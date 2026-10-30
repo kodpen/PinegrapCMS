@@ -10,6 +10,7 @@ description: W8 address values: the order's recipients (ship_to, order view, rec
 
 ## Which values does the address book offer?
 - In its row loop: `__recipient_salutation`, `__recipient_first_name`, `__recipient_last_name`, `__recipient_address_1` / `_2`, `__recipient_city`, `__recipient_state`, `__recipient_zip`, `__recipient_country` (the country's name in the site language, `pg_geo_country_label()`, as the one-line address prints it), `__recipient_address_type` (words, only when the widget asks for the address type). Editor group "More recipient details (loop)" (`SW_ADDRESS_BOOK_ENTITY_TOKENS`). Only the signed-in member's own saved recipients.
+- `__shipping_salutation` / `__recipient_salutation` print the stored abbreviation (Mr.); the pick lists show it translated (`get_salutation_options()` is label => value, #3579), so a loop over it takes `$label => $val`.
 
 ## Which row tokens do the order lists carry?
 - `order.shipments` names the ship_to values; `order.items` names the order line and product values (`pg_sw_list_order_entity_tokens()`, labels twin of the editor lists). Being the list's own tokens, a row fills them (empty when the order view did not read them) instead of the outer record.

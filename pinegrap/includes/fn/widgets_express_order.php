@@ -2046,11 +2046,12 @@ function _eo_render_billing_address($lf, $totals, $cfg)
     // country code (e.g. 'TR'), and tax rate / shipping validation look it
     // up against `countries.code = '…'`. See _eo_country_options() comment.
     $country_options = _eo_country_options($get('billing_country'));
-    // Salutation options come from get_salutation_options() → key/value array
+    // Salutation options come from get_salutation_options() as label => value:
+    // the label is translated, the posted value is the stored abbreviation.
     $sal_options = function_exists('get_salutation_options') ? get_salutation_options() : array('' => '');
     $sal_html = '';
     $sel_sal = $get('billing_salutation');
-    foreach ($sal_options as $val => $label) {
+    foreach ($sal_options as $label => $val) {
         $sal_html .= '<option value="' . h($val) . '"' . ($val === $sel_sal ? ' selected' : '') . '>' . h($label) . '</option>';
     }
 
@@ -3619,7 +3620,7 @@ function _eo_render_shipping_section($recipients, $lf, $form_id, $widget_id, $in
         // Address block
         $sal_html = '';
         $sel_sal = $get('salutation');
-        foreach ($sal_options as $val => $label) {
+        foreach ($sal_options as $label => $val) {
             $sal_html .= '<option value="' . h($val) . '"' . ($val === $sel_sal ? ' selected' : '') . '>' . h($label) . '</option>';
         }
         // Country options use CODE as value (matches ship_tos.country storage
@@ -3911,6 +3912,11 @@ function _eo_render_widget_js($widget_id, $form_id, $needs_shipping, $recipients
     $_eo_ship_drawn   = (int)($totals['shipping_drawn'] ?? 0);
     $_eo_ship_charged = (int)($totals['shipping'] ?? $_eo_ship_drawn);
     $_eo_total_shown  = (int)($totals['total'] ?? 0);
+    // The card surcharge percentage in thousandths of a percent, the units
+    // pg_percent_of() multiplies by.
+    $_eo_surcharge_units = (defined('ECOMMERCE_SURCHARGE_PERCENTAGE') && (float)ECOMMERCE_SURCHARGE_PERCENTAGE > 0)
+        ? (int)pg_decimal_units(ECOMMERCE_SURCHARGE_PERCENTAGE, 3)
+        : 0;
 
     // Inline script. Idempotent — multiple express_order widgets on the
     // same page register only one global init via window.__pgEoInit.
@@ -3924,8 +3930,16 @@ function _eo_render_widget_js($widget_id, $form_id, $needs_shipping, $recipients
     var SHIP_DRAWN   = {$_eo_ship_drawn};
     var SHIP_CHARGED = {$_eo_ship_charged};
     var TOTAL_SHOWN  = {$_eo_total_shown};
+    var SURCHARGE_UNITS = {$_eo_surcharge_units};
     var form = document.getElementById(FORM_ID);
     if (!form) return;
+    // The posted total without the card surcharge, as drawn: read before
+    // any pick rewrites the hidden field.
+    var POSTED_TOTAL = (function () {
+        var h = form.querySelector('input[name="total"]');
+        var c = h ? Math.round(parseFloat(h.value) * 100) : NaN;
+        return isNaN(c) ? TOTAL_SHOWN : c;
+    })();
 
     // Convert HTML5 <input type="date"> ISO value (YYYY-MM-DD) into the
     // format `validate_date()` accepts (DD/MM/YYYY for day_month sites,
@@ -4312,8 +4326,9 @@ function _eo_render_widget_js($widget_id, $form_id, $needs_shipping, $recipients
         // pg-eo-total-formatted; _eo_default_designer_tree's \$tot_row
         // calls). Express Order templates saved before they existed would
         // otherwise get a new total beside a shipping row nothing updates;
-        // they keep the server-rendered total, and a full "Güncelle"
-        // recalculates it.
+        // they keep the server-rendered total, and a full "Update"
+        // recalculates it. Their posted total does not move either, so
+        // submit_order() still asks them to confirm a higher total.
         if (!document.querySelector('.pg-eo-subtotal-formatted')) return;
         if (!document.querySelector('.pg-eo-shipping-formatted')) return;
         var totalSpan = document.querySelector('.pg-eo-total-formatted');
@@ -4322,9 +4337,32 @@ function _eo_render_widget_js($widget_id, $form_id, $needs_shipping, $recipients
         // the shipping picked now and the shipping it was drawn with: the
         // discount, the tax and the gift cards stay as the server worked
         // them out. Adding the displayed subtotal, tax and shipping left the
-        // order discount out.
-        var cents = Math.max(0, TOTAL_SHOWN + shipCents - SHIP_CHARGED);
+        // order discount out. The card surcharge is taken again on the new
+        // total as submit_order() takes it (pg_percent_of()); while the
+        // shipping is the one drawn, the drawn figures stay as they are.
+        var base = POSTED_TOTAL, cents = TOTAL_SHOWN;
+        if (shipCents !== SHIP_CHARGED) {
+            base = Math.max(0, POSTED_TOTAL + shipCents - SHIP_CHARGED);
+            cents = base;
+            if (SURCHARGE_UNITS > 0 && TOTAL_SHOWN > POSTED_TOTAL) {
+                cents += Math.round(base * SURCHARGE_UNITS / 100000);
+            }
+        }
         totalSpan.textContent = formatCost(cents / 100 * moneyRate());
+        totalSpan.setAttribute('data-pg-eo-total-cents', base);
+        if (totalSpan.hasAttribute('data-pg-eo-total-with-surcharge-cents')) {
+            totalSpan.setAttribute('data-pg-eo-total-with-surcharge-cents', cents);
+        }
+        var surSpan = document.querySelector('.pg-eo-surcharge-formatted');
+        if (surSpan && cents > base) surSpan.textContent = formatCost((cents - base) / 100 * moneyRate());
+        // The posted totals follow the shown one: submit_order() refuses an
+        // order whose total is above the one posted, and the picked method's
+        // cost reaches ship_tos only with this POST, so a total left as drawn
+        // refused the first submit of every paid method.
+        var hTotal = form.querySelector('input[name="total"]');
+        var hTws = form.querySelector('input[name="total_with_surcharge"]');
+        if (hTotal) hTotal.value = (base / 100).toFixed(2);
+        if (hTws) hTws.value = (cents / 100).toFixed(2);
     }
     // software_money_format / software_format_money come from frontend.js
     // and write money the way the server does; the fallback below only

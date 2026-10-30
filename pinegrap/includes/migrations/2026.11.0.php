@@ -118,6 +118,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_shipment_label_pickup(); // 11.0.131
 	upgrade_2026_11_0_subscription_price_notice(); // 11.0.132
 	upgrade_2026_11_0_workspace_visit_contact(); // 11.0.118
+	upgrade_2026_11_0_starter_addthis();        // 11.0.133
 
 }
 
@@ -3777,5 +3778,26 @@ function upgrade_2026_11_0_workspace_visit_contact() {
 	install_add_index('ws_events', 'idx_contact', "INDEX idx_contact (contact_id)");
 
 	install_note('Workspace: a customer visit on the Work Calendar can name the customer, and it shows on that customer\'s card and history.');
+
+}
+
+// The sharing code of the starter sites (2026.11.0, 11.0.133). Both starter
+// dumps shipped an AddThis script as the advanced sharing code; AddThis closed
+// on 2023-05-31, so every page sent a request that only failed. The dumps now
+// ship an empty code, and get_page_content.php prints nothing for an empty
+// code. On a running site the code is emptied only while it is still, byte
+// for byte, one of the two stock scripts: a code the owner wrote or edited
+// stays. BINARY keeps the comparison exact (case, trailing spaces, CR LF).
+function upgrade_2026_11_0_starter_addthis() {
+
+	$stock = array(
+		"<!-- register for a addthis.com account and change the pubid -->\r\n<script type=\"text/javascript\" src=\"//s7.addthis.com/js/300/addthis_widget.js#pubid=ra-577d4f644c7cc90c\"></script>\r\n\r\n",
+		"<!-- Go to www.addthis.com/dashboard to customize your tools -->\r\n<script type=\"text/javascript\" src=\"//s7.addthis.com/js/300/addthis_widget.js#pubid=ra-5be52cac894a13b9\"></script>\r\n",
+	);
+
+	db("UPDATE config SET social_networking_code = ''
+		WHERE BINARY social_networking_code IN ('" . e($stock[0]) . "', '" . e($stock[1]) . "')");
+
+	install_note('Sharing: the AddThis script the starter sites came with is removed where it was never changed, since AddThis closed in 2023 and the script only failed. A sharing code written on the site stays.');
 
 }
