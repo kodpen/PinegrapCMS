@@ -27,7 +27,7 @@ description: Generated from the module field of the memory files: each includes/
 - `contact_list`: [[contact-list-names]], [[panel-image-alt]], [[server-paged-lists]]
 - `contacts`: [[contact-holders]], [[contact-lead-source]], [[panel-avatar]], [[panel-avatar-sites]]
 - `core`: [[error-screen-language-and-status]], [[send-to-url-safety]], [[time-zone-list-labels]]
-- `custom_form`: [[collection-template-refs]], [[sms-consent-custom-form]]
+- `custom_form`: [[collection-template-refs]], [[custom-form-field-rules]], [[sms-consent-custom-form]]
 - `designer_fx`: [[designer-interactions]]
 - `designer_vocab`: [[designer-bootstrap-vocabulary]]
 - `ecommerce`: [[card-data-manual-processing]], [[express-order-tax-address]], [[panel-image-alt]]

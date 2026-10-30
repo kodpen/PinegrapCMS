@@ -1318,6 +1318,7 @@
     "on {var:1}'s proposal": "{var:1} önerisiyle",
     "once a day": "günde bir kez",
     "once a week": "haftada bir kez",
+    "one answer per line": "her satıra bir cevap",
     "one keyword per line": "satır başına bir anahtar kelime",
     "online, video, telemedicine, remote": "çevrimiçi, görüntülü, uzaktan sağlık, uzaktan",
     "only enable after all historical orders have been synced, to start sending MailChimp automation campaigns": "MailChimp otomasyon kampanyaları göndermeye başlamak için yalnızca tüm geçmiş siparişler senkronize edildikten sonra etkinleştirin",

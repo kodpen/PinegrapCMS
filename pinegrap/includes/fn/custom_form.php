@@ -1929,6 +1929,23 @@ function pg_cf_apply_field_bindings(&$tree, $map, $lf = null, $cf_folder_id = 0,
                 $set_attr($tree['props']['_attrs'], 'title', $cf_msg);
             }
 
+            // The visitor rules in the browser (custom_form.php checks them
+            // again): a day picker starts at today, and a field required for
+            // some answers of another names that field's control and the
+            // answers, for pg_cf_validation_script() to switch `required`.
+            // Not on a box of a group, which never carries `required` here,
+            // nor on a field that is always required.
+            $cf_rules = pg_cf_rules_clean(isset($row['rules']) ? $row['rules'] : '', (string)$row['type']);
+            if (isset($cf_rules['min_date']) && $input_type === 'date') {
+                $set_attr($tree['props']['_attrs'], 'min', pg_cf_rules_today());
+            }
+            $cf_other = pg_cf_rule_other_field($cf_rules, $map);
+            if ($cf_other !== null && empty($row['required']) && $input_type !== 'checkbox' && !$cf_rich) {
+                $set_attr($tree['props']['_attrs'], 'data-pg-required-when', (string)(int)$cf_other['id']);
+                $set_attr($tree['props']['_attrs'], 'data-pg-required-answers',
+                    json_encode($cf_rules['required_when']['answers'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+            }
+
             // A field's kind draws its control: a number field takes decimal
             // numbers, an image field offers images; a reference pick list
             // lists the records of the form it points into (a product or
@@ -2295,7 +2312,19 @@ function pg_cf_validation_script()
          . 'if(!file||!/^image\\//.test(file.type)||!window.URL){if(img)img.hidden=true;return;}'
          . 'if(!img){img=document.createElement("img");img.className="img-thumbnail d-block mt-2";img.alt="";'
          . 'img.style.maxHeight="12rem";input.insertAdjacentElement("afterend",img);}'
-         . 'url=URL.createObjectURL(file);img.src=url;img.hidden=false;});});});};'
+         . 'url=URL.createObjectURL(file);img.src=url;img.hidden=false;});});'
+         // A field required only for some answers of another
+         // (data-pg-required-when names that field's control, posted as its
+         // id or id[]) is required while one of them is chosen, compared
+         // without case or surrounding spaces as the server compares them.
+         . 'Array.prototype.forEach.call(form.querySelectorAll("[data-pg-required-when]"),function(c){'
+         . 'var id=c.getAttribute("data-pg-required-when"),norm=function(v){return String(v).trim().toLowerCase();},answers=[];'
+         . 'try{answers=JSON.parse(c.getAttribute("data-pg-required-answers")||"[]").map(norm);}catch(x){}'
+         . 'var sync=function(){var on=false;Array.prototype.forEach.call(form.elements,function(o){'
+         . 'if(o.name!==id&&o.name!==id+"[]")return;if((o.type==="radio"||o.type==="checkbox")&&!o.checked)return;'
+         . 'var vals=(o.tagName==="SELECT")?Array.prototype.filter.call(o.options,function(p){return p.selected;}).map(function(p){return p.value;}):[o.value];'
+         . 'vals.forEach(function(v){if(answers.indexOf(norm(v))!==-1)on=true;});});c.required=on;};'
+         . 'form.addEventListener("change",sync);form.addEventListener("input",sync);sync();});});};'
          . 'if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded",bind);}else{bind();}'
          . '})();</script>';
 }

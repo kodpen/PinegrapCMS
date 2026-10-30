@@ -220,3 +220,16 @@ function test_custom_form_rules_templates()
 	foreach ($delivered['props']['_attrs'] as $a) if ($a['name'] === 'value') $value = $a['value'];
 	pg_assert_same(lang('Delivered to us'), $value, 'the rule names the answer as the control posts it');
 }
+
+// The browser side: the drawn control carries min and the condition, and the
+// shared validation script switches `required`.
+function test_custom_form_rules_browser_side()
+{
+	$fn = _test_cf_rules_source('includes/fn/custom_form.php');
+	pg_assert_contains("\$set_attr(\$tree['props']['_attrs'], 'min', pg_cf_rules_today());", $fn, 'min on a day picker');
+	pg_assert_contains("'data-pg-required-when'", $fn, 'the condition on the control');
+	$start = strpos($fn, 'function pg_cf_validation_script()');
+	$end   = strpos($fn, "\n}\n", $start);
+	pg_assert_contains('[data-pg-required-when]', substr($fn, $start, $end - $start), 'the script reads the condition');
+	pg_assert_contains("sd-cf-mindate", _test_cf_rules_source('assets/js/style_designer.src.js'), 'the designer row');
+}
