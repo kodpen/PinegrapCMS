@@ -5,7 +5,7 @@ description: The campaign profile create and edit screens share includes/forms/e
 
 ## Where is the campaign profile form?
 - `includes/forms/email_campaign_profile_form.php` (gate `PG_FUNCTIONS_DIR`), PR #2356. `add_email_campaign_profile.php` and `edit_email_campaign_profile.php` stay at the root as thin wrappers and `require_once` it.
-- `pg_email_campaign_profile_form_cards($liveform, $user, $product_id)` prints the five cards; `…_form_validate($liveform, $profile_id)` marks the errors (0 = new profile, else its own name is no duplicate); `…_form_columns($liveform)` returns the column values, saved with `db_q()`.
+- `pg_email_campaign_profile_form_cards($liveform, $user, $product_id, $keep_pages)` prints the five cards (edit passes the stored custom form and body page as `$keep_pages`, so a page in an archived folder stays listed and Save is not refused); `…_form_validate($liveform, $profile_id)` marks the errors (0 = new profile, else its own name is no duplicate); `…_form_columns($liveform)` returns the column values, saved with `db_q()`.
 
 ## What stays in the screens?
 - Create: the plain text footer prefill of the body, the Create button, the redirect back to the create screen on error.

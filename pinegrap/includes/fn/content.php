@@ -654,8 +654,10 @@ function get_menu_item_options($menu_id, $exception_menu_item_id = 0, $parent_id
 // page sent to the bin is left out with it. A folder sent to the bin keeps its
 // own folder_archived and carries its pages in: $include_recycled = false
 // leaves those out too. $keep_id is the page the record being edited already
-// points at: while it is in the bin it stays, marked, under the name it had
-// before the bin parked it, so saving the record does not drop it.
+// points at: it stays whatever its folder and whatever the user's folder
+// access, so saving the record does not drop it. In the bin it is marked and
+// shown under the name it had before the bin parked it; in an archived folder
+// it is marked archived.
 function get_page_options($page_id = '', $page_type = '', $access = 'edit', $include_recycled = true, $keep_id = 0)
 {
     global $user;
@@ -687,8 +689,8 @@ function get_page_options($page_id = '', $page_type = '', $access = 'edit', $inc
     } else {
         $where .= ' AND ';
     }
-    // The kept page is let past the archived rule here; the loop below keeps
-    // it only while it is in the bin.
+    // The kept page is let past the archived rule here; the loop below marks
+    // it (pg_page_option_status()).
     $where .= ($keep_id > 0) ? '((folder.folder_archived = "0") OR (page.page_id = \'' . $keep_id . '\'))' : '(folder.folder_archived = "0")';
     // get pages
     $query = "SELECT
@@ -710,25 +712,54 @@ function get_page_options($page_id = '', $page_type = '', $access = 'edit', $inc
         ORDER BY page.page_name";
     $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
     while ($row = mysqli_fetch_assoc($result)) {
-        $binned = isset($bin_folders[(int) $row['page_folder']]);
-        $kept = $binned && ((int) $row['page_id'] === $keep_id);
-        if ((((string) $row['folder_archived'] !== '0') || ($binned && ($include_recycled == false))) && !$kept) {
+        $kept = ((int) $row['page_id'] === $keep_id);
+        $status = pg_page_option_status((string) $row['folder_archived'] !== '0', isset($bin_folders[(int) $row['page_folder']]), $include_recycled == true, $kept);
+        if ($status === 'skip') {
             continue;
         }
         $page_name = $row['page_name'];
-        if ($kept) {
+        if ($status === 'bin') {
             require_once(PG_FUNCTIONS_DIR . '/view_folder_and_files_f.php');
             $original = pg_recycle_parked_original($page_name, $row['page_id']);
             $page_name = (($original !== '') ? $original : $page_name) . ' [' . lang('IN RECYCLE BIN') . ']';
+        } elseif ($status === 'archived') {
+            $page_name .= ' [' . lang('ARCHIVED') . ']';
         }
         // If access is set to "edit" and the user has edit access to this page,
         // or if access is set to "view" and the user has view access to this page,
-        // then include it
-        if ((($access == 'edit') && (check_folder_access_in_array($row['page_folder'], $folders_that_user_has_access_to) == true)) || (($access == 'view') && (check_view_access($row['page_folder']) == true))) {
+        // then include it. The kept page is the record's own and stays.
+        if ($kept || (($access == 'edit') && (check_folder_access_in_array($row['page_folder'], $folders_that_user_has_access_to) == true)) || (($access == 'view') && (check_view_access($row['page_folder']) == true))) {
             $page_options[h($page_name)] = $row['page_id'];
         }
     }
     return $page_options;
+}
+
+/**
+ * How get_page_options() lists one page.
+ *
+ * @param bool $archived          The page's folder is archived (the Recycle Bin is one)
+ * @param bool $binned            The page is in the bin or in a folder sent into it
+ * @param bool $include_recycled  Pages in a folder sent into the bin are listed
+ * @param bool $kept              The page is the one the edited record points at
+ * @return string  'skip' (left out), 'show', 'bin' (kept, marked in the
+ *                 Recycle Bin) or 'archived' (kept, marked archived)
+ */
+function pg_page_option_status($archived, $binned, $include_recycled, $kept)
+{
+    if ($kept) {
+        if ($binned) {
+            return 'bin';
+        }
+
+        return $archived ? 'archived' : 'show';
+    }
+
+    if ($archived || ($binned && !$include_recycled)) {
+        return 'skip';
+    }
+
+    return 'show';
 }
 
 /**

@@ -191,9 +191,12 @@ function pg_email_campaign_profile_schedule_time($time)
  * @param int      $product_id  The stored product, kept in the product
  *                              picker even when it is no longer offered
  *                              (0 on the create screen)
+ * @param array    $keep_pages  The stored 'custom_form_page_id' and 'page_id',
+ *                              kept in their page pickers even in an archived
+ *                              folder (empty on the create screen)
  * @return string  HTML
  */
-function pg_email_campaign_profile_form_cards($liveform, $user, $product_id = 0)
+function pg_email_campaign_profile_form_cards($liveform, $user, $product_id = 0, $keep_pages = array())
 {
     $rows = pg_email_campaign_profile_action_rows($liveform->get_field_value('action'));
 
@@ -282,7 +285,7 @@ function pg_email_campaign_profile_form_cards($liveform, $user, $product_id = 0)
                                         </div>
                                         <div class="col-12 md:col-6 lg:col-4 my-3 collapse ' . $rows['custom_form_page_id'] . '" id="custom_form_page_id_row">
                                             <label for="custom_form_page_id" class="form-label">' . lang('Custom Form') . '</label>
-                                            ' . $liveform->output_field(array('type'=>'select', 'name'=>'custom_form_page_id', 'id'=>'custom_form_page_id', 'class'=>'form-control', 'options'=>get_page_options('', 'custom form') )) . '
+                                            ' . $liveform->output_field(array('type'=>'select', 'name'=>'custom_form_page_id', 'id'=>'custom_form_page_id', 'class'=>'form-control', 'options'=>get_page_options('', 'custom form', 'edit', true, $keep_pages['custom_form_page_id'] ?? 0) )) . '
                                         </div>
                                         <div class="col-12 md:col-6 lg:col-4 my-3 collapse ' . $rows['email_campaign_profile_id'] . '" id="email_campaign_profile_id_row">
                                             <label for="email_campaign_profile_id" class="form-label">' . lang('Campaign Profile for Campaign that was sent') . '</label>
@@ -334,7 +337,7 @@ function pg_email_campaign_profile_form_cards($liveform, $user, $product_id = 0)
                                                     <div class="row">
                                                         <div class="col-12 sm:col-8 my-1">
                                                             <label class="form-label" for="page_id">' . lang('Page') . '</label>
-                                                            ' . $liveform->output_field(array('type'=>'select', 'id'=>'page_id', 'name'=>'page_id', 'class'=>'form-control collapse-if-selected', 'options'=>get_page_options('', '', 'view'), 'data-bs-target'=>'#body_preview_row', 'onchange'=>'document.getElementById(\'body_preview_iframe\').src = \'' . OUTPUT_PATH . '\' + this.options[this.selectedIndex].firstChild.nodeValue + \'?edit=no&email=true\';')) . '
+                                                            ' . $liveform->output_field(array('type'=>'select', 'id'=>'page_id', 'name'=>'page_id', 'class'=>'form-control collapse-if-selected', 'options'=>get_page_options('', '', 'view', true, $keep_pages['page_id'] ?? 0), 'data-bs-target'=>'#body_preview_row', 'onchange'=>'document.getElementById(\'body_preview_iframe\').src = \'' . OUTPUT_PATH . '\' + this.options[this.selectedIndex].firstChild.nodeValue + \'?edit=no&email=true\';')) . '
                                                         </div>
                                                         <div class="collapse popover fade bs-popover-bottom p-0 mb-3 w-100" id="body_preview_row">
                                                             <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
