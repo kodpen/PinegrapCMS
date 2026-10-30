@@ -231,11 +231,14 @@ function erp_files_list($folder, $options = array())
     $where = $scope['where'] . erp_files_search_sql($is_waybill ? 'waybill' : ($is_letter ? 'reconciliation' : 'invoice'), (string) ($options['search'] ?? ''));
 
     // The kept copy, when there is one: its size is the file's, and the entry
-    // says it opens the document as it was issued.
+    // says it opens the document as it was issued. Only the newest kept row is
+    // joined: a document whose kept file went missing from the disk gets a
+    // second row on its next rendering, and the earlier one stays as history,
+    // so joining every row would list the document twice and count it twice.
     $kept_type = array('waybill' => 'waybill', 'ewaybill' => 'waybill', 'edoc' => 'edoc', 'reconciliation' => 'reconciliation');
     $kept_type = $kept_type[$scope['table']] ?? 'invoice';
     $kept_join = (function_exists('erp_archive_ready') && erp_archive_ready())
-        ? " LEFT JOIN files kf ON kf.erp_doc_type = '" . $kept_type . "' AND kf.erp_doc_id = " . $alias . ".id"
+        ? " LEFT JOIN files kf ON kf.id = (SELECT MAX(f2.id) FROM files f2 WHERE f2.erp_doc_type = '" . $kept_type . "' AND f2.erp_doc_id = " . $alias . ".id)"
         : '';
     $kept_columns = ($kept_join !== '') ? ', kf.id AS kept_file_id, kf.name AS kept_file_name, kf.size AS kept_size, kf.timestamp AS kept_at' : '';
 
