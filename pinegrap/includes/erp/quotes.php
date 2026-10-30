@@ -671,9 +671,10 @@ function erp_quote_mail_defaults($quote)
  * @param string $subject
  * @param string $message
  * @param int    $user_id
+ * @param string $link_url  A guest link to accept the quote by (erp_quote_link_url()), or ''
  * @return array ['success' => bool, 'error' => string]
  */
-function erp_quote_mail_send($quote_id, $to, $subject, $message, $user_id)
+function erp_quote_mail_send($quote_id, $to, $subject, $message, $user_id, $link_url = '')
 {
     $mail_id = 0;
     $fail = function ($message) use (&$mail_id) {
@@ -729,7 +730,7 @@ function erp_quote_mail_send($quote_id, $to, $subject, $message, $user_id)
         'reply_to' => $sender,
         'subject' => $subject,
         'format' => 'html',
-        'body' => erp_quote_mail_html($quote, $message, $sender),
+        'body' => erp_quote_mail_html($quote, $message, $sender, $link_url),
         'type' => 'system',
         'attachments' => array(
             array('name' => $file, 'content' => $pdf, 'type' => 'application/pdf'),
@@ -758,9 +759,10 @@ function erp_quote_mail_send($quote_id, $to, $subject, $message, $user_id)
  * @param array  $quote
  * @param string $message
  * @param string $sender
+ * @param string $link_url  The guest link, or ''
  * @return string
  */
-function erp_quote_mail_html($quote, $message, $sender)
+function erp_quote_mail_html($quote, $message, $sender, $link_url = '')
 {
     $paragraph = 'font-size: 14px; margin: 0 0 12px 0;';
     $cell = 'font-size: 14px; padding: 4px 16px 4px 0; vertical-align: top;';
@@ -790,6 +792,7 @@ function erp_quote_mail_html($quote, $message, $sender)
         ' . (($title !== '') ? '<p style="' . $paragraph . '">' . h(lang(array('string' => 'Dear {var:1},', 'vars' => $title))) . '</p>' : '') . '
         <p style="' . $paragraph . '">' . nl2br(h(trim((string) $message))) . '</p>
         <table style="border-collapse: collapse; margin: 8px 0 16px 0;">' . $output_rows . '</table>
+        ' . (($link_url !== '') ? '<p style="' . $paragraph . '"><a href="' . h($link_url) . '" style="color: #0d6efd;">' . h(lang('Read the quote and accept it online')) . '</a></p>' : '') . '
         <p style="' . $paragraph . '">' . h(lang('If you have a question about this quote, simply reply to this e-mail.')) . '</p>
         <p style="' . $paragraph . '">' . h(ORGANIZATION_NAME) . (($sender !== '') ? '<br>' . h($sender) : '') . '</p>
     </div>

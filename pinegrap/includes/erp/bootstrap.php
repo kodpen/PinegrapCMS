@@ -68,6 +68,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/erp/quotes.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/quote_templates.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/purchase_orders.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/signatures.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/erp/quote_links.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/invoice_recurring.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/price_lists.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/stock_counts.php');
