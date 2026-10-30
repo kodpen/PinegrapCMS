@@ -223,7 +223,12 @@ if (!$_POST) {
             parallelUploads: 9999,
             // What this server accepts for one file, in MB.
             maxFilesize: ' . $dropzone_file_max_mb . ',
-            dictFileTooBig: "' . lang('This file is too big to upload ({{filesize}} MB). The limit is {{maxFilesize}} MB.') . '",
+            // Names the limit as the line above the drop area does; the Dropzone
+            // own figures are base 1024 with two "." decimals.
+            dictFileTooBig: ' . encode_json(lang(array(
+                'string' => 'The file can be at most {var:1}.',
+                'vars'   => array(convert_bytes_to_string(($upload_limits['file_max'] > 0) ? $upload_limits['file_max'] : $dropzone_file_max_mb * 1048576, 1))))) . ',
+            filesizeBase: 1024,
             previewsContainer: ".dropzone_previews",
             // The drop area is a plain div that takes no focus; the button
             // beside it opens the same file dialog from the keyboard.
@@ -263,6 +268,30 @@ if (!$_POST) {
 
                 // Shown only once Dropzone runs; without it the fallback input below is used.
                 document.getElementById("pg_upload_choose").hidden = false;
+
+                // The size under each file in the panel units and decimal
+                // mark (B and KB whole, MB and up with one decimal), so it
+                // reads like the limit line above the drop area.
+                var sizeSeparators = ' . encode_json(pg_number_separators()) . ';
+                myDropzone.filesize = function (size) {
+                    var value = size;
+                    var unit = " B";
+                    var decimals = 0;
+                    var parts;
+
+                    if (size >= 1073741824) {
+                        value = size / 1073741824; unit = " GB"; decimals = 1;
+                    } else if (size >= 1048576) {
+                        value = size / 1048576; unit = " MB"; decimals = 1;
+                    } else if (size >= 1024) {
+                        value = size / 1024; unit = " KB";
+                    }
+
+                    parts = value.toFixed(decimals).split(".");
+                    parts[0] = parts[0].replace(/\\B(?=(\\d{3})+(?!\\d))/g, sizeSeparators.thousands);
+
+                    return "<strong>" + parts.join(sizeSeparators.decimal) + "</strong>" + unit;
+                };
                
                 // First change the button to actually tell Dropzone to process the queue.
                 // By id: a Connect button of the cloud picker is a submit button too.
