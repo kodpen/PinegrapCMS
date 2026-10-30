@@ -69,6 +69,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-assistant-discussions.md: An assistant asked in a discussion: what it reads about it (Claude's context thread, PR #1121; Pinegrap AI's first message), where it may be asked, following
 - workspace-assistant-keys.md: Create on the Claude and Pinegrap AI cards, Claude's "Reset secret": the row made, scopes, config link, who sees it, one-time window, a key never given a secret
 - workspace-assistant-reach.md: Claude and Pinegrap AI read and answer a discussion or allowed private channel their app owner is not in through the person who asked (PR #1085)
+- workspace-attachment-uploads.md: How the Workspace screen sends channel and note attachments: a form part over XMLHttpRequest with a progress card and Cancel (#3745), the shared server check, base64 still taken, limits
 - workspace-bulk-create.md: Bulk product drafts (bulk.php action create, PR #2266): one 'bulk' card of up to 200 rows, checks, row place saved before the write, events, card, where a person's own rows come from
 - workspace-bulk-sources.md: A person's own bulk product drafts (bulk_sources.php): several lines under /create product, /create product answering or sent with a channel spreadsheet, the table reader, ws_bulk_create_card()
 - workspace-calc-numbers.md: Figures inside a workspace sum (ws_calc_tokens(), ws_calc_inline(), #3398): read the site's way, leading %, English comma separates arguments, "=" line errors

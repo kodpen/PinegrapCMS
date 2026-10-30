@@ -122,7 +122,7 @@ if (!$_POST) {
         $delete_confirmation = pg_recycle_style_ready()
             ? lang('This page style will be moved to the Recycle Bin.')
             : lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('page style'))));
-        $output_delete_button = '<button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-solid theme-danger " data-confirm-content="' . $delete_confirmation . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>';
+        $output_delete_button = '<button type="submit" name="submit_delete" value="Delete" formnovalidate class="btn my-1  btn-solid theme-danger " data-confirm-content="' . $delete_confirmation . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>';
     }
 
     print
@@ -233,6 +233,11 @@ else
     } else {
         $values = pg_custom_style_form_values($_POST, SOCIAL_NETWORKING == TRUE);
         $name = $values['style_name'];
+
+        // A name of only spaces passes the browser's required check and is trimmed to ''.
+        if ($name === '') {
+            output_error(lang('Name is required.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+        }
 
         // update style
         $result = db_q(

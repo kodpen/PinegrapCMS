@@ -490,6 +490,69 @@
         });
     }
 
+    // A file sent to an action as a form part, over XMLHttpRequest: fetch()
+    // says nothing while the body is on its way, and a form part travels
+    // without base64's third more and the JSON body's memory limit. fields
+    // go beside it; onProgress(loaded, total) follows the bytes (total 0
+    // when the browser cannot tell). The answer is read as api() reads it;
+    // xhr.abort() rejects with error.aborted.
+    function apiUpload(action, fields, file, name, onProgress) {
+        var xhr = new XMLHttpRequest();
+        var form = new FormData();
+
+        form.append('action', action);
+        form.append('token', CFG.token);
+        Object.keys(fields || {}).forEach(function (key) {
+            form.append(key, fields[key]);
+        });
+        form.append('file', file, name);
+
+        var done = new Promise(function (resolve, reject) {
+            xhr.open('POST', CFG.api_url);
+            // The listeners go on before send(), or no progress is reported.
+            xhr.upload.addEventListener('progress', function (event) {
+                if (onProgress) {
+                    onProgress(event.lengthComputable ? event.loaded : 0, event.lengthComputable ? event.total : 0);
+                }
+            });
+            xhr.addEventListener('load', function () {
+                var json = null;
+
+                try {
+                    json = JSON.parse(xhr.responseText);
+                } catch (error) {
+                    json = null;
+                }
+
+                if (json && json.status === 'success') {
+                    resolve(json.data || {});
+                    return;
+                }
+
+                // Not an answer of ours: a web server or proxy refused the
+                // body before PHP saw it (nginx 413, IIS 404.13), or a
+                // gateway gave up waiting.
+                var error = new Error((json && json.message) ? json.message
+                    : ((xhr.status === 413 || xhr.status === 404) ? t('upload_too_large_server') : t('error_generic')));
+
+                error.code = (json && json.code) ? json.code : '';
+                reject(error);
+            });
+            xhr.addEventListener('error', function () {
+                reject(new Error(t('upload_failed')));
+            });
+            xhr.addEventListener('abort', function () {
+                var error = new Error('');
+
+                error.aborted = true;
+                reject(error);
+            });
+            xhr.send(form);
+        });
+
+        return { xhr: xhr, done: done };
+    }
+
     var toastRoot = null;
 
     function toast(message, kind, action) {
@@ -539,6 +602,94 @@
 
     function fail(error) {
         toast((error && error.message) ? error.message : t('error_generic'), 'danger');
+    }
+
+    // Uploads on their way, for the guard against leaving the page. It
+    // stands only while one runs: a standing listener keeps the page out of
+    // the browser's back-forward cache.
+    var uploadsRunning = 0;
+
+    function uploadLeaveGuard(event) {
+        event.preventDefault();
+        event.returnValue = t('upload_leave');
+
+        return event.returnValue;
+    }
+
+    // A file on its way, in the corner where the notices stand: what goes
+    // (label, the file's name), a bar with the share sent, "1.4 MB of 6.0
+    // MB" and Cancel upload, which calls onCancel. progress(loaded, total)
+    // moves it; remove() takes it away once the request has ended.
+    function uploadCard(label, name, onCancel) {
+        if (!toastRoot) {
+            toastRoot = el('div', 'toast-container position-fixed bottom-0 start-0 p-5');
+            toastRoot.style.zIndex = 1090;
+            document.body.appendChild(toastRoot);
+        }
+
+        var box = el('div', 'toast show border-0 bg-inverse fg-contrast-inverse');
+        var inner = el('div', 'toast-body');
+        var title = el('div', 'fw-semibold', label);
+        var file = el('div', 'small text-truncate', name);
+        var bar = progressBar({ percent: 0 }, true, label);
+        var fill = bar.firstChild;
+        var row = el('div', 'd-flex justify-content-between align-items-center gap-3 small mt-2');
+        var bytes = el('span');
+        var stop = button('btn btn-sm btn-text fg-reset', t('upload_cancel'));
+        var gone = false;
+
+        // The step is announced, not every percent.
+        title.setAttribute('role', 'status');
+        stop.addEventListener('click', function () {
+            stop.disabled = true;
+            onCancel();
+        });
+
+        inner.appendChild(title);
+        inner.appendChild(file);
+        inner.appendChild(el('div', 'mt-2')).appendChild(bar);
+        row.appendChild(bytes);
+        row.appendChild(stop);
+        inner.appendChild(row);
+        box.appendChild(inner);
+        toastRoot.appendChild(box);
+
+        if (uploadsRunning++ === 0) {
+            window.addEventListener('beforeunload', uploadLeaveGuard);
+        }
+
+        return {
+            progress: function (loaded, total) {
+                // No figures (a browser that cannot tell the size): a moving
+                // bar.
+                if (!total) {
+                    fill.className = 'progress-bar progress-bar-striped progress-bar-animated';
+                    fill.style.width = '100%';
+                    bar.removeAttribute('aria-valuenow');
+                    bytes.textContent = '';
+                    return;
+                }
+
+                var share = Math.min(100, Math.round(100 * loaded / total));
+
+                fill.className = 'progress-bar';
+                fill.style.width = share + '%';
+                bar.setAttribute('aria-valuenow', String(share));
+                bytes.textContent = t('upload_sent', sizeLabel(loaded), sizeLabel(total));
+            },
+            remove: function () {
+                if (gone) {
+                    return;
+                }
+
+                gone = true;
+                box.remove();
+
+                if (--uploadsRunning === 0) {
+                    window.removeEventListener('beforeunload', uploadLeaveGuard);
+                }
+            }
+        };
     }
 
     function debounce(fn, wait) {
@@ -3170,6 +3321,22 @@
     // A bar says what it counts: a checklist bar is named with the "items
     // done" sentence unless the caller names it, so a screen reader does
     // not hear a bare percentage.
+    // Sizes of files in a list and on their way, as the file manager
+    // writes them (uploadSizeLabel() in view_folders.php). The unit letters
+    // are not translated: the server's convert_bytes_to_string() writes the
+    // same ones in every language.
+    function sizeLabel(bytes) {
+        var steps = [[1073741824, ' GB', 1], [1048576, ' MB', 1], [1024, ' KB', 0]];
+
+        for (var i = 0; i < steps.length; i++) {
+            if (bytes >= steps[i][0]) {
+                return (bytes / steps[i][0]).toLocaleString(CFG.locale || undefined, { minimumFractionDigits: steps[i][2], maximumFractionDigits: steps[i][2] }) + steps[i][1];
+            }
+        }
+
+        return bytes + ' B';
+    }
+
     function progressBar(progress, small, label) {
         var bar = el('div', 'progress ws-progress' + (small ? ' ws-progress-sm' : '') + (progress.complete ? ' ws-progress-full' : ''));
         var fill = el('div', 'progress-bar');
@@ -13984,53 +14151,58 @@
                     return;
                 }
 
-                var reader = new FileReader();
+                var name = file.name || ('image-' + Date.now() + '.png');
+                var card = uploadCard((total > 1) ? t('uploading_count', total - queue.length, total) : t('uploading'), name, function () {
+                    request.xhr.abort();
+                });
+                var request = apiUpload('ws_attach', {
+                    channel_id: self.channel.id,
+                    name: name,
+                    body: body,
+                    parent_id: settings.parent_id || 0,
+                    voice_duration_ms: settings.voice ? Math.round(settings.voice.duration_ms || 0) : 0,
+                    voice_peaks: settings.voice ? (settings.voice.peaks || '') : ''
+                }, file, name, function (loaded, sent) {
+                    card.progress(loaded, sent);
+                });
 
-                reader.onload = function () {
-                    toast((total > 1) ? t('uploading_count', done + 1, total) : t('uploading'), 'secondary');
+                request.done.then(function (result) {
+                    card.remove();
+                    done++;
 
-                    api('ws_attach', {
-                        channel_id: self.channel.id,
-                        name: file.name || ('image-' + Date.now() + '.png'),
-                        data: reader.result,
-                        body: body,
-                        parent_id: settings.parent_id || 0,
-                        voice_duration_ms: settings.voice ? Math.round(settings.voice.duration_ms || 0) : 0,
-                        voice_peaks: settings.voice ? (settings.voice.peaks || '') : ''
-                    }).then(function (result) {
-                        done++;
-
-                        // "/create product" sent with a spreadsheet: the file
-                        // is posted, its rows a card of drafts or refused.
-                        if (result && result.command) {
-                            if (result.command.type === 'error') {
-                                toast(result.command.error, 'warning');
-                            } else if (result.command.bulk) {
-                                self.bulkMade(result.command.bulk);
-                            }
+                    // "/create product" sent with a spreadsheet: the file
+                    // is posted, its rows a card of drafts or refused.
+                    if (result && result.command) {
+                        if (result.command.type === 'error') {
+                            toast(result.command.error, 'warning');
+                        } else if (result.command.bulk) {
+                            self.bulkMade(result.command.bulk);
                         }
+                    }
 
-                        if (body !== '') {
-                            body = '';
+                    if (body !== '') {
+                        body = '';
 
-                            if (!ownBody) {
-                                self.clearInput();
-                            }
+                        if (!ownBody) {
+                            self.clearInput();
                         }
+                    }
 
-                        next();
-                    }).catch(function (error) {
-                        fail(error);
-                        next();
-                    });
-                };
-
-                reader.onerror = function () {
-                    toast(t('error_generic'), 'danger');
                     next();
-                };
+                }).catch(function (error) {
+                    card.remove();
 
-                reader.readAsDataURL(file);
+                    // Cancel stops this file and the ones after it; what
+                    // was posted stays.
+                    if (error && error.aborted) {
+                        queue.length = 0;
+                        toast(t('upload_cancelled'), 'secondary');
+                    } else {
+                        fail(error);
+                    }
+
+                    next();
+                });
             }
 
             next();
@@ -21406,23 +21578,6 @@
 
             // ── the files ──
 
-            // Sizes in the list and while the files travel, as the file
-            // manager writes them (uploadSizeLabel() in view_folders.php).
-            // The unit letters are not translated: the server's
-            // convert_bytes_to_string() writes the same ones in every
-            // language.
-            function sizeLabel(bytes) {
-                var steps = [[1073741824, ' GB', 1], [1048576, ' MB', 1], [1024, ' KB', 0]];
-
-                for (var i = 0; i < steps.length; i++) {
-                    if (bytes >= steps[i][0]) {
-                        return (bytes / steps[i][0]).toLocaleString(CFG.locale || undefined, { minimumFractionDigits: steps[i][2], maximumFractionDigits: steps[i][2] }) + steps[i][1];
-                    }
-                }
-
-                return bytes + ' B';
-            }
-
             // The kind the server reads a file as: its last extension, in
             // lower case (ws_note_import_stage()).
             function kindOf(name) {
@@ -22777,16 +22932,25 @@
                         return;
                     }
 
-                    var reader = new FileReader();
+                    var card = uploadCard(t('notes_uploading'), file.name, function () {
+                        request.xhr.abort();
+                    });
+                    var request = apiUpload('ws_note_file', { note_id: current.id, name: file.name }, file, file.name, function (loaded, total) {
+                        card.progress(loaded, total);
+                    });
 
-                    toast(t('notes_uploading') + ' ' + file.name);
+                    request.done.then(function (data) {
+                        card.remove();
+                        field.rich.insertLink(data.file.name, data.file.url);
+                    }).catch(function (error) {
+                        card.remove();
 
-                    reader.onload = function () {
-                        api('ws_note_file', { note_id: current.id, name: file.name, data: String(reader.result || '') }).then(function (data) {
-                            field.rich.insertLink(data.file.name, data.file.url);
-                        }).catch(fail);
-                    };
-                    reader.readAsDataURL(file);
+                        if (error && error.aborted) {
+                            toast(t('upload_cancelled'), 'secondary');
+                        } else {
+                            fail(error);
+                        }
+                    });
                 });
             }).catch(fail);
         }

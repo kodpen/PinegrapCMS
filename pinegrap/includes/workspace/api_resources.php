@@ -1326,13 +1326,7 @@ function ws_api_upload_input($params)
 
     // A form part is held to the server's own upload limit as well, which
     // may be the lower of the two.
-    $limits = function_exists('pg_upload_limits') ? pg_upload_limits() : array();
-    $form_max = ws_upload_max_bytes();
-
-    if (((int) ($limits['file_max'] ?? 0) > 0) && ((int) $limits['file_max'] < $form_max)) {
-        $form_max = (int) $limits['file_max'];
-    }
-
+    $form_max = ws_upload_form_max_bytes();
     $too_large = lang(array('string' => 'The file is larger than {var:1} MB.', 'vars' => (int) floor($form_max / 1048576)));
 
     if (($part !== null) && ($base64 !== '')) {
@@ -1341,17 +1335,11 @@ function ws_api_upload_input($params)
 
     if ($part !== null) {
         $error = is_array($part['error']) ? UPLOAD_ERR_NO_FILE : (int) $part['error'];
+        $uploaded = ($error === UPLOAD_ERR_OK) && is_uploaded_file((string) $part['tmp_name']);
+        $refusal = ws_upload_part_error($error, $uploaded, $uploaded ? (int) @filesize((string) $part['tmp_name']) : 0, $form_max);
 
-        if (in_array($error, array(UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE), true)) {
-            api_fail_validation($too_large, 'file');
-        }
-
-        if (($error !== UPLOAD_ERR_OK) || !is_uploaded_file((string) $part['tmp_name'])) {
-            api_fail_validation(lang('The file could not be read.'), 'file');
-        }
-
-        if ((int) @filesize((string) $part['tmp_name']) > $form_max) {
-            api_fail_validation($too_large, 'file');
+        if ($refusal !== '') {
+            api_fail_validation($refusal, 'file');
         }
 
         return array(

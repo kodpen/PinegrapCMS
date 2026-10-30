@@ -7,7 +7,7 @@ description: E-mailing an issued ERP invoice (4.97): the attachment, erp_documen
 - A short covering e-mail with the PDF attached: the provider's official copy once GİB accepted an e-document (kept once, as the invoice screen keeps it), the store's kept PDF otherwise. At most `ERP_MAIL_MAX_RECIPIENTS` (5) addresses.
 - Issued sales documents only (`erp_mail_invoice_refusal()`: no purchase, draft or cancelled one). The account's invoice address (`erp_accounts.invoice_email`) goes first, its main address otherwise.
 - Every e-mail is an `erp_document_mails` row, written `queued` and settled `sent` or `failed`: the invoice screen lists them, a failed one can be sent again, one that never finished shows as queued.
-- Send the e-mail (invoice, quote and purchase order screens) sends synchronously inside the request, so its form sends once per press (`data-erp-send-once`, ui/button-busy-state.md); before, a second press during a slow send mailed the document twice.
+- Send the e-mail (invoice, quote and purchase order screens) sends synchronously inside the request, so its form sends once per press (`data-erp-send-once`, ui/send-once-screens.md); before, a second press during a slow send mailed the document twice.
 
 ## When does the automatic e-mail go? (`config.erp_invoice_mail_auto`)
 - One door: `erp_event_invoice()` calls `erp_mail_auto_consider()` on `erp.invoice.created` and `erp.invoice.edoc_changed`. Nothing else sends an invoice on its own.

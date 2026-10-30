@@ -178,14 +178,16 @@ function pg_list_search_turkish_charset()
 }
 
 /**
- * A text in lower case under Turkish rules: I is ı and İ is i.
+ * A search word folded the Turkish way for a list search: İ, I and ı become
+ * i, the rest is lower cased, so "YILDIZ", "yildiz" and "Yıldız" are one
+ * word (the rule of ws_fold()). One letter for one letter.
  *
  * @param string $text
  * @return string
  */
-function pg_list_turkish_lower($text)
+function pg_list_search_fold($text)
 {
-    return mb_strtolower(strtr((string) $text, array('İ' => 'i', 'I' => 'ı')), 'UTF-8');
+    return mb_strtolower(str_replace(array('İ', 'I', 'ı'), 'i', (string) $text), 'UTF-8');
 }
 
 /**
@@ -206,8 +208,10 @@ function pg_list_turkish_lower($text)
  *                       'labels' => stored value => shown label)
  * @param string|null $turkish the connection charset ('utf8mb4' or 'utf8')
  *                       when a word with I or ı is also matched under
- *                       Turkish case rules (I = ı, İ = i), '' when it is
- *                       not; null asks pg_list_search_turkish_charset()
+ *                       Turkish case rules (I = ı, İ = i) and a word with
+ *                       any i letter also folded (pg_list_search_fold()),
+ *                       '' when it is not; null asks
+ *                       pg_list_search_turkish_charset()
  * @return array array('sql' => '(…) AND (…)' or '', 'params' => values for
  *               its placeholders, in order)
  */
@@ -250,6 +254,16 @@ function pg_list_search_where($terms, $columns, $labels = array(), $turkish = nu
                 $alternatives[] = 'CONVERT(' . $column . ' USING ' . $turkish . ') COLLATE ' . $turkish . '_turkish_ci LIKE ?';
                 $params[] = pg_list_like_pattern($column_term);
             }
+
+            // I, İ, ı and i as one letter, so "yildiz" finds "Yıldız" and
+            // "isik" finds "Işık": the word folded here, the column folded by
+            // REPLACE (case-sensitive, so İ and ı each need one; I already
+            // equals i under the charset's case-insensitive collation). LIKE
+            // '%…%' scans anyway, so no index is lost.
+            if ($plain && ($turkish !== '') && preg_match('/[iIıİ]/u', $column_term)) {
+                $alternatives[] = 'REPLACE(REPLACE(CONVERT(' . $column . ' USING ' . $turkish . "), 'İ', 'i'), 'ı', 'i') LIKE ?";
+                $params[] = pg_list_like_pattern(pg_list_search_fold($column_term));
+            }
         }
 
         foreach ($labels as $label_column) {
@@ -257,7 +271,7 @@ function pg_list_search_where($terms, $columns, $labels = array(), $turkish = nu
 
             foreach ($label_column['labels'] as $value => $label) {
                 if ((mb_stripos((string) $label, $term, 0, 'UTF-8') !== false)
-                    || (($turkish !== '') && (mb_strpos(pg_list_turkish_lower($label), pg_list_turkish_lower($term), 0, 'UTF-8') !== false))) {
+                    || (($turkish !== '') && (mb_strpos(pg_list_search_fold($label), pg_list_search_fold($term), 0, 'UTF-8') !== false))) {
                     $values[] = (string) $value;
                 }
             }
