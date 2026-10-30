@@ -1638,6 +1638,7 @@
     "İYS Code": "İYS Numarası",
     "İYS consent sync": "İYS izin eşitleme",
     "İYS does not list the brand {var:1} under this İYS code. Brands: {var:2}": "İYS bu İYS numarası altında {var:1} markasını listelemiyor. Markalar: {var:2}",
+    "İYS dry run: {var:1} consent answer(s) would be pushed (consent log rows {var:2}-{var:3}).": "İYS deneme çalışması: {var:1} izin yanıtı gönderilecekti (izin kaydı satırları {var:2}-{var:3}).",
     "İYS dry run: {var:1} e-mail consent answer(s) would be pushed (consent log rows {var:2}-{var:3}).": "İYS deneme çalıştırması: {var:1} e-posta izin yanıtı gönderilecekti (izin kaydı satırları {var:2}-{var:3}).",
     "İYS is switched on but cannot be reached: the stored password cannot be read with this site's encryption key. Enter it again.": "İYS açık ama ulaşılamıyor: kayıtlı parola bu sitenin şifreleme anahtarıyla okunamıyor. Parolayı yeniden girin.",
     "İYS is switched on but the account is not complete, so nothing is sent to İYS.": "İYS açık ama hesap eksik, bu yüzden İYS'ye hiçbir şey gönderilmiyor.",
