@@ -2451,6 +2451,7 @@ function workspace_flows_parity_table()
 			array(array('ws_event_depth in ws_scheduled_execute'), 3, 'depth through flow runs: a run hands its depth to the events it causes'),
 			array(array('ws_event_depth in ws_event'), 3, 'depth through events: a Workspace event carries the depth of the run that caused it'),
 			array(array('ws_event_depth in ws_step_run'), 3, 'depth through step boxes: a flow\'s step says its run\'s depth while it works, so the Workspace and site events it causes carry it'),
+			array(array('ws_event_depth in ws_step_change_approved_write'), 3, 'depth through an approved change: the change a role-3 member\'s box proposed is written at its run\'s depth, as a step box writes'),
 		),
 		'starts' => array(
 			array(array('ws_scheduled_run() in includes/workspace/actions.php ws_handle_action case \'ws_tick\''), 3, 'driver: an open screen\'s ws_tick runs what is due, anchors too'),
