@@ -49,7 +49,7 @@ description: Generated from the module field of the memory files: each includes/
 - `layouts`: [[layout-code-tab]], [[layout-editor-classic]]
 - `link_resolve`: [[designer-prototype-viewer]]
 - `list_paging`: [[list-label-sort]], [[server-paged-lists]]
-- `list_period`: [[list-period-navigator-and-clock]], [[list-period-week]]
+- `list_period`: [[list-period-navigator-and-clock]], [[list-period-order]], [[list-period-week]]
 - `mail`: [[single-email-address-boxes]]
 - `mail_parse`: [[mail-parse]]
 - `mail_queue`: [[fn-module-errors-mail-backup-consent]], [[mail-failure-reason]]

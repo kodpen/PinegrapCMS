@@ -49,6 +49,12 @@ $filters = array(
     'id' => max(0, is_scalar($_GET['id'] ?? null) ? (int) $_GET['id'] : 0),
     'search' => mb_substr(trim(is_string($_GET['search'] ?? null) ? $_GET['search'] : ''), 0, 100),
 );
+
+// A range given the wrong way round is read the right way round.
+if (($filters['from'] !== '') && ($filters['to'] !== '') && ($filters['from'] > $filters['to'])) {
+    list($filters['from'], $filters['to']) = array($filters['to'], $filters['from']);
+}
+
 $query = array_filter($filters, function ($value) {
     return ($value !== '') && ($value !== 0);
 });
