@@ -17,12 +17,13 @@ description: Sendcloud label driver (2026.11.0, #3226), Europe: API v3 announce 
 - test: the sender address list; account = the address's company, city and country.
 
 - Customer returns go through the Returns API (#3409): `carrier-label-sendcloud-returns.md`.
+- Status webhook (#3431): `carrier-webhook-drivers.md`.
 
 ## Which failures are unclear?
 - Only the announce and the cancel: no answer after the request went out, or a 5xx. Pricing and reads are plain.
 
 ## Which carriers reach the row?
-- `pg_label_sendcloud_carrier()`: dpd and dpd_* dpd, dhl_de and dhl_express dhl, deutsche_post, ups, fedex, royal_mail. Sendcloud's plain `dhl` (DHL Parcel Benelux), PostNL, bpost, GLS, Colissimo and others stay '' (the method decides); the row still gets Sendcloud's tracking link. No carrier was added to `pg_shipping_carriers()`: their sites refused cloud fetches, so no tracking address could be checked.
+- `pg_label_sendcloud_carrier()`: dpd and dpd_* dpd, dhl_de and dhl_express dhl, deutsche_post, ups, fedex, royal_mail. Plain `dhl` (DHL Parcel Benelux), PostNL, bpost, GLS, Colissimo and others stay '' (the method decides); the row still gets Sendcloud's tracking link. None added to `pg_shipping_carriers()`: their sites refused cloud fetches.
 
 ## What is unverified?
-- No live call: the owner's keys in test mode make the first. Unverified: the exact error bodies, the tracking answer's wrapping, the sender address order (the first is taken as the default). Tests: `tests/carrier_label_sendcloud_test.php` with `pg_label_sendcloud_transport()` and `tests/fixtures/sendcloud/`.
+- No live call: the owner's keys in test mode make the first. Unverified: the exact error bodies, the webhook's status ids and time units, the tracking answer's wrapping, the sender address order (the first is taken as the default). Tests: `tests/carrier_label_sendcloud_test.php` with `pg_label_sendcloud_transport()` and `tests/fixtures/sendcloud/`.

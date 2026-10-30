@@ -16,7 +16,10 @@
  * goes through the Returns API: POST /returns/announce-synchronously
  * announces it from the customer to the sender address, GET /returns/{id}
  * gives its tracking number, PATCH /returns/{id}/cancel asks the carrier to
- * cancel it.
+ * cancel it. Parcel status changes arrive at carrier_webhook.php
+ * (includes/fn/carrier_webhook.php) as parcel_status_changed messages signed
+ * with the secret key; PATCH /integrations/{id} sets the API integration's
+ * webhook address.
  *
  * Sendcloud has no sandbox: test mode ships with the free "Unstamped
  * letter" option (sendcloud:letter), which makes a real label no carrier
@@ -1166,4 +1169,219 @@ function pg_label_sendcloud_track($reference, $account)
         'tracking_number' => $number,
         'tracking_url'    => (strncmp($tracking, 'https://', 8) === 0) ? $tracking : '',
     );
+}
+
+/**
+ * The tracking phase (or exception) of a parcel status id of the webhook,
+ * read through pg_label_sendcloud_status(), so both paths name a status
+ * alike. A status the store has no use for (cancelled, announcement
+ * failed, unknown ids) is '' and records nothing. Pure.
+ *
+ * @param mixed $id parcel.status.id
+ * @return string a pg_shipment_statuses() value, '' when unknown
+ */
+function pg_label_sendcloud_webhook_status($id)
+{
+    $events = array(
+        1000 => array('phase' => 'ready_to_send'),
+        1001 => array('phase' => 'announcing'),
+        1    => array('phase' => 'announced'),
+        22   => array('phase' => 'accepted'),
+        3    => array('phase' => 'in_transit'),
+        91   => array('phase' => 'in_transit'),
+        5    => array('phase' => 'sorted'),
+        7    => array('phase' => 'sorted'),
+        8    => array('phase' => 'attempted'),
+        12   => array('phase' => 'pup'),
+        92   => array('phase' => 'in_delivery'),
+        11   => array('phase' => 'delivered'),
+        93   => array('phase' => 'delivered'),
+        4    => array('exception' => 'delivery_delay'),
+        6    => array('exception' => 'sorting_delay'),
+        13   => array('exception' => 'handover_delay'),
+        15   => array('exception' => 'collection_error'),
+        80   => array('exception' => 'undeliverable'),
+    );
+    $id = is_numeric($id) ? (int) $id : -1;
+
+    return isset($events[$id]) ? pg_label_sendcloud_status($events[$id]) : '';
+}
+
+/**
+ * A webhook time in seconds: Sendcloud's own timestamp is in milliseconds,
+ * the carrier's in seconds. Pure.
+ *
+ * @param mixed $value
+ * @return int 0 when none
+ */
+function pg_label_sendcloud_webhook_time($value)
+{
+    $value = is_numeric($value) ? (float) $value : 0.0;
+
+    return (int) (($value > 99999999999) ? floor($value / 1000) : max(0, $value));
+}
+
+/**
+ * Reads a webhook message: only parcel_status_changed carries a status.
+ * The parcel's shipment_uuid is the shipment id create() stored as the
+ * reference. A return parcel gives nothing: its label's reference is
+ * r-<return id>-<parcel id> and a return records no arrival.
+ *
+ * @param string $body
+ * @return array|false list of reference, is_return, answer; false for a
+ *                     body that is not a message
+ */
+function pg_label_sendcloud_webhook_read($body)
+{
+    $message = json_decode((string) $body, true);
+
+    if (!is_array($message) || !isset($message['action']) || !is_string($message['action'])) {
+        return false;
+    }
+
+    $parcel = (isset($message['parcel']) && is_array($message['parcel'])) ? $message['parcel'] : array();
+
+    if ((strtolower(trim($message['action'])) !== 'parcel_status_changed') || !empty($parcel['is_return'])) {
+        return array();
+    }
+
+    $id = pg_label_sendcloud_id(isset($parcel['shipment_uuid']) ? $parcel['shipment_uuid'] : '');
+
+    if ($id === '') {
+        return array();
+    }
+
+    $status = pg_label_sendcloud_webhook_status(isset($parcel['status']['id']) ? $parcel['status']['id'] : null);
+    $time = pg_label_sendcloud_webhook_time(isset($message['carrier_status_change_timestamp']) ? $message['carrier_status_change_timestamp'] : 0);
+    $time = ($time > 0) ? $time : pg_label_sendcloud_webhook_time(isset($message['timestamp']) ? $message['timestamp'] : 0);
+    $tracking = pg_label_sendcloud_text($parcel, 'tracking_url');
+
+    $answer = ($status === '')
+        ? array('success' => false, 'error' => lang('Sendcloud gives no status for this shipment yet.'))
+        : array(
+            'success'         => true,
+            'reference'       => $id,
+            'status'          => $status,
+            'status_at'       => $time,
+            'tracking_number' => pg_label_sendcloud_text($parcel, 'tracking_number'),
+            'tracking_url'    => (strncmp($tracking, 'https://', 8) === 0) ? $tracking : '',
+        );
+
+    return array(array('reference' => $id, 'is_return' => false, 'answer' => $answer));
+}
+
+/**
+ * Whether a message is Sendcloud's: its Sendcloud-Signature header is the
+ * HMAC-SHA256 (hex) of the raw body with the integration's secret key.
+ *
+ * @param string $raw
+ * @param array  $headers lower-case name => value
+ * @param array  $account
+ * @return bool
+ */
+function pg_label_sendcloud_webhook_verify($raw, $headers, $account)
+{
+    $key = isset($account['secret_key']) ? (string) $account['secret_key'] : '';
+    $signature = (isset($headers['sendcloud-signature']) && is_string($headers['sendcloud-signature'])) ? strtolower(trim($headers['sendcloud-signature'])) : '';
+
+    return ($key !== '') && ($signature !== '') && hash_equals(hash_hmac('sha256', (string) $raw, $key), $signature);
+}
+
+/**
+ * Whether an integration's webhook address is this store's.
+ *
+ * @param mixed $integration
+ * @return bool
+ */
+function pg_label_sendcloud_webhook_ours($integration)
+{
+    $url = pg_label_sendcloud_text($integration, 'webhook_url');
+
+    return ($url === '') || (strpos($url, 'carrier_webhook.php?driver=sendcloud&') !== false);
+}
+
+/**
+ * Sets the store's address as the webhook of the account's API integration
+ * (PATCH /integrations/{id}), the one place Sendcloud keeps it. The keys
+ * belong to an integration of type api, which the list does not mark, so
+ * the only such integration is taken; with none or several, or one that
+ * already sends to another address (never overwritten), the Shipping card
+ * shows the address to add by hand.
+ *
+ * @param string $url
+ * @param array  $account
+ * @return array success, id (the integration id), error
+ */
+function pg_label_sendcloud_webhook_register($url, $account)
+{
+    $read = pg_label_sendcloud_api('GET', '/integrations', $account);
+
+    if (!$read['ok']) {
+        return array('success' => false, 'id' => '', 'error' => pg_label_sendcloud_failure($read, false)['error']);
+    }
+
+    $list = (isset($read['data']['data']) && is_array($read['data']['data'])) ? $read['data']['data'] : array();
+    $found = array_values(array_filter($list, function ($integration) {
+        return strtolower(pg_label_sendcloud_text($integration, 'type')) === 'api';
+    }));
+
+    if (count($found) !== 1) {
+        return array('success' => false, 'id' => '', 'error' => lang('Sendcloud has no single API integration these keys could belong to.'));
+    }
+
+    $id = pg_label_sendcloud_id(pg_label_sendcloud_text($found[0], 'id'));
+
+    if ($id === '') {
+        return array('success' => false, 'id' => '', 'error' => lang('Sendcloud refused the request.'));
+    }
+
+    if (!empty($found[0]['webhook_active']) && !pg_label_sendcloud_webhook_ours($found[0])) {
+        return array('success' => false, 'id' => '', 'error' => lang('The Sendcloud API integration already sends its webhook to another address.'));
+    }
+
+    $read = pg_label_sendcloud_api('PATCH', '/integrations/' . $id, $account, array('webhook_active' => true, 'webhook_url' => (string) $url));
+
+    if (!$read['ok']) {
+        return array('success' => false, 'id' => '', 'error' => pg_label_sendcloud_failure($read, false)['error']);
+    }
+
+    return array('success' => true, 'id' => $id, 'error' => '');
+}
+
+/**
+ * Switches the integration's webhook off, if it still sends to this store.
+ * An integration Sendcloud no longer has (404), or one whose address was
+ * changed to another since, counts as removed.
+ *
+ * @param string $id
+ * @param array  $account
+ * @return array success, error
+ */
+function pg_label_sendcloud_webhook_remove($id, $account)
+{
+    $id = pg_label_sendcloud_id($id);
+
+    if (($id === '') || !ctype_digit($id)) {
+        return array('success' => false, 'error' => lang('Sendcloud refused the request.'));
+    }
+
+    $read = pg_label_sendcloud_api('GET', '/integrations/' . $id, $account);
+
+    if (!$read['ok']) {
+        return ($read['status'] === 404) ? array('success' => true, 'error' => '') : array('success' => false, 'error' => pg_label_sendcloud_failure($read, false)['error']);
+    }
+
+    $integration = (isset($read['data']['data']) && is_array($read['data']['data'])) ? $read['data']['data'] : $read['data'];
+
+    if (!pg_label_sendcloud_webhook_ours($integration)) {
+        return array('success' => true, 'error' => '');
+    }
+
+    $read = pg_label_sendcloud_api('PATCH', '/integrations/' . $id, $account, array('webhook_active' => false, 'webhook_url' => null));
+
+    if (!$read['ok'] && ($read['status'] !== 404)) {
+        return array('success' => false, 'error' => pg_label_sendcloud_failure($read, false)['error']);
+    }
+
+    return array('success' => true, 'error' => '');
 }
