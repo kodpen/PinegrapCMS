@@ -20,7 +20,9 @@ description: Plan: the Site Log writers still passing bare English to log_activi
 - `includes/fn/layouts.php` (136): bare literal. Held by draft #3141; start after it lands.
 - `email_a_friend.php` 158: bare English on purpose: the spam limit at 84 counts rows `LIKE '%e-mailed a link%'`. A count that does not read the log text needs a marker column or table (a schema change, owner's decision); left as it is.
 - `includes/settings/commerce.save.php` 693 logs `parasut_connect_report()`'s line: part of the owner's ERP work, not checked.
-- Not checked, held by other work: `custom_form.php`, `includes/fn/custom_form.php`, `includes/fn/forms.php`, `includes/migrations/*`, `includes/erp/*`, `parasut_connect.php`, `add_erp_quote.php`, `add_erp_receipt.php`, and the files of draft #3298 (`includes/api/*`, `includes/fn/cart_quotes.php`, `add_cart_quote.php`, `view_cart_quotes.php`).
+- Part 5 (#3800): `custom_form.php` (access denied, auto-login, key code), `logout()` in `includes/fn/forms.php` (`logout.php`, `kiosk.php`) and the quote guest signature in `includes/erp/quote_links.php` (`erp_quote.php`) go through `pg_log_lang()`. Checked, panel only, `lang()` kept: `pg_cf_adopt_form()` in `includes/fn/custom_form.php` (called only from `includes/panel/designer.php`), the new guest link line in `quote_links.php`, `add_erp_quote.php`, `add_erp_receipt.php`, `includes/erp/quotes.php`.
+- Part 6, after #3780 lands: the checkout auto-invoice path (`includes/erp/order_flow.php`, `includes/erp/mail.php` 'auto' mode, `includes/erp/order_bridge.php`). Move it all in one PR so one checkout request does not log in two languages.
+- Not checked, held by other work: `includes/migrations/*`, `parasut_connect.php`, and the files of draft #3298 (`includes/api/*`, `includes/fn/cart_quotes.php`, `add_cart_quote.php`, `view_cart_quotes.php`).
 
 ## What was left as it is?
 - `assets/lib/tiny_mce_3_5_10/plugins/advlink/add_file.php` and `.../advimage/add_file.php`: `tools/check_lang.php` skips `assets/lib`, so a `lang()` key there would never be checked against the shards; they stay bare English.
