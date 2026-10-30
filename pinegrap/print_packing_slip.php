@@ -36,6 +36,7 @@ $query =
         ship_tos.company,
         ship_tos.address_1,
         ship_tos.address_2,
+        " . (pg_ship_to_district_ready() ? "ship_tos.district," : "") . "
         ship_tos.city,
         ship_tos.state,
         ship_tos.zip_code,
@@ -74,6 +75,7 @@ $output_organization_country = '';
 $output_ship_to_salutation = '';
 $output_ship_to_company = '';
 $output_ship_to_address_2 = '';
+$output_ship_to_district = '';
 $output_ship_to_phone_number = '';
 
 // If there is an organization address 2, then output it.
@@ -83,8 +85,18 @@ if (ORGANIZATION_ADDRESS_2 != '') {
 
 // If there is an organization country, then output it.
 if (ORGANIZATION_COUNTRY != '') {
-    $output_organization_country = h(ORGANIZATION_COUNTRY);
+    $output_organization_country = h(pg_order_view_country(ORGANIZATION_COUNTRY));
 }
+
+// The state follows the city after a comma only when there is one, so an
+// empty state does not leave "City,  Zip".
+$output_organization_city_line = h(ORGANIZATION_CITY);
+
+if (ORGANIZATION_STATE != '') {
+    $output_organization_city_line .= ', ' . h(ORGANIZATION_STATE);
+}
+
+$output_organization_city_line .= ' ' . h(ORGANIZATION_ZIP_CODE);
 
 // If there is a ship to salutation, then output it.
 if ($ship_to['salutation'] != '') {
@@ -100,6 +112,20 @@ if ($ship_to['company'] != '') {
 if ($ship_to['address_2'] != '') {
     $output_ship_to_address_2 = h($ship_to['address_2']) . '<br />';
 }
+
+// The district, when one was typed, before the city (as the order screen
+// prints it). The column is missing on sites not yet upgraded.
+if (!empty($ship_to['district'])) {
+    $output_ship_to_district = h($ship_to['district']) . ', ';
+}
+
+$output_ship_to_city_line = $output_ship_to_district . h($ship_to['city']);
+
+if ($ship_to['state'] != '') {
+    $output_ship_to_city_line .= ', ' . h($ship_to['state']);
+}
+
+$output_ship_to_city_line .= ' ' . h($ship_to['zip_code']);
 
 // If there is a ship to phone number, then output it.
 if ($ship_to['phone_number'] != '') {
@@ -356,7 +382,7 @@ foreach ($order_items as $order_item) {
                         <div>
                             ' . h(ORGANIZATION_ADDRESS_1) . '<br />
                             ' . $output_organization_address_2 . '
-                            ' . h(ORGANIZATION_CITY) . ', ' . h(ORGANIZATION_STATE) . ' ' . h(ORGANIZATION_ZIP_CODE) . '<br />
+                            ' . $output_organization_city_line . '<br />
                             ' . $output_organization_country . '
                         </div>
                     </td>
@@ -369,8 +395,8 @@ foreach ($order_items as $order_item) {
                             ' . $output_ship_to_company . '
                             ' . h($ship_to['address_1']) . '<br />
                             ' . $output_ship_to_address_2 . '
-                            ' . h($ship_to['city']) . ', ' . h($ship_to['state']) . ' ' . h($ship_to['zip_code']) . '<br />
-                            ' . h($ship_to['country']) . '
+                            ' . $output_ship_to_city_line . '<br />
+                            ' . h(pg_order_view_country($ship_to['country'])) . '
                             ' . $output_ship_to_phone_number . '
                         </div>
                     </td>

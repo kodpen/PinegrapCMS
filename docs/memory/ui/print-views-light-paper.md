@@ -1,6 +1,6 @@
 ---
 name: print-views-light-paper
-description: The order print view and packing slip force the light theme (they stand for the paper), carry their own title and the store icon; the e-mail campaign popups' title and icon
+description: The order print view and packing slip force the light theme, carry their own title and the store icon; the packing slip's address lines; the campaign popups' title and icon
 ---
 
 ## Why did the order print view print dark?
@@ -19,6 +19,10 @@ description: The order print view and packing slip force the light theme (they s
 
 ## Which labels of the order print view are translated?
 - The fax label, the gift card table (Code, Amount, Recipient Email, From Name, Message, Delivery Date) as `lang('X') . ':'`, and the ship-to address type through `pg_order_view_address_type()` (`includes/fn/order_view.php`), as the order view does.
+
+## What does the packing slip's address print?
+- The recipient's district (`ship_tos.district`, read behind `pg_ship_to_district_ready()`) before the city, as the order screen does; the country through `pg_order_view_country()` (name, not the stored `TR`) for the recipient and the shop.
+- ", state" only when the state is not empty, for both addresses: it printed "City,  Zip". Pinned by `tests/packing_slip_address_test.php`.
 
 ## How is it checked?
 - `tests/print_views_theme_test.php` pins the script, the titles, the icons and the labels (#2659). Not checked by a unit test: the printed result itself.

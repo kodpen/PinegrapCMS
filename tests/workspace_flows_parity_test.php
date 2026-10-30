@@ -1663,7 +1663,8 @@ function workspace_flows_parity_caps_in($place, $code)
 }
 
 // The caps written as numbers (workspace_flows_parity_caps_in()) in the code
-// that checks an action, which no WS_SCHEDULED_* constant names. The places:
+// that checks an action, which no WS_SCHEDULED_* constant names, a field
+// length of ws_scheduled_text_limits() included. The places:
 // the action's own check (action, ws_scheduled_input()), each branch of a
 // rule's check (rule kind) and of a step's (step kind), and the
 // ws_scheduled_* functions those call.
@@ -1696,10 +1697,18 @@ function workspace_flows_parity_read_caps()
 		$places[$function . '()'] = workspace_flows_parity_source($function);
 	}
 
+	// A field length the form reads from ws_scheduled_text_limits() counts
+	// as written there.
+	$limits = array();
+
+	foreach (ws_scheduled_text_limits() as $key => $limit) {
+		$limits['$limits[\'' . $key . '\']'] = (string) $limit;
+	}
+
 	$out = array();
 
 	foreach ($places as $place => $code) {
-		$out = array_merge($out, workspace_flows_parity_caps_in($place, $code));
+		$out = array_merge($out, workspace_flows_parity_caps_in($place, strtr($code, $limits)));
 	}
 
 	return $out;
