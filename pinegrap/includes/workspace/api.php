@@ -201,6 +201,7 @@ function ws_openapi_objects()
         'WorkspaceScheduledMessage' => 'ws_api_scheduled_message_schema',
         'WorkspaceNoteVersion'      => 'ws_api_note_version_schema',
         'WorkspacePlanItem'         => 'ws_api_plan_item_schema',
+        'WorkspacePlanItemContact'  => 'ws_api_plan_item_contact_schema',
         'WorkspaceSearchHit'        => 'ws_api_search_hit_schema',
         'WorkspaceMyDay'            => 'ws_api_my_day_schema',
         'WorkspaceSync'             => 'ws_api_sync_schema',
@@ -289,6 +290,7 @@ function ws_api_routes()
         array('name' => 'department_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'For scope department. See GET /workspace/departments.'),
         array('name' => 'people', 'in' => 'body', 'type' => 'list', 'of' => 'integer', 'max_items' => 50, 'description' => 'User ids, for scope people; ids of people outside the team are left out.'),
         array('name' => 'meeting_url', 'in' => 'body', 'type' => 'string', 'max_length' => 500, 'description' => 'The video call: a Google Meet, Teams, Zoom, Jitsi or other http(s) address. Empty clears it. A timed item with one tells its people ten minutes before it starts.'),
+        array('name' => 'contact_id', 'in' => 'body', 'type' => 'int', 'min' => 0, 'description' => 'The customer of a visit, a contact id; 0 clears it. Only kind visit keeps one: saving any other kind drops it. A customer the owner of the application cannot open is refused with 422 validation_failed on contact_id, as one that is not there. Left out, the item keeps its customer.'),
     );
 
     // The parts of a flow's draft (includes/workspace/flows.php); a change
@@ -1817,7 +1819,7 @@ function ws_api_routes()
             'handler'     => 'ws_api_plan_items_list',
             'returns'     => array('list' => 'WorkspacePlanItem'),
             'summary'     => 'List plan items',
-            'description' => 'The meetings, customer visits, leave, holidays and other items on the planning board and the calendar between two days, the earliest first, as the whole team sees them. A yearly holiday is listed in every year of the range with the same id. user_id keeps the items about one person: theirs, their departments\' and the company\'s.',
+            'description' => 'The meetings, customer visits, leave, holidays and other items on the planning board and the calendar between two days, the earliest first, as the whole team sees them. A yearly holiday is listed in every year of the range with the same id. user_id keeps the items about one person: theirs, their departments\' and the company\'s. contact is the customer a visit names: id and label when the key holds customers:read and the owner of the application may open the contact, else hidden true with id and label null; null for an item about nobody.',
             'params'      => array(
                 array('name' => 'from', 'in' => 'query', 'type' => 'string', 'max_length' => 10, 'description' => 'YYYY-MM-DD. Today when left out.'),
                 array('name' => 'days', 'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 92, 'default' => 14),
@@ -1849,7 +1851,7 @@ function ws_api_routes()
             'returns'     => 'WorkspacePlanItem',
             'status'      => 201,
             'summary'     => 'Add a plan item',
-            'description' => 'Puts a meeting, a customer visit, leave or another item on the planning board, as the calendar does; it takes its hours (a whole day for leave and holidays) from the people\'s capacity. scope people is about the people listed - the owner when nobody is - and the owner may plan only for themselves and the people of the departments they lead; department is the lead\'s or a settings holder\'s, company a settings holder\'s alone. Leave and holidays are whole days. Send an Idempotency-Key so a retried call does not add two items.',
+            'description' => 'Puts a meeting, a customer visit, leave or another item on the planning board, as the calendar does; it takes its hours (a whole day for leave and holidays) from the people\'s capacity. scope people is about the people listed - the owner when nobody is - and the owner may plan only for themselves and the people of the departments they lead; department is the lead\'s or a settings holder\'s, company a settings holder\'s alone. Leave and holidays are whole days. A visit may name its customer (contact_id); the item answers with contact. Send an Idempotency-Key so a retried call does not add two items.',
             'params'      => array_merge(array(
                 array('name' => 'start_date', 'in' => 'body', 'type' => 'string', 'max_length' => 10, 'required' => true, 'description' => 'YYYY-MM-DD.'),
             ), $plan_item_fields),
@@ -1865,7 +1867,7 @@ function ws_api_routes()
             'dry_run' => true,
             'returns'      => 'WorkspacePlanItem',
             'summary'      => 'Change a plan item',
-            'description'  => 'Changes only the fields sent, on an item the owner added, of a department they lead, or any item for a settings holder (can_edit). people replaces the list. A holiday read from a calendar address (from_calendar) is written over by the next reading of that calendar. PATCH is accepted beside POST.',
+            'description'  => 'Changes only the fields sent, on an item the owner added, of a department they lead, or any item for a settings holder (can_edit). people replaces the list. contact_id names, changes or clears the customer of a visit; left out, the customer stays. A holiday read from a calendar address (from_calendar) is written over by the next reading of that calendar. PATCH is accepted beside POST.',
             'params'       => array_merge(array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
                 array('name' => 'start_date', 'in' => 'body', 'type' => 'string', 'max_length' => 10, 'description' => 'YYYY-MM-DD.'),
