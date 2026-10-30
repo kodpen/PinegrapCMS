@@ -1518,7 +1518,6 @@ function _eo_default_designer_tree()
                         $sem('div', 'card-body', array(
                             $bind('payment_methods', 'mb-3'),
                             $sem('div', 'pg-eo-cc-fields', array(
-                                $sem('p', 'small text-muted mb-2', lang('The card fields appear when Credit/Debit Card is selected.')),
                                 $sem('div', 'row', array(
                                     $field('col-12 mb-3', lang('Card Number'), 'card_number', 'text', '•••• •••• •••• ••••', false, true),
                                     $field('col-6 mb-3',  lang('Expiry date'),  'expiration',  'text', lang('MM / YY'), false, true),

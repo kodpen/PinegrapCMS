@@ -5889,13 +5889,16 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
     $rendered = pg_sw_sweep_tokens($rendered);
     if ($static !== '') $static = pg_sw_sweep_tokens($static);
 
-    // The pencil on the product (or, on a variant group's page, the group).
-    if ($p && pg_sw_can_edit_products()) {
-        $rendered = ($is_select_group && $select_group_id > 0)
-            ? pg_sw_add_edit_chip($rendered, pg_sw_backend_edit_url('edit_product_group.php', $select_group_id), lang('Edit the product group'), 'ecommerce')
-            : pg_sw_add_edit_chip($rendered, pg_sw_backend_edit_url('edit_product.php', (int)$p['id']), lang('Edit the product'), 'ecommerce');
-    }
     $_civ_html = ($static === '') ? $rendered : str_replace('<!--pg-loop-slot-->', $rendered, $static);
+
+    // The pencil on the product (or, on a variant group's page, the group),
+    // in the widget's first element: in the loop's first element it sat on
+    // a part inside the product, such as a section heading.
+    if ($p && pg_sw_can_edit_products()) {
+        $_civ_html = ($is_select_group && $select_group_id > 0)
+            ? pg_sw_add_edit_chip($_civ_html, pg_sw_backend_edit_url('edit_product_group.php', $select_group_id), lang('Edit the product group'), 'ecommerce')
+            : pg_sw_add_edit_chip($_civ_html, pg_sw_backend_edit_url('edit_product.php', (int)$p['id']), lang('Edit the product'), 'ecommerce');
+    }
 
     // ── Expand variant_attr markers (designer-placed templates) ──────────
     // Designer dropped one or more `variant_attr` content nodes in the

@@ -9082,8 +9082,9 @@ function pg_sw_backend_edit_url($script, $id, $params = array())
  * the record itself wins); the chip fades in on hover and focus and grows
  * under the pointer (!important, over the plain opacity and transform the
  * chip carries); it draws no pseudo-element a design gives links; it is not
- * printed (visibility: its display is pinned). The chip's size, shape and
- * colours need none of it. Written once per page by
+ * printed (visibility: its display is pinned); a heading or breadcrumb that
+ * hosts the chip or follows it moves its text clear of the chip. The chip's
+ * size, shape and colours need none of it. Written once per page by
  * pg_sw_edit_chip_css_inject().
  */
 function pg_sw_edit_chip_css()
@@ -9093,6 +9094,7 @@ function pg_sw_edit_chip_css()
         . '.pg-edit-chip::before,.pg-edit-chip::after{content:none!important;display:none!important}'
         . '.pg-edit-host:hover>.pg-edit-chip,.pg-edit-chip:focus-visible{opacity:1!important}'
         . '.pg-edit-chip:hover{transform:scale(1.08)!important}'
+        . ':is(h1,h2,h3,h4,h5,h6,.breadcrumb).pg-edit-host,.pg-edit-chip+:is(h1,h2,h3,h4,h5,h6,nav,.breadcrumb){padding-inline-start:2.4rem}'
         . '.pg-edit-chip:focus-visible{outline:2px solid #fff!important;outline-offset:2px!important}'
         . '@media (hover:none){.pg-edit-chip{opacity:.9!important}}'
         . '@media print{.pg-edit-chip{visibility:hidden!important}}'

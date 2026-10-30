@@ -60039,7 +60039,6 @@ const StyleDesigner = (function () {
                         sem('div', 'card-body', [
                             bind('payment_methods', 'mb-3'),
                             sem('div', 'pg-eo-cc-fields', [
-                                sem('p', 'small text-muted mb-2', _sdT('The card fields appear when Credit/Debit Card is selected.')),
                                 sem('div', 'row', [
                                     fld('col-12 mb-3', _sdT('Card Number'), 'card_number', 'text', '•••• •••• •••• ••••', false, true),
                                     fld('col-6 mb-3',  _sdT('Expiry date'),  'expiration',  'text', _sdT('MM / YY'), false, true),
@@ -60863,24 +60862,27 @@ const StyleDesigner = (function () {
                 //   3) Reviews          — comments_block region: the product's reviews on a
                 //      designed product page; the site leaves the tab out when the
                 //      block draws nothing (comments off, or a Comments widget on the page)
+                // nav-justified + flex-nowrap keep the three tabs on one line on a
+                // phone (equal widths, a long label wraps inside its tab), h-100
+                // keeps the tabs the same height.
                 // Random tabPfx prevents collisions when multiple tab widgets coexist.
                 var civTabPfx = 'civtab_' + Math.random().toString(36).substr(2, 5);
                 var tabsSection = createNode('semantic', { tag: 'div', cssClass: 'mt-5', customName: _sdT('Product Information (Tabs)') }, [
-                    createNode('semantic', { tag: 'ul', cssClass: 'nav nav-tabs', customName: _sdT('Tab Menu'),
+                    createNode('semantic', { tag: 'ul', cssClass: 'nav nav-tabs nav-justified flex-nowrap', customName: _sdT('Tab Menu'),
                         _attrs: [{ name: 'role', value: 'tablist' }] }, [
                         createNode('semantic', { tag: 'li', cssClass: 'nav-item', customName: _sdT('Details Tab'),
                             _attrs: [{ name: 'role', value: 'presentation' }] }, [
-                            createNode('content', { contentType: 'heading', tag: 'button', text: _sdT('Details'), cssClass: 'nav-link active',
+                            createNode('content', { contentType: 'heading', tag: 'button', text: _sdT('Details'), cssClass: 'nav-link active h-100',
                                 _attrs: [{ name: 'type', value: 'button' }, { name: 'data-bs-toggle', value: 'tab' }, { name: 'data-bs-target', value: '#' + civTabPfx + '_0' }, { name: 'role', value: 'tab' }, { name: 'aria-selected', value: 'true' }] })
                         ]),
                         createNode('semantic', { tag: 'li', cssClass: 'nav-item', customName: _sdT('Payment Tab'),
                             _attrs: [{ name: 'role', value: 'presentation' }] }, [
-                            createNode('content', { contentType: 'heading', tag: 'button', text: _sdT('Checkout Options'), cssClass: 'nav-link',
+                            createNode('content', { contentType: 'heading', tag: 'button', text: _sdT('Checkout Options'), cssClass: 'nav-link h-100',
                                 _attrs: [{ name: 'type', value: 'button' }, { name: 'data-bs-toggle', value: 'tab' }, { name: 'data-bs-target', value: '#' + civTabPfx + '_1' }, { name: 'role', value: 'tab' }] })
                         ]),
                         createNode('semantic', { tag: 'li', cssClass: 'nav-item', customName: _sdT('Reviews Tab'),
                             _attrs: [{ name: 'role', value: 'presentation' }] }, [
-                            createNode('content', { contentType: 'heading', tag: 'button', text: _sdT('Reviews'), cssClass: 'nav-link',
+                            createNode('content', { contentType: 'heading', tag: 'button', text: _sdT('Reviews'), cssClass: 'nav-link h-100',
                                 _attrs: [{ name: 'type', value: 'button' }, { name: 'data-bs-toggle', value: 'tab' }, { name: 'data-bs-target', value: '#' + civTabPfx + '_2' }, { name: 'role', value: 'tab' }] })
                         ])
                     ]),
