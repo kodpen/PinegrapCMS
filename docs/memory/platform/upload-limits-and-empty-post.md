@@ -35,6 +35,6 @@ description: Why an empty $_POST is an error (post_max_size), pg_post_body_disca
 - `pg_upload_refuse_discarded_body()` right after `init.php`: a 413 page naming post_max_size (`pg_upload_body_discarded_message()`). `translations_action.php` calls it only for a multipart body, before its JSON branch.
 - `pg_upload_file_refusal($_FILES[x], $file_max)` before opening the file: `''` for OK or no file, else `pg_upload_error_message()` naming the file and limit.
 - `pg_upload_limit_hint($app_max)` under the box: the lower of the server's and the screen's own limit.
-- Used by the CSV imports (contacts, key codes, campaign profiles, submitted forms, users, products, shipments, short links, translations), Import Zip, Add Theme File and Workspace tables (#PR).
+- Used by the CSV imports (contacts, key codes, campaign profiles, submitted forms, users, products, shipments, short links, translations), Import Zip, Add Theme File and Workspace tables (#3664).
 
 Related: docs/memory/platform/browser-image-preshrink.md
