@@ -9114,6 +9114,8 @@ function duplicate_product($id)
     // price as it starts with its price.
     $compare_at_column = array_key_exists('compare_at_price', $row) ? 'compare_at_price,' : '';
     $compare_at_value = array_key_exists('compare_at_price', $row) ? pg_compare_at_price_sql($row['compare_at_price']) . ',' : '';
+    // products.hs_code and origin_country (2026.11.0) the same way.
+    $customs = pg_product_customs_copy_sql($row);
     // insert row into product table
     $query = "INSERT INTO products (
 
@@ -9298,6 +9300,8 @@ function duplicate_product($id)
             mpn,
 
             " . $compare_at_column . "
+
+            " . $customs['columns'] . "
 
             user,
 
@@ -9486,6 +9490,8 @@ function duplicate_product($id)
             '" . escape($row['mpn']) . "',
 
             " . $compare_at_value . "
+
+            " . $customs['values'] . "
 
             '" . USER_ID . "',
 

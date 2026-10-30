@@ -92,7 +92,7 @@ if (!$_POST) {
                     ' . $liveform->output_notices() . $output_file_missing . '
                     <div class="row mb-3  flex-wrap">
                         <div class="col-12 sm:col-12 text-center md:text-start">
-<h2 class="d-inline-block text-break" data-bs-content="' . lang('You are editing this CSS file.') . '" title="' . lang('Edit CSS') . '">[' . h($file_name) . ']</h2>
+<h2 class="d-inline-block text-break">[' . h($file_name) . ']</h2>
                         </div>
                     </div>
                     <form name="form" action="edit_theme_css.php" method="post">

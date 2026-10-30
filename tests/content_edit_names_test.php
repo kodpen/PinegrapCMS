@@ -74,11 +74,8 @@ function test_content_edit_names_one_label_per_name_field()
 		$source = content_edit_names_source($path);
 		pg_assert_same(1, substr_count($source, 'for="name"'), $path . ': labels on #name');
 		pg_assert_false((bool) preg_match('/<label[^>]*material-icons[^>]*>public</', $source), $path . ': the public ligature is a label');
-		if ($path === 'includes/forms/short_link_form.php') {
-			// The short link form shows its address pattern as form text (content_form_group_names_test.php).
-			continue;
-		}
-		pg_assert_true((bool) preg_match('/<span class="input-group-text material-icons" title="[^"]+" data-bs-content="/', $source), $path . ': the ligature keeps its hint');
+		// Every one shows its address pattern as form text (field_hint_visible_test.php).
+		pg_assert_true((bool) preg_match('/<span class="input-group-text material-icons" aria-hidden="true">public</', $source), $path . ': the ligature is hidden');
 	}
 }
 

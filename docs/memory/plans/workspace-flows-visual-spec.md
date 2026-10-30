@@ -10,7 +10,7 @@ description: Plan (owner request 2026-10-27, draft): the Flows canvas look in nu
 - The selected box's threads at full colour, the rest dimmed; a "Data threads" toggle hides them all.
 
 ## Which colours?
-- Types: number `#6ea8ff`, text `#e9b44c`, yes/no `#4cc38a`, person `#b49cff`, date `#c3c9d3`, address `#ff9aa0` (no thread may end in an address field).
+- Types: number `#6ea8ff`, text `#e9b44c`, yes/no `#4cc38a`, person `#b49cff`, date `#c3c9d3`, address `#ff9aa0` (no thread may end in an address field; the one exception, #3410: a number thread into a webhook URL's path or query).
 - Tones: threads of one type stay a few tones apart, even from the same dot: numbers `#6ea8ff`, `#9cc4ff`, `#4d8fe8`; texts `#e9b44c`, `#f5cf7d`, `#f0c060`. A field chip takes its thread's tone.
 - Box kind labels: start `#6fdca6`, system `#45c4d6`, logic `#e9b44c`, message `#6ea8ff`, people and tasks `#b49cff`, value boxes `#e58fd0` with a dashed border. Selection ring `#a78bfa`.
 

@@ -41,7 +41,9 @@ function voice_text_test_run($stubs, $probe)
 		. 'Node.prototype.appendChild = function (c) { this.children.push(c); return c; };' . "\n"
 		. 'Node.prototype.setAttribute = function (k, v) { this.attrs[k] = v; };' . "\n"
 		. 'Node.prototype.addEventListener = function (k, f) { this.on[k] = f; };' . "\n"
+		. 'Node.prototype.focus = function () { if (!this.hidden) { document.activeElement = this; } };' . "\n"
 		. 'global.document = { createElement: function (tag) { return new Node(tag); } };' . "\n"
+		. 'document.body = new Node("body"); document.activeElement = document.body;' . "\n"
 		. 'global.window = global; var posted = [];' . "\n"
 		. 'function settle() { return new Promise(function (r) { setTimeout(r, 20); }); }' . "\n";
 
@@ -130,6 +132,48 @@ function test_voice_text_failure_offers_it_again()
 	pg_assert_false($result['button'], 'the button is back');
 	pg_assert_true($result['by'], 'no mark without a text');
 	pg_assert_same(1, $result['destroyed']);
+}
+
+// From the keyboard: the click keeps focus inside the control (on the
+// status while it works), the written-out text takes focus so it is read,
+// a failure gives focus back to the button; the meter is named after the
+// status.
+function test_voice_text_keyboard_focus_and_meter_name()
+{
+	$probe = 'var box = PGVoiceText.control("/f.weba", function (k) { return "[" + k + "]"; }, "en");' . "\n"
+		. 'var b = box.children; var named = b[2].attrs["aria-label"];' . "\n"
+		. 'settle().then(function () { b[0].focus(); b[0].on.click(); var during = document.activeElement === b[1]; var held = b[1].attrs.tabindex; var meter = b[2].attrs["aria-label"];' . "\n"
+		. ' return settle().then(function () { console.log(JSON.stringify({ named: named, during: during, held: held, meter: meter, after: document.activeElement === b[3], tab: b[3].attrs.tabindex })); }); });';
+	$result = voice_text_test_run(voice_text_test_model('{ en: "available" }'), $probe);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same('[voice_text_working]', $result['named'], 'the meter is named');
+	pg_assert_same('[voice_text_working]', $result['meter']);
+	pg_assert_true($result['during'], 'focus on the status while it works');
+	pg_assert_same('-1', $result['held']);
+	pg_assert_true($result['after'], 'the written-out text takes focus');
+	pg_assert_same('-1', $result['tab']);
+
+	$probe = 'window.failAt = 1; var box = PGVoiceText.control("/f.weba", function (k) { return k; }, "en"); var b = box.children;' . "\n"
+		. 'settle().then(function () { b[0].focus(); b[0].on.click(); return settle().then(function () { console.log(JSON.stringify({ back: document.activeElement === b[0] })); }); });';
+	$result = voice_text_test_run(voice_text_test_model('{ en: "available" }'), $probe);
+	pg_assert_true($result['back'], 'a failure gives focus back to the button');
+
+	// Focus the person moved elsewhere while it worked stays there.
+	$probe = 'var box = PGVoiceText.control("/f.weba", function (k) { return k; }, "en"); var b = box.children; var other = new Node("input");' . "\n"
+		. 'settle().then(function () { b[0].focus(); b[0].on.click(); other.focus(); return settle().then(function () { console.log(JSON.stringify({ kept: document.activeElement === other })); }); });';
+	$result = voice_text_test_run(voice_text_test_model('{ en: "available" }'), $probe);
+	pg_assert_true($result['kept'], 'focus elsewhere is not taken back');
+
+	// The download names the meter after its status.
+	$probe = 'var box = PGVoiceText.control("/f.weba", function (k) { return k; }, "en"); var b = box.children;' . "\n"
+		. 'var create = LanguageModel.create; LanguageModel.create = function (o) { var m = { addEventListener: function (k, f) { f({ loaded: 0.5 }); } }; o.monitor(m); return create(o); };' . "\n"
+		. 'settle().then(function () { b[0].on.click(); console.log(JSON.stringify({ meter: b[2].attrs["aria-label"], value: b[2].value })); });';
+	$result = voice_text_test_run(voice_text_test_model('{ en: "downloadable" }'), $probe);
+	pg_assert_same('voice_text_download', $result['meter']);
 }
 
 // The Workspace player offers it only without a server transcript; the

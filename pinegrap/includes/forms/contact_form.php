@@ -201,6 +201,35 @@ function pg_contact_form_text_field($values, $name, $label, $maxlength)
 }
 
 /**
+ * The lead source field: a select of the referral sources with an empty
+ * choice; a stored value outside the list stays as its own selected choice
+ * (pg_contact_lead_source_options()).
+ *
+ * @param array $values  The stored contact (raw values), array() for a new one
+ * @param array $sources Rows of name and code (pg_referral_sources())
+ * @return string
+ */
+function pg_contact_form_lead_source_field($values, $sources)
+{
+    $current = (string) ($values['lead_source'] ?? '');
+    $options = '';
+    $hint = '';
+
+    foreach (pg_contact_lead_source_options($sources, $current) as $option) {
+        $options .= '<option value="' . h($option['value']) . '"' . (($option['value'] === $current) ? ' selected="selected"' : '') . '>' . h($option['label']) . '</option>';
+
+        if ($option['kept']) {
+            $hint = '<div class="form-text">' . lang('The stored value is not one of the referral sources; it is kept until another one is chosen.') . '</div>';
+        }
+    }
+
+    return '<div class="col-12 my-5">
+                                            <label for="lead_source" class="form-label">' . lang('Lead Source') . '</label>
+                                            <select name="lead_source" id="lead_source" class="form-control">' . $options . '</select>' . $hint . '
+                                        </div>';
+}
+
+/**
  * The work, home, membership, notes, affiliate and contact group cards.
  *
  * @param array $values      The stored contact (raw values), array() for a new one
@@ -306,10 +335,7 @@ function pg_contact_form_detail_cards($values, $is_new, $work_extra, $groups_htm
                                 </h2>
                                 <div class="card-body">
                                     <div class="row">
-                                        <div class="col-12 my-3">
-                                            <label for="lead_source" class="form-label">' . lang('Lead Source') . '</label>
-                                            <input value="' . pg_contact_form_value($values, 'lead_source') . '" type="text" name="lead_source" id="lead_source" class="form-control" maxlength="50" />
-                                        </div>
+                                        ' . pg_contact_form_lead_source_field($values, pg_referral_sources()) . '
                                         <div class="col-12 my-3">
                                             <label for="description" class="form-label">' . lang('Description') . '</label>
                                             <textarea type="text" name="description" id="description" class="form-control">' . pg_contact_form_value($values, 'description') . '</textarea>

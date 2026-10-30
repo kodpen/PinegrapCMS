@@ -118,18 +118,20 @@ function pg_folder_form_markup($values)
                                             <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                         </div>
                                         <div class="col-12 md:col-4  my-3">
-                                            <label for="order" class="form-label" data-bs-content="' . lang('Display order of this Folder to other Folders') . '" title="' . lang('Sorting') . '">' . lang('Sorting') . ' (?)</label>
+                                            <label for="order" class="form-label">' . lang('Sorting') . '</label>
                                             <div class="input-group number-controls">
                                                 <button class="btn material-icons minus border border-end-0" type="button" aria-label="' . h(lang('Decrease')) . '">remove</button>
-                                                <input class="form-control text-center border-start-0 border-end-0" value="' . h($values['order']) . '" type="text" name="order" id="order" maxlength="9" inputmode="numeric" data-inputmask-alias="decimal"  data-inputmask-placeholder="0"/>
+                                                <input class="form-control text-center border-start-0 border-end-0" value="' . h($values['order']) . '" type="text" name="order" id="order" aria-describedby="order_hint" maxlength="9" inputmode="numeric" data-inputmask-alias="decimal"  data-inputmask-placeholder="0"/>
                                                 <button class="btn material-icons plus border border-start-0" type="button" aria-label="' . h(lang('Increase')) . '">add</button>
                                             </div>
+                                            <div class="form-text" id="order_hint">' . lang('Display order of this Folder to other Folders') . '</div>
                                         </div>
                                         <div class="col-12 my-5">
                                             <div class="form-field">
-                                                <div class="switch"><input class="" type="checkbox" id="folder_archived" name="folder_archived" value="1"' . ($values['archived'] ? ' checked="checked"' : '') . ' /></div>
-                                                <label class="" for="folder_archived" data-bs-content="' . lang('Archive Folder for Pages and Files that are no longer being used') . '" title="' . lang('Archive') . '">' . lang('Archive') . ' (?)</label>
+                                                <div class="switch"><input class="" type="checkbox" id="folder_archived" aria-describedby="folder_archived_hint" name="folder_archived" value="1"' . ($values['archived'] ? ' checked="checked"' : '') . ' /></div>
+                                                <label class="" for="folder_archived">' . lang('Archive') . '</label>
                                             </div>
+                                            <div class="form-text" id="folder_archived_hint">' . lang('Archive Folder for Pages and Files that are no longer being used') . '</div>
                                         </div>
                                     </div>
                                 </div>
@@ -143,8 +145,9 @@ function pg_folder_form_markup($values)
                                 <div class="card-body">
                                     <div class="row">' . $parent_row . '
                                         <div class="col-12 md:col-6 lg:col-auto my-3">
-                                            <label for="access_control_type" class="form-label" data-bs-content="' . lang('Access Control for all Pages and Files within this Folder') . '" title="' . lang('Folder Access Control Type') . '">' . lang('Folder Access Control Type') . ' (?)</label>
-                                            <select class="form-control" id="access_control_type" name="access_control_type">' . $values['access_options'] . '</select>
+                                            <label for="access_control_type" class="form-label">' . lang('Folder Access Control Type') . '</label>
+                                            <select class="form-control" id="access_control_type" aria-describedby="access_control_type_hint" name="access_control_type">' . $values['access_options'] . '</select>
+                                            <div class="form-text" id="access_control_type_hint">' . lang('Access Control for all Pages and Files within this Folder') . '</div>
                                         </div>
                                     </div>
                                     <div class="row mt-7">

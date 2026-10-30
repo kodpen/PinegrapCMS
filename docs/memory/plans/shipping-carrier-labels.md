@@ -4,36 +4,36 @@ description: Plan (approved 2026-10-19; 1-4, 6-8 partly done): carrier APIs for 
 ---
 
 ## Why?
-- No Turkish carrier API existed; competitors ship many carrier integrations with thermal labels and tracking write-back.
+- No Turkish carrier API existed; competitors ship many with thermal labels and tracking write-back.
 
 ## What is decided?
-- This plan starts only after `shipping-management.md` steps 1–3 exist: the shipment row (`shipping_tracking_numbers` with `carrier`, `status`, `source='carrier'`) and the single write path `pg_shipment_record()` are the base; this plan never writes tracking numbers another way.
-- First driver: one shipping aggregator (single API, many carriers, contracted rates without a carrier contract), chosen by the owner from the current Turkish aggregators; then Yurtiçi Kargo and Aras Kargo direct APIs. Owner (2026-10-29, #3073): start with the services whose integration is open (public reference and test mode); every aggregator and direct carrier follows; international drivers too, the US and Europe first, since the product is global. Driver interface `includes/shipping/<driver>.php`: create shipment → label (PDF/ZPL) + barcode + tracking number; cancel; track; pickup request where supported.
-- Panel: "Create label" on the order and on selected orders (bulk, one PDF), reprint, status refresh; the carrier comes from the shipping method's `carrier` or the order's method code.
+- Base: the shipment row (`shipping_tracking_numbers` with `carrier`, `status`, `source='carrier'`) and the single write path `pg_shipment_record()` of `shipping-management.md`; this plan never writes tracking numbers another way.
+- First driver: one shipping aggregator (single API, many carriers, contracted rates), chosen by the owner; then Yurtiçi Kargo and Aras Kargo direct APIs. Owner (2026-10-29, #3073): open integrations (public docs, test mode) first; every aggregator and direct carrier follows; international too, the US and Europe first. Driver interface `includes/shipping/<driver>.php`: create shipment → label (PDF/ZPL) + barcode + tracking number; cancel; track; pickup request where supported.
+- Panel: "Create label" on the order and on selected orders (bulk, one PDF), reprint, status refresh; carrier from the method's `carrier` or the order's method code.
 - Status write-back: the job polls open shipments and calls `pg_shipment_delivered()` so `order.delivered`, e-mail and SMS fire exactly once. Carrier webhooks are used when the driver offers them.
 - Return labels: the same driver creates a return shipment for customer returns with the named return carrier (step 8).
-- UPS/FedEx/USPS rate code and box packing stay untouched (their labels: Shippo, step 7).
+- UPS/FedEx/USPS rate code and box packing stay (their labels: Shippo, step 7).
 - Marketplace orders: Trendyol common label (`createCommonLabel`, ZPL for TEX/Aras) is the marketplace connector's job.
 
 ## What remains?
-1. Driver interface, settings card (credentials encrypted), connection test (S). Done in PR #2378 (`commerce/carrier-label-drivers.md`).
+1. Done #2378: driver interface, settings card, connection test (`commerce/carrier-label-drivers.md`).
 2. Geliver driver (#3073). Done: PR #3096 (`commerce/carrier-label-geliver.md`), webhook #3245 (`carrier-webhook.md`).
 3. Panel actions single + bulk; `shipment_labels` and `data/shipping_labels/`, retention 30/90 days (#3108, `workflow/decisions-made-schema-3.md`) (M).
-   - 3a. Done in PR #3117 (`commerce/shipment-labels.md`): table, files, Create Label and reprint on the order, sweep, erasure, order delete.
-   - 3b. Done in PR #3137 (`commerce/shipment-label-bulk.md`): bulk create and one merged PDF from the orders list, Cancel Label, return labels; bulk .zpl #3315.
-4. Status polling job in the dispatcher, write-back through the single path (S). Done in PR #3157 (`commerce/shipment-tracking.md`).
-5. Direct drivers (M each): Aras done in PR #3259 (`commerce/carrier-label-aras.md`); Yurtiçi waits for docs.
-   - 5c. API: done in PR #3220 (`commerce/shipment-label-api.md`).
-6. Aggregators, done: Basit Kargo PR #3163 (`commerce/carrier-label-basitkargo.md`), Kargonomi PR #3286 (`commerce/carrier-label-kargonomi.md`); MNG ApiZone (M) waits for docs.
-7. International (#3124), done: Shippo PR #3192 (`commerce/carrier-label-shippo.md`), Sendcloud PR #3226 (`commerce/carrier-label-sendcloud.md`); no customs yet.
-   - 7b Shippo webhook. Done in PR #3407.
-   - 7c Sendcloud return labels. Done in PR #3409.
+   - 3a. Done #3117 (`commerce/shipment-labels.md`): table, files, Create Label, reprint, sweep, erasure, order delete.
+   - 3b. Done #3137 (`commerce/shipment-label-bulk.md`): bulk create, one merged PDF, Cancel Label, return labels; bulk .zpl #3315.
+4. Done #3157: status polling job, write-back through the single path (`commerce/shipment-tracking.md`).
+5. Direct drivers (M each): Aras done #3259 (`commerce/carrier-label-aras.md`); Yurtiçi waits for docs.
+   - 5c. API: done #3220 (`commerce/shipment-label-api.md`).
+6. Aggregators, done: Basit Kargo #3163 (`commerce/carrier-label-basitkargo.md`), Kargonomi #3286 (`commerce/carrier-label-kargonomi.md`); MNG ApiZone (M) waits for docs.
+7. International (#3124), done: Shippo #3192 (`commerce/carrier-label-shippo.md`), Sendcloud #3226 (`commerce/carrier-label-sendcloud.md`); 7b Shippo webhook #3407; 7c Sendcloud return labels #3409.
+   - 7d Customs, decided #3408 (`workflow/decisions-made-product-7.md`), a PR each: C1 #3429 (`commerce/product-customs-fields.md`): columns, product screen, copy, import/export. C2 Shippo `customs_declaration`, shop defaults in its settings, products API fields. C3 Sendcloud `parcel_items` + the block; EU-only refusal lifted once filled.
 8. Return label on the returns screen (#3178, `workflow/decisions-made-product-4.md`) (S).
-   - Done: 8a PR #3194 (`commerce/shipment-label-returns.md`), 8b PR #3239 (classic view), 8c PR #3268 (widget).
+   - Done: 8a #3194 (`commerce/shipment-label-returns.md`), 8b #3239 (classic view), 8c #3268 (widget).
+9. Pickup requests, decided #3415 (`workflow/decisions-made-product-7.md`): orders list and label card action, `pickup_ref`/`pickup_at` on the label; Shippo and Sendcloud first (M).
 
 ## Open questions?
-- Answered (#3073): Geliver first (public reference and test mode); the owner confirms its prices; no aggregator-specific fields in the shipment row.
-- Formats (#3123): PDF, ZPL, SVG; ZPL never sent to a converter.
+- #3073: Geliver first; the owner confirms its prices; no aggregator-specific fields in the shipment row.
+- Formats (#3123): PDF, ZPL, SVG; no ZPL converter.
 
 ## Where to start?
-- Step 5 Yurtiçi/Aras drivers (one with `track()` is tracked by the job as it is). Live checks of Geliver, Shippo and Sendcloud with the owner's keys.
+- 7d C2 after C1, C3 after C2; 9 pickup is free. Yurtiçi waits for docs. Live checks of Geliver, Shippo, Sendcloud (owner keys).

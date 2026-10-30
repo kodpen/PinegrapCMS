@@ -342,10 +342,10 @@ function pg_dashboard_widget_5($request, $user)
         $vs5_tp = function ($tp, $rgb) use ($vs5_views_label) {
             if (!$tp)
                 return '';
-            return '<div class="d-flex align-items-center gap-1" style="font-size:11px">'
+            return '<div class="d-flex align-items-center gap-1" style="font-size:.6875rem">'
                 . '<i class="bi bi-window fg-secondary flex-shrink-0"></i>'
                 . '<span class="text-truncate flex-grow-1 fg-secondary" title="' . $tp['name'] . '">' . $tp['name'] . '</span>'
-                . '<span class="badge rounded-pill flex-shrink-0" style="background:rgba(' . $rgb . ',.12);color:rgb(' . $rgb . ');font-size:10px" title="' . h($vs5_views_label) . '">' . pg_format_number($tp['cnt'], 0) . ' <span style="opacity:.75;font-weight:400">' . h($vs5_views_label) . '</span></span>'
+                . '<span class="badge rounded-pill flex-shrink-0" style="background:rgba(' . $rgb . ',.12);color:rgb(' . $rgb . ');font-size:.625rem" title="' . h($vs5_views_label) . '">' . pg_format_number($tp['cnt'], 0) . ' <span style="opacity:.75;font-weight:400">' . h($vs5_views_label) . '</span></span>'
                 . '</div>';
         };
 
@@ -359,7 +359,7 @@ function pg_dashboard_widget_5($request, $user)
             $vs5_pct = floor(($vs5_backfill['cursor'] / $vs5_backfill['max_id']) * 100);
             $vs5_progress = '
             <div class="px-5 pt-3">
-              <div class="alert theme-info py-1 px-3 mb-0 d-flex align-items-center gap-3" style="font-size:11px">
+              <div class="alert theme-info py-1 px-3 mb-0 d-flex align-items-center gap-3" style="font-size:.6875rem">
                 <i class="bi bi-hourglass-split flex-shrink-0"></i>
                 <span class="flex-grow-1">' . lang('Historical visitor summaries are still being built. Figures for earlier periods will be incomplete until this finishes.') . '</span>
                 <span class="badge bg-subtle-info fg-emphasis-info flex-shrink-0">' . h(lang(array('string' => '{var:1}%', 'vars' => (int) $vs5_pct))) . '</span>

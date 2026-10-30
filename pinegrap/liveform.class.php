@@ -227,6 +227,11 @@ class liveform {
             $output_aria_label = ' aria-label="' . h((string) $attributes['aria-label']) . '"';
         }
 
+        // A hint printed under the field is tied to it by its id.
+        if (isset($attributes['aria-describedby']) && is_scalar($attributes['aria-describedby']) && (string) $attributes['aria-describedby'] !== '') {
+            $output_aria_label .= ' aria-describedby="' . h((string) $attributes['aria-describedby']) . '"';
+        }
+
         $spellcheck = '';
 
         if (isset($attributes['spellcheck']) && $attributes['spellcheck']) {

@@ -42,7 +42,7 @@ function pg_dashboard_widget_32($request, $user)
     // Settings are for managers and above; below that the link is left out.
     $footer = ($user['role'] < 3) ? '
     <div class="card-footer border-0 bg-reset py-1 text-center">
-        <a href="' . h(pg_settings_link('seo', 'pgset-analytics')) . '" class="text-decoration-none" style="font-size:11px">'
+        <a href="' . h(pg_settings_link('seo', 'pgset-analytics')) . '" class="text-decoration-none" style="font-size:.6875rem">'
         . h($state['property_name']) . ' <i class="bi bi-arrow-right-short" aria-hidden="true"></i></a>
     </div>' : '';
 
@@ -81,7 +81,7 @@ function pg_dashboard_widget_32($request, $user)
             ? lang(array('string' => '{var:1} points', 'vars' => pg_format_number($shown, 1)))
             : lang(array('string' => '{var:1}%', 'vars' => pg_format_number($shown, 0)));
 
-        return '<span class="' . $class . '" style="font-size:11px" title="' . $against . '">'
+        return '<span class="' . $class . '" style="font-size:.6875rem" title="' . $against . '">'
             . $sign . h($text) . '<span class="visually-hidden"> ' . $against . '</span></span>';
     };
 
@@ -102,9 +102,9 @@ function pg_dashboard_widget_32($request, $user)
 
         $figures .= '
             <div style="min-width:7rem">
-                <div class="fg-secondary" style="font-size:11px">' . h($labels[$metric]) . '</div>
+                <div class="fg-secondary" style="font-size:.6875rem">' . h($labels[$metric]) . '</div>
                 <div class="d-flex align-items-baseline gap-3">
-                    <span class="fw-semibold" style="font-size:18px">' . h($value) . '</span>
+                    <span class="fw-semibold" style="font-size:1.125rem">' . h($value) . '</span>
                     ' . $change($figure) . '
                 </div>
             </div>';
@@ -131,7 +131,7 @@ function pg_dashboard_widget_32($request, $user)
         }
 
         if ($out === '') {
-            $out = '<p class="fg-secondary text-center mb-0 py-3" style="font-size:12px">' . h(lang('Nothing counted in these 28 days.')) . '</p>';
+            $out = '<p class="fg-secondary text-center mb-0 py-3" style="font-size:.75rem">' . h(lang('Nothing counted in these 28 days.')) . '</p>';
         }
 
         return pg_widget_row_heading(h($heading), h($aside)) . $out;
@@ -144,7 +144,7 @@ function pg_dashboard_widget_32($request, $user)
                 ' . $figures . '
             </div>
             <div class="d-flex align-items-end gap-3 px-5 pb-1">
-                <span class="fg-secondary" style="font-size:11px">' . h(lang('Active users, last 7 days')) . '</span>
+                <span class="fg-secondary" style="font-size:.6875rem">' . h(lang('Active users, last 7 days')) . '</span>
                 ' . pg_widget_bars(array_values($week)) . '
             </div>
             <table class="visually-hidden">
@@ -152,7 +152,7 @@ function pg_dashboard_widget_32($request, $user)
                 <tr><th scope="col">' . h(lang('Date')) . '</th><th scope="col">' . h(lang('Active Users')) . '</th></tr>
                 ' . $week_rows . '
             </table>
-            <div class="fg-secondary px-5 pb-3" style="font-size:10px">' . h(prepare_form_data_for_output($report['from'], 'date', false) . ' – ' . prepare_form_data_for_output($report['to'], 'date', false)) . '</div>
+            <div class="fg-secondary px-5 pb-3" style="font-size:.625rem">' . h(prepare_form_data_for_output($report['from'], 'date', false) . ' – ' . prepare_form_data_for_output($report['to'], 'date', false)) . '</div>
         </div>
         <div class="flex-fill pg-list">
             ' . $list(lang('Top pages'), lang('Views'), $report['pages'], 'bi-file-earmark-text') . '

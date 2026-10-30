@@ -232,7 +232,8 @@ if (!$_POST) {
                         <div class="col-12 sm:col-12 text-center md:text-start">
                             <div class="row mb-3">
                                 <div class="col-12 md:col">
-                                    <h2 class="d-inline-block text-break" data-bs-content="' . lang('Manually create a submitted form for this custom form. Office use only fields are also visible.') . '" title="' . lang('Add Submitted Form') . '">[' . h($form_name) . ']</h2>
+                                    <h2 class="d-inline-block text-break">[' . h($form_name) . ']</h2>
+                                    <p class="form-text mt-0">' . lang('Manually create a submitted form for this custom form. Office use only fields are also visible.') . '</p>
                                     <p class="p-0 m-0"><a class="pg-link-secondary" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_submitted_form.php">' . lang('Select a different custom form') . '</a></p>
                                 </div>
                             </div>

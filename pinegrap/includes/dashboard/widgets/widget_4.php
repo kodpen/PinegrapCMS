@@ -142,8 +142,8 @@ function pg_dashboard_widget_4($request, $user)
                 </span>
                 <span class="d-block flex-grow-1 overflow-hidden">
                     <span class="d-flex justify-content-between align-items-center" style="gap:6px">
-                        <span class="text-truncate fw-semibold" style="font-size:13px">' . h($eg_title) . '</span>
-                        <span class="' . $eg_wait_class . ' flex-shrink-0" style="font-size:11px">' . get_relative_time(array('timestamp' => (int) $eg_chat['last_message_at'])) . '</span>
+                        <span class="text-truncate fw-semibold" style="font-size:.8125rem">' . h($eg_title) . '</span>
+                        <span class="' . $eg_wait_class . ' flex-shrink-0" style="font-size:.6875rem">' . get_relative_time(array('timestamp' => (int) $eg_chat['last_message_at'])) . '</span>
                     </span>
                     <small class="fg-secondary text-truncate d-block">' . h($eg_chat['last_message_preview']) . '</small>
                 </span>
@@ -263,11 +263,11 @@ function pg_dashboard_widget_4($request, $user)
             // The name is then a real link stretched over the row;
             // the chat button sits above that link as its sibling,
             // never inside it.
-            $eg_name_html = '<span class="text-truncate me-1 fw-semibold" style="font-size:13px">' . h($eg_name) . '</span>';
+            $eg_name_html = '<span class="text-truncate me-1 fw-semibold" style="font-size:.8125rem">' . h($eg_name) . '</span>';
 
             if (((int) $user['role'] === 0) || ((int) $user['role'] < (int) $eg_person['user_role'])) {
                 $eg_name_html = '<a href="edit_user.php?id=' . (int) $eg_person['id'] . '"'
-                    . ' class="stretched-link text-truncate me-1 fw-semibold fg-body text-decoration-none" style="font-size:13px"'
+                    . ' class="stretched-link text-truncate me-1 fw-semibold fg-body text-decoration-none" style="font-size:.8125rem"'
                     . ' data-pg-focus-key="user-' . (int) $eg_person['id'] . '">' . h($eg_name) . '</a>';
             }
 
@@ -295,7 +295,7 @@ function pg_dashboard_widget_4($request, $user)
                 <div class="flex-grow-1 overflow-hidden">
                     <div class="d-flex justify-content-between align-items-center">
                         ' . $eg_name_html . '
-                        <span class="badge rounded-pill flex-shrink-0" style="background:' . $eg_role_color . '22;color:color-mix(in srgb, ' . $eg_role_color . ' 50%, var(--pg-fg-emphasis));font-size:10px">' . h(pg_chat_role_label($eg_person['user_role'])) . '</span>
+                        <span class="badge rounded-pill flex-shrink-0" style="background:' . $eg_role_color . '22;color:color-mix(in srgb, ' . $eg_role_color . ' 50%, var(--pg-fg-emphasis));font-size:.625rem">' . h(pg_chat_role_label($eg_person['user_role'])) . '</span>
                         ' . $eg_chat_icon . '
                     </div>
                     <small class="fg-secondary">' . $eg_seen_text . '</small>
@@ -317,8 +317,8 @@ function pg_dashboard_widget_4($request, $user)
         $eg_heading = function ($eg_label, $eg_count) {
             return '
             <div class="d-flex align-items-center justify-content-between px-3 pt-3 pb-1">
-                <span class="fg-secondary text-uppercase" style="font-size:10px;letter-spacing:.06em">' . h($eg_label) . '</span>
-                <span class="fg-secondary" style="font-size:10px">' . pg_format_number($eg_count, 0) . '</span>
+                <span class="fg-secondary text-uppercase" style="font-size:.625rem;letter-spacing:.06em">' . h($eg_label) . '</span>
+                <span class="fg-secondary" style="font-size:.625rem">' . pg_format_number($eg_count, 0) . '</span>
             </div>';
         };
 
@@ -337,8 +337,8 @@ function pg_dashboard_widget_4($request, $user)
         if ($eg_chats_panel === '') {
             $eg_chats_panel = '
             <div class="text-center py-5">
-                <i class="bi bi-chat-left-dots d-block mb-3" style="font-size:20px;opacity:.35"></i>
-                <p class="fg-secondary mb-0" style="font-size:12px">' . lang('Nobody is waiting for a reply.') . '</p>
+                <i class="bi bi-chat-left-dots d-block mb-3" style="font-size:1.25rem;opacity:.35"></i>
+                <p class="fg-secondary mb-0" style="font-size:.75rem">' . lang('Nobody is waiting for a reply.') . '</p>
             </div>';
         }
 
@@ -355,8 +355,8 @@ function pg_dashboard_widget_4($request, $user)
         if ($eg_people_panel === '') {
             $eg_people_panel = '
             <div class="text-center py-7">
-                <i class="bi bi-person-dash d-block mb-3" style="font-size:22px;opacity:.35"></i>
-                <p class="fg-secondary mb-0" style="font-size:12px">' . lang('Nobody is online right now.') . '</p>
+                <i class="bi bi-person-dash d-block mb-3" style="font-size:1.375rem;opacity:.35"></i>
+                <p class="fg-secondary mb-0" style="font-size:.75rem">' . lang('Nobody is online right now.') . '</p>
             </div>';
         }
 
