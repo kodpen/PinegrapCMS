@@ -349,6 +349,7 @@ function ws_flow_config_normalize($kind, $config)
         case 'event':
         case 'join':
         case 'row':
+        case 'no_order':
             return function_exists('ws_flow_anchor_normalize') ? ws_flow_anchor_normalize($kind, $config) : array();
     }
 
@@ -815,7 +816,7 @@ function ws_flow_graph_check($graph)
             }
         }
 
-        if (in_array($node['kind'], array('schedule', 'event', 'join', 'row'), true)) {
+        if (in_array($node['kind'], array('schedule', 'event', 'join', 'row', 'no_order'), true)) {
             foreach (ws_flow_anchor_problems($node['kind'], $node['config'], $name) as $text) {
                 $problems[] = ws_flow_problem('bad_config', $id, null, $text);
             }
@@ -1376,14 +1377,14 @@ function ws_flows_list_where($filters)
 
 /**
  * How a flow starts, by the kind of its start box: at a time, on an event
- * (a row of a workflow table written is one too), when somebody joins a
- * channel, or by hand.
+ * (a row of a workflow table written is one too, and a customer who stopped
+ * ordering), when somebody joins a channel, or by hand.
  *
  * @return array box kind => start
  */
 function ws_flow_start_names()
 {
-    return array('schedule' => 'time', 'event' => 'event', 'row' => 'event', 'join' => 'join', 'manual' => 'manual');
+    return array('schedule' => 'time', 'event' => 'event', 'row' => 'event', 'no_order' => 'event', 'join' => 'join', 'manual' => 'manual');
 }
 
 /**
@@ -1661,6 +1662,10 @@ function ws_flow_start_rule($graph, $readable, $table_text = null)
     // A row box names its table and column only to whoever reads the table.
     if ($kind === 'row') {
         return array('text' => ($table_text !== null) ? (string) call_user_func($table_text, $config) : $label, 'rule' => null);
+    }
+
+    if ($kind === 'no_order') {
+        return array('text' => ws_flow_no_order_said($config), 'rule' => null);
     }
 
     if (((int) ($config['channel_id'] ?? 0) > 0) && !call_user_func($readable, (int) $config['channel_id'])) {
@@ -2752,6 +2757,10 @@ function ws_flow_js_strings()
         'fl_join_channel'     => lang('Channel joined'),
         'fl_join_any'         => lang('Any public channel'),
         'fl_kind_row'         => lang('When a table row changes'),
+        'fl_kind_no_order'    => lang('When a customer stops ordering'),
+        'fl_no_order_days'    => lang('Days since the last order'),
+        'fl_no_order_days_help' => lang('Looked at every hour: each customer whose last order is this many days old starts one run, as the flow\'s owner, with the customer\'s values. A new order starts the count again; customers who never ordered start nothing.'),
+        'fl_no_order_meta'    => ws_js_template('No order for {var:1} days', 1),
         'fl_row_table'        => lang('Table'),
         'fl_row_table_pick'   => lang('Choose a table'),
         'fl_row_table_help'   => lang('Each row written starts a run, as the flow\'s owner, while the flow is live and they may read the table. Rows a file import adds start nothing.'),
@@ -3233,6 +3242,10 @@ function ws_flow_js_config($viewer, $mode)
 
         // The workflow tables a row box may start on, with their columns.
         $steps['tables'] = function_exists('ws_flow_row_tables') ? ws_flow_row_tables($viewer) : array();
+
+        // A box on customers who stopped ordering, to whoever reads orders
+        // and contacts.
+        $steps['no_order'] = function_exists('ws_flow_no_order_refusal') && (ws_flow_no_order_refusal($viewer) === '');
 
         // The MCP servers an MCP box may call with the person's account and
         // the tools that read there; none, and the palette has no MCP box

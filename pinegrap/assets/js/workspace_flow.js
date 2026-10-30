@@ -126,6 +126,7 @@
         event: { name: 'fl_kind_event', group: 'start', into: false, out: ['next'] },
         join: { name: 'fl_kind_join', group: 'start', into: false, out: ['next'] },
         row: { name: 'fl_kind_row', group: 'start', into: false, out: ['next'] },
+        no_order: { name: 'fl_kind_no_order', group: 'start', into: false, out: ['next'] },
         task: { name: 'fl_kind_task', group: 'people', into: true, out: ['done', 'cancelled', 'timeout'] },
         post: { name: 'fl_kind_post', group: 'message', into: true, out: ['done', 'failed'] },
         email: { name: 'fl_kind_email', group: 'message', into: true, out: ['done', 'failed'] },
@@ -186,6 +187,7 @@
         ['event', 'fl_kind_event'],
         ['join', 'fl_kind_join'],
         ['row', 'fl_kind_row'],
+        ['no_order', 'fl_kind_no_order'],
         ['task', 'fl_add_task'],
         ['condition', 'fl_kind_condition'],
         ['delay', 'fl_kind_delay'],
@@ -594,6 +596,7 @@
             repeats: steps.repeats || {},
             events: steps.events || null,
             tables: steps.tables || [],
+            no_order: !!steps.no_order,
             mcp: steps.mcp || []
         };
     }
@@ -726,6 +729,10 @@
 
         if (node.kind === 'row') {
             return rowMeta(config);
+        }
+
+        if (node.kind === 'no_order') {
+            return t('fl_no_order_meta', config.days || 30);
         }
 
         if ((node.kind === 'row_add') || (node.kind === 'row_set')) {
@@ -3753,7 +3760,9 @@
     // What the palette offers: an MCP box only while there is a server the
     // person may call with a tool that reads (ws_step_mcp_form_servers()), a
     // row box only while there is a table they read (ws_flow_row_tables()),
-    // a box that adds or changes a row only while there is one they change.
+    // a box that adds or changes a row only while there is one they change,
+    // a box on customers who stopped ordering only to whoever reads orders
+    // and contacts (ws_flow_no_order_refusal()).
     function paletteItems() {
         var mcp = stepLists().mcp.length > 0;
         var tables = stepLists().tables.length > 0;
@@ -3761,6 +3770,7 @@
 
         return PALETTE.filter(function (item) {
             return memberKind(item[0]) && ((item[0] !== 'mcp') || mcp) && ((item[0] !== 'row') || tables)
+                && ((item[0] !== 'no_order') || stepLists().no_order)
                 && (((item[0] !== 'row_add') && (item[0] !== 'row_set')) || writable);
         });
     }
@@ -5214,6 +5224,10 @@
             rowFields(box, node);
         }
 
+        if (node.kind === 'no_order') {
+            noOrderFields(box, node);
+        }
+
         if (state.edit) {
             // Only the owner: the box is looked at with their rights.
             if (state.flow && state.flow.manage) {
@@ -6536,6 +6550,22 @@
             refreshNode(node);
         });
         box.appendChild(field(t('fl_row_column'), column, t('fl_row_column_help')));
+    }
+
+    // A box on customers who stopped ordering: the days since their last
+    // order (1 to WS_FLOW_NO_ORDER_DAYS_MAX).
+    function noOrderFields(box, node) {
+        var days = el('input', 'form-control form-control-sm wsf-number');
+
+        days.type = 'number';
+        days.min = '1';
+        days.max = '3650';
+        days.value = String(node.config.days || 30);
+        days.addEventListener('input', function () {
+            node.config.days = clamp(parseInt(days.value, 10) || 1, 1, 3650);
+            refreshNode(node);
+        });
+        box.appendChild(field(t('fl_no_order_days'), days, t('fl_no_order_days_help')));
     }
 
     // ── Boxes that add or change a row ─────────────────────────────────
@@ -7876,6 +7906,8 @@
             config = { event: '', page_id: 0, status: '', channel_id: 0 };
         } else if (kind === 'join') {
             config = { channel_id: 0 };
+        } else if (kind === 'no_order') {
+            config = { days: 30 };
         } else if (kind === 'row') {
             // The one table there is is taken; of several, none yet.
             var tables = stepLists().tables;

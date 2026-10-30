@@ -346,7 +346,7 @@ JS
 	}
 
 	pg_assert_same(array('start', 'values', 'logic', 'people', 'message', 'system'), $result['order'], 'groups in the plan\'s order');
-	pg_assert_same(array('start:manual,schedule,event,join,row', 'values:constants,value'), $result['firstItems'], 'each group keeps the palette\'s order');
+	pg_assert_same(array('start:manual,schedule,event,join,row,no_order', 'values:constants,value'), $result['firstItems'], 'each group keeps the palette\'s order');
 	pg_assert_same(array('start:schedule'), $result['search'], 'a search keeps the boxes whose name holds it, any case');
 	pg_assert_same(array('start:manual'), $result['words'], 'every word searched for');
 	pg_assert_same(0, $result['none'], 'nothing found: no group');
@@ -1835,7 +1835,7 @@ JS
 function ws_flows_canvas_test_groups()
 {
 	return array(
-		'start' => array('#6fdca6', array('manual', 'schedule', 'event', 'join', 'row')),
+		'start' => array('#6fdca6', array('manual', 'schedule', 'event', 'join', 'row', 'no_order')),
 		'values' => array('#e58fd0', array('constants', 'value')),
 		'logic' => array('#e9b44c', array('condition', 'delay', 'end', 'for_each', 'for_each_end')),
 		'people' => array('#b49cff', array('task', 'task_open', 'checkin', 'approval', 'task_digest', 'lead')),
