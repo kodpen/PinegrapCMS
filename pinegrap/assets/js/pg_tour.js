@@ -273,8 +273,10 @@ window.PgTour = (function () {
 
         // Tab stays inside the bubble while the tour is up; there is nothing
         // else on the screen a keyboard should be able to reach.
+        // Step text that scrolls carries tabindex=0 (fitBody()) and comes
+        // first in the ring, so the arrow keys can scroll it.
         if (event.key === 'Tab') {
-            var focusable = bubble.querySelectorAll('button:not([disabled])');
+            var focusable = bubble.querySelectorAll('[tabindex="0"], button:not([disabled])');
 
             if (!focusable.length) { return; }
 
@@ -412,6 +414,34 @@ window.PgTour = (function () {
 
             centre();
         }
+
+        fitBody();
+    }
+
+    // Step text taller than the bubble scrolls in .pg-tour-body.  While it
+    // does, it is a named region in the tab order, so a keyboard reaches it
+    // and the arrow keys scroll it; text that fits stays out of the way.
+    // paint() runs on every resize and scroll, so this follows the screen.
+    function fitBody() {
+
+        var body = bubble.querySelector('.pg-tour-body');
+
+        if (!body) { return; }
+
+        if (body.scrollHeight > (body.clientHeight + 1)) {
+            body.setAttribute('tabindex', '0');
+            body.setAttribute('role', 'region');
+            body.setAttribute('aria-labelledby', 'pg_tour_title');
+            return;
+        }
+
+        var focused = (document.activeElement === body);
+
+        body.removeAttribute('tabindex');
+        body.removeAttribute('role');
+        body.removeAttribute('aria-labelledby');
+
+        if (focused) { parts.next.focus(); }
     }
 
     // The bubble in the middle of the screen, never above or left of its edge:
