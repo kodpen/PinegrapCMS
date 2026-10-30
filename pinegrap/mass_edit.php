@@ -235,6 +235,9 @@ if (!$_POST) {
     }
 
     // --- Find & Replace card (always visible, separate form) ---
+    // Title and Description are ticked on a first draw; after a refused
+    // apply the boxes show what was ticked.
+    $fr_defaults = $liveform->prefill() ? array('checked' => 'checked') : array();
     $output_find_replace = '
         <div class="card mb-7">
             <div class="card-header d-flex align-items-center gap-3">
@@ -249,36 +252,29 @@ if (!$_POST) {
                         <div class="col-12 md:col-auto">
                             <label class="form-label fw-semibold mb-3">' . lang('Apply to Fields') . '</label>
                             <div class="form-field">
-                                <input class="check" type="checkbox" name="fr_fields[]"
-                                    value="page_name" id="fr_page_name">
+                                ' . $liveform->output_field(array('type'=>'checkbox', 'name'=>'fr_fields[]', 'id'=>'fr_page_name', 'value'=>'page_name', 'class'=>'check')) . '
                                 <label class="" for="fr_page_name">' . lang('Page Name') . '</label>
                             </div>
                             <div class="form-field">
-                                <input class="check" type="checkbox" name="fr_fields[]"
-                                    value="page_title" id="fr_page_title" checked>
+                                ' . $liveform->output_field($fr_defaults + array('type'=>'checkbox', 'name'=>'fr_fields[]', 'id'=>'fr_page_title', 'value'=>'page_title', 'class'=>'check')) . '
                                 <label class="" for="fr_page_title">' . lang('Web Browser Title') . '</label>
                             </div>
                             <div class="form-field">
-                                <input class="check" type="checkbox" name="fr_fields[]"
-                                    value="page_meta_description" id="fr_meta_desc" checked>
+                                ' . $liveform->output_field($fr_defaults + array('type'=>'checkbox', 'name'=>'fr_fields[]', 'id'=>'fr_meta_desc', 'value'=>'page_meta_description', 'class'=>'check')) . '
                                 <label class="" for="fr_meta_desc">' . lang('Web Browser Description') . '</label>
                             </div>
                         </div>
                         <div class="col-12 sm:col-6 md:col">
                             <label class="form-label" for="find_text">' . lang('Find') . '</label>
-                            <input type="text" name="find_text" id="find_text"
-                                class="form-control font-monospace"
-                                placeholder="' . lang('Text to find...') . '">
+                            ' . $liveform->output_field(array('type'=>'text', 'name'=>'find_text', 'id'=>'find_text', 'class'=>'form-control font-monospace', 'placeholder'=>lang('Text to find...'), 'required'=>'required')) . '
                         </div>
                         <div class="col-12 sm:col-6 md:col">
                             <label class="form-label" for="replace_text">' . lang('Replace with') . '</label>
-                            <input type="text" name="replace_text" id="replace_text"
-                                class="form-control font-monospace"
-                                placeholder="' . lang('Leave empty to delete') . '">
+                            ' . $liveform->output_field(array('type'=>'text', 'name'=>'replace_text', 'id'=>'replace_text', 'class'=>'form-control font-monospace', 'placeholder'=>lang('Leave empty to delete'))) . '
                         </div>
                         <div class="col-12 md:col-auto d-flex flex-column gap-3">
                             <div class="form-field mb-0">
-                                <div class="switch"><input class="" type="checkbox" name="use_regex" id="use_regex" value="1"></div>
+                                <div class="switch">' . $liveform->output_field(array('type'=>'checkbox', 'name'=>'use_regex', 'id'=>'use_regex', 'value'=>'1', 'class'=>'no-bs')) . '</div>
                                 <label class="" for="use_regex">
                                     ' . lang('Regex') . '
                                     <small class="fg-secondary d-block" style="font-size:.75em;">/pattern/flags</small>
@@ -448,6 +444,11 @@ if (!$_POST) {
                     $liveform->add_notice($fr_name_skipped . ' ' . lang('page name(s) skipped: name already in use.'));
                 }
             }
+        }
+        if ($liveform->check_form_errors() == true) {
+            // A refused apply comes back with what was typed and ticked, kept
+            // untrimmed because spaces count in a pattern.
+            $liveform->add_fields_to_session(array('trim' => false));
         }
         header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/mass_edit.php');
         exit();

@@ -4329,6 +4329,224 @@ function _apply_catalog_item_view_bindings(&$node, $context)
     }
 }
 
+// ── Reviews frame ──────────────────────────────────────────────────────────
+// The starters put the classic comments block (a comments_block region) in a
+// "Reviews" tab or section. The block draws nothing while the page's
+// comments are off or a comments widget on the page shows the thread
+// (get_page_content.php), so its frame is left out then: no empty tab.
+
+// Whether the comments block of a product page draws: the page's comments
+// are on and no comments widget (a thread, not a recent list) on the page
+// shows the reviews. Pure.
+function pg_civ_comments_block_draws($comments_on, $has_thread_widget)
+{
+    return (bool)$comments_on && !$has_thread_widget;
+}
+
+// pg_civ_comments_block_draws() for page $page_id: its comment settings
+// (the Preview's unsaved ones included) and its widgets (the page tree only:
+// a comments widget placed inside a shared component is not seen). Null
+// when there is no page (an e-mail, an unsaved Preview).
+function _pg_civ_comments_block_will_draw($page_id)
+{
+    $page_id = (int)$page_id;
+    if ($page_id <= 0 || !function_exists('_pg_comments_widget_page_row')) return null;
+    $row = _pg_comments_widget_page_row($page_id);
+    if (!is_array($row)) return null;
+    $settings = pg_comments_settings(pg_comments_page_override($row, pg_comments_preview_page()));
+    $widget = pg_sw_page_widget($page_id, 'comments', function ($c) { return pg_sw_widget_kind($c) === 'comments'; });
+    return pg_civ_comments_block_draws(!empty($settings['enabled']), $widget !== null);
+}
+
+function _pg_civ_has_class($node, $class)
+{
+    $classes = (isset($node['props']['cssClass']) && is_string($node['props']['cssClass'])) ? $node['props']['cssClass'] : '';
+    return in_array($class, preg_split('/\s+/', trim($classes)), true);
+}
+
+function _pg_civ_add_classes(&$node, $add)
+{
+    $classes = (isset($node['props']['cssClass']) && is_string($node['props']['cssClass'])) ? trim($node['props']['cssClass']) : '';
+    $list = ($classes === '') ? array() : preg_split('/\s+/', $classes);
+    foreach ($add as $class) {
+        if (!in_array($class, $list, true)) $list[] = $class;
+    }
+    $node['props']['cssClass'] = implode(' ', $list);
+}
+
+function _pg_civ_attr($node, $name)
+{
+    foreach ((isset($node['props']['_attrs']) && is_array($node['props']['_attrs'])) ? $node['props']['_attrs'] : array() as $a) {
+        if (is_array($a) && isset($a['name']) && $a['name'] === $name) return isset($a['value']) ? (string)$a['value'] : '';
+    }
+    return null;
+}
+
+function _pg_civ_set_attr(&$node, $name, $value)
+{
+    $attrs = (isset($node['props']['_attrs']) && is_array($node['props']['_attrs'])) ? $node['props']['_attrs'] : array();
+    foreach ($attrs as &$a) {
+        if (is_array($a) && isset($a['name']) && $a['name'] === $name) {
+            $a['value'] = $value;
+            $node['props']['_attrs'] = $attrs;
+            return;
+        }
+    }
+    unset($a);
+    $attrs[] = array('name' => $name, 'value' => $value);
+    $node['props']['_attrs'] = $attrs;
+}
+
+// The paths (child indexes from the root) of every comments_block region.
+function _pg_civ_comments_block_paths($node, $path = array(), &$out = array())
+{
+    if (!is_array($node)) return $out;
+    if (isset($node['type'], $node['props']['regionType']) && $node['type'] === 'region' && $node['props']['regionType'] === 'comments_block') {
+        $out[] = $path;
+        return $out;
+    }
+    if (isset($node['children']) && is_array($node['children'])) {
+        foreach ($node['children'] as $i => $child) {
+            _pg_civ_comments_block_paths($child, array_merge($path, array($i)), $out);
+        }
+    }
+    return $out;
+}
+
+function &_pg_civ_node_at(&$tree, $path)
+{
+    $node = &$tree;
+    foreach ($path as $i) $node = &$node['children'][$i];
+    return $node;
+}
+
+// A heading: an h1-h6 element of any node type.
+function _pg_civ_is_heading($node)
+{
+    return is_array($node) && isset($node['props']['tag']) && is_string($node['props']['tag'])
+        && preg_match('/^h[1-6]$/', $node['props']['tag']);
+}
+
+// The path of the tab trigger aiming at '#$pane_id' (data-bs-target or
+// href), with its li / nav-item holder when it has one; null when none.
+function _pg_civ_tab_trigger_path($node, $pane_id, $path = array())
+{
+    if (!is_array($node)) return null;
+    $target = '#' . $pane_id;
+    $href = (isset($node['props']['href']) && is_string($node['props']['href'])) ? $node['props']['href'] : null;
+    if (_pg_civ_attr($node, 'data-bs-target') === $target || _pg_civ_attr($node, 'href') === $target || $href === $target) {
+        return $path;
+    }
+    if (isset($node['children']) && is_array($node['children'])) {
+        foreach ($node['children'] as $i => $child) {
+            $found = _pg_civ_tab_trigger_path($child, $pane_id, array_merge($path, array($i)));
+            if ($found !== null) return $found;
+        }
+    }
+    return null;
+}
+
+// The first tab trigger (data-bs-toggle tab or pill) under $node.
+function &_pg_civ_first_trigger(&$node)
+{
+    $none = null;
+    if (!is_array($node)) return $none;
+    if (in_array(_pg_civ_attr($node, 'data-bs-toggle'), array('tab', 'pill'), true)) return $node;
+    if (isset($node['children']) && is_array($node['children'])) {
+        foreach ($node['children'] as &$child) {
+            $found = &_pg_civ_first_trigger($child);
+            if ($found !== null) return $found;
+        }
+    }
+    return $none;
+}
+
+function _pg_civ_remove_at(&$tree, $path)
+{
+    $last = array_pop($path);
+    $parent = &_pg_civ_node_at($tree, $path);
+    array_splice($parent['children'], $last, 1);
+}
+
+// Leaves out the frame of each comments block in a widget tree: a) the tab
+// pane holding it, its trigger and the trigger's li / nav-item (the first
+// tab left opens when the pane was the open one); b) else the nearest
+// element around it holding nothing else but headings (a "Reviews"
+// section); c) else the region alone.
+function _pg_civ_drop_comments_frame(&$tree)
+{
+    // Each pass removes one block with its frame; paths are read again as
+    // a removal shifts the indexes after it.
+    while (($paths = _pg_civ_comments_block_paths($tree)) !== array()) {
+        $path = $paths[0];
+        if ($path === array()) break;
+        $drop = $path;
+
+        // a) A tab pane around it.
+        for ($n = count($path) - 1; $n >= 0; $n--) {
+            $ancestor_path = array_slice($path, 0, $n);
+            $ancestor = _pg_civ_node_at($tree, $ancestor_path);
+            if (!_pg_civ_has_class($ancestor, 'tab-pane')) continue;
+
+            $was_active = _pg_civ_has_class($ancestor, 'active');
+            $pane_id = (isset($ancestor['props']['id']) && is_scalar($ancestor['props']['id'])) ? (string)$ancestor['props']['id'] : '';
+            $panes_path = array_slice($ancestor_path, 0, -1);
+            _pg_civ_remove_at($tree, $ancestor_path);
+
+            $nav_path = null;
+            $trigger = ($pane_id !== '') ? _pg_civ_tab_trigger_path($tree, $pane_id) : null;
+            if ($trigger !== null) {
+                $holder = $trigger;
+                if (count($trigger) > 0) {
+                    $parent = _pg_civ_node_at($tree, array_slice($trigger, 0, -1));
+                    if ((isset($parent['props']['tag']) && $parent['props']['tag'] === 'li') || _pg_civ_has_class($parent, 'nav-item')) {
+                        $holder = array_slice($trigger, 0, -1);
+                    }
+                }
+                $nav_path = array_slice($holder, 0, -1);
+                _pg_civ_remove_at($tree, $holder);
+            }
+
+            if ($was_active) {
+                $panes = &_pg_civ_node_at($tree, $panes_path);
+                foreach ($panes['children'] as &$pane) {
+                    if (!_pg_civ_has_class($pane, 'tab-pane')) continue;
+                    _pg_civ_add_classes($pane, _pg_civ_has_class($pane, 'fade') ? array('show', 'active') : array('active'));
+                    break;
+                }
+                unset($pane, $panes);
+                if ($nav_path !== null) {
+                    $nav = &_pg_civ_node_at($tree, $nav_path);
+                    $first = &_pg_civ_first_trigger($nav);
+                    if ($first !== null) {
+                        _pg_civ_add_classes($first, array('active'));
+                        _pg_civ_set_attr($first, 'aria-selected', 'true');
+                    }
+                    unset($first, $nav);
+                }
+            }
+            continue 2;
+        }
+
+        // b) An element holding only headings beside it.
+        if (count($path) > 0) {
+            $parent_path = array_slice($path, 0, -1);
+            $parent = _pg_civ_node_at($tree, $parent_path);
+            $only_headings = true;
+            foreach ($parent['children'] as $i => $child) {
+                if ($i !== end($path) && !_pg_civ_is_heading($child)) {
+                    $only_headings = false;
+                    break;
+                }
+            }
+            if ($only_headings && count($parent_path) > 0) $drop = $parent_path;
+        }
+
+        // c) The region alone, or the element of b).
+        _pg_civ_remove_at($tree, $drop);
+    }
+}
+
 // ============================================================================
 // Render a catalog_item_view system widget — single product detail.
 //
@@ -4543,6 +4761,13 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
     // run, and the detail page then showed every message the session carried
     // rather than its own.
     _pg_inject_messages_node($tree_decoded, 'catalog_detail');
+    // The comments block draws nothing while the page's comments are off or
+    // a comments widget on the page shows the reviews: its tab or section
+    // is left out with it. No page (an e-mail, an unsaved Preview): as it is.
+    $_civ_ctx = pg_sw_render_context();
+    if (_pg_civ_comments_block_will_draw(isset($_civ_ctx['page_id']) ? $_civ_ctx['page_id'] : 0) === false) {
+        _pg_civ_drop_comments_frame($tree_decoded);
+    }
     // "Show only when" has_rating / no_rating / can_notify: the tree is drawn
     // before the product is read, so the elements are marked here and kept
     // or cut once the product is known (below). Another widget's flag stays

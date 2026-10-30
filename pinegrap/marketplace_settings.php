@@ -1465,6 +1465,9 @@ function mp_settings_credentials_from_post($provider) {
 // $current is the stored value when editing. A text field never shows it back
 // - a blank box keeps it, the placeholder hints at it - while a select shows
 // the stored choice, because it is not a secret and has no blank state.
+// On create, $current is the value of a refused Connect: drawn back into a
+// select or a plain text box, never into a secret one. A text box is
+// required on create only.
 // $disabled keeps the field of a marketplace that is not chosen out of the
 // submitted form.
 function mp_settings_credential_field($prefix, $field, $meta, $current, $editing, $disabled = false) {
@@ -1503,6 +1506,8 @@ function mp_settings_credential_field($prefix, $field, $meta, $current, $editing
 				<input type="' . (!empty($meta['secret']) ? 'password' : 'text') . '" class="form-control"
 					id="' . h($id) . '" name="' . h($field) . '" autocomplete="' . (!empty($meta['secret']) ? 'new-password' : 'off') . '"'
 					. ($editing ? ' placeholder="' . h(mp_credential_hint($current)) . '"' : '')
+					. ((!$editing && empty($meta['secret']) && $current !== '') ? ' value="' . h($current) . '"' : '')
+					. (!$editing ? ' required' : '')
 					. ($disabled ? ' disabled' : '') . '>'
 				. ($editing ? '
 				<div class="form-text">' . lang('Leave empty to keep what is stored.') . '</div>' : '') . '
@@ -1518,7 +1523,33 @@ function mp_settings_credential_field($prefix, $field, $meta, $current, $editing
 
 $accounts = mp_accounts();
 
+// A refused Connect or Save does not redirect: the screen is drawn in this
+// same request, so its form is drawn again from what was posted and opened.
+$mp_refused = '';
+
+if ($_POST && isset($action)) {
+
+	if ($action === 'create') {
+
+		$mp_refused = 'create';
+
+	} elseif (($action === 'update') && $account) {
+
+		$mp_refused = 'update';
+
+	}
+
+}
+
 $selected_id = isset($_GET['account']) ? (int)$_GET['account'] : 0;
+
+// The post goes to the bare screen address, so the refused account comes
+// from the form, not from the address.
+if ($mp_refused === 'update') {
+
+	$selected_id = $account_id;
+
+}
 
 if (!$selected_id && $accounts) {
 
@@ -2376,31 +2407,46 @@ if ($selected) {
 
 /* ------------------------------------------------------------------ modals */
 
+$new_provider = key($providers);
+
+if (($mp_refused === 'create') && isset($_POST['provider']) && is_string($_POST['provider'])
+	&& isset($providers[trim($_POST['provider'])])) {
+
+	$new_provider = trim($_POST['provider']);
+
+}
+
+$new_name = (($mp_refused === 'create') && isset($_POST['name'])) ? trim((string)$_POST['name']) : '';
+
+$new_push_price = ($mp_refused === 'create') ? !empty($_POST['push_price']) : true;
+
 $provider_options = '';
 
 foreach ($providers as $key => $meta) {
 
-	$provider_options .= '<option value="' . h($key) . '">' . h($meta['name']) . '</option>';
+	$provider_options .= '<option value="' . h($key) . '"' . (($key === $new_provider) ? ' selected' : '') . '>' . h($meta['name']) . '</option>';
 
 }
 
-$first_provider = key($providers);
-
 // Every marketplace's fields are drawn, one block each; the script below shows
 // the chosen one's. The others are disabled as well as hidden so that only the
-// chosen marketplace's credentials are posted.
+// chosen marketplace's credentials are posted, and so that their required
+// boxes do not stop the form.
 $new_fields = '';
 
 foreach ($providers as $key => $meta) {
 
-	$is_first = ($key === $first_provider);
+	$is_chosen = ($key === $new_provider);
 
 	$new_fields .= '
-				<div data-mp-fields="' . h($key) . '"' . ($is_first ? '' : ' class="d-none"') . '>';
+				<div data-mp-fields="' . h($key) . '"' . ($is_chosen ? '' : ' class="d-none"') . '>';
 
 	foreach ((isset($meta['fields']) ? $meta['fields'] : array()) as $field => $field_meta) {
 
-		$new_fields .= mp_settings_credential_field('new_' . $key, $field, $field_meta, '', false, !$is_first);
+		$posted = ($is_chosen && ($mp_refused === 'create') && isset($_POST[$field]) && is_scalar($_POST[$field]))
+			? trim((string)$_POST[$field]) : '';
+
+		$new_fields .= mp_settings_credential_field('new_' . $key, $field, $field_meta, $posted, false, !$is_chosen);
 
 	}
 
@@ -2432,12 +2478,12 @@ echo '
 				</div>
 				<div class="mb-5">
 					<label class="form-label" for="new_name">' . lang('Name') . '</label>
-					<input type="text" class="form-control" id="new_name" name="name"
+					<input type="text" class="form-control" id="new_name" name="name" value="' . h($new_name) . '" required
 						placeholder="' . lang('The name you will recognise this store by') . '">
 				</div>
 				' . $new_fields . '
 				<div class="form-field">
-					<div class="switch"><input class="" type="checkbox" role="switch" id="new_push_price" name="push_price" value="1" checked></div>
+					<div class="switch"><input class="" type="checkbox" role="switch" id="new_push_price" name="push_price" value="1"' . ($new_push_price ? ' checked' : '') . '></div>
 					<label class="" for="new_push_price">' . lang('Send prices as well as stock') . '</label>
 					<div class="form-text">'
 						. lang('Many shops price differently on a marketplace because of its commission. Leave this off to send only quantities.') . '</div>
@@ -2452,11 +2498,40 @@ echo '
 
 if ($selected) {
 
+	// A refused Save draws the drawer's fields as posted. Its text
+	// credentials stay blank, as on any opening: a blank box keeps what is
+	// stored, and a secret is never drawn back.
+	$edit = $selected;
+
+	if ($mp_refused === 'update') {
+
+		foreach (array('push_stock', 'push_price', 'pull_orders', 'auto_approve') as $switch) {
+
+			$edit[$switch] = empty($_POST[$switch]) ? 0 : 1;
+
+		}
+
+		$edit['status'] = (isset($_POST['status']) && $_POST['status'] === 'active') ? 'active' : 'paused';
+
+		$edit['shipment_template'] = isset($_POST['shipment_template']) ? trim((string)$_POST['shipment_template']) : '';
+
+		$edit['preparing_day'] = max(1, min(30, isset($_POST['preparing_day']) ? (int)$_POST['preparing_day'] : 3));
+
+	}
+
+	$edit_name = ($mp_refused === 'update') ? (isset($_POST['name']) ? trim((string)$_POST['name']) : '') : (string)$selected['name'];
+
 	$edit_fields = '';
 
 	foreach ($provider_fields as $field => $meta) {
 
 		$current = isset($selected['credentials'][$field]) ? (string)$selected['credentials'][$field] : '';
+
+		if (($mp_refused === 'update') && mp_provider_field_is_select($meta) && isset($_POST[$field]) && is_scalar($_POST[$field])) {
+
+			$current = (string)$_POST[$field];
+
+		}
 
 		$edit_fields .= mp_settings_credential_field('edit', $field, $meta, $current, true);
 
@@ -2486,35 +2561,35 @@ if ($selected) {
 		<div class="drawer-body">
 			<div class="mb-5">
 				<label class="form-label" for="edit_name">' . lang('Name') . '</label>
-				<input type="text" class="form-control" id="edit_name" name="name" value="' . h($selected['name']) . '">
+				<input type="text" class="form-control" id="edit_name" name="name" value="' . h($edit_name) . '" required>
 			</div>
 			' . $edit_fields . '
 			<div class="form-field mb-3">
 				<div class="switch"><input class="" type="checkbox" role="switch" id="edit_status" name="status" value="active"'
-					. ($selected['status'] === 'active' ? ' checked' : '') . '></div>
+					. ($edit['status'] === 'active' ? ' checked' : '') . '></div>
 				<label class="" for="edit_status">' . lang('Send changes to this marketplace') . '</label>
 			</div>
 			<div class="form-field mb-3">
 				<div class="switch"><input class="" type="checkbox" role="switch" id="edit_push_stock" name="push_stock" value="1"'
-					. (!empty($selected['push_stock']) ? ' checked' : '') . '></div>
+					. (!empty($edit['push_stock']) ? ' checked' : '') . '></div>
 				<label class="" for="edit_push_stock">' . lang('Send stock') . '</label>
 			</div>
 			<div class="form-field mb-7">
 				<div class="switch"><input class="" type="checkbox" role="switch" id="edit_push_price" name="push_price" value="1"'
-					. (!empty($selected['push_price']) ? ' checked' : '') . '></div>
+					. (!empty($edit['push_price']) ? ' checked' : '') . '></div>
 				<label class="" for="edit_push_price">' . lang('Send prices') . '</label>
 			</div>
 			<hr>'
 			. ($can_orders ? '
 			<div class="form-field ' . ($can_approve ? 'mb-3' : 'mb-7') . '">
 				<div class="switch"><input class="" type="checkbox" role="switch" id="edit_pull_orders" name="pull_orders" value="1"'
-					. (!empty($selected['pull_orders']) ? ' checked' : '') . '></div>
+					. (!empty($edit['pull_orders']) ? ' checked' : '') . '></div>
 				<label class="" for="edit_pull_orders">' . lang('Bring orders in from this marketplace') . '</label>
 			</div>'
 			. ($can_approve ? '
 			<div class="form-field mb-7">
 				<div class="switch"><input class="" type="checkbox" role="switch" id="edit_auto_approve" name="auto_approve" value="1"'
-					. (!empty($selected['auto_approve']) ? ' checked' : '') . '></div>
+					. (!empty($edit['auto_approve']) ? ' checked' : '') . '></div>
 				<label class="" for="edit_auto_approve">' . lang('Accept new orders automatically') . '</label>
 				<div class="form-text">'
 					. lang('Accepting an order tells the marketplace you are preparing it, and their dispatch clock starts. Leave this off to accept them yourself.') . '</div>
@@ -2528,14 +2603,14 @@ if ($selected) {
 			<div class="mb-5">
 				<label class="form-label" for="edit_shipment_template">' . lang('Cargo template') . '</label>
 				<input type="text" class="form-control" id="edit_shipment_template" name="shipment_template"
-					value="' . h((string)$selected['shipment_template']) . '">
+					value="' . h((string)$edit['shipment_template']) . '">
 				<div class="form-text">'
 					. lang('The name of the cargo agreement in your marketplace store settings, copied exactly. A new listing is refused without it.') . '</div>
 			</div>' : '') . '
 			<div class="mb-7">
 				<label class="form-label" for="edit_preparing_day">' . lang('Days to prepare') . '</label>
 				<input type="number" class="form-control" id="edit_preparing_day" name="preparing_day" min="1" max="30"
-					value="' . (int)$selected['preparing_day'] . '" style="max-width:110px">
+					value="' . (int)$edit['preparing_day'] . '" style="max-width:110px">
 				<div class="form-text">' . lang('How long you take to hand a parcel over. It is shown to the buyer.') . '</div>
 			</div>
 			<hr>
@@ -2602,6 +2677,34 @@ echo '
 		provider.addEventListener(\'change\', showFields);
 
 		showFields();
+
+	}
+
+	// A refused Connect or Save opens its form again, as it was posted.
+	var refused = ' . json_encode($mp_refused === 'create' ? array('dialog', 'mp_new') : ($mp_refused === 'update' ? array('drawer', 'mp_drawer') : null)) . ';
+
+	if (refused) {
+
+		var kind = refused[0];
+
+		var el = document.getElementById(refused[1]);
+
+		// Waits for Bootstrap too: Bootstrap 6 loads as a deferred module.
+		var open = function () { pgUI.ready(function () { pgUI[kind].show(el); }); };
+
+		if (el) {
+
+			if (document.readyState === \'loading\') {
+
+				document.addEventListener(\'DOMContentLoaded\', open);
+
+			} else {
+
+				open();
+
+			}
+
+		}
 
 	}
 

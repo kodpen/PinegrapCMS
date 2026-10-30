@@ -3811,6 +3811,28 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                 }
             }
 
+            // A designed page that shows one product (a standard page with a
+            // catalog_item_view widget) reads as a catalog detail page: the
+            // block shows the reviews of the product in its address, picked
+            // and checked as the comments widget picks them, and nothing when
+            // the address names no product the page could show. Every other
+            // page keeps its own type, so its HTML is unchanged.
+            $comments_product_view = false;
+            $comments_product_item = null;
+            if ($comments_settings['enabled'] && ($comments_record === null)) {
+                $comments_page_type = pg_comment_thread_page_type($system_region_properties['page_id'], $comments_page_type);
+                $comments_product_view = ($comments_page_type !== $system_region_properties['page_type']);
+            }
+            if ($comments_product_view) {
+                $comments_product_item = pg_comment_address_item('catalog detail', pg_comment_address_item_facts($system_region_properties['page_id'], 'catalog detail', pg_sw_render_context(), true));
+                if (($comments_product_item !== null) && ($comments_product_item['item_type'] !== '')) {
+                    $comments_product_verified = pg_comment_thread_verify($system_region_properties['page_id'], $system_region_properties['page_type'], $comments_product_item['item_type'], $comments_product_item['item_id']);
+                    if (!$comments_product_verified['accept']) {
+                        $comments_product_item = null;
+                    }
+                }
+            }
+
             // A page of a visual design on Bootstrap gets its comments in
             // Bootstrap's markup - cards, form controls, buttons - and an
             // editor gets the pencil on each comment without an edit mode. A
@@ -3829,7 +3851,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
             // no second reader of the add_comment form state and no append to the
             // System region. A comments-block marker is still emptied further down,
             // as $comments_block_html stays empty.
-            if ($comments_settings['enabled'] && (($comments_record === null) || $comments_record['visible']) && !pg_comments_widget_drawn($system_region_properties['page_id'], $pg_cw_pages)) {
+            if ($comments_settings['enabled'] && (($comments_record === null) || $comments_record['visible']) && (!$comments_product_view || ($comments_product_item !== null)) && !pg_comments_widget_drawn($system_region_properties['page_id'], $pg_cw_pages)) {
                 $item_id = '0';
                 $item_type = '';
 
@@ -3856,9 +3878,9 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                 
                 // if this page has a page type which shows data for different items, then get item id, item type, and prepare sql filter
                 if (
-                    ($system_region_properties['page_type'] == 'catalog')
-                    || ($system_region_properties['page_type'] == 'catalog detail')
-                    || ($system_region_properties['page_type'] == 'calendar event view')
+                    ($comments_page_type == 'catalog')
+                    || ($comments_page_type == 'catalog detail')
+                    || ($comments_page_type == 'calendar event view')
                     || ($comments_page_type == 'form item view')
                 ) {
                     switch($comments_page_type) {
@@ -3885,8 +3907,13 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                             break;
                         
                         case 'catalog detail':
+                            // A designed product page: the product picked above.
+                            if ($comments_product_view) {
+                                $item_id = (string) $comments_product_item['item_id'];
+                                $item_type = $comments_product_item['item_type'];
+
                             // if there is a forward slash in the page name then get the items information
-                            if (isset($_GET['page']) && (mb_strpos($_GET['page'], '/') !== FALSE)) {
+                            } elseif (isset($_GET['page']) && (mb_strpos($_GET['page'], '/') !== FALSE)) {
                                 $item = get_catalog_item_from_url();
                                 $item_id = $item['id'];
                                 
@@ -5211,6 +5238,12 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                     $liveform_add_or_remove_watcher->remove_form();
                 }
                 
+                // A designed product page with no review to show says so
+                // before the form or the reason no form is offered.
+                if ($comments_product_view && $cm_bs && (count($comments) === 0)) {
+                    $output_comments = '<p class="no_comments text-body-secondary">' . lang('No reviews yet.') . '</p>';
+                }
+
                 // output comments
                 // If a comments_block placeholder exists in the style, redirect comments
                 // HTML there so it renders at the designer-chosen position rather than

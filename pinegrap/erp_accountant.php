@@ -168,8 +168,10 @@ if ($_POST) {
             ));
 
             if (!$saved['success']) {
+                // Keep the typed address and both switches, so the card shows
+                // what was refused instead of the stored settings.
+                $liveform->add_fields_to_session();
                 $liveform->mark_error('accountant_email', h($saved['error']));
-                $liveform->assign_field_value('accountant_email', (string) ($_POST['accountant_email'] ?? ''));
                 go($self_url);
             }
 
@@ -380,6 +382,14 @@ $output_lock_state = ($lock_date !== '')
     : '<div class="h5 mb-1"><i class="bi bi-unlock fg-secondary me-3" aria-hidden="true"></i>' . lang('No period is locked') . '</div>'
         . '<div class="form-text mt-0">' . lang('Lock a period once its VAT return and books have been filed, so nothing in it changes afterwards.') . '</div>';
 
+// After a refused save the card shows what was sent; otherwise what is stored.
+$settings_form = $settings;
+if (!$liveform->prefill() && ((string) $liveform->get_field_value('erp_action') === 'settings')) {
+    $settings_form['email'] = (string) $liveform->get_field_value('accountant_email');
+    $settings_form['monthly'] = ((string) $liveform->get_field_value('accountant_monthly') !== '');
+    $settings_form['pdfs'] = ((string) $liveform->get_field_value('accountant_pdfs') !== '');
+}
+
 $output_settings_card = '
             <div class="card my-7">
                 <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Accountant') . '</div>
@@ -390,18 +400,18 @@ $output_settings_card = '
                         <div class="row g-5">
                             <div class="col-12">
                                 <label class="form-label" for="accountant_email">' . lang('Accountant\'s e-mail') . '</label>
-                                <input type="email" class="form-control" id="accountant_email" name="accountant_email" value="' . h($settings['email']) . '" maxlength="255" autocomplete="off"' . ($can_settings ? '' : ' disabled') . ' />
+                                <input type="email" class="form-control" id="accountant_email" name="accountant_email" value="' . h($settings_form['email']) . '" maxlength="255" autocomplete="off"' . ($can_settings ? '' : ' disabled') . ' />
                             </div>
                             <div class="col-12">
                                 <div class="form-field">
-                                    <div class="switch"><input class="" type="checkbox" id="accountant_monthly" name="accountant_monthly" value="1"' . ($settings['monthly'] ? ' checked' : '') . ($can_settings ? '' : ' disabled') . ' /></div>
+                                    <div class="switch"><input class="" type="checkbox" id="accountant_monthly" name="accountant_monthly" value="1"' . ($settings_form['monthly'] ? ' checked' : '') . ($can_settings ? '' : ' disabled') . ' /></div>
                                     <label class="" for="accountant_monthly">' . lang('Send last month\'s pack by itself') . '</label>
                                 </div>
                                 <div class="form-text">' . h(lang(array('string' => 'On the first days of every month the scheduled job builds the month before and e-mails the accountant a link that works for {var:1} days.', 'vars' => ERP_ACCOUNTANT_LINK_DAYS))) . '</div>
                             </div>
                             <div class="col-12">
                                 <div class="form-field">
-                                    <div class="switch"><input class="" type="checkbox" id="accountant_pdfs" name="accountant_pdfs" value="1"' . ($settings['pdfs'] ? ' checked' : '') . ($can_settings ? '' : ' disabled') . ' /></div>
+                                    <div class="switch"><input class="" type="checkbox" id="accountant_pdfs" name="accountant_pdfs" value="1"' . ($settings_form['pdfs'] ? ' checked' : '') . ($can_settings ? '' : ' disabled') . ' /></div>
                                     <label class="" for="accountant_pdfs">' . lang('Put the documents in the monthly pack') . '</label>
                                 </div>
                             </div>

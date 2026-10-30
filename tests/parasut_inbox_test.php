@@ -226,3 +226,15 @@ function test_parasut_inbox_screen_prints_totals_and_refusal()
 	pg_assert_same(2, substr_count($source, 'data-withholding-tax="'), 'both detail buttons');
 	pg_assert_true(strpos($source, "\$vkn_result['refused']") !== false, 'a refused number');
 }
+
+// The detail dialog sets the description with textContent, so it is escaped
+// once, in the data-desc attribute, not also when it is read.
+function test_parasut_inbox_description_is_escaped_once()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/view_parasut_inbox.php');
+
+	pg_assert_same(0, substr_count($source, "\$description = h("), 'pre-escaped description');
+	pg_assert_same(2, substr_count($source, "\$description = (string) (\$attr['description'] ?? '');"), 'both lists read it raw');
+	pg_assert_same(2, substr_count($source, 'data-desc="\' . h($description) . \'"'), 'both detail buttons escape it');
+	pg_assert_true(strpos($source, 'getElementById("modal-desc").textContent') !== false, 'shown as text');
+}

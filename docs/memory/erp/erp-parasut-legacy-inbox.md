@@ -29,4 +29,4 @@ description: Legacy Paraşüt inbox (view_parasut_inbox.php): what its tabs read
 
 ## Tests
 - `tests/parasut_test.php`: the query keys, a date left out, both lists built with the helper.
-- `tests/parasut_inbox_test.php`: the totals (plain, withholding, both live sales, a bill with and without lines), the refusals without a request, the digits asked, the screen's keys.
+- `tests/parasut_inbox_test.php`: totals, refusals without a request, digits asked, the screen's keys, the description escaped once (#3549: it was `h()`-ed twice, `&amp;` in the detail).

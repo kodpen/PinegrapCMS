@@ -57,6 +57,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - comment-replies.md: Which comment a reply may answer (pg_comment_parent_ok()): same thread, visible to the writer, else refused with the text kept; ?reply_to=, staff mails, API parent_id, deleted parents, page copies
 - comment-thread-rules.md: Comment rules the classic comments block shares with the widget (pg_comments_settings, _allow_new, _viewer, _rows, _thread_order); its HTML stays byte for byte, its quirks kept
 - comment-thread-verify.md: Which thread a posted comment joins (pg_comment_thread_verify()): a record view page only its record, a classic catalog or event page only an item it shows; refusals after the page gates
+- comments-block-product-page.md: The classic comments block on a designed product page (#3546): the product's reviews with the review gate, and its Reviews tab or section left out when it draws nothing; canvas twin
 - comments-moderation-counters.md: Comment moderation on designed record pages: the stored row decides, edit_comment.php and the API rebuild submitted_form_info and mail the record's submitter unless they wrote it
 - comments-watcher-mail.md: Who gets the watcher e-mail about a new comment: each watcher's address once, never the comment's own writer, on every path that publishes it
 - comments-widget-canvas.md: The comments widget on the canvas: visitor states (the e-mail one too), the thread flag twin, hide versus fade, picking a node, sample comments, token previews
@@ -247,6 +248,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - options-panel-style-labels.md: Labels of the options panel selects built from utility classes (selStyleGroup) and of the colour pickers: how options and placeholders are translated, the Text/Background Color row keys (#2046)
 - order-form-widget.md: The Order Form widget (classic "order form" page type): handler and page row, list and drop-down layouts, row controls by name, flags, schedule section, what is left out.
 - order-preview-widget.md: The Order Preview widget (last classic checkout step): values from get_order_preview()'s custom-layout branch, page row, controls by name, sections, what is left out.
+- order-view-not-found.md: Order view widget with no, unknown or foreign order id: message with a My Account link and a 404 with noindex; account order links skip order receipt e-mail pages
 - page-conditions.md: W18: an element outside a widget shown by visit facts (signed in, cart) or the page's record (found, allow-listed values); stored-body markers decided per request, cache, editor
 - page-drafts.md: Drafts of visual-designer pages (2026.4.7): the private Drafts folder, page_drafts and the folder a page returns to, how a save sets the state, new pages start as drafts, Save vs Publish, copies.
 - page-html-rebuild.md: Rebuild Page HTML (pg_designer_rebuild_page_code()): every designer page drawn again from its stored tree; when it runs, what stays, session cursor; per-body once-assets

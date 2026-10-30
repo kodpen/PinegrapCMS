@@ -123,6 +123,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - field-help-describedby.md: pgBindFieldHelp() in backend.src.js ties a panel field's .form-text help to the field with aria-describedby at runtime: which field, what is skipped, when it runs, what is left
 - field-shared-form.md: The form field create and edit screens share includes/forms/field_form.php
 - file-preview-names.md: Names of the File Manager and Edit File previews: frame titles from the item's name, the side pane's image link, the decorative .ico preview
+- file-screen-destinations.md: Where Edit File, Upload File and Upload Design Files go after Save & Return, Delete, rotate, convert, duplicate, the back arrow and a finished upload
 - file-shared-form.md: add_file.php and edit_file.php draw the File Access Control and Description cards through includes/forms/design_file_form.php; what each screen keeps
 - flex-overflow-hidden-pitfall.md: CSS pitfall - any overflow value other than visible zeroes a flex item's automatic minimum size (min-height: auto), collapsing panels on narrow screens.
 - focus-after-removal.md: Where focus goes when a panel control removes, hides or replaces the focused element (ERP lines, bundle rows, contact photo, API sheet, Modify Selected, marketplace bulk bar, product group Load More)
@@ -166,7 +167,8 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - main-menu-settings-row.md: The Site Settings row of the main menu (slot 20): two levels of panels, the page path instead of the modal (data-pg-settings-page), the gates it shares with the modal, the rows it marks active
 - main-menu-states.md: Main menu on wide screens: expanded / mini / hidden, the one bar button (#menu_mode_toggle) that walks them (the drawer on phones), the cookie, server-drawn classes, Ctrl+D
 - marketplace-products-names.md: Marketplace products screen: named row boxes, focus kept on redrawn rows and when the bulk bar hides, pager spans, emphasis inks, formatted counts, announced progress and selected count
-- marketplace-settings-screen-a11y.md: Marketplaces account screen: question and failure rows wrap on a phone, emphasis inks for status text, named dialogs, the current account marked, formatted notice counts
+- marketplace-settings-screen-a11y.md: Marketplaces account screen: phone-width rows, emphasis inks, named dialogs, current account marked, formatted counts, a refused Connect or Save drawn again
+- mass-edit-find-replace.md: The Find & Replace card of mass_edit.php: its liveform fields, what a refused apply comes back with, the first-draw defaults
 - menu-item-shared-form.md: The menu item create and edit screens share includes/forms/menu_item_form.php
 - menu-shared-form.md: The menu create and edit screens share includes/forms/menu_form.php: what it holds, the underscore name rule, what stays in the screens
 - money-field-input-mask.md: Panel money boxes with the currency input mask: panel-language separators (pg_money_mask_attributes()), filled with pg_format_input_amount(), read with pg_normalize_amount() (#728, #986)

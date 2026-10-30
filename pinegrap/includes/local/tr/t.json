@@ -3000,6 +3000,7 @@
     "The product was added to the cart.": "Ürün sepete eklendi.",
     "The product's own code (SKU): no two products share one.": "Ürünün kendi kodu (SKU): iki ürün aynı kodu taşıyamaz.",
     "The product's own out-of-stock message": "Ürünün kendi stokta-yok mesajı",
+    "The product's reviews will appear here": "Ürünün incelemeleri burada görünecek",
     "The product, {var:1}, was moved to the Recycle Bin.": "{var:1} ürünü Geri Dönüşüm Kutusuna taşındı.",
     "The product, {var:1}, was removed from a product group.": "{var:1} ürünü bir ürün grubundan çıkarıldı.",
     "The products are in your cart.": "Ürünler sepetinizde.",
