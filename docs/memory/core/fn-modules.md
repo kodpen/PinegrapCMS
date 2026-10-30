@@ -60,6 +60,7 @@ description: Generated from the module field of the memory files: each includes/
 - `privacy`: [[consent-log-and-audit-trail]]
 - `privacy_export`: [[personal-data-export]]
 - `privacy_retention`: [[privacy-log-retention]]
+- `product_customs`: [[product-customs-fields]]
 - `product_list`: [[product-list-paging]]
 - `prototype`: [[designer-prototype-viewer]]
 - `prototype_links`: [[designer-prototype-share-links]]

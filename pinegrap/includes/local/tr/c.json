@@ -1799,6 +1799,7 @@
     "Country code (TR/US/…)": "Ülke kodu (TR/US/…)",
     "Country is required.": "Ülke alanı zorunludur.",
     "Country list (filled by backend, 240 countries)": "Ülke Listesi (arka uç doldurur, 240 ülke)",
+    "Country of Origin": "Menşe ülkesi",
     "Counts": "Sayaçlar",
     "Counts failed sign-ins against both the visitor's address and the account being tried, and locks that pair out for a while once the limit is passed. Successful sign-ins are never counted.": "Başarısız girişleri hem ziyaretçinin adresine hem de denenen hesaba yazar; sınır aşılınca o ikiliyi bir süre kilitler. Başarılı girişler sayılmaz.",
     "Counts listed": "Listelenen sayılar",

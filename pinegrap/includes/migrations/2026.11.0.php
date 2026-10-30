@@ -114,6 +114,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_subscriptions();          // 11.0.128
 	upgrade_2026_11_0_workspace_personal_ical(); // 11.0.117
 	upgrade_2026_11_0_subscription_campaigns(); // 11.0.129
+	upgrade_2026_11_0_product_customs();       // 11.0.130
 
 }
 
@@ -3677,5 +3678,23 @@ function upgrade_2026_11_0_subscription_campaigns() {
 	install_modify_column('email_campaigns', 'action', $definition);
 
 	install_note('E-mail campaigns: a campaign started by a subscription renewed, failed or cancelled profile keeps its action.');
+
+}
+
+// Customs data of a product (2026.11.0, 11.0.130; includes/fn/product_customs.php).
+//
+// hs_code is the Harmonized System code a customs declaration names the
+// goods by (digits and dots, a national tariff number of up to 16
+// characters), origin_country the ISO 3166-1 alpha-2 code of the country the
+// goods were made in. A label service declares each order line of a parcel
+// that leaves the customs area with both. Empty means "use the shop default"
+// of the label driver's settings, so two empty columns change nothing on a
+// running site until a shop fills a default or a product.
+function upgrade_2026_11_0_product_customs() {
+
+	install_add_column('products', 'hs_code', "VARCHAR(16) NOT NULL DEFAULT ''");
+	install_add_column('products', 'origin_country', "CHAR(2) NOT NULL DEFAULT ''");
+
+	install_note('Products: an HS code and a country of origin can be set in the shipping part of the product screen, for the customs declaration of parcels sent abroad.');
 
 }
