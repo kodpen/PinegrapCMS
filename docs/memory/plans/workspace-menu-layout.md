@@ -4,9 +4,13 @@ description: Plan (owner decision 2026-10-30) for a tidier Workspace list in the
 ---
 
 ## What is this plan?
-- Owner request (2026-10-30, "Menü çok karışık"): the Workspace list (`workspace/workspace-menu-list.md`) gets the layout below, which the owner approved; only the list changes: the channel screen, the Overview and the other workspace screens stay as they are (`workflow/decisions-made-workspace-5.md`).
+- Owner request (2026-10-30, "Menü çok karışık"): the Workspace list (`workspace/workspace-menu-list.md`) gets the layout below, which the owner approved (`workflow/decisions-made-workspace-5.md`); the channel screen is redrawn in `plans/workspace-channel-layout.md`.
 - Kept: the place (#2545), the data (`ws_side_payload()`: every entry under its screen's gate, the script hides nothing), `<a href>` links, pin, drag into a group, right-click menus, the closed state in localStorage, the panel colours (`--pg-*`, `--ws-accent`) in light and dark.
 - Files: `assets/js/workspace_side.js` (`draw()`), `includes/workspace/nav.php`, the Workspace block of `assets/css/backend.src.css`, `includes/workspace/tour.php`, `tests/workspace_side_test.php`; new words through `tools/tr_add.php`. No schema, no new right.
+
+## Who builds it?
+- From M2 on, only a session the owner names in chat for the design; a coordinator does not hand the steps out and a worker does not claim them (owner, 2026-10-31, `workflow/decisions-made-workspace-5.md`).
+- Each step is checked on dev against the drawn design at desktop and phone width, light and dark, before it is marked ready.
 
 ## What is the order, top to bottom?
 1. Head: one search field that opens the workspace search (`hooks.palette`, elsewhere `?view=home&palette=1`; it finds channels, people, messages, decisions, tasks, notes and files), so the separate message search input goes. Beside it: "+" New channel, the gear of Workspace Settings (from `nav.foot`) and the tour button (kept in sight: the tour's `ready()` waits for `[data-ws-tour]`).
@@ -17,9 +21,11 @@ description: Plan (owner decision 2026-10-30) for a tidier Workspace list in the
 6. Counts: a mention count in the workspace accent, an unread count neutral; a closed section still shows the open entry and its unread sum.
 
 ## What are the steps?
-- M1 Head, places, Channels, My discussions: `draw()`, `ws_nav_groups()` `top`, tour targets that moved, tests, memory `workspace/workspace-menu-list.md`. Done in #3794 (settings gear in a new `head` group, `foot` gone).
+- M1 Head, places, Channels, My discussions: done #3794 (`workspace/workspace-menu-list.md`; settings gear in a new `head` group, `foot` gone).
 
-- M2 Tools tiles and More: `tools` and `more` groups replace `work` and `records` (`ws_nav_group_titles()`), tile CSS, tour steps inside More open it first (`PGWsSide.openSections(['more'])`), tests, memory. Also in M2: drop the `search` hook of `sideHooks()` in `workspace.js` (draw() no longer calls it; the file was held by #3787 during M1), and the tour hook's `openSections(['work', 'records'])` follows the new group keys.
+- M2 Tools tiles and More: `tools` and `more` groups replace `work` and `records` (`ws_nav_group_titles()`), tile CSS, tour steps inside More open it first (`PGWsSide.openSections(['more'])`), tests, memory. Also in M2: drop the `search` hook of `sideHooks()` in `workspace.js` (draw() no longer calls it), and the tour hook's `openSections(['work', 'records'])` follows the new group keys.
+
+- M3 The bell is the one inbox: filters All, Site, Workspace (mentions, approvals, tasks, flows), repeated flow runs folded, a wider panel; the list's Inbox opens the bell on Workspace and its own count goes. `ws_inbox` stays the store (API, sync, push) and keeps its bell rows (`ws_bell_add()`); no schema.
 
 ## What is still open?
 1. My Tasks count: none for now; a count of overdue and today's tasks needs one more query in `ws_side_payload()`.
