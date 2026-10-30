@@ -133,9 +133,10 @@ function test_shipping_method_carrier_names_only()
 function test_shipment_statuses_and_sources()
 {
 	pg_assert_same(array('created', 'in_transit', 'out_for_delivery', 'delivered', 'returned', 'exception'), pg_shipment_statuses());
-	pg_assert_same(array('panel', 'api', 'marketplace', 'carrier', 'csv'), pg_shipment_sources());
+	pg_assert_same(array('panel', 'api', 'marketplace', 'carrier', 'csv', 'shipworks'), pg_shipment_sources());
 	pg_assert_same('api', pg_shipment_source(' API '), 'case and spaces');
 	pg_assert_same('marketplace', pg_shipment_source('marketplace'));
+	pg_assert_same('shipworks', pg_shipment_source('shipworks'), 'the ShipWorks update');
 	pg_assert_same('panel', pg_shipment_source('somewhere'), 'unknown');
 	pg_assert_same('panel', pg_shipment_source(null), 'missing');
 }
