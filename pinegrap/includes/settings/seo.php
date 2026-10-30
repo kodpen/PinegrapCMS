@@ -302,15 +302,15 @@ $pg_settings_cards[] = '
                                         </div>
                                         <div class="pg-f-lg">
                                             <label for="product_feed_seller_url" class="form-label">' . lang('Seller website') . '</label>
-                                            <input type="text" name="product_feed_seller_url" id="product_feed_seller_url" class="form-control" maxlength="2000" value="' . h($product_feeds_settings['seller_url']) . '" placeholder="https://"/>
+                                            <input type="text" inputmode="url" spellcheck="false" autocapitalize="off" name="product_feed_seller_url" id="product_feed_seller_url" class="form-control" maxlength="2000" value="' . h($product_feeds_settings['seller_url']) . '" placeholder="https://"/>
                                         </div>
                                         <div class="pg-f-lg">
                                             <label for="product_feed_privacy_policy_url" class="form-label">' . lang('Privacy policy address') . '</label>
-                                            <input type="text" name="product_feed_privacy_policy_url" id="product_feed_privacy_policy_url" class="form-control" maxlength="2000" value="' . h($product_feeds_settings['privacy_policy_url']) . '" placeholder="https://"/>
+                                            <input type="text" inputmode="url" spellcheck="false" autocapitalize="off" name="product_feed_privacy_policy_url" id="product_feed_privacy_policy_url" class="form-control" maxlength="2000" value="' . h($product_feeds_settings['privacy_policy_url']) . '" placeholder="https://"/>
                                         </div>
                                         <div class="pg-f-lg">
                                             <label for="product_feed_terms_url" class="form-label">' . lang('Terms of sale address') . '</label>
-                                            <input type="text" name="product_feed_terms_url" id="product_feed_terms_url" class="form-control" maxlength="2000" value="' . h($product_feeds_settings['terms_url']) . '" placeholder="https://"/>
+                                            <input type="text" inputmode="url" spellcheck="false" autocapitalize="off" name="product_feed_terms_url" id="product_feed_terms_url" class="form-control" maxlength="2000" value="' . h($product_feeds_settings['terms_url']) . '" placeholder="https://"/>
                                             <div class="form-text">' . lang('Full addresses starting with https://. The OpenAI feed passes them on with every product.') . '</div>
                                         </div>
                                         <div class="pg-f-lg">
@@ -373,7 +373,7 @@ $pg_settings_cards[] = '
                                                                <div class="row gy-5">
                                                                     <div class="col-12 ">
                                                                         <label for="stats_url" class="form-label">' . lang('Website Analytics URL') . '</label>
-                                                                        <input type="text" name="stats_url" id="stats_url" class="form-control" value="' . h($stats_url) . '" />
+                                                                        <input type="text" inputmode="url" spellcheck="false" autocapitalize="off" name="stats_url" id="stats_url" class="form-control" value="' . h($stats_url) . '" />
                                                                     </div>
                                                                     <div class="col-12 ">
                                                                         <label for="google_analytics_web_property_id" class="form-label">' . lang('Web Property ID') . '</label>
@@ -438,7 +438,7 @@ $pg_settings_cards[] = '
                                         </div>
                                         <div class="pg-f-lg">
                                             <label for="cookie_consent_policy_url" class="form-label">' . lang('Cookie Policy Address') . '</label>
-                                            <input type="text" name="cookie_consent_policy_url" id="cookie_consent_policy_url" class="form-control" maxlength="500" value="' . h($cookie_consent_policy_url) . '" placeholder="/cookie-policy"/>
+                                            <input type="text" inputmode="url" spellcheck="false" autocapitalize="off" name="cookie_consent_policy_url" id="cookie_consent_policy_url" class="form-control" maxlength="500" value="' . h($cookie_consent_policy_url) . '" placeholder="/cookie-policy"/>
                                             <div class="form-text">' . lang('A page that explains the cookies in detail, shown as a link in the notice. Start it with / or https://; leave it empty for no link.') . '</div>
                                         </div>
                                         <div class="col-12">

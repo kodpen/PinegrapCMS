@@ -888,7 +888,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
                                                     </div>
                                                     <div class="pg-f-sm">
                                                         <label for="merchant_shipping_rate" class="form-label">' . lang('Standard Shipping Rate') . '</label>
-                                                        <input type="text" name="merchant_shipping_rate" id="merchant_shipping_rate" class="form-control" value="' . (($merchant_shipping_rate >= 0) ? h(sprintf('%01.2f', $merchant_shipping_rate / 100)) : '') . '"/>
+                                                        <input type="text" inputmode="decimal" name="merchant_shipping_rate" id="merchant_shipping_rate" class="form-control" value="' . (($merchant_shipping_rate >= 0) ? h(sprintf('%01.2f', $merchant_shipping_rate / 100)) : '') . '"/>
                                                         <div class="form-text">' . lang('Leave blank to leave shipping out of the markup. Enter 0 for free shipping.') . '</div>
                                                     </div>
                                                     <div class="pg-f-xs">
@@ -901,7 +901,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
                                                     </div>
                                                     <div class="pg-f-xs">
                                                         <label for="merchant_return_days" class="form-label">' . lang('Return Window (days)') . '</label>
-                                                        <input type="text" name="merchant_return_days" id="merchant_return_days" class="form-control" value="' . (($merchant_return_days >= 0) ? (int) $merchant_return_days : '') . '"/>
+                                                        <input type="text" inputmode="numeric" name="merchant_return_days" id="merchant_return_days" class="form-control" value="' . (($merchant_return_days >= 0) ? (int) $merchant_return_days : '') . '"/>
                                                         <div class="form-text">' . lang('Leave blank to leave the return policy out of the markup. Enter 0 if returns are not accepted.') . '</div>
                                                     </div>
                                                     <div class="pg-f-md">

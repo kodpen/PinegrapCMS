@@ -74,6 +74,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - commerce-form-group-names.md: Commerce forms names: State Country label, ship date Adjustment pair, shipping day sets, rate tiers and rate boxes, product group Display Type and gift card Format legends
 - commission-list-paging.md: The commission lists (view_commissions.php, view_recurring_commission_profiles.php) paged and searched on the server; issue #2038 (search found only the page PHP printed); what the screens keep
 - common-region-shared-form.md: The common region create and edit screens share includes/forms/common_region_form.php: what it holds, the label fixes, what stays in the screens
+- contact-filter-keyboards.md: Contacts Advanced Filters: no address autofill, phone and web address keyboards; Submitted Forms Referring URL keyboard
 - contact-group-shared-form.md: The contact group create and edit screens share includes/forms/contact_group_form.php: what it holds, the create-only difference, what stays in the screens
 - contact-list-names.md: Contacts list (view_contacts.php): one Website filter, labels on their own field, group counts in the panel's number format, the row checkbox and Opt-In mark names, silent icon words
 - contact-shared-form.md: The contact create and edit screens share includes/forms/contact_form.php: what it holds, what stays in the screens
@@ -251,6 +252,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - settings-dashboard-card.md: Dashboard card in Site Settings > Appearance (pgset-dashboard): card style, panel backdrop, per-sign-in refresh time, Reset Widgets; role < 2 gate; how a save reaches the dashboard behind the dialog
 - settings-filter-autofill.md: Settings category screens: a password manager wrote the saved username ("admin") into the toolbar filter and every section card vanished; the token and the focus guard that stop it (PR #1700)
 - settings-group-names.md: Site Settings groups, user rights Select / Select All and the other two-list Select All switches (Organize Contacts, calendar event) named by their heading
+- settings-input-keyboards.md: Phone keyboard and auto-capitalisation of the Site Settings and Workspace mailbox boxes for web addresses, hosts, user names, address lists and Merchant numbers.
 - settings-invalid-fields.md: A refused Site Settings save names its marked fields (pg_settings_marked_fields()); the dialog marks them with pgFieldInvalid(), shows the notice and focuses the first (#3026)
 - settings-invalid-vs-error.md: Settings save outcomes: rejected input returns status invalid (no re-read, nothing written, no log); pane sentences are plain text.
 - settings-modal-architecture.md: Site Settings modal architecture: file map, the categories and their cards, moving a card, adding a new category.

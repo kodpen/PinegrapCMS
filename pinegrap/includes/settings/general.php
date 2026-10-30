@@ -34,7 +34,7 @@ $pg_settings_cards[] = '
                     </div>
                     <div class="pg-f-lg">
                         <label for="hostname" class="form-label">' . lang('Hostname') . '</label>
-                        <input type="text" name="hostname" id="hostname" maxlength="255" class="form-control" value="' . h($hostname) . '" />
+                        <input type="text" inputmode="url" spellcheck="false" autocapitalize="off" name="hostname" id="hostname" maxlength="255" class="form-control" value="' . h($hostname) . '" />
                     </div>
                     <div class="pg-f-lg">
                         <label for="setting_email_address" class="form-label">' . lang('Support E-mail Address') . '</label>
@@ -42,7 +42,7 @@ $pg_settings_cards[] = '
                     </div>
                     <div class="pg-f-lg">
                         <label for="proxy_address" class="form-label">' . lang('Proxy Address') . '</label>
-                        <input type="text" name="proxy_address" id="proxy_address" maxlength="255" class="form-control" value="' . h($proxy_address) . '" />
+                        <input type="text" inputmode="url" spellcheck="false" autocapitalize="off" name="proxy_address" id="proxy_address" maxlength="255" class="form-control" value="' . h($proxy_address) . '" />
                     </div>
                 </div>
             </div>
@@ -373,7 +373,7 @@ if ($backup_settings_ready) {
                             </div>') . '
                             <div class="pg-f-md">
                                 <label for="backup_ftp_host" class="form-label">' . lang('FTP server') . '</label>
-                                <input type="text" name="backup_ftp_host" id="backup_ftp_host" maxlength="255" class="form-control" value="' . h($backup_remote_ftp['host']) . '" placeholder="ftp.example.com" />
+                                <input type="text" inputmode="url" spellcheck="false" autocapitalize="off" name="backup_ftp_host" id="backup_ftp_host" maxlength="255" class="form-control" value="' . h($backup_remote_ftp['host']) . '" placeholder="ftp.example.com" />
                             </div>
                             <div class="pg-f-xs">
                                 <label for="backup_ftp_port" class="form-label">' . lang('Port') . '</label>
@@ -381,7 +381,7 @@ if ($backup_settings_ready) {
                             </div>
                             <div class="pg-f-md">
                                 <label for="backup_ftp_user" class="form-label">' . lang('Username') . '</label>
-                                <input type="text" name="backup_ftp_user" id="backup_ftp_user" maxlength="255" class="form-control" value="' . h($backup_remote_ftp['user']) . '" autocomplete="off" />
+                                <input type="text" spellcheck="false" autocapitalize="off" name="backup_ftp_user" id="backup_ftp_user" maxlength="255" class="form-control" value="' . h($backup_remote_ftp['user']) . '" autocomplete="off" />
                             </div>
                             <div class="pg-f-md">
                                 <label for="backup_ftp_password" class="form-label">' . lang('Password') . '</label>
@@ -389,7 +389,7 @@ if ($backup_settings_ready) {
                             </div>
                             <div class="pg-f-md">
                                 <label for="backup_ftp_path" class="form-label">' . lang('Folder on the server') . '</label>
-                                <input type="text" name="backup_ftp_path" id="backup_ftp_path" maxlength="255" class="form-control" value="' . h($backup_remote_ftp['path']) . '" placeholder="/backups" />
+                                <input type="text" spellcheck="false" autocapitalize="off" name="backup_ftp_path" id="backup_ftp_path" maxlength="255" class="form-control" value="' . h($backup_remote_ftp['path']) . '" placeholder="/backups" />
                             </div>
                             <div class="col-12">
                                 <div class="form-field">
@@ -403,24 +403,24 @@ if ($backup_settings_ready) {
                         <div class="row gy-5">
                             <div class="pg-f-lg">
                                 <label for="backup_s3_endpoint" class="form-label">' . lang('Endpoint address') . '</label>
-                                <input type="text" name="backup_s3_endpoint" id="backup_s3_endpoint" maxlength="255" class="form-control" value="' . h($backup_remote_s3['endpoint']) . '" placeholder="https://s3.eu-central-1.amazonaws.com" />
+                                <input type="text" inputmode="url" spellcheck="false" autocapitalize="off" name="backup_s3_endpoint" id="backup_s3_endpoint" maxlength="255" class="form-control" value="' . h($backup_remote_s3['endpoint']) . '" placeholder="https://s3.eu-central-1.amazonaws.com" />
                                 <div class="form-text">' . lang('Leave empty for Amazon S3 in the region below.') . '</div>
                             </div>
                             <div class="pg-f-sm">
                                 <label for="backup_s3_region" class="form-label">' . lang('Region') . '</label>
-                                <input type="text" name="backup_s3_region" id="backup_s3_region" maxlength="64" class="form-control" value="' . h($backup_remote_s3['region']) . '" placeholder="us-east-1" />
+                                <input type="text" spellcheck="false" autocapitalize="off" name="backup_s3_region" id="backup_s3_region" maxlength="64" class="form-control" value="' . h($backup_remote_s3['region']) . '" placeholder="us-east-1" />
                             </div>
                             <div class="pg-f-md">
                                 <label for="backup_s3_bucket" class="form-label">' . lang('Bucket name') . '</label>
-                                <input type="text" name="backup_s3_bucket" id="backup_s3_bucket" maxlength="255" class="form-control" value="' . h($backup_remote_s3['bucket']) . '" />
+                                <input type="text" spellcheck="false" autocapitalize="off" name="backup_s3_bucket" id="backup_s3_bucket" maxlength="255" class="form-control" value="' . h($backup_remote_s3['bucket']) . '" />
                             </div>
                             <div class="pg-f-md">
                                 <label for="backup_s3_prefix" class="form-label">' . lang('Folder in the bucket') . '</label>
-                                <input type="text" name="backup_s3_prefix" id="backup_s3_prefix" maxlength="255" class="form-control" value="' . h($backup_remote_s3['prefix']) . '" placeholder="backups" />
+                                <input type="text" spellcheck="false" autocapitalize="off" name="backup_s3_prefix" id="backup_s3_prefix" maxlength="255" class="form-control" value="' . h($backup_remote_s3['prefix']) . '" placeholder="backups" />
                             </div>
                             <div class="pg-f-md">
                                 <label for="backup_s3_access_key" class="form-label">' . lang('Access Key') . '</label>
-                                <input type="text" name="backup_s3_access_key" id="backup_s3_access_key" maxlength="255" class="form-control" value="' . h($backup_remote_s3['access_key']) . '" autocomplete="off" />
+                                <input type="text" spellcheck="false" autocapitalize="off" name="backup_s3_access_key" id="backup_s3_access_key" maxlength="255" class="form-control" value="' . h($backup_remote_s3['access_key']) . '" autocomplete="off" />
                             </div>
                             <div class="pg-f-md">
                                 <label for="backup_s3_secret_key" class="form-label">' . lang('Secret Key') . '</label>
