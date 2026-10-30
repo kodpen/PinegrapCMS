@@ -20048,6 +20048,18 @@ html[data-bs-theme="dark"] .wsf-tone-text-2 { --wsf-tone: #f0c060; }
   font-size: 1rem;
   font-weight: 600;
 }
+.wsf-outline-toggle {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+}
 .wsf-outline-kind {
   margin-right: .25rem;
   color: var(--pg-fg-2);

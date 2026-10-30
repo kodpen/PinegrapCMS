@@ -78,6 +78,10 @@
     // an arrow-key move) folds into that step.
     var HISTORY_MAX = 50;
     var HISTORY_FOLD = 1000;
+    // While a box's settings are typed in, the data threads, the outline's
+    // reads and the undo step wait until no key came for SETTLE_DELAY ms
+    // (settle()): in a big flow each of them takes longer than a keystroke.
+    var SETTLE_DELAY = 200;
 
     // An open run is read again after POLL_FIRST ms, then each look that
     // finds nothing new waits POLL_GROW times longer, up to POLL_MAX; a
@@ -259,6 +263,9 @@
         history: null,      // the open flow's steps for undo and redo (historyOf())
         saving: null,
         saveTimer: 0,
+        settleTimer: 0,     // settle() once the typing pauses
+        settleHistory: false,
+        settleThreads: false,
         arriving: 0,        // the timer that opens a placed template's setup panel
         saveError: '',
         conflict: '',
@@ -2347,6 +2354,7 @@
     function show(flow) {
         var same = !!(state.flow && (state.flow.id === flow.id));
 
+        settle();
         window.clearTimeout(state.saveTimer);
         closeSetup();
         endRun();
@@ -2874,7 +2882,9 @@
             badge.remove();
         }
 
-        if (!state.run) {
+        // A value box writes no step: its value is worked out when a box
+        // reading it runs, so it is never "not reached".
+        if (!state.run || kindOf(node).pure) {
             return;
         }
 
@@ -7489,6 +7499,11 @@
         return title ? ' · ' + title : ((node.kind === 'task') ? ' · ' + t('fl_untitled_box') : '');
     }
 
+    // The box whose settings the outline shows: the one selected.
+    function outlineOpen() {
+        return (state.selected && (state.selected.type === 'node')) ? state.selected.id : '';
+    }
+
     function drawOutline() {
         K.clear(ui.outlineBox);
 
@@ -7502,15 +7517,31 @@
         }
 
         var list = el('ol', 'wsf-outline-list');
+        var open = outlineOpen();
 
-        orderedNodes().forEach(function (node) {
+        (state.run ? runOrder() : orderedNodes()).forEach(function (node) {
             var item = el('li', 'wsf-outline-item ' + kindClasses(node.kind));
             var head = el('h3', 'wsf-outline-head');
+            // Outside a run the heading opens the box's settings: only the
+            // open box's form is drawn, a big flow has hundreds of controls.
+            var label = state.run ? head : head.appendChild(el('button', 'wsf-outline-toggle'));
 
             item.setAttribute('data-node', node.id);
-            head.appendChild(K.flowIcon(node.kind, 'me-1'));
-            head.appendChild(el('span', 'wsf-outline-kind', t(kindOf(node).name)));
-            head.appendChild(el('span', 'wsf-outline-title', outlineTitle(node)));
+            label.appendChild(K.flowIcon(node.kind, 'me-1'));
+            label.appendChild(el('span', 'wsf-outline-kind', t(kindOf(node).name)));
+            label.appendChild(el('span', 'wsf-outline-title', outlineTitle(node)));
+
+            if (!state.run) {
+                label.type = 'button';
+                label.setAttribute('aria-expanded', (node.id === open) ? 'true' : 'false');
+                label.setAttribute('data-refocus', 'outline-open-' + node.id);
+                label.appendChild(K.icon((node.id === open) ? 'bi-chevron-up' : 'bi-chevron-down', 'wsf-outline-chevron ms-auto'));
+                label.addEventListener('click', function () {
+                    state.refocus = 'outline-open-' + node.id;
+                    select((node.id === outlineOpen()) ? null : { type: 'node', id: node.id });
+                });
+            }
+
             paintMark(item, head, node);
             item.appendChild(head);
 
@@ -7522,9 +7553,9 @@
 
                 head.tabIndex = -1;
                 head.setAttribute('data-refocus', 'outline-box-' + node.id);
-                item.classList.add('wsf-run-' + ((step && STEP_STATES[step.status]) ? step.status : 'none'));
+                item.classList.add(kindOf(node).pure ? 'wsf-run-value' : ('wsf-run-' + ((step && STEP_STATES[step.status]) ? step.status : 'none')));
                 item.appendChild(outlineRun(node, step));
-            } else {
+            } else if (node.id === open) {
                 item.appendChild(nodeForm(node));
             }
             list.appendChild(item);
@@ -7565,9 +7596,9 @@
         });
 
         // The values it reads may have changed, and its name is in the
-        // outline's lines of the boxes it gives to.
-        drawData();
-        drawReads(dataThreads());
+        // outline's lines of the boxes it gives to: drawn again once the
+        // typing pauses (settle()).
+        state.settleThreads = true;
 
         Array.prototype.forEach.call(ui.outlineBox.querySelectorAll('[data-node="' + node.id + '"] > .wsf-outline-head .wsf-outline-title'), function (title) {
             title.textContent = outlineTitle(node);
@@ -7603,8 +7634,19 @@
         state.dirty = true;
         state.changes++;
 
-        if (state.history) {
-            historyRecord(state.history, JSON.stringify(state.graph), !structure && !step, Date.now());
+        // A change that folds (typing, an arrow-key move) is recorded once
+        // the changes pause; one that is its own step first records what
+        // came before it, then itself.
+        if (!structure && !step) {
+            state.settleHistory = !!state.history;
+            window.clearTimeout(state.settleTimer);
+            state.settleTimer = window.setTimeout(settle, SETTLE_DELAY);
+        } else {
+            settle();
+
+            if (state.history) {
+                historyRecord(state.history, JSON.stringify(state.graph), false, Date.now());
+            }
         }
 
         if (structure) {
@@ -7630,18 +7672,46 @@
         state.saveTimer = window.setTimeout(save, SAVE_DELAY);
     }
 
+    // The changes paused (or something needs them settled now: a step of its
+    // own, undo, a run or another flow shown): the undo step and the data
+    // threads put off while typing are made, once.
+    function settle() {
+        window.clearTimeout(state.settleTimer);
+        state.settleTimer = 0;
+
+        if (state.settleHistory) {
+            state.settleHistory = false;
+
+            if (state.edit && state.history && state.flow && (state.history.flow === state.flow.id)) {
+                historyRecord(state.history, JSON.stringify(state.graph), true, Date.now());
+                drawState();
+            }
+        }
+
+        if (state.settleThreads) {
+            state.settleThreads = false;
+            drawData();
+            drawReads(dataThreads());
+        }
+    }
+
     // Undo (back) or redo may be pressed: the draft open for editing, no
     // run shown, no box on its way and a step to go to.
     function undoable(back) {
         var history = state.history;
 
-        return !!(state.edit && state.flow && !state.run && !state.drag && history && (history.flow === state.flow.id) && (back ? history.past : history.future).length);
+        // A change waiting to be recorded (settle()) is a step back already
+        // and leaves nothing to redo.
+        return !!(state.edit && state.flow && !state.run && !state.drag && history && (history.flow === state.flow.id)
+            && (back ? (history.past.length || state.settleHistory) : (history.future.length && !state.settleHistory)));
     }
 
     // The graph one step back or forward, saved as any change; a box
     // selected stays selected while it is there, an arrow (selected by its
     // place in the list) does not.
     function undo(back) {
+        settle();
+
         if (!undoable(back)) {
             return;
         }
@@ -8571,6 +8641,29 @@
         return badge;
     }
 
+    // A value box in a run's words: a neutral mark in place of a state, as
+    // it writes no step of its own (paintRun()).
+    function stepBadge(node, step) {
+        if (kindOf(node).pure) {
+            var badge = el('span', 'wsf-run-badge wsf-run-value');
+
+            badge.appendChild(K.icon('bi-calculator'));
+            badge.appendChild(document.createTextNode(t('fl_group_values')));
+
+            return badge;
+        }
+
+        return runBadge(STEP_STATES, step ? step.status : 'none');
+    }
+
+    // The boxes of a run in arrow order, the steps first and the value
+    // boxes after them.
+    function runOrder() {
+        var nodes = orderedNodes();
+
+        return nodes.filter(function (node) { return !kindOf(node).pure; }).concat(nodes.filter(function (node) { return kindOf(node).pure; }));
+    }
+
     // A run's flag (assets/js/workspace_flow_flag.js, in the workspace
     // bundle so the run's card in a channel draws the same one).
     function runFlag(run, options) {
@@ -9014,6 +9107,7 @@
         }
 
         state.openSeq++;
+        settle();
 
         if (!state.stash) {
             state.stash = { graph: state.graph, selected: state.selected, view: { x: state.view.x, y: state.view.y, k: state.view.k }, edit: state.edit };
@@ -9197,7 +9291,7 @@
         title.setAttribute('data-refocus', 'step');
         wrap.appendChild(title);
         wrap.appendChild(el('div', 'fw-semibold mb-1', nameOf(node)));
-        wrap.appendChild(runBadge(STEP_STATES, step ? step.status : 'none'));
+        wrap.appendChild(stepBadge(node, step));
 
         [metaOf(node), (step && step.started_at) ? t('fl_run_at', when(step.started_at)) : '', (step && step.finished_at) ? t('fl_run_ended', when(step.finished_at)) : ''].forEach(function (text) {
             if (text) {
@@ -9284,15 +9378,28 @@
         wrap.appendChild(el('p', 'small fg-secondary mb-3', t('fl_run_pick')));
         list.setAttribute('aria-label', t('fl_run_boxes'));
 
-        orderedNodes().forEach(function (node) {
+        var values = false;
+
+        // The value boxes come after the steps, under their own heading.
+        runOrder().forEach(function (node) {
             var step = stepOf(node.id);
             var row = K.button('wsf-run-step-row', '');
+            var pure = !!kindOf(node).pure;
+
+            if (pure && !values) {
+                values = true;
+                list.appendChild(el('li', 'wsf-run-values small fw-semibold fg-secondary mt-3 mb-1', t('fl_group_values')));
+            }
 
             row.appendChild(K.flowIcon(node.kind));
 
             row.setAttribute('data-refocus', 'run-step-' + node.id);
             row.appendChild(el('span', 'wsf-run-step-name', nameOf(node)));
-            row.appendChild(runBadge(STEP_STATES, step ? step.status : 'none'));
+
+            if (!pure) {
+                row.appendChild(stepBadge(node, step));
+            }
+
             row.addEventListener('click', function () {
                 select({ type: 'node', id: node.id }, { reveal: true, focus: true });
             });
@@ -9310,7 +9417,7 @@
         var box = el('div', 'wsf-run-outline');
         var meta = metaOf(node);
 
-        box.appendChild(el('p', 'mb-1')).appendChild(runBadge(STEP_STATES, step ? step.status : 'none'));
+        box.appendChild(el('p', 'mb-1')).appendChild(stepBadge(node, step));
 
         if (meta) {
             box.appendChild(el('p', 'small fg-secondary mb-1', meta));
@@ -9866,9 +9973,16 @@
     // ── Selection and view ─────────────────────────────────────────────
 
     function select(selected, options) {
+        var open = outlineOpen();
+
         state.selected = selected;
         markSelected();
         drawSettings();
+
+        // The outline draws the form of the box selected only.
+        if (state.outline && !state.run && (outlineOpen() !== open)) {
+            drawOutline();
+        }
 
         if (options && options.reveal) {
             if (state.outline) {
