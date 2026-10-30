@@ -881,7 +881,7 @@ function test_order_completion_payment_records_the_installment_difference()
 
 	pg_assert_contains("function pg_order_complete_from_payment(\$order_id, \$status, array \$paid = array())", $completion);
 	pg_assert_contains("\$paid_totals = pg_payment_paid_totals(\$paid['amount'] ?? null, \$paid['installments'] ?? 0, \$order['total']);", $completion, 'against the total read under this request');
-	pg_assert_contains("'reason' => 'the amount paid is not the order\\'s total'", $completion);
+	pg_assert_contains("'reason' => pg_log_lang(array('string' => 'the amount paid is not the order\\'s total'))", $completion);
 	pg_assert_contains("array_merge(pg_order_payment_completion_values(", $completion);
 	pg_assert_contains(", \$paid_totals),", $completion, 'the paid figures win over the kept ones');
 	pg_assert_contains("(int) \$order['total'] - (int) \$order['surcharge']", $completion, 'the commission base is the kept total');

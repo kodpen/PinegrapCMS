@@ -111,6 +111,7 @@ function test_site_log_writers_pass_no_bare_english()
 		'includes/fn/update.php',
 		'includes/iys/client.php',
 		'includes/panel/commerce.php',
+		'includes/payments/callback.php',
 		'includes/panel/software.php',
 		'membership_entrance.php',
 		'membership_job.php',
@@ -168,4 +169,23 @@ function test_site_log_writers_store_untranslated_unknown()
 	}
 
 	pg_assert_same(array(), $found);
+}
+
+// A payment message's line is built from its parts in the software language;
+// a finished line is never rewritten by searching its English text.
+function test_site_log_payment_notice_line_from_parts()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/payments/callback.php');
+
+	pg_assert_false(preg_match('/str_replace\(\s*\'[A-Z][a-z]/', $source) === 1, 'no str_replace() on English text');
+
+	$order = array('id' => '438', 'status' => 'incomplete', 'transaction_id' => '');
+	$answer = array('success' => true, 'status' => 'paid', 'transaction_id' => 'pi_1', 'amount' => 1000, 'log' => array('Stripe reports that payment pi_1 succeeded'), 'raw' => array());
+	$outcome = pg_payment_notify_outcome('stripe', $answer, array('total' => '2000') + $order, 'TRY');
+
+	pg_assert_same('Stripe reports that payment pi_1 succeeded', $outcome['source'], 'the service\'s own line is kept for the caller');
+	pg_assert_same(pg_payment_notify_line('stripe', $outcome['source'], 438, 'not_matching'), $outcome['log'][0]);
+	pg_assert_same(
+		pg_log_lang(array('string' => '{var:1} for order #{var:2}, which was still incomplete. The order was not completed: {var:3}. Check the payment on {var:4}\'s own screen.', 'vars' => array('X', 438, 'why', pg_payment_log_name('stripe')))),
+		pg_payment_notify_line('stripe', 'X', 438, 'not_completed', array('reason' => 'why')));
 }
