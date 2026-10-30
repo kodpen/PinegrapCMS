@@ -1,6 +1,6 @@
 ---
 name: cloudflare-dns-dialog
-description: Cloudflare Tools Add/Edit DNS Record dialogs: hidden type groups are disabled so only the visible priority box is posted, MX priority is carried into Edit, Content is required where shown
+description: Cloudflare Tools Add/Edit DNS Record dialogs (#3628): hidden type groups are disabled so only the visible priority box is posted, MX priority is carried into Edit, Content is required where shown
 ---
 
 ## Why are hidden fields disabled in the DNS dialogs?
