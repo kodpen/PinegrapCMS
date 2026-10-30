@@ -17,6 +17,10 @@
  */
 
 include('init.php');
+// A file over post_max_size empties the whole request; say so instead of
+// answering with the token page.
+pg_upload_refuse_discarded_body();
+
 $user = validate_user();
 validate_ecommerce_access($user);
 
@@ -36,7 +40,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $upload = isset($_FILES['file']) ? $_FILES['file'] : null;
 
-    if (!$upload || ($upload['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK || !is_uploaded_file($upload['tmp_name'])) {
+    $upload_limits = pg_upload_limits();
+    $upload_refusal = pg_upload_file_refusal($upload, $upload_limits['file_max']);
+
+    if ($upload_refusal !== '') {
+        $output_error = $upload_refusal;
+    } elseif (!$upload || ($upload['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK || !is_uploaded_file($upload['tmp_name'])) {
         $output_error = lang('Please select a CSV file to upload.');
     } elseif ($upload['size'] > $shipping_import_max_bytes) {
         $output_error = lang('The file is larger than 1 MB. Please upload it in parts.');
@@ -79,6 +88,7 @@ print
                         <div class="my-5">
                             <label for="file" class="form-label">' . h(lang('CSV File')) . '</label>
                             <input name="file" id="file" type="file" accept=".csv,text/csv,text/plain" class="form-control w-auto" required>
+                            ' . pg_upload_limit_hint($shipping_import_max_bytes) . '
                         </div>
                         <div class="form-field my-5">
                             <div class="switch"><input type="checkbox" name="notify" id="notify" value="1" class="" checked></div>

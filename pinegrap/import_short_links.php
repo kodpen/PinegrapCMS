@@ -16,9 +16,7 @@
 
 include('init.php');
 
-if (pg_post_body_discarded()) {
-    output_error(h(lang('The request was too large for this server and arrived empty.')), 413);
-}
+pg_upload_refuse_discarded_body();
 
 $user = validate_user();
 validate_area_access($user, 'manager');
@@ -47,6 +45,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $liveform->add_fields_to_session();
 
     $upload = (isset($_FILES['file']) && is_array($_FILES['file'])) ? $_FILES['file'] : null;
+
+    $upload_limits = pg_upload_limits();
+    $upload_refusal = pg_upload_file_refusal($upload, $upload_limits['file_max']);
+
+    if ($upload_refusal !== '') {
+        $liveform->mark_error('file', h($upload_refusal));
+        go($screen_url);
+    }
 
     if (($upload === null) || !is_string($upload['tmp_name'] ?? null) || ((int) ($upload['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) || !is_uploaded_file($upload['tmp_name'])) {
         $liveform->mark_error('file', h(lang('Choose a CSV file to import.')));
@@ -155,6 +161,7 @@ pg_page_shell(
                                     <div class="col-12 md:col-8 my-3">
                                         <label for="file" class="form-label">' . h(lang('File')) . '</label>
                                         <input type="file" id="file" name="file" class="form-control" accept=".csv,.txt,text/csv,text/plain" required>
+                                        ' . pg_upload_limit_hint($import_max_bytes) . '
                                     </div>
                                     <div class="col-12 my-3">
                                         <div class="form-field">

@@ -1832,6 +1832,7 @@
     "The figures you change are only for you to see and are not saved.": "Değiştirdiğiniz değerleri yalnız siz görürsünüz, kaydedilmez.",
     "The file \"{var}\" is deleted for good, from the disk and from the file manager.": "\"{var}\" dosyası diskten ve dosya yöneticisinden kalıcı olarak silinecek.",
     "The file can be at most {var:1} MB.": "Dosya en fazla {var:1} MB olabilir.",
+    "The file can be at most {var:1}.": "Dosya en fazla {var:1} olabilir.",
     "The file could not be copied ({var:1}).": "Dosya kopyalanamadı ({var:1}).",
     "The file could not be created:": "Dosya oluşturulamadı:",
     "The file could not be deleted:": "Dosya silinemedi:",
