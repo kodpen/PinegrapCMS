@@ -194,6 +194,85 @@ function ws_upload_max_bytes()
 }
 
 /**
+ * The largest file a channel or a note takes as a form part: the channel's
+ * limit, or the server's own upload limit when that is lower.
+ *
+ * @return int bytes
+ */
+function ws_upload_form_max_bytes()
+{
+    $max = ws_upload_max_bytes();
+    $limits = function_exists('pg_upload_limits') ? pg_upload_limits() : array();
+
+    if (((int) ($limits['file_max'] ?? 0) > 0) && ((int) $limits['file_max'] < $max)) {
+        $max = (int) $limits['file_max'];
+    }
+
+    return $max;
+}
+
+/**
+ * Why a file sent as a form part is not taken, read from what PHP says of
+ * it: the panel's attachments and the external API's upload say the same.
+ *
+ * @param int  $error    PHP's upload error code
+ * @param bool $uploaded the temporary file is this request's upload
+ * @param int  $size     bytes of the temporary file
+ * @param int  $max      bytes, ws_upload_form_max_bytes()
+ * @return string '' when it is taken
+ */
+function ws_upload_part_error($error, $uploaded, $size, $max)
+{
+    $too_large = lang(array('string' => 'The file is larger than {var:1} MB.', 'vars' => (int) floor($max / 1048576)));
+
+    if (in_array((int) $error, array(UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE), true)) {
+        return $too_large;
+    }
+
+    if (((int) $error !== UPLOAD_ERR_OK) || !$uploaded) {
+        return lang('The file could not be read.');
+    }
+
+    return ((int) $size > (int) $max) ? $too_large : '';
+}
+
+/**
+ * The file a panel request carries to a channel or a note: a form part named
+ * file, as the screen sends it, or base64 in data, as older screens and
+ * scripts do. The name is the request's, else the part's.
+ *
+ * @param array $request
+ * @return array ok, error, name, binary (string, or false when base64 could
+ *               not be decoded: the store refuses it)
+ */
+function ws_upload_request_file($request)
+{
+    $name = trim((string) ($request['name'] ?? ''));
+    $part = (isset($_FILES['file']) && is_array($_FILES['file'])) ? $_FILES['file'] : null;
+
+    if ($part === null) {
+        return array('ok' => true, 'error' => '', 'name' => $name, 'binary' => ws_upload_decode((string) ($request['data'] ?? '')));
+    }
+
+    $error = is_array($part['error'] ?? null) ? UPLOAD_ERR_NO_FILE : (int) ($part['error'] ?? UPLOAD_ERR_NO_FILE);
+    $tmp = is_string($part['tmp_name'] ?? null) ? $part['tmp_name'] : '';
+    $uploaded = ($error === UPLOAD_ERR_OK) && ($tmp !== '') && is_uploaded_file($tmp);
+    $refusal = ws_upload_part_error($error, $uploaded, $uploaded ? (int) @filesize($tmp) : 0, ws_upload_form_max_bytes());
+
+    if ($refusal !== '') {
+        return array('ok' => false, 'error' => $refusal, 'name' => $name, 'binary' => false);
+    }
+
+    if ($name === '') {
+        $name = is_string($part['name'] ?? null) ? $part['name'] : '';
+    }
+
+    $binary = @file_get_contents($tmp);
+
+    return array('ok' => true, 'error' => '', 'name' => $name, 'binary' => ($binary === false) ? false : (string) $binary);
+}
+
+/**
  * The largest file an MCP tool call posts: 1 MB, or the channel's own limit
  * when that is lower. The file travels base64 inside one JSON-RPC message
  * the client builds and often its model reads, so the tool is the path for a

@@ -1900,31 +1900,10 @@ function ws_note_channel_sync($channel_id)
 }
 
 /**
- * Keeps a file for a note in the note's folder, base64 as the panel sends
- * files (see ws_note_file_store_bytes()).
- *
- * @param array  $viewer
- * @param array  $note one the person may change
- * @param string $original_name
- * @param string $data
- * @return array ok, error, id, name, url, image
- */
-function ws_note_file_store($viewer, $note, $original_name, $data)
-{
-    $parts = explode('base64,', (string) $data, 2);
-    $binary = base64_decode(str_replace(' ', '+', end($parts)), true);
-
-    if (($binary === false) || ($binary === '')) {
-        return array('ok' => false, 'error' => lang('The file could not be read.'), 'id' => 0, 'name' => '', 'url' => '', 'image' => false);
-    }
-
-    return ws_note_file_store_bytes($viewer, $note, $original_name, $binary);
-}
-
-/**
  * Keeps a file for a note in the note's folder, from its bytes: what the
- * screen sends (ws_note_file_store()) and what a note brought in from another
- * app carries with it (includes/workspace/notes_import.php). What a channel
+ * screen sends (ws_note_file, read by ws_upload_request_file()) and what a
+ * note brought in from another app carries with it
+ * (includes/workspace/notes_import.php). What a channel
  * refuses is refused here too.
  *
  * @param array  $viewer
