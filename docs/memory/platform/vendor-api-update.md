@@ -16,7 +16,7 @@ description: The Kodpen API's release check (GET /releases/latest, PR #3282) beh
 - `pg_vendor_release_message()`: the stepping stone, another channel, "Service access is closed for this site." (the licence card's text too), the existing repair and no-update texts; a beta build is named beside its version. An unusable answer keeps the screens' own texts ("No access to the update server." with `pg_curl_tls_hint()`, "No response from the update server.").
 
 ## What does the check step keep?
-- `$_SESSION['software']['update']`: mode, version, channel, build, package_url, size, sha256, manifest_sha256, sig_key_id, manifest_url, signature_url, package_file (`vendor_update_<16 hex>.zip` for `data/temp/`, one per check). The later steps are to read only this; they still take api2's package until they move. Repair also keeps `software.repair.version` for its log line.
+- `$_SESSION['software']['update']`: mode, version, channel, build, package_url, size, sha256, manifest_sha256, sig_key_id, manifest_url, signature_url, package_file (`vendor_update_<16 hex>.zip` for `data/temp/`, one per check). Download, backup and replace read only this (`vendor-api-update-download.md`, #3632); replace or any refusal deletes the package and clears it. Repair also keeps `software.repair.version` for its log line.
 
 ## Flag and notification?
 - `software_update_check()`: an update or a blocked release sets `software_update_available` and leaves one `software_update` notification; any other answer clears both; an unusable one takes the old error path (notification deleted, logged).
