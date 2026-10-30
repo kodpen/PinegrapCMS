@@ -122,9 +122,10 @@ function pg_bi_page_row_changes($row, $cfg)
  * @param bool  $signed_in a member is signed in, not ghosting
  * @param bool  $referral the site has referral sources
  * @param bool  $tax_exempt tax is on and tax exemption allowed
+ * @param bool  $opt_in_sms the SMS box is offered (pg_consent_sms_checkout_shown())
  * @return array
  */
-function pg_bi_flags($row, $opt_in, $signed_in, $referral, $tax_exempt)
+function pg_bi_flags($row, $opt_in, $signed_in, $referral, $tax_exempt, $opt_in_sms = false)
 {
     $bi_flags = array(
         'has_custom_field_1'   => isset($row['custom_field_1_label']) && (string)$row['custom_field_1_label'] !== '',
@@ -132,6 +133,7 @@ function pg_bi_flags($row, $opt_in, $signed_in, $referral, $tax_exempt)
         'has_po_number'        => !empty($row['po_number']),
         'has_custom_form'      => !empty($row['form']),
         'shows_opt_in'         => (bool)$opt_in,
+        'shows_opt_in_sms'     => (bool)$opt_in_sms,
         'can_update_contact'   => (bool)$signed_in,
         'has_referral_sources' => (bool)$referral,
         'has_tax_exempt'       => (bool)$tax_exempt,
@@ -173,10 +175,11 @@ function _pg_bi_page_settings($page_id, $cfg)
 // the country decides which posts), billing_zip_code, billing_country,
 // billing_phone_number, billing_fax_number, billing_email_address,
 // custom_field_1/2, po_number, referral_source (<select>), tax_number,
-// tax_office, tax_exempt, opt_in, update_contact. A control the page does not
+// tax_office, tax_exempt, opt_in, opt_in_sms, update_contact. A control the page does not
 // ask for is dropped: the custom fields without a label, the PO number when
 // off, the referral source without sources, tax exemption when off, the
-// opt-in for a contact already opted in, "update my contact" for a visitor
+// opt-in for a contact already opted in, the SMS box while it is not offered
+// (pg_consent_sms_checkout_shown()), "update my contact" for a visitor
 // who is not signed in.
 // Tokens: ^^__custom_field_1_label^^, ^^__custom_field_2_label^^,
 // ^^__tax_exempt_label^^, ^^__opt_in_label^^, ^^__custom_form_title^^,
@@ -214,7 +217,7 @@ function _render_system_widget_billing_information($tree_json, $widget_id, $cfg 
     if ($lf->field_in_session('billing_first_name')) {
         $values = array();
         foreach (array_keys(pg_bi_address_fields()) as $name) $values[$name] = (string)$lf->get_field_value($name);
-        foreach (array('tax_number', 'tax_office', 'opt_in', 'tax_exempt', 'update_contact') as $name) {
+        foreach (array('tax_number', 'tax_office', 'opt_in', 'opt_in_sms', 'tax_exempt', 'update_contact') as $name) {
             $values[$name] = (string)$lf->get_field_value($name);
         }
     } else {
@@ -222,6 +225,8 @@ function _render_system_widget_billing_information($tree_json, $widget_id, $cfg 
         $values = pg_bi_start_values($order, $contact,
             $signed_in && (isset($_SESSION['software']['update_contact']) && $_SESSION['software']['update_contact'] === false));
         if ($values['billing_country'] === '') $values['billing_country'] = _pg_acct_default_country();
+        // The SMS box starts ticked, as the e-mail box of a new order does.
+        $values['opt_in_sms'] = '1';
         if ($custom_form && $order_id > 0) {
             _pg_sa_prefill_custom_form($lf, "form_data.order_id = '" . $order_id . "' AND form_data.ship_to_id = '0' AND form_data.order_item_id = '0'");
         }
@@ -233,7 +238,8 @@ function _render_system_widget_billing_information($tree_json, $widget_id, $cfg 
         $referral[] = array((string)$r['code'], (string)$r['name']);
     }
     $tax_exempt = defined('ECOMMERCE_TAX') && ECOMMERCE_TAX && defined('ECOMMERCE_TAX_EXEMPT') && ECOMMERCE_TAX_EXEMPT;
-    $bi_flags = pg_bi_flags($settings, $opt_in, $signed_in, count($referral) > 0, $tax_exempt);
+    $bi_flags = pg_bi_flags($settings, $opt_in, $signed_in, count($referral) > 0, $tax_exempt,
+        function_exists('pg_consent_sms_checkout_shown') && pg_consent_sms_checkout_shown($contact));
     _eo_apply_visibility_bindings($tree, $bi_flags);
 
     // The controls a switched-off part leaves are dropped with it.
@@ -244,6 +250,7 @@ function _render_system_widget_billing_information($tree_json, $widget_id, $cfg 
         'referral_source' => !$bi_flags['has_referral_sources'],
         'tax_exempt'      => !$bi_flags['has_tax_exempt'],
         'opt_in'          => !$bi_flags['shows_opt_in'],
+        'opt_in_sms'      => !$bi_flags['shows_opt_in_sms'],
         'update_contact'  => !$bi_flags['can_update_contact'],
     );
     foreach ($off as $name => $drop) {
@@ -265,7 +272,7 @@ function _render_system_widget_billing_information($tree_json, $widget_id, $cfg 
     foreach ((array)db_items("SELECT code FROM countries WHERE zip_code_required = 1") as $c) $zip[] = (string)$c['code'];
 
     $fill = $values;
-    foreach (array('billing_state', 'opt_in', 'tax_exempt', 'update_contact') as $k) unset($fill[$k]);
+    foreach (array('billing_state', 'opt_in', 'opt_in_sms', 'tax_exempt', 'update_contact') as $k) unset($fill[$k]);
     $selects = array(
         'billing_salutation' => _pg_acct_pairs(get_salutation_options()),
         'billing_country'    => _pg_acct_country_options(),
@@ -274,7 +281,7 @@ function _render_system_widget_billing_information($tree_json, $widget_id, $cfg 
     _pg_acct_fill_values($tree, $fill, $selects);
     _pg_sa_state_controls($tree, $values['billing_state'],
         isset($states[$values['billing_country']]) ? $states[$values['billing_country']] : array(), 'billing_state');
-    foreach (array('opt_in', 'tax_exempt', 'update_contact') as $name) {
+    foreach (array('opt_in', 'opt_in_sms', 'tax_exempt', 'update_contact') as $name) {
         _pg_member_fill_control($tree, $name, '1', $values[$name] === '1');
     }
 
@@ -303,12 +310,17 @@ function _render_system_widget_billing_information($tree_json, $widget_id, $cfg 
     $folder_id = $page_id > 0 ? (int)db_value("SELECT page_folder FROM page WHERE page_id = '" . (int)$page_id . "'") : 0;
     $scripts .= pg_sa_state_script($form_id, $states, $zip, 'billing_');
     $next_page_id = isset($settings['next_page_id']) ? (int)$settings['next_page_id'] : 0;
-    $rendered = _pg_member_form_wrap($rendered . $scripts, _pg_acct_software_path() . '/billing_information.php', array(
+    $hidden = array(
         'page_id'          => $page_id,
         'next_page_id'     => $next_page_id > 0 ? $next_page_id : '',
         'opt_in_displayed' => $bi_flags['shows_opt_in'] ? 'true' : 'false',
         'folder_id'        => $folder_id,
-    ), 'pg-billing-information-form');
+    );
+    // The SMS answer counts only from a tree that still draws its box.
+    if ($bi_flags['shows_opt_in_sms'] && _eo_tree_asks_opt_in($split['static_tree'], 'opt_in_sms')) {
+        $hidden['opt_in_sms_shown'] = '1';
+    }
+    $rendered = _pg_member_form_wrap($rendered . $scripts, _pg_acct_software_path() . '/billing_information.php', $hidden, 'pg-billing-information-form');
     $rendered = preg_replace('/^<form /', '<form id="' . h($form_id) . '" ', $rendered, 1);
 
     $tax_label = (defined('ECOMMERCE_TAX_EXEMPT_LABEL') && ECOMMERCE_TAX_EXEMPT_LABEL != '')

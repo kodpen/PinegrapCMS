@@ -1,6 +1,6 @@
 ---
 name: sms-consent-box
-description: The SMS marketing box beside the e-mail box (PR #3660): when it is drawn, how it starts, the consent_log sms rows it writes, where it is not yet
+description: The SMS marketing box beside the e-mail box (PR #3660, #3694 checkout): when it is drawn, how it starts, the consent_log sms rows it writes, where it is not yet
 module: privacy
 ---
 
@@ -9,6 +9,7 @@ module: privacy
 - Member widgets (registration, membership): a control named `opt_in_sms`, kept only when the tree also has a visible control bound to `mobile_phone` (`pg_member_tree_asks_mobile()`); `_pg_member_sms_box()` drops it otherwise, never in the editor. Starts ticked, as `opt_in`.
 - The legacy registration and membership screens ask for no number, so they draw no SMS box.
 - E-mail preferences: the legacy layouts draw it under `$sms_opt_in` with a hidden `opt_in_sms_shown=1`; the widget fills or drops `opt_in_sms`. Both use the contact's stored number.
+- Checkout (PR #3694): billing information and express order, classic table, layouts (`$opt_in_sms`, `$opt_in_sms_label`) and widgets. The checkout asks the billing phone, so offered = `pg_sms_ready()`; drawn unless the buyer's last `sms:marketing` row is `granted` (`pg_consent_sms_checkout_shown()`, as the e-mail box only for a contact not opted in). Starts ticked. Widgets: flag `shows_opt_in_sms`; the billing widget drops `opt_in_sms`, the express order default trees bind the row to the flag (PHP `_eo_default_designer_tree()`, JS starters).
 
 ## How does it start, where is the answer kept?
 - The answer is a `consent_log` row, channel `sms`, purpose `marketing`; no column holds it (`contacts.iys_sms_status` is İYS's own answer, step 8).
@@ -18,12 +19,14 @@ module: privacy
 - `pg_consent_sms_answers($asked, $number_known, $posted)`: only when the box was drawn and the contact has a number after the save; then through `pg_consent_log_answers()` in the same call as the e-mail answer, so a repeated answer writes nothing.
 - Sign-up: `pg_member_consent_answers()` for `pg_member_register()` / `pg_member_activate()`; the entrances set `sms_opt_in_asked` for a widget post whose tree asks it (`pg_member_widget_asks_opt_in(.., 'opt_in_sms')`).
 - Preferences: a widget post that lists `opt_in_sms` in `pg_controls`, or a legacy post with `opt_in_sms_shown=1`; a custom layout without the box posts neither, so its silence is no refusal.
+- Checkout: `pg_consent_checkout_sms_answers()` passed to `pg_consent_log_checkout()`, so in the same call and branch as the e-mail answer (contact updated, not ghosting). Only with a posted `opt_in_sms_shown=1` (the table row and layouts print it inside the box; widgets only while the tree still draws `opt_in_sms`, `_eo_tree_asks_opt_in($tree, 'opt_in_sms')`) and a billing phone that is a mobile number.
 
 ## What is not done yet?
-- Checkout (billing information, express order, their widgets), custom forms bound to `opt_in`, the designer's default trees and help text: step 7b of `plans/sms-and-iys.md`.
+- Custom forms (a choice field bound to `opt_in_sms`, which is no `contacts` column: every contact-binding read and write path must skip it): step 7b2 of `plans/sms-and-iys.md`.
+- The number a checkout answer is for is the order's billing phone; `contacts.mobile_phone` is not filled from it, so step 10's sender must pick the number (open there).
 - Commercial SMS stays refused by `pg_sms_send()` until step 9.
 
 ## Tests?
-- `tests/sms_consent_test.php`: offered rule, start state, answers, changes per channel, member trees, source checks of each drawn box.
+- `tests/sms_consent_test.php`: offered rule, start state, answers, changes per channel, member trees, checkout answers and drawn rule, default trees, source checks of each drawn box.
 
 Related: docs/memory/core/consent-log-writers.md, docs/memory/plans/sms-and-iys.md

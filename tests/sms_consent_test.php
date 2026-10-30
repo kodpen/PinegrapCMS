@@ -142,3 +142,105 @@ function test_sms_consent_drawn_beside_the_email_box()
 	$account = (string) file_get_contents($root . 'includes/fn/widgets_account.php');
 	pg_assert_true(strpos($account, "_pg_member_fill_control(\$tree, 'opt_in_sms', '1', \$sms_on);") !== false, 'preferences widget starts from the log');
 }
+
+// A checkout post answers the SMS question only from a drawn box, never
+// while ghosting, and only with a billing phone an SMS can go to.
+function test_sms_consent_checkout_answers()
+{
+	pg_assert_same(array('sms:marketing' => true), pg_consent_checkout_sms_answers('1', false, '0532 123 45 67', '1'), 'ticked');
+	pg_assert_same(array('sms:marketing' => false), pg_consent_checkout_sms_answers('1', false, '0532 123 45 67', ''), 'unticked');
+	pg_assert_same(array(), pg_consent_checkout_sms_answers('', false, '0532 123 45 67', ''), 'a layout without the box: silence is no refusal');
+	pg_assert_same(array(), pg_consent_checkout_sms_answers(null, false, '0532 123 45 67', '1'), 'nothing posted');
+	pg_assert_same(array(), pg_consent_checkout_sms_answers(array('1'), false, '0532 123 45 67', '1'), 'not a scalar');
+	pg_assert_same(array(), pg_consent_checkout_sms_answers('1', true, '0532 123 45 67', '1'), 'ghosting');
+	pg_assert_same(array(), pg_consent_checkout_sms_answers('1', false, '0212 123 45 67', '1'), 'a landline');
+	pg_assert_same(array(), pg_consent_checkout_sms_answers('1', false, '', '1'), 'no number');
+}
+
+// The checkout draws the box while it is offered and the buyer has not said
+// yes, as the e-mail box is drawn only for a contact not opted in.
+function test_sms_consent_checkout_ask()
+{
+	pg_assert_true(pg_consent_sms_checkout_ask(array(), true), 'no answer yet');
+	pg_assert_true(pg_consent_sms_checkout_ask(array('sms:marketing' => array('status' => 'refused')), true), 'refused before');
+	pg_assert_false(pg_consent_sms_checkout_ask(array('sms:marketing' => array('status' => 'granted')), true), 'said yes already');
+	pg_assert_true(pg_consent_sms_checkout_ask(array('email:marketing' => array('status' => 'granted')), true), 'the e-mail yes is another answer');
+	pg_assert_false(pg_consent_sms_checkout_ask(array(), false), 'not offered');
+}
+
+// Every checkout screen draws the SMS box beside the e-mail box, marks it,
+// starts it ticked, and every handler writes its answer with the e-mail one.
+function test_sms_consent_checkout_screens()
+{
+	$root = dirname(__DIR__) . '/pinegrap/';
+	$read = function ($file) use ($root) {
+		return (string) file_get_contents($root . $file);
+	};
+	$after = function ($source, $first, $second) {
+		$a = strpos($source, $first);
+		$b = strpos($source, $second);
+
+		return ($a !== false) && ($b !== false) && ($b > $a);
+	};
+
+	foreach (array('get_billing_information.php', 'get_express_order.php') as $file) {
+		$source = $read($file);
+		pg_assert_true($after($source, "' . \$output_opt_in . '", "' . \$output_opt_in_sms . '"), $file . ': table row after the e-mail box');
+		pg_assert_true(strpos($source, 'pg_consent_sms_checkout_row($form)') !== false, $file . ': table row with its mark');
+		pg_assert_true(strpos($source, "'opt_in_sms' => \$opt_in_sms,") !== false, $file . ': layout told');
+		pg_assert_true(strpos($source, "'opt_in_sms', '1')") !== false, $file . ': starts ticked');
+	}
+
+	foreach (array('includes/templates/billing_information.php', 'includes/templates/express_order.php') as $file) {
+		$source = $read($file);
+		pg_assert_true($after($source, 'name="opt_in"', 'name="opt_in_sms"'), $file . ': SMS box after the e-mail box');
+		pg_assert_true(strpos($source, '<?php if ($opt_in_sms): ?>') !== false, $file . ': drawn only when offered');
+		pg_assert_true(strpos($source, 'name="opt_in_sms_shown"') !== false, $file . ': marks the box as drawn');
+	}
+
+	pg_assert_true(strpos(pg_consent_sms_checkout_row(new sms_consent_test_form()), 'name="opt_in_sms_shown" value="1"') !== false, 'the table row marks itself');
+
+	foreach (array('billing_information.php', 'express_order.php', 'submit_order.php') as $file) {
+		$source = $read($file);
+		pg_assert_true(strpos($source, "'opt_in_sms', 'opt_in_sms_shown'") !== false, $file . ': reads the box and its mark');
+		pg_assert_true(strpos($source, "pg_consent_checkout_sms_answers(\$liveform->get_field_value('opt_in_sms_shown'), \$ghost, \$liveform->get_field_value('billing_phone_number'), \$liveform->get_field_value('opt_in_sms'))") !== false, $file . ': written with the e-mail answer');
+	}
+
+	$bi = $read('includes/fn/widgets_billing_information.php');
+	pg_assert_true(strpos($bi, "'opt_in_sms'      => !\$bi_flags['shows_opt_in_sms'],") !== false, 'billing widget drops the box when not offered');
+	pg_assert_true(strpos($bi, "_eo_tree_asks_opt_in(\$split['static_tree'], 'opt_in_sms')") !== false, 'billing widget marks a drawn box only');
+
+	$cart = $read('includes/fn/widgets_cart.php');
+	pg_assert_true(strpos($cart, "'shows_opt_in_sms'   => \$_eo_sms_box,") !== false, 'express order widget flag');
+	pg_assert_true(strpos($cart, "\$_eo_sms_box && _eo_tree_asks_opt_in(\$tree_decoded_for_eo, 'opt_in_sms')") !== false, 'express order widget marks a drawn box only');
+}
+
+// The express order widget's default tree draws both boxes, the SMS one
+// behind its flag; the designer's starter trees are its twins.
+function test_sms_consent_default_trees()
+{
+	$tree = _eo_default_designer_tree();
+	pg_assert_true(_eo_tree_asks_opt_in($tree), 'express order: e-mail box');
+	pg_assert_true(_eo_tree_asks_opt_in($tree, 'opt_in_sms'), 'express order: SMS box');
+	pg_assert_false(_eo_tree_asks_opt_in($tree, 'opt_in_sms_missing'), 'only the named box');
+
+	$flags = array_fill_keys(array('has_shipping', 'has_no_shipping', 'has_single_recipient', 'has_terms'), true);
+	$off = $tree;
+	_eo_apply_visibility_bindings($off, $flags + array('shows_opt_in_sms' => false));
+	pg_assert_false(_eo_tree_asks_opt_in($off, 'opt_in_sms'), 'express order: not offered, not drawn');
+	pg_assert_true(_eo_tree_asks_opt_in($off), 'express order: the e-mail box stays');
+
+	$js = (string) file_get_contents(dirname(__DIR__) . '/pinegrap/assets/js/style_designer.src.js');
+	pg_assert_true(strpos($js, "checkRow('opt_in_sms', _sdT('I want to receive campaign and offer messages by SMS.'), 'pg-eo-opt-in-sms mb-3', 'shows_opt_in_sms')") !== false, 'express order starter twin');
+	pg_assert_true(strpos($js, "biCheck('opt_in_sms', _sdT('I want to receive campaign and offer messages by SMS.'), '_optinsms', '', 'shows_opt_in_sms')") !== false, 'billing information starter');
+	pg_assert_same(2, substr_count($js, "['shows_opt_in_sms',"), 'flag offered in both widgets');
+}
+
+// Enough of a liveform for pg_consent_sms_checkout_row().
+class sms_consent_test_form
+{
+	public function output_field($attrs)
+	{
+		return '<input name="' . $attrs['name'] . '">';
+	}
+}

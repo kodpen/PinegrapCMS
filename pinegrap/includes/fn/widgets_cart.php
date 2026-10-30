@@ -2904,7 +2904,11 @@ function _render_system_widget_express_order($tree_json, $widget_id, $cfg = arra
         if ($needs_shipping && !empty($recipients) && is_array($recipients[0])) {
             $_eo_ship_rid = (int)$recipients[0]['id'];
         }
+        $_eo_sms_box = _eo_sms_box_shown(!empty($_SESSION['software']['ghost']));
         $_eo_vis_ctx = array(
+            // The SMS marketing box: while SMS is on and the buyer has not
+            // said yes already.
+            'shows_opt_in_sms'   => $_eo_sms_box,
             'has_shipping'       => (bool)$needs_shipping,
             // Nothing to ship (a digital order): the billing card is the
             // first form card, so it carries the "* is required" line.
@@ -2979,6 +2983,11 @@ function _render_system_widget_express_order($tree_json, $widget_id, $cfg = arra
         // read the box itself the same way with or without it.
         $_eo_opt_in_marker = _eo_tree_asks_opt_in($tree_decoded_for_eo)
             ? '<input type="hidden" name="opt_in_displayed" value="true">' : '';
+        // The SMS box's mark, only while it is offered and still drawn: a
+        // tree without it posts no SMS answer, and its silence is no refusal.
+        if ($_eo_sms_box && _eo_tree_asks_opt_in($tree_decoded_for_eo, 'opt_in_sms')) {
+            $_eo_opt_in_marker .= '<input type="hidden" name="opt_in_sms_shown" value="1">';
+        }
 
         // ── 1b. Split off any recipient_loop_area BEFORE the field-bindings
         // walker runs. The walker takes a single ship_rid and rewrites every

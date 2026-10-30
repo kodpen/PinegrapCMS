@@ -563,6 +563,28 @@ function pg_consent_checkout_person($email, $user_id, $contact_id)
 }
 
 /**
+ * The SMS marketing answer of a checkout post, or array() when it is not the
+ * buyer's own: the box marks itself with opt_in_sms_shown=1 where it is
+ * drawn (a layout without it posts nothing, and its silence is no refusal),
+ * a ghosting staff member answers for nobody, and a billing phone that is
+ * not a mobile number gives no answer (pg_consent_sms_answers()). Pure.
+ *
+ * @param mixed $shown   the posted opt_in_sms_shown
+ * @param mixed $ghost   $_SESSION['software']['ghost']
+ * @param mixed $phone   the billing phone number written to the order
+ * @param mixed $posted  the posted opt_in_sms, '1' when ticked
+ * @return array  "channel:purpose" => bool, for pg_consent_log_checkout()
+ */
+function pg_consent_checkout_sms_answers($shown, $ghost, $phone, $posted)
+{
+    if ($ghost || !is_scalar($shown) || ((string) $shown !== '1')) {
+        return array();
+    }
+
+    return pg_consent_sms_answers(true, pg_consent_sms_number_known($phone), $posted);
+}
+
+/**
  * Record the e-mail marketing answer a checkout has just written to the
  * contact (billing_information.php, express_order.php, submit_order()). The
  * handlers call it right after the UPDATE contacts that carries opt_in, in
@@ -577,11 +599,12 @@ function pg_consent_checkout_person($email, $user_id, $contact_id)
  * @param mixed $opt_in_displayed  the posted opt_in_displayed
  * @param mixed $ghost             $_SESSION['software']['ghost']
  * @param mixed $opt_in            the opt_in written to the contact, 0 or 1
+ * @param array $sms               pg_consent_checkout_sms_answers(), written in the same call
  * @return int  rows written
  */
-function pg_consent_log_checkout($email, $user_id, $contact_id, $opt_in_displayed, $ghost, $opt_in)
+function pg_consent_log_checkout($email, $user_id, $contact_id, $opt_in_displayed, $ghost, $opt_in, array $sms = array())
 {
-    $answers = pg_consent_checkout_answers($opt_in_displayed, $ghost, $opt_in);
+    $answers = pg_consent_checkout_answers($opt_in_displayed, $ghost, $opt_in) + $sms;
 
     if (!$answers) {
         return 0;
@@ -665,6 +688,56 @@ function pg_consent_sms_answers($asked, $number_known, $posted)
 function pg_consent_sms_start_for(array $person)
 {
     return pg_consent_sms_start(pg_consent_log_current(pg_consent_log_rows($person)));
+}
+
+/**
+ * Whether a checkout draws the SMS box: while it is offered (the checkout
+ * asks the billing phone number) and the person has not said yes already,
+ * as the e-mail box is drawn only for a contact not opted in. Pure.
+ *
+ * @param array $current  pg_consent_log_current() of the buyer
+ * @param bool  $offered  pg_consent_sms_offered()
+ * @return bool
+ */
+function pg_consent_sms_checkout_ask(array $current, $offered)
+{
+    return (bool) $offered
+        && !(isset($current['sms:marketing']['status']) && ($current['sms:marketing']['status'] === 'granted'));
+}
+
+/**
+ * Whether a checkout draws the SMS box for this buyer, read from their log
+ * rows. Guests with no contact yet have no rows.
+ *
+ * @param array|null $contact  the buyer's contacts row (id, email_address), or none
+ * @return bool
+ */
+function pg_consent_sms_checkout_shown($contact)
+{
+    if (!pg_consent_sms_offered(true)) {
+        return false;
+    }
+
+    $contact = is_array($contact) ? $contact : array();
+    $person = pg_consent_checkout_person(isset($contact['email_address']) ? $contact['email_address'] : '', 0, isset($contact['id']) ? $contact['id'] : 0);
+
+    return pg_consent_sms_checkout_ask(pg_consent_log_current(pg_consent_log_rows($person)), true);
+}
+
+/**
+ * The SMS box row of the classic billing information and express order
+ * tables, with its opt_in_sms_shown mark.
+ *
+ * @param liveform $form
+ * @return string
+ */
+function pg_consent_sms_checkout_row($form)
+{
+    return
+        '<tr>
+            <td>&nbsp;</td>
+            <td>' . $form->output_field(array('type' => 'checkbox', 'name' => 'opt_in_sms', 'id' => 'opt_in_sms', 'value' => '1', 'class' => 'software_input_checkbox')) . '<label for="opt_in_sms"> ' . h(lang('I want to receive campaign and offer messages by SMS.')) . '</label><input type="hidden" name="opt_in_sms_shown" value="1"></td>
+        </tr>';
 }
 
 /**

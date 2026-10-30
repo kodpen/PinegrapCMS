@@ -57,14 +57,15 @@ function _eo_tree_has_messages_node($tree)
     return false;
 }
 
-// True when the tree carries the e-mail marketing box: a form control the
+// True when the tree carries the e-mail marketing box (or the SMS one for
+// $field 'opt_in_sms'): a form control the
 // visitor answers whose name is `opt_in`, by its eo_field binding (which
 // sets the name at render) or, without one, by its own name attribute.
 // Hidden inputs and buttons ask nothing. Run on the tree after the
 // visibility and section bindings, so a box in a dropped container or in a
 // section replaced by server HTML does not count. The renderer posts
 // opt_in_displayed=true only then, so an answer is known to be the visitor's.
-function _eo_tree_asks_opt_in($tree)
+function _eo_tree_asks_opt_in($tree, $field = 'opt_in')
 {
     if (!is_array($tree)) return false;
     if (isset($tree['type']) && $tree['type'] === 'semantic'
@@ -80,14 +81,14 @@ function _eo_tree_asks_opt_in($tree)
                 if ($a['name'] === 'type') $type = strtolower((string)$a['value']);
             }
         }
-        if ($name === 'opt_in'
+        if ($name === $field
             && !in_array($type, array('hidden', 'submit', 'reset', 'button', 'image'), true)) {
             return true;
         }
     }
     if (!empty($tree['children']) && is_array($tree['children'])) {
         foreach ($tree['children'] as $child) {
-            if (_eo_tree_asks_opt_in($child)) return true;
+            if (_eo_tree_asks_opt_in($child, $field)) return true;
         }
     }
     return false;
@@ -851,7 +852,7 @@ function _eo_known_input_names()
         'billing_zip_code','billing_phone_number','billing_email_address',
         'billing_fax_number','custom_field_1','custom_field_2','po_number',
         'special_offer_code','gift_card_code','referral_source','identitynumber',
-        'notes','tax_exempt','opt_in','agree_terms','update_contact',
+        'notes','tax_exempt','opt_in','opt_in_sms','agree_terms','update_contact',
         'tax_number','tax_office','billing_same_as_shipping',
         'card_number','expiration','card_verification_number',
         // The checkout documents' acceptance boxes (pg_legal_documents_inject()
@@ -1684,6 +1685,8 @@ function _eo_default_designer_tree()
                                 // Plain checkbox (no required) — purely
                                 // permission-based, default off.
                                 $check_row('opt_in', lang('I want to subscribe to the campaign and offer newsletter'), 'pg-eo-opt-in mb-3'),
+                                // The SMS box beside it, only while it is offered.
+                                $check_row('opt_in_sms', lang('I want to receive campaign and offer messages by SMS.'), 'pg-eo-opt-in-sms mb-3', 'shows_opt_in_sms'),
 
                                 // Real <button> elements. eo_action binding
                                 // forces type/name/value attrs at render.
@@ -3248,6 +3251,19 @@ function _eo_render_order_totals($sub, $disc, $tax, $ship, $gc_disc, $total, $su
 // touched a field this request, we don't clobber their value. Without this
 // gate the prefill would constantly overwrite edits with stale order/contact
 // data on every render.
+// Whether the widget offers the SMS marketing box (opt_in_sms): while SMS is
+// on and the buyer has not said yes already (pg_consent_sms_checkout_shown()).
+// Only a signed-in buyer who is not being ghosted has rows to read.
+function _eo_sms_box_shown($ghost)
+{
+    if (!function_exists('pg_consent_sms_checkout_shown')) return false;
+    $contact = array();
+    if (defined('USER_LOGGED_IN') && USER_LOGGED_IN && !$ghost && defined('USER_CONTACT_ID') && USER_CONTACT_ID > 0) {
+        $contact = db_item("SELECT id, email_address FROM contacts WHERE id = '" . (int)USER_CONTACT_ID . "' LIMIT 1");
+    }
+    return pg_consent_sms_checkout_shown($contact);
+}
+
 function _eo_prefill_billing_fields($lf, $order_id, $ghost)
 {
     if (!$lf || $order_id <= 0) return;
@@ -3336,6 +3352,10 @@ function _eo_prefill_billing_fields($lf, $order_id, $ghost)
     }
     if (!$lf->field_in_session('opt_in')) {
         $lf->assign_field_value('opt_in', !empty($order['opt_in']) ? '1' : '');
+    }
+    // The SMS box starts ticked, as the e-mail box of a new order does.
+    if (!$lf->field_in_session('opt_in_sms')) {
+        $lf->assign_field_value('opt_in_sms', '1');
     }
     if (!$lf->field_in_session('tax_exempt')) {
         $lf->assign_field_value('tax_exempt', !empty($order['tax_exempt']) ? '1' : '');
