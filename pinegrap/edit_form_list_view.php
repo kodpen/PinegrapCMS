@@ -436,7 +436,7 @@ if (!$_POST) {
         'icon'=>'design',
         'heading'=>lang('Edit Form List View'),
         'heading_description' => lang('Update this page\'s display of data from multiple submitted forms.'),
-        'cancel'=>array('enable'=>'true','url'=>'view_submitted_forms.php')
+        'cancel'=>array('enable'=>'true','url'=>pg_send_to_url('edit_page.php?id=' . (int)$page['id']))
     ,
             'breadcrumb' => array(array('label' => lang('All My Pages'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_pages.php'), array('label' => lang('Edit Form List View'))),
         ]) . '<main id="content" class="container-fluid">' );

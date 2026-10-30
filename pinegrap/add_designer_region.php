@@ -29,7 +29,7 @@ if (!isset($_POST['name'])) {
         'icon'=>'design',
         'heading'=>lang(array('string'=>'Create {var:1}','vars'=>lang('Designer Region'))),
         'heading_description' => lang('Create a designer region of shared content that can be added to any page style and updated during page editing by any Site designer.'),
-        'cancel'=>array('enable'=>'true','url'=>'view_regions.php')
+        'cancel'=>array('enable'=>'true','url'=>'view_regions.php?filter=all_designer_regions')
     ,
             'breadcrumb' => array(array('label' => lang('All Designer Regions'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_regions.php?filter=all_designer_regions'), array('label' => lang(array('string'=>'Create {var:1}','vars'=>lang('Designer Region'))))),
         ]) . '
