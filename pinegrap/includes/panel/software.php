@@ -546,6 +546,33 @@ function pg_panel_software_update($request, $action)
 
             break;
         case 'download':
+            // The release the check step pinned: its signed manifest, then
+            // its package, each checked before the next is fetched
+            // (pg_vendor_update_download()). Any failure deletes the package
+            // and forgets the pin; the operator starts again from a check.
+            if (PG_VENDOR_API_V1 === true) {
+                $pin = pg_panel_software_update_pin();
+                $download = pg_vendor_update_download($pin);
+
+                if (!$download['ok']) {
+                    pg_vendor_update_forget();
+
+                    if ($download['log'] !== '') {
+                        log_activity($download['log']);
+                    }
+
+                    respond(array(
+                        'status' => 'error',
+                        'message' => $download['message']
+                    ));
+                }
+
+                respond(array(
+                    'status' => 'success',
+                    'message' => lang('Files overwriting...')
+                ));
+            }
+
             //Step 2: download update file from curl
             // The package of this installation's channel. The name is asked for
             // once and reused below, so the file the replace step opens is the
@@ -683,9 +710,18 @@ function pg_panel_software_update($request, $action)
                 ));
             }
 
-            $update_backup = pg_update_backup_create(PG_FUNCTIONS_DIR . '/' . pg_update_package_file());
+            // The verified package of the pin once the Kodpen API is on.
+            $update_package = (PG_VENDOR_API_V1 === true)
+                ? pg_vendor_update_package_path(pg_panel_software_update_pin()['package_file'])
+                : PG_FUNCTIONS_DIR . '/' . pg_update_package_file();
+
+            $update_backup = pg_update_backup_create($update_package);
 
             if (!$update_backup['ok']) {
+                if (PG_VENDOR_API_V1 === true) {
+                    pg_vendor_update_forget();
+                }
+
                 log_activity(lang(array('string' => 'The backup before the software update could not be written: {var:1}', 'vars' => array($update_backup['error']))), $_SESSION['sessionusername']);
 
                 respond(array(
@@ -714,6 +750,25 @@ function pg_panel_software_update($request, $action)
             define('_PATH', PG_FUNCTIONS_DIR);
             // Zip file name — the channel's package, the same name the download step used.
             $filename = pg_update_package_file();
+
+            // The pin's package, checked again right before extraction: the
+            // size, sha256 and in-ZIP version the download step accepted.
+            if (PG_VENDOR_API_V1 === true) {
+                $pin = pg_panel_software_update_pin();
+                $recheck = pg_vendor_update_recheck($pin);
+
+                if ($recheck['outcome'] !== 'extract') {
+                    pg_vendor_update_forget();
+                    log_activity('software update ' . $pin['version'] . (pg_vendor_update_security_event($recheck['reason']) ? ' refused as a security event' : ' refused') . ' at the replace step: ' . $recheck['reason'] . '.');
+
+                    respond(array(
+                        'status' => 'error',
+                        'message' => pg_vendor_update_refusal_message($recheck['reason'])
+                    ));
+                }
+
+                $filename = pg_vendor_update_package_path($pin['package_file']);
+            }
             // Unzip path
             $path = _PATH . "/../";
 
@@ -746,7 +801,11 @@ function pg_panel_software_update($request, $action)
                 exit();
             }
 
-            unlink($filename);
+            if (PG_VENDOR_API_V1 === true) {
+                pg_vendor_update_forget();
+            } else {
+                unlink($filename);
+            }
 
             // The bytecode cache still holds the OLD files; dropped here, not
             // left to its own timestamp check (pg_update_clear_opcache()
@@ -785,6 +844,26 @@ function pg_panel_software_update($request, $action)
     }
 
     exit();
+}
+
+/**
+ * The release the check step pinned for this session, or the update ends
+ * here: the steps after the check read nothing else.
+ *
+ * @return array
+ */
+function pg_panel_software_update_pin()
+{
+    $pin = isset($_SESSION['software']['update']) ? $_SESSION['software']['update'] : null;
+
+    if (!is_array($pin) || (pg_vendor_update_package_path(isset($pin['package_file']) ? $pin['package_file'] : null) === '')) {
+        respond(array(
+            'status' => 'error',
+            'message' => lang('The update was not checked in this session. Start the update again.')
+        ));
+    }
+
+    return $pin;
 }
 
 function pg_panel_software_rollback($request, $action)
