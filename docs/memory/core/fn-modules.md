@@ -96,6 +96,7 @@ description: Generated from the module field of the memory files: each includes/
 - `widgets_attrs`: [[widget-attr-bindings]]
 - `widgets_billing_information`: [[billing-information-widget]]
 - `widgets_cart`: [[cart-tax-estimate]], [[express-order-tax-address]]
+- `widgets_catalog`: [[comments-block-product-page]]
 - `widgets_comments`: [[comments-widget]], [[comments-widget-decisions]], [[comments-widget-email-items]], [[comments-widget-form]], [[comments-widget-pages]], [[comments-widget-replies]], [[comments-widget-watch-staff]]
 - `widgets_comments_recent`: [[comments-widget-recent]], [[comments-widget-recent-reads]]
 - `widgets_conditions`: [[widget-conditions]]

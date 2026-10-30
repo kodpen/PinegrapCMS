@@ -57,6 +57,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - comment-replies.md: Which comment a reply may answer (pg_comment_parent_ok()): same thread, visible to the writer, else refused with the text kept; ?reply_to=, staff mails, API parent_id, deleted parents, page copies
 - comment-thread-rules.md: Comment rules the classic comments block shares with the widget (pg_comments_settings, _allow_new, _viewer, _rows, _thread_order); its HTML stays byte for byte, its quirks kept
 - comment-thread-verify.md: Which thread a posted comment joins (pg_comment_thread_verify()): a record view page only its record, a classic catalog or event page only an item it shows; refusals after the page gates
+- comments-block-product-page.md: The classic comments block on a designed product page (#3546): the product's reviews with the review gate, and its Reviews tab or section left out when it draws nothing; canvas twin
 - comments-moderation-counters.md: Comment moderation on designed record pages: the stored row decides, edit_comment.php and the API rebuild submitted_form_info and mail the record's submitter unless they wrote it
 - comments-watcher-mail.md: Who gets the watcher e-mail about a new comment: each watcher's address once, never the comment's own writer, on every path that publishes it
 - comments-widget-canvas.md: The comments widget on the canvas: visitor states (the e-mail one too), the thread flag twin, hide versus fade, picking a node, sample comments, token previews
