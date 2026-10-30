@@ -40,7 +40,7 @@ if (isset($_POST['parasut_action'])) {
     if ($order_id && defined('ENABLE_PARASUT') && ENABLE_PARASUT && defined('PARASUT_COMPANY_ID') && PARASUT_COMPANY_ID !== '') {
         $parasut_action = $_POST['parasut_action'];
 
-        $redirect = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_order.php?id=' . $order_id;
+        $redirect = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_order.php?id=' . $order_id . '&send_to=' . urlencode(pg_send_to_url(''));
 
         // With the ERP and an e-document provider on, the order's invoice and
         // delivery note are the ERP's; sending the order from here as well
@@ -126,7 +126,7 @@ if (isset($_POST['parasut_action'])) {
         }
     }
 
-    go(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_order.php?id=' . $order_id);
+    go(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_order.php?id=' . $order_id . '&send_to=' . urlencode(pg_send_to_url('')));
 }
 
 // if the form has not just been submitted, then output form
@@ -2636,6 +2636,7 @@ if (!$_POST) {
         <form method="post" id="parasut-invoice-form" class="d-none">
             ' . get_token_field() . '
             <input type="hidden" name="id" value="' . (int)$_GET['id'] . '" />
+            <input type="hidden" name="send_to" value="' . h(pg_send_to_url('')) . '" />
             <input type="hidden" name="parasut_action" value="invoice" />
         </form>
         ';
@@ -2645,6 +2646,7 @@ if (!$_POST) {
             $output_parasut_forms .= '<form method="post" id="parasut-e-irsaliye-form" class="d-none">
             ' . get_token_field() . '
             <input type="hidden" name="id" value="' . (int)$_GET['id'] . '" />
+            <input type="hidden" name="send_to" value="' . h(pg_send_to_url('')) . '" />
             <input type="hidden" name="parasut_action" value="e_irsaliye" />
         </form>';
         }
@@ -2799,7 +2801,7 @@ if (!$_POST) {
             'icon'=>'store',
             'heading'=>lang('View Order'),
             'heading_description' => lang('View the details of this order and update shipping information.'),
-            'cancel'=>array('enable'=>'true','url'=>'view_orders.php')
+            'cancel'=>array('enable'=>'true','url'=>pg_send_to_url('view_orders.php'))
         ,
             'breadcrumb' => array(array('label' => lang('All Orders'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_orders.php'), array('label' => lang('View Order'))),
         )
@@ -3028,6 +3030,7 @@ if (!$_POST) {
         $output_parasut_forms .
         '<form method="post" action="shipment_label.php" id="shipment-label-form" class="d-none">
             ' . get_token_field() . '
+            <input type="hidden" name="send_to" value="' . h(pg_send_to_url('')) . '" />
         </form>
         </main>' . output_footer();
         $liveform->remove_form();
@@ -3375,13 +3378,18 @@ if (!$_POST) {
             output_error(h($response['message']));
         }
         
-        // if the user is going to be sent to the view order screen, then prepare notice
-        if (mb_substr($liveform->get_field_value('send_to'), -15) == 'view_orders.php') {
+        // An order opened without send_to (Create Order, the notification
+        // bell, the dashboard, Ctrl+K) goes back to All Orders, never to the
+        // site's front page.
+        $target = pg_safe_redirect_path($liveform->get_field_value('send_to'), PATH . SOFTWARE_DIRECTORY . '/view_orders.php');
+
+        // if the user is going to be sent to the view orders screen, then prepare notice
+        if (basename((string) parse_url($target, PHP_URL_PATH)) === 'view_orders.php') {
             $liveform_view_orders = new liveform('view_orders');
             $liveform_view_orders->add_notice(lang('The order has been deleted.'));
         }
 
-        header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path($liveform->get_field_value('send_to')));
+        header('Location: ' . URL_SCHEME . HOSTNAME . $target);
         
     // else the user selected to save the order
     } else {
@@ -3478,13 +3486,18 @@ if (!$_POST) {
             output_error(h($response['message']));
         }
         
-        // if the user is going to be sent to the view order screen, then prepare notice
-        if (mb_substr($liveform->get_field_value('send_to'), -15) == 'view_orders.php') {
+        // An order opened without send_to (Create Order, the notification
+        // bell, the dashboard, Ctrl+K) goes back to All Orders, never to the
+        // site's front page.
+        $target = pg_safe_redirect_path($liveform->get_field_value('send_to'), PATH . SOFTWARE_DIRECTORY . '/view_orders.php');
+
+        // if the user is going to be sent to the view orders screen, then prepare notice
+        if (basename((string) parse_url($target, PHP_URL_PATH)) === 'view_orders.php') {
             $liveform_view_orders = new liveform('view_orders');
             $liveform_view_orders->add_notice(lang('The order has been saved.'));
         }
         
-        header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path($liveform->get_field_value('send_to')));
+        header('Location: ' . URL_SCHEME . HOSTNAME . $target);
     }
     
     $liveform->remove_form();
