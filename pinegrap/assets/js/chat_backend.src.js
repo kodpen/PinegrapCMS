@@ -734,7 +734,7 @@
         nameLine.appendChild(el('span', 'pg-chat-row-name fw-semibold', config.ai.label));
 
         var badgeAi = el('span', 'badge rounded-pill theme-success flex-shrink-0', 'AI');
-        badgeAi.style.fontSize = '10px';
+        badgeAi.style.fontSize = '0.625rem';
         nameLine.appendChild(badgeAi);
 
         main.appendChild(nameLine);
@@ -767,7 +767,7 @@
 
         var titleWrap = el('div', 'flex-grow-1 overflow-hidden');
         var titleLine = el('div', 'fw-semibold text-truncate', config.ai.label);
-        titleLine.style.fontSize = '13px';
+        titleLine.style.fontSize = '0.8125rem';
         titleWrap.appendChild(titleLine);
         titleWrap.appendChild(el('small', 'fg-secondary', STR.online));
         header.appendChild(titleWrap);
@@ -1043,7 +1043,7 @@
 
         var titleWrap = el('div', 'flex-grow-1 overflow-hidden');
         var titleLine = el('div', 'fw-semibold text-truncate');
-        titleLine.style.fontSize = '13px';
+        titleLine.style.fontSize = '0.8125rem';
 
         // Header title: name/surname links to the linked contact's edit
         // page, the small @username next to it links to the account's edit
@@ -1054,7 +1054,7 @@
 
         if (headerPeer && headerPeer.username) {
             var accountName = el('span', 'fg-secondary ms-1', '@' + headerPeer.username);
-            accountName.style.fontSize = '11px';
+            accountName.style.fontSize = '0.6875rem';
             accountName.style.fontWeight = 'normal';
             titleLine.appendChild(accountName);
         }
@@ -1273,9 +1273,16 @@
             textarea.style.height = 'auto';
 
             var wanted = textarea.scrollHeight;
+            // The cap is the CSS max-height (6rem), so it grows with the
+            // browser's text size.
+            var cap = parseFloat(window.getComputedStyle(textarea).maxHeight);
 
-            textarea.style.height = Math.min(wanted, 96) + 'px';
-            textarea.style.overflowY = (wanted > 96) ? 'auto' : 'hidden';
+            if (isNaN(cap)) {
+                cap = 96;
+            }
+
+            textarea.style.height = Math.min(wanted, cap) + 'px';
+            textarea.style.overflowY = (wanted > cap) ? 'auto' : 'hidden';
         }
 
         function refreshSendState() {
