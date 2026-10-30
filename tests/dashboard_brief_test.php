@@ -112,3 +112,42 @@ function test_dashboard_brief_next_under_way()
 	pg_assert_true(strpos($html, 'class="pg-next hover-lift is-now"') !== false, 'marked as now');
 	pg_assert_true(strpos($html, '<span class="pg-next-until">Now</span>') !== false, 'says now');
 }
+
+// Card ids of each settings category, read from the registry source so the
+// check needs no language layer.
+function dashboard_brief_settings_cards()
+{
+	$registry = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/settings/registry.php');
+	preg_match_all("/^        '([a-z_]+)' => array\(/m", $registry, $starts, PREG_OFFSET_CAPTURE);
+	$cards = array();
+
+	foreach ($starts[1] as $i => $start) {
+		$end = isset($starts[1][$i + 1]) ? $starts[1][$i + 1][1] : strlen($registry);
+		$block = substr($registry, $start[1], $end - $start[1]);
+
+		if (preg_match("/'sections' => array\((.*?)\n            \),/s", $block, $sections)) {
+			preg_match_all("/'(pgset-[\w-]+)'\s*=>/", $sections[1], $ids);
+			$cards[$start[0]] = $ids[1];
+		}
+	}
+
+	return $cards;
+}
+
+// Every settings link in the brief opens a card its category draws, and the
+// device hint opens the Device card.
+function test_dashboard_brief_settings_links()
+{
+	$brief = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/dashboard/brief.php');
+	$cards = dashboard_brief_settings_cards();
+	pg_assert_true(isset($cards['security']) && in_array('pgset-device', $cards['security'], true), 'registry read');
+
+	preg_match_all("/settings_([a-z_]+)\.php#(pgset-[\w-]+)/", $brief, $links, PREG_SET_ORDER);
+	pg_assert_true(count($links) > 0, 'brief has settings links');
+
+	foreach ($links as $link) {
+		pg_assert_true(isset($cards[$link[1]]) && in_array($link[2], $cards[$link[1]], true), $link[0] . ' names a registry card');
+	}
+
+	pg_assert_true(preg_match("/cap how many devices.*?\n\s*\. \\\$greeting_ask\('settings_security\.php#pgset-device'/", $brief) === 1, 'device hint opens the Device card');
+}
