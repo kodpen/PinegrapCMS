@@ -15,7 +15,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 
 ## Files
 
-- addon-hook-system.md: Plan (approved 2026-10-19, watch list, after payment-driver-layer): add-on packages under includes/addons/ with manifest and hooks so payment, carrier, marketplace and SMS drivers add without forking
+- addon-hook-system.md: Plan (approved 2026-10-19, watch list, not before 2026.11.0 ships): add-on packages under includes/addons/ with manifest and hooks so payment, carrier, marketplace and SMS drivers add without forking
 - agent-channel.md: DRAFT, not to be started (owner, 2026-10-29): a Workspace channel as the messaging space of agents and people: wake rules, claim queue, memory, doors; the full plan stays with the owner
 - ai-agent-prompts.md: Plan (2026-10-21, steps 1, 2, 2b, 3, 4, 5 done): Pinegrap AI's briefing for every agent, one rules block for every prompt, untrusted text framed as data, Claude's instructions from the site
 - bootstrap-6-components.md: Step B9 of plans/bootstrap-6-panel.md: own panel widgets swapped for native Bootstrap 6 components, the conditions research found, what stays as it is
