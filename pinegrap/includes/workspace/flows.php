@@ -364,9 +364,52 @@ function ws_flow_config_normalize($kind, $config)
 }
 
 /**
+ * When a run tells the flow's owner that it ended, as a start box keeps it:
+ * every run, only a run that failed, or never. Pure.
+ *
+ * @return string[]
+ */
+function ws_flow_tell_choices()
+{
+    return array('every', 'failures', 'never');
+}
+
+/**
+ * A start box's tell choice; anything else is every run, as a run always
+ * told before the choice existed. Pure.
+ *
+ * @param mixed $tell
+ * @return string
+ */
+function ws_flow_tell_normalize($tell)
+{
+    return (is_string($tell) && in_array($tell, ws_flow_tell_choices(), true)) ? $tell : 'every';
+}
+
+/**
+ * The tell choice of a graph: its start box's, every run without one. Pure.
+ *
+ * @param array $graph ws_flow_graph_normalize() graph
+ * @return string
+ */
+function ws_flow_tell_of($graph)
+{
+    $kinds = ws_flow_kinds();
+
+    foreach ((array) ($graph['nodes'] ?? array()) as $node) {
+        if (is_array($node) && !empty($kinds[$node['kind'] ?? '']['trigger'])) {
+            return ws_flow_tell_normalize($node['config']['tell'] ?? '');
+        }
+    }
+
+    return 'every';
+}
+
+/**
  * A graph in its kept shape, from an array or its JSON: types cast, unknown
  * keys dropped, labels cut to 160 characters and note texts to 2,000, places
- * held within WS_FLOW_COORD_MAX. An arrow sent without an outcome leaves its
+ * held within WS_FLOW_COORD_MAX. A start box keeps its tell choice
+ * (ws_flow_tell_normalize()) unless it is every run. An arrow sent without an outcome leaves its
  * box on the box's first one (a start box on next, a task when it is done).
  * Nothing is refused here; ws_flow_graph_check() says what is wrong.
  *
@@ -403,6 +446,15 @@ function ws_flow_graph_normalize($graph)
             'y'      => ws_flow_coord($node['y'] ?? 0),
             'config' => ws_flow_config_normalize($kind, $node['config'] ?? array()),
         );
+
+        // A start box says when the run tells the flow's owner it ended
+        // (ws_flow_run_tell_owner()). Every run is kept as no key, so a
+        // graph written before the choice existed reads the same.
+        $tell = !empty($kinds[$kind]['trigger']) ? ws_flow_tell_normalize($node['config']['tell'] ?? '') : 'every';
+
+        if ($tell !== 'every') {
+            $out['nodes'][count($out['nodes']) - 1]['config']['tell'] = $tell;
+        }
 
         if (!isset($kind_of[$id])) {
             $kind_of[$id] = $kind;
