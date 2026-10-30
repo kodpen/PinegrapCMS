@@ -21,7 +21,7 @@ description: The derived value box of a flow (kind value, T3, PR #2701): its all
 - At most `WS_FLOW_DERIVED_VALUE_LENGTH` (4000) characters (#3367). `ws_flow_derived_value()` cuts both inputs and the join there; `ws_flow_derived_fill()` gives each placed value only the room left, then cuts the input there. `mb_substr()`: never mid-UTF-8.
 - Why: one input may cite a value many times (about 58-fold per join), so three chained joins exhausted `memory_limit` in `ws_tick` or a job: the box stayed `running`, the rest of the tick was skipped. Role-3 members build these boxes (#3345).
 - Why 4000: the longest text a message box keeps (`ws_flow_lines(..., 4000)`), so the common landing place gets it whole.
-- Later: a filled text is not cut where it lands (mail body, webhook, MCP arguments, table cell); the check does not warn about repeated citations.
+- Landing (#3754): mail, digest, webhook, summary title cut to `ws_scheduled_text_limits()` (`ws_scheduled_fill_cut()`). Cells: the store refuses; MCP args: JSON.
 
 ## What does the check say?
 - `ws_flow_derived_problems()`: no `a`; no `b` for a rule of two inputs (`ws_flow_derived_two_inputs()`); add_days with a written b that is not a whole number. `ws_flow_derived_loops()`: a box reading itself through derived boxes (`bad_config`).

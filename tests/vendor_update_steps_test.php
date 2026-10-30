@@ -223,7 +223,7 @@ function test_vendor_update_manifest_read()
 	$manifest = array('schema' => 1, 'version' => '2026.11.1', 'channel' => 'stable', 'artifacts' => array($full, $artifact));
 
 	pg_assert_same(
-		array('version' => '2026.11.1', 'channel' => 'stable', 'build' => '', 'update' => array('size' => 31000000, 'sha256' => str_repeat('ab', 32))),
+		array('version' => '2026.11.1', 'channel' => 'stable', 'build' => '', 'git_ref' => '', 'update' => array('size' => 31000000, 'sha256' => str_repeat('ab', 32))),
 		pg_vendor_manifest_read(json_encode($manifest))
 	);
 
@@ -233,6 +233,10 @@ function test_vendor_update_manifest_read()
 
 	pg_assert_same('bbbbbbb.202611051500', pg_vendor_manifest_read(json_encode($beta))['build'], 'a beta build');
 
+	// The tag or commit the build was made from, optional.
+	$beta['git_ref'] = 'v2026.11.1-beta.202611051500';
+	pg_assert_same('v2026.11.1-beta.202611051500', pg_vendor_manifest_read(json_encode($beta))['git_ref'], 'a git_ref');
+
 	$broken = array(
 		'two update artifacts' => array('artifacts', array($artifact, $artifact)),
 		'no update artifact'   => array('artifacts', array($full)),
@@ -241,6 +245,8 @@ function test_vendor_update_manifest_read()
 		'short sha256'         => array('artifacts', array(array('kind' => 'update', 'size' => 1, 'sha256' => 'ab'))),
 		'version missing'      => array('version', null),
 		'build not a string'   => array('build', 7),
+		'git_ref not a string' => array('git_ref', 7),
+		'git_ref with a slash' => array('git_ref', 'refs/tags/x'),
 	);
 
 	foreach ($broken as $label => $change) {
@@ -376,4 +382,24 @@ function test_vendor_update_refusal_texts()
 	pg_assert_true(pg_vendor_update_security_event('manifest_mismatch'), 'another manifest');
 	pg_assert_false(pg_vendor_update_security_event('signature_unverifiable'), 'a server without OpenSSL');
 	pg_assert_false(pg_vendor_update_security_event('not_newer'), 'already installed');
+}
+
+// The verified manifest's git_ref goes into the pin; the installed build is
+// the build file's.
+function test_vendor_update_git_ref_pin_and_installed_build()
+{
+	pg_assert_same(
+		array('version' => '2026.11.0', 'build' => 'b1', 'git_ref' => 'v2026.11.0-beta.1'),
+		array_intersect_key(pg_vendor_update_pin_manifest(array('version' => '2026.11.0', 'build' => 'b1'), array('git_ref' => 'v2026.11.0-beta.1')), array('version' => 1, 'build' => 1, 'git_ref' => 1))
+	);
+	pg_assert_same('', pg_vendor_update_pin_manifest(array('version' => '2026.11.0', 'git_ref' => 'old'), array('git_ref' => ''))['git_ref'], 'none in the manifest');
+
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/update.php');
+
+	foreach (array('function pg_vendor_update_site(', 'function pg_vendor_release_check(') as $name) {
+		$start = strpos($source, $name);
+		$body = substr($source, $start, strpos($source, "\n}\n", $start) - $start);
+
+		pg_assert_contains("pg_update_build_read()['build']", $body, $name);
+	}
 }

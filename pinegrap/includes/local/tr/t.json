@@ -1921,6 +1921,8 @@
     "The file {var:1} is not an image.": "{var:1} dosyası bir görsel değil.",
     "The file, {var:1}, has been uploaded.": "{var:1} dosyası yüklendi.",
     "The files could not be loaded.": "Dosyalar yüklenemedi.",
+    "The files of the new build are in place, but data/update_build.json could not be written. Run Repair Software to finish the update.": "Yeni derlemenin dosyaları yerinde, ancak data/update_build.json yazılamadı. Güncellemeyi tamamlamak için Yazılımı Onar'ı çalıştırın.",
+    "The files of the new build are in place, but the database could not be prepared for its upgrade steps. Run Repair Software to finish the update.": "Yeni derlemenin dosyaları yerinde, ancak veritabanı yükseltme adımlarına hazırlanamadı. Güncellemeyi tamamlamak için Yazılımı Onar'ı çalıştırın.",
     "The files that are replaced and the database are backed up first (data/backups/pre-update-….zip). Repair Software can roll the files back to it.": "Değiştirilecek dosyalar ve veritabanı önce yedeklenir (data/backups/pre-update-….zip). Yazılımı Onar dosyaları bu yedeğe geri alabilir.",
     "The final-consumer number is not written to an account card.": "Nihai tüketici numarası cari kartına yazılmaz.",
     "The firewall ban list could not be read.": "Güvenlik duvarı yasak listesi okunamadı.",
