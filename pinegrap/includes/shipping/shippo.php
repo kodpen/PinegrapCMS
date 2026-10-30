@@ -92,7 +92,7 @@ function pg_label_shippo_fields()
         );
     }
 
-    return $fields;
+    return array_merge($fields, pg_label_customs_fields());
 }
 
 /**

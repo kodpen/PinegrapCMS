@@ -137,6 +137,12 @@ function test_carrier_label_shippo_is_a_builtin_driver()
 		'sender_country'  => 'text required',
 		'sender_phone'    => 'text',
 		'sender_email'    => 'text',
+		'customs_contents'       => 'select',
+		'customs_incoterm'       => 'select',
+		'customs_non_delivery'   => 'select',
+		'customs_hs_code'        => 'text',
+		'customs_origin_country' => 'select',
+		'customs_signer'         => 'text',
 	), $fields);
 }
 
