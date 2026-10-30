@@ -220,7 +220,7 @@ if ($action != 'import') {
                 <div class="col-12">
                     ' . $liveform->output_errors() . '
                     ' . $liveform->output_notices() . '
-            <form action="' . h($_SERVER['PHP_SELF']) . '" method="' . $output_method .'">
+            <form id="import_design_form" action="' . h($_SERVER['PHP_SELF']) . '" method="' . $output_method .'">
                 ' . $output_fields;
 
     if ($action == 'scan') {
@@ -311,14 +311,50 @@ if ($action != 'import') {
                         <div class=" btn-group flex-wrap justify-content-center">
                             ' . $output_buttons . '
                         </div>
+                        ' . ($action == 'scan' ? '<p class="small fg-secondary mt-2 mb-0" id="import_design_status" role="status" aria-live="polite"></p>' : '') . '
                     </div>
                 </nav>
             </form>
                 </div>
             </div>
         
-</main>' .
-        output_footer();
+</main>';
+
+    if ($action == 'scan') {
+        echo '
+<script>
+(function () {
+    // The scan-result form is sent once: the first submit goes, any later
+    // one is cancelled until the page leaves. Import fetches every scanned
+    // address and writes the pages with nothing sent to the browser, far
+    // longer than the window guard\'s 3 seconds; a second press would wait
+    // for the first run, find the scanned list already taken and never show
+    // the result. The button is never disabled, so its value travels.
+    var import_design_sent = false;
+    var form = document.getElementById("import_design_form");
+    var status = document.getElementById("import_design_status");
+    if (!form) { return; }
+    window.addEventListener("submit", function (event) {
+        if (event.target !== form) { return; }
+        if (import_design_sent) { event.preventDefault(); return; }
+        if (event.defaultPrevented) { return; }
+        import_design_sent = true;
+        if (event.submitter && event.submitter.value === "Import") {
+            form.setAttribute("aria-busy", "true");
+            if (status) { status.textContent = "' . escape_javascript(lang('Importing…')) . '"; }
+        }
+    });
+    window.addEventListener("pageshow", function (event) {
+        if (!event.persisted) { return; }
+        import_design_sent = false;
+        form.removeAttribute("aria-busy");
+        if (status) { status.textContent = ""; }
+    });
+})();
+</script>';
+    }
+
+    echo output_footer();
 
     $liveform->unmark_errors();
     $liveform->clear_notices();
