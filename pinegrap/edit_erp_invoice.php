@@ -780,6 +780,12 @@ if (($reminder['phase'] !== 'off') || ($reminder['notified_at'] > 0) || ($remind
         }
     }
 
+    $sms_queued_at = erp_overdue_sms_queued_at((int) $invoice['account_id'], $reminder['notified_at'], $reminder['second_notified_at']);
+
+    if ($sms_queued_at > 0) {
+        $reminder_lines[] = lang(array('string' => 'A reminder text message to the customer was queued on {var:1}.', 'vars' => $date_stamp($sms_queued_at)));
+    }
+
     $output_reminder_lines = '';
     foreach ($reminder_lines as $line) {
         $output_reminder_lines .= '<div>' . h($line) . '</div>';

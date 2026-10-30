@@ -3,7 +3,8 @@
  * Pinegrap - Enterprise Website Platform
  *
  * The text messages the shop sends on its own: an order received, shipped,
- * delivered, and the back-in-stock notice a customer asked for.
+ * delivered, the back-in-stock notice a customer asked for, and the ERP
+ * module's overdue receivable reminder.
  *
  * Each event has a switch and a template on the Communication settings' SMS
  * Messages card. They are kept in connect_apps under 'sms_templates', beside
@@ -33,7 +34,8 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  *
  * @return array event => kind (pg_sms_kinds()), label, text (the built-in
  *               template), fields (the ^^name^^ fields it may use), note
- *               (optional: what switching it on changes)
+ *               (optional: what switching it on changes), erp (optional:
+ *               only offered while the ERP module is on)
  */
 function pg_sms_message_events()
 {
@@ -83,6 +85,17 @@ function pg_sms_message_events()
             'text'   => lang('^^store^^: Your sign-in code is ^^code^^. Do not share it with anyone.'),
             'fields' => array('store', 'code'),
             'note'   => lang('While this is on, a member account (User role) with two-step verification may ask for a code to its contact\'s mobile phone number instead of the code from its app. Staff accounts are never offered it.'),
+        ),
+        // Sent with the overdue receivables digest (includes/erp/notify.php):
+        // one per account at each of its two notices. A reminder of a debt,
+        // so it carries the total and nothing to sell.
+        'erp_overdue' => array(
+            'kind'   => 'reminder',
+            'label'  => lang('Overdue receivable reminder'),
+            'text'   => lang('^^store^^: ^^count^^ document(s) of ^^account^^ are past their due date. Total due: ^^total^^. If you have already paid, please disregard this message.'),
+            'fields' => array('store', 'account', 'count', 'total'),
+            'note'   => lang('Sent with the overdue receivable reminders of the ERP module, once per account at each of the two notices, to the account\'s phone number or else its contact\'s mobile phone number. An account set not to receive reminders is not texted.'),
+            'erp'    => true,
         ),
     );
 }
@@ -250,6 +263,42 @@ function pg_sms_message_field_list($fields)
 }
 
 /**
+ * Whether the card offers an event: an ERP event only while the module is on.
+ *
+ * @param array $definition pg_sms_message_events() row
+ * @param bool  $erp_on     ERP_ENABLED
+ * @return bool
+ */
+function pg_sms_message_event_shown($definition, $erp_on)
+{
+    return empty($definition['erp']) || $erp_on;
+}
+
+/**
+ * An event the card does not offer, carried in hidden fields: a save keeps
+ * its switch and text for when the module is switched on again.
+ *
+ * @param string $event
+ * @param array  $stored pg_sms_message_settings() row
+ * @return string
+ */
+function pg_sms_message_event_hidden_fields($event, $stored)
+{
+    $name = 'sms_msg_' . $event . '_';
+    $html = '';
+
+    if (!empty($stored['on'])) {
+        $html .= '<input type="hidden" name="' . h($name) . 'on" value="1"/>';
+    }
+
+    if (isset($stored['text']) && ((string) $stored['text'] !== '')) {
+        $html .= '<input type="hidden" name="' . h($name) . 'text" value="' . h($stored['text']) . '"/>';
+    }
+
+    return $html;
+}
+
+/**
  * Checks the SMS Messages card before the Communication settings are
  * written: a refused template is marked, so nothing of the category is.
  *
@@ -315,14 +364,22 @@ function pg_sms_message_settings_fields()
 
     $html = '
                                         <input type="hidden" name="sms_msg_card" value="1"/>
-                                        <div class="col-12 form-text">' . lang('Sent to the order\'s billing phone number, or for a product back in stock to the number the customer gave, if it is a mobile number and SMS is set up. These are informational messages: put no promotion, discount or campaign in them, or they need the recipient\'s consent recorded in İYS. Leave a text empty to send the built-in one.') . '</div>';
+                                        <div class="col-12 form-text">' . lang('Sent to the order\'s billing phone number, for a product back in stock to the number the customer gave, or for an overdue receivable to the ERP account\'s phone number, if it is a mobile number and SMS is set up. These are informational messages: put no promotion, discount or campaign in them, or they need the recipient\'s consent recorded in İYS. Leave a text empty to send the built-in one.') . '</div>';
 
     if (!pg_sms_ready()) {
         $html .= '
                                         <div class="col-12"><div class="alert theme-warning mb-0">' . lang('SMS is not set up: no message is sent until an SMS account is saved and switched on.') . '</div></div>';
     }
 
+    $erp_on = defined('ERP_ENABLED') && ERP_ENABLED;
+
     foreach (pg_sms_message_events() as $event => $definition) {
+        if (!pg_sms_message_event_shown($definition, $erp_on)) {
+            $html .= '
+                                        ' . pg_sms_message_event_hidden_fields($event, $settings[$event]);
+            continue;
+        }
+
         $name = 'sms_msg_' . $event . '_';
         $text = ($settings[$event]['text'] !== '') ? $settings[$event]['text'] : $definition['text'];
 
@@ -385,8 +442,8 @@ function pg_sms_message_queue($event, $to, $fields, $reference)
         return false;
     }
 
-    // News of an order or of stock is no use days late: a queue held up that
-    // long (the general job stopped) drops it instead.
+    // News of an order, of stock or of a debt is no use days late: a queue
+    // held up that long (the general job stopped) drops it instead.
     $queued = pg_sms_enqueue($to, pg_sms_message_text($event, $fields, $settings), $definitions[$event]['kind'], array(
         'reference'  => $reference,
         'expires_at' => time() + 2 * 86400,
