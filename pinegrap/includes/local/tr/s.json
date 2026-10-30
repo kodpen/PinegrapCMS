@@ -2791,7 +2791,7 @@
     "session token was revoked": "oturum belirteci iptal edilmiş",
     "sessions ended because the email address was blocked ({var:1})": "e-posta adresi engellendiği için oturumlar sonlandırıldı ({var:1})",
     "set": "takım",
-    "set-password": "sifre-belirle",
+    "set-password": "parola-belirle",
     "settings were modified": "ayarlar düzenlendi",
     "setups, organization": "düzenler, organizasyon",
     "shared component ({var:1}) was closed to content editors": "ortak bileşen ({var:1}) içerik düzenleyicilere kapatıldı",
