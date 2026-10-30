@@ -221,7 +221,7 @@ if ($edoc_filter !== '') {
 
 $where = !empty($conditions) ? (' WHERE ' . implode(' AND ', $conditions)) : '';
 
-$invoices = (array) db_items("SELECT i.*, a.title AS live_account_title, o.order_number,
+$invoices = (array) db_items("SELECT i.*, a.title AS live_account_title, o.order_number, o.id AS order_exists,
         " . erp_aging_due_sql('i') . " AS effective_due
     FROM erp_invoices i
     LEFT JOIN erp_accounts a ON i.account_id = a.id
@@ -293,9 +293,7 @@ foreach ($invoices as $invoice) {
         ? '<span class="fg-secondary fst-italic">' . lang('Draft') . '</span>'
         : h($invoice['full_number']);
 
-    $order_cell = ((int) $invoice['order_id'] > 0)
-        ? '<a href="view_order.php?id=' . (int) $invoice['order_id'] . '">' . h($invoice['order_number'] ?: ('#' . (int) $invoice['order_id'])) . '</a>'
-        : '';
+    $order_cell = erp_order_link_html($invoice['order_id'], $invoice['order_number'], $invoice['order_exists'] !== null);
 
     // Figures in the document's own currency; a foreign document also shows
     // what its total came to in the base currency.

@@ -40,7 +40,7 @@ $self_action = h('edit_erp_invoice.php' . (($send_to !== '') ? '?send_to=' . url
 $invoice_id = is_scalar($_REQUEST['id'] ?? null) ? (int) $_REQUEST['id'] : 0;
 
 $invoice = ($invoice_id > 0)
-    ? db_item("SELECT i.*, a.title AS live_account_title, a.tax_number AS live_tax_number, a.tax_office AS live_tax_office, o.order_number
+    ? db_item("SELECT i.*, a.title AS live_account_title, a.tax_number AS live_tax_number, a.tax_office AS live_tax_office, o.order_number, o.id AS order_exists
         FROM erp_invoices i
         LEFT JOIN erp_accounts a ON i.account_id = a.id
         LEFT JOIN orders o ON i.order_id = o.id
@@ -627,7 +627,7 @@ if (!empty($returns)) {
 }
 
 $output_order = ((int) $invoice['order_id'] > 0)
-    ? '<a href="view_order.php?id=' . (int) $invoice['order_id'] . '">' . h($invoice['order_number'] ?: ('#' . (int) $invoice['order_id'])) . '</a>'
+    ? erp_order_link_html($invoice['order_id'], $invoice['order_number'], $invoice['order_exists'] !== null)
     : '<span class="fg-secondary">&mdash;</span>';
 
 // The quote the invoice was made from (8.58), when it is still there.
