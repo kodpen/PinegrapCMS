@@ -34,8 +34,7 @@ function pg_dashboard_widget_8($request, $user)
             FROM orders
             LEFT JOIN user ON orders.user_id = user.user_id
             LEFT JOIN contacts ON orders.contact_id = contacts.id
-            LEFT JOIN ship_tos ON orders.id = ship_tos.order_id
-            WHERE status != 'incomplete'
+            WHERE orders.status != 'incomplete'
             ORDER BY orders.order_date DESC
             LIMIT 50";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
@@ -212,7 +211,7 @@ function pg_dashboard_widget_8($request, $user)
             'id' => 'w8_spark',
             'rgb' => '5,150,105',
             'unit' => lang('orders today'),
-            'series' => pg_activity_daily('orders', 'orders.order_date', " AND (orders.status = 'complete')"),
+            'series' => pg_activity_daily('orders', 'orders.order_date', " AND (orders.status != 'incomplete')"),
         ));
 
         // Orders and carts side by side rather than behind tabs. They
