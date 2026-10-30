@@ -37,4 +37,8 @@ description: Button recipes, menu colour rule, shared toolbar CSS classes, card 
 - `editor_select_image.php` does the same: the picker opens as a 390 px tab on a phone (zoom off), so `#esi_toolbar` wraps and the filter pill takes a full row, its fields `flex: 1 1 0`.
 - A card header's right-hand button cluster (`ms-auto d-flex`) carries `flex-wrap justify-content-end`: `.btn` is nowrap, and four of them pushed `marketplace_settings.php` sideways.
 
+## Which screens keep their own phone toolbar rules?
+- `editor_select_image.php` (`#esi_toolbar`) and the prototype viewer bar (`includes/fn/prototype.php`, `.pg-proto-bar`) do not use the shared classes.
+- Their phone rules give the filter pill / page navigation a full-width line but no `order`: the bar wraps at markup position (title, filters or Prev/Pages/Next, then the buttons), so Tab and screen readers follow the rows as drawn (WCAG 2.4.3). Pinned by `tests/toolbar_local_order_test.php` (PR #NNNN).
+
 Related: docs/memory/ui/admin-screen-toolbar.md

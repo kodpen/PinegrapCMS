@@ -53,7 +53,7 @@ function test_phone_width_image_picker_toolbar_wraps()
 	pg_assert_true(preg_match('/@media \(max-width: 767\.98px\) \{(.*?)\n\}/s', $source, $block) === 1, 'phone block exists');
 
 	pg_assert_true(preg_match('/#esi_toolbar\s*\{[^}]*flex-wrap: wrap/', (isset($block[1]) ? $block[1] : "")) === 1, 'toolbar wraps');
-	pg_assert_true(preg_match('/#files_nav_controls\s*\{[^}]*order:[^}]*flex-basis: 100%/', (isset($block[1]) ? $block[1] : "")) === 1, 'filters take their own row');
+	pg_assert_true(preg_match('/#files_nav_controls\s*\{[^}]*flex-basis: 100%/', (isset($block[1]) ? $block[1] : "")) === 1, 'filters take their own row');
 	pg_assert_true(preg_match('/\.esi-field,\s*\.esi-search\s*\{[^}]*flex: 1 1 0[^}]*min-width: 0/', (isset($block[1]) ? $block[1] : "")) === 1, 'fields share the row');
 }
 
