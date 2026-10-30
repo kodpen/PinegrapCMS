@@ -124,3 +124,34 @@ function test_erp_account_form_save_fields_country_fallback()
 
 	pg_assert_same('DE', $chosen['country_code'], 'a chosen country wins over the fallback');
 }
+
+// The liveform stand-in that also collects the marked errors.
+class pg_test_account_form_marks extends pg_test_account_form_post
+{
+	public $errors = array();
+
+	public function mark_error($name, $message)
+	{
+		$this->errors[$name] = $message;
+	}
+}
+
+function pg_test_account_form_marks($overrides = array())
+{
+	return new pg_test_account_form_marks(pg_test_account_form_post($overrides)->values);
+}
+
+// The main e-mail address is checked like the invoice one: a typo is
+// marked, an empty box and a real address with a long top-level domain are not.
+function test_erp_account_form_check_formats_email()
+{
+	$form = pg_test_account_form_marks(array('email' => 'ali@firma'));
+	erp_account_form_check_formats($form, 'TR');
+	pg_assert_true(isset($form->errors['email']), 'typo marked');
+
+	foreach (array('', 'info@firma.istanbul', ' info@example.com ') as $email) {
+		$form = pg_test_account_form_marks(array('email' => $email));
+		erp_account_form_check_formats($form, 'TR');
+		pg_assert_false(isset($form->errors['email']), 'not marked: ' . $email);
+	}
+}

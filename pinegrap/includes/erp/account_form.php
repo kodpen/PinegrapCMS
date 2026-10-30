@@ -833,6 +833,14 @@ function erp_account_form_check_formats($liveform, $country_code = '')
         $liveform->mark_error('credit_limit', lang('Enter the credit limit as an amount, or leave it empty for none.'));
     }
 
+    // Checked like the invoice address: the invoice mail falls back to it,
+    // and the mails skip an address filter_var() refuses.
+    $email = trim((string) $liveform->get_field_value('email'));
+
+    if (($email !== '') && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $liveform->mark_error('email', lang('Please enter a valid email address.'));
+    }
+
     $invoice_email = trim((string) $liveform->get_field_value('invoice_email'));
 
     if (($invoice_email !== '') && !filter_var($invoice_email, FILTER_VALIDATE_EMAIL)) {
