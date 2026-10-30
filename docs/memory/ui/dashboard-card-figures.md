@@ -1,6 +1,6 @@
 ---
 name: dashboard-card-figures
-description: Dashboard card figures: the brief's "this week", visitor "Last 12 Months", open-ended offers, currency rates, Activity job rows, job summaries kept out of the site log
+description: Dashboard card figures: rows counted like their lists, the brief's "this week", visitor "Last 12 Months", open-ended offers, currency rates, Activity job rows, job summaries kept out of the site log
 ---
 
 ## What is "this week" on the dashboard?
@@ -13,6 +13,11 @@ description: Dashboard card figures: the brief's "this week", visitor "Last 12 M
 ## How does the Offers card show an offer with no end?
 - An open-ended offer's `end_date` is `PG_OFFER_OPEN_END_DATE` (2099-12-31, `edit_offer_f.php`); `_pg_offer_days_left()` gives null for it and the card prints "Open-ended" (the list's word) instead of 26728 days (#2047).
 - Current offers (enabled, started, not ended) and the last 20 expired ones are two queries: one list ordered by end date let 60 expired offers push every open-ended one out. Expired end dates print in the site's date format.
+
+## Which rows do the Orders, stock and new-contacts figures count?
+- The same rows as the list they summarise or link to (#3721). The Orders card headline (`widget_8.php`) counts `orders.status != 'incomplete'` like its list, the Activity tile and the greeting; it counted only `complete`, so exported or cancelled orders left the headline but stayed in the list. The list has no `ship_tos` join: it listed a multi-recipient order once per recipient.
+- Every product count and row on the Operations Desk stock lane (`widget_9.php`), the E-Commerce Summary stock line (`widget_3.php`) and the greeting's out-of-stock and low-stock counts carries `pg_catalog_bin_live_sql('products')`, as the products list leaves the Recycle Bin out.
+- The greeting's "people joined this week" for a User (role 3) counts `COUNT(DISTINCT contacts.id)` in `get_items_user_can_edit('contact_groups', …)` only, 0 with no group, as `view_contacts.php` shows them. Test: `tests/dashboard_counts_match_lists_test.php`.
 
 ## Small rules on other cards
 - Currency rates (`widget_16.php`): the rate is `pg_format_number(..., 5)` like the "1 $ = …" line; the edit link carries no `send_to` (the card is drawn by `api.php`, and `edit_currency.php` returns to the currency list anyway).

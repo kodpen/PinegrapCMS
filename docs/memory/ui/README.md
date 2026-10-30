@@ -90,7 +90,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - dark-theme-panel-css.md: backend.src.css swept for fixed light fills and dark text after Bootstrap 6: .pg-table-light on tokens (black head text in dark), tone rows' band under the card fill, what stays fixed
 - dark-theme-text-colour.md: Panel text on the page background is fg-body, never fg-black (black in both themes); a menu inside a scrolling table gets data-bs-strategy="fixed"
 - dashboard-card-drag.md: Dashboard card drag: the grip pinned to the right of the header is the only handle, mouse drags at once, touch keeps a short hold, keyboard unchanged
-- dashboard-card-figures.md: Dashboard card figures: the brief's "this week", visitor "Last 12 Months", open-ended offers, currency rates, Activity job rows, job summaries kept out of the site log
+- dashboard-card-figures.md: Dashboard card figures: rows counted like their lists, the brief's "this week", visitor "Last 12 Months", open-ended offers, currency rates, Activity job rows, job summaries kept out of the site log
 - dashboard-hover-figures.md: Dashboard figures and states printed as text instead of a native title: shipped state, firewall request count and score limit, address and request counts, Search Console basis, Away
 - dashboard-keyboard.md: Dashboard keyboard and screen-reader access: Online Engagement rows, focusable System Status chips and their links, focus kept across the refresh
 - dashboard-percent-and-empty-text.md: Dashboard wording: '{var:1}%' percentage figures and the whole-sentence empty states of each card
