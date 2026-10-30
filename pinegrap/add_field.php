@@ -74,7 +74,7 @@ if ((isset($_REQUEST['page_id'])) && ($_REQUEST['page_id'] != '')) {
     
     // validate user's access
     if (check_edit_access($folder_id) == false) {
-        log_activity('access denied to add field to ' . $form_type . ' because user does not have access to modify folder that ' . $form_type . ' is in', $_SESSION['sessionusername']);
+        log_activity(lang(array('string' => 'access denied to add field to {var:1} because user does not have access to modify folder that {var:1} is in', 'vars' => array($form_type))), $_SESSION['sessionusername']);
         output_error(lang('Access denied.'));
     }
 

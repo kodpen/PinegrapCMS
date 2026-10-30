@@ -3,7 +3,7 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Tests for the language file helpers (includes/fn/lang_files.php) and the
- * readers in includes/fn/core.php (pg_lang_read_folder(), pg_lang_source(),
+ * readers in includes/fn/lang.php (pg_lang_read_folder(), pg_lang_source(),
  * pg_lang_map()): the shard a key belongs to, the exact text of a language
  * file, splitting, adding keys, the three-way merge tools/tr_resolve.php
  * uses, the checks tools/check_lang.php runs on a shard, the Turkish shards

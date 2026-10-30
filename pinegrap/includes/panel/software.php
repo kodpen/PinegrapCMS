@@ -107,7 +107,7 @@ function pg_panel_software_backup($request, $action)
                     rmdir($backup_location . $backup_folder_name);
                 }
 
-                log_activity('Creating Mysql Dumb is Failure. Because: ' . $backups_error_message, $_SESSION['sessionusername']);
+                log_activity(lang(array('string' => 'The database dump for the software backup failed: {var:1}', 'vars' => array($backups_error_message))), $_SESSION['sessionusername']);
                 //return error json output
                 $response = array(
                     'status' => 'error',
@@ -233,7 +233,7 @@ function pg_panel_software_backup($request, $action)
                         if (file_exists($backup_location . $backup_folder_name . '/layouts')) {
                             $liveform_backups = new liveform('backups');
 
-                            log_activity("Software Backup (" . $backup_folder_name . ") Success", $_SESSION['sessionusername']);
+                            log_activity(lang(array('string' => 'Software Backup ({var:1}) Success', 'vars' => array($backup_folder_name))), $_SESSION['sessionusername']);
                             // Add notice to liveform.
                             $liveform_backups->add_notice('Software Backup (' . $backup_folder_name . ') Create Success.');
                             //return success json output
@@ -384,7 +384,7 @@ function pg_panel_software_update($request, $action)
                 }
 
                 if ($server['error'] === 'curl_error') {
-                    log_activity('software update check could not communicate with the software update server, so it is not known if there is a software update available. cURL Error Number: ' . $server['curl_errno'] . '. cURL Error Message: ' . $server['curl_error'] . '.');
+                    log_activity(lang(array('string' => 'software update check could not communicate with the software update server, so it is not known if there is a software update available. cURL Error Number: {var:1}. cURL Error Message: {var:2}.', 'vars' => array($server['curl_errno'], $server['curl_error']))));
                     respond(array(
                         'status' => 'error',
                         'message' => lang('No access to the update server.') . pg_curl_tls_hint($server['curl_errno'], true)
@@ -392,7 +392,7 @@ function pg_panel_software_update($request, $action)
                 }
 
                 if ($server['error'] !== '') {
-                    log_activity('software update check received an invalid response from the software update server, so it is not known if there is a software update available');
+                    log_activity(lang('software update check received an invalid response from the software update server, so it is not known if there is a software update available'));
                     respond(array(
                         'status' => 'error',
                         'message' => lang('No response from the update server.')
@@ -435,7 +435,7 @@ function pg_panel_software_update($request, $action)
 
             if ($server['error'] === 'curl_error') {
                 log_activity(
-                    'software update check could not communicate with the software update server, so it is not known if there is a software update available. cURL Error Number: ' . $server['curl_errno'] . '. cURL Error Message: ' . $server['curl_error'] . '.'
+                    lang(array('string' => 'software update check could not communicate with the software update server, so it is not known if there is a software update available. cURL Error Number: {var:1}. cURL Error Message: {var:2}.', 'vars' => array($server['curl_errno'], $server['curl_error'])))
                 );
                 //return error json output
                 $response = array(
@@ -447,7 +447,7 @@ function pg_panel_software_update($request, $action)
             }
 
             if ($server['error'] === 'invalid_response') {
-                log_activity('software update check received an invalid response from the software update server, so it is not known if there is a software update available');
+                log_activity(lang('software update check received an invalid response from the software update server, so it is not known if there is a software update available'));
                 //return error json output
                 $response = array(
                     'status' => 'error',
@@ -602,7 +602,7 @@ function pg_panel_software_update($request, $action)
             // as pinegrap_software_update.zip and fails three steps later
             // as an unexplained archive error.
             if ($raw !== false && $http_status !== 200) {
-                log_activity('software update download returned HTTP ' . $http_status . ' instead of the update package.');
+                log_activity(lang(array('string' => 'software update download returned HTTP {var:1} instead of the update package.', 'vars' => array($http_status))));
 
                 $response = array(
                     'status' => 'error',
@@ -615,7 +615,7 @@ function pg_panel_software_update($request, $action)
             // A transfer cut short mid-stream is not an error to cURL
             // either; compare against the length the server promised.
             if ($raw !== false && $expected_bytes > 0 && strlen($raw) < $expected_bytes) {
-                log_activity('software update download was truncated: ' . strlen($raw) . ' of ' . $expected_bytes . ' bytes.');
+                log_activity(lang(array('string' => 'software update download was truncated: {var:1} of {var:2} bytes.', 'vars' => array(strlen($raw), $expected_bytes))));
 
                 $response = array(
                     'status' => 'error',
@@ -626,7 +626,7 @@ function pg_panel_software_update($request, $action)
             }
 
             if ($raw !== false && !pg_looks_like_zip($raw)) {
-                log_activity('software update download was not a zip archive.');
+                log_activity(lang('software update download was not a zip archive.'));
 
                 $response = array(
                     'status' => 'error',
@@ -639,7 +639,7 @@ function pg_panel_software_update($request, $action)
             if ($raw === false) {
                 // there is an error about download so notice user and log activiy
                 log_activity(
-                    'software update file get could not communicate with the software update server, may its about update server so try it later. cURL Error Number: ' . $curl_errno . '. cURL Error Message: ' . $curl_error . '.'
+                    lang(array('string' => 'software update download could not reach the software update server; try again later. cURL Error Number: {var:1}. cURL Error Message: {var:2}.', 'vars' => array($curl_errno, $curl_error)))
                 );
                 //return error json output
                 $response = array(
@@ -759,7 +759,9 @@ function pg_panel_software_update($request, $action)
 
                 if ($recheck['outcome'] !== 'extract') {
                     pg_vendor_update_forget();
-                    log_activity('software update ' . $pin['version'] . (pg_vendor_update_security_event($recheck['reason']) ? ' refused as a security event' : ' refused') . ' at the replace step: ' . $recheck['reason'] . '.');
+                    log_activity(pg_vendor_update_security_event($recheck['reason'])
+                        ? lang(array('string' => 'software update {var:1} refused as a security event at the replace step: {var:2}.', 'vars' => array($pin['version'], $recheck['reason'])))
+                        : lang(array('string' => 'software update {var:1} refused at the replace step: {var:2}.', 'vars' => array($pin['version'], $recheck['reason']))));
 
                     respond(array(
                         'status' => 'error',
@@ -788,10 +790,10 @@ function pg_panel_software_update($request, $action)
             $extract = pg_extract_archive($filename, $path);
 
             if (!$extract['ok']) {
-                log_activity('software update extraction failed: ' . $extract['message']
-                    . (!empty($extract['missing']) ? ' Missing: ' . implode(', ', array_slice($extract['missing'], 0, 10)) : '')
-                    . (!empty($extract['stale']) ? ' Not replaced: ' . implode(', ', array_slice($extract['stale'], 0, 10)) : '')
-                    . (!empty($extract['blocked']) ? ' Cannot be replaced: ' . implode(', ', array_slice($extract['blocked'], 0, 10)) : ''));
+                log_activity(lang(array('string' => 'software update extraction failed: {var:1}', 'vars' => array($extract['message'])))
+                    . (!empty($extract['missing']) ? ' ' . lang(array('string' => 'Missing: {var:1}', 'vars' => array(implode(', ', array_slice($extract['missing'], 0, 10))))) : '')
+                    . (!empty($extract['stale']) ? ' ' . lang(array('string' => 'Not replaced: {var:1}', 'vars' => array(implode(', ', array_slice($extract['stale'], 0, 10))))) : '')
+                    . (!empty($extract['blocked']) ? ' ' . lang(array('string' => 'Cannot be replaced: {var:1}', 'vars' => array(implode(', ', array_slice($extract['blocked'], 0, 10))))) : ''));
 
                 $response = array(
                     'status' => 'error',
@@ -816,7 +818,7 @@ function pg_panel_software_update($request, $action)
             $pg_update_opcache = pg_update_clear_opcache((isset($extract['files']) && is_array($extract['files'])) ? $extract['files'] : array());
 
             if (!$pg_update_opcache['cleared'] && ($pg_update_opcache['running'] === true)) {
-                log_activity('software update: the bytecode cache could not be cleared - run Purge Cache if the update does not take effect');
+                log_activity(lang('software update: the bytecode cache could not be cleared - run Purge Cache if the update does not take effect'));
             }
 
             $query = "DELETE FROM notifications WHERE action = 'software_update'";

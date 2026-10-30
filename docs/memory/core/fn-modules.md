@@ -42,6 +42,7 @@ description: Generated from the module field of the memory files: each includes/
 - `google_reviews`: [[google-reviews-widget]]
 - `imap_client`: [[mail-imap-client]]
 - `innodb`: [[panel-script-number-format]]
+- `lang`: [[lang-loader]]
 - `lang_files`: [[lang-files]]
 - `layout_convert`: [[layout-form-converter]]
 - `layouts`: [[layout-code-tab]], [[layout-editor-classic]]

@@ -443,7 +443,7 @@ function pg_captcha_log_failure($provider, $outcome, $detail)
             'vars'   => array($label, $detail)));
     }
 
-    log_activity($message, lang('UNKNOWN'));
+    log_activity($message, 'UNKNOWN');
 }
 
 /**

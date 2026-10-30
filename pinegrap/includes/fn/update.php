@@ -3298,7 +3298,7 @@ function pg_update_rollback($name)
     pg_backup_delete_tree($work);
 
     if (!$extract['ok']) {
-        log_activity('software rollback extraction failed: ' . $extract['message'], isset($_SESSION['sessionusername']) ? $_SESSION['sessionusername'] : 'SYSTEM');
+        log_activity(lang(array('string' => 'software rollback extraction failed: {var:1}', 'vars' => array($extract['message']))), isset($_SESSION['sessionusername']) ? $_SESSION['sessionusername'] : 'SYSTEM');
         $result['message'] = $extract['message'];
         return $result;
     }
@@ -3321,7 +3321,7 @@ function pg_update_rollback($name)
     $opcache = pg_update_clear_opcache($extract['files']);
 
     if (!$opcache['cleared'] && ($opcache['running'] === true)) {
-        log_activity('software rollback: the bytecode cache could not be cleared - run Purge Cache if the rollback does not take effect', 'SYSTEM');
+        log_activity(lang('software rollback: the bytecode cache could not be cleared - run Purge Cache if the rollback does not take effect'), 'SYSTEM');
     }
 
     foreach (array('system_status_cache.json', 'hash_reference_state.json') as $cache) {

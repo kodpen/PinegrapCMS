@@ -95,7 +95,7 @@ function api_auth_login($params) {
 		log_activity(lang(array(
 			'string' => 'access denied from a device (email or username: {var:1})',
 			'vars'   => $username
-		)), lang('UNKNOWN'));
+		)), 'UNKNOWN');
 
 		// No Basic challenge on this one: the credentials were a person's, and a
 		// browser-based client would otherwise put up its own login dialog.

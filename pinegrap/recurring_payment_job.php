@@ -35,7 +35,7 @@ pg_subscription_cancelled_ends_run(time());
 if ((ECOMMERCE_CREDIT_DEBIT_CARD == true) && (ECOMMERCE_PAYMENT_GATEWAY == 'PayPal Payments Pro')) {
     // if cURL is not installed, then output error
     if (function_exists('curl_init') == false) {
-        $error_message = 'The recurring payment job failed.  This website cannot communicate with the payment gateway.  The administrator of this website should install cURL.';
+        $error_message = lang('The recurring payment job failed. This website cannot communicate with the payment gateway. The administrator of this website should install cURL.');
         log_activity($error_message, 'UNKNOWN');
         exit($error_message);
     }

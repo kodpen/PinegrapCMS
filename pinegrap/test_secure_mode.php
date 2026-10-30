@@ -64,7 +64,7 @@ function tsm_lang($string)
             $language = DEFAULT_SOFTWARE_LANGUAGE;
         }
 
-        // The order pg_lang_map() (includes/fn/core.php, not loaded here)
+        // The order pg_lang_map() (includes/fn/lang.php, not loaded here)
         // reads a language in: its shards in includes/local/<code>/, merged in
         // name order, else the single includes/local/<code>.json.
         $local = dirname(__FILE__) . '/includes/local/' . basename($language);
