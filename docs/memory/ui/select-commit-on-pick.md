@@ -1,6 +1,6 @@
 ---
 name: select-commit-on-pick
-description: Selects that save or ask the moment they change (Translations engine, "Write with AI" tone) wait for a keyboard pick; the AI panel gives focus back after a request
+description: Selects that save, ask or move focus on change (Translations engine, AI tone, list quick edit, Edit Comment Publish) wait for a keyboard pick; the AI panel gives focus back after a request
 ---
 
 ## Why can an arrow key not save a select?
@@ -12,6 +12,8 @@ description: Selects that save or ask the moment they change (Translations engin
 - A navigation keydown (arrows, Home, End, PageUp, PageDown) sets a flag; a `change` after it is held, and the pick is committed on Enter or `blur`. A `pointerdown` clears the flag, so a pointer pick commits at once as before.
 - A commit does nothing when the value equals the saved one: `config.engine` for the engine, `askedTone` (the tone of the last request, set in `begin()`) for the tone.
 - `tests/select_commit_test.php` pins the listeners.
+- List quick edit (`backend.src.js`, #3477): a choice-list cell saved and closed on each arrow step once its list was closed (after Escape dismissed the `showPicker()` list, or with no picker). The flag is `state.keyed`; Alt+Arrow, F4 and Space clear it, so a pick in the opened list still saves at once. Enter, Tab, Ctrl+S and blur commit; Escape cancels. One step could take a product off sale or mark an order Exported.
+- Edit Comment Publish (`init_edit_comment_publish()`, #3477): an arrow step onto At a Scheduled Time moved focus to the date box and opened its calendar. Change still shows or hides `#publish_schedule`, but focus moves only without the flag; Enter with the schedule chosen moves it there.
 
 ## Where does focus go while the AI panel asks?
 - `setBusy(panel, true)` disables the tone and "Try again", which drops focus to the page. It remembers the control inside the panel that had focus and `setBusy(panel, false)` focuses it again, unless focus moved elsewhere meanwhile or the panel was closed.

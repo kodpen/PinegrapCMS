@@ -1936,6 +1936,12 @@ $(document).ready(function () {
                 pgListKeep(pgListKey, { start: info.start, length: info.length, search: datatable.search() });
             });
         }
+        datatable.on('draw.dt column-sizing.dt fixedheader-mode.dt', function (e) {
+            pgListHeadingCopies(e.dt);
+        });
+        datatable.tables().every(function () {
+            pgListHeadingCopies(this);
+        });
         $(window).on("resize", function () {
             datatable.columns.adjust();
         });
@@ -2931,6 +2937,34 @@ function pgListKeep(key, kept) {
         history.replaceState(state, '', location.href);
     } catch (e) {
         // A refused state (size limit) leaves the entry as it was.
+    }
+}
+
+// With scrollX, DataTables keeps a copy of a list's heading in the body table
+// to size the columns, inside 0px boxes. Screen readers take the column
+// headers from that copy, so its text stays readable, but its sort links and
+// select-all box leave the Tab order: Tab used to pass through them a second
+// time with no focus to see. While FixedHeader floats the real heading, its
+// floating table is aria-hidden and a placeholder copy with live links stays
+// in place; the floating heading is shown to screen readers again and the
+// placeholder is made inert, as focus there is lost when it is removed.
+// FixedHeader builds both again on each mode change.
+function pgListHeadingCopies(api) {
+    var header = api.table().header();
+
+    $(api.table().node()).children('thead').not(header)
+        .find('a[href], button, input, select, textarea, [tabindex]').attr('tabindex', '-1')
+        .end()
+        .find('button, input, select, textarea').attr('aria-hidden', 'true');
+
+    var holder = $(header).closest('table');
+
+    if (holder.length && (holder[0] !== api.table().node()) && !$(api.table().container()).find(holder).length) {
+        holder.removeAttr('aria-hidden');
+
+        $(api.table().container()).find('div.dt-scroll-head thead').not(header)
+            .attr('inert', '')
+            .find('a[href], button, input, select, textarea, [tabindex]').attr('tabindex', '-1');
     }
 }
 
@@ -6531,6 +6565,29 @@ function init_edit_comment_publish() {
         publish_schedule.fadeIn();
     }
 
+    // An arrow key on a closed select changes its value at once, so after a
+    // navigation key the date box is shown but focus stays on the select;
+    // Enter moves it there. A pointer pick, or a key that opens the list,
+    // moves focus as soon as the schedule is picked.
+    var publish_keyed = false;
+
+    publish.on('keydown', function (event) {
+        if (!event.altKey && (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Home', 'End', 'PageUp', 'PageDown'].indexOf(event.key) !== -1)) {
+            publish_keyed = true;
+        } else if ((event.key === 'Enter') && (publish.val() == 'schedule')) {
+            if (window.pgFields) {
+                event.preventDefault();
+                window.pgFields.focus(publish_date_and_time[0]);
+            }
+        } else if (event.altKey || (event.key === 'F4') || (event.key === ' ')) {
+            publish_keyed = false;
+        }
+    });
+
+    publish.on('pointerdown', function () {
+        publish_keyed = false;
+    });
+
     // When the publish pick list is changed, then update fields.
     publish.change(function () {
         // If the schedule option is selected, then show fields for it.
@@ -6539,7 +6596,7 @@ function init_edit_comment_publish() {
 
             // Focus the box of the date and time field, which opens its
             // calendar; the field itself is the hidden store.
-            if (window.pgFields) {
+            if (!publish_keyed && window.pgFields) {
                 window.pgFields.focus(publish_date_and_time[0]);
             }
 
@@ -12049,7 +12106,7 @@ $(function () {
         style.textContent = '.pg-sort-btn{background:none;border:0;padding:0;margin:0;color:inherit;font:inherit;'
             + 'text-transform:inherit;letter-spacing:inherit;text-align:inherit;display:inline-flex;align-items:center;'
             + 'gap:.3em;cursor:pointer;white-space:nowrap}'
-            + '.pg-sort-btn:focus-visible{outline:2px solid var(--pg-primary);outline-offset:2px;border-radius:2px}'
+            + '.pg-sort-btn:focus-visible{outline:2px solid var(--pg-primary-ink);outline-offset:2px;border-radius:2px}'
             + '.pg-sort-btn .pg-sort-icon{opacity:.35;font-size:.8em}'
             + '.pg-sort-btn .pg-sort-rank{font-size:.8em}'
             + 'th[data-pg-sort-level] .pg-sort-btn .pg-sort-icon{opacity:1}'
@@ -12420,7 +12477,9 @@ $(function () {
  * A cell marked data-pg-edit opens an input on a click, a tap, Enter or F2.
  * Enter or leaving the input saves, Escape puts the cell back as it was, Tab
  * saves and opens the same column on the next row (Shift+Tab: the row
- * before). A choice list saves as soon as something is picked. The value
+ * before). A choice list saves as soon as something is picked with the
+ * pointer or in its opened list; an arrow key on the closed list only moves
+ * the choice, which Enter, Tab or leaving the list saves. The value
  * goes to the table's data-pg-edit-url with the session token; the answer
  * redraws the cell from what was stored, and the other cells of the row it
  * names. A refusal, or a request that never got an answer, puts the cell back
@@ -12447,7 +12506,7 @@ $(function () {
         var style = document.createElement('style');
         style.id = 'pg_list_edit_style';
         style.textContent = 'td[data-pg-edit]{cursor:pointer}'
-            + 'td[data-pg-edit]:focus-visible{outline:2px solid var(--pg-primary);outline-offset:-2px}'
+            + 'td[data-pg-edit]:focus-visible{outline:2px solid var(--pg-primary-ink);outline-offset:-2px}'
             + 'td[data-pg-edit]:not([data-pg-editing]):not([data-pg-edit-busy])::after{content:"\\f4cb";font-family:bootstrap-icons;'
             + 'font-style:normal;font-weight:400;font-size:.75rem;line-height:1;margin-inline-start:.35em;vertical-align:.05em;'
             + 'color:var(--pg-fg-2);opacity:0}'
@@ -12733,7 +12792,7 @@ $(function () {
 
         control.setAttribute('aria-label', String(column.label || ''));
 
-        var state = { cell: cell, table: table, control: control, value: value, html: cell.innerHTML, done: false };
+        var state = { cell: cell, table: table, control: control, value: value, html: cell.innerHTML, done: false, keyed: false };
 
         cell.setAttribute('data-pg-editing', '');
         cell.innerHTML = '';
@@ -12755,6 +12814,15 @@ $(function () {
             // here is for this input.
             event.stopPropagation();
 
+            // An arrow key on a closed choice list changes its value at once;
+            // that change waits for Enter, Tab, Ctrl+S or leaving the list.
+            // The keys that open the list let a pick there save at once.
+            if (!event.altKey && (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Home', 'End', 'PageUp', 'PageDown'].indexOf(event.key) !== -1)) {
+                state.keyed = true;
+            } else if (event.altKey || (event.key === 'F4') || (event.key === ' ')) {
+                state.keyed = false;
+            }
+
             if (event.key === 'Enter') {
                 event.preventDefault();
                 commit(state, 0, true);
@@ -12775,8 +12843,14 @@ $(function () {
         });
 
         if (control.tagName === 'SELECT') {
+            control.addEventListener('pointerdown', function () {
+                state.keyed = false;
+            });
+
             control.addEventListener('change', function () {
-                commit(state);
+                if (!state.keyed) {
+                    commit(state);
+                }
             });
         }
     }
