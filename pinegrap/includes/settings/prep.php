@@ -467,10 +467,9 @@ if (!defined('PG_SETTINGS_ENTRY')) {
 
         $output_erp_edoc_options = '
                                                             <div class="form-field">
-                                                                <input class="radio collapse-switcher" type="radio" name="edoc_provider" id="edoc_provider_none" value="" data-bs-target="#edoc_fields_none"' . (($erp_edoc_active === '') ? ' checked="checked"' : '') . ' />
-                                                                <label class="" for="edoc_provider_none"><b>' . lang('Off') . '</b>
-                                                                    <div class="form-text mt-0">' . lang('Invoices and delivery notes are printed as PDF and sent to the tax authority by other means.') . '</div>
-                                                                </label>
+                                                                <input class="radio collapse-switcher" type="radio" name="edoc_provider" id="edoc_provider_none" value="" aria-describedby="edoc_provider_none_help" data-bs-target="#edoc_fields_none"' . (($erp_edoc_active === '') ? ' checked="checked"' : '') . ' />
+                                                                <label class="" for="edoc_provider_none"><b>' . lang('Off') . '</b></label>
+                                                                <div class="form-text mt-0" id="edoc_provider_none_help">' . lang('Invoices and delivery notes are printed as PDF and sent to the tax authority by other means.') . '</div>
                                                             </div>
                                                             <div id="edoc_fields_none" style="display:none"></div>';
 
@@ -545,12 +544,11 @@ if (!defined('PG_SETTINGS_ENTRY')) {
 
             $output_erp_edoc_options .= '
                                                             <div class="form-field">
-                                                                <input class="radio collapse-switcher" type="radio" name="edoc_provider" id="edoc_provider_' . h($erp_edoc_code) . '" value="' . h($erp_edoc_code) . '" data-bs-target="#edoc_fields_' . h($erp_edoc_code) . '"' . (($erp_edoc_active === $erp_edoc_code) ? ' checked="checked"' : '') . ' />
-                                                                <label class="" for="edoc_provider_' . h($erp_edoc_code) . '"><b>' . h($erp_edoc_info['label']) . '</b>' . $erp_edoc_badges . '
-                                                                    <div class="form-text mt-0">' . h($erp_edoc_info['description'])
-                                                                        . (($erp_edoc_info['docs_url'] !== '') ? ' <a href="' . h($erp_edoc_info['docs_url']) . '" target="_blank" rel="noopener">' . lang('API documentation') . '</a>' : '') . '</div>'
-                                                                    . $erp_edoc_status . '
-                                                                </label>
+                                                                <input class="radio collapse-switcher" type="radio" name="edoc_provider" id="edoc_provider_' . h($erp_edoc_code) . '" value="' . h($erp_edoc_code) . '" aria-describedby="edoc_provider_' . h($erp_edoc_code) . '_help" data-bs-target="#edoc_fields_' . h($erp_edoc_code) . '"' . (($erp_edoc_active === $erp_edoc_code) ? ' checked="checked"' : '') . ' />
+                                                                <label class="" for="edoc_provider_' . h($erp_edoc_code) . '"><b>' . h($erp_edoc_info['label']) . '</b>' . $erp_edoc_badges . '</label>
+                                                                <div class="form-text mt-0" id="edoc_provider_' . h($erp_edoc_code) . '_help">' . h($erp_edoc_info['description'])
+                                                                    . (($erp_edoc_info['docs_url'] !== '') ? ' <a href="' . h($erp_edoc_info['docs_url']) . '" target="_blank" rel="noopener">' . lang('API documentation') . '</a>' : '')
+                                                                    . $erp_edoc_status . '</div>
                                                             </div>
                                                             <div id="edoc_fields_' . h($erp_edoc_code) . '" class="ms-7 mb-5" style="display:none">
                                                                 ' . (($erp_edoc_info['settings_note'] !== '') ? '<div class="form-text mb-3">' . h($erp_edoc_info['settings_note']) . '</div>' : '') . '

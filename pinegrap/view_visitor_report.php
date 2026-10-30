@@ -1740,11 +1740,14 @@ if (!$_POST) {
         unset($pager_params['detail_page']);
         $pager_base = 'view_visitor_report.php?' . (empty($pager_params) ? '' : http_build_query($pager_params) . '&') . 'detail_page=';
 
+        // A span carries no aria-label, so a disabled arrow says its name in
+        // visually-hidden text; the glyph is hidden either way.
         $pager_link = function ($page, $label, $name, $disabled) use ($pager_base) {
+            $glyph = '<span aria-hidden="true">' . $label . '</span>';
             if ($disabled) {
-                return '<li class="page-item disabled"><span class="page-link" aria-label="' . h($name) . '">' . $label . '</span></li>';
+                return '<li class="page-item disabled"><span class="page-link">' . $glyph . '<span class="visually-hidden">' . h($name) . '</span></span></li>';
             }
-            return '<li class="page-item"><a class="page-link" href="' . h($pager_base . (int) $page) . '" aria-label="' . h($name) . '">' . $label . '</a></li>';
+            return '<li class="page-item"><a class="page-link" href="' . h($pager_base . (int) $page) . '" aria-label="' . h($name) . '">' . $glyph . '</a></li>';
         };
 
         $csv_params = $_GET;

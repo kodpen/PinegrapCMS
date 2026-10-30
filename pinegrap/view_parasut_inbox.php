@@ -163,11 +163,13 @@ function _parasut_pagination($current, $total, $tab, $extra_params = []) {
     foreach ($extra_params as $k => $v) {
         if ($v !== '') $base .= '&' . urlencode($k) . '=' . urlencode($v);
     }
-    // A disabled arrow and the current page are no links, so Tab skips them.
+    // A disabled arrow and the current page are no links, so Tab skips them;
+    // a span carries no aria-label, so the disabled arrow says its name in
+    // visually-hidden text.
     $arrow = function ($page, $enabled, $label, $glyph) use ($base) {
         $inner = '<span aria-hidden="true">' . $glyph . '</span>';
         if (!$enabled) {
-            return '<li class="page-item disabled"><span class="page-link" aria-label="' . h($label) . '">' . $inner . '</span></li>';
+            return '<li class="page-item disabled"><span class="page-link">' . $inner . '<span class="visually-hidden">' . h($label) . '</span></span></li>';
         }
         return '<li class="page-item"><a class="page-link" href="' . $base . '&pg=' . $page . '" aria-label="' . h($label) . '">' . $inner . '</a></li>';
     };

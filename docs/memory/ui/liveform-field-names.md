@@ -25,5 +25,6 @@ description: Liveform field names and pagers: aria-label, file id, required impo
 
 ## How is a hand-built pager named?
 - The `<nav>` carries `lang('Pagination')`; the arrows carry Previous page / Next page with the glyph `aria-hidden`; a disabled arrow and the current page are `<span class="page-link">`, the current one under `aria-current="page"`, so Tab skips them (`view_parasut_inbox.php`, `editor_select_image.php`).
+- A disabled arrow's name is `visually-hidden` text, not `aria-label` (prohibited on a role-less span, dropped by NVDA/Chrome): inbox, visitor report, marketplace products (`tests/panel_name_carriers_test.php`).
 
 Related: docs/memory/ui/panel-accessible-names.md

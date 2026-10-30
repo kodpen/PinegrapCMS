@@ -384,14 +384,15 @@ function mp_products_picture($src, $full, $alt, $gallery, $index, $external) {
 }
 
 // A pager arrow: a link, or a span when there is no page that way, so a
-// disabled arrow stays out of the tab order and Enter cannot follow it.
+// disabled arrow stays out of the tab order and Enter cannot follow it. A
+// span carries no aria-label, so its name is visually-hidden text.
 function mp_products_pager_arrow($disabled, $href, $label, $icon) {
 
 	$glyph = '<i class="bi ' . $icon . '" aria-hidden="true"></i>';
 
 	if ($disabled) {
 
-		return '<span class="btn btn-sm btn-outline theme-secondary disabled" aria-disabled="true" aria-label="' . h($label) . '">' . $glyph . '</span>';
+		return '<span class="btn btn-sm btn-outline theme-secondary disabled" aria-disabled="true">' . $glyph . '<span class="visually-hidden">' . h($label) . '</span></span>';
 
 	}
 
