@@ -119,6 +119,15 @@ function pg_cf_contact_fields()
     return $out;
 }
 
+// Bindings in pg_cf_contact_fields() that are no contacts column: opt_in_sms
+// is the SMS marketing answer, kept only as a consent_log row, so every path
+// that reads or writes contacts.<contact_field> skips it.
+function pg_cf_contact_column($contact_field)
+{
+    $contact_field = (string)$contact_field;
+    return $contact_field !== '' && $contact_field !== 'opt_in_sms';
+}
+
 /**
  * Whether a signed-in person's form submission is about somebody else: the
  * e-mail address the form writes to the contact (a field wired to the
