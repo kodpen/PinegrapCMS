@@ -703,7 +703,8 @@ function ws_handle_action($action, $request)
             return $result['ok'] ? ws_action_ok(array('graph' => $result['graph'])) : ws_action_error($result['error']);
 
         // Add › Scheduled flow in a channel's composer (scheduled_convert.php):
-        // with sketch, the two boxes its mini window draws, nothing written;
+        // with sketch, the two boxes its mini window draws with what the form
+        // holds so far, each with its dry run, nothing written;
         // else what the window holds saved as the person's draft flow, then
         // published when asked or opened on the canvas. Duplicate on a
         // scheduled action's card opens a new draft on the canvas too.
@@ -711,7 +712,7 @@ function ws_handle_action($action, $request)
             $channel_id = (int) ($request['channel_id'] ?? 0);
 
             if (!empty($request['sketch'])) {
-                $result = ws_scheduled_flow_sketch($viewer, $channel_id);
+                $result = ws_scheduled_flow_sketch($viewer, $channel_id, ws_scheduled_flow_fill($request));
 
                 return $result['ok'] ? ws_action_ok(array('graph' => $result['graph'], 'start' => $result['start'])) : ws_action_error($result['error']);
             }

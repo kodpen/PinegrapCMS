@@ -392,9 +392,9 @@ function test_ws_flow_card_graph()
 	}
 
 	pg_assert_same(array(WS_FLOW_CARD_PAD, WS_FLOW_CARD_PAD), array($by['start']['x'], $by['start']['y']), 'the leftmost and topmost box sits at the margin');
-	pg_assert_same(976 - 400 + WS_FLOW_CARD_PAD, $by['mail']['x'], 'the others keep their distance');
-	pg_assert_same(976 - 400 + 2 * WS_FLOW_CARD_PAD + WS_FLOW_CARD_BOX_W, $card['width'], 'width');
-	pg_assert_same(352 - 96 + 2 * WS_FLOW_CARD_PAD + WS_FLOW_CARD_BOX_H, $card['height'], 'height');
+	pg_assert_same(370, $by['mail']['x'], 'the others keep their distance in boxes: 576 canvas units are 354 px beside 128 px boxes');
+	pg_assert_same(370 + WS_FLOW_CARD_BOX_W + WS_FLOW_CARD_PAD, $card['width'], 'width');
+	pg_assert_same(192 + 2 * WS_FLOW_CARD_PAD + WS_FLOW_CARD_BOX_H, $card['height'], 'height: 256 canvas units down are 192 px');
 	pg_assert_same('First', $by['task_1']['name'], 'named by its label');
 	pg_assert_true($by['mail']['outbound'] && $by['hook']['outbound'], 'e-mail and webhook send outside');
 	pg_assert_true(!$by['task_1']['outbound'] && !$by['start']['outbound'], 'a task and a start do not');
@@ -407,6 +407,98 @@ function test_ws_flow_card_graph()
 	foreach (array('email', 'webhook', 'mcp', 'change') as $kind) {
 		pg_assert_true(in_array($kind, ws_flow_card_outbound_kinds(), true), $kind . ' is outbound');
 	}
+}
+
+// The window's sizes are the visual spec's, in px.
+function test_ws_flow_card_box_size()
+{
+	pg_assert_same(array(128, 60), array(WS_FLOW_CARD_BOX_W, WS_FLOW_CARD_BOX_H), 'boxes 128 x 60 px');
+	pg_assert_same(array(208, 80), array(WS_FLOW_CARD_CANVAS_W, WS_FLOW_CARD_CANVAS_H), 'scaled from the canvas box');
+	pg_assert_same(3, WS_FLOW_CARD_THREAD_GAP, 'threads at least 3 px apart');
+}
+
+// sag = 10 px + 0.05 x the horizontal span, either way.
+function test_ws_flow_card_thread_sag()
+{
+	pg_assert_same(10.0, ws_flow_card_thread_sag(0));
+	pg_assert_same(20.0, ws_flow_card_thread_sag(200));
+	pg_assert_same(20.0, ws_flow_card_thread_sag(-200));
+}
+
+// One thread per box and field a value fills, with its value, type, tone
+// and place: dots spread along the source's bottom edge, the farther thread
+// of one dot on the left and deeper.
+function test_ws_flow_card_threads()
+{
+	$graph = ws_flow_graph_normalize(array(
+		'nodes' => array(
+			array('id' => 'start', 'kind' => 'manual', 'x' => 96, 'y' => 96),
+			array('id' => 'call', 'kind' => 'task', 'x' => 384, 'y' => 96, 'config' => array('title' => 'Call')),
+			array('id' => 'near', 'kind' => 'notify', 'x' => 672, 'y' => 96, 'config' => array('text' => 'Task {{node.call.task_id}} and {{node.call.text}}')),
+			array('id' => 'far', 'kind' => 'notify', 'x' => 960, 'y' => 224, 'config' => array('text' => 'Again {{node.call.task_id}}')),
+			array('id' => 'said', 'kind' => 'notify', 'x' => 672, 'y' => 224, 'config' => array('text' => 'It says {{node.call.text}}')),
+		),
+		'edges' => array(
+			array('from' => 'start', 'to' => 'call', 'on' => 'next'),
+			array('from' => 'call', 'to' => 'near', 'on' => 'done'),
+		),
+	));
+	$card = ws_flow_card_graph($graph);
+	$threads = array();
+
+	foreach ($card['threads'] as $thread) {
+		$threads[$thread['to']] = $thread;
+	}
+
+	pg_assert_same(3, count($card['threads']), 'one thread per box and field');
+	pg_assert_same(array('call', 'near', 'text', 'task_id', 'number', 0), array($threads['near']['from'], $threads['near']['to'], $threads['near']['key'], $threads['near']['value'], $threads['near']['type'], $threads['near']['tone']), 'the first value the field reads gives its type');
+	pg_assert_same(array('number', 1), array($threads['far']['type'], $threads['far']['tone']), 'tones of one type taken in turn');
+	pg_assert_same(array('text', 0), array($threads['said']['type'], $threads['said']['tone']), 'a box\'s text is text');
+
+	$call = null;
+
+	foreach ($card['nodes'] as $node) {
+		if ($node['id'] === 'call') {
+			$call = $node;
+		}
+	}
+
+	pg_assert_same($call['y'] + WS_FLOW_CARD_BOX_H, $threads['near']['y1'], 'leaves the source\'s bottom edge');
+	pg_assert_true($threads['said']['x1'] > $threads['near']['x1'] + 20, 'a second value has its own dot');
+	pg_assert_same(WS_FLOW_CARD_THREAD_GAP, $threads['near']['x1'] - $threads['far']['x1'], 'one dot\'s threads 3 px apart, the farther on the left');
+	pg_assert_same((int) round(max($threads['near']['y1'], $threads['near']['y2']) + ws_flow_card_thread_sag($threads['near']['x2'] - $threads['near']['x1'])), $threads['near']['cy'], 'the nearer hangs by the sag alone');
+	pg_assert_same((int) round(max($threads['far']['y1'], $threads['far']['y2']) + ws_flow_card_thread_sag($threads['far']['x2'] - $threads['far']['x1']) + WS_FLOW_CARD_THREAD_GAP), $threads['far']['cy'], 'the farther 3 px deeper');
+	pg_assert_true($card['height'] >= max($threads['far']['y2'], $threads['far']['y1']) + ($threads['far']['cy'] - max($threads['far']['y1'], $threads['far']['y2'])) / 2, 'the window holds the lowest curve');
+}
+
+// The third line: a waiting new flow (or a sketch) is tried as the asker's
+// own draft in memory, a waiting patch not at all, an opened draft only
+// where the person may try it.
+function test_ws_flow_card_try_flow()
+{
+	$viewer = array('id' => 7);
+	$graph = ws_flow_graph_normalize(array('nodes' => array(array('id' => 'start', 'kind' => 'manual', 'x' => 0, 'y' => 0))));
+	$new = ws_flow_card_try_flow($viewer, 'new', $graph, null, false, 'Weekly');
+
+	pg_assert_same(array(0, 7, 'draft', 'edit', 'Weekly'), array($new['id'], $new['owner_id'], $new['status'], $new['access'], $new['name']), 'the asker\'s own draft, in memory');
+	pg_assert_same($graph, ws_flow_graph_of($new), 'holding the graph');
+	pg_assert_same(null, ws_flow_card_try_flow($viewer, 'patch', $graph), 'a waiting patch: no third line');
+
+	$flow = array('id' => 4, 'owner_id' => 7, 'access' => 'edit');
+	pg_assert_same($flow, ws_flow_card_try_flow($viewer, 'opened', null, $flow, true), 'an opened draft its flow');
+	pg_assert_same(null, ws_flow_card_try_flow($viewer, 'opened', null, $flow, false), 'only where it may be tried');
+
+	pg_assert_same(null, ws_flow_card_try_line(array('ok' => false, 'error' => 'Only the owner')), 'a refused try draws nothing');
+	pg_assert_same(array('said' => 'Posts here', 'failed' => false), ws_flow_card_try_line(array('ok' => true, 'said' => 'Posts here', 'refusal' => '')));
+	pg_assert_true(ws_flow_card_try_line(array('ok' => true, 'said' => '', 'refusal' => 'No text'))['failed'], 'why it would not run');
+
+	$card = ws_flow_card_tries($viewer, null, array('nodes' => array(array('id' => 'start', 'try' => true, 'said' => '', 'failed' => false))));
+	pg_assert_same('', $card['nodes'][0]['said'], 'no flow, no line');
+
+	$read = workspace_flow_draft_code('ws_flow_draft_card_graph_read');
+	pg_assert_contains("ws_flow_card_try_flow(\$viewer,'opened'", str_replace(' ', '', $read), 'opened');
+	pg_assert_contains("'new':'patch'", str_replace(' ', '', $read), 'waiting');
+	pg_assert_contains('ws_flow_box_try(', workspace_flow_draft_code('ws_flow_card_tries'), 'the F4e try');
 }
 
 function test_ws_flow_card_graph_patch()
