@@ -143,6 +143,10 @@
         condition: { name: 'fl_kind_condition', group: 'logic', into: true, out: ['yes', 'no'] },
         delay: { name: 'fl_kind_delay', group: 'logic', into: true, out: ['done'] },
         end: { name: 'fl_kind_end', group: 'logic', into: true, out: [] },
+        // A loop: the boxes the each arrow of a For each box leads into run
+        // once per item, up to its End for each box (`loop` as the server's).
+        for_each: { name: 'fl_kind_for_each', group: 'logic', into: true, out: ['each', 'failed'], loop: 'start' },
+        for_each_end: { name: 'fl_kind_for_each_end', group: 'logic', into: true, out: ['done'], loop: 'end' },
         // A value box: no arrows, its values reach the boxes through threads.
         constants: { name: 'fl_kind_constants', group: 'values', into: false, out: [], pure: true },
         value: { name: 'fl_kind_value', group: 'values', into: false, out: [], pure: true }
@@ -160,6 +164,7 @@
         expired: 'fl_on_expired',
         withdrawn: 'fl_on_withdrawn',
         timeout: 'fl_on_timeout',
+        each: 'fl_on_each',
         always: 'fl_on_always'
     };
 
@@ -180,6 +185,8 @@
         ['task', 'fl_add_task'],
         ['condition', 'fl_kind_condition'],
         ['delay', 'fl_kind_delay'],
+        ['for_each', 'fl_kind_for_each'],
+        ['for_each_end', 'fl_kind_for_each_end'],
         ['post', 'fl_add_post'],
         ['email', 'fl_add_email'],
         ['notify', 'fl_kind_notify'],
@@ -640,6 +647,16 @@
 
         if (node.kind === 'delay') {
             return delayText(config);
+        }
+
+        if (node.kind === 'for_each') {
+            return config.list ? valueLabel(node, config.list) : t('fl_loop_no_list');
+        }
+
+        if (node.kind === 'for_each_end') {
+            var looped = nodeById(config.for_each || '');
+
+            return (looped && (looped.kind === 'for_each')) ? t('fl_loop_end_meta', nameOf(looped)) : t('fl_loop_pick');
         }
 
         if (node.kind === 'approval') {
@@ -2880,10 +2897,73 @@
         return { d: 'M' + x1 + ' ' + y1 + ' C' + (x1 + dx) + ' ' + y1 + ' ' + (x2 - dx) + ' ' + y2 + ' ' + x2 + ' ' + y2, mx: (x1 + x2) / 2, my: (y1 + y2) / 2 };
     }
 
+    // Where a loop's frame goes: around its For each box, its body and its
+    // End box, with room for the label above and the data rows below. Null
+    // for a loop with no box in it.
+    function loopFrame(loop, id) {
+        var ids = loop.body.length ? [id].concat(loop.body, loop.end ? [loop.end] : []) : [];
+        var nodes = ids.map(nodeById).filter(Boolean);
+
+        if (!nodes.length) {
+            return null;
+        }
+
+        var left = Math.min.apply(null, nodes.map(function (node) { return node.x; })) - LOOP_PAD.side;
+        var top = Math.min.apply(null, nodes.map(function (node) { return node.y; })) - LOOP_PAD.top;
+        var right = Math.max.apply(null, nodes.map(function (node) { return node.x + BOX_W; })) + LOOP_PAD.side;
+        var bottom = Math.max.apply(null, nodes.map(function (node) { return node.y + BOX_H; })) + LOOP_PAD.bottom;
+
+        return { x: left, y: top, width: right - left, height: bottom - top };
+    }
+
+    // Each loop's extent as a light frame in the logic group's colour under
+    // the arrows, named "Repeated for each item"; it takes no pointer.
+    function drawLoops() {
+        if (!state.graph) {
+            return;
+        }
+
+        var loops = flowLoops();
+
+        Object.keys(loops).forEach(function (id) {
+            var frame = loopFrame(loops[id], id);
+
+            if (!frame) {
+                return;
+            }
+
+            var group = svgEl('g', 'wsf-loop wsf-group-logic');
+            var rect = svgEl('rect', 'wsf-loop-frame');
+            var label = svgEl('text', 'wsf-loop-label');
+
+            group.setAttribute('data-loop', id);
+            group.style.pointerEvents = 'none';
+            rect.setAttribute('x', String(frame.x));
+            rect.setAttribute('y', String(frame.y));
+            rect.setAttribute('width', String(frame.width));
+            rect.setAttribute('height', String(frame.height));
+            rect.setAttribute('rx', '12');
+            rect.style.fill = 'color-mix(in srgb, var(--wsf-kind) 6%, transparent)';
+            rect.style.stroke = 'color-mix(in srgb, var(--wsf-kind) 60%, transparent)';
+            rect.style.strokeWidth = '1.5';
+            rect.style.strokeDasharray = '6 4';
+            label.setAttribute('x', String(frame.x + 12));
+            label.setAttribute('y', String(frame.y + 16));
+            label.style.fill = 'var(--wsf-kind)';
+            label.style.fontSize = '11px';
+            label.textContent = t('fl_loop_body');
+            group.appendChild(rect);
+            group.appendChild(label);
+            ui.svg.appendChild(group);
+        });
+    }
+
     function drawEdges() {
-        Array.prototype.slice.call(ui.svg.querySelectorAll('.wsf-edge, .wsf-thread')).forEach(function (node) {
+        Array.prototype.slice.call(ui.svg.querySelectorAll('.wsf-edge, .wsf-thread, .wsf-loop')).forEach(function (node) {
             node.remove();
         });
+
+        drawLoops();
 
         (state.graph ? state.graph.edges : []).forEach(function (edge, index) {
             var from = nodeById(edge.from);
@@ -2914,7 +2994,7 @@
 
             // An arrow taken when a task is cancelled, or a step failed, says
             // so on itself.
-            if ((edge.on === 'cancelled') || (edge.on === 'failed') || (edge.on === 'always')) {
+            if ((edge.on === 'cancelled') || (edge.on === 'failed') || (edge.on === 'always') || (edge.on === 'each')) {
                 var label = svgEl('text', 'wsf-edge-label');
 
                 label.setAttribute('x', String(path.mx));
@@ -2951,7 +3031,9 @@
         report: [['title', 'fl_report_title', 160]],
         checkin: [['question', 'fl_checkin_question', 500]],
         approval: [['title', 'fl_title', 200], ['text', 'fl_description', 4000]],
-        value: [['a', 'fl_derived_a', 500], ['b', 'fl_derived_b', 500]]
+        value: [['a', 'fl_derived_a', 500], ['b', 'fl_derived_b', 500]],
+        for_each: [['list', 'fl_loop_list', 200]],
+        for_each_end: [['collect', 'fl_loop_collect', 200]]
     };
 
     // How many tones a type's threads take turns in (.wsf-tone-<type>-<n>).
@@ -2962,6 +3044,10 @@
     // the ring's size; all 18 px high, half under the box's bottom edge. A
     // thread bends at most `deep` px further down to pass under a box.
     var DATA_ROW = { field: 76, out: 84, gap: 4, left: 8, half: 9, ring: 18, deep: 160 };
+
+    // A loop's frame around its boxes: beside them, above (its label) and
+    // below (their data rows).
+    var LOOP_PAD = { side: 16, top: 28, bottom: 32 };
 
     // Where the chips (fields first) and the dots of a box's row go: at full
     // width while they fit within the box, else all as wide as the box's
@@ -3075,8 +3161,11 @@
             return ((rule.type === 'value') && !rule.ref) ? [{ key: 'rule', label: t('fl_cond_value_ref'), text: '', max: 0 }] : [];
         }
 
+        // A loop's box reads one value: its field is open while empty.
         return (VALUE_FIELDS[node.kind] || []).filter(function (item) {
             return (node.kind !== 'value') || (item[0] !== 'b') || derivedRule(config.rule).two;
+        }).filter(function (item) {
+            return !kindOf(node).loop || !config[item[0]];
         }).map(function (item) {
             return { key: item[0], label: t(item[1]), text: (typeof config[item[0]] === 'string') ? config[item[0]] : '', max: item[2] };
         });
@@ -3096,7 +3185,7 @@
             }
 
             openFields(node).forEach(function (item) {
-                if (item.text.indexOf(token) === -1) {
+                if ((item.text.indexOf(token) === -1) && fieldTakes(node, item.key, source)) {
                     out.push({ node: node, key: item.key, label: item.label, text: item.text, max: item.max });
                 }
             });
@@ -4203,7 +4292,7 @@
         var add = function (token, item) {
             if (!keys[item.key]) {
                 keys[item.key] = true;
-                list.push({ token: '{{' + token + item.key + '}}', label: item.label, type: item.type || 'text' });
+                list.push({ token: '{{' + token + item.key + '}}', key: item.key, label: item.label, type: item.type || 'text' });
             }
         };
 
@@ -4252,6 +4341,16 @@
             }
         });
 
+        // A For each box gives the fields of an item it names
+        // (ws_flow_loop_outputs()).
+        if (node.kind === 'for_each') {
+            (node.config.fields || []).forEach(function (key) {
+                if (/^[a-z_][a-z0-9_]{0,31}$/.test(key)) {
+                    add(prefix, { key: key, label: key });
+                }
+            });
+        }
+
         if (node.kind === 'report') {
             (node.config.metrics || []).forEach(function (item) {
                 var key = String(item.key || '') + (((parseInt(item.param, 10) || 0) > 0) ? '_' + parseInt(item.param, 10) : '');
@@ -4288,6 +4387,10 @@
         // A derived value box has no place among the arrows: it may read any
         // box, checked at the boxes that read it.
         var reader = node.kind === 'value';
+        // A box outside a loop reads neither its body's boxes nor the item
+        // (ws_flow_loop_problems()); the End box reads the body's values.
+        var loops = flowLoops();
+        var inside = loopOf(loops, node.id);
 
         orderedNodes().forEach(function (other) {
             // A value box gives to every box, read whenever it is.
@@ -4299,6 +4402,17 @@
             }
 
             var values = boxValues(other);
+            var held = loopOf(loops, other.id);
+
+            if (!reader && held && (held !== inside) && (loops[held].end !== node.id)) {
+                return;
+            }
+
+            if (!reader && (other.kind === 'for_each') && (other.id !== inside)) {
+                values = values.filter(function (value) {
+                    return (value.key !== 'index') && (value.key !== 'item') && ((other.config.fields || []).indexOf(value.key) === -1);
+                });
+            }
 
             if (!values.length) {
                 return;
@@ -4335,6 +4449,112 @@
         });
 
         return names;
+    }
+
+    // What a box's chip of a value reads, else the value as written.
+    function valueLabel(node, text) {
+        var name = valueNames(node)[text];
+
+        return name ? name.label : text;
+    }
+
+    // The loops of the graph, as ws_flow_loops() finds them: for each For
+    // each box its End box (the first naming it, '' for none), the boxes its
+    // each arrows lead into and its body, the boxes reached from them short
+    // of the End box and of any box after it.
+    function flowLoops() {
+        var ends = {};
+        var next = {};
+        var out = {};
+
+        state.graph.nodes.forEach(function (node) {
+            var loop = (node.config || {}).for_each;
+
+            if ((node.kind === 'for_each_end') && loop && !ends[loop]) {
+                ends[loop] = node.id;
+            }
+        });
+        state.graph.edges.forEach(function (edge) {
+            (next[edge.from] = next[edge.from] || []).push([edge.to, edge.on]);
+        });
+
+        state.graph.nodes.forEach(function (node) {
+            if (node.kind !== 'for_each') {
+                return;
+            }
+
+            var end = ends[node.id] || '';
+            var each = [];
+            var after = {};
+            var body = {};
+            var list = [];
+            var queue = end ? [end] : [];
+
+            (next[node.id] || []).forEach(function (arrow) {
+                if ((arrow[1] === 'each') && (each.indexOf(arrow[0]) === -1)) {
+                    each.push(arrow[0]);
+                }
+            });
+
+            while (queue.length) {
+                (next[queue.shift()] || []).forEach(function (arrow) {
+                    if (!after[arrow[0]]) {
+                        after[arrow[0]] = true;
+                        queue.push(arrow[0]);
+                    }
+                });
+            }
+
+            var take = function (to) {
+                if ((to !== end) && (to !== node.id) && !body[to] && !after[to]) {
+                    body[to] = true;
+                    list.push(to);
+                    queue.push(to);
+                }
+            };
+
+            each.forEach(take);
+
+            while (queue.length) {
+                (next[queue.shift()] || []).forEach(function (arrow) {
+                    take(arrow[0]);
+                });
+            }
+
+            out[node.id] = { end: end, each: each, body: list };
+        });
+
+        return out;
+    }
+
+    // The For each box whose body holds a box, '' outside every loop.
+    function loopOf(loops, id) {
+        return Object.keys(loops).filter(function (key) {
+            return loops[key].body.indexOf(id) !== -1;
+        })[0] || '';
+    }
+
+    // Whether a value holds a list a For each box may go through: a
+    // webhook's answer or the list an End for each box gathered.
+    function listValue(source) {
+        return ((source.node.kind === 'webhook') && (source.value.key === 'body'))
+            || ((source.node.kind === 'for_each_end') && (source.value.key === 'list'));
+    }
+
+    // Whether a field of a box may take a value: a For each box's list a
+    // list, an End box's gathered value one of its loop's body.
+    function fieldTakes(node, key, source) {
+        if ((node.kind === 'for_each') && (key === 'list')) {
+            return listValue(source);
+        }
+
+        if ((node.kind === 'for_each_end') && (key === 'collect')) {
+            var loop = flowLoops()[node.config.for_each || ''];
+
+            return !!loop && (loop.body.indexOf(source.node.id) !== -1);
+        }
+
+        return true;
     }
 
     // A value as the builder reads it; one no box before gives keeps its
@@ -4565,8 +4785,9 @@
     }
 
     // A field of a box's text with "Add value": the list of what started the
-    // run and the boxes before it, each value a chip put in the text.
-    function valueField(node, label, value, max, onInput, multi, help) {
+    // run and the boxes before it, each value a chip put in the text; with
+    // `takes`, only the values it accepts ({ node, value }).
+    function valueField(node, label, value, max, onInput, multi, help, takes) {
         var input = valueInput(node, value, max, onInput, multi);
         var wrap = field(label, input, help ? help + ' ' + t('fl_values_hint') : t('fl_values_hint'));
         var caption = wrap.querySelector('label');
@@ -4607,7 +4828,11 @@
                 return;
             }
 
-            var groups = valueGroups(node);
+            var groups = valueGroups(node).map(function (group) {
+                return takes ? { node: group.node, skipped: group.skipped, values: group.values.filter(function (one) { return takes({ node: group.node, value: one }); }) } : group;
+            }).filter(function (group) {
+                return group.values.length > 0;
+            });
 
             K.clear(list);
 
@@ -4853,6 +5078,14 @@
 
         if (node.kind === 'start_flow') {
             chainFields(box, node);
+        }
+
+        if (node.kind === 'for_each') {
+            loopFields(box, node);
+        }
+
+        if (node.kind === 'for_each_end') {
+            loopEndFields(box, node);
         }
 
         if (node.kind === 'approval') {
@@ -5604,6 +5837,62 @@
             refreshNode(node);
         });
         box.appendChild(field(t('fl_chain_flow'), pick, t('fl_chain_help')));
+    }
+
+    // A For each box: the one value holding the list, where the list sits in
+    // it, and the fields of an item it gives by name
+    // (ws_flow_loop_normalize()).
+    function loopFields(box, node) {
+        var config = node.config;
+        var fields = textInput((config.fields || []).join(', '), 400, function (value) {
+            config.fields = [];
+            value.split(',').forEach(function (part) {
+                var key = part.trim().toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 32);
+
+                if (key && (config.fields.indexOf(key) === -1) && (config.fields.length < 10)) {
+                    config.fields.push(key);
+                }
+            });
+            refreshNode(node);
+        });
+        var path = textInput(config.path || '', 200, function (value) {
+            config.path = value.replace(/[^A-Za-z0-9_.\-]/g, '');
+            refreshNode(node);
+        });
+
+        box.appendChild(valueField(node, t('fl_loop_list'), config.list || '', 200, function (value) {
+            config.list = value.trim();
+            refreshNode(node);
+        }, false, t('fl_loop_list_help'), function (source) {
+            return fieldTakes(node, 'list', source);
+        }));
+        box.appendChild(field(t('fl_loop_path'), path, t('fl_loop_path_help')));
+        box.appendChild(field(t('fl_loop_fields'), fields, t('fl_loop_fields_help')));
+    }
+
+    // An End for each box: the loop it ends, and the one value of its body
+    // gathered per item into its list.
+    function loopEndFields(box, node) {
+        var config = node.config;
+        var options = [['', t('fl_loop_pick')]].concat(state.graph.nodes.filter(function (other) {
+            return other.kind === 'for_each';
+        }).map(function (other) {
+            return [other.id, nameOf(other)];
+        }));
+        var pick = K.select(options, config.for_each || '');
+
+        pick.addEventListener('change', function () {
+            config.for_each = pick.value;
+            drawEdges();
+            refreshNode(node);
+        });
+        box.appendChild(field(t('fl_loop_ends'), pick));
+        box.appendChild(valueField(node, t('fl_loop_collect'), config.collect || '', 200, function (value) {
+            config.collect = value.trim();
+            refreshNode(node);
+        }, false, t('fl_loop_collect_help'), function (source) {
+            return fieldTakes(node, 'collect', source);
+        }));
     }
 
     function startFields(box, node) {
@@ -7048,7 +7337,9 @@
     function arrowOutcomes(node) {
         var kind = kindOf(node);
 
-        return (kind.into && kind.out.length) ? kind.out.concat(['always']) : kind.out;
+        // A For each box never leaves on always: one arrow enters its loop,
+        // one leaves it when the list cannot be read.
+        return (kind.into && kind.out.length && (kind.loop !== 'start')) ? kind.out.concat(['always']) : kind.out;
     }
 
     function outcomeSelect(edge) {
@@ -7362,6 +7653,14 @@
             config = { amount: 1, unit: 'hours' };
         } else if (kind === 'start_flow') {
             config = { flow_id: 0 };
+        } else if (kind === 'for_each') {
+            config = { list: '', path: '', fields: [] };
+        } else if (kind === 'for_each_end') {
+            // The loop that has no End box yet, when there is one such.
+            var loops = flowLoops();
+            var open = Object.keys(loops).filter(function (id) { return !loops[id].end; });
+
+            config = { for_each: (open.length === 1) ? open[0] : '', collect: '' };
         } else if (kind === 'approval') {
             config = { channel_id: 0, title: '', text: '', approvers: [], rule: 'any', closes_in: '' };
         } else if (kind === 'schedule') {

@@ -1635,11 +1635,11 @@ echo pg_page_shell(array(
 .mp-scroll { overflow-x: auto; overflow-y: hidden; }
 .mp-head, .mp-row { display: grid; grid-template-columns: 2fr 1.4fr 1fr .9fr .9fr 40px;
 	gap: 12px; align-items: center; min-width: 760px; }
-.mp-head { padding: 0 14px 8px; font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--pg-fg-2); }
+.mp-head { padding: 0 14px 8px; font-size: 0.65625rem; letter-spacing: .06em; text-transform: uppercase; color: var(--pg-fg-2); }
 .mp-row { padding: 11px 14px; border-top: 1px solid var(--pg-border-color); }
-.mp-row b { font-size: 13px; display: block; }
-.mp-row code { font-size: 11px; opacity: .7; }
-.mp-pill { font-size: 10.5px; padding: 3px 9px; border-radius: 20px; font-weight: 600;
+.mp-row b { font-size: 0.8125rem; display: block; }
+.mp-row code { font-size: 0.6875rem; opacity: .7; }
+.mp-pill { font-size: 0.65625rem; padding: 3px 9px; border-radius: 20px; font-weight: 600;
 	border: 1px solid var(--pg-border-color); display: inline-block; white-space: nowrap; }
 .mp-pill.on { color: var(--pg-success-fg-emphasis); border-color: color-mix(in srgb, var(--pg-success) 35%, transparent); }
 .mp-pill.off { color: var(--pg-fg-2); }
@@ -1650,9 +1650,9 @@ echo pg_page_shell(array(
 .mp-tab small { color: var(--pg-fg-2); }
 .mp-count { display: flex; gap: 18px; flex-wrap: wrap; }
 .mp-count div { min-width: 82px; }
-.mp-count b { font-size: 20px; display: block; line-height: 1.1; }
-.mp-count span { font-size: 11px; color: var(--pg-fg-2); }
-.mp-err { font-size: 11.5px; color: var(--pg-danger-fg-emphasis); word-break: break-word; }
+.mp-count b { font-size: 1.25rem; display: block; line-height: 1.1; }
+.mp-count span { font-size: 0.6875rem; color: var(--pg-fg-2); }
+.mp-err { font-size: 0.71875rem; color: var(--pg-danger-fg-emphasis); word-break: break-word; }
 /* Questions and failures are free text, not columns: they sit outside the
    sideways-scrolling block, so they wrap to the width of the card instead. */
 .mp-question { padding: 11px 14px; border-top: 1px solid var(--pg-border-color); }
@@ -1678,7 +1678,7 @@ if (!$accounts) {
 	echo '
 	<div class="card">
 		<div class="card-body text-center py-12">
-			<i class="bi bi-shop" style="font-size:34px;opacity:.35"></i>
+			<i class="bi bi-shop" style="font-size:2.125rem;opacity:.35"></i>
 			<p class="mt-5 mb-1"><b>' . lang('No marketplace is connected yet.') . '</b></p>
 			<p class="small opacity-75 mb-7" style="max-width:520px;margin:0 auto">'
 				. lang('Connect a marketplace account and match your products to the codes it knows them by. Stock and price changes here are then sent over there on a schedule.') . '</p>

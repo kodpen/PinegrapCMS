@@ -100,7 +100,7 @@ function pg_dashboard_widget_25($request, $user)
             // The stars are read as "4 out of 5", not as four
             // "black star" characters.
             $cm_rating = min(5, (int) $cm_item['rating']);
-            $cm_stars = '<span class="fg-warning ms-1 flex-shrink-0" style="font-size:10px">'
+            $cm_stars = '<span class="fg-warning ms-1 flex-shrink-0" style="font-size:.625rem">'
                 . '<span aria-hidden="true">' . str_repeat('★', $cm_rating) . '</span>'
                 . '<span class="visually-hidden">' . h(lang(array('string' => '{var:1} out of 5', 'vars' => $cm_rating))) . '</span>'
                 . '</span>';
@@ -113,20 +113,20 @@ function pg_dashboard_widget_25($request, $user)
         $cm_rows .= '
         <a class="d-block px-5 py-3 border-top text-decoration-none fg-body" href="edit_comment.php?id=' . (int) $cm_item['id'] . '&amp;send_to=' . h(PATH . SOFTWARE_DIRECTORY . '/view_comments.php') . '">
             <div class="d-flex align-items-center" style="gap:6px">
-                <span class="text-truncate fw-semibold" style="font-size:12px">' . h($cm_item['name'] != '' ? $cm_item['name'] : lang('Unknown')) . '</span>
+                <span class="text-truncate fw-semibold" style="font-size:.75rem">' . h($cm_item['name'] != '' ? $cm_item['name'] : lang('Unknown')) . '</span>
                 ' . $cm_stars . '
-                <span class="fg-secondary ms-auto flex-shrink-0" style="font-size:10px">' . get_relative_time(array('timestamp' => (int) $cm_item['created_timestamp'])) . '</span>
+                <span class="fg-secondary ms-auto flex-shrink-0" style="font-size:.625rem">' . get_relative_time(array('timestamp' => (int) $cm_item['created_timestamp'])) . '</span>
             </div>
-            <div class="fg-secondary" style="font-size:11px;line-height:1.35">' . h($cm_preview) . '</div>
-            <div class="fg-secondary text-truncate" style="font-size:10px">' . h($cm_where_text) . '</div>
+            <div class="fg-secondary" style="font-size:.6875rem;line-height:1.35">' . h($cm_preview) . '</div>
+            <div class="fg-secondary text-truncate" style="font-size:.625rem">' . h($cm_where_text) . '</div>
         </a>';
     }
 
     if ($cm_rows === '') {
         $cm_rows = '
         <div class="text-center py-7">
-            <i class="bi bi-check2-circle d-block mb-3 fg-success" style="font-size:22px;opacity:.8"></i>
-            <p class="fg-secondary mb-0" style="font-size:12px">' . lang('No comments are waiting for approval.') . '</p>
+            <i class="bi bi-check2-circle d-block mb-3 fg-success" style="font-size:1.375rem;opacity:.8"></i>
+            <p class="fg-secondary mb-0" style="font-size:.75rem">' . lang('No comments are waiting for approval.') . '</p>
         </div>';
     }
 
@@ -137,7 +137,7 @@ function pg_dashboard_widget_25($request, $user)
     if ($cm_total > count($cm_items)) {
         $cm_more = '
         <div class="px-5 py-1 text-center border-top">
-            <span class="fg-secondary" style="font-size:10px">' . lang(array(
+            <span class="fg-secondary" style="font-size:.625rem">' . lang(array(
                 'string' => '{var:1} more waiting',
                 'vars'   => pg_format_number($cm_total - count($cm_items), 0),
             )) . '</span>
@@ -147,14 +147,14 @@ function pg_dashboard_widget_25($request, $user)
     $output_data = '
     <div class="card-body p-0 d-flex flex-column" style="overflow-x:hidden;overflow-y:auto">
         <div class="d-flex align-items-center justify-content-between px-5 pt-3 pb-1">
-            <span class="fg-secondary" style="font-size:11px">' . lang('Waiting for approval') . '</span>
-            <span class="fw-semibold fg-' . ($cm_total > 0 ? 'warning' : 'success') . '" style="font-size:15px">' . pg_format_number($cm_total, 0) . '</span>
+            <span class="fg-secondary" style="font-size:.6875rem">' . lang('Waiting for approval') . '</span>
+            <span class="fw-semibold fg-' . ($cm_total > 0 ? 'warning' : 'success') . '" style="font-size:.9375rem">' . pg_format_number($cm_total, 0) . '</span>
         </div>
         ' . $cm_rows . '
         ' . $cm_more . '
     </div>
     <div class="card-footer border-0 bg-reset py-1 text-center">
-        <a href="view_comments.php" class="text-decoration-none" style="font-size:11px">'
+        <a href="view_comments.php" class="text-decoration-none" style="font-size:.6875rem">'
         . lang('Comments') . ' <i class="bi bi-arrow-right-short"></i></a>
     </div>';
 

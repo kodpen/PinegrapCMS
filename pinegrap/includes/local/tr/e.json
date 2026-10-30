@@ -573,6 +573,7 @@
     "Ends": "Bitiş saati",
     "Ends at": "Bitiş",
     "Ends at {var:1}": "{var:1} saatinde bitiyor",
+    "Ends {var:1}": "{var:1} döngüsünü bitirir",
     "Enforce": "Uygula",
     "Enforce Language": "Dili Zorla",
     "Enforced whatever mode the firewall is in, including Monitor, and before the database is even opened. Allowed addresses above still win.": "Güvenlik duvarı hangi modda olursa olsun, izleme modu dâhil ve daha veritabanı bile açılmadan uygulanır. Yukarıdaki izin verilen adresler yine de önceliklidir.",
