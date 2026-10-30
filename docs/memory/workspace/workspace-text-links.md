@@ -16,4 +16,6 @@ description: Where a web address in a Workspace text ends: escaped quotes, angle
 - An href never carries a raw quote: the escaped text is reused as before.
 
 ## Is there a JavaScript twin?
-- The writing box (`workspace_editor.js`) reads `[text](address)` from the raw text with `[^\s()<>"]`: it stops at `"` but not at `'`. Not changed here.
+- The writing box (`workspace_editor.js`) reads the raw text: `inlineNodes()` reads `[text](address)` with `[^\s()<>"']`, `PASTE_LINK` (a pasted address alone) the same class, and `cleanUrl()` (the link tip) refuses `\s<>"'`. So `[x](https://kodpen.com'da)` stays text in the box as on the server, and `[x](https://kodpen.com)'da` links only the address. `&` in a query stays inside.
+- The box links no bare address; only the server does.
+- Pinned in `tests/workspace_editor_links_test.php` (run under Node against `ws_format_text()`). Before the follow-up to #3366 the class was `[^\s()<>"]` and let the apostrophe in.

@@ -159,3 +159,34 @@ function test_workspace_flow_fill_webhook_value_by_format()
 
 	pg_assert_same("@here a<{$j}b & \"c\" 'd'\nnext\x07end <{$j}@user:5> <{$j}#order:7> <{$j}!channel> @{$j}everyone", $body['content']);
 }
+
+// The delay box's waited_until reaches a message, a chat post and an e-mail
+// in the site's date and time, a webhook's body as the machine value.
+function test_workspace_flow_fill_waited_until_local()
+{
+	$zone = date_default_timezone_get();
+	date_default_timezone_set('Europe/Istanbul');
+
+	pg_assert_same('30.10.2026 03:50', ws_step_local_time('2026-10-30T00:50:44Z', 'day_month', 'twenty_four_hours'));
+	pg_assert_same('10/30/2026 3:50 AM', ws_step_local_time('2026-10-30T00:50:44Z', 'month_day', 'twelve_hours'));
+	pg_assert_same('soon', ws_step_local_time('soon', 'day_month', ''), 'anything else stays');
+
+	$values = array('delay_1' => array('waited_until' => '2026-10-30T00:50:44Z', 'text' => 'Waited'));
+	$local = ws_step_local_time('2026-10-30T00:50:44Z', defined('DATE_FORMAT') ? DATE_FORMAT : '', defined('TIME_FORMAT') ? TIME_FORMAT : '');
+
+	$post = ws_step_fill_action('post', array('type' => 'post', 'body' => 'Until {{node.delay_1.waited_until}}'), $values);
+	$email = ws_step_fill_action('email', array('type' => 'email', 'subject' => '{{node.delay_1.waited_until}}', 'body' => '{{node.delay_1.waited_until}}'), $values);
+	$chat = ws_step_fill_action('webhook', array('type' => 'webhook', 'format' => 'text', 'text' => '{{node.delay_1.waited_until}}'), $values);
+	$hook = ws_step_fill_action('webhook', array('type' => 'webhook', 'format' => 'generic', 'text' => '{{node.delay_1.waited_until}}'), $values);
+	$row = ws_step_fill_action('row_add', array('type' => 'row_add', 'cells' => '{{node.delay_1.waited_until}}'), $values);
+
+	date_default_timezone_set($zone);
+
+	pg_assert_same('Until ' . $local, $post['body']);
+	pg_assert_same($local, $email['subject']);
+	pg_assert_same($local, $email['body']);
+	pg_assert_same($local, $chat['text']);
+	pg_assert_same('2026-10-30T00:50:44Z', $hook['text'], 'a webhook body keeps the machine value');
+	pg_assert_same('2026-10-30T00:50:44Z', $row['cells'], 'a table cell keeps the machine value');
+	pg_assert_same('2026-10-30T00:50:44Z', $values['delay_1']['waited_until'], 'the run values themselves are unchanged');
+}

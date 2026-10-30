@@ -3,8 +3,8 @@
  *
  * Workspace - the customer card on a channel's Summary tab: who the channel's
  * customer is, the records tied to them, their latest orders, the balance of
- * their current accounts, their open sales and cart quotes and the forms
- * they sent, "Remind me" for a follow-up on a day, and "New cart quote" for
+ * their current accounts, their open sales and cart quotes, the forms they
+ * sent and the visits that name them, "Remind me" for a follow-up on a day, and "New cart quote" for
  * the new cart quote screen on the customer's contact.
  *
  * assets/js/workspace.js asks this file for the card and lends it its own
@@ -144,6 +144,14 @@
             shown = true;
         }
 
+        if (sections.visits) {
+            body.appendChild(sectionTitle(h, h.t('cust_visits'), 'bi-geo-alt', 0));
+            sections.visits.forEach(function (visit) {
+                body.appendChild(line(h, visit.title, visit.url, [visit.date_text], ''));
+            });
+            shown = true;
+        }
+
         if (!shown) {
             body.appendChild(h.el('div', 'small fg-secondary mt-5', h.t('cust_empty')));
         }
@@ -160,7 +168,8 @@
         message: 'bi-chat-left-text',
         task: 'bi-check2-square',
         note: 'bi-journal-text',
-        wtable_row: 'bi-table'
+        wtable_row: 'bi-table',
+        visit: 'bi-geo-alt'
     };
 
     // What happened with the customer, newest first, read only when asked

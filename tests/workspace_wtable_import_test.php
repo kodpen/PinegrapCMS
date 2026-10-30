@@ -51,6 +51,56 @@ function test_workspace_wtable_import_number()
 	pg_assert_same(null, ws_wtable_import_number(''));
 }
 
+// Runs $test with the site writing decimals with a comma (Turkish) or a dot,
+// then puts the site's own way back.
+function ws_wtable_import_test_in($comma, $test)
+{
+	$own = ws_calc_decimal_comma();
+	ws_calc_decimal_comma($comma);
+
+	try {
+		$test();
+	} finally {
+		ws_calc_decimal_comma($own);
+	}
+}
+
+function test_workspace_wtable_import_number_site()
+{
+	ws_wtable_import_test_in(true, function () {
+		pg_assert_same('1250', ws_wtable_import_number('1.250'), 'Turkish: a dot before three digits groups thousands');
+		pg_assert_same('1.25', ws_wtable_import_number('1,25'));
+		pg_assert_same('1.250', ws_wtable_import_number('1,250'), 'Turkish: a comma is the decimal, three digits or not');
+		pg_assert_same('1.25', ws_wtable_import_number('1.25'), 'a dot not before three digits is the decimal');
+		pg_assert_same('1250.50', ws_wtable_import_number('1.250,50'));
+		pg_assert_same('1250.50', ws_wtable_import_number('1,250.50'));
+		pg_assert_same('0.250', ws_wtable_import_number('0.250'), 'a lone nought is no thousands group');
+		pg_assert_same('1234.567', ws_wtable_import_number('1234.567'), 'four digits before the mark are no group');
+		pg_assert_same(array('amount' => '1250', 'currency' => 'TRY'), ws_wtable_import_money('1.250 ₺'));
+		pg_assert_same(array('amount' => '1250', 'currency' => 'TRY'), ws_wtable_import_money('1.250 TL'));
+		pg_assert_same(125000, ws_wtable_import_cell(array('type' => 'money', 'options' => array('decimals' => 2)), '₺1.250 '), 'money in minor units');
+		pg_assert_same('1250', ws_wtable_import_cell(array('type' => 'number', 'options' => array()), '1.250'));
+		pg_assert_same('1,250 kg', ws_wtable_import_cell(array('type' => 'number', 'options' => array()), '1,250 kg'), 'not a number: handed over as written');
+		pg_assert_same(array('type' => 'number', 'options' => array('decimals' => 0)), ws_wtable_import_guess(array('1.250', '2.500', '3')), 'the guess is still a number');
+		pg_assert_same(array('type' => 'money', 'options' => array('decimals' => 2, 'currency' => 'TRY')), ws_wtable_import_guess(array('1.250 ₺', '12,50 TL')));
+		pg_assert_same('text', ws_wtable_import_guess(array('1.250', 'yok'))['type'], 'a cell that is no number keeps the column text');
+	});
+
+	ws_wtable_import_test_in(false, function () {
+		pg_assert_same('1250', ws_wtable_import_number('1,250'), 'English: a comma before three digits groups thousands');
+		pg_assert_same('1.25', ws_wtable_import_number('1.25'));
+		pg_assert_same('1.250', ws_wtable_import_number('1.250'), 'English: a dot is the decimal, three digits or not');
+		pg_assert_same('1.25', ws_wtable_import_number('1,25'), 'a comma not before three digits is the decimal');
+		pg_assert_same('1250.50', ws_wtable_import_number('1,250.50'));
+		pg_assert_same('1250.50', ws_wtable_import_number('1.250,50'));
+		pg_assert_same(array('amount' => '1250', 'currency' => 'USD'), ws_wtable_import_money('$1,250'));
+		pg_assert_same(array('amount' => '1250', 'currency' => 'EUR'), ws_wtable_import_money('EUR 1,250'));
+		pg_assert_same(125000, ws_wtable_import_cell(array('type' => 'money', 'options' => array('decimals' => 2)), '1,250 USD'));
+		pg_assert_same(array('type' => 'number', 'options' => array('decimals' => 0)), ws_wtable_import_guess(array('1,250', '2,500', '3')));
+		pg_assert_same('text', ws_wtable_import_guess(array('1,250', 'n/a'))['type']);
+	});
+}
+
 function test_workspace_wtable_import_money()
 {
 	pg_assert_same(array('amount' => '12.50', 'currency' => 'TRY'), ws_wtable_import_money('12,50 ₺'));

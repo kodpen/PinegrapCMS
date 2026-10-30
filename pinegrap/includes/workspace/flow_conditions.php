@@ -295,8 +295,9 @@ function ws_flow_condition_run($run, $step, $node, $owner)
 
     if ($check['rule']['type'] === 'value') {
         // Inside a loop, the boxes of its own item and the current item.
-        $values = ws_step_run_values($run, ws_flow_run_graph($run), $owner, ws_flow_run_context($run), $step);
-        $held = ws_flow_condition_value_holds($check['rule'], $values);
+        $graph = ws_flow_run_graph($run);
+        $values = ws_step_run_values($run, $graph, $owner, ws_flow_run_context($run), $step);
+        $held = ws_flow_condition_value_holds($check['rule'], $values, $graph);
         $end = ws_flow_condition_settlement($held['holds']);
 
         ws_flow_step_settle($step, 'running', $end['status'], $end['outcome'], $held['text']);
@@ -316,15 +317,17 @@ function ws_flow_condition_run($run, $step, $node, $owner)
 
 /**
  * Whether a value rule holds against the run's values, and the sentence the
- * box keeps: the rule and the value it read. A value the run lacks (a box
- * skipped, a field it did not give) is ''. A comparison of size holds only
- * between two numbers, so an empty value is never "less than 5". Pure.
+ * box keeps: the rule, the value named as the value picker names it, and
+ * the value it read. A value the run lacks (a box skipped, a field it did
+ * not give) is ''. A comparison of size holds only between two numbers, so
+ * an empty value is never "less than 5". Pure.
  *
  * @param array $rule   ws_flow_condition_normalize() value rule
  * @param array $values ws_step_node_values(), the trigger's under WS_STEP_TRIGGER
+ * @param array $graph  the graph the run follows, which names the value
  * @return array holds, text
  */
-function ws_flow_condition_value_holds($rule, $values)
+function ws_flow_condition_value_holds($rule, $values, $graph = array())
 {
     $current = '';
 
@@ -347,10 +350,109 @@ function ws_flow_condition_value_holds($rule, $values)
         $holds = ws_scheduled_compare($current, $op, $value, 'text');
     }
 
-    $said = trim(substr((string) $rule['ref'], 2, -2) . ' ' . (ws_scheduled_operators()[$op] ?? $op) . ' ' . $shown);
+    $said = trim(ws_flow_condition_value_name((string) $rule['ref'], $graph) . ' ' . (ws_scheduled_operators()[$op] ?? $op) . ' ' . $shown);
     $text = $holds
         ? lang(array('string' => 'The condition held: {var:1} (it was "{var:2}").', 'vars' => array($said, $current)))
         : lang(array('string' => 'The condition did not hold: {var:1} (it was "{var:2}").', 'vars' => array($said, $current)));
 
     return array('holds' => $holds, 'text' => $text);
+}
+
+/**
+ * A value a condition reads, named as the value picker's chip names it:
+ * "Box name › Value" (a box by its label, a task or approval box by its
+ * title, else by its kind; what started the run by its start box). A box
+ * the graph no longer has, or a field it does not give, keeps the reference
+ * as written. Pure but for a row start box's columns.
+ *
+ * @param string $ref   {{node.<id>.<field>}} or {{trigger.<field>}}
+ * @param array  $graph the graph the run follows
+ * @return string
+ */
+function ws_flow_condition_value_name($ref, $graph)
+{
+    $fallback = trim(substr((string) $ref, 2, -2));
+
+    if (preg_match(WS_STEP_VALUE_PATTERN, (string) $ref, $match) !== 1) {
+        return $fallback;
+    }
+
+    $kinds = ws_flow_kinds();
+    $trigger = ((string) $match[1] === '');
+    $box = null;
+
+    foreach ((array) ($graph['nodes'] ?? array()) as $node) {
+        $kind = (string) ($node['kind'] ?? '');
+
+        if ($trigger ? !empty($kinds[$kind]['trigger']) : ((string) ($node['id'] ?? '') === (string) $match[1])) {
+            $box = $node;
+            break;
+        }
+    }
+
+    if ($box === null) {
+        return $fallback;
+    }
+
+    $label = ws_flow_condition_field_label($box, (string) $match[2], $kinds);
+
+    if ($label === '') {
+        return $fallback;
+    }
+
+    $kind = (string) $box['kind'];
+    $config = (array) ($box['config'] ?? array());
+    $name = in_array($kind, array('task', 'task_open', 'approval'), true) ? (string) ($config['title'] ?? '') : '';
+    $name = ($name !== '') ? $name : (string) ($box['label'] ?? '');
+    $name = ($name !== '') ? $name : (string) ($kinds[$kind]['label'] ?? $kind);
+
+    return $name . ' › ' . $label;
+}
+
+/**
+ * What the value picker calls a field of a box: text, outcome and status of
+ * a box that runs, else the label of the value it declares; '' for a field
+ * it does not give. Pure but for a row start box's columns.
+ *
+ * @param array  $node  a box of the graph
+ * @param string $field
+ * @param array  $kinds ws_flow_kinds()
+ * @return string
+ */
+function ws_flow_condition_field_label($node, $field, $kinds)
+{
+    $kind = (string) $node['kind'];
+    $config = (array) ($node['config'] ?? array());
+    $start = !empty($kinds[$kind]['trigger']);
+
+    if (!$start && ($kind !== 'constants') && ($kind !== 'value')) {
+        $own = array('text' => lang('What it did'), 'outcome' => lang('Outcome'), 'status' => lang('Status'));
+
+        if (isset($own[$field])) {
+            return $own[$field];
+        }
+    }
+
+    if ($kind === 'value') {
+        return ($field === 'value') ? lang('Value') : '';
+    }
+
+    if ($kind === 'constants') {
+        $outputs = function_exists('ws_flow_constants_outputs') ? ws_flow_constants_outputs($config) : array();
+    } elseif ($start) {
+        $outputs = function_exists('ws_flow_trigger_outputs') ? ws_flow_trigger_outputs($kind, $config) : array();
+    } elseif (($kind === 'for_each') && function_exists('ws_flow_loop_outputs')) {
+        $outputs = ws_flow_loop_outputs($config);
+    } else {
+        $outputs = (!empty($kinds[$kind]['step']) && function_exists('ws_step_outputs')) ? ws_step_outputs($kind, $config) : ($kinds[$kind]['outputs'] ?? array());
+    }
+
+    foreach ($outputs as $output) {
+        if ((string) ($output['key'] ?? '') === $field) {
+            // A constants row is named by its key, as the picker names it.
+            return (string) (($output['label'] ?? '') !== '' ? $output['label'] : $field);
+        }
+    }
+
+    return '';
 }

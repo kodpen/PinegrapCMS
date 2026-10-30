@@ -642,6 +642,7 @@
     "Select a Custom Form": "Seç",
     "Select a State:": "Bir İl Seçin:",
     "Select a Verified Address:": "Doğrulanmış Bir Adres Seçin:",
+    "Select a box to change it. Changes stay in the draft until you publish them; the published flow runs as it is meanwhile.": "Değiştirmek için bir kutu seçin. Değişiklikler siz yayınlayana kadar taslakta kalır; bu arada yayındaki akış olduğu gibi çalışır.",
     "Select a box to change it. Nothing runs until the flow is published.": "Değiştirmek için bir kutu seçin. Akış yayınlanana kadar hiçbir şey çalışmaz.",
     "Select a box to see how it went in this run.": "Bu çalıştırmada nasıl gittiğini görmek için bir kutu seçin.",
     "Select a different custom form": "Farklı bir özel form seçin",

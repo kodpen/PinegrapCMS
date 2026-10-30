@@ -345,3 +345,25 @@ function test_curl_run_take_reports_a_failed_write()
 	pg_assert_same(0, $taken['received']);
 	fclose($sink);
 }
+
+// A certificate error is told in the panel language; the data/config.php
+// advice only to an administrator the caller shows it to.
+function test_curl_tls_hint_text()
+{
+	$cause = ' The certificate could not be verified: this server is most likely missing an up-to-date CA bundle.';
+	$advice = ' Point CURL_CA_BUNDLE at a cacert.pem in data/config.php, or as a last resort set ALLOW_INSECURE_UPDATE_TLS to true there.';
+
+	pg_assert_same('', pg_curl_tls_hint_text(28, true), 'not a certificate error');
+	pg_assert_same($cause, pg_curl_tls_hint_text(60, false));
+	pg_assert_same($cause . $advice, pg_curl_tls_hint_text(77, true));
+	pg_assert_same($cause, pg_curl_tls_hint(35), 'no advice unless the caller asks for it');
+
+	if (!defined('USER_ROLE')) {
+		pg_assert_same($cause, pg_curl_tls_hint(60, true), 'no advice without a signed-in administrator');
+	}
+
+	// Every text goes through lang().
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/update.php');
+	pg_assert_true(strpos($source, "' The certificate could not be verified. This server") === false, 'the old English sentence is gone');
+	pg_assert_contains("lang('The certificate could not be verified: this server is most likely missing an up-to-date CA bundle.')", $source);
+}

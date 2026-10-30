@@ -48,6 +48,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workflow-table-starters.md: Starters on the New table card (T6c, #3044): contact pipeline and checklist live in code (ws_wtable_starters()), made through the store's functions with optional sample rows; no store, no schema
 - workflow-tables-api.md: Workflow tables in the external API and MCP (api_wtables.php, T1d1 #2890, T1d2 #2931): routes, which are tools, dry run, errors, rows paging, Claude's reach, shares, workspace.wtable.row.* webhooks
 - workflow-tables-later.md: What workflow tables leave for later (T1-T6 done): API/MCP import route, xlsx export, a "my tables" strip, CRM pipeline, table bin
+- workflow-tables-numbers.md: How workflow tables read and show amounts and numbers (#3391, PR #3507, import PR #3524): ws_calc_number() for typed figures, site separators in file import and on display, machine form stored
 - workflow-tables-screen.md: The workflow tables screen workspace_wtables.php (T1e, #2966): server-drawn forms over the store, list scopes, rows paged, the row form, column options from the form, shares, nav entry
 - workflow-tables.md: Workflow tables (11.0.110, #2746): the four ws_wtable* tables column by column, ws_wtable_access(), column changes; JSON person/link cells and the privacy reader
 - workspace-agent-preamble.md: The site preamble an MCP agent (switch ws_mcp_servers.agent_preamble, 11.0.111, off by default) and an outside app (GET /workspace/messages/{id}/preamble) get, and what stays out
@@ -133,7 +134,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-flows-derived-box.md: The derived value box of a flow (kind value, T3, PR #2701): its allowlisted rules, inputs and value, how a run works it out, the transitive "comes before" check, the canvas form
 - workspace-flows-event-depth.md: The chain depth a flow run's events carry: ws_event_depth() said by a step box around its work, stamped as _depth by ws_event() and pg_event_record(), read by ws_events_start()
 - workspace-flows-for-each-canvas.md: The For each loop on the Flows canvas (D9 canvas, #3422): kinds, arrows, the body frame, the list and collect forms, which values a box inside or outside the loop is offered
-- workspace-flows-for-each.md: Flows For each loop (D9, #3312; server #3323, canvas #3422): For each / End boxes, body per item at pass = item, graph check, 50-item cap, End outputs, 16 KB list, canvas frame
+- workspace-flows-for-each.md: Flows For each loop (D9, #3312, #3323, #3422): For each / End boxes, body per item at pass = item, graph check, 50-item cap, End outputs, 16 KB list, size warning
 - workspace-flows-form-retirement.md: How the scheduled actions form was retired (R1-R4, done in #2970): what went in each slice, and what cards, scheduled messages, the draft card and the canvas still use
 - workspace-flows-from-scheduled.md: A scheduled action as a flow graph (ws_flow_graph_from_scheduled(), PR #2306): how each part maps to a box or arrow, self-retry, money, what is told in left
 - workspace-flows-from-table.md: Run from a workflow table (F6c-a #3145, F6c-b, decision #3122): rows compiled into a draft flow (ws_flow_from_wtable()), rights; Run's optional customer, one open run per flow and contact
@@ -151,9 +152,10 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-flows-run-channel.md: The channel a flow run opens its tasks in: the flow's home as the run starts, or the channel_id named on POST /workspace/flows/{id}/runs (decision #2413); ws_flow_run_channel_check(), shared with C2
 - workspace-flows-run-events.md: Webhook events of flow runs (A7, #2406): workspace.flow.run.finished, .failed, .cancelled, .waiting; where each is announced once, the body, words only in public channels, what is never announced
 - workspace-flows-run-flag.md: A flow run's flag (C1, #2903): state, duration, one-line result folded behind ▾; ws_flow_run_result_pick(), result on run reads, last_run in the flow list, runFlag() for C2
+- workspace-flows-run-notice.md: A flow run's inbox line opens that run (?flow=&run=), a failed run's own title and icon, box titles with values named, the live-flow hint, the cancel sentence by box kind and the cancel dialog (#3514)
 - workspace-flows-run-values.md: What GET /workspace/flow-runs/{id} gives per box beyond its status (A5, #2284): threads_in as the walk reads them, outputs from the result's data, what a reader without edit does not get
 - workspace-flows-run-view.md: The run view of the flow canvas (workspace_flow.js, PR #1555): Run, the runs list, a run shown box by box, the values each box received, how it is read again, what a failed read shows
-- workspace-flows-runner-rounds.md: Flow runner rounds (#3473, bug #3368): each run gets 3 boxes a round, new rounds until 30 a call or the budget; pending publish warning for loop items x body boxes
+- workspace-flows-runner-rounds.md: Flow runner rounds (#3473, bug #3368): each run gets 3 boxes a round, new rounds until 30 a call or the budget; publish warning for loop items x body boxes (#3515)
 - workspace-flows-runner.md: Workspace flow runs (flow_runs.php): start, run channel, walk, task boxes, wake-ups, recovery, drivers, limits, end, cancel, routes
 - workspace-flows-scheduled-merge.md: Scheduled actions moved into Flows (owner, 2026-10-24): what was decided, the two anchors, what stays a scheduled action, and the PRs of each slice
 - workspace-flows-scheduled-section.md: Staff's scheduled actions at the end of the Flows list (V5, #3222): converted rows with Run now and History, the Not converted cards, ?view=scheduled opens the list, Show on canvas
@@ -237,6 +239,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-unsent-draft.md: The Workspace composer's unsent text kept on the browser (localStorage) per site, viewer, channel and discussion: key, when saved, restored, cleared, limits, what is never kept
 - workspace-upload-refusals.md: What a Workspace channel refuses to take (ws_upload_refused()): the file manager's list, page and script types, Office files with macros (PR #1322); why, every door it covers, the message
 - workspace-variant-set-change.md: A variant set added from a change card (variant_set, PR #1943): fields, variants and price_rules values, checks, writer, events, matrix card, proposers
+- workspace-visit-contact.md: A customer visit on the Work Calendar names its contact (ws_events.contact_id, 11.0.118, CRM seams 10.1, #3517): the pick check, the card section, the history entry, holder and erasure
 - workspace-voice-asks.md: A voice message that asks Claude, Pinegrap AI or an MCP server (V4c): tags beside the mic, a voice answer, asked once transcribed (ws_voice_posted(), ws_voice_ask())
 - workspace-voice-assistants.md: Voice transcripts the assistants, recaps, bells, banners and search read (V4a #2798, V4b): ws_voice_transcripts(), ws_voice_with_transcript(), ws_voice_excerpt(), ws_voice_search_or()
 - workspace-voice-read-aloud.md: Assistants' answers read aloud (V5): the per-person browser switch in the channel menu, off by default, no schema; which answers are read, what is left out, when it stops
