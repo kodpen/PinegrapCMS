@@ -232,8 +232,17 @@ function get_express_order($properties) {
                 "SELECT name, code, zip_code_required AS zip FROM countries ORDER BY name",
                 'code');
 
+        // Named and ordered in the site's language (pg_geo_country_label()); two
+        // rows that share a label (a duplicate code in the data) keep both options.
+        $country_labels = array();
+
         foreach ($countries as $country) {
-            $country_options[$country['name']] = $country['code'];
+            $country_labels[] = array('code' => $country['code'], 'label' => pg_geo_country_label($country['name'], $country['code']));
+        }
+
+        foreach (pg_geo_sort_by_label($country_labels) as $country) {
+            $label = isset($country_options[$country['label']]) ? $country['label'] . ' (' . $country['code'] . ')' : $country['label'];
+            $country_options[$label] = $country['code'];
         }
 
         $states = db_items(
@@ -4263,6 +4272,11 @@ function get_express_order($properties) {
                 if (ECOMMERCE_SHIPPING and $recipient['shipping']) {
 
                     $recipient['ship_to_heading'] = true;
+
+                    // The country in the site's language, not the stored name.
+                    if ($recipient['country']) {
+                        $recipient['country'] = pg_geo_country_label($recipient['country'], $recipient['country_code']);
+                    }
 
                     // If this shipping address is verified,
                     // then convert salutation and country to all uppercase.
