@@ -496,6 +496,7 @@
     "Payment schedule: frequency (required)": "Ödeme planı: sıklık (zorunlu)",
     "Payment schedule: number of payments": "Ödeme planı: ödeme sayısı",
     "Payment schedule: start date": "Ödeme planı: başlangıç tarihi",
+    "Payment service": "Ödeme hizmeti",
     "Payment term": "Vade",
     "Payment term (days)": "Vade (gün)",
     "Payment term must be a whole number of days, 0 to 3650.": "Vade 0 ile 3650 arasında tam gün olmalıdır.",

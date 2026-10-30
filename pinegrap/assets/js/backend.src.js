@@ -3872,7 +3872,7 @@ function get_notifications($read_mark, keep_place) {
 
                             output_button_bar += '<button type="button" class="fs-smaller menu-item bi bi-check-square bi-me-2 fg-emphasis-secondary" onclick="edit_notification(\'' + notification_id + '\', \'mark_unread\'); this.remove();">' + lang('Mark as unread') + '</button>';
 
-                            output_data_title = '<small class="notification-title" title="' + response.data[i].title + '">' + response.data[i].title + '</small>';
+                            output_data_title = '<small class="notification-title text-wrap text-break w-100">' + response.data[i].title + '</small>';
                         } else {
                             output_data_title = '<div class="notification-title text-wrap w-100">' + response.data[i].title + '</div>';
                         }
