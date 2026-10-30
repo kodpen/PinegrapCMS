@@ -70,6 +70,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-assistant-reach.md: Claude and Pinegrap AI read and answer a discussion or allowed private channel their app owner is not in through the person who asked (PR #1085)
 - workspace-bulk-create.md: Bulk product drafts (bulk.php action create, PR #2266): one 'bulk' card of up to 200 rows, checks, row place saved before the write, events, card, where a person's own rows come from
 - workspace-bulk-sources.md: A person's own bulk product drafts (bulk_sources.php): several lines under /create product, /create product answering or sent with a channel spreadsheet, the table reader, ws_bulk_create_card()
+- workspace-calc-numbers.md: Figures inside a workspace sum (ws_calc_tokens(), ws_calc_inline(), #3398): read the site's way, leading %, English comma separates arguments, "=" line errors
 - workspace-cart-quote-tag.md: The cart quote's Workspace tag (cart_quote, #3256): prefixes, the ecommerce right, orders:read, what the chip shows, the search, view_cart_quotes.php?id= and its Workspace button
 - workspace-change-proposal-display.md: How an application's proposal is shown: its name on cards, bells, push, Site Log (every bulk slice) and decisions, the task drawer's "Proposed for" line, the agent GET /workspace/decisions gives
 - workspace-change-proposals.md: Record changes an application proposes as cards (proposals.php, api_proposals.php): routes, agents oauth:/app:, checks, role-3 contacts, the hourly limit and its lock, who applies, what is written
