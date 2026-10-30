@@ -311,7 +311,7 @@ $footer = function () use ($el, $para, $link, $icon, $heading, $categories, $cat
     return $el('footer', 'mt-auto bg-body text-body pt-5 pb-4 border-top', lang('Site Footer'), array(
         $el('div', 'container', lang('Footer Container'), array(
             $el('div', 'row g-4', lang('Footer Columns'), array(
-                $el('div', 'col-12 col-lg-4', lang('About the Store'), array(
+                $el('div', 'col-12 col-lg-3', lang('About the Store'), array(
                     $link('{{site_name}}', '{{page:home}}', 'fs-5 fw-bold text-decoration-none link-body-emphasis'),
                     $para(lang('Good products at fair prices, packed with care and sent the same day.'), 'small text-body-secondary mt-2 mb-3'),
                     $el('div', 'd-flex gap-3', lang('Social Links'), array(
@@ -337,7 +337,7 @@ $footer = function () use ($el, $para, $link, $icon, $heading, $categories, $cat
                     $link(lang('Shopping Cart'), '{{page:cart}}', $plain),
                     $link(lang('Favourites'), '{{page:favourites}}', $plain),
                 )),
-                $el('div', 'col-6 col-lg-2', lang('Contact Details'), array(
+                $el('div', 'col-6 col-lg-3', lang('Contact Details'), array(
                     $heading('h2', lang('Get in Touch'), 'h6 text-uppercase small fw-bold mb-3'),
                     $el('p', 'small d-flex align-items-center gap-2 mb-2', lang('Email'), array(
                         $icon('bi-envelope', 'text-primary'),
@@ -345,7 +345,7 @@ $footer = function () use ($el, $para, $link, $icon, $heading, $categories, $cat
                     )),
                     $el('p', 'small d-flex align-items-center gap-2 mb-0', lang('Phone'), array(
                         $icon('bi-telephone', 'text-primary'),
-                        $link('+90 555 000 00 00', 'tel:+905550000000', 'link-body-emphasis text-decoration-none'),
+                        $link('+90 555 000 00 00', 'tel:+905550000000', 'link-body-emphasis text-decoration-none text-nowrap'),
                     )),
                 )),
             )),
@@ -2613,7 +2613,7 @@ foreach ($pages as $i => $p) {
 
 return array(
     'name'        => lang('Online Store'),
-    'version'     => '1.1.1',
+    'version'     => '1.1.2',
     'framework'   => 'bootstrap5',
     'order'       => 20,
     'icon'        => 'bi-bag-heart',
