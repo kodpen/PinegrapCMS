@@ -858,6 +858,38 @@ function pg_initials_upper($text)
 }
 
 /**
+ * Each word's first letter upper-cased for the panel's language, the rest
+ * left as it is: a multibyte ucwords() that knows "i" is "İ" in Turkish.
+ *
+ * @param string $text
+ * @return string
+ */
+function pg_upper_words($text)
+{
+    return (string) preg_replace_callback('/(^|[\s\-])(\pL)/u', function ($match) {
+        return $match[1] . pg_initials_upper($match[2]);
+    }, (string) $text);
+}
+
+/**
+ * A name in Turkish title case whatever the panel's language ("AYŞE YILDIZ
+ * IŞIK" is "Ayşe Yıldız Işık", "İLKER" is "İlker"), for files read by
+ * Turkish-only services such as Paraşüt. mb_convert_case() lowers "I" to "i"
+ * and "İ" to "i" plus a combining dot.
+ *
+ * @param string $text
+ * @return string
+ */
+function pg_turkish_title_case($text)
+{
+    $text = mb_strtolower(str_replace(array('I', 'İ'), array('ı', 'i'), (string) $text), 'UTF-8');
+
+    return (string) preg_replace_callback('/(^|[\s\-])(\pL)/u', function ($match) {
+        return $match[1] . mb_strtoupper(str_replace(array('i', 'ı'), array('İ', 'I'), $match[2]), 'UTF-8');
+    }, $text);
+}
+
+/**
  * The letters a person is shown by.
  *
  * @param string $first_name

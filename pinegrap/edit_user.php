@@ -715,7 +715,7 @@ if (!$_POST) {
     if ($identity_photo != '') {
         $output_identity_picture = '<img class="pg-identity-pic" src="' . h($identity_photo) . '" alt="" />';
     } else {
-        $output_identity_picture = '<span class="pg-identity-pic">' . h(mb_strtoupper(mb_substr($identity_name, 0, 1, 'UTF-8'), 'UTF-8')) . '</span>';
+        $output_identity_picture = '<span class="pg-identity-pic">' . h(pg_initials_upper(mb_substr($identity_name, 0, 1, 'UTF-8'))) . '</span>';
     }
 
     // ── Sessions ─────────────────────────────────────────────────────────

@@ -652,7 +652,7 @@
             var source = (user && user.name) ? user.name : (fallbackName || '');
 
             face.classList.add('avatar-subtle', 'theme-secondary');
-            face.textContent = source.replace(/^\s+/, '').charAt(0).toUpperCase() || '?';
+            face.textContent = source.replace(/^\s+/, '').charAt(0).toLocaleUpperCase(document.documentElement.lang || undefined) || '?';
         }
 
         if (user && (['online', 'away', 'offline'].indexOf(user.presence) !== -1)) {
