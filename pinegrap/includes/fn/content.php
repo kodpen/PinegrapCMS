@@ -2771,9 +2771,34 @@ function get_duplicate_catalog_item_address_name_number($address_name, $number =
 // Not a general transliteration: it covers the alphabets this software is
 // actually used in, which is what a URL segment needs. Turkish first, because
 // its dotless i and dotted I are the pair that most often breaks an address.
+//
+// The table itself is pg_transliterate_ascii_table(); this applies it.
 function pg_transliterate_to_ascii($text)
 {
-    static $accented = array(
+    static $accented = null;
+    static $plain = null;
+
+    if ($accented === null) {
+        $table = pg_transliterate_ascii_table();
+        $accented = array_keys($table);
+        $plain = array_values($table);
+    }
+
+    return str_replace($accented, $plain, (string) $text);
+}
+
+// The accented letters pg_transliterate_to_ascii() replaces, as
+// accented => plain. The product screen passes it to its address preview so
+// the browser builds the address with this table instead of a copy of it.
+function pg_transliterate_ascii_table()
+{
+    static $table = null;
+
+    if ($table !== null) {
+        return $table;
+    }
+
+    $accented = array(
         'ı','İ','ş','Ş','ğ','Ğ','ü','Ü','ö','Ö','ç','Ç',
         'á','à','â','ä','ã','å','ā','Á','À','Â','Ä','Ã','Å','Ā',
         'é','è','ê','ë','ē','É','È','Ê','Ë','Ē',
@@ -2784,7 +2809,7 @@ function pg_transliterate_to_ascii($text)
         'ł','Ł','ń','ň','Ń','Ň','ř','Ř','ś','š','Ś','Š',
         'ť','Ť','ź','ż','ž','Ź','Ż','Ž','æ','Æ','œ','Œ','ß');
 
-    static $plain = array(
+    $plain = array(
         'i','I','s','S','g','G','u','U','o','O','c','C',
         'a','a','a','a','a','a','a','A','A','A','A','A','A','A',
         'e','e','e','e','e','E','E','E','E','E',
@@ -2795,7 +2820,9 @@ function pg_transliterate_to_ascii($text)
         'l','L','n','n','N','N','r','R','s','s','S','S',
         't','T','z','z','z','Z','Z','Z','ae','AE','oe','OE','ss');
 
-    return str_replace($accented, $plain, (string) $text);
+    $table = array_combine($accented, $plain);
+
+    return $table;
 }
 
 function prepare_catalog_item_address_name($address_name, $item_id = '')

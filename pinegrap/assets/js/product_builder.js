@@ -2250,21 +2250,48 @@
     }
 
     /* The address a visitor lands on, built the way the server builds it.
-       prepare_catalog_item_address_name() replaces spaces and ampersands and
-       nothing else, and falls back to the short description, then the name —
-       so an operator who leaves the catalog name blank still sees what their
-       URL is going to be.
+       The steps are prepare_catalog_item_address_name()'s: trim, transliterate
+       with the server's own accent table (cfg.asciiTable, from
+       pg_transliterate_ascii_table()), every character outside A-Z a-z 0-9
+       [ ] _ - to an underscore, runs of underscores to one, none at either
+       end, and 'item' when nothing is left. The duplicate number the server
+       appends ("[1]") needs the database and is not shown.
+
+       The source falls back the way the save does: the catalog name, then the
+       short description, then the name. On Edit the save rebuilds the address
+       only when the box changed, so a blank or unchanged box shows the stored
+       address (cfg.storedAddress) as it is.
 
        The middle segment is an ellipsis on purpose. A product sits under
        whichever page the catalog is on, and that page is not chosen on this
        screen; printing a guess would be inventing a URL. */
     function previewAddress() {
 
-        var raw = $.trim($('#address_name').val() || '') ||
+        var typed  = $.trim($('#address_name').val() || '');
+        var stored = cfg.storedAddress || '';
+
+        if (stored && (typed === '' || typed === stored)) {
+            return stored;
+        }
+
+        var raw = typed ||
                   $.trim($('#short_description').val() || '') ||
                   $.trim($('#name').val() || '');
 
-        return raw.replace(/ /g, '_').replace(/&/g, '_');
+        if (!raw) {
+            return '';
+        }
+
+        var table = cfg.asciiTable || {};
+
+        Object.keys(table).forEach(function (accented) {
+            raw = raw.split(accented).join(table[accented]);
+        });
+
+        return raw
+            .replace(/[^A-Za-z0-9\[\]_-]/g, '_')
+            .replace(/_{2,}/g, '_')
+            .replace(/^_+|_+$/g, '') || 'item';
     }
 
     /* Rich text fields are CKEditor 4 instances, and CKEditor hides the original
