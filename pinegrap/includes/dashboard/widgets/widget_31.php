@@ -113,7 +113,7 @@ function pg_dashboard_widget_31($request, $user)
         <div class="d-flex align-items-end gap-5 px-5 pt-3 pb-3">
             ' . $figure(lang('Clicks'), $now['clicks'], $change($now['clicks'], $before['clicks'])) . '
             ' . $figure(lang('Impressions'), $now['impressions'], $change($now['impressions'], $before['impressions'])) . '
-            <span title="' . h(lang('Clicks in the last 7 days with figures')) . '">' . pg_widget_bars($week) . '</span>
+            <span title="' . h(lang('Clicks in the last 7 days with figures')) . '">' . pg_widget_bars($week, lang('Clicks')) . '</span>
         </div>
         <div class="fg-secondary px-5 pb-1" style="font-size:10px">' . h(prepare_form_data_for_output($period['from'], 'date', false) . ' – ' . prepare_form_data_for_output($period['to'], 'date', false)) . '</div>
         <div class="pg-list">

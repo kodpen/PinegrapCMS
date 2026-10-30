@@ -69,6 +69,7 @@ function pg_dashboard_widget_7($request, $user)
             'color' => $kind['color'],
             'count' => ($today > 0) ? pg_format_number($today, 0) : '',
             'title' => lang(array('string' => '{var:1} today', 'vars' => pg_format_number($today, 0))),
+            'count_text' => lang(array('string' => '{var:1} today', 'vars' => pg_format_number($today, 0))),
             'bars'  => ($kind['series'] !== null) ? $kind['series'] : null,
         ));
 
@@ -114,6 +115,7 @@ function pg_dashboard_widget_7($request, $user)
         'color' => '#8b5cf6',
         'count' => ($today_total > 0) ? pg_format_number($today_total, 0) : '',
         'title' => lang(array('string' => '{var:1} today', 'vars' => pg_format_number($today_total, 0))),
+        'count_text' => lang(array('string' => '{var:1} today', 'vars' => pg_format_number($today_total, 0))),
     ));
 
     $output_data = '
