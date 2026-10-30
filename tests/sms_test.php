@@ -838,10 +838,62 @@ function test_sms_dial_reads_back_the_stored_number()
 	pg_assert_same('', pg_sms_dial(''), 'no number');
 }
 
-// Both drivers are offered, Netgsm first.
-function test_sms_providers_list_both()
+// Every driver is offered, Netgsm first, Twilio for numbers abroad last.
+function test_sms_providers_list()
 {
-	pg_assert_same(array('netgsm', 'iletimerkezi'), array_keys(pg_sms_providers()));
+	pg_assert_same(array('netgsm', 'iletimerkezi', 'twilio'), array_keys(pg_sms_providers()));
+}
+
+// A Twilio sender is a phone number in E.164 or a Messaging Service SID; the
+// others keep the eleven-character sender name.
+function test_sms_sender_valid_per_provider()
+{
+	pg_assert_true(pg_sms_sender_valid('+14155550100', 'twilio'));
+	pg_assert_true(pg_sms_sender_valid('MG0123456789abcdef0123456789abcdef', 'twilio'));
+	pg_assert_false(pg_sms_sender_valid('PINEGRAP', 'twilio'));
+	pg_assert_false(pg_sms_sender_valid('14155550100', 'twilio'));
+	pg_assert_false(pg_sms_sender_valid('MG0123456789abcdef', 'twilio'));
+	pg_assert_false(pg_sms_sender_valid("+14155550100\n", 'twilio'));
+	pg_assert_true(pg_sms_sender_valid('PINEGRAP', 'netgsm'));
+	pg_assert_false(pg_sms_sender_valid('+14155550100123', 'iletimerkezi'));
+
+	pg_assert_same('+14155550100', pg_sms_sender_typed(' +1 (415) 555-0100 ', 'twilio'));
+	pg_assert_same('ŞİRKET AŞ', pg_sms_sender_typed('ŞİRKET AŞ', 'netgsm'));
+
+	$providers = pg_sms_providers();
+	pg_assert_same(34, $providers['twilio']['sender_maxlength']);
+	pg_assert_same(11, $providers['netgsm']['sender_maxlength']);
+	pg_assert_same('password', pg_sms_refused_field('twilio', '20003'));
+	pg_assert_same('user', pg_sms_refused_field('twilio', '20404'));
+}
+
+// The Twilio card asks for the Account SID and Auth Token and takes a
+// 34-character sender, copied with spaces or not.
+function test_sms_settings_twilio_card()
+{
+	$providers = pg_sms_providers();
+	$fields = pg_sms_settings_account_fields('twilio', $providers['twilio'], sms_test_none());
+	pg_assert_contains('>Account SID</label>', $fields);
+	pg_assert_contains('>Auth Token</label>', $fields);
+	pg_assert_contains('name="sms_twilio_sender"', $fields);
+	pg_assert_contains('maxlength="34"', $fields);
+
+	$post = array(
+		'sms_provider'        => 'twilio',
+		'sms_enabled'         => '1',
+		'sms_twilio_user'     => 'ACXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
+		'sms_twilio_password' => 'test_auth_token',
+		'sms_twilio_sender'   => '+1 415 555 0100',
+	);
+	$decision = pg_sms_settings_decide($post, 'twilio', sms_test_none(), '');
+	pg_assert_same('+14155550100', $decision['sender']);
+	pg_assert_same(array(), $decision['marks']);
+	pg_assert_true($decision['ask']);
+
+	$post['sms_twilio_sender'] = 'PINEGRAP';
+	$wrong = pg_sms_settings_decide($post, 'twilio', sms_test_none(), '');
+	pg_assert_contains('Messaging Service SID', $wrong['marks']['sms_twilio_sender']);
+	pg_assert_false($wrong['ask']);
 }
 
 // A refused account check marks the field the provider's code names.
