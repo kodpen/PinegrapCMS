@@ -719,5 +719,5 @@
     "by hand": "elle",
     "by this time yesterday {var:1}": "dün bu saatte {var:1}",
     "by word": "tam sözcük",
-    "by {var:1}": "<strong>{var:1}</strong> tarafından."
+    "by {var:1}": "{var:1} tarafından"
 }
