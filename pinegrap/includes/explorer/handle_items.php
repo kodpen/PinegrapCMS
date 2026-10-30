@@ -492,7 +492,9 @@ function pg_explorer_handle_move($type, $request, $user)
 
     if ($moved > 0) {
         $target_name = db_value("SELECT folder_name FROM folder WHERE folder_id = '" . e($target_id) . "'");
-        log_activity($moved . ' ' . lang('item(s)') . ' ' . lang(array('string' => 'were moved to {var:1}', 'vars' => $target_name)), $_SESSION['sessionusername']);
+        log_activity(($moved == 1)
+            ? lang(array('string' => '{var:1} item was moved to the folder {var:2}', 'vars' => array($moved, $target_name)))
+            : lang(array('string' => '{var:1} items were moved to the folder {var:2}', 'vars' => array($moved, $target_name))), $_SESSION['sessionusername']);
 
         // An item dragged out of the bin is restored: forget it.
         if (pg_recycle_ready()) {
@@ -514,5 +516,7 @@ function pg_explorer_handle_move($type, $request, $user)
         'errors' => $errors,
         'message' => (count($errors) > 0)
             ? implode(' ', $errors)
-            : lang(array('string' => '{var:1} item(s) were moved.', 'vars' => $moved))));
+            : (($moved == 1)
+                ? lang(array('string' => '{var:1} item was moved.', 'vars' => $moved))
+                : lang(array('string' => '{var:1} items were moved.', 'vars' => $moved)))));
 }

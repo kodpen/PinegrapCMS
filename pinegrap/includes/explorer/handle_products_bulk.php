@@ -508,12 +508,18 @@ function pg_explorer_handle_products_bulk_edit($type, $request, $user)
         $notes[] = lang('removed from a product group');
     }
 
-    $message = lang(array(
-        'string' => '{var:1} products were updated ({var:2}).',
-        'vars' => array($updated, implode(', ', $notes))));
-
     if (count($notes) == 0) {
-        $message = lang(array('string' => '{var:1} products were updated', 'vars' => $updated));
+        $message = ($updated == 1)
+            ? lang(array('string' => '{var:1} product was updated', 'vars' => $updated))
+            : lang(array('string' => '{var:1} products were updated', 'vars' => $updated));
+    } elseif ($updated == 1) {
+        $message = lang(array(
+            'string' => '{var:1} product was updated ({var:2}).',
+            'vars' => array($updated, implode(', ', $notes))));
+    } else {
+        $message = lang(array(
+            'string' => '{var:1} products were updated ({var:2}).',
+            'vars' => array($updated, implode(', ', $notes))));
     }
 
     // Everything below is appended as its own sentence, so the count

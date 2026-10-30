@@ -221,7 +221,7 @@ foreach ($receivables['top'] as $account) {
     $output_top .= '
                         <tr>
                             <td class="text-break" style="max-width:220px"><a href="edit_erp_account.php?id=' . (int) $account['id'] . '" class="pg-link-body-emphasis">' . h($account['title']) . '</a></td>
-                            <td class="text-end text-nowrap fg-secondary" data-sort="' . (int) $account['oldest_days'] . '">' . h(lang(array('string' => '{var:1} days', 'vars' => (int) $account['oldest_days']))) . '</td>
+                            <td class="text-end text-nowrap fg-secondary" data-sort="' . (int) $account['oldest_days'] . '">' . h(lang(array('string' => '{var:1} day{suffix:1}', 'vars' => (int) $account['oldest_days'], 'suffix' => ((int) $account['oldest_days'] == 1) ? '' : 's'))) . '</td>
                             <td class="text-end text-nowrap" data-sort="' . (int) $account['total'] . '"><a href="erp_invoices.php?filter=overdue&amp;direction=sales&amp;account_id=' . (int) $account['id'] . '" class="pg-link-body-emphasis">' . h(erp_money_out((int) $account['total'])) . '</a></td>
                         </tr>';
 }

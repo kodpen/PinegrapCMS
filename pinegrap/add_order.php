@@ -440,7 +440,7 @@ echo
                     <div class="card pg-sale-cart mt-5">
                         <div class="card-header">
                             <h2 class="pg-sale-ch fg-primary">' . lang('Cart') . '</h2>
-                            <span class="small fg-secondary" id="pg_sale_count">' . (($totals['count'] > 0) ? h(lang(array('string' => '{var:1} lines · {var:2} units', 'vars' => array($totals['count'], $totals['units'])))) : '') . '</span>
+                            <span class="small fg-secondary" id="pg_sale_count">' . h(local_sale_count_text($totals)) . '</span>
                         </div>
                         <div class="table-responsive">
                             <table class="table mb-0 pg-sale-table">

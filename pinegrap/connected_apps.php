@@ -73,7 +73,9 @@ if ($_POST) {
 
 		if ($count > 0) {
 
-			$liveform->add_notice(lang(array('string' => '{var:1} connections were ended.', 'vars' => $count)));
+			$liveform->add_notice(($count == 1)
+				? lang(array('string' => '{var:1} connection was ended.', 'vars' => $count))
+				: lang(array('string' => '{var:1} connections were ended.', 'vars' => $count)));
 
 			log_activity(lang('ended all of their OAuth connections'), $_SESSION['sessionusername']);
 

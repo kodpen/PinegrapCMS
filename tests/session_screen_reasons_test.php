@@ -80,7 +80,7 @@ function test_session_screen_user_list_lock_minutes_visible()
 {
 	$source = session_screen_reasons_test_source('includes/fn/user_list.php');
 
-	session_screen_reasons_test_not_in_title($source, "'string' => 'Clears in {var:1} minutes.'", 'the lock minutes');
+	session_screen_reasons_test_not_in_title($source, "'string' => 'Clears in {var:1} minute{suffix:1}.'", 'the lock minutes');
 	pg_assert_true(strpos($source, "'Signing in is locked after repeated failed attempts. Clears in {var:1} minutes.'") === false, 'the hover-only sentence is gone');
 }
 
