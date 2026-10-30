@@ -28,6 +28,11 @@ define('WS_FLOW_CONSTANT_LENGTH', 500);
 define('WS_FLOW_DERIVED_LENGTH', 500);
 define('WS_FLOW_DERIVED_DAYS', 3650);
 
+// The longest value a derived value box gives, and the longest input once
+// filled, in characters: an input may cite a value many times, so without a
+// limit a chain of joins grows the value many-fold per box.
+define('WS_FLOW_DERIVED_VALUE_LENGTH', 4000);
+
 /**
  * The types a constant takes: those of the values the boxes give
  * (ws_step_output_types()).
@@ -454,8 +459,8 @@ function ws_flow_derived_date($text)
  */
 function ws_flow_derived_value($config, $a, $b)
 {
-    $a = trim((string) $a);
-    $b = trim((string) $b);
+    $a = trim(mb_substr((string) $a, 0, WS_FLOW_DERIVED_VALUE_LENGTH));
+    $b = trim(mb_substr((string) $b, 0, WS_FLOW_DERIVED_VALUE_LENGTH));
     $numbers = is_numeric($a) && is_numeric($b);
 
     switch ($config['rule']) {
@@ -474,7 +479,7 @@ function ws_flow_derived_value($config, $a, $b)
             return ws_scheduled_compare($a, $op, $b, 'text') ? '1' : '0';
 
         case 'join':
-            return trim($a . ' ' . $b);
+            return mb_substr(trim($a . ' ' . $b), 0, WS_FLOW_DERIVED_VALUE_LENGTH);
 
         case 'add':
         case 'subtract':
@@ -507,7 +512,9 @@ function ws_flow_derived_value($config, $a, $b)
 /**
  * A derived value box's input with the run's values in it, as they are:
  * the box that reads the value makes it safe where it lands
- * (ws_step_fill_value()). Pure.
+ * (ws_step_fill_value()). Cut to WS_FLOW_DERIVED_VALUE_LENGTH characters:
+ * each value placed takes only the room left, so the text never grows past
+ * the limit and the written input's own length. Pure.
  *
  * @param string $text
  * @param array  $values node id => key => value, the trigger's under WS_STEP_TRIGGER
@@ -515,9 +522,16 @@ function ws_flow_derived_value($config, $a, $b)
  */
 function ws_flow_derived_fill($text, $values)
 {
-    return (string) preg_replace_callback(WS_STEP_VALUE_PATTERN, function ($match) use ($values) {
-        return (string) ($values[ws_step_value_box($match)][$match[2]] ?? '');
+    $room = WS_FLOW_DERIVED_VALUE_LENGTH;
+
+    $text = (string) preg_replace_callback(WS_STEP_VALUE_PATTERN, function ($match) use ($values, &$room) {
+        $value = mb_substr((string) ($values[ws_step_value_box($match)][$match[2]] ?? ''), 0, max(0, $room));
+        $room -= mb_strlen($value);
+
+        return $value;
     }, (string) $text);
+
+    return mb_substr($text, 0, WS_FLOW_DERIVED_VALUE_LENGTH);
 }
 
 /**
