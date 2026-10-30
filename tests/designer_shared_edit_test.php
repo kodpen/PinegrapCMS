@@ -50,7 +50,7 @@ function designer_shared_edit_test_run($body)
 	}
 
 	$source = designer_shared_edit_test_source();
-	$script = 'var _sharedCache = {}, _sharedDirty = {}, _sharedSnapshots = {};'
+	$script = 'var _sharedCache = {}, _sharedDirty = {}, _sharedSnapshots = {}, nodeIdCounter = 0;'
 		. 'var contentLevel = false, openToContent = {};'
 		. 'function _sdIsContentLevel() { return contentLevel; }'
 		. 'function _sdSharedOpenToContent(sid) { return !!openToContent[sid]; }'
@@ -64,6 +64,8 @@ function designer_shared_edit_test_run($body)
 		. designer_shared_edit_test_fn($source, '_sdSharedChanged')
 		. designer_shared_edit_test_fn($source, '_sdSharedMarkEdited')
 		. designer_shared_edit_test_fn($source, '_sdSharedCatchEdits')
+		. designer_shared_edit_test_fn($source, 'reindex')
+		. designer_shared_edit_test_fn($source, '_restoreShared')
 		. 'console.log(JSON.stringify((function () {' . $body . '})()));';
 
 	$file = tempnam(sys_get_temp_dir(), 'pgsharededit');
@@ -158,6 +160,80 @@ function test_designer_shared_edit_mark_edited()
 	}
 
 	pg_assert_same(array(0, 9, true, 0, false, 9, true), $answer);
+}
+
+// Undo and Redo restore every cached component tree. A tree equal to its
+// snapshot is not an edit: an unconditional mark made every page showing
+// the header count as changed at the next save.
+function test_designer_shared_edit_restore_marks_only_a_difference()
+{
+	$answer = designer_shared_edit_test_run(
+		'var w = widget(); _sharedCache[7] = { tree: w.tree };'
+		. '_sdSharedBaseline();'
+		. 'var same = JSON.stringify(w.tree);'
+		. '_restoreShared({ 7: same });'
+		. 'var r = [!!_sharedDirty[7], _sdSharedChanged(7)];'
+		. 'var other = widget(); other.btn.props.text = "Bul";'
+		. '_restoreShared({ 7: JSON.stringify(other.tree) });'
+		. 'r.push(!!_sharedDirty[7]);'
+		. '_restoreShared({ 7: same });'
+		. 'r.push(7 in _sharedDirty, _sdSharedChanged(7));'
+		. '_restoreShared({ 8: same });'
+		. 'r.push(!!_sharedDirty[8]);'
+		. 'return r;'
+	);
+
+	if ($answer === null) {
+		return;
+	}
+
+	pg_assert_same(array(false, false, true, false, false, true), $answer);
+}
+
+// Without a snapshot a restore marks a tree that differs from the cached one
+// (or had none) and leaves an existing mark alone.
+function test_designer_shared_edit_restore_without_snapshot()
+{
+	$answer = designer_shared_edit_test_run(
+		'var w = widget(); _sharedCache[5] = { tree: w.tree };'
+		. '_restoreShared({ 5: JSON.stringify(w.tree) });'
+		. 'var r = [!!_sharedDirty[5]];'
+		. '_sharedDirty[5] = true;'
+		. '_restoreShared({ 5: JSON.stringify(_sharedCache[5].tree) });'
+		. 'r.push(!!_sharedDirty[5]);'
+		. 'var other = widget(); other.btn.props.text = "Bul"; delete _sharedDirty[5];'
+		. '_restoreShared({ 5: JSON.stringify(other.tree) });'
+		. 'r.push(!!_sharedDirty[5], nodeIdCounter >= 0);'
+		. 'return r;'
+	);
+
+	if ($answer === null) {
+		return;
+	}
+
+	pg_assert_same(array(false, true, true, true), $answer);
+}
+
+// At save a mark on a tree equal to its snapshot is cleared; an edited tree
+// and a dirty entry without a snapshot stay marked.
+function test_designer_shared_edit_catch_edits_clears_equal_mark()
+{
+	$answer = designer_shared_edit_test_run(
+		'var a = widget(), b = widget(), c = widget();'
+		. '_sharedCache[1] = { tree: a.tree }; _sharedCache[2] = { tree: b.tree };'
+		. '_sdSharedBaseline();'
+		. '_sharedCache[3] = { tree: c.tree };'
+		. '_sharedDirty[1] = true; _sharedDirty[2] = true; _sharedDirty[3] = true;'
+		. 'b.btn.props.text = "Bul";'
+		. '_sdSharedCatchEdits();'
+		. 'return [1 in _sharedDirty, !!_sharedDirty[2], !!_sharedDirty[3], Object.keys(_sharedDirty).length];'
+	);
+
+	if ($answer === null) {
+		return;
+	}
+
+	pg_assert_same(array(false, true, true, 2), $answer);
 }
 
 // Where the helpers are wired in.
