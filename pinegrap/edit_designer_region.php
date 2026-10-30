@@ -42,7 +42,18 @@ if (!isset($_POST['name'])) {
     $row = mysqli_fetch_array($result);
     $cregion_name = $row['cregion_name'];
     $cregion_content = $row['cregion_content'];
-    
+
+    // The stored values, or the posted ones after a refused name.
+    $form_name = $cregion_name;
+    $form_content = $cregion_content;
+    $form_type = 'designer';
+    $name_taken = $liveform->check_field_error('name');
+
+    if ($liveform->field_in_session('name')) {
+        list($form_name, $form_content) = pg_designer_region_form_values(array('name' => $liveform->get_field_value('name'), 'content' => $liveform->get_field_value('content')));
+        $form_type = ($liveform->get_field_value('type') == 'common') ? 'common' : 'designer';
+    }
+
     print
     pg_page_shell([
         'title'=> lang(array('string'=>'Edit {var:1}','vars'=>lang('Designer Region'))),
@@ -77,12 +88,12 @@ if (!isset($_POST['name'])) {
                     ' . get_token_field() . '
                     <input type="hidden" name="id" value="' . h($_GET['id']) . '">
                     <input type="hidden" name="send_to" value="' . h(($_GET['send_to'] ?? '')) . '" />
-                    ' . pg_designer_region_form_card($cregion_name, $cregion_content, '
+                    ' . pg_designer_region_form_card($form_name, $form_content, '
                                         <div class="col-12 md:col-6 my-3">
                                             <label for="type" class="form-label">' . lang('Region Type') . '</label>
-                                            <select name="type" id="type" class="form-control"><option value="common">' . lang('Common Region') . '</option><option value="designer" selected="selected">' . lang('Designer Region') . '</option></select>
+                                            <select name="type" id="type" class="form-control"><option value="common"' . ($form_type == 'common' ? ' selected="selected"' : '') . '>' . lang('Common Region') . '</option><option value="designer"' . ($form_type == 'designer' ? ' selected="selected"' : '') . '>' . lang('Designer Region') . '</option></select>
                                             <div class="form-text text-end">' . lang('You can change Region Type') . '</div>
-                                        </div>') . '
+                                        </div>', $name_taken) . '
                     <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
@@ -118,6 +129,16 @@ $liveform->remove_form();
         
     } else {
         list($name, $content) = pg_designer_region_form_values($_POST);
+
+        // A rename onto a name another region already has is refused: the
+        // site reads only one row per name. The screen comes back with the
+        // posted values.
+        if (pg_cregion_name_taken($name, $id)) {
+            $liveform->add_fields_to_session(array('trim' => false));
+            $liveform->mark_error('name', lang('The name that you entered is already in use, so please enter a different name.'));
+            header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_designer_region.php?id=' . $id . ((($_POST['send_to'] ?? '') != '') ? '&send_to=' . urlencode((string) $_POST['send_to']) : ''));
+            exit();
+        }
 
         if ($_POST['type'] == 'common') {
             $cregion_designer_type = 'no';

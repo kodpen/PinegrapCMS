@@ -43,8 +43,8 @@ function test_designer_region_form_labels_point_at_their_fields()
 function test_designer_region_form_screens_use_shared_form()
 {
 	$screens = array(
-		'add_designer_region.php' => 'pg_designer_region_form_card()',
-		'edit_designer_region.php' => 'pg_designer_region_form_card($cregion_name, $cregion_content, ',
+		'add_designer_region.php' => 'pg_designer_region_form_card($name, $content, \'\', $name_taken)',
+		'edit_designer_region.php' => 'pg_designer_region_form_card($form_name, $form_content, ',
 	);
 
 	foreach ($screens as $file => $card) {
