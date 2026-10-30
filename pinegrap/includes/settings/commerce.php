@@ -963,7 +963,7 @@ $pg_settings_cards[] = '
                                                                                             <label for="ecommerce_surcharge_percentage" class="form-label">' . lang('Surcharge') . '</label>
                                                                                             <label class="form-control form-adorn form-adorn-end">
                                                                                                 <span class="form-adorn-text" aria-hidden="true">%</span>
-                                                                                                <input value="' . $ecommerce_surcharge_percentage . '" type="text" name="ecommerce_surcharge_percentage" id="ecommerce_surcharge_percentage" class="form-ghost" size="7" maxlength="7" inputmode="numeric" data-inputmask-alias="decimal" data-inputmask-placeholder="0"  style="text-align: right;" />
+                                                                                                <input value="' . $ecommerce_surcharge_percentage . '" type="text" name="ecommerce_surcharge_percentage" id="ecommerce_surcharge_percentage" class="form-ghost" size="7" maxlength="7" inputmode="decimal" data-inputmask-alias="decimal" data-inputmask-placeholder="0"  style="text-align: right;" />
                                                                                             </label>
                                                                                         </div>
                                                                                         <div class="col-12 " id="ecommerce_iyzipay_threeds_row" style="' . $ecommerce_iyzipay_3ds_row_style . '">
@@ -1270,7 +1270,7 @@ $pg_settings_cards[] = '
                                                             <label for="affiliate_default_commission_rate" class="form-label">' . lang('Default Commission Rate') . '</label>
                                                             <label class="form-control form-adorn form-adorn-end">
                                                                 <span class="form-adorn-text" aria-hidden="true">%</span>
-                                                                <input value="' . $affiliate_default_commission_rate . '" type="text" name="affiliate_default_commission_rate" id="affiliate_default_commission_rate" class="form-ghost" size="6" maxlength="6" inputmode="numeric" data-inputmask-alias="decimal" data-inputmask-placeholder="0"  style="text-align: right;" />
+                                                                <input value="' . $affiliate_default_commission_rate . '" type="text" name="affiliate_default_commission_rate" id="affiliate_default_commission_rate" class="form-ghost" size="6" maxlength="6" inputmode="decimal" data-inputmask-alias="decimal" data-inputmask-placeholder="0"  style="text-align: right;" />
                                                             </label>
                                                         </div>
                                                         <div class="pg-f-md">
