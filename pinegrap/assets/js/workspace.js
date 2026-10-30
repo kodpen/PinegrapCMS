@@ -16923,9 +16923,13 @@
         var bar = el('nav', 'pg-toolbar navigation mb-5');
         var list = el('div', 'card');
         var listBody = el('div', 'card-body p-0');
+        // Says how many tasks the list holds after a filter or a search.
+        var countLine = el('div', 'visually-hidden');
 
+        countLine.setAttribute('role', 'status');
         list.appendChild(listBody);
         root.appendChild(bar);
+        root.appendChild(countLine);
         root.appendChild(list);
 
         var add = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('new_task'), 'bi-plus-circle');
@@ -16944,12 +16948,30 @@
             scopeList.push(['time', t('tt_my_time')]);
         }
 
+        // Fill and aria-pressed move together onto the chosen scope.
+        function setScope(name) {
+            state.scope = name;
+            Array.prototype.forEach.call(scopes.children, function (child) {
+                var on = child.getAttribute('data-scope') === name;
+
+                child.classList.toggle('active', on);
+                child.setAttribute('aria-pressed', on ? 'true' : 'false');
+            });
+        }
+
         scopeList.forEach(function (scope) {
             var item = button('btn btn-text theme-secondary' + (state.scope === scope[0] ? ' active' : ''), scope[1]);
+            item.setAttribute('data-scope', scope[0]);
+            item.setAttribute('aria-pressed', state.scope === scope[0] ? 'true' : 'false');
             item.addEventListener('click', function () {
-                state.scope = scope[0];
-                Array.prototype.forEach.call(scopes.children, function (child) { child.classList.remove('active'); });
-                item.classList.add('active');
+                // ws_tasks reads department_id only in the department scope,
+                // so the select must not keep showing one the list ignores.
+                if (scope[0] !== 'department') {
+                    state.department_id = 0;
+                    dept.value = '0';
+                }
+
+                setScope(scope[0]);
                 load();
             });
             scopes.appendChild(item);
@@ -16968,11 +16990,12 @@
 
         var dept = select(departmentOptions(t('all_departments')), 0);
         dept.classList.add('w-auto');
+        dept.setAttribute('aria-label', t('department'));
         dept.addEventListener('change', function () {
             state.department_id = parseInt(dept.value, 10) || 0;
 
             if (state.department_id) {
-                state.scope = 'department';
+                setScope('department');
             }
 
             load();
@@ -17031,6 +17054,7 @@
             var mine = ++serial;
 
             if (state.scope === 'time') {
+                countLine.textContent = '';
                 window.PGWsTaskTime.myTime(listBody, partHelpers());
                 return;
             }
@@ -17038,6 +17062,7 @@
             api('ws_tasks', state).then(function (data) {
                 if (mine === serial) {
                     taskRows(listBody, data.tasks, load);
+                    countLine.textContent = data.tasks.length ? t('task_count', data.tasks.length) : t('nothing_found');
                 }
             }).catch(fail);
         }
@@ -17120,10 +17145,15 @@
 
         [[7, t('one_week')], [14, t('two_weeks')]].forEach(function (option) {
             var item = button('btn btn-text theme-secondary' + (state.days === option[0] ? ' active' : ''), option[1]);
+            item.setAttribute('aria-pressed', state.days === option[0] ? 'true' : 'false');
             item.addEventListener('click', function () {
                 state.days = option[0];
-                Array.prototype.forEach.call(span.children, function (child) { child.classList.remove('active'); });
+                Array.prototype.forEach.call(span.children, function (child) {
+                    child.classList.remove('active');
+                    child.setAttribute('aria-pressed', 'false');
+                });
                 item.classList.add('active');
+                item.setAttribute('aria-pressed', 'true');
                 load();
             });
             span.appendChild(item);
@@ -17133,6 +17163,7 @@
 
         var dept = select(departmentOptions(t('all_departments')), 0);
         dept.classList.add('w-auto');
+        dept.setAttribute('aria-label', t('department'));
         dept.addEventListener('change', function () {
             state.department_id = parseInt(dept.value, 10) || 0;
             load();
@@ -17559,6 +17590,7 @@
 
         var dept = select(departmentOptions(t('all_departments')), 0);
         dept.classList.add('w-auto');
+        dept.setAttribute('aria-label', t('department'));
         dept.addEventListener('change', function () {
             state.department_id = parseInt(dept.value, 10) || 0;
             load();
