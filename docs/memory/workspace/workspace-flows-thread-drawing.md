@@ -25,7 +25,7 @@ description: Data threads on the Flows canvas (T1, V6): read from the fields, th
 ## How is a thread drawn into a field? (T2)
 - `workspace-flows-thread-binding.md`.
 
-## How is a value of a deleted box drawn? (T5, PR #PRNUM)
+## How is a value of a deleted box drawn? (T5, PR #3711)
 - `dataThreads()` marks `gone: true` a reference to a box id not in the graph (still `from: ''`, red chip); a box that is there but not before this one keeps a red chip, no thread.
 - `goneThread()` draws it red and dashed (`.wsf-thread-gone`, `--pg-danger`, `data-ends` the reading box, so dimming and the toggle apply): from the place the box had when `removeSelected()` removed it in this session (`state.gone`, per flow; an undo that brings it back forgets it), else a short loose end hanging from the chip.
 - Outline and run view say `fl_values_gone`, not `fl_values_missing`.

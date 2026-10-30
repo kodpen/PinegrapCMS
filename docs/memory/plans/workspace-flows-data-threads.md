@@ -33,7 +33,7 @@ description: Plan (owner request 2026-10-27, draft being refined): the Flows can
 
 - T4 the run view lists threads and values per box. Done (PR #2650, `workspace/workspace-flows-run-view.md`).
 
-- T5 a value whose box was deleted gets a red dashed thread. Done (PR #PRNUM, `workspace/workspace-flows-thread-drawing.md`).
+- T5 a value whose box was deleted gets a red dashed thread. Done (PR #3711, `workspace/workspace-flows-thread-drawing.md`).
 
 - T6 (left) the per-thread "when empty, write" fallback of a value from a branch that may be skipped.
 
