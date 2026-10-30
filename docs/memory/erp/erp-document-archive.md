@@ -20,3 +20,6 @@ description: ERP documents kept as issued (4.65, includes/erp/archive.php): what
 - `includes/erp/files.php` owns the virtual folders (`erp_files_folders()`), their scope, counts, lists and item payloads; `view_folders.php` only draws them (label, icon, "Go to …" and preview by `erp_kind`). A new folder or kind updates both.
 - A picture item (expense receipt) carries `picture: true` and keeps `is_image` false: `is_image` would offer the image editor, optimising and the picture filters on a document.
 - The e-document folders appear only when e-documents are in use or already hold something.
+
+## Why is each document listed once, by its newest kept copy?
+- A document can hold more than one kept `files` row: when its kept file is gone from the disk, `erp_archive_file()` answers null and the next opening keeps a new rendering beside the old row (history), and two people opening a never-kept invoice at once keep two. `erp_files_list()` therefore joins only `kf.id = (SELECT MAX(f2.id) …)`, as the expense list does; a join over every kept row listed the document twice (once on each side of a Show more page edge, in search too) and made the folder total one higher than `erp_files_count()`. Test: `tests/erp_files_listed_once_test.php`.
