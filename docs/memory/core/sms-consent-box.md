@@ -13,7 +13,7 @@ module: privacy
 - Checkout (PR #3694): billing information and express order, classic table, layouts (`$opt_in_sms`, `$opt_in_sms_label`) and widgets. The checkout asks the billing phone, so offered = `pg_sms_ready()`; drawn unless the buyer's last `sms:marketing` row is `granted` (`pg_consent_sms_checkout_shown()`, as the e-mail box only for a contact not opted in). Starts ticked. Widgets: flag `shows_opt_in_sms`; the billing widget drops `opt_in_sms`, the express order default trees bind the row to the flag (PHP `_eo_default_designer_tree()`, JS starters).
 
 ## How does it start, where is the answer kept?
-- The answer is a `consent_log` row, channel `sms`, purpose `marketing`; no column holds it (`contacts.iys_sms_status` is İYS's own answer, step 8).
+- The answer is a `consent_log` row, channel `sms`, purpose `marketing`; no column holds it (`contacts.iys_sms_status` is İYS's own answer, `platform/iys-sms-channel.md`).
 - Preferences start from the person's last `sms:marketing` row (`pg_consent_sms_start()`): unticked only after a refusal, ticked with none, as the e-mail box of a DEFAULT-1 contact.
 
 ## When is a row written?
