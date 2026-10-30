@@ -14472,11 +14472,11 @@
             // The team, as the @ picker lists it, without whoever the line
             // already names; never the site's members.
             if (source === 'people' || source === 'people_departments') {
-                var needle = query.toLocaleLowerCase();
+                var needle = foldText(query);
                 var markup = self.tokens(self.inputText());
                 var people = [];
                 var fits = function (text) {
-                    return !needle || String(text || '').toLocaleLowerCase().indexOf(needle) !== -1;
+                    return !needle || foldText(text).indexOf(needle) !== -1;
                 };
 
                 (BOOT.people || []).forEach(function (member) {
@@ -14676,7 +14676,7 @@
             }
 
             return Object.keys(BOOT.ref_types).some(function (key) {
-                return BOOT.ref_types[key].prefixes.indexOf(words[0].toLocaleLowerCase()) !== -1;
+                return BOOT.ref_types[key].prefixes.map(foldText).indexOf(foldText(words[0])) !== -1;
             });
         },
 
@@ -14757,20 +14757,20 @@
             }
 
             if (mode === 'people') {
-                var needle = query.toLocaleLowerCase();
+                var needle = foldText(query);
                 var items = [];
 
                 // Claude and Pinegrap AI as a note asks them: a tag once
                 // connected, before that the name as text, which answers with
                 // how to set it up.
                 var noteAssistants = function () {
-                    if (BOOT.claude && (!needle || 'claude'.indexOf(needle) === 0)) {
+                    if (BOOT.claude && (!needle || foldText('claude').indexOf(needle) === 0)) {
                         items.push(BOOT.claude.token
                             ? { label: 'Claude', meta: t('claude_meta'), icon: 'bi-stars', token: BOOT.claude.token, shown: '@Claude' }
                             : { label: 'Claude', meta: t('claude_not_ready'), icon: 'bi-stars', insert: '@Claude ' });
                     }
 
-                    if (BOOT.ai && (!needle || 'ai'.indexOf(needle) === 0 || 'pinegrap'.indexOf(needle) === 0)) {
+                    if (BOOT.ai && (!needle || foldText('ai').indexOf(needle) === 0 || foldText('pinegrap').indexOf(needle) === 0)) {
                         items.push(BOOT.ai.token
                             ? { label: BOOT.ai.name, meta: BOOT.ai.handle, icon: 'bi-cpu', token: BOOT.ai.token, shown: BOOT.ai.handle }
                             : { label: BOOT.ai.name, meta: t('ai_not_ready'), icon: 'bi-cpu', insert: BOOT.ai.handle + ' ' });
@@ -14783,7 +14783,7 @@
                 // has on its answers (ws_mcp_boot_entry()).
                 var mcpAliases = function () {
                     (BOOT.mcp || []).forEach(function (server) {
-                        if (!needle || server.alias.indexOf(needle) === 0 || server.name.toLocaleLowerCase().indexOf(needle) !== -1) {
+                        if (!needle || foldText(server.alias).indexOf(needle) === 0 || foldText(server.name).indexOf(needle) !== -1) {
                             items.push({ label: '@' + server.alias, meta: (server.name ? server.name + ' · ' : '') + t(server.agent ? 'mcp_meta_agent' : 'mcp_meta'), avatar: server.avatar || '', face: { avatar: server.avatar || '', initials: server.initials, tone: server.tone, name: server.alias }, icon: server.icon || 'bi-plug', insert: '@' + server.alias + ' ' });
                         }
                     });
@@ -14807,7 +14807,7 @@
                 // Claude: a tag where it may be asked; elsewhere, or before it
                 // is connected, "@Claude" as text, which answers with how to
                 // set it up or open the channel to it.
-                if (BOOT.claude && self.channel && (!needle || 'claude'.indexOf(needle) === 0)) {
+                if (BOOT.claude && self.channel && (!needle || foldText('claude').indexOf(needle) === 0)) {
                     if (BOOT.claude.token && self.channel.claude && self.channel.claude.available) {
                         items.push({ label: 'Claude', meta: t('claude_meta'), icon: 'bi-stars', token: BOOT.claude.token, shown: '@Claude' });
                     } else {
@@ -14816,7 +14816,7 @@
                 }
 
                 // Pinegrap AI the same way, with @ai.
-                if (BOOT.ai && self.channel && (!needle || 'ai'.indexOf(needle) === 0 || 'pinegrap'.indexOf(needle) === 0)) {
+                if (BOOT.ai && self.channel && (!needle || foldText('ai').indexOf(needle) === 0 || foldText('pinegrap').indexOf(needle) === 0)) {
                     if (BOOT.ai.token && self.channel.ai && self.channel.ai.available) {
                         items.push({ label: BOOT.ai.name, meta: BOOT.ai.handle, icon: 'bi-cpu', token: BOOT.ai.token, shown: BOOT.ai.handle });
                     } else {
@@ -14831,20 +14831,20 @@
                     // handle or name (app_handles.php); before the people,
                     // as the list is cut at ten.
                     (self.channel.apps || []).forEach(function (app) {
-                        if (!needle || app.shown.slice(1).indexOf(needle) === 0 || app.meta.toLocaleLowerCase().indexOf(needle) === 0) {
+                        if (!needle || foldText(app.shown.slice(1)).indexOf(needle) === 0 || foldText(app.meta).indexOf(needle) === 0) {
                             items.push({ label: app.label, meta: app.meta, icon: app.icon, token: app.token, shown: app.shown });
                         }
                     });
                 }
 
                 BOOT.people.forEach(function (member) {
-                    if (!needle || member.name.toLocaleLowerCase().indexOf(needle) !== -1 || member.username.toLocaleLowerCase().indexOf(needle) !== -1) {
+                    if (!needle || foldText(member.name).indexOf(needle) !== -1 || foldText(member.username).indexOf(needle) !== -1) {
                         items.push({ label: member.name, meta: member.title, avatar: member.avatar, face: member, token: '<@user:' + member.id + '>', shown: shownLabel('@', member.name) });
                     }
                 });
 
                 BOOT.departments.forEach(function (item) {
-                    if (!needle || item.name.toLocaleLowerCase().indexOf(needle) !== -1) {
+                    if (!needle || foldText(item.name).indexOf(needle) !== -1) {
                         items.push({ label: item.name, meta: t('department'), icon: 'bi-people', token: '<@dept:' + item.id + '>', shown: shownLabel('@', item.name) });
                     }
                 });
@@ -14861,7 +14861,7 @@
 
             if (prefix) {
                 Object.keys(BOOT.ref_types).forEach(function (key) {
-                    if (BOOT.ref_types[key].prefixes.indexOf(prefix[1].toLocaleLowerCase()) !== -1) {
+                    if (BOOT.ref_types[key].prefixes.map(foldText).indexOf(foldText(prefix[1])) !== -1) {
                         type = key;
                         search = prefix[2];
                     }
@@ -14874,10 +14874,10 @@
             var people = [];
 
             if (self.notesMode && (type === 'all')) {
-                var wanted = search.trim().toLocaleLowerCase();
+                var wanted = foldText(search.trim());
 
                 BOOT.people.forEach(function (member) {
-                    if ((people.length < 5) && (!wanted || member.name.toLocaleLowerCase().indexOf(wanted) !== -1 || member.username.toLocaleLowerCase().indexOf(wanted) !== -1)) {
+                    if ((people.length < 5) && (!wanted || foldText(member.name).indexOf(wanted) !== -1 || foldText(member.username).indexOf(wanted) !== -1)) {
                         people.push({ label: member.name, meta: t('notes_person'), avatar: member.avatar, face: member, token: '<@user:' + member.id + '>', shown: shownLabel('@', member.name) });
                     }
                 });
@@ -23435,6 +23435,7 @@
     function shareKit() {
         window.PGWsKit = {
             cfg: CFG,
+            foldText: foldText,
             t: t,
             el: el,
             icon: icon,
