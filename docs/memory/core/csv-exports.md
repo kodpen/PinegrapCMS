@@ -6,7 +6,7 @@ description: Panel CSV exports start with pg_csv_download_start() (UTF-8 charset
 ## How does a panel CSV export start?
 - `pg_csv_download_start($filename)` (`includes/fn/core.php`) sends `Content-Type: text/csv; charset=utf-8` and the attachment header (`pg_csv_download_headers()`), then writes the UTF-8 byte order mark `EF BB BF`.
 - Without the mark Excel on Windows opens the file in the ANSI code page: Turkish letters in names, addresses, notes and answers showed as `Ã¼` / `ÅŸ`. Used by the contacts, gift card, key code, submitted form, campaign profile and orders (single file) exports; the visitor report, short link and ERP exports already wrote the mark themselves.
-- Orders "Multiple files" zip (`view_orders.php`): each entry (`orders.csv`, `ship_tos.csv`, `order_items.csv`, `shipping_tracking_numbers.csv`) starts with the mark. The zip holds one file per kind of record, not per order; the menu item was mislabelled "One file per order" until PR #NNNN.
+- Orders "Multiple files" zip (`view_orders.php`): each entry (`orders.csv`, `ship_tos.csv`, `order_items.csv`, `shipping_tracking_numbers.csv`) starts with the mark. The zip holds one file per kind of record, not per order; the menu item was mislabelled "One file per order" until PR #3587.
 - Products CSV (`pg_products_export_csv()` in `export_products_f.php`, behind Products > Export and the File/Catalog Manager): writes the mark itself after its own headers, because `pg_products_export_disposition()` carries the `filename*` UTF-8 file name that `pg_csv_download_start()` would lose. `import_products.php` reads through `pg_csv_open()`; the Workspace table reader strips the mark too.
 
 ## How is a time written in an export?
