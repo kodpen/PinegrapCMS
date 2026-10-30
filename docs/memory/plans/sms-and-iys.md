@@ -8,7 +8,7 @@ description: Plan (approved 2026-10-19): SMS layer, order messages, consent writ
 
 ## What is decided?
 - SMS drivers under `includes/sms/<provider>.php`: Netgsm first, then İleti Merkezi and Twilio; credentials in `connect_apps`, no schema per provider (`platform/sms-provider-layer.md`).
-- Message kinds and templates (Settings › Communication): order received, order shipped (carrier + tracking URL), order delivered, cash-on-delivery confirmation code, password/OTP for members, ERP overdue reminder. Transactional messages are exempt from İYS and never carry promotion text; the template editor says so.
+- Message kinds and templates (Settings › Communication): order received, order shipped (carrier + tracking URL), order delivered, cash-on-delivery confirmation code, password/OTP for members, ERP overdue reminder (built: PR #3626, platform/sms-erp-overdue.md). Transactional messages are exempt from İYS and never carry promotion text; the template editor says so.
 - İYS: direct İYS API (not a provider's module) so the consent log stays provider-independent. Consent rows (`consent_log`, kept 3 years) are pushed to İYS within 3 business days by a job; refusals pulled from İYS stop sending in the same window.
 - E-mail campaigns check the İYS status for Turkish sites before sending; the existing `opt_in` stays as the local flag and is kept in sync.
 - Sender identity (MERSİS/trade name) and the type label ("tanıtım, kampanya ve bilgilendirme") come from settings and are appended to every marketing SMS.
