@@ -8,7 +8,7 @@ description: Plan (approved 2026-10-19; 1-4, 6-8 partly done): carrier APIs for 
 
 ## What is decided?
 - Base: the shipment row (`shipping_tracking_numbers` with `carrier`, `status`, `source='carrier'`) and the single write path `pg_shipment_record()` of `shipping-management.md`; this plan never writes tracking numbers another way.
-- First driver: one shipping aggregator (single API, many carriers, contracted rates), chosen by the owner; then Yurtiçi Kargo and Aras Kargo direct APIs. Owner (2026-10-29, #3073): open integrations (public docs, test mode) first; every aggregator and direct carrier follows; international too, the US and Europe first. Driver interface `includes/shipping/<driver>.php`: create shipment → label (PDF/ZPL) + barcode + tracking number; cancel; track; pickup request where supported.
+- First driver: one shipping aggregator (single API, many carriers, contracted rates), chosen by the owner; then Yurtiçi Kargo and Aras Kargo direct APIs. Owner (#3073): open integrations (public docs, test mode) first, then every aggregator and direct carrier; international too, the US and Europe first. Driver `includes/shipping/<driver>.php`: create shipment → label (PDF/ZPL) + barcode + tracking number; cancel; track; pickup request where supported.
 - Panel: "Create label" on the order and on selected orders (bulk, one PDF), reprint, status refresh; carrier from the method's `carrier` or the order's method code.
 - Status write-back: the job polls open shipments and calls `pg_shipment_delivered()` so `order.delivered`, e-mail and SMS fire exactly once. Carrier webhooks are used when the driver offers them.
 - Return labels: the same driver creates a return shipment for customer returns with the named return carrier (step 8).
