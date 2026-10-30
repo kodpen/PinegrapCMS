@@ -1031,18 +1031,25 @@ function escape_csv($string)
     return str_replace('"', '""', $string);
 }
 
-// Prepares an untrusted value for a double-quoted CSV cell. Besides doubling
-// embedded quotes it prefixes a leading formula trigger (=, +, -, @, tab or
-// carriage return) with an apostrophe so spreadsheet software shows the text
-// instead of evaluating it. Returns the cell body only; the caller adds the
-// surrounding quotes.
-function csv_cell($value)
+// Prefixes a leading formula trigger (=, +, -, @, tab or carriage return)
+// with an apostrophe so spreadsheet software shows untrusted text instead of
+// evaluating it. Only for text cells: a negative amount would gain the
+// apostrophe too and stop being a number.
+function pg_csv_formula_guard($value)
 {
     $value = (string) $value;
     if (($value !== '') && (strpos("=+-@\t\r", $value[0]) !== false)) {
         $value = "'" . $value;
     }
-    return str_replace('"', '""', $value);
+    return $value;
+}
+
+// Prepares an untrusted value for a double-quoted CSV cell: the formula guard
+// plus doubled embedded quotes. Returns the cell body only; the caller adds
+// the surrounding quotes.
+function csv_cell($value)
+{
+    return str_replace('"', '""', pg_csv_formula_guard($value));
 }
 
 // The headers of a panel CSV download: UTF-8 named in the content type and

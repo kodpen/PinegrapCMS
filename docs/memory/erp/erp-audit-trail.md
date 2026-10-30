@@ -16,4 +16,4 @@ description: ERP audit trail (erp_audit_log, 4.90): its two writers (events and 
 - `object_type` is the event name's second part. A new type needs its label and amount in `erp_audit_event()`, a row in `erp_audit_object_types()` (filter label and link) and its sentence in `erp_audit_event_text()`.
 
 ## Who may read it?
-- `erp_audit.php`: role below 3, the ERP settings right, or the read-only accountant (`USER_ERP_READONLY`); others are refused and logged. `?type=&id=` follows one record; the invoice, quote and purchase order screens link there. Filters and a CSV export (`erp_audit_csv()`).
+- `erp_audit.php`: role below 3, the ERP settings right, or the read-only accountant (`USER_ERP_READONLY`); others are refused and logged. `?type=&id=` follows one record; the invoice, quote and purchase order screens link there. Filters and a CSV export (`erp_audit_csv()`); its user, action, number-or-name and detail cells pass `pg_csv_formula_guard()`, the date, ids and amount do not (`core/csv-exports.md`).
