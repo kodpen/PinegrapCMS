@@ -56,13 +56,13 @@ function pg_shipment_status_reported($status)
 /**
  * Who wrote a row: the order screen (and the Workspace, which saves through
  * it), the external API, a marketplace import, a carrier's own API, a CSV
- * upload.
+ * upload, a ShipWorks shipment update.
  *
  * @return string[]
  */
 function pg_shipment_sources()
 {
-    return array('panel', 'api', 'marketplace', 'carrier', 'csv');
+    return array('panel', 'api', 'marketplace', 'carrier', 'csv', 'shipworks');
 }
 
 /**
