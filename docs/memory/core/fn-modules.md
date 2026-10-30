@@ -52,7 +52,7 @@ description: Generated from the module field of the memory files: each includes/
 - `mfa`: [[two-step-sign-in-expiry]]
 - `order_completion`: [[order-completion]], [[order-completion-account]], [[order-completion-after-lines]], [[order-completion-before-lock]], [[order-completion-context]], [[order-completion-from-payment]], [[order-completion-line-comments]], [[order-completion-lines]]
 - `order_list`: [[orders-list-amount-column]]
-- `order_view`: [[order-view-screen-rows]]
+- `order_view`: [[order-view-screen-rows]], [[print-order-shipping-card]]
 - `output`: [[list-status-words]]
 - `page_facts`: [[page-conditions]]
 - `payments`: [[payment-driver-paytr-installments]], [[payment-gateway-secrets]]
