@@ -6,6 +6,7 @@ description: How a mail is drawn in a Workspace channel (ws_mail_card_html(), se
 ## How is a mail message drawn?
 - `ws_message_payloads()` reads the page's mails once (`ws_mail_items_map()`: items with their conversation) into `$extra['mail']`; `ws_message_payload()` gives a `sender_kind 'mail'` message `ws_mail_sender()` (name from the mail, else the address; `id` 0, `title` the address, letters avatar, `mail: true`, like `ws_guest_sender()`) and `html` from `ws_mail_card_html()`, never `ws_render_body()`: mail text is untrusted and is not Workspace markup.
 - The card: badge "E-mail" (`auth` pass) or "Sender not verified" (fail / none) with the address; the subject only on the conversation's card (`conversation.message_id` = the message); the message text escaped with `nl2br`; `<details>` "Show all" with `body_text` (first 100,000 characters) when it is longer than the message; "Not taken in: …" from `refused_files`. An attachment's own message (file, no text) draws only its file; a missing item says "This e-mail is no longer available."
+- Pinned bar, Ctrl+K, Home, board files: `ws_message_rows_senders()` reads a list's mails and people (answer writers too) once; `ws_message_row_sender()` names each row (messages.php). They drew a mail nameless before (PR #NNNN).
 - No JavaScript change: the screen draws `sender` and `html` as for any message. Mail messages cannot be edited, marked or deleted (those checks know `user` / `guest` only).
 
 ## Where are mailboxes added?
@@ -18,4 +19,4 @@ description: How a mail is drawn in a Workspace channel (ws_mail_card_html(), se
 - `ws_mail_ready()`: the three tables exist; the card is hidden before the upgrade.
 
 ## Tests?
-- `tests/workspace_mail_card_test.php`.
+- `tests/workspace_mail_card_test.php`, `tests/workspace_mail_sender_name_test.php`.

@@ -173,24 +173,13 @@ function ws_palette_message_rows($viewer, $where, $channel_id, $limit)
  * Who wrote a message, as a name.
  *
  * @param array $row
- * @param array $people ws_people() of the user senders
+ * @param array $people ws_message_rows_senders() people
+ * @param array $mail   ws_message_rows_senders() mail
  * @return string
  */
-function ws_palette_sender_name($row, $people)
+function ws_palette_sender_name($row, $people, $mail = array())
 {
-    if ($row['sender_kind'] === 'user') {
-        return (string) ($people[(int) $row['sender_id']]['name'] ?? '');
-    }
-
-    if ($row['sender_kind'] === 'app') {
-        return (string) (ws_app_sender((int) $row['sender_id'])['name'] ?? '');
-    }
-
-    if (($row['sender_kind'] === 'guest') && function_exists('ws_guest_sender')) {
-        return (string) (ws_guest_sender((int) $row['sender_id'])['name'] ?? '');
-    }
-
-    return '';
+    return (string) (ws_message_row_sender($row, $people, $mail)['name'] ?? '');
 }
 
 /**
@@ -205,20 +194,15 @@ function ws_palette_sender_name($row, $people)
 function ws_palette_message_items($viewer, $rows, $type, $query)
 {
     $base = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/';
-    $senders = array();
     $files = array();
 
     foreach ($rows as $row) {
-        if ($row['sender_kind'] === 'user') {
-            $senders[] = (int) $row['sender_id'];
-        }
-
         if ((int) $row['file_id'] > 0) {
             $files[] = (int) $row['file_id'];
         }
     }
 
-    $people = ws_people(array_unique($senders));
+    list($people, $mail) = ws_message_rows_senders($rows);
     $stored = array();
 
     if (!empty($files)) {
@@ -251,7 +235,7 @@ function ws_palette_message_items($viewer, $rows, $type, $query)
         }
 
         $sub = array('#' . (string) $channel['name']);
-        $sender = ws_palette_sender_name($row, $people);
+        $sender = ws_palette_sender_name($row, $people, $mail);
 
         if ($sender !== '') {
             $sub[] = $sender;
