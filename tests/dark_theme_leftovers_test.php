@@ -106,7 +106,7 @@ function test_dark_theme_dashboard_tracks_use_tokens()
 	}
 
 	pg_assert_contains(
-		'style="background:var(--pg-bg-2);color:inherit;font-size:10px"',
+		'style="background:var(--pg-bg-2);color:inherit;font-size:.625rem"',
 		dark_theme_leftovers_source('includes/dashboard/widgets/widget_21.php'),
 		'firewall widget hit count pill');
 }

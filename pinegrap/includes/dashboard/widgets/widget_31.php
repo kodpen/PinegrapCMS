@@ -35,7 +35,7 @@ function pg_dashboard_widget_31($request, $user)
 
     $footer = '
     <div class="card-footer border-0 bg-reset py-1 text-center">
-        <a href="search_console.php" class="text-decoration-none" style="font-size:11px">'
+        <a href="search_console.php" class="text-decoration-none" style="font-size:.6875rem">'
         . lang('Google Search Console') . ' <i class="bi bi-arrow-right-short"></i></a>
     </div>';
 
@@ -73,7 +73,7 @@ function pg_dashboard_widget_31($request, $user)
         // reads +%12 rather than %+12.
         $sign = (round(abs($moved) * 100) == 0) ? '' : (($moved > 0) ? '+' : '-');
 
-        return '<span class="' . $class . '" style="font-size:11px" title="' . h(lang('Against the 28 days before')) . '">'
+        return '<span class="' . $class . '" style="font-size:.6875rem" title="' . h(lang('Against the 28 days before')) . '">'
             . $sign . h(lang(array('string' => '{var:1}%', 'vars' => pg_format_number(abs($moved) * 100, 0))))
             . '<span class="visually-hidden"> ' . h(lang('Against the 28 days before')) . '</span></span>';
     };
@@ -81,9 +81,9 @@ function pg_dashboard_widget_31($request, $user)
     $figure = function ($label, $value, $moved) {
         return '
             <div class="flex-fill">
-                <div class="fg-secondary" style="font-size:11px">' . h($label) . '</div>
+                <div class="fg-secondary" style="font-size:.6875rem">' . h($label) . '</div>
                 <div class="d-flex align-items-baseline gap-3">
-                    <span class="fw-semibold" style="font-size:18px">' . h(pg_format_number($value, 0)) . '</span>
+                    <span class="fw-semibold" style="font-size:1.125rem">' . h(pg_format_number($value, 0)) . '</span>
                     ' . $moved . '
                 </div>
             </div>';
@@ -105,7 +105,7 @@ function pg_dashboard_widget_31($request, $user)
     }
 
     if ($rows === '') {
-        $rows = '<p class="fg-secondary text-center mb-0 py-5" style="font-size:12px">' . h(lang('No search brought a click in these 28 days.')) . '</p>';
+        $rows = '<p class="fg-secondary text-center mb-0 py-5" style="font-size:.75rem">' . h(lang('No search brought a click in these 28 days.')) . '</p>';
     }
 
     $output_data = '
@@ -115,7 +115,7 @@ function pg_dashboard_widget_31($request, $user)
             ' . $figure(lang('Impressions'), $now['impressions'], $change($now['impressions'], $before['impressions'])) . '
             <span title="' . h(lang('Clicks in the last 7 days with figures')) . '">' . pg_widget_bars($week, lang('Clicks')) . '</span>
         </div>
-        <div class="fg-secondary px-5 pb-1" style="font-size:10px">' . h(prepare_form_data_for_output($period['from'], 'date', false) . ' – ' . prepare_form_data_for_output($period['to'], 'date', false)) . '</div>
+        <div class="fg-secondary px-5 pb-1" style="font-size:.625rem">' . h(prepare_form_data_for_output($period['from'], 'date', false) . ' – ' . prepare_form_data_for_output($period['to'], 'date', false)) . '</div>
         <div class="pg-list">
             ' . pg_widget_row_heading(lang('Top searches'), lang('clicks')) . '
             ' . $rows . '
