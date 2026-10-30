@@ -8,7 +8,8 @@ description: A note's table block into a workflow table (T6b, #3044): notes and 
 - The read is kept like a file (`ws_wtable_import_keep(…, $note = true)`); `kept['note']` makes the confirmation say "note" and offer the name as written (no extension cut).
 
 ## Which notes and tables are offered?
-- `ws_wtable_import_note_choices()`: own notes and notes shared by name, through `ws_notes_list()` (text cut at 4000); a note at the cut with a `|` in it is read whole, up to 50 such notes. Notes reached only through a channel share are not listed. Label: note title — the `::: Title` above the table, else its header names.
+- `ws_wtable_import_note_choices()`: own notes and notes shared by name, through `ws_notes_list()` (which applies access). Its rows hold only a 140-character `excerpt`, no `body`, so one query reads the whole `body` of the listed ids holding a `|`, the first 50 in the list's order; `ws_wtable_import_note_choices_from($notes, $bodies)` (tested) builds the choices from those. Notes reached only through a channel share are not listed. Label: note title — the `::: Title` above the table, else its header names.
+- Before #3447 (issue #3380) it read `$note['body']` from the list rows: no note was ever offered and the Tables screen printed two "Undefined array key" warnings per note.
 - `ws_wtable_import_note_read()` reads the note whole and checks `ws_note_access()` (`''` → "That note could not be found."); the table index gone → "That table is no longer in the note." The note is never written.
 
 ## How is a note's table read?

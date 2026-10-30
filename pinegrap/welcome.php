@@ -991,8 +991,8 @@ $output_header_includes .
        clips everything outside it, so the ring is drawn inside the box. */
     @layer custom {
         .card.widget [data-pg-focus-key^="scroll-"]:focus-visible {
-            outline: none;
-            box-shadow: inset 0 0 0 var(--pg-focus-ring-width) var(--pg-focus-ring-color);
+            outline: 2px solid var(--pg-primary-ink);
+            outline-offset: -2px;
         }
     }
 </style>

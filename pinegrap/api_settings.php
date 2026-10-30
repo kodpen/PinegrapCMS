@@ -1591,7 +1591,9 @@ echo pg_page_shell(array(
 	gap: 14px; align-items: center; min-width: 900px; }
 .api-head { padding: 0 16px 8px; font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--pg-fg-2); }
 .api-row { padding: 13px 16px; border-top: 1px solid var(--pg-border-color); cursor: pointer; }
-.api-row:hover, .api-row:focus-visible { background: var(--pg-bg-1); outline: 0; }
+.api-row:hover, .api-row:focus-visible { background: var(--pg-bg-1); }
+/* Inset: .api-scroll clips a ring drawn outside the row. */
+.api-row:focus-visible { outline: 2px solid var(--pg-primary-ink); outline-offset: -2px; }
 .api-name { display: flex; align-items: center; gap: 9px; min-width: 0; }
 .api-name i { opacity: .7; }
 .api-name b { font-size: 13px; display: block; }
