@@ -12483,6 +12483,17 @@ function pg_products_import_row_prices($row, $money_positions)
     return array('prices' => $prices, 'refused' => false);
 }
 
+// The column name an import file's heading stands for: trimmed, lower-cased
+// (UTF-8) and with each run of spaces or dashes read as one underscore, so
+// "Price", " PRICE " and "Short Description" match price and
+// short_description. Used by the products and campaign profile importers.
+function pg_import_heading($heading)
+{
+    $heading = mb_strtolower(trim((string) $heading), 'UTF-8');
+
+    return (string) preg_replace('/[\s\-]+/u', '_', $heading);
+}
+
 // The text of one column of a CSV row: '' when the file has no such column
 // (null, or false from array_search()) or the row ends before it.
 function pg_products_import_row_value($row, $key)

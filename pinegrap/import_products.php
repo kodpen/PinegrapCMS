@@ -178,6 +178,7 @@ if (!$_POST) {
     }
 
     $submit_form_fields = array();
+    $column_names = array();
     
     // create array with column field names
     foreach ($columns as $key => $value) {
@@ -228,6 +229,18 @@ if (!$_POST) {
         }
     }
     
+    // Every row is matched to a product by its name, so a file without a name
+    // column imports nothing; say so instead of skipping every row.
+    if (!in_array('name', $column_names, true)) {
+        $liveform->mark_error('file', lang('The file has no name column. Add a column with the heading name for the product ID (SKU).'));
+        fclose($handle);
+
+        if ($import_temp_path != '') { unlink($import_temp_path); }
+
+        header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/import_products.php');
+        exit();
+    }
+
     // Predefine variables
     $product_imported_count = 0;
     $product_updated_count = 0;
@@ -905,7 +918,9 @@ function convert_column_name($column_name)
         return 'custom_field_4';
     }
 
-    switch ($column_name) {
+    // The heading is matched whatever its case and spacing ("Price",
+    // "Short Description").
+    switch (pg_import_heading($column_name)) {
         case 'name':
             return('name');
             break;
