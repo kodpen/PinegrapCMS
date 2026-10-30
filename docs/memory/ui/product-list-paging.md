@@ -19,4 +19,10 @@ module: product_list
 ## What else changed with the paging?
 - Counts and the page read join only one-row lookups (user, contact group, start and e-mail page, folder); the traffic join behind the impact score joins the page read only. Zones are read once per page (`pg_product_list_zones()`), not two queries per row.
 - The barcode button carries its label data in `data-pg-barcode-product`; `pgPrintProductBarcode(id, button)` reads it (the page-wide `productMap` is gone).
-- Export reads the whole view with the same condition and sort (impact sorts by last change there). Select all, Modify Selected and Delete Selected act on the checked rows on screen, as before.
+- Export reads the whole view with the same condition and sort (impact sorts by last change there).
+
+## Why do sort codes never name a join?
+- `export_products_f.php` reads `products` alone, and Export Products is a GET that keeps the session's sort. Contact Group, Set Start Page, Grant Private Access and E-mail Page sort by correlated subqueries for the name the cell shows (`(SELECT page_name FROM page WHERE page.page_id = products.email_page)`), so they work in the list and the export alike. Before, `contact_group_name` and `start_page` (SELECT aliases) made the export query fail ("Query failed."), `private_folder` and `products.email_page` sorted by id.
+- Inventory Quantity sorts by `IF(products.inventory = '1', products.inventory_quantity, NULL)`, as the search does: an untracked product shows a dash and no longer sorts among the counts.
+- The Users list's Start Page sorts by `start_page.page_name` (the join exists in every view offering that sort), not the page id `user.user_home`.
+- Pinned by `tests/product_list_test.php` (no sort names a joined table or alias). Select all, Modify Selected and Delete Selected act on the checked rows on screen, as before.

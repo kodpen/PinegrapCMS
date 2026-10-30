@@ -297,7 +297,10 @@ function pg_product_list_labels($filter, $custom_labels)
 
 /**
  * What each sort code orders by. Only codes pg_list_state() let through
- * reach pg_list_order_by(), and it writes nothing but these.
+ * reach pg_list_order_by(), and it writes nothing but these. The export
+ * reads products without the list's joins, so a name shown from another
+ * table is a correlated subquery, never a join or SELECT alias. Stock sorts
+ * as the cell shows it: an untracked product (a dash) has none.
  *
  * @return array code => SQL
  */
@@ -328,20 +331,20 @@ function pg_product_list_sort_sql()
         'allow_to_schedule'     => 'products.recurring_schedule_editable_by_customer',
         'order_receipt_message' => 'products.order_receipt_message',
         'order_receipt_bcc'     => 'products.order_receipt_bcc_email_address',
-        'email_page'            => 'products.email_page',
+        'email_page'            => '(SELECT page_name FROM page WHERE page.page_id = products.email_page)',
         'email_page_bcc'        => 'products.email_bcc',
-        'contact_group'         => 'contact_group_name',
+        'contact_group'         => '(SELECT name FROM contact_groups WHERE contact_groups.id = products.contact_group_id)',
         'start'                 => 'products.start',
         'number_of_payments'    => 'products.number_of_payments',
         'payment_period'        => 'products.payment_period',
-        'set_start_page'        => 'start_page',
-        'grant_private_access'  => 'private_folder',
+        'set_start_page'        => '(SELECT page_name FROM page WHERE page.page_id = products.send_to_page)',
+        'grant_private_access'  => '(SELECT folder_name FROM folder WHERE folder.folder_id = products.private_folder)',
         'membership_renewal'    => 'products.membership_renewal',
         'custom_field_1'        => 'products.custom_field_1',
         'custom_field_2'        => 'products.custom_field_2',
         'custom_field_3'        => 'products.custom_field_3',
         'custom_field_4'        => 'products.custom_field_4',
-        'inventory_quantity'    => 'products.inventory_quantity',
+        'inventory_quantity'    => "IF(products.inventory = '1', products.inventory_quantity, NULL)",
         'last_modified'         => 'products.timestamp',
         'out_of_stock_date'     => 'products.out_of_stock_timestamp',
     );
