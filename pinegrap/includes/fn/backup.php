@@ -51,6 +51,27 @@ function pg_backup_auto_name($time)
 
 
 /**
+ * The folder a hand-made backup is written to, from the name typed for it.
+ *
+ * The last segment only (pg_basename(), which keeps a first letter outside
+ * ASCII on PHP 7), Turkish and other Latin letters mapped to ASCII
+ * (pg_ascii_file_name()), then everything outside letters, digits, "_" and
+ * "-" made "_" -- dots too, so "." and ".." cannot name a folder. Runs of
+ * "_" collapse and the ends are trimmed, so a second pass gives the same
+ * name: every backup step sends the name back and computes it again.
+ *
+ * @param string $name
+ * @return string empty when nothing usable is left
+ */
+function pg_backup_folder_name($name)
+{
+    $name = preg_replace('/[^A-Za-z0-9_-]/', '_', pg_ascii_file_name(pg_basename((string) $name)));
+
+    return trim(preg_replace('/_{2,}/', '_', $name), '_');
+}
+
+
+/**
  * Whether a directory entry is an automatic backup, as a folder or an archive.
  *
  * The one gate in front of every delete this module makes, so it is strict:

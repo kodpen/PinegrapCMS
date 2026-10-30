@@ -316,7 +316,7 @@ function pg_explorer_handle_backup_extract($type, $request, $user)
 
     // Its own folder, named after the archive, so extracting twice
     // does not merge two backups into one heap.
-    $base = pathinfo($path, PATHINFO_FILENAME);
+    $base = pg_file_name_stem($path);
     $destination = dirname($path) . '/' . $base;
 
     for ($number = 1; (is_dir($destination) || is_file($destination)) && ($number < 200); $number++) {
@@ -513,7 +513,7 @@ function pg_explorer_handle_backup_rename_copy_delete($type, $request, $user)
     if ($type == 'explorer_backup_rename') {
 
         $name = trim(isset($request['name']) ? (string) $request['name'] : '');
-        $name = basename(str_replace('\\', '/', $name));
+        $name = pg_basename(str_replace('\\', '/', $name));
 
         if (($name == '') || (mb_substr($name, 0, 1) == '.') || pg_explorer_unsafe_archive_name($name)) {
             respond(array('status' => 'error', 'message' => lang('Sorry, that name is not allowed here.')));
