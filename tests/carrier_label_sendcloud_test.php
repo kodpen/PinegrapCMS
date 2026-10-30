@@ -250,7 +250,7 @@ function test_carrier_label_sendcloud_create_takes_the_asked_option_and_zpl()
 function test_carrier_label_sendcloud_refusals_before_a_call()
 {
 	carrier_label_sendcloud_test_stub(array());
-	$return = pg_label_call('sendcloud', 'create', array(carrier_label_sendcloud_test_shipment(array('return' => true)), carrier_label_sendcloud_test_account()));
+	$return = pg_label_call('sendcloud', 'create', array(carrier_label_sendcloud_test_shipment(array('return' => true)), carrier_label_sendcloud_test_account(array('mode' => 'test'))));
 	$nowhere = carrier_label_sendcloud_test_shipment();
 	$nowhere['recipient']['country'] = '';
 	$no_country = pg_label_call('sendcloud', 'create', array($nowhere, carrier_label_sendcloud_test_account()));
@@ -258,7 +258,8 @@ function test_carrier_label_sendcloud_refusals_before_a_call()
 	carrier_label_sendcloud_test_done();
 
 	pg_assert_false($return['success']);
-	pg_assert_contains('return', $return['error']);
+	pg_assert_false($return['unclear']);
+	pg_assert_contains('live mode', $return['error'], 'a return is never bought in test mode');
 	pg_assert_false($no_country['success']);
 	pg_assert_same(array(), $sent);
 
@@ -270,6 +271,12 @@ function test_carrier_label_sendcloud_refusals_before_a_call()
 	pg_assert_contains('customs', pg_label_sendcloud_route_error('DE', 'CH'));
 	pg_assert_contains('customs', pg_label_sendcloud_route_error('DE', 'US'));
 	pg_assert_contains('does not ship from TR', pg_label_sendcloud_route_error('TR', 'TR'));
+
+	pg_assert_same('', pg_label_sendcloud_route_error('DE', 'NL', true));
+	pg_assert_same('', pg_label_sendcloud_route_error('PL', 'NL', true), 'a return from any EU country to the shop');
+	pg_assert_contains('A return from CH to DE needs a customs declaration', pg_label_sendcloud_route_error('CH', 'DE', true));
+	pg_assert_contains('A return from FR to GB needs a customs declaration', pg_label_sendcloud_route_error('FR', 'GB', true));
+	pg_assert_contains('does not ship from TR', pg_label_sendcloud_route_error('DE', 'TR', true), 'the shop\'s country is the one checked');
 }
 
 function test_carrier_label_sendcloud_parcel_outside_the_eu_is_refused_after_the_sender()
@@ -408,4 +415,150 @@ function test_carrier_label_sendcloud_carrier_of_a_code()
 	pg_assert_same('', pg_label_sendcloud_carrier('dhl'), 'DHL Parcel Benelux is not DHL Germany');
 	pg_assert_same('', pg_label_sendcloud_carrier('postnl'));
 	pg_assert_same('', pg_label_sendcloud_carrier('colissimo'));
+}
+
+function test_carrier_label_sendcloud_return_announces_from_the_customer()
+{
+	carrier_label_sendcloud_test_stub(array(
+		'GET /addresses/sender-addresses?page_size=100'      => array('sender_addresses.json'),
+		'POST /shipping-options'                              => array('shipping_options_return.json'),
+		'POST /returns/announce-synchronously'               => array(array(201, '{"return_id": 12345, "parcel_id": 67880, "multi_collo_ids": []}')),
+		'GET /returns/12345'                                  => array('return_pending.json', 'return.json'),
+		'GET /parcels/67880/documents/label?paper_size=a6'   => array('label.pdf'),
+	));
+	$shipment = carrier_label_sendcloud_test_shipment(array('return' => true));
+	$shipment['recipient']['state_code'] = 'DE-BE';
+	$answer = pg_label_call('sendcloud', 'create', array($shipment, carrier_label_sendcloud_test_account(array('service' => 'postnl:standard'))));
+	$sent = $GLOBALS['carrier_label_sendcloud_test_sent'];
+	$waits = pg_label_sendcloud_waits();
+	carrier_label_sendcloud_test_done();
+
+	pg_assert_true($answer['success'], $answer['error']);
+	pg_assert_same(array(
+		'GET /addresses/sender-addresses?page_size=100',
+		'POST /shipping-options',
+		'POST /returns/announce-synchronously',
+		'GET /returns/12345',
+		'GET /returns/12345',
+		'GET /parcels/67880/documents/label?paper_size=a6',
+	), carrier_label_sendcloud_test_sent());
+	pg_assert_same(array(2), $waits, 'asked again once while the number was missing');
+	pg_assert_same('r-12345-67880', $answer['reference']);
+	pg_assert_same('05212345679999', $answer['tracking_number']);
+	pg_assert_same('dpd', $answer['carrier']);
+	pg_assert_same('https://tracking.eu-central-1-0.sendcloud.sc/forward?carrier=dpd&code=05212345679999&destination=NL&lang=en-us', $answer['tracking_url']);
+	pg_assert_same('created', $answer['status']);
+	pg_assert_same('pdf', $answer['label_format']);
+	pg_assert_same(0, strpos($answer['label'], '%PDF-'));
+	pg_assert_contains('dpd:return/return', implode(' ', $answer['log']));
+
+	pg_assert_same(array(
+		'from_address'     => array('country_code' => 'DE', 'postal_code' => '10117'),
+		'to_address'       => array('country_code' => 'NL', 'postal_code' => '5611 EM'),
+		'parcels'          => array(array('dimensions' => array('length' => '30.00', 'width' => '20.00', 'height' => '10.50', 'unit' => 'cm'), 'weight' => array('value' => '1.250', 'unit' => 'kg'))),
+		'functionalities'  => array('returns' => true),
+		'calculate_quotes' => true,
+	), $sent[1]['body'], 'priced from the customer to the shop');
+
+	pg_assert_same(array(
+		'from_address'    => array(
+			'name'                => 'Jana Müller',
+			'address_line_1'      => 'Friedrichstraße 10',
+			'address_line_2'      => 'Hinterhaus',
+			'postal_code'         => '10117',
+			'city'                => 'Berlin',
+			'country_code'        => 'DE',
+			'state_province_code' => 'DE-BE',
+			'phone_number'        => '+49 30 1234567',
+			'email'               => 'jana@example.com',
+		),
+		'to_address'      => array(
+			'name'           => 'Marie Doe',
+			'company_name'   => 'Example Shop',
+			'address_line_1' => 'Stadhuisplein',
+			'house_number'   => '10',
+			'postal_code'    => '5611 EM',
+			'city'           => 'Eindhoven',
+			'country_code'   => 'NL',
+			'phone_number'   => '+31626262626',
+			'email'          => 'shop@example.com',
+		),
+		'ship_with'       => array('type' => 'shipping_option_code', 'shipping_option_code' => 'dpd:return/return'),
+		'weight'          => array('value' => 1.25, 'unit' => 'kg'),
+		'dimensions'      => array('length' => 30, 'width' => 20, 'height' => 10.5, 'unit' => 'cm'),
+		'delivery_option' => 'drop_off_point',
+		'order_number'    => '10042',
+	), $sent[2]['body'], 'the outgoing option, a service point and a non-return option are passed over; no customs');
+}
+
+function test_carrier_label_sendcloud_return_refusals()
+{
+	$account = carrier_label_sendcloud_test_account();
+	$abroad = carrier_label_sendcloud_test_shipment(array('return' => true));
+	$abroad['recipient']['country'] = 'CH';
+
+	carrier_label_sendcloud_test_stub(array('GET /addresses/sender-addresses?page_size=100' => array('sender_addresses.json')));
+	$customs = pg_label_call('sendcloud', 'create', array($abroad, $account));
+	$sent = carrier_label_sendcloud_test_sent();
+	carrier_label_sendcloud_test_done();
+
+	pg_assert_false($customs['success']);
+	pg_assert_false($customs['unclear']);
+	pg_assert_contains('A return from CH to NL needs a customs declaration', $customs['error']);
+	pg_assert_same(array('GET /addresses/sender-addresses?page_size=100'), $sent, 'nothing is priced or announced');
+
+	carrier_label_sendcloud_test_stub(array(
+		'GET /addresses/sender-addresses?page_size=100' => array('sender_addresses.json', 'sender_addresses.json', 'sender_addresses.json', 'sender_addresses.json'),
+		'POST /shipping-options'                         => array('shipping_options.json'),
+		'POST /returns/announce-synchronously'          => array(
+			array(400, '{"error": {"code": "invalid_postal_code", "request": "api/v3/returns/announce-synchronously", "message": "The postal code you provided is invalid."}}'),
+			array(502, '<html>Bad gateway</html>'),
+		),
+	));
+	$none = pg_label_call('sendcloud', 'create', array(carrier_label_sendcloud_test_shipment(array('return' => true)), $account));
+	$asked = carrier_label_sendcloud_test_shipment(array('return' => true, 'service' => 'dpd:return/return'));
+	$invalid = pg_label_call('sendcloud', 'create', array($asked, $account));
+	$server = pg_label_call('sendcloud', 'create', array($asked, $account));
+	$lost = pg_label_call('sendcloud', 'create', array($asked, $account));
+	$sent = $GLOBALS['carrier_label_sendcloud_test_sent'];
+	carrier_label_sendcloud_test_done();
+
+	pg_assert_false($none['success']);
+	pg_assert_false($none['unclear']);
+	pg_assert_contains('Sendcloud found no return option for this shipment.', $none['error'], 'outgoing options are never taken for a return');
+	pg_assert_same('dpd:return/return', $sent[3]['body']['ship_with']['shipping_option_code'], 'the shipment\'s service is taken without pricing');
+	pg_assert_false($invalid['unclear']);
+	pg_assert_contains('(The postal code you provided is invalid.)', $invalid['error']);
+	pg_assert_true($server['unclear'], 'a server error after the return was announced');
+	pg_assert_true($lost['unclear'], 'no answer after the return was announced');
+}
+
+function test_carrier_label_sendcloud_return_label_and_cancel()
+{
+	carrier_label_sendcloud_test_stub(array(
+		'GET /parcels/67880/documents/label' => array('label.zpl'),
+		'PATCH /returns/12345/cancel'        => array(
+			array(202, '{"message": "Cancellation requested successfully"}'),
+			array(409, '{"errors": [{"field": "returns", "code": 409, "message": "Return is not cancellable."}]}'),
+		),
+	));
+	$label = pg_label_call('sendcloud', 'label', array('r-12345-67880', 'zpl', carrier_label_sendcloud_test_account()));
+	$requested = pg_label_call('sendcloud', 'cancel', array('r-12345-67880', carrier_label_sendcloud_test_account()));
+	$refused = pg_label_call('sendcloud', 'cancel', array('r-12345-67880', carrier_label_sendcloud_test_account()));
+	$broken = pg_label_call('sendcloud', 'cancel', array('r-12345', carrier_label_sendcloud_test_account()));
+	$sent = $GLOBALS['carrier_label_sendcloud_test_sent'];
+	carrier_label_sendcloud_test_done();
+
+	pg_assert_true($label['success'], $label['error']);
+	pg_assert_same('r-12345-67880', $label['reference']);
+	pg_assert_contains('^XA', $label['label']);
+	pg_assert_same(array('GET /parcels/67880/documents/label', 'PATCH /returns/12345/cancel', 'PATCH /returns/12345/cancel'), carrier_label_sendcloud_test_sent(), 'the return\'s parcel, no shipment read');
+	pg_assert_same(null, $sent[1]['body']);
+
+	pg_assert_true($requested['success'], $requested['error']);
+	pg_assert_contains('Cancellation requested successfully', implode(' ', $requested['log']));
+	pg_assert_false($refused['success']);
+	pg_assert_false($refused['unclear']);
+	pg_assert_contains('Return is not cancellable.', $refused['error']);
+	pg_assert_false($broken['success'], 'a return reference without its parcel');
 }

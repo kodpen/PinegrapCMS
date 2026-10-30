@@ -35,6 +35,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - carrier-label-drivers.md: Carrier label driver layer (2026.11.0): pg_label_<key>_ contract, pg_label_call() answers, what reaches the shipment row, connect_apps label_<key>, Shipping card and test
 - carrier-label-geliver.md: Geliver label driver (2026.11.0, #3096): two-step flow, offers, barcode as tracking number, PDF only, statuses, TRACK_UPDATED webhook (#3245), what is unverified
 - carrier-label-kargonomi.md: Kargonomi label driver (2026.11.0, #3286), Turkish aggregator, no test mode: draft, prices, confirmation as the charge, carrier number read after it, PDF label, cancel in 36 h, unverified points
+- carrier-label-sendcloud-returns.md: Sendcloud customer return labels (#3409): Returns API announce from the customer to the sender address, live mode and EU only, r-<return>-<parcel> reference, cancel request
 - carrier-label-sendcloud.md: Sendcloud label driver (2026.11.0, #3226), Europe: API v3 announce with the label inline, test mode as an unstamped letter, sender address id, no customs (EU or domestic only), cancel, tracking phases
 - carrier-label-shippo.md: Shippo label driver (2026.11.0, #3192), the first international one: rates then purchase, sender address in the account, PDF or ZPL II, refund as cancel, tracking status, European carriers
 - carrier-webhook.md: carrier_webhook.php (2026.11.0, #3245): a label service's parcel status messages written through the tracking write-back, the key in the URL, registration from the Shipping card, answers, firewall

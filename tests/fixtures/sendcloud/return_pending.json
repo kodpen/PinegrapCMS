@@ -1,0 +1,19 @@
+{
+  "from_address": {"name": "Jana Müller", "address_line_1": "Friedrichstraße 10", "postal_code": "10117", "city": "Berlin", "country_code": "DE"},
+  "to_address": {"name": "Marie Doe", "company_name": "Example Shop", "address_line_1": "Stadhuisplein", "house_number": "10", "postal_code": "5611 EM", "city": "Eindhoven", "country_code": "NL"},
+  "shipping_product": {"code": "dpd:return"},
+  "shipping_option": {"code": "dpd:return/return"},
+  "weight": {"value": 1.25, "unit": "kg"},
+  "send_tracking_emails": false,
+  "label": {"normal_printer": [], "label_printer": "https://panel.sendcloud.sc/api/v3/parcels/67880/documents/label"},
+  "tracking_number": null,
+  "tracking_numbers": [],
+  "tracking_url": null,
+  "is_cancellable": true,
+  "status_history": [{"status": "announcing", "message": "Announcing"}],
+  "created_at": "2026-10-30T09:14:02Z",
+  "order_number": "10042",
+  "delivery_option": "drop_off_point",
+  "status": "open",
+  "errors": []
+}
