@@ -7,7 +7,11 @@ description: add_country.php and edit_country.php draw the country options card 
 - `includes/forms/country_form.php` (loaded with `require_once(PG_FUNCTIONS_DIR . …)` after `init.php`): `pg_country_form_card($values)` (name, code, the zip code required and selected by default switches, transit adjustment days; `$values` null on create, which prints no values and no switch on) and `pg_country_form_values($_POST)` (the five fields as text, in INSERT/UPDATE order). The edit screen passes its stored row through `pg_country_form_values()` too.
 - A screen keeps its gates (`validate_user()`, `validate_ecommerce_access()`), the edit screen's not-found guard and record load, the form tag, the hidden `id`, buttons (edit adds Delete), the INSERT / UPDATE, the reset of `default_selected` on every other country, the log line and the redirect.
 
-## What does a delete clear?
+## How is a taken code refused?
+- `pg_country_form_code_error($code, $stored_code, $except_id)` answers 'The code that you entered is already in use by another country…' when another country has the code (`pg_country_form_code_taken()`, db_q, edit leaves its own id out). Only a non-empty code that is new or changed is looked up, so an edit keeping an old clash still saves; delete is never held back.
+- Why: checkout's zone lookup and the product destination check take the country id from the first `countries` row with the code. Create/Edit Currency already refused a taken code.
+- The screen draws the form again with the posted values and `pg_country_form_card($values, $errors)` marks the code field (`is-invalid`, `aria-describedby="code-error"`, message under it); nothing is written. Tests: `tests/commerce_code_taken_test.php`.
+
 - Only the edit screen deletes: for each state of the country its `zones_states_xref`, `tax_zones_states_xref` and `verified_shipping_addresses` rows, then the `states`, `zones_countries_xref`, `tax_zones_countries_xref` and `countries` rows.
 
 ## What changed with the move?

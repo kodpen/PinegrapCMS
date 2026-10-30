@@ -38,15 +38,64 @@ function pg_country_form_values($post)
 }
 
 /**
+ * Whether another country already has the code. Checkout's zone lookup and
+ * the product destination check take the country id from the first row with
+ * the code, so a second country with it would be read as the first.
+ *
+ * @param string   $code      The code
+ * @param int|null $except_id The edited country (left out); null on create
+ * @return bool
+ */
+function pg_country_form_code_taken($code, $except_id = null)
+{
+    $query = "SELECT id FROM countries WHERE code = ?";
+    $values = array((string) $code);
+
+    if ($except_id !== null) {
+        $query .= " AND id != ?";
+        $values[] = (int) $except_id;
+    }
+
+    $result = db_q($query . " LIMIT 1", $values) or output_error('Query failed.');
+
+    return mysqli_num_rows($result) > 0;
+}
+
+/**
+ * The message for a code another country has, or ''. Only a non-empty code
+ * that is new or changed is looked up, so an edit that keeps an old clash
+ * still saves.
+ *
+ * @param string      $code        The posted code
+ * @param string|null $stored_code The edited country's stored code; null on create
+ * @param int|null    $except_id   The edited country's id; null on create
+ * @param callable    $taken       Lookup as pg_country_form_code_taken() (tests stub it)
+ * @return string
+ */
+function pg_country_form_code_error($code, $stored_code, $except_id, $taken = 'pg_country_form_code_taken')
+{
+    $code = (string) $code;
+
+    if ((trim($code) === '') || (($stored_code !== null) && ($code === (string) $stored_code))) {
+        return '';
+    }
+
+    return $taken($code, $except_id)
+        ? lang('The code that you entered is already in use by another country, please enter a different code.')
+        : '';
+}
+
+/**
  * The options card, from the opening row to its closing tag; the screens
  * print the form tag, the buttons and the edit screen's id around it.
  *
  * @param array|null $values The fields of pg_country_form_values() from a
- *                           stored country; null on create, which prints no
- *                           values and no switch on
+ *                           stored country or a refused post; null on
+ *                           create, which prints no values and no switch on
+ * @param array      $errors Field => message; 'code' is printed under the code field
  * @return string  HTML
  */
-function pg_country_form_card($values)
+function pg_country_form_card($values, $errors = array())
 {
     if ($values === null) {
         $values = pg_country_form_values(array());
@@ -54,6 +103,11 @@ function pg_country_form_card($values)
 
     $name_value = ($values['name'] !== '') ? ' value="' . h($values['name']) . '"' : '';
     $code_value = ($values['code'] !== '') ? ' value="' . h($values['code']) . '"' : '';
+    $code_error = isset($errors['code']) ? (string) $errors['code'] : '';
+    $code_class = ($code_error !== '') ? ' is-invalid' : '';
+    $code_aria = ($code_error !== '') ? ' aria-invalid="true" aria-describedby="code-error"' : '';
+    $code_feedback = ($code_error !== '') ? '
+                                                <div id="code-error" class="invalid-feedback d-block">' . h($code_error) . '</div>' : '';
     $zip_checked = $values['zip_code_required'] ? ' checked' : '';
     $default_checked = ($values['default_selected'] == 1) ? ' checked' : '';
 
@@ -74,7 +128,7 @@ function pg_country_form_card($values)
                                             </div>
                                             <div class="col-12 md:col-6 lg:col-4 my-3">
                                                 <label for="code" class="form-label">' . lang('Code') . '</label>
-                                                <input type="text" name="code" id="code" class="form-control" maxlength="50"' . $code_value . ' />
+                                                <input type="text" name="code" id="code" class="form-control' . $code_class . '" maxlength="50"' . $code_value . $code_aria . ' />' . $code_feedback . '
                                                 <div class="form-text">' . lang('New Country Code for Order Reporting') . '</div>
                                             </div>
 
