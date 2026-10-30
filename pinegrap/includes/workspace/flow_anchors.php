@@ -805,6 +805,25 @@ function ws_flow_anchor_start($viewer, $row, $fill)
         }
     }
 
+    // A role-3 member's own flow: an event box asked again with the rights
+    // they hold now (one they no longer see starts nothing), and the cap of
+    // starts of all their flows (flow_member.php).
+    if (ws_flow_builder_kind($viewer) === 'member') {
+        if ((string) $trigger['kind'] === 'event') {
+            $checked = ws_scheduled_rule_input($viewer, ws_flow_anchor_rule('event', $trigger['config'] ?? array()));
+
+            if (!$checked['ok']) {
+                return $fail($checked['error']);
+            }
+        }
+
+        $refused = ws_flow_member_starts_check($viewer);
+
+        if ($refused !== '') {
+            return $fail($refused);
+        }
+    }
+
     $flow_id = (int) $flow['id'];
     $start_key = 'sched:' . (int) ($fill['run_id'] ?? 0);
 

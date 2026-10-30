@@ -312,7 +312,7 @@ if (count($products) > 0) {
 
         $output_product_rows .=
             '<tr>
-                <td class="chart_label"><a href="' . h('edit_product.php?id=' . (int) $product['id']) . '">' . $output_description . '</a></td>
+                <th scope="row" class="chart_label fw-normal"><a href="' . h('edit_product.php?id=' . (int) $product['id']) . '">' . $output_description . '</a></th>
                 <td style="text-align: center">' . $output_before . '</td>
                 ' . $output_date_cells . '
                 <td style="text-align: center">' . $output_after . '</td>
@@ -369,7 +369,7 @@ if (count($products) > 0) {
             <tbody>' . $output_product_rows . '</tbody>
             <tfoot>
                 <tr class="fw-bold table-info">
-                    <td style="font-weight: bold">' . lang('Grand Total') . '</td>
+                    <th scope="row">' . lang('Grand Total') . '</th>
                     <td style="font-weight: bold; text-align: center">' . $output_total_before . '</td>
                     ' . $output_total_date_cells . '
                     <td style="font-weight: bold; text-align: center">' . $output_total_after . '</td>

@@ -2002,8 +2002,22 @@ function ws_flow_run_start_check($viewer, $flow, $data = array())
 
     $owner = ws_change_viewer_for_id($flow['owner_id']);
 
-    if (!is_array($owner) || !ws_can_schedule($owner)) {
+    if (!is_array($owner) || !ws_flow_builder($owner)) {
         return ws_flow_refusal(lang('The owner of this flow is no longer on the staff, so it cannot run.'));
+    }
+
+    // A role-3 member's own flow: run by its owner alone, under the cap of
+    // starts of all their flows (flow_member.php).
+    $refused = ws_flow_member_starter_refusal(ws_flow_builder_kind($owner), $flow['owner_id'], $viewer['id']);
+
+    if ($refused !== '') {
+        return ws_flow_refusal($refused, 403);
+    }
+
+    $refused = ws_flow_member_starts_check($owner);
+
+    if ($refused !== '') {
+        return ws_flow_refusal($refused);
     }
 
     $channel_id = null;
@@ -2592,6 +2606,13 @@ function ws_flow_step_run($step)
     // A loop's boxes open tasks, approvals and e-mails under a cap per run.
     $refusal = ws_flow_loop_effects_check($run, $step, $node);
 
+    // The owner as they stand now: on the team, and, while a role-3
+    // member, with a box their own flow may hold (flow_member.php). What
+    // the box reaches is asked by the box itself.
+    if ($refusal === '') {
+        $refusal = ws_flow_member_box_refusal(ws_flow_builder_kind(ws_change_viewer_for_id($run['actor_id'])), $node);
+    }
+
     if ($refusal !== '') {
         ws_flow_step_settle($step, 'running', 'failed', '', $refusal);
         return;
@@ -2611,7 +2632,7 @@ function ws_flow_step_run($step)
         case 'for_each':
             $owner = ws_change_viewer_for_id($run['actor_id']);
 
-            if (!is_array($owner) || !ws_can_schedule($owner)) {
+            if (!is_array($owner) || !ws_flow_builder($owner)) {
                 ws_flow_step_settle($step, 'running', 'failed', '', lang('The owner of the flow is no longer on the staff, so the box did not run.'));
                 return;
             }
@@ -2629,7 +2650,7 @@ function ws_flow_step_run($step)
         case 'task':
             $owner = ws_change_viewer_for_id($run['actor_id']);
 
-            if (!is_array($owner) || !ws_can_schedule($owner)) {
+            if (!is_array($owner) || !ws_flow_builder($owner)) {
                 ws_flow_step_settle($step, 'running', 'failed', '', lang('The owner of the flow is no longer on the staff, so the task was not opened.'));
                 return;
             }
@@ -2641,7 +2662,7 @@ function ws_flow_step_run($step)
         case 'start_flow':
             $owner = ws_change_viewer_for_id($run['actor_id']);
 
-            if (!is_array($owner) || !ws_can_schedule($owner)) {
+            if (!is_array($owner) || !ws_flow_builder($owner)) {
                 ws_flow_step_settle($step, 'running', 'failed', '', lang('The owner of the flow is no longer on the staff, so the box did not run.'));
                 return;
             }
@@ -2653,7 +2674,7 @@ function ws_flow_step_run($step)
         case 'condition':
             $owner = ws_change_viewer_for_id($run['actor_id']);
 
-            if (!is_array($owner) || !ws_can_schedule($owner)) {
+            if (!is_array($owner) || !ws_flow_builder($owner)) {
                 ws_flow_step_settle($step, 'running', 'failed', '', lang('The owner of the flow is no longer on the staff, so the box did not run.'));
                 return;
             }
@@ -2667,7 +2688,7 @@ function ws_flow_step_run($step)
     if (!empty(ws_flow_kinds()[$node['kind']]['step'])) {
         $owner = ws_change_viewer_for_id($run['actor_id']);
 
-        if (!is_array($owner) || !ws_can_schedule($owner)) {
+        if (!is_array($owner) || !ws_flow_builder($owner)) {
             ws_flow_step_settle($step, 'running', 'failed', '', lang('The owner of the flow is no longer on the staff, so the box did not run.'));
             return;
         }

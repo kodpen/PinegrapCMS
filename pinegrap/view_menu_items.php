@@ -263,7 +263,7 @@ pg_page_shell( array(
             ' . $liveform->output_notices() . '
             <div class="row mb-3  flex-wrap">
                 <div class="col-12 text-center md:text-start">
-                    <h2 class="d-inline-block " data-bs-content="' . lang('Update, add, or remove menu items.') . '" title="' . lang('Edit Menu') . '">[' . h($menu_name) . ']</h2>
+                    <h2 class="d-inline-block ">[' . h($menu_name) . ']</h2>
                     ' . $output_subheading . '
                     <nav id="button_bar" class="navigation " aria-label="' . h(lang('Button Bar')) . '">
                         <a class="btn btn-sm btn-solid theme-primary m-1 " href="add_menu_item.php?menu_id=' . h(urlencode($_GET['id'])) . '&from=' . h(urlencode(($_GET['from'] ?? ''))) . '&send_to=' . h(urlencode(($_GET['send_to'] ?? ''))) . '"><span class="bi bi-plus-circle me-3"></span>' . lang(array('string'=>'Create') ) . '</a>
