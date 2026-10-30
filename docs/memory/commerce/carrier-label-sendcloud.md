@@ -15,7 +15,8 @@ description: Sendcloud label driver (2026.11.0, #3226), Europe: API v3 announce 
 - cancel: `POST /shipments/{id}/cancel`; 200 cancelled and 202 queued (watched 14 days) are done; 409 (already cancelled, delivered, 42 days) refuses.
 - track: `GET /shipments/{id}` for the number, then `GET /parcels/tracking/{number}`; the first event's `phase` (`pg_label_sendcloud_status()`; in_delivery is out_for_delivery, delivery_forced delivered) or, with phase `none`, its `exception` (returned_sender returned, delays in_transit, the rest exception, unknown a plain failure).
 - test: the sender address list; account = the address's company, city and country.
-- Returns are refused: the Shipments API makes outgoing shipments only (the Returns API is a later step).
+
+- Customer returns go through the Returns API (#3409): `carrier-label-sendcloud-returns.md`.
 
 ## Which failures are unclear?
 - Only the announce and the cancel: no answer after the request went out, or a 5xx. Pricing and reads are plain.

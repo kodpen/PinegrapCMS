@@ -95,6 +95,9 @@ if (!$_POST) {
     $output_control_buttons = '';
     if ((MASS_DELETION == true) || (defined('USER_ROLE') && (USER_ROLE < 1))) {
         $checked = (!empty($_SESSION['software']['settings']['view_log']['error_log'])) ? 'checked' : '';
+        // The switch posts its form on change; the redirect after that post
+        // asks for focus back on it, so the keyboard keeps its place.
+        $error_log_autofocus = (isset($_GET['focus']) && $_GET['focus'] === 'error_log_toggle') ? ' autofocus' : '';
     
         $delete_logs_button = '';
         if (MASS_DELETION == true && $all_logs > 0) {
@@ -140,7 +143,7 @@ if (!$_POST) {
         
             $error_log_controls = '
                 <div class="form-field me-5 align-middle">
-                    <div class="switch"><input class="" type="checkbox" name="error_log_toggle" id="error_log_toggle" ' . $checked . '></div>
+                    <div class="switch"><input class="" type="checkbox" name="error_log_toggle" id="error_log_toggle" ' . $checked . $error_log_autofocus . '></div>
                     <label class="" for="error_log_toggle">' . lang('Show Error Logs') . '</label>
                 </div>
                 <script>
@@ -848,6 +851,13 @@ if (!$_POST) {
         }
     }
     
-    header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/view_log.php');
+    // A post without a Delete button came from the Show Error Logs switch:
+    // focus goes back to it after the redirect.
+    $redirect_query = '';
+    if (!isset($_POST['delete_all_site_logs']) && !isset($_POST['delete_all_error_logs'])) {
+        $redirect_query = '?focus=error_log_toggle';
+    }
+
+    header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/view_log.php' . $redirect_query);
     exit;
 }

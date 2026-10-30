@@ -12,7 +12,7 @@ description: Plan (approved 2026-10-19; 1-4, 6-8 partly done): carrier APIs for 
 - Panel: "Create label" on the order and on selected orders (bulk, one PDF), reprint, status refresh; the carrier comes from the shipping method's `carrier` or the order's method code.
 - Status write-back: the job polls open shipments and calls `pg_shipment_delivered()` so `order.delivered`, e-mail and SMS fire exactly once. Carrier webhooks are used when the driver offers them.
 - Return labels: the same driver creates a return shipment for customer returns with the named return carrier (step 8).
-- UPS/FedEx/USPS rate code and box packing stay untouched; their labels are a later driver on the same interface.
+- UPS/FedEx/USPS rate code and box packing stay untouched (their labels: Shippo, step 7).
 - Marketplace orders: Trendyol common label (`createCommonLabel`, ZPL for TEX/Aras) is the marketplace connector's job.
 
 ## What remains?
@@ -25,16 +25,15 @@ description: Plan (approved 2026-10-19; 1-4, 6-8 partly done): carrier APIs for 
 5. Direct drivers (M each): Aras done in PR #3259 (`commerce/carrier-label-aras.md`); Yurtiçi waits for docs.
    - 5c. API: done in PR #3220 (`commerce/shipment-label-api.md`).
 6. Aggregators, done: Basit Kargo PR #3163 (`commerce/carrier-label-basitkargo.md`), Kargonomi PR #3286 (`commerce/carrier-label-kargonomi.md`); MNG ApiZone (M) waits for docs.
-7. International (#3124), done: Shippo PR #3192 (`commerce/carrier-label-shippo.md`), Sendcloud PR #3226 (`commerce/carrier-label-sendcloud.md`). Customs decided #3408 (`workflow/decisions-made-product-7.md`, `-schema-5.md`), after #3407/#3409 (M).
+7. International (#3124), done: Shippo PR #3192 (`commerce/carrier-label-shippo.md`), Sendcloud PR #3226 (`commerce/carrier-label-sendcloud.md`); 7b Shippo webhook #3407; 7c Sendcloud return labels #3409.
+   - 7d Customs, decided #3408 (`workflow/decisions-made-product-7.md`, `-schema-5.md`): per-product HS code and origin plus shop defaults (M).
 8. Return label on the returns screen (#3178, `workflow/decisions-made-product-4.md`) (S).
-   - 8a (2(a)). Done #3194 (`commerce/shipment-label-returns.md`).
-   - 8b (2(c)). Done #3239 (classic view).
-   - 8c. Done #3268 (the widget's returns part).
-9. Pickup requests, decided #3415 (`workflow/decisions-made-product-7.md`): orders-list and label-card action, `pickup_ref`/`pickup_at` on the label; Shippo and Sendcloud first, after #3407/#3409 (M).
+   - Done: 8a PR #3194 (`commerce/shipment-label-returns.md`), 8b PR #3239 (classic view), 8c PR #3268 (widget).
+9. Pickup requests, decided #3415 (`workflow/decisions-made-product-7.md`): orders-list and label-card action, `pickup_ref`/`pickup_at` on the label; Shippo and Sendcloud first (M).
 
 ## Open questions?
 - #3073: Geliver first; the owner confirms its prices; no aggregator-specific fields in the shipment row.
 - Formats (#3123): PDF, ZPL, SVG; ZPL never sent to a converter.
 
 ## Where to start?
-- Step 5 Yurtiçi/Aras drivers (one with `track()` is tracked by the job as it is). Live checks of Geliver, Shippo and Sendcloud with the owner's keys.
+- 7d customs and 9 pickup are free (one PR each, different files from step 5). Step 5 Yurtiçi waits for docs. Live checks of Geliver, Shippo and Sendcloud with the owner's keys.

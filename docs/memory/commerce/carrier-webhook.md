@@ -5,7 +5,7 @@ module: carrier_webhook
 ---
 
 ## What is it?
-- `POST carrier_webhook.php?driver=<key>&key=<secret>`, functions in `includes/fn/carrier_webhook.php` (loaded by the entry and the Shipping card). A driver joins with optional `pg_label_<key>_webhook_read($body)`, `_webhook_register($url, $account)`, `_webhook_remove($id, $account)`; Geliver is the first (`carrier-label-geliver.md`). The hourly poll (`shipment-tracking.md`) stays as the safety net, budgets unchanged.
+- `POST carrier_webhook.php?driver=<key>&key=<secret>`, functions in `includes/fn/carrier_webhook.php` (loaded by the entry and the Shipping card). A driver joins with optional `pg_label_<key>_webhook_read($body)`, `_webhook_register($url, $account)`, `_webhook_remove($id, $account)`; Geliver is the first (`carrier-label-geliver.md`), Shippo the second (#3407, `carrier-label-shippo.md`). The hourly poll (`shipment-tracking.md`) stays as the safety net, budgets unchanged.
 
 ## Where is the secret?
 - No schema: `webhook_key` (32 hex, `random_bytes`) and `webhook_id` (the service's) are extra entries of the driver's sealed secrets in `connect_apps` `label_<key>` (`pg_carrier_webhook_secrets_put()`, null removes). `pg_label_settings_store()` merges secrets, so a save keeps them; they are never account fields.
@@ -19,8 +19,12 @@ module: carrier_webhook
 ## What does a message change?
 - `pg_carrier_webhook_decide()` (pure) over `pg_carrier_webhook_label()` (label by driver + reference, its parcel row LEFT JOINed): unknown → logged once (last 100 in `data/temp/carrier_webhook.json`), 200; return label or the service's return flag → nothing; label not active, row gone, order incomplete/cancelled → nothing; parcel arrived or returned → nothing (a repeated delivery gives no second `order.delivered`); a status older than the row's `status_at` → nothing (out of order; an arrival is never too old); else `pg_shipment_tracking_decide()` then `pg_shipment_tracking_apply()`, the only write.
 
+## How does Shippo's side work?
+- `pg_label_shippo_webhook_read()` takes only `track_updated`. With the pinned version the body is `{event, test, data: <tracking object>}` and `data.transaction` is the reference; an account on 2017-03-29 or older posts the transaction (its `object_id`). Status, time and number through `pg_label_shippo_track_answer()`, shared with track(); `is_return` false (the label row decides). Shippo's own test message (`transaction` null) carries nothing.
+- Register: `POST /webhooks {event: track_updated, url, active, is_test}` (`is_test` for a `shippo_test_` token), id = `object_id`; an address of 200+ characters is refused locally, so the card shows it to add by hand. Remove: `DELETE /webhooks/{id}`, empty 2xx or 404 = removed. The webhooks API is beta; Shippo signs only under a sales agreement, so the key in the URL is the credential (its documented token-in-URL option). It retries on 408/429/5xx, wants an answer within 3 s, and tracks its own labels: nothing per label.
+
 ## Firewall?
 - In `waf_is_api_request()` and `waf_country_api_scripts()` like `payment_callback.php`: no bot policy or country gate, global limit applies.
 
 ## How is it tested?
-- `tests/carrier_webhook_test.php`: the reference's message, shapes, key check, decision, delivered once, return label, unknown note, register/remove through the stand-in transport, write-path pins. No live delivery.
+- `tests/carrier_webhook_test.php`: the reference's message, shapes, key check, decision, delivered once, return label, unknown note, register/remove through the stand-in transport, write-path pins; Shippo's side in `tests/carrier_webhook_shippo_test.php`. No live delivery.

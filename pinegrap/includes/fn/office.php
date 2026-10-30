@@ -1835,6 +1835,7 @@ function pg_office_view_strings()
         'doc_hint'          => lang('Click a paragraph, then click it again (or press Enter) to change its text. Enter keeps the change, Shift+Enter starts a new line, Esc undoes it.'),
         'doc_changed'       => lang('{1} paragraph(s) changed.'),
         'doc_format'        => lang('Changed paragraphs show their formatting again once saved.'),
+        'doc'               => lang('Document preview'),
         'doc_editor'        => lang('Text of the paragraph'),
         'doc_link'          => lang('Hold Ctrl (Cmd on a Mac) and click to follow the link.'),
         'doc_signed'        => lang('The file is digitally signed, so its text is not changed here.'),
