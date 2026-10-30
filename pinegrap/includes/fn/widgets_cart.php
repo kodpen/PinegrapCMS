@@ -816,41 +816,23 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
         );
         if ($_pg_ship_sum > 0) $shipping_cents = $_pg_ship_sum;
 
-        // Tax — two strategies:
-        //   (a) If the visitor already went through the checkout once,
-        //       order_items.tax_total is populated → use that SUM directly.
-        //   (b) Otherwise compute a PREVIEW tax based on the site's default
-        //       country tax_zone × taxable products' line total. This lets
-        //       the cart summary show a representative VAT/KDV figure instead
-        //       of always 0 — visitor sees the real rate they'll pay (or
-        //       very close, modulo state/region overrides at checkout).
-        // tax_total is the tax on the whole line, so this is a plain sum.
-        $tax_cents = (int)db_value(
-            "SELECT COALESCE(SUM(tax_total), 0) FROM order_items WHERE order_id = '$oid_esc'" . pg_order_item_active_sql()
+        // Tax — the stored line taxes (order_items.tax_total, written by the
+        // checkout's tax pass on the buyer's address) while every taxable
+        // line has one; else a PREVIEW over the whole cart on the site's
+        // default country rate, per product rate (pg_cart_estimate_tax()).
+        // A product added after the visitor once reached the checkout has
+        // tax_total 0, and the stored sum alone left it out of the tax.
+        $tax_cents = 0;
+        $_pg_tax_lines = db_items(
+            "SELECT oi.price * oi.quantity AS amount, oi.tax_total, p.taxable, p.tax_rate
+             FROM order_items oi
+             LEFT JOIN products p ON oi.product_id = p.id
+             WHERE oi.order_id = '$oid_esc'" . pg_order_item_active_sql('oi')
         );
-        if ($tax_cents <= 0 && (!defined('ECOMMERCE_TAX') || ECOMMERCE_TAX == true) && function_exists('get_tax_rate_for_address')) {
-            $_pg_def_rate = get_default_tax_rate();
-            if ($_pg_def_rate !== false) {
-                // Rate per product, not one rate over the basket: a shop on a
-                // value-added tax carries different rates on different articles
-                // and a single multiplication would quote the wrong figure on
-                // any mixed basket. COALESCE puts the site rate under the
-                // products that carry none, which is what they will be charged
-                // at once an address is known. The tax is taken once per rate on
-                // the sum of its lines, as the checkout takes it
-                // (pg_tax_by_rate()).
-                $_pg_rate_sql = "COALESCE(p.tax_rate, " . (float)$_pg_def_rate . ")";
-                $tax_cents = (int)db_value(
-                    "SELECT COALESCE(SUM(ROUND(rate_groups.amount * rate_groups.rate / 100)), 0)
-                     FROM (
-                        SELECT " . $_pg_rate_sql . " AS rate, SUM(oi.price * oi.quantity) AS amount
-                        FROM order_items oi
-                        LEFT JOIN products p ON oi.product_id = p.id
-                        WHERE oi.order_id = '$oid_esc' AND p.taxable = 1" . pg_order_item_active_sql('oi') . "
-                        GROUP BY " . $_pg_rate_sql . "
-                     ) AS rate_groups"
-                );
-            }
+        if (is_array($_pg_tax_lines)) {
+            $_pg_def_rate = ((!defined('ECOMMERCE_TAX') || ECOMMERCE_TAX == true) && function_exists('get_tax_rate_for_address'))
+                ? get_default_tax_rate() : false;
+            $tax_cents = pg_cart_estimate_tax($_pg_tax_lines, $_pg_def_rate);
         }
 
         // Surcharge — never computed in cart phase; checkout step adds it
@@ -1989,6 +1971,92 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
 }
 
 /**
+ * The addresses the express order widget takes the tax on when it draws the
+ * page: the ones its form shows and will post, so the tax shown is the tax
+ * submit_order() recomputes from them.
+ *
+ * A recipient takes the form's country and state when the form holds a
+ * country for it, else its stored row (an empty row until the first submit).
+ * Billing takes the form's own values, except when "billing same as
+ * shipping" is ticked on an order with exactly one recipient that has a
+ * country: then it is that recipient's address, as express_order.php copies
+ * it on submit.
+ *
+ * @param array  $recipients        list of ship_tos rows: id, country, state
+ * @param array  $fields            the form's values: billing_country, billing_state,
+ *                                  shipping_<id>_country, shipping_<id>_state
+ * @param string $same_as_shipping  the billing_same_as_shipping value
+ * @return array billing => [country, state], ship_tos => [id => [country, state]]
+ */
+function pg_express_order_tax_addresses($recipients, $fields, $same_as_shipping)
+{
+    $fields = (array) $fields;
+    $value = function ($key) use ($fields) {
+        return isset($fields[$key]) ? trim((string) $fields[$key]) : '';
+    };
+
+    $ship_tos = array();
+    foreach ((array) $recipients as $recipient) {
+        $id = (int) ($recipient['id'] ?? 0);
+        if ($id <= 0) continue;
+        $country = $value('shipping_' . $id . '_country');
+        if ($country !== '') {
+            $ship_tos[$id] = array('country' => $country, 'state' => $value('shipping_' . $id . '_state'));
+        } else {
+            $ship_tos[$id] = array(
+                'country' => (string) ($recipient['country'] ?? ''),
+                'state'   => (string) ($recipient['state'] ?? ''),
+            );
+        }
+    }
+
+    $billing = array('country' => $value('billing_country'), 'state' => $value('billing_state'));
+    if (((string) $same_as_shipping === '1') && (count($ship_tos) === 1)) {
+        $only = reset($ship_tos);
+        if ($only['country'] !== '') $billing = $only;
+    }
+
+    return array('billing' => $billing, 'ship_tos' => $ship_tos);
+}
+
+/**
+ * The tax the cart widget estimates before the checkout: the stored line
+ * taxes (order_items.tax_total, written by the checkout's tax pass on the
+ * buyer's address) while every taxable line has one, else the preview on the
+ * site's default rate over the whole cart.
+ *
+ * A line counts as untaxed when its tax_total is 0 although the preview would
+ * tax it (taxable product, rate above 0): a product added after the visitor
+ * once reached the checkout. The whole cart is then previewed rather than
+ * only that line, so the tax is taken once per rate on the sum of the lines,
+ * as the checkout takes it (pg_tax_by_rate()), and not rounded per batch.
+ *
+ * @param array       $lines         per active line: amount (price × quantity), tax_total,
+ *                                   taxable, tax_rate (products.tax_rate, null for the zone's)
+ * @param float|false $default_rate  get_default_tax_rate(): false when the default country is in no zone
+ * @return int minor units
+ */
+function pg_cart_estimate_tax($lines, $default_rate)
+{
+    $stored = 0;
+    $preview = array();
+    $untaxed = false;
+
+    foreach ((array) $lines as $key => $line) {
+        $stored += (int) ($line['tax_total'] ?? 0);
+        if (empty($line['taxable']) || $default_rate === false) continue;
+        $rate = (float) get_effective_tax_rate($line['tax_rate'] ?? null, $default_rate);
+        if ($rate <= 0) continue;
+        $preview[$key] = array('amount' => (int) ($line['amount'] ?? 0), 'rate' => $rate);
+        if ((int) ($line['tax_total'] ?? 0) === 0) $untaxed = true;
+    }
+
+    if (!$untaxed) return $stored;
+
+    return (int) array_sum(pg_tax_by_rate($preview));
+}
+
+/**
  * The totals of the cart as submit_order() charges them when the order is
  * placed, in minor units: the lines charged today
  * (pg_order_line_charged_today(); a recurring line that starts later is
@@ -2270,44 +2338,6 @@ function _render_system_widget_express_order($tree_json, $widget_id, $cfg = arra
 
     $order_id = isset($_SESSION['ecommerce']['order_id']) ? (int)($_SESSION['ecommerce']['order_id'] ?? '') : 0;
 
-    // Pre-seed billing_country/state on the order so update_order_item_taxes()
-    // can compute the right per-line tax at FORM RENDER time, not just after
-    // the visitor submits. Without this, the displayed total = subtotal +
-    // surcharge (no tax) but submit_order.php recomputes WITH tax (because
-    // the visitor by then HAS filled billing_country) → real_total > seen
-    // total → "tutar değişti" rejection (and an HTTP 500 fatal further
-    // down in the legacy log_activity call). Priority:
-    //   1. Visitor's just-edited billing_country (liveform session)
-    //   2. Saved billing_country on the order row
-    //   3. countries.default_selected (site default)
-    if ($order_id > 0 && defined('ECOMMERCE_TAX') && ECOMMERCE_TAX === true) {
-        $_eo_tax_country = '';
-        $_eo_tax_state   = '';
-        if ($_eo_lf) {
-            $_eo_tax_country = (string)$_eo_lf->get_field_value('billing_country');
-            $_eo_tax_state   = (string)$_eo_lf->get_field_value('billing_state');
-        }
-        if ($_eo_tax_country === '') {
-            $_eo_row = db_item("SELECT billing_country, billing_state FROM orders WHERE id = '" . (int)$order_id . "' LIMIT 1");
-            if (is_array($_eo_row)) {
-                $_eo_tax_country = (string)($_eo_row['billing_country'] ?? '');
-                $_eo_tax_state   = (string)($_eo_row['billing_state']   ?? '');
-            }
-        }
-        if ($_eo_tax_country === '') {
-            $_eo_tax_country = (string)db_value("SELECT code FROM countries WHERE default_selected = 1 ORDER BY id ASC LIMIT 1");
-        }
-        if ($_eo_tax_country !== '') {
-            db("UPDATE orders SET billing_country = '" . e($_eo_tax_country) . "'"
-             . ($_eo_tax_state !== '' ? ", billing_state = '" . e($_eo_tax_state) . "'" : "")
-             . " WHERE id = '" . (int)$order_id . "'");
-        }
-    }
-
-    if (defined('ECOMMERCE_TAX') && ECOMMERCE_TAX === true && function_exists('update_order_item_taxes')) {
-        update_order_item_taxes();
-    }
-
     // ── Prefill billing + shipping fields from saved sources ─────────────────
     // Source priority (each field independently):
     //   • Visitor's just-edited value (already in liveform session) → keep
@@ -2316,10 +2346,66 @@ function _render_system_widget_express_order($tree_json, $widget_id, $cfg = arra
     //   • Site default (countries.default_selected) for country fallback
     //
     // For shipping, address_book row (matched on user + ship_to_name) wins
-    // over the ship_tos columns when available.
+    // over the ship_tos columns when available. The prefill runs before the
+    // tax pass below, so the tax is taken on the address the form shows.
+    $_eo_ship_tos = array();
+    if ($order_id > 0) {
+        $_eo_ship_tos = db_items(
+            "SELECT id, ship_to_name, salutation, first_name, last_name, company,
+                    address_1, address_2, city, state, zip_code, country, phone_number,
+                    address_type, arrival_date_id
+             FROM ship_tos
+             WHERE order_id = '" . (int)$order_id . "'
+             ORDER BY id ASC"
+        );
+        if (!is_array($_eo_ship_tos)) $_eo_ship_tos = array();
+    }
     if ($_eo_lf && $order_id > 0) {
         $_eo_ghost = isset($_SESSION['software']['ghost']) ? (bool)$_SESSION['software']['ghost'] : false;
         _eo_prefill_billing_fields($_eo_lf, $order_id, $_eo_ghost);
+        if (defined('ECOMMERCE_SHIPPING') && ECOMMERCE_SHIPPING === true) {
+            foreach ($_eo_ship_tos as $r) {
+                _eo_prefill_shipping_fields($_eo_lf, $r, $_eo_ghost);
+            }
+        }
+    }
+
+    // Tax on the address the page shows and will post. submit_order()
+    // recomputes the tax from the posted address and refuses a total higher
+    // than the one shown, so a page taxed on the still-empty recipient row
+    // (it gets its address only on submit) showed 0 tax and the first
+    // "Complete Order" was refused. Recipients are taxed on the form's
+    // address through update_order_item_taxes()'s map, without a ship_tos
+    // write; the billing address is written to the order, where the tax pass
+    // reads it for the lines without a recipient.
+    $_eo_tax_ship_tos = array();
+    if ($order_id > 0 && defined('ECOMMERCE_TAX') && ECOMMERCE_TAX === true) {
+        $_eo_tax_fields = array();
+        $_eo_same = '';
+        if ($_eo_lf) {
+            $_eo_tax_fields['billing_country'] = (string)$_eo_lf->get_field_value('billing_country');
+            $_eo_tax_fields['billing_state']   = (string)$_eo_lf->get_field_value('billing_state');
+            if (defined('ECOMMERCE_SHIPPING') && ECOMMERCE_SHIPPING === true) {
+                foreach ($_eo_ship_tos as $r) {
+                    $_eo_prefix = 'shipping_' . (int)$r['id'] . '_';
+                    $_eo_tax_fields[$_eo_prefix . 'country'] = (string)$_eo_lf->get_field_value($_eo_prefix . 'country');
+                    $_eo_tax_fields[$_eo_prefix . 'state']   = (string)$_eo_lf->get_field_value($_eo_prefix . 'state');
+                }
+            }
+            $_eo_same = (string)$_eo_lf->get_field_value('billing_same_as_shipping');
+        }
+        $_eo_tax_addresses = pg_express_order_tax_addresses($_eo_ship_tos, $_eo_tax_fields, $_eo_same);
+        $_eo_tax_ship_tos = $_eo_tax_addresses['ship_tos'];
+        $_eo_billing = $_eo_tax_addresses['billing'];
+        if ($_eo_billing['country'] !== '') {
+            db("UPDATE orders SET billing_country = '" . e($_eo_billing['country']) . "',"
+             . " billing_state = '" . e($_eo_billing['state']) . "'"
+             . " WHERE id = '" . (int)$order_id . "'");
+        }
+    }
+
+    if (defined('ECOMMERCE_TAX') && ECOMMERCE_TAX === true && function_exists('update_order_item_taxes')) {
+        update_order_item_taxes($_eo_tax_ship_tos);
     }
 
     // ── Load cart items + per-recipient totals ───────────────────────────────
@@ -2495,15 +2581,6 @@ function _render_system_widget_express_order($tree_json, $widget_id, $cfg = arra
         );
     }
     if (!is_array($recipients)) $recipients = array();
-
-    // Per-recipient shipping prefill — runs AFTER recipients are loaded so
-    // we have the ship_to_name to match against address_book.
-    if ($_eo_lf && !empty($recipients)) {
-        $_eo_ghost = isset($_SESSION['software']['ghost']) ? (bool)$_SESSION['software']['ghost'] : false;
-        foreach ($recipients as $r) {
-            _eo_prefill_shipping_fields($_eo_lf, $r, $_eo_ghost);
-        }
-    }
 
     // ── Section: Cart summary ────────────────────────────────────────────────
     $cart_html = _eo_render_cart_summary($items, $widget_id, $form_id, $_eo_fmt, $_eo_lf, $gift_card_data);
