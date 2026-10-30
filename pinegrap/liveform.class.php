@@ -237,6 +237,12 @@ class liveform {
         if (isset($attributes['spellcheck']) && $attributes['spellcheck']) {
             $spellcheck = ' spellcheck="' . h($attributes['spellcheck']) . '"';
         }
+
+        // Printed only when given (an IBAN asks for "characters", an e-mail
+        // list for "off"), so site forms keep the browser default.
+        if (isset($attributes['autocapitalize']) && is_scalar($attributes['autocapitalize']) && (string) $attributes['autocapitalize'] !== '') {
+            $spellcheck .= ' autocapitalize="' . h((string) $attributes['autocapitalize']) . '"';
+        }
         
         $output_inputmode = '';
         if ($inputmode) {
