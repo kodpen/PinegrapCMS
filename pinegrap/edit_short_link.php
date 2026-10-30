@@ -247,7 +247,7 @@ if (!$_POST) {
         if (pg_short_link_recycle_ready()) {
             pg_short_link_to_bin($short_link['id'], $user);
 
-            log_activity(lang(array('string' => 'The short link, {var:1}, was moved to the Recycle Bin.', 'vars' => h($short_link['name']))), $_SESSION['sessionusername']);
+            log_activity(lang(array('string' => 'The short link, {var:1}, was moved to the Recycle Bin.', 'vars' => $short_link['name'])), $_SESSION['sessionusername']);
 
             $delete_notice = lang('The short link was moved to the Recycle Bin.');
         } else {

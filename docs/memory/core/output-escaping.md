@@ -26,4 +26,4 @@ description: Escaping output: h() for every value in HTML, liveform values raw, 
 ## What about PHP tags in raw markup?
 - Markup printed raw into a page (page text, rich product descriptions, imported HTML) goes through `pg_defuse_php_tags()`, because the assembled page may be evaluated as PHP: `php-regions-eval-and-content.md`.
 
-Related: docs/memory/core/security-helpers-and-secret-storage.md
+Related: docs/memory/core/security-helpers-and-secret-storage.md; Site Log lines are plain text: message-carried-values.md

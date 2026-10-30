@@ -359,13 +359,13 @@ function pg_explorer_handle_catalog_create_group($type, $request, $user)
 
     $group_id = mysqli_insert_id(db::$con);
 
-    log_activity(lang(array('string' => 'The product group, {var:1}, was added.', 'vars' => h($name))), $_SESSION['sessionusername']);
+    log_activity(lang(array('string' => 'The product group, {var:1}, was added.', 'vars' => $name)), $_SESSION['sessionusername']);
 
     respond(array(
         'status' => 'success',
         'request' => $type,
         'group' => array('id' => (int) $group_id, 'name' => $name),
-        'message' => lang(array('string' => 'The product group, {var:1}, was added.', 'vars' => h($name)))));
+        'message' => lang(array('string' => 'The product group, {var:1}, was added.', 'vars' => $name))));
 }
 
 // ── Rename a group or a product ──────────────────────────────────
@@ -451,7 +451,7 @@ function pg_explorer_handle_catalog_membership_remove($type, $request, $user)
 
     $product = db_item("SELECT name FROM products WHERE id = '" . e($product_id) . "'");
 
-    log_activity(lang(array('string' => 'The product, {var:1}, was removed from a product group.', 'vars' => h(isset($product['name']) ? $product['name'] : ''))), $_SESSION['sessionusername']);
+    log_activity(lang(array('string' => 'The product, {var:1}, was removed from a product group.', 'vars' => isset($product['name']) ? $product['name'] : '')), $_SESSION['sessionusername']);
 
     respond(array(
         'status' => 'success',
@@ -777,7 +777,7 @@ function pg_explorer_handle_catalog_recycle($type, $request, $user)
                 db($statement);
             }
 
-            log_activity(lang(array('string' => 'The product group, {var:1}, was moved to the Recycle Bin.', 'vars' => h($map[$item_id]['name']))), $_SESSION['sessionusername']);
+            log_activity(lang(array('string' => 'The product group, {var:1}, was moved to the Recycle Bin.', 'vars' => $map[$item_id]['name'])), $_SESSION['sessionusername']);
 
             $binned++;
 
@@ -796,7 +796,7 @@ function pg_explorer_handle_catalog_recycle($type, $request, $user)
 
             pg_audit_record('recycle', 'products', $item_id, $audit_before);
 
-            log_activity(lang(array('string' => 'The product, {var:1}, was moved to the Recycle Bin.', 'vars' => h($product_name))), $_SESSION['sessionusername']);
+            log_activity(lang(array('string' => 'The product, {var:1}, was moved to the Recycle Bin.', 'vars' => $product_name)), $_SESSION['sessionusername']);
 
             $binned++;
         }
@@ -1066,7 +1066,7 @@ function pg_explorer_handle_catalog_enable($type, $request, $user)
                     user = '" . e($user['id']) . "'
                 WHERE id = '" . e($item_id) . "'" . pg_catalog_live_filter('product_groups'));
 
-            log_activity(lang(array('string' => 'product group ({var:1}) was updated', 'vars' => array(h($map[$item_id]['name'])))), $_SESSION['sessionusername']);
+            log_activity(lang(array('string' => 'product group ({var:1}) was updated', 'vars' => array($map[$item_id]['name']))), $_SESSION['sessionusername']);
 
             $changed++;
 
@@ -1087,7 +1087,7 @@ function pg_explorer_handle_catalog_enable($type, $request, $user)
                 WHERE id = '" . e($item_id) . "'");
             pg_audit_record('update', 'products', $item_id, $audit_before);
 
-            log_activity(lang(array('string' => 'product ({var:1}) was updated', 'vars' => array(h($product['name'])))), $_SESSION['sessionusername']);
+            log_activity(lang(array('string' => 'product ({var:1}) was updated', 'vars' => array($product['name']))), $_SESSION['sessionusername']);
 
             $changed++;
         }
