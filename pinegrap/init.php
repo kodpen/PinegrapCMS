@@ -694,6 +694,9 @@ define('ERP_AUTO_INVOICE_ON', $row['erp_auto_invoice_on'] ?? 'off');
 // Off and 0 until the step has run.
 define('ERP_AUTO_INVOICE_TAX_NUMBER_ONLY', isset($row['erp_auto_invoice_tax_number_only']) ? (int) $row['erp_auto_invoice_tax_number_only'] : 0);
 define('ERP_AUTO_INVOICE_MIN_TOTAL', isset($row['erp_auto_invoice_min_total']) ? (int) $row['erp_auto_invoice_min_total'] : 0);
+// Whether marketplace orders are invoiced on their own too (2026.11.0,
+// 11.0.62). Off until the step has run.
+define('ERP_AUTO_INVOICE_MARKETPLACE', isset($row['erp_auto_invoice_marketplace']) ? (int) $row['erp_auto_invoice_marketplace'] : 0);
 // The e-Fatura thresholds (2026.11.0, 11.0.61) in minor units of the base
 // currency: sales over the internet and every sale. 0 (off) until the step
 // has run.
