@@ -5,7 +5,9 @@
  * Tests that names sit only where they can be carried: a disabled pager
  * arrow (a role-less span) says its name through visually-hidden text, not
  * a prohibited aria-label, on the Paraşüt inbox, the visitor report and the
- * marketplace products screen; and the e-document provider radios of Site
+ * marketplace products screen and the picture picker; the picture picker
+ * and Translations pagers carry the panel-language name 'Pagination'; and
+ * the e-document provider radios of Site
  * Settings are named by the provider alone, their description, links and
  * status line sitting beside the label as the radio's description.
  *
@@ -26,7 +28,7 @@ function panel_name_carriers_test_source($file)
 
 function test_panel_name_carriers_disabled_pager_arrow_has_no_aria_label()
 {
-	foreach (array('view_parasut_inbox.php', 'view_visitor_report.php', 'marketplace_products.php') as $file) {
+	foreach (array('view_parasut_inbox.php', 'view_visitor_report.php', 'marketplace_products.php', 'editor_select_image.php') as $file) {
 		$source = panel_name_carriers_test_source($file);
 
 		pg_assert_true(!preg_match('/<span class="[^"]*(page-link|disabled)[^"]*"[^>]*aria-label=/', $source), $file . ': no aria-label on a disabled arrow span');
@@ -35,6 +37,23 @@ function test_panel_name_carriers_disabled_pager_arrow_has_no_aria_label()
 
 	$report = panel_name_carriers_test_source('view_visitor_report.php');
 	pg_assert_true(strpos($report, '<span aria-hidden="true">\' . $label . \'</span>') !== false, 'view_visitor_report.php: the glyph is hidden');
+}
+
+function test_panel_name_carriers_hand_built_pagers_use_panel_language_names()
+{
+	$picker = panel_name_carriers_test_source('editor_select_image.php');
+
+	pg_assert_true(strpos($picker, 'data pagination') === false, 'editor_select_image.php: no English pager landmark name');
+	pg_assert_true(strpos($picker, 'aria-label="Previous"') === false, 'editor_select_image.php: no English Previous name');
+	pg_assert_true(strpos($picker, 'aria-label="Next"') === false, 'editor_select_image.php: no English Next name');
+	pg_assert_contains('<nav class="navigation" aria-label="\' . h(lang(\'Pagination\')) . \'">', $picker);
+	pg_assert_contains("lang('Previous page')", $picker);
+	pg_assert_contains("lang('Next page')", $picker);
+	pg_assert_contains('<span class="bi \' . $glyph . \'" aria-hidden="true"></span>', $picker);
+
+	$translations = panel_name_carriers_test_source('translations.php');
+	pg_assert_contains('<nav aria-label="\' . h(lang(\'Pagination\')) . \'"><ul class="pagination', $translations);
+	pg_assert_true(strpos($translations, '<nav aria-label="\' . h(lang(\'Pages\'))') === false, 'translations.php: the text pager does not borrow the Pages card name');
 }
 
 function test_panel_name_carriers_edoc_provider_label_holds_the_name_alone()
