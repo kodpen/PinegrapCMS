@@ -313,7 +313,9 @@ function pg_subscription_cancelled_ends_run($now, $limit = 200)
 /**
  * A customer's subscriptions, newest first, with the product's name and the
  * latest event: kind, detail, created_at as last_kind, last_detail,
- * last_at; and the latest renewal event as renewal_kind, renewal_detail.
+ * last_at; the latest renewal event as renewal_kind, renewal_detail; and
+ * a price change told but not charged yet as price_pending
+ * (pg_subscription_price_pending()).
  *
  * @param int $user_id
  * @return array
@@ -344,6 +346,7 @@ function pg_subscription_customer_rows($user_id)
         $rows[$index]['last_at'] = $last ? (int) $last['created_at'] : 0;
         $rows[$index]['renewal_kind'] = $renewal ? (string) $renewal['kind'] : '';
         $rows[$index]['renewal_detail'] = $renewal ? (string) $renewal['detail'] : '';
+        $rows[$index]['price_pending'] = pg_subscription_price_pending($row);
     }
 
     return $rows;
@@ -395,6 +398,8 @@ function pg_subscription_customer_event_label($kind)
             return lang('Payment in progress');
         case 'card_update_opened':
             return lang('Card update opened');
+        case 'price_notice':
+            return lang('Price change notice');
         case 'status_active':
             return lang('Resumed');
         case 'status_paused':
@@ -456,6 +461,15 @@ function pg_subscription_customer_section_html($rows, $action_url, $send_to, $to
             $html .= '<span class="me-2">' . h(lang('Next charge:')) . ' ' . h(_pg_sw_short_date($next, $date_format)) . '</span>';
         } elseif (($status === 'cancelled') && ($next > 0) && ((int) $row['retry_count'] === 0)) {
             $html .= '<span class="me-2">' . h(lang('Runs until:')) . ' ' . h(_pg_sw_short_date($next, $date_format)) . '</span>';
+        }
+
+        $pending = $row['price_pending'] ?? null;
+
+        if (is_array($pending) && in_array($status, array('active', 'past_due', 'paused'), true)) {
+            $html .= '<span class="me-2">' . h(lang(array(
+                'string' => 'New amount from {var:1}: {var:2}',
+                'vars'   => array(_pg_sw_short_date((int) strtotime($pending['date']), $date_format), trim(pg_format_number($pending['amount'] / 100, 2) . ' ' . (string) $row['currency'])),
+            ))) . '</span>';
         }
 
         if ((string) $row['card_last4'] !== '') {

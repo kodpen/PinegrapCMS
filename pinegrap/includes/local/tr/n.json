@@ -249,6 +249,8 @@
     "New account email (when the form opened one)": "Yeni hesabın e-postası (form hesap açtıysa)",
     "New account password note (a sentence with the set password link)": "Yeni hesabın parola notu (parola belirleme bağlantısını içeren cümle)",
     "New address": "Yeni adres",
+    "New amount": "Yeni tutar",
+    "New amount from {var:1}: {var:2}": "{var:1} tarihinden itibaren yeni tutar: {var:2}",
     "New application: ^^position^^": "Yeni başvuru: ^^position^^",
     "New appointment request: ^^department^^, ^^preferred_date^^": "Yeni randevu talebi: ^^department^^, ^^preferred_date^^",
     "New arrivals": "Yeni gelenler",

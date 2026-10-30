@@ -5,7 +5,7 @@ module: subscription_renewal
 ---
 
 ## Which event sends which mail?
-- `pg_subscription_mail_action()`: `renewed` → `subscription_renewed`; `renewal_failed` and `confirm_needed` (Stripe `authentication_required`) → `subscription_failed`; a failure that ends the ladder, `status_cancelled`, and `status_ended` not after a cancel → `subscription_cancelled`. Pending, unclear and other moves send nothing.
+- `pg_subscription_mail_action()`: `renewed` → `subscription_renewed`; `renewal_failed` and `confirm_needed` (Stripe `authentication_required`) → `subscription_failed`; a failure that ends the ladder, `status_cancelled`, and `status_ended` not after a cancel → `subscription_cancelled`. `price_notice` → `subscription_price_changed` (`subscriptions-price-notice.md`). Pending, unclear and other moves send nothing.
 - Sent by `pg_subscription_mail_send()` through `create_auto_email_campaigns()`, like `order_delivered`: every enabled profile of the action makes an automatic campaign to the first order's billing address (contact opt-out for commercial profiles as usual). No profile → no mail.
 - Called from `pg_subscription_renewal_run_row()` (also the refused path) and `pg_subscription_renewal_confirmed()` through `$io['mail']`, after the lock is let go, and from `pg_subscription_set_status()`. A throw is logged, never stops the renewal.
 

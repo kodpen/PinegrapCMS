@@ -504,3 +504,144 @@ function subscription_renewal_test_confirm_detail($now)
 
 	return $GLOBALS['subscriptions_renewal_test_mails'][0]['detail'];
 }
+
+// A price change: the line as the notice scan reads it (the first order's
+// line, the product's price now, the latest notice's amount).
+function subscriptions_renewal_test_price_row(array $over = array())
+{
+	return array_merge(subscriptions_renewal_test_row(), array(
+		'price' => '14990', 'quantity' => '1', 'tax_total' => '2698', 'recurring_start_date' => '',
+		'product_price' => '14990', 'notice_amount' => null,
+	), $over);
+}
+
+function test_subscription_price_amount_keeps_the_quantity_and_the_tax_rate()
+{
+	$item = array('price' => '14990', 'quantity' => '1', 'tax_total' => '2698');
+
+	pg_assert_same(17688, pg_subscription_price_amount($item, 14990), 'the same price: the amount charged today');
+	pg_assert_same(16990 + 3058, pg_subscription_price_amount($item, 16990), 'the tax at the line\'s rate, rounded');
+	pg_assert_same(2 * 1100 + 220, pg_subscription_price_amount(array('price' => '1250', 'quantity' => '2', 'tax_total' => '250'), '1100'), 'a decrease, two units');
+	pg_assert_same(0, pg_subscription_price_amount($item, 0), 'no price, no notice');
+	pg_assert_same(0, pg_subscription_price_amount(array('price' => '0', 'quantity' => '1'), 14990));
+}
+
+// At least 14 days ahead: the next charge itself, or one period later.
+function test_subscription_price_notice_written_at_14_days()
+{
+	$next = mktime(10, 0, 0, 3, 31, 2027);
+	$row = subscriptions_renewal_test_price_row(array('product_price' => '16990'));
+
+	$plan = pg_subscription_price_notice_plan($row, $row, $row['product_price'], $row['notice_amount'], $next - 14 * 86400);
+	pg_assert_same(array('amount' => 20048, 'detail' => '2027-03-31'), $plan, '14 days ahead: the next charge');
+
+	$late = pg_subscription_price_notice_plan($row, $row, $row['product_price'], $row['notice_amount'], $next - 14 * 86400 + 3600);
+	pg_assert_same(array('amount' => 20048, 'detail' => '2027-04-30'), $late, 'inside the 14 days: one period later');
+
+	pg_assert_same(null, pg_subscription_price_notice_plan($row, $row, '14990', null, $next - 20 * 86400), 'no change');
+	pg_assert_same(null, pg_subscription_price_notice_plan($row, $row, '16990', '20048', $next - 20 * 86400), 'the same new amount: no second notice');
+	pg_assert_same(array('amount' => 20048, 'detail' => '2027-03-31'), pg_subscription_price_notice_plan(subscriptions_renewal_test_row(array('amount' => '17000')), $row, '16990', '17000', $next - 20 * 86400), 'a notice applied, then another change');
+	pg_assert_same(array('amount' => 17688, 'detail' => '2027-03-31'), pg_subscription_price_notice_plan($row, $row, '14990', '20048', $next - 20 * 86400), 'the price set back before it applied: told again');
+
+	foreach (array('paused', 'cancelled', 'ended') as $status) {
+		pg_assert_same(null, pg_subscription_price_notice_plan(subscriptions_renewal_test_row(array('status' => $status)), $row, '16990', null, $next - 20 * 86400), $status);
+	}
+
+	pg_assert_same(null, pg_subscription_price_notice_plan(subscriptions_renewal_test_row(array('next_charge_at' => '0')), $row, '16990', null, $next - 20 * 86400), 'held');
+}
+
+function test_subscription_price_decrease_is_noticed_the_same_way()
+{
+	$next = mktime(10, 0, 0, 3, 31, 2027);
+	$row = subscriptions_renewal_test_price_row();
+
+	pg_assert_same(array('amount' => 12990 + 2338, 'detail' => '2027-03-31'), pg_subscription_price_notice_plan($row, $row, '12990', null, $next - 15 * 86400));
+}
+
+// The notice run: one event and one mail, under the lock; a second run
+// writes nothing for the same amount.
+function test_subscription_price_notice_run_writes_once()
+{
+	$now = mktime(10, 0, 0, 3, 31, 2027) - 15 * 86400;
+	$store = subscriptions_renewal_test_price_row(array('product_price' => '16990'));
+	$calls = array();
+	$GLOBALS['subscriptions_renewal_test_mails'] = array();
+	$io = subscriptions_renewal_test_io($store, $calls, array());
+	$io['notice_read'] = function ($id) use (&$store) {
+		return $store;
+	};
+
+	pg_assert_same('noticed', pg_subscription_price_notice_run_row($store, $now, $io));
+	pg_assert_same(array('lock', array('event', 'price_notice', 0, 20048, '2027-03-31', ''), 'unlock'), $calls);
+	pg_assert_same('subscription_price_changed', $GLOBALS['subscriptions_renewal_test_mails'][0]['action']);
+	pg_assert_same('2027-03-31', $GLOBALS['subscriptions_renewal_test_mails'][0]['detail']);
+
+	$store['notice_amount'] = '20048';
+	$calls = array();
+
+	pg_assert_same('nothing', pg_subscription_price_notice_run_row($store, $now + 86400, $io));
+	pg_assert_same(array(), $calls, 'no second notice');
+	pg_assert_same(1, count($GLOBALS['subscriptions_renewal_test_mails']));
+
+	$store['notice_amount'] = null;
+	$calls = array();
+	pg_assert_same('skipped', pg_subscription_price_notice_run_row($store, $now, subscriptions_renewal_test_io($store, $calls, array(), false) + array('notice_read' => $io['notice_read'])), 'another run holds the row');
+}
+
+function test_subscription_price_due_on_or_after_its_date()
+{
+	$row = subscriptions_renewal_test_row();
+	$notice = array('amount' => '20048', 'detail' => '2027-03-31');
+
+	pg_assert_same(20048, pg_subscription_price_due($row, $notice, mktime(10, 0, 0, 3, 31, 2027)));
+	pg_assert_same(20048, pg_subscription_price_due($row, $notice, mktime(10, 0, 0, 4, 3, 2027)), 'a late run');
+	pg_assert_same(0, pg_subscription_price_due($row, $notice, mktime(10, 0, 0, 3, 30, 2027)), 'a retry before the date');
+	pg_assert_same(0, pg_subscription_price_due($row, array('amount' => '17688', 'detail' => '2027-03-31'), mktime(10, 0, 0, 4, 1, 2027)), 'already the amount');
+	pg_assert_same(0, pg_subscription_price_due($row, null, mktime(10, 0, 0, 4, 1, 2027)));
+	pg_assert_same(0, pg_subscription_price_due($row, array('amount' => '20048', 'detail' => 'x'), mktime(10, 0, 0, 4, 1, 2027)));
+}
+
+// The renewal on the date charges the new amount, writes it to the row and
+// the order's line moves with it.
+function test_subscription_renewal_charges_the_noticed_amount()
+{
+	foreach (array(20048 => array(16990, 3058), 15328 => array(12990, 2338)) as $amount => $line) {
+		$store = subscriptions_renewal_test_row();
+		$calls = array();
+		$io = subscriptions_renewal_test_io($store, $calls, array('success' => true, 'status' => 'paid', 'transaction_id' => 'pi_1'));
+		$io['price_notice'] = function ($id) use ($amount) {
+			return array('amount' => (string) $amount, 'detail' => '2027-03-31');
+		};
+
+		pg_assert_same('paid', pg_subscription_renewal_run_row(7, mktime(10, 0, 0, 4, 1, 2027), $io));
+		pg_assert_same($amount, (int) $calls[2][2]['amount'], $amount . ': charged');
+		pg_assert_same($amount, (int) $store['amount'], $amount . ': the row holds it');
+		pg_assert_same(array('event', 'renewed', 880, $amount, '', ''), $calls[5]);
+
+		$figures = pg_subscription_renewal_figures(array('amount' => $amount), array('price' => '14990', 'quantity' => '1', 'tax_total' => '2698'));
+		pg_assert_same(array($line[0], $line[1]), array($figures['price'], $figures['tax']), $amount . ': the line at the new price');
+	}
+
+	$store = subscriptions_renewal_test_row();
+	$calls = array();
+	$io = subscriptions_renewal_test_io($store, $calls, array('success' => true, 'status' => 'paid', 'transaction_id' => 'pi_1'));
+	$io['price_notice'] = function ($id) {
+		return array('amount' => '20048', 'detail' => '2027-04-30');
+	};
+
+	pg_subscription_renewal_run_row(7, mktime(10, 0, 0, 4, 1, 2027), $io);
+	pg_assert_same(17688, (int) $calls[2][2]['amount'], 'before the date: the old amount');
+	pg_assert_same('17688', $store['amount']);
+}
+
+function test_subscription_price_mail()
+{
+	pg_assert_same('subscription_price_changed', pg_subscription_mail_action('price_notice', 'active', 'active'));
+
+	$fields = pg_subscription_price_mail_fields(array('currency' => 'TRY'), array('amount' => '20048', 'detail' => '2027-03-31'));
+	pg_assert_same(array(
+		array('name' => 'subscription_new_amount', 'data' => pg_format_number(200.48, 2) . ' TRY', 'type' => ''),
+		array('name' => 'subscription_new_date', 'data' => '2027-03-31', 'type' => 'date'),
+	), $fields);
+	pg_assert_same(2, count(pg_subscription_price_mail_fields(array(), null)), 'passed empty');
+}

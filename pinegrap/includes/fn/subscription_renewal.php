@@ -140,7 +140,8 @@ function pg_subscription_renewal_next_at($created_at, $period, $now)
  * quantity, and the tax that makes up the subscription's amount. Pure.
  *
  * @param array $subscription the subscriptions row (amount)
- * @param array $item         the first order's line (price, quantity)
+ * @param array $item         the first order's line (price, quantity,
+ *                            tax_total)
  * @return array|null price, quantity, subtotal, tax, total; null when the
  *                    line cannot carry the amount
  */
@@ -149,6 +150,21 @@ function pg_subscription_renewal_figures($subscription, $item)
     $amount = (int) ($subscription['amount'] ?? 0);
     $quantity = max(1, (int) ($item['quantity'] ?? 1));
     $price = (int) round((float) ($item['price'] ?? 0));
+
+    if (isset($item['tax_total']) && ($price > 0)) {
+        $line_total = $price * $quantity + (int) round((float) $item['tax_total']);
+
+        // The amount changed after a price notice: the unit price moves with
+        // it and the tax keeps the line's rate.
+        if (($line_total > 0) && ($amount > 0) && ($amount !== $line_total)) {
+            $price = (int) round($price * $amount / $line_total);
+
+            if ($price * $quantity > $amount) {
+                $price = intdiv($amount, $quantity);
+            }
+        }
+    }
+
     $subtotal = $price * $quantity;
 
     if (($amount <= 0) || ($price <= 0) || ($subtotal > $amount)) {
@@ -307,7 +323,8 @@ function pg_subscription_renewal_status_after($row, $plan)
  * @param int   $id
  * @param int   $now
  * @param array $io lock, unlock, read, first_order, charge, seal, save,
- *                  write_order, log, event, mail
+ *                  write_order, log, event, mail; price_notice (the latest
+ *                  price notice) when price changes are applied
  * @return string the outcome, 'skipped' when another run holds the row or
  *                it is no longer due, 'refused' when it cannot be charged
  */
@@ -327,6 +344,14 @@ function pg_subscription_renewal_run_row($id, $now, array $io)
         call_user_func($io['unlock'], $id);
 
         return 'skipped';
+    }
+
+    // A price change noticed for a date that has come is charged from this
+    // renewal on, and written to the row with the outcome.
+    $new_amount = isset($io['price_notice']) ? pg_subscription_price_due($row, call_user_func($io['price_notice'], $id), $now) : 0;
+
+    if ($new_amount > 0) {
+        $row['amount'] = $new_amount;
     }
 
     $first = call_user_func($io['first_order'], $row);
@@ -353,6 +378,12 @@ function pg_subscription_renewal_run_row($id, $now, array $io)
 
     if ($outcome === 'paid') {
         $plan['fields'] += pg_subscription_renewal_card_fields($answer, $driver_row['card_ref'], $io['seal']);
+    }
+
+    // Whatever the outcome, the charge asked for the new amount: a retry or
+    // the service's later paid report must see the same one.
+    if ($new_amount > 0) {
+        $plan['fields']['amount'] = $new_amount;
     }
 
     // The row moves before the order is written: a run that ends inside the
@@ -412,6 +443,10 @@ function pg_subscription_renewal_io()
             return pg_subscription_event_write($id, $kind, $order_id, $amount, $remote_event_id, $detail);
         },
         'mail' => 'pg_subscription_mail_send',
+        'price_notice' => 'pg_subscription_price_notice_latest',
+        'notice_read' => function ($id) {
+            return db_item(pg_subscription_price_notice_sql(true), array((int) $id));
+        },
     );
 }
 
@@ -435,7 +470,7 @@ function pg_subscription_renewal_first_order($row)
             . ($page_column ? ', checkout_page_id' : '') . "
         FROM orders WHERE id = '" . e((int) $row['order_id']) . "'");
 
-    $item = db_item("SELECT id, ship_to_id, product_id, product_name, quantity, price, recurring_start_date
+    $item = db_item("SELECT id, ship_to_id, product_id, product_name, quantity, price, tax_total, recurring_start_date
         FROM order_items
         WHERE (id = '" . e((int) $row['order_item_id']) . "') AND (order_id = '" . e((int) $row['order_id']) . "')");
 
@@ -719,6 +754,8 @@ function pg_subscription_renewals_run($now, $limit = 200)
         }
     }
 
+    pg_subscription_price_notices_run($now, $io);
+
     if ($done > 0) {
         log_activity(lang(array(
             'string' => 'Subscription renewals: {var:1} paid, {var:2} failed, {var:3} waiting for the customer, {var:4} waiting for the payment service.',
@@ -742,7 +779,8 @@ function pg_subscription_renewals_run($now, $limit = 200)
  * @param string $status_before the status the row had
  * @param string $status_after  the status the event left it in
  * @return string subscription_renewed, subscription_failed,
- *                subscription_cancelled, or '' for no mail
+ *                subscription_cancelled, subscription_price_changed, or ''
+ *                for no mail
  */
 function pg_subscription_mail_action($event, $status_before, $status_after)
 {
@@ -761,6 +799,9 @@ function pg_subscription_mail_action($event, $status_before, $status_after)
 
         case 'status_ended':
             return ((string) $status_before === 'cancelled') ? '' : 'subscription_cancelled';
+
+        case 'price_notice':
+            return 'subscription_price_changed';
     }
 
     return '';
@@ -928,12 +969,18 @@ function pg_subscription_mail_send($id, $event_id, $event, $status_before, $stat
 
         unset($row['card_ref']);
 
+        $fields = pg_subscription_mail_fields($row, $context);
+
+        if ($action === 'subscription_price_changed') {
+            $fields = array_merge($fields, pg_subscription_price_mail_fields($row, db_item("SELECT amount, detail FROM subscription_events WHERE id = '" . e((int) $event_id) . "'")));
+        }
+
         create_auto_email_campaigns(array(
             'action'        => $action,
             'order_id'      => ((int) $order_id > 0) ? (int) $order_id : (int) $row['order_id'],
             'contact_id'    => $first['order']['contact_id'],
             'email_address' => $first['order']['billing_email_address'],
-            'fields'        => pg_subscription_mail_fields($row, $context),
+            'fields'        => $fields,
             'data'          => array('subscription' => $row),
         ));
     } catch (\Throwable $exception) {
@@ -946,4 +993,289 @@ function pg_subscription_mail_send($id, $event_id, $event, $status_before, $stat
     }
 
     return true;
+}
+
+/* ---------------------------------------------------------------------------
+   Price changes
+   --------------------------------------------------------------------------- */
+
+/**
+ * How many days ahead a price change is told before it is charged.
+ *
+ * @return int
+ */
+function pg_subscription_price_notice_days()
+{
+    return 14;
+}
+
+/**
+ * What a subscription line costs at the product's price now: the unit price
+ * times the line's quantity, plus the line's tax at the rate it was charged
+ * at. Pure.
+ *
+ * @param array     $item          the first order's line (price, quantity,
+ *                                 tax_total)
+ * @param int|string $product_price products.price, minor units
+ * @return int minor units, 0 when no amount can be made
+ */
+function pg_subscription_price_amount($item, $product_price)
+{
+    $price = (int) round((float) $product_price);
+    $line_price = (int) round((float) ($item['price'] ?? 0));
+    $quantity = max(1, (int) ($item['quantity'] ?? 1));
+
+    if (($price <= 0) || ($line_price <= 0)) {
+        return 0;
+    }
+
+    $tax = (int) round((float) ($item['tax_total'] ?? 0));
+
+    return $price * $quantity + (int) round($tax * $price / $line_price);
+}
+
+/**
+ * The date a price change noticed now takes effect: the next charge when it
+ * is at least pg_subscription_price_notice_days() away, else the first charge
+ * of the series after that. Pure.
+ *
+ * @param array $row  the subscriptions row
+ * @param array $item the first order's line (recurring_start_date)
+ * @param int   $now
+ * @return int unix time, 0 when the row has no next charge
+ */
+function pg_subscription_price_effective_at($row, $item, $now)
+{
+    $next = (int) ($row['next_charge_at'] ?? 0);
+    $from = (int) $now + pg_subscription_price_notice_days() * 86400;
+
+    if ($next <= 0) {
+        return 0;
+    }
+
+    if ($next >= $from) {
+        return $next;
+    }
+
+    $created_at = (int) ($row['created_at'] ?? 0);
+    $first_at = pg_subscription_later_start_at($item['recurring_start_date'] ?? '', $created_at);
+
+    return pg_subscription_renewal_next_at(($first_at > 0) ? $first_at : $created_at, (string) ($row['period'] ?? ''), max($next, $from - 1));
+}
+
+/**
+ * The price notice a running subscription needs now: the product's price
+ * makes an amount other than the one last told (the latest notice, else the
+ * amount charged). An increase and a decrease alike, so the mail always says
+ * what will be charged; the same new amount is never told twice. Pure.
+ *
+ * @param array           $row           the subscriptions row
+ * @param array           $item          the first order's line
+ * @param int|string      $product_price products.price
+ * @param int|string|null $notice_amount the latest price_notice's amount,
+ *                                       null when there is none
+ * @param int             $now
+ * @return array|null amount, detail (the date it takes effect, Y-m-d)
+ */
+function pg_subscription_price_notice_plan($row, $item, $product_price, $notice_amount, $now)
+{
+    if (!in_array((string) ($row['status'] ?? ''), array('active', 'past_due'), true)
+        || ((int) ($row['next_charge_at'] ?? 0) <= 0)) {
+        return null;
+    }
+
+    $amount = pg_subscription_price_amount($item, $product_price);
+    $told = ($notice_amount !== null) ? (int) $notice_amount : (int) ($row['amount'] ?? 0);
+
+    if (($amount <= 0) || ($amount === $told)) {
+        return null;
+    }
+
+    $at = pg_subscription_price_effective_at($row, $item, $now);
+
+    if ($at <= 0) {
+        return null;
+    }
+
+    return array('amount' => $amount, 'detail' => date('Y-m-d', $at));
+}
+
+/**
+ * The amount a renewal charges after a price notice: the notice's amount
+ * once its date has come and while the row charges another. Pure.
+ *
+ * @param array      $row    the subscriptions row
+ * @param array|null $notice the latest price_notice (amount, detail)
+ * @param int        $now
+ * @return int the new amount, 0 when the row's amount stays
+ */
+function pg_subscription_price_due($row, $notice, $now)
+{
+    if (!is_array($notice)) {
+        return 0;
+    }
+
+    $amount = (int) ($notice['amount'] ?? 0);
+    $date = (string) ($notice['detail'] ?? '');
+
+    if (($amount <= 0) || ($amount === (int) ($row['amount'] ?? 0))
+        || (preg_match('/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/', $date) !== 1)) {
+        return 0;
+    }
+
+    return (date('Y-m-d', (int) $now) >= $date) ? $amount : 0;
+}
+
+/**
+ * A price change told but not charged yet: the latest notice when its
+ * amount is not the row's. For the lists of My Account and the operator
+ * screen.
+ *
+ * @param array $row the subscriptions row (id, amount)
+ * @return array|null amount, date (Y-m-d)
+ */
+function pg_subscription_price_pending($row)
+{
+    $notice = pg_subscription_price_notice_latest((int) ($row['id'] ?? 0));
+
+    if (!is_array($notice) || ((int) $notice['amount'] <= 0) || ((int) $notice['amount'] === (int) ($row['amount'] ?? 0))) {
+        return null;
+    }
+
+    return array('amount' => (int) $notice['amount'], 'date' => (string) $notice['detail']);
+}
+
+/**
+ * The latest price notice of a subscription.
+ *
+ * @param int $id
+ * @return array|null amount, detail
+ */
+function pg_subscription_price_notice_latest($id)
+{
+    if ((int) $id <= 0) {
+        return null;
+    }
+
+    $notice = db_item("SELECT amount, detail FROM subscription_events
+        WHERE (subscription_id = '" . e((int) $id) . "') AND (kind = 'price_notice')
+        ORDER BY id DESC LIMIT 1");
+
+    return $notice ? $notice : null;
+}
+
+/**
+ * The query the notice run reads: the running rows with a next charge, the
+ * first order's line, the product's price and the latest notice's amount.
+ * Placeholders: the last id seen and how many rows; with $one, the id only.
+ *
+ * @param bool $one
+ * @return string
+ */
+function pg_subscription_price_notice_sql($one = false)
+{
+    return "SELECT s.id, s.status, s.period, s.amount, s.currency, s.next_charge_at, s.created_at,
+            oi.price, oi.quantity, oi.tax_total, oi.recurring_start_date, p.price AS product_price,
+            (SELECT e.amount FROM subscription_events AS e
+                WHERE (e.subscription_id = s.id) AND (e.kind = 'price_notice')
+                ORDER BY e.id DESC LIMIT 1) AS notice_amount
+        FROM subscriptions AS s
+        INNER JOIN order_items AS oi ON (oi.id = s.order_item_id) AND (oi.order_id = s.order_id)
+        INNER JOIN products AS p ON p.id = s.product_id
+        WHERE s.status IN ('active', 'past_due') AND (s.next_charge_at > 0) AND "
+        . ($one ? '(s.id = ?)' : '(s.id > ?) ORDER BY s.id ASC LIMIT ?');
+}
+
+/**
+ * Tells one subscription of a price change: a price_notice event and the
+ * subscription_price_changed mail, under the renewal's lock and checked again
+ * inside it, so two runs write one notice.
+ *
+ * @param array $found pg_subscription_price_notice_sql()'s row
+ * @param int   $now
+ * @param array $io    pg_subscription_renewal_io()
+ * @return string noticed, nothing, skipped (another run holds the row)
+ */
+function pg_subscription_price_notice_run_row($found, $now, array $io)
+{
+    $id = (int) ($found['id'] ?? 0);
+
+    if (($id <= 0) || (pg_subscription_price_notice_plan($found, $found, $found['product_price'] ?? 0, $found['notice_amount'] ?? null, $now) === null)) {
+        return 'nothing';
+    }
+
+    if (!call_user_func($io['lock'], $id)) {
+        return 'skipped';
+    }
+
+    $row = call_user_func($io['notice_read'], $id);
+    $plan = is_array($row) ? pg_subscription_price_notice_plan($row, $row, $row['product_price'] ?? 0, $row['notice_amount'] ?? null, $now) : null;
+
+    if ($plan === null) {
+        call_user_func($io['unlock'], $id);
+
+        return 'nothing';
+    }
+
+    $event_id = call_user_func($io['event'], $id, 'price_notice', 0, $plan['amount'], $plan['detail']);
+    call_user_func($io['unlock'], $id);
+    call_user_func($io['mail'], $id, (int) $event_id, 'price_notice', (string) $row['status'], (string) $row['status'], 0, $plan['detail']);
+
+    return 'noticed';
+}
+
+/**
+ * Looks at every running subscription for a price change to tell, in
+ * batches. Called from the renewal run, once a day.
+ *
+ * @param int   $now
+ * @param array $io pg_subscription_renewal_io()
+ * @return int how many notices were written
+ */
+function pg_subscription_price_notices_run($now, array $io)
+{
+    $last_id = 0;
+    $noticed = 0;
+
+    do {
+        $result = db_q(pg_subscription_price_notice_sql(), array($last_id, 200));
+        $rows = 0;
+
+        while ($result && ($found = mysqli_fetch_assoc($result))) {
+            $rows++;
+            $last_id = (int) $found['id'];
+
+            if (pg_subscription_price_notice_run_row($found, $now, $io) === 'noticed') {
+                $noticed++;
+            }
+        }
+    } while ($rows === 200);
+
+    if ($noticed > 0) {
+        log_activity(lang(array(
+            'string' => 'Subscription price changes: {var:1} customers were told of a new amount.',
+            'vars'   => array($noticed),
+        )), 'UNKNOWN');
+    }
+
+    return $noticed;
+}
+
+/**
+ * The mail-merge fields only the price change mail fills in, every one always
+ * passed. Pure but for the site's number separators.
+ *
+ * @param array      $row    the subscriptions row (currency)
+ * @param array|null $notice the price_notice event (amount, detail)
+ * @return array name, data, type
+ */
+function pg_subscription_price_mail_fields($row, $notice)
+{
+    $amount = is_array($notice) ? (int) ($notice['amount'] ?? 0) : 0;
+    $date = is_array($notice) ? (string) ($notice['detail'] ?? '') : '';
+
+    return array(
+        array('name' => 'subscription_new_amount', 'data' => ($amount > 0) ? trim(pg_format_number($amount / 100, 2) . ' ' . (string) ($row['currency'] ?? '')) : '', 'type' => ''),
+        array('name' => 'subscription_new_date', 'data' => $date, 'type' => 'date'),
+    );
 }

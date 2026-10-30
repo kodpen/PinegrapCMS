@@ -845,7 +845,7 @@ function pg_mail_merge_address_hrefs($body, $fields = array('review_url', 'track
 // Create function that is used to see if auto email campaigns need to be created after a specific action has occurred
 // and then create them if necessary.
 // Properties:
-// action: "calendar_event_reserved", "custom_form_submitted", "email_campaign_sent", "order_abandoned", "order_completed", "order_review_request", "order_shipped", "order_delivered", "product_ordered", "subscription_renewed", "subscription_failed", "subscription_cancelled"
+// action: "calendar_event_reserved", "custom_form_submitted", "email_campaign_sent", "order_abandoned", "order_completed", "order_review_request", "order_shipped", "order_delivered", "product_ordered", "subscription_renewed", "subscription_failed", "subscription_cancelled", "subscription_price_changed"
 // action_item_id: The id of item that is related to the action (e.g. the calendar event id)
 // calendar_event_recurrence_number
 // order_id: Used by the order_abandoned and order_review_request actions.
@@ -1310,6 +1310,9 @@ function create_auto_email_campaigns($properties)
                     break;
                 case 'subscription_cancelled':
                     $log_action = lang('subscription cancelled');
+                    break;
+                case 'subscription_price_changed':
+                    $log_action = lang('subscription price changed');
                     break;
                 default:
                     $log_action = $action;

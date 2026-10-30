@@ -98,6 +98,23 @@ $GLOBALS['fake_writes'] = array();
 upgrade_2026_11_0_subscription_campaigns();
 $out['missing'] = $GLOBALS['fake_writes'];
 
+$GLOBALS['fake_schema'] = array(
+	'email_campaign_profiles' => array('action' => "enum('calendar_event_reserved','order_delivered','subscription_renewed','subscription_failed','subscription_cancelled')"),
+	'email_campaigns' => array('action' => "enum('','calendar_event_reserved','order_delivered','subscription_renewed','subscription_failed','subscription_cancelled')"),
+);
+$out['price_runs'] = array();
+
+foreach (array(1, 2) as $run) {
+	$GLOBALS['fake_writes'] = array();
+	upgrade_2026_11_0_subscription_price_notice();
+	$out['price_runs'][] = $GLOBALS['fake_writes'];
+}
+
+$GLOBALS['fake_schema'] = array();
+$GLOBALS['fake_writes'] = array();
+upgrade_2026_11_0_subscription_price_notice();
+$out['price_missing'] = $GLOBALS['fake_writes'];
+
 echo json_encode($out);
 PHP;
 
@@ -140,6 +157,36 @@ function test_subscription_mails_step_run_twice_changes_nothing_the_second_time(
 	pg_assert_same(array("ALTER TABLE `email_campaigns` MODIFY `action` ENUM('','calendar_event_reserved','order_shipped','order_delivered','subscription_renewed','subscription_failed','subscription_cancelled') NOT NULL DEFAULT ''"), $first, 'appended once, at the end');
 	pg_assert_same(array(), $second, 'the second run writes nothing');
 	pg_assert_same(array(), $result['missing'], 'nothing written where the table is missing');
+}
+
+// The price change action: appended to both lists in one step, the second
+// run and a site without the tables write nothing.
+function test_subscription_price_step_run_twice_changes_nothing_the_second_time()
+{
+	$result = subscription_mails_test_run_step();
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_true(isset($result['price_runs']), 'the step ran: ' . (isset($result['error']) ? $result['error'] : ''));
+
+	if (!isset($result['price_runs'])) {
+		return;
+	}
+
+	list($first, $second) = $result['price_runs'];
+
+	pg_assert_same(array(
+		"ALTER TABLE `email_campaign_profiles` MODIFY `action` ENUM('calendar_event_reserved','order_delivered','subscription_renewed','subscription_failed','subscription_cancelled','subscription_price_changed') NOT NULL DEFAULT ''",
+		"ALTER TABLE `email_campaigns` MODIFY `action` ENUM('','calendar_event_reserved','order_delivered','subscription_renewed','subscription_failed','subscription_cancelled','subscription_price_changed') NOT NULL DEFAULT ''",
+	), $first, 'appended once, at the end of each list');
+	pg_assert_same(array(), $second, 'the second run writes nothing');
+	pg_assert_same(array(), $result['price_missing'], 'nothing written where the tables are missing');
+
+	$migration = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/migrations/2026.11.0.php');
+	pg_assert_true((bool) preg_match('~\tupgrade_2026_11_0_subscription_price_notice\(\); +// 11\.0\.132\n~', $migration), 'under 11.0.132');
+	pg_assert_contains("case 'subscription_price_changed':", (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/mail.php'), 'named in the log');
 }
 
 // Called once, under its label.

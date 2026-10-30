@@ -56,6 +56,7 @@ $action_names = array(
     'subscription_renewed' => lang('Subscription Renewed'),
     'subscription_failed' => lang('Subscription Payment Failed'),
     'subscription_cancelled' => lang('Subscription Cancelled'),
+    'subscription_price_changed' => lang('Subscription Price Changed'),
     'product_ordered' => lang('Product Ordered'),
 );
 

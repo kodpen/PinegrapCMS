@@ -198,6 +198,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - subscriptions-later-start.md: Recurring lines that start after the order day on the driver gateways (PR #3378, decided in #3310): their row on today's card, the first charge on the start date, the nothing-today order refused
 - subscriptions-mails.md: Subscription e-mails (decided in #3288): renewed / failed / cancelled campaign profiles, which event mails which, once per event, the fields, the signed card update page, step 11.0.129
 - subscriptions-operator-screen.md: Operator Subscriptions screen (#3343): view_subscriptions.php list and filters, ?id= row page, pause/resume/cancel at period end through the shared move, operator named in the event
+- subscriptions-price-notice.md: Subscription price change (decided in #3311, PR #3495): price_notice event 14 days ahead, subscription_price_changed mail, applied from the first renewal on or after its date, step 11.0.132
 - subscriptions-renewal.md: Renewals of store-run subscriptions (PR #3290, decided in #3183): job branch, per-row lock, renewal order, next date, 1/3/7 ladder, held rows and Stripe's paid report
 - subscriptions-stripe.md: Stripe store-run subscriptions (PR #3270, decided in #3183): Customer and setup_future_usage on the first payment, card_ref, off-session charge_renewal, Checkout setup page, detach on cancel
 - subscriptions.md: Store-run subscriptions (11.0.128, PR #3236): the two tables, recurring mode and store-mode driver operations, status moves, period dates, 1/3/7 ladder, sealed card_ref
