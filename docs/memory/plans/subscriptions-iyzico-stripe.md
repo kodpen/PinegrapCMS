@@ -17,13 +17,13 @@ description: Plan (approved 2026-10-19, watch list, after payment-driver-layer):
 ## What remains?
 - Design note: #3183 (store-run; no proration, period end only).
 - Slice 1 done (#3236): tables, the `recurring` mode and the store-mode operations in the contract, `includes/fn/subscriptions.php` (`commerce/subscriptions.md`).
-- Slice 2 done (#3249): iyzico store mode behind the stored-card renewals switch, `card_ref`, `charge_renewal`, `update_card`, `subscription_cancel`, the row from checkout (`commerce/subscriptions-iyzico.md`). Future-start lines get no row yet.
+- Slice 2 done (#3249): iyzico store mode behind the stored-card renewals switch, `card_ref`, `charge_renewal`, `update_card`, `subscription_cancel`, the row from checkout (`commerce/subscriptions-iyzico.md`). Later lines: #3378.
 - Slice 3 done (#3270): Stripe store mode (`commerce/subscriptions-stripe.md`).
 - Slice 4a done (#3290): renewal writer + ladder (`commerce/subscriptions-renewal.md`). 4b done (#3318): the mails (`commerce/subscriptions-mails.md`).
 - 5a done #3347: My Account subscriptions (`commerce/subscriptions-account.md`). Next: 5b API `/customers/{id}/subscriptions` + `subscription.*` webhooks; then the operator screen (#3343: `view_subscriptions.php`, pause/resume/cancel at period end, no refunds; `workflow/decisions-made-product-6.md`).
 
 ## Open questions?
-- Price changes: next period only, 14-day notice mail (#3311); later-starting lines: #3310.
+- Price changes: next period only, 14-day notice mail (#3311). Later lines: done (#3310, #3378).
 
 ## Where to start?
 - Slice 5b: read `commerce/subscriptions.md`, `subscriptions-account.md` (the action runner to reuse) and the external API memory (`api/`).

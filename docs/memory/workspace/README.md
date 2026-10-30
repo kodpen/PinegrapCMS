@@ -154,7 +154,8 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-flows-shares.md: Flows shared with the team (F7, ws_flow_shares, 11.0.83): view/run/edit, who manages and publishes, access, runs, Claude's reach, lists, bell row, panel actions, API routes, the Share dialog
 - workspace-flows-steps.md: Step boxes of a flow (steps.php, F4a #1835, F4b #1857, F4b2 #1923, F4b3 #1957): 13 kinds run by ws_scheduled_do(), the MCP and table boxes, outcomes, owner rights, {{node.ID.FIELD}}, never twice
 - workspace-flows-store.md: Workspace flows store (graph check, API; runs: workspace-flows-runner.md): the four tables (11.0.80), graph JSON, problem codes, access, routes, why publishing is the person's own
-- workspace-flows-table-boxes.md: The table boxes of flows (F6b-1, #3189): row_add adds a workflow table row, row_set changes cells of one; cells as JSON text, owner's edit reach, store writers, pause, what non-editors read
+- workspace-flows-table-box-form.md: The canvas form of the add-row and change-row flow boxes (F6b-2, #3359): tables offered, a field per column, cells kept as JSON one key at a time, the JSON fallback, threads
+- workspace-flows-table-boxes.md: The table boxes of flows (F6b-1 #3189): row_add adds a workflow table row, row_set changes cells of one; cells as JSON text, owner's edit reach, store writers, pause, what non-editors read
 - workspace-flows-template-flow-only.md: The flow templates a scheduled action never had (G3): new_customer, quote_approval, text_review; their boxes, the one person setting, how they are tested
 - workspace-flows-template-format.md: Flow templates (G1 #2161, flow_templates.php): format, the scheduled templates that came over or wait, the gallery
 - workspace-flows-template-last-day.md: The forms, orders and chain flow templates (R1b, #2787): counts of the last day once a day, the orders webhook, chain a manual start a "Start a flow" box starts

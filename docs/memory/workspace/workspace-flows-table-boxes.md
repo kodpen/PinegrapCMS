@@ -1,6 +1,6 @@
 ---
 name: workspace-flows-table-boxes
-description: The table boxes of flows (F6b-1, #3189): row_add adds a workflow table row, row_set changes cells of one; cells as JSON text, owner's edit reach, store writers, pause, what non-editors read
+description: The table boxes of flows (F6b-1 #3189): row_add adds a workflow table row, row_set changes cells of one; cells as JSON text, owner's edit reach, store writers, pause, what non-editors read
 ---
 
 ## What are they?
@@ -21,8 +21,9 @@ description: The table boxes of flows (F6b-1, #3189): row_add adds a workflow ta
 ## What if the table's owner has left the team?
 - Gate `paused` (`workflow-table-shares.md`): publish refused; at run `ws_step_row_wait()`: waiting, effect cleared, `wait_key` `wtable:<table id>`, next look in `WS_FLOW_RECHECK`. `ws_flow_step_recheck()` hands it to `ws_step_row_recheck()`: still away, it waits on; else ready again, the try not counted. No `workspace.flow.run.waiting` event (its `for` lists no table).
 
-## Who reads what?
-- Run readers without edit: no `row_id` (`ws_step_outputs_held()`); "A row was added to a table." or "A row of a table was changed." for the sentence naming the table (`ws_step_result_shown()`). The draft card marks both outbound.
+## How is it built on the canvas?
+- `workspace-flows-table-box-form.md` (F6b-2, #3359).
 
-## What is left (F6b-2)?
-- Canvas: `KINDS`, form (table, row, a field per column, value chips), `fl_*` texts. `ws_flow_graph_present()` masks `row` and the cell values for non-editors as the change box (flows.php was held by #3172). Saved templates ask no table yet.
+## Who reads what?
+- On the screen, the API and a run's graph `ws_flow_graph_present()` gives a non-editor the table and the column ids, never `row` ('') nor the values (`ws_flow_row_box_masked()`; cells that are no object: ''), as the change box.
+- Run readers without edit: no `row_id` (`ws_step_outputs_held()`); "A row was added to a table." or "A row of a table was changed." for the sentence naming the table (`ws_step_result_shown()`). The draft card marks both outbound.

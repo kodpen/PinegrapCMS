@@ -172,10 +172,12 @@ function pg_subscription_renewal_figures($subscription, $item)
  * @param string $outcome pg_subscription_renewal_outcome()
  * @param array  $answer  the driver's answer
  * @param int    $now
+ * @param array  $item    the first order's line (recurring_start_date: the
+ *                        series of a line that started later begins then)
  * @return array fields (column => value), status (the status after, or ''
  *               when it stays), event, detail
  */
-function pg_subscription_renewal_plan($row, $outcome, $answer, $now)
+function pg_subscription_renewal_plan($row, $outcome, $answer, $now, $item = array())
 {
     $now = (int) $now;
     $status = (string) ($row['status'] ?? '');
@@ -186,7 +188,10 @@ function pg_subscription_renewal_plan($row, $outcome, $answer, $now)
 
     switch ($outcome) {
         case 'paid':
-            $fields['next_charge_at'] = pg_subscription_renewal_next_at((int) ($row['created_at'] ?? 0), (string) ($row['period'] ?? ''), $now);
+            // The series starts with the first charge: the order's time, or
+            // the start date of a line that started later.
+            $first_at = pg_subscription_later_start_at($item['recurring_start_date'] ?? '', (int) ($row['created_at'] ?? 0));
+            $fields['next_charge_at'] = pg_subscription_renewal_next_at(($first_at > 0) ? $first_at : (int) ($row['created_at'] ?? 0), (string) ($row['period'] ?? ''), $now);
             $fields['retry_count'] = 0;
             $to = ($status === 'past_due') ? 'active' : '';
             $event = 'renewed';
@@ -344,7 +349,7 @@ function pg_subscription_renewal_run_row($id, $now, array $io)
 
     $answer = call_user_func($io['charge'], $row['driver'], $driver_row);
     $outcome = pg_subscription_renewal_outcome($answer);
-    $plan = pg_subscription_renewal_plan($row, $outcome, $answer, $now);
+    $plan = pg_subscription_renewal_plan($row, $outcome, $answer, $now, $first['item']);
 
     if ($outcome === 'paid') {
         $plan['fields'] += pg_subscription_renewal_card_fields($answer, $driver_row['card_ref'], $io['seal']);
@@ -430,7 +435,7 @@ function pg_subscription_renewal_first_order($row)
             . ($page_column ? ', checkout_page_id' : '') . "
         FROM orders WHERE id = '" . e((int) $row['order_id']) . "'");
 
-    $item = db_item("SELECT id, ship_to_id, product_id, product_name, quantity, price
+    $item = db_item("SELECT id, ship_to_id, product_id, product_name, quantity, price, recurring_start_date
         FROM order_items
         WHERE (id = '" . e((int) $row['order_item_id']) . "') AND (order_id = '" . e((int) $row['order_id']) . "')");
 
@@ -653,7 +658,7 @@ function pg_subscription_renewal_confirmed($driver, $id, $answer, $now, $io = nu
         return 'refused';
     }
 
-    $plan = pg_subscription_renewal_plan($row, 'paid', $answer, $now);
+    $plan = pg_subscription_renewal_plan($row, 'paid', $answer, $now, $first['item']);
 
     call_user_func($io['save'], $row, $plan);
 

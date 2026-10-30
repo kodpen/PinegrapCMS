@@ -271,7 +271,9 @@ function pg_subscription_card_ref_is_sealed($value)
  * @param string $card_ref the card's token, already sealed
  *                         (pg_subscription_card_ref_seal())
  * @param string $card_last4
- * @param int    $now      the time of the paid charge
+ * @param int    $now      the time of the paid charge; a line whose
+ *                         recurring_start_date is later is first charged on
+ *                         that day (pg_subscription_later_start_at())
  * @return array|null null when anything is missing or the token is not sealed
  */
 function pg_subscription_row_from_order_line($order, $item, $driver, $period, $currency, $card_ref, $card_last4, $now)
@@ -299,6 +301,7 @@ function pg_subscription_row_from_order_line($order, $item, $driver, $period, $c
     }
 
     $card_last4 = trim((string) $card_last4);
+    $later_start_at = pg_subscription_later_start_at($item['recurring_start_date'] ?? '', $now);
 
     return array(
         'user_id'        => (int) ($order['user_id'] ?? 0),
@@ -311,7 +314,7 @@ function pg_subscription_row_from_order_line($order, $item, $driver, $period, $c
         'period'         => (string) $period,
         'amount'         => $amount,
         'currency'       => $currency,
-        'next_charge_at' => pg_subscription_next_charge_at($now, $period),
+        'next_charge_at' => ($later_start_at > 0) ? $later_start_at : pg_subscription_next_charge_at($now, $period),
         'retry_count'    => 0,
         'card_last4'     => (preg_match('/^[0-9]{4}$/', $card_last4) === 1) ? $card_last4 : '',
         'card_ref'       => $card_ref,
@@ -358,19 +361,41 @@ function pg_subscription_event_row($subscription_id, $kind, $order_id, $amount, 
 }
 
 /**
+ * The first second of a recurring line's start date when it is after the
+ * day of $now: such a line is not in today's payment and is first charged
+ * by the renewal job on that day. Pure.
+ *
+ * @param string $start_date order_items.recurring_start_date (Y-m-d)
+ * @param int    $now
+ * @return int unix time, 0 for no date, today or a day before
+ */
+function pg_subscription_later_start_at($start_date, $now)
+{
+    $start_date = (string) $start_date;
+
+    if ((preg_match('/^([0-9]{4})-([0-9]{2})-([0-9]{2})$/', $start_date, $parts) !== 1)
+        || !checkdate((int) $parts[2], (int) $parts[3], (int) $parts[1])
+        || ($start_date <= date('Y-m-d', (int) $now))) {
+        return 0;
+    }
+
+    return (int) mktime(0, 0, 0, (int) $parts[2], (int) $parts[3], (int) $parts[1]);
+}
+
+/**
  * The order lines a paid checkout makes subscriptions of: recurring lines
- * with a price that were charged today (a line that starts later was not in
- * the payment), each with its period. None unless the payment's driver runs
+ * with a price, each with its period. A line that starts later was not in
+ * today's payment: its row is first charged on its start date with the card
+ * today's payment stored. None unless the payment's driver runs
  * subscriptions itself (recurring mode 'store') and its payment stored a
  * card: the legacy gateways keep their own recurring profiles.
  *
  * @param array  $lines          order lines as pg_order_lines_sql() reads them
  * @param string $recurring_mode pg_payment_recurring_mode() of the payment's driver
  * @param string $card_ref       the card_ref the payment answered, plain
- * @param string $today          Y-m-d
  * @return array list of array('item' => order_items fields, 'period' => key)
  */
-function pg_subscription_checkout_lines($lines, $recurring_mode, $card_ref, $today)
+function pg_subscription_checkout_lines($lines, $recurring_mode, $card_ref)
 {
     if (($recurring_mode !== 'store') || (trim((string) $card_ref) === '') || !is_array($lines)) {
         return array();
@@ -382,8 +407,7 @@ function pg_subscription_checkout_lines($lines, $recurring_mode, $card_ref, $tod
         $period = pg_subscription_period_from_legacy($line['recurring_payment_period'] ?? '');
         $item_id = (int) ($line['order_item_id'] ?? 0);
 
-        if (empty($line['recurring']) || ((int) ($line['price'] ?? 0) <= 0) || ($period === '') || ($item_id <= 0)
-            || ((string) ($line['recurring_start_date'] ?? '') > (string) $today)) {
+        if (empty($line['recurring']) || ((int) ($line['price'] ?? 0) <= 0) || ($period === '') || ($item_id <= 0)) {
             continue;
         }
 
@@ -394,12 +418,49 @@ function pg_subscription_checkout_lines($lines, $recurring_mode, $card_ref, $tod
                 'price'      => $line['price'],
                 'quantity'   => $line['quantity'] ?? 1,
                 'tax_total'  => $line['tax_total'] ?? 0,
+                'recurring_start_date' => (string) ($line['recurring_start_date'] ?? ''),
             ),
             'period' => $period,
         );
     }
 
     return array_values($planned);
+}
+
+/**
+ * Whether a checkout is refused on a driver that runs subscriptions itself:
+ * it charges nothing today and every priced recurring line starts later.
+ * The card is stored only with a payment, so such an order would leave
+ * subscriptions with no card to charge. The legacy gateways keep their own
+ * profiles and are never refused here. Pure.
+ *
+ * @param array  $lines          order lines as pg_order_lines_sql() reads them
+ * @param string $recurring_mode pg_payment_recurring_mode() of the chosen driver
+ * @param bool   $charged_today  the order takes a payment today
+ * @param string $today          Y-m-d
+ * @return bool
+ */
+function pg_subscription_checkout_starts_later_only($lines, $recurring_mode, $charged_today, $today)
+{
+    if (($recurring_mode !== 'store') || $charged_today || !is_array($lines)) {
+        return false;
+    }
+
+    $later = false;
+
+    foreach ($lines as $line) {
+        if (empty($line['recurring']) || ((int) ($line['price'] ?? 0) <= 0)) {
+            continue;
+        }
+
+        if ((string) ($line['recurring_start_date'] ?? '') <= (string) $today) {
+            return false;
+        }
+
+        $later = true;
+    }
+
+    return $later;
 }
 
 /* ---------------------------------------------------------------------------
@@ -616,7 +677,7 @@ function pg_subscription_checkout_create($order_id, $driver, $answer, $lines)
     }
 
     $card_ref = (string) ($answer['card_ref'] ?? '');
-    $planned = pg_subscription_checkout_lines($lines, pg_payment_recurring_mode($driver), $card_ref, date('Y-m-d'));
+    $planned = pg_subscription_checkout_lines($lines, pg_payment_recurring_mode($driver), $card_ref);
 
     if (!$planned) {
         return array();

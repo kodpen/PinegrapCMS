@@ -122,9 +122,14 @@ function pg_dashboard_widget_5($request, $user)
         // page template that displayed it. Rows recorded before
         // this change still show the page name, because the item
         // identity was never written down and cannot be recovered.
+        //
+        // Names stay unescaped: the tooltip draws them on a canvas and
+        // the table writes them with textContent, so an entity would
+        // show literally ("Q&amp;A"). json_encode() with JSON_HEX_TAG
+        // and JSON_HEX_AMP keeps them safe inside the script block.
         $vs5_hour_label = function ($row) {
             if (!$row) return null;
-            return array('name' => h($row['name']), 'cnt' => (int) $row['cnt']);
+            return array('name' => (string) $row['name'], 'cnt' => (int) $row['cnt']);
         };
 
         $h_today_pages = array_map($vs5_hour_label, pg_visitor_top_content_by_hour($today_date));
@@ -535,6 +540,7 @@ function pg_dashboard_widget_5($request, $user)
             thisMonth:' . json_encode(lang('This Month')) . ',
             prevMonth:' . json_encode(lang('Previous Month')) . ',
             total:    ' . json_encode(lang('Total')) . ',
+            top:      ' . json_encode(lang('Most Visited')) . ',
             hour:     ' . json_encode(lang('Hour')) . ',
             day:      ' . json_encode(lang('Day')) . ',
             month:    ' . json_encode(lang('Month')) . '
@@ -559,8 +565,8 @@ function pg_dashboard_widget_5($request, $user)
           // and the legend drops its second key accordingly.
           var P = {
             d: { eyebrow:L.daily,   axis:L.hour,  type:"line", labels:[' . $h_yest_labels_js . '],
-                 now:{ label:L.today,     data:[' . $h_today_full_js . '], views:[' . $h_today_views_full_js . '], pages:' . json_encode(array_values($h_today_pages)) . ' },
-                 prev:{ label:L.yesterday, data:[' . $h_yest_js . '],       views:[' . $h_yest_views_js . '],      pages:' . json_encode(array_values($h_yest_pages)) . ' },
+                 now:{ label:L.today,     data:[' . $h_today_full_js . '], views:[' . $h_today_views_full_js . '], pages:' . json_encode(array_values($h_today_pages), JSON_HEX_TAG | JSON_HEX_AMP) . ' },
+                 prev:{ label:L.yesterday, data:[' . $h_yest_js . '],       views:[' . $h_yest_views_js . '],      pages:' . json_encode(array_values($h_yest_pages), JSON_HEX_TAG | JSON_HEX_AMP) . ' },
                  kpi:' . $kpi_today . ', cmp:' . $kpi_yesterday_same . ', full:' . $kpi_yesterday . ', nowIndex:' . $current_hour . ' },
             w: { eyebrow:L.weekly,  axis:L.day,   type:"line", labels:[' . $w_tw_labels . '],
                  now:{ label:L.thisWeek, data:[' . $w_tw_data . '] },
@@ -711,7 +717,10 @@ function pg_dashboard_widget_5($request, $user)
 
           // The chart figures as a table for screen readers, one row
           // per point of the period on show, rebuilt on every switch.
-          // Built with textContent, so no label needs escaping.
+          // A series that carries page views and the busiest page per
+          // point (the day view) gets a column for each, so nothing
+          // stays in the tooltip alone. Built with textContent, so no
+          // label needs escaping.
           var tableEl = document.getElementById("vs5_table");
           function table() {
             if (!tableEl) return;
@@ -727,7 +736,11 @@ function pg_dashboard_widget_5($request, $user)
             tableEl.createCaption().textContent = p.eyebrow + " · " + L.visitors;
             var hr = tableEl.createTHead().insertRow();
             cell(hr, "th", p.axis, "col");
-            series.forEach(function (s) { cell(hr, "th", s.label, "col"); });
+            series.forEach(function (s) {
+              cell(hr, "th", s.label, "col");
+              if (s.views) { cell(hr, "th", s.label + " · " + L.views, "col"); }
+              if (s.pages) { cell(hr, "th", s.label + " · " + L.top, "col"); }
+            });
             var body = tableEl.createTBody();
             p.labels.forEach(function (label, i) {
               var tr = body.insertRow();
@@ -735,6 +748,14 @@ function pg_dashboard_widget_5($request, $user)
               series.forEach(function (s) {
                 var v = s.data[i];
                 cell(tr, "td", (v === null || v === undefined) ? "–" : fmtN(v));
+                if (s.views) {
+                  var vw = s.views[i];
+                  cell(tr, "td", (vw === null || vw === undefined) ? "–" : fmtN(vw));
+                }
+                if (s.pages) {
+                  var pg = s.pages[i];
+                  cell(tr, "td", pg ? pg.name + " · " + fmtN(pg.cnt) : "–");
+                }
               });
             });
           }

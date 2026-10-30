@@ -336,7 +336,7 @@ pg_page_shell([
                     <div class="card h-100">
                         <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('By month') . '</div>
                         <div class="card-body">
-                            ' . ($many_months ? '<div style="height:16rem"><canvas id="erp_profit_chart" aria-label="' . h(lang('By month')) . '" role="img"></canvas></div>' : '') . '
+                            ' . ($many_months ? '<div style="height:16rem"><canvas id="erp_profit_chart" aria-hidden="true"></canvas></div>' : '') . '
                             <div class="table-responsive' . ($many_months ? ' mt-5' : '') . '">
                                 <table class="table table-sm table-hover align-middle mb-0" data-pg-sort id="erp_profit_months">
                                     <thead>
@@ -434,15 +434,23 @@ pg_page_shell([
     probe.style.color = "var(--pg-fg-2)";
     document.body.appendChild(probe);
     var ink = getComputedStyle(probe).color;
+    // The pastel fills read about 2:1 on the light card, so bar edges and the
+    // line take the ink tones of the theme.
+    probe.style.color = "var(--pg-primary-ink)";
+    var primaryInk = getComputedStyle(probe).color;
+    probe.style.color = "var(--pg-secondary-ink)";
+    var secondaryInk = getComputedStyle(probe).color;
+    probe.style.color = "var(--pg-success-ink)";
+    var successInk = getComputedStyle(probe).color;
     probe.remove();
     var grid = "rgba(128,128,128,.2)";
     new Chart(canvas, {
         data: {
             labels: data.labels,
             datasets: [
-                { type: "bar", label: ' . json_encode(lang('Net sales')) . ', data: data.revenue, backgroundColor: color("--bs-primary", "#0d6efd"), borderRadius: 4 },
-                { type: "bar", label: ' . json_encode(lang('Costs and expenses')) . ', data: data.costs, backgroundColor: color("--bs-secondary-bg", "#adb5bd"), borderRadius: 4 },
-                { type: "line", label: ' . json_encode(lang('Net profit')) . ', data: data.net, borderColor: color("--bs-success", "#198754"), backgroundColor: color("--bs-success", "#198754"), tension: 0.3, pointRadius: 3 }
+                { type: "bar", label: ' . json_encode(lang('Net sales')) . ', data: data.revenue, backgroundColor: color("--bs-primary", "#0d6efd"), borderColor: primaryInk, borderWidth: 2, borderRadius: 4 },
+                { type: "bar", label: ' . json_encode(lang('Costs and expenses')) . ', data: data.costs, backgroundColor: "transparent", borderColor: secondaryInk, borderWidth: 2, borderRadius: 4 },
+                { type: "line", label: ' . json_encode(lang('Net profit')) . ', data: data.net, borderColor: successInk, backgroundColor: successInk, tension: 0.3, pointRadius: 3 }
             ]
         },
         options: {

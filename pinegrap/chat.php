@@ -1679,6 +1679,7 @@ function pg_chat_panel_strings()
         'no_online_users' => lang('No one else is online right now.'),
         'no_conversations' => lang('No conversations yet.'),
         'type_a_message' => lang('Type a message'),
+        'messages' => lang('Messages'),
         'send' => lang('Send'),
         'back' => lang('Back'),
         'close_conversation' => lang('Close Conversation'),
@@ -1788,6 +1789,7 @@ function pg_chat_render_backend_launcher()
             #pg-chat-root .pg-chat-tabs .nav-link { border: 0; border-radius: 9px; color: var(--pg-fg-2); font-size: 12.5px; font-weight: 600; padding: 4px 10px; }
             #pg-chat-root .pg-chat-tabs .nav-link.active { color: var(--pg-primary-fg-emphasis); background: color-mix(in srgb, var(--pg-primary) 15%, transparent); }
             #pg-chat-root .pg-chat-body { flex: 1 1 auto; overflow-y: auto; overscroll-behavior: contain; }
+            #pg-chat-root .pg-chat-body:focus-visible { outline: 2px solid transparent; box-shadow: inset 0 0 0 var(--pg-focus-ring-width) var(--pg-focus-ring-color); }
             #pg-chat-root .pg-chat-row { display: flex; align-items: center; gap: 10px; border-radius: 12px; margin: 4px 8px; padding: 8px 10px; cursor: pointer; background: var(--pg-bg-body); transition: background .12s ease; }
             #pg-chat-root .pg-chat-row:hover { background: var(--pg-bg-2); }
             #pg-chat-root .pg-chat-row:focus-visible { outline: 2px solid transparent; background: var(--pg-bg-2); box-shadow: 0 0 0 var(--pg-focus-ring-width) var(--pg-focus-ring-color); }

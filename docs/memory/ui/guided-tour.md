@@ -26,6 +26,9 @@ description: The guided tour engine (assets/js/pg_tour.js, pg_tour.css): who use
 - `max-height: calc(100dvh - 24px)` (20px under 576px, where it sits at the bottom), `box-sizing: border-box`, a flex column: count, title and text scroll in `.pg-tour-body`, the foot (Skip, dots, Back, Next) keeps its height. No overflow on `.pg-tour-bubble` itself: it would clip `.pg-tour-arrow`, which sits outside the edge.
 - `centre()` clamps left and top to the 12px edge; the old centred paths gave a negative top at 320x256.
 
+## How is step text that scrolls reached from the keyboard?
+- `fitBody()`, run by every `paint()` (resize, scroll): while `.pg-tour-body` overflows it is `tabindex=0`, `role=region`, `aria-labelledby=pg_tour_title`; when it fits these go and focus on it moves to Next. `onKey`'s Tab ring takes `[tabindex="0"], button:not([disabled])`, so the text comes before Skip. Before, the ring held only buttons and long text on a short screen could not be scrolled from the keyboard.
+
 ## What colour is Next?
 - `.pg-tour-primary` text is `--pg-on-accent` on `--pg-primary`, like every filled panel control; white on `#64b5f6` was about 2.2:1.
 - `veil` and `bubble` keep `data-pg-menu-hold` (`main-menu-panel-scripts.md`).

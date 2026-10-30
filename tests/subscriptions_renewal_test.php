@@ -157,6 +157,23 @@ function test_subscription_renewal_paid_moves_one_period_and_resets_the_ladder()
 	pg_assert_same(0, $late['fields']['retry_count']);
 }
 
+function test_subscription_renewal_series_of_a_later_line_starts_on_its_start_date()
+{
+	// Ordered on Jan 20, started on Mar 1: the first charge on the start date
+	// sets the day of the series, not the order's day.
+	$row = subscriptions_renewal_test_row(array('created_at' => (string) mktime(15, 0, 0, 1, 20, 2027), 'next_charge_at' => (string) mktime(0, 0, 0, 3, 1, 2027)));
+	$item = array('recurring_start_date' => '2027-03-01');
+
+	$first = pg_subscription_renewal_plan($row, 'paid', array(), mktime(4, 0, 0, 3, 1, 2027), $item);
+	pg_assert_same('2027-04-01', date('Y-m-d', $first['fields']['next_charge_at']), 'one period after the first charge');
+
+	$late = pg_subscription_renewal_plan(array_merge($row, array('status' => 'past_due', 'retry_count' => '1')), 'paid', array(), mktime(4, 0, 0, 4, 2, 2027), $item);
+	pg_assert_same('2027-05-01', date('Y-m-d', $late['fields']['next_charge_at']), 'a paid retry keeps the series');
+
+	pg_assert_same('2027-04-20', date('Y-m-d', pg_subscription_renewal_plan($row, 'paid', array(), mktime(16, 0, 0, 3, 20, 2027), array('recurring_start_date' => '2027-01-20'))['fields']['next_charge_at']), 'a line charged on the order day: the order day');
+	pg_assert_same('2027-04-20', date('Y-m-d', pg_subscription_renewal_plan($row, 'paid', array(), mktime(16, 0, 0, 3, 20, 2027))['fields']['next_charge_at']), 'no line given: the order day');
+}
+
 function test_subscription_renewal_next_date_follows_the_series()
 {
 	$created = mktime(10, 0, 0, 1, 31, 2027);

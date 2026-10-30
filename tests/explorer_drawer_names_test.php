@@ -61,5 +61,13 @@ function test_explorer_drawer_names_file_window_code_field()
 	$source = explorer_drawer_names_source();
 	pg_assert_true(strpos($source, "'file_content' => lang('File Content')") !== false, 'label map carries the code field name');
 	pg_assert_true(strpos($source, "textarea.setAttribute('aria-label', L.file_content);") !== false, 'fallback textarea is named');
-	pg_assert_true(strpos($source, "extensions: window.PgCM.view.EditorView.contentAttributes.of({ 'aria-label': L.file_content })") !== false, 'editor content is named');
+	pg_assert_true(strpos($source, "extensions: window.PgCM.view.EditorView.contentAttributes.of({ 'aria-label': L.file_content, 'aria-describedby': 'file_edit_editor_note' })") !== false, 'editor content is named');
+}
+
+function test_explorer_drawer_names_file_window_says_how_tab_leaves()
+{
+	$source = explorer_drawer_names_source();
+	pg_assert_true(strpos($source, "'tab_hint' => lang('Tab indents. {var} makes Tab move to the next field.')") !== false, 'label map carries the Tab hint');
+	pg_assert_true(strpos($source, "note.textContent = L.tab_hint.replace('{var}', /mac|iphone|ipad|ipod/i.test(platform) ? 'Shift+Alt+M' : 'Ctrl+M');") !== false, 'an editable file shows the way out under the editor');
+	pg_assert_true(strpos($source, "contentAttributes.of({ 'aria-label': L.file_content, 'aria-describedby': 'file_edit_editor_note' })") !== false, 'editor content is described by the note under it');
 }

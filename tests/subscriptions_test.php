@@ -237,13 +237,14 @@ function subscriptions_test_checkout_lines()
 
 function test_subscription_checkout_lines_one_per_paid_recurring_line()
 {
-	$planned = pg_subscription_checkout_lines(subscriptions_test_checkout_lines(), 'store', 'ukey-1|ctok-1', '2027-01-31');
+	$planned = pg_subscription_checkout_lines(subscriptions_test_checkout_lines(), 'store', 'ukey-1|ctok-1');
 
-	pg_assert_same(array(9001, 9003), array_map(function ($line) {
+	pg_assert_same(array(9001, 9003, 9005), array_map(function ($line) {
 		return $line['item']['id'];
-	}, $planned), 'recurring, priced, charged today; each line once');
-	pg_assert_same(array('monthly', 'yearly'), array_column($planned, 'period'));
-	pg_assert_same(array('id' => 9003, 'product_id' => 46, 'price' => '9900', 'quantity' => '2', 'tax_total' => '0'), $planned[1]['item']);
+	}, $planned), 'recurring and priced, today or later; each line once');
+	pg_assert_same(array('monthly', 'yearly', 'monthly'), array_column($planned, 'period'));
+	pg_assert_same(array('id' => 9003, 'product_id' => 46, 'price' => '9900', 'quantity' => '2', 'tax_total' => '0', 'recurring_start_date' => '0000-00-00'), $planned[1]['item']);
+	pg_assert_same('2027-03-01', $planned[2]['item']['recurring_start_date'], 'a later line keeps its start date');
 
 	$line = subscriptions_test_line();
 	pg_assert_same(17688, pg_subscription_row_from_order_line($line['order'], $planned[0]['item'], 'iyzico', $planned[0]['period'], 'TRY', subscriptions_test_sealed(), '0008', time())['amount'], 'the row takes the line as planned');
@@ -253,13 +254,82 @@ function test_subscription_checkout_lines_none_for_other_drivers()
 {
 	$lines = subscriptions_test_checkout_lines();
 
-	pg_assert_same(array(), pg_subscription_checkout_lines($lines, '', 'ukey-1|ctok-1', '2027-01-31'), 'a driver without a recurring mode');
-	pg_assert_same(array(), pg_subscription_checkout_lines($lines, 'psp', 'ukey-1|ctok-1', '2027-01-31'), 'the service runs its own');
-	pg_assert_same(array(), pg_subscription_checkout_lines($lines, 'store', '', '2027-01-31'), 'no stored card');
-	pg_assert_same(array(), pg_subscription_checkout_lines(null, 'store', 'ukey-1|ctok-1', '2027-01-31'));
+	pg_assert_same(array(), pg_subscription_checkout_lines($lines, '', 'ukey-1|ctok-1'), 'a driver without a recurring mode');
+	pg_assert_same(array(), pg_subscription_checkout_lines($lines, 'psp', 'ukey-1|ctok-1'), 'the service runs its own');
+	pg_assert_same(array(), pg_subscription_checkout_lines($lines, 'store', ''), 'no stored card');
+	pg_assert_same(array(), pg_subscription_checkout_lines(null, 'store', 'ukey-1|ctok-1'));
 
 	// No database in the runner: the writer makes nothing and never throws.
 	pg_assert_same(array(), pg_subscription_checkout_create(501, 'iyzico', array('card_ref' => 'ukey-1|ctok-1'), $lines));
 	pg_assert_same(array(), pg_subscription_checkout_create(501, '', array(), $lines), 'a legacy gateway has no driver');
 }
 
+function test_subscription_later_start_at()
+{
+	$now = mktime(15, 20, 0, 1, 31, 2027);
+
+	pg_assert_same(mktime(0, 0, 0, 3, 1, 2027), pg_subscription_later_start_at('2027-03-01', $now), 'the start day, from its first second');
+	pg_assert_same(mktime(0, 0, 0, 2, 1, 2027), pg_subscription_later_start_at('2027-02-01', $now), 'tomorrow');
+	pg_assert_same(0, pg_subscription_later_start_at('2027-01-31', $now), 'today is not later');
+	pg_assert_same(0, pg_subscription_later_start_at('2026-12-01', $now));
+	pg_assert_same(0, pg_subscription_later_start_at('0000-00-00', $now), 'no start date');
+	pg_assert_same(0, pg_subscription_later_start_at('', $now));
+	pg_assert_same(0, pg_subscription_later_start_at('2027-02-30', $now), 'not a date');
+}
+
+function test_subscription_row_of_a_later_line_is_charged_on_its_start_date()
+{
+	$now = mktime(15, 20, 0, 1, 31, 2027);
+	$sealed = subscriptions_test_sealed();
+	$lines = subscriptions_test_checkout_lines();
+	$lines[] = array('order_item_id' => '9006', 'product_id' => '49', 'recurring' => '1', 'price' => '2500', 'quantity' => '2', 'tax_total' => '900', 'recurring_payment_period' => 'Weekly', 'recurring_start_date' => '2027-02-10');
+	$line = subscriptions_test_line();
+	$rows = array();
+
+	foreach (pg_subscription_checkout_lines($lines, 'store', 'ukey-1|ctok-1') as $planned) {
+		$rows[$planned['item']['id']] = pg_subscription_row_from_order_line($line['order'], $planned['item'], 'iyzico', $planned['period'], 'TRY', $sealed, '0008', $now);
+	}
+
+	pg_assert_same(array(9001, 9003, 9005, 9006), array_keys($rows), 'a mixed order: the lines of today and the later ones');
+
+	// Charged today: the next charge is one period on.
+	pg_assert_same('2027-02-28', date('Y-m-d', $rows[9001]['next_charge_at']));
+	pg_assert_same('2028-01-31', date('Y-m-d', $rows[9003]['next_charge_at']));
+
+	// Starting later: active on today's card, first charged on the start date
+	// at the line's price.
+	foreach (array(9005 => array('2027-03-01', 1000), 9006 => array('2027-02-10', 5900)) as $id => $expected) {
+		pg_assert_same('active', $rows[$id]['status']);
+		pg_assert_same(mktime(0, 0, 0, (int) substr($expected[0], 5, 2), (int) substr($expected[0], 8, 2), 2027), $rows[$id]['next_charge_at'], $id . ' starts on its date');
+		pg_assert_same($expected[1], $rows[$id]['amount'], $id . ' is the line price');
+		pg_assert_same($now, $rows[$id]['created_at']);
+		pg_assert_same($sealed, $rows[$id]['card_ref'], 'the card today\'s payment stored');
+	}
+}
+
+function test_subscription_checkout_refuses_an_order_that_starts_only_later()
+{
+	$later = array(
+		array('order_item_id' => '9005', 'recurring' => '1', 'price' => '1000', 'recurring_start_date' => '2027-03-01'),
+		array('order_item_id' => '9004', 'recurring' => '1', 'price' => '0', 'recurring_start_date' => '2027-01-31'),
+	);
+
+	// iyzico (stored-card renewals on) and Stripe both run store mode.
+	pg_assert_true(pg_subscription_checkout_starts_later_only($later, 'store', false, '2027-01-31'), 'nothing charged today, no card can be stored');
+
+	pg_assert_false(pg_subscription_checkout_starts_later_only($later, 'store', true, '2027-01-31'), 'something is charged today: the card is stored');
+	pg_assert_false(pg_subscription_checkout_starts_later_only(array_merge($later, array(
+		array('order_item_id' => '9001', 'recurring' => '1', 'price' => '14990', 'recurring_start_date' => '2027-01-31'),
+	)), 'store', false, '2027-01-31'), 'a recurring line starts today');
+	pg_assert_false(pg_subscription_checkout_starts_later_only($later, '', false, '2027-01-31'), 'a legacy gateway keeps its own profiles');
+	pg_assert_false(pg_subscription_checkout_starts_later_only($later, 'psp', false, '2027-01-31'));
+	pg_assert_false(pg_subscription_checkout_starts_later_only(array(
+		array('order_item_id' => '9002', 'recurring' => '0', 'price' => '5000', 'recurring_start_date' => '2027-03-01'),
+	), 'store', false, '2027-01-31'), 'no recurring line');
+	pg_assert_false(pg_subscription_checkout_starts_later_only(null, 'store', false, '2027-01-31'));
+
+	pg_assert_same('iyzico', pg_payment_order_driver('Credit/Debit Card', 'Iyzipay'), 'the card driver asked at checkout');
+	pg_assert_same('stripe', pg_payment_order_driver('Credit/Debit Card', 'Stripe PaymentIntents'));
+	pg_assert_same('', pg_payment_order_driver('Credit/Debit Card', 'Stripe'), 'the classic Stripe Charges code is a legacy gateway');
+	pg_assert_same('', pg_payment_order_driver('Credit/Debit Card', 'Authorize.Net'), 'a legacy gateway has no driver');
+}
