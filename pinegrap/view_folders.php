@@ -1033,9 +1033,11 @@ tr.explorer-item.selected > td { background: var(--pg-primary-bg-subtle) !import
 .stock-dot { position: absolute; top: .28rem; left: .28rem; width: .55rem; height: .55rem; border-radius: 50%;
   background: var(--pg-danger); box-shadow: 0 0 0 2px var(--pg-bg-body); z-index: 3; pointer-events: none; }
 #explorer_list_table .stock-dot { position: static; display: inline-block; box-shadow: none; margin-right: .3rem; vertical-align: middle; }
-.sel-dot { position: absolute; top: .4rem; left: .4rem; width: 1.15rem; height: 1.15rem; border-radius: 50%; border: 2px solid var(--pg-fg-3); background: var(--pg-bg-body); display: none; align-items: center; justify-content: center; font-size: .65rem; color: #fff; cursor: pointer; z-index: 2; }
+.sel-dot { position: absolute; top: .4rem; left: .4rem; width: 1.15rem; height: 1.15rem; border-radius: 50%; border: 2px solid var(--pg-fg-3); background: var(--pg-bg-body); display: none; align-items: center; justify-content: center; font-size: .65rem; color: transparent; cursor: pointer; z-index: 2; }
 #explorer_grid .item-card:hover .sel-dot, .explorer-item.selected .sel-dot { display: flex; }
-.explorer-item.selected .sel-dot { background: var(--pg-primary); border-color: var(--pg-primary); }
+/* The check shows only on a selected tile: a hover bubble that drew it looked
+   selected, as on the tile that moves under the pointer after a delete. */
+.explorer-item.selected .sel-dot { background: var(--pg-primary); border-color: var(--pg-primary); color: var(--pg-on-accent); }
 .item-thumb-area { height: var(--pg-tile-thumb); display: flex; align-items: center; justify-content: center; margin-bottom: .3rem; }
 .explorer-item .item-icon { font-size: var(--pg-tile-icon); line-height: 1; position: relative; display: inline-block; }
 
