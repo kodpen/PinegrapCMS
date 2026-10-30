@@ -4,7 +4,7 @@ description: Marketplace orders (Trendyol, n11) in the automatic invoice: config
 ---
 
 ## What does the switch do?
-- `config.erp_auto_invoice_marketplace` TINYINT(1) default 0 (2026.11.0, 11.0.62, decision #3670, PR #PRNUM); constant `ERP_AUTO_INVOICE_MARKETPLACE`, read as `erp_auto_invoice_filters()['marketplace']`.
+- `config.erp_auto_invoice_marketplace` TINYINT(1) default 0 (2026.11.0, 11.0.62, decision #3670, PR #3692); constant `ERP_AUTO_INVOICE_MARKETPLACE`, read as `erp_auto_invoice_filters()['marketplace']`.
 - 0: `erp_auto_invoice_decision()` answers `marketplace` for `orders.type = 'marketplace'`, as before. 1: the order is weighed like a web order: the ENUM trigger (`erp_auto_invoice_on`), status, an existing or cancelled invoice, both filters (minimum, tax number only), payment.
 - Off by default: a running site that invoices its marketplace orders elsewhere must not get a second invoice from an update.
 
