@@ -174,7 +174,7 @@ pg_page_shell([
 
             ' . (($movements !== '') ? '<div class="card my-7">
                 <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Movements') . '</div>
-                <div class="card-body p-0 table-responsive"><table class="table table-sm align-middle mb-0"><tbody>' . $movements . '</tbody></table></div>
+                <div class="card-body p-0 table-responsive"><table class="table table-sm align-middle mb-0"><thead><tr class="fg-secondary"><th class="fw-normal">' . lang('Date') . '</th><th class="fw-normal">' . lang('Description') . '</th><th class="fw-normal">' . lang('Till') . '</th><th class="fw-normal text-end">' . lang('Amount') . '</th></tr></thead><tbody>' . $movements . '</tbody></table></div>
             </div>' : '') . '
 
             ' . $output_steps . '

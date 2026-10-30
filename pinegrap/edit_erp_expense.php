@@ -229,11 +229,11 @@ $output_details = '
 $output_figures = '
     <table class="table table-sm mb-0">
         <tbody>
-            <tr><td class="fg-secondary">' . lang('Net') . '</td><td class="text-end">' . $money($expense['net_amount']) . '</td></tr>
-            <tr><td class="fg-secondary">' . h(erp_tax_label('tax')) . ' ' . h(erp_percent_text((float) $expense['tax_rate'])) . '</td><td class="text-end">' . $money($expense['tax_amount'])
+            <tr><th scope="row" class="fg-secondary fw-normal">' . lang('Net') . '</th><td class="text-end">' . $money($expense['net_amount']) . '</td></tr>
+            <tr><th scope="row" class="fg-secondary fw-normal">' . h(erp_tax_label('tax')) . ' ' . h(erp_percent_text((float) $expense['tax_rate'])) . '</th><td class="text-end">' . $money($expense['tax_amount'])
                 . '<div class="small fg-secondary">' . (((int) $expense['tax_deductible'] === 1) ? lang('taken back') : lang('not taken back: counts as cost')) . '</div></td></tr>
-            <tr class="fw-bold"><td>' . lang('Total') . '</td><td class="text-end">' . $money($expense['total_amount']) . '</td></tr>
-            ' . ($foreign ? '<tr><td class="fg-secondary">' . h(lang(array('string' => 'In {var:1}', 'vars' => $base))) . '</td><td class="text-end">' . h(erp_money_out((int) $expense['total_base']))
+            <tr class="fw-bold"><th scope="row">' . lang('Total') . '</th><td class="text-end">' . $money($expense['total_amount']) . '</td></tr>
+            ' . ($foreign ? '<tr><th scope="row" class="fg-secondary fw-normal">' . h(lang(array('string' => 'In {var:1}', 'vars' => $base))) . '</th><td class="text-end">' . h(erp_money_out((int) $expense['total_base']))
                 . '<div class="small fg-secondary">' . h(lang(array('string' => 'at {var:1}', 'vars' => erp_fx_rate_text((float) $expense['exchange_rate'])))) . '</div></td></tr>' : '') . '
         </tbody>
     </table>';
