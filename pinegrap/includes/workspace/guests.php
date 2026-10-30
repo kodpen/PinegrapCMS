@@ -1025,11 +1025,11 @@ function ws_guest_render($body)
         // them; then the marks the staff's screen reads the same way
         // (render.php): **bold**, _italics_, ~~strike-through~~, ==highlight==.
         $links = array();
-        $html = preg_replace_callback('#https?://[^\s<>"]{2,500}#i', function ($match) use (&$links) {
-            $url = rtrim($match[0], '.,;:!?)');
+        $html = preg_replace_callback('#https?://' . ws_text_address_char() . '{2,500}#i', function ($match) use (&$links) {
+            list($url, $tail) = ws_text_address_split($match[0]);
             $links[] = '<a href="' . $url . '" target="_blank" rel="nofollow noopener noreferrer">' . $url . '</a>';
 
-            return "\x01" . (count($links) - 1) . "\x01" . substr($match[0], strlen($url));
+            return "\x01" . (count($links) - 1) . "\x01" . $tail;
         }, $html);
 
         $html = preg_replace('/\*\*([^*\n]{1,300})\*\*/', '<strong>$1</strong>', $html);
