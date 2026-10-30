@@ -8,10 +8,10 @@ description: The derived value box of a flow (kind value, T3, PR #2701): its all
 - `ws_flow_derived_normalize()`: `rule`, `a`, `b` (one line of 500, may hold `{{node.*}}` and `{{trigger.*}}`), `op`, `places` (0-6), `format`. An unknown rule is kept as join.
 
 ## Which rules?
-- `ws_flow_derived_rules()` (rule => type): compare (number: 1 when it holds, else 0; `op` of `ws_flow_derived_operators()`, as a value condition compares: texts without case, numbers by value, gt/gte/lt/lte only between numbers), join (text: a and b with a space, trimmed), add, subtract (number), round (number, `places`), date_format (text, `format` of `ws_flow_derived_formats()`), add_days (text, b a whole number, at most 3650).
+- `ws_flow_derived_rules()` (rule => type): compare (number: 1 when it holds, else 0; `op` of `ws_flow_derived_operators()`, as a value condition compares: texts without case or Turkish i (`ws_fold()`), numbers by value, gt/gte/lt/lte only between numbers), join (text: a and b with a space, trimmed), add, subtract (number), round (number, `places`), date_format (text, `format` of `ws_flow_derived_formats()`), add_days (text, b a whole number, at most 3650).
 - Numbers are written by `ws_flow_derived_number()` (no trailing zeros, six places at most). Dates are read by `ws_flow_derived_date()`: `Y-m-d`, with `H:i(:s)`, or a Unix time in the site's time zone; words such as "next monday" are not dates (no `strtotime()`). Computed with `gmmktime()`/`gmdate()` on the wall-clock parts.
 - An input the rule cannot read gives an empty value, never an error.
-- Record field was dropped from the plan's list: it reads the database, so the box would not be pure.
+- Record field was dropped: it reads the database, so the box would not be pure.
 
 ## How does a run work it out?
 - `ws_flow_pure_values($graph, $values)`: the inputs filled raw by `ws_flow_derived_fill()` (the reader's own fill makes the value safe where it lands), from the run's values, the constants and derived boxes already worked out (passes in dependency order, any box order). A box in a loop of derived boxes gives ''.

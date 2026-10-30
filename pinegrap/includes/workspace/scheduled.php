@@ -3871,7 +3871,8 @@ function ws_scheduled_hours_hold($from, $to, $minute)
 }
 
 /**
- * One comparison of a rule.
+ * One comparison of a rule. Texts are compared without case, the Turkish
+ * capitals and dotted or dotless i folded alike (ws_fold()).
  *
  * @param mixed  $current what the record holds
  * @param string $operator
@@ -3902,7 +3903,7 @@ function ws_scheduled_compare($current, $operator, $value, $kind)
             return !$empty;
 
         case 'contains':
-            return ($value !== '') && (mb_stripos($text, (string) $value) !== false);
+            return ((string) $value !== '') && ws_text_contains($text, (string) $value);
 
         // A date, today or within so many days from today.
         case 'within':
@@ -3939,10 +3940,10 @@ function ws_scheduled_compare($current, $operator, $value, $kind)
             return $a <= $b;
 
         case 'neq':
-            return mb_strtolower($text) !== mb_strtolower(trim((string) $value));
+            return ws_fold($text) !== ws_fold(trim((string) $value));
 
         default:
-            return mb_strtolower($text) === mb_strtolower(trim((string) $value));
+            return ws_fold($text) === ws_fold(trim((string) $value));
     }
 }
 

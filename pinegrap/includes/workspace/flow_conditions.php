@@ -163,7 +163,13 @@ function ws_flow_condition_problems($config, $name)
                 : array();
 
         case 'value':
-            return ($rule['ref'] === '') ? array(lang(array('string' => 'The box {var:1} needs the value it looks at.', 'vars' => $name))) : array();
+            if ($rule['ref'] === '') {
+                return array(lang(array('string' => 'The box {var:1} needs the value it looks at.', 'vars' => $name)));
+            }
+
+            return ws_flow_condition_number_missing($rule)
+                ? array(lang(array('string' => 'The box {var:1} compares sizes: {var:2} is not a number.', 'vars' => array($name, $rule['value']))))
+                : array();
     }
 
     return array();
@@ -192,12 +198,42 @@ function ws_flow_condition_check($viewer, $config)
     if ($rule['type'] === 'value') {
         $config = ws_flow_condition_normalize(array('rule' => $rule));
 
-        return ($config['rule']['ref'] === '')
-            ? array('ok' => false, 'error' => lang('Choose the value the box looks at.'), 'rule' => null)
+        if ($config['rule']['ref'] === '') {
+            return array('ok' => false, 'error' => lang('Choose the value the box looks at.'), 'rule' => null);
+        }
+
+        // A flow published before typed numbers were checked fails the box
+        // rather than leaving on no without a word.
+        return ws_flow_condition_number_missing($config['rule'])
+            ? array('ok' => false, 'error' => lang(array('string' => 'The condition compares sizes: {var:1} is not a number.', 'vars' => $config['rule']['value'])), 'rule' => null)
             : array('ok' => true, 'error' => '', 'rule' => $config['rule']);
     }
 
     return ws_scheduled_rule_input($viewer, $rule);
+}
+
+/**
+ * Whether a value rule's operator compares sizes (more, less), which hold
+ * only between two numbers. Pure.
+ *
+ * @param string $op
+ * @return bool
+ */
+function ws_flow_condition_sized($op)
+{
+    return in_array((string) $op, array('gt', 'gte', 'lt', 'lte'), true);
+}
+
+/**
+ * Whether a value rule compares sizes with a typed value that is no number
+ * as the site writes it (ws_flow_typed_number()).
+ *
+ * @param array $rule ws_flow_condition_normalize() value rule
+ * @return bool
+ */
+function ws_flow_condition_number_missing($rule)
+{
+    return ws_flow_condition_sized($rule['op'] ?? '') && (ws_flow_typed_number($rule['value'] ?? '') === null);
 }
 
 /**
@@ -298,11 +334,20 @@ function ws_flow_condition_value_holds($rule, $values)
 
     $op = (string) $rule['op'];
     $value = (string) $rule['value'];
-    $sized = in_array($op, array('gt', 'gte', 'lt', 'lte'), true);
-    $holds = ($sized && (!is_numeric(trim($current)) || !is_numeric(trim($value))))
-        ? false
-        : ws_scheduled_compare($current, $op, $value, 'text');
-    $said = trim(substr((string) $rule['ref'], 2, -2) . ' ' . (ws_scheduled_operators()[$op] ?? $op) . ' ' . (in_array($op, array('empty', 'not_empty'), true) ? '' : $value));
+    $shown = in_array($op, array('empty', 'not_empty'), true) ? '' : $value;
+
+    if (ws_flow_condition_sized($op)) {
+        // The run's value is mostly a machine number (1500); the typed one
+        // is read as the site writes it (1.000,50).
+        $a = is_numeric(trim($current)) ? (float) trim($current) : ws_flow_typed_number($current);
+        $b = ws_flow_typed_number($value);
+        $holds = ($a !== null) && ($b !== null) && ws_scheduled_compare(ws_flow_derived_number($a), $op, ws_flow_derived_number($b), 'text');
+        $shown = ($b === null) ? $value : ws_flow_typed_number_shown($b);
+    } else {
+        $holds = ws_scheduled_compare($current, $op, $value, 'text');
+    }
+
+    $said = trim(substr((string) $rule['ref'], 2, -2) . ' ' . (ws_scheduled_operators()[$op] ?? $op) . ' ' . $shown);
     $text = $holds
         ? lang(array('string' => 'The condition held: {var:1} (it was "{var:2}").', 'vars' => array($said, $current)))
         : lang(array('string' => 'The condition did not hold: {var:1} (it was "{var:2}").', 'vars' => array($said, $current)));
