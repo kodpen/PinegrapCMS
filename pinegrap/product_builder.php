@@ -2410,7 +2410,7 @@ function pg_pb_render_attribute_card($attribute, $selected_option_ids = array(),
                     <span class="pg-pb-option-add d-inline-flex align-items-center gap-1">
                         <button type="button" class="btn btn-sm btn-outline theme-secondary rounded-pill pg-pb-option-add-open" title="' . lang('Add Option') . '"><i class="bi bi-plus-lg"></i></button>
                         <span class="pg-pb-option-add-form d-none input-group input-group-sm" style="width:16rem;">
-                            <input type="text" class="form-control pg-pb-option-add-input" maxlength="255" placeholder="' . lang('Label') . '" />
+                            <input type="text" class="form-control pg-pb-option-add-input" maxlength="255" placeholder="' . lang('Label') . '" aria-label="' . h(lang(array('string' => 'New option for {var:1}', 'vars' => array($attribute['name'])))) . '" />
                             <button type="button" class="btn btn-solid theme-primary pg-pb-option-add-save" title="' . lang('Save') . '"><i class="bi bi-check-lg"></i></button>
                             <button type="button" class="btn btn-outline theme-secondary pg-pb-option-add-cancel" title="' . lang('Cancel') . '"><i class="bi bi-x-lg"></i></button>
                         </span>
@@ -2473,8 +2473,8 @@ function pg_pb_render_attribute_modal()
                                 <input type="text" id="pg_pb_attr_label" class="form-control" maxlength="255" placeholder="' . lang('Attribute Label') . '" />
                             </div>
                             <div class="col-12">
-                                <label class="form-label">' . lang('Attribute Options') . '</label>
-                                <div id="pg_pb_attr_options"></div>
+                                <label class="form-label" id="pg_pb_attr_options_label">' . lang('Attribute Options') . '</label>
+                                <div id="pg_pb_attr_options" role="group" aria-labelledby="pg_pb_attr_options_label"></div>
                                 <button type="button" class="btn btn-sm btn-outline theme-primary mt-3" id="pg_pb_attr_add_option"><i class="bi bi-plus-circle me-3"></i>' . lang('Add Option') . '</button>
                             </div>
                         </div>
@@ -4668,6 +4668,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
         'Clear'              => lang('Clear'),
         'Combinations'       => lang('Combinations'),
         'Label'              => lang('Label'),
+        'option_n'           => lang(array('string' => 'Option {var:1}', 'vars' => array('{n}'))),
         "'No Thanks' Option" => lang('\'No Thanks\' Option'),
         'required_sku'       => lang(array('string' => '{var:1} is required', 'vars' => array(lang('Product ID / SKU')))),
         'request_failed'     => lang('Sorry, we could not accept your request.'),
