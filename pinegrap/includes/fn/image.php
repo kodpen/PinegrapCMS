@@ -667,14 +667,18 @@ function pg_img_responsive_sets($src, $source_width, $source_extension, $formats
  *
  * auto (the width the layout gives the image, where the browser knows it)
  * comes first only for a lazy image whose CSS width fills its box
- * (pg_img_fills_width()): there the layout does not depend on the file, and
- * a catalog card 300 px wide is sent a 480 px file instead of one as wide as
- * the window. Without a CSS width Chrome lays an auto-sized image out at
- * 300 px, so it is never used there.
+ * (pg_img_fills_width()) and whose height is set by its markup or its own
+ * ratio box (pg_img_height_given()): there the layout does not depend on
+ * the file, and a catalog card 300 px wide is sent a 480 px file instead of
+ * one as wide as the window. The browser lays an auto-sized image out at
+ * 300 x 150 px (contain-intrinsic-size), ignoring the file's size: without
+ * a CSS width it is 300 px wide, without a height 150 px tall, so auto is
+ * never used there.
  *
  * @param string $width         the node's width ('48', '48px', '50%', '')
  * @param int    $natural_width the file's displayed width
- * @param bool   $auto          lazy, and its CSS width fills its box
+ * @param bool   $auto          lazy, its CSS width fills its box, and its
+ *                              height is given
  * @return string
  */
 function pg_img_sizes($width, $natural_width, $auto = false)
@@ -733,6 +737,44 @@ function pg_img_dimension($value)
 function pg_img_fills_width($class)
 {
     return (bool) preg_match('/(?:^|\s)(?:w-100|card-img|card-img-top|card-img-bottom)(?:\s|$)/', (string) $class);
+}
+
+
+/**
+ * Whether an <img> tag's own markup gives it a height: a height attribute
+ * that is a whole number above 0, or a style declaring height or
+ * aspect-ratio with a value other than auto. A declaration counts only at
+ * its start, so max-height, min-height and line-height do not.
+ *
+ * sizes="auto" needs it: the browser's stylesheet gives such an image
+ * contain: size and contain-intrinsic-size 300px 150px (both !important),
+ * so the file's own size and ratio are ignored and an image with no height
+ * of its own is drawn 150 px tall. Heights from a stylesheet are not seen.
+ *
+ * @param string $tag the <img> tag
+ * @return bool
+ */
+function pg_img_height_given($tag)
+{
+    $tag = (string) $tag;
+
+    if (preg_match('/^[0-9]+$/', trim(pg_img_tag_attr($tag, 'height'))) && ((int) pg_img_tag_attr($tag, 'height') > 0)) {
+        return true;
+    }
+
+    if (!preg_match_all('/(?:^|;)\s*(?:height|aspect-ratio)\s*:\s*([^;]*)/i', pg_img_tag_attr($tag, 'style'), $matches)) {
+        return false;
+    }
+
+    foreach ($matches[1] as $value) {
+        $value = strtolower(trim(preg_replace('/\s*!important\s*$/i', '', $value)));
+
+        if (($value !== '') && ($value !== 'auto')) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 
@@ -1174,7 +1216,7 @@ function pg_img_responsive_html($html, $resolve = 'pg_img_responsive')
         $add = ' srcset="' . h($sets['srcset']) . '"';
 
         if (!preg_match('~\ssizes\s*=~i', $tag)) {
-            $auto = (strtolower(pg_img_tag_attr($tag, 'loading')) === 'lazy') && pg_img_fills_width(pg_img_tag_attr($tag, 'class'));
+            $auto = (strtolower(pg_img_tag_attr($tag, 'loading')) === 'lazy') && pg_img_fills_width(pg_img_tag_attr($tag, 'class')) && pg_img_height_given($tag);
             $add .= ' sizes="' . h(pg_img_sizes(pg_img_tag_attr($tag, 'width'), $sets['width'], $auto)) . '"';
         }
 
