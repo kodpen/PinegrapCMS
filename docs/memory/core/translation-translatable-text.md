@@ -26,6 +26,6 @@ A URL or an e-mail address on its own can carry a per-language value (a support 
 On kodpen.com the tools form keeps an icon field (`data:image/svg+xml,<svg…>`) and a package field (`{"v":1,"uses":[…],"items":[…]}`) per record. Both were listed as pending texts (112 of them), the engines could not translate them, and the home page widget that prints the last three icons counted each as untranslated, so `/en/`, `/en/araclar` and `/en/arac/*` got `noindex` (issue #1094, PR #1171).
 
 ## What happens on a site that already stored such values?
-- Pages: at once. `pg_tr_render_rules()` went to `2026.11.0`, so `pg_tr_render_rules_check()` drops the drawn bodies and the kept robots answers once, and the next request counts without the data values.
+- Pages: at once. `pg_tr_render_rules()` went to `2026.11.0` (now `2026.11.0-2`, [[translation-source-lang-mark]]), so `pg_tr_render_rules_check()` drops the drawn bodies and the kept robots answers once, and the next request counts without the data values.
 - Store: the `translation_uses` rows stay until their owner is extracted again; the owner's rows are deleted first, so the data values drop then. For form records: the Forms group (whole-site "Update translations" or the group's "Update these texts") or "Update this page" on a page whose list or detail widget includes the records. Saving a form record does not extract. The `translation_strings` rows stay without a use: not counted, not listed, not loaded by `pg_tr_map()`.
 - Not the prune of #1018 (`pg_tr_uses_prune()`, deleted or binned pages).
