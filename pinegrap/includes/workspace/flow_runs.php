@@ -2217,11 +2217,13 @@ function ws_flow_run_refresh($run_id)
  * Tells the flow's owner that a run ended, in their inbox. The sentence sits
  * beside the inbox row as a scheduled action's notice does
  * (ws_scheduled_notices), so the line names the flow and the run; the
- * notice's action_id holds the run, which the line opens. Every run
- * that ends gets a line of its own ('separate'): the inbox keys a line by its
- * channel, message and task, all 0 here, so a line still unread would
- * otherwise take the sentence of any later run of any of the owner's flows,
- * and a failure would be written over by an unrelated success.
+ * notice's action_id holds the run, which the line opens. A chain of runs
+ * that start one another tells its root's owner on one line
+ * (flow_run_chain_notice.php). A run of another owner's flow in a chain gets
+ * a line of its own ('separate'): the inbox keys a line by its channel,
+ * message and task, all 0 here, so a line still unread would otherwise take
+ * the sentence of any later run of any of the owner's flows, and a failure
+ * would be written over by an unrelated success.
  *
  * @param array  $run
  * @param string $state done | failed
@@ -2236,21 +2238,13 @@ function ws_flow_run_tell_owner($run, $state)
         return 0;
     }
 
-    if ($state === 'failed') {
-        $failed = db_item("SELECT node_id, result FROM ws_flow_run_steps
-            WHERE run_id = '" . (int) $run['id'] . "' AND status = 'failed' ORDER BY finished_at, id LIMIT 1");
-        $node = is_array($failed) ? ws_flow_graph_node(ws_flow_run_graph($run), $failed['node_id']) : null;
+    $chained = ws_flow_run_tell_chain($run, $state, $flow, $owner_id);
 
-        $text = lang(array('string' => 'Flow “{var:1}”, run {var:2}, failed at the box {var:3}: {var:4}', 'vars' => array(
-            $flow['name'],
-            (int) $run['id'],
-            $node ? ws_flow_box_name($node) : (is_array($failed) ? (string) $failed['node_id'] : '?'),
-            is_array($failed) ? ws_flow_result_text($failed['result']) : '',
-        )));
-    } else {
-        $text = lang(array('string' => 'Flow “{var:1}”, run {var:2}, is done.', 'vars' => array($flow['name'], (int) $run['id'])));
+    if ($chained !== null) {
+        return $chained;
     }
 
+    $text = ws_flow_chain_notice_text($flow['name'], (int) $run['id'], 0, ($state === 'failed') ? ws_flow_run_failure($run, $flow) : null);
     $inbox_id = ws_notify($owner_id, 'flow_finished', array('channel_id' => 0, 'message_id' => 0, 'actor_id' => 0, 'separate' => true));
 
     // The notice keeps the run's id where a scheduled action's notice keeps
@@ -3911,17 +3905,20 @@ function ws_flow_chain_key($run_id, $node_id, $pass)
  * @param array  $source_context ws_flow_run_context() of the run that started it
  * @param string $source         the name of the flow that started it
  * @param string $source_result  the sentence of the box that led to the start
+ * @param int    $root_id        the run the chain began with, kept last so
+ *                               its line finds the chain's runs
+ *                               (flow_run_chain_notice.php); 0 for none
  * @return array
  */
-function ws_flow_chain_context($flow, $trigger, $source_context, $source, $source_result)
+function ws_flow_chain_context($flow, $trigger, $source_context, $source, $source_result, $root_id = 0)
 {
     $carried = ws_step_trigger_context($source_context);
-    unset($carried['source'], $carried['source_result']);
+    unset($carried['source'], $carried['source_result'], $carried['chain_root']);
 
     return array('trigger' => 'chain') + ws_flow_run_context_new($flow, $trigger) + $carried + array(
         'source'        => (string) $source,
         'source_result' => (string) $source_result,
-    );
+    ) + (((int) $root_id > 0) ? array('chain_root' => (int) $root_id) : array());
 }
 
 /**
@@ -4052,7 +4049,7 @@ function ws_flow_chain_start($run, $step, $node, $owner)
     $source_context = ws_flow_run_context($run);
     $values = ws_step_run_values($run, $graph, $owner, $source_context, $step);
     $context = json_encode(ws_flow_chain_context($flow, $trigger, $source_context, (string) ($source_context['flow_name'] ?? ''),
-        ws_flow_chain_source_result($graph, $node['id'], $values)), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        ws_flow_chain_source_result($graph, $node['id'], $values), ws_flow_chain_root($run, 'ws_flow_run')), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     $now = time();
 
     // Started by the owner of the flow whose box starts it, acting as the

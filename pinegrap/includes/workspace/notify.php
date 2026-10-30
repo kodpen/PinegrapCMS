@@ -120,6 +120,61 @@ function ws_notify($user_id, $kind, $data)
 }
 
 /**
+ * Sends an unread line again: its created_at moves, so it rises in the
+ * inbox and GET /workspace/inbox?changed_since= reports it once more, and
+ * its bell row takes its title now. A line read meanwhile is left as the
+ * person read it: nothing is changed and the caller writes a new line.
+ *
+ * @param int           $user_id
+ * @param int           $inbox_id
+ * @param bool          $push   wake the person's devices as for a new line
+ * @param callable|null $change what else changes with the line, called once
+ *                              it is known to be unread, before the bell
+ *                              reads its title
+ * @return bool false for a line no longer unread
+ */
+function ws_inbox_send_again($user_id, $inbox_id, $push, $change = null)
+{
+    $user_id = (int) $user_id;
+    $inbox_id = (int) $inbox_id;
+
+    db("UPDATE ws_inbox SET created_at = '" . time() . "' WHERE id = '" . $inbox_id . "' AND user_id = '" . $user_id . "' AND read_at = 0");
+
+    if ((int) mysqli_affected_rows(db::$con) !== 1) {
+        return false;
+    }
+
+    if (is_callable($change)) {
+        $change();
+    }
+
+    if (ws_bell_ready()) {
+        $row = db_item("SELECT * FROM ws_inbox WHERE id = '" . $inbox_id . "'");
+
+        if (is_array($row)) {
+            $described = ws_inbox_describe(ws_rights_for_id($user_id) + array('ecommerce' => false, 'contacts' => false, 'erp' => false), $row);
+
+            db("UPDATE notifications SET title = '" . e(mb_substr($described['title'], 0, 250)) . "', timestamp = UNIX_TIMESTAMP()
+                WHERE action = 'workspace' AND target_user_id = '" . $user_id . "' AND reference_id = '" . $inbox_id . "'");
+        }
+    }
+
+    if ($push) {
+        include_once(PG_FUNCTIONS_DIR . '/includes/push.php');
+
+        if (function_exists('pg_push_enqueue')) {
+            pg_push_enqueue($user_id, 'ws', $inbox_id, 0);
+
+            if (function_exists('pg_push_queue_run')) {
+                pg_push_queue_run(5);
+            }
+        }
+    }
+
+    return true;
+}
+
+/**
  * Wakes the devices a batch of ws_notify(..., batch) calls queued: the queue
  * is worked once for all of them rather than once per person told.
  *
