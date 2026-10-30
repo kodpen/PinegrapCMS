@@ -20,7 +20,7 @@ description: Plan (2026-10-19) for Workspace notes: export, Markdown/zip, .enex,
 ## What is still open?
 1. Headings and lists: answered in #2420 (headings in notes only); headings drawn and kept by the import since #2649 (workspace/workspace-text-headings.md); lists stay one level (every item `- `).
 2. A read-only token feed like the calendar's (default: no; sync clients use OAuth 2.1 + REST).
-3. Answered #3745 (`workflow/decisions-made-product-10.md`): channel and note attachments go as a form part over XHR with progress and Cancel, no picked-file list; built in PR #NNNN (`workspace/workspace-attachment-uploads.md`).
+3. Answered #3745 (`workflow/decisions-made-product-10.md`): channel and note attachments go as a form part over XHR with progress and Cancel, no picked-file list; built in PR #3774 (`workspace/workspace-attachment-uploads.md`).
 
 ## Where to start?
 - Item 1 (N4) once the reverse-oauth decisions are made. Read docs/memory/workspace/README.md and the workspace-notes-*.md file of the part first; light mode, `CLAUDE.md` Claim work.

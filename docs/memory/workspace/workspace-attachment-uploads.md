@@ -3,7 +3,7 @@ name: workspace-attachment-uploads
 description: How the Workspace screen sends channel and note attachments: a form part over XMLHttpRequest with a progress card and Cancel (#3745), the shared server check, base64 still taken, limits
 ---
 
-## How does a channel or note attachment travel? (PR #NNNN, decision #3745)
+## How does a channel or note attachment travel? (PR #3774, decision #3745)
 - `apiUpload(action, fields, file, name, onProgress)` in workspace.js: a `FormData` (action, token, the fields, the file as part `file`) posted to `CFG.api_url` over XMLHttpRequest, because fetch() reports no upload progress. Answer read as `api()` reads it; nginx 413 / IIS 404.13 read as "larger than this server accepts in one request".
 - Both doors use it: the channel's paperclip, drop, paste and voice (`uploadFiles()` → `ws_attach`) and a note's drop, picker and recording (`attach()` → `ws_note_file`). No FileReader, no base64: no third more on the wire, no JSON memory ceiling.
 - No list of picked files first (the notes import's `drawPick()` stays the import's): one attachment is one step.
