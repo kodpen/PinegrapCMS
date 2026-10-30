@@ -9,7 +9,7 @@ description: The product group create and edit screens share includes/forms/prod
 - `…_products_card($form)` prints the table, "Load More Products" and its script (`table_id`, `title`, `card_class`, `rows`, `total_unselected`, `loaded`, `product_group_id` 0 on create). `…_unselected_rows($products, $show_image)` draws the products not in the group yet.
 
 ## In what order are the offered products paged?
-- `…_unselected_order_sql()` (`ORDER BY timestamp DESC, id DESC`) sorts the first batch (Create 50, Edit 20) and every Load More page (`pg_panel_get_unselected_products()`, 100 per page from the count loaded). Timestamp alone tied rows stamped in one second (imports, bulk edit), and MySQL's filesort with LIMIT may order ties differently per LIMIT, so one product came twice and another never (PR #pending).
+- `…_unselected_order_sql()` (`ORDER BY timestamp DESC, id DESC`) sorts the first batch (Create 50, Edit 20) and every Load More page (`pg_panel_get_unselected_products()`, 100 per page from the count loaded). Timestamp alone tied rows stamped in one second (imports, bulk edit), and MySQL's filesort with LIMIT may order ties differently per LIMIT, so one product came twice and another never (PR #3750).
 - Load More drops a returned row whose `products[]` box is already in the table (keyed on the box, not the `<tr id>`: a child group row uses its group id).
 
 ## What does a save share?
