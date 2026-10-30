@@ -2618,7 +2618,9 @@ function _pg_cf_controls($widget_tree, $page_id = 0)
                     $ov = isset($a['value']) ? (string)$a['value'] : '';
                     if ($ov !== '') {
                         $dup = false;
-                        foreach ($out[$key]['options'] as $ex) if ($ex['value'] === $ov) { $dup = true; break; }
+                        foreach ($out[$key]['options'] as $ex) {
+                            if ($ex['value'] === $ov) { $dup = true; break; }
+                        }
                         if (!$dup) {
                             $ol = ($id !== '' && isset($labels[$id])) ? $labels[$id] : $ov;
                             $out[$key]['options'][] = array('label' => $ol, 'value' => $ov,

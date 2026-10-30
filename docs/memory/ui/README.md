@@ -179,6 +179,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - panel-dates-site-order.md: Application Access, Connected applications, Connections, the chat window and the barcode scan logs show dates in the site's date order and 12/24-hour clock
 - panel-field-title-override.md: A labelled panel field carries no title: Bootstrap 6 copies a popover title into aria-label, replacing the label as its name; what replaces the title, the scan test, what is left
 - panel-focus-ring.md: The panel's focus ring on Bootstrap 6's focus-ring tokens (step B9k): the --pg-focus-ring-* tokens, why the colour is not an alias, what was checked, which ring sizes wait for B10
+- panel-forced-colors.md: The panel in Windows High Contrast (forced colours): the one @media (forced-colors: active) block in backend.src.css, what it draws, how to add a new state to it, how it was checked
 - panel-help-links.md: Where a panel screen's help goes: get_help_url.php maps script names (and list filters) to page#anchor on pinegrap.com; the 'help' property, language prefix, private label, F1, adding a new screen.
 - panel-hint-tooltip-or-popover.md: Panel hover hints: why a bare title turns into a large header-only popover, when to use a compact tooltip (no-popover + data-bs-toggle="tooltip") and how to keep a details popover short
 - panel-icon-marks-and-filter-rows.md: Ligature status marks with a hidden text, filter-link rows as nav not tablist, list-cell text visible instead of a title, payment method shown through pg_payment_method_label() on return screens
@@ -222,6 +223,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - report-table-rows.md: Order, visitor and shipping report tables: detail rows and product names as links, percent figures through '{var:1}%' (Search Console too), named yes marks
 - required-boxes-and-seo-counter.md: Boxes the server refuses blank carry required (Delete in the same form gets formnovalidate); the SEO character counter is the field's description and says count, target and state in words
 - return-key-default-button.md: Return in a drawer form saves through a hidden nameless first submit button; Enter in the guided tour leaves a focused Skip or Back button alone
+- rich-text-editor-names.md: The rich text editor (CKEditor 4) named by its field's caption through pgCkeditorReplace(); label click focuses it; Source view names the code editor, says how Tab leaves, passes Alt+F10/Alt+0 on
 - rich-text-source-dialog.md: The rich text editor's Source dialog with the code editor: isolated in a shadow root (the dialog resets every element), sized like its textarea, Enter, Tab and used keys kept from the dialog
 - script-built-field-names.md: Dialogs and fields drawn by script after load name themselves: unique title ids, label for, aria-label from the screen's label map, Escape kept (#3029)
 - select-commit-on-pick.md: Selects that save or ask the moment they change (Translations engine, "Write with AI" tone) wait for a keyboard pick; the AI panel gives focus back after a request

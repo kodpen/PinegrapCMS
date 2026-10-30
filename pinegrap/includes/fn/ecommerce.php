@@ -868,18 +868,18 @@ function _pg_decrypt_legacy_credit_card_number($credit_card_number, $key)
     if (
         (extension_loaded('mcrypt') == FALSE)
         || (function_exists('mcrypt_decrypt') == FALSE)
-        || (in_array('rijndael-256', mcrypt_list_algorithms()) == FALSE)
+        || (in_array('rijndael-256', mcrypt_list_algorithms()) == FALSE) // phpcs:ignore PHPCompatibility.FunctionUse.RemovedFunctions.mcrypt_list_algorithmsDeprecatedRemoved,PHPCompatibility.Extensions.RemovedExtensions.mcryptDeprecatedRemoved -- guarded by extension_loaded('mcrypt') / function_exists('mcrypt_decrypt'); kept while PHP 7.1 is supported
     ) {
         return '';
     }
     $credit_card_number = base64_decode($credit_card_number);
-    $iv_size = mcrypt_get_iv_size(MCRYPT_RIJNDAEL_256, MCRYPT_MODE_CBC);
+    $iv_size = mcrypt_get_iv_size(MCRYPT_RIJNDAEL_256, MCRYPT_MODE_CBC); // phpcs:ignore PHPCompatibility.FunctionUse.RemovedFunctions.mcrypt_get_iv_sizeDeprecatedRemoved,PHPCompatibility.Extensions.RemovedExtensions.mcryptDeprecatedRemoved,PHPCompatibility.Constants.RemovedConstants.mcrypt_rijndael_256DeprecatedRemoved,PHPCompatibility.Constants.RemovedConstants.mcrypt_mode_cbcDeprecatedRemoved -- guarded by extension_loaded('mcrypt') / function_exists('mcrypt_decrypt'); kept while PHP 7.1 is supported
     if (strlen($credit_card_number) <= $iv_size) {
         return '';
     }
     $iv = substr($credit_card_number, 0, $iv_size);
     $credit_card_number = substr($credit_card_number, $iv_size);
-    $decrypted_credit_card_number = mcrypt_decrypt(MCRYPT_RIJNDAEL_256, $key, $credit_card_number, MCRYPT_MODE_CBC, $iv);
+    $decrypted_credit_card_number = mcrypt_decrypt(MCRYPT_RIJNDAEL_256, $key, $credit_card_number, MCRYPT_MODE_CBC, $iv); // phpcs:ignore PHPCompatibility.FunctionUse.RemovedFunctions.mcrypt_decryptDeprecatedRemoved,PHPCompatibility.Extensions.RemovedExtensions.mcryptDeprecatedRemoved,PHPCompatibility.Constants.RemovedConstants.mcrypt_rijndael_256DeprecatedRemoved,PHPCompatibility.Constants.RemovedConstants.mcrypt_mode_cbcDeprecatedRemoved -- guarded by extension_loaded('mcrypt') / function_exists('mcrypt_decrypt'); kept while PHP 7.1 is supported
     // remove null padding from the end
     return rtrim((string) $decrypted_credit_card_number, "\0");
 }
