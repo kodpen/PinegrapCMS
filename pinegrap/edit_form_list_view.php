@@ -63,7 +63,7 @@ $custom_form_folder_id = $row['page_folder'];
 $custom_form_name = $row['form_name'];
 
 if (isset($custom_form_name) == true) {
-    $output_custom_form_information = lang('Displays submitted forms from') . ': ' . $custom_form_name;
+    $output_custom_form_information = lang('Displays submitted forms from') . ': ' . h($custom_form_name);
 }else {
     $output_custom_form_information = lang('Displays submitted forms from') . ': ' . lang('None');
 }
@@ -568,7 +568,7 @@ if (!$_POST) {
                     }
 
                     // Add option for show by default pick list for this field.
-                    $output_browse_show_by_default_form_field_id_options .= '<option value="' . $field['id'] . '"' . $output_selected . '>' . $output_label . '</option>';
+                    $output_browse_show_by_default_form_field_id_options .= '<option value="' . $field['id'] . '"' . $output_selected . '>' . h($output_label) . '</option>';
 
                     $output_checked = '';
                     $output_shortcut_checked = '';
@@ -628,7 +628,7 @@ if (!$_POST) {
                     $output_browse_field_rows .=
                         '<div class="form-field">
                             <input type="checkbox" id="browse_field_' . $field['id'] . '" name="browse_field_' . $field['id'] . '" value="1"' . $output_checked . ' class="check collapse-switcher" data-bs-target="#browse_field_' . $field['id'] . '_row" onclick="show_or_hide_edit_form_list_view_browse_field(' . $field['id'] . ')"/>
-                            <label class="" for="browse_field_' . $field['id'] . '">' . $output_label . '</label>
+                            <label class="" for="browse_field_' . $field['id'] . '">' . h($output_label) . '</label>
                         </div>
                         <div class="collapse popover fade bs-popover-bottom p-0 mb-3 w-100" id="browse_field_' . $field['id'] . '_row">
                             <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>

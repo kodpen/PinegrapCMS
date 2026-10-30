@@ -401,7 +401,7 @@ function pg_contact_form_affiliate_card($values)
                             <label for="affiliate_commission_rate" class="form-label">' . lang('Commission Rate') . '</label>
                             <label class="form-control form-adorn form-adorn-end">
                                 <span class="form-adorn-text" aria-hidden="true">%</span>
-                                <input value="' . h(pg_contact_form_commission_rate_value($values['affiliate_commission_rate'] ?? '')) . '" type="text" name="affiliate_commission_rate" id="affiliate_commission_rate" class="form-ghost" size="3" maxlength="3" inputmode="numeric" data-inputmask-alias="decimal" data-inputmask-placeholder="0" style="text-align: right;">
+                                <input value="' . h(pg_contact_form_commission_rate_value($values['affiliate_commission_rate'] ?? '')) . '" type="text" name="affiliate_commission_rate" id="affiliate_commission_rate" class="form-ghost" size="6" maxlength="6" inputmode="decimal" data-inputmask-alias="decimal" data-inputmask-placeholder="0" style="text-align: right;">
                             </label>
                             <div class="form-text text-end">' . lang(array('string'=>'leave blank for default: {var:1}%','vars'=>AFFILIATE_DEFAULT_COMMISSION_RATE)) . '</div>
                         </div>

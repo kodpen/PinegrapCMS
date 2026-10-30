@@ -54,7 +54,7 @@ if (!$_POST) {
                 $name = $page_name;
             }
             
-            $custom_form_options[$name] = $page_id;
+            $custom_form_options[h($name)] = $page_id;
         }
     }
     

@@ -220,7 +220,7 @@ function pg_submitted_form_fields_markup($liveform, $user, $page_id, $office_use
                 $pick_list_options = array();
 
                 foreach ($options as $option) {
-                    $pick_list_options[$option['label']] =
+                    $pick_list_options[h($option['label'])] =
                         array(
                             'value' => $option['value'],
                             'default_selected' => $option['default_selected']

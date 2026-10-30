@@ -143,7 +143,7 @@ if (!$_POST) {
                     $name = $row['page_name'];
                 }
 
-                $custom_form_options[$name] = $row['page_id'];
+                $custom_form_options[h($name)] = $row['page_id'];
             }
         }
 

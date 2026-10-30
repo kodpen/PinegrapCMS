@@ -1,6 +1,6 @@
 ---
 name: output-escaping
-description: Escaping output: h() for every value in HTML, lang() in inline handlers via json_encode(), a raw & in query strings, lang() {var:N} values unescaped, form labels as text, _sdT(), PHP tags
+description: Escaping output: h() for every value in HTML, liveform values raw, lang() in handlers via json_encode(), raw & in query strings, lang() {var:N} values, form labels as text, _sdT(), PHP tags
 ---
 
 ## Which helper escapes what?
@@ -8,6 +8,10 @@ description: Escaping output: h() for every value in HTML, lang() in inline hand
 - Give `h()` an address with a plain `&` between query parameters: it encodes `&` itself, so a hand-written `&amp;` comes out as `&amp;amp;` and the parameter is lost.
 - `h()` and `escape_javascript()` are not URL validators; a user-given address after `HOSTNAME`: `platform/redirect-after-hostname.md`.
 - In the designer's JavaScript `_sdT()` returns raw text: `esc(_sdT('...'))` wherever it goes into HTML.
+
+## Does liveform escape what it prints?
+- A field's value: yes. `output_field()` prints `value="' . h($value) . '"`, so pass the raw value; a pre-escaped one shows as entities and a save posts them back. Symptom fixed in the ERP invoice/quote/order and waybill line editors (`lines[n][...]`): `Ali'nin &` showed as `Ali&#039;nin &amp;` and gained an `&amp;` layer per save (`tests/erp_names_escaping_test.php`).
+- Select option labels: no, printed as they are; key a stored name with `h()` (Transfer's tills, ERP account countries).
 
 ## Does lang() escape its {var:N} values?
 - No. `lang(array('string' => '... {var:1}', 'vars' => $x))` inserts `$x` as is, and `liveform` prints notices, warnings and errors as raw HTML. A stored name or URL that goes into a notice must be wrapped: `'vars' => h($name)`.

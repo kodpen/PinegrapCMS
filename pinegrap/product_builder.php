@@ -4436,11 +4436,11 @@ function pg_pb_render_product_screen($values = array(), $context = array())
 
                                                     <div class="col-6 lg:col-3 my-1">
                                                         <label for="primary_weight_points" class="form-label">' . lang('Primary Weight Points') . '</label>
-                                                        <input value="' . h($v('primary_weight_points', '0')) . '" type="number" step="0.01" min="0" name="primary_weight_points" id="primary_weight_points" class="form-control" />
+                                                        <input value="' . h($v('primary_weight_points', '0')) . '" type="number" step="1" min="0" inputmode="numeric" name="primary_weight_points" id="primary_weight_points" class="form-control" />
                                                     </div>
                                                     <div class="col-6 lg:col-3 my-1">
                                                         <label for="secondary_weight_points" class="form-label">' . lang('Secondary Weight Points') . '</label>
-                                                        <input value="' . h($v('secondary_weight_points', '0')) . '" type="number" step="0.01" min="0" name="secondary_weight_points" id="secondary_weight_points" class="form-control" />
+                                                        <input value="' . h($v('secondary_weight_points', '0')) . '" type="number" step="1" min="0" inputmode="numeric" name="secondary_weight_points" id="secondary_weight_points" class="form-control" />
                                                     </div>
                                                     <div class="col-6 lg:col-3 my-1">
                                                         <label for="preparation_time" class="form-label">' . lang('Preparation Time') . '</label>
@@ -4529,7 +4529,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                             'panel' =>
                                 '<div class="col-12 lg:col-6">
                                     <label class="form-label" for="recurring_profile_disabled_email_subject">' . lang('Subject') . '</label>
-                                    <input type="text" id="recurring_profile_disabled_email_subject" name="recurring_profile_disabled_email_subject" class="form-control" maxlength="100" value="' . h($v('recurring_profile_disabled_email_subject')) . '" />
+                                    <input type="text" id="recurring_profile_disabled_email_subject" name="recurring_profile_disabled_email_subject" class="form-control" maxlength="255" value="' . h($v('recurring_profile_disabled_email_subject')) . '" />
                                 </div>
                                 <div class="col-12 lg:col-6">
                                     <label class="form-label" for="recurring_profile_disabled_email_page_id">' . lang('Page') . '</label>
@@ -4899,14 +4899,14 @@ function pg_pb_render_product_screen($values = array(), $context = array())
 
                                     <div class="col-12 lg:col-4 my-3">
                                         <label for="name" class="form-label">' . lang('Product ID / SKU') . '</label>
-                                        <input type="text" name="name" id="name" class="form-control" required value="' . h($v('name')) . '" data-pg-name-except="' . (($pg_mode === 'edit') ? $pg_product_id : 0) . '" />
+                                        <input type="text" name="name" id="name" class="form-control" maxlength="100" required value="' . h($v('name')) . '" data-pg-name-except="' . (($pg_mode === 'edit') ? $pg_product_id : 0) . '" />
                                         <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                         <div class="form-text pg-pb-group-only d-none">' . lang('Used as the prefix of every variant SKU.') . '</div>
                                     </div>
 
                                     <div class="col-12 lg:col-5 my-3">
                                         ' . pg_ai_write_label_row('<label for="short_description" class="form-label">' . lang('Short Description') . '</label>', $ai_button('product_short', 'short_description'), $ai_marker('short_description', 'short_description')) . '
-                                        <input type="text" name="short_description" id="short_description" class="form-control" maxlength="255" value="' . h($v('short_description')) . '" />
+                                        <input type="text" name="short_description" id="short_description" class="form-control" maxlength="100" value="' . h($v('short_description')) . '" />
                                         <div class="form-text pg-pb-group-only d-none">' . lang('Becomes the product group name shown in the catalog.') . '</div>
                                     </div>
 
@@ -5389,7 +5389,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                                     'panel' =>
                                                         '<div class="col-12 lg:col-8">
                                                             <label class="form-label" for="gift_card_email_subject">' . lang('Subject') . '</label>
-                                                            <input type="text" id="gift_card_email_subject" name="gift_card_email_subject" class="form-control" maxlength="100" value="' . h($v('gift_card_email_subject')) . '" />
+                                                            <input type="text" id="gift_card_email_subject" name="gift_card_email_subject" class="form-control" maxlength="255" value="' . h($v('gift_card_email_subject')) . '" />
                                                             <div class="d-flex flex-wrap gap-1 mt-1" data-pg-pb-giftvar-target="gift_card_email_subject">' . $output_gift_card_variables . '</div>
                                                         </div>
     
@@ -5668,7 +5668,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                 <span class="bi ' . (($pg_mode === 'edit') ? 'bi-check-circle' : 'bi-plus-circle') . ' me-3"></span><span class="pg-btn-label">' . (($pg_mode === 'edit') ? lang(array('string' => 'Save')) : lang(array('string' => 'Create'))) . '</span>
                             </button>
                             ' . (($pg_mode === 'edit')
-                                ? '<button type="submit" name="submit_delete" value="Delete" class="btn my-1 btn-solid theme-danger" data-confirm-content="' . h(pg_catalog_bin_ready() ? lang(array('string' => 'This {var:1} will be moved to the Recycle Bin. It can be restored from the Recycle Bin in the Catalog Manager.', 'vars' => array(lang('product')))) : lang(array('string' => 'WARNING: This {var:1} will be permanently deleted.', 'vars' => array(lang('product'))))) . '"><span class="bi bi-trash me-3"></span><span class="pg-btn-label">' . lang(array('string' => 'Delete')) . '</span></button>'
+                                ? '<button type="submit" name="submit_delete" value="Delete" class="btn my-1 btn-solid theme-danger" formnovalidate data-confirm-content="' . h(pg_catalog_bin_ready() ? lang(array('string' => 'This {var:1} will be moved to the Recycle Bin. It can be restored from the Recycle Bin in the Catalog Manager.', 'vars' => array(lang('product')))) : lang(array('string' => 'WARNING: This {var:1} will be permanently deleted.', 'vars' => array(lang('product'))))) . '"><span class="bi bi-trash me-3"></span><span class="pg-btn-label">' . lang(array('string' => 'Delete')) . '</span></button>'
                                 : '')) . '
                         </div>
                     </div>
@@ -6273,6 +6273,15 @@ function pg_pb_validate_product_post($user, $product_id = 0)
     // operator would only notice later. On edit only a changed code is
     // looked up, so a catalogue that already holds a duplicate still saves.
     $names = pg_pb_posted_product_names($_POST, $product_id);
+
+    // products.name is varchar(100): a longer code would be cut on write, and
+    // two codes sharing their first 100 characters would both pass the
+    // uniqueness check below and be stored as the same code.
+    foreach ($names as $name) {
+        if (mb_strlen($name, 'UTF-8') > 100) {
+            output_error(lang(array('string' => '{var:1} can be at most {var:2} characters long.', 'vars' => array(lang('Product ID / SKU'), 100))) . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
+        }
+    }
 
     // A bundle's contents are checked before anything is written: a refused
     // component would otherwise leave the bundle switched on and empty.

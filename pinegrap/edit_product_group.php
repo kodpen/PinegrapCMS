@@ -465,7 +465,7 @@ if (!$_POST) {
         // else there is not a child object in this product group, so allow delete
         } else {
             $output_delete_button = '
-            <button type="submit" name="submit_button" value="Delete" class="btn my-1  btn-solid theme-danger " data-confirm-content="' . h(pg_catalog_bin_ready() ? lang(array('string' => 'This {var:1} will be moved to the Recycle Bin. It can be restored from the Recycle Bin in the Catalog Manager.', 'vars' => array(lang('product group')))) : lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('product group'))))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>';
+            <button type="submit" name="submit_button" value="Delete" class="btn my-1  btn-solid theme-danger " formnovalidate data-confirm-content="' . h(pg_catalog_bin_ready() ? lang(array('string' => 'This {var:1} will be moved to the Recycle Bin. It can be restored from the Recycle Bin in the Catalog Manager.', 'vars' => array(lang('product group')))) : lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('product group'))))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>';
         }
     } else {
         $output_delete_button = '';

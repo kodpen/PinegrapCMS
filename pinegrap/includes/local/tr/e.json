@@ -700,7 +700,7 @@
     "Error code (404, 403 …; empty when the error has none)": "Hata kodu (404, 403 …; hatanın kodu yoksa boş)",
     "Error generating barcode.": "Barkod oluşturulurken hata oluştu.",
     "Error message": "Hata mesajı",
-    "Error message from payment gateway: ": "Ödeme altyapısından gelen hata mesajı:",
+    "Error message from payment gateway: ": "Ödeme altyapısından gelen hata mesajı: ",
     "Error saving template.": "Şablon kaydedilirken hata oluştu.",
     "Error sound": "Hata sesi",
     "Error while get files from the update server.{var:1}": "Güncelleme sunucusundan dosyalar alınırken hata oluştu.{var:1}",

@@ -1,6 +1,6 @@
 ---
 name: product-screen-units-and-commission
-description: Product screen weight and dimensions (lb/in stored, metric typed keeps four places, unit labels through lang()) and the commission rate limit read like a dimension and held to decimal(5,2) (#2056)
+description: Product screen weight and dimensions (lb/in stored, metric keeps four places), the commission rate limit held to decimal(5,2) (#2056), and text and number boxes sized to their columns
 ---
 
 ## How are weight and dimensions stored and typed?
@@ -15,4 +15,9 @@ description: Product screen weight and dimensions (lb/in stored, metric typed ke
 ## How does the metric switch convert in the browser?
 - The switch's script (`backend.src.js`, `pgProductFigure()` and `pgProductRound()`) reads the box with either separator and rounds the converted figure to four places. Before, it multiplied the text as typed: `12,5` became `NaN` and 0.25 lb came back as `0.25000000000013883`.
 
-Test: `tests/product_screen_units_test.php`.
+## How big may the product screen's boxes be?
+- Each box takes what its column holds, because the non-strict session cuts longer text and truncates decimals without a word: Product ID / SKU and Short Description `maxlength="100"` (also the variant matrix cells in `product_builder.js`), the gift card and recurring-profile-disabled e-mail subjects `maxlength="255"` (they were 100, refusing valid subjects), Primary/Secondary Weight Points `step="1"` (`int(10) unsigned`; `step="0.01"` let 1.25 through to be stored as 1). The product group form: Name 100 and `required` in edit mode too (`edit_product_group.php` refuses it blank), Title 255.
+- `pg_pb_validate_product_post()` refuses a code over 100 characters before the uniqueness check: two long codes sharing their first 100 characters both passed it and were stored as one code.
+- Product and group Delete buttons carry `formnovalidate`, so a blank required box does not block them.
+
+Tests: `tests/product_screen_units_test.php`, `tests/product_box_limits_test.php`.
