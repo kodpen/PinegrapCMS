@@ -13,4 +13,4 @@ description: Freeing a GD image: pg_image_destroy() calls imagedestroy() only be
 - The vendored dompdf calls `imagedestroy()` itself; the test runner drops deprecations raised inside vendored folders.
 - Test: `test_image_destroy_frees_only_below_php_8` (`tests/image_gd_gif_test.php`).
 
-Related: docs/memory/platform/image-processing-engine.md, docs/memory/plans/php-compatibility-and-bugs.md
+Related: docs/memory/platform/image-processing-engine.md, docs/memory/workflow/static-analysis.md

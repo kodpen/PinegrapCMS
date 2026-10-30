@@ -15,6 +15,6 @@ description: PHP 5 remnants removed (PR #3149, #3195): the DB_LEGACY mysql_* con
 ## What is left, and what keeps it out?
 - `array_stripslashes()` (`includes/fn/core.php`) stays although nothing in the product calls it any more: custom code may.
 - `tests/php_dead_remnants_test.php` scans the product's tokens (vendored libraries and `data/` left out as in `tools/phpcs.xml`, the config template read): no `mysql_*` call, no `DB_LEGACY`, no magic quotes function or ini name, the installer included. PHPCompatibility fails a new `mysql_*` or `get_magic_quotes_gpc()` call anywhere: its baseline (`tools/phpcs-baseline.json`) holds none.
-- The `mcrypt` path of `_pg_decrypt_legacy_credit_card_number()` stays while PHP 7.1 is supported (`plans/php-compatibility-and-bugs.md`).
+- The `mcrypt` path of `_pg_decrypt_legacy_credit_card_number()` stays while PHP 7.1 is supported (`workflow/static-analysis-kept-apis.md`).
 
 Related: docs/memory/workflow/static-analysis.md, docs/memory/core/init-constants-and-config-file.md

@@ -8,12 +8,12 @@ description: CI's PHPStan level 0 and PHPCompatibility (PHP 7.1+) checks: what t
 - Vendored libraries are scanned for their classes, not analysed; `data/` (the starter sites' layouts) is skipped; the root `download_assistant.php` and `index.php` are checked.
 
 ## What are the baselines?
-- What the tree held when the checks went in (39 PHPStan errors, 200 PHPCompatibility findings), less what was fixed since: guarded APIs, the dead `mysql_*`/`pfpro`/`mcrypt` paths, PHP 8.1-8.5 deprecations, the confirmed bugs (`plans/php-compatibility-and-bugs.md`). The nested named functions left with PR #972 (PHPStan 39 → 12). `tools/phpstan-baseline.neon` counts per file and message, `tools/phpcs-baseline.json` per file and sniff (`tools/check_php_compat.php` compares). More than the count fails; fewer passes.
+- What the tree held when the checks went in (39 PHPStan errors, 200 PHPCompatibility findings), less what was fixed or marked since (the nested named functions left with PR #972, PHPStan 39 → 12). `tools/phpcs-baseline.json` holds only `submit_order.php`'s `pfpro`. `tools/phpstan-baseline.neon` counts per file and message, `tools/phpcs-baseline.json` per file and sniff (`tools/check_php_compat.php` compares). More than the count fails; fewer passes.
 - After a fix, `bash tools/static_analysis.sh --generate-baseline` in the same PR shrinks them. Never regenerate to let a new finding through; the baseline diff shows it.
 - `reportUnmatchedIgnoredErrors` is off, so a fix merged without the baseline update stays green.
 
 ## What does new code do with a newer API?
-- Guard it (`function_exists()`, `defined()`, `PHP_VERSION_ID`) and mark the line, since PHPCompatibility cannot see guards: `// phpcs:ignore PHPCompatibility.FunctionUse.NewFunctions.imageavifFound -- guarded by function_exists()`. PHPStan reads the guard itself.
+- Guard it (`function_exists()`, `defined()`, `PHP_VERSION_ID`) and mark the line, since PHPCompatibility cannot see guards: `// phpcs:ignore PHPCompatibility.FunctionUse.NewFunctions.imageavifFound -- guarded by function_exists()`. PHPStan reads the guard itself. Old APIs kept on purpose: `static-analysis-kept-apis.md`.
 - A function that always throws or exits gets `@return never` in its docblock, or PHPStan reports a missing return after a call to it (`pg_webauthn_fail()`).
 - "Constant not found" is ignored: constants come from the config at run time.
 
@@ -30,4 +30,4 @@ description: CI's PHPStan level 0 and PHPCompatibility (PHP 7.1+) checks: what t
 ## How long does it take?
 - In GitHub Actions PHPStan takes about 4.5 minutes and phpcs one; in a two-core session 2-4 minutes and 40 seconds. PHPStan's result cache makes a rerun on an unchanged tree take a second.
 
-Related: docs/memory/plans/php-compatibility-and-bugs.md, docs/memory/workflow/sandbox-and-environment.md
+Related: docs/memory/workflow/static-analysis-kept-apis.md, docs/memory/workflow/sandbox-and-environment.md

@@ -427,7 +427,7 @@ function pg_office_zip_stream()
         @stream_wrapper_restore('zip');
 
         if (function_exists('libxml_disable_entity_loader')) {
-            @libxml_disable_entity_loader(false);
+            @libxml_disable_entity_loader(false); // phpcs:ignore PHPCompatibility.FunctionUse.RemovedFunctions.libxml_disable_entity_loaderDeprecated -- guarded by function_exists(); undoes PHPExcel's switch-off, which stops XMLReader opening the sheet
         }
     }
 }
