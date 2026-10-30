@@ -290,7 +290,7 @@ if (!$_POST) {
             $filters[] = array(
                 'field' => $row['field'],
                 'operator' => $row['operator'],
-                'value' => prepare_form_data_for_output($row['value'], $field_type),
+                'value' => prepare_form_data_for_output($row['value'], $field_type, false),
                 'dynamic_value' => $row['dynamic_value'],
                 'dynamic_value_attribute' => $row['dynamic_value_attribute']
             );

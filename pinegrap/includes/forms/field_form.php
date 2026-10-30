@@ -810,7 +810,7 @@ function pg_field_form_cards($liveform, $field, $context)
                         <div class="row">
                             <div class="col-12 my-3">
                                 <label for="quiz_answer" class="form-label">' . lang('Correct Answer') . '</label>
-                                <input value="' . h(prepare_form_data_for_output($field['quiz_answer'], $field['type'])) . '" type="text" name="quiz_answer" id="quiz_answer" class="form-control"  maxlength="255"/>
+                                <input value="' . h(prepare_form_data_for_output($field['quiz_answer'], $field['type'], false)) . '" type="text" name="quiz_answer" id="quiz_answer" class="form-control"  maxlength="255"/>
                             </div>
                         </div>
                     </div>
