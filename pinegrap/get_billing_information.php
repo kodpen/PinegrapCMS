@@ -289,6 +289,9 @@ function get_billing_information($properties) {
             $form->assign_field_value('opt_in', '');
         }
 
+        // The SMS box starts ticked, as the e-mail box of a new order does.
+        $form->assign_field_value('opt_in_sms', '1');
+
         // If the visitor is logged in and not ghosting and the visitor has selected
         // that he/she does not want his/her contact info updated with the billing info
         // previously in this session, then uncheck the update contact check box.
@@ -458,6 +461,9 @@ function get_billing_information($properties) {
             
             $output_opt_in_displayed_value = 'true';
         }
+
+        // The SMS box beside it, while SMS is on and the buyer has not said yes.
+        $output_opt_in_sms = pg_consent_sms_checkout_shown($contact) ? pg_consent_sms_checkout_row($form) : '';
         
         // if po number is enabled, output po number field
         if ($po_number) {
@@ -668,6 +674,7 @@ function get_billing_information($properties) {
                         <td>' . $form->output_field(array('type'=>'text', 'name'=>'tax_office', 'maxlength'=>'100', 'class'=>'software_input_text')) . '</td>
                     </tr>
                     ' . $output_opt_in . '
+                    ' . $output_opt_in_sms . '
                     ' . $output_po_number . '
                     ' . $output_referral_source . '
 
@@ -763,6 +770,9 @@ function get_billing_information($properties) {
             $opt_in_label = '';
             $opt_in_displayed_value = 'false';
         }
+
+        // The SMS box: the layout draws it with its own opt_in_sms_shown mark.
+        $opt_in_sms = pg_consent_sms_checkout_shown($contact);
 
         settype($po_number, 'bool');
 
@@ -1094,6 +1104,8 @@ function get_billing_information($properties) {
             'custom_field_2_required' => $custom_field_2_required,
             'opt_in' => $opt_in,
             'opt_in_label' => $opt_in_label,
+            'opt_in_sms' => $opt_in_sms,
+            'opt_in_sms_label' => lang('I want to receive campaign and offer messages by SMS.'),
             'po_number' => $po_number,
             'referral_source' => $referral_source,
             'update_contact' => $update_contact,

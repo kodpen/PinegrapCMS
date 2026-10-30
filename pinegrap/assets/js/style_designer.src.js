@@ -2573,6 +2573,7 @@ const StyleDesigner = (function () {
         password_verify:      _sdT('Password again'),
         password_hint:        _sdT('Password hint (not drawn when the site setting is off)'),
         opt_in:               _sdT('Campaign consent (contact: opt_in)'),
+        opt_in_sms:           _sdT('SMS campaign consent (drawn while SMS is on and a mobile number is asked)'),
         register_remember_me: _sdT('Remember me'),
         remember_me:          _sdT('Remember me'),
         captcha_submitted_answer: _sdT('CAPTCHA answer')
@@ -34933,7 +34934,8 @@ const StyleDesigner = (function () {
                     _biField(1) + _biField(2) +
                     row(_sdT('PO number'), _biSwitch('po_number') + _biHint(_sdT('While on, the purchase order number (name: <code>po_number</code>) is drawn.'))) +
                     row(_sdT('Controls'),
-                        _biHint(_sdT('The form reads its controls by name: {var}.', '<code>billing_salutation, billing_first_name, billing_last_name, billing_company, billing_address_1, billing_address_2, billing_city, billing_state, billing_zip_code, billing_country, billing_phone_number, billing_fax_number, billing_email_address, custom_field_1, custom_field_2, po_number, referral_source, tax_number, tax_office, tax_exempt, opt_in, update_contact</code>')))
+                        _biHint(_sdT('The form reads its controls by name: {var}.', '<code>billing_salutation, billing_first_name, billing_last_name, billing_company, billing_address_1, billing_address_2, billing_city, billing_state, billing_zip_code, billing_country, billing_phone_number, billing_fax_number, billing_email_address, custom_field_1, custom_field_2, po_number, referral_source, tax_number, tax_office, tax_exempt, opt_in, opt_in_sms, update_contact</code>')) +
+                            _biHint(_sdT('The SMS box (name: <code>opt_in_sms</code>) is drawn only while SMS is on and the buyer has not said yes.')))
                 );
             }
 
@@ -35259,6 +35261,7 @@ const StyleDesigner = (function () {
                     ) +
                     '<div class="sd-prop-row"><div class="sd-prop-control" style="font-size:.66rem;color:#888;line-height:1.45">' +
                         _sdT('Core controls are recognised by name: <code>first_name</code>, <code>last_name</code>, <code>email</code>, <code>email_verify</code> (optional), <code>password</code>, <code>password_verify</code>, <code>password_hint</code>, <code>opt_in</code>, <code>username</code> (derived from the email when absent). Select any other control and bind it to a contact column with <strong>Contact binding</strong>.') +
+                        ' ' + _sdT('A control named <code>opt_in_sms</code> asks the SMS marketing question; it is drawn only while SMS is on and the form has a visible control bound to the mobile number.') +
                     '</div></div>'
                 );
             }
@@ -35722,6 +35725,7 @@ const StyleDesigner = (function () {
                     ) +
                     '<div class="sd-prop-row"><div class="sd-prop-control" style="font-size:.66rem;color:#888;line-height:1.45">' +
                         _sdT('Core controls are recognised by name: <code>member_id</code>, <code>first_name</code>, <code>last_name</code>, <code>email</code>, <code>email_verify</code> (optional), <code>password</code>, <code>password_verify</code>, <code>password_hint</code>, <code>opt_in</code>, <code>username</code> (derived from the email when absent). The member number and last name must match a member in the contacts. Select any other control and bind it to a contact column with <strong>Contact binding</strong>.') +
+                        ' ' + _sdT('A control named <code>opt_in_sms</code> asks the SMS marketing question; it is drawn only while SMS is on and the form has a visible control bound to the mobile number.') +
                     '</div></div>'
                 );
             }
@@ -36223,7 +36227,7 @@ const StyleDesigner = (function () {
                     change_password:   'email_address, current_password, new_password, new_password_verify, password_hint',
                     set_password:      'new_password, password_hint',
                     account_profile:   'first_name, last_name, title, company, business_address_1, business_address_2, business_city, business_state, business_zip_code, business_country, business_phone, mobile_phone, home_phone, business_fax, salutation, suffix, tax_number, tax_office, timezone',
-                    email_preferences: 'email_address, opt_in, contact_group',
+                    email_preferences: 'email_address, opt_in, opt_in_sms, contact_group',
                     address_book:      'ship_to_name, salutation, first_name, last_name, company, address_1, address_2, city, state, zip_code, country, address_type, phone_number',
                     account_security:  'code, current_password, name'
                 }[_regionType];
@@ -41152,7 +41156,8 @@ const StyleDesigner = (function () {
         { label: _sdT('Promotion / Preferences'), tokens: [
             ['special_offer_code',  _sdT('Special offer code')],
             ['tax_exempt',          _sdT('Tax exemption (checkbox)')],
-            ['opt_in',              _sdT('Newsletter subscription (checkbox)')]
+            ['opt_in',              _sdT('Newsletter subscription (checkbox)')],
+            ['opt_in_sms',          _sdT('SMS campaign consent (checkbox)')]
         ]},
         // Acceptance boxes. legal_preinfo / legal_contract are asked for by
         // submit_order.php while the checkout documents are switched on.
@@ -42485,6 +42490,7 @@ const StyleDesigner = (function () {
             ['has_legal_kvkk',       _sdT('A KVKK notice page or consent sentence is set')],
             ['has_legal_kvkk_notice', _sdT('A KVKK notice page is set')],
             ['has_legal_kvkk_consent', _sdT('A KVKK consent sentence is set')],
+            ['shows_opt_in_sms',     _sdT('The SMS box is offered (SMS is on and the buyer has not said yes)')],
             ['tax_exempt_allowed',   _sdT('Tax exemption is allowed')],
             ['has_discount',         _sdT('There is a discount')],
             ['has_tax',              _sdT('There is tax')],
@@ -42740,6 +42746,7 @@ const StyleDesigner = (function () {
             ['has_po_number',        _sdT('The page asks for a PO number')],
             ['has_custom_form',      _sdT('The page has a custom billing form')],
             ['shows_opt_in',         _sdT('The opt-in box is offered (the contact has not opted in)')],
+            ['shows_opt_in_sms',     _sdT('The SMS box is offered (SMS is on and the buyer has not said yes)')],
             ['can_update_contact',   _sdT('A signed-in member may update their contact')],
             ['has_referral_sources', _sdT('The site has referral sources')],
             ['has_tax_exempt',       _sdT('Tax exemption can be asked for')]
@@ -60152,6 +60159,8 @@ const StyleDesigner = (function () {
                                 // Moved out of the Order Preferences card —
                                 // last step before the visitor confirms order.
                                 checkRow('opt_in', _sdT('I want to subscribe to the campaign and offer newsletter'), 'pg-eo-opt-in mb-3'),
+                                // The SMS box beside it, only while it is offered.
+                                checkRow('opt_in_sms', _sdT('I want to receive campaign and offer messages by SMS.'), 'pg-eo-opt-in-sms mb-3', 'shows_opt_in_sms'),
                                 sem('div', 'd-grid gap-2 mt-3', [
                                     sem('button', 'btn btn-primary btn-lg', _sdT('Complete Order'),
                                         { bindings: { action: 'eo_submit_purchase' } }),
@@ -63182,6 +63191,7 @@ const StyleDesigner = (function () {
                     biReferral,
                     biCheck('tax_exempt', _sdT('Tax-Exempt?'), '_taxex', '__tax_exempt_label', 'has_tax_exempt'),
                     biCheck('opt_in', _sdT('Opt-in checkbox label'), '_optin', '__opt_in_label', 'shows_opt_in'),
+                    biCheck('opt_in_sms', _sdT('I want to receive campaign and offer messages by SMS.'), '_optinsms', '', 'shows_opt_in_sms'),
                     biCheck('update_contact', _sdT('Update my contact information with these details.'), '_upd', '', 'can_update_contact'),
                     createNode('semantic', { tag: 'div', cssClass: 'my-4', customName: _sdT('Custom Billing Form'),
                         _bindings: { eo_visible_if: 'has_custom_form' } }, [

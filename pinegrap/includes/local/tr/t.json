@@ -742,6 +742,8 @@
     "The SKU {var:1} was sent for two variants.": "{var:1} stok kodu iki varyant için gönderildi.",
     "The SMS account was not saved: {var:1}": "SMS hesabı kaydedilmedi: {var:1}",
     "The SMS account was saved without being checked: {var:1}": "SMS hesabı denetlenmeden kaydedildi: {var:1}",
+    "The SMS box (name: <code>opt_in_sms</code>) is drawn only while SMS is on and the buyer has not said yes.": "SMS kutusu (ad: <code>opt_in_sms</code>) yalnızca SMS açıkken ve alıcı henüz evet demediyse çizilir.",
+    "The SMS box is offered (SMS is on and the buyer has not said yes)": "SMS kutusu sunuluyor (SMS açık ve alıcı henüz evet demedi)",
     "The SMS provider could not be loaded.": "SMS sağlayıcısı yüklenemedi.",
     "The SMS provider may have taken a text message to +{var:1}; it is not sent again by itself: {var:2}": "SMS sağlayıcısı +{var:1} numarasına giden kısa mesajı almış olabilir; mesaj kendiliğinden yeniden gönderilmez: {var:2}",
     "The SMS queue is not available yet; run the upgrade.": "SMS kuyruğu henüz yok; yükseltmeyi çalıştırın.",
