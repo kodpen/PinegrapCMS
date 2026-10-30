@@ -14,7 +14,7 @@ description: Dashboard card lists that scroll inside the square card become name
 
 ## How is its focus shown?
 - The card clips an outer ring, so welcome.php's own `<style>` draws an inset outline (2px `--pg-primary-ink`, offset -2px) for `[data-pg-focus-key^="scroll-"]:focus-visible`.
-- Before #PR it was an inset 3px box-shadow of `--pg-focus-ring-color` (35% `#64b5f6`, about 1.3:1 on the white card): hardly visible. `tests/faint_focus_rings_test.php` pins the ink ring.
+- Before #3435 it was an inset 3px box-shadow of `--pg-focus-ring-color` (35% `#64b5f6`, about 1.3:1 on the white card): hardly visible. `tests/faint_focus_rings_test.php` pins the ink ring.
 
 ## What was not checked in a browser?
 - Nothing was rendered; pinned by `tests/dashboard_keyboard_test.php` as source checks.
