@@ -11,10 +11,11 @@
  * needs it.
  *
  * The account is kept in connect_apps under 'sms_<key>', like the carriers'
- * API applications: the user code as client_id, the password sealed with the
- * site's key and never drawn back into a form, the sender name among the
- * options and the Communication settings' switch as enabled. A provider added
- * later needs no schema change.
+ * API applications: the user code or API key as client_id, the password or
+ * API secret sealed with the site's key and never drawn back into a form, the
+ * sender name among the options and the Communication settings' switch as
+ * enabled. A provider added later needs no schema change: its definition
+ * names its two account fields as the settings card shows them.
  *
  * Every message has a kind. Transactional kinds (an order, a shipment, a
  * sign-in code, a reminder, the one back-in-stock notice a customer asked
@@ -44,17 +45,76 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 /**
  * The SMS providers, in the order the settings offer them.
  *
- * @return array key => label, file (under includes/sms/), portal
+ * Each account has two credentials, kept as user and password whatever the
+ * provider calls them: the labels and the card's help text come from here.
+ *
+ * @return array key => label, file (under includes/sms/), portal,
+ *               user_label, password_label, help (the card's line, HTML),
+ *               refused_fields
+ *               (the provider's refusal code => 'password' or 'user', the
+ *               field a refused account check marks; 'user' when not
+ *               listed), user_sends (the user code is a sender name too,
+ *               listed or not)
  */
 function pg_sms_providers()
 {
+    $netgsm = pg_sms_portal_link('Netgsm', 'https://www.netgsm.com.tr/');
+    $iletimerkezi = pg_sms_portal_link('İleti Merkezi', 'https://www.iletimerkezi.com/');
+
     return array(
         'netgsm' => array(
-            'label'  => 'Netgsm',
-            'file'   => 'netgsm.php',
-            'portal' => 'https://www.netgsm.com.tr/',
+            'label'          => 'Netgsm',
+            'file'           => 'netgsm.php',
+            'portal'         => 'https://www.netgsm.com.tr/',
+            'user_label'     => lang('User Code'),
+            'password_label' => lang('Password'),
+            'help'           => lang(array(
+                'string' => 'Enter the user code and password of an API user of your {var:1} account, and a sender name approved on it. Saving checks them with {var:1}. To remove the account from this site, switch SMS off and empty the user code.',
+                'vars'   => array($netgsm))),
+            'refused_fields' => array('30' => 'password'),
+            'user_sends'     => true,
+        ),
+        'iletimerkezi' => array(
+            'label'          => 'İleti Merkezi',
+            'file'           => 'iletimerkezi.php',
+            'portal'         => 'https://www.iletimerkezi.com/',
+            'user_label'     => lang('API Key'),
+            'password_label' => lang('API Hash'),
+            'help'           => lang(array(
+                'string' => 'Enter the API key and API hash of your {var:1} account (Settings › Security › API Access; API access must be allowed there) and a sender name approved on it. Saving checks them with {var:1}. To remove the account from this site, switch SMS off and empty the API key.',
+                'vars'   => array($iletimerkezi))),
+            'refused_fields' => array('401' => 'password'),
+            'user_sends'     => false,
         ),
     );
+}
+
+/**
+ * A provider's name linked to its site, for the settings card's help line.
+ *
+ * @param string $label
+ * @param string $portal
+ * @return string HTML
+ */
+function pg_sms_portal_link($label, $portal)
+{
+    return '<a href="' . h($portal) . '" target="_blank" rel="noopener">' . h($label) . '</a>';
+}
+
+/**
+ * The field a refused account check marks: the one the provider's code
+ * names, otherwise the user code.
+ *
+ * @param string $provider
+ * @param string $code the provider's refusal code
+ * @return string 'user' or 'password'
+ */
+function pg_sms_refused_field($provider, $code)
+{
+    $definition = pg_sms_provider_definition($provider);
+    $fields = ($definition !== null) ? $definition['refused_fields'] : array();
+
+    return (isset($fields[(string) $code]) && ($fields[(string) $code] === 'password')) ? 'password' : 'user';
 }
 
 /**
@@ -439,11 +499,13 @@ function pg_sms_senders($provider, $app)
 
 /**
  * The approved spelling of a sender name, compared without regard to case.
- * The account's own number (the user code) is a sender too, listed or not.
+ * Where the provider says so (user_sends: Netgsm, whose user code is the
+ * account's number), the user code is a sender too, listed or not; the
+ * caller passes it only then (pg_sms_sender_approved()).
  *
  * @param string $sender
  * @param array  $senders the provider's list
- * @param string $user    the account's user code
+ * @param string $user    the account's user code, '' when it sends nothing
  * @return string '' when it is not among them
  */
 function pg_sms_sender_match($sender, $senders, $user = '')
@@ -467,6 +529,22 @@ function pg_sms_sender_match($sender, $senders, $user = '')
     }
 
     return '';
+}
+
+/**
+ * The approved spelling of a sender name on a provider's account.
+ *
+ * @param string $provider
+ * @param string $sender
+ * @param array  $senders the provider's list
+ * @param string $user    the account's user code or API key
+ * @return string '' when it is not approved
+ */
+function pg_sms_sender_approved($provider, $sender, $senders, $user)
+{
+    $definition = pg_sms_provider_definition($provider);
+
+    return pg_sms_sender_match($sender, $senders, (($definition !== null) && $definition['user_sends']) ? $user : '');
 }
 
 /**
@@ -1118,8 +1196,15 @@ function pg_sms_settings_fields()
                                                             <select name="sms_provider" id="sms_provider" class="form-control">' . $options . '</select>
                                                         </div>';
 
+    // Every provider's fields are drawn and posted, so switching the select
+    // back loses nothing typed; only the chosen one's are shown
+    // (pg_sms_settings_script()).
     foreach (pg_sms_providers() as $key => $definition) {
-        $html .= pg_sms_settings_account_fields($key, $definition, ($key === $shown) ? $app : pg_sms_app($key));
+        $html .= '
+                                                        <div class="col-12" data-sms-provider="' . h($key) . '"' . (($key === $shown) ? '' : ' hidden') . '>
+                                                            <div class="row gy-5">' . pg_sms_settings_account_fields($key, $definition, ($key === $shown) ? $app : pg_sms_app($key)) . '
+                                                            </div>
+                                                        </div>';
     }
 
     if (pg_sms_queue_ready()) {
@@ -1147,6 +1232,36 @@ function pg_sms_settings_fields()
 }
 
 /**
+ * The SMS card's script: shows the account fields of the provider the select
+ * names (data-sms-provider) and hides the others. It knows no provider, so a
+ * new one needs nothing here.
+ *
+ * @return string
+ */
+function pg_sms_settings_script()
+{
+    return '
+    <script>
+        (function () {
+            var select = document.getElementById("sms_provider");
+
+            if (!select) {
+                return;
+            }
+
+            function sync() {
+                Array.prototype.forEach.call(document.querySelectorAll("[data-sms-provider]"), function (pane) {
+                    pane.hidden = pane.getAttribute("data-sms-provider") !== select.value;
+                });
+            }
+
+            select.addEventListener("change", sync);
+            sync();
+        })();
+    </script>';
+}
+
+/**
  * One provider's account fields.
  *
  * @param string $provider
@@ -1165,15 +1280,13 @@ function pg_sms_settings_account_fields($provider, $definition, $app)
         : '';
 
     return '
-                                                        <div class="col-12 form-text">' . lang(array(
-                                                            'string' => 'Enter the user code and password of an API user of your {var:1} account, and a sender name approved on it. Saving checks them with {var:1}. To remove the account from this site, switch SMS off and empty the user code.',
-                                                            'vars'   => array('<a href="' . h($definition['portal']) . '" target="_blank" rel="noopener">' . h($definition['label']) . '</a>'))) . '</div>
+                                                        <div class="col-12 form-text">' . $definition['help'] . '</div>
                                                         <div class="pg-f-md">
-                                                            <label for="' . h($name) . 'user" class="form-label">' . lang('User Code') . '</label>
+                                                            <label for="' . h($name) . 'user" class="form-label">' . h($definition['user_label']) . '</label>
                                                             <input type="text" name="' . h($name) . 'user" id="' . h($name) . 'user" class="form-control" value="' . h($app['user']) . '" maxlength="255" autocomplete="off"/>
                                                         </div>
                                                         <div class="pg-f-md">
-                                                            <label for="' . h($name) . 'password" class="form-label">' . lang('Password') . '</label>
+                                                            <label for="' . h($name) . 'password" class="form-label">' . h($definition['password_label']) . '</label>
                                                             <input type="password" name="' . h($name) . 'password" id="' . h($name) . 'password" class="form-control" value="" maxlength="255" autocomplete="new-password"' . $placeholder . '/>
                                                         </div>
                                                         <div class="pg-f-sm">
@@ -1294,15 +1407,16 @@ function pg_sms_settings_decide($post, $provider, $before, $refusal)
     }
 
     $decision['password_effective'] = ($decision['password'] !== '') ? $decision['password'] : $before['password'];
+    $definition = pg_sms_provider_definition($provider);
 
     if ($decision['user'] === '') {
-        $decision['marks'][$name . 'user'] = lang(array('string' => '{var:1} is required.', 'vars' => array(lang('User Code'))));
+        $decision['marks'][$name . 'user'] = lang(array('string' => '{var:1} is required.', 'vars' => array(h($definition['user_label']))));
     }
 
     if ($decision['password_effective'] === '') {
         $decision['marks'][$name . 'password'] = $before['password_stored']
             ? lang('SMS is switched on but cannot send: the stored password cannot be read with this site\'s encryption key. Enter it again.')
-            : lang(array('string' => '{var:1} is required.', 'vars' => array(lang('Password'))));
+            : lang(array('string' => '{var:1} is required.', 'vars' => array(h($definition['password_label']))));
     }
 
     if ($decision['sender'] === '') {
@@ -1379,7 +1493,7 @@ function pg_sms_settings_check($post, $liveform)
         'sender'   => $decision['sender']));
 
     if ($check['ok']) {
-        $approved = pg_sms_sender_match($decision['sender'], $check['senders'], $decision['user']);
+        $approved = pg_sms_sender_approved($provider, $decision['sender'], $check['senders'], $decision['user']);
 
         if ($approved !== '') {
             $decision['sender'] = $approved;
@@ -1393,7 +1507,7 @@ function pg_sms_settings_check($post, $liveform)
                 'vars'   => array($label))));
         }
     } elseif ($check['refused']) {
-        $liveform->mark_error(($check['code'] === '30') ? $name . 'password' : $name . 'user', h($check['error']));
+        $liveform->mark_error($name . pg_sms_refused_field($provider, $check['code']), h($check['error']));
     } else {
         // The provider could not be asked (no answer, an unreadable one, an
         // outage, a limit): the account is kept unchecked rather than the

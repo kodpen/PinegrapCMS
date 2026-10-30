@@ -253,6 +253,8 @@ $pg_settings_cards[] = '
                             </div>
                         </div>';
 
+$pg_settings_scripts[] = pg_sms_settings_script();
+
 // ── SMS messages ──
 // The order's own text messages: a switch and a template per event
 // (includes/fn/sms_messages.php).
