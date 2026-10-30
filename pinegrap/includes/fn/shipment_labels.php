@@ -215,9 +215,32 @@ function pg_shipment_label_marketplace_ready()
 }
 
 /**
+ * Whether a marketplace account has its packages' labels made by the
+ * marketplace (mp_label_accounts_offer()), so the orders list offers the bulk
+ * label buttons without a carrier label service. The marketplace layer is
+ * loaded only when an active account exists. Once a request.
+ *
+ * @return bool
+ */
+function pg_shipment_label_marketplace_offers()
+{
+    static $offers = null;
+
+    if ($offers === null) {
+        $offers = pg_shipment_labels_ready()
+            && ((int) db_value("SELECT COUNT(*) FROM marketplace_accounts WHERE status = 'active'") > 0)
+            && pg_shipment_label_marketplace_ready()
+            && mp_label_accounts_offer(mp_accounts('', 'active'));
+    }
+
+    return $offers;
+}
+
+/**
  * The marketplace's label of an order's address (mp_label_ship_to()): offer
  * ('create' while the marketplace makes the label of this package now,
- * 'print' or '' once it has one), label_id, map_id, account_id, provider and
+ * 'print' or '' once it has one), carried (its carrier takes the parcel
+ * without that label), label_id, map_id, account_id, provider and
  * name. null for an address of an order no marketplace brought in; the
  * marketplace layer is loaded only for one that did.
  *
@@ -514,7 +537,10 @@ function pg_shipment_label_rows($ship_to_id)
  * An address that already has an active label of the kind asked for gets no
  * second one: a second create() would buy a second shipment. Nor does a
  * package whose marketplace makes its label for its own carrier now
- * (pg_shipment_label_marketplace()): its parcel goes with that carrier.
+ * (pg_shipment_label_marketplace()): its parcel goes with that carrier. Nor
+ * does one the marketplace's carrier takes without that label (another
+ * carrier, or a package no longer open): it travels on the marketplace's
+ * account already.
  *
  * @param bool       $ready   pg_shipment_labels_ready()
  * @param array|null $order   status of the address's order, null when none
@@ -523,10 +549,13 @@ function pg_shipment_label_rows($ship_to_id)
  * @param bool       $return
  * @param string     $marketplace the name of the marketplace that makes the
  *                                label, '' for none
+ * @param string     $carried     the name of the marketplace whose carrier
+ *                                takes the parcel without its label, '' for none
  * @return array code (not_ready, not_found, not_completed, label_exists,
- *               marketplace_label, no_driver; '' when nothing refuses), error
+ *               marketplace_label, marketplace_carried, no_driver; '' when
+ *               nothing refuses), error
  */
-function pg_shipment_label_create_refusal($ready, $order, $active, $driver, $return = false, $marketplace = '')
+function pg_shipment_label_create_refusal($ready, $order, $active, $driver, $return = false, $marketplace = '', $carried = '')
 {
     if (!$ready) {
         return array('code' => 'not_ready', 'error' => lang('Run the software update first: the table for shipping labels is missing.'));
@@ -550,6 +579,13 @@ function pg_shipment_label_create_refusal($ready, $order, $active, $driver, $ret
         return array('code' => 'marketplace_label', 'error' => lang(array(
             'string' => '{var:1} makes the label of this parcel for its own carrier: get it with Get {var:1} label. A carrier label service\'s label would be a second shipment.',
             'vars'   => array((string) $marketplace),
+        )));
+    }
+
+    if ((string) $carried !== '') {
+        return array('code' => 'marketplace_carried', 'error' => lang(array(
+            'string' => '{var:1}\'s contracted carrier takes this parcel, but its common label does not cover it. A carrier label service\'s label would be a second shipment: handle it in the {var:1} seller panel.',
+            'vars'   => array((string) $carried),
         )));
     }
 
@@ -580,6 +616,7 @@ function pg_shipment_label_create_check($ship_to_id, $return = false)
     $active = 0;
     $driver = '';
     $marketplace_name = '';
+    $carried_name = '';
 
     if ($ready) {
         $ship_to = db_item(
@@ -607,9 +644,10 @@ function pg_shipment_label_create_check($ship_to_id, $return = false)
 
         $marketplace = $return ? null : pg_shipment_label_marketplace((int) $ship_to['id']);
         $marketplace_name = ($marketplace && ($marketplace['offer'] === 'create')) ? $marketplace['name'] : '';
+        $carried_name = ($marketplace && !empty($marketplace['carried'])) ? $marketplace['name'] : '';
     }
 
-    $refusal = pg_shipment_label_create_refusal($ready, $order, $active, $driver, $return, $marketplace_name);
+    $refusal = pg_shipment_label_create_refusal($ready, $order, $active, $driver, $return, $marketplace_name, $carried_name);
 
     $out['code'] = $refusal['code'];
     $out['error'] = $refusal['error'];

@@ -5861,7 +5861,9 @@ function _pg_sw_search_collect($query, $cfg, $advanced = null)
     if ($advanced === null) $advanced = defined('SEARCH_TYPE') && SEARCH_TYPE === 'advanced';
     $path         = defined('PATH') ? PATH : '/';
     $host         = (defined('URL_SCHEME') ? URL_SCHEME : '') . (defined('HOSTNAME') ? HOSTNAME : '');
-    $page_row     = function ($title, $name_or_url, $excerpt, $is_url = false) use ($path, $host) {
+    // $item: a search_items row read with its page's name and title
+    // (pg_search_item_type()), so a record or a file is not labelled a page.
+    $page_row     = function ($title, $name_or_url, $excerpt, $is_url = false, $item = null) use ($path, $host) {
         $url = $is_url ? $path . $name_or_url : $path . encode_url_path((string)$name_or_url);
         // On a page in another language the title reads in it; the link gets
         // the language's directory with the rest of the page's links.
@@ -5869,12 +5871,25 @@ function _pg_sw_search_collect($query, $cfg, $advanced = null)
             $title   = pg_tr_text((string)$title, 'text', 'seo');
             $excerpt = pg_tr_text((string)$excerpt, 'text', 'seo');
         }
+        $type  = 'page';
+        $label = '';
+        if (is_array($item)) {
+            $type = pg_search_item_type($item);
+            // A record (or an event) is named by the page that shows it:
+            // "Topic", "Guide"; a page without a title says "Record".
+            if ($type === 'record') {
+                $label = isset($item['page_title']) ? trim((string)$item['page_title']) : '';
+                if ($label !== '' && function_exists('pg_tr_text')) $label = pg_tr_text($label, 'text', 'seo');
+                if ($label === '') $label = lang('Record');
+            }
+        }
         return array(
             'title'    => ((string)$title !== '') ? (string)$title : $host . $url,
             'url'      => $url,
             'full_url' => $host . $url,
             'excerpt'  => (string)$excerpt,
-            'type'     => 'page',
+            'type'     => $type,
+            'type_label' => $label,
             'image'    => '',
             'price'    => '',
             // The page, for its search sections (_pg_sw_search_attach_sections());
@@ -5976,39 +5991,40 @@ function _pg_sw_search_collect($query, $cfg, $advanced = null)
             if (!$folders) return $out;
             $sql_folders = "(search_items.folder_id IN (" . implode(',', array_map('intval', $folders)) . ")) AND ";
         }
-        // A single word without quotes is searched as an exact phrase, so
-        // "multi-recipient" does not match "multi" and "recipient" apart.
-        $filter = $query;
-        if (mb_strpos($filter, ' ') === false && mb_strpos($filter, '"') === false) $filter = '"' . $filter . '"';
-        $score   = $filter;
-        $boolean = '';
-        if (mb_strpos($filter, '"') !== false || mb_strpos($filter, '+') !== false) {
-            $boolean = ' IN BOOLEAN MODE';
-            $score   = str_replace(array('"', '+'), '', $score);
-        }
-        $featured = db_items(
-            "SELECT id, url, title, description,
-                    MATCH(keywords) AGAINST ('" . e($score) . "') AS score
-             FROM search_items
-             WHERE $sql_folders (MATCH(keywords) AGAINST('" . e($filter) . "'$boolean))
-             ORDER BY score DESC LIMIT 100");
+        // Boolean operators a word does not carry are dropped
+        // (pg_search_boolean_terms()); nothing searchable left finds nothing.
+        $filter = pg_search_boolean_terms($query);
+        $featured = $results = array();
+        $score   = pg_search_score_terms($filter);
+        $mode    = pg_search_needs_boolean_mode($filter) ? ' IN BOOLEAN MODE' : '';
+        // Pages since binned, archived or removed stay out until the index
+        // is rebuilt.
+        $sql_live = pg_search_items_live_sql(pg_recycle_bin_folder_ids());
+        if ($filter !== '') $featured = pg_search_fulltext_items(
+            "SELECT search_items.id, url, title, description, search_items.page_id,
+                    sp.page_name, sp.page_title,
+                    MATCH(keywords) AGAINST (?) AS score
+             FROM search_items LEFT JOIN page AS sp ON sp.page_id = search_items.page_id
+             WHERE $sql_folders (MATCH(keywords) AGAINST(?$mode))$sql_live
+             ORDER BY score DESC LIMIT 100", array($score, $filter));
         $not_featured = '';
-        foreach ((array)$featured as $item) {
-            $out['featured'][] = $page_row($item['title'], $item['url'], $item['description'], true);
-            $not_featured .= "(id != '" . (int)$item['id'] . "') AND ";
+        foreach ($featured as $item) {
+            $out['featured'][] = $page_row($item['title'], $item['url'], $item['description'], true, $item);
+            $not_featured .= "(search_items.id != '" . (int)$item['id'] . "') AND ";
         }
-        $results = db_items(
-            "SELECT url, title, description,
-                    ((3 * (MATCH(title) AGAINST ('" . e($score) . "')))
-                   + (2 * (MATCH(description) AGAINST ('" . e($score) . "')))
-                   + (1 * (MATCH(content) AGAINST ('" . e($score) . "')))) AS score
-             FROM search_items
-             WHERE $sql_folders $not_featured (MATCH(content) AGAINST('" . e($filter) . "'$boolean))
-             ORDER BY score DESC LIMIT 100");
-        foreach ((array)$results as $item) {
-            $out['pages'][] = $page_row($item['title'], $item['url'], $item['description'], true);
+        if ($filter !== '') $results = pg_search_fulltext_items(
+            "SELECT url, title, description, search_items.page_id,
+                    sp.page_name, sp.page_title,
+                    ((3 * (MATCH(title) AGAINST (?)))
+                   + (2 * (MATCH(description) AGAINST (?)))
+                   + (1 * (MATCH(content) AGAINST (?)))) AS score
+             FROM search_items LEFT JOIN page AS sp ON sp.page_id = search_items.page_id
+             WHERE $sql_folders $not_featured (MATCH(content) AGAINST(?$mode))$sql_live
+             ORDER BY score DESC LIMIT 100", array($score, $score, $score, $filter));
+        foreach ($results as $item) {
+            $out['pages'][] = $page_row($item['title'], $item['url'], $item['description'], true, $item);
         }
-        $out['limited'] = (is_array($results) && count($results) === 100);
+        $out['limited'] = (count($results) === 100);
         $out['pages'] = _pg_sw_search_merge_pages($tr_pages, $out['pages']);
         $out['featured'] = _pg_sw_search_attach_sections($out['featured'], $query);
         $out['pages']    = _pg_sw_search_attach_sections($out['pages'], $query);
@@ -6385,7 +6401,7 @@ function _render_system_widget_search_results($tree_json, $widget_id, $cfg = arr
     $loop_template = str_replace('<!--pg-sr-pagination-->', $pagination_html, $loop_template);
     $static_html   = str_replace('<!--pg-sr-pagination-->', $pagination_html, $static_html);
 
-    $type_labels = array('page' => lang('Page'), 'product' => lang('Product'), 'product group' => lang('Product Group'));
+    $type_labels = array('page' => lang('Page'), 'file' => lang('File'), 'product' => lang('Product'), 'product group' => lang('Product Group'));
     $loop_rendered = '';
     // A tree without a loop_area has nowhere to put rows: it renders once.
     if ($loop_template !== '' && $static_html !== '') {
@@ -6396,7 +6412,8 @@ function _render_system_widget_search_results($tree_json, $widget_id, $cfg = arr
                 '__result_full_url'     => $r['full_url'],
                 '__result_excerpt'      => $r['excerpt'],
                 '__result_type'         => $r['type'],
-                '__result_type_label'   => isset($type_labels[$r['type']]) ? $type_labels[$r['type']] : '',
+                '__result_type_label'   => (isset($r['type_label']) && $r['type_label'] !== '') ? $r['type_label']
+                                         : (isset($type_labels[$r['type']]) ? $type_labels[$r['type']] : ''),
                 '__result_image'        => $r['image'],
                 '__result_price'        => $r['price'],
                 '__result_is_featured'  => $r['featured'],

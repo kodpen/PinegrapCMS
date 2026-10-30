@@ -8738,6 +8738,10 @@ function pg_design_template_install($template_id, $user, $opts = array())
         }
     }
 
+    // The new design's pages and records are in the site search after the
+    // next scheduled tick, not the next day's index run.
+    if (function_exists('pg_search_index_refresh_soon')) pg_search_index_refresh_soon();
+
     log_activity(lang(array('string' => 'style ({var:1}) was created', 'vars' => array($tp['style_name']))), isset($user['username']) ? (string)$user['username'] : '');
 
     return array(

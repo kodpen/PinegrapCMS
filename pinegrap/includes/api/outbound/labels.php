@@ -135,6 +135,37 @@ function mp_label_offer($row, $stage, $label, $ships_itself, $carrier_ok) {
 
 }
 
+// Whether a package travels on the marketplace's carrier without the
+// marketplace making its label now: the account does not ship itself, so
+// the parcel is on the carrier the marketplace contracts, but the common
+// label does not cover it (another carrier, or a stage no longer open). A
+// carrier label service's label for it would be a second shipment. Pure.
+function mp_label_carried($offer, $ships_itself) {
+
+	return !$ships_itself && is_array($offer) && isset($offer['offer']) && ($offer['offer'] !== 'create');
+
+}
+
+// Whether any of these accounts has its packages' labels made by the
+// marketplace: active, a connector that makes labels, and not shipping
+// itself. Pure over the account rows (mp_accounts()).
+function mp_label_accounts_offer($accounts) {
+
+	foreach ((array)$accounts as $account) {
+
+		if (is_array($account) && isset($account['status'], $account['provider']) && ($account['status'] === 'active')
+			&& mp_label_can((string)$account['provider']) && !mp_account_ships_itself($account)) {
+
+			return true;
+
+		}
+
+	}
+
+	return false;
+
+}
+
 // The offers of the packages the Imported orders card shows, by order id
 // (mp_label_offer()). Two queries for the whole list: the orders' labels of
 // this marketplace, and the shipping method code of each order's first
@@ -599,11 +630,12 @@ function mp_label_keep($account, $map, $ship_to_id, $number, $label, $user_id) {
 // The marketplace's label of an order's address, for the order screen, the
 // orders list's bulk Create Labels and the create check of a carrier label
 // (includes/fn/shipment_labels.php): the package's map row and account, and
-// what mp_label_offer() says. null when the address is not the first one of
+// what mp_label_offer() says, and whether the marketplace's carrier takes the
+// parcel without that label (mp_label_carried()). null when the address is not the first one of
 // an order imported from a marketplace whose connector makes labels; the
 // import records the package's cargo number on that address.
 //
-// Answers offer, label_id, map_id, account_id, provider and name.
+// Answers offer, carried, label_id, map_id, account_id, provider and name.
 function mp_label_ship_to($ship_to_id) {
 
 	$ship_to = db_item("SELECT id, order_id, shipping_method_code FROM ship_tos WHERE id = '" . e((int)$ship_to_id) . "'");
@@ -635,11 +667,14 @@ function mp_label_ship_to($ship_to_id) {
 		ORDER BY id DESC
 		LIMIT 1");
 
+	$ships_itself = mp_account_ships_itself($account);
+
 	$offer = mp_label_offer($map, mp_order_stage($account, $map), $label ? $label : null,
-		mp_account_ships_itself($account), mp_label_carrier_ok($provider, $ship_to['shipping_method_code']));
+		$ships_itself, mp_label_carrier_ok($provider, $ship_to['shipping_method_code']));
 
 	return array(
 		'offer'      => $offer['offer'],
+		'carried'    => mp_label_carried($offer, $ships_itself),
 		'label_id'   => $offer['label_id'],
 		'map_id'     => (int)$map['id'],
 		'account_id' => (int)$account['id'],

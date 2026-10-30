@@ -2552,3 +2552,36 @@ function test_workspace_flows_canvas_start_box_tell_choice()
 		pg_assert_contains("'" . $key . "'", ws_flows_canvas_test_strings_source());
 	}
 }
+
+// The setup panel of a saved template asks the table of its row boxes with
+// a picker of the tables the person reaches: only those whose rows they may
+// change once a box adds or changes rows, every table read for a row start.
+function test_workspace_flows_canvas_template_table_picker()
+{
+	$script = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js');
+	$strings = ws_flow_js_strings();
+
+	pg_assert_true(strpos($script, "table: 'fl_tpl_set_table'") !== false, 'the table setting has its label');
+	pg_assert_true(strpos($script, "type === 'table'") !== false, 'the setup panel draws a table picker');
+	pg_assert_true(isset($strings['fl_tpl_set_table']), 'the label is handed over');
+
+	$result = ws_flows_canvas_test_node(
+		array('stepLists', 'setupTables'),
+		<<<'JS'
+var FL = { steps: { tables: [{ id: 4, name: 'Deals', edit: true, columns: [] }, { id: 5, name: 'Read only', edit: false, columns: [] }] } };
+var graph = { nodes: [{ id: 'start', kind: 'row' }, { id: 'add', kind: 'row_add' }] };
+var out = {
+    start: setupTables({ graph: graph }, { type: 'table', targets: [['start', 'table_id']] }).map(function (table) { return table.id; }),
+    write: setupTables({ graph: graph }, { type: 'table', targets: [['start', 'table_id'], ['add', 'table_id']] }).map(function (table) { return table.id; })
+};
+console.log(JSON.stringify(out));
+JS
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same(array(4, 5), $result['start'], 'a row start reads any table reached');
+	pg_assert_same(array(4), $result['write'], 'a row written: only tables the person may change');
+}
