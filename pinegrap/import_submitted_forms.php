@@ -212,6 +212,12 @@ if (!$_POST) {
 
             // loop through all rows of data in CSV file
             while ($row = fgetcsv($handle, 100000, ",", '"', '\\')) {
+                // A blank line or a row of commas is not a submitted form:
+                // pass over it, uncounted.
+                if (pg_import_row_is_blank($row)) {
+                    continue;
+                }
+
                 // insert submitted form
                 $query =
                     "INSERT INTO forms (

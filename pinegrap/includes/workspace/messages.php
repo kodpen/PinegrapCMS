@@ -510,6 +510,62 @@ function ws_app_sender($app_id)
 }
 
 /**
+ * The senders a list of message rows names, read once for the whole list:
+ * the people (user senders and the team's writers of mail answers) and the
+ * mails (ws_mail_items_map()).
+ *
+ * @param array[] $rows ws_messages rows
+ * @return array array(people, mail), for ws_message_row_sender()
+ */
+function ws_message_rows_senders($rows)
+{
+    $mail = function_exists('ws_mail_items_map') ? ws_mail_items_map($rows) : array();
+    $ids = array();
+
+    foreach ((array) $rows as $row) {
+        if ((string) $row['sender_kind'] === 'user') {
+            $ids[] = (int) $row['sender_id'];
+        }
+    }
+
+    foreach ($mail as $item) {
+        if (((string) ($item['direction'] ?? 'in') === 'out') && ((int) $item['user_id'] > 0)) {
+            $ids[] = (int) $item['user_id'];
+        }
+    }
+
+    return array(ws_people(array_unique($ids)), $mail);
+}
+
+/**
+ * Who wrote a message row where it is listed outside its channel (pinned
+ * bar, Ctrl+K, Home): a person, an application, a guest of a room or the
+ * sender of a mail (an answer the team sent: its writer).
+ *
+ * @param array $row    ws_messages row
+ * @param array $people ws_message_rows_senders() people
+ * @param array $mail   ws_message_rows_senders() mail
+ * @return array|null
+ */
+function ws_message_row_sender($row, $people, $mail = array())
+{
+    $id = (int) $row['sender_id'];
+
+    switch ((string) $row['sender_kind']) {
+        case 'user':
+            return $people[$id] ?? null;
+        case 'app':
+            return ws_app_sender($id);
+        case 'guest':
+            return function_exists('ws_guest_sender') ? ws_guest_sender($id) : null;
+        case 'mail':
+            return function_exists('ws_mail_sender') ? ws_mail_sender($mail[$id] ?? null, $people) : null;
+    }
+
+    return null;
+}
+
+/**
  * A line the system writes into a channel: who created it, who joined, which
  * task was finished.
  *

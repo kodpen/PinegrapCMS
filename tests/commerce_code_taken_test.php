@@ -136,3 +136,31 @@ function test_country_and_state_screens_check_the_code_before_writing()
 		pg_assert_true($write !== false && $check < $write, $file . ' checks before it writes');
 	}
 }
+
+function test_country_code_is_compared_trimmed()
+{
+	$calls = array();
+	$taken = commerce_code_taken_test_stub(array('US'), $calls);
+	$message = lang('The code that you entered is already in use by another country, please enter a different code.');
+
+	pg_assert_same($message, pg_country_form_code_error(' US', null, null, $taken), 'a padded code is refused beside the plain one');
+	pg_assert_same(array('US', null), $calls[0], 'the lookup runs on the trimmed code');
+
+	$calls = array();
+	pg_assert_same('', pg_country_form_code_error('US', ' US', 4, $taken), 'a legacy padded stored code posted back unchanged saves');
+	pg_assert_same(array(), $calls, 'no lookup for the unchanged legacy code');
+}
+
+function test_state_code_is_compared_trimmed()
+{
+	$calls = array();
+	$taken = commerce_code_taken_test_stub(array('TX'), $calls);
+	$message = lang('The code that you entered is already in use by another state in this country, please enter a different code.');
+
+	pg_assert_same($message, pg_state_form_code_error(array('code' => ' TX', 'country_id' => '1'), null, null, $taken), 'a padded code is refused beside the plain one');
+	pg_assert_same(array('TX', 1, null), $calls[0], 'the lookup runs on the trimmed code');
+
+	$calls = array();
+	pg_assert_same('', pg_state_form_code_error(array('code' => 'TX', 'country_id' => '1'), array('code' => 'TX ', 'country_id' => '1'), 9, $taken), 'a legacy padded stored code posted back unchanged saves');
+	pg_assert_same(array(), $calls, 'no lookup for the unchanged legacy code');
+}

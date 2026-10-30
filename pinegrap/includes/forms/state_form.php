@@ -20,7 +20,9 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 
 /**
  * The posted name, code and country id as text, in INSERT/UPDATE order.
- * A missing or non-scalar value is empty.
+ * A missing or non-scalar value is empty. The name and the code are
+ * trimmed: checkout matches the code against the trimmed visitor post, and
+ * the PAD SPACE collation ignores trailing but not leading spaces.
  *
  * @param array $post The posted form ($_POST)
  * @return array  'name', 'code', 'country_id'
@@ -32,6 +34,9 @@ function pg_state_form_values($post)
     foreach (array('name', 'code', 'country_id') as $key) {
         $values[$key] = (isset($post[$key]) && is_scalar($post[$key])) ? (string) $post[$key] : '';
     }
+
+    $values['name'] = trim($values['name']);
+    $values['code'] = trim($values['code']);
 
     return $values;
 }
@@ -72,15 +77,16 @@ function pg_state_form_code_taken($code, $country_id, $except_id = null)
  */
 function pg_state_form_code_error($values, $stored, $except_id, $taken = 'pg_state_form_code_taken')
 {
-    $code = (string) $values['code'];
+    $code = trim((string) $values['code']);
 
-    if (trim($code) === '') {
+    if ($code === '') {
         return '';
     }
 
     if (
         ($stored !== null)
-        && ($code === (string) $stored['code'])
+        // A legacy padded stored code posted back unchanged arrives trimmed.
+        && ($code === trim((string) $stored['code']))
         && ((int) $values['country_id'] === (int) $stored['country_id'])
     ) {
         return '';

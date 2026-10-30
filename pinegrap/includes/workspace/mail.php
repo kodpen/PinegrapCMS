@@ -904,14 +904,16 @@ function ws_mail_items_map($rows)
  * with letters for a picture, like a guest of a room; an answer the team
  * sent, under its writer.
  *
- * @param array|null $item ws_mail_items row
+ * @param array|null $item   ws_mail_items row
+ * @param array|null $people ws_people() already read for the page, or null
  * @return array
  */
-function ws_mail_sender($item)
+function ws_mail_sender($item, $people = null)
 {
     // An answer the team sent: its writer, from the mailbox's address.
-    if (is_array($item) && ((string) ($item['direction'] ?? 'in') === 'out') && ((int) $item['user_id'] > 0) && function_exists('ws_people')) {
-        $people = ws_people(array((int) $item['user_id']));
+    if (is_array($item) && ((string) ($item['direction'] ?? 'in') === 'out') && ((int) $item['user_id'] > 0)
+        && (isset($people[(int) $item['user_id']]) || function_exists('ws_people'))) {
+        $people = isset($people[(int) $item['user_id']]) ? $people : ws_people(array((int) $item['user_id']));
 
         if (isset($people[(int) $item['user_id']])) {
             return array_merge($people[(int) $item['user_id']], array('title' => (string) $item['from_email'], 'mail' => true));

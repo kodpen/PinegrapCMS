@@ -1152,6 +1152,97 @@ function pg_csv_open($path)
     return $copy;
 }
 
+// The separator of an imported CSV file, read from its header line: of the
+// comma, the semicolon and the tab, the one the line holds most; the comma
+// when it holds none (a file of one column). Excel saves a CSV file with the
+// list separator of the computer's region, a semicolon in Turkish.
+function pg_csv_separator($header_line)
+{
+    $header_line = (string) $header_line;
+    $best = ',';
+    $most = substr_count($header_line, ',');
+
+    foreach (array(';', "\t") as $separator) {
+        $count = substr_count($header_line, $separator);
+
+        if ($count > $most) {
+            $best = $separator;
+            $most = $count;
+        }
+    }
+
+    return $best;
+}
+
+// Reads the header line of a handle from pg_csv_open() for its separator and
+// moves back to where that line started, so fgetcsv() reads the headings
+// next. Never back to 0: that would land on a byte order mark the open
+// stepped over, which left in front of a quoted heading keeps the quotes in
+// the name.
+function pg_csv_read_separator($handle)
+{
+    $start = (int) ftell($handle);
+    $header_line = (string) fgets($handle);
+    fseek($handle, $start);
+
+    return pg_csv_separator($header_line);
+}
+
+// The number of file lines a row read by fgetcsv() took: a quoted cell can
+// hold line breaks. Used to name a row by the line it starts on.
+function pg_csv_row_lines($row)
+{
+    return 1 + preg_match_all('/\r\n?|\n/', implode('', (array) $row));
+}
+
+// Whether a row read by fgetcsv() holds no value: a blank line, or one of
+// separators and spaces only, which Excel writes for an emptied row.
+function pg_csv_row_blank($row)
+{
+    foreach ((array) $row as $value) {
+        if (trim((string) $value) !== '') {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+// The headings of an imported file as one line of text for a message:
+// trimmed, blank ones left out, joined with commas. Not escaped.
+function pg_csv_headings_text($headings)
+{
+    $names = array();
+
+    foreach ((array) $headings as $heading) {
+        $heading = trim((string) $heading);
+
+        if ($heading !== '') {
+            $names[] = $heading;
+        }
+    }
+
+    return implode(', ', $names);
+}
+
+// The lines of an imported file that were skipped or changed, as
+// 'Line n: reason' texts: the first $limit of them, then one line counting
+// the rest. $problems is a list of array(line number, reason). Not escaped.
+function pg_csv_problem_list($problems, $limit = 20)
+{
+    $list = array();
+
+    foreach (array_slice((array) $problems, 0, $limit) as $problem) {
+        $list[] = lang(array('string' => 'Line {var:1}: {var:2}', 'vars' => array($problem[0], $problem[1])));
+    }
+
+    if (count($problems) > $limit) {
+        $list[] = lang(array('string' => 'and {var:1} more line(s) that could not be used.', 'vars' => array(count($problems) - $limit)));
+    }
+
+    return $list;
+}
+
 // glob() with brace alternatives ("{csv,xlsx}", "{,.}") on every PHP build.
 // GLOB_BRACE is a GNU extension: PHP built against musl (Alpine images) or
 // another non-GNU libc does not define the constant, and naming it there is a

@@ -378,18 +378,13 @@ function ws_channel_board_files($viewer, $channel, $q)
         LIMIT 100");
 
     $hidden = ws_message_hidden_ids($viewer['id'], array_map(function ($row) { return (int) $row['id']; }, $rows));
-    $senders = array();
     $files = array();
 
     foreach ($rows as $row) {
-        if ($row['sender_kind'] === 'user') {
-            $senders[] = (int) $row['sender_id'];
-        }
-
         $files[] = (int) $row['file_id'];
     }
 
-    $people = ws_people(array_unique($senders));
+    list($people, $mail) = ws_message_rows_senders($rows);
     $stored = array();
 
     if (!empty($files)) {
@@ -410,7 +405,7 @@ function ws_channel_board_files($viewer, $channel, $q)
 
         $kind = ws_file_kind($name);
         $url = PATH . encode_url_path($stored[(int) $row['file_id']]);
-        $by = ws_palette_sender_name($row, $people);
+        $by = ws_palette_sender_name($row, $people, $mail);
         $when = ws_time_label($row['created_at']);
 
         $out[] = array(

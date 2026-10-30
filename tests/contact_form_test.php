@@ -27,6 +27,26 @@ function test_contact_form_posted()
 	pg_assert_same('', pg_contact_form_posted(array('first_name' => array('x')), 'first_name'), 'array field');
 }
 
+function test_contact_form_affiliate_code_is_trimmed()
+{
+	$lookups = array();
+	$taken = function ($code, $contact_id) use (&$lookups) {
+		$lookups[] = array($code, $contact_id);
+		return false;
+	};
+	$generate = function () {
+		return 'GEN123';
+	};
+
+	pg_assert_same('abc', pg_contact_form_affiliate_code(array('affiliate_code' => ' abc '), 5, $taken, $generate), 'the saved code is trimmed');
+	pg_assert_same(array(array('abc', 5)), $lookups, 'the duplicate lookup runs on the trimmed code');
+
+	$lookups = array();
+	pg_assert_same('', pg_contact_form_affiliate_code(array('affiliate_code' => '   '), 5, $taken, $generate), 'a code of only spaces is blank');
+	pg_assert_same('GEN123', pg_contact_form_affiliate_code(array('affiliate_code' => '   ', 'affiliate_approved' => '1'), 5, $taken, $generate), 'approved with only spaces gets a generated code');
+	pg_assert_same(array(), $lookups, 'no duplicate lookup for a blank code');
+}
+
 function test_contact_form_columns()
 {
 	$post = array(
