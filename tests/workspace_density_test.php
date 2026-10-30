@@ -27,6 +27,7 @@ function workspace_density_test_js()
 function workspace_density_test_compact_rules()
 {
 	$css = (string) file_get_contents(dirname(__DIR__) . '/pinegrap/assets/css/backend.src.css');
+	$css = (string) preg_replace('~/\*.*?\*/~s', '', $css);
 
 	preg_match_all('/([^{}]*\.ws-compact[^{}]*)\{([^{}]*)\}/', $css, $matches, PREG_SET_ORDER);
 
@@ -38,7 +39,7 @@ function test_workspace_density_key_and_values()
 	$js = workspace_density_test_js();
 
 	pg_assert_contains("var DENSITY_KEY = 'ws-density';", $js, 'the density is kept under ws-density');
-	pg_assert_contains("=== 'compact' ? 'compact' : 'comfortable'", $js, 'compact or comfortable, comfortable by default');
+	pg_assert_contains("=== 'compact') ? 'compact' : 'comfortable'", $js, 'compact or comfortable, comfortable by default');
 	pg_assert_contains("classList.toggle('ws-compact', value === 'compact')", $js, 'compact sets the one class on the root');
 }
 

@@ -11134,7 +11134,8 @@ html[data-bs-theme="dark"] body .workspace-color {
 
 /* The workspace's own accent, on its screens and in its drawers elsewhere,
    and the scale every workspace rule measures with: four corner radii from
-   a chip to a drawer, four spaces, four sizes of face, two shadows. The
+   a chip to a drawer, four spaces, a row's and a header's padding,
+   four sizes of face, two shadows. The
    RGB numbers are --workspace-color written out, for rgba(); the two are
    kept together here so a change to one is a change to both. */
 body.workspace,
@@ -11151,6 +11152,9 @@ body.workspace,
   --ws-space-2: .5rem;
   --ws-space-3: .75rem;
   --ws-space-4: 1rem;
+  --ws-row-y: .3rem;
+  --ws-head-y: .6rem;
+  --ws-head-h: 3.4rem;
   --ws-avatar-xs: 1rem;
   --ws-avatar-sm: 1.6rem;
   --ws-avatar: 2.2rem;
@@ -11166,6 +11170,20 @@ html[data-bs-theme="dark"] [id^="ws-"] {
   --ws-soft: rgba(var(--ws-accent-rgb), .1);
   --ws-shadow: 0 1px 2px rgba(0, 0, 0, .2), 0 10px 30px -14px rgba(0, 0, 0, .5);
   --ws-shadow-accent: 0 .75rem 1.5rem -.75rem rgba(var(--ws-accent-rgb), .35);
+}
+/* Compact density, chosen per browser in the overview's header
+   (workspace.js sets the class on <html> before the first draw): the same
+   screens with the spaces narrowed, so only the tokens change here. */
+html.ws-compact body.workspace,
+html.ws-compact .ws-app,
+html.ws-compact [id^="ws-"] {
+  --ws-space-1: .15rem;
+  --ws-space-2: .35rem;
+  --ws-space-3: .5rem;
+  --ws-space-4: .65rem;
+  --ws-row-y: .1rem;
+  --ws-head-y: .35rem;
+  --ws-head-h: 2.8rem;
 }
 
 /* Focus rings follow the keyboard, not the mouse: the workspace is full of
@@ -11442,16 +11460,16 @@ button.ws-thread-bar:hover {
   }
 }
 .ws-side-head {
-  padding: .75rem .75rem .5rem;
+  padding: var(--ws-space-3, .75rem) var(--ws-space-3, .75rem) var(--ws-space-2, .5rem);
   display: flex;
-  gap: .5rem;
+  gap: var(--ws-space-2, .5rem);
   align-items: center;
 }
 .ws-side-scroll {
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
-  padding: 0 .5rem .75rem;
+  padding: 0 var(--ws-space-2, .5rem) var(--ws-space-3, .75rem);
 }
 .ws-side-section {
   margin-top: .75rem;
@@ -11512,7 +11530,7 @@ button.ws-thread-bar:hover {
   color: var(--pg-fg-body);
   text-align: left;
   border-radius: var(--ws-radius-sm);
-  padding: .3rem .5rem;
+  padding: var(--ws-row-y, .3rem) var(--ws-space-2, .5rem);
   font-size: .9rem;
   text-decoration: none;
 }
@@ -12104,10 +12122,10 @@ html[data-bs-theme="dark"] .ws-group-icon {
 .ws-head {
   display: flex;
   align-items: center;
-  gap: .75rem;
-  padding: .6rem 1rem;
+  gap: var(--ws-space-3, .75rem);
+  padding: var(--ws-head-y, .6rem) var(--ws-space-4, 1rem);
   border-bottom: 1px solid var(--pg-border-color);
-  min-height: 3.4rem;
+  min-height: var(--ws-head-h, 3.4rem);
 }
 .ws-head-title {
   flex: 1 1 auto;
@@ -12259,7 +12277,7 @@ html[data-bs-theme="dark"] .ws-head[data-ws-colored] .ws-head-icon {
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
-  padding: .75rem 1rem;
+  padding: var(--ws-space-3, .75rem) var(--ws-space-4, 1rem);
 }
 /* Only the pane gives way when the screen is short: the header, the tabs and
    the composer keep their height (the tabs scroll sideways, so without this
@@ -12308,7 +12326,7 @@ html[data-bs-theme="dark"] .ws-head[data-ws-colored] .ws-head-icon {
   display: grid;
   grid-template-columns: 2.2rem minmax(0, 1fr);
   gap: .6rem;
-  padding: .3rem .5rem;
+  padding: var(--ws-row-y, .3rem) var(--ws-space-2, .5rem);
   border-radius: var(--ws-radius-sm);
 }
 .ws-msg:hover {
@@ -17314,7 +17332,7 @@ html[data-bs-theme="dark"] .ws-fd-tone-text-2 { --ws-fd-tone: #f0c060; }
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
-  padding: 1rem;
+  padding: var(--ws-space-4, 1rem);
 }
 .ws-home-hello {
   font-size: 1.15rem;

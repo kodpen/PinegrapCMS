@@ -279,6 +279,9 @@ function ws_home_js_strings()
     return array(
         'home'                => lang('Overview'),
         'home_hello'          => ws_js_template('Hello, {var:1}', 1),
+        'density'             => lang('Density'),
+        'density_comfortable' => lang('Comfortable'),
+        'density_compact'     => lang('Compact'),
         'home_tasks'          => lang('Coming up'),
         'home_tasks_count'    => ws_js_template('{var:1} open task(s)', 1),
         'home_tasks_overdue'  => ws_js_template('{var:1} overdue', 1),
