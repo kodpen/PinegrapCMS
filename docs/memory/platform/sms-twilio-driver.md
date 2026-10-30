@@ -1,6 +1,6 @@
 ---
 name: sms-twilio-driver
-description: Twilio SMS driver (includes/sms/twilio.php, PR #NNNN): Basic auth, Messages.json form POST, IncomingPhoneNumbers check, Messaging Service SID, sender rule, error codes, retry and uncertain rules
+description: Twilio SMS driver (includes/sms/twilio.php, PR #3647): Basic auth, Messages.json form POST, IncomingPhoneNumbers check, Messaging Service SID, sender rule, error codes, retry and uncertain rules
 ---
 
 ## What does Twilio take?
