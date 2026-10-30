@@ -159,7 +159,7 @@ foreach ($connections as $connection) {
 	}
 
 	$meta = array(
-		lang(array('string' => 'Connected on {var:1}', 'vars' => get_absolute_time(array('timestamp' => (int)$connection['created_timestamp'], 'type' => 'date')))),
+		lang(array('string' => 'Connected on {var:1}', 'vars' => get_absolute_time(array('timestamp' => (int)$connection['created_timestamp'], 'type' => 'date', 'format' => 'plain_text')))),
 		lang('Last used') . ' ' . connected_apps_ago($connection['last_used_timestamp'])
 	);
 

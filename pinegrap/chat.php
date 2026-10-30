@@ -602,7 +602,7 @@ function pg_chat_last_seen_label($timestamp)
         return lang(array('string' => '{var:1} day{suffix:1} ago', 'vars' => $count, 'suffix' => ($count == 1 ? '' : 's')));
     }
 
-    return get_absolute_time(array('timestamp' => $timestamp, 'type' => 'date'));
+    return get_absolute_time(array('timestamp' => $timestamp, 'type' => 'date', 'format' => 'plain_text'));
 }
 
 // Exact "last seen" timestamp for tooltips (empty when never logged in).
@@ -610,7 +610,7 @@ function pg_chat_last_seen_exact($timestamp)
 {
     $timestamp = (int) $timestamp;
 
-    return ($timestamp > 0) ? get_absolute_time(array('timestamp' => $timestamp)) : '';
+    return ($timestamp > 0) ? get_absolute_time(array('timestamp' => $timestamp, 'format' => 'plain_text')) : '';
 }
 
 function pg_chat_role_label($role)

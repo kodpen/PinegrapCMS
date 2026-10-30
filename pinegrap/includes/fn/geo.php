@@ -617,7 +617,7 @@ function pg_geo_settings_note()
     $database = is_array($status['database'])
         ? lang(array(
             'string' => 'Location database: {var:1}, {var:2} address ranges, built on {var:3}.',
-            'vars'   => array((string) $status['database']['version'], pg_format_number((int) $status['database']['rows4'] + (int) $status['database']['rows6'], 0), get_absolute_time(array('timestamp' => (int) $status['database']['built_at'], 'type' => 'date')))))
+            'vars'   => array((string) $status['database']['version'], pg_format_number((int) $status['database']['rows4'] + (int) $status['database']['rows6'], 0), get_absolute_time(array('timestamp' => (int) $status['database']['built_at'], 'type' => 'date', 'format' => 'plain_text')))))
         : lang('There is no location database yet. It is downloaded when a setting needs the visitor\'s location: on saving, and then once a month by the general job.');
 
     return '
