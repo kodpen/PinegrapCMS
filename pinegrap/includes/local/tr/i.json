@@ -303,6 +303,7 @@
     "In the Dropbox App Console, choose Create app, then Scoped access and App folder.": "Dropbox App Console'da Create app'i, ardından Scoped access ve App folder'ı seçin.",
     "In the ERP: {var:1}": "ERP'de: {var:1}",
     "In the Microsoft Entra admin center, open App registrations and choose New registration.": "Microsoft Entra yönetim merkezinde App registrations bölümünü açın ve New registration seçin.",
+    "In the Recycle Bin": "Geri Dönüşüm Kutusu'nda",
     "In the app, open Settings and choose Calendar feed.": "Uygulamada Ayarlar'ı açın ve Takvim beslemesi'ni seçin.",
     "In the application's Google Cloud project, enable the Google Search Console API and the Site Verification API.": "Uygulamanın Google Cloud projesinde Google Search Console API'sini ve Site Verification API'sini etkinleştirin.",
     "In the archive": "Arşivde",

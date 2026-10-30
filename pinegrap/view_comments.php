@@ -161,6 +161,10 @@ while ($row = mysqli_fetch_assoc($result)) {
     $comments[] = $row;
 }
 
+// Folders of the Recycle Bin: a comment on a page there gets no link to the
+// site (the page is not on it) and a badge saying where its page is.
+$bin_folders = array_flip(array_map('intval', (array) pg_recycle_bin_folder_ids()));
+
 // loop through styles in order to prepare to output them
 foreach ($comments as $comment) {
     // if user does not have access then output error
@@ -168,6 +172,7 @@ foreach ($comments as $comment) {
 
 
     $folder_id = $comment['page_folder'];
+    $binned = isset($bin_folders[(int) $comment['page_folder']]);
 
 
     // Set checkmark in variable
@@ -215,7 +220,9 @@ foreach ($comments as $comment) {
         
         $output_reference_button = '';
         $form_reference_code = '';
-        if($comment['item_type'] === 'submitted_form'){
+        if ($binned) {
+            // The page is in the Recycle Bin: no address to go to.
+        }else if($comment['item_type'] === 'submitted_form'){
             //if this is custom page check referance code from forms
             $form_reference_code = $comment['reference_code'];
             if($form_reference_code != ''){
@@ -255,7 +262,7 @@ foreach ($comments as $comment) {
                     <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
                     ' . $output_reference_button . '
                 </td>
-                <td class="align-middle chart_label">' . h(pg_comment_display_name($comment['name'])) . ((int) $comment['verified_order_id'] > 0 ? ' <span class="badge theme-success fw-light">' . h(lang('Verified purchase')) . '</span>' : '') . '</td>
+                <td class="align-middle chart_label">' . h(pg_comment_display_name($comment['name'])) . ((int) $comment['verified_order_id'] > 0 ? ' <span class="badge theme-success fw-light">' . h(lang('Verified purchase')) . '</span>' : '') . ($binned ? ' <span class="badge theme-secondary fw-light">' . h(lang('In the Recycle Bin')) . '</span>' : '') . '</td>
                 <td class="align-middle text-center">' . $output_published_check_mark . '</td>
                 <td class="align-middle text-center">' . $output_featured_check_mark . '</td>
                 <td class="align-middle"><span class="badge theme-primary fw-light">'.$output_date_and_time.'</span></td>

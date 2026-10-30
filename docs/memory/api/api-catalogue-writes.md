@@ -22,6 +22,7 @@ description: External API writes to products, groups, pages and key codes: the s
 
 ## Why may a key code not equal an offer's code?
 - Checkout looks a typed code up in `offers.code` first and reads `key_codes.code` only when no offer has it, so a key code equal to an offer's code is never applied. Every place that writes or generates a code checks both tables: `api_key_code_own_or_fail()`, `api_key_code_generate()` (`includes/api/resources/key_codes.php`); codes compare as the database collation does, so case does not make a second code.
+- The offer editor's `offer_save` (`edit_offer_f.php`) refuses a new or changed offer code a key code holds, under the code field (`_pg_offer_code_key_code_error()`, error key `offer.code`). Offers sharing one code with each other are not refused.
 
 ## Where are the related rules?
 - Text limits of these routes: `api-text-field-limits.md`. Bulk stock quantities: `api-bulk-inventory-quantity.md`. Product fields and variants: `products-variant-model.md`.

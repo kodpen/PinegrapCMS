@@ -17,15 +17,6 @@ if (!defined('PG_TEST_RUNNER')) {
 	exit;
 }
 
-// Files that still print a date element through h(); the check skips them.
-// view_order.php: two arrival and delivery dates.
-// api_settings.php: a device's "since", an application's created date and
-// an OAuth client's "Registered on".
-function absolute_time_text_skipped_files()
-{
-	return array('view_order.php', 'api_settings.php');
-}
-
 function absolute_time_text_source($file)
 {
 	return (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
@@ -97,7 +88,7 @@ function test_absolute_time_text_escaped_calls_take_plain_text()
 			continue;
 		}
 		$relative = str_replace('\\', '/', substr($file->getPathname(), strlen($root) + 1));
-		if (strpos($relative, 'data/') === 0 || strpos($relative, 'includes/local/') === 0 || in_array($relative, absolute_time_text_skipped_files(), true)) {
+		if (strpos($relative, 'data/') === 0 || strpos($relative, 'includes/local/') === 0) {
 			continue;
 		}
 		$source = (string) file_get_contents($file->getPathname());
@@ -130,6 +121,12 @@ function test_absolute_time_text_dates_escaped_later_take_plain_text()
 		'print_order.php' => array("\$output_arrival_date = get_absolute_time(array('timestamp' => strtotime(\$ship_tos[\$key]['arrival_date']), 'type' => 'date', 'format' => 'plain_text'));"),
 		'includes/fn/widgets_order_preview.php' => array("get_absolute_time(array('timestamp' => strtotime((string)\$r['arrival_date']), 'type' => 'date', 'size' => 'long', 'format' => 'plain_text'))"),
 		'includes/fn/widgets_shipping_method.php' => array("get_absolute_time(array('timestamp' => strtotime((string)\$recipient['arrival_date']), 'type' => 'date', 'size' => 'long', 'format' => 'plain_text'))"),
+		'view_order.php' => array("\$output_arrival_date = get_absolute_time(array('timestamp' => strtotime(\$ship_tos[\$key]['arrival_date']), 'type' => 'date', 'format' => 'plain_text'));"),
+		// "since" and "created" go to JSON drawn through esc() in the page script.
+		'api_settings.php' => array(
+			"'since'    => get_absolute_time(array('timestamp' => (int)\$row['created_timestamp'], 'type' => 'date', 'format' => 'plain_text')),",
+			"'created'     => get_absolute_time(array('timestamp' => (int)\$app['created_timestamp'], 'type' => 'date', 'format' => 'plain_text')),",
+		),
 		'view_visitor_report.php' => array("get_absolute_time(array('timestamp' => \$row['start_timestamp'], 'type' => 'date and time', 'timezone_type' => 'site', 'format' => 'plain_text'))"),
 	);
 	foreach ($pins as $file => $needles) {

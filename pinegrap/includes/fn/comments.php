@@ -1346,6 +1346,73 @@ function pg_comment_return_url($path, $comment_id, $featured)
     return $parts['path'] . '?' . http_build_query($query, '', '&');
 }
 
+/**
+ * The WHERE fragment that leaves out comments on pages in the Recycle Bin:
+ * the moderation queue, its count and the greeting show only work someone
+ * can act on, and a binned page is not shown on the site. $bin_folder_ids is
+ * pg_recycle_bin_folder_ids()'s answer: the bin folder and its descendants.
+ * The query must LEFT JOIN page ON comments.page_id = page.page_id; the
+ * IS NULL arm keeps a comment whose page is gone (the join gives NULL).
+ * Ids are cast to integers, ids not above 0 dropped, the rest de-duplicated
+ * and sorted. No id (or a value that is not an array) gives ''. Pure.
+ *
+ * @param mixed $bin_folder_ids
+ * @return string
+ */
+function pg_comment_live_page_sql($bin_folder_ids)
+{
+    $ids = array();
+
+    foreach ((is_array($bin_folder_ids) ? $bin_folder_ids : array()) as $id) {
+        $id = (is_scalar($id) && !is_bool($id)) ? (int) $id : 0;
+
+        if ($id > 0) {
+            $ids[$id] = $id;
+        }
+    }
+
+    if (!$ids) {
+        return '';
+    }
+
+    sort($ids);
+
+    return ' AND (page.page_folder IS NULL OR page.page_folder NOT IN (' . implode(',', $ids) . '))';
+}
+
+/**
+ * The name a panel screen shows for a comment's page. A page sent to the
+ * Recycle Bin is renamed pgbin_<page_id>_<name> so its address is free
+ * (includes/explorer/recycle_names.php); the label takes that prefix off
+ * when it carries this page's own id and a name follows it. Any other name
+ * is returned as it is; a name that is not a value gives ''. Pure.
+ *
+ * @param mixed $page_name
+ * @param mixed $page_id
+ * @return string
+ */
+function pg_comment_page_label($page_name, $page_id)
+{
+    if (!is_scalar($page_name) || is_bool($page_name)) {
+        return '';
+    }
+
+    $page_name = (string) $page_name;
+    $id = (is_scalar($page_id) && !is_bool($page_id)) ? (int) $page_id : 0;
+
+    if ($id <= 0) {
+        return $page_name;
+    }
+
+    $prefix = (defined('PG_RECYCLE_PARK_PREFIX') ? PG_RECYCLE_PARK_PREFIX : 'pgbin_') . $id . '_';
+
+    if ((strlen($page_name) > strlen($prefix)) && (strpos($page_name, $prefix) === 0)) {
+        return substr($page_name, strlen($prefix));
+    }
+
+    return $page_name;
+}
+
 // The thread as a page shows it. The plural pg_comments_* helpers decide what
 // a page's comment thread is: the page's comment settings, whether the thread
 // takes new comments, who reads it, which comments they read and the order

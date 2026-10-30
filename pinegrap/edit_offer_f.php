@@ -928,6 +928,38 @@ function _pg_offer_validate($payload)
             'actions'    => $actions));
 }
 
+// Checkout looks a typed code up in offers first and reads key_codes only
+// when no offer has it, so an offer given a key code's code silently turns
+// that key code off. Only a new or changed, non-empty code is looked up:
+// offers saved before this check keep saving. Returns the message or ''.
+function _pg_offer_code_key_code_error($code, $stored_code, $key_code_taken = '_pg_offer_key_code_taken')
+{
+    $code = (string) $code;
+    if (($code === '') || (($stored_code !== null) && ($code === (string) $stored_code))) {
+        return '';
+    }
+    return $key_code_taken($code)
+        ? lang('A key code already uses this code. Checkout would apply the offer and the key code would stop working.')
+        : '';
+}
+
+function _pg_offer_key_code_taken($code)
+{
+    $result = db_q("SELECT id FROM key_codes WHERE code = ? LIMIT 1", array((string) $code)) or output_error('Query failed.');
+    return mysqli_num_rows($result) > 0;
+}
+
+// The stored code of an offer being edited; null for a new offer.
+function _pg_offer_stored_code($offer_id)
+{
+    if ((int) $offer_id <= 0) {
+        return null;
+    }
+    $result = db_q("SELECT code FROM offers WHERE id = ?", array((int) $offer_id)) or output_error('Query failed.');
+    $row = mysqli_fetch_assoc($result);
+    return $row ? (string) $row['code'] : null;
+}
+
 function _pg_offer_valid_date($date)
 {
     if (!preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', (string) $date, $parts)) {
@@ -1950,6 +1982,12 @@ function pg_offer_editor_handle($request)
 
         case 'offer_save':
             $checked = _pg_offer_validate($request);
+            if (!isset($checked['errors']['offer.code'])) {
+                $code_error = _pg_offer_code_key_code_error($checked['clean']['offer']['code'], _pg_offer_stored_code($checked['clean']['offer']['id']));
+                if ($code_error !== '') {
+                    $checked['errors']['offer.code'] = $code_error;
+                }
+            }
             if ($checked['errors']) {
                 respond(array(
                     'status'  => 'error',

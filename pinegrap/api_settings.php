@@ -709,7 +709,7 @@ if (api_devices_ready()) {
 				'name'     => (string)$row['name'],
 				'platform' => (string)$row['platform'],
 				'version'  => (string)$row['app_version'],
-				'since'    => get_absolute_time(array('timestamp' => (int)$row['created_timestamp'], 'type' => 'date')),
+				'since'    => get_absolute_time(array('timestamp' => (int)$row['created_timestamp'], 'type' => 'date', 'format' => 'plain_text')),
 				'used_text' => api_settings_ago($row['last_used_timestamp']),
 				'ip'       => (string)$row['last_used_ip']
 			);
@@ -1013,7 +1013,7 @@ foreach ($apps as $app) {
 		'key'         => $app['api_key'],
 		'hint'        => $app['api_secret_hint'],
 		'owner'       => $app['owner_username'],
-		'created'     => get_absolute_time(array('timestamp' => (int)$app['created_timestamp'], 'type' => 'date')),
+		'created'     => get_absolute_time(array('timestamp' => (int)$app['created_timestamp'], 'type' => 'date', 'format' => 'plain_text')),
 		'status'      => $app['status'],
 		'ip'          => $app['ip_allowlist'],
 		'expires'     => ((int)$app['expires_at'] > 0) ? date('Y-m-d', (int)$app['expires_at']) : '',
@@ -1514,7 +1514,7 @@ if ($oauth_in_use || !empty($oauth_clients)) {
 		$meta = array(
 			lang(array('string' => '{var:1} connection{suffix:1}', 'vars' => pg_format_number((int)$client['connections'], 0), 'suffix' => ((int)$client['connections'] == 1) ? '' : 's')),
 			lang('Last used') . ' ' . api_settings_ago($client['last_used_timestamp']),
-			lang(array('string' => 'Registered on {var:1}', 'vars' => get_absolute_time(array('timestamp' => (int)$client['created_timestamp'], 'type' => 'date'))))
+			lang(array('string' => 'Registered on {var:1}', 'vars' => get_absolute_time(array('timestamp' => (int)$client['created_timestamp'], 'type' => 'date', 'format' => 'plain_text'))))
 		);
 
 		if ((string)$client['software_version'] !== '') {

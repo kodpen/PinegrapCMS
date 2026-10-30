@@ -31,7 +31,27 @@ if (!$row) {
     output_error(lang('Record not found.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.', 404);
 }
 
-if (!$_POST) {
+// A save whose code another country has draws the form again with what was
+// typed and the message under the code field; nothing is written. Delete
+// is never held back by the code.
+$values = pg_country_form_values($row);
+$errors = array();
+
+if ($_POST) {
+    validate_token_field();
+
+    $values = pg_country_form_values($_POST);
+
+    if (($_POST['submit_delete'] ?? '') != 'Delete') {
+        $code_error = pg_country_form_code_error($values['code'], (string) $row['code'], $id);
+
+        if ($code_error !== '') {
+            $errors['code'] = $code_error;
+        }
+    }
+}
+
+if (!$_POST || $errors) {
     $output =
         pg_page_shell([
             'title'=> lang('Edit Country'),
@@ -50,7 +70,7 @@ if (!$_POST) {
                     <form name="form" action="edit_country.php" method="post">
                         ' . get_token_field() . '
                         <input type="hidden" name="id" value="' . $id . '">
-                        ' . pg_country_form_card(pg_country_form_values($row)) . '
+                        ' . pg_country_form_card($values, $errors) . '
                         <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                             <div class="container">
                                 <div class="btn-group flex-wrap justify-content-center">
@@ -69,10 +89,6 @@ if (!$_POST) {
     echo $output;
 
 } else {
-    validate_token_field();
-
-    $values = pg_country_form_values($_POST);
-
     if (($_POST['submit_delete'] ?? '') == 'Delete') {
         // Clear everything tied to each state of the country before the states themselves.
         $result = db_q("SELECT id FROM states WHERE country_id = ?", array($id)) or output_error('Query failed.');
