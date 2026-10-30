@@ -159,9 +159,14 @@ function erp_drawer_account($account_id)
     ))));
 
     $contact = ((int) $account['contact_id'] > 0) ? erp_contact_summary((int) $account['contact_id']) : null;
-    $output_contact = is_array($contact)
-        ? '<a href="edit_contact.php?id=' . (int) $account['contact_id'] . '" class="pg-link-body-emphasis">' . h((string) ($contact['name'] ?? ('#' . (int) $account['contact_id']))) . '</a>'
-        : '';
+    $output_contact = '';
+    if (is_array($contact)) {
+        $output_contact = h((string) ($contact['name'] ?? ('#' . (int) $account['contact_id'])));
+        // Linked only for a viewer edit_contact.php would let in.
+        if (pg_can_open_contact(null, (int) $account['contact_id'])) {
+            $output_contact = '<a href="edit_contact.php?id=' . (int) $account['contact_id'] . '" class="pg-link-body-emphasis">' . $output_contact . '</a>';
+        }
+    }
 
     $output_card = '
     <div class="d-flex align-items-baseline flex-wrap gap-3 mb-5">
