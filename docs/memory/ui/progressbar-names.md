@@ -9,6 +9,7 @@ description: Names of panel progress bars (role="progressbar"): the sentence goe
 ## Which bars are named?
 - The Workspace task card in channel messages (`ws_task_card_html()` in `includes/workspace/tasks.php`): "{var:1} of {var:2} items done".
 - The channel board card (`assets/js/workspace_board_channel.js`): `t('progress_text')` ("{var:1} of {var:2} items · {var:3}%").
+- The Convert to text meter under voice messages (`pg_voice_text.js`): the status text (`ui/voice-text-keyboard.md`).
 - Pinned by `tests/progressbar_names_test.php`.
 
 ## Which are not yet?
