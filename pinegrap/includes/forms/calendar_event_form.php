@@ -626,12 +626,10 @@ function pg_calendar_event_form_cards($liveform, $user, $calendars, $calendar_ev
                                         <div class="col-12 md:col-4 my-3">
                                             <label for="name" class="form-label">' . lang(array('string'=>'{var:1} Name','vars'=>lang('Event'))) . '</label>
                                             ' . $liveform->output_field(array('type'=>'text', 'name'=>'name', 'id'=>'name', 'class'=>'form-control', 'maxlength'=>'100', 'required'=>'required')) . '
-                                            <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                         </div>
                                         <div class="col-12 md:col-8 my-3">
                                             <label for="short_description" class="form-label">' . lang('Short Description') . '</label>
                                             ' . $liveform->output_field(array('type'=>'text', 'name'=>'short_description', 'id'=>'short_description', 'class'=>'form-control', 'maxlength'=>'255')) . '
-                                            <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                         </div>
                                         <div class="col-12 my-5">
                                             <label for="full_description" class="form-label">' . lang('Full Description') . '</label>
@@ -889,17 +887,14 @@ function pg_calendar_event_form_cards($liveform, $user, $calendars, $calendar_ev
                                                         <div class="col-12 md:col-4 my-3">
                                                             <label for="reserve_button_label" class="form-label">' . lang('Reserve Button Label') . '</label>
                                                             ' . $liveform->output_field(array('type'=>'text', 'name'=>'reserve_button_label', 'id'=>'reserve_button_label', 'class'=>'form-control', 'maxlength'=>'50')) . '
-                                                            <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                                         </div>
                                                         <div class="col-12 md:col-4 my-3">
                                                             <label for="product_id" class="form-label">' . lang('Reservation Product') . '</label>
                                                             ' . $liveform->output_field(array('type'=>'select', 'name'=>'product_id', 'id'=>'product_id', 'class'=>'form-control', 'options'=>get_product_options(true, $product_id))) . '
-                                                            <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                                         </div>
                                                         <div class="col-12 md:col-4 my-3">
                                                             <label for="next_page_id" class="form-label">' . lang('Next Page') . '</label>
                                                             ' . $liveform->output_field(array('type'=>'select', 'name'=>'next_page_id', 'id'=>'next_page_id', 'class'=>'form-control', 'options'=>get_page_options())) . '
-                                                            <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                                         </div>
                                                     </div>
                                                 </div>

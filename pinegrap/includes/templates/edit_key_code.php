@@ -68,7 +68,8 @@ if (!defined('PG_INIT_LOADED')) {
 													'onchange'=>'update_key_code();',
 													'inputmode'=>'numeric',
 													'data-inputmask-alias'=>'decimal',
-													'data-inputmask-placeholder'=>'0'))?>
+													'data-inputmask-placeholder'=>'0',
+													'required' => 'required'))?>
                                                
                                             </div>
 											<div class="text-end form-text"><?=lang('Increase Quantity to Create Multiple Key Codes')?></div>
@@ -76,13 +77,13 @@ if (!defined('PG_INIT_LOADED')) {
 									<?php endif ?>
                                     <div class="col-12 md:col-4 my-3 collapse show" id="code_row">
                                         <label for="code" class="form-label"><?=lang('Key Code')?></label>
-                                        <?=$liveform->output_field(array(
+                                        <?php // A new key code may be left blank (or is collapsed for several codes), so only edit asks for it. ?>
+                                        <?=$liveform->output_field(array_merge(array(
 											'type' => 'text',
 											'id' => 'code',
 											'name' => 'code',
 											'class' => 'form-control add-header-content-updater',
-											'maxlength' => '50'))?>
-										<div class="invalid-feedback"><?=lang('Required Area')?></div>
+											'maxlength' => '50'), $screen == 'edit' ? array('required' => 'required') : array()))?>
 										<div class="text-end form-text"><?=lang('New Key Code for Redemption & Order Reporting')?></div>
                                     </div>
                                     <div class="col-12 md:col-4 my-3">
@@ -92,8 +93,8 @@ if (!defined('PG_INIT_LOADED')) {
 											'id' => 'offer_code',
 											'name' => 'offer_code',
 											'class' => 'form-control',
-											'maxlength' => '50'))?>
-										<div class="invalid-feedback"><?=lang('Required Area')?></div>
+											'maxlength' => '50',
+											'required' => 'required'))?>
 										<div class="text-end form-text"><?=lang('Alias of Existing Offer Code')?></div>
                                     </div>
 								</div>
@@ -195,7 +196,7 @@ if (!defined('PG_INIT_LOADED')) {
                         <div class=" btn-group flex-wrap justify-content-center">
                             <button type="submit" id="save_button" name="submit_button" value="<?php if ($screen == 'create'): ?>Create<?php else: ?>Save<?php endif ?>" class="btn my-1 btn-solid theme-success "><span class="material-icons me-3" aria-hidden="true"><?php if ($screen == 'create'): ?>add<?php else: ?>save<?php endif ?></span><span class="pg-btn-label" ><?php if ($screen == 'create'): ?><?=lang(array('string'=>'Create') )?><?php else: ?><?=lang(array('string'=>'Save') )?><?php endif ?></span></button>
                             <?php if ($screen == 'edit'): ?>
-								<button type="submit" name="delete" value="Delete" class="btn my-1  btn-solid theme-danger " data-confirm-content="<?=lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('key code'))))?>"><span class="material-icons me-3" aria-hidden="true">delete</span><span class="pg-btn-label" ><?=lang(array('string'=>'Delete') )?></span></button>
+								<button type="submit" name="delete" value="Delete" formnovalidate class="btn my-1  btn-solid theme-danger " data-confirm-content="<?=lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('key code'))))?>"><span class="material-icons me-3" aria-hidden="true">delete</span><span class="pg-btn-label" ><?=lang(array('string'=>'Delete') )?></span></button>
 							<?php endif ?>
 						</div>
                     </div>

@@ -250,7 +250,6 @@ function pg_email_campaign_profile_form_cards($liveform, $user, $product_id = 0)
             '<div class="col-12 md:col-6 lg:col-4 my-3 collapse ' . $rows['product_id'] . '" id="product_id_row">
                 <label for="product_id" class="form-label">' . lang('Product') . '</label>
                 ' . $liveform->output_field(array('type'=>'select', 'name'=>'product_id', 'id'=>'product_id', 'class'=>'form-control', 'options'=>get_product_options(true, $product_id) )) . '
-                <div class="invalid-feedback">' . lang('Required Area') . '</div>
             </div>';
     }
 
@@ -272,27 +271,22 @@ function pg_email_campaign_profile_form_cards($liveform, $user, $product_id = 0)
                                         <div class="col-12 md:col-6 lg:col-4 my-3">
                                             <label for="name" class="form-label">' . lang('Name') . '</label>
                                             ' . $liveform->output_field(array('type'=>'text', 'name'=>'name', 'id'=>'name', 'size'=>'60', 'maxlength'=>'100', 'placeholder'=>lang('Campaign Profile Name'), 'class'=>'form-control', 'required'=>'required')) . '
-                                            <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                         </div>
                                         <div class="col-12 md:col-6 lg:col-4 my-3">
                                             <label for="action" class="form-label">' . lang('Action') . '</label>
                                             ' . $liveform->output_field(array('type'=>'select', 'name'=>'action', 'id'=>'action', 'class'=>'form-control', 'options'=>$action_options, 'onchange'=>'change_email_campaign_profile_action()')) . '
-                                            <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                         </div>
                                         <div class="col-12 md:col-6 lg:col-4 my-3 collapse ' . $rows['calendar_event_id'] . '" id="calendar_event_id_row">
                                             <label for="calendar_event_id" class="form-label">' . lang('Calendar Event') . '</label>
                                             ' . $liveform->output_field(array('type'=>'select', 'name'=>'calendar_event_id', 'id'=>'calendar_event_id', 'class'=>'form-control', 'options'=>get_calendar_event_options(array('reservations' => true)) )) . '
-                                            <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                         </div>
                                         <div class="col-12 md:col-6 lg:col-4 my-3 collapse ' . $rows['custom_form_page_id'] . '" id="custom_form_page_id_row">
                                             <label for="custom_form_page_id" class="form-label">' . lang('Custom Form') . '</label>
                                             ' . $liveform->output_field(array('type'=>'select', 'name'=>'custom_form_page_id', 'id'=>'custom_form_page_id', 'class'=>'form-control', 'options'=>get_page_options('', 'custom form') )) . '
-                                            <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                         </div>
                                         <div class="col-12 md:col-6 lg:col-4 my-3 collapse ' . $rows['email_campaign_profile_id'] . '" id="email_campaign_profile_id_row">
                                             <label for="email_campaign_profile_id" class="form-label">' . lang('Campaign Profile for Campaign that was sent') . '</label>
                                             ' . $liveform->output_field(array('type'=>'select', 'name'=>'email_campaign_profile_id', 'id'=>'email_campaign_profile_id', 'class'=>'form-control', 'options'=>get_email_campaign_profile_options() )) . '
-                                            <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                         </div>
                                         ' . $output_product_id_row . '
                                         ' . $output_subscription_fields_row . '
@@ -310,7 +304,6 @@ function pg_email_campaign_profile_form_cards($liveform, $user, $product_id = 0)
                                         <div class="col-12 my-3">
                                             <label for="subject" class="form-label">' . lang('Subject') . '</label>
                                             ' . $liveform->output_field(array('type'=>'text', 'name'=>'subject', 'id'=>'subject', 'placeholder'=>lang('Subject'), 'maxlength'=>'255', 'class'=>'form-control', 'required'=>'required')) . '
-                                            <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                         </div>
                                         <div class="col-12 my-1">
                                             <fieldset>
@@ -331,7 +324,6 @@ function pg_email_campaign_profile_form_cards($liveform, $user, $product_id = 0)
                                                         <div class="col-12 my-1">
                                                           <label for="email_body" class="form-label">' . lang('Body') . '</label>
                                                           ' . $liveform->output_field(array('type'=>'textarea', 'name'=>'body', 'id'=>'email_body', 'class'=>'form-control', 'placeholder'=>lang('Type E-mail body here') )) . '
-                                                          <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -343,7 +335,6 @@ function pg_email_campaign_profile_form_cards($liveform, $user, $product_id = 0)
                                                         <div class="col-12 sm:col-8 my-1">
                                                             <label class="form-label" for="page_id">' . lang('Page') . '</label>
                                                             ' . $liveform->output_field(array('type'=>'select', 'id'=>'page_id', 'name'=>'page_id', 'class'=>'form-control collapse-if-selected', 'options'=>get_page_options('', '', 'view'), 'data-bs-target'=>'#body_preview_row', 'onchange'=>'document.getElementById(\'body_preview_iframe\').src = \'' . OUTPUT_PATH . '\' + this.options[this.selectedIndex].firstChild.nodeValue + \'?edit=no&email=true\';')) . '
-                                                            <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                                         </div>
                                                         <div class="collapse popover fade bs-popover-bottom p-0 mb-3 w-100" id="body_preview_row">
                                                             <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
@@ -374,24 +365,20 @@ function pg_email_campaign_profile_form_cards($liveform, $user, $product_id = 0)
                                         <div class="col-12 sm:col-6 xl:col-12 my-3">
                                             <label class="form-label" for="from_name">' . lang('From Name') . '</label>
                                             ' . $liveform->output_field(array('type'=>'text','value'=>ORGANIZATION_NAME, 'name'=>'from_name', 'id'=>'from_name', 'class'=>'form-control', 'maxlength'=>'100', 'required'=>'required')) . '
-                                            <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                         </div>
                                         <div class="col-12">
                                             <div class="row">
                                                 <div class="col-12 sm:col-6 xl:col-4 my-3">
                                                     <label class="form-label" for="bcc_email_address">' . lang('BCC E-mail Address') . '</label>
                                                     ' . $liveform->output_field(array('type'=>'text','value'=>'', 'name'=>'bcc_email_address', 'id'=>'bcc_email_address', 'class'=>'form-control text-end', 'maxlength'=>'100', 'inputmode'=>'email', 'data-inputmask-alias'=>'email')) . '
-                                                    <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                                 </div>
                                                 <div class="col-12 sm:col-6 xl:col-4 my-3">
                                                     <label class="form-label" for="from_email_address">' . lang('From E-mail Address') . '</label>
-                                                    ' . $liveform->output_field(array('type'=>'text','value'=>$user['email_address'], 'name'=>'from_email_address', 'id'=>'from_email_address', 'class'=>'form-control text-end', 'maxlength'=>'100', 'inputmode'=>'email', 'data-inputmask-alias'=>'email')) . '
-                                                    <div class="invalid-feedback">' . lang('Required Area') . '</div>
+                                                    ' . $liveform->output_field(array('type'=>'text','value'=>$user['email_address'], 'name'=>'from_email_address', 'id'=>'from_email_address', 'class'=>'form-control text-end', 'maxlength'=>'100', 'required'=>'required', 'inputmode'=>'email', 'data-inputmask-alias'=>'email')) . '
                                                 </div>
                                                 <div class="col-12 sm:col-6 xl:col-4 my-3">
                                                     <label class="form-label" for="reply_email_address">' . lang('Reply to E-mail Address') . '</label>
                                                     ' . $liveform->output_field(array('type'=>'text','value'=>$user['email_address'], 'name'=>'reply_email_address', 'id'=>'reply_email_address', 'class'=>'form-control text-end', 'maxlength'=>'100', 'inputmode'=>'email', 'data-inputmask-alias'=>'email')) . '
-                                                    <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                                 </div>
                                             </div>
                                         </div>
@@ -419,7 +406,6 @@ function pg_email_campaign_profile_form_cards($liveform, $user, $product_id = 0)
                                         <div class="col-12 md:col-6 lg:col-4 my-3">
                                             <label class="form-label" for="schedule_time">' . lang('Send at a specific time') . '</label>
                                             ' . $liveform->output_field(array('type'=>'text', 'name'=>'schedule_time', 'id'=>'schedule_time', 'class'=>'form-control', 'maxlength'=>'8', 'data-pg-time' => '')) . '
-                                            <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                             <div class="text-end form-text">' . ((pg_time_format_code() === 'H:i') ? lang('HH:mm, leave blank to send at any time.') : lang('h:mm AM/PM, leave blank to send at any time.')) . '</div>
                                             ' . get_time_picker_format() . pg_fields_script() . '
                                         </div>
