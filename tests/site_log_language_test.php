@@ -98,6 +98,7 @@ function test_site_log_writers_pass_no_bare_english()
 		'email_a_friend.php',
 		'email_campaign_job.php',
 		'forgot_password.php',
+		'get_file.php',
 		'get_photo_gallery.php',
 		'get_set_password.php',
 		'import_design.php',

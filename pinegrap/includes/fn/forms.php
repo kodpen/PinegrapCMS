@@ -1653,31 +1653,6 @@ function pg_log_actor($user, $ip)
 
     return ((string) $ip === '') ? lang('Scheduled job') : lang('Unknown');
 }
-/**
- * A site log line written by a request a visitor makes. A page drawn in
- * another site language (FRONTEND_LANGUAGE) would write the line in that
- * language; the log is read in the panel, so the line takes the software
- * language like the panel's own lines.
- *
- * @param array $properties lang()'s array form ('string', 'vars', 'suffix').
- * @return string
- */
-function pg_log_lang($properties)
-{
-    $held = function_exists('pg_tr_suspend');
-
-    if ($held) {
-        pg_tr_suspend(true);
-    }
-
-    $text = lang($properties);
-
-    if ($held) {
-        pg_tr_suspend(false);
-    }
-
-    return $text;
-}
 function get_number_of_contacts($contact_group, $require_email = false)
 {
     $where_values = array();
