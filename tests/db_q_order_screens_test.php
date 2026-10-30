@@ -132,7 +132,8 @@ function db_q_order_screens_test_files()
 	return array(
 		'view_orders.php' => 6,
 		'view_order.php' => 13,
-		'print_order.php' => 13,
+		// Its parcel query moved to pg_shipment_rows() with the shipping card.
+		'print_order.php' => 12,
 		'view_order_report.php' => 10,
 		// Its row queries moved to includes/fn/product_list.php with the
 		// server paging; the screen keeps only value-free counts.
