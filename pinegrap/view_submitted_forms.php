@@ -580,7 +580,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
                         </div>
                         <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label for="http_referer" class="form-label">' . lang('Referring URL') . '</label>
-                            <input type="text" id="http_referer" name="http_referer" class="form-control" value="' . h(($_SESSION['software']['forms']['view_submitted_forms']['http_referer'] ?? '')) . '"/>
+                            <input type="text" id="http_referer" name="http_referer" class="form-control" inputmode="url" spellcheck="false" autocapitalize="off" value="' . h(($_SESSION['software']['forms']['view_submitted_forms']['http_referer'] ?? '')) . '"/>
                         </div>
                         <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label for="contact_name" class="form-label">' . lang('Contact Name') . '</label>
