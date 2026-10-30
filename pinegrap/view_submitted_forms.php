@@ -703,8 +703,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
 
         )
     ) . '
-<main id="content" class="container-fluid">  
-    ' . $output_advanced_filters . '
+<main id="content" class="container-fluid">
     <script>
         function export_forms() {
             if (document.getElementById("custom_form")) {
@@ -769,6 +768,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
                                 'year'  => array($decrease_year, $current_year, $increase_year),
                             ), $output_date_range_time) . '
                 </nav>
+                ' . $output_advanced_filters . '
                 <div class="card my-7">
                     <div class="card-body p-0 position-relative">
                         <form name="form" action="delete_submitted_forms.php" method="post" class="disable_shortcut"> 

@@ -1046,8 +1046,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
                     
         )
     ) . '
-<main id="content" class="container-fluid">  
-    ' . $output_advanced_filters . '
+<main id="content" class="container-fluid">
             <div class="row">
             <div class="col-12">
                 ' . $liveform->output_errors() . '
@@ -1081,6 +1080,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
                                 'year'  => array($decrease_year, $current_year, $increase_year),
                             ), $output_date_range_time) : '') . '
                 </nav>
+                ' . $output_advanced_filters . '
                 <div class="card my-7">
                     <div class="card-body p-0 position-relative">
                         <form name="form"  action="edit_contacts.php" method="post" class="view_orders"> 

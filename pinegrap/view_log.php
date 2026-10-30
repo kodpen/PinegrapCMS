@@ -561,13 +561,16 @@ if (!$_POST) {
                 </div>
         
                 <script>
-                    // Set initial values for date selectors using escaped JS-safe values
-                    document.form.start_month.value = "' . escape_javascript($start_month) . '";
-                    document.form.start_day.value = "' . escape_javascript($start_day) . '";
-                    document.form.start_year.value = "' . escape_javascript($start_year) . '";
-                    document.form.stop_month.value = "' . escape_javascript($stop_month) . '";
-                    document.form.stop_day.value = "' . escape_javascript($stop_day) . '";
-                    document.form.stop_year.value = "' . escape_javascript($stop_year) . '";
+                    // Set initial values for date selectors using escaped JS-safe values. The form is
+                    // found by its id: the toolbar form before it carries the same name.
+                    (function (form) {
+                        form.start_month.value = "' . escape_javascript($start_month) . '";
+                        form.start_day.value = "' . escape_javascript($start_day) . '";
+                        form.start_year.value = "' . escape_javascript($start_year) . '";
+                        form.stop_month.value = "' . escape_javascript($stop_month) . '";
+                        form.stop_day.value = "' . escape_javascript($stop_day) . '";
+                        form.stop_year.value = "' . escape_javascript($stop_year) . '";
+                    })(document.getElementById("search_advanced"));
                 </script>
                 ' . get_date_picker_format() . pg_fields_script() . '
             </form>
@@ -586,7 +589,6 @@ if (!$_POST) {
             'icon'=>'setting',
             'heading'=> lang('Site Log'),
             'heading_description' => lang('Audit all website events and changes by any site visitor or user.'),
-            'pre_main_html' => $output_advanced_filters,
         )
     ) . '
 <main id="content" class="container-fluid">
@@ -621,6 +623,7 @@ if (!$_POST) {
                         </div>
                     </div>
                 </div>
+                ' . $output_advanced_filters . '
                 ' . $output_toolbar . '
                 <div class="card my-7">
                     <div class="card-body p-0 position-relative">
