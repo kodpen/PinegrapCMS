@@ -7,21 +7,28 @@
  * written onto the parcel the moment they arrive instead of at the next
  * hourly run of the shipment tracking job, which stays as the safety net.
  *
- * A driver takes part with three optional functions beside its contract
+ * A driver takes part with four optional functions beside its contract
  * (includes/fn/carrier_labels.php):
  *
  *   pg_label_<key>_webhook_read($body)              list of reference,
  *                                                   is_return, answer (a
  *                                                   track() answer); false
  *                                                   for a body it cannot read
+ *   pg_label_<key>_webhook_verify($raw, $headers, $account)
+ *                                                   whether a signed message
+ *                                                   is the service's (headers
+ *                                                   by lower-case name)
  *   pg_label_<key>_webhook_register($url, $account) success, id, error
  *   pg_label_<key>_webhook_remove($id, $account)    success, error
  *
- * The secret key in the address is the credential (Geliver signs nothing).
- * It and the service's webhook id are kept with the driver's sealed secrets
- * (connect_apps label_<key>, webhook_key and webhook_id). Saving the driver
- * switched on registers the address at the service; switching it off
- * removes it there and drops the key, so the old address is refused.
+ * The secret key in the address is the credential of every driver; a
+ * service that signs its messages (Sendcloud) is checked by its verify
+ * function as well, and one that does not (Geliver, Shippo) by the key
+ * alone. The key and the service's webhook id are kept with the driver's
+ * sealed secrets (connect_apps label_<key>, webhook_key and webhook_id).
+ * Saving the driver switched on registers the address at the service;
+ * switching it off removes it there and drops the key, so the old address
+ * is refused. A driver without register shows no webhook on the card.
  *
  * A message reaches the parcel only through the tracking write-back:
  * pg_shipment_tracking_decide() and pg_shipment_tracking_apply()
@@ -117,6 +124,67 @@ function pg_carrier_webhook_function($key, $name)
     $function = 'pg_label_' . $key . '_webhook_' . $name;
 
     return function_exists($function) ? $function : '';
+}
+
+/**
+ * The request headers by lower-case, dash-separated name, from $_SERVER.
+ * Pure.
+ *
+ * @param array $server
+ * @return array
+ */
+function pg_carrier_webhook_headers($server)
+{
+    $headers = array();
+
+    foreach ((array) $server as $name => $value) {
+        if (!is_string($value)) {
+            continue;
+        }
+
+        if (strncmp((string) $name, 'HTTP_', 5) === 0) {
+            $headers[strtolower(str_replace('_', '-', substr($name, 5)))] = $value;
+        } elseif (in_array($name, array('CONTENT_TYPE', 'CONTENT_LENGTH'), true)) {
+            $headers[strtolower(str_replace('_', '-', $name))] = $value;
+        }
+    }
+
+    return $headers;
+}
+
+/**
+ * Whether a message passes the driver's signature check; true for a
+ * driver that has none, as the key in the address already matched.
+ *
+ * @param string $driver
+ * @param string $raw     the body as it came
+ * @param array  $headers pg_carrier_webhook_headers()
+ * @param array  $account pg_label_account()
+ * @return bool
+ */
+function pg_carrier_webhook_verified($driver, $raw, $headers, $account)
+{
+    $verify = pg_carrier_webhook_function($driver, 'verify');
+
+    if ($verify === '') {
+        return true;
+    }
+
+    try {
+        return call_user_func($verify, (string) $raw, $headers, $account) === true;
+    } catch (\Throwable $exception) {
+        return false;
+    }
+}
+
+/**
+ * Counts a refused credential as a firewall offence.
+ */
+function pg_carrier_webhook_offence()
+{
+    if (function_exists('waf_register_offence') && function_exists('waf_client_ip') && function_exists('waf_mode')) {
+        waf_register_offence(waf_client_ip(), 5, (waf_mode() === 'block'));
+    }
 }
 
 /**
@@ -340,7 +408,8 @@ function pg_carrier_webhook_answer($http, $data)
  * 405 not POST; 404 no such driver or one without webhooks; 429 over the
  * allowance; 503 the database not upgraded; 403 e-commerce off, the driver
  * off or no key stored; 401 a wrong key (an offence for the firewall); 413
- * too large; 400 not a message; else 200, unknown shipments included, so
+ * too large; 401 a signature the driver refuses (an offence too); 400 not
+ * a message; else 200, unknown shipments included, so
  * the service does not send them again.
  *
  * @return void
@@ -376,10 +445,7 @@ function pg_carrier_webhook_receive()
     }
 
     if (!pg_carrier_webhook_key_matches($stored, isset($_GET['key']) ? $_GET['key'] : null)) {
-        if (function_exists('waf_register_offence') && function_exists('waf_client_ip') && function_exists('waf_mode')) {
-            waf_register_offence(waf_client_ip(), 5, (waf_mode() === 'block'));
-        }
-
+        pg_carrier_webhook_offence();
         pg_carrier_webhook_answer(401, array('status' => 'wrong_key'));
     }
 
@@ -391,6 +457,11 @@ function pg_carrier_webhook_receive()
 
     if (($body === false) || (strlen($body) > PG_CARRIER_WEBHOOK_MAX_BODY)) {
         pg_carrier_webhook_answer(413, array('status' => 'too_large'));
+    }
+
+    if (!pg_carrier_webhook_verified($driver, $body, pg_carrier_webhook_headers($_SERVER), pg_label_account(pg_label_fields($driver), $settings))) {
+        pg_carrier_webhook_offence();
+        pg_carrier_webhook_answer(401, array('status' => 'wrong_signature'));
     }
 
     try {
@@ -585,7 +656,7 @@ function pg_carrier_webhook_card_row($key, $settings)
                                                                                         <div class="col-12">
                                                                                             <label class="form-label" for="' . h($input) . '">' . lang('Status Webhook Address') . '</label>
                                                                                             <input class="form-control" type="text" id="' . h($input) . '" value="' . h(pg_carrier_webhook_url($key, $token)) . '" readonly="readonly"/>
-                                                                                            <div class="form-text">' . lang(array('string' => 'The webhook could not be registered. Add this address in the {var:1} panel as a webhook for TRACK_UPDATED, or save again to retry. Keep it private.', 'vars' => array(h($definition['label'])))) . '</div>
+                                                                                            <div class="form-text">' . lang(array('string' => 'The webhook could not be registered. Add this address in the {var:1} panel as its parcel status webhook, or save again to retry. Keep it private.', 'vars' => array(h($definition['label'])))) . '</div>
                                                                                         </div>';
     } else {
         $text = lang(array('string' => 'Saving with {var:1} switched on registers a webhook there, so parcel statuses arrive as they change.', 'vars' => array(h($definition['label']))));
