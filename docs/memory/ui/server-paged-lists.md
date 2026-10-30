@@ -17,7 +17,7 @@ module: list_paging, user_list, submitted_form_list, contact_list
 
 ## What does the search box find?
 - Every word (a "quoted phrase" is one word) somewhere in the row's text columns, case-insensitive, as DataTables' smart search did. `pg_list_search_where()` writes `LIKE ?` per column with bound patterns (`pg_list_like_pattern()` escapes `%`, `_`, `\`); a column showing a label for a stored value (the role) matches by label (`IN (?)`). Times and check marks are not searched.
-- Turkish I (PR for #3584): `utf8mb4_unicode_ci` folds I with i, not ı, so "YILDIZ" missed "Yıldız". With a `tr` panel or page language (`pg_list_search_turkish_charset()`: the connection's `utf8`/`utf8mb4`) a word with I or ı adds `CONVERT(expr USING cs) COLLATE cs_turkish_ci LIKE ?` beside the plain LIKE, which stays (turkish_ci alone loses ş/s, ç/c and IPHONE→iPhone); `term` columns never. Labels also match lowered the Turkish way (`pg_list_turkish_lower()`). "yildiz" finding "Yıldız" is a product decision, not done.
+- Turkish I (PR #3677): `utf8mb4_unicode_ci` folds I with i, not ı, so "YILDIZ" missed "Yıldız". With a `tr` panel or page language (`pg_list_search_turkish_charset()`: the connection's `utf8`/`utf8mb4`) a word with I or ı adds `CONVERT(expr USING cs) COLLATE cs_turkish_ci LIKE ?` beside the plain LIKE, which stays (turkish_ci alone loses ş/s, ç/c and IPHONE→iPhone); `term` columns never. Labels also match lowered the Turkish way (`pg_list_turkish_lower()`). "yildiz" finding "Yıldız" is a product decision, not done.
 
 ## What do select all and the bulk buttons act on?
 - The rows on screen (exports and "all that match" read the whole filtered list on the server); only the drawn page is in the DOM. "Unlimited" lists every row.
