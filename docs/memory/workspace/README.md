@@ -100,6 +100,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-customer-history.md: A channel's customer history (CRM seams slice 4, #1681): union read of orders, cart quotes, invoices, quotes, forms and Workspace tags, rights per source, paging, API route, card part
 - workspace-customer-summary.md: A channel's customer summary (GET /workspace/channels/{id}/customer): identity, orders, ERP balance, sales quotes, cart quotes, forms; rights and key scopes per section, money
 - workspace-date-fields.md: Workspace date and time fields on the one control: pgDateField(), the watcher that draws them, script-written values, the control in the lazy record loader (#2867)
+- workspace-density.md: The Workspace comfortable / compact switch: ws-density key per browser, .ws-compact on <html>, which tokens it narrows, where the switch sits, which screens follow (PR #3733)
 - workspace-discussion-follow-screen.md: Stop / Follow again for the assistant a discussion follows (PR #2997, answer 4a of #2419): header line, channel line, system line, API follow fields and endpoint
 - workspace-discussion-follow.md: The assistant a discussion follows (ws_threads.follow_agent, step 11.0.113, decision #2419, PR #2924): who is followed, which message asks it, the no-pile-up rule, scheduled sends
 - workspace-editor-autoformat.md: Autoformat while typing in a Workspace writing box: ==x== to a highlight, "- " "* " "1. " "> " at a line's start to a list or quote; one undo, IME and paste guards, the per-viewer off switch
@@ -239,7 +240,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-text-links.md: Where a web address in a Workspace text ends: escaped quotes, angle brackets and apostrophes stay outside the link, &amp; stays inside, punctuation after it stays text
 - workspace-text-lists.md: Lists and quotes in Workspace texts drawn by the server (#1725): which shapes become a list, which stay text so old messages look the same, plain text, guest page, approval mail
 - workspace-ui-notes.md: Where the Workspace screens are drawn and styled, its tokens, colour picker vs plan board legend class names, what a closed section of the channel list shows, cosmetic leftovers
-- workspace-ui-scale.md: The Workspace's CSS scale (radii, spaces, avatar sizes, shadows as --ws-* tokens), the keyboard-only focus rings, the dark tones of the nav icons, where the block ends in backend.src.css
+- workspace-ui-scale.md: The Workspace CSS scale (radii, spaces, row and header padding, avatar sizes, shadows as --ws-* tokens), keyboard-only focus rings, dark nav tones, where the block ends
 - workspace-unsent-draft.md: The Workspace composer's unsent text kept on the browser (localStorage) per site, viewer, channel and discussion: key, when saved, restored, cleared, limits, what is never kept
 - workspace-upload-refusals.md: What a Workspace channel refuses to take (ws_upload_refused()): the file manager's list, page and script types, Office files with macros (PR #1322); why, every door it covers, the message
 - workspace-variant-set-change.md: A variant set added from a change card (variant_set, PR #1943): fields, variants and price_rules values, checks, writer, events, matrix card, proposers

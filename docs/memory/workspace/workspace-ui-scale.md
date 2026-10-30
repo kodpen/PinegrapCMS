@@ -1,6 +1,6 @@
 ---
 name: workspace-ui-scale
-description: The Workspace's CSS scale (radii, spaces, avatar sizes, shadows as --ws-* tokens), the keyboard-only focus rings, the dark tones of the nav icons, where the block ends in backend.src.css
+description: The Workspace CSS scale (radii, spaces, row and header padding, avatar sizes, shadows as --ws-* tokens), keyboard-only focus rings, dark nav tones, where the block ends
 ---
 
 ## Which tokens does the Workspace measure with?
@@ -17,4 +17,4 @@ description: The Workspace's CSS scale (radii, spaces, avatar sizes, shadows as 
 - The workspace CSS runs from the `/* ── Workspace ── */` marker to the `/* ── /Workspace ── */` marker at the end of the file; the feature add-ons (status, templates, time, links, delegation, approvals, acks) are inside it.
 
 ## What is next?
-- Empty lists and skeleton rows (U4, done): `workspace-empty-states.md`. Channel identity and motion (U3, U5, done): `workspace-channel-identity-motion.md`. Density (U6): docs/memory/plans/workspace-friendly-ui.md. The avatar component and presence dot: Bootstrap 6 Avatar, step B9j in docs/memory/plans/bootstrap-6-components.md.
+- Empty lists and skeleton rows (U4, done): `workspace-empty-states.md`. Channel identity and motion (U3, U5, done): `workspace-channel-identity-motion.md`. Density switch (U6, done): `workspace-density.md`, which also added `--ws-row-y`, `--ws-head-y`, `--ws-head-h` to the scale. The friendly-look plan (2026-10-19, U1-U6) is finished; no display font is loaded (`workflow/decisions-made-product-9.md`). The avatar component and presence dot: Bootstrap 6 Avatar, step B9j in docs/memory/plans/bootstrap-6-components.md.

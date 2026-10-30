@@ -19,6 +19,6 @@ description: Decisions list, product part 9 (2026-10-30 afternoon on): form rule
 - Decided (architect, 2026-10-30): templates are personal or site-wide (`erp_quote_templates`, schema-6), not per channel; "From template" fills the editor's lines only; the API routes wait for #3298. The expiry follow-up gets a Settings checkbox (`config.erp_quote_expiry_followup`); it runs when the column is 1 or `ERP_QUOTE_EXPIRY_FOLLOWUP` is defined true.
 
 ## Does the Workspace get a density switch and a rounded display font? (#3673)
-- Owner decision (2026-10-30): the comfortable/compact density switch is built (plan `workspace-friendly-ui.md` U6: per browser in localStorage, no schema, default comfortable). No rounded display font: the panel loads no web font, and the rounder, softer look and illustrations of U1-U5 are enough. The owner's words: "Evet, yapılsın" and "Hayır, mevcut yumuşak görünüm yeter".
+- Owner decision (2026-10-30): the comfortable/compact density switch is built (built in PR #3733, `workspace/workspace-density.md`: per browser in localStorage, no schema, default comfortable). No rounded display font: the panel loads no web font, and the rounder, softer look and illustrations of U1-U5 are enough. The owner's words: "Evet, yapılsın" and "Hayır, mevcut yumuşak görünüm yeter".
 
 Related: docs/memory/workflow/decisions-made-product-8.md, docs/memory/workflow/decisions-made.md

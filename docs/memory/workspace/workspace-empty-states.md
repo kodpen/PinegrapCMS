@@ -14,4 +14,4 @@ description: Workspace empty lists with a small theme-coloured drawing (emptySta
 - The channel screen's first rows (`workspace.php`) and its start-up error carry `ws-boot`: `.ws-app > .ws-boot { grid-column: 1 / -1 }`. The other workspace screens still print a "Loading…" line in PHP.
 - Motion (skeleton shine, the drawing's fade-in) only inside `@media (prefers-reduced-motion: no-preference)`.
 
-Related: docs/memory/workspace/workspace-ui-scale.md, docs/memory/plans/workspace-friendly-ui.md
+Related: docs/memory/workspace/workspace-ui-scale.md, docs/memory/workspace/workspace-density.md
