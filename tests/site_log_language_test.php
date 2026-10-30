@@ -89,8 +89,11 @@ function site_log_language_bare_calls($path)
 function test_site_log_writers_pass_no_bare_english()
 {
 	$files = array(
+		'add_erp_quote.php',
+		'add_erp_receipt.php',
 		'add_field.php',
 		'cancel_order.php',
+		'custom_form.php',
 		'change_password.php',
 		'delete_styles.php',
 		'delete_users.php',
@@ -106,6 +109,8 @@ function test_site_log_writers_pass_no_bare_english()
 		'get_set_password.php',
 		'import_design.php',
 		'import_key_codes.php',
+		'includes/erp/quote_links.php',
+		'includes/erp/quotes.php',
 		'includes/explorer/handle_backups.php',
 		'includes/explorer/handle_bulk_edit.php',
 		'includes/explorer/handle_catalog.php',
@@ -124,8 +129,10 @@ function test_site_log_writers_pass_no_bare_english()
 		'includes/explorer/handle_zip.php',
 		'includes/explorer/recycle_bin.php',
 		'includes/fn/carrier_webhook.php',
+		'includes/fn/custom_form.php',
 		'includes/fn/designer.php',
 		'includes/fn/ecommerce.php',
+		'includes/fn/forms.php',
 		'includes/fn/google_reviews.php',
 		'includes/fn/mail.php',
 		'includes/fn/mail_queue.php',
@@ -262,4 +269,24 @@ function test_site_log_payment_driver_lines_translated()
 
 	pg_assert_true($shown > 0, 'the checkout builds its gateway errors from parts');
 	pg_assert_same($shown, substr_count($checkout, 'log_activity(pg_log_lang($payment_gateway_error)'), 'one log line per error shown');
+}
+
+// The lines a visitor's request writes on a designed form (access denied,
+// auto-login, key code), on member log-out (logout() from logout.php and
+// kiosk.php) and on a quote's guest signature (erp_quote.php) take the
+// software language. The panel's own lines in those files stay lang():
+// the orphaned form adoption (includes/fn/custom_form.php, reached only from
+// the designer), the new guest link (quote_links.php), add_erp_quote.php,
+// add_erp_receipt.php and includes/erp/quotes.php.
+function test_site_log_visitor_form_logout_signature_lines_translated()
+{
+	$patterns = array(
+		'custom_form.php'              => '/log_activity\(lang\(/',
+		'includes/fn/forms.php'        => '/log_activity\(lang\(\'user logged out\'\)/',
+		'includes/erp/quote_links.php' => '/log_activity\(lang\(array\(\s*\'string\' => \'erp quote \(\{var:1\}\) was signed by/',
+	);
+
+	foreach ($patterns as $file => $pattern) {
+		pg_assert_same(0, preg_match($pattern, (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file)), $file);
+	}
 }
