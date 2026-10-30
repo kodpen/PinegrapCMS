@@ -1063,6 +1063,8 @@
     "Order terms accepted (checkbox)": "Sipariş şartları kabul edildi (onay kutusu)",
     "Order timeline": "Sipariş zaman çizelgesi",
     "Order timeline (ready-made HTML)": "Sipariş zaman çizelgesi (hazır HTML)",
+    "Order total changed during 3D Secure verification": "Sipariş toplamı 3D Secure doğrulaması sırasında değişti",
+    "Order total changed during Pay with Iyzico checkout": "Sipariş toplamı iyzico ile Öde sırasında değişti",
     "Order totals (computed by backend: VAT, card surcharge, total)": "Sipariş Toplamları (arka uç hesaplar: KDV, kart ek ücreti, toplam)",
     "Order was already cancelled.": "Sipariş zaten iptal edilmiş.",
     "Order was completed": "Sipariş tamamlandı",
