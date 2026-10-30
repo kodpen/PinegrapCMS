@@ -18762,6 +18762,25 @@
 
         body.appendChild(grid);
 
+        // The customer of a visit (ws_events.contact_id): sent only once it
+        // was changed here, so a customer the person cannot open stays.
+        var customer = null;
+
+        if (CFG.event_contacts) {
+            customer = eventCustomerPicker(event ? event.contact : null, event && !event.can_edit);
+
+            var customerRow = el('div');
+            customerRow.appendChild(formRow(t('event_customer'), customer.node, t('event_customer_help')));
+            body.appendChild(customerRow);
+
+            var customerView = function () {
+                customerRow.classList.toggle('d-none', kind.value !== 'visit');
+            };
+
+            kind.addEventListener('change', customerView);
+            customerView();
+        }
+
         var note = el('textarea', 'form-control form-control-sm');
         note.id = nextId('ws-ev-note-');
         note.rows = 2;
@@ -18879,7 +18898,8 @@
                     start_time: startTime.value,
                     end_time: endTime.value,
                     note: note.value,
-                    meeting_url: meeting ? meeting.value.trim() : undefined
+                    meeting_url: meeting ? meeting.value.trim() : undefined,
+                    contact_id: (customer && customer.changed) ? customer.id : undefined
                 }).then(function () {
                     hideOffcanvas(node);
                     toast(t('plan_saved'), 'success');
@@ -18893,6 +18913,96 @@
         }
 
         showOffcanvas(node);
+    }
+
+    // The customer field of the plan item form: a search among the contacts
+    // the person may open (ws_ref_search), one picked at a time. The server
+    // checks the pick again (ws_event_save_check()).
+    function eventCustomerPicker(contact, readOnly) {
+        var picked = { id: contact && !contact.hidden ? contact.id : 0, changed: false };
+        var wrap = el('div');
+        var input = el('input', 'form-control form-control-sm');
+        var list = el('div', 'list-group mt-1 d-none');
+        var chip = el('div', 'd-flex align-items-center gap-2 d-none');
+        var serial = 0;
+
+        input.type = 'search';
+        input.autocomplete = 'off';
+        picked.node = wrap;
+
+        function show(label, hidden) {
+            clear(chip);
+            list.classList.add('d-none');
+            input.value = '';
+            input.classList.toggle('d-none', label !== '' || readOnly);
+            chip.classList.toggle('d-none', label === '');
+
+            if (label === '') {
+                return;
+            }
+
+            chip.appendChild(icon('bi-person-vcard'));
+            chip.appendChild(el('span', hidden ? 'fg-secondary' : 'fw-semibold', label));
+
+            if (readOnly) {
+                return;
+            }
+
+            var remove = button('btn btn-sm btn-text theme-secondary', '', 'bi-x-lg', t('event_customer_clear'));
+            remove.addEventListener('click', function () {
+                picked.id = 0;
+                picked.changed = true;
+                show('', false);
+                input.focus();
+            });
+            chip.appendChild(remove);
+        }
+
+        input.addEventListener('input', debounce(function () {
+            var mine = ++serial;
+            var query = input.value.trim();
+
+            if (query === '') {
+                list.classList.add('d-none');
+                return;
+            }
+
+            api('ws_ref_search', { type: 'contact', q: query }).then(function (data) {
+                if (mine !== serial) {
+                    return;
+                }
+
+                clear(list);
+                (data.items || []).forEach(function (found) {
+                    var item = button('list-group-item list-group-item-action small text-start', found.label + (found.meta ? ' · ' + found.meta : ''));
+
+                    item.addEventListener('click', function () {
+                        picked.id = found.id;
+                        picked.changed = true;
+                        show(found.label, false);
+                    });
+                    list.appendChild(item);
+                });
+
+                if (!list.firstChild) {
+                    list.appendChild(el('div', 'list-group-item small fg-secondary', t('event_customer_none')));
+                }
+
+                list.classList.remove('d-none');
+            }).catch(fail);
+        }, 250));
+        input.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape') {
+                list.classList.add('d-none');
+            }
+        });
+
+        wrap.appendChild(input);
+        wrap.appendChild(chip);
+        wrap.appendChild(list);
+        show(contact ? (contact.hidden ? t('event_customer_hidden') : contact.label) : '', !!(contact && contact.hidden));
+
+        return picked;
     }
 
     // ═══════════════════════════════════════════════════════════════════

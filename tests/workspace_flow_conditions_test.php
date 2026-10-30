@@ -224,5 +224,38 @@ function test_workspace_flow_condition_value_holds()
 
 	$run = ws_flow_conditions_test_source('ws_flow_condition_run');
 
-	pg_assert_contains('ws_step_run_values($run, ws_flow_run_graph($run), $owner, ws_flow_run_context($run), $step)', $run, 'the run\'s settled boxes and the trigger\'s values with the owner\'s rights, its own item inside a loop');
+	pg_assert_contains('ws_step_run_values($run, $graph, $owner, ws_flow_run_context($run), $step)', $run, 'the run\'s settled boxes and the trigger\'s values with the owner\'s rights, its own item inside a loop');
+}
+
+// The sentence names the value as the value picker does, "box › value", and
+// falls back to the reference only when the flow has no such box or field.
+function test_workspace_flow_condition_value_sentence_names_the_box()
+{
+	$graph = array('nodes' => array(
+		array('id' => 'p05', 'kind' => 'post', 'label' => 'Step 5', 'config' => array()),
+		array('id' => 'web_1', 'kind' => 'web_check', 'label' => '', 'config' => array('mode' => 'status')),
+		array('id' => 'ask_1', 'kind' => 'task', 'label' => '', 'config' => array('title' => 'Call the customer')),
+		array('id' => 'start', 'kind' => 'event', 'label' => 'New order', 'config' => array('event' => 'order.created')),
+	));
+	$values = array(
+		'p05'           => array('message_id' => '87', 'status' => 'done'),
+		'web_1'         => array('status_code' => '503'),
+		'ask_1'         => array('outcome' => 'done'),
+		WS_STEP_TRIGGER => array('record_id' => '1042'),
+	);
+	$said = function ($ref, $op, $value) use ($graph, $values) {
+		return ws_flow_condition_value_holds(array('type' => 'value', 'ref' => $ref, 'op' => $op, 'value' => $value), $values, $graph)['text'];
+	};
+
+	pg_assert_same('The condition held: Step 5 › Message is more than 0 (it was "87").', $said('{{node.p05.message_id}}', 'gt', '0'));
+	pg_assert_same('The condition did not hold: Step 5 › Status is failed (it was "done").', $said('{{node.p05.status}}', 'eq', 'failed'));
+	pg_assert_same('The condition held: Check a web address › Status code is at least 500 (it was "503").', $said('{{node.web_1.status_code}}', 'gte', '500'), 'a box without a label is named by its kind');
+	pg_assert_same('The condition held: Call the customer › Outcome is done (it was "done").', $said('{{node.ask_1.outcome}}', 'eq', 'done'), 'a task box by its title');
+	pg_assert_same('The condition held: New order › Record is 1042 (it was "1042").', $said('{{trigger.record_id}}', 'eq', '1042'), 'what started the run by its start box');
+	pg_assert_same('The condition held: node.gone_1.total is empty (it was "").', $said('{{node.gone_1.total}}', 'empty', ''), 'a box no longer in the flow keeps its reference');
+	pg_assert_same('The condition held: node.p05.nothing is empty (it was "").', $said('{{node.p05.nothing}}', 'empty', ''), 'so does a field the box does not give');
+
+	$run = ws_flow_conditions_test_source('ws_flow_condition_run');
+
+	pg_assert_contains('ws_flow_condition_value_holds($check[\'rule\'], $values, $graph)', $run, 'the run names the value from the graph it ran');
 }

@@ -671,7 +671,8 @@ function ws_conflicts($viewer, $from, $to)
  * @param array $data see ws_event_save()
  * @return array ok, error, field, event_id, item (the row as it would be
  *               written: kind, scope, department_id, people, title,
- *               starts_at, ends_at, all_day, meeting_url, current)
+ *               starts_at, ends_at, all_day, meeting_url, contact_id,
+ *               current)
  */
 function ws_event_save_check($viewer, $data)
 {
@@ -769,6 +770,28 @@ function ws_event_save_check($viewer, $data)
         }
     }
 
+    // The customer of a visit (2026.11.0, 11.0.118): only a contact the
+    // person may open; one they may not is refused as one that is not there.
+    $contact_id = 0;
+
+    if (ws_event_contacts_ready()) {
+        $asked = (int) ($data['contact_id'] ?? 0);
+        $open = array();
+
+        if (($asked > 0) && ($kind === 'visit') && ($asked !== (int) ($current['contact_id'] ?? 0))
+            && db_value("SELECT id FROM contacts WHERE id = '" . $asked . "'")) {
+            $open = ws_viewer_contacts_open($viewer, array($asked));
+        }
+
+        $picked = ws_event_contact_pick($kind, $data, $current, $open);
+
+        if (!$picked['ok']) {
+            return $fail(lang('That customer could not be found.'), 'contact_id');
+        }
+
+        $contact_id = $picked['contact_id'];
+    }
+
     return array('ok' => true, 'error' => '', 'field' => '', 'event_id' => $event_id, 'item' => array(
         'kind'          => $kind,
         'scope'         => $scope,
@@ -779,8 +802,104 @@ function ws_event_save_check($viewer, $data)
         'ends_at'       => $ends_at,
         'all_day'       => $all_day,
         'meeting_url'   => $meeting_url,
+        'contact_id'    => $contact_id,
         'current'       => $current,
     ));
+}
+
+/**
+ * Whether a plan item can name its customer: ws_events.contact_id is there
+ * (2026.11.0, 11.0.118). Files land before the upgrade runs.
+ *
+ * @return bool
+ */
+function ws_event_contacts_ready()
+{
+    static $ready = null;
+
+    if ($ready === null) {
+        $ready = function_exists('pg_schema_has') && pg_schema_has('ws_events', 'contact_id');
+    }
+
+    return $ready;
+}
+
+/**
+ * The customer a plan item names, as its form shows it: the contact's name
+ * (else its company, else its e-mail address) when the person may open it;
+ * hidden when they may not, so the form keeps it without telling who it is.
+ *
+ * @param array $viewer
+ * @param array $event a ws_events row
+ * @return array|null id, label, hidden; null when it names nobody
+ */
+function ws_event_contact_of($viewer, $event)
+{
+    $contact_id = (int) ($event['contact_id'] ?? 0);
+    $row = ($contact_id > 0) ? db_item("SELECT id, first_name, last_name, company, email_address FROM contacts WHERE id = '" . $contact_id . "'") : null;
+
+    if (!is_array($row)) {
+        return null;
+    }
+
+    if (!in_array($contact_id, ws_viewer_contacts_open($viewer, array($contact_id)), true)) {
+        return array('id' => 0, 'label' => '', 'hidden' => true);
+    }
+
+    return array('id' => $contact_id, 'label' => ws_event_contact_label($row), 'hidden' => false);
+}
+
+/**
+ * A contact's name for a plan item: first and last name, else the company,
+ * else the e-mail address.
+ *
+ * @param array $row first_name, last_name, company, email_address
+ * @return string
+ */
+function ws_event_contact_label($row)
+{
+    $name = pg_contact_display_name($row['first_name'] ?? '', $row['last_name'] ?? '');
+
+    foreach (array('company', 'email_address') as $column) {
+        $name = ($name !== '') ? $name : trim((string) ($row[$column] ?? ''));
+    }
+
+    return $name;
+}
+
+/**
+ * The customer a plan item is saved with. Only a visit names one; any other
+ * kind keeps none. Left out of the request, an item keeps the one it has, so
+ * a write that does not know of the field (an older form, the API) never
+ * drops it. Kept as it is, it needs no new check; a new one must be among
+ * the contacts the person may open.
+ *
+ * @param string     $kind    the kind being saved
+ * @param array      $data    the request (contact_id, optional)
+ * @param array|null $current the item as it is, null for a new one
+ * @param int[]      $open    the asked contact when the person may open it
+ *                            (ws_viewer_contacts_open()), else empty
+ * @return array ok, contact_id
+ */
+function ws_event_contact_pick($kind, $data, $current, $open)
+{
+    $kept = (int) ($current['contact_id'] ?? 0);
+
+    if ($kind !== 'visit') {
+        return array('ok' => true, 'contact_id' => 0);
+    }
+
+    if (!array_key_exists('contact_id', (array) $data)) {
+        return array('ok' => true, 'contact_id' => $kept);
+    }
+
+    $asked = max(0, (int) $data['contact_id']);
+
+    if (($asked === 0) || ($asked === $kept) || in_array($asked, array_map('intval', (array) $open), true)) {
+        return array('ok' => true, 'contact_id' => $asked);
+    }
+
+    return array('ok' => false, 'contact_id' => 0);
 }
 
 /**
@@ -789,7 +908,8 @@ function ws_event_save_check($viewer, $data)
  * @param array $viewer
  * @param array $data id, kind, scope, department_id, people, title, note,
  *                    start (Y-m-d), end (Y-m-d), start_time, end_time, all_day,
- *                    meeting_url (left as it is when not sent)
+ *                    meeting_url, contact_id (each left as it is when not
+ *                    sent; a customer only on a visit)
  * @return array ok, error, field, event_id
  */
 function ws_event_save($viewer, $data)
@@ -811,12 +931,14 @@ function ws_event_save($viewer, $data)
     $all_day = $check['item']['all_day'];
     $meeting_url = $check['item']['meeting_url'];
     $current = $check['item']['current'];
+    $contact_set = ws_event_contacts_ready() ? ", contact_id = '" . (int) $check['item']['contact_id'] . "'" : '';
 
     if ($current !== null) {
         db("UPDATE ws_events SET
                 kind = '" . $kind . "', scope = '" . $scope . "', department_id = '" . (($scope === 'department') ? $department_id : 0) . "',
                 title = '" . e($title) . "', note = '" . e(mb_substr((string) ($data['note'] ?? ''), 0, 500)) . "',
-                starts_at = '" . (int) $starts_at . "', ends_at = '" . (int) $ends_at . "', all_day = '" . ($all_day ? 1 : 0) . "'
+                starts_at = '" . (int) $starts_at . "', ends_at = '" . (int) $ends_at . "', all_day = '" . ($all_day ? 1 : 0) . "'"
+                . $contact_set . "
             WHERE id = '" . $event_id . "'");
 
         db("DELETE FROM ws_event_people WHERE event_id = '" . $event_id . "'");
@@ -828,6 +950,10 @@ function ws_event_save($viewer, $data)
                 '" . (int) $viewer['id'] . "', '" . time() . "')");
 
         $event_id = (int) mysqli_insert_id(db::$con);
+
+        if ($contact_set !== '') {
+            db("UPDATE ws_events SET contact_id = '" . (int) $check['item']['contact_id'] . "' WHERE id = '" . $event_id . "'");
+        }
     }
 
     foreach ($people as $user_id) {

@@ -710,6 +710,11 @@ function pg_privacy_erase_tables()
         )),
         // A cart quote keeps its products for the store; only whom it was
         // made for goes.
+        // A customer visit on the Work Calendar stays on the team's plan; it
+        // no longer names the person.
+        'ws_events' => array('find' => array('contact_id' => 'contact_ids'), 'action' => 'anonymise', 'fields' => array(
+            'contact_id' => 0,
+        )),
         'cart_quotes' => array('find' => array('contact_id' => 'contact_ids'), 'action' => 'anonymise', 'fields' => array(
             'contact_id' => 0,
         )),
@@ -826,6 +831,7 @@ function pg_privacy_erase_labels()
         'comments'                     => lang('Comments and reviews'),
         'consent_log'                  => lang('Consents'),
         'ws_approval_guests'           => lang('Workspace approvals'),
+        'ws_events'                    => lang('Customer visits'),
         'cart_quotes'                  => lang('Cart quotes'),
         'audit_log'                    => lang('Audit trail'),
         'record_revisions'             => lang('Item revisions'),
