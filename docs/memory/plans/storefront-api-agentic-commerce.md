@@ -1,6 +1,6 @@
 ---
 name: storefront-api-agentic-commerce
-description: Plan (approved 2026-10-19, watch list): public storefront API (cart, checkout, customer auth) as the base for agentic commerce bindings (OpenAI ACP checkout_sessions, Google UCP manifest)
+description: Plan (approved 2026-10-19; design note first, code after 2026.11.0 ships, #3798): public storefront API (cart, checkout, customer auth), base for OpenAI ACP and Google UCP bindings
 ---
 
 ## Why?
@@ -15,7 +15,7 @@ description: Plan (approved 2026-10-19, watch list): public storefront API (cart
 - MCP: the storefront routes become MCP tools under the customer's own consent, like today's routes.
 
 ## What remains?
-- Design note with the route table and the token model (owner review) before any code.
+- Decided #3798 (`workflow/decisions-made-product-11.md`): the design note now, a memory-only PR here (route table, token model, error vocabulary, the `auth_tokens.kind` proposal, ACP/UCP mapping), reviewed by the architect; code after 2026.11.0 ships; the customer-token migration step is approved when the auth slice starts.
 - Then slices: auth (M), cart (M), checkout (L), customer (M), ACP (M), UCP manifest (S), WAF agent verification (S).
 
 ## Open questions?
