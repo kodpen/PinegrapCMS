@@ -196,7 +196,7 @@ function pg_label_kargonomi_api($method, $path, $account, $payload = null)
         $read['message'] = isset($call['error']) ? (string) $call['error'] : '';
     } elseif (!$read['ok']) {
         $words = pg_label_kargonomi_error_texts($decoded);
-        $read['message'] = $words ? substr(implode(' ', $words), 0, 300) : 'HTTP ' . $status;
+        $read['message'] = $words ? mb_substr(implode(' ', $words), 0, 300, 'UTF-8') : 'HTTP ' . $status;
     }
 
     return $read;

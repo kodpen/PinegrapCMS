@@ -514,3 +514,20 @@ function test_carrier_label_kargonomi_pure_helpers()
 	)));
 	pg_assert_same('', pg_label_kargonomi_document('not a label', array()));
 }
+
+// A long Turkish refusal is cut on a character, not a byte: a broken last
+// letter would make htmlspecialchars() print the whole notice empty.
+function test_carrier_label_kargonomi_long_refusal_is_cut_on_a_character()
+{
+	carrier_label_kargonomi_test_stub(array(
+		'GET /states'     => array('states.json'),
+		'GET /cities/6'   => array('cities_6.json'),
+		'POST /shipments' => array(array(422, json_encode(array('message' => 'A' . str_repeat('ş', 200))))),
+	));
+	$answer = pg_label_call('kargonomi', 'create', array(carrier_label_kargonomi_test_shipment(), carrier_label_kargonomi_test_account()));
+	carrier_label_kargonomi_test_done();
+
+	pg_assert_false($answer['success']);
+	pg_assert_true(mb_check_encoding($answer['error'], 'UTF-8'), 'the error is valid UTF-8');
+	pg_assert_contains('A' . str_repeat('ş', 149), htmlspecialchars($answer['error'], ENT_QUOTES, 'UTF-8'));
+}

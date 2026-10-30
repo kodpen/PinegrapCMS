@@ -14,7 +14,7 @@ description: Generated from the module field of the memory files: each includes/
 - `auth`: [[list-row-names]], [[sign-in-one-message]]
 - `backup`: [[fn-module-errors-mail-backup-consent]]
 - `bundles`: [[product-bundles]], [[product-bundles-storefront]]
-- `carrier_labels`: [[carrier-label-drivers]]
+- `carrier_labels`: [[carrier-label-drivers]], [[carrier-label-text-cuts]]
 - `carrier_webhook`: [[carrier-webhook]], [[carrier-webhook-drivers]]
 - `cart_quotes`: [[cart-quotes]]
 - `classic_style_design`: [[classic-style-design-files]], [[classic-style-folder-pages]], [[classic-style-to-design]]

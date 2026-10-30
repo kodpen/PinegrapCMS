@@ -274,7 +274,7 @@ function pg_label_aras_parse($body, $operation)
         // SOAP 1.1 faultstring, or a SOAP 1.2 Reason/Text.
         $words = $xp->query('*[local-name()="faultstring"] | *[local-name()="Reason"]/*[local-name()="Text"]', $fault)->item(0);
         $out['fault'] = $words ? trim($words->textContent) : '';
-        $out['fault'] = ($out['fault'] !== '') ? substr($out['fault'], 0, 300) : 'SOAP fault';
+        $out['fault'] = ($out['fault'] !== '') ? mb_substr($out['fault'], 0, 300, 'UTF-8') : 'SOAP fault';
 
         return $out;
     }
@@ -646,7 +646,7 @@ function pg_label_aras_barcode_read($result, $format)
 
     return array(
         'ok'              => (pg_label_aras_value($result, 'ResultCode') === '0'),
-        'message'         => substr(pg_label_aras_value($result, 'Message'), 0, 300),
+        'message'         => mb_substr(pg_label_aras_value($result, 'Message'), 0, 300, 'UTF-8'),
         'tracking_number' => pg_label_aras_value($model, 'TrackingNumber'),
         'barcode'         => pg_label_aras_value($model, 'Barcode'),
         'label'           => pg_label_aras_document($result, $format),
@@ -931,7 +931,7 @@ function pg_label_aras_create($shipment, $account)
     }
 
     if ($result !== '0') {
-        $words = substr(pg_label_aras_value($info, 'ResultMessage'), 0, 300);
+        $words = mb_substr(pg_label_aras_value($info, 'ResultMessage'), 0, 300, 'UTF-8');
 
         return array(
             'success' => false,
@@ -1050,7 +1050,7 @@ function pg_label_aras_cancel($reference, $account)
     }
 
     $result = pg_label_aras_value($read['result'], 'ResultCode');
-    $words = substr(pg_label_aras_value($read['result'], 'ResultMessage'), 0, 300);
+    $words = mb_substr(pg_label_aras_value($read['result'], 'ResultMessage'), 0, 300, 'UTF-8');
 
     if ($result === '') {
         return array(

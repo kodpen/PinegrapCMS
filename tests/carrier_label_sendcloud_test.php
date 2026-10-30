@@ -838,3 +838,46 @@ function test_carrier_label_sendcloud_pickup_failures_and_unclear()
 		}
 	}
 }
+
+// A long accented refusal is cut on a character, not a byte: a broken last
+// letter would make htmlspecialchars() print the whole notice empty.
+function test_carrier_label_sendcloud_long_refusal_is_cut_on_a_character()
+{
+	carrier_label_sendcloud_test_stub(array(
+		'GET /addresses/sender-addresses?page_size=100' => array('sender_addresses.json'),
+		'POST /shipments/announce'                       => array(array(400, json_encode(array('errors' => array(array('detail' => 'A' . str_repeat('ş', 200), 'status' => '400')))))),
+	));
+	$answer = pg_label_call('sendcloud', 'create', array(carrier_label_sendcloud_test_shipment(), carrier_label_sendcloud_test_account(array('service' => 'dpd:home'))));
+	carrier_label_sendcloud_test_done();
+
+	pg_assert_false($answer['success']);
+	pg_assert_true(mb_check_encoding($answer['error'], 'UTF-8'), 'the error is valid UTF-8');
+	pg_assert_contains('A' . str_repeat('ş', 149), htmlspecialchars($answer['error'], ENT_QUOTES, 'UTF-8'));
+}
+
+// A long recipient name is cut to 75 characters, not bytes: a broken last
+// letter would make json_encode() answer false and the announcement go out
+// without a body.
+function test_carrier_label_sendcloud_long_name_keeps_the_body()
+{
+	$bodies = array();
+	pg_label_sendcloud_transport(function ($method, $url, $headers, $body) use (&$bodies) {
+		$bodies[] = $body;
+
+		if ($method === 'GET') {
+			return array('status' => 200, 'body' => carrier_label_sendcloud_test_fixture('sender_addresses.json'), 'error' => '', 'sent' => true);
+		}
+
+		return array('status' => 200, 'body' => carrier_label_sendcloud_test_fixture('shipment.json'), 'error' => '', 'sent' => true);
+	});
+
+	$shipment = carrier_label_sendcloud_test_shipment();
+	$shipment['recipient']['name'] = str_repeat('ü', 60);
+	$answer = pg_label_call('sendcloud', 'create', array($shipment, carrier_label_sendcloud_test_account(array('service' => 'dpd:home'))));
+	carrier_label_sendcloud_test_done();
+
+	pg_assert_true($answer['success'], $answer['error']);
+	pg_assert_true(is_string(end($bodies)), 'the announcement has a body');
+	$sent = json_decode((string) end($bodies), true);
+	pg_assert_same(str_repeat('ü', 60), isset($sent['to_address']['name']) ? $sent['to_address']['name'] : null);
+}

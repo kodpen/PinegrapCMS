@@ -317,7 +317,7 @@ function pg_label_shippo_api($method, $path, $account, $payload = null)
         $read['message'] = $call['error'];
     } elseif (!$read['ok']) {
         $words = pg_label_shippo_error_texts($decoded);
-        $read['message'] = $words ? substr(implode(' ', $words), 0, 300) : 'HTTP ' . $call['status'];
+        $read['message'] = $words ? mb_substr(implode(' ', $words), 0, 300, 'UTF-8') : 'HTTP ' . $call['status'];
     }
 
     return $read;
@@ -750,7 +750,7 @@ function pg_label_shippo_create($shipment, $account)
 
         return array(
             'success' => false,
-            'error'   => lang('Shippo found no rate for this shipment.') . ($words ? ' (' . substr(implode(' ', $words), 0, 300) . ')' : ''),
+            'error'   => lang('Shippo found no rate for this shipment.') . ($words ? ' (' . mb_substr(implode(' ', $words), 0, 300, 'UTF-8') . ')' : ''),
             'log'     => array('Shippo shipment ' . $id . ' has no rate.'),
             'raw'     => $read['raw'],
         );
@@ -786,7 +786,7 @@ function pg_label_shippo_create($shipment, $account)
 
         return array(
             'success' => false,
-            'error'   => lang('Shippo could not make the label.') . ($words ? ' (' . substr(implode(' ', $words), 0, 300) . ')' : ''),
+            'error'   => lang('Shippo could not make the label.') . ($words ? ' (' . mb_substr(implode(' ', $words), 0, 300, 'UTF-8') . ')' : ''),
             'log'     => array('Shippo transaction ' . $reference . ' failed with ' . $provider . '.'),
             'raw'     => $read['raw'],
         );
@@ -1098,7 +1098,7 @@ function pg_label_shippo_pickup_answer($data, $raw)
 
         return array(
             'success' => false,
-            'error'   => lang('The carrier refused the pickup request.') . ($words ? ' (' . substr(implode(' ', $words), 0, 300) . ')' : ''),
+            'error'   => lang('The carrier refused the pickup request.') . ($words ? ' (' . mb_substr(implode(' ', $words), 0, 300, 'UTF-8') . ')' : ''),
             'raw'     => $raw,
         );
     }

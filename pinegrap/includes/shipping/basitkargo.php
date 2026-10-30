@@ -332,7 +332,7 @@ function pg_label_basitkargo_api($method, $path, $account, $payload = null, $key
 
         // The reference's validation answers are plain Turkish sentences.
         if (!$words && !$decoded && (stripos($call['body'], '<') === false) && (trim($call['body']) !== '')) {
-            $words[] = substr(trim($call['body']), 0, 200);
+            $words[] = mb_substr(trim($call['body']), 0, 200, 'UTF-8');
         }
 
         $read['message'] = $words ? implode(' ', array_unique($words)) : 'HTTP ' . $call['status'];
