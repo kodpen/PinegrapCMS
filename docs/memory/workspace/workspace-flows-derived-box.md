@@ -17,6 +17,12 @@ description: The derived value box of a flow (kind value, T3, PR #2701): its all
 - `ws_flow_pure_values($graph, $values)`: the inputs filled raw by `ws_flow_derived_fill()` (the reader's own fill makes the value safe where it lands), from the run's values, the constants and derived boxes already worked out (passes in dependency order, any box order). A box in a loop of derived boxes gives ''.
 - Worked out each time a reader runs; no cache, no row.
 
+## How long can a derived value be?
+- At most `WS_FLOW_DERIVED_VALUE_LENGTH` (4000) characters (#3367). `ws_flow_derived_value()` cuts both inputs and the join there; `ws_flow_derived_fill()` gives each placed value only the room left, then cuts the input there. `mb_substr()`: never mid-UTF-8.
+- Why: one input may cite a value many times (about 58-fold per join), so three chained joins exhausted `memory_limit` in `ws_tick` or a job: the box stayed `running`, the rest of the tick was skipped. Role-3 members build these boxes (#3345).
+- Why 4000: the longest text a message box keeps (`ws_flow_lines(..., 4000)`), so the common landing place gets it whole.
+- Later: a filled text is not cut where it lands (mail body, webhook, MCP arguments, table cell); the check does not warn about repeated citations.
+
 ## What does the check say?
 - `ws_flow_derived_problems()`: no `a`; no `b` for a rule of two inputs (`ws_flow_derived_two_inputs()`); add_days with a written b that is not a whole number. `ws_flow_derived_loops()`: a box reading itself through derived boxes (`bad_config`).
 - The box's own references are checked for the box and the field only, never "does not come before" nor skippable: it has no place among the arrows.
