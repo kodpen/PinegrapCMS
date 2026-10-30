@@ -97,9 +97,9 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         // Clamped to the same bounds pg_login_throttle_limits() enforces at
         // read time, so a value typed here cannot mean one thing in the box
         // and another in the counter.
-        $login_post_attempts = max(1, min(1000,  (int) post_value('login_throttle_attempts')));
-        $login_post_minutes  = max(1, min(1440,  (int) post_value('login_throttle_minutes')));
-        $login_post_lockout  = max(1, min(43200, (int) post_value('login_throttle_lockout')));
+        $login_post_attempts = max(1, min(1000,  pg_parse_whole_number(post_value('login_throttle_attempts'), 1000)));
+        $login_post_minutes  = max(1, min(1440,  pg_parse_whole_number(post_value('login_throttle_minutes'), 1440)));
+        $login_post_lockout  = max(1, min(43200, pg_parse_whole_number(post_value('login_throttle_lockout'), 43200)));
 
         $sql_login_throttle =
             "login_throttle = '" . escape(post_value('login_throttle') ? 1 : 0) . "',
@@ -110,7 +110,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         // The sign-in question arrives with 4.40; own guard, same reason.
         if (waf_table_has_column('config', 'login_throttle_captcha_after')) {
             $sql_login_throttle .=
-                "login_throttle_captcha_after = " . max(0, min(100, (int) post_value('login_throttle_captcha_after'))) . ",";
+                "login_throttle_captcha_after = " . max(0, min(100, pg_parse_whole_number(post_value('login_throttle_captcha_after'), 100))) . ",";
         }
     }
     // Form submission limits (2026.11.0): the same fragment pattern, clamped
@@ -119,9 +119,9 @@ if (!defined('PG_SETTINGS_ENTRY')) {
 
     if (function_exists('pg_schema_has') && pg_schema_has('config', 'form_limit_ip_hour')) {
         $sql_form_limits =
-            "form_limit_ip_hour = " . max(0, min(10000, (int) post_value('form_limit_ip_hour'))) . ",
-             form_limit_recipient_day = " . max(0, min(10000, (int) post_value('form_limit_recipient_day'))) . ",
-             form_limit_domain_hour = " . max(0, min(10000, (int) post_value('form_limit_domain_hour'))) . ",
+            "form_limit_ip_hour = " . max(0, min(10000, pg_parse_whole_number(post_value('form_limit_ip_hour'), 10000))) . ",
+             form_limit_recipient_day = " . max(0, min(10000, pg_parse_whole_number(post_value('form_limit_recipient_day'), 10000))) . ",
+             form_limit_domain_hour = " . max(0, min(10000, pg_parse_whole_number(post_value('form_limit_domain_hour'), 10000))) . ",
              form_spam_blacklist = " . (post_value('form_spam_blacklist') ? 1 : 0) . ",";
     }
 
