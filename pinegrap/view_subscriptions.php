@@ -60,7 +60,7 @@ $output_amount = function ($amount, $currency) {
 };
 
 $output_date = function ($time) {
-    return ((int) $time > 0) ? h(date('d.m.Y', (int) $time)) : '<span class="fg-secondary">&ndash;</span>';
+    return ((int) $time > 0) ? h(get_absolute_time(array('timestamp' => (int) $time, 'type' => 'date', 'format' => 'plain_text'))) : '<span class="fg-secondary">&ndash;</span>';
 };
 
 $output_customer = function ($row) {
@@ -117,7 +117,7 @@ if ($subscription_id > 0) {
 
     if ($pending !== null) {
         $facts[] = array(lang('New amount'), $output_amount($pending['amount'], $row['currency'])
-            . ' <span class="small fg-secondary">' . h(lang(array('string' => 'from {var:1}', 'vars' => array(date('d.m.Y', (int) strtotime($pending['date'])))))) . '</span>');
+            . ' <span class="small fg-secondary">' . h(lang(array('string' => 'from {var:1}', 'vars' => array(prepare_form_data_for_output($pending['date'], 'date', false))))) . '</span>');
     }
 
     if ((int) $row['cancelled_at'] > 0) {
@@ -163,7 +163,7 @@ if ($subscription_id > 0) {
         $label = pg_subscription_customer_event_label((string) $event['kind']);
         $output_events .= '
                             <tr>
-                                <td class="text-nowrap">' . h(date('d.m.Y H:i', (int) $event['created_at'])) . '</td>
+                                <td class="text-nowrap">' . h(get_absolute_time(array('timestamp' => (int) $event['created_at'], 'format' => 'plain_text'))) . '</td>
                                 <td>' . h(($label !== '') ? $label : (string) $event['kind']) . '</td>
                                 <td>' . (((int) $event['order_id'] > 0) ? '<a href="view_order.php?id=' . (int) $event['order_id'] . '">#' . (int) $event['order_id'] . '</a>' : '') . '</td>
                                 <td class="text-end text-nowrap">' . (((int) $event['amount'] > 0) ? $output_amount($event['amount'], $row['currency']) : '') . '</td>
@@ -177,7 +177,7 @@ if ($subscription_id > 0) {
         $output_orders .= '
                             <tr>
                                 <td><a href="view_order.php?id=' . (int) $order['id'] . '">' . h(((string) $order['order_number'] !== '') ? (string) $order['order_number'] : '#' . (int) $order['id']) . '</a></td>
-                                <td class="text-nowrap">' . (((int) $order['order_date'] > 0) ? h(date('d.m.Y H:i', (int) $order['order_date'])) : '') . '</td>
+                                <td class="text-nowrap">' . (((int) $order['order_date'] > 0) ? h(get_absolute_time(array('timestamp' => (int) $order['order_date'], 'format' => 'plain_text'))) : '') . '</td>
                                 <td>' . h((string) $order['status']) . '</td>
                                 <td class="text-end text-nowrap">' . $output_amount($order['total'], $row['currency']) . '</td>
                             </tr>';

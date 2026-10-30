@@ -3582,11 +3582,11 @@ function pg_short_link_state($row)
     $used = (int) ($row['used_at'] ?? 0);
 
     if (($expires > 0) && ($expires <= time())) {
-        return array('status' => 'expired', 'label' => lang(array('string' => 'Expired on {var:1}', 'vars' => date('d.m.Y H:i', $expires))));
+        return array('status' => 'expired', 'label' => lang(array('string' => 'Expired on {var:1}', 'vars' => get_absolute_time(array('timestamp' => $expires, 'format' => 'plain_text')))));
     }
 
     if (($mode === 'once') && ($used > 0)) {
-        return array('status' => 'used', 'label' => lang(array('string' => 'Opened on {var:1}; no longer works', 'vars' => date('d.m.Y H:i', $used))));
+        return array('status' => 'used', 'label' => lang(array('string' => 'Opened on {var:1}; no longer works', 'vars' => get_absolute_time(array('timestamp' => $used, 'format' => 'plain_text')))));
     }
 
     if ($mode === 'once') {
@@ -3594,7 +3594,7 @@ function pg_short_link_state($row)
     }
 
     if ($expires > 0) {
-        return array('status' => 'open', 'label' => lang(array('string' => 'Valid until {var:1}', 'vars' => date('d.m.Y H:i', $expires))));
+        return array('status' => 'open', 'label' => lang(array('string' => 'Valid until {var:1}', 'vars' => get_absolute_time(array('timestamp' => $expires, 'format' => 'plain_text')))));
     }
 
     return array('status' => 'open', 'label' => '');
