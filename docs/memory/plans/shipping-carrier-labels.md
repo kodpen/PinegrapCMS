@@ -4,7 +4,7 @@ description: Plan (approved 2026-10-19; 1-4, 6-8 partly done): carrier APIs for 
 ---
 
 ## Why?
-- No Turkish carrier API existed; competitors ship many with thermal labels and tracking write-back.
+- No Turkish carrier API existed; competitors ship many with labels and tracking write-back.
 
 ## What is decided?
 - Base: the shipment row (`shipping_tracking_numbers` with `carrier`, `status`, `source='carrier'`) and the single write path `pg_shipment_record()` of `shipping-management.md`; this plan never writes tracking numbers another way.
@@ -24,7 +24,7 @@ description: Plan (approved 2026-10-19; 1-4, 6-8 partly done): carrier APIs for 
 4. Done #3157: status polling job, write-back through the single path (`commerce/shipment-tracking.md`).
 5. Direct drivers (M each): Aras done #3259 (`commerce/carrier-label-aras.md`); Yurtiçi waits for docs.
    - 5c. API: done #3220 (`commerce/shipment-label-api.md`).
-6. Aggregators, done: Basit Kargo #3163 (`commerce/carrier-label-basitkargo.md`), Kargonomi #3286 (`commerce/carrier-label-kargonomi.md`); MNG ApiZone (M) waits for docs.
+6. Aggregators, done: Basit Kargo #3163 (`commerce/carrier-label-basitkargo.md`), Kargonomi #3286 (`commerce/carrier-label-kargonomi.md`), Kargonomi webhook #3633; MNG ApiZone (M) waits for docs.
 7. International (#3124), done: Shippo #3192 (`commerce/carrier-label-shippo.md`), Sendcloud #3226 (`commerce/carrier-label-sendcloud.md`); 7b Shippo webhook #3407; 7c Sendcloud return labels #3409; Sendcloud webhook #3431.
    - 7d Customs, decided #3408 (`workflow/decisions-made-product-7.md`): C1 #3429 (`commerce/product-customs-fields.md`); C2 #3449 Shippo (`commerce/carrier-label-customs.md`); C3 #3474 Sendcloud (`commerce/carrier-label-sendcloud-customs.md`). Next: products API `hs_code`/`origin_country` after #3298 (holds `schema.php`).
 8. Done: return label on the returns screen (#3178): 8a #3194 (`commerce/shipment-label-returns.md`), 8b #3239 (classic), 8c #3268 (widget).
