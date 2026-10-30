@@ -346,7 +346,7 @@ function pg_carrier_webhook_unknown($driver, $reference)
 
     $definition = pg_label_driver($driver);
 
-    log_activity('Shipment Tracking: ' . $definition['label'] . ' sent a status of shipment ' . $reference . ', which no label of this site has.', 'SYSTEM');
+    log_activity(lang(array('string' => 'Shipment Tracking: {var:1} sent a status of shipment {var:2}, which no label of this site has.', 'vars' => array($definition['label'], $reference))), 'SYSTEM');
 }
 
 /**

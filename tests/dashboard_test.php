@@ -264,10 +264,10 @@ function test_dashboard_workspace_cards_need_the_module()
 // reads as a scheduled job, an unknown visitor with an address as unknown.
 function test_dashboard_log_actor()
 {
-	pg_assert_same('admin', pg_dashboard_log_actor('admin', '10.0.0.1'));
-	pg_assert_same(lang('Scheduled job'), pg_dashboard_log_actor('UNKNOWN', ''));
-	pg_assert_same(lang('Scheduled job'), pg_dashboard_log_actor('', ''));
-	pg_assert_same(lang('Unknown'), pg_dashboard_log_actor('', '203.0.113.5'));
+	pg_assert_same('admin', pg_log_actor('admin', '10.0.0.1'));
+	pg_assert_same(lang('Scheduled job'), pg_log_actor('UNKNOWN', ''));
+	pg_assert_same(lang('Scheduled job'), pg_log_actor('', ''));
+	pg_assert_same(lang('Unknown'), pg_log_actor('', '203.0.113.5'));
 }
 
 // The address label appears only with an address, never as a bare "· IP".

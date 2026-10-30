@@ -253,9 +253,6 @@ if (!$_POST) {
         $query .= "ORDER BY $order_by ";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed');
         while ($row = mysqli_fetch_assoc($result)) {
-            if ($row['log_user'] == '') {
-                $row['log_user'] = 'UNKNOWN';
-            }
             $row['log_type'] = 'Site Log';
             $row['log_location'] = h(lang('Database'));
             

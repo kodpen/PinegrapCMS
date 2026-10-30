@@ -215,7 +215,7 @@ if (!$_POST) {
             WHERE user_id = '" . $user_id . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed');
 
-        log_activity("user ($_SESSION[sessionusername]) updated account", $_SESSION['sessionusername']);
+        log_activity(pg_log_lang(array('string' => 'user ({var:1}) updated account', 'vars' => array($_SESSION['sessionusername']))), $_SESSION['sessionusername']);
         
         // remove liveform because software does not need it anymore
         $liveform->remove_form('my_account_profile');

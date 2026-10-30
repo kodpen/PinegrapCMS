@@ -941,6 +941,8 @@
     "member": "uye",
     "member account opened with {var:1} ({var:2})": "{var:1} ile üye hesabı açıldı ({var:2})",
     "membership": "uyelik",
+    "membership job removed {var:1} member(s) from membership contact group because membership was no longer valid (e.g. membership expired)": "üyelik işi {var:1} üyeyi üyelik kişi grubundan çıkardı, çünkü üyelik artık geçerli değildi (ör. üyeliğin süresi doldu)",
+    "membership job sent expiration warning e-mail(s) to {var:1} member(s)": "üyelik işi {var:1} üyeye süre sonu uyarı e-postası gönderdi",
     "membership, registration, sign up, signup, approval, verification, member number": "membership, registration, sign up, signup, approval, verification, member number, uyelik, üyelik, kayit, uye ol, onay, dogrulama, uye numarasi",
     "mentioned you": "sizi andı",
     "mentioned you in a channel": "bir kanalda seni andı",

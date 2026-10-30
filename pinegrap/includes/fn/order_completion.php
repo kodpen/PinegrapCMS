@@ -1935,7 +1935,7 @@ function pg_order_complete_line_gift_cards(array $line, $order_id, $created_user
                 '" . $created_user_id . "',
                 UNIX_TIMESTAMP())");
 
-        log_activity('gift card (' . output_gift_card_code($code) . ') was created because gift card product was ordered', $actor);
+        log_activity(pg_log_lang(array('string' => 'gift card ({var:1}) was created because gift card product was ordered', 'vars' => array(output_gift_card_code($code)))), $actor);
 
         // Create an array that will store the fields for variables that need to be replaced.
         $fields = array();
@@ -2088,7 +2088,7 @@ function pg_order_complete_line_gift_cards(array $line, $order_id, $created_user
                 'automatic',
                 '" . escape($order_item_gift_card['recipient_email_address']) . "')");
         
-        log_activity('auto campaign was created because gift card was ordered (' . output_gift_card_code($code) . ')', $actor);
+        log_activity(pg_log_lang(array('string' => 'auto campaign was created because gift card was ordered ({var:1})', 'vars' => array(output_gift_card_code($code)))), $actor);
     }
 }
 

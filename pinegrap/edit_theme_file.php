@@ -106,7 +106,7 @@ if (!$_POST) {
         }
         
         // log the activity
-        log_activity("theme file ($file_name) was exported", $_SESSION['sessionusername']);
+        log_activity(lang(array('string' => 'theme file ({var:1}) was exported', 'vars' => array($file_name))), $_SESSION['sessionusername']);
     
     // else output the page
     } else {
@@ -279,7 +279,7 @@ if (!$_POST) {
         @unlink(FILE_DIRECTORY_PATH . '/' . $original_name);
         
         // log activity, add a notice to the liveform, and then send the user back to the view themes screen
-        log_activity("theme file ($original_name) was deleted", $_SESSION['sessionusername']);
+        log_activity(lang(array('string' => 'theme file ({var:1}) was deleted', 'vars' => array($original_name))), $_SESSION['sessionusername']);
         $liveform_view_themes->add_notice(lang('The theme file was deleted successfully.'));
         header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/view_themes.php');
     
@@ -457,7 +457,7 @@ if (!$_POST) {
             rename(FILE_DIRECTORY_PATH . '/' . $original_name, FILE_DIRECTORY_PATH . '/' . $name);
         }
 
-        log_activity("theme file ($name) was modified", $_SESSION['sessionusername']);
+        log_activity(lang(array('string' => 'theme file ({var:1}) was modified', 'vars' => array($name))), $_SESSION['sessionusername']);
 
         // If this theme was activated as a desktop or mobile theme,
         // then update styles for pages.
@@ -545,7 +545,7 @@ if (!$_POST) {
                 $_SESSION['software']['preview_theme_id'] = $liveform->get_field_value('id');
             }
 
-            log_activity('theme file (' . $name . ') was activated for desktop', $_SESSION['sessionusername']);
+            log_activity(lang(array('string' => 'theme file ({var:1}) was activated for desktop', 'vars' => array($name))), $_SESSION['sessionusername']);
         }
 
         // if this theme file was activated for desktop before and it is not now, then log activity
@@ -553,7 +553,7 @@ if (!$_POST) {
             ($original_activated_desktop_theme == 1)
             && ($liveform->get_field_value('activated_desktop_theme') == 0)
         ) {
-            log_activity('theme file (' . $name . ') was deactivated for desktop', $_SESSION['sessionusername']);
+            log_activity(lang(array('string' => 'theme file ({var:1}) was deactivated for desktop', 'vars' => array($name))), $_SESSION['sessionusername']);
         }
 
         // if this theme file was not activated for mobile before and it is now,
@@ -571,7 +571,7 @@ if (!$_POST) {
                 $_SESSION['software']['preview_theme_id'] = $liveform->get_field_value('id');
             }
 
-            log_activity('theme file (' . $name . ') was activated for mobile', $_SESSION['sessionusername']);
+            log_activity(lang(array('string' => 'theme file ({var:1}) was activated for mobile', 'vars' => array($name))), $_SESSION['sessionusername']);
         }
 
         // if this theme file was activated for mobile before and it is not now, then log activity
@@ -579,7 +579,7 @@ if (!$_POST) {
             ($original_activated_mobile_theme == 1)
             && ($liveform->get_field_value('activated_mobile_theme') == 0)
         ) {
-            log_activity('theme file (' . $name . ') was deactivated for mobile', $_SESSION['sessionusername']);
+            log_activity(lang(array('string' => 'theme file ({var:1}) was deactivated for mobile', 'vars' => array($name))), $_SESSION['sessionusername']);
         }
         
         $notice = lang('The theme file was edited successfully.');

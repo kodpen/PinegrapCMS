@@ -69,7 +69,7 @@ if ($pg_set_password_mode) {
     // threshold the attempt is refused outright, before the password is
     // looked at. Signing in at the login form clears the account's counter.
     if (pg_login_captcha_required($pg_login_identifier)) {
-        log_activity('access denied to change password (too many failed attempts) (email or username: ' . $pg_login_identifier . ')', 'UNKNOWN');
+        log_activity(pg_log_lang(array('string' => 'access denied to change password (too many failed attempts) (email or username: {var:1})', 'vars' => array($pg_login_identifier))), 'UNKNOWN');
         $liveform->mark_error('current_password', lang('There have been several failed sign-in attempts for this account or from this address. Please sign in first, then change your password.'));
         $liveform->assign_field_value('current_password', '');
         go($pg_error_url);
@@ -86,9 +86,9 @@ if ($pg_set_password_mode) {
         // The site log records which half was wrong; the visitor gets one
         // message for both, so the form does not tell which accounts exist.
         if (validate_username($liveform->get_field_value('email_address')) == true) {
-            log_activity('access denied to change password (password invalid) (email or username: ' . $liveform->get_field_value('email_address') . ')', 'UNKNOWN');
+            log_activity(pg_log_lang(array('string' => 'access denied to change password (password invalid) (email or username: {var:1})', 'vars' => array($liveform->get_field_value('email_address')))), 'UNKNOWN');
         } else {
-            log_activity('access denied to change password (email or username invalid: ' . $liveform->get_field_value('email_address') . ')', 'UNKNOWN');
+            log_activity(pg_log_lang(array('string' => 'access denied to change password (email or username invalid: {var:1})', 'vars' => array($liveform->get_field_value('email_address')))), 'UNKNOWN');
         }
 
         $liveform->mark_error('current_password', pg_login_refused_message(false, true));
@@ -187,7 +187,7 @@ if ($pg_keep_session && isset($_COOKIE['software']['auth'])) {
 
 pg_auth_token_revoke_user($change_user_id);
 
-log_activity("user changed password", $username);
+log_activity(pg_log_lang(array('string' => 'user changed password')), $username);
 
 if (!$pg_keep_session) {
     $liveform->remove();

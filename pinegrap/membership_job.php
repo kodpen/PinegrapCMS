@@ -90,7 +90,7 @@ if ((MEMBERSHIP_EXPIRATION_WARNING_EMAIL == true) && (MEMBERSHIP_EXPIRATION_WARN
         
         // if membership job e-mailed at least 1 member, then log action
         if (count($contacts) > 0) {
-            log_activity('membership job sent expiration warning e-mail(s) to ' . count($contacts) . ' member(s)', 'UNKNOWN');
+            log_activity(lang(array('string' => 'membership job sent expiration warning e-mail(s) to {var:1} member(s)', 'vars' => array(count($contacts)))), 'UNKNOWN');
         }
     }
 }
@@ -140,7 +140,7 @@ if (mysqli_num_rows($result) > 0) {
 
     // if membership job removed at least one contact, then log action
     if (count($contacts) > 0) {
-        log_activity('membership job removed ' . count($contacts) . ' member(s) from membership contact group because membership was no longer valid (e.g. membership expired)', 'UNKNOWN');
+        log_activity(lang(array('string' => 'membership job removed {var:1} member(s) from membership contact group because membership was no longer valid (e.g. membership expired)', 'vars' => array(count($contacts)))), 'UNKNOWN');
     }
 }
 

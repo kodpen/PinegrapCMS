@@ -1998,7 +1998,7 @@ if (!$_POST) {
         
         // if the user is creating a new visitor report, then log activity, remove form, and add notice in a certain way
         if ($liveform->field_in_session('id') == false) {
-            log_activity('visitor report (' . $liveform->get_field_value('name') . ') was created', $_SESSION['sessionusername']);
+            log_activity(lang(array('string' => 'visitor report ({var:1}) was created', 'vars' => array($liveform->get_field_value('name')))), $_SESSION['sessionusername']);
             $liveform->remove_form();
             $liveform->add_notice(lang('The visitor report has been created, and the results appear below.') . $date_filter_message);
             

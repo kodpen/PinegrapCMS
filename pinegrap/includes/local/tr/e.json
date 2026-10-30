@@ -1210,6 +1210,7 @@
     "e-Invoice taxpayer": "e-Fatura mükellefi",
     "e-mail address": "e-posta adresi",
     "e-mail campaign (subject: {var:1}) was sent to {var:2} recipients": "e-posta kampanyası (konu: {var:1}) {var:2} alıcıya gönderildi",
+    "e-mail campaign job sent e-mail(s) to {var:1} recipient(s)": "e-posta kampanyası işi {var:1} alıcıya e-posta gönderdi",
     "e-mail “{var:1}” sent to {var:2}": "“{var:1}” e-postası {var:2} adresine gönderildi",
     "e-mail, instagram, location, contact": "e-posta, instagram, konum, iletişim",
     "e-mail, integrations": "e-posta, entegrasyonlar",

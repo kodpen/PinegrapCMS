@@ -16,7 +16,7 @@ description: Dashboard card figures: the brief's "this week", visitor "Last 12 M
 
 ## Small rules on other cards
 - Currency rates (`widget_16.php`): the rate is `pg_format_number(..., 5)` like the "1 $ = …" line; the edit link carries no `send_to` (the card is drawn by `api.php`, and `edit_currency.php` returns to the currency list anyway).
-- Activity (`widget_7.php`): `pg_dashboard_log_actor()` names a row with no user or the literal `UNKNOWN` and no address "Scheduled job", with an address "Unknown"; `pg_dashboard_log_meta()` adds "IP …" only when there is one (#2049).
+- Activity (`widget_7.php`): `pg_log_actor()` (shared with the Site Log, `site-log-paging.md`) names a row with no user or the literal `UNKNOWN` and no address "Scheduled job", with an address "Unknown"; `pg_dashboard_log_meta()` adds "IP …" only when there is one (#2049).
 - Live engagement (`widget_4.php`): the labels take a `{suffix:1}` plural ("1 Active Visitor"); Turkish has one form ("Aktif Ziyaretçi").
 - Calendars (`get_calendar()` minimal mode): short day names (`Sun`…`Sat` keys) in `<abbr>` with the full name, since the card cut both Friday and Saturday to "Cu…".
 

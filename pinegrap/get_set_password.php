@@ -57,7 +57,7 @@ function get_set_password($properties) {
             // If query to database return no results for token
             if (!is_array($user) || !$user['id']) {
 
-                log_activity('Set Password: invalid token');
+                log_activity(pg_log_lang(array('string' => 'Set Password: invalid token')));
 
                 output_error(lang(array('string' => 'Sorry, the token is not valid, so we can\'t allow you to set a password. Please check if your email client possibly broke the link. If so, then you might try fixing the link. Otherwise, the token might be old, so please <a href="{var:1}">request a new email</a>.', 'vars' => array(h(pg_sign_in_screen_url('forgot password', 'forgot_password.php'))))));
             }
@@ -68,7 +68,7 @@ function get_set_password($properties) {
             // Check to see if token has expired after 24 hours
             if (($token_timestamp + $time_24hrs) < time()) {
                 
-                log_activity('Set Password: expired token');
+                log_activity(pg_log_lang(array('string' => 'Set Password: expired token')));
 
                 output_error(lang(array('string' => 'Sorry, the token has expired. Please <a href="{var:1}">request a new email</a>.', 'vars' => array(h(pg_sign_in_screen_url('forgot password', 'forgot_password.php'))))));
             }   
@@ -79,7 +79,7 @@ function get_set_password($properties) {
         // to be able to view page/form and edit it.
         } else if (!check_edit_access($folder_id)) {
 
-            log_activity('Set Password: missing token');
+            log_activity(pg_log_lang(array('string' => 'Set Password: missing token')));
 
             output_error(lang('Sorry, the token is missing from the address, so we can\'t allow you to set a password.'));
         }

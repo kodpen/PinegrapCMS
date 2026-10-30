@@ -79,7 +79,7 @@ if (!$is_admin) {
         "SELECT user_id FROM orders WHERE id = '" . e($order_id) . "' LIMIT 1"
     );
     if ($current_user_id <= 0 || $owner_id !== $current_user_id) {
-        log_activity('Access denied — non-owner attempted to cancel order #' . $order_id);
+        log_activity(pg_log_lang(array('string' => 'Access denied — non-owner attempted to cancel order #{var:1}', 'vars' => array($order_id))));
         output_error(lang('You are not allowed to cancel this order.'));
     }
 }

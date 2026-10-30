@@ -70,7 +70,7 @@ switch (($_GET['mode'] ?? '')) {
                     $log_style_name = 'Default (inherit)';
                 }
 
-                log_activity('activated ' . $_SESSION['software']['device_type'] . ' page style (' . $log_style_name . ') was set for page (' . get_page_name($_GET['page_id']) . ')', $_SESSION['sessionusername']);
+                log_activity(lang(array('string' => 'activated {var:1} page style ({var:2}) was set for page ({var:3})', 'vars' => array($_SESSION['software']['device_type'], $log_style_name, get_page_name($_GET['page_id'])))), $_SESSION['sessionusername']);
 
             // Otherwise the user is not previewing the activated theme or "none" theme,
             // so update the preview style for the page.
@@ -109,7 +109,7 @@ switch (($_GET['mode'] ?? '')) {
 
                 $log_theme_name = db_value("SELECT name FROM files WHERE id = '" . escape($_SESSION['software']['preview_theme_id']) . "'");
 
-                log_activity('preview ' . $_SESSION['software']['device_type'] . ' page style (' . $log_style_name . ') was set for page (' . get_page_name($_GET['page_id']) . ') and theme (' . $log_theme_name . ')', $_SESSION['sessionusername']);
+                log_activity(lang(array('string' => 'preview {var:1} page style ({var:2}) was set for page ({var:3}) and theme ({var:4})', 'vars' => array($_SESSION['software']['device_type'], $log_style_name, get_page_name($_GET['page_id']), $log_theme_name))), $_SESSION['sessionusername']);
             }
         }
         

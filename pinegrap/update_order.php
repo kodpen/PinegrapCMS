@@ -234,7 +234,7 @@ function update_order($request) {
     db("UPDATE orders SET last_modified_timestamp = UNIX_TIMESTAMP()
         WHERE id = '" . e($order['id']) . "'");
 
-    log_activity('Shipping info for order (' . $order['order_number'] . ') was updated.');
+    log_activity(lang(array('string' => 'Shipping info for order ({var:1}) was updated.', 'vars' => array($order['order_number']))));
 
     // The event, once per address that gained a number. Announced here rather
     // than in the screen and the endpoint separately: order.shipped has to mean
