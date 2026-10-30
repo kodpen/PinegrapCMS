@@ -1,6 +1,6 @@
 ---
 name: product-code-unique
-description: The product screen refuses a product code (products.name) another product holds, on create and edit, with a live check on the field; variant sets, Recycle Bin, what still renames
+description: Product screen refuses a product code (products.name) another product holds, with a live field check; variant sets, Recycle Bin, what still renames; typed barcodes on create
 ---
 
 ## What does the product screen do with a code another product has?
@@ -23,3 +23,7 @@ description: The product screen refuses a product code (products.name) another p
 
 ## What still renames?
 - `pg_pb_create_product()` keeps `get_unique_name()` as the last guard for callers without this check: the Workspace, the designer's demo products and the API, which refuses first anyway. Product group names (`pg_pb_create_group()`) are still made unique by renaming.
+
+## And a typed barcode on Create Product?
+- `pg_pb_validate_product_post()` also checks the barcodes the create will apply when barcodes are on (`pg_pb_posted_barcodes()`: the Barcode field for a single product, each row's code for a variant set; blank means generate). `pg_pb_barcodes_problem()` refuses a code that fails `pg_barcode_matches_format()`, one two rows share (case aside) or one `product_barcodes` holds, with `output_error()` and "Go back".
+- Why: `pg_assign_product_barcode()` returns '' for such a code after the product row exists, and the product was created without a barcode while the notice said it was created (October 2026). It stays unchanged as the last guard for the API and the Workspace.
