@@ -1772,6 +1772,7 @@
     "Software Auto Backup error: the folder {var:1} could not be created.": "Yazılım Otomatik Yedekleme hatası: {var:1} klasörü oluşturulamadı.",
     "Software Auto Backup error: {var:1}": "Yazılım Otomatik Yedekleme hatası: {var:1}",
     "Software Backup ({var:1}) Success": "Yazılım Yedeği ({var:1}) Başarılı",
+    "Software Backup ({var:1}) failed: {var:2}": "Yazılım Yedeği ({var:1}) başarısız: {var:2}",
     "Software Backup process Successful. Page will be refresh...": "Yazılım Yedekleme işlemi Başarılı. Sayfa yenilenecektir...",
     "Software Configuration Error": "Yazılım Yapılandırma Hatası",
     "Software Directory": "Yazılım Dizini",
