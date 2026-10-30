@@ -942,7 +942,7 @@ if (!$_POST) {
                 $output_arrival_date = '';
 
                 if ($ship_tos[$key]['arrival_date'] != '0000-00-00') {
-                    $output_arrival_date = get_absolute_time(array('timestamp' => strtotime($ship_tos[$key]['arrival_date']), 'type' => 'date'));
+                    $output_arrival_date = get_absolute_time(array('timestamp' => strtotime($ship_tos[$key]['arrival_date']), 'type' => 'date', 'format' => 'plain_text'));
                 }
 
                 // The date, then the arrival date's name as the customer saw
@@ -1023,7 +1023,7 @@ if (!$_POST) {
                         $shipment_status_title = '';
 
                         if (($shipment['status'] === 'delivered') && ((int) $shipment_row['delivered_at'] > 0)) {
-                            $shipment_status_title = ' title="' . h(get_absolute_time(array('timestamp' => (int) $shipment_row['delivered_at'], 'type' => 'date'))) . '"';
+                            $shipment_status_title = ' title="' . h(get_absolute_time(array('timestamp' => (int) $shipment_row['delivered_at'], 'type' => 'date', 'format' => 'plain_text'))) . '"';
                         }
 
                         $output_shipping_tracking_numbers .=
