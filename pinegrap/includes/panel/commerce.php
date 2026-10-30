@@ -946,11 +946,13 @@ function pg_panel_get_unselected_products($request, $action)
 
     $show_image = (bool) ECOMMERCE_SHOW_PRODUCT_IMAGES;
 
+    // The same order as the first batch, so this page continues it exactly.
+    require_once(PG_FUNCTIONS_DIR . '/includes/forms/product_group_form.php');
     $products = db_items(
         "SELECT id, name, enabled, short_description, image_name, price
              FROM products
              WHERE 1 $exclude_sql
-             ORDER BY timestamp DESC
+             " . pg_product_group_form_unselected_order_sql() . "
              LIMIT $limit OFFSET $offset"
     );
 

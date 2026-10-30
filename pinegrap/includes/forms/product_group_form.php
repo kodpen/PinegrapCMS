@@ -23,6 +23,19 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 }
 
 /**
+ * The order the products offered for the group are paged in, first batch
+ * and Load More alike. Imports and bulk edits stamp many rows with the same
+ * second, and MySQL may return tied rows in a different order when the LIMIT
+ * differs, so the id breaks the tie and batches never overlap or skip a row.
+ *
+ * @return string
+ */
+function pg_product_group_form_unselected_order_sql()
+{
+    return 'ORDER BY timestamp DESC, id DESC';
+}
+
+/**
  * The table rows of products offered for the group (not in it yet): ticked
  * off, no sort order.
  *
@@ -327,9 +340,17 @@ function pg_product_group_form_products_card($form)
                                             return;
                                         }
 
+                                        var $table = $("#' . $form['table_id'] . '");
                                         var $rows = response.rows ? $(response.rows).filter("tr") : $();
+                                        // A product already in the table is not added again. The tick
+                                        // box is the key: a selected child group row uses its group id
+                                        // as the row id, which can equal a product id.
+                                        $rows = $rows.filter(function() {
+                                            var id = $(this).find("input[name=\"products[]\"]").val();
+                                            return !id || !$table.find("input[name=\"products[]\"][value=\"" + id + "\"]").length;
+                                        });
                                         if ($rows.length) {
-                                            var dt = $("#' . $form['table_id'] . '").DataTable();
+                                            var dt = $table.DataTable();
                                             $rows.each(function() {
                                                 dt.row.add(this);
                                             });
@@ -451,6 +472,30 @@ function pg_product_group_form_search_results_pages($product_group_id, $parent_i
 }
 
 /**
+ * The product ids to link from the posted products[] values: each once, in
+ * the order posted, without values that are no product id.
+ * products_groups_xref has no unique key, so a doubled value would link the
+ * product twice.
+ *
+ * @param array $posted
+ * @return int[]
+ */
+function pg_product_group_form_link_ids($posted)
+{
+    $ids = array();
+    foreach ($posted as $value) {
+        if (!is_scalar($value) || !ctype_digit((string) $value)) {
+            continue;
+        }
+        $id = (int) $value;
+        if ($id > 0 && !in_array($id, $ids, true)) {
+            $ids[] = $id;
+        }
+    }
+    return $ids;
+}
+
+/**
  * Links the ticked products to the group with their sort orders.
  *
  * @param mixed $product_group_id
@@ -464,10 +509,10 @@ function pg_product_group_form_link_products($product_group_id, $post, $kept_pro
         return;
     }
 
-    foreach ($post['products'] as $product_id) {
+    foreach (pg_product_group_form_link_ids($post['products']) as $product_id) {
         // A form opened before the product went to the bin still posts it;
         // its row is the one kept.
-        if (in_array((int) $product_id, $kept_product_ids, true)) {
+        if (in_array($product_id, array_map('intval', $kept_product_ids), true)) {
             continue;
         }
 

@@ -230,7 +230,7 @@ if (!$_POST) {
     $initial_unselected = db_items(
         "SELECT id, name, enabled, short_description, image_name, price
          FROM products $unselected_exclude_sql
-         ORDER BY timestamp DESC
+         " . pg_product_group_form_unselected_order_sql() . "
          LIMIT 20"
     );
 
