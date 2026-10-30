@@ -12,7 +12,7 @@ description: What duplicate_product() (Edit Product > Duplicate, Duplicate Produ
 - The gallery: `products_images_xref` rows of the original (non-empty `file_name`) in read order; the table has no order column. `image_name` is the cover.
 - A bundle: after the INSERT, `pg_bundle_items_save()` with `pg_bundle_items()` of the original, then `pg_bundle_refresh()` derives the copy's stock and price, behind `pg_bundles_ready()`. `$is_bundle` is read before the zone loop reuses `$row`.
 
-## What was wrong before? (fix/duplicate-product-complete)
+## What was wrong before? (PR #3705)
 - The copy showed only the cover picture, lost the AI marks and the VAT exemption code (the ERP default code was used), and a copied bundle became a plain product holding the bundle's cached stock as its own: it sold stock that did not exist and took none from its components.
 
 ## What is still open?
