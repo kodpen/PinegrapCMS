@@ -1294,7 +1294,7 @@ state = { graph: { nodes: [
     box('event_1', 'event', { event: 'order.created' }, 0),
     box('web_check_1', 'web_check', { mode: 'status' }, 1),
     box('condition_1', 'condition', { rule: { type: 'value', ref: '{{node.web_check_1.status_code}}' } }, 2),
-    box('post_1', 'post', { body: 'Code {{node.web_check_1.status_code}} {{node.web_check_1.status_code}}, {{node.web_check_1.text}}, {{node.gone_1.text}}' }, 3),
+    box('post_1', 'post', { body: 'Code {{node.web_check_1.status_code}} {{node.web_check_1.status_code}}, {{node.web_check_1.text}}, {{node.gone_1.text}} {{node.email_1.text}}' }, 3),
     box('email_1', 'email', { subject: 'Order {{trigger.order_number}}', body: '{{node.post_1.message_id}} {{node.web_check_1.status_code}}' }, 4)
 ], edges: [
     { from: 'event_1', to: 'web_check_1', on: 'next' },
@@ -1304,7 +1304,7 @@ state = { graph: { nodes: [
     { from: 'post_1', to: 'email_1', on: 'done' }
 ] } };
 console.log(JSON.stringify(dataThreads().map(function (thread) {
-    return [thread.from, thread.to, thread.field, thread.fieldLabel, thread.label, thread.type + '-' + thread.tone, thread.skipped ? 'skipped' : ''].join(' | ');
+    return [thread.from, thread.to, thread.field, thread.fieldLabel, thread.label, thread.type + '-' + thread.tone, thread.skipped ? 'skipped' : '', thread.gone ? 'gone' : ''].join(' | ');
 })));
 JS
 	);
@@ -1313,14 +1313,17 @@ JS
 		return;
 	}
 
+	// A box that is gone gives a thread with no source, marked gone; a box
+	// that is there but comes later gives none.
 	pg_assert_same(array(
-		'web_check_1 | condition_1 | rule | fl_cond_value_ref | Check a web address › Status code | number-0 | ',
-		'web_check_1 | post_1 | body | fl_post_body | Check a web address › Status code | number-1 | ',
-		'web_check_1 | post_1 | body | fl_post_body | Check a web address › fl_values_text | text-0 | ',
-		' | post_1 | body | fl_post_body | node.gone_1.text | text-1 | ',
-		'event_1 | email_1 | subject | fl_email_subject | Event › Order number | text-2 | ',
-		'post_1 | email_1 | body | fl_email_body | Post › Message | number-2 | skipped',
-		'web_check_1 | email_1 | body | fl_email_body | Check a web address › Status code | number-0 | ',
+		'web_check_1 | condition_1 | rule | fl_cond_value_ref | Check a web address › Status code | number-0 |  | ',
+		'web_check_1 | post_1 | body | fl_post_body | Check a web address › Status code | number-1 |  | ',
+		'web_check_1 | post_1 | body | fl_post_body | Check a web address › fl_values_text | text-0 |  | ',
+		' | post_1 | body | fl_post_body | node.gone_1.text | text-1 |  | gone',
+		' | post_1 | body | fl_post_body | node.email_1.text | text-2 |  | ',
+		'event_1 | email_1 | subject | fl_email_subject | Event › Order number | text-0 |  | ',
+		'post_1 | email_1 | body | fl_email_body | Post › Message | number-2 | skipped | ',
+		'web_check_1 | email_1 | body | fl_email_body | Check a web address › Status code | number-0 |  | ',
 	), $result, 'one thread per value and field, from the box that gives it');
 }
 
