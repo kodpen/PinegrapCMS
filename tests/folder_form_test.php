@@ -100,3 +100,13 @@ function test_folder_form_screens_use_shared_form()
 	pg_assert_contains('function change_level(', $edit, 'edit keeps the level change');
 	pg_assert_contains('A folder cannot be moved into itself', $edit, 'edit keeps the cycle walk');
 }
+
+function test_edit_folder_refuses_a_blank_name_before_the_move()
+{
+	$edit = (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_folder.php');
+	$check = strpos($edit, "if (trim((string) \$_POST['name']) === '') {");
+	pg_assert_true($check !== false, 'edit refuses a name of only spaces');
+	pg_assert_true($check < strpos($edit, 'SELECT folder_parent FROM folder WHERE folder_id = ?'), 'the refusal runs before the parent move');
+	pg_assert_true(strpos($edit, "The folder must have a name. Please type in a name for the folder.", $check) !== false, 'with the Create Folder message');
+	pg_assert_contains('if (empty($_POST[\'name\'])) {', $edit, 'the form/Delete gate stays');
+}

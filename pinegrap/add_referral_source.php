@@ -81,6 +81,10 @@ if (!$_POST) {
                 ?,
                 UNIX_TIMESTAMP())";
     $values = pg_referral_source_form_values($_POST);
+    $error = pg_referral_source_form_error($values);
+    if ($error !== '') {
+        output_error($error . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+    }
     $result = db_q($query, array($values['name'], $values['code'], $values['sort_order'], (int) $user['id'])) or output_error('Query failed.');
 
     $referral_source_id = mysqli_insert_id(db::$con);

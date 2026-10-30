@@ -19,8 +19,8 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 }
 
 /**
- * The posted name, code and sort order as text, in INSERT/UPDATE order.
- * A missing or non-scalar value is empty.
+ * The posted name, code and sort order as trimmed text, in INSERT/UPDATE
+ * order. A missing or non-scalar value is empty.
  *
  * @param array $post The posted form ($_POST)
  * @return array  'name', 'code', 'sort_order'
@@ -30,10 +30,31 @@ function pg_referral_source_form_values($post)
     $values = array();
 
     foreach (array('name', 'code', 'sort_order') as $key) {
-        $values[$key] = (isset($post[$key]) && is_scalar($post[$key])) ? (string) $post[$key] : '';
+        $values[$key] = (isset($post[$key]) && is_scalar($post[$key])) ? trim((string) $post[$key]) : '';
     }
 
     return $values;
+}
+
+/**
+ * Why the values cannot be saved: the name or the code is blank (a value
+ * of only spaces passes the browser's required check). Empty when both
+ * are given.
+ *
+ * @param array $values pg_referral_source_form_values()
+ * @return string  the translated message, or ''
+ */
+function pg_referral_source_form_error($values)
+{
+    $labels = array('name' => 'Referral Source Name', 'code' => 'Referral Source Code');
+
+    foreach ($labels as $key => $label) {
+        if (($values[$key] ?? '') === '') {
+            return lang(array('string' => '{var:1} is required.', 'vars' => array(lang($label))));
+        }
+    }
+
+    return '';
 }
 
 /**
