@@ -1938,12 +1938,12 @@
 
             '<td class="d-block lg:d-table-cell align-middle">' +
             cellLabel(label('Product ID / SKU')) +
-            '<input type="text" class="form-control form-control-sm pg-pb-v-name" value="' + esc(sku) + '"' + cellName('Product ID / SKU', combo) + ' />' +
+            '<input type="text" class="form-control form-control-sm pg-pb-v-name" maxlength="100" value="' + esc(sku) + '"' + cellName('Product ID / SKU', combo) + ' />' +
             '</td>' +
 
             '<td class="d-block lg:d-table-cell align-middle">' +
             cellLabel(label('Short Description')) +
-            '<input type="text" class="form-control form-control-sm pg-pb-v-short" value="' + esc(short) + '"' + cellName('Short Description', combo) + ' />' +
+            '<input type="text" class="form-control form-control-sm pg-pb-v-short" maxlength="100" value="' + esc(short) + '"' + cellName('Short Description', combo) + ' />' +
             '</td>' +
 
             '<td class="d-block lg:d-table-cell align-middle">' +
