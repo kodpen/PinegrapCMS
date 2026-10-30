@@ -9,7 +9,7 @@ description: Panel amounts print in the base currency (prepare_amount()), never 
 - An amount stored in another currency (ERP invoice, receipt, incoming e-invoice, sales quote; an imported marketplace order) is printed in that currency, unconverted.
 
 ## Which helpers do it in the Workspace?
-- `ws_money_out($minor)` (`includes/workspace/refs.php`): base amount, `prepare_amount()`, decoded plain text. Feeds the order, product and ERP account chips, watch `{{amount}}`, scheduled actions, the assistant, change cards and bulk changes. Until #PR it went through `prepare_price_for_output()`.
+- `ws_money_out($minor)` (`includes/workspace/refs.php`): base amount, `prepare_amount()`, decoded plain text. Feeds the order, product and ERP account chips, watch `{{amount}}`, scheduled actions, the assistant, change cards and bulk changes. Until #3724 it went through `prepare_price_for_output()`.
 - `ws_erp_money_out($minor, $currency)`: an ERP document's amount in its own currency (`erp_money_out_currency()`), loading `includes/erp/money.php` alone when the ERP bootstrap has not run. The invoice (`erp_invoices.currency`), receipt (`erp_cash_transactions.currency`) and incoming e-invoice (`erp_edoc_inbox.currency`) chips use it; before, a 1,000 EUR invoice chip read "₺1.000,00" with ERP FX on. The sales quote chip calls `erp_money_out_currency()` directly (erp/erp-quotes.md).
 - `ws_customer_money_text()` (customer summary) does the same split: workspace/workspace-customer-summary.md.
 
