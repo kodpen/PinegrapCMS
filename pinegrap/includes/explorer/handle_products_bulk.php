@@ -104,6 +104,21 @@ function pg_explorer_bulk_price_value($method, $value)
     return $value;
 }
 
+// The quantity of a bulk stock change in whole units, or null when it is
+// empty, not a number or not whole. It is read by pg_normalize_amount(), as
+// the price is, so a grouped figure (1.200 on a Turkish panel) is twelve
+// hundred, not 1.
+function pg_explorer_bulk_quantity_value($value)
+{
+    $value = pg_normalize_amount(trim((string) $value));
+
+    if (($value === '') || (is_numeric($value) == false) || ((float) $value != floor((float) $value))) {
+        return null;
+    }
+
+    return (int) $value;
+}
+
 // A product's stock quantity after a bulk change: set to the value ('value'),
 // raised by it ('increase') or lowered by it (anything else). Stock does not
 // go negative: a shelf holds none or some.
@@ -250,11 +265,11 @@ function pg_explorer_handle_products_bulk_edit($type, $request, $user)
 
     if ($bulk_quantity_mode !== '') {
 
-        if (($bulk_quantity_value === '') || (is_numeric($bulk_quantity_value) == false)) {
+        $bulk_quantity_value = pg_explorer_bulk_quantity_value($bulk_quantity_value);
+
+        if ($bulk_quantity_value === null) {
             respond(array('status' => 'error', 'message' => lang('Enter an inventory quantity.')));
         }
-
-        $bulk_quantity_value = (int) $bulk_quantity_value;
     }
 
     $bulk_tax_sql = '';

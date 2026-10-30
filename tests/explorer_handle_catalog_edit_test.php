@@ -81,11 +81,21 @@ function test_explorer_catalog_quick_price_reads_grouped_amounts()
 	pg_assert_same(125, pg_explorer_catalog_quick_price('1' . $decimal . '250'), 'three digits after the decimal separator');
 }
 
-// A typed stock count: empty and non-numeric are refused, below zero is zero.
+// A typed stock count: empty, non-numeric and not whole are refused, a
+// grouped figure is read whole, below zero is zero.
 function test_explorer_catalog_quick_quantity()
 {
 	pg_assert_same(7, pg_explorer_catalog_quick_quantity('7'), 'number');
-	pg_assert_same(3, pg_explorer_catalog_quick_quantity('3.7'), 'whole units');
+	pg_assert_same(null, pg_explorer_catalog_quick_quantity('3.7'), 'not whole');
+	pg_assert_same(null, pg_explorer_catalog_quick_quantity('2,5'), 'not whole, decimal comma');
+	pg_assert_same(1200, pg_explorer_catalog_quick_quantity('1.200,00'), 'Turkish grouped');
+	pg_assert_same(1200, pg_explorer_catalog_quick_quantity('1,200.00'), 'English grouped');
+
+	$decimal = pg_number_separators()['decimal'];
+	$thousands = ($decimal === ',') ? '.' : ',';
+
+	pg_assert_same(1200, pg_explorer_catalog_quick_quantity('1' . $thousands . '200'), 'grouped the panel\'s way');
+	pg_assert_same(null, pg_explorer_catalog_quick_quantity('1' . $decimal . '200'), 'three decimals are not whole');
 	pg_assert_same(0, pg_explorer_catalog_quick_quantity('-4'), 'not below zero');
 	pg_assert_same(null, pg_explorer_catalog_quick_quantity(''), 'empty');
 	pg_assert_same(null, pg_explorer_catalog_quick_quantity('many'), 'not a number');
