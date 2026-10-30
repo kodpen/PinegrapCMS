@@ -81,6 +81,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - contact-group-shared-form.md: The contact group create and edit screens share includes/forms/contact_group_form.php: what it holds, the create-only difference, what stays in the screens
 - contact-list-names.md: Contacts list (view_contacts.php): one Website filter, labels on their own field, group counts in the panel's number format, the row checkbox and Opt-In mark names, silent icon words
 - contact-shared-form.md: The contact create and edit screens share includes/forms/contact_form.php: what it holds, what stays in the screens
+- contact-user-list-view-kept.md: Contacts and Users lists keep their view (filter) through Export, Delete All, Merge, Advanced Filters, Create and Import
 - container-shared-form.md: add_container.php and edit_container.php draw and check the container form through includes/forms/container_form.php; what each screen keeps
 - copy-buttons.md: Hand-written panel Copy buttons: label kept, icon swapped, polite status beside the button, clipboard API only in a secure context, execCommand decides; which screens follow it
 - country-shared-form.md: add_country.php and edit_country.php draw the country options card and read its posted values through includes/forms/country_form.php; what each screen keeps

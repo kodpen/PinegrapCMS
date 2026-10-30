@@ -58,10 +58,10 @@ echo
                 ' . $liveform->output_notices() . '
                
                 <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . h(lang('Button Bar')) . '">
-                            <a class="btn btn-sm btn-solid theme-primary m-1 " href="add_user.php?send_to=' . h(REQUEST_URL) . '"><span class="bi bi-plus-circle me-3"></span>' . lang(array('string'=>'Create') ) . '</a>
+                            <a class="btn btn-sm btn-solid theme-primary m-1 " href="add_user.php?send_to=' . h(urlencode(REQUEST_URL)) . '"><span class="bi bi-plus-circle me-3"></span>' . lang(array('string'=>'Create') ) . '</a>
                             <form id="export_form" class="disable_shortcut d-inline-block" method="get">
                                 <div class=" btn-group btn-group-sm flex-wrap">
-                                    <a class="btn btn-link pg-link-secondary py-0 m-1" href="import_users.php?send_to=' . h(REQUEST_URL) . '"><span class="bi bi-box-arrow-in-right me-1"></span>' . lang(array('string'=>'Import') ) . '</a>
+                                    <a class="btn btn-link pg-link-secondary py-0 m-1" href="import_users.php?send_to=' . h(urlencode(REQUEST_URL)) . '"><span class="bi bi-box-arrow-in-right me-1"></span>' . lang(array('string'=>'Import') ) . '</a>
                                 </div>
                             </form>
                             <div class="pg-toolbar-grow"></div>
