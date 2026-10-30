@@ -108,9 +108,12 @@ function test_ws_upload_inspect_keeps_a_non_ascii_name()
 
 // The doors that read a name a person gave cut it with pg_basename(): a ZIP
 // entry, a note attachment, a channel upload, the notes import, an image link
-// in a note, the API's file address and the SEO structure check; the
-// designer's imports and the installer take its stem with
-// pg_file_name_stem().
+// in a note, the API's file address, the SEO structure check, an entry the
+// File Manager extracts, the archive and backup-upload checks and a backup
+// renamed in the Backups view; the designer's imports, the installer and a
+// backup extracted in the Backups view take its stem with
+// pg_file_name_stem(); a Backup Manager name goes through
+// pg_backup_folder_name().
 function test_file_basename_doors_use_pg_basename()
 {
 	$lines = array(
@@ -127,6 +130,12 @@ function test_file_basename_doors_use_pg_basename()
 		array('import_design_zip.php', "if (\$project === '') \$project = pg_file_name_stem(\$orig_name);", 1),
 		array('includes/designer_import.php', 'pg_file_name_stem(', 4),
 		array('install/index.php', "\$folder_name = pg_file_name_stem(\$upload['name']);", 1),
+		array('includes/explorer/handle_zip.php', "return pg_basename(str_replace('\\\\', '/', \$entry));", 1),
+		array('includes/explorer/archives.php', "\$base = mb_strtolower(pg_basename(trim(str_replace('\\\\', '/', (string) \$name))));", 1),
+		array('includes/explorer/archives.php', '$base = pg_basename($name);', 1),
+		array('includes/explorer/handle_backups.php', "\$name = pg_basename(str_replace('\\\\', '/', \$name));", 1),
+		array('includes/explorer/handle_backups.php', '$base = pg_file_name_stem($path);', 1),
+		array('includes/panel/software.php', '$backup_folder_name = pg_backup_folder_name($backup_name);', 2),
 	);
 
 	foreach ($lines as $line) {

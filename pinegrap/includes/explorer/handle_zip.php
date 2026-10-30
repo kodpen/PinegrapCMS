@@ -42,7 +42,7 @@ function pg_explorer_zip_entry_file_name($entry)
         return '';
     }
 
-    return basename(str_replace('\\', '/', $entry));
+    return pg_basename(str_replace('\\', '/', $entry));
 }
 
 // ── Compress a selection into a zip file in this folder ─────────
