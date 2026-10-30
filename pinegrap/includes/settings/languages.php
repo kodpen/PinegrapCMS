@@ -63,6 +63,12 @@ foreach ($translation_languages as $translation_code => $translation_row) {
     }
 
     $translation_name = 'languages[' . h($translation_code) . ']';
+    // An empty format box falls back to the language's own default, so that
+    // default is the example shown in it.
+    $translation_is_known = isset($translation_known[$translation_code]);
+    $translation_number_example = $translation_is_known ? $translation_known[$translation_code][3] : '1,234.56';
+    $translation_date_example = $translation_is_known ? $translation_known[$translation_code][4] : 'n/j/Y';
+    $translation_og_example = $translation_is_known ? $translation_known[$translation_code][2] : 'en_US';
     $translation_label = ($translation_row['label'] !== '') ? $translation_row['label'] : (isset($translation_known[$translation_code]) ? $translation_known[$translation_code][1] : $translation_code);
     $translation_prefix = mb_strtolower(($translation_row['prefix'] !== '') ? $translation_row['prefix'] : $translation_code);
 
@@ -133,15 +139,18 @@ foreach ($translation_languages as $translation_code => $translation_row) {
                                 </div>
                                 <div class="col-12 md:col-6 xl:col-3">
                                     <label class="form-label" for="tr_number_' . h($translation_code) . '">' . lang('Number format') . '</label>
-                                    <input type="text" class="form-control font-monospace" id="tr_number_' . h($translation_code) . '" name="' . $translation_name . '[locale_number]" value="' . h($translation_row['locale_number']) . '" maxlength="16" placeholder="1,234.56"/>
+                                    <input type="text" class="form-control font-monospace" id="tr_number_' . h($translation_code) . '" name="' . $translation_name . '[locale_number]" value="' . h($translation_row['locale_number']) . '" maxlength="16" placeholder="' . h($translation_number_example) . '" aria-describedby="tr_formats_hint_' . h($translation_code) . '"/>
                                 </div>
                                 <div class="col-12 md:col-6 xl:col-3">
                                     <label class="form-label" for="tr_date_' . h($translation_code) . '">' . lang('Date format') . '</label>
-                                    <input type="text" class="form-control font-monospace" id="tr_date_' . h($translation_code) . '" name="' . $translation_name . '[locale_date]" value="' . h($translation_row['locale_date']) . '" maxlength="32" placeholder="j/n/Y"/>
+                                    <input type="text" class="form-control font-monospace" id="tr_date_' . h($translation_code) . '" name="' . $translation_name . '[locale_date]" value="' . h($translation_row['locale_date']) . '" maxlength="32" placeholder="' . h($translation_date_example) . '" aria-describedby="tr_formats_hint_' . h($translation_code) . '"/>
                                 </div>
                                 <div class="col-12 md:col-6 xl:col-3">
                                     <label class="form-label" for="tr_og_' . h($translation_code) . '">og:locale</label>
-                                    <input type="text" class="form-control font-monospace" id="tr_og_' . h($translation_code) . '" name="' . $translation_name . '[og_locale]" value="' . h($translation_row['og_locale']) . '" maxlength="16" placeholder="en_US"/>
+                                    <input type="text" class="form-control font-monospace" id="tr_og_' . h($translation_code) . '" name="' . $translation_name . '[og_locale]" value="' . h($translation_row['og_locale']) . '" maxlength="16" placeholder="' . h($translation_og_example) . '" aria-describedby="tr_formats_hint_' . h($translation_code) . '"/>
+                                </div>
+                                <div class="col-12">
+                                    <div class="form-text" id="tr_formats_hint_' . h($translation_code) . '">' . lang('Number: how 1234.56 is written in this language, for example 1.234,56. Date: PHP date letters (j day, n month, Y year; d and m with a leading zero). og:locale: language_COUNTRY, for example tr_TR; any other shape is cleared on save. An empty number or date box uses the language\'s own format.') . '</div>
                                 </div>
                             </div>
                         </div>';
