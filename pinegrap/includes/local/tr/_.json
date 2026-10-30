@@ -670,6 +670,7 @@
     "{var:1} file(s) were not extracted because their type is not allowed on a web site.": "{var:1} dosya, türü web sitesinde izin verilmediği için çıkartılmadı.",
     "{var:1} file(s) were uploaded.": "{var:1} dosya yüklendi.",
     "{var:1} files": "{var:1} dosya",
+    "{var:1} files could not be copied into the backup ({var:2}), so it was removed. Free some disk space and try again.": "{var:1} dosya yedeğe kopyalanamadı ({var:2}), bu yüzden yedek silindi. Disk alanı açıp yeniden deneyin.",
     "{var:1} files have been uploaded.": "{var:1} dosya yüklendi.",
     "{var:1} files were changed: {var:2}.": "{var:1} dosya değiştirildi: {var:2}.",
     "{var:1} files were compressed": "{var:1} dosya sıkıştırıldı",

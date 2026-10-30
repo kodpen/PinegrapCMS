@@ -168,14 +168,22 @@ function pg_panel_software_backup($request, $action)
             //WRITE//
             // prepare path to template files
             $backup_files_path = $backup_location . $backup_folder_name . '/files/';
-            $handle = opendir(FILE_DIRECTORY_PATH);
-            // copy files to backup directory
-            while (false !== ($file = readdir($handle))) {
-                if (($file != '.') && ($file != '..')) {
-                    copy(FILE_DIRECTORY_PATH . '/' . $file, $backup_files_path . $file);
-                }
+            $failed = pg_backup_copy_folder(FILE_DIRECTORY_PATH, rtrim($backup_files_path, '/'));
+
+            // A half-copied folder would be listed and downloadable as a
+            // complete backup; removing it also gives back the space a full
+            // disk ran out of.
+            if ($failed) {
+                pg_backup_delete_tree($backup_location . $backup_folder_name);
+                $copy_error = pg_backup_copy_failure_message($failed);
+                log_activity(lang(array('string' => 'Software Backup ({var:1}) failed: {var:2}', 'vars' => array($backup_folder_name, $copy_error))), $_SESSION['sessionusername']);
+                $response = array(
+                    'status' => 'error',
+                    'message' => h($copy_error)
+                );
+                echo encode_json($response);
+                exit();
             }
-            closedir($handle);
 
             //return success json output
             $response = array(
@@ -192,14 +200,22 @@ function pg_panel_software_backup($request, $action)
             //WRITE//
             // prepare path to template layouts
             $backup_layouts_path = $backup_location . $backup_folder_name . '/layouts/';
-            $handle = opendir(LAYOUT_DIRECTORY_PATH);
-            // copy files to backup directory
-            while (false !== ($file = readdir($handle))) {
-                if (($file != '.') && ($file != '..')) {
-                    copy(LAYOUT_DIRECTORY_PATH . '/' . $file, $backup_layouts_path . $file);
-                }
+            $failed = pg_backup_copy_folder(LAYOUT_DIRECTORY_PATH, rtrim($backup_layouts_path, '/'));
+
+            // A half-copied folder would be listed and downloadable as a
+            // complete backup; removing it also gives back the space a full
+            // disk ran out of.
+            if ($failed) {
+                pg_backup_delete_tree($backup_location . $backup_folder_name);
+                $copy_error = pg_backup_copy_failure_message($failed);
+                log_activity(lang(array('string' => 'Software Backup ({var:1}) failed: {var:2}', 'vars' => array($backup_folder_name, $copy_error))), $_SESSION['sessionusername']);
+                $response = array(
+                    'status' => 'error',
+                    'message' => h($copy_error)
+                );
+                echo encode_json($response);
+                exit();
             }
-            closedir($handle);
 
             //return success json output
             $response = array(
