@@ -512,7 +512,7 @@ function pg_product_group_form_link_products($product_group_id, $post, $kept_pro
     foreach (pg_product_group_form_link_ids($post['products']) as $product_id) {
         // A form opened before the product went to the bin still posts it;
         // its row is the one kept.
-        if (in_array($product_id, array_map('intval', $kept_product_ids), true)) {
+        if (in_array((int) $product_id, $kept_product_ids, true)) {
             continue;
         }
 
