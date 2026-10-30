@@ -18,4 +18,4 @@ description: Turkish search of DataTables lists searched in the browser (orders,
 - DataTables empties its box for a function search; a `search.dt` handler puts the text back on the next tick unless the box has focus.
 
 ## Where was it done?
-- PR #PRNUM (part of issue #3584; server lists were #3677). Checked headless against `datatables.js` 2.3.7, not on a panel.
+- PR #3751 (part of issue #3584; server lists were #3677). Checked headless against `datatables.js` 2.3.7, not on a panel.
