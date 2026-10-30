@@ -21,6 +21,6 @@ module: product_customs
 - Unverified (no live call): whether Shippo wants `eel_pfc` for exports from the US (not sent; Shippo's refusal is shown), the description length limit, and inline creation's exact answer. Tests: `tests/label_customs_test.php`, `tests/carrier_label_shippo_test.php` with `tests/fixtures/shippo/customs_declaration.json`.
 
 ## What is still open?
-- The products external API fields (`hs_code`, `origin_country`) follow once #3298 (holding `includes/api/schema.php`) merges; C3 Sendcloud `parcel_items` with the same block and lines.
+- The products external API fields (`hs_code`, `origin_country`) follow once #3298 (holding `includes/api/schema.php`) merges. Sendcloud (C3 #3474): `carrier-label-sendcloud-customs.md`; a line carries `sku` (`products.name`) since then.
 
 Related: commerce/product-customs-fields.md, commerce/carrier-label-shippo.md, workflow/decisions-made-product-7.md

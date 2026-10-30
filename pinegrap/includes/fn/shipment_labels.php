@@ -303,7 +303,7 @@ function pg_shipment_label_expires_at($created_at, $delivered_at, $cancelled_at)
  *                       country, phone_number) and total (minor units)
  * @param array $items   list of product_name, quantity, weight, length, width, height,
  *                       and for a customs declaration price (minor units),
- *                       hs_code, origin_country
+ *                       hs_code, origin_country, sku (products.name)
  * @param string $state_code the province's plate number, TR-34 or 34
  * @param bool  $return
  * @return array
@@ -346,6 +346,7 @@ function pg_shipment_label_shipment($order, $ship_to, $items, $state_code = '', 
             'weight'         => round(((float) $text($item, 'weight')) * 0.45359237, 3),
             'hs_code'        => $text($item, 'hs_code'),
             'origin_country' => strtoupper($text($item, 'origin_country')),
+            'sku'            => $text($item, 'sku'),
         );
     }
 
@@ -660,6 +661,7 @@ function pg_shipment_label_create($ship_to_id, $user_id, $return = false)
             order_items.product_name,
             order_items.quantity,
             order_items.price,
+            products.name AS sku,
             products.weight,
             products.length,
             products.width,
@@ -911,6 +913,7 @@ function pg_shipment_label_return_open($return, $user_id)
             order_items.product_name,
             order_return_items.quantity,
             order_items.price,
+            products.name AS sku,
             products.weight,
             products.length,
             products.width,

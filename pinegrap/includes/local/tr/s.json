@@ -837,6 +837,7 @@
     "Sendcloud refused the request.": "Sendcloud isteği reddetti.",
     "Sendcloud return labels are made in live mode only: test mode ships unstamped letters, which have no return.": "Sendcloud iade etiketleri yalnızca canlı modda oluşturulur: test modu her gönderiyi pulsuz mektup olarak gönderir ve mektubun iadesi yoktur.",
     "Sendcloud return labels are not made from the store yet.": "Sendcloud iade etiketleri henüz mağazadan oluşturulamıyor.",
+    "Sendcloud takes an HS code of at most 12 digits; {var:1} has {var:2}.": "Sendcloud en fazla 12 haneli GTİP kodu kabul ediyor; {var:1} ürününün kodu {var:2}.",
     "Sender": "Gönderen",
     "Sender Address ID": "Gönderici Adresi ID",
     "Sender City": "Gönderici Şehri",

@@ -127,15 +127,15 @@ function test_shipment_label_shipment_shape()
 	pg_assert_same(array('length' => 25.4, 'width' => 25.4, 'height' => 15.24, 'weight' => round(2.5 * 0.45359237, 3)), $shipment['parcel'], 'parcel in cm and kg');
 	pg_assert_same(array(array('title' => 'Mug', 'quantity' => 2), array('title' => 'Plate', 'quantity' => 1)), $shipment['items'], 'items');
 	pg_assert_same(array(
-		array('name' => 'Mug', 'quantity' => 2, 'price' => 0, 'weight' => 0.454, 'hs_code' => '', 'origin_country' => ''),
-		array('name' => 'Plate', 'quantity' => 1, 'price' => 0, 'weight' => 0.227, 'hs_code' => '', 'origin_country' => ''),
+		array('name' => 'Mug', 'quantity' => 2, 'price' => 0, 'weight' => 0.454, 'hs_code' => '', 'origin_country' => '', 'sku' => ''),
+		array('name' => 'Plate', 'quantity' => 1, 'price' => 0, 'weight' => 0.227, 'hs_code' => '', 'origin_country' => '', 'sku' => ''),
 	), $shipment['goods'], 'goods for customs, nothing filled');
 
 	$customs = pg_shipment_label_shipment(array(), array(), array(
-		array('product_name' => 'Mug', 'quantity' => 1, 'price' => '1249.5', 'weight' => '1', 'hs_code' => '6912.00', 'origin_country' => 'tr'),
+		array('product_name' => 'Mug', 'quantity' => 1, 'price' => '1249.5', 'weight' => '1', 'hs_code' => '6912.00', 'origin_country' => 'tr', 'sku' => ' MUG-01 '),
 	));
 
-	pg_assert_same(array('name' => 'Mug', 'quantity' => 1, 'price' => 1250, 'weight' => 0.454, 'hs_code' => '6912.00', 'origin_country' => 'TR'), $customs['goods'][0], 'unit price rounded, unit weight in kg');
+	pg_assert_same(array('name' => 'Mug', 'quantity' => 1, 'price' => 1250, 'weight' => 0.454, 'hs_code' => '6912.00', 'origin_country' => 'TR', 'sku' => 'MUG-01'), $customs['goods'][0], 'unit price rounded, unit weight in kg, SKU trimmed');
 	pg_assert_same(12345, $shipment['total'], 'total in minor units');
 	pg_assert_same('TRY', $shipment['currency'], 'currency');
 	pg_assert_same(false, $shipment['return'], 'not a return');

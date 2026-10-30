@@ -28,11 +28,14 @@
  *
  * The contract is the one in includes/fn/carrier_labels.php; the shipment
  * create() takes is the one includes/shipping/geliver.php describes
- * (service: a Sendcloud shipping option code such as postnl:standard). No
- * customs declaration is sent yet, so a parcel that would need one (leaving
- * the EU, or to or from Great Britain abroad) is refused before a call, a
- * return as well. A return is made in live mode only: the unstamped letter
- * of test mode is an outgoing option.
+ * (service: a Sendcloud shipping option code such as postnl:standard). A
+ * parcel that needs a customs declaration (leaving the EU, or to or from
+ * Great Britain abroad) carries its lines as parcel_items and the
+ * customs_information of the shipment once the shop fills the customs block
+ * of the settings (pg_label_customs_fields(), pg_label_customs_lines());
+ * with the block empty it is refused before a call, a return always. A
+ * return is made in live mode only: the unstamped letter of test mode is an
+ * outgoing option.
  * $reference is Sendcloud's shipment id, or r-<return id>-<parcel id> for a
  * return.
  *
@@ -56,7 +59,7 @@ function pg_label_sendcloud_info()
 
 function pg_label_sendcloud_fields()
 {
-    return array(
+    return array_merge(array(
         array(
             'name'     => 'public_key',
             'type'     => 'secret',
@@ -97,7 +100,7 @@ function pg_label_sendcloud_fields()
             'options' => array('pdf' => lang('PDF, A6'), 'zpl' => lang('ZPL (thermal printer)')),
             'default' => 'pdf',
         ),
-    );
+    ), pg_label_customs_fields());
 }
 
 /**
@@ -342,30 +345,31 @@ function pg_label_sendcloud_number($value, $places)
 }
 
 /**
- * The countries of the EU customs union: a parcel between two of them needs
- * no customs declaration.
+ * Whether the shop filled the customs block of the settings: a default HS
+ * code, country of origin or signer. Only then does a parcel that needs
+ * customs go out declared. Pure.
  *
- * @return string[]
+ * @param array $account
+ * @return bool
  */
-function pg_label_sendcloud_eu_countries()
+function pg_label_sendcloud_customs_filled($account)
 {
-    return array(
-        'AT', 'BE', 'BG', 'HR', 'CY', 'CZ', 'DK', 'EE', 'FI', 'FR', 'DE', 'GR', 'HU', 'IE',
-        'IT', 'LV', 'LT', 'LU', 'MT', 'NL', 'PL', 'PT', 'RO', 'SK', 'SI', 'ES', 'SE',
-    );
+    return pg_label_customs_in_use(array(), $account);
 }
 
 /**
- * Why a parcel between two countries cannot be sent without customs, ''
- * when it can: Sendcloud's sender countries (the shop's side), then within
- * the EU or within Great Britain. Pure.
+ * Why a parcel between two countries cannot be sent, '' when it can:
+ * Sendcloud's sender countries (the shop's side), then a route that needs a
+ * customs declaration (pg_label_customs_needed()) unless one is sent with
+ * it. Pure.
  *
  * @param string $from
  * @param string $to
- * @param bool   $return a return: $from is the customer, $to the shop
+ * @param bool   $return  a return: $from is the customer, $to the shop
+ * @param bool   $customs whether a customs declaration goes with the parcel
  * @return string
  */
-function pg_label_sendcloud_route_error($from, $to, $return = false)
+function pg_label_sendcloud_route_error($from, $to, $return = false, $customs = false)
 {
     $from = strtoupper(trim((string) $from));
     $to = strtoupper(trim((string) $to));
@@ -381,9 +385,7 @@ function pg_label_sendcloud_route_error($from, $to, $return = false)
         return lang(array('string' => 'Sendcloud does not ship from {var:1}.', 'vars' => array(($shop === '') ? '?' : $shop)));
     }
 
-    $eu = pg_label_sendcloud_eu_countries();
-
-    if (($from === $to) || (in_array($from, $eu, true) && in_array($to, $eu, true))) {
+    if ($customs || !pg_label_customs_needed($from, $to)) {
         return '';
     }
 
@@ -392,6 +394,94 @@ function pg_label_sendcloud_route_error($from, $to, $return = false)
     }
 
     return lang(array('string' => 'A parcel from {var:1} to {var:2} needs a customs declaration, which is not sent to Sendcloud yet.', 'vars' => array($from, $to)));
+}
+
+/**
+ * The customs data of a parcel between two countries: null when the route
+ * needs none or the shop has not filled the customs block (the route is
+ * then refused). Each order line becomes a parcel item with the unit's
+ * weight and price, its HS code and country of origin the product's, else
+ * the shop default; a line with neither refuses the label. Sendcloud takes
+ * an HS code of digits only, at most 12. The shipment's
+ * customs_information names the order number as the invoice number and the
+ * contents type as the export reason; the incoterm is a property of the
+ * shipping option (pg_label_sendcloud_option_pick()). Pure.
+ *
+ * @param array  $shipment see the header of this file; goods for the lines
+ * @param array  $account
+ * @param string $from     the sender address's country
+ * @return array items (list or null), information (array or null), error
+ *               ('' or the translated reason no label can be made)
+ */
+function pg_label_sendcloud_customs($shipment, $account, $from)
+{
+    $shipment = is_array($shipment) ? $shipment : array();
+    $text = 'pg_label_sendcloud_text';
+    $recipient = isset($shipment['recipient']) ? $shipment['recipient'] : array();
+    $none = array('items' => null, 'information' => null, 'error' => '');
+
+    if (!pg_label_customs_needed($from, $text($recipient, 'country')) || !pg_label_sendcloud_customs_filled($account)) {
+        return $none;
+    }
+
+    $parcel = isset($shipment['parcel']) ? $shipment['parcel'] : array();
+    $built = pg_label_customs_lines(isset($shipment['goods']) ? $shipment['goods'] : array(), array(
+        'hs_code'        => $text($account, 'customs_hs_code'),
+        'origin_country' => $text($account, 'customs_origin_country'),
+    ), (float) $text($parcel, 'weight'));
+
+    if (!$built['ok']) {
+        return array('items' => null, 'information' => null, 'error' => $built['error']);
+    }
+
+    $currency = strtoupper($text($shipment, 'currency'));
+
+    if (preg_match('/^[A-Z]{3}$/', $currency) !== 1) {
+        return array('items' => null, 'information' => null, 'error' => lang('The order has no currency to declare its goods in.'));
+    }
+
+    $invoice = substr($text($shipment, 'order_number'), 0, 40);
+
+    if ($invoice === '') {
+        return array('items' => null, 'information' => null, 'error' => lang('The order has no number to name the customs invoice.'));
+    }
+
+    $items = array();
+
+    foreach ($built['lines'] as $line) {
+        $hs_code = str_replace('.', '', $line['hs_code']);
+
+        if (strlen($hs_code) > 12) {
+            return array('items' => null, 'information' => null, 'error' => lang(array(
+                'string' => 'Sendcloud takes an HS code of at most 12 digits; {var:1} has {var:2}.',
+                'vars'   => array($line['name'], $line['hs_code']),
+            )));
+        }
+
+        $item = array(
+            'description'    => $line['name'],
+            'quantity'       => $line['quantity'],
+            'weight'         => array('value' => round($line['unit_weight'], 3), 'unit' => 'kg'),
+            // Prices are kept in hundredths of the currency.
+            'price'          => array('value' => number_format($line['unit_price'] / 100, 2, '.', ''), 'currency' => $currency),
+            'hs_code'        => $hs_code,
+            'origin_country' => $line['origin_country'],
+        );
+
+        if ($line['sku'] !== '') {
+            $item['sku'] = $line['sku'];
+        }
+
+        $items[] = $item;
+    }
+
+    $reasons = array('merchandise' => 'commercial_goods', 'gift' => 'gift', 'sample' => 'commercial_sample', 'documents' => 'documents', 'return' => 'returned_goods');
+    $reason = $text($account, 'customs_contents');
+
+    return array('items' => $items, 'information' => array(
+        'invoice_number' => $invoice,
+        'export_reason'  => !empty($shipment['return']) ? 'returned_goods' : (isset($reasons[$reason]) ? $reasons[$reason] : 'commercial_goods'),
+    ), 'error' => '');
 }
 
 /**
@@ -474,9 +564,10 @@ function pg_label_sendcloud_recipient_address($recipient)
  * @param array  $account
  * @param int    $sender   the sender address id
  * @param string $option   the shipping option code
+ * @param array|null $customs pg_label_sendcloud_customs(), null for none
  * @return array
  */
-function pg_label_sendcloud_shipment_body($shipment, $account, $sender, $option)
+function pg_label_sendcloud_shipment_body($shipment, $account, $sender, $option, $customs = null)
 {
     $shipment = is_array($shipment) ? $shipment : array();
     $text = 'pg_label_sendcloud_text';
@@ -504,29 +595,44 @@ function pg_label_sendcloud_shipment_body($shipment, $account, $sender, $option)
         $body['total_order_price'] = array('currency' => $currency, 'value' => number_format($total / 100, 2, '.', ''));
     }
 
+    if (is_array($customs) && is_array($customs['items'])) {
+        $body['parcels'][0]['parcel_items'] = $customs['items'];
+        $body['customs_information'] = $customs['information'];
+    }
+
     return $body;
 }
 
 /**
  * The cheapest shipping option Sendcloud priced that needs no service point,
  * no export documents and is not the free test letter; for a return also
- * one marked for returns. Pure.
+ * one marked for returns. A parcel declared to customs takes an option that
+ * needs export documents (Sendcloud makes them from the declaration) and
+ * whose incoterm, when it has one, puts the duties on the party the shop's
+ * incoterm names. Pure.
  *
- * @param mixed $options the data of POST /shipping-options
- * @param bool  $return
+ * @param mixed  $options  the data of POST /shipping-options
+ * @param bool   $return
+ * @param string $incoterm DDU, DAP or DDP for a declared parcel, '' for none
  * @return string the option's code, '' when none
  */
-function pg_label_sendcloud_option_pick($options, $return = false)
+function pg_label_sendcloud_option_pick($options, $return = false, $incoterm = '')
 {
+    // DDU and DAP leave the duties to the recipient, DDP to the shop.
+    $incoterm = strtoupper(trim((string) $incoterm));
+    $terms = ($incoterm === 'DDP') ? array('ddp', 'dap_dp') : array('ddu', 'dap', 'dap_np');
+
     $cheapest = null;
 
     foreach (is_array($options) ? $options : array() as $option) {
         $code = pg_label_sendcloud_text($option, 'code');
         $needs = (isset($option['requirements']) && is_array($option['requirements'])) ? $option['requirements'] : array();
         $total = isset($option['quotes'][0]['price']['total']) ? pg_label_sendcloud_text($option['quotes'][0]['price']['total'], 'value') : '';
+        $term = isset($option['functionalities']) ? strtolower(pg_label_sendcloud_text($option['functionalities'], 'incoterm')) : '';
 
         if (($code === '') || (strncmp($code, 'sendcloud:letter', 16) === 0) || !empty($option['quote_error'])
-            || !empty($needs['export_documents']) || !empty($needs['is_service_point_required']) || !is_numeric($total)
+            || (($incoterm === '') && !empty($needs['export_documents'])) || (($incoterm !== '') && ($term !== '') && !in_array($term, $terms, true))
+            || !empty($needs['is_service_point_required']) || !is_numeric($total)
             || ($return && empty($option['functionalities']['returns']))) {
             continue;
         }
@@ -698,6 +804,7 @@ function pg_label_sendcloud_return_ids($reference)
  * @param array  $shipment see the header of this file
  * @param array  $sender   a sender address of the account
  * @param string $option   the shipping option code
+ * @param array|null $customs pg_label_sendcloud_customs(), null for none
  * @return array
  */
 function pg_label_sendcloud_return_body($shipment, $sender, $option)
@@ -924,11 +1031,22 @@ function pg_label_sendcloud_create($shipment, $account)
     }
 
     $from = $sender['address'];
-    $refusal = pg_label_sendcloud_route_error(pg_label_sendcloud_text($from, 'country_code'), $to);
+    $refusal = pg_label_sendcloud_route_error(pg_label_sendcloud_text($from, 'country_code'), $to, false, pg_label_sendcloud_customs_filled($account));
 
     if ($refusal !== '') {
         return array('success' => false, 'error' => $refusal);
     }
+
+    // A parcel that leaves the customs area carries its lines; a line with
+    // no HS code anywhere refuses the label before anything is priced.
+    $customs = pg_label_sendcloud_customs($shipment, $account, pg_label_sendcloud_text($from, 'country_code'));
+
+    if ($customs['error'] !== '') {
+        return array('success' => false, 'error' => $customs['error'], 'log' => array('Sendcloud shipment not announced: the customs data is incomplete.'));
+    }
+
+    $incoterm = ($customs['items'] !== null) ? strtoupper(pg_label_sendcloud_text($account, 'customs_incoterm')) : '';
+    $incoterm = (($customs['items'] !== null) && !in_array($incoterm, array('DDU', 'DAP', 'DDP'), true)) ? 'DDU' : $incoterm;
 
     $parcel = pg_label_sendcloud_parcel(isset($shipment['parcel']) ? $shipment['parcel'] : array());
 
@@ -951,7 +1069,7 @@ function pg_label_sendcloud_create($shipment, $account)
             return pg_label_sendcloud_failure($read, false);
         }
 
-        $option = pg_label_sendcloud_option_pick(isset($read['data']['data']) ? $read['data']['data'] : array());
+        $option = pg_label_sendcloud_option_pick(isset($read['data']['data']) ? $read['data']['data'] : array(), false, $incoterm);
 
         if ($option === '') {
             $words = pg_label_sendcloud_text($read['data'], 'message');
@@ -966,7 +1084,7 @@ function pg_label_sendcloud_create($shipment, $account)
 
     // The announcement is the charge: a lost answer or a server error
     // leaves it unknown whether the label was made.
-    $body = pg_label_sendcloud_shipment_body($shipment, $account, pg_label_sendcloud_text($from, 'id'), $option);
+    $body = pg_label_sendcloud_shipment_body($shipment, $account, pg_label_sendcloud_text($from, 'id'), $option, $customs);
     $read = pg_label_sendcloud_api('POST', '/shipments/announce', $account, $body);
 
     if (!$read['ok']) {

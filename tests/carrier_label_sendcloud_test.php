@@ -120,7 +120,13 @@ function test_carrier_label_sendcloud_is_a_builtin_driver()
 		'sender_address' => 'text',
 		'service'        => 'text',
 		'label_format'   => 'select',
-	), $fields);
+		'customs_contents'       => 'select',
+		'customs_incoterm'       => 'select',
+		'customs_non_delivery'   => 'select',
+		'customs_hs_code'        => 'text',
+		'customs_origin_country' => 'select',
+		'customs_signer'         => 'text',
+	), $fields, 'the shared customs block after the driver\'s own fields');
 }
 
 function test_carrier_label_sendcloud_test_reads_the_sender_address()
@@ -561,4 +567,141 @@ function test_carrier_label_sendcloud_return_label_and_cancel()
 	pg_assert_false($refused['unclear']);
 	pg_assert_contains('Return is not cancellable.', $refused['error']);
 	pg_assert_false($broken['success'], 'a return reference without its parcel');
+}
+
+function carrier_label_sendcloud_test_customs_shipment()
+{
+	$shipment = carrier_label_sendcloud_test_shipment(array('order_number' => '10077'));
+	$shipment['recipient'] = array(
+		'name'       => 'John Doe',
+		'email'      => 'john@example.com',
+		'phone'      => '+12129976661',
+		'address_1'  => '123 West 43rd St',
+		'address_2'  => '',
+		'city'       => 'New York',
+		'state'      => 'New York',
+		'state_code' => 'US-NY',
+		'zip'        => '10036',
+		'country'    => 'US',
+	);
+	$shipment['goods'] = array(
+		array('name' => 'Ceramic Mug', 'quantity' => 2, 'price' => 1250, 'weight' => 0.4, 'hs_code' => '6912.00.10', 'origin_country' => 'TR', 'sku' => 'MUG-01'),
+		array('name' => 'Linen Napkin', 'quantity' => 1, 'price' => 499, 'weight' => 0, 'hs_code' => '', 'origin_country' => '', 'sku' => ''),
+	);
+
+	return $shipment;
+}
+
+function carrier_label_sendcloud_test_customs_account($changes = array())
+{
+	return carrier_label_sendcloud_test_account(array_merge(array(
+		'customs_contents'       => 'merchandise',
+		'customs_incoterm'       => 'DDU',
+		'customs_non_delivery'   => 'return',
+		'customs_hs_code'        => '6302.51',
+		'customs_origin_country' => 'PT',
+		'customs_signer'         => '',
+	), $changes));
+}
+
+function test_carrier_label_sendcloud_customs_route_carries_parcel_items()
+{
+	carrier_label_sendcloud_test_stub(array(
+		'GET /addresses/sender-addresses?page_size=100' => array('sender_addresses.json'),
+		'POST /shipping-options'                         => array('shipping_options_customs.json'),
+		'POST /shipments/announce'                       => array('shipment.json'),
+	));
+	$answer = pg_label_call('sendcloud', 'create', array(carrier_label_sendcloud_test_customs_shipment(), carrier_label_sendcloud_test_customs_account()));
+	$sent = $GLOBALS['carrier_label_sendcloud_test_sent'];
+	carrier_label_sendcloud_test_done();
+
+	pg_assert_true($answer['success'], $answer['error']);
+	pg_assert_same(array('GET /addresses/sender-addresses?page_size=100', 'POST /shipping-options', 'POST /shipments/announce'), carrier_label_sendcloud_test_sent());
+
+	$body = $sent[2]['body'];
+	pg_assert_same('postnl:worldwide', $body['ship_with']['properties']['shipping_option_code'], 'export documents allowed; the DDP option passed over for DDU');
+	pg_assert_same(array(
+		array(
+			'description'    => 'Ceramic Mug',
+			'quantity'       => 2,
+			'weight'         => array('value' => 0.4, 'unit' => 'kg'),
+			'price'          => array('value' => '12.50', 'currency' => 'EUR'),
+			'hs_code'        => '69120010',
+			'origin_country' => 'TR',
+			'sku'            => 'MUG-01',
+		),
+		array(
+			'description'    => 'Linen Napkin',
+			'quantity'       => 1,
+			'weight'         => array('value' => 0.45, 'unit' => 'kg'),
+			'price'          => array('value' => '4.99', 'currency' => 'EUR'),
+			'hs_code'        => '630251',
+			'origin_country' => 'PT',
+		),
+	), $body['parcels'][0]['parcel_items'], 'product values first, shop defaults second; no SKU key when there is none');
+	pg_assert_same(array('invoice_number' => '10077', 'export_reason' => 'commercial_goods'), $body['customs_information']);
+	pg_assert_same('US-NY', $body['to_address']['state_province_code']);
+
+	$gift = pg_label_sendcloud_customs(carrier_label_sendcloud_test_customs_shipment(), carrier_label_sendcloud_test_customs_account(array('customs_contents' => 'gift')), 'NL');
+	pg_assert_same('gift', $gift['information']['export_reason']);
+	pg_assert_same('ups:express_saver/incoterm=ddp', pg_label_sendcloud_option_pick(json_decode(carrier_label_sendcloud_test_fixture('shipping_options_customs.json'), true)['data'], false, 'DDP'));
+}
+
+function test_carrier_label_sendcloud_customs_route_with_an_empty_block_is_refused()
+{
+	// A product's own HS code does not open the route: only the shop's block does.
+	$account = carrier_label_sendcloud_test_customs_account(array('customs_hs_code' => '', 'customs_origin_country' => '', 'customs_signer' => ''));
+	carrier_label_sendcloud_test_stub(array('GET /addresses/sender-addresses?page_size=100' => array('sender_addresses.json')));
+	$answer = pg_label_call('sendcloud', 'create', array(carrier_label_sendcloud_test_customs_shipment(), $account));
+	carrier_label_sendcloud_test_done();
+
+	pg_assert_false($answer['success']);
+	pg_assert_false($answer['unclear']);
+	pg_assert_contains('A parcel from NL to US needs a customs declaration, which is not sent to Sendcloud yet.', $answer['error']);
+	pg_assert_same(array('GET /addresses/sender-addresses?page_size=100'), carrier_label_sendcloud_test_sent());
+	pg_assert_same('', pg_label_sendcloud_route_error('NL', 'US', false, true));
+	pg_assert_contains('does not ship from TR', pg_label_sendcloud_route_error('TR', 'US', false, true), 'the sender countries still apply');
+	pg_assert_contains('A return from CH to DE needs a customs declaration', pg_label_sendcloud_route_error('CH', 'DE', true));
+}
+
+function test_carrier_label_sendcloud_customs_line_without_hs_code_is_refused()
+{
+	$account = carrier_label_sendcloud_test_customs_account(array('customs_hs_code' => ''));
+	carrier_label_sendcloud_test_stub(array('GET /addresses/sender-addresses?page_size=100' => array('sender_addresses.json')));
+	$answer = pg_label_call('sendcloud', 'create', array(carrier_label_sendcloud_test_customs_shipment(), $account));
+	carrier_label_sendcloud_test_done();
+
+	pg_assert_false($answer['success']);
+	pg_assert_false($answer['unclear']);
+	pg_assert_contains('Linen Napkin has no HS code', $answer['error']);
+	pg_assert_same(array('GET /addresses/sender-addresses?page_size=100'), carrier_label_sendcloud_test_sent(), 'nothing is priced or announced');
+
+	$long = carrier_label_sendcloud_test_customs_shipment();
+	$long['goods'][0]['hs_code'] = '6912.0010.9900.1';
+	$refused = pg_label_sendcloud_customs($long, carrier_label_sendcloud_test_customs_account(), 'NL');
+	pg_assert_contains('at most 12 digits', $refused['error']);
+
+	$no_currency = carrier_label_sendcloud_test_customs_shipment();
+	$no_currency['currency'] = '';
+	pg_assert_contains('no currency', pg_label_sendcloud_customs($no_currency, carrier_label_sendcloud_test_customs_account(), 'NL')['error']);
+}
+
+function test_carrier_label_sendcloud_eu_route_with_the_block_filled_is_unchanged()
+{
+	$shipment = carrier_label_sendcloud_test_customs_shipment();
+	$shipment['recipient'] = carrier_label_sendcloud_test_shipment()['recipient'];
+	carrier_label_sendcloud_test_stub(array(
+		'GET /addresses/sender-addresses?page_size=100' => array('sender_addresses.json'),
+		'POST /shipping-options'                         => array('shipping_options.json'),
+		'POST /shipments/announce'                       => array('shipment.json'),
+	));
+	$answer = pg_label_call('sendcloud', 'create', array($shipment, carrier_label_sendcloud_test_customs_account()));
+	$sent = $GLOBALS['carrier_label_sendcloud_test_sent'];
+	carrier_label_sendcloud_test_done();
+
+	pg_assert_true($answer['success'], $answer['error']);
+	pg_assert_same('dpd:home', $sent[2]['body']['ship_with']['properties']['shipping_option_code'], 'export documents still passed over');
+	pg_assert_false(isset($sent[2]['body']['customs_information']));
+	pg_assert_false(isset($sent[2]['body']['parcels'][0]['parcel_items']));
+	pg_assert_same(array('items' => null, 'information' => null, 'error' => ''), pg_label_sendcloud_customs($shipment, carrier_label_sendcloud_test_customs_account(), 'NL'));
 }

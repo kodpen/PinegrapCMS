@@ -14,7 +14,7 @@ module: product_customs
 - Product screen (`product_builder.php`): two fields in the Shippable panel after Extra Shipping Cost, a hint "Empty uses the shop default of the label service"; the country picker's first option is "Shop default", names in the panel language with the code. Saved in `pg_pb_common_from_post()` through `pg_product_customs_from_post()`, so every variant of a set takes them (a property of the goods, like weight). `pg_pb_validate_product_post()` refuses a bad value with `output_error()` before any write (`pg_product_customs_problem()`), rather than saving it empty.
 - Copy: `duplicate_product()` and `duplicate_products.php` add `pg_product_customs_copy_sql($row)` beside the compare-at price; a stored value the screen would refuse is copied as ''.
 - Export (`export_products_f.php`): `hs_code`, `origin_country` after `compare_at_price`. Import: same headings; `pg_product_customs_import_row()` normalises the cells, a bad cell leaves the whole row out and names it in its own error ("…HS code or country of origin is not valid"); an empty cell leaves the stored value, as for every column.
-- Labels (C2 #3449): the label's line query reads both columns; Shippo declares them with the shop defaults of its settings (`carrier-label-customs.md`).
+- Labels (C2 #3449): the label's line query reads both columns; Shippo declares them with the shop defaults of its settings (`carrier-label-customs.md`); Sendcloud as `parcel_items` (C3 #3474, `carrier-label-sendcloud-customs.md`).
 - Not yet: the products external API (`includes/api/schema.php` is held by #3298; the fields follow once it merges), the mass edit screen and the product list's in-place edit.
 
 ## Why these rules?
