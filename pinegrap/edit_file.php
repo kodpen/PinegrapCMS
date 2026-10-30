@@ -458,6 +458,7 @@ if (!isset($_POST['name'])) {
                     ' . get_token_field() . '
                     <input type="hidden" name="id" value="' . h($_GET['id']) . '">
                     <input type="hidden" name="name" value="' . h($file_name) . '">
+                    <input type="hidden" name="send_to" value="' . h(pg_send_to_url('')) . '">
                 </form>';
 
             $image_buttons = $optimize_button . $resize_button . '<button type="submit" form="edit_file_rotate" class="btn btn-link pg-link-secondary py-0 mb-3" name="rotate_left" value="1"><i class="bi bi-arrow-counterclockwise bi-me-2"></i>' . lang('Rotate Left') . '</button> <button type="submit" form="edit_file_rotate" class="btn btn-link pg-link-secondary py-0 mb-3" name="rotate_right" value="1"><i class="bi bi-arrow-clockwise bi-me-2"></i>' . lang('Rotate right') . '</button><a class="btn btn-link pg-link-secondary py-0 mb-3" href="' . $output_image_edit_link . '"><i class="bi bi-flower2 bi-me-2"></i>' . lang(array('string'=>'Edit this image with {var:1}','vars'=>array(lang('Image Editor')) )) . '</a>';
@@ -511,7 +512,7 @@ if (!isset($_POST['name'])) {
                 'url'=>$back_url
             ),
             'breadcrumb' => array(
-                array('label' => lang('Files'), 'url' => $back_url),
+                array('label' => lang('Files'), 'url' => pg_send_to_list_url(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_files.php')),
                 array('label' => $file_name),
             ),
         )
@@ -700,7 +701,7 @@ $liveform->remove_form('edit_file');
         include_once('liveform.class.php');
         $liveform = new liveform('view_files');
         $liveform->add_notice(lang('The file was deleted successfully.'));
-        header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/view_files.php');
+        header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path(pg_send_to_url(''), PATH . SOFTWARE_DIRECTORY . '/view_files.php'));
         exit();
     }
 
@@ -811,7 +812,7 @@ $liveform->remove_form('edit_file');
                 $row['name'],
                 lang(array('string' => 'Sorry, we could not rotate that image ({var:1}).', 'vars' => $row['name'])))));
 
-            header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_file.php?id=' . urlencode($_POST['id']));
+            header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_file.php?id=' . urlencode($_POST['id']) . '&send_to=' . urlencode(pg_send_to_url('')));
             exit();
         }
 
@@ -838,7 +839,7 @@ $liveform->remove_form('edit_file');
 
         $liveform->add_notice(lang('The file was rotated successfully.'));
 
-        header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_file.php?id=' . urlencode($_POST['id']));
+        header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_file.php?id=' . urlencode($_POST['id']) . '&send_to=' . urlencode(pg_send_to_url('')));
         exit();
     }
 
@@ -1011,7 +1012,7 @@ $liveform->remove_form('edit_file');
 
             $liveform_redirect = new liveform('edit_file');
             $liveform_redirect->add_notice(lang('SVG was converted and saved as a new file.'));
-            header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_file.php?id=' . urlencode($new_id));
+            header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_file.php?id=' . urlencode($new_id) . '&send_to=' . urlencode(pg_send_to_url('')));
             exit();
 
         } else {
@@ -1037,7 +1038,7 @@ $liveform->remove_form('edit_file');
 
             $liveform_redirect = new liveform('edit_file');
             $liveform_redirect->add_notice(lang('SVG was converted successfully.'));
-            header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_file.php?id=' . urlencode($_POST['id']));
+            header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_file.php?id=' . urlencode($_POST['id']) . '&send_to=' . urlencode(pg_send_to_url('')));
             exit();
         }
     }
@@ -1104,12 +1105,12 @@ $liveform->remove_form('edit_file');
         if (!empty($_POST['submit_save']) && ($_POST['submit_save'] ?? '') === 'Save') {
             $liveform = new liveform('edit_file');
             $liveform->add_notice(lang('The file was edited successfully.'));
-            header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_file.php?id=' . urlencode($_POST['id']) . '&send_to=' . urlencode($_POST['send_to']));
+            header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_file.php?id=' . urlencode($_POST['id']) . '&send_to=' . urlencode(pg_send_to_url('')));
             exit();
         } elseif (!empty($_POST['submit_save_and_return']) && ($_POST['submit_save_and_return'] ?? '') === 'Save & Return') {
             $liveform = new liveform('view_files');
             $liveform->add_notice(lang('The file was edited successfully.'));
-            header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/view_files.php');
+            header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path(pg_send_to_url(''), PATH . SOFTWARE_DIRECTORY . '/view_files.php'));
             exit();
         }
     }
@@ -1168,7 +1169,7 @@ $liveform->remove_form('edit_file');
         $liveform = new liveform('edit_file');
         $liveform->add_notice(lang('A new copy of the file has been created.'));
 
-        header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_file.php?id=' . $new_file_id);
+        header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_file.php?id=' . $new_file_id . '&send_to=' . urlencode(pg_send_to_url('')));
         exit();
     }
 

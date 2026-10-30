@@ -90,9 +90,9 @@ if (!$_POST) {
             'icon'=>'design', 
             'heading'=> lang('Upload Design Files'),
             'heading_description' => lang('Drop design files below, update the settings (if necessary), and then click Upload.'),
-            'cancel'=>array('enable'=>'true','url'=>'view_design_files.php')
+            'cancel'=>array('enable'=>'true','url'=>pg_send_to_url('view_design_files.php'))
         ,
-            'breadcrumb' => array(array('label' => lang('All Design Files'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_design_files.php'), array('label' => lang('Upload Design Files'))),
+            'breadcrumb' => array(array('label' => lang('All Design Files'), 'url' => pg_send_to_list_url(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_design_files.php')), array('label' => lang('Upload Design Files'))),
         )
     ) . '
 <main id="content" class="container-fluid">
@@ -147,13 +147,8 @@ if (!$_POST) {
                 });
 
                 this.on("successmultiple", function(files, response) {
-                    var send_to = $("#send_to").val();
-
-                    if (send_to) {
-                        window.location = send_to;
-                    } else {
-                        window.location = "view_design_files.php";
-                    }
+                    // send_to is checked on the server: only a path on this site.
+                    window.location = ' . json_encode(pg_send_to_url('view_design_files.php'), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) . ';
                     
                 });
                 this.on("errormultiple", function(files, response, xhr) {
