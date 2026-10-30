@@ -244,3 +244,51 @@ function test_workspace_render_guest_page_keeps_heading_signs()
 {
 	pg_assert_same('# Plan<br>' . "\n" . '---', ws_guest_render("# Plan\n---"), 'a guest reads messages, where # is text');
 }
+
+// An address in quotes, angle brackets, a JSON value or with a Turkish
+// suffix after an apostrophe links the address alone; the closing sign and
+// the suffix stay text outside the link, escaped as before.
+function workspace_render_test_link($url, $guest = false)
+{
+	return '<a href="' . $url . '" target="_blank" rel="' . ($guest ? 'nofollow ' : '') . 'noopener noreferrer">' . $url . '</a>';
+}
+
+function test_workspace_render_address_ends_at_quotes_and_brackets()
+{
+	$a = workspace_render_test_link('https://a.test/x');
+	pg_assert_same('Bak: &quot;' . $a . '&quot;', workspace_render_test_html('Bak: "https://a.test/x"'), 'double quotes');
+	pg_assert_same('&#039;' . $a . '&#039;', workspace_render_test_html("'https://a.test/x'"), 'single quotes');
+	pg_assert_same('&lt;' . $a . '&gt;', workspace_render_test_html('<https://a.test/x>'), 'angle brackets');
+	pg_assert_same('{&quot;docs&quot;:&quot;' . $a . '&quot;}}', workspace_render_test_html('{"docs":"https://a.test/x"}}'), 'a JSON value');
+	pg_assert_same('&quot;' . $a . '&quot;.', workspace_render_test_html('"https://a.test/x".'), 'a dot after the quote');
+}
+
+function test_workspace_render_address_leaves_an_apostrophe_suffix_out()
+{
+	pg_assert_same('Siparişi ' . workspace_render_test_link('https://a.test/siparis/12') . '&#039;de görebilirsiniz.', workspace_render_test_html("Siparişi https://a.test/siparis/12'de görebilirsiniz."), "'de");
+	pg_assert_same('Ayrıntılar ' . workspace_render_test_link('https://kodpen.com') . '&#039;da.', workspace_render_test_html("Ayrıntılar https://kodpen.com'da."), "'da");
+	pg_assert_same(workspace_render_test_link('https://a.test') . '&#039;a, ' . workspace_render_test_link('https://b.test') . '&#039;e', workspace_render_test_html("https://a.test'a, https://b.test'e"), "'a and 'e");
+}
+
+function test_workspace_render_address_keeps_its_query_and_plain_cases()
+{
+	pg_assert_same(workspace_render_test_link('https://a.test/?a=1&amp;b=2'), workspace_render_test_html('https://a.test/?a=1&b=2'), '&amp; in the query');
+	pg_assert_same(workspace_render_test_link('https://a.test/?a=1') . '&amp;.', workspace_render_test_html('https://a.test/?a=1&.'), 'a trailing & stays whole outside');
+	pg_assert_same('Düz ' . workspace_render_test_link('https://a.test/e'), workspace_render_test_html('Düz https://a.test/e'), 'plain');
+	pg_assert_same('Düz ' . workspace_render_test_link('https://a.test/e') . '.', workspace_render_test_html('Düz https://a.test/e.'), 'a trailing dot');
+	pg_assert_same('(' . workspace_render_test_link('https://a.test/e') . '),', workspace_render_test_html('(https://a.test/e),'), 'a bracket and a comma');
+}
+
+function test_workspace_render_link_with_words_ends_at_quotes()
+{
+	pg_assert_same('<a href="https://a.test/?a=1&amp;b=2" target="_blank" rel="noopener noreferrer">see</a>', workspace_render_test_html('[see](https://a.test/?a=1&b=2)'), '&amp; in the query');
+	pg_assert_same('[see](' . workspace_render_test_link('https://a.test/x') . '&quot;)', workspace_render_test_html('[see](https://a.test/x")'), 'a quote inside stays text');
+	pg_assert_same('[see](' . workspace_render_test_link('https://a.test') . '&#039;da)', workspace_render_test_html("[see](https://a.test'da)"), 'an apostrophe inside stays text');
+}
+
+function test_workspace_render_guest_page_address_ends_at_quotes()
+{
+	pg_assert_same('&quot;' . workspace_render_test_link('https://a.test/x', true) . '&quot;', ws_guest_render('"https://a.test/x"'), 'double quotes');
+	pg_assert_same(workspace_render_test_link('https://kodpen.com', true) . '&#039;da.', ws_guest_render("https://kodpen.com'da."), "'da");
+	pg_assert_same(workspace_render_test_link('https://a.test/?a=1&amp;b=2', true), ws_guest_render('https://a.test/?a=1&b=2'), '&amp; in the query');
+}
