@@ -269,8 +269,10 @@ function _pg_offer_product_groups()
             'name'  => $names[$id],
             'label' => implode(' › ', $path));
     }
+    // The panel language's order: strcasecmp() compares bytes, so Ç, Ş, Ü
+    // and İ came after Z.
     usort($groups, function ($a, $b) {
-        return strcasecmp($a['label'], $b['label']);
+        return pg_geo_label_compare($a['label'], $b['label']);
     });
     $cache = $groups;
     return $cache;

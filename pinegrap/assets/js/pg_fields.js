@@ -540,7 +540,10 @@
             return window.pgUI.combobox.get(toggle, {
                 multiple: multiple,
                 search: search,
-                placeholder: placeholder
+                placeholder: placeholder,
+                // Bootstrap strips accents and the dot of İ before it compares,
+                // so "ist" finds "İstanbul"; toLowerCase() alone never does.
+                searchNormalize: true
             });
         });
         keepMenuKeysInCombobox(combobox, toggle);

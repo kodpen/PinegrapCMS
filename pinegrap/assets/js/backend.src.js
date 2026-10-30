@@ -7,6 +7,16 @@ window.pgLang = function (key) {
     return (v !== undefined && v !== null) ? String(v) : key;
 };
 
+// Folds text for the panel's live filters: lowercase, then the dot that
+// toLowerCase() leaves on a capital İ (i + U+0307) removed and ı, ğ, ü, ş, ö,
+// ç folded to their plain letters, so "ist" finds "İstanbul" and "cerez"
+// finds "Çerez". String() first: a stray number must not stop a filter.
+window.pgFoldTR = function (s) {
+    return String(s).toLowerCase().replace(/\u0307/g, '')
+        .replace(/\u011f/g, 'g').replace(/\u00fc/g, 'u').replace(/\u015f/g, 's')
+        .replace(/\u0131/g, 'i').replace(/\u00f6/g, 'o').replace(/\u00e7/g, 'c');
+};
+
 // Says a short answer to a screen reader without moving focus. A live region
 // is only heard when its words change after it is in the document, so the two
 // regions (polite and assertive) are made empty once the page has loaded and
@@ -2383,12 +2393,10 @@ $(document).ready(function () {
             return (v !== undefined && v !== null) ? v : key;
         }
 
-        // String() first: one term that arrives as a number would otherwise
-        // stop the matcher, and with it every search typed into the box.
+        // pgFoldTR() reads String(s): one term that arrives as a number would
+        // otherwise stop the matcher, and with it every search typed into the box.
         function normalizeTR(s) {
-            return String(s).toLowerCase()
-                .replace(/\u011f/g, 'g').replace(/\u00fc/g, 'u').replace(/\u015f/g, 's')
-                .replace(/\u0131/g, 'i').replace(/\u00f6/g, 'o').replace(/\u00e7/g, 'c');
+            return window.pgFoldTR(s);
         }
 
         function actionMatches(q, keys) {
@@ -2578,7 +2586,7 @@ $(document).ready(function () {
                         }
                         if (resp.actions) cachedActions = resp.actions;
                         var actions = cachedActions || [];
-                        var q = query.toLowerCase();
+                        var q = query;
                         var matched = actions.filter(function (a) { return actionMatches(q, a.keys); });
                         if (matched.length) {
                             var $actRow = $('<div class="d-flex flex-wrap gap-1 mb-3 pb-3 border-bottom"></div>');
@@ -10255,7 +10263,7 @@ function initSettingsFilter() {
     // reading it per keystroke on the commerce screen is a hundred kilobytes of
     // textContent per character.
     cards.forEach(function (card) {
-        card.setAttribute('data-pgtext', (card.textContent || '').replace(/\s+/g, ' ').toLowerCase());
+        card.setAttribute('data-pgtext', window.pgFoldTR((card.textContent || '').replace(/\s+/g, ' ')));
     });
 
     // Only what a person typed filters. A password manager writes the saved
@@ -10271,7 +10279,7 @@ function initSettingsFilter() {
             field.value = '';
         }
 
-        var needle = field.value.trim().toLowerCase();
+        var needle = window.pgFoldTR(field.value.trim());
         var shown = 0;
 
         cards.forEach(function (card) {

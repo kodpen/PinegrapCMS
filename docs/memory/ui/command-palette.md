@@ -4,7 +4,10 @@ description: Panel search box (Ctrl+K): where the chips come from, how text is m
 ---
 
 ## Where do the chips come from?
-- `pg_panel_backend_search()` (`includes/panel/search.php`) answers with `actions`: label, icon, url and `keys`. The empty query returns the actions only; `backend.src.js` caches them when the box opens and matches the typed text against `keys` with `actionMatches()` (prefix either way, Turkish letters folded by `normalizeTR()`).
+- `pg_panel_backend_search()` (`includes/panel/search.php`) answers with `actions`: label, icon, url and `keys`. The empty query returns the actions only; `backend.src.js` caches them when the box opens and matches the typed text against `keys` with `actionMatches()` (prefix either way, Turkish letters folded by `normalizeTR()`, which calls `window.pgFoldTR()`).
+
+## What is pgFoldTR()?
+- One shared fold at the top of `backend.src.js`: `String(s).toLowerCase()`, the U+0307 that a lowercased capital İ keeps removed, ı, ğ, ü, ş, ö, ç to their plain letters. The palette, the Site Settings "Search in this page" filter (`initSettingsFilter()`) and the API applications filter (`api_settings.php`) use it. Before, a query starting with a capital İ ("İade", or a phone keyboard's capital first letter) matched no chip, and "denetim izi" hid the "Denetim İzi" settings card. Pinned by `tests/panel_turkish_fold_test.php`. Comboboxes fold through Bootstrap's `searchNormalize` instead (`pg-combobox.md`).
 - Settings sections come from the registry (`pg_settings_categories()`, `includes/settings/registry.php`); their `keys` are `pg_settings_keywords()` over one translated comma list per section.
 
 ## Why must every key be a string?
