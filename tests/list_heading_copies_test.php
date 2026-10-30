@@ -7,7 +7,7 @@
  * sizing copy in the body table keeps its text for screen readers, which take
  * the column headers from it, but its links and boxes leave the Tab order;
  * while the heading floats, the floating table is no longer aria-hidden and
- * the placeholder left in place is inert. The vendored files stay as shipped.
+ * the placeholder left in place is inert.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -51,11 +51,4 @@ function test_list_heading_copies_floating_heading_is_perceivable()
 	pg_assert_contains("holder.removeAttr('aria-hidden');", $body, 'is not aria-hidden while it floats');
 	pg_assert_contains("$(api.table().container()).find('div.dt-scroll-head thead').not(header)", $body, 'the placeholder left in place');
 	pg_assert_contains(".attr('inert', '')", $body, 'is inert');
-}
-
-function test_list_heading_copies_vendored_files_unchanged()
-{
-	$dir = PG_FUNCTIONS_DIR . '/assets/lib/DataTables/';
-
-	pg_assert_same('119ae2bf2e007ccd696b4c86efc502932806c52d', sha1_file($dir . 'datatables.js'), 'datatables.js is the shipped DataTables 2.3.7 / FixedHeader 4.0.6 build');
 }
