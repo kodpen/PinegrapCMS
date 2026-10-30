@@ -4,8 +4,8 @@
  *
  * Source test for the .btn-ghost to .btn-text.theme-secondary swap: the
  * converted Workspace and ERP screens (the rich text tool rows included), the
- * designer list and the shared list helpers carry no .btn-ghost, and neither
- * does any other panel file outside the flow canvas and the stylesheet.
+ * designer list and the shared list helpers carry no .btn-ghost, no other
+ * panel file does, and the stylesheet defines no .btn-ghost rule.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -86,14 +86,8 @@ function test_bs6_btn_ghost_swap_designer_and_list_helpers()
 
 function test_bs6_btn_ghost_swap_whole_panel()
 {
-	// Every product file outside the libraries, the flow canvas (its own
-	// work converts it) and the stylesheet that still defines the rules.
-	$skip = array(
-		'assets/js/workspace_flow.js',
-		'assets/js/workspace_flow.min.js',
-		'assets/css/backend.src.css',
-		'assets/css/backend.min.css',
-	);
+	// Every product file outside the libraries, the flow canvas and the
+	// stylesheets included: the class and its rules are gone.
 	$root = dirname(__DIR__) . '/pinegrap/';
 	$iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($root, FilesystemIterator::SKIP_DOTS));
 	$found = array();
@@ -101,7 +95,7 @@ function test_bs6_btn_ghost_swap_whole_panel()
 	foreach ($iterator as $file) {
 		$path = str_replace('\\', '/', substr($file->getPathname(), strlen($root)));
 
-		if (!preg_match('/\.(php|js|css)$/', $path) || strpos($path, 'assets/lib/') === 0 || in_array($path, $skip, true)) {
+		if (!preg_match('/\.(php|js|css)$/', $path) || strpos($path, 'assets/lib/') === 0) {
 			continue;
 		}
 
@@ -111,4 +105,9 @@ function test_bs6_btn_ghost_swap_whole_panel()
 	}
 
 	pg_assert_same(array(), $found, 'no panel file carries .btn-ghost');
+
+	// The button chain no longer excludes it, and no rule styles it.
+	$css = (string) file_get_contents($root . 'assets/css/backend.src.css');
+	pg_assert_same(0, preg_match_all('/\.btn-ghost(?![\w-])/', $css), 'no .btn-ghost selector is left');
+	pg_assert_same(1, preg_match_all('/\.btn-text\.theme-secondary\.active \{/', $css), 'the view switch rule keeps its own selector');
 }

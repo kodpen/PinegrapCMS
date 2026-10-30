@@ -3147,7 +3147,7 @@ body:not(.toolbar) .software-content {
    Two things it does need of its own. The markup is legacy and cannot be
    rewritten across seventy files: the actions arrive wrapped in .btn-group and
    dressed as .btn-link, where the toolbar's own recipe would be a bare button
-   with .btn-ghost. Both are mapped onto the toolbar's language below, so the
+   with .btn-text.theme-secondary. Both are mapped onto the toolbar's language below, so the
    two bars read the same without a single page being touched.
 
    A group is also the wrong component for what these are: it welds its children
@@ -3240,7 +3240,8 @@ body:not(.toolbar) .software-content {
 
 /* The helper links are the quiet half, and quiet here means exactly what it
    means on the explorer's toolbar: no border until hovered, secondary ink,
-   the theme's own surface underneath. Same declarations as .btn-ghost, reached
+   the theme's own surface underneath. Same declarations as
+   .btn-text.theme-secondary, reached
    through the class the legacy markup happens to carry. */
 #button_bar .btn-link {
   --bs-btn-color: var(--pg-fg-2);
@@ -4139,7 +4140,7 @@ body:not(.toolbar) .software-content {
     .btn-outline.theme-danger
   ):not(.btn-outline.theme-warning):not(.btn-outline.theme-info):not(
     .btn-outline-light
-  ):not(.btn-outline-dark):not(.btn-close):not(.btn-ghost):not(.btn-text.theme-secondary) {
+  ):not(.btn-outline-dark):not(.btn-close):not(.btn-text.theme-secondary) {
   --bs-btn-bg: transparent;
   --bs-btn-hover-bg: var(--pg-bg-1);
   --bs-btn-active-bg: color-mix(in srgb, var(--pg-bg-1) 50%, transparent);
@@ -8262,11 +8263,11 @@ button.no-popover:focus-visible {
 
      <div class="pg-toolbar">
        <div class="dropdown">…primary: btn btn-sm btn-primary rounded-pill px-3…</div>
-       <button class="btn btn-sm btn-ghost">…secondary tools…</button>
+       <button class="btn btn-sm btn-text theme-secondary">…secondary tools…</button>
        <div class="pg-toolbar-grow">…breadcrumb / title / location…</div>
        <div class="input-group input-group-sm rounded-pill pg-toolbar-search">…</div>
-       <div class="btn-group btn-group-sm">…view switches: btn-ghost + .active…</div>
-       <div class="dropdown ms-auto">…overflow: btn-ghost with bi-three-dots-vertical…</div>
+       <div class="btn-group btn-group-sm">…view switches: btn-text theme-secondary + .active…</div>
+       <div class="dropdown ms-auto">…overflow: btn-text theme-secondary with bi-three-dots-vertical…</div>
      </div>
 
    Rules that go with it: one recipe per intent, more than four buttons go
@@ -8329,36 +8330,18 @@ button.no-popover:focus-visible {
 .pg-toolbar-search { width: 200px; }
 
 /* Ghost button: a toolbar full of outlined buttons reads as a row of boxes,
-   so secondary tools carry no border until they are hovered. Defined through
-   Bootstrap's own button variables, which is what makes it follow the light
-   and dark themes without a second rule.
+   so secondary tools carry no border until they are hovered. Bootstrap 6's
+   text button in the secondary theme is that object; its tokens are set to
+   the panel's ink and surfaces, so it follows the light and dark themes:
+   - colours: the panel's secondary ink and hover surface, not the theme's;
+   - focus: the panel-wide focus ring above still wins over the theme's;
+   - disabled: left undefined, so the label keeps the parent's ink and the
+     border falls back to it.
 
    The house rule for a button with no variant on it (the long :not() chain
    further up) has to exclude this one by name. That selector carries a class
-   for every :not() in it - eighteen of them - so it outweighs a single class
-   many times over, and this block would never have taken effect. It went
-   unnoticed because the file manager scoped its own copy under an id, and an
-   id beats any number of classes; the moment that screen moved onto the
-   shared class the buttons came back with borders. */
-.btn-ghost {
-  --bs-btn-color: var(--pg-fg-2);
-  --bs-btn-hover-color: var(--pg-fg-body);
-  --bs-btn-hover-bg: var(--pg-bg-2);
-  --bs-btn-active-color: var(--pg-fg-body);
-  --bs-btn-active-bg: var(--pg-bg-2);
-  --bs-btn-border-color: transparent;
-  --bs-btn-hover-border-color: transparent;
-  --bs-btn-active-border-color: transparent;
-}
-
-/* Bootstrap 6's text button in the secondary theme is the same object, and
-   the panel carries it instead of .btn-ghost (only the Workspace flows
-   still use the class above). Its tokens are set to what the ghost
-   resolves to, so the two look alike in every state:
-   - colours: the ghost's ink and hover surface, not the secondary theme's;
-   - focus: the panel-wide focus ring above still wins over the theme's;
-   - disabled: left undefined like the ghost's, so the label keeps the
-     parent's ink and the border falls back to it, as before. */
+   for every :not() in it, so it outweighs these two classes many times over,
+   and this block would never take effect otherwise. */
 .btn-text.theme-secondary {
   --bs-btn-color: var(--pg-fg-2);
   --bs-btn-hover-color: var(--pg-fg-body);
@@ -8374,8 +8357,7 @@ button.no-popover:focus-visible {
 
 /* A view switch that is currently on. Not :active - that is the pressed
    state and lasts a moment; this one has to hold. */
-.btn-text.theme-secondary.active,
-.btn-ghost.active {
+.btn-text.theme-secondary.active {
   background: var(--pg-bg-2);
   color: var(--pg-fg-body);
 }
@@ -20319,7 +20301,6 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
     .menu-item.active,
     input.btn-check:checked + .btn,
     .btn-text.theme-secondary.active,
-    .btn-ghost.active,
     #header .pg-um-themebtn.active,
     .pg-filter[aria-pressed="true"],
     button.pg-vs-cell.is-active,
@@ -20345,7 +20326,6 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
     .menu-item.active,
     input.btn-check:checked + .btn,
     .btn-text.theme-secondary.active,
-    .btn-ghost.active,
     #header .pg-um-themebtn.active,
     .pg-filter[aria-pressed="true"],
     button.pg-vs-cell.is-active,
