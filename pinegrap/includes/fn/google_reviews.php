@@ -307,7 +307,7 @@ function pg_grev_refresh($language)
         $entry = array('fetched_at' => $now, 'tried_at' => $now, 'logged' => false, 'place' => $result['place']);
     } else {
         if (empty($entry['logged']) && function_exists('log_activity')) {
-            log_activity('Google reviews could not be read: ' . $result['error'], 'SYSTEM');
+            log_activity(lang(array('string' => 'Google reviews could not be read: {var:1}', 'vars' => array($result['error']))), 'SYSTEM');
         }
 
         $entry['logged'] = true;

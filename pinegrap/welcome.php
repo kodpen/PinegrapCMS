@@ -55,7 +55,7 @@ $liveform = new liveform('welcome');
 // if the user has a user role and the user does not have edit access to any folders and the user does not have access to control panels, then deny access to software welcome screen
 if (($user['role'] == 3) && (no_acl_check($user['id']) == false) && ($user['manage_calendars'] == false) && ($user['manage_forms'] == false) && ($user['manage_visitors'] == false) && ($user['manage_contacts'] == false) && ($user['manage_emails'] == false) && ($user['manage_ecommerce'] == false) && ($user['manage_ecommerce_reports'] == false) && (empty($user['manage_erp'])) && (empty($user['manage_workspace'])) && (count(get_items_user_can_edit('ad_regions', $user['id'])) == 0))
 {
-    log_activity("access denied to welcome screen", $_SESSION['sessionusername']);
+    log_activity(lang('access denied to welcome screen'), $_SESSION['sessionusername']);
     output_error(lang('Access denied.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
 }
 

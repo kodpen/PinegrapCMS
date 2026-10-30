@@ -261,7 +261,7 @@ if ((ECOMMERCE_CREDIT_DEBIT_CARD == true) && (ECOMMERCE_PAYMENT_GATEWAY == 'PayP
     
     // if recurring payment job did something, then log activity
     if (($number_of_expired_memberships > 0) || ($number_of_revoked_private_access > 0) || ($number_of_emails_sent > 0)) {
-        log_activity('recurring payment job expired membership for ' . $number_of_expired_memberships . ' user(s), revoked private access for ' . $number_of_revoked_private_access . ' user(s), and sent e-mail to ' . $number_of_emails_sent . ' user(s)', 'UNKNOWN');
+        log_activity(lang(array('string' => 'recurring payment job expired membership for {var:1} user(s), revoked private access for {var:2} user(s), and sent e-mail to {var:3} user(s)', 'vars' => array($number_of_expired_memberships, $number_of_revoked_private_access, $number_of_emails_sent))), 'UNKNOWN');
     }
 }
 

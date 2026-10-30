@@ -10797,11 +10797,15 @@ function process_order_cancellation($order_id, $reason = '', $is_admin = false, 
         );
     }
 
-    log_activity(
-        'Order #' . $order_id . ' cancelled by ' .
-        ($is_admin ? 'admin' : 'customer') . ' (user_id=' . (int) $user_id . ').' .
-        ($reason_clean !== '' ? ' Reason: ' . $reason_clean : '')
-    );
+    $cancel_line = $is_admin
+        ? pg_log_lang(array('string' => 'Order #{var:1} cancelled by admin (user ID {var:2}).', 'vars' => array($order_id, (int) $user_id)))
+        : pg_log_lang(array('string' => 'Order #{var:1} cancelled by customer (user ID {var:2}).', 'vars' => array($order_id, (int) $user_id)));
+
+    if ($reason_clean !== '') {
+        $cancel_line = pg_log_lang(array('string' => '{var:1} Reason: {var:2}', 'vars' => array($cancel_line, $reason_clean)));
+    }
+
+    log_activity($cancel_line);
 
     // ── Automatic refund (opt-in) ───────────────────────────────────────
     // Default OFF. When ECOMMERCE_ORDER_CANCEL_AUTO_REFUND === true and the
@@ -10909,9 +10913,9 @@ function process_order_cancellation($order_id, $reason = '', $is_admin = false, 
         try {
             _send_order_cancellation_email($order, $reason_clean, $refund_status_outcome);
         } catch (\Throwable $e) {
-            log_activity('Cancellation email failed for order #' . $order_id . ': ' . $e->getMessage());
+            log_activity(pg_log_lang(array('string' => 'Cancellation email failed for order #{var:1}: {var:2}', 'vars' => array($order_id, $e->getMessage()))));
         } catch (\Exception $e) {
-            log_activity('Cancellation email failed for order #' . $order_id . ': ' . $e->getMessage());
+            log_activity(pg_log_lang(array('string' => 'Cancellation email failed for order #{var:1}: {var:2}', 'vars' => array($order_id, $e->getMessage()))));
         }
     }
 
@@ -11043,7 +11047,7 @@ function pg_order_restore_cancelled($order_id, $status = 'complete')
 
     pg_order_restore_gift_cards($order_id, (string) $cancelled_order['order_number'], $cancelled_order['cancelled_at'] ?? 0);
 
-    log_activity('Restored cancelled order #' . $order_id . ' to ' . $status . '.');
+    log_activity(pg_log_lang(array('string' => 'Restored cancelled order #{var:1} to {var:2}.', 'vars' => array($order_id, $status))));
 
     return true;
 }
@@ -11333,7 +11337,7 @@ function iyzipay_cancel_payment($options, $payment_id, $conversation_id, $reason
     $reason = (string) $reason;
 
     if ($payment_id === '') {
-        log_activity('Iyzipay payment could not be cancelled because the payment id is empty (' . $reason . ').');
+        log_activity(pg_log_lang(array('string' => 'Iyzipay payment could not be cancelled because the payment id is empty ({var:1}).', 'vars' => array($reason))));
         return false;
     }
 
@@ -11351,17 +11355,16 @@ function iyzipay_cancel_payment($options, $payment_id, $conversation_id, $reason
         $cancel = \Iyzipay\Model\Cancel::create($request, $options);
 
         if ($cancel->getStatus() == 'success') {
-            log_activity('Iyzipay payment ' . $payment_id . ' was cancelled: ' . $reason . '.');
+            log_activity(pg_log_lang(array('string' => 'Iyzipay payment {var:1} was cancelled: {var:2}.', 'vars' => array($payment_id, $reason))));
             return true;
         }
 
         $error_message = method_exists($cancel, 'getErrorMessage') ? (string) $cancel->getErrorMessage() : '';
-        log_activity(
-            'Iyzipay payment ' . $payment_id . ' could not be cancelled (' . $reason . '). MANUAL REFUND REQUIRED. ' .
-            'Gateway message: ' . ($error_message !== '' ? $error_message : '(no message)')
-        );
+        log_activity(pg_log_lang(array(
+            'string' => 'Iyzipay payment {var:1} could not be cancelled ({var:2}). MANUAL REFUND REQUIRED. Gateway message: {var:3}',
+            'vars' => array($payment_id, $reason, ($error_message !== '') ? $error_message : pg_log_lang(array('string' => '(no message)'))))));
     } catch (\Throwable $e) {
-        log_activity('Iyzipay payment ' . $payment_id . ' could not be cancelled (' . $reason . '). MANUAL REFUND REQUIRED. ' . $e->getMessage());
+        log_activity(pg_log_lang(array('string' => 'Iyzipay payment {var:1} could not be cancelled ({var:2}). MANUAL REFUND REQUIRED. {var:3}', 'vars' => array($payment_id, $reason, $e->getMessage()))));
     }
 
     return false;

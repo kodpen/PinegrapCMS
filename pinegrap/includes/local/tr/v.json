@@ -292,6 +292,7 @@
     "verified shipping address ({var:1}) was modified": "doğrulanmış teslimat adresi ({var:1}) değiştirildi",
     "viewing": "görüntülüyor",
     "visitor report": "ziyaretçi raporu",
+    "visitor report ({var:1}) was created": "ziyaretçi raporu ({var:1}) oluşturuldu",
     "visitor report ({var:1}) was deleted": "ziyaretçi raporu ({var:1}) silindi",
     "visitor report ({var:1}) was modified": "ziyaretçi raporu ({var:1}) düzenlendi",
     "visitor was not allowed to App access because the visitor's IP address ({var:1}) was banned": "ziyaretçinin IP adresi ({var:1}) yasaklandığı için ziyaretçinin Uygulama erişimine izin verilmedi",

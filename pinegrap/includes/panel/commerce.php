@@ -811,7 +811,9 @@ function pg_panel_update_product_status($request, $action)
             WHERE id = '" . e($request['id']) . "'"
     );
 
-    log_activity('product (' . $product['name'] . ' - ' . $product['short_description'] . ') was ' . $request['status']);
+    log_activity(($request['status'] == 'enabled')
+        ? lang(array('string' => 'product ({var:1} - {var:2}) was enabled', 'vars' => array($product['name'], $product['short_description'])))
+        : lang(array('string' => 'product ({var:1} - {var:2}) was disabled', 'vars' => array($product['name'], $product['short_description']))));
 
     $response = array('status' => 'success');
 

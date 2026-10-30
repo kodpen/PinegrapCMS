@@ -45,7 +45,7 @@ function software_update_check($return_details = false)
     db("UPDATE config SET last_software_update_check_timestamp = UNIX_TIMESTAMP()");
 
     if (!function_exists('curl_init')) {
-        log_activity('daily software update check could not communicate with the software update server, because cURL is not installed, so it is not known if there is a software update available');
+        log_activity(lang('daily software update check could not communicate with the software update server, because cURL is not installed, so it is not known if there is a software update available'));
         $details['error'] = 'curl_missing';
         return $return_details ? $details : false;
     }
@@ -142,9 +142,9 @@ function software_update_check($return_details = false)
         $query = "DELETE FROM notifications WHERE action = 'software_update'";
         $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
 
-        log_activity(
-            'daily software update check could not communicate with the software update server, so it is not known if there is a software update available. cURL Error Number: ' . $curl_errno . '. cURL Error Message: ' . $curl_error . '.' . pg_curl_tls_hint($curl_errno)
-        );
+        log_activity(lang(array(
+            'string' => 'daily software update check could not communicate with the software update server, so it is not known if there is a software update available. cURL Error Number: {var:1}. cURL Error Message: {var:2}.{var:3}',
+            'vars' => array($curl_errno, $curl_error, pg_curl_tls_hint($curl_errno)))));
         $details['error'] = 'curl_error';
         $details['curl_errno'] = $curl_errno;
         $details['curl_error'] = $curl_error;
@@ -159,7 +159,7 @@ function software_update_check($return_details = false)
         $query = "DELETE FROM notifications WHERE action = 'software_update'";
         $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
 
-        log_activity('daily software update check received an invalid response from the software update server, so it is not known if there is a software update available');
+        log_activity(lang('daily software update check received an invalid response from the software update server, so it is not known if there is a software update available'));
         $details['error'] = 'invalid_response';
         return $return_details ? $details : false;
     }

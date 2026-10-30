@@ -31,7 +31,7 @@ $result = db_q($query, array((string) $liveform->get_field_value('current_page_i
 
 // if the page does not exist or it is not an e-mail a friend page, then log activity and output error
 if (mysqli_num_rows($result) == 0) {
-    log_activity('access denied to e-mail a link to a friend because the page that the visitor came from no longer existed or was not an e-mail a friend page', $_SESSION['sessionusername']);
+    log_activity(pg_log_lang(array('string' => 'access denied to e-mail a link to a friend because the page that the visitor came from no longer existed or was not an e-mail a friend page')), $_SESSION['sessionusername']);
     output_error(lang('The e-mail could not be sent because the page you came from no longer exists or it is not an e-mail a friend page.') . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
 }
 

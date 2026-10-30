@@ -662,7 +662,7 @@ if (!$_POST) {
                                 @unlink(FILE_DIRECTORY_PATH . '/' . $attachment['name']);
                                 
                                 // log that the file was deleted
-                                log_activity('file attachment (' . $attachment['name'] . ') for a comment was deleted because the page (' . $page_name . ') was deleted', $_SESSION['sessionusername']);
+                                log_activity(lang(array('string' => 'file attachment ({var:1}) for a comment was deleted because the page ({var:2}) was deleted', 'vars' => array($attachment['name'], $page_name))), $_SESSION['sessionusername']);
                             }
                         }
                         

@@ -40,7 +40,7 @@ if (
 
 // If the user is not logged in, then log activity and output error.
 if (USER_LOGGED_IN == false) {
-    log_activity('access denied to upload file in editor because user was not logged in', $_SESSION['sessionusername']);
+    log_activity(lang('access denied to upload file in editor because user was not logged in'), $_SESSION['sessionusername']);
     echo '<script>window.parent.CKEDITOR.tools.callFunction("' . escape_javascript($_GET['CKEditorFuncNum']) . '", "", "' . lang('Sorry, the file could not be uploaded, because you are not logged in.') . '")</script>';
     exit();
 }
@@ -48,7 +48,7 @@ if (USER_LOGGED_IN == false) {
 // If the user has a user role and they do not have edit access to any folders,
 // then log activity and output error.
 if ((USER_ROLE == 3) && (no_acl_check(USER_ID) == false)) {
-    log_activity('access denied to upload file in editor because user did not have edit access to any folders', $_SESSION['sessionusername']);
+    log_activity(lang('access denied to upload file in editor because user did not have edit access to any folders'), $_SESSION['sessionusername']);
     echo '<script>window.parent.CKEDITOR.tools.callFunction("' . escape_javascript($_GET['CKEditorFuncNum']) . '", "", "' . lang('Sorry, the file could not be uploaded, because you do not have edit access to any folders.') . '")</script>';
     exit();
 }
@@ -122,7 +122,7 @@ $query =    "INSERT INTO files ".
 $result = db_q($query, array((string) $file_name, (string) $folder_id, (string) $file_extension, (string) $file_size, (string) USER_ID)) or output_error('Query failed.');
 $file_id = mysqli_insert_id(db::$con);
 
-log_activity("file ($file_name) was created", $_SESSION['sessionusername']);
+log_activity(lang(array('string' => 'file ({var:1}) was created', 'vars' => array($file_name))), $_SESSION['sessionusername']);
 
 echo '<script>window.parent.CKEDITOR.tools.callFunction("' . escape_javascript($_GET['CKEditorFuncNum']) . '", "' . escape_javascript(OUTPUT_PATH . encode_url_path($file_name)) . '", "")</script>';
 exit();

@@ -407,7 +407,7 @@ if (!$_POST) {
                     '<br><label for="dkim_notice_record" class="form-label mt-3">' . lang('Add this TXT record to your DNS:') . '</label>' .
                     '<textarea id="dkim_notice_record" class="form-control" rows="4" readonly>' . h($txt_record) . '</textarea>'
                 );
-                log_activity('DKIM key pair generated, files saved, TXT suggestion stored.', $_SESSION['sessionusername']);
+                log_activity(lang('DKIM key pair generated, files saved, TXT suggestion stored.'), $_SESSION['sessionusername']);
             }
         }
         header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/smtp_settings.php');
@@ -432,7 +432,7 @@ if (!$_POST) {
 
             if ($dns_txt && strpos($txt_record, $dns_txt) !== false) {
                 $liveform_settings->add_notice(lang('DKIM test successful. DNS record matches generated key.'));
-                log_activity('DKIM test successful.', $_SESSION['sessionusername']);
+                log_activity(lang('DKIM test successful.'), $_SESSION['sessionusername']);
             } else {
                 $liveform_settings->add_warning(lang('DKIM test failed. DNS record not matching or not found.'));
             }

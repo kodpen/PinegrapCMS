@@ -709,7 +709,7 @@ if ($action != 'import') {
                     // Update old file to have backup name on file system.
                     @rename(FILE_DIRECTORY_PATH . '/' . $name, FILE_DIRECTORY_PATH . '/' . $backup_name);
 
-                    log_activity('file was renamed during import my site (' . $name . ' -> ' . $backup_name . ')');
+                    log_activity(lang(array('string' => 'file was renamed during import my site ({var:1} -> {var:2})', 'vars' => array($name, $backup_name))));
 
                     $old_file_backed_up = true;
 
