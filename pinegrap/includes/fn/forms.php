@@ -2277,6 +2277,12 @@ function select_contact_field($selected_contact_field = '')
         'value' => 'opt_in',
         'name' => lang('Opt-In')
     );
+    // The SMS marketing answer: no contacts column holds it, it is written
+    // to the consent log (pg_cf_contact_column()).
+    $contact_fields[] = array(
+        'value' => 'opt_in_sms',
+        'name' => lang('SMS Opt-In')
+    );
     $contact_fields[] = array(
         'value' => 'description',
         'name' => lang('Description')
