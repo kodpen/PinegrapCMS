@@ -162,8 +162,12 @@ if (!$_POST) {
 
     // get file handle for uploaded CSV file
     $handle = pg_csv_open($import_path);
+    // An uploaded .csv file is read with the separator of its header line
+    // (Excel in Turkish writes ';'); a converted spreadsheet is written with
+    // commas.
+    $separator = ($import_temp_path != '') ? ',' : pg_csv_read_separator($handle);
     // get column names from first row of CSV file
-    $columns = fgetcsv($handle, 100000, ",", '"', '\\');
+    $columns = fgetcsv($handle, 100000, $separator, '"', '\\');
     
     // if file is empty
     if (!$columns) {
@@ -179,6 +183,8 @@ if (!$_POST) {
 
     $submit_form_fields = array();
     $column_names = array();
+    // Headings the import does not know, named in the result.
+    $unknown_headings = array();
     
     // create array with column field names
     foreach ($columns as $key => $value) {
@@ -203,7 +209,12 @@ if (!$_POST) {
 
         // Otherwise this is a normal column, so deal with it in the general way.
         } else {
-            $column_names[] = convert_column_name($value);
+            $column_name = convert_column_name($value);
+            $column_names[] = $column_name;
+
+            if ($column_name === false) {
+                $unknown_headings[] = $value;
+            }
         }
     }
 
@@ -278,10 +289,13 @@ if (!$_POST) {
 
     $rows_not_amounts = array();
     $rows_not_customs = array();
+    // Rows of products already on file, left as they are because Update
+    // Existing Products is off.
+    $rows_left_alone = array();
     $row_number = 1;
 
     // loops through all rows of data in CSV file
-    while ($row = fgetcsv($handle, 100000, ",", '"', '\\')) {
+    while ($row = fgetcsv($handle, 100000, $separator, '"', '\\')) {
         $row_number++;
 
         // If product name is not blank, do something with the rows data.
@@ -603,6 +617,11 @@ if (!$_POST) {
                     }
 
                     $product_updated_count ++;
+
+                // Otherwise the product is left as it is; say so, so the row
+                // is not taken for imported.
+                } else {
+                    $rows_left_alone[] = array($row_number, lang(array('string' => 'A product named "{var:1}" already exists and was left as it is, because Update Existing Products is off.', 'vars' => array((string) $row[$name_key]))));
                 }
 
             // Else, the product name was not already in use.
@@ -865,6 +884,14 @@ if (!$_POST) {
     if ($rows_not_customs) {
         $rows_listed = implode(', ', array_slice($rows_not_customs, 0, 50)) . ((count($rows_not_customs) > 50) ? ', ...' : '');
         $liveform_view_products->add_error(lang(array('string' => 'These rows were not imported because their HS code or country of origin is not valid: {var:1}.', 'vars' => array($rows_listed))));
+    }
+
+    if (pg_csv_headings_text($unknown_headings) !== '') {
+        $liveform_view_products->add_warning(h(lang(array('string' => 'These columns were not recognised and were left out: {var:1}', 'vars' => array(pg_csv_headings_text($unknown_headings))))));
+    }
+
+    if ($rows_left_alone) {
+        $liveform_view_products->add_warning(implode('<br>', array_map('h', pg_csv_problem_list($rows_left_alone))));
     }
 
     // Display notices to tell the user what has been done. Redirect them to proper page.

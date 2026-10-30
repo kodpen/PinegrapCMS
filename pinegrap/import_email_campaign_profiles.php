@@ -113,8 +113,12 @@ if (!$_POST) {
     // Get file handle for uploaded CSV file.
     $handle = pg_csv_open($_FILES['file']['tmp_name']);
 
+    // The header line says which separator the file uses (Excel in Turkish
+    // writes ';').
+    $separator = pg_csv_read_separator($handle);
+
     // Get column names from first row of CSV file.
-    $row = fgetcsv($handle, 100000, ',', '"', '\\');
+    $row = fgetcsv($handle, 100000, $separator, '"', '\\');
     
     // If the file is empty then add error and forward user back to previous screen.
     if (!$row) {
@@ -126,6 +130,8 @@ if (!$_POST) {
     $row = array_map('trim', $row);
 
     $columns = array();
+    // Headings the import does not know, named in the result.
+    $unknown_headings = array();
     
     // Loop through the columns in order to determine which are valid.
     foreach ($row as $number => $name) {
@@ -157,6 +163,8 @@ if (!$_POST) {
             $columns[$name] = array(
                 'name' => $name,
                 'number' => $number);
+        } else {
+            $unknown_headings[] = $row[$number];
         }
     }
 
@@ -177,10 +185,14 @@ if (!$_POST) {
     $updated_count = 0;
     $skipped_count = 0;
 
+    // Empty cells up to the last column used, for rows shorter than that.
+    $empty_row = array_fill(0, max(array_column($columns, 'number')) + 1, '');
+
     // Loops through all rows of data in CSV file, in order to create or update campaign profiles.
-    while ($row = fgetcsv($handle, 100000, ',', '"', '\\')) {
-        // Trim all values.
-        $row = array_map('trim', $row);
+    while ($row = fgetcsv($handle, 100000, $separator, '"', '\\')) {
+        // Trim all values; a row shorter than the header (a blank line is
+        // array(null)) reads its missing cells as empty.
+        $row = array_map('trim', array_map('strval', $row)) + $empty_row;
 
         $name = $row[$columns['name']['number']];
 
@@ -302,6 +314,10 @@ if (!$_POST) {
     }
 
     $liveform_view_email_campaign_profiles->add_notice($message);
+
+    if (pg_csv_headings_text($unknown_headings) !== '') {
+        $liveform_view_email_campaign_profiles->add_warning(h(lang(array('string' => 'These columns were not recognised and were left out: {var:1}', 'vars' => array(pg_csv_headings_text($unknown_headings))))));
+    }
 
     go(PATH . SOFTWARE_DIRECTORY . '/view_email_campaign_profiles.php');
 }

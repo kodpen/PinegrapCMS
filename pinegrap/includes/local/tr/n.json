@@ -716,6 +716,7 @@
     "No figures yet. Google publishes them two or three days late; the daily job downloads them as they come.": "Henüz veri yok. Google verileri iki üç gün gecikmeyle yayımlar; günlük iş geldikçe indirir.",
     "No figures yet. They are read from Google Analytics within the hour.": "Henüz rakam yok. Bir saat içinde Google Analytics'ten okunur.",
     "No file matches that.": "Bununla eşleşen dosya yok.",
+    "No file named \"{var:1}\" was found, so nothing was attached to the {var:2} field.": "\"{var:1}\" adlı dosya bulunamadı, bu yüzden {var:2} alanına bir şey eklenmedi.",
     "No file was found.": "Dosya bulunamadı.",
     "No file was uploaded.": "Dosya yüklenmedi.",
     "No files found.": "Dosya bulunamadı.",
