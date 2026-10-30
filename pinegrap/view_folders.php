@@ -6718,8 +6718,10 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     function trapQuickLookTab(event) {
 
         var overlay = document.getElementById('explorer_quicklook');
-        var controls = Array.prototype.filter.call(overlay.querySelectorAll('button, a[href], video[controls], audio[controls]'), function (element) {
-            return !element.disabled && (element.offsetParent !== null);
+        // The PDF and page frames and the Office preview's scrolling boxes and
+        // cells take part; a roving tabindex's inactive members (-1) do not.
+        var controls = Array.prototype.filter.call(overlay.querySelectorAll('button, a[href], video[controls], audio[controls], iframe, [tabindex]'), function (element) {
+            return !element.disabled && (element.offsetParent !== null) && (element.getAttribute('tabindex') !== '-1') && (element !== overlay);
         });
 
         event.preventDefault();
@@ -10263,9 +10265,9 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
             html += '<div class="d-flex align-items-baseline gap-3 py-1 border-bottom small' +
                 '">' +
-                '<span class="text-truncate' + (row.unchanged ? ' fg-2' : '') + '" style="flex:1 1 0;">' + esc(row.item.name) + '</span>' +
-                '<i class="bi bi-arrow-right fg-secondary"></i>' +
-                '<span class="text-truncate' + (row.clash ? ' fg-danger' : '') + (row.unchanged ? ' fg-2' : '') + '" style="flex:1 1 0;">' +
+                '<span class="text-break' + (row.unchanged ? ' fg-2' : '') + '" style="flex:1 1 0;min-width:0;">' + esc(row.item.name) + '</span>' +
+                '<i class="bi bi-arrow-right fg-secondary" aria-hidden="true"></i>' +
+                '<span class="text-break' + (row.clash ? ' fg-danger' : '') + (row.unchanged ? ' fg-2' : '') + '" style="flex:1 1 0;min-width:0;">' +
                 esc(row.unchanged ? row.item.name : row.name) + '</span>' +
                 (note ? ('<span class="fg-secondary text-nowrap">' + esc(note) + '</span>') : '') +
                 '</div>';
@@ -10388,8 +10390,9 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                     '<label class="" for="rename_keep_extension">' + esc(L.rename_keep_extension) + '</label></div>')
                 : '') +
 
-            '<h6 class="text-uppercase fg-secondary fw-bold" style="font-size:.72rem;letter-spacing:.05em;">' + esc(L.rename_preview) + '</h6>' +
-            '<div id="rename_preview_list" class="mb-3" style="max-height:40vh;overflow-y:auto;"></div>' +
+            '<h6 id="rename_preview_heading" class="text-uppercase fg-secondary fw-bold" style="font-size:.72rem;letter-spacing:.05em;">' + esc(L.rename_preview) + '</h6>' +
+            // A long list scrolls from the keyboard too, named by its heading.
+            '<div id="rename_preview_list" class="mb-3" role="region" aria-labelledby="rename_preview_heading" tabindex="0" style="max-height:40vh;overflow-y:auto;"></div>' +
             '<div class="form-text mb-5">' + esc(L.rename_server_note) + '</div>' +
 
             '<div class="d-grid"><button type="button" class="btn btn-solid theme-primary btn-sm" id="rename_apply_button"></button></div>';
@@ -15252,6 +15255,14 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     document.getElementById('quicklook_prev').addEventListener('click', function () { stepQuickLook(-1); });
     document.getElementById('quicklook_next').addEventListener('click', function () { stepQuickLook(1); });
 
+    // Tab inside a PDF or page frame is the frame's own, and leaving it moves
+    // focus on in the page outside the overlay; it is brought back.
+    document.addEventListener('focusin', function (event) {
+        if (quickLookIsOpen() && !document.getElementById('explorer_quicklook').contains(event.target)) {
+            document.getElementById('quicklook_close').focus();
+        }
+    });
+
     // Clicking the empty space around the picture closes it, the way a
     // lightbox does. The picture itself and the buttons do not: a click that
     // lands on what somebody is looking at should not take it away.
@@ -15369,6 +15380,15 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
             // A video or a sound keeps its own keys: Space plays, the arrows seek.
             if (event.target.closest && event.target.closest('#explorer_quicklook video, #explorer_quicklook audio')) { return; }
+
+            // A key the Office preview already used (a sheet tab's arrow) is
+            // not a step to the next file as well.
+            if (event.defaultPrevented) { return; }
+
+            // Inside the Office preview the arrow, page, Home and End keys
+            // scroll a sheet or a document instead of stepping or being eaten.
+            if (event.target.closest && event.target.closest('#explorer_quicklook .office-view') &&
+                (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'PageUp', 'PageDown', 'Home', 'End'].indexOf(key) !== -1)) { return; }
 
             if ((key === 'Enter') && onControl) { return; }
             if (key === ' ') {
