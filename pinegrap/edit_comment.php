@@ -338,7 +338,7 @@ if (!$_POST) {
             'icon'=>'page', 
             'heading'=> lang(array('string'=>'Edit {var:1}','vars'=>lang('Comment'))),
             'heading_description' => lang('Edit and publish this comment.'),
-            'cancel'=>array('enable'=>'true','url'=>'view_comments.php')
+            'cancel' => array('enable' => 'true', 'url' => pg_send_to_url(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_comments.php'))
 
         ,
             'breadcrumb' => array(array('label' => lang('Comments'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_comments.php'), array('label' => lang('Edit Comment'))),
@@ -523,7 +523,7 @@ if (!$_POST) {
         
         // if there is an error, forward user back to edit comment screen
         if ($liveform->check_form_errors() == true) {
-            header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_comment.php?id=' . $liveform->get_field_value('id'));
+            header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_comment.php?id=' . $liveform->get_field_value('id') . '&send_to=' . urlencode($liveform->get_field_value('send_to')));
             exit();
         }
         

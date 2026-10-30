@@ -1805,6 +1805,7 @@
     "Somebody's user name is the same as that alias. Choose another, so that @ means one thing.": "Bir kullanıcının adı bu takma adla aynı. @ tek bir anlama gelsin diye başka bir ad seçin.",
     "Someone": "Biri",
     "Someone famous in <cite>Source Title</cite>": "Ünlü biri, <cite>Kaynak Başlığı</cite> içinde",
+    "Someone filled {var:1} this week and left it; it is still on the list.": "Bu hafta doldurulup bırakılan {var:1} var, listede duruyor.",
     "Someone filled {var:1} this week and left them; they are all still on the list.": "Bu hafta doldurulup bırakılan {var:1} var, hepsi listede duruyor.",
     "Someone left a comment!": "Biri yorum bıraktı!",
     "Someone wrote on a page you follow: a reply under a topic, feedback under a guide, or an answer from the moderators in your conversation. Read it below and answer on the page.": "Takip ettiğiniz bir sayfaya biri yazdı: bir konunun altına yanıt, bir rehberin altına geri bildirim ya da görüşmenizde moderatörlerden bir yanıt. Aşağıda okuyun, sayfasında yanıtlayın.",
