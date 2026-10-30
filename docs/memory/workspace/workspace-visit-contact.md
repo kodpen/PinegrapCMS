@@ -1,6 +1,6 @@
 ---
 name: workspace-visit-contact
-description: A customer visit on the Work Calendar names its contact (ws_events.contact_id, 11.0.118, CRM seams 10.1, #3517): the pick check, the card section, the history entry, holder and erasure
+description: A customer visit on the Work Calendar names its contact (ws_events.contact_id, 11.0.118, #3517): pick check, card, history, holder, erasure, API field (#3796)
 ---
 
 ## What is it?
@@ -23,8 +23,10 @@ description: A customer visit on the Work Calendar names its contact (ws_events.
 ## Merge and erasure?
 - `pg_contact_holders()` row `ws_events` (merge `move`, erase `find`): a merge re-points visits; the erasure finds them by the person's contacts and sets `contact_id` 0 (`pg_privacy_erase_tables()`, label "Customer visits"). The visit stays on the team's plan; its title and note are not touched.
 
-## What is next?
-- External API and MCP field `contact_id` on plan items (`includes/workspace/api.php` route params, the PlanItem object, `ws_api_plan_item_input()`, `ws_api_plan_item_would()`); not in #3517.
-- Not checked live: no running site; the step, the form and the card never ran against a database or in a browser.
+## How does the API carry it? (#3796)
+- `contact_id` (int, min 0) on `workspace.plan_items.create`/`.update` (and their MCP tools): `ws_api_plan_item_input()` passes it only when sent; 0 clears. A refusal on field `contact_id` is 422 (`ws_api_plan_item_refused_field()`), not 403. A dry run echoes `contact_id`.
+- `WorkspacePlanItem.contact` (`WorkspacePlanItemContact?`): `{id, label, hidden}`, null for a non-visit, no contact or a deleted one. Named only with `customers:read` and a contact the owner may open (as the customer summary); else `{id: null, label: null, hidden: true}` (`ws_api_plan_item_contact_names()`).
+- List and my-day look up a page's contacts in one query (`ws_api_plan_item_contacts()`), handed to `ws_api_plan_item_present()`; a single item looks up its own.
+- Not checked live: no running site or database; the step, form, card and API never ran against a database or in a browser.
 
 Related: docs/memory/plans/workspace-crm-seams.md, docs/memory/workspace/workspace-customer-card.md, docs/memory/workspace/workspace-customer-history.md, docs/memory/core/contact-holders.md
