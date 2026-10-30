@@ -47,6 +47,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - cart-order-creation.md: When the visitor's order row is created (first real cart write, never a page view), and why the designer cart and express order widgets create none on view.
 - cart-quotes.md: Cart quotes (Sepet teklifi): cart_quotes / cart_quote_items, the hashed link, cart_quote.php (GET confirm, POST fills the cart), plan rules, ordered on completion, contact holder, export and erasure
 - cart-save-for-later.md: Opt-in Save for Later: cart_action.php endpoint, pg_order_item_active_sql() in every cart and checkout reader, what still counts a saved line, lines dropped when the order is placed (#732).
+- cart-tax-estimate.md: The cart widget's tax estimate (pg_cart_estimate_tax): stored line taxes while every taxable line has one, else the default-rate preview over the whole cart (#3455, PR #3530)
 - cart-widget-low-stock.md: Cart widget low-stock warning (define, tokens, exact condition), cart query stock columns and out_of_stock_message.
 - cart-widget-payment-plan-and-gates.md: Who writes cart recurring payment plan columns, the Messages-node-before-loop liveform snapshot rule, and the double gate for staff-only offline payment checkbox.
 - cart-widget-rows-and-groups.md: Cart widget row types (donation, offer gift, normal), pending offers own-form rule, tax/shipping notice, and recipient/recurring group heading bands with their sorting.
@@ -61,6 +62,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - express-order-notes-address-book.md: Express order (EO) widget bindings for order note (eo_field notes) and address book section, plus the narrow-screen table classes and the three places to update.
 - express-order-recipient-loop-area.md: Express Order recipient_loop_area node for multi-recipient carts: designer usage, render pipeline, visibility flags, compatibility, structural rules.
 - express-order-recipient-tokens.md: Binding tokens available inside an Express Order recipient_loop_area (^^__recipient_*^^ text/href tokens) and how form inputs bind via eo_field.
+- express-order-tax-address.md: Which address the express order widget takes its render-time tax on: prefill first, recipients through update_order_item_taxes() without a ship_tos write (#3326, PR #3530)
 - express-order-widget-totals.md: Express order widget totals (designer pages) as submit_order() charges them: today's lines, order discount and its tax, gift cards, surcharge, shipping a kurus lower (pg_express_order_charged_totals)
 - form-fields-zero-id-query-trap.md: Product-form reads must pin form_type = 'product' (template rows have page_id and product_id 0); the deleted-product receipt bug and the empty-id rule.
 - gift-card-balance-edit.md: The gift card screen (edit_gift_card.php) writes the balance only when it was changed there, and only over the balance it opened with; why, and what a stale save sees
