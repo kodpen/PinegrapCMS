@@ -1,6 +1,6 @@
 ---
 name: otp-fields
-description: Code and PIN fields on the Bootstrap 6 OTP component (B9d, #2210): MFA app and recovery code modes, no auto-submit, developer lock masked slots and submit on complete
+description: Code and PIN fields on the Bootstrap 6 OTP component (B9d, #2210): MFA app and recovery code modes, no auto-submit, developer lock masked slots, submit on complete and its hint
 ---
 
 ## Which fields use the OTP component?
@@ -19,3 +19,4 @@ description: Code and PIN fields on the Bootstrap 6 OTP component (B9d, #2210): 
 
 ## How does the developer lock submit on complete?
 - The component takes typing (`beforeinput`, `preventDefault`) and paste, so no native `input` event follows a keystroke. The screen reads the input's value on `keyup`, `input`, `change` and after `paste`, and submits once when it holds `maxlength` digits. No Bootstrap event is read, so `pgUI` needs no `otp` kind.
+- The send is announced: `#pin_hint` under the slots says "The page opens as soon as every digit is entered." and `#pin` carries `aria-describedby="pin_hint"` (the component focuses that one input, so this is what is read). Without it a wrong digit was sent and refused with no warning (WCAG 3.2.2).

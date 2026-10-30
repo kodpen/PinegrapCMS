@@ -786,15 +786,31 @@ function pg_label_shippo_track($reference, $account)
         return pg_label_shippo_failure($read, false);
     }
 
-    $data = $read['data'];
+    return pg_label_shippo_track_answer($read['data'], $read['raw']);
+}
+
+/**
+ * A track() answer from a transaction or a tracking object: both carry
+ * tracking_status (a high level code on a transaction, an object on a
+ * tracking object) and tracking_number. A tracking object names its
+ * transaction in "transaction"; a transaction is its own object_id. Pure.
+ *
+ * @param array $data
+ * @param array $raw  what to keep of Shippo's answer
+ * @return array
+ */
+function pg_label_shippo_track_answer($data, $raw)
+{
     $tracking = isset($data['tracking_status']) ? $data['tracking_status'] : '';
     $status = pg_label_shippo_status($tracking);
 
     if ($status === '') {
-        return array('success' => false, 'error' => lang('Shippo gives no status for this shipment yet.'), 'raw' => $read['raw']);
+        return array('success' => false, 'error' => lang('Shippo gives no status for this shipment yet.'), 'raw' => $raw);
     }
 
     $time = is_array($tracking) ? strtotime(pg_label_shippo_text($tracking, 'status_date')) : false;
+    $details = is_array($tracking) ? pg_label_shippo_text($tracking, 'status_details') : '';
+    $id = pg_label_shippo_id(array_key_exists('transaction', $data) ? $data['transaction'] : (isset($data['object_id']) ? $data['object_id'] : ''));
 
     return array(
         'success'         => true,
@@ -803,5 +819,110 @@ function pg_label_shippo_track($reference, $account)
         'status_at'       => ($time === false) ? 0 : max(0, $time),
         'tracking_number' => pg_label_shippo_text($data, 'tracking_number'),
         'tracking_url'    => pg_label_shippo_text($data, 'tracking_url_provider'),
+        'log'             => ($details !== '') ? array('Shippo: ' . rtrim($details, '.') . '.') : array(),
     );
+}
+
+/**
+ * The parcel news in a message Shippo posted to the store's webhook address
+ * (carrier_webhook.php). With the pinned API version the message is
+ * {event, test, data: <a tracking object>} whose "transaction" is the
+ * label's reference; an account on version 2017-03-29 or older posts the
+ * transaction itself (object_id, tracking_status). Shippo signs nothing
+ * without a sales agreement: the key in the registered address is the
+ * credential (includes/fn/carrier_webhook.php). Only track_updated is read;
+ * another event carries nothing. Pure.
+ *
+ * @param string $body
+ * @return array|false list of reference (the transaction's object_id),
+ *                     is_return (false: the label row decides), answer (a
+ *                     track() answer); false when the body is not a message
+ */
+function pg_label_shippo_webhook_read($body)
+{
+    $message = json_decode((string) $body, true);
+
+    if (!is_array($message) || !isset($message['event']) || !is_string($message['event'])) {
+        return false;
+    }
+
+    $data = (isset($message['data']) && is_array($message['data'])) ? $message['data'] : array();
+
+    if (strtolower(trim($message['event'])) !== 'track_updated') {
+        return array();
+    }
+
+    // The 2018-02-08 tracking object names its transaction; the older
+    // transaction message is the transaction.
+    $id = pg_label_shippo_id(array_key_exists('transaction', $data) ? $data['transaction'] : (isset($data['object_id']) ? $data['object_id'] : ''));
+
+    if ($id === '') {
+        return array();
+    }
+
+    $data['transaction'] = $id;
+
+    return array(array(
+        'reference' => $id,
+        'is_return' => false,
+        'answer'    => pg_label_shippo_track_answer($data, array('event' => 'track_updated', 'transaction' => $id)),
+    ));
+}
+
+/**
+ * Registers the store's webhook address at Shippo for track_updated
+ * (POST /webhooks). Shippo takes an address shorter than 200 characters; a
+ * longer one is refused here so the Shipping card shows it to add by hand.
+ *
+ * @param string $url
+ * @param array  $account
+ * @return array success, id (Shippo's webhook object_id), error
+ */
+function pg_label_shippo_webhook_register($url, $account)
+{
+    $url = (string) $url;
+
+    if (strlen($url) >= 200) {
+        return array('success' => false, 'id' => '', 'error' => lang('Shippo refused the request.') . ' (url: 200+)');
+    }
+
+    $read = pg_label_shippo_api('POST', '/webhooks', $account, array(
+        'event'   => 'track_updated',
+        'url'     => $url,
+        'active'  => true,
+        // A test token's labels only send test events to a test webhook.
+        'is_test' => strncmp((string) $account['api_token'], 'shippo_test_', 12) === 0,
+    ));
+    $id = $read['ok'] ? pg_label_shippo_id(isset($read['data']['object_id']) ? $read['data']['object_id'] : '') : '';
+
+    if ($id === '') {
+        return array('success' => false, 'id' => '', 'error' => $read['ok'] ? lang('Shippo refused the request.') : pg_label_shippo_failure($read, false)['error']);
+    }
+
+    return array('success' => true, 'id' => $id, 'error' => '');
+}
+
+/**
+ * Removes a webhook at Shippo (DELETE /webhooks/{id}), answered with an
+ * empty 2xx. One Shippo no longer has (404) counts as removed.
+ *
+ * @param string $id
+ * @param array  $account
+ * @return array success, error
+ */
+function pg_label_shippo_webhook_remove($id, $account)
+{
+    $id = pg_label_shippo_id($id);
+
+    if ($id === '') {
+        return array('success' => false, 'error' => lang('Shippo refused the request.'));
+    }
+
+    $read = pg_label_shippo_api('DELETE', '/webhooks/' . $id, $account);
+
+    if (!$read['ok'] && ($read['status'] !== 404)) {
+        return array('success' => false, 'error' => pg_label_shippo_failure($read, false)['error']);
+    }
+
+    return array('success' => true, 'error' => '');
 }

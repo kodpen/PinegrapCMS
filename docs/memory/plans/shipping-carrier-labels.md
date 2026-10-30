@@ -12,7 +12,7 @@ description: Plan (approved 2026-10-19; 1-4, 6-8 partly done): carrier APIs for 
 - Panel: "Create label" on the order and on selected orders (bulk, one PDF), reprint, status refresh; the carrier comes from the shipping method's `carrier` or the order's method code.
 - Status write-back: the job polls open shipments and calls `pg_shipment_delivered()` so `order.delivered`, e-mail and SMS fire exactly once. Carrier webhooks are used when the driver offers them.
 - Return labels: the same driver creates a return shipment for customer returns with the named return carrier (step 8).
-- UPS/FedEx/USPS rate code and box packing stay untouched; their labels are a later driver on the same interface.
+- UPS/FedEx/USPS rate code and box packing stay untouched (their labels: Shippo, step 7).
 - Marketplace orders: Trendyol common label (`createCommonLabel`, ZPL for TEX/Aras) is the marketplace connector's job.
 
 ## What remains?
@@ -26,10 +26,10 @@ description: Plan (approved 2026-10-19; 1-4, 6-8 partly done): carrier APIs for 
    - 5c. API: done in PR #3220 (`commerce/shipment-label-api.md`).
 6. Aggregators, done: Basit Kargo PR #3163 (`commerce/carrier-label-basitkargo.md`), Kargonomi PR #3286 (`commerce/carrier-label-kargonomi.md`); MNG ApiZone (M) waits for docs.
 7. International (#3124), done: Shippo PR #3192 (`commerce/carrier-label-shippo.md`), Sendcloud PR #3226 (`commerce/carrier-label-sendcloud.md`); no customs yet.
+   - 7b Shippo webhook. Done in PR #3407.
+   - 7c Sendcloud return labels. Done in PR #3409.
 8. Return label on the returns screen (#3178, `workflow/decisions-made-product-4.md`) (S).
-   - 8a (2(a)). Done in PR #3194 (`commerce/shipment-label-returns.md`).
-   - 8b (2(c)). Done in PR #3239 (classic view).
-   - 8c. Done in PR #3268 (the widget's returns part).
+   - Done: 8a PR #3194 (`commerce/shipment-label-returns.md`), 8b PR #3239 (classic view), 8c PR #3268 (widget).
 
 ## Open questions?
 - Answered (#3073): Geliver first (public reference and test mode); the owner confirms its prices; no aggregator-specific fields in the shipment row.
