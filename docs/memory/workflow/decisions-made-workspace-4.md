@@ -1,6 +1,6 @@
 ---
 name: decisions-made-workspace-4
-description: Decisions list, workspace part 4 (2026-10-30 on): the webhook URL digits exception, CRM seams 10 (no-order-in-N-days start, lead_source), "Edit here" on the AI draft card
+description: Decisions list, workspace part 4 (2026-10-30 on): webhook URL digits exception, CRM seams 10 (N-days start, lead_source), "Edit here" on the AI draft card, flow run notices per chain
 ---
 
 ## May a thread end in a webhook box's URL? (#3410)
@@ -14,5 +14,8 @@ description: Decisions list, workspace part 4 (2026-10-30 on): the webhook URL d
 
 ## What may "Edit here" on the AI draft card change? (#3444)
 - Decided (architect, 2026-10-30, plan `workspace-flows-look.md` V7b): open first, then edit in place. On a waiting card "Edit here" runs the same `ws_flow_draft_open()` as "Open on canvas" (the flow draft is created, or the patch made on the flow's draft; the card becomes applied with `flow_id`), then the picked box's label and settings form opens in the card and saves through `ws_flow_save()` with `draft_rev` (409 on a moved draft); on an opened card it edits directly. The button says it opens the draft. The stored proposal (`ws_ai_changes` snapshot) is never edited: the AI's proposal stays the audit record. Shown only where opening would pass (the asker with `ws_can_schedule()`, `edit` on a patch's flow); box try stays the flow owner's (F4e). No schema.
+
+## How many inbox lines do flow runs write? (#3526)
+- Decided (architect, 2026-10-30, after the owner's report #3371): one line per chain and a per-flow choice, no schema. A run whose chain has a root run updates the root's unread `flow_finished` line (count and last state; a failure turns it into the failure line that opens the failed run; a run ending after the line was read writes a new one; push only for the root line and the turn to failure); the root id goes in the run's `context` JSON with `start_key` as fallback; only runs of flows with the root's owner are folded; event-started and scheduled runs are not. The start box's config gets "Tell me: every run / only when a run fails / never" (one key in `ws_flow_graph_normalize()`, read by `ws_flow_run_tell_owner()`), default "every run" for every start kind so running sites change nothing until the owner chooses; in a chain the root flow's choice decides. Webhook run events and the runs list are unchanged.
 
 Related: docs/memory/workflow/decisions-made-workspace-3.md, docs/memory/workflow/decisions-made.md
