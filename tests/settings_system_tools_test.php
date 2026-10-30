@@ -26,7 +26,6 @@ if (!defined('PG_PANEL_ACTIONS')) {
 }
 
 require_once(PG_FUNCTIONS_DIR . '/includes/settings/registry.php');
-require_once(PG_FUNCTIONS_DIR . '/includes/settings/modal.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/panel/search.php');
 
 function settings_system_tools_admin()
@@ -48,20 +47,22 @@ function settings_system_tools_sample_groups()
 	);
 }
 
+// The whole dialog reads the categories, which ask the database, so its
+// source is checked here and its one tool row through the helper below.
 function test_settings_system_tools_modal_has_no_tool_groups()
 {
-	$markup = pg_settings_modal_markup(settings_system_tools_admin());
-	pg_assert_true($markup !== '', 'the dialog is printed for an administrator');
-	pg_assert_same(false, strpos($markup, 'pg-sm-group'), 'no tool group heading in the list');
-	pg_assert_same(false, strpos($markup, 'view_log.php'), 'no tool link in the list');
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/settings/modal.php');
+	pg_assert_same(false, strpos($source, 'pg-sm-group'), 'no tool group heading in the list');
+	pg_assert_same(false, strpos($source, "\$group['items']"), 'no tool link drawn in the list');
+	pg_assert_contains('pg_settings_tools_link(pg_settings_tool_groups($user))', $source, 'one System tools row, from the gated groups');
 }
 
 function test_settings_system_tools_modal_link_for_user_with_tools()
 {
-	$markup = pg_settings_modal_markup(settings_system_tools_admin());
-	pg_assert_contains('system_tools.php', $markup, 'the list links to the System tools screen');
-	pg_assert_contains('pg-sm-link pg-sm-away', $markup, 'drawn as a link that leaves the dialog');
-	pg_assert_contains(h(lang('System tools')), $markup, 'labelled System tools');
+	$markup = pg_settings_tools_link(pg_settings_tool_groups(settings_system_tools_admin()));
+	pg_assert_contains('href="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/system_tools.php') . '"', $markup, 'the row links to the System tools screen');
+	pg_assert_contains('class="pg-sm-link pg-sm-away"', $markup, 'drawn as a row that leaves the dialog');
+	pg_assert_contains('<span>' . h(lang('System tools')) . '</span>', $markup, 'labelled System tools');
 }
 
 function test_settings_system_tools_link_only_with_tools()
@@ -80,7 +81,7 @@ function test_settings_system_tools_count()
 function test_settings_system_tools_cards_keep_gate_target_confirm()
 {
 	$markup = pg_settings_tool_cards(settings_system_tools_sample_groups(), '/pinegrap/');
-	pg_assert_same(2, substr_count($markup, 'class="card'), 'one card per group that has links');
+	pg_assert_same(2, substr_count($markup, 'class="card h-100"'), 'one card per group that has links');
 	pg_assert_same(false, strpos($markup, '>Empty<'), 'a group without links is not drawn');
 	pg_assert_contains('href="/pinegrap/view_log.php"', $markup, 'link under the software directory');
 	pg_assert_contains('target="_blank" rel="noopener"', $markup, 'target kept');
