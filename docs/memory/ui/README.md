@@ -47,6 +47,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - audit-log-paging.md: The audit trail list (view_audit_log.php) paged, sorted and searched on the server; changes read when a line's fold opens; filters stay in the address
 - auto-dialog-shared-form.md: add_auto_dialog.php and edit_auto_dialog.php share the template and includes/forms/auto_dialog_form.php (checks, page clean-up, saved values); what stays in the screens
 - back-arrow-targets.md: The back arrow of a panel screen (pg_page_shell 'cancel') goes where its Save goes, send_to first; the screens fixed for it and the ones that keep another target
+- barcode-scanner-detection.md: The jQuery Scanner Detection listener on the barcode stock screens and Create Order ignores keys typed into fields, scans in an open dialog and blank codes
 - bootstrap-6-button-alignment.md: Shell rule .btn:where(.text-start|.text-end) in backend.src.css: why text-start buttons came out centred under Bootstrap 6, how the rule keeps utilities winning, the ellipsis limit
 - bootstrap-6-codemod.md: tools/bs6_migrate.php, the switch fixes and tools/check_bs6.php: contexts read, what is rewritten or reported, sizes converted once, scope, how the switch keeps the v5 look
 - bootstrap-6-collapse-switcher.md: Sections behind a panel switch (input.collapse-switcher) on Bootstrap 6: why they stayed 0 px high, the .show that pgCollapseSwitcherShow() adds with the display, why switch callouts lost their arrow
