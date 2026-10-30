@@ -132,3 +132,21 @@ function test_collections_address_source()
 		array('data' => 'Second', 'kind' => '', 'rss' => 'title'),
 	)), 'the first non-blank title');
 }
+
+function test_collections_address_field()
+{
+	$title = array('id' => 7, 'data' => 'Kampanya', 'kind' => '', 'rss' => 'title');
+	$slug  = array('id' => 9, 'data' => ' kampanya-2 ', 'kind' => 'slug', 'rss' => '');
+	$blank = array('id' => 9, 'data' => '', 'kind' => 'slug', 'rss' => '');
+
+	pg_assert_same(array('id' => 9, 'data' => 'kampanya-2'), pg_coll_address_field(array($title, $slug)), 'the slug decides, wherever it sits');
+	pg_assert_same(array('id' => 9, 'data' => 'kampanya-2'), pg_coll_address_field(array($slug, $title)));
+	pg_assert_same(array('id' => 7, 'data' => 'Kampanya'), pg_coll_address_field(array($blank, $title)), 'a blank slug falls back to the title');
+	pg_assert_same(array('id' => 7, 'data' => 'Kampanya'), pg_coll_address_field(array($title)), 'the Title field alone');
+	pg_assert_same(null, pg_coll_address_field(array($blank)), 'nothing makes an address');
+	pg_assert_same(null, pg_coll_address_field(array()));
+	pg_assert_same(array('id' => 4, 'data' => 'Second'), pg_coll_address_field(array(
+		array('id' => 3, 'data' => '', 'kind' => '', 'rss' => 'title'),
+		array('id' => 4, 'data' => 'Second', 'kind' => '', 'rss' => 'title'),
+	)), 'the first non-blank title');
+}
