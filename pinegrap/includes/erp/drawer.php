@@ -204,7 +204,7 @@ function erp_drawer_account($account_id)
     }
 
     $output_statement = ($output_statement !== '')
-        ? '<div class="table-responsive"><table class="table table-sm small mb-1"><tbody>' . $output_statement . '</tbody></table></div>'
+        ? '<div class="table-responsive"><table class="table table-sm small mb-1"><thead><tr class="fg-secondary"><th class="fw-normal">' . lang('Date') . '</th><th class="fw-normal">' . lang('Description') . '</th><th class="fw-normal text-end">' . lang('Amount') . '</th><th class="fw-normal text-end">' . lang('Balance') . '</th></tr></thead><tbody>' . $output_statement . '</tbody></table></div>'
             . ((count($statement['rows']) > ERP_DRAWER_STATEMENT_ROWS)
                 ? '<a href="edit_erp_account.php?id=' . $account_id . '" class="small pg-link-body-emphasis">' . h(lang(array('string' => 'All {var:1} movements', 'vars' => count($statement['rows'])))) . '</a>'
                 : '')
@@ -402,7 +402,7 @@ function erp_drawer_waybill($waybill_id)
     }
 
     $output_lines = ($output_lines !== '')
-        ? '<div class="table-responsive"><table class="table table-sm small mb-0"><tbody>' . $output_lines . '</tbody></table></div>'
+        ? '<div class="table-responsive"><table class="table table-sm small mb-0"><thead><tr class="fg-secondary"><th class="fw-normal">' . lang('Description') . '</th><th class="fw-normal text-end">' . lang('Quantity') . '</th></tr></thead><tbody>' . $output_lines . '</tbody></table></div>'
         : '<p class="small fg-secondary mb-0">' . lang('The document has no lines yet.') . '</p>';
 
     $output_actions = '
