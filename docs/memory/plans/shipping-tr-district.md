@@ -16,6 +16,8 @@ description: Shipping plan step 8 (decision #3569): ship_tos.district and states
 - Carrier drivers (Aras `ReceiverTownName`, Geliver `districtName`, Basit Kargo `town`, Kargonomi's district lookup) send `district` first and fall back to `city` as today, so older orders ship as before.
 - The n11 and Trendyol imports (`mp_order_ship_to()`, `includes/api/outbound/orders.php`) write `district`.
 - The API `ship_tos` address (`api_order_shipments()`, `includes/api/resources/orders.php`) gains `district` with its entry in `includes/api/schema.php`; left out of D1 because that file was held by draft #3298.
+- D3a: the drivers and the imports (in progress).
+- D3b: the API district field, after #3298 merges.
 
 ## Where to start?
 - D3: the drivers in `includes/shipping/`, `mp_order_ship_to()`, `includes/api/outbound/orders.php`, `includes/api/resources/orders.php`, `includes/api/schema.php`; a driver that needs the district may define `pg_label_<key>_needs_district()`; check open PRs on them first.
