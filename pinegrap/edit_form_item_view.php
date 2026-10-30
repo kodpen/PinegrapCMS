@@ -62,7 +62,7 @@ $custom_form_folder_id = $row['page_folder'];
 $custom_form_name = $row['form_name'];
 
 if ((isset($custom_form_name) == true) && ($custom_form_name != '')) {
-    $output_custom_form_information = lang('Displays submitted forms from') . ': ' . $custom_form_name;
+    $output_custom_form_information = lang('Displays submitted forms from') . ': ' . h($custom_form_name);
 } else {
     $output_custom_form_information = lang('Displays submitted forms from') . ': ' . lang('None');
 }
