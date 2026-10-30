@@ -1,6 +1,6 @@
 ---
 name: workflow-tables-numbers
-description: How the workflow tables screen reads and shows amounts and numbers (#3391, PR #3507): ws_calc_number() for typed figures, the site's separators on display, machine form stored
+description: How workflow tables read and show amounts and numbers (#3391, PR #3507, import PR #3521): ws_calc_number() for typed figures, site separators in file import and on display, machine form stored
 ---
 
 ## How is a typed amount or number read?
@@ -16,5 +16,7 @@ description: How the workflow tables screen reads and shows amounts and numbers 
 ## What was the symptom?
 - Turkish panel: `1.250` saved as 1,25 TRY without a warning, `1.250,50` refused ("12.50 gibi bir tutar yazın."), amounts shown `1.25 TRY`, numbers `1234.5`. The form reader turned `,` into `.` and matched a dot-decimal pattern; the list wrote `number_format($value, 10, '.', '')`.
 
-## What reads table cells by its own rule still?
-- The file import (`ws_wtable_import_number()`, `workflow-table-import.md`): a lone mark is always the decimal (`1.250` = 1.25 on a Turkish site too). Next item: read a lone mark before three digits by the site's language as `ws_calc_number()` does, keeping the type guess the same. The API row writer takes machine form only and is right as it is.
+## How does the file import read numbers?
+- `ws_wtable_import_number()` (`workflow-table-import.md`, PR #3521) reads a lone mark before three digits by the site's language, as `ws_calc_number()` does: Turkish `1.250` = 1250, `1,250` = 1.25; English `1,250` = 1250, `1.250` = 1.25. A lone mark not before three digits stays the decimal (`1,25`, `1.25`); both marks and a repeated mark read as before. A head of four digits or a lone `0` is no thousands group (`1234.567`, `0.250` keep decimals). The type guess is unchanged; amounts with a currency go through the same reader.
+- Before, a lone mark was always the decimal: a Turkish file's `1.250` came in as 1.25.
+- The API row writer takes machine form only and is right as it is.
