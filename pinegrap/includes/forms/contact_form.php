@@ -277,7 +277,7 @@ function pg_contact_form_detail_cards($values, $is_new, $work_extra, $groups_htm
         pg_contact_form_text_field($values, 'business_city', lang('Business City'), 50) .
         pg_contact_form_text_field($values, 'business_state', lang('Business State'), 50) .
         pg_contact_form_text_field($values, 'business_country', lang('Business Country'), 50) .
-        pg_contact_form_text_field($values, 'business_zip_code', lang('Business Zip Code'), 50) .
+        pg_contact_form_text_field($values, 'business_zip_code', lang('Business Zip Code'), 10) .
         pg_contact_form_text_field($values, 'business_phone', lang('Business Phone'), 50, 'tel') .
         pg_contact_form_text_field($values, 'business_fax', lang('Business Fax'), 50, 'tel');
 
@@ -287,10 +287,10 @@ function pg_contact_form_detail_cards($values, $is_new, $work_extra, $groups_htm
         pg_contact_form_text_field($values, 'home_city', lang('Home City'), 50) .
         pg_contact_form_text_field($values, 'home_state', lang('Home State'), 50) .
         pg_contact_form_text_field($values, 'home_country', lang('Home Country'), 50) .
-        pg_contact_form_text_field($values, 'home_zip_code', lang('Home Zip Code'), 50) .
+        pg_contact_form_text_field($values, 'home_zip_code', lang('Home Zip Code'), 10) .
         pg_contact_form_text_field($values, 'home_phone', lang('Home Phone'), 50, 'tel') .
         pg_contact_form_text_field($values, 'home_fax', lang('Home Fax'), 50, 'tel') .
-        pg_contact_form_text_field($values, 'mobile_phone', lang('Mobile Phone'), 255, 'tel');
+        pg_contact_form_text_field($values, 'mobile_phone', lang('Mobile Phone'), 50, 'tel');
 
     return '
                     <div class="row">
@@ -339,7 +339,7 @@ function pg_contact_form_detail_cards($values, $is_new, $work_extra, $groups_htm
                                     <div class="row">
                                         <div class="col-12 my-3">
                                             <label for="member_id" class="form-label">' . h(MEMBER_ID_LABEL) . '</label>
-                                            <input value="' . pg_contact_form_value($values, 'member_id') . '" type="text" name="member_id" id="member_id" class="form-control" />
+                                            <input value="' . pg_contact_form_value($values, 'member_id') . '" type="text" name="member_id" id="member_id" class="form-control" maxlength="50" />
                                             <div class="form-text text-end">' . lang('leave blank for no membership') . '</div>
                                         </div>
                                         <div class="col-12 my-3">

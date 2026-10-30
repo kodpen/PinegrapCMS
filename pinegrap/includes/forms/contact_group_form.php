@@ -41,7 +41,7 @@ function pg_contact_group_form_card($liveform, $required = false)
                                     <div class="row">
                                         <div class="col-12 md:col-6 lg:col-4 my-3">
                                             <label for="name" class="form-label">' . lang('Contact Group Name') . '</label>
-                                            ' . $liveform->output_field(array('type'=>'text', 'name'=>'name', 'id'=>'name', 'placeholder'=>lang('Please enter a name'), 'maxlength'=>'255', 'class'=>'form-control') + $required) . '
+                                            ' . $liveform->output_field(array('type'=>'text', 'name'=>'name', 'id'=>'name', 'placeholder'=>lang('Please enter a name'), 'maxlength'=>'100', 'class'=>'form-control') + $required) . '
                                             <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                         </div>
 
@@ -70,7 +70,7 @@ function pg_contact_group_form_card($liveform, $required = false)
                                                     </div>
                                                     <div class="col-12 my-1">
                                                         <label for="description" class="form-label">' . lang('Description') . '</label>
-                                                        ' . $liveform->output_field(array('type'=>'textarea', 'name'=>'description', 'id'=>'description', 'class'=>'form-control', 'rows'=>'5', 'cols'=>'50')) . '
+                                                        ' . $liveform->output_field(array('type'=>'textarea', 'name'=>'description', 'id'=>'description', 'class'=>'form-control', 'rows'=>'5', 'cols'=>'50', 'maxlength'=>'255')) . '
                                                         <div class="form-text text-end">' . lang('Description/Subscription Message on My Account Pages') . '</div>
                                                     </div>
                                                 </div>
@@ -84,7 +84,10 @@ function pg_contact_group_form_card($liveform, $required = false)
 }
 
 /**
- * Checks the posted name: required, not used by another contact group.
+ * Checks the posted name: required, at most 100 characters (the
+ * contact_groups.name column; a longer name would be cut on save, so two
+ * long names sharing their first 100 characters would pass the duplicate
+ * check and be stored as one), not used by another contact group.
  * Errors are marked on the form.
  *
  * @param liveform $liveform
@@ -95,6 +98,11 @@ function pg_contact_group_form_validate_name($liveform, $id)
     $liveform->validate_required_field('name', lang(array('string'=>'{var:1} is required','vars'=>lang('Name'))));
 
     if ($liveform->check_field_error('name') == true) {
+        return;
+    }
+
+    if (mb_strlen((string) $liveform->get_field_value('name'), 'UTF-8') > 100) {
+        $liveform->mark_error('name', lang(array('string' => 'The name can be at most {var:1} characters long.', 'vars' => array(100))));
         return;
     }
 

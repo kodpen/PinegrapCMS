@@ -414,7 +414,7 @@ if (!$_POST) {
         $output_password_hint_field = 
             '<div class="col-12 xl:col-6 my-3">
                 <label for="password_hint" class="form-label">' . lang('User Password Hint') . '</label>
-                <input value="' . h($password_hint) . '" type="text" name="password_hint" id="password_hint" class="form-control" />
+                <input value="' . h($password_hint) . '" type="text" name="password_hint" id="password_hint" class="form-control" maxlength="100" />
             </div>';
     }
 
