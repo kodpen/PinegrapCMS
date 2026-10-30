@@ -130,10 +130,10 @@ if ($currencies) {
 print
 pg_page_shell(
     array(
-        'title'=> lang('Currencies'),
+        'title'=> lang('All Currencies'),
         'extra classes'=>'setting',
         'icon'=>'setting', 
-        'heading'=>lang('Currencies'),
+        'heading'=>lang('All Currencies'),
         'heading_description' => lang('All currencies available for customers to select.'),
     )
 ) . '

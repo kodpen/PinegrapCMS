@@ -41,15 +41,15 @@ if (!$_POST) {
     $output =
         pg_page_shell(
             array(
-                'title'=> lang('Edit Refferal Source'),
+                'title'=> lang('Edit Referral Source'),
                 'extra classes'=>'setting',
                 'icon'=>'setting',
-                'heading'=>lang('Edit Refferal Source'),
+                'heading'=>lang('Edit Referral Source'),
                 'heading_description' => lang('Create a new referral source to gather marketing information during checkout. (Delete all will hide feature.)'),
                 'cancel'=>array('enable'=>'true','url'=>'view_referral_sources.php'),
                 'breadcrumb' => array(
                     array('label' => lang('All Referral Sources'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_referral_sources.php'),
-                    array('label' => lang('Edit Refferal Source')),
+                    array('label' => lang('Edit Referral Source')),
                 ),
             )
         ) . '

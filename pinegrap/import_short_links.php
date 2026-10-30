@@ -134,7 +134,7 @@ pg_page_shell(
         'heading_description' => lang('Add many short links at once from a CSV file, for example the addresses of an old site and where each one lives now.'),
         'cancel' => array('enable' => 'true', 'url' => 'view_short_links.php'),
         'breadcrumb' => array(
-            array('label' => lang('My Short Links'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_short_links.php'),
+            array('label' => lang('Short Links'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_short_links.php'),
             array('label' => lang('Import Short Links')),
         ),
     )

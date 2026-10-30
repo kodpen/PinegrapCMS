@@ -157,7 +157,7 @@ if (!$_POST) {
                 'heading_description' => lang('Manually create a submitted form for any existing custom form.'),
                 'cancel'=>array('enable'=>'true','url'=>'view_submitted_forms.php'),
 
-                'breadcrumb' => array(array('label' => lang('My Submitted Forms'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_submitted_forms.php'), array('label' => lang('Add Submitted Form'))),
+                'breadcrumb' => array(array('label' => lang('Forms'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_submitted_forms.php'), array('label' => lang('Add Submitted Form'))),
             )
         ) . '
 <main id="content" class="container-fluid">
@@ -216,7 +216,7 @@ if (!$_POST) {
                 'heading'=>lang('Add Submitted Form'),
                 'cancel'=>array('enable'=>'true','url'=>'view_submitted_forms.php'),
                 'breadcrumb' => array(
-                    array('label' => lang('My Submitted Forms'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_submitted_forms.php'),
+                    array('label' => lang('Forms'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_submitted_forms.php'),
                     array('label' => lang('Add Submitted Form')),
                 ),
             )
