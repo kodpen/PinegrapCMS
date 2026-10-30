@@ -362,18 +362,37 @@ function pg_email_address_matches($given, $stored)
 }
 
 // Whether a member widget's tree (the decoded shared_components.tree_json)
-// asks the marketing question: it has a control named opt_in, the one name
-// pg_member_register() and pg_member_activate() read the answer from. A
-// hidden input of that name is not a question the visitor saw, and a
-// control bound to the opt_in column under another name is never read.
-function pg_member_tree_asks_opt_in(array $tree)
+// asks the marketing question: it has a control named opt_in (opt_in_sms for
+// the SMS question), the names pg_member_register() and pg_member_activate()
+// read the answers from. A hidden input of that name is not a question the
+// visitor saw, and a control bound to the opt_in column under another name
+// is never read.
+function pg_member_tree_asks_opt_in(array $tree, $name = 'opt_in')
 {
     if (!function_exists('_pg_member_controls')) {
         return false;
     }
 
     foreach (_pg_member_controls($tree) as $control) {
-        if (($control['name'] === 'opt_in') && ($control['type'] !== 'hidden')) {
+        if (($control['name'] === (string) $name) && ($control['type'] !== 'hidden')) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+// Whether a member widget's tree asks for the mobile number: a visible
+// control bound to the contact's mobile_phone column. Without one the SMS
+// box has no number to stand for and is not drawn.
+function pg_member_tree_asks_mobile(array $tree)
+{
+    if (!function_exists('_pg_member_controls')) {
+        return false;
+    }
+
+    foreach (_pg_member_controls($tree) as $control) {
+        if (($control['contact_field'] === 'mobile_phone') && ($control['type'] !== 'hidden')) {
             return true;
         }
     }
@@ -386,8 +405,9 @@ function pg_member_tree_asks_opt_in(array $tree)
 // pg_member_widget_register_opts() reads it. $type is the widget type the
 // entrance serves ('registration' or 'membership'); an id that names no
 // widget of that type answers false, as nothing shows the question was on
-// the screen.
-function pg_member_widget_asks_opt_in($widget_id, $type = 'registration')
+// the screen. $name 'opt_in_sms' asks for the SMS question, which the widget
+// draws only while SMS is on and it asks for the mobile number.
+function pg_member_widget_asks_opt_in($widget_id, $type = 'registration', $name = 'opt_in')
 {
     $widget_id = (int) $widget_id;
     if ($widget_id <= 0) {
@@ -404,7 +424,11 @@ function pg_member_widget_asks_opt_in($widget_id, $type = 'registration')
     }
     $tree = json_decode((string) $row['tree_json'], true);
 
-    return is_array($tree) && pg_member_tree_asks_opt_in($tree);
+    if (!is_array($tree) || !pg_member_tree_asks_opt_in($tree, $name)) {
+        return false;
+    }
+
+    return ($name !== 'opt_in_sms') || pg_consent_sms_offered(pg_member_tree_asks_mobile($tree));
 }
 
 // The settings (system_region_config) of the widget a form was posted from,
@@ -435,6 +459,26 @@ function pg_member_confirmation_notice($cfg, $default)
     return ($message !== '') ? nl2br(h($message), false) : (string) $default;
 }
 
+// The marketing answers a sign-up records: the e-mail one when the screen
+// asked it, the SMS one when it asked it and the contact has a mobile
+// number after the save (pg_consent_sms_answers()).
+function pg_member_consent_answers($form, array $opts, $opt_in, $contact_id)
+{
+    $answers = array();
+
+    if (!empty($opts['opt_in_asked'])) {
+        $answers['email:marketing'] = ($opt_in === '1');
+    }
+
+    if (!empty($opts['sms_opt_in_asked'])) {
+        $answers += pg_consent_sms_answers(true,
+            pg_consent_sms_number_known(pg_consent_sms_contact_number($contact_id)),
+            $form->get_field_value('opt_in_sms'));
+    }
+
+    return $answers;
+}
+
 // Register a member from the 'register' liveform: the validation and the
 // writes the registration entrance has always done, in one place, so the
 // legacy screen and a designed page (the registration widget) run the same
@@ -451,6 +495,9 @@ function pg_member_confirmation_notice($cfg, $default)
 //   opt_in_asked      true when the screen that posted showed the marketing
 //                     question; only then is the answer recorded in
 //                     consent_log.
+//   sms_opt_in_asked  the same for the SMS question (opt_in_sms); recorded
+//                     only when the contact has a mobile number after the
+//                     save.
 //   kvkk_consent      true when the visitor ticked the store's explicit KVKK
 //                     consent box (pg_legal_kvkk_consent_given()); recorded
 //                     in consent_log as a granted contract:kvkk answer.
@@ -621,14 +668,12 @@ function pg_member_register($form, $opts = array())
     }
     $new_user_id = (int) create_member_user($create);
 
-    // The marketing answer, once per sign-up however many contacts share the
-    // address, and only when it differs from the person's last recorded one.
-    if (!empty($opts['opt_in_asked'])) {
-        pg_consent_log_answers(
-            array('email' => $email, 'user_id' => $new_user_id, 'contact_id' => $contact_id),
-            array('email:marketing' => ($opt_in === '1')),
-            'signup');
-    }
+    // The marketing answers, once per sign-up however many contacts share the
+    // address, and only when they differ from the person's last recorded ones.
+    pg_consent_log_answers(
+        array('email' => $email, 'user_id' => $new_user_id, 'contact_id' => $contact_id),
+        pg_member_consent_answers($form, $opts, $opt_in, $contact_id),
+        'signup');
 
     // Explicit KVKK consent: only a ticked box is an answer (no refusal row),
     // and a person who gave it before adds nothing.
@@ -700,7 +745,7 @@ function pg_member_register($form, $opts = array())
 //
 // $opts: contact_fields (column => value written to the member's contact,
 // found or created), contact_group_id (the site setting when absent),
-// opt_in_asked and kvkk_consent (as in pg_member_register()).
+// opt_in_asked, sms_opt_in_asked and kvkk_consent (as in pg_member_register()).
 function pg_member_activate($form, $opts = array())
 {
     if (!is_array($opts)) $opts = array();
@@ -908,15 +953,13 @@ function pg_member_activate($form, $opts = array())
         pg_signin_identity_add($new_user_id, $pending_provider, (string) ($google_pending['sub'] ?? ''), $email);
     }
 
-    // The marketing answer (see pg_member_register()). The contact id and the
-    // address the contact had before find what the member answered earlier;
-    // a one-click unsubscribe is recorded under the address alone.
-    if (!empty($opts['opt_in_asked'])) {
-        pg_consent_log_answers(
-            array('email' => $email, 'user_id' => $new_user_id, 'contact_id' => $contact_id, 'previous_email' => $previous_email),
-            array('email:marketing' => ($opt_in === '1')),
-            'signup');
-    }
+    // The marketing answers (see pg_member_register()). The contact id and
+    // the address the contact had before find what the member answered
+    // earlier; a one-click unsubscribe is recorded under the address alone.
+    pg_consent_log_answers(
+        array('email' => $email, 'user_id' => $new_user_id, 'contact_id' => $contact_id, 'previous_email' => $previous_email),
+        pg_member_consent_answers($form, $opts, $opt_in, $contact_id),
+        'signup');
 
     // Explicit KVKK consent (see pg_member_register()).
     if (!empty($opts['kvkk_consent'])) {

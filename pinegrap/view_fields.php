@@ -397,7 +397,7 @@ while ($row = mysqli_fetch_assoc($result)) {
     // label wraps so it is read in full.
     if ($row['type'] == 'information') {
         $label_or_information = pg_sanitize_rich_text($row['information'], 'staff');
-        $output_label_cell = '<td title="' . h(strip_tags($label_or_information)) . '"><span class="text-truncate overflow-hidden d-block" style="width:200px;max-width:100%;">' . $label_or_information . '</span></td>';
+        $output_label_cell = '<td title="' . h(pg_liveform_message_text($label_or_information)) . '"><span class="text-truncate overflow-hidden d-block" style="width:200px;max-width:100%;">' . $label_or_information . '</span></td>';
     } else {
         $label_or_information = h($row['label']);
         $output_label_cell = '<td class="text-wrap"><div class="text-wrap text-break" style="max-width:20rem;">' . $label_or_information . '</div></td>';

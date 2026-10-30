@@ -172,20 +172,22 @@ if (!empty($_POST['orders'])) {
                     $product_tax_rate = 0;
                 }
 
+                // Typed text goes in as explicit text cells: the default binder would
+                // store a value starting with '=' as a formula and '#N/A' as an error.
                 $objPHPExcel2->getActiveSheet()
-                ->setCellValue('A'. $i_obj_2 ,$customer_billing_name)                                               //A FİRMA ADI MÜŞTERİ ÜNVANI*
+                ->setCellValueExplicit('A'. $i_obj_2 ,$customer_billing_name,PHPExcel_Cell_DataType::TYPE_STRING)                                           //A FİRMA ADI MÜŞTERİ ÜNVANI*
                                                                                                                     //B KISA ADI	
                 ->setCellValue('C' . $i_obj_2,"M")                                                                  //C MÜŞTERİ/TEDARİKÇİ*	
-                ->setCellValue('D' . $i_obj_2,$billing_email_address)                                               //D E-POSTA	
+                ->setCellValueExplicit('D' . $i_obj_2,$billing_email_address,PHPExcel_Cell_DataType::TYPE_STRING)                                           //D E-POSTA	
                 ->setCellValue('E' . $i_obj_2,"Pinegrap CMS")                                                       //E KATEGORİ	
-                ->setCellValue('F' . $i_obj_2,$billing_combined_address)                                            //F ADRES	
-                ->setCellValue('G' . $i_obj_2,$billing_city)                                                        //G İLÇE	
-                ->setCellValue('H' . $i_obj_2,$billing_state)                                                       //H İL	
+                ->setCellValueExplicit('F' . $i_obj_2,$billing_combined_address,PHPExcel_Cell_DataType::TYPE_STRING)                                           //F ADRES	
+                ->setCellValueExplicit('G' . $i_obj_2,$billing_city,PHPExcel_Cell_DataType::TYPE_STRING)                                           //G İLÇE	
+                ->setCellValueExplicit('H' . $i_obj_2,$billing_state,PHPExcel_Cell_DataType::TYPE_STRING)                                           //H İL	
                 ->setCellValueExplicit('I' . $i_obj_2,$billing_phone_number,PHPExcel_Cell_DataType::TYPE_STRING)    //I TELEFON	
                 ->setCellValueExplicit('J' . $i_obj_2,$billing_fax_number,PHPExcel_Cell_DataType::TYPE_STRING)      //J FAKS	
                                                                                                                     //K VERGİ DAİRESİ	
                                                                                                                     //L VERGİ NUMARASI	
-                ->setCellValue('M' . $i_obj_2,$identification_number);                                              //M TC KİMLİK NO	
+                ->setCellValueExplicit('M' . $i_obj_2,$identification_number,PHPExcel_Cell_DataType::TYPE_STRING);                                           //M TC KİMLİK NO	
                                                                                                                     //N AÇILIŞ BAKİYESİ TARİHİ 
                                                                                                                     //P AÇILIŞ BAKİYESİ DÖVİZ CİNSİ	
                                                                                                                     //P AÇILIŞ BAKİYESİ TUTARI	
@@ -198,8 +200,8 @@ if (!empty($_POST['orders'])) {
                 $i_obj_2++;
 
                 $objPHPExcel1->getActiveSheet()
-                ->setCellValue('A'. $i_obj_1 ,$customer_billing_name)                                               //A | MÜŞTERİ ÜNVANI*	           
-                ->setCellValue('B' . $i_obj_1, $organization_name . ' - ' . $order_number)                          //B | FATURA AÇIKLAMASI	                                
+                ->setCellValueExplicit('A'. $i_obj_1 ,$customer_billing_name,PHPExcel_Cell_DataType::TYPE_STRING)                                           //A | MÜŞTERİ ÜNVANI*	           
+                ->setCellValueExplicit('B' . $i_obj_1, $organization_name . ' - ' . $order_number,PHPExcel_Cell_DataType::TYPE_STRING)                          //B | FATURA AÇIKLAMASI	                                
                 ->setCellValue('C' . $i_obj_1,PHPExcel_Shared_Date::PHPToExcel(date('j.m.Y H:i',time())))           //C | FATURA TARİHİ*           
                                                                                                                     //D | DÖVİZ CİNSİ	    
                                                                                                                     //E | DÖVİZ KURU	        
@@ -255,7 +257,7 @@ if (!empty($_POST['orders'])) {
                         // start from 4th line
                         //Set Data
                         $objPHPExcel1->getActiveSheet()
-                        ->setCellValue('L' . $i_obj_1,$product_name)                    //L | HİZMET/ÜRÜN*	                    
+                        ->setCellValueExplicit('L' . $i_obj_1,$product_name,PHPExcel_Cell_DataType::TYPE_STRING)                    //L | HİZMET/ÜRÜN*	                    
                                                                                         //M | HİZMET/ÜRÜN AÇIKLAMASI	                            
                                                                                         //N | ÇIKIŞ DEPOSU	    
                         ->setCellValue('O' . $i_obj_1,$quantity)                        //O | MİKTAR*	    

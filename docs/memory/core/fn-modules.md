@@ -61,7 +61,7 @@ description: Generated from the module field of the memory files: each includes/
 - `page_facts`: [[page-conditions]]
 - `payments`: [[payment-driver-paytr-installments]], [[payment-gateway-secrets]]
 - `pdf_merge`: [[shipment-label-bulk]]
-- `privacy`: [[consent-log-and-audit-trail]]
+- `privacy`: [[consent-log-and-audit-trail]], [[sms-consent-box]]
 - `privacy_export`: [[personal-data-export]]
 - `privacy_retention`: [[privacy-log-retention]]
 - `product_customs`: [[carrier-label-customs]], [[product-customs-fields]]

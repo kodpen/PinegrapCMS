@@ -1186,9 +1186,9 @@ if (!defined('PG_SETTINGS_ENTRY')) {
       
         foreach($currencies as $currency){
             if($iyzipay_protected_currency_code == $currency['code']){
-                $output_iyzipay_protected_currency_select_options .= '<option value="' . $currency['code'] . '" selected="selected">' . $currency['code'] . ' - ' . $currency['name'] . '</option>';
+                $output_iyzipay_protected_currency_select_options .= '<option value="' . h($currency['code']) . '" selected="selected">' . h($currency['code']) . ' - ' . h($currency['name']) . '</option>';
             }else{
-                $output_iyzipay_protected_currency_select_options .= '<option value="' . $currency['code'] . '" >' . $currency['code'] . ' - ' . $currency['name'] . '</option>';
+                $output_iyzipay_protected_currency_select_options .= '<option value="' . h($currency['code']) . '" >' . h($currency['code']) . ' - ' . h($currency['name']) . '</option>';
             }
 
         }
