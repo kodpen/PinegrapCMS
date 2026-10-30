@@ -43,6 +43,15 @@ require_once(dirname(__FILE__) . '/includes/api/outbound/listings.php');
 require_once(dirname(__FILE__) . '/includes/api/outbound/product_matches.php');
 require_once(dirname(__FILE__) . '/includes/api/outbound/webhook_receiver.php');
 require_once(dirname(__FILE__) . '/includes/api/outbound/labels.php');
+require_once(dirname(__FILE__) . '/includes/api/outbound/invoice_push.php');
+
+// The public address of an order's invoice (includes/erp/invoice_public_link.php),
+// which the invoice link form offers.
+if (defined('ERP_ENABLED') && ERP_ENABLED) {
+
+	require_once(PG_FUNCTIONS_DIR . '/includes/erp/bootstrap.php');
+
+}
 
 $liveform = new liveform('marketplace_settings');
 
@@ -445,12 +454,13 @@ if ($_POST) {
 
 	}
 
-	// The link of an imported package's invoice, typed by the operator. The
-	// e-document PDF is served only behind the panel login, so no job can hand
-	// the marketplace a link of its own; the operator gives the address the
-	// buyer can open (an e-Archive portal, a shared PDF). A refusal is shown
-	// here and not kept in last_error, which takes the package out of the
-	// own-carrier shipping pass.
+	// The link of an imported package's invoice: the public address of the
+	// order's issued invoice (erp_invoice.php, made anew on each send), or an
+	// address the operator types (an e-Archive portal, a shared PDF). Also the
+	// retry of a link the automatic send could not hand over
+	// (includes/api/outbound/invoice_push.php). A refusal is shown here and not
+	// kept in last_error, which takes the package out of the own-carrier
+	// shipping pass.
 	if ($action === 'invoice_link' && $account) {
 
 		$map_id = isset($_POST['map_id']) ? (int)$_POST['map_id'] : 0;
@@ -485,9 +495,28 @@ if ($_POST) {
 
 		} else {
 
-			$sent = mp_call($account['provider'], 'send_invoice_link', array($account, $package, $invoice_url));
+			$invoice = !empty($_POST['use_public']) ? mp_invoice_push_invoice((int)$package['order_id']) : null;
 
-			if ($sent['ok']) {
+			if ($invoice && function_exists('erp_invoice_public_link_issue')) {
+
+				$sent = mp_invoice_push_link($account, $package, $invoice, false);
+
+			} else {
+
+				$invoice = null;
+
+				$sent = mp_call($account['provider'], 'send_invoice_link', array($account, $package, $invoice_url));
+
+			}
+
+			if ($sent['ok'] && $invoice) {
+
+				$liveform->add_notice(lang(array(
+					'string' => 'The invoice link of order {var:1} was sent to {var:2}.',
+					'vars'   => array(h((string)$package['remote_order_id']), h(mp_provider_name($account['provider'])))
+				)));
+
+			} elseif ($sent['ok']) {
 
 				db("UPDATE marketplace_order_map
 					SET invoice_sent = UNIX_TIMESTAMP(), updated_timestamp = UNIX_TIMESTAMP()
@@ -1439,22 +1468,34 @@ function mp_settings_claim_reject_form($account_id, $claim, $reasons) {
 // The "Send invoice link" form under one imported order, folded until opened.
 // The operator types the address the buyer can open; the screen cannot offer
 // one of its own (see the invoice_link action).
-function mp_settings_invoice_form($account_id, $row) {
+//
+// With the order's issued invoice ($invoice) the form comes filled in: its
+// public address is sent, made at the moment of sending, and the address
+// field is only for sending another one instead.
+function mp_settings_invoice_form($account_id, $row, $invoice = null) {
 
 	$map_id = (int)$row['id'];
 
+	$public = is_array($invoice) && function_exists('erp_invoice_public_link_issue') && erp_invoice_public_link_ready();
+
 	return '
 				<details class="small" style="grid-column:1/-1">
-					<summary class="pg-link-secondary">' . lang('Send invoice link') . '</summary>
+					<summary class="pg-link-secondary">' . lang('Send invoice link') . '</summary>' . ($public ? '
+					<div class="form-text">' . h(lang(array('string' => 'The public address of invoice {var:1} is sent, unless you untick it and type another address.', 'vars' => (string)$invoice['full_number']))) . '</div>' : '') . '
 					<form method="post" action="marketplace_settings.php" class="d-flex gap-3 flex-wrap mt-3"
 						onsubmit="this.querySelector(\'button[type=submit]\').disabled = true;">
 						' . get_token_field() . '
 						<input type="hidden" name="mp_action" value="invoice_link">
 						<input type="hidden" name="account_id" value="' . (int)$account_id . '">
-						<input type="hidden" name="map_id" value="' . $map_id . '">
+						<input type="hidden" name="map_id" value="' . $map_id . '">' . ($public ? '
+						<div class="form-field align-self-center mb-0">
+							<input class="check" type="checkbox" name="use_public" value="1" id="use_public_' . $map_id . '" checked
+								onchange="document.getElementById(\'invoice_url_' . $map_id . '\').required = !this.checked;">
+							<label class="" for="use_public_' . $map_id . '">' . h(lang(array('string' => 'Invoice {var:1}', 'vars' => (string)$invoice['full_number']))) . '</label>
+						</div>' : '') . '
 						<label class="visually-hidden" for="invoice_url_' . $map_id . '">' . lang('Invoice link') . '</label>
 						<input type="url" class="form-control form-control-sm" id="invoice_url_' . $map_id . '"
-							name="invoice_url" maxlength="1000" required style="max-width:520px"
+							name="invoice_url" maxlength="2048"' . ($public ? '' : ' required') . ' style="max-width:520px"
 							placeholder="https://">
 						<button type="submit" class="btn btn-sm btn-outline theme-secondary">' . lang('Send') . '</button>
 					</form>
@@ -1466,7 +1507,8 @@ function mp_settings_invoice_form($account_id, $row) {
 
 // The "Mark invoiced" form under one imported order, folded until opened: the
 // number of the invoice cut for it (see the mark_invoiced action).
-function mp_settings_invoiced_form($account_id, $row) {
+// With the order's issued invoice ($invoice) its number is filled in.
+function mp_settings_invoiced_form($account_id, $row, $invoice = null) {
 
 	$map_id = (int)$row['id'];
 
@@ -1482,7 +1524,7 @@ function mp_settings_invoiced_form($account_id, $row) {
 						<label class="visually-hidden" for="invoice_number_' . $map_id . '">' . lang('Invoice number') . '</label>
 						<input type="text" class="form-control form-control-sm" id="invoice_number_' . $map_id . '"
 							name="invoice_number" maxlength="50" required pattern="[A-Za-z0-9][A-Za-z0-9\-]*" style="max-width:260px"
-							autocomplete="off">
+							autocomplete="off"' . (is_array($invoice) ? ' value="' . h((string)$invoice['full_number']) . '"' : '') . '>
 						<button type="submit" class="btn btn-sm btn-outline theme-secondary">' . lang('Send') . '</button>
 					</form>
 					<div class="form-text">'
@@ -2190,9 +2232,15 @@ if ($selected) {
 				<span>' . lang('Imported') . '</span><span></span>
 			</div>';
 
+			$order_invoices = mp_invoice_push_invoices(array_column($orders, 'order_id'));
+
+			$push_on = mp_invoice_push_switch_on();
+
 			foreach ($orders as $row) {
 
 				$name = trim((string)$row['billing_first_name'] . ' ' . (string)$row['billing_last_name']);
+
+				$invoice = isset($order_invoices[(int)$row['order_id']]) ? $order_invoices[(int)$row['order_id']] : null;
 
 				echo '
 			<div class="mp-row" style="grid-template-columns:1.4fr 1.4fr 1fr .9fr .9fr 40px">
@@ -2210,7 +2258,10 @@ if ($selected) {
 						? ' <span class="mp-pill on">' . lang('Accepted') . '</span>' : '')
 					. (!empty($row['invoice_sent'])
 						? ' <span class="mp-pill on" title="' . h(mp_settings_ago((int)$row['invoice_sent'])) . '">'
-							. lang('Invoice sent') . '</span>' : '') . '
+							. lang('Invoice sent') . '</span>' : '')
+					. (mp_invoice_push_pending($push_on, $row, $invoice, $can_invoice)
+						? ' <span class="mp-pill bad" title="' . h(lang('The invoice was issued but its link has not reached the marketplace. The reason is in the activity log; send it again with Send invoice link.')) . '">'
+							. lang('Invoice link not sent') . '</span>' : '') . '
 					' . ($row['last_error'] !== ''
 						? '<div class="mp-err">' . h(mb_substr((string)$row['last_error'], 0, 120)) . '</div>' : '') . '</span>
 				<span class="small opacity-75">' . h(mp_settings_ago((int)$row['imported_timestamp'])) . '</span>
@@ -2220,9 +2271,9 @@ if ($selected) {
 					: '') . '</span>'
 				. (($can_invoice && ($row['status'] === 'imported') && $row['order_id'] && empty($row['invoice_sent'])
 					&& (mp_order_stage($selected, $row) !== 'cancelled'))
-					? mp_settings_invoice_form($selected_id, $row) : '')
+					? mp_settings_invoice_form($selected_id, $row, $invoice) : '')
 				. (($can_mark_invoiced && mp_invoiced_offer($row, mp_order_stage($selected, $row)))
-					? mp_settings_invoiced_form($selected_id, $row) : '')
+					? mp_settings_invoiced_form($selected_id, $row, $invoice) : '')
 				. (isset($order_labels[(int)$row['order_id']])
 					? mp_settings_label_line($selected_id, $row, $order_labels[(int)$row['order_id']], mp_provider_name($selected['provider'])) : '') . '
 			</div>';

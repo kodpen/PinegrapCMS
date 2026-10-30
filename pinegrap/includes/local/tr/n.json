@@ -1546,6 +1546,8 @@
     "n11 refused the batch without saying why.": "n11 partiyi gerekçe belirtmeden reddetti.",
     "n11 rejected the batch.": "n11 partiyi reddetti.",
     "n11 returned no categories.": "n11 hiç kategori dönmedi.",
+    "n11 takes only an invoice link that ends in .pdf, .png or .jpeg.": "n11 yalnızca .pdf, .png ya da .jpeg ile biten bir fatura bağlantısı kabul eder.",
+    "n11 takes only an invoice link that starts with https:// and has no spaces.": "n11 yalnızca https:// ile başlayan ve boşluk içermeyen bir fatura bağlantısı kabul eder.",
     "name": "ad",
     "name in the line": "satırda cari adı",
     "name is required.": "name alanı zorunlu.",

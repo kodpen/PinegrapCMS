@@ -1168,7 +1168,19 @@ function pg_erp_auto_invoice_run($order_id, $trigger)
             return null;
         }
 
-        return erp_auto_invoice_for_order((int) $order_id, (string) $trigger);
+        $answer = erp_auto_invoice_for_order((int) $order_id, (string) $trigger);
+
+        // A marketplace order's invoice goes on to the marketplace: its
+        // public address and, on Trendyol, the Invoiced status
+        // (mp_invoice_push_order(), which does nothing while the store does
+        // not invoice marketplace orders).
+        if (!empty($answer['done'])
+            && ((string) db_value("SELECT type FROM orders WHERE id = '" . (int) $order_id . "' LIMIT 1") === 'marketplace')) {
+            require_once(PG_FUNCTIONS_DIR . '/includes/api/outbound/invoice_push.php');
+            mp_invoice_push_order((int) $order_id);
+        }
+
+        return $answer;
     } catch (Throwable $error) {
         if (function_exists('pg_error_write') && function_exists('pg_error_entry')) {
             pg_error_write(pg_error_entry(

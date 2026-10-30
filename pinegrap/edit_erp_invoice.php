@@ -69,6 +69,21 @@ if ($_POST) {
         'fix_city', 'fix_district', 'fix_carrier_title', 'fix_carrier_vkn', 'recur_every', 'recur_first', 'recur_end', 'recur_mode', 'recurrence_id',
         'mail_to', 'mail_subject', 'mail_message'));
 
+    // Taking the invoice's public PDF address back (erp_invoice.php): the
+    // address answers 404 from now on, and the next send makes a new one.
+    if (($_POST['erp_action'] ?? '') === 'public_link_revoke') {
+
+        if (defined('USER_ERP_READONLY') && USER_ERP_READONLY) {
+            $liveform->mark_error('_error', lang('Access denied'));
+        } elseif (erp_invoice_public_link_revoke($invoice_id)) {
+            $liveform->add_notice(lang('The public address of this invoice was taken back. It no longer opens the PDF.'));
+        } else {
+            $liveform->mark_error('_error', lang('The change could not be saved.'));
+        }
+
+        go(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_erp_invoice.php?id=' . $invoice_id . $send_to_query);
+    }
+
     if (($_POST['erp_action'] ?? '') === 'notes') {
 
         $notes = mb_substr(trim((string) ($_POST['notes'] ?? '')), 0, 5000);
@@ -1480,6 +1495,17 @@ pg_page_shell([
             ' . $output_edoc . '
             ' . $output_mail . '
             ' . $output_recurring . '
+            ' . (((string) ($invoice['public_token_hash'] ?? '') !== '')
+                ? '<form name="public_link_form" action="' . $self_action . '" method="post" class="d-flex flex-wrap align-items-center gap-3 my-7">
+                ' . get_token_field() . '
+                <input type="hidden" name="id" value="' . $invoice_id . '" />
+                <input type="hidden" name="erp_action" value="public_link_revoke" />
+                <span class="small"><i class="bi bi-link-45deg me-1" aria-hidden="true"></i>' . lang('This invoice has a public PDF address, sent to the marketplace as the order\'s invoice link.') . '</span>'
+                . (!(defined('USER_ERP_READONLY') && USER_ERP_READONLY)
+                    ? '<button type="submit" class="btn btn-sm btn-outline theme-danger" onclick="return confirm(this.dataset.confirm);" data-confirm="' . h(lang('The buyer and the marketplace will no longer open the PDF at this address. Take it back?')) . '">' . lang('Take the address back') . '</button>'
+                    : '') . '
+            </form>'
+                : '') . '
 
             <form name="notes_form" action="' . $self_action . '" method="post">
                 ' . get_token_field() . '
