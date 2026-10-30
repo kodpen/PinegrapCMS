@@ -214,3 +214,137 @@ function test_workspace_personal_ical_payload_fits()
 	pg_assert_true(strlen(json_encode($kept)) <= WS_PERSONAL_ICAL_PAYLOAD_MAX, 'what is kept fits');
 	pg_assert_same(1790000000, $kept[0]['starts_at'], 'the first is kept');
 }
+
+// Lines of a calendar of the given VEVENT lines, read in Istanbul time.
+function ws_personal_ical_test_read($lines)
+{
+	$previous = date_default_timezone_get();
+	date_default_timezone_set('Europe/Istanbul');
+	$text = implode("\r\n", array_merge(array('BEGIN:VCALENDAR', 'VERSION:2.0'), $lines, array('END:VCALENDAR')));
+	$events = ws_personal_ical_events($text, strtotime('2026-10-01 00:00:00'), strtotime('2027-01-01 00:00:00'));
+	$out = array();
+
+	foreach ($events as $event) {
+		$out[] = date('Y-m-d H:i', $event['starts_at']) . ' -> ' . date('H:i', $event['ends_at']) . ' ' . $event['title'];
+	}
+
+	date_default_timezone_set($previous);
+
+	return $out;
+}
+
+// An e-mail reminder's SUMMARY and DESCRIPTION never take the event's place (Google).
+function test_workspace_personal_ical_alarm_keeps_event_name()
+{
+	pg_assert_same(array('2026-11-03 12:00 -> 13:00 Dentist'), ws_personal_ical_test_read(array(
+		'BEGIN:VEVENT',
+		'DTSTART:20261103T090000Z',
+		'DTEND:20261103T100000Z',
+		'UID:g1@google.com',
+		'SUMMARY:Dentist',
+		'BEGIN:VALARM',
+		'ACTION:EMAIL',
+		'DESCRIPTION:This is an event reminder',
+		'SUMMARY:Alarm notification',
+		'TRIGGER:-P0DT0H30M0S',
+		'END:VALARM',
+		'END:VEVENT',
+	)), 'the event keeps its own name');
+
+	$vevents = ws_ical_vevents("BEGIN:VEVENT\r\nUID:a\r\nBEGIN:VALARM\r\nUID:b\r\nBEGIN:X-NESTED\r\nUID:c\r\nEND:X-NESTED\r\nEND:VALARM\r\nBEGIN:X-OTHER\r\nSUMMARY:x\r\nEND:X-OTHER\r\nEND:VEVENT");
+	pg_assert_same(1, count($vevents), 'one event');
+	pg_assert_same('a', $vevents[0]['UID']['value'], 'nested blocks at any depth are skipped');
+	pg_assert_false(isset($vevents[0]['SUMMARY']), 'an unknown block is skipped too');
+}
+
+// Reminders carrying their own UID (Apple) leave the moved week's match intact.
+function test_workspace_personal_ical_alarm_uid_moved_week()
+{
+	pg_assert_same(array(
+		'2026-11-02 10:00 -> 11:00 Standup',
+		'2026-11-10 14:00 -> 15:00 Standup (moved)',
+		'2026-11-16 10:00 -> 11:00 Standup',
+		'2026-11-23 10:00 -> 11:00 Standup',
+	), ws_personal_ical_test_read(array(
+		'BEGIN:VEVENT',
+		'UID:A1',
+		'DTSTART;TZID=Europe/Istanbul:20261102T100000',
+		'DTEND;TZID=Europe/Istanbul:20261102T110000',
+		'RRULE:FREQ=WEEKLY;COUNT=4',
+		'SUMMARY:Standup',
+		'BEGIN:VALARM',
+		'UID:AL-1',
+		'ACTION:DISPLAY',
+		'DESCRIPTION:Reminder',
+		'TRIGGER:-PT15M',
+		'END:VALARM',
+		'END:VEVENT',
+		'BEGIN:VEVENT',
+		'UID:A1',
+		'RECURRENCE-ID;TZID=Europe/Istanbul:20261109T100000',
+		'DTSTART;TZID=Europe/Istanbul:20261110T140000',
+		'DTEND;TZID=Europe/Istanbul:20261110T150000',
+		'SUMMARY:Standup (moved)',
+		'BEGIN:VALARM',
+		'UID:AL-2',
+		'ACTION:DISPLAY',
+		'DESCRIPTION:Reminder',
+		'TRIGGER:-PT15M',
+		'END:VALARM',
+		'END:VEVENT',
+	)), 'the moved week shows once, at its new time');
+}
+
+// A quoted parameter value may hold ':' and ';' (RFC 5545 3.2).
+function test_workspace_personal_ical_quoted_param()
+{
+	pg_assert_same(array('2026-11-04 10:00 -> 11:00 Review'), ws_personal_ical_test_read(array(
+		'BEGIN:VEVENT',
+		'UID:q1',
+		'DTSTART;TZID="(UTC+03:00) Istanbul":20261104T100000',
+		'DTEND;TZID="(UTC+03:00) Istanbul":20261104T110000',
+		'SUMMARY:Review',
+		'END:VEVENT',
+	)), 'an unknown quoted zone falls back to the site zone');
+
+	$vevents = ws_ical_vevents("BEGIN:VEVENT\nATTENDEE;CN=\"Doe; John: CEO\";ROLE=CHAIR:mailto:j@example.com\nEND:VEVENT");
+	pg_assert_same('mailto:j@example.com', $vevents[0]['ATTENDEE']['value'], 'the value starts after the first colon outside quotes');
+	pg_assert_same('CN="Doe; John: CEO";ROLE=CHAIR', $vevents[0]['ATTENDEE']['params'], 'the parameters are kept whole');
+}
+
+// DURATION gives the end when there is no DTEND.
+function test_workspace_personal_ical_duration()
+{
+	pg_assert_same(array(
+		'2026-11-05 12:00 -> 14:00 Workshop',
+		'2026-11-06 12:00 -> 13:30 Call',
+		'2026-11-07 00:00 -> 23:59 Retreat',
+	), ws_personal_ical_test_read(array(
+		'BEGIN:VEVENT',
+		'UID:d1',
+		'DTSTART:20261105T090000Z',
+		'DURATION:PT2H',
+		'SUMMARY:Workshop',
+		'END:VEVENT',
+		'BEGIN:VEVENT',
+		'UID:d2',
+		'DTSTART:20261106T090000Z',
+		'DURATION:PT1H30M',
+		'SUMMARY:Call',
+		'END:VEVENT',
+		'BEGIN:VEVENT',
+		'UID:d3',
+		'DTSTART;VALUE=DATE:20261107',
+		'DURATION:P2D',
+		'SUMMARY:Retreat',
+		'END:VEVENT',
+	)), 'the end follows the duration');
+
+	pg_assert_same(7200, ws_ical_duration('PT2H'), 'hours');
+	pg_assert_same(5400, ws_ical_duration('PT1H30M'), 'hours and minutes');
+	pg_assert_same(1209600, ws_ical_duration('P2W'), 'weeks');
+	pg_assert_same(90061, ws_ical_duration('+P1DT1H1M1S'), 'days and time');
+	pg_assert_same(0, ws_ical_duration('-PT15M'), 'a negative duration gives nothing');
+	pg_assert_same(0, ws_ical_duration('P'), 'an empty duration gives nothing');
+	pg_assert_same(0, ws_ical_duration('soon'), 'not a duration');
+}
