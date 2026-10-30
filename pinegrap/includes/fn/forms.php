@@ -5134,3 +5134,18 @@ function get_field_type_name($field_type)
             return h($field_type);
     }
 }
+
+// Whether a row read from an import file holds no value: fgetcsv() gives
+// array(null) for a blank line and empty strings for a row of commas.
+// Import Submitted Forms passes over such a row instead of creating an
+// empty submitted form for it.
+function pg_import_row_is_blank($row)
+{
+    foreach ((array) $row as $cell) {
+        if (trim((string) $cell) !== '') {
+            return false;
+        }
+    }
+
+    return true;
+}

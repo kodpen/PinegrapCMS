@@ -129,6 +129,10 @@ if (!$_POST) {
     
     // Loop through the columns in order to determine which are valid.
     foreach ($row as $number => $name) {
+        // The heading is matched whatever its case and spacing ("Subject",
+        // "From Name").
+        $name = pg_import_heading($name);
+
         // If this column is valid, then add it to the columns array.
         if (
             ($name == 'name')
@@ -163,7 +167,7 @@ if (!$_POST) {
     }
 
     // If there is no name column then add error and forward user back to previous screen.
-    if (!$columns['name']) {
+    if (!isset($columns['name'])) {
         $liveform->mark_error('file', lang('Sorry, we could not find a \'name\' column in the CSV file.'));
         go($_SERVER['PHP_SELF']);
     }
@@ -250,7 +254,7 @@ if (!$_POST) {
 
             // If an enabled column was not included,
             // then set campaign profile to be enabled by default.
-            if (!$columns['enabled']) {
+            if (!isset($columns['enabled'])) {
                 $sql_columns .= "enabled,";
                 $sql_values .= "'1',";
             }
