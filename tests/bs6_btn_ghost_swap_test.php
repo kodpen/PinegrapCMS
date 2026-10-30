@@ -69,7 +69,9 @@ function test_bs6_btn_ghost_swap_workspace_and_erp()
 	// The rich tool rows' pressed and disabled looks follow their buttons.
 	$css = (string) file_get_contents(dirname(__DIR__) . '/pinegrap/assets/css/backend.src.css');
 	pg_assert_same(0, preg_match_all('/\.ws-rich-tools \.btn-ghost/', $css), 'no .ws-rich-tools .btn-ghost rule is left');
-	pg_assert_same(1, preg_match_all('/\.ws-rich-tools \.btn-text\.theme-secondary\[aria-pressed="true"\]/', $css), 'pressed tool rule');
+	// The screen rule only: the forced-colours block repeats the selector.
+	$screen = (string) strstr($css, '@media (forced-colors: active)', true);
+	pg_assert_same(1, preg_match_all('/\.ws-rich-tools \.btn-text\.theme-secondary\[aria-pressed="true"\]/', $screen), 'pressed tool rule');
 	pg_assert_same(1, preg_match_all('/\.ws-rich-tools \.btn-text\.theme-secondary:disabled/', $css), 'disabled tool rule');
 }
 
