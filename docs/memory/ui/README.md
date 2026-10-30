@@ -304,4 +304,5 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - verified-shipping-address-shared-form.md: The verified shipping address create and edit screens share includes/forms/verified_shipping_address_form.php: what it holds, what stays in the screens
 - voice-text-keyboard.md: Convert to text under a voice message from the keyboard (pg_voice_text.js): where focus goes while it works, after success and after a failure; the progress meter's name
 - waf-log-paging.md: The firewall log's events (view_waf_log.php) paged, sorted and searched on the server; period, category and search filters stay in the address and drive the summary
+- whole-number-input-mask.md: Panel boxes of whole-number columns take Inputmask's integer alias, never decimal, so a Turkish 1.000 is a thousand
 - zone-shared-form.md: add_zone.php and edit_zone.php draw the shipping zone form and read its rates through includes/forms/zone_form.php; what each screen keeps
