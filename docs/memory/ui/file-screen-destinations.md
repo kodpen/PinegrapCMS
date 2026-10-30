@@ -19,3 +19,7 @@ description: Where Edit File, Upload File and Upload Design Files go after Save 
 ## Where does a finished upload go?
 - To a server-resolved `json_encode(pg_send_to_url(<list>), JSON_HEX_…)`, not `$('#send_to').val()`: an absolute or `javascript:` `send_to` was followed.
 - Pinned by `tests/file_screen_destinations_test.php`.
+
+## What does Edit File's Duplicate copy?
+- The file on disk and its folder, description, design flag, `optimized`, `image_width`, `image_height` and `optimization_percent` (empty size or saving as NULL), like the File Manager's copy (`includes/explorer/handle_files.php`).
+- Symptom fixed: a copy of an optimised picture had `optimized = 0`, so the dashboard File Manager card offered it, View Files showed a saving for it and `optimize_image.php` compressed it again; the resize hint stayed off until a file screen measured it. Pinned by `tests/file_style_duplicate_test.php`.

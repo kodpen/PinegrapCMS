@@ -1133,8 +1133,8 @@ $liveform->remove_form('edit_file');
         // Always copy from filesystem, never from $_POST['code']
         copy(FILE_DIRECTORY_PATH . '/' . $original_name, $new_file_path);
 
-        // Fetch folder and description from DB
-        $query = "SELECT folder, description, design FROM files WHERE id = ?";
+        // Fetch folder, description and the picture's optimisation state from DB
+        $query = "SELECT folder, description, design, optimized, image_width, image_height, optimization_percent FROM files WHERE id = ?";
         $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
         $row = mysqli_fetch_assoc($result);
 
@@ -1142,9 +1142,18 @@ $liveform->remove_form('edit_file');
         // from the current user's role.
         $sql_design = "'" . (int) $row['design'] . "',";
 
+        // The copy is byte-identical, so it keeps the source's optimisation
+        // flag and cached size; otherwise an optimised picture would be
+        // offered for (and given) another lossy pass.
+        $sql_optimization = "'" . (int) $row['optimized'] . "', ";
+
+        foreach (array('image_width', 'image_height', 'optimization_percent') as $column) {
+            $sql_optimization .= (($row[$column] !== null && $row[$column] !== '') ? "'" . escape($row[$column]) . "'" : 'NULL') . ', ';
+        }
+
         // Insert new file record
         $query = "INSERT INTO files (
-            name, folder, description, type, size, design, user, timestamp
+            name, folder, description, type, size, design, optimized, image_width, image_height, optimization_percent, user, timestamp
         ) VALUES (
             '" . escape($new_file_name) . "',
             '" . escape($row['folder']) . "',
@@ -1152,6 +1161,7 @@ $liveform->remove_form('edit_file');
             '" . escape($file_extension) . "',
             '" . escape(filesize($new_file_path)) . "',
             " . $sql_design . "
+            " . $sql_optimization . "
             '" . $user['id'] . "',
             UNIX_TIMESTAMP()
         )";
