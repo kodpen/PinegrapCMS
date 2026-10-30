@@ -88,7 +88,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 log_activity(lang('made a calendar subscription address for their workspace'), $_SESSION['sessionusername']);
             }
 
-            $liveform->add_notice(lang('Your calendar address is ready. Add it to your calendar with the buttons below.'));
+            // The Google button is drawn only on an https site (ws_calendar_feed_google_url()).
+            $liveform->add_notice((strtolower((string) URL_SCHEME) === 'https://')
+                ? lang('Your calendar address is ready. Add it to your calendar with Add to Google Calendar or Open in Apple Calendar or Outlook.')
+                : lang('Your calendar address is ready. Add it to your calendar with Open in Apple Calendar or Outlook, or copy it.'));
 
         } else {
 

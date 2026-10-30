@@ -18,5 +18,8 @@ description: Where the Workspace screens are drawn and styled, its tokens, colou
 - Section headings come from `sectionToggle()` in `workspace_side.js`; the closed ones are `ws-side-closed` (groups `ws-groups-closed`) in localStorage, read on every draw and shared by every page, so the ws_sync redraw, a reload and another screen keep them. A closed channel section still lists the channel on the screen, a closed Work or Decisions section the screen that is open. A closed Discussions section lists none: it used to keep the open discussion, which reopens from `&thread=` in the address and sorts first, so with one discussion the caret turned and nothing hid.
 - People's initials come from `pg_initials()` / `pg_initials_upper()` (`includes/fn/contacts.php`), which turn `i` into `İ` and `ı` into `I` in Turkish (#519).
 
+## How does a text point at a control?
+- By its label, never icon, shape or place: "the Tour of the workspace button", "New channel", "the channel list" (below 1024px it sits in the menu drawer), "the eyes reaction (👀)", the template grip "Drag to change the order" and its arrow keys; message tools by pointer or Tab. The calendar notice names the Google button only on https, where it is drawn. tests/workspace_sensory_texts_test.php (PR #3448).
+
 ## What is known and left for the UI plan?
 - Keyboard focus rings are switched off with `!important` (~9422), the accent is typed twice (hex and RGB), `<img src="">` is drawn for a person without a picture, and several rule blocks are duplicated (`.ws-channel-link`, `.ws-tabs`, `.ws-center`). All listed in the plan; none changes behaviour.

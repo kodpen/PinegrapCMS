@@ -239,7 +239,7 @@ function ws_js_strings()
         'people_help'            => lang('Everyone chosen is responsible for the task.'),
         'percent'                => ws_js_template('{var:1}%', 1),
         'person'                 => lang('Team member'),
-        'pick_channel'           => lang('Choose a channel on the left, or create one.'),
+        'pick_channel'           => lang('Choose a channel from the channel list, or create one.'),
         'plan_saved'             => lang('The plan was saved.'),
         'planning_board'         => lang('Planning Board'),
         'poll_add_option'        => lang('Add an option'),

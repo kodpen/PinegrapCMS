@@ -1278,7 +1278,7 @@ function ws_templates_js_strings()
         'tpl_assign_none'     => lang('Nobody yet'),
         'tpl_assign_dept'     => ws_js_template('Pool of {var:1}', 1),
         'tpl_after'           => lang('After these tasks'),
-        'tpl_after_help'      => lang('Only an earlier task can be chosen; drag the task down to wait for a later one.'),
+        'tpl_after_help'      => lang('Only an earlier task can be chosen. To wait for a later one, move this task below it with the Drag to change the order button: drag it, or use the arrow keys on it.'),
         'tpl_task_n'          => ws_js_template('Task {var:1}', 1),
         'tpl_note_body'       => lang('Text'),
         'tpl_no_tasks'        => lang('No tasks in the template yet.'),

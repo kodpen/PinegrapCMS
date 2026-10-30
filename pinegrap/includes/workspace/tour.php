@@ -9,8 +9,7 @@
  * tour. What is here is what belongs to the workspace: the steps, their words
  * and the part of the screen each one is about. assets/js/workspace_tour.js
  * puts a small drawing on every step and registers the tour once the screen
- * has drawn itself; the signpost button above the channel list plays it
- * again.
+ * has drawn itself; the Tour of the workspace button plays it again.
  *
  * A step whose part of the screen is not there (no channel open, a phone) is
  * shown in the middle with its drawing; one marked optional is left out
@@ -61,7 +60,7 @@ function ws_tour_steps($viewer)
         array(
             'art'   => 'welcome',
             'title' => lang('Welcome to the Workspace'),
-            'text'  => lang('Your team\'s conversations, tasks, plans and decisions, in one place. This short tour shows you around. You can leave at any point and watch it again from the signpost button above the channel list.'),
+            'text'  => lang('Your team\'s conversations, tasks, plans and decisions, in one place. This short tour shows you around. You can leave at any point and watch it again with the Tour of the workspace button.'),
         ),
         array(
             'art'       => 'channels',
@@ -76,7 +75,7 @@ function ws_tour_steps($viewer)
             'target'    => array('#ws-menu-side .ws-side-head'),
             'placement' => 'right',
             'title'     => lang('Search and a new channel'),
-            'text'      => lang('Search every conversation you can read from the box. The + button opens a new channel: give it a name, make it public or private, invite people and, when it is about a customer, tie it to them.'),
+            'text'      => lang('Search every conversation you can read from the box. The New channel button starts a channel: give it a name, make it public or private, invite people and, when it is about a customer, tie it to them.'),
         ),
         array(
             'art'       => 'head',
@@ -97,7 +96,7 @@ function ws_tour_steps($viewer)
             'target'    => array('last:#ws-root .ws-pane-messages .ws-msg:not(.ws-msg-deleted)'),
             'placement' => 'top',
             'title'     => lang('What a message can become'),
-            'text'      => lang('Point at a message to see what it can do: answer it, react to it, pin it to the top, forward it, mark it as a decision or turn it into a task. Every decision is kept in the Decision Timeline.'),
+            'text'      => lang('Point at a message, or move to it with the Tab key, to see what it can do: answer it, react to it, pin it to the top, forward it, mark it as a decision or turn it into a task. Every decision is kept in the Decision Timeline.'),
         ),
         array(
             'art'       => 'tasks',
@@ -193,7 +192,7 @@ function ws_tour_steps($viewer)
         'target'    => array('#ws-menu-side [data-ws-tour]'),
         'placement' => 'right',
         'title'     => lang('That is all'),
-        'text'      => lang('Start a channel of your own, or write in one you are in. This tour is always here: the signpost button above the channel list plays it again.'),
+        'text'      => lang('Start a channel of your own, or write in one you are in. This tour is always here: the Tour of the workspace button plays it again.'),
     );
 
     return $steps;
