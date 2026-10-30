@@ -53,7 +53,7 @@ function ws_flows_member_canvas_test_function($path, $name)
 
 	$next = strpos($source, "\nfunction ", $at + 10);
 
-	return substr($source, $at, ($next === false) ? null : ($next - $at));
+	return substr($source, $at, (($next === false) ? strlen($source) : $next) - $at);
 }
 
 // A box of a graph.
