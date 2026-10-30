@@ -81,7 +81,7 @@ if ((isset($_REQUEST['page_id'])) && ($_REQUEST['page_id'] != '')) {
     list($form_name, $quiz) = pg_field_form_page_form_name($page_type, $form_type, $_REQUEST['page_id'], $page_name);
 
     $pg_breadcrumb_parent = array('label' => lang('All My Pages'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_pages.php');
-    $output_form_designer_content_heading = lang(array('string'=>'Create {var:1} Field','vars'=>array(ucwords($form_type_name)) ));
+    $output_form_designer_content_heading = lang(array('string'=>'Create {var:1} Field','vars'=>array(pg_upper_words($form_type_name)) ));
     $output_form_designer_content_subheading = lang(array('string'=>'Create a new field on this {var:1}.','vars'=>$form_type_name ) );
     
 // Else if there is a product_group_id, this is a variant set's form template
@@ -203,7 +203,7 @@ if (!$_POST) {
                 <div class="row mb-3  flex-wrap">
                     <div class="col-12 sm:col-12 text-center md:text-start">
 
-                        <p class="p-0 m-0">' . ucwords($form_type_name) . ': ' . h($form_name) . '</p>
+                        <p class="p-0 m-0">' . pg_upper_words($form_type_name) . ': ' . h($form_name) . '</p>
                     </div>
                 </div>
                 <form name="form" action="add_field.php" method="post">

@@ -53,6 +53,11 @@ $states = db_items(
     LEFT JOIN countries ON states.country_id = countries.id
     ORDER BY countries.name ASC, states.name ASC");
 
+// A remembered state that is gone goes back to [All].
+$_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['state_id'] = pg_list_filter_known(
+    $_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['state_id'],
+    array_column($states, 'id'));
+
 $output_state_options = '';
 
 foreach ($states as $state) {
