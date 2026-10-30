@@ -120,6 +120,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_workspace_visit_contact(); // 11.0.118
 	upgrade_2026_11_0_starter_addthis();        // 11.0.133
 	upgrade_2026_11_0_tr_district_plate();      // 11.0.134
+	upgrade_2026_11_0_erp_auto_invoice_marketplace(); // 11.0.62
 
 }
 
@@ -1033,6 +1034,19 @@ function upgrade_2026_11_0_erp_auto_invoice() {
 	install_add_column('config', 'erp_auto_invoice_min_total', "BIGINT NOT NULL DEFAULT 0");
 
 	install_note('ERP: the invoice the ERP issues on its own for a paid or shipped web order can now be kept to buyers with a tax number and to orders from an amount up, under Site Settings, Ecommerce, ERP. Both are off until set there.');
+
+}
+
+// The switch that lets the order invoice the ERP issues on its own
+// (config.erp_auto_invoice_on, erp_auto_invoice_decision() in
+// includes/erp/order_bridge.php) take marketplace orders too, weighed like a
+// web order with the same trigger and filters. It starts off, so a store that
+// invoices its marketplace orders somewhere else gets no second invoice.
+function upgrade_2026_11_0_erp_auto_invoice_marketplace() {
+
+	install_add_column('config', 'erp_auto_invoice_marketplace', "TINYINT(1) NOT NULL DEFAULT 0");
+
+	install_note('ERP: the invoice the ERP issues on its own for a paid or shipped order can now be issued for marketplace orders (Trendyol, n11) too, under Site Settings, Ecommerce, ERP. It is off until ticked there.');
 
 }
 

@@ -623,6 +623,9 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         && array_key_exists('erp_auto_invoice_min_total', $row);
     $erp_auto_invoice_tax_number_only_checked = ((int) ($row['erp_auto_invoice_tax_number_only'] ?? 0) === 1) ? ' checked' : '';
     $erp_auto_invoice_min_total = (int) floor(max(0, (int) ($row['erp_auto_invoice_min_total'] ?? 0)) / 100);
+    // Marketplace orders too (11.0.62), off by default.
+    $erp_auto_invoice_marketplace_ready = $erp_auto_invoice_ready && array_key_exists('erp_auto_invoice_marketplace', $row);
+    $erp_auto_invoice_marketplace_checked = ((int) ($row['erp_auto_invoice_marketplace'] ?? 0) === 1) ? ' checked' : '';
     // Checkout legal documents (11.0.1): the switch and the two templates. An
     // empty template is shown as the built-in one, so it is edited rather than
     // written from nothing.
