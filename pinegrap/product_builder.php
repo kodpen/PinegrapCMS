@@ -5806,6 +5806,30 @@ function pg_pb_render_product_screen($values = array(), $context = array())
  * ------------------------------------------------------------------ */
 
 /**
+ * The product row with the stored 0 of each "leave blank for no limit" box
+ * (payments, access days, quantity limits, commission rate limit) turned
+ * into '', as a new product shows them. The save stores a blank as 0 and the
+ * readers take 0 as unlimited; printed back as 0 or 0.00 under a hint that
+ * says blank means no limit, the box read as "none allowed". A column the
+ * row lacks is not added.
+ *
+ * @param array $row
+ * @return array
+ */
+function pg_pb_blank_unlimited_zeros($row)
+{
+    $columns = array('number_of_payments', 'private_days', 'minimum_quantity', 'maximum_quantity', 'commission_rate_limit');
+
+    foreach ($columns as $column) {
+        if (array_key_exists($column, $row) and ((float) $row[$column] == 0)) {
+            $row[$column] = '';
+        }
+    }
+
+    return $row;
+}
+
+/**
  * Everything the product screen needs to draw an existing product.
  *
  * Returns the same shape the screen writes, so a field that round-trips
@@ -5844,6 +5868,8 @@ function pg_pb_load_product($product_id)
 
     $row['compare_at_price_enabled'] = is_int($compare_at);
     $row['compare_at_price']         = is_int($compare_at) ? pg_format_input_amount($compare_at / 100) : '';
+
+    $row = pg_pb_blank_unlimited_zeros($row);
 
     // The cover is products.image_name and the rest live in the xref, in the
     // order they were added. The screen treats them as one list whose first
