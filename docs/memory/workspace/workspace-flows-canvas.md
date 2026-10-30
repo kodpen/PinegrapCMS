@@ -33,7 +33,7 @@ description: The flow canvas (workspace_flows.php, workspace_flow.js): who sees 
 - Tab in arrow order; arrows move 16 (Shift 64); C "Connect to…"; Delete; Enter: first field; + − 0; Esc. Undo: `workspace-flows-undo.md`.
 
 ## What is the outline view?
-- A toggle, default under 768 px: boxes in arrow order with settings and "Connect to…"; the hidden canvas redraws when shown.
+- A toggle, default under 768 px: boxes in arrow order; a box's heading opens its settings and "Connect to…" (the selected box, `outlineOpen()`), one at a time; the hidden canvas redraws when shown. All forms at once was 686 controls at 97 boxes (#3497).
 
 ## Where is the run view?
 - `workspace-flows-run-view.md`: Run, the runs list, a run shown box by box, how it is read again and what a failed read shows.
