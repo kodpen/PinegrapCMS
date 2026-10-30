@@ -142,3 +142,10 @@ function test_tour_engine_centred_bubble_is_clamped_to_the_edge()
 	pg_assert_false(strpos($place, 'Math.round((viewportHeight - height) / 2)') !== false, 'the centred fallback of placeBubble() never gets a negative top');
 	pg_assert_false(strpos($paint, 'Math.round((viewportHeight - bubble.offsetHeight) / 2)') !== false, 'a centred step never gets a negative top');
 }
+
+function test_tour_engine_tab_ring_takes_step_text_that_scrolls()
+{
+	$key = tour_engine_test_function('onKey');
+
+	pg_assert_contains("querySelectorAll('[tabindex=\"0\"], button:not([disabled])')", $key, 'Tab walks the step text while it scrolls (tabindex=0 from fitBody()) as well as the buttons');
+}
