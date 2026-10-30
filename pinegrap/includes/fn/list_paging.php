@@ -35,6 +35,33 @@ function pg_list_page_lengths()
 }
 
 /**
+ * A list's remembered filter value checked against the ids its pick list
+ * offers. An id that is no longer offered (the record was deleted, or the
+ * user lost access to it) selects no option, so the browser shows the first
+ * one, '[All] (N)', while the WHERE clause still narrows to the gone id and
+ * the list comes up empty. Such a value falls back to '[All]'.
+ *
+ * @param mixed  $value the remembered value
+ * @param array  $ids   the ids the pick list offers
+ * @param string $all   the value that stands for every record
+ * @return string
+ */
+function pg_list_filter_known($value, array $ids, $all = '[All]')
+{
+    if (!is_string($value) || ($value === $all)) {
+        return is_string($value) ? $value : $all;
+    }
+
+    foreach ($ids as $id) {
+        if ((string) $id === $value) {
+            return $value;
+        }
+    }
+
+    return $all;
+}
+
+/**
  * The rows one request may ask for. A length the menu does not offer falls
  * back to 100, the menu's default; -1 asks for every row from the offset on.
  * The offset is a whole number of 0 or more.
