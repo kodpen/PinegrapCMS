@@ -3785,6 +3785,21 @@ function get_dynamic_value($dynamic_value, $dynamic_value_attribute = '')
             break;
     }
 }
+// A panel report's dynamic filter value for a field of $field_type. The Order
+// and Visitor reports compare a date field as a bare 'Y-m-d' string, so
+// 'days ago' becomes a whole calendar date there (a date-and-time would sort
+// after the same day and drop it); strtotime() keeps it right across DST.
+// Everything else is get_dynamic_value()'s value.
+function pg_report_dynamic_value($dynamic_value, $dynamic_value_attribute, $field_type, $now = null)
+{
+    if ($dynamic_value === 'days ago' && $field_type === 'date') {
+        if ($now === null) {
+            $now = time();
+        }
+        return date('Y-m-d', strtotime('-' . (int) $dynamic_value_attribute . ' days', $now));
+    }
+    return get_dynamic_value($dynamic_value, $dynamic_value_attribute);
+}
 function generate_email_recipient_reference_code()
 {
     $characters = array(
