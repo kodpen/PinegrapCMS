@@ -1221,6 +1221,24 @@ if (!$_POST) {
         }
     }
     
+    // The corner cell heads the group-name column, so it names the chosen
+    // summarize-by levels; with none chosen there is no such column to head.
+    $summarize_by_labels = array();
+
+    for ($level = 1; $level <= $number_of_summarize_bys; $level++) {
+        $summarize_by_label = array_search($liveform->get_field_value('summarize_by_' . $level), $summarize_by_options, true);
+
+        if ($summarize_by_label !== false) {
+            $summarize_by_labels[] = $summarize_by_label;
+        }
+    }
+
+    if ($number_of_summarize_bys > 0) {
+        $output_summarize_by_heading = '<th colspan="' . $number_of_summarize_bys . '">' . h(implode(' / ', $summarize_by_labels)) . '</th>';
+    } else {
+        $output_summarize_by_heading = '<td></td>';
+    }
+
     $output_report_detail_headers = '';
     $output_report_detail_cells = '';
     
@@ -1385,7 +1403,7 @@ if (!$_POST) {
                         <table class="table table-striped table-hover">
                             <thead>
                                 <tr>
-                                    <th colspan="' . $number_of_summarize_bys . '">&nbsp;</th>
+                                    ' . $output_summarize_by_heading . '
                                     ' . $output_report_detail_headers . '
                                     <th class="text-end text-nowrap">' . lang('Visitors') . '</th>
                                     <th class="text-end text-nowrap">' . lang('Visitors') . ' %</th>
@@ -1433,7 +1451,7 @@ if (!$_POST) {
             
             print
                 '<tr style="font-weight: bold; color: #008000; cursor: default">
-                    <td class="align-middle text-nowrap" colspan="' . $number_of_summarize_bys . '">' . nl2br(h($summarize_by_1_name)) . '</td>
+                    <th scope="row" class="align-middle text-nowrap" colspan="' . $number_of_summarize_bys . '">' . nl2br(h($summarize_by_1_name)) . '</th>
                     ' . $output_report_detail_cells . '
                     <td class="align-middle text-end">' . pg_format_number($summarize_by_1_result['count'], 0) . '</td>
                     <td class="align-middle text-end">' . h(lang(array('string' => '{var:1}%', 'vars' => pg_format_number($count_percentage, 2)))) . '</td>
@@ -1482,7 +1500,7 @@ if (!$_POST) {
                     print
                         '<tr style="font-weight: bold; color: #719700; cursor: default">
                             <td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td>
-                            <td class="align-middle text-nowrap" colspan="' . $colspan . '">' . nl2br(h($summarize_by_2_name)) . '</td>
+                            <th scope="row" class="align-middle text-nowrap" colspan="' . $colspan . '">' . nl2br(h($summarize_by_2_name)) . '</th>
                             ' . $output_report_detail_cells . '
                             <td class="align-middle text-end">' . pg_format_number($summarize_by_2_result['count'], 0) . '</td>
                             <td class="align-middle text-end">' . h(lang(array('string' => '{var:1}%', 'vars' => pg_format_number($count_percentage, 2)))) . '</td>
@@ -1530,7 +1548,7 @@ if (!$_POST) {
                                 '<tr style="font-weight: bold; color: #808080; cursor: default">
                                     <td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td>
                                     <td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td>
-                                    <td class="align-middle text-nowrap">' . nl2br(h($summarize_by_3_name)) . '</td>
+                                    <th scope="row" class="align-middle text-nowrap">' . nl2br(h($summarize_by_3_name)) . '</th>
                                     ' . $output_report_detail_cells . '
                                     <td class="align-middle text-end">' . pg_format_number($summarize_by_3_result['count'], 0) . '</td>
                                     <td class="align-middle text-end">' . h(lang(array('string' => '{var:1}%', 'vars' => pg_format_number($count_percentage, 2)))) . '</td>
@@ -1769,7 +1787,7 @@ if (!$_POST) {
     
                     print
                         '<tr style="font-weight: bold; color: #c49700;  cursor: default">
-                            <td class="align-middle text-nowrap" colspan="' . $number_of_summarize_bys . '">' . lang('Grand Total') . '</td>
+                            <th scope="row" class="align-middle text-nowrap" colspan="' . $number_of_summarize_bys . '">' . lang('Grand Total') . '</th>
                             ' . $output_report_detail_cells . '
                             <td class="align-middle text-end">' . pg_format_number($grand_count, 0) . '</td>
                             <td class="align-middle text-end">' . h(lang(array('string' => '{var:1}%', 'vars' => pg_format_number(100, 2)))) . '</td>
