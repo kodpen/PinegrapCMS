@@ -18,7 +18,6 @@ description: Inputs of a collection's fields by kind (C3, C3b, C3c): number, ima
 - Reference, product, page: every value (one, comma-joined from a text box, or a list) must be one of `pg_coll_kind_options()` (`pg_coll_reference_ok()`), so a product or page the visitor may not see is refused; a record already holding one that left the list must be given another on Edit.
 
 ## What is not drawn yet?
-- Text box references stay text (several codes joined by commas).
-- Product / page tokens (name, link, price, image) on a detail page: C4b (`plans/designer-collections-steps.md`).
+- Text box references stay text (several codes joined by commas). Product / page tokens on a detail page come from the `__ref` binding (C4b1, `collection-references.md`).
 
 Tests: `tests/collections_inputs_test.php`.

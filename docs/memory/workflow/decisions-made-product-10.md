@@ -19,6 +19,6 @@ description: Decisions list, product part 10 (2026-10-30 evening on): Turkish i-
 - Decided (architect, 2026-10-30): progress and Cancel over the import's multipart XHR transport (`sendFiles()` shape), no picked-file list; `notes.php` and `screen.php` take multipart beside base64 with the same `ws_upload_max_bytes()` and type checks. No schema.
 
 ## Do collection items get schedule columns? (#3746)
-- Decided (architect, 2026-10-30): no. The templates' `publish_date` field and live filter schedule items; nobody asked for unpublishing; `forms` is large on every site. Plan `designer-collections-steps.md` closes by a memory-only PR.
+- Decided (architect, 2026-10-30): no. The templates' `publish_date` field and live filter schedule items; nobody asked for unpublishing; `forms` is large on every site. Recorded in `designer/collections-decisions.md`.
 
 Related: docs/memory/workflow/decisions-made-product-9.md, docs/memory/workflow/decisions-made.md

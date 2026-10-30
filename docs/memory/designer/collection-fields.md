@@ -4,7 +4,7 @@ description: Collection forms and field kinds: columns, where the kind is writte
 ---
 
 ## What is stored?
-- `custom_form_pages.collection` (TINYINT, 0): the form is a collection; its records are items other forms' records point at. `form_fields.collection_kind` (VARCHAR(32), ''): `number`, `image`, `reference`, `product`, `page` or `slug`; `form_fields.reference_page_id` (INT, 0): the form page a reference points into. Step `upgrade_2026_11_0_collections()` (11.0.43); owner's approval recorded in `plans/designer-collections-steps.md`.
+- `custom_form_pages.collection` (TINYINT, 0): the form is a collection; its records are items other forms' records point at. `form_fields.collection_kind` (VARCHAR(32), ''): `number`, `image`, `reference`, `product`, `page` or `slug`; `form_fields.reference_page_id` (INT, 0): the form page a reference points into. Step `upgrade_2026_11_0_collections()` (11.0.43); owner's approval (#2393) in `collections-decisions.md`.
 - VARCHAR, not ENUM, so a new kind needs no migration; `form_fields.type` is never altered (classic screens read it).
 - Every reader and writer probes `pg_coll_ready()` (all three columns): before the upgrade nothing changes.
 
