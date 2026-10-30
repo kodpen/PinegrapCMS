@@ -3323,7 +3323,8 @@
     // One thread for each value a field of a box holds, read from the
     // references kept in the fields: nothing else stores them, so a removed
     // chip takes its thread with it. A value no box before gives has no
-    // source (from ''). Threads of one type take turns in its tones.
+    // source (from ''); one whose box is no longer in the flow is gone too.
+    // Threads of one type take turns in its tones.
     function dataThreads() {
         var threads = [];
         var tones = {};
@@ -3367,7 +3368,8 @@
                         value: source ? source.value.label : '',
                         type: type,
                         tone: (tones[type] - 1) % THREAD_TONES[type],
-                        skipped: !!(source && source.skipped)
+                        skipped: !!(source && source.skipped),
+                        gone: !source && !!match[1] && !nodeById(match[1])
                     });
                 }
             });
@@ -3565,6 +3567,10 @@
             var from = thread.from ? nodeById(thread.from) : null;
             var to = nodeById(thread.to);
 
+            if (thread.gone && to && rows[to.id]) {
+                goneThread(thread, to, slot(to.id, 'field', thread.field));
+            }
+
             if (!from || !to || !rows[from.id] || !rows[to.id]) {
                 return;
             }
@@ -3589,6 +3595,33 @@
         markThreads();
 
         return targets.length;
+    }
+
+    // The thread of a value whose box was deleted: red and dashed, from the
+    // place the box had when it was removed here, else a short loose end
+    // hanging from the chip.
+    function goneThread(thread, to, field) {
+        var id = /^\{\{node\.([a-z0-9_]+)\./.exec(thread.token)[1];
+        var was = state.gone && state.flow && (state.gone.flow === state.flow.id) ? state.gone.at[id] : null;
+        var x2 = to.x + field.left + field.width / 2;
+        var y2 = to.y + BOX_H + DATA_ROW.half;
+        var path = svgEl('path', 'wsf-thread wsf-thread-gone');
+        var d;
+
+        if (was) {
+            var x1 = was.x + DATA_ROW.left + DATA_ROW.half;
+            var others = state.graph.nodes.filter(function (node) { return node !== to; });
+
+            d = threadPath(x1, was.y + BOX_H + DATA_ROW.half, x2, y2, 10 + 0.06 * Math.abs(x2 - x1), others).d;
+        } else {
+            d = 'M ' + (x2 - 16) + ' ' + (y2 + 22) + ' Q ' + x2 + ' ' + (y2 + 18) + ' ' + x2 + ' ' + y2;
+        }
+
+        path.setAttribute('d', d);
+        path.setAttribute('data-to', to.id);
+        path.setAttribute('data-field', thread.field);
+        path.setAttribute('data-ends', to.id);
+        ui.svg.appendChild(path);
     }
 
     // A dot a thread may be drawn from: dragged to a field chip, tapped twice
@@ -3762,7 +3795,7 @@
 
                 // A run shown: the value the thread brought in it.
                 if (!thread.from) {
-                    text += ' ' + t('fl_values_missing');
+                    text += ' ' + t(thread.gone ? 'fl_values_gone' : 'fl_values_missing');
                 } else if (state.run) {
                     var value = runValue(thread);
 
@@ -7906,6 +7939,14 @@
         state.graph = graph;
         state.binding = null;
         state.selected = (selected && (selected.type === 'node') && nodeById(selected.id)) ? selected : null;
+
+        // A box back from the bin of this session forgets its old place.
+        if (state.gone) {
+            graph.nodes.forEach(function (node) {
+                delete state.gone.at[node.id];
+            });
+        }
+
         changed(true);
 
         // The button that went grey gives the focus to the other one.
@@ -8135,6 +8176,13 @@
                 state.refocus = (near ? 'title-' + near.id + ' ' : '') + 'outline-add-task';
             }
 
+            // Where it stood: the values it gave still have threads, red, from
+            // there (goneThread()).
+            if (!state.gone || !state.flow || (state.gone.flow !== state.flow.id)) {
+                state.gone = { flow: state.flow ? state.flow.id : null, at: {} };
+            }
+
+            state.gone.at[node.id] = { x: node.x, y: node.y };
             state.graph.nodes = state.graph.nodes.filter(function (item) { return item !== node; });
             state.graph.edges = state.graph.edges.filter(function (edge) { return edge.from !== node.id && edge.to !== node.id; });
             announce(t('fl_removed', nameOf(node)));
@@ -9629,7 +9677,7 @@
         var match = /^\{\{node\.([a-z0-9_]+)\.([a-z0-9_]+)\}\}$/.exec(thread.token);
 
         if (!thread.from) {
-            return { text: '', note: t('fl_values_missing') };
+            return { text: '', note: t(thread.gone ? 'fl_values_gone' : 'fl_values_missing') };
         }
 
         if (!match) {

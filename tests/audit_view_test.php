@@ -201,7 +201,7 @@ function test_audit_view_condition()
 
 function test_audit_view_labels()
 {
-	pg_assert_same(lang('Created'), pg_audit_view_labels('action')['create']);
+	pg_assert_same(lang('Record created'), pg_audit_view_labels('action')['create']);
 	pg_assert_same(array(), pg_audit_view_labels('other'));
 	pg_assert_same('later_word', pg_audit_view_label('action', 'later_word'), 'a word without a label is shown as stored');
 }

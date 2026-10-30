@@ -468,7 +468,9 @@ function pg_submitted_form_list_row($row, $contacts_access)
         $contact_name = (trim((string) $row['contact_name']) == '') ? '[' . lang('No Name') . ']' : (string) $row['contact_name'];
     }
 
-    $contact = $contacts_access
+    // contacts.id is NULL when the submission has no contact or it was
+    // deleted: print nothing rather than an empty link.
+    $contact = ($contacts_access && $row['contact_id'])
         ? '<a class="pg-link-secondary" href="edit_contact.php?id=' . h($row['contact_id']) . '">' . h($contact_name) . '</a>'
         : h($contact_name);
 

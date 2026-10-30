@@ -204,7 +204,9 @@ if (!$_POST) {
             '<div class="col-12 sm:col-6 xl:col my-3">
                 <div class="alert border-4 theme-secondary" role="alert">
                     <h4 class="alert-heading">' . lang('Profile') . '</h4>
-                    <p><a href="edit_email_campaign_profile.php?id=' . $email_campaign_profile_id . '">' . h($email_campaign_profile_name) . '</a></p>
+                    <p>' . (($email_campaign_profile_name !== null)
+                        ? '<a href="edit_email_campaign_profile.php?id=' . $email_campaign_profile_id . '">' . h($email_campaign_profile_name) . '</a>'
+                        : h(lang('The campaign profile has been deleted.'))) . '</p>
                 </div>
             </div>
             ' . $output_order;

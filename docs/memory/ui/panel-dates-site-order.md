@@ -21,4 +21,8 @@ description: Application Access, Connected applications, Connections, the chat w
 - Symptom: screens showed `<time datetime="…">Pzt 19 Eki 2026</time>` as text (#3605): Sessions, Edit User, the location database note (Languages and WAF Country Restriction cards), Connected applications, Connections, chat "Last seen", the storefront Order Preview and Shipping Method arrival dates, the printed order's arrival date, the visitor report CSV (#3675). The screens moved to `get_absolute_time()` kept their `h()`.
 - View Order's arrival date and delivered `title`, and the API settings device "since", application created date and OAuth client "Registered on" take `plain_text` too (#3696). `tests/absolute_time_text_test.php` checks every escaped call in the tree, with no skipped file.
 
+## Where does a relative time's tooltip come from?
+- `get_relative_time()` draws its `<time title="…">` with `get_absolute_time(… 'format' => 'plain_text')` for the same moment (date only for `'type' => 'date'`), escaped with `h()`. The caller's properties pass through, so the zone rule (`pg_time_uses_user_zone()`) is the same.
+- Symptom: a Turkish panel's tooltip read "Thu 15 Oct 2026 22:11 +03" beside "Per 15 Eki 2026 22:11 +03" elsewhere (#3606, fixed in #3712). Test: `test_core_relative_time_tooltip_follows_the_panel_language` in `tests/core_test.php` (Turkish child process).
+
 Tests: `tests/panel_dates_site_order_test.php`, `tests/absolute_time_text_test.php`.
