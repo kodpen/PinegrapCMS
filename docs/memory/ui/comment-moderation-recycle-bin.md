@@ -23,6 +23,6 @@ module: comments
 - #3612 (PR #3695): comments on a binned page showed as dashboard work under 'pgbin_1380_rehber-2', the greeting counted them as approve-and-it-shows, and Go To Comment opened /pgbin_….
 
 ## How does the Activity card leave them out?
-- `pg_dashboard_activity_kinds()` builds the fragment once; `pg_activity_daily()` gets `comments LEFT JOIN page ON …` as its table and the fragment as `$extra`, and the list query appends it after `WHERE 1 = 1`. Before, it counted and listed them as 'Awaiting approval' (PR for the Activity card counts).
+- `pg_dashboard_activity_kinds()` builds the fragment once; `pg_activity_daily()` gets `comments LEFT JOIN page ON …` as its table and the fragment as `$extra`, and the list query appends it after `WHERE 1 = 1`. Before, it counted and listed them as 'Awaiting approval' (#3734).
 
 Test: `tests/comment_recycle_bin_test.php`.
