@@ -182,3 +182,19 @@ function test_liveform_output_field_aria_label()
 		pg_assert_false(strpos($form->output_field(array('type' => 'hidden', 'name' => 'h', 'aria-label' => 'x')), 'aria-label') !== false, 'hidden prints none');
 	});
 }
+
+// A field given aria-describedby (the id of a hint printed under it) prints
+// it, escaped; one without prints none.
+function test_liveform_output_field_aria_describedby()
+{
+	_test_liveform_with_session(function ($form) {
+		foreach (array('text', 'checkbox', 'select', 'textarea') as $type) {
+			$field = array('type' => $type, 'name' => 'd_' . $type);
+			if ($type === 'select') $field['options'] = array('A' => 'a');
+			pg_assert_false(strpos($form->output_field($field), 'aria-describedby') !== false, $type . ' without one');
+
+			$field['aria-describedby'] = 'x_hint"';
+			pg_assert_contains(' aria-describedby="x_hint&quot;"', $form->output_field($field), $type . ' with one');
+		}
+	});
+}

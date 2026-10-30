@@ -1,6 +1,6 @@
 ---
 name: report-table-rows
-description: Order, visitor and shipping report tables: detail rows and product names as links, percent figures through '{var:1}%' (Search Console too), named yes marks
+description: Order, visitor and shipping report tables: group names and Grand Total as row headers, detail rows and product names as links, percent figures through '{var:1}%' (Search Console too), named yes marks
 ---
 
 ## How are the report percentages printed?
@@ -14,6 +14,11 @@ description: Order, visitor and shipping report tables: detail rows and product 
 
 ## How are the visitor detail marks drawn?
 - Form submitted, Order created, Retrieved, Checked out and Completed print `$output_yes_mark`: a `task_alt` icon with `role="img"` and `aria-label` Yes (`list-and-table-screens.md`), not a bare `*` read as "star".
+
+## How do the report rows name their figures?
+- The order and visitor reports' corner cell (above the group-name column) is `<th colspan=N>` with the chosen summarize-by labels joined by ` / ` (`Year / Month / Product`), read back with `array_search(..., $summarize_by_options, true)`; with no summarize-by it is an empty `<td>`. Each level's group name and the Grand Total label are `<th scope="row">` with the same colspan and classes; the indent spacer cells and the detail rows stay `td`. Those rows are bold inline, so nothing looks different.
+- The shipping report's product cell is `<th scope="row" class="chart_label fw-normal">` (a `th` is bold by default, the row is not) and its tfoot Grand Total is `<th scope="row">`. DataTables reads body `th` cells like `td`.
+- Before, the corner was an empty `&nbsp;` heading and every name a `td`: a screen reader heard "Total 1.234,00 TL" without the month or product it belonged to.
 
 ## What was left alone?
 - The inline row colours (`#969696` and the rest): Bootstrap 6's `.table > :not(caption) > * > *` sets each cell's colour, so they have no visible effect.

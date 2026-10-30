@@ -23,4 +23,5 @@ module: voice_text
 
 ## What is unverified?
 - No browser run: the sandbox has no Prompt API. Audio input was announced for Chrome's Prompt API (desktop, with Gemini Nano; Chrome 138+ extensions, the web later); whether a given Chrome exposes it on the web, how long a piece it takes and how well it hears Turkish are not checked. Edge, Firefox and Safari show no button as far as known.
+- Keyboard focus and the meter name: `ui/voice-text-keyboard.md`.
 - `tests/voice_text_test.php`: the control hidden without the model, the language order, three pieces for 70 s joined with the mark, the file only read, a failure offering it again (Node with stubs), and the wiring.

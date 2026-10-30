@@ -167,10 +167,11 @@ if (!$_POST) {
                                     <div class="col-12">
                                         <label class="form-label" for="page_name_' . $row['page_id'] . '">' . lang('Page Name') . '</label>
                                         <div class="input-group ">
-                                            <label for="page_name_' . $row['page_id'] . '" class="input-group-text material-icons" title="' . lang('This option determines the url address of the page.') . '" data-bs-content="' . URL_SCHEME . HOSTNAME . OUTPUT_PATH . '{' . lang('Page Name') . '}">public</label>
-                                            <input name="page_name_' . $row['page_id'] . '" id="page_name_' . $row['page_id'] . '" type="text" value="' . h($row['page_name']) . '" placeholder="' . lang('Page Name') . '" maxlength="100" class="form-control" required="required" />
+                                            <label for="page_name_' . $row['page_id'] . '" class="input-group-text material-icons" aria-hidden="true">public</label>
+                                            <input name="page_name_' . $row['page_id'] . '" id="page_name_' . $row['page_id'] . '" aria-describedby="page_name_' . $row['page_id'] . '_hint" type="text" value="' . h($row['page_name']) . '" placeholder="' . lang('Page Name') . '" maxlength="100" class="form-control" required="required" />
                                             <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                         </div>
+                                        <div class="form-text" id="page_name_' . $row['page_id'] . '_hint">' . lang('This option determines the url address of the page.') . ' <code>' . h(URL_SCHEME . HOSTNAME . OUTPUT_PATH . '{' . lang('Page Name') . '}') . '</code></div>
                                     </div>';
                 }
                 if($output_page_title != false){

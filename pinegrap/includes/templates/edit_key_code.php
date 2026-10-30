@@ -29,12 +29,10 @@ if (!defined('PG_INIT_LOADED')) {
                             <li class="breadcrumb-item active" aria-current="page"><?php if ($screen == 'create'): ?><?=lang('Create Key Code')?><?php else: ?><?=lang('Edit Key Code')?><?php endif ?></li>
                         </ol> 
                     </nav>
-                    <h2 
-						class="d-inline-block text-break header-content-for-add-page" 
-						data-bs-content="<?php if ($screen == 'create'): ?><?=lang('Create one or more key codes (offer code alias) to allow redeemed offers to be tracked by customer segments.')?><?php else: ?><?=lang('Edit a key code (offer code alias) to allow redeemed offers to be tracked by customer segments.')?><?php endif ?>" 
-						title="<?php if ($screen == 'create'): ?><?=lang('Create Key Code')?><?php else: ?><?=lang('Edit Key Code')?><?php endif ?>">
+                    <h2 class="d-inline-block text-break header-content-for-add-page">
 						[<?php if ($screen == 'create'): ?><?=lang('Key Code')?><?php else: ?><?=h($key_code['code'])?><?php endif ?>]
 					</h2>
+					<p class="form-text mt-0"><?php if ($screen == 'create'): ?><?=lang('Create one or more key codes (offer code alias) to allow redeemed offers to be tracked by customer segments.')?><?php else: ?><?=lang('Edit a key code (offer code alias) to allow redeemed offers to be tracked by customer segments.')?><?php endif ?></p>
                 </div>
             </div>
             <form method="post">

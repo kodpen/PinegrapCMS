@@ -127,7 +127,8 @@ if (!$_POST) {
             <div class="col-12">
                 <div class="row mb-3  flex-wrap">
                     <div class="col-12 sm:col-12 text-center md:text-start">
-<h2 class="d-inline-block text-break header-content-for-add-page" data-bs-content="' . lang('Update this HTML template that is applied to all associated pages.') . '" title="' . lang('Edit Custom Page Style') . '">[' . h($style_name) . ']</h2>
+<h2 class="d-inline-block text-break header-content-for-add-page">[' . h($style_name) . ']</h2>
+                        <p class="form-text mt-0">' . lang('Update this HTML template that is applied to all associated pages.') . '</p>
                         <p>' . lang('Last Modified') . ': ' . get_relative_time(array('timestamp' => $style_timestamp)) . ' ' . h($user_username) . '</p>
                         
                         <nav id="button_bar" class="navigation " aria-label="' . h(lang('Button Bar')) . '">
