@@ -1701,9 +1701,11 @@ function _pg_acct_staff_url($staff_page_id)
 // ^^__my_account_wishlist_url^^ (shop sites: the first page carrying a
 // Favourites widget, which has no legacy page type),
 // ^^__logout_url^^, ^^__staff_url^^ (cfg staff_page_id, only for a member
-// the staff page's folder lets in). Section: order_history (the member's
-// orders, newest first, each linking to the order view page). Flags:
-// has_orders, no_orders, is_staff.
+// the staff page's folder lets in). Sections: order_history (the member's
+// orders, newest first, each linking to the order view page), subscriptions
+// (the member's subscriptions with their actions,
+// pg_subscription_customer_section_html()). Flags: has_orders, no_orders,
+// is_staff.
 function _pg_my_account_extras($logged_in, $cfg = array())
 {
     $shop  = defined('ECOMMERCE') && ECOMMERCE;
@@ -1718,7 +1720,7 @@ function _pg_my_account_extras($logged_in, $cfg = array())
     );
     // 'orders' and 'order_view_url': the history's rows and the view order
     // page, for a list of the member's orders (pg_sw_list_account_rows()).
-    $out = array('links' => $links, 'sections' => array('order_history' => ''),
+    $out = array('links' => $links, 'sections' => array('order_history' => '', 'subscriptions' => ''),
                  'flags' => array('has_orders' => false, 'no_orders' => true, 'is_staff' => false),
                  'orders' => array(), 'order_view_url' => '');
     if (!$logged_in) return $out;
@@ -1763,6 +1765,12 @@ function _pg_my_account_extras($logged_in, $cfg = array())
             $out['flags']['has_orders'] = true;
             $out['flags']['no_orders']  = false;
         }
+        // The actions post back to the page the member is on.
+        $out['sections']['subscriptions'] = pg_subscription_customer_section_html(
+            pg_subscription_customer_rows((int)USER_ID),
+            _pg_acct_software_path() . '/subscription_action.php',
+            pg_safe_redirect_path(isset($_SERVER['REQUEST_URI']) ? strtok((string)$_SERVER['REQUEST_URI'], '?') : '', defined('PATH') ? PATH : '/'),
+            isset($_SESSION['software']['token']) ? (string)$_SESSION['software']['token'] : '');
     }
     return $out;
 }

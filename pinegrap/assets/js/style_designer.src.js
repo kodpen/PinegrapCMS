@@ -13363,6 +13363,7 @@ const StyleDesigner = (function () {
                     month_grid:           _sdT('Month grid (filled by the backend — the events of each day)'),
                     reserve_form:         _sdT('Reserve button (filled by the backend — hidden when reservations are closed)'),
                     order_history:        _sdT('Order history (filled by the backend — the member\'s orders, each linking to the order page)'),
+                    subscriptions:        _sdT('Subscriptions (filled by the backend — the member\'s subscriptions with pause, resume, cancel and card update)'),
                     // Express order section bindings (prefixed eo_*) — same
                     // pattern as catalog: real container in the tree, server
                     // injects the live HTML at render time.
@@ -45339,6 +45340,7 @@ const StyleDesigner = (function () {
                 _sectionOpts.push(['month_grid',           _sdT('Month grid (not in the upcoming view)')]);
             } else if (_semSwRegion === 'my_account') {
                 _sectionOpts.push(['order_history',        _sdT('Order history (shop sites; hidden when there are no orders)')]);
+                _sectionOpts.push(['subscriptions',        _sdT('Subscriptions (shop sites; hidden when there are none)')]);
             } else if (_semSwRegion === 'change_password' || _semSwRegion === 'set_password') {
                 _sectionOpts.push(['password_rules',       _sdT('Strong password rules (hidden when the site setting is off)')]);
             } else if (_semSwRegion === 'calendar_event_view') {

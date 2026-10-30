@@ -145,6 +145,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/pdf_merge.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/payments.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/subscriptions.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/subscription_renewal.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/subscriptions_account.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/innodb.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/db_maintenance.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/visitor_retention.php');
