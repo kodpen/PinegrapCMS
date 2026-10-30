@@ -152,9 +152,12 @@ function test_list_search_where_turkish_labels()
 	pg_assert_same('(user.user_role IN (?))', $where['sql']);
 	pg_assert_same(array('3'), $where['params']);
 
+	// Without Turkish rules only mb_stripos() decides; mbstring before PHP 7.3
+	// upper-cases ı to I and so already matches here.
+	$plain = mb_stripos('Kullanıcı', 'KULLANICI', 0, 'UTF-8') !== false;
 	$where = pg_list_search_where(array('KULLANICI'), array(), $labels, '');
-	pg_assert_same('(1 = 0)', $where['sql'], 'not Turkish: no label match');
-	pg_assert_same(array(), $where['params']);
+	pg_assert_same($plain ? '(user.user_role IN (?))' : '(1 = 0)', $where['sql'], 'not Turkish: mb_stripos() alone');
+	pg_assert_same($plain ? array('3') : array(), $where['params']);
 
 	$labels = array(array('expr' => 'orders.status', 'labels' => array('r' => 'İade', 'p' => 'Ödendi')));
 	$where = pg_list_search_where(array('İADE'), array(), $labels, 'utf8mb4');
