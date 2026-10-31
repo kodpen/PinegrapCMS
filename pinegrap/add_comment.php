@@ -507,6 +507,8 @@ if ($name == '') {
 }
 
 $file_id = 0;
+$file_name = '';
+$file_size = 0;
 
 // If file attachments are allowed and a file was uploaded, then add file.
 if (($comments_allow_file_attachments == 1) && isset($_FILES['file']) && ($_FILES['file']['name'])) {
