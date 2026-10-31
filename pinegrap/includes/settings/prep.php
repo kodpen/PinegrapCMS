@@ -746,14 +746,15 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $output_site_icon_picker = '';
 
     // The site's own icon (includes/fn/site_icon.php): a PNG or SVG of the
-    // Files screen, kept in config_text. A stored name that no longer
+    // Files screen, kept in config_text, never an attachment or an ERP
+    // document (pg_public_image_files_where()). A stored name that no longer
     // matches a file is kept as its own option, so saving cannot clear it.
     if (pg_schema_has('config_text')) {
         $site_icon = pg_site_icon_name();
         $site_icon_options = '<option value="">' . lang('(not selected)') . '</option>';
         $site_icon_matched = ($site_icon === '');
 
-        foreach (db_items("SELECT name FROM files WHERE ((type = 'png') || (type = 'svg')) AND (attachment = 0) ORDER BY name ASC") as $site_icon_file) {
+        foreach (db_items("SELECT name FROM files WHERE ((type = 'png') || (type = 'svg')) AND " . pg_public_image_files_where() . " ORDER BY name ASC") as $site_icon_file) {
             $site_icon_options .= '<option value="' . h($site_icon_file['name']) . '"' . (($site_icon_file['name'] === $site_icon) ? ' selected="selected"' : '') . '>' . h($site_icon_file['name']) . '</option>';
 
             if ($site_icon_file['name'] === $site_icon) {
@@ -779,11 +780,13 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         // longer matches anything (an old hand-typed address) is kept as its
         // own option, so opening and saving this screen cannot silently
         // clear it.
+        // No attachment and no ERP document: what is chosen here is shown
+        // to everyone (pg_public_image_files_where()).
         $seo_image_files = db_items(
             "SELECT name FROM files
             WHERE
-                ((type = 'jpg') || (type = 'jpeg') || (type = 'png') || (type = 'gif') || (type = 'webp') || (type = 'avif') || (type = 'bmp'))
-                AND (attachment = 0)
+                (type IN ('" . implode("', '", pg_public_image_file_types()) . "'))
+                AND " . pg_public_image_files_where() . "
             ORDER BY name ASC");
 
         $og_image_options = '<option value="">' . lang('(not selected)') . '</option>';

@@ -46,7 +46,7 @@ function test_public_image_choice_verdict()
 function test_public_image_pickers_and_saves_wired()
 {
 	$prep = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/settings/prep.php');
-	pg_assert_same(2, substr_count($prep, 'pg_public_image_files_where()'), 'the site icon list and the share image, logo and app icon list');
+	pg_assert_same(2, substr_count($prep, 'AND " . pg_public_image_files_where()'), 'the site icon list and the share image, logo and app icon list');
 	pg_assert_false(strpos($prep, 'AND (attachment = 0) ORDER BY') !== false, 'no list filters on attachment alone');
 
 	$seo = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/settings/seo.save.php');

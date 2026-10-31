@@ -226,3 +226,14 @@ function test_site_icon_wiring()
 	$save = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/settings/seo.save.php');
 	pg_assert_contains("pg_config_text_save('site_icon', \$site_icon_input);", $save);
 }
+
+// The engine's "lighter file" rule: a format conversion, a rotation and a
+// resize asked at its size ('exact_size', the site icon) are exempt.
+function test_image_engine_no_gain_exemptions()
+{
+	pg_assert_true(pg_image_engine_no_gain(5000, 3500, false, 0, false), 'a heavier resize is not written');
+	pg_assert_false(pg_image_engine_no_gain(3000, 3500, false, 0, false), 'a lighter one is');
+	pg_assert_false(pg_image_engine_no_gain(5000, 3500, true, 0, false), 'a format conversion is exempt');
+	pg_assert_false(pg_image_engine_no_gain(5000, 3500, false, 90, false), 'a rotation is exempt');
+	pg_assert_false(pg_image_engine_no_gain(5000, 3500, false, 0, true), 'an exact-size resize is exempt');
+}
