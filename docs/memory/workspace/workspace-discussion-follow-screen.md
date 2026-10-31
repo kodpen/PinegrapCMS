@@ -13,7 +13,7 @@ description: Stop / Follow again for the assistant a discussion follows (PR #299
 
 ## What do the screens show?
 - `ws_thread_present()` adds `follow`, `follow_handle`, `follow_again`, `follow_again_handle`, `can_follow`; `ws_thread_follow_state()` (pure) decides them. The handle is `@Claude`, `@ai` or an MCP server's `@alias` (`ws_thread_follow_handle()`), '' once the server is gone.
-- Discussion panel: a line under the header, "@Claude follows this discussion" with Stop, or only Follow again once stopped (`view.followLine()` in workspace.js). Nothing goes into the channel menu or the discussion's ⋮ menu.
+- Discussion panel: a soft line under the header, the assistant's sign, "@Claude follows this discussion" and a Stop pill, or only Follow again once stopped (`view.followLine()` in workspace.js, workspace-channel-panels.md). Nothing goes into the channel menu or the discussion's ⋮ menu.
 - Under the channel message: "@Claude follows this discussion" beside the "was asked" line.
 
 ## What does the API give?

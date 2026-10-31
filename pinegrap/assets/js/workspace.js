@@ -8987,26 +8987,28 @@
                 body.appendChild(speak);
             }
 
-            // The time spent on its tasks (task_time.php), when there is any;
-            // the panel does not wait for it.
-            var time = el('div', 'ws-info-time');
+            // The time spent on its tasks (task_time.php), as the Summary
+            // tab reads it, when there is any; the panel does not wait for it.
+            if (CFG.task_time && CFG.task_time.ready) {
+                var time = el('div', 'ws-info-time');
 
-            time.hidden = true;
-            body.appendChild(time);
+                time.hidden = true;
+                body.appendChild(time);
 
-            api('ws_task_time_channel', { channel_id: channel.id }).then(function (data) {
-                var card = data ? data.card : null;
+                api('ws_task_time_channel', { channel_id: channel.id }).then(function (data) {
+                    var card = data ? data.card : null;
 
-                if (!card || !card.entries || (self.channel !== channel) || !self.infoOpen) {
-                    return;
-                }
+                    if (!card || !card.entries || (self.channel !== channel) || !self.infoOpen) {
+                        return;
+                    }
 
-                time.appendChild(el('h3', 'ws-panel-kicker', t('info_time')));
-                time.appendChild(el('p', 'ws-info-time-line', t('info_time_line', card.month_label, card.total_label)));
-                time.hidden = false;
-            }).catch(function () {
-                // Without it the rest of the info stands.
-            });
+                    time.appendChild(el('h3', 'ws-panel-kicker', t('info_time')));
+                    time.appendChild(el('p', 'ws-info-time-line', t('info_time_line', card.month_label, card.total_label)));
+                    time.hidden = false;
+                }).catch(function () {
+                    // Without it the rest of the info stands.
+                });
+            }
 
             if (channel.can_manage) {
                 var settings = button('btn btn-sm btn-outline theme-secondary rounded-pill w-100 ws-info-settings', t('edit_channel'), 'bi-gear');

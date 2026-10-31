@@ -90,6 +90,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-channel-icon.md: A Workspace channel's own icon (ws_channels.icon, 11.0.81): the curated Bootstrap Icons list, chosen vs kind icon, the corner badge, who may choose, where it is drawn, colour and icon in the API
 - workspace-channel-identity-motion.md: Workspace header in the channel colour (icon tile, top stripe), group colour chips, and the send pop, reaction bounce and new-message slide-in (U3, U5, PR #2094)
 - workspace-channel-messages.md: The channel's messages as drawn (C4, plans/workspace-channel-layout.md): grouped lines with their time on hover, the short hover bar, the decision tag, the discussion line, Convert to text
+- workspace-channel-panels.md: The side panels as drawn (C6, plans/workspace-channel-layout.md): the channel info beside the conversation in the discussion's place, its parts, the discussion's head and follow line
 - workspace-checklist-to-task.md: A checklist item of a Workspace message made into a task (ws_checklist_item_task(), step 9b): read as /task reads it, item tied by message + words, button, tag, edits, rights, API
 - workspace-claude-bootstrap.md: Claude's routine reads its instructions and each request's briefing (ws_ai_briefing()) from the site; the short versioned bootstrap pasted on claude.ai and the card's warning
 - workspace-claude-key-reads.md: Workspace reads with Claude's application key keep to the channels Claude may be asked in (ws_claude_channel_allowed()): which reads, record refs narrowed, the leak it fixed
