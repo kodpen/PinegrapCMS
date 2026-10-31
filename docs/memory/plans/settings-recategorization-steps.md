@@ -23,7 +23,7 @@ description: Steps R1-R9 of plans/settings-recategorization.md: what each moves,
 - R5 (S) Visitors and privacy. Done in #3899: a new `privacy` key (`privacy.php`, `privacy.save.php`, `settings_privacy.php`) after SEO; Visitor Tracking and Cookie Consent left SEO, Legal Documents left Ecommerce; anchors `pgset-analytics`, `pgset-cookies`, `pgset-legal` land on it (`ui/settings-modal-architecture.md`).
   - After #3141 (holds `output.php`, `get_help_url.php`), with R1b: `case 'settings_privacy.php'` in `output_menu()`; a `settings_privacy` help row (the help falls back until then).
 
-- R6 (S) SEO and sharing (in progress on `feature/settings-r6-seo-sharing`). The Site icon, Social sharing and Structured data blocks (now drawn in `prep.php`) become cards. Product Feeds moves to Ecommerce. AI Crawlers becomes the one place for AI bots, and the Firewall card shows its state and a link there. If #3557 is open, fix it here: Structured Data and Merchant Center post the same `merchant_country` field.
+- R6 (S) SEO and sharing — done (#3908). The Site icon, Social sharing and Structured data blocks (now drawn in `prep.php`) become cards. Product Feeds moves to Ecommerce. AI Crawlers becomes the one place for AI bots, and the Firewall card shows its state and a link there. If #3557 is open, fix it here: Structured Data and Merchant Center post the same `merchant_country` field.
 
 - R7 (S) Updates and maintenance, and Integrations. Update Channel, Cron Jobs, Backups, Alerts and Maintenance Mode leave General. API becomes Integrations, takes Google Reviews from Communication, and gets the links listed in the plan. The panel's look gets one place: Private label comes in under Appearance, from `private_label.php`.
 

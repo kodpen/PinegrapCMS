@@ -4,7 +4,7 @@
  *
  * Source pins for the field names of Settings › SEO. The structured-data
  * card (includes/settings/prep.php) and the Merchant Center card
- * (includes/settings/seo_merchant.php) post in one form: PHP keeps the last
+ * (includes/settings/commerce_merchant.php) post in one form: PHP keeps the last
  * value of a repeated name, and a repeated id sends a label's for= and
  * getElementById to the first element, so the two cards share neither.
  *
@@ -36,7 +36,7 @@ function settings_field_names_attr($source, $attr)
 function test_settings_field_names_seo_cards_apart()
 {
 	$prep = settings_field_names_source('includes/settings/prep.php');
-	$merchant = settings_field_names_source('includes/settings/seo_merchant.php');
+	$merchant = settings_field_names_source('includes/settings/commerce_merchant.php');
 
 	foreach (array('name', 'id') as $attr) {
 		$shared = array_intersect(settings_field_names_attr($prep, $attr), settings_field_names_attr($merchant, $attr));
@@ -51,7 +51,7 @@ function test_settings_field_names_seo_cards_apart()
 // Each save reads its own field.
 function test_settings_field_names_seo_save_reads()
 {
-	$save = settings_field_names_source('includes/settings/seo.save.php');
+	$save = settings_field_names_source('includes/settings/seo.save.php') . settings_field_names_source('includes/settings/commerce.save.php');
 
 	pg_assert_true(preg_match("/'country'\s*=>\s*\(string\) post_value\('merchant_center_country'\)/", $save) === 1, 'Merchant save reads merchant_center_country');
 	pg_assert_true(preg_match("/\\\$merchant_country_input = .*post_value\('merchant_country'\)/", $save) === 1, 'config save reads merchant_country');

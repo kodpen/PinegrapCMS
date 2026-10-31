@@ -219,16 +219,6 @@ if (!defined('PG_SETTINGS_ENTRY')) {
              waf_log_retention_days = " . $waf_post_retention . ",
              waf_log_max_rows = " . $waf_post_max_rows . ",";
 
-        // The AI bot switches are newer than the firewall base schema
-        // (2026.4.4 vs 2026.2.4), so they carry their own column guard: an
-        // install upgraded to the firewall but not this far saves the rest of
-        // the firewall settings and skips these two.
-        if (waf_table_has_column('config', 'waf_allow_ai_fetchers')) {
-            $sql_waf_settings .=
-                "waf_allow_ai_fetchers = '" . escape(post_value('waf_allow_ai_fetchers') ? 1 : 0) . "',
-                 waf_allow_ai_search = '" . escape(post_value('waf_allow_ai_search') ? 1 : 0) . "',";
-        }
-
         // The api.php allowance is the LAST step of 2026.4.4 (4.35), so it is
         // the first column to be missing on a site whose migration file was an
         // older copy than the package's. Written unguarded, it turned the
@@ -365,55 +355,6 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         $liveform->add_notice(lang('One or more banned IP addresses were not added because they were invalid.') );
     }
 
-    // The "Update Bot IP Lists" button submits the settings form with its own
-    // name, so the toggles the operator just set are saved first (above) and
-    // the fetch runs against the saved state. Forced: pressing the button is
-    // the explicit "now" the throttle exists to protect against.
-    if (post_value('waf_refresh_ranges') && function_exists('pg_waf_refresh_ai_ranges')) {
-
-        $waf_ranges_results = pg_waf_refresh_ai_ranges(true);
-
-        if (is_array($waf_ranges_results)) {
-
-            $waf_ranges_updated = 0;
-            $waf_ranges_failed  = 0;
-
-            foreach ($waf_ranges_results as $waf_ranges_result) {
-                if ($waf_ranges_result['status'] === 'updated') {
-                    $waf_ranges_updated++;
-                } elseif ($waf_ranges_result['status'] === 'failed') {
-                    $waf_ranges_failed++;
-                }
-            }
-
-            if ($waf_ranges_failed == 0) {
-                $liveform->add_notice(lang(array(
-                    'string' => 'Bot IP lists refreshed: {var:1} list{suffix:1} updated.',
-                    'vars'   => $waf_ranges_updated,
-                    'suffix' => ($waf_ranges_updated == 1 ? '' : 's'),
-                )));
-            } else {
-                $liveform->add_notice(lang(array(
-                    'string' => 'Bot IP lists: {var:1} updated, {var:2} could not be fetched. The stored copies were kept.',
-                    'vars'   => array($waf_ranges_updated, $waf_ranges_failed),
-                )));
-
-                // Name the first failure's cause. Four sources failing at once
-                // is nearly always one local condition (no CA bundle, blocked
-                // outbound), so one reason diagnoses all of them and four
-                // repeated hints would only bury it.
-                foreach ($waf_ranges_results as $waf_ranges_provider => $waf_ranges_result) {
-                    if ($waf_ranges_result['status'] === 'failed' && !empty($waf_ranges_result['reason'])) {
-                        $liveform->add_notice(lang(array(
-                            'string' => 'Bot IP list fetch error: {var:1}',
-                            'vars'   => h($waf_ranges_provider . ' — ' . $waf_ranges_result['reason']),
-                        )));
-                        break;
-                    }
-                }
-            }
-        }
-    }
 
     // The location database, when the button asks for it or the country
     // restriction is on and the site has none yet. Last, so a slow download

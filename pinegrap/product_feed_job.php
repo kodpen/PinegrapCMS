@@ -56,5 +56,5 @@ if ((php_sapi_name() === 'cli') && !defined('PG_CRON_DISPATCH')) {
         }
     }
 } elseif (!pg_cron_is_background_run()) {
-    go(PATH . SOFTWARE_DIRECTORY . '/settings_seo.php');
+    go(PATH . SOFTWARE_DIRECTORY . '/settings_commerce.php');
 }

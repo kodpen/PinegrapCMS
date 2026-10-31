@@ -24,6 +24,27 @@ if (!defined('PG_SETTINGS_ENTRY')) {
 $waf_own_address = function_exists('waf_client_ip') ? (string) waf_client_ip() : '';
 
 // ── Firewall ──
+// The AI bot switches live on SEO › AI Crawlers, next to what robots.txt
+// tells the same bots; this card only says how they stand.
+$output_waf_ai_state = '';
+
+if ($waf_ai_ready) {
+    $waf_ai_catalog = pg_ai_crawler_catalog();
+    $waf_ai_agents = implode(', ', $waf_ai_catalog['agent']);
+    $waf_ai_search = implode(', ', $waf_ai_catalog['search']);
+
+    $output_waf_ai_state = '
+                                                        <div class="col-12">
+                                                            <div class="form-text">' . h($waf_allow_ai_fetchers
+                                                                ? lang(array('string' => 'Assistants ({var:1}): let in by the firewall.', 'vars' => array($waf_ai_agents)))
+                                                                : lang(array('string' => 'Assistants ({var:1}): turned away by the firewall.', 'vars' => array($waf_ai_agents)))) . '</div>
+                                                            <div class="form-text">' . h($waf_allow_ai_search
+                                                                ? lang(array('string' => 'AI search ({var:1}): let in by the firewall.', 'vars' => array($waf_ai_search)))
+                                                                : lang(array('string' => 'AI search ({var:1}): turned away by the firewall.', 'vars' => array($waf_ai_search)))) . '</div>
+                                                            <div class="form-text"><a class="pg-link-secondary" href="' . h(pg_settings_link('seo', 'pgset-ai')) . '">' . lang('Change under AI Crawlers') . '</a></div>
+                                                        </div>';
+}
+
 $pg_settings_cards[] = '
     <div id="pgset-waf" class="pg-set-card">
         <div class="card">
@@ -100,7 +121,7 @@ $pg_settings_cards[] = '
                                                                 <label class="" for="waf_verify_bots">' . lang('Verify Search Engine Crawlers') . '</label>
                                                                 <div class="form-text">' . lang('Confirms by reverse DNS that a visitor claiming to be Googlebot really is one. Anyone can type Googlebot into a user agent; without this check, doing so grants crawler privileges. A failed lookup is never treated as a forgery, so a DNS outage cannot block a real crawler.') . '</div>
                                                             </div>
-                                                        </div>' . $output_waf_ai_block . '
+                                                        </div>' . $output_waf_ai_state . '
                                                         <div class="col-12 ">
                                                             <div class="form-field">
                                                                 <div class="switch"><input value="1"' . $waf_rate_limit_checked . ' class="collapse-switcher" type="checkbox" id="waf_rate_limit" name="waf_rate_limit" data-bs-target="#waf_rate_limit_row"/></div>

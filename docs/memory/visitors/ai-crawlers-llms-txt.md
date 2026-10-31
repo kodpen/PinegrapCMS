@@ -4,12 +4,12 @@ description: AI section of robots.txt (Content-Signal, Disallow groups in step w
 ---
 
 ## Where is it set and stored?
-- Site Settings › SEO › AI Crawlers (`pgset-ai`, `includes/settings/seo.php`). Columns from step 11.0.21: `config.robots_ai_rules`, `robots_ai_training`, `llms_txt` (TINYINT, default 0) and `additional_llms_content` (TEXT). All off after the upgrade: robots.txt stays byte-identical and `/llms.txt` answers as before.
+- Site Settings › SEO › AI Crawlers (`pgset-ai`, `includes/settings/seo.php`), the one place for AI bots: the firewall's two AI switches and the "Update Bot IP Lists" button are on this card and written by `seo.save.php`; the Firewall card only shows their state and links here (#3908). Columns from step 11.0.21: `config.robots_ai_rules`, `robots_ai_training`, `llms_txt` (TINYINT, default 0) and `additional_llms_content` (TEXT). All off after the upgrade: robots.txt stays byte-identical and `/llms.txt` answers as before.
 - Code: `includes/fn/ai_crawlers.php`; `get_robots.txt.php` calls `pg_robots_txt_content()`, `get_llms.txt.php` serves llms.txt.
 
 ## Who decides which AI crawler is turned away?
 - Training (`pg_ai_crawler_catalog()['train']`: GPTBot, ClaudeBot, Google-Extended, Applebot-Extended, CCBot, meta-externalagent, Amazonbot, Bytespider): the card's own "Allow AI training" switch.
-- Assistants (ChatGPT-User, Claude-User, Perplexity-User) and AI search (OAI-SearchBot, Claude-SearchBot): the WAF switches `waf_allow_ai_fetchers` / `waf_allow_ai_search`, shown read-only on the card. One source, so robots.txt never contradicts the firewall. `tests/seo_ai_crawlers_test.php` holds these lists to `waf_ai_bots()` and the real training crawlers to `waf_bad_bots()`.
+- Assistants (ChatGPT-User, Claude-User, Perplexity-User) and AI search (OAI-SearchBot, Claude-SearchBot): the WAF switches `waf_allow_ai_fetchers` / `waf_allow_ai_search`, on the same card. One source, so robots.txt never contradicts the firewall. `tests/seo_ai_crawlers_test.php` holds these lists to `waf_ai_bots()` and the real training crawlers to `waf_bad_bots()`.
 - PerplexityBot is left out: Perplexity calls it a search crawler, the WAF blocks it as a bad bot.
 
 ## What is written, and where?

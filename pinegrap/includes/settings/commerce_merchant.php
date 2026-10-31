@@ -8,9 +8,9 @@
  * as a data source Google fetches every day and see the product issues read
  * from the account.
  *
- * Runs in the scope of includes/settings/seo.php and leaves the markup in
+ * Runs in the scope of includes/settings/commerce.php and leaves the markup in
  * $product_feeds_merchant; the Connect form goes to $pg_settings_modals,
- * outside the settings form. seo.save.php hands the posted fields to
+ * outside the settings form. commerce.save.php hands the posted fields to
  * pg_merchant_save_from_screen().
  *
  * @author      Erdal Güral (Kodpen)
@@ -66,7 +66,7 @@ if (pg_merchant_ready()) {
             // by its form attribute.
             $pg_settings_modals[] = '
             <form method="post" action="connect.php" id="pgset_merchant_connect" class="disable_shortcut d-none">
-                ' . pg_connect_start_fields('google', 'merchant_center', pg_settings_url('seo') . '?merchant_connect=1#pgset-feeds') . '
+                ' . pg_connect_start_fields('google', 'merchant_center', pg_settings_url('commerce') . '?merchant_connect=1#pgset-feeds') . '
             </form>';
         } else {
             $merchant_body = '
