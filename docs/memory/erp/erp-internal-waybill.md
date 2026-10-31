@@ -24,3 +24,6 @@ description: Internal ERP waybill (irsaliye; no driver sends e-Irsaliye): files,
 - `data-confirm-content` is a native `confirm()` (backend.src.js), not a modal: in automation `window.confirm` is overridden.
 
 Related: docs/memory/erp/erp-local-sale.md, docs/memory/erp/erp-document-numbering.md
+
+## Does a note keep the list's filter?
+- Yes: View on `erp_waybills.php` passes `send_to`; the note's arrow, breadcrumb (`pg_send_to_list_url()`), form and reloads keep it. Before, every return showed all notes. Pinned by `tests/erp_waybill_back_arrow_test.php`.

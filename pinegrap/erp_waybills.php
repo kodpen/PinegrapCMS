@@ -111,7 +111,7 @@ foreach ($waybills as $waybill) {
     $output_rows .=
         '<tr' . erp_drawer_row_attributes($id) . ($is_cancelled ? ' class="fg-secondary"' : '') . '>
             <td class="align-middle text-start">
-                <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2" title="' . lang('View') . '" onclick="window.location.href=\'edit_erp_waybill.php?id=' . $id . '\'"><i class="bi bi-eye"></i></button>
+                <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2" title="' . lang('View') . '" onclick="window.location.href=\'' . h(escape_javascript('edit_erp_waybill.php?id=' . $id . '&send_to=' . urlencode(REQUEST_URL))) . '\'"><i class="bi bi-eye"></i></button>
             </td>
             <td class="align-middle text-nowrap chart_label" data-order="' . h($waybill['full_number']) . '">' . h($waybill['full_number']) . '</td>
             <td class="align-middle text-nowrap" data-order="' . h($waybill['issue_date']) . '">' . h(prepare_form_data_for_output($waybill['issue_date'], 'date')) . '</td>
