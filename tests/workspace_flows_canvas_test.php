@@ -2856,7 +2856,7 @@ function test_workspace_flows_canvas_thread_is_removed_from_its_field()
 	pg_assert_true((bool) preg_match('/^( *)var VALUE_TOKEN = [^\n]*;\n/m', $source, $found), 'workspace_flow.js has VALUE_TOKEN');
 
 	$result = ws_flows_canvas_test_node(
-		array('nodeById', 'withoutToken', 'unbindThread'),
+		array('nodeById', 'tokenGap', 'withoutToken', 'unbindThread'),
 		$found[0] . <<<'JS'
 var a = '{{node.web_check_1.outcome}}';
 state = { graph: { nodes: [
@@ -2914,7 +2914,7 @@ function test_workspace_flows_canvas_deleting_a_box_removes_its_values()
 	}
 
 	$result = ws_flows_canvas_test_node(
-		array('nodeById', 'fieldTexts', 'withoutToken', 'unbindThread', 'dropValuesOf'),
+		array('nodeById', 'fieldTexts', 'tokenGap', 'withoutToken', 'unbindThread', 'dropValuesOf'),
 		$constants . <<<'JS'
 state = { graph: { nodes: [
     { id: 'web_check_1', kind: 'web_check', config: {} },
@@ -2949,4 +2949,37 @@ JS
 	pg_assert_contains("selected.type === 'thread'", $remove, 'Delete removes a selected thread');
 	pg_assert_contains("pointerEvents = 'stroke'", ws_flows_canvas_test_script_function($source, 'threadHit'), 'the hit path takes the pointer from the script');
 	pg_assert_true(strpos($source, 'state.gone') === false, 'no red thread from the place of a box deleted in this session');
+}
+
+// A chip's × takes the space that set the value apart, by the same rule as
+// removing its thread (tokenGap(), #4236), and names the field it left;
+// the outline's Remove falls back to the box's outline line when its
+// settings are closed (#4235); an Undo by key from the canvas hands the
+// focus back to the box or the canvas drawn again (#3981).
+function test_workspace_flows_canvas_chip_remove_gap_and_focus()
+{
+	$result = ws_flows_canvas_test_node(
+		array('tokenGap'),
+		<<<'JS'
+console.log(JSON.stringify([
+    tokenGap('Bildirim ', ', tamam'),
+    tokenGap('Bildirim ', ''),
+    tokenGap('Bildirim ', ' x'),
+    tokenGap('', ' first'),
+    tokenGap('line\n', ' next'),
+    tokenGap('a ', 'b'),
+    tokenGap('(', ')')
+]));
+JS
+	);
+
+	if ($result !== null) {
+		pg_assert_same(array(array(1, 0), array(1, 0), array(1, 0), array(0, 1), array(0, 1), array(0, 0), array(0, 0)), $result, 'the space before, after or none');
+	}
+
+	$source = str_replace("\r\n", "\n", (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js'));
+
+	pg_assert_true((bool) preg_match('/wsf-chip-remove\'\)\) \{.*?tokenGap\(.*?threadName\(\{/s', $source), 'the chip × applies tokenGap() and announces like the thread');
+	pg_assert_true(strpos($source, "state.refocus = 'title-' + id + ' outline-open-' + id;") !== false, 'the outline Remove falls back to the box line');
+	pg_assert_true((bool) preg_match('/var onCanvas = [^\n]*viewport\.contains\(document\.activeElement\).*?\(box \|\| ui\.viewport\)\.focus\(/s', $source), 'undo by key gives the focus back on the canvas');
 }
