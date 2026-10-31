@@ -308,6 +308,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - system-widget-change-checklist.md: Checklist when changing system widgets (legacy comparison, subgroup test, PHP/JS twins, three places for defaults, node --check, logged-out live check) plus the escape-$ rule in heredocs.
 - system-widget-form-records.md: Form list and form detail widgets: one record address (pg_sw_record_url), how get_page.php answers it, layout_type is not the editor marker, list filters, the no-record layout, the record title.
 - system-widget-functional-classes.md: Which pg-eo-* / pg-qty-stepper classes and data-* attributes in system widget trees are functional (keep) versus decorative (deletable).
+- system-widget-page-types.md: Which classic page types have designer system widgets, which stay `system` nodes (#2436), confirmations as a widget setting, and what a converted page uses until a widget exists.
 - system-widget-render-rules.md: System widget renderer rules: Messages node named after the liveform, state messages fitted to the loop parent, pg-hide-if-empty, stretched links, the PHP tree renderer mirroring the exporter.
 - system-widget-test-pages.md: System widget test URLs (/c /d /e /b/<slug>), the two dev.pinegrap.com backends, legacy page confusion, saved-cart link, stale-output causes.
 - system-widget-type-and-name.md: Designer system widget rules: SW_TYPES, auto names, empty widget, gated type change (fork/all/cancel), the panel's copy button, walking all page tabs, pg_shared_component_usage() and usage_all rows.
