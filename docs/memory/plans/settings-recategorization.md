@@ -28,7 +28,7 @@ description: Plan (owner 2026-10-30): Site Settings regrouped, one place per set
 - **Updates and maintenance:** Update channel, Cron jobs, Backups, Alerts, Maintenance mode.
 
 ## What is still open?
-- Headings over the list, for example Site, Selling, Security, Running the site? Ask before R8.
+- Headings over the list: decided #3879 (`workflow/decisions-made-product-13.md`): Site, Security, Selling, Running the site, drawn like the main menu's, in today's order.
 - Two "Support E-mail Address" fields (`general.php` 40, `commerce.php` 1281): one field, or two names? Ask before R4.
 
 ## Where to start?

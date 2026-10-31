@@ -26,6 +26,6 @@ description: Steps R1-R9 of plans/settings-recategorization.md: what each moves,
 
 - R7 (S) Updates and maintenance, and Integrations. Update Channel, Cron Jobs, Backups, Alerts and Maintenance Mode leave General. API becomes Integrations, takes Google Reviews from Communication, and gets the links listed in the plan. The panel's look gets one place: Private label comes in under Appearance, from `private_label.php`.
 
-- R8 (M) Search. A search box in the dialog covers every category's cards and field labels, from the registry plus the drawn labels. Palette keywords: false hits ("logo" on E-Invoice) and misses (favicon, kvkk, workspace, prefetch, encryption). Headings over the list, if wanted.
+- R8 (M) Search. A search box in the dialog covers every category's cards and field labels, from the registry plus the drawn labels. Palette keywords: false hits ("logo" on E-Invoice) and misses (favicon, kvkk, workspace, prefetch, encryption). Headings over the list as decided #3879 (Site, Security, Selling, Running the site; `.pg-sm-group`, a `group` key per category).
 
 - R9 (S) Links and notes. Update the text links that name old places ("Site Settings › Contact" in `erp_settings.php`, "Settings › General" in `workspace/ai.php`). Check deep links (#3558). Refresh descriptions, help. Remove `pg_settings_status()` and `pg_settings_facts()`, which have no callers. Rewrite `ui/settings-modal-architecture.md`, write the decisions into the decisions list, and delete this plan.
