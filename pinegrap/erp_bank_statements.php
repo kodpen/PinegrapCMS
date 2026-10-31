@@ -80,8 +80,10 @@ if (!$ready) {
 }
 
 $tills = '';
+$till_count = 0;
 foreach ((array) db_items("SELECT id, name, currency, kind FROM erp_cash_accounts WHERE is_active = 1 ORDER BY (kind = 'bank') DESC, sort_order ASC, id ASC") as $till) {
     $tills .= '<option value="' . (int) $till['id'] . '"' . (((string) $till['id'] === (string) $liveform->get_field_value('cash_account_id')) ? ' selected' : '') . '>' . h($till['name'] . ' (' . $till['currency'] . ')') . '</option>';
+    $till_count++;
 }
 
 $output_rows = '';
@@ -126,6 +128,7 @@ pg_page_shell([
                     <div class="col-12 md:col-4">
                         <label class="form-label" for="cash_account_id">' . lang('Bank account') . '</label>
                         <select class="form-control" id="cash_account_id" name="cash_account_id">' . $tills . '</select>
+                        ' . erp_no_till_hint($till_count) . '
                     </div>
                     <div class="col-12 md:col-5">
                         <label class="form-label" for="statement">' . lang('Statement file (Excel, ODS or CSV)') . '</label>
