@@ -150,6 +150,12 @@ function pg_subscription_operator_where($filter)
         $where[] = "(s.status = '" . e((string) $filter['status']) . "')";
     }
 
+    // Only a running row has a next charge: a cancelled or ended row keeps
+    // its stored date, but nothing is charged on it.
+    if (((string) ($filter['next_from'] ?? '') !== '') || ((string) ($filter['next_to'] ?? '') !== '')) {
+        $where[] = "(s.status IN ('active', 'past_due', 'paused'))";
+    }
+
     if ((string) ($filter['next_from'] ?? '') !== '') {
         list($year, $month, $day) = array_map('intval', explode('-', (string) $filter['next_from']));
         $where[] = "(s.next_charge_at >= '" . mktime(0, 0, 0, $month, $day, $year) . "')";
@@ -272,6 +278,41 @@ function pg_subscription_operator_select_sql()
 }
 
 /**
+ * The list order: running rows (active, past due, paused) with a next charge
+ * first, by that charge, then every other row; the newest first within each.
+ * A cancelled or ended row keeps its stored next_charge_at, which is never
+ * charged, so it is not ordered by it.
+ *
+ * @return string
+ */
+function pg_subscription_operator_order_sql()
+{
+    $running = "s.status IN ('active', 'past_due', 'paused') AND s.next_charge_at > 0";
+
+    return '(' . $running . ') DESC, CASE WHEN ' . $running . ' THEN s.next_charge_at ELSE 0 END ASC, s.id DESC';
+}
+
+/**
+ * The next charge the row page shows (0 = none): a running row's next charge,
+ * or the end of the paid period of a cancelled row; a row cancelled while past
+ * due is never charged again and ends on the next renewal run.
+ *
+ * @param array $row
+ * @return int
+ */
+function pg_subscription_operator_next_charge($row)
+{
+    $status = (string) ($row['status'] ?? '');
+
+    if (in_array($status, array('active', 'past_due', 'paused'), true)
+        || (($status === 'cancelled') && ((int) ($row['retry_count'] ?? 0) === 0))) {
+        return (int) ($row['next_charge_at'] ?? 0);
+    }
+
+    return 0;
+}
+
+/**
  * The list: the rows the filter matches, the next charge first (rows with
  * none last), then the newest.
  *
@@ -287,7 +328,7 @@ function pg_subscription_operator_rows($filter, $limit)
 
     return (array) db_items(pg_subscription_operator_select_sql() . "
         WHERE " . pg_subscription_operator_where($filter) . "
-        ORDER BY (s.next_charge_at = 0) ASC, s.next_charge_at ASC, s.id DESC
+        ORDER BY " . pg_subscription_operator_order_sql() . "
         LIMIT " . max(1, (int) $limit));
 }
 
