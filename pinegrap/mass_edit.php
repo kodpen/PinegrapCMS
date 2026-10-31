@@ -408,7 +408,7 @@ if (!$_POST) {
                 $count_by_field  = array();
                 $fr_name_skipped = 0;
                 $fr_long_skipped = 0;
-                $q = mysqli_query(db::$con, "SELECT page_id, page_name, page_title, page_meta_description FROM page") or output_error(lang('Query failed.'));
+                $q = mysqli_query(db::$con, "SELECT page_id, page_name, page_folder, page_title, page_meta_description FROM page") or output_error(lang('Query failed.'));
                 while ($row = mysqli_fetch_assoc($q)) {
                     // One audit line per changed page: read before its first
                     // field update, recorded after its last.
@@ -437,7 +437,9 @@ if (!$_POST) {
                         }
 
                         if ($field === 'page_name') {
-                            if (!check_name_availability(array('name' => $new_val, 'ignore_item_id' => $row['page_id'], 'ignore_item_type' => 'page'))) {
+                            // A 301/302 short link of the page's own does
+                            // not hold its name: the rename deletes it.
+                            if (!check_name_availability(array('name' => $new_val, 'ignore_item_id' => $row['page_id'], 'ignore_item_type' => 'page', 'ignore_redirects_to_page' => $row['page_id']))) {
                                 $fr_name_skipped++;
                                 continue;
                             }
@@ -448,6 +450,13 @@ if (!$_POST) {
                             $audit_before = pg_audit_fetch('page', $row['page_id']);
                         }
                         db("UPDATE page SET `{$field}` = '" . escape($new_val) . "' WHERE page_id = '" . e($row['page_id']) . "'");
+
+                        // A redirect of the page's own that holds the new
+                        // name would loop, so it goes; no redirect from the
+                        // old name is added here.
+                        if ($field === 'page_name') {
+                            pg_short_link_page_renamed($row['page_id'], $row['page_name'], $new_val, false, $user['id'], $row['page_folder']);
+                        }
                     }
                     if ($audit_before !== null) {
                         pg_audit_record('update', 'page', $row['page_id'], $audit_before);
@@ -521,13 +530,20 @@ if (!$_POST) {
             $new_page_name = str_replace(' ', '_', $new_page_name);
             $new_page_name = str_replace('&', '_', $new_page_name);
             if ($new_page_name !== $current_page_name) {
-                if (check_name_availability(array('name' => $new_page_name, 'ignore_item_id' => $page_id, 'ignore_item_type' => 'page'))) {
+                // A 301/302 short link of the page's own does not hold
+                // its name: the rename deletes it below.
+                if (check_name_availability(array('name' => $new_page_name, 'ignore_item_id' => $page_id, 'ignore_item_type' => 'page', 'ignore_redirects_to_page' => $page_id))) {
                     $count_change++;
                     $count_page_name_changes++;
                     if ($audit_before === null) {
                         $audit_before = pg_audit_fetch('page', $page_id);
                     }
                     db("UPDATE page SET page_name = '" . escape($new_page_name) . "' WHERE page_id = '" . e($page_id) . "'");
+
+                    // A redirect of the page's own that holds the new name
+                    // would loop, so it goes; no redirect from the old name
+                    // is added here.
+                    pg_short_link_page_renamed($page_id, $current_page_name, $new_page_name, false, $user['id'], $row['page_folder']);
                 } else {
                     $page_name_conflicts[] = h($new_page_name);
                 }

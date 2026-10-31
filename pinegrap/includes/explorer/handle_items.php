@@ -287,8 +287,9 @@ function pg_explorer_handle_rename($type, $request, $user)
 
                 // Pages and files share the web root namespace, so a
                 // page may not take a name that any page or file
-                // already answers to.
-                if (check_name_availability(array('name' => $name, 'ignore_item_id' => $item_id, 'ignore_item_type' => 'page')) == false) {
+                // already answers to. A 301/302 short link of the page's
+                // own does not hold its name: the rename deletes it below.
+                if (check_name_availability(array('name' => $name, 'ignore_item_id' => $item_id, 'ignore_item_type' => 'page', 'ignore_redirects_to_page' => $item_id)) == false) {
                     respond(array('status' => 'error', 'message' => lang('That name is already in use. Please choose a different name.')));
                 }
 
@@ -297,9 +298,15 @@ function pg_explorer_handle_rename($type, $request, $user)
                     "UPDATE page SET
                         page_name = '" . e($name) . "',
                         page_timestamp = UNIX_TIMESTAMP(),
-                        page_user = '" . e($user['id']) . "'
+                        page_user = '" . e($user['id']) . "',
+                        seo_analysis_current = '0'
                     WHERE page_id = '" . e($item_id) . "'");
                 pg_audit_record('update', 'page', $item_id, $audit_before);
+
+                // The router reads short links before pages, so a redirect
+                // of the page's own that holds the new name would loop: it
+                // goes. No redirect from the old name is added here.
+                pg_short_link_page_renamed($item_id, $page['page_name'], $name, false, $user['id'], $page['page_folder']);
 
                 log_activity(lang(array('string' => 'page ({var:1}) was modified', 'vars' => array($name))), $_SESSION['sessionusername']);
             }
@@ -472,7 +479,8 @@ function pg_explorer_handle_move($type, $request, $user)
                         "UPDATE page SET
                             page_folder = '" . e($target_id) . "',
                             page_timestamp = UNIX_TIMESTAMP(),
-                            page_user = '" . e($user['id']) . "'
+                            page_user = '" . e($user['id']) . "',
+                            seo_analysis_current = '0'
                         WHERE page_id = '" . e($item_id) . "'");
                     pg_audit_record('update', 'page', $item_id, $audit_before);
 

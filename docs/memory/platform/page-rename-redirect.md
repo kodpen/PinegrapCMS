@@ -17,9 +17,9 @@ description: A renamed page's old address as a 301 short link to the page (2026.
 
 ## Why may a page take back a name its own redirect holds?
 - The router reads short links before pages: a link `old` -> page left in place once the page is named `old` again would send every visitor round in a loop. So a 301/302 link to the same page does not hold its name (`pg_short_link_not_redirect_to_page_sql()`, used by `check_name_availability()`'s `ignore_redirects_to_page` and `pg_designer_page_name_taken_elsewhere($name, $page_id)`), and the rename deletes it (the new name as it came and in the stored form).
-- The File Manager's rename, mass edit and the API's page write do not pass the option: there a name held by such a link is refused as before.
+- The File Manager's rename (inline and Bulk Rename) and Mass Edit (Page Name grid, Find & Replace) pass it too and call `pg_short_link_page_renamed(..., false, ...)`: the page's own link goes, no 301 from the old name is added (no opt-out box there; Bulk Rename would add many links; an Undo would leave a reverse 301). Before, they refused the name as in use. The API's page write does not pass the option: there such a name is refused.
 
 ## What does it not cover?
 - Addresses below the page (`/old-catalog/<product>`, `/old-blog/<record>`): only the page's own address is kept. A `old/*` pattern to `new/$1` can be added by hand; a URL destination keeps no language prefix.
 
-Tests: `tests/short_link_redirects_test.php` (`renamed_page_*`), `tests/short_link_requests_test.php` (the screens' wiring). PR: #1403.
+Tests: `tests/short_link_redirects_test.php` (`renamed_page_*`), `tests/short_link_requests_test.php` (the screens' wiring). PRs: #1403, #4099 (File Manager and Mass Edit).

@@ -60,6 +60,45 @@ function pg_explorer_file_usage_screen_open($screen, $role, $allowed)
     return false;
 }
 
+// Products and product groups keep every photo but the cover by file name
+// in their gallery tables (Edit Product, Edit Product Group). Each source
+// names the table, the column holding the owner's id, the owner's table and
+// the screen that edits it.
+function pg_explorer_file_usage_gallery_sources()
+{
+    return array(
+        array(
+            'xref' => 'products_images_xref',
+            'owner_column' => 'product',
+            'owner_table' => 'products',
+            'url' => 'edit_product.php?id=',
+            'label' => lang('Product Gallery Photos')),
+        array(
+            'xref' => 'product_groups_images_xref',
+            'owner_column' => 'product_group',
+            'owner_table' => 'product_groups',
+            'url' => 'edit_product_group.php?id=',
+            'label' => lang('Product Group Gallery Photos')));
+}
+
+// A column that holds one file name is matched whole: a LIKE would also
+// list photo.jpg.bak for photo.jpg. The caller passes the name escaped
+// (e()).
+function pg_explorer_file_usage_exact_where($table, $column, $escaped_name)
+{
+    return $table . '.' . $column . " = '" . $escaped_name . "'";
+}
+
+// One gallery hit: the owner's name, linked only when its screen admits
+// the viewer.
+function pg_explorer_file_usage_gallery_item($row, $source, $can_open)
+{
+    return array(
+        'name' => (string) $row['name'],
+        'note' => '',
+        'url' => $can_open ? ($source['url'] . (int) $row['id']) : '');
+}
+
 // "Can I delete this?" is the question the file manager could not
 // answer, and the way it was answered instead was by deleting it and
 // waiting to see what broke.
@@ -284,6 +323,41 @@ function pg_explorer_handle_file_usage($type, $request, $user, $folders_that_use
             function ($row) use ($usage_open, $usage_commerce) {
                 return array('name' => (string) $row['name'], 'note' => '', 'url' => $usage_open('commerce', $usage_commerce) ? ('edit_product_group.php?id=' . (int) $row['id']) : '');
             });
+
+        // Gallery photos: every photo but the cover, kept by file name, so
+        // renaming or converting one drops it from the gallery.
+        foreach (pg_explorer_file_usage_gallery_sources() as $usage_gallery) {
+
+            if (count($usage_columns($usage_gallery['xref'], array('file_name', $usage_gallery['owner_column']))) < 2) {
+                continue;
+            }
+
+            $usage_gallery_rows = db_items(
+                "SELECT DISTINCT " . $usage_gallery['owner_table'] . ".id, " . $usage_gallery['owner_table'] . ".name
+                FROM " . $usage_gallery['xref'] . "
+                INNER JOIN " . $usage_gallery['owner_table'] . " ON " . $usage_gallery['owner_table'] . ".id = " . $usage_gallery['xref'] . "." . $usage_gallery['owner_column'] . "
+                WHERE " . pg_explorer_file_usage_exact_where($usage_gallery['xref'], 'file_name', e($usage_name)) . "
+                ORDER BY " . $usage_gallery['owner_table'] . ".name
+                LIMIT " . ($usage_cap + 1));
+
+            if (!$usage_gallery_rows) {
+                continue;
+            }
+
+            if (count($usage_gallery_rows) > $usage_cap) {
+                $usage_truncated = true;
+                $usage_gallery_rows = array_slice($usage_gallery_rows, 0, $usage_cap);
+            }
+
+            $usage_gallery_items = array();
+
+            foreach ($usage_gallery_rows as $usage_gallery_row) {
+                $usage_gallery_items[] = pg_explorer_file_usage_gallery_item($usage_gallery_row, $usage_gallery, $usage_open('commerce', $usage_commerce));
+            }
+
+            $usage_total += count($usage_gallery_items);
+            $usage_groups[] = array('label' => $usage_gallery['label'], 'items' => $usage_gallery_items);
+        }
     }
 
     if (defined('ADS') && ADS === true) {

@@ -20,3 +20,7 @@ description: Selects that drop the stored choice add it back selected and marked
 - Edit Calendar Event passes the stored `next_page_id` (read from `calendar_events` on every draw, never from the post) to `pg_calendar_event_form_cards(..., $keep_next_page_id)`, which hands it to `get_page_options()`; before, a stored next page in an archived folder, or one a role-3 editor cannot edit, refused the save with "Next Page is required." while reservations were on.
 - `select_offer()` (Edit Page Grant Offer, Affiliate Group Offer) marks an offer whose status is not 'enabled' " [DISABLED]": key codes and grants for it never apply.
 - Tests: `tests/page_pickers_keep_test.php`.
+
+## How do the Settings picture pickers mark a file that is gone?
+- Site Icon, Default Share Image, Organization Logo and Application Icon (`includes/settings/prep.php`) append a stored name their list lacks through `pg_stored_file_option()` (includes/fn/forms.php). It is marked "(file not found)" only when the value is not an http(s) address and no `files` row has that name (`pg_stored_file_exists()`): the lists offer only some types (raster, attachment 0; PNG/SVG for the icon), so an existing SVG logo is not in the list and still not gone. Symptom fixed: a renamed or converted file left the card looking fine while the icon, share image or logo pointed at nothing (PR #4098). The value is never rewritten.
+- Tests: `tests/file_usage_gallery_and_settings_marks_test.php`.
