@@ -13,7 +13,7 @@ description: add_country.php and edit_country.php draw the country options card 
 - Why: checkout's zone lookup and the product destination check take the country id from the first `countries` row with the code. Create/Edit Currency already refused a taken code.
 - The screen draws the form again with the posted values and `pg_country_form_card($values, $errors)` marks the code field (`is-invalid`, `aria-describedby="code-error"`, message under it); nothing is written. Tests: `tests/commerce_code_taken_test.php`.
 
-- Only the edit screen deletes: for each state of the country its `zones_states_xref`, `tax_zones_states_xref` and `verified_shipping_addresses` rows, then the `states`, `zones_countries_xref`, `tax_zones_countries_xref` and `countries` rows.
+- Only the edit screen deletes: for each state of the country its `zones_states_xref`, `tax_zones_states_xref` and `verified_shipping_addresses` rows, then the `states`, `zones_countries_xref`, `tax_zones_countries_xref` and `countries` rows. Every one of these DELETEs, and the save's reset of `default_selected` on the other countries, carries `or output_error('Query failed.')`: a failure stops before the log line and redirect instead of leaving half a country or two default countries (`tests/checked_writes_country_shipping_currency_test.php`, which also pins Edit Shipping Method's DELETEs).
 
 ## What changed with the move?
 - `edit_country.php` runs every query through `db_q()` with the integer id from the not-found guard (before: `escape()` concatenation of `$_POST['id']`); the guard loads the row it checks, so the screen reads the country once.

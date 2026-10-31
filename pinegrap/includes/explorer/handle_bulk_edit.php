@@ -138,9 +138,19 @@ function pg_explorer_handle_pages_bulk_edit($type, $request, $user)
     // carries its own layout tree, and the style it points at owns the
     // assets that tree was built against, so pointing it at another style
     // breaks it rather than restyling it.
+    // A page whose write failed is named, not counted: it was not changed.
+    $written = 0;
+
     foreach ($pages as $page) {
         $decision = pg_page_bulk_decide($page, $decide_set, $user['role']);
-        pg_page_bulk_apply($page, $decision, USER_ID);
+
+        if (!pg_page_bulk_apply($page, $decision, USER_ID)) {
+            $errors[] = lang(array('string' => 'The page {var:1} could not be saved.', 'vars' => $page['page_name']));
+            unset($audit_before[(int) $page['page_id']]);
+            continue;
+        }
+
+        $written++;
 
         if ($decision['style_skipped']) {
             $style_skipped++;
@@ -149,13 +159,13 @@ function pg_explorer_handle_pages_bulk_edit($type, $request, $user)
 
     pg_audit_record_many('update', 'page', $audit_before);
 
-    if (count($allowed) > 0) {
-        log_activity(((count($allowed) == 1) ? lang(array('string' => '{var:1} page was updated', 'vars' => 1)) : lang(array('string' => '{var:1} pages were updated', 'vars' => count($allowed)))), $_SESSION['sessionusername']);
+    if ($written > 0) {
+        log_activity((($written == 1) ? lang(array('string' => '{var:1} page was updated', 'vars' => 1)) : lang(array('string' => '{var:1} pages were updated', 'vars' => $written))), $_SESSION['sessionusername']);
     }
 
     // The skip note below is appended as its own sentence, so the
     // count has to end like one.
-    $bulk_pages_message = pg_explorer_sentence_end(((count($allowed) == 1) ? lang(array('string' => '{var:1} page was updated', 'vars' => 1)) : lang(array('string' => '{var:1} pages were updated', 'vars' => count($allowed)))));
+    $bulk_pages_message = pg_explorer_sentence_end((($written == 1) ? lang(array('string' => '{var:1} page was updated', 'vars' => 1)) : lang(array('string' => '{var:1} pages were updated', 'vars' => $written))));
 
     // Said rather than left to be noticed: an operator who picked a
     // style and saw nothing change on half the list would go looking
@@ -167,9 +177,9 @@ function pg_explorer_handle_pages_bulk_edit($type, $request, $user)
     }
 
     respond(array(
-        'status' => pg_explorer_bulk_pages_status(count($allowed), $errors, $style_skipped),
+        'status' => pg_explorer_bulk_pages_status($written, $errors, $style_skipped),
         'request' => $type,
-        'updated' => count($allowed),
+        'updated' => $written,
         'style_skipped' => $style_skipped,
         'errors' => $errors,
         'message' => (count($errors) > 0) ? implode(' ', $errors) : $bulk_pages_message));

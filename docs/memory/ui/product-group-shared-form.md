@@ -17,6 +17,7 @@ description: The product group create and edit screens share includes/forms/prod
 - `…_images($picked)`: `array(cover, rest)`; the cover goes to `image_name`, the rest to `product_groups_images_xref`.
 - `…_search_results_pages($id, $parent_id = null)`: `current` / `parent` pages whose tree holds the group, for the tag cloud clear and rebuild.
 - `…_link_products($id, $post, $kept)`: the `products_groups_xref` inserts, one per id from `…_link_ids($posted)` (positive ids, each once: the table has no unique key, so a doubled tick linked twice); edit passes the links of binned products it kept.
+- `…_member_rows($listed, $stored)` (`delete` / `keep`): Edit posts `listed_product_ids`, the members it listed when opened. The save deletes only the rows of those listed members (ticked or not, binned excepted), so a ticked one is inserted again with its edited sort order; every other row (a product linked meanwhile by Create/Edit Product, Catalog Manager or the API, or a binned one) stays and is passed as kept, so it is neither dropped nor doubled. Before, the save deleted every row of the group and silently unlinked products added while the screen was open. A post without the field deletes every row as before.
 
 ## What stays in the screens?
 - Create: the parent picker (required once a group exists), the image code template prefill and its save to `config`, the INSERT.

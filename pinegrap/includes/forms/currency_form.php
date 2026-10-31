@@ -132,5 +132,5 @@ function pg_currency_form_clear_other_bases($id)
         WHERE
             (base = '1')
             AND (id != ?)",
-        array((string) $id));
+        array((string) $id)) or output_error('Query failed.');
 }

@@ -11,7 +11,7 @@ description: The currency create and edit screens share includes/forms/currency_
 ## What does a save share?
 - `pg_currency_form_code_in_use($code, $id)` (`null` on create, the posted id on edit) through `db_q()`; the screen marks the error and redirects.
 - `…_exchange_rate($posted, $base)`: the masked rate normalised (`pg_normalize_amount()`) and written with five decimals, never in exponent form; `1` for the base currency.
-- `…_clear_other_bases($id)` takes the base flag from every other currency when the saved one is the base (now a `db_q()` placeholder on both screens).
+- `…_clear_other_bases($id)` takes the base flag from every other currency when the saved one is the base (a `db_q()` placeholder with `or output_error('Query failed.')`, as `db()` stopped before; unchecked it left two base currencies behind a 'saved' notice).
 
 ## What stays in the screens?
 - Create: the required checks, the INSERT, the log line and notice.

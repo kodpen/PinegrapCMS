@@ -110,7 +110,7 @@ if (!$_POST) {
     db_q(
         "INSERT INTO email_campaign_profiles (" . implode(', ', array_keys($columns)) . ", created_timestamp, last_modified_timestamp)
         VALUES (" . implode(', ', array_fill(0, count($columns), '?')) . ", UNIX_TIMESTAMP(), UNIX_TIMESTAMP())",
-        array_values($columns));
+        array_values($columns)) or output_error('Query failed.');
     
     log_activity(lang(array('string'=>'campaign profile ({var:1}) was created','vars'=>$liveform->get_field_value('name'))), $_SESSION['sessionusername']);
     

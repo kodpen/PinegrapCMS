@@ -94,7 +94,7 @@ if (!$_POST) {
         db_q("DELETE FROM shipping_methods WHERE id = ?", array($id)) or output_error('Query failed.');
         db_q("DELETE FROM offer_actions_shipping_methods_xref WHERE shipping_method_id = ?", array($id)) or output_error('Query failed.');
         db_q("DELETE FROM shipping_cutoffs WHERE shipping_method_id = ?", array($id)) or output_error('Query failed.');
-        db_q("DELETE FROM ship_date_adjustments WHERE shipping_method_id = ?", array($id));
+        db_q("DELETE FROM ship_date_adjustments WHERE shipping_method_id = ?", array($id)) or output_error('Query failed.');
 
         log_activity(lang(array('string'=>'shipping method ({var:1}) was deleted','vars'=>$_POST['name'])), $_SESSION['sessionusername']);
         

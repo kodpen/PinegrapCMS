@@ -191,6 +191,28 @@ body{margin:0}
 .pge-zoom{display:flex;align-items:center;gap:2px;flex:none}
 .pge-zbtn{min-width:58px;height:28px;border:0;border-radius:8px;background:transparent;cursor:pointer;font-size:12.5px;font-variant-numeric:tabular-nums;color:var(--tx)}
 .pge-zbtn:hover{background:var(--hover)}
+.pge-phone .pge-top{height:52px;padding:0 6px;gap:2px}
+.pge-phone .pge-top .pge-sepv{display:none}
+.pge-phone .pge-file{flex:1;min-width:0;margin:0 4px}
+.pge-phone .pge-fname{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13.5px}
+.pge-phone .pge-top .pge-btn.ghost,.pge-phone .pge-top .pge-fmt,.pge-phone .pge-fmeta{display:none}
+.pge-phone .pge-modal{width:auto;max-width:none;margin:0 12px;padding:18px;gap:14px;max-height:calc(100% - 24px);overflow-y:auto}
+.pge-phone .pge-presets{grid-template-columns:1fr 1fr}
+.pge-phone .pge-preset{padding:10px;gap:8px}
+.pge-phone .pge-top .pge-grow{display:none}
+.pge-phone .pge-body{flex-direction:column}
+.pge-phone .pge-stage{order:1;padding:14px}
+.pge-phone .pge-panel{order:2;width:auto;max-height:42%;border-left:0;border-top:1px solid var(--line);border-radius:18px 18px 0 0;box-shadow:0 -10px 28px rgba(0,0,0,.18);margin-top:-12px;position:relative;z-index:3}
+.pge-phone .pge-panel::before{content:"";display:block;flex:none;width:38px;height:4px;border-radius:2px;background:var(--line);margin:8px auto 0}
+.pge-phone .pge-ph{min-height:40px;padding:6px 16px 4px}
+.pge-phone .pge-rail{order:3;width:auto;height:66px;flex:none;flex-direction:row;align-items:stretch;gap:2px;padding:6px 6px calc(6px + env(safe-area-inset-bottom));border-right:0;border-top:1px solid var(--line);overflow-x:auto;overflow-y:hidden}
+.pge-phone .pge-rail .pge-grow{display:none}
+.pge-phone .pge-tool{flex:none;min-width:62px;padding:6px 2px 5px}
+.pge-phone .pge-status{display:none}
+.pge-phone .pge-mini{top:auto;bottom:12px;max-width:calc(100% - 16px);overflow-x:auto}
+.pge-phone .pge-h{width:18px;height:18px;margin:-9px 0 0 -9px}
+.pge-phone .pge-h::after{content:"";position:absolute;inset:-13px}
+.pge-phone .pge-drawer{top:52px;left:0;width:auto;bottom:0}
 .pge-drawer{position:absolute;top:56px;right:0;bottom:36px;width:340px;display:flex;flex-direction:column;background:var(--surface);border-left:1px solid var(--line);box-shadow:-16px 0 40px rgba(0,0,0,.16);z-index:8}
 .pge-dnote{margin:0 16px 8px}
 .pge-vers{list-style:none;margin:0;padding:0 8px 16px;overflow-y:auto;display:flex;flex-direction:column}
@@ -983,6 +1005,8 @@ class Component extends DCLogic {
   // ---- basic accessors ----
   t() { return DICT[this.props && this.props.lang === 'en' ? 'en' : 'tr']; }
   isMini() { return this.state.profile === 'annotate'; }
+  // Phone layout: tools in a bottom bar, the tool's panel as a sheet above it.
+  isPhone() { return this.rootW() < 600; }
   isCanvas() { return this.state.profile === 'canvas'; }
   isModal() { return !!(this.props && this.props.modal); }
   isModalWin() { return this.isModal() && !(this.state && this.state.fs); }
@@ -1034,9 +1058,10 @@ class Component extends DCLogic {
     let w = st.sw, h = st.sh;
     if (!w || !h) {
       const W = this.rootW(), H = this.rootH();
-      w = mini ? W : W - 76 - 304;
-      h = mini ? H - 56 : H - 56 - 36;
+      w = this.isPhone() ? W : mini ? W : W - 76 - 304;
+      h = this.isPhone() ? H - 52 - (mini ? 0 : 66) : mini ? H - 56 : H - 56 - 36;
     }
+    if (this.isPhone()) return mini ? { w: Math.max(60, w - 24), h: Math.max(60, h - 96) } : { w: Math.max(60, w - 28), h: Math.max(60, h - 28) };
     return mini ? { w: Math.max(60, w - 96), h: Math.max(60, h - 116) } : { w: Math.max(60, w - 64), h: Math.max(60, h - 64) };
   }
   flipRot() {
@@ -2519,7 +2544,7 @@ class Component extends DCLogic {
     const vCount = st.versions.length;
     return {
       t: T, ic: IC, ids: ids, fx: fx,
-      rootCls: 'pge' + (theme === 'dark' ? ' pge-dark' : '') + (mini ? ' pge-ismini' : ''),
+      rootCls: 'pge' + (theme === 'dark' ? ' pge-dark' : '') + (mini ? ' pge-ismini' : '') + (this.isPhone() ? ' pge-phone' : ''),
       rootStyle: (this.isModal() ? (st.fs ? 'position: absolute; left: 0; top: 0; ' : 'position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); border-radius: 14px; box-shadow: 0 28px 90px rgba(0, 0, 0, 0.55); ') : '') + 'width: ' + this.rootW() + 'px; height: ' + this.rootH() + 'px',
       onKey: this.onKey, onRootClick: this.onRootClick, setRoot: this.setRoot,
       isFull: !mini, isMini: mini, isCanvas: canvas,
@@ -2550,7 +2575,7 @@ class Component extends DCLogic {
       frameOv: frameOv, cropUI: cropUI, selBox: selBox, nodeOv: nodeOv, handles: handles,
       showMini: mini, mini: miniObj,
       toast: { show: !!st.toast, msg: st.toast || '' },
-      showPanel: !mini, panelTitle: panelTitle, pReset: pReset, pn: pn,
+      showPanel: !mini && !(this.isPhone() && tool === 'select' && !sel && st.panel !== 'layers'), panelTitle: panelTitle, pReset: pReset, pn: pn,
       layerRows: layerRows, baseName: canvas ? T.bgLayer : T.base,
       cropRatios: cropRatios, cropBtns: cropBtns, cropAngle: (st.straighten > 0 ? '+' : '') + st.straighten + '°', cropStraighten: st.straighten,
       onStraighten: (e) => this.setState({ straighten: Number(e.target.value) }), resetStraighten: () => this.setState({ straighten: 0 }),

@@ -496,12 +496,45 @@ function pg_product_group_form_link_ids($posted)
 }
 
 /**
+ * Splits the group's stored member rows into those the save rewrites and
+ * those it leaves alone.
+ *
+ * Edit posts the ids of the members it listed when it was opened. Only their
+ * rows are deleted (ticked ones are inserted again with their sort orders);
+ * a product linked to the group after the screen was opened (Create or Edit
+ * Product, Catalog Manager, API) is not on the form and keeps its row. A
+ * form posted without the list rewrites every row, as before.
+ *
+ * @param mixed $listed      Comma-separated ids from listed_product_ids,
+ *                           null when the field was not posted
+ * @param array $stored_ids  Products linked to the group now
+ * @return array             'delete' => int[], 'keep' => int[]
+ */
+function pg_product_group_form_member_rows($listed, $stored_ids)
+{
+    $stored = pg_product_group_form_link_ids(array_map('strval', array_filter((array) $stored_ids, 'is_scalar')));
+
+    if ($listed === null) {
+        return array('delete' => $stored, 'keep' => array());
+    }
+
+    $listed_ids = is_string($listed) ? pg_product_group_form_link_ids(explode(',', $listed)) : array();
+
+    $rows = array('delete' => array(), 'keep' => array());
+    foreach ($stored as $id) {
+        $rows[in_array($id, $listed_ids, true) ? 'delete' : 'keep'][] = $id;
+    }
+    return $rows;
+}
+
+/**
  * Links the ticked products to the group with their sort orders.
  *
  * @param mixed $product_group_id
  * @param array $post
  * @param array $kept_product_ids  Products whose link was left in place
- *                                 (edit: products in the Recycle Bin)
+ *                                 (edit: products in the Recycle Bin and
+ *                                 products the form did not list)
  */
 function pg_product_group_form_link_products($product_group_id, $post, $kept_product_ids = array())
 {
