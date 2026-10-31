@@ -298,6 +298,17 @@ var pgLazyOptions = {
     }
 };
 
+// The button the panel's Ctrl+S presses in a form: the one named by the
+// form's submitshortcut attribute, default submit_save. Empty when the form
+// has none; the shortcut then submits nothing and no button gets its hint.
+function pgSaveShortcutButton($form) {
+    var name = $form.attr('submitshortcut') || 'submit_save';
+
+    return $form.find('button').filter(function () {
+        return this.name === name;
+    }).first();
+}
+
 // Swaps the loading.gif of pictures that have not loaded yet for the still
 // square when reduced motion is asked for.
 function pgLazyStill($images) {
@@ -483,7 +494,12 @@ $(document).ready(function () {
                 }
                 return true;
             } else {
-                //user selected NO
+                // Refused: the bulk action written above is taken back, or a
+                // later Ctrl+S or Return would still post it with the
+                // selected rows.
+                if (result == true) {
+                    document.form.action.value = '';
+                }
                 return false;
             }
         }
@@ -676,41 +692,32 @@ $(document).ready(function () {
                         break;
                     }
 
-                    // A "disable_shortcut" class has been added to forms that purely delete
-                    // items, because the shortcut is too dangerous in that case.
-                    // We could still allow it for those types of forms, but just show
-                    // the warning before the form is submitted, however we have not
-                    // spent the time to do that, so we will just disable them for now.
-
-                    // Find the form closest to the current focused element.
+                    // Forms that only act (delete, bulk actions, pause or
+                    // cancel) carry "disable_shortcut" and are never taken.
+                    // The shortcut only presses a form's save button (its
+                    // submitshortcut attribute, default submit_save), so the
+                    // button's own click handlers and confirmation run; a form
+                    // without one is never submitted, because a bare submit
+                    // skipped them and posted a refused or unconfirmed action.
                     var form = $(document.activeElement).closest('form:not(.disable_shortcut)');
                     if (!form.length) {
-                        // No focused form: fall back to the first safe form the
-                        // operator can see. A form inside a closed dialog (the
-                        // settings modal on every screen) has no handlers wired
-                        // yet, and submitting it natively would navigate away.
-                        form = $('form:not(.disable_shortcut)').filter(':visible').first();
+                        // No focused form: the first visible safe form that has
+                        // a save button. A form inside a closed dialog (the
+                        // settings modal on every screen) is not visible.
+                        form = $('form:not(.disable_shortcut)').filter(':visible').filter(function () {
+                            return pgSaveShortcutButton($(this)).length > 0;
+                        }).first();
                     }
 
                     if (form.length) {
                         event.preventDefault();
 
-                        // Read the preferred submit button name from the form attribute
-                        var shortcutName = form.attr('submitshortcut') || 'submit_save';
-
-                        // Try to find the matching button by name
-                        var button = form.find('button[name="' + shortcutName + '"]');
+                        var button = pgSaveShortcutButton(form);
 
                         if (button.length) {
-                            // Simulate a click on the button to ensure correct POST data
                             button[0].click();
-                        } else {
-                            // If no button found, fallback to submitting the form directly
-                            form.submit();
                         }
                     }
-
-
 
                     break;
 
@@ -720,23 +727,10 @@ $(document).ready(function () {
 
 
 
-    // Add Ctrl+S keyboard shortcut info to the correct submit button of every form.
-    // A "disable_shortcut" class has been added to forms that purely delete
-    // items, because the shortcut is too dangerous in that case.
-
+    // The Ctrl+S hint goes only on the button the shortcut presses; a form
+    // without its save button gets no hint on any other button.
     $('form:not(.disable_shortcut)').each(function () {
-        var form = $(this);
-
-        // The target button name comes from the form's submitshortcut attribute, default 'submit_save'.
-        var shortcutName = form.attr('submitshortcut') || 'submit_save';
-
-        // Look for the button with that name first.
-        var button = form.find('button[name="' + shortcutName + '"]');
-
-        // Fall back to the first submit button when there is none.
-        if (!button.length) {
-            button = form.find('[type=submit]:first');
-        }
+        var button = pgSaveShortcutButton($(this));
 
         if (button.length) {
             var title = button.prop('title');
