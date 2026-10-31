@@ -29,4 +29,4 @@ description: A customer visit on the Work Calendar names its contact (ws_events.
 - List and my-day look up a page's contacts in one query (`ws_api_plan_item_contacts()`), handed to `ws_api_plan_item_present()`; a single item looks up its own.
 - Not checked live: no running site or database; the step, form, card and API never ran against a database or in a browser.
 
-Related: docs/memory/plans/workspace-crm-seams.md, docs/memory/workspace/workspace-customer-card.md, docs/memory/workspace/workspace-customer-history.md, docs/memory/core/contact-holders.md
+Related: docs/memory/workflow/decisions-made-product-11.md, docs/memory/workspace/workspace-customer-card.md, docs/memory/workspace/workspace-customer-history.md, docs/memory/core/contact-holders.md

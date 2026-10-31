@@ -29,4 +29,4 @@ description: Contacts in audit_log (#2170, #2246, #2620, #2643, #2768): which pa
 ## What does erasure do with them?
 - `pg_privacy_erase_scope()` takes contact lines by the person's contact ids and by label among their addresses. `pg_privacy_erase_audit_fields()['contact']`: names (first name → "Deleted customer"), company, job fields, both addresses, phones, faxes, address → person token, website, description, member id, affiliate name, tax number and office, image. Countries, opt-in and lead source stay. The label is cleared. Owner decision 2026-10-26 (#1706): actor, time and action stay.
 
-Related: docs/memory/core/audit-trail-writers.md, docs/memory/core/personal-data-erasure.md, docs/memory/plans/workspace-crm-seams.md
+Related: docs/memory/core/audit-trail-writers.md, docs/memory/core/personal-data-erasure.md, docs/memory/core/contact-holders.md
