@@ -219,11 +219,32 @@ function test_field_form_posted_field()
 
 function test_field_form_name_taken()
 {
-	pg_assert_same(true, pg_field_form_name_taken('klasor', array('ad', 'klasor')), 'a name another field of the form has');
+	// $names_in_use are the names the database compares equal to the posted
+	// one (form_fields.name is utf8mb4_unicode_ci: no case, no diacritics).
+	pg_assert_same(true, pg_field_form_name_taken('klasor', array('klasor')), 'a name another field of the form has');
 	pg_assert_same(true, pg_field_form_name_taken('Klasör', array('KLASÖR')), 'compared without case, multibyte too');
-	pg_assert_same(false, pg_field_form_name_taken('klasor', array('ad', 'soyad')), 'a free name');
-	pg_assert_same(false, pg_field_form_name_taken('klasor', array()), 'the first field');
+	pg_assert_same(true, pg_field_form_name_taken('klasör', array('klasor')), 'a name that differs only by a diacritic');
+	pg_assert_same(true, pg_field_form_name_taken('şehir', array('sehir')), 'ş and s are one letter to the database');
+	pg_assert_same(false, pg_field_form_name_taken('klasor', array()), 'a free name');
 	pg_assert_same(false, pg_field_form_name_taken('klasor', array('klasor'), 'Klasor'), 'an existing duplicate saved under its own name keeps working');
+	pg_assert_same(false, pg_field_form_name_taken('klasör', array('klasor'), 'klasör'), 'an existing diacritic twin saved under its own name keeps working');
 	pg_assert_same(true, pg_field_form_name_taken('klasor', array('klasor'), 'dosya'), 'renamed onto a name in use');
+	pg_assert_same(true, pg_field_form_name_taken('klasor', array('klasor'), 'klasör'), 'renamed onto a diacritic twin in use');
 	pg_assert_same(false, pg_field_form_name_taken('', array('')), 'a blank name is the blank check\'s business');
+}
+
+function test_field_form_pick_by_name()
+{
+	$rows = array(
+		array('id' => '851', 'name' => 'klasor'),
+		array('id' => '852', 'name' => 'klasör'),
+	);
+
+	pg_assert_same('852', pg_field_form_pick_by_name($rows, 'klasör')['id'], 'the exact name wins over a diacritic twin read first');
+	pg_assert_same('851', pg_field_form_pick_by_name($rows, 'klasor')['id'], 'the exact name');
+	pg_assert_same('852', pg_field_form_pick_by_name(array_reverse($rows), 'klasör')['id'], 'whatever the row order');
+	pg_assert_same('851', pg_field_form_pick_by_name($rows, 'KLASOR')['id'], 'the same name in other case before a twin');
+	pg_assert_same('852', pg_field_form_pick_by_name($rows, 'KLASÖR')['id'], 'other case, multibyte too');
+	pg_assert_same('851', pg_field_form_pick_by_name($rows, 'klasőr')['id'], 'no closer name: the first row, as the database matched it');
+	pg_assert_same(null, pg_field_form_pick_by_name(array(), 'klasor'), 'no row');
 }

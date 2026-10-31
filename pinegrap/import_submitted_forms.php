@@ -25,43 +25,17 @@ $user = validate_user();
 validate_forms_access($user);
 
 include_once('liveform.class.php');
+// pg_field_form_pick_by_name(): which field a CSV heading means.
+require_once(PG_FUNCTIONS_DIR . '/includes/forms/field_form.php');
 $liveform = new liveform('import_submitted_forms');
 
 if (!$_POST) {
-    // get custom forms for pick list
-    $custom_form_options = array();
-    $custom_form_options['-' . lang('Select') . '-'] = '';
-    
-    $query =
-        "SELECT
-           page.page_id,
-           page.page_name,
-           page.page_folder,
-           custom_form_pages.form_name
-        FROM page
-        LEFT JOIN custom_form_pages ON page.page_id = custom_form_pages.page_id
-        WHERE " . pg_form_page_sql('page') . "
-        ORDER BY custom_form_pages.form_name";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-    
-    while ($row = mysqli_fetch_assoc($result)) {
-        $page_id = $row['page_id'];
-        $page_name = $row['page_name'];
-        $folder_id = $row['page_folder'];
-        $form_name = $row['form_name'];
-        
-        // if user has access to this custom form, add custom form to pick list
-        if (check_edit_access($folder_id) == true) {
-            if ($form_name) {
-                $name = $form_name;
-            } else {
-                $name = $page_name;
-            }
-            
-            $custom_form_options[h($name)] = $page_id;
-        }
-    }
-    
+    // Every custom form the user may edit is its own option: same-named forms
+    // get their page name, binned ones are marked and go last.
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/submitted_form_list.php');
+    $custom_form_options = array('-' . lang('Select') . '-' => '')
+        + pg_submitted_form_list_options(pg_submitted_form_list_custom_forms());
+
     print
     pg_page_shell(
         array(
@@ -189,13 +163,21 @@ if (!$_POST) {
                 FROM form_fields
                 WHERE
                     (page_id = ?)
-                    AND (name = ?)";
+                    AND (name = ?)
+                ORDER BY id";
             $result = db_q($query, array((string) $custom_form_page_id, (string) $field_name)) or output_error('Query failed.');
-            
+
+            // The name matches by the column's collation (no case, no
+            // diacritics): a 'klasör' heading must fill the 'klasör' field,
+            // not a 'klasor' field read first.
+            $matches = array();
+            while ($match = mysqli_fetch_assoc($result)) {
+                $matches[] = $match;
+            }
+            $row = pg_field_form_pick_by_name($matches, $field_name);
+
             // if a field was found, then add to fields array
-            if (mysqli_num_rows($result) > 0) {
-                $row = mysqli_fetch_assoc($result);
-                
+            if ($row) {
                 $field_id = $row['id'];
                 
                 $fields[] =

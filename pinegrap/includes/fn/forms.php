@@ -429,49 +429,27 @@ function select_page($page_id = '', $page_type = '')
     }
     return $output;
 }
-// outputs the form's <select> page list for selecting a custom form
+// outputs the form's <select> page list for selecting a custom form: the
+// labels of the Forms screen (a repeated form name gets its page name,
+// binned forms are marked and go last)
 function select_custom_form($page_id = '', $user = '')
 {
-    // only ever appended to below, so it has to start out empty
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/submitted_form_list.php');
+
+    // if access does not need to be validated
+    // or custom form is the current selected custom form
+    // or user has access to this custom form,
+    // output custom form option
+    $forms = pg_submitted_form_list_custom_forms(function ($row) use ($page_id, $user) {
+        return !$user
+            || ((string) $row['page_id'] === (string) $page_id)
+            || (check_edit_access($row['folder_id']) == true);
+    });
+
     $output = '';
-
-    // get pages
-    $query = "SELECT
-
-                page.page_id,
-
-                page.page_name,
-
-                page.page_folder,
-
-                custom_form_pages.form_name
-
-             FROM page
-
-             LEFT JOIN custom_form_pages ON page.page_id = custom_form_pages.page_id
-
-             WHERE " . pg_form_page_sql('page') . "
-
-             ORDER BY custom_form_pages.form_name";
-    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
-    while ($row = mysqli_fetch_assoc($result)) {
-        if ($row['page_id'] == $page_id) {
-            $selected = ' selected="selected"';
-        } else {
-            $selected = '';
-        }
-        // if access does not need to be validated
-        // or custom form is the current selected custom form
-        // or user has access to this custom form,
-        // prepare to output custom form option
-        if (!$user || $selected || (check_edit_access($row['page_folder']) == true)) {
-            if ($row['form_name']) {
-                $name = $row['form_name'];
-            } else {
-                $name = $row['page_name'];
-            }
-            $output .= '<option value="' . $row['page_id'] . '"' . $selected . '>' . h($name) . '</option>';
-        }
+    foreach ($forms as $form) {
+        $selected = ((string) $form['id'] === (string) $page_id) ? ' selected="selected"' : '';
+        $output .= '<option value="' . (int) $form['id'] . '"' . $selected . '>' . h($form['name']) . '</option>';
     }
     return $output;
 }

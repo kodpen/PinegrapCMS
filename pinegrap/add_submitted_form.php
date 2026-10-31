@@ -135,13 +135,7 @@ if (!$_POST) {
         // has its own option (the labels are the option keys).
         require_once(PG_FUNCTIONS_DIR . '/includes/fn/submitted_form_list.php');
 
-        foreach (pg_submitted_form_list_custom_forms() as $custom_form) {
-            $name = $custom_form['name'];
-            if (isset($custom_form_options[h($name)])) {
-                $name .= ' (#' . (int) $custom_form['id'] . ')';
-            }
-            $custom_form_options[h($name)] = $custom_form['id'];
-        }
+        $custom_form_options += pg_submitted_form_list_options(pg_submitted_form_list_custom_forms());
 
         print
         pg_page_shell(
