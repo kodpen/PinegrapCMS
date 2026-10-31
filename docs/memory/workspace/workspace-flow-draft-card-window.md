@@ -10,7 +10,7 @@ description: The flow draft card as a mini flow window (D8b #3032, V7a #3393, V7
 - A picked box shows below: name, kind, marks; once opened "Open on the canvas" (`?flow=&box=`) and, for `can_try`, "Try this box" (`ws_flow_box_try`). CSS `.ws-fd-*` in backend.src.css.
 
 ## How is it drawn? (V7a)
-- Boxes 128 × 60: the kind's icon (`flowIconPaths()`) and name, the kind (or New / Changed), the dry run as third line (red when it would not run).
+- Boxes 128 × 60: the kind's icon (`flowIconPaths()`) and the name as the canvas gives it (`ws_flow_box_names()`: an untitled box by its kind), the kind (or New / Changed) only when the name is not the kind's, the dry run under them (red when it would not run).
 - Arrows `.ws-fd-arrow` 2 px from the right edge, a filled head as its own path. Threads `.ws-fd-thread` from `ws_flow_card_threads()` (pure, reuses `ws_flow_template_threads()`; type number or text, tones in turn), quadratic, sag `10 + 0.05 × span`, 3 px apart per dot; `{{trigger.*}}` draws none.
 
 ## Whose dry run is the third line?

@@ -2359,10 +2359,13 @@
         search.autocomplete = 'off';
         search.spellcheck = false;
 
+        // The pick goes in before the picker closes: closing gives the focus
+        // back to the writing box, which put the caret at its start, and
+        // the emoji went in there.
         function pick(emoji) {
             rememberEmoji(emoji);
-            closeCtx();
             onPick(emoji);
+            closeCtx();
         }
 
         function draw(list) {
@@ -11096,7 +11099,10 @@
 
                 clear(detail);
                 detail.appendChild(el('b', '', node.name));
-                detail.appendChild(document.createTextNode(' · ' + node.label));
+
+                if (node.name !== node.label) {
+                    detail.appendChild(document.createTextNode(' · ' + node.label));
+                }
 
                 if (node.outbound) {
                     detail.appendChild(document.createTextNode(' · ' + t('fd_outbound')));
@@ -11180,20 +11186,23 @@
             }
 
             graph.nodes.forEach(function (node) {
+                // An untitled box is named by its kind: the kind is not said
+                // twice.
+                var named = (node.name !== node.label) ? node.name + ', ' + node.label : node.name;
                 var group = make('g', {
                     'class': 'ws-fd-box' + (node.outbound ? ' is-outbound' : '') + (node.mark ? ' is-' + node.mark : ''),
                     tabindex: 0,
                     role: 'button',
-                    'aria-label': node.name + ', ' + node.label + (node.outbound ? ', ' + t('fd_outbound') : '')
+                    'aria-label': named + (node.outbound ? ', ' + t('fd_outbound') : '')
                         + (node.mark ? ', ' + t(node.mark === 'added' ? 'fd_added' : 'fd_changed') : '')
                         + (node.said ? ', ' + node.said : '')
                 });
                 var cut = function (text, most) {
                     return text.length > most ? text.slice(0, most - 1) + '…' : text;
                 };
-                var kind = node.mark ? t(node.mark === 'added' ? 'fd_added' : 'fd_changed') : node.label;
+                var kind = node.mark ? t(node.mark === 'added' ? 'fd_added' : 'fd_changed') : ((node.name !== node.label) ? node.label : '');
 
-                group.appendChild(make('title', {}, node.name + ' · ' + node.label + (node.said ? '\n' + node.said : '')));
+                group.appendChild(make('title', {}, ((node.name !== node.label) ? node.name + ' · ' + node.label : node.name) + (node.said ? '\n' + node.said : '')));
                 group.appendChild(make('rect', { x: node.x, y: node.y, width: W, height: H, rx: 8 }));
                 // The kind's icon before its name, at the canvas's 16 px.
                 var sign = make('svg', { x: node.x + 7, y: node.y + 6, width: 16, height: 16, viewBox: '0 0 16 16', 'class': 'ws-fd-icon' });
@@ -11203,10 +11212,13 @@
                 });
                 group.appendChild(sign);
                 group.appendChild(make('text', { x: node.x + 28, y: node.y + 18, 'class': 'ws-fd-name' }, cut(node.name, node.outbound ? 13 : 16)));
-                group.appendChild(make('text', { x: node.x + 8, y: node.y + 35, 'class': 'ws-fd-kind' }, cut(kind, 22)));
+
+                if (kind) {
+                    group.appendChild(make('text', { x: node.x + 8, y: node.y + 35, 'class': 'ws-fd-kind' }, cut(kind, 22)));
+                }
 
                 if (node.said) {
-                    group.appendChild(make('text', { x: node.x + 8, y: node.y + 50, 'class': 'ws-fd-said' + (node.failed ? ' is-failed' : '') }, cut(node.said, 24)));
+                    group.appendChild(make('text', { x: node.x + 8, y: node.y + (kind ? 50 : 35), 'class': 'ws-fd-said' + (node.failed ? ' is-failed' : '') }, cut(node.said, 24)));
                 }
 
                 if (node.outbound) {

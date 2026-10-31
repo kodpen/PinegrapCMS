@@ -43,6 +43,26 @@ function test_workspace_editor_drawers_write_after_closing()
 	pg_assert_contains('h.hideOffcanvas(node, function () {', $replies, 'a saved reply goes in after the drawer closed');
 }
 
+// The emoji picker hands its pick over before it closes: closing gave the
+// focus back to the box with the caret at its start, and the emoji went in
+// there.
+function test_workspace_editor_emoji_goes_in_before_the_picker_closes()
+{
+	$screen = workspace_editor_windows_test_source('workspace.js');
+
+	pg_assert_true((bool) preg_match('/function pick\(emoji\) \{\s*rememberEmoji\(emoji\);\s*onPick\(emoji\);\s*closeCtx\(\);\s*\}/', $screen), 'onPick() comes before closeCtx()');
+}
+
+// The small drawing of a flow does not say a box's kind twice when the box
+// is named by it.
+function test_workspace_flow_window_names_a_box_once()
+{
+	$screen = workspace_editor_windows_test_source('workspace.js');
+
+	pg_assert_contains("var named = (node.name !== node.label) ? node.name + ', ' + node.label : node.name;", $screen);
+	pg_assert_contains("((node.name !== node.label) ? node.label : '')", $screen, 'the kind line only when the name is not the kind');
+}
+
 function test_workspace_editor_caret_after_a_new_card()
 {
 	$editor = workspace_editor_windows_test_source('workspace_editor.js');
