@@ -154,6 +154,19 @@ function test_explorer_context_menu_opens_from_the_keyboard()
 	pg_assert_contains('restoreFocus(menuReturnFocus)', explorer_keyboard_function('hideMenu'), 'closing the menu gives the focus back');
 }
 
+// The right-click menu is a Bootstrap 6 .menu the script shows by its
+// display, never with .show: without the screen's own rule it opened at
+// opacity 0, and a right click seemed to do nothing.
+function test_explorer_context_menu_is_drawn_without_show()
+{
+	$source = explorer_keyboard_source();
+
+	pg_assert_contains('<ul id="explorer_menu" class="menu"', $source);
+	pg_assert_contains("menuElement.style.display = 'block';", $source, 'shown by its display');
+	pg_assert_contains('#explorer_menu, #explorer_menu .pg-submenu { opacity: 1; transform: none; }', $source, 'the menu and its flyouts are drawn without .show');
+	pg_assert_contains('#explorer_menu:focus { outline: none; }', $source, 'the list focused for the arrows draws no ring');
+}
+
 function test_explorer_list_headings_sort_from_a_button_and_say_their_order()
 {
 	$source = explorer_keyboard_source();
