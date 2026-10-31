@@ -112,6 +112,12 @@ if (!$_POST) {
         pg_email_campaign_profile_action_item_row($email_campaign_profile['action'], $email_campaign_profile['action_item_id'])
     );
 
+    // An HTML profile whose stored body page row is gone gets a notice above
+    // the Page picker.
+    $page_gone = ($email_campaign_profile['format'] == 'html')
+        && ((int) $email_campaign_profile['page_id'] > 0)
+        && (db_value("SELECT page_id FROM page WHERE page_id = '" . (int) $email_campaign_profile['page_id'] . "'") === null);
+
     $delete_confirmation = pg_email_campaign_profile_delete_confirmation(
         pg_email_campaign_profile_follower_count($id, pg_email_campaign_profile_follow_map())
     );
@@ -148,6 +154,7 @@ if (!$_POST) {
                         'page_id' => (int) $email_campaign_profile['page_id'],
                         'email_campaign_profile_id' => ($email_campaign_profile['action'] == 'email_campaign_sent') ? (int) $email_campaign_profile['action_item_id'] : 0,
                         'action_item_gone' => $action_item_gone ? $email_campaign_profile['action'] : '',
+                        'page_gone' => $page_gone,
                     ), $id) . '
                     <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                         <div class="container">

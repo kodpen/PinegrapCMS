@@ -176,7 +176,8 @@ if (isset($_GET['export'])) {
         if ($email_campaign_profile['format'] == 'html') {
             $email_campaign_profile['body'] = '';
 
-            $page_name = db_value("SELECT page_name FROM page WHERE page_id = '" . $email_campaign_profile['page_id'] . "'");
+            // A binned page under its former name, a gone one as "(deleted)".
+            $page_name = pg_page_record_name($email_campaign_profile['page_id']);
 
         // Otherwise the format is "plain_text", so prepare values for that.
         } else {
@@ -231,7 +232,7 @@ if (isset($_GET['export'])) {
             email_campaign_profiles.action_item_id,
             email_campaign_profiles.subject,
             email_campaign_profiles.format,
-            page.page_name,
+            email_campaign_profiles.page_id,
             email_campaign_profiles.schedule_time,
             email_campaign_profiles.schedule_length,
             email_campaign_profiles.schedule_unit,
@@ -284,9 +285,10 @@ if (isset($_GET['export'])) {
 
             $output_page_name = '';
 
-            // If the format is "html", then prepare page name.
+            // If the format is "html", then prepare page name: a binned page
+            // under its former name, a gone one as "(deleted)".
             if ($email_campaign_profile['format'] == 'html') {
-                $output_page_name = h($email_campaign_profile['page_name']);
+                $output_page_name = h(pg_page_record_name($email_campaign_profile['page_id']));
             }
 
             $output_schedule_time = '';

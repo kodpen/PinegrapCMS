@@ -151,7 +151,8 @@ function test_short_link_lists_leave_binned_pages_and_files_out_but_keep_the_lin
 
 	pg_assert_contains("function get_page_options(\$page_id = '', \$page_type = '', \$access = 'edit', \$include_recycled = true, \$keep_id = 0)", $content, 'every other list is drawn as before');
 	pg_assert_contains("\$status = pg_page_option_status((string) \$row['folder_archived'] !== '0', isset(\$bin_folders[(int) \$row['page_folder']]), \$include_recycled == true, \$kept);", $content, 'archived and binned pages are left out unless kept (pg_page_option_status())');
-	pg_assert_contains("' [' . lang('IN RECYCLE BIN') . ']'", $content, 'the kept page is marked');
+	pg_assert_contains("\$page_name = pg_page_record_label(\$row['page_id'], \$row, true);", $content, 'the kept page is marked');
+	pg_assert_contains("' [' . lang('IN RECYCLE BIN') . ']'", short_link_requests_test_function_body(short_link_requests_test_source('includes/fn/content.php'), 'pg_page_record_label'), 'with the bin label');
 
 	$files = short_link_requests_test_function_body(short_link_requests_test_source('includes/fn/forms.php'), 'get_file_options');
 

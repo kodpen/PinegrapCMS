@@ -59,7 +59,7 @@ function test_campaign_profile_edit_keeps_its_stored_pages()
 {
 	$form = page_options_keep_test_source('includes/forms/email_campaign_profile_form.php');
 	$edit = page_options_keep_test_source('edit_email_campaign_profile.php');
-	pg_assert_contains("get_page_options('', 'custom form', 'edit', true, \$keep_pages['custom_form_page_id'] ?? 0)", $form, 'the custom form picker keeps the given page');
+	pg_assert_contains("get_page_options('', 'any form', 'edit', false, \$keep_pages['custom_form_page_id'] ?? 0)", $form, 'the custom form picker keeps the given page');
 	pg_assert_contains("get_page_options('', '', 'view', true, \$keep_pages['page_id'] ?? 0)", $form, 'the body page picker keeps the given page');
 	pg_assert_contains("'custom_form_page_id' => (\$email_campaign_profile['action'] == 'custom_form_submitted') ? (int) \$email_campaign_profile['action_item_id'] : 0", $edit, 'the stored custom form is kept');
 	pg_assert_contains("'page_id' => (int) \$email_campaign_profile['page_id']", $edit, 'the stored body page is kept');

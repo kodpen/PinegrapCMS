@@ -980,7 +980,12 @@ function create_auto_email_campaigns($properties)
         if ($email_campaign_profile['format'] == 'plain_text') {
             $body = $email_campaign_profile['body'];
             $email_campaign_profile['page_id'] = '';
-            // Otherwise HTML was selected for the format, so prepare body for that format.
+            // An HTML profile whose page row is gone (LEFT JOIN page gave no
+            // name) would queue a body without the page content: skip it.
+        } else if ($email_campaign_profile['page_name'] === null) {
+            log_activity(lang(array('string' => 'auto campaign for profile ({var:1}) was not created, because the page it sends has been deleted', 'vars' => array($email_campaign_profile['name']))), isset($_SESSION['sessionusername']) ? $_SESSION['sessionusername'] : '');
+            continue;
+        // Otherwise HTML was selected for the format, so prepare body for that format.
         } else {
             require_once(PG_FUNCTIONS_DIR . '/get_page_content.php');
             // Get html for page.

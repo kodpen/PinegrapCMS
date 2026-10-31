@@ -12,15 +12,17 @@ description: The campaign profile create and edit screens share includes/forms/e
 - Edit: the not-found guard, the record load, the role-3 owner check, the prefill, the Duplicate link, delete, the redirect back with `?id=` on error.
 
 ## Where do action rules live?
-- `pg_email_campaign_profile_commerce_actions()` lists the actions that need commerce access; `…_action_item_field()` names the field stored in `action_item_id`; `…_action_rows()` which rows open; `…_action_values()` the `action_item_id` / `schedule_period` / `schedule_base` saved (only calendar event reserved takes period and base from the form; order actions save item `0`). A new action is added there, not in the screens. Tests: `tests/email_campaign_profile_form_test.php`.
+- `pg_email_campaign_profile_commerce_actions()` lists the actions that need commerce access; `…_action_item_field()` names the field stored in `action_item_id`; `…_action_rows()` which rows open; `…_action_values()` the `action_item_id` / `schedule_period` / `schedule_base` saved (only calendar event reserved takes period and base from the form; order actions save item `0`). A new action is added there, not in the screens. Follow rings: `email-campaign-profile-follow-ring.md`. Tests: `tests/email_campaign_profile_form_test.php`.
 
 ## Why are the From defaults passed raw?
 - On the create screen From Name defaults to `ORGANIZATION_NAME` and From/Reply-to E-mail to the user's address, passed to liveform raw: `output_field()` escapes `value` itself (`core/output-escaping.md`). They used to go through `h()` first, so "Ali & Veli" showed and saved as "Ali &amp; Veli" and went out as the From name of every campaign the profile made; an address with `&` or an apostrophe failed validation. PR #3508, `tests/email_campaign_profile_from_defaults_test.php`.
 
-## Why can a profile not follow itself or a profile that follows it?
-- Each profile has one action, so a "campaign sent" profile that follows itself or a ring (A follows B, B follows A) has nothing that starts it; campaigns of it already queued fired again after every run (each finished campaign calls `create_auto_email_campaigns('email_campaign_sent', its profile id)`), one mail per interval to the same contact without end.
-- `pg_email_campaign_profile_follow_map()` reads id => action_item_id of every `email_campaign_sent` profile, whatever the user may see. `…_downstream()` (the profile and all that follow it) and `…_closes_ring()` walk it with a visited guard.
-- The edit screen passes its id to `…_form_cards()`; `get_email_campaign_profile_options($exclude_ids, $keep_id)` leaves the downstream profiles out but keeps the stored pick listed, so a stored self-loop still shows. Validate refuses a ring on the field. Runtime sending and `import_email_campaign_profiles.php` are unchanged. Tests: `tests/email_campaign_profile_form_test.php`.
-
 ## What happens when a profile create, save or delete fails?
 - The three `db_q()` writes in `add_email_campaign_profile.php` and `edit_email_campaign_profile.php` end with `or output_error('Query failed.')`. After their move from `db()` to `db_q()` they dropped the `false` and still logged and announced "created/saved/deleted" (fixed in #4132). Pin: `test_email_campaign_profile_writes_are_checked`.
+
+## Which forms does the Custom Form picker list?
+- `get_page_options('', 'any form', 'edit', false, $keep)`: `'any form'` is `pg_form_page_sql()`, the Forms screen set (classic custom form pages and visual-designer forms). Pages in the bin, in a binned folder or in an archived folder are left out; the stored form stays, marked. Before, only `page_type = 'custom form'` was listed, so a designer-built form could not be picked (#4030, PR #4183).
+
+## How is a binned or deleted page shown?
+- `pg_page_record_label($page_id, $row, $binned)` / `pg_page_record_name($page_id)` (`includes/fn/content.php`): the name, the former name + ' [IN RECYCLE BIN]' (`pg_recycle_parked_original()`, the same as `get_page_options()`), '(deleted)' when the row is gone. The list and the CSV use it for the body page and the form trigger; before, they printed `pgbin_<id>_…` or nothing.
+- The edit screen passes `'page_gone'` in `$keep_pages`: a notice above the Page picker. `create_auto_email_campaigns()` skips an HTML profile whose page row is gone with a Site Log line instead of queuing a body without the page (#4033, PR #4183).

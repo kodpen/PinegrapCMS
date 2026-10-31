@@ -1132,7 +1132,9 @@ if (!$_POST) {
                 if ($export_summarize_bys[$i] == 'site_search_terms') {
                     $cell = str_replace(",\n", ', ', $cell);
                 }
-                $line[] = $cell;
+                // Referrer, search terms, codes and utm_* values are set by
+                // the visitor: a leading = + - @ must not run as a formula.
+                $line[] = pg_csv_formula_guard($cell);
             }
 
             fputcsv($out, array_merge($line, array(

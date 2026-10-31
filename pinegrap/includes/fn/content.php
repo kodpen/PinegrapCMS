@@ -657,7 +657,9 @@ function get_menu_item_options($menu_id, $exception_menu_item_id = 0, $parent_id
 // points at: it stays whatever its folder and whatever the user's folder
 // access, so saving the record does not drop it. In the bin it is marked and
 // shown under the name it had before the bin parked it; in an archived folder
-// it is marked archived.
+// it is marked archived. $page_type 'any form' lists every page that takes
+// form submissions, classic custom form pages and visual-designer forms
+// (pg_form_page_sql()), the set the Forms screen shows.
 function get_page_options($page_id = '', $page_type = '', $access = 'edit', $include_recycled = true, $keep_id = 0)
 {
     global $user;
@@ -677,8 +679,9 @@ function get_page_options($page_id = '', $page_type = '', $access = 'edit', $inc
     // Setup first option
     $page_options['-' . lang(array('string' => 'Select {var:1}', 'vars' => array(lang('Page')))) . '-'] = '';
     // if a page type was given, prepare to only return pages with that page type
-    if ($page_type) {
-        $where = "WHERE page.page_type = '" . escape($page_type) . "'";
+    $type_sql = pg_page_options_type_sql($page_type);
+    if ($type_sql !== '') {
+        $where = 'WHERE ' . $type_sql;
     } else {
         $where = '';
     }
@@ -719,9 +722,7 @@ function get_page_options($page_id = '', $page_type = '', $access = 'edit', $inc
         }
         $page_name = $row['page_name'];
         if ($status === 'bin') {
-            require_once(PG_FUNCTIONS_DIR . '/view_folder_and_files_f.php');
-            $original = pg_recycle_parked_original($page_name, $row['page_id']);
-            $page_name = (($original !== '') ? $original : $page_name) . ' [' . lang('IN RECYCLE BIN') . ']';
+            $page_name = pg_page_record_label($row['page_id'], $row, true);
         } elseif ($status === 'archived') {
             $page_name .= ' [' . lang('ARCHIVED') . ']';
         }
@@ -733,6 +734,84 @@ function get_page_options($page_id = '', $page_type = '', $access = 'edit', $inc
         }
     }
     return $page_options;
+}
+
+/**
+ * The condition get_page_options() puts on the page type: '' for every page,
+ * pg_form_page_sql() for 'any form', else the type itself.
+ *
+ * @param string $page_type
+ * @return string  SQL, '' when there is no condition
+ */
+function pg_page_options_type_sql($page_type)
+{
+    $page_type = (string) $page_type;
+
+    if ($page_type === '') {
+        return '';
+    }
+
+    if ($page_type === 'any form') {
+        return pg_form_page_sql('page');
+    }
+
+    return "page.page_type = '" . escape($page_type) . "'";
+}
+
+/**
+ * The name a list shows for the page a record points at: the page's name,
+ * the name it had before the Recycle Bin parked it plus ' [IN RECYCLE BIN]'
+ * while it is binned, '(deleted)' when its row is gone. The edit screens'
+ * page pickers mark a binned page the same way (get_page_options()).
+ *
+ * @param int        $page_id  The stored page id, 0 for none
+ * @param array|null $row      The page row ('page_name'), null when gone
+ * @param bool       $binned   The page is in the bin or in a folder sent there
+ * @return string  Plain text, not escaped; '' when no page is stored
+ */
+function pg_page_record_label($page_id, $row, $binned)
+{
+    $page_id = (int) $page_id;
+
+    if ($page_id <= 0) {
+        return '';
+    }
+
+    if (!is_array($row)) {
+        return lang('(deleted)');
+    }
+
+    $page_name = (string) ($row['page_name'] ?? '');
+
+    if (!$binned) {
+        return $page_name;
+    }
+
+    require_once(PG_FUNCTIONS_DIR . '/view_folder_and_files_f.php');
+    $original = pg_recycle_parked_original($page_name, $page_id);
+
+    return (($original !== '') ? $original : $page_name) . ' [' . lang('IN RECYCLE BIN') . ']';
+}
+
+/**
+ * pg_page_record_label() for a stored page id, read from the database.
+ *
+ * @param int $page_id
+ * @return string  Plain text, not escaped
+ */
+function pg_page_record_name($page_id)
+{
+    $page_id = (int) $page_id;
+
+    if ($page_id <= 0) {
+        return '';
+    }
+
+    $row = db_item("SELECT page_name, page_folder FROM page WHERE page_id = '" . $page_id . "'");
+    $row = is_array($row) ? $row : null;
+    $binned = $row && in_array((int) $row['page_folder'], pg_recycle_bin_folder_ids(), true);
+
+    return pg_page_record_label($page_id, $row, $binned);
 }
 
 /**
