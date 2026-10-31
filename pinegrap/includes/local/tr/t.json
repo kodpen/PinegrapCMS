@@ -3447,6 +3447,7 @@
     "The server could not accept {var:1}. Please try again.": "Sunucu {var:1} dosyasını kabul edemedi. Lütfen tekrar deneyin.",
     "The server could not be reached on its port.": "Sunucuya bağlantı noktasından ulaşılamadı.",
     "The server could not write a temporary file.": "Sunucu geçici bir dosya yazamadı.",
+    "The server did not accept the whole form, so no change was saved. Change fewer pages at a time, or ask the server administrator to raise the max_input_vars PHP setting in the php.ini file.": "Sunucu formun tamamını kabul etmedi, bu yüzden hiçbir değişiklik kaydedilmedi. Bir seferde daha az sayfa değiştirin ya da sunucu yöneticisinden php.ini dosyasındaki max_input_vars PHP ayarını yükseltmesini isteyin.",
     "The server did not answer": "Sunucu yanıt vermedi",
     "The server did not answer in time.": "Sunucu zamanında yanıt vermedi.",
     "The server did not answer in time; trying again…": "Sunucu zamanında cevap vermedi; yeniden deneniyor…",
