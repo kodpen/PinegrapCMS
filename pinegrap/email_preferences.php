@@ -96,7 +96,7 @@ if (!$_POST) {
             array('email:marketing' => false),
             'unsubscribe');
 
-        log_activity(lang(array('string' => '{var:1} unsubscribed with one click.', 'vars' => array($one_click_address))), 'UNKNOWN');
+        log_activity(pg_log_lang(array('string' => '{var:1} unsubscribed with one click.', 'vars' => array($one_click_address))), 'UNKNOWN');
 
         http_response_code(200);
         print 'Unsubscribed';

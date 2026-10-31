@@ -104,7 +104,7 @@ function pg_layout_save($page_id, $content)
         : false;
 
     if (!$layout) {
-        return array('ok' => false, 'modified' => 0, 'message' => 'Layout could not be found.');
+        return array('ok' => false, 'modified' => 0, 'message' => lang('Layout could not be found.'));
     }
 
     $path = LAYOUT_DIRECTORY_PATH . '/' . $file;
@@ -132,7 +132,7 @@ function pg_layout_save($page_id, $content)
         WHERE page_id = '" . (int) $layout['id'] . "'"
     );
 
-    log_activity('layout for page (' . $layout['name'] . ') was modified');
+    log_activity(lang(array('string' => 'layout for page ({var:1}) was modified', 'vars' => $layout['name'])));
 
     return array('ok' => true, 'modified' => $modified, 'message' => '');
 }

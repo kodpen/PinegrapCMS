@@ -434,11 +434,11 @@ function pg_captcha_log_failure($provider, $outcome, $detail)
     $label = ($definition !== null) ? $definition['label'] : $provider;
 
     if ($outcome === 'misconfigured') {
-        $message = lang(array(
+        $message = pg_log_lang(array(
             'string' => '{var:1} refused this site\'s CAPTCHA keys ({var:2}), so form submissions are refused until the keys are corrected in the Security settings',
             'vars'   => array($label, $detail)));
     } else {
-        $message = lang(array(
+        $message = pg_log_lang(array(
             'string' => '{var:1} could not be reached to check a CAPTCHA ({var:2}), so the form submission was refused',
             'vars'   => array($label, $detail)));
     }

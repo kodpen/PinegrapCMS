@@ -89,12 +89,13 @@ function site_log_language_bare_calls($path)
 function test_site_log_writers_pass_no_bare_english()
 {
 	$files = array(
+		'add_cart_quote.php',
 		'add_erp_quote.php',
 		'add_erp_receipt.php',
 		'add_field.php',
 		'cancel_order.php',
-		'custom_form.php',
 		'change_password.php',
+		'custom_form.php',
 		'delete_styles.php',
 		'delete_users.php',
 		'edit_contact.php',
@@ -132,11 +133,13 @@ function test_site_log_writers_pass_no_bare_english()
 		'includes/explorer/handle_zip.php',
 		'includes/explorer/recycle_bin.php',
 		'includes/fn/carrier_webhook.php',
+		'includes/fn/cart_quotes.php',
 		'includes/fn/custom_form.php',
 		'includes/fn/designer.php',
 		'includes/fn/ecommerce.php',
 		'includes/fn/forms.php',
 		'includes/fn/google_reviews.php',
+		'includes/fn/layouts.php',
 		'includes/fn/mail.php',
 		'includes/fn/mail_queue.php',
 		'includes/fn/order_completion.php',
@@ -149,6 +152,7 @@ function test_site_log_writers_pass_no_bare_english()
 		'includes/panel/shared_component.php',
 		'includes/panel/software.php',
 		'includes/payments/callback.php',
+		'includes/settings/accounting.save.php',
 		'includes/settings/commerce.save.php',
 		'includes/settings/features.save.php',
 		'includes/settings/firewall.save.php',
@@ -166,6 +170,7 @@ function test_site_log_writers_pass_no_bare_english()
 		'my_account_profile.php',
 		'order_form.php',
 		'order_invoice_print.php',
+		'parasut_connect.php',
 		'preview_style.php',
 		'recurring_payment_job.php',
 		'registration_entrance.php',
@@ -180,6 +185,7 @@ function test_site_log_writers_pass_no_bare_english()
 		'submit_order.php',
 		'update_order.php',
 		'update_product_group_status.php',
+		'view_cart_quotes.php',
 		'view_order.php',
 		'view_visitor_report.php',
 		'welcome.php',
@@ -187,6 +193,16 @@ function test_site_log_writers_pass_no_bare_english()
 
 	foreach ($files as $file) {
 		pg_assert_same(array(), site_log_language_bare_calls(PG_FUNCTIONS_DIR . '/' . $file), $file);
+	}
+
+	// Every writer of the external API (its resources, webhooks and sync
+	// jobs) runs in an API request, a job or the panel: lang() throughout.
+	$api = new RecursiveIteratorIterator(new RecursiveDirectoryIterator(PG_FUNCTIONS_DIR . '/includes/api', FilesystemIterator::SKIP_DOTS));
+
+	foreach ($api as $file) {
+		if (substr($file->getFilename(), -4) === '.php') {
+			pg_assert_same(array(), site_log_language_bare_calls($file->getPathname()), $file->getPathname());
+		}
 	}
 
 	// The check itself finds a bare literal.
@@ -330,4 +346,53 @@ function test_site_log_checkout_auto_invoice_lines_translated()
 	foreach ($patterns as $file => $pattern) {
 		pg_assert_same(0, preg_match($pattern, (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file)), $file);
 	}
+}
+
+// The lines a visitor's request writes on sign-in (the password form posted
+// from a page, the two-step and SMS step, passkeys, social sign-in, the
+// device limit, the account security screen), on CAPTCHA refusals, on event
+// reservations, return requests, comment watchers, one-click unsubscribe,
+// the member's own order deletion, a cart quote taken into the cart, a chat
+// closed from the site widget, a form signature's time stamp and the
+// accountant's download link take the software language. The panel's
+// access gates in auth.php stay lang().
+function test_site_log_visitor_sign_in_and_account_lines_translated()
+{
+	require_once(__DIR__ . '/helpers/source_reader.php');
+
+	$files = array(
+		'mfa.php',
+		'passkey.php',
+		'account_security.php',
+		'device_limit.php',
+		'signin.php',
+		'reserve_calendar_event.php',
+		'order_return.php',
+		'email_preferences.php',
+		'add_or_remove_watcher.php',
+		'erp_accountant_download.php',
+		'delete_order.php',
+		'index.php',
+		'includes/fn/mfa.php',
+		'includes/fn/passkeys.php',
+		'includes/fn/signin.php',
+		'includes/fn/signature.php',
+	);
+
+	foreach ($files as $file) {
+		pg_assert_same(0, preg_match('/log_activity\(lang\(/', (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file)), $file);
+	}
+
+	pg_assert_same(0, preg_match('/(\$message = lang\(|log_activity\(lang\()/', (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/captcha.php')), 'captcha.php');
+	pg_assert_same(0, preg_match('/\? lang\(\'user asked for an e-mailed code/', (string) file_get_contents(PG_FUNCTIONS_DIR . '/passkey.php')), 'passkey.php e-mailed code');
+	pg_assert_same(0, preg_match('/log_activity\(lang\(\'chat conversation closed/', (string) file_get_contents(PG_FUNCTIONS_DIR . '/chat.php')), 'chat.php closed line');
+
+	foreach (array('pg_device_limit_gate', 'validate_login', 'initialize_user', 'check_banned_ip_addresses') as $function) {
+		$source = pg_test_function_source($function);
+
+		pg_assert_true(strpos($source, 'pg_log_lang(') !== false, $function . ' writes through pg_log_lang()');
+		pg_assert_same(0, preg_match('/log_activity\(\s*lang\(/', $source), $function);
+	}
+
+	pg_assert_same(1, preg_match('/log_activity\(pg_log_lang\(array\(\'string\' => \'cart quote \{var:1\} was added to a cart/', pg_test_function_source('pg_cart_quote_apply')), 'pg_cart_quote_apply()');
 }

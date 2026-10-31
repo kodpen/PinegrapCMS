@@ -85,7 +85,7 @@ if ($action === 'logout_all') {
         $current_selector = (string) $auth_parts[0];
     }
 
-    log_activity(lang('user signed out of all devices'), $_SESSION['sessionusername'] ?? '');
+    log_activity(pg_log_lang(array('string' => 'user signed out of all devices')), $_SESSION['sessionusername'] ?? '');
 
     if (($current_selector !== '') && pg_auth_token_pinned($current_selector)) {
         go($back_or(get_page_type_url('my account')));
@@ -117,7 +117,7 @@ if (strpos($action, 'unlink_') === 0) {
         }
 
         pg_signin_identity_remove($user_id, $unlink_provider);
-        log_activity(lang(array('string' => 'user disconnected {var:1}', 'vars' => $unlink_label)), $_SESSION['sessionusername'] ?? '');
+        log_activity(pg_log_lang(array('string' => 'user disconnected {var:1}', 'vars' => $unlink_label)), $_SESSION['sessionusername'] ?? '');
     }
 
     go($back_or(get_page_type_url('my account')));
@@ -140,7 +140,7 @@ if ($action === 'revoke_device') {
             }
 
             pg_auth_token_revoke($selector);
-            log_activity(lang('user signed out one device'), $_SESSION['sessionusername'] ?? '');
+            log_activity(pg_log_lang(array('string' => 'user signed out one device')), $_SESSION['sessionusername'] ?? '');
 
             $current_selector = '';
             if (isset($_COOKIE['software']['auth'])) {
@@ -219,7 +219,7 @@ if (strpos($action, 'mfa_') === 0) {
     // Turning it off counts its attempt in pg_mfa_self_disable_check().
     if (in_array($action, array('mfa_confirm', 'mfa_recovery_regenerate'), true)
         && pg_mfa_attempt_blocked($user_id)) {
-        log_activity(lang('access denied (too many two-step verification attempts)'), $mfa_username);
+        log_activity(pg_log_lang(array('string' => 'access denied (too many two-step verification attempts)')), $mfa_username);
         output_error(lang('Too many attempts. Please wait a few minutes and try again.'));
     }
 
@@ -262,7 +262,7 @@ if (strpos($action, 'mfa_') === 0) {
 
         pg_mfa_attempt_clear($user_id);
         $_SESSION['software']['mfa_codes_show'] = pg_mfa_recovery_regenerate($user_id);
-        log_activity(lang('user created new two-step recovery codes'), $mfa_username);
+        log_activity(pg_log_lang(array('string' => 'user created new two-step recovery codes')), $mfa_username);
         go($mfa_back);
     }
 
@@ -274,7 +274,7 @@ if (strpos($action, 'mfa_') === 0) {
 
         pg_mfa_attempt_clear($user_id);
         $_SESSION['software']['mfa_codes_show'] = pg_mfa_recovery_regenerate($user_id);
-        log_activity(lang('user created new two-step recovery codes'), $mfa_username);
+        log_activity(pg_log_lang(array('string' => 'user created new two-step recovery codes')), $mfa_username);
         go($mfa_back);
     }
 
@@ -291,7 +291,7 @@ if (strpos($action, 'mfa_') === 0) {
 
         pg_mfa_disable($user_id);
         unset($_SESSION['software']['mfa_codes_show']);
-        log_activity(lang('user turned off two-step verification'), $mfa_username);
+        log_activity(pg_log_lang(array('string' => 'user turned off two-step verification')), $mfa_username);
         go($mfa_back);
     }
 
@@ -325,7 +325,7 @@ if (strpos($action, 'passkey_') === 0) {
             (isset($_POST['name']) && is_scalar($_POST['name'])) ? (string) $_POST['name'] : '');
 
         if ($passkey_name !== null) {
-            log_activity(lang(array('string' => 'user renamed a passkey ({var:1})', 'vars' => $passkey_name)), $passkey_username);
+            log_activity(pg_log_lang(array('string' => 'user renamed a passkey ({var:1})', 'vars' => $passkey_name)), $passkey_username);
         }
 
         go($passkey_back);
@@ -359,7 +359,7 @@ if (strpos($action, 'passkey_') === 0) {
         $passkey_name = pg_passkey_remove($user_id, $passkey_id);
 
         if ($passkey_name !== null) {
-            log_activity(lang(array('string' => 'user removed a passkey ({var:1})', 'vars' => $passkey_name)), $passkey_username);
+            log_activity(pg_log_lang(array('string' => 'user removed a passkey ({var:1})', 'vars' => $passkey_name)), $passkey_username);
         }
 
         go($passkey_back);

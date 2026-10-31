@@ -104,7 +104,7 @@ function pg_mfa_screen_complete($user_id, $username, $send_to, $remember)
     require_once(dirname(__FILE__) . '/connect_user_to_order.php');
     connect_user_to_order();
 
-    log_activity(lang('user signed in with two-step verification'), $username);
+    log_activity(pg_log_lang(array('string' => 'user signed in with two-step verification')), $username);
 
     send_user_to_login_home();
     exit();
@@ -114,7 +114,7 @@ function pg_mfa_screen_complete($user_id, $username, $send_to, $remember)
 // refused, so a guessing run shows up where an operator watches for probing.
 function pg_mfa_screen_blocked($username)
 {
-    log_activity(lang('access denied (too many two-step verification attempts)'), $username);
+    log_activity(pg_log_lang(array('string' => 'access denied (too many two-step verification attempts)')), $username);
 
     if (function_exists('waf_log_event') && isset(db::$con) && db::$con) {
         waf_log_event(
@@ -162,13 +162,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $result = pg_mfa_verify_code($user_id, $code);
 
             if ($result === false) {
-                log_activity(lang('access denied (two-step code invalid)'), $username);
+                log_activity(pg_log_lang(array('string' => 'access denied (two-step code invalid)')), $username);
                 $error = lang('That code was not accepted. Each code works once: wait for the next one, and check the time on your phone.');
             } else {
                 pg_mfa_attempt_clear($user_id);
 
                 if ($result === 'recovery') {
-                    log_activity(lang(array(
+                    log_activity(pg_log_lang(array(
                         'string' => 'user signed in with a recovery code ({var:1} left)',
                         'vars'   => array((string) pg_mfa_recovery_remaining($user_id)))), $username);
                 }
@@ -189,14 +189,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $result = pg_passkey_signin_check($credential, $user_id);
 
             if (!$result['ok']) {
-                log_activity(lang(array(
+                log_activity(pg_log_lang(array(
                     'string' => 'access denied (passkey not accepted: {var:1})',
                     'vars'   => array($result['error']))), $username);
                 $error = pg_passkey_refusal($result['error'], 'signin');
             } else {
                 pg_mfa_attempt_clear($user_id);
 
-                log_activity(lang(array(
+                log_activity(pg_log_lang(array(
                     'string' => 'user signed in with a passkey ({var:1})',
                     'vars'   => array($result['name']))), $username);
 
@@ -214,7 +214,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $sent = pg_sms_code_send('signin', 'user:' . $user_id, $sms_number);
 
             if ($sent['error'] === '') {
-                log_activity(lang('sign-in code sent by SMS'), $username);
+                log_activity(pg_log_lang(array('string' => 'sign-in code sent by SMS')), $username);
 
                 // Shown after the redirect, so a reload does not send again.
                 $_SESSION['software']['mfa_sms_notice'] = pg_sms_code_sentence('', $sent['masked']);
@@ -238,12 +238,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $refusal = pg_sms_code_verify('signin', 'user:' . $user_id, $sms_number, $code);
 
             if ($refusal !== '') {
-                log_activity(lang('access denied (sign-in code sent by SMS not accepted)'), $username);
+                log_activity(pg_log_lang(array('string' => 'access denied (sign-in code sent by SMS not accepted)')), $username);
                 $error = pg_sms_code_sentence($refusal);
             } else {
                 pg_mfa_attempt_clear($user_id);
 
-                log_activity(lang('user signed in with a code sent by SMS'), $username);
+                log_activity(pg_log_lang(array('string' => 'user signed in with a code sent by SMS')), $username);
 
                 pg_mfa_screen_complete($user_id, $username, $send_to, $remember);
             }

@@ -766,7 +766,7 @@ function pg_mfa_confirm_setup($user_id, $code)
 
     pg_mfa_revoke_other_sessions($user_id);
 
-    log_activity(lang('user turned on two-step verification'),
+    log_activity(pg_log_lang(array('string' => 'user turned on two-step verification')),
         (string) db_value("SELECT user_username FROM user WHERE user_id = '" . (int) $user_id . "'"));
 
     return $codes;
@@ -1008,7 +1008,7 @@ function pg_mfa_reauth_refusal($user_id, $username, $current_password, $code)
     $mfa = pg_mfa_enabled($user_id);
 
     if ($mfa && pg_mfa_attempt_blocked($user_id)) {
-        log_activity(lang('access denied (too many two-step verification attempts)'), $username);
+        log_activity(pg_log_lang(array('string' => 'access denied (too many two-step verification attempts)')), $username);
 
         return 'attempts';
     }

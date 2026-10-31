@@ -83,7 +83,7 @@ function delete_order($request) {
         $log_code = $order['reference_code'];
     }
 
-    log_activity(lang(array('string'=>'Order ({var:1}) was deleted.','vars'=>$log_code)) );
+    log_activity(pg_log_lang(array('string'=>'Order ({var:1}) was deleted.','vars'=>$log_code)) );
 
     return array(
         'status' => 'success',

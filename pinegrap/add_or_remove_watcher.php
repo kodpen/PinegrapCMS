@@ -76,25 +76,25 @@ if (($page_type != 'form item view') && ($item_type == 'submitted_form') && func
 
 // if comments are disabled for the page, log and output error
 if ($comments == 0) {
-    log_activity(lang(array('string' => 'access denied to add or remove watcher for page ({var:1}) because comments are disabled', 'vars' => $page_name)), $_SESSION['sessionusername']);
+    log_activity(pg_log_lang(array('string' => 'access denied to add or remove watcher for page ({var:1}) because comments are disabled', 'vars' => $page_name)), $_SESSION['sessionusername']);
     output_error(lang('You do not have access to add or remove watchers because comments are disabled for the page. <a href="javascript:history.go(-1);">Go back</a>.'));
 }
 
 // if watching comments is disabled for the page, log and output error
 if ($comments_watcher_email_page_id == 0) {
-    log_activity(lang(array('string' => 'access denied to add or remove watcher for page ({var:1}) because watching comments is disabled', 'vars' => $page_name)), $_SESSION['sessionusername']);
+    log_activity(pg_log_lang(array('string' => 'access denied to add or remove watcher for page ({var:1}) because watching comments is disabled', 'vars' => $page_name)), $_SESSION['sessionusername']);
     output_error(lang('You do not have access to add or remove watchers because watching comments is disabled for the page. <a href="javascript:history.go(-1);">Go back</a>.'));
 }
 
 // if the visitor is not logged in, log and output error
 if (USER_LOGGED_IN == FALSE) {
-    log_activity(lang(array('string' => 'access denied to add or remove watcher for page ({var:1}) because visitor is not logged in', 'vars' => $page_name)), $_SESSION['sessionusername']);
+    log_activity(pg_log_lang(array('string' => 'access denied to add or remove watcher for page ({var:1}) because visitor is not logged in', 'vars' => $page_name)), $_SESSION['sessionusername']);
     output_error(lang('You do not have access to add or remove watchers because you are not logged in. <a href="javascript:history.go(-1);">Go back</a>.'));
 }
 
 // if user does not have access to view page then the user does not have access to add or remove him/herself as a watcher, so log and output error
 if (check_view_access($folder_id) == false) {
-    log_activity(lang(array('string' => 'access denied to add or remove watcher for page ({var:1}) because user does not have access to view page', 'vars' => $page_name)), $_SESSION['sessionusername']);
+    log_activity(pg_log_lang(array('string' => 'access denied to add or remove watcher for page ({var:1}) because user does not have access to view page', 'vars' => $page_name)), $_SESSION['sessionusername']);
     output_error(lang('You do not have access to add or remove watchers because you do not have access to view the page. <a href="javascript:history.go(-1);">Go back</a>.'));
 }
 
@@ -172,7 +172,7 @@ if ($management == TRUE) {
 
     // If this user does not have access to manage watchers, then output error.
     if ($watcher_management_access == FALSE) {
-        log_activity(lang(array('string' => 'access denied to manage watchers for page ({var:1})', 'vars' => $page_name)), $_SESSION['sessionusername']);
+        log_activity(pg_log_lang(array('string' => 'access denied to manage watchers for page ({var:1})', 'vars' => $page_name)), $_SESSION['sessionusername']);
         output_error(lang('You do not have access to manage watchers. <a href="javascript:history.go(-1);">Go back</a>.'));
     }
 
@@ -351,7 +351,7 @@ if ($management == TRUE) {
             (($page_type == 'form item view') && ($item_type != 'submitted_form'))
             || (($page_type != 'form item view') && ($item_type == 'submitted_form'))
         ) {
-            log_activity(lang(array('string' => 'access denied to add watcher to page ({var:1}) because the item type was not valid for the page type', 'vars' => $page_name)), $_SESSION['sessionusername']);
+            log_activity(pg_log_lang(array('string' => 'access denied to add watcher to page ({var:1}) because the item type was not valid for the page type', 'vars' => $page_name)), $_SESSION['sessionusername']);
             output_error(lang('Sorry, we could not add you as a watcher, because the item type was not valid for the page type. <a href="javascript:history.go(-1);">Go back</a>.'));
         }
 
@@ -371,7 +371,7 @@ if ($management == TRUE) {
 
             // If the submitted form was not found, then log and output error.
             if (!$submitted_form['id']) {
-                log_activity(lang(array('string' => 'access denied to add watcher to page ({var:1}) because the submitted form could not be found', 'vars' => $page_name)), $_SESSION['sessionusername']);
+                log_activity(pg_log_lang(array('string' => 'access denied to add watcher to page ({var:1}) because the submitted form could not be found', 'vars' => $page_name)), $_SESSION['sessionusername']);
                 output_error(lang('Sorry, we could not add you as a watcher, because the submitted form could not be found. <a href="javascript:history.go(-1);">Go back</a>.'));
             }
 
@@ -455,7 +455,7 @@ if ($management == TRUE) {
                 // If this visitor does not have view access to the submitted form.
                 // then log and output error.
                 if ($view_access == false) {
-                    log_activity(lang(array('string' => 'access denied to add watcher to page ({var:1}) because the visitor did not have view access to submitted form ({var:2})', 'vars' => array($page_name, $submitted_form['reference_code']))), $_SESSION['sessionusername']);
+                    log_activity(pg_log_lang(array('string' => 'access denied to add watcher to page ({var:1}) because the visitor did not have view access to submitted form ({var:2})', 'vars' => array($page_name, $submitted_form['reference_code']))), $_SESSION['sessionusername']);
                     output_error(lang('Sorry, we could not add you as a watcher, because you do not have access to view that submitted form. <a href="javascript:history.go(-1);">Go back</a>.'));
                 }
             }
