@@ -63,6 +63,7 @@
 [NEW] Added Bootstrap 6 for the control panel.
 [NEW] Added product creation from the Workspace: single products and groups, bulk product drafts from a list, a spreadsheet or an assistant, and variant sets in one go.
 [NEW] Added a converter that turns a classic custom form layout into design elements.
+[NEW] Added classic page styles to the visual designer: a classic style opens there with its regions, design files and pages, a page's custom layout has an editor of its own, and the old page designer is retired.
 [NEW] Added an automatic reference price ("lowest price of the last 30/10 days" or the compare-at price) beside discounted prices in catalog widgets and catalog pages.
 [NEW] Added the order form system widget to the visual page editor.
 [NEW] Added a cash-on-delivery confirmation code sent by SMS at checkout.
