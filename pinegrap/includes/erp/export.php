@@ -484,7 +484,7 @@ function erp_export_rows_csv_invoices($invoices, $profile)
                 erp_export_date($i['due_date'], $profile),
                 isset($direction_words[$i['direction']]) ? $direction_words[$i['direction']] : (string) $i['direction'],
                 isset($type_words[$i['doc_type']]) ? $type_words[$i['doc_type']] : (string) $i['doc_type'],
-                (string) $i['status'],
+                erp_invoice_status_label($i['status']),
                 $header['title'],
                 $header['tax_number'],
                 $header['tax_office'],
@@ -528,6 +528,23 @@ function erp_export_rows_csv_invoices($invoices, $profile)
 }
 
 /**
+ * The payment methods of a receipt in words, the ones the accountant pack
+ * writes; an unknown code is written as it is.
+ *
+ * @return array  code => label
+ */
+function erp_export_payment_method_words()
+{
+    return array(
+        'cash' => lang('Cash'),
+        'transfer' => lang('Bank transfer'),
+        'card' => lang('Card'),
+        'cheque' => lang('Cheque'),
+        'other' => lang('Other'),
+    );
+}
+
+/**
  * Rows for the generic receipts file.
  *
  * @param array $receipts
@@ -538,6 +555,7 @@ function erp_export_rows_csv_receipts($receipts, $profile)
 {
     $rows = array();
     $direction_words = array('collection' => lang('Receipt'), 'payment' => lang('Payment'));
+    $method_words = erp_export_payment_method_words();
 
     foreach ($receipts as $r) {
         $rows[] = array(
@@ -546,7 +564,7 @@ function erp_export_rows_csv_receipts($receipts, $profile)
             (string) ($r['account_title'] ?? ''),
             (string) ($r['account_tax_number'] ?? ''),
             (string) ($r['till_name'] ?? ''),
-            (string) $r['payment_method'],
+            isset($method_words[$r['payment_method']]) ? $method_words[$r['payment_method']] : (string) $r['payment_method'],
             erp_export_amount($r['amount'], $profile),
             erp_export_currency($r['currency'], $profile),
             erp_export_rate($r['exchange_rate'], $profile, 6),

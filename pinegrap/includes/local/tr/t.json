@@ -3701,6 +3701,7 @@
     "The summary is written": "Özet yazılmış",
     "The summary under the title in search results and in shared links; 150 to 160 characters read best. Left empty, the description of the site is used.": "Arama sonuçlarında ve paylaşılan bağlantılarda başlığın altındaki özet; en iyisi 150-160 karakter. Boş bırakılırsa sitenin açıklaması kullanılır.",
     "The summary was saved.": "Özet kaydedildi.",
+    "The supplier document is the invoice; this opens its record": "Fatura tedarikçinin belgesidir; bu öğe fatura kaydını açar",
     "The supplier's account ({var:1}) is passive. Make it active to take the invoice in.": "Tedarikçinin carisi ({var:1}) pasif. Faturayı almak için etkinleştirin.",
     "The supplier's, as printed on the receipt.": "Tedarikçinin, fişte yazdığı gibi.",
     "The support team really cares: every question got a clear answer within hours.": "Destek ekibi gerçekten ilgili; her sorumuza saatler içinde net yanıt aldık.",

@@ -391,6 +391,7 @@ function erp_files_invoice_payload($row, $as_edoc = false)
     $edoc_status = (string) ($row['edoc_status'] ?? 'none');
     $timestamp = max((int) $row['created_at'], (int) $row['updated_at']);
     $screen = ($is_draft ? 'edit_erp_invoice_draft.php?id=' : 'edit_erp_invoice.php?id=') . $id;
+    $is_purchase = !$is_draft && ((string) $row['direction'] === 'purchase');
 
     if ($as_edoc) {
         $kind = 'erp_edoc';
@@ -399,6 +400,15 @@ function erp_files_invoice_payload($row, $as_edoc = false)
         $url = 'get_erp_edoc_document.php?id=' . $id . '&format=pdf';
         $download_url = $url . '&download=1';
         $source = 'provider';
+    } elseif ($is_purchase) {
+        // The store keeps no rendering of a purchase invoice: the document is
+        // the supplier's. The entry opens the invoice record, as a draft does,
+        // and offers no PDF or download; an old kept PDF stays unused.
+        $kind = 'erp_invoice';
+        $name = ($safe_number !== '') ? $safe_number : ('invoice_' . $id);
+        $url = $screen;
+        $download_url = '';
+        $source = 'record';
     } else {
         $kind = 'erp_invoice';
         $name = $is_draft ? (lang('Draft') . ' #' . $id) : ((($safe_number !== '') ? $safe_number : ('invoice_' . $id)) . '.pdf');
@@ -407,16 +417,19 @@ function erp_files_invoice_payload($row, $as_edoc = false)
         $source = $is_draft ? 'draft' : 'generated';
     }
 
+    // Only a file the entry can serve is shown as kept.
+    $kept = !empty($row['kept_file_id']) && ($as_edoc || !$is_purchase);
+
     return array(
         'kind' => $kind,
         'id' => $id,
         'name' => $name,
         'title' => trim($number . (($account_title !== '') ? ' — ' . $account_title : '')),
-        'type' => $is_draft ? '' : 'pdf',
-        'size' => !empty($row['kept_file_id']) ? (int) $row['kept_size'] : null,
-        'kept' => !empty($row['kept_file_id']),
-        'kept_at' => !empty($row['kept_file_id']) ? (int) $row['kept_at'] : 0,
-        'source' => !empty($row['kept_file_id']) ? 'kept' : $source,
+        'type' => ($is_draft || ($is_purchase && !$as_edoc)) ? '' : 'pdf',
+        'size' => $kept ? (int) $row['kept_size'] : null,
+        'kept' => $kept,
+        'kept_at' => $kept ? (int) $row['kept_at'] : 0,
+        'source' => $kept ? 'kept' : $source,
         'number' => $number,
         'doc_class' => ((string) $row['doc_type'] === 'return') ? 'return' : (((string) $row['direction'] === 'purchase') ? 'purchase' : 'sales'),
         'date' => (string) $row['issue_date'],
