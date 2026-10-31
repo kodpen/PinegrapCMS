@@ -47,6 +47,13 @@ $table_exists = pg_schema_has('waf_log');
 
 // ---- Actions ---------------------------------------------------------------
 
+// Each filter is one value; one sent as an array (?range[]=x) counts as not
+// given: it ended in an error page (pg_waf_log_list_filters()). Read before
+// the posts below: their forms post to the filtered address, so a handler
+// sends the admin back to the same view.
+$filters = pg_waf_log_list_filters($_GET);
+$list_url = pg_waf_log_list_url($filters);
+
 // Clear the log. Same CSRF-token + POST pattern as the performance log, so a
 // stray GET URL cannot wipe the evidence of an attack in progress.
 if (isset($_POST['submit_clear'])) {
@@ -58,7 +65,7 @@ if (isset($_POST['submit_clear'])) {
         $liveform->add_notice(lang('Firewall log data has been cleared.'));
     }
 
-    go(PATH . SOFTWARE_DIRECTORY . '/view_waf_log.php');
+    go(PATH . SOFTWARE_DIRECTORY . '/' . $list_url);
 }
 
 // Release an automatic ban. Manual entries are untouched: those belong to the
@@ -97,7 +104,7 @@ if (isset($_POST['submit_release'])) {
         $liveform->add_notice(lang(array('string' => 'The ban on {var:1} has been released.', 'vars' => h($release_ip))));
     }
 
-    go(PATH . SOFTWARE_DIRECTORY . '/view_waf_log.php');
+    go(PATH . SOFTWARE_DIRECTORY . '/' . $list_url);
 }
 
 // Put a flagged address on the allowed list. Written as the same row the
@@ -156,7 +163,7 @@ if (isset($_POST['submit_allow'])) {
         $liveform->add_notice(lang(array('string' => 'The address {var:1} has been added to the allowed list.', 'vars' => $allow_ip)));
     }
 
-    go(PATH . SOFTWARE_DIRECTORY . '/view_waf_log.php');
+    go(PATH . SOFTWARE_DIRECTORY . '/' . $list_url);
 }
 
 // Forget the policy reports. They live in a file, not the log table, so the
@@ -171,7 +178,7 @@ if (isset($_POST['submit_csp_clear'])) {
         $liveform->add_notice(lang('The policy reports have been cleared.'));
     }
 
-    go(PATH . SOFTWARE_DIRECTORY . '/view_waf_log.php');
+    go(PATH . SOFTWARE_DIRECTORY . '/' . $list_url);
 }
 
 // ---- Missing table ---------------------------------------------------------
@@ -198,9 +205,6 @@ if (!$table_exists) {
 
 // ---- Filters ---------------------------------------------------------------
 
-// Each filter is one value; one sent as an array (?range[]=x) counts as not
-// given: it ended in an error page (pg_waf_log_list_filters()).
-$filters = pg_waf_log_list_filters($_GET);
 $range_options = pg_waf_log_list_ranges();
 $category_options = pg_waf_log_list_categories();
 $range = $filters['range'];
@@ -480,9 +484,9 @@ foreach ($category_options as $value => $label) {
 $clear_menu = '<div class="pg-menu-wrap">
     <button type="button" class="btn btn-sm btn-text theme-secondary" data-bs-toggle="menu" data-bs-placement="bottom-end" aria-expanded="false" title="' . h(lang('More')) . '" aria-label="' . h(lang('More')) . '"><i class="bi bi-three-dots-vertical" aria-hidden="true"></i></button>
     <ul class="menu pg-menu-end">
-        <li><form method="post" action="view_waf_log.php" class="disable_shortcut" onsubmit="return confirm(\'' . escape_javascript(lang('Clear all firewall log data?')) . '\');">' . get_token_field() . '<button type="submit" name="submit_clear" value="1" class="menu-item pg-link-body-emphasis"><i class="bi bi-trash me-3" aria-hidden="true"></i>' . lang('Clear Log') . '</button></form></li>'
+        <li><form method="post" action="' . h($list_url) . '" class="disable_shortcut" onsubmit="return confirm(\'' . escape_javascript(lang('Clear all firewall log data?')) . '\');">' . get_token_field() . '<button type="submit" name="submit_clear" value="1" class="menu-item pg-link-body-emphasis"><i class="bi bi-trash me-3" aria-hidden="true"></i>' . lang('Clear Log') . '</button></form></li>'
     . ($csp_entries ? '
-        <li><form method="post" action="view_waf_log.php" class="disable_shortcut">' . get_token_field() . '<button type="submit" name="submit_csp_clear" value="1" class="menu-item pg-link-body-emphasis" data-confirm-content="' . h(lang(array('string' => 'Delete all {var:1} Content Security Policy reports? This cannot be undone.', 'vars' => count($csp_entries)))) . '"><i class="bi bi-trash me-3" aria-hidden="true"></i>' . lang('Clear Reports') . '</button></form></li>' : '') . '
+        <li><form method="post" action="' . h($list_url) . '" class="disable_shortcut">' . get_token_field() . '<button type="submit" name="submit_csp_clear" value="1" class="menu-item pg-link-body-emphasis" data-confirm-content="' . h(lang(array('string' => 'Delete all {var:1} Content Security Policy reports? This cannot be undone.', 'vars' => count($csp_entries)))) . '"><i class="bi bi-trash me-3" aria-hidden="true"></i>' . lang('Clear Reports') . '</button></form></li>' : '') . '
     </ul>
 </div>';
 
@@ -573,7 +577,7 @@ if ($suspects) {
             <td class="small">' . $badges . '</td>
             <td class="small text-nowrap">' . get_relative_time(array('timestamp' => (int) $suspect['last_seen'])) . '</td>
             <td class="text-end">
-                <form method="post" action="view_waf_log.php" class="d-inline">'
+                <form method="post" action="' . h($list_url) . '" class="d-inline">'
                     . get_token_field() . '
                     <input type="hidden" name="allow_ip" value="' . h($suspect['ip_address']) . '"/>
                     <button type="submit" name="submit_allow" value="1" class="btn btn-sm btn-outline theme-success">
@@ -609,7 +613,7 @@ if ($auto_bans) {
             <td class="small fg-secondary">' . h($ban['note']) . '</td>
             <td class="small">' . ceil($remaining / 60) . ' ' . lang('minute(s)') . '</td>
             <td class="text-end">
-                <form method="post" action="view_waf_log.php" class="d-inline">'
+                <form method="post" action="' . h($list_url) . '" class="d-inline">'
                     . get_token_field() . '
                     <input type="hidden" name="release_ip" value="' . h($ban['ip_address']) . '"/>
                     <button type="submit" name="submit_release" value="1" class="btn btn-sm btn-outline theme-secondary">
