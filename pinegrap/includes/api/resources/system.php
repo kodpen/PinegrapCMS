@@ -99,7 +99,7 @@ function api_system_status($params) {
 			'total_bytes'    => isset($storage['total']) ? (int)$storage['total'] : 0,
 			'measured_at'    => api_time(isset($storage['ts']) ? $storage['ts'] : 0)
 		),
-		// Maintenance mode (Site Settings, General): whether visitors get the
+		// Maintenance mode (Site Settings › Updates and maintenance): whether visitors get the
 		// maintenance screen now, and when it ends by itself (null: no end).
 		'maintenance' => array(
 			'active' => function_exists('pg_maintenance_holds') ? pg_maintenance_holds($maintenance['on'], $maintenance['until'], time()) : false,

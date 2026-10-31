@@ -377,7 +377,7 @@ function pg_grev_job_run()
 }
 
 /**
- * The Google Reviews card of Site Settings › Communication: the key (never
+ * The Google Reviews card of Site Settings › Integrations: the key (never
  * drawn back), the Place ID and the test button.
  *
  * @return string

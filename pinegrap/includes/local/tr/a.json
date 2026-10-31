@@ -2315,6 +2315,7 @@
     "An e-mail from {var:1} came into {var:2}: {var:3}": "{var:1} kişisinden {var:2} kanalına bir e-posta geldi: {var:3}",
     "An e-mail is larger than 25 MB.": "Bir e-posta 25 MB'tan büyük.",
     "An e-mail is received": "Bir e-posta gelir",
+    "An e-mail is sent for each automatic ban; when one rule bans several addresses within an hour, a single notice is sent instead. Alerts are set under Site Settings › Updates and maintenance › Alerts.": "Her otomatik yasak için bir e-posta gönderilir; bir kural bir saat içinde birden çok adresi yasaklarsa bunun yerine tek bir bildirim gönderilir. Uyarılar Site Ayarları › Güncellemeler ve Bakım › Uyarılar altında ayarlanır.",
     "An e-mail is sent for each automatic ban; when one rule bans several addresses within an hour, a single notice is sent instead. Alerts are set under Site Settings, General, Alerts.": "Her otomatik yasak için bir e-posta gönderilir; bir kural bir saat içinde birden çok adresi yasaklarsa bunun yerine tek bir bildirim gönderilir. Uyarılar Site Ayarları, Genel, Uyarılar altında ayarlanır.",
     "An e-mail page is a page of this design with a Form Item View widget of this form: it is drawn for the submission and sent as it looks.": "E-posta sayfası, bu tasarımda bu formun Form Öğesi Görünümü widget'ını taşıyan bir sayfadır: gönderilen kayıt için çizilir ve göründüğü gibi gönderilir.",
     "An e-mail to {var:1} was given up after {var:2} attempts: {var:3}": "{var:1} adresine giden e-posta {var:2} denemeden sonra bırakıldı: {var:3}",

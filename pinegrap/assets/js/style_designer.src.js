@@ -35064,7 +35064,7 @@ const StyleDesigner = (function () {
             // ── google_reviews settings ──────────────────────────────────────
             if (_isGoogleReviews) {
                 systemSection += sect('bi-google', _sdT('Google Reviews Settings'),
-                    '<div style="font-size:.7rem;color:#888">' + esc(_sdT('The Places API key and the Place ID are set in Site Settings, Communication, Google Reviews. Without them the widget shows nothing on the site.')) + '</div>'
+                    '<div style="font-size:.7rem;color:#888">' + esc(_sdT('The Places API key and the Place ID are set in Site Settings › Integrations › Google Reviews. Without them the widget shows nothing on the site.')) + '</div>'
                 );
             }
 

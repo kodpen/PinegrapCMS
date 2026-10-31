@@ -2530,7 +2530,7 @@ function get_system_status_checks()
                     'vars'   => array($visitor_settings['days']),
                 ));
             } else {
-                $visitor_kept = lang('Visitor records are kept without a limit. Set a period under Settings › SEO › Visitor Tracking.');
+                $visitor_kept = lang('Visitor records are kept without a limit. Set a period under Site Settings › Visitors and privacy › Visitor Tracking.');
             }
 
             $output .= $makeIcon(

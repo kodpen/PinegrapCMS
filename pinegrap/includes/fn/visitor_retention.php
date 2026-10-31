@@ -1403,7 +1403,7 @@ function pg_visitor_cleanup_result_text($run)
             return lang('Visitor records: the settings for keeping them are not in the database yet. Run the upgrade steps again.');
 
         case 'off':
-            return lang('Visitor records are kept without a limit, so nothing was removed. The period is set under Settings › SEO › Visitor Tracking.');
+            return lang('Visitor records are kept without a limit, so nothing was removed. The period is set under Site Settings › Visitors and privacy › Visitor Tracking.');
 
         case 'busy':
             return lang('Another visitor record cleanup is running (the general job, or another tab). Try again in a minute.');
@@ -1418,7 +1418,7 @@ function pg_visitor_cleanup_result_text($run)
 
     // Records kept without a limit: the run only took IP addresses out.
     if ($run['days'] <= 0) {
-        return lang('Visitor records are kept without a limit, so nothing was removed. The period is set under Settings › SEO › Visitor Tracking.') . $ip_text;
+        return lang('Visitor records are kept without a limit, so nothing was removed. The period is set under Site Settings › Visitors and privacy › Visitor Tracking.') . $ip_text;
     }
 
     $text = lang(array(

@@ -568,7 +568,7 @@ function pg_ops_alert_email_html($label, $detail, $url)
         <p style="font-size: 16px; font-weight: bold; margin: 0 0 12px 0;">' . h($label) . '</p>' . (($detail !== '') ? '
         <p style="' . $paragraph . '">' . h($detail) . '</p>' : '') . '
         <p style="' . $paragraph . '"><a href="' . h($url) . '">' . h(lang('Open it in the panel')) . '</a></p>
-        <p style="font-size: 12px; color: #666666; margin: 18px 0 0 0;">' . h(lang('The same alert is sent at most once a day while the problem lasts. Alerts are set under Site Settings, General, Alerts.')) . '</p>';
+        <p style="font-size: 12px; color: #666666; margin: 18px 0 0 0;">' . h(lang('The same alert is sent at most once a day while the problem lasts. Alerts are set under Site Settings › Updates and maintenance › Alerts.')) . '</p>';
 }
 
 /**
