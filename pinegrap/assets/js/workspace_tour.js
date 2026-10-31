@@ -407,10 +407,11 @@
     }
 
     // Whether a step is about the list of channels, which is the main
-    // menu's Workspace panel (assets/js/workspace_side.js).
+    // menu's Workspace panel (assets/js/workspace_side.js), its tools in the
+    // panel's head among it.
     function inMenuList(selectors) {
         return [].concat(selectors || []).some(function (selector) {
-            return String(selector).indexOf('#ws-menu-side') !== -1;
+            return (String(selector).indexOf('#ws-menu-side') !== -1) || (String(selector).indexOf('.ws-side-head-tools') !== -1);
         });
     }
 
@@ -560,7 +561,7 @@
                 return !!document.querySelector('#ws-root .ws-center');
             }
 
-            return !!document.querySelector('#ws-menu-side [data-ws-tour]');
+            return !!document.querySelector('#ws-menu-side [data-ws-tour], .ws-side-head-tools [data-ws-tour]');
         },
 
         // A rail widened, or the menu's drawer opened, for the list goes
