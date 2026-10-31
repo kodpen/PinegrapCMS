@@ -11305,49 +11305,102 @@ var pgSettingsModal = (function () {
     }
 
     /**
-     * How well one row answers the query: 0 its name, 1 a keyword (the
-     * palette's rule: a term that starts with the query, or a query that
-     * starts with the term), 2 a field label, 3 every word somewhere; -1 not
-     * at all. Also says which field label matched, to show under the name.
+     * How well one row answers the query, best first: 0 its name, 1 a
+     * keyword that starts with the query, 2 a field label, 3 a keyword the
+     * query starts with ("zaman" for "zaman damgasi sunucu"), 4 every word
+     * somewhere; -1 not at all. A keyword that holds only the query's first
+     * word ranks under a field label that holds all of it, so typing a
+     * setting's full name brings its own card first.
+     *
+     * fit orders hits of one rank: 1 when the text is the query itself, and
+     * for rank 3 the length of the keyword, so the one that covers more of
+     * the query comes first. field is the label that matched, shown under
+     * the name.
      */
     function score(row, q) {
 
         var i;
+        var keys = row.keys || [];
+        var fields = row.fields || [];
 
         if (wordStarts(row.title, q)) {
-            return { rank: 0, field: '' };
+            return { rank: 0, field: '', fit: (fold(row.title) === q) ? 1 : 0 };
         }
 
-        for (i = 0; i < row.keys.length; i++) {
-            var key = fold(row.keys[i]);
+        var best = null;
 
-            if ((key.indexOf(q) === 0) || ((key.length > 2) && (q.indexOf(key) === 0))) {
-                return { rank: 1, field: '' };
+        for (i = 0; i < keys.length; i++) {
+            var key = fold(keys[i]);
+
+            if (key.indexOf(q) === 0) {
+                return { rank: 1, field: '', fit: (key === q) ? 1 : 0 };
+            }
+
+            if ((key.length > 2) && (q.indexOf(key) === 0) && ((!best) || (key.length > best.fit))) {
+                best = { rank: 3, field: '', fit: key.length };
             }
         }
 
-        for (i = 0; i < row.fields.length; i++) {
-            if (wordStarts(row.fields[i], q) || ((q.length > 3) && (fold(row.fields[i]).indexOf(q) !== -1))) {
-                return { rank: 2, field: row.fields[i] };
+        var label = null;
+
+        for (i = 0; i < fields.length; i++) {
+            var text = fold(fields[i]);
+
+            if (wordStarts(text, q) || ((q.length > 3) && (text.indexOf(q) !== -1))) {
+
+                if (text === q) {
+                    return { rank: 2, field: fields[i], fit: 1 };
+                }
+
+                if (!label) {
+                    label = { rank: 2, field: fields[i], fit: 0 };
+                }
             }
+        }
+
+        if (label) {
+            return label;
+        }
+
+        if (best) {
+            return best;
         }
 
         var words = q.split(' ');
 
         if (words.length > 1) {
 
-            var all = fold([row.title, row.place].concat(row.keys, row.fields).join(' '));
+            var all = fold([row.title, row.place].concat(keys, fields).join(' '));
 
             for (i = 0; i < words.length; i++) {
                 if (words[i] && (all.indexOf(words[i]) === -1)) {
-                    return { rank: -1, field: '' };
+                    return { rank: -1, field: '', fit: 0 };
                 }
             }
 
-            return { rank: 3, field: '' };
+            return { rank: 4, field: '', fit: 0 };
         }
 
-        return { rank: -1, field: '' };
+        return { rank: -1, field: '', fit: 0 };
+    }
+
+    // The rows that answer the query, best first: by rank, then by fit, then
+    // in the order of the list.
+    function rankHits(rows, q) {
+
+        var found = [];
+
+        rows.forEach(function (row, order) {
+            var s = score(row, q);
+
+            if (s.rank >= 0) {
+                found.push({ row: row, rank: s.rank, field: s.field, fit: s.fit, order: order });
+            }
+        });
+
+        found.sort(function (a, b) { return (a.rank - b.rank) || (b.fit - a.fit) || (a.order - b.order); });
+
+        return found;
     }
 
     function escapeText(text) {
@@ -11384,17 +11437,7 @@ var pgSettingsModal = (function () {
             return;
         }
 
-        var found = [];
-
-        index.forEach(function (row, order) {
-            var s = score(row, q);
-
-            if (s.rank >= 0) {
-                found.push({ row: row, rank: s.rank, field: s.field, order: order });
-            }
-        });
-
-        found.sort(function (a, b) { return (a.rank - b.rank) || (a.order - b.order); });
+        var found = rankHits(index, q);
 
         if (!found.length) {
             hits.innerHTML = '<p class="pg-sm-hits-empty">' + escapeText(say('nohits')) + '</p>';
@@ -11404,12 +11447,22 @@ var pgSettingsModal = (function () {
         hits.innerHTML = found.slice(0, 30).map(function (hit) {
 
             var where = [hit.row.place, hit.field].filter(Boolean).join(' › ');
+            var text = '<span class="pg-sm-hit-text"><span>' + escapeText(hit.row.title) + '</span>'
+                + (where ? '<small>' + escapeText(where) + '</small>' : '') + '</span>';
+
+            // A system tool is a screen of its own: its hit is a link that
+            // leaves the dialog, like the System tools row it stands for.
+            if (hit.row.url) {
+                return '<a class="pg-sm-link pg-sm-away pg-sm-hit" href="' + escapeText(hit.row.url) + '"'
+                    + (hit.row.target ? ' target="' + escapeText(hit.row.target) + '" rel="noopener"' : '') + '>'
+                    + '<i class="bi ' + escapeText(hit.row.icon || 'bi-tools') + '" aria-hidden="true"></i>'
+                    + text + '<i class="bi bi-chevron-right pg-sm-out" aria-hidden="true"></i></a>';
+            }
 
             return '<button type="button" class="pg-sm-link pg-sm-hit"'
                 + ' data-hit-pane="' + escapeText(hit.row.pane) + '" data-hit-card="' + escapeText(hit.row.card) + '">'
                 + '<i class="bi ' + (hit.row.card ? 'bi-card-heading' : 'bi-folder2') + '" aria-hidden="true"></i>'
-                + '<span class="pg-sm-hit-text"><span>' + escapeText(hit.row.title) + '</span>'
-                + (where ? '<small>' + escapeText(where) + '</small>' : '') + '</span></button>';
+                + text + '</button>';
         }).join('');
     }
 
@@ -11504,8 +11557,9 @@ var pgSettingsModal = (function () {
 
         // A hit opens its category and scrolls to its card, as a
         // #settings/<category>/<card> link does; the hits stay up, so the
-        // next one is a click away.
-        $(el).on('click', '.pg-sm-hit', function () {
+        // next one is a click away. A tool's hit is a plain link and is
+        // followed as one.
+        $(el).on('click', 'button.pg-sm-hit', function () {
             drawer(false);
             open(this.getAttribute('data-hit-pane'), this.getAttribute('data-hit-card') || '');
         });

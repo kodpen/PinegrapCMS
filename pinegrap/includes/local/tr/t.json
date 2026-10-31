@@ -6033,7 +6033,7 @@
     "travel, living abroad": "seyahat, yurt dışında yaşam",
     "trees, city council": "ağaçlar, belediye meclisi",
     "two-step verification turned off for user ({var:1})": "kullanıcının iki adımlı doğrulaması kapatıldı ({var:1})",
-    "two-step, two factor, 2fa, totp, authenticator, mfa, verification code": "iki adımlı, iki faktörlü, 2fa, totp, doğrulama uygulaması, mfa, doğrulama kodu",
+    "two-step, two factor, 2fa, totp, authenticator, mfa, verification code": "iki adımlı, iki faktörlü, 2fa, totp, doğrulama uygulaması, mfa, doğrulama kodu, two-step, two factor, authenticator, verification code",
     "type": "tür",
     "type is one of {var:1}.": "type şunlardan biri olmalı: {var:1}."
 }
