@@ -449,6 +449,10 @@ if ($action != 'import') {
     // to keep track of which scanned items were actually created.
     $imported_items = array();
 
+    // Scanned items that were left out, each with its address and why
+    // ('name' refused or 'download' failed), for the summary at the end.
+    $skipped_items = array();
+
     // Loop through the scanned items in order to create them.
     foreach ($scanned_items as $item) {
 
@@ -463,13 +467,16 @@ if ($action != 'import') {
         // upload rules apply: a name the web server would run, or one that
         // changes how it serves that directory (.htaccess), is skipped.
         if (($type != 'html') && pg_upload_name_blocked($name)) {
+            $skipped_items[] = array('url' => $url, 'reason' => 'name');
             continue;
         }
 
         $content = fetch_url_content($url);
 
-        // If the download failed, then skip to the next item.
+        // If the download failed (no answer, a refused address or a status
+        // outside 200-399), then skip to the next item.
         if ($content === false) {
+            $skipped_items[] = array('url' => $url, 'reason' => 'download');
             continue;
         }
 
@@ -772,16 +779,84 @@ if ($action != 'import') {
     require('update_imported_items.php');
     update_imported_items($imported_items);
 
+    $summary = import_design_import_summary(count($imported_items), $skipped_items);
+
     if ($command_line) {
+        echo $summary['text'];
         exit('Complete');
     }
 
     $liveform->remove_form();
 
     $liveform_view_pages = new liveform('view_pages');
-    $liveform_view_pages->add_notice(lang('All scanned items have been imported successfully.'));
+
+    if ($summary['failed']) {
+        $liveform_view_pages->mark_error('', $summary['message']);
+    } else {
+        $liveform_view_pages->add_notice($summary['message']);
+    }
+
+    if ($summary['warning'] !== '') {
+        $liveform_view_pages->add_warning($summary['warning']);
+    }
 
     go(PATH . SOFTWARE_DIRECTORY . '/view_pages.php');
+}
+
+// The summary the final Import ends with. $imported_count is how many items
+// were created; $skipped lists the left-out items as array('url' => …,
+// 'reason' => 'name'|'download'). Answers 'failed' (nothing was imported),
+// 'message' (plain text for the notice or the error), 'warning' (HTML naming
+// up to $limit escaped addresses, then "and N more"; '' when nothing was
+// skipped) and 'text' (the command-line summary listing every address).
+function import_design_import_summary($imported_count, $skipped, $limit = 5)
+{
+    $imported_count = (int) $imported_count;
+    $failed = ($imported_count === 0);
+
+    if ($failed) {
+        $message = lang('No items could be imported.');
+    } else {
+        $message = lang(array('string' => 'Items imported: {var:1}.', 'vars' => $imported_count));
+    }
+
+    $reasons = array(
+        'name' => lang('file name not allowed'),
+        'download' => lang('download failed'),
+    );
+
+    $warning = '';
+    $text = $message . "\n";
+
+    if ($skipped) {
+        $listed = array();
+
+        foreach (array_slice($skipped, 0, $limit) as $item) {
+            $reason = $reasons[$item['reason']] ?? $reasons['download'];
+            $listed[] = h($item['url']) . ' (' . h($reason) . ')';
+        }
+
+        $warning = h(lang('These items were not imported:')) . ' ' . implode(', ', $listed);
+
+        $more = count($skipped) - count($listed);
+
+        if ($more > 0) {
+            $warning .= ' ' . h(lang(array('string' => 'and {var:1} more', 'vars' => $more)));
+        }
+
+        $text .= lang('These items were not imported:') . "\n";
+
+        foreach ($skipped as $item) {
+            $text .= $item['url'] . ' (' . ($reasons[$item['reason']] ?? $reasons['download']) . ")\n";
+        }
+    }
+
+    return array(
+        'failed' => $failed,
+        'message' => $message,
+        'warning' => $warning,
+        'text' => $text,
+    );
 }
 
 function get_filetype_icon($extension) {
