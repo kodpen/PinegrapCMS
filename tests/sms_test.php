@@ -370,7 +370,7 @@ function test_sms_send_refuses_before_reading_the_account()
 {
 	foreach (array(
 		array('905321234567', 'Hello', 'newsletter', 'Unknown kind of SMS message.'),
-		array('905321234567', 'Hello', 'marketing', 'Marketing messages are not sent by SMS: they need the recipient\'s consent recorded in İYS.'),
+		array('905321234567', 'Hello', 'marketing', 'A marketing SMS needs the sender identity: fill in the trade name or the MERSİS number in Settings › Communication › SMS Messages.'),
 		array('not a number', 'Hello', 'order', 'This is not a mobile number an SMS can be sent to.'),
 		array('905321234567', "  \x07 ", 'order', 'The message is empty.'),
 	) as $case) {

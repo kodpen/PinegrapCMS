@@ -1146,6 +1146,7 @@ if ($pages) {
         $output_link_url = h(escape_javascript(PATH)) . h(escape_javascript(encode_url_path($page['page_name']))) . $query_string_from;
 
         $output_style_name = '';
+        $output_no_mobile_style_warning_class = '';
 
         // If the user is previewing a theme, and it is not the activated theme,
         // then get preview style if one exists.
@@ -1168,8 +1169,6 @@ if ($pages) {
         // If a style has not been found yet, then that means user is not previewing themes
         // or there is no preview style, so just output activated style.
         if ($output_style_name == '') {
-            $output_no_mobile_style_warning_class = '';
-
             // if the page has a style specifically defined for it, then prepare to output style name
             if ($page['style_name'] != '') {
                 $output_style_name = h($page['style_name']);

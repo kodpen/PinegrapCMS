@@ -8,6 +8,7 @@ description: Application Access, Connected applications, Connections, the chat w
 - `connected_apps.php` and `connections.php`: "Connected on" (`'type' => 'date'`).
 - `chat.php`: `pg_chat_last_seen_label()` past a week (`'type' => 'date'`) and the "Last seen" tooltip `pg_chat_last_seen_exact()` (date and time).
 - Before, they were `date('d.m.Y')` / `date('d.m.Y H:i')`: a US-English site (`month_day`, `twelve_hours`) read "29.10.2026" beside a "Last used" that followed its settings.
+- Subscriptions, Firewall log, short link state lines and the Paraşüt line: `stored-times-site-order.md`.
 - Left as they are: `api_settings.php`'s log `'time'` (H:i) and `'expires'` (Y-m-d, an input value).
 
 ## How does the chat window know the site's clock?
