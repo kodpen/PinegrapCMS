@@ -284,6 +284,12 @@
   outline: none;
 }
 
+/* The stage takes the focus on opening only so the keys work at once; no
+   ring is drawn around the picture. */
+.pgie .pgie-stage:focus-visible {
+  outline: none;
+}
+
 .pgie-stage.pgie-panning {
   cursor: grab;
 }
@@ -494,10 +500,16 @@
   gap: 8px;
 }
 
-/* Under 768 px the editor fills the screen; the tool panel waits for the
-   phone layout. */
+/* Small screens. Below 768 px wide or 500 px tall the dialog fills the
+   screen and the panel becomes a sheet: over the right of the stage between
+   600 and 767 px and on a phone held sideways, above a bottom tool bar below
+   600 px. The editor marks a closed sheet with .pgie-sheet-closed. */
 
-@media (max-width: 767.98px) {
+.pgie-sheet-close {
+  display: none;
+}
+
+@media (max-width: 767.98px), (max-height: 499.98px) {
   .pgie-dialog {
     width: 100vw;
     height: 100vh;
@@ -506,16 +518,161 @@
   }
 
   .pgie-fullbtn,
-  .pgie-panel,
   .pgie-hint {
     display: none;
   }
 
+  .pgie-body {
+    position: relative;
+  }
+
+  .pgie-panel {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 3;
+    width: min(304px, 46%);
+    box-shadow: -12px 0 32px rgba(0, 0, 0, 0.22);
+  }
+
+  .pgie-sheet-closed .pgie-panel {
+    display: none;
+  }
+
+  .pgie-sheet-close {
+    display: inline-grid;
+  }
+}
+
+/* A phone held sideways: a short top bar and an icon rail. */
+
+@media (max-height: 499.98px) {
+  .pgie-top {
+    height: 44px;
+  }
+
+  .pgie-fmeta,
+  .pgie-top .pgie-sepv,
+  .pgie-foot,
+  .pgie .pgie-tool span {
+    display: none;
+  }
+
   .pgie-rail {
-    width: 64px;
+    width: 56px;
+    padding: 4px;
+  }
+
+  .pgie-tool {
+    padding: 9px 2px;
+  }
+}
+
+/* A phone held upright: the rail is a bar along the bottom and the panel a
+   sheet above it. */
+
+@media (max-width: 599.98px) {
+  .pgie-top {
+    height: calc(52px + env(safe-area-inset-top));
+    gap: 2px;
+    padding: env(safe-area-inset-top) 6px 0;
+  }
+
+  .pgie-fmeta,
+  .pgie-top .pgie-sepv,
+  .pgie-top .pgie-grow,
+  .pgie-foot {
+    display: none;
+  }
+
+  .pgie-file {
+    flex: 1;
+    min-width: 0;
+    margin: 0 4px;
   }
 
   .pgie-fname {
-    max-width: 30vw;
+    max-width: none;
+    font-size: 13.5px;
+  }
+
+  .pgie-body {
+    flex-direction: column;
+  }
+
+  .pgie-stage {
+    order: 1;
+  }
+
+  .pgie-panel {
+    position: relative;
+    top: auto;
+    right: auto;
+    bottom: auto;
+    order: 2;
+    width: auto;
+    max-height: 42%;
+    margin-top: -12px;
+    border-left: 0;
+    border-top: 1px solid var(--pgie-line);
+    border-radius: 18px 18px 0 0;
+    box-shadow: 0 -10px 28px rgba(0, 0, 0, 0.18);
+  }
+
+  .pgie-panel::before {
+    content: "";
+    display: block;
+    width: 38px;
+    height: 4px;
+    margin: 8px auto 0;
+    border-radius: 2px;
+    background: var(--pgie-line);
+  }
+
+  .pgie-ph {
+    height: 44px;
+  }
+
+  .pgie-rail {
+    order: 3;
+    width: auto;
+    height: calc(64px + env(safe-area-inset-bottom));
+    flex-direction: row;
+    align-items: stretch;
+    gap: 2px;
+    padding: 4px 6px calc(4px + env(safe-area-inset-bottom));
+    overflow-x: auto;
+    overflow-y: hidden;
+    border-right: 0;
+    border-top: 1px solid var(--pgie-line);
+  }
+
+  .pgie-rail .pgie-grow {
+    display: none;
+  }
+
+  .pgie-tool {
+    flex: none;
+    min-width: 62px;
+  }
+
+  .pgie-mini {
+    top: auto;
+    bottom: calc(12px + env(safe-area-inset-bottom));
+  }
+}
+
+/* Touch: a handle keeps its drawn size and gets a 44 px target. */
+
+@media (pointer: coarse) {
+  .pgie-h::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 44px;
+    height: 44px;
+    transform: translate(-50%, -50%);
   }
 }

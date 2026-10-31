@@ -48,6 +48,7 @@ function pg_image_editor_strings()
         'tools'          => lang('Tools'),
         'layers'         => lang('Layers'),
         'noLayers'       => lang('No layers yet.'),
+        'closePanel'     => lang('Close the panel'),
         'loading'        => lang('Opening the image…'),
         'loadError'      => lang('The image could not be opened.'),
         'unsavedTitle'   => lang('Close without saving?'),
