@@ -766,6 +766,61 @@ function pg_panel_get_shipping_methods($request, $action)
     exit();
 }
 
+function pg_panel_eo_tax_totals($request, $action)
+{
+    // The express order page asks again for its tax and totals when the
+    // visitor edits an address, so the page shows the tax submit_order()
+    // will charge before "Complete Order". Only the session's own cart is
+    // touched: the billing address on the order and the lines' taxes, never
+    // ship_tos (the shipping method, `complete` and the order screens read
+    // that row) and never the form's session values.
+    $order_id = (int) ($_SESSION['ecommerce']['order_id'] ?? 0);
+
+    if (!defined('ECOMMERCE_TAX') || ECOMMERCE_TAX !== true || $order_id <= 0) {
+        respond(array('status' => 'unchanged'));
+    }
+
+    $status = db_value("SELECT status FROM orders WHERE id = '" . $order_id . "' LIMIT 1");
+
+    if ($status !== 'incomplete') {
+        respond(array('status' => 'unchanged'));
+    }
+
+    $shipping = defined('ECOMMERCE_SHIPPING') && ECOMMERCE_SHIPPING === true;
+
+    $ship_tos = db_items(
+        "SELECT id, country, state FROM ship_tos WHERE order_id = '" . $order_id . "' ORDER BY id ASC"
+    );
+    if (!is_array($ship_tos)) $ship_tos = array();
+
+    $posted = pg_express_order_live_tax_fields($request, array_column($ship_tos, 'id'), $shipping);
+    pg_express_order_tax_pass($order_id, $ship_tos, $posted['fields'], $posted['same_as_shipping']);
+
+    // The lines as the page's render reads them for its totals.
+    $items = db_items(
+        "SELECT oi.price, oi.quantity, oi.tax_total,
+                " . (pg_schema_has('order_items', 'tax_rate') ? "oi.tax_rate AS line_tax_rate, " : "") . "
+                p.shippable, p.gift_card, p.recurring, p.start AS recurring_start_days,
+                oi.recurring_start_date
+         FROM order_items oi
+         INNER JOIN products p ON p.id = oi.product_id
+         WHERE oi.order_id = '" . $order_id . "'" . pg_order_item_active_sql('oi') . "
+         ORDER BY oi.id ASC"
+    );
+    if (!is_array($items)) $items = array();
+
+    $needs_shipping = false;
+    if ($shipping) {
+        foreach ($items as $item) {
+            if ((int) $item['shippable'] === 1) { $needs_shipping = true; break; }
+        }
+    }
+
+    respond(pg_express_order_live_tax_answer(
+        pg_express_order_live_totals($order_id, pg_express_order_total_lines($items), $needs_shipping)
+    ));
+}
+
 function pg_panel_update_order($request, $action)
 {
     // Update shipping & tracking info for completed order.

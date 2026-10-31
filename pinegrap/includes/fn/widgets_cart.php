@@ -2051,6 +2051,155 @@ function pg_express_order_tax_addresses($recipients, $fields, $same_as_shipping)
 }
 
 /**
+ * Takes the tax of the session's order on the address the express order page
+ * shows: the billing address is written to orders.billing_country /
+ * billing_state (the tax pass reads it there for lines without a recipient),
+ * the recipients are taxed on the form's address through
+ * update_order_item_taxes()'s map. Nothing is written to ship_tos: the
+ * shipping method, `complete` and the order screens read that row, and it
+ * gets the address only on submit. Shared by the widget's render and the
+ * eo_tax_totals action, so both take the tax the same way.
+ *
+ * @param int    $order_id          the session's order; 0 takes the tax on the stored addresses
+ * @param array  $ship_tos          the order's ship_tos rows (id, country, state)
+ * @param array  $fields            billing_country, billing_state, shipping_<id>_country / _state
+ * @param string $same_as_shipping  billing_same_as_shipping as posted
+ */
+function pg_express_order_tax_pass($order_id, $ship_tos, $fields, $same_as_shipping)
+{
+    if (!defined('ECOMMERCE_TAX') || ECOMMERCE_TAX !== true || !function_exists('update_order_item_taxes')) return;
+
+    $map = array();
+    if ((int) $order_id > 0) {
+        $addresses = pg_express_order_tax_addresses($ship_tos, $fields, $same_as_shipping);
+        $map = $addresses['ship_tos'];
+        if ($addresses['billing']['country'] !== '') {
+            db("UPDATE orders SET billing_country = '" . e($addresses['billing']['country']) . "',"
+             . " billing_state = '" . e($addresses['billing']['state']) . "'"
+             . " WHERE id = '" . (int) $order_id . "'");
+        }
+    }
+
+    update_order_item_taxes($map);
+}
+
+/**
+ * The cart lines as pg_express_order_charged_totals() reads them, from the
+ * order_items rows joined to their product (price, quantity, tax_total,
+ * line_tax_rate, recurring, recurring_start_date, recurring_start_days,
+ * gift_card).
+ *
+ * @param array $items
+ * @return array
+ */
+function pg_express_order_total_lines($items)
+{
+    $lines = array();
+    foreach ((array) $items as $it) {
+        $lines[] = array(
+            'price'                => $it['price'],
+            'quantity'             => $it['quantity'],
+            'tax_total'            => $it['tax_total'],
+            'tax_rate'             => isset($it['line_tax_rate']) ? $it['line_tax_rate'] : null,
+            'recurring'            => $it['recurring'],
+            'recurring_start_date' => $it['recurring_start_date'],
+            'start_days'           => $it['recurring_start_days'],
+            'gift_card'            => $it['gift_card'],
+        );
+    }
+    return $lines;
+}
+
+/**
+ * The express order page's totals as submit_order() will charge them
+ * (pg_express_order_charged_totals()), with the cart's order discount, the
+ * applied gift cards and the recipients' shipping as stored, plus that
+ * stored shipping as shipping_drawn: the totals may charge it a minor unit
+ * lower (pg_order_charges_reachable()), and the page's shipping script keeps
+ * that while the methods picked are the stored ones.
+ *
+ * @param int   $order_id
+ * @param array $lines           pg_express_order_total_lines()
+ * @param bool  $needs_shipping  shipping on and a shippable line in the cart
+ * @return array  pg_express_order_charged_totals()'s keys and shipping_drawn, minor units
+ */
+function pg_express_order_live_totals($order_id, $lines, $needs_shipping)
+{
+    // A gift card is not taken on an order of gift cards alone; submit_order()
+    // removes the applied ones then.
+    $gift_card_balance = 0;
+    if ((int) $order_id > 0 && defined('ECOMMERCE_GIFT_CARD') && ECOMMERCE_GIFT_CARD == true) {
+        $gift_card_balance = (int) db_value(
+            "SELECT COALESCE(SUM(old_balance), 0) FROM applied_gift_cards WHERE order_id = '" . (int) $order_id . "'"
+        );
+    }
+    $shipping_drawn = ((int) $order_id > 0 && $needs_shipping)
+        ? (int) db_value("SELECT COALESCE(SUM(shipping_cost),0) FROM ship_tos WHERE order_id = '" . (int) $order_id . "'")
+        : 0;
+    $totals = pg_express_order_charged_totals(
+        $lines,
+        isset($_SESSION['ecommerce']['order_discount']) ? $_SESSION['ecommerce']['order_discount'] : 0,
+        $shipping_drawn,
+        $gift_card_balance,
+        defined('ECOMMERCE_SURCHARGE_PERCENTAGE') ? (float) ECOMMERCE_SURCHARGE_PERCENTAGE : 0,
+        date('Y-m-d'),
+        (defined('ECOMMERCE_CREDIT_DEBIT_CARD') && ECOMMERCE_CREDIT_DEBIT_CARD == true)
+            && (defined('ECOMMERCE_PAYMENT_GATEWAY') && ECOMMERCE_PAYMENT_GATEWAY == 'ClearCommerce'),
+        pg_order_charges_settle_rates()
+    );
+    $totals['shipping_drawn'] = $shipping_drawn;
+    return $totals;
+}
+
+/**
+ * The address fields the eo_tax_totals action takes from a request: the
+ * billing country and state, and the country and state of the order's own
+ * recipients only (a shipping_<id>_ field of any other id is dropped), as
+ * trimmed strings, the shipping ones only while shipping is on.
+ *
+ * @param array $request
+ * @param array $ship_to_ids  the ids of the session order's ship_tos rows
+ * @param bool  $shipping     ECOMMERCE_SHIPPING
+ * @return array  ['fields' => name => value, 'same_as_shipping' => '1' or '']
+ */
+function pg_express_order_live_tax_fields($request, $ship_to_ids, $shipping)
+{
+    $value = function ($name) use ($request) {
+        $v = isset($request[$name]) && is_scalar($request[$name]) ? trim((string) $request[$name]) : '';
+        return mb_substr($v, 0, 100);
+    };
+
+    $fields = array('billing_country' => $value('billing_country'), 'billing_state' => $value('billing_state'));
+    if ($shipping) {
+        foreach ((array) $ship_to_ids as $id) {
+            $prefix = 'shipping_' . (int) $id . '_';
+            $fields[$prefix . 'country'] = $value($prefix . 'country');
+            $fields[$prefix . 'state']   = $value($prefix . 'state');
+        }
+    }
+
+    $same = $value('billing_same_as_shipping');
+
+    return array('fields' => $fields, 'same_as_shipping' => ($same === '1' || $same === 'true') ? '1' : '');
+}
+
+/**
+ * The eo_tax_totals action's answer: the figures the express order page
+ * redraws, in the base currency's minor units.
+ *
+ * @param array $totals  pg_express_order_live_totals()
+ * @return array
+ */
+function pg_express_order_live_tax_answer($totals)
+{
+    $answer = array('status' => 'success');
+    foreach (array('tax', 'total', 'total_with_surcharge', 'surcharge', 'shipping_drawn', 'shipping') as $key) {
+        $answer[$key] = (int) ($totals[$key] ?? 0);
+    }
+    return $answer;
+}
+
+/**
  * The tax the cart widget estimates before the checkout: the stored line
  * taxes (order_items.tax_total, written by the checkout's tax pass on the
  * buyer's address) while every taxable line has one, else the preview on the
@@ -2433,10 +2582,9 @@ function _render_system_widget_express_order($tree_json, $widget_id, $cfg = arra
     // address through update_order_item_taxes()'s map, without a ship_tos
     // write; the billing address is written to the order, where the tax pass
     // reads it for the lines without a recipient.
-    $_eo_tax_ship_tos = array();
+    $_eo_tax_fields = array();
+    $_eo_same = '';
     if ($order_id > 0 && defined('ECOMMERCE_TAX') && ECOMMERCE_TAX === true) {
-        $_eo_tax_fields = array();
-        $_eo_same = '';
         if ($_eo_lf) {
             $_eo_tax_fields['billing_country'] = (string)$_eo_lf->get_field_value('billing_country');
             $_eo_tax_fields['billing_state']   = (string)$_eo_lf->get_field_value('billing_state');
@@ -2449,19 +2597,8 @@ function _render_system_widget_express_order($tree_json, $widget_id, $cfg = arra
             }
             $_eo_same = (string)$_eo_lf->get_field_value('billing_same_as_shipping');
         }
-        $_eo_tax_addresses = pg_express_order_tax_addresses($_eo_ship_tos, $_eo_tax_fields, $_eo_same);
-        $_eo_tax_ship_tos = $_eo_tax_addresses['ship_tos'];
-        $_eo_billing = $_eo_tax_addresses['billing'];
-        if ($_eo_billing['country'] !== '') {
-            db("UPDATE orders SET billing_country = '" . e($_eo_billing['country']) . "',"
-             . " billing_state = '" . e($_eo_billing['state']) . "'"
-             . " WHERE id = '" . (int)$order_id . "'");
-        }
     }
-
-    if (defined('ECOMMERCE_TAX') && ECOMMERCE_TAX === true && function_exists('update_order_item_taxes')) {
-        update_order_item_taxes($_eo_tax_ship_tos);
-    }
+    pg_express_order_tax_pass($order_id, $_eo_ship_tos, $_eo_tax_fields, $_eo_same);
 
     // ── Load cart items + per-recipient totals ───────────────────────────────
     // Phase-1 simplified: collapse to a single flat list. Phase-2 will split
@@ -2539,44 +2676,8 @@ function _render_system_widget_express_order($tree_json, $widget_id, $cfg = arra
                    FROM orders WHERE id = '" . (int)$order_id . "' LIMIT 1")
         : array();
     if (!is_array($totals)) $totals = array();
-    $_eo_lines = array();
-    foreach ((array)$items as $it) {
-        $_eo_lines[] = array(
-            'price'                => $it['price'],
-            'quantity'             => $it['quantity'],
-            'tax_total'            => $it['tax_total'],
-            'tax_rate'             => isset($it['line_tax_rate']) ? $it['line_tax_rate'] : null,
-            'recurring'            => $it['recurring'],
-            'recurring_start_date' => $it['recurring_start_date'],
-            'start_days'           => $it['recurring_start_days'],
-            'gift_card'            => $it['gift_card'],
-        );
-    }
-    // A gift card is not taken on an order of gift cards alone; submit_order()
-    // removes the applied ones then.
-    $_eo_gift_card_balance = 0;
-    if ($order_id > 0 && defined('ECOMMERCE_GIFT_CARD') && ECOMMERCE_GIFT_CARD == true) {
-        $_eo_gift_card_balance = (int)db_value(
-            "SELECT COALESCE(SUM(old_balance), 0) FROM applied_gift_cards WHERE order_id = '" . (int)$order_id . "'"
-        );
-    }
-    // The recipients' shipping as stored; the totals may charge it a minor
-    // unit lower (pg_order_charges_reachable()), and the shipping script
-    // keeps that while the methods picked are the stored ones.
-    $_eo_shipping_drawn = ($order_id > 0 && $needs_shipping)
-        ? (int)db_value("SELECT COALESCE(SUM(shipping_cost),0) FROM ship_tos WHERE order_id = '" . (int)$order_id . "'")
-        : 0;
-    $_eo_totals = pg_express_order_charged_totals(
-        $_eo_lines,
-        isset($_SESSION['ecommerce']['order_discount']) ? $_SESSION['ecommerce']['order_discount'] : 0,
-        $_eo_shipping_drawn,
-        $_eo_gift_card_balance,
-        defined('ECOMMERCE_SURCHARGE_PERCENTAGE') ? (float)ECOMMERCE_SURCHARGE_PERCENTAGE : 0,
-        date('Y-m-d'),
-        (defined('ECOMMERCE_CREDIT_DEBIT_CARD') && ECOMMERCE_CREDIT_DEBIT_CARD == true)
-            && (defined('ECOMMERCE_PAYMENT_GATEWAY') && ECOMMERCE_PAYMENT_GATEWAY == 'ClearCommerce'),
-        pg_order_charges_settle_rates()
-    );
+    $_eo_totals = pg_express_order_live_totals($order_id, pg_express_order_total_lines($items), $needs_shipping);
+    $_eo_shipping_drawn = $_eo_totals['shipping_drawn'];
     $sub_cents      = $_eo_totals['subtotal'];
     $discount_cents = $_eo_totals['discount'];
     $tax_cents      = $_eo_totals['tax'];
