@@ -187,6 +187,44 @@ function test_audit_view_record_ids_grouped_by_type()
 	pg_assert_contains('pg_audit_view_live_records(', file_get_contents(dirname(__DIR__) . '/pinegrap/includes/fn/audit_list.php'), 'each page asks which records still exist');
 }
 
+// The Open icon follows the target screen's own gate: edit_user.php admits
+// a strictly lower role (administrators everyone), edit_file.php refuses a
+// design file below Designer.
+function test_audit_view_can_open_role_matrix()
+{
+	$user = function ($target) {
+		return array('user_role' => $target);
+	};
+
+	foreach (array(0, 1, 2, 3) as $target) {
+		pg_assert_true(pg_audit_view_can_open('user', $user($target), 0), 'an administrator opens role ' . $target);
+	}
+
+	pg_assert_false(pg_audit_view_can_open('user', $user(0), 1), 'a designer does not open an administrator');
+	pg_assert_false(pg_audit_view_can_open('user', $user(1), 1), 'a designer does not open a designer, their own account included');
+	pg_assert_true(pg_audit_view_can_open('user', $user(2), 1), 'a designer opens a manager');
+	pg_assert_false(pg_audit_view_can_open('user', $user(2), 2), 'a manager does not open a manager, their own account included');
+	pg_assert_true(pg_audit_view_can_open('user', $user(3), 2), 'a manager opens a user');
+	pg_assert_false(pg_audit_view_can_open('user', true, 0), 'an unknown role opens nothing');
+
+	pg_assert_true(pg_audit_view_can_open('file', array('design' => 0), 2), 'a manager opens a file');
+	pg_assert_false(pg_audit_view_can_open('file', array('design' => '1'), 2), 'a manager does not open a design file');
+	pg_assert_true(pg_audit_view_can_open('file', array('design' => '1'), 1), 'a designer opens a design file');
+	pg_assert_true(pg_audit_view_can_open('file', array('design' => 1), 0), 'an administrator opens a design file');
+	pg_assert_false(pg_audit_view_can_open('file', true, 2), 'a file of unknown kind is treated as a design file');
+	pg_assert_true(pg_audit_view_can_open('file', true, 1), 'which a designer opens');
+
+	foreach (array('product', 'page', 'order', 'offer', 'contact') as $type) {
+		pg_assert_true(pg_audit_view_can_open($type, true, 2), $type . ' opens for a manager');
+	}
+
+	pg_assert_same(array('user' => 'user_role', 'file' => 'design'), pg_audit_view_record_columns(), 'the gates read these columns');
+
+	foreach (pg_audit_view_record_columns() as $type => $column) {
+		pg_assert_true(isset(pg_audit_view_record_tables()[$type]), $type . ' is a looked-up type');
+	}
+}
+
 // The condition binds every value; a ? in a value stays a value.
 function test_audit_view_condition()
 {

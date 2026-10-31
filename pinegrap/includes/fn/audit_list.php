@@ -197,10 +197,16 @@ function pg_audit_list_changes_html(array $changes)
  *                     label, before_json, after_json
  * @param array $live  pg_audit_view_live_records() of the page
  * @param array $query pg_audit_view_query() of the filters
+ * @param int|null $role the viewer's role, USER_ROLE when null: the "Open"
+ *                     icon is drawn only when the record's screen admits it
  * @return array array('class', 'cells')
  */
-function pg_audit_list_row(array $line, array $live, array $query)
+function pg_audit_list_row(array $line, array $live, array $query, $role = null)
 {
+    if ($role === null) {
+        $role = defined('USER_ROLE') ? USER_ROLE : 3;
+    }
+
     $type = (string) $line['entity_type'];
     $id = (int) $line['entity_id'];
 
@@ -220,8 +226,10 @@ function pg_audit_list_row(array $line, array $live, array $query)
 
     $open = pg_audit_view_record_url($type, $id);
 
-    // A deleted record's edit screen answers "not found".
-    if (isset(pg_audit_view_record_tables()[$type]) && empty($live[$type][$id])) {
+    // A deleted record's edit screen answers "not found", one that refuses
+    // the viewer "Access denied".
+    if (isset(pg_audit_view_record_tables()[$type])
+        && (empty($live[$type][$id]) || !pg_audit_view_can_open($type, $live[$type][$id], $role))) {
         $open = '';
     }
 
