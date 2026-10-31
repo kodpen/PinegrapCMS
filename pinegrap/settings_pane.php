@@ -34,6 +34,7 @@ define('PG_SETTINGS_ENTRY', true);
 
 include_once(PG_FUNCTIONS_DIR . '/includes/settings/registry.php');
 include_once(PG_FUNCTIONS_DIR . '/includes/settings/fragment.php');
+include_once(PG_FUNCTIONS_DIR . '/includes/settings/search.php');
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -100,6 +101,20 @@ function pg_settings_pane_words($message)
 pg_error_throws(true);
 
 $liveform = new liveform('settings');
+
+// The dialog's search index: every category the reader may open, each card
+// with its keywords and the labels it draws. Asked for once, on the search
+// box's first use; it reads and writes nothing else.
+if (!$_POST && isset($_GET['search'])) {
+
+    try {
+        $index = pg_settings_search_build($user, $liveform);
+    } catch (Throwable $error) {
+        pg_settings_pane_respond(array('status' => 'error', 'message' => pg_settings_pane_complaint($error)), 500);
+    }
+
+    pg_settings_pane_respond(array('status' => 'success', 'index' => $index));
+}
 
 $pane = (isset($_REQUEST['pane']) && is_string($_REQUEST['pane'])) ? $_REQUEST['pane'] : '';
 
