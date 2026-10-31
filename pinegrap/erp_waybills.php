@@ -146,7 +146,7 @@ pg_page_shell([
                 <a class="btn btn-sm btn-solid theme-primary rounded-pill px-5" href="add_erp_waybill.php"><i class="bi bi-plus-lg me-1"></i>' . lang('New Delivery Note') . '</a>
                 <form action="add_erp_waybill.php" method="get" class="d-flex align-items-center gap-1">
                     <select name="order_id" class="form-control form-control-sm" aria-label="' . lang('Order') . '" style="max-width:20rem">' . $output_order_options . '</select>
-                    <button type="submit" class="btn btn-sm btn-outline theme-secondary text-nowrap"><i class="bi bi-cart me-1"></i>' . lang('Open') . '</button>
+                    <button type="submit" class="btn btn-sm btn-outline theme-secondary text-nowrap"><i class="bi bi-cart me-1"></i>' . lang('Open it') . '</button>
                 </form>
                 <div class="pg-toolbar-grow"></div>
                 ' . pg_filter_select('filter', array('' => lang('All')) + $filter_names, $filter, array('label' => lang('Status'), 'icon' => 'funnel', 'action' => 'erp_waybills.php')) . '

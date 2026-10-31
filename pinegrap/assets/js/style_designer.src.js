@@ -8613,7 +8613,7 @@ const StyleDesigner = (function () {
                     '<button type="button" class="sd-ctx-btn sd-ctx-dd-open-close' +
                     (isExpanded ? ' sd-ctx-active' : '') + '">' +
                     '<span class="bi ' + (isExpanded ? 'bi-eye-slash' : 'bi-eye') + '"></span> ' +
-                    (isExpanded ? esc(_sdT('Close')) : esc(_sdT('Open'))) + '</button>';
+                    (isExpanded ? esc(_sdT('Close')) : esc(_sdT('Open it'))) + '</button>';
                 showHide.style.display = '';
                 var ocBtn = showHide.querySelector('.sd-ctx-dd-open-close');
                 if (ocBtn) ocBtn.addEventListener('click', function() {
@@ -8698,7 +8698,7 @@ const StyleDesigner = (function () {
                 ? '<button type="button" class="sd-ctx-btn' + (isOpen ? ' sd-ctx-active' : '') +
                   '" data-ctx-navbar-collapse="' + collapseId + '">' +
                   '<span class="bi ' + (isOpen ? 'bi-layout-navbar-collapse' : 'bi-layout-navbar') + '"></span> ' +
-                  (isOpen ? esc(_sdT('Close')) : esc(_sdT('Open'))) + '</button>'
+                  (isOpen ? esc(_sdT('Close')) : esc(_sdT('Open it'))) + '</button>'
                 : '';
 
             var addItems = navNavId

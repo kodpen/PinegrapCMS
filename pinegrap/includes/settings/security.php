@@ -230,7 +230,7 @@ if ($audit_retention_ready) {
         <div class="card">
             <div class="card-header bg-reset border-0 d-flex flex-wrap justify-content-between align-items-center">
                 <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . lang('Audit Trail') . '</span>
-                <a class="btn btn-sm btn-outline theme-secondary" href="view_audit_log.php">' . lang('Open') . '</a>
+                <a class="btn btn-sm btn-outline theme-secondary" href="view_audit_log.php">' . lang('Open it') . '</a>
             </div>
             <div class="card-body">
                 <div class="row gy-12">

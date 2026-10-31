@@ -383,6 +383,8 @@ function erp_drawer_waybill($waybill_id)
 
     $waybill_id = (int) $waybill['id'];
     $is_cancelled = ((string) $waybill['status'] === 'cancelled');
+    $invoice_state = erp_waybill_invoice_state($waybill);
+    $invoice_url = erp_waybill_invoice_url($waybill);
 
     $address = trim(implode(', ', array_filter(array(
         trim((string) $waybill['ship_to_address']),
@@ -400,7 +402,7 @@ function erp_drawer_waybill($waybill_id)
         lang('Carrier') => h(trim((string) $waybill['carrier_title'] . (((string) $waybill['carrier_vkn'] !== '') ? ' · ' . $waybill['carrier_vkn'] : ''))),
         lang('Plate') => h((string) $waybill['plate']),
         lang('Order') => erp_order_link_html($waybill['order_id'], $waybill['order_number'], $waybill['order_exists'] !== null, 'pg-link-body-emphasis'),
-        lang('Invoice') => ((int) $waybill['invoice_id'] > 0) ? '<a href="edit_erp_invoice.php?id=' . (int) $waybill['invoice_id'] . '" class="pg-link-body-emphasis">' . h((string) ($waybill['invoice_number'] ?: ('#' . (int) $waybill['invoice_id']))) . '</a>' : '',
+        lang('Invoice') => ($invoice_url !== '') ? '<a href="' . h($invoice_url) . '" class="pg-link-body-emphasis">' . (($invoice_state === 'draft') ? lang('Draft invoice') : h((string) ($waybill['invoice_number'] ?: ('#' . (int) $waybill['invoice_id'])))) . '</a>' : '',
     ));
 
     $output_lines = '';
