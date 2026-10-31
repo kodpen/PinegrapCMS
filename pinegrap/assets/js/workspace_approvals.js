@@ -434,18 +434,12 @@
         };
     }
 
-    // The overview's list of requests waiting for the reader's answer;
-    // nothing when there are none.
-    function home(data, view, h) {
+    // The requests waiting for the reader's answer, as rows of the
+    // overview's Waiting for you card; answers how many it put there.
+    function homeRows(data, view, h, into) {
         var items = (data && data.approvals) || [];
-
-        if (!items.length) {
-            return null;
-        }
-
         var t = h.t;
         var el = h.el;
-        var section = h.homeCard(t('apv_home'), 'bi-patch-question');
 
         items.forEach(function (item) {
             var row = h.button('ws-home-row ws-home-unread');
@@ -460,16 +454,17 @@
             text.appendChild(meta);
             text.appendChild(el('span', 'ws-home-row-quote', item.title));
             row.appendChild(text);
+            row.title = t('apv_home');
             row.addEventListener('click', function () { view.open(item.channel.id, item.message_id); });
-            section.body.appendChild(row);
+            into.appendChild(row);
         });
 
-        return section.node;
+        return items.length;
     }
 
     window.PGWsApprovals = {
         card: card,
         form: form,
-        home: home
+        homeRows: homeRows
     };
 })();

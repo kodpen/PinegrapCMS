@@ -1522,6 +1522,7 @@
     "{var:1}, stock now {var:2}": "{var:1}, stok şimdi {var:2}",
     "{var:1}, the product no longer tracks stock": "{var:1}, ürün artık stok takip etmiyor",
     "{var:1}, waiting to be counted": "{var:1}, sayılmayı bekliyor",
+    "{var:1}, {var:2}": "{var:1}, {var:2}",
     "{var:1}. The amount or the subscription's first order does not match: nothing was written. Check the payment on {var:2}'s own screen.": "{var:1}. Tutar veya aboneliğin ilk siparişi eşleşmiyor: hiçbir şey yazılmadı. Ödemeyi {var:2} ekranında kontrol edin.",
     "{var:1}. The renewal order was written.": "{var:1}. Yenileme siparişi oluşturuldu.",
     "{var:1}: a value of its own for each of {var:2} records ({var:3})": "{var:1}: {var:2} kaydın her birine kendi değeri ({var:3})",

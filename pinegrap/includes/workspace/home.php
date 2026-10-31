@@ -3,11 +3,11 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Workspace - the overview: the page a person lands on when they have not
- * pinned a channel, and whenever they come back to it from the sidebar. In a
- * few lines it tells them what is coming (their open tasks by due date),
- * what was written to them (replies to their messages and mentions, with the
- * channel), the latest decisions, the channels they could join, and what
- * this place is for.
+ * pinned a channel, and whenever they come back to it from the sidebar. It
+ * greets them by the hour and tells them what waits for them (replies,
+ * mentions, approvals, read receipts), their tasks due today or before,
+ * today's calendar, what happened in their channels, the latest decisions,
+ * the channels they could join, and what this place is for.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -39,7 +39,8 @@ function ws_home($viewer)
     $today = date('Y-m-d');
 
     $counts = db_item("SELECT COUNT(*) AS open_count,
-            SUM(t.due_date > '0000-00-00' AND t.due_date < '" . e($today) . "') AS overdue_count
+            SUM(t.due_date > '0000-00-00' AND t.due_date < '" . e($today) . "') AS overdue_count,
+            SUM(t.due_date > '0000-00-00' AND t.due_date <= '" . e($today) . "') AS due_count
         FROM ws_tasks t
         INNER JOIN ws_task_assignees a ON a.task_id = t.id AND a.user_id = '" . $me . "'
         WHERE t.status IN ('todo', 'doing', 'waiting')");
@@ -66,9 +67,24 @@ function ws_home($viewer)
         }
     }
 
+    // Due today or before, the earliest first, as the my-day route reads
+    // them (api_day.php).
+    $due = array();
+
+    foreach (ws_tasks_list($viewer, array('scope' => 'mine', 'status' => 'open', 'to' => $today, 'limit' => 20)) as $brief) {
+        if (($brief['due_date'] !== null) && (count($due) < 6)) {
+            $due[] = $brief;
+        }
+    }
+
     return array(
         'name'          => (string) ($person[$me]['name'] ?? ''),
         'date'          => ws_home_date_label($today),
+        'greeting'      => ws_home_greeting((int) date('G')),
+        'due'           => $due,
+        'tasks_due'     => (int) ($counts['due_count'] ?? 0),
+        'calendar'      => ws_home_calendar($viewer, $today),
+        'digest'        => ws_home_digest($viewer, 5),
         'tasks'         => $tasks,
         'tasks_hot'     => count($hot),
         'tasks_open'    => (int) ($counts['open_count'] ?? 0),
@@ -84,6 +100,159 @@ function ws_home($viewer)
         'claude'        => function_exists('ws_claude_ready') && ws_claude_ready(),
         'ai'            => function_exists('ws_ai_ready') && ws_ai_ready(),
     );
+}
+
+/**
+ * The words the overview greets with, by the hour: the plain ones of the
+ * channel's greeting (ws_channel_briefing()).
+ *
+ * @param int $hour 0-23
+ * @return string
+ */
+function ws_home_greeting($hour)
+{
+    $hour = (int) $hour;
+
+    if (($hour < 5) || ($hour >= 23)) {
+        return lang('Good night');
+    }
+
+    if ($hour < 12) {
+        return lang('Good morning');
+    }
+
+    return ($hour < 18) ? lang('Good afternoon') : lang('Good evening');
+}
+
+/**
+ * Today's plan items that are about the person (schedule.php) and the events
+ * of their own calendars (personal_ical.php), as the calendar card lists them.
+ *
+ * @param array  $viewer
+ * @param string $today Y-m-d
+ * @return array[] ws_home_calendar_rows()
+ */
+function ws_home_calendar($viewer, $today)
+{
+    $me = (int) $viewer['id'];
+    $start = strtotime($today . ' 00:00:00');
+    $end = strtotime($today . ' 23:59:59');
+    $departments = ws_user_department_ids($me);
+    $items = array();
+
+    foreach (ws_events_between($today, $today) as $event) {
+        if (ws_event_applies($event, $me, $departments)) {
+            $items[] = $event;
+        }
+    }
+
+    if (function_exists('ws_personal_ical_layer')) {
+        foreach (ws_personal_ical_layer($me) as $event) {
+            if (((int) $event['starts_at'] <= $end) && ((int) $event['ends_at'] >= $start)) {
+                $items[] = $event;
+            }
+        }
+    }
+
+    return ws_home_calendar_rows($items, $start, $end, time());
+}
+
+/**
+ * The calendar card's rows: the all-day items first, then by the hour, at
+ * most eight; the one going on now and the ones already over marked.
+ *
+ * @param array[] $items ws_events rows or personal calendar events
+ * @param int     $start today's first second
+ * @param int     $end   today's last second
+ * @param int     $now
+ * @return array[] id, title, kind, all_day, time, until, now, past, meeting_url, layer
+ */
+function ws_home_calendar_rows($items, $start, $end, $now)
+{
+    $rows = array();
+
+    foreach ($items as $event) {
+        $all_day = !empty($event['all_day']);
+        $from = max((int) $start, (int) $event['starts_at']);
+        $to = min((int) $end, (int) $event['ends_at']);
+
+        $rows[] = array(
+            'id'          => (int) ($event['id'] ?? 0),
+            'title'       => (string) ($event['title'] ?? ''),
+            'kind'        => (string) ($event['kind'] ?? ''),
+            'all_day'     => $all_day,
+            'time'        => $all_day ? '' : date('H:i', $from),
+            'until'       => $all_day ? '' : date('H:i', $to),
+            'now'         => !$all_day && ($from <= $now) && ($now < $to),
+            'past'        => !$all_day && ($to <= $now),
+            'meeting_url' => (string) ($event['meeting_url'] ?? ''),
+            'layer'       => (string) ($event['layer'] ?? ''),
+            'at'          => $all_day ? 0 : $from,
+        );
+    }
+
+    usort($rows, function ($a, $b) {
+        return ($a['at'] - $b['at']) ?: ($a['id'] - $b['id']);
+    });
+
+    return array_map(function ($row) {
+        unset($row['at']);
+
+        return $row;
+    }, array_slice($rows, 0, 8));
+}
+
+/**
+ * What happened in the person's channels: the joined ones with messages they
+ * have not read, the latest first, each with its unread count and its last
+ * message, who wrote it and its first words.
+ *
+ * @param array $viewer
+ * @param int   $limit
+ * @return array[] id, name, kind, unread, mentions, message_id, sender, text, time
+ */
+function ws_home_digest($viewer, $limit = 5)
+{
+    $channels = array_values(array_filter(ws_channels_for($viewer), function ($channel) {
+        return $channel['joined'] && ($channel['unread'] > 0);
+    }));
+
+    usort($channels, function ($a, $b) {
+        return ($b['last_message_at'] - $a['last_message_at']) ?: ($b['id'] - $a['id']);
+    });
+
+    $out = array();
+
+    foreach (array_slice($channels, 0, (int) $limit) as $channel) {
+        $row = db_item("SELECT * FROM ws_messages WHERE channel_id = '" . (int) $channel['id'] . "'
+            AND deleted_at = 0 AND sender_kind <> 'system' ORDER BY id DESC LIMIT 1");
+        $sender = null;
+        $text = '';
+
+        if (is_array($row)) {
+            list($people, $mail) = ws_message_rows_senders(array($row));
+            $sender = ws_message_row_sender($row, $people, $mail);
+            $text = ws_plain_line($viewer, $row['body']);
+
+            if (mb_strlen($text) > 120) {
+                $text = rtrim(mb_substr($text, 0, 119)) . '…';
+            }
+        }
+
+        $out[] = array(
+            'id'         => (int) $channel['id'],
+            'name'       => (string) $channel['name'],
+            'kind'       => (string) $channel['kind'],
+            'unread'     => (int) $channel['unread'],
+            'mentions'   => (int) $channel['mentions'],
+            'message_id' => is_array($row) ? (int) $row['id'] : 0,
+            'sender'     => is_array($sender) ? (string) ($sender['name'] ?? '') : '',
+            'text'       => $text,
+            'time'       => is_array($row) ? ws_time_label((int) $row['created_at']) : '',
+        );
+    }
+
+    return $out;
 }
 
 /**
@@ -265,7 +434,19 @@ function ws_home_js_strings()
 {
     return array(
         'home'                => lang('Overview'),
-        'home_hello'          => ws_js_template('Hello, {var:1}', 1),
+        'home_greeting'       => ws_js_template('{var:1}, {var:2}', 2),
+        'home_lead'           => ws_js_template('Waiting for you: {var:1} · Due today or overdue: {var:2}', 2),
+        'home_waiting'        => lang('Waiting for you'),
+        'home_waiting_empty'  => lang('Nothing waits for you. Approvals, read receipts, replies to your messages and mentions of you show here.'),
+        'home_due'            => lang('Today and overdue'),
+        'home_calendar'       => lang('Calendar · today'),
+        'home_calendar_more'  => lang('Work Calendar'),
+        'home_calendar_empty' => lang('Nothing is planned for you today.'),
+        'home_all_day'        => lang('All day'),
+        'home_now'            => lang('Now'),
+        'home_digest'         => lang('What happened in the channels'),
+        'home_digest_empty'   => lang('You have read everything in your channels.'),
+        'home_digest_new'     => ws_js_template('{var:1} new', 1),
         'density'             => lang('Density'),
         'density_comfortable' => lang('Comfortable'),
         'density_compact'     => lang('Compact'),
@@ -273,8 +454,6 @@ function ws_home_js_strings()
         'home_tasks_count'    => ws_js_template('{var:1} open task(s)', 1),
         'home_tasks_overdue'  => ws_js_template('{var:1} overdue', 1),
         'home_tasks_empty'    => lang('No open task is yours. Tasks handed to you show here, the nearest due date first.'),
-        'home_talk'           => lang('Written to you'),
-        'home_talk_empty'     => lang('Nothing new. Replies to your messages and mentions of you show here.'),
         'home_reply'          => lang('replied'),
         'home_mention'        => lang('mentioned you'),
         'home_decisions'      => lang('Latest decisions'),
@@ -287,7 +466,6 @@ function ws_home_js_strings()
         'home_about_tasks'    => lang('Turn a message into a task with /gorev. The Planning Board shows who does what on which day and warns about clashes.'),
         'home_about_decisions' => lang('Mark a message as a decision; every decision of every channel you can read gathers in the Decision Timeline.'),
         'home_about_claude'   => lang('Write @Claude in a channel: it reads the conversation, answers, and proposes tasks and record changes that you approve.'),
-        'home_start'          => lang('Start a conversation'),
         'home_new_channel'    => lang('New channel'),
         'home_new_private'    => lang('New private channel'),
         'nav_work'            => lang('Work and planning'),
