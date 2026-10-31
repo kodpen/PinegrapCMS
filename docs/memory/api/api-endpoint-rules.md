@@ -19,6 +19,7 @@ description: Writing an external API endpoint: one route row, one presenter, lis
 - A body key the route does not declare is 422 (`api_request_body_keys()`); the query string is NOT checked (cache busters, analytics tags and proxy marks land there).
 - A body field that may be cleared declares `'nullable' => true`: JSON null and `''` both reach the handler as `''`, and the handler decides what clearing means. Without it `""` on a non-string field is 422.
 - A text `max_length` must fit its column: `api-text-field-limits.md`.
+- A shared check's refusal (`api_http_check_url()['error']`, an English key) goes through `lang()` at the call site; `api_fail_validation()` sends text as it is. Symptom (#4025, PR #4129): webhook create/update (API and MCP) refused an address in English.
 
 ## Which error codes may a handler use?
 - Reuse the generic ones: `validation_failed` (`api_fail_validation()`), `not_found` (`api_fail_not_found()`), `forbidden`, `invalid_cursor`, `service_unavailable` (a feature that waits for a database update; a lost connection is the bootstrap's `database_unavailable`, `api-database-unavailable.md`). Every non-409 code must be explained in `api_error_catalogue()` (`includes/api/schema.php`); `tools/check_api_schema.php` fails a build that answers an unexplained one.

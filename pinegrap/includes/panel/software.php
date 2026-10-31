@@ -34,6 +34,11 @@ function pg_panel_software_backup($request, $action)
     // steps ran for whoever could reach the address.  Manager and a valid
     // token is the same reach backups.php asks for at its own door, and
     // now the door the Backups view knocks on asks the same.
+    // Exempt: an ended session gets the JSON refusal here, before
+    // validate_user() could redirect the request to the sign-in page.
+    if (!USER_LOGGED_IN) {
+        respond(panel_login_refusal());
+    }
     $user = validate_user();
     validate_area_access($user, 'manager');
     validate_token();

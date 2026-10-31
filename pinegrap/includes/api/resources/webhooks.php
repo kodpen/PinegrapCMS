@@ -148,7 +148,7 @@ function api_webhooks_create($params) {
 
 	if (!$check['ok']) {
 
-		api_fail_validation($check['error'], 'url');
+		api_fail_validation(lang($check['error']), 'url');
 
 	}
 
@@ -318,7 +318,7 @@ function api_webhooks_update($params) {
 
 		if (!$check['ok']) {
 
-			api_fail_validation($check['error'], 'url');
+			api_fail_validation(lang($check['error']), 'url');
 
 		}
 

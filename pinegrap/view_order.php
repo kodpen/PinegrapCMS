@@ -899,9 +899,11 @@ if (!$_POST) {
                     $address .= $ship_tos[$key]['address_2'] . ', ';
                 }
                 
-                // The district, when one was typed, before the city.
-                if (!empty($ship_tos[$key]['district'])) {
-                    $address .= $ship_tos[$key]['district'] . ', ';
+                // The district, when it differs from the city, before the city.
+                $district = pg_order_view_district(isset($ship_tos[$key]['district']) ? $ship_tos[$key]['district'] : '', $ship_tos[$key]['city']);
+
+                if ($district !== '') {
+                    $address .= $district . ', ';
                 }
 
                 if ($ship_tos[$key]['city']) {

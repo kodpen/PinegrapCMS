@@ -4,7 +4,8 @@
  *
  * The panel order screen's card rows (view_order.php): a "label: value" row
  * only when there is a value, the stored address type and country code as
- * the panel names them, the requested arrival date as the customer chose it
+ * the panel names them, the district only when it differs from the city,
+ * the requested arrival date as the customer chose it
  * at the checkout, the text of the contact link, and the printed order's
  * shipping card (print_order.php).
  *
@@ -91,6 +92,33 @@ function pg_order_view_country($stored)
     }
 
     return pg_geo_country_name($stored);
+}
+
+/**
+ * The district of an order address as it is printed before the city, or ''
+ * when it only repeats the city: marketplace imports store the district in
+ * both ship_tos.city and ship_tos.district. Compared the Turkish way
+ * (pg_list_search_fold(): I, İ, ı and i are one letter), ignoring case and
+ * spaces. Not escaped: the text goes through h() where it is printed.
+ *
+ * @param mixed $district ship_tos.district (null when the column is missing)
+ * @param mixed $city ship_tos.city
+ * @return string
+ */
+function pg_order_view_district($district, $city)
+{
+    $district = is_scalar($district) ? trim((string) $district) : '';
+
+    if ($district === '') {
+        return '';
+    }
+
+    $city = is_scalar($city) ? (string) $city : '';
+    $fold = function ($text) {
+        return preg_replace('/\s+/u', '', pg_list_search_fold($text));
+    };
+
+    return $fold($district) === $fold($city) ? '' : $district;
 }
 
 /**

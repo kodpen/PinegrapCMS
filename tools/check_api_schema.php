@@ -10,7 +10,7 @@
  * suite that asserts fields the endpoint never had - which is how a working
  * endpoint comes back as a page of red assertions.
  *
- * Four contracts are enforced:
+ * Five contracts are enforced:
  *   1. Every route in api_schema() declares 'returns', except the few that
  *      answer with a document rather than a record (the OpenAPI file itself,
  *      the console page and its fragment), with a file ('binary' => true) or
@@ -24,6 +24,8 @@
  *      or array(201, 200)), and a route that says so has a handler that does.
  *      The document promises 200 otherwise, and a generated client reads the
  *      201 of a create as an answer it was never told about.
+ *   5. Every route row carries a 'params' list, empty when it takes none:
+ *      the router, the document and the console read it unguarded.
  *
  * Static on purpose - it reads the files rather than running the API, so it
  * needs no database, no credentials and no site.
@@ -338,6 +340,40 @@ foreach (array_merge(
 
 	$handler_sources .= "\n" . file_get_contents($handler_file);
 
+}
+
+// Every row carries its parameter list, empty when it takes none. The router
+// walks it while matching any path, and the document and the console walk it
+// for every route, so a row without it warns on every unknown address.
+// Readers do not guard the key: this check does. An inline shape with an id
+// field ('returns' => array('id' => 'integer', ...)) splits a route into more
+// than one block, so the key is looked for up to the next route.
+$params_route = null;
+$params_seen = true;
+
+foreach ($blocks as $block) {
+
+	$head = substr($block, 0, 400);
+
+	if ((strpos($head, "'method'") !== false) && (strpos($head, "'handler'") !== false)) {
+
+		if (!$params_seen) {
+			$problems[] = $params_route . ': no \'params\' - a route without parameters declares \'params\' => array().';
+		}
+
+		$params_route = substr($block, 0, strpos($block, "'"));
+		$params_seen = false;
+
+	}
+
+	if (preg_match("/'params'\s*=>/", $block)) {
+		$params_seen = true;
+	}
+
+}
+
+if (!$params_seen) {
+	$problems[] = $params_route . ': no \'params\' - a route without parameters declares \'params\' => array().';
 }
 
 foreach ($blocks as $block) {
