@@ -1318,7 +1318,15 @@ function get_membership_entrance_screen()
     }
     return $output;
 }
-function get_registration_confirmation_screen()
+/**
+ * The registration confirmation screen.
+ *
+ * @param string|null $host host of the default content's "Continue" link;
+ *        null keeps the request host (the visitor's screen), the staff
+ *        e-mail passes HOSTNAME_SETTING
+ * @return string
+ */
+function get_registration_confirmation_screen($host = null)
 {
     // find if there is a registration confirmation page
     $query = "SELECT page_id FROM page WHERE page_type = 'registration confirmation'";
@@ -1327,16 +1335,28 @@ function get_registration_confirmation_screen()
     if (mysqli_num_rows($result) > 0) {
         $row = mysqli_fetch_assoc($result);
         require_once(PG_FUNCTIONS_DIR . '/get_page_content.php');
+        require_once(PG_FUNCTIONS_DIR . '/get_registration_confirmation_screen_content.php');
+        // The page's system region renders this content itself on the
+        // request host; a given host builds it here instead.
+        $system_content = ($host === null) ? '' : get_registration_confirmation_screen_content($host);
         // get page content
-        $output = get_page_content($row['page_id'], $system_content = '', $extra_system_content = '', $mode = 'preview', $email = false, $dynamic_properties = array(), $toolbar = false, ($_SESSION['software']['device_type'] ?? ''));
+        $output = get_page_content($row['page_id'], $system_content, $extra_system_content = '', $mode = 'preview', $email = false, $dynamic_properties = array(), $toolbar = false, ($_SESSION['software']['device_type'] ?? ''));
         // else there is not a registration confirmation page, so use default screen
     } else {
         require_once(PG_FUNCTIONS_DIR . '/get_registration_confirmation_screen_content.php');
-        $output = output_header_secure() . get_registration_confirmation_screen_content() . output_footer_secure();
+        $output = output_header_secure() . get_registration_confirmation_screen_content($host) . output_footer_secure();
     }
     return $output;
 }
-function get_membership_confirmation_screen()
+/**
+ * The membership confirmation screen.
+ *
+ * @param string|null $host host of the default content's "Continue" link;
+ *        null keeps the request host (the visitor's screen), the staff
+ *        e-mail passes HOSTNAME_SETTING
+ * @return string
+ */
+function get_membership_confirmation_screen($host = null)
 {
     // find if there is a membership confirmation page
     $query = "SELECT page_id FROM page WHERE page_type = 'membership confirmation'";
@@ -1345,12 +1365,16 @@ function get_membership_confirmation_screen()
     if (mysqli_num_rows($result) > 0) {
         $row = mysqli_fetch_assoc($result);
         require_once(PG_FUNCTIONS_DIR . '/get_page_content.php');
+        require_once(PG_FUNCTIONS_DIR . '/get_membership_confirmation_screen_content.php');
+        // The page's system region renders this content itself on the
+        // request host; a given host builds it here instead.
+        $system_content = ($host === null) ? '' : get_membership_confirmation_screen_content($host);
         // get page content
-        $output = get_page_content($row['page_id'], $system_content = '', $extra_system_content = '', $mode = 'preview', $email = false, $dynamic_properties = array(), $toolbar = false, ($_SESSION['software']['device_type'] ?? ''));
+        $output = get_page_content($row['page_id'], $system_content, $extra_system_content = '', $mode = 'preview', $email = false, $dynamic_properties = array(), $toolbar = false, ($_SESSION['software']['device_type'] ?? ''));
         // else there is not a membership confirmation page, so use default screen
     } else {
         require_once(PG_FUNCTIONS_DIR . '/get_membership_confirmation_screen_content.php');
-        $output = output_header_secure() . get_membership_confirmation_screen_content() . output_footer_secure();
+        $output = output_header_secure() . get_membership_confirmation_screen_content($host) . output_footer_secure();
     }
     return $output;
 }

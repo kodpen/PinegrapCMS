@@ -18,4 +18,8 @@ description: HOSTNAME (request Host header) for redirects back to the visitor, H
 
 ## What still uses the request host outside a redirect?
 - The "retrieve order" link (`get_shopping_cart.php`, `get_express_order.php`) is printed on the visitor's own screen: fine.
-- The registration and membership staff notices (`includes/fn/auth.php` `pg_member_register()` / `pg_member_activate()`) draw `get_registration_confirmation_screen_content.php` / `get_membership_confirmation_screen_content.php`, whose "Continue" link is on `HOSTNAME`: a forged Host header on the anonymous sign-up post points the staff e-mail's link anywhere. Open; to be fixed like #558.
+
+## How do the registration and membership staff notices link?
+- With `REGISTRATION_EMAIL_ADDRESS` / `MEMBERSHIP_EMAIL_ADDRESS` set, `pg_member_register()` / `pg_member_activate()` (`includes/fn/auth.php`) mail staff the visitor's confirmation screen. They call `get_registration_confirmation_screen(HOSTNAME_SETTING)` / `get_membership_confirmation_screen(HOSTNAME_SETTING)` inside `pg_staff_lang()`, so subject and body are in the software language and the "Continue" link is on the site's host.
+- The `$host` argument (default `null` = `HOSTNAME`) reaches `get_*_confirmation_screen_content($host)`; on a designed confirmation page the wrapper builds that content and hands it to `get_page_content()` as `$system_content`. Without a host nothing changes, so the visitor's own screen is byte-identical.
+- Before the fix the link took the anonymous sign-up post's Host header (POSTs are never main-host redirected) and the subject followed the page's `pg_lang`. `tests/registration_staff_mail_test.php` pins it.

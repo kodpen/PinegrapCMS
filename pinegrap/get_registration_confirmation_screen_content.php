@@ -16,8 +16,20 @@
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
-function get_registration_confirmation_screen_content()
+/**
+ * The default registration confirmation content.
+ *
+ * @param string|null $host host of the "Continue" link; null takes the
+ *        request host (the visitor's own screen), an e-mail passes
+ *        HOSTNAME_SETTING so the request cannot choose where it points
+ * @return string
+ */
+function get_registration_confirmation_screen_content($host = null)
 {
+    if ($host === null) {
+        $host = HOSTNAME;
+    }
+
     $email_address = '';
     $username = '';
     
@@ -37,6 +49,6 @@ function get_registration_confirmation_screen_content()
         'Email: ' . h($email_address) . '<br />
         Username: ' . h($username) . '<br />
         <br />
-        <a href="' . URL_SCHEME . HOSTNAME . h(pg_safe_redirect_path($_REQUEST['send_to'] ?? '')) . '" class="software_button_primary">Continue</a><br />';
+        <a href="' . URL_SCHEME . $host . h(pg_safe_redirect_path($_REQUEST['send_to'] ?? '')) . '" class="software_button_primary">Continue</a><br />';
 }
 ?>
