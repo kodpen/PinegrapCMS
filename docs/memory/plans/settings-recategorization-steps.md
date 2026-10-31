@@ -13,7 +13,7 @@ description: Steps R1-R9 of plans/settings-recategorization.md: what each moves,
 
 - R2 (M) Accounting category, cut in two (size).
   - R2a, done in #3819: a new `accounting` key, `accounting.php` and `accounting.save.php`; the ERP and E-Invoice blocks and their columns leave `commerce.php`/`commerce.save.php` unchanged; anchors `pgset-erp`, `pgset-invoice`, `pgsub-invoice` land on them; return links name `accounting`.
-  - R2b: the `erp_settings.php` cards (rules, late fee, e-Fatura threshold, templates) move in and that screen opens `#settings/accounting`; `system_status.php` 3589 still lands on the threshold card. Ask first (plan, open questions).
+  - R2b, done in #3840 (decided #3828, A; `erp/erp-settings-cards.md`): the `erp_settings.php` cards in the pane, the screen kept for role 3; no redirect while the template editor is only there.
   - After #3141 (holds `output.php`, `get_help_url.php`), with R1b: the menu's ERP Settings row links `#settings/accounting`; `case 'settings_accounting.php'` in `output_menu()`; a `settings_accounting` help row.
 
 - R3 (M) Renames and the security moves. Labels become Accounts and sign-in, Firewall and HTTPS; the keys `security` and `firewall` stay. The encryption key block moves from Payment Methods to its own card, and the MFA hint (`security.php` 200) points there. Trusted Proxies moves out from under Enable Firewall. Blocked Email Addresses moves from IP Lists to Spam Protection.
@@ -26,6 +26,6 @@ description: Steps R1-R9 of plans/settings-recategorization.md: what each moves,
 
 - R7 (S) Updates and maintenance, and Integrations. Update Channel, Cron Jobs, Backups, Alerts and Maintenance Mode leave General. API becomes Integrations, takes Google Reviews from Communication, and gets the links listed in the plan. The panel's look gets one place: Private label comes in under Appearance, from `private_label.php`.
 
-- R8 (M) Search. A search box in the dialog covers every category's cards and field labels, from the registry plus the drawn labels. Palette keywords get fixed: false hits ("logo" on E-Invoice) and misses (favicon, kvkk, workspace, prefetch, encryption). Headings over the list come here if the owner wants them.
+- R8 (M) Search. A search box in the dialog covers every category's cards and field labels, from the registry plus the drawn labels. Palette keywords: false hits ("logo" on E-Invoice) and misses (favicon, kvkk, workspace, prefetch, encryption). Headings over the list, if wanted.
 
-- R9 (S) Links and notes. Update the text links that name old places ("Site Settings › Contact" in `erp_settings.php`, "Settings › General" in `workspace/ai.php`). Check every deep link (dashboard tips, #3558). Refresh descriptions and help mapping. Remove `pg_settings_status()` and `pg_settings_facts()`, which have no callers. Rewrite `ui/settings-modal-architecture.md`, write the decisions into the decisions list, and delete this plan.
+- R9 (S) Links and notes. Update the text links that name old places ("Site Settings › Contact" in `erp_settings.php`, "Settings › General" in `workspace/ai.php`). Check deep links (#3558). Refresh descriptions, help. Remove `pg_settings_status()` and `pg_settings_facts()`, which have no callers. Rewrite `ui/settings-modal-architecture.md`, write the decisions into the decisions list, and delete this plan.

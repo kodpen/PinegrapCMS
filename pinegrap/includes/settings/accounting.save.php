@@ -20,6 +20,33 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     exit;
 }
 
+require_once(PG_FUNCTIONS_DIR . '/includes/erp/bootstrap.php');
+
+// The ERP module's cards that the pane drew and that came with the post: a
+// card's fields missing from a hand-made request leave its settings alone.
+$erp_settings_cards = array();
+
+if (erp_settings_rules_editable() && isset($_POST['vat_exemption_code'])) {
+    $erp_settings_cards[] = 'rules';
+}
+
+if (erp_late_fee_ready() && isset($_POST['late_fee_rate'], $_POST['late_fee_tax_rate'])) {
+    $erp_settings_cards[] = 'late_fee';
+}
+
+if (erp_efatura_threshold_ready() && isset($_POST['erp_efatura_web_threshold'], $_POST['erp_efatura_general_threshold'])) {
+    $erp_settings_cards[] = 'efatura_threshold';
+}
+
+// A refused value stops the whole save before anything is written.
+foreach (erp_settings_cards_refusals($_POST, $erp_settings_cards) as $erp_settings_field => $erp_settings_error) {
+    $liveform->mark_error($erp_settings_field, h($erp_settings_error));
+}
+
+if ($liveform->check_form_errors()) {
+    return;
+}
+
 /**
  * Build the encrypted Parasut credentials blob for the settings save.
  *
@@ -344,6 +371,12 @@ function pg_parasut_credentials_for_save()
             " . $sql_erp_overdue . "
             last_modified_user_id = '" . USER_ID . "',
             last_modified_timestamp = UNIX_TIMESTAMP()");
+
+    $erp_settings_saved = erp_settings_cards_save($_POST, $erp_settings_cards);
+
+    if (!$erp_settings_saved['success']) {
+        $liveform->mark_error($erp_settings_saved['field'], h($erp_settings_saved['error']));
+    }
 
     // A Paraşüt authorization code is exchanged by the card's Connect button;
     // one pasted and saved with the page is exchanged here as well, after the
