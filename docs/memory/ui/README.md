@@ -106,6 +106,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - dashboard-scroll-regions.md: Dashboard card lists that scroll inside the square card become named keyboard regions (pg_widget_scroll_regions() in welcome.php)
 - dashboard-welcome-card.md: The dashboard top card (welcome.php, .pg-clockbar): greeting on the left, time and date on the right in one full-width card; phone stacking, themes, ids the scripts read
 - dashboard-widget-files.md: Adding a dashboard widget: includes/dashboard/widgets/widget_<id>.php and its function contract, the welcome.php registry entry, retired ids never reused, the refresh and solo lists, charts.
+- deleted-picture-fallback.md: A contact or product picture whose file was deleted in the File Manager falls back to the letters or icon (pg_contact_picture_name(), is_file() on product thumbs)
 - design-file-missing-on-disk.md: What the theme, design file and CSS/JS/text editor screens do when a files row has no file on the disk; the Turkish "noise" theme file and upgrade step 10.5
 - design-file-shared-form.md: add_design_file.php and edit_design_file.php draw the File Access Control and Description cards through includes/forms/design_file_form.php; what each screen keeps
 - designer-region-shared-form.md: The designer region create and edit screens share includes/forms/designer_region_form.php: what it holds, the label fix, what stays in the screens

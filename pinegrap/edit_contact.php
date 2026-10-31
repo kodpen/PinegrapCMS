@@ -150,52 +150,48 @@ if (!$_POST) {
     $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed');
     $row = mysqli_fetch_assoc($result);
     $image = '';
-    if($row['file_id'] == 0){
-        if($row['image']){
-            $image = '
-            <div class="item col">
-                <div class="card bg-transparent border-0 shadow-none cursor-pointer image">
-                    <div class="card-header d-flex justify-content-end p-1 border-0 bg-transparent"><button type="button" class="btn btn-link pg-link-danger bi bi-x-lg p-0" title="' . h(lang('Remove')) . '" aria-label="' . h(lang('Remove')) . '" onclick=" $(this).closest(\'.item\').remove();"></button></div>
-                    <div class="card-body overflow-hidden position-relative rounded-4 w-100 p-0" style="aspect-ratio: 5 / 4;background: radial-gradient(transparent, #00000024);" title="' . h($row['image']) . '">
-                        <input type="hidden" name="image_url" id="image_url" value="' . e($row['image']) . '">
-                        <img class="lazy object-fit-contain w-100 h-100" alt="' . h(lang('Picture')) . '" src="' . OUTPUT_PATH . SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="' . PATH . h($row['image']) . '" />
-                    </div>
-                </div>
-            </div>';
-        }else{
-            $image = '
-            <div class="item col">
-                <div class="card bg-transparent border-0 shadow-none cursor-pointer image">
-                    <div class="card-header d-flex justify-content-end p-1 border-0 bg-transparent"><button type="button" class="btn btn-link pg-link-danger bi bi-x-lg p-0 opacity-0" tabindex="-1" aria-hidden="true"></button></div>
-                    <div class="card-body overflow-hidden position-relative rounded-4 w-100 p-0" style="aspect-ratio: 5 / 4;background: radial-gradient(transparent, #00000024);" title="' . h($row['image']) . '">
-                        <div class="d-flex align-items-center justify-content-center w-100 h-100">' . pg_avatar_markup_for($row['first_name'] ?? '', $row['last_name'] ?? '', $row['company'] ?? '', $id, 'avatar-xl') . '</div>
-                    </div>
-                </div>
-            </div>';
-        }
-       
-    }else{
-        $query = 
-        "SELECT 
-            files.name
-        FROM files 
-        WHERE files.id = ?";
-        $result = db_q($query, array((string) $row['file_id'])) or output_error('Query failed.');
-        $file = mysqli_fetch_array($result);
-        $file_name = $file['name'];
+    // A file deleted in the File Manager leaves contacts.file_id behind;
+    // without its files row the contact gets the letters, and the stored id
+    // stays in the form so a Save changes nothing.
+    $picture_name = pg_contact_picture_name($row['file_id']);
+    $kept_file_id = '';
 
+    if ($picture_name !== '') {
         $image = '
         <div class="item col">
             <div class="card bg-transparent border-0 shadow-none cursor-pointer image">
                 <div class="card-header d-flex justify-content-end p-1 border-0 bg-transparent"><button type="button" class="btn btn-link pg-link-danger bi bi-x-lg p-0" title="' . h(lang('Remove')) . '" aria-label="' . h(lang('Remove')) . '" onclick=" $(this).closest(\'.item\').remove();"></button></div>
-                <div class="card-body overflow-hidden position-relative rounded-4 w-100 p-0" style="aspect-ratio: 5 / 4;background: radial-gradient(transparent, #00000024);" title="' . h($file_name) . '">
-                    <input type="hidden" name="file_id" id="file_id" value="' . $row['file_id'] . '"/>
-                    <img class="lazy object-fit-contain w-100 h-100" alt="' . h(lang('Picture')) . '" src="' . OUTPUT_PATH . SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="' . PATH . h($file_name) . '" />
+                <div class="card-body overflow-hidden position-relative rounded-4 w-100 p-0" style="aspect-ratio: 5 / 4;background: radial-gradient(transparent, #00000024);" title="' . h($picture_name) . '">
+                    <input type="hidden" name="file_id" id="file_id" value="' . (int) $row['file_id'] . '"/>
+                    <img class="lazy object-fit-contain w-100 h-100" alt="' . h(lang('Picture')) . '" src="' . OUTPUT_PATH . SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="' . PATH . h($picture_name) . '" />
                 </div>
             </div>
         </div>';
+    } elseif (((int) $row['file_id'] == 0) && $row['image']) {
+        $image = '
+        <div class="item col">
+            <div class="card bg-transparent border-0 shadow-none cursor-pointer image">
+                <div class="card-header d-flex justify-content-end p-1 border-0 bg-transparent"><button type="button" class="btn btn-link pg-link-danger bi bi-x-lg p-0" title="' . h(lang('Remove')) . '" aria-label="' . h(lang('Remove')) . '" onclick=" $(this).closest(\'.item\').remove();"></button></div>
+                <div class="card-body overflow-hidden position-relative rounded-4 w-100 p-0" style="aspect-ratio: 5 / 4;background: radial-gradient(transparent, #00000024);" title="' . h($row['image']) . '">
+                    <input type="hidden" name="image_url" id="image_url" value="' . e($row['image']) . '">
+                    <img class="lazy object-fit-contain w-100 h-100" alt="' . h(lang('Picture')) . '" src="' . OUTPUT_PATH . SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="' . PATH . h($row['image']) . '" />
+                </div>
+            </div>
+        </div>';
+    } else {
+        if ((int) $row['file_id'] != 0) {
+            $kept_file_id = '<input type="hidden" name="file_id" id="file_id" value="' . (int) $row['file_id'] . '"/>';
+        }
 
-
+        $image = '
+        <div class="item col">
+            <div class="card bg-transparent border-0 shadow-none cursor-pointer image">
+                <div class="card-header d-flex justify-content-end p-1 border-0 bg-transparent"><button type="button" class="btn btn-link pg-link-danger bi bi-x-lg p-0 opacity-0" tabindex="-1" aria-hidden="true"></button></div>
+                <div class="card-body overflow-hidden position-relative rounded-4 w-100 p-0" style="aspect-ratio: 5 / 4;background: radial-gradient(transparent, #00000024);" title="' . h($row['image']) . '">' . $kept_file_id . '
+                    <div class="d-flex align-items-center justify-content-center w-100 h-100">' . pg_avatar_markup_for($row['first_name'] ?? '', $row['last_name'] ?? '', $row['company'] ?? '', $id, 'avatar-xl') . '</div>
+                </div>
+            </div>
+        </div>';
     }
     $parasut_contact_id = h($row['parasut_contact_id'] ?? '');
     $user_id = $row['user_id'];
