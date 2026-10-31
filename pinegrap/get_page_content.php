@@ -1396,7 +1396,10 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
 
         // The cookie notice, last, so it can see every script the page holds
         // back for consent. Not while editing: the editor is staff's own view.
-        if ($mode != 'edit') {
+        // Not in a background render (the search index, the SEO pass): no
+        // visitor sees it, and its text would count as every page's content.
+        if ($mode != 'edit' && !pg_seo_rendering()
+            && !(defined('UPDATE_SEARCH_INDEX') && UPDATE_SEARCH_INDEX === true)) {
             $content = pg_consent_inject($content);
         }
     }
