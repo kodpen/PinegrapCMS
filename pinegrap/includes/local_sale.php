@@ -1339,7 +1339,9 @@ function local_sale_render_rows($lines, $line_errors = array(), $flash_id = 0)
         $error = isset($line_errors[$id]) ? (string) $line_errors[$id] : '';
         $label = local_sale_product_label($line);
 
-        $image = (trim((string) $line['image_name']) !== '')
+        // A picture deleted in the File Manager leaves image_name behind; the
+        // row then keeps the placeholder instead of an empty grey box.
+        $image = ((trim((string) $line['image_name']) !== '') && is_file(FILE_DIRECTORY_PATH . '/' . basename($line['image_name'])))
             ? '<img class="pg-sale-thumb" src="' . PATH . h($line['image_name']) . '" alt="" loading="lazy" width="40" height="40">'
             : '<span class="pg-sale-thumb" aria-hidden="true"><i class="bi bi-box-seam"></i></span>';
 

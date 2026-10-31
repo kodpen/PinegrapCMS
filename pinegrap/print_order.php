@@ -41,8 +41,6 @@ $query = "SELECT
             contacts.last_name AS contact_last_name,
             contacts.email_address AS contact_email_address,
             contacts.member_id,
-            contacts.file_id as contact_file_id,
-            contacts.image AS contact_image,
             contacts.tax_number AS contact_tax_number,
             contacts.tax_office AS contact_tax_office
          FROM orders
@@ -84,8 +82,6 @@ $user_id = $row['user_id'];
 $username = $row['username'];
 $username_role = $row['username_role'];
 $contact_id = $row['contact_id'];
-$contact_image = $row['contact_image'];
-$contact_file_id = $row['contact_file_id'];
 $contact_first_name = $row['contact_first_name'];
 $contact_last_name = $row['contact_last_name'];
 $contact_email_address = $row['contact_email_address'];
@@ -138,10 +134,6 @@ if (($status == 'cancelled') && (($order_cancellation_reason !== '') || ($order_
         . (($order_cancelled_at > 0) ? ' (' . get_absolute_time(array('timestamp' => $order_cancelled_at)) . ')' : '') . '</div>';
 }
 $source = '';
-$output_contact_image = '';
-
-// Only set when a contact image is found below, but read in both branches.
-$accent_color = '';
 
 // These cells are only filled in for some order/product types, but they are always printed
 // in the tables further down.
@@ -149,36 +141,6 @@ $output_custom_field_1_cell = '';
 $output_custom_field_2_cell = '';
 $output_custom_field_3_cell = '';
 $output_custom_field_4_cell = '';
-
-if($contact_file_id == 0){
-    if($contact_image){
-        $accent_color = get_dominant_area_color(FILE_DIRECTORY_PATH . '/' . $contact_image);
-        $output_contact_image = '
-        <div class="col-auto overflow-hidden pg-print-none rounded-circle bg-1" style="width:50px;height:50px;background-color:' . h($accent_color) . ';">
-            <img class="lazy object-fit-contain w-100 h-100"  src="' . OUTPUT_PATH . SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="' . PATH . h($row['image']) . '" />
-        </div>';
-    }else{
-        $output_contact_image = '
-        <div class="col-auto overflow-hidden pg-print-none rounded-circle bg-1" style="width:50px;height:50px;background-color:' . h($accent_color) . ';">
-            <img class="lazy object-fit-contain w-100 h-100"  src="' . OUTPUT_PATH . SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="' . h(function_exists('pg_avatar_for') ? pg_avatar_for($contact_first_name, $contact_last_name, '', isset($contact_id) ? $contact_id : '') : 'assets/images/person1.png') . '" />
-        </div>';
-    }
-   
-}else{
-    $query = 
-    "SELECT 
-        files.name
-    FROM files 
-    WHERE files.id = ?";
-    $result = db_q($query, array((string) $contact_file_id)) or output_error('Query failed.');
-    $file = mysqli_fetch_array($result);
-    $file_name = $file['name'];
-    $accent_color = get_dominant_area_color(FILE_DIRECTORY_PATH . '/' . $file_name);
-    $output_contact_image = '
-    <div class="col-aut overflow-hidden pg-print-none rounded-circle bg-1" style="width:50px;height:50px;background-color:' . h($accent_color) . ';">
-        <img class="lazy  object-fit-contain w-100 h-100"  src="' . OUTPUT_PATH . SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="' . PATH . h($file_name) . '" />
-    </div>';
-}
 
 if ($tracking_code or $http_referer or $referral_source_code or $utm_source) {
     $source .=

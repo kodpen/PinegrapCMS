@@ -1052,6 +1052,7 @@
     "The book club's picks for autumn": "Kitap kulübünün sonbahar seçimleri",
     "The booking could not be found.": "Rezervasyon bulunamadı.",
     "The books are locked up to {var:1}, so nothing dated {var:2} can be issued, cancelled or paid. Date it after the lock, or ask whoever keeps the books to move the lock.": "Defterler {var:1} dahil kilitli; {var:2} tarihli hiçbir şey kesilemez, iptal edilemez, ödenemez. Kilitten sonraki bir tarih verin ya da defterleri tutan kişiden kilidi taşımasını isteyin.",
+    "The books are locked up to {var:1}, so this line cannot be recorded. Set it aside, or ask whoever keeps the books to move the lock.": "Defterler {var:1} tarihine kadar kilitli, bu yüzden bu satır kaydedilemez. Satırı kenara ayırın ya da defterleri tutan kişiden kilidi ilerletmesini isteyin.",
     "The books are locked up to {var:1}.": "Defterler {var:1} dahil kilitlendi.",
     "The books are locked up to {var:1}: this expense can no longer be changed or cancelled. It can still be paid, with a date after the lock.": "Defterler {var:1} dahil kilitli: bu gider artık değiştirilemez ya da iptal edilemez. Kilitten sonraki bir tarihle yine de ödenebilir.",
     "The books are locked up to {var:1}: this receipt went to the accountant as it is, so its file is not replaced.": "Defterler {var:1} dahil kilitli: bu fiş muhasebeciye olduğu gibi gitti, dosyası değiştirilmez.",

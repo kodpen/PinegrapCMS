@@ -124,6 +124,11 @@ if ($_POST) {
                 continue;
             }
 
+            // Recording posts with the line's own date, which the lock refuses.
+            if (erp_lock_refusal((string) $line['doc_date']) !== '') {
+                continue;
+            }
+
             $suggestion = erp_bank_line_suggestion($line);
 
             if ($suggestion['account_id'] <= 0) {
@@ -268,10 +273,15 @@ if ((string) $statement['status'] === 'mapping') {
         $action = '';
 
         if ((string) $line['status'] === 'new' && !$readonly) {
-            $suggestion = erp_bank_line_suggestion($line);
             $hidden = '<input type="hidden" name="line_id" value="' . (int) $line['id'] . '" />';
+            // A line dated inside the locked books cannot be recorded (it posts
+            // with its own date): the reason replaces the Record steps.
+            $line_locked = erp_lock_refusal((string) $line['doc_date']);
+            $suggestion = ($line_locked === '') ? erp_bank_line_suggestion($line) : array('account_id' => 0);
 
-            if ($suggestion['account_id'] > 0) {
+            if ($line_locked !== '') {
+                $action .= '<div class="small fg-secondary" style="max-width:24rem">' . h(lang(array('string' => 'The books are locked up to {var:1}, so this line cannot be recorded. Set it aside, or ask whoever keeps the books to move the lock.', 'vars' => prepare_form_data_for_output(erp_lock_date(), 'date', false)))) . '</div>';
+            } elseif ($suggestion['account_id'] > 0) {
                 $suggested++;
                 $title = (string) db_value("SELECT title FROM erp_accounts WHERE id = '" . (int) $suggestion['account_id'] . "' LIMIT 1");
                 $action .= $post_form($hidden . '<input type="hidden" name="erp_action" value="record" /><input type="hidden" name="account_id" value="' . (int) $suggestion['account_id'] . '" /><input type="hidden" name="invoice_id" value="' . (int) $suggestion['invoice_id'] . '" />',
@@ -279,7 +289,9 @@ if ((string) $statement['status'] === 'mapping') {
                     . '<div class="small fg-secondary">' . h($suggestion['why']) . '</div>';
             }
 
-            if ($open_line === (int) $line['id']) {
+            if ($line_locked !== '') {
+                // Only Set aside below.
+            } elseif ($open_line === (int) $line['id']) {
                 if ($all_accounts === null) {
                     $all_accounts = '';
                     foreach (erp_accounts(array('status' => 'active')) as $account) {

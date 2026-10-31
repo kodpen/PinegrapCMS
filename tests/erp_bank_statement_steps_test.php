@@ -77,3 +77,21 @@ function test_erp_bank_statement_steps_send_once()
 	// Split again and the per-line forms keep the window guard only.
 	pg_assert_contains("lang('Split again'), 'btn-outline theme-secondary')", $one, 'Split again unchanged');
 }
+
+function test_erp_bank_statement_steps_locked_line()
+{
+	$source = erp_bank_statement_steps_source('erp_bank_statement.php');
+	$rows = substr($source, strpos($source, "if ((string) \$line['status'] === 'new' && !\$readonly) {"), 1400);
+
+	// A line dated inside the locked books shows why in place of the Record
+	// steps, keeps Set aside and is not counted as a suggestion.
+	pg_assert_contains("\$line_locked = erp_lock_refusal((string) \$line['doc_date']);", $rows, 'lock asked per line');
+	pg_assert_contains("if (\$line_locked !== '') {", $rows, 'locked line branch');
+	pg_assert_true(strpos($rows, "if (\$line_locked !== '') {") < strpos($rows, '$suggested++;'), 'locked line not counted');
+	pg_assert_contains("'The books are locked up to {var:1}, so this line cannot be recorded. Set it aside, or ask whoever keeps the books to move the lock.'", $source, 'bank line lock sentence');
+
+	// Record the suggested lines skips them instead of counting them failed.
+	$bulk = substr($source, strpos($source, "if (\$action === 'record_suggested') {"), 700);
+	pg_assert_contains("if (erp_lock_refusal((string) \$line['doc_date']) !== '') {", $bulk, 'bulk step skips locked lines');
+	pg_assert_true(strpos($bulk, "erp_lock_refusal((string) \$line['doc_date'])") < strpos($bulk, 'erp_bank_line_record('), 'skipped before recording');
+}

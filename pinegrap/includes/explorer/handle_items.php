@@ -202,8 +202,33 @@ function pg_explorer_handle_create_file($type, $request, $user)
 }
 
 // A new name for one folder, page or file.
+// Each typed file name as prepare_file_name() stores it, in the order sent,
+// for the Bulk Rename preview; a blank or a value that is not text stays
+// blank. At most 500 names, the most a preview asks for at once.
+function pg_explorer_rename_preview_names($names)
+{
+    $prepared = array();
+
+    if (!is_array($names)) {
+        return $prepared;
+    }
+
+    foreach (array_slice(array_values($names), 0, 500) as $name) {
+        $name = is_string($name) ? trim($name) : '';
+        $prepared[] = ($name === '') ? '' : prepare_file_name($name);
+    }
+
+    return $prepared;
+}
+
 function pg_explorer_handle_rename($type, $request, $user)
 {
+    // A preview writes nothing: it answers the names as a file rename would
+    // store them, so Bulk Rename shows and compares those before applying.
+    if (!empty($request['preview'])) {
+        respond(array('status' => 'success', 'request' => $type, 'names' => pg_explorer_rename_preview_names(isset($request['names']) ? $request['names'] : array())));
+    }
+
     $item_kind = isset($request['item_kind']) ? $request['item_kind'] : '';
     $item_id = (int) (isset($request['item_id']) ? $request['item_id'] : 0);
     $name = trim(isset($request['name']) ? $request['name'] : '');

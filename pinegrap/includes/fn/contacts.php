@@ -1103,6 +1103,35 @@ function pg_avatar_markup_for($first_name, $last_name, $username = '', $seed = '
 }
 
 /**
+ * The file name of a contact's picture (contacts.file_id), or '' when the
+ * contact has none or its files row was deleted in the File Manager, which
+ * leaves contacts.file_id in place. A screen draws its no-picture branch on
+ * '', so no <img> points at PATH alone (the site's home page).
+ *
+ * @param int|string $file_id contacts.file_id
+ * @param array|null $names   id => name already read (a list); null reads the files row
+ * @return string
+ */
+function pg_contact_picture_name($file_id, $names = null)
+{
+    $file_id = (int) $file_id;
+
+    if ($file_id <= 0) {
+        return '';
+    }
+
+    if ($names === null) {
+        $result = db_q('SELECT name FROM files WHERE id = ?', array($file_id));
+        $row = $result ? mysqli_fetch_assoc($result) : null;
+        $name = $row ? $row['name'] : '';
+    } else {
+        $name = isset($names[$file_id]) ? $names[$file_id] : '';
+    }
+
+    return (string) $name;
+}
+
+/**
  * The account menu's quick form: what is missing of the signed-in person's
  * address-book contact - their first and last name (and, if given, mobile
  * phone), their picture - written into it. The contact is made, and tied to

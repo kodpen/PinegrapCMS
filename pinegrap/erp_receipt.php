@@ -330,6 +330,9 @@ if (!$is_cancelled && ($unallocated > 0)) {
 // why and leads to the cheque, whose steps change it.
 $output_cancel = '';
 $receipt_cheque = (!$is_cancelled && function_exists('erp_cheque_for_cash')) ? erp_cheque_for_cash($cash_id) : null;
+// A receipt dated inside the locked books cannot be cancelled: the button
+// stays visible but disabled, with the reason under it.
+$cancel_locked = ($receipt_cheque === null && !$is_cancelled) ? erp_lock_refusal((string) $receipt['doc_date']) : '';
 
 if ($receipt_cheque !== null) {
     $output_cancel = '
@@ -338,6 +341,16 @@ if ($receipt_cheque !== null) {
                 <span class="flex-grow-1">' . h(erp_cheque_receipt_refusal($receipt_cheque)) . '</span>
                 <a class="btn btn-sm btn-outline theme-primary" href="erp_cheque.php?id=' . (int) $receipt_cheque['id'] . '"><i class="bi bi-arrow-right me-1" aria-hidden="true"></i>' . lang('Open the cheque or note') . '</a>
             </div>';
+} elseif ($cancel_locked !== '') {
+    $output_cancel = '
+            <nav class="buttons navigation text-center position-sticky mb-3" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
+                <div class="container">
+                    <div class="btn-group flex-wrap justify-content-center">
+                        <button type="button" class="btn my-1 btn-outline theme-warning" disabled aria-describedby="erp_receipt_cancel_note"><i class="bi bi-arrow-counterclockwise me-3" aria-hidden="true"></i>' . ($is_collection ? lang('Cancel the Receipt') : lang('Cancel the Payment')) . '</button>
+                    </div>
+                </div>
+            </nav>
+            <p class="small fg-secondary text-center mx-auto mb-7" style="max-width:40rem" id="erp_receipt_cancel_note">' . h($cancel_locked) . '</p>';
 } elseif (!$is_cancelled) {
     $output_cancel = '
             <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
