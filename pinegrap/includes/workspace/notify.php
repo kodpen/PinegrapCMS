@@ -1205,8 +1205,10 @@ function ws_bell_describe($inbox_id, $user_id)
 /**
  * Which bell rows fold into one line: the runs of one flow that ended the
  * same way, so a flow that runs every few minutes is one line, not a page of
- * them. A failed run folds only with the failed ones and still stands out; a
- * run no longer known, and every other kind, stays a line of its own ('').
+ * them. A failed run folds only with the failed ones and still stands out.
+ * A line whose run is not known (written before the notice kept it, or its
+ * run gone) reads the same as every other such line, so those fold
+ * together; every other kind stays a line of its own ('').
  *
  * @param string     $kind the inbox row's kind
  * @param array|null $run  ws_inbox_flow_run(): id, flow_id, status
@@ -1214,8 +1216,12 @@ function ws_bell_describe($inbox_id, $user_id)
  */
 function ws_bell_fold_key($kind, $run)
 {
-    if (((string) $kind !== 'flow_finished') || !is_array($run) || ((int) ($run['flow_id'] ?? 0) <= 0)) {
+    if ((string) $kind !== 'flow_finished') {
         return '';
+    }
+
+    if (!is_array($run) || ((int) ($run['flow_id'] ?? 0) <= 0)) {
+        return 'flow:0:ended';
     }
 
     return 'flow:' . (int) $run['flow_id'] . ':' . (((string) ($run['status'] ?? '') === 'failed') ? 'failed' : 'ended');

@@ -4292,10 +4292,14 @@ window.pgBellOpen = function (filter) {
 
     pgBellFilter = (pgBellFilters.indexOf(filter) > -1) ? filter : pg_bell_filter_kept();
 
+    // Opened once the click that asked has finished: the bell closes on a
+    // click outside it, and that click is still on its way up.
     if (pgUI.menu.isOpen('#notification_toggle')) {
         pg_bell_filter_apply();
     } else {
-        toggle.click();
+        setTimeout(function () {
+            toggle.click();
+        }, 0);
     }
 
     return true;

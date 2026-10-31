@@ -12218,16 +12218,21 @@ html[data-bs-theme="dark"] .ws-group-icon {
   border-bottom: 1px solid var(--pg-border-color);
   min-height: var(--ws-head-h, 3.4rem);
 }
-/* One line: the sign and the name, then how the work stands, the
-   department and the customer, cut before they push the tools away. */
+/* A header's title: its name, and under it a line of context (the
+   overview's date, a discussion's channel). */
 .ws-head-title {
-  display: flex;
   flex: 1 1 auto;
-  align-items: center;
-  gap: .5rem;
   min-width: 0;
 }
-.ws-head-title h2 {
+/* The channel's header (drawCenter()), one line: the sign and the name,
+   then how the work stands, the department and the customer, which give
+   way before the name does. */
+.ws-head-title.ws-head-row {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+}
+.ws-head-row > h2 {
   display: flex;
   flex: 0 1 auto;
   align-items: center;
@@ -12241,7 +12246,7 @@ html[data-bs-theme="dark"] .ws-group-icon {
 }
 .ws-head-tags {
   display: flex;
-  flex: 0 1 auto;
+  flex: 0 100 auto;
   align-items: center;
   gap: .375rem;
   min-width: 0;
@@ -12259,6 +12264,13 @@ html[data-bs-theme="dark"] .ws-group-icon {
 }
 .ws-head-tags .ws-status-pill {
   margin-right: 0;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.ws-status-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .ws-head-tags .ws-head-tag.badge {
   overflow: hidden;
@@ -12287,21 +12299,27 @@ html[data-bs-theme="dark"] .ws-group-icon {
   margin: 0 0 .5rem;
   white-space: pre-wrap;
 }
-/* The header's tools a phone finds in the channel's menu, and the other way
-   round. */
-@media (min-width: 768px) {
-  .menu .ws-head-narrow {
-    display: none;
-  }
+/* A narrow channel header (a phone, or the discussion panel open beside
+   it): the people, search, info and new task move into the menu, which
+   then lists them first, and of the tags only the status icon stays. The
+   menu is drawn inside the header, so the query reaches it too. */
+.ws-head-channel {
+  container-type: inline-size;
 }
-@media (max-width: 767.98px) {
-  .ws-head .ws-head-wide {
+.ws-head-channel .ws-head-narrow {
+  display: none;
+}
+@container (max-width: 40rem) {
+  .ws-head-channel .ws-head-wide {
     display: none;
   }
-  .ws-head-tags > :not(.ws-status-pill) {
+  .ws-head-channel .ws-head-narrow {
+    display: block;
+  }
+  .ws-head-channel .ws-head-tags > :not(.ws-status-pill) {
     display: none;
   }
-  .ws-head .ws-status-pill .ws-status-text {
+  .ws-head-channel .ws-status-pill .ws-status-text {
     display: none;
   }
 }
@@ -12343,6 +12361,8 @@ html[data-bs-theme="dark"] .ws-group-icon {
   letter-spacing: -.01em;
   font-weight: 700;
   margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 /* The channel's sign: its icon on a soft tile in its colour, and a thin
@@ -12602,6 +12622,22 @@ html[data-bs-theme="dark"] .ws-head[data-ws-colored] .ws-head-icon {
 }
 .ws-msg-note {
   border-left-color: var(--pg-info);
+}
+/* On the Decisions tab each one is a card of its own, apart from the next:
+   in the conversation they keep the rhythm of the messages around them. */
+.ws-pane-decisions {
+  display: flex;
+  flex-direction: column;
+  gap: .6rem;
+}
+.ws-pane-decisions > .ws-msg {
+  margin: 0;
+  padding: .65rem .85rem;
+  border-top: 1px solid var(--pg-border-color-translucent);
+  border-right: 1px solid var(--pg-border-color-translucent);
+  border-bottom: 1px solid var(--pg-border-color-translucent);
+  border-radius: var(--ws-radius);
+  background: var(--pg-bg-body);
 }
 /* ── Workspace: status updates and check-ins (assets/js/workspace_status.js) ── */
 .ws-msg-status {
