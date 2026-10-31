@@ -23,6 +23,11 @@ validate_area_access($user, 'designer');
 
 $liveform = new liveform('mass_edit');
 
+// Pages in the Recycle Bin, or in a folder carried into it, are neither
+// listed nor changed here: a rename would park them under a name the
+// restore brings back.
+$live_pages_where = ' WHERE 1 = 1' . pg_pages_bin_sql(pg_recycle_bin_folder_ids(), false);
+
 function checkifchecked($checkedstatus){
     if($checkedstatus == 1){
         return ' checked="checked"';
@@ -108,8 +113,8 @@ if (!$_POST) {
                 case 'site_search':
                 case 'page_search_keywords':
                     // get all pages
-                    $query ="SELECT * FROM page ORDER BY page_name asc";
-                    $count_result = db('SELECT COUNT(*) FROM page');
+                    $query = "SELECT * FROM page" . $live_pages_where . " ORDER BY page_name asc";
+                    $count_result = db("SELECT COUNT(*) FROM page" . $live_pages_where);
                     
                     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
                     $output_page_editing = true;
@@ -334,6 +339,7 @@ if (!$_POST) {
                         <form name="form" action="' . h($_SERVER['PHP_SELF']) . '" method="post" class="disable_shortcut">
                             ' . get_token_field() . '
                             ' . $outputs . '
+                            <input type="hidden" name="max_input_vars_test" value="true">
                         </form>
                     </div>
                 </div>
@@ -363,6 +369,30 @@ if (!$_POST) {
             if (window.history.replaceState) {
                 history.pushState({}, null, String(tags_removed_url).replace( "?", "" ));
             }
+
+        // Only the fields that were changed are posted, so a site with many
+        // pages stays under the max_input_vars PHP setting; the save loop
+        // skips a page field that is not in the post.
+        $("form[name=form]").on("submit", function () {
+            var form = this;
+            $(form).find("[name^=page_name_],[name^=page_title_],[name^=meta_description_],[name^=page_search_keywords_]").each(function () {
+                var el = this;
+                if (el.value === el.defaultValue) {
+                    el.disabled = true;
+                }
+            });
+            $(form).find("input[type=checkbox][name^=page_search_]").each(function () {
+                var box = this;
+                if (box.checked === box.defaultChecked) {
+                    box.disabled = true;
+                    $(form).find("input[type=hidden][name=\"" + box.name + "\"]").prop("disabled", true);
+                }
+            });
+        });
+        // A page brought back from the history cache gets its fields back.
+        $(window).on("pageshow", function () {
+            $("form[name=form] :disabled").prop("disabled", false);
+        });
 
         // SEO character counters — logic in assets/js/backend.src.js
         initSeoCounters([
@@ -408,7 +438,7 @@ if (!$_POST) {
                 $count_by_field  = array();
                 $fr_name_skipped = 0;
                 $fr_long_skipped = 0;
-                $q = mysqli_query(db::$con, "SELECT page_id, page_name, page_folder, page_title, page_meta_description FROM page") or output_error(lang('Query failed.'));
+                $q = mysqli_query(db::$con, "SELECT page_id, page_name, page_folder, page_title, page_meta_description FROM page" . $live_pages_where) or output_error(lang('Query failed.'));
                 while ($row = mysqli_fetch_assoc($q)) {
                     // One audit line per changed page: read before its first
                     // field update, recorded after its last.
@@ -490,6 +520,13 @@ if (!$_POST) {
         exit();
     }
 
+    // The marker is the form's last field: without it PHP dropped the end of
+    // the post at max_input_vars, and the pages past that point would keep
+    // their old values in silence, so nothing is saved.
+    if (!isset($_POST['max_input_vars_test'])) {
+        output_error(lang('The server did not accept the whole form, so no change was saved. Change fewer pages at a time, or ask the server administrator to raise the max_input_vars PHP setting in the php.ini file.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+    }
+
     $count_change = 0;
     $count_page_name_changes = 0;
     $count_page_title_changes = 0;
@@ -499,7 +536,7 @@ if (!$_POST) {
     $page_name_conflicts = array();
 
     // get current page data
-    $query = "SELECT * FROM page";
+    $query = "SELECT * FROM page" . $live_pages_where;
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
     while ($row = mysqli_fetch_assoc($result)) {
         //Page id
