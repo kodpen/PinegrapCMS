@@ -541,6 +541,47 @@ function pg_explorer_handle_file_usage($type, $request, $user, $folders_that_use
         }
     }
 
+    // A photo gallery page shows the images of its folder and of the
+    // albums below it, chosen by folder rather than by name, so the
+    // pages whose folder holds the file, or a folder above it, use it.
+    // A page in the Recycle Bin shows nothing.
+    if (in_array(strtolower((string) $usage_file['type']), pg_gal_image_types(), true) && ((int) $usage_file['design'] == 0)) {
+        $usage_gallery_folders = pg_gal_folders_showing($usage_file['folder'], function ($folder_id) {
+            return (int) db_value("SELECT folder_parent FROM folder WHERE folder_id = '" . (int) $folder_id . "'");
+        });
+        $usage_gallery_folders = array_values(array_diff($usage_gallery_folders, pg_recycle_bin_folder_ids()));
+
+        if ($usage_gallery_folders) {
+            $usage_gallery_pages = db_items(
+                "SELECT page_id, page_name, page_folder
+                FROM page
+                WHERE page_type = 'photo gallery'
+                AND page_folder IN (" . implode(', ', array_map('intval', $usage_gallery_folders)) . ")
+                ORDER BY page_name
+                LIMIT " . ($usage_cap + 1));
+            $usage_gallery_pages = is_array($usage_gallery_pages) ? $usage_gallery_pages : array();
+
+            if (count($usage_gallery_pages) > $usage_cap) {
+                $usage_truncated = true;
+                $usage_gallery_pages = array_slice($usage_gallery_pages, 0, $usage_cap);
+            }
+
+            $usage_gallery_page_items = array();
+
+            foreach ($usage_gallery_pages as $usage_row) {
+                $usage_gallery_page_items[] = array(
+                    'name' => (string) $usage_row['page_name'],
+                    'note' => '',
+                    'url' => $usage_open('page', $usage_page_folder_editable($usage_row['page_folder'])) ? ('edit_page.php?id=' . (int) $usage_row['page_id']) : '');
+            }
+
+            if ($usage_gallery_page_items) {
+                $usage_total += count($usage_gallery_page_items);
+                $usage_groups[] = array('label' => lang('Photo Gallery'), 'items' => $usage_gallery_page_items);
+            }
+        }
+    }
+
     // Settings that name a file outright. Matched whole rather than by
     // LIKE: these hold one file name, not a document that mentions one.
     $usage_settings = array(

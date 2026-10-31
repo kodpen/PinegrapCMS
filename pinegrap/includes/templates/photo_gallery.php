@@ -28,7 +28,7 @@ if (!defined('PG_INIT_LOADED')) {
 	<div class="album text-center">
 		<a href="<?=h($album['url'])?>">
 			<div class="image">
-				<img src="<?=h($album['image_url'])?>" class="img-responsive img-thumbnail center-block">
+				<img src="<?=h($album['image_url'])?>" class="img-responsive img-thumbnail center-block" alt="">
 			</div>
 			<div class="name"><strong><?=h($album['name'])?></strong></div>
 			<div class="number_of_photos">
@@ -46,7 +46,7 @@ if (!defined('PG_INIT_LOADED')) {
 	<div class="photo text-center">
 		<a href="<?=h($photo['url'])?>">
 			<div class="image">
-				<img src="<?=h($photo['url'])?>" class="img-responsive img-thumbnail center-block">
+				<img src="<?=h($photo['url'])?>" class="img-responsive img-thumbnail center-block" alt="">
 			</div>
 			<div class="name"><?=h($photo['name'])?></div>
 			<div class="description"><?=h($photo['description'])?></div>

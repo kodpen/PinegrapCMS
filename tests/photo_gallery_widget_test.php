@@ -79,3 +79,54 @@ function test_photo_gallery_widget_registered()
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/widgets_photo_gallery.php');
 	pg_assert_contains("_pg_inject_messages_node(\$tree, 'photo_gallery')", $source, 'Messages named after the classic liveform');
 }
+
+function test_photo_gallery_image_types_take_webp_and_avif()
+{
+	$types = pg_gal_image_types();
+	foreach (pg_public_image_file_types() as $type) {
+		pg_assert_true(in_array($type, $types, true), 'a public image type is a photo: ' . $type);
+	}
+	pg_assert_true(in_array('tiff', $types, true), 'the classic TIFF types stay');
+}
+
+function test_photo_gallery_photo_alt()
+{
+	pg_assert_same('Our team at the lake', pg_gal_photo_alt('  Our team at the lake ', 'team.jpg'), 'the description');
+	pg_assert_same('pg test galeri 1', pg_gal_photo_alt('', 'pg-test-galeri-1.jpg'), 'no description: the readable file name');
+	pg_assert_same('summer day', pg_gal_photo_alt(null, 'summer__day.webp'), 'underscores too');
+	pg_assert_same('ıspanak börek', pg_gal_photo_alt('', 'ıspanak-börek.png'), 'a name starting with a non-ASCII letter keeps it');
+}
+
+function test_photo_gallery_folders_showing()
+{
+	$parents = array(3 => 2, 2 => 1, 1 => 0, 5 => 6, 6 => 5);
+	$parent_of = function ($id) use ($parents) {
+		return isset($parents[$id]) ? $parents[$id] : 0;
+	};
+	pg_assert_same(array(3, 2, 1), pg_gal_folders_showing(3, $parent_of), 'the folder and those above it');
+	pg_assert_same(array(5, 6), pg_gal_folders_showing(5, $parent_of), 'a loop ends the walk');
+	pg_assert_same(array(), pg_gal_folders_showing(0, $parent_of), 'no folder');
+}
+
+// The classic page reads the widget's list, writes the photo's alt text
+// on the image and none on the link; the custom layout's template leaves
+// the image's alt empty beside the name in the link.
+function test_photo_gallery_classic_page_types_and_alt()
+{
+	$page = (string) file_get_contents(PG_FUNCTIONS_DIR . '/get_photo_gallery.php');
+	$template = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/templates/photo_gallery.php');
+	pg_assert_same(2, substr_count($page, 'type IN (" . pg_gal_image_types_sql() . ")'), 'both layouts read the list');
+	pg_assert_false(strpos($page, "(type = 'gif')") !== false, 'no fixed list left');
+	pg_assert_contains("alt=\"' . h(pg_gal_photo_alt(\$photo['description'], \$photo['name'])) . '\"", $page, 'the image alt');
+	pg_assert_false(strpos($page, "'\" alt=\"' . h(\$photo['name'])") !== false, 'no alt on any link');
+	pg_assert_same(2, substr_count($template, 'center-block" alt="">'), 'empty alt in the template');
+}
+
+// Where used lists the photo gallery pages that show the file.
+function test_photo_gallery_where_used()
+{
+	$handler = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/explorer/handle_file_usage.php');
+	pg_assert_contains('pg_gal_folders_showing($usage_file[\'folder\']', $handler, 'walks the folders above the file');
+	pg_assert_contains("WHERE page_type = 'photo gallery'", $handler, 'reads the gallery pages');
+	pg_assert_contains('pg_recycle_bin_folder_ids()', $handler, 'leaves the Recycle Bin out');
+}
