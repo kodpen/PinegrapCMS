@@ -3207,6 +3207,7 @@
     "The rejection of the return of order {var:1} was not sent: {var:2}": "{var:1} numaralı siparişin iadesi için ret talebi gönderilemedi: {var:2}",
     "The rejection of the return of order {var:1} was sent to {var:2}. The marketplace decides on it; the next read of the returns shows its answer.": "{var:1} numaralı siparişin iadesi için ret talebi {var:2} pazaryerine gönderildi. Kararı pazaryeri verir; iadeleri bir sonraki okuyuşunuzda sonucu görünür.",
     "The remainder of a division": "Bölümden kalan",
+    "The remaining spots of this event changed while the screen was open: it is now {var:1}. Check them and save again.": "Bu etkinliğin kalan yerleri ekran açıkken değişti: şu an {var:1}. Kontrol edip yeniden kaydedin.",
     "The reminder was e-mailed on {var:1}.": "Hatırlatma {var:1} tarihinde e-postayla gönderildi.",
     "The reminder went on {var:1}.": "Hatırlatma {var:1} tarihinde gitti.",
     "The reminder would go in the past: pick a later day or time.": "Hatırlatma geçmişte kalıyor: daha ileri bir gün ya da saat seçin.",

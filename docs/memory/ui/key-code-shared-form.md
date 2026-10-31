@@ -18,3 +18,7 @@ description: The key code create and edit screens share includes/forms/key_code_
 - Create: the quantity checks (1,000 limit, `limit=false` bypass), the generate loop and INSERT, the notices.
 - Edit: the not-found guard (`panel_id_gate_test.php`), the row load, delete, 'Key Code is required', the UPDATE.
 - Test: `tests/key_code_form_test.php`.
+
+## When does the edit screen write Enabled?
+- Only when the box was changed there. The template prints a hidden `enabled_was` (edit only) and the screen passes the stored `enabled` as `pg_key_code_form_values()`'s third argument; when the posted box equals `enabled_was` the stored value is written back. A form without `enabled_was` (and create) writes the box.
+- Why: a completed order sets a used single-use code to `enabled = '0'` (`pg_order_complete_key_code()`); a notes save on a screen opened before that enabled the used code again. The list's quick edit (`pg_key_code_quick_update()`) already wrote only a change.

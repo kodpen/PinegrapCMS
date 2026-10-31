@@ -21,4 +21,11 @@ description: Edit calendar event screen (edit_calendar_event.php): which recurri
 - Yes: the redirect adds `send_to` through `urlencode()`, so a site event page's address (`/event?id=12&recurrence_number=3`) survives whole and the back arrow (`pg_send_to_url('calendars.php')`) opens that occurrence. Before, the address was cut at its first `&` and the arrow opened the first occurrence. Pinned by `tests/edit_return_address_test.php`.
 
 
+## When does a save write Remaining Spots?
+- The form carries `number_of_remaining_spots_was`, the instance's spots when the screen opened (its row, or the initial spots when it has no row). A save whose Remaining Spots equals it leaves `remaining_reservation_spots` alone.
+- A changed value is written (DELETE + INSERT, as before) only when the stored value (`pg_calendar_event_stored_spots()`, same instance number as the write) still equals the opened one. Otherwise nothing is saved: the field says "…changed while the screen was open: it is now N", the was value becomes N and the error redirect keeps `send_to` and `recurrence_number`; saving again writes the typed value.
+- Why: a reservation takes spots off relatively (`order_completion.php`, `number_of_remaining_spots - ?`). With 12 left, three reservations while the screen was open, a description save put 12 back and oversold 3 seats.
+- The decision is `pg_calendar_event_spots_decision()` in `includes/forms/calendar_event_form.php` (keep / write / stale; a form without the was field writes as before), pinned by `tests/calendar_event_edit_test.php`. Same mechanism as `commerce/gift-card-balance-edit.md`.
+
+
 Related: `core/request-parameter-arrays.md` (array = not given).
