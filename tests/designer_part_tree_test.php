@@ -98,7 +98,7 @@ function _dpt_js_fn($js, $name)
 
 // $script run under Node after the part helpers and stubs: its JSON answer,
 // or null when Node is missing.
-function _dpt_node($script)
+function _dpt_node($script, $fns = array())
 {
 	$out = array();
 	$code = 1;
@@ -108,7 +108,7 @@ function _dpt_node($script)
 	}
 	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	$code_js = "var SD_PART_KINDS = ['catalog_item_view', 'form_item_view', 'calendar_event_view'];\n";
-	foreach (array('_sdPartOf', '_sdPartRefusal', '_sdPartSidAt') as $fn) {
+	foreach (array_merge(array('_sdPartOf', '_sdPartRefusal', '_sdPartSidAt'), $fns) as $fn) {
 		$body = _dpt_js_fn($js, $fn);
 		pg_assert_true($body !== '', $fn . '() is found');
 		$code_js .= $body . "\n";
@@ -171,4 +171,55 @@ function test_designer_part_tree_panels_wired()
 	pg_assert_true(strpos(_dpt_js_fn($js, '_sdListBand'), '_sdPartSidAt(node)') !== false, 'the list band reads the part\'s widget');
 	pg_assert_true(strpos(_dpt_js_fn($js, '_sdListBandIn'), '_sdValueSidOf(node)') !== false, 'the list band reads the drawn widget');
 	pg_assert_true(strpos(_dpt_js_fn($js, '_sdNodeSetBinding'), 'var sid = _isInsideSystemWidget(node);') !== false, 'a binding marks only the widget it stands in');
+}
+
+// A part outside its widget gets the widget's "Show only when" flag row,
+// the Format row and "Hide when empty", read from its widget; it gets no
+// action or field row, and a node of no part gets none of them.
+function test_designer_part_tree_flag_format_hide_empty_rows()
+{
+	$res = _dpt_node(<<<'JS'
+var SD_PART_REFUSED_TAGS = ['form', 'input', 'select', 'textarea', 'button', 'option', 'script'];
+var SD_PART_REFUSED_CONTENT = ['messages'];
+var SD_HIDE_EMPTY = 'pg-hide-if-empty', SD_FIELD_VALUE = 'pg-field-value';
+var _sdPartDrawing = 0;
+var SW_VISIBILITY_FLAGS = { catalog_item_view: [['no_rating', 'No rating yet']] };
+var SW_DATE_FIELD_TOKENS = {};
+var _SD_TEXT_FILTERS = [['', 'As it is'], ['upper', 'UPPER CASE']];
+var _SD_FILTER_ARG = {};
+var _SD_FILTER_KINDS = { catalog_item_view: 1 };
+var head = { type: 'semantic', props: { tag: 'a', _bindings: { text: '__short_description', eo_visible_if: 'no_rating' }, _bindFormats: { text: 'upper' }, partOf: 12 }, children: [] };
+var plain = { type: 'semantic', props: { tag: 'h1', _bindings: { text: '__short_description' } }, children: [] };
+var tree = { type: 'root', props: {}, children: [head, plain] };
+var _sharedCache = { 12: { name: 'Product', system_region_config: '{"regionType":"catalog_item_view"}', tree: { type: 'root', children: [] } } };
+function findParent(node, root) { return (root.children || []).indexOf(node) !== -1 ? root : null; }
+function _resolveSharedSid() { return 0; }
+function _isInsideSystemWidget() { return 0; }
+function _sdPartInfo(node) { var sid = _sdPartOf(node); return sid ? { sid: sid, state: 'ok' } : null; }
+function _swNameKind(cfg) { return cfg.regionType; }
+function _sdT(t) { return t; }
+function esc(t) { return String(t); }
+function row(label, body) { return '<row>' + label + body + '</row>'; }
+function sect(icon, title, body) { return '<sect>' + title + body + '</div></div>'; }
+function swAttr(a, on) { return '<input ' + a + (on ? ' checked' : '') + '>'; }
+function _sdNodeClassHas(node, cls) { return String(node.props.cssClass || '').split(' ').indexOf(cls) !== -1; }
+function _sdAnyParent() { return null; }
+function _sdListRowFlags() { return []; }
+function _sdFormFieldIsDate() { return false; }
+function _propsDataBindingCore() { return ''; }
+function _sdConditionRows() { return ''; }
+function _sdBindingTextNote() { return ''; }
+var a = propsDataBinding(head), b = propsDataBinding(plain);
+console.log(JSON.stringify([
+    a.indexOf('data-bind-visible') !== -1, a.indexOf('value="no_rating" selected') !== -1,
+    a.indexOf('sd-sw-bindfilter') !== -1, a.indexOf('value="upper" selected') !== -1,
+    a.indexOf('data-sd-hide-empty') !== -1, a.indexOf('data-bind-action') === -1,
+    a.indexOf('Bind Data (System Widget)') !== -1, b, _sdPartDrawing
+]));
+JS
+	, array('propsDataBinding', '_sdBindingActionRows', '_sdVisibleIfRow', '_sdFormatRows', '_sdFillKindOf', '_sdParseFilter', '_sdHideEmptyRows', '_sdValueSidOf', '_sdWithValueSid', '_getSystemWidgetRegionType'));
+	if ($res === null) {
+		return;
+	}
+	pg_assert_same(array(true, true, true, true, true, true, true, '', 0), $res);
 }
