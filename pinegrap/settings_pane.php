@@ -224,10 +224,37 @@ if ($liveform->check_form_errors()) {
     ));
 }
 
+$saved_row = pg_settings_config_row(true);
+
+// A save that changed the software language leaves the page behind the dialog,
+// and the dialog's own frame, in the language they were drawn in. The dialog
+// reloads the page at this pane instead, so everything speaks the new one.
+$relocalize = pg_software_language_changed(
+    lang(array('info' => true)),
+    defined('ENFORCEMENT_SOFTWARE_LANGUAGE') ? (string) ENFORCEMENT_SOFTWARE_LANGUAGE : '',
+    isset($saved_row['software_language']) ? (string) $saved_row['software_language'] : '',
+    defined('DEFAULT_SOFTWARE_LANGUAGE') ? (string) DEFAULT_SOFTWARE_LANGUAGE : ''
+);
+
 // The same confirmation the screen printed. The save modules do not add it --
 // they only speak up about what they could not do -- so it is added here, where
-// a save is known to have finished.
-$liveform->add_notice(lang('The Site Settings have been saved.'));
+// a save is known to have finished. After a language change it is said in the
+// new language: it is read on the reloaded page.
+$liveform->add_notice(($relocalize !== '')
+    ? lang(array('string' => 'The Site Settings have been saved.', 'language' => $relocalize))
+    : lang('The Site Settings have been saved.'));
+
+// The page is reloaded and the dialog asks for the pane again; that read hands
+// the notices over and removes the form, so it stays until then.
+if (($relocalize !== '') && ($scheme === URL_SCHEME)) {
+    pg_settings_pane_respond(array(
+        'status'     => 'success',
+        'pane'       => $pane,
+        'notices'    => array(),
+        'relocalize' => true,
+        'token'      => (isset($_SESSION['software']['token']) ? $_SESSION['software']['token'] : ''),
+    ));
+}
 
 // The notices the save left behind, read out of the form rather than shown on a
 // page that is never rendered. Removing the form is what stops them coming back
@@ -251,6 +278,6 @@ pg_settings_pane_respond(array(
     'reload'   => (($scheme !== URL_SCHEME)
         ? ($scheme . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/welcome.php')
         : ''),
-    'meta'     => pg_settings_last_modified(pg_settings_config_row(true)),
+    'meta'     => pg_settings_last_modified($saved_row),
     'token'    => (isset($_SESSION['software']['token']) ? $_SESSION['software']['token'] : ''),
 ));
