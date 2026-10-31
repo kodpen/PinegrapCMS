@@ -244,7 +244,7 @@ function erp_drawer_account($account_id)
         : '<p class="small fg-secondary mb-0">' . lang('There are no documents on this account yet.') . '</p>';
 
     // add_erp_receipt.php is cash-gated and refuses the read-only accountant.
-    $can_record_receipt = defined('USER_MANAGE_ERP_CASH') && USER_MANAGE_ERP_CASH && !(defined('USER_ERP_READONLY') && USER_ERP_READONLY);
+    $can_record_receipt = erp_can_record_receipt();
 
     $output_actions = '
     <div class="d-flex flex-wrap gap-3 mb-7">
@@ -347,13 +347,13 @@ function erp_drawer_invoice($invoice_id)
     }
 
     // add_erp_receipt.php is cash-gated and refuses the read-only accountant.
-    $can_record_receipt = defined('USER_MANAGE_ERP_CASH') && USER_MANAGE_ERP_CASH && !(defined('USER_ERP_READONLY') && USER_ERP_READONLY);
+    $can_record_receipt = erp_can_record_receipt();
 
     $output_actions = '
     <div class="d-flex flex-wrap gap-3 mb-7">
         ' . (!$is_draft ? '<a class="btn btn-sm btn-outline theme-secondary" href="get_erp_invoice_pdf.php?id=' . $invoice_id . '" target="_blank" rel="noopener"><i class="bi bi-file-earmark-pdf me-1" aria-hidden="true"></i>' . lang('PDF') . '</a>' : '') . '
         ' . ($can_record_receipt && !$is_draft && ($open > 0) && ((int) $invoice['account_id'] > 0)
-            ? '<a class="btn btn-sm btn-outline theme-secondary" href="add_erp_receipt.php?direction=' . (((string) $invoice['direction'] === 'purchase') ? 'payment' : 'collection') . '&amp;invoice_id=' . $invoice_id . '"><i class="bi bi-cash-coin me-1" aria-hidden="true"></i>' . ((((string) $invoice['direction'] === 'purchase') ? lang('Record a Payment') : lang('Record a Receipt'))) . '</a>'
+            ? '<a class="btn btn-sm btn-outline theme-secondary" href="add_erp_receipt.php?direction=' . (((string) $invoice['direction'] === 'purchase') ? 'payment' : 'collection') . '&amp;invoice_id=' . $invoice_id . '"><i class="bi bi-cash-coin me-1" aria-hidden="true"></i>' . h(erp_record_receipt_label((string) $invoice['direction'])) . '</a>'
             : '') . '
     </div>';
 

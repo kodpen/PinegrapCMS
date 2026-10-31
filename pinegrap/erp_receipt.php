@@ -221,7 +221,7 @@ foreach ($settlements as $settlement) {
                                 <tr>
                                     <td class="text-nowrap" data-sort="' . h(str_replace('-', '', (string) $settlement['doc_date'])) . '">' . h(prepare_form_data_for_output($settlement['doc_date'], 'date')) . '</td>
                                     <td><a href="edit_erp_invoice.php?id=' . $invoice_id . '" class="pg-link-body-emphasis">' . h($settlement['full_number']) . '</a></td>
-                                    <td>' . h((string) $settlement['invoice_status']) . '</td>
+                                    <td>' . h(erp_invoice_status_label((string) $settlement['invoice_status'])) . '</td>
                                     <td class="text-end" data-sort="' . (int) $settlement['amount'] . '">' . $money((int) $settlement['amount'])
                                         . ($is_foreign ? ' <span class="fg-secondary small">' . h(erp_money_out((int) $settlement['amount_base'])) . '</span>' : '') . '</td>
                                     <td class="text-end text-nowrap">' . $output_remove . '</td>

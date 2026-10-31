@@ -15,6 +15,9 @@ description: ERP invoice closing by settlement (erp_settlements): why it posts n
 - `erp_post_receipt()`'s `invoice_id` writes the settlement inside the caller's transaction. A rejected settlement rolls back the whole receipt; no half-written receipt remains.
 - `erp_tx_begin/commit/rollback` keep nesting depth in one counter (`$GLOBALS['_erp_tx_depth']`, `erp_tx_depth()`); a second posting in the same request really opens a new transaction.
 
+## How is a stored status shown?
+- Through `erp_invoice_status_labels()` / `erp_invoice_status_label($status)` (`includes/erp/settlement.php`): the invoice list, the invoice screen, the File Manager's ERP section and the receipt screen's allocations (`erp_receipt.php`) print the same translated word. The allocations printed the raw code ("partially_paid") until #4109. `includes/erp/document.php` (PDF) still keeps its own list. Test: `tests/erp_invoice_status_labels_test.php`.
+
 ## Can a balance cache feed a report?
 - No. `erp_accounts.balance` (`erp_account_refresh_balance()`, `includes/erp/ledger.php`) and the tills' `erp_cash_accounts.balance` (`erp_cash_refresh_balance()`, `includes/erp/cash.php`) are caches recomputed after each posting. Reconciliation and cash flow sum the ledgers (`erp_account_transactions`, `erp_cash_transactions`) as of their date; aging works from the documents and their settlements (erp-aging-and-due-date.md).
 - Ledger rows are inserted only by `erp_cash_post()` (`cash.php`) and `erp_account_post()` (`ledger.php`); when a balance looks wrong, read those two first.

@@ -66,15 +66,63 @@ function test_erp_receipt_link_used_by_every_receipt_link()
 	}
 }
 
+function test_erp_can_record_receipt_needs_cash_and_write()
+{
+	pg_assert_true(erp_can_record_receipt(true, false), 'a cash clerk who may write records');
+	pg_assert_false(erp_can_record_receipt(false, false), 'no cash right, no button');
+	pg_assert_false(erp_can_record_receipt(true, true), 'the read-only accountant gets no button');
+	pg_assert_false(erp_can_record_receipt(false, true), 'neither right');
+}
+
+function test_erp_can_record_receipt_reads_the_viewer_rights_when_not_given()
+{
+	$expected = defined('USER_MANAGE_ERP_CASH') && USER_MANAGE_ERP_CASH && !(defined('USER_ERP_READONLY') && USER_ERP_READONLY);
+	pg_assert_same($expected, erp_can_record_receipt(), 'the default follows USER_MANAGE_ERP_CASH and USER_ERP_READONLY');
+}
+
+function test_erp_record_receipt_label_follows_the_direction()
+{
+	pg_assert_same(lang('Record a Payment'), erp_record_receipt_label('purchase'), 'a purchase invoice is paid');
+	pg_assert_same(lang('Record a Receipt'), erp_record_receipt_label('sales'), 'a sales invoice is collected');
+}
+
 function test_erp_record_receipt_buttons_need_cash_and_write()
 {
-	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/erp/drawer.php');
-	pg_assert_true(substr_count($source, 'href="add_erp_receipt.php?') === 2, 'two Record buttons in the drawer');
-	pg_assert_true(substr_count($source, '$can_record_receipt = defined(\'USER_MANAGE_ERP_CASH\') && USER_MANAGE_ERP_CASH && !(defined(\'USER_ERP_READONLY\') && USER_ERP_READONLY);') === 2, 'both drawers ask for the cash right and no read-only right');
-	$offset = 0;
-	while (($at = strpos($source, 'href="add_erp_receipt.php?', $offset)) !== false) {
-		$before = substr($source, max(0, $at - 300), min(300, $at));
-		pg_assert_contains('($can_record_receipt', $before, 'the button at offset ' . $at . ' is drawn behind that answer');
-		$offset = $at + 1;
+	$files = array(
+		'includes/erp/drawer.php' => 2,
+		'edit_erp_invoice.php' => 1,
+	);
+
+	foreach ($files as $file => $count) {
+		$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
+		pg_assert_same($count, substr_count($source, 'href="add_erp_receipt.php?'), $file . ' draws its Record buttons');
+		pg_assert_same($count, substr_count($source, '$can_record_receipt = erp_can_record_receipt();'), $file . ' asks erp_can_record_receipt() for each');
+		$offset = 0;
+		while (($at = strpos($source, 'href="add_erp_receipt.php?', $offset)) !== false) {
+			$before = substr($source, max(0, $at - 300), min(300, $at));
+			pg_assert_contains('($can_record_receipt', $before, $file . ': the button at offset ' . $at . ' is drawn behind that answer');
+			$offset = $at + 1;
+		}
 	}
+
+	$invoice = (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_erp_invoice.php');
+	pg_assert_contains("erp_record_receipt_label((string) \$invoice['direction'])", $invoice, 'the invoice screen names the button by direction');
+}
+
+function test_erp_can_open_receipt_follows_the_cash_right()
+{
+	pg_assert_true(erp_can_open_receipt(true), 'given right');
+	pg_assert_false(erp_can_open_receipt(false), 'given no right');
+	pg_assert_same(defined('USER_MANAGE_ERP_CASH') && USER_MANAGE_ERP_CASH, erp_can_open_receipt(), 'the default follows USER_MANAGE_ERP_CASH');
+}
+
+// The invoice screen's allocation rows show the receipt icon only for a cash
+// clerk: erp_receipt.php would answer "Access denied" to anyone else.
+function test_erp_invoice_screen_receipt_icon_needs_the_cash_right()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_erp_invoice.php');
+	$at = strpos($source, 'href="erp_receipt.php?id=');
+	pg_assert_true($at !== false, 'the icon is still there');
+	pg_assert_contains('erp_can_open_receipt()', substr($source, max(0, $at - 400), min(400, $at)), 'and drawn behind erp_can_open_receipt()');
+	pg_assert_same(1, substr_count($source, 'href="erp_receipt.php'), 'no other receipt link on the screen');
 }

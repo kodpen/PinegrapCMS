@@ -387,6 +387,9 @@ $returns = erp_invoice_returns($invoice_id);
 $returned_total = erp_invoice_returned_total($invoice_id);
 $open_amount = erp_invoice_open_amount($invoice);
 
+// add_erp_receipt.php is cash-gated and refuses the read-only accountant.
+$can_record_receipt = erp_can_record_receipt();
+
 $is_return = ((string) $invoice['doc_type'] === 'return');
 $is_cancelled = ((string) $invoice['status'] === 'cancelled');
 
@@ -446,13 +449,7 @@ if ($can_return && !erp_return_lines_left(erp_returnable_lines($invoice_id))) {
     $returned_in_full = true;
 }
 
-$status_labels = array(
-    'draft' => lang('Draft'),
-    'issued' => lang('Issued'),
-    'partially_paid' => lang('Partly paid'),
-    'paid' => lang('Paid'),
-    'cancelled' => lang('Cancelled'),
-);
+$status_labels = erp_invoice_status_labels();
 
 // The lines are shown in the order they were written on the document, so this
 // is deliberately not a DataTable: a line number is part of what the document
@@ -584,12 +581,15 @@ if (!empty($settlements)) {
     // itself can be taken off by whoever may move cash. The gift card's is not
     // anybody's decision and goes only with the invoice.
     $can_unsettle = (!$is_cancelled && defined('USER_MANAGE_ERP_CASH') && USER_MANAGE_ERP_CASH);
+    // erp_receipt.php is cash-gated: without the right the icon would only
+    // lead to "Access denied", so it is left out.
+    $can_open_receipt = erp_can_open_receipt();
 
     foreach ($settlements as $settlement) {
         $is_receipt = in_array((string) $settlement['source_type'], array('collection', 'payment'), true);
 
         $output_actions = '';
-        if ($is_receipt && ((int) $settlement['cash_id'] > 0)) {
+        if ($can_open_receipt && $is_receipt && ((int) $settlement['cash_id'] > 0)) {
             $output_actions .= '<a class="btn btn-sm btn-outline theme-secondary" href="erp_receipt.php?id=' . (int) $settlement['cash_id'] . '" title="' . lang('Receipt') . '"><i class="bi bi-receipt"></i></a> ';
         }
         if ($can_unsettle && ((string) $settlement['source_type'] !== 'gift_card')) {
@@ -1546,8 +1546,8 @@ pg_page_shell([
             <div class="card my-7">
                 <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold d-flex flex-wrap justify-content-between align-items-center gap-3">
                     <span>' . lang('Settlement') . '</span>
-                    ' . (($open_amount > 0 && (string) $invoice['status'] !== 'cancelled')
-                        ? '<a class="btn btn-sm btn-solid theme-primary" href="add_erp_receipt.php?direction=' . (((string) $invoice['direction'] === 'sales') ? 'collection' : 'payment') . '&amp;invoice_id=' . $invoice_id . '"><i class="bi bi-cash-coin me-3" aria-hidden="true"></i>' . lang('Record a Receipt') . '</a>'
+                    ' . (($can_record_receipt && $open_amount > 0 && (string) $invoice['status'] !== 'cancelled')
+                        ? '<a class="btn btn-sm btn-solid theme-primary" href="add_erp_receipt.php?direction=' . (((string) $invoice['direction'] === 'sales') ? 'collection' : 'payment') . '&amp;invoice_id=' . $invoice_id . '"><i class="bi bi-cash-coin me-3" aria-hidden="true"></i>' . h(erp_record_receipt_label((string) $invoice['direction'])) . '</a>'
                         : '') . '
                 </div>
                 <div class="card-body">

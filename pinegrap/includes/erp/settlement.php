@@ -33,6 +33,36 @@ if (!defined('PG_ERP_ENTRY')) {
 }
 
 /**
+ * The words for the stored invoice statuses, shared by every screen that
+ * shows one.
+ *
+ * @return array  status code => translated label
+ */
+function erp_invoice_status_labels()
+{
+    return array(
+        'draft' => lang('Draft'),
+        'issued' => lang('Issued'),
+        'partially_paid' => lang('Partly paid'),
+        'paid' => lang('Paid'),
+        'cancelled' => lang('Cancelled'),
+    );
+}
+
+/**
+ * One invoice status in words; an unknown code is returned as it is.
+ *
+ * @param string $status
+ * @return string
+ */
+function erp_invoice_status_label($status)
+{
+    $labels = erp_invoice_status_labels();
+
+    return $labels[(string) $status] ?? (string) $status;
+}
+
+/**
  * What is still to be collected on an invoice.
  *
  * Two things reduce it, and they are not the same thing: money that came in

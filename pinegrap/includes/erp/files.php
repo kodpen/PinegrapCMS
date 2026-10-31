@@ -386,13 +386,7 @@ function erp_files_invoice_payload($row, $as_edoc = false)
     $currency = strtoupper(trim((string) $row['currency']));
     $account_title = (trim((string) ($row['account_title'] ?? '')) !== '') ? (string) $row['account_title'] : (string) ($row['live_account_title'] ?? '');
     $safe_number = preg_replace('/[^A-Za-z0-9._-]+/', '_', $number);
-    $states = array(
-        'draft' => lang('Draft'),
-        'issued' => lang('Issued'),
-        'partially_paid' => lang('Partly paid'),
-        'paid' => lang('Paid'),
-        'cancelled' => lang('Cancelled'),
-    );
+    $states = erp_invoice_status_labels();
     $edoc_labels = function_exists('erp_edoc_status_labels') ? erp_edoc_status_labels() : array();
     $edoc_status = (string) ($row['edoc_status'] ?? 'none');
     $timestamp = max((int) $row['created_at'], (int) $row['updated_at']);
