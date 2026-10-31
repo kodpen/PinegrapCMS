@@ -1234,6 +1234,7 @@
     "{var:1} repeating expense(s) were written.": "{var:1} tekrarlayan gider yazıldı.",
     "{var:1} repeating invoice(s)": "{var:1} tekrarlayan fatura",
     "{var:1} repeating invoice(s) were written.": "{var:1} tekrarlayan fatura yazıldı.",
+    "{var:1} replies": "{var:1} yanıt",
     "{var:1} report": "{var:1} raporu",
     "{var:1} reports {var:2} for payment {var:3}": "{var:1}, {var:3} ödemesi için {var:2} durumunu bildiriyor",
     "{var:1} request{suffix:1}": "{var:1} istek",

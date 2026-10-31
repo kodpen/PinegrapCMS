@@ -2989,6 +2989,25 @@
         return stack;
     }
 
+    // The hour and minute of a moment, in the site's time zone like the
+    // labels the server writes; a zone the browser does not know falls back
+    // to its own.
+    function clockText(timestamp) {
+        var date = new Date(timestamp * 1000);
+        var shape = { hour: '2-digit', minute: '2-digit' };
+
+        try {
+            return date.toLocaleTimeString(CFG.locale || undefined, Object.assign({ timeZone: CFG.timezone || undefined }, shape));
+        } catch (error) {
+            return date.toLocaleTimeString(CFG.locale || undefined, shape);
+        }
+    }
+
+    // A recording made with the writing box's microphone (workspace_voice.js).
+    function voiceFile(file) {
+        return !!(file && window.PGWsVoice && window.PGWsVoice.isVoice(file.name));
+    }
+
     function params() {
         var out = {};
 
@@ -7786,7 +7805,7 @@
         threadBar: function (message) {
             var self = this;
             var thread = message.thread;
-            var bar = el(thread.mine || thread.can_join ? 'button' : 'div', 'ws-thread-bar' + (thread.closed ? ' ws-thread-bar-closed' : '') + (thread.unread ? ' ws-thread-bar-news' : ''));
+            var bar = el(thread.mine || thread.can_join ? 'button' : 'div', 'ws-thread-bar' + (thread.closed ? ' ws-thread-bar-closed' : ''));
 
             if (thread.mine || thread.can_join) {
                 bar.type = 'button';
@@ -7796,29 +7815,36 @@
                 });
             }
 
-            bar.appendChild(avatarStack('ws-thread-faces', thread.people, 4));
+            // One short line: who takes part, how many replies and when the
+            // last came. The discussion's name is in the tooltip and read
+            // out first; it opens in its panel with the name at the top.
+            bar.appendChild(avatarStack('ws-thread-faces', thread.people, 3));
+            bar.appendChild(el('span', 'visually-hidden', t('th_bar', thread.title) + ':'));
+            bar.title = t('th_bar', thread.title);
 
-            var text = el('span', 'ws-thread-bar-text');
-            text.appendChild(el('b', '', t('th_bar', thread.title)));
-
-            var facts = [t('th_bar_count', thread.count)];
-
-            if (thread.last) {
-                facts.push(t('th_bar_last', thread.last));
-            }
-
-            text.appendChild(el('span', 'ws-thread-bar-facts', facts.join(' · ')));
-            bar.appendChild(text);
+            var facts = [];
 
             if (thread.closed) {
-                bar.appendChild(el('span', 'badge rounded-pill theme-secondary', t('th_bar_closed')));
-            } else if (thread.unread) {
+                facts.push(t('th_bar_closed'));
+            }
+
+            if (!thread.count) {
+                facts.push(t('th_bar_none'));
+            } else {
+                facts.push((thread.count === 1) ? t('th_bar_reply') : t('th_bar_replies', thread.count));
+
+                if (thread.last) {
+                    facts.push(t('th_bar_last_reply', thread.last));
+                }
+            }
+
+            bar.appendChild(el('span', 'ws-thread-bar-text', facts.join(' · ')));
+
+            if (thread.unread && !thread.closed) {
                 bar.appendChild(el('span', 'ws-count', thread.unread > 99 ? '99+' : thread.unread));
             }
 
-            if (thread.mine) {
-                bar.appendChild(el('span', 'ws-thread-bar-go', t('th_open')));
-            } else if (thread.can_join) {
+            if (!thread.mine && thread.can_join) {
                 bar.appendChild(el('span', 'ws-thread-bar-go', t('th_join')));
             }
 
@@ -8916,10 +8942,14 @@
                 return line;
             }
 
+            // One author's lines within five minutes read as one group: the
+            // face and the name once, a later line's time in the face's
+            // column on hover. An answer, a decision, a note, a task and a
+            // voice message start a group of their own.
             var follow = previous && previous.kind !== 'system' && previous.sender && message.sender
                 && previous.sender.id === message.sender.id && previous.sender_kind === message.sender_kind
                 && (message.timestamp - previous.timestamp) < 300 && !message.parent_id
-                && message.kind === 'message' && previous.kind !== 'task';
+                && message.kind === 'message' && previous.kind !== 'task' && !voiceFile(message.file);
 
             var node = el('div', 'ws-msg' + (follow ? ' ws-msg-follow' : '') + (message.deleted ? ' ws-msg-deleted' : '')
                 + ((message.kind === 'decision' || message.kind === 'note') ? ' ws-msg-' + message.kind : ''));
@@ -8933,6 +8963,15 @@
             var face = el('div', 'ws-msg-avatar');
             var person = (message.sender_kind === 'user') ? message.sender : null;
             face.appendChild(personLink(avatar(message.sender), person));
+
+            // Read out with the name in the hidden head; shown on hover.
+            if (follow) {
+                var clock = el('span', 'ws-msg-clock', clockText(message.timestamp));
+
+                clock.setAttribute('aria-hidden', 'true');
+                face.appendChild(clock);
+            }
+
             node.appendChild(face);
 
             var main = el('div', 'ws-msg-main');
@@ -8957,7 +8996,6 @@
 
             if (message.kind === 'decision' || message.kind === 'note') {
                 var flag = el('span', 'ws-msg-flag ws-flag-' + message.kind);
-                flag.appendChild(icon(message.kind === 'decision' ? 'bi-patch-check' : 'bi-sticky'));
                 flag.appendChild(document.createTextNode(message.kind === 'decision' ? t('decision') : t('note')));
                 flag.title = message.marked;
 
@@ -9276,13 +9314,13 @@
             }
 
             if (self.channel.can_post) {
-                items.push({ icon: 'bi-reply', label: t('reply'), tool: true, action: function () {
+                items.push({ icon: 'bi-reply', label: t('reply'), tool: 1, action: function () {
                     self.reply = message;
                     self.drawReplyBar();
                     self.input.focus();
                 } });
 
-                items.push({ icon: 'bi-check2-square', label: t('task_from_message'), tool: true, action: function () {
+                items.push({ icon: 'bi-check2-square', label: t('task_from_message'), tool: 3, action: function () {
                     taskDrawer.open(0, Object.assign(self.taskDefaults(), {
                         title: self.plain(message.html).slice(0, 200),
                         description: message.raw || ''
@@ -9295,7 +9333,7 @@
             // phone can also open it in a box to select a part of it, since
             // the long press there opens this menu instead of selecting.
             if (message.html) {
-                items.push({ icon: 'bi-copy', label: t('copy_text'), tool: true, action: function () {
+                items.push({ icon: 'bi-copy', label: t('copy_text'), action: function () {
                     copyText(readableText(message.html));
                 } });
 
@@ -9310,24 +9348,24 @@
             if (CFG.threads && !self.isThread && !self.era && !message.deleted && !message.past
                 && ['message', 'decision', 'note', 'task'].indexOf(message.kind) !== -1) {
                 if (message.thread && (message.thread.mine || message.thread.can_join)) {
-                    items.push({ icon: 'bi-chat-square-dots', label: message.thread.mine ? t('th_open') : t('th_join'), tool: true, action: function () { self.threadGo(message.thread); } });
+                    items.push({ icon: 'bi-chat-square-dots', label: message.thread.mine ? t('th_open') : t('th_join'), tool: 2, action: function () { self.threadGo(message.thread); } });
                 } else if (!message.thread && self.channel.can_post) {
-                    items.push({ icon: 'bi-chat-square-dots', label: t('th_start'), tool: true, action: function () { self.startThread(message); } });
+                    items.push({ icon: 'bi-chat-square-dots', label: t('th_start'), tool: 2, action: function () { self.startThread(message); } });
                 }
             }
 
             // A note card is a note already: it opens, and those who may
             // change the note edit it on the notes screen.
             if (message.note_card && !message.deleted) {
-                items.push({ icon: 'bi-eye', label: t('notes_card_open'), tool: true, action: function () { openNoteView(message.note_card.id); } });
+                items.push({ icon: 'bi-eye', label: t('notes_card_open'), action: function () { openNoteView(message.note_card.id); } });
 
                 if (noteCardEditable(message.note_card)) {
-                    items.push({ icon: 'bi-pencil-square', label: t('notes_card_edit'), tool: true, action: function () { openNoteEdit(message.note_card.id); } });
+                    items.push({ icon: 'bi-pencil-square', label: t('notes_card_edit'), action: function () { openNoteEdit(message.note_card.id); } });
                 }
             } else if (CFG.notes && !message.deleted && (message.sender_kind === 'user' || message.sender_kind === 'app')
                 && ['message', 'note', 'decision'].indexOf(message.kind) !== -1) {
                 // Anybody's message, kept as a copy in the person's own notes.
-                items.push({ icon: 'bi-journal-plus', label: t('notes_save_message'), tool: true, action: function () { self.keepAsNote(message); } });
+                items.push({ icon: 'bi-journal-plus', label: t('notes_save_message'), action: function () { self.keepAsNote(message); } });
             }
 
             if (message.has_list && self.channel.can_post) {
@@ -9343,7 +9381,7 @@
             }
 
             if (message.can_mark && self.channel.can_post) {
-                items.push({ icon: 'bi-patch-check', label: message.kind === 'decision' ? t('unmark') : t('mark_decision'), tool: true, action: function () {
+                items.push({ icon: 'bi-patch-check', label: message.kind === 'decision' ? t('unmark') : t('mark_decision'), action: function () {
                     self.mark(message, message.kind === 'decision' ? 'message' : 'decision');
                 } });
                 items.push({ icon: 'bi-sticky', label: message.kind === 'note' ? t('unmark') : t('mark_channel_note'), action: function () {
@@ -9395,11 +9433,11 @@
                 // A picture is edited in the image editor: in place in the
                 // person's own message, as a copy of their own otherwise.
                 if (message.file.image && self.channel.can_post) {
-                    items.push({ icon: 'bi-brush', label: message.mine ? t('file_edit_image') : t('file_edit_send'), tool: true, action: function () { self.editImage(message); } });
+                    items.push({ icon: 'bi-brush', label: message.mine ? t('file_edit_image') : t('file_edit_send'), action: function () { self.editImage(message); } });
                 }
 
                 if (message.file.text) {
-                    items.push({ icon: 'bi-file-earmark-text', label: t('file_edit_text'), tool: true, action: function () { self.openText(message); } });
+                    items.push({ icon: 'bi-file-earmark-text', label: t('file_edit_text'), action: function () { self.openText(message); } });
                 }
             }
 
@@ -9408,11 +9446,11 @@
             }
 
             if (message.can_edit) {
-                items.push({ icon: 'bi-pencil', label: t('edit'), tool: true, action: function () { self.editMessage(message); } });
+                items.push({ icon: 'bi-pencil', label: t('edit'), action: function () { self.editMessage(message); } });
             }
 
             if (message.can_delete || message.can_hide) {
-                items.push({ icon: 'bi-trash', label: t('delete'), tool: true, danger: true, action: function () { self.deleteMessage(message); } });
+                items.push({ icon: 'bi-trash', label: t('delete'), danger: true, action: function () { self.deleteMessage(message); } });
             }
 
             return items;
@@ -9481,21 +9519,14 @@
             });
         },
 
+        // The bar over a message on hover, focus or a tap: a reaction, the
+        // answers (reply, discussion), a task, and More with every action;
+        // the rest of them wait in More and the context menu.
         messageTools: function (message) {
             var self = this;
             var tools = el('div', 'ws-msg-tools');
 
             if (message.can_react) {
-                (BOOT.reactions || []).slice(0, 3).forEach(function (emoji) {
-                    var quick = el('button', 'ws-tool-emoji', emoji);
-
-                    quick.type = 'button';
-                    quick.title = t('react_with', emoji);
-                    quick.setAttribute('aria-label', quick.title);
-                    quick.addEventListener('click', function () { self.react(message, emoji); });
-                    tools.appendChild(quick);
-                });
-
                 var pick = button('', '', 'bi-emoji-smile', t('add_reaction'));
                 pick.addEventListener('click', function (event) {
                     var box = pick.getBoundingClientRect();
@@ -9506,11 +9537,11 @@
                 tools.appendChild(pick);
             }
 
-            this.messageActions(message).forEach(function (item) {
-                if (item === '-' || !item.tool || item.emojis) {
-                    return;
-                }
-
+            this.messageActions(message).filter(function (item) {
+                return (item !== '-') && item.tool && !item.emojis;
+            }).sort(function (a, b) {
+                return a.tool - b.tool;
+            }).forEach(function (item) {
                 var tool = button(item.danger ? 'ws-tool-danger' : '', '', item.icon, item.label);
                 tool.addEventListener('click', item.action);
                 tools.appendChild(tool);
