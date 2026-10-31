@@ -2909,6 +2909,8 @@ function get_express_order($properties) {
             $output_opt_in_sms = pg_consent_sms_checkout_shown(array('id' => $contact_id, 'email_address' => $contact['email_address']))
                 ? pg_consent_sms_checkout_row($form) : '';
             
+            $output_po_number = '';
+
             // if po number is enabled, output po number field
             if ($po_number) {
                 $output_po_number =
@@ -3815,7 +3817,7 @@ function get_express_order($properties) {
         
         // else the number of ship tos is 0, so there are no products in the cart, so output notice
         } else {
-            $output_express_order = '<p style="font-weight: bold">No items have been added.</p>';
+            $output_express_order = '<p style="font-weight: bold">' . lang('No items have been added.') . '</p>';
         }
         
         $output =

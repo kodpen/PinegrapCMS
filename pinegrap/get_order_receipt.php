@@ -84,7 +84,7 @@ function get_order_receipt($properties) {
 
     // If a completed order could not be found, then output error.
     if (!$order_id) {
-        return error('Sorry, it appears that you have not completed an order yet.', 404);
+        return error(lang('Sorry, it appears that you have not completed an order yet.'), 404);
     }
 
     $order_number = $row['order_number'];
@@ -312,8 +312,6 @@ function get_order_receipt($properties) {
                     $original_product_price = $order_item['product_price'] / 100;
                     $recurring = $order_item['recurring'];
                     $recurring_schedule_editable_by_customer = $order_item['recurring_schedule_editable_by_customer'];
-                    $start = $order_item['start'];
-                    $payment_period = $order_item['payment_period'];
                     $selection_type = $order_item['selection_type'];
                     $gift_card = $order_item['gift_card'];
                     $form = $order_item['form'];

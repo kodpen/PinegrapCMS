@@ -80,6 +80,14 @@ function get_order_preview($properties) {
 
     if ($layout_type == 'system') {
 
+        // Totals are summed per line below and the optional rows are filled
+        // only when they apply, so they start empty.
+        $subtotal = 0;
+        $grand_tax = 0;
+        $grand_shipping = 0;
+        $output_discount = '';
+        $output_card_verification_number_help = '';
+
         // set shipping to false until we find out that this is a shipping order
         $shipping = false;
 
@@ -185,7 +193,8 @@ function get_order_preview($properties) {
                 $query = "SELECT name FROM countries WHERE code = ?";
                 $result = db_q($query, array((string) $country)) or output_error('Query failed.');
                 $row = mysqli_fetch_assoc($result);
-                $country = $row['name'];
+                // No row when the recipient has no shipping address yet.
+                $country = $row['name'] ?? '';
                 
                 // if this shipping address is verified, then convert salutation and country to all uppercase
                 if ($address_verified == 1) {
@@ -1535,7 +1544,7 @@ function get_order_preview($properties) {
                     $card_verification_number_page_name = get_page_name($card_verification_number_page_id);
 
                     $output_card_verification_number_help =
-                        '&nbsp; <a href="' . OUTPUT_PATH . h(encode_url_path($card_verification_number_page_name)) . '" target="_blank" style="white-space: nowrap">What is this?</a>';
+                        '&nbsp; <a href="' . OUTPUT_PATH . h(encode_url_path($card_verification_number_page_name)) . '" target="_blank" style="white-space: nowrap">' . lang('What is this?') . '</a>';
                 }
 
                 $output_surcharge_message = '';

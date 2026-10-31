@@ -1907,6 +1907,7 @@
     "Sorry, config.php is not configured properly. This probably means that the software has not been installed. Please install the software, or configure config.php properly.": "Üzgünüz, config.php düzgün yapılandırılmamış. Bu muhtemelen yazılımın yüklenmediği anlamına gelir. Lütfen yazılımı kurun veya config.php'yi uygun şekilde yapılandırın.",
     "Sorry, files of that type cannot be uploaded here.": "Üzgünüz, bu türden dosyalar buraya yüklenemez.",
     "Sorry, it appears that a reference code was not included in the website address, so we don't know which confirmation to show you.": "Üzgünüz, web sitesi adresine bir referans kodu eklenmemiş görünüyor, bu nedenle hangi onayı göstereceğimizi bilmiyoruz.",
+    "Sorry, it appears that you have not completed an order yet.": "Üzgünüz, henüz bir siparişi tamamlamamış görünüyorsunuz.",
     "Sorry, neither Pages nor Files are selected to be included in this Folder View, so there is nothing to display.": "Maalesef, bu Klasör Görünümüne dahil edilmek üzere ne Sayfalar ne de Dosyalar seçilmedi, bu nedenle görüntülenecek hiçbir şey yok.",
     "Sorry, no feed is available because the item could not be found.": "Üzgünüz, öğe bulunamadığından yayın yok.",
     "Sorry, no feed is available because the item is not currently available.": "Üzgünüz, öğe mevcut olmadığı için besleme şu anda mevcut değil.",
