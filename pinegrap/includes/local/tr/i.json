@@ -247,7 +247,7 @@
     "Import another file": "Başka bir dosya içe aktar",
     "Import as machine translations (still to be reviewed)": "Makine çevirisi olarak içe aktar (gözden geçirilecek)",
     "Import complete.": "İçe aktarma tamamlandı.",
-    "Import contacts into any of my contact groups.": "Kişileri, kişi gruplarımdan birine aktarın.",
+    "Import contacts into any of my contact groups.": "Kişileri, rehber gruplarımdan birine aktarın.",
     "Import failed": "İçe aktarma başarısız",
     "Import new Users and Contacts, assign privileges, and choose to email login info to Users.": "Yeni Kullanıcıları ve Kişileri içe aktarın, ayrıcalıklar atayın ve oturum açma bilgilerini Kullanıcılara e-postayla gönderin.",
     "Import new and update existing campaign profiles.": "Yenilerini içe aktarın ve mevcut kampanya profillerini güncelleyin.",
@@ -746,6 +746,9 @@
     "It was taken off the desk or the site, for example at your request.": "Örneğin sizin isteğinizle masadan ya da siteden kaldırıldı.",
     "It was taken out of the docs, for example because it no longer applies.": "Örneğin artık geçerli olmadığı için dokümanlardan çıkarıldı.",
     "It was the home page: the site has no home page until another page is marked as home.": "Bu sayfa ana sayfaydı: başka bir sayfa ana sayfa yapılana kadar sitenin ana sayfası yok.",
+    "It will also be removed from {var:1} shipping zone{suffix:1} and {var:2} tax zone{suffix:2}.": "Ayrıca {var:1} nakliye bölgesinden ve {var:2} vergi bölgesinden çıkarılacak.",
+    "It will also be removed from {var:1} shipping zone{suffix:1}.": "Ayrıca {var:1} nakliye bölgesinden çıkarılacak.",
+    "It will also be removed from {var:1} tax zone{suffix:1}.": "Ayrıca {var:1} vergi bölgesinden çıkarılacak.",
     "It will assist you in your local sales transactions by scanning with your barcode device.": "Barkod cihazınız ile okutarak yerel satış işlemlerinizde size yardımcı olacaktır.",
     "It will be able to:": "Şunları yapabilecek:",
     "It will help you to decrease the amount of product stock with the barcode device.": "Barkod cihazı ile ürün stok miktarını azaltmanıza yardımcı olacaktır.",
@@ -911,6 +914,6 @@
     "it is removed from all of them.": "hepsinden kaldırılacak.",
     "item(s)": "öğe",
     "its own design": "kendi tasarımı",
-    "iys, ileti yönetim sistemi, consent, permission, brand, marketing, opt-in, refusal": "iys, ileti yönetim sistemi, izin, onay, marka, pazarlama, ticari ileti, ret",
+    "iys, ileti yönetim sistemi, consent, permission, brand, marketing, opt-in, refusal": "iys, ileti yönetim sistemi, izin, onay, marka, pazarlama, ticari ileti, ret, consent, permission, brand, marketing, opt-in, refusal",
     "iyzico logo address": "iyzico logosunun adresi"
 }

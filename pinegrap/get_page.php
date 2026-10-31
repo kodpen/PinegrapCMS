@@ -298,7 +298,9 @@ if (pg_folder_binned($folder_id))
 // If this page is archived, and the visitor does not have edit access to this page, then output error.
 if (($folder_archived == '1') && ($edit_access == false))
 {
-	log_activity(lang(array('string'=>'access denied to archived page ({var:1})','vars'=>$page_name)), $_SESSION['sessionusername']);
+	// A visitor without a session has no username; log_activity() then takes
+	// the signed-in user's name itself or leaves it empty.
+	log_activity(lang(array('string'=>'access denied to archived page ({var:1})','vars'=>$page_name)), isset($_SESSION['sessionusername']) ? (string) $_SESSION['sessionusername'] : '');
 	output_error(lang('The page that you requested is no longer available because it has been archived.'), 410);
 }
 // Automatic language redirect (includes/fn/language_redirect.php): the first
@@ -443,7 +445,7 @@ case 'private':
 case 'guest':
 	// if user is not logged in or has an invalid login, then forward user to Registration Entrance screen
 	// and, if the user is not browsing the site as a Guest
-	if ((pg_session_signed_in() == false) && ($_SESSION['software']['guest'] !== true))
+	if ((pg_session_signed_in() == false) && (empty($_SESSION['software']['guest']) || ($_SESSION['software']['guest'] !== true)))
 	{
 		header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/registration_entrance.php?allow_guest=true&send_to=' . urlencode(REQUEST_URL));
 		exit();

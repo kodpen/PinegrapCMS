@@ -1,14 +1,16 @@
 ---
 name: commerce-delete-confirm
-description: Edit State, Shipping Method, Zone and Product Attribute name and count, in their Delete confirmation, the records the delete removes or unlinks
+description: Edit State, Country, Shipping Method, Zone and Product Attribute name and count, in their Delete confirmation, the records the delete removes or unlinks
 ---
 
 ## What does each Delete confirmation name?
-- Edit State: the verified shipping addresses of the state (deleted with it, rows of `view_verified_shipping_addresses.php`).
+- Edit State: the verified shipping addresses of the state (deleted with it, rows of `view_verified_shipping_addresses.php`), then the shipping and tax zones it leaves and those left with no state or country (#4078).
+- Edit Country: its fixed sentence (states and addresses), then the same zone sentences for the country and its states (#4078).
+- Zone sentences: `pg_zone_form_member_delete_counts('state'|'country', $id)` and `pg_zone_form_member_delete_sentences()` in `zone_form.php`. The delete removes the `zones_*_xref` and `tax_zones_*_xref` rows; a shipping zone with no member matches no address (its methods are never offered there), a tax zone with no member charges no tax. Zones are not deleted or refused: the confirmation only says so.
 - Edit Shipping Method: its ship date adjustments (deleted) and the offer actions that discount shipping on it (unlinked, so they stop discounting).
 - Edit Zone: the products and shipping methods losing the zone, then a second sentence for the shippable products and methods left with no other zone. Checkout intersects the allowed zones of the cart's products and offers a method only through its zones, so those can no longer ship.
 - Edit Product Attribute: the products and product groups using it (the attribute and its options are removed from them).
-- With every count 0 the old 'WARNING: This {var:1} will be permanently deleted.' stays. What a delete removes did not change. Edit Country already named its states and addresses and is the model.
+- With every count 0 the old 'WARNING: This {var:1} will be permanently deleted.' stays. What a delete removes did not change.
 
 ## Which Turkish words do they use?
 - The screens' own names: "nakliye yöntemi" (not "teslimat yöntemi"), "eyalet/il", offer action "teklif hareketi" (not "kampanya eylemi"); every warning starts "UYARI:", the plain sentences too. "Shipping Methods" is "Nakliye Yöntemleri" (panel search, the site's method template), the code help and "Shipping Method is required." say "Nakliye Yöntemi" (#4112).

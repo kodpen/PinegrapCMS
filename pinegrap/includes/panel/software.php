@@ -751,7 +751,7 @@ function pg_panel_software_update($request, $action)
 
                 respond(array(
                     'status' => 'error',
-                    'message' => lang(array('string' => 'The backup before the update could not be written: {var:1} Nothing was changed. Free some disk space and try again, or switch off "Back up before updating" under Site Settings, General, Update Channel to update without it.', 'vars' => array($update_backup['error'])))
+                    'message' => lang(array('string' => 'The backup before the update could not be written: {var:1} Nothing was changed. Free some disk space and try again, or switch off "Back up before updating" under Site Settings › Updates and maintenance › Update Channel to update without it.', 'vars' => array($update_backup['error'])))
                 ));
             }
 

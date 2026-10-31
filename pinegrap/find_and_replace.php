@@ -567,14 +567,19 @@ if (!$_POST) {
             'extra classes'=> 'setting',
             'icon'         => 'setting',
             'heading'      => lang('Find Results'),
-            'heading_description' => $summary,
-            'cancel'       => array('enable' => 'true', 'url' => 'find_and_replace.php'),
+            'heading_description' => lang('Enter the text that you want to mass-find and replace throughout many types of items in the system.'),
+            'cancel'       => array('enable' => 'true', 'url' => 'find_and_replace.php', 'title' => lang('Find & Replace')),
             'breadcrumb'   => array(
                 array('label' => lang('Find & Replace'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/find_and_replace.php'),
                 array('label' => lang('Find Results')),
             ),
         ]) . '
         <main id="content" class="container-fluid">
+            ' . pg_screen_toolbar(array(
+                // The heading description is hidden on narrow screens; the
+                // match count is the answer to the search, so it stays here.
+                'grow' => '<span class="fg-secondary" role="status">' . h($summary) . '</span>',
+            ), array('class' => 'mb-5')) . '
             <div class="row">
                 <div class="col-12">
                     ' . $results_html . '

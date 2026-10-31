@@ -19,3 +19,6 @@ description: Ligature status marks with a hidden text, filter-link rows as nav n
 - Cancel, the breadcrumb and the save redirect all lead to `view_recurring_commission_profiles.php`, the only screen that opens it.
 
 Tests: `tests/returns_commission_names_test.php`; the three e-mail campaign lists (row boxes, `'{var:1}%'` progress, ligatures, landmarks) in `tests/email_campaign_list_names_test.php`.
+
+## How does a toolbar filter say what it filters?
+- Each select or search box sits in an `input-group` behind a `<label class="input-group-text" for=…>` with an icon, the field's name as `title` and a `visually-hidden` span, like `pg_filter_select()` with `'icon'`. The "every value" choice names what it covers ("All categories", "All areas"), never a bare "All": two bare "All"s on one panel read the same. A placeholder alone is no label (#4076, PR #4307: `view_waf_log.php`, `view_performance_log.php`; `tests/screen_labels_visible_test.php`).

@@ -156,38 +156,47 @@ function pg_state_form_card($values, $errors = array())
 }
 
 /**
- * How many verified shipping addresses a state delete removes with it.
+ * What a state delete takes or unlinks: its verified shipping addresses,
+ * then the shipping zone and tax zone counts of
+ * pg_zone_form_member_delete_counts().
  *
  * @param int $state_id
- * @return int
+ * @return array list of (addresses, zones, tax zones, emptied zones, emptied tax zones)
  */
 function pg_state_form_delete_counts($state_id)
 {
     $result = db_q("SELECT COUNT(*) FROM verified_shipping_addresses WHERE state_id = ?", array((int) $state_id));
     $row = $result ? mysqli_fetch_row($result) : null;
 
-    return $row ? (int) $row[0] : 0;
+    return array_merge(array($row ? (int) $row[0] : 0), pg_zone_form_member_delete_counts('state', $state_id));
 }
 
 /**
  * The Delete confirmation of Edit State as lang() arguments: the verified
  * shipping addresses of the state go with it, so they are named when there
- * are any.
+ * are any; then the shipping zones and tax zones it leaves, and those left
+ * with no member.
  *
  * @param int $addresses
+ * @param int $zones
+ * @param int $tax_zones
+ * @param int $emptied_zones
+ * @param int $emptied_tax_zones
  * @return array list of lang() arguments, one per sentence
  */
-function pg_state_form_delete_confirm($addresses)
+function pg_state_form_delete_confirm($addresses, $zones = 0, $tax_zones = 0, $emptied_zones = 0, $emptied_tax_zones = 0)
 {
     $addresses = (int) $addresses;
 
     if ($addresses < 1) {
-        return array(array('string' => 'WARNING: This {var:1} will be permanently deleted.', 'vars' => array(lang('state'))));
+        $sentences = array(array('string' => 'WARNING: This {var:1} will be permanently deleted.', 'vars' => array(lang('state'))));
+    } else {
+        $sentences = array(array(
+            'string' => 'WARNING: This state and its {var:1} verified shipping address{suffix:1} will be permanently deleted.',
+            'vars' => array($addresses),
+            'suffix' => array($addresses == 1 ? '' : 'es'),
+        ));
     }
 
-    return array(array(
-        'string' => 'WARNING: This state and its {var:1} verified shipping address{suffix:1} will be permanently deleted.',
-        'vars' => array($addresses),
-        'suffix' => array($addresses == 1 ? '' : 'es'),
-    ));
+    return array_merge($sentences, pg_zone_form_member_delete_sentences($zones, $tax_zones, $emptied_zones, $emptied_tax_zones));
 }

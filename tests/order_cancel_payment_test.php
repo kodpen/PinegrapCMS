@@ -60,7 +60,35 @@ function test_order_cancel_payment_manual()
 function test_order_cancel_payment_nothing_taken()
 {
 	pg_assert_same('none', pg_order_cancel_payment_plan(0, 0, 'Credit/Debit Card', true, 'iyzipay', true)['action'], 'a free order');
-	pg_assert_same('none', pg_order_cancel_payment_plan(10000, 0, 'Offline Payment', false, '', true)['action'], 'offline payment');
+	pg_assert_same('none', pg_order_cancel_payment_plan(10000, 0, 'Offline Payment', false, '', true, 0)['action'], 'a bank transfer that never arrived');
 	pg_assert_same('none', pg_order_cancel_payment_plan(10000, 0, '', false, '', true)['action'], 'no payment method');
-	pg_assert_same(10000, pg_order_cancel_payment_plan(10000, 0, 'Offline Payment', false, '', true)['remaining'], 'what is left is still reported');
+	pg_assert_same(10000, pg_order_cancel_payment_plan(10000, 0, 'Offline Payment', false, '', true, 0)['remaining'], 'what is left is still reported');
+}
+
+function test_order_cancel_payment_bank_transfer_paid()
+{
+	// A bank transfer the operator marked as received (paid_at set) is money
+	// the customer is owed back: pg_order_cancel_refund_owed() counts it, so
+	// the cancellation flags it.
+	pg_assert_same(
+		array('action' => 'manual', 'remaining' => 899880, 'refunded' => 0),
+		pg_order_cancel_payment_plan(899880, 0, 'Offline Payment', false, '', false, 1793000000),
+		'a received bank transfer is flagged');
+	pg_assert_same(
+		array('action' => 'manual', 'remaining' => 6000, 'refunded' => 4000),
+		pg_order_cancel_payment_plan(10000, 4000, 'Offline Payment', false, '', true, 1793000000),
+		'a received bank transfer partly sent back: the rest is flagged');
+	pg_assert_same('none', pg_order_cancel_payment_plan(10000, 10000, 'Offline Payment', false, '', true, 1793000000)['action'], 'sent back in full');
+	// A row without paid_at (a schema before the column) cannot tell, so its
+	// payment counts as arrived, as pg_order_cancel_refund_owed() reads it.
+	pg_assert_same('manual', pg_order_cancel_payment_plan(10000, 0, 'Offline Payment', false, '', false)['action'], 'paid_at unknown');
+}
+
+function test_order_cancel_payment_pending_method_unpaid()
+{
+	// A payment its service left pending (paid_at 0) was not taken: no flag.
+	pg_assert_same('none', pg_order_cancel_payment_plan(10000, 0, 'PayPal Checkout', true, 'paypal', false, 0)['action'], 'pending, auto refund off');
+	pg_assert_same('manual', pg_order_cancel_payment_plan(10000, 0, 'PayPal Checkout', true, 'paypal', false, 1793000000)['action'], 'settled, auto refund off');
+	pg_assert_same('void', pg_order_cancel_payment_plan(10000, 0, 'PayPal Checkout', true, 'paypal', true, 0)['action'], 'a driver still cancels what it holds');
+	pg_assert_same('manual', pg_order_cancel_payment_plan(10000, 0, 'Credit/Debit Card', true, '', false, 0)['action'], 'paid_at 0 of another method means nothing');
 }

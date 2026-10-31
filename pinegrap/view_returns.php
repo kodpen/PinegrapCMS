@@ -144,7 +144,7 @@ echo
         'icon'                => 'store',
         'heading'             => lang('Returns'),
         'heading_description' => lang('Answer the customers\' return requests and follow the goods back.'),
-        'cancel'              => array('enable' => 'true', 'url' => 'view_orders.php'),
+        'cancel'              => array('enable' => 'true', 'url' => 'view_orders.php', 'title' => lang('All Orders')),
         'breadcrumb'          => array(
             array('label' => lang('All Orders'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_orders.php'),
             array('label' => lang('Returns')),

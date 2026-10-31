@@ -9,7 +9,7 @@ description: Rate, commission and whole-number boxes read as their columns store
 - The box (`pg_tax_zone_form_cards()`) is the product screen's: `type="number" min="0" max="100" step="0.001"`, plus `required`; it is filled through `format_tax_rate()` (8.250 reads 8.25, 0.000 reads 0).
 
 ## How wide is the contact commission rate box?
-- `contacts.affiliate_commission_rate` is `decimal(5,2) unsigned`; the box in `includes/forms/contact_form.php` takes `maxlength="6"` with `inputmode="decimal"`. The old `maxlength="3"` could not take 12.5 or show a stored 12.50 (the product screen had the same bug, `product-screen-units-and-commission.md`).
+- `contacts.affiliate_commission_rate` is `decimal(5,2) unsigned`; the box in `includes/forms/contact_form.php` takes `maxlength="6"` with `inputmode="decimal"`. The save reads it through `pg_contact_form_commission_rate_posted()` (`pg_parse_commission_rate()`; blank stays blank for the default), so `8,25` is 8.25, not 8 (#4230). The old `maxlength="3"` could not take 12.5 or show a stored 12.50 (the product screen had the same bug, `product-screen-units-and-commission.md`).
 
 ## How are reward points bounded?
 - `user.user_reward_points` is `int(10) unsigned`. The Reward Points box on `add_user.php`, `edit_user.php` and `import_users.php` is `type="number" min="0" max="4294967295" step="1"`; browsers ignore `maxlength` on a number box, and -5 was stored as 0.

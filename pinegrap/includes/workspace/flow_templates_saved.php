@@ -272,7 +272,7 @@ function ws_flow_template_saved_entry($row, $viewer)
         'title'    => (string) $row['title'],
         'help'     => (string) $row['help'],
         'icon'     => ((string) $row['icon'] !== '') ? (string) $row['icon'] : 'bi-bookmark-star',
-        'start'    => $graph['nodes'][0]['kind'],
+        'start'    => (string) (ws_flow_trigger_node($graph)['kind'] ?? ''),
         'graph'    => $graph,
         'boxes'    => count($graph['nodes']),
         'threads'  => count(ws_flow_template_threads($graph)),

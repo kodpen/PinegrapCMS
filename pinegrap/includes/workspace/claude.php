@@ -246,7 +246,7 @@ function ws_claude_setup_hint()
     $before = true;
 
     if (!$api_on) {
-        $parts[] = lang('The site\'s application API is switched off; an administrator switches it on first:') . ' ' . $link(lang('Site Settings › API'), $base . 'settings_api.php');
+        $parts[] = lang('The site\'s application API is switched off; an administrator switches it on first:') . ' ' . $link(lang('Site Settings › Integrations › Application API'), $base . 'settings_api.php#pgset-api');
     } elseif (!ws_claude_app() && empty(ws_claude_suitable_apps())) {
         $parts[] = lang('There is no API application Claude could work through yet: an administrator makes it by pressing Create Claude\'s key on the card in the Workspace settings.');
     } else {

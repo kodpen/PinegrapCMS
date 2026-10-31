@@ -120,7 +120,8 @@ function ws_palette_snippet($text, $query, $length = 120)
  *
  * @param array  $viewer
  * @param string $where      the extra condition, built from escaped values
- * @param int    $channel_id 0 for every channel
+ * @param int    $channel_id 0 for every channel; a channel takes in its
+ *                           discussions (ws_channel_search_ids())
  * @param int    $limit
  * @return array[] rows of ws_messages, each with _channel (the channel row)
  */
@@ -128,7 +129,7 @@ function ws_palette_message_rows($viewer, $where, $channel_id, $limit)
 {
     $rows = (array) db_items("SELECT * FROM ws_messages
         WHERE deleted_at = 0 AND " . $where
-        . (((int) $channel_id > 0) ? " AND channel_id = '" . (int) $channel_id . "'" : '') . "
+        . ws_channel_search_sql(ws_channel_search_ids($channel_id)) . "
         ORDER BY id DESC
         LIMIT 200");
 

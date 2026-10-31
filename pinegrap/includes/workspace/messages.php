@@ -1803,7 +1803,8 @@ function ws_channel_files($viewer, $channel_id)
  *
  * @param array  $viewer
  * @param string $query
- * @param int    $channel_id 0 for every channel
+ * @param int    $channel_id 0 for every channel; a channel takes in its
+ *                           discussions (ws_channel_search_ids())
  * @return array[]
  */
 function ws_message_search($viewer, $query, $channel_id = 0)
@@ -1818,7 +1819,7 @@ function ws_message_search($viewer, $query, $channel_id = 0)
     $like = e(escape_like($query));
     $rows = (array) db_items("SELECT * FROM ws_messages
         WHERE deleted_at = 0 AND (body LIKE '%" . $like . "%'" . ws_voice_search_or($like) . ")"
-        . (((int) $channel_id > 0) ? " AND channel_id = '" . (int) $channel_id . "'" : '') . "
+        . ws_channel_search_sql(ws_channel_search_ids($channel_id)) . "
         ORDER BY id DESC
         LIMIT 200");
 

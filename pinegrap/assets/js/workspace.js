@@ -9083,10 +9083,11 @@
                 onContext(row, function () { return personMenu(member); });
 
                 if (channel.can_manage && member.id !== channel.owner_id && member.id !== BOOT.me.id) {
-                    var remove = button('btn btn-sm btn-text theme-secondary', '', 'bi-x-lg', t('remove'));
+                    var remove = button('btn btn-sm btn-text theme-secondary', '', 'bi-x-lg', t('member_remove', member.name));
+                    remove.setAttribute('data-info-key', 'remove-' + member.id);
                     remove.addEventListener('click', function () {
                         api('ws_channel_member_remove', { channel_id: channel.id, user_id: member.id }).then(function () {
-                            self.open(channel.id, 0);
+                            self.refreshInfo('add-open');
                         }).catch(fail);
                     });
                     row.appendChild(remove);
@@ -9102,6 +9103,8 @@
 
                 if (outside.length) {
                     var addOpen = button('btn btn-sm btn-outline theme-secondary rounded-pill mt-2', t('add_people'), 'bi-person-plus');
+
+                    addOpen.setAttribute('data-info-key', 'add-open');
                     var addBox = el('div', 'ws-info-add');
 
                     addBox.hidden = true;
@@ -9112,7 +9115,7 @@
                     });
 
                     var picker = peoplePicker([], outside);
-                    var add = button('btn btn-sm btn-solid theme-primary rounded-pill px-4 mt-2', t('add_people'), 'bi-person-plus');
+                    var add = button('btn btn-sm btn-solid theme-primary rounded-pill px-4 mt-2', t('add_people_confirm'), 'bi-check2');
 
                     add.addEventListener('click', function () {
                         var ids = picker.value();
@@ -9122,7 +9125,7 @@
                         }
 
                         api('ws_channel_members_add', { channel_id: channel.id, user_ids: ids }).then(function () {
-                            self.open(channel.id, 0);
+                            self.refreshInfo('add-open');
                         }).catch(fail);
                     });
 
@@ -9147,13 +9150,14 @@
                     var choice = button('ws-seg-item', t(option[1]));
 
                     choice.title = t(option[2]);
+                    choice.setAttribute('data-info-key', 'notify-' + option[0]);
                     choice.setAttribute('aria-pressed', (channel.notify === option[0]) ? 'true' : 'false');
                     choice.addEventListener('click', function () {
                         if (channel.notify === option[0]) {
                             return;
                         }
 
-                        api('ws_channel_notify', { channel_id: channel.id, notify: option[0] }).then(function () { self.reloadChannels(channel.id); }).catch(fail);
+                        api('ws_channel_notify', { channel_id: channel.id, notify: option[0] }).then(function () { self.refreshInfo(); }).catch(fail);
                     });
                     choices.appendChild(choice);
                 });
@@ -9215,6 +9219,106 @@
 
             if (focus) {
                 title.focus();
+            }
+        },
+
+        // After a change made from the info panel: the channel read again
+        // and the panel, the header's people and menu and the sidebar drawn
+        // anew, without opening the channel from the start (which would
+        // empty the panel, scroll the messages and move the focus to the
+        // composer). The focus stays on the control that was used, found by
+        // its data-info-key; where that control is gone (a person removed),
+        // on the fallback key, else on the panel's title.
+        refreshInfo: function (fallbackKey) {
+            var self = app;
+            var channel = self.channel;
+
+            if (!channel) {
+                return;
+            }
+
+            var active = (self.infoPanel && self.infoPanel.contains(document.activeElement)) ? document.activeElement : null;
+            var key = active ? active.getAttribute('data-info-key') : null;
+            var addWasOpen = !!(self.infoPanel && self.infoPanel.querySelector('[data-info-key="add-open"][aria-expanded="true"]'));
+
+            api('ws_channel_get', { channel_id: channel.id }).then(function (data) {
+                if (!data || !data.channel || (self.channel !== channel)) {
+                    return;
+                }
+
+                var fresh = data.channel;
+
+                // An earlier version of the conversation stays read-only.
+                if (self.era) {
+                    fresh.can_post = false;
+                }
+
+                // Copied into the object the screen holds, so what was drawn
+                // from it (the composer, the message tools) reads it as it is
+                // now.
+                Object.keys(fresh).forEach(function (name) {
+                    channel[name] = fresh[name];
+                });
+
+                self.refreshHead();
+                self.drawInfo(false);
+
+                if (!self.infoPanel || !self.infoOpen) {
+                    return;
+                }
+
+                // Adding more people: the picker stays open, emptied.
+                if (addWasOpen) {
+                    var opener = self.infoPanel.querySelector('[data-info-key="add-open"]');
+
+                    if (opener) {
+                        opener.click();
+                    }
+                }
+
+                if (active) {
+                    var target = (key ? self.infoPanel.querySelector('[data-info-key="' + key + '"]') : null)
+                        || (fallbackKey ? self.infoPanel.querySelector('[data-info-key="' + fallbackKey + '"]') : null)
+                        || self.infoPanel.querySelector('.ws-panel-title');
+
+                    if (target) {
+                        target.focus({ preventScroll: true });
+                    }
+                }
+            }).catch(fail);
+
+            api('ws_channels').then(function (data) {
+                BOOT.channels = data.channels;
+                BOOT.groups = data.groups || [];
+                self.drawSide();
+            }).catch(function () {
+                // The sidebar catches up on the next sync.
+            });
+        },
+
+        // The header's people and menu, read from the channel as it is now
+        // (refreshInfo()); the rest of the header does not change there.
+        refreshHead: function () {
+            var self = app;
+            var channel = self.channel;
+            var actions = self.center ? self.center.querySelector('.ws-head-channel .ws-head-actions') : null;
+
+            if (!actions || !channel) {
+                return;
+            }
+
+            var faces = actions.querySelector('.ws-head-faces');
+
+            if (faces) {
+                clear(faces);
+                faces.appendChild(avatarStack('', channel.members, 4));
+                faces.appendChild(el('span', 'small', channel.members.length));
+            }
+
+            var menu = actions.querySelector(':scope > .pg-menu-wrap');
+
+            if (menu) {
+                actions.replaceChild(self.channelMenu(), menu);
             }
         },
 
@@ -10602,8 +10706,15 @@
                     body.appendChild(list);
                 }
 
-                group(t('seen_by_read'), data.seen || [], 'bi-check2-all', t('seen_by_none'));
-                group(t('seen_by_not_yet'), data.unseen || [], 'bi-clock', t('seen_by_everyone'));
+                // Nobody but the writer in the channel: one line, not two
+                // empty groups whose texts contradict each other.
+                if (!(data.seen || []).length && !(data.unseen || []).length) {
+                    body.appendChild(el('div', 'small fg-secondary mt-3', t('seen_by_alone')));
+                } else {
+                    group(t('seen_by_read'), data.seen || [], 'bi-check2-all', t('seen_by_none'));
+                    group(t('seen_by_not_yet'), data.unseen || [], 'bi-clock', t('seen_by_everyone'));
+                }
+
                 body.appendChild(el('div', 'small fg-secondary mt-5', t('seen_by_help')));
                 showOffcanvas(node);
             }).catch(fail);

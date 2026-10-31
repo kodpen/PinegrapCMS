@@ -206,6 +206,25 @@ function pg_commission_list_when($timestamp, $username)
 }
 
 /**
+ * The "Cancelled order" badge of a commission or profile whose order is
+ * cancelled, '' otherwise. Every status gets it, so a paid commission of a
+ * cancelled order is seen for clawback; it reads orders.status, so orders
+ * cancelled before their commissions were voided automatically are marked
+ * too.
+ *
+ * @param mixed $order_status orders.status, null without an order
+ * @return string escaped
+ */
+function pg_commission_list_cancelled_badge($order_status)
+{
+    if ((string) $order_status !== 'cancelled') {
+        return '';
+    }
+
+    return ' <span class="badge badge-subtle theme-danger border fw-light">' . h(lang('Cancelled order')) . '</span>';
+}
+
+/**
  * One row of the commissions list.
  *
  * @param array $commission
@@ -228,7 +247,7 @@ function pg_commission_list_row($commission)
         pg_list_cell(h($commission['affiliate_name']), 'align-middle chart_label'),
         pg_list_cell(h($commission['affiliate_code'])),
         pg_list_cell(h($commission['reference_code'])),
-        pg_list_cell('<span class="badge ' . ($badges[$status] ?? 'theme-secondary fg-white fw-light') . '">' . h(lang(ucwords($status))) . '</span>'),
+        pg_list_cell('<span class="badge ' . ($badges[$status] ?? 'theme-secondary fg-white fw-light') . '">' . h(lang(ucwords($status))) . '</span>' . pg_commission_list_cancelled_badge($commission['order_status'] ?? null)),
         pg_list_cell(pg_format_money($commission['amount'] / 100, BASE_CURRENCY_SYMBOL), 'align-middle text-end'),
         pg_list_cell(h(pg_commission_list_periods()[(string) $commission['period']] ?? lang(ucwords((string) $commission['period'])))),
         pg_list_cell(h($commission['order_number'])),
@@ -258,7 +277,7 @@ function pg_commission_list_page($range, $terms, $window)
         $params,
         pg_list_search_where($terms, $columns['columns'], $columns['labels']),
         'commissions.id, commissions.affiliate_code, commissions.reference_code, commissions.status, commissions.amount,
-            commissions.created_timestamp, commissions.last_modified_timestamp, contacts.affiliate_name, orders.order_number,
+            commissions.created_timestamp, commissions.last_modified_timestamp, contacts.affiliate_name, orders.order_number, orders.status AS order_status,
             recurring_commission_profiles.period, recurring_commission_profiles.product_name,
             recurring_commission_profiles.product_short_description,
             created_user.user_username AS created_username, last_modified_user.user_username AS last_modified_username',
@@ -352,7 +371,7 @@ function pg_commission_profile_list_row($profile)
         pg_list_cell(prepare_form_data_for_output($profile['start_date'], 'date')),
         pg_list_cell(h(pg_commission_list_periods()[(string) $profile['period']] ?? lang(ucwords((string) $profile['period'])))),
         pg_list_cell('<span class="badge theme-success fw-light">' . h($commissions) . '</span>'),
-        pg_list_cell(h($profile['order_number'])),
+        pg_list_cell(h($profile['order_number']) . pg_commission_list_cancelled_badge($profile['order_status'] ?? null)),
         pg_list_cell(h($product)),
         pg_list_cell(pg_commission_list_when($profile['created_timestamp'], (string) $profile['created_username'])),
         pg_list_cell(pg_commission_list_when($profile['last_modified_timestamp'], (string) $profile['last_modified_username'])),
@@ -384,7 +403,7 @@ function pg_commission_profile_list_page($terms, $window)
             recurring_commission_profiles.amount, recurring_commission_profiles.start_date, recurring_commission_profiles.period,
             recurring_commission_profiles.number_of_commissions, recurring_commission_profiles.product_name,
             recurring_commission_profiles.product_short_description, recurring_commission_profiles.created_timestamp,
-            recurring_commission_profiles.last_modified_timestamp, contacts.affiliate_name, orders.order_number,
+            recurring_commission_profiles.last_modified_timestamp, contacts.affiliate_name, orders.order_number, orders.status AS order_status,
             created_user.user_username AS created_username, last_modified_user.user_username AS last_modified_username',
         pg_commission_profile_list_sort()['order_by'],
         $window,

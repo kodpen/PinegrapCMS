@@ -840,6 +840,41 @@ function pg_settings_tool_groups($user)
 
 
 /**
+ * Search words of each system tool, by its script, in Turkish and English.
+ * A tool missing here is still found by its own label. The command palette
+ * and the Site Settings search both read them.
+ *
+ * @return array script => list of words
+ */
+function pg_settings_tool_keys()
+{
+    return array(
+        'system_tools.php'          => array('sistem araclari', 'sistem araçları', 'araclar', 'araçlar', 'system tools', 'tools', 'sis'),
+        'view_log.php'              => array('log', 'kayit', 'site log', 'journal', 'akt'),
+        'view_audit_log.php'        => array('denetim', 'denetim izi', 'audit', 'audit trail', 'kim degistirdi', 'den'),
+        'view_sessions.php'         => array('oturum', 'oturumlar', 'session', 'sessions', 'giris yapan', 'otu'),
+        'smtp_settings.php'         => array('smtp', 'mail ayar', 'email ayar', 'smtpayar'),
+        'api_settings.php'          => array('uygulama erisimi', 'uygulama erişimi', 'api anahtar', 'application access', 'api key', 'token', 'uyg'),
+        'connections.php'           => array('bagli hesap', 'connected account', 'google', 'microsoft', 'oauth', 'bagla', 'connect'),
+        'marketplace_settings.php'  => array('pazaryeri', 'pazar yeri', 'marketplace', 'trendyol', 'hepsiburada', 'n11', 'paz'),
+        'view_referral_sources.php' => array('yonlendiren', 'yönlendiren', 'referans kaynak', 'referral', 'referral source', 'yon'),
+        'view_currencies.php'       => array('para', 'doviz', 'döviz', 'currency', 'cur'),
+        'software_update.php'       => array('guncelle', 'güncelle', 'guncelleme', 'güncelleme', 'update', 'updates', 'gun'),
+        'software_repair.php'       => array('onar', 'onarim', 'onarım', 'repair', 'yazilim onar', 'ona'),
+        'si.php'                    => array('sistem bilgi', 'system info', 'php info', 'phpinfo', 'sunucu bilgi', 'server info'),
+        'view_performance_log.php'  => array('performans', 'performance', 'yavas', 'slow', 'per'),
+        'clean_up.php'              => array('temizle', 'temizlik', 'clean', 'clean up', 'eski dosya', 'tem'),
+        'database_engine.php'       => array('veritabani', 'veritabanı', 'database', 'innodb', 'myisam', 'tablo onar', 'motor', 'vt'),
+        'purge_cache.php'           => array('onbellek', 'önbellek', 'cache', 'purge', 'purge cache', 'temizle cache', 'onb'),
+        'mail_queue.php'            => array('posta kuyrugu', 'posta kuyruğu', 'mail kuyruk', 'mail queue', 'queue', 'giden posta', 'kuy'),
+        'install'                   => array('yeniden kur', 'kurulum', 'reinstall', 'upgrade', 'install', 'kur'),
+        'backups.php'               => array('yedek', 'yedekler', 'backup', 'backups', 'bak', 'yed'),
+        'cloudflare.php'            => array('cloudflare', 'cdn', 'clo'),
+    );
+}
+
+
+/**
  * How many links the tool groups hold, over all groups.
  *
  * @param array $groups pg_settings_tool_groups()

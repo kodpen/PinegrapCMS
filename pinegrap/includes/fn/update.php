@@ -2977,7 +2977,7 @@ function pg_update_clear_opcache(array $files)
 // backup folder) when it is written and checked before anything is extracted.
 
 /**
- * Whether an update backs up first (Site Settings, General, Update Channel).
+ * Whether an update backs up first (Site Settings › Updates and maintenance › Update Channel).
  * On until the 2026.11.0 column says otherwise.
  *
  * @return bool

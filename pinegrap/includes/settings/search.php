@@ -165,7 +165,106 @@ function pg_settings_search_index($categories, $labels)
 
 
 /**
- * Build the index for the reader: every category drawn once, its labels read.
+ * The search rows of the System tools screen and of every tool on it.
+ *
+ * The dialog's list ends on one "System tools" row; its screens are found by
+ * the search too, under the gates pg_settings_tool_groups() gave them. A row
+ * carries the url it opens instead of a pane: a tool that asks first (a
+ * confirm) opens the System tools screen, where the question is asked. A
+ * keyword that only starts another of the tool's words ("tem" beside
+ * "temizle") is the palette's shorthand and is left out: here it would pull
+ * the tool into every query that starts with it.
+ *
+ * @param array  $groups   pg_settings_tool_groups()
+ * @param string $base_url the software directory, ending in a slash
+ * @return array rows as pg_settings_search_index() writes them, plus url,
+ *               target and icon; empty when the reader has no tool
+ */
+function pg_settings_search_tool_rows($groups, $base_url)
+{
+    $keys = pg_settings_tool_keys();
+    $screen_url = $base_url . 'system_tools.php';
+    $screen = lang('System tools');
+    $rows = array();
+
+    foreach ((array) $groups as $group) {
+
+        if (empty($group['items'])) {
+            continue;
+        }
+
+        foreach ($group['items'] as $item) {
+
+            $script = (string) strtok((string) $item['url'], '?');
+            $words = isset($keys[$script]) ? $keys[$script] : array();
+
+            $rows[] = array(
+                'pane'   => '',
+                'card'   => '',
+                'title'  => (string) $item['label'],
+                'place'  => $screen . ' › ' . $group['label'],
+                'keys'   => pg_settings_search_tool_words($item['label'], $words),
+                'fields' => array(),
+                'url'    => isset($item['confirm']) ? $screen_url : $base_url . $item['url'],
+                'target' => isset($item['target']) ? (string) $item['target'] : '',
+                'icon'   => (string) $item['icon'],
+            );
+        }
+    }
+
+    if (count($rows) === 0) {
+        return array();
+    }
+
+    array_unshift($rows, array(
+        'pane' => '', 'card' => '', 'title' => $screen, 'place' => '',
+        'keys' => pg_settings_search_tool_words($screen, $keys['system_tools.php']),
+        'fields' => array(), 'url' => $screen_url, 'target' => '', 'icon' => 'bi-tools',
+    ));
+
+    return $rows;
+}
+
+
+/**
+ * A tool's keywords for the settings search: its words without the ones that
+ * only start another of its words or its label.
+ *
+ * @param string $label the tool's label
+ * @param array  $words pg_settings_tool_keys() of its script
+ * @return array lower-case words
+ */
+function pg_settings_search_tool_words($label, $words)
+{
+    $all = array_merge(array(mb_strtolower((string) $label, 'UTF-8')), (array) $words);
+    $kept = array();
+
+    foreach ($all as $word) {
+
+        $word = (string) $word;
+        $short = false;
+
+        foreach ($all as $other) {
+            $other = (string) $other;
+
+            if (($other !== $word) && (mb_strlen($other, 'UTF-8') > mb_strlen($word, 'UTF-8')) && (mb_strpos($other, $word, 0, 'UTF-8') === 0)) {
+                $short = true;
+                break;
+            }
+        }
+
+        if (!$short && !in_array($word, $kept, true)) {
+            $kept[] = $word;
+        }
+    }
+
+    return $kept;
+}
+
+
+/**
+ * Build the index for the reader: every category drawn once, its labels read,
+ * then the System tools screen and the tools the reader may open.
  *
  * A category that fails to draw keeps its registry row and keywords; the
  * search must not be lost to one card's error.
@@ -196,5 +295,7 @@ function pg_settings_search_build($user, $liveform)
         }
     }
 
-    return pg_settings_search_index($categories, $labels);
+    return array_merge(
+        pg_settings_search_index($categories, $labels),
+        pg_settings_search_tool_rows(pg_settings_tool_groups($user), OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/'));
 }

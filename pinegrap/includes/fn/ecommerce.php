@@ -10988,10 +10988,12 @@ function process_order_cancellation($order_id, $reason = '', $is_admin = false, 
 
     // Minimal selection — enough for cancel gating + email + refund.
     // refunded_amount: what the order screen or a return gave back already,
-    // which the cancellation must not return a second time.
+    // which the cancellation must not return a second time. paid_at tells a
+    // bank transfer or pending payment that arrived from one that did not.
     $order = db_item(
         "SELECT id, status, user_id, payment_method, transaction_id, total,
                 " . (pg_schema_has('orders', 'refunded_amount') ? 'refunded_amount' : '0 AS refunded_amount') . ",
+                " . (pg_schema_has('orders', 'paid_at') ? 'paid_at' : 'NULL AS paid_at') . ",
                 billing_first_name, billing_last_name, billing_email_address,
                 order_number, order_date,
                 " . (pg_schema_has('orders', 'type') ? 'type' : "'' AS type") . "
@@ -11106,6 +11108,15 @@ function process_order_cancellation($order_id, $reason = '', $is_admin = false, 
 
     log_activity($cancel_line);
 
+    // ── Void the affiliate commissions of this order ───────────────────
+    // Only the request that cancelled the order (the guarded write above)
+    // gets here, so two cancellations at once void them once.
+    $cancelled_commissions = pg_order_cancel_commissions($order_id, $user_id);
+    $commission_line = pg_order_commission_cancel_line($order_log_number, $cancelled_commissions['voided'], $cancelled_commissions['stopped']);
+    if ($commission_line !== '') {
+        log_activity($commission_line);
+    }
+
     // ── Automatic refund (opt-in) ───────────────────────────────────────
     // Default OFF. When ECOMMERCE_ORDER_CANCEL_AUTO_REFUND === true and the
     // order's payment has a driver that can cancel (pg_payment_cancel_driver():
@@ -11136,7 +11147,8 @@ function process_order_cancellation($order_id, $reason = '', $is_admin = false, 
         $order['payment_method'],
         !empty($order['transaction_id']),
         $cancel_driver,
-        $auto_refund
+        $auto_refund,
+        ($order['paid_at'] === null) ? null : (int) $order['paid_at']
     );
 
     if ($payment_plan['action'] === 'void') {
@@ -11151,7 +11163,7 @@ function process_order_cancellation($order_id, $reason = '', $is_admin = false, 
         // pg_payment_call() never throws: an exception inside the driver comes
         // back as a failure, which the outcome logs as an EXCEPTION line.
         $cancel_outcome = pg_payment_cancel_outcome(
-            $order_id,
+            $order_log_number,
             (string) $order['transaction_id'],
             pg_payment_call($cancel_driver, 'cancel', array($cancelled_order, (string) $order['transaction_id'])),
             pg_payment_log_name($cancel_driver)
@@ -11166,8 +11178,12 @@ function process_order_cancellation($order_id, $reason = '', $is_admin = false, 
     } elseif ($payment_plan['action'] === 'manual') {
         // No auto-refund — but money did change hands, so flag for the operator.
         $refund_status_outcome = 'manual_required';
+        // A bank transfer has no gateway to refund in: the money goes back
+        // by another transfer.
         log_activity(pg_log_lang(array(
-            'string' => 'REFUND ACTION REQUIRED — order #{var:1} was cancelled. Payment method: {var:2}. Amount: {var:3}. Process refund in the gateway dashboard.',
+            'string' => ((string) $order['payment_method'] === 'Offline Payment')
+                ? 'REFUND ACTION REQUIRED — order #{var:1} was cancelled. Payment method: {var:2}. Amount: {var:3}. Send the amount back to the customer by bank transfer.'
+                : 'REFUND ACTION REQUIRED — order #{var:1} was cancelled. Payment method: {var:2}. Amount: {var:3}. Process refund in the gateway dashboard.',
             'vars'   => array($order_log_number, (string) $order['payment_method'], pg_order_log_money($payment_plan['remaining'])))));
         if ($payment_plan['refunded'] > 0) {
             log_activity(pg_log_lang(array(
@@ -11288,6 +11304,16 @@ function pg_order_log_number(array $order)
     return (($number !== '') && ($number !== '0')) ? $number : (string) (int) ($order['id'] ?? 0);
 }
 
+// What the panel tells the operator to do with payment money a cancellation
+// did not return: a bank transfer goes back by another transfer, any other
+// payment is refunded in its provider's dashboard.
+function pg_order_refund_instruction($payment_method)
+{
+    return ((string) $payment_method === 'Offline Payment')
+        ? lang('The payment was NOT refunded automatically. Send the amount back to the customer by bank transfer.')
+        : lang('The payment was NOT refunded automatically. Process the refund in your payment provider dashboard.');
+}
+
 // The base currency symbol as plain text: the currencies table keeps it as an
 // HTML entity (&#8378;), which the Site Log escapes and shows as it is.
 function pg_order_log_currency_symbol()
@@ -11326,25 +11352,31 @@ function pg_order_log_status($status)
 //  'void'   the payment driver cancels the payment: the auto refund is on, a
 //           driver can cancel ($cancel_driver, pg_payment_cancel_driver()),
 //           the order has a transaction and nothing was refunded yet;
-//  'manual' money is left and a payment method took it, but it is not voided:
+//  'manual' money is left and the payment arrived, but it is not voided:
 //           the operator returns it (REFUND ACTION REQUIRED, manual_required);
-//  'none'   nothing is left (refunded in full, a free order), or no method
-//           took the money (Offline Payment, none).
+//  'none'   nothing is left (refunded in full, a free order), no method took
+//           the money, or it never arrived: a bank transfer (Offline Payment)
+//           or a pending payment method with $paid_at 0.
+// $paid_at is orders.paid_at, null when the schema has not got it; then the
+// payment counts as arrived, as pg_order_cancel_refund_owed() reads it, so
+// the flag and the owed amount follow one rule.
 // A void takes no amount and reverses the whole payment, so a payment partly
 // refunded already (the order screen's or a return's refund) is not voided:
 // what is left goes to the operator. Amounts are minor units.
-function pg_order_cancel_payment_plan($total_cents, $refunded_cents, $payment_method, $has_transaction, $cancel_driver, $auto_refund)
+function pg_order_cancel_payment_plan($total_cents, $refunded_cents, $payment_method, $has_transaction, $cancel_driver, $auto_refund, $paid_at = null)
 {
     $total_cents    = (int) $total_cents;
     $refunded_cents = max(0, (int) $refunded_cents);
     $remaining      = max(0, $total_cents - $refunded_cents);
     $payment_method = (string) $payment_method;
+    $unpaid         = ($paid_at !== null) && ((int) $paid_at === 0)
+        && (($payment_method === 'Offline Payment') || in_array($payment_method, pg_order_pending_payment_methods(), true));
 
     if ($remaining <= 0) {
         $action = 'none';
     } elseif ($auto_refund && $has_transaction && (string) $cancel_driver !== '' && $refunded_cents === 0) {
         $action = 'void';
-    } elseif ($payment_method !== '' && $payment_method !== 'Offline Payment') {
+    } elseif ($payment_method !== '' && !$unpaid) {
         $action = 'manual';
     } else {
         $action = 'none';
@@ -11429,9 +11461,130 @@ function pg_order_restore_cancelled($order_id, $status = 'complete')
 
     pg_order_restore_gift_cards($order_id, (string) $cancelled_order['order_number'], $cancelled_order['cancelled_at'] ?? 0);
 
+    $restored_commissions = pg_order_restore_commissions($order_id);
+    $commission_line = pg_order_commission_restore_line(pg_order_log_number($cancelled_order), $restored_commissions['restored'], $restored_commissions['started']);
+    if ($commission_line !== '') {
+        log_activity($commission_line);
+    }
+
     log_activity(pg_log_lang(array('string' => 'Restored cancelled order #{var:1} to {var:2}.', 'vars' => array(pg_order_log_number($cancelled_order), pg_order_log_status($status)))));
 
     return true;
+}
+
+// Cancelling an order voids the affiliate commissions it earned: a pending or
+// payable commission becomes ineligible, keeping the status it had in
+// commissions.status_before_cancel, and each enabled recurring commission
+// profile of the order is stopped with disabled_by_cancel = 1, so the
+// periodic job writes no more commissions for it. A paid commission stays as
+// it is (the Commissions screen marks it for clawback). The two columns come
+// with the 2026.11.0 upgrade; before it runs, nothing is changed, since a
+// void that could not be restored would lose the status. Returns how many
+// commissions were voided and how many profiles were stopped.
+function pg_order_cancel_commissions($order_id, $user_id = 0)
+{
+    $order_id = (int) $order_id;
+    $result   = array('voided' => 0, 'stopped' => 0);
+
+    if ($order_id <= 0) {
+        return $result;
+    }
+
+    if (pg_schema_has('commissions', 'status_before_cancel')) {
+        db("UPDATE commissions SET
+                status_before_cancel    = status,
+                status                  = 'ineligible',
+                last_modified_user_id   = '" . (int) $user_id . "',
+                last_modified_timestamp = UNIX_TIMESTAMP()
+            WHERE order_id = '" . $order_id . "'
+              AND status IN ('pending', 'payable')");
+        $result['voided'] = max(0, (int) mysqli_affected_rows(db::$con));
+    }
+
+    if (pg_schema_has('recurring_commission_profiles', 'disabled_by_cancel')) {
+        db("UPDATE recurring_commission_profiles SET
+                enabled                 = 0,
+                disabled_by_cancel      = 1,
+                last_modified_user_id   = '" . (int) $user_id . "',
+                last_modified_timestamp = UNIX_TIMESTAMP()
+            WHERE order_id = '" . $order_id . "'
+              AND enabled = 1");
+        $result['stopped'] = max(0, (int) mysqli_affected_rows(db::$con));
+    }
+
+    return $result;
+}
+
+// Restoring a cancelled order gives back what pg_order_cancel_commissions()
+// took: a commission still ineligible with its marker set gets the status it
+// had, a profile still disabled with its marker set is enabled again. A hand
+// edit clears the marker (edit_commission.php,
+// edit_recurring_commission_profile.php), so a restore never undoes the
+// operator's later choice, and a commission made ineligible by hand before
+// the cancellation has no marker and stays. Returns how many commissions and
+// profiles were put back.
+function pg_order_restore_commissions($order_id)
+{
+    $order_id = (int) $order_id;
+    $result   = array('restored' => 0, 'started' => 0);
+
+    if ($order_id <= 0) {
+        return $result;
+    }
+
+    if (pg_schema_has('commissions', 'status_before_cancel')) {
+        db("UPDATE commissions SET
+                status                  = status_before_cancel,
+                status_before_cancel    = '',
+                last_modified_timestamp = UNIX_TIMESTAMP()
+            WHERE order_id = '" . $order_id . "'
+              AND status = 'ineligible'
+              AND status_before_cancel IN ('pending', 'payable')");
+        $result['restored'] = max(0, (int) mysqli_affected_rows(db::$con));
+    }
+
+    if (pg_schema_has('recurring_commission_profiles', 'disabled_by_cancel')) {
+        db("UPDATE recurring_commission_profiles SET
+                enabled                 = 1,
+                disabled_by_cancel      = 0,
+                last_modified_timestamp = UNIX_TIMESTAMP()
+            WHERE order_id = '" . $order_id . "'
+              AND enabled = 0
+              AND disabled_by_cancel = 1");
+        $result['started'] = max(0, (int) mysqli_affected_rows(db::$con));
+    }
+
+    return $result;
+}
+
+// The site log line of a cancellation's commissions, '' when it changed none.
+function pg_order_commission_cancel_line($order_log_number, $voided, $stopped)
+{
+    $voided  = max(0, (int) $voided);
+    $stopped = max(0, (int) $stopped);
+
+    if ($voided === 0 && $stopped === 0) {
+        return '';
+    }
+
+    return pg_log_lang(array(
+        'string' => 'Order #{var:1} cancelled: {var:2} affiliate commission(s) set to Ineligible, {var:3} recurring commission profile(s) stopped.',
+        'vars'   => array((string) $order_log_number, $voided, $stopped)));
+}
+
+// The site log line of a restore's commissions, '' when it changed none.
+function pg_order_commission_restore_line($order_log_number, $restored, $started)
+{
+    $restored = max(0, (int) $restored);
+    $started  = max(0, (int) $started);
+
+    if ($restored === 0 && $started === 0) {
+        return '';
+    }
+
+    return pg_log_lang(array(
+        'string' => 'Order #{var:1} restored: {var:2} affiliate commission(s) got their status back, {var:3} recurring commission profile(s) enabled again.',
+        'vars'   => array((string) $order_log_number, $restored, $started)));
 }
 
 // Restoring a cancelled order: the gift cards it issued that the cancellation

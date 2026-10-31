@@ -218,7 +218,7 @@ pg_page_shell([
         'icon' => 'workspace',
         'heading' => $is_new ? lang('New channel template') : lang('Channel template'),
         'heading_description' => lang('The tasks, notes and texts a channel is set up with.'),
-        'cancel' => array('enable' => 'true', 'url' => $settings_url),
+        'cancel' => array('enable' => 'true', 'url' => $settings_url, 'title' => lang('Channel templates')),
         'breadcrumb' => array(
             array('label' => lang('Channel templates'), 'url' => $settings_url),
             array('label' => $is_new ? lang('New channel template') : lang('Channel template')),

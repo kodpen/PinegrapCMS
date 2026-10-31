@@ -6397,7 +6397,7 @@ else {
 
 			$install_expected_steps++;
 
-			add_install_step(lang('Switched on the pre-information form and the distance sales contract at checkout'), lang('Site Settings › Ecommerce › Legal Documents'));
+			add_install_step(lang('Switched on the pre-information form and the distance sales contract at checkout'), lang('Site Settings › Visitors and privacy › Legal Documents'));
 
 		}
 
@@ -6411,7 +6411,7 @@ else {
 
 			$install_expected_steps++;
 
-			add_install_step(lang('Allowed large image previews in search results'), lang('Site Settings › SEO › Site Map and Crawling'));
+			add_install_step(lang('Allowed large image previews in search results'), lang('Site Settings › SEO › Search Engine Optimization'));
 
 		}
 

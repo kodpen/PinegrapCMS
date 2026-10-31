@@ -127,7 +127,7 @@ if (isset($_POST['admin_context']) && $_POST['admin_context'] === 'view_orders')
                 $liveform_view_orders->add_notice(lang('The payment has been refunded.'));
             } elseif (($result['refund_status'] === 'manual_required' || $result['refund_status'] === 'failed')
                 && ($cancelled_owed['payment'] > 0 || $cancelled_owed['gift_card'] <= 0)) {
-                $liveform_view_orders->add_notice(lang('The payment was NOT refunded automatically. Process the refund in your payment provider dashboard.'));
+                $liveform_view_orders->add_notice(pg_order_refund_instruction($cancelled_order['payment_method'] ?? ''));
             }
             if ($cancelled_owed['gift_card'] > 0) {
                 $liveform_view_orders->add_notice(lang(array(

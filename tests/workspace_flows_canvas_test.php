@@ -248,6 +248,9 @@ out.searched = listCounts(flows, 'SALES');
 out.time = ids('time', '');
 out.draft = ids('draft', '');
 out.search = ids('', 'stock low');
+flows.push({ id: 6, name: 'Teklif onayı', status: 'draft', version: 0, start: 'manual', start_text: '', channel_name: 'İzmir', mine: true, access: 'edit', last_run: null });
+out.turkish = [ids('', 'ONAYI'), ids('', 'onayi'), ids('', 'Onayı'), ids('', 'İZMİR'), ids('', 'izmir')];
+flows.pop();
 out.searchChannel = ids('manual', 'sales');
 out.sentences = flows.map(startSentence);
 drawRows();
@@ -283,6 +286,7 @@ JS
 	pg_assert_same(array(1), $result['time'], 'Time: flows started at a time');
 	pg_assert_same(array(2, 4, 5), $result['draft'], 'Draft: the drafts, however they start');
 	pg_assert_same(array(3), $result['search'], 'every word searched for, in any order, any case');
+	pg_assert_same(array(array(6), array(6), array(6), array(6), array(6)), $result['turkish'], 'Turkish I, İ, ı and i fold alike in the search');
 	pg_assert_same(array(4), $result['searchChannel'], 'the home channel is searched, within the chip');
 	pg_assert_same(array('Every day 09:00', 'fl_kind_join', 'When a product runs low in stock', 'By hand', 'fl_list_no_start'), $result['sentences'], 'a flow without a sentence says its kind');
 	pg_assert_same(array(array('fl_chip_all 5', 'true'), array('fl_chip_time 1', 'false'), array('fl_chip_manual 1', 'false'), array('fl_chip_event 1', 'false'), array('fl_chip_join 1', 'false'), array('fl_chip_draft 3', 'false')), $result['chips'], 'chips: toggle buttons, the count in the name');
@@ -327,6 +331,9 @@ out.firstItems = shape(paletteGroups(PALETTE, '')).slice(0, 2);
 out.search = shape(paletteGroups(PALETTE, 'TIME'));
 out.words = shape(paletteGroups(PALETTE, 'by hand'));
 out.none = paletteGroups(PALETTE, 'nothing like it').length;
+names.fl_add_end = 'Bitiş';
+names.fl_add_task = 'Bir tablo satırı';
+out.turkish = [shape(paletteGroups(PALETTE, 'BİTİŞ')), shape(paletteGroups(PALETTE, 'bitis')), shape(paletteGroups(PALETTE, 'TABLO SATIRI')), shape(paletteGroups(PALETTE, 'satiri'))];
 out.heading = paletteHeading('start');
 out.logic = paletteHeading('logic');
 state.graph.nodes = [{ id: 'task_1', kind: 'task' }, { id: 'schedule_1', kind: 'schedule' }];
@@ -350,6 +357,7 @@ JS
 	pg_assert_same(array('start:schedule'), $result['search'], 'a search keeps the boxes whose name holds it, any case');
 	pg_assert_same(array('start:manual'), $result['words'], 'every word searched for');
 	pg_assert_same(0, $result['none'], 'nothing found: no group');
+	pg_assert_same(array(array('logic:end'), array('logic:end'), array('people:task'), array('people:task')), $result['turkish'], 'Turkish I, İ, ı and i fold alike in the box search');
 	pg_assert_same('fl_group_start', $result['heading'], 'no start box yet: the group\'s name');
 	pg_assert_same('fl_group_logic', $result['logic'], 'the other groups their names');
 	pg_assert_same('fl_palette_this_flow At a time', $result['started'], 'with a start: This flow: <kind>');
@@ -798,6 +806,10 @@ function ws_flows_canvas_test_node(array $names, $script)
 
 	$source = str_replace("\r\n", "\n", (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js'));
 	$body = ws_flows_canvas_test_stage() . "\n";
+
+	// The kit's Turkish-aware fold, taken from workspace.js as the page has it.
+	$kit = str_replace("\r\n", "\n", (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace.js'));
+	$body .= ws_flows_canvas_test_script_function($kit, 'foldText') . "K.foldText = foldText;\n";
 
 	preg_match_all('/^ *var POLL_[A-Z_]+ = [0-9.]+;$/m', $source, $timings);
 	$body .= implode("\n", $timings[0]) . "\n";

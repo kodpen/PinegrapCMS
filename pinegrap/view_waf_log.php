@@ -496,9 +496,18 @@ echo pg_screen_toolbar(array(
         'vars'   => array(pg_format_number((int) $summary['total'], 0), pg_format_number((int) $summary['rows_stored'], 0)),
     )) . '</span>',
     'search' => '<form method="get" action="view_waf_log.php" class="pg-toolbar-filter disable_shortcut d-inline-flex flex-wrap row-gap-2 gap-2 align-items-center">
-        <select name="range" id="range" class="form-control form-control-sm w-auto" aria-label="' . h(lang('Period')) . '">' . $range_select . '</select>
-        <select name="category" id="category" class="form-control form-control-sm w-auto" aria-label="' . h(lang('Category')) . '">' . $category_select . '</select>
-        <input type="text" name="search" id="search" class="form-control form-control-sm w-auto" value="' . h($search) . '" placeholder="' . lang('IP address, URL, rule, reference') . '" aria-label="' . h(lang('Search')) . '"/>
+        <div class="input-group input-group-sm w-auto flex-nowrap">
+            <label class="input-group-text" for="range" title="' . h(lang('Period')) . '"><i class="bi bi-calendar3" aria-hidden="true"></i><span class="visually-hidden">' . h(lang('Period')) . '</span></label>
+            <select name="range" id="range" class="form-control form-control-sm w-auto">' . $range_select . '</select>
+        </div>
+        <div class="input-group input-group-sm w-auto flex-nowrap">
+            <label class="input-group-text" for="category" title="' . h(lang('Category')) . '"><i class="bi bi-tag" aria-hidden="true"></i><span class="visually-hidden">' . h(lang('Category')) . '</span></label>
+            <select name="category" id="category" class="form-control form-control-sm w-auto">' . $category_select . '</select>
+        </div>
+        <div class="input-group input-group-sm w-auto flex-nowrap">
+            <label class="input-group-text" for="search" title="' . h(lang('Search')) . '"><i class="bi bi-search" aria-hidden="true"></i><span class="visually-hidden">' . h(lang('Search')) . '</span></label>
+            <input type="text" name="search" id="search" class="form-control form-control-sm w-auto" value="' . h($search) . '" placeholder="' . lang('IP address, URL, rule, reference') . '"/>
+        </div>
         <button type="submit" class="btn btn-sm btn-solid theme-primary rounded-pill px-5"><i class="bi bi-funnel me-1" aria-hidden="true"></i>' . lang('Filter') . '</button>
     </form>',
     'view'   => ((int) $summary['rows_stored'] === 0) ? '' : pg_list_sort_menu('view_waf_log.php', $list_sort['sort_columns'], $list_sort['sort_levels'], $list_sort['sort_default'], $list_query),

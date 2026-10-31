@@ -501,6 +501,134 @@
         return o ? { w: o.w, h: o.h } : { w: Math.round(c.w), h: Math.round(c.h) };
     }
 
+    // ---- colour ----
+
+    // The adjustments: whole numbers in [min, max], 0 changes nothing. The
+    // first five are the panel's sliders, the rest sit under Details.
+    var ADJUST = [
+        ['brightness', -100, 100], ['contrast', -100, 100], ['saturation', -100, 100], ['exposure', -100, 100],
+        ['temperature', -100, 100], ['gamma', -100, 100], ['vignette', 0, 100], ['sharpen', 0, 100]
+    ];
+
+    // The filters are fixed values of the same numbers, added to the
+    // sliders' (includes/fn/image_editor.php keeps the same list).
+    var FILTERS = {
+        none: {},
+        mono: { saturation: -100 },
+        sepia: { saturation: -100, temperature: 60, contrast: -8, brightness: 4 },
+        cool: { temperature: -35, saturation: 8, brightness: 2 },
+        warm: { temperature: 35, saturation: 15 },
+        fade: { contrast: -28, brightness: 8, saturation: -30 },
+        vivid: { contrast: 15, saturation: 45 },
+        noir: { saturation: -100, contrast: 50, brightness: -6 },
+        chrome: { contrast: 22, saturation: 22, exposure: 6 }
+    };
+    var FILTER_NAMES = ['none', 'mono', 'sepia', 'cool', 'warm', 'fade', 'vivid', 'noir', 'chrome'];
+
+    // The numbers the colour step of a document uses: its adjustments plus
+    // its filter's, each kept in range.
+    function colorValues(doc) {
+        var a = doc.adjust || {}, f = FILTERS[doc.filter] || {}, out = {};
+
+        ADJUST.forEach(function (d) {
+            out[d[0]] = clamp(Math.round((Number(a[d[0]]) || 0) + (f[d[0]] || 0)), d[1], d[2]);
+        });
+
+        return out;
+    }
+
+    // An affine colour map as rows R, G, B of [r, g, b, offset]; a after b.
+    function affine(a, b) {
+        return a.map(function (row) {
+            return [0, 1, 2, 3].map(function (c) {
+                return row[0] * b[0][c] + row[1] * b[1][c] + row[2] * b[2][c] + ((c === 3) ? row[3] : 0);
+            });
+        });
+    }
+
+    function gains(r, g, b, offset) {
+        return [[r, 0, 0, offset], [0, g, 0, offset], [0, 0, b, offset]];
+    }
+
+    // The colour step of values v on sRGB values from 0 to 1, in this order:
+    // exposure scales, brightness lifts, contrast spreads around the middle,
+    // saturation moves from or towards grey (Rec. 709 luma), temperature
+    // warms or cools (after saturation, so a grey picture takes a tint: the
+    // sepia filter); then gamma. Answers feColorMatrix's 20 numbers (rows
+    // R, G, B, A; offsets from 0 to 1) and the gamma exponent, or null when
+    // nothing changes. The server reads the same numbers (pg_image_edit_color()).
+    function colorMatrix(v) {
+        if (!v.exposure && !v.temperature && !v.brightness && !v.contrast && !v.saturation && !v.gamma) {
+            return null;
+        }
+
+        var e = Math.pow(2, v.exposure / 100), t = v.temperature / 100, b = 0.25 * v.brightness / 100;
+        var c = Math.pow(2, v.contrast / 100), s = 1 + v.saturation / 100, lr = 0.2126, lg = 0.7152, lb = 0.0722;
+        var m = gains(e, e, e, 0);
+
+        m = affine(gains(1, 1, 1, b), m);
+        m = affine(gains(c, c, c, 0.5 * (1 - c)), m);
+        m = affine([
+            [lr + (1 - lr) * s, lg - lg * s, lb - lb * s, 0],
+            [lr - lr * s, lg + (1 - lg) * s, lb - lb * s, 0],
+            [lr - lr * s, lg - lg * s, lb + (1 - lb) * s, 0]
+        ], m);
+        m = affine(gains(1 + 0.2 * t, 1 + 0.04 * t, 1 - 0.2 * t, 0), m);
+
+        var round = function (x) { return Math.round(x * 1e6) / 1e6; };
+
+        return {
+            matrix: [m[0][0], m[0][1], m[0][2], 0, m[0][3], m[1][0], m[1][1], m[1][2], 0, m[1][3], m[2][0], m[2][1], m[2][2], 0, m[2][3], 0, 0, 0, 1, 0].map(round),
+            gamma: round(Math.pow(2, -v.gamma / 100))
+        };
+    }
+
+    // The colour step on RGBA bytes (ImageData's), in place: the matrix,
+    // cut to 0-255, then gamma through a table. Draws the filter tiles and
+    // the colour layer a server without Imagick saves from.
+    function applyColor(data, color) {
+        var m = color.matrix, lut = [], i, r, g, b;
+        var at = function (v) { return lut[(v < 0) ? 0 : ((v > 255) ? 255 : Math.round(v))]; };
+
+        for (i = 0; i < 256; i++) {
+            lut[i] = Math.round(255 * Math.pow(i / 255, color.gamma));
+        }
+
+        for (i = 0; i < data.length; i += 4) {
+            r = data[i];
+            g = data[i + 1];
+            b = data[i + 2];
+            data[i] = at(m[0] * r + m[1] * g + m[2] * b + m[4] * 255);
+            data[i + 1] = at(m[5] * r + m[6] * g + m[7] * b + m[9] * 255);
+            data[i + 2] = at(m[10] * r + m[11] * g + m[12] * b + m[14] * 255);
+        }
+
+        return data;
+    }
+
+    // The vignette: black over the picture whose opacity grows from 40 % of
+    // the way to the corners (r, 1 at a corner) to 80 % at full strength;
+    // [r, opacity] stops for a CSS radial gradient and the server's mask.
+    function vignetteStops(value) {
+        var a = 0.8 * clamp(value || 0, 0, 100) / 100;
+
+        return a ? [[0.4, 0], [0.7, Math.round(0.3 * a * 1e4) / 1e4], [1, Math.round(a * 1e4) / 1e4]] : null;
+    }
+
+    // Sharpening: an unsharp mask over a 3 x 3 binomial blur, as a kernel
+    // (row by row, sum 1); null for 0.
+    function sharpenKernel(value) {
+        var a = 1.5 * clamp(value || 0, 0, 100) / 100;
+
+        if (!a) {
+            return null;
+        }
+
+        var corner = -a / 16, edge = -a / 8;
+
+        return [corner, edge, corner, edge, 1 + 0.75 * a, edge, corner, edge, corner].map(function (x) { return Math.round(x * 1e6) / 1e6; });
+    }
+
     var api = {
         mul: mul, inv: inv, apply: apply, translate: translate, scale: scale, rotate: rotate, clamp: clamp,
         flipRot: flipRot, coverScale: coverScale, fitZoom: fitZoom, centred: centred, zoomAt: zoomAt,
@@ -508,7 +636,8 @@
         clone: clone, newDocument: newDocument, docSize: docSize, History: History,
         RATIOS: RATIOS, cropBox: cropBox, pictureMatrix: pictureMatrix, fitRatio: fitRatio, resizeCrop: resizeCrop,
         moveCrop: moveCrop, mapLayer: mapLayer, reorient: reorient, turnDocument: turnDocument, flipDocument: flipDocument,
-        outputSize: outputSize
+        outputSize: outputSize, ADJUST: ADJUST, FILTERS: FILTERS, FILTER_NAMES: FILTER_NAMES, colorValues: colorValues,
+        colorMatrix: colorMatrix, applyColor: applyColor, vignetteStops: vignetteStops, sharpenKernel: sharpenKernel
     };
 
     if ((typeof module === 'object') && module.exports) {

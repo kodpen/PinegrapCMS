@@ -128,6 +128,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_contact_iys_sms_status(); // 11.0.136
 	upgrade_2026_11_0_sms_campaigns();           // 11.0.137
 	upgrade_2026_11_0_n11_old_address_order(); // 11.0.138
+	upgrade_2026_11_0_commission_cancel_marker(); // 11.0.139
 
 }
 
@@ -277,7 +278,7 @@ function upgrade_2026_11_0_ops_alerts() {
 
 	install_add_column('config', 'ops_alert_cert_days', "TINYINT UNSIGNED NOT NULL DEFAULT 14");
 
-	install_note('Operations alerts: a failed or missing backup, a scheduled task that stopped, changed software files, a burst of PHP errors, low disk space, failing mail or webhooks and an expiring certificate are now told on the panel bell, by e-mail to the site address and on subscribed devices. They are set under Site Settings, General, Alerts.');
+	install_note('Operations alerts: a failed or missing backup, a scheduled task that stopped, changed software files, a burst of PHP errors, low disk space, failing mail or webhooks and an expiring certificate are now told on the panel bell, by e-mail to the site address and on subscribed devices. They are set under Site Settings › Updates and maintenance › Alerts.');
 
 }
 
@@ -293,7 +294,7 @@ function upgrade_2026_11_0_update_backup() {
 
 	install_add_column('config', 'update_backup', "TINYINT(1) UNSIGNED NOT NULL DEFAULT 1");
 
-	install_note('Software update: before an update replaces the files, the files it replaces and the database are backed up to data/backups/pre-update-….zip, and Repair Software can roll the files back. It can be switched off under Site Settings, General, Update Channel.');
+	install_note('Software update: before an update replaces the files, the files it replaces and the database are backed up to data/backups/pre-update-….zip, and Repair Software can roll the files back. It can be switched off under Site Settings › Updates and maintenance › Update Channel.');
 
 }
 
@@ -312,7 +313,7 @@ function upgrade_2026_11_0_maintenance_mode() {
 
 	install_add_column('config', 'maintenance_allow_ips', "TEXT NULL");
 
-	install_note('Maintenance mode: visitors can be shown a maintenance page (503, with the time the site is expected back) while managers, administrators and listed addresses see the site. It is under Site Settings, General, Maintenance Mode; health.php answers uptime monitors.');
+	install_note('Maintenance mode: visitors can be shown a maintenance page (503, with the time the site is expected back) while managers, administrators and listed addresses see the site. It is under Site Settings › Updates and maintenance › Maintenance Mode; health.php answers uptime monitors.');
 
 }
 
@@ -2732,7 +2733,7 @@ function upgrade_2026_11_0_passkey_signin() {
 
 	install_add_column('config', 'passkey_signin', "TINYINT NOT NULL DEFAULT 0");
 
-	install_note('Settings › Security: a switch offers sign-in with a passkey alone on the sign-in screens. It starts off.');
+	install_note('Site Settings › Accounts and sign-in: a switch offers sign-in with a passkey alone on the sign-in screens. It starts off.');
 
 }
 
@@ -2818,7 +2819,7 @@ function upgrade_2026_11_0_audit_retention() {
 
 	install_add_column('config', 'audit_log_retention_years', "TINYINT UNSIGNED NOT NULL DEFAULT 2");
 
-	install_note('Privacy: the audit trail now keeps its lines for 2 years and the consent log its history for 3 years; the general job removes older lines once a day. The consent answer in force for each person is always kept. The audit trail period can be changed under Settings › Security › Audit Trail.');
+	install_note('Privacy: the audit trail now keeps its lines for 2 years and the consent log its history for 3 years; the general job removes older lines once a day. The consent answer in force for each person is always kept. The audit trail period can be changed under Site Settings › Accounts and sign-in › Audit Trail.');
 
 }
 
@@ -2868,7 +2869,7 @@ function upgrade_2026_11_0_reference_price_rule() {
 }
 
 // Large image previews in search results (2026.11.0, 11.0.51;
-// includes/fn/seo.php, Site Settings › SEO, Site Map and Crawling).
+// includes/fn/seo.php, Site Settings › SEO › Search Engine Optimization).
 //
 // max_image_preview_large adds max-image-preview:large to the robots meta tag
 // of every indexed page (pg_page_robots_content()), which lets Google show a
@@ -2880,7 +2881,7 @@ function upgrade_2026_11_0_max_image_preview() {
 
 	install_add_column('config', 'max_image_preview_large', "TINYINT(1) UNSIGNED NOT NULL DEFAULT 0");
 
-	install_note('SEO: pages can now let search engines show their pictures large (max-image-preview:large in the robots meta tag), under Site Settings, SEO, Site Map and Crawling. It stays off on this site until switched on.');
+	install_note('SEO: pages can now let search engines show their pictures large (max-image-preview:large in the robots meta tag), under Site Settings › SEO › Search Engine Optimization. It stays off on this site until switched on.');
 
 }
 
@@ -2939,7 +2940,7 @@ function upgrade_2026_11_0_main_host_redirect() {
 
 	install_add_column('config', 'main_host_redirect', "TINYINT(1) UNSIGNED NOT NULL DEFAULT 0");
 
-	install_note('SEO: pages opened on another host name of this site (for example with or without www) can now be sent to the site address with a permanent redirect, under Site Settings, SEO, Site Map and Crawling. It stays off until switched on.');
+	install_note('SEO: pages opened on another host name of this site (for example with or without www) can now be sent to the site address with a permanent redirect, under Site Settings › SEO › Search Engine Optimization. It stays off until switched on.');
 
 }
 // The author of a record page's BlogPosting (2026.11.0, 11.0.53;
@@ -4115,5 +4116,21 @@ function upgrade_2026_11_0_n11_old_address_order() {
 	} else {
 		install_skipped('ship_tos: no older n11 order address the other way round, nothing to swap');
 	}
+
+}
+
+// Affiliate commissions of a cancelled order (2026.11.0, 11.0.139;
+// includes/fn/ecommerce.php). process_order_cancellation() sets the order's
+// pending and payable commissions to ineligible and keeps the status each had
+// in status_before_cancel; it stops the order's enabled recurring commission
+// profiles and marks them with disabled_by_cancel. Restoring the order puts
+// back only rows still carrying the marker; a hand edit clears it. Both
+// default empty, so a running site's rows are untouched (no backfill).
+function upgrade_2026_11_0_commission_cancel_marker() {
+
+	install_add_column('commissions', 'status_before_cancel', "VARCHAR(16) NOT NULL DEFAULT ''");
+	install_add_column('recurring_commission_profiles', 'disabled_by_cancel', "TINYINT(1) NOT NULL DEFAULT 0");
+
+	install_note('Affiliate commissions: cancelling an order makes its pending and payable commissions ineligible and stops its recurring commission profiles; restoring the order puts them back.');
 
 }

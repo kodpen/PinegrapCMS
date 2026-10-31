@@ -21,8 +21,8 @@ description: Steps E1-E10 of plans/image-editor.md: core modal, crop, server sav
 - E3 (M) Server save. Done in #4258 (`platform/image-editor-save.md`).
   - `image_editor_api.php` open and save, the validator, `pg_image_edit_apply()` steps 1, 2, 5, 6 (Imagick, GD), replace, copy, new.
 
-- E4 (M) Adjust and filters. Screen 03.
-  - Brightness, contrast, saturation, exposure, temperature, gamma, vignette, sharpen; nine filters as fixed values of the same numbers; preview through SVG filters, server step 3; GD hosts send the colour layer.
+- E4 (M) Adjust and filters. Screen 03. Done in #4302 (`ui/image-editor-adjust.md`).
+  - Eight adjustments, nine filters as fixed values of them; SVG filter preview, server step 3; GD's colour layer.
 
 - E5 (M) Layers and selection. Screen 01.
   - Select, move, resize, rotate, multi-select, align and distribute, order, lock, hide, duplicate, delete, copy and paste (also a pasted picture), snapping guides, the layers list, keyboard nudges.

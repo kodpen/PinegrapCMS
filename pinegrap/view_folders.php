@@ -1298,6 +1298,13 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 /* A product with no storefront name: the dash is the gap, said quietly. */
 #explorer_list_table .subname-empty { opacity: .45; }
 #explorer_menu { position: fixed; z-index: 1080; display: none; min-width: 230px; border-radius: .75rem; box-shadow: 0 10px 30px rgba(0,0,0,.25); user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+/* The script shows the menu and its flyouts by their display, never with
+   .show; Bootstrap 6 draws a .menu without .show at opacity 0, scaled down,
+   so a right click opened an invisible menu. */
+#explorer_menu, #explorer_menu .pg-submenu { opacity: 1; transform: none; }
+/* A right click focuses the list itself only so the arrows work; the entry
+   they reach shows the focus, the list draws no ring. */
+#explorer_menu:focus { outline: none; }
 #explorer_menu .menu-item { cursor: pointer; border-radius: .45rem; padding: .32rem .7rem; }
 #explorer_menu .menu-item .bi { width: 1.35rem; display: inline-block; }
 #explorer_menu { padding: .35rem; }
@@ -1433,7 +1440,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 #explorer_menu li.has-submenu.open > .pg-submenu { display: block; }
 #explorer_menu li.has-submenu.submenu-left > .pg-submenu { left: auto; right: 100%; }
 #explorer_menu .menu-item .menu-check { width: 1.1rem; display: inline-block; }
-#explorer_menu .menu-item .submenu-arrow { float: right; margin-top: .2rem; opacity: .6; }
+#explorer_menu .menu-item .submenu-arrow { margin-inline-start: auto; opacity: .6; }
 .bin-badge { font-size: .66rem; }
 /* ERP documents. A folder with nothing in it stays in the branch, quieter,
    so the set of folders does not change shape as documents are issued. A

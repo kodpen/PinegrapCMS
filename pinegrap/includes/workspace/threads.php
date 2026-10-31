@@ -145,6 +145,49 @@ function ws_thread_parent_id($channel)
 }
 
 /**
+ * The channels a search narrowed to one channel reads: the channel and the
+ * discussions opened on its messages, which show beside it. Each row found is
+ * still checked with ws_can_read_channel() by the search that asks.
+ *
+ * @param int $channel_id
+ * @return int[] the channel first, then its discussions
+ */
+function ws_channel_search_ids($channel_id)
+{
+    $channel_id = (int) $channel_id;
+
+    if ($channel_id <= 0) {
+        return array();
+    }
+
+    $threads = (array) db_values("SELECT channel_id FROM ws_threads WHERE parent_channel_id = '" . $channel_id . "'");
+
+    return array_merge(array($channel_id), array_map('intval', $threads));
+}
+
+/**
+ * The SQL condition that narrows ws_messages to a search's channels
+ * (ws_channel_search_ids()): empty for every channel.
+ *
+ * @param int[] $channel_ids
+ * @return string " AND channel_id ..." or ''
+ */
+function ws_channel_search_sql($channel_ids)
+{
+    $ids = array_values(array_unique(array_filter(array_map('intval', (array) $channel_ids), function ($id) { return $id > 0; })));
+
+    if (!$ids) {
+        return '';
+    }
+
+    if (count($ids) === 1) {
+        return " AND channel_id = '" . $ids[0] . "'";
+    }
+
+    return " AND channel_id IN ('" . implode("', '", $ids) . "')";
+}
+
+/**
  * A title as it is kept: one line, at most WS_THREAD_TITLE_MAX characters.
  *
  * @param string $title
@@ -1228,7 +1271,7 @@ function ws_threads_js_strings()
         'th_start_help'     => lang('Talk it over with the people concerned in a room of its own, beside the channel. What you decide there, and the tasks you open, go into the channel too.'),
         'th_title'          => lang('Title'),
         'th_title_help'     => lang('Left empty, the first words of the message.'),
-        'th_create'         => lang('Start'),
+        'th_create'         => lang('Start the discussion'),
         'th_open'           => lang('Open the discussion'),
         'th_join'           => lang('Join'),
         'th_joined'         => lang('You joined the discussion.'),
