@@ -39741,8 +39741,8 @@ const StyleDesigner = (function () {
     var SW_CATALOG_TOKEN_GROUPS = [
         { label: _sdT('Basic Details'), tokens: [
             ['__id',                _sdT('Product ID')],
-            ['__name',              _sdT('Product name')],
-            ['__short_description', _sdT('Short description')],
+            ['__name',              _sdT('Product ID / SKU')],
+            ['__short_description', _sdT('Product name (shown in the store)')],
             ['__description',       _sdT('Description (long)')],
             ['__details',           _sdT('Details (rich text)')],
             ['__address_name',      'URL slug'],
@@ -39928,8 +39928,8 @@ const StyleDesigner = (function () {
     var SW_CATALOG_ITEM_TOKEN_GROUPS = [
         { label: _sdT('Basic Details'), tokens: [
             ['__id',                _sdT('Product ID')],
-            ['__name',              _sdT('Product name')],
-            ['__short_description', _sdT('Short description')],
+            ['__name',              _sdT('Product ID / SKU')],
+            ['__short_description', _sdT('Product name (shown in the store)')],
             ['__description',       _sdT('Description (long)')],
             ['__details',           _sdT('Details (rich text)')],
             ['__ai_generated',      _sdT('AI note (when a description was written with AI)')],
@@ -40446,8 +40446,8 @@ const StyleDesigner = (function () {
         ]},
         { label: _sdT('Saved Product (loop_area)'), tokens: [
             ['__id',                       _sdT('Product ID')],
-            ['__name',                     _sdT('Product name')],
-            ['__short_description',        _sdT('Short description')],
+            ['__name',                     _sdT('Product ID / SKU')],
+            ['__short_description',        _sdT('Product name (shown in the store)')],
             ['__price',                    _sdT('Price (number)')],
             ['__price_formatted',          _sdT('Price (with symbol)')],
             ['__original_price_formatted', _sdT('Original price (with symbol, to be struck through)')],
@@ -40518,8 +40518,8 @@ const StyleDesigner = (function () {
         ]},
         { label: _sdT('Product (loop_area)'), tokens: [
             ['__id',                    _sdT('Product ID')],
-            ['__name',                  _sdT('Product name')],
-            ['__short_description',     _sdT('Short description')],
+            ['__name',                  _sdT('Product ID / SKU')],
+            ['__short_description',     _sdT('Product name (shown in the store)')],
             ['__description',           _sdT('Description (long)')],
             ['__price_formatted',       _sdT('Price (with symbol)')],
             ['__image_url',             _sdT('Image URL')],
@@ -41165,8 +41165,8 @@ const StyleDesigner = (function () {
         ]},
         { label: _sdT('Cart item (loop_area)'), tokens: [
             ['__item_id',                         _sdT('Cart item id (order_items.id)')],
-            ['__item_name',                       _sdT('Product name')],
-            ['__item_short_description',          _sdT('Short description')],
+            ['__item_name',                       _sdT('Product ID / SKU')],
+            ['__item_short_description',          _sdT('Product name (shown in the store)')],
             ['__item_description',                _sdT('Description (long)')],
             ['__item_summary',                    _sdT('Description summary (one line, plain text)')],
             ['__item_qty',                        _sdT('Quantity')],
@@ -57807,8 +57807,8 @@ const StyleDesigner = (function () {
             arg: '', argRequired: false,
             kinds: ['catalog_item_view'],
             rows: [
-                ['__related_name',              _sdT('Product name')],
-                ['__related_short_description', _sdT('Short Description')],
+                ['__related_name',              _sdT('Product ID / SKU')],
+                ['__related_short_description', _sdT('Product name (shown in the store)')],
                 ['__related_url',               _sdT('Product address')],
                 ['__related_image_url',         _sdT('Image address')],
                 ['__related_price',             _sdT('Price')],
@@ -57820,8 +57820,8 @@ const StyleDesigner = (function () {
             arg: '', argRequired: false,
             kinds: ['catalog_item_view', 'catalog_listing'],
             rows: [
-                ['__bundle_item_name',              _sdT('Product name')],
-                ['__bundle_item_short_description', _sdT('Short Description')],
+                ['__bundle_item_name',              _sdT('Product ID / SKU')],
+                ['__bundle_item_short_description', _sdT('Product name (shown in the store)')],
                 ['__bundle_item_quantity',          _sdT('Quantity in the bundle')],
                 ['__bundle_item_url',               _sdT('Product address')],
                 ['__bundle_item_image_url',         _sdT('Image address')]

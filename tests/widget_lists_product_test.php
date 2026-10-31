@@ -96,6 +96,24 @@ function test_widget_lists_product_descriptors()
 	pg_assert_same(array('product.images', 'product.attributes', 'product.bundle_items', 'catalog.crumbs', 'catalog.active_filters', 'paging.pages'), array_keys(pg_sw_kind_lists('catalog_listing')), 'the listing: no products bought together');
 }
 
+// products.name is the stock code the panel calls "Product ID / SKU"; the
+// name shoppers read is short_description. The row labels say which is
+// which, so a list never offers the SKU as the product's name.
+function test_widget_lists_product_name_labels()
+{
+	$sources = pg_sw_list_sources();
+	$labels  = array();
+	foreach (array('product.related', 'product.bundle_items') as $source) {
+		foreach ($sources[$source]['tokens'] as $pair) $labels[$pair[0]] = $pair[1];
+	}
+	foreach (array('__related_name', '__bundle_item_name') as $token) {
+		pg_assert_same('Product ID / SKU', $labels[$token], $token);
+	}
+	foreach (array('__related_short_description', '__bundle_item_short_description') as $token) {
+		pg_assert_same('Product name (shown in the store)', $labels[$token], $token);
+	}
+}
+
 // A bundle's contents: in its order, the quantity at least one, the
 // address on the detail page and the main image; a component switched off
 // is not shown.

@@ -1430,6 +1430,7 @@
     "Product name": "Ürün adı",
     "Product name (products.name — usually the SKU/code)": "Ürün adı (products.name — genelde SKU/kod)",
     "Product name (products.name)": "Ürün adı (products.name)",
+    "Product name (shown in the store)": "Ürün adı (vitrinde görünen)",
     "Product not found or is disabled.": "Ürün bulunamadı veya devre dışı.",
     "Product not found.": "Ürün bulunamadı.",
     "Product not found: {var:1}": "Ürün bulunamadı: {var:1}",
