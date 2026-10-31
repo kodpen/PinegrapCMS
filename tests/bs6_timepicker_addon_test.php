@@ -102,3 +102,16 @@ function test_bs6_timepicker_addon_form_content_branches()
 	}
 	pg_assert_false((bool) preg_match('/\\.(date)?(time)?picker\\(datetimepicker_options\\)/', $source), 'content.php calls no jQuery UI picker');
 }
+
+function test_bs6_timepicker_addon_files_are_gone_and_cleaned_up()
+{
+	$clean_up = bs6_timepicker_addon_test_source('clean_up.php');
+
+	foreach (array(
+		'assets/lib/Jquery/jquery-ui-timepicker-addon-1.2.1.min.js',
+		'assets/lib/Jquery/jquery-ui-timepicker-addon-1.2.1.src.js',
+	) as $path) {
+		pg_assert_false(is_file(dirname(__DIR__) . '/pinegrap/' . $path), $path . ' is not shipped');
+		pg_assert_contains("    '" . $path . "',\n", $clean_up, 'Cleanup deletes ' . $path . ' on an updated site');
+	}
+}
