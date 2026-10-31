@@ -458,6 +458,6 @@ function ws_acks_js_strings()
         'ack_unread'       => lang('Not yet'),
         'ack_nobody_left'  => lang('Everybody has read it.'),
         'ack_home'         => lang('Messages waiting for your read receipt'),
-        'ack_home_asked'   => ws_js_template('{var:1} asks', 1),
+        'ack_home_asks'    => lang('asks for your read receipt'),
     );
 }

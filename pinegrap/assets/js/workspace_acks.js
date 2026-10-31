@@ -194,8 +194,8 @@
             var meta = el('small', 'ws-home-row-meta');
 
             row.appendChild(h.icon('bi-eye', 'fg-secondary'));
-            meta.appendChild(el('b', '', t('ack_home_asked', item.asker)));
-            meta.appendChild(document.createTextNode(' · '));
+            meta.appendChild(el('b', '', item.asker));
+            meta.appendChild(document.createTextNode(' ' + t('ack_home_asks') + ' · '));
             meta.appendChild(h.icon(item.channel['private'] ? 'bi-lock' : 'bi-hash'));
             meta.appendChild(document.createTextNode(item.channel.name + ' · ' + item.time));
             text.appendChild(meta);

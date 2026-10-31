@@ -3409,6 +3409,8 @@
     "asked {var:1}": "sorgulandı: {var:1}",
     "asked {var:1} to change the page {var:2}": "{var:1} asistanına {var:2} sayfası için değişiklik isteği gönderildi",
     "asking again": "yeniden soruluyor",
+    "asks for your approval": "onayınızı istiyor",
+    "asks for your read receipt": "okundu onayınızı istiyor",
     "assets/google_taxonomy/google_taxonomy_{var:1}.json is missing, so there is nothing to pick from. Type the category or its number yourself.": "assets/google_taxonomy/google_taxonomy_{var:1}.json bulunamadı, seçilecek bir liste yok. Kategoriyi veya numarasını kendiniz yazın.",
     "astronomy, volunteers": "gökbilim, gönüllüler",
     "at least": "en az",

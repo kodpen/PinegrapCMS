@@ -77,23 +77,46 @@ function ws_home($viewer)
         }
     }
 
+    // The unread messages and mentions of the joined channels, as the
+    // sidebar counts them.
+    $channels = ws_channels_for($viewer);
+    $unread = 0;
+    $mentions = 0;
+
+    foreach ($channels as $channel) {
+        if ($channel['joined']) {
+            $unread += (int) $channel['unread'];
+            $mentions += (int) $channel['mentions'];
+        }
+    }
+
+    // Approval requests and read receipts waiting for the person
+    // (approvals.php, acks.php): all of them counted, five of each shown.
+    $approvals = function_exists('ws_approvals_waiting') ? ws_approvals_waiting($viewer, 50) : array();
+    $acks = function_exists('ws_acks_waiting') ? ws_acks_waiting($viewer, 20) : array();
+
     return array(
         'name'          => (string) ($person[$me]['name'] ?? ''),
         'date'          => ws_home_date_label($today),
         'greeting'      => ws_home_greeting((int) date('G')),
+        'lead'          => ws_home_lead(array(
+            'messages'  => $unread,
+            'mentions'  => $mentions,
+            'approvals' => count($approvals),
+            'acks'      => count($acks),
+            'due'       => (int) ($counts['due_count'] ?? 0),
+        )),
         'due'           => $due,
         'tasks_due'     => (int) ($counts['due_count'] ?? 0),
         'calendar'      => ws_home_calendar($viewer, $today),
-        'digest'        => ws_home_digest($viewer, 5),
+        'digest'        => ws_home_digest($viewer, $channels, 5),
         'tasks'         => $tasks,
         'tasks_hot'     => count($hot),
         'tasks_open'    => (int) ($counts['open_count'] ?? 0),
         'tasks_overdue' => (int) ($counts['overdue_count'] ?? 0),
         'talk'          => ws_home_talk($viewer, 5),
-        // Approval requests and read receipts waiting for the person
-        // (approvals.php, acks.php).
-        'approvals'     => function_exists('ws_approvals_waiting') ? ws_approvals_waiting($viewer, 5) : array(),
-        'acks'          => function_exists('ws_acks_waiting') ? ws_acks_waiting($viewer, 5) : array(),
+        'approvals'     => array_slice($approvals, 0, 5),
+        'acks'          => array_slice($acks, 0, 5),
         'decisions'     => ws_timeline_items($viewer, $timeline['rows'], $timeline['channels']),
         'join'          => ws_home_joinable($viewer, 5),
         'newcomer'      => ($written === 0),
@@ -122,6 +145,49 @@ function ws_home_greeting($hour)
     }
 
     return ($hour < 18) ? lang('Good afternoon') : lang('Good evening');
+}
+
+/**
+ * The line under the greeting: what is new and what waits, the counts joined
+ * by dots ("3 new messages · 1 mention · 1 approval request"), or that
+ * nothing does.
+ *
+ * @param array $counts messages, mentions, approvals, acks, due
+ * @return string
+ */
+function ws_home_lead($counts)
+{
+    $count = function ($key) use ($counts) {
+        return max(0, (int) ($counts[$key] ?? 0));
+    };
+    $messages = $count('messages');
+    $mentions = $count('mentions');
+    $approvals = $count('approvals');
+    $acks = $count('acks');
+    $due = $count('due');
+    $parts = array();
+
+    if ($messages > 0) {
+        $parts[] = lang(array('string' => '{var:1} new message{suffix:1}', 'vars' => $messages, 'suffix' => array(($messages === 1) ? '' : 's')));
+    }
+
+    if ($mentions > 0) {
+        $parts[] = lang(array('string' => '{var:1} mention{suffix:1}', 'vars' => $mentions, 'suffix' => array(($mentions === 1) ? '' : 's')));
+    }
+
+    if ($approvals > 0) {
+        $parts[] = lang(array('string' => '{var:1} approval request{suffix:1}', 'vars' => $approvals, 'suffix' => array(($approvals === 1) ? '' : 's')));
+    }
+
+    if ($acks > 0) {
+        $parts[] = lang(array('string' => '{var:1} read receipt{suffix:1} asked of you', 'vars' => $acks, 'suffix' => array(($acks === 1) ? '' : 's')));
+    }
+
+    if ($due > 0) {
+        $parts[] = lang(array('string' => '{var:1} task{suffix:1} due today or overdue', 'vars' => $due, 'suffix' => array(($due === 1) ? '' : 's')));
+    }
+
+    return $parts ? implode(' · ', $parts) : lang('Everything is read and nothing is due today.');
 }
 
 /**
@@ -204,33 +270,71 @@ function ws_home_calendar_rows($items, $start, $end, $now)
 
 /**
  * What happened in the person's channels: the joined ones with messages they
- * have not read, the latest first, each with its unread count and its last
- * message, who wrote it and its first words.
+ * have not read, each with its unread count and its last message, who wrote
+ * it and its first words; the channel whose last message is the latest
+ * first. System lines are not counted as unread, so they neither show nor
+ * order the list.
  *
- * @param array $viewer
- * @param int   $limit
+ * @param array   $viewer
+ * @param array[] $channels ws_channels_for() of the person
+ * @param int     $limit
  * @return array[] id, name, kind, unread, mentions, message_id, sender, text, time
  */
-function ws_home_digest($viewer, $limit = 5)
+function ws_home_digest($viewer, $channels, $limit = 5)
 {
-    $channels = array_values(array_filter(ws_channels_for($viewer), function ($channel) {
-        return $channel['joined'] && ($channel['unread'] > 0);
-    }));
+    $unread = array();
 
-    usort($channels, function ($a, $b) {
-        return ($b['last_message_at'] - $a['last_message_at']) ?: ($b['id'] - $a['id']);
+    foreach ($channels as $channel) {
+        if ($channel['joined'] && ($channel['unread'] > 0)) {
+            $unread[(int) $channel['id']] = $channel;
+        }
+    }
+
+    if (empty($unread)) {
+        return array();
+    }
+
+    // Each channel's last message, in one grouped read.
+    $last = array();
+
+    foreach ((array) db_items("SELECT channel_id, MAX(id) AS id FROM ws_messages
+        WHERE channel_id IN (" . implode(',', array_keys($unread)) . ") AND deleted_at = 0 AND sender_kind <> 'system'
+        GROUP BY channel_id") as $row) {
+        $last[(int) $row['channel_id']] = (int) $row['id'];
+    }
+
+    $ids = array_keys($unread);
+
+    usort($ids, function ($a, $b) use ($last) {
+        return (($last[$b] ?? 0) - ($last[$a] ?? 0)) ?: ($b - $a);
     });
 
+    $ids = array_slice($ids, 0, (int) $limit);
+    $messages = array();
+    $wanted = array();
+
+    foreach ($ids as $id) {
+        if (!empty($last[$id])) {
+            $wanted[] = (int) $last[$id];
+        }
+    }
+
+    if ($wanted) {
+        foreach ((array) db_items("SELECT * FROM ws_messages WHERE id IN (" . implode(',', $wanted) . ")") as $row) {
+            $messages[(int) $row['channel_id']] = $row;
+        }
+    }
+
+    list($people, $mail) = ws_message_rows_senders(array_values($messages));
     $out = array();
 
-    foreach (array_slice($channels, 0, (int) $limit) as $channel) {
-        $row = db_item("SELECT * FROM ws_messages WHERE channel_id = '" . (int) $channel['id'] . "'
-            AND deleted_at = 0 AND sender_kind <> 'system' ORDER BY id DESC LIMIT 1");
+    foreach ($ids as $id) {
+        $channel = $unread[$id];
+        $row = $messages[$id] ?? null;
         $sender = null;
         $text = '';
 
         if (is_array($row)) {
-            list($people, $mail) = ws_message_rows_senders(array($row));
             $sender = ws_message_row_sender($row, $people, $mail);
             $text = ws_plain_line($viewer, $row['body']);
 
@@ -435,7 +539,6 @@ function ws_home_js_strings()
     return array(
         'home'                => lang('Overview'),
         'home_greeting'       => ws_js_template('{var:1}, {var:2}', 2),
-        'home_lead'           => ws_js_template('Waiting for you: {var:1} · Due today or overdue: {var:2}', 2),
         'home_waiting'        => lang('Waiting for you'),
         'home_waiting_empty'  => lang('Nothing waits for you. Approvals, read receipts, replies to your messages and mentions of you show here.'),
         'home_due'            => lang('Today and overdue'),

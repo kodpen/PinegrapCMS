@@ -448,7 +448,7 @@
 
             row.appendChild(h.icon('bi-patch-question', 'fg-secondary'));
             meta.appendChild(el('b', '', item.asker));
-            meta.appendChild(document.createTextNode(' · '));
+            meta.appendChild(document.createTextNode(' ' + t('apv_home_asks') + ' · '));
             meta.appendChild(h.icon(item.channel['private'] ? 'bi-lock' : 'bi-hash'));
             meta.appendChild(document.createTextNode(item.channel.name + ' · ' + item.time + (item.closes ? ' · ' + t('apv_home_until', item.closes) : '')));
             text.appendChild(meta);

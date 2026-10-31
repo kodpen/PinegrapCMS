@@ -7487,7 +7487,7 @@
 
             words.appendChild(el('p', 'ws-home-date', data.date));
             words.appendChild(el('h1', 'ws-home-greeting', t('home_greeting', data.greeting || '', data.name)));
-            words.appendChild(el('p', 'ws-home-lead', t('home_lead', waitingCount, data.tasks_due || 0)));
+            words.appendChild(el('p', 'ws-home-lead', data.lead || ''));
             hello.appendChild(words);
 
             // A way to start, always in sight.
@@ -7634,23 +7634,26 @@
 
         },
 
-        // A card's heading with the count of what is in it, when there is any.
-        homeCount: function (card, count) {
+        // A card's heading with the count of what is in it, when there is
+        // any; in the accent for what waits for an answer.
+        homeCount: function (card, count, hot) {
             if (count > 0) {
-                card.node.querySelector('h3').appendChild(el('span', 'ws-count ws-home-count', count > 99 ? '99+' : String(count)));
+                card.node.querySelector('h3').appendChild(el('span', 'ws-count ws-home-count' + (hot ? ' ws-home-count-hot' : ''), count > 99 ? '99+' : String(count)));
             }
         },
 
         // Waiting for the person: approvals and read receipts asked of them
         // (workspace_approvals.js, workspace_acks.js), then the replies to
-        // their messages and the mentions of them, the unread ones marked.
+        // their messages and the mentions of them, the unread ones marked;
+        // the ones already read only while the card has fewer than five rows.
         homeWaiting: function (data, count) {
             var self = this;
             var card = homeCard(t('home_waiting'), 'bi-inbox');
             var helpers = featureHelpers();
             var rows = 0;
 
-            self.homeCount(card, count);
+            card.node.classList.add('ws-home-waiting');
+            self.homeCount(card, count, true);
 
             [window.PGWsApprovals, window.PGWsAcks].forEach(function (feature) {
                 if (feature && feature.homeRows) {
@@ -7659,6 +7662,10 @@
             });
 
             data.talk.forEach(function (item) {
+                if (!item.unread && (rows >= 5)) {
+                    return;
+                }
+
                 var row = button('ws-home-row' + (item.unread ? ' ws-home-unread' : ''));
                 var face = el('span', 'ws-home-face');
                 face.appendChild(avatar(item.sender));
@@ -7686,7 +7693,8 @@
         },
 
         // The person's tasks due today or before, the earliest first; with
-        // none, the ones coming up. Under them how many are open, overdue and
+        // none, the ones coming up. Each is ticked off from here, as in the
+        // task lists, or opened. Under them how many are open, overdue and
         // pressing.
         homeDue: function (data) {
             var self = this;
@@ -7705,9 +7713,32 @@
 
             list.forEach(function (task) {
                 var hot = (task.priority === 'urgent' || task.priority === 'high');
-                var row = button('ws-home-row' + (hot ? ' ws-home-row-hot ws-home-row-' + task.priority : ''));
-                row.appendChild(icon(task.overdue ? 'bi-exclamation-circle' : (hot ? 'bi-fire' : 'bi-circle'), task.overdue ? 'fg-danger' : (hot ? 'ws-home-hot-icon' : 'fg-secondary')));
+                var row = el('div', 'ws-home-row ws-home-task' + (hot ? ' ws-home-row-hot ws-home-row-' + task.priority : ''));
+                var done = el('input', 'check ws-home-done');
 
+                done.type = 'checkbox';
+                done.title = t('mark_done');
+                done.setAttribute('aria-label', t('mark_done') + ': ' + task.title);
+                done.addEventListener('change', function () {
+                    if (!done.checked) {
+                        return;
+                    }
+
+                    done.disabled = true;
+                    row.classList.add('ws-home-task-done');
+                    api('ws_task_status', { task_id: task.id, status: 'done' }).then(function () {
+                        toast(t('task_saved'), 'success');
+                        self.showHome(false);
+                    }).catch(function (error) {
+                        done.checked = false;
+                        done.disabled = false;
+                        row.classList.remove('ws-home-task-done');
+                        fail(error);
+                    });
+                });
+                row.appendChild(done);
+
+                var open = button('ws-home-task-open');
                 var text = el('span', 'ws-home-row-text');
                 var titleLine = el('span', 'ws-home-row-title', task.title);
 
@@ -7717,10 +7748,11 @@
 
                 text.appendChild(titleLine);
                 text.appendChild(el('small', task.overdue ? 'fg-danger' : 'fg-secondary', task.number + ' · ' + task.due_label));
-                row.appendChild(text);
-                row.addEventListener('click', function () {
+                open.appendChild(text);
+                open.addEventListener('click', function () {
                     taskDrawer.open(task.id, null, function () { self.showHome(false); });
                 });
+                row.appendChild(open);
                 card.body.appendChild(row);
             });
 

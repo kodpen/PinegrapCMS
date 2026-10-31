@@ -69,7 +69,6 @@
     "Waiting for the customer": "Müşteriyi bekliyor",
     "Waiting for this task": "Bu görevi bekleyenler",
     "Waiting for you": "Sizi bekliyor",
-    "Waiting for you: {var:1} · Due today or overdue: {var:2}": "Sizi bekleyen: {var:1} · Bugün ve geciken: {var:2}",
     "Waiting for you: {var:1}.": "Sizi bekleyenler: {var:1}.",
     "Waiting for {1} to apply it or preview it in the editor.": "{1} tarafından uygulanmayı ya da düzenleyicide önizlenmeyi bekliyor.",
     "Waiting for {var:1}": "Bekliyor: {var:1}",
