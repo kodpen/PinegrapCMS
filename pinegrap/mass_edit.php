@@ -410,6 +410,9 @@ if (!$_POST) {
                 $fr_long_skipped = 0;
                 $q = mysqli_query(db::$con, "SELECT page_id, page_name, page_title, page_meta_description FROM page") or output_error(lang('Query failed.'));
                 while ($row = mysqli_fetch_assoc($q)) {
+                    // One audit line per changed page: read before its first
+                    // field update, recorded after its last.
+                    $audit_before = null;
                     foreach ($fr_fields as $field) {
                         $current = $row[$field];
                         $new_val = $use_regex
@@ -441,7 +444,13 @@ if (!$_POST) {
                         }
 
                         $count_by_field[$field] = isset($count_by_field[$field]) ? $count_by_field[$field] + 1 : 1;
+                        if ($audit_before === null) {
+                            $audit_before = pg_audit_fetch('page', $row['page_id']);
+                        }
                         db("UPDATE page SET `{$field}` = '" . escape($new_val) . "' WHERE page_id = '" . e($row['page_id']) . "'");
+                    }
+                    if ($audit_before !== null) {
+                        pg_audit_record('update', 'page', $row['page_id'], $audit_before);
                     }
                 }
                 if (empty($count_by_field)) {
@@ -497,6 +506,10 @@ if (!$_POST) {
         $new_page_search = $current_page_search;
         $new_page_search_keywords = $current_page_search_keywords;
 
+        // One audit line per changed page: read before its first field
+        // update, recorded after its last.
+        $audit_before = null;
+
         
         
 
@@ -511,6 +524,9 @@ if (!$_POST) {
                 if (check_name_availability(array('name' => $new_page_name, 'ignore_item_id' => $page_id, 'ignore_item_type' => 'page'))) {
                     $count_change++;
                     $count_page_name_changes++;
+                    if ($audit_before === null) {
+                        $audit_before = pg_audit_fetch('page', $page_id);
+                    }
                     db("UPDATE page SET page_name = '" . escape($new_page_name) . "' WHERE page_id = '" . e($page_id) . "'");
                 } else {
                     $page_name_conflicts[] = h($new_page_name);
@@ -527,6 +543,9 @@ if (!$_POST) {
             $count_change++;
             $count_page_title_changes++;
             //update with db function.
+            if ($audit_before === null) {
+                $audit_before = pg_audit_fetch('page', $page_id);
+            }
             db("UPDATE page SET page_title = '" . escape($_POST['page_title_' . $row['page_id']]) . "' WHERE page_id = '" . e($page_id) . "'");
         }
 
@@ -539,6 +558,9 @@ if (!$_POST) {
             $count_change++;
             $count_page_meta_description_changes++;
             //update with db function.
+            if ($audit_before === null) {
+                $audit_before = pg_audit_fetch('page', $page_id);
+            }
             db("UPDATE page SET page_meta_description = '" . escape($_POST['meta_description_' . $row['page_id']]) . "' WHERE page_id = '" . e($page_id) . "'");
         }
        
@@ -552,6 +574,9 @@ if (!$_POST) {
             $count_change++;
             $count_page_search_changes++;
             //update with db function.
+            if ($audit_before === null) {
+                $audit_before = pg_audit_fetch('page', $page_id);
+            }
             db("UPDATE page SET page_search = '" . escape($_POST['page_search_' . $row['page_id']]) . "' WHERE page_id = '" . e($page_id) . "'");
 
             $new_page_search = $_POST['page_search_' . $row['page_id']];
@@ -567,9 +592,16 @@ if (!$_POST) {
             $count_change++;
             $count_page_search_keywords_changes++;
             //update with db function.
+            if ($audit_before === null) {
+                $audit_before = pg_audit_fetch('page', $page_id);
+            }
             db("UPDATE page SET page_search_keywords = '" . escape($_POST['page_search_keywords_' . $row['page_id']]) . "' WHERE page_id = '" . e($page_id) . "'");
 
             $new_page_search_keywords = $_POST['page_search_keywords_' . $row['page_id']];
+        }
+
+        if ($audit_before !== null) {
+            pg_audit_record('update', 'page', $page_id, $audit_before);
         }
 
         //if either half of what the tag cloud is built from changed, rebuild this page's entries.
