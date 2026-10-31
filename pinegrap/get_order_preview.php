@@ -793,7 +793,7 @@ function get_order_preview($properties) {
                         $output_ship_tos .=
                             '<tr class="ship_tos">
                                 <td colspan="5">
-                                    <div class="heading">Ship to ' . $output_ship_to_name . '<a class="software_button_tiny_secondary" href="' . OUTPUT_PATH . get_page_name($_SESSION['ecommerce']['shipping_address_and_arrival_page_id']) . '?ship_to_id=' . $ship_to_id . '">Change</a></div>
+                                    <div class="heading">Ship to ' . $output_ship_to_name . '' . pg_op_change_link_html(pg_op_step_url('shipping_address_and_arrival_page_id', '?ship_to_id=' . $ship_to_id)) . '</div>
                                     <div class="data">
                                         ' . $address . '
                                         ' . get_submitted_form_content_with_form_fields(array('type' => 'custom_shipping_form', 'ship_to_id' => $ship_to_id)) . '
@@ -983,7 +983,7 @@ function get_order_preview($properties) {
                         $output_recurring_ship_tos .=
                             '<tr class="ship_tos">
                                 <td colspan="6">
-                                    <div class="heading">Ship to ' . $output_ship_to_name . '<a class="software_button_tiny_secondary" href="' . OUTPUT_PATH . get_page_name($_SESSION['ecommerce']['shipping_address_and_arrival_page_id']) . '?ship_to_id=' . $ship_to_id . '">Change</a></div>
+                                    <div class="heading">Ship to ' . $output_ship_to_name . '' . pg_op_change_link_html(pg_op_step_url('shipping_address_and_arrival_page_id', '?ship_to_id=' . $ship_to_id)) . '</div>
                                     <div class="data">' . $address . '</div>
                                     ' . get_submitted_form_content_with_form_fields(array('type' => 'custom_shipping_form', 'ship_to_id' => $ship_to_id)) . '
                                 </td>
@@ -1312,13 +1312,19 @@ function get_order_preview($properties) {
                 custom_field_2_required
             FROM billing_information_pages
             WHERE page_id = ?";
-        $result = db_q($query, array((string) $_SESSION['ecommerce']['billing_information_page_id'])) or output_error('Query failed.');
-        $row = mysqli_fetch_assoc($result);
+        // Without a billing step page in the session there are no labels to
+        // read: the custom fields are left out.
+        $row = null;
+        $billing_page_id = pg_op_step_page_id($_SESSION['ecommerce'] ?? null, 'billing_information_page_id');
+        if ($billing_page_id > 0) {
+            $result = db_q($query, array((string) $billing_page_id)) or output_error('Query failed.');
+            $row = mysqli_fetch_assoc($result);
+        }
 
-        $custom_field_1_label = $row['custom_field_1_label'];
-        $custom_field_1_required = $row['custom_field_1_required'];
-        $custom_field_2_label = $row['custom_field_2_label'];
-        $custom_field_2_required = $row['custom_field_2_required'];
+        $custom_field_1_label = $row['custom_field_1_label'] ?? '';
+        $custom_field_1_required = $row['custom_field_1_required'] ?? '';
+        $custom_field_2_label = $row['custom_field_2_label'] ?? '';
+        $custom_field_2_required = $row['custom_field_2_required'] ?? '';
 
         // if there is a custom field 1 label and custom field 1 is not blank, then prepare to output data
         if (($custom_field_1_label != '') && ($custom_field_1 != '')) {
@@ -1961,7 +1967,7 @@ function get_order_preview($properties) {
                 ' . $output_multicurrency_disclaimer . '
                 ' . $output_recurring_products . '
                 ' . $output_applied_offers . '
-                <div class="billing heading">Billing Information &nbsp;<a class="software_button_tiny_secondary" href="' . OUTPUT_PATH . get_page_name($_SESSION['ecommerce']['billing_information_page_id']) . '">Change</a></div>
+                <div class="billing heading">Billing Information &nbsp;' . pg_op_change_link_html(pg_op_step_url('billing_information_page_id')) . '</div>
                 <div class="billing data" style="margin-bottom: 15px">
                     ' . $output_billing_information . '
                     ' . get_submitted_form_content_with_form_fields(array('type' => 'custom_billing_form', 'order_id' => $order_id)) . '
@@ -2206,7 +2212,8 @@ function get_order_preview($properties) {
                         $recipient['country'] = mb_strtoupper($recipient['country']);
                     }
 
-                    $recipient['update_url'] = PATH . encode_url_path(get_page_name($_SESSION['ecommerce']['shipping_address_and_arrival_page_id'])) . '?ship_to_id=' . $recipient['id'];
+                    // '' without a shipping step page: the Change link is left out.
+                    $recipient['update_url'] = pg_op_step_url('shipping_address_and_arrival_page_id', '?ship_to_id=' . $recipient['id']);
 
                     if ($recipient['salutation'] and $recipient['last_name']) {
                         $recipient['name'] = $recipient['salutation'];
@@ -2844,7 +2851,8 @@ function get_order_preview($properties) {
                 $purchase_now_button_label = $submit_button_label;
             }
 
-            $billing_update_url = PATH . encode_url_path(get_page_name($_SESSION['ecommerce']['billing_information_page_id']));
+            // '' without a billing step page: the Change link is left out.
+            $billing_update_url = pg_op_step_url('billing_information_page_id');
 
             $order = db_item(
                 "SELECT
@@ -2901,11 +2909,17 @@ function get_order_preview($properties) {
                     custom_field_2_label
                 FROM billing_information_pages
                 WHERE page_id = ?";
-            $result = db_q($query, array((string) $_SESSION['ecommerce']['billing_information_page_id'])) or output_error('Query failed.');
-            $row = mysqli_fetch_assoc($result);
+            // Without a billing step page in the session there are no labels
+            // to read: the custom fields are left out.
+            $row = null;
+            $billing_page_id = pg_op_step_page_id($_SESSION['ecommerce'] ?? null, 'billing_information_page_id');
+            if ($billing_page_id > 0) {
+                $result = db_q($query, array((string) $billing_page_id)) or output_error('Query failed.');
+                $row = mysqli_fetch_assoc($result);
+            }
 
-            $custom_field_1_label = $row['custom_field_1_label'];
-            $custom_field_2_label = $row['custom_field_2_label'];
+            $custom_field_1_label = $row['custom_field_1_label'] ?? '';
+            $custom_field_2_label = $row['custom_field_2_label'] ?? '';
 
             $fields = array();
 
