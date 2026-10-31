@@ -30,7 +30,7 @@ description: Panel screen basics (frame, notices, fields, width, icons, help), t
 
 ## How does a screen draw its toolbar?
 - `pg_screen_toolbar($slots, $opts)` (`includes/fn/output.php`) returns `nav#button_bar.pg-toolbar` with slots `primary`, `secondary`, `grow`, `search`, `view`, `overflow`, always in that order; `''` when no slot is filled, so no empty bar. Options: `label` (aria name, default "Button Bar"), `class`.
-- CSS hides a bar only when empty: no `.btn`, `a`, `button`, `select`, visible `input`, `textarea`, filled grow. Tabs, a `pg_filter_select()` (Apply in `<noscript>`) or a grow fact keep it (#4070, `tests/button_bar_hidden_test.php`).
+- CSS hides a bar only when empty: no `.btn`, `a`, `button`, `select`, visible `input`, `textarea`, filled grow. Tabs, a `pg_filter_select()` (Apply in `<noscript>`) or a grow fact keep it (#4142, `tests/button_bar_hidden_test.php`).
 - A slot is markup (a menu, `pg_filter_select()`), a button array `label`/`url`/`icon`/`id` (escaped, drawn in the slot's recipe above) or a list of both. A right cluster with no grow gets an empty grow as spacer. Pinned by `tests/screen_toolbar_test.php`.
 - `pg_page_shell()` draws no buttons: its `actions`/`primary_button`/`action_bar_class` keys and the `.pg-page-actions` row were removed; `tests/panel_screen_titles_test.php` refuses the keys.
 
