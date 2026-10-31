@@ -127,6 +127,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_form_field_rules();       // 11.0.135
 	upgrade_2026_11_0_contact_iys_sms_status(); // 11.0.136
 	upgrade_2026_11_0_sms_campaigns();           // 11.0.137
+	upgrade_2026_11_0_n11_old_address_order(); // 11.0.138
 
 }
 
@@ -4032,5 +4033,87 @@ function upgrade_2026_11_0_sms_campaigns() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('SMS campaigns: a text message can be sent to the contacts of chosen contact groups, now or at a time. Nothing is sent until SMS is set up and a campaign is created.');
+
+}
+
+// n11 orders imported before #2004 kept a Turkish address the other way round
+// from the checkout: the province in city and the town in state, with
+// ship_tos.district (11.0.134, called before this step) empty. Screens read
+// them reversed and a carrier label got the province as the district. Each
+// such row is swapped and its empty district takes the town. Only ship_tos
+// rows of orders mapped to an n11 account are read; pg_ship_to_reversed_tr_swap()
+// decides per row (Turkey, city a province, state none), so a row in the
+// checkout's order never matches and a rerun finds nothing to swap. The
+// UPDATE repeats the values it read, so an edit made in between is kept.
+function upgrade_2026_11_0_n11_old_address_order() {
+
+	if (!function_exists('pg_ship_to_reversed_tr_swap')) {
+
+		install_skipped('ship_tos: the addresses of older n11 orders were not put in the checkout\'s order, because includes/fn/shipping.php is out of date. Upload the files of this version again and run the upgrade.');
+
+		return;
+
+	}
+
+	if (!install_table_exists('marketplace_order_map') || !install_table_exists('marketplace_accounts') || !install_column_exists('ship_tos', 'district')) {
+
+		install_skipped('ship_tos: no n11 order tables or no district column, no n11 address to put in order');
+
+		return;
+
+	}
+
+	$last_id = 0;
+	$swapped = 0;
+
+	do {
+
+		$rows = (array) db_items("SELECT DISTINCT ship_tos.id, ship_tos.city, ship_tos.state, ship_tos.district, ship_tos.country
+			FROM ship_tos
+			INNER JOIN marketplace_order_map ON marketplace_order_map.order_id = ship_tos.order_id
+			INNER JOIN marketplace_accounts ON marketplace_accounts.id = marketplace_order_map.account_id
+			WHERE (marketplace_accounts.provider = 'n11') AND (marketplace_order_map.order_id > 0) AND (ship_tos.id > '" . (int) $last_id . "')
+			ORDER BY ship_tos.id
+			LIMIT 500");
+
+		foreach ($rows as $row) {
+
+			$last_id = (int) $row['id'];
+			$swap = pg_ship_to_reversed_tr_swap($row);
+
+			if (!$swap) {
+				continue;
+			}
+
+			$updated = db_q("UPDATE ship_tos SET city = ?, state = ?, district = ?
+				WHERE (id = ?) AND (city = ?) AND (state = ?) AND (district = ?)",
+				array(mb_substr($swap['city'], 0, 50), mb_substr($swap['state'], 0, 50), mb_substr($swap['district'], 0, 50),
+					$last_id, (string) $row['city'], (string) $row['state'], (string) $row['district']));
+
+			if ($updated !== false) {
+				$swapped += max(0, (int) mysqli_affected_rows(db::$con));
+			}
+
+		}
+
+		// A later pass starts over from the first row: the rows swapped so far
+		// no longer match, so it only reads them again. It pauses only after a
+		// swap, so every pass gets further and a pass of reads alone never
+		// pauses.
+		if (($swapped > 0) && (install_pass_seconds() >= install_pause_budget())) {
+			install_pause('ship_tos: putting older n11 order addresses in the checkout\'s order, up to id ' . $last_id . '.');
+		}
+
+	} while (count($rows) === 500);
+
+	if ($swapped > 0) {
+
+		install_ran('ship_tos: ' . $swapped . ' older n11 order address(es) put in the checkout\'s order (town in city, province in state)');
+
+		install_note('n11 orders: the addresses of orders imported before this version now carry the town as the city and the province as the state, as checkout addresses do, and the town as the district.');
+
+	} else {
+		install_skipped('ship_tos: no older n11 order address the other way round, nothing to swap');
+	}
 
 }
