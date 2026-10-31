@@ -5,10 +5,10 @@ description: Panel screen basics (frame, notices, fields, width, icons, help), t
 
 ## What are the basic panel UI helpers and conventions?
 - Bootstrap 6 (panel; sites stay on 5.3.8). `output_header([...])` / `output_footer()` = page frame. Cards are spaced with bottom margins on the v6 spacer scale: v5's `mb-5` (3rem) is `mb-12`; most screens use `mb-7` / `mb-5` (1.5rem / 1rem).
-- `$liveform->output_errors()` / `output_notices()` print messages; `add_notice(...)` / `add_error(...)` add one; `$liveform->mark_error('field', 'message')` marks a field, then redirect with `go($url)`. A screen that adds notices prints them and calls `remove_form()` after drawing (`liveform-notices-trap.md`).
-- Fields are drawn with `$liveform->output_field([...])`, never a hand-written `<input>`: error marking and refill come from it.
+- `$liveform->output_errors()` / `output_notices()` print messages, `add_notice()` / `add_error()` add one, `mark_error('field', 'message')` marks a field, then `go($url)`. A screen that adds notices prints them and calls `remove_form()` after drawing (`liveform-notices-trap.md`).
+- Fields: `$liveform->output_field([...])`, never a hand-written `<input>` (error marking, refill).
 - No `max-width` on an admin screen: screens are `container-fluid` wide; a field's width comes from the grid (`col-*`, `md:col-*`).
-- Icons: Bootstrap Icons `<i class="bi bi-icon-name"></i>`, `aria-hidden="true"` when decorative. Material Icons (`<span class="material-icons">`) remain only in old code. The main menu rows are the exception (`main-menu-icons.md`).
+- Icons: Bootstrap Icons `<i class="bi bi-…" aria-hidden="true"></i>`; Material Icons only in old code and the main menu (`main-menu-icons.md`).
 - Reference screens: `view_folders.php` (toolbar), `product_builder.php` (edit screen layout, `edit-screen-wide-layout.md`). Help link: `panel-help-links.md`.
 
 ## What is the admin screen design principle?
@@ -30,7 +30,8 @@ description: Panel screen basics (frame, notices, fields, width, icons, help), t
 
 ## How does a screen draw its toolbar?
 - `pg_screen_toolbar($slots, $opts)` (`includes/fn/output.php`) returns `nav#button_bar.pg-toolbar` with slots `primary`, `secondary`, `grow`, `search`, `view`, `overflow`, always in that order; `''` when no slot is filled, so no empty bar. Options: `label` (aria name, default "Button Bar"), `class`.
+- CSS hides a bar only when empty: no `.btn`, `a`, `button`, `select`, visible `input`, `textarea`, filled grow. Tabs, a `pg_filter_select()` (Apply in `<noscript>`) or a grow fact keep it (#4142, `tests/button_bar_hidden_test.php`).
 - A slot is markup (a menu, `pg_filter_select()`), a button array `label`/`url`/`icon`/`id` (escaped, drawn in the slot's recipe above) or a list of both. A right cluster with no grow gets an empty grow as spacer. Pinned by `tests/screen_toolbar_test.php`.
-- `pg_page_shell()` draws no buttons: its `actions`/`primary_button`/`action_bar_class` keys and the unstyled `.pg-page-actions` row were removed (only Calendar subscription used them; it now goes back by arrow and breadcrumb). `tests/panel_screen_titles_test.php` refuses the keys.
+- `pg_page_shell()` draws no buttons: its `actions`/`primary_button`/`action_bar_class` keys and the `.pg-page-actions` row were removed; `tests/panel_screen_titles_test.php` refuses the keys.
 
 Related: docs/memory/ui/admin-screen-toolbar-rules.md
