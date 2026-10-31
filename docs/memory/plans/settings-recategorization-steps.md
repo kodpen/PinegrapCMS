@@ -28,7 +28,7 @@ description: Steps R1-R9 of plans/settings-recategorization.md: what each moves,
 - R7, cut in four (size).
   - R7a, done in #3968: a `maintenance` category, "Updates and maintenance", last; Update Channel, Cron Jobs, Alerts, Maintenance Mode left General; their anchors land on it (`ui/settings-modal-architecture.md`).
   - R7b, done in #4020: Backups joins it (card, save, remote test, `?backup_connect=`, an old return to General sent on), anchor `pgset-backup`.
-  - R7c (S) API becomes Integrations, takes Google Reviews from Communication, gets the plan's links.
+  - R7c, done in #4067: API is named Integrations, holds Google Reviews (from Communication) and a Related screens card (`pg_settings_integration_links()`).
   - R7d (M) Private label under Appearance, from `private_label.php`.
 
 - R8 (M) Search. A search box in the dialog covers every category's cards and field labels, from the registry plus the drawn labels. Palette keywords: false hits ("logo" on E-Invoice) and misses (favicon, kvkk, workspace, prefetch, encryption). Headings over the list as decided #3879 (Site, Security, Selling, Running the site; `.pg-sm-group`, a `group` key per category).

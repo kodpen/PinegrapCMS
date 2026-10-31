@@ -29,7 +29,7 @@ Shared
 - `accounting`: ERP and E-Invoice cards from Ecommerce (#3819, `accounting.save.php`), E-Invoice hidden outside Turkey (`pg_edoc_settings_shown()`); the `erp_settings.php` cards from `includes/erp/settings_cards.php` (`erp/erp-settings-cards.md`).
 - `seo`: Site Icon, Social Sharing, Structured Data cards (built in `prep.php`); AI Crawlers holds the AI bot switches; Product Feeds is in `commerce` (#3908).
 - `privacy`: Visitor Tracking (`privacy_analytics.php`), Cookie Consent, Legal Documents (#3899).
-- `api`: Google Reviews came from Communication; Related screens: `pg_settings_integration_links()`, gated per screen (#R7CPR).
+- `api`: Google Reviews came from Communication; Related screens: `pg_settings_integration_links()`, gated per screen (#4067).
 - `maintenance`: Update Channel, Cron Jobs, Backups, Alerts, Maintenance Mode, out of General (#3968; Backups #4020).
 - General › Organization: the organization's identity on one card (`settings-organization-card.md`).
 - Accounts and sign-in and Firewall and HTTPS: the cards moved in #3858 (`settings-security-cards.md`).
