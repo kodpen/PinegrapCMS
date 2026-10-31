@@ -18,6 +18,10 @@ if (!defined('PG_TEST_RUNNER')) {
 	exit;
 }
 
+// The driver file is loaded here, not by the first test that calls
+// pg_label_call(): a test run on its own (a filter) must find its functions.
+pg_label_load('sendcloud');
+
 function carrier_label_sendcloud_test_fixture($name)
 {
 	return (string) file_get_contents(dirname(__FILE__) . '/fixtures/sendcloud/' . $name);
@@ -41,8 +45,6 @@ function carrier_label_sendcloud_test_account($changes = array())
 // out after it was sent.
 function carrier_label_sendcloud_test_stub($answers)
 {
-	// A test run on its own (a filter) has not loaded the driver yet.
-	pg_label_load('sendcloud');
 	$GLOBALS['carrier_label_sendcloud_test_sent'] = array();
 
 	pg_label_sendcloud_transport(function ($method, $url, $headers, $body) use (&$answers) {
@@ -863,7 +865,6 @@ function test_carrier_label_sendcloud_long_refusal_is_cut_on_a_character()
 function test_carrier_label_sendcloud_long_name_keeps_the_body()
 {
 	$bodies = array();
-	pg_label_load('sendcloud');
 	pg_label_sendcloud_transport(function ($method, $url, $headers, $body) use (&$bodies) {
 		$bodies[] = $body;
 

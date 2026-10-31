@@ -16,7 +16,7 @@ description: The legacy page designer (page_designer.php) retired in 2026.11.0: 
 
 ## What went in L5, and what stays?
 - Gone (PR #3141): the three files (`clean_up.php` deletes them on an updated site: an update deletes nothing), the toolbar's "Open Page Designer", the menu case, the help row, the session key `software.page_designer` and the api.php actions only its script called (`get_page`, `get_style`, `update_style`, `get_layout`, `update_layout`, `get_file`, `update_file`, `get_items_in_style`, `get_design_files`, `get_designer_region`, `get_dynamic_region(s)`, `update_designer_region`, `update_dynamic_region`, `create_design_region`, `create_dynamic_region`, `update_page_designer_properties`): such a call meets the general gate, then "Invalid action.".
-- Kept: `get_styles` and `get_designer_regions`, which `migration.php` reads from another site beside `get_common_regions`, `get_folders`, `get_pages` and `test`.
+- Kept: `get_styles` and `get_designer_regions`, which `migration.php` reads from another site beside `get_common_regions`, `get_folders`, `get_pages` and `test`. `get_styles` reads `code` with `!empty()`: a call without it printed an "Undefined array key" warning before the JSON (#4356).
 
 ## Which rules stay?
 - The legacy custom style layer is production (`workflow/decisions-made-product.md`): conversion never runs by itself; the renderers and layout templates are not touched.

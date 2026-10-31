@@ -18,6 +18,10 @@ if (!defined('PG_TEST_RUNNER')) {
 	exit;
 }
 
+// The driver file is loaded here, not by the first test that calls
+// pg_label_call(): a test run on its own (a filter) must find its functions.
+pg_label_load('basitkargo');
+
 function carrier_label_basitkargo_test_fixture($name)
 {
 	return (string) file_get_contents(dirname(__FILE__) . '/fixtures/basitkargo/' . $name);
@@ -39,8 +43,6 @@ function carrier_label_basitkargo_test_account($changes = array())
 // times out after it was sent.
 function carrier_label_basitkargo_test_stub($answers)
 {
-	// A test run on its own (a filter) has not loaded the driver yet.
-	pg_label_load('basitkargo');
 	$GLOBALS['carrier_label_basitkargo_test_sent'] = array();
 
 	pg_label_basitkargo_transport(function ($method, $url, $headers, $body) use (&$answers) {
