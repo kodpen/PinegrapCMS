@@ -722,13 +722,7 @@ function pg_contact_list_address_line($label, $parts)
  */
 function pg_contact_list_row_name($contact)
 {
-    $name = trim(($contact['first_name'] ?? '') . ' ' . ($contact['last_name'] ?? ''));
-
-    if ($name === '') {
-        $name = trim($contact['company'] ?? '');
-    }
-
-    return ($name !== '') ? $name : (string) ($contact['email_address'] ?? '');
+    return pg_contact_heading_name($contact);
 }
 
 /**

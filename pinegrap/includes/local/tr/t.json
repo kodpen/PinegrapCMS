@@ -2907,7 +2907,7 @@
     "The passkeys part has something to say (the site can use them, or the account keeps some)": "Geçiş anahtarları bölümünün söyleyeceği bir şey var (site bunları kullanabilir veya hesapta bazıları var)",
     "The password cannot be kept as typed.": "Şifre yazıldığı gibi saklanamıyor.",
     "The password has just been set": "Şifre az önce belirlendi",
-    "The password is '{var:1}'. The user has not been notified.": "Şifre '{var:1}'. Kullanıcı bilgilendirilmedi.",
+    "The password is '{var:1}'. The user has not been notified.": "Parola '{var:1}'. Kullanıcı bilgilendirilmedi.",
     "The password is stored and is not shown. Leave the box empty to keep it.": "Parola kayıtlı, ekranda gösterilmez. Korumak için kutuyu boş bırakın.",
     "The password of the sending server cannot be read; enter it again.": "Gönderme sunucusunun parolası okunamıyor; yeniden girin.",
     "The password reset e-mail page shows no set password link, so the built-in e-mail was sent.": "Şifre sıfırlama e-postası sayfasında şifre belirleme bağlantısı yok; bu yüzden yerleşik e-posta gönderildi.",

@@ -1502,6 +1502,27 @@ function pg_contact_display_name($first_name, $last_name, $nickname = '')
 }
 
 /**
+ * The name a contact is shown by in a heading or a list row: the full name,
+ * else the company, else the e-mail address ('' when it has none of them).
+ * A contact created from a user account has only the e-mail address. Pure.
+ *
+ * @param array $contact first_name, last_name, company, email_address
+ * @return string unescaped
+ */
+function pg_contact_heading_name($contact)
+{
+    foreach (array(trim(($contact['first_name'] ?? '') . ' ' . ($contact['last_name'] ?? '')), $contact['company'] ?? '', $contact['email_address'] ?? '') as $name) {
+        $name = trim((string) $name);
+
+        if ($name !== '') {
+            return $name;
+        }
+    }
+
+    return '';
+}
+
+/**
  * The contacts a person with the user role (3) may open, as SQL: those filed
  * in a contact group given to them (users_contact_groups_xref), the rule of
  * validate_contact_access() written as one condition. A contact in no group,
