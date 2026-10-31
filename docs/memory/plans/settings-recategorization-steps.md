@@ -27,7 +27,7 @@ description: Steps R1-R9 of plans/settings-recategorization.md: what each moves,
 
 - R7, cut in four (size).
   - R7a, done in #3968: a `maintenance` category, "Updates and maintenance", last; Update Channel, Cron Jobs, Alerts, Maintenance Mode left General; their anchors land on it (`ui/settings-modal-architecture.md`).
-  - R7b (M) Backups joins it (card, save, remote test, `?backup_connect=`), anchor `pgset-backup`.
+  - R7b, done in #4020: Backups joins it (card, save, remote test, `?backup_connect=`, an old return to General sent on), anchor `pgset-backup`.
   - R7c (S) API becomes Integrations, takes Google Reviews from Communication, gets the plan's links.
   - R7d (M) Private label under Appearance, from `private_label.php`.
 
