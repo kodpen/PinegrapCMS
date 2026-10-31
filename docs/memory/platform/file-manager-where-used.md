@@ -9,7 +9,7 @@ description: The file manager's "Where used" (explorer_file_usage): the sources 
 
 ## When does a hit link?
 - Every name is listed for anyone who sees the file's folder; `url` is given only when the target screen admits the viewer (`pg_explorer_file_usage_screen_open()`), else `''` and the JS prints plain text. Pages and page regions: `check_edit_access(page_folder)` (asked once per folder). Common and designer regions, classic styles (`edit_custom_style.php`): role <= 1. Dynamic regions: role 0. Products and product groups: `USER_MANAGE_ECOMMERCE`. Ads: role < 3, or the ad's `ad_region_id` in `get_items_user_can_edit('ad_regions')`. Visual designer styles (`edit_system_style.php`) always link: `pg_designer_access()` admits roles 2-3 at content level.
-- Why: each of those screens ended on "Access denied" for Managers or role-3 file users (PR #NNNN). Names outside a role-3 user's folders still show (a disclosure question, not decided).
+- Why: each of those screens ended on "Access denied" for Managers or role-3 file users (PR #4056). Names outside a role-3 user's folders still show (a disclosure question, not decided).
 
 ## How does the Workspace count?
 - Behind `WORKSPACE_ENABLED`, `bootstrap.php` and `ws_enabled()`, for a member (`ws_viewer($user)['member']`): `ws_file_usage()` (includes/workspace/files.php) reads by id, not by name: the messages that carry the file (`ws_messages.file_id`, `idx_file`; a discussion's copy in its channel carries the same file) and the messages and tasks that tag it (`<#file:ID>`, `ws_refs` through `ws_record_refs()`, `idx_ref`). `ws_file_usage_groups()` makes two groups, "Workspace messages" (channel · words, or the file's name) and "Workspace tasks" (title · status), each linking to the message or the task.
