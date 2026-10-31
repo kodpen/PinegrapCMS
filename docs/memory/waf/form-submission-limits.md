@@ -13,7 +13,7 @@ description: custom_form.php per visitor address, per e-mail and per domain limi
 - Runs before the hook code, so a hook that ends the request (`go()`, `exit`) is still counted. A refused submission is counted too, and so is one the hook later refuses.
 - Fails open like every `waf_rate` counter (a counter that cannot be written returns 0).
 - Refusal: "Too many submissions. Please try again later.", `waf_log_event('rate', 'form-<scope>', ...)` and a `DENY rule=form-<scope>` line in `data/firewall.log`. No offence is registered: the domain counter is shared by innocent visitors.
-- Works with the firewall off; sweeps itself (1 in 50). `waf_rate_sweep_queries()` keeps `|cfr` keys 24 h (`waf_rate_long_scopes()`).
+- Works with the firewall off; sweeps itself (1 in 50). `waf_rate_sweep_queries()` keeps the `waf_rate_long_scopes()` keys 24 h: `|cfr`, and `|eaf`, E-mail a Friend's 10 e-mails a day per `pg_auth_request_address()` (`email_a_friend.php`: `waf_rate_hits()` before sending, `waf_rate_record()` after, folder editors exempt; #3802, #3818). Before #3818 that limit counted Site Log rows by their English text, so the line could not be translated.
 
 ## Where are the numbers set?
 - `config.form_limit_ip_hour` 10, `form_limit_recipient_day` 3, `form_limit_domain_hour` 0, off (2026.11.0 step 11.0.28); Site Settings, Security, Session & Password card. 0 turns a limit off; clamped 0..10000. Before the step, `waf_setting()` gives the same defaults.

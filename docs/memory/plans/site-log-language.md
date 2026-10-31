@@ -18,7 +18,7 @@ description: Plan: the Site Log writers still passing bare English to log_activi
 
 ## What is left?
 - `includes/fn/layouts.php` (136): bare literal. Held by draft #3141; start after it lands.
-- `email_a_friend.php` 158: decided #3802 (`workflow/decisions-made-product-11.md`): the limit at 84 moves to the WAF rate store (scope `eaf`, 86400 s in `waf_rate_long_scopes()`; `waf_rate_hits()` before sending, `waf_rate_record()` after), then the line goes through `pg_log_lang()` (`waf.php`).
+- `email_a_friend.php`: done #3818 (#3802): the daily limit is the WAF rate scope `eaf` (`waf/form-submission-limits.md`); the line goes through `pg_log_lang()`; listed in the test.
 - `includes/settings/commerce.save.php` 693 logs `parasut_connect_report()`'s line: part of the owner's ERP work, not checked.
 - Part 5 done #3800: `custom_form.php` (access denied, auto-login, key code), `logout()` in `includes/fn/forms.php` and the quote guest signature (`includes/erp/quote_links.php`) go through `pg_log_lang()`; the panel-only files it checked keep `lang()` (listed in the test).
 - Part 6: the checkout auto-invoice path (`includes/erp/order_flow.php`, `includes/erp/mail.php` 'auto' mode, `includes/erp/order_bridge.php`). All in one PR, so a checkout does not log in two languages.

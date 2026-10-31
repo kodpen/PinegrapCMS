@@ -79,14 +79,10 @@ if ($liveform->check_form_errors() == false) {
     
     // if the visitor does not have edit rights to the page's folder, then check to see if the user has reached the usage limit for this feature
     if ($edit_rights == false) {
-        // Check log table to see how many times this visitor has used this feature in the last day,
-        // by the address log_activity() records for the row (includes/authentication.php).
-        $query = "SELECT COUNT(log_id) FROM log WHERE (log_description LIKE '%e-mailed a link%') AND (log_timestamp > (UNIX_TIMESTAMP() - 86400)) AND (log_ip = ?)";
-        $result = db_q($query, array(pg_auth_request_address())) or output_error('Query failed.');
-        $row = mysqli_fetch_row($result);
-        
-        // if the user has reached the limit of ten e-mails in a day, then do not allow user to send email and output error message.
-        if ($row[0] >= 10) {
+        // The visitor's address may send ten e-mails a day, counted in the
+        // firewall's rate store (scope 'eaf', kept past the hourly sweep by
+        // waf_rate_long_scopes()). Fails open where the store is not loaded.
+        if (function_exists('waf_rate_hits') && (waf_rate_hits(pg_auth_request_address(), 'eaf', 86400) >= 10)) {
             $liveform->mark_error('', lang('You have sent the maximum number of e-mails that you are allowed to send in one day. Please try again later.'));
         }
     }
@@ -153,9 +149,13 @@ email(array(
     'subject' => $subject,
     'body' => $body));
 
+// count the sent e-mail on the visitor's daily limit
+if (function_exists('waf_rate_record')) {
+    waf_rate_record(pg_auth_request_address(), 'eaf', 86400);
+}
+
 // log that the user e-mailed a page to a friend
-// IMPORTANT!!!: The content "e-mailed a link" below is used by the spam protection logic above, so don't change this content without updating the spam protection logic
-log_activity($from_email_address . ' e-mailed a link (' . $link_url . ') to a friend', $_SESSION['sessionusername']);
+log_activity(pg_log_lang(array('string' => '{var:1} e-mailed a link ({var:2}) to a friend', 'vars' => array($from_email_address, $link_url))), $_SESSION['sessionusername']);
 
 // get next page id
 $query =
