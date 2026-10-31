@@ -303,26 +303,21 @@ print
                 ' . $liveform->get_warnings() . '
                 ' . $liveform->output_notices() . '
                
-                <div class="row mb-3  flex-wrap">
-                    <div class="col-12 sm:col-12 md:col-6 xl:col-9 text-center md:text-start">
-                        
-                        <nav id="button_bar" class="navigation " aria-label="' . h(lang('Button Bar')) . '">
-                            <a class="btn btn-sm btn-solid theme-primary m-1 " href="add_ad.php"><span class="bi bi-plus-circle me-3"></span>' . lang(array('string'=>'Create') ) . '</a>
-                            <div class="pg-toolbar-grow"></div>
-                            ' . pg_list_sort_menu('view_ads.php', $sort_columns, $sort_levels, $sort_default) . '
-                        </nav>
-                    </div>
-                    <div class="col-12 sm:col-12 md:col-6 xl:col-3 ">
-                        <div class="row justify-content-center md:justify-content-end">
-                            <form id="search_form" action="view_ads.php" method="get" class="search_form col-auto">
-                                <div class="input-group input-group-sm">
-                                    <label class="input-group-text mt-1 mb-1 material-icons" title="' . lang('Content that viewed') . '" for="ad_region_id">visibility</label>
-                                    <select id="ad_region_id" aria-label="' . h(lang('Content that viewed')) . '" name="ad_region_id" class="form-control mt-1 mb-1" title="' . lang('Content that viewed') . '" onchange="submit_form(\'search_form\')"><option value="[All]">[' . lang('All') . '] (' . pg_format_number($all_ads, 0) . ')</option>' . $output_ad_region_options . '</select>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                </div>
+                ' . pg_screen_toolbar(array(
+                    'primary' => array('label' => lang('Create'), 'url' => 'add_ad.php', 'icon' => 'bi-plus-circle'),
+                    'search'  => array(
+                        pg_list_sort_menu('view_ads.php', $sort_columns, $sort_levels, $sort_default),
+                        // The ad region filter: its options carry counts, so the
+                        // form is drawn here rather than by pg_filter_select().
+                        '<form id="search_form" action="view_ads.php" method="get" class="pg-toolbar-filter disable_shortcut">
+                            <div class="input-group input-group-sm w-auto flex-nowrap">
+                                <label class="input-group-text" title="' . h(lang('Content that viewed')) . '" for="ad_region_id"><i class="bi bi-eye" aria-hidden="true"></i></label>
+                                <select id="ad_region_id" aria-label="' . h(lang('Content that viewed')) . '" name="ad_region_id" class="form-control form-control-sm w-auto" onchange="this.form.submit()"><option value="[All]">[' . lang('All') . '] (' . pg_format_number($all_ads, 0) . ')</option>' . $output_ad_region_options . '</select>
+                            </div>
+                            <noscript><button type="submit" class="btn btn-sm btn-outline theme-secondary">' . h(lang('Apply')) . '</button></noscript>
+                        </form>',
+                    ),
+                )) . '
                 <div class="card my-7">
                     <div class="card-body p-0 position-relative">
                         <table class="chart table-hover table" style="width:100%;display:none">

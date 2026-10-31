@@ -179,16 +179,9 @@ if (!$_POST) {
             <div class="col-12">
                 ' . $liveform->output_errors() . '
                 ' . $liveform->output_notices() . '
-                <div class="row mb-3  flex-wrap">
-                    <div class="col-12 sm:col-12 text-center md:text-start">
-
-                        <nav id="button_bar" class="navigation " aria-label="' . h(lang('Button Bar')) . '">
-                            <div class=" btn-group btn-group-sm flex-wrap">
-                                ' . ($short_link_is_pattern ? '' : '<a class="btn btn-link pg-link-secondary py-0 mb-3 "  href="' . OUTPUT_PATH . h(encode_url_path($short_link['name'])) . '" target="_blank"><span class="material-icons me-1">link</span>' . lang('Visit') . '</a>') . '
-                            </div>
-                        </nav>
-                    </div>
-                </div>
+                ' . pg_screen_toolbar(array(
+                    'secondary' => ($short_link_is_pattern ? '' : '<a class="btn btn-sm btn-text theme-secondary" href="' . OUTPUT_PATH . h(encode_url_path($short_link['name'])) . '" target="_blank"><i class="bi bi-link-45deg me-1" aria-hidden="true"></i>' . lang('Visit') . '</a>'),
+                )) . '
                 <form name="form" action="edit_short_link.php" method="post">
                     ' . get_token_field() . '
                     ' . $liveform->output_field(array('type'=>'hidden', 'name'=>'id', 'value'=>$_GET['id'])) . '

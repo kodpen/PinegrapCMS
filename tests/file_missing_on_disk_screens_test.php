@@ -32,7 +32,7 @@ function test_file_missing_on_disk_file_screens_check_the_disk_once()
 		pg_assert_true(strpos($source, "lang('The file is recorded here but is not on the disk.')") !== false, $screen . ' shows the note');
 		// Open in New Tab and Download are built only for a file on the disk.
 		pg_assert_true(strpos($source, "\$output_file_links = '';") !== false, $screen . ' defaults the links to empty');
-		pg_assert_true(strpos($source, "' . \$output_file_links . '") !== false, $screen . ' prints the links through the variable');
+		pg_assert_true(strpos($source, "array(\$image_buttons, \$output_file_links)") !== false, $screen . ' prints the links through the variable');
 		pg_assert_same(1, substr_count($source, "lang('Open in New Tab')"), $screen . ' has one Open in New Tab link');
 		pg_assert_true(strpos($source, "if (\$on_disk && (") !== false, $screen . ' offers the image tools only for a file on the disk');
 	}

@@ -545,26 +545,16 @@ if (!isset($_POST['name'])) {
                     <input type="hidden" name="id" value="' . h($_GET['id']) . '"><input type="hidden" name="from" value="' . h($from) . '">
                     <input type="hidden" id="send_to" name="send_to" value="' . (isset($_REQUEST['send_to']) ? h($_REQUEST['send_to']) : '') . '" />
 
-                    <div class="row mb-3  flex-wrap">
-                        <div class="col-12 sm:col-12 text-center md:text-start">
-<div class="row mb-3">
-                                <div class="col-12 md:col">
-                                    
-                                    <p class="p-0 m-0">' . lang('File Size') . ': '. $output_file_size . $output_image_info . '</p>
-                                    <p class="p-0 m-0 ' . h(get_access_control_type($file_folder)) . '">' . lang('Access') . ': ' . h(get_access_control_type_name(get_access_control_type($file_folder))) . '</p>
-                                </div>
-                            </div>
-                            <nav id="button_bar" class="navigation " aria-label="' . h(lang('Button Bar')) . '">
-                                <div class=" btn-group btn-group-sm flex-wrap">
-                                    ' . $image_buttons . '
-                                    ' . $output_file_links . '
-                                </div>
-                            </nav>
-                            <div class="row mb-3">
-                                <div class="col-12">
-                                    ' . $output_thumbnail . '
-                                </div>
-                            </div>
+                    <div class="mb-3 text-center md:text-start">
+                        <p class="p-0 m-0">' . lang('File Size') . ': '. $output_file_size . $output_image_info . '</p>
+                        <p class="p-0 m-0 ' . h(get_access_control_type($file_folder)) . '">' . lang('Access') . ': ' . h(get_access_control_type_name(get_access_control_type($file_folder))) . '</p>
+                    </div>
+                    ' . pg_screen_toolbar(array(
+                        'secondary' => array($image_buttons, $output_file_links),
+                    )) . '
+                    <div class="row mb-3">
+                        <div class="col-12">
+                            ' . $output_thumbnail . '
                         </div>
                     </div>
                     <div class="row justify-content-center">

@@ -596,32 +596,20 @@ if (!$_POST) {
                 ' . $liveform->output_errors() . '
                 ' . $liveform->get_warnings() . '
                 ' . $liveform->output_notices() . '
-                <div class="row mb-3  flex-wrap">
-                    <div class="col-12 sm:col-12 md:col-6 xl:col-9 text-center md:text-start">
-                        
-                        <nav id="button_bar" class="navigation " aria-label="' . h(lang('Button Bar')) . '">
-                            ' . $output_control_buttons . '
-                            <div class="pg-toolbar-grow"></div>
-                            ' . pg_list_sort_menu('view_log.php', $sort_columns, $sort_levels, $sort_default, array(
-                                'start_month' => $start_month,
-                                'start_day'   => $start_day,
-                                'start_year'  => $start_year,
-                                'stop_month'  => $stop_month,
-                                'stop_day'    => $stop_day,
-                                'stop_year'   => $stop_year,
-                            )) . '
-                        </nav>
-                    </div>
-                    <div class="col-12 sm:col-12 md:col-6 xl:col-3 ">
-                        <div class="row justify-content-center md:justify-content-end">
-                            <form action="view_log.php" method="get" name="form" class="search_form col-auto">
-                                <div class="input-group input-group-sm">   
-                                    <a class="btn btn-sm  my-1 ' . $output_advanced_filters_class . '" title="' . $output_advanced_filters_label . '" aria-label="' . $output_advanced_filters_label . '" href="view_log.php?advanced_filters=' . $output_advanced_filters_value . '" ><i class="material-icons">'. $advanced_filters_icon . '</i></a>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                </div>
+                ' . pg_screen_toolbar(array(
+                    'secondary' => $output_control_buttons,
+                    'search'  => array(
+                        pg_list_sort_menu('view_log.php', $sort_columns, $sort_levels, $sort_default, array(
+                            'start_month' => $start_month,
+                            'start_day'   => $start_day,
+                            'start_year'  => $start_year,
+                            'stop_month'  => $stop_month,
+                            'stop_day'    => $stop_day,
+                            'stop_year'   => $stop_year,
+                        )),
+                        '<a class="btn btn-sm ' . $output_advanced_filters_class . '" title="' . $output_advanced_filters_label . '" aria-label="' . $output_advanced_filters_label . '" href="view_log.php?advanced_filters=' . $output_advanced_filters_value . '"><i class="material-icons" aria-hidden="true">' . $advanced_filters_icon . '</i></a>',
+                    ),
+                )) . '
                 ' . $output_advanced_filters . '
                 ' . $output_toolbar . '
                 <div class="card my-7">

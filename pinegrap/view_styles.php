@@ -151,17 +151,11 @@ pg_page_shell([
             ' . $liveform->output_errors() . '
             ' . $liveform->get_warnings() . '
             ' . $liveform->output_notices() . '
-            <div class="row mb-3  flex-wrap">
-                <div class="col-12 text-center md:text-start">
-                    
-                    <nav id="button_bar" class="navigation " aria-label="' . h(lang('Button Bar')) . '">
-                        <a class="btn btn-sm btn-solid theme-primary m-1 " href="add_custom_style.php"><span class="bi bi-plus-circle me-3"></span>' . lang(array('string'=>'Create') ) . '</a>
-                        <a class="btn btn-sm btn-outline theme-secondary m-1 " href="view_system_styles.php"><span class="bi bi-magic me-3"></span>' . lang('Visual Page Editor') . '</a>
-                        <div class="pg-toolbar-grow"></div>
-                        ' . pg_list_sort_menu('view_styles.php', $sort_columns, $sort_levels, $sort_default) . '
-                    </nav>
-                </div>
-            </div>
+            ' . pg_screen_toolbar(array(
+                'primary'   => array('label' => lang('Create'), 'url' => 'add_custom_style.php', 'icon' => 'bi-plus-circle'),
+                'secondary' => array('label' => lang('Visual Page Editor'), 'url' => 'view_system_styles.php', 'icon' => 'bi-magic'),
+                'search'    => pg_list_sort_menu('view_styles.php', $sort_columns, $sort_levels, $sort_default),
+            )) . '
             <div class="card my-7">
                 <div class="card-body p-0 position-relative">
                     <form name="form" action="delete_styles.php" method="post" class="disable_shortcut"> 

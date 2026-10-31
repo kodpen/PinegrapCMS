@@ -60,7 +60,8 @@ function test_email_campaign_list_ligatures_hidden_and_landmarks_translated()
 		$source = email_campaign_list_names_source($path);
 		pg_assert_false(strpos($source, 'aria-label="Button Bar"') !== false, $path . ': literal landmark name');
 		pg_assert_false(strpos($source, 'aria-label="data edit buttons') !== false, $path . ': literal landmark name');
-		pg_assert_contains("aria-label=\"' . h(lang('Button Bar')) . '\"", $source, $path);
+		// The toolbar's landmark name comes from pg_screen_toolbar(), translated.
+		pg_assert_contains('pg_screen_toolbar(', $source, $path);
 		// Every live ligature span carries aria-hidden; commented-out markup is ignored.
 		$live = preg_replace('/<!--.*?-->/s', '', $source);
 		pg_assert_false((bool) preg_match('/<span class="material-icons[^"]*">/', $live), $path . ': ligature span read aloud');
@@ -74,5 +75,5 @@ function test_email_campaign_profiles_toolbar_full_width()
 {
 	$source = email_campaign_list_names_source('view_email_campaign_profiles.php');
 	pg_assert_false(strpos($source, 'col-12 sm:col-12 md:col-6 xl:col-9') !== false, 'toolbar column stops at half width');
-	pg_assert_contains('<div class="col-12 text-center md:text-start">', $source);
+	pg_assert_contains('pg_screen_toolbar(', $source, 'the bar is the full-width screen toolbar');
 }

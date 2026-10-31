@@ -67,7 +67,7 @@ function test_button_bar_placement_view_pages_four_buttons_and_one_menu()
 	foreach (array('Add Page (Legacy)', 'Update Search Index', 'Refresh SEO Scores', 'Analyze HTML Structure', 'Accessibility report') as $label) {
 		$found = false;
 		foreach (explode("\n", $block) as $line) {
-			if (strpos($line, $label) !== false) {
+			if ((strpos($line, $label) !== false) && (strpos(ltrim($line), '//') !== 0)) {
 				$found = true;
 				pg_assert_contains('menu-item', $line, 'view_pages.php: ' . $label . ' is a menu row');
 			}

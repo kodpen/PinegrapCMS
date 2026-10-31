@@ -645,37 +645,30 @@ output_header_secure(array('title'=>lang('Browse Items'),'icon'=>'folder')) . '
 </nav>
 <main class="container">
     <p class="form-text mt-5 mb-0 text-center md:text-start">' . lang('Select the Page, File, or Short Link that you want to link to.') . '</p>
-    <div class="row mb-3 flex-wrap">
-        <div class="col-12 sm:col-12 md:col-6 xl:col-9 text-center md:text-start">
-            <nav id="button_bar" class="navigation " aria-label="' . h(lang('Button Bar')) . '">
-                <form id="export_form" class="disable_shortcut d-inline-block" method="get">
-                    <div class=" btn-group btn-group-sm flex-wrap">
-
-                        <a class="btn btn-outline theme-secondary my-3' . $output_type_page_class . '" href="editor_select_page_or_file.php?type=page&CKEditorFuncNum=' . h(urlencode(($_GET['CKEditorFuncNum'] ?? ''))) . '"><span class="material-icons me-1" aria-hidden="true">desktop_windows</span>' . lang('Pages') . '</a>
-                        <a class="btn btn-outline theme-secondary my-3' . $output_type_file_class . '" href="editor_select_page_or_file.php?type=file&CKEditorFuncNum=' . h(urlencode(($_GET['CKEditorFuncNum'] ?? ''))) . '"><span class="material-icons me-1" aria-hidden="true">insert_drive_file</span>' . lang('Files') . '</a>
-                        ' . ((USER_ROLE < 3) ? '<a class="btn btn-outline theme-secondary my-3' . $output_type_short_link_class . '" href="editor_select_page_or_file.php?type=short_link&CKEditorFuncNum=' . h(urlencode(($_GET['CKEditorFuncNum'] ?? ''))) . '"><span class="material-icons me-1" aria-hidden="true">link</span>' . lang('Short Links') . '</a>' : '') . '
-                    </div>
-                </form>
-                <div class="pg-toolbar-grow"></div>
-                ' . pg_list_sort_menu('editor_select_page_or_file.php', $sort_columns, $sort_levels, $sort_default, array('CKEditorFuncNum' => ($_GET['CKEditorFuncNum'] ?? ''))) . '
-            </nav>
-        </div>
-        <div class="col-12 sm:col-12 md:col-6 xl:col-3 ">
-            <div class="row justify-content-center md:justify-content-end">
-                <form id="search" action="editor_select_page_or_file.php" method="get" class="search_form col-auto">
-                    <input type="hidden" name="CKEditorFuncNum" value="' . h(($_GET['CKEditorFuncNum'] ?? '')) . '" />
-                    <div class="input-group input-group-sm">
-                        <label class="input-group-text mt-1 mb-1 material-icons" title="' . lang('Folder') . '" for="folder_id">folder</label>
-                        <select id="folder_id" aria-label="' . h(lang('Folder')) . '" name="folder_id" class="form-control mt-1 mb-1" title="' . lang('Folder') . '" onchange="submit_form(\'search\')"><option value="all">[' . lang('All') . ']</option>' . select_folder(($_SESSION['software']['editor_select_page_or_file']['folder_id'] ?? '')) . '</select>
-                    </div>
-                    <div class="input-group input-group-sm">
-                        <label class="input-group-text mt-1 mb-1 material-icons" title="' . lang('Access') . '" for="access_control_type">verified_user</label>
-                        <select id="access_control_type" aria-label="' . h(lang('Access')) . '" name="access_control_type" class="form-control mt-1 mb-1 ' . h(($_SESSION['software']['editor_select_page_or_file']['access_control_type'] ?? '')) . '" title="' . lang('Access') . '" onchange="submit_form(\'search\')"><option value="all" class="all">[' . lang('All') . ']</option>' . select_access_control_type(($_SESSION['software']['editor_select_page_or_file']['access_control_type'] ?? ''), false) . '</select>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
+    ' . pg_screen_toolbar(array(
+        'search' => array(
+            pg_list_sort_menu('editor_select_page_or_file.php', $sort_columns, $sort_levels, $sort_default, array('CKEditorFuncNum' => ($_GET['CKEditorFuncNum'] ?? ''))),
+            // Folder and access narrow the list together: one form, so a change
+            // of one keeps the other.
+            '<form id="search" action="editor_select_page_or_file.php" method="get" class="pg-toolbar-filter disable_shortcut flex-wrap row-gap-2">
+                <input type="hidden" name="CKEditorFuncNum" value="' . h(($_GET['CKEditorFuncNum'] ?? '')) . '" />
+                <div class="input-group input-group-sm w-auto flex-nowrap">
+                    <label class="input-group-text" title="' . h(lang('Folder')) . '" for="folder_id"><i class="bi bi-folder" aria-hidden="true"></i></label>
+                    <select id="folder_id" aria-label="' . h(lang('Folder')) . '" name="folder_id" class="form-control form-control-sm w-auto" onchange="this.form.submit()"><option value="all">[' . lang('All') . ']</option>' . select_folder(($_SESSION['software']['editor_select_page_or_file']['folder_id'] ?? '')) . '</select>
+                </div>
+                <div class="input-group input-group-sm w-auto flex-nowrap">
+                    <label class="input-group-text" title="' . h(lang('Access')) . '" for="access_control_type"><i class="bi bi-shield-check" aria-hidden="true"></i></label>
+                    <select id="access_control_type" aria-label="' . h(lang('Access')) . '" name="access_control_type" class="form-control form-control-sm w-auto ' . h(($_SESSION['software']['editor_select_page_or_file']['access_control_type'] ?? '')) . '" onchange="this.form.submit()"><option value="all" class="all">[' . lang('All') . ']</option>' . select_access_control_type(($_SESSION['software']['editor_select_page_or_file']['access_control_type'] ?? ''), false) . '</select>
+                </div>
+                <noscript><button type="submit" class="btn btn-sm btn-outline theme-secondary">' . h(lang('Apply')) . '</button></noscript>
+            </form>',
+        ),
+        'view' => '<div class="btn-group btn-group-sm" role="group" aria-label="' . h(lang('View')) . '">
+            <a class="btn btn-text theme-secondary' . $output_type_page_class . '" href="editor_select_page_or_file.php?type=page&amp;CKEditorFuncNum=' . h(urlencode(($_GET['CKEditorFuncNum'] ?? ''))) . '"><i class="bi bi-window me-1" aria-hidden="true"></i>' . lang('Pages') . '</a>
+            <a class="btn btn-text theme-secondary' . $output_type_file_class . '" href="editor_select_page_or_file.php?type=file&amp;CKEditorFuncNum=' . h(urlencode(($_GET['CKEditorFuncNum'] ?? ''))) . '"><i class="bi bi-file-earmark me-1" aria-hidden="true"></i>' . lang('Files') . '</a>
+            ' . ((USER_ROLE < 3) ? '<a class="btn btn-text theme-secondary' . $output_type_short_link_class . '" href="editor_select_page_or_file.php?type=short_link&amp;CKEditorFuncNum=' . h(urlencode(($_GET['CKEditorFuncNum'] ?? ''))) . '"><i class="bi bi-link-45deg me-1" aria-hidden="true"></i>' . lang('Short Links') . '</a>' : '') . '
+        </div>',
+    )) . '
     <div class="card my-7">
         <div class="card-header chart-buttons justify-content-end d-flex flex-wrap"></div>
         <div class="card-body p-0 position-relative">

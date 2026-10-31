@@ -135,16 +135,10 @@ pg_page_shell(
             ' . $liveform->output_errors() . '
             ' . $liveform->get_warnings() . '
             ' . $liveform->output_notices() . '
-            <div class="row mb-3  flex-wrap">
-                <div class="col-12 text-center md:text-start">
-                    
-                    <nav id="button_bar" class="navigation " aria-label="' . h(lang('Button Bar')) . '">
-                        ' . $output_add_calendar_button . '
-                        <div class="pg-toolbar-grow"></div>
-                        ' . pg_list_sort_menu('view_calendars.php', $sort_columns, $sort_levels, $sort_default) . '
-                    </nav>
-                </div>
-            </div>
+            ' . pg_screen_toolbar(array(
+                'primary' => $output_add_calendar_button,
+                'search'  => pg_list_sort_menu('view_calendars.php', $sort_columns, $sort_levels, $sort_default),
+            )) . '
             <div class="card my-7">
                 <div class="card-body p-0 position-relative">
                     <table class="chart table-hover table " style="width:100%;display:none">

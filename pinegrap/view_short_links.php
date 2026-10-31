@@ -255,22 +255,18 @@ pg_page_shell(
             ' . $liveform->output_errors() . '
             ' . $liveform->get_warnings() . '
             ' . $liveform->output_notices() . '
-            <div class="row mb-3  flex-wrap">
-                <div class="col-12 text-center md:text-start">
-                    
-                    <nav id="button_bar" class="navigation " aria-label="' . h(lang('Button Bar')) . '">
-                        <a class="btn btn-sm btn-solid theme-primary m-1 " href="add_short_link.php"><span class="bi bi-plus-circle me-3"></span>' . lang(array('string'=>'Create') ) . '</a>
-                        ' . (pg_short_link_redirects_ready() ? '<a class="btn btn-sm btn-text theme-secondary" href="import_short_links.php"><i class="bi bi-upload me-1" aria-hidden="true"></i>' . lang('Import') . '</a>' : '') . '
-                        <a class="btn btn-sm btn-text theme-secondary" href="view_short_links.php?export=csv"><i class="bi bi-download me-1" aria-hidden="true"></i>' . lang('Export') . '</a>
-                        <div class="pg-toolbar-grow"></div>
-                        ' . pg_list_sort_menu('view_short_links.php', $sort_columns, $sort_levels, $sort_default) . '
-                        ' . (pg_not_found_log_ready() ? '<div class="btn-group btn-group-sm" role="group" aria-label="' . h(lang('View')) . '">
-                            <a class="btn btn-text theme-secondary active" href="view_short_links.php" aria-current="page">' . h(lang('Short Links')) . '</a>
-                            <a class="btn btn-text theme-secondary" href="view_not_found_log.php">' . h(lang('404 Log')) . '</a>
-                        </div>' : '') . '
-                    </nav>
-                </div>
-            </div>
+            ' . pg_screen_toolbar(array(
+                'primary'   => array('label' => lang('Create'), 'url' => 'add_short_link.php', 'icon' => 'bi-plus-circle'),
+                'secondary' => array(
+                    (pg_short_link_redirects_ready() ? array('label' => lang('Import'), 'url' => 'import_short_links.php', 'icon' => 'bi-upload') : ''),
+                    array('label' => lang('Export'), 'url' => 'view_short_links.php?export=csv', 'icon' => 'bi-download'),
+                ),
+                'search'    => pg_list_sort_menu('view_short_links.php', $sort_columns, $sort_levels, $sort_default),
+                'view'      => (pg_not_found_log_ready() ? '<div class="btn-group btn-group-sm" role="group" aria-label="' . h(lang('View')) . '">
+                    <a class="btn btn-text theme-secondary active" href="view_short_links.php" aria-current="page">' . h(lang('Short Links')) . '</a>
+                    <a class="btn btn-text theme-secondary" href="view_not_found_log.php">' . h(lang('404 Log')) . '</a>
+                </div>' : ''),
+            )) . '
             <div class="card my-7">
                 <div class="card-body p-0 position-relative">
                     <table class="chart table-hover table " style="width:100%;display:none">

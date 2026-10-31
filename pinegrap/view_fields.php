@@ -491,17 +491,14 @@ pg_page_shell(array(
     <div class="row">
         ' . $liveform->get_messages() . '
         <div class="col-12">
-            <div class="row mb-3  flex-wrap">
-                <div class="col-12 text-center md:text-start">
+            <div class="mb-3 text-center md:text-start">
 <h2 class="d-inline-block text-break" data-bs-content="' . $output_form_designer_content_subheading . '" title="' . $output_form_designer_content_heading . '">[' . $output_form_designer_subnav_heading . ']</h2>
                     ' . $output_form_designer_subnav_subheading . '
-                    <nav id="button_bar" class="navigation " aria-label="' . h(lang('Button Bar')) . '">
-                        ' . $output_create_button . '
-                        ' . $output_layout_buttons . '
-                        ' . $output_preview_button . '
-                    </nav>
-                </div>
             </div>
+            ' . pg_screen_toolbar(array(
+                'primary'   => $output_create_button,
+                'secondary' => array($output_layout_buttons, $output_preview_button),
+            )) . '
             ' . $output_designer_form_notice . '
             <div class="card my-7">
                 <div class="card-body p-0 position-relative">

@@ -43,7 +43,7 @@ function test_key_code_marks_read_as_text()
 
 	pg_assert_contains('<span class="material-icons" aria-hidden="true">task_alt</span><span class="visually-hidden"><?=lang(\'Yes\')?></span>', $src, 'the Single-Use mark reads Yes');
 	pg_assert_false(strpos($src, 'aria-label="Button Bar"') !== false, 'the toolbar landmark is translated');
-	pg_assert_contains('<span class="material-icons me-3" aria-hidden="true">delete_forever</span>', $src, 'the delete ligature is not read');
+	pg_assert_contains('<i class="bi bi-trash me-1" aria-hidden="true"></i>', $src, 'the delete icon is not read');
 
 	$cells = pg_key_code_list_cells(array(
 		'enabled' => '1', 'expiration_date' => '0000-00-00',

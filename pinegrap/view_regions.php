@@ -649,16 +649,10 @@ echo
                 ' . $liveform->get_warnings() . '
                 ' . $liveform->output_notices() . '
                
-                <div class="row mb-3  flex-wrap">
-                    <div class="col-12 text-center md:text-start">
-                        
-                        <nav id="button_bar" class="navigation " aria-label="' . h(lang('Button Bar')) . '">
-                            ' . $button_bar_button . '
-                            <div class="pg-toolbar-grow"></div>
-                            ' . $output_sort_menu . '
-                        </nav>
-                    </div>
-                </div>
+                ' . pg_screen_toolbar(array(
+                    'primary' => $button_bar_button,
+                    'search'  => $output_sort_menu,
+                )) . '
                 <div class="card my-7">
                     <div class="card-body p-0 position-relative">
                         <table class="chart table-hover table " style="width:100%;display:none">

@@ -21,8 +21,7 @@ if (!defined('PG_INIT_LOADED')) {
     <div class="row">
         <div class="col-12">
 			<?=$liveform->get_messages()?>
-            <div class="row mb-3  flex-wrap">
-                <div class="col-12 sm:col-12 text-center md:text-start">
+            <div class="mb-3 text-center md:text-start">
                     <nav class="navigation" aria-label="breadcrumb">
                         <ol class="breadcrumb justify-content-center md:justify-content-start "> 
                             <li class="breadcrumb-item"><a class="pg-link-secondary " href="<?=OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY?>/view_auto_dialogs.php"><?=lang('All Auto Dialogs')?></a></li>
@@ -33,15 +32,12 @@ if (!defined('PG_INIT_LOADED')) {
 						[<?php if ($screen == 'create'): ?><?=lang('Auto Dialog Name')?><?php else: ?><?=h($auto_dialog['name'])?><?php endif ?>]
 					</h2>
 					<p class="form-text mt-0"><?php if ($screen == 'create'): ?><?=lang('Create a new auto dialog that can automatically popup for visitors. You may preview the auto dialog on the next screen and then enable it for all visitors when desired.')?><?php else: ?><?=lang('Edit an auto dialog that can automatically popup for visitors.')?><?php endif ?></p>
-					<?php if ($screen == 'edit'): ?>
-						<nav id="button_bar" class="navigation " aria-label="<?= h(lang('Button Bar')) ?>">
-                			<div class=" btn-group btn-group-sm flex-wrap">
-								<a class="btn btn-link pg-link-secondary py-0 mb-3 bi bi-link bi-me-2" href="<?=h($preview_url)?>" target="_blank"><?=lang('Preview')?></a>
-							</div>
-						</nav>
-					<?php endif ?>
-                </div>
             </div>
+            <?php if ($screen == 'edit'): ?>
+                <?=pg_screen_toolbar(array(
+                    'secondary' => '<a class="btn btn-sm btn-text theme-secondary" href="' . h($preview_url) . '" target="_blank"><i class="bi bi-link me-1" aria-hidden="true"></i>' . lang('Preview') . '</a>',
+                ))?>
+            <?php endif ?>
             <form method="post">
 				<?=get_token_field()?>
                 <div class="row">
