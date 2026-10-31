@@ -12,6 +12,7 @@ module: widgets_lists_product
 - `product.bundle_items`: a bundle's contents, quantity and link per component ([[product-bundles-storefront]], #2902).
 - `catalog.crumbs` (family `crumbs`, key `__has_breadcrumb`) sits beside them in both kinds: [[widget-default-parts-breadcrumb]].
 - Other values in a row (the product's `__name`, `__short_description` …) come through carriers, as in every list.
+- `__related_name` and `__bundle_item_name` are the SKU ("Product ID / SKU"); the store name is the `…short_description` twin ([[product-name-sku-and-canvas-placeholders]]).
 
 ## Where are the rows read?
 - The renderer asks `pg_sw_list_wanted('product')` (the sources its tree drew), reads only those for the products shown (`pg_sw_list_product_read()`: one query per source for the whole page, at most 100 rows a product; related products one cross-sell lookup each, so the listing does not offer them) and publishes them; the provider reads the published rows. A tree without a product list reads nothing more. The pure builders (`pg_sw_list_product_*_rows()`) are tested in `tests/widget_lists_product_test.php`.

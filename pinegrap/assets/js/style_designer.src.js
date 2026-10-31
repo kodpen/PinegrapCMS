@@ -13543,6 +13543,10 @@ const StyleDesigner = (function () {
                     eo_update_button:          _sdT('Update Button (for the cart quantities)')
                 };
                 var _sec = node.props._bindings.section;
+                // A section the map does not name takes its name from the
+                // Section binding list, never the raw key.
+                var _secName = _sectionLabels[_sec] || _sdSectionOptionLabel(_getSystemWidgetRegionType(node), _sec)
+                    || (_sdT('Section') + ': ' + _sec);
                 var _hasChildren = node.children && node.children.length > 0;
                 var _hint = doc.createElement('div');
                 _hint.className = 'sd-section-binding-hint';
@@ -13551,14 +13555,14 @@ const StyleDesigner = (function () {
                                         + 'border-radius:4px;color:#dc3545;font-size:.7rem;line-height:1.4;'
                                         + 'pointer-events:none;text-align:center;margin-top:4px';
                     _hint.innerHTML = '<i class="bi bi-exclamation-triangle-fill" style="margin-right:4px"></i>'
-                                    + esc(_sdT('Binding')) + ': ' + esc(_sectionLabels[_sec] || _sec)
+                                    + esc(_sdT('Binding')) + ': ' + esc(_secName)
                                     + '<br><span style="font-size:.65rem">⚠ ' + esc(_sdT('The child elements here are replaced with BACKEND HTML at render time')) + '</span>';
                 } else {
                     _hint.style.cssText = 'padding:8px 12px;background:rgba(99,102,241,.06);border:1px dashed #6366f1;'
                                         + 'border-radius:4px;color:#6366f1;font-size:.75rem;line-height:1.4;'
                                         + 'pointer-events:none;text-align:center;font-style:italic';
                     _hint.innerHTML = '<i class="bi bi-link-45deg" style="margin-right:4px"></i>'
-                                    + (_sectionLabels[_sec] || (esc(_sdT('Section')) + ': ' + esc(_sec)));
+                                    + esc(_secName);
                     // The sign-in block prints one button per provider that is
                     // on; say which ones a visitor gets today.
                     if (_sec === 'google_signin' || _sec === 'google_signup') {
@@ -14121,11 +14125,15 @@ const StyleDesigner = (function () {
         var label = (ff && (ff.label || ff.name))
             ? String(ff.label || ff.name).replace(/<[^>]*>/g, '').replace(/\s*[:：]\s*$/, '').trim()
             : '';
-        if (!label) {
-            label = String(fieldName || '').replace(/^_+/, '').replace(/_+/g, ' ').trim();
-            label = label.charAt(0).toUpperCase() + label.slice(1);
+        // Else the name Bind Data gives the value (translated), never one
+        // built from the token, which would stay English in every language.
+        if (!label && fieldName && node) {
+            var type = _getSystemWidgetRegionType(node);
+            var bound = type ? _swBindLabel(type, fieldName) : '';
+            if (bound && bound !== fieldName) label = String(bound);
         }
-        return label ? '\u2039' + label + '\u203a' : '';
+        if (!fieldName) return '';
+        return '\u2039' + (label || _sdT('value')) + '\u203a';
     }
     // An svg content node's drawing as an element of `doc`: the first <svg>
     // of its markup, without scripts, foreignObject, event handlers or script
@@ -14283,8 +14291,16 @@ const StyleDesigner = (function () {
         '__new_account_password': _sdT('Set it with this link: {var:1}', 'https://example.com/set-password'),
         '__new_account_set_password_url': '#',
         '__ai_summary': _sdT('The main points of the post, written by the visitor\'s browser.'),
-        '__item_name': _sdT('Sample Product Name'),
+        // products.name is the stock code ("Product ID / SKU"); the name a
+        // shopper reads is short_description, so each previews as its kind.
+        '__name': 'PRD-1001',
+        '__item_name': 'PRD-1001',
+        '__related_name': 'PRD-1001',
+        '__bundle_item_name': 'PRD-1001',
+        '__short_description': _sdT('Sample Product Name'),
         '__item_short_description': _sdT('Sample Product Name'),
+        '__related_short_description': _sdT('Sample Product Name'),
+        '__bundle_item_short_description': _sdT('Sample Product Name'),
         '__item_description': _sdT('A sample product description — short and clear.'),
         '__item_summary': _sdT('A sample product description — short and clear.'),
         '__cart_section_label': _sdT('Cart'),
@@ -41345,6 +41361,91 @@ const StyleDesigner = (function () {
         return out;
     })();
 
+    // The sections a container inside a system widget of `type` may be
+    // bound to, as [key, label] pairs: the Section binding list, and the
+    // name the canvas gives a bound container.
+    function _sdSectionOptions(type) {
+        var out = [];
+        if (type === 'catalog_listing') {
+            out.push(['group_tree',        _sdT('Category Tree (nested list)')]);
+            out.push(['filters_offcanvas', _sdT('Filter Offcanvas')]);
+            out.push(['attribute_filters', _sdT('Attribute Filter UI (legacy)')]);
+        } else if (type === 'shopping_cart') {
+            out.push(['applied_offers',    _sdT('Applied Offers Info Box')]);
+            // Own <form> — keep it OUT of the cart-update form (nested
+            // forms are dropped by the HTML parser). Sidebar or above the
+            // item list are the safe spots.
+            out.push(['quick_add',         _sdT('Quick Add Box (its own form)')]);
+            out.push(['pending_offers',    _sdT('Campaign Gifts (with an Add button — its own form)')]);
+        } else if (type === 'catalog_item_view') {
+            out.push(['recipient_picker',  _sdT('Recipient Picker (hidden on a product that is not shipped)')]);
+        } else if (type === 'custom_form') {
+            // Site-wide CAPTCHA (Settings → CAPTCHA). Absent for a signed-in
+            // visitor and when the setting is off, and the container goes
+            // with it — an empty box under a heading reads as a failure.
+            out.push(['captcha',           _sdT('CAPTCHA (depends on the site setting; hidden for a signed-in visitor)')]);
+        } else if (type === 'login_form') {
+            // Each block is the server's ready-made element and is
+            // absent - container included - when its feature is off.
+            out.push(['google_signin',        _sdT('Sign-in buttons: Google, Microsoft and Apple (only the ones turned on)')]);
+            out.push(['forgot_password_link', _sdT('Forgot password link (hidden when the site setting is off)')]);
+            out.push(['register_link',        _sdT('Sign-up link (hidden when no registration page is chosen)')]);
+        } else if (type === 'forgot_password') {
+            out.push(['password_hint',        _sdT('Password hint box (drawn only on the hint screen)')]);
+        } else if (type === 'registration') {
+            out.push(['captcha',              _sdT('CAPTCHA (depends on the site setting; hidden for a signed-in visitor)')]);
+            out.push(['password_rules',       _sdT('Strong password rules (hidden when the site setting is off)')]);
+            out.push(['google_signup',        _sdT('Sign-up buttons: Google, Microsoft and Apple (only the ones turned on)')]);
+            out.push(['login_link',           _sdT('Sign-in link')]);
+        } else if (type === 'membership') {
+            out.push(['password_rules',       _sdT('Strong password rules (hidden when the site setting is off)')]);
+            out.push(['google_signup',        _sdT('Sign-up buttons: Google, Microsoft and Apple (only the ones turned on)')]);
+            out.push(['login_link',           _sdT('Sign-in link')]);
+        } else if (type === 'search_results') {
+            out.push(['pagination',           _sdT('Pagination (hidden on a single page)')]);
+        } else if (type === 'calendar_view') {
+            out.push(['calendar_picker',      _sdT('Calendar and view picker (not in the upcoming view)')]);
+            out.push(['month_grid',           _sdT('Month grid (not in the upcoming view)')]);
+        } else if (type === 'my_account') {
+            out.push(['order_history',        _sdT('Order history (shop sites; hidden when there are no orders)')]);
+            out.push(['subscriptions',        _sdT('Subscriptions (shop sites; hidden when there are none)')]);
+        } else if (type === 'change_password' || type === 'set_password') {
+            out.push(['password_rules',       _sdT('Strong password rules (hidden when the site setting is off)')]);
+        } else if (type === 'calendar_event_view') {
+            out.push(['reserve_form',         _sdT('Reserve button (hidden when reservations are closed)')]);
+        } else if (type === 'order_preview') {
+            out.push(['order_recipients',   _sdT('Recipients and their items')]);
+            out.push(['applied_offers',     _sdT('Applied offers')]);
+            out.push(['applied_gift_cards', _sdT('Applied gift cards with their remove links')]);
+            out.push(['recurring_payments', _sdT('Recurring payments by period')]);
+            out.push(['billing_form',       _sdT('Custom billing form answers')]);
+            out.push(['card_installments',  _sdT('Installment choice (filled as the card number is typed)')]);
+            out.push(['installment_table',  _sdT('Installment table by card family')]);
+        } else if (type === 'billing_information') {
+            out.push(['custom_billing_form',  _sdT('Custom billing form fields (hidden when the page has none)')]);
+        } else if (type === 'order_form') {
+            out.push(['recurring_schedule',   _sdT('Row: payment schedule of a recurring product')]);
+        } else if (type === 'shipping_method') {
+            out.push(['recipient_items',      _sdT('The recipient\'s items (a product that cannot go to the address carries its remove link)')]);
+        } else if (type === 'shipping_address_and_arrival') {
+            out.push(['custom_shipping_form', _sdT('Custom shipping form fields (hidden when the page has none)')]);
+            out.push(['verified_addresses',   _sdT('Verified shipping address pick lists and the Use This Address button')]);
+        } else if (type === 'comments') {
+            out.push(['comment_captcha',      _sdT('CAPTCHA (depends on the site setting; hidden for staff)')]);
+            out.push(['comment_rating_input', _sdT('Star rating input (hidden when stars are off for the page)')]);
+            out.push(['comment_publish',      _sdT('Publish options (staff only)')]);
+            out.push(['comment_watchers',     _sdT('Watcher list (who may manage the watchers only)')]);
+            out.push(['comment_pagination',   _sdT('Pagination (hidden on a single page)')]);
+        }
+        return out;
+    }
+    // The name of section `sec` in a widget of `type`, '' when unknown.
+    function _sdSectionOptionLabel(type, sec) {
+        var opts = _sdSectionOptions(type);
+        for (var i = 0; i < opts.length; i++) if (opts[i][0] === sec) return opts[i][1];
+        return '';
+    }
+
     // Resolve the regionType of the system widget that contains `node`.
     // Returns one of: 'form_list_view' (default), 'form_item_view',
     // 'catalog_listing', or '' if not in a SW.
@@ -45480,78 +45581,7 @@ const StyleDesigner = (function () {
         var _isContainerTag = ['div','nav','ul','ol','section','aside','header','footer','main','article'].indexOf(tag) !== -1;
         if (_semSwRegion && _isContainerTag) {
             var _curSection = (n.props._bindings && n.props._bindings.section) || '';
-            var _sectionOpts = [['', _sdT('None')]];
-            if (_semSwRegion === 'catalog_listing') {
-                _sectionOpts.push(['group_tree',        _sdT('Category Tree (nested list)')]);
-                _sectionOpts.push(['filters_offcanvas', _sdT('Filter Offcanvas')]);
-                _sectionOpts.push(['attribute_filters', _sdT('Attribute Filter UI (legacy)')]);
-            } else if (_semSwRegion === 'shopping_cart') {
-                _sectionOpts.push(['applied_offers',    _sdT('Applied Offers Info Box')]);
-                // Own <form> — keep it OUT of the cart-update form (nested
-                // forms are dropped by the HTML parser). Sidebar or above the
-                // item list are the safe spots.
-                _sectionOpts.push(['quick_add',         _sdT('Quick Add Box (its own form)')]);
-                _sectionOpts.push(['pending_offers',    _sdT('Campaign Gifts (with an Add button — its own form)')]);
-            } else if (_semSwRegion === 'catalog_item_view') {
-                _sectionOpts.push(['recipient_picker',  _sdT('Recipient Picker (hidden on a product that is not shipped)')]);
-            } else if (_semSwRegion === 'custom_form') {
-                // Site-wide CAPTCHA (Settings → CAPTCHA). Absent for a signed-in
-                // visitor and when the setting is off, and the container goes
-                // with it — an empty box under a heading reads as a failure.
-                _sectionOpts.push(['captcha',           _sdT('CAPTCHA (depends on the site setting; hidden for a signed-in visitor)')]);
-            } else if (_semSwRegion === 'login_form') {
-                // Each block is the server's ready-made element and is
-                // absent - container included - when its feature is off.
-                _sectionOpts.push(['google_signin',        _sdT('Sign-in buttons: Google, Microsoft and Apple (only the ones turned on)')]);
-                _sectionOpts.push(['forgot_password_link', _sdT('Forgot password link (hidden when the site setting is off)')]);
-                _sectionOpts.push(['register_link',        _sdT('Sign-up link (hidden when no registration page is chosen)')]);
-            } else if (_semSwRegion === 'forgot_password') {
-                _sectionOpts.push(['password_hint',        _sdT('Password hint box (drawn only on the hint screen)')]);
-            } else if (_semSwRegion === 'registration') {
-                _sectionOpts.push(['captcha',              _sdT('CAPTCHA (depends on the site setting; hidden for a signed-in visitor)')]);
-                _sectionOpts.push(['password_rules',       _sdT('Strong password rules (hidden when the site setting is off)')]);
-                _sectionOpts.push(['google_signup',        _sdT('Sign-up buttons: Google, Microsoft and Apple (only the ones turned on)')]);
-                _sectionOpts.push(['login_link',           _sdT('Sign-in link')]);
-            } else if (_semSwRegion === 'membership') {
-                _sectionOpts.push(['password_rules',       _sdT('Strong password rules (hidden when the site setting is off)')]);
-                _sectionOpts.push(['google_signup',        _sdT('Sign-up buttons: Google, Microsoft and Apple (only the ones turned on)')]);
-                _sectionOpts.push(['login_link',           _sdT('Sign-in link')]);
-            } else if (_semSwRegion === 'search_results') {
-                _sectionOpts.push(['pagination',           _sdT('Pagination (hidden on a single page)')]);
-            } else if (_semSwRegion === 'calendar_view') {
-                _sectionOpts.push(['calendar_picker',      _sdT('Calendar and view picker (not in the upcoming view)')]);
-                _sectionOpts.push(['month_grid',           _sdT('Month grid (not in the upcoming view)')]);
-            } else if (_semSwRegion === 'my_account') {
-                _sectionOpts.push(['order_history',        _sdT('Order history (shop sites; hidden when there are no orders)')]);
-                _sectionOpts.push(['subscriptions',        _sdT('Subscriptions (shop sites; hidden when there are none)')]);
-            } else if (_semSwRegion === 'change_password' || _semSwRegion === 'set_password') {
-                _sectionOpts.push(['password_rules',       _sdT('Strong password rules (hidden when the site setting is off)')]);
-            } else if (_semSwRegion === 'calendar_event_view') {
-                _sectionOpts.push(['reserve_form',         _sdT('Reserve button (hidden when reservations are closed)')]);
-            } else if (_semSwRegion === 'order_preview') {
-                _sectionOpts.push(['order_recipients',   _sdT('Recipients and their items')]);
-                _sectionOpts.push(['applied_offers',     _sdT('Applied offers')]);
-                _sectionOpts.push(['applied_gift_cards', _sdT('Applied gift cards with their remove links')]);
-                _sectionOpts.push(['recurring_payments', _sdT('Recurring payments by period')]);
-                _sectionOpts.push(['billing_form',       _sdT('Custom billing form answers')]);
-                _sectionOpts.push(['card_installments',  _sdT('Installment choice (filled as the card number is typed)')]);
-                _sectionOpts.push(['installment_table',  _sdT('Installment table by card family')]);
-            } else if (_semSwRegion === 'billing_information') {
-                _sectionOpts.push(['custom_billing_form',  _sdT('Custom billing form fields (hidden when the page has none)')]);
-            } else if (_semSwRegion === 'order_form') {
-                _sectionOpts.push(['recurring_schedule',   _sdT('Row: payment schedule of a recurring product')]);
-            } else if (_semSwRegion === 'shipping_method') {
-                _sectionOpts.push(['recipient_items',      _sdT('The recipient\'s items (a product that cannot go to the address carries its remove link)')]);
-            } else if (_semSwRegion === 'shipping_address_and_arrival') {
-                _sectionOpts.push(['custom_shipping_form', _sdT('Custom shipping form fields (hidden when the page has none)')]);
-                _sectionOpts.push(['verified_addresses',   _sdT('Verified shipping address pick lists and the Use This Address button')]);
-            } else if (_semSwRegion === 'comments') {
-                _sectionOpts.push(['comment_captcha',      _sdT('CAPTCHA (depends on the site setting; hidden for staff)')]);
-                _sectionOpts.push(['comment_rating_input', _sdT('Star rating input (hidden when stars are off for the page)')]);
-                _sectionOpts.push(['comment_publish',      _sdT('Publish options (staff only)')]);
-                _sectionOpts.push(['comment_watchers',     _sdT('Watcher list (who may manage the watchers only)')]);
-                _sectionOpts.push(['comment_pagination',   _sdT('Pagination (hidden on a single page)')]);
-            }
+            var _sectionOpts = [['', _sdT('None')]].concat(_sdSectionOptions(_semSwRegion));
             if (_sectionOpts.length > 1) {
                 sectionBindRow = row(_sdT('Section binding (system widget)'),
                     '<select class="form-control form-control-sm" data-bind-section>' +
