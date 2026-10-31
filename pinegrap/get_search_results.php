@@ -51,38 +51,8 @@ function get_search_results($properties) {
         $query = trim($_GET['query']);
     }
 
-    // If the visitor has searched and visitor tracking is enabled and this visitor
-    // has been initialized, then add site search terms to visitor record
-    if (
-        ($query != '')
-        && (VISITOR_TRACKING == true)
-        && (isset($_SESSION['software']['visitor_id']) == true)
-    ) {
-        // get visitor's search terms from visitors table
-        $db_query = "SELECT site_search_terms FROM visitors WHERE id = ?";
-        $result = db_q($db_query, array((string) $_SESSION['software']['visitor_id'])) or output_error('Query failed.');
-        $row = mysqli_fetch_assoc($result);
-        // The session can name a row that is gone: a restored backup carries
-        // no visitor rows.
-        $site_search_terms = is_array($row) ? (string) $row['site_search_terms'] : '';
-
-        // if there are search terms, then add a delimiter
-        if ($site_search_terms != '') {
-            $site_search_terms .= '|';
-        }
-        
-        // add the new query to the search terms
-        $site_search_terms .= $query;
-        
-        // update search terms in the visitors table for this visitor
-        $db_query =
-            "UPDATE visitors
-            SET
-                site_search_terms = ?,
-                stop_timestamp = UNIX_TIMESTAMP()
-            WHERE (id = ?)";
-        $result = db_q($db_query, array((string) $site_search_terms, (string) $_SESSION['software']['visitor_id'])) or output_error('Query failed.');
-    }
+    // Add the search to the visit's site search terms.
+    pg_search_record_visit_term($query);
 
     // get current URL parts in order to deal with query string parameters
     $url_parts = parse_url(defined('REQUEST_URL') ? REQUEST_URL : '');

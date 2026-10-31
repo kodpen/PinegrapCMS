@@ -446,3 +446,67 @@ function pg_search_index_failure_note($page_name, $reference_code, $message, $ma
 
     return $label . ': ' . $message;
 }
+
+/**
+ * A visit's site search terms with one more search added, separated by "|"
+ * as the visitor report and the visit detail split them. An empty term adds
+ * nothing. Pure.
+ *
+ * @param string $existing visitors.site_search_terms as stored
+ * @param string $term     what the visitor searched for
+ * @return string
+ */
+function pg_search_visit_terms_append($existing, $term)
+{
+    $existing = (string) $existing;
+    $term = trim((string) $term);
+
+    if ($term === '') {
+        return $existing;
+    }
+
+    return ($existing === '') ? $term : $existing . '|' . $term;
+}
+
+/**
+ * Add a site search to the current visit (visitors.site_search_terms), for
+ * the visitor report's "Site Search Terms" summary and the visit detail.
+ * Shared by the search widget and the legacy Search Results page; does
+ * nothing when the term is empty, visitor tracking is off or the visit has
+ * not been started.
+ *
+ * @param string $term
+ * @return void
+ */
+function pg_search_record_visit_term($term)
+{
+    $term = trim((string) $term);
+
+    if (
+        ($term === '')
+        || !defined('VISITOR_TRACKING') || (VISITOR_TRACKING != true)
+        || empty($_SESSION['software']['visitor_id'])
+    ) {
+        return;
+    }
+
+    $visitor_id = (string) $_SESSION['software']['visitor_id'];
+
+    $result = db_q("SELECT site_search_terms FROM visitors WHERE id = ?", array($visitor_id));
+    $row = $result ? mysqli_fetch_assoc($result) : null;
+
+    // The session can name a row that is gone: a restored backup carries no
+    // visitor rows.
+    if (!is_array($row)) {
+        return;
+    }
+
+    db_q(
+        "UPDATE visitors
+        SET
+            site_search_terms = ?,
+            stop_timestamp = UNIX_TIMESTAMP()
+        WHERE (id = ?)",
+        array(pg_search_visit_terms_append((string) $row['site_search_terms'], $term), $visitor_id)
+    );
+}
