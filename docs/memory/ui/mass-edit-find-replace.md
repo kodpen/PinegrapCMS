@@ -13,6 +13,10 @@ description: The Find & Replace card of mass_edit.php: its liveform fields, what
 - A successful apply keeps nothing: the screen's `remove_form('mass_edit')` after drawing clears the session copy either way. No query was added (`db_q_pages_regions_test.php` counts them).
 - Test: `tests/mass_edit_find_replace_keep_test.php`.
 
+## Which writes mark the SEO score stale?
+- Every page UPDATE of `mass_edit.php` (the card and the table's name, title, description, search and keywords) writes `seo_analysis_current = '0'` with the value, as Edit Page does; only changed values are written. The designer Find & Replace screen (`find_and_replace.php`) marks a product or product group row in its own UPDATE (`'seo_stale' => 'row'`) and the page of a changed page region (`'seo_stale_page' => 'pregion_page'`); common and designer regions are shared and mark nothing, as in `save_region_content.php`.
+- Symptom it fixed (#4153, #4254): the scheduled SEO job scores only stale rows, so the score, the SEO flags and the Pages SEO filters stayed old until a manual Refresh SEO Scores. Test: `tests/seo_stale_mass_edit_test.php`.
+
 ## How does Get Edit Form open the form?
 - It sets `window.location.href = window.location.pathname + "?tags=" + encodeURIComponent(...)`. Before, it appended `?tags=` to the whole address; after the skip link (`#content`) that only changed the fragment and the page did not reload. Pinned by `tests/edit_return_address_test.php`.
 
