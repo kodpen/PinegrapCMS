@@ -67,3 +67,59 @@ function test_cart_tax_estimate_untaxable_line()
 	$lines = array(cart_tax_estimate_test_line(5000, 0, 0));
 	pg_assert_same(0, pg_cart_estimate_tax($lines, 20.0), 'nothing taxable');
 }
+
+// A line as the cart reads it on a schema with order_items.tax_rate: the rate
+// the checkout charged it at goes with its tax.
+function cart_tax_estimate_test_charged($amount, $tax_total, $charged_rate, $taxable = 1, $tax_rate = null)
+{
+	$line = cart_tax_estimate_test_line($amount, $tax_total, $taxable, $tax_rate);
+	$line['charged_rate'] = $charged_rate;
+	return $line;
+}
+
+// The quantity doubled after the checkout: the stored tax is of the old amount.
+function test_cart_tax_estimate_quantity_changed()
+{
+	$lines = array(
+		cart_tax_estimate_test_charged(20000, 2000, '20.000'),
+		cart_tax_estimate_test_charged(5000, 1000, '20.000'),
+	);
+	pg_assert_same(5000, pg_cart_estimate_tax($lines, 20.0), 'the preview, not the old 3000');
+}
+
+// A donation amount changed after the checkout: the preview.
+function test_cart_tax_estimate_donation_changed()
+{
+	$lines = array(cart_tax_estimate_test_charged(7500, 1000, '20.000'));
+	pg_assert_same(1500, pg_cart_estimate_tax($lines, 20.0), 'the preview on the new amount');
+}
+
+// Amounts unchanged: the stored taxes, even at a rate other than the default one
+// (the buyer's address is in another zone).
+function test_cart_tax_estimate_unchanged_amounts()
+{
+	$lines = array(
+		cart_tax_estimate_test_charged(10000, 800, '8.000'),
+		cart_tax_estimate_test_charged(5000, 400, '8.000'),
+		cart_tax_estimate_test_charged(3333, 333, '10.000', 1, '10.000'),
+	);
+	pg_assert_same(1533, pg_cart_estimate_tax($lines, 20.0), 'the stored taxes');
+
+	// Rounded once per rate over the lines, spread back: still matches.
+	$lines = array(
+		cart_tax_estimate_test_charged(333, 60, '18.000'),
+		cart_tax_estimate_test_charged(333, 60, '18.000'),
+		cart_tax_estimate_test_charged(333, 60, '18.000'),
+	);
+	pg_assert_same(180, pg_cart_estimate_tax($lines, 20.0), 'the group tax, spread');
+}
+
+// A stored tax with no stored rate cannot be checked: the preview.
+function test_cart_tax_estimate_tax_without_rate()
+{
+	$lines = array(cart_tax_estimate_test_charged(10000, 800, null));
+	pg_assert_same(2000, pg_cart_estimate_tax($lines, 20.0), 'no rate');
+
+	$lines = array(cart_tax_estimate_test_charged(10000, 800, '0.000'));
+	pg_assert_same(2000, pg_cart_estimate_tax($lines, 20.0), 'a zero rate');
+}
