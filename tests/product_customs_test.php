@@ -212,3 +212,50 @@ function test_product_customs_import_row()
 	pg_assert_contains("array('heading' => 'hs_code', 'column' => 'hs_code', 'kind' => 'text')", $export);
 	pg_assert_contains("array('heading' => 'origin_country', 'column' => 'origin_country', 'kind' => 'text')", $export);
 }
+
+function test_product_origin_countries_follow_current_iso()
+{
+	$countries = pg_product_origin_countries();
+
+	foreach (array('CW', 'SX', 'BQ', 'MF', 'BL', 'RS', 'ME', 'SS', 'XK', 'TR') as $code) {
+		pg_assert_true(isset($countries[$code]), $code . ' is offered');
+		pg_assert_same($code, pg_product_origin_country_parse(strtolower($code)), $code . ' is accepted');
+	}
+
+	pg_assert_same(false, isset($countries['AN']), 'Netherlands Antilles (withdrawn 2010) is not offered');
+	pg_assert_same(false, isset($countries['CS']), 'Serbia and Montenegro (withdrawn 2006) is not offered');
+
+	// A withdrawn code a product or setting already holds is still read, so
+	// saving, copying or declaring it keeps working.
+	pg_assert_same('AN', pg_product_origin_country_parse('an'), 'a stored AN keeps working');
+	pg_assert_same('CS', pg_product_origin_country_parse('CS'), 'a stored CS keeps working');
+	pg_assert_same(array('AN', 'CS'), array_keys(pg_product_origin_retired_countries()));
+
+	// The sales map and the firewall keep their own list untouched.
+	pg_assert_true(isset(pg_sales_map_iso_countries()['AN']), 'the sales map still places an AN row');
+}
+
+function test_product_origin_country_options_name_new_and_withdrawn_codes()
+{
+	$options = pg_product_origin_country_options('AN');
+
+	pg_assert_true(strpos($options, 'value="CW"') !== false, 'Curaçao is offered');
+	pg_assert_true(strpos($options, '(CW)') !== false);
+	pg_assert_true(strpos($options, 'value="AN" selected="selected">' . h(lang('Netherlands Antilles')) . ' (AN)') !== false, 'a stored AN stays selected under its own name');
+	pg_assert_same(false, strpos(pg_product_origin_country_options(''), 'value="AN"'), 'AN is not offered otherwise');
+	pg_assert_same(false, strpos(pg_product_origin_country_options(''), 'value="CS"'), 'CS is not offered otherwise');
+
+	$fields = pg_label_customs_fields();
+	$origin = null;
+
+	foreach ($fields as $field) {
+		if ($field['name'] === 'customs_origin_country') {
+			$origin = $field;
+		}
+	}
+
+	pg_assert_true(is_array($origin), 'the label settings have the field');
+	pg_assert_true(isset($origin['options']['SX']), 'Sint Maarten is a label default');
+	pg_assert_same(false, isset($origin['options']['AN']), 'AN is not a label default');
+	pg_assert_same(false, isset($origin['options']['CS']), 'CS is not a label default');
+}
