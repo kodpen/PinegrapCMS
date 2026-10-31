@@ -772,6 +772,7 @@
     "Pinegrap AI puts what they missed into a few sentences": "Pinegrap AI kaçırdıklarını birkaç cümlede özetler",
     "Pinegrap AI refused the licence key: it does not match this site or it is not valid.": "Pinegrap AI lisans anahtarını reddetti: anahtar bu siteyle eşleşmiyor ya da geçerli değil.",
     "Pinegrap AI refused the subscription key under Settings › General: it does not match this site or it is not valid.": "Pinegrap AI, Ayarlar › Genel altındaki abonelik anahtarını kabul etmedi: anahtar bu siteye ait değil ya da geçerli değil.",
+    "Pinegrap AI refused the subscription key under Site Settings › General › Software: it does not match this site or it is not valid.": "Pinegrap AI, Site Ayarları › Genel › Yazılım altındaki abonelik anahtarını kabul etmedi: anahtar bu siteye ait değil ya da geçerli değil.",
     "Pinegrap AI suggestion": "Pinegrap AI önerisi",
     "Pinegrap AI suggests on new conversations": "Pinegrap AI yeni konuşmalarda öneri yazsın",
     "Pinegrap AI translates on the server through the site's own model connection, a few texts at a time with their context, the glossary and the style note. The update runs while this screen is open; the scheduled job finishes what is left.": "Pinegrap AI, sitenin kendi model bağlantısıyla sunucuda çevirir; metinleri bağlamı, sözlük ve üslup notuyla birkaçar birkaçar gönderir. Güncelleme bu ekran açıkken sürer; kalanı zamanlanmış iş bitirir.",

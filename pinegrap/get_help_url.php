@@ -493,7 +493,6 @@ function get_help_url($properties = array())
         'clean_up'             => 'system#caches',
         'database_engine'      => 'system#database-engine',
         'view_performance_log' => 'system#performance-log',
-        'private_label'        => 'system#private-label',
 
         // Security
         'view_waf_log'   => 'security#waf-log',
