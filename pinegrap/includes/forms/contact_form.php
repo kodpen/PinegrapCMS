@@ -419,7 +419,7 @@ function pg_contact_form_affiliate_card($values)
                         <div class="col-12 md:col-6 my-3">
                             <label for="affiliate_code" class="form-label">' . lang('Affiliate Code') . '</label>
                             <input value="' . pg_contact_form_value($values, 'affiliate_code') . '" type="text" name="affiliate_code" id="affiliate_code" class="form-control" maxlength="100" />
-                            <div class="form-text text-end">' . lang('leave blank to automatically generate code') . '</div>
+                            <div class="form-text text-end">' . lang('leave blank to generate a code when the affiliate is approved') . '</div>
                         </div>
                         <div class="col-12 md:col-3 my-3">
                             <label for="affiliate_commission_rate" class="form-label">' . lang('Commission Rate') . '</label>
