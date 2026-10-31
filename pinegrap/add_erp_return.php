@@ -52,15 +52,7 @@ if (!$_POST) {
     $back_order_id = is_scalar($_GET['back_order'] ?? null) ? (int) $_GET['back_order'] : 0;
     $lines = erp_returnable_lines($invoice_id);
 
-    $anything_left = false;
-
-    foreach ($lines as $line) {
-        if ($line['remaining_qty'] > 0.00001) {
-            $anything_left = true;
-        }
-    }
-
-    if (!$anything_left) {
+    if (!erp_return_lines_left($lines)) {
         output_error(lang('Everything on this invoice has already been returned.')
             . ' <a href="' . h($invoice_url) . '">' . lang('Invoice') . '</a>');
         exit();

@@ -14,3 +14,12 @@ description: An ERP return's currency, rate and date, and how returned quantitie
 - The parent line's withholding and second tax are capped like its VAT: `returned_withholding` and `returned_tax2` beside `returned_tax` (erp-vat-withholding).
 
 Related: docs/memory/erp/erp-return-documents.md
+
+## When is a return offered?
+
+While `erp_return_lines_left()` finds a line of `erp_returnable_lines()` with
+`remaining_qty > 0.00001`. A fully returned invoice stays issued or paid, so
+the invoice screen asks this, not the status: with nothing left it shows
+"Returned in full" in place of "Return an Invoice", which led only to the
+refusal in `add_erp_return.php`. The order card goes by amounts instead
+(`erp_order_flow_returned_in_full()`).

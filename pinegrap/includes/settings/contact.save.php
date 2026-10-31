@@ -249,13 +249,6 @@ require_once(PG_FUNCTIONS_DIR . '/includes/iys/settings.php');
     // Only what the cards on this screen edit.
     db("UPDATE config
         SET
-            organization_name = '" . escape(post_value('organization_name')) . "',
-            organization_address_1 = '" . escape(post_value('organization_address_1')) . "',
-            organization_address_2 = '" . escape(post_value('organization_address_2')) . "',
-            organization_city = '" . escape(post_value('organization_city')) . "',
-            organization_state = '" . escape(post_value('organization_state')) . "',
-            organization_zip_code = '" . escape(post_value('organization_zip_code')) . "',
-            organization_country = '" . escape(post_value('organization_country')) . "',
             opt_in_label = '" . escape(post_value('opt_in_label')) . "',
             plain_text_email_campaign_footer = '" . escape(trim(post_value('plain_text_email_campaign_footer'))) . "',
             mailchimp = '" . escape($mailchimp_post) . "',

@@ -32,34 +32,6 @@ $pg_settings_cards[] = '
                                 <div class="card-body">
                                    <div class="row gy-5">
                                         <div class="pg-f-md">
-                                            <label for="organization_name" class="form-label">' . lang('Organization Name') . '</label>
-                                            <input type="text" name="organization_name" id="organization_name" class="form-control" value="' . h($organization_name) . '"/>
-                                        </div>
-                                        <div class="pg-f-md">
-                                            <label for="organization_address_1" class="form-label">' . lang('Organization Address') . ' 1</label>
-                                            <input type="text" name="organization_address_1" id="organization_address_1" class="form-control" value="' . h($organization_address_1) . '"/>
-                                        </div>
-                                        <div class="pg-f-md">
-                                            <label for="organization_address_2" class="form-label">' . lang('Organization Address') . ' 2</label>
-                                            <input type="text" name="organization_address_2" id="organization_address_2" class="form-control" value="' . h($organization_address_2) . '"/>
-                                        </div>
-                                        <div class="pg-f-md">
-                                            <label for="organization_city" class="form-label">' . lang('Organization City') . '</label>
-                                            <input type="text" name="organization_city" id="organization_city" class="form-control" value="' . h($organization_city) . '"/>
-                                        </div>
-                                        <div class="pg-f-md">
-                                            <label for="organization_state" class="form-label">' . lang('Organization State') . '</label>
-                                            <input type="text" name="organization_state" id="organization_state" class="form-control" value="' . h($organization_state) . '"/>
-                                        </div>
-                                        <div class="pg-f-md">
-                                            <label for="organization_zip_code" class="form-label">' . lang('Organization Zip Code') . '</label>
-                                            <input type="text" name="organization_zip_code" id="organization_zip_code" class="form-control" value="' . h($organization_zip_code) . '"/>
-                                        </div>
-                                        <div class="pg-f-md">
-                                            <label for="organization_country" class="form-label">' . lang('Organization Country') . '</label>
-                                            <input type="text" name="organization_country" id="organization_country" class="form-control" value="' . h($organization_country) . '"/>
-                                        </div>
-                                        <div class="pg-f-md">
                                             <label for="opt_in_label" class="form-label">' . lang('Opt-In Label') . '</label>
                                             <input type="text" name="opt_in_label" id="opt_in_label" class="form-control" value="' . h($opt_in_label) . '" maxlength="255"/>
                                         </div>

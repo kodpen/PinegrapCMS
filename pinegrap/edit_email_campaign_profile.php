@@ -140,7 +140,8 @@ if (!$_POST) {
                     ' . pg_email_campaign_profile_form_cards($liveform, $user, $liveform->get_field_value('product_id'), array(
                         'custom_form_page_id' => ($email_campaign_profile['action'] == 'custom_form_submitted') ? (int) $email_campaign_profile['action_item_id'] : 0,
                         'page_id' => (int) $email_campaign_profile['page_id'],
-                    )) . '
+                        'email_campaign_profile_id' => ($email_campaign_profile['action'] == 'email_campaign_sent') ? (int) $email_campaign_profile['action_item_id'] : 0,
+                    ), $id) . '
                     <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">

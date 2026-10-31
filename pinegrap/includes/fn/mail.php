@@ -771,8 +771,15 @@ function send_comment_email_to_watchers($comment_id)
         }
     }
 }
-// Create function that can be used to build the options for a pick list of email campaign profiles.
-function get_email_campaign_profile_options()
+/**
+ * Builds the options for a pick list of email campaign profiles.
+ *
+ * @param int[] $exclude_ids  Profiles left out (a profile and those that follow it)
+ * @param int   $keep_id      The stored pick, listed even when excluded so the
+ *                            picker shows what is saved
+ * @return array label => id
+ */
+function get_email_campaign_profile_options($exclude_ids = array(), $keep_id = 0)
 {
     $email_campaign_profile_options = array();
     $email_campaign_profile_options['-' . lang(array('string' => 'Select {var:1}', 'vars' => array(lang('campaign profile')))) . '-'] = '';
@@ -792,7 +799,13 @@ function get_email_campaign_profile_options()
     foreach ($email_campaign_profiles as $email_campaign_profile) {
         // If this user has a role greater than a user role or if this user is the creator,
         // then add this profile as an option.
-        if ((USER_ROLE < 3) || (USER_ID == $email_campaign_profile['created_user_id'])) {
+        if (
+            ((USER_ROLE < 3) || (USER_ID == $email_campaign_profile['created_user_id']))
+            && (
+                !in_array((int) $email_campaign_profile['id'], $exclude_ids, true)
+                || ((int) $email_campaign_profile['id'] == (int) $keep_id)
+            )
+        ) {
             $email_campaign_profile_options[h($email_campaign_profile['name'])] = $email_campaign_profile['id'];
         }
     }

@@ -88,8 +88,9 @@ function pg_settings_categories()
         'general' => array(
             'label' => lang('General'),
             'icon'  => 'bi-sliders',
-            'description' => lang('Server, domain, licence, update channel, date and time.'),
+            'description' => lang('The organization, server, domain, licence, update channel, date and time.'),
             'sections' => array(
+                'pgset-organization' => lang('Organization'),
                 'pgset-server'   => lang('Server & Domain'),
                 'pgset-software' => lang('Software'),
                 'pgset-channel'  => lang('Update Channel'),
@@ -100,7 +101,8 @@ function pg_settings_categories()
                 'pgset-maintenance' => lang('Maintenance Mode'),
             ),
             'keywords' => array(
-                'pgset-server'   => pg_settings_keywords(lang('hostname, domain, ip, ssl, https, secure mode, secure, email, support, proxy')),
+                'pgset-organization' => pg_settings_keywords(lang('organization, company, name, address, logo, support, email, tax number, tax office, vkn, seller')),
+                'pgset-server'   => pg_settings_keywords(lang('hostname, domain, ip, ssl, https, secure mode, secure, proxy')),
                 'pgset-software' => pg_settings_keywords(lang('software, language, licence, license, subscription, error, debug')),
                 'pgset-channel'  => pg_settings_keywords(lang('update, channel, beta, stable, version')),
                 'pgset-datetime' => pg_settings_keywords(lang('date, time, timezone, format')),
@@ -206,7 +208,7 @@ function pg_settings_categories()
                 'pgset-google-reviews' => lang('Google Reviews'),
             ),
             'keywords' => array(
-                'pgset-campaigns' => pg_settings_keywords(lang('campaign, newsletter, subscribe, organization, address')),
+                'pgset-campaigns' => pg_settings_keywords(lang('campaign, newsletter, subscribe, opt-in, footer')),
                 'pgset-chat'      => pg_settings_keywords(lang('chat, live support, operator, bubble, message')),
                 'pgset-mailchimp' => pg_settings_keywords(lang('mailchimp, mail chimp, list, list id, api key, key, sync, automation, store')),
                 'pgset-sms'       => pg_settings_keywords(lang('sms, text message, netgsm, sender name, header, msgheader, mobile, phone, iys, test message')),
@@ -468,6 +470,7 @@ function pg_settings_legacy_anchors()
         'pgset-seo'        => array('seo',        'pgset-seo'),
         'pgset-analytics'  => array('seo',        'pgset-analytics'),
         'pgset-campaigns'  => array('contact',    'pgset-campaigns'),
+        'pgset-organization' => array('general',  'pgset-organization'),
         'pgset-chat'       => array('contact',    'pgset-chat'),
         'pgset-security'   => array('security',   'pgset-session'),
         'pgsub-devices'    => array('security',   'pgset-device'),

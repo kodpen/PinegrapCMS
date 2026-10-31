@@ -1379,6 +1379,7 @@
     "orders.payment_method already knows about PayTR": "orders.payment_method zaten PayTR'yi biliyor",
     "orders.payment_method does not exist, skipped": "orders.payment_method yok, atlandı",
     "orders.payment_method is not an ENUM, skipped": "orders.payment_method ENUM değil, atlandı",
+    "organization, company, name, address, logo, support, email, tax number, tax office, vkn, seller": "organization, company, name, address, logo, support, email, tax number, tax office, vkn, seller, kurulus, kuruluş, sirket, şirket, unvan, adres, logo, destek, eposta, e-posta, vergi numarasi, vergi numarası, vergi dairesi, tckn, satici, satıcı",
     "orphaned form was moved to page ({var:1})": "sahipsiz form ({var:1}) sayfasına taşındı",
     "our-cafes": "subelerimiz",
     "our-menu": "menumuz",
