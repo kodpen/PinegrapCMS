@@ -107,7 +107,7 @@ if (!$_POST) {
     
     // if the user is a designer or above, then prepare to display subheading and name field
     if ($user['role'] <= 1) {
-        $output_subheading = '<p>' . lang('Page Style Body Tag') . ': <strong>' . h('<ad>' . $output_name . '</ad>') . '</strong></p>';
+        $output_subheading = '<span class="small fg-secondary">' . lang('Page Style Body Tag') . ': <code>' . h('<ad>' . $output_name . '</ad>') . '</code></span>';
         
         $output_name_field_or_value = $liveform->output_field(array('type'=>'text', 'name'=>'name', 'id'=>'name', 'class'=>'form-control', 'maxlength'=>'100', 'required'=>'required'));
 
@@ -146,16 +146,11 @@ if (!$_POST) {
             'breadcrumb' => array(array('label' => lang('All Ad Regions'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_regions.php?filter=all_ad_regions'), array('label' => lang(array('string'=>'Edit {var:1}','vars'=>lang('Ad Region'))))),
         ]) . '
 <main id="content" class="container-fluid">
+    ' . pg_screen_toolbar(array('grow' => $output_subheading)) . '
             <div class="row">
             <div class="col-12">
                 ' . $liveform->output_errors() . '
                 ' . $liveform->output_notices() . '
-                <div class="row mb-3  flex-wrap">
-                    <div class="col-12 sm:col-12 text-center md:text-start">
-
-                        ' . $output_subheading . '
-                    </div>
-                </div>
                 <form name="form" action="edit_ad_region.php" method="post">
                     ' . get_token_field() . '
                     <input type="hidden" name="id" value="' . h($_GET['id']) . '" />

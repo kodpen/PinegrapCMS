@@ -163,7 +163,7 @@ if ((isset($_GET['page_id'])) && ($_GET['page_id'] != '')) {
     
     // if the page name is different from the form name, then output page name
     if ($form_name != $page_name) {
-        $output_form_designer_subnav_subheading = '<p class="p-0 m-0">' . lang('Displayed in Page') . ': ' . h($page_name) . '</p>';
+        $output_form_designer_subnav_subheading = '<span class="small fg-secondary me-3">' . lang('Displayed in Page') . ': ' . h($page_name) . '</span>';
     }
 
     // If this page supports a custom layout and the user is an admin or designer,
@@ -190,10 +190,8 @@ if ((isset($_GET['page_id'])) && ($_GET['page_id'] != '')) {
                 pg_hosted());
 
             $output_layout_buttons =
-            '<div class=" btn-group btn-group-sm flex-wrap ">
-                <a class="btn btn-link pg-link-secondary py-0 mb-3 " href="' . h($edit_layout_url . ((strpos($edit_layout_url, 'edit_page_layout.php') === 0) ? '&send_to=' . urlencode(REQUEST_URL) : '')) . '"><span class="material-icons me-1">code</span>' . lang('Edit Layout') . '</a>
-                <a class="btn btn-link pg-link-secondary py-0 mb-3 " href="generate_layout.php?page_id=' . h($_GET['page_id']) . '"><span class="material-icons me-1">plagiarism</span>' . lang('Generate Layout') . '</a>
-            </div>';
+                '<a class="btn btn-sm btn-text theme-secondary" href="' . h($edit_layout_url . ((strpos($edit_layout_url, 'edit_page_layout.php') === 0) ? '&send_to=' . urlencode(REQUEST_URL) : '')) . '"><i class="bi bi-code-slash me-1" aria-hidden="true"></i>' . lang('Edit Layout') . '</a>'
+                . '<a class="btn btn-sm btn-text theme-secondary" href="generate_layout.php?page_id=' . h($_GET['page_id']) . '"><i class="bi bi-file-earmark-code me-1" aria-hidden="true"></i>' . lang('Generate Layout') . '</a>';
         }
     }
     $output_breadcrumb_first_level_item = '<li class="breadcrumb-item"><a class="pg-link-secondary " href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_pages.php">' . lang('All My Pages') . '</a></li>';
@@ -271,8 +269,8 @@ if ((isset($_GET['page_id'])) && ($_GET['page_id'] != '')) {
     // setup form designer heading, content heading and subheading
     $output_form_designer_subnav_heading = h($short_description);
     $output_form_designer_subnav_subheading = '
-    <p class="p-0 m-0">' . lang('Product ID / SKU') . ': ' . h($product_name) . '</p>
-    <p class="p-0 m-0">' . lang('Form Name') . ': ' . h($form_name) . '</p>';
+    <span class="small fg-secondary me-3">' . lang('Product ID / SKU') . ': ' . h($product_name) . '</span>
+    <span class="small fg-secondary me-3">' . lang('Form Name') . ': ' . h($form_name) . '</span>';
     $output_breadcrumb_first_level_item = '<li class="breadcrumb-item"><a class="pg-link-secondary " href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_products.php">' . lang('All Products') . '</a></li>';
     $output_breadcrumb_second_level_item = '<li class="breadcrumb-item"><a class="pg-link-secondary " href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_product.php?id=' . h(escape_javascript($_GET['product_id'])) . '">' . lang('Edit Product') . '</a></li>';
     $pg_breadcrumb_parent_items = array(
@@ -282,10 +280,7 @@ if ((isset($_GET['page_id'])) && ($_GET['page_id'] != '')) {
     $output_form_designer_content_heading = lang('Edit Product Form');
     $output_form_designer_content_subheading = lang('Add fields to this product form.');
     $output_cancel_onclick = 'window.location.href=\'edit_product.php?id=' . h(escape_javascript($_GET['product_id'])) . '\'';
-    $output_preview_button = '
-    <div class=" btn-group btn-group-sm flex-wrap ">
-        <button type="button" class="btn btn-link pg-link-secondary py-0 mb-3 " onclick="document.location.href = \'preview_form.php?product_id=\' + document.getElementById(\'product_id\').value"><span class="material-icons me-1">preview</span>' . lang('Preview') . '</button>
-    </div>';
+    $output_preview_button = '<button type="button" class="btn btn-sm btn-text theme-secondary" onclick="document.location.href = \'preview_form.php?product_id=\' + document.getElementById(\'product_id\').value"><i class="bi bi-eye me-1" aria-hidden="true"></i>' . lang('Preview') . '</button>';
     $output_form_designer_footer = '<button type="submit" value="Delete Selected" class=" btn mb-1 mt-1 btn-solid theme-danger disabled" data-confirm-content="' . lang(array('string'=>'WARNING: Selected {var:1} will be permanently deleted.','vars'=>array(lang('field(s)')))) . '"><span class="material-icons me-3">delete</span>' . lang(array('string'=>'Delete Selected') ) . '</button>';
     
     // Send the product id through the browser url.
@@ -333,11 +328,11 @@ if ((isset($_GET['page_id'])) && ($_GET['page_id'] != '')) {
     // The count is the point of this screen: what you draw here lands on every
     // one of those products.
     $output_form_designer_subnav_subheading = '
-    <p class="p-0 m-0">' . lang('Form Name') . ': ' . h($form_name) . '</p>
-    <p class="p-0 m-0">' . lang(array(
+    <span class="small fg-secondary me-3">' . lang('Form Name') . ': ' . h($form_name) . '</span>
+    <span class="small fg-secondary me-3">' . lang(array(
         'string' => 'Applied to {var:1} variant{suffix:1}',
         'vars'   => array($variant_count),
-        'suffix' => ($variant_count === 1) ? '' : 's')) . '</p>';
+        'suffix' => ($variant_count === 1) ? '' : 's')) . '</span>';
 
     $output_breadcrumb_first_level_item = '<li class="breadcrumb-item"><a class="pg-link-secondary " href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_products.php?mode=variant_sets">' . lang('Variant Sets') . '</a></li>';
     $output_breadcrumb_second_level_item = '<li class="breadcrumb-item"><a class="pg-link-secondary " href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_product_group.php?id=' . h(escape_javascript($_GET['product_group_id'])) . '">' . h($product_group['name']) . '</a></li>';
@@ -465,7 +460,7 @@ if ($designer_form) {
     $output_create_button = '';
     $output_select_all_heading = '<th class="noVis"></th>';
 } else {
-    $output_create_button = '<a class="btn btn-sm btn-solid theme-primary m-1 " href="add_field.php?' . $form_type_identifier_id . '=' . h(urlencode($_GET[$form_type_identifier_id])) . '&amp;form_type=' . $form_type . '&amp;send_to=' . h(urlencode(($_GET['send_to'] ?? ''))) . '"><span class="bi bi-plus-circle me-3"></span>' . lang(array('string'=>'Create') ) . '</a>';
+    $output_create_button = '<a class="btn btn-sm btn-solid theme-primary rounded-pill px-5" href="add_field.php?' . $form_type_identifier_id . '=' . h(urlencode($_GET[$form_type_identifier_id])) . '&amp;form_type=' . $form_type . '&amp;send_to=' . h(urlencode(($_GET['send_to'] ?? ''))) . '"><span class="bi bi-plus-circle me-3"></span>' . lang(array('string'=>'Create') ) . '</a>';
     $output_select_all_heading =
         '<th class="noVis">
             <div class="form-field">
@@ -481,6 +476,7 @@ pg_page_shell(array(
     'title' => $output_form_designer_subnav_heading . ' | ' . $output_form_designer_content_heading,
     'icon' => (($form_type == 'product') || ($form_type == 'product_group')) ? 'store' : 'design',
     'heading' => $output_form_designer_content_heading,
+    'heading_description' => $output_form_designer_content_subheading,
     'cancel'=>array('enable'=>true,'onclick'=>$output_cancel_onclick),
     'breadcrumb' => array_merge(
         $pg_breadcrumb_parent_items,
@@ -488,20 +484,14 @@ pg_page_shell(array(
     ),
 )) . '
 <main id="content" class="container-fluid">
+    ' . pg_screen_toolbar(array(
+        'primary'   => $output_create_button,
+        'secondary' => array($output_layout_buttons, $output_preview_button),
+        'grow'      => '<span class="fw-semibold text-break me-3">' . $output_form_designer_subnav_heading . '</span>' . $output_form_designer_subnav_subheading,
+    )) . '
     <div class="row">
         ' . $liveform->get_messages() . '
         <div class="col-12">
-            <div class="row mb-3  flex-wrap">
-                <div class="col-12 text-center md:text-start">
-<h2 class="d-inline-block text-break" data-bs-content="' . $output_form_designer_content_subheading . '" title="' . $output_form_designer_content_heading . '">[' . $output_form_designer_subnav_heading . ']</h2>
-                    ' . $output_form_designer_subnav_subheading . '
-                    <nav id="button_bar" class="navigation " aria-label="' . h(lang('Button Bar')) . '">
-                        ' . $output_create_button . '
-                        ' . $output_layout_buttons . '
-                        ' . $output_preview_button . '
-                    </nav>
-                </div>
-            </div>
             ' . $output_designer_form_notice . '
             <div class="card my-7">
                 <div class="card-body p-0 position-relative">

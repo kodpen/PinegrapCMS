@@ -109,3 +109,26 @@ function test_screen_lone_controls_lone_rows_are_gone()
 	$calendars = screen_lone_controls_source('calendars.php');
 	pg_assert_false(strpos($calendars, 'md:col-6 xl:col-9 text-center md:text-start') !== false, 'calendars: the bar is not inside a column');
 }
+
+function test_screen_lone_controls_edit_screen_rows_join_the_toolbar()
+{
+	$screens = array(
+		'edit_common_region.php', 'edit_designer_region.php', 'edit_menu.php', 'edit_calendar_event.php',
+		'edit_email_campaign_profile.php', 'edit_folder.php', 'edit_product_group.php', 'edit_custom_style.php',
+		'edit_ad_region.php', 'edit_dynamic_region.php', 'edit_login_region.php', 'view_menu_items.php',
+		'edit_javascript.php', 'edit_theme_css.php', 'view_fields.php', 'add_submitted_form.php',
+	);
+
+	foreach ($screens as $file) {
+		$source = screen_lone_controls_source($file);
+		pg_assert_contains('pg_screen_toolbar(', $source, $file . ' draws its bar through pg_screen_toolbar()');
+		pg_assert_false(strpos($source, '<nav id="button_bar"') !== false, $file . ' writes no bar by hand');
+		// The record's name was a second heading in square brackets.
+		pg_assert_false((bool) preg_match("/<h2[^>]*>\\[' \\./", $source), $file . ' has no [name] second heading');
+		// The Duplicate link was a lone btn-link row.
+		// (A Duplicate submit in the form's save bar stays with its form.)
+		pg_assert_false(strpos($source, 'btn btn-link pg-link-secondary py-0 mb-3') !== false, $file . ' has no lone Duplicate row');
+		// The Page Style Body Tag line was a paragraph above the bar.
+		pg_assert_false(strpos($source, "<p>' . lang('Page Style Body Tag')") !== false, $file . ' has no Body Tag paragraph');
+	}
+}

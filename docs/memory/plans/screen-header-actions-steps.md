@@ -26,6 +26,7 @@ description: Steps H1-H6 of plans/screen-header-actions.md: which screens each f
 
 - H4 (M) Lone controls and fact lines.
   - H4a done (#3966): right-only bars, report headers, lone buttons and Disk Usage draw one `pg_screen_toolbar()` bar directly in `<main>`; fact lines (counts, Disk Usage, the 404 and firewall summaries) sit in its grow slot. Left for H4b: Duplicate rows, `[name]` headings, Page Style Body Tag rows.
+  - H4b done (#4048): the Duplicate rows of eight edit screens are slot 2 links of one toolbar; the `[name]` headings and Page Style Body Tag lines are text in its grow slot (not the record's card: the grow slot keeps them beside the actions, as Disk Usage); screen descriptions that sat in that row became `heading_description`.
   - Bars whose only control sits at the right: `erp_invoice_recurrences`, `view_audit_log`, `view_waf_log`, `view_not_found_log`.
   - Report headers: `view_order_report`, `view_visitor_report`, `view_performance_log`.
   - Lone buttons: `erp_bank_statement`, `erp_stock_count`, `calendars.php`.

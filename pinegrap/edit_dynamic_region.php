@@ -65,15 +65,12 @@ if (!isset($_POST['name'])) {
         ),
     ]) . '
 <main id="content" class="container-fluid">
+    ' . pg_screen_toolbar(array(
+        'grow' => '<span class="small fg-secondary">' . lang('Page Style Body Tag') . ': <code>' . h('<dregion>' . $dregion_name . '</dregion>') . '</code></span>',
+    )) . '
             <div class="row">
             <div class="col-12">
                 ' . $liveform->output_errors() . '
-                <div class="row mb-3  flex-wrap">
-                    <div class="col-12 sm:col-12 text-center md:text-start">
-                        
-                        <p>' . lang('Page Style Body Tag') . ': <strong>' . h('<dregion>' . $dregion_name . '</dregion>') . '</strong></p>
-                    </div>
-                </div>
                 <form action="edit_dynamic_region.php" method="post">
                     ' . get_token_field() . '
                     <input type="hidden" name="id" value="' . h($_GET['id']) . '" />
