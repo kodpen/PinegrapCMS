@@ -195,9 +195,16 @@ if ($mail_queue_tab === 'sms') {
         if ($sms_queue_row['status'] === 'sent') {
             $sms_queue_when = prepare_form_data_for_output(date('Y-m-d H:i:s', (int) $sms_queue_row['sent_at']), 'date and time');
         } elseif ($sms_queue_row['status'] === 'queued') {
-            $sms_queue_when = ((int) $sms_queue_row['send_after'] > time())
-                ? prepare_form_data_for_output(date('Y-m-d H:i:s', (int) $sms_queue_row['send_after']), 'date and time')
-                : lang('On the next run');
+
+            // A row past its expiry is never sent: the next run marks it
+            // failed without an attempt, so it does not claim that run.
+            if ($sms_queue_expired) {
+                $sms_queue_when = lang('Expired');
+            } else {
+                $sms_queue_when = ((int) $sms_queue_row['send_after'] > time())
+                    ? prepare_form_data_for_output(date('Y-m-d H:i:s', (int) $sms_queue_row['send_after']), 'date and time')
+                    : lang('On the next run');
+            }
         } else {
             $sms_queue_when = '';
         }
