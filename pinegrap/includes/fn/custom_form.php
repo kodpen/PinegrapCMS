@@ -1721,6 +1721,53 @@ function pg_cf_field_initial_value($field, $lf, $folder_id = 0, $url_value = '')
 }
 
 /**
+ * The posted values of a pick list, radio button or check box group that its
+ * option list does not have, each once, in the order sent. An empty value is
+ * no value (a field left blank); values are compared exactly, spaces around
+ * either side aside. A nested array is skipped here: pg_cf_option_values_ok()
+ * refuses it.
+ *
+ * @param mixed $value          The posted or stored value, a string or a list
+ * @param array $option_values  The option values of the field
+ * @return string[]
+ */
+function pg_cf_values_outside_options($value, $option_values)
+{
+    $known = array();
+    foreach ((array) $option_values as $option_value) {
+        if (is_scalar($option_value)) $known[trim((string) $option_value)] = true;
+    }
+
+    $outside = array();
+    foreach ((is_array($value) ? $value : array($value)) as $item) {
+        if (!is_scalar($item)) continue;
+        $item = trim((string) $item);
+        if ($item === '' || isset($known[$item]) || in_array($item, $outside, true)) continue;
+        $outside[] = $item;
+    }
+
+    return $outside;
+}
+
+/**
+ * Whether a posted pick list, radio button or check box value holds only
+ * values of the field's option list (or nothing). The browser can send only
+ * those; anything else was made up outside the form.
+ *
+ * @param mixed $value
+ * @param array $option_values
+ * @return bool
+ */
+function pg_cf_option_values_ok($value, $option_values)
+{
+    foreach ((is_array($value) ? $value : array($value)) as $item) {
+        if (($item !== null) && !is_scalar($item)) return false;
+    }
+
+    return pg_cf_values_outside_options($value, $option_values) === array();
+}
+
+/**
  * Give every label the control it names.
  *
  * A <label> without `for` only reaches its control by wrapping it, which the

@@ -881,6 +881,7 @@
     "Please choose": "Seçim yapınız",
     "Please choose a CSV file.": "Lütfen bir CSV dosyası seçin.",
     "Please choose a region type to create": "Lütfen oluşturmak için bir bölge türü seçin",
+    "Please choose a valid option for {var:1}": "Lütfen {var:1} için geçerli bir seçenek seçin",
     "Please choose an image (JPG, PNG, GIF or WebP) for {var:1}": "Lütfen {var:1} için bir görsel (JPG, PNG, GIF ya da WebP) seçin",
     "Please choose one of the listed items for {var:1}": "Lütfen {var:1} için listelenen öğelerden birini seçin",
     "Please choose what the site should be installed from.": "Sitenin neyin üzerine kurulacağını seçin.",

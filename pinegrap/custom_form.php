@@ -429,6 +429,28 @@ foreach ($fields as $field_key => $field) {
         // A number, an image or a reference of a collection's field.
         pg_coll_check_field($liveform, $field, $collection_kinds);
 
+        // A pick list, radio button or check box group takes only values of
+        // its option list; the browser sends nothing else. A field whose
+        // choices are records, products or pages is checked above instead. A
+        // field with no option rows (a designed box without a value posts
+        // "on") has no list to hold it to.
+        if (
+            in_array($field['type'], array('pick list', 'radio button', 'check box'), true)
+            && ($liveform->check_field_error($field['id']) == false)
+            && !in_array(isset($collection_kinds[(int) $field['id']]) ? $collection_kinds[(int) $field['id']]['kind'] : '', array('reference', 'product', 'page'), true)
+        ) {
+            $option_values = array();
+            $option_result = db_q("SELECT value FROM form_field_options WHERE form_field_id = ?", array((string) $field['id']));
+
+            while ($option_result && ($option_row = mysqli_fetch_assoc($option_result))) {
+                $option_values[] = $option_row['value'];
+            }
+
+            if (($option_values !== array()) && !pg_cf_option_values_ok($liveform->get_field_value($field['id']), $option_values)) {
+                $liveform->mark_error($field['id'], lang(array('string'=>'Please choose a valid option for {var:1}','vars'=>h(function_exists('pg_tr_label') ? pg_tr_label($field['label']) : $field['label']))) );
+            }
+        }
+
         // The field's visitor rules: a date not before today, a field required
         // for some answers of another. Checked here only; staff editing a
         // submission in the panel, the API and MCP are not held to them.

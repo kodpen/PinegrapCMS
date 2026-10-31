@@ -60,6 +60,34 @@ function pg_submitted_form_attachment_state($row, $bin_folder_ids)
 }
 
 /**
+ * The options of a pick list, radio button or check box group on Edit
+ * Submitted Form, with each stored value the list does not have (an option
+ * renamed or deleted after the submission) added as an option marked
+ * "(not in the list)". Its value is the stored one, so the save writes it back
+ * unchanged unless staff choose another.
+ *
+ * @param array $options   form_field_options rows: id, label, value, default_selected
+ * @param mixed $stored    The stored value, a string or a list
+ * @param int|string $field_id
+ * @return array
+ */
+function pg_submitted_form_keep_stored_options($options, $stored, $field_id)
+{
+    $outside = pg_cf_values_outside_options($stored, array_column($options, 'value'));
+
+    foreach ($outside as $index => $value) {
+        $options[] = array(
+            'id' => $field_id . '_stored' . $index,
+            'label' => $value . ' ' . lang('(not in the list)'),
+            'value' => $value,
+            'default_selected' => 0,
+        );
+    }
+
+    return $options;
+}
+
+/**
  * The value a field starts with on a new submitted form: the folder name when
  * the field is set to use it and the name is known, else its default value,
  * as the site's form does (pg_cf_field_initial_value()).
@@ -231,6 +259,13 @@ function pg_submitted_form_fields_markup($liveform, $user, $page_id, $office_use
             }
         }
 
+        // On an existing submitted form a stored value the option list no
+        // longer has stays on screen as its own option, so saving another
+        // field neither drops it nor turns it into the first option.
+        if ($existing && ($coll_choices === null) && in_array($field['type'], array('pick list', 'radio button', 'check box'), true)) {
+            $options = pg_submitted_form_keep_stored_options($options, $liveform->get_field_value($field['id']), $field['id']);
+        }
+
         // if field should have spacing above, add spacing
         if ($field['spacing_above']) {
             $output_fields .=
@@ -368,6 +403,9 @@ function pg_submitted_form_fields_markup($liveform, $user, $page_id, $office_use
                 // the group's name is an array, PHP replaces this empty scalar value with
                 // the array of checked values, while a hidden field after them would
                 // replace that array with an empty string and lose every checked value.
+                // It goes before the fieldset, not right after the legend: Bootstrap
+                // floats the legend and clears only the element that follows it, so a
+                // hidden input there left the first option squeezed beside the legend.
                 // A new submitted form has no data to replace, so it needs none.
                 $output_hidden = '';
 
@@ -377,9 +415,9 @@ function pg_submitted_form_fields_markup($liveform, $user, $page_id, $office_use
 
                 $output_fields .=
                     '<div class="col-12 my-3 ' . $row_class . '">
+                        ' . $output_hidden . '
                         <fieldset>
                             <legend class="form-label fs-md">' . h($field['label']) . '</legend>
-                            ' . $output_hidden . '
                             ' . $output_options . '
                         </fieldset>
                     </div>';
