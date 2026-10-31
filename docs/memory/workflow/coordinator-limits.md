@@ -1,6 +1,6 @@
 ---
 name: coordinator-limits
-description: Coordinator rules (2026-10-27): quota guard before a worker starts, 3 to 6 workers per coordinator, a card for a draft PR whose decision came after its session ended
+description: Coordinator rules (2026-10-27): quota guard before a worker starts, 3 to 6 workers per coordinator, a new worker for a draft PR whose decision came after its session ended
 ---
 
 ## Why?
@@ -12,8 +12,8 @@ description: Coordinator rules (2026-10-27): quota guard before a worker starts,
 - Each coordinator keeps at least 3 and at most 6 workers busy (since 2026-10-31; before, 6 per account shared by its coordinators). Fewer than 3 only while the quota guard, the queue limit (CLAUDE.md, Working mode 8) or a lack of free steps stops a start. The queue rule (at most 6 of the 20 places per coordinator; 4 of 15 before 2026-10-28) stays.
 - Starts are staggered: at most one new worker a minute. The architect starts no sub-agents for the same reason.
 
-## Which draft PR gets a card?
-- A draft PR whose `Decision: #<issue>` issue is closed and whose session has ended: a worker card for that branch, with the decision comment on the PR as the brief; the new session continues the branch, notes "decided in #<issue>" in the PR body and marks it ready when CI is green.
+## Which draft PR gets a new worker?
+- A draft PR whose `Decision: #<issue>` issue is closed and whose session has ended: a new worker (`create_session`) for that branch, with the decision comment on the PR as the brief; the new session continues the branch, notes "decided in #<issue>" in the PR body and marks it ready when CI is green.
 - The 10-minute check finds it by listing the drafts whose body has `Decision: #` and reading each issue's state; no polling of sessions.
 
 Related: docs/memory/workflow/coordinator.md, docs/memory/workflow/session-lifecycle.md, docs/memory/workflow/architect.md
