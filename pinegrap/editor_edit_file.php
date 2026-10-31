@@ -199,7 +199,8 @@ if (!$_POST) {
             (string) filesize(FILE_DIRECTORY_PATH . '/' . $new_file_name),
             (string) $user['id'],
         )) or output_error('Query failed.');
-        $new_file_id = mysqli_insert_id(db::$con);
+        $new_file_id = (int) mysqli_insert_id(db::$con);
+        pg_audit_record('create', 'files', $new_file_id);
 
         log_activity(lang(array('string'=>'a new copy of the file ({var:1}) was created', 'vars'=>$file_name)), $_SESSION['sessionusername']);
 
@@ -222,6 +223,7 @@ if (!$_POST) {
             editor_edit_file_write_failed($liveform, $id, $file_name);
         }
 
+        $audit_before = pg_audit_fetch('files', (int) $id);
         $query = "UPDATE files 
             SET size = ?,
                 timestamp = UNIX_TIMESTAMP(),
@@ -232,6 +234,7 @@ if (!$_POST) {
             (string) $user['id'],
             (string) $id,
         )) or output_error('Query failed.');
+        pg_audit_record('update', 'files', (int) $id, $audit_before);
 
         log_activity(lang(array('string'=>'the file ({var:1}) was modified','vars'=>$file_name)), $_SESSION['sessionusername']);
 

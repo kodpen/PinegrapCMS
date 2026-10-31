@@ -223,7 +223,8 @@ if (!$_POST) {
             (string) $row['theme'],
             (string) $user['id'],
         )) or output_error('Query failed.');
-        $new_theme_id = mysqli_insert_id(db::$con);
+        $new_theme_id = (int) mysqli_insert_id(db::$con);
+        pg_audit_record('create', 'files', $new_theme_id);
 
         // Duplicate preview style records.
 
@@ -282,6 +283,7 @@ if (!$_POST) {
         }
         
         // update file in database
+        $audit_before = pg_audit_fetch('files', (int) $id);
         $query =
             "UPDATE files 
             SET 
@@ -294,6 +296,7 @@ if (!$_POST) {
             (string) $user['id'],
             (string) $id,
         )) or output_error('Query failed.');
+        pg_audit_record('update', 'files', (int) $id, $audit_before);
         
         // log the change and add a notice that the file was modified
         log_activity(lang(array('string'=>'the css for theme file ({var:1}) was modified','vars'=>$file_name)), $_SESSION['sessionusername']);

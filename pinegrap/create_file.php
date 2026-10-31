@@ -233,6 +233,8 @@ if (!$_POST) {
         '" . USER_ID . "',
         UNIX_TIMESTAMP()
     )");
+    $new_file_id = (int) mysqli_insert_id(db::$con);
+    pg_audit_record('create', 'files', $new_file_id);
 
     log_activity(lang(array('string'=>'file ({var:1}) was created','vars'=>$name)), $_SESSION['sessionusername']);
 

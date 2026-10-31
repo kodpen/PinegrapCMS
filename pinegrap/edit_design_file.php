@@ -287,8 +287,10 @@ if (empty($_POST['name'])) {
     if (!empty($_POST['delete']))
     {
         // delete file row
+        $audit_before = pg_audit_fetch('files', (int) $id);
         $query = "DELETE FROM files WHERE id = ?";
         $result=db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed');
+        pg_audit_record('delete', 'files', (int) $id, $audit_before);
         
         // check to see if this is a system theme
         $query = "SELECT COUNT(id) FROM system_theme_css_rules WHERE file_id = ?";
@@ -345,6 +347,7 @@ if (empty($_POST['name'])) {
         }
         
         // update file
+        $audit_before = pg_audit_fetch('files', (int) $id);
         $query =
             "UPDATE files 
             SET 
@@ -359,6 +362,7 @@ if (empty($_POST['name'])) {
             WHERE id = '" . escape($_POST['id'] ?? '') . "'";
         
         $result=mysqli_query(db::$con, $query) or output_error('Query failed');
+        pg_audit_record('update', 'files', (int) $id, $audit_before);
         
         // Rename the file when its name changed and it is on the disk (a
         // file recorded here but missing from the disk has nothing to rename).
