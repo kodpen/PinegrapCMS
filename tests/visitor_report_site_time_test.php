@@ -149,3 +149,9 @@ function test_visitor_report_reads_days_in_site_time()
 	pg_assert_same(3, substr_count($source, ", \$site_time_from, \$site_time_to) . ','"), 'three groupings get the window');
 	pg_assert_same(0, preg_match("/FROM_UNIXTIME\\(visitors\\.start_timestamp, '/", str_replace("\\'", "'", $source)), 'no plain day reading');
 }
+
+// Without a window the session's offset is kept.
+function test_site_time_sql_without_a_window()
+{
+	pg_assert_same("FROM_UNIXTIME(visitors.start_timestamp, '%m')", pg_site_time_sql('visitors.start_timestamp', '%m', null, null, 'Europe/Berlin', pg_test_site_time_berlin_now()));
+}

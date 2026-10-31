@@ -37,11 +37,11 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  *
  * Each segment holds the shift in seconds and the first timestamp it no
  * longer covers (null for the last one). Neighbouring segments never share
- * a shift. An unknown zone or an empty window gives one segment without a
- * shift.
+ * a shift. An unknown zone, an empty window or no window at all (null)
+ * gives one segment without a shift.
  *
- * @param int         $from First timestamp of the window
- * @param int         $to   Last timestamp of the window
+ * @param int|null    $from First timestamp of the window
+ * @param int|null    $to   Last timestamp of the window
  * @param string|null $zone Time zone name; the site's (PHP's default) when null
  * @param int|null    $now  The moment whose offset the session has; time() when null
  * @return array List of array('until' => int|null, 'shift' => int)
@@ -49,12 +49,13 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 function pg_site_time_shifts($from, $to, $zone = null, $now = null)
 {
     $plain = array(array('until' => null, 'shift' => 0));
-    $from = (int) $from;
-    $to = (int) $to;
 
-    if ($from > $to) {
+    if (($from === null) || ($to === null) || ((int) $from > (int) $to)) {
         return $plain;
     }
+
+    $from = (int) $from;
+    $to = (int) $to;
 
     try {
         $timezone = new DateTimeZone(($zone === null) ? date_default_timezone_get() : (string) $zone);
@@ -105,8 +106,8 @@ function pg_site_time_shifts($from, $to, $zone = null, $now = null)
  *
  * @param string      $column SQL expression of a Unix timestamp
  * @param string      $format MySQL date format, e.g. '%Y-%m-%d'
- * @param int         $from   First timestamp of the window
- * @param int         $to     Last timestamp of the window
+ * @param int|null    $from   First timestamp of the window
+ * @param int|null    $to     Last timestamp of the window
  * @param string|null $zone   Time zone name; the site's when null
  * @param int|null    $now    The moment whose offset the session has; time() when null
  * @return string

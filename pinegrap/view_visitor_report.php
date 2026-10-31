@@ -2034,7 +2034,10 @@ if (!$_POST) {
 
 // $from and $to bound the visits the query reads: the year, month and day
 // are taken in the site's own time over that window (pg_site_time_sql()).
-function get_summarize_by_column($summarize_by, $from, $to)
+// They are optional only because static analysis checks view_order_report.php's
+// function of the same name against this signature; without them the
+// session's offset is used.
+function get_summarize_by_column($summarize_by, $from = null, $to = null)
 {
     switch ($summarize_by) {
         case 'year': return pg_site_time_sql('visitors.start_timestamp', '%Y', $from, $to);
