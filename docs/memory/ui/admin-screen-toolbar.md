@@ -13,7 +13,7 @@ description: Panel screen basics (frame, notices, fields, width, icons, help), t
 
 ## What is the admin screen design principle?
 - As `view_folders.php` (its tree panel aside): everything a screen does is in ONE toolbar straight under the title (never in a `.row`/`.col`), content below. Owner decision 2026-10-30 (`workflow/decisions-made-product-14.md`).
-- Nothing alone under the title: a lone action joins the bar, a fact goes into the grow slot, no second heading repeating the title. Back only by arrow + breadcrumb (`back-arrow-no-copies.md`). Filters, sort, view at the right end, never a second column. No sticky bar (#3837).
+- Nothing alone under the title: a lone action joins the bar, a fact goes into the grow slot (#4264, `toolbar-phone-fit.md`), no second heading repeating the title. Back only by arrow + breadcrumb (`back-arrow-no-copies.md`). Filters, sort, view at the right end, never a second column. No sticky bar (#3837).
 - Left: `mass_edit.php` still wraps its bar in a column; move it when next touched (`page-button-bar.md`).
 
 ## What is the toolbar slot order?
