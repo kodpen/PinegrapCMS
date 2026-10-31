@@ -2,7 +2,7 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Site Settings - the server and domain, the software itself, the update channel, date and time.
+ * Site Settings - the organization, the server and domain, the software itself, date and time.
  *
  * One of the nine category screens the settings were split into on
  * 2026-09-12. Everything the screen does lives in the shared flow and in the
@@ -16,6 +16,15 @@
  */
 
 include('init.php');
+
+// The Backups card moved to Updates and maintenance. A cloud account
+// connection started from this screen before the move still returns here
+// with ?backup_connect=; it is sent on to the card, which reads it.
+if (isset($_GET['backup_connect'])) {
+    header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/'
+        . 'settings_maintenance.php?' . http_build_query(array('backup_connect' => (is_string($_GET['backup_connect']) ? preg_replace('/[^a-z]/', '', $_GET['backup_connect']) : ''))) . '#pgset-backup');
+    exit;
+}
 
 define('PG_SETTINGS_KEY', 'general');
 

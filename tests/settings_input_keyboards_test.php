@@ -63,8 +63,8 @@ function test_settings_input_keyboards_web_addresses_and_hosts()
 		array('includes/settings/privacy.php', 'stats_url'),
 		array('includes/settings/general.php', 'hostname'),
 		array('includes/settings/general.php', 'proxy_address'),
-		array('includes/settings/general.php', 'backup_ftp_host'),
-		array('includes/settings/general.php', 'backup_s3_endpoint'),
+		array('includes/settings/maintenance.php', 'backup_ftp_host'),
+		array('includes/settings/maintenance.php', 'backup_s3_endpoint'),
 		array('includes/settings/accounting.php', 'erp_web_address'),
 		array('includes/settings/features.php', 'signature_tsa_url'),
 		array('includes/workspace/mail_settings.php', 'auth_server'),
@@ -80,12 +80,12 @@ function test_settings_input_keyboards_web_addresses_and_hosts()
 function test_settings_input_keyboards_names_kept_as_typed()
 {
 	$boxes = array(
-		array('includes/settings/general.php', 'backup_ftp_user'),
-		array('includes/settings/general.php', 'backup_ftp_path'),
-		array('includes/settings/general.php', 'backup_s3_region'),
-		array('includes/settings/general.php', 'backup_s3_bucket'),
-		array('includes/settings/general.php', 'backup_s3_prefix'),
-		array('includes/settings/general.php', 'backup_s3_access_key'),
+		array('includes/settings/maintenance.php', 'backup_ftp_user'),
+		array('includes/settings/maintenance.php', 'backup_ftp_path'),
+		array('includes/settings/maintenance.php', 'backup_s3_region'),
+		array('includes/settings/maintenance.php', 'backup_s3_bucket'),
+		array('includes/settings/maintenance.php', 'backup_s3_prefix'),
+		array('includes/settings/maintenance.php', 'backup_s3_access_key'),
 		array('includes/settings/features.php', 'signature_tsa_username'),
 		array('includes/workspace/mail_settings.php', 'user'),
 	);
