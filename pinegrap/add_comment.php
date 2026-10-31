@@ -178,7 +178,7 @@ if ($liveform->check_form_errors() == true) {
 
 // if comments are disabled for the page, log and output error
 if ($comments == 0) {
-    log_activity(lang(array('string'=>'access denied to submit a comment to page ({var:1}) because comments are disabled','vars'=>$page_name)), $_SESSION['sessionusername']);
+    log_activity(pg_log_lang(array('string'=>'access denied to submit a comment to page ({var:1}) because comments are disabled','vars'=>$page_name)), $_SESSION['sessionusername']);
     output_error(lang('You do not have access to submit a comment to that page because comments are disabled.') . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
 }
 
@@ -189,13 +189,13 @@ $allow_new_comments = pg_comments_allow_new($page_id, $item_type, $item_id, ($co
 
 // if new comments are not allowed, log and output error
 if ($allow_new_comments == FALSE) {
-    log_activity(lang(array('string'=>'access denied to submit a comment to page ({var:1}) because new comments are not allowed','vars'=>$page_name)), $_SESSION['sessionusername']);
+    log_activity(pg_log_lang(array('string'=>'access denied to submit a comment to page ({var:1}) because new comments are not allowed','vars'=>$page_name)), $_SESSION['sessionusername']);
     output_error(h($comments_disallow_new_comment_message) . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
 }
 
 // if the user is not logged in, and if the user is required to login to comment, then output an error
 if ((isset($_SESSION['sessionusername']) == FALSE) && ($comments_require_login_to_comment == 1)) {
-    log_activity(lang(array('string'=>'access denied to submit a comment to page ({var:1}) because visitor was not logged in','vars'=>$page_name)), $_SESSION['sessionusername']);
+    log_activity(pg_log_lang(array('string'=>'access denied to submit a comment to page ({var:1}) because visitor was not logged in','vars'=>$page_name)), $_SESSION['sessionusername']);
     output_error(lang(array('string'=>'You must login before you can submit a {var:1}.','vars'=>$output_comment_label_lowercase)) . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
 }
 
@@ -215,7 +215,7 @@ $user_role = $row['user_role'] ?? null;
 
 // if user does not have access to view page, log and output error
 if (check_view_access($folder_id) == false) {
-    log_activity(lang(array('string'=>'access denied to submit a comment to page ({var:1}) because visitor does not have view access to page','vars'=>$page_name)), $_SESSION['sessionusername']);
+    log_activity(pg_log_lang(array('string'=>'access denied to submit a comment to page ({var:1}) because visitor does not have view access to page','vars'=>$page_name)), $_SESSION['sessionusername']);
     output_error(lang(array('string'=>'You do not have access to submit a {var:1} to that page.','vars'=>$output_comment_label_lowercase)) . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
 }
 
@@ -239,7 +239,7 @@ if ($user['role'] == 3) {
 // prints the session value first, so the form drawn again would carry the
 // refused thread rather than the record the page shows.
 if ($comment_thread['refusal'] === 'item_type') {
-    log_activity(lang(array('string'=>'access denied to submit a comment to page ({var:1}) because the item type was not valid for the page type','vars'=>$page_name)), $_SESSION['sessionusername'] ?? '');
+    log_activity(pg_log_lang(array('string'=>'access denied to submit a comment to page ({var:1}) because the item type was not valid for the page type','vars'=>$page_name)), $_SESSION['sessionusername'] ?? '');
     $liveform->add_error(lang(array('string'=>'Sorry, the {var:1} was not added, because the item type was not valid for the page type.','vars'=>$output_comment_label_lowercase)));
     $liveform->set_field('item_type', array());
     $liveform->set_field('item_id', array());
@@ -264,9 +264,9 @@ if ($comment_thread['refusal'] === 'record') {
     ) ? $comment_thread['record']['form'] : null;
 
     if ($refused_record !== null) {
-        log_activity(lang(array('string'=>'access denied to submit a comment to page ({var:1}) because the visitor did not have view access to submitted form ({var:2})','vars'=>array( $page_name,$refused_record['reference_code'] ))), $_SESSION['sessionusername'] ?? '');
+        log_activity(pg_log_lang(array('string'=>'access denied to submit a comment to page ({var:1}) because the visitor did not have view access to submitted form ({var:2})','vars'=>array( $page_name,$refused_record['reference_code'] ))), $_SESSION['sessionusername'] ?? '');
     } else {
-        log_activity(lang(array('string'=>'access denied to submit a comment to page ({var:1}) because the submitted form could not be found','vars'=>$page_name)), $_SESSION['sessionusername'] ?? '');
+        log_activity(pg_log_lang(array('string'=>'access denied to submit a comment to page ({var:1}) because the submitted form could not be found','vars'=>$page_name)), $_SESSION['sessionusername'] ?? '');
     }
 
     $liveform->remove_form();
@@ -279,7 +279,7 @@ if ($comment_thread['refusal'] === 'record') {
 // when its page type shows that kind of item), then log activity and output
 // error.
 if ($comment_thread['refusal'] === 'page_type') {
-    log_activity(lang(array('string'=>'access denied to submit a comment to page ({var:1}) because the item type was not valid for the page type','vars'=>$page_name)), $_SESSION['sessionusername'] ?? '');
+    log_activity(pg_log_lang(array('string'=>'access denied to submit a comment to page ({var:1}) because the item type was not valid for the page type','vars'=>$page_name)), $_SESSION['sessionusername'] ?? '');
     output_error(lang(array('string'=>'Sorry, the {var:1} was not added, because the item type was not valid for the page type.','vars'=>$output_comment_label_lowercase)) . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
 }
 
@@ -292,7 +292,7 @@ if ($comment_thread['refusal'] === 'page_type') {
 // comment form of this page, about another item, would carry the refused item
 // and the typed text and post them again.
 if ($comment_thread['refusal'] === 'item') {
-    log_activity(lang(array('string'=>'access denied to submit a comment to page ({var:1}) because the item could not be found','vars'=>$page_name)), $_SESSION['sessionusername'] ?? '');
+    log_activity(pg_log_lang(array('string'=>'access denied to submit a comment to page ({var:1}) because the item could not be found','vars'=>$page_name)), $_SESSION['sessionusername'] ?? '');
     $liveform->remove_form();
     output_error(lang(array('string'=>'Sorry, the {var:1} was not added, because the item could not be found.','vars'=>$output_comment_label_lowercase)) . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
 }
@@ -316,7 +316,7 @@ if ($item_type == 'submitted_form') {
 
     // If the submitted form was not found, then log and output error.
     if (!$submitted_form['id']) {
-        log_activity(lang(array('string'=>'access denied to submit a comment to page ({var:1}) because the submitted form could not be found','vars'=>$page_name)), $_SESSION['sessionusername']);
+        log_activity(pg_log_lang(array('string'=>'access denied to submit a comment to page ({var:1}) because the submitted form could not be found','vars'=>$page_name)), $_SESSION['sessionusername']);
         output_error(lang(array('string'=>'Sorry, the {var:1} was not added, because the submitted form could not be found.','vars'=>$output_comment_label_lowercase)) . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
     }
 
@@ -402,7 +402,7 @@ if ($item_type == 'submitted_form') {
         // If this visitor does not have view access to the submitted form.
         // then log and output error.
         if ($view_access == false) {
-            log_activity(lang(array('string'=>'access denied to submit a comment to page ({var:1}) because the visitor did not have view access to submitted form ({var:2})','vars'=>array( $page_name,$submitted_form['reference_code'] ))), $_SESSION['sessionusername']);
+            log_activity(pg_log_lang(array('string'=>'access denied to submit a comment to page ({var:1}) because the visitor did not have view access to submitted form ({var:2})','vars'=>array( $page_name,$submitted_form['reference_code'] ))), $_SESSION['sessionusername']);
             output_error(lang(array('string'=>'Sorry, the {var:1} was not added, because you do not have access to view that submitted form.','vars'=>$output_comment_label_lowercase)) . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
         }
     }
@@ -441,7 +441,7 @@ $comment_parent_check = pg_comment_parent_ok(
 );
 
 if (!$comment_parent_check['accept']) {
-    log_activity(lang(array('string' => 'access denied to submit a comment to page ({var:1}) because the comment it replies to could not be found or is not visible to the visitor', 'vars' => $page_name)), $_SESSION['sessionusername'] ?? '');
+    log_activity(pg_log_lang(array('string' => 'access denied to submit a comment to page ({var:1}) because the comment it replies to could not be found or is not visible to the visitor', 'vars' => $page_name)), $_SESSION['sessionusername'] ?? '');
     $liveform->add_error(lang(array('string' => 'Sorry, the {var:1} was not added, because the one it replies to could not be found.', 'vars' => $output_comment_label_lowercase)));
     $liveform->set_field('parent_id', array());
     header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path($liveform->get_field_value('send_to')) . '#software_add_comment');
@@ -466,7 +466,7 @@ if ($is_product_review && !check_edit_access($folder_id)) {
     $review = pg_review_eligibility((int) $user_id, $item_type, $item_id);
 
     if ($review['refusal'] !== '') {
-        log_activity(lang(array('string' => 'access denied to submit a review to page ({var:1}) because the visitor has no purchase of the product left to review', 'vars' => $page_name)), $_SESSION['sessionusername'] ?? '');
+        log_activity(pg_log_lang(array('string' => 'access denied to submit a review to page ({var:1}) because the visitor has no purchase of the product left to review', 'vars' => $page_name)), $_SESSION['sessionusername'] ?? '');
         output_error(h(pg_review_refusal_message($review['refusal'])) . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
     }
 

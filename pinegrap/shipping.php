@@ -1199,7 +1199,7 @@ function get_shipping_realtime_rate($properties) {
                 // (includes/fn/carrier_api.php). The user ID of the retired
                 // Web Tools stays in the config table, unread.
                 if (!pg_carrier_api_ready('usps')) {
-                    log_activity(lang('This website cannot get real-time rates from USPS, because no USPS consumer key and consumer secret are set in the site settings.'));
+                    log_activity(pg_log_lang(array('string' => 'This website cannot get real-time rates from USPS, because no USPS consumer key and consumer secret are set in the site settings.')));
                     return false;
                 }
 
@@ -1220,14 +1220,14 @@ function get_shipping_realtime_rate($properties) {
 
                     $request = pg_usps_rate_request(ORGANIZATION_ZIP_CODE, $zip_code, $package, $mail_classes, date('Y-m-d'));
 
-                    log_activity(lang(array('string' => 'USPS rate request: {var:1}', 'vars' => array(json_encode($request)))));
+                    log_activity(pg_log_lang(array('string' => 'USPS rate request: {var:1}', 'vars' => array(json_encode($request)))));
 
                     $response = pg_carrier_api_call('usps', 'POST', '/prices/v3/total-rates/search', $request);
 
-                    log_activity(lang(array('string' => 'USPS rate response: {var:1}', 'vars' => array($response['body']))));
+                    log_activity(pg_log_lang(array('string' => 'USPS rate response: {var:1}', 'vars' => array($response['body']))));
 
                     if ($response['error'] !== '') {
-                        log_activity(lang(array('string' => 'An error occurred while trying to get real-time rates from USPS: {var:1}', 'vars' => array($response['error']))));
+                        log_activity(pg_log_lang(array('string' => 'An error occurred while trying to get real-time rates from USPS: {var:1}', 'vars' => array($response['error']))));
                         return false;
                     }
 
@@ -1266,7 +1266,7 @@ function get_shipping_realtime_rate($properties) {
                 // The access key, user ID and password of the retired XML
                 // interface stay in the config table, unread.
                 if (!pg_carrier_api_ready('ups')) {
-                    log_activity(lang('This website cannot get real-time rates from UPS, because no UPS client ID and client secret are set in the site settings.'));
+                    log_activity(pg_log_lang(array('string' => 'This website cannot get real-time rates from UPS, because no UPS client ID and client secret are set in the site settings.')));
                     return false;
                 }
 
@@ -1308,16 +1308,16 @@ function get_shipping_realtime_rate($properties) {
 
                     $request = pg_ups_rate_request($shipper, $ship_to, $package, $ups_account);
 
-                    log_activity(lang(array('string' => 'UPS rate request: {var:1}', 'vars' => array(json_encode($request)))));
+                    log_activity(pg_log_lang(array('string' => 'UPS rate request: {var:1}', 'vars' => array(json_encode($request)))));
 
                     $response = pg_carrier_api_call('ups', 'POST', '/api/rating/v2409/Shop', $request, array(
                         'transId: ' . bin2hex(random_bytes(16)),
                         'transactionSrc: pinegrap'));
 
-                    log_activity(lang(array('string' => 'UPS rate response: {var:1}', 'vars' => array($response['body']))));
+                    log_activity(pg_log_lang(array('string' => 'UPS rate response: {var:1}', 'vars' => array($response['body']))));
 
                     if ($response['error'] !== '') {
-                        log_activity(lang(array('string' => 'An error occurred while trying to get real-time rates from UPS: {var:1}', 'vars' => array($response['error']))));
+                        log_activity(pg_log_lang(array('string' => 'An error occurred while trying to get real-time rates from UPS: {var:1}', 'vars' => array($response['error']))));
                         return false;
                     }
 
@@ -2371,7 +2371,7 @@ function verify_address($properties) {
         // USPS's Addresses API signs in with the consumer key and secret of an
         // application from the USPS Developer Portal (includes/fn/carrier_api.php).
         if (!pg_carrier_api_ready('usps')) {
-            log_activity(lang('This website cannot verify addresses with USPS, because no USPS consumer key and consumer secret are set in the site settings.'), $_SESSION['sessionusername']);
+            log_activity(pg_log_lang(array('string' => 'This website cannot verify addresses with USPS, because no USPS consumer key and consumer secret are set in the site settings.')), $_SESSION['sessionusername']);
             
         // else the application is set, so continue address verification
         } else {
@@ -2464,7 +2464,7 @@ function verify_address($properties) {
 
                     // USPS gave no usable answer, so just log it
                     case 'error':
-                        log_activity(lang(array(
+                        log_activity(pg_log_lang(array(
                             'string' => 'An error occurred while trying to verify an address with USPS: {var:1}',
                             'vars' => array(($response['error'] !== '') ? $response['error'] : $response['body']))), $_SESSION['sessionusername']);
                         break;

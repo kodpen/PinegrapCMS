@@ -95,9 +95,11 @@ function test_site_log_writers_pass_no_bare_english()
 		'add_field.php',
 		'cancel_order.php',
 		'change_password.php',
+		'chat.php',
 		'custom_form.php',
 		'delete_styles.php',
 		'delete_users.php',
+		'duplicate_folder_f.php',
 		'edit_contact.php',
 		'edit_pages.php',
 		'edit_theme_file.php',
@@ -165,6 +167,7 @@ function test_site_log_writers_pass_no_bare_english()
 		'includes/workspace/api_resources.php',
 		'includes/workspace/changes.php',
 		'mail_queue.php',
+		'mailchimp.php',
 		'membership_entrance.php',
 		'membership_job.php',
 		'my_account_profile.php',
@@ -172,11 +175,14 @@ function test_site_log_writers_pass_no_bare_english()
 		'order_invoice_print.php',
 		'parasut_connect.php',
 		'preview_style.php',
+		'product_builder.php',
 		'recurring_payment_job.php',
 		'registration_entrance.php',
 		'remove_item_from_cart.php',
 		'reset_password.php',
 		'retrieve_order.php',
+		'seo_score_job.php',
+		'seo_structure.php',
 		'set_password.php',
 		'shipping.php',
 		'smtp_settings.php',
@@ -185,9 +191,12 @@ function test_site_log_writers_pass_no_bare_english()
 		'submit_order.php',
 		'update_order.php',
 		'update_product_group_status.php',
+		'update_search_index.php',
 		'view_cart_quotes.php',
+		'view_folder_and_files_f.php',
 		'view_order.php',
 		'view_visitor_report.php',
+		'waf_unban.php',
 		'welcome.php',
 	);
 
@@ -349,13 +358,15 @@ function test_site_log_checkout_auto_invoice_lines_translated()
 }
 
 // The lines a visitor's request writes on sign-in (the password form posted
-// from a page, the two-step and SMS step, passkeys, social sign-in, the
-// device limit, the account security screen), on CAPTCHA refusals, on event
+// from a page, forgot password, the registration area, the two-step and SMS
+// step, passkeys, social sign-in, the device limit, the account security
+// screen), on CAPTCHA refusals, comment submission refusals, event
 // reservations, return requests, comment watchers, one-click unsubscribe,
-// the member's own order deletion, a cart quote taken into the cart, a chat
-// closed from the site widget, a form signature's time stamp and the
-// accountant's download link take the software language. The panel's
-// access gates in auth.php stay lang().
+// the member's own order deletion, checkout (shipping rates, address checks,
+// the order submission), a cart quote taken into the cart, a chat closed from
+// the site widget, a form signature's time stamp and the accountant's
+// download link take the software language. The panel's access gates in
+// auth.php stay lang().
 function test_site_log_visitor_sign_in_and_account_lines_translated()
 {
 	require_once(__DIR__ . '/helpers/source_reader.php');
@@ -370,9 +381,14 @@ function test_site_log_visitor_sign_in_and_account_lines_translated()
 		'order_return.php',
 		'email_preferences.php',
 		'add_or_remove_watcher.php',
+		'add_comment.php',
 		'erp_accountant_download.php',
 		'delete_order.php',
 		'index.php',
+		'forgot_password.php',
+		'registration_entrance.php',
+		'shipping.php',
+		'submit_order.php',
 		'includes/fn/mfa.php',
 		'includes/fn/passkeys.php',
 		'includes/fn/signin.php',

@@ -180,7 +180,7 @@ if (!$_POST) {
             connect_user_to_order();
             
             // validation complete - we may now continue
-            log_activity(lang('user logged into registration area'), $username);
+            log_activity(pg_log_lang(array('string' => 'user logged into registration area')), $username);
 
             send_user_to_login_home();
             
