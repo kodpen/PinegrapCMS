@@ -6,7 +6,8 @@ module: product_customs
 
 ## What are the two columns?
 - `products.hs_code VARCHAR(16) NOT NULL DEFAULT ''`: the Harmonized System code, or a national tariff number (Turkey's GTİP: 12 digits with dots). Digits in groups split by single dots, at most 16 characters, trimmed (`pg_product_hs_code_parse()`).
-- `products.origin_country CHAR(2) NOT NULL DEFAULT ''`: ISO 3166-1 alpha-2 of the country the goods were made in, upper case, from the whole ISO list (`pg_sales_map_iso_countries()`), not the shop's `countries` table: goods come from countries a shop never ships to (`pg_product_origin_country_parse()`).
+- `products.origin_country CHAR(2) NOT NULL DEFAULT ''`: ISO 3166-1 alpha-2 of the country the goods were made in, upper case, from the whole current ISO list, not the shop's `countries` table: goods come from countries a shop never ships to (`pg_product_origin_country_parse()`).
+- The list (`pg_product_origin_countries()`, #3952) is the sales map's list without the withdrawn AN and CS and with CW, SX, BQ, MF, BL; the sales map and the firewall keep theirs (it also places old `countries` rows and orders). AN/CS (`pg_product_origin_retired_countries()`) are never offered but still parse, so a product holding one saves, copies and declares as before; the product picker keeps it selected under its old name (intl named AN "Curaçao"). A label setting holding one shows "None" and drops it on the next save (settings selects keep only listed values).
 - Empty means "use the shop default" of the label driver's customs block (C2/C3 of `plans/shipping-carrier-labels.md`). A line with no HS code anywhere refuses the label (#3408), never a guessed code.
 - Step `upgrade_2026_11_0_product_customs()` (11.0.130), `install_add_column()` only; a fresh install runs it like every step. Readers ask `pg_product_customs_ready()` (exact-name `pg_schema_has()`) first.
 

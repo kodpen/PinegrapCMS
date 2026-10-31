@@ -374,6 +374,44 @@ function pg_subscription_operator_order_status_label($status)
 }
 
 /**
+ * An event's stored detail as the history shows it: the operator's
+ * "operator: <name> (#<id>)" as "Staff: <name>", the customer's "customer"
+ * as "Customer" and a price notice's Y-m-d date in the panel's date format;
+ * any other text as stored. The stored value stays what it is.
+ *
+ * @param string        $kind   subscription_events.kind
+ * @param string        $detail subscription_events.detail
+ * @param callable|null $date   timestamp => date text (the tests); the
+ *                              panel's own format by default
+ * @return string plain text
+ */
+function pg_subscription_operator_event_detail($kind, $detail, $date = null)
+{
+    $detail = (string) $detail;
+
+    if ($detail === 'customer') {
+        return lang('Customer');
+    }
+
+    if (preg_match('/^operator: (.*) \(#\d+\)$/su', $detail, $match) === 1) {
+        return lang(array('string' => 'Staff: {var:1}', 'vars' => array($match[1])));
+    }
+
+    if (((string) $kind === 'price_notice') && (preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $detail, $match) === 1)
+        && checkdate((int) $match[2], (int) $match[3], (int) $match[1])) {
+        $timestamp = mktime(0, 0, 0, (int) $match[2], (int) $match[3], (int) $match[1]);
+
+        if ($date === null) {
+            return (string) get_absolute_time(array('timestamp' => $timestamp, 'type' => 'date', 'format' => 'plain_text'));
+        }
+
+        return (string) call_user_func($date, $timestamp);
+    }
+
+    return $detail;
+}
+
+/**
  * One row for the row page, with its history (newest first) and its renewal
  * orders (the events that name an order other than the first).
  *

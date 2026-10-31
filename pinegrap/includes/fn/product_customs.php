@@ -78,13 +78,57 @@ function pg_product_hs_code_parse($value)
  * name, the whole list rather than the shop's shipping countries, because
  * goods are made in countries a shop never ships to.
  *
+ * The sales map's list without the codes ISO 3166-1 has withdrawn and with
+ * the ones it added since: a customs declaration must carry a current code.
+ * That list stays as it is, because it also places the countries rows and
+ * orders a shop stored long ago.
+ *
  * @return array
  */
 function pg_product_origin_countries()
 {
-    require_once(PG_FUNCTIONS_DIR . '/includes/sales_map.php');
+    static $countries = null;
 
-    return pg_sales_map_iso_countries();
+    if ($countries === null) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/sales_map.php');
+
+        $countries = array_diff_key(pg_sales_map_iso_countries(), pg_product_origin_retired_countries()) + array(
+            'BL' => 'Saint Barthelemy',
+            'BQ' => 'Bonaire, Sint Eustatius and Saba',
+            'CW' => 'Curacao',
+            'MF' => 'Saint Martin (French part)',
+            'SX' => 'Sint Maarten (Dutch part)',
+        );
+    }
+
+    return $countries;
+}
+
+/**
+ * The codes ISO 3166-1 has withdrawn (code => English name): never offered,
+ * but still read, so a product or a label setting that already holds one
+ * saves, copies and declares as before.
+ *
+ * @return array
+ */
+function pg_product_origin_retired_countries()
+{
+    return array('AN' => 'Netherlands Antilles', 'CS' => 'Serbia and Montenegro');
+}
+
+/**
+ * The name of a country of origin in the panel language: intl's name
+ * (pg_geo_country_name()), else the English name of the list.
+ *
+ * @param string $code
+ * @param string $name English name
+ * @return string
+ */
+function pg_product_origin_country_label($code, $name)
+{
+    $label = (string) pg_geo_country_name($code);
+
+    return (($label === '') || ($label === $code)) ? (string) lang($name) : $label;
 }
 
 /**
@@ -110,7 +154,8 @@ function pg_product_origin_country_parse($value)
         return '';
     }
 
-    if ((preg_match('/^[A-Z]{2}$/', $value) !== 1) || !array_key_exists($value, pg_product_origin_countries())) {
+    if ((preg_match('/^[A-Z]{2}$/', $value) !== 1)
+        || (!array_key_exists($value, pg_product_origin_countries()) && !array_key_exists($value, pg_product_origin_retired_countries()))) {
         return false;
     }
 
@@ -173,11 +218,14 @@ function pg_product_origin_country_options($selected)
     $rows = array();
 
     foreach (pg_product_origin_countries() as $code => $name) {
-        $rows[] = array('code' => (string) $code, 'label' => pg_geo_country_name($code));
+        $rows[] = array('code' => (string) $code, 'label' => pg_product_origin_country_label((string) $code, $name));
     }
 
+    // A withdrawn code keeps its old name; intl would name AN Curaçao.
+    $retired = pg_product_origin_retired_countries();
+
     if (($selected !== '') && !array_key_exists($selected, pg_product_origin_countries())) {
-        $rows[] = array('code' => $selected, 'label' => $selected);
+        $rows[] = array('code' => $selected, 'label' => isset($retired[$selected]) ? (string) lang($retired[$selected]) : $selected);
     }
 
     $output = '<option value="">' . h(lang('Shop default')) . '</option>';
@@ -303,7 +351,7 @@ function pg_label_customs_fields()
     $rows = array();
 
     foreach (pg_product_origin_countries() as $code => $name) {
-        $rows[] = array('code' => (string) $code, 'label' => pg_geo_country_name($code));
+        $rows[] = array('code' => (string) $code, 'label' => pg_product_origin_country_label((string) $code, $name));
     }
 
     foreach (pg_geo_sort_by_label($rows) as $row) {

@@ -169,7 +169,7 @@ if ($subscription_id > 0) {
                                 <td>' . h(($label !== '') ? $label : (string) $event['kind']) . '</td>
                                 <td>' . pg_subscription_operator_order_cell($event['order_id'], $event['order_number'], (int) $event['order_row'] > 0) . '</td>
                                 <td class="text-end text-nowrap">' . (((int) $event['amount'] > 0) ? $output_amount($event['amount'], $row['currency']) : '') . '</td>
-                                <td class="small text-break">' . h((string) $event['detail']) . '</td>
+                                <td class="small text-break">' . h(pg_subscription_operator_event_detail((string) $event['kind'], (string) $event['detail'])) . '</td>
                             </tr>';
     }
 
