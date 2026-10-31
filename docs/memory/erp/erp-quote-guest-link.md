@@ -3,7 +3,7 @@ name: erp-quote-guest-link
 description: Sales quote guest link (#3761, 2026.11.0 step 11.0.64): erp_quote_links, erp_quote.php, one live link, expiry, acceptance through erp_signatures and erp_quote_set_status(), WAF, e-mail
 ---
 
-## What is it? (decision #3671, plan workspace-quotes step 7)
+## What is it? (decision #3671, built #3761)
 - A customer without an account opens a sales quote by link (`erp_quote.php?t=`), reads it and accepts it with a drawn signature. No payment or collection on the page (erp-not-built-on-purpose.md).
 - Code: `includes/erp/quote_links.php` (loaded by the ERP bootstrap), page `erp_quote.php` (root, URL-called), buttons on `edit_erp_quote.php`.
 

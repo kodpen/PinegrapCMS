@@ -4,7 +4,7 @@ description: A sales quote added from a change card (kind erp_quote, PR #1705): 
 ---
 
 ## What is it?
-- `erp_quote` in `ws_change_types()` (includes/workspace/changes.php): a sales quote, actions `create` and `invoice`, ERP right (`erp`, refused to `manage_erp_readonly` through `ws_change_erp_types()`), tag `erp_quote`, table `erp_quotes`. Never a cart quote (plans/workspace-quotes.md, answer 1).
+- `erp_quote` in `ws_change_types()` (includes/workspace/changes.php): a sales quote, actions `create` and `invoice`, ERP right (`erp`, refused to `manage_erp_readonly` through `ws_change_erp_types()`), tag `erp_quote`, table `erp_quotes`. Never a cart quote (owner, 2026-10-24; erp/erp-quotes.md).
 - Proposed like every kind: an application through `workspace.changes.propose` or its task twin, Claude in its answer's `changes`, Pinegrap AI with `propose_change` (field `lines` as one JSON list). The person applies it on the card.
 - Only on a site with the ERP and the `erp_quotes` table (`line_data` probe).
 

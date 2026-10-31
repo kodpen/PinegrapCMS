@@ -26,4 +26,4 @@ module: cart_quotes
 ## API, events, what is left?
 - Routes, checks shared with the screens, `cart_quote.*` events: `cart-quotes-api.md` (#3298). Not built: a sweep writing `expired`.
 
-Related: docs/memory/plans/workspace-quotes.md, docs/memory/core/contact-holders.md, docs/memory/core/personal-data-erasure.md
+Related: docs/memory/erp/erp-quotes.md, docs/memory/core/contact-holders.md, docs/memory/core/personal-data-erasure.md

@@ -10,7 +10,7 @@ description: Umbrella of the Workspace growth plans of 2026-10-23 (CRM seams, MC
 ## Which plan holds what?
 - CRM seams: done (#1621 to #4043; workspace/workspace-customer-*.md, decisions-made-product-11.md #3797).
 - The site's MCP server (done): api/api-mcp-server.md, api/api-mcp-no-tool-routes.md, api/mcp-resources-prompts.md, workspace/workspace-change-proposals.md.
-- plans/workspace-quotes.md: sales quote (`erp_quote`) and cart quote (`cart_quote`).
+- Quotes: done; sales quote erp/erp-quotes.md, cart quote commerce/cart-quotes.md.
 - Catalogue creates and bulk drafts: done, workspace/workspace-bulk-create.md.
 - Workflow tables, board view, scheduled-actions API: done (workspace/workflow-tables*.md, workflow-table-*.md).
 - plans/workspace-flows.md, plans/workspace-flows-engine.md: Flows (Workspace canvas, rules, process templates), the main use (2026-10-24).

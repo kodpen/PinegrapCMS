@@ -34,4 +34,4 @@ module: cart_quotes
 ## Tests?
 - `tests/api_cart_quotes_test.php` (routes and scopes, presenter, state filter, last day, the shared checks above the dry-run stop, events in the catalogue and announced where written), `tests/cart_quotes_test.php` (refusals, payload), `test_ws_api_search_record_scopes_name_known_kinds` (the tag's scope equals `cart_quotes.list` / `.get`).
 
-Related: docs/memory/commerce/cart-quotes.md, docs/memory/api/api-webhook-events.md, docs/memory/plans/workspace-quotes.md
+Related: docs/memory/commerce/cart-quotes.md, docs/memory/api/api-webhook-events.md, docs/memory/erp/erp-quotes.md

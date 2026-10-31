@@ -84,4 +84,3 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - workspace-growth-2026-10.md: Umbrella of the Workspace growth plans of 2026-10-23 (CRM seams, MCP, quotes, catalogue, Workspace canvas, text tools, commands, voice, icons, MCP connectors, assistant keys): index, waves, rules
 - workspace-growth-terms.md: Shared names and single owners across the Workspace growth plans (2026-10-23): workflow tables, Workspace canvas, the two quote kinds, registries, engine words, agent keys, one proposal route
 - workspace-menu-layout.md: Plan (owner decision 2026-10-30) for a tidier Workspace list in the main menu: search, places, one Channels section, discussions, Tools tiles; channel screen unchanged
-- workspace-quotes.md: Plan (2026-10-23; every slice built, closes in a memory-only PR): Sales quote (ERP) and new Cart quote (site), never mixed: tags, proposals, templates, expiry, guest links
