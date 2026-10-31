@@ -173,9 +173,10 @@
             if (composer.rich && composer.channel && composer.channel.can_post) {
                 var use = h.button('btn btn-sm btn-text theme-primary', '', 'bi-box-arrow-in-down-left', t('reply_use'));
                 use.addEventListener('click', function () {
-                    h.hideOffcanvas(node);
-                    composer.rich.insertStored(0, item.text, item.labels || {});
-                    composer.autosize();
+                    h.hideOffcanvas(node, function () {
+                        composer.rich.insertStored(0, item.text, item.labels || {});
+                        composer.autosize();
+                    });
                 });
                 line.appendChild(use);
             }

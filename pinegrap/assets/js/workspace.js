@@ -3074,12 +3074,27 @@
         pgUI.drawer.show(node);
     }
 
-    function hideOffcanvas(node) {
+    // Closes a drawer; then runs what comes after it, when given, once it
+    // has closed: a Bootstrap 6 drawer stays modal until its closing
+    // animation ends, and the page under it is inert till then, so a box
+    // there could take neither the focus nor the text.
+    function hideOffcanvas(node, then) {
         var instance = pgUI.drawer.find(node);
 
-        if (instance) {
-            instance.hide();
+        if (!instance) {
+            if (then) {
+                then();
+            }
+
+            return;
         }
+
+        if (then) {
+            pgUI.drawer.hide(node).then(function () { then(); });
+            return;
+        }
+
+        instance.hide();
     }
 
     // The time on a task's due date and its e-mail reminder, a box of the task
@@ -3468,8 +3483,7 @@
                     row.appendChild(words);
                     row.addEventListener('click', function () {
                         api('ws_block_pull', { id: item.id }).then(function (pulled) {
-                            hideOffcanvas(node);
-                            onPick(pulled);
+                            hideOffcanvas(node, function () { onPick(pulled); });
                         }).catch(fail);
                     });
                     list.appendChild(row);
