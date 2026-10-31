@@ -11,7 +11,7 @@ module: widgets
 - `pg_sw_feed_guid_xml($permalink, $page_url, $reference_code)`.
 - With a detail page the record's address (`?r=` or pretty URL) is the link and a plain permalink `<guid>`.
 - Without one the item links to the list page, and the guid is `<guid isPermaLink="false">` page address + `#` + the record's reference code.
-- Why: every item used to carry the page address as guid; readers de-duplicate by guid, so subscribers saw one item and nothing new ever arrived, and validators failed (issue #4039, PR #PRNUM). The older feed wrote an error text as link and guid; it now links to the list page too.
+- Why: every item used to carry the page address as guid; readers de-duplicate by guid, so subscribers saw one item and nothing new ever arrived, and validators failed (issue #4039, PR #4205). The older feed wrote an error text as link and guid; it now links to the list page too.
 
 ## What enclosure does a media field give?
 - An upload: its real size and type, only when a visitor who is not signed in may open it (`pg_file_open_to_everyone()`).
