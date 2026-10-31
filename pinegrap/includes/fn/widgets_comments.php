@@ -2058,37 +2058,7 @@ function pg_comments_apply_form_bindings(&$tree, $ctx)
  */
 function pg_comments_stamp_login_links(&$tree)
 {
-    if (!is_array($tree)) {
-        return;
-    }
-
-    if (isset($tree['props']['_bindings']['href']) && ($tree['props']['_bindings']['href'] === '__login_url')) {
-        $tree['props']['rel'] = _pg_comments_rel_nofollow(isset($tree['props']['rel']) ? $tree['props']['rel'] : '');
-    }
-
-    if (!empty($tree['children']) && is_array($tree['children'])) {
-        foreach ($tree['children'] as &$child) {
-            pg_comments_stamp_login_links($child);
-        }
-        unset($child);
-    }
-}
-
-/**
- * A rel value with nofollow among its words, added once.
- *
- * @param mixed $rel
- * @return string
- */
-function _pg_comments_rel_nofollow($rel)
-{
-    $tokens = preg_split('/\s+/', trim(is_string($rel) ? $rel : ''), -1, PREG_SPLIT_NO_EMPTY);
-
-    if (!in_array('nofollow', array_map('strtolower', $tokens), true)) {
-        $tokens[] = 'nofollow';
-    }
-
-    return implode(' ', $tokens);
+    pg_sw_stamp_nofollow($tree, array('__login_url'));
 }
 
 // ============================================================================
@@ -2286,7 +2256,7 @@ function _pg_comments_wire_link_or_button(&$node, $href, $nofollow, $data)
             // empty, so it joins the prop that takes its place.
             $rel = (isset($node['props']['rel']) && is_string($node['props']['rel']) && (trim($node['props']['rel']) !== ''))
                 ? $node['props']['rel'] : _user_attr_value($node['props'], 'rel');
-            $node['props']['rel'] = _pg_comments_rel_nofollow($rel);
+            $node['props']['rel'] = pg_sw_rel_with_nofollow($rel);
         }
 
         _pg_comments_set_attrs($node, $managed + array('href' => 1), $data);
