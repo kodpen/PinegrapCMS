@@ -154,3 +154,49 @@ function test_erp_quote_templates_in_get_tables()
 {
 	pg_assert_contains("\t\t'erp_quote_templates',\n", (string) file_get_contents(PG_FUNCTIONS_DIR . '/install/index.php'), 'listed in get_tables()');
 }
+
+// A name is the same template whatever its letter case, Turkish I and İ
+// included, but another letter (ş against s) is another template: the
+// column's collation called "PG-TEST API SABLON" and "pg-test API şablon"
+// one name and wrote over the other's lines.
+function test_erp_quote_template_name_match()
+{
+	require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_paging.php');
+
+	$rows = array(
+		array('id' => 2, 'name' => 'pg-test API şablon'),
+		array('id' => 5, 'name' => 'Yıllık Bakım'),
+		array('id' => 9, 'name' => 'İSTANBUL kurulum'),
+	);
+
+	pg_assert_same(null, erp_quote_template_name_match($rows, 'PG-TEST API SABLON'), 'ş and s are two letters');
+	pg_assert_same(array('id' => 2, 'name' => 'pg-test API şablon'), erp_quote_template_name_match($rows, 'PG-TEST  api ŞABLON'), 'case and spaces ignored, stored spelling kept');
+	pg_assert_same(5, erp_quote_template_name_match($rows, 'YILLIK BAKIM')['id'], 'I is ı');
+	pg_assert_same(9, erp_quote_template_name_match($rows, 'istanbul Kurulum')['id'], 'İ is i');
+	pg_assert_same(null, erp_quote_template_name_match($rows, 'Yillik Bakim 2'), 'another name');
+	pg_assert_same(3, erp_quote_template_name_match(array(array('id' => 7, 'name' => 'Pack'), array('id' => 3, 'name' => 'PACK')), 'pack')['id'], 'the oldest of two');
+	pg_assert_same(null, erp_quote_template_name_match(array(), 'Pack'), 'none');
+}
+
+// The save reports the template it writes over by its stored name, so the
+// reply, the Site Log and the event name the same template; the database
+// lookup compares in PHP, never with the column's collation.
+function test_erp_quote_template_save_check_reports_stored_name()
+{
+	$lines = array(array('description' => 'Installation', 'unit_price' => 100));
+	$lookup = function ($scope, $owner_id, $name) {
+		return array('id' => 2, 'name' => 'pg-test API şablon');
+	};
+
+	$check = erp_quote_template_save_check('PG-TEST API ŞABLON', 'personal', $lines, 7, false, $lookup);
+	pg_assert_same(2, $check['replaces']);
+	pg_assert_same('pg-test API şablon', $check['name'], 'the stored spelling');
+
+	$existing = pg_test_function_source('erp_quote_template_existing');
+	pg_assert_contains('erp_quote_template_name_match(', $existing);
+	pg_assert_false(strpos($existing, "name = '") !== false, 'no collation compare on name');
+
+	$save = pg_test_function_source('erp_quote_template_save');
+	pg_assert_contains("'name' => \$check['name']", $save, 'event and answer carry the checked name');
+	pg_assert_false(strpos($save, 'SET name') !== false, 'an overwrite keeps the stored name');
+}
