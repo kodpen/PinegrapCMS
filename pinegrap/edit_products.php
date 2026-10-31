@@ -241,9 +241,11 @@ if (!$_POST) {
                         $new_inventory_quantity = null;
                         // The stock as stored, read once when this edit may
                         // move the count or the tracking.
-                        $stock_stored = (($quantity_value !== null) || (($_POST['edit_inventory'] ?? '') !== ''))
-                            ? db_item("SELECT inventory, inventory_quantity, out_of_stock FROM products WHERE id = '" . e($product_id) . "'")
-                            : null;
+                        $stock_stored = null;
+                        if (($quantity_value !== null) || (($_POST['edit_inventory'] ?? '') !== '')) {
+                            $result = db_q("SELECT inventory, inventory_quantity, out_of_stock FROM products WHERE id = ?", array((string) $product_id)) or output_error('Query failed.');
+                            $stock_stored = mysqli_fetch_assoc($result);
+                        }
                         // The new count, worked out from the stored one by the
                         // Catalog Manager's rule: never below zero.
                         if ($quantity_value !== null) {
