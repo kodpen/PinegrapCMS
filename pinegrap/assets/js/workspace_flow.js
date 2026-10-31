@@ -3118,40 +3118,62 @@
 
     // The row under a box: a field chip's and a value dot's full width, the
     // gap between them, where the row starts and ends inside the box, and
-    // the ring's size; all 18 px high, half under the box's bottom edge. A
+    // the ring's size; all 14 px high, half under the box's bottom edge. A
     // thread bends at most `deep` px further down to pass under a box.
-    var DATA_ROW = { field: 76, out: 84, gap: 4, left: 8, half: 9, ring: 18, deep: 160 };
+    var DATA_ROW = { field: 76, out: 84, gap: 4, left: 8, half: 7, ring: 14, deep: 160 };
 
     // A loop's frame around its boxes: beside them, above (its label) and
     // below (their data rows).
     var LOOP_PAD = { side: 16, top: 28, bottom: 32 };
 
     // Where the chips (fields first) and the dots of a box's row go: at full
-    // width while they fit within the box, else all as wide as the box's
-    // width shared out allows (a dot never narrower than its ring, the
-    // label then cut, its full name on hover), so the row is never wider
-    // than its box. Each slot is { left, width } from the box's left edge.
-    function dataRowSlots(fields, outs) {
+    // width while they fit within the box. Short of room, the last `open`
+    // dots (values no thread takes yet, drawn while their box is selected)
+    // shrink to their ring, their name on hover, so the chips and the dots
+    // in use keep readable labels; still short, all share the box's width
+    // (a dot never narrower than its ring, the label then cut, its full name
+    // on hover), so the row is never wider than its box. Each slot is
+    // { left, width } from the box's left edge.
+    function dataRowSlots(fields, outs, open) {
         var room = BOX_W - 2 * DATA_ROW.left;
         var count = fields + outs;
-        var full = fields * DATA_ROW.field + outs * DATA_ROW.out + Math.max(0, count - 1) * DATA_ROW.gap;
+        var gaps = Math.max(0, count - 1) * DATA_ROW.gap;
+        var full = fields * DATA_ROW.field + outs * DATA_ROW.out + gaps;
         var slots = { field: [], out: [] };
         var at = DATA_ROW.left;
         var width = 0;
         var step = 0;
+        var widths = [];
+        var shared = 0;
         var i;
+
+        open = Math.min(Math.max(0, open || 0), outs);
 
         if (full <= room) {
             for (i = 0; i < count; i++) {
-                width = (i < fields) ? DATA_ROW.field : DATA_ROW.out;
-                slots[(i < fields) ? 'field' : 'out'].push({ left: at, width: width });
-                at += width + DATA_ROW.gap;
+                widths.push((i < fields) ? DATA_ROW.field : DATA_ROW.out);
+            }
+        } else if (open > 0) {
+            shared = count - open;
+            width = shared ? Math.min(DATA_ROW.out, Math.floor((room - gaps - open * DATA_ROW.ring) / shared)) : 0;
+
+            if (!shared || (width >= DATA_ROW.ring)) {
+                for (i = 0; i < count; i++) {
+                    widths.push((i >= count - open) ? DATA_ROW.ring : ((i < fields) ? Math.min(DATA_ROW.field, width) : width));
+                }
+            }
+        }
+
+        if (widths.length) {
+            for (i = 0; i < count; i++) {
+                slots[(i < fields) ? 'field' : 'out'].push({ left: at, width: widths[i] });
+                at += widths[i] + DATA_ROW.gap;
             }
 
             return slots;
         }
 
-        width = Math.max(DATA_ROW.ring, Math.floor((room - (count - 1) * DATA_ROW.gap) / count));
+        width = Math.max(DATA_ROW.ring, Math.floor((room - gaps) / count));
         step = (count > 1) ? Math.min(width + DATA_ROW.gap, (room - width) / (count - 1)) : 0;
 
         for (i = 0; i < count; i++) {
@@ -3506,7 +3528,9 @@
         var slot = function (id, part, key) {
             var item = rows[id];
 
-            item.slots = item.slots || dataRowSlots(item.fields.length, item.outs.length);
+            item.slots = item.slots || dataRowSlots(item.fields.length, item.outs.length, item.outs.filter(function (token) {
+                return item.values[token] && item.values[token].unused;
+            }).length);
 
             return item.slots[part][(part === 'out') ? item.outs.indexOf(key) : item.fields.indexOf(key)];
         };
@@ -7873,11 +7897,7 @@
             var row = el('li', 'wsf-link');
 
             row.appendChild(K.icon('bi-arrow-right'));
-            row.appendChild(nameText(nodeById(edge.to), 'flex-grow-1 text-truncate'));
-
-            if (kindOf(node).out.length > 1) {
-                row.appendChild(outcomeSelect(edge));
-            }
+            row.appendChild(nameText(nodeById(edge.to), 'wsf-link-name text-truncate'));
 
             var remove = K.button('btn btn-sm btn-text theme-secondary', '', 'bi-x-lg');
 
@@ -7888,6 +7908,13 @@
                 removeSelected({ type: 'edge', id: index });
             });
             row.appendChild(remove);
+
+            // The outcome goes on its own line under the name: its longest
+            // choice then never squeezes the name out of a narrow panel.
+            if (kindOf(node).out.length > 1) {
+                row.appendChild(outcomeSelect(edge));
+            }
+
             list.appendChild(row);
         });
 
@@ -7933,7 +7960,7 @@
         var from = nodeById(edge.from);
         var pick = K.select((from ? arrowOutcomes(from) : [edge.on]).map(function (on) { return [on, t(OUTCOMES[on] || 'fl_on_done')]; }), edge.on);
 
-        pick.className = 'form-control form-control-sm w-auto';
+        pick.className = 'form-control form-control-sm wsf-link-on';
         pick.setAttribute('aria-label', onLabel(from));
         pick.setAttribute('data-refocus', 'on-' + edge.from + '-' + edge.to);
         pick.disabled = !state.edit;
