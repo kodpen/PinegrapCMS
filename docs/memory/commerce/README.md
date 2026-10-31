@@ -192,6 +192,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - product-review-store-reply.md: The store's reply under a product review (comments.seller_reply, seller_reply_at; 2026.11.0, PR #698): where it is written and shown, when its date is set, the verified marker in moderation
 - product-reviews-verified.md: Product reviews only from buyers (2026.11.0, 11.0.14, PR #698): which comments are reviews, the purchase check, the product rating and its refresh, aggregateRating
 - product-screen-units-and-commission.md: Product screen weight and dimensions (lb/in stored, metric keeps four places), the commission rate limit (decimal(5,2), #2056), stored "no limit" zeros shown blank, boxes sized to their columns
+- product-stock-edit-was.md: Edit Product writes the stock count only when it was changed on the screen, and only over the count it opened with; a count that moved meanwhile is kept and the operator is told
 - product-stock-flag-on-create.md: The out-of-stock mark the product screens work out (pg_pb_apply_stock_flag()): tracked with an empty quantity counts as 0, so a created product is marked at once (#4079, PR #4124)
 - product-tax-rate.md: How product tax_rate and tax_zones combine, NULL vs 0.000 semantics, line-total tax in order_items.tax_total, deprecated order_items.tax, PayPal Express tax field.
 - products-list-bulk-writes.md: Products list, Catalog Manager and product group status bulk writes: bundle component refusal, restore limited to the bin, SEO stale mark, marketplace send, tag cloud keywords
