@@ -1134,13 +1134,16 @@ function pg_explorer_handle_catalog_enable($type, $request, $user)
                     user = '" . e($user['id']) . "'
                 WHERE id = '" . e($item_id) . "'" . pg_catalog_live_filter('product_groups'));
 
-            log_activity(lang(array('string' => 'product group ({var:1}) was updated', 'vars' => array($map[$item_id]['name']))), $_SESSION['sessionusername']);
+            log_activity(($enabled == '1')
+                ? lang(array('string' => 'product group ({var:1}) was enabled', 'vars' => array($map[$item_id]['name'])))
+                : lang(array('string' => 'product group ({var:1}) was disabled', 'vars' => array($map[$item_id]['name']))),
+                $_SESSION['sessionusername']);
 
             $changed++;
 
         } elseif ($item_kind == 'product') {
 
-            $product = db_item("SELECT id, name FROM products WHERE (id = '" . e($item_id) . "')" . pg_catalog_live_filter('products'));
+            $product = db_item("SELECT id, name, short_description FROM products WHERE (id = '" . e($item_id) . "')" . pg_catalog_live_filter('products'));
 
             if (is_array($product) == false) {
                 continue;
@@ -1162,7 +1165,11 @@ function pg_explorer_handle_catalog_enable($type, $request, $user)
                 pg_marketplace_product_changed($item_id);
             }
 
-            log_activity(lang(array('string' => 'product ({var:1}) was updated', 'vars' => array($product['name']))), $_SESSION['sessionusername']);
+            // The same line the Products list switch writes.
+            log_activity(($enabled == '1')
+                ? lang(array('string' => 'product ({var:1} - {var:2}) was enabled', 'vars' => array($product['name'], $product['short_description'])))
+                : lang(array('string' => 'product ({var:1} - {var:2}) was disabled', 'vars' => array($product['name'], $product['short_description']))),
+                $_SESSION['sessionusername']);
 
             $changed++;
         }

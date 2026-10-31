@@ -221,6 +221,7 @@
     "Saved Products": "Kayıtlı Ürünler",
     "Saved addresses…": "Kayıtlı adresler…",
     "Saved barcode {var:1} for product #{var:2}.": "Ürün #{var:2} için {var:1} barkodu kaydedildi.",
+    "Saved barcode {var:1} for product {var:2}.": "{var:2} ürünü için {var:1} barkodu kaydedildi.",
     "Saved by {var:1} · {var:2}": "{var:1} kaydetti · {var:2}",
     "Saved cart link (the visitor can return to the cart with the order #)": "Kayıtlı Sepet Bağlantısı (ziyaretçi sipariş numarasıyla sepete geri dönebilir)",
     "Saved for {var:1} people.": "{var:1} kişi için kaydedildi.",
