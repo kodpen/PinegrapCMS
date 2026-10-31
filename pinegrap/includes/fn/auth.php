@@ -1090,6 +1090,71 @@ function pg_can_open_contact($user, $contact_id, $contacts_access = null)
 }
 
 /**
+ * The WHERE fragment that keeps a panel search query to the records whose
+ * edit screen would let a viewer of $role in, appended inside the query so
+ * the per-type cap and Load More paging count only those. '' when the role
+ * passes the rule; ' AND (0 = 1)' when nothing passes.
+ *
+ * folder         $column IN the folders the viewer may edit ($ids, from
+ *                get_folders_that_user_has_access_to()), for role 3; as
+ *                check_edit_access() in edit_page.php and edit_file.php
+ * contact_group  $column (a contact id) in one of the viewer's contact groups
+ *                ($ids), for role 3; as validate_contact_access() in
+ *                edit_contact.php
+ * user_role      $column (an account's role) strictly above the viewer's for
+ *                roles 1-2, none for role 3; as edit_user.php
+ * Any other rule lists nothing.
+ *
+ * @param string     $rule   folder, contact_group or user_role
+ * @param int|string $role   viewer's role (0 administrator ... 3 user)
+ * @param string     $column column the rule compares, as written in the query
+ * @param array      $ids    folder or contact group ids the viewer holds
+ * @return string
+ */
+function pg_panel_search_scope_sql($rule, $role, $column, $ids = array())
+{
+    $role = (int) $role;
+
+    if ($rule === 'user_role') {
+        if ($role === 0) {
+            return '';
+        }
+
+        return ($role <= 2) ? ' AND (' . $column . ' > ' . $role . ')' : ' AND (0 = 1)';
+    }
+
+    if (($rule !== 'folder') && ($rule !== 'contact_group')) {
+        return ' AND (0 = 1)';
+    }
+
+    if ($role < 3) {
+        return '';
+    }
+
+    $list = array();
+
+    foreach ((array) $ids as $id) {
+        $id = (int) $id;
+
+        if ($id > 0) {
+            $list[$id] = $id;
+        }
+    }
+
+    if (empty($list)) {
+        return ' AND (0 = 1)';
+    }
+
+    $list = implode(',', $list);
+
+    if ($rule === 'folder') {
+        return ' AND (' . $column . ' IN (' . $list . '))';
+    }
+
+    return ' AND (' . $column . ' IN (SELECT contact_id FROM contacts_contact_groups_xref WHERE contact_group_id IN (' . $list . ')))';
+}
+
+/**
  * How an account signs in, as short badges: one per connected provider, a
  * warning when one provider is the only way in (removing it would lock the
  * account out), or nothing connected. Shared by the sessions table and the
