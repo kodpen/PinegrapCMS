@@ -10,18 +10,25 @@
  *   pgImageEditor.open({
  *       src: url, fileId: id, fileName: name,    a picture, or
  *       blank: { width, height, background },    an empty artboard
+ *       save: { mode, folderId, name },          how Save writes (below)
  *       profile: 'photo' | 'canvas' | 'annotate' | 'optimise',
  *       tools: ['arrow', ...],                    a subset: the mini bar
  *       theme: 'light' | 'dark',                  default: the panel's
  *       fullscreen: true,                         open filling the window
- *       onSave: function (result) {},            result.doc: the document
+ *       onSave: function (result) {},            result.doc, result.file
  *       onClose: function () {}
  *   }).then(function (result) {});              null when closed unsaved
+ *
+ * Save goes to image_editor_api.php (pgImageEditorConfig.api): a file
+ * (fileId) is written over ('replace', or 'copy' when the server says it may
+ * not be) and an artboard given save.folderId becomes a new file ('new');
+ * result.file is the saved file. Without either, or with save.mode
+ * 'callback', the document goes to onSave and nothing is written.
  *
  * One editor is open at a time. Labels come from
  * window.pgImageEditorConfig.strings, geometry from PgImageEditorModel
  * (assets/js/pg_image_editor_model.js). docs/memory/ui/image-editor-modal.md
- * describes the parts.
+ * describes the parts, docs/memory/platform/image-editor-save.md the save.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -67,13 +74,18 @@
         rotl: 'M3.5 12a8.5 8.5 0 1 0 2.5-6L3.5 8.5M3.5 3.5v5h5',
         rotr: 'M20.5 12a8.5 8.5 0 1 1-2.5-6l2.5 2.5M20.5 3.5v5h-5',
         fliph: 'M12 3v18M8.5 7L4 12l4.5 5zM15.5 7l4.5 5-4.5 5z',
-        flipv: 'M3 12h18M7 8.5L12 4l5 4.5zM7 15.5l5 4.5 5-4.5z'
+        flipv: 'M3 12h18M7 8.5L12 4l5 4.5zM7 15.5l5 4.5 5-4.5z',
+        chev: 'M6.5 9.5l5.5 5.5 5.5-5.5'
     };
 
     var current = null;
 
+    function config() {
+        return window.pgImageEditorConfig || {};
+    }
+
     function t(key) {
-        var cfg = window.pgImageEditorConfig, s = (cfg && cfg.strings) || {};
+        var s = config().strings || {};
 
         return (s[key] !== undefined) ? s[key] : key;
     }
@@ -177,8 +189,19 @@
     }
 
     function Editor(opts, resolve) {
+        var save = opts.save || {};
+
         this.opts = opts;
         this.resolve = resolve;
+        // replace, copy, new or callback: see the top of this file.
+        this.saveMode = save.mode || (opts.fileId ? 'replace' : ((opts.blank && save.folderId) ? 'new' : 'callback'));
+
+        if (!config().api) {
+            this.saveMode = 'callback';
+        }
+
+        this.saving = false;
+        this.saveMenu = null;
         this.tools = M.resolveTools(opts.blank ? (opts.profile || 'canvas') : opts.profile, opts.tools);
         this.tool = this.tools.list[0];
         // On a small screen the panel is a sheet (pg_image_editor.src.css):
@@ -211,17 +234,22 @@
         this.fullBtn = button('pgie-ibtn pgie-fullbtn', t('fullscreen'), 'expand', function () { self.setFull(!self.full); });
         this.meta = el('div', { class: 'pgie-fmeta' });
 
+        this.nameEl = el('div', { class: 'pgie-fname', text: name || t('dialog') });
+        this.saveBox = el('div', { class: 'pgie-savebox' });
+
         var top = el('header', { class: 'pgie-top' }, [
             mini ? null : button('pgie-ibtn', t('close'), 'close', function () { self.requestClose(); }),
-            el('div', { class: 'pgie-file' }, [el('div', { class: 'pgie-fname', text: name || t('dialog') }), this.meta]),
+            el('div', { class: 'pgie-file' }, [this.nameEl, this.meta]),
             mini ? null : el('div', { class: 'pgie-sepv' }),
             mini ? null : this.undoBtn,
             mini ? null : this.redoBtn,
             el('div', { class: 'pgie-grow' }),
             mini ? button('pgie-btn', t('cancel'), null, function () { self.requestClose(); }, true) : null,
-            button('pgie-btn pgie-primary', mini ? t('done') : t('save'), null, function () { self.save(); }, true),
+            this.saveBox,
             this.fullBtn
         ]);
+
+        this.renderSave();
 
         this.img = null;
         this.layersSvg = document.createElementNS(SVGNS, 'svg');
@@ -278,6 +306,12 @@
             self.onEscape();
         });
         this.dialog.addEventListener('keydown', function (e) { self.onKey(e); });
+        // A press outside the save menu closes it.
+        this.dialog.addEventListener('pointerdown', function (e) {
+            if (self.saveMenu && !self.saveBox.contains(e.target)) {
+                self.toggleSaveMenu(false);
+            }
+        }, true);
         this.dialog.addEventListener('keyup', function (e) {
             if (e.key === ' ' || e.code === 'Space') {
                 self.space = false;
@@ -334,6 +368,47 @@
             return;
         }
 
+        if ((this.saveMode !== 'callback') && this.opts.fileId) {
+            // The server names the file, its address and whether a save may
+            // write over it.
+            this.request({ action: 'open', file_id: this.opts.fileId }).then(function (r) {
+                if (!r || (r.status !== 'success')) {
+                    self.fail((r && r.message) || t('loadError'));
+                    return;
+                }
+
+                self.file = r.file;
+
+                if (!r.file.replace && (self.saveMode === 'replace')) {
+                    self.saveMode = 'copy';
+                    self.renderSave();
+                }
+
+                self.nameEl.textContent = r.file.name;
+                self.dialog.setAttribute('aria-label', t('dialog') + ': ' + r.file.name);
+
+                if (r.file.notice) {
+                    self.showMessage(r.file.notice);
+                }
+
+                self.loadImage(self.opts.src || r.file.url);
+            }, function () {
+                self.fail(t('loadError'));
+            });
+
+            return;
+        }
+
+        this.loadImage(this.opts.src || '');
+    };
+
+    Editor.prototype.fail = function (message) {
+        this.notice.textContent = message;
+        this.notice.classList.add('pgie-error');
+    };
+
+    Editor.prototype.loadImage = function (src) {
+        var self = this;
         var img = new Image();
 
         img.className = 'pgie-img';
@@ -349,10 +424,9 @@
             self.setReady();
         };
         img.onerror = function () {
-            self.notice.textContent = t('loadError');
-            self.notice.classList.add('pgie-error');
+            self.fail(t('loadError'));
         };
-        img.src = this.opts.src || '';
+        img.src = src;
     };
 
     Editor.prototype.setReady = function () {
@@ -1015,7 +1089,27 @@
         var mod = e.ctrlKey || e.metaKey, k = e.key;
         var typing = /^(INPUT|TEXTAREA|SELECT)$/.test((e.target && e.target.tagName) || '') || (e.target && e.target.isContentEditable);
 
-        if (this.confirmBox || typing) {
+        if (this.saving) {
+            e.preventDefault();
+            return;
+        }
+
+        if (mod && (k === 's' || k === 'S')) {
+            e.preventDefault();
+            this.save();
+            return;
+        }
+
+        // Escape closes the save menu here, on the key itself: the dialog's
+        // cancel event is not sent for every press.
+        if (this.saveMenu && (k === 'Escape')) {
+            e.preventDefault();
+            this.toggleSaveMenu(false);
+            this.menuBtn.focus();
+            return;
+        }
+
+        if (this.confirmBox || this.saveMenu || typing) {
             return;
         }
 
@@ -1063,6 +1157,10 @@
     };
 
     Editor.prototype.onEscape = function () {
+        if (this.saving) {
+            return;
+        }
+
         if (this.confirmBox) {
             this.closeConfirm();
         } else if (this.cropping()) {
@@ -1105,14 +1203,191 @@
 
     // ---- save and close ----
 
-    Editor.prototype.save = function () {
-        var result = { doc: M.clone(this.doc), fileId: this.doc.source ? this.doc.source.fileId : 0 };
+    // The Save button, with a menu (Save as a copy) beside it when Save
+    // writes over a file.
+    Editor.prototype.renderSave = function () {
+        var self = this, mini = this.tools.mini;
 
-        if (typeof this.opts.onSave === 'function') {
-            this.opts.onSave(result);
+        this.saveBox.textContent = '';
+        this.saveMenu = null;
+        this.saveBtn = button('pgie-btn pgie-primary', mini ? t('done') : t('save'), null, function () { self.save(); }, true);
+        this.saveBox.appendChild(this.saveBtn);
+        this.menuBtn = null;
+
+        if ((this.saveMode === 'replace') && !mini) {
+            this.menuBtn = button('pgie-btn pgie-primary pgie-caret', t('moreSave'), 'chev', function () { self.toggleSaveMenu(); });
+            this.menuBtn.setAttribute('aria-haspopup', 'menu');
+            this.menuBtn.setAttribute('aria-expanded', 'false');
+            this.saveBox.appendChild(this.menuBtn);
         }
 
-        this.finish(result);
+        this.saveBox.classList.toggle('pgie-split', !!this.menuBtn);
+    };
+
+    Editor.prototype.toggleSaveMenu = function (open) {
+        var self = this;
+
+        open = (open === undefined) ? !this.saveMenu : open;
+
+        if (this.saveMenu) {
+            this.saveBox.removeChild(this.saveMenu);
+            this.saveMenu = null;
+        }
+
+        if (!this.menuBtn) {
+            return;
+        }
+
+        this.menuBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+
+        if (!open) {
+            return;
+        }
+
+        var copy = el('button', { type: 'button', role: 'menuitem', text: t('saveCopy'), onclick: function () {
+            self.toggleSaveMenu(false);
+            self.save('copy');
+        } });
+
+        this.saveMenu = el('div', { class: 'pgie-menu', role: 'menu', 'aria-label': t('moreSave') }, [copy]);
+        this.saveBox.appendChild(this.saveMenu);
+        copy.focus();
+    };
+
+    Editor.prototype.request = function (body) {
+        var cfg = config();
+
+        body.token = cfg.token || '';
+
+        return fetch(cfg.api, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+            body: JSON.stringify(body)
+        }).then(function (res) {
+            // A refusal is JSON too; anything else reads as no answer.
+            return res.json().catch(function () { return null; });
+        });
+    };
+
+    // An empty artboard as the PNG a new file starts from.
+    Editor.prototype.drawArtboard = function () {
+        var a = this.doc.artboard, canvas = document.createElement('canvas'), g;
+
+        canvas.width = a.width;
+        canvas.height = a.height;
+        g = canvas.getContext('2d');
+
+        if (a.background && (a.background !== 'transparent')) {
+            g.fillStyle = a.background;
+            g.fillRect(0, 0, a.width, a.height);
+        }
+
+        return canvas.toDataURL('image/png');
+    };
+
+    Editor.prototype.setSaving = function (on) {
+        this.saving = on;
+        this.root.classList.toggle('pgie-busy', on);
+        this.root.setAttribute('aria-busy', on ? 'true' : 'false');
+        this.saveBtn.disabled = on;
+        this.saveBtn.lastChild.textContent = on ? t('saving') : (this.tools.mini ? t('done') : t('save'));
+
+        if (this.menuBtn) {
+            this.menuBtn.disabled = on;
+        }
+
+        // A button disabled while it had the focus drops it to the page,
+        // where the editor's keys no longer arrive.
+        if (!on && !this.dialog.contains(document.activeElement)) {
+            this.stage.focus({ preventScroll: true });
+        }
+    };
+
+    // A line over the stage: what the server said, gone after a while.
+    Editor.prototype.showMessage = function (message, isError) {
+        var self = this;
+
+        this.hideMessage();
+        this.toastEl = el('div', { class: 'pgie-toast' + (isError ? ' pgie-error' : ''), role: isError ? 'alert' : 'status', text: message });
+        this.stage.appendChild(this.toastEl);
+        this.toastTimer = setTimeout(function () { self.hideMessage(); }, isError ? 8000 : 5000);
+    };
+
+    Editor.prototype.hideMessage = function () {
+        clearTimeout(this.toastTimer);
+
+        if (this.toastEl && this.toastEl.parentNode) {
+            this.toastEl.parentNode.removeChild(this.toastEl);
+        }
+
+        this.toastEl = null;
+    };
+
+    // mode: the editor's own (saveMode) or 'copy' from the menu. The server
+    // makes the pixels from the original and answers with the saved file.
+    Editor.prototype.save = function (mode) {
+        var self = this, body;
+
+        if (!this.ready || this.saving) {
+            return;
+        }
+
+        // A crop being drawn is kept, as leaving the tool keeps it.
+        if (this.cropping()) {
+            this.applyCrop();
+        }
+
+        mode = mode || this.saveMode;
+
+        if (mode === 'callback') {
+            var result = { doc: M.clone(this.doc), fileId: this.doc.source ? this.doc.source.fileId : 0 };
+
+            if (typeof this.opts.onSave === 'function') {
+                this.opts.onSave(result);
+            }
+
+            this.finish(result);
+            return;
+        }
+
+        // Nothing changed is nothing to write over.
+        if ((mode === 'replace') && !this.dirty) {
+            this.finish(null);
+            return;
+        }
+
+        body = { action: 'save', mode: mode, doc: this.doc };
+
+        if (mode === 'new') {
+            body.folder_id = (this.opts.save && this.opts.save.folderId) || 0;
+            body.name = (this.opts.save && this.opts.save.name) || this.opts.fileName || '';
+            body.picture = this.drawArtboard();
+        } else {
+            body.file_id = this.opts.fileId;
+        }
+
+        this.hideMessage();
+        this.setSaving(true);
+
+        this.request(body).then(function (r) {
+            if (!r || (r.status !== 'success')) {
+                self.setSaving(false);
+                self.showMessage((r && r.message) || t('saveError'), true);
+                return;
+            }
+
+            var result = { file: r, doc: M.clone(self.doc), fileId: r.id };
+
+            if (typeof self.opts.onSave === 'function') {
+                self.opts.onSave(result);
+            }
+
+            self.finish(result);
+        }, function () {
+            self.setSaving(false);
+            self.showMessage(t('saveError'), true);
+        });
     };
 
     Editor.prototype.requestClose = function () {
@@ -1144,6 +1419,8 @@
     };
 
     Editor.prototype.finish = function (result) {
+        this.hideMessage();
+
         if (this.resizer) {
             this.resizer.disconnect();
         }
