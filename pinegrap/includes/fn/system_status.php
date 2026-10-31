@@ -1051,6 +1051,7 @@ function pg_purge_caches()
         'system_status_cache.json',
         'db_health_cache.json',
         'storage_usage.json',
+        'cors_preflight_cache.json',
     );
     $temp_cleared = 0;
     foreach ($temp_cache_files as $temp_cache_file) {
@@ -1519,6 +1520,107 @@ function pg_php_build_time()
 }
 
 /**
+ * The address System Status sends its CORS preflight to: the site's own
+ * mcp.php in the software folder. '' without a host to ask.
+ *
+ * Compatibility: PHP 7.0 - 8.5
+ * Returns: string
+ */
+function pg_cors_preflight_url($scheme, $host, $path, $software_directory)
+{
+    if ((string) $host === '') {
+        return '';
+    }
+
+    return $scheme . $host . $path . $software_directory . '/mcp.php';
+}
+
+/**
+ * Reads the answer pg_curl_run() gave to the preflight (with
+ * 'response_headers'). 'ok': it carries Access-Control-Allow-Origin, so PHP
+ * answered it. 'missing': a 2xx without that header, which is IIS answering
+ * OPTIONS itself because the PHP handler mapping does not take the verb.
+ * 'unknown': no answer (loopback blocked, a timeout) or an error status (a
+ * firewall, maintenance), where the handler change would be the wrong advice.
+ *
+ * Compatibility: PHP 7.0 - 8.5
+ * Returns: string
+ */
+function pg_cors_preflight_verdict($answer)
+{
+    if (!is_array($answer) || !empty($answer['errno']) || empty($answer['status'])) {
+        return 'unknown';
+    }
+
+    $headers = isset($answer['headers']) ? (string) $answer['headers'] : '';
+
+    if (preg_match('/^access-control-allow-origin[ \t]*:/im', $headers) === 1) {
+        return 'ok';
+    }
+
+    $status = (int) $answer['status'];
+
+    return ($status >= 200 && $status < 300) ? 'missing' : 'unknown';
+}
+
+/**
+ * Sends one OPTIONS request to the site's own mcp.php, as a browser-based MCP
+ * or OAuth client does before its POST, and answers pg_cors_preflight_verdict().
+ * The verdict is kept a day in data/temp/cors_preflight_cache.json: the
+ * answer only changes when the server's handler mapping does, and a host that
+ * cannot reach itself would otherwise cost the widget five seconds on every
+ * recompute. A cache purge drops the file, so a fixed server is seen at once.
+ *
+ * Compatibility: PHP 7.0 - 8.5
+ * Returns: string 'ok', 'missing' or 'unknown'
+ */
+function pg_cors_preflight_probe()
+{
+    $cache_file = PG_FUNCTIONS_DIR . '/data/temp/cors_preflight_cache.json';
+
+    if (is_file($cache_file)) {
+        $cached = json_decode((string) @file_get_contents($cache_file), true);
+
+        if (is_array($cached) && isset($cached['ts'], $cached['verdict']) && ((time() - (int) $cached['ts']) < 86400)) {
+            return (string) $cached['verdict'];
+        }
+    }
+
+    $url = '';
+
+    if (defined('URL_SCHEME') && defined('HOSTNAME_SETTING') && defined('PATH') && defined('SOFTWARE_DIRECTORY')) {
+        $url = pg_cors_preflight_url(URL_SCHEME, HOSTNAME_SETTING, PATH, SOFTWARE_DIRECTORY);
+    }
+
+    $verdict = 'unknown';
+
+    if (($url !== '') && function_exists('pg_curl_run')) {
+        $verdict = pg_cors_preflight_verdict(pg_curl_run('OPTIONS', $url, array(
+            'headers'          => array(
+                'Origin: https://example.com',
+                'Access-Control-Request-Method: POST',
+                'Access-Control-Request-Headers: content-type',
+            ),
+            'timeout'          => 5,
+            'connect_timeout'  => 3,
+            'follow'           => 0,
+            'response_headers' => true,
+            // A site served over http asks itself over http.
+            'allow_http'       => (strpos($url, 'http://') === 0),
+            'forbid_reuse'     => true,
+        )));
+    }
+
+    $cache_dir = dirname($cache_file);
+
+    if (is_dir($cache_dir) || @mkdir($cache_dir, 0755, true)) {
+        @file_put_contents($cache_file, json_encode(array('ts' => time(), 'verdict' => $verdict)));
+    }
+
+    return $verdict;
+}
+
+/**
  * Drops the cached System Status result, so the next draw runs the checks
  * again. Called by a screen that has just changed what a tile reports (a
  * Site Settings save, a webhook switch or Retry, the Maintenance Mode switch),
@@ -1694,8 +1796,8 @@ function get_system_status_checks()
     // CAPTCHA constant, no cron table, nginx in front -- leaves the total
     // instead of being scored as a pass. $makeIcon adds a title's weight the
     // first time it records it, which is also what keeps this map honest: a
-    // check whose title is not here is reported and never scored, and
-    // Database Size is the only one of those on purpose.
+    // check whose title is not here is reported and never scored, as
+    // Database Size and CORS Preflight are on purpose.
     $check_weights = array(
         'Directory File Integrity' => $weights['file_integrity'],
         'SSL Status'               => $weights['ssl'],
@@ -1751,6 +1853,7 @@ function get_system_status_checks()
     //   patch     → CA certificate bundle  bell     → operations alerts
     //   cone      → maintenance mode       rss      → product feeds
     //   bug       → PHP security fixes
+    //   globe     → CORS preflight
     //
     // Where the family offers a natural negative form (unlock, shield-slash,
     // database-x) use it for the failing state: it reinforces the colour instead
@@ -1784,6 +1887,7 @@ function get_system_status_checks()
         // same name on every server and the tile is built before the answer is
         // known. The value line carries it instead.
         'Web Server Rules'         => 'Server rules',
+        'CORS Preflight'           => 'CORS',
         'Write Permissions'        => 'Permissions',
         // 'Backup' and 'Update' are already translated elsewhere as the verbs
         // on buttons -- "Yedekle", "Güncelle". A tile wants the noun, so these
@@ -1826,6 +1930,7 @@ function get_system_status_checks()
     $job_titles = array(
         'CA Bundle Setting',
         'Web Server Rules',
+        'CORS Preflight',
         'Write Permissions',
         'Last Backup',
         'Software Update',
@@ -2788,6 +2893,28 @@ function get_system_status_checks()
             'Web Server Rules',
             'The web server configuration file carries every rule this version expects.',
             $server_rules['name'],
+            '',
+            array()
+        );
+    }
+
+    // 🌐 CORS preflight — can a browser-based MCP or OAuth client get in?
+    //
+    // A browser sends OPTIONS before its POST to mcp.php, oauth.php and
+    // integration.php, and PHP answers it with the CORS headers. IIS's PHP
+    // handler mapping takes GET, HEAD and POST by default, so there IIS
+    // answers OPTIONS itself, without them, and the browser stops. Server-side
+    // connectors never send a preflight, so this is a nudge, not a fault: no
+    // row when PHP answers or when the site cannot ask itself, and no share of
+    // the score. The software does not write the handler entry: its name and
+    // FastCGI path differ per host, and a wrong one is a 500 on every request.
+    if (pg_cors_preflight_probe() === 'missing') {
+        $output .= $makeIcon(
+            'bi-globe2',
+            'fg-warning',
+            'CORS Preflight',
+            'Browser-based MCP and OAuth clients cannot connect: the web server answers their preflight (OPTIONS) request itself, without the CORS headers the software sends. On IIS, add OPTIONS to the verbs of the PHP handler mapping. Server-side connectors are not affected.',
+            lang('Not passed to PHP'),
             '',
             array()
         );
