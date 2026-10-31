@@ -18,7 +18,9 @@
 
 function get_email_preferences($properties = array()) {
 
-    $page_id = $properties['page_id'];
+    // No page id when the site has no email preferences page: the screen is
+    // then drawn without page properties (get_email_preferences_screen()).
+    $page_id = isset($properties['page_id']) ? $properties['page_id'] : 0;
 
     $form = new liveform('email_preferences');
 
