@@ -306,13 +306,36 @@ function pg_site_icon_current($stamp)
 }
 
 /**
+ * Whether the source with this stamp was found impossible to draw
+ * (failed.txt, written by pg_site_icon_draw()). A replaced picture gives
+ * another stamp, so it is drawn again.
+ *
+ * @param string      $stamp      pg_site_icon_stamp()
+ * @param string|null $directory  pg_site_icon_directory() when null
+ * @return bool
+ */
+function pg_site_icon_failed($stamp, $directory = null)
+{
+    if ((string) $stamp === '') {
+        return false;
+    }
+
+    $directory = ($directory === null) ? pg_site_icon_directory() : (string) $directory;
+
+    return trim((string) @file_get_contents($directory . '/failed.txt')) === (string) $stamp;
+}
+
+/**
  * Draw the sizes of a PNG site icon (the Files screen name $name) into
- * pg_site_icon_directory() and stamp them (pg_site_icon_draw()).
+ * pg_site_icon_directory() and stamp them (pg_site_icon_draw()). A source
+ * already marked as impossible to draw is not drawn again on every page
+ * view or icon request; only the settings save asks for a retry ($retry).
  *
  * @param string $name
+ * @param bool   $retry
  * @return array  'ok' => bool, 'reason' => '' | not_png | missing | folder | engine
  */
-function pg_site_icon_generate($name)
+function pg_site_icon_generate($name, $retry = false)
 {
     if (pg_site_icon_kind($name) !== 'png') {
         return array('ok' => false, 'reason' => 'not_png');
@@ -324,7 +347,13 @@ function pg_site_icon_generate($name)
         return array('ok' => false, 'reason' => 'missing');
     }
 
-    return pg_site_icon_draw($source, pg_site_icon_directory(), pg_site_icon_stamp($name, $source));
+    $stamp = pg_site_icon_stamp($name, $source);
+
+    if (!$retry && pg_site_icon_failed($stamp)) {
+        return array('ok' => false, 'reason' => 'engine');
+    }
+
+    return pg_site_icon_draw($source, pg_site_icon_directory(), $stamp);
 }
 
 /**
@@ -332,7 +361,9 @@ function pg_site_icon_generate($name)
  * the source scaled down to that long edge (a smaller source is kept as it
  * is: the engine never enlarges), moved over the previous one only when it
  * is complete. The stamp goes last, so a draw cut short is drawn again on
- * the next request.
+ * the next request. A source the engine cannot draw is marked with its stamp
+ * in failed.txt (pg_site_icon_failed()), so it is not drawn again on every
+ * request; a missing or unwritable folder is server state and is not marked.
  *
  * @param string $source     The PNG on disk
  * @param string $directory  Where icon-<size>.png and stamp.txt go
@@ -341,18 +372,19 @@ function pg_site_icon_generate($name)
  */
 function pg_site_icon_draw($source, $directory, $stamp)
 {
-    $info = @getimagesize($source);
-
-    if (!is_array($info) || (($info['mime'] ?? '') !== 'image/png')) {
-        return array('ok' => false, 'reason' => 'not_png');
-    }
-
     if (!is_dir($directory)) {
         @mkdir($directory, 0755, true);
     }
 
     if (!is_dir($directory) || !pg_dir_writable($directory)) {
         return array('ok' => false, 'reason' => 'folder');
+    }
+
+    $info = @getimagesize($source);
+
+    if (!is_array($info) || (($info['mime'] ?? '') !== 'image/png')) {
+        @file_put_contents($directory . '/failed.txt', (string) $stamp);
+        return array('ok' => false, 'reason' => 'not_png');
     }
 
     @set_time_limit(120);
@@ -364,15 +396,18 @@ function pg_site_icon_draw($source, $directory, $stamp)
             return array('ok' => false, 'reason' => 'folder');
         }
 
-        $report = pg_process_image_file($temporary, array('max_dimension' => $size, 'quality' => 90));
+        // 'exact_size': a flat-colour palette PNG scaled down no longer fits
+        // its palette and is heavier than the source; the size is written
+        // anyway, the engine's "lighter file" rule is not for this copy.
+        $report = pg_process_image_file($temporary, array('max_dimension' => $size, 'quality' => 90, 'exact_size' => true));
         clearstatcache(true, $temporary);
         $drawn = @getimagesize($temporary);
 
-        // 'skipped' keeps the copy: a source no larger than the size, or a
-        // result the engine found heavier. Only a picture still larger than
-        // the size is refused.
+        // 'skipped' keeps the copy of a source no larger than the size. A
+        // picture still larger than the size is refused.
         if ((($report['status'] ?? '') === 'error') || !is_array($drawn) || (max((int) $drawn[0], (int) $drawn[1]) > $size)) {
             @unlink($temporary);
+            @file_put_contents($directory . '/failed.txt', (string) $stamp);
             return array('ok' => false, 'reason' => 'engine');
         }
 
@@ -383,6 +418,7 @@ function pg_site_icon_draw($source, $directory, $stamp)
     }
 
     @file_put_contents($directory . '/stamp.txt', (string) $stamp);
+    @unlink($directory . '/failed.txt');
 
     return array('ok' => true, 'reason' => '');
 }
@@ -411,7 +447,8 @@ function pg_site_icon_error_text($reason)
 /**
  * The head links for the page being drawn, '' while no site icon is set.
  * A PNG whose sizes are not drawn yet (or are out of date) is drawn here
- * first; one that cannot be drawn is not linked.
+ * first; one that cannot be drawn is not linked, and its failure mark keeps
+ * the next page view from drawing it again (pg_site_icon_generate()).
  *
  * @param string $content  The page drawn so far, for the links it declares
  * @return string

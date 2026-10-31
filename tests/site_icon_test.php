@@ -132,6 +132,84 @@ function test_site_icon_draw()
 	@rmdir($base);
 }
 
+// A flat-colour palette PNG gives smaller pictures that are heavier files
+// (the scaled edges no longer fit a palette); every size is still written
+// at its own size, which the engine's "lighter file" rule alone refuses.
+function test_site_icon_draw_palette_source()
+{
+	if (!function_exists('imagecreate') || !function_exists('imagepng')) {
+		return;
+	}
+
+	$base = sys_get_temp_dir() . '/pg_site_icon_palette_' . getmypid();
+	@mkdir($base, 0755, true);
+	$source = $base . '/mark.png';
+	$image = imagecreate(1024, 1024);
+	imagecolorallocate($image, 255, 255, 255);
+	imagefilledellipse($image, 512, 512, 700, 700, imagecolorallocate($image, 20, 90, 200));
+	imagepng($image, $source, 9);
+
+	$result = pg_site_icon_draw($source, $base . '/out', 'stamp-p');
+	pg_assert_same(array('ok' => true, 'reason' => ''), $result, 'a palette source is drawn');
+
+	foreach (pg_site_icon_sizes() as $size) {
+		$drawn = @getimagesize($base . '/out/icon-' . $size . '.png');
+		pg_assert_same(array($size, $size), is_array($drawn) ? array($drawn[0], $drawn[1]) : null, $size . ' px from a palette PNG');
+	}
+
+	foreach (glob($base . '/out/*') as $file) @unlink($file);
+	@rmdir($base . '/out');
+	@unlink($source);
+	@rmdir($base);
+}
+
+// A source that cannot be drawn is marked against its stamp: the next page
+// view does not draw it again until the source (its stamp) changes.
+function test_site_icon_failure_mark()
+{
+	if (!function_exists('imagecreatetruecolor') || !function_exists('imagejpeg')) {
+		return;
+	}
+
+	$base = sys_get_temp_dir() . '/pg_site_icon_mark_' . getmypid();
+	@mkdir($base, 0755, true);
+	$jpeg = $base . '/photo.png';
+	imagejpeg(imagecreatetruecolor(600, 600), $jpeg);
+
+	pg_assert_false(pg_site_icon_failed('stamp-j', $base . '/out'), 'nothing marked yet');
+	pg_assert_same('not_png', pg_site_icon_draw($jpeg, $base . '/out', 'stamp-j')['reason']);
+	pg_assert_true(pg_site_icon_failed('stamp-j', $base . '/out'), 'the failure is marked against the stamp');
+	pg_assert_false(pg_site_icon_failed('stamp-other', $base . '/out'), 'a changed source is drawn again');
+	pg_assert_false(pg_site_icon_failed('', $base . '/out'), 'no stamp, no mark');
+
+	$fixed = $base . '/fixed.png';
+	imagepng(imagecreatetruecolor(64, 64), $fixed);
+	pg_assert_true(pg_site_icon_draw($fixed, $base . '/out', 'stamp-f')['ok']);
+	pg_assert_false(pg_site_icon_failed('stamp-j', $base . '/out'), 'a drawn source clears the mark');
+
+	foreach (glob($base . '/out/*') as $file) @unlink($file);
+	@rmdir($base . '/out');
+	foreach (glob($base . '/*') as $file) @unlink($file);
+	@rmdir($base);
+}
+
+// The page head and get_site_icon.php go through pg_site_icon_generate(),
+// which reads the mark before it draws; only the save asks for a retry.
+function test_site_icon_failure_not_retried_per_request()
+{
+	$fn = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/site_icon.php');
+	$start = strpos($fn, 'function pg_site_icon_generate(');
+	$body = substr($fn, $start, strpos($fn, "\nfunction ", $start + 10) - $start);
+	pg_assert_contains('pg_site_icon_failed(', $body, 'generate reads the failure mark first');
+
+	$save = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/settings/seo.save.php');
+	pg_assert_contains('pg_site_icon_generate($site_icon_input, true)', $save, 'the save draws again');
+
+	$head_start = strpos($fn, 'function pg_site_icon_page_head(');
+	$head = substr($fn, $head_start);
+	pg_assert_false(strpos($head, ', true)') !== false, 'a page view never forces a retry');
+}
+
 // The router hands the names over only while an icon is set, before the
 // files table is asked; the page head adds the links outside e-mail.
 function test_site_icon_wiring()
@@ -147,4 +225,15 @@ function test_site_icon_wiring()
 
 	$save = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/settings/seo.save.php');
 	pg_assert_contains("pg_config_text_save('site_icon', \$site_icon_input);", $save);
+}
+
+// The engine's "lighter file" rule: a format conversion, a rotation and a
+// resize asked at its size ('exact_size', the site icon) are exempt.
+function test_image_engine_no_gain_exemptions()
+{
+	pg_assert_true(pg_image_engine_no_gain(5000, 3500, false, 0, false), 'a heavier resize is not written');
+	pg_assert_false(pg_image_engine_no_gain(3000, 3500, false, 0, false), 'a lighter one is');
+	pg_assert_false(pg_image_engine_no_gain(5000, 3500, true, 0, false), 'a format conversion is exempt');
+	pg_assert_false(pg_image_engine_no_gain(5000, 3500, false, 90, false), 'a rotation is exempt');
+	pg_assert_false(pg_image_engine_no_gain(5000, 3500, false, 0, true), 'an exact-size resize is exempt');
 }
