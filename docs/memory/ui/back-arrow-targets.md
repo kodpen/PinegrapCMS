@@ -31,4 +31,5 @@ description: The back arrow of a panel screen (pg_page_shell 'cancel') goes wher
 ## Which arrows keep their target on purpose?
 - `edit_menu.php`: its arrow matches its breadcrumb parent All Menus.
 - The common-region screens: bare `view_regions.php` is All Common Regions.
-- `backups.php`, `cloudflare.php`, `mail_queue.php`, `view_audit_log.php`: `history.go(-1)` works as the browser's Back.
+- `history.go(-1)` (`'cancel' => true`) works as the browser's Back: `backups.php`, `cloudflare.php`, `mail_queue.php`, `view_audit_log.php`, `privacy_erase.php`, `privacy_export.php`, `generate_layout.php`, `barcode_increase_inventory.php`, `barcode_decrease_inventory.php`, `import_design.php`.
+- No copy of the way back in a toolbar, card or content: `back-arrow-no-copies.md`.

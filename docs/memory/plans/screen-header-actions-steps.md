@@ -13,7 +13,7 @@ description: Steps H1-H6 of plans/screen-header-actions.md: which screens each f
   - `workspace_calendar_feed.php` gets a back arrow and breadcrumb to Work Calendar instead.
   - Test: `panel_screen_titles_test.php` refuses the removed keys.
 
-- H2 (M) The way back.
+- H2 (M) The way back. H2a (the PHP screens, the six arrows below) done in #3933; H2b (the JS-drawn copies) open.
   - Give each screen whose bar holds a "back to list" copy a `cancel` url and a breadcrumb, then drop the copy: `add_return`, `view_return`, `view_returns`, `view_subscriptions`, `view_cart_quotes`, `product_builder`, `marketplace_products`, `workspace_template`, `workspace_wtables`, `workspace_mcp`, `find_and_replace`, `erp_stock` (card link), `erp_cashflow`.
   - Also drop the bottom link of `workspace_calendar.php` and the JS-drawn ones in `workspace_flow.js` and `workspace.js`; rebuild the bundles.
   - Add the six unlisted `history.go(-1)` arrows to `back-arrow-targets.md`: `privacy_erase`, `privacy_export`, `generate_layout`, `barcode_increase_inventory`, `barcode_decrease_inventory`, `import_design`.
