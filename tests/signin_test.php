@@ -503,9 +503,15 @@ function test_signin_match_user_source_uses_the_exact_match()
 	$start = strpos($fn, 'function pg_signin_match_user(');
 	$end = ($start === false) ? false : strpos($fn, "\n}\n", $start);
 	$body = ($end === false) ? '' : substr($fn, $start, $end - $start);
+	pg_assert_true(strpos($body, '$match_id = pg_signin_address_user($identity);') !== false, 'the tie goes through the address lookup');
+	pg_assert_same(0, preg_match('/\$match_id\s*=\s*\(int\)\s*db_value\(/', $body), 'no first row taken as is');
+
+	$start = strpos($fn, 'function pg_signin_address_user(');
+	$end = ($start === false) ? false : strpos($fn, "\n}\n", $start);
+	$body = ($end === false) ? '' : substr($fn, $start, $end - $start);
 	pg_assert_true(strpos($body, 'pg_signin_same_address_user(db_items(') !== false, 'the lookup goes through the exact-match rule');
 	pg_assert_true(strpos($body, 'SELECT user.user_id, user.user_email') !== false, 'the lookup reads the stored address');
-	pg_assert_same(0, preg_match('/\$match_id\s*=\s*\(int\)\s*db_value\(/', $body), 'no first row taken as is');
+	pg_assert_same(0, preg_match('/\bdb\(|pg_signin_identity_add\(/', $body), 'the lookup writes nothing');
 
 	$same = strpos($fn, 'function pg_signin_same_address_user(');
 	pg_assert_true($same !== false && strpos(substr($fn, $same, 600), 'pg_email_address_matches(') !== false, 'the rule is pg_email_address_matches()');
@@ -517,4 +523,39 @@ function test_signin_match_user_source_uses_the_exact_match()
 	$create = strpos($cb, 'pg_signin_create_member($identity)');
 	pg_assert_true($refusal !== false && $in_use !== false && $membership !== false && $create !== false
 		&& $refusal < $in_use && $in_use < $membership && $in_use < $create, 'a look-alike is refused before an account is handed over or opened');
+}
+
+// The block list stops a provider sign-in that would reach a member or open
+// an account, and every Connect; staff are let through, as with the password
+// (validate_login()) and the passkey (pg_passkey_passwordless_refusal()).
+function test_signin_block_refuses()
+{
+	pg_assert_false(pg_signin_block_refuses(false, 0, 3), 'an address not on the list');
+	pg_assert_false(pg_signin_block_refuses(false, 7, null), 'a Connect with an address not on the list');
+	pg_assert_true(pg_signin_block_refuses(true, 0, 3), 'a member');
+	pg_assert_true(pg_signin_block_refuses(true, 0, '3'), 'a member, role read as text');
+	pg_assert_true(pg_signin_block_refuses(true, 0, null), 'no account: one would be opened or handed over');
+	pg_assert_false(pg_signin_block_refuses(true, 0, 0), 'an administrator');
+	pg_assert_false(pg_signin_block_refuses(true, 0, '1'), 'a designer');
+	pg_assert_false(pg_signin_block_refuses(true, 0, 2), 'a manager');
+	pg_assert_true(pg_signin_block_refuses(true, 7, 0), 'a Connect keeps the refusal, staff included');
+	pg_assert_true(pg_signin_block_refuses(true, 7, null), 'a Connect keeps the refusal');
+}
+
+// The callback asks which account the sign-in would reach (a lookup that ties
+// nothing) before it applies the block list, and a Connect is still refused.
+function test_signin_block_list_source_lets_staff_through()
+{
+	$cb = (string) file_get_contents(PG_FUNCTIONS_DIR . '/signin.php');
+	$check = strpos($cb, "pg_signin_block_refuses(pg_email_blocked(\$email), \$identity['connect_user'], pg_signin_reached_role(\$identity))");
+	$connect = strpos($cb, 'pg_signin_connect_finish($identity);');
+	$match = strpos($cb, '$user_id = pg_signin_match_user($identity);');
+	pg_assert_true($check !== false && $connect !== false && $match !== false && $check < $connect && $check < $match, 'the block list is decided before a Connect finishes or an identity is tied');
+
+	$fn = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/signin.php');
+	$start = strpos($fn, 'function pg_signin_reached_role(');
+	$end = ($start === false) ? false : strpos($fn, "\n}\n", $start);
+	$body = ($end === false) ? '' : substr($fn, $start, $end - $start);
+	pg_assert_true(strpos($body, 'pg_signin_address_user($identity)') !== false, 'an untied account is found by its address');
+	pg_assert_same(0, preg_match('/pg_signin_identity_add\(|pg_signin_identity_touch\(|pg_signin_match_user\(/', $body), 'nothing is tied or touched');
 }

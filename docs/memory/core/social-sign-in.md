@@ -13,6 +13,10 @@ description: Sign in with Google, Microsoft and Apple: the flow, how an account 
 - Only the very address (letter case aside) ties; a look-alike is refused: [[social-sign-in-address-match]].
 - A provider account whose address differs from the account's is tied by connecting it while signed in ("Connect with ...", [[social-sign-in-connect]]); signing in with it before that is refused.
 
+## Does the Blocked Email Addresses list stop a provider sign-in?
+- For members, a sign-in that would open or hand over an account, and every Connect: yes, on the address the provider reported, before anything is tied. Staff (role below 3) are let through, as with the password (`validate_login()`) and the passkey: `signin.php` asks `pg_signin_reached_role()` (identity holder, else `pg_signin_address_user()`, nothing tied) and `pg_signin_block_refuses()` decides.
+- Before (#PR): staff were refused too ("cannot be used on this site"), so an operator whose own address or domain was on the list was locked out of provider sign-in, and one without a password had only Forgot Password.
+
 ## What does a refused or failed sign-in show?
 - Its own screen, `pg_signin_fail()` (`output_header_secure()` + `pg_signin_failure_card()`): title, reason, "Geri Dön" (the button's page from the same-site Referer, `pg_signin_referer_path()`; else the entrance page) and "{provider} ile tekrar dene".
 - Before (#467): every refusal went through `output_error()`, i.e. the site's error page. Most sites design that page as "page not found", so a refused sign-in looked like a 404 and the reason was easy to miss (reported on kodpen.com 2026-10-16: an administrator whose Google address was not the account's address).

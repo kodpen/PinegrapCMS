@@ -1507,6 +1507,95 @@ function pg_signin_finish($params)
 }
 
 /**
+ * The account a verified provider address would be tied to: one whose
+ * stored address is the reported one (letter case aside) and that has no
+ * identity at this provider yet. 0 when there is none. Reads only; the tie
+ * is pg_signin_match_user()'s.
+ *
+ * @param array $identity what pg_signin_finish() returned
+ * @return int
+ */
+function pg_signin_address_user($identity)
+{
+    if (!$identity['email_verified'] || ($identity['email'] === '')) {
+        return 0;
+    }
+
+    // The address only finds the row; the identity is what signs in from
+    // now on. An account already tied to another person at this provider is
+    // never taken over, Google's still in the old column included. The
+    // column's collation folds accents, so the rows are candidates only:
+    // the stored address must be the reported one (pg_email_address_matches()),
+    // or a provider account "jane@sirket.com" would be tied to the account
+    // of "jane@şirket.com".
+    $legacy_google = (($identity['provider'] === 'google') && pg_signin_google_legacy_column())
+        ? " AND (user.user_google_id IS NULL OR user.user_google_id = '')"
+        : '';
+
+    return pg_signin_same_address_user(db_items(
+        "SELECT user.user_id, user.user_email
+        FROM user
+        LEFT JOIN user_identities
+            ON user_identities.user_id = user.user_id
+            AND user_identities.provider = '" . e($identity['provider']) . "'
+        WHERE user.user_email = '" . e($identity['email']) . "' AND user_identities.id IS NULL" . $legacy_google . "
+        ORDER BY user.user_id
+        LIMIT 20"), $identity['email']);
+}
+
+/**
+ * The role of the account a finished sign-in would reach, without tying an
+ * identity or touching its sign-in date (an identity row whose account is
+ * gone is still removed, as pg_signin_identity_user() always does): the
+ * identity's holder, else the account pg_signin_address_user() finds. null when the sign-in reaches no account
+ * (one would be opened or handed over to the membership form).
+ *
+ * @param array $identity what pg_signin_finish() returned
+ * @return int|null
+ */
+function pg_signin_reached_role($identity)
+{
+    $user_id = pg_signin_identity_user($identity['provider'], $identity['subject']);
+
+    if (!$user_id) {
+        $user_id = pg_signin_address_user($identity);
+    }
+
+    if (!$user_id) {
+        return null;
+    }
+
+    $role = db_value("SELECT user_role FROM user WHERE user_id = '" . (int) $user_id . "'");
+
+    return (($role === null) || ($role === false) || ($role === '')) ? null : (int) $role;
+}
+
+/**
+ * Whether the block list refuses a finished provider sign-in. Members
+ * (role 3) and a sign-in that reaches no account are refused, as is every
+ * Connect; staff (role below 3) are not, as with the password and the
+ * passkey: an operator who puts their own address or domain on the list
+ * would otherwise lock themselves out of the screen that holds it.
+ *
+ * @param bool     $blocked      the reported address is on the list
+ * @param int      $connect_user the account a Connect is for, 0 for a sign-in
+ * @param int|null $role         pg_signin_reached_role()
+ * @return bool
+ */
+function pg_signin_block_refuses($blocked, $connect_user, $role)
+{
+    if (!$blocked) {
+        return false;
+    }
+
+    if (((int) $connect_user > 0) || ($role === null) || ($role === '')) {
+        return true;
+    }
+
+    return ((int) $role) >= 3;
+}
+
+/**
  * The account a finished sign-in belongs to: the one holding the identity,
  * else one whose stored address is the verified address (letter case aside)
  * and that has no identity at this provider yet (it is then tied to it).
@@ -1529,26 +1618,7 @@ function pg_signin_match_user($identity)
         return 0;
     }
 
-    // The address only finds the row; the identity is what signs in from
-    // now on. An account already tied to another person at this provider is
-    // never taken over, Google's still in the old column included. The
-    // column's collation folds accents, so the rows are candidates only:
-    // the stored address must be the reported one (pg_email_address_matches()),
-    // or a provider account "jane@sirket.com" would be tied to the account
-    // of "jane@şirket.com".
-    $legacy_google = (($identity['provider'] === 'google') && pg_signin_google_legacy_column())
-        ? " AND (user.user_google_id IS NULL OR user.user_google_id = '')"
-        : '';
-
-    $match_id = pg_signin_same_address_user(db_items(
-        "SELECT user.user_id, user.user_email
-        FROM user
-        LEFT JOIN user_identities
-            ON user_identities.user_id = user.user_id
-            AND user_identities.provider = '" . e($identity['provider']) . "'
-        WHERE user.user_email = '" . e($identity['email']) . "' AND user_identities.id IS NULL" . $legacy_google . "
-        ORDER BY user.user_id
-        LIMIT 20"), $identity['email']);
+    $match_id = pg_signin_address_user($identity);
 
     if ($match_id && pg_signin_identity_add($match_id, $identity['provider'], $identity['subject'], $identity['email'])) {
         log_activity(pg_log_lang(array(

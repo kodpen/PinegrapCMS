@@ -122,8 +122,10 @@ $send_to = $identity['send_to'];
 $signup_mode = $identity['signup'];
 
 // Block list, checked on the address the provider reported, before
-// anything is matched, tied or opened.
-if (($email !== '') && pg_email_blocked($email)) {
+// anything is matched, tied or opened. Staff reached by the sign-in are let
+// through, as with the password and the passkey; members, a new account and
+// a Connect are refused.
+if (($email !== '') && pg_signin_block_refuses(pg_email_blocked($email), $identity['connect_user'], pg_signin_reached_role($identity))) {
     log_activity(pg_log_lang(array(
         'string' => '{var:1} sign-in refused because the email address is blocked ({var:2})',
         'vars'   => array($label, $email))), '');
