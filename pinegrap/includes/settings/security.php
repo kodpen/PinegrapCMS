@@ -128,7 +128,7 @@ $pg_settings_cards[] = '
                                             <label for="banned_email_addresses" class="form-label"><i class="bi bi-envelope-slash fg-danger me-1"></i>' . lang('Blocked Email Addresses') . '</label>
                                             ' . pg_fields_script() . '
                                             <input type="text" value="' . h($banned_email_addresses) . '" name="banned_email_addresses" id="banned_email_addresses" class="form-control tagin min-height-tagin border-subtle-danger" data-pg-chips data-placeholder="' . lang('Block an address') . '"/>
-                                            <div class="form-text">' . lang('A whole address or a domain. For example: spam@example.com, tempmail.com, @disposable.net. A blocked address cannot register through any form, cannot connect Google, and cannot sign in.') . '</div>
+                                            <div class="form-text">' . lang('A whole address or a domain. For example: spam@example.com, tempmail.com, @disposable.net. A blocked address cannot register through any form or connect a sign-in provider, and a member with it cannot sign in. Staff accounts are not stopped.') . '</div>
                                         </div>
                 </div>
             </div>
