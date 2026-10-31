@@ -19,15 +19,16 @@ description: Products list, Catalog Manager and product group status bulk writes
 - The Catalog Manager Publish/Unpublish (`pg_explorer_handle_catalog_enable()`, groups and products) and its restore (a product, or the variants restored with their set) do too (#4016): the nightly full refresh scores binned rows as unpublished.
 
 ## Which enabled writes queue a marketplace send?
-- All of them, through `pg_marketplace_product_changed()`: a disabled product is listed with quantity 0 (`mp_product_row()`). Binning queues one at `enabled = 0`, so the Catalog Manager restore (product and variants), Publish/Unpublish and the Catalog Manager bulk enable (`$bulk_enabled !== ''`) queue one too (#4016). Before, the marketplace stayed sold out after a restore and kept selling after Unpublish.
+- All of them, through `pg_marketplace_product_changed()`: a disabled product is listed with quantity 0 (`mp_product_row()`). Binning queues one at `enabled = 0`, so the Catalog Manager restore (product and variants), Publish/Unpublish and the Catalog Manager bulk enable (`$bulk_enabled !== ''`) queue one too (#4016). Before, a restore stayed sold out and Unpublish kept selling.
 
 ## Why does the enabled state matter?
 - `seo.php` reads a product's `searchable` from `enabled`; the keyword check applies only to searchable records.
 - Only stale rows are recalculated: without the mark, "Products With a Weak SEO Score" and the SEO column kept the old state's score until the 7-day full refresh.
 - The API rescores at once instead (`api/api-catalogue-writes.md`).
+- Change Selected stock mark, bin, refused prices: products-bulk-change-stock-bin-price.md.
 
 ## What does switching a product group on or off do?
-- `update_product_group_status()` (Enabled switch on Edit Product Group, variant set Enable/Disable, Workspace, API publish) reads the groups' and products' `enabled` first (not the audit snapshot: empty while auditing is off).
+- `update_product_group_status()` (Enabled switch on Edit Product Group, variant set Enable/Disable, Workspace, API publish) reads the groups' and products' `enabled` first (not the audit snapshot, empty while auditing is off).
 - A group or product whose `enabled` really changes gets `seo_analysis_current = '0'`; such a product also gets `pg_pb_sync_tag_cloud_keywords()` and `pg_marketplace_product_changed()`. Unchanged rows are written as before, with no follow-up.
 - The legacy cloud rebuild `update_tag_cloud_keywords_for_search_results_page_product_group()` (`includes/fn/seo.php`) inserts no keywords for a disabled product but keeps its xref row, so enabling it brings them back.
 - Symptom it fixed: after a group was disabled the SEO column and weak-SEO filters kept the old score, marketplaces kept selling the variants, and the Tag Cloud still offered the hidden products' keywords (the rebuild after the status call and on every group save put them back).

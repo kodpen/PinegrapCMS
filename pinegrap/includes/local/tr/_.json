@@ -1187,6 +1187,7 @@
     "{var:1} product(s) were exported": "{var:1} ürün dışa aktarıldı",
     "{var:1} product(s) were moved to the Recycle Bin.": "{var:1} ürün Geri Dönüşüm Kutusuna taşındı.",
     "{var:1} product(s) were not changed because their price would fall to zero or below.": "{var:1} ürünün fiyatı sıfıra ya da altına ineceği için değiştirilmedi.",
+    "{var:1} product(s) were not changed because they are in the Recycle Bin.": "{var:1} ürün Geri Dönüşüm Kutusunda olduğu için değiştirilmedi.",
     "{var:1} product(s) will be moved to the Recycle Bin.": "{var:1} ürün Geri Dönüşüm Kutusuna taşınacak.",
     "{var:1} product(s) with a cost; stock on hand worth {var:2}": "Maliyeti olan {var:1} ürün; eldeki stoğun değeri {var:2}",
     "{var:1} products": "{var:1} ürün",
