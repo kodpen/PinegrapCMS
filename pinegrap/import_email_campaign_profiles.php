@@ -188,8 +188,23 @@ if (!$_POST) {
     // Empty cells up to the last column used, for rows shorter than that.
     $empty_row = array_fill(0, max(array_column($columns, 'number')) + 1, '');
 
+    // A "campaign sent" trigger is checked as the edit screen checks it:
+    // against every profile, with the map kept current as rows are written,
+    // so a ring made over several rows of the file is found too.
+    require_once(PG_FUNCTIONS_DIR . '/includes/forms/email_campaign_profile_form.php');
+    $follows = pg_email_campaign_profile_follow_map();
+    $profile_ids = array_flip(array_map('intval', db_values("SELECT id FROM email_campaign_profiles")));
+
+    // Rows not written, as array(line, reason).
+    $problems = array();
+    $next_line = 2;
+
     // Loops through all rows of data in CSV file, in order to create or update campaign profiles.
     while ($row = fgetcsv($handle, 100000, $separator, '"', '\\')) {
+        // The file line the row starts on.
+        $line = $next_line;
+        $next_line += pg_csv_row_lines($row);
+
         // Trim all values; a row shorter than the header (a blank line is
         // array(null)) reads its missing cells as empty.
         $row = array_map('trim', array_map('strval', $row)) + $empty_row;
@@ -201,7 +216,7 @@ if (!$_POST) {
             continue;
         }
 
-        $existing_profile = db_item("SELECT id, created_user_id FROM email_campaign_profiles WHERE name = '" . e($name) . "'");
+        $existing_profile = db_item("SELECT id, created_user_id, action, action_item_id FROM email_campaign_profiles WHERE name = '" . e($name) . "'");
 
         // A basic user only sees and edits the profiles they created
         // (view_email_campaign_profiles.php, edit_email_campaign_profile.php).
@@ -214,6 +229,27 @@ if (!$_POST) {
         ) {
             $skipped_count++;
             continue;
+        }
+
+        // The trigger the profile has once the row is written: the file's
+        // value, else the stored one.
+        $action = isset($columns['action']) ? $row[$columns['action']['number']] : ($existing_profile ? $existing_profile['action'] : '');
+        $action_item_id = isset($columns['action_item_id']) ? $row[$columns['action_item_id']['number']] : ($existing_profile ? $existing_profile['action_item_id'] : '');
+        $follows_profile = (strtolower(trim((string) $action)) == 'email_campaign_sent');
+
+        // A profile that follows itself, one that follows it, or no profile
+        // at all is refused: the first two send to the same contact without
+        // end, the last never sends.
+        if (
+            $follows_profile
+            && (isset($columns['action']) || isset($columns['action_item_id']))
+        ) {
+            $reason = pg_email_campaign_profile_follow_problem($existing_profile ? (int) $existing_profile['id'] : 0, $action_item_id, $follows, $profile_ids);
+
+            if ($reason !== '') {
+                $problems[] = array($line, $reason);
+                continue;
+            }
         }
 
         // If an existing campaign profile has this name, then update campaign profile.
@@ -243,6 +279,7 @@ if (!$_POST) {
                 WHERE id = '" . e($id) . "'");
             
             $updated_count++;
+            $id = (int) $id;
 
         // Otherwise an existing campaign profile was not found, so create a new one.
         } else {
@@ -286,6 +323,15 @@ if (!$_POST) {
                     UNIX_TIMESTAMP())");
 
             $imported_count++;
+            $id = (int) mysqli_insert_id(db::$con);
+            $profile_ids[$id] = true;
+        }
+
+        // Later rows are checked against what this row wrote.
+        if ($follows_profile) {
+            $follows[$id] = (int) $action_item_id;
+        } else {
+            unset($follows[$id]);
         }
     }
 
@@ -314,6 +360,11 @@ if (!$_POST) {
     }
 
     $liveform_view_email_campaign_profiles->add_notice($message);
+
+    // The first rows not written, each with its line and reason.
+    if ($problems) {
+        $liveform_view_email_campaign_profiles->add_warning(implode('<br>', array_map('h', pg_csv_problem_list($problems))));
+    }
 
     if (pg_csv_headings_text($unknown_headings) !== '') {
         $liveform_view_email_campaign_profiles->add_warning(h(lang(array('string' => 'These columns were not recognised and were left out: {var:1}', 'vars' => array(pg_csv_headings_text($unknown_headings))))));

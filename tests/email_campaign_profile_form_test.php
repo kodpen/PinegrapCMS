@@ -209,3 +209,76 @@ function test_email_campaign_profile_writes_are_checked()
 		pg_assert_same(array(), email_campaign_profile_test_dropped_writes($source), $file . ' drops no write result');
 	}
 }
+
+// An imported "campaign sent" trigger follows the edit screen's rule: the
+// followed profile exists and no ring is closed.
+function test_email_campaign_profile_follow_problem()
+{
+	$follows = array(2 => 1, 3 => 2, 12 => 5);
+	$ids = array_flip(array(1, 2, 3, 5, 12));
+	$ring = lang('A campaign profile cannot follow itself or a profile that follows it.');
+	$missing = lang('The campaign profile it is to follow does not exist.');
+
+	pg_assert_same($ring, pg_email_campaign_profile_follow_problem(12, '12', $follows, $ids), 'follows itself');
+	pg_assert_same($ring, pg_email_campaign_profile_follow_problem(1, 3, $follows, $ids), 'follows a profile further down');
+	pg_assert_same($missing, pg_email_campaign_profile_follow_problem(1, 99, $follows, $ids), 'no such profile');
+	pg_assert_same($missing, pg_email_campaign_profile_follow_problem(1, '', $follows, $ids), 'no pick');
+	pg_assert_same($missing, pg_email_campaign_profile_follow_problem(1, '2abc', $follows, $ids), 'not a number');
+	pg_assert_same('', pg_email_campaign_profile_follow_problem(3, 1, $follows, $ids), 'a profile upstream');
+	pg_assert_same('', pg_email_campaign_profile_follow_problem(0, 12, $follows, $ids), 'a new profile');
+}
+
+// The import writes no row the shared check refuses and keeps its map current.
+function test_email_campaign_profile_import_checks_rings()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/import_email_campaign_profiles.php');
+
+	pg_assert_contains('pg_email_campaign_profile_follow_map()', $source, 'reads the follow map');
+	pg_assert_contains('pg_email_campaign_profile_follow_problem(', $source, 'runs the shared check');
+	pg_assert_contains('$follows[$id] = (int) $action_item_id;', $source, 'updates the map with each row');
+	pg_assert_contains('pg_csv_problem_list($problems)', $source, 'names the rows not written');
+}
+
+// A page a record points at: its name, its former name while binned,
+// "(deleted)" once its row is gone.
+function test_page_record_label()
+{
+	$bin = ' [' . lang('IN RECYCLE BIN') . ']';
+
+	pg_assert_same('', pg_page_record_label(0, null, false), 'no page stored');
+	pg_assert_same(lang('(deleted)'), pg_page_record_label(1071, null, false), 'row gone');
+	pg_assert_same('contact', pg_page_record_label(5, array('page_name' => 'contact'), false), 'plain page');
+	pg_assert_same('pg-test-form-klasor' . $bin, pg_page_record_label(1626, array('page_name' => 'pgbin_1626_pg-test-form-klasor'), true), 'binned page unparked');
+	pg_assert_same('inner' . $bin, pg_page_record_label(7, array('page_name' => 'inner'), true), 'page inside a binned folder keeps its name');
+	pg_assert_same('pgbin_9_x' . $bin, pg_page_record_label(7, array('page_name' => 'pgbin_9_x'), true), 'another row\'s prefix is not stripped');
+}
+
+// The Custom Form picker lists every form the Forms screen lists.
+function test_email_campaign_profile_form_picker_lists_every_form()
+{
+	pg_assert_same('', pg_page_options_type_sql(''), 'no type');
+
+	$content = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/content.php');
+	pg_assert_contains("if (\$page_type === 'any form') {\n        return pg_form_page_sql('page');", $content, 'every form is the Forms screen set');
+
+	$form = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/forms/email_campaign_profile_form.php');
+	pg_assert_contains("get_page_options('', 'any form', 'edit', false,", $form, 'picker asks for every form, bin left out');
+}
+
+// The list, the CSV and the edit screen name a binned or gone page; sending
+// skips an HTML profile whose page is gone.
+function test_email_campaign_profile_page_states()
+{
+	$view = (string) file_get_contents(PG_FUNCTIONS_DIR . '/view_email_campaign_profiles.php');
+	pg_assert_same(2, substr_count($view, 'pg_page_record_name($email_campaign_profile[\'page_id\'])'), 'list and CSV use the page label');
+
+	$form = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/forms/email_campaign_profile_form.php');
+	pg_assert_contains('pg_page_record_label($action_item_id, $row,', $form, 'trigger form page label');
+	pg_assert_contains('$page_gone_notice', $form, 'notice above the Page picker');
+
+	$edit = (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_email_campaign_profile.php');
+	pg_assert_contains("'page_gone' => \$page_gone", $edit, 'edit passes the gone page');
+
+	$mail = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/mail.php');
+	pg_assert_contains("} else if (\$email_campaign_profile['page_name'] === null) {", $mail, 'gone page is skipped');
+}

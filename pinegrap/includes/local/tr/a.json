@@ -3420,6 +3420,7 @@
     "audit, audit trail, changes, history, retention, kvkk, gdpr, who changed": "denetim, denetim izi, değişiklikler, geçmiş, saklama süresi, kvkk, gdpr, kim değiştirdi",
     "author account, submit a story, review": "yazar hesabı, yazı gönderme, inceleme",
     "auto campaign for profile ({var:1}) was created because of an action ({var:2})": "profil için otomatik kampanya ({var:1}) bir işlem nedeniyle oluşturuldu ({var:2})",
+    "auto campaign for profile ({var:1}) was not created, because the page it sends has been deleted": "profil ({var:1}) için otomatik kampanya oluşturulmadı, çünkü göndereceği sayfa silindi",
     "auto campaign sent": "otomatik kampanya gönderildi",
     "auto campaign was created because gift card was ordered ({var:1})": "otomatik kampanya oluşturuldu, çünkü hediye kartı sipariş edildi ({var:1})",
     "auto dialog": "otomatik diyalog",
