@@ -1120,9 +1120,11 @@ function erp_accountant_file_part($name)
 
 /**
  * The file of a document to put in the pack: the provider's official copy of
- * an e-document first, then the PDF kept when it was issued. A sales document
- * with neither is rendered and kept now, when $render allows; a purchase has
- * no document of ours to render - the supplier's is the one that counts.
+ * an e-document first. A sales document without one takes the PDF kept when
+ * it was issued, or is rendered and kept now when $render allows. A purchase
+ * takes the provider's copy or nothing: the supplier's document is the one
+ * that counts, and a PDF kept for it by an earlier version is a rendering of
+ * ours that the pack leaves out.
  *
  * @param array $entry   From erp_accountant_collect() documents
  * @param bool  $render
@@ -1134,12 +1136,12 @@ function erp_accountant_document_file($entry, $render, $user_id)
     $id = (int) $entry['document']['id'];
     $file = erp_archive_file('edoc', $id);
 
-    if ($file === null) {
+    if (($file === null) && erp_archive_keeps_rendering((string) $entry['direction'])) {
         $file = erp_archive_file('invoice', $id);
-    }
 
-    if (($file === null) && $render && ($entry['direction'] === 'sales')) {
-        $file = erp_archive_invoice($id, $user_id);
+        if (($file === null) && $render) {
+            $file = erp_archive_invoice($id, $user_id);
+        }
     }
 
     return $file;

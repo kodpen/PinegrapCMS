@@ -16,7 +16,7 @@ description: ERP accountant pack (4.78): the shared xlsx writer, where the ZIP i
 ## Where is the ZIP kept?
 - `data/temp/erp_packages/` (`erp_accountant_directory()`, plus a `Require all denied` `.htaccess`). The ZIP is a delivery copy, not a record: the row keeps what went in, and a pack whose file is gone is built again (the screen says so, the monthly job does it itself).
 - Do not open a new permanent folder under `data/`; a file the software can make again goes under `data/temp/` (docs/memory/platform/clean-up-tool-file-list.md).
-- Inside: the workbook and, with PDFs on, `belgeler/<folder>/<number>.<ext>`: the provider's official copy of an e-document first, else the kept PDF (a sales document with neither is rendered and kept now), and the expense receipts.
+- Inside: the workbook and, with PDFs on, `belgeler/<folder>/<number>.<ext>`: the provider's official copy first; a sales document without one takes its kept PDF or is rendered and kept now; a purchase only the provider's copy, else nothing (#4104); expense receipts.
 
 ## How does the accountant's link work?
 - `erp_accountant_new_link()`: a random 48-hex token, only its sha256 kept (`token_hash`), valid `ERP_ACCOUNTANT_LINK_DAYS` (7); each new link replaces the last. `erp_accountant_download.php` opens it without a login; a wrong, spent or guessed token gets the same plain 404 page.

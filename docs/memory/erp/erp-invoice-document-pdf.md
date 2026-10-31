@@ -14,7 +14,7 @@ description: ERP invoice document layer (includes/erp/document.php): template sy
 - ERP documents only, with dompdf (docs/memory/core/dompdf-embedding.md): invoice, delivery note, reconciliation letter, quote, purchase order and the customer's copies (`get_account_document.php`). The customer's order receipt (`order_invoice_print.php`) and the signature receipt stay browser print (docs/memory/commerce/order-view-timeline-invoice-card.md).
 
 ## What is the PDF endpoint?
-`get_erp_invoice_pdf.php`: `?id=` inline PDF, `&download=1` download, `&html=1` shows HTML. A POST `template` field previews an UNSAVED template and requires CSRF + the `settings` right. The *PDF* and *İndir* buttons in the top toolbar of `edit_erp_invoice.php` go here.
+`get_erp_invoice_pdf.php`: `?id=` inline PDF, `&download=1` download, `&html=1` shows HTML. A POST `template` field previews an UNSAVED template and requires CSRF + the `settings` right. The *PDF* and *İndir* buttons in the top toolbar of `edit_erp_invoice.php` go here; a purchase invoice has neither and gets a notice page here (erp-document-archive.md).
 
 ## What is `erp_settings.php` now?
 - A template editor: save, preview, placeholder reference, back to default. An empty template or one equal to the default is written as `NULL`; "customized" means only "differs from the default".
