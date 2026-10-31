@@ -169,3 +169,22 @@ function pg_country_form_card($values, $errors = array())
                         </div>
 ';
 }
+
+/**
+ * The Delete confirmation of Edit Country as lang() arguments: the country
+ * goes with its states and their addresses, then the shipping zones and
+ * tax zones it or its states leave, and those left with no member.
+ *
+ * @param int $zones
+ * @param int $tax_zones
+ * @param int $emptied_zones
+ * @param int $emptied_tax_zones
+ * @return array list of lang() arguments, one per sentence
+ */
+function pg_country_form_delete_confirm($zones, $tax_zones, $emptied_zones, $emptied_tax_zones)
+{
+    return array_merge(
+        array(array('string' => 'WARNING: This country and all states and verified shipping addresses in this country will be permanently deleted.')),
+        pg_zone_form_member_delete_sentences($zones, $tax_zones, $emptied_zones, $emptied_tax_zones)
+    );
+}
