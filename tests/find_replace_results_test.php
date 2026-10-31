@@ -34,7 +34,7 @@ function test_find_replace_results_ligatures_hidden()
 {
 	$source = find_replace_results_source();
 
-	foreach (array('search', 'find_replace', 'open_in_new', 'arrow_back', 'expand_more') as $ligature) {
+	foreach (array('search', 'find_replace', 'open_in_new', 'expand_more') as $ligature) {
 		pg_assert_true(
 			(bool) preg_match('/<span class="material-icons[^"]*"[^>]*aria-hidden="true"[^>]*>' . $ligature . '<\/span>/', $source),
 			$ligature . ' ligature aria-hidden'

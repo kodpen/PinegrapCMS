@@ -81,6 +81,7 @@ $output_not_ready = $ready ? '' : '
             <div class="alert theme-warning" role="status">' . h(lang('Subscriptions are not installed yet: the database has to be updated first.')) . '</div>';
 
 $breadcrumb = array(array('label' => lang('All Orders'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_orders.php'));
+$cancel_url = 'view_orders.php';
 
 if ($subscription_id > 0) {
 
@@ -186,12 +187,10 @@ if ($subscription_id > 0) {
     $title = lang('Subscription') . ' #' . (int) $row['id'];
     $breadcrumb[] = array('label' => lang('Subscriptions'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_subscriptions.php');
     $breadcrumb[] = array('label' => $title);
+    $cancel_url = 'view_subscriptions.php';
 
     $output_content = '
-            <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . h(lang('Button Bar')) . '">
-                ' . $output_actions . '
-                <a class="btn btn-sm btn-text theme-secondary" href="view_subscriptions.php"><i class="bi bi-list-ul me-1" aria-hidden="true"></i>' . h(lang('All subscriptions')) . '</a>
-            </nav>
+            ' . pg_screen_toolbar(array('primary' => $output_actions)) . '
             <div class="card my-7">
                 <div class="card-body">
                     <dl class="row mb-0">' . $output_facts . '
@@ -281,7 +280,6 @@ if ($subscription_id > 0) {
 
     $output_content = '
             <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . h(lang('Button Bar')) . '">
-                <a class="btn btn-sm btn-text theme-secondary" href="view_orders.php"><i class="bi bi-cart4 me-1" aria-hidden="true"></i>' . h(lang('All Orders')) . '</a>
                 <div class="pg-toolbar-grow"></div>
                 <form action="view_subscriptions.php" method="get" class="d-flex flex-wrap align-items-center gap-1 row-gap-3" role="search">
                     <select name="status" class="form-control form-control-sm w-auto" aria-label="' . h(lang('Status')) . '">' . $output_status_options . '</select>
@@ -326,7 +324,7 @@ echo
         'icon'                => 'store',
         'heading'             => $title,
         'heading_description' => lang('Recurring payments the store charges from the customer\'s stored card.'),
-        'cancel'              => false,
+        'cancel'              => array('enable' => 'true', 'url' => $cancel_url),
         'breadcrumb'          => $breadcrumb,
     )) . '
 <main id="content" class="container-fluid">
