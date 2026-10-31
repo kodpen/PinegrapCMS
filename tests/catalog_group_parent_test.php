@@ -6,8 +6,8 @@
  * (pg_catalog_group_parent_id(), includes/fn/ecommerce.php): a group with no
  * parent named goes under the top of the catalogue, so the catalogue keeps a
  * single root. Read from the source, since they need a database: the variant
- * set writer and the browse group writer both resolve through it, and the
- * product screen's group mode no longer offers a parent of 0.
+ * set writer (the product screen's '-None-' parent, the Workspace, the API)
+ * and the browse group writer both resolve through it.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -78,15 +78,4 @@ function test_catalog_group_parent_writers_resolve_through_it()
 	$input = catalog_group_parent_test_body('includes/fn/ecommerce.php', 'pg_catalog_group_create_input');
 
 	pg_assert_contains('pg_catalog_group_parent_id(', $input, 'the browse group writer shares the resolver');
-}
-
-function test_catalog_group_parent_screen_offers_no_zero_parent()
-{
-	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/product_builder.php');
-	$start = strpos($screen, 'id="parent_group_id"');
-	$field = ($start === false) ? '' : substr($screen, $start, 600);
-
-	pg_assert_true($field !== '', 'the parent field is there');
-	pg_assert_false(strpos($field, '<option value="0">') !== false, 'no -None- option that would make a second root');
-	pg_assert_contains('get_product_group_options(pg_catalog_group_top_id()', $field, 'the top of the catalogue is selected first');
 }

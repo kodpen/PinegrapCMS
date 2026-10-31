@@ -365,7 +365,7 @@ function test_catalog_bin_group_pickers_leave_the_bin_out()
 
 	$builder = catalog_bin_test_source('product_builder.php');
 
-	pg_assert_contains("get_product_group_options(pg_catalog_group_top_id(), 0, 0, 0, array(), FALSE, 'text', false, true, false)", $builder, 'product screen: parent group');
+	pg_assert_contains("get_product_group_options(0, 0, 0, 0, array(), FALSE, 'text', false, true, false)", $builder, 'product screen: parent group');
 	pg_assert_contains("get_product_group_options(0, 0, 0, 0, array(), TRUE, 'text', false, true, false, \$v('catalog_group_ids', array()))", $builder, 'product screen: the groups it is in stay');
 
 	pg_assert_contains("'product_group_id' => \$liveform->get_field_value('product_group_id'),", catalog_bin_test_source('edit_short_link.php'), 'short link: the group it points at stays');

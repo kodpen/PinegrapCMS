@@ -10,7 +10,7 @@ description: pg_catalog_variant_set_create(): input array, shared check, prices 
 - `$user`: null keeps `USER_ID`; an array with id or a user id stamps the group and products. `$opts`: ai_fields, submit_form (absent: `$_POST`), barcode_auto (absent: the screen's switch), price_source.
 
 ## Where does a set with no parent go?
-- Under the top group: parent 0/''/none goes through `pg_catalog_group_parent_id()` before `pg_pb_create_group()`. The screen's parent list has no '-None-' and opens on the top group (#4074 fix).
+- Under the top group: parent 0/''/none goes through `pg_catalog_group_parent_id()` before `pg_pb_create_group()`. So the screen's '-None-' parent means the top group (#4074 fix).
 - Before, '-None-' wrote a second root: the Catalog Manager lists root tiles, Edit Product Group offers no Delete and wants a parent on Save. On a site: pick a parent there.
 
 ## Which checks are shared?
