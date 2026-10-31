@@ -706,7 +706,13 @@ if (!$_POST) {
 
     if ($contact_id != '') {
         if ($contact_file_id != 0) {
-            $identity_photo = PATH . db_value("SELECT name FROM files WHERE id = '" . escape($contact_file_id) . "'");
+            // A file deleted in the File Manager leaves contacts.file_id
+            // behind; without its files row the initial shows.
+            $contact_picture_name = pg_contact_picture_name($contact_file_id);
+
+            if ($contact_picture_name !== '') {
+                $identity_photo = PATH . $contact_picture_name;
+            }
         } elseif ($contact_image != '') {
             $identity_photo = $contact_image;
         }

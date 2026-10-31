@@ -196,6 +196,7 @@
     "File name": "Dosya adı",
     "File name is invalid": "Dosya adı geçersiz",
     "File name is invalid.": "Dosya adı geçersiz.",
+    "File names are shown as they will be saved: accented letters become plain letters, spaces and signs become underscores.": "Dosya adları kaydedilecekleri biçimde gösterilir: aksanlı harfler düz harflere, boşluklar ve işaretler alt çizgiye dönüşür.",
     "File not found": "Dosya bulunamadı",
     "File size": "Dosya boyutu",
     "File stat cache": "Dosya istatistik önbelleği",

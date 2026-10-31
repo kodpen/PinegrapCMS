@@ -229,8 +229,12 @@ if (!$_POST) {
     // if there is a file attachment, then output it
     if ($file_name != '') {
         // we are using a separate link for the image and the file name because we don't want an underline on the image and we don't want to have to update all themes with new CSS
+        // The row can outlive its file (a site restored without data/files):
+        // then the name is shown with a note, with no thumbnail or link.
+        $file_on_disk = is_file(FILE_DIRECTORY_PATH . '/' . $file_name);
+
         // An image (a review photo) shows as a thumbnail above its link.
-        $output_file_thumbnail = pg_comment_file_is_image($file_name)
+        $output_file_thumbnail = ($file_on_disk && pg_comment_file_is_image($file_name))
             ? '<a href="' . h(OUTPUT_PATH . encode_url_path($file_name)) . '" target="_blank" rel="noopener" class="d-inline-block mb-2"><img src="' . h(OUTPUT_PATH . encode_url_path($file_name)) . '" alt="' . h(lang('Photo')) . '" class="img-thumbnail" style="max-width: 240px; max-height: 240px"></a>'
             : '';
         $output_file_attachment =
@@ -238,10 +242,12 @@ if (!$_POST) {
                 <label class="form-label">' . lang('Attachment') . '</label>
                 ' . $output_file_thumbnail . '
                 <div class="input-group">
-                    <a class=" btn btn-subtle theme-secondary border" href="' . OUTPUT_PATH . h(encode_url_path($file_name)) . '" target="_blank">
+                    ' . ($file_on_disk
+                        ? '<a class=" btn btn-subtle theme-secondary border" href="' . OUTPUT_PATH . h(encode_url_path($file_name)) . '" target="_blank">
                         <span class="material-icons">attach_file</span>
                         ' . h($file_name) . ' (' . convert_bytes_to_string($file_size) . ') 
-                    </a>
+                    </a>'
+                        : '<span class="input-group-text"><span class="material-icons me-1" aria-hidden="true">attach_file</span>' . h($file_name) . ' <span class="fg-secondary ms-1">(' . lang('not on the disk') . ')</span></span>') . '
                     <div class="input-group-text">
                         <div class="col-12">
                             <div class="form-field">

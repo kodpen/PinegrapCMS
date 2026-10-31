@@ -51,7 +51,7 @@ function test_message_values_system_are_escaped()
 		array('search_console.php', '$liveform->add_notice(h($flash[\'text\']));', 1),
 		array('smtp_settings.php', '$liveform->add_error(h($connect_flash[\'text\']));', 1),
 		array('smtp_settings.php', '$liveform->add_notice(h($connect_flash[\'text\']));', 1),
-		array('smtp_settings.php', '$liveform_settings->add_notice(lang([\'string\'=>\'Test email accepted by SMTP server. Please check mailbox: {var:1}\', \'vars\'=>[h(EMAIL_ADDRESS)]]));', 1),
+		array('smtp_settings.php', '$liveform->add_notice(lang([\'string\'=>\'Test email accepted by SMTP server. Please check mailbox: {var:1}\', \'vars\'=>[h(EMAIL_ADDRESS)]]));', 1),
 		array('view_waf_log.php', '$liveform->add_notice(lang(array(\'string\' => \'The ban on {var:1} has been released.\', \'vars\' => h($release_ip))));', 1),
 	);
 
