@@ -18,7 +18,7 @@ description: Steps R1-R9 of plans/settings-recategorization.md: what each moves,
 
 - R3 (M) Renames and the security moves. Done in #3858 (`ui/settings-modal-architecture.md`).
 
-- R4 (M) General › Organization. In progress. One card for the organization's name, address, logo, support e-mail and tax number and office; each field keeps its column and save file. The two "Support E-mail Address" fields: decided #3799, Organization takes the site's; the Affiliate Program card's field is relabelled "Affiliate Program E-mail Address" (`tr_add.php`), no column or reader change. ERP Settings' pointer card goes.
+- R4 (M) General › Organization. Done in #3874 (`ui/settings-modal-architecture.md`).
 
 - R5 (S) Visitors and privacy. Visitor Tracking and Cookie Consent come from SEO, Legal Documents from Ecommerce.
 

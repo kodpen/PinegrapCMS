@@ -899,7 +899,7 @@ $pg_settings_cards[] = '
                                                             <select class="form-control" id="affiliate_contact_group_id" name="affiliate_contact_group_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Contact Group')) )) . '-</option>' . select_contact_group($affiliate_contact_group_id, $user) . '</select>
                                                         </div>
                                                         <div class="pg-f-sm">
-                                                            <label for="affiliate_email_address" class="form-label">' . lang('Support E-mail Address') . '</label>
+                                                            <label for="affiliate_email_address" class="form-label">' . lang('Affiliate Program E-mail Address') . '</label>
                                                             <input type="text" name="affiliate_email_address" id="affiliate_email_address" class="form-control" value="' . h($affiliate_email_address) . '" inputmode="email" data-inputmask-alias="email"/>
                                                         </div>
                                                         <div class="pg-f-md">

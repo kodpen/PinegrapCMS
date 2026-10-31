@@ -249,7 +249,6 @@ if (!defined('PG_SETTINGS_ENTRY')) {
 
         $sql_seo_jsonld_fields =
             "og_default_image = '" . escape(trim(post_value('og_default_image'))) . "',
-            organization_logo = '" . escape(trim(post_value('organization_logo'))) . "',
             merchant_country = '" . escape($merchant_country_input) . "',
             merchant_shipping_rate = '" . $merchant_shipping_rate_value . "',
             merchant_transit_days_min = '" . $merchant_transit_days_min_value . "',

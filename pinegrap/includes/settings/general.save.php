@@ -2,7 +2,7 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Site Settings - what the General screen writes: where the site is, what the software is, which releases it takes, the time it keeps, what runs on a schedule and how it is backed up.
+ * Site Settings - what the General screen writes: who runs the site, where it is, what the software is, which releases it takes, the time it keeps, what runs on a schedule and how it is backed up.
  *
  * Runs in the scope of includes/settings/screen.php, after the token check and
  * after post_value() is defined. Only the columns edited by the cards on this
@@ -347,9 +347,37 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         ? "update_backup = '" . (post_value('update_backup') ? 1 : 0) . "',"
         : '';
 
+    // The seller's tax number, kept the way the store's country writes it:
+    // digits in Turkey (VKN/TCKN), as typed elsewhere - an EU VAT id carries
+    // its country prefix and letters. Never longer than the column holds
+    // (32 from 2026.4.4/4.70, 11 before it), so the save never fails on it.
+    $erp_seller_vkn_width = (int) db_value("SELECT CHARACTER_MAXIMUM_LENGTH FROM information_schema.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'config' AND COLUMN_NAME = 'erp_seller_vkn' LIMIT 1");
+    $erp_seller_vkn_width = ($erp_seller_vkn_width > 0) ? $erp_seller_vkn_width : 11;
+    $erp_seller_vkn_value = trim((string) post_value('erp_seller_vkn'));
+    $erp_seller_vkn_value = (pg_erp_store_country() === 'TR')
+        ? substr(preg_replace('/\D/', '', $erp_seller_vkn_value), 0, 11)
+        : mb_substr($erp_seller_vkn_value, 0, $erp_seller_vkn_width);
+
+    // The Organization card's logo, where the SEO save wrote it before: only
+    // once the structured data columns exist.
+    $sql_organization_logo = waf_table_has_column('config', 'og_default_image')
+        ? "organization_logo = '" . escape(trim(post_value('organization_logo'))) . "',"
+        : '';
+
     // Only what the cards on this screen edit.
     db("UPDATE config
         SET
+            organization_name = '" . escape(post_value('organization_name')) . "',
+            organization_address_1 = '" . escape(post_value('organization_address_1')) . "',
+            organization_address_2 = '" . escape(post_value('organization_address_2')) . "',
+            organization_city = '" . escape(post_value('organization_city')) . "',
+            organization_state = '" . escape(post_value('organization_state')) . "',
+            organization_zip_code = '" . escape(post_value('organization_zip_code')) . "',
+            organization_country = '" . escape(post_value('organization_country')) . "',
+            " . $sql_organization_logo . "
+            erp_seller_vkn = '" . escape($erp_seller_vkn_value) . "',
+            erp_seller_tax_office = '" . escape(trim(post_value('erp_seller_tax_office'))) . "',
             hostname = '" . escape($hostname) . "',
             email_address = '" . escape(post_value('email_address')) . "',
             proxy_address = '" . escape(post_value('proxy_address')) . "',

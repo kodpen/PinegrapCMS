@@ -66,19 +66,6 @@ $pg_settings_cards[] = '
                         <div class="form-text">' . lang('Printed on invoices for internet sales, which have to name it. For example www.example.com.') . '</div>
                     </div>
                     <div class="pg-f-md">
-                        ' . ((pg_erp_store_country() === 'TR')
-                            ? '<label class="form-label" for="erp_seller_vkn">' . lang('Seller VKN / TCKN') . '</label>
-                        <input type="text" class="form-control" id="erp_seller_vkn" name="erp_seller_vkn" value="' . h($erp_seller_vkn) . '" maxlength="11" inputmode="numeric" autocomplete="off" />
-                        <div class="form-text">' . lang('Tax number (10 digits) or ID number (11 digits) of the company that issues the invoices') . '</div>'
-                            : '<label class="form-label" for="erp_seller_vkn">' . lang('Seller tax number') . '</label>
-                        <input type="text" class="form-control" id="erp_seller_vkn" name="erp_seller_vkn" value="' . h($erp_seller_vkn) . '" maxlength="32" autocomplete="off" />
-                        <div class="form-text">' . lang('The tax number of the company that issues the invoices (VAT id, EIN, ...), as it is printed on them.') . '</div>') . '
-                    </div>
-                    <div class="pg-f-md' . ((pg_erp_store_country() === 'TR') ? '' : ' d-none') . '">
-                        <label class="form-label" for="erp_seller_tax_office">' . lang('Seller Tax Office') . '</label>
-                        <input type="text" class="form-control" id="erp_seller_tax_office" name="erp_seller_tax_office" value="' . h($erp_seller_tax_office) . '" maxlength="100" autocomplete="off" />
-                    </div>
-                    <div class="pg-f-md">
                         <label class="form-label" for="erp_default_due_days">' . lang('Default payment term (days)') . '</label>
                         <input type="number" class="form-control" id="erp_default_due_days" name="erp_default_due_days" value="' . (int) $erp_default_due_days . '" min="0" max="3650" step="1" inputmode="numeric" autocomplete="off" />
                         <div class="form-text">' . lang('A new invoice falls due this many days after its date, unless the account carries its own term. 0 means due on the invoice date.') . '</div>

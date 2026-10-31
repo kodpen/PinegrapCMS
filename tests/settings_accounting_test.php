@@ -104,7 +104,7 @@ function test_settings_accounting_cards_moved_out_of_ecommerce()
 	// The fields the moved cards post: none left in Ecommerce, all in Accounting.
 	$moved = settings_accounting_test_names($accounting);
 
-	foreach (array('erp_enabled', 'erp_seller_vkn', 'erp_seller_tax_office', 'erp_web_address', 'erp_default_series', 'erp_overdue_notify_days', 'erp_auto_invoice_on', 'enable_parasut', 'parasut_client_id', 'parasut_client_secret', 'parasut_auth_code', 'erp_edoc_autosend', 'local_sale_prices') as $field) {
+	foreach (array('erp_enabled', 'erp_web_address', 'erp_default_series', 'erp_overdue_notify_days', 'erp_auto_invoice_on', 'enable_parasut', 'parasut_client_id', 'parasut_client_secret', 'parasut_auth_code', 'erp_edoc_autosend', 'local_sale_prices') as $field) {
 		pg_assert_true(in_array($field, $moved, true), $field . ' drawn by Accounting');
 	}
 
@@ -122,7 +122,7 @@ function test_settings_accounting_save_writes_what_the_cards_post()
 	$commerce = settings_accounting_test_source('includes/settings/commerce.save.php');
 	$accounting = settings_accounting_test_source('includes/settings/accounting.save.php');
 
-	foreach (array('erp_enabled', 'erp_seller_vkn', 'erp_seller_tax_office', 'erp_web_address', 'erp_default_series', 'erp_fx_enabled', 'erp_overdue_notify_days', 'erp_auto_invoice_on', 'erp_edoc_autosend', 'local_sale_prices', 'enable_parasut', 'parasut_credentials_enc', 'parasut_company_id') as $column) {
+	foreach (array('erp_enabled', 'erp_web_address', 'erp_default_series', 'erp_fx_enabled', 'erp_overdue_notify_days', 'erp_auto_invoice_on', 'erp_edoc_autosend', 'local_sale_prices', 'enable_parasut', 'parasut_credentials_enc', 'parasut_company_id') as $column) {
 		pg_assert_contains($column . ' = ', $accounting, $column . ' written by Accounting');
 		pg_assert_same(false, strpos($commerce, $column . ' = '), $column . ' no longer written by Ecommerce');
 	}
