@@ -132,6 +132,48 @@ function api_order_date($value) {
 
 }
 
+// The columns api_order_shipments() reads.
+//
+// ship_tos.district arrives with a migration step, and the files land before
+// the upgrade runs: naming a missing column fails the whole query, and
+// api_rows() would then answer with no shipments at all. $district_ready
+// stands in for the schema probe in tests.
+function api_order_shipment_columns($district_ready = null) {
+
+	if ($district_ready === null) {
+
+		$district_ready = pg_ship_to_district_ready();
+
+	}
+
+	return "ship_tos.id, ship_tos.ship_to_name, ship_tos.salutation,
+			ship_tos.first_name, ship_tos.last_name, ship_tos.company,
+			ship_tos.address_1, ship_tos.address_2, " . ($district_ready ? "ship_tos.district, " : "") . "ship_tos.city, ship_tos.state,
+			ship_tos.zip_code, ship_tos.country, ship_tos.phone_number,
+			ship_tos.shipping_cost, ship_tos.shipping_method_id, ship_tos.shipping_method_code,
+			ship_tos.arrival_date, ship_tos.ship_date, ship_tos.delivery_date, ship_tos.complete,
+			shipping_methods.name AS method_name";
+
+}
+
+// A recipient's address as the API shows it.
+//
+// The district sits before the city, as the order screen prints it. It is ''
+// when none was given and while the column is missing, never null.
+function api_order_shipment_address($row) {
+
+	return array(
+		'line_1'   => $row['address_1'],
+		'line_2'   => $row['address_2'],
+		'district' => isset($row['district']) ? (string)$row['district'] : '',
+		'city'     => $row['city'],
+		'state'    => $row['state'],
+		'zip'      => $row['zip_code'],
+		'country'  => $row['country']
+	);
+
+}
+
 // The shipping half of an order.
 //
 // The store keeps one ship_tos row per address an order goes to - most orders
@@ -150,13 +192,7 @@ function api_order_shipments($order_id) {
 
 	$order_id = (int)$order_id;
 
-	$rows = api_rows("SELECT ship_tos.id, ship_tos.ship_to_name, ship_tos.salutation,
-			ship_tos.first_name, ship_tos.last_name, ship_tos.company,
-			ship_tos.address_1, ship_tos.address_2, ship_tos.city, ship_tos.state,
-			ship_tos.zip_code, ship_tos.country, ship_tos.phone_number,
-			ship_tos.shipping_cost, ship_tos.shipping_method_id, ship_tos.shipping_method_code,
-			ship_tos.arrival_date, ship_tos.ship_date, ship_tos.delivery_date, ship_tos.complete,
-			shipping_methods.name AS method_name
+	$rows = api_rows("SELECT " . api_order_shipment_columns() . "
 		FROM ship_tos
 		LEFT JOIN shipping_methods ON shipping_methods.id = ship_tos.shipping_method_id
 		WHERE ship_tos.order_id = '" . $order_id . "'
@@ -202,14 +238,7 @@ function api_order_shipments($order_id) {
 				'company'    => $row['company'],
 				'phone'      => $row['phone_number']
 			),
-			'address' => array(
-				'line_1'  => $row['address_1'],
-				'line_2'  => $row['address_2'],
-				'city'    => $row['city'],
-				'state'   => $row['state'],
-				'zip'     => $row['zip_code'],
-				'country' => $row['country']
-			),
+			'address' => api_order_shipment_address($row),
 			'method' => array(
 				'id'   => ((int)$row['shipping_method_id'] > 0) ? (int)$row['shipping_method_id'] : null,
 				'name' => ($row['method_name'] === null) ? null : $row['method_name'],
@@ -1745,12 +1774,13 @@ function api_order_schema() {
 				'phone'      => 'string'
 			),
 			'address' => array(
-				'line_1'  => 'string',
-				'line_2'  => 'string',
-				'city'    => 'string',
-				'state'   => 'string',
-				'zip'     => 'string',
-				'country' => 'string'
+				'line_1'   => 'string',
+				'line_2'   => 'string',
+				'district' => 'string',
+				'city'     => 'string',
+				'state'    => 'string',
+				'zip'      => 'string',
+				'country'  => 'string'
 			),
 			'method' => array(
 				'id'   => 'integer?',

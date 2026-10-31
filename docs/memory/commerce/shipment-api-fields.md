@@ -1,12 +1,15 @@
 ---
 name: shipment-api-fields
-description: The parcels block of GET /orders/{id} shipments and of the order.shipped / order.delivered payloads (pg_shipment_api_parcel), and the carrier POST /orders/{id}/shipment keeps on the parcel
+description: The address (district) and parcels blocks of GET /orders/{id} shipments, the order.shipped / order.delivered parcels (pg_shipment_api_parcel), and the carrier POST /orders/{id}/shipment keeps
 ---
 
 ## What does the API give per parcel? (PR #2004)
 - Each `shipments[]` entry of `GET /orders/{id}` keeps `tracking_numbers` (strings, for older clients) and adds `parcels`: `number`, `carrier` (key or null), `carrier_name`, `tracking_url`, `status`, `shipped_at`, `delivered_at` (UTC `Y-m-d\TH:i:sZ`, null when 0). Unknown values are null, never ''.
 - Built by `pg_shipment_api_parcel($row, $method, $default)` (pure, `tests/shipping_test.php`) over `pg_shipment_view()`, so the carrier and link are the ones the order screen and the e-mails show (row's own, else method code, default, number shape). `pg_shipment_api_parcels($ship_to_id, $method = null, $number = null)` reads the address's numbered rows.
 - Declared in `api_order_schema()` (`includes/api/resources/orders.php`); the `orders.get` description in `includes/api/schema.php` explains the fields.
+
+## What does the address carry? (#3917)
+- `line_1`, `line_2`, `district`, `city`, `state`, `zip`, `country` (`api_order_shipment_address()`). `district` is `ship_tos.district`, '' when none was given or before step 11.0.134, never null; `api_order_shipment_columns()` names the column only when `pg_ship_to_district_ready()`. `POST /orders/{id}/shipment` answers with the same. No API path writes a district.
 
 ## Which webhooks carry parcels?
 - `order.shipped` from `update_order()` (panel, Workspace, API, CSV): every parcel of the address, beside `tracking_numbers`.
