@@ -20,9 +20,9 @@ description: Plan (owner decision 2026-10-31) for the redrawn Workspace channel 
 ## What are the steps?
 - C1 Header: done #3843 (`workspace/workspace-channel-head.md`; one line, the purpose in the channel's info, on a phone back, name and ⋯).
 
-- C2 Briefing card to catch-up line: in a channel only one closable line "While you were away …" (new messages, mentions, overdue tasks) when something is new, with Go to new messages and the overdue tasks; the greeting stays on the Overview and in the morning e-mail (`briefing.php` stays as data).
+- C2 Briefing card to catch-up line: done #3873 (`workspace/workspace-channel-catchup.md`; `ws_channel_catchup()`, the greeting stays as data).
 
-- C3 Pinned and system lines: pinned messages as one line with the rendered text and a count, opening on a click; a system notice as one short line with its link; no raw markdown.
+- C3 Pinned and system lines: done #3873 (the pinned message in one line; with the catch-up line one row on a phone; system notices already one line).
 
 - C4 Messages: one author's consecutive messages grouped, actions on hover, the decision tag, Convert to text as a small button, a discussion's link "3 replies · last …".
 
@@ -36,4 +36,4 @@ description: Plan (owner decision 2026-10-31) for the redrawn Workspace channel 
 1. Whether C7 renames Overview to Today; asked when C7 starts.
 
 ## Where to start?
-- C2. The local sandbox (`tools/setup_sandbox.sh`) draws the channel screen at desktop and phone width; try each step at 390 px with the keyboard open before anything else.
+- C5 before C4: the one-row composer gives a phone the most height; the local sandbox (`tools/setup_sandbox.sh`) draws the channel screen at desktop and phone width; try each step at 390 px with the keyboard open before anything else.
