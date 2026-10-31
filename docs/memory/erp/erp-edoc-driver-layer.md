@@ -17,7 +17,7 @@ description: ERP e-document driver layer (4.61): registry gate, adding a provide
 - Capabilities (`erp_edoc_has_capability()`): `einvoice`, `earchive`, `ewaybill`, `inbox`, `accounts`, `return`, `ubl` (`fetch_document` hands back the UBL, not only the PDF; the invoice screen draws the UBL button by it).
 
 ## How are credentials and the active provider handled?
-- `erp_edoc_providers.credentials_enc` ("cipher:iv", AES-256-CBC, `encrypt_string_with_iv` / `decode_ssl_keys`), never in `config` (row size: data/config-table-no-varchar.md). A stored `password` field is never printed: empty box, "Saved" placeholder, remove tick `edoc_<code>_<field>_clear`. `erp_edoc_credentials_merge()`: blank password keeps, tick clears; text/select stored as posted; not posted kept (#3955). The Paraşüt driver declares no fields: its secrets are on the Paraşüt card (erp-parasut-connection.md).
+- `erp_edoc_providers.credentials_enc` ("cipher:iv", AES-256-CBC, `encrypt_string_with_iv` / `decode_ssl_keys`), never in `config` (row size: data/config-table-no-varchar.md). `erp_edoc_credentials_save()` merges with `erp_edoc_credentials_merge()` (erp-edoc-settings-card.md). The Paraşüt driver declares no fields: its secrets are on the Paraşüt card (erp-parasut-connection.md).
 - One active provider: the `is_active=1` row, read once per request (`erp_edoc_active()`); before 4.61 `ERP_PARASUT_ENABLED`. Two would send a document to GİB twice. A past document's questions go to its own `edoc_provider`.
 - `erp_edoc_test()` pings AND writes `checked_at/check_status/check_message`; the card's "Last checked" line reads them.
 
