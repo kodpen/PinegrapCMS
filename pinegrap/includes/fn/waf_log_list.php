@@ -44,7 +44,7 @@ function pg_waf_log_list_ranges()
 function pg_waf_log_list_categories()
 {
     return array(
-        ''         => lang('All'),
+        ''         => lang('All categories'),
         'sqli'     => lang('SQL Injection'),
         'xss'      => lang('Cross-site Scripting'),
         'lfi'      => lang('Path Traversal'),

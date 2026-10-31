@@ -11,10 +11,13 @@ description: The way back to a parent or list screen is only the back arrow and 
 - Returns: `add_return.php` (arrow to Returns, or to the order on the second step), `view_return.php`, `view_returns.php` (arrow to All Orders).
 - `view_subscriptions.php` (list: All Orders; record: the list), `view_cart_quotes.php`, Variant Sets (`product_builder.php`), `marketplace_products.php` (arrow to the account's Marketplaces).
 - Workspace: `workspace_template.php` (Channel templates), a table on `workspace_wtables.php` (Tables; the list itself has no arrow), `workspace_mcp.php` (MCP servers, only for someone with Workspace settings).
-- `find_and_replace.php` results: through `pg_page_shell()`, the summary is the heading description.
+- `find_and_replace.php` results: through `pg_page_shell()`; the match summary is in the content toolbar's grow slot, because the header hides its description below 1024 px (#4073, PR #4307).
 - ERP: `erp_stock.php` with one product (arrow to the whole stock), `erp_cashflow.php` both views (Cash and Bank).
 - `workspace_calendar.php` lost its bottom link to Calendar subscription; that screen is in the Workspace nav and the menu.
 - Pinned by `tests/back_arrow_targets_test.php` (`test_back_arrow_replaces_back_to_list_copies`).
+
+## What does the arrow say?
+- An arrow that replaced a named button names where it goes: `'cancel' => array('enable' => 'true', 'url' => …, 'title' => lang('All Orders'))`. Without `title` the shell labels it "Cancel" (tooltip and `aria-label`), which stays right only on edit screens that drop changes (#4071, PR #4307). Pinned by `test_back_arrow_names_its_destination`.
 
 ## What about the views Workspace scripts draw in the page?
 - Their in-view back buttons became the page's arrow too (#3971): `back-arrow-targets.md`, "inside a Workspace view".
