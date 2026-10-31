@@ -1,12 +1,18 @@
 ---
 name: system-status-check-rules
-description: System Status panel rules - a check row and its action button must come from the same read (rules signature), per-check detail boxes, confirm tiles on buttons.
+description: System Status rules - a check row and its button share one read, the cache dropped by pg_system_status_forget() after a save, per-check detail boxes, confirm tiles on buttons.
 ---
 
 ## Why must a status row and its action button share one read?
 - `get_system_status_checks()` is cached for ten minutes; the server-rules tile reads the file live. When they diverge, a row says "2 missing" next to a button that is never drawn (nothing to do), read as "says missing, does not fix".
 - Rule: **a check row and its action button are fed by the same read.** `pg_server_config_scan()` is memoized per request; `pg_server_rules_signature()` collects everything the scan decided into one string, stored with the cache and compared on read - if different the cache is dropped.
 - When adding a new "check + button" pair, build the same pattern.
+
+## When is the cache dropped?
+- A screen that changes what a tile reports calls `pg_system_status_forget()` (`includes/fn/system_status.php`) after a write without errors, so the next draw recomputes instead of showing the old state for ten minutes; nothing drops `system_status_cache.json` by its file name.
+- Callers: both Site Settings save paths (`pg_settings_apply()` in `settings/fragment.php`, the POST branch of `settings/screen.php`), unconditionally on a save without form errors; the `webhook_status` and `webhook_retry` branches of `api_settings.php`; the Maintenance Mode switch (`general.save.php`); `erp_efatura_threshold_forget_status()`. Translations are baked into the cache, so a Software Language change needs the drop too.
+- The symptom (#PR): "Operations Alerts: Off" stayed Off up to ten minutes after Alerts on > Save; the same for CAPTCHA, Secure Mode, WAF, IndexNow, feeds, auto-backup, a failing webhook after Retry. `tests/system_status_forget_test.php` pins the callers.
+- `panel/system.php` (deep table repair) still unlinks the file itself.
 
 ## How is the detail panel organised?
 - Rows made with `$makeIcon(..., $detail)` write into a box `system_status_detail_<n>`, and the box starts with which check it belongs to. There used to be one `#system_status_detail`; adding a second detailed check made two chevrons open the same box.
