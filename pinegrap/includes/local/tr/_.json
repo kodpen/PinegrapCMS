@@ -624,6 +624,7 @@
     "{var:1} dropped": "{var:1} kaldırıldı",
     "{var:1} e-mail(s) of the last day could not be sent. The last error: {var:2}": "Son bir günün {var:1} e-postası gönderilemedi. Son hata: {var:2}",
     "{var:1} e-mail(s) were given up and will not be sent.": "{var:1} e-postadan vazgeçildi, gönderilmeyecek.",
+    "{var:1} e-mailed a link ({var:2}) to a friend": "{var:1} bir arkadaşına bağlantı ({var:2}) e-postaladı",
     "{var:1} earlier version(s)": "Düzenlendi · {var:1} önceki sürüm",
     "{var:1} email address(es) already exist. ({var:2})": "{var:1} e-posta adresi zaten var. ({var:2})",
     "{var:1} email address(es) were invalid. ({var:2})": "{var:1} e-posta adresi geçersiz. ({var:2})",

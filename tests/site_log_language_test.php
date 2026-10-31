@@ -290,3 +290,22 @@ function test_site_log_visitor_form_logout_signature_lines_translated()
 		pg_assert_same(0, preg_match($pattern, (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file)), $file);
 	}
 }
+
+// E-mail a Friend counts its ten e-mails a day in the WAF rate store, not by
+// matching the log line's English text, so the line takes the software
+// language: the count is read before sending and taken after the e-mail went.
+function test_site_log_email_a_friend_limit_in_rate_store()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/email_a_friend.php');
+
+	pg_assert_same(false, strpos($source, 'e-mailed a link%'), 'no log query for the limit');
+	pg_assert_same(1, preg_match('/waf_rate_hits\(pg_auth_request_address\(\), \'eaf\', 86400\) >= 10/', $source), 'hits read');
+	pg_assert_same(1, preg_match('/waf_rate_record\(pg_auth_request_address\(\), \'eaf\', 86400\)/', $source), 'hit recorded');
+
+	$hits = strpos($source, 'waf_rate_hits(');
+	$send = strpos($source, "\nemail(array(");
+	$record = strpos($source, 'waf_rate_record(');
+
+	pg_assert_true(($hits !== false) && ($send !== false) && ($record !== false) && ($hits < $send) && ($send < $record), 'read before sending, recorded after');
+	pg_assert_same(1, preg_match('/log_activity\(pg_log_lang\(array\(\'string\' => \'{var:1} e-mailed a link \({var:2}\) to a friend\'/', $source), 'log line through pg_log_lang()');
+}
