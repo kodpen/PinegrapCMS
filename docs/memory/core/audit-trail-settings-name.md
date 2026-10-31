@@ -15,6 +15,6 @@ module: audit_view
 - "the {var:1} settings were modified" with the category's name (the key when unknown), written in the panel language of the request, like every `log_activity()` line. Before, "settings were modified" without the category.
 
 ## Tests?
-- `tests/audit_file_content_test.php`: names by key, unknown key, other types; every `*.save.php` module has a `label` in the registry. PR #NNNN.
+- `tests/audit_file_content_test.php`: names by key, unknown key, other types; every `*.save.php` module has a `label` in the registry. PR #4260.
 
 Related: docs/memory/core/audit-trail-screen.md, docs/memory/core/audit-trail-writers.md
