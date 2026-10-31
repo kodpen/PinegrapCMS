@@ -138,7 +138,7 @@ echo
         'icon'                => 'store',
         'heading'             => lang('Cart quotes'),
         'heading_description' => lang('Product lists sent to a customer as a link that fills their cart at the store\'s current prices.'),
-        'cancel'              => array('enable' => 'true', 'url' => 'view_orders.php'),
+        'cancel'              => array('enable' => 'true', 'url' => 'view_orders.php', 'title' => lang('All Orders')),
         'breadcrumb'          => array(
             array('label' => lang('All Orders'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_orders.php'),
             array('label' => lang('Cart quotes')),

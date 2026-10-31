@@ -568,7 +568,7 @@ if (!$_POST) {
             'icon'         => 'setting',
             'heading'      => lang('Find Results'),
             'heading_description' => $summary,
-            'cancel'       => array('enable' => 'true', 'url' => 'find_and_replace.php'),
+            'cancel'       => array('enable' => 'true', 'url' => 'find_and_replace.php', 'title' => lang('Find & Replace')),
             'breadcrumb'   => array(
                 array('label' => lang('Find & Replace'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/find_and_replace.php'),
                 array('label' => lang('Find Results')),

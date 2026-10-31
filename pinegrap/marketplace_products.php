@@ -1586,7 +1586,7 @@ echo pg_page_shell(array(
 	// The heading is printed as markup; the account name is the operator's text.
 	'heading'             => $account ? h($account['name']) . ' · ' . h($provider_name) : lang('Marketplace Products'),
 	'heading_description' => lang('Match what you sell on the marketplace to the products in this shop. Matched products get their stock and price from here.'),
-	'cancel'              => array('enable' => 'true', 'url' => 'marketplace_settings.php' . ($account ? '?account=' . $account_id : '')),
+	'cancel'              => array('enable' => 'true', 'url' => 'marketplace_settings.php' . ($account ? '?account=' . $account_id : ''), 'title' => lang('Marketplaces')),
 	'breadcrumb'          => array(
 		array('label' => lang('Marketplaces'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/marketplace_settings.php' . ($account ? '?account=' . $account_id : '')),
 		array('label' => lang('Marketplace Products'))
