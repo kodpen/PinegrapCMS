@@ -1,6 +1,6 @@
 ---
 name: session-lifecycle
-description: A session from green CI to its next step: the ready label, staying subscribed with one check-in, no base merge after it, the merge as wake-up, the next step (three at most), a PR sent back
+description: A session from green CI to its next step: the ready label, one check-in, no base merge after it, the merge as wake-up, the next step (three at most), a PR sent back, an idle draft
 ---
 
 ## What do I do when my PR is green?
@@ -15,11 +15,13 @@ description: A session from green CI to its next step: the ready label, staying 
 ## What do I do when my PR is merged?
 - Check the queue limit (`working-mode.md`). Under it, claim your plan's next step that no open PR holds (`CLAUDE.md`, Claim work); with no plan, no free step or the queue over the limit, end.
 - At most three steps in a row, then hand over through the plan file and end: a long session pays for its whole context on every wake. Never poll.
-- Before #1672 every session stopped at the label and waited to be told to go on.
 
 ## What if my PR is sent back?
 - The merging session fixes a small blocker on the branch itself and says so in a comment; nothing is needed from you.
 - A larger one gets one comment naming it, and the PR stays out of the train: push the fix and mark it ready again. If you have ended, a new session does it (nobody else is on the branch).
+
+## What happens to a draft nobody pushes to?
+- No push for 12 hours, no `Decision:` line on an open issue, no owner check named in its body (#3897): a coordinator's worker continues it on the same branch (merge `origin/development` as a new commit, never rebase, amend or force-push; finish what the body lists; "continued on <date> (#3897)" in the body; ready and label when green). Nobody re-claims its files elsewhere; a body naming a wait keeps the hold; the coordinator's one-hour notice (`coordinator.md`) comes first.
 
 ## What if I need a decision?
 - Never ask the owner in your reply or the PR body. Open an issue labelled `architect` (template in `architect-asking.md`; first search the open and closed `architect` issues so the question is not opened twice) and name it in the PR body (`Decision: #<issue>`). If the session's permission check refuses the issue, put its text in the PR body under `## Decision question` instead; the architect opens it. Then turn the PR back to draft (`gh pr ready <n> --undo`; in a cloud session `mcp__github__update_pull_request` with `draft: true`) and take its `ready` label off (`gh api -X DELETE repos/kodpen/pinegrapcms/issues/<n>/labels/ready`). A PR waiting on a decision cannot go into a train, so it gives its place in the queue to work that can.
