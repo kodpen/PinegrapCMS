@@ -429,7 +429,7 @@ if ($signature !== null) {
                 <div class="card-body">
                     <div class="row g-5 align-items-center">
                         <div class="col-12 md:col-5">'
-                            . (((string) $signature['file_name'] !== '')
+                            . (((string) $signature['file_name'] !== '' && is_file(FILE_DIRECTORY_PATH . '/' . (string) $signature['file_name']))
                                 ? '<img src="' . h(OUTPUT_PATH . (string) $signature['file_name']) . '" alt="' . h(lang('Customer signature')) . '" class="img-fluid border rounded-4 bg-white p-3" style="max-height:10rem" />'
                                 : '<span class="fg-danger">' . lang('The drawing of the signature is missing.') . '</span>') . '
                         </div>
