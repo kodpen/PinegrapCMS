@@ -191,11 +191,19 @@ if (!$_POST) {
         $output_order = '';
 
         if ($order_reference_code) {
+            $output_order_reference = h($order_reference_code);
+
+            // view_order.php asks for commerce; a campaign manager without it
+            // reads the reference code without a link to "Access denied".
+            if (defined('USER_MANAGE_ECOMMERCE') && USER_MANAGE_ECOMMERCE) {
+                $output_order_reference = '<a href="view_order.php?id=' . (int) $order_id . '">' . $output_order_reference . '</a>';
+            }
+
             $output_order =
                 '<div class="col-12 sm:col-6 xl:col my-3">
                     <div class="alert border-4 theme-secondary" role="alert">
                         <h4 class="alert-heading">' . lang('Order') . '</h4>
-                        <p><a href="view_order.php?id=' . $order_id . '">' . $order_reference_code . '</a></p>
+                        <p>' . $output_order_reference . '</p>
                     </div>
                 </div>';
         }

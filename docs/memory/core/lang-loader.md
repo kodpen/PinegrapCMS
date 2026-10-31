@@ -14,6 +14,7 @@ module: lang
 
 ## In which order is the software language chosen?
 - `pg_software_language_pick($enforcement, $stored, $default)`: config.php's `ENFORCEMENT_SOFTWARE_LANGUAGE`, else the stored `config.software_language` (`undefined`, which an old settings screen saved, counts as none), else `DEFAULT_SOFTWARE_LANGUAGE`; `''` when none, and `lang()` speaks English. The same order `init.php` uses. `pg_software_language_define()` leaves an already defined constant alone. Test: `tests/lang_loader_test.php`.
+- `pg_software_language_changed($current, …)` runs the same pick after a settings save and names the new language, `''` when it is still `$current` (nothing set counts as `en`); the Site Settings dialog reloads on it (`ui/settings-modal-endpoint.md`, `tests/settings_dialog_relocalize_test.php`).
 
 ## And a page in another site language?
 - `pg_log_lang()` holds `pg_tr_suspend()` where the translation module is loaded; where it is not (`get_file.php`) and `FRONTEND_LANGUAGE` is set, it names the software language in lang()'s `language` key instead.

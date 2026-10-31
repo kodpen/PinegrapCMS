@@ -22,7 +22,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
 
 // ── Theme ──
 $pg_settings_cards[] = '
-                        <div id="pgset-theme" class="pg-set-card">
+                        <div id="pgset-theme" class="pg-set-card" data-pg-advanced-visuals="' . ($advanced_visual_effects_checked ? '1' : '0') . '">
                             <div class="card">
                                 <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Theme') . '
@@ -46,6 +46,21 @@ $pg_settings_cards[] = '
                                 </div>
                             </div>
                         </div>';
+
+// The acrylic effect is a class on the body, set when the page is drawn, and
+// every glass rule of the menus and the dialog hangs on it. The pane is read
+// again after every save, so the card carries what is stored now and its
+// script puts the class on or off the page behind the dialog at once.
+$pg_settings_scripts[] = '
+<script>
+    (function () {
+        var card = document.getElementById("pgset-theme");
+
+        if (card && document.body) {
+            document.body.classList.toggle("advanced-visuals", card.getAttribute("data-pg-advanced-visuals") === "1");
+        }
+    })();
+</script>';
 
 // ── Dashboard ──
 //

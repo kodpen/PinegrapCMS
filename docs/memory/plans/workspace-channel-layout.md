@@ -18,7 +18,7 @@ description: Plan (owner decision 2026-10-31) for the redrawn Workspace channel 
 - The drawn prototype failed both (the box stayed under the keyboard, the list had a third of the screen); the owner approved it for the desktop.
 
 ## What are the steps?
-- C1 Header: one line (channel tile, name, status pill, tag; avatars with the count, search, info, ⋯ with the menu's items grouped); the purpose moves to the info panel; the tabs keep their counts.
+- C1 Header: done #3843 (`workspace/workspace-channel-head.md`; one line, the purpose in the channel's info, on a phone back, name and ⋯).
 
 - C2 Briefing card to catch-up line: in a channel only one closable line "While you were away …" (new messages, mentions, overdue tasks) when something is new, with Go to new messages and the overdue tasks; the greeting stays on the Overview and in the morning e-mail (`briefing.php` stays as data).
 
@@ -36,4 +36,4 @@ description: Plan (owner decision 2026-10-31) for the redrawn Workspace channel 
 1. Whether C7 renames Overview to Today; asked when C7 starts.
 
 ## Where to start?
-- C1, after M2 of `plans/workspace-menu-layout.md`; try it at 390 px with the keyboard open before anything else.
+- C2. The local sandbox (`tools/setup_sandbox.sh`) draws the channel screen at desktop and phone width; try each step at 390 px with the keyboard open before anything else.
