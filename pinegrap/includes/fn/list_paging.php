@@ -83,6 +83,30 @@ function pg_list_page_window($start, $length)
 }
 
 /**
+ * A page number held to the pages a list has: 1 to ceil(total / per_page),
+ * or 1 when the list is empty or a page holds no rows. A screen that reloads
+ * after rows left the list (a bulk accept keeps ?page=N) shows its last page
+ * instead of an empty one past the end.
+ *
+ * @param mixed $page     the page asked for, counted from 1
+ * @param mixed $total    the rows of the list
+ * @param mixed $per_page the rows of one page
+ * @return int
+ */
+function pg_list_page_clamp($page, $total, $per_page)
+{
+    $page = (int) $page;
+    $total = (int) $total;
+    $per_page = (int) $per_page;
+
+    if (($per_page <= 0) || ($total <= 0) || ($page < 1)) {
+        return 1;
+    }
+
+    return min($page, (int) ceil($total / $per_page));
+}
+
+/**
  * The SQL LIMIT clause of a page window, with a leading space, or '' when
  * every row is asked for from the first one on.
  *

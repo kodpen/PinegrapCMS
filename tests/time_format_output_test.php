@@ -80,6 +80,7 @@ function test_time_format_output_screens_have_no_fixed_twelve_hour_text()
 		'get_form_list_view.php' => "lang('(Format: HH:mm)')",
 		'generate_layout_content.php' => "lang('(Format: HH:mm)')",
 		'includes/templates/product_form.php' => "lang('(Format: HH:mm)')",
+		'includes/forms/submitted_form_form.php' => "'vars' => array(pg_time_format_help())",
 	) as $file => $help) {
 		pg_assert_true(strpos(file_get_contents($root . $file), $help) !== false, $file . ' has the 24-hour time help');
 	}

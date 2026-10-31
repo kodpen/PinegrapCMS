@@ -15098,7 +15098,9 @@ a.ws-chip:hover {
 }
 .ws-board {
   display: grid;
-  min-width: 56rem;
+  /* The grid's real minimum: an 11rem person column and seven 7rem days
+     (workspace.js); a larger grid would scroll inside the wrapper. */
+  min-width: 60rem;
 }
 .ws-board-cell,
 .ws-board-head,

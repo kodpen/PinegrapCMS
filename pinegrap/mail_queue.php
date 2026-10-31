@@ -90,7 +90,7 @@ if ($_POST) {
                     AND (status IN ('queued', 'failed'))");
 
             if (mysqli_affected_rows(db::$con) > 0) {
-                $liveform->add_notice(lang('The message will be sent on the next run of the general job.'));
+                $liveform->add_notice(lang('The message will be sent on the next run of the general job or mail_job.php.'));
             }
 
         } else {
@@ -308,7 +308,10 @@ if ($mail_queue_tab === 'sms') {
 
     $mail_queue_runs = pg_cron_last_runs();
 
-    $mail_queue_job_run = (is_array($mail_queue_runs) && isset($mail_queue_runs['job'])) ? (int) $mail_queue_runs['job'] : 0;
+    // Both the general job and mail_job.php record 'mail_job' after working
+    // the queue, so this row is the queue's last run whichever one is
+    // scheduled.
+    $mail_queue_job_run = (is_array($mail_queue_runs) && isset($mail_queue_runs['mail_job'])) ? (int) $mail_queue_runs['mail_job'] : 0;
 
     $mail_queue_status_labels = array(
         'queued'  => array(lang('Queued'), 'theme-secondary'),
@@ -344,9 +347,9 @@ if ($mail_queue_tab === 'sms') {
     }
 
     if (pg_mail_job_alive()) {
-        $mail_queue_state = '<span class="badge theme-success">' . lang('Queue active') . '</span> <span class="small fg-secondary">' . lang('E-mail is handed to the general job.') . '</span>';
+        $mail_queue_state = '<span class="badge theme-success">' . lang('Queue active') . '</span> <span class="small fg-secondary">' . lang('E-mail is handed to the scheduled job (the general job or mail_job.php).') . '</span>';
     } else {
-        $mail_queue_state = '<span class="badge theme-secondary">' . lang('Queue inactive') . '</span> <span class="small fg-secondary">' . lang('The general job has not run in the last 15 minutes, so e-mail is sent immediately.') . '</span>';
+        $mail_queue_state = '<span class="badge theme-secondary">' . lang('Queue inactive') . '</span> <span class="small fg-secondary">' . lang('Neither the general job nor mail_job.php has run in the last 15 minutes, so e-mail is sent immediately.') . '</span>';
     }
 
     $mail_queue_job_text = ($mail_queue_job_run > 0)
@@ -439,7 +442,7 @@ if ($mail_queue_tab === 'sms') {
             <div class="row g-5 my-3">' . $mail_queue_stats . '
             </div>
 
-            <p class="small fg-secondary mt-5 mb-0">' . lang('Last run of the general job') . ': ' . $mail_queue_job_text . '</p>
+            <p class="small fg-secondary mt-5 mb-0">' . lang('Last run of the mail queue') . ': ' . $mail_queue_job_text . '</p>
 
             <form action="mail_queue.php" method="post" class="disable_shortcut">
                 ' . get_token_field() . '
@@ -498,7 +501,7 @@ pg_page_shell(array(
         'heading'             => lang('Mail queue'),
         'heading_description' => ($mail_queue_tab === 'sms')
             ? lang('Text messages waiting for the general job, sent in the last week and not sent in the last month.')
-            : lang('E-mail waiting for the general job, sent in the last week and given up on in the last month.'),
+            : lang('E-mail waiting for the general job or mail_job.php, sent in the last week and given up on in the last month.'),
         'cancel'              => true,
     )) . '
 <main id="content" class="container-fluid">

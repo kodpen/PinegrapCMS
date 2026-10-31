@@ -587,7 +587,7 @@ if ($items) {
                         <td class="align-middle text-center" style="min-width:50px;height:50px;">' . $output_thumbnail . '</td>
                         <td class="align-middle chart_label"><button type="button" class="btn btn-link p-0 text-start" onclick="event.stopPropagation(); window.opener.CKEDITOR.tools.callFunction(\'' . h(escape_javascript(($_GET['CKEditorFuncNum'] ?? ''))) . '\', \'' . h(escape_javascript($item['href'])) . '\'); window.close();">' . h($item['url']) . '</button></td>
                         <td class="align-middle">' . h($item['folder_name']) . '</td>
-                        <td class="align-middle">' . h(convert_bytes_to_string($item['size'])) . '</td>
+                        <td class="align-middle">' . h(convert_bytes_to_string($item['size'], 'auto')) . '</td>
                         <td class="align-middle">' . get_relative_time(array('timestamp' => $item['last_modified_timestamp'])) . $output_last_modified_username . '</td>
                         <td></td>
                     </tr>';

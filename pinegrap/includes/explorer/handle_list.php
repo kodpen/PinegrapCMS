@@ -235,7 +235,7 @@ function pg_explorer_handle_list_all_files($type, $request, $user, $folders_that
             'can_create_pages' => (($user['role'] < 3) || ($user['create_pages'] == true)),
             'can_delete_pages' => (($user['role'] < 3) || ($user['delete_pages'] == true)),
             'upload_max_bytes' => $upload_max_bytes,
-            'upload_max_label' => convert_bytes_to_string($upload_max_bytes),
+            'upload_max_label' => convert_bytes_to_string($upload_max_bytes, 'floor'),
             'resize_trigger' => (int) pg_image_settings()['file_resize_trigger'],
             'resize_target' => (int) pg_image_settings()['file_max_dimension'],
             // The upload rule's lists, so the upload window can say
@@ -468,7 +468,7 @@ function pg_explorer_handle_list($type, $request, $user, $folders_that_user_has_
             'can_create_pages' => (($user['role'] < 3) || ($user['create_pages'] == true)),
             'can_delete_pages' => (($user['role'] < 3) || ($user['delete_pages'] == true)),
             'upload_max_bytes' => $upload_max_bytes,
-            'upload_max_label' => convert_bytes_to_string($upload_max_bytes),
+            'upload_max_label' => convert_bytes_to_string($upload_max_bytes, 'floor'),
             'resize_trigger' => (int) pg_image_settings()['file_resize_trigger'],
             'resize_target' => (int) pg_image_settings()['file_max_dimension'],
             // The upload rule's lists, so the upload window can say no

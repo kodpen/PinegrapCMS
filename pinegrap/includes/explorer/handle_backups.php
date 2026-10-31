@@ -151,7 +151,7 @@ function pg_explorer_handle_backups_list($type, $request, $user)
                     'type' => mb_strtolower(pathinfo($name, PATHINFO_EXTENSION)),
                     'is_image' => false,
                     'size' => $size,
-                    'size_label' => convert_bytes_to_string($size),
+                    'size_label' => convert_bytes_to_string($size, 'auto'),
                     'design' => false,
                     'optimized' => false,
                     'image_width' => 0,
@@ -197,7 +197,7 @@ function pg_explorer_handle_backups_list($type, $request, $user)
             'backup_blocked_names' => pg_explorer_blocked_upload_names(),
             'backup_blocked_extensions' => pg_explorer_blocked_upload_extensions(),
             'backup_allowed_names' => pg_explorer_backup_upload_allowed_names(),
-            'upload_max_label' => convert_bytes_to_string($upload_limits['json_max'])),
+            'upload_max_label' => convert_bytes_to_string($upload_limits['json_max'], 'floor')),
         'total_label' => convert_bytes_to_string(folderSize($root), 2)));
 }
 
@@ -650,7 +650,7 @@ function pg_explorer_handle_backup_zip($type, $request, $user)
         'request' => $type,
         'name' => basename($zip_path),
         'path' => trim(str_replace('\\', '/', substr($zip_path, strlen($root))), '/'),
-        'size_label' => convert_bytes_to_string(filesize($zip_path)),
+        'size_label' => convert_bytes_to_string(filesize($zip_path), 'auto'),
         'files' => $added,
         'message' => (($added == 1) ? lang(array('string' => '{var:1} file was compressed', 'vars' => 1)) : lang(array('string' => '{var:1} files were compressed', 'vars' => $added)))));
 }

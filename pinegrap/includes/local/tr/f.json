@@ -616,6 +616,7 @@
     "Format code": "Kodu biçimlendir",
     "Format rule": "Biçim kuralı",
     "Format: h:mm AM/PM": "Biçim: h:mm AM/PM",
+    "Format: {var:1}": "Biçim: {var:1}",
     "Formats": "Biçimler",
     "Former member": "Eski üye",
     "Forms": "Formlar",

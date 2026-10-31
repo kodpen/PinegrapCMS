@@ -281,11 +281,43 @@ function erp_invoice_form_line_row($liveform, $index, $line, $withholding_shown 
 }
 
 /**
+ * Keep a stored account in the account list after it turned passive.
+ *
+ * The list offers active accounts only, so a draft, quote or purchase order
+ * whose account was made passive later would open on "Choose an account" and
+ * its plain save would be refused. The stored account is drawn as one more
+ * option marked Passive; nothing is written to the account.
+ *
+ * @param array      $account_options  The list as erp_invoice_form_cards() builds it
+ * @param array|null $account          The stored account row, or null when it is gone
+ * @return array
+ */
+function erp_invoice_form_keep_account($account_options, $account)
+{
+    if (!is_array($account) || ((int) ($account['id'] ?? 0) <= 0)) {
+        return $account_options;
+    }
+
+    $key = 'account_' . (int) $account['id'];
+
+    if (!isset($account_options[$key])) {
+        $account_options[$key] = array(
+            'label' => h((string) ($account['title'] ?? '')) . ' (' . lang('Passive') . ')',
+            'value' => (string) (int) $account['id'],
+        );
+    }
+
+    return $account_options;
+}
+
+/**
  * The cards of the typed invoice form.
  *
  * @param liveform $liveform
  * @param array    $options  lines (display rows), invoice_id, quote (bool),
- *                           valid_days, purchase_order (bool)
+ *                           valid_days, purchase_order (bool),
+ *                           keep_account_id (the stored account an edit
+ *                           screen keeps listed when it is passive)
  * @return string  HTML
  */
 function erp_invoice_form_cards($liveform, $options = array())
@@ -306,6 +338,11 @@ function erp_invoice_form_cards($liveform, $options = array())
     // Keyed by id with the title as the label, so two accounts of the same name stay two options.
     foreach (erp_accounts(array('status' => 'active')) as $account) {
         $account_options['account_' . (int) $account['id']] = array('label' => h($account['title']), 'value' => (string) (int) $account['id']);
+    }
+
+    $keep_account_id = isset($options['keep_account_id']) ? (int) $options['keep_account_id'] : 0;
+    if (($keep_account_id > 0) && !isset($account_options['account_' . $keep_account_id])) {
+        $account_options = erp_invoice_form_keep_account($account_options, erp_account($keep_account_id));
     }
 
     $direction_options = array();
