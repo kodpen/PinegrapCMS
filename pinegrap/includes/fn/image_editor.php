@@ -73,6 +73,24 @@ function pg_image_editor_strings()
         'tool_rect'      => lang('Rectangle'),
         'tool_ellipse'   => lang('Ellipse'),
         'tool_pen'       => lang('Pen'),
+        'reset'          => lang('Reset'),
+        'apply'          => lang('Apply'),
+        'cropRatio'      => lang('Ratio'),
+        'cropFree'       => lang('Freeform'),
+        'cropOriginal'   => lang('Original'),
+        'rotateFlip'     => lang('Rotate and flip'),
+        'rotateLeft'     => lang('Rotate left'),
+        'rotateRight'    => lang('Rotate right'),
+        'flipH'          => lang('Flip horizontally'),
+        'flipV'          => lang('Flip vertically'),
+        'straighten'     => lang('Straighten'),
+        'cropShape'      => lang('Crop shape'),
+        'shapeRect'      => lang('Rectangle'),
+        'shapeRounded'   => lang('Rounded corners'),
+        'shapeCircle'    => lang('Circle'),
+        'outputSize'     => lang('Output size'),
+        'width'          => lang('Width'),
+        'height'         => lang('Height'),
     );
 }
 
@@ -96,6 +114,13 @@ function pg_image_editor_style_url()
     return OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/' . $file . '?v=' . (int) @filemtime(PG_FUNCTIONS_DIR . '/' . $file);
 }
 
+function pg_image_editor_decimal()
+{
+    $separators = function_exists('pg_number_separators') ? pg_number_separators() : array();
+
+    return isset($separators['decimal']) ? $separators['decimal'] : '.';
+}
+
 /**
  * What the loader and the editor read from window.pgImageEditorConfig.
  *
@@ -107,6 +132,9 @@ function pg_image_editor_config()
         'scripts' => pg_js_bundle_urls('assets/js/pg_image_editor.min.js'),
         'style'   => pg_image_editor_style_url(),
         'strings' => pg_image_editor_strings(),
+        // The decimal separator of the panel's language, for the figures the
+        // editor writes (docs/memory/ui/panel-script-number-format.md).
+        'decimal' => pg_image_editor_decimal(),
     );
 }
 

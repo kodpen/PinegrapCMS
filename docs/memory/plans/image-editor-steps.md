@@ -4,7 +4,7 @@ description: Steps E1-E10 of plans/image-editor.md: core modal, crop, server sav
 ---
 
 ## Which steps are there?
-- S is under 400 product lines, M about 1,000 (E9's library deletion not counted). "Screen" numbers are in `image-editor-visuals.md`. Order: E1, E1b, E2, E3, then E4-E8 in any order, E9, E10. Each step's UI also works on a phone in the E1b layout.
+- S under 400 product lines, M about 1,000 (E9's deletion not counted). Screens: `image-editor-visuals.md`. Order: E1, E1b, E2, E3, E4-E8 in any order, E9, E10. Each step's UI works on a phone (E1b layout).
 
 - E1 (M) Core modal. Screens 18, 19, 01, 12, 13. Done in #4122 (`ui/image-editor-modal.md`).
   - Bundle, stylesheet, loader, `pg_image_editor_strings()`, the `<dialog>` with full screen, top bar, rail, panel, zoom and pan (wheel, pinch, keys), document model, undo and redo, profiles and `tools`.
@@ -14,7 +14,7 @@ description: Steps E1-E10 of plans/image-editor.md: core modal, crop, server sav
   - Narrower than 600 px: the rail becomes a scrolling bottom bar, the tool's panel a sheet above it (handle, at most 42 % of the height; closed for Select until something is chosen), the top bar keeps close, name, undo, redo and save; the mini bar sits at the bottom; handles get 44 px touch targets; safe-area insets.
   - Lower than 500 px (a phone held sideways): an icon rail on the left and the panel as a sheet over the right of the stage. Replaces E1's rule that hides the panel under 768 px.
 
-- E2 (M) Crop and geometry. Screen 02.
+- E2 (M) Crop and geometry. Screen 02. Done in #4208 (`ui/image-editor-crop.md`).
   - Crop box and handles, ratios (free, original, 1:1, 4:3, 3:2, 16:9, 4:5, 9:16), quarter turns, flips, straighten ±45° with cover scale, output size with presets, crop shape (rounded, circle).
   - Layers follow turns and flips; cancel restores them.
 

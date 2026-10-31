@@ -79,6 +79,14 @@ if (pg_currency_rates_table_exists()) {
 
 $fetched = pg_currency_rates_fetch($base_code, $wanted);
 
+// Neither feed answered: say so once, beside the per-currency marks below.
+if ($wanted && !$fetched) {
+    $liveform->mark_error('exchange_rates', lang('The exchange rate services could not be reached, so the exchange rates were not changed.'));
+}
+
+// How many currencies got a new rate, for the notice.
+$updated = 0;
+
 foreach ($wanted as $code) {
 
     if (!isset($fetched[$code])) {
@@ -105,6 +113,8 @@ foreach ($wanted as $code) {
     if (pg_currency_rates_table_exists()) {
         pg_currency_rate_store($today, $base_code, $code, 1 / $store_rate, (string) $fetched[$code]['source']);
     }
+
+    $updated++;
 }
 
 // Scheduled-task health: record that this job finished. See pg_cron_ran().
@@ -114,7 +124,14 @@ pg_cron_ran('update_exchange_rates');
 
 // Redirect if needed
 if (($_GET['send_to'] ?? '')) {
-    $liveform->add_notice(lang('The exchange rates have been updated.'));
+    // A notice only for rates really written; failures are already marked above.
+    if ($updated > 0) {
+        $liveform->add_notice(lang(array(
+            'string' => '{var:1} exchange rates were updated',
+            'vars' => array($updated)
+        )));
+    }
+
     header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path($_GET['send_to'] ?? '', PATH . SOFTWARE_DIRECTORY . '/view_currencies.php'));
     exit();
 }

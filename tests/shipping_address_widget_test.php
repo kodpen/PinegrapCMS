@@ -194,7 +194,7 @@ function test_shipping_address_widget_verified_starter()
 	$starter = substr($js, (int)$from, (int)strpos($js, "case 'wishlist': {", (int)$from) - (int)$from);
 	pg_assert_contains("eo_visible_if: 'has_verified_addresses'", $starter, 'the help box is shown by the flag');
 	pg_assert_contains("section: 'verified_addresses'", $starter, 'the starter places the server-drawn section');
-	pg_assert_contains("_sectionOpts.push(['verified_addresses'", $js, 'the section can be bound in the designer');
+	pg_assert_contains("out.push(['verified_addresses'", $js, 'the section can be bound in the designer');
 	$php = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/widgets_shipping_address.php');
 	pg_assert_contains("'verified_addresses' => ''", $php, 'the renderer fills the same section');
 	pg_assert_contains("'has_verified_addresses' =>", $php, 'and sets the same flag');

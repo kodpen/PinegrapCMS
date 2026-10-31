@@ -89,7 +89,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - container-shared-form.md: add_container.php and edit_container.php draw and check the container form through includes/forms/container_form.php; what each screen keeps
 - copy-buttons.md: Hand-written panel Copy buttons: label kept, icon swapped, polite status beside the button, clipboard API only in a secure context, execCommand decides; which screens follow it
 - country-shared-form.md: add_country.php and edit_country.php draw the country options card and read its posted values through includes/forms/country_form.php; what each screen keeps
-- currency-exchange-rate-box.md: Exchange rate box on add/edit currency: five decimals like currencies.exchange_rate and the rate updater, filled and stored with five; 0,0285 no longer saved as 0,03 (#1335, PR #1341)
+- currency-exchange-rate-box.md: Exchange rate box on add/edit currency: five decimals like currencies.exchange_rate and the rate updater (#1341); Update Exchange Rates announces only the rates it wrote
 - currency-shared-form.md: The currency create and edit screens share includes/forms/currency_form.php: what it holds, what stays in the screens
 - current-and-pressed-state.md: The current link or menu item carries aria-current beside .active; a segmented toggle button carries aria-pressed beside its fill (.active or btn-solid)
 - custom-style-shared-form.md: The custom page style create and edit screens share includes/forms/custom_style_form.php: what it holds, the defaults, what stays in the screens
@@ -160,6 +160,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - greeting-counts.md: Counts in the dashboard greeting, the Workspace channel greeting and the Ecommerce card: a key for one, nominative vs accusative link phrases, counts inside one key
 - guided-tour.md: The guided tour engine (assets/js/pg_tour.js, pg_tour.css): who uses it, how steps are counted, Back at the start, how a step is read out, where focus goes at the end, the bubble's size
 - icon-ligature-button-names.md: Buttons whose content is a Material Icons ligature (north, south, delete, living) are named by that word; how the product attribute and product group screens name them (#2893)
+- image-editor-crop.md: The image editor's crop tool: geometry in the document, the rotated space, cover scale, crop mode with its undo and Cancel, ratios, handles, turns and flips, shape, output size, keys
 - image-editor-modal.md: The image editor core (window.PgImageEditor): files, loader, bundles, the pure model, labels via lang(), options, keys, full screen, the phone layout, recording a change
 - inline-feedback-placement.md: Where a panel field's error message goes on Bootstrap 6 (pgPlaceInlineFeedback(), #2578) and how script-set marks get aria-invalid and their message (pgFieldInvalid(), class observer, #3026)
 - installer-wizard-a11y.md: Installer wizard (install/index.php) from the keyboard and a screen reader: focus on step change, step status, rail current/Completed, step problems, the announced run, choice cards

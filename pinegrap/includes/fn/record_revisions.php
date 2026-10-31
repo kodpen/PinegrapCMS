@@ -909,7 +909,8 @@ function pg_record_revision_restore_files($form_id, $page_id, $revision, $skip_f
 }
 
 /**
- * The label of a revision's source.
+ * The label of a revision's source: a noun, not the Edit and Restore button
+ * labels, since it sits beside the Compare and Load buttons.
  *
  * @param string $source
  * @return string
@@ -918,13 +919,13 @@ function pg_record_revision_source_label($source)
 {
     switch (pg_record_revision_source($source)) {
         case 'restore':
-            return lang('Restore');
+            return lang('Restoration');
         case 'api':
             return lang('API');
         case 'workspace':
             return lang('Workspace');
         default:
-            return lang('Edit');
+            return lang('Edited');
     }
 }
 

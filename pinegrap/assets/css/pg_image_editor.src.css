@@ -54,6 +54,7 @@
   --pgie-primary-h: var(--pg-primary-hover, #42a5f5);
   --pgie-on-primary: var(--pg-on-accent, #13202c);
   --pgie-pw: var(--pg-primary-subtle, #e3f2fd);
+  --pgie-pline: var(--pg-primary-line, #bbdefb);
   --pgie-ink: var(--pg-primary-ink, #1565c0);
   --pgie-sel: #1e88e5;
   --pgie-danger: #c62828;
@@ -83,6 +84,7 @@
   --pgie-primary-h: #90caf9;
   --pgie-on-primary: #0d1620;
   --pgie-pw: rgba(100, 181, 246, 0.15);
+  --pgie-pline: rgba(100, 181, 246, 0.42);
   --pgie-ink: #90caf9;
   --pgie-sel: #64b5f6;
   --pgie-danger: #ef5350;
@@ -298,6 +300,7 @@
   position: absolute;
   left: 0;
   top: 0;
+  overflow: hidden;
   box-shadow: 0 2px 16px rgba(0, 0, 0, 0.18);
 }
 
@@ -311,8 +314,11 @@
   pointer-events: none;
 }
 
-.pgie-img {
+.pgie .pgie-img {
   display: block;
+  max-width: none;
+  max-height: none;
+  transform-origin: 0 0;
   -webkit-user-drag: none;
 }
 
@@ -364,8 +370,210 @@
 }
 
 .pgie-pb {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
   padding: 0 16px 16px;
 }
+
+.pgie .pgie-link {
+  padding: 4px 6px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--pgie-ink);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.pgie .pgie-link:hover {
+  background: var(--pgie-hover);
+}
+
+/* Panel controls */
+
+.pgie-sec {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pgie-lbl {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--pgie-muted);
+}
+
+.pgie-val {
+  color: var(--pgie-tx);
+  font-variant-numeric: tabular-nums;
+}
+
+.pgie-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.pgie .pgie-chip {
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--pgie-line);
+  border-radius: 999px;
+  background: var(--pgie-surface);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.pgie .pgie-chip:hover {
+  background: var(--pgie-hover);
+}
+
+.pgie .pgie-chip.on {
+  border-color: var(--pgie-pline);
+  background: var(--pgie-pw);
+  color: var(--pgie-ink);
+  font-weight: 650;
+}
+
+.pgie-tiles {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.pgie .pgie-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: 10px 4px 8px;
+  border: 1px solid var(--pgie-line);
+  border-radius: 12px;
+  background: var(--pgie-surface);
+  color: var(--pgie-muted);
+  font-size: 11.5px;
+  line-height: 1.2;
+  text-align: center;
+  cursor: pointer;
+}
+
+.pgie .pgie-tile:hover {
+  background: var(--pgie-hover);
+  color: var(--pgie-tx);
+}
+
+.pgie-range {
+  width: 100%;
+  margin: 0;
+  accent-color: var(--pgie-sel);
+}
+
+.pgie-wh {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--pgie-muted);
+}
+
+.pgie .pgie-input {
+  width: 96px;
+  height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--pgie-line);
+  border-radius: 9px;
+  background: var(--pgie-surface);
+  color: var(--pgie-tx);
+  font: inherit;
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.pgie-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* Crop box: the rest of the picture is dimmed, thirds help the eye, eight
+   handles size it. */
+
+.pgie-cropbox {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 1;
+  display: none;
+  outline: 1.5px solid rgba(255, 255, 255, 0.95);
+  box-shadow: 0 0 0 100vmax rgba(10, 12, 16, 0.55);
+  cursor: move;
+  touch-action: none;
+}
+
+.pgie-cropping .pgie-cropbox {
+  display: block;
+}
+
+.pgie-third {
+  position: absolute;
+  background: rgba(255, 255, 255, 0.5);
+  pointer-events: none;
+}
+
+.pgie-v1,
+.pgie-v2 {
+  top: 0;
+  bottom: 0;
+  width: 1px;
+}
+
+.pgie-v1 {
+  left: 33.333%;
+}
+
+.pgie-v2 {
+  left: 66.667%;
+}
+
+.pgie-h1,
+.pgie-h2 {
+  left: 0;
+  right: 0;
+  height: 1px;
+}
+
+.pgie-h1 {
+  top: 33.333%;
+}
+
+.pgie-h2 {
+  top: 66.667%;
+}
+
+.pgie-h {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  margin: -8px 0 0 -8px;
+  border: 2px solid #ffffff;
+  border-radius: 4px;
+  background: var(--pgie-sel);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+  touch-action: none;
+}
+
+.pgie-h[data-h="nw"] { left: 0; top: 0; cursor: nwse-resize; }
+.pgie-h[data-h="n"] { left: 50%; top: 0; cursor: ns-resize; }
+.pgie-h[data-h="ne"] { left: 100%; top: 0; cursor: nesw-resize; }
+.pgie-h[data-h="e"] { left: 100%; top: 50%; cursor: ew-resize; }
+.pgie-h[data-h="se"] { left: 100%; top: 100%; cursor: nwse-resize; }
+.pgie-h[data-h="s"] { left: 50%; top: 100%; cursor: ns-resize; }
+.pgie-h[data-h="sw"] { left: 0; top: 100%; cursor: nesw-resize; }
+.pgie-h[data-h="w"] { left: 0; top: 50%; cursor: ew-resize; }
 
 .pgie-note {
   margin: 0;

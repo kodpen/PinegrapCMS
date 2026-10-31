@@ -4658,6 +4658,35 @@ function pg_sitemap_cache_purge()
 }
 
 /**
+ * Whether IndexNow took a ping: it answers 200 or 202 for an accepted one.
+ *
+ * @param int $status HTTP status from pg_curl_run(), 0 when no answer came
+ * @return bool
+ */
+function pg_indexnow_ping_accepted($status)
+{
+    return in_array((int) $status, array(200, 202), true);
+}
+
+/**
+ * The reason text for a ping IndexNow did not take: the HTTP code it
+ * answered with, or the cURL error when no answer came.
+ *
+ * @param array $answer pg_curl_run() result
+ * @return string
+ */
+function pg_indexnow_ping_failure($answer)
+{
+    $status = (int) ($answer['status'] ?? 0);
+
+    if ($status === 0) {
+        return (string) ($answer['error'] ?? '');
+    }
+
+    return 'HTTP ' . $status;
+}
+
+/**
  * Checks if the sitemap content has changed and securely pings IndexNow if necessary.
  * This unifies the sitemap check logic safely on the backend.
  *
@@ -4689,7 +4718,8 @@ function update_sitemap_and_ping()
 
                 // pg_curl_run() sends this installation's User-Agent, goes
                 // through PROXY_ADDRESS when set and applies pg_curl_tls().
-                // Any HTTP answer counts as sent, as before.
+                // Only 200 or 202 means IndexNow took the ping; 400, 403 (key
+                // not valid), 422 (host and key do not match) and 429 refuse it.
                 $answer = pg_curl_run('POST', $indexnow_url, array(
                     'body'            => $post_data,
                     'headers'         => array('Content-Type: application/json'),
@@ -4697,10 +4727,10 @@ function update_sitemap_and_ping()
                     'connect_timeout' => 8,
                 ));
 
-                if ($answer['status'] === 0) {
-                    log_activity(lang('IndexNow ping failed: ') . $answer['error'], '');
-                } else {
+                if (pg_indexnow_ping_accepted($answer['status'])) {
                     log_activity(lang('IndexNow ping sent successfully.'), '');
+                } else {
+                    log_activity(lang('IndexNow ping failed: ') . pg_indexnow_ping_failure($answer), '');
                 }
             } else {
                 log_activity(lang('IndexNow skipped: INDEXNOW_KEY not defined or empty.'), '');

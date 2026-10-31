@@ -65,8 +65,8 @@ function pg_sw_list_product_sources()
             'arg'          => '',
             'arg_required' => false,
             'tokens'       => array(
-                array('__related_name', lang('Product name')),
-                array('__related_short_description', lang('Short Description')),
+                array('__related_name', lang('Product ID / SKU')),
+                array('__related_short_description', lang('Product name (shown in the store)')),
                 array('__related_url', lang('Product address')),
                 array('__related_image_url', lang('Image address')),
                 array('__related_price', lang('Price')),
@@ -80,8 +80,8 @@ function pg_sw_list_product_sources()
             'arg'          => '',
             'arg_required' => false,
             'tokens'       => array(
-                array('__bundle_item_name', lang('Product name')),
-                array('__bundle_item_short_description', lang('Short Description')),
+                array('__bundle_item_name', lang('Product ID / SKU')),
+                array('__bundle_item_short_description', lang('Product name (shown in the store)')),
                 array('__bundle_item_quantity', lang('Quantity in the bundle')),
                 array('__bundle_item_url', lang('Product address')),
                 array('__bundle_item_image_url', lang('Image address')),

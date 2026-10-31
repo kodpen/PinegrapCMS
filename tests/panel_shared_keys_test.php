@@ -93,3 +93,44 @@ function test_panel_shared_keys_visitor_report_order_steps()
 		pg_assert_same($value, $map[$key] ?? null, $key);
 	}
 }
+
+// The comments quote starter is named "Alıntılar" under its own key; "Quotes"
+// stays the ERP quotations screen. The product rating line reads its count
+// word from a visible key; "reviews" stays the design templates' address slug.
+function test_panel_shared_keys_starter_labels_have_their_own_keys()
+{
+	$map = pg_test_language_map();
+
+	pg_assert_same('Alıntılar', $map['Quotations'] ?? null, 'Quotations');
+	pg_assert_same('Fiyat Teklifleri', $map['Quotes'] ?? null, 'Quotes');
+	pg_assert_same('değerlendirme', $map['review(s)'] ?? null, 'review(s)');
+	pg_assert_same('degerlendirmeler', $map['reviews'] ?? null, 'reviews');
+
+	$source = panel_shared_keys_source('includes/fn/widgets_starters.php');
+
+	pg_assert_true(strpos($source, "'label' => lang('Quotations')") !== false, 'quote starter label');
+	pg_assert_true(strpos($source, "lang('review(s)')") !== false, 'rating count word');
+	pg_assert_false(strpos($source, "lang('Quotes')") !== false, 'widgets_starters.php has no lang(\'Quotes\')');
+	pg_assert_false(strpos($source, "lang('reviews')") !== false, 'widgets_starters.php has no lang(\'reviews\')');
+}
+
+// A revision's source is a noun under its own key, not the Edit and Restore
+// button labels that sit beside Compare and Load.
+function test_panel_shared_keys_revision_sources_are_nouns()
+{
+	$map = pg_test_language_map();
+
+	pg_assert_same('Düzenleme', $map['Edited'] ?? null, 'Edited');
+	pg_assert_same('Geri yükleme', $map['Restoration'] ?? null, 'Restoration');
+	pg_assert_same('Düzenle', $map['Edit'] ?? null, 'Edit');
+	pg_assert_same('Geri Yükle', $map['Restore'] ?? null, 'Restore');
+
+	$source = panel_shared_keys_source('includes/fn/record_revisions.php');
+	$start = (int) strpos($source, 'function pg_record_revision_source_label(');
+	$body = substr($source, $start, (int) strpos($source, "\n}\n", $start) - $start);
+
+	pg_assert_true(strpos($body, "lang('Edited')") !== false, 'edit source label');
+	pg_assert_true(strpos($body, "lang('Restoration')") !== false, 'restore source label');
+	pg_assert_false(strpos($body, "lang('Edit')") !== false, 'no Edit button key');
+	pg_assert_false(strpos($body, "lang('Restore')") !== false, 'no Restore button key');
+}
