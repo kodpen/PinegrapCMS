@@ -31,6 +31,11 @@ function pg_panel_file_explorer($request, $action)
     // administrator would see no folders at all.
     global $user, $folders_that_user_has_access_to;
 
+    // Exempt: an ended session gets the JSON refusal here, before
+    // validate_user() could redirect the request to the sign-in page.
+    if (!USER_LOGGED_IN) {
+        respond(panel_login_refusal());
+    }
     $user = validate_user();
     validate_token();
 

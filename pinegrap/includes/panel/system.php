@@ -32,6 +32,11 @@ function pg_panel_database_deep_check($request, $action)
     // cheap MyISAM flags and leaves alone the engines that ignore them;
     // the thorough pass lives here, where an operator decides when the
     // site can afford it.
+    // Exempt: an ended session gets the JSON refusal here, before
+    // validate_user() could redirect the request to the sign-in page.
+    if (!USER_LOGGED_IN) {
+        respond(panel_login_refusal());
+    }
     $user = validate_user();
 
     // Same gate as the widget that reports the result.
@@ -114,6 +119,11 @@ function pg_panel_server_config_repair($request, $action)
     // The rest of the widget stands behind role < 3, so the tile that
     // starts this is drawn for role 0 alone rather than being offered to
     // people it would refuse.
+    // Exempt: an ended session gets the JSON refusal here, before
+    // validate_user() could redirect the request to the sign-in page.
+    if (!USER_LOGGED_IN) {
+        respond(panel_login_refusal());
+    }
     $user = validate_user();
 
     if ((int) $user['role'] !== 0) {
@@ -225,6 +235,11 @@ function pg_panel_write_permissions_repair($request, $action)
     // Administrator only, like the rules file: this changes who may write
     // into the software directory, which is not the same authority as
     // clearing a cache.
+    // Exempt: an ended session gets the JSON refusal here, before
+    // validate_user() could redirect the request to the sign-in page.
+    if (!USER_LOGGED_IN) {
+        respond(panel_login_refusal());
+    }
     $user = validate_user();
 
     if ((int) $user['role'] !== 0) {
@@ -278,6 +293,11 @@ function pg_panel_purge_cache($request, $action)
     // validate_area_access($user, 'manager') -- written here as a role test
     // because that function answers in HTML, and an HTML refusal reaches a
     // caller expecting JSON as "unexpected token <".
+    // Exempt: an ended session gets the JSON refusal here, before
+    // validate_user() could redirect the request to the sign-in page.
+    if (!USER_LOGGED_IN) {
+        respond(panel_login_refusal());
+    }
     $user = validate_user();
 
     if ((int) $user['role'] >= 3) {
