@@ -5,7 +5,7 @@ description: The image editor prototype the owner approved on 2026-10-31: its sc
 
 ## Where are they and how are they read?
 - `docs/memory/plans/image-editor/NN-name.jpg`, 1280 px wide, Turkish labels; photo screens dark, canvas screens light. They fix behaviour and layout; colours, icons and spacing come from the panel's tokens.
-- `plans/image-editor/prototype/*.dc.html`: the prototype's source, a design-canvas component (it needs that runtime and its sample pictures to run, which are not here). Read it for the maths, the panels, the labels and the edge cases already solved: `Main.dc.html` is the editor; the others set its props (`profile`, `tools`, `modal`).
+- `plans/image-editor/prototype/*.dc.html`: the prototype's source, a design-canvas component (it needs that runtime and its sample pictures to run, which are not here). Read it for the maths, the panels, the labels and the edge cases already solved: `Main.dc.html` is the editor; the others set its props (`profile`, `tools`, `modal`, a phone size).
 
 ## Which screen goes with which step?
 - 01-photo (E1, E5): the layout: top bar, tool rail, layers panel, hint and zoom line; a photo with two texts and a sticker as layers.
@@ -22,6 +22,7 @@ description: The image editor prototype the owner approved on 2026-10-31: its sc
 - 14-canvas-new, 15-canvas (E12): New image presets and background; a canvas with a picture, a sticker and a text layer.
 - 16-artboard-drag, 17-artboard-done (E12): the artboard tool: dashed new bounds and the size while dragging, anchor grid, fit to content, preset sizes; after release the board is wider and the artwork has not moved.
 - 18-modal, 19-fullscreen (E1): the modal over the File Manager; the same editor after the full-screen button.
+- 20-25, 390×844 (E1b): the phone layout: top bar with close, name, undo, redo and save; the tools in a bottom bar; no sheet for Select (20); the tool's panel as a bottom sheet (21 adjust, 22 crop with finger-size handles); a caller's mini bar at the bottom (23); New image in two columns (24); a canvas with the sticker sheet (25).
 
 ## What is in the prototype but not on a screen?
 - Undo and redo across every tool, rotate and flip with layers following, crop reset, the save menu (new version, copy, export settings), dark and light themes, Turkish and English labels.

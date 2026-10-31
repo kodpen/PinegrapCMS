@@ -30,8 +30,8 @@ description: Steps E11-E20 of plans/image-editor.md: versions, canvas and artboa
 - E17 (S) Visual designer.
   - The image widget's "Edit image" opens the modal over the designer; a saved version refreshes the picture (cache key); crop presets from the widget's ratio.
 
-- E18 (S) Access and touch.
-  - Keyboard map and help sheet, names for every control, focus trap, reduced motion, touch gestures (pinch, two-finger rotate), phone layout.
+- E18 (S) Access.
+  - Keyboard map and help sheet, names for every control, focus trap, reduced motion, two-finger rotate (the phone layout is E1b).
 
 - E19 (M, later) SVG animation presets.
   - Per layer: entrance (fade, slide, scale, draw the stroke) and loop (pulse, float, spin, blink) with delay, duration, easing; a play button. The server writes one `<style>` of `@keyframes` from the preset names and numbers, never the browser's CSS, inside `prefers-reduced-motion: no-preference`. Only SVG output moves (`<img>`, CSS background, inline); raster formats keep the first frame; no SMIL, script, GIF or video.
