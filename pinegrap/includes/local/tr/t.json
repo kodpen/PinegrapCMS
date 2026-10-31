@@ -3610,6 +3610,7 @@
     "The status of {var:1} is now {var:2}": "{var:1} durumu {var:2} oldu",
     "The steps that lead to the problem, what you expected and what happened instead.": "Soruna götüren adımlar, ne beklediğiniz ve onun yerine ne olduğu.",
     "The stock and inventory settings above are worked out from these products when you save.": "Yukarıdaki stok ve envanter ayarları kaydettiğinizde bu ürünlerden hesaplanır.",
+    "The stock of this product changed while the screen was open: it is now {var:1}; the count you typed was not saved.": "Ekran açıkken bu ürünün stoğu değişti: şu an {var:1}; yazdığınız miktar kaydedilmedi.",
     "The storage endpoint address is not valid.": "Depolama uç noktası adresi geçerli değil.",
     "The storage service answered HTTP {var:1}. {var:2}": "Depolama hizmeti HTTP {var:1} yanıtı verdi. {var:2}",
     "The storage service did not answer.": "Depolama hizmeti yanıt vermedi.",

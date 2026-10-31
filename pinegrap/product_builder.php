@@ -5126,6 +5126,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                                     '<div class="col-12 sm:col-6 lg:col-4">
                                                         <label for="inventory_quantity" class="form-label">' . lang('Inventory Quantity') . '</label>
                                                         <input type="number" min="0" name="inventory_quantity" id="inventory_quantity" class="form-control" value="' . h($v('inventory_quantity', '')) . '" />
+                                                        ' . (($pg_mode === 'edit') ? '<input type="hidden" name="inventory_quantity_was" value="' . h($v('inventory_quantity', '')) . '" />' : '') . '
                                                         <div class="form-text pg-pb-group-only d-none">' . lang('Starting stock for every variant; each row can differ.') . '</div>
                                                     </div>
                                                     <div class="col-12 mt-5">
@@ -6125,6 +6126,39 @@ function pg_pb_update_product($product_id)
         }
     }
 
+    // The stock as stored, read before the row is written: a save that moved
+    // it is announced below the way a stock write through the API is.
+    $stock_was = db_item("SELECT inventory, inventory_quantity FROM products WHERE id = '" . e($product_id) . "'");
+
+    // The count is written only when it was changed on the screen, and then
+    // only over the count the screen opened with (inventory_quantity_was):
+    // checkout lowers it relatively, so writing back the count read when the
+    // screen opened would put units sold meanwhile back. A count that moved
+    // meanwhile is kept and the operator is told; the rest of the save goes
+    // through, since this screen does not refill typed fields after a
+    // refusal. A bundle's count is the stored cache (above) either way.
+    $stock_was_posted = isset($_POST['inventory_quantity_was']) ? $_POST['inventory_quantity_was'] : NULL;
+    $stock_action     = 'write';
+    $stock_guarded    = FALSE;
+    $stock_kept       = NULL;
+
+    if ($stock_was && !($bundle_posted && $product['bundle'])) {
+        $stock_action = pg_pb_stock_save_action(
+            $product['inventory_quantity'],
+            $stock_was_posted,
+            $stock_was['inventory_quantity']);
+
+        $stock_guarded = ($stock_action === 'write') && is_numeric(trim((string) $stock_was_posted));
+    }
+
+    if ($stock_action !== 'write') {
+        if ($stock_action === 'conflict') {
+            $stock_kept = (int) $stock_was['inventory_quantity'];
+        }
+
+        $product['inventory_quantity'] = (string) $stock_was['inventory_quantity'];
+    }
+
     pg_pb_apply_stock_flag($product, $product_id);
 
     // Everything this screen manages feeds the SEO score, so the stored
@@ -6143,11 +6177,55 @@ function pg_pb_update_product($product_id)
             pg_ai_fields_values('product', $product));
     }
 
-    // The stock as stored, read before the row is written: a save that moved
-    // it is announced below the way a stock write through the API is.
-    $stock_was = db_item("SELECT inventory, inventory_quantity FROM products WHERE id = '" . e($product_id) . "'");
+    // A kept count is left out of the row; a changed one, with the flag it
+    // decides, is written after the row and only over the opened count.
+    $row           = $product;
+    $stock_columns = array();
 
-    pg_pb_update_row('products', $product, 'id', $product_id);
+    if ($stock_action !== 'write') {
+        unset($row['inventory_quantity']);
+    } elseif ($stock_guarded) {
+        foreach (array('inventory_quantity', 'out_of_stock', 'out_of_stock_timestamp') as $column) {
+            if (array_key_exists($column, $row)) {
+                $stock_columns[$column] = $row[$column];
+                unset($row[$column]);
+            }
+        }
+    }
+
+    pg_pb_update_row('products', $row, 'id', $product_id);
+
+    if ($stock_columns) {
+        $assignments = array();
+
+        foreach ($stock_columns as $column => $value) {
+            $assignments[] = '`' . $column . "` = '" . e($value) . "'";
+        }
+
+        db(
+            "UPDATE products
+            SET " . implode(', ', $assignments) . "
+            WHERE id = '" . (int) $product_id . "'
+            AND inventory_quantity = '" . (int) trim((string) $stock_was_posted) . "'");
+
+        // Checkout moved the count between the read above and this write:
+        // the stored count stays and the flag follows it.
+        if (mysqli_affected_rows(db::$con) < 1) {
+            $stock_kept = (int) db_value("SELECT inventory_quantity FROM products WHERE id = '" . (int) $product_id . "'");
+
+            $product['inventory_quantity'] = (string) $stock_kept;
+            unset($product['out_of_stock_timestamp']);
+            pg_pb_apply_stock_flag($product, $product_id);
+
+            $flag = array('out_of_stock' => $product['out_of_stock']);
+
+            if (isset($product['out_of_stock_timestamp'])) {
+                $flag['out_of_stock_timestamp'] = $product['out_of_stock_timestamp'];
+            }
+
+            pg_pb_update_row('products', $flag, 'id', $product_id);
+        }
+    }
 
     // The price history writes a row only when the stored price differs from
     // its newest one, so a save that left the price alone adds nothing.
@@ -6260,7 +6338,8 @@ function pg_pb_update_product($product_id)
     // event rule hears about a save on this screen too.
     pg_announce('product.updated', array('id' => (int) $product_id, 'name' => $product['name']));
 
-    return array('name' => $product['name']);
+    // stock_kept: the stored count a changed count was not written over.
+    return array('name' => $product['name'], 'stock_kept' => $stock_kept);
 }
 
 
@@ -6643,6 +6722,48 @@ function pg_pb_save_submit_form_fields($product_id, $posted = NULL)
             $added[] = $field_id;
         }
     }
+}
+
+
+/**
+ * What an Edit Product save does with the stock count.
+ *
+ * Checkout lowers the count relatively (inventory_quantity - n), so writing
+ * back the count the screen opened with puts units sold meanwhile back on
+ * the shelf. The screen posts the count it opened with as
+ * inventory_quantity_was:
+ *
+ *   'keep'     the count was not changed on the screen, or the typed count
+ *              is the one stored: the stored count stays
+ *   'write'    the count was changed and the stored count is still the one
+ *              the screen opened with: write it (over that count only); a
+ *              form posted without a numeric was value writes as before
+ *   'conflict' the count was changed but the stored count moved meanwhile:
+ *              the stored count stays and the operator is told
+ *
+ * An empty box counts as 0, the way the row stores it.
+ *
+ * @param  string     $posted the posted inventory_quantity
+ * @param  mixed      $was    the posted inventory_quantity_was, NULL if absent
+ * @param  string|int $stored the count stored now
+ * @return string 'keep', 'write' or 'conflict'
+ */
+function pg_pb_stock_save_action($posted, $was, $stored)
+{
+    $was = ($was === NULL) ? '' : trim((string) $was);
+
+    if (($was === '') || !is_numeric($was)) {
+        return 'write';
+    }
+
+    $posted = (int) trim((string) $posted);
+    $stored = (int) $stored;
+
+    if (($posted === (int) $was) || ($posted === $stored)) {
+        return 'keep';
+    }
+
+    return ($stored === (int) $was) ? 'write' : 'conflict';
 }
 
 
