@@ -12970,7 +12970,13 @@ function pg_products_import_row_value($row, $key)
 function pg_products_import_decimal_cell($column_name, $value)
 {
     if (in_array($column_name, array('weight', 'length', 'width', 'height'), true)) {
-        return number_format(round(pg_pb_decimal_from_input($value), 4), 4, '.', '');
+        $cell = trim((string) $value);
+
+        // A spreadsheet writes a very small or large number with an exponent
+        // ("1E-3"); the screen's reader would drop the "E" and read 13.
+        $number = preg_match('/^\d+(\.\d+)?[eE][+-]?\d+$/', $cell) ? (float) $cell : pg_pb_decimal_from_input($cell);
+
+        return number_format(round($number, 4), 4, '.', '');
     }
 
     if ($column_name === 'commission_rate_limit') {
@@ -12978,6 +12984,45 @@ function pg_products_import_decimal_cell($column_name, $value)
     }
 
     return null;
+}
+
+/**
+ * Whether a product import row is left out because one of its weight,
+ * length, width, height or commission_rate_limit cells is not a number.
+ * $decimal_positions maps those columns to their position in the row. A
+ * number is digits with "." or "," as decimal point or grouping (spaces
+ * group too: "1 234,5"), or a spreadsheet's exponent form; an empty cell
+ * leaves the column as it is. Words, a unit ("1,5 kg") or a minus sign
+ * (the columns are unsigned) refuse the row, as do weight and dimensions
+ * above decimal(12,4)'s top: the non-strict session would store 0 or the
+ * top without a word. A commission rate above 999.99 is held to it, as on
+ * the product screen.
+ *
+ * @param array $row
+ * @param array $decimal_positions column => position
+ * @return bool
+ */
+function pg_products_import_row_decimals_refused($row, $decimal_positions)
+{
+    foreach ($decimal_positions as $decimal_column => $decimal_position) {
+        $cell = str_replace(' ', '', trim(pg_products_import_row_value($row, $decimal_position)));
+
+        if ($cell === '') {
+            continue;
+        }
+
+        if (!preg_match('/^\d+(\.\d+)?[eE][+-]?\d+$/', $cell)
+            && !preg_match('/^[0-9.,]*[0-9][0-9.,]*$/', $cell)) {
+            return true;
+        }
+
+        if (($decimal_column !== 'commission_rate_limit')
+            && ((float) pg_products_import_decimal_cell($decimal_column, $cell) > 99999999.9999)) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 /**
