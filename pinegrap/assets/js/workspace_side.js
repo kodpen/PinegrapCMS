@@ -18,9 +18,10 @@
  * any page. The workspace's screens hand in what they answer on the spot
  * (PGWsSide.attach(): assets/js/workspace.js): the channel screen opens a
  * channel, a discussion or the overview in place and adds the pin, the
- * dragging and the right-click menus; the other screens open the inbox in
- * place. Which sections and groups are closed is the person's, on
- * this browser, the same on every page.
+ * dragging and the right-click menus. The Inbox opens the panel's bell on
+ * Workspace, the one inbox (backend.src.js); only a page without the bell
+ * opens the workspace's own list. Which sections and groups are closed is
+ * the person's, on this browser, the same on every page.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -527,8 +528,25 @@
                 node.appendChild(el('span', 'ws-count ws-count-mention', badge > 99 ? '99+' : badge));
             }
 
-            inPlace(node, navHooks[item.key]);
+            inPlace(node, item.inbox ? toBell(navHooks[item.key], item.url) : navHooks[item.key]);
             box.appendChild(node);
+        }
+
+        // The bell is the panel's one inbox (backend.src.js): the Inbox opens
+        // it on Workspace. Where a page has no bell, the workspace's own list
+        // opens as before.
+        function toBell(own, url) {
+            return function () {
+                if ((typeof window.pgBellOpen === 'function') && window.pgBellOpen('workspace')) {
+                    return;
+                }
+
+                if (typeof own === 'function') {
+                    own();
+                } else {
+                    window.location.href = url;
+                }
+            };
         }
 
         // A tile of Tools: the screen's icon in its own colour and its short
@@ -591,8 +609,9 @@
 
         var top = group('', '').box;
 
+        // The Inbox counts nothing of its own: the bell it opens does.
         (nav.top || []).forEach(function (item) {
-            navLink(top, item, navActive(item), item.inbox ? data.inbox : 0);
+            navLink(top, item, navActive(item), 0);
         });
 
         // Channels in a group are listed under it (pinned ones stay pinned).

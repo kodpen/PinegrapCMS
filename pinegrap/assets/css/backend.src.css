@@ -4225,8 +4225,10 @@ table.chart thead th {
 }
 
 /*NOTIFICATIONS*/
+/* The one inbox of the panel: the site's notices and what the workspace told
+   the person, so it has room for a sentence and its filters. */
 #notifications {
-  width: 21.875rem;
+  width: 26rem;
   right: 2px !important;
   left: auto;
   top: calc(var(--pg-navbar-h) + 2px) !important;
@@ -4352,6 +4354,82 @@ table.chart thead th {
 #notifications #push_row,
 #notifications #push_hint {
   flex: 0 0 auto;
+}
+
+/* The filters over the list (output.php, backend.src.js): All, the site's
+   notices, what the workspace told the person, each with its unread count. */
+/* One row however narrow the phone: it scrolls sideways before it wraps. */
+#notifications .pg-bell-filters {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 0.375rem;
+  padding: 0.625rem 0.75rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+  border-bottom: 1px solid var(--pg-border-color-translucent);
+}
+#notifications .pg-bell-filter {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 0.375rem;
+  min-height: 1.875rem;
+  padding: 0.125rem 0.625rem;
+  border: 1px solid var(--pg-border-color);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--pg-fg-2);
+  font-size: 0.8125rem;
+  line-height: 1.2;
+  white-space: nowrap;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+#notifications .pg-bell-filter:hover {
+  background: var(--pg-tint);
+  color: var(--pg-fg-body);
+}
+#notifications .pg-bell-filter:focus-visible {
+  outline: 2px solid var(--pg-primary);
+  outline-offset: 1px;
+}
+#notifications .pg-bell-filter[aria-pressed="true"] {
+  border-color: var(--pg-primary);
+  background: var(--pg-primary);
+  color: var(--pg-on-accent);
+  font-weight: 600;
+}
+#notifications .pg-bell-count {
+  min-width: 1.25rem;
+  padding: 0 0.3rem;
+  border-radius: 999px;
+  background: var(--pg-tint-strong);
+  color: var(--pg-fg-body);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  line-height: 1.25rem;
+  text-align: center;
+}
+#notifications .pg-bell-filter[aria-pressed="true"] .pg-bell-count {
+  background: color-mix(in srgb, var(--pg-on-accent) 16%, transparent);
+  color: inherit;
+}
+/* A row of another filter, and a flow's older runs while its newest is
+   closed. */
+#notifications .software_notification:is(.pg-bell-off, .pg-bell-shut) {
+  display: none;
+}
+/* An older run hangs under its newest. */
+#notifications .software_notification[data-pg-bell-fold] .notification-card {
+  margin-left: 0.75rem;
+  border-left: 2px solid var(--pg-border-color-translucent);
+}
+/* A workspace row's icon, in the workspace's colour. */
+#notifications .pg-bell-glyph {
+  margin-right: 0.375rem;
+  color: var(--workspace-color);
+}
+html[data-bs-theme="dark"] #notifications .pg-bell-glyph {
+  color: var(--workspace-color-highlight);
 }
 
 .alert p.notice,
@@ -20634,6 +20712,7 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
     .btn-text.theme-secondary.active,
     #header .pg-um-themebtn.active,
     .pg-filter[aria-pressed="true"],
+    #notifications .pg-bell-filter[aria-pressed="true"],
     button.pg-vs-cell.is-active,
     .pg-sale-switch .btn.active,
     .pg-sale-switch .btn[aria-pressed="true"],
@@ -20659,6 +20738,7 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
     .btn-text.theme-secondary.active,
     #header .pg-um-themebtn.active,
     .pg-filter[aria-pressed="true"],
+    #notifications .pg-bell-filter[aria-pressed="true"],
     button.pg-vs-cell.is-active,
     .pg-sale-switch .btn.active,
     .pg-sale-switch .btn[aria-pressed="true"],
