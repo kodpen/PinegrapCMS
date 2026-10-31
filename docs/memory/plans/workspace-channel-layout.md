@@ -26,7 +26,7 @@ description: Plan (owner decision 2026-10-31) for the redrawn Workspace channel 
 
 - C4 Messages: one author's consecutive messages grouped, actions on hover, the decision tag, Convert to text as a small button, a discussion's link "3 replies · last …".
 
-- C5 Composer: one row (attach, formatting, @, /, emoji, voice, send), the hint line goes, / opens the command list in the panel's look; the phone rules above.
+- C5 Composer: done #3898 (`workspace/workspace-channel-composer.md`; the hint line gone, marks behind Aa, a phone's one row with a tools switch, the strip and tabs hide while the keyboard is up; the / list keeps its look).
 
 - C6 Side panels: the discussion (title, channel, Claude's follow line with Stop) and the channel info (purpose, status, members, notifications, read answers aloud, time spent, channel settings).
 
@@ -36,4 +36,4 @@ description: Plan (owner decision 2026-10-31) for the redrawn Workspace channel 
 1. Whether C7 renames Overview to Today; asked when C7 starts.
 
 ## Where to start?
-- C5 before C4: the one-row composer gives a phone the most height; the local sandbox (`tools/setup_sandbox.sh`) draws the channel screen at desktop and phone width; try each step at 390 px with the keyboard open before anything else.
+- C4, then C6 and C7. The local sandbox (`tools/setup_sandbox.sh`) draws the channel screen at desktop and phone width; try each step at 390 px with the keyboard open before anything else.

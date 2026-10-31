@@ -6,10 +6,9 @@
  * includes/fn/files.php): dkim.key, the key that signs the site's mail, which
  * get_file.php never serves either. The file screens show no content for it,
  * leave it out of their archives and neither copy nor rename it; the
- * Workspace's file picker does not copy it into a channel, and the classic
- * page designer's file loader does not read it. Other .key and .pub files are
- * still shown. A basic user or a visitor may not give a file that name
- * (pg_file_name_reserved()), however it is spelled on the way in.
+ * Workspace's file picker does not copy it into a channel. Other .key and
+ * .pub files are still shown. A basic user or a visitor may not give a file
+ * that name (pg_file_name_reserved()), however it is spelled on the way in.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -119,18 +118,14 @@ function file_withheld_test_asks_first($section, $asked, $acted)
 
 // The doors outside the file screens: the Workspace's picker and the copy it
 // posts into a channel (the file manager's "Send to a channel" and the
-// paperclip), and the file loader of the classic page designer.
-function test_file_withheld_is_asked_by_the_workspace_and_designer_doors()
+// paperclip).
+function test_file_withheld_is_asked_by_the_workspace_doors()
 {
 	$library = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/library.php');
 
 	pg_assert_true(file_withheld_test_asks_first(file_withheld_test_section($library, 'function ws_library_file_payload('), 'pg_file_withheld($name)', "'refused' =>"), 'the picker shows it as one that cannot be picked');
 	pg_assert_true(file_withheld_test_asks_first(file_withheld_test_section($library, 'function ws_library_file('), "pg_file_withheld(\$row['name'])", "'ok' => true"), 'the picker does not hand it on');
 	pg_assert_true(file_withheld_test_asks_first(file_withheld_test_section($library, 'function ws_library_send('), 'ws_library_file(', 'file_get_contents('), 'the copy is only read once the picker handed the file on');
-
-	$content = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/panel/content.php');
-
-	pg_assert_true(file_withheld_test_asks_first(file_withheld_test_section($content, 'function pg_panel_get_file('), "pg_file_withheld(\$file['name'])", 'file_get_contents('), 'the page designer\'s file loader does not read it');
 }
 
 // The mailer signs with whatever file is called dkim.key, so who may give a

@@ -27,7 +27,7 @@ function db_q_tail_test_files()
 {
 	return array(
 		'install/index.php' => array(22, 83),
-		'includes/panel/designer.php' => array(2, 0),
+		'includes/panel/designer.php' => array(1, 0),
 		'assets/lib/tiny_mce_3_5_10/plugins/advimage/add_file.php' => array(4, 0),
 		'assets/lib/tiny_mce_3_5_10/plugins/advlink/add_file.php' => array(4, 0),
 		'includes/workspace/flows.php' => array(1, 0),

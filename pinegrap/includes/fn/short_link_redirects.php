@@ -1685,7 +1685,7 @@ function pg_short_link_csv_rows($bytes)
     $cell = function ($cells, $index) {
         $text = isset($cells[$index]) ? trim((string) $cells[$index]) : '';
 
-        return (preg_match("/^'[=+\-@]/", $text) === 1) ? substr($text, 1) : $text;
+        return pg_csv_formula_unguard($text);
     };
 
     $rows = array();

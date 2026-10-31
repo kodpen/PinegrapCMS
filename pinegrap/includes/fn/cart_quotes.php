@@ -17,6 +17,11 @@
  * order_id that order). The link shows products and quantities only, never
  * whom the quote was made for.
  *
+ * The cart quote screens and the external API (includes/api/resources/
+ * cart_quotes.php) meet one set of refusals: pg_cart_quote_create_check() and
+ * pg_cart_quote_open_check(), which the writers call first. Each change is
+ * announced as a cart_quote.* webhook event (pg_cart_quote_announce()).
+ *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
  * @copyright   2017–2026 Kodpen
@@ -225,36 +230,187 @@ function pg_cart_quote_plan(array $lines, array $products)
     return array('add' => $add, 'skipped' => $skipped);
 }
 
+/**
+ * Why a new quote is refused, or null: the rules the new cart quote screen
+ * and the external API share (pg_cart_quote_create_check()). In order: the
+ * contact named is there, the link's last day is not over, the lines are
+ * lines (pg_cart_quote_lines_clean()), and each product is one the screen's
+ * product box offers: in the catalogue and out of the Recycle Bin, switched
+ * on, no donation. Pure.
+ *
+ * @param int   $contact_id    0 for nobody named
+ * @param bool  $contact_found the contact is there
+ * @param array $clean         pg_cart_quote_lines_clean()
+ * @param array $products      product id => products row (enabled,
+ *                             selection_type) of the lines' products that
+ *                             are in the catalogue
+ * @param int   $valid_until   unix seconds, 0 for no end
+ * @param int   $now
+ * @return array|null code (contact_missing | valid_until_past | lines_too_many
+ *                    | lines_invalid | product_unavailable), field (contact_id
+ *                    | valid_until | lines), error
+ */
+function pg_cart_quote_create_refusal($contact_id, $contact_found, array $clean, array $products, $valid_until, $now)
+{
+    if (((int) $contact_id > 0) && !$contact_found) {
+        return array('code' => 'contact_missing', 'field' => 'contact_id', 'error' => lang('The contact could not be found.'));
+    }
+
+    if (((int) $valid_until > 0) && ((int) $valid_until < (int) $now)) {
+        return array('code' => 'valid_until_past', 'field' => 'valid_until', 'error' => lang('The last day of the link cannot be in the past.'));
+    }
+
+    if ($clean['problem'] === 'many') {
+        return array('code' => 'lines_too_many', 'field' => 'lines', 'error' => lang(array('string' => 'A cart quote holds at most {var:1} products.', 'vars' => PG_CART_QUOTE_MAX_LINES)));
+    }
+
+    if ($clean['problem'] !== '') {
+        return array('code' => 'lines_invalid', 'field' => 'lines', 'error' => lang('Add at least one product with a quantity of one or more.'));
+    }
+
+    foreach ($clean['lines'] as $line) {
+        $product = isset($products[$line['product_id']]) ? $products[$line['product_id']] : null;
+
+        if (!is_array($product) || ((string) ($product['enabled'] ?? '0') !== '1') || ((string) ($product['selection_type'] ?? '') === 'donation')) {
+            return array('code' => 'product_unavailable', 'field' => 'lines', 'error' => lang(array(
+                'string' => 'Product {var:1} cannot go into a cart quote: it is not in the catalogue, is switched off or is a donation.',
+                'vars'   => (int) $line['product_id'])));
+        }
+    }
+
+    return null;
+}
+
+/**
+ * Why cancelling a quote or giving it a new link is refused, or null: the
+ * quote is not there, or it is no longer open (ordered, cancelled, or past
+ * its last day: pg_cart_quote_state()). Pure.
+ *
+ * @param array|null $quote  cart_quotes row
+ * @param int        $now
+ * @param string     $action cancel | link
+ * @return array|null code (not_found | not_open), error
+ */
+function pg_cart_quote_open_refusal($quote, $now, $action)
+{
+    if (!is_array($quote)) {
+        return array('code' => 'not_found', 'error' => lang('The cart quote could not be found.'));
+    }
+
+    if (pg_cart_quote_state($quote, $now) !== 'open') {
+        return array('code' => 'not_open', 'error' => ($action === 'link')
+            ? lang('Only an open cart quote can be given a new link.')
+            : lang('Only an open cart quote can be cancelled.'));
+    }
+
+    return null;
+}
+
+/**
+ * What a cart_quote.* webhook event carries: the quote as it stands, whom it
+ * is for, the cart or order it filled, and its lines as product ids and
+ * quantities. Never the link: only its hash is kept. Pure.
+ *
+ * @param array $quote cart_quotes row
+ * @param array $lines list of product_id, quantity (pg_cart_quote_lines())
+ * @param int   $now
+ * @return array id, status, state, contact_id, order_id, valid_until (UTC,
+ *               null for no end), items
+ */
+function pg_cart_quote_event_payload(array $quote, array $lines, $now)
+{
+    $items = array();
+
+    foreach ($lines as $line) {
+        $items[] = array('product_id' => (int) $line['product_id'], 'quantity' => (int) $line['quantity']);
+    }
+
+    $until = (int) ($quote['valid_until'] ?? 0);
+
+    return array(
+        'id'          => (int) $quote['id'],
+        'status'      => (string) $quote['status'],
+        'state'       => pg_cart_quote_state($quote, $now),
+        'contact_id'  => (int) ($quote['contact_id'] ?? 0),
+        'order_id'    => (int) ($quote['order_id'] ?? 0),
+        'valid_until' => ($until > 0) ? gmdate('Y-m-d\TH:i:s\Z', $until) : null,
+        'items'       => $items,
+    );
+}
+
 /* ---------------------------------------------------------------------------
    Rows
    --------------------------------------------------------------------------- */
 
 /**
- * Makes a quote: its lines checked (pg_cart_quote_lines_clean()) and a new
- * link. The token is returned once and never kept.
+ * The checks a new quote meets before anything is written, the same for the
+ * new cart quote screen and the external API (POST /cart-quotes and its
+ * rehearsal): the tables are there, then pg_cart_quote_create_refusal() on
+ * the contact and the products as they are now.
+ *
+ * @param int   $contact_id  0 for nobody named
+ * @param mixed $lines       list of product_id, quantity, as a form or the
+ *                           API sends them
+ * @param int   $valid_until unix seconds, 0 for no end
+ * @param int   $now         null for now
+ * @return array ok, error, field, code (not_installed or a refusal's code),
+ *               contact_id, valid_until, lines (pg_cart_quote_lines_clean()'s)
+ */
+function pg_cart_quote_create_check($contact_id, $lines, $valid_until, $now = null)
+{
+    $now = ($now === null) ? time() : (int) $now;
+    $result = array('ok' => false, 'error' => '', 'field' => '', 'code' => '', 'contact_id' => max(0, (int) $contact_id), 'valid_until' => max(0, (int) $valid_until), 'lines' => array());
+
+    if (!pg_cart_quotes_ready()) {
+        return array_merge($result, array('error' => lang('Cart quotes are not installed yet: the database has to be updated first.'), 'code' => 'not_installed'));
+    }
+
+    $clean = pg_cart_quote_lines_clean($lines);
+    $found = ($result['contact_id'] > 0) && ((int) db_value("SELECT COUNT(*) FROM contacts WHERE id = '" . $result['contact_id'] . "'") > 0);
+    $products = array();
+
+    if ($clean['problem'] === '') {
+        $ids = array();
+
+        foreach ($clean['lines'] as $line) {
+            $ids[] = (int) $line['product_id'];
+        }
+
+        foreach ((array) db_items("SELECT id, enabled, selection_type FROM products WHERE id IN (" . implode(',', $ids) . ")" . pg_catalog_bin_live_sql('products')) as $row) {
+            $products[(int) $row['id']] = $row;
+        }
+    }
+
+    $refusal = pg_cart_quote_create_refusal($result['contact_id'], $found, $clean, $products, $result['valid_until'], $now);
+
+    if ($refusal !== null) {
+        return array_merge($result, $refusal);
+    }
+
+    $result['ok'] = true;
+    $result['lines'] = $clean['lines'];
+
+    return $result;
+}
+
+/**
+ * Makes a quote, once pg_cart_quote_create_check() lets it, with a new link,
+ * and announces cart_quote.created. The token is returned once and never
+ * kept. The caller writes the Site Log line.
  *
  * @param int   $contact_id  whom it is for (0 for nobody named)
  * @param array $lines       list of product_id, quantity
  * @param int   $valid_until unix seconds, 0 for no end
  * @param int   $user_id     who made it
- * @return array ok, error, id, token
+ * @return array ok, error, field and code (pg_cart_quote_create_check()'s
+ *               when it refused), id, token
  */
 function pg_cart_quote_create($contact_id, $lines, $valid_until, $user_id)
 {
-    $fail = array('ok' => false, 'error' => lang('The cart quote could not be saved.'), 'id' => 0, 'token' => '');
+    $checked = pg_cart_quote_create_check($contact_id, $lines, $valid_until);
 
-    if (!pg_cart_quotes_ready()) {
-        return $fail;
-    }
-
-    $clean = pg_cart_quote_lines_clean($lines);
-
-    if ($clean['problem'] !== '') {
-        $fail['error'] = ($clean['problem'] === 'many')
-            ? lang(array('string' => 'A cart quote holds at most {var:1} products.', 'vars' => PG_CART_QUOTE_MAX_LINES))
-            : lang('Add at least one product with a quantity of one or more.');
-
-        return $fail;
+    if (!$checked['ok']) {
+        return array('ok' => false, 'error' => $checked['error'], 'field' => $checked['field'], 'code' => $checked['code'], 'id' => 0, 'token' => '');
     }
 
     $now = time();
@@ -263,21 +419,78 @@ function pg_cart_quote_create($contact_id, $lines, $valid_until, $user_id)
 
     db_q("INSERT INTO cart_quotes (token_hash, token_hint, contact_id, valid_until, status, order_id, created_by, created_at, updated_at)
         VALUES (?, ?, ?, ?, 'open', 0, ?, ?, ?)",
-        array($parts['hash'], $parts['hint'], (string) max(0, (int) $contact_id), (string) max(0, (int) $valid_until), (string) (int) $user_id, (string) $now, (string) $now))
+        array($parts['hash'], $parts['hint'], (string) $checked['contact_id'], (string) $checked['valid_until'], (string) (int) $user_id, (string) $now, (string) $now))
         or output_error(lang('Query failed.'));
 
     $id = (int) mysqli_insert_id(db::$con);
 
     if ($id <= 0) {
-        return $fail;
+        return array('ok' => false, 'error' => lang('The cart quote could not be saved.'), 'field' => '', 'code' => 'not_saved', 'id' => 0, 'token' => '');
     }
 
-    foreach ($clean['lines'] as $line) {
+    foreach ($checked['lines'] as $line) {
         db_q("INSERT INTO cart_quote_items (cart_quote_id, product_id, quantity) VALUES (?, ?, ?)",
             array((string) $id, (string) $line['product_id'], (string) $line['quantity'])) or output_error(lang('Query failed.'));
     }
 
-    return array('ok' => true, 'error' => '', 'id' => $id, 'token' => $token);
+    pg_cart_quote_announce('cart_quote.created', $id);
+
+    return array('ok' => true, 'error' => '', 'field' => '', 'code' => '', 'id' => $id, 'token' => $token);
+}
+
+/**
+ * The checks cancelling a quote or giving it a new link meets, the same for
+ * the cart quote list and the external API: the tables are there, then
+ * pg_cart_quote_open_refusal() on the quote as it is now.
+ *
+ * @param int    $quote_id
+ * @param string $action   cancel | link
+ * @param int    $now      null for now
+ * @return array ok, error, code (not_installed, not_found or not_open), quote
+ *               (the cart_quotes row, null when it is not there)
+ */
+function pg_cart_quote_open_check($quote_id, $action, $now = null)
+{
+    $now = ($now === null) ? time() : (int) $now;
+
+    if (!pg_cart_quotes_ready()) {
+        return array('ok' => false, 'error' => lang('Cart quotes are not installed yet: the database has to be updated first.'), 'code' => 'not_installed', 'quote' => null);
+    }
+
+    $quote = db_item("SELECT * FROM cart_quotes WHERE id = '" . (int) $quote_id . "'");
+    $quote = is_array($quote) ? $quote : null;
+    $refusal = pg_cart_quote_open_refusal($quote, $now, $action);
+
+    if ($refusal !== null) {
+        return array('ok' => false, 'error' => $refusal['error'], 'code' => $refusal['code'], 'quote' => $quote);
+    }
+
+    return array('ok' => true, 'error' => '', 'code' => '', 'quote' => $quote);
+}
+
+/**
+ * Announces a cart_quote.* event to the webhooks through pg_announce(),
+ * which is silent without the API and never the reason a request fails. A
+ * quote that cannot be read is not announced.
+ *
+ * @param string    $event cart_quote.created | .applied | .ordered | .cancelled
+ * @param int|array $quote the quote's id, or its cart_quotes row as it is now
+ * @param array     $extra what the event adds to pg_cart_quote_event_payload()
+ * @return void
+ */
+function pg_cart_quote_announce($event, $quote, $extra = array())
+{
+    if (!function_exists('pg_announce')) {
+        return;
+    }
+
+    $row = is_array($quote) ? $quote : db_item("SELECT * FROM cart_quotes WHERE id = '" . (int) $quote . "'");
+
+    if (!is_array($row)) {
+        return;
+    }
+
+    pg_announce($event, pg_cart_quote_event_payload($row, pg_cart_quote_lines((int) $row['id']), time()) + (array) $extra);
 }
 
 /**
@@ -386,7 +599,8 @@ function pg_cart_quote_view($token)
  * Puts an open quote's lines into the visitor's cart through
  * add_order_item(), then prices the cart and applies the offers as any
  * addition does. The quote remembers the cart (order_id) so its completion
- * marks the quote ordered; a second POST into the same cart adds nothing.
+ * marks the quote ordered, and announces cart_quote.applied; a second POST
+ * into the same cart adds and announces nothing.
  *
  * @param string $token
  * @return array ok, error, added (lines added), again (the cart already had them)
@@ -437,15 +651,24 @@ function pg_cart_quote_apply($token)
     db_q("UPDATE cart_quotes SET order_id = ?, updated_at = ? WHERE id = ? AND status = 'open'",
         array((string) (int) ($_SESSION['ecommerce']['order_id'] ?? 0), (string) time(), (string) (int) $quote['id'])) or output_error(lang('Query failed.'));
 
+    // Only a quote still open remembers the cart (one cancelled meanwhile
+    // does not), and only a cart that took a line is announced.
+    $remembered = (mysqli_affected_rows(db::$con) > 0);
+
     log_activity(lang(array('string' => 'cart quote {var:1} was added to a cart ({var:2} products)', 'vars' => array('#' . (int) $quote['id'], $added))));
+
+    if ($remembered && ($added > 0)) {
+        pg_cart_quote_announce('cart_quote.applied', (int) $quote['id'], array('added' => $added));
+    }
 
     return array('ok' => true, 'error' => '', 'added' => $added, 'again' => false);
 }
 
 /**
- * Marks the open quote that filled this order's cart as ordered. Called by
- * pg_order_complete() once the order is complete, from the visitor's
- * checkout and from a payment service's message alike.
+ * Marks the open quote that filled this order's cart as ordered, and
+ * announces cart_quote.ordered with the order's number. Called by
+ * pg_order_complete() once the order is complete and numbered, from the
+ * visitor's checkout and from a payment service's message alike.
  *
  * @param int $order_id
  * @return void
@@ -456,10 +679,25 @@ function pg_cart_quote_order_completed($order_id)
         return;
     }
 
+    $order_number = null;
+
     // The order is complete by now: a failed write leaves the quote open
-    // rather than stopping the rest of the completion.
-    db_q("UPDATE cart_quotes SET status = 'ordered', updated_at = ? WHERE order_id = ? AND status = 'open'",
-        array((string) time(), (string) (int) $order_id));
+    // rather than stopping the rest of the completion. Each quote moves on
+    // its own, so only one that moved is announced.
+    foreach ((array) db_values("SELECT id FROM cart_quotes WHERE order_id = '" . (int) $order_id . "' AND status = 'open'") as $quote_id) {
+        $moved = db_q("UPDATE cart_quotes SET status = 'ordered', updated_at = ? WHERE id = ? AND status = 'open'",
+            array((string) time(), (string) (int) $quote_id));
+
+        if (!$moved || (mysqli_affected_rows(db::$con) < 1)) {
+            continue;
+        }
+
+        if ($order_number === null) {
+            $order_number = (string) db_value("SELECT order_number FROM orders WHERE id = '" . (int) $order_id . "'");
+        }
+
+        pg_cart_quote_announce('cart_quote.ordered', (int) $quote_id, array('order_number' => $order_number));
+    }
 }
 
 /* ---------------------------------------------------------------------------
@@ -592,14 +830,16 @@ function pg_cart_quote_panel_rows($contact_id = 0, $limit = PG_CART_QUOTE_PANEL_
 }
 
 /**
- * Cancels an open quote: its link opens nothing more.
+ * Cancels an open quote, once pg_cart_quote_open_check() lets it: its link
+ * opens nothing more. Announces cart_quote.cancelled; the caller writes the
+ * Site Log line.
  *
  * @param int $quote_id
  * @return bool whether an open quote was cancelled
  */
 function pg_cart_quote_cancel($quote_id)
 {
-    if (!pg_cart_quotes_ready()) {
+    if (!pg_cart_quote_open_check($quote_id, 'cancel')['ok']) {
         return false;
     }
 
@@ -610,27 +850,22 @@ function pg_cart_quote_cancel($quote_id)
         return false;
     }
 
-    log_activity(lang(array('string' => 'cart quote {var:1} was cancelled', 'vars' => '#' . (int) $quote_id)));
+    pg_cart_quote_announce('cart_quote.cancelled', (int) $quote_id);
 
     return true;
 }
 
 /**
- * Gives an open quote a new link, which replaces the old one: the token is
- * kept only as its hash, so a lost link is made again rather than shown.
+ * Gives an open quote a new link, once pg_cart_quote_open_check() lets it,
+ * which replaces the old one: the token is kept only as its hash, so a lost
+ * link is made again rather than shown. The caller writes the Site Log line.
  *
  * @param int $quote_id
  * @return string the new token, '' when the quote is not open
  */
 function pg_cart_quote_new_link($quote_id)
 {
-    if (!pg_cart_quotes_ready()) {
-        return '';
-    }
-
-    $quote = db_item("SELECT * FROM cart_quotes WHERE id = '" . (int) $quote_id . "'");
-
-    if (!is_array($quote) || (pg_cart_quote_state($quote, time()) !== 'open')) {
+    if (!pg_cart_quote_open_check($quote_id, 'link')['ok']) {
         return '';
     }
 
@@ -643,8 +878,6 @@ function pg_cart_quote_new_link($quote_id)
     if (mysqli_affected_rows(db::$con) < 1) {
         return '';
     }
-
-    log_activity(lang(array('string' => 'cart quote {var:1} was given a new link', 'vars' => '#' . (int) $quote_id)));
 
     return $token;
 }

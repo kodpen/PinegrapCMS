@@ -17,7 +17,7 @@ description: The cart quote's Workspace tag (cart_quote, #3256): prefixes, the e
 - `ws_ref_search()`: a number (`12` or `#12`) by id, else words of the contact's first or last name, full name, company or e-mail; newest first; nothing typed lists the newest.
 
 ## Which scope reads it?
-- `orders:read` in `ws_api_search_record_scopes()` and `ws_ai_type_scope()`: the scope of the order routes, which the store hands to the people the cart quote screens open to (`api_owner_scopes()`, `validate_ecommerce_access()`), and the one the customer summary's cart quote section is read with (`ws_api_customer_scopes()`). `test_ws_api_search_record_scopes_name_known_kinds` holds it to `orders.list` / `orders.get`; the `cart_quote.*` routes (`plans/workspace-quotes.md`) read with the same scope, or both maps and that test change with them.
+- `orders:read` in `ws_api_search_record_scopes()` and `ws_ai_type_scope()`: the scope the cart quote read routes ask (`GET /cart-quotes`, `commerce/cart-quotes-api.md`), so the search is no way round them; the store hands it to the people the cart quote screens open to (`api_owner_scopes()`, `validate_ecommerce_access()`), and the customer summary's cart quote section reads with it (`ws_api_customer_scopes()`). `test_ws_api_search_record_scopes_name_known_kinds` holds it to `cart_quotes.list` / `cart_quotes.get`; another scope there changes both maps and that test.
 - `GET /workspace/refs`, the search route and the `pinegrap://workspace/refs/{type}/{id}` resource take the kind. Pinegrap AI's `read_record` gives the chip's words, not the lines; Claude's record route reads change kinds only.
 
 Related: docs/memory/commerce/cart-quotes.md, docs/memory/workspace/workspace-record-kinds.md

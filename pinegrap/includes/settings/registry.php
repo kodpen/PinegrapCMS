@@ -155,23 +155,35 @@ function pg_settings_categories()
         'seo' => array(
             'label' => 'SEO',
             'icon'  => 'bi-search',
-            'description' => lang('Search engines, structured data and visitor tracking.'),
+            'description' => lang('Search engines, structured data, AI crawlers and product feeds.'),
             'sections' => array(
                 'pgset-seo'       => lang('Search Engine Optimization'),
                 'pgset-ai'        => lang('AI Crawlers'),
                 'pgset-feeds'     => lang('Product Feeds'),
-                'pgset-analytics' => lang('Visitor Tracking'),
-                'pgset-cookies'   => lang('Cookie Consent'),
             ),
             'keywords' => array(
                 'pgset-seo'       => pg_settings_keywords(lang('seo, meta, robots, sitemap, title, description, jsonld, json-ld, canonical, indexnow, sharing, social, og, merchant, structured data')),
                 'pgset-ai'        => pg_settings_keywords(lang('ai, artificial intelligence, llms.txt, robots, crawler, bot, gptbot, claudebot, chatgpt, content signal, training')),
                 'pgset-feeds'     => pg_settings_keywords(lang('product feed, feed, merchant center, google shopping, openai, chatgpt, shopping agent, jsonl, csv, tsv')),
-                'pgset-analytics' => pg_settings_keywords(lang('visitor, analytics, tracking code, tracking, statistics, google analytics')),
-                'pgset-cookies'   => pg_settings_keywords(lang('cookie, cookies, consent, gdpr, kvkk, privacy, cookie policy, banner, notice')),
             ),
             'lists' => array(
                 'product_feed_excluded_groups' => 1,
+            ),
+        ),
+
+        'privacy' => array(
+            'label' => lang('Visitors and privacy'),
+            'icon'  => 'bi-incognito',
+            'description' => lang('Visitor tracking, cookie consent and the checkout\'s legal documents.'),
+            'sections' => array(
+                'pgset-analytics' => lang('Visitor Tracking'),
+                'pgset-cookies'   => lang('Cookie Consent'),
+                'pgset-legal'     => lang('Legal Documents'),
+            ),
+            'keywords' => array(
+                'pgset-analytics' => pg_settings_keywords(lang('visitor, analytics, tracking code, tracking, statistics, google analytics')),
+                'pgset-cookies'   => pg_settings_keywords(lang('cookie, cookies, consent, gdpr, kvkk, privacy, cookie policy, banner, notice')),
+                'pgset-legal'     => pg_settings_keywords(lang('legal, contract, distance sales contract, pre-information form, terms, withdrawal, consumer')),
             ),
         ),
 
@@ -278,7 +290,6 @@ function pg_settings_categories()
                 'pgset-giftcards' => lang('Gift Cards & Rewards'),
                 'pgset-payments'  => lang('Payment Methods'),
                 'pgset-reference-price' => lang('Reference Price'),
-                'pgset-legal'     => lang('Legal Documents'),
                 'pgset-affiliate' => lang('Affiliate Program'),
             ),
             'keywords' => array(
@@ -287,7 +298,6 @@ function pg_settings_categories()
                 'pgset-giftcards' => pg_settings_keywords(lang('gift card, points, reward, givex')),
                 'pgset-payments'  => pg_settings_keywords(lang('payment, card, credit card, iyzico, iyzipay, paypal, stripe, installment, wire transfer, cash on delivery, 3d secure')),
                 'pgset-reference-price' => pg_settings_keywords(lang('reference price, price before discount, lowest price, 30 days, 10 days, compare-at price, omnibus, price label')),
-                'pgset-legal'     => pg_settings_keywords(lang('legal, contract, distance sales contract, pre-information form, terms, withdrawal, consumer')),
                 'pgset-affiliate' => pg_settings_keywords(lang('affiliate, commission, referral')),
             ),
         ),
@@ -468,7 +478,9 @@ function pg_settings_legacy_anchors()
         'pgset-images'     => array('features',   'pgset-images'),
         'pgset-signature'  => array('features',   'pgset-signature'),
         'pgset-seo'        => array('seo',        'pgset-seo'),
-        'pgset-analytics'  => array('seo',        'pgset-analytics'),
+        'pgset-analytics'  => array('privacy',    'pgset-analytics'),
+        'pgset-cookies'    => array('privacy',    'pgset-cookies'),
+        'pgset-legal'      => array('privacy',    'pgset-legal'),
         'pgset-campaigns'  => array('contact',    'pgset-campaigns'),
         'pgset-organization' => array('general',  'pgset-organization'),
         'pgset-chat'       => array('contact',    'pgset-chat'),

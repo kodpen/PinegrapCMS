@@ -306,7 +306,8 @@ if (!$_POST) {
                     // else this is not a file upload field, so add data
                     } else {
                         $add_data = TRUE;
-                        $data = isset($row[$key]) ? (string) $row[$key] : '';
+                        // The export guards a leading = + - @ with an apostrophe; take it off.
+                        $data = isset($row[$key]) ? pg_csv_formula_unguard($row[$key]) : '';
                     }
                     
                     // if data should be added for this field, then add it

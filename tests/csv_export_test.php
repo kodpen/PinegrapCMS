@@ -144,3 +144,22 @@ function test_csv_export_erp_aging_guards_the_account_title()
 	$export = csv_export_test_function_body('includes/erp/export.php', 'erp_export_write_csv');
 	pg_assert_true(strpos($export, 'pg_csv_formula_guard(') === false, 'the export profile writer stays unguarded');
 }
+
+function test_csv_export_formula_unguard_undoes_the_guard()
+{
+	foreach (array('+90 532 111 22 33', '@pinegrap', '-5', '=1+1', "\tx", "\rx", 'plain text', '', "'quoted", "it's") as $value) {
+		pg_assert_same($value, pg_csv_formula_unguard(pg_csv_formula_guard($value)), 'round trip of ' . json_encode($value));
+	}
+
+	pg_assert_same("'quoted", pg_csv_formula_unguard("'quoted"), 'an apostrophe before plain text stays');
+	pg_assert_same("'", pg_csv_formula_unguard("'"), 'a lone apostrophe stays');
+	pg_assert_same('+1', pg_csv_formula_unguard("'+1"), 'one apostrophe is taken off');
+	pg_assert_same("''+1", pg_csv_formula_unguard("''+1"), 'two apostrophes are not a guard and stay');
+}
+
+function test_csv_export_submitted_forms_import_unguards_its_cells()
+{
+	$source = file_get_contents(dirname(__DIR__) . '/pinegrap/import_submitted_forms.php');
+
+	pg_assert_true(strpos($source, "\$data = isset(\$row[\$key]) ? pg_csv_formula_unguard(\$row[\$key]) : '';") !== false, 'a non-file cell loses the export guard');
+}

@@ -16,7 +16,7 @@ description: Generated from the module field of the memory files: each includes/
 - `bundles`: [[product-bundles]], [[product-bundles-storefront]]
 - `carrier_labels`: [[carrier-label-drivers]], [[carrier-label-text-cuts]]
 - `carrier_webhook`: [[carrier-webhook]], [[carrier-webhook-basitkargo]], [[carrier-webhook-drivers]]
-- `cart_quotes`: [[cart-quotes]]
+- `cart_quotes`: [[cart-quotes]], [[cart-quotes-api]]
 - `classic_style_design`: [[classic-style-design-files]], [[classic-style-folder-pages]], [[classic-style-to-design]]
 - `cloud_file_picker`: [[cloud-file-picker]], [[cloud-file-picker-onedrive]]
 - `collections`: [[collection-references]]

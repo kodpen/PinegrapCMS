@@ -274,7 +274,6 @@ function bs6_switch_rgb_files($root)
 	$paths = bs6_switch_token_files($root);
 	$paths[] = 'includes/fn/output.php';
 	$paths[] = 'includes/fn/design_themes.php';
-	$paths[] = 'assets/js/page_designer.js';
 	// Its in-panel SEO block reads the admin bar's navbar triple.
 	$paths[] = 'toolbar.php';
 

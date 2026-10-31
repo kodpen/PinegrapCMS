@@ -86,7 +86,7 @@ function ws_js_strings()
         'cmd_keys'               => lang('Tab: write · ↑↓: choose · Esc: close'),
         'commands'               => lang('Slash commands'),
         'completed_on'           => ws_js_template('Finished {var:1}', 1),
-        'composer_hint'          => lang('@ someone · # a record · / a command · Shift+Enter for a new line'),
+        'composer_tools'         => lang('Tools'),
         'composer_placeholder'   => ws_js_template('Write to #{var:1}', 1),
         'conflicts'              => lang('Clashes'),
         'conflicts_help'         => lang('People over their day, and work falling on somebody\'s leave, in the next two weeks.'),
