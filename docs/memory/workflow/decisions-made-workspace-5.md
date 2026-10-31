@@ -1,10 +1,10 @@
 ---
 name: decisions-made-workspace-5
-description: Decisions list, workspace part 5 (from 2026-10-30 evening): Workspace list and channel redrawn; who builds the design; one inbox; panel colours; a deleted Flows box takes its values
+description: Decisions list, workspace part 5 (from 2026-10-30 evening): Workspace list and channel redrawn; who builds the design; one inbox; panel colours; a deleted Flows box takes its values; Today page
 ---
 
 ## How is the Workspace list laid out?
-- As `plans/workspace-menu-layout.md` describes it: one search field, the places (Overview, Inbox, My Tasks), one Channels section (pinned, groups, the rest), My discussions, Tools tiles with More. The place and the access rules of #2545 stay (`decisions-made-workspace.md`).
+- As `plans/workspace-menu-layout.md` describes it: one search field, the places (Today, Inbox, My Tasks), one Channels section (pinned, groups, the rest), My discussions, Tools tiles with More. The place and the access rules of #2545 stay (`decisions-made-workspace.md`).
 - Owner decision (2026-10-30, "Menü çok karışık"; on the drawn proposal "Menü yapısı ve kanal görünümü uygun"): the list was hard to find one's way in.
 
 ## Does the channel screen change too?
@@ -28,3 +28,7 @@ Related: docs/memory/workflow/decisions-made-workspace-4.md, docs/memory/workflo
 ## What happens to the values of a deleted Flows box?
 - They go with it: deleting a box removes its arrows, its data threads and the chips in every field that read its values; the rest of each field's text stays, one Undo brings all back, the announcement says how many fields lost a value. The red mark stays only for references whose box is missing some other way (API, AI draft, old draft), removed with "Remove the thread" (`workspace/workspace-flows-thread-removing.md`, PR #4127). This replaces the T5 behaviour of #3711.
 - Owner decision (2026-10-31, issue #4058, "kutu silindiği hâlde ipleri ve taşıdığı değerler yerinde kalmamalı"): the left values were problems that blocked publishing until removed field by field.
+
+## What is the Workspace's first page called?
+- "Today" ("Bugün"), renamed from Overview (`plans/workspace-channel-layout.md` C8); the address `?view=home` and the links stay. The architect had kept "Overview" from the menu plan (#4192); the owner overrode it.
+- Owner decision (2026-10-31, #4192, "bugün olsun"): the page leads with today's greeting, tasks and calendar.

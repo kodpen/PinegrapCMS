@@ -1,6 +1,6 @@
 ---
 name: workspace-channel-layout
-description: Plan (owner decision 2026-10-31) for the redrawn Workspace channel screen: one-line header, catch-up line for the briefing card, compact lines, clean composer, side panels, Overview; phone rules
+description: Plan (owner decision 2026-10-31) for the redrawn Workspace channel screen: one-line header, catch-up line for the briefing card, compact lines, clean composer, side panels, Today page; phone rules
 ---
 
 ## What is this plan?
@@ -32,8 +32,10 @@ description: Plan (owner decision 2026-10-31) for the redrawn Workspace channel 
 
 - C7 Overview: the greeting only here, then Waiting for you, Today and overdue, Calendar today, What happened in the channels, Recent decisions.
 
+- C8 Name: the page is called "Today" (owner, 2026-10-31, #4192, "bugün olsun"): `t('home')` in `includes/workspace/home.php`, the `home` place label of `ws_nav_groups()` (`includes/workspace/nav.php`), the tour step and the help texts that name it; `lang('Today')` exists. The address `?view=home` and every link stay. With C7 or right after it.
+
 ## What is still open?
-1. Whether C7 renames Overview to Today; asked when C7 starts.
+- Nothing: the name is decided (C8).
 
 ## Where to start?
-- C7. The local sandbox (`tools/setup_sandbox.sh`) draws the channel screen at desktop and phone width; try each step at 390 px with the keyboard open before anything else.
+- C7, then C8. The local sandbox (`tools/setup_sandbox.sh`) draws the channel screen at desktop and phone width; try each step at 390 px with the keyboard open before anything else.

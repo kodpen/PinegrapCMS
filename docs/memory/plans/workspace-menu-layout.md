@@ -14,7 +14,7 @@ description: Plan (owner decision 2026-10-30) for a tidier Workspace list in the
 
 ## What is the order, top to bottom?
 1. Head: one search field that opens the workspace search (`hooks.palette`, elsewhere `?view=home&palette=1`; it finds channels, people, messages, decisions, tasks, notes and files), so the separate message search input goes. Beside it: "+" New channel, the gear of Workspace Settings (from `nav.foot`) and the tour button (kept in sight: the tour's `ready()` waits for `[data-ws-tour]`).
-2. Places, no heading: Overview (keeps its name), Inbox (opens the bell on Workspace, M3), My Tasks (moved up from Work and planning).
+2. Places, no heading: Today (was Overview; owner, 2026-10-31, #4192), Inbox (opens the bell on Workspace, M3), My Tasks (moved up from Work and planning).
 3. Channels, one heading: pinned first (pin icon), then the groups (tree; a closed group shows its unread), then the person's other channels, then the channels not joined, dimmed (`ws-notjoined`). The Pinned, My channels and Other channels headings go; sorting, drag and drop-out keep working per part.
 4. My discussions (today's Discussions, moved below the channels): title, `#channel` under it, unread count, Show all after the first few.
 5. Tools: two-column tiles of a new `tools` group (Notes, Tables, Flows, Work Calendar, Planning Board, Decision Timeline, E-mails, each under its gate) and a last tile, More, opening a `more` group: Scheduled messages or actions, My MCP connections, Calendar subscription, Archived channels, Private channels (staff).
