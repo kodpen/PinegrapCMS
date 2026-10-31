@@ -15,7 +15,7 @@ description: Every list a Workspace record kind (order, product, invoice...) mus
 
 ## Which scope do the assistants read a kind with?
 - The one the external API reads it with: `ws_ai_type_scope()` asks what `ws_api_search_record_scopes()` asks, kind by kind, no exception, so an assistant's key reads no record it could not read over the API.
-- A sales quote (`erp_quote`) asks `erp:read`, as the ERP's quote routes; a cart quote `orders:read`, as the order routes (`test_ws_api_search_record_scopes_name_known_kinds`).
+- A sales quote (`erp_quote`) asks `erp:read`, as the ERP's quote routes; a cart quote `orders:read`, as its own read routes `cart_quotes.list` / `.get` (`test_ws_api_search_record_scopes_name_known_kinds`).
 - Calendar events ask `calendars:read` and cash receipts `erp_cash:read`, as their API routes do. Only user_account (no API scope reads users) and kinds without an API endpoint go with `workspace:read`.
 - Pinegrap AI: `search_records` and `read_record` offer only the kinds its application's scopes reach (`ws_ai_readable_types()`). Claude: `GET /workspace/claude/requests/{id}/records/{type}/{record_id}` is declared with `workspace:read` but asks the kind's scope too, before the record is looked up (403 `insufficient_scope`).
 - An application chosen for Pinegrap AI by hand now needs `calendars:read` for events and `erp_cash:read` for receipts. The key Claude's card makes holds both when the administrator may hand them on (every read but five, `api_assistant_scopes()`).
