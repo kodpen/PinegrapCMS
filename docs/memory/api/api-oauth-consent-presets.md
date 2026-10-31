@@ -11,6 +11,7 @@ description: OAuth consent screen presets (Workspace, Store, Accounting, All, PR
 - Every preset: `workspace:read/write`, `tasks:read/write`, so the client can always propose a record change as a card (`workspace.changes.propose`, workspace/workspace-change-proposals.md).
 - Workspace: only those. Store: the reads of `pg_oauth_consent_store_groups()`. Accounting: `erp:read`, `erp_cash:read`. All: `api_assistant_scopes()` without `api_assistant_scopes_left_out()` (no account, key code, gift card, Site Log or system reads).
 - A group the site lacks (module switched off) adds nothing.
+- The presets are the MCP tool profiles (#2422): no per-connection tool groups, no schema.
 
 ## Why is no record write ticked?
 - Owner, 2026-10-24: direct record writes by AI apps stay possible, but presets leave them unticked; the person ticks one by hand. No OAuth ceiling or column against them.

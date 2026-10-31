@@ -9,14 +9,14 @@ description: Umbrella of the Workspace growth plans of 2026-10-23 (CRM seams, MC
 
 ## Which plan holds what?
 - plans/workspace-crm-seams.md: record-kind registry, customer identity and summary, merge, history, follow-ups, lead intake.
-- plans/workspace-mcp-capabilities.md: the site's MCP server: dead tools, one proposal route, resources, prompts, API gaps.
+- The site's MCP server (done): api/api-mcp-server.md, api/api-mcp-no-tool-routes.md, api/mcp-resources-prompts.md, workspace/workspace-change-proposals.md.
 - plans/workspace-quotes.md: sales quote (`erp_quote`) and cart quote (`cart_quote`).
 - Catalogue creates and bulk drafts: done, workspace/workspace-bulk-create.md.
 - Workflow tables, board view, scheduled-actions API: done (workspace/workflow-tables*.md, workflow-table-*.md).
 - plans/workspace-flows.md, plans/workspace-flows-engine.md: Flows (Workspace canvas, rules, process templates), the main use (2026-10-24).
 - workspace/workspace-flows-scheduled-merge.md: scheduled actions into Flows, no feature lost; plans/graph-canvas-core.md: one canvas core for Flows and the designer.
-- workspace/workspace-composer-later.md (composer tools, done), workspace/workspace-command-registry.md (/ commands, done), plans/workspace-channel-icons.md, plans/workspace-mcp-connectors.md, plans/workspace-assistant-key-setup.md.
-- Shared names and single owners: plans/workspace-growth-terms.md. Neighbours: plans/workspace-agent-handles.md, ai-agent-prompts.md.
+- workspace/workspace-composer-later.md (composer tools, done), workspace/workspace-command-registry.md (/ commands, done), plans/workspace-channel-icons.md, workspace/workspace-mcp-servers-card.md (MCP connectors, done), plans/workspace-assistant-key-setup.md.
+- Shared names and single owners: plans/workspace-growth-terms.md. Neighbours: plans/workspace-agent-handles.md, core/ai-prompt-rules.md.
 
 ## In which order? (waves)
 1. Fixes, no schema, no decision: `/task` Enter and Turkish names (slash 1, #1440); dead MCP tools (MCP 1) and missing `dry_run` (MCP 8); voice record, send, play (voice V1, #1457); MCP connector error texts (1, 3-6) and card fixes (9); Discussions caret (#1433); API colour on channels (icons 1); composer shared toolbar (composer 1); catalogue 1a.
