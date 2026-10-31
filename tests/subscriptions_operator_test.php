@@ -264,3 +264,33 @@ function test_subscription_operator_next_charge_shown_on_the_row_page()
 	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/view_subscriptions.php');
 	pg_assert_true(strpos($screen, '$output_date(pg_subscription_operator_next_charge($row))') !== false, 'the row page prints the helper');
 }
+
+function test_subscription_operator_order_cell_names_the_order_number()
+{
+	pg_assert_same('<a href="view_order.php?id=12">1005</a>', pg_subscription_operator_order_cell(12, '1005', true), 'linked by its number');
+	pg_assert_same('<a href="view_order.php?id=12">#12</a>', pg_subscription_operator_order_cell(12, '', true), 'the id only without a number');
+	pg_assert_same('1005', pg_subscription_operator_order_cell(12, '1005', false), 'plain text when the order row is gone');
+	pg_assert_same('#12', pg_subscription_operator_order_cell(12, '', false), 'plain id when the order row is gone');
+	pg_assert_same('', pg_subscription_operator_order_cell(0, '', false), 'no order');
+	pg_assert_same('<a href="view_order.php?id=3">&lt;b&gt;</a>', pg_subscription_operator_order_cell(3, '<b>', true), 'escaped');
+
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/subscriptions_operator.php');
+	pg_assert_true(strpos($source, "COALESCE(o.order_number, '') AS order_number, COALESCE(o.id, 0) AS order_row") !== false, 'the history reads the order number');
+	pg_assert_true(strpos($source, 'LEFT JOIN orders AS o ON o.id = se.order_id') !== false, 'the history joins its order');
+
+	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/view_subscriptions.php');
+	pg_assert_true(strpos($screen, "pg_subscription_operator_order_cell(\$event['order_id'], \$event['order_number'], (int) \$event['order_row'] > 0)") !== false, 'the history prints the helper');
+	pg_assert_same(false, strpos($screen, "'\">#' . (int) \$event['order_id']"), 'no internal id as the label');
+}
+
+function test_subscription_operator_order_status_in_the_panel_language()
+{
+	pg_assert_same(lang('Complete'), pg_subscription_operator_order_status_label('complete'));
+	pg_assert_same(lang('Incomplete'), pg_subscription_operator_order_status_label('incomplete'));
+	pg_assert_same(lang('Exported'), pg_subscription_operator_order_status_label('exported'));
+	pg_assert_same(lang('Cancelled'), pg_subscription_operator_order_status_label('cancelled'));
+	pg_assert_same('odd', pg_subscription_operator_order_status_label('odd'), 'an unknown code falls back to itself');
+
+	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/view_subscriptions.php');
+	pg_assert_true(strpos($screen, "h(pg_subscription_operator_order_status_label((string) \$order['status']))") !== false, 'the renewal orders print the label');
+}

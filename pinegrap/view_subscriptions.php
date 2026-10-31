@@ -166,7 +166,7 @@ if ($subscription_id > 0) {
                             <tr>
                                 <td class="text-nowrap">' . h(get_absolute_time(array('timestamp' => (int) $event['created_at'], 'format' => 'plain_text'))) . '</td>
                                 <td>' . h(($label !== '') ? $label : (string) $event['kind']) . '</td>
-                                <td>' . (((int) $event['order_id'] > 0) ? '<a href="view_order.php?id=' . (int) $event['order_id'] . '">#' . (int) $event['order_id'] . '</a>' : '') . '</td>
+                                <td>' . pg_subscription_operator_order_cell($event['order_id'], $event['order_number'], (int) $event['order_row'] > 0) . '</td>
                                 <td class="text-end text-nowrap">' . (((int) $event['amount'] > 0) ? $output_amount($event['amount'], $row['currency']) : '') . '</td>
                                 <td class="small text-break">' . h((string) $event['detail']) . '</td>
                             </tr>';
@@ -177,9 +177,9 @@ if ($subscription_id > 0) {
     foreach ($record['orders'] as $order) {
         $output_orders .= '
                             <tr>
-                                <td><a href="view_order.php?id=' . (int) $order['id'] . '">' . h(((string) $order['order_number'] !== '') ? (string) $order['order_number'] : '#' . (int) $order['id']) . '</a></td>
+                                <td>' . pg_subscription_operator_order_cell($order['id'], $order['order_number'], true) . '</td>
                                 <td class="text-nowrap">' . (((int) $order['order_date'] > 0) ? h(get_absolute_time(array('timestamp' => (int) $order['order_date'], 'format' => 'plain_text'))) : '') . '</td>
-                                <td>' . h((string) $order['status']) . '</td>
+                                <td>' . h(pg_subscription_operator_order_status_label((string) $order['status'])) . '</td>
                                 <td class="text-end text-nowrap">' . $output_amount($order['total'], $row['currency']) . '</td>
                             </tr>';
     }
