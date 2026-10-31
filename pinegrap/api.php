@@ -199,7 +199,7 @@ pg_panel_dispatch($action, $request);
 
 respond(array(
     'status' => 'error',
-    'message' => 'Invalid action.'
+    'message' => lang('Invalid action.')
 ));
 
 function respond($response)

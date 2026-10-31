@@ -432,7 +432,7 @@ function pg_panel_dispatch($action, $request)
     }
 
     if (!function_exists($entry['handler'])) {
-        respond(array('status' => 'error', 'message' => 'Invalid action.'));
+        respond(array('status' => 'error', 'message' => lang('Invalid action.')));
     }
 
     $result = $entry['handler']($request, $action);

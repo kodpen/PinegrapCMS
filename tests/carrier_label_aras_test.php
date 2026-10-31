@@ -19,6 +19,10 @@ if (!defined('PG_TEST_RUNNER')) {
 	exit;
 }
 
+// The driver file is loaded here, not by the first test that calls
+// pg_label_call(): a test run on its own (a filter) must find its functions.
+pg_label_load('aras');
+
 function carrier_label_aras_test_fixture($name)
 {
 	return (string) file_get_contents(dirname(__FILE__) . '/fixtures/aras/' . $name);
