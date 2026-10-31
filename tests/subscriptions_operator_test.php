@@ -294,3 +294,25 @@ function test_subscription_operator_order_status_in_the_panel_language()
 	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/view_subscriptions.php');
 	pg_assert_true(strpos($screen, "h(pg_subscription_operator_order_status_label((string) \$order['status']))") !== false, 'the renewal orders print the label');
 }
+
+function test_subscription_operator_event_detail_in_the_panel_language()
+{
+	$date = function ($timestamp) {
+		return 'D' . date('d.m.Y', $timestamp);
+	};
+
+	pg_assert_same(lang(array('string' => 'Staff: {var:1}', 'vars' => array('admin'))), pg_subscription_operator_event_detail('status_paused', 'operator: admin (#118)', $date), 'the operator by name');
+	pg_assert_same(lang(array('string' => 'Staff: {var:1}', 'vars' => array('a (b) c'))), pg_subscription_operator_event_detail('status_paused', 'operator: a (b) c (#5)', $date), 'a name with brackets');
+	pg_assert_same(lang('Customer'), pg_subscription_operator_event_detail('status_cancelled', 'customer', $date), 'the customer');
+	pg_assert_same('D' . date('d.m.Y', mktime(0, 0, 0, 12, 1, 2026)), pg_subscription_operator_event_detail('price_notice', '2026-12-01', $date), 'the notice date in the panel format');
+	pg_assert_same('2026-13-45', pg_subscription_operator_event_detail('price_notice', '2026-13-45', $date), 'not a date stays');
+	pg_assert_same('2026-12-01', pg_subscription_operator_event_detail('charge_failed', '2026-12-01', $date), 'a date only for a price notice');
+	pg_assert_same('Card declined', pg_subscription_operator_event_detail('charge_failed', 'Card declined', $date), 'free text stays');
+	pg_assert_same('', pg_subscription_operator_event_detail('status_paused', '', $date));
+
+	// The stored value is what the move writes: unchanged.
+	pg_assert_same('operator: admin (#118)', pg_subscription_operator_detail(array('id' => 118, 'username' => 'admin')));
+
+	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/view_subscriptions.php');
+	pg_assert_true(strpos($screen, "h(pg_subscription_operator_event_detail((string) \$event['kind'], (string) \$event['detail']))") !== false, 'the history prints the label');
+}

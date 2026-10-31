@@ -149,6 +149,7 @@
     "Netgsm reported a system error. Try again later.": "Netgsm bir sistem hatası bildirdi. Daha sonra tekrar deneyin.",
     "Netgsm sends to Turkish mobile numbers only.": "Netgsm yalnız Türkiye cep telefonu numaralarına gönderir.",
     "Netgsm sent an answer that could not be read (HTTP {var:1}).": "Netgsm okunamayan bir cevap gönderdi (HTTP {var:1}).",
+    "Netherlands Antilles": "Hollanda Antilleri",
     "Network error": "Ağ hatası",
     "Network error — please retry.": "Ağ hatası — lütfen tekrar deneyin.",
     "Network error — the API cannot be reached.": "Ağ hatası — API'ye ulaşılamıyor.",
