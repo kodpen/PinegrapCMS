@@ -537,6 +537,20 @@ function test_workspace_flow_templates_saved_entry()
 	pg_assert_false($entry['saved']['edit'], 'somebody else may not change it');
 	pg_assert_true(isset(ws_flow_template_categories()['saved']), 'the gallery has the category');
 
+	// The start is the start box's kind, wherever the box sits in the list.
+	$later = $graph;
+	$later['nodes'] = array_merge(array_slice($graph['nodes'], 1), array($graph['nodes'][0]));
+	$read = function ($graph) {
+		return ws_flow_template_saved_entry(array('id' => 43, 'template_key' => 'site_43', 'category' => 'site', 'title' => 'Later', 'help' => '',
+			'icon' => '', 'graph' => json_encode($graph), 'settings' => '[]', 'source_flow_id' => 3, 'created_by' => 9, 'updated_at' => 100),
+			array('id' => 9, 'role' => 3, 'member' => true));
+	};
+	pg_assert_same('web_check', $later['nodes'][0]['kind'], 'the first box is not the start');
+	pg_assert_same('schedule', $read($later)['start'], 'a start box placed later is still the start');
+	$none = $graph;
+	$none['nodes'] = array_slice($graph['nodes'], 1);
+	pg_assert_same('', $read($none)['start'], 'no start box: no start');
+
 	// A built-in key is never a saved one.
 	pg_assert_same('site_42', ws_flow_template_saved_key(42));
 	$builtin = array_column(ws_flow_templates(ws_flow_templates_test_fill()), 'key');
