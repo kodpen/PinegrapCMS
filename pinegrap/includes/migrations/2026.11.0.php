@@ -126,6 +126,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_erp_invoice_public_link(); // 11.0.65
 	upgrade_2026_11_0_form_field_rules();       // 11.0.135
 	upgrade_2026_11_0_contact_iys_sms_status(); // 11.0.136
+	upgrade_2026_11_0_sms_campaigns();           // 11.0.137
 
 }
 
@@ -3990,5 +3991,46 @@ function upgrade_2026_11_0_contact_iys_sms_status() {
 	}
 
 	install_note('Contacts: a column keeps what İYS last said about each mobile number on the SMS channel. It stays empty until an İYS account is set up.');
+
+}
+
+// SMS campaigns (2026.11.0, 11.0.137; includes/fn/sms_campaigns.php).
+//
+// A text sent to the contacts of chosen contact groups, now or at a time,
+// beside the e-mail campaigns but not in their tables: every reader of
+// email_campaigns mails a ready row. start_at is when the general job queues
+// it (epoch, 0 for a draft); status draft, ready, queued or cancelled, a
+// VARCHAR so a state added later needs no step. Each message is a sms_outbox
+// row whose reference names the campaign and the contact, so the queue's
+// unique reference keeps a second run from queueing it again; queued_count
+// and refused_count stay after the queue sweeps its rows.
+function upgrade_2026_11_0_sms_campaigns() {
+
+	install_create_table('sms_campaigns', "CREATE TABLE sms_campaigns (
+		id             INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		name           VARCHAR(100) NOT NULL DEFAULT '',
+		body           TEXT NOT NULL,
+		start_at       INT UNSIGNED NOT NULL DEFAULT 0,
+		status         VARCHAR(16) NOT NULL DEFAULT 'draft',
+		queued_count   INT UNSIGNED NOT NULL DEFAULT 0,
+		refused_count  INT UNSIGNED NOT NULL DEFAULT 0,
+		queued_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at     INT UNSIGNED NOT NULL DEFAULT 0,
+		created_by     INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at     INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_by     INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_due (status, start_at)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('contact_groups_sms_campaigns_xref', "CREATE TABLE contact_groups_sms_campaigns_xref (
+		contact_group_id  INT UNSIGNED NOT NULL DEFAULT 0,
+		sms_campaign_id   INT UNSIGNED NOT NULL DEFAULT 0,
+		type              VARCHAR(16) NOT NULL DEFAULT 'included',
+		KEY contact_group_id (contact_group_id),
+		KEY sms_campaign_id (sms_campaign_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('SMS campaigns: a text message can be sent to the contacts of chosen contact groups, now or at a time. Nothing is sent until SMS is set up and a campaign is created.');
 
 }

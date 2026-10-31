@@ -23,4 +23,4 @@ description: Who writes consent_log rows: own e-mail and SMS marketing answers (
 
 The cookie notice's answers (channel `cookie`, source `banner`): `consent-log-cookie-notice.md`.
 
-Gaps, tests, open questions: docs/memory/core/consent-log-writer-gaps.md. Related: docs/memory/core/consent-log-and-audit-trail.md, docs/memory/plans/sms-and-iys.md
+Gaps, tests: docs/memory/core/consent-log-writer-gaps.md. See docs/memory/core/consent-log-and-audit-trail.md, docs/memory/platform/sms-and-iys-rules.md

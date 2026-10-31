@@ -23,4 +23,4 @@ description: The marketing SMS kind (PR #3820, #3570): sender identity and type 
 ## Tests?
 - `tests/sms_marketing_test.php`; `tests/sms_test.php` (the kind refused without identity).
 
-Related: docs/memory/platform/sms-provider-layer.md, docs/memory/core/sms-consent-box.md, docs/memory/platform/iys-sms-channel.md, docs/memory/plans/sms-and-iys.md
+Related: docs/memory/platform/sms-provider-layer.md, docs/memory/core/sms-consent-box.md, docs/memory/platform/iys-sms-channel.md, docs/memory/platform/sms-and-iys-rules.md

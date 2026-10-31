@@ -23,4 +23,4 @@ description: İYS MESAJ channel (PR #3806): contacts.iys_sms_status (11.0.136), 
 ## What is not verified?
 - No İYS account and no database: the MESAJ field names and the `+90` recipient form come from İYS's published documents; the step was not run twice on a dev DB.
 
-Related: docs/memory/platform/iys-client.md, docs/memory/core/sms-consent-box.md, docs/memory/plans/sms-and-iys.md
+Related: docs/memory/platform/iys-client.md, docs/memory/core/sms-consent-box.md, docs/memory/platform/sms-and-iys-rules.md
