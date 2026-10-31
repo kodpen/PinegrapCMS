@@ -1031,6 +1031,7 @@
     "{var:1} of {var:2} areas on": "{var:1} / {var:2} alan açık",
     "{var:1} of {var:2} asks you to approve:": "{var:2} adına {var:1} sizden onay istiyor:",
     "{var:1} of {var:2} done": "{var:2} kayıttan {var:1} tamam",
+    "{var:1} of {var:2} exchange rates were updated": "{var:2} döviz kurundan {var:1} tanesi güncellendi",
     "{var:1} of {var:2} items are done on {var:3}.": "{var:3}: {var:2} maddeden {var:1} tanesi tamam.",
     "{var:1} of {var:2} items done": "{var:2} maddeden {var:1} tanesi bitti",
     "{var:1} of {var:2} items · {var:3}%": "{var:1}/{var:2} madde · %{var:3}",

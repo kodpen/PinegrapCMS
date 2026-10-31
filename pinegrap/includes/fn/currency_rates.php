@@ -28,6 +28,38 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 }
 
 /**
+ * The Site Log line for one Update Exchange Rates run, as lang() properties
+ * for pg_log_lang(): how many of the requested rates were written, or that
+ * none could be fetched. Null when no currency besides the base was asked
+ * for, since nothing was attempted.
+ *
+ * @param int $updated   Rates written in this run.
+ * @param int $requested Currencies a rate was asked for.
+ * @return array|null
+ */
+function pg_exchange_rates_log_line($updated, $requested)
+{
+    $updated = (int) $updated;
+    $requested = (int) $requested;
+
+    if ($requested <= 0) {
+        return null;
+    }
+
+    if ($updated <= 0) {
+        return array(
+            'string' => 'Exchange rates were not updated: no rate could be fetched ({var:1} requested)',
+            'vars'   => array($requested),
+        );
+    }
+
+    return array(
+        'string' => '{var:1} of {var:2} exchange rates were updated',
+        'vars'   => array($updated, $requested),
+    );
+}
+
+/**
  * The currencies the Frankfurter feed (ECB reference rates) can answer for.
  *
  * @return array

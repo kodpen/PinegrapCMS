@@ -117,6 +117,14 @@ foreach ($wanted as $code) {
     $updated++;
 }
 
+// One Site Log line per run, from the button and the scheduled job alike;
+// log_activity() names the signed-in user, a background run has none.
+$log_line = pg_exchange_rates_log_line($updated, count($wanted));
+
+if ($log_line) {
+    log_activity(pg_log_lang($log_line));
+}
+
 // Scheduled-task health: record that this job finished. See pg_cron_ran().
 // Placed before the redirect so a run started from the settings screen counts
 // too - the rates got refreshed either way, which is what the record means.
