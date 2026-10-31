@@ -380,7 +380,7 @@ function pg_order_auto_register($email_address, $contact_id)
     }
 
     if ($action === 'blocked') {
-        log_activity(lang(array(
+        log_activity(pg_log_lang(array(
             'string' => 'no account created for a blocked email address ({var:1})',
             'vars'   => array($email_address))), '');
     }
@@ -3433,7 +3433,7 @@ function pg_order_complete_announce($order_id, $order_number, $total, array $bil
 {
     $customer = $billing['first_name'] . ' ' . $billing['last_name'] . ', ' . $billing['email_address'];
 
-    log_activity(lang('Order was completed') . ' (' . $order_number . ', ' . prepare_amount($total / 100) . ', ' . $customer . ').');
+    log_activity(pg_log_lang(array('string' => 'Order was completed')) . ' (' . $order_number . ', ' . prepare_amount($total / 100) . ', ' . $customer . ').');
 
     create_notification(array(
         'action' => 'new_order',
