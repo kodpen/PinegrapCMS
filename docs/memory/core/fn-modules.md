@@ -35,6 +35,7 @@ description: Generated from the module field of the memory files: each includes/
 - `ecommerce`: [[affiliate-link-offer-code]], [[card-data-manual-processing]], [[cart-default-quantity]], [[csv-import-headings]], [[express-order-tax-address]], [[import-decimal-cells]], [[panel-image-alt]]
 - `editor`: [[rich-text-profiles]]
 - `email_campaign_schedule`: [[email-campaign-schedule-label]]
+- `email_campaign_send`: [[email-campaign-send]]
 - `errors`: [[fn-module-errors-mail-backup-consent]]
 - `events`: [[workspace-flows-event-depth]]
 - `explorer_side`: [[explorer-menu-tree]]

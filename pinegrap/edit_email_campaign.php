@@ -502,6 +502,14 @@ if (!$_POST) {
         $sql_bcc_email_address = "bcc_email_address = '" . escape($_POST['bcc_email_address'] ?? '') . "',";
     }
     
+    // The send time field is drawn only while the campaign job is on; without
+    // it the stored start time is kept.
+    $sql_start_time = '';
+
+    if (isset($_POST['start_time']) && is_string($_POST['start_time'])) {
+        $sql_start_time = "start_time = '" . escape(prepare_form_data_for_input($_POST['start_time'], 'date and time')) . "',";
+    }
+
     $query =
         "UPDATE email_campaigns
         SET
@@ -512,7 +520,7 @@ if (!$_POST) {
             from_email_address = '" . escape($_POST['from_email_address'] ?? '') . "',
             reply_email_address = '" . escape($_POST['reply_email_address'] ?? '') . "',
             " . $sql_bcc_email_address . "
-            start_time = '" . escape(prepare_form_data_for_input($_POST['start_time'], 'date and time')) . "',
+            " . $sql_start_time . "
             purpose = '" . e($_POST['purpose'] ?? '') . "',
             last_modified_user_id = '" . $user['id'] . "',
             last_modified_timestamp = UNIX_TIMESTAMP()
