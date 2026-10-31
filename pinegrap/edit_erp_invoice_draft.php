@@ -107,7 +107,7 @@ if (!$_POST) {
             <form name="form" action="' . $self_action . '" method="post" autocomplete="off">
                 ' . get_token_field() . '
                 <input type="hidden" name="id" value="' . $invoice_id . '" />
-                ' . erp_invoice_form_cards($liveform, array('lines' => erp_invoice_form_lines($liveform, $stored_rows))) . '
+                ' . erp_invoice_form_cards($liveform, array('keep_account_id' => (int) $invoice['account_id'], 'lines' => erp_invoice_form_lines($liveform, $stored_rows))) . '
                 <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                     <div class="container">
                         <div class="btn-group flex-wrap justify-content-center">
