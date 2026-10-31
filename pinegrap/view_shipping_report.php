@@ -67,16 +67,9 @@ if (validate_date(prepare_form_data_for_output($end_date, 'date')) == false) {
     output_error(lang('The end date is invalid.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>');
 }
 
-// If the date format is month and then day, then use that format.
-if (DATE_FORMAT == 'month_day') {
-    $month_and_day_format = 'F j';
-
-// Otherwise the date format is day and then month, so use that format.
-} else {
-    $month_and_day_format = 'j F';
-}
-
-$output_date_range = date($month_and_day_format . ', Y', strtotime($start_date)) . ' - ' . date($month_and_day_format . ', Y', strtotime($end_date));
+// The period in the panel language and the site's date order ('31 Ekim
+// 2026 – 13 Kasım 2026'), like the list screens' headings.
+$output_date_range = h(pg_list_period_heading(pg_list_period_range_from_dates($start_date, $end_date)));
 
 $number_of_days_in_date_range = round((strtotime($end_date) - strtotime($start_date)) / 86400);
 
@@ -423,7 +416,7 @@ print
                 </div>
                 <div class="d-inline-flex align-items-center gap-1" role="group" aria-label="' . h(lang('Period')) . '">
                     <a class="btn btn-sm btn-text theme-secondary" href="' . h('view_shipping_report.php?start_date=' . $output_previous_start_date . '&end_date=' . $output_previous_end_date) . '" title="' . h(lang('Previous')) . '" aria-label="' . h(lang('Previous')) . '"><i class="bi bi-chevron-left" aria-hidden="true"></i></a>
-                    <span class="small fg-secondary text-nowrap">' . $output_date_range . '</span>
+                    <span class="small fg-secondary text-center">' . $output_date_range . '</span>
                     <a class="btn btn-sm btn-text theme-secondary" href="' . h('view_shipping_report.php?start_date=' . $output_next_start_date . '&end_date=' . $output_next_end_date) . '" title="' . h(lang('Next')) . '" aria-label="' . h(lang('Next')) . '"><i class="bi bi-chevron-right" aria-hidden="true"></i></a>
                 </div>
             </form>',

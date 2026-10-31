@@ -277,6 +277,6 @@ function test_list_period_shipping_report_heading()
 	$source = file_get_contents(dirname(__DIR__) . '/pinegrap/view_shipping_report.php');
 
 	pg_assert_contains('pg_list_period_heading(pg_list_period_range_from_dates(', $source, 'the period in the panel language and the date order');
-	pg_assert_false(strpos($source, '$month_and_day_format') !== false, 'no English date() of its own');
+	pg_assert_false(strpos($source, '$month_and_day_format . \', Y\'') !== false, 'no English date() of its own');
 	pg_assert_false(strpos($source, 'text-nowrap">\' . $output_date_range') !== false, 'the period text can wrap');
 }

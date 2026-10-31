@@ -43,10 +43,14 @@ function pg_shipping_method_form_days()
  * PO box allowed, handled, shipped and available on weekdays (available on
  * every day), open from today until the end of 2099.
  *
+ * @param string|null $time_format 'twelve_hours' or 'twenty_four_hours';
+ *                                 the site's TIME_FORMAT when null
  * @return array  See pg_shipping_method_form_cards()
  */
-function pg_shipping_method_form_new_values()
+function pg_shipping_method_form_new_values($time_format = null)
 {
+    $clock = pg_time_format_code($time_format);
+
     $values = array(
         'name' => '',
         'description' => '',
@@ -77,8 +81,9 @@ function pg_shipping_method_form_new_values()
         // Today in the site's date order, like the end time: month-first text
         // read day-first is day 10 of month 27 (no date) or, on days 1-12, a
         // date months away that hides the method until then.
-        'start_time' => date(get_date_format_code() . '/Y') . ' 12:00 AM',
-        'end_time' => (DATE_FORMAT == 'month_day') ? '12/31/2099 11:59 PM' : '31/12/2099 11:59 PM',
+        // The times on the site's clock, as the edit screen shows them.
+        'start_time' => date(get_date_format_code() . '/Y') . ' ' . date($clock, mktime(0, 0, 0)),
+        'end_time' => ((DATE_FORMAT == 'month_day') ? '12/31/2099' : '31/12/2099') . ' ' . date($clock, mktime(23, 59, 0)),
     );
 
     for ($number = 2; $number <= 4; $number++) {
