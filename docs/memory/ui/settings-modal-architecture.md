@@ -33,7 +33,7 @@ Shared
 - `maintenance`: Update Channel, Cron Jobs, Backups, Alerts, Maintenance Mode, out of General (#3968; Backups #4020).
 - General › Organization: the organization's identity on one card (`settings-organization-card.md`).
 - Accounts and sign-in and Firewall and HTTPS: the cards moved in #3858 (`settings-security-cards.md`).
-- Appearance: Dashboard role < 2 (`settings-dashboard-card.md`), Private Label role 0.
+- Appearance: Dashboard role < 2 (`settings-dashboard-card.md`), Private Label role 0 (#4095).
 
 ## How do you move a card?
 - Two edits: the `sections` entry in `registry.php`, and moving the card block between `includes/settings/<key>.php` files.

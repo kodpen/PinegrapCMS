@@ -15,7 +15,7 @@ description: The Site Settings row of the main menu (slot 20): two levels of pan
 - The same people and the same categories as the modal's sidebar: the row only for role <= 2 (`pg_settings_modal_markup()` and the pages' `validate_area_access($user, 'manager')`). No gate is written a second time in the menu.
 
 ## What else does a category panel list?
-- Under its sections and a divider, the screens that go with the category without being settings pages: `pg_settings_category_screens($user)` (registry), each under its screen's gate. Translations under Languages and Translation (role <= 2). Private Label Branding is a section of Appearance since #R7DPR (role 0). They carry no `data-pg-settings-page`. Why: `main-menu-entry-gates.md`.
+- Under its sections and a divider, the screens that go with the category without being settings pages: `pg_settings_category_screens($user)` (registry), each under its screen's gate. Translations under Languages and Translation (role <= 2). Private Label Branding is a section of Appearance since #4095 (role 0). They carry no `data-pg-settings-page`. Why: `main-menu-entry-gates.md`.
 
 ## Which screens mark it active?
 - Row 20: the category pages (`settings_accounting.php` and `settings_privacy.php` included) and their screens (`translations.php`; `private_label.php`, now a redirect to the Appearance card), in `output_menu()`'s switch; a new one needs its `case` there.
