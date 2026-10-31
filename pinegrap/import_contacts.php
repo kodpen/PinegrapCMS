@@ -270,7 +270,7 @@ if (!$_POST) {
                     // foreach field
                     foreach ($column_names as $key => $value) {
                         // create value list
-                        $value = escape(trim($row[$key] ?? ''));
+                        $value = escape(pg_import_contact_cell($value, $row[$key] ?? ''));
                         $data_list .= "'$value', ";
                     }
 
@@ -343,7 +343,7 @@ if (!$_POST) {
                         // foreach field
                         foreach ($column_names as $key => $value) {
                             // create value list
-                            $value = escape(trim($row[$key] ?? ''));
+                            $value = escape(pg_import_contact_cell($value, $row[$key] ?? ''));
                             $data_list .= "'$value', ";
                         }
 
