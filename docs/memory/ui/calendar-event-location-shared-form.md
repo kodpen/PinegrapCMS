@@ -11,5 +11,5 @@ description: The calendar event location create and edit screens share includes/
 ## What stays in the screens?
 - The gates differ and stay as they were: create calls `validate_calendars_access()`, edit only refuses role 3 (both refuse role 3).
 - Create: the required check, the INSERT, the log line and notice.
-- Edit: the not-found guard, the record load (on every visit), delete (with the event xref rows), the required check, the UPDATE.
-- Tests: `tests/calendar_event_location_form_test.php`; `db_q_small_functions_test.php` and `db_q_regions_styles_menus_test.php` count the `db_q()` calls of the screens and the form.
+- Edit: the not-found guard, the record load (skipped while the liveform holds a typed `name`, so a refused rename, blank or already in use, comes back showing what was typed; `remove_form()` after the page clears it), delete (with the event xref rows), the required check, the UPDATE.
+- Tests: `tests/calendar_event_location_form_test.php`, `tests/calendar_event_location_refused_name_test.php`; `db_q_small_functions_test.php` and `db_q_regions_styles_menus_test.php` count the `db_q()` calls of the screens and the form.
