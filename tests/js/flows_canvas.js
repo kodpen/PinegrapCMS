@@ -769,10 +769,30 @@ function driver(page, store, setup, url) {
             }
         },
 
-        // The flows screen opened (query: ?flow=8 …), its first flow drawn.
+        // The flows screen opened on its flow list (no flow in the address).
+        openList: async () => {
+            await page.navigate(url);
+            await h.waitFor('the flow list draws', (harness) => harness && harness.settled() && !!document.querySelector('#ws-root .wsf-nothing'), 15000);
+            await h.settle();
+        },
+
+        // A flow opened: the one query names (?flow=8 …), else the first one
+        // of the flow list, clicked as a person would. With no flow at all
+        // the screen stays on the list.
         open: async (query) => {
-            await page.navigate(url + (query || ''));
-            await h.waitFor('the flows screen draws', (harness) => harness && harness.settled() && (!!document.querySelector('#ws-root .wsf-name, #ws-root .wsf-name-text') || !!document.querySelector('#ws-root .wsf-nothing')), 15000);
+            if (!query) {
+                await h.openList();
+
+                if (!(await page.evaluate(() => !!document.querySelector('#ws-root .wsf-flow-open')))) {
+                    return;
+                }
+
+                await h.click({ css: '#ws-root .wsf-flow-row .wsf-flow-open' });
+            } else {
+                await page.navigate(url + query);
+            }
+
+            await h.waitFor('the flow draws', (harness) => harness && harness.settled() && !document.querySelector('#ws-root .wsf-nothing') && !!document.querySelector('#ws-root .wsf-name, #ws-root .wsf-name-text'), 15000);
             await h.settle();
         },
 

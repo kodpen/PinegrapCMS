@@ -111,12 +111,15 @@ function pg_audit_view_query(array $filters)
  * db_q(). The dates are whole days in the site's time zone; the user is a
  * user id when it is a number, otherwise part of the name the line was
  * written under (an API line carries the app's name); the text search looks
- * in the record's name. Every value is bound as a string.
+ * in the record's name as stored and, for a settings line, in the
+ * category name the screen shows (pg_audit_view_record_name()). Every value
+ * is bound as a string.
  *
- * @param array $filters  from pg_audit_view_filters()
+ * @param array      $filters  from pg_audit_view_filters()
+ * @param array|null $names    settings key => name; pg_audit_view_settings_names() when null
  * @return array  sql ('1' when nothing is filtered), params
  */
-function pg_audit_view_condition(array $filters)
+function pg_audit_view_condition(array $filters, $names = null)
 {
     $where = array();
     $params = array();
@@ -149,8 +152,24 @@ function pg_audit_view_condition(array $filters)
     }
 
     if ($filters['q'] !== '') {
-        $where[] = 'label LIKE ?';
+        $sql = 'label LIKE ?';
         $params[] = '%' . pg_audit_view_like($filters['q']) . '%';
+
+        // A settings line stores the category key and shows its name, so a
+        // name typed as seen is matched to its keys.
+        if (in_array($filters['type'], array('', 'settings'), true)) {
+            $keys = pg_audit_view_settings_keys_named($filters['q'], is_array($names) ? $names : pg_audit_view_settings_names());
+
+            if ($keys) {
+                $sql .= " OR (entity_type = 'settings' AND label IN (" . implode(', ', array_fill(0, count($keys), '?')) . '))';
+
+                foreach ($keys as $key) {
+                    $params[] = (string) $key;
+                }
+            }
+        }
+
+        $where[] = $sql;
     }
 
     return array('sql' => $where ? '(' . implode(') AND (', $where) . ')' : '1', 'params' => $params);
@@ -161,12 +180,13 @@ function pg_audit_view_condition(array $filters)
  * values written in, for a query built as text.
  *
  * @param array    $filters  from pg_audit_view_filters()
- * @param callable $escape   escapes a value for a quoted SQL string
+ * @param callable   $escape   escapes a value for a quoted SQL string
+ * @param array|null $names    settings key => name, as pg_audit_view_condition() takes them
  * @return string  '1' when nothing is filtered
  */
-function pg_audit_view_where(array $filters, $escape = 'e')
+function pg_audit_view_where(array $filters, $escape = 'e', $names = null)
 {
-    $condition = pg_audit_view_condition($filters);
+    $condition = pg_audit_view_condition($filters, $names);
 
     return (string) pg_db_bind($condition['sql'], $condition['params'], $escape);
 }
@@ -579,6 +599,51 @@ function pg_audit_view_settings_names()
     }
 
     return $names;
+}
+
+/**
+ * The settings categories whose shown name contains the text, in any case;
+ * the Turkish dotted and dotless i fold to one letter, so "BAKIM" finds
+ * "Bakım". The stored key is not compared here: the label search finds it.
+ *
+ * @param string $text
+ * @param array  $names  key => name, as pg_audit_view_settings_names() gives them
+ * @return array  keys, in the order of $names
+ */
+function pg_audit_view_settings_keys_named($text, array $names)
+{
+    $needle = pg_audit_view_fold(trim((string) $text));
+
+    if ($needle === '') {
+        return array();
+    }
+
+    $keys = array();
+
+    foreach ($names as $key => $name) {
+        $name = (string) $name;
+
+        if (($name !== (string) $key) && (strpos(pg_audit_view_fold($name), $needle) !== false)) {
+            $keys[] = (string) $key;
+        }
+    }
+
+    return $keys;
+}
+
+/**
+ * A text lowered for a case-insensitive search: İ, I and ı become i first,
+ * because mb_strtolower() turns İ into i plus a combining dot and never
+ * gives ı for I.
+ *
+ * @param string $text
+ * @return string
+ */
+function pg_audit_view_fold($text)
+{
+    $text = str_replace(array('İ', 'I', 'ı'), 'i', (string) $text);
+
+    return function_exists('mb_strtolower') ? mb_strtolower($text, 'UTF-8') : strtolower($text);
 }
 
 /**

@@ -128,6 +128,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_contact_iys_sms_status(); // 11.0.136
 	upgrade_2026_11_0_sms_campaigns();           // 11.0.137
 	upgrade_2026_11_0_n11_old_address_order(); // 11.0.138
+	upgrade_2026_11_0_commission_cancel_marker(); // 11.0.139
 
 }
 
@@ -4115,5 +4116,21 @@ function upgrade_2026_11_0_n11_old_address_order() {
 	} else {
 		install_skipped('ship_tos: no older n11 order address the other way round, nothing to swap');
 	}
+
+}
+
+// Affiliate commissions of a cancelled order (2026.11.0, 11.0.139;
+// includes/fn/ecommerce.php). process_order_cancellation() sets the order's
+// pending and payable commissions to ineligible and keeps the status each had
+// in status_before_cancel; it stops the order's enabled recurring commission
+// profiles and marks them with disabled_by_cancel. Restoring the order puts
+// back only rows still carrying the marker; a hand edit clears it. Both
+// default empty, so a running site's rows are untouched (no backfill).
+function upgrade_2026_11_0_commission_cancel_marker() {
+
+	install_add_column('commissions', 'status_before_cancel', "VARCHAR(16) NOT NULL DEFAULT ''");
+	install_add_column('recurring_commission_profiles', 'disabled_by_cancel', "TINYINT(1) NOT NULL DEFAULT 0");
+
+	install_note('Affiliate commissions: cancelling an order makes its pending and payable commissions ineligible and stops its recurring commission profiles; restoring the order puts them back.');
 
 }

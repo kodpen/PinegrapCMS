@@ -18,6 +18,7 @@
 
 include('init.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/forms/state_form.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/forms/zone_form.php');
 $user = validate_user();
 validate_ecommerce_access($user);
 
@@ -79,7 +80,7 @@ if (!$_POST || $errors) {
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
                                 <button type="submit" id="submit_save" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><span class="material-icons me-3">save</span><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>
-                                <button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-solid theme-danger " data-confirm-content="' . h(implode(' ', array_map('lang', pg_state_form_delete_confirm(pg_state_form_delete_counts($id))))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>
+                                <button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-solid theme-danger " data-confirm-content="' . h(implode(' ', array_map('lang', pg_state_form_delete_confirm(...pg_state_form_delete_counts($id))))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>
                             </div>
                         </div>
                     </nav>

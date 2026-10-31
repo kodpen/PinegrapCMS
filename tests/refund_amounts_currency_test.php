@@ -76,7 +76,7 @@ function test_refund_amounts_order_screen_in_base_currency()
 	pg_assert_true(strpos($refund, 'currency_code') === false, 'the refund texts do not use the visitor\'s currency');
 	pg_assert_same(2, substr_count($refund, 'BASE_CURRENCY_SYMBOL)'), 'the refund amount and the gift card part print the store\'s symbol');
 
-	$cancel = pg_test_refund_currency_slice($code, 'of the payment was refunded already.', '} elseif ($cancel_payment_plan[\'remaining\'] > 0) {');
+	$cancel = pg_test_refund_currency_slice($code, 'of the payment was refunded already.', '} elseif ($cancel_payment_plan[\'action\'] === \'manual\') {');
 	pg_assert_true(strpos($cancel, 'currency_code') === false, 'the cancel note does not use the visitor\'s currency');
 	pg_assert_same(2, substr_count($cancel, 'BASE_CURRENCY_SYMBOL)'), 'refunded and remaining print the store\'s symbol');
 

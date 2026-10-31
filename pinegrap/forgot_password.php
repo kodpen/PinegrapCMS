@@ -47,11 +47,10 @@ $form = new liveform('forgot_password');
 $form->add_fields_to_session();
 
 $email = $form->get_field_value('email');
-$screen = $form->get_field_value('screen');
 $send_to = $form->get_field_value('send_to');
 
 // A designed page (the forgot_password widget) names itself in return_to;
-// every answer below - the error, the hint screen, the confirmation - goes
+// every answer below - the error, the confirmation - goes
 // back to that page instead of the legacy screen. The widget reads the same
 // liveform fields (screen, email) and notices this script leaves behind.
 // Such a page also names its widget in pg_widget_id, whose
@@ -103,8 +102,7 @@ if (!$form->check_form_errors()) {
         "SELECT
             user_id AS id,
             user_username AS username,
-            user_email AS email,
-            user_password_hint AS password_hint
+            user_email AS email
         FROM user
         WHERE user_email = '" . e($email) . "'");
 
@@ -139,18 +137,10 @@ if ($form->check_form_errors()) {
     go($url);
 }
 
-// If password hint is enabled and the user has a password hint,
-// and the user has not already told us that the password hint did not help,
-// then show the password hint to the user.
-if (
-    PASSWORD_HINT
-    && ($user['password_hint'] != '')
-    && ($screen != 'password_hint')
-) {
-    $form->assign_field_value('screen', 'password_hint');
-
-    go($url);
-}
+// The account's password hint is never shown here: a hint for a known
+// address and the confirmation for an unknown one would tell anyone which
+// addresses hold an account, and what their hint says. The hint stays on the
+// forms of a signed-in user (register, change password, Edit User).
 
 // Create a function to get token for email link, because, if the token that we generate is already
 // in use, then we will need to use recursion to generate a different token.

@@ -67,6 +67,20 @@ async function saveNumber(h, count, label, timeout) {
     return h.saves()[count - 1];
 }
 
+// The flow list's names, in their order.
+function listNames(h) {
+    return h.page(() => Array.prototype.map.call(document.querySelectorAll('#ws-root .wsf-flow-row .wsf-flow-open'), (node) => node.textContent));
+}
+
+// Back to the flow list by the page's back arrow, then another flow opened
+// from its row.
+async function openOther(h, name) {
+    await h.click('#ws-view-back');
+    await h.waitFor('the flow list shown', () => !!document.querySelector('#ws-root .wsf-nothing'), 3000);
+    await h.settle();
+    await h.click({ css: '#ws-root .wsf-flow-row .wsf-flow-open', text: name });
+}
+
 // What has the focus ({} for nothing but the page).
 async function focus(h) {
     return (await h.probe('focused')) || {};
@@ -127,7 +141,7 @@ module.exports = [
             h.ok('the box no arrow reaches is outlined', lone && lone.bad);
             h.same('its tooltip says why, in the server\'s words', lone && lone.tip, h.store.flows.get(7).problems.map((problem) => problem.text).join('\n'));
             h.same('the side panel shows the flow', state.side, h.t('fl_flow_settings'));
-            h.same('the list', await h.page(() => Array.prototype.map.call(document.querySelectorAll('#ws-root .wsf-list-name'), (node) => node.textContent)), ['Customer onboarding', 'Weekly report', 'Stock check']);
+            h.same('the list', await listNames(h), ['Customer onboarding', 'Weekly report', 'Stock check']);
             h.ok('the palette is shown to whoever may edit', state.palette);
         }
     },
@@ -560,14 +574,14 @@ module.exports = [
         run: async (h) => {
             await h.open();
 
-            const threads = () => h.page(() => Array.prototype.map.call(document.querySelectorAll('#ws-root .wsf-edges .wsf-thread'), (path) => [path.getAttribute('data-from'), path.getAttribute('data-to'), path.getAttribute('data-field'), path.classList.contains('wsf-dim')]));
+            const threads = () => h.page(() => Array.prototype.map.call(document.querySelectorAll('#ws-root .wsf-edges .wsf-thread:not(.wsf-thread-hit)'), (path) => [path.getAttribute('data-from'), path.getAttribute('data-to'), path.getAttribute('data-field'), path.classList.contains('wsf-dim')]));
 
             h.same('one thread, from the task to the field reading it', await threads(), [['task_1', 'task_2', 'description', false]]);
             h.ok('the field shows as a chip under the box', !!(await h.probe('find', { css: BOX('task_2') + ' .wsf-data-field', text: h.t('fl_description') })));
             h.ok('the value as a dot under the box giving it', !!(await h.probe('find', { css: BOX('task_1') + ' .wsf-data-out' })));
 
             const ends = await h.page(() => {
-                const path = document.querySelector('#ws-root .wsf-edges .wsf-thread');
+                const path = document.querySelector('#ws-root .wsf-edges .wsf-thread:not(.wsf-thread-hit)');
                 const matrix = path.getScreenCTM();
                 const a = new DOMPoint(path.getPointAtLength(0).x, path.getPointAtLength(0).y).matrixTransform(matrix);
                 const b = new DOMPoint(path.getPointAtLength(path.getTotalLength()).x, path.getPointAtLength(path.getTotalLength()).y).matrixTransform(matrix);
@@ -595,7 +609,7 @@ module.exports = [
             h.same('only fields of the boxes after it, not one holding it already', await h.page(() => Array.prototype.map.call(document.querySelectorAll('#ws-root .wsf-data-target[data-bind]'), (chip) => chip.getAttribute('data-bind'))), ['task_2 title']);
             await h.moveTo('#ws-root .wsf-data-target[data-bind="task_2 title"]', { steps: 6 });
             await h.release();
-            await h.waitFor('a second thread', (harness) => document.querySelectorAll('#ws-root .wsf-edges .wsf-thread').length === 2, 3000);
+            await h.waitFor('a second thread', (harness) => document.querySelectorAll('#ws-root .wsf-edges .wsf-thread:not(.wsf-thread-hit)').length === 2, 3000);
 
             const save = await saveNumber(h, 1);
 
@@ -623,7 +637,10 @@ module.exports = [
             h.ok('the outline in place of the canvas', state.outline && !state.canvas, state);
             h.same('pressed', await h.page((harness, text) => harness.find({ text: text, within: '#ws-root .wsf-bar' }).getAttribute('aria-pressed'), h.t('fl_outline')), 'true');
             h.same('the boxes in the order of their arrows', await h.page(() => Array.prototype.map.call(document.querySelectorAll('#ws-root .wsf-outline-item'), (item) => item.getAttribute('data-node'))), ['manual_1', 'task_1', 'end_1', 'task_2']);
-            h.ok('each with its settings', await h.page(() => Array.prototype.every.call(document.querySelectorAll('#ws-root .wsf-outline-item'), (item) => !!item.querySelector('input, select'))));
+            h.ok('each heading opens its settings, none open yet', await h.page(() => Array.prototype.every.call(document.querySelectorAll('#ws-root .wsf-outline-item'), (item) => !!item.querySelector('.wsf-outline-toggle[aria-expanded="false"]') && !item.querySelector('input, select'))));
+            await h.click(OUTLINE + ' .wsf-outline-item[data-node="task_1"] .wsf-outline-toggle');
+            await h.waitFor('task_1\'s settings open', (harness) => !!document.querySelector('#ws-root .wsf-outline-item[data-node="task_1"] select.wsf-connect'), 3000);
+            h.same('only that box\'s settings', await h.page(() => Array.prototype.filter.call(document.querySelectorAll('#ws-root .wsf-outline-item'), (item) => !!item.querySelector('input, select')).map((item) => item.getAttribute('data-node'))), ['task_1']);
 
             const connect = OUTLINE + ' .wsf-outline-item[data-node="task_1"] select.wsf-connect';
 
@@ -661,13 +678,12 @@ module.exports = [
 
             h.ok('the outline shown, the canvas not', state.outline && !state.canvas, state);
             h.ok('no sideways scroll', await h.page(() => document.documentElement.scrollWidth <= window.innerWidth), await h.page(() => [document.documentElement.scrollWidth, window.innerWidth]));
-            await h.click({ text: h.t('fl_nav'), within: BAR });
-            h.ok('the list opens from the toolbar', await h.page(() => document.querySelector('#ws-root .wsf-app').classList.contains('wsf-show-list')));
-            await h.click({ css: '#ws-root .wsf-list-item', has: 'Weekly report' });
+            await openOther(h, 'Weekly report');
             await h.until('the flow opens', () => h.store.callsOf('ws_flow_get').length === 2, 3000);
             await h.settle();
-            h.ok('the list closes again', await h.page(() => !document.querySelector('#ws-root .wsf-app').classList.contains('wsf-show-list')));
+            h.ok('the list closes again', await h.page(() => !document.querySelector('#ws-root .wsf-nothing')));
             h.same('the other flow', (await h.state()).name, 'Weekly report');
+            h.ok('still no sideways scroll', await h.page(() => document.documentElement.scrollWidth <= window.innerWidth), await h.page(() => [document.documentElement.scrollWidth, window.innerWidth]));
         }
     },
 
@@ -734,7 +750,9 @@ module.exports = [
 
             const dialogs = await h.leave();
 
-            await h.until('saved as the page is left', () => h.saves().length === 2, 2000);
+            await h.until('saved as the page is left', () => h.saves().length >= 2, 2000);
+            await h.sleep(300);
+            h.same('one save as the page is left, not one each from beforeunload and pagehide', h.saves().length, 2);
             h.ok('as a keepalive request', h.saves()[1].keepalive);
             h.same('on the draft_rev the last save was answered with', h.saves()[1].data.draft_rev, 4);
             h.same('with the change', nodeIn(h.saves()[1].data.graph, 'task_1').x, 352);
@@ -804,12 +822,12 @@ module.exports = [
     },
 
     {
-        name: 'opening another flow saves the change on its way first',
+        name: 'going back to the list for another flow saves the change on its way first',
         run: async (h) => {
             await h.open();
             await pick(h, 'task_1');
             await h.key('ArrowRight');
-            await h.click({ css: '#ws-root .wsf-list-item', has: 'Weekly report' });
+            await openOther(h, 'Weekly report');
             await h.until('the other flow asked', () => h.store.callsOf('ws_flow_get').length === 2, 3000);
             await h.settle();
 
@@ -947,7 +965,7 @@ module.exports = [
     },
 
     {
-        name: 'the ⋯ menu: Share lists who has the flow and gives the focus back; Delete asks, bins the flow and opens the next one',
+        name: 'the ⋯ menu: Share lists who has the flow and gives the focus back; Delete asks, bins the flow and shows the list',
         run: async (h) => {
             await h.open();
             await h.click({ label: h.t('fl_more'), within: BAR });
@@ -969,12 +987,12 @@ module.exports = [
 
             h.same('it asks first', asked.text, h.t('fl_bin_ask', 'Customer onboarding'));
             await h.until('binned', () => h.store.callsOf('ws_flow_bin').length === 1, 3000);
-            await h.until('the next flow opened', () => h.store.callsOf('ws_flow_get').length === 2, 3000);
+            await h.waitFor('the flow list shown', () => !!document.querySelector('#ws-root .wsf-nothing'), 3000);
             await h.settle();
-            h.same('the next flow shown', (await h.state()).name, 'Weekly report');
-            h.same('gone from the list', await h.page(() => Array.prototype.map.call(document.querySelectorAll('#ws-root .wsf-list-name'), (node) => node.textContent)), ['Weekly report', 'Stock check']);
+            h.same('no other flow opened, the address names none', [h.store.callsOf('ws_flow_get').length, (await h.state()).search], [1, '']);
+            h.same('gone from the list', await listNames(h), ['Weekly report', 'Stock check']);
             await h.eventually('a toast says so', (harness, text) => harness.toasts.some((toast) => toast.text === text), 3000, h.t('fl_binned'));
-            await h.eventually('the next flow\'s name has the focus', (harness) => harness.focused() && (harness.focused().refocus === 'name'), 2000);
+            await h.eventually('the list\'s search has the focus', (harness) => harness.focused() && (harness.focused().refocus === 'flows-search'), 2000);
         }
     },
 
@@ -1032,7 +1050,7 @@ module.exports = [
 
             const state = await h.state();
 
-            h.same('it says how to start', state.empty, h.t('fl_none_build'));
+            h.same('it says how to start', await h.page(() => document.querySelector('#ws-root .wsf-flows-none').textContent), h.t('fl_none_build'));
             h.ok('no box to add, no flow tools', !state.name && !state.problems && (await h.page(() => !document.querySelector('#ws-root .wsf-palette button'))), state);
             h.ok('New flow offered', !!(await h.probe('find', { text: h.t('fl_new'), within: BAR })));
             h.same('the address names no flow', state.search, '');
@@ -1054,8 +1072,11 @@ module.exports = [
             h.same('the new flow shown', [state.name, state.search], [h.t('fl_untitled'), '?flow=20']);
             h.same('the empty canvas says what to do', state.empty, h.t('fl_empty_canvas'));
             h.same('its name has the focus, selected', await h.page(() => [document.activeElement.classList.contains('wsf-name'), document.activeElement.selectionStart, document.activeElement.selectionEnd]), [true, 0, h.t('fl_untitled').length]);
-            h.same('first in the list', await h.page(() => document.querySelector('#ws-root .wsf-list-name').textContent), h.t('fl_untitled'));
             h.same('the server says it has no start', state.problems.text, h.t('fl_problems', 1));
+            await h.click('#ws-view-back');
+            await h.waitFor('the flow list shown', () => !!document.querySelector('#ws-root .wsf-nothing'), 3000);
+            await h.settle();
+            h.same('first in the list', (await listNames(h))[0], h.t('fl_untitled'));
         }
     },
 

@@ -80,7 +80,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - command-palette-ranking.md: Panel search box (Ctrl+K) results: the relevance score, Turkish I folding, a fixed per-type cap read best first and the full tie-break that keep Load More pages disjoint
 - command-palette.md: Panel search box (Ctrl+K): where the chips come from, how text is matched, why every key must be a string (the "503" crash), chips that open a dialog
 - comment-moderation-recycle-bin.md: Comments on pages in the Recycle Bin: left out of the moderation queue, its count, the greeting and the Workspace counter; marked without a link on the Comments list and edit screens
-- commerce-delete-confirm.md: Edit State, Shipping Method, Zone and Product Attribute name and count, in their Delete confirmation, the records the delete removes or unlinks
+- commerce-delete-confirm.md: Edit State, Country, Shipping Method, Zone and Product Attribute name and count, in their Delete confirmation, the records the delete removes or unlinks
 - commerce-form-group-names.md: Commerce forms names: State Country label, ship date Adjustment pair, shipping day sets, rate tiers and rate boxes, product group Display Type and gift card Format legends
 - commission-list-paging.md: The commission lists (view_commissions.php, view_recurring_commission_profiles.php) paged and searched on the server; issue #2038 (search found only the page PHP printed); what the screens keep
 - common-region-shared-form.md: The common region create and edit screens share includes/forms/common_region_form.php: what it holds, the label fixes, what stays in the screens

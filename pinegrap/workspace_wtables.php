@@ -1319,7 +1319,7 @@ if (!$table) {
     </nav>' . $flow_window;
 
     $title = (string) $table['name'];
-    $cancel = array('enable' => 'true', 'url' => $self_url);
+    $cancel = array('enable' => 'true', 'url' => $self_url, 'title' => lang('All tables'));
     $breadcrumb = array(
         array('label' => lang('Tables'), 'url' => $self_url),
         array('label' => $title),

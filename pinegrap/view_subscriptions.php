@@ -82,6 +82,7 @@ $output_not_ready = $ready ? '' : '
 
 $breadcrumb = array(array('label' => lang('All Orders'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_orders.php'));
 $cancel_url = 'view_orders.php';
+$cancel_title = lang('All Orders');
 
 if ($subscription_id > 0) {
 
@@ -188,6 +189,7 @@ if ($subscription_id > 0) {
     $breadcrumb[] = array('label' => lang('Subscriptions'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_subscriptions.php');
     $breadcrumb[] = array('label' => $title);
     $cancel_url = 'view_subscriptions.php';
+    $cancel_title = lang('Subscriptions');
 
     $output_content = '
             ' . pg_screen_toolbar(array('primary' => $output_actions)) . '
@@ -324,7 +326,7 @@ echo
         'icon'                => 'store',
         'heading'             => $title,
         'heading_description' => lang('Recurring payments the store charges from the customer\'s stored card.'),
-        'cancel'              => array('enable' => 'true', 'url' => $cancel_url),
+        'cancel'              => array('enable' => 'true', 'url' => $cancel_url, 'title' => $cancel_title),
         'breadcrumb'          => $breadcrumb,
     )) . '
 <main id="content" class="container-fluid">
