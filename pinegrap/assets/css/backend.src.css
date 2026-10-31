@@ -8500,6 +8500,19 @@ button.no-popover:focus-visible {
 
 .pg-toolbar-search { width: 200px; }
 
+/* A filter form (pg_filter_select(), Browse Items' folder and access pickers)
+   is a flex item of the bar, and a flex item's automatic minimum is its
+   content: a select is as wide as its longest option, so one long folder name
+   or report rule pushed the page sideways on a phone. Capped here, the select
+   shrinks to the bar and cuts its text instead. */
+.pg-toolbar-filter,
+.pg-toolbar-filter > .input-group,
+.pg-toolbar-filter select {
+  min-width: 0;
+  max-width: 100%;
+}
+.pg-toolbar-filter select { text-overflow: ellipsis; }
+
 /* Ghost button: a toolbar full of outlined buttons reads as a row of boxes,
    so secondary tools carry no border until they are hovered. Bootstrap 6's
    text button in the secondary theme is that object; its tokens are set to

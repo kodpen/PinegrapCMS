@@ -283,7 +283,7 @@ if ($subscription_id > 0) {
                 <div class="pg-toolbar-grow"></div>
                 <form action="view_subscriptions.php" method="get" class="d-flex flex-wrap align-items-center gap-1 row-gap-3" role="search">
                     <select name="status" class="form-control form-control-sm w-auto" aria-label="' . h(lang('Status')) . '">' . $output_status_options . '</select>
-                    <span class="d-inline-flex align-items-center gap-1">
+                    <span class="d-inline-flex flex-wrap align-items-center gap-1 row-gap-3 max-w-100">
                         <input type="date" data-pg-date name="next_from" value="' . h($filter['next_from']) . '" class="form-control form-control-sm w-auto" aria-label="' . h(lang('Next charge from')) . '" title="' . h(lang('Next charge from')) . '">
                         <span class="fg-secondary">&ndash;</span>
                         <input type="date" data-pg-date name="next_to" value="' . h($filter['next_to']) . '" class="form-control form-control-sm w-auto" aria-label="' . h(lang('Next charge to')) . '" title="' . h(lang('Next charge to')) . '">

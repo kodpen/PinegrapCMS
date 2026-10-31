@@ -157,12 +157,9 @@ if (!$_POST) {
                     <div class="col-12">
                         ' . $liveform->output_errors() . '
                         ' . $liveform->output_notices() . $output_file_missing . '
-                <div class="mb-3 text-center md:text-start">
-                    <h2 class="d-inline-block text-break"><a href="' . OUTPUT_PATH . h($file_name) . '" target="_blank">' . h($file_name) . '</a></h2>
-                    <p class="fg-secondary small">' . lang('Page Style Head Tag') . ': ' . h('<stylesheet></stylesheet>') . '</p>
-                </div>
                 ' . pg_screen_toolbar(array(
                     'secondary' => array($output_edit_theme_button, $output_export_button, $output_download_file_button),
+                    'grow' => '<p class="fg-secondary small mb-0">' . lang('Page Style Head Tag') . ': ' . h('<stylesheet></stylesheet>') . '</p>',
                 )) . '
                 <form action="edit_theme_file.php" method="post">
                     ' . get_token_field() . '
