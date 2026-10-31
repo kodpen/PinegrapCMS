@@ -130,3 +130,18 @@ function test_audit_create_file_records_the_new_file()
 {
 	audit_design_file_writers_test_creates('create_file.php', 1);
 }
+
+// Edit File writes the posted code to disk: the row and the content digest are
+// read from the stored path before the rename and the write, and the save
+// records a line with the digest of the file under its new name.
+function test_audit_edit_file_records_content_digest()
+{
+	$source = audit_design_file_writers_test_source('edit_file.php');
+	$read = strpos($source, 'pg_audit_fetch_file($file_id, $stored_file_path)');
+	$rename = ($read === false) ? false : strpos($source, '@rename($old_file_path, $file_path)', $read);
+	$write = ($rename === false) ? false : strpos($source, "fwrite(\$handle, \$_POST['code'])", $rename);
+	$update = ($write === false) ? false : strpos($source, 'UPDATE files SET', $write);
+	$record = ($update === false) ? false : strpos($source, 'pg_audit_record_file($file_id, $audit_before_content, $file_path)', $update);
+	pg_assert_true($rename !== false && $write !== false, 'the digest is read before the rename and the write');
+	pg_assert_true($record !== false, 'the code save records a line with the new content digest');
+}

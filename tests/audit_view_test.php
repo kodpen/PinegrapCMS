@@ -243,3 +243,37 @@ function test_audit_view_labels()
 	pg_assert_same(array(), pg_audit_view_labels('other'));
 	pg_assert_same('later_word', pg_audit_view_label('action', 'later_word'), 'a word without a label is shown as stored');
 }
+
+// The search finds a settings line by the category name the screen shows,
+// in any case and with the Turkish dotted and dotless i alike; the stored key
+// still matches through the label.
+function test_audit_view_settings_keys_named()
+{
+	$names = array('general' => 'Genel', 'maintenance' => 'Güncellemeler ve Bakım', 'commerce' => 'E-Ticaret', 'api' => 'Entegrasyonlar', 'seo' => 'SEO');
+
+	pg_assert_same(array('general'), pg_audit_view_settings_keys_named('Genel', $names), 'the shown name');
+	pg_assert_same(array('general'), pg_audit_view_settings_keys_named('GENEL', $names), 'any case');
+	pg_assert_same(array('maintenance'), pg_audit_view_settings_keys_named('BAKIM', $names), 'dotless i typed as I');
+	pg_assert_same(array('commerce', 'api'), pg_audit_view_settings_keys_named('e', array_intersect_key($names, array('api' => 1, 'commerce' => 1))), 'every match');
+	pg_assert_same(array(), pg_audit_view_settings_keys_named('general', $names), 'the key is matched by the label, not here');
+	pg_assert_same(array(), pg_audit_view_settings_keys_named('  ', $names), 'blank');
+}
+
+function test_audit_view_condition_finds_settings_by_shown_name()
+{
+	$names = array('general' => 'Genel', 'maintenance' => 'Güncellemeler ve Bakım');
+
+	$condition = pg_audit_view_condition(pg_audit_view_filters(array('q' => 'Genel')), $names);
+	pg_assert_same("(label LIKE ? OR (entity_type = 'settings' AND label IN (?)))", $condition['sql']);
+	pg_assert_same(array('%Genel%', 'general'), $condition['params']);
+
+	$condition = pg_audit_view_condition(pg_audit_view_filters(array('type' => 'settings', 'q' => 'bakım')), $names);
+	pg_assert_same("(entity_type = ?) AND (label LIKE ? OR (entity_type = 'settings' AND label IN (?)))", $condition['sql']);
+	pg_assert_same(array('settings', '%bakım%', 'maintenance'), $condition['params']);
+
+	$condition = pg_audit_view_condition(pg_audit_view_filters(array('type' => 'page', 'q' => 'Genel')), $names);
+	pg_assert_same('(entity_type = ?) AND (label LIKE ?)', $condition['sql'], 'another type searches the label only');
+
+	$condition = pg_audit_view_condition(pg_audit_view_filters(array('q' => 'general')), $names);
+	pg_assert_same('(label LIKE ?)', $condition['sql'], 'the key alone matches through the label');
+}
