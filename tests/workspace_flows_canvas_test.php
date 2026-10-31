@@ -2121,6 +2121,7 @@ function boxValues() { return ['t1', 't2', 't3', 't4', 't5', 't6'].map(function 
 function bindTargets() { return []; }
 function markThreads() {}
 function liveDot() {}
+function threadHit() {}
 function svgEl(tag, className) { return new FakeNode(tag, className); }
 FakeNode.prototype.style = null;
 ui.layer = new FakeNode('div');
@@ -2730,6 +2731,7 @@ function test_workspace_flows_canvas_loop_fields_take_no_fallback()
 		array('fieldFallback', 'valueChip'),
 		<<<'JS'
 state = { edit: true };
+FakeNode.prototype.style = {};
 var names = { '{{node.c.l}}': { label: 'Constants › l', skipped: false } };
 console.log(JSON.stringify({
     takes: [fieldFallback({ kind: 'for_each' }, 'list'), fieldFallback({ kind: 'for_each_end' }, 'collect'), fieldFallback({ kind: 'post' }, 'body'), fieldFallback({ kind: 'for_each' }, 'path')],
@@ -2749,4 +2751,111 @@ JS
 
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js');
 	pg_assert_contains("bare && names[tokenBare(", ws_flows_canvas_test_script_function($source, 'valueInput'), 'a click asks for a fallback only where the field takes one');
+}
+
+// A data thread is only its token in the field's text: removing the thread
+// (Delete on it, its menus, the chip's ×, the outline's Remove) takes every
+// place that field reads the value, with or without a fallback, and keeps
+// the rest of the text; the one space that set the value apart goes with
+// it. A condition's compared value is emptied. Before, nothing removed a
+// thread but the caret beside the chip in the side panel.
+function test_workspace_flows_canvas_thread_is_removed_from_its_field()
+{
+	$source = str_replace("\r\n", "\n", (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js'));
+	pg_assert_true((bool) preg_match('/^( *)var VALUE_TOKEN = [^\n]*;\n/m', $source, $found), 'workspace_flow.js has VALUE_TOKEN');
+
+	$result = ws_flows_canvas_test_node(
+		array('nodeById', 'withoutToken', 'unbindThread'),
+		$found[0] . <<<'JS'
+var a = '{{node.web_check_1.outcome}}';
+state = { graph: { nodes: [
+    { id: 'post_1', kind: 'post', config: { body: 'Result: {{node.web_check_1.outcome}} and {{node.web_check_1.outcome|none}}, code {{node.web_check_1.status_code}}' } },
+    { id: 'condition_1', kind: 'condition', config: { rule: { type: 'value', ref: '{{node.web_check_1.outcome}}', op: 'eq', value: 'up' } } }
+], edges: [] } };
+console.log(JSON.stringify({
+    texts: [
+        withoutToken('Result: {{node.web_check_1.outcome}} done', a),
+        withoutToken('{{node.web_check_1.outcome}} first', a),
+        withoutToken('last {{node.web_check_1.outcome|x}}', a),
+        withoutToken('line\n{{node.web_check_1.outcome}} next', a),
+        withoutToken('({{node.web_check_1.outcome}})', a),
+        withoutToken('{"a":"{{node.web_check_1.outcome}}","b":"{{node.web_check_1.code}}"}', a),
+        withoutToken('{{node.web_check_1.outcome_x}} stays', a)
+    ],
+    body: unbindThread('post_1', 'body', a),
+    rule: unbindThread('condition_1', 'rule', a),
+    again: unbindThread('post_1', 'body', a),
+    config: [nodeById('post_1').config.body, nodeById('condition_1').config.rule]
+}));
+JS
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same(array(
+		'Result: done',
+		'first',
+		'last',
+		"line\nnext",
+		'()',
+		'{"a":"","b":"{{node.web_check_1.code}}"}',
+		'{{node.web_check_1.outcome_x}} stays',
+	), $result['texts'], 'the token goes, the text stays');
+	pg_assert_same(array(true, true, false), array($result['body'], $result['rule'], $result['again']), 'removed once');
+	pg_assert_same(array('Result: and, code {{node.web_check_1.status_code}}', array('type' => 'value', 'ref' => '', 'op' => 'eq', 'value' => 'up')), $result['config'], 'every place the field reads it, with or without a fallback');
+}
+
+// Deleting a box takes the values read from it out of every field that
+// reads them (#4058): the rest of each text stays, the count of fields is
+// told. The thread's hit path takes the pointer from the script (the
+// stylesheet keeps .wsf-thread out of its way), and Delete removes a
+// selected thread.
+function test_workspace_flows_canvas_deleting_a_box_removes_its_values()
+{
+	$source = str_replace("\r\n", "\n", (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js'));
+	$constants = '';
+
+	foreach (array('VALUE_TOKEN', 'VALUE_FIELDS') as $name) {
+		pg_assert_true((bool) preg_match('/^( *)var ' . $name . ' = (?:[^\n]*;\n|\{\n.*?\n\1\};\n)/ms', $source, $found), 'workspace_flow.js has ' . $name);
+		$constants .= $found[0];
+	}
+
+	$result = ws_flows_canvas_test_node(
+		array('nodeById', 'fieldTexts', 'withoutToken', 'unbindThread', 'dropValuesOf'),
+		$constants . <<<'JS'
+state = { graph: { nodes: [
+    { id: 'web_check_1', kind: 'web_check', config: {} },
+    { id: 'post_1', kind: 'post', config: { body: 'Site {{node.web_check_1.outcome}} ({{node.web_check_1.status_code}}) {{node.web_check_2.outcome}}' } },
+    { id: 'value_1', kind: 'value', config: { a: '{{node.web_check_1.outcome}}', b: 'x' } },
+    { id: 'condition_1', kind: 'condition', config: { rule: { type: 'value', ref: '{{node.web_check_1.status_code}}' } } },
+    { id: 'email_1', kind: 'email', config: { subject: 'Hi', body: '{{node.web_check_10.outcome}}' } }
+], edges: [] } };
+var count = dropValuesOf('web_check_1');
+console.log(JSON.stringify({
+    count: count,
+    post: nodeById('post_1').config.body,
+    value: nodeById('value_1').config.a,
+    rule: nodeById('condition_1').config.rule.ref,
+    email: nodeById('email_1').config.body
+}));
+JS
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same(3, $result['count'], 'three fields lost a value');
+	pg_assert_same('Site () {{node.web_check_2.outcome}}', $result['post']);
+	pg_assert_same('', $result['value']);
+	pg_assert_same('', $result['rule']);
+	pg_assert_same('{{node.web_check_10.outcome}}', $result['email'], 'another box with a longer id keeps its value');
+
+	$remove = ws_flows_canvas_test_script_function($source, 'removeSelected');
+	pg_assert_contains('dropValuesOf(node.id)', $remove, 'deleting a box removes its values');
+	pg_assert_contains("selected.type === 'thread'", $remove, 'Delete removes a selected thread');
+	pg_assert_contains("pointerEvents = 'stroke'", ws_flows_canvas_test_script_function($source, 'threadHit'), 'the hit path takes the pointer from the script');
+	pg_assert_true(strpos($source, 'state.gone') === false, 'no red thread from the place of a box deleted in this session');
 }
