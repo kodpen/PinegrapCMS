@@ -13538,8 +13538,8 @@ const StyleDesigner = (function () {
                     eo_saved_cart_link:        _sdT('Saved Cart Link (the visitor can return to the cart with the order #)'),
                     eo_address_book:           _sdT('Saved Addresses for billing (address book and past orders — hidden when empty)'),
                     eo_address_book_shipping:  _sdT('Saved Addresses for shipping (the member\'s address book — hidden when empty)'),
-                    eo_upsell_offers:          _sdT('Upsell Offers (view_offers.php — alert strip, "only $100 to go")'),
-                    eo_applied_offers:         _sdT('Applied Offers (derived from orders.discount_offer_id + order_items.offer_id)'),
+                    eo_upsell_offers:          _sdT('Upsell Offers (notice strip, "only $100 to go")'),
+                    eo_applied_offers:         _sdT('Applied Offers (from the offers of the order and its lines)'),
                     eo_totals:                 _sdT('Order Totals (calculated by the backend — VAT, surcharge, total)'),
                     eo_submit_button:          _sdT('Complete the Order Button'),
                     eo_update_button:          _sdT('Update Button (for the cart quantities)')
