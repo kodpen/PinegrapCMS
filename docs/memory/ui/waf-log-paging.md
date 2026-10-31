@@ -19,3 +19,6 @@ module: waf_log_list
 ## Where do Release, Allow, Clear Log and Clear Reports land?
 - On the view they were sent from. `pg_waf_log_list_url($filters)` gives `view_waf_log.php` plus only the non-default filters (period other than 7, a category, a search); the four forms post to it and each handler redirects to it, so the filters come back through `$_GET`. The filters are read above the handlers for this.
 - Symptom fixed: opening the log for one address (ban mail, Active Automatic Bans link) and pressing Release or Allow landed on the default 7-day, unsearched view. Pinned by `test_waf_log_list_url`.
+
+## Why do Request and Match sit in an inner `<div>`?
+- `table.chart td { white-space: nowrap }` (`backend.src.css`) stops every chart cell from wrapping, and a `td`'s `max-width` does not narrow an auto-layout column: a long URL and user agent stretched the table to 2263 px and pushed Match off the card (#4340). Each cell now holds a `div.text-break` with `white-space:normal` and `min-width`/`max-width` (Request 10–22rem, Match 8–16rem), so the text wraps and the table fits its card. Do not move the limit back onto the cell.

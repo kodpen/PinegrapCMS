@@ -274,8 +274,10 @@ function pg_waf_log_list_row(array $event, $now)
         pg_list_cell(h($event['ip_address']), 'font-monospace small text-nowrap'),
         pg_list_cell($rule, 'small'),
         pg_list_cell((string) (int) $event['score'], 'small'),
-        pg_list_cell($request, 'small text-break', array('style' => 'max-width:22rem;')),
-        pg_list_cell($match, 'small text-break', array('style' => 'max-width:16rem;')),
+        // table.chart cells do not wrap and a cell's max-width does not narrow an
+        // auto-layout column, so the width limit sits on an inner block that wraps.
+        pg_list_cell('<div class="text-break" style="white-space:normal;min-width:10rem;max-width:22rem;">' . $request . '</div>', 'small'),
+        pg_list_cell('<div class="text-break" style="white-space:normal;min-width:8rem;max-width:16rem;">' . $match . '</div>', 'small'),
     ));
 }
 
