@@ -3923,6 +3923,25 @@ function validate_token_field()
         }
     }
 }
+
+/**
+ * Whether initialize_user() signs the request in as the session's user.
+ * Pure: the session's user id and whether this request is a search index
+ * run, which always renders as a visitor who is not signed in.
+ *
+ * @param mixed $session_user_id $_SESSION['sessionuserid'], or null
+ * @param bool  $index_run       UPDATE_SEARCH_INDEX is set
+ * @return bool
+ */
+function pg_auth_session_user_applies($session_user_id, $index_run)
+{
+    if ($index_run) {
+        return false;
+    }
+
+    return !empty($session_user_id);
+}
+
 // Create function to handle remember me and set user information if user is logged in.
 function initialize_user()
 {
@@ -4179,8 +4198,16 @@ function initialize_user()
             setcookie('software[auth]', '', time() - 1000, '/');
         }
 
-    // 2) An API request (raw password), or a session that already carries a user id.
-    } else if (defined('API_USERNAME') || isset($_SESSION['sessionuserid'])) {
+    // 2) An API request (raw password), or a session that already carries a
+    // user id. Not the session user during a search index run: the index
+    // stores what a visitor who is not signed in reads, and a manager
+    // pressing Update Search Index would otherwise draw every page with edit
+    // access (the comments area's watcher list and its e-mail addresses).
+    // update_search_index.php checks that person's role from the session
+    // itself; the session is left as it is, so nobody is signed out.
+    } else if (defined('API_USERNAME')
+        || pg_auth_session_user_applies($_SESSION['sessionuserid'] ?? null,
+            defined('UPDATE_SEARCH_INDEX') && UPDATE_SEARCH_INDEX === true)) {
 
         if (defined('API_USERNAME')) {
 
