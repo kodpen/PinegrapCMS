@@ -227,10 +227,40 @@ function test_subscription_operator_where()
 	$from = mktime(0, 0, 0, 3, 1, 2027);
 	$to = mktime(0, 0, 0, 4, 1, 2027);
 	$where = pg_subscription_operator_where(pg_subscription_operator_filter(array('next_from' => '2027-03-01', 'next_to' => '2027-03-31')));
-	pg_assert_same("(s.next_charge_at >= '" . $from . "') AND (s.next_charge_at < '" . $to . "')", $where, 'the last day is whole');
+	pg_assert_same("(s.status IN ('active', 'past_due', 'paused')) AND (s.next_charge_at >= '" . $from . "') AND (s.next_charge_at < '" . $to . "')", $where, 'the last day is whole; only running rows have a next charge');
+
+	$where = pg_subscription_operator_where(pg_subscription_operator_filter(array('next_to' => '2027-03-31')));
+	pg_assert_same("(s.status IN ('active', 'past_due', 'paused')) AND (s.next_charge_at < '" . $to . "')", $where, 'an open range is running rows only too');
 
 	$where = pg_subscription_operator_where(pg_subscription_operator_filter(array('q' => "o'Neil_5%")));
 	pg_assert_true(strpos($where, "LIKE '%o\\'Neil\\\\_5\\\\%%'") !== false, 'quoted and LIKE-escaped: ' . $where);
 	pg_assert_true(strpos($where, 'o.billing_email_address LIKE') !== false);
 	pg_assert_true(strpos($where, 'u.user_username LIKE') !== false);
+}
+
+function test_subscription_operator_order_puts_running_rows_first()
+{
+	$order = pg_subscription_operator_order_sql();
+	pg_assert_same("(s.status IN ('active', 'past_due', 'paused') AND s.next_charge_at > 0) DESC, "
+		. "CASE WHEN s.status IN ('active', 'past_due', 'paused') AND s.next_charge_at > 0 THEN s.next_charge_at ELSE 0 END ASC, s.id DESC", $order);
+
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/subscriptions_operator.php');
+	pg_assert_true(strpos($source, 'ORDER BY " . pg_subscription_operator_order_sql()') !== false, 'the list orders through the helper');
+	pg_assert_same(false, strpos($source, 'ORDER BY (s.next_charge_at = 0)'), 'no order by the stored date of every status');
+}
+
+function test_subscription_operator_next_charge_shown_on_the_row_page()
+{
+	$at = 1800000000;
+
+	foreach (array('active', 'past_due', 'paused') as $status) {
+		pg_assert_same($at, pg_subscription_operator_next_charge(array('status' => $status, 'next_charge_at' => $at, 'retry_count' => 0)), $status);
+	}
+
+	pg_assert_same($at, pg_subscription_operator_next_charge(array('status' => 'cancelled', 'next_charge_at' => $at, 'retry_count' => 0)), 'runs until the paid period ends');
+	pg_assert_same(0, pg_subscription_operator_next_charge(array('status' => 'cancelled', 'next_charge_at' => $at, 'retry_count' => 2)), 'cancelled while past due: never charged again');
+	pg_assert_same(0, pg_subscription_operator_next_charge(array('status' => 'ended', 'next_charge_at' => $at, 'retry_count' => 0)), 'ended');
+
+	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/view_subscriptions.php');
+	pg_assert_true(strpos($screen, '$output_date(pg_subscription_operator_next_charge($row))') !== false, 'the row page prints the helper');
 }
