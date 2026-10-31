@@ -5492,6 +5492,59 @@ function pg_new_user_email_body($email_address, $set_password_url, $login)
     return $body;
 }
 
+/**
+ * The body of the e-mail reset_password.php sends when an administrator resets
+ * an account's password: the address, the link to set a new password (or,
+ * without one, where to get one) and the sign-in address. No password is
+ * written: the one the reset stores only locks the old password out.
+ *
+ * @param string $email_address
+ * @param string $set_password_url '' when no link could be issued
+ * @param string $login            the "Login:" lines, or ''
+ * @return string plain text
+ */
+function pg_reset_password_email_body($email_address, $set_password_url, $login)
+{
+    $body =
+        lang('Your password was reset by an administrator.') . "\n" .
+        "\n" .
+        lang('Email') . ': ' . (string) $email_address . "\n";
+
+    if ((string) $set_password_url !== '') {
+        $body .= lang(array('string' => 'Set a new password: {var:1}', 'vars' => array((string) $set_password_url))) . "\n";
+    } else {
+        $body .= lang('You can set a new password with "Forgot password" on the sign-in page.') . "\n";
+    }
+
+    if ((string) $login !== '') {
+        $body .= "\n" . (string) $login;
+    }
+
+    return $body;
+}
+
+/**
+ * The panel notice after an administrator's password reset, from what
+ * actually happened: the e-mail went out with a link, went out without one,
+ * or could not be sent. Plain text; the caller escapes it.
+ *
+ * @param string $set_password_url '' when no link could be issued
+ * @param bool   $sent             what email() returned
+ * @return string
+ */
+function pg_reset_password_notice($set_password_url, $sent)
+{
+    if (!$sent) {
+        return lang('The user\'s password has been reset, but the e-mail could not be sent. The user can set a new password with "Forgot password" on the sign-in page.');
+    }
+
+    if ((string) $set_password_url !== '') {
+        return lang('The user\'s password has been reset, and a link to set a new password has been e-mailed to the user.');
+    }
+
+    return lang('The user\'s password has been reset, and the user has been e-mailed to set a new password with "Forgot password" on the sign-in page.');
+}
+
 
 /**
  * Is this account locked out of signing in, and until when?
