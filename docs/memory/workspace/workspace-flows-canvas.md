@@ -25,7 +25,7 @@ description: The flow canvas (workspace_flows.php, workspace_flow.js): who sees 
 
 ## How is it saved?
 - 1.5 s after the last change, on blur, Ctrl+S; Publish, Pause, another flow, "New flow" save first.
-- Hidden tab or page left: a keepalive `ws_flow_save`; none over 60 000 bytes (a hidden tab saves as usual, leaving asks). `beforeunload` asks while changes are unsent.
+- Hidden tab or page left: a keepalive `ws_flow_save`; none over 60 000 bytes (a hidden tab saves as usual, leaving asks). `beforeunload` asks while changes are unsent. Sent once: `workspace-flows-canvas-leave-focus.md`.
 - Unsaveable changes are dropped on a switch after `ask()` only. A 409 shows "Load it again".
 
 ## Focus and keys?
