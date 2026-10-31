@@ -11073,6 +11073,7 @@ var pgSettingsModal = (function () {
             // The pane stays in the document with its editors in it, hidden.
             // Hidden is exactly the state the refresh addon waits out forever.
             window.pgReleaseEditors(byId('pg_settings_modal'));
+            window.pgReleaseFields(byId('pg_settings_modal'));
 
             clearExtras();
             drawer(false);
@@ -12245,6 +12246,23 @@ window.pgReleaseEditors = function (scope) {
     });
 };
 
+// Lets go of the date and time fields inside a region that is about to be
+// thrown away. Their dropdown calendar lives in the dialog's overlay host,
+// outside the region, with listeners on window; replacing the region's
+// markup leaves both behind, and every new pane adds another calendar.
+window.pgReleaseFields = function (scope) {
+
+    var root = scope || document;
+
+    if (!root || !root.querySelectorAll || !window.pgFields) {
+        return;
+    }
+
+    Array.prototype.forEach.call(root.querySelectorAll('[data-pg-date], [data-pg-datetime], [data-pg-time]'), function (el) {
+        try { window.pgFields.destroy(el); } catch (e) {}
+    });
+};
+
 // Runs `run` once the code editor facade (assets/js/pg_code_editor.js,
 // window.PgCodeEditor) is on the page, fetching it the first time.
 //
@@ -12373,6 +12391,7 @@ window.pgCodeEditorReady = function (markup, done) {
         // The editors the last pane started go before its markup does; the
         // addon that keeps them refreshed outlives the element otherwise.
         window.pgReleaseEditors($pane[0]);
+        window.pgReleaseFields($pane[0]);
 
         // .html(), not innerHTML: the cards carry inline scripts that start
         // the code editors and the tag fields, and .html() runs them.
