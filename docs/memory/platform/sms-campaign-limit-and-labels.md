@@ -13,4 +13,8 @@ module: sms_campaigns
 ## What goes when a contact group is deleted?
 - Deleting a group (`edit_contact_group.php`, API `DELETE /contact-groups/{id}`) deletes its `contact_groups_sms_campaigns_xref` rows when `pg_schema_has()` finds the table, beside the e-mail xref (#3958).
 
+## What do Delete Selected and Cancel Campaign do on a failed write?
+- `view_sms_campaigns.php` stops with `Query failed.` when a DELETE fails; the xref DELETE runs only after the campaign row went, and a campaign is counted in the notice only after both succeeded.
+- Cancel (`edit_sms_campaign.php`) stops on `=== false` and logs "SMS campaign cancelled" only when `mysqli_affected_rows()` is 1 (a job that claimed it first leaves nothing cancelled). Before #4132 both logged and announced success after a failed write. Pin: `test_sms_campaign_screen_writes_are_checked`.
+
 Related: docs/memory/platform/sms-campaigns.md, docs/memory/ui/contact-group-shared-form.md

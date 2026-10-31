@@ -40,8 +40,10 @@ if ($_POST) {
             continue;
         }
 
-        db_q("DELETE FROM sms_campaigns WHERE id = ?", array((string) $id));
-        db_q("DELETE FROM contact_groups_sms_campaigns_xref WHERE sms_campaign_id = ?", array((string) $id));
+        // A failed DELETE ends the request before the xref rows go or the
+        // campaign is counted as deleted.
+        db_q("DELETE FROM sms_campaigns WHERE id = ?", array((string) $id)) or output_error('Query failed.');
+        db_q("DELETE FROM contact_groups_sms_campaigns_xref WHERE sms_campaign_id = ?", array((string) $id)) or output_error('Query failed.');
         $deleted++;
     }
 
