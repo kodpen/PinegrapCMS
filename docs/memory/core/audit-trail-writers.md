@@ -27,7 +27,7 @@ description: Which save paths write audit_log rows, how they read the row before
 - Not attempted: designer publish (revisions keep it), imports, `update_order.php` / the order screen's Save (only ship_tos change), API webhooks, `edit_user.php` sign-in unlock, identity disconnect, two-step reset.
 
 ## What did the sandbox show (PR #905)?
-- One line per request, changed fields only; a first save after an upgrade logs NULL → '' once; the page editor writes `page_home = ''` off the home page (not fixed).
+- One line per request, changed fields only (NULL vs '': `audit-trail-diff.md`); the page editor writes `page_home = ''` off the home page (not fixed).
 
 ## Personal data?
 - A deleted order or user keeps its row in `before_json` (card fields masked) till erasure.
