@@ -273,7 +273,13 @@ function pg_email_campaign_profile_action_item_row($action, $action_item_id)
             break;
 
         case 'custom_form_submitted':
-            $row = db_item("SELECT page_name FROM page WHERE page_id = '" . $action_item_id . "'");
+            $row = db_item("SELECT page_name, page_folder FROM page WHERE page_id = '" . $action_item_id . "'");
+
+            // A form page in the Recycle Bin is listed under its former name.
+            if (is_array($row)) {
+                $row['binned'] = in_array((int) $row['page_folder'], pg_recycle_bin_folder_ids(), true);
+            }
+
             break;
 
         case 'email_campaign_sent':
@@ -332,7 +338,7 @@ function pg_email_campaign_profile_action_item_label($action, $action_item_id, $
             return (string) ($row['name'] ?? '');
 
         case 'custom_form_submitted':
-            return (string) ($row['page_name'] ?? '');
+            return pg_page_record_label($action_item_id, $row, !empty($row['binned']));
 
         case 'product_ordered':
             $name = (string) ($row['name'] ?? '');
@@ -421,6 +427,32 @@ function pg_email_campaign_profile_closes_ring($profile_id, $pick, $follows)
 }
 
 /**
+ * Why an imported "campaign sent" trigger cannot be saved, the rule the edit
+ * screen applies: the followed profile must exist and must not close a ring
+ * (pg_email_campaign_profile_closes_ring()).
+ *
+ * @param int        $profile_id   The profile written, 0 for a new one
+ * @param int|string $pick         The profile it is to follow
+ * @param array      $follows      pg_email_campaign_profile_follow_map()
+ * @param array      $profile_ids  Every profile id, as keys
+ * @return string  Plain text reason, '' when the trigger may be saved
+ */
+function pg_email_campaign_profile_follow_problem($profile_id, $pick, $follows, $profile_ids)
+{
+    $pick = (is_scalar($pick) && preg_match('/^\s*\d+\s*$/', (string) $pick)) ? (int) $pick : 0;
+
+    if (!$pick || !isset($profile_ids[$pick])) {
+        return lang('The campaign profile it is to follow does not exist.');
+    }
+
+    if (pg_email_campaign_profile_closes_ring($profile_id, $pick, $follows)) {
+        return lang('A campaign profile cannot follow itself or a profile that follows it.');
+    }
+
+    return '';
+}
+
+/**
  * The five field cards of the form, wrapped in their row.
  *
  * @param liveform $liveform
@@ -434,8 +466,9 @@ function pg_email_campaign_profile_closes_ring($profile_id, $pick, $follows)
  *                              kept in its picker even when it closes a ring,
  *                              and 'action_item_gone', the stored action when
  *                              its stored item has no row any more, so its
- *                              picker says why it is empty (empty on the
- *                              create screen)
+ *                              picker says why it is empty, and 'page_gone',
+ *                              true when the stored body page has no row any
+ *                              more (empty on the create screen)
  * @param int      $profile_id  The profile being edited, 0 for a new one; it
  *                              and the profiles downstream of it are left out
  *                              of the "campaign sent" picker
@@ -461,6 +494,12 @@ function pg_email_campaign_profile_form_cards($liveform, $user, $product_id = 0,
     if ($gone_field != '') {
         $gone_notices[$gone_field] = '<div class="form-text fg-danger mb-1">' . h(lang('The item this profile was set to follow has been deleted, so the profile sends nothing until another one is picked.')) . '</div>';
     }
+
+    // The stored body page was deleted: the Page picker falls back to the
+    // placeholder, so say why above it.
+    $page_gone_notice = !empty($keep_pages['page_gone'])
+        ? '<div class="form-text fg-danger mb-1">' . h(lang('The page this profile was set to send has been deleted, so the profile sends nothing until another page is picked.')) . '</div>'
+        : '';
 
     $output_body_preview_iframe_source = '';
 
@@ -550,7 +589,7 @@ function pg_email_campaign_profile_form_cards($liveform, $user, $product_id = 0,
                                         <div class="col-12 md:col-6 lg:col-4 my-3 collapse ' . $rows['custom_form_page_id'] . '" id="custom_form_page_id_row">
                                             <label for="custom_form_page_id" class="form-label">' . lang('Custom Form') . '</label>
                                             ' . $gone_notices['custom_form_page_id'] . '
-                                            ' . $liveform->output_field(array('type'=>'select', 'name'=>'custom_form_page_id', 'id'=>'custom_form_page_id', 'class'=>'form-control', 'options'=>get_page_options('', 'custom form', 'edit', true, $keep_pages['custom_form_page_id'] ?? 0) )) . '
+                                            ' . $liveform->output_field(array('type'=>'select', 'name'=>'custom_form_page_id', 'id'=>'custom_form_page_id', 'class'=>'form-control', 'options'=>get_page_options('', 'any form', 'edit', false, $keep_pages['custom_form_page_id'] ?? 0) )) . '
                                         </div>
                                         <div class="col-12 md:col-6 lg:col-4 my-3 collapse ' . $rows['email_campaign_profile_id'] . '" id="email_campaign_profile_id_row">
                                             <label for="email_campaign_profile_id" class="form-label">' . lang('Campaign Profile for Campaign that was sent') . '</label>
@@ -603,6 +642,7 @@ function pg_email_campaign_profile_form_cards($liveform, $user, $product_id = 0,
                                                     <div class="row">
                                                         <div class="col-12 sm:col-8 my-1">
                                                             <label class="form-label" for="page_id">' . lang('Page') . '</label>
+                                                            ' . $page_gone_notice . '
                                                             ' . $liveform->output_field(array('type'=>'select', 'id'=>'page_id', 'name'=>'page_id', 'class'=>'form-control collapse-if-selected', 'options'=>get_page_options('', '', 'view', true, $keep_pages['page_id'] ?? 0), 'data-bs-target'=>'#body_preview_row', 'onchange'=>'document.getElementById(\'body_preview_iframe\').src = \'' . OUTPUT_PATH . '\' + this.options[this.selectedIndex].firstChild.nodeValue + \'?edit=no&email=true\';')) . '
                                                         </div>
                                                         <div class="collapse popover fade bs-popover-bottom p-0 mb-3 w-100" id="body_preview_row">

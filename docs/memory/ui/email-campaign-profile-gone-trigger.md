@@ -12,7 +12,7 @@ description: A campaign profile whose trigger item is deleted is marked "(delete
 - Delete's confirmation is `…_delete_confirmation(…_follower_count($id, …_follow_map()))`: two literal keys plus the plain one, naming how many profiles follow it directly.
 
 ## What stays the same?
-- Delete removes only the profile; followers are not disabled or repointed (that would be a product decision). Runtime sending (`includes/fn/mail.php`) is unchanged.
+- Delete removes only the profile; followers are not disabled or repointed (that would be a product decision). Sending (`includes/fn/mail.php`) does not look at the trigger row; it skips only an HTML profile whose body page is gone (`email-campaign-profile-shared-form.md`).
 
 ## Where are the tests?
 - `tests/email_campaign_profile_gone_trigger_test.php`.
