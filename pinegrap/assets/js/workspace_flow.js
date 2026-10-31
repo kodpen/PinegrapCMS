@@ -264,6 +264,7 @@
         changes: 0,         // counts every change, to tell one made while a request ran
         history: null,      // the open flow's steps for undo and redo (historyOf())
         saving: null,
+        leaveSent: -1,      // state.changes a keepalive save carried while its answer was lost
         saveTimer: 0,
         settleTimer: 0,     // settle() once the typing pauses
         settleHistory: false,
@@ -8641,9 +8642,12 @@
         }
 
         var flow = state.flow;
+        var keepalive = !!(options && options.keepalive);
+        var sent = state.changes;
 
         state.dirty = false;
         state.saveError = '';
+        state.leaveSent = -1;
         state.saving = K.api('ws_flow_save', payload(), options).then(function (data) {
             flow.draft_rev = data.draft_rev;
             flow.changed = true;
@@ -8661,6 +8665,16 @@
             }
         }).catch(function (error) {
             state.dirty = true;
+
+            // A keepalive request is rejected when the page closes under it,
+            // yet the browser still delivers it: no answer (no field) means
+            // the save is on its way. The same changes are not sent again as
+            // the page goes (the server would refuse the stale draft_rev);
+            // a page that stays saves them again after SAVE_DELAY.
+            if (keepalive && (error.field === undefined)) {
+                state.leaveSent = sent;
+                return;
+            }
 
             if (error.field === 'changed_meanwhile') {
                 conflict(error.message);
@@ -8693,9 +8707,11 @@
     // and a refusal leaves the changes unsaved. Browsers refuse a keepalive
     // body over 64 KiB: a larger draft is saved the usual way while the page
     // is only hidden, and when it is left (leaving) it stays unsaved, which
-    // beforeunload asks about.
+    // beforeunload asks about. beforeunload, visibilitychange and pagehide
+    // all come as a page is left: changes whose keepalive save is already on
+    // its way (leaveSent) are sent once.
     function saveOnLeave(leaving) {
-        if (!drafting() || !state.flow || !state.dirty || state.saving || state.conflict) {
+        if (!drafting() || !state.flow || !state.dirty || state.saving || state.conflict || (state.leaveSent === state.changes)) {
             return;
         }
 
