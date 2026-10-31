@@ -619,10 +619,13 @@ function pg_image_engine_no_gain($bytes_after, $bytes_before, $format_conversion
  *   edit            array the image editor's recipe, checked by
  *                         pg_image_edit_validate() (includes/fn/image_editor.php):
  *                         rot, flip_x, flip_y, straighten, crop, space_w,
- *                         space_h, shape, out_w, out_h, overlay (a PNG's
- *                         path), first_frame (an animated picture gives its
- *                         first frame instead of being refused). Applied to
- *                         the upright picture before encoding
+ *                         space_h, shape, out_w, out_h, color (a matrix and a
+ *                         gamma; Imagick only, reason no_color under GD),
+ *                         sharpen, vignette, overlay (a PNG's path),
+ *                         first_frame (an animated picture gives its first
+ *                         frame instead of being refused), type (the
+ *                         IMAGETYPE_* to write, the read one by default).
+ *                         Applied to the upright picture before encoding
  *                         (pg_image_edit_imagick(), pg_image_edit_gd()); no
  *                         resize or rotate on top, and the result is written
  *                         even when it is heavier.
@@ -757,6 +760,13 @@ function pg_process_image_file($file_path, $options = array())
         }
 
         $use_imagick = ($writer === 'imagick');
+    }
+
+    // GD has no colour matrix: the image editor sends a GD server its colour
+    // step done (the colour layer it saves from).
+    if ($edit && !empty($edit['color']) && !$use_imagick) {
+        $report['reason'] = 'no_color';
+        return $report;
     }
 
     // GD turns a JPEG upright from its EXIF orientation (Imagick reads the
@@ -963,6 +973,10 @@ function pg_process_image_with_imagick($file_path, $type, $resize, $target_width
 {
     $image = null;
 
+    // An edit may write another type than it reads (the image editor's
+    // colour layer is written in the original's type).
+    $write_type = ($edit && !empty($edit['type'])) ? (int) $edit['type'] : $type;
+
     try {
         $image = new Imagick();
         $image->readImage(empty($edit['first_frame']) ? $file_path : ($file_path . '[0]'));
@@ -1005,7 +1019,7 @@ function pg_process_image_with_imagick($file_path, $type, $resize, $target_width
             $image->transformImageColorspace(Imagick::COLORSPACE_SRGB);
         }
 
-        if ($edit && !pg_image_edit_imagick($image, $edit, pg_image_edit_keeps_alpha($type, $format))) {
+        if ($edit && !pg_image_edit_imagick($image, $edit, pg_image_edit_keeps_alpha($write_type, $format))) {
             $image->clear();
             $image->destroy();
             return false;
@@ -1032,6 +1046,10 @@ function pg_process_image_with_imagick($file_path, $type, $resize, $target_width
             $image->rotateImage(new ImagickPixel('none'), $rotate);
         }
 
+        if (($format === '') && ($write_type !== $type)) {
+            $image->setImageFormat(image_type_to_extension($write_type, false));
+        }
+
         if ($format === 'webp') {
             $image->setImageFormat('webp');
             $image->setImageCompressionQuality($quality);
@@ -1046,21 +1064,21 @@ function pg_process_image_with_imagick($file_path, $type, $resize, $target_width
             $image->setImageCompressionQuality($quality);
             $image->setOption('heic:speed', '6');
 
-        } elseif ($type == IMAGETYPE_JPEG) {
+        } elseif ($write_type == IMAGETYPE_JPEG) {
             $image->setImageCompression(Imagick::COMPRESSION_JPEG);
             // Progressive: the picture appears at low detail and sharpens,
             // instead of filling in one band at a time.
             $image->setInterlaceScheme(Imagick::INTERLACE_PLANE);
             $image->setImageCompressionQuality($quality);
 
-        } elseif ($type == IMAGETYPE_PNG) {
+        } elseif ($write_type == IMAGETYPE_PNG) {
             // PNG is lossless, so quality does nothing here; the saving comes
             // from the zlib level and the filter.
             $image->setImageCompression(Imagick::COMPRESSION_ZIP);
             $image->setOption('png:compression-level', '9');
             $image->setOption('png:compression-filter', '5');
 
-        } elseif (defined('IMAGETYPE_WEBP') && ($type == IMAGETYPE_WEBP)) {
+        } elseif (defined('IMAGETYPE_WEBP') && ($write_type == IMAGETYPE_WEBP)) {
             $image->setImageCompressionQuality($quality);
             $image->setOption('webp:method', '6');
 
@@ -1161,6 +1179,7 @@ function pg_image_apply_imagick_orientation($image)
 function pg_process_image_with_gd($file_path, $type, $resize, $target_width, $target_height, $quality, $format = '', $rotate = 0, $edit = null)
 {
     $source = pg_image_gd_read($file_path, $type);
+    $write_type = ($edit && !empty($edit['type'])) ? (int) $edit['type'] : $type;
 
     if (!$source) {
         return false;
@@ -1183,7 +1202,7 @@ function pg_process_image_with_gd($file_path, $type, $resize, $target_width, $ta
     $image = $source;
 
     if ($edit) {
-        $image = pg_image_edit_gd($source, $edit, pg_image_edit_keeps_alpha($type, $format));
+        $image = pg_image_edit_gd($source, $edit, pg_image_edit_keeps_alpha($write_type, $format));
 
         if (!$image) {
             return false;
@@ -1234,7 +1253,7 @@ function pg_process_image_with_gd($file_path, $type, $resize, $target_width, $ta
 
         pg_image_destroy($source);
 
-    } elseif (($type == IMAGETYPE_PNG) || (defined('IMAGETYPE_WEBP') && ($type == IMAGETYPE_WEBP))) {
+    } elseif (($write_type == IMAGETYPE_PNG) || (defined('IMAGETYPE_WEBP') && ($write_type == IMAGETYPE_WEBP))) {
         imagesavealpha($image, true);
     }
 
@@ -1301,7 +1320,7 @@ function pg_process_image_with_gd($file_path, $type, $resize, $target_width, $ta
         return $data;
     }
 
-    switch ($type) {
+    switch ($write_type) {
 
         case IMAGETYPE_JPEG:
             imageinterlace($image, true);
@@ -1336,7 +1355,7 @@ function pg_process_image_with_gd($file_path, $type, $resize, $target_width, $ta
             break;
 
         default:
-            if (defined('IMAGETYPE_WEBP') && ($type == IMAGETYPE_WEBP) && function_exists('imagewebp')) {
+            if (defined('IMAGETYPE_WEBP') && ($write_type == IMAGETYPE_WEBP) && function_exists('imagewebp')) {
                 $written = imagewebp($image, null, $quality);
             }
             break;
@@ -1539,6 +1558,52 @@ function pg_image_edit_imagick($image, $edit, $alpha)
         $image->resizeImage($plan['out_w'], $plan['out_h'], Imagick::FILTER_LANCZOS, 1);
     }
 
+    if (!empty($edit['color'])) {
+        $m = $edit['color']['matrix'];
+
+        // ImageMagick's 6 x 6 matrix: rows and columns R, G, B, K, A and
+        // the offset, which counts from 0 to 1 as the preview's does.
+        $image->colorMatrixImage(array(
+            $m[0], $m[1], $m[2], 0, 0, $m[4],
+            $m[5], $m[6], $m[7], 0, 0, $m[9],
+            $m[10], $m[11], $m[12], 0, 0, $m[14],
+            0, 0, 0, 1, 0, 0,
+            0, 0, 0, 0, 1, 0,
+            0, 0, 0, 0, 0, 1));
+
+        if (method_exists($image, 'clampImage')) {
+            $image->clampImage();
+        }
+
+        // gammaImage(g) gives v^(1/g); the recipe holds the exponent.
+        if ((float) $edit['color']['gamma'] != 1.0) {
+            $image->gammaImage(1 / $edit['color']['gamma']);
+        }
+    }
+
+    // An unsharp mask over a 3 x 3 binomial blur (sigma 0.85), the kernel
+    // GD and the preview use.
+    if (!empty($edit['sharpen'])) {
+        $image->unsharpMaskImage(1, 0.85, (float) $edit['sharpen'], 0);
+    }
+
+    if (!empty($edit['vignette'])) {
+        list($mw, $mh, $alphas) = pg_image_edit_vignette_alphas($plan['out_w'], $plan['out_h'], $edit['vignette']);
+        $pixels = array();
+
+        foreach ($alphas as $alpha) {
+            array_push($pixels, 0, 0, 0, (int) round($alpha * 255));
+        }
+
+        $vignette = new Imagick();
+        $vignette->newImage($mw, $mh, new ImagickPixel('transparent'), 'png');
+        $vignette->importImagePixels(0, 0, $mw, $mh, 'RGBA', Imagick::PIXEL_CHAR, $pixels);
+        $vignette->resizeImage($plan['out_w'], $plan['out_h'], Imagick::FILTER_TRIANGLE, 1);
+        $image->compositeImage($vignette, Imagick::COMPOSITE_OVER, 0, 0);
+        $vignette->clear();
+        $vignette->destroy();
+    }
+
     if (!empty($edit['overlay'])) {
         $overlay = new Imagick($edit['overlay']);
         $image->compositeImage($overlay, Imagick::COMPOSITE_OVER, 0, 0);
@@ -1685,6 +1750,17 @@ function pg_image_edit_gd($image, $edit, $alpha)
     imagecopyresampled($out, $image, 0, 0, $sx, $sy, $plan['out_w'], $plan['out_h'], $sw, $sh);
     pg_image_destroy($image);
 
+    if (!empty($edit['sharpen'])) {
+        $a = (float) $edit['sharpen'];
+        // GD cuts the result to a whole number: the offset of 0.5 rounds it.
+        imageconvolution($out, array(array(-$a / 16, -$a / 8, -$a / 16), array(-$a / 8, 1 + 0.75 * $a, -$a / 8), array(-$a / 16, -$a / 8, -$a / 16)), 1, 0.5);
+    }
+
+    if (!empty($edit['vignette']) && !pg_image_edit_vignette_gd($out, $edit['vignette'])) {
+        pg_image_destroy($out);
+        return false;
+    }
+
     if (!empty($edit['overlay'])) {
         $overlay = @imagecreatefrompng($edit['overlay']);
 
@@ -1706,6 +1782,81 @@ function pg_image_edit_gd($image, $edit, $alpha)
     }
 
     return $out;
+}
+
+/**
+ * The vignette's opacity at r (0 in the middle, 1 at a corner): none to 40 %
+ * of the way, then up through 30 % of the amount at 70 % to the amount at
+ * the corners; vignetteStops() of assets/js/pg_image_editor_model.js, which
+ * the preview draws as a CSS gradient.
+ *
+ * @return float
+ */
+function pg_image_edit_vignette_alpha($r, $amount)
+{
+    if ($r <= 0.4) {
+        return 0.0;
+    }
+
+    return $amount * (($r <= 0.7) ? (0.3 * ($r - 0.4) / 0.3) : min(1, 0.3 + 0.7 * ($r - 0.7) / 0.3));
+}
+
+/**
+ * A small mask of the vignette for a w x h picture, at most 256 px on its
+ * long side; scaled up smoothly it lies over the picture. The ellipse runs
+ * through the corners, as a CSS radial gradient's farthest-corner does.
+ *
+ * @return array width, height, the opacities row by row
+ */
+function pg_image_edit_vignette_alphas($width, $height, $amount)
+{
+    $long = min(256, max($width, $height));
+    $mw = max(2, (int) round($long * $width / max($width, $height)));
+    $mh = max(2, (int) round($long * $height / max($width, $height)));
+    $alphas = array();
+
+    for ($y = 0; $y < $mh; $y++) {
+        $v = 2 * ($y + 0.5) / $mh - 1;
+
+        for ($x = 0; $x < $mw; $x++) {
+            $u = 2 * ($x + 0.5) / $mw - 1;
+            $alphas[] = pg_image_edit_vignette_alpha(sqrt(($u * $u + $v * $v) / 2), $amount);
+        }
+    }
+
+    return array($mw, $mh, $alphas);
+}
+
+// The vignette over a GD picture, in place.
+function pg_image_edit_vignette_gd($image, $amount)
+{
+    $w = imagesx($image);
+    $h = imagesy($image);
+    list($mw, $mh, $alphas) = pg_image_edit_vignette_alphas($w, $h, $amount);
+    $mask = pg_image_edit_gd_canvas($mw, $mh);
+
+    if (!$mask) {
+        return false;
+    }
+
+    foreach ($alphas as $i => $alpha) {
+        imagesetpixel($mask, $i % $mw, (int) floor($i / $mw), imagecolorallocatealpha($mask, 0, 0, 0, 127 - (int) round($alpha * 127)));
+    }
+
+    // IMG_BILINEAR_FIXED leaves a fully clear mask one step dark.
+    $scaled = imagescale($mask, $w, $h, IMG_TRIANGLE);
+    pg_image_destroy($mask);
+
+    if (!$scaled) {
+        return false;
+    }
+
+    imagealphablending($image, true);
+    imagecopy($image, $scaled, 0, 0, 0, 0, $w, $h);
+    imagealphablending($image, false);
+    pg_image_destroy($scaled);
+
+    return true;
 }
 
 /**

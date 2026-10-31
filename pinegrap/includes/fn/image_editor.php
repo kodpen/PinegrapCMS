@@ -95,6 +95,27 @@ function pg_image_editor_strings()
         'outputSize'     => lang('Output size'),
         'width'          => lang('Width'),
         'height'         => lang('Height'),
+        'adjustments'    => lang('Adjustments'),
+        'filters'        => lang('Filters'),
+        'details'        => lang('Details'),
+        'adj_brightness' => lang('Brightness'),
+        'adj_contrast'   => lang('Contrast'),
+        'adj_saturation' => lang('Saturation'),
+        'adj_exposure'   => lang('Exposure'),
+        'adj_temperature' => lang('Temperature'),
+        'adj_gamma'      => lang('Gamma'),
+        'adj_vignette'   => lang('Vignette'),
+        'adj_sharpen'    => lang('Sharpen'),
+        'filter_none'    => lang('Original'),
+        'filter_mono'    => lang('Black and white'),
+        'filter_sepia'   => lang('Sepia'),
+        'filter_cool'    => lang('Cool'),
+        'filter_warm'    => lang('Warm'),
+        'filter_fade'    => lang('Faded'),
+        'filter_vivid'   => lang('Vivid'),
+        'filter_noir'    => lang('Noir'),
+        'filter_chrome'  => lang('Chrome'),
+        'hintAdjust'     => lang('Changes show at once. Double-click a slider to set it back to 0.'),
     );
 }
 
@@ -142,6 +163,8 @@ function pg_image_editor_config()
         // Where it opens and saves files, and the session's token for it.
         'api'     => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/image_editor_api.php',
         'token'   => isset($_SESSION['software']['token']) ? (string) $_SESSION['software']['token'] : '',
+        // Without Imagick the browser sends the colour step done.
+        'serverColor' => class_exists('Imagick'),
     );
 }
 
@@ -217,6 +240,98 @@ function pg_image_edit_number($value, $min, $max)
     }
 
     return $value;
+}
+
+// The adjustments and their ranges; 0 changes nothing (ADJUST of
+// assets/js/pg_image_editor_model.js).
+function pg_image_edit_adjust_ranges()
+{
+    return array(
+        'brightness' => array(-100, 100), 'contrast' => array(-100, 100), 'saturation' => array(-100, 100),
+        'exposure' => array(-100, 100), 'temperature' => array(-100, 100), 'gamma' => array(-100, 100),
+        'vignette' => array(0, 100), 'sharpen' => array(0, 100));
+}
+
+// The filters: fixed values of the adjustments, added to the sliders'
+// (FILTERS of the model).
+function pg_image_edit_filters()
+{
+    return array(
+        'none'   => array(),
+        'mono'   => array('saturation' => -100),
+        'sepia'  => array('saturation' => -100, 'temperature' => 60, 'contrast' => -8, 'brightness' => 4),
+        'cool'   => array('temperature' => -35, 'saturation' => 8, 'brightness' => 2),
+        'warm'   => array('temperature' => 35, 'saturation' => 15),
+        'fade'   => array('contrast' => -28, 'brightness' => 8, 'saturation' => -30),
+        'vivid'  => array('contrast' => 15, 'saturation' => 45),
+        'noir'   => array('saturation' => -100, 'contrast' => 50, 'brightness' => -6),
+        'chrome' => array('contrast' => 22, 'saturation' => 22, 'exposure' => 6));
+}
+
+// An affine colour map as rows R, G, B of [r, g, b, offset]; $a after $b.
+function pg_image_edit_affine($a, $b)
+{
+    $out = array();
+
+    foreach ($a as $row) {
+        $line = array();
+
+        for ($c = 0; $c < 4; $c++) {
+            $line[] = $row[0] * $b[0][$c] + $row[1] * $b[1][$c] + $row[2] * $b[2][$c] + (($c === 3) ? $row[3] : 0);
+        }
+
+        $out[] = $line;
+    }
+
+    return $out;
+}
+
+/**
+ * The colour step of the adjustment values: colorMatrix() of the model, so
+ * the server draws what the preview's SVG filter shows. Exposure scales,
+ * brightness lifts, contrast spreads around the middle, saturation moves from
+ * or towards grey (Rec. 709 luma), temperature warms or cools, on sRGB values
+ * from 0 to 1; then gamma.
+ *
+ * @return array|null matrix: 20 numbers, rows R, G, B, A of r, g, b, a,
+ *                    offset (0 to 1); gamma: the exponent. null for none.
+ */
+function pg_image_edit_color($v)
+{
+    if (!$v['exposure'] && !$v['temperature'] && !$v['brightness'] && !$v['contrast'] && !$v['saturation'] && !$v['gamma']) {
+        return null;
+    }
+
+    $e = pow(2, $v['exposure'] / 100);
+    $t = $v['temperature'] / 100;
+    $b = 0.25 * $v['brightness'] / 100;
+    $c = pow(2, $v['contrast'] / 100);
+    $s = 1 + $v['saturation'] / 100;
+    $lr = 0.2126;
+    $lg = 0.7152;
+    $lb = 0.0722;
+    $gains = function ($r, $g, $b, $offset) {
+        return array(array($r, 0, 0, $offset), array(0, $g, 0, $offset), array(0, 0, $b, $offset));
+    };
+
+    $m = $gains($e, $e, $e, 0);
+    $m = pg_image_edit_affine($gains(1, 1, 1, $b), $m);
+    $m = pg_image_edit_affine($gains($c, $c, $c, 0.5 * (1 - $c)), $m);
+    $m = pg_image_edit_affine(array(
+        array($lr + (1 - $lr) * $s, $lg - $lg * $s, $lb - $lb * $s, 0),
+        array($lr - $lr * $s, $lg + (1 - $lg) * $s, $lb - $lb * $s, 0),
+        array($lr - $lr * $s, $lg - $lg * $s, $lb + (1 - $lb) * $s, 0)), $m);
+    $m = pg_image_edit_affine($gains(1 + 0.2 * $t, 1 + 0.04 * $t, 1 - 0.2 * $t, 0), $m);
+
+    $matrix = array(
+        $m[0][0], $m[0][1], $m[0][2], 0, $m[0][3],
+        $m[1][0], $m[1][1], $m[1][2], 0, $m[1][3],
+        $m[2][0], $m[2][1], $m[2][2], 0, $m[2][3],
+        0, 0, 0, 1, 0);
+
+    return array(
+        'matrix' => array_map(function ($x) { return round($x, 6); }, $matrix),
+        'gamma'  => round(pow(2, -$v['gamma'] / 100), 6));
 }
 
 /**
@@ -343,6 +458,36 @@ function pg_image_edit_validate($doc)
         $out_h = $crop ? $crop['h'] : $rh;
     }
 
+    // The colour step: the adjustments plus the filter's, each in range.
+    $adjust = isset($doc['adjust']) ? $doc['adjust'] : array();
+    $filter = isset($doc['filter']) ? $doc['filter'] : 'none';
+    $ranges = pg_image_edit_adjust_ranges();
+    $filters = pg_image_edit_filters();
+
+    if (!is_array($adjust)) {
+        $result['error'] = 'adjust';
+        return $result;
+    }
+
+    foreach ($adjust as $key => $value) {
+        if (!isset($ranges[$key]) || (pg_image_edit_number($value, $ranges[$key][0], $ranges[$key][1]) === null)) {
+            $result['error'] = 'adjust';
+            return $result;
+        }
+    }
+
+    if (!is_string($filter) || !isset($filters[$filter])) {
+        $result['error'] = 'filter';
+        return $result;
+    }
+
+    $values = array();
+
+    foreach ($ranges as $key => $range) {
+        $sum = (isset($adjust[$key]) ? $adjust[$key] : 0) + (isset($filters[$filter][$key]) ? $filters[$filter][$key] : 0);
+        $values[$key] = max($range[0], min($range[1], (int) round($sum)));
+    }
+
     $result['edit'] = array(
         'rot'        => (int) $rot,
         'flip_x'     => $flip_x,
@@ -353,7 +498,11 @@ function pg_image_edit_validate($doc)
         'space_h'    => $rh,
         'shape'      => $shape,
         'out_w'      => max(1, (int) round($out_w)),
-        'out_h'      => max(1, (int) round($out_h)));
+        'out_h'      => max(1, (int) round($out_h)),
+        'color'      => pg_image_edit_color($values),
+        // Amounts as vignetteStops() and sharpenKernel() of the model use them.
+        'vignette'   => 0.8 * $values['vignette'] / 100,
+        'sharpen'    => 1.5 * $values['sharpen'] / 100);
 
     return $result;
 }
@@ -446,18 +595,17 @@ function pg_image_editor_open($request, $user)
 }
 
 /**
- * A PNG the browser drew (the overlay, an artboard) as a data: URL, decoded
- * onto the disk in pieces, as base64_decode() of the whole string would hold
- * it three times over; kept only when it is a PNG of exactly w x h.
+ * A picture the browser drew as a data: URL (PNG or JPEG), decoded onto the
+ * disk in pieces, as base64_decode() of the whole string would hold it three
+ * times over; kept only when its bytes are the type the URL names.
  *
- * @return bool
+ * @return array|false getimagesize() of the file written to $destination
  */
-function pg_image_editor_take_png($data, $destination, $width, $height)
+function pg_image_editor_take_picture($data, $destination)
 {
     $data = is_string($data) ? $data : '';
-    $prefix = 'data:image/png;base64,';
 
-    if (strncmp($data, $prefix, strlen($prefix)) !== 0) {
+    if (!preg_match('#^data:image/(png|jpeg);base64,#', substr($data, 0, 32), $match)) {
         return false;
     }
 
@@ -469,7 +617,7 @@ function pg_image_editor_take_png($data, $destination, $width, $height)
 
     // A multiple of four: every piece is whole base64 groups, and only the
     // last one may carry padding.
-    for ($offset = strlen($prefix), $length = strlen($data); $offset < $length; $offset += 65532) {
+    for ($offset = strlen($match[0]), $length = strlen($data); $offset < $length; $offset += 65532) {
         $chunk = base64_decode(substr($data, $offset, 65532), true);
 
         if (($chunk === false) || (fwrite($handle, $chunk) === false)) {
@@ -483,12 +631,29 @@ function pg_image_editor_take_png($data, $destination, $width, $height)
 
     $size = @getimagesize($destination);
 
-    if (!$size || ((int) $size[2] !== IMAGETYPE_PNG) || ((int) $size[0] !== (int) $width) || ((int) $size[1] !== (int) $height)) {
+    if (!$size || ((int) $size[2] !== (($match[1] === 'png') ? IMAGETYPE_PNG : IMAGETYPE_JPEG))) {
         @unlink($destination);
         return false;
     }
 
-    return true;
+    return $size;
+}
+
+// A PNG the browser drew (the overlay, an artboard), kept only at exactly
+// w x h.
+function pg_image_editor_take_png($data, $destination, $width, $height)
+{
+    $size = (strncmp(is_string($data) ? $data : '', 'data:image/png;', 15) === 0) ? pg_image_editor_take_picture($data, $destination) : false;
+
+    if ($size && ((int) $size[0] === (int) $width) && ((int) $size[1] === (int) $height)) {
+        return true;
+    }
+
+    if ($size) {
+        @unlink($destination);
+    }
+
+    return false;
 }
 
 /**
@@ -699,13 +864,44 @@ function pg_image_editor_save($request, $user)
         $edit['overlay'] = $overlay;
     }
 
+    $source = $file['path'];
+    $layer = '';
+
+    // A server without Imagick has no colour matrix: the browser sends the
+    // picture it loaded with the colour step done (the colour layer), of its
+    // shape and no larger, and the rest is drawn from that in the file's type.
+    if (!empty($request['colour']) && !empty($edit['color'])) {
+        $layer = FILE_DIRECTORY_PATH . '/' . $name . '.' . (function_exists('getmypid') ? getmypid() : uniqid()) . '.colour.tmp';
+        $size = pg_image_editor_take_picture($request['colour'], $layer);
+        $width = ($edit['rot'] % 180) ? $edit['space_h'] : $edit['space_w'];
+        $height = ($edit['rot'] % 180) ? $edit['space_w'] : $edit['space_h'];
+
+        if (!$size || ($size[0] > $width + 0.5) || ($size[1] > $height + 0.5) || (abs($size[0] - $size[1] * $width / $height) > 1.5)) {
+            @unlink($layer);
+            @unlink($overlay);
+            return pg_image_editor_refusal(lang('Invalid request.'));
+        }
+
+        $source = $layer;
+        $edit['color'] = null;
+        $edit['type'] = $file['type'];
+
+    } elseif (!empty($edit['color']) && !class_exists('Imagick')) {
+        @unlink($overlay);
+        return pg_image_editor_refusal(lang('Invalid request.'));
+    }
+
     // Encoded for quality, as the file manager's rotate button does: the
     // operator asked for a changed picture, not a lighter file, and a replace
     // is the next edit's original.
-    $report = pg_image_edit_apply($file['path'], $edit, array('quality' => 92));
+    $report = pg_image_edit_apply($source, $edit, array('quality' => 92));
 
     if ($overlay !== '') {
         @unlink($overlay);
+    }
+
+    if ($layer !== '') {
+        @unlink($layer);
     }
 
     if (($report['status'] !== 'success') || !is_string($report['data'])) {
