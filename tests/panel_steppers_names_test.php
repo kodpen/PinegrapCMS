@@ -30,7 +30,9 @@ function test_panel_steppers_names_every_stepper_button_is_named()
 	$found = 0;
 
 	foreach ($iterator as $file) {
-		$path = $file->getPathname();
+		// Windows answers backslashes below $root; the checks below compare
+		// with forward-slash paths. The length stays, so $relative still cuts.
+		$path = str_replace('\\', '/', $file->getPathname());
 
 		if (substr($path, -4) !== '.php' || strpos($path, '/vendor/') !== false) {
 			continue;

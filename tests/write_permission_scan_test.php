@@ -86,8 +86,10 @@ function test_write_permission_walk_lists_a_closed_folder()
 	$tree = pg_test_write_permission_tree();
 
 	// Root writes into a 0555 folder all the same; the listing is only
-	// asked of a runner that the mode stops.
-	$closed = !is_writable($tree['closed']);
+	// asked of a runner that the mode stops. On Windows chmod() only sets
+	// the read-only attribute, which Windows does not enforce on folders,
+	// so the walk (pg_dir_writable()) rightly lists nothing there.
+	$closed = (DIRECTORY_SEPARATOR !== '\\') && !is_writable($tree['closed']);
 
 	$full = pg_write_permission_walk($tree['root']);
 	$folders = pg_write_permission_walk($tree['root'], false);
