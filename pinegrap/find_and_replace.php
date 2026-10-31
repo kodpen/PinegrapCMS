@@ -54,6 +54,8 @@ $all_table_defs = [
         // its rows.
         'base_where'   => pg_page_region_read_sql(),
         'columns'      => ['pregion_content'],
+        // The page the region belongs to is marked for SEO rescoring.
+        'seo_stale_page' => 'pregion_page',
         // The page's frontend URL — edited from the page itself
         'edit_url'     => '{pregion_page_name}',
         'url_raw'      => true,   // OUTPUT_PATH . page_name (software dir olmadan)
@@ -120,6 +122,8 @@ if (defined('ECOMMERCE') && ECOMMERCE === true) {
         'columns'      => ['short_description', 'full_description', 'details'],
         'edit_url'     => 'edit_product.php?id={id}',
         'url_raw'      => false,
+        // The row carries its own SEO score, marked stale in the same UPDATE.
+        'seo_stale'    => 'row',
     ];
 
     $all_table_defs['product_groups'] = [
@@ -132,6 +136,8 @@ if (defined('ECOMMERCE') && ECOMMERCE === true) {
         'columns'      => ['short_description', 'full_description', 'details'],
         'edit_url'     => 'edit_product_group.php?id={id}',
         'url_raw'      => false,
+        // The row carries its own SEO score, marked stale in the same UPDATE.
+        'seo_stale'    => 'row',
     ];
 }
 
@@ -594,6 +600,9 @@ if (!$_POST) {
             foreach ($def['columns'] as $col) {
                 $sql_select .= ', ' . $col;
             }
+            if (!empty($def['seo_stale_page'])) {
+                $sql_select .= ', ' . $def['seo_stale_page'];
+            }
 
             $sql_base_where = !empty($def['base_where'] ?? '') ? '(' . $def['base_where'] . ') AND ' : '';
             $sql_where      = build_find_where($def['columns'], $find, $case_sensitive, $use_regex);
@@ -629,11 +638,19 @@ if (!$_POST) {
                         if ($sql_set != '') $sql_set .= ', ';
                         $sql_set .= "$col = '" . e($item[$col]) . "'";
                     }
+                    // The SEO score reads these texts and the scheduled SEO
+                    // job scores only stale rows.
+                    if (($def['seo_stale'] ?? '') === 'row') {
+                        $sql_set .= ", seo_analysis_current = '0'";
+                    }
                     // Products are traced in the audit trail; the other tables here are not.
                     $audit_before = ($def['table'] === 'products') ? pg_audit_fetch('products', (int) $item[$def['id_column']]) : array();
                     db("UPDATE {$def['table']} SET $sql_set WHERE {$def['id_column']} = '" . $item[$def['id_column']] . "'");
                     if ($def['table'] === 'products') {
                         pg_audit_record('update', 'products', (int) $item[$def['id_column']], $audit_before);
+                    }
+                    if (!empty($def['seo_stale_page']) && ((int) $item[$def['seo_stale_page']] > 0)) {
+                        db_q("UPDATE page SET seo_analysis_current = '0' WHERE page_id = ?", array((int) $item[$def['seo_stale_page']]));
                     }
                     $number_of_items++;
                 }

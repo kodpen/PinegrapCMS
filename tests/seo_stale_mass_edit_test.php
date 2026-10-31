@@ -49,7 +49,7 @@ function test_find_and_replace_marks_products_and_groups_stale()
 
 	foreach (array('products', 'product_groups') as $table) {
 		pg_assert_true(
-			(bool) preg_match("/'table'\s*=>\s*'" . $table . "',[^\]]*'seo_stale'\s*=>\s*'row'/s", $source),
+			(bool) preg_match("/'table'\s*=>\s*'" . $table . "',(?:(?!\];).)*'seo_stale'\s*=>\s*'row'/s", $source),
 			$table . ' rows are marked stale in the same UPDATE'
 		);
 	}
@@ -62,7 +62,7 @@ function test_find_and_replace_marks_the_region_page_stale()
 	$source = seo_stale_mass_edit_test_source('find_and_replace.php');
 
 	pg_assert_true(
-		(bool) preg_match("/'table'\s*=>\s*'pregion',[^\]]*'seo_stale_page'\s*=>\s*'pregion_page'/s", $source),
+		(bool) preg_match("/'table'\s*=>\s*'pregion',(?:(?!\];).)*'seo_stale_page'\s*=>\s*'pregion_page'/s", $source),
 		'a page region names the page it belongs to'
 	);
 	pg_assert_contains("UPDATE page SET seo_analysis_current = '0' WHERE page_id = ?", $source, 'the region page is marked stale');

@@ -412,6 +412,8 @@ if (!$_POST) {
                 while ($row = mysqli_fetch_assoc($q)) {
                     // One audit line per changed page: read before its first
                     // field update, recorded after its last.
+                    // Each changed field marks the SEO score stale, as Edit
+                    // Page does: the scheduled SEO job scores only stale rows.
                     $audit_before = null;
                     foreach ($fr_fields as $field) {
                         $current = $row[$field];
@@ -449,7 +451,7 @@ if (!$_POST) {
                         if ($audit_before === null) {
                             $audit_before = pg_audit_fetch('page', $row['page_id']);
                         }
-                        db("UPDATE page SET `{$field}` = '" . escape($new_val) . "' WHERE page_id = '" . e($row['page_id']) . "'");
+                        db("UPDATE page SET `{$field}` = '" . escape($new_val) . "', seo_analysis_current = '0' WHERE page_id = '" . e($row['page_id']) . "'");
 
                         // A redirect of the page's own that holds the new
                         // name would loop, so it goes; no redirect from the
@@ -517,6 +519,8 @@ if (!$_POST) {
 
         // One audit line per changed page: read before its first field
         // update, recorded after its last.
+        // Every field below is read by the SEO score, so each UPDATE also
+        // marks it stale (as Edit Page does) for the scheduled SEO job.
         $audit_before = null;
 
         
@@ -538,7 +542,7 @@ if (!$_POST) {
                     if ($audit_before === null) {
                         $audit_before = pg_audit_fetch('page', $page_id);
                     }
-                    db("UPDATE page SET page_name = '" . escape($new_page_name) . "' WHERE page_id = '" . e($page_id) . "'");
+                    db("UPDATE page SET page_name = '" . escape($new_page_name) . "', seo_analysis_current = '0' WHERE page_id = '" . e($page_id) . "'");
 
                     // A redirect of the page's own that holds the new name
                     // would loop, so it goes; no redirect from the old name
@@ -562,7 +566,7 @@ if (!$_POST) {
             if ($audit_before === null) {
                 $audit_before = pg_audit_fetch('page', $page_id);
             }
-            db("UPDATE page SET page_title = '" . escape($_POST['page_title_' . $row['page_id']]) . "' WHERE page_id = '" . e($page_id) . "'");
+            db("UPDATE page SET page_title = '" . escape($_POST['page_title_' . $row['page_id']]) . "', seo_analysis_current = '0' WHERE page_id = '" . e($page_id) . "'");
         }
 
         //if page_meta_description posted and posted page_meta_description not equal to current one, update it.
@@ -577,7 +581,7 @@ if (!$_POST) {
             if ($audit_before === null) {
                 $audit_before = pg_audit_fetch('page', $page_id);
             }
-            db("UPDATE page SET page_meta_description = '" . escape($_POST['meta_description_' . $row['page_id']]) . "' WHERE page_id = '" . e($page_id) . "'");
+            db("UPDATE page SET page_meta_description = '" . escape($_POST['meta_description_' . $row['page_id']]) . "', seo_analysis_current = '0' WHERE page_id = '" . e($page_id) . "'");
         }
        
         //if page_search posted and posted page_search not equal to current one, update it.
@@ -593,7 +597,7 @@ if (!$_POST) {
             if ($audit_before === null) {
                 $audit_before = pg_audit_fetch('page', $page_id);
             }
-            db("UPDATE page SET page_search = '" . escape($_POST['page_search_' . $row['page_id']]) . "' WHERE page_id = '" . e($page_id) . "'");
+            db("UPDATE page SET page_search = '" . escape($_POST['page_search_' . $row['page_id']]) . "', seo_analysis_current = '0' WHERE page_id = '" . e($page_id) . "'");
 
             $new_page_search = $_POST['page_search_' . $row['page_id']];
         }
@@ -611,7 +615,7 @@ if (!$_POST) {
             if ($audit_before === null) {
                 $audit_before = pg_audit_fetch('page', $page_id);
             }
-            db("UPDATE page SET page_search_keywords = '" . escape($_POST['page_search_keywords_' . $row['page_id']]) . "' WHERE page_id = '" . e($page_id) . "'");
+            db("UPDATE page SET page_search_keywords = '" . escape($_POST['page_search_keywords_' . $row['page_id']]) . "', seo_analysis_current = '0' WHERE page_id = '" . e($page_id) . "'");
 
             $new_page_search_keywords = $_POST['page_search_keywords_' . $row['page_id']];
         }
