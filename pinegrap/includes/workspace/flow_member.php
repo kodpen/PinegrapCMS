@@ -142,11 +142,13 @@ function ws_flow_member_node_refusal($node)
  */
 function ws_flow_member_graph_refusal($graph)
 {
-    foreach ((array) ($graph['nodes'] ?? array()) as $node) {
+    $nodes = (array) ($graph['nodes'] ?? array());
+
+    foreach ($nodes as $node) {
         $refusal = ws_flow_member_node_refusal($node);
 
         if ($refusal !== '') {
-            return lang(array('string' => 'The box {var:1}: {var:2}', 'vars' => array(ws_flow_box_name($node), $refusal)));
+            return lang(array('string' => 'The box {var:1}: {var:2}', 'vars' => array(ws_flow_box_names($nodes)[(string) $node['id']] ?? ws_flow_box_name($node), $refusal)));
         }
     }
 

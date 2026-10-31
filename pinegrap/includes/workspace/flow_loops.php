@@ -237,14 +237,21 @@ function ws_flow_loop_of($loops, $node_id)
  *
  * @param array $graph ws_flow_graph_normalize()
  * @param array $nodes node id => box
+ * @param array|null $names ws_flow_box_names()
  * @return array[] ws_flow_problem()
  */
-function ws_flow_loop_problems($graph, $nodes)
+function ws_flow_loop_problems($graph, $nodes, $names = null)
 {
     $problems = array();
     $loops = ws_flow_loops($graph);
-    $name = function ($id) use ($nodes) {
-        return isset($nodes[$id]) ? ws_flow_box_name($nodes[$id]) : (string) $id;
+    $kinds = ws_flow_kinds();
+    $names = $names ?? ws_flow_box_names($nodes, $kinds);
+    $name = function ($id) use ($nodes, $names) {
+        return $names[(string) $id] ?? (isset($nodes[$id]) ? ws_flow_box_name($nodes[$id]) : lang('a box that is not in the flow'));
+    };
+    // A value a box reads, by its box and label.
+    $value = function ($match) use ($nodes, $names, $kinds) {
+        return ws_flow_value_label((string) $match[1], (string) $match[2], $nodes, $names, $kinds);
     };
     // A list or a gathered value is read as it is: no fallback.
     $single = function ($text) {
@@ -345,7 +352,7 @@ function ws_flow_loop_problems($graph, $nodes)
             if (ws_step_value_has_fallback($collect)) {
                 $problems[] = ws_flow_problem('bad_config', $end, null, lang(array('string' => 'The value {var:1} gathers cannot have a “When empty, write” text: remove it, the value is gathered as it is.', 'vars' => $name($end))));
             } elseif (!$single($collect) || !in_array($box, $loop['body'], true)) {
-                $problems[] = ws_flow_problem('bad_config', $end, null, lang(array('string' => 'The End box {var:1} gathers one value of a box inside its loop, not {var:2}.', 'vars' => array($name($end), $collect))));
+                $problems[] = ws_flow_problem('bad_config', $end, null, lang(array('string' => 'The End box {var:1} gathers one value of a box inside its loop, not {var:2}.', 'vars' => array($name($end), preg_replace_callback(WS_STEP_VALUE_PATTERN, $value, $collect)))));
             }
         }
     }
@@ -370,9 +377,9 @@ function ws_flow_loop_problems($graph, $nodes)
                 $loop = ws_flow_loop_of($loops, $box);
 
                 if (($loop !== '') && ($loop !== $own)) {
-                    $problems[] = ws_flow_problem('bad_reference', (string) $id, null, lang(array('string' => 'The box {var:1} reads {var:2} from inside the loop of {var:3}; outside the loop, read what the items gave through its End box.', 'vars' => array($name($id), $match[0], $name($loop)))));
+                    $problems[] = ws_flow_problem('bad_reference', (string) $id, null, lang(array('string' => 'The box {var:1} reads {var:2} from inside the loop of {var:3}; outside the loop, read what the items gave through its End box.', 'vars' => array($name($id), $value($match), $name($loop)))));
                 } elseif (isset($loops[$box]) && ($own !== $box) && in_array((string) $match[2], ws_flow_loop_item_keys($nodes[$box]['config']), true)) {
-                    $problems[] = ws_flow_problem('bad_reference', (string) $id, null, lang(array('string' => 'The box {var:1} reads {var:2}, which has a value only inside the loop of {var:3}.', 'vars' => array($name($id), $match[0], $name($box)))));
+                    $problems[] = ws_flow_problem('bad_reference', (string) $id, null, lang(array('string' => 'The box {var:1} reads {var:2}, which has a value only inside the loop of {var:3}.', 'vars' => array($name($id), $value($match), $name($box)))));
                 }
             }
         }

@@ -16,7 +16,9 @@ description: Plan (owner request 2026-10-27, draft): the Flows canvas look in nu
 
 ## Which icons? (16 px, 1.5 px stroke)
 - Boxes: manual start play, time start clock, event bolt, join person, web check globe, condition fork, message speech bubble, e-mail envelope, task check square, count summary bar chart, webhook three linked dots, approval shield with a tick, record change pencil, constants tag, derived value sigma.
-- Output dots: an 18 px ring in the type colour with a 10 px type icon inside (`#` number, `T` text; person, calendar, toggle for the others) and the output's label beside it.
+- Output dots (#4060, PR #4189): a 14 px ring in the type colour with an 8 px type icon inside (`#` number, `T` text; person, calendar, toggle for the others) and the output's label beside it; the row 14 px high. An invisible 24 × 24 px target (`.wsf-data-ring::before`) takes the pointer, touch long-press included.
+- Arrow ports (#4060, PR #4189): 10 px, 12 px on hover (`scale(1.2)`), 1.5 px ring in the page colour, centred 2 px outside the box's edge; an invisible 24 × 24 px target (`.wsf-port::before`).
+- Mini window (boxes 128 × 60): no ports; thread dots r 2.5 (5 px), already under the canvas ratio (14 / 208 × 128 ≈ 8.6 px), kept.
 
 ## How do run flags look?
 - Completed: green ground `#173a2a`, text `#6fdca6`, a flag icon, the state, the duration, one line of result; ▾ opens the whole result and a link to the run.

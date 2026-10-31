@@ -197,7 +197,7 @@ function test_workspace_flow_row_references_are_checked()
 	}));
 
 	pg_assert_same(1, count($refs), 'row_id is given, event is not');
-	pg_assert_contains('trigger.event', $refs[0]['message'] ?? json_encode($refs[0]));
+	pg_assert_contains('gives no value event', $refs[0]['text'] ?? json_encode($refs[0]));
 }
 
 function test_workspace_flow_row_start_reads()

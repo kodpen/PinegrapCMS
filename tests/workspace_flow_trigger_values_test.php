@@ -74,7 +74,8 @@ function test_workspace_flow_trigger_reference_check()
 	$found = ws_flow_trig_test_refs($event, 'Who: {{trigger.newcomer_id}} {{trigger.newcomer_id}}');
 	pg_assert_same(1, count($found), 'an unknown field, once');
 	pg_assert_same('post_1', $found[0]['node']);
-	pg_assert_contains('{{trigger.newcomer_id}}', $found[0]['text']);
+	pg_assert_contains('newcomer_id', $found[0]['text']);
+	pg_assert_false(strpos($found[0]['text'], '{{') !== false, 'no raw token in the problem');
 
 	pg_assert_same(1, count(ws_flow_trig_test_refs(ws_flow_trig_test_node('start', 'manual'), '{{trigger.event}}')), 'started by hand gives nothing');
 	pg_assert_same(array(), ws_flow_trig_test_refs(ws_flow_trig_test_node('start', 'join', array('channel_id' => 0)), 'Hi {{trigger.newcomer_name}} in {{trigger.channel_name}}'));

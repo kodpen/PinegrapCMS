@@ -499,7 +499,9 @@ function ws_flow_graph_normalize($graph)
 }
 
 /**
- * How a box is called in a problem: its label, or its id when it has none.
+ * How a box is called where its id is a fair stand-in (run records, an AI
+ * draft's lines): its label, or its id when it has none. Problems and
+ * refusals name boxes with ws_flow_box_names().
  *
  * @param array $node
  * @return string
@@ -507,6 +509,161 @@ function ws_flow_graph_normalize($graph)
 function ws_flow_box_name($node)
 {
     return ((string) $node['label'] !== '') ? (string) $node['label'] : (string) $node['id'];
+}
+
+/**
+ * The title a box is drawn with on the canvas before its values are named
+ * (rawTitle() in workspace_flow.js): a task or approval box's task title,
+ * else its label.
+ *
+ * @param array $node
+ * @return string
+ */
+function ws_flow_box_raw_title($node)
+{
+    $kind = (string) ($node['kind'] ?? '');
+    $title = in_array($kind, array('task', 'task_open', 'approval'), true) ? trim((string) ($node['config']['title'] ?? '')) : '';
+
+    return ($title !== '') ? $title : trim((string) ($node['label'] ?? ''));
+}
+
+/**
+ * How the problems of a flow name its boxes, the way the canvas names them
+ * (nameOf() in workspace_flow.js): the title, each value in it as
+ * "[Box › Value]"; a box without a title, or with a value no box gives, by
+ * its kind's name, numbered "(1)", "(2)" in the graph's order when several
+ * such boxes share a kind, so a problem never shows an internal id. Pure but
+ * for a row start box's columns.
+ *
+ * @param array      $nodes boxes of a graph (a list, or keyed by id)
+ * @param array|null $kinds ws_flow_kinds()
+ * @return array node id => name
+ */
+function ws_flow_box_names($nodes, $kinds = null)
+{
+    $kinds = $kinds ?? ws_flow_kinds();
+    $titles = array();
+    $by_id = array();
+
+    foreach ($nodes as $node) {
+        $id = (string) ($node['id'] ?? '');
+
+        if (!isset($by_id[$id])) {
+            $by_id[$id] = $node;
+            $titles[$id] = ws_flow_box_raw_title($node);
+        }
+    }
+
+    // The name of a box giving a value inside a title: its own title when
+    // that holds no value, else its kind's name.
+    $giver = function ($node) use ($titles, $kinds) {
+        $own = $titles[(string) $node['id']] ?? '';
+
+        return (($own === '') || (strpos($own, '{{') !== false)) ? (string) ($kinds[(string) $node['kind']]['label'] ?? $node['kind']) : $own;
+    };
+
+    $names = array();
+    $untitled = array();
+
+    foreach ($by_id as $id => $node) {
+        $title = $titles[$id];
+
+        if (($title !== '') && (strpos($title, '{{') !== false)) {
+            $title = defined('WS_STEP_VALUE_PATTERN') ? ws_flow_box_title_values($title, $by_id, $kinds, $giver) : '';
+        }
+
+        if ($title !== '') {
+            $names[$id] = $title;
+        } else {
+            $untitled[(string) $node['kind']][] = $id;
+        }
+    }
+
+    foreach ($untitled as $kind => $ids) {
+        $label = (string) ($kinds[$kind]['label'] ?? $kind);
+
+        foreach ($ids as $place => $id) {
+            $names[$id] = (count($ids) > 1) ? $label . ' (' . ($place + 1) . ')' : $label;
+        }
+    }
+
+    return $names;
+}
+
+/**
+ * A title with its values named "[Box › Value]", '' when one of them is given
+ * by no box of the flow (the canvas then draws the kind's name). Pure.
+ *
+ * @param string   $title
+ * @param array    $by_id node id => box
+ * @param array    $kinds ws_flow_kinds()
+ * @param callable $giver box => the name the box giving a value goes by
+ * @return string
+ */
+function ws_flow_box_title_values($title, $by_id, $kinds, $giver)
+{
+    $named = true;
+    $out = preg_replace_callback(WS_STEP_VALUE_PATTERN, function ($match) use ($by_id, $kinds, $giver, &$named) {
+        $box = ws_flow_value_giver($match[1], $by_id, $kinds);
+        $label = ($box && function_exists('ws_flow_condition_field_label')) ? ws_flow_condition_field_label($box, (string) $match[2], $kinds) : '';
+
+        if ($label === '') {
+            $named = false;
+
+            return '';
+        }
+
+        return '[' . $giver($box) . ' › ' . $label . ']';
+    }, $title);
+
+    return $named ? (string) $out : '';
+}
+
+/**
+ * The box a value {{node.<id>.<field>}} is read from: the box of that id, or
+ * the start box for {{trigger.<field>}} (an empty id); null for none.
+ *
+ * @param string $id
+ * @param array  $nodes boxes of the graph
+ * @param array  $kinds ws_flow_kinds()
+ * @return array|null
+ */
+function ws_flow_value_giver($id, $nodes, $kinds)
+{
+    foreach ($nodes as $node) {
+        if (((string) $id === '') ? !empty($kinds[(string) $node['kind']]['trigger']) : ((string) $node['id'] === (string) $id)) {
+            return $node;
+        }
+    }
+
+    return null;
+}
+
+/**
+ * A value a box reads, named for a problem as the value picker's chip names
+ * it: "Box › Value" (the box by ws_flow_box_names()); a value of a box the
+ * flow does not have says so instead of the id; a field the box does not
+ * give keeps its key.
+ *
+ * @param string     $box   the id of the box giving it, '' for what started the run
+ * @param string     $field
+ * @param array      $nodes boxes of the graph
+ * @param array      $names ws_flow_box_names()
+ * @param array|null $kinds ws_flow_kinds()
+ * @return string
+ */
+function ws_flow_value_label($box, $field, $nodes, $names, $kinds = null)
+{
+    $kinds = $kinds ?? ws_flow_kinds();
+    $node = ws_flow_value_giver($box, $nodes, $kinds);
+
+    if (($node === null) || !isset($kinds[(string) $node['kind']])) {
+        return lang('a value of a box that is not in the flow');
+    }
+
+    $label = function_exists('ws_flow_condition_field_label') ? ws_flow_condition_field_label($node, (string) $field, $kinds) : '';
+
+    return ($names[(string) $node['id']] ?? ws_flow_box_name($node)) . ' › ' . (($label !== '') ? $label : (string) $field);
 }
 
 /**
@@ -817,10 +974,11 @@ function ws_flow_graph_check($graph)
     $nodes = array();
     $triggers = array();
     $joined = ws_flow_starts_on_join($graph);
+    $names = ws_flow_box_names($graph['nodes'], $kinds);
 
     foreach ($graph['nodes'] as $node) {
         $id = $node['id'];
-        $name = ws_flow_box_name($node);
+        $name = $names[(string) $id] ?? ws_flow_box_name($node);
 
         if (!ws_flow_node_id_valid($id)) {
             $problems[] = ws_flow_problem('bad_id', ($id !== '') ? $id : null, null, lang(array('string' => 'The box {var:1} needs an id of small letters, digits and _ that starts with a letter, at most 32 characters.', 'vars' => ($name !== '') ? $name : '?')));
@@ -904,7 +1062,7 @@ function ws_flow_graph_check($graph)
     }
 
     foreach ((function_exists('ws_flow_derived_loops') ? ws_flow_derived_loops($nodes) : array()) as $id) {
-        $problems[] = ws_flow_problem('bad_config', $id, null, lang(array('string' => 'The box {var:1} reads its own value, through other value boxes: it cannot be worked out.', 'vars' => ws_flow_box_name($nodes[$id]))));
+        $problems[] = ws_flow_problem('bad_config', $id, null, lang(array('string' => 'The box {var:1} reads its own value, through other value boxes: it cannot be worked out.', 'vars' => $names[(string) $id])));
     }
 
     if (empty($triggers)) {
@@ -912,7 +1070,7 @@ function ws_flow_graph_check($graph)
     }
 
     foreach (array_slice($triggers, 1) as $id) {
-        $problems[] = ws_flow_problem('two_triggers', $id, null, lang(array('string' => 'A flow is started by one box; {var:1} is a second one.', 'vars' => ws_flow_box_name($nodes[$id]))));
+        $problems[] = ws_flow_problem('two_triggers', $id, null, lang(array('string' => 'A flow is started by one box; {var:1} is a second one.', 'vars' => $names[(string) $id])));
     }
 
     // The arrows. One that joins two boxes that are there counts for the
@@ -933,30 +1091,30 @@ function ws_flow_graph_check($graph)
         }
 
         if ($from === $to) {
-            $problems[] = ws_flow_problem('bad_edge', $from, $index, lang(array('string' => 'An arrow joins the box {var:1} to itself.', 'vars' => ws_flow_box_name($nodes[$from]))));
+            $problems[] = ws_flow_problem('bad_edge', $from, $index, lang(array('string' => 'An arrow joins the box {var:1} to itself.', 'vars' => $names[(string) $from])));
             continue;
         }
 
         // A value box gives values through threads only: no arrow leads into
         // it (one leaving it has no outcome to leave on).
         if (!empty($kinds[$nodes[$to]['kind']]['pure'])) {
-            $problems[] = ws_flow_problem('bad_edge', $to, $index, lang(array('string' => 'No arrow may lead into the box {var:1}: it gives its values to the boxes that read them.', 'vars' => ws_flow_box_name($nodes[$to]))));
+            $problems[] = ws_flow_problem('bad_edge', $to, $index, lang(array('string' => 'No arrow may lead into the box {var:1}: it gives its values to the boxes that read them.', 'vars' => $names[(string) $to])));
         }
 
         if (in_array($to, $triggers, true)) {
-            $problems[] = ws_flow_problem('arrow_into_trigger', $to, $index, lang(array('string' => 'No arrow may lead into the box that starts the flow ({var:1}).', 'vars' => ws_flow_box_name($nodes[$to]))));
+            $problems[] = ws_flow_problem('arrow_into_trigger', $to, $index, lang(array('string' => 'No arrow may lead into the box that starts the flow ({var:1}).', 'vars' => $names[(string) $to])));
         }
 
         $kind = $nodes[$from]['kind'];
 
         if (isset($kinds[$kind]) && !in_array($edge['on'], ws_flow_arrow_outcomes($kinds[$kind]), true)) {
-            $problems[] = ws_flow_problem('bad_outcome', $from, $index, lang(array('string' => 'An arrow leaves the box {var:1} on {var:2}, which is not one of its outcomes.', 'vars' => array(ws_flow_box_name($nodes[$from]), ($edge['on'] !== '') ? $edge['on'] : '-'))));
+            $problems[] = ws_flow_problem('bad_outcome', $from, $index, lang(array('string' => 'An arrow leaves the box {var:1} on {var:2}, which is not one of its outcomes.', 'vars' => array($names[(string) $from], ($edge['on'] !== '') ? $edge['on'] : '-'))));
         }
 
         $key = $from . "\n" . $to . "\n" . $edge['on'];
 
         if (isset($seen[$key])) {
-            $problems[] = ws_flow_problem('duplicate_edge', $from, $index, lang(array('string' => 'Two arrows join {var:1} to {var:2} on the same outcome.', 'vars' => array(ws_flow_box_name($nodes[$from]), ws_flow_box_name($nodes[$to])))));
+            $problems[] = ws_flow_problem('duplicate_edge', $from, $index, lang(array('string' => 'Two arrows join {var:1} to {var:2} on the same outcome.', 'vars' => array($names[(string) $from], $names[(string) $to]))));
             continue;
         }
 
@@ -1007,7 +1165,7 @@ function ws_flow_graph_check($graph)
     } while ($pruned);
 
     foreach (array_keys($left) as $id) {
-        $problems[] = ws_flow_problem('cycle', (string) $id, null, lang(array('string' => 'The box {var:1} is in a loop: the arrows lead back to it.', 'vars' => ws_flow_box_name($nodes[$id]))));
+        $problems[] = ws_flow_problem('cycle', (string) $id, null, lang(array('string' => 'The box {var:1} is in a loop: the arrows lead back to it.', 'vars' => $names[(string) $id])));
     }
 
     // Boxes no arrow from the start leads to, while there is one start.
@@ -1026,17 +1184,17 @@ function ws_flow_graph_check($graph)
 
         foreach ($nodes as $id => $node) {
             if (!isset($reached[$id]) && isset($kinds[$node['kind']]) && empty($kinds[$node['kind']]['pure'])) {
-                $problems[] = ws_flow_problem('unreachable', (string) $id, null, lang(array('string' => 'No arrow from the start leads to the box {var:1}.', 'vars' => ws_flow_box_name($node))));
+                $problems[] = ws_flow_problem('unreachable', (string) $id, null, lang(array('string' => 'No arrow from the start leads to the box {var:1}.', 'vars' => $names[(string) $id])));
             }
         }
     }
 
     // The loops: their End boxes, bodies and the arrows in and out of them.
     if (function_exists('ws_flow_loop_problems')) {
-        $problems = array_merge($problems, ws_flow_loop_problems($graph, $nodes));
+        $problems = array_merge($problems, ws_flow_loop_problems($graph, $nodes, $names));
     }
 
-    return array_merge($problems, ws_flow_reference_problems($nodes, $kinds, $next, $always));
+    return array_merge($problems, ws_flow_reference_problems($nodes, $kinds, $next, $always, $names));
 }
 
 /**
@@ -1050,10 +1208,12 @@ function ws_flow_graph_check($graph)
  * @param array $kinds  ws_flow_kinds()
  * @param array $next   node id => ids an arrow leads into
  * @param array $always node id => id => true (ws_flow_sure_before())
+ * @param array|null $names ws_flow_box_names()
  * @return array[] ws_flow_problem()
  */
-function ws_flow_reference_problems($nodes, $kinds, $next, $always)
+function ws_flow_reference_problems($nodes, $kinds, $next, $always, $names = null)
 {
+    $names = $names ?? ws_flow_box_names($nodes, $kinds);
     $problems = array();
     $into = array_fill_keys(array_keys($nodes), array());
     $sure = null;
@@ -1101,7 +1261,10 @@ function ws_flow_reference_problems($nodes, $kinds, $next, $always)
             continue;
         }
 
-        $name = ws_flow_box_name($node);
+        $name = $names[(string) $id] ?? ws_flow_box_name($node);
+        $value = function ($box, $field) use ($nodes, $names, $kinds) {
+            return ws_flow_value_label($box, $field, $nodes, $names, $kinds);
+        };
 
         // An address takes numbers only (decision #3410): a value of any
         // other type there is refused, as one no box gives.
@@ -1124,13 +1287,13 @@ function ws_flow_reference_problems($nodes, $kinds, $next, $always)
                 $type = $box ? ws_flow_node_field_type($box, $match[2], $kinds) : '';
 
                 if (($type !== '') && ($type !== 'number')) {
-                    $problems[] = ws_flow_problem('bad_reference', (string) $id, null, lang(array('string' => 'The box {var:1} puts {var:2} into its address, which takes only a number.', 'vars' => array($name, $match[0]))));
+                    $problems[] = ws_flow_problem('bad_reference', (string) $id, null, lang(array('string' => 'The box {var:1} puts {var:2} into its address, which takes only a number.', 'vars' => array($name, $value($match[1], $match[2])))));
                 }
 
                 $fallback = ws_step_value_fallback($match);
 
                 if (($fallback !== '') && !preg_match('/^[0-9]+$/', $fallback)) {
-                    $problems[] = ws_flow_problem('bad_reference', (string) $id, null, lang(array('string' => 'The box {var:1} writes "{var:2}" into its address when {var:3} is empty; the address takes only a whole number.', 'vars' => array($name, $fallback, ws_step_value_token($match[1], $match[2])))));
+                    $problems[] = ws_flow_problem('bad_reference', (string) $id, null, lang(array('string' => 'The box {var:1} writes "{var:2}" into its address when {var:3} is empty; the address takes only a whole number.', 'vars' => array($name, $fallback, $value($match[1], $match[2])))));
                 }
             }
         }
@@ -1139,10 +1302,12 @@ function ws_flow_reference_problems($nodes, $kinds, $next, $always)
         // flow without one has its own problem (no_trigger).
         if (!empty($trigger_refs)) {
             $trigger_fields = ws_flow_trigger_fields($nodes, $kinds);
+            $start = ws_flow_value_giver('', $nodes, $kinds);
+            $start_name = $start ? $names[(string) $start['id']] : '?';
 
             foreach ($trigger_refs as $ref => $field) {
                 if (!in_array($field, $trigger_fields, true)) {
-                    $problems[] = ws_flow_problem('bad_reference', (string) $id, null, lang(array('string' => 'The box {var:1} reads {var:2}, but what starts the flow gives no value {var:3}.', 'vars' => array($name, $ref, $field))));
+                    $problems[] = ws_flow_problem('bad_reference', (string) $id, null, lang(array('string' => 'The box {var:1} reads the value {var:2}, but {var:3}, which starts the flow, gives no value {var:2}.', 'vars' => array($name, $field, $start_name))));
                 }
             }
         }
@@ -1156,18 +1321,18 @@ function ws_flow_reference_problems($nodes, $kinds, $next, $always)
             $other = $nodes[$box] ?? null;
 
             if (($other === null) || !isset($kinds[$other['kind']])) {
-                $problems[] = ws_flow_problem('bad_reference', (string) $id, null, lang(array('string' => 'The box {var:1} reads {var:2}, but the flow has no box {var:3}.', 'vars' => array($name, $ref, $box))));
+                $problems[] = ws_flow_problem('bad_reference', (string) $id, null, lang(array('string' => 'The box {var:1} reads a value of a box that is not in the flow.', 'vars' => $name)));
             } elseif (!$pure_reader && !isset($before[$box]) && empty($kinds[$other['kind']]['pure'])) {
-                $problems[] = ws_flow_problem('bad_reference', (string) $id, null, lang(array('string' => 'The box {var:1} reads {var:2}, but the box {var:3} does not come before it.', 'vars' => array($name, $ref, ws_flow_box_name($other)))));
+                $problems[] = ws_flow_problem('bad_reference', (string) $id, null, lang(array('string' => 'The box {var:1} reads {var:2}, but the box {var:3} does not come before it.', 'vars' => array($name, $value($box, $field), $names[(string) $box]))));
             } elseif (!in_array($field, ws_flow_node_fields($other, $kinds), true)) {
-                $problems[] = ws_flow_problem('bad_reference', (string) $id, null, lang(array('string' => 'The box {var:1} reads {var:2}, but the box {var:3} gives no value {var:4}.', 'vars' => array($name, $ref, ws_flow_box_name($other), $field))));
+                $problems[] = ws_flow_problem('bad_reference', (string) $id, null, lang(array('string' => 'The box {var:1} reads {var:2}, but the box {var:3} gives no value {var:4}.', 'vars' => array($name, $value($box, $field), $names[(string) $box], $field))));
             } elseif (!$pure_reader && empty($kinds[$other['kind']]['pure']) && isset($bare[$ref])) {
                 // A reference with a fallback at each of its places has
                 // words for the empty value: no warning then.
                 $sure = $sure ?? ws_flow_sure_before($next, $always);
 
                 if (isset($sure[$id]) && !isset($sure[$id][$box])) {
-                    $problems[] = ws_flow_problem('skippable_reference', (string) $id, null, lang(array('string' => 'The box {var:1} reads {var:2}, but the box {var:3} may not run before it; the value is then empty.', 'vars' => array($name, $ref, ws_flow_box_name($other)))), true);
+                    $problems[] = ws_flow_problem('skippable_reference', (string) $id, null, lang(array('string' => 'The box {var:1} reads {var:2}, but the box {var:3} may not run before it; the value is then empty.', 'vars' => array($name, $value($box, $field), $names[(string) $box]))), true);
                 }
             }
         }
@@ -1184,14 +1349,14 @@ function ws_flow_reference_problems($nodes, $kinds, $next, $always)
             }
 
             if (!isset($before[$box])) {
-                $problems[] = ws_flow_problem('bad_reference', (string) $id, null, lang(array('string' => 'The box {var:1} reads the value box {var:2}, which reads the box {var:3}; that box does not come before {var:1}.', 'vars' => array($name, ws_flow_box_name($nodes[$via]), ws_flow_box_name($other)))));
+                $problems[] = ws_flow_problem('bad_reference', (string) $id, null, lang(array('string' => 'The box {var:1} reads the value box {var:2}, which reads the box {var:3}; that box does not come before {var:1}.', 'vars' => array($name, $names[(string) $via], $names[(string) $box]))));
                 continue;
             }
 
             $sure = $sure ?? ws_flow_sure_before($next, $always);
 
             if (isset($sure[$id]) && !isset($sure[$id][$box])) {
-                $problems[] = ws_flow_problem('skippable_reference', (string) $id, null, lang(array('string' => 'The box {var:1} reads the value box {var:2}, which reads the box {var:3}; that box may not run before {var:1}, and its values are then empty.', 'vars' => array($name, ws_flow_box_name($nodes[$via]), ws_flow_box_name($other)))), true);
+                $problems[] = ws_flow_problem('skippable_reference', (string) $id, null, lang(array('string' => 'The box {var:1} reads the value box {var:2}, which reads the box {var:3}; that box may not run before {var:1}, and its values are then empty.', 'vars' => array($name, $names[(string) $via], $names[(string) $box]))), true);
             }
         }
     }
@@ -1237,7 +1402,7 @@ function ws_flow_problems($graph)
 
     foreach ($graph['nodes'] as $node) {
         if (($node['kind'] === 'manual') && ($node['config']['subject'] !== '') && !isset($types[$node['config']['subject']])) {
-            $problems[] = ws_flow_problem('bad_config', ($node['id'] !== '') ? $node['id'] : null, null, lang(array('string' => 'The start box {var:1} is about a kind of record the Workspace does not know ({var:2}).', 'vars' => array(ws_flow_box_name($node), $node['config']['subject']))));
+            $problems[] = ws_flow_problem('bad_config', ($node['id'] !== '') ? $node['id'] : null, null, lang(array('string' => 'The start box {var:1} is about a kind of record the Workspace does not know ({var:2}).', 'vars' => array(ws_flow_box_names($graph['nodes'])[(string) $node['id']] ?? ws_flow_box_name($node), $node['config']['subject']))));
         }
     }
 
@@ -1989,6 +2154,7 @@ function ws_flow_publish_check($viewer, $flow, $data = array())
 
     $graph = ws_flow_graph_of($flow);
     $problems = ws_flow_problems($graph);
+    $names = ws_flow_box_names($graph['nodes']);
 
     if (!empty($problems)) {
         return ws_flow_refusal(lang(array('string' => 'Fix the flow before it is published: {var:1}', 'vars' => $problems[0]['text']))) + array('problems' => $problems);
@@ -2010,7 +2176,7 @@ function ws_flow_publish_check($viewer, $flow, $data = array())
             $step = ws_step_check($viewer, $node['kind'], $node['config'], ws_flow_starts_on_join($graph));
 
             if (!$step['ok']) {
-                return ws_flow_refusal(lang(array('string' => 'The box {var:1}: {var:2}', 'vars' => array(ws_flow_box_name($node), $step['error']))));
+                return ws_flow_refusal(lang(array('string' => 'The box {var:1}: {var:2}', 'vars' => array(($names[(string) $node['id']] ?? ws_flow_box_name($node)), $step['error']))));
             }
         }
 
@@ -2020,7 +2186,7 @@ function ws_flow_publish_check($viewer, $flow, $data = array())
             $anchor = ws_flow_anchor_check($viewer, $node['kind'], $node['config']);
 
             if (!$anchor['ok']) {
-                return ws_flow_refusal(lang(array('string' => 'The box {var:1}: {var:2}', 'vars' => array(ws_flow_box_name($node), $anchor['error']))));
+                return ws_flow_refusal(lang(array('string' => 'The box {var:1}: {var:2}', 'vars' => array(($names[(string) $node['id']] ?? ws_flow_box_name($node)), $anchor['error']))));
             }
         }
 
@@ -2029,7 +2195,7 @@ function ws_flow_publish_check($viewer, $flow, $data = array())
             $condition = ws_flow_condition_check($viewer, $node['config']);
 
             if (!$condition['ok']) {
-                return ws_flow_refusal(lang(array('string' => 'The box {var:1}: {var:2}', 'vars' => array(ws_flow_box_name($node), $condition['error']))));
+                return ws_flow_refusal(lang(array('string' => 'The box {var:1}: {var:2}', 'vars' => array(($names[(string) $node['id']] ?? ws_flow_box_name($node)), $condition['error']))));
             }
         }
 
@@ -2038,7 +2204,7 @@ function ws_flow_publish_check($viewer, $flow, $data = array())
             $chain = ws_flow_chain_check($viewer, (int) $flow['id'], $node['config']);
 
             if (!$chain['ok']) {
-                return ws_flow_refusal(lang(array('string' => 'The box {var:1}: {var:2}', 'vars' => array(ws_flow_box_name($node), $chain['error']))));
+                return ws_flow_refusal(lang(array('string' => 'The box {var:1}: {var:2}', 'vars' => array(($names[(string) $node['id']] ?? ws_flow_box_name($node)), $chain['error']))));
             }
         }
     }
@@ -2051,7 +2217,7 @@ function ws_flow_publish_check($viewer, $flow, $data = array())
         $task = ws_task_create_check($viewer, array('title' => $node['config']['title'], 'assignees' => $node['config']['assignees']));
 
         if (!$task['ok']) {
-            return ws_flow_refusal(lang(array('string' => 'The task box {var:1}: {var:2}', 'vars' => array(ws_flow_box_name($node), $task['error']))));
+            return ws_flow_refusal(lang(array('string' => 'The task box {var:1}: {var:2}', 'vars' => array(($names[(string) $node['id']] ?? ws_flow_box_name($node)), $task['error']))));
         }
     }
 
@@ -3251,13 +3417,15 @@ function ws_flow_member_problems($builder, $graph)
     }
 
     $problems = array();
+    $nodes = (array) (ws_flow_graph_normalize($graph)['nodes'] ?? array());
+    $names = ws_flow_box_names($nodes);
 
-    foreach ((array) (ws_flow_graph_normalize($graph)['nodes'] ?? array()) as $node) {
+    foreach ($nodes as $node) {
         $refusal = ws_flow_member_node_refusal($node);
 
         if ($refusal !== '') {
             $problems[] = ws_flow_problem('member_kind', ($node['id'] !== '') ? $node['id'] : null, null,
-                lang(array('string' => 'The box {var:1}: {var:2}', 'vars' => array(ws_flow_box_name($node), $refusal))));
+                lang(array('string' => 'The box {var:1}: {var:2}', 'vars' => array($names[(string) $node['id']] ?? ws_flow_box_name($node), $refusal))));
         }
     }
 
