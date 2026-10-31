@@ -2035,6 +2035,8 @@
     "The folder menu": "Klasör menüsü",
     "The folder must have a name.": "Klasörün bir adı olmalı.",
     "The folder must have a name. Please type in a name for the folder.": "Klasörün bir adı olmalıdır. Lütfen klasör için bir ad yazın.",
+    "The folder this field uploads to is no longer offered here. Choose another folder.": "Bu alanın dosya yüklediği klasör artık burada listelenmiyor. Başka bir klasör seçin.",
+    "The folder this field uploads to was deleted. Choose another folder.": "Bu alanın dosya yüklediği klasör silindi. Başka bir klasör seçin.",
     "The folder to move mail to was not found.": "Postaların taşınacağı klasör bulunamadı.",
     "The folder to read was not found.": "Okunacak klasör bulunamadı.",
     "The folder tree": "Klasör ağacı",

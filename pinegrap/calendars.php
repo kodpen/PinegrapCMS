@@ -71,7 +71,7 @@ while ($row = mysqli_fetch_assoc($result)) {
         }
     }
 }
-$output_edit_calendar_button = '';
+$output_edit_calendar_button = array();
 $create_calendar_event_url = 'add_calendar_event.php';
 $pg_breadcrumb_items = array(
     array('label' => lang('Calendars'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_calendars.php'),
@@ -82,8 +82,8 @@ if($calendar_name == ''){
 }else{
     $pg_breadcrumb_items[] = array('label' => lang('View Calendars'));
     // The create screen starts with the viewed calendar ticked.
-    $create_calendar_event_url = 'add_calendar_event.php?calendar_id=' . h(urlencode((string) $_SESSION['software']['calendars']['calendar_id']));
-    $output_edit_calendar_button ='<a class="btn btn-sm btn-solid theme-primary m-1 " href="edit_calendar.php?id=' . h(($_SESSION['software']['calendars']['calendar_id'] ?? '')) . '"><span class="material-icons me-3">edit</span>' . lang(array('string'=>'Edit Calendar Properties') ) . '</a>';
+    $create_calendar_event_url = 'add_calendar_event.php?calendar_id=' . urlencode((string) $_SESSION['software']['calendars']['calendar_id']);
+    $output_edit_calendar_button = array('label' => lang('Edit Calendar Properties'), 'url' => 'edit_calendar.php?id=' . urlencode((string) ($_SESSION['software']['calendars']['calendar_id'] ?? '')), 'icon' => 'bi-pencil');
 }
 echo
 
@@ -104,20 +104,15 @@ pg_page_shell(
     )
 ) . '
 <main id="content" class="container-fluid">
+    ' . pg_screen_toolbar(array(
+        'primary'   => array('label' => lang('Create Calendar Event'), 'url' => $create_calendar_event_url, 'icon' => 'bi-plus-circle'),
+        'secondary' => $output_edit_calendar_button,
+    )) . '
     <div class="row">
         <div class="col-12">
             ' . $liveform->output_errors() . '
             ' . $liveform->get_warnings() . '
             ' . $liveform->output_notices() . '
-            <div class="row mb-3  flex-wrap">
-                <div class="col-12 sm:col-12 md:col-6 xl:col-9 text-center md:text-start">
-
-                    <nav id="button_bar" class="navigation " aria-label="' . h(lang('Button Bar')) . '">
-                        <a class="btn btn-sm btn-solid theme-primary m-1 " href="' . $create_calendar_event_url . '"><span class="bi bi-plus-circle me-3"></span>' . lang(array('string'=>'Create Calendar Event') ) . '</a>
-                        ' . $output_edit_calendar_button . '
-                    </nav>
-                </div>
-            </div>
             <div class="card my-7">
                 ' . get_calendar(($_SESSION['software']['calendars']['calendar_id'] ?? ''), $calendars, ($_SESSION['software']['calendars']['view'] ?? ''), ($_SESSION['software']['calendars']['status'] ?? ''), $user, ($_SESSION['software']['calendars']['date'] ?? ''), PATH . SOFTWARE_DIRECTORY . '/edit_calendar_event.php') . '
             </div>

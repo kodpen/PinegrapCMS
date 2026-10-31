@@ -220,22 +220,16 @@ pg_page_shell(
     )
 )  . '
 <main id="content" class="container-fluid">
+    ' . pg_screen_toolbar(array(
+        'primary' => array('label' => lang('Upload File'), 'url' => 'add_design_file.php?send_to=' . urlencode(REQUEST_URL), 'icon' => 'bi-upload'),
+        'grow'    => '<span class="small fg-secondary">' . lang('Disk Usage') . ': ' . h(convert_bytes_to_string(db("SELECT SUM(size) FROM files"), 2)) . '</span>',
+        'view'    => pg_list_sort_menu('view_design_files.php', $sort_columns, $sort_levels, $sort_default),
+    )) . '
     <div class="row">
         <div class="col-12">
             ' . $liveform->output_errors() . '
             ' . $liveform->get_warnings() . '
             ' . $liveform->output_notices() . '
-            <div class="row mb-3  flex-wrap">
-                <div class="col-12 text-center md:text-start">
-                    
-                    <p>' . lang('Disk Usage') . ': ' . h(convert_bytes_to_string(db("SELECT SUM(size) FROM files"), 2)) . '</p>
-                    <nav id="button_bar" class="navigation " aria-label="' . h(lang('Button Bar')) . '">
-                        <a class="btn btn-sm btn-solid theme-primary m-1 " href="add_design_file.php?send_to=' . h(urlencode(REQUEST_URL)) . '"><span class="material-icons me-3">file_upload</span>' . lang(array('string'=>'Upload File') ) . '</a>
-                        <div class="pg-toolbar-grow"></div>
-                        ' . pg_list_sort_menu('view_design_files.php', $sort_columns, $sort_levels, $sort_default) . '
-                    </nav>
-                </div>
-            </div>
             <div class="card my-7">
                 <div class="card-body p-0 position-relative">
                     <form name="form"  action="edit_files.php" method="post"> 

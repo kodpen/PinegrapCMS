@@ -167,6 +167,8 @@ $post_form = function ($fields, $button, $class, $attributes = '') use ($stateme
 };
 
 $output_body = '';
+// A screen-wide action, drawn in the toolbar under the heading.
+$output_toolbar = '';
 
 if ((string) $statement['status'] === 'mapping') {
     // Choosing the columns: the first lines of the file as they are, with a
@@ -346,7 +348,6 @@ if ((string) $statement['status'] === 'mapping') {
     }
 
     $output_body = $output_bank_quick . '
-            ' . (($suggested > 0 && !$readonly) ? '<div class="d-flex justify-content-end my-5">' . $post_form('<input type="hidden" name="erp_action" value="record_suggested" />', '<i class="bi bi-check2-all me-1" aria-hidden="true"></i>' . h(lang(array('string' => 'Record the {var:1} suggested line(s)', 'vars' => $suggested))), 'btn-solid theme-success', ' data-erp-send-once') . '</div>' : '') . '
             <div class="card my-7">
                 <div class="card-body p-0 table-responsive">
                     <table class="table table-hover align-middle mb-0" data-pg-sort>
@@ -356,6 +357,12 @@ if ((string) $statement['status'] === 'mapping') {
                 </div>
                 <div class="form-text px-5 pb-5">' . lang('Matched: the books already have the movement (same amount and way, within three days). A suggestion comes from a tax number or an account name in the line, or from the one open invoice of that amount; it is written only when you record it.') . '</div>
             </div>';
+
+    if ($suggested > 0 && !$readonly) {
+        $output_toolbar = pg_screen_toolbar(array(
+            'primary' => $post_form('<input type="hidden" name="erp_action" value="record_suggested" />', '<i class="bi bi-check2-all me-1" aria-hidden="true"></i>' . h(lang(array('string' => 'Record the {var:1} suggested line(s)', 'vars' => $suggested))), 'btn-solid theme-success', ' data-erp-send-once'),
+        ));
+    }
 }
 
 echo
@@ -372,6 +379,7 @@ pg_page_shell([
     ),
 ]) . '
 <main id="content" class="container-fluid">
+    ' . $output_toolbar . '
     <div class="row">
         <div class="col-12">
             ' . $liveform->output_errors() . '

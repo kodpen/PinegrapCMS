@@ -154,6 +154,7 @@ if (!$table_exists) {
         'extra classes' => 'setting',
         'icon' => 'setting',
         'heading' => lang('Performance Log'),
+        'heading_description' => h(lang('Per-request runtime metrics recorded after each response is flushed to the client.')),
     ));
     echo '<main id="content" class="container-fluid">
         <div class="alert theme-warning my-7">
@@ -494,43 +495,28 @@ echo pg_page_shell(array(
     'extra classes' => 'setting',
     'icon' => 'setting',
     'heading' => lang('Performance Log'),
+    'heading_description' => h(lang('Per-request runtime metrics recorded after each response is flushed to the client.')),
 ));
 
+// The toolbar: the filter form at the right end, the clear dialog after it.
 echo '
 <main id="content" class="container-fluid">
+    ' . pg_screen_toolbar(array(
+        'search'   => '<form action="view_performance_log.php" method="get" class="pg-toolbar-filter disable_shortcut d-inline-flex flex-wrap row-gap-2 gap-2 align-items-center" role="search">
+            <label for="perf_log_search" class="visually-hidden">' . lang('Search') . '</label>
+            <input type="search" id="perf_log_search" name="search" value="' . h($search) . '" class="form-control form-control-sm w-auto" placeholder="' . h(lang('Search by page...')) . '">
+            <label for="perf_log_range" class="visually-hidden">' . lang('Time Range') . '</label>
+            <select id="perf_log_range" name="range" class="form-control form-control-sm w-auto" onchange="this.form.submit()">' . $range_select . '</select>
+            <label for="perf_log_area" class="visually-hidden">' . lang('Area') . '</label>
+            <select id="perf_log_area" name="area" class="form-control form-control-sm w-auto" onchange="this.form.submit()">' . $area_select . '</select>
+            <button type="submit" class="btn btn-sm btn-solid theme-primary" aria-label="' . h(lang('Search')) . '"><i class="bi bi-search" aria-hidden="true"></i></button>
+        </form>',
+        'overflow' => '<button type="button" class="btn btn-sm btn-text theme-secondary" data-bs-toggle="dialog" data-bs-target="#perf-log-clear-modal" title="' . h(lang('Clear all performance log data')) . '" aria-label="' . h(lang('Clear all performance log data')) . '"><i class="bi bi-trash" aria-hidden="true"></i></button>',
+    ), array('class' => 'mb-5')) . '
     <div class="row">
         <div class="col-12">
             ' . $liveform->output_errors() . '
             ' . $liveform->output_notices() . '
-
-            <div class="row mb-5 flex-wrap align-items-center">
-                <div class="col-12 md:col-6 text-center md:text-start">
-                    
-                    <p class="m-0 small fg-secondary">' . lang('Per-request runtime metrics recorded after each response is flushed to the client.') . '</p>
-                </div>
-                <div class="col-12 md:col-6">
-                    <form action="view_performance_log.php" method="get" class="row g-3 md:justify-content-end align-items-end">
-                        <div class="col-12 sm:col">
-                            <label for="perf_log_search" class="form-label small mb-0">' . lang('Search') . '</label>
-                            <input type="search" id="perf_log_search" name="search" value="' . h($search) . '" class="form-control form-control-sm" placeholder="' . h(lang('Search by page...')) . '">
-                        </div>
-                        <div class="col-auto">
-                            <label for="perf_log_range" class="form-label small mb-0">' . lang('Time Range') . '</label>
-                            <select id="perf_log_range" name="range" class="form-control form-control-sm" onchange="this.form.submit()">' . $range_select . '</select>
-                        </div>
-                        <div class="col-auto">
-                            <label for="perf_log_area" class="form-label small mb-0">' . lang('Area') . '</label>
-                            <select id="perf_log_area" name="area" class="form-control form-control-sm" onchange="this.form.submit()">' . $area_select . '</select>
-                        </div>
-                        <div class="col-auto">
-                            <button type="submit" class="btn btn-sm btn-solid theme-primary" aria-label="' . h(lang('Search')) . '"><i class="bi bi-search"></i></button>
-                        </div>
-                        <div class="col-auto">
-                            <button type="button" class="btn btn-sm btn-outline theme-danger" data-bs-toggle="dialog" data-bs-target="#perf-log-clear-modal" title="' . h(lang('Clear all performance log data')) . '"><i class="bi bi-trash"></i></button>
-                        </div>
-                    </form>
-                </div>
-            </div>
 
             <!-- Clear-all confirm modal: TRUNCATE the perf_log table.
                  Posts back to this page with submit_clear=1 + the standard

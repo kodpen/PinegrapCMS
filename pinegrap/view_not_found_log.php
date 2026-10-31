@@ -89,13 +89,10 @@ $view_switcher =
 if (!$ready) {
     echo pg_page_shell($shell) . '
 <main id="content" class="container-fluid">
-    <nav id="button_bar" class="pg-toolbar my-3" aria-label="' . h(lang('Button Bar')) . '">
-        <div class="pg-toolbar-grow"></div>
-        ' . $view_switcher . '
-    </nav>
-    <div class="alert theme-warning my-7">
-        <i class="bi bi-exclamation-triangle me-3" aria-hidden="true"></i>' . h(lang('The 404 log table does not exist yet. Please run the software upgrade to create it.')) . '
-    </div>
+    ' . pg_screen_toolbar(array(
+        'grow' => '<span class="fg-warning"><i class="bi bi-exclamation-triangle me-3" aria-hidden="true"></i>' . h(lang('The 404 log table does not exist yet. Please run the software upgrade to create it.')) . '</span>',
+        'view' => $view_switcher,
+    ), array('class' => 'my-3')) . '
 </main>' . output_footer();
 
     $liveform->remove_form();
@@ -230,31 +227,32 @@ $output_table = ($output_rows === '')
 
 echo pg_page_shell($shell) . '
 <main id="content" class="container-fluid">
+    ' . pg_screen_toolbar(array(
+        'grow'     => '<span class="small fg-secondary">' . $output_summary . '</span>',
+        'search'   => array(
+            '<form method="get" action="view_not_found_log.php" class="pg-toolbar-search disable_shortcut" role="search">
+                ' . (($who !== '') ? '<input type="hidden" name="who" value="' . h($who) . '">' : '') . '
+                <label class="form-control form-control-sm form-adorn rounded-pill">
+                    <span class="form-adorn-text" aria-hidden="true"><i class="bi bi-search"></i></span>
+                    <input type="search" class="form-ghost" id="pg_404_search" name="q" value="' . h($search) . '" maxlength="' . (int) PG_NOT_FOUND_LOG_PATH_MAX . '" placeholder="' . h(lang('Search addresses')) . '" aria-label="' . h(lang('Search')) . '">
+                </label>
+            </form>',
+            pg_filter_select('who', $who_options, $who, array('keep' => array('q'), 'label' => lang('Who asked'), 'icon' => 'person', 'action' => 'view_not_found_log.php')),
+            pg_list_sort_menu('view_not_found_log.php', $sort_columns, $sort_levels, $sort_default, $kept),
+        ),
+        'view'     => $view_switcher,
+        'overflow' => '<div class="pg-menu-wrap">
+                <button type="button" class="btn btn-sm btn-text theme-secondary" data-bs-toggle="menu" data-bs-placement="bottom-end" aria-expanded="false" title="' . h(lang('More')) . '" aria-label="' . h(lang('More')) . '"><i class="bi bi-three-dots-vertical" aria-hidden="true"></i></button>
+                <ul class="menu pg-menu-end">
+                    <li><button type="button" class="menu-item pg-link-body-emphasis no-submit pg-404-clear"><i class="bi bi-trash me-3" aria-hidden="true"></i>' . h(lang('Clear Log')) . '</button></li>
+                </ul>
+            </div>',
+    ), array('class' => 'my-3')) . '
     <div class="row">
         <div class="col-12">
             ' . $liveform->output_errors() . '
             ' . $liveform->get_warnings() . '
             ' . $liveform->output_notices() . '
-            <nav id="button_bar" class="pg-toolbar my-3" aria-label="' . h(lang('Button Bar')) . '">
-                <div class="pg-toolbar-grow"></div>
-                <form method="get" action="view_not_found_log.php" class="pg-toolbar-search disable_shortcut" role="search">
-                    ' . (($who !== '') ? '<input type="hidden" name="who" value="' . h($who) . '">' : '') . '
-                    <label class="form-control form-control-sm form-adorn rounded-pill">
-                        <span class="form-adorn-text" aria-hidden="true"><i class="bi bi-search"></i></span>
-                        <input type="search" class="form-ghost" id="pg_404_search" name="q" value="' . h($search) . '" maxlength="' . (int) PG_NOT_FOUND_LOG_PATH_MAX . '" placeholder="' . h(lang('Search addresses')) . '" aria-label="' . h(lang('Search')) . '">
-                    </label>
-                </form>
-                ' . pg_filter_select('who', $who_options, $who, array('keep' => array('q'), 'label' => lang('Who asked'), 'icon' => 'person', 'action' => 'view_not_found_log.php')) . '
-                ' . pg_list_sort_menu('view_not_found_log.php', $sort_columns, $sort_levels, $sort_default, $kept) . '
-                ' . $view_switcher . '
-                <div class="pg-menu-wrap">
-                    <button type="button" class="btn btn-sm btn-text theme-secondary" data-bs-toggle="menu" data-bs-placement="bottom-end" aria-expanded="false" title="' . h(lang('More')) . '" aria-label="' . h(lang('More')) . '"><i class="bi bi-three-dots-vertical" aria-hidden="true"></i></button>
-                    <ul class="menu pg-menu-end">
-                        <li><button type="button" class="menu-item pg-link-body-emphasis no-submit pg-404-clear"><i class="bi bi-trash me-3" aria-hidden="true"></i>' . h(lang('Clear Log')) . '</button></li>
-                    </ul>
-                </div>
-            </nav>
-            <p class="small fg-secondary mb-0">' . $output_summary . '</p>
             <div class="card my-7">
                 <div class="card-body p-0 position-relative">
                     ' . $output_table . '

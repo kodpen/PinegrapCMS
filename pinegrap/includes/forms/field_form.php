@@ -413,6 +413,56 @@ function pg_field_form_folder_exists($folder_id)
 }
 
 /**
+ * The name of a folder, or null when no folder has this id.
+ *
+ * @param int|string $folder_id
+ * @return string|null
+ */
+function pg_field_form_folder_name($folder_id)
+{
+    $result = db_q("SELECT folder_name FROM folder WHERE folder_id = ?", array((string) $folder_id)) or output_error('Query failed.');
+    $row = mysqli_fetch_row($result);
+
+    return $row ? (string) $row[0] : null;
+}
+
+/**
+ * The upload folder options with the stored folder kept. select_folder()
+ * has no option for a deleted folder or one it no longer offers (in the
+ * Recycle Bin, or out of the user's reach), and no blank first option, so
+ * the browser would show the first folder as selected and a plain Save would
+ * write it. The stored folder is appended selected and marked, with a line
+ * asking for another folder.
+ *
+ * @param string      $options_html the <option> tags select_folder() gave
+ * @param int|string  $value        the stored folder id, 0 for none
+ * @param string|null $name         the stored folder's name, null when the
+ *                                  folder row is gone
+ * @return array options (the option tags), help (the line, or '')
+ */
+function pg_field_form_kept_folder($options_html, $value, $name)
+{
+    $id = (int) $value;
+
+    if (($id <= 0) || (strpos($options_html, '<option value="' . $id . '"') !== false)) {
+        return array('options' => $options_html, 'help' => '');
+    }
+
+    if ($name === null) {
+        $label = lang('(deleted folder)');
+        $line = lang('The folder this field uploads to was deleted. Choose another folder.');
+    } else {
+        $label = trim($name . ' ' . lang('(no longer offered)'));
+        $line = lang('The folder this field uploads to is no longer offered here. Choose another folder.');
+    }
+
+    return array(
+        'options' => $options_html . '<option value="' . $id . '" selected>' . h($label) . '</option>',
+        'help' => '<div id="upload_folder_id_help" class="form-text fg-danger">' . h($line) . '</div>',
+    );
+}
+
+/**
  * One stored choice as a line of the choices text (the format
  * pg_field_form_parse_option_line() reads). Each part is written only when it
  * or a later part has a value.
@@ -846,12 +896,21 @@ function pg_field_form_cards($liveform, $field, $context)
     }
 
     if ($context['upload_folder_row']) {
+        $folder_options = select_folder($field['upload_folder_id']);
+        $kept_folder = pg_field_form_kept_folder($folder_options, $field['upload_folder_id'], null);
+
+        // Only a stored folder that the list left out needs its name.
+        if ($kept_folder['help'] !== '') {
+            $kept_folder = pg_field_form_kept_folder($folder_options, $field['upload_folder_id'], pg_field_form_folder_name($field['upload_folder_id']));
+        }
+
         $output_upload_folder_id_row =
             '<div class="col-12 my-3 collapse" id="upload_folder_id_row">
                 <div class="row">
                     <div class="col-12 md:col-6 my-3">
                         <label for="upload_folder_id" class="form-label">' . lang('Folder to upload File') . '</label>
-                        <select name="upload_folder_id" id="upload_folder_id" class="form-control">' . select_folder($field['upload_folder_id']) . '</select>
+                        <select name="upload_folder_id" id="upload_folder_id" class="form-control"' . ($kept_folder['help'] !== '' ? ' aria-describedby="upload_folder_id_help"' : '') . '>' . $kept_folder['options'] . '</select>
+                        ' . $kept_folder['help'] . '
                     </div>
                 </div>
             </div>';
