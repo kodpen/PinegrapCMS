@@ -1,6 +1,6 @@
 ---
 name: decisions-made-product-14
-description: Decisions list, product part 14 (2026-10-31 on): own image editor, nothing alone under a screen's title
+description: Decisions list, product part 14 (2026-10-31 on): own image editor, nothing alone under a screen's title, no PDF of ours for a purchase invoice
 ---
 
 ## Where are the rules and the earlier parts?
@@ -14,3 +14,6 @@ description: Decisions list, product part 14 (2026-10-31 on): own image editor, 
 
 ## What may sit under a screen's title? (owner, 2026-10-30)
 - Decided (owner, 2026-10-30, with a screenshot of Calendar subscription's lone "Work Calendar" button): no button, link or short text alone under the title. Everything a screen does is in one toolbar there (`ui/admin-screen-toolbar.md`); the way back is only the back arrow and the breadcrumb (`ui/back-arrow-no-copies.md`). Done #3912-#4100. The bar does not stick on phones (#3837, part 12).
+
+## What is a purchase invoice's PDF, and what goes into the accountant pack for it? (#4104)
+- Decided (architect, 2026-10-31, bug #3997): nothing of ours. The archive keeps a rendering only for `direction = 'sales'` (`erp_event_invoice()` defers it, `erp_archive_invoice()` refuses a purchase); the pack's `belgeler/Alis_faturalari/` holds only the provider's `edoc` copy of a purchase, never the `invoice` copy or a render; `edit_erp_invoice.php` draws no PDF / Download for a purchase invoice (its e-document block already leads to the supplier's inbox document); `get_erp_invoice_pdf.php` answers a purchase invoice with a notice page for PDF, download and `?html=1`. Kept purchase PDFs on running sites stay in `files`, unused. No schema or data step. Refused: printing it as a "Purchase invoice" with the supplier as issuer: a second document beside the supplier's, which is the one that counts, and every custom template would need the branch. Re-ask if accountants want a per-purchase record printout.
