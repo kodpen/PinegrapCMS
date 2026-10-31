@@ -11,4 +11,7 @@ description: Destroy Chart.js charts (destroy_widget_charts in welcome.php) befo
 - Any code that replaces a region that may hold charts with `.html()` / `.remove()` / `.append()` first closes the charts in that region. `destroy_widget_charts($scope)` in `welcome.php` does this (`Chart.getChart(canvas).destroy()`); a new refresh path must call it too.
 - The hook was deliberately NOT put into jQuery's `remove()` (overriding `$.cleanData`): it would affect every screen and hide who owns the chart. Widget refresh is the only place that routinely replaces chart markup.
 
+## Do date and time fields need the same?
+- Yes. A `data-pg-date` / `-datetime` / `-time` field's dropdown calendar is moved into the dialog's overlay host, outside the pane, with listeners on `window`; `.html()` on the pane leaves it. `window.pgReleaseFields(scope)` (`backend.src.js`) calls `pgFields.destroy()` on them; the settings modal calls it with `pgReleaseEditors()` before a pane change and on close. Before #3959 calendars piled up in the dialog, one per pane visit.
+
 Related: docs/memory/ui/panel-code-fields.md (code editors: `pgReleaseEditors()`)
