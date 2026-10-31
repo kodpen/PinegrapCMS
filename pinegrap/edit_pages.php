@@ -17,6 +17,7 @@
  */
 include('init.php');
 include_once('liveform.class.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/page_bulk.php');
 $liveform = new liveform('view_pages');
 $user = validate_user();
 validate_area_access($user, 'user');
@@ -49,6 +50,31 @@ if (!$_POST) {
 
         $default_style_label = '[' . lang('Activated') . ']';
     }
+    // Only staff set a style, as on the page screen; a page the visual
+    // editor opens keeps its own whatever is picked here.
+    $output_style_rows = '';
+
+    if ($user['role'] < 3) {
+        $output_style_rows = '
+            <div class="col-12">
+                <div class="row">
+                    ' . $output_preview_style_warning_row . '
+                    <div class="col-12 sm:col-6">
+                        <div class="form-floating mt-1 mb-3">
+                            <label for="page_style" class="form-label">' . lang('Page Style') . '</label>
+                            <select class="form-control" id="page_style"><option value=""></option>' . select_style('', $default_style_label) . '</select>
+                        </div>
+                    </div>
+                    <div class="col-12 sm:col-6">
+                        <div class="form-floating mt-1 mb-3">
+                            <label for="mobile_style_id" class="form-label">' . lang('Mobile Page Style') . '</label>
+                            <select class="form-control" id="mobile_style_id"><option value=""></option>' . get_mobile_style_options('', $default_style_label) . '</select>
+                        </div>
+                    </div>
+                </div>
+            </div>';
+    }
+
     // set options for search pick list
     $site_search_options =
         array(
@@ -96,13 +122,14 @@ if (!$_POST) {
                 opener.document.form.move_to_folder.value = document.getElementById("folder").value;
             }
 
-            // if there is a value then update field in the form
-            if (document.getElementById("page_style").value != "") {
-                opener.document.form.edit_page_style.value = document.getElementById("page_style").value;
+            // the two style pick lists are drawn for staff only
+            var page_style = document.getElementById("page_style");
+            if (page_style && (page_style.value != "")) {
+                opener.document.form.edit_page_style.value = page_style.value;
             }
-            // if there is a value then update field in the form
-            if (document.getElementById("mobile_style_id").value != "") {
-                opener.document.form.edit_mobile_style_id.value = document.getElementById("mobile_style_id").value;
+            var mobile_style_id = document.getElementById("mobile_style_id");
+            if (mobile_style_id && (mobile_style_id.value != "")) {
+                opener.document.form.edit_mobile_style_id.value = mobile_style_id.value;
             }
 
             // if there is a value then update field in the form
@@ -130,24 +157,7 @@ if (!$_POST) {
                 </div>
             </div>
             
-            <div class="col-12">
-                <div class="row">
-                    ' . $output_preview_style_warning_row . '
-                    <div class="col-12 sm:col-6">
-                        <div class="form-floating mt-1 mb-3">
-                            <label for="page_style" class="form-label">' . lang('Page Style') . '</label>
-                            <select class="form-control" id="page_style"><option value=""></option>' . select_style('', $default_style_label) . '</select>
-                        </div>
-                    </div>
-                    <div class="col-12 sm:col-6">
-                        <div class="form-floating mt-1 mb-3">
-                            <label for="mobile_style_id" class="form-label">' . lang('Mobile Page Style') . '</label>
-                            <select class="form-control" id="mobile_style_id"><option value=""></option>' . get_mobile_style_options('', $default_style_label) . '</select>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
+            ' . $output_style_rows . '
             <div class="col-12 sm:col-6">
                 <div class="form-floating mt-1 mb-3">
                     <label for="site_search" class="form-label">' . lang('Site Search') . '</label>
@@ -186,203 +196,67 @@ if (!$_POST) {
                     output_error(lang('You do not have access to move pages to the folder that you selected') . '. <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
                 }
                 
+                // While a theme other than the activated one is previewed, the styles are set for the preview.
+                $previewing = (
+                    (!empty($_SESSION['software']['preview_theme_id']))
+                    && ($_SESSION['software']['preview_theme_id'] != $activated_desktop_theme_id)
+                    && ($_SESSION['software']['preview_theme_id'] != $activated_mobile_theme_id)
+                );
+
+                // Only staff set a style, as on the page screen; a role 3 user is
+                // not offered the two pick lists and a posted style is ignored.
+                $staff = ($user['role'] < 3);
+                $edit_page_style = $staff ? (string) ($_POST['edit_page_style'] ?? '') : '';
+                $edit_mobile_style_id = $staff ? (string) ($_POST['edit_mobile_style_id'] ?? '') : '';
+
+                $set = array(
+                    'folder' => $_POST['move_to_folder'] ?? '',
+                    'search' => $_POST['edit_site_search'] ?? '',
+                    'sitemap' => $_POST['edit_sitemap'] ?? '',
+                    'style' => $edit_page_style,
+                    'mobile_style' => $edit_mobile_style_id,
+                );
+
+                $number_of_styled_pages = 0;
+                $number_of_style_skipped_pages = 0;
+
                 // loop through each page and process actions
                 foreach ($_POST['pages'] as $page_id) {
-                    $audit_before = pg_audit_fetch('page', $page_id);
+                    $page = pg_page_bulk_fetch($page_id);
 
-                    // get folder that page is in, in order to validate access
-                    $query = 
-                        "SELECT
-                            page_folder,
-                            page_search,
-                            page_search_keywords,
-                            page_type
-                        FROM page
-                        WHERE page_id = ?";
-                    $result = db_q($query, array((string) $page_id)) or output_error('Query failed.');
-                    $row = mysqli_fetch_assoc($result);
-                    $original_page_search = $row['page_search'];
-                    $original_search_keywords = $row['page_search_keywords'];
-                    $page_type = $row['page_type'];
-                    
+                    if (!$page) {
+                        continue;
+                    }
+
                     // if user has access to page then proceed
-                    if (check_edit_access($row['page_folder']) == true) {
-                        // if a folder was selected to move the page(s) to, then move page
-                        if ($_POST['move_to_folder']) {
-                            $query = "UPDATE page
-                                     SET
-                                        page_folder = ?,
-                                        page_timestamp = UNIX_TIMESTAMP(),
-                                        page_user = ?
-                                     WHERE page_id = ?";
-                            $result = db_q($query, array((string) ($_POST['move_to_folder'] ?? ''), (string) $user['id'], (string) $page_id)) or output_error('Query failed.');
-                        }
-                        
-                        // if a page style was selected to be applied to the page(s), then apply the style
-                        if ($_POST['edit_page_style'] != '') {
-                            // If the user is currently previewing a theme and it is not an activated theme,
-                            // then update preview style for page instead of activated style.
-                            if (
-                                (!empty($_SESSION['software']['preview_theme_id']))
-                                && ($_SESSION['software']['preview_theme_id'] != $activated_desktop_theme_id)
-                                && ($_SESSION['software']['preview_theme_id'] != $activated_mobile_theme_id)
-                            ) {
-                                // Delete existing record.
-                                db(
-                                    "DELETE FROM preview_styles
-                                    WHERE
-                                        (page_id = '" . escape($page_id) . "')
-                                        AND (theme_id = '" . escape($_SESSION['software']['preview_theme_id']) . "')
-                                        AND (device_type = 'desktop')");
+                    if (check_edit_access($page['page_folder']) == true) {
+                        $audit_before = pg_audit_fetch('page', $page['page_id']);
 
-                                // If the user has selected a style (and not the default activated style),
-                                // then add record for preview style.
-                                if ($_POST['edit_page_style']) {
-                                    db(
-                                        "INSERT INTO preview_styles (
-                                            page_id,
-                                            theme_id,
-                                            style_id,
-                                            device_type)
-                                        VALUES (
-                                            '" . escape($page_id) . "',
-                                            '" . escape($_SESSION['software']['preview_theme_id']) . "',
-                                            '" . escape($_POST['edit_page_style'] ?? '') . "',
-                                            'desktop')");
-                                }
+                        $decision = pg_page_bulk_decide($page, $set, $user['role']);
+                        pg_page_bulk_apply($page, $decision, $user['id'], $previewing ? (int) $_SESSION['software']['preview_theme_id'] : 0);
 
-                            // Otherwise the user is not previewing a theme or it is an activated one,
-                            // so update activated style for page.
-                            } else {
-                                $query = "UPDATE page
-                                         SET
-                                            page_style = ?,
-                                            page_timestamp = UNIX_TIMESTAMP(),
-                                            page_user = ?
-                                         WHERE page_id = ?";
-                                $result = db_q($query, array((string) ($_POST['edit_page_style'] ?? ''), (string) $user['id'], (string) $page_id)) or output_error('Query failed.');
-                            }
+                        pg_audit_record('update', 'page', $page['page_id'], $audit_before);
+
+                        if (count($decision['styles']) > 0) {
+                            $number_of_styled_pages++;
                         }
 
-                        // if a mobile page style was selected to be applied to the page(s), then apply the mobile style
-                        if ($_POST['edit_mobile_style_id'] != '') {
-                            // If the user is currently previewing a theme and it is not an activated theme,
-                            // then update preview style for page instead of activated style.
-                            if (
-                                (!empty($_SESSION['software']['preview_theme_id']))
-                                && ($_SESSION['software']['preview_theme_id'] != $activated_desktop_theme_id)
-                                && ($_SESSION['software']['preview_theme_id'] != $activated_mobile_theme_id)
-                            ) {
-                                // Delete existing record.
-                                db(
-                                    "DELETE FROM preview_styles
-                                    WHERE
-                                        (page_id = '" . escape($page_id) . "')
-                                        AND (theme_id = '" . escape($_SESSION['software']['preview_theme_id']) . "')
-                                        AND (device_type = 'mobile')");
-
-                                // If the user has selected a style (and not the default activated style),
-                                // then add record for preview style.
-                                if ($_POST['edit_mobile_style_id']) {
-                                    db(
-                                        "INSERT INTO preview_styles (
-                                            page_id,
-                                            theme_id,
-                                            style_id,
-                                            device_type)
-                                        VALUES (
-                                            '" . escape($page_id) . "',
-                                            '" . escape($_SESSION['software']['preview_theme_id']) . "',
-                                            '" . escape($_POST['edit_mobile_style_id'] ?? '') . "',
-                                            'mobile')");
-                                }
-
-                            // Otherwise the user is not previewing a theme or it is an activated one,
-                            // so update activated style for page.
-                            } else {
-                                $query = "UPDATE page
-                                         SET
-                                            mobile_style_id = ?,
-                                            page_timestamp = UNIX_TIMESTAMP(),
-                                            page_user = ?
-                                         WHERE page_id = ?";
-                                $result = db_q($query, array((string) ($_POST['edit_mobile_style_id'] ?? ''), (string) $user['id'], (string) $page_id)) or output_error('Query failed.');
-                            }
+                        if ($decision['style_skipped']) {
+                            $number_of_style_skipped_pages++;
                         }
-                        
-                        // if the site search was selected to be edited, then update site search and update the tag cloud table
-                        if ($_POST['edit_site_search'] != '') {
-                            $query = "UPDATE page
-                                     SET
-                                        page_search = ?,
-                                        page_timestamp = UNIX_TIMESTAMP(),
-                                        page_user = ?
-                                     WHERE page_id = ?";
-                            $result = db_q($query, array((string) ($_POST['edit_site_search'] ?? ''), (string) $user['id'], (string) $page_id)) or output_error('Query failed.');
-                            
-                            // if the site search was off and it is now being turned on, then call the function that updates the tag cloud table to add the keywords
-                            if (($original_page_search != 1) && ($_POST['edit_site_search'] == 1)) {
-                                update_tag_cloud_keywords_for_page($page_id, $_POST['edit_site_search'], $original_search_keywords, 0, '');
-
-                            // else if the site search was on and it is now being turned off, then call the function that updates the tag cloud table to reduce or remove the keywords
-                            } elseif (($original_page_search == 1) && ($_POST['edit_site_search'] != 1)) {
-                                update_tag_cloud_keywords_for_page($page_id, 0, '', $original_page_search, $original_search_keywords);
-                            }
-                        }
-                        
-                        // if sitemap was selected to be edited and page has a valid page type for the sitemap, then update sitemap value
-                        if (
-                            ($_POST['edit_sitemap'] != '')
-                            &&
-                            (
-                                ($page_type == 'standard')
-                                || ($page_type == 'folder view')
-                                || ($page_type == 'photo gallery')
-                                || ($page_type == 'custom form')
-                                || ($page_type == 'form list view')
-                                || ($page_type == 'form item view')
-                                || ($page_type == 'form view directory')
-                                || ($page_type == 'calendar view')
-                                || ($page_type == 'calendar event view')
-                                || ($page_type == 'catalog')
-                                || ($page_type == 'catalog detail')
-                                || ($page_type == 'express order')
-                                || ($page_type == 'order form')
-                                || ($page_type == 'shopping cart')
-                                || ($page_type == 'search results')
-                            )
-                        ) {
-                            $query =
-                                "UPDATE page
-                                SET
-                                    sitemap = ?,
-                                    page_timestamp = UNIX_TIMESTAMP(),
-                                    page_user = ?
-                                WHERE page_id = ?";
-                            $result = db_q($query, array((string) ($_POST['edit_sitemap'] ?? ''), (string) $user['id'], (string) $page_id)) or output_error('Query failed.');
-                        }
-
-                        pg_audit_record('update', 'page', $page_id, $audit_before);
 
                         $number_of_pages++;
-                    
+
                     // else output error
                     } else {
                         output_error(lang('You do not have access to edit the pages that you selected') . '. <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
                     }
                 }
-                
+
                 // if more than 0 pages were modified, then log activity
                 if ($number_of_pages > 0) {
                     // Each change is a verb-free phrase; they are joined with ', ' inside one sentence key.
                     $changes = array();
-
-                    // While a theme other than the activated one is previewed, the styles were set for the preview.
-                    $previewing = (
-                        (!empty($_SESSION['software']['preview_theme_id']))
-                        && ($_SESSION['software']['preview_theme_id'] != $activated_desktop_theme_id)
-                        && ($_SESSION['software']['preview_theme_id'] != $activated_mobile_theme_id)
-                    );
 
                     // if a folder was selected to move the page(s) to, then name the folder
                     if ($_POST['move_to_folder']) {
@@ -393,13 +267,13 @@ if (!$_POST) {
                         $changes[] = lang(array('string' => 'moved to the folder {var:1}', 'vars' => array($row['folder_name'])));
                     }
 
-                    // if a page style was selected to be applied to the page(s), then name the style
-                    if ($_POST['edit_page_style'] != '') {
-                        if ($_POST['edit_page_style'] == '0') {
+                    // if a page style was applied to any of the page(s), then name the style
+                    if (($edit_page_style != '') && ($number_of_styled_pages > 0)) {
+                        if ($edit_page_style == '0') {
                             $style = $previewing ? '[' . lang('Activated') . ']' : lang('Default') . ' (' . lang('inherit') . ')';
                         } else {
                             $query = "SELECT style_name FROM style WHERE style_id = ?";
-                            $result = db_q($query, array((string) ($_POST['edit_page_style'] ?? ''))) or output_error('Query failed.');
+                            $result = db_q($query, array($edit_page_style)) or output_error('Query failed.');
                             $row = mysqli_fetch_assoc($result);
                             $style = $row['style_name'];
                         }
@@ -411,13 +285,13 @@ if (!$_POST) {
                         }
                     }
 
-                    // if a mobile page style was selected to be applied to the page(s), then name the style
-                    if ($_POST['edit_mobile_style_id'] != '') {
-                        if ($_POST['edit_mobile_style_id'] == '0') {
+                    // if a mobile page style was applied to any of the page(s), then name the style
+                    if (($edit_mobile_style_id != '') && ($number_of_styled_pages > 0)) {
+                        if ($edit_mobile_style_id == '0') {
                             $mobile_style = $previewing ? '[' . lang('Activated') . ']' : lang('Default') . ' (' . lang('inherit') . ')';
                         } else {
                             $query = "SELECT style_name FROM style WHERE style_id = ?";
-                            $result = db_q($query, array((string) ($_POST['edit_mobile_style_id'] ?? ''))) or output_error('Query failed.');
+                            $result = db_q($query, array($edit_mobile_style_id)) or output_error('Query failed.');
                             $row = mysqli_fetch_assoc($result);
                             $mobile_style = $row['style_name'];
                         }
@@ -445,6 +319,14 @@ if (!$_POST) {
                             $message = lang(array('string' => '{var:1} page was changed: {var:2}.', 'vars' => array($number_of_pages, implode(', ', $changes))));
                         } else {
                             $message = lang(array('string' => '{var:1} pages were changed: {var:2}.', 'vars' => array($number_of_pages, implode(', ', $changes))));
+                        }
+
+                        // Said rather than left to be noticed: a style that changed
+                        // nothing on part of the selection would look like a bug.
+                        if ($number_of_style_skipped_pages > 0) {
+                            $message .= ' ' . lang(array(
+                                'string' => 'The style was left alone on {var:1} of them, because a page the visual editor opens carries its own layout.',
+                                'vars' => $number_of_style_skipped_pages));
                         }
 
                         log_activity($message, $_SESSION['sessionusername']);
