@@ -4,7 +4,7 @@ description: Steps E1-E10 of plans/image-editor.md: core modal, crop, server sav
 ---
 
 ## Which steps are there?
-- S is under 400 product lines, M about 1,000 (E9's library deletion not counted). "Screen" numbers are in `image-editor-visuals.md`. Order: E1, E1b, E2, E3, then E4-E8 in any order, E9, E10. Each step's UI also works on a phone in the E1b layout.
+- S under 400 product lines, M about 1,000 (E9's deletion not counted). Screens: `image-editor-visuals.md`. Order: E1, E1b, E2, E3, E4-E8 in any order, E9, E10. Each step's UI works on a phone (E1b layout).
 
 - E1 (M) Core modal. Screens 18, 19, 01, 12, 13. Done in #4122 (`ui/image-editor-modal.md`).
   - Bundle, stylesheet, loader, `pg_image_editor_strings()`, the `<dialog>` with full screen, top bar, rail, panel, zoom and pan (wheel, pinch, keys), document model, undo and redo, profiles and `tools`.
