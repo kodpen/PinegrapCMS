@@ -507,6 +507,8 @@ if ($name == '') {
 }
 
 $file_id = 0;
+$file_name = '';
+$file_size = 0;
 
 // If file attachments are allowed and a file was uploaded, then add file.
 if (($comments_allow_file_attachments == 1) && isset($_FILES['file']) && ($_FILES['file']['name'])) {
@@ -977,7 +979,10 @@ if (count($administrator_email_addresses) > 0) {
         'from_name' => ORGANIZATION_NAME,
         'from_email_address' => EMAIL_ADDRESS,
         'subject' => $subject,
-        'body' => $body
+        'body' => $body,
+        // Queued, so the writer never waits on the mail server; email()
+        // still sends at once when the general job has not run lately.
+        'queue' => true
     ));
 
 }

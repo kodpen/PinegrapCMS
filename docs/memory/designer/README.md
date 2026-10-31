@@ -54,6 +54,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - collection-revisions.md: Collection item revisions (record_revisions, 11.0.123, C7a #3068; History and restore C7b #3099): which items, which writers, what a row holds, the History section, restore, retention, erasure
 - collection-template-refs.md: A template's reference into another tab's form (_cf.ref tab:<key>): Publish, forms target first, sample references by label, blog categories, export (C6b1, C6b2)
 - collections-decisions.md: Typed collections over designer forms: why a form with a flag, the approved schema (#2393, #3051), why items have no schedule columns (#3746), what C1–C7 built and where it is described
+- comment-admin-notification.md: The administrator e-mail add_comment.php sends about a new comment: queued, written in the staff language, attachment line only when a file came
 - comment-anonymous-name.md: The stored literal 'Anonymous' of a nameless comment and every reader that shows it in the site or panel language through pg_comment_display_name()
 - comment-counters-recount.md: Upgrade step 11.0.33 (data only) counts the comments of form records on designed pages again: two walks, a time pause, a per-database data/temp progress file with a done marker
 - comment-replies.md: Which comment a reply may answer (pg_comment_parent_ok()): same thread, visible to the writer, else refused with the text kept; ?reply_to=, staff mails, API parent_id, deleted parents, page copies
