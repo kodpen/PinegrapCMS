@@ -1215,6 +1215,7 @@
     "e-Invoice": "e-Fatura",
     "e-Invoice or e-Archive": "e-Fatura ya da e-Arşiv",
     "e-Invoice taxpayer": "e-Fatura mükellefi",
+    "e-fatura, threshold, limit, gross sales, system status": "e-fatura, threshold, limit, gross sales, system status, eşik, sınır, brüt satış, sistem durumu",
     "e-mail address": "e-posta adresi",
     "e-mail campaign (subject: {var:1}) was sent to {var:2} recipients": "e-posta kampanyası (konu: {var:1}) {var:2} alıcıya gönderildi",
     "e-mail campaign job sent e-mail(s) to {var:1} recipient(s)": "e-posta kampanyası işi {var:1} alıcıya e-posta gönderdi",

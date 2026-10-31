@@ -745,6 +745,7 @@
     "last {var:1}": "son: {var:1}",
     "last {var:1} days": "son {var:1} gün",
     "late": "geciken",
+    "late payment fee, late fee, interest, overdue, default interest": "late payment fee, late fee, interest, overdue, default interest, gecikme faizi, gecikme bedeli, faiz, vadesi geçmiş, temerrüt faizi",
     "later": "sonra",
     "latest-news": "son-haberler",
     "lb": "lb",

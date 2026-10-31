@@ -19,6 +19,11 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     exit;
 }
 
+// The accounting rules, the late payment fee, the e-Fatura thresholds and the
+// document templates are drawn by the ERP module, which draws them on the ERP
+// Settings screen too.
+require_once(PG_FUNCTIONS_DIR . '/includes/erp/bootstrap.php');
+
 // ── ERP ──
 $pg_settings_cards[] = '
     <div id="pgset-erp" class="pg-set-card">
@@ -400,6 +405,67 @@ $pg_settings_cards[] = '
                                                             </div>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>';
+
+// ── Accounting Rules ──
+$pg_settings_cards[] = '
+    <div id="pgset-erp-rules" class="pg-set-card">
+        <div class="card">
+            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                ' . lang('Accounting rules') . '
+            </div>
+            <div class="card-body">
+                        <p class="fg-secondary">' . lang('Choices your accountant settles for the store; until then the ERP works as it always has.') . '</p>
+                        ' . erp_settings_rules_fields() . '
+            </div>
+        </div>
+    </div>';
+
+// ── Late Payment Fee ──
+// Drawn once the upgrade added its columns; the save writes it only then.
+if (erp_late_fee_ready()) {
+    $pg_settings_cards[] = '
+    <div id="pgset-late-fee" class="pg-set-card">
+        <div class="card">
+            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                ' . lang('Late payment fee') . '
+            </div>
+            <div class="card-body">
+                        ' . erp_settings_late_fee_fields() . '
+            </div>
+        </div>
+    </div>';
+}
+
+// ── e-Fatura Threshold ──
+// A Turkish rule: outside Turkey the card is drawn hidden, like the E-Invoice
+// card, so a save finds the stored amounts and keeps them.
+if (erp_efatura_threshold_ready()) {
+    $pg_settings_cards[] = '
+    <div id="pgset-efatura-threshold" class="pg-set-card' . (erp_settings_efatura_threshold_shown() ? '' : ' d-none') . '">
+        <div class="card">
+            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                ' . lang('e-Fatura threshold') . '
+            </div>
+            <div class="card-body">
+                        ' . erp_settings_efatura_threshold_fields() . '
+            </div>
+        </div>
+    </div>';
+}
+
+// ── Document Templates ──
+// The editor, with its preview and reset, stays on the ERP Settings screen.
+$pg_settings_cards[] = '
+    <div id="pgset-erp-templates" class="pg-set-card">
+        <div class="card">
+            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                ' . lang('Document Templates') . '
+            </div>
+            <div class="card-body">
+                        ' . erp_settings_templates_status(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_settings.php') . '
             </div>
         </div>
     </div>';

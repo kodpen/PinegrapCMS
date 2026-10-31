@@ -145,6 +145,7 @@ ERP (accounting) module: invoices, payments, waybills, cash, e-documents, report
 - erp-return-documents.md: ERP return (credit) documents: series naming, full vs partial return arithmetic, currency and date of a return, line VAT rate, returned_qty and parent_line_id.
 - erp-return-quantities-and-currency.md: An ERP return's currency, rate and date, and how returned quantities are tracked on the parent (returned_qty, parent_line_id 4.50, the product-match fallback, withholding and second tax caps).
 - erp-screen-status-column-pattern.md: Owner decision on ERP screen width: form column plus sticky status column and sticky save bar, modeled on product_builder.php.
+- erp-settings-cards.md: The ERP Settings cards drawn in two places (Accounting pane and erp_settings.php) from includes/erp/settings_cards.php; who sees which, how each saves, why the template editor stays on the screen.
 - erp-stock-count.md: ERP stock count (4.100): scanning and corrections, applying it to products in one transaction, why it writes no stock move and carries no cost, what is kept, the event and the marketplace hook.
 - erp-stock-moves-and-cost.md: ERP stock and cost from documents (4.77): which invoices change the count, stock_wanted, moves written in the transaction and applied after commit, idempotent moves, the average cost rules.
 - erp-tax-names-zones-and-second-tax.md: ERP tax captions (erp_tax_label, config.erp_tax_name), the zone rate for store and account sales, and the second tax (4.75): columns, SQL helpers, captions, the e-document limit.

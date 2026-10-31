@@ -3276,6 +3276,7 @@
     "accessibility@example.com": "erisilebilirlik@example.com",
     "account-email": "hesap-e-postasi",
     "account_id is one current account.": "account_id tek bir cari hesaptır.",
+    "accounting rules, vat, withholding, exemption code, zero-rated, expense category": "accounting rules, vat, withholding, exemption code, zero-rated, expense category, muhasebe kuralları, kdv, tevkifat, istisna kodu, sıfır oranlı, gider kategorisi",
     "action": "eylem",
     "action is the step, as an object with a type.": "action, type alanı olan bir nesne olarak adımdır.",
     "activated {var:1} page style ({var:2}) was set for page ({var:3})": "etkin {var:1} sayfa stili ({var:2}) sayfa ({var:3}) için ayarlandı",
