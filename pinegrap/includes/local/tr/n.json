@@ -1397,6 +1397,7 @@
     "Nothing was saved: these settings would refuse you, because this request comes from {var:1}. Let your country in, keep the control panel open, or add your address to the allowed IP addresses.": "Hiçbir şey kaydedilmedi: bu ayarlar sizi reddederdi, çünkü bu istek {var:1} ülkesinden geliyor. Ülkenizi içeri alın, yönetim panelini açık tutun ya da adresinizi izin verilen IP adreslerine ekleyin.",
     "Nothing was saved; close this tab and use Save on the settings card to keep the credentials.": "Hiçbir şey kaydedilmedi; bu sekmeyi kapatın ve kimlik bilgilerini saklamak için ayarlar kartındaki Kaydet'i kullanın.",
     "Nothing was saved; use Save on the settings card to keep the credentials.": "Hiçbir şey kaydedilmedi; kimlik bilgilerini saklamak için ayarlar kartındaki Kaydet'i kullanın.",
+    "Nothing was sent or changed.": "Hiçbir şey gönderilmedi veya değiştirilmedi.",
     "Nothing was sent. To post it as a message, start it with two slashes: {var:1}. {var:2} lists every command.": "Hiçbir şey gönderilmedi. Mesaj olarak göndermek için iki eğik çizgiyle başlayın: {var:1}. {var:2} tüm komutları listeler.",
     "Nothing was sold in this period.": "Bu dönemde satış yapılmadı.",
     "Nothing was uploaded.": "Hiçbir şey yüklenmedi.",

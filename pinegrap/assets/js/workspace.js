@@ -9061,6 +9061,11 @@
                 main.appendChild(window.PGWsMail.node(message, self, featureHelpers()));
             }
 
+            // Pinegrap AI's reply draft under a conversation (workspace_mail.js).
+            if (message.mail_draft && window.PGWsMail) {
+                main.appendChild(window.PGWsMail.draft(message, self, featureHelpers()));
+            }
+
             // Somebody mentioned here who is not in the channel: one click
             // brings them in, and the mention reaches them.
             if (message.invite && message.invite.length && !message.deleted) {

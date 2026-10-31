@@ -1,6 +1,6 @@
 ---
 name: mass-edit-find-replace
-description: The Find & Replace card of mass_edit.php: its liveform fields, what a refused apply comes back with, the first-draw defaults
+description: The Find & Replace card of mass_edit.php: its liveform fields, what a refused apply comes back with, the first-draw defaults; the Get Edit Form address
 ---
 
 ## How is the card drawn?
@@ -12,5 +12,9 @@ description: The Find & Replace card of mass_edit.php: its liveform fields, what
 - Before, the card was hand-written HTML with no values: Find and Replace came back blank, Regex off and the boxes back to Title and Description, so a user who had ticked only Page Name could re-apply the permanent replace on fields they had unticked.
 - A successful apply keeps nothing: the screen's `remove_form('mass_edit')` after drawing clears the session copy either way. No query was added (`db_q_pages_regions_test.php` counts them).
 - Test: `tests/mass_edit_find_replace_keep_test.php`.
+
+## How does Get Edit Form open the form?
+- It sets `window.location.href = window.location.pathname + "?tags=" + encodeURIComponent(...)`. Before, it appended `?tags=` to the whole address; after the skip link (`#content`) that only changed the fragment and the page did not reload. Pinned by `tests/edit_return_address_test.php`.
+
 
 Related: docs/memory/ui/page-form-refused-save.md, docs/memory/ui/liveform-notices-trap.md

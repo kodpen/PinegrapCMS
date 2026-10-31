@@ -93,7 +93,7 @@ function test_log_activity_ip_peer_without_the_firewall()
 
 // Both log_activity() bodies take the address from pg_auth_request_address()
 // and read REMOTE_ADDR nowhere themselves; the e-mail-a-friend daily limit
-// counts the rows by the same address, or it would never match them.
+// counts by the same address in the WAF rate store.
 function test_log_activity_ip_both_copies_and_the_limit_share_the_helper()
 {
 	$forms = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/forms.php');
@@ -107,8 +107,7 @@ function test_log_activity_ip_both_copies_and_the_limit_share_the_helper()
 	pg_assert_same(false, strpos($body, 'REMOTE_ADDR'), 'get_file.php reads no REMOTE_ADDR');
 
 	$limit = (string) file_get_contents(PG_FUNCTIONS_DIR . '/email_a_friend.php');
-	pg_assert_contains('(log_ip = ?)', $limit);
-	pg_assert_contains('db_q($query, array(pg_auth_request_address()))', $limit, 'the limit counts by the logged address');
+	pg_assert_contains("waf_rate_hits(pg_auth_request_address(), 'eaf', 86400)", $limit, 'the limit counts by the logged address');
 	pg_assert_same(false, strpos($limit, 'REMOTE_ADDR'), 'email_a_friend.php reads no REMOTE_ADDR');
 }
 

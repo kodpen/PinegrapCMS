@@ -351,6 +351,7 @@ function ws_mail_js_strings()
         'mail_reply_send'    => lang('Send e-mail'),
         'mail_reply_sent'    => lang('The e-mail was sent.'),
         'mail_reply_text'    => lang('Answer'),
+        'mail_draft_open'    => lang('Open the reply draft'),
     );
 }
 
