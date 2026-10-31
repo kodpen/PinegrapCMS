@@ -25,7 +25,7 @@ module: privacy
 
 ## What is not done yet?
 - The number a checkout answer is for is the order's billing phone; `contacts.mobile_phone` is not filled from it, so step 10's sender must pick the number (open there).
-- Commercial SMS stays refused by `pg_sms_send()` until step 9.
+- Marketing SMS reads these rows to decide who may get one (`platform/sms-marketing-kind.md`).
 
 ## Tests?
 - `tests/sms_consent_test.php`: offered rule, start state, answers, changes per channel, member trees, checkout answers and drawn rule, default trees, source checks of each drawn box.

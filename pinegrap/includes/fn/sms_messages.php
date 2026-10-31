@@ -17,7 +17,9 @@
  * customer. A message is only queued (pg_sms_enqueue()), with a reference per
  * order and event, so the same event saved twice is texted once while its
  * queue row is kept. These are transactional messages: no promotion goes in
- * them, which the card says, and pg_sms_check() refuses a commercial kind.
+ * them, which the card says. The same card holds the marketing messages'
+ * sender identity and type label (options.marketing), which pg_sms_check()
+ * appends to a marketing message and to no other kind.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -314,6 +316,11 @@ function pg_sms_message_settings_check($post, $liveform)
         return null;
     }
 
+    $marketing = pg_sms_marketing_settings_decide($post, pg_sms_marketing_settings());
+    $decision['marketing'] = $marketing['marketing'];
+    $decision['changed'] = $decision['changed'] || $marketing['changed'];
+    $decision['marks'] += $marketing['marks'];
+
     foreach ($decision['marks'] as $field => $sentence) {
         $liveform->mark_error($field, $sentence);
     }
@@ -338,7 +345,13 @@ function pg_sms_message_settings_save($decision, $user_id)
         return;
     }
 
-    $options = e(json_encode(array('events' => $decision['events'])));
+    $options = array('events' => $decision['events']);
+
+    if (isset($decision['marketing'])) {
+        $options['marketing'] = $decision['marketing'];
+    }
+
+    $options = e(json_encode($options));
 
     db("INSERT INTO connect_apps
         SET
@@ -395,7 +408,39 @@ function pg_sms_message_settings_fields()
                                         </div>';
     }
 
-    return $html;
+    return $html . pg_sms_marketing_settings_fields();
+}
+
+/**
+ * The marketing messages' fields on the SMS Messages card: the sender
+ * identity and the type label every marketing message carries.
+ *
+ * @return string
+ */
+function pg_sms_marketing_settings_fields()
+{
+    $marketing = pg_sms_marketing_settings();
+    $label = ($marketing['label'] !== '') ? $marketing['label'] : pg_sms_marketing_label_default();
+
+    return '
+                                        <div class="col-12">
+                                            <h6 class="fw-bold mb-1">' . lang('Marketing Messages') . '</h6>
+                                            <div class="form-text">' . lang('Every marketing SMS ends with the sender identity and the type label below, as İYS and BTK rules require. A marketing SMS goes only to a number whose owner consented to marketing SMS on the site and refused it neither here nor in İYS, and none goes while both identity fields are empty. Order, shipping, code and reminder messages never carry them.') . '</div>
+                                        </div>
+                                        <div class="col-12 md:col-6">
+                                            <label class="form-label" for="sms_mkt_trade_name">' . lang('Trade Name') . '</label>
+                                            <input type="text" name="sms_mkt_trade_name" id="sms_mkt_trade_name" value="' . h($marketing['trade_name']) . '" maxlength="120" class="form-control"/>
+                                        </div>
+                                        <div class="col-12 md:col-6">
+                                            <label class="form-label" for="sms_mkt_mersis">' . lang('MERSİS Number') . '</label>
+                                            <input type="text" name="sms_mkt_mersis" id="sms_mkt_mersis" value="' . h($marketing['mersis']) . '" maxlength="20" inputmode="numeric" class="form-control"/>
+                                            <div class="form-text">' . lang('16 digits.') . '</div>
+                                        </div>
+                                        <div class="col-12">
+                                            <label class="form-label" for="sms_mkt_label">' . lang('Type Label') . '</label>
+                                            <input type="text" name="sms_mkt_label" id="sms_mkt_label" value="' . h($label) . '" maxlength="120" class="form-control"/>
+                                            <div class="form-text">' . lang('Leave it unchanged to send the built-in label in the site\'s language.') . '</div>
+                                        </div>';
 }
 
 /**
