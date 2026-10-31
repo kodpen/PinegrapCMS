@@ -979,6 +979,21 @@ if (!$_POST) {
 
         return $output;
     };
+
+    // view_order.php asks for commerce, not for commerce reports: a user who
+    // may only read the report gets the order number without a link rather
+    // than a link that lands on "Access denied".
+    $can_open_orders = (defined('USER_MANAGE_ECOMMERCE') && USER_MANAGE_ECOMMERCE);
+
+    $output_order_number = function ($order) use ($can_open_orders, $query_string_id) {
+        if (!$can_open_orders) {
+            return h($order['order_number']);
+        }
+
+        $url = 'view_order.php?id=' . (int) $order['id'] . '&send_to=' . urlencode(PATH . SOFTWARE_DIRECTORY . '/view_order_report.php' . $query_string_id);
+
+        return '<a href="' . h($url) . '">' . h($order['order_number']) . '</a>';
+    };
     
     // The corner cell heads the group-name column, so it names the chosen
     // summarize-by levels; with none chosen there is no such column to head.
@@ -1308,12 +1323,10 @@ if (!$_POST) {
                                         $total_percentage = 0;
                                     }
                                     
-                                    $output_link_url = 'view_order.php?id=' . (int) $order['id'] . '&send_to=' . urlencode(PATH . SOFTWARE_DIRECTORY . '/view_order_report.php' . $query_string_id);
-                                    
                                     print
                                         '<tr style="color: #969696">
                                             <td colspan="3">&nbsp;</td>
-                                            <td class="align-middle text-nowrap"><a href="' . h($output_link_url) . '">' . h($order['order_number']) . '</a></td>
+                                            <td class="align-middle text-nowrap">' . $output_order_number($order) . '</td>
                                             <td class="align-middle text-nowrap">' . get_relative_time(array('timestamp' => $order['order_date'])) . '</td>
                                             <td>&nbsp;</td>
                                             <td>&nbsp;</td>
@@ -1344,12 +1357,10 @@ if (!$_POST) {
                                     $total_percentage = 0;
                                 }
                                 
-                                $output_link_url = 'view_order.php?id=' . (int) $order['id'] . '&send_to=' . urlencode(PATH . SOFTWARE_DIRECTORY . '/view_order_report.php' . $query_string_id);
-                                
                                 print
                                     '<tr style="color: #969696">
                                         <td colspan="2">&nbsp;</td>
-                                        <td class="align-middle text-nowrap"><a href="' . h($output_link_url) . '">' . h($order['order_number']) . '</a></td>
+                                        <td class="align-middle text-nowrap">' . $output_order_number($order) . '</td>
                                         <td class="align-middle text-nowrap">' . get_relative_time(array('timestamp' => $order['order_date'])) . '</td>
                                         <td>&nbsp;</td>
                                         <td>&nbsp;</td>
@@ -1381,12 +1392,10 @@ if (!$_POST) {
                             $total_percentage = 0;
                         }
                         
-                        $output_link_url = 'view_order.php?id=' . (int) $order['id'] . '&send_to=' . urlencode(PATH . SOFTWARE_DIRECTORY . '/view_order_report.php' . $query_string_id);
-                        
                         print
                             '<tr style="color: #969696">
                                 <td>&nbsp;</td>
-                                <td class="align-middle text-nowrap"><a href="' . h($output_link_url) . '">' . h($order['order_number']) . '</a></td>
+                                <td class="align-middle text-nowrap">' . $output_order_number($order) . '</td>
                                 <td class="align-middle text-nowrap">' . get_relative_time(array('timestamp' => $order['order_date'])) . '</td>
                                 <td>&nbsp;</td>
                                 <td>&nbsp;</td>
@@ -1418,12 +1427,10 @@ if (!$_POST) {
                     $total_percentage = 0;
                 }
                 
-                $output_link_url = 'view_order.php?id=' . (int) $order['id'] . '&send_to=' . urlencode(PATH . SOFTWARE_DIRECTORY . '/view_order_report.php' . $query_string_id);
-                
                 print
                     '<tr style="color: #969696">
                         <td>&nbsp;</td>
-                        <td class="align-middle text-nowrap"><a href="' . h($output_link_url) . '">' . h($order['order_number']) . '</a></td>
+                        <td class="align-middle text-nowrap">' . $output_order_number($order) . '</td>
                         <td class="align-middle text-nowrap">' . get_relative_time(array('timestamp' => $order['order_date'])) . '</td>
                         <td>&nbsp;</td>
                         <td>&nbsp;</td>
