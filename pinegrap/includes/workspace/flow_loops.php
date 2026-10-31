@@ -651,6 +651,80 @@ function ws_flow_loop_item_values($config, $items, $pass)
 }
 
 /**
+ * The values the boxes of a run give a box at one pass: the boxes outside
+ * the loops (pass 0) and those of the same item, later rows standing for
+ * earlier ones, plus, inside a loop, the For each box's place, item and
+ * fields at that pass (ws_flow_loop_item_values()) from the items it kept.
+ * Pure.
+ *
+ * @param array   $graph   ws_flow_graph_normalize()
+ * @param string  $node_id the box reading them
+ * @param array[] $rows    settled steps: node_id, pass, status, outcome, result; in pass, id order
+ * @param int     $pass    the box's pass, 0 outside a loop
+ * @return array ws_step_node_values()
+ */
+function ws_flow_loop_pass_values($graph, $node_id, $rows, $pass)
+{
+    $pass = (int) $pass;
+    $values = ws_step_node_values($rows);
+
+    if ($pass <= 0) {
+        return $values;
+    }
+
+    $loop = ws_flow_loop_of(ws_flow_loops($graph), (string) $node_id);
+    $start = ($loop !== '') ? ws_flow_graph_node($graph, $loop) : null;
+
+    foreach ((array) $rows as $row) {
+        if ($start && ((string) $row['node_id'] === $loop) && ((int) ($row['pass'] ?? 0) === 0)) {
+            $kept = json_decode((string) $row['result'], true)['data']['items'] ?? '';
+            $values[$loop] = ws_flow_loop_item_values($start['config'], is_string($kept) ? $kept : '', $pass) + (array) ($values[$loop] ?? array());
+        }
+    }
+
+    return $values;
+}
+
+/**
+ * The values a box is tried with against a run (ws_flow_box_try()), as the
+ * run view shows it: a box inside a loop at its last pass in that run, so
+ * the For each box's place, item and fields are those of that item; any
+ * other box, or one the run never reached, with every settled box, later
+ * rows standing for earlier ones. Pure.
+ *
+ * @param array   $graph   ws_flow_graph_normalize()
+ * @param string  $node_id the box tried
+ * @param array[] $rows    the run's steps, oldest first
+ * @return array ws_step_node_values()
+ */
+function ws_flow_loop_try_values($graph, $node_id, $rows)
+{
+    $pass = 0;
+
+    if (ws_flow_loop_of(ws_flow_loops($graph), (string) $node_id) !== '') {
+        foreach ((array) $rows as $row) {
+            if ((string) $row['node_id'] === (string) $node_id) {
+                $pass = (int) ($row['pass'] ?? 0);
+            }
+        }
+    }
+
+    // Pass 0 first, then the box's item, each oldest first, as the runner
+    // reads them (ws_step_run_values()).
+    $settled = array(0 => array(), 1 => array());
+
+    foreach ((array) $rows as $row) {
+        $row_pass = (int) ($row['pass'] ?? 0);
+
+        if (ws_flow_step_settled((string) $row['status']) && (($pass === 0) || ($row_pass === 0) || ($row_pass === $pass))) {
+            $settled[(($pass > 0) && ($row_pass === $pass)) ? 1 : 0][] = $row;
+        }
+    }
+
+    return ws_flow_loop_pass_values($graph, $node_id, array_merge($settled[0], $settled[1]), $pass);
+}
+
+/**
  * The number of items a For each box went through, from its step's result.
  * Pure.
  *

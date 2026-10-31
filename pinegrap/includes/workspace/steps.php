@@ -1690,19 +1690,7 @@ function ws_step_run_values($run, $graph, $owner, $context, $step = null)
     $rows = (array) db_items("SELECT node_id, pass, status, outcome, result FROM ws_flow_run_steps
         WHERE run_id = '" . (int) $run['id'] . "' AND pass IN (0, " . $pass . ") AND status IN ('done', 'failed', 'skipped')
         ORDER BY pass, id");
-    $values = ws_step_node_values($rows);
-
-    if (($pass > 0) && function_exists('ws_flow_loops')) {
-        $loop = ws_flow_loop_of(ws_flow_loops($graph), (string) $step['node_id']);
-        $start = ($loop !== '') ? ws_flow_graph_node($graph, $loop) : null;
-
-        foreach ($rows as $row) {
-            if ($start && ((string) $row['node_id'] === $loop) && ((int) $row['pass'] === 0)) {
-                $kept = json_decode((string) $row['result'], true)['data']['items'] ?? '';
-                $values[$loop] = ws_flow_loop_item_values($start['config'], is_string($kept) ? $kept : '', $pass) + (array) ($values[$loop] ?? array());
-            }
-        }
-    }
+    $values = function_exists('ws_flow_loop_pass_values') ? ws_flow_loop_pass_values($graph, (string) ($step['node_id'] ?? ''), $rows, $pass) : ws_step_node_values($rows);
 
     $values[WS_STEP_TRIGGER] = ws_step_trigger_values_for($owner, $context);
 
@@ -1933,7 +1921,10 @@ function ws_flow_box_try($viewer, $flow, $data)
             return ws_flow_refusal(lang('That run could not be found.'), 404, 'run_id');
         }
 
-        $values = ws_step_node_values(array_filter(ws_flow_run_steps($run_id), function ($row) {
+        // A box inside a loop reads its last pass in that run, as the run
+        // view shows it: the item, its place and fields of that pass.
+        $steps = ws_flow_run_steps($run_id);
+        $values = function_exists('ws_flow_loop_try_values') ? ws_flow_loop_try_values($graph, (string) $node['id'], $steps) : ws_step_node_values(array_filter($steps, function ($row) {
             return ws_flow_step_settled((string) $row['status']);
         }));
         $context = ws_flow_run_context($run);

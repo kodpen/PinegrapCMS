@@ -444,7 +444,7 @@ function test_workspace_flow_loops_runner_wiring()
 
 	$values = ws_flow_loops_test_source('ws_step_run_values');
 	pg_assert_contains('pass IN (0, " . $pass . ")', $values, 'its own item and the boxes outside the loops');
-	pg_assert_contains('ws_flow_loop_item_values(', $values);
+	pg_assert_contains('ws_flow_loop_pass_values(', $values);
 	pg_assert_contains('ws_step_run_values($run, $graph, $owner, $context, $step)', ws_flow_loops_test_source('ws_step_run'));
 	pg_assert_contains('ws_step_run_values($run, $graph, $owner, $source_context, $step)', ws_flow_loops_test_source('ws_flow_chain_start'));
 
@@ -531,4 +531,51 @@ function test_workspace_flow_loops_box_try()
 	foreach (array($each, $end) as $node) {
 		pg_assert_false(array_key_exists('refusal', ws_flow_loop_try($graph, $node, array(), true)), 'never a refusal');
 	}
+}
+
+// Tried with a run, a box inside a loop reads its last pass as the run view
+// shows it: the For each box's place, item and fields at that pass, the
+// boxes of that item and those outside the loop. A box outside the loop
+// reads every settled box, as before.
+function test_workspace_flow_loops_box_try_run_values()
+{
+	$graph = ws_flow_loops_test_graph();
+	$rows = array(
+		ws_flow_loops_test_row('start', 0, 'done', 'next'),
+		ws_flow_loops_test_row('webhook_1', 0, 'done', 'done'),
+		ws_flow_loops_test_row('for_each_1', 0, 'done', 'each', array('count' => 3, 'items' => '[{"name":"Bir"},{"name":""},{"name":"Üç"}]')),
+		ws_flow_loops_test_row('notify_1', 1, 'done', 'done', array('told' => 1)),
+		ws_flow_loops_test_row('notify_1', 2, 'done', 'done', array('told' => 2)),
+		ws_flow_loops_test_row('notify_1', 3, 'done', 'done', array('told' => 3)),
+		ws_flow_loops_test_row('for_each_end_1', 0, 'done', 'done', array('count' => 3, 'done' => 3)),
+	);
+
+	$values = ws_flow_loop_try_values($graph, 'notify_1', $rows);
+	pg_assert_same('3', $values['for_each_1']['index']);
+	pg_assert_same('Üç', $values['for_each_1']['name']);
+	pg_assert_same('{"name":"Üç"}', $values['for_each_1']['item']);
+	pg_assert_same('3', $values['for_each_1']['count']);
+	pg_assert_same('3', $values['notify_1']['told'], 'its own last pass');
+
+	$tried = ws_step_try_texts('notify', array('type' => 'notify', 'user_ids' => array(1), 'text' => 'pg-test öğe {{node.for_each_1.index}}: {{node.for_each_1.name|adsız}}'), $values);
+	pg_assert_same('pg-test öğe 3: Üç', $tried['action']['text']);
+	pg_assert_same(array(), $tried['empty'], 'nothing left empty');
+
+	// A run stopped in item 2: that item is read.
+	$stopped = array_slice($rows, 0, 4);
+	$stopped[] = ws_flow_loops_test_row('notify_1', 2, 'failed', 'failed');
+	$values = ws_flow_loop_try_values($graph, 'notify_1', $stopped);
+	pg_assert_same('2', $values['for_each_1']['index']);
+	pg_assert_same('', $values['for_each_1']['name']);
+	pg_assert_same('failed', $values['notify_1']['status']);
+
+	// Outside the loop, and a loop box the run never reached: no item values.
+	$values = ws_flow_loop_try_values($graph, 'notify_2', $rows);
+	pg_assert_false(isset($values['for_each_1']['index']));
+	pg_assert_same('3', $values['notify_1']['told']);
+	$values = ws_flow_loop_try_values($graph, 'notify_1', array_slice($rows, 0, 3));
+	pg_assert_false(isset($values['for_each_1']['index']));
+
+	pg_assert_contains('ws_flow_loop_try_values(', ws_flow_loops_test_source('ws_flow_box_try'));
+	pg_assert_contains('ws_flow_loop_pass_values(', ws_flow_loops_test_source('ws_step_run_values'));
 }
