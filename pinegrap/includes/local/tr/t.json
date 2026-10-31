@@ -927,6 +927,7 @@
     "The answer was sent to {var:1}. It is published after their review.": "Yanıt {var:1} pazaryerine gönderildi. İncelendikten sonra yayınlanır.",
     "The answer you entered for the question was incorrect. Please try again.": "Soru için girdiğiniz cevap yanlış. Lütfen tekrar deneyin.",
     "The app can leave client_key out while this is the only team devices application. Signed-in devices appear on its Devices tab, where each can be signed out.": "Tek ekip cihazları uygulaması bu olduğu sürece uygulama client_key göndermeyebilir. Oturum açan cihazlar Cihazlar sekmesinde görünür ve her biri oradan kapatılabilir.",
+    "The application API, its uploads and logs, Google reviews, and the screens that connect the site to other services.": "Uygulama API'si, yüklemeleri ve kayıtları, Google yorumları ve siteyi diğer hizmetlere bağlayan ekranlar.",
     "The application API: the master switch, HTTPS, the public description, log retention and the upload folder.": "Uygulama API'si: ana anahtar, HTTPS, herkese açık tanım, günlük saklama ve yükleme klasörü.",
     "The application Claude works through": "Claude'un çalıştığı uygulama",
     "The application Pinegrap AI writes through": "Pinegrap AI'ın yazdığı uygulama",

@@ -3,7 +3,7 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Site Settings - what the API screen writes: the master switch, HTTPS, the public description, log retention and the upload folder.
+ * Site Settings - what the Integrations screen writes: the application API (master switch, HTTPS, public description, log retention, upload folder) and Google reviews.
  *
  * Runs in the scope of includes/settings/screen.php, after the token check and
  * after post_value() is defined. Only the columns edited by the cards on this
@@ -18,6 +18,15 @@
 
 if (!defined('PG_SETTINGS_ENTRY')) {
     exit;
+}
+
+// ── Google Reviews ──
+// A key or a Place ID that is not one refuses the whole category before
+// anything is written; the sealed key is stored after the API columns.
+$google_reviews_post = pg_grev_settings_check($_POST, $liveform);
+
+if ($liveform->check_form_errors()) {
+    return;
 }
 
 // The columns arrive together with the 2026.4.4 upgrade; on a site that has
@@ -51,3 +60,5 @@ if (waf_table_has_column('config', 'api_enabled')) {
         api_device_switch_save(post_value('api_team_devices') ? true : false, USER_ID, $_SESSION['sessionusername']);
     }
 }
+
+pg_grev_settings_save($google_reviews_post, $liveform);

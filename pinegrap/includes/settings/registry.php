@@ -205,7 +205,6 @@ function pg_settings_categories()
                 'pgset-sms'       => lang('SMS'),
                 'pgset-sms-messages' => lang('SMS Messages'),
                 'pgset-iys'       => lang('İYS'),
-                'pgset-google-reviews' => lang('Google Reviews'),
             ),
             'keywords' => array(
                 'pgset-campaigns' => pg_settings_keywords(lang('campaign, newsletter, subscribe, opt-in, footer')),
@@ -214,7 +213,6 @@ function pg_settings_categories()
                 'pgset-sms'       => pg_settings_keywords(lang('sms, text message, netgsm, sender name, header, msgheader, mobile, phone, iys, test message')),
                 'pgset-sms-messages' => pg_settings_keywords(lang('sms, text message, order received, order shipped, order delivered, tracking number, template')),
                 'pgset-iys'       => pg_settings_keywords(lang('iys, ileti yönetim sistemi, consent, permission, brand, marketing, opt-in, refusal')),
-                'pgset-google-reviews' => pg_settings_keywords(lang('google reviews, reviews, rating, google maps, places api, place id, business profile')),
             ),
         ),
 
@@ -321,16 +319,20 @@ function pg_settings_categories()
         ),
 
         'api' => array(
-            'label' => lang('API'),
-            'icon'  => 'bi-braces',
-            'description' => lang('The application API: the master switch, HTTPS, the public description, log retention and the upload folder.'),
+            'label' => lang('Integrations'),
+            'icon'  => 'bi-plug',
+            'description' => lang('The application API, its uploads and logs, Google reviews, and the screens that connect the site to other services.'),
             'sections' => array(
                 'pgset-api'         => lang('Application API'),
                 'pgset-api-storage' => lang('Uploads & Logs'),
+                'pgset-google-reviews' => lang('Google Reviews'),
+                'pgset-integration-links' => lang('Related screens'),
             ),
             'keywords' => array(
                 'pgset-api'         => pg_settings_keywords(lang('api, application, key, https, openapi, swagger, webhook, integration')),
                 'pgset-api-storage' => pg_settings_keywords(lang('log, retention, upload folder, file')),
+                'pgset-google-reviews' => pg_settings_keywords(lang('google reviews, reviews, rating, google maps, places api, place id, business profile')),
+                'pgset-integration-links' => pg_settings_keywords(lang('application access, connected accounts, oauth, marketplaces, workspace settings, integration')),
             ),
         ),
 
@@ -527,6 +529,7 @@ function pg_settings_legacy_anchors()
         'pgset-alerts'     => array('maintenance', 'pgset-alerts'),
         'pgset-maintenance' => array('maintenance', 'pgset-maintenance'),
         'pgset-backup'     => array('maintenance', 'pgset-backup'),
+        'pgset-google-reviews' => array('api',    'pgset-google-reviews'),
     );
 }
 
@@ -563,6 +566,77 @@ function pg_settings_category_screens($user)
     }
 
     return $screens;
+}
+
+
+/**
+ * The screens the Integrations category links, each under its own gate.
+ *
+ * Application Access, Connected accounts and Marketplaces open for a manager
+ * (validate_area_access($user, 'manager')), Marketplaces only while the store
+ * is on; Workspace Settings for a member holding the workspace settings right
+ * (ws_screen_gate()). The facts that need the database are passed in, or read
+ * here when they are not, so the list can be tested without one.
+ *
+ * @param array $user  the row validate_user() returned
+ * @param array $facts optional: 'ecommerce' and 'workspace_settings' (bool)
+ * @return array of array(label, icon, url)
+ */
+function pg_settings_integration_links($user, $facts = null)
+{
+    $role = isset($user['role']) ? (int) $user['role'] : 3;
+
+    // The settings dialog itself is a manager's door.
+    if ($role > 2) {
+        return array();
+    }
+
+    if (!is_array($facts)) {
+        $facts = array(
+            'ecommerce'          => (defined('ECOMMERCE') && ECOMMERCE === true),
+            'workspace_settings' => pg_settings_workspace_settings_allowed($user),
+        );
+    }
+
+    $links = array(
+        array('label' => lang('Application Access'), 'icon' => 'bi-key',         'url' => 'api_settings.php'),
+        array('label' => lang('Connected accounts'), 'icon' => 'bi-cloud-check', 'url' => 'connections.php'),
+    );
+
+    if (!empty($facts['ecommerce'])) {
+        $links[] = array('label' => lang('Marketplaces'), 'icon' => 'bi-buildings', 'url' => 'marketplace_settings.php');
+    }
+
+    if (!empty($facts['workspace_settings'])) {
+        $links[] = array('label' => lang('Workspace Settings'), 'icon' => 'bi-people', 'url' => 'workspace_settings.php');
+    }
+
+    return $links;
+}
+
+
+/**
+ * Whether workspace_settings.php would open for this user: the module on and
+ * installed, a member of the team with the settings right (ws_screen_gate()).
+ *
+ * @param array $user the row validate_user() returned
+ * @return bool
+ */
+function pg_settings_workspace_settings_allowed($user)
+{
+    if (!defined('WORKSPACE_ENABLED') || !WORKSPACE_ENABLED || !defined('PG_FUNCTIONS_DIR')) {
+        return false;
+    }
+
+    require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
+
+    if (!ws_ready() || !ws_enabled()) {
+        return false;
+    }
+
+    $rights = ws_rights($user);
+
+    return !empty($rights['member']) && !empty($rights['settings']);
 }
 
 
