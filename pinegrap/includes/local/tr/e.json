@@ -124,6 +124,8 @@
     "ERP purchase order {var:1} was marked {var:2} through the API.": "ERP satın alma siparişi {var:1} API üzerinden {var:2} olarak işaretlendi.",
     "ERP purchase order {var:1} was turned into purchase invoice draft #{var:2} through the API.": "ERP satın alma siparişi {var:1} API üzerinden #{var:2} numaralı alış faturası taslağına dönüştürüldü.",
     "ERP purchase order {var:1} was written through the API.": "ERP satın alma siparişi {var:1} API üzerinden yazıldı.",
+    "ERP quote template {var:1} was deleted through the API.": "ERP satış teklifi şablonu {var:1} API üzerinden silindi.",
+    "ERP quote template {var:1} was saved through the API.": "ERP satış teklifi şablonu {var:1} API üzerinden kaydedildi.",
     "ERP quote {var:1} was changed through the API.": "ERP teklifi {var:1} API üzerinden değiştirildi.",
     "ERP quote {var:1} was e-mailed to {var:2} through the API.": "ERP teklifi {var:1} API üzerinden {var:2} adresine e-postayla gönderildi.",
     "ERP quote {var:1} was marked {var:2} through the API.": "ERP teklifi {var:1} API üzerinden {var:2} olarak işaretlendi.",
