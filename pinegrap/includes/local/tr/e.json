@@ -1089,6 +1089,7 @@
     "Exchange rate note (another currency)": "Kur notu (başka para birimi)",
     "Exchange rate, empty for a base-currency document": "Kur; ana para birimindeki belgede boş",
     "Exchange rates": "Döviz kurları",
+    "Exchange rates were not updated: no rate could be fetched ({var:1} requested)": "Döviz kurları güncellenmedi: hiçbir kur alınamadı ({var:1} istendi)",
     "Exclude": "Hariç Tut",
     "Excluded Dates": "Hariç Tutulan Tarihler",
     "Excluded Dates for Shipping & Handling (e.g. Holidays). Split dates with enter key or ',' key": "Nakliye ve Taşıma için Hariç Tutulan Tarihler (ör. Tatiller). Enter tuşu veya ',' tuşu ile tarihleri ayırın",
