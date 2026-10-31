@@ -475,6 +475,14 @@ else
                     WHERE id = ?";
     $result = db_q($query, array((string) $file_id)) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
+
+    // if the file was deleted after the editor opened, then stop before its
+    // details are used to write, update or insert anything
+    if (!$row)
+    {
+        output_error(lang('The image cannot be updated because it no longer exists') . '. <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+    }
+
     $file_name = $row['name'];
     $original_file_name = $row['name'];
     $folder_id = $row['folder'];

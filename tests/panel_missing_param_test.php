@@ -55,6 +55,19 @@ function test_panel_missing_param_image_editor_checks_file_first()
 	pg_assert_true(($check !== false) && ($read !== false) && ($check < $read), 'image_editor_edit: file row read before the existence check');
 }
 
+// Save after the picture was deleted meanwhile stops with the open screen's
+// own sentence before the row's fields are read.
+function test_panel_missing_param_image_editor_save_checks_file_first()
+{
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/image_editor_edit.php');
+	$fetch = strpos($source, "\$result = db_q(\$query, array((string) \$file_id)) or output_error('Query failed.');");
+	$check = ($fetch === false) ? false : strpos($source, 'if (!$row)', $fetch);
+	$read = ($fetch === false) ? false : strpos($source, "\$file_name = \$row['name'];", $fetch);
+
+	pg_assert_true(($fetch !== false) && ($check !== false) && ($read !== false) && ($check < $read), 'image_editor_edit: Save reads the file row before the existence check');
+	pg_assert_true(strpos(substr($source, $check, 300), "lang('The image cannot be updated because it no longer exists')") !== false, 'image_editor_edit: Save stops with the open screen sentence');
+}
+
 // Screens that answer without a record read the missing value as empty.
 function test_panel_missing_param_empty_reads()
 {
