@@ -13,7 +13,7 @@ description: validate_area_access() gates, real role numbering (Designer above M
 
 ## Do job scripts go through the gate?
 - Yes. The job scripts (`*_job.php`, `update_exchange_rates.php`, `auto_backup.php`) use `pg_cron_is_background_run()` (`includes/fn/cron.php`): only CLI or `PG_CRON_DISPATCH` (the job.php dispatcher defines it right before the include) passes; every other request goes through the gate of the panel screen that offers the button.
-- A web run that writes also checks the form token: the button's link carries it (`update_exchange_rates.php` since PR #NNNN; a forged link opened by a signed-in user overwrote hand-entered rates). The background branch has no session and checks none.
+- A web run that writes also checks the form token: the button's link carries it (`update_exchange_rates.php` since PR #4116; a forged link opened by a signed-in user overwrote hand-entered rates). The background branch has no session and checks none.
 - Never skip the user check by looking at whether `send_to` exists. A new job script uses the same pattern.
 
 ## What are the roles?
