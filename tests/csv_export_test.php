@@ -163,3 +163,37 @@ function test_csv_export_submitted_forms_import_unguards_its_cells()
 
 	pg_assert_true(strpos($source, "\$data = isset(\$row[\$key]) ? pg_csv_formula_unguard(\$row[\$key]) : '';") !== false, 'a non-file cell loses the export guard');
 }
+
+function test_csv_export_orders_guard_shopper_typed_text()
+{
+	$source = file_get_contents(dirname(__DIR__) . '/pinegrap/view_orders.php');
+
+	// Billing, ship-to, card holder and visitor-set columns in both exports.
+	$cells = array(
+		"\$order['custom_field_1']" => 2, "\$order['custom_field_2']" => 2, "\$order['billing_first_name']" => 2, "\$order['billing_last_name']" => 2,
+		"\$order['billing_company']" => 2, "\$order['billing_address_1']" => 2, "\$order['billing_city']" => 2,
+		"\$order['billing_zip_code']" => 2, "\$order['billing_phone_number']" => 2, "\$order['cardholder']" => 2,
+		"\$order['po_number']" => 2, "\$order['tracking_code']" => 2, "\$order['utm_source']" => 2,
+		"\$order['utm_content']" => 2, "\$order['affiliate_code']" => 2, "\$order['http_referer']" => 2,
+		"\$row['ship_to_name']" => 1, "\$row['first_name']" => 1, "\$row['address_1']" => 1, "\$row['zip_code']" => 1,
+		"\$ship_to['ship_to_name']" => 1, "\$ship_to['first_name']" => 1, "\$ship_to['address_1']" => 1, "\$ship_to['zip_code']" => 1,
+	);
+
+	foreach ($cells as $cell => $count) {
+		pg_assert_same($count, substr_count($source, "'\"' . pg_csv_formula_guard(" . $cell . ") . '\",'"), $cell . ' is guarded in every orders export');
+		pg_assert_same(0, substr_count($source, "'\"' . " . $cell . " . '\",'"), $cell . ' is not written unguarded');
+	}
+
+	// Form answers go through csv_cell(), not a bare quote doubling.
+	pg_assert_true(strpos($source, "str_replace('\"', '\"\"', \$data)") === false, 'product form answers use csv_cell()');
+	pg_assert_true(strpos($source, "str_replace('\"', '\"\"', \$order['custom_fields']") === false, 'custom billing answers use csv_cell()');
+	pg_assert_true(strpos($source, "str_replace('\"', '\"\"', \$ship_to['custom_fields']") === false, 'custom shipping answers use csv_cell()');
+	pg_assert_true(strpos($source, "str_replace('\"', '\"\"', \$custom_billing_form_data") === false, 'zip custom billing answers use csv_cell()');
+	pg_assert_true(strpos($source, "str_replace('\"', '\"\"', \$ship_tos[") === false, 'zip custom shipping answers use csv_cell()');
+
+	// Card numbers, money and ids stay untouched: the shared quote loops run
+	// before card decryption and the money columns.
+	pg_assert_same(0, substr_count($source, 'pg_csv_formula_guard($value)'), 'the shared per-row loops add no guard');
+	pg_assert_true(strpos($source, "'\"#' . \$card_number . '\",'") !== false, 'the card number cell is unchanged');
+	pg_assert_true(strpos($source, "'\"' . \$order['order_number'] . '\",'") !== false, 'the order number cell is unchanged');
+}

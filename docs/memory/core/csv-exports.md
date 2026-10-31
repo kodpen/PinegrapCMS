@@ -21,7 +21,7 @@ description: Panel CSV exports start with pg_csv_download_start() (UTF-8 charset
 - `import_key_codes.php` reads its header line for the separator and seeks back to where that line started (`ftell()`), not to 0, which would land on the mark again.
 
 ## What was left as it is?
-- The comma separator, money decimals and no formula guard on the older exports: separate decisions. The formula guard and its import side: `csv-formula-guard.md`. Orders keep their snake_case headings and point-decimal money; products keep the headings `import_products.php` reads.
+- The comma separator and money decimals. Which exports guard text cells against formulas (orders included) and the import side: `csv-formula-guard.md`. Orders keep their snake_case headings and point-decimal money; products keep the headings `import_products.php` reads.
 
 ## Which separator does the ERP audit trail CSV use?
 - `erp_audit_csv()` (`includes/erp/audit.php`) uses `erp_csv_delimiter()` like the other ERP CSVs: `;` where the store uses a decimal comma, `,` elsewhere. It used a fixed `;`, so on a point-decimal store Excel put each line in column A. Dates stay `Y-m-d H:i:s`, amounts point-decimal (as in the ERP export profiles).
