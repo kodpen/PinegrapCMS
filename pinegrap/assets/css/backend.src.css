@@ -10216,6 +10216,50 @@ body.pg-side-panel-open .pg-chat-launcher {
   font-size: .65rem;
   opacity: .7;
 }
+/* The search box over the list, and the hits that take the list's place. */
+.pg-sm-search {
+  position: relative;
+  padding: 0 .5rem .25rem;
+}
+.pg-sm-search > .bi {
+  position: absolute;
+  top: 50%;
+  left: 1.1rem;
+  transform: translateY(calc(-50% - .125rem));
+  color: var(--pg-fg-2);
+  font-size: .75rem;
+  pointer-events: none;
+}
+.pg-sm-search .form-control {
+  padding-left: 1.75rem;
+}
+.pg-sm-nav[hidden] {
+  display: none;
+}
+.pg-sm-hit {
+  align-items: flex-start;
+}
+.pg-sm-hit i:first-child {
+  margin-top: .15rem;
+}
+.pg-sm-hit-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.pg-sm-hit-text small {
+  overflow: hidden;
+  color: var(--pg-fg-2);
+  font-size: .6875rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pg-sm-hits-empty {
+  margin: 0;
+  padding: .75rem .5rem;
+  color: var(--pg-fg-2);
+  font-size: .8125rem;
+}
 
 /* ── the pane ──────────────────────────────────────────────────────────── */
 .pg-sm-main {

@@ -1241,6 +1241,7 @@
     "Running": "Çalışıyor",
     "Running late, or need to change something? Write to us below; we answer here and by e-mail.": "Gecikecek misiniz ya da bir şeyi değiştirmeniz mi gerekiyor? Aşağıdan yazın; burada ve e-postayla yanıt veririz.",
     "Running low": "Azalıyor",
+    "Running the site": "Site işletimi",
     "Runs": "Çalışma",
     "Runs of this flow": "Bu akışın çalıştırmaları",
     "Runs the tool {var:1} of @{var:2} and keeps its answer.": "@{var:2} sunucusunun {var:1} aracını çalıştırır ve yanıtını saklar.",
