@@ -98,15 +98,15 @@ if (!$_POST || $errors) {
         }
 
         foreach ($state_ids as $state_id) {
-            db_q("DELETE FROM zones_states_xref WHERE state_id = ?", array($state_id));
-            db_q("DELETE FROM tax_zones_states_xref WHERE state_id = ?", array($state_id));
-            db_q("DELETE FROM verified_shipping_addresses WHERE state_id = ?", array($state_id));
+            db_q("DELETE FROM zones_states_xref WHERE state_id = ?", array($state_id)) or output_error('Query failed.');
+            db_q("DELETE FROM tax_zones_states_xref WHERE state_id = ?", array($state_id)) or output_error('Query failed.');
+            db_q("DELETE FROM verified_shipping_addresses WHERE state_id = ?", array($state_id)) or output_error('Query failed.');
         }
 
-        db_q("DELETE FROM states WHERE country_id = ?", array($id));
-        db_q("DELETE FROM zones_countries_xref WHERE country_id = ?", array($id));
-        db_q("DELETE FROM tax_zones_countries_xref WHERE country_id = ?", array($id));
-        db_q("DELETE FROM countries WHERE id = ?", array($id));
+        db_q("DELETE FROM states WHERE country_id = ?", array($id)) or output_error('Query failed.');
+        db_q("DELETE FROM zones_countries_xref WHERE country_id = ?", array($id)) or output_error('Query failed.');
+        db_q("DELETE FROM tax_zones_countries_xref WHERE country_id = ?", array($id)) or output_error('Query failed.');
+        db_q("DELETE FROM countries WHERE id = ?", array($id)) or output_error('Query failed.');
 
         log_activity(lang(array('string' => 'country ({var:1}) was deleted', 'vars' => array($values['name']))), $_SESSION['sessionusername']);
 
@@ -131,7 +131,7 @@ if (!$_POST || $errors) {
 
         // if default selected was checked, then turn value off for all other countries
         if ($values['default_selected'] == 1) {
-            db_q("UPDATE countries SET default_selected = 0 WHERE id != ?", array($id));
+            db_q("UPDATE countries SET default_selected = 0 WHERE id != ?", array($id)) or output_error('Query failed.');
         }
 
         log_activity(lang(array('string' => 'country ({var:1}) was modified', 'vars' => array($values['name']))), $_SESSION['sessionusername']);
