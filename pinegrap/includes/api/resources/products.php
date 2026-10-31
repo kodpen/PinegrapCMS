@@ -79,6 +79,10 @@ function api_product_present($row, $extras = array(), $with_issues = false) {
 		'shippable'         => ((int)$row['shippable'] === 1),
 		'free_shipping'     => ((int)$row['free_shipping'] === 1),
 		'weight'            => ($row['weight'] > 0) ? (float)$row['weight'] : null,
+		// Customs data declared on labels of parcels sent abroad; null means
+		// none, and the label service's shop default is used.
+		'hs_code'           => api_product_customs_value($row, 'hs_code'),
+		'origin_country'    => api_product_customs_value($row, 'origin_country'),
 		'inventory' => array(
 			'tracked'      => ((int)$row['inventory'] === 1),
 			'quantity'     => (int)$row['inventory_quantity'],
@@ -148,6 +152,14 @@ function api_product_rating($row) {
 		'average' => ($count > 0) ? round((float)$row['rating_avg'], 2) : null,
 		'count'   => $count
 	);
+
+}
+
+// products.hs_code or products.origin_country as the product object carries
+// it: null for '' (the shop default) and on a site whose table lacks it.
+function api_product_customs_value($row, $column) {
+
+	return (isset($row[$column]) && ((string)$row[$column] !== '')) ? (string)$row[$column] : null;
 
 }
 
@@ -296,6 +308,7 @@ function api_product_select() {
 			products.shippable, products.free_shipping, products.weight,
 			products.inventory, products.inventory_quantity, products.out_of_stock,
 			products.tax_rate,
+			" . (pg_product_customs_ready() ? "products.hs_code, products.origin_country," : "'' AS hs_code, '' AS origin_country,") . "
 			" . (pg_bundles_ready() ? "products.bundle, products.bundle_pricing, products.bundle_discount_bp," : "0 AS bundle, 'fixed' AS bundle_pricing, 0 AS bundle_discount_bp,") . "
 			" . (pg_reviews_ready() ? "products.rating_avg, products.rating_count," : "0 AS rating_avg, 0 AS rating_count,") . "
 			" . (api_catalog_bin_columns() ? "products.recycled," : "0 AS recycled,") . "
@@ -656,6 +669,8 @@ function api_products_create($params) {
 
 	}
 
+	$product = array_merge($product, api_products_customs_param($params));
+
 	// Absent means "follow the tax zone", which is the column default. Present
 	// and empty means the same thing said out loud, and both write NULL.
 	if (array_key_exists('tax_rate', $params)) {
@@ -763,6 +778,77 @@ function api_products_compare_at_price_param($value) {
 	}
 
 	return $value;
+
+}
+
+// The customs fields a write sent, as the product screen stores them:
+// column => value for each one sent ('' clears it), or the name of the first
+// field the screen would refuse.
+function api_products_customs_values($params) {
+
+	$values = array();
+
+	if (array_key_exists('hs_code', $params)) {
+
+		$values['hs_code'] = pg_product_hs_code_parse($params['hs_code']);
+
+		if ($values['hs_code'] === false) {
+
+			return 'hs_code';
+
+		}
+
+	}
+
+	if (array_key_exists('origin_country', $params)) {
+
+		$values['origin_country'] = pg_product_origin_country_parse($params['origin_country']);
+
+		if ($values['origin_country'] === false) {
+
+			return 'origin_country';
+
+		}
+
+	}
+
+	return $values;
+
+}
+
+// The customs columns to write, refused with 422 when a value is not valid.
+// A site that took the code but not the 11.0.130 step has no columns to write
+// them to and answers 503 rather than dropping the fields, as for
+// compare_at_price.
+function api_products_customs_param($params) {
+
+	if (!array_key_exists('hs_code', $params) && !array_key_exists('origin_country', $params)) {
+
+		return array();
+
+	}
+
+	if (!pg_product_customs_ready()) {
+
+		api_fail(503, 'service_unavailable', lang('The database has to be updated first.'));
+
+	}
+
+	$values = api_products_customs_values($params);
+
+	if ($values === 'hs_code') {
+
+		api_fail_validation(lang('The HS code may hold only digits and dots, up to 16 characters.'), 'hs_code');
+
+	}
+
+	if ($values === 'origin_country') {
+
+		api_fail_validation(lang('The country of origin is not a known country.'), 'origin_country');
+
+	}
+
+	return $values;
 
 }
 
@@ -1135,6 +1221,12 @@ function api_products_update($params) {
 	if (array_key_exists('compare_at_price', $params)) {
 
 		$set[] = "compare_at_price = " . pg_compare_at_price_sql(api_products_compare_at_price_param($params['compare_at_price']));
+
+	}
+
+	foreach (api_products_customs_param($params) as $column => $value) {
+
+		$set[] = $column . " = '" . escape($value) . "'";
 
 	}
 
@@ -2177,6 +2269,9 @@ function api_product_schema() {
 		'shippable'         => 'boolean',
 		'free_shipping'     => 'boolean',
 		'weight'            => 'number?',
+		// '' in the column (the shop default) answers null.
+		'hs_code'           => 'string?',
+		'origin_country'    => 'string?',
 		'inventory'         => array(
 			'tracked'      => 'boolean',
 			'quantity'     => 'integer',
