@@ -1313,15 +1313,13 @@ else if (isset($_GET['rss']) && $_GET['rss'] == 'true')
                                 $output_rss_media = '<enclosure url="' . URL_SCHEME . HOSTNAME_SETTING . PATH  . h(urlencode($media['name'])) . '" length="' . $media['size'] . '" type="' . $output_media_type . '"/>';
                             }
                           }
-                            //else no media_file so we check media_text for data 
-                        }else{
-                            if(!empty($submitted_form['media_text'])){
-                                // we cant check length or media type here so we randomly fill them.
-                                $output_rss_media = '<enclosure url="' . h($submitted_form['media_text']) . '" length="50000" type="image/jpeg"/>';
-                            } 
+                        } elseif (!empty($submitted_form['media_text'])) {
+                            // An address typed into the field: size unknown, type from its extension.
+                            $output_rss_media = pg_sw_feed_url_enclosure_xml($submitted_form['media_text'], URL_SCHEME . HOSTNAME_SETTING);
                         }
 						
 						$output_form_item_view_page_link = '';
+						$output_rss_guid = '';
 						// if there is a form item view page, then add link to it
 						if ($form_item_view_page_id != '')
 						{
@@ -1337,12 +1335,14 @@ else if (isset($_GET['rss']) && $_GET['rss'] == 'true')
 							{
 								$output_form_item_view_page_link = URL_SCHEME . HOSTNAME . OUTPUT_PATH . h(encode_url_path($form_item_view_page_name)) . '?r=' . $submitted_form['reference_code'];
 							}
-							// else there is not a form item view page so output an error
-							
+							$output_rss_guid = '<guid>' . $output_form_item_view_page_link . '</guid>';
 						}
 						else
 						{
-							$output_form_item_view_page_link = lang('There is not a Form Item View Page set in the properties for the Form List View Page.');
+							// No form item view page: the item links to the list page,
+							// and its guid is that page with the record's code.
+							$output_form_item_view_page_link = URL_SCHEME . HOSTNAME . OUTPUT_PATH . h(encode_url_path($page_name));
+							$output_rss_guid = pg_sw_feed_guid_xml('', URL_SCHEME . HOSTNAME . OUTPUT_PATH . encode_url_path($page_name), $submitted_form['reference_code']);
 						}
 						// build RSS item
 						$output_rss_items .= '<item>
@@ -1350,7 +1350,7 @@ else if (isset($_GET['rss']) && $_GET['rss'] == 'true')
             <title>' . $output_rss_title . '</title>
             <description>' . $output_rss_description . '</description>
             <link>' . $output_form_item_view_page_link . '</link>
-            <guid>' . $output_form_item_view_page_link . '</guid>
+            ' . $output_rss_guid . '
             ' . $output_rss_media . '
             <pubDate>' . date('D, d M Y H:i:s O', $submitted_form['submitted_timestamp']) . '</pubDate>
         </item>';
@@ -1560,6 +1560,7 @@ else if (isset($_GET['rss']) && $_GET['rss'] == 'true')
 							$output_rss_description = lang('There is not an RSS description specified in the form.');
 						}
 						$output_form_item_view_page_link = '';
+						$output_rss_guid = '';
 						// if there is a form item view page, then add link to it
 						if ($form_item_view_page_id != '')
 						{
@@ -1575,12 +1576,14 @@ else if (isset($_GET['rss']) && $_GET['rss'] == 'true')
 							{
 								$output_form_item_view_page_link = URL_SCHEME . HOSTNAME . OUTPUT_PATH . h(encode_url_path($form_item_view_page_name)) . '?r=' . $submitted_form['reference_code'];
 							}
-							// else there is not a form item view page so output an error
-							
+							$output_rss_guid = '<guid>' . $output_form_item_view_page_link . '</guid>';
 						}
 						else
 						{
-							$output_form_item_view_page_link = lang('There is not a Form Item View Page set in the properties for the Form List View Page.');
+							// No form item view page: the item links to the list page,
+							// and its guid is that page with the record's code.
+							$output_form_item_view_page_link = URL_SCHEME . HOSTNAME . OUTPUT_PATH . h(encode_url_path($page_name));
+							$output_rss_guid = pg_sw_feed_guid_xml('', URL_SCHEME . HOSTNAME . OUTPUT_PATH . encode_url_path($page_name), $submitted_form['reference_code']);
 						}
 						// build RSS item
 						$output_rss_items .= '<item>
