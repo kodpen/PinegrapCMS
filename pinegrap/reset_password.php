@@ -29,10 +29,10 @@ validate_token_field();
 // The reset revokes every remembered session of the account (the
 // pg_auth_token_revoke_user() call below), so the editor who pressed the button
 // is signed out on the very next request - which is the redirect at the bottom
-// of this file, before the screen carrying the new password gets to render the
-// notice. From then on the password only exists in the e-mail; where mail is
-// not configured it exists nowhere at all, and an administrator doing this to
-// his/her own account locks the site's last administrator out of it.
+// of this file. From then on the only way back in is the set password link in
+// the e-mail; where mail is not configured there is none, and an administrator
+// doing this to his/her own account locks the site's last administrator out
+// of it.
 //
 // An account's own password is changed from the change password screen, which
 // mints a fresh token for the browser making the change and so keeps it signed
@@ -96,9 +96,13 @@ if (($user['role'] > 0) && ($user['role'] >= $user_role)) {
     output_error(lang('Access denied.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
 }
 
+// The old password stops working at once: it is replaced by a long random
+// one that nobody is told. The owner sets their own through a single-use set
+// password link (pg_set_password_link()), as for an account an administrator
+// creates (add_user.php).
 $random_password = get_random_string(array(
     'type' => 'lowercase_letters',
-    'length' => 10));
+    'length' => 32));
 
 // insert new random password into database
 $query =
@@ -147,19 +151,22 @@ if (
         URL_SCHEME . HOSTNAME_SETTING . PATH . encode_url_path(get_page_name($user_home)) . "\n";
 }
 
-email(array(
+// Issued after the password update, which leaves the token columns alone.
+// The link works for whoever reads it, so the e-mail is 'secret': a failed
+// delivery keeps its body out of the activity log and the delivery-failed
+// notice.
+$set_password_url = pg_set_password_link_issue((int) ($_POST['user_id'] ?? 0)) ? pg_set_password_link((int) ($_POST['user_id'] ?? 0)) : '';
+
+$sent = (bool) email(array(
     'to' => $user_email,
     'from_name' => ORGANIZATION_NAME,
     'from_email_address' => EMAIL_ADDRESS,
     'subject' => lang('Password Reset'),
-    'body' =>
-        lang('Your password was reset by an administrator. You can find your new password below.') . "\n\n" .
-        lang('Email') . ': ' . $user_email . "\n" .
-        lang('Password') . ': ' . $random_password . "\n\n" .
-        $login . "\n"));
-    
+    'body' => pg_reset_password_email_body($user_email, $set_password_url, $login),
+    'secret' => true));
+
 log_activity(lang(array('string' => 'password was reset for user ({var:1})', 'vars' => array($user_username))), $_SESSION['sessionusername']);
-$liveform_view_users->add_notice(lang(array('string' => 'The user\'s password has been reset, and a new password, &quot;{var:1}&quot;, has been e-mailed to the user.', 'vars' => array(h($random_password)))));
+$liveform_view_users->add_notice(h(pg_reset_password_notice($set_password_url, $sent)));
 
 // If there is a send to value then send user back to that screen
 if ((isset($_REQUEST['send_to']) == TRUE) && ($_REQUEST['send_to'] != '')) {

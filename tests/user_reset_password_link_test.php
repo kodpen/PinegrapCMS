@@ -49,3 +49,22 @@ function test_reset_password_notice_follows_the_send()
 	pg_assert_contains('Forgot password', $plain);
 	pg_assert_false(strpos($failed . $linked . $plain, 'k=abc') !== false, 'no link in the notice');
 }
+
+// reset_password.php sends the link as a secret e-mail, never the random
+// password, and builds its notice from what email() returned.
+function test_reset_password_screen_sends_the_link()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/reset_password.php');
+
+	pg_assert_contains('pg_set_password_link_issue(', $source);
+	pg_assert_contains('pg_set_password_link(', $source);
+	pg_assert_contains('pg_reset_password_email_body(', $source);
+	pg_assert_contains("'secret' => true", $source);
+	pg_assert_contains('$sent = (bool) email(', $source);
+	pg_assert_contains('pg_reset_password_notice($set_password_url, $sent)', $source);
+	pg_assert_same(0, preg_match('/\$random_password\s*\.\s*"\\\\n/', $source), 'password in the e-mail');
+	pg_assert_same(0, substr_count($source, '$random_password') - 2, 'the random password is only generated and hashed');
+	pg_assert_contains('validate_token_field();', $source);
+	pg_assert_contains("validate_area_access(\$user, 'manager');", $source);
+	pg_assert_contains("(\$user['role'] > 0) && (\$user['role'] >= \$user_role)", $source);
+}

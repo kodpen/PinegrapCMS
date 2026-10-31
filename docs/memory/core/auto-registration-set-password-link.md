@@ -28,6 +28,6 @@ description: Accounts a form auto-registers or an administrator creates (add use
 ## What does an administrator's "New Account" e-mail carry?
 - A set password link, never the password (`add_user.php`, `import_users.php`): `core/admin-new-account-email-link.md` (#1217).
 
-## What is still open?
-- `reset_password.php` still mails the password an administrator resets and repeats it in the notice: separate fix.
+## What else uses the link, and where are the tests?
+- `reset_password.php` too, since #4093 (`core/admin-new-account-email-link.md`).
 - Tests: `tests/auto_registration_set_password_test.php`.
