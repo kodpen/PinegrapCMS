@@ -18,6 +18,7 @@
 
 include('init.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/iys/client.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/email_campaign_send.php');
 
 $user = validate_user();
 validate_email_access($user);
@@ -93,6 +94,7 @@ $body_template = $row['body'];
 $page_id = $row['page_id'];
 $status = $row['status'];
 $purpose = $row['purpose'];
+$email_campaign = $row;
 $created_user_id = $row['created_user_id'];
 $created_timestamp = $row['created_timestamp'];
 
@@ -107,16 +109,25 @@ if ($status == 'cancelled') {
     output_error_in_popup(lang('The e-mail campaign may not be sent because it is cancelled.  Please update the status in order to send the e-mail campaign.'));
 }
 
+// A delivery email() refuses is stored as an attempt, as the campaign job
+// does, and the recipient waits out the mail backoff: the next batches skip
+// it, so a run never loops on an address the server cannot deliver to. An
+// installation without the retry columns (before the 2026.4.8 upgrade) keeps
+// the flow it had.
+$retry_ready = pg_email_retry_ready();
+
 // get next 10 e-mail recipients to send e-mail campaign to
 $query =
     "SELECT
         id,
         email_address,
-        contact_id
+        contact_id" . ($retry_ready ? ",
+        attempts" : "") . "
      FROM email_recipients
      WHERE
         (email_campaign_id = ?)
-        AND (complete = '0')
+        AND (complete = '0')" . ($retry_ready ? "
+        AND (next_attempt_at <= UNIX_TIMESTAMP())" : "") . "
      ORDER BY id
      LIMIT 10";
 $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
@@ -396,18 +407,23 @@ if (mysqli_num_rows($result) > 0) {
 
         }
         
-        email(array(
-            'to' => $email_recipient['email_address'],
-            'to_name' => $mail_merge_dynamic_data,
-            'bcc' => $bcc_email_address,
-            'from_name' => $from_name,
-            'from_email_address' => $from_email_address,
-            'reply_to' => $reply_email_address,
-            'subject' => $subject,
-            'format' => $format,
-            'body' => $body,
-            'type' => 'campaign'));
-        
+        $properties = pg_email_campaign_mail_properties($email_campaign, $email_recipient['email_address'], $mail_merge_dynamic_data, $subject, $body);
+
+        if ($retry_ready) {
+
+            // The sender is told about an undeliverable message once, on the
+            // last attempt, as in the job.
+            $properties['notify_sender'] = (((int) $email_recipient['attempts'] + 1) >= pg_mail_max_attempts());
+
+            if (!email($properties)) {
+                pg_email_campaign_record_failure($email_recipient['id'], $email_recipient['email_address'], $email_recipient['attempts'], null, $_SESSION['sessionusername']);
+                continue;
+            }
+
+        } else {
+            email($properties);
+        }
+
         // mark e-mail recipient as complete and set reference code
         $query = 
             "UPDATE email_recipients
@@ -424,15 +440,10 @@ if (mysqli_num_rows($result) > 0) {
     $row = mysqli_fetch_row($result);
     $number_of_email_recipients = $row[0];
     
-    // get total number of incomplete recipients
-    $query = "SELECT COUNT(*) FROM email_recipients WHERE (email_campaign_id = ?) AND (complete = '0')";
-    $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
-    $row = mysqli_fetch_row($result);
-    $number_of_remaining_email_recipients = $row[0];
-
-    $number_of_completed_email_recipients = $number_of_email_recipients - $number_of_remaining_email_recipients;
-    $percent_complete = ($number_of_completed_email_recipients / $number_of_email_recipients) * 100;
-    $percent_complete = round($percent_complete, 0);
+    // Only accepted deliveries count as sent: a given-up recipient is
+    // complete but failed, and one waiting for another attempt is not complete.
+    $number_of_completed_email_recipients = send_email_campaign_delivered_count($id, $retry_ready);
+    $percent_complete = pg_email_campaign_send_summary($number_of_email_recipients, $number_of_completed_email_recipients, 0, 0)['percent'];
 
     if ($send_json) {
         send_email_campaign_json(array(
@@ -503,8 +514,8 @@ if (mysqli_num_rows($result) > 0) {
                 <div class="alert theme-danger"><p>' . lang('Closing this browser window before completion will pause this Campaign, but it can be resumed at any time.') . '</p></div>
             </div>
             <div class="col-12" id="campaign_sent" hidden>
-                <h3>' . lang('Campaign Sent') . '.</h3>
-                <div class="alert theme-success"><p>' . lang('The e-mail campaign has been sent to all recipients.') . '</p></div>
+                <h3 id="campaign_sent_heading">' . lang('Campaign Sent') . '.</h3>
+                <div id="campaign_sent_alert" class="alert theme-success"><p>' . lang('The e-mail campaign has been sent to all recipients.') . '</p></div>
             </div>
             <div class="col-12">
                 <p id="campaign_send_status" role="status" class="visually-hidden"></p>
@@ -556,13 +567,25 @@ if (mysqli_num_rows($result) > 0) {
 
         // Done: the finished screen replaces the progress, Close (which
         // reloads the campaign list) replaces Stop & Close and takes focus.
-        function finish() {
+        // The finish names how many e-mails could not be delivered; the
+        // success text is kept only when every recipient got the message.
+        function finish(answer) {
+            var heading = document.getElementById(\'campaign_sent_heading\');
+            var alert = document.getElementById(\'campaign_sent_alert\');
+            if (answer.message) {
+                heading.textContent = answer.heading + \'.\';
+                alert.querySelector(\'p\').textContent = answer.message;
+            }
+            if (answer.all_sent === false) {
+                alert.classList.remove(\'theme-success\');
+                alert.classList.add(\'theme-warning\');
+            }
             document.getElementById(\'campaign_sending\').hidden = true;
             document.getElementById(\'campaign_sent\').hidden = false;
             document.getElementById(\'campaign_send_header_close\').onclick = close.onclick;
             stop.hidden = true;
             close.hidden = false;
-            status.textContent = ' . json_encode(lang('Campaign Sent') . '. ' . lang('The e-mail campaign has been sent to all recipients.'), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) . ';
+            status.textContent = heading.textContent + \' \' + alert.querySelector(\'p\').textContent;
             close.focus();
         }
 
@@ -576,7 +599,7 @@ if (mysqli_num_rows($result) > 0) {
                     }
                     show(answer);
                     if (answer.done) {
-                        finish();
+                        finish(answer);
                     } else {
                         setTimeout(next, 1000);
                     }
@@ -590,15 +613,27 @@ if (mysqli_num_rows($result) > 0) {
     
 // else there is not at least one e-mail recipient left, so e-mail campaign is complete
 } else {
-    // update e-mail campaign status
-    $query = "UPDATE email_campaigns SET status = 'complete' WHERE id = ?";
-    $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
-    
     // get total number of recipients
     $query = "SELECT COUNT(*) FROM email_recipients WHERE email_campaign_id = ?";
     $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
     $row = mysqli_fetch_row($result);
     $number_of_email_recipients = $row[0];
+
+    $number_of_delivered_email_recipients = send_email_campaign_delivered_count($id, $retry_ready);
+    $number_of_failed_email_recipients = $retry_ready ? (int) db_value("SELECT COUNT(*) FROM email_recipients WHERE (email_campaign_id = '" . $id . "') AND (failed = '1')") : 0;
+    $query = "SELECT COUNT(*) FROM email_recipients WHERE (email_campaign_id = ?) AND (complete = '0')";
+    $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
+    $row = mysqli_fetch_row($result);
+    $number_of_waiting_email_recipients = (int) $row[0];
+
+    $summary = pg_email_campaign_send_summary($number_of_email_recipients, $number_of_delivered_email_recipients, $number_of_failed_email_recipients, $number_of_waiting_email_recipients);
+
+    // Recipients waiting for another attempt keep the campaign open: the
+    // job, or the next Send now, tries them again.
+    if ($summary['complete']) {
+        $query = "UPDATE email_campaigns SET status = 'complete' WHERE id = ?";
+        $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
+    }
 
     $log_page = '';
 
@@ -608,10 +643,14 @@ if (mysqli_num_rows($result) > 0) {
     }
     
     // log end of sending e-mails
-    log_activity(lang(array('string'=>'e-mail campaign (subject: {var:1}) was sent to {var:2} recipients','vars'=>array($subject_template . $log_page, pg_format_number($number_of_email_recipients, 0)))), $_SESSION['sessionusername']);
-    
+    if ($summary['all_sent']) {
+        log_activity(lang(array('string'=>'e-mail campaign (subject: {var:1}) was sent to {var:2} recipients','vars'=>array($subject_template . $log_page, pg_format_number($number_of_email_recipients, 0)))), $_SESSION['sessionusername']);
+    } else {
+        log_activity(lang(array('string'=>'e-mail campaign (subject: {var:1}) was delivered to {var:2} of {var:3} recipients; {var:4} could not be delivered','vars'=>array($subject_template . $log_page, pg_format_number($number_of_delivered_email_recipients, 0), pg_format_number($number_of_email_recipients, 0), pg_format_number($number_of_failed_email_recipients + $number_of_waiting_email_recipients, 0)))), $_SESSION['sessionusername']);
+    }
+
     // If this is an automatic campaign, then check if auto campaigns need to be created.
-    if ($type == 'automatic') {
+    if (($type == 'automatic') && $summary['complete']) {
         // Get contact id from the campaign that was just sent so it can be used for new auto campaigns if necessary.
         $contact_id = db_value("SELECT contact_id FROM email_recipients WHERE email_campaign_id = '" . escape($_GET['id']) . "'");
 
@@ -624,12 +663,16 @@ if (mysqli_num_rows($result) > 0) {
 
     if ($send_json) {
         send_email_campaign_json(array(
-            'sent' => (int) $number_of_email_recipients,
+            'sent' => (int) $number_of_delivered_email_recipients,
             'total' => (int) $number_of_email_recipients,
+            'failed' => (int) ($number_of_failed_email_recipients + $number_of_waiting_email_recipients),
             'done' => true,
-            'percent' => 100,
-            'percent_text' => lang(array('string' => '{var:1}%', 'vars' => array(100))),
-            'count' => pg_format_number($number_of_email_recipients, 0) . lang(' of ') . pg_format_number($number_of_email_recipients, 0)));
+            'all_sent' => $summary['all_sent'],
+            'heading' => $summary['heading'],
+            'message' => $summary['message'],
+            'percent' => $summary['percent'],
+            'percent_text' => lang(array('string' => '{var:1}%', 'vars' => array($summary['percent']))),
+            'count' => pg_format_number($number_of_delivered_email_recipients, 0) . lang(' of ') . pg_format_number($number_of_email_recipients, 0)));
     }
 
     echo
@@ -671,8 +714,8 @@ if (mysqli_num_rows($result) > 0) {
                 </div>
             </div>
             <div class="col-12">
-                <h3>' . lang('Campaign Sent') . '.</h3>
-                <div class="alert theme-success"><p>' . lang('The e-mail campaign has been sent to all recipients.') . '</p></div>
+                <h3>' . h($summary['heading']) . '.</h3>
+                <div class="alert ' . ($summary['all_sent'] ? 'theme-success' : 'theme-warning') . '"><p>' . h($summary['message']) . '</p></div>
             </div>
         </div>
         <nav class="buttons navigation text-center position-sticky" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
@@ -713,6 +756,19 @@ function output_error_in_popup($error_message)
         </nav>
     </main>' . output_footer_secure();
     exit();
+}
+
+// Recipients that accepted the message: complete and, where the retry
+// columns exist, not given up.
+function send_email_campaign_delivered_count($id, $retry_ready)
+{
+    return (int) db_value(
+        "SELECT COUNT(*)
+        FROM email_recipients
+        WHERE
+            (email_campaign_id = '" . (int) $id . "')
+            AND (complete = '1')" . ($retry_ready ? "
+            AND (failed = '0')" : ""));
 }
 
 // One answer of the JSON mode, always with its four keys, and the end of the

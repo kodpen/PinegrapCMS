@@ -67,6 +67,7 @@ Code rules, file layout, translation, JavaScript twins and bundles, roles and ac
 - dom-node-html.md: pg_dom_html() instead of $document->saveHTML($node): one DOM node's HTML the same on every PHP version (7.1-7.2 pretty-printed it), its callers and its test
 - dompdf-embedding.md: How dompdf and its chain are embedded in includes/dompdf/: versions, custom autoloader, runtime write location, HTML/charset handling for PDFs.
 - email-campaign-schedule-label.md: The schedule label on My Campaign Profiles built from two whole keys, the send time as {var:4} at the end
+- email-campaign-send.md: Send now and the campaign job share includes/fn/email_campaign_send.php: mail properties with purpose, refused deliveries stored as attempts, finish counts only deliveries
 - error-path-missing-methods.md: liveform has add_error() for form-level messages vs mark_error() per field; never call a method that does not exist on error branches (PHP 8 gives a blank HTTP 500).
 - error-screen-language-and-status.md: The error screen output_error() draws leaves through pg_tr_finalize() like a page, so <html lang> is the site's or the address's language; which "not found" screens answer 404; what is still left
 - explorer-handler-files.md: pg_explorer_handle() after the split: the prelude and the dispatch, one handler per sub-action in includes/explorer/handle_*.php, where a new one goes, the tests

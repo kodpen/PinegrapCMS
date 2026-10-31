@@ -4,7 +4,7 @@ description: The Send E-mail Campaign pop-up draws once and sends its batches ov
 ---
 
 ## How does the send window send the next batch?
-- `send_email_campaign.php` draws the progress screen once (it sends the first batch while drawing). An inline script then fetches `send_email_campaign.php?id=…&format=json&token=…` one second after each answer, the pace the refresh had. Each JSON request sends the next 10 recipients (same query, same order) and answers `{sent, total, done, error, percent, percent_text, count}`; `percent_text` and `count` are formatted by the server (`lang('{var:1}%')`, `pg_format_number()`).
+- `send_email_campaign.php` draws the progress screen once (it sends the first batch while drawing). An inline script then fetches `send_email_campaign.php?id=…&format=json&token=…` one second after each answer, the pace the refresh had. Each JSON request sends the next 10 recipients (same query, same order) and answers `{sent, total, done, error, percent, percent_text, count}` (`sent` counts only accepted deliveries; the `done` answer adds `failed`, `all_sent`, `heading`, `message`, `core/email-campaign-send.md`); `percent_text` and `count` are formatted by the server (`lang('{var:1}%')`, `pg_format_number()`).
 - `done` is true on the request that finds no recipient left: that request runs the finish (status `complete`, activity log, auto campaigns), as the last reload did.
 - Without script the old `<meta http-equiv="refresh" content="1">` still reloads the window: it sits inside `<noscript>`.
 

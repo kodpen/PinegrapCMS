@@ -626,7 +626,7 @@ if (!$_POST) {
             UNIX_TIMESTAMP(),
             ?,
             UNIX_TIMESTAMP())";
-    $result = db_q($query, array((string) ($_POST['from_name'] ?? ''), (string) ($_POST['from_email_address'] ?? ''), (string) ($_POST['reply_email_address'] ?? ''), (string) ($_POST['subject'] ?? ''), (string) ($_POST['format'] ?? ''), (string) $body, (string) ($_POST['page_id'] ?? ''), (string) prepare_form_data_for_input($_POST['start_time'], 'date and time'), (string) ($_POST['purpose'] ?? ''), (string) $user['id'], (string) $user['id'])) or output_error('Query failed.');
+    $result = db_q($query, array((string) ($_POST['from_name'] ?? ''), (string) ($_POST['from_email_address'] ?? ''), (string) ($_POST['reply_email_address'] ?? ''), (string) ($_POST['subject'] ?? ''), (string) ($_POST['format'] ?? ''), (string) $body, (string) ($_POST['page_id'] ?? ''), (string) prepare_form_data_for_input((string) ($_POST['start_time'] ?? ''), 'date and time'), (string) ($_POST['purpose'] ?? ''), (string) $user['id'], (string) $user['id'])) or output_error('Query failed.');
     
     $email_campaign_id = mysqli_insert_id(db::$con);
     

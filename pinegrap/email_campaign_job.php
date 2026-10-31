@@ -18,6 +18,7 @@
 
 require('init.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/iys/client.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/email_campaign_send.php');
 
 // if the e-mail campaign job is not activated, then output error
 if (email_campaign_job_enabled() == false) {
@@ -337,18 +338,7 @@ function email_campaign_job_prepare($email_recipient)
 
     return array(
         'reference_code' => $email_recipient['reference_code'],
-        'properties' => array(
-            'to' => $email_recipient['email_address'],
-            'to_name' => $mail_merge_dynamic_data,
-            'bcc' => $email_recipient['bcc_email_address'],
-            'from_name' => $email_recipient['from_name'],
-            'from_email_address' => $email_recipient['from_email_address'],
-            'reply_to' => $email_recipient['reply_email_address'],
-            'subject' => $email_recipient['subject'],
-            'format' => $email_recipient['format'],
-            'body' => $email_recipient['body'],
-            'type' => 'campaign',
-            'purpose' => $email_recipient['purpose'])
+        'properties' => pg_email_campaign_mail_properties($email_recipient, $email_recipient['email_address'], $mail_merge_dynamic_data, $email_recipient['subject'], $email_recipient['body'])
     );
 }
 
@@ -623,45 +613,10 @@ if (!pg_email_retry_ready()) {
             continue;
         }
 
-        $error = pg_mail_clip(pg_mail_last_error(), 500);
-
-        // Out of attempts: the recipient is complete as far as the campaign is
-        // concerned - the campaign can finish - and marked failed, which the
-        // campaign screen counts.
-        if ($attempt_number >= $max_attempts) {
-
-            db(
-                "UPDATE email_recipients
-                SET
-                    complete = '1',
-                    failed = '1',
-                    attempts = '" . $attempt_number . "',
-                    last_error = '" . e($error) . "',
-                    claimed_at = 0,
-                    claim_token = ''
-                WHERE
-                    (id = '" . $email_recipient_id . "')
-                    AND (claim_token = '" . e($run) . "')");
-
-            log_activity(lang(array(
-                'string' => 'A campaign e-mail to {var:1} was given up after {var:2} attempts: {var:3}',
-                'vars'   => array($email_recipient['email_address'], $attempt_number, $error),
-            )), 'UNKNOWN');
-
-        } else {
-
-            db(
-                "UPDATE email_recipients
-                SET
-                    attempts = '" . $attempt_number . "',
-                    last_error = '" . e($error) . "',
-                    next_attempt_at = UNIX_TIMESTAMP() + " . (int) pg_mail_backoff($attempt_number) . ",
-                    claimed_at = 0,
-                    claim_token = ''
-                WHERE
-                    (id = '" . $email_recipient_id . "')
-                    AND (claim_token = '" . e($run) . "')");
-        }
+        // Refused: one more attempt, or given up on the last one (complete
+        // as far as the campaign is concerned, marked failed, which the
+        // campaign screen counts).
+        pg_email_campaign_record_failure($email_recipient_id, $email_recipient['email_address'], $email_recipient['attempts'], $run);
     }
 
     // Anything this run claimed and did not finish with - a recipient whose

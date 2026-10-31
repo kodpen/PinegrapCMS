@@ -632,6 +632,8 @@
     "{var:1} done · {var:2} open · {var:3} late · {var:4}": "{var:1} biten · {var:2} açık · {var:3} geciken · {var:4}",
     "{var:1} drafts left today on this site.": "Bu sitede bugün {var:1} taslak hakkı kaldı.",
     "{var:1} dropped": "{var:1} kaldırıldı",
+    "{var:1} e-mail(s) could not be delivered and will not be tried again.": "{var:1} e-posta teslim edilemedi ve yeniden denenmeyecek.",
+    "{var:1} e-mail(s) could not be delivered yet and wait for another attempt.": "{var:1} e-posta henüz teslim edilemedi ve yeniden denenmeyi bekliyor.",
     "{var:1} e-mail(s) of the last day could not be sent. The last error: {var:2}": "Son bir günün {var:1} e-postası gönderilemedi. Son hata: {var:2}",
     "{var:1} e-mail(s) were given up and will not be sent.": "{var:1} e-postadan vazgeçildi, gönderilmeyecek.",
     "{var:1} e-mailed a link ({var:2}) to a friend": "{var:1} bir arkadaşına bağlantı ({var:2}) e-postaladı",
