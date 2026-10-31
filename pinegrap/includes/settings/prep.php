@@ -762,7 +762,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         }
 
         if (!$site_icon_matched) {
-            $site_icon_options .= '<option value="' . h($site_icon) . '" selected="selected">' . h($site_icon) . '</option>';
+            $site_icon_options .= pg_stored_file_option($site_icon, pg_stored_file_exists($site_icon));
         }
 
         $output_site_icon_picker = '
@@ -805,11 +805,11 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         }
 
         if (!$og_value_matched) {
-            $og_image_options .= '<option value="' . h($og_default_image) . '" selected="selected">' . h($og_default_image) . '</option>';
+            $og_image_options .= pg_stored_file_option($og_default_image, pg_stored_file_exists($og_default_image));
         }
 
         if (!$logo_value_matched) {
-            $logo_image_options .= '<option value="' . h($organization_logo) . '" selected="selected">' . h($organization_logo) . '</option>';
+            $logo_image_options .= pg_stored_file_option($organization_logo, pg_stored_file_exists($organization_logo));
         }
 
         // The icon the panel wears once it is installed on a phone or a desktop.
@@ -833,7 +833,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
             }
 
             if (!$app_icon_matched) {
-                $app_icon_options .= '<option value="' . h($app_icon) . '" selected="selected">' . h($app_icon) . '</option>';
+                $app_icon_options .= pg_stored_file_option($app_icon, pg_stored_file_exists($app_icon));
             }
 
             $output_app_icon_picker = '

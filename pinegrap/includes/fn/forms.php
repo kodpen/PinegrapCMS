@@ -5210,3 +5210,40 @@ function pg_import_row_is_blank($row)
 
     return true;
 }
+
+// Whether a stored picture value is a file name worth looking up in the
+// files table: an http(s) address names no file of this site.
+function pg_stored_file_needs_check($value)
+{
+    $value = (string) $value;
+
+    return ($value !== '') && !preg_match('/^https?:\/\//i', $value);
+}
+
+// The option a picture picker appends, selected, for a stored value its list
+// does not offer, so a Save cannot clear it. A file name that no files row
+// carries any more (renamed, converted or deleted) is marked, so the picker
+// does not look as if the picture were still there. A picker lists only some
+// types, so "not in the list" alone is no sign the file is gone; the caller
+// asks the files table and passes $file_exists.
+function pg_stored_file_option($value, $file_exists)
+{
+    $value = (string) $value;
+    $label = h($value);
+
+    if (!$file_exists && pg_stored_file_needs_check($value)) {
+        $label .= ' ' . lang('(file not found)');
+    }
+
+    return '<option value="' . h($value) . '" selected="selected">' . $label . '</option>';
+}
+
+// Whether a files row carries this name.
+function pg_stored_file_exists($value)
+{
+    if (!pg_stored_file_needs_check($value)) {
+        return true;
+    }
+
+    return (int) db_value("SELECT COUNT(*) FROM files WHERE name = '" . e((string) $value) . "'") > 0;
+}
