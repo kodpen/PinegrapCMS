@@ -353,6 +353,10 @@ function pg_explorer_handle_products_bulk_edit($type, $request, $user)
             }
 
             $sql_parts[] = "enabled = '" . e($bulk_enabled) . "'";
+
+            // The SEO keyword check applies only to an enabled product and
+            // only stale rows are recalculated (seo.php).
+            $sql_parts[] = "seo_analysis_current = '0'";
         }
 
         if ($bulk_price_method !== '') {

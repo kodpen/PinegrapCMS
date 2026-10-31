@@ -180,7 +180,10 @@ if (!$_POST) {
                                 }
                             }
 
-                            $sql_enabled = "enabled = '" . e($_POST['edit_enabled'] ?? '') . "',";
+                            // The SEO keyword check applies only to an enabled product
+                            // and only stale rows are recalculated, as the product
+                            // screen save and the list's quick edit do.
+                            $sql_enabled = "enabled = '" . e($_POST['edit_enabled'] ?? '') . "', seo_analysis_current = '0',";
                         }
 
 						// Price Update
@@ -458,6 +461,7 @@ if (!$_POST) {
             // If products are being deleted, then delete them.
             case 'delete':
                 $number_of_products = 0;
+                $number_of_components = 0;
 
                 // To the Recycle Bin when the catalogue has one, the way the
                 // Catalog Manager deletes: a product deleted by mistake from
@@ -476,6 +480,13 @@ if (!$_POST) {
                     $product_id = (int) $product_id;
 
                     if ($product_id <= 0) {
+                        continue;
+                    }
+
+                    // A bundle component stays: both paths below refuse it, and
+                    // it is counted apart so the screen says why it is still listed.
+                    if (pg_bundle_is_component($product_id)) {
+                        $number_of_components++;
                         continue;
                     }
 
@@ -520,6 +531,12 @@ if (!$_POST) {
 
                     log_activity($message, $_SESSION['sessionusername']);
                     $liveform->add_notice(h($message));
+                }
+
+                $refusal = pg_bundle_bulk_delete_refusal($number_of_components);
+
+                if ($refusal !== '') {
+                    $liveform->mark_error('bundle_component', h($refusal));
                 }
                 
                 break;

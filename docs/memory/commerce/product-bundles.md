@@ -34,4 +34,4 @@ module: bundles
 - `pg_pb_validate_product_post()` refuses bad contents before writing (`pg_bundle_items_problem()`: not found, a bundle, donation, gift card, recurring; a component cannot become a bundle). While on, posted stock fields are ignored; switching off empties the contents.
 
 ## Can a component be deleted?
-- No: `pg_pb_delete_product()` returns false for a product in a bundle and deletes a bundle's own contents rows; API `DELETE` answers 409 `product_in_bundle`. The Recycle Bin refuses a component too (`pg_catalog_bin_product()` false; screen, API and Workspace say why).
+- No: `pg_pb_delete_product()` returns false for a product in a bundle and deletes a bundle's own contents rows; API `DELETE` answers 409 `product_in_bundle`. The Recycle Bin refuses a component too (`pg_catalog_bin_product()` false; screen, list, API, Workspace say why).

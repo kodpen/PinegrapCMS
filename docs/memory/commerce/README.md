@@ -190,6 +190,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - product-reviews-verified.md: Product reviews only from buyers (2026.11.0, 11.0.14, PR #698): which comments are reviews, the purchase check, the product rating and its refresh, aggregateRating
 - product-screen-units-and-commission.md: Product screen weight and dimensions (lb/in stored, metric keeps four places), the commission rate limit (decimal(5,2), #2056), stored "no limit" zeros shown blank, boxes sized to their columns
 - product-tax-rate.md: How product tax_rate and tax_zones combine, NULL vs 0.000 semantics, line-total tax in order_items.tax_total, deprecated order_items.tax, PayPal Express tax field.
+- products-list-bulk-writes.md: Products list bulk Delete Selected and Enable/Disable: the bundle component refusal it reports, and the SEO stale mark a change of the enabled state needs
 - products-variant-model.md: products/product_groups access and price units, the no-separate-variant-table model and its xref tables, external API field source, and the no per-row queries list rule.
 - refund-amounts-base-currency.md: Refund and cancel amounts on the dashboard 'To refund' lane and the order screen are printed with BASE_CURRENCY_SYMBOL, never orders.currency_code
 - shipment-api-fields.md: The address (district) and parcels blocks of GET /orders/{id} shipments, the order.shipped / order.delivered parcels (pg_shipment_api_parcel), and the carrier POST /orders/{id}/shipment keeps
