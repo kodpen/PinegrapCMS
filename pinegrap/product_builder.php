@@ -3724,7 +3724,7 @@ function pg_pb_variant_sets_screen()
         'icon'          => 'store',
         'heading'       => lang('Variant Sets'),
         'heading_description' => lang('Product groups that present several forms of the same product as one catalog item.'),
-        'cancel'        => array('enable' => 'true', 'url' => 'view_products.php?mode=products'),
+        'cancel'        => array('enable' => 'true', 'url' => 'view_products.php?mode=products', 'title' => lang('All Products')),
         'breadcrumb'    => array(
             // ?mode=products is required, not tidy: without it the session sends
             // the operator straight back here and the breadcrumb becomes a loop.

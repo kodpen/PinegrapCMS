@@ -147,3 +147,36 @@ function test_back_arrow_replaces_back_to_list_copies()
 
 	pg_assert_false(strpos((string) file_get_contents(PG_FUNCTIONS_DIR . '/workspace_calendar.php'), 'workspace_calendar_feed.php') !== false, 'workspace_calendar.php: no bottom link');
 }
+
+// An arrow that replaced a named back-to-list button names where it goes:
+// without a title the shell labels it "Cancel", and there is nothing to
+// cancel on a list or report screen.
+function test_back_arrow_names_its_destination()
+{
+	$screens = array(
+		'view_returns.php' => "lang('All Orders')",
+		'view_cart_quotes.php' => "lang('All Orders')",
+		'view_subscriptions.php' => '$cancel_title',
+		'erp_cashflow.php' => "lang('Cash and Bank')",
+		'erp_invoice_recurrences.php' => "lang('Invoices')",
+		'erp_stock.php' => "lang('Stock and cost')",
+		'marketplace_products.php' => "lang('Marketplaces')",
+		'workspace_template.php' => "lang('Channel templates')",
+		'workspace_mcp.php' => "lang('MCP servers')",
+		'find_and_replace.php' => "lang('Find & Replace')",
+		'workspace_calendar_feed.php' => "lang('Work Calendar')",
+		'product_builder.php' => "lang('All Products')",
+	);
+
+	foreach ($screens as $file => $title) {
+		foreach (back_arrow_targets_cancel_lines($file) as $line) {
+			if (strpos($line, "'url'") === false || strpos($line, 'pg_send_to_url') !== false) {
+				continue;
+			}
+			pg_assert_contains("'title' => " . $title, $line, $file . ': the arrow names where it goes');
+		}
+	}
+
+	$wtables = (string) file_get_contents(PG_FUNCTIONS_DIR . '/workspace_wtables.php');
+	pg_assert_contains("'url' => \$self_url, 'title' => lang('All tables')", $wtables, 'workspace_wtables.php: the arrow names the table list');
+}

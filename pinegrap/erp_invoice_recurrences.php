@@ -66,7 +66,7 @@ pg_page_shell([
     'icon' => 'erp',
     'heading' => lang('Repeating invoices'),
     'heading_description' => lang('Invoices written again every month, every three months or every year: maintenance contracts, rents, subscriptions.'),
-    'cancel' => array('enable' => 'true', 'url' => 'erp_invoices.php'),
+    'cancel' => array('enable' => 'true', 'url' => 'erp_invoices.php', 'title' => lang('Invoices')),
     'breadcrumb' => array(
         array('label' => lang('Invoices'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_invoices.php'),
         array('label' => lang('Repeating invoices')),

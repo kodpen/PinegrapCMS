@@ -72,7 +72,7 @@ $range_seconds = (int) $range * 86400;
 $start_timestamp = time() - $range_seconds;
 
 $area_options = array(
-    ''         => lang('All'),
+    ''         => lang('All areas'),
     'backend'  => lang('Backend'),
     'frontend' => lang('Frontend'),
 );
@@ -503,12 +503,18 @@ echo '
 <main id="content" class="container-fluid">
     ' . pg_screen_toolbar(array(
         'search'   => '<form action="view_performance_log.php" method="get" class="pg-toolbar-filter disable_shortcut d-inline-flex flex-wrap row-gap-2 gap-2 align-items-center" role="search">
-            <label for="perf_log_search" class="visually-hidden">' . lang('Search') . '</label>
-            <input type="search" id="perf_log_search" name="search" value="' . h($search) . '" class="form-control form-control-sm w-auto" placeholder="' . h(lang('Search by page...')) . '">
-            <label for="perf_log_range" class="visually-hidden">' . lang('Time Range') . '</label>
-            <select id="perf_log_range" name="range" class="form-control form-control-sm w-auto" onchange="this.form.submit()">' . $range_select . '</select>
-            <label for="perf_log_area" class="visually-hidden">' . lang('Area') . '</label>
-            <select id="perf_log_area" name="area" class="form-control form-control-sm w-auto" onchange="this.form.submit()">' . $area_select . '</select>
+            <div class="input-group input-group-sm w-auto flex-nowrap">
+                <label for="perf_log_search" class="input-group-text" title="' . h(lang('Search')) . '"><i class="bi bi-search" aria-hidden="true"></i><span class="visually-hidden">' . lang('Search') . '</span></label>
+                <input type="search" id="perf_log_search" name="search" value="' . h($search) . '" class="form-control form-control-sm w-auto" placeholder="' . h(lang('Search by page...')) . '">
+            </div>
+            <div class="input-group input-group-sm w-auto flex-nowrap">
+                <label for="perf_log_range" class="input-group-text" title="' . h(lang('Time Range')) . '"><i class="bi bi-clock-history" aria-hidden="true"></i><span class="visually-hidden">' . lang('Time Range') . '</span></label>
+                <select id="perf_log_range" name="range" class="form-control form-control-sm w-auto" onchange="this.form.submit()">' . $range_select . '</select>
+            </div>
+            <div class="input-group input-group-sm w-auto flex-nowrap">
+                <label for="perf_log_area" class="input-group-text" title="' . h(lang('Area')) . '"><i class="bi bi-window" aria-hidden="true"></i><span class="visually-hidden">' . lang('Area') . '</span></label>
+                <select id="perf_log_area" name="area" class="form-control form-control-sm w-auto" onchange="this.form.submit()">' . $area_select . '</select>
+            </div>
             <button type="submit" class="btn btn-sm btn-solid theme-primary" aria-label="' . h(lang('Search')) . '"><i class="bi bi-search" aria-hidden="true"></i></button>
         </form>',
         'overflow' => '<button type="button" class="btn btn-sm btn-text theme-secondary" data-bs-toggle="dialog" data-bs-target="#perf-log-clear-modal" title="' . h(lang('Clear all performance log data')) . '" aria-label="' . h(lang('Clear all performance log data')) . '"><i class="bi bi-trash" aria-hidden="true"></i></button>',

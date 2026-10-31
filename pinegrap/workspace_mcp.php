@@ -360,7 +360,7 @@ pg_page_shell(array(
     'heading'             => lang('My MCP connections'),
     'heading_description' => lang('Your own accounts on the other services\' MCP servers of the Workspace, and their tools that read, run with a form.'),
     // Only someone who manages the Workspace has the server list to go back to.
-    'cancel'              => $viewer['settings'] ? array('enable' => 'true', 'url' => 'workspace_settings.php#ws-mcp') : false,
+    'cancel'              => $viewer['settings'] ? array('enable' => 'true', 'url' => 'workspace_settings.php#ws-mcp', 'title' => lang('MCP servers')) : false,
     'breadcrumb'          => $viewer['settings'] ? array(
         array('label' => lang('MCP servers'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/workspace_settings.php#ws-mcp'),
         array('label' => lang('My MCP connections')),
