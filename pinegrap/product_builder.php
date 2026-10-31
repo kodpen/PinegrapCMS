@@ -6854,7 +6854,8 @@ function pg_pb_quick_update($product_id, $field, $value)
     // missing one, or switching it on would put it back on sale from the bin.
     $current = db_item(
         "SELECT id, name, short_description, enabled, price, inventory, inventory_quantity, keywords"
-        . (isset($columns['compare_at_price']) ? ', compare_at_price' : '') . "
+        . (isset($columns['compare_at_price']) ? ', compare_at_price' : '')
+        . (pg_bundles_ready() ? ', bundle, bundle_pricing' : '') . "
         FROM products
         WHERE (id = '" . $product_id . "')" . pg_catalog_bin_live_sql('products'));
 
@@ -6874,6 +6875,12 @@ function pg_pb_quick_update($product_id, $field, $value)
             break;
 
         case 'price':
+            // A bundle priced as the sum of its products follows them: a
+            // typed price would only last until the next refresh.
+            if (pg_bundle_price_is_summed($current)) {
+                return array('ok' => false, 'code' => 'bundle', 'message' => lang('A bundle priced as the sum of its products takes no price of its own.'));
+            }
+
             $change['price'] = pg_pb_price_to_cents($value);
 
             // products.price is a signed INT of minor units.

@@ -451,6 +451,20 @@ function pg_bundle_refresh_for($product_id)
 }
 
 /**
+ * Whether a product row is a bundle priced as the sum of its products: its
+ * price is worked out by pg_bundle_refresh(), so a typed price would only
+ * last until the next refresh. A row read without the bundle columns is not.
+ *
+ * @param array|null $row products row with bundle and bundle_pricing
+ * @return bool
+ */
+function pg_bundle_price_is_summed($row)
+{
+    return is_array($row) && !empty($row['bundle']) && isset($row['bundle_pricing'])
+        && ((string) $row['bundle_pricing'] === 'sum');
+}
+
+/**
  * Refresh every bundle: after a product import, which writes stock and
  * prices without the per-product hooks.
  *

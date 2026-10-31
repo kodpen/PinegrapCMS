@@ -88,7 +88,7 @@ function test_bundle_quick_edit_refuses_the_stock()
 	pg_assert_true($body !== '', 'pg_pb_quick_update() found');
 
 	$case = strpos($body, "case 'inventory_quantity':");
-	$refusal = strpos($body, "'code' => 'bundle'");
+	$refusal = ($case !== false) ? strpos($body, "'code' => 'bundle'", $case) : false;
 	$write = strpos($body, 'pg_pb_update_row(');
 
 	pg_assert_true($refusal !== false, 'a bundle is refused');
