@@ -48,13 +48,17 @@ function test_forgot_password_no_hint_screens_hold_no_hint()
 	}
 }
 
-// The designed forgot-password widget neither reads the hint nor fills a
-// password_hint section or token.
+// The designed forgot-password widget neither reads the hint nor fills its
+// box or token.
 function test_forgot_password_no_hint_widget_holds_no_hint()
 {
 	$source = pg_test_forgot_password_function_source('includes/fn/widgets.php', '_render_system_widget_forgot_password');
 	pg_assert_true($source !== '', 'renderer found');
-	pg_assert_false(stripos($source, 'password_hint') !== false, 'renderer mentions password_hint');
+	pg_assert_false(stripos($source, 'user_password_hint') !== false, 'renderer reads user_password_hint');
+	pg_assert_false(strpos($source, 'pg-password-hint') !== false, 'renderer draws the hint box');
+	pg_assert_false(strpos($source, "'__password_hint'") !== false, 'renderer fills the hint token');
+	// A saved tree's old hint section is emptied, so its container drops.
+	pg_assert_contains("'password_hint' => ''", $source, 'old hint section emptied');
 }
 
 // The designer twin's forgot-password starter has no hint section, and the

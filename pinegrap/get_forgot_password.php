@@ -40,18 +40,10 @@ function get_forgot_password($properties = array()) {
         $form->set('email', 'required', true);
         $form->set('email', 'autofocus', true);
 
-        $screen = $form->get_field_value('screen');
-
-        $password_hint = '';
-
-        if (PASSWORD_HINT && ($screen == 'password_hint')) {
-            $email = $form->get_field_value('email');
-
-            $password_hint = db_value(
-                "SELECT user_password_hint
-                FROM user
-                WHERE user_email = '" . e($email) . "'");
-        }
+        // The form is the only screen before the confirmation: the account's
+        // password hint is never shown here, so a known and an unknown
+        // address get the same answer.
+        $screen = '';
 
         // If a send to was passed in the query string,
         // then set send to.
@@ -76,33 +68,18 @@ function get_forgot_password($properties = array()) {
             <input type="hidden" name="send_to">
             <input type="hidden" name="screen">';
 
-        if ($password_hint != '') {
-            $system .= '<input type="hidden" name="email">';
-        }
-
         // No forgot password page: the default screen, on the sign-in
         // card inside output_header_secure()'s Bootstrap 6. The field
         // names stay those of the system layout, which forgot_password.php
         // reads and prepare() fills.
         if ((int)$page_id <= 0) {
 
-            if ($screen == 'password_hint') {
-                $fields =
-                    '<p class="mb-3">' . lang('Your Password Hint is:') . ' <strong>' . h($password_hint) . '</strong></p>
-                    <p class="mb-5">' . lang('Do you remember your password now?') . '</p>
-                    <div class="d-flex flex-wrap gap-3">
-                        <a href="' . h($send_to) . '" class="btn btn-solid theme-primary">' . lang('Yes, I Remember') . '</a>
-                        <button type="submit" class="btn btn-outline theme-secondary">' . lang('No, I Forget') . '</button>
-                    </div>';
-
-            } else {
-                $fields =
-                    '<div class="mb-5">
-                        <label for="email" class="form-label">' . lang('Email') . '</label>
-                        <input type="email" name="email" id="email" class="form-control form-control-lg" autocomplete="email" spellcheck="false">
-                    </div>
-                    <button type="submit" name="submit" value="Send Email" class="btn btn-solid theme-primary w-100">' . lang('Send Email') . '</button>';
-            }
+            $fields =
+                '<div class="mb-5">
+                    <label for="email" class="form-label">' . lang('Email') . '</label>
+                    <input type="email" name="email" id="email" class="form-control form-control-lg" autocomplete="email" spellcheck="false">
+                </div>
+                <button type="submit" name="submit" value="Send Email" class="btn btn-solid theme-primary w-100">' . lang('Send Email') . '</button>';
 
             $output = pg_secure_card('bi-key', lang('Forgot Password'),
                 $form->get_messages() . '
@@ -119,7 +96,8 @@ function get_forgot_password($properties = array()) {
                 'form' => $form,
                 'attributes' => $attributes,
                 'screen' => $screen,
-                'password_hint' => $password_hint,
+                // Kept empty for a custom layout that still prints it.
+                'password_hint' => '',
                 'send_to' => $send_to,
                 'system' => $system));
         }

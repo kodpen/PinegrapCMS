@@ -374,6 +374,7 @@
     "Password hint": "Parola ipucu",
     "Password hint (filled by the backend — only on the hint screen)": "Parola ipucu (sunucu doldurur — yalnız ipucu ekranında)",
     "Password hint (filled only on the hint screen)": "Parola ipucu (yalnız ipucu ekranında dolu)",
+    "Password hint (no longer shown on this form; this block can be deleted)": "Parola ipucu (bu formda artık gösterilmiyor; bu blok silinebilir)",
     "Password hint (not drawn when the site setting is off)": "Parola ipucu (site ayarı kapalıysa çizilmez)",
     "Password hint box (drawn only on the hint screen)": "Parola ipucu kutusu (yalnız ipucu ekranında çizilir)",
     "Password hint is disabled.": "Parola ipucu kapalı.",

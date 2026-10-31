@@ -4860,11 +4860,12 @@ function _render_system_widget_login_form($tree_json, $widget_id, $cfg = array()
 // Render a 'forgot_password' system widget.
 //
 // Posts to <software>/forgot_password.php. Control by name: email. Tokens:
-// ^^__site_name^^, ^^__password_hint^^, ^^__back_url^^. Section:
-// password_hint. Screens follow the processor's `screen` field on the
-// 'forgot_password' liveform: '' (the form), 'password_hint' (the hint is
-// shown and the same form asks again), 'confirm' (the controls are gone, the
-// notice stays — worded the same for a known and an unknown address).
+// ^^__site_name^^, ^^__back_url^^. Screens follow the processor's `screen`
+// field on the 'forgot_password' liveform: '' (the form), 'confirm' (the
+// controls are gone, the notice stays — worded the same for a known and an
+// unknown address). The account's password hint is never shown: it would
+// tell anyone which addresses hold an account. A saved tree that still has
+// the old password_hint section or token gets it emptied.
 //
 // cfg: redirect_page_id (send_to: where the visitor may go afterwards),
 // login_page_id (the "back to sign-in" link; the legacy login page type is
@@ -4900,24 +4901,14 @@ function _render_system_widget_forgot_password($tree_json, $widget_id, $cfg = ar
     }
     if ($back_url === '') $back_url = $send_to;
 
-    // The hint screen: PASSWORD_HINT on, the account has one, and the visitor
-    // has not yet said it did not help (that second post keeps screen =
-    // password_hint and the processor sends the mail).
-    $hint = '';
-    if ($screen === 'password_hint' && defined('PASSWORD_HINT') && PASSWORD_HINT && $email !== '') {
-        $hint = (string)db_value("SELECT user_password_hint FROM user WHERE user_email = '" . e($email) . "' LIMIT 1");
-    }
-
     if ($screen === 'confirm') {
         _pg_member_drop_all_controls($tree);
     } else {
         _pg_member_fill_control($tree, 'email', $email);
     }
 
-    pg_cf_apply_section_bindings($tree, array(
-        'password_hint' => ($hint !== '')
-            ? '<div class="alert alert-info pg-password-hint" role="alert"><strong>' . h(lang('Password Hint')) . ':</strong> ' . h($hint) . '</div>' : '',
-    ));
+    // A tree saved with the old hint section loses that container.
+    pg_cf_apply_section_bindings($tree, array('password_hint' => ''));
     _pg_member_drop_empty_links($tree, array('__back_url' => $back_url));
     pg_cf_link_labels($tree);
     _pg_inject_messages_node($tree, 'forgot_password');
@@ -4935,9 +4926,8 @@ function _render_system_widget_forgot_password($tree_json, $widget_id, $cfg = ar
     }
 
     return _pg_member_apply_tokens($rendered, array(
-        '__site_name'     => h($site_name),
-        '__password_hint' => h($hint),
-        '__back_url'      => h($back_url),
+        '__site_name' => h($site_name),
+        '__back_url'  => h($back_url),
     ));
 }
 
