@@ -301,6 +301,10 @@ function pg_audit_value($value)
  * only those fields. A field present on one side only is null on the other.
  * Fields keep the order of $before, then the ones only $after has.
  *
+ * NULL and '' of a field both sides hold are the same empty value: one save
+ * path leaves a text column NULL (an import lists only its CSV columns),
+ * another writes '' (the edit screen), and that is no change to the record.
+ *
  * @param array $before
  * @param array $after
  * @return array  array($before_changed, $after_changed)
@@ -311,8 +315,14 @@ function pg_audit_diff(array $before, array $after)
     $new = array();
 
     foreach (array_keys($before + $after) as $key) {
-        $was = array_key_exists($key, $before) ? pg_audit_value($before[$key]) : null;
-        $now = array_key_exists($key, $after) ? pg_audit_value($after[$key]) : null;
+        $in_before = array_key_exists($key, $before);
+        $in_after = array_key_exists($key, $after);
+        $was = $in_before ? pg_audit_value($before[$key]) : null;
+        $now = $in_after ? pg_audit_value($after[$key]) : null;
+
+        if ($in_before && $in_after && (($was === null) || ($was === '')) && (($now === null) || ($now === ''))) {
+            continue;
+        }
 
         if ($was !== $now) {
             $old[$key] = $was;

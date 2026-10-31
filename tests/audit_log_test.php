@@ -31,14 +31,33 @@ function test_audit_diff_keeps_changed_fields_only()
 {
 	list($old, $new) = pg_audit_diff(
 		array('name' => 'Kalem', 'price' => '1250', 'enabled' => '1', 'note' => null),
-		array('name' => 'Kalem', 'price' => 1300, 'enabled' => true, 'note' => '', 'stock' => 4)
+		array('name' => 'Kalem', 'price' => 1300, 'enabled' => true, 'note' => 'x', 'stock' => 4)
 	);
 
 	pg_assert_same(array('price' => '1250', 'note' => null, 'stock' => null), $old, 'before');
-	pg_assert_same(array('price' => '1300', 'note' => '', 'stock' => '4'), $new, 'after');
+	pg_assert_same(array('price' => '1300', 'note' => 'x', 'stock' => '4'), $new, 'after');
 
 	pg_assert_same(array(array(), array()), pg_audit_diff(array('a' => 1), array('a' => '1')), 'nothing changed');
 	pg_assert_same(array(array('gone' => 'x'), array('gone' => null)), pg_audit_diff(array('gone' => 'x'), array()), 'field removed');
+}
+
+// NULL and '' of a field both sides have are the same empty value: an imported
+// contact (columns left NULL) saved by Edit Contact ('' written) lists only
+// the field really changed. A field only one side has still counts.
+function test_audit_diff_null_and_empty_string_are_equal()
+{
+	list($old, $new) = pg_audit_diff(
+		array('company' => null, 'website' => '', 'affiliate_commission_rate' => '0', 'title' => null),
+		array('company' => '', 'website' => null, 'affiliate_commission_rate' => '5', 'title' => 'Dr')
+	);
+
+	pg_assert_same(array('affiliate_commission_rate' => '0', 'title' => null), $old, 'before');
+	pg_assert_same(array('affiliate_commission_rate' => '5', 'title' => 'Dr'), $new, 'after');
+
+	pg_assert_same(array(array(), array()), pg_audit_diff(array('a' => null, 'b' => ''), array('a' => '', 'b' => null)), 'nothing changed');
+	pg_assert_same(array(array('a' => null), array('a' => '0')), pg_audit_diff(array('a' => null), array('a' => 0)), 'zero is a value');
+	pg_assert_same(array(array('a' => null), array('a' => '')), pg_audit_diff(array(), array('a' => '')), 'one-sided empty still listed');
+	pg_assert_same(null, pg_audit_row('update', 'contact', 158, array('company' => null, 'nickname' => null), array('company' => '', 'nickname' => '')), 'no line');
 }
 
 // Secrets are recognised by name; ordinary fields that only look alike are not.
