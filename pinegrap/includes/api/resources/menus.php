@@ -519,36 +519,21 @@ function api_menu_link_page_or_fail($page_id) {
 }
 
 // An address an item may link to: http, https, mailto or tel, or one on this
-// site (a path, or an anchor). Anything a browser would run is refused.
+// site (a path, or an anchor). Anything a browser would run is refused. The
+// rule is shared with the panel's menu item screens.
 function api_menu_link_url_or_fail($url) {
 
-	$url = trim((string)$url);
+	require_once(PG_FUNCTIONS_DIR . '/includes/forms/menu_item_form.php');
 
-	if ($url === '') {
+	$problem = pg_menu_item_url_problem($url);
 
-		return '';
+	if ($problem !== '') {
 
-	}
-
-	if (preg_match('/[\x00-\x20\x7f]/', $url)) {
-
-		api_fail_validation(lang('The address cannot contain spaces or control characters.'), 'url');
+		api_fail_validation($problem, 'url');
 
 	}
 
-	if (preg_match('/^([A-Za-z][A-Za-z0-9+.-]*):/', $url, $found) && !in_array(strtolower($found[1]), array('http', 'https', 'mailto', 'tel'), true)) {
-
-		api_fail_validation(lang('The address must be a web, e-mail or phone address, or a path on this site.'), 'url');
-
-	}
-
-	if (strpos($url, '//') === 0 || strpos($url, '\\') !== false) {
-
-		api_fail_validation(lang('The address must be a web, e-mail or phone address, or a path on this site.'), 'url');
-
-	}
-
-	return $url;
+	return trim((string)$url);
 
 }
 

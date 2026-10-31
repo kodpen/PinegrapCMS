@@ -4,7 +4,7 @@
  *
  * The menu item form, shared by the create and the edit screens
  * (add_menu_item.php, edit_menu_item.php): the Options card, the page or
- * URL a menu item links to, the sort order of a new last item and the
+ * URL a menu item links to and the addresses it refuses, the sort order of a new last item and the
  * menu's last modified stamp. The screens keep what differs: the edit
  * screen loads the record, offers the position and delete, and reorders
  * the level it is saved on.
@@ -125,7 +125,41 @@ function pg_menu_item_form_link($post)
         return array('link_page_id' => $post['link_page_id'], 'link_url' => '');
     }
 
-    return array('link_page_id' => '', 'link_url' => $post['link_url'] ?? '');
+    return array('link_page_id' => '', 'link_url' => trim((string) ($post['link_url'] ?? '')));
+}
+
+/**
+ * Why an address cannot be a menu item's URL, or '' when it can: http,
+ * https, mailto or tel, or one on this site (a path, a query or an anchor).
+ * Anything a browser would run (javascript:, data:), a protocol-relative
+ * address and a backslash are refused, and so are spaces and control
+ * characters, which browsers skip while they read the scheme. The panel
+ * screens and the external API share this rule.
+ *
+ * @param string $url
+ * @return string  The translated message, or ''
+ */
+function pg_menu_item_url_problem($url)
+{
+    $url = trim((string) $url);
+
+    if ($url === '') {
+        return '';
+    }
+
+    if (preg_match('/[\x00-\x20\x7f]/', $url)) {
+        return lang('The address cannot contain spaces or control characters.');
+    }
+
+    if (
+        (preg_match('/^([A-Za-z][A-Za-z0-9+.-]*):/', $url, $found) && !in_array(strtolower($found[1]), array('http', 'https', 'mailto', 'tel'), true))
+        || strpos($url, '//') === 0
+        || strpos($url, '\\') !== false
+    ) {
+        return lang('The address must be a web, e-mail or phone address, or a path on this site.');
+    }
+
+    return '';
 }
 
 /**
