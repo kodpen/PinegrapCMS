@@ -82,7 +82,7 @@ function test_binned_folders_left_out_of_live_readers()
 	$auth = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/authentication.php');
 
 	pg_assert_contains('pg_folder_binned($folder_id)', $page, 'page answers 410 in the bin');
-	pg_assert_same(2, substr_count($pages, 'pg_pages_bin_sql('), 'list and SEO summary');
+	pg_assert_same(3, substr_count($pages, 'pg_pages_bin_sql(pg_recycle_bin_folder_ids(), '), 'live list, archive list and SEO summary');
 	pg_assert_contains('pg_folder_access_resolve($tree[\'rows\'], $folder_id, $tree[\'bin\'])', $auth, 'access type reads the bin');
 }
 

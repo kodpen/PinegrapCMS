@@ -203,7 +203,6 @@ function pg_explorer_handle_recycle_delete($type, $request, $user)
 
         // Files and pages are recorded in the audit trail once the
         // row has its bin folder and its parked name.
-        $page_style_left_name = '';
 
         $audit_table = ($item_kind === 'file') ? 'files' : (($item_kind === 'page') ? 'page' : '');
         $audit_before = ($audit_table !== '') ? pg_audit_fetch($audit_table, $item_id) : array();
@@ -430,6 +429,17 @@ function pg_explorer_restore_notes($name, $reason, $new_name = '')
     return $notes;
 }
 
+// The note for a page restored while its style stays in the bin; none when
+// no style was left behind.
+function pg_explorer_restore_style_note($page_name, $style_name)
+{
+    if ((string) $style_name === '') {
+        return array();
+    }
+
+    return array(lang(array('string' => 'The page {var:1} came back without its style {var:2}, which stays in the recycle bin until a designer restores it.', 'vars' => array($page_name, $style_name))));
+}
+
 // The restore's answer: the count, or the refusals when there are any, with
 // the notes of what came back changed after either.
 function pg_explorer_restore_message($restored, $errors, $notes)
@@ -486,6 +496,10 @@ function pg_explorer_handle_recycle_restore($type, $request, $user)
     }
 
     foreach ($restore_items as $item) {
+
+        // Set only for a page whose style stays in the bin; every other
+        // item must not read the previous page's value.
+        $page_style_left_name = '';
 
         $item_kind = isset($item['kind']) ? $item['kind'] : '';
         $item_id = (int) (isset($item['id']) ? $item['id'] : 0);
@@ -653,9 +667,7 @@ function pg_explorer_handle_recycle_restore($type, $request, $user)
             $target['reason'],
             $released['to'] ?? ''));
 
-        if ($page_style_left_name !== '') {
-            $notes[] = lang(array('string' => 'The page {var:1} came back without its style {var:2}, which stays in the recycle bin until a designer restores it.', 'vars' => array($item_name, $page_style_left_name)));
-        }
+        $notes = array_merge($notes, pg_explorer_restore_style_note($item_name, $page_style_left_name));
 
         db("DELETE FROM recycle_bin WHERE id = '" . e($entry['id']) . "'");
 

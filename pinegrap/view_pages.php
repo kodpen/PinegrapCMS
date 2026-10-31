@@ -968,12 +968,14 @@ if ($where == '') {
 // if the filter is not all my archived pages, then add the sql where statement to prevent getting archived pages
 // NULL check covers pages with no parent folder (page_folder = 0) — LEFT JOIN produces NULL
 // for folder columns in that case, and NULL = "0" evaluates to false in SQL.
+// A folder carried into the Recycle Bin keeps folder_archived = 0, so the
+// bin's folders count as archived here (pg_pages_bin_sql()).
 if ($filter != 'all_my_archived_pages') {
-    $where .= '(folder.folder_archived = "0" OR folder.folder_archived IS NULL)';
+    $where .= '((folder.folder_archived = "0" OR folder.folder_archived IS NULL)' . pg_pages_bin_sql(pg_recycle_bin_folder_ids(), false) . ')';
 
 // else this is the all my archived pages filter, so only get archived pages
 } else {
-    $where .= '(folder.folder_archived = "1")';
+    $where .= '((folder.folder_archived = "1")' . pg_pages_bin_sql(pg_recycle_bin_folder_ids(), true) . ')';
 }
 
 $all_pages = 0;
@@ -1318,7 +1320,7 @@ if ((USER_ROLE < 3) && pg_seo_schema_ready()) {
             page.seo_checked_at
         FROM page
         LEFT JOIN folder ON page.page_folder = folder.folder_id
-        WHERE (folder.folder_archived = '0') OR (folder.folder_archived IS NULL)");
+        WHERE ((folder.folder_archived = '0') OR (folder.folder_archived IS NULL))" . pg_pages_bin_sql(pg_recycle_bin_folder_ids(), false));
 
     $seo_summary_public_folders = array();
 

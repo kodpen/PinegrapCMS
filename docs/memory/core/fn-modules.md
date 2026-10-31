@@ -76,7 +76,7 @@ description: Generated from the module field of the memory files: each includes/
 - `record_revisions`: [[collection-history]], [[collection-revisions]]
 - `returns`: [[bootstrap-6-runtime-markup]]
 - `reviews`: [[product-review-photos]], [[product-reviews-verified]]
-- `seo`: [[indexnow-ping-result]], [[list-row-names]], [[main-host-redirect]], [[record-breadcrumb-list-step]], [[record-page-schema-type]], [[robots-large-image-preview]], [[sitemap-cache]], [[sitemap-listed-pages]]
+- `seo`: [[indexnow-ping-result]], [[list-row-names]], [[main-host-redirect]], [[record-breadcrumb-list-step]], [[record-page-schema-type]], [[recycle-bin-offline]], [[robots-large-image-preview]], [[sitemap-cache]], [[sitemap-listed-pages]]
 - `shipment_labels`: [[shipment-label-api]], [[shipment-label-pickup]], [[shipment-label-pickup-drivers]], [[shipment-label-returns]], [[shipment-labels]]
 - `shipment_lookup`: [[guest-shipment-lookup]]
 - `shipment_tracking`: [[shipment-tracking]]

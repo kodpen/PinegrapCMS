@@ -445,50 +445,109 @@ function pg_session_token_binding_broken()
 // pages use, so these live here rather than in includes/fn/auth.php. They read
 // the USER_* constants that initialize_user() defines on either side.
 
-// Determine what access control type a folder has.
-function get_access_control_type($folder_id)
+// The folder tree and the Recycle Bin folder id, read once per request. The
+// bin id comes from config without a schema probe (get_file.php loads no
+// functions.php): SELECT * simply has no recycle_folder_id key before the
+// upgrade that adds it, and a stale id that names no folder means no bin.
+function pg_folder_access_tree()
 {
-    // Per-request memoization. view_files.php walks every file row twice
-    // (count loop + render loop) and recurses up the parent chain on each
-    // call, so without caching this issues thousands of identical lookups.
-    static $resolved = array();
-    static $rows = null;
+    static $tree = null;
 
-    if (isset($resolved[$folder_id])) {
-        return $resolved[$folder_id];
+    if ($tree !== null) {
+        return $tree;
     }
 
-    // Lazy-load the entire folder tree once. For typical sites this is a few
-    // KB of memory and replaces N recursive single-row queries with one scan.
-    if ($rows === null) {
-        $rows = array();
-        foreach (db_items("SELECT folder_id, folder_parent, folder_access_control_type FROM folder") as $r) {
-            $rows[$r['folder_id']] = $r;
-        }
+    $rows = array();
+    foreach ((array) db_items("SELECT folder_id, folder_parent, folder_access_control_type FROM folder") as $r) {
+        $rows[$r['folder_id']] = $r;
     }
 
-    // Walk the parent chain in-memory until we hit an explicit access control
-    // type or the root folder.
+    $config = db_item("SELECT * FROM config LIMIT 1");
+    $bin_id = (is_array($config) && isset($config['recycle_folder_id'])) ? (int) $config['recycle_folder_id'] : 0;
+
+    if (!isset($rows[$bin_id])) {
+        $bin_id = 0;
+    }
+
+    $tree = array('rows' => $rows, 'bin' => $bin_id);
+
+    return $tree;
+}
+
+// True when the folder is the bin or anywhere below it. Pure over the rows
+// (folder_id => folder_parent, folder_access_control_type).
+function pg_folder_in_bin_chain($rows, $folder_id, $bin_id)
+{
+    if ($bin_id <= 0) {
+        return false;
+    }
+
     $current = $folder_id;
     $visited = array(); // guard against malformed loops in folder_parent
+
+    while (isset($rows[$current]) && !isset($visited[$current])) {
+        if ((int) $current === (int) $bin_id) {
+            return true;
+        }
+        $visited[$current] = true;
+        $current = $rows[$current]['folder_parent'];
+    }
+
+    return false;
+}
+
+// The access type of a folder: the first one set up the parent chain, public
+// at the root or when a row is missing (historical behaviour). A folder in the
+// Recycle Bin is private whatever type it carries itself: a folder keeps its
+// own type when it is binned, so that it comes back with it, and without this
+// a public folder in the bin kept serving its pages and files.
+function pg_folder_access_resolve($rows, $folder_id, $bin_id)
+{
+    if (pg_folder_in_bin_chain($rows, $folder_id, $bin_id)) {
+        return 'private';
+    }
+
+    $current = $folder_id;
+    $visited = array();
+
     while (isset($rows[$current]) && !isset($visited[$current])) {
         $visited[$current] = true;
         $r = $rows[$current];
         if (!empty($r['folder_access_control_type'])) {
-            $resolved[$folder_id] = $r['folder_access_control_type'];
-            return $resolved[$folder_id];
+            return $r['folder_access_control_type'];
         }
         if ($r['folder_parent'] == 0) {
-            $resolved[$folder_id] = 'public';
             return 'public';
         }
         $current = $r['folder_parent'];
     }
 
-    // Folder row missing or loop detected — fall back to public to match
-    // historical behaviour.
-    $resolved[$folder_id] = 'public';
     return 'public';
+}
+
+// Determine what access control type a folder has.
+function get_access_control_type($folder_id)
+{
+    // Per-request memoization. view_files.php walks every file row twice
+    // (count loop + render loop), so the answer is kept per folder.
+    static $resolved = array();
+
+    if (isset($resolved[$folder_id])) {
+        return $resolved[$folder_id];
+    }
+
+    $tree = pg_folder_access_tree();
+    $resolved[$folder_id] = pg_folder_access_resolve($tree['rows'], $folder_id, $tree['bin']);
+
+    return $resolved[$folder_id];
+}
+
+// Whether a folder is the Recycle Bin or below it: what it holds is offline.
+function pg_folder_binned($folder_id)
+{
+    $tree = pg_folder_access_tree();
+
+    return pg_folder_in_bin_chain($tree['rows'], $folder_id, $tree['bin']);
 }
 
 // Create function that will check if a visitor has view access to a folder.

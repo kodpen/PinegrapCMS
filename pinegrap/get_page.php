@@ -287,6 +287,13 @@ else
 {
 	$edit_access = false;
 }
+// A page in the Recycle Bin, or in a folder carried into it, is gone for
+// anybody who cannot edit it, like an archived page. A binned folder keeps
+// its own archived flag and access type for its restore, so the bin is asked.
+if (pg_folder_binned($folder_id))
+{
+	$folder_archived = '1';
+}
 // If this page is archived, and the visitor does not have edit access to this page, then output error.
 if (($folder_archived == '1') && ($edit_access == false))
 {

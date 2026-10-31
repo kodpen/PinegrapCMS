@@ -810,6 +810,29 @@ function pg_recycle_bin_folder_id($recheck = false)
 }
 
 /**
+ * The page-list condition for the Recycle Bin's folders (from
+ * pg_recycle_bin_folder_ids()). A folder carried into the bin keeps its own
+ * folder_archived = 0, so a list of live pages appends "AND NOT IN" and the
+ * archive list appends "OR IN"; with no bin it adds nothing.
+ *
+ * @param array $bin_folder_ids
+ * @param bool  $archive        true for the archived-pages list
+ * @return string
+ */
+function pg_pages_bin_sql($bin_folder_ids, $archive)
+{
+    $ids = array_values(array_unique(array_map('intval', (array) $bin_folder_ids)));
+
+    if (count($ids) == 0) {
+        return '';
+    }
+
+    $list = implode(', ', $ids);
+
+    return $archive ? ' OR (page.page_folder IN (' . $list . '))' : ' AND (page.page_folder NOT IN (' . $list . '))';
+}
+
+/**
  * True when the page table carries the search engine indexing columns.
  *
  * An installation that takes a code update without running the database

@@ -114,6 +114,7 @@ Code rules, file layout, translation, JavaScript twins and bundles, roles and ac
 - preg-replace-replacement-escaping.md: Text put into a page through preg_replace() goes through pg_regex_replacement(): $NN and \N in it are back references, "$400'dan" printed as "0'dan"; where it applies and the guard test
 - privacy-log-retention.md: How long audit_log and consent_log keep lines: config.audit_log_retention_years (11.0.47), the Audit Trail settings card, the daily job pass, why the answer in force stays
 - qr-code-generator.md: QR code generation via includes/fn/qr.php (pg_qr_matrix, pg_qr_svg), its limits, forbidden library paths, and why secret QRs are inline SVG only.
+- recycle-bin-offline.md: Everything inside the Recycle Bin folder is offline for visitors, whatever the access type a binned folder carries itself
 - request-parameter-arrays.md: How screens must treat a request parameter that arrives as an array (?id[]=x), missing records, and null passed to escaping helpers
 - sdt-designer-js-text-rules.md: How visible text in style_designer.src.js must use _sdT('English') keys: literal-key rule, server key scan and cache, variables instead of built keys, escaping, PHP/JS default twins, the checks.
 - security-helpers-and-secret-storage.md: CSRF helpers; secret config fields (one encrypted blob, never a constant, never shown back, the written exception); session cookie flags and sign-in renewal; the install unlock throttle.
