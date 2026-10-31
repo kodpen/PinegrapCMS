@@ -215,6 +215,8 @@ function get_order_form($properties) {
                     }
                     
                     // if page is being viewed in an editable mode, output edit button to allow user to edit product
+                    $edit_button = '';
+
                     if ($editable) {
                         $edit_button = '<a href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_product.php?id=' . $product['id'] . '&from=pages&send_to=' . h(urlencode(get_request_uri())) . '" class="software_pinegrap_inline_edit_button ecommerce" title="' . lang('Product') . ': ' . h($product['short_description']) . '"><i class="bi bi-pencil"></i></a>';
                     }
@@ -536,6 +538,7 @@ function get_order_form($properties) {
         if ($available_products_exist == TRUE) {
             // if a submit button label was entered for the page, then use that
             if ($add_button_label) {
+                $output_add_button_value = h($add_button_label);
                 $output_add_button_label = h($add_button_label);
             
             // else a submit button label could not be found, so use a default label
