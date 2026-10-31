@@ -34,7 +34,7 @@ description: Steps H1-H6 of plans/screen-header-actions.md: which screens each f
   - Remove the `[name]` second headings and the "Page Style Body Tag" fact rows (these move into the record's card).
 
 - H5 (S) Screen-wide actions and recipes.
-  - H5 done (#PR): Clear Log and Clear Reports in `view_waf_log`'s overflow menu, New department as `workspace_settings`' toolbar primary, `api_settings` drawn by the helper (primary first), `view_shipping_report`'s link in slot 2 and its filter at the bar's right end (so H3 skips that screen).
+  - H5 done (#4008): Clear Log and Clear Reports in `view_waf_log`'s overflow menu, New department as `workspace_settings`' toolbar primary, `api_settings` drawn by the helper (primary first), `view_shipping_report`'s link in slot 2 and its filter at the bar's right end (so H3 skips that screen).
   - "Clear Log" and the CSP clear (`view_waf_log`), "New department" (`workspace_settings`), the primary placed last (`api_settings`), and the related link drawn as primary (`view_shipping_report`).
   - Align `admin-screen-toolbar-rules.md` with slot 2's `btn-text`.
 
