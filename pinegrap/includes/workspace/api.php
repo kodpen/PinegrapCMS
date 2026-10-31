@@ -2010,30 +2010,6 @@ function ws_api_routes()
         ),
 
         array(
-            'id'          => 'workspace.commands.run',
-            'method'      => 'POST',
-            'path'        => '/workspace/commands/run',
-            'scope'       => 'workspace:write',
-            'handler'     => 'ws_api_commands_run',
-            'dry_run'     => true,
-            'returns'     => array('command' => 'object'),
-            'mcp'         => false,
-            'summary'     => 'Run a channel command',
-            'description' => 'Runs a / command typed into a channel, as the panel\'s writing box runs it, for a chat client that offers the same commands. The contract is what the web composer accepts: the commands, their words and the shape of command may change between releases; an integration that wants a stable contract calls the typed endpoints (tasks, plan items, scheduled messages, changes). Only the person\'s own team devices session (POST /auth/login) runs one (403 otherwise), in a channel they may post in. /claude and /ai become the assistant\'s tag first, as in the panel, and so are messages: a text that is not a command is refused with 400 not_a_command and never posted. command is what the panel receives: type preview (a /task shown back: send it again with confirm true; force true hands it over despite a clash with somebody\'s leave; assignees replaces the people), record_preview (/price, /stock: send again with confirm true and from, the value the preview showed), create_preview (/product, /create: confirm true, on_sale true to put it on sale), poll_form (a question with fewer than two options), done (written; message_id, task_id or record when there is one), ephemeral (an answer only the person sees, as html) or error (nothing written; error says why). decision true keeps a record change in the channel as a decision; parent_id is the message a command answers. Each right is checked inside the run as in the chat. A dry run writes nothing: its detail names the command and, for the commands shown back before they write (/task, /price, /stock, /product, /create, a /poll without its options), preview is the answer the unconfirmed run gives; for the others preview is null.',
-            'params'      => array(
-                array('name' => 'channel_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The channel the command is typed into.'),
-                array('name' => 'text', 'in' => 'body', 'type' => 'string', 'max_length' => 4000, 'required' => true, 'description' => 'The line as typed, starting with its / command.'),
-                array('name' => 'confirm', 'in' => 'body', 'type' => 'bool', 'description' => 'Make what the preview showed.'),
-                array('name' => 'force', 'in' => 'body', 'type' => 'bool', 'description' => '/task: hand it over despite a clash with somebody\'s leave, where the person may.'),
-                array('name' => 'assignees', 'in' => 'body', 'type' => 'list', 'of' => 'integer', 'max_items' => 20, 'description' => '/task: user ids replacing the people the text names.'),
-                array('name' => 'from', 'in' => 'body', 'type' => 'string', 'max_length' => 100, 'description' => '/price, /stock: the value the preview showed (its from); a record that changed meanwhile is not written.'),
-                array('name' => 'decision', 'in' => 'body', 'type' => 'bool', 'description' => 'Keep the change in the channel as a decision.'),
-                array('name' => 'on_sale', 'in' => 'body', 'type' => 'bool', 'description' => '/product: create it on sale.'),
-                array('name' => 'parent_id', 'in' => 'body', 'type' => 'int', 'min' => 0, 'description' => 'The message the command answers.'),
-            ),
-        ),
-
-        array(
             'id'          => 'workspace.channels.apply_template',
             'method'      => 'POST',
             'path'        => '/workspace/channels/{id}/apply-template',

@@ -1,0 +1,38 @@
+---
+name: workspace-slash-commands
+description: Plan (2026-10-23, 1 done #1440, 2-3 #1499, 4 #1731, 5 #1991, 6 #1896 #1938, answer 2a): /task fixes, command registry, Tab suggestions, live line, more commands, GET /workspace/commands
+---
+
+## What is asked? (owner, 2026-10-23)
+- More, clearer `/` commands ("I never managed to start a task from here"); after `/command ` a popup suggests, Tab writes, a space opens the next. Toolbar, insert menu, notes' `/`: workspace/workspace-composer-later.md; channel `/` commands: here.
+
+## What is there today?
+- includes/workspace/commands.php: `ws_command_names()`, `ws_command_help()` (`BOOT.commands`, `/help`, `ws_palette_commands()`), `ws_command_run()`, `ws_command_offered()`. Tested: /price, /stock.
+- /task Enter, Turkish names (#1440), the registry and argument popup (#1499), the live line and the parser's next week, datives, `14:00` (#1731, workspace/workspace-command-live-line.md) are built.
+- A typed `@username` assigns on one exact team match, else warns (question 1 answered a, #1731).
+- `GET /workspace/commands` lists the registry (#1991); no API runs commands.
+
+## What is proposed? (not approved yet)
+- `ws_commands($viewer)` (proposed, commands.php): key, TR/EN names, `lang()` description and usage, typed arguments (person, task, record, date…) with a suggestion source, gate. Picker, palette, `/help`, parser and API read it.
+- Suggestions only from what one may see (`BOOT.people`, `.channels`, `.priorities`, `ws_ref_search` through `ws_refs_resolve()`), never site members; runs re-check `ws_can_read_channel()`. Writes as today (/price, /stock: `ws_quick_edit_save()`, changes.php). Texts: `ws_js_strings()` (screen.php), keys added with `php tools/tr_add.php` (shards in `includes/local/tr/`).
+- App commands: built (#2213), workspace/workspace-app-commands.md.
+
+## Slices
+1. Done (#1440): /task Enter on the preview, Turkish and English names in the picker.
+2. Done (#1499). Registry (no schema): `ws_commands()`; unknown `/word` per question 2; `/claude`, `/ai` listed when set up.
+3. Done (#1499). Argument popup (no schema): a new picker mode after `/name `, slot from the registry (`@`, `#` keep theirs); Tab/Enter write `value `, `pickerCheck()` reopens; a strip shows what is left.
+4. Done (#1731). Live line: `ws_command_suggest` runs the parser; "Will create: …", `@word` warning; "next week", datives, `14:00` (`due_time`); `1.5 saat` is an estimate; a typed `@username` assigns on one exact team match.
+5. Done (#1991). API (no schema): `GET /workspace/commands` (workspace:read, `'mcp' => false`) lists the registry (workspace/workspace-command-api.md).
+6. New commands, a PR each (no schema): `/durum /status` done (#1896, workspace/workspace-command-registry.md); `/zamanla /schedule`, `/süre /timer`, `/izin /away`, `/toplantı /meeting` done (#1938, workspace/workspace-command-schedule.md, workspace-command-plan-items.md).
+7. `POST /workspace/commands/run` (#3801, no schema; the shape is in `workflow/decisions-made-product-11.md`): route `workspace.commands.run`, workspace:write, `'mcp' => false`, the composer's options, `dry_run` returns the preview without a write, no command → 400 `not_a_command`. Then the plan's rules move to `workspace/` and it is deleted. Built on branch `feature/ws-commands-run-api` (its first two commits; the tip reverts them): the new `not_a_command` code needs a line in `api_error_catalogue()` (`includes/api/schema.php`, held by draft #3298), an open architect question linked from the step's draft PR. Once decided: revert the tip's revert, add the line or change the code as decided, set the PR number in `workspace/workspace-command-api.md`.
+
+## Open questions (recommendation)
+1. Answered (owner, 2026-10-26): (a) a typed `@ayse` assigns on one exact team username, else warns.
+2. Unknown `/word`: (a) refuse with a hint, (b) post with a hint → a.
+3. API: decided #3801 (`workflow/decisions-made-product-11.md`): (b) run them, slice 7.
+4. First commands: decided #3801: (a) slice 6, no record cards.
+5. Enter on a /price, /stock card: decided #3801: (a) Save only.
+
+## Where to start?
+- Slice 7 (the run route, `includes/workspace/api.php`, `api_commands.php`, tests/workspace_commands_test.php).
+- Slice 6 is done; a further command is declared in `ws_commands()` like /status, with `live` and a `ws_command_*_suggest()` for a live line.

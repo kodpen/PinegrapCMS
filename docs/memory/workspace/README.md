@@ -87,7 +87,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-claude-key-reads.md: Workspace reads with Claude's application key keep to the channels Claude may be asked in (ws_claude_channel_allowed()): which reads, record refs narrowed, the leak it fixed
 - workspace-claude-routine.md: "@Claude" in Workspace channels through one site-wide claude.ai routine: how it runs, limits, setup on claude.ai, security rules, what was never tested live
 - workspace-colon-emoji.md: ":" and two letters in a Workspace writing box with the emoji button suggest matching emoji (colonEmojiAt(), colonEmojiList()): where it opens, order, keys, undo, which boxes
-- workspace-command-api.md: / commands over the API: GET /workspace/commands lists the registry (#1991); POST /workspace/commands/run runs one as the composer does (#NNNN); dry run previews; no MCP tool
+- workspace-command-api.md: GET /workspace/commands (PR #1991): the command registry for the key's owner as WorkspaceCommand rows, workspace:read, no MCP tool, lists only and never runs a command
 - workspace-command-live-line.md: The live line under a /task and a /status (ws_command_suggest: "Will create: …", warnings), a typed @username assigning, and what the parser reads: next week, datives, 14:00, "1.5 saat" as an estimate
 - workspace-command-plan-items.md: /timer (/süre), /away (/izin) and /meeting (/toplantı) in a Workspace channel (PR #1938): what each reads, the functions they write through, who is told, their live lines
 - workspace-command-registry.md: One registry (ws_commands()) for the / picker, /help, palette, the Tab argument popup after "/name " and the API list; an unknown /word refused with the closest names; "//" posts it
