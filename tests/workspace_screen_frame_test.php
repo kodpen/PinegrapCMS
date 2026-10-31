@@ -37,7 +37,7 @@ function ws_frame_css_rule($source, $selector)
 function test_ws_frame_gutter_rule_leaves_out_framed_screens()
 {
 	$source = ws_frame_css_source();
-	$framed = 'body.workspace:not(.workspace_settings, .workspace_mcp, .workspace_template)';
+	$framed = 'body.workspace:not(.workspace_settings, .workspace_mcp, .workspace_template, .workspace_calendar_feed)';
 
 	pg_assert_true(strpos($source, $framed . ' #content.p-0 > .row,') !== false, 'the gutter-0 rule on #content leaves out the framed screens');
 	$rule = ws_frame_css_rule($source, $framed . ' .ws-shell-main > .row');
@@ -49,7 +49,7 @@ function test_ws_frame_gutter_rule_leaves_out_framed_screens()
 function test_ws_frame_mcp_and_template_take_settings_frame()
 {
 	$source = ws_frame_css_source();
-	$screens = 'body.workspace:is(.workspace_settings, .workspace_mcp, .workspace_template)';
+	$screens = 'body.workspace:is(.workspace_settings, .workspace_mcp, .workspace_template, .workspace_calendar_feed)';
 
 	$main = ws_frame_css_rule($source, $screens . ' .ws-shell-main');
 	pg_assert_true(strpos($main, 'padding: 0 .75rem .75rem;') !== false, 'the framed screens pad .ws-shell-main');
@@ -79,4 +79,13 @@ function test_ws_frame_mcp_rows_wrap()
 	pg_assert_true(strpos(ws_frame_css_rule($source, '#ws-mcp > .card-body > .ws-dept-row'), 'flex-wrap: wrap;') !== false, 'an MCP server row wraps');
 	pg_assert_true(strpos(ws_frame_css_rule($source, '#ws-mcp > .card-body > .ws-dept-row > .ws-grow'), 'flex-basis: 12rem;') !== false, 'an MCP server name column keeps 12rem before the buttons wrap');
 	pg_assert_true(strpos(ws_frame_css_rule($source, "\n.ws-dept-row"), 'flex-wrap') === false, '.ws-dept-row itself still does not wrap');
+}
+
+// Calendar subscription sits in the Workspace frame like the MCP screen.
+function test_ws_frame_calendar_feed_in_the_frame()
+{
+	$source = (string) file_get_contents(dirname(__DIR__) . '/pinegrap/workspace_calendar_feed.php');
+
+	pg_assert_contains("'extra classes'       => 'workspace workspace_calendar_feed',", $source, 'the workspace body classes');
+	pg_assert_contains('<main id="content" class="container-fluid p-0">' . "\n" . '<div class="ws-shell">' . "\n" . '<div class="ws-shell-main">', $source, 'the shell around the columns');
 }
