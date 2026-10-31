@@ -693,6 +693,11 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
     
     $order_data .= "\n";
 
+    // Orders the export moved to exported and orders whose card data it
+    // cleared, for the Site Log lines written after the loop.
+    $number_of_exported_orders = 0;
+    $number_of_card_data_cleared = 0;
+
     // Loop through all orders in order to prepare CSV rows.
     foreach ($orders as $order) {
         // for each value in the row
@@ -841,16 +846,30 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
             // export read rather than reading thousands of rows again. An
             // order listed twice (a product name search joins its items) is
             // changed, and recorded, once.
-            if (function_exists('pg_audit') && (mysqli_affected_rows(db::$con) > 0)) {
-                pg_audit('update', 'order', (int) $order['id'], array('status' => 'complete'), array('status' => 'exported'), pg_audit_label_of('orders', $order));
+            if (mysqli_affected_rows(db::$con) > 0) {
+                $number_of_exported_orders++;
+
+                if (function_exists('pg_audit')) {
+                    pg_audit('update', 'order', (int) $order['id'], array('status' => 'complete'), array('status' => 'exported'), pg_audit_label_of('orders', $order));
+                }
             }
         }
 
         // An exported order is processed: the card data the file carried
         // leaves the order (the number masked, the security code emptied).
         if (pg_card_data_needs_clearing($order['card_number'], $order['card_verification_number'])) {
-            pg_order_card_data_clear($order['id']);
+            if (pg_order_card_data_clear($order['id'])) {
+                $number_of_card_data_cleared++;
+            }
         }
+    }
+
+    if ($number_of_exported_orders > 0) {
+        log_activity(lang(array('string' => '{var:1} order(s) were exported.', 'vars' => array(pg_format_number($number_of_exported_orders, 0)))), $_SESSION['sessionusername']);
+    }
+
+    if ($number_of_card_data_cleared > 0) {
+        log_activity(lang(array('string' => 'Card data was removed from {var:1} order(s).', 'vars' => array(pg_format_number($number_of_card_data_cleared, 0)))), $_SESSION['sessionusername']);
     }
     
     // get all custom shipping form data in database
@@ -1666,6 +1685,11 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
         $output_custom_field_4_heading .
         '"notes"' . "\n";
 
+    // Orders the export moved to exported and orders whose card data it
+    // cleared, for the Site Log lines written after the loop.
+    $number_of_exported_orders = 0;
+    $number_of_card_data_cleared = 0;
+
     // loop through orders in order to prepare data
     foreach ($orders as $order) {
         // loop through all values for this order in order to replace quotation marks with two quotation marks
@@ -2228,16 +2252,30 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
             // export read rather than reading thousands of rows again. An
             // order listed twice (a product name search joins its items) is
             // changed, and recorded, once.
-            if (function_exists('pg_audit') && (mysqli_affected_rows(db::$con) > 0)) {
-                pg_audit('update', 'order', (int) $order['id'], array('status' => 'complete'), array('status' => 'exported'), pg_audit_label_of('orders', $order));
+            if (mysqli_affected_rows(db::$con) > 0) {
+                $number_of_exported_orders++;
+
+                if (function_exists('pg_audit')) {
+                    pg_audit('update', 'order', (int) $order['id'], array('status' => 'complete'), array('status' => 'exported'), pg_audit_label_of('orders', $order));
+                }
             }
         }
 
         // An exported order is processed: the card data the file carried
         // leaves the order (the number masked, the security code emptied).
         if (pg_card_data_needs_clearing($order['card_number'], $order['card_verification_number'])) {
-            pg_order_card_data_clear($order['id']);
+            if (pg_order_card_data_clear($order['id'])) {
+                $number_of_card_data_cleared++;
+            }
         }
+    }
+
+    if ($number_of_exported_orders > 0) {
+        log_activity(lang(array('string' => '{var:1} order(s) were exported.', 'vars' => array(pg_format_number($number_of_exported_orders, 0)))), $_SESSION['sessionusername']);
+    }
+
+    if ($number_of_card_data_cleared > 0) {
+        log_activity(lang(array('string' => 'Card data was removed from {var:1} order(s).', 'vars' => array(pg_format_number($number_of_card_data_cleared, 0)))), $_SESSION['sessionusername']);
     }
 
 // else user did not request to export orders, so view orders

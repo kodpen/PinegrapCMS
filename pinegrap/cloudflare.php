@@ -89,6 +89,13 @@ function cf_graphql($body, $token) {
     ];
 }
 
+// cf_record_label: a DNS record as the Site Log names it, its type and name,
+// or its id when neither is known.
+function cf_record_label($type, $name, $id) {
+    $label = trim((is_string($type) ? $type : '') . ' ' . (is_string($name) ? $name : ''));
+    return ($label !== '') ? $label : (string) $id;
+}
+
 // -------------------- ACTION HANDLERS --------------------
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Every action below changes DNS or zone settings, so reject forged requests first.
@@ -157,6 +164,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $liveform->mark_error('error', $msg);
         } else {
             $liveform->add_notice(lang('Record added successfully.'));
+            log_activity(lang(array('string' => 'Cloudflare DNS record added: {var:1}.', 'vars' => array(cf_record_label($payload['type'], $payload['name'], '')))), $_SESSION['sessionusername']);
         }
     }
 
@@ -178,15 +186,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $liveform->mark_error('error', $msg);
         } else {
             $liveform->add_notice(lang('Record updated successfully.'));
+            log_activity(lang(array('string' => 'Cloudflare DNS record updated: {var:1}.', 'vars' => array(cf_record_label($payload['type'], $payload['name'], $record_id)))), $_SESSION['sessionusername']);
         }
     }
 
     if ($action === 'delete_record') {
+        // Read the record first so the Site Log names it by type and name;
+        // the id stands in when the read fails.
+        $existing = cf_request('GET', "zones/{$CF_ZONE_ID}/dns_records/" . $record_id, null, $CF_API_BASE, $CF_API_TOKEN);
+        $existing_record = (!empty($existing['json']['success']) && is_array($existing['json']['result'] ?? null)) ? $existing['json']['result'] : array();
         $resp = cf_request('DELETE', "zones/{$CF_ZONE_ID}/dns_records/" . $record_id, null, $CF_API_BASE, $CF_API_TOKEN);
         if ($resp['status'] !== 200 || empty($resp['json']['success'])) {
             $liveform->mark_error('error', lang('Delete record failed'));
         } else {
             $liveform->add_notice(lang('Record deleted successfully.'));
+            log_activity(lang(array('string' => 'Cloudflare DNS record deleted: {var:1}.', 'vars' => array(cf_record_label($existing_record['type'] ?? '', $existing_record['name'] ?? '', $record_id)))), $_SESSION['sessionusername']);
         }
     }
 
@@ -199,6 +213,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $liveform->mark_error('error', lang('Development Mode toggle failed'));
         } else {
             $liveform->add_notice(lang(array('string' => 'Development Mode updated to {var:1}.', 'vars' => $value)));
+            log_activity(lang(array('string' => 'Cloudflare {var:1} updated to {var:2}.', 'vars' => array(lang('Development Mode'), $value))), $_SESSION['sessionusername']);
         }
     }
     
@@ -210,6 +225,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $liveform->mark_error('error', lang('Under Attack Mode toggle failed'));
         } else {
             $liveform->add_notice(lang(array('string' => 'Under Attack Mode updated to {var:1}.', 'vars' => $value)));
+            log_activity(lang(array('string' => 'Cloudflare {var:1} updated to {var:2}.', 'vars' => array(lang('Under Attack Mode'), $value))), $_SESSION['sessionusername']);
         }
     }
     
@@ -221,6 +237,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $liveform->mark_error('error', lang('Always Use HTTPS toggle failed'));
         } else {
             $liveform->add_notice(lang(array('string' => 'Always Use HTTPS updated to {var:1}.', 'vars' => $value)));
+            log_activity(lang(array('string' => 'Cloudflare {var:1} updated to {var:2}.', 'vars' => array(lang('Always Use HTTPS'), $value))), $_SESSION['sessionusername']);
         }
     }
     
@@ -232,6 +249,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $liveform->mark_error('error', lang('Brotli toggle failed'));
         } else {
             $liveform->add_notice(lang(array('string' => 'Brotli updated to {var:1}.', 'vars' => $value)));
+            log_activity(lang(array('string' => 'Cloudflare {var:1} updated to {var:2}.', 'vars' => array(lang('Brotli'), $value))), $_SESSION['sessionusername']);
         }
     }
     
@@ -247,6 +265,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $liveform->mark_error('error', $msg);
         } else {
             $liveform->add_notice(lang(array('string' => 'Rocket Loader updated to {var:1}.', 'vars' => $value)));
+            log_activity(lang(array('string' => 'Cloudflare {var:1} updated to {var:2}.', 'vars' => array(lang('Rocket Loader'), $value))), $_SESSION['sessionusername']);
         }
     }
     
@@ -257,6 +276,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $liveform->mark_error('error', lang('Cache purge failed'));
         } else {
             $liveform->add_notice(lang('Cache successfully purged.'));
+            log_activity(lang('Cloudflare cache purged.'), $_SESSION['sessionusername']);
         }
     }
 

@@ -311,6 +311,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - single-email-address-boxes.md: Panel boxes that hold one e-mail address refuse a broken one before the save writes anything, through pg_email_field_errors()
 - site-button-box.md: Editing buttons over a site page (get_page.php) as a top-right corner box in the site page's colours (#3316): place, collapse arrow, narrow default, SEO panel and save/cancel pair under it
 - site-datetime-loader.md: The date-and-time control on site pages, loaded on demand (pg_site_datetime_inject()): the hooks that bring it, what it prints, site mode in pg_datetime.js and pg_fields.js, the library's own CSS
+- site-log-action-lines.md: Which panel actions write a Site Log line on success: order exports, Cloudflare Tools, the Site Log's own Delete buttons
 - site-log-paging.md: The Site Log (view_log.php): database view paged and searched on the server, the error_log view printed whole, who a row without a user is, the language log lines are written in
 - site-page-toolbar-theme.md: The editor toolbar over a site page (toolbar.php in #software_toolbar): why its root stays light and its body takes the theme under Bootstrap 6, the unreadable dark toolbar it fixed (PR #2448)
 - smtp-settings-keyboards.md: Phone keyboards of the SMTP Settings boxes: URL keyboard on hosts and the DKIM domain, no auto-capitalisation on user names and the DKIM selector
