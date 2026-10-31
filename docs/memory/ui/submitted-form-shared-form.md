@@ -24,3 +24,7 @@ description: The submitted form create and edit screens share includes/forms/sub
 
 ## How are the fields named?
 - Text box, text area, pick list and file upload print `<label for>` the field id (`output_field()` prints no id unless given one, so the pick list and the upload pass `'id' => $field['id']`). Radio button and check box groups are a `fieldset` with the question as `legend`; the check box group's hidden field stays inside it, before the options. Date and time rows are left to the date picker work. Test: `tests/field_caption_links_test.php`.
+
+## What does a field start with on a new submitted form?
+- `pg_submitted_form_start_value($field, $folder_name)`: the folder name of the custom form page when `use_folder_name_for_default_value` is on and the name is not empty, else `default_value`, as on the site (`pg_cf_field_initial_value()` step 5). Text box / e-mail, text area, pick list, radio, check box; not date and time rows.
+- `add_submitted_form.php` passes `$folder_id` (sixth argument); the name is read once, only when `$form_id` is `''`. Symptom fixed: a staff-added submission saved a folder name field blank (its Default Value box is hidden, so `default_value` is empty or stale).

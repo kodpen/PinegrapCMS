@@ -213,7 +213,7 @@ if (!$_POST) {
     // Otherwise a custom form was chosen, so output that custom form's fields.
     } else {
 
-        $form_markup = pg_submitted_form_fields_markup($liveform, $user, $page_id, $office_use_only_access);
+        $form_markup = pg_submitted_form_fields_markup($liveform, $user, $page_id, $office_use_only_access, '', $folder_id);
 
         echo
         pg_page_shell(
