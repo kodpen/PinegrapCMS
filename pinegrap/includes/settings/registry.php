@@ -79,7 +79,11 @@ function pg_settings_keywords($terms)
  * save that posts it as a list is refused (pg_settings_refuse_lists()). A
  * card that moves takes its list fields with it.
  *
- * @return array key => array(label, icon, description, sections, keywords, lists)
+ * 'group' names the heading the category sits under in the dialog's list
+ * (pg_settings_groups()). The groups follow the order of this list, so a
+ * category joins a group by its place here as well as by its key.
+ *
+ * @return array key => array(label, group, icon, description, sections, keywords, lists)
  */
 function pg_settings_categories()
 {
@@ -87,6 +91,7 @@ function pg_settings_categories()
 
         'general' => array(
             'label' => lang('General'),
+            'group' => 'site',
             'icon'  => 'bi-sliders',
             'description' => lang('The organization, server, domain, licence, and date and time.'),
             'sections' => array(
@@ -105,6 +110,7 @@ function pg_settings_categories()
 
         'appearance' => array(
             'label' => lang('Appearance'),
+            'group' => 'site',
             'icon'  => 'bi-brush',
             'description' => lang('The panel theme, the dashboard and the rich-text editor.'),
             'sections' => array(
@@ -123,6 +129,7 @@ function pg_settings_categories()
 
         'features' => array(
             'label' => lang('Features'),
+            'group' => 'site',
             'icon'  => 'bi-toggles',
             'description' => lang('Which features are on, and how images are handled.'),
             'sections' => array(
@@ -133,7 +140,7 @@ function pg_settings_categories()
                 'pgset-signature' => lang('Signature Time Stamp'),
             ),
             'keywords' => array(
-                'pgset-features' => pg_settings_keywords(lang('feature, cart, comment, blog, calendar, form, ads, sharing, search, performance, mobile')),
+                'pgset-features' => pg_settings_keywords(lang('feature, cart, comment, blog, calendar, form, ads, sharing, search, performance, mobile, prefetch, speculation rules, preload')),
                 'pgset-images'   => pg_settings_keywords(lang('image, photo, optimization, webp, avif, responsive, quality, size, upload, watermark')),
                 'pgset-revisions' => pg_settings_keywords(lang('revision, revisions, history, version, versions, restore, retention, page, designer')),
                 'pgset-page-cache' => pg_settings_keywords(lang('cache, page cache, cdn, proxy, varnish, nginx, cloudflare, speed, performance, s-maxage, cache-control')),
@@ -143,6 +150,7 @@ function pg_settings_categories()
 
         'seo' => array(
             'label' => 'SEO',
+            'group' => 'site',
             'icon'  => 'bi-search',
             'description' => lang('Search engines, the site icon, social sharing, structured data and AI crawlers.'),
             'sections' => array(
@@ -163,6 +171,7 @@ function pg_settings_categories()
 
         'privacy' => array(
             'label' => lang('Visitors and privacy'),
+            'group' => 'site',
             'icon'  => 'bi-incognito',
             'description' => lang('Visitor tracking, cookie consent and the checkout\'s legal documents.'),
             'sections' => array(
@@ -179,6 +188,7 @@ function pg_settings_categories()
 
         'languages' => array(
             'label' => lang('Languages and Translation'),
+            'group' => 'site',
             'icon'  => 'bi-globe',
             'description' => lang('The language the pages are written in, the languages they are served in, and the engines that translate them.'),
             'sections' => array(
@@ -198,6 +208,7 @@ function pg_settings_categories()
 
         'contact' => array(
             'label' => lang('Communication'),
+            'group' => 'site',
             'icon'  => 'bi-chat-dots',
             'description' => lang('E-mail campaigns, live chat, MailChimp and SMS.'),
             'sections' => array(
@@ -220,6 +231,7 @@ function pg_settings_categories()
 
         'security' => array(
             'label' => lang('Accounts and sign-in'),
+            'group' => 'security',
             'icon'  => 'bi-shield-lock',
             'description' => lang('Passwords, devices, sign-in with Google, Microsoft and Apple, registration and membership, spam protection and the encryption key.'),
             'sections' => array(
@@ -248,6 +260,7 @@ function pg_settings_categories()
 
         'firewall' => array(
             'label' => lang('Firewall and HTTPS'),
+            'group' => 'security',
             'icon'  => 'bi-bricks',
             'description' => lang('The request filter, trusted proxies, bot policy, address lists, HTTPS and security headers.'),
             'sections' => array(
@@ -270,6 +283,7 @@ function pg_settings_categories()
 
         'commerce' => array(
             'label' => lang('Ecommerce'),
+            'group' => 'selling',
             'icon'  => 'bi-shop',
             'description' => lang('Store, shipping, gift cards, payment, product feeds and affiliates.'),
             'sections' => array(
@@ -297,6 +311,7 @@ function pg_settings_categories()
 
         'accounting' => array(
             'label' => lang('Accounting'),
+            'group' => 'selling',
             'icon'  => 'bi-calculator',
             'description' => lang('The ERP, the e-document provider, the accounting rules and the document templates.'),
             'sections' => array(
@@ -309,7 +324,7 @@ function pg_settings_categories()
             ),
             'keywords' => array(
                 'pgset-erp'       => pg_settings_keywords(lang('erp, account, cash, bank, bookkeeping, waybill, collection, overdue, reminder, automatic invoice')),
-                'pgset-invoice'   => pg_settings_keywords(lang('invoice, e-invoice, e-archive, e-document, provider, parasut, isbasi, logo, accounting')),
+                'pgset-invoice'   => pg_settings_keywords(lang('invoice, e-invoice, e-archive, e-document, provider, parasut, isbasi, accounting')),
                 'pgset-erp-rules' => pg_settings_keywords(lang('accounting rules, vat, withholding, exemption code, zero-rated, expense category')),
                 'pgset-late-fee'  => pg_settings_keywords(lang('late payment fee, late fee, interest, overdue, default interest')),
                 'pgset-efatura-threshold' => pg_settings_keywords(lang('e-fatura, threshold, limit, gross sales, system status')),
@@ -322,6 +337,7 @@ function pg_settings_categories()
 
         'api' => array(
             'label' => lang('Integrations'),
+            'group' => 'running',
             'icon'  => 'bi-plug',
             'description' => lang('The application API, its uploads and logs, Google reviews, and the screens that connect the site to other services.'),
             'sections' => array(
@@ -340,6 +356,7 @@ function pg_settings_categories()
 
         'maintenance' => array(
             'label' => lang('Updates and maintenance'),
+            'group' => 'running',
             'icon'  => 'bi-wrench-adjustable',
             'description' => lang('The update channel, scheduled jobs, backups, operations alerts and maintenance mode.'),
             'sections' => array(
@@ -391,6 +408,58 @@ function pg_settings_categories()
     return $categories;
 }
 
+
+/**
+ * The headings over the dialog's list of categories, in their order.
+ *
+ * Labels, not links: they only break the list into landmarks, which matters
+ * most in the phone drawer, where thirteen rows have nothing else to hold on
+ * to. A category names its heading with the 'group' key of
+ * pg_settings_categories(); the System tools row closes the last one.
+ *
+ * @return array key => label
+ */
+function pg_settings_groups()
+{
+    return array(
+        'site'     => lang('Site'),
+        'security' => lang('Security'),
+        'selling'  => lang('Selling'),
+        'running'  => lang('Running the site'),
+    );
+}
+
+
+/**
+ * The categories under their headings.
+ *
+ * A heading with no category the reader may open is left out; one with a
+ * single category keeps its heading. A category that names no known group
+ * goes under the last heading rather than out of the list.
+ *
+ * @param array $categories as pg_settings_categories() returns them
+ * @return array group key => array(label, categories: list of category keys)
+ */
+function pg_settings_grouped($categories)
+{
+    $groups = pg_settings_groups();
+    $keys = array_keys($groups);
+    $last = end($keys);
+    $grouped = array();
+
+    foreach ($groups as $group => $label) {
+        $grouped[$group] = array('label' => $label, 'categories' => array());
+    }
+
+    foreach ($categories as $key => $category) {
+        $group = (isset($category['group']) && isset($groups[$category['group']])) ? $category['group'] : $last;
+        $grouped[$group]['categories'][] = $key;
+    }
+
+    return array_filter($grouped, function ($group) {
+        return !empty($group['categories']);
+    });
+}
 
 /**
  * One category, or null when the key is not one of ours.

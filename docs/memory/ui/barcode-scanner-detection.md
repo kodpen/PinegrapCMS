@@ -1,6 +1,6 @@
 ---
 name: barcode-scanner-detection
-description: The jQuery Scanner Detection listener on the barcode stock screens and Create Order ignores keys typed into fields, scans in an open dialog and blank codes
+description: The jQuery Scanner Detection listener on the barcode stock screens and Create Order ignores keys typed into fields, scans in an open dialog and blank codes; the Last Scans row is built as text
 ---
 
 ## Which screens listen for a barcode scanner?
@@ -17,3 +17,7 @@ description: The jQuery Scanner Detection listener on the barcode stock screens 
 - The minified plugin line, the Read button busy state (`button-busy-state.md`), the server lookup and the decrease screen's answers.
 
 PR #3377. Test: `tests/barcode_scanner_fields_test.php` (source pins).
+
+## How is a Last Scans row built?
+- Cell by cell in jQuery: name, short description and the three quantities with `.text()`, `response.data.scanned_at` (a `<time>` element from `get_absolute_time()`) with `.html()`. The `?request=action` answer stays raw JSON.
+- Symptom fixed: the row was a concatenated string, so `Pantolon <Siyah>` showed as `Pantolon `, a `<b>` bolded the row and `<img src=x onerror=…>` in a product name ran in the scanning operator's session. PR #4121, test: `tests/barcode_scan_log_escaping_test.php`.

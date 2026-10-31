@@ -30,6 +30,37 @@ if (pg_post_body_discarded()) {
     output_error(lang('The request was too large for this server and arrived empty.'), 413);
 }
 
+// A visitor cleanup step (ajax=1) is read by the page's script as JSON. An
+// ended session, a missing right or a stale token is answered here in the
+// step's own shape: validate_user() would redirect to the sign-in page, which
+// fetch follows as a 200, and validate_area_access() and
+// validate_token_field() print HTML pages.
+if (($_SERVER['REQUEST_METHOD'] === 'POST') && isset($_POST['ajax']) && ($_POST['ajax'] === '1')) {
+
+    $engine_refuse = function ($text, $status) {
+        http_response_code($status);
+        header('Content-Type: application/json; charset=utf-8');
+        header('Cache-Control: no-store');
+        echo json_encode(array('ok' => false, 'state' => 'stopped', 'deleted' => 0, 'summarized' => 0, 'text' => $text));
+        exit;
+    };
+
+    if (!defined('USER_LOGGED_IN') || !USER_LOGGED_IN) {
+        $engine_refuse(lang('Your session has expired. Reload the page and sign in again.'), 401);
+    }
+
+    if (!defined('USER_ROLE') || ((int) USER_ROLE > 2)) {
+        $engine_refuse(lang('Access denied.'), 403);
+    }
+
+    $engine_session_token = (string) ($_SESSION['software']['token'] ?? '');
+    $engine_post_token = (isset($_POST['token']) && is_string($_POST['token'])) ? $_POST['token'] : '';
+
+    if (($engine_session_token === '') || !hash_equals($engine_session_token, $engine_post_token)) {
+        $engine_refuse(lang('Your session expired. Reload the page and try again.'), 403);
+    }
+}
+
 $user = validate_user();
 validate_area_access($user, 'manager');
 
@@ -1236,6 +1267,7 @@ echo '
         }
         var progress = document.getElementById("pg_visitor_cleanup_progress");
         var failed = ' . json_encode(lang('The cleanup stopped:'), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) . ';
+        var sessionEnded = ' . json_encode(lang('Your session has expired. Reload the page and sign in again.'), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) . ';
         var starting = ' . json_encode(lang('Cleaning up; keep this page open…'), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) . ';
         button.addEventListener("click", function () {
             if (button.disabled || !window.confirm(button.getAttribute("data-confirm") || "")) {
@@ -1261,10 +1293,19 @@ echo '
                 data.append("summarized_so_far", String(summarized));
                 window.fetch(form.getAttribute("action"), {method: "POST", body: data, credentials: "same-origin", headers: {"X-Requested-With": "XMLHttpRequest"}})
                     .then(function (response) {
-                        if (!response.ok) {
-                            throw new Error("HTTP " + response.status);
+                        // A redirect is the sign-in page: the session has
+                        // ended. A refusal carries its sentence in JSON.
+                        if (response.redirected) {
+                            throw new Error(sessionEnded);
                         }
-                        return response.json();
+                        return response.json().then(function (answer) {
+                            if (!response.ok || !answer) {
+                                throw new Error((answer && answer.text) ? answer.text : ("HTTP " + response.status));
+                            }
+                            return answer;
+                        }, function () {
+                            throw new Error("HTTP " + response.status);
+                        });
                     })
                     .then(function (answer) {
                         deleted += answer.deleted;

@@ -908,7 +908,7 @@ if (!$_POST) {
         foreach ($column_names as $key => $value) {
             // If this is not the username column, then add data for it.
             if ($value != 'username') {
-                $value = escape(trim($user_to_be_imported[$key]));
+                $value = escape(pg_import_contact_cell($value, $user_to_be_imported[$key]));
                 $contact_data_list .= "'$value', ";
             }
         }

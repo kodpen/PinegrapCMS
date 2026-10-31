@@ -164,14 +164,16 @@ if ( !isset( $_GET['request'] ) && empty( $_GET['request'] ) && ($_GET['request'
                                     if( $(".remove_this_first_scan").length > 0){
                                         $(".remove_this_first_scan").remove();
                                     }
-                                    $("#action_logs tbody").prepend("<tr>\
-                                        <td class=\'align-middle\'>" + response.data.name + "</td>\
-                                        <td class=\'align-middle\'>" + response.data.short_description + "</td>\
-                                        <td class=\'align-middle text-center\'>" + response.data.inventory_quantity + "</td>\
-                                        <td class=\'align-middle text-center fg-danger fw-bolder\'>" + response.data.quantity + "</td>\
-                                        <td class=\'align-middle text-center h5 fw-bolder \'>" + response.data.new_inventory_quantity + "</td>\
-                                        <td class=\'align-middle \'>" + response.data.scanned_at + "</td>\
-                                    </tr>");
+                                    // Name and description are stored text: written with .text() so markup in
+                                    // them shows as typed. scanned_at is a server-built <time> element.
+                                    var row = $("<tr>");
+                                    $("<td class=\'align-middle\'>").text(response.data.name).appendTo(row);
+                                    $("<td class=\'align-middle\'>").text(response.data.short_description).appendTo(row);
+                                    $("<td class=\'align-middle text-center\'>").text(response.data.inventory_quantity).appendTo(row);
+                                    $("<td class=\'align-middle text-center fg-danger fw-bolder\'>").text(response.data.quantity).appendTo(row);
+                                    $("<td class=\'align-middle text-center h5 fw-bolder\'>").text(response.data.new_inventory_quantity).appendTo(row);
+                                    $("<td class=\'align-middle\'>").html(response.data.scanned_at).appendTo(row);
+                                    $("#action_logs tbody").prepend(row);
                                     // Said to screen readers too: the table row is not announced.
                                     document.getElementById("barcode_status").textContent = "' . escape_javascript(lang('{var:1}: the inventory quantity is now {var:2}.')) . '".replace("{var:1}", function(){ return String(response.data.name); }).replace("{var:2}", function(){ return String(response.data.new_inventory_quantity); });
                                 }

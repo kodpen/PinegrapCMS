@@ -498,6 +498,10 @@ if (!$_POST) {
                             } elseif ($column_name == 'compare_at_price') {
                                 // NULL for none: '' would be stored as 0.
                                 $update_values .= "compare_at_price = " . pg_compare_at_price_sql($column_value);
+                            } elseif (($decimal_cell = pg_products_import_decimal_cell($column_name, $column_value)) !== null) {
+                                // Weight, dimensions and the commission rate limit
+                                // with either separator, as the product screen.
+                                $update_values .= $column_name . " = '" . escape($decimal_cell) . "'";
                             } else {
                                 $update_values .= $column_name . " = '" . escape($column_value) . "'";
                             }
@@ -674,6 +678,8 @@ if (!$_POST) {
                             if ($column_name == 'tax_rate') {
                                 $parsed_tax_rate = parse_tax_rate($column_value);
                                 $insert_values .= ($parsed_tax_rate === NULL) ? 'NULL' : "'" . escape($parsed_tax_rate) . "'";
+                            } elseif (($decimal_cell = pg_products_import_decimal_cell($column_name, $column_value)) !== null) {
+                                $insert_values .= "'" . escape($decimal_cell) . "'";
                             } else {
                                 $insert_values .= "'" . escape($column_value) . "'";
                             }
