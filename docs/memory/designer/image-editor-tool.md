@@ -33,3 +33,6 @@ description: Bindable image editor (Pintura): save endpoint contract, write rule
 - Pintura does not see a synthetic `button.click()`: `doka:process` never fires. A real pointer click is needed.
 
 Related: docs/memory/core/json-endpoint-rules.md
+
+## Is it being replaced?
+- Yes (owner, 2026-10-31): `plans/image-editor.md` builds Pinegrap's own editor; its step E9 switches every caller and removes this one. Until then this file describes the live editor.

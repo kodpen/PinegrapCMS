@@ -16,7 +16,7 @@ description: Plan (2026-10-24): one Flows system: process templates, "when X do 
 - Canvas (main): workspace_flows.php, `workspace_flow.min.js`.
 - Process template: task boxes on "after" arrows; from a channel template or table rows.
 - Rights: staff build (`ws_can_schedule()`), owner-only (`ws_note_access()`); an optional home channel (public or private) lets its readers Run it and holds runs started there (each keeps its channel); table boxes show only to their readers; runs use the owner's rights at run time; nothing reaches site members.
-- CRM: pipeline = shared workflow table + flows ("Won → start New customer setup"); plans/workspace-crm-seams.md step 6 is shared.
+- CRM: pipeline = shared workflow table + flows ("Won → start New customer setup"); the pipeline shape is decided in workflow/decisions-made-product-11.md (#3797); lead intake: workspace/workspace-crm-lead-intake.md.
 - Tables T3-T5 came here (workspace/workflow-tables-later.md).
 
 ## Slices (one PR each; phase 1 = F1-F3, a process drawn and run)
