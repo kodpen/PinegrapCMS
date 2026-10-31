@@ -21,6 +21,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 
 ## Files
 
+- affiliate-link-offer-code.md: When an affiliate link (?a=) puts the affiliate's code into the session as the special offer code: only when its group offer runs today (pg_special_offer_code_running(), #4163, PR #4266)
 - api-bulk-inventory-quantity.md: How POST /products/inventory (batch) reads each item's quantity: the same whole-number rule and ±1000000 bound as the single-product endpoint, refused per item instead of rounded or clamped
 - api-bulk-price-bound.md: How POST /products/prices (batch) reads each item's price: whole minor units from 0 to 2147483647, the single-product routes' bound, refused per item instead of rounded or cut by the INT column
 - api-catalog-recycle-bin.md: How the external API treats products and product groups in the catalogue's Recycle Bin: what is listed, what a group's product_ids and in_use count, when a group delete is refused for binned subgroups

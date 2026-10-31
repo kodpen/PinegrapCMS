@@ -199,9 +199,10 @@ if ((ECOMMERCE == true) && (isset($_GET['o']) && $_GET['o']))
 // and there is an affiliate code in the query string
 // and there is not already an offer code in the query string
 // and there is not already an offer code in the session
-// and if affiliate code is also a special offer code (e.g. affiliate group offer)
+// and if affiliate code is also a special offer code (e.g. affiliate group offer) whose offer runs today
+// (a disabled or out-of-date group offer would only make the cart refuse a code the visitor never typed)
 // then add affiliate code as a special offer code
-if ((ECOMMERCE == true) && (AFFILIATE_PROGRAM == true) && ((isset($_GET['a']) == true) && ($_GET['a'] != '')) && ((isset($_GET['o']) == false) || ($_GET['o'] == '')) && ((isset($_SESSION['ecommerce']['special_offer_code']) == false) || ($_SESSION['ecommerce']['special_offer_code'] == '')) && (get_offer_code_for_special_offer_code($_GET['a']) != ''))
+if ((ECOMMERCE == true) && (AFFILIATE_PROGRAM == true) && ((isset($_GET['a']) == true) && ($_GET['a'] != '')) && ((isset($_GET['o']) == false) || ($_GET['o'] == '')) && ((isset($_SESSION['ecommerce']['special_offer_code']) == false) || ($_SESSION['ecommerce']['special_offer_code'] == '')) && (pg_special_offer_code_running($_GET['a']) == true))
 {
 	$_SESSION['ecommerce']['special_offer_code'] = trim($_GET['a']);
 }
