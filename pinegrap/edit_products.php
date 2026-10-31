@@ -227,7 +227,9 @@ if (!$_POST) {
                         // The new count, worked out from the stored one by the
                         // Catalog Manager's rule: never below zero.
                         if ($quantity_value !== null) {
-                            $inventory_quantity = (int) db_value("SELECT inventory_quantity FROM products WHERE id = '" . e((int) $product_id) . "'");
+                            $result = db_q("SELECT inventory_quantity FROM products WHERE id = ?", array((string) $product_id)) or output_error('Query failed.');
+                            $row = mysqli_fetch_assoc($result);
+                            $inventory_quantity = (int) $row['inventory_quantity'];
                             $new_inventory_quantity = (int) pg_explorer_bulk_product_new_quantity($inventory_quantity, $quantity_process, $quantity_value);
                             $sql_inventory_quantity = "inventory_quantity = '" . $new_inventory_quantity . "',";
                         }
