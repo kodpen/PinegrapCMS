@@ -85,7 +85,7 @@ description: Generated from the module field of the memory files: each includes/
 - `site_time_sql`: [[visitor-report-site-time]]
 - `sms_campaigns`: [[sms-campaigns]]
 - `sms_codes`: [[sms-codes]]
-- `speculation`: [[speculation-prefetch]]
+- `speculation`: [[speculation-prefetch]], [[speculation-prefetch-left-out]]
 - `stock_notify`: [[back-in-stock-notices]]
 - `submitted_form_list`: [[server-paged-lists]]
 - `subscription_renewal`: [[subscriptions-mails]], [[subscriptions-price-notice]], [[subscriptions-renewal]]

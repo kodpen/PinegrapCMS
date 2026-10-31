@@ -13,8 +13,7 @@ module: speculation
 - `pg_speculation_take()` hands the noted ones over and forgets them, once per page.
 
 ## What is left out?
-- `pg_speculation_path()`: anchors, other schemes, other hosts (allowed: `HOSTNAME`, `HOSTNAME_SETTING`), relative paths, any `?`, paths outside `PATH`, the software directory (panel, `get_file`, sign-out), a last segment with a file extension other than `.html`/`.htm`, dot segments.
-- Then one query reads the named pages and the home page: only an existing page whose folder is `public` and whose type `pg_speculation_page_type_kept()` lists (standard, folder view, photo gallery, catalog, catalog detail, calendar view, calendar event view, form list/item view, form view directory, custom form). Sign-in, sign-out, registration, cart, order, checkout, account and password pages, search results and any type added later are left out. The page shown is left out.
+- Query strings, other hosts, the software directory, non-public folders, acting page types and designer pages holding acting widgets: `speculation-prefetch-left-out.md`.
 
 ## Who gets no block?
 - `pg_speculation_rules_wanted()`: switch off, a signed-in member or staff (`USER_LOGGED_IN`, unknown counts as signed in). A page already carrying `speculationrules` (operator code) gets no second one.

@@ -14,7 +14,9 @@
  * before </head>. Left out: addresses with a query string, off-site and
  * relative links, files and the software directory (the panel, downloads,
  * sign-out), and every page that is not a public content page (sign-in, cart,
- * checkout, account pages: pg_speculation_page_type_kept()). On a page drawn
+ * checkout, account pages: pg_speculation_page_type_kept()), a page of the
+ * visual designer included when a system widget in its tree does such a
+ * page's work (pg_speculation_widget_kept()). On a page drawn
  * in another language the addresses get its prefix by the translation
  * module's own rule (pg_tr_prefix_path()), as its links get it on the way
  * out. No block while the Settings > Features switch is off
@@ -224,6 +226,109 @@ function pg_speculation_page_type_kept($page_type)
 }
 
 /**
+ * Whether a page whose tree holds a system widget of this kind may be
+ * prefetched. A page of the visual designer is page type 'standard' and a
+ * system widget does the work, so the widget standing in for a page type
+ * pg_speculation_page_type_kept() leaves out leaves the page out too, as do
+ * every account widget and the favourites list. The login region and the
+ * cart link sit in the header of every page and keep it.
+ *
+ * @param string $region_type        the widget's regionType
+ * @param array  $page_type_widgets  page type => widget kind (pg_sw_page_type_widgets())
+ * @return bool
+ */
+function pg_speculation_widget_kept($region_type, array $page_type_widgets)
+{
+    $region_type = (string) $region_type;
+
+    if (strpos($region_type, 'account_') === 0 || $region_type === 'wishlist') {
+        return false;
+    }
+
+    foreach ($page_type_widgets as $page_type => $widget_type) {
+        if ((string) $widget_type === $region_type && !pg_speculation_page_type_kept($page_type)) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+/**
+ * The widget kinds pg_speculation_widget_kept() leaves out, for the query
+ * that finds them; the account_ kinds are found by their prefix.
+ *
+ * @param array $page_type_widgets  page type => widget kind
+ * @return array
+ */
+function pg_speculation_acting_widget_types(array $page_type_widgets)
+{
+    $out = array('wishlist');
+
+    foreach ($page_type_widgets as $widget_type) {
+        if (!pg_speculation_widget_kept($widget_type, $page_type_widgets)) {
+            $out[] = (string) $widget_type;
+        }
+    }
+
+    return array_values(array_unique($out));
+}
+
+/**
+ * An SQL condition true when a tree column holds a shared_ref to one of the
+ * ids: the exact "sharedId" value, closed by a comma or a brace, as the tree
+ * JSON is written. '0' for no ids.
+ *
+ * @param string $tree_expr  the SQL expression of the tree JSON
+ * @param array  $ids        shared component ids
+ * @return string
+ */
+function pg_speculation_tree_sql($tree_expr, array $ids)
+{
+    $likes = array();
+
+    foreach (array_unique(array_map('intval', $ids)) as $id) {
+        if ($id > 0) {
+            $likes[] = $tree_expr . " LIKE '%\"sharedId\":" . $id . ",%'";
+            $likes[] = $tree_expr . " LIKE '%\"sharedId\":" . $id . "}%'";
+        }
+    }
+
+    return $likes ? '(' . implode(' OR ', $likes) . ')' : '0';
+}
+
+/**
+ * Ids of the shared component rows that are system widgets
+ * pg_speculation_widget_kept() leaves out. One query per request.
+ *
+ * @return array
+ */
+function pg_speculation_acting_widget_ids()
+{
+    $map = pg_sw_page_type_widgets();
+    $likes = array("system_region_config LIKE '%\"regionType\":\"account\\_%'");
+
+    foreach (pg_speculation_acting_widget_types($map) as $type) {
+        $likes[] = "system_region_config LIKE '%\"regionType\":\"" . e($type) . "\"%'";
+    }
+
+    $rows = db_items(
+        "SELECT id, system_region_config FROM shared_components
+        WHERE " . implode(' OR ', $likes));
+    $ids = array();
+
+    foreach ((array) $rows as $row) {
+        $cfg = json_decode((string) $row['system_region_config'], true);
+
+        if (is_array($cfg) && isset($cfg['regionType']) && !pg_speculation_widget_kept($cfg['regionType'], $map)) {
+            $ids[] = (int) $row['id'];
+        }
+    }
+
+    return $ids;
+}
+
+/**
  * The block for a list of addresses: valid JSON whose <, >, & and quotes are
  * written as \u escapes, so no address can close the script element.
  *
@@ -255,13 +360,14 @@ function pg_speculation_rules_html(array $urls)
 
 /**
  * Which candidate paths go into the block: those of an existing page whose
- * type is kept and whose folder is public, without the page shown, in the
- * order noted, at most PG_SPECULATION_MAX_URLS.
+ * type is kept, whose tree holds no widget doing a left-out page's work and
+ * whose folder is public, without the page shown, in the order noted, at
+ * most PG_SPECULATION_MAX_URLS.
  *
  * @param array  $paths    same-site paths (pg_speculation_path())
  * @param string $base     the site's path
- * @param array  $pages    lower-case page name => array('type', 'public', 'home'),
- *                         '' for the home page at the site's path
+ * @param array  $pages    lower-case page name => array('type', 'public', 'home',
+ *                         'acting'), '' for the home page at the site's path
  * @param string $current       the page shown, lower case
  * @param bool   $current_home  whether the page shown is the home page
  * @return array
@@ -279,7 +385,7 @@ function pg_speculation_pick(array $paths, $base, array $pages, $current, $curre
 
         $page = $pages[$name];
 
-        if (empty($page['public']) || !pg_speculation_page_type_kept($page['type'])) {
+        if (empty($page['public']) || !empty($page['acting']) || !pg_speculation_page_type_kept($page['type'])) {
             continue;
         }
 
@@ -408,16 +514,34 @@ function pg_speculation_rules_inject($content, $page_name, $home)
         }
     }
 
+    // A page of the visual designer whose tree places a system widget that
+    // signs in or out, registers, sets a password, runs the cart or checkout,
+    // shows an account or search results. Before the multi-page editor no
+    // page can carry a widget.
+    $acting_sql = '0';
+    $style_join = '';
+
+    if (function_exists('pg_sw_page_type_widgets') && function_exists('pg_multi_page_design_ready') && pg_multi_page_design_ready()) {
+        $acting_sql = pg_speculation_tree_sql(pg_page_tree_sql_expr(), pg_speculation_acting_widget_ids());
+
+        if ($acting_sql !== '0') {
+            $style_join = 'LEFT JOIN style ON page.page_style = style.style_id';
+        }
+    }
+
     $rows = db_items(
-        "SELECT page_name, page_type, page_folder, page_home
+        "SELECT page.page_name, page.page_type, page.page_folder, page.page_home,
+            COALESCE(" . $acting_sql . ", 0) AS acting
         FROM page
-        WHERE " . ($sql_names ? "page_name IN (" . implode(',', $sql_names) . ") OR " : '') . "page_home = 'yes'");
+        " . $style_join . "
+        WHERE " . ($sql_names ? "page.page_name IN (" . implode(',', $sql_names) . ") OR " : '') . "page.page_home = 'yes'");
 
     foreach ((array) $rows as $row) {
         $page = array(
             'type'   => (string) $row['page_type'],
             'public' => (get_access_control_type($row['page_folder']) === 'public'),
             'home'   => ($row['page_home'] === 'yes'),
+            'acting' => !empty($row['acting']),
         );
 
         $pages[mb_strtolower((string) $row['page_name'])] = $page;
