@@ -233,3 +233,63 @@ function test_sms_campaign_group_rows_go_with_the_group()
 		pg_assert_contains('DELETE FROM contact_groups_sms_campaigns_xref WHERE contact_group_id', $source, $file);
 	}
 }
+
+// Statement-level db_q() writes in $source whose result is dropped: the call
+// starts a statement and is followed straight by ';'. String literals are
+// skipped while the parentheses are counted.
+function sms_campaign_test_dropped_writes($source)
+{
+	$dropped = array();
+
+	if (!preg_match_all('/(?:^|[;{}])\s*db_q\(/', $source, $matches, PREG_OFFSET_CAPTURE)) {
+		return $dropped;
+	}
+
+	foreach ($matches[0] as $match) {
+		$start = $match[1] + strlen($match[0]);
+		$depth = 1;
+		$quote = '';
+		$length = strlen($source);
+
+		for ($i = $start; ($i < $length) && ($depth > 0); $i++) {
+			$char = $source[$i];
+
+			if ($quote !== '') {
+				if ($char === '\\') {
+					$i++;
+				} elseif ($char === $quote) {
+					$quote = '';
+				}
+			} elseif (($char === '"') || ($char === "'")) {
+				$quote = $char;
+			} elseif ($char === '(') {
+				$depth++;
+			} elseif ($char === ')') {
+				$depth--;
+			}
+		}
+
+		$call = substr($source, $start, $i - $start);
+
+		if (preg_match('/^\s*"\s*(INSERT|UPDATE|DELETE)\b/i', $call) && preg_match('/^\s*;/', substr($source, $i))) {
+			$dropped[] = trim(substr($call, 0, 60));
+		}
+	}
+
+	return $dropped;
+}
+
+// Delete Selected counts a campaign only after both of its DELETEs worked,
+// and Cancel logs only the campaign its UPDATE really cancelled.
+function test_sms_campaign_screen_writes_are_checked()
+{
+	foreach (array('/view_sms_campaigns.php', '/edit_sms_campaign.php') as $file) {
+		$source = file_get_contents(PG_FUNCTIONS_DIR . $file);
+		pg_assert_same(array(), sms_campaign_test_dropped_writes($source), $file . ' drops no write result');
+	}
+
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/edit_sms_campaign.php');
+	$affected = strpos($source, 'mysqli_affected_rows(db::$con) === 1');
+	$logged = strpos($source, "'SMS campaign cancelled: {var:1}'");
+	pg_assert_true(($affected !== false) && ($logged !== false) && ($affected < $logged), 'cancel log follows the affected-rows check');
+}

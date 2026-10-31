@@ -69,9 +69,19 @@ if ($_POST && !$readonly) {
     validate_token_field();
 
     if (isset($_POST['submit_cancel']) && $id && ($campaign['status'] === 'ready')) {
-        db_q("UPDATE sms_campaigns SET status = 'cancelled', updated_at = ?, updated_by = ? WHERE id = ? AND status = 'ready'",
+        $cancelled = db_q("UPDATE sms_campaigns SET status = 'cancelled', updated_at = ?, updated_by = ? WHERE id = ? AND status = 'ready'",
             array((string) time(), (string) $user['id'], (string) $id));
-        log_activity(lang(array('string' => 'SMS campaign cancelled: {var:1}', 'vars' => array($campaign['name']))), $_SESSION['sessionusername']);
+
+        if ($cancelled === false) {
+            output_error('Query failed.');
+        }
+
+        // No row changed when the job claimed the campaign after it was read:
+        // it is no longer ready, so nothing was cancelled to log.
+        if (mysqli_affected_rows(db::$con) === 1) {
+            log_activity(lang(array('string' => 'SMS campaign cancelled: {var:1}', 'vars' => array($campaign['name']))), $_SESSION['sessionusername']);
+        }
+
         header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/view_sms_campaigns.php');
         exit;
     }

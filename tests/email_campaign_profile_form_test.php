@@ -154,3 +154,58 @@ function test_email_campaign_profile_picker_leaves_out_downstream()
 	pg_assert_contains("'email_campaign_profile_id' =>", $edit, 'edit keeps the stored pick');
 	pg_assert_contains('), $id) .', $edit, 'edit passes the profile id to the cards');
 }
+
+// Statement-level db_q() writes in $source whose result is dropped: the call
+// starts a statement and is followed straight by ';'. String literals are
+// skipped while the parentheses are counted.
+function email_campaign_profile_test_dropped_writes($source)
+{
+	$dropped = array();
+
+	if (!preg_match_all('/(?:^|[;{}])\s*db_q\(/', $source, $matches, PREG_OFFSET_CAPTURE)) {
+		return $dropped;
+	}
+
+	foreach ($matches[0] as $match) {
+		$start = $match[1] + strlen($match[0]);
+		$depth = 1;
+		$quote = '';
+		$length = strlen($source);
+
+		for ($i = $start; ($i < $length) && ($depth > 0); $i++) {
+			$char = $source[$i];
+
+			if ($quote !== '') {
+				if ($char === '\\') {
+					$i++;
+				} elseif ($char === $quote) {
+					$quote = '';
+				}
+			} elseif (($char === '"') || ($char === "'")) {
+				$quote = $char;
+			} elseif ($char === '(') {
+				$depth++;
+			} elseif ($char === ')') {
+				$depth--;
+			}
+		}
+
+		$call = substr($source, $start, $i - $start);
+
+		if (preg_match('/^\s*"\s*(INSERT|UPDATE|DELETE)\b/i', $call) && preg_match('/^\s*;/', substr($source, $i))) {
+			$dropped[] = trim(substr($call, 0, 60));
+		}
+	}
+
+	return $dropped;
+}
+
+// A failed create, save or delete ends the request with 'Query failed.'
+// instead of logging and announcing that it worked.
+function test_email_campaign_profile_writes_are_checked()
+{
+	foreach (array('/add_email_campaign_profile.php', '/edit_email_campaign_profile.php') as $file) {
+		$source = file_get_contents(PG_FUNCTIONS_DIR . $file);
+		pg_assert_same(array(), email_campaign_profile_test_dropped_writes($source), $file . ' drops no write result');
+	}
+}

@@ -174,7 +174,7 @@ if (!$_POST) {
 
     // If the user selected to delete this profile, then delete it.
     if ($liveform->get_field_value('submit_delete') == 'Delete') {
-        db_q("DELETE FROM email_campaign_profiles WHERE id = ?", array($id));
+        db_q("DELETE FROM email_campaign_profiles WHERE id = ?", array($id)) or output_error('Query failed.');
         
         log_activity(lang(array('string'=>'campaign profile ({var:1}) was deleted','vars'=>$email_campaign_profile['name'])), $_SESSION['sessionusername']);
         $liveform->remove_form();
@@ -211,7 +211,7 @@ if (!$_POST) {
             "UPDATE email_campaign_profiles
             SET " . implode(', ', $assignments) . ", last_modified_timestamp = UNIX_TIMESTAMP()
             WHERE id = ?",
-            $parameters);
+            $parameters) or output_error('Query failed.');
 
         log_activity(lang(array('string'=>'campaign profile ({var:1}) was modified','vars'=>$liveform->get_field_value('name'))), $_SESSION['sessionusername']);
         
