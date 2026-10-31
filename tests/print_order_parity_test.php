@@ -28,8 +28,8 @@ function test_print_order_parity_district_and_country_names()
 	$source = print_order_parity_source();
 
 	pg_assert_contains('(pg_ship_to_district_ready() ? "ship_tos.district," : "")', $source, 'the district read behind its guard');
-	pg_assert_contains("\$address .= \$ship_tos[\$key]['district'] . ', ';", $source, 'the district in the card address');
-	pg_assert_contains("h(\$st['district'])", $source, 'the district in the header column');
+	pg_assert_contains("pg_order_view_district(isset(\$ship_tos[\$key]['district'])", $source, 'the district in the card address');
+	pg_assert_contains("pg_order_view_district(isset(\$st['district'])", $source, 'the district in the header column');
 	pg_assert_contains("\$address .= pg_order_view_country(\$ship_tos[\$key]['country']);", $source, 'the card country by name');
 	pg_assert_contains("h(pg_order_view_country(\$st['country']))", $source, 'the header country by name');
 	pg_assert_contains('h(pg_order_view_country($billing_country))', $source, 'the billing country by name');

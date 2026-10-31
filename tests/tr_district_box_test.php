@@ -223,7 +223,7 @@ function test_tr_district_box_saved_and_shown()
 
 	$view = tr_district_box_test_source('view_order.php');
 	pg_assert_contains('(pg_ship_to_district_ready() ? "ship_tos.district," : "")', $view);
-	pg_assert_contains("\$ship_tos[\$key]['district'] . ', '", $view);
+	pg_assert_contains("pg_order_view_district(isset(\$ship_tos[\$key]['district'])", $view);
 }
 
 // Aras and Kargonomi refuse a shipment without a district, so their

@@ -113,10 +113,12 @@ if ($ship_to['address_2'] != '') {
     $output_ship_to_address_2 = h($ship_to['address_2']) . '<br />';
 }
 
-// The district, when one was typed, before the city (as the order screen
-// prints it). The column is missing on sites not yet upgraded.
-if (!empty($ship_to['district'])) {
-    $output_ship_to_district = h($ship_to['district']) . ', ';
+// The district, when it differs from the city, before the city (as the order
+// screen prints it). The column is missing on sites not yet upgraded.
+$ship_to_district = pg_order_view_district(isset($ship_to['district']) ? $ship_to['district'] : '', $ship_to['city']);
+
+if ($ship_to_district !== '') {
+    $output_ship_to_district = h($ship_to_district) . ', ';
 }
 
 $output_ship_to_city_line = $output_ship_to_district . h($ship_to['city']);
