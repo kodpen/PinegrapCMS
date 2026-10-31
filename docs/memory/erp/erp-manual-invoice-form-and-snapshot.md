@@ -10,6 +10,9 @@ description: Manual invoice form mechanics (lines[n][field] arrays, template row
 - Product choice is a shortcut, not a lock: `product_id` sits in a hidden field and drops to 0 when the product name is edited.
 - JS totals mimic `erp_kurus` / `erp_line_total` / `erp_apply_rate` exactly (whole kuruş, `Math.round`), and the group taxes with `allocate()` / `rateTaxes()`, copies of `erp_allocate()` / `erp_rate_vat()` (#1004): a line's total shows its share of the group's VAT. PHP recomputes on every save; a mismatch between the two is a bug.
 
+## Which document does the form name? (#3944)
+- `erp_invoice_form_cards()` serves invoices, quotes (`'quote' => true`) and purchase orders (`'purchase_order' => true`); every invoice-only text picks its noun from `$is_quote` / `$is_order` with its own English key (e.g. the preview note "…when the quote is saved"), never a second copy of the form.
+
 ## What is the account snapshot on an invoice (4.51)?
 - Columns `erp_invoices.account_title / account_tax_number / account_tax_office / account_address / account_city / account_country_code / account_email`, plus `account_district` and `account_postcode` (4.64) and `account_state` (4.71), copied from the account card by `erp_invoice_snapshot_account()` (`accounts.php`) at issue (also copied on draft save, re-copied at issue). The order bridge calls the same helper; it runs inside the caller's transaction. The newer columns are written only where they exist.
 - `document.php`, `edit_erp_invoice.php` and `erp_invoices.php` read the copy FIRST and fall back to the live card when `account_title` is empty (backward compatibility; the migration backfills older issued invoices).

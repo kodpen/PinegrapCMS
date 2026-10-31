@@ -94,11 +94,14 @@ if ($state === 'open') {
     $rows = '';
 
     foreach (erp_quote_lines($quote) as $line) {
-        $base = (int) $line['line_total'] - (int) $line['discount_amount'];
+        // The same figures the panel's quote prints for the line.
+        $amounts = erp_quote_line_amounts($line);
         $rows .= '<tr><td>' . h((string) $line['description']) . '</td>'
             . '<td class="text-end">' . h(erp_quantity_text($line['quantity'])) . '</td>'
             . '<td class="text-end">' . $money($line['unit_price']) . '</td>'
-            . '<td class="text-end">' . $money($base + (int) $line['tax_total']) . '</td></tr>';
+            . '<td class="text-end">' . (($amounts['discount'] > 0) ? $money($amounts['discount']) : '') . '</td>'
+            . '<td class="text-end">' . h(erp_percent_text($amounts['tax_rate'])) . '</td>'
+            . '<td class="text-end">' . $money($amounts['total']) . '</td></tr>';
     }
 
     $total = function ($label, $value) {
@@ -109,7 +112,9 @@ if ($state === 'open') {
         . '<p class="pg-cart-quote-meta">' . h((string) $quote['account_title']) . ' · '
         . h(lang(array('string' => 'Valid until {var:1}', 'vars' => prepare_form_data_for_output((string) $quote['valid_until'], 'date', false)))) . '</p>'
         . '<div class="table-responsive"><table class="table pg-cart-quote-lines"><thead><tr><th scope="col">' . h(lang('Description')) . '</th><th scope="col" class="text-end">' . h(lang('Quantity'))
-        . '</th><th scope="col" class="text-end">' . h(lang('Unit price')) . '</th><th scope="col" class="text-end">' . h(lang('Line total')) . '</th></tr></thead><tbody>' . $rows . '</tbody></table></div>'
+        . '</th><th scope="col" class="text-end">' . h(lang('Unit price')) . '</th><th scope="col" class="text-end">' . h(lang('Discount'))
+        . '</th><th scope="col" class="text-end">' . h(erp_tax_label('percent')) . '</th><th scope="col" class="text-end">' . h(lang('Line total')) . '</th></tr></thead><tbody>' . $rows . '</tbody></table></div>'
+        . '<p class="pg-cart-quote-fine mt-0 mb-3">' . h(lang('Line totals are after the discount and include VAT.')) . '</p>'
         . '<div class="mb-5">'
         . $total(lang('Subtotal'), $money($quote['subtotal']))
         . (((int) $quote['discount_total'] !== 0) ? $total(lang('Discount'), '&minus;' . $money($quote['discount_total'])) : '')
