@@ -15,5 +15,6 @@ description: Undo and redo on the flow canvas (workspace_flow.js): the toolbar b
 
 ## How is an undo saved and when does history reset?
 - Undo puts the snapshot back with `graphOf()`, keeps a selected box that is still there (an arrow, selected by its index, is unselected) and calls `changed(true)`: redrawn and saved by the normal autosave; it records nothing, the graph equals `history.now`.
+- The focus: a toolbar button keeps it (a grey one hands it to the other). A key pressed on the canvas (a box focused) gets it back on the redrawn box still selected, else on the viewport, so arrows, Delete and C keep working (PR #4275, #3981: `drawCanvas()` replaced the box and the focus fell to the body).
 - Off in the run view: `showRun()` sets `state.edit` false and the buttons are not drawn.
 - `show(flow)` starts a new history for another flow and keeps it for the same flow (Publish and Pause call `show()` again, which only refreshes `history.now`). "Load it again" after a 409 clears it, so undo never brings back what the other screen wrote over.

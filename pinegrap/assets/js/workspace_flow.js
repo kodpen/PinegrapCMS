@@ -3331,11 +3331,25 @@
         return true;
     }
 
+    // The one space that set a removed value apart, from the text before
+    // and after it: [1, 0] the one before it when nothing but a space, a
+    // line break, a punctuation mark or the end follows, [0, 1] the one
+    // after it at the start of a line, else [0, 0]. A no-break space counts
+    // as a space (a text box types one at a line's end).
+    function tokenGap(before, after) {
+        before = String(before).replace(/\u00a0/g, ' ');
+        after = String(after).replace(/\u00a0/g, ' ');
+
+        if (/ $/.test(before) && /^($|[\s.,;:!?)\]])/.test(after)) {
+            return [1, 0];
+        }
+
+        return (((before === '') || /\n$/.test(before)) && (after.charAt(0) === ' ')) ? [0, 1] : [0, 0];
+    }
+
     // A text without the places it reads a (bare) token, with or without a
-    // fallback; the rest stays. The one space that set the value apart
-    // goes with it: the one before it when nothing but a space, a line
-    // break, a punctuation mark or the end follows, else the one after it
-    // at the start of a line.
+    // fallback; the rest stays, less the space that set the value apart
+    // (tokenGap()).
     function withoutToken(text, token) {
         var out = '';
         var last = 0;
@@ -3351,16 +3365,10 @@
 
             var before = text.slice(last, match.index);
             var end = match.index + match[0].length;
-            var after = text.charAt(end);
+            var gap = tokenGap(out + before, text.slice(end));
 
-            if (/ $/.test(before) && /^($|[\s.,;:!?)\]])/.test(after)) {
-                before = before.slice(0, -1);
-            } else if (((out + before) === '' || /\n$/.test(out + before)) && (after === ' ')) {
-                end++;
-            }
-
-            out += before;
-            last = end;
+            out += gap[0] ? before.slice(0, -1) : before;
+            last = end + gap[1];
         }
 
         return out + text.slice(last);
@@ -3435,7 +3443,7 @@
     // One thread per value: a removed one is announced by the value it read
     // and the field it went into.
     function threadName(thread) {
-        return thread.label + ' → ' + nameOf(nodeById(thread.to)) + ' › ' + thread.fieldLabel;
+        return thread.label + ' → ' + nameOf(nodeById(thread.to)) + (thread.fieldLabel ? ' › ' + thread.fieldLabel : '');
     }
 
     // One thread for each value a field of a box holds, read from the
@@ -3981,14 +3989,15 @@
                 line.appendChild(el('span', '', text));
 
                 // The keyboard's and the screen reader's way to remove a
-                // thread; the focus goes to the box's title after it.
+                // thread; the focus goes to the box's title after it, or
+                // to its line in the outline when its settings are closed.
                 if (state.edit && !state.run) {
                     var remove = K.button('btn btn-sm btn-text theme-secondary py-0', t('fl_thread_remove_short'), 'bi-x-lg');
 
                     remove.setAttribute('aria-label', t('fl_thread_remove_of', thread.label));
                     remove.title = remove.getAttribute('aria-label');
                     remove.addEventListener('click', function () {
-                        state.refocus = 'title-' + id;
+                        state.refocus = 'title-' + id + ' outline-open-' + id;
                         removeSelected({ type: 'thread', id: threadKey(thread) });
                     });
                     line.appendChild(remove);
@@ -5078,6 +5087,29 @@
             selection.addRange(place);
             range = place.cloneRange();
         };
+        // The node next to a chip, empty text passed over, and the text it
+        // stands for there: a line break, the field's start or end (''), a
+        // chip's token.
+        var beside = function (chip, back) {
+            var near = back ? chip.previousSibling : chip.nextSibling;
+
+            while (near && (near.nodeType === 3) && (near.nodeValue === '')) {
+                near = back ? near.previousSibling : near.nextSibling;
+            }
+
+            return near;
+        };
+        var besideText = function (near) {
+            if (!near) {
+                return '';
+            }
+
+            if (near.nodeType === 3) {
+                return near.nodeValue;
+            }
+
+            return (near.nodeName === 'BR') ? '\n' : (near.getAttribute('data-token') || 'x');
+        };
         var atEnd = function () {
             var place = document.createRange();
 
@@ -5186,10 +5218,26 @@
 
             if (state.edit && chip && input.contains(chip) && event.target.closest('.wsf-chip-remove')) {
                 var token = tokenBare(chip.getAttribute('data-token'));
+                var prev = beside(chip, true);
+                var next = beside(chip, false);
+                var gap = tokenGap(besideText(prev), besideText(next));
+                var caption = document.getElementById(input.getAttribute('aria-labelledby') || '');
+
+                // The space that set the value apart goes with it, as when
+                // the thread is removed (withoutToken()).
+                if (gap[0]) {
+                    prev.nodeValue = prev.nodeValue.slice(0, -1);
+                } else if (gap[1]) {
+                    next.nodeValue = next.nodeValue.slice(1);
+                }
 
                 chip.parentNode.removeChild(chip);
                 changed();
-                announce(t('fl_removed', names[token] ? names[token].label : token.slice(2, -2)));
+                announce(t('fl_removed', threadName({
+                    label: names[token] ? names[token].label : token.slice(2, -2),
+                    to: node.id,
+                    fieldLabel: caption ? caption.textContent.trim() : ''
+                })));
             } else if (state.edit && chip && input.contains(chip) && !bare && names[tokenBare(chip.getAttribute('data-token'))]) {
                 askFallback(chip, names, changed);
             }
@@ -8256,6 +8304,7 @@
         var graph = graphOf(JSON.parse(historyStep(state.history, back)));
         var selected = state.selected;
         var pressed = (document.activeElement === ui.undo) || (document.activeElement === ui.redo);
+        var onCanvas = !state.outline && ui.viewport.contains(document.activeElement);
 
         state.graph = graph;
         state.binding = null;
@@ -8266,6 +8315,15 @@
         // The button that went grey gives the focus to the other one.
         if (pressed && document.activeElement && document.activeElement.disabled) {
             (back ? ui.redo : ui.undo).focus();
+        }
+
+        // Undone from the canvas by key: the canvas was drawn again, so the
+        // box still selected takes the focus back, else the canvas does, and
+        // its keys (arrows, Delete, C) keep working.
+        if (onCanvas && !ui.viewport.contains(document.activeElement)) {
+            var box = state.selected ? ui.viewport.querySelector('[data-refocus="box-' + state.selected.id + '"]') : null;
+
+            (box || ui.viewport).focus({ preventScroll: true });
         }
 
         announce(t(back ? 'fl_undone' : 'fl_redone'));
