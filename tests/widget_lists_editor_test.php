@@ -70,7 +70,7 @@ function _widget_lists_editor_run_js($script, $stubs = '')
 	pg_assert_true(strpos($cut, 'SW_LIST_SOURCES') !== false && strpos($cut, 'SW_LIST_ORDERS') !== false, 'the list tables are found');
 	foreach (array('_sdT', '_sdListIsSourced', '_sdListSpec', '_sdKindLists', '_sdListsAbove', '_sdListRowOptions', '_sdListRowLabel',
 		'_sdListName', '_sdListStarter', '_sdProductListStarter', '_sdListStarterDepth', '_sdCalendarListStarter', '_sdOrderListStarter', '_sdCheckoutListStarter', '_sdOrderListKeyless', '_sdOrderItemListKey', '_sdListWidgetKind', '_sdListNeedsMainLoop', '_sdInMainLoopAt', '_sdListNesting', '_sdDragIsList', '_sdListPlaceOk',
-		'_sdListWrite', '_sdListFieldOf', '_sdListFieldFits', '_sdListBand', 'isDescendantOf', '_subtreeContainsLoopArea', '_sdFirstLoopArea') as $name) {
+		'_sdListWrite', '_sdListFieldOf', '_sdListFieldFits', '_sdListBand', '_sdListBandIn', '_sdWithValueSid', '_sdValueSidOf', 'isDescendantOf', '_subtreeContainsLoopArea', '_sdFirstLoopArea') as $name) {
 		$fn = _widget_lists_editor_js_function($js, $name);
 		pg_assert_true($fn !== '', $name . ' is found');
 		$cut .= $fn;
@@ -80,7 +80,10 @@ function _widget_lists_editor_run_js($script, $stubs = '')
 	if ($file === false) {
 		return null;
 	}
-	file_put_contents($file, $stubs . $cut . "\n" . $script);
+	// A part placed outside its widget (props.partOf) stands for the widget
+	// named in PART_SID by its _id (_sdPartSidAt()).
+	$parts = "var _sdPartDrawing = 0, PART_SID = {};\nfunction _sdPartSidAt(n) { return (n && PART_SID[n._id]) || 0; }\n";
+	file_put_contents($file, $parts . $stubs . $cut . "\n" . $script);
 	$out = array();
 	@exec('node ' . escapeshellarg($file) . ' 2>&1', $out, $code);
 	@unlink($file);
@@ -510,7 +513,9 @@ console.log(JSON.stringify({
     wrongField: band(bad6),
     goneField: band(nof6),
     deep: band(l4),
-    files: band(l1)
+    files: band(l1),
+    pageList: band({ _id: 'p1', type: 'loop_area', props: { source: 'form_record.files' }, children: [] }),
+    partList: (PART_SID.p2 = 6, band({ _id: 'p2', type: 'loop_area', props: { source: 'form_record.files' }, children: [] }))
 }));
 JS;
 	$a = _widget_lists_editor_run_js($script, _widget_lists_editor_trees_js());
@@ -529,6 +534,8 @@ JS;
 	pg_assert_same(array(true, 'Values of a field: the field gone gives this list no rows'), $a['goneField']);
 	pg_assert_same(array(false, 'Attachments — one row shown (repeated for every row at runtime)'), $a['deep'], 'the fourth level draws');
 	pg_assert_same(array(false, 'Attachments — one row shown (repeated for every row at runtime)'), $a['files']);
+	pg_assert_true($a['pageList'][0], 'a list of no widget and no part fades');
+	pg_assert_same(array(false, 'Attachments — one row shown (repeated for every row at runtime)'), $a['partList'], 'a part\'s list is read in its widget');
 }
 
 // A calendar view (8): an event loop, a month grid of weeks > days >

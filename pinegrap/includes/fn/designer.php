@@ -541,20 +541,33 @@ function _validate_and_clean_tree_json($json)
     return array('ok' => true, 'error' => '', 'warnings' => $warnings, 'cleaned_json' => ($cleaned !== '' ? $cleaned : $json));
 }
 
-// Walk tree array and accumulate schema errors.
-function _vt_walk(&$node, $depth, $valid_types, $required_props, &$errors)
+// Walk tree array and accumulate schema errors, each a translated sentence
+// the save shows the operator. A list (a sourced loop_area) is valid only
+// inside a part of a detail widget (props.partOf): its widget draws it
+// (widgets_parts_anywhere.php), and whether it draws the part at all stays
+// pg_sw_away_read_only()'s decision.
+function _vt_walk(&$node, $depth, $valid_types, $required_props, &$errors, $in_part = false)
 {
     if (!is_array($node)) return;
     $type = isset($node['type']) ? $node['type'] : '';
-    if (!$type || !in_array($type, $valid_types, true)) {
-        $errors[] = 'Invalid node type: "' . $type . '"';
+    if (!$in_part && pg_sw_away_of($node) > 0) $in_part = true;
+    if ($type === 'loop_area' && $in_part) {
+        if (!pg_sw_list_is_sourced($node)) {
+            $errors[] = lang('A part placed outside its widget can only hold one of the widget\'s lists, not the widget\'s own record loop. Remove that element, then save again.');
+            return;
+        }
+    } elseif ($type === 'loop_area') {
+        $errors[] = lang('A list of a widget\'s values stands outside its widget. Move it back into the widget or remove it, then save again.');
+        return;
+    } elseif (!is_string($type) || $type === '' || !in_array($type, $valid_types, true)) {
+        $errors[] = lang(array('string' => 'The page holds an element the editor does not know ({var:1}). Remove it, then save again.', 'vars' => is_scalar($type) ? (string)$type : ''));
         return;
     }
     if (isset($required_props[$type])) {
         foreach ($required_props[$type] as $prop) {
             $val = isset($node['props'][$prop]) ? $node['props'][$prop] : null;
             if ($val === null || $val === '') {
-                $errors[] = '[' . $type . '] prop "' . $prop . '" missing';
+                $errors[] = lang(array('string' => 'An element of the page lacks a setting it needs ({var:1}). Remove it, then save again.', 'vars' => $type . ' / ' . $prop));
             }
         }
     }
@@ -566,14 +579,14 @@ function _vt_walk(&$node, $depth, $valid_types, $required_props, &$errors)
         if (isset($name_required[$rt])) {
             $rn = isset($node['props']['regionName']) ? $node['props']['regionName'] : '';
             if ($rn === null || $rn === '') {
-                $errors[] = '[region] type "' . $rt . '" requires non-empty regionName';
+                $errors[] = lang('A region element of the page has no region chosen. Choose one or remove the element, then save again.');
             }
         }
     }
-    if ($depth > 60) { $errors[] = 'Tree too deep (possible cycle)'; return; }
+    if ($depth > 60) { $errors[] = lang('The page is nested too deeply to be saved.'); return; }
     if (isset($node['children']) && is_array($node['children'])) {
         foreach ($node['children'] as &$child) {
-            _vt_walk($child, $depth + 1, $valid_types, $required_props, $errors);
+            _vt_walk($child, $depth + 1, $valid_types, $required_props, $errors, $in_part);
         }
         unset($child);
     }
