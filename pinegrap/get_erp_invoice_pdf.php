@@ -48,16 +48,27 @@ if ($_POST && isset($_POST['template'])) {
 }
 
 $invoice = ($invoice_id > 0)
-    ? db_item("SELECT id, full_number, status FROM erp_invoices WHERE id = '" . $invoice_id . "' LIMIT 1")
+    ? db_item("SELECT id, full_number, status, direction FROM erp_invoices WHERE id = '" . $invoice_id . "' LIMIT 1")
     : null;
 
-if (!is_array($invoice)) {
+// A plain page with one sentence, in place of the document.
+$notice_page = function ($message) {
     header('Content-Type: text/html; charset=utf-8');
+    header('X-Robots-Tag: noindex');
     echo '<!DOCTYPE html><html lang="' . h(defined('SOFTWARE_LANGUAGE') ? SOFTWARE_LANGUAGE : 'tr') . '"><head><meta charset="utf-8"><title>' . lang('Invoice') . '</title></head>'
-        . '<body style="font-family:sans-serif;padding:2rem;">'
-        . (($preview_template !== null) ? lang('There is no invoice to preview yet.') : lang('The invoice could not be found.'))
-        . '</body></html>';
+        . '<body style="font-family:sans-serif;padding:2rem;">' . h($message) . '</body></html>';
     exit();
+};
+
+if (!is_array($invoice)) {
+    $notice_page(($preview_template !== null) ? lang('There is no invoice to preview yet.') : lang('The invoice could not be found.'));
+}
+
+// A purchase invoice has no document of the store's own: the sales layout
+// would show the store as its seller. A copy kept for one by an earlier
+// version stays in the files table and is not served.
+if (!erp_archive_keeps_rendering((string) $invoice['direction'])) {
+    $notice_page(lang('A purchase invoice has no document of the store\'s own; the supplier\'s document is the invoice.'));
 }
 
 // The copy kept at issue is the document; a live rendering is only for a
@@ -95,8 +106,9 @@ if ($pdf === false) {
     exit();
 }
 
-// An issued invoice with no kept copy is one from before copies were kept,
-// or one whose copy could not be written at issue: this rendering becomes it.
+// An issued sales invoice with no kept copy is one from before copies were
+// kept, or one whose copy could not be written at issue: this rendering
+// becomes it.
 if ((string) $invoice['status'] !== 'draft') {
     erp_archive_store('invoice', $invoice_id, $pdf, (string) $invoice['full_number'], 'pdf', (int) $user['id']);
 }

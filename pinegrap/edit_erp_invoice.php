@@ -1275,6 +1275,11 @@ if (((string) $invoice['direction'] === 'sales')
 }
 
 // Where it was talked about in the workspace, and the tasks about it.
+// PDF and Download open the store's own document, which only a sales invoice
+// has; a purchase invoice's is the supplier's, reached from the e-document
+// block above where there is one.
+$has_own_pdf = erp_archive_keeps_rendering((string) $invoice['direction']);
+
 // E-mail: the form to send the invoice to the customer, and every e-mail it
 // already went out in.
 $output_mail = '';
@@ -1459,8 +1464,9 @@ pg_page_shell([
             ' . $liveform->output_notices() . '
 
             <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . lang('Button Bar') . '">
+                        ' . ($has_own_pdf ? '
                         <a class="btn btn-sm btn-outline theme-secondary" href="get_erp_invoice_pdf.php?id=' . $invoice_id . '" target="_blank" rel="noopener"><i class="bi bi-file-earmark-pdf me-1"></i>' . lang('PDF') . '</a>
-                        <a class="btn btn-sm btn-outline theme-secondary" href="get_erp_invoice_pdf.php?id=' . $invoice_id . '&amp;download=1"><i class="bi bi-download me-1"></i>' . lang('Download') . '</a>
+                        <a class="btn btn-sm btn-outline theme-secondary" href="get_erp_invoice_pdf.php?id=' . $invoice_id . '&amp;download=1"><i class="bi bi-download me-1"></i>' . lang('Download') . '</a>' : '') . '
                         ' . ((((string) $invoice['doc_type'] === 'invoice') && ((int) $invoice['order_id'] === 0) && !(defined('USER_ERP_READONLY') && USER_ERP_READONLY)) ? '<a class="btn btn-sm btn-outline theme-secondary" href="add_erp_manual_invoice.php?copy=' . $invoice_id . '"><i class="bi bi-files me-1" aria-hidden="true"></i>' . lang('Copy') . '</a>' : '') . '
                         ' . $output_mail_button . '
                         ' . $output_waybill_button . '

@@ -191,8 +191,24 @@ function erp_archive_files($doc_type, $doc_id)
 }
 
 /**
- * Keeps an issued invoice's PDF. A draft has no document; a cancelled one
- * keeps the copy it was issued with.
+ * Whether an invoice of this direction has a document of the store's own: a
+ * sales invoice does. A purchase invoice's document is the supplier's (the
+ * incoming e-invoice where there is one), so the store neither keeps nor
+ * serves a rendering of it; one would read as the store invoicing the
+ * supplier.
+ *
+ * @param string|null $direction  erp_invoices.direction
+ * @return bool
+ */
+function erp_archive_keeps_rendering($direction)
+{
+    return ((string) $direction === 'sales');
+}
+
+/**
+ * Keeps an issued sales invoice's PDF. A draft has no document; a cancelled
+ * one keeps the copy it was issued with; a purchase invoice has none of ours
+ * (erp_archive_keeps_rendering()).
  *
  * @param int $invoice_id
  * @param int $user_id
@@ -200,9 +216,10 @@ function erp_archive_files($doc_type, $doc_id)
  */
 function erp_archive_invoice($invoice_id, $user_id = 0)
 {
-    $invoice = db_item("SELECT id, full_number, status FROM erp_invoices WHERE id = '" . (int) $invoice_id . "' LIMIT 1");
+    $invoice = db_item("SELECT id, full_number, status, direction FROM erp_invoices WHERE id = '" . (int) $invoice_id . "' LIMIT 1");
 
-    if (!is_array($invoice) || ((string) $invoice['status'] === 'draft') || ((string) $invoice['full_number'] === '')) {
+    if (!is_array($invoice) || ((string) $invoice['status'] === 'draft') || ((string) $invoice['full_number'] === '')
+        || !erp_archive_keeps_rendering((string) $invoice['direction'])) {
         return null;
     }
 

@@ -116,8 +116,9 @@ function erp_event_invoice($invoice_id, $event)
     }
 
     // The document as issued is kept once the request that issued it is
-    // over (includes/erp/archive.php).
-    if (($event === 'erp.invoice.created') && function_exists('erp_archive_defer')) {
+    // over (includes/erp/archive.php); a purchase invoice has none of ours.
+    if (($event === 'erp.invoice.created') && function_exists('erp_archive_defer')
+        && erp_archive_keeps_rendering((string) $invoice['direction'])) {
         erp_archive_defer('invoice', (int) $invoice['id']);
     }
 

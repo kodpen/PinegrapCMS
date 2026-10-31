@@ -4,9 +4,12 @@ description: ERP documents kept as issued (4.65, includes/erp/archive.php): what
 ---
 
 ## What is kept, and where?
-- The PDF an invoice or delivery note was issued with, the provider's copy of an e-document once GİB accepted it (only when the bytes are a PDF), every e-mailed reconciliation letter (with an `erp_reconciliation_log` row) and expense receipts (a new photo is kept beside the old one, `$again`: erp-expense-receipts.md).
+- The PDF a sales invoice or delivery note was issued with, the provider's copy of an e-document once GİB accepted it (only when the bytes are a PDF), every e-mailed reconciliation letter (with an `erp_reconciliation_log` row) and expense receipts (a new photo is kept beside the old one, `$again`: erp-expense-receipts.md).
 - Through `includes/erp/archive.php` only (`erp_archive_store()`): the file directory (`FILE_DIRECTORY_PATH`) and a `files` row with `folder = 0`, `erp_doc_type` / `erp_doc_id` set, named `erp-<type>-<number>-<random>.pdf`. Never a new folder or a write path of its own. The first copy is the document; a later call returns it.
 - Written as a temporary file then renamed. Do not ask `is_writable()` about the folder (on Windows it reads the read-only attribute); the write's result is the answer.
+
+## Why is nothing of ours kept for a purchase invoice?
+- Its document is the supplier's (the incoming e-invoice). Our sales layout printed the store as its seller, and that copy went into the accountant pack's `belgeler/Alis_faturalari/` (#3997, decided in #4104). `erp_archive_keeps_rendering($direction)` (sales only) gates `erp_event_invoice()`'s deferral, `erp_archive_invoice()`, the pack's kept/rendered copy, the PDF / Download buttons of `edit_erp_invoice.php` and the drawer, and `get_erp_invoice_pdf.php` (a notice page for PDF, download and `?html=1`). Purchase PDFs kept before stay in `files`, unused; no data step. Test: `tests/erp_purchase_invoice_no_pdf_test.php`.
 
 ## When is it rendered?
 - Asked for where the document is announced (`erp_archive_defer()` from `erp_event_invoice()` / `erp_event_waybill()`), which is inside the writer's transaction; the render runs at the end of the request, so a rolled-back writer leaves nothing to keep. The queue empties as it runs, so a document written during shutdown (the automatic invoice) still gets its copy.

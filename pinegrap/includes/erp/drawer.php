@@ -351,7 +351,7 @@ function erp_drawer_invoice($invoice_id)
 
     $output_actions = '
     <div class="d-flex flex-wrap gap-3 mb-7">
-        ' . (!$is_draft ? '<a class="btn btn-sm btn-outline theme-secondary" href="get_erp_invoice_pdf.php?id=' . $invoice_id . '" target="_blank" rel="noopener"><i class="bi bi-file-earmark-pdf me-1" aria-hidden="true"></i>' . lang('PDF') . '</a>' : '') . '
+        ' . ((!$is_draft && erp_archive_keeps_rendering((string) $invoice['direction'])) ? '<a class="btn btn-sm btn-outline theme-secondary" href="get_erp_invoice_pdf.php?id=' . $invoice_id . '" target="_blank" rel="noopener"><i class="bi bi-file-earmark-pdf me-1" aria-hidden="true"></i>' . lang('PDF') . '</a>' : '') . '
         ' . ($can_record_receipt && !$is_draft && ($open > 0) && ((int) $invoice['account_id'] > 0)
             ? '<a class="btn btn-sm btn-outline theme-secondary" href="add_erp_receipt.php?direction=' . (((string) $invoice['direction'] === 'purchase') ? 'payment' : 'collection') . '&amp;invoice_id=' . $invoice_id . '"><i class="bi bi-cash-coin me-1" aria-hidden="true"></i>' . h(erp_record_receipt_label((string) $invoice['direction'])) . '</a>'
             : '') . '
