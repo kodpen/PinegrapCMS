@@ -54,7 +54,8 @@ function test_site_search_query_word_operators_are_kept()
 function test_site_search_query_phrases()
 {
 	pg_assert_same('"foo"', pg_search_boolean_terms('foo'));
-	pg_assert_same('"multi-recipient"', pg_search_boolean_terms('multi-recipient'));
+	pg_assert_same('"multi-recipient" "multı-recıpıent"', pg_search_boolean_terms('multi-recipient'));
+	pg_assert_same('"web-tasarım" "web-tasarim"', pg_search_boolean_terms('web-tasarım'));
 	pg_assert_same('"a b"', pg_search_boolean_terms('a*b'));
 	pg_assert_same('"a"', pg_search_boolean_terms('*a'));
 	pg_assert_same('"foo bar" baz', pg_search_boolean_terms('"foo* bar" baz'));
@@ -65,10 +66,40 @@ function test_site_search_query_phrases()
 
 function test_site_search_query_turkish_letters()
 {
-	pg_assert_same('"eşitleme"', pg_search_boolean_terms('eşitleme'));
-	pg_assert_same('Bug avı', pg_search_boolean_terms('Bug avı'));
-	pg_assert_same('+çığ ÖZEL*', pg_search_boolean_terms('+çığ ÖZEL*'));
-	pg_assert_same('"Pinegrap\'in"', pg_search_boolean_terms("Pinegrap'in"));
+	pg_assert_same('"şube"', pg_search_boolean_terms('şube'));
+	pg_assert_same('Bug avı avi', pg_search_boolean_terms('Bug avı'));
+	pg_assert_same('+(çığ çiğ) ÖZEL*', pg_search_boolean_terms('+çığ ÖZEL*'));
+	pg_assert_same('"pinegrap\'in" "pınegrap\'in" "pinegrap\'ın" "pınegrap\'ın"', pg_search_boolean_terms("Pinegrap'in"));
+	pg_assert_same('"diyarbakir" "dıyarbakir" "diyarbakır" "dıyarbakır"', pg_search_boolean_terms('Diyarbakir'));
+}
+
+// i, I, ı and İ are one letter (#4352): utf8mb4_unicode_ci folds I and İ
+// to i but keeps ı apart, so every reading of such a letter is searched.
+function test_site_search_query_turkish_i_variants()
+{
+	pg_assert_same('"kahvaltı" "kahvalti"', pg_search_boolean_terms('KAHVALTI'));
+	pg_assert_same('"kahvalti" "kahvaltı"', pg_search_boolean_terms('kahvalti'));
+	pg_assert_same('"kahvaltı" "kahvalti"', pg_search_boolean_terms('kahvaltı'));
+	pg_assert_same('"hakkımızda" "hakkimızda" "hakkımizda" "hakkimizda"', pg_search_boolean_terms('HAKKIMIZDA'));
+	pg_assert_same('"çalışma" "çalişma"', pg_search_boolean_terms('çalıŞMA'));
+	pg_assert_same('"istanbul" "ıstanbul"', pg_search_boolean_terms('İstanbul'));
+	pg_assert_same('"istanbul" "ıstanbul"', pg_search_boolean_terms("I\u{307}stanbul"));
+	pg_assert_same('-(kahvalti* kahvaltı*) menu', pg_search_boolean_terms('-kahvalti* menu'));
+	pg_assert_same('+("ıç mekan" "iç mekan")', pg_search_boolean_terms('+"IÇ mekan"'));
+	pg_assert_same('kahvaltı kahvalti menu', pg_search_boolean_terms('KAHVALTI menu'));
+	pg_assert_false(pg_search_needs_boolean_mode('kahvaltı kahvalti menu'));
+	pg_assert_same('kahvaltı kahvalti', pg_search_score_terms('"kahvaltı" "kahvalti"'));
+	pg_assert_same('kahvalti kahvaltı menu', pg_search_score_terms('-(kahvalti* kahvaltı*) menu'));
+}
+
+// Past two such letters a word gives its own reading, all i and all ı,
+// not every mix. A word with such a letter is lower cased (I as ı, İ as i).
+function test_site_search_query_turkish_i_variants_capped()
+{
+	pg_assert_same('"ışıltılı" "işiltili"', pg_search_boolean_terms('IŞILTILI'));
+	pg_assert_same('"işletmelerimiz" "ışletmelerımız"', pg_search_boolean_terms('işletmelerimiz'));
+	pg_assert_same(array('bilgi', 'bılgi', 'bilgı', 'bılgı'), pg_search_i_variants('bilgi'));
+	pg_assert_same(array('menu'), pg_search_i_variants('menu'));
 }
 
 function test_site_search_query_mode_and_score()
