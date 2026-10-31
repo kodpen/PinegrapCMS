@@ -16,3 +16,6 @@ description: The ERP Settings cards drawn in two places (Accounting pane and erp
 - Rules: always; the two VAT fields only with `erp_settings_rules_editable()` (Turkish features and the columns).
 - Late fee: once its columns exist. Threshold: once its columns exist, hidden outside Turkey like E-Invoice, and left out of the list with it.
 - Templates: in the pane a status list (saved or built-in) linking the screen's editor; the editor's Preview, Reset and document pills cannot ride one pane Save. So `erp_settings.php` does not redirect role < 3 to `#settings/accounting` yet.
+
+## Where does the menu's ERP Settings entry lead?
+- Role < 3: `pg_settings_link('accounting')`, without `data-pg-settings-page`, so `pgSettingsModal` opens the dialog on Accounting (#3929). A role-3 user with `manage_erp_settings` keeps `erp_settings.php`. The accountant's read-only right still hides the entry. `settings_accounting_test.php` reads both targets from `output_menu()`.

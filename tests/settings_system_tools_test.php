@@ -201,6 +201,7 @@ function test_settings_system_tools_menu_row()
 
 	$gate = strrpos(substr($source, 0, $start), 'if (');
 	pg_assert_contains("if (\$user['role'] <= 2 && pg_settings_tool_count(\$menu_tools_groups) > 0)", substr($source, $gate, $start - $gate), 'under system_tools.php\'s own gate');
+	pg_assert_contains("\$menu_tools_groups = (\$user['role'] <= 2) ? pg_settings_tool_groups(\$user) : array();", $source, 'from the gated groups');
 	pg_assert_contains("\$menu_items[25]['href'] = 'system_tools.php';", $source, 'the row leads to the screen');
 	pg_assert_contains("\$menu_items[25]['title'] = 'System tools';", $source, 'titled as the screen');
 	pg_assert_contains('$menu_panels_nested .= $menu_tools[\'panels\'];', $source, 'its group panels join the nested ones');

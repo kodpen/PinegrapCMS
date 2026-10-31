@@ -3213,6 +3213,19 @@ function pg_menu_icon($name, $color_class = '')
                 '</g>';
             break;
 
+        case 'tools':
+            // A toolbox, its latch in the accent colour.
+            $box = 'M3 9.5A2.5 2.5 0 0 1 5.5 7h13A2.5 2.5 0 0 1 21 9.5v8a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5z';
+            $body =
+                '<path' . $d . ' d="' . $box . '"/>' .
+                '<path d="' . $box . '"/>' .
+                '<path d="M9 7V5.5A1.5 1.5 0 0 1 10.5 4h3A1.5 1.5 0 0 1 15 5.5V7M3 13h7M14 13h7"/>' .
+                '<g class="pg-mi-a">' .
+                '<rect' . $a . ' x="10" y="11" width="4" height="4" rx="1"/>' .
+                '<rect x="10" y="11" width="4" height="4" rx="1" stroke-width="1.5"/>' .
+                '</g>';
+            break;
+
         default:
             return '';
     }
@@ -3226,7 +3239,8 @@ function output_menu($properties = false)
     global $user;
     $menu_items = array();
     // Panels drawn without a row of their own: the pinned My Notes panel when
-    // nothing is pinned yet, and the second level of Site Settings.
+    // nothing is pinned yet, and the second level of Site Settings and of
+    // System tools.
     $menu_panels_unattached = array();
     $menu_panels_nested = '';
     // What follows the rows and panels: the Workspace list's data and script.
@@ -3821,8 +3835,17 @@ function output_menu($properties = false)
         // The accountant's read-only right wins over the settings right:
         // validate_erp_access($user, 'settings') refuses it (erp_accountant.php
         // computes the same $can_settings).
+        // Below role 3 the ERP settings are the Accounting category of Site
+        // Settings, opened in the dialog (no data-pg-settings-page); a role 3
+        // user, who has no Site Settings, keeps the ERP Settings screen.
         if (USER_MANAGE_ERP_SETTINGS && !(defined('USER_ERP_READONLY') && USER_ERP_READONLY)) {
-            $menu_items[22]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_settings.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-sliders bi-me-2\'>' . lang('ERP Settings') . '</a>';
+            if ($user['role'] < 3) {
+                $menu_erp_settings_url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/' . pg_settings_link('accounting');
+            } else {
+                $menu_erp_settings_url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_settings.php';
+            }
+
+            $menu_items[22]['data-bs-content'] .= '<a href=\'' . h($menu_erp_settings_url) . '\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-sliders bi-me-2\'>' . lang('ERP Settings') . '</a>';
         }
 
     }
@@ -3907,10 +3930,10 @@ function output_menu($properties = false)
     // SITE SETTINGS. Slot 20, last in the menu. The gear in the header opens
     // the settings over the current screen (the modal); this row leads to
     // their pages instead (settings_<category>.php), for whoever wants a
-    // whole screen. Its panel lists what the modal's sidebar lists, from the
-    // same functions and under the same gates (pg_settings_modal_markup():
-    // role <= 2): the categories, each opening its sections, and the
-    // neighbouring screens in their groups (pg_menu_settings_entries()).
+    // whole screen. Its panel lists the categories of the modal's sidebar,
+    // from the same function and under the same gate
+    // (pg_settings_modal_markup(): role <= 2), each opening its sections
+    // (pg_menu_settings_entries()).
     if ($user['role'] <= 2) {
         $menu_settings = pg_menu_settings_entries($user, $output_parent_target);
 
@@ -3922,7 +3945,28 @@ function output_menu($properties = false)
         $menu_items[20]['context'] = true;
         $menu_items[20]['data-bs-content'] = $menu_settings['entries'];
         $menu_items[20]['row_attributes'] = ' data-pg-settings-page';
-        $menu_panels_nested = $menu_settings['panels'];
+        $menu_panels_nested .= $menu_settings['panels'];
+    }
+
+    // SYSTEM TOOLS. Slot 25: 3, 13, 18 and 19 are retired and 22 to 24 are
+    // taken, and operators pin rows by their slot
+    // (user.selected_appmenu_items_array), so no slot is ever reused. The
+    // screens beside Site Settings, under system_tools.php's own gate: the
+    // screen first, then each group of pg_settings_tool_groups() opening a
+    // panel of its screens, every one under its own gate.
+    $menu_tools_groups = ($user['role'] <= 2) ? pg_settings_tool_groups($user) : array();
+
+    if ($user['role'] <= 2 && pg_settings_tool_count($menu_tools_groups) > 0) {
+        $menu_tools = pg_menu_tools_markup($menu_tools_groups, OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/', $output_parent_target);
+
+        $menu_items[25]['id'] = 25;
+        $menu_items[25]['href'] = 'system_tools.php';
+        $menu_items[25]['menu_icon'] = 'tools';
+        $menu_items[25]['color_class'] = 'settings-color';
+        $menu_items[25]['title'] = 'System tools';
+        $menu_items[25]['context'] = true;
+        $menu_items[25]['data-bs-content'] = $menu_tools['entries'];
+        $menu_panels_nested .= $menu_tools['panels'];
     }
 
     // get the name of the PHP script that was just accessed in order to determine which tab should be highlighted
@@ -4248,9 +4292,8 @@ function output_menu($properties = false)
             }
             break;
 
-        // The pages of Site Settings and the neighbouring screens its panel
-        // leads to (pg_menu_settings_entries()). view_sessions.php is in the
-        // Users panel too and stays unmarked, as before.
+        // The pages of Site Settings and the screens its category panels
+        // list (pg_settings_category_screens()).
         case 'settings_general.php':
         case 'settings_appearance.php':
         case 'settings_features.php':
@@ -4260,15 +4303,24 @@ function output_menu($properties = false)
         case 'settings_firewall.php':
         case 'settings_commerce.php':
         case 'settings_api.php':
+        case 'settings_accounting.php':
+        case 'settings_privacy.php':
         case 'settings_languages.php':
         case 'translations.php':
+        case 'private_label.php':
+            $active_menu = 20;
+            break;
+
+        // System tools and the screens of its group panels
+        // (pg_settings_tool_groups()). view_sessions.php is in the Users
+        // panel too and stays unmarked.
+        case 'system_tools.php':
         case 'view_log.php':
         case 'view_audit_log.php':
         case 'smtp_settings.php':
         case 'api_settings.php':
         case 'connections.php':
         case 'marketplace_settings.php':
-        case 'private_label.php':
         case 'software_update.php':
         case 'software_repair.php':
         case 'view_performance_log.php':
@@ -4277,7 +4329,7 @@ function output_menu($properties = false)
         case 'mail_queue.php':
         case 'backups.php':
         case 'cloudflare.php':
-            $active_menu = 20;
+            $active_menu = 25;
             break;
         case 'view_referral_sources.php':
         case 'add_referral_source.php':
@@ -4285,9 +4337,9 @@ function output_menu($properties = false)
         case 'view_currencies.php':
         case 'add_currency.php':
         case 'edit_currency.php':
-            // Site Settings › Store Lists; a role 3 user, who has no Site
-            // Settings row, finds them in the shipping row.
-            $active_menu = ($user['role'] <= 2) ? 20 : 15;
+            // System tools › Store Lists; a role 3 user, who has no System
+            // tools row, finds them in the shipping row.
+            $active_menu = ($user['role'] <= 2) ? 25 : 15;
             break;
     }
 
@@ -4453,7 +4505,8 @@ function pg_menu_explorer_side($area, $user, $toolbar, &$menu_tail)
  * Each category is a heading (an English lang() source) over its rows, named
  * by the slot ids output_menu() builds them under; the rows come in the order
  * listed. The untitled first one is drawn without a heading. Slots 3, 13, 18
- * and 19 are retired and never come back; a new row gets a place here, or is
+ * and 19 are retired and never come back, and no slot is ever renumbered
+ * (operators pin rows by their slot); a new row gets a place here, or is
  * drawn at the end without a heading (pg_menu_layout()).
  *
  * @return array key => label (lang() source, '' for none), slots (ids)
@@ -4468,7 +4521,7 @@ function pg_menu_categories()
         // The ERP has its own switch and rights, and runs without the store.
         'accounting' => array('label' => 'Accounting', 'slots' => array(22)),
         'marketing'  => array('label' => 'Marketing', 'slots' => array(6, 7, 9, 16)),
-        'system'     => array('label' => 'System', 'slots' => array(8, 20)),
+        'system'     => array('label' => 'System', 'slots' => array(8, 20, 25)),
     );
 }
 
@@ -4544,9 +4597,10 @@ function pg_menu_heading($key, $label)
 /**
  * The entries of the Site Settings row, and the second-level panels they open.
  *
- * The same lists as the sidebar of the settings modal, from the same functions
- * and so under the same gates (pg_settings_modal_markup()): every category of
- * pg_settings_categories() and every group of pg_settings_tool_groups().
+ * The same list as the sidebar of the settings modal, from the same function
+ * and so under the same gate (pg_settings_modal_markup()): every category of
+ * pg_settings_categories(). The screens beside them have their own row
+ * (pg_menu_tools_markup()).
  *
  * @param array  $user          the row validate_user() returned
  * @param string $parent_target ' target=\'_parent\'' in the front-end toolbar
@@ -4568,28 +4622,26 @@ function pg_menu_settings_entries($user, $parent_target)
         $categories[$key]['screens'] = isset($screens[$key]) ? $screens[$key] : array();
     }
 
-    return pg_menu_settings_markup($categories, pg_settings_tool_groups($user), OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/', $parent_target);
+    return pg_menu_settings_markup($categories, OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/', $parent_target);
 }
 
 /**
  * The Site Settings row's entries and second-level panels, from its lists.
  *
  * Each category opens a panel with its page, its sections and, under a
- * divider, the screens that go with it (pg_settings_category_screens()); each
- * group of neighbouring screens opens a panel with its screens. The category pages are
- * the page path of the settings (settings_<category>.php), so every link to
- * them carries data-pg-settings-page, which tells pgSettingsModal not to
- * answer it with the modal (backend.src.js).
+ * divider, the screens that go with it (pg_settings_category_screens()). The
+ * category pages are the page path of the settings (settings_<category>.php),
+ * so every link to them carries data-pg-settings-page, which tells
+ * pgSettingsModal not to answer it with the modal (backend.src.js).
  *
  * @param array  $categories    key => label, icon, url, sections (id => label),
  *                              screens (optional: label, icon, url)
- * @param array  $groups        label, icon, items (label, icon, url, target, confirm)
  * @param string $base          the panel folder's address, ending in /
  * @param string $parent_target ' target=\'_parent\'' in the front-end toolbar
  * @return array href (the first category's page), entries (first level),
  *               panels (the second level, as markup)
  */
-function pg_menu_settings_markup($categories, $groups, $base, $parent_target)
+function pg_menu_settings_markup($categories, $base, $parent_target)
 {
     $class = 'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi ';
     $chevron = '<i class=\'bi bi-chevron-right pg-menu-chevron\' aria-hidden=\'true\'></i>';
@@ -4627,7 +4679,30 @@ function pg_menu_settings_markup($categories, $groups, $base, $parent_target)
         $panels .= pg_menu_panel($panel_id, $entry_id, $category['label'], $sections);
     }
 
-    $first_group = true;
+    return array('href' => $href, 'entries' => $entries, 'panels' => $panels);
+}
+
+/**
+ * The System tools row's entries and second-level panels.
+ *
+ * First the System tools screen itself, then one entry per group of
+ * pg_settings_tool_groups() that has a screen, each opening a panel with its
+ * screens. A screen keeps its own target (rel noopener) and its question
+ * (data-confirm-content, asked by the panel's link handler).
+ *
+ * @param array  $groups        label, icon, items (label, icon, url, target, confirm)
+ * @param string $base          the panel folder's address, ending in /
+ * @param string $parent_target ' target=\'_parent\'' in the front-end toolbar
+ * @return array entries (first level), panels (the second level, as markup);
+ *               both empty when no group has a screen
+ */
+function pg_menu_tools_markup($groups, $base, $parent_target)
+{
+    $class = 'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi ';
+    $chevron = '<i class=\'bi bi-chevron-right pg-menu-chevron\' aria-hidden=\'true\'></i>';
+
+    $entries = '';
+    $panels = '';
 
     foreach ($groups as $number => $group) {
 
@@ -4635,14 +4710,8 @@ function pg_menu_settings_markup($categories, $groups, $base, $parent_target)
             continue;
         }
 
-        if ($first_group && ($entries !== '')) {
-            $entries .= '<hr class=\'divider my-3\' />';
-        }
-
-        $first_group = false;
-
-        $entry_id = 'menu_entry_20_tools_' . $number;
-        $panel_id = 'menu_panel_20_tools_' . $number;
+        $entry_id = 'menu_entry_25_tools_' . $number;
+        $panel_id = 'menu_panel_25_tools_' . $number;
         $items = '';
 
         foreach ($group['items'] as $item) {
@@ -4661,7 +4730,13 @@ function pg_menu_settings_markup($categories, $groups, $base, $parent_target)
         $panels .= pg_menu_panel($panel_id, $entry_id, $group['label'], $items);
     }
 
-    return array('href' => $href, 'entries' => $entries, 'panels' => $panels);
+    if ($entries === '') {
+        return array('entries' => '', 'panels' => '');
+    }
+
+    $entries = '<a href=\'' . h($base . 'system_tools.php') . '\'' . $parent_target . ' class=\'' . $class . 'bi-tools bi-me-2\'>' . h(lang('System tools')) . '</a><hr class=\'divider my-3\' />' . $entries;
+
+    return array('entries' => $entries, 'panels' => $panels);
 }
 
 /**
