@@ -6,7 +6,7 @@ description: The one product group writer pg_catalog_group_create(): who calls i
 ## What writes a new product group?
 - `pg_catalog_group_create($data, $user, $opts)` in `includes/fn/ecommerce.php`: one browse row (variant selection on, no images, details or code), the products filed, the keyword clouds of the search results pages holding it rebuilt, its SEO score, `product_group.created`. Returns the id, 0 when no row was written.
 - `$data`: name (as given; the caller trims), enabled, parent_id (0 or less: the top, `pg_catalog_group_top_id()`), short_description, full_description, keywords, title, meta_description, meta_keywords, product_ids. `$user`: an array with `id` or a user id, stamped in `user`.
-- In steps: `pg_catalog_group_create_input()` settles the user id, the parent (the top read through a callable, only when none is named), the address source (short description, else name), the rich text with {path} (`prepare_rich_text_editor_content_for_input()`, path as a parameter) and the product ids, with no query; `prepare_catalog_item_address_name()` makes the address; `pg_catalog_group_write()` runs the INSERT ('insert' answers the id), then one link per product, through a runner callable bound to `pg_catalog_query()`.
+- In steps: `pg_catalog_group_create_input()` settles the user id, the parent (`pg_catalog_group_parent_id()`: the top when none is named), the address source (short description, else name), the rich text with {path} (`prepare_rich_text_editor_content_for_input()`, path as a parameter) and the product ids, with no query; `prepare_catalog_item_address_name()` makes the address; `pg_catalog_group_write()` runs the INSERT ('insert' answers the id), then one link per product, through a runner callable bound to `pg_catalog_query()`.
 - The caller checks first (name free, parent and products there) and writes its own Site Log line.
 
 ## Who calls it?
@@ -28,4 +28,4 @@ description: The one product group writer pg_catalog_group_create(): who calls i
 
 ## Which test covers it?
 - `tests/catalog_group_writer_test.php` runs what needs no database: what `pg_catalog_group_create_input()` settles, the INSERT (`pg_catalog_group_insert_sql()`) from each caller's real mapping (`api_product_group_create_data()`, `ws_change_group_create_data()`) and the links held to the old statements, `pg_catalog_group_write()`'s statements in order (a recording runner), `pg_catalog_query()` with stand-ins for the API helpers and the db() path made to throw (`workflow/unit-test-database-exit.md`).
-- From the source only: the thin wrappers (the API passes `$app['owner']`), the clouds twins, SEO and one announcement, the Workspace product score, the screens left alone.
+- From the source only: the wrappers, the clouds twins, SEO, one announcement, the screens left alone.

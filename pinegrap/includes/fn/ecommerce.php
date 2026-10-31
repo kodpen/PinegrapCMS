@@ -2602,6 +2602,24 @@ function pg_catalog_group_top_id($opts = array())
 }
 
 /**
+ * The parent a new group is filed under: the one named, else the top of the
+ * catalogue ($top_id asked only then). A parent of 0 would make the group a
+ * second root, which the Catalog Manager, the storefront, search and feeds
+ * never reach; on an empty catalogue the top is 0 and the new group becomes
+ * the root.
+ *
+ * @param mixed    $parent_id as posted or sent (0, '', null: none named)
+ * @param callable $top_id    answers the top of the catalogue's id
+ * @return int
+ */
+function pg_catalog_group_parent_id($parent_id, $top_id)
+{
+    $parent_id = (int) $parent_id;
+
+    return ($parent_id > 0) ? $parent_id : (int) $top_id();
+}
+
+/**
  * The INSERT of a new browse group: variant selection on, no images, details
  * or code. Built apart from the writer so the unit tests can hold it to the
  * row POST /product-groups and the Workspace wrote before they shared it.
@@ -2675,12 +2693,10 @@ function pg_catalog_group_create_input($data, $user, $top_id, $path = null)
     $data['full_description'] = prepare_rich_text_editor_content_for_input((string) ($data['full_description'] ?? ''), $path);
 
     $short = (string) ($data['short_description'] ?? '');
-    $parent_id = (int) ($data['parent_id'] ?? 0);
-
     return array(
         'data'           => $data,
         'user_id'        => is_array($user) ? (int) ($user['id'] ?? 0) : (int) $user,
-        'parent_id'      => ($parent_id > 0) ? $parent_id : (int) $top_id(),
+        'parent_id'      => pg_catalog_group_parent_id($data['parent_id'] ?? 0, $top_id),
         'address_source' => ($short !== '') ? $short : $data['name'],
         'product_ids'    => array_map('intval', array_values((array) ($data['product_ids'] ?? array()))),
     );
@@ -2983,6 +2999,11 @@ function pg_catalog_variant_set_create($data, $user = null, $opts = array())
             $group[$key] = $data[$key];
         }
     }
+
+    // No parent named: under the top of the catalogue, never a second root.
+    $group['parent_id'] = pg_catalog_group_parent_id(isset($group['parent_id']) ? $group['parent_id'] : 0, function () {
+        return pg_catalog_group_top_id();
+    });
 
     if ($user_id !== null) {
         $group['user'] = $user_id;
