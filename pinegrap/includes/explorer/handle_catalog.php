@@ -401,8 +401,14 @@ function pg_explorer_handle_catalog_rename($type, $request, $user)
 
     if ($item_kind == 'group') {
 
+        // Live rows only: a group deleted meanwhile, or one in the bin, is
+        // refused instead of answered as renamed (the bin offers no rename).
         // The short description follows the name while the two agree.
-        $group_row = db_item("SELECT name, short_description FROM product_groups WHERE id = '" . e($item_id) . "'");
+        $group_row = db_item("SELECT name, short_description FROM product_groups WHERE id = '" . e($item_id) . "'" . pg_catalog_live_filter('product_groups'));
+
+        if (!$group_row) {
+            respond(array('status' => 'error', 'message' => lang('Sorry, we could not accept your request.')));
+        }
 
         $sql_short_description = '';
 
@@ -414,6 +420,12 @@ function pg_explorer_handle_catalog_rename($type, $request, $user)
         db("UPDATE product_groups SET name = '" . e($name) . "', " . $sql_short_description . " timestamp = UNIX_TIMESTAMP() WHERE id = '" . e($item_id) . "'");
 
     } elseif ($item_kind == 'product') {
+
+        // The same rule for a product: a binned one is restored before it
+        // is edited, and a deleted one has nothing to rename.
+        if (!db_item("SELECT id FROM products WHERE id = '" . e($item_id) . "'" . pg_catalog_live_filter('products'))) {
+            respond(array('status' => 'error', 'message' => lang('Sorry, we could not accept your request.')));
+        }
 
         $audit_before = pg_audit_fetch('products', $item_id);
         db("UPDATE products SET name = '" . e($name) . "', timestamp = UNIX_TIMESTAMP() WHERE id = '" . e($item_id) . "'");
