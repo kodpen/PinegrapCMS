@@ -1,6 +1,6 @@
 ---
 name: workspace-channel-panels
-description: The side panels as drawn (C6, plans/workspace-channel-layout.md): the channel info beside the conversation in the discussion's place, its parts, the discussion's head and follow line
+description: The side panels as drawn (C6 of workspace-channel-screen.md): the channel info beside the conversation in the discussion's place, its parts, the discussion's head and follow line
 ---
 
 ## Where does the channel info open?

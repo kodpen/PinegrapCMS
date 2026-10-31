@@ -61,7 +61,7 @@ function ws_nav_groups($viewer, $flags = null)
     $groups = array(
         'head' => array(),
         'top' => array(
-            array('key' => 'home', 'label' => lang('Overview'), 'icon' => 'bi-house', 'url' => $base . 'workspace.php?view=home'),
+            array('key' => 'home', 'label' => lang('Today'), 'icon' => 'bi-house', 'url' => $base . 'workspace.php?view=home'),
             array('key' => 'inbox', 'label' => lang('Inbox'), 'icon' => 'bi-inbox', 'url' => $base . 'workspace.php?view=home&inbox=1', 'inbox' => true),
             array('key' => 'tasks', 'label' => lang('My Tasks'), 'icon' => 'bi-check2-square', 'url' => $base . 'workspace_tasks.php'),
         ),

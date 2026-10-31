@@ -1,6 +1,6 @@
 ---
 name: workspace-channel-messages
-description: The channel's messages as drawn (C4, plans/workspace-channel-layout.md): grouped lines with their time on hover, the short hover bar, the decision tag, the discussion line, Convert to text
+description: The channel's messages as drawn (C4 of workspace-channel-screen.md): grouped lines with their time on hover, the short hover bar, the decision tag, the discussion line, Convert to text
 ---
 
 ## How are lines grouped?

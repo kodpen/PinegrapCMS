@@ -8,7 +8,7 @@ description: The Workspace comfortable / compact switch: ws-density key per brow
 - `assets/js/workspace.js`: `readDensity()`, `writeDensity()`, `applyDensity()` near the top. `applyDensity(readDensity())` runs at the script's top level, before `start()` draws anything, so a compact screen never flashes comfortable first; a change applies at once, without a reload.
 
 ## Where is the switch?
-- In the overview's header (`showHome()`, `?view=home` on workspace.php): an icon button (`densityButton()`, `bi-arrows-collapse-vertical`, title "Density") opening a `ctxMenu()` with "Comfortable" / "Compact" as checked radio items. Not in the channel menu: that menu holds only the channel's own settings (workspace key rules).
+- In the header of Today, the first page (`showHome()`, `?view=home` on workspace.php): an icon button (`densityButton()`, `bi-arrows-collapse-vertical`, title "Density") opening a `ctxMenu()` with "Comfortable" / "Compact" as checked radio items. Not in the channel menu: that menu holds only the channel's own settings (workspace key rules).
 - Strings `density`, `density_comfortable`, `density_compact` in `ws_home_js_strings()` (includes/workspace/home.php); Turkish "Yoğunluk", "Ferah", "Sıkı".
 
 ## What does compact change?

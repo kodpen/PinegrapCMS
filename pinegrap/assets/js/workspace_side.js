@@ -638,7 +638,7 @@
             return box;
         }
 
-        // ── The places, without a heading: Overview, Inbox, My Tasks ──
+        // ── The places, without a heading: Today, Inbox, My Tasks ──
 
         var top = group('', '').box;
 

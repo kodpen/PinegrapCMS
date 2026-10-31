@@ -4661,10 +4661,36 @@
             } else {
                 var before = this.beforeCaret();
                 var holder = el('span');
+                var fresh = blockNode(kind, markup);
 
-                holder.appendChild(blockNode(kind, markup));
+                fresh.setAttribute('data-ws-new', '1');
+                holder.appendChild(fresh);
 
                 command('insertHTML', ((before !== '' && !/\n$/.test(before)) ? '<br>' : '') + holder.innerHTML + '<br>');
+
+                // The caret on the line after the card: Chrome leaves it
+                // before what a non-editable card brought in, so the next
+                // words or card went above this one. A last line break draws
+                // no line, so a second one holds the line to write on.
+                var placed = this.node.querySelector('[data-ws-new]');
+
+                if (placed) {
+                    var next = placed.nextSibling;
+                    var stop = (next && next.nodeType === 1 && next.tagName === 'BR') ? next : null;
+
+                    placed.removeAttribute('data-ws-new');
+
+                    if (!stop) {
+                        stop = el('br');
+                        placed.parentNode.insertBefore(stop, placed.nextSibling);
+                    }
+
+                    if (!stop.nextSibling) {
+                        stop.parentNode.appendChild(el('br'));
+                    }
+
+                    select(stop.parentNode, indexIn(stop) + 1, stop.parentNode, indexIn(stop) + 1);
+                }
             }
 
             // A line after the card to write on.
@@ -5614,7 +5640,19 @@
             body: node.querySelector('.dialog-body'),
             footer: node.querySelector('.dialog-footer'),
             show: function () { if (instance) { instance.show(); } },
-            hide: function () { if (instance) { instance.hide(); } }
+            hide: function () { if (instance) { instance.hide(); } },
+            // Closes the window, then hands its result over: a Bootstrap 6
+            // dialog stays modal until its closing animation ends, and the
+            // page under it is inert till then, so a box there could take
+            // neither the focus nor the text.
+            finish: function (callback) {
+                if (!instance) {
+                    callback();
+                    return;
+                }
+
+                pgUI.dialog.hide(node).then(function () { callback(); });
+            }
         };
     }
 
@@ -6365,8 +6403,7 @@
                 linesOut.push('| ' + row.map(function (value) { return escape(value) || ' '; }).join(' | ') + ' |');
             });
 
-            win.hide();
-            done(linesOut.join('\n'));
+            win.finish(function () { done(linesOut.join('\n')); });
         }, options.insertLabel);
 
         pgUI.dialog.on(win.node, 'shown', function () { focusCell(-1, 0); });
@@ -6527,8 +6564,7 @@
                 }
             });
 
-            win.hide();
-            done(lines.join('\n'));
+            win.finish(function () { done(lines.join('\n')); });
         });
 
         pgUI.dialog.on(win.node, 'shown', function () { focusRow(rows()[0]); });
@@ -6604,15 +6640,10 @@
             var body = area.value.replace(/\r\n?/g, '\n').replace(/\s+$/, '');
             var name = input.value.trim().replace(/[^A-Za-z0-9_+#.-]/g, '').slice(0, 20);
 
-            win.hide();
-
-            if (body.trim() === '') {
-                done('');
-                return;
-            }
-
             // A line of three backticks inside would end the block early.
-            done('```' + name + '\n' + body.replace(/^(\s*)```/gm, '$1​```') + '\n```');
+            win.finish(function () {
+                done((body.trim() === '') ? '' : '```' + name + '\n' + body.replace(/^(\s*)```/gm, '$1​```') + '\n```');
+            });
         });
 
         pgUI.dialog.on(win.node, 'shown', function () { area.focus(); });
@@ -7036,9 +7067,9 @@
 
         footerButtons(win, !markup, function () {
             var body = area.value.replace(/\r\n?/g, '\n').replace(/\s+$/, '');
+            var result = (body.trim() === '') ? '' : fence() + '\n' + body.replace(/^(\s*)```/gm, '$1​```') + '\n```';
 
-            win.hide();
-            done((body.trim() === '') ? '' : fence() + '\n' + body.replace(/^(\s*)```/gm, '$1​```') + '\n```');
+            win.finish(function () { done(result); });
         }, options.insertLabel);
 
         pgUI.dialog.on(win.node, 'shown', function () { area.focus(); });

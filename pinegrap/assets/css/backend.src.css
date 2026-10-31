@@ -17935,24 +17935,172 @@ html[data-bs-theme="dark"] #ws-menu-side .ws-count.ws-count-mention {
   flex: 1 1 auto;
   min-width: 0;
 }
-/* The overview: what is coming, what was written to the person, what this
-   place is, and beside it the latest decisions. */
+/* The overview as drawn: the greeting with the ways to start, three cards
+   (waiting, due, today's calendar), two (the channels' news, the latest
+   decisions), then the channels to join and what this place is. */
 .ws-home {
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
-  padding: var(--ws-space-4, 1rem);
+  padding: 1.5rem var(--ws-space-4, 1rem) 2.5rem;
+}
+.ws-home > * {
+  max-width: 74rem;
+  margin-right: auto;
+  margin-left: auto;
 }
 .ws-home-hello {
-  font-size: 1.15rem;
-  font-weight: 600;
-  margin: 0 0 .75rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
 }
-.ws-home .md\:col-6 > .ws-home-card {
-  height: 100%;
+.ws-home-hello-text {
+  flex: 1 1 22rem;
+  min-width: 0;
 }
-.ws-home-card + .ws-home-card {
-  margin-top: 1rem;
+.ws-home-date {
+  margin: 0 0 .2rem;
+  font-size: .82rem;
+  color: var(--pg-fg-2);
+}
+.ws-home-greeting {
+  margin: 0;
+  font-size: 1.75rem;
+  font-weight: 800;
+  letter-spacing: -.02em;
+  overflow-wrap: anywhere;
+}
+.ws-home-lead {
+  margin: .35rem 0 0;
+  font-size: .92rem;
+  color: var(--pg-fg-2);
+}
+.ws-home-lead-part {
+  display: inline-block;
+  max-width: 100%;
+}
+.ws-home-grid {
+  display: grid;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+.ws-home-grid-3 {
+  grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
+}
+.ws-home-grid-2 {
+  grid-template-columns: repeat(auto-fit, minmax(22rem, 1fr));
+}
+.ws-home-grid > .ws-home-card {
+  min-width: 0;
+  margin: 0;
+}
+.ws-home-count {
+  margin-left: .4rem;
+  vertical-align: middle;
+}
+.ws-home-count.ws-home-count-hot {
+  background: var(--ws-accent);
+  color: #fff;
+}
+html[data-bs-theme="dark"] .ws-home-count.ws-home-count-hot {
+  color: var(--pg-on-accent);
+}
+.ws-home-sub {
+  padding: .1rem .5rem .25rem;
+  font-size: .72rem;
+  font-weight: 700;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: var(--pg-fg-2);
+}
+/* Today's calendar: the hour, a bar, the title. */
+.ws-home-event {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  padding: .4rem .5rem;
+}
+.ws-home-event-time {
+  flex: 0 0 3rem;
+  font-size: .82rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.ws-home-event-bar {
+  flex: 0 0 3px;
+  align-self: stretch;
+  border-radius: 2px;
+  background: var(--ws-accent);
+}
+.ws-home-event-now .ws-home-event-bar {
+  background: var(--pg-success);
+}
+.ws-home-event-past {
+  opacity: .6;
+}
+.ws-home-event-past .ws-home-event-bar {
+  background: var(--pg-border-color);
+}
+.ws-home-event .ws-home-row-title {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+/* A task due: the box that ticks it off, then the rest opens it. */
+.ws-home-task:hover {
+  background: var(--pg-bg-2);
+}
+.ws-home-done {
+  flex: none;
+  margin-top: .2rem;
+}
+.ws-home-task-open {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+}
+.ws-home-task-done .ws-home-row-title {
+  color: var(--pg-fg-2);
+  text-decoration: line-through;
+}
+/* The channels' news: the channel's sign, its name and count, the last
+   message. */
+.ws-home-digest-icon {
+  display: inline-flex;
+  flex: 0 0 2rem;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: .55rem;
+  background: color-mix(in srgb, var(--ws-ch, var(--ws-accent)) 14%, transparent);
+  color: var(--ws-ch, var(--ws-accent));
+}
+.ws-home-new {
+  margin-left: .45rem;
+  padding: 0 .4rem;
+  border-radius: 999px;
+  background: var(--pg-bg-2);
+  color: var(--pg-fg-2);
+  font-size: .7rem;
+  font-weight: 700;
+  vertical-align: middle;
+}
+.ws-home-new.ws-home-new-mention {
+  background: var(--ws-soft);
+  color: var(--ws-accent);
+}
+.ws-home-digest-time {
+  flex: none;
+  padding-top: .1rem;
+  color: var(--pg-fg-2);
+  white-space: nowrap;
 }
 .ws-home-card .card-header {
   background: transparent;
@@ -18004,9 +18152,7 @@ button.ws-home-row:hover,
   white-space: nowrap;
 }
 .ws-home-row-meta {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
   color: var(--pg-fg-2);
 }
 .ws-home-row-meta b {
@@ -18032,14 +18178,33 @@ button.ws-home-row:hover,
 .ws-home-face .avatar {
   --bs-avatar-size: 1.75rem;
 }
-.ws-home-about {
+/* An approval's or a read receipt's sign in a box the size of a face, so
+   every row's text starts at the same line. */
+.ws-home-waiting .ws-home-row > .bi:first-child {
+  display: inline-flex;
+  flex: 0 0 1.75rem;
+  align-items: center;
+  justify-content: center;
+  height: 1.75rem;
+  margin-top: 0;
+  border-radius: .5rem;
+  background: var(--pg-bg-2);
+}
+.ws-home-about.card {
   margin-top: 1rem;
+  border-color: transparent;
+  border-radius: var(--ws-radius-lg);
+  box-shadow: var(--ws-shadow);
 }
 .ws-home-about > summary {
   cursor: pointer;
   list-style: none;
   font-size: .9rem;
   font-weight: 600;
+  background: transparent;
+}
+.ws-home-about:not([open]) > summary {
+  border-bottom: 0;
 }
 .ws-home-about > summary::-webkit-details-marker {
   display: none;
@@ -18069,15 +18234,6 @@ button.ws-home-row:hover,
   flex-wrap: wrap;
   align-items: center;
   gap: .5rem;
-  margin-top: 1rem;
-  padding: .75rem 1rem;
-  border: 1px dashed var(--pg-border-color);
-  border-radius: var(--ws-radius);
-}
-.ws-home-start-text {
-  flex: 1 1 12rem;
-  font-size: .9rem;
-  font-weight: 600;
 }
 .ws-home-tl {
   position: relative;

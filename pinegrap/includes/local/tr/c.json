@@ -108,6 +108,7 @@
     "Calendar event ({var:1}) was deleted through the API by the application {var:2} (key {var:3}).": "Takvim etkinliği ({var:1}), {var:2} uygulaması tarafından (anahtar {var:3}) API üzerinden silindi.",
     "Calendar navigation": "Takvim gezinmesi",
     "Calendar subscription": "Takvim aboneliği",
+    "Calendar · today": "Takvim · bugün",
     "Calendars": "Takvimler",
     "Calendars are switched off on this site.": "Bu sitede takvimler kapalı.",
     "Calendars read the address at their own pace: Apple and Outlook every hour or so, Google a few times a day. A change made here appears there after the next read.": "Takvimler adresi kendi sıklıklarında okur: Apple ve Outlook yaklaşık saatte bir, Google günde birkaç kez. Burada yapılan değişiklik bir sonraki okumadan sonra orada görünür.",

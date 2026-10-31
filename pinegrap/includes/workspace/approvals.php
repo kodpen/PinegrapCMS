@@ -1178,6 +1178,7 @@ function ws_approvals_js_strings()
         'apv_result'         => lang('See the decision'),
         'apv_count'          => ws_js_template('{var:1} of {var:2} approved', 2),
         'apv_home'           => lang('Approvals waiting for you'),
+        'apv_home_asks'      => lang('asks for your approval'),
         'apv_home_until'     => ws_js_template('until {var:1}', 1),
         'apv_sa_title'       => lang('Title of the request'),
         'apv_sa_text'        => lang('Details'),

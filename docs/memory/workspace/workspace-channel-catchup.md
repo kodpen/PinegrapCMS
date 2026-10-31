@@ -1,6 +1,6 @@
 ---
 name: workspace-channel-catchup
-description: Over a channel's conversation (C2, C3 of plans/workspace-channel-layout.md): the catch-up line in place of the greeting card, the pinned line, one row on a phone
+description: Over a channel's conversation (C2, C3 of workspace-channel-screen.md): the catch-up line in place of the greeting card, the pinned line, one row on a phone
 ---
 
 ## What does a channel show above the conversation?

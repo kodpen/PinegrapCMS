@@ -181,18 +181,12 @@
         return ask;
     }
 
-    // The overview's list of messages waiting for the reader's receipt;
-    // nothing when there are none.
-    function home(data, view, h) {
+    // The messages waiting for the reader's receipt, as rows of the
+    // overview's Waiting for you card; answers how many it put there.
+    function homeRows(data, view, h, into) {
         var items = (data && data.acks) || [];
-
-        if (!items.length) {
-            return null;
-        }
-
         var t = h.t;
         var el = h.el;
-        var section = h.homeCard(t('ack_home'), 'bi-eye');
 
         items.forEach(function (item) {
             var row = h.button('ws-home-row ws-home-unread');
@@ -200,24 +194,25 @@
             var meta = el('small', 'ws-home-row-meta');
 
             row.appendChild(h.icon('bi-eye', 'fg-secondary'));
-            meta.appendChild(el('b', '', t('ack_home_asked', item.asker)));
-            meta.appendChild(document.createTextNode(' · '));
+            meta.appendChild(el('b', '', item.asker));
+            meta.appendChild(document.createTextNode(' ' + t('ack_home_asks') + ' · '));
             meta.appendChild(h.icon(item.channel['private'] ? 'bi-lock' : 'bi-hash'));
             meta.appendChild(document.createTextNode(item.channel.name + ' · ' + item.time));
             text.appendChild(meta);
             text.appendChild(el('span', 'ws-home-row-quote', item.text));
             row.appendChild(text);
+            row.title = t('ack_home');
             row.addEventListener('click', function () { view.open(item.channel.id, item.message_id); });
-            section.body.appendChild(row);
+            into.appendChild(row);
         });
 
-        return section.node;
+        return items.length;
     }
 
     window.PGWsAcks = {
         node: messageNode,
         request: request,
         pinNode: pinNode,
-        home: home
+        homeRows: homeRows
     };
 })();

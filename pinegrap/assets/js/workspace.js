@@ -3074,12 +3074,27 @@
         pgUI.drawer.show(node);
     }
 
-    function hideOffcanvas(node) {
+    // Closes a drawer; then runs what comes after it, when given, once it
+    // has closed: a Bootstrap 6 drawer stays modal until its closing
+    // animation ends, and the page under it is inert till then, so a box
+    // there could take neither the focus nor the text.
+    function hideOffcanvas(node, then) {
         var instance = pgUI.drawer.find(node);
 
-        if (instance) {
-            instance.hide();
+        if (!instance) {
+            if (then) {
+                then();
+            }
+
+            return;
         }
+
+        if (then) {
+            pgUI.drawer.hide(node).then(function () { then(); });
+            return;
+        }
+
+        instance.hide();
     }
 
     // The time on a task's due date and its e-mail reminder, a box of the task
@@ -3468,8 +3483,7 @@
                     row.appendChild(words);
                     row.addEventListener('click', function () {
                         api('ws_block_pull', { id: item.id }).then(function (pulled) {
-                            hideOffcanvas(node);
-                            onPick(pulled);
+                            hideOffcanvas(node, function () { onPick(pulled); });
                         }).catch(fail);
                     });
                     list.appendChild(row);
@@ -7433,13 +7447,12 @@
             var head = el('div', 'ws-head');
             head.appendChild(channelsToggle());
 
+            // The name alone: the day stands over the greeting below.
             var title = el('div', 'ws-head-title');
             var h = el('h2');
             h.appendChild(icon('bi-house', 'me-1 fg-secondary'));
             h.appendChild(document.createTextNode(t('home')));
             title.appendChild(h);
-            var date = el('div', 'ws-topic');
-            title.appendChild(date);
             head.appendChild(title);
 
             var actions = el('div', 'ws-head-actions');
@@ -7463,7 +7476,6 @@
                     return;
                 }
 
-                date.textContent = data.date;
                 self.drawHome(body, data);
             }).catch(function (error) {
                 clear(body);
@@ -7471,115 +7483,139 @@
             });
         },
 
+        // The overview as drawn: the greeting, only here, with the ways to
+        // start; then what waits for the person, their tasks due today or
+        // before, today's calendar; then what happened in their channels and
+        // the latest decisions; the channels to join and what this place is
+        // for at the end.
         drawHome: function (body, data) {
             var self = this;
 
             clear(body);
 
-            var layout = el('div', 'row g-5');
-            var main = el('div', 'xl:col-8');
-            var side = el('div', 'xl:col-4');
-            layout.appendChild(main);
-            layout.appendChild(side);
+            var waitingCount = (data.talk || []).filter(function (item) { return item.unread; }).length
+                + (data.approvals || []).length + (data.acks || []).length;
 
-            body.appendChild(el('h3', 'ws-home-hello', t('home_hello', data.name)));
-            body.appendChild(layout);
+            var hello = el('div', 'ws-home-hello');
+            var words = el('div', 'ws-home-hello-text');
 
-            var pair = el('div', 'row g-5');
-            var tasksCol = el('div', 'md:col-6');
-            var talkCol = el('div', 'md:col-6');
-            pair.appendChild(tasksCol);
-            pair.appendChild(talkCol);
-            main.appendChild(pair);
+            words.appendChild(el('p', 'ws-home-date', data.date));
+            words.appendChild(el('h1', 'ws-home-greeting', t('home_greeting', data.greeting || '', data.name)));
+            // The counts as parts that wrap whole, each dot at a line's end.
+            var lead = el('p', 'ws-home-lead');
+            var parts = data.lead || [];
 
-            // Coming up: the person's open tasks, the nearest due date first.
-            var tasks = homeCard(t('home_tasks'), 'bi-check2-square', CFG.urls.tasks, t('my_tasks'));
+            parts.forEach(function (part, index) {
+                var last = (index === parts.length - 1);
 
-            if (data.tasks_open) {
-                var counts = el('div', 'ws-home-counts');
-                counts.appendChild(el('span', '', t('home_tasks_count', data.tasks_open)));
+                lead.appendChild(el('span', 'ws-home-lead-part', last ? part : part + ' ·'));
 
-                if (data.tasks_overdue) {
-                    counts.appendChild(el('span', 'fg-danger', t('home_tasks_overdue', data.tasks_overdue)));
+                if (!last) {
+                    lead.appendChild(document.createTextNode(' '));
                 }
-
-                // The pressing ones lead the list; a link opens all of them.
-                if (data.tasks_hot) {
-                    var hotLink = el('a', 'ws-home-hot');
-                    hotLink.href = CFG.urls.tasks + '?urgent=1';
-                    hotLink.appendChild(icon('bi-fire', 'me-1'));
-                    hotLink.appendChild(document.createTextNode(t('home_tasks_hot', data.tasks_hot)));
-                    counts.appendChild(hotLink);
-                }
-
-                tasks.body.appendChild(counts);
-            }
-
-            if (!data.tasks.length) {
-                tasks.body.appendChild(el('div', 'ws-home-empty', t('home_tasks_empty')));
-            }
-
-            data.tasks.forEach(function (task) {
-                var hot = (task.priority === 'urgent' || task.priority === 'high');
-                var row = button('ws-home-row' + (hot ? ' ws-home-row-hot ws-home-row-' + task.priority : ''));
-                row.appendChild(icon(task.overdue ? 'bi-exclamation-circle' : (hot ? 'bi-fire' : 'bi-circle'), task.overdue ? 'fg-danger' : (hot ? 'ws-home-hot-icon' : 'fg-secondary')));
-
-                var text = el('span', 'ws-home-row-text');
-                var titleLine = el('span', 'ws-home-row-title', task.title);
-
-                if (hot) {
-                    titleLine.appendChild(el('span', 'ws-home-priority ws-home-priority-' + task.priority, (BOOT.priorities || {})[task.priority] || task.priority));
-                }
-
-                text.appendChild(titleLine);
-                text.appendChild(el('small', task.overdue ? 'fg-danger' : 'fg-secondary', task.number + ' · ' + task.due_label));
-                row.appendChild(text);
-                row.addEventListener('click', function () {
-                    taskDrawer.open(task.id, null, function () { self.showHome(false); });
-                });
-                tasks.body.appendChild(row);
             });
 
-            tasksCol.appendChild(tasks.node);
+            words.appendChild(lead);
+            hello.appendChild(words);
 
-            // Written to the person: replies to their messages and mentions.
-            var talk = homeCard(t('home_talk'), 'bi-chat-left-text');
+            // A way to start, always in sight.
+            var start = el('div', 'ws-home-start');
+            var created = function (id) { self.reloadChannels(id); };
+            var publicButton = button('btn btn-sm btn-solid theme-primary rounded-pill px-4', t('home_new_channel'), 'bi-plus-lg');
+            publicButton.addEventListener('click', function () { channelForm(null, { kind: 'public' }, created); });
+            start.appendChild(publicButton);
 
-            if (!data.talk.length) {
-                talk.body.appendChild(el('div', 'ws-home-empty', t('home_talk_empty')));
+            var privateButton = button('btn btn-sm btn-outline theme-secondary rounded-pill px-4', t('home_new_private'), 'bi-lock');
+            privateButton.addEventListener('click', function () { channelForm(null, { kind: 'private' }, created); });
+            start.appendChild(privateButton);
+
+            if ((CFG.guests || {}).can_host) {
+                var guestButton = button('btn btn-sm btn-outline theme-secondary rounded-pill px-4', t('guest_start'), 'bi-door-open');
+                guestButton.addEventListener('click', function () { guestForm(created); });
+                start.appendChild(guestButton);
             }
 
-            data.talk.forEach(function (item) {
-                var row = button('ws-home-row' + (item.unread ? ' ws-home-unread' : ''));
-                var face = el('span', 'ws-home-face');
-                face.appendChild(avatar(item.sender));
-                row.appendChild(face);
+            hello.appendChild(start);
+            body.appendChild(hello);
+
+            var first = el('div', 'ws-home-grid ws-home-grid-3');
+            first.appendChild(self.homeWaiting(data, waitingCount));
+            first.appendChild(self.homeDue(data));
+            first.appendChild(self.homeCalendar(data));
+            body.appendChild(first);
+
+            var second = el('div', 'ws-home-grid ws-home-grid-2');
+            second.appendChild(self.homeDigest(data));
+
+            // Beside it: the latest decisions, unfiltered.
+            var decisions = homeCard(t('home_decisions'), 'bi-clock-history', CFG.urls.timeline, t('nav_timeline'));
+
+            if (!data.decisions.length) {
+                decisions.body.appendChild(el('div', 'ws-home-empty', t('home_decisions_empty')));
+            }
+
+            var line = el('div', 'ws-home-tl');
+
+            data.decisions.forEach(function (item) {
+                var row = button('ws-home-tl-item' + (item.claude ? ' ws-tl-by-claude' : ''));
+                var dot = el('span', 'ws-home-tl-dot');
+                dot.appendChild(icon(item.claude ? 'bi-stars' : 'bi-patch-check'));
+                row.appendChild(dot);
 
                 var text = el('span', 'ws-home-row-text');
                 var meta = el('small', 'ws-home-row-meta');
-                meta.appendChild(el('b', '', item.sender ? item.sender.name : ''));
-                meta.appendChild(document.createTextNode(' ' + (item.kind === 'reply' ? t('home_reply') : t('home_mention')) + ' · '));
                 meta.appendChild(icon(item.channel.private ? 'bi-lock' : 'bi-hash'));
-                meta.appendChild(document.createTextNode(item.channel.name + ' · ' + item.time));
+                meta.appendChild(document.createTextNode(item.channel.name + ' · ' + item.day_label + ' ' + item.time));
                 text.appendChild(meta);
-                text.appendChild(el('span', 'ws-home-row-quote', item.text));
+
+                var quote = el('span', 'ws-home-row-quote ws-msg-body');
+                setHtml(quote, item.html);
+                text.appendChild(quote);
                 row.appendChild(text);
-                row.addEventListener('click', function () { self.open(item.channel.id, item.id); });
-                talk.body.appendChild(row);
+                row.addEventListener('click', function (event) {
+                    if (event.target.closest('a')) {
+                        return;
+                    }
+
+                    self.open(item.channel.id, item.id);
+                });
+                line.appendChild(row);
             });
 
-            talkCol.appendChild(talk.node);
+            decisions.body.appendChild(line);
+            second.appendChild(decisions.node);
 
-            // Approvals and read receipts waiting for the person, when there
-            // are any (workspace_approvals.js, workspace_acks.js).
-            [window.PGWsApprovals, window.PGWsAcks].forEach(function (feature) {
-                var waiting = feature ? feature.home(data, self, featureHelpers()) : null;
+            body.appendChild(second);
 
-                if (waiting) {
-                    main.appendChild(waiting);
-                }
-            });
+            // Public channels the person is not in yet.
+            if (data.join.length) {
+                var join = homeCard(t('home_join'), 'bi-door-open');
 
+                data.join.forEach(function (channel) {
+                    var row = el('div', 'ws-home-row ws-home-join');
+                    row.appendChild(icon('bi-hash', 'fg-secondary'));
+
+                    var text = el('span', 'ws-home-row-text');
+                    text.appendChild(el('span', 'ws-home-row-title', channel.name));
+                    text.appendChild(el('small', 'fg-secondary', (channel.topic ? channel.topic + ' · ' : '') + t('home_members', channel.members)));
+                    row.appendChild(text);
+
+                    var joinButton = button('btn btn-sm btn-outline theme-primary rounded-pill', t('join'));
+                    joinButton.addEventListener('click', function () {
+                        joinButton.disabled = true;
+                        api('ws_channel_join', { channel_id: channel.id }).then(function () {
+                            self.reloadChannels(channel.id);
+                        }).catch(function (error) {
+                            joinButton.disabled = false;
+                            fail(error);
+                        });
+                    });
+                    row.appendChild(joinButton);
+                    join.body.appendChild(row);
+                });
+
+                body.appendChild(join.node);
+            }
             // What this place is for: open for somebody who has not written
             // anything yet, folded for the others.
             var about = el('details', 'card ws-home-about');
@@ -7622,95 +7658,250 @@
 
             aboutBody.appendChild(tiles);
             about.appendChild(aboutBody);
-            main.appendChild(about);
+            body.appendChild(about);
 
-            // A way to start, always in sight.
-            var start = el('div', 'ws-home-start');
-            start.appendChild(el('span', 'ws-home-start-text', t('home_start')));
+        },
 
-            var created = function (id) { self.reloadChannels(id); };
-            var publicButton = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('home_new_channel'), 'bi-hash');
-            publicButton.addEventListener('click', function () { channelForm(null, { kind: 'public' }, created); });
-            start.appendChild(publicButton);
-
-            var privateButton = button('btn btn-sm btn-outline theme-secondary rounded-pill px-5', t('home_new_private'), 'bi-lock');
-            privateButton.addEventListener('click', function () { channelForm(null, { kind: 'private' }, created); });
-            start.appendChild(privateButton);
-
-            if ((CFG.guests || {}).can_host) {
-                var guestButton = button('btn btn-sm btn-outline theme-secondary rounded-pill px-5', t('guest_start'), 'bi-door-open');
-                guestButton.addEventListener('click', function () { guestForm(created); });
-                start.appendChild(guestButton);
+        // A card's heading with the count of what is in it, when there is
+        // any; in the accent for what waits for an answer.
+        homeCount: function (card, count, hot) {
+            if (count > 0) {
+                card.node.querySelector('h3').appendChild(el('span', 'ws-count ws-home-count' + (hot ? ' ws-home-count-hot' : ''), count > 99 ? '99+' : String(count)));
             }
-            main.appendChild(start);
+        },
 
-            // Beside it: the latest decisions, unfiltered.
-            var decisions = homeCard(t('home_decisions'), 'bi-clock-history', CFG.urls.timeline, t('nav_timeline'));
+        // Waiting for the person: approvals and read receipts asked of them
+        // (workspace_approvals.js, workspace_acks.js), then the replies to
+        // their messages and the mentions of them, the unread ones marked;
+        // the ones already read only while the card has fewer than five rows.
+        homeWaiting: function (data, count) {
+            var self = this;
+            var card = homeCard(t('home_waiting'), 'bi-inbox');
+            var helpers = featureHelpers();
+            var rows = 0;
 
-            if (!data.decisions.length) {
-                decisions.body.appendChild(el('div', 'ws-home-empty', t('home_decisions_empty')));
-            }
+            card.node.classList.add('ws-home-waiting');
+            self.homeCount(card, count, true);
 
-            var line = el('div', 'ws-home-tl');
+            [window.PGWsApprovals, window.PGWsAcks].forEach(function (feature) {
+                if (feature && feature.homeRows) {
+                    rows += feature.homeRows(data, self, helpers, card.body);
+                }
+            });
 
-            data.decisions.forEach(function (item) {
-                var row = button('ws-home-tl-item' + (item.claude ? ' ws-tl-by-claude' : ''));
-                var dot = el('span', 'ws-home-tl-dot');
-                dot.appendChild(icon(item.claude ? 'bi-stars' : 'bi-patch-check'));
-                row.appendChild(dot);
+            data.talk.forEach(function (item) {
+                if (!item.unread && (rows >= 5)) {
+                    return;
+                }
+
+                var row = button('ws-home-row' + (item.unread ? ' ws-home-unread' : ''));
+                var face = el('span', 'ws-home-face');
+                face.appendChild(avatar(item.sender));
+                row.appendChild(face);
 
                 var text = el('span', 'ws-home-row-text');
                 var meta = el('small', 'ws-home-row-meta');
+                meta.appendChild(el('b', '', item.sender ? item.sender.name : ''));
+                meta.appendChild(document.createTextNode(' ' + (item.kind === 'reply' ? t('home_reply') : t('home_mention')) + ' · '));
                 meta.appendChild(icon(item.channel.private ? 'bi-lock' : 'bi-hash'));
-                meta.appendChild(document.createTextNode(item.channel.name + ' · ' + item.day_label + ' ' + item.time));
+                meta.appendChild(document.createTextNode(item.channel.name + ' · ' + item.time));
                 text.appendChild(meta);
-
-                var quote = el('span', 'ws-home-row-quote ws-msg-body');
-                setHtml(quote, item.html);
-                text.appendChild(quote);
+                text.appendChild(el('span', 'ws-home-row-quote', item.text));
                 row.appendChild(text);
-                row.addEventListener('click', function (event) {
-                    if (event.target.closest('a')) {
+                row.addEventListener('click', function () { self.open(item.channel.id, item.id); });
+                card.body.appendChild(row);
+                rows++;
+            });
+
+            if (!rows) {
+                card.body.appendChild(el('div', 'ws-home-empty', t('home_waiting_empty')));
+            }
+
+            return card.node;
+        },
+
+        // The person's tasks due today or before, the earliest first; with
+        // none, the ones coming up. Each is ticked off from here, as in the
+        // task lists, or opened. Under them how many are open, overdue and
+        // pressing.
+        homeDue: function (data) {
+            var self = this;
+            var card = homeCard(t('home_due'), 'bi-check2-square', CFG.urls.tasks, t('my_tasks'));
+            var list = (data.due && data.due.length) ? data.due : data.tasks;
+
+            self.homeCount(card, data.tasks_due || 0);
+
+            if (!(data.due && data.due.length) && data.tasks.length) {
+                card.body.appendChild(el('div', 'ws-home-sub', t('home_tasks')));
+            }
+
+            if (!list.length) {
+                card.body.appendChild(el('div', 'ws-home-empty', t('home_tasks_empty')));
+            }
+
+            list.forEach(function (task) {
+                var hot = (task.priority === 'urgent' || task.priority === 'high');
+                var row = el('div', 'ws-home-row ws-home-task' + (hot ? ' ws-home-row-hot ws-home-row-' + task.priority : ''));
+                var done = el('input', 'check ws-home-done');
+
+                done.type = 'checkbox';
+                done.title = t('mark_done');
+                done.setAttribute('aria-label', t('mark_done') + ': ' + task.title);
+                done.addEventListener('change', function () {
+                    if (!done.checked) {
                         return;
                     }
 
-                    self.open(item.channel.id, item.id);
+                    done.disabled = true;
+                    row.classList.add('ws-home-task-done');
+                    api('ws_task_status', { task_id: task.id, status: 'done' }).then(function () {
+                        toast(t('task_saved'), 'success');
+                        self.showHome(false);
+                    }).catch(function (error) {
+                        done.checked = false;
+                        done.disabled = false;
+                        row.classList.remove('ws-home-task-done');
+                        fail(error);
+                    });
                 });
-                line.appendChild(row);
+                row.appendChild(done);
+
+                var open = button('ws-home-task-open');
+                var text = el('span', 'ws-home-row-text');
+                var titleLine = el('span', 'ws-home-row-title', task.title);
+
+                if (hot) {
+                    titleLine.appendChild(el('span', 'ws-home-priority ws-home-priority-' + task.priority, (BOOT.priorities || {})[task.priority] || task.priority));
+                }
+
+                text.appendChild(titleLine);
+                text.appendChild(el('small', task.overdue ? 'fg-danger' : 'fg-secondary', task.number + ' · ' + task.due_label));
+                open.appendChild(text);
+                open.addEventListener('click', function () {
+                    taskDrawer.open(task.id, null, function () { self.showHome(false); });
+                });
+                row.appendChild(open);
+                card.body.appendChild(row);
             });
 
-            decisions.body.appendChild(line);
-            side.appendChild(decisions.node);
+            if (data.tasks_open) {
+                var counts = el('div', 'ws-home-counts');
+                counts.appendChild(el('span', '', t('home_tasks_count', data.tasks_open)));
 
-            // Public channels the person is not in yet.
-            if (data.join.length) {
-                var join = homeCard(t('home_join'), 'bi-door-open');
+                if (data.tasks_overdue) {
+                    counts.appendChild(el('span', 'fg-danger', t('home_tasks_overdue', data.tasks_overdue)));
+                }
 
-                data.join.forEach(function (channel) {
-                    var row = el('div', 'ws-home-row ws-home-join');
-                    row.appendChild(icon('bi-hash', 'fg-secondary'));
+                // The pressing ones, a link to all of them.
+                if (data.tasks_hot) {
+                    var hotLink = el('a', 'ws-home-hot');
+                    hotLink.href = CFG.urls.tasks + '?urgent=1';
+                    hotLink.appendChild(icon('bi-fire', 'me-1'));
+                    hotLink.appendChild(document.createTextNode(t('home_tasks_hot', data.tasks_hot)));
+                    counts.appendChild(hotLink);
+                }
 
-                    var text = el('span', 'ws-home-row-text');
-                    text.appendChild(el('span', 'ws-home-row-title', channel.name));
-                    text.appendChild(el('small', 'fg-secondary', (channel.topic ? channel.topic + ' · ' : '') + t('home_members', channel.members)));
-                    row.appendChild(text);
-
-                    var joinButton = button('btn btn-sm btn-outline theme-primary rounded-pill', t('join'));
-                    joinButton.addEventListener('click', function () {
-                        joinButton.disabled = true;
-                        api('ws_channel_join', { channel_id: channel.id }).then(function () {
-                            self.reloadChannels(channel.id);
-                        }).catch(function (error) {
-                            joinButton.disabled = false;
-                            fail(error);
-                        });
-                    });
-                    row.appendChild(joinButton);
-                    join.body.appendChild(row);
-                });
-
-                side.appendChild(join.node);
+                card.body.appendChild(counts);
             }
+
+            return card.node;
+        },
+
+        // Today's plan items about the person and their own calendars'
+        // events (home.php): the hour, a bar, the title; the one going on
+        // now marked, the ones over dimmed, a meeting's call to join.
+        homeCalendar: function (data) {
+            var card = homeCard(t('home_calendar'), 'bi-calendar-event', CFG.urls.calendar || '', t('home_calendar_more'));
+            var items = data.calendar || [];
+
+            if (!items.length) {
+                card.body.appendChild(el('div', 'ws-home-empty', t('home_calendar_empty')));
+            }
+
+            items.forEach(function (item) {
+                var row = el('div', 'ws-home-event' + (item.now ? ' ws-home-event-now' : '') + (item.past ? ' ws-home-event-past' : ''));
+
+                row.appendChild(el('span', 'ws-home-event-time', item.all_day ? t('home_all_day') : item.time));
+                row.appendChild(el('span', 'ws-home-event-bar'));
+
+                var text = el('span', 'ws-home-row-text');
+                text.appendChild(el('span', 'ws-home-row-title', item.title));
+
+                if (!item.all_day || item.layer) {
+                    text.appendChild(el('small', 'fg-secondary', [item.all_day ? '' : item.time + '–' + item.until, item.layer].filter(Boolean).join(' · ')));
+                }
+
+                row.appendChild(text);
+
+                if (item.now) {
+                    row.appendChild(el('span', 'badge rounded-pill theme-success', t('home_now')));
+                }
+
+                // A call link is followed only when it is a web address.
+                if (item.meeting_url && /^https?:/i.test(item.meeting_url) && !item.past) {
+                    var call = el('a', 'btn btn-sm btn-outline theme-secondary rounded-pill', t('join'));
+                    call.href = item.meeting_url;
+                    call.target = '_blank';
+                    call.rel = 'noopener noreferrer';
+                    row.appendChild(call);
+                }
+
+                card.body.appendChild(row);
+            });
+
+            return card.node;
+        },
+
+        // What happened in the person's channels: the ones with messages
+        // they have not read, the latest first, each with its count and its
+        // last message.
+        homeDigest: function (data) {
+            var self = this;
+            var card = homeCard(t('home_digest'), 'bi-chat-square-text');
+            var items = data.digest || [];
+
+            if (!items.length) {
+                card.body.appendChild(el('div', 'ws-home-empty', t('home_digest_empty')));
+            }
+
+            items.forEach(function (item) {
+                var channel = (BOOT.channels || []).filter(function (one) { return one.id === item.id; })[0] || item;
+                var row = button('ws-home-row ws-home-digest');
+                var tile = el('span', 'ws-home-digest-icon');
+
+                tile.setAttribute('aria-hidden', 'true');
+                tile.appendChild(channelIcon(channel));
+
+                if (channel.hex) {
+                    tile.style.setProperty('--ws-ch', channel.hex);
+                }
+
+                row.appendChild(tile);
+
+                var text = el('span', 'ws-home-row-text');
+                var name = el('span', 'ws-home-row-title');
+                name.appendChild(document.createTextNode(item.name));
+                name.appendChild(el('span', 'ws-home-new' + (item.mentions ? ' ws-home-new-mention' : ''), t('home_digest_new', item.unread > 99 ? '99+' : item.unread)));
+                text.appendChild(name);
+
+                if (item.text || item.sender) {
+                    var last = el('span', 'ws-home-row-quote');
+
+                    if (item.sender) {
+                        last.appendChild(el('b', '', item.sender + ': '));
+                    }
+
+                    last.appendChild(document.createTextNode(item.text));
+                    text.appendChild(last);
+                }
+
+                row.appendChild(text);
+                row.appendChild(el('small', 'ws-home-digest-time', item.time));
+                row.addEventListener('click', function () { self.open(item.id, 0); });
+                card.body.appendChild(row);
+            });
+
+            return card.node;
         },
 
         // ── Discussions (threads.php) ──
