@@ -287,7 +287,21 @@ if (!$_POST) {
         }
     }
 
+    // The weight, dimension and commission limit columns, by position: a
+    // row whose cell in one of them is not a number is left out whole and
+    // named in the result, like a row of a money cell that is not an amount.
+    $decimal_positions = array();
+
+    foreach (array('weight', 'length', 'width', 'height', 'commission_rate_limit') as $decimal_column) {
+        $decimal_position = array_search($decimal_column, $column_names, true);
+
+        if ($decimal_position !== false) {
+            $decimal_positions[$decimal_column] = $decimal_position;
+        }
+    }
+
     $rows_not_amounts = array();
+    $rows_not_numbers = array();
     $rows_not_customs = array();
     // Rows of products already on file, left as they are because Update
     // Existing Products is off.
@@ -312,6 +326,11 @@ if (!$_POST) {
             // file. The message is HTML, so the name is escaped.
             if ($row_read['refused']) {
                 $rows_not_amounts[] = $row_number . ' (' . htmlspecialchars((string) $row[$name_key], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . ')';
+                continue;
+            }
+
+            if (pg_products_import_row_decimals_refused($row, $decimal_positions)) {
+                $rows_not_numbers[] = $row_number . ' (' . htmlspecialchars((string) $row[$name_key], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . ')';
                 continue;
             }
 
@@ -884,6 +903,13 @@ if (!$_POST) {
     if ($rows_not_amounts) {
         $rows_listed = implode(', ', array_slice($rows_not_amounts, 0, 50)) . ((count($rows_not_amounts) > 50) ? ', ...' : '');
         $liveform_view_products->add_error(lang(array('string' => 'These rows were not imported because a price, compare-at price or extra shipping cost in them is not an amount: {var:1}.', 'vars' => array($rows_listed))));
+    }
+
+    // Rows left out because a weight, dimension or commission limit cell is
+    // not a number.
+    if ($rows_not_numbers) {
+        $rows_listed = implode(', ', array_slice($rows_not_numbers, 0, 50)) . ((count($rows_not_numbers) > 50) ? ', ...' : '');
+        $liveform_view_products->add_error(lang(array('string' => 'These rows were not imported because a weight, length, width, height or commission rate limit in them is not a number: {var:1}.', 'vars' => array($rows_listed))));
     }
 
     // Rows left out because an HS code or a country of origin cannot be stored.
