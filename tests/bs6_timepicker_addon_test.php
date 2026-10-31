@@ -6,7 +6,8 @@
  * panel screen calls .datetimepicker() or .timepicker() since the date and
  * time fields moved to pg_fields.js, so the converted screens no longer load
  * the add-on, while they still print the picker options pg_fields.js reads.
- * The site renderers draw theirs on the same control, so no file loads it.
+ * The site renderers draw theirs on the same control, so no file loads it,
+ * and the add-on itself is no longer shipped.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -72,7 +73,8 @@ function test_bs6_timepicker_addon_loaded_nowhere()
 			continue;
 		}
 		$path = str_replace('\\', '/', substr($file->getPathname(), strlen($root)));
-		if (strpos($path, 'assets/lib/') === 0) {
+		// clean_up.php names the files to delete them on an updated site.
+		if ((strpos($path, 'assets/lib/') === 0) || ($path === 'clean_up.php')) {
 			continue;
 		}
 		if (strpos((string) file_get_contents($file->getPathname()), 'jquery-ui-timepicker-addon') !== false) {
