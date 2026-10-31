@@ -6673,7 +6673,10 @@ function pg_pb_apply_stock_flag(&$product, $product_id = 0)
 
     $tracking = !empty($product['inventory']);
     $quantity = isset($product['inventory_quantity']) ? trim((string) $product['inventory_quantity']) : '';
-    $empty    = ($quantity !== '') && ((int) $quantity <= 0);
+    // An empty quantity is stored as 0, so it is counted as 0 here too: a
+    // product created tracked with the box left empty is out of stock from
+    // its first row, not only after its first edit save.
+    $empty    = ((int) $quantity <= 0);
 
     $product['out_of_stock'] = ($tracking && $empty) ? '1' : '0';
 

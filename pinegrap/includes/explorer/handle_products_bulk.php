@@ -119,6 +119,22 @@ function pg_explorer_bulk_quantity_value($value)
     return (int) $value;
 }
 
+// The quantity of the product list's Modify Selected stock change: read as
+// the Catalog Manager reads it (pg_explorer_bulk_quantity_value()), and a
+// whole count of zero or more, or null. That screen has no sign of its own
+// for the figure: its method says which way it goes, so a decrease by -5
+// would raise the stock.
+function pg_products_mass_quantity_value($value)
+{
+    $value = trim((string) $value);
+
+    if (strpos($value, '-') === 0) {
+        return null;
+    }
+
+    return pg_explorer_bulk_quantity_value($value);
+}
+
 // A product's stock quantity after a bulk change: set to the value ('value'),
 // raised by it ('increase') or lowered by it (anything else). Stock does not
 // go negative: a shelf holds none or some.

@@ -225,9 +225,9 @@ if (!defined('PG_INIT_LOADED')) {
 									'class'=>'form-control text-center border-start-0 border-end-0',
 									'maxlength'=>'9',
 									'inputmode'=>'numeric',
-									'data-inputmask-alias'=>'decimal',
-									'data-inputmask-placeholder'=>'0'						
-									
+									'data-inputmask-alias'=>'integer',
+									'data-inputmask-allowminus'=>'false',
+									'data-inputmask-placeholder'=>'0'
 									))?>
                                 <button class="btn material-icons plus border border-start-0" type="button" aria-label="<?=h(lang('Increase'))?>">add</button>
 							</div>

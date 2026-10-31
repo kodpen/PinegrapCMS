@@ -126,3 +126,42 @@ function test_explorer_bulk_quantity_value()
 		pg_assert_same(null, pg_explorer_bulk_quantity_value($refused), 'refused: ' . $refused);
 	}
 }
+
+// Modify Selected on the product list reads its stock quantity with the
+// Catalog Manager's reader and takes a whole count of zero or more only: a
+// Turkish 1.200 was written as 1, 12.5 as 12 and a decrease by -5 raised the
+// stock.
+function test_products_mass_quantity_value()
+{
+	pg_assert_same(0, pg_products_mass_quantity_value('0'), 'zero');
+	pg_assert_same(25, pg_products_mass_quantity_value(' 25 '), 'trimmed');
+	pg_assert_same(1200, pg_products_mass_quantity_value('1.200,00'), 'Turkish grouped');
+
+	$decimal = pg_number_separators()['decimal'];
+	$thousands = ($decimal === ',') ? '.' : ',';
+
+	pg_assert_same(1200, pg_products_mass_quantity_value('1' . $thousands . '200'), 'grouped the panel\'s way');
+
+	foreach (array('', 'abc', '12.5', '2,5', '-5', '-0,5') as $refused) {
+		pg_assert_same(null, pg_products_mass_quantity_value($refused), 'refused: ' . $refused);
+	}
+}
+
+// The screen refuses an unreadable quantity before the product loop, writes
+// the count it read and never the posted text.
+function test_products_mass_change_quantity_is_read_before_the_write()
+{
+	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_products.php');
+
+	pg_assert_contains("require_once(PG_FUNCTIONS_DIR . '/includes/explorer/handle_products_bulk.php');", $screen, 'loads the reader');
+	pg_assert_true(strpos($screen, 'pg_products_mass_quantity_value(') !== false, 'reads with the shared reader');
+	pg_assert_true(strpos($screen, 'pg_products_mass_quantity_value(') < strpos($screen, 'foreach ($_POST[\'products\'] as $product_id)'), 'before any product is touched');
+	pg_assert_true(strpos($screen, 'pg_explorer_bulk_product_new_quantity(') !== false, 'the new count is worked out by the shared helper');
+	pg_assert_same(0, preg_match('/[+\-]\s*\$_POST\[\'edit_inventory_quantity\'\]/', $screen), 'no arithmetic on the posted text');
+	pg_assert_same(false, strpos($screen, "'\" . e(\$_POST['edit_inventory_quantity']"), 'the posted text is not written');
+
+	$template = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/templates/edit_products.php');
+	$box = substr($template, (int) strpos($template, "'id' => 'inventory_quantity'"), 400);
+
+	pg_assert_contains("'data-inputmask-alias'=>'integer'", $box, 'the box is an integer field');
+}
