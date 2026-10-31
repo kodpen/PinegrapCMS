@@ -1713,22 +1713,20 @@ body.api-drawer-open .pg-chat-launcher { display: none !important; }
 		' . $liveform_messages . '
 	</div></div>
 
-	<div class="d-flex flex-wrap align-items-center gap-3 mb-5">
-		<div class="input-group input-group-sm" style="max-width:280px">
-			<span class="input-group-text"><i class="bi bi-search"></i></span>
+	' . pg_screen_toolbar(array(
+		'primary'   => '<button type="button" class="btn btn-sm btn-solid theme-primary rounded-pill px-5" data-bs-toggle="dialog" data-bs-target="#api_new"><i class="bi bi-key me-1" aria-hidden="true"></i>' . lang('New Application') . '</button>',
+		'secondary' => array(
+			array('label' => lang('API Documentation'), 'url' => 'api_docs.php', 'icon' => 'bi-file-earmark-text'),
+			array('label' => lang('API Settings'), 'url' => 'settings_api.php', 'icon' => 'bi-sliders'),
+		),
+		'search'    => '<div class="input-group input-group-sm pg-toolbar-search" style="max-width:280px">
+			<span class="input-group-text"><i class="bi bi-search" aria-hidden="true"></i></span>
 			<input type="text" class="form-control" id="api_filter" aria-label="' . h(lang('Search application')) . '" placeholder="' . lang('Search application') . '" autocomplete="off">
 		</div>
 		<div class="visually-hidden" id="api_filter_status" role="status"
 			data-found="' . h(lang(array('string' => '{var:1} found', 'vars' => '{1}'))) . '"
-			data-none="' . h(lang('Nothing found.')) . '"></div>
-		<div class="flex-grow-1"></div>
-		<a class="btn btn-sm btn-outline theme-secondary" href="api_docs.php">
-			<i class="bi bi-file-earmark-text me-1"></i>' . lang('API Documentation') . '</a>
-		<a class="btn btn-sm btn-outline theme-secondary" href="settings_api.php">
-			<i class="bi bi-sliders me-1"></i>' . lang('API Settings') . '</a>
-		<button type="button" class="btn btn-sm btn-solid theme-primary" data-bs-toggle="dialog" data-bs-target="#api_new">
-			<i class="bi bi-key me-1"></i>' . lang('New Application') . '</button>
-	</div>
+			data-none="' . h(lang('Nothing found.')) . '"></div>',
+	), array('class' => 'mb-5')) . '
 
 	<div class="card">
 		<div class="card-header d-flex align-items-center">

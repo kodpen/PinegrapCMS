@@ -612,16 +612,19 @@ pg_page_shell([
     ' . $liveform->output_errors() . '
     ' . $liveform->get_warnings() . '
     ' . $liveform->output_notices() . '
-    <nav id="button_bar" class="pg-toolbar navigation mb-5" aria-label="' . lang('Button Bar') . '">
-        <a class="btn btn-sm btn-text theme-secondary" href="workspace.php"><i class="bi bi-chat-square-text me-1" aria-hidden="true"></i>' . h(lang('Channels')) . '</a>
-        <a class="btn btn-sm btn-text theme-secondary" href="workspace_board.php"><i class="bi bi-calendar-week me-1" aria-hidden="true"></i>' . h(lang('Planning Board')) . '</a>
-    </nav>
+    ' . pg_screen_toolbar(array(
+        // Opens the new department form at the top of the Departments card.
+        'primary'   => '<button type="button" class="btn btn-sm btn-solid theme-primary rounded-pill px-5" data-bs-toggle="collapse" data-bs-target="#ws-dept-new" aria-controls="ws-dept-new" aria-expanded="false"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i>' . h(lang('New department')) . '</button>',
+        'secondary' => array(
+            array('label' => lang('Channels'), 'url' => 'workspace.php', 'icon' => 'bi-chat-square-text'),
+            array('label' => lang('Planning Board'), 'url' => 'workspace_board.php', 'icon' => 'bi-calendar-week'),
+        ),
+    ), array('class' => 'mb-5')) . '
     <div class="row g-7">
         <div class="xl:col-8">
             <div class="card mb-7" id="ws-departments">
                 <div class="card-header d-flex align-items-center gap-3">
                     <h2 class="h6 mb-0 ws-grow"><i class="bi bi-diagram-3 me-1" aria-hidden="true"></i>' . h(lang('Departments')) . '</h2>
-                    <button type="button" class="btn btn-sm btn-solid theme-primary rounded-pill px-5" data-bs-toggle="collapse" data-bs-target="#ws-dept-new"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i>' . h(lang('New department')) . '</button>
                 </div>
                 <div class="card-body">
                     <div class="collapse mb-5" id="ws-dept-new">
