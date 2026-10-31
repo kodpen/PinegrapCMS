@@ -979,7 +979,10 @@ if (count($administrator_email_addresses) > 0) {
         'from_name' => ORGANIZATION_NAME,
         'from_email_address' => EMAIL_ADDRESS,
         'subject' => $subject,
-        'body' => $body
+        'body' => $body,
+        // Queued, so the writer never waits on the mail server; email()
+        // still sends at once when the general job has not run lately.
+        'queue' => true
     ));
 
 }

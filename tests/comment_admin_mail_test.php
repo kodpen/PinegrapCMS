@@ -22,6 +22,16 @@ function comment_admin_mail_test_source()
 	return (string) file_get_contents(PG_FUNCTIONS_DIR . '/add_comment.php');
 }
 
+// The administrator e-mail is queued; email() sends at once only when the
+// general job has not run lately.
+function test_comment_admin_mail_queued()
+{
+	$source = comment_admin_mail_test_source();
+	$found = preg_match("/email\\(array\\(\\s*'to' => \\\$administrator_email_addresses,(.*?)\\)\\);/s", $source, $match);
+	pg_assert_true((bool) $found, 'administrator e-mail call found');
+	pg_assert_true(strpos($match[1], "'queue' => true") !== false, 'administrator e-mail is queued');
+}
+
 // $file_name and $file_size are set beside $file_id = 0, before the
 // attachment branch, because the mail closure takes them in its use list.
 function test_comment_admin_mail_attachment_defaults()
