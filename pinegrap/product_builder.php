@@ -758,6 +758,78 @@ function pg_pb_common_from_post()
 
 
 /**
+ * The labels of the four custom product fields, keyed 1..4, as the product
+ * screen reads them from Site Settings. An empty label means the screen does
+ * not draw that field.
+ *
+ * @return array number => label
+ */
+function pg_pb_custom_product_field_labels()
+{
+    $labels = array();
+
+    for ($number = 1; $number <= 4; $number++) {
+        $constant = 'ECOMMERCE_CUSTOM_PRODUCT_FIELD_' . $number . '_LABEL';
+        $labels[$number] = defined($constant) ? (string) constant($constant) : '';
+    }
+
+    return $labels;
+}
+
+
+/**
+ * Leave out of a product update the columns whose controls the product
+ * screen did not draw, so the stored values stay.
+ *
+ * pg_pb_common_from_post() reads every column from the post, and a control
+ * that is not on the screen posts nothing: an off switch reads as 0 and an
+ * absent box as ''. On update that would turn a product unshippable with no
+ * weight while the store's Shipping is off, drop its gift card set-up while
+ * gift cards are off, and empty a custom field whose label was cleared. On
+ * create the defaults are what the row starts with anyway, so only the
+ * update path calls this.
+ *
+ * @param array $product       column => value
+ * @param bool  $shipping_on   the shipping panel is drawn (ECOMMERCE_SHIPPING)
+ * @param bool  $gift_cards_on the Email Gift Card section is drawn (ECOMMERCE_GIFT_CARD)
+ * @param array $custom_labels number => label (pg_pb_custom_product_field_labels())
+ * @return array column => value
+ */
+function pg_pb_drop_undrawn_columns($product, $shipping_on, $gift_cards_on, $custom_labels)
+{
+    $drop = array();
+
+    if (!$shipping_on) {
+        $drop = array_merge($drop, array(
+            'shippable', 'weight', 'length', 'width', 'height',
+            'primary_weight_points', 'secondary_weight_points', 'container_required',
+            'preparation_time', 'free_shipping', 'extra_shipping_cost',
+            'hs_code', 'origin_country',
+        ));
+    }
+
+    if (!$gift_cards_on) {
+        $drop = array_merge($drop, array(
+            'gift_card', 'gift_card_email_subject', 'gift_card_email_format',
+            'gift_card_email_body', 'gift_card_email_page_id',
+        ));
+    }
+
+    for ($number = 1; $number <= 4; $number++) {
+        if (!isset($custom_labels[$number]) || ((string) $custom_labels[$number] === '')) {
+            $drop[] = 'custom_field_' . $number;
+        }
+    }
+
+    foreach ($drop as $column) {
+        unset($product[$column]);
+    }
+
+    return $product;
+}
+
+
+/**
  * Decode and normalise the variant matrix the browser posted.
  *
  * Shape of one row (same contract assets/js/product_builder.js writes):
@@ -4667,17 +4739,15 @@ function pg_pb_render_product_screen($values = array(), $context = array())
     // is an unused one and does not appear.
     $output_custom_product_fields = '';
 
-    for ($custom_field_number = 1; $custom_field_number <= 4; $custom_field_number++) {
+    foreach (pg_pb_custom_product_field_labels() as $custom_field_number => $custom_field_label) {
 
-        $custom_field_constant = 'ECOMMERCE_CUSTOM_PRODUCT_FIELD_' . $custom_field_number . '_LABEL';
-
-        if (!defined($custom_field_constant) || constant($custom_field_constant) == '') {
+        if ($custom_field_label === '') {
             continue;
         }
 
         $output_custom_product_fields .=
             '<div class="col-12 lg:col-6 my-3">
-                <label for="custom_field_' . $custom_field_number . '" class="form-label">' . h(constant($custom_field_constant)) . '</label>
+                <label for="custom_field_' . $custom_field_number . '" class="form-label">' . h($custom_field_label) . '</label>
                 <input class="form-control" type="text" id="custom_field_' . $custom_field_number . '" name="custom_field_' . $custom_field_number . '" value="' . h($v('custom_field_' . $custom_field_number)) . '" maxlength="255" />
             </div>';
     }
@@ -5987,7 +6057,16 @@ function pg_pb_update_product($product_id)
         return array('name' => '');
     }
 
-    $product = pg_pb_common_from_post();
+    // The shipping panel, the Email Gift Card section and an unlabelled
+    // custom field are not drawn when their switch is off, so they post
+    // nothing; their columns and the zone rows keep what is stored.
+    $shipping_on = (defined('ECOMMERCE_SHIPPING') && ECOMMERCE_SHIPPING == TRUE);
+
+    $product = pg_pb_drop_undrawn_columns(
+        pg_pb_common_from_post(),
+        $shipping_on,
+        (defined('ECOMMERCE_GIFT_CARD') && ECOMMERCE_GIFT_CARD == TRUE),
+        pg_pb_custom_product_field_labels());
     $images  = pg_pb_selected_images();
 
     pg_pb_store_image_code_template(isset($_POST['code']) ? $_POST['code'] : NULL);
@@ -6140,16 +6219,18 @@ function pg_pb_update_product($product_id)
         }
     }
 
-    db("DELETE FROM products_zones_xref WHERE product_id = '" . e($product_id) . "'");
+    if ($shipping_on) {
+        db("DELETE FROM products_zones_xref WHERE product_id = '" . e($product_id) . "'");
 
-    if (!empty($_POST['allowed_zones']) && is_array($_POST['allowed_zones'])) {
-        foreach ($_POST['allowed_zones'] as $zone_id) {
-            $zone_id = (int) $zone_id;
-            if ($zone_id) {
-                pg_pb_insert_row('products_zones_xref', array(
-                    'product_id' => $product_id,
-                    'zone_id'    => $zone_id,
-                ));
+        if (!empty($_POST['allowed_zones']) && is_array($_POST['allowed_zones'])) {
+            foreach ($_POST['allowed_zones'] as $zone_id) {
+                $zone_id = (int) $zone_id;
+                if ($zone_id) {
+                    pg_pb_insert_row('products_zones_xref', array(
+                        'product_id' => $product_id,
+                        'zone_id'    => $zone_id,
+                    ));
+                }
             }
         }
     }

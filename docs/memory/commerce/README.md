@@ -64,6 +64,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - counter-sale-keyboard-focus.md: Create Order screen (add_order.js): focus kept on the cart row, quick-amount chip and customer card when a server answer redraws them; Enter in a quantity box keeps the box
 - country-names-display.md: Country names on screen through pg_geo_country_label() and pg_geo_sort_by_label() in the current language; the starter dumps' corrected country rows (#2522)
 - country-names-in-addresses.md: The order view's address blocks and the address book name the stored country code in the site language; the country tokens keep the code
+- edit-product-undrawn-columns-kept.md: Edit Product's save leaves out the shipping, customs, zone, gift card and unlabelled custom-field columns the screen does not draw.
 - express-order-notes-address-book.md: Express order (EO) widget bindings for order note (eo_field notes) and address book section, plus the narrow-screen table classes and the three places to update.
 - express-order-recipient-loop-area.md: Express Order recipient_loop_area node for multi-recipient carts: designer usage, render pipeline, visibility flags, compatibility, structural rules.
 - express-order-recipient-tokens.md: Binding tokens available inside an Express Order recipient_loop_area (^^__recipient_*^^ text/href tokens) and how form inputs bind via eo_field.
