@@ -42,14 +42,43 @@ function update_product_group_status($properties) {
     $sql_product_groups = "";
     $sql_not_in_product_groups = "";
 
+    // The groups' enabled as it is now. The SEO analysis reads a group's
+    // enabled as "searchable", so a group whose flag really changes needs a
+    // fresh score; one already in the asked state keeps its own.
+    $group_ids = array();
+
+    foreach ($product_groups as $product_group) {
+        $group_ids[] = "'" . e($product_group['id']) . "'";
+    }
+
+    $group_enabled = array();
+
+    if ($group_ids) {
+        foreach ((array) db_items(
+            "SELECT id, enabled FROM product_groups
+            WHERE id IN (" . implode(',', $group_ids) . ")") as $row) {
+            $group_enabled[(int) $row['id']] = (int) $row['enabled'];
+        }
+    }
+
     // Loop through the product groups in order to update the status for each.
     foreach ($product_groups as $product_group) {
+
+        $sql_seo_stale = "";
+
+        if (
+            !isset($group_enabled[(int) $product_group['id']])
+            or ($group_enabled[(int) $product_group['id']] !== $enabled)
+        ) {
+            $sql_seo_stale = "seo_analysis_current = '0',";
+        }
 
         // Update product group status.
         db(
             "UPDATE product_groups
             SET
                 enabled = '$enabled',
+                $sql_seo_stale
                 user = '" . $user_id . "',
                 timestamp = UNIX_TIMESTAMP()
             WHERE id = '" . e($product_group['id']) . "'");
@@ -85,6 +114,31 @@ function update_product_group_status($properties) {
     $audit_before = pg_audit_fetch_many('products', array_column((array) $products, 'id'));
     $audit_changed = array();
 
+    // The products' enabled and keywords as they are now, read here rather
+    // than taken from the audit snapshot, which is empty while auditing is
+    // off. Only a product whose enabled really changes gets the follow-ups.
+    $product_ids = array();
+
+    foreach ((array) $products as $product) {
+        $product_ids[] = "'" . e($product['id']) . "'";
+    }
+
+    $product_rows = array();
+
+    if ($product_ids) {
+        foreach ((array) db_items(
+            "SELECT id, enabled, keywords FROM products
+            WHERE id IN (" . implode(',', $product_ids) . ")") as $row) {
+            $product_rows[(int) $row['id']] = $row;
+        }
+    }
+
+    // The tag cloud sync lives with the product screen's writer, a function
+    // library with an include guard that draws nothing.
+    if ($product_rows and !function_exists('pg_pb_sync_tag_cloud_keywords')) {
+        require_once(PG_FUNCTIONS_DIR . '/product_builder.php');
+    }
+
     // Loop through the products in order to update the status for each.
     foreach ((array) $products as $product) {
 
@@ -110,14 +164,38 @@ function update_product_group_status($properties) {
             continue;
         }
 
+        // Only a product whose enabled really changes gets the follow-ups
+        // below; one already in the asked state is written as before.
+        $current = isset($product_rows[(int) $product['id']]) ? $product_rows[(int) $product['id']] : null;
+        $changed = ($current !== null) && ((int) $current['enabled'] !== $enabled);
+
+        // The SEO analysis reads enabled as "searchable", so a changed
+        // product's stored score is marked stale.
+        $sql_seo_stale = $changed ? "seo_analysis_current = '0'," : "";
+
         // Update product status.
         db(
             "UPDATE products
             SET
                 enabled = '$enabled',
+                $sql_seo_stale
                 user = '" . $user_id . "',
                 timestamp = UNIX_TIMESTAMP()
             WHERE id = '" . e($product['id']) . "'");
+
+        if ($changed) {
+
+            // A disabled product's keywords leave the tag cloud; an enabled
+            // one's come back where it is in a cloud.
+            pg_pb_sync_tag_cloud_keywords((int) $product['id'], $current['keywords'], ($enabled === 1));
+
+            // A connector sends quantity 0 for a disabled product, but only
+            // for one the queue was told about.
+            if (function_exists('pg_marketplace_product_changed')) {
+                pg_marketplace_product_changed((int) $product['id']);
+            }
+
+        }
 
         $audit_changed[(int) $product['id']] = true;
 
