@@ -22,7 +22,7 @@ description: Plan (owner 2026-10-30): no lone buttons or texts under a screen's 
 - A screen-wide action is never in a card header (for example "Clear Log" on `view_waf_log`, "New department" on `workspace_settings`).
 
 ## What is still open?
-- Phones: does the toolbar stay at the top while the list scrolls? Today it does not stick. Ask before H3.
+- Decided #3837 (`workflow/decisions-made-product-12.md`): on phones the toolbar scrolls with the page, as today; a sticky bar only later, and only as phones + list screens through a flag in H1's helper.
 
 ## Where to start?
 - `pg_page_shell()` / `output_header()` (`cancel`, `breadcrumb`) and `pg_send_to_url()` in `includes/fn/core.php`.

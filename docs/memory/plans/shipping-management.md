@@ -4,7 +4,7 @@ description: Shipping plan (2026-10-08; phases 1-7 and the phase 8 postcode chec
 ---
 
 ## What state is it in?
-- Phase 1 built (#601), phase 2 built (#694, step 11.0.20; `commerce/shipment-row-schema.md`), phase 3 built (#879; `commerce/shipment-write-path.md`), phase 4 built (#931; `commerce/order-screen-shipments.md`). Schema labels: free ones of the open version (`upgrade_to_…()`). Old plan text: `git show 41aea113:docs/_plan_kargo.md`.
+- Phase 1 built (#601), phase 2 built (#694, step 11.0.20; `commerce/shipment-row-schema.md`), phase 3 built (#879; `commerce/shipment-write-path.md`), phase 4 built (#931; `commerce/order-screen-shipments.md`). Schema labels: free ones of the open version (`upgrade_to_…()`).
 - Every phase is one PR; `tests/shipping_test.php` pins today's behaviour and changes only together with a test (red first).
 
 ## Which decisions are fixed?
@@ -25,5 +25,5 @@ description: Shipping plan (2026-10-08; phases 1-7 and the phase 8 postcode chec
 
 ## What must the owner check by hand?
 - Live carrier tracking URLs, n11 province/district on a live order, the campaign e-mail via real SMTP, `^^tracking_url^^` on existing sites.
-- Open owner questions: `orders.tracking_company`, old n11 records, the delivery rule and the named-only `carrier` (`commerce/shipment-write-path.md`), when the `[NEW]` changelog line comes.
+- Decided: `tracking_company` (`decisions-made-data.md`); old n11 rows: a 2026.11.0 step swaps them (#3836); delivery rule and named-only `carrier` confirmed (#3839; `-product-12.md`). Open: the `[NEW]` changelog line.
 - Printed order shipping card - done (#3365, decision #3346; `commerce/print-order-shipping-card.md`).

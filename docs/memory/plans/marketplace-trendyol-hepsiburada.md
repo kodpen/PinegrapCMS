@@ -23,7 +23,7 @@ description: Plan (approved 2026-10-19): Trendyol (V2) and Hepsiburada on the n1
 
 ## Open questions?
 - Hepsiburada developer portal renders as a JS shell; API facts must come from the owner's account documentation before slice 1.
-- Trendyol "Luxe" channel listings: in scope only if the owner sells there.
+- Trendyol "Luxe" channel listings: not in 2026.11.0 (#3838); a later item, when a merchant asks and the Luxe API facts are gathered first.
 - Owner: first live call with credentials; whether Kodpen registers as a Trendyol integrator (User-Agent `SelfIntegration` until then).
 - Unverified until a live call (listed in each `trendyol-*.md`): the `barcodes` comma list, whether a rejected listing re-enters approval on a new create, whether `docNeeded` turns false once the document is in.
 
