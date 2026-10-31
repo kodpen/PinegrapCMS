@@ -27,5 +27,5 @@ description: Panel CSV exports start with pg_csv_download_start() (UTF-8 charset
 - `erp_audit_csv()` (`includes/erp/audit.php`) uses `erp_csv_delimiter()` like the other ERP CSVs: `;` where the store uses a decimal comma, `,` elsewhere. It used a fixed `;`, so on a point-decimal store Excel put each line in column A. Dates stay `Y-m-d H:i:s`, amounts point-decimal (as in the ERP export profiles).
 
 ## Do the orders CSV figures add up to the order?
-- Item `tax` = `pg_order_item_line_tax()` (`includes/fn/order_list.php`): `tax_total`, else unit `tax` x quantity (marketplace lines). Before, the zip printed the unit `tax` (0.00 for web lines since 2026.4.4), the single file `tax_total` (0.00 for marketplace lines).
+- Item `tax` = `pg_order_export_line_tax()` (`order_list.php`): the line's own tax (`pg_order_item_line_tax()`: `tax_total`, else unit `tax` x quantity) less its share of the order discount (`pg_order_line_charged_taxes()`, the `pg_order_charged_tax()` rule per line), so lines add up to `orders.tax`; read from all the order's lines (#4171, PR #4221).
 - Both orders files end with `installment_charges` after `ip_address`, before the custom billing columns: `orders.total` includes it. Tests: `tests/order_list_test.php`.
