@@ -1093,6 +1093,7 @@
     "{var:1} outstanding": "{var:1} kalan",
     "{var:1} over in all": "Toplam {var:1} aşım",
     "{var:1} overdue": "{var:1} gecikmiş",
+    "{var:1} overdue tasks": "{var:1} geciken görev",
     "{var:1} package{suffix:1}": "{var:1} paket",
     "{var:1} page style(s) were moved to the Recycle Bin.": "{var:1} sayfa stili Geri Dönüşüm Kutusuna taşındı.",
     "{var:1} page styles were deleted": "{var:1} sayfa stili silindi",

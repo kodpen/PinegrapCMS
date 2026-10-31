@@ -3339,6 +3339,7 @@
     "an e-mail was brought into the mailbox {var:1} by hand": "{var:1} e-posta kutusuna elle bir e-posta alındı",
     "an error occurred when communicating with the spam protection service {var:1}, so visitor's request was accepted": "spam koruma hizmeti ile iletişim kurulurken bir hata oluştu {var:1}, bu nedenle ziyaretçinin isteği kabul edildi",
     "an item": "bir öğe",
+    "an overdue task": "geciken bir görev",
     "an unknown country": "bilinmeyen bir ülke",
     "analyzed HTML structure": "HTML yapısını denetledi",
     "and": "ve",

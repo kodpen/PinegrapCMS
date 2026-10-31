@@ -334,6 +334,64 @@ function ws_channel_briefing($viewer, $channel, $membership)
         'advice'   => $advice,
         'recap'    => $offer ? array('since_id' => $last_read, 'messages' => $recap['messages']) : null,
         'key'      => $channel_id . ':' . $today,
+        // What the channel screen shows: one line of what came while the
+        // reader was away.
+        'catchup'  => ws_channel_catchup(array(
+            'messages'      => $first_visit ? 0 : $new_count,
+            'mentions'      => count($mention_ids),
+            'overdue'       => $overdue,
+            'first_unread'  => $first_unread,
+            'first_mention' => $mention_ids[0] ?? 0,
+        )),
+    );
+}
+
+/**
+ * The channel's catch-up line: what came while the reader was away (new
+ * messages, mentions) and the tasks past their date, or null when there is
+ * none of that. A first visit counts no messages: the channel's info says
+ * what it is for.
+ *
+ * @param array $signals messages, mentions, overdue (counts); first_unread,
+ *                       first_mention (message ids)
+ * @return array|null lead, parts (the counts as words), go (the message to
+ *                    open: the first mention, else the first unread), mention,
+ *                    tasks (whether the overdue tasks are offered)
+ */
+function ws_channel_catchup($signals)
+{
+    $messages = max(0, (int) ($signals['messages'] ?? 0));
+    $mentions = max(0, (int) ($signals['mentions'] ?? 0));
+    $overdue = max(0, (int) ($signals['overdue'] ?? 0));
+
+    if (($messages + $mentions + $overdue) === 0) {
+        return null;
+    }
+
+    $parts = array();
+
+    if ($messages > 0) {
+        $parts[] = ($messages === 1) ? lang('a new message') : lang(array('string' => '{var:1} new messages', 'vars' => $messages));
+    }
+
+    if ($mentions > 0) {
+        $parts[] = ($mentions === 1) ? lang('a mention') : lang(array('string' => '{var:1} mentions', 'vars' => $mentions));
+    }
+
+    if ($overdue > 0) {
+        $parts[] = ($overdue === 1) ? lang('an overdue task') : lang(array('string' => '{var:1} overdue tasks', 'vars' => $overdue));
+    }
+
+    $first_mention = (int) ($signals['first_mention'] ?? 0);
+    $first_unread = ($messages > 0) ? (int) ($signals['first_unread'] ?? 0) : 0;
+
+    // Late tasks alone did not come while the reader was away: they wait.
+    return array(
+        'lead'    => (($messages + $mentions) > 0) ? lang('While you were away') : lang('Waiting for you'),
+        'parts'   => $parts,
+        'go'      => ($first_mention > 0) ? $first_mention : $first_unread,
+        'mention' => ($first_mention > 0),
+        'tasks'   => ($overdue > 0),
     );
 }
 
