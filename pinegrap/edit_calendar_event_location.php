@@ -39,15 +39,19 @@ require_once(PG_FUNCTIONS_DIR . '/includes/forms/calendar_event_location_form.ph
 $liveform = new liveform('edit_calendar_event_location', $_REQUEST['id']);
 
 if (!$_POST) {
-    // get calendar event location data
-    $query =
-        "SELECT name
-        FROM calendar_event_locations
-        WHERE id = ?";
-    $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
-    $row = mysqli_fetch_assoc($result);
-    
-    $liveform->assign_field_value('name', $row['name']);
+    // Load the stored name only when no typed value waits in the session:
+    // after a refused rename (blank or already in use) the screen shows the
+    // name the user typed next to the error.
+    if (!$liveform->field_in_session('name')) {
+        $query =
+            "SELECT name
+            FROM calendar_event_locations
+            WHERE id = ?";
+        $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
+        $row = mysqli_fetch_assoc($result);
+
+        $liveform->assign_field_value('name', $row['name']);
+    }
 
 
 
