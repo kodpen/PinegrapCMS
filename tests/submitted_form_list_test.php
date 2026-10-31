@@ -171,3 +171,22 @@ function test_submitted_form_list_row()
 
 	pg_assert_same('', $row['cells'][5]['html'], 'no contact, contacts access');
 }
+
+function test_submitted_form_list_labels_tell_forms_apart()
+{
+	$labels = pg_submitted_form_list_labels(array(
+		array('id' => '1152', 'form_name' => 'Blog', 'page_name' => 'blog-old', 'binned' => true),
+		array('id' => '1609', 'form_name' => 'Blog', 'page_name' => 'blog', 'binned' => false),
+		array('id' => '1584', 'form_name' => 'Contact', 'page_name' => 'contact', 'binned' => false),
+		array('id' => '1580', 'form_name' => '', 'page_name' => 'catering', 'binned' => false),
+		array('id' => '1123', 'form_name' => 'Old', 'page_name' => 'old', 'binned' => true),
+	));
+
+	pg_assert_same(array('1609', '1584', '1580', '1152', '1123'), array_column($labels, 'id'), 'binned forms go last, the rest keep their order');
+	pg_assert_same('Blog — blog', $labels[0]['name'], 'a repeated form name gets its page name');
+	pg_assert_same('Contact', $labels[1]['name'], 'a single form name stays as it is');
+	pg_assert_same('catering', $labels[2]['name'], 'a form without a name shows its page name');
+	pg_assert_same('Blog — blog-old [' . lang('IN RECYCLE BIN') . ']', $labels[3]['name'], 'a binned form is marked');
+	pg_assert_same('Old [' . lang('IN RECYCLE BIN') . ']', $labels[4]['name'], 'a binned form with a single name');
+	pg_assert_same(true, $labels[3]['binned'], 'the binned flag is kept');
+}

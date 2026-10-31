@@ -130,29 +130,17 @@ if (!$_POST) {
         $custom_form_options = array();
         $custom_form_options['-' . lang('Select') . '-'] = '';
 
-        $query =
-            "SELECT
-               page.page_id,
-               page.page_name,
-               page.page_folder,
-               custom_form_pages.form_name
-            FROM page
-            LEFT JOIN custom_form_pages ON page.page_id = custom_form_pages.page_id
-            WHERE " . pg_form_page_sql('page') . "
-            ORDER BY custom_form_pages.form_name";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        // The same list as the Forms screen's filter: a repeated form name
+        // carries its page name and binned forms are marked, so every form
+        // has its own option (the labels are the option keys).
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/submitted_form_list.php');
 
-        while ($row = mysqli_fetch_assoc($result)) {
-            // if user has access to this custom form, add custom form to pick list
-            if (check_edit_access($row['page_folder']) == true) {
-                if ($row['form_name']) {
-                    $name = $row['form_name'];
-                } else {
-                    $name = $row['page_name'];
-                }
-
-                $custom_form_options[h($name)] = $row['page_id'];
+        foreach (pg_submitted_form_list_custom_forms() as $custom_form) {
+            $name = $custom_form['name'];
+            if (isset($custom_form_options[h($name)])) {
+                $name .= ' (#' . (int) $custom_form['id'] . ')';
             }
+            $custom_form_options[h($name)] = $custom_form['id'];
         }
 
         print

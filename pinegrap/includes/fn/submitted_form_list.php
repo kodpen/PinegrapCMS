@@ -29,9 +29,10 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 }
 
 /**
- * The custom forms the signed-in user may edit, by form name.
+ * The custom forms the signed-in user may edit, by form name, the ones in the
+ * Recycle Bin last and marked (pg_submitted_form_list_labels()).
  *
- * @return array list of array('id', 'name')
+ * @return array list of array('id', 'name', 'binned')
  */
 function pg_submitted_form_list_custom_forms()
 {
@@ -46,17 +47,73 @@ function pg_submitted_form_list_custom_forms()
         WHERE " . pg_form_page_sql('page') . "
         ORDER BY custom_form_pages.form_name, page.page_name");
 
-    $custom_forms = array();
+    $bin_folders = function_exists('pg_recycle_bin_folder_ids') ? array_flip(pg_recycle_bin_folder_ids()) : array();
+
+    $forms = array();
 
     foreach ($rows as $row) {
         if (check_edit_access($row['folder_id']) == true) {
-            $custom_forms[] = array(
+            $binned = isset($bin_folders[(int) $row['folder_id']]);
+            $page_name = (string) $row['page_name'];
+
+            // A binned page carries a parked name; show the one it had.
+            if ($binned) {
+                require_once(PG_FUNCTIONS_DIR . '/view_folder_and_files_f.php');
+                $original = pg_recycle_parked_original($page_name, $row['page_id']);
+                if ($original !== '') {
+                    $page_name = $original;
+                }
+            }
+
+            $forms[] = array(
                 'id' => $row['page_id'],
-                'name' => $row['form_name'] ? $row['form_name'] : $row['page_name']);
+                'form_name' => (string) $row['form_name'],
+                'page_name' => $page_name,
+                'binned' => $binned);
         }
     }
 
-    return $custom_forms;
+    return pg_submitted_form_list_labels($forms);
+}
+
+/**
+ * The names the custom form pickers show. A site whose design was changed
+ * keeps older forms with the same name, their pages in the Recycle Bin, so
+ * a form name that appears more than once gets its page name, a binned form
+ * gets ' [IN RECYCLE BIN]' as the other page pickers do, and the binned
+ * forms go after the others (each group keeps its order).
+ *
+ * @param array $forms list of array('id', 'form_name', 'page_name', 'binned')
+ * @return array list of array('id', 'name', 'binned'), names not escaped
+ */
+function pg_submitted_form_list_labels($forms)
+{
+    $count = array();
+    foreach ($forms as $form) {
+        $base = ($form['form_name'] !== '') ? $form['form_name'] : $form['page_name'];
+        $key = mb_strtolower($base, 'UTF-8');
+        $count[$key] = ($count[$key] ?? 0) + 1;
+    }
+
+    $live = array();
+    $binned = array();
+
+    foreach ($forms as $form) {
+        $base = ($form['form_name'] !== '') ? $form['form_name'] : $form['page_name'];
+        $name = $base;
+
+        if (($count[mb_strtolower($base, 'UTF-8')] > 1) && ($form['page_name'] !== '')) {
+            $name .= ' — ' . $form['page_name'];
+        }
+
+        if (!empty($form['binned'])) {
+            $binned[] = array('id' => $form['id'], 'name' => $name . ' [' . lang('IN RECYCLE BIN') . ']', 'binned' => true);
+        } else {
+            $live[] = array('id' => $form['id'], 'name' => $name, 'binned' => false);
+        }
+    }
+
+    return array_merge($live, $binned);
 }
 
 /**

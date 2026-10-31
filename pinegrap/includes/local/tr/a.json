@@ -2454,6 +2454,7 @@
     "Another error (not 404)": "Başka bir hata (404 değil)",
     "Another event coming up?": "Yeni bir etkinlik mi var?",
     "Another field already has this name: <code>{var}</code>. Give it a different one.": "Bu adda başka bir alan var: <code>{var}</code>. Farklı bir ad verin.",
+    "Another field of this form already has this name. Please type in a different name.": "Bu formun başka bir alanı zaten bu adı taşıyor. Lütfen farklı bir ad yazın.",
     "Another figure": "Başka bir değer",
     "Another flow could not be started.": "Başka bir akış başlatılamadı.",
     "Another flow was started.": "Başka bir akış başlatıldı.",
