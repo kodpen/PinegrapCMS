@@ -27,6 +27,10 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  */
 function pg_ad_form_cards($liveform)
 {
+    global $user;
+
+    $region_options = get_ad_region_options();
+
     return '
                         <div class="row">
                             <div class="col-12">
@@ -42,8 +46,9 @@ function pg_ad_form_cards($liveform)
                                             </div>
                                             <div class="col-12 md:col-6 lg:col-4 my-3">
                                                 <label for="ad_region_id" class="form-label">' . lang('Ad Region') . '</label>
-                                                ' . $liveform->output_field(array('type'=>'select', 'name'=>'ad_region_id', 'id'=>'ad_region_id', 'class'=>'form-control', 'options'=>get_ad_region_options(), 'required'=>'required')) . '
+                                                ' . $liveform->output_field(array('type'=>'select', 'name'=>'ad_region_id', 'id'=>'ad_region_id', 'class'=>'form-control', 'options'=>$region_options, 'required'=>'required')) . '
                                                 <div class="form-text">' . lang('Assign to Ad Region') . '</div>
+                                                ' . pg_ad_form_region_hint($region_options, $user['role']) . '
                                             </div>
                                             <div class="col-12 mt-1 mb-3">
                                                 <label for="content_textarea" class="form-label">' . lang('Ad Content') . '</label>
@@ -79,6 +84,31 @@ function pg_ad_form_cards($liveform)
                             </div>
                         </div>
 ';
+}
+
+/**
+ * The line under the Ad Region select when no ad region exists yet, so the
+ * required select does not just refuse the save. Designers (role 1 and
+ * above) get a link to Create Ad Region; other roles cannot open that
+ * screen, so they are told a designer creates ad regions.
+ *
+ * @param array $options  get_ad_region_options(): a blank first entry, then one per region
+ * @param int|string $role  The signed-in user's role
+ * @return string  The hint markup, or '' when a region exists
+ */
+function pg_ad_form_region_hint(array $options, $role)
+{
+    foreach ($options as $value) {
+        if ((string) $value !== '') {
+            return '';
+        }
+    }
+
+    if ((int) $role <= 1) {
+        return '<div class="form-text">' . lang('No ad region exists yet.') . ' <a href="add_ad_region.php" class="pg-link-body-emphasis">' . lang('Create Ad Region') . '</a></div>';
+    }
+
+    return '<div class="form-text">' . lang('No ad region exists yet.') . ' ' . lang('A designer creates ad regions.') . '</div>';
 }
 
 /**

@@ -563,6 +563,7 @@
     "No active till or bank account is kept in {var:1}, so this expense cannot be paid from one yet.": "{var:1} tutan etkin bir kasa ya da banka hesabı yok; bu gider henüz bir hesaptan ödenemez.",
     "No active till.": "Etkin kasa yok.",
     "No activity recorded yet.": "Henüz kayıtlı hareket yok.",
+    "No ad region exists yet.": "Henüz reklam bölgesi yok.",
     "No address in the log matches.": "Kayıtta eşleşen adres yok.",
     "No address yet": "Henüz adres yok",
     "No advertiser, owner or official decides what we cover or how. Our reporters do not write about people or companies they have a personal stake in.": "Neyi ve nasıl haberleştireceğimize hiçbir reklamveren, sahip ya da yetkili karar vermez. Muhabirlerimiz kişisel çıkarlarının bulunduğu kişiler ya da şirketler hakkında yazmaz.",
