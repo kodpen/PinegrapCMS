@@ -467,7 +467,7 @@ if (!$_POST) {
 
     if (defined('WORKSPACE_ENABLED') && WORKSPACE_ENABLED) {
         require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
-        $output_workspace_button = ws_record_button($user, 'product_group', (int) $_GET['id'], (string) db_value("SELECT name FROM product_groups WHERE id = '" . (int) $_GET['id'] . "'"), 'btn btn-link pg-link-secondary py-0 mb-3');
+        $output_workspace_button = ws_record_button($user, 'product_group', (int) $_GET['id'], (string) db_value("SELECT name FROM product_groups WHERE id = '" . (int) $_GET['id'] . "'"), 'btn btn-sm btn-text theme-secondary');
     }
 
     echo
@@ -482,6 +482,12 @@ if (!$_POST) {
             'breadcrumb' => array(array('label' => lang('Product Groups'), 'url' => pg_send_to_url(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_product_groups.php')), array('label' => lang('Edit Product Group'))),
         ]) . '
 <main id="content" class="container-fluid">
+    ' . pg_screen_toolbar(array(
+        'secondary' => array(
+            '<a class="btn btn-sm btn-text theme-secondary" href="duplicate_product_group.php?id=' . h($_GET['id']) . '"><i class="bi bi-copy me-1" aria-hidden="true"></i>' . lang('Duplicate') . '</a>',
+            $output_workspace_button,
+        ),
+    )) . '
             ' . get_wysiwyg_editor_code(array('full_description', 'details')) . '
         <div class="row">
             <div class="col-12">
@@ -491,17 +497,6 @@ if (!$_POST) {
                 ' . ($group_binned
                     ? '<div class="alert theme-warning d-flex flex-wrap align-items-center gap-3" role="alert"><span class="bi bi-trash3"></span><span class="me-auto">' . lang('This product group is in the Recycle Bin. Restore it from the Recycle Bin in the Catalog Manager before changing it.') . '</span><a class="btn btn-sm btn-outline theme-secondary" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_product_groups.php?view=bin">' . lang('Open the Recycle Bin') . '</a></div>'
                     : '') . '
-                <div class="row mb-3  flex-wrap">
-                    <div class="col-12 sm:col-12 text-center md:text-start">
-
-                        <nav id="button_bar" class="navigation " aria-label="' . h(lang('Button Bar')) . '">
-                            <div class=" btn-group btn-group-sm flex-wrap">
-                                <a class="btn btn-link pg-link-secondary py-0 mb-3 " href="duplicate_product_group.php?id=' . h($_GET['id']) . '"><span class="material-icons me-1">control_point_duplicate</span>' . lang('Duplicate') . '</a>
-                                ' . $output_workspace_button . '
-                            </div>
-                        </nav>
-                    </div>
-                </div>
                 <form name="form" action="edit_product_group.php" method="post" class="product_group_form">
                     ' . get_token_field() . '
                     <input type="hidden" name="id" value="' . h($_GET['id']) . '">

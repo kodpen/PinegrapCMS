@@ -235,7 +235,7 @@ if (!$_POST) {
 
     if (defined('WORKSPACE_ENABLED') && WORKSPACE_ENABLED) {
         require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
-        $output_workspace_button = ws_record_button($user, 'calendar_event', (int) $_GET['id'], (string) db_value("SELECT name FROM calendar_events WHERE id = '" . (int) $_GET['id'] . "'"), 'btn btn-link pg-link-secondary py-0 mb-3');
+        $output_workspace_button = ws_record_button($user, 'calendar_event', (int) $_GET['id'], (string) db_value("SELECT name FROM calendar_events WHERE id = '" . (int) $_GET['id'] . "'"), 'btn btn-sm btn-text theme-secondary');
     }
 
     print
@@ -253,23 +253,18 @@ if (!$_POST) {
         )
     ) . '
 <main id="content" class="container-fluid">
+    ' . pg_screen_toolbar(array(
+        'secondary' => array(
+            '<a class="btn btn-sm btn-text theme-secondary" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/duplicate_calendar_event.php?id=' . h(escape_javascript($_GET['id'])) . get_token_query_string_field() . '"><i class="bi bi-copy me-1" aria-hidden="true"></i>' . lang('Duplicate') . '</a>',
+            $output_workspace_button,
+        ),
+    )) . '
     ' . get_date_time_picker_format() . '
     ' . get_wysiwyg_editor_code(array('full_description', 'notes', 'no_remaining_spots_message')) . '
             <div class="row">
             <div class="col-12">
                 ' . $liveform->output_errors() . '
                 ' . $liveform->output_notices() . '
-                <div class="row mb-3  flex-wrap">
-                    <div class="col-12 sm:col-12 text-center md:text-start">
-
-                        <nav id="button_bar" class="navigation " aria-label="' . h(lang('Button Bar')) . '">
-                            <div class=" btn-group btn-group-sm flex-wrap">
-                                <a class="btn btn-link pg-link-secondary py-0 mb-3 " href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/duplicate_calendar_event.php?id=' . h(escape_javascript($_GET['id'])) . get_token_query_string_field() . '"><span class="material-icons me-1">control_point_duplicate</span>' . lang('Duplicate') . '</a>
-                                ' . $output_workspace_button . '
-                            </div>
-                        </nav>
-                    </div>
-                </div>
                 <form name="form" action="edit_calendar_event.php" method="post">
                     ' . get_token_field() . '
                     <input type="hidden" name="id" value="' . h($_GET['id']) . '" />

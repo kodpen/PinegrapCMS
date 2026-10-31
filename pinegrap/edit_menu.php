@@ -80,23 +80,17 @@ if (!$_POST) {
             'breadcrumb' => array(array('label' => lang('All Menus'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_menus.php'), array('label' => lang('Edit Menu Properties'))),
         ]) . '
 <main id="content" class="container-fluid">
+    ' . pg_screen_toolbar(array(
+        'secondary' => array(
+            '<a class="btn btn-sm btn-text theme-secondary" href="duplicate_menu.php?id=' . h(urlencode($_GET['id'])) . '&from=' . h(urlencode(($_GET['from'] ?? ''))) . '&send_to=' . h(urlencode(($_GET['send_to'] ?? ''))) . get_token_query_string_field() . '"><i class="bi bi-copy me-1" aria-hidden="true"></i>' . lang('Duplicate') . '</a>',
+        ),
+        'grow'      => '<span class="small fg-secondary">' . lang('Page Style Body Tag') . ': <code>' . h('<menu>' . $menu_name . '</menu>') . '</code></span>',
+    )) . '
             <div class="row">
             <div class="col-12">
                 ' . $liveform->output_errors() . '
                 ' . $liveform->get_warnings() . '
                 ' . $liveform->output_notices() . '
-                <div class="row mb-3  flex-wrap">
-                    <div class="col-12 sm:col-12 text-center md:text-start">
-
-                        <p>' . lang('Page Style Body Tag') . ': <strong>' . h('<menu>' . $menu_name . '</menu>') . '</strong></p>
-                        
-                        <nav id="button_bar" class="navigation " aria-label="' . h(lang('Button Bar')) . '">
-                            <div class=" btn-group btn-group-sm flex-wrap">
-                                <a class="btn btn-link pg-link-secondary py-0 mb-3 " href="duplicate_menu.php?id=' . h(urlencode($_GET['id'])) . '&from=' . h(urlencode(($_GET['from'] ?? ''))) . '&send_to=' . h(urlencode(($_GET['send_to'] ?? ''))) . get_token_query_string_field() . '"><span class="material-icons me-1">control_point_duplicate</span>' . lang('Duplicate') . '</a>
-                            </div>
-                        </nav>
-                    </div>
-                </div>
                 <form name="form" action="edit_menu.php" method="post">
                     ' . get_token_field() . '
                     <input type="hidden" name="from" value="' . h(($_GET['from'] ?? '')) . '" />

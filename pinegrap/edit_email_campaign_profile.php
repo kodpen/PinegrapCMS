@@ -130,21 +130,16 @@ if (!$_POST) {
         )
     )    . '
 <main id="content" class="container-fluid">
+    ' . pg_screen_toolbar(array(
+        'secondary' => array(
+            '<a class="btn btn-sm btn-text theme-secondary" href="duplicate_email_campaign_profile.php?id=' . h($_GET['id']) . get_token_query_string_field() . '"><i class="bi bi-copy me-1" aria-hidden="true"></i>' . lang('Duplicate') . '</a>',
+        ),
+    )) . '
             <div class="row">
             <div class="col-12">
                 ' . $liveform->output_errors() . '
                 ' . $liveform->get_warnings() . '
                 ' . $liveform->output_notices() . '
-                <div class="row mb-3  flex-wrap">
-                    <div class="col-12 sm:col-12 text-center md:text-start">
-
-                        <nav id="button_bar" class="navigation " aria-label="' . h(lang('Button Bar')) . '">
-                            <div class=" btn-group btn-group-sm flex-wrap">
-                                <a class="btn btn-link pg-link-secondary py-0 mb-3 " href="duplicate_email_campaign_profile.php?id=' . h($_GET['id']) . get_token_query_string_field() . '"><span class="material-icons me-1" aria-hidden="true">control_point_duplicate</span>' . lang('Duplicate') . '</a>
-                            </div>
-                        </nav>
-                    </div>
-                </div>
                 <form action="edit_email_campaign_profile.php" method="post">
                     ' . get_token_field() . '
                     ' . $liveform->output_field(array('type'=>'hidden', 'name'=>'id', 'value'=>$_GET['id'])) . '

@@ -75,6 +75,7 @@ if (!$_POST) {
             'title' => h($style_name) . ' | ' . lang('Edit Custom Page Style'),
             'icon' => 'design',
             'heading' => lang('Edit Custom Page Style'),
+            'heading_description' => lang('Update this HTML template that is applied to all associated pages.'),
             'cancel'=>array('enable'=>'true','url'=>$output_cancel_button_url) ,
             'breadcrumb' => array(array('label' => lang('All Page Styles'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_styles.php'), array('label' => lang('Edit Custom Page Style'))),
         ) ) . '<main id="content" class="container-fluid">';
@@ -127,22 +128,13 @@ if (!$_POST) {
 
     print
     $output_header . '
+    ' . pg_screen_toolbar(array(
+        'secondary' => '<a class="btn btn-sm btn-text theme-secondary" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/duplicate_style.php?id=' . h(escape_javascript(urlencode($_REQUEST['id']))) . get_token_query_string_field() . '"><i class="bi bi-copy me-1" aria-hidden="true"></i>' . lang('Duplicate') . '</a>',
+        'grow'      => '<span class="fw-semibold text-break me-3">' . h($style_name) . '</span><span class="small fg-secondary">' . lang('Last Modified') . ': ' . get_relative_time(array('timestamp' => $style_timestamp)) . ' ' . h($user_username) . '</span>',
+    )) . '
             <div class="row">
             <div class="col-12">
-                <div class="row mb-3  flex-wrap">
-                    <div class="col-12 sm:col-12 text-center md:text-start">
-<h2 class="d-inline-block text-break header-content-for-add-page">[' . h($style_name) . ']</h2>
-                        ' . $liveform->output_notices() . '
-                        <p class="form-text mt-0">' . lang('Update this HTML template that is applied to all associated pages.') . '</p>
-                        <p>' . lang('Last Modified') . ': ' . get_relative_time(array('timestamp' => $style_timestamp)) . ' ' . h($user_username) . '</p>
-                        
-                        <nav id="button_bar" class="navigation " aria-label="' . h(lang('Button Bar')) . '">
-                            <div class=" btn-group btn-group-sm flex-wrap">
-                                <a class="btn btn-link pg-link-secondary py-0 mb-3 " href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/duplicate_style.php?id=' . h(escape_javascript(urlencode($_REQUEST['id']))) . get_token_query_string_field() . '"><span class="material-icons me-1">control_point_duplicate</span>' . lang('Duplicate') . '</a>
-                            </div>
-                        </nav>
-                    </div>
-                </div>
+                ' . $liveform->output_notices() . '
                 <form name="form" action="edit_custom_style.php" method="post">
                     ' . get_token_field() . '
                     <input type="hidden" name="id" value="'. h($_REQUEST['id']) .'">

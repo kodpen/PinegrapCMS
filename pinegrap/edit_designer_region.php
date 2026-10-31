@@ -68,22 +68,16 @@ if (!isset($_POST['name'])) {
         ),
     ]) . '
 <main id="content" class="container-fluid">
+    ' . pg_screen_toolbar(array(
+        'secondary' => array(
+            '<a class="btn btn-sm btn-text theme-secondary" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/duplicate_designer_region.php?id=' . h(escape_javascript(urlencode($_REQUEST['id']))) . get_token_query_string_field() . '"><i class="bi bi-copy me-1" aria-hidden="true"></i>' . lang('Duplicate') . '</a>',
+        ),
+        'grow'      => '<span class="small fg-secondary">' . lang('Page Style Body Tag') . ': <code>' . h('<cregion>' . $cregion_name . '</cregion>') . '</code></span>',
+    )) . '
             <div class="row">
             <div class="col-12">
                 ' . $liveform->output_errors() . '
                 ' . $liveform->output_notices() . '
-                <div class="row mb-3  flex-wrap">
-                    <div class="col-12 sm:col-12 text-center md:text-start">
-                        
-                        <p>' . lang('Page Style Body Tag') . ': <strong>' . h('<cregion>' . $cregion_name . '</cregion>') . '</strong></p>
-                        
-                        <nav id="button_bar" class="navigation " aria-label="' . h(lang('Button Bar')) . '">
-                            <div class=" btn-group btn-group-sm flex-wrap">
-                                <a class="btn btn-link pg-link-secondary py-0 mb-3 " href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/duplicate_designer_region.php?id=' . h(escape_javascript(urlencode($_REQUEST['id']))) . get_token_query_string_field() . '"><span class="material-icons me-1">control_point_duplicate</span>' . lang('Duplicate') . '</a>
-                            </div>
-                        </nav>
-                    </div>
-                </div>
                 <form name="form" action="edit_designer_region.php" method="post">
                     ' . get_token_field() . '
                     <input type="hidden" name="id" value="' . h($_GET['id']) . '">
