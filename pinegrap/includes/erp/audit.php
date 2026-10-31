@@ -258,12 +258,23 @@ function erp_audit_event_text($row)
         return ((string) ($detail['direction'] ?? '') === 'payment') ? lang('Payment recorded') : lang('Collection recorded');
     }
 
+    if ($event === 'erp.receipt.cancelled') {
+        $detail = json_decode((string) $row['detail'], true);
+        $direction = (string) ($detail['direction'] ?? '');
+
+        if ($direction === 'payment') {
+            return lang('Payment cancelled');
+        }
+
+        // A line without a direction keeps the label that covers both kinds.
+        return ($direction === 'collection') ? lang('Collection cancelled') : lang('Receipt cancelled');
+    }
+
     $texts = array(
         'erp.invoice.created' => lang('Invoice issued'),
         'erp.invoice.paid' => lang('Invoice paid in full'),
         'erp.invoice.cancelled' => lang('Invoice cancelled'),
         'erp.invoice.edoc_changed' => lang('E-document status changed'),
-        'erp.receipt.cancelled' => lang('Receipt cancelled'),
         'erp.account.created' => lang('Account opened'),
         'erp.waybill.created' => lang('Delivery note issued'),
         'erp.waybill.cancelled' => lang('Delivery note cancelled'),

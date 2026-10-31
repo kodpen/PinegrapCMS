@@ -635,8 +635,10 @@ function erp_settlement_allocate($data)
         return $fail(lang('The receipt could not be found.'));
     }
 
+    $is_payment = ((string) $txn['doc_type'] === 'payment');
+
     if ((int) $txn['reversal_id'] > 0) {
-        return $fail(lang('That receipt has been cancelled.'));
+        return $fail($is_payment ? lang('That payment has been cancelled.') : lang('That receipt has been cancelled.'));
     }
 
     $invoice = db_item("SELECT id, account_id, direction, doc_type, currency, full_number, grand_total, grand_total_base, paid_total, status
@@ -663,7 +665,7 @@ function erp_settlement_allocate($data)
 
     if (erp_fx_enabled() && (strtoupper(trim((string) $invoice['currency'])) !== $currency)) {
         return $fail(lang(array(
-            'string' => 'Invoice {var:1} is in {var:2}; record the receipt in that currency.',
+            'string' => $is_payment ? 'Invoice {var:1} is in {var:2}; record the payment in that currency.' : 'Invoice {var:1} is in {var:2}; record the receipt in that currency.',
             'vars' => array((string) $invoice['full_number'], strtoupper(trim((string) $invoice['currency']))),
         )));
     }
@@ -685,7 +687,7 @@ function erp_settlement_allocate($data)
     }
 
     if ($amount > erp_txn_unallocated($txn_id) + $held) {
-        return $fail(lang('That amount is more than is unallocated on this receipt.'));
+        return $fail($is_payment ? lang('That amount is more than is unallocated on this payment.') : lang('That amount is more than is unallocated on this receipt.'));
     }
 
     if (!erp_tx_begin()) {

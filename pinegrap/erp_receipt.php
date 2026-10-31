@@ -59,8 +59,8 @@ if ($_POST) {
         $result = erp_receipt_cancel($cash_id, (string) ($_POST['reason'] ?? ''), (int) $user['id']);
 
         if ($result['success']) {
-            log_activity(lang(array('string' => 'erp receipt (#{var:1}) was cancelled', 'vars' => $cash_id)), $_SESSION['sessionusername']);
-            $liveform->add_notice(lang(array('string' => 'The receipt has been cancelled and {var:1} invoice(s) reopened.', 'vars' => count($result['reopened']))));
+            log_activity(lang(array('string' => $is_collection ? 'erp receipt (#{var:1}) was cancelled' : 'erp payment (#{var:1}) was cancelled', 'vars' => $cash_id)), $_SESSION['sessionusername']);
+            $liveform->add_notice(lang(array('string' => $is_collection ? 'The receipt has been cancelled and {var:1} invoice(s) reopened.' : 'The payment has been cancelled and {var:1} invoice(s) reopened.', 'vars' => count($result['reopened']))));
         } else {
             $liveform->mark_error('_error', h($result['error']));
         }
@@ -72,7 +72,7 @@ if ($_POST) {
         $result = erp_settlement_remove((int) ($_POST['settlement_id'] ?? 0), (int) $user['id']);
 
         if ($result['success']) {
-            log_activity(lang(array('string' => 'erp allocation was removed from receipt (#{var:1})', 'vars' => $cash_id)), $_SESSION['sessionusername']);
+            log_activity(lang(array('string' => $is_collection ? 'erp allocation was removed from receipt (#{var:1})' : 'erp allocation was removed from payment (#{var:1})', 'vars' => $cash_id)), $_SESSION['sessionusername']);
             $liveform->add_notice(lang('The allocation has been removed.'));
         } else {
             $liveform->mark_error('_error', $result['error']);
@@ -119,7 +119,7 @@ if ($_POST) {
         }
 
         if ($done > 0) {
-            log_activity(lang(array('string' => 'erp receipt (#{var:1}) was allocated to {var:2} invoice(s)', 'vars' => array($cash_id, $done))), $_SESSION['sessionusername']);
+            log_activity(lang(array('string' => $is_collection ? 'erp receipt (#{var:1}) was allocated to {var:2} invoice(s)' : 'erp payment (#{var:1}) was allocated to {var:2} invoice(s)', 'vars' => array($cash_id, $done))), $_SESSION['sessionusername']);
             $liveform->add_notice(lang(array('string' => '{var:1} allocation(s) saved.', 'vars' => $done)));
         } elseif (empty($errors)) {
             $liveform->mark_error('_error', lang('Nothing was allocated.'));
@@ -229,7 +229,7 @@ foreach ($settlements as $settlement) {
 }
 
 if ($output_allocation_rows === '') {
-    $output_allocation_rows = '<tr data-pg-sort-fixed><td colspan="5" class="text-center fg-secondary py-5">' . lang('This receipt has not been allocated to any invoice.') . '</td></tr>';
+    $output_allocation_rows = '<tr data-pg-sort-fixed><td colspan="5" class="text-center fg-secondary py-5">' . ($is_collection ? lang('This receipt has not been allocated to any invoice.') : lang('This payment has not been allocated to any invoice.')) . '</td></tr>';
 }
 
 $output_allocations = '

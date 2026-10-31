@@ -595,6 +595,7 @@
     "Invoice {var:1}": "Fatura {var:1}",
     "Invoice {var:1} already has delivery note {var:2}.": "{var:1} faturasının irsaliyesi zaten var: {var:2}.",
     "Invoice {var:1} created.": "{var:1} numaralı fatura oluşturuldu.",
+    "Invoice {var:1} is in {var:2}; record the payment in that currency.": "{var:1} faturası {var:2} cinsinden; ödemeyi o para biriminde kaydedin.",
     "Invoice {var:1} is in {var:2}; record the receipt in that currency.": "{var:1} faturası {var:2} cinsinden; tahsilatı o para biriminde kaydedin.",
     "Invoice {var:1} total": "Fatura {var:1} toplamı",
     "Invoiced": "Faturalandı",
