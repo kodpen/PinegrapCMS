@@ -10,7 +10,7 @@ description: The short link create and edit screens share includes/forms/short_l
 
 ## What does a save share?
 - `pg_short_link_form_validate_name($liveform, $ignore_id)` (required, pasted address, name rule, free; `null` on create, the posted id on edit) returns the cleaned name.
-- `…_validate_destination($liveform, $current)` checks the type and its target and returns the `page_id` to save; a binned target is refused unless `$current` (the stored row, `null` on create) already points at it.
+- `…_validate_destination($liveform, $current)` checks the type and its target and returns the `page_id` to save; a binned target is refused unless `$current` (the stored row, `null` on create) already points at it. A URL destination refuses whitespace in the raw value (the screens store it untrimmed), then runs `pg_short_link_url_problem()`, the rule the external API and the CSV import share: http(s) or a path on this site, no other scheme, no `//host`, no backslash, within the column. Before, the panel took `mailto:` or `//host` and visitors got a broken redirect.
 - `…_answer($liveform, $id, $name, $current_code)` runs `pg_short_link_redirect_columns()` on a form without errors.
 - `…_destination_column($type)` names the column and field of the target (`file` → `file_id`; a page has none, it keeps `page_id`). Create inserts only that column; edit sets it and clears the other three.
 
