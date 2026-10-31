@@ -3274,7 +3274,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                 ' . $output_order_stats . '
                 <div class="card my-7">
                     <div class="card-body p-0 position-relative">
-                        <form name="form"  action="edit_orders.php" method="post" class="view_orders"> 
+                        <form name="form"  action="edit_orders.php" method="post" class="view_orders disable_shortcut"> 
                             ' . get_token_field() . ' 
                             <input type="hidden" name="action">
                             <table class="chart table-hover table " style="width:100%;display:none"' . pg_list_edit_table('view_orders.php', $quick_edit) . '>

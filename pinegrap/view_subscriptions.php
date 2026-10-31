@@ -151,7 +151,7 @@ if ($subscription_id > 0) {
     foreach ($actions as $action) {
         $button = $buttons[$action];
         $output_actions .= '
-                <form action="view_subscriptions.php?id=' . (int) $row['id'] . '" method="post" class="d-inline-block">
+                <form action="view_subscriptions.php?id=' . (int) $row['id'] . '" method="post" class="d-inline-block disable_shortcut">
                     ' . get_token_field() . '
                     <input type="hidden" name="id" value="' . (int) $row['id'] . '">
                     <input type="hidden" name="action" value="' . h($action) . '">
