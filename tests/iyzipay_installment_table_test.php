@@ -101,7 +101,18 @@ function test_iyzipay_installments_table()
 	));
 	$cache = array();
 	$errors = array();
-	set_error_handler(function ($no, $str) use (&$errors) { $errors[] = $str; return true; });
+	// Only warnings and notices come from a failed reply. Anything else goes to the
+	// runner's handler: PHP 8.4+ raises E_DEPRECATED while the iyzipay-php classes
+	// load (implicitly nullable parameters), which the runner lets through for
+	// vendored code and still fails for product code.
+	$previous = null;
+	$previous = set_error_handler(function ($no, $str, $file = '', $line = 0) use (&$errors, &$previous) {
+		if (($no & (E_WARNING | E_NOTICE | E_USER_WARNING | E_USER_NOTICE)) !== 0) {
+			$errors[] = $str;
+			return true;
+		}
+		return $previous ? call_user_func($previous, $no, $str, $file, $line) : false;
+	});
 	$t = pg_payment_iyzico_installment_table(100, iyzipay_installment_test_settings(), $cache);
 	restore_error_handler();
 
