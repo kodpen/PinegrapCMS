@@ -202,6 +202,154 @@ function pg_email_campaign_profile_follow_map()
 }
 
 /**
+ * How many profiles follow this profile directly: their "campaign sent"
+ * trigger is this profile, so they send nothing once it is deleted.
+ *
+ * @param int   $profile_id
+ * @param array $follows     pg_email_campaign_profile_follow_map()
+ * @return int
+ */
+function pg_email_campaign_profile_follower_count($profile_id, $follows)
+{
+    $profile_id = (int) $profile_id;
+
+    if (!$profile_id) {
+        return 0;
+    }
+
+    $count = 0;
+
+    foreach ($follows as $followed_id) {
+        if ((int) $followed_id == $profile_id) {
+            $count++;
+        }
+    }
+
+    return $count;
+}
+
+/**
+ * The Delete confirmation of the edit screen, naming how many profiles
+ * follow the profile and stop sending with it.
+ *
+ * @param int $follower_count  pg_email_campaign_profile_follower_count()
+ * @return string  Plain text
+ */
+function pg_email_campaign_profile_delete_confirmation($follower_count)
+{
+    $follower_count = (int) $follower_count;
+
+    if ($follower_count == 1) {
+        return lang('WARNING: This campaign profile will be permanently deleted. 1 campaign profile follows it and will send nothing until it is given another trigger.');
+    }
+
+    if ($follower_count > 1) {
+        return lang(array('string' => 'WARNING: This campaign profile will be permanently deleted. {var:1} campaign profiles follow it and will send nothing until they are given another trigger.', 'vars' => array($follower_count)));
+    }
+
+    return lang('WARNING: This campaign profile will be permanently deleted.');
+}
+
+/**
+ * The row of the item a profile's action is tied to (calendar event,
+ * custom form page, followed profile or product), null when the action has
+ * no item, none is stored or the row is gone.
+ *
+ * @param string $action
+ * @param int    $action_item_id
+ * @return array|null
+ */
+function pg_email_campaign_profile_action_item_row($action, $action_item_id)
+{
+    $action_item_id = (int) $action_item_id;
+
+    if (!$action_item_id) {
+        return null;
+    }
+
+    switch ($action) {
+        case 'calendar_event_reserved':
+            $row = db_item("SELECT name FROM calendar_events WHERE id = '" . $action_item_id . "'");
+            break;
+
+        case 'custom_form_submitted':
+            $row = db_item("SELECT page_name FROM page WHERE page_id = '" . $action_item_id . "'");
+            break;
+
+        case 'email_campaign_sent':
+            $row = db_item("SELECT name FROM email_campaign_profiles WHERE id = '" . $action_item_id . "'");
+            break;
+
+        case 'product_ordered':
+            $row = db_item("SELECT name, short_description FROM products WHERE id = '" . $action_item_id . "'");
+            break;
+
+        default:
+            return null;
+    }
+
+    return is_array($row) ? $row : null;
+}
+
+/**
+ * Whether the profile's action names an item whose row is gone: the
+ * profile can never fire until another item is picked.
+ *
+ * @param string     $action
+ * @param int        $action_item_id
+ * @param array|null $row  pg_email_campaign_profile_action_item_row()
+ * @return bool
+ */
+function pg_email_campaign_profile_action_item_gone($action, $action_item_id, $row)
+{
+    return (pg_email_campaign_profile_action_item_field($action) != '')
+        && ((int) $action_item_id > 0)
+        && !is_array($row);
+}
+
+/**
+ * The label of the item a profile's action is tied to, as the list and the
+ * CSV export show it, or "(deleted)" when its row is gone.
+ *
+ * @param string     $action
+ * @param int        $action_item_id
+ * @param array|null $row  pg_email_campaign_profile_action_item_row()
+ * @return string  Plain text, not escaped
+ */
+function pg_email_campaign_profile_action_item_label($action, $action_item_id, $row)
+{
+    if (pg_email_campaign_profile_action_item_gone($action, $action_item_id, $row)) {
+        return lang('(deleted)');
+    }
+
+    if (!is_array($row)) {
+        return '';
+    }
+
+    switch ($action) {
+        case 'calendar_event_reserved':
+        case 'email_campaign_sent':
+            return (string) ($row['name'] ?? '');
+
+        case 'custom_form_submitted':
+            return (string) ($row['page_name'] ?? '');
+
+        case 'product_ordered':
+            $name = (string) ($row['name'] ?? '');
+            $short_description = (string) ($row['short_description'] ?? '');
+            $label = $name;
+
+            if (($short_description != '') && ($short_description != $name)) {
+                $label .= (($label != '') ? ' - ' : '') . $short_description;
+            }
+
+            return $label;
+    }
+
+    return '';
+}
+
+/**
  * The profile plus every profile that follows it, directly or further down
  * the chain: none of them may be its trigger, or the campaigns run in a ring
  * that never ends.
@@ -283,8 +431,11 @@ function pg_email_campaign_profile_closes_ring($profile_id, $pick, $follows)
  * @param array    $keep_pages  The stored 'custom_form_page_id' and 'page_id',
  *                              kept in their page pickers even in an archived
  *                              folder, and the stored 'email_campaign_profile_id',
- *                              kept in its picker even when it closes a ring
- *                              (empty on the create screen)
+ *                              kept in its picker even when it closes a ring,
+ *                              and 'action_item_gone', the stored action when
+ *                              its stored item has no row any more, so its
+ *                              picker says why it is empty (empty on the
+ *                              create screen)
  * @param int      $profile_id  The profile being edited, 0 for a new one; it
  *                              and the profiles downstream of it are left out
  *                              of the "campaign sent" picker
@@ -295,6 +446,21 @@ function pg_email_campaign_profile_form_cards($liveform, $user, $product_id = 0,
     $rows = pg_email_campaign_profile_action_rows($liveform->get_field_value('action'));
 
     $exclude_ids = $profile_id ? pg_email_campaign_profile_downstream($profile_id, pg_email_campaign_profile_follow_map()) : array();
+
+    // The stored trigger item was deleted: its picker falls back to the
+    // placeholder, so say why above it.
+    $gone_notices = array(
+        'calendar_event_id' => '',
+        'custom_form_page_id' => '',
+        'email_campaign_profile_id' => '',
+        'product_id' => '',
+    );
+
+    $gone_field = pg_email_campaign_profile_action_item_field($keep_pages['action_item_gone'] ?? '');
+
+    if ($gone_field != '') {
+        $gone_notices[$gone_field] = '<div class="form-text fg-danger mb-1">' . h(lang('The item this profile was set to follow has been deleted, so the profile sends nothing until another one is picked.')) . '</div>';
+    }
 
     $output_body_preview_iframe_source = '';
 
@@ -348,6 +514,7 @@ function pg_email_campaign_profile_form_cards($liveform, $user, $product_id = 0,
         $output_product_id_row =
             '<div class="col-12 md:col-6 lg:col-4 my-3 collapse ' . $rows['product_id'] . '" id="product_id_row">
                 <label for="product_id" class="form-label">' . lang('Product') . '</label>
+                ' . $gone_notices['product_id'] . '
                 ' . $liveform->output_field(array('type'=>'select', 'name'=>'product_id', 'id'=>'product_id', 'class'=>'form-control', 'options'=>get_product_options(true, $product_id) )) . '
             </div>';
     }
@@ -377,14 +544,17 @@ function pg_email_campaign_profile_form_cards($liveform, $user, $product_id = 0,
                                         </div>
                                         <div class="col-12 md:col-6 lg:col-4 my-3 collapse ' . $rows['calendar_event_id'] . '" id="calendar_event_id_row">
                                             <label for="calendar_event_id" class="form-label">' . lang('Calendar Event') . '</label>
+                                            ' . $gone_notices['calendar_event_id'] . '
                                             ' . $liveform->output_field(array('type'=>'select', 'name'=>'calendar_event_id', 'id'=>'calendar_event_id', 'class'=>'form-control', 'options'=>get_calendar_event_options(array('reservations' => true)) )) . '
                                         </div>
                                         <div class="col-12 md:col-6 lg:col-4 my-3 collapse ' . $rows['custom_form_page_id'] . '" id="custom_form_page_id_row">
                                             <label for="custom_form_page_id" class="form-label">' . lang('Custom Form') . '</label>
+                                            ' . $gone_notices['custom_form_page_id'] . '
                                             ' . $liveform->output_field(array('type'=>'select', 'name'=>'custom_form_page_id', 'id'=>'custom_form_page_id', 'class'=>'form-control', 'options'=>get_page_options('', 'custom form', 'edit', true, $keep_pages['custom_form_page_id'] ?? 0) )) . '
                                         </div>
                                         <div class="col-12 md:col-6 lg:col-4 my-3 collapse ' . $rows['email_campaign_profile_id'] . '" id="email_campaign_profile_id_row">
                                             <label for="email_campaign_profile_id" class="form-label">' . lang('Campaign Profile for Campaign that was sent') . '</label>
+                                            ' . $gone_notices['email_campaign_profile_id'] . '
                                             ' . $liveform->output_field(array('type'=>'select', 'name'=>'email_campaign_profile_id', 'id'=>'email_campaign_profile_id', 'class'=>'form-control', 'options'=>get_email_campaign_profile_options($exclude_ids, $keep_pages['email_campaign_profile_id'] ?? 0) )) . '
                                         </div>
                                         ' . $output_product_id_row . '

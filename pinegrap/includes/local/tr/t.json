@@ -2268,6 +2268,7 @@
     "The item has been added to your cart.": "Ürün sepetinize eklendi.",
     "The item that you attempted to add requires a recipient.": "Eklemeye çalıştığınız ürün için bir alıcı seçmelisiniz.",
     "The item that you selected could not be found. Please select a different item to add.": "Seçtiğiniz ürün bulunamadı. Eklemek için başka bir ürün seçin.",
+    "The item this profile was set to follow has been deleted, so the profile sends nothing until another one is picked.": "Bu profilin izlediği öğe silindi; başka bir öğe seçilene kadar profil hiçbir şey göndermez.",
     "The item was renamed successfully.": "Öğe başarıyla yeniden adlandırıldı.",
     "The items are added, ordered and linked under Menus; without a menu the widget draws no items.": "Öğeler Menüler altında eklenir, sıralanır ve bağlanır; menü seçilmezse bileşen öğe çizmez.",
     "The items of the list take more than {var:1} KB; they cannot be kept for the loop.": "Listenin öğeleri {var:1} KB'tan fazla yer tutuyor; döngü için saklanamazlar.",
