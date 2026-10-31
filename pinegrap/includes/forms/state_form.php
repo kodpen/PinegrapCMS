@@ -154,3 +154,40 @@ function pg_state_form_card($values, $errors = array())
                         </div>
 ';
 }
+
+/**
+ * How many verified shipping addresses a state delete removes with it.
+ *
+ * @param int $state_id
+ * @return int
+ */
+function pg_state_form_delete_counts($state_id)
+{
+    $result = db_q("SELECT COUNT(*) FROM verified_shipping_addresses WHERE state_id = ?", array((int) $state_id));
+    $row = $result ? mysqli_fetch_row($result) : null;
+
+    return $row ? (int) $row[0] : 0;
+}
+
+/**
+ * The Delete confirmation of Edit State as lang() arguments: the verified
+ * shipping addresses of the state go with it, so they are named when there
+ * are any.
+ *
+ * @param int $addresses
+ * @return array list of lang() arguments, one per sentence
+ */
+function pg_state_form_delete_confirm($addresses)
+{
+    $addresses = (int) $addresses;
+
+    if ($addresses < 1) {
+        return array(array('string' => 'WARNING: This {var:1} will be permanently deleted.', 'vars' => array(lang('state'))));
+    }
+
+    return array(array(
+        'string' => 'WARNING: This state and its {var:1} verified shipping address{suffix:1} will be permanently deleted.',
+        'vars' => array($addresses),
+        'suffix' => array($addresses == 1 ? '' : 'es'),
+    ));
+}

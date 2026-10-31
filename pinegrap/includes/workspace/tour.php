@@ -189,7 +189,7 @@ function ws_tour_steps($viewer)
 
     $steps[] = array(
         'art'       => 'finish',
-        'target'    => array('#ws-menu-side [data-ws-tour]'),
+        'target'    => array('.ws-side-head-tools [data-ws-tour]', '#ws-menu-side [data-ws-tour]'),
         'placement' => 'right',
         'title'     => lang('That is all'),
         'text'      => lang('Start a channel of your own, or write in one you are in. This tour is always here: the Tour of the workspace button plays it again.'),

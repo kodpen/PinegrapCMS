@@ -17,8 +17,9 @@
  * write delivery notes, stock counts and minimums in api_stock.php, transfers
  * and cheques in api_cash.php, the profit, cash flow, cash forecast, late
  * payment fee and dashboard figures (and the fee's invoice draft) in
- * api_reports.php, and the purchase orders' in api_purchase_orders.php; this
- * one stays a table, the way schema.php is a table.
+ * api_reports.php, the purchase orders' in api_purchase_orders.php and the
+ * sales quote templates' in api_quote_templates.php; this one stays a table,
+ * the way schema.php is a table.
  *
  * Two permissions, mirroring the panel: 'erp' is the ledger - accounts,
  * invoices, delivery notes, expenses, quotes, stock and the reports - and
@@ -50,6 +51,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/erp/api_stock.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/api_cash.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/api_reports.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/api_purchase_orders.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/erp/api_quote_templates.php');
 
 /**
  * The permission rows on the Application Access screen.
@@ -145,6 +147,8 @@ function erp_webhook_events()
         'erp.quote.reopened' => 'An ERP sales quote was opened again (editable, running from today if it had expired)',
         'erp.quote.invoiced' => 'An ERP sales quote was turned into an invoice draft at the prices quoted',
         'erp.quote.signed' => 'An ERP sales quote was signed by the customer on the screen (an ordinary electronic signature); it is accepted from then on. Also carries signer_name and signed_at',
+        'erp.quote_template.saved' => 'An ERP sales quote template was saved, new or written over one of the same name. Carries id, name and scope (personal or site)',
+        'erp.quote_template.deleted' => 'An ERP sales quote template was deleted. Carries id, name and scope (personal or site)',
         'erp.stock_count.applied' => 'An ERP stock count was applied: the store\'s stock of every product on it was set to what was counted. Carries line_count and changed (the products whose stock moved)',
         'erp.purchase_order.created' => 'An ERP purchase order to a supplier was written and took its number',
         'erp.purchase_order.sent' => 'An ERP purchase order went to the supplier (e-mailed, or marked sent by hand); only the first time',
@@ -175,6 +179,7 @@ function erp_openapi_objects()
         'ErpExpenseCategory' => 'erp_api_expense_category_schema',
         'ErpQuote' => 'erp_api_quote_schema',
         'ErpQuoteSignature' => 'erp_api_quote_signature_schema',
+        'ErpQuoteTemplate' => 'erp_api_quote_template_schema',
         'ErpPurchaseOrder' => 'erp_api_purchase_order_schema',
         'ErpCheque' => 'erp_api_cheque_schema',
         'ErpStockLevel' => 'erp_api_stock_level_schema',
@@ -1231,6 +1236,82 @@ function erp_api_routes()
                 array('name' => 'to', 'in' => 'body', 'type' => 'string', 'max_length' => 500, 'description' => 'Addresses, separated by commas. The account\'s invoice address, or its main address, when left out.'),
                 array('name' => 'subject', 'in' => 'body', 'type' => 'string', 'max_length' => 255, 'description' => 'The store\'s default subject when left out.'),
                 array('name' => 'message', 'in' => 'body', 'type' => 'string', 'max_length' => 5000, 'description' => 'The covering text. A sentence naming the valid-until date when left out.'),
+            ),
+        ),
+
+        /* ----- Quote templates --------------------------------------------- */
+
+        array(
+            'id' => 'erp.quote_templates.list',
+            'method' => 'GET',
+            'path' => '/erp/quote-templates',
+            'scope' => 'erp:read',
+            'handler' => 'erp_api_quote_templates_list',
+            'returns' => array('list' => 'ErpQuoteTemplate'),
+            'summary' => 'List sales quote templates',
+            'description' => 'The site templates and the owner\'s own personal ones, personal first, by name. A template keeps quote lines only, never an account, dates, a currency or notes. A personal template is seen and changed by its owner alone; a site template is seen by everyone with the ERP right and changed by anyone who may write quotes. To fill a quote, read a template and send its lines to POST /erp/quotes. One page holds them all.',
+            'params' => array(),
+        ),
+
+        array(
+            'id' => 'erp.quote_templates.get',
+            'method' => 'GET',
+            'path' => '/erp/quote-templates/{id}',
+            'scope' => 'erp:read',
+            'handler' => 'erp_api_quote_templates_get',
+            'returns' => 'ErpQuoteTemplate',
+            'summary' => 'One sales quote template',
+            'description' => 'A template the owner sees; another user\'s personal template answers 404. Its lines go to POST /erp/quotes as they are.',
+            'params' => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+            ),
+        ),
+
+        array(
+            'id' => 'erp.quote_templates.save',
+            'method' => 'POST',
+            'path' => '/erp/quote-templates',
+            'scope' => 'erp:write',
+            'handler' => 'erp_api_quote_templates_save',
+            'dry_run' => true,
+            'returns' => 'ErpQuoteTemplate',
+            'status' => 201,
+            'summary' => 'Save a sales quote template',
+            'description' => 'Keeps quote lines under a name, the way the quote screen\'s "Save as template" does. A template keeps lines only, never an account, dates, a currency or notes; empty lines are dropped. A template of the same name in the same scope (the owner\'s own for personal) is written over and answers 200; a new one answers 201. personal is seen and changed by the owner alone; site is seen by everyone with the ERP right and changed by anyone who may write quotes. Announced as erp.quote_template.saved.',
+            'params' => array(
+                array('name' => 'name', 'in' => 'body', 'type' => 'string', 'max_length' => 100, 'required' => true),
+                array('name' => 'scope', 'in' => 'body', 'type' => 'enum', 'values' => array('personal', 'site'), 'required' => true, 'description' => 'personal: only the owner sees it. site: everyone with the ERP right.'),
+                array_merge($lines, array('required' => true, 'description' => 'The lines, in order, as POST /erp/quotes takes them. unit_price is minor units of the quote currency, before tax and discount. Nothing is worked out or priced until the lines are sent to a quote; at least one line with a product or a description is required.')),
+            ),
+        ),
+
+        array(
+            'id' => 'erp.quote_templates.delete',
+            'method' => 'DELETE',
+            'path' => '/erp/quote-templates/{id}',
+            'scope' => 'erp:write',
+            'handler' => 'erp_api_quote_templates_delete',
+            'dry_run' => true,
+            'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+            'summary' => 'Delete a sales quote template',
+            'description' => 'A personal template is deleted by its owner alone, a site template by anyone who may write quotes. A template the owner does not see answers 404. Quotes filled from it keep their lines. Announced as erp.quote_template.deleted.',
+            'params' => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+            ),
+        ),
+
+        array(
+            'id' => 'erp.quote_templates.delete_post',
+            'method' => 'POST',
+            'path' => '/erp/quote-templates/{id}/delete',
+            'scope' => 'erp:write',
+            'handler' => 'erp_api_quote_templates_delete',
+            'dry_run' => true,
+            'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+            'summary' => 'Delete a sales quote template, addressed as a POST',
+            'description' => 'The same deletion as DELETE /erp/quote-templates/{id}, for clients and servers that cannot send DELETE.',
+            'params' => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
             ),
         ),
 

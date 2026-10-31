@@ -19,6 +19,7 @@ description: Where ERP work lives, part 2: stock, accountant pack, period lock, 
 | Audit trail | `audit.php`, `erp_audit.php` |
 | Instant alerts | `alerts.php`, `erp_stock_alert_job.php` |
 | Quotes | `quotes.php`, `erp_quotes.php`, `add_erp_quote.php`, `edit_erp_quote.php`, `get_erp_quote_pdf.php` |
+| Sales quote templates | `quote_templates.php` (box on `add_erp_quote.php`), API `api_quote_templates.php` |
 | Purchase orders | `purchase_orders.php`, `erp_purchase_orders.php`, `add_erp_purchase_order.php`, `edit_erp_purchase_order.php`, `get_erp_purchase_order_pdf.php`, `templates/purchase_order.html` |
 | Document signature (quote) | `signatures.php` |
 | Recurring invoices | `invoice_recurring.php`, `erp_invoice_recurrences.php`, `erp_invoice_recurring_job.php` |

@@ -8,6 +8,9 @@ description: add_calendar_event.php and edit_calendar_event.php draw and check t
 - A screen keeps its gates, CSRF check, the error redirect (add: plain; edit: `id`, `recurrence_number`, `send_to`), the write and the success redirect.
 - The form markup too: `pg_calendar_event_form_choices()` loads every calendar and location (id, name), `pg_calendar_event_form_cards($liveform, $user, $calendars, $calendar_event_locations, $calendar_event_id = 0)` returns the five cards and the closing `toggle_calendar_event_recurrence()` script. A screen keeps the page shell, its script tags, the form tag, hidden fields (edit: `id`, `send_to`, `recurrence_number`) and buttons (edit adds Duplicate, workspace and Delete). PR #2459.
 
+## Which calendars does a new event start on?
+- Calendars' Create Calendar Event button passes `?calendar_id=<id>` only when the viewed (session) calendar is one the user may access. On the first visit add_calendar_event.php ticks `calendar_<id>` for the ids `pg_calendar_event_form_start_calendars($offered_ids, $requested_id)` returns: the requested id when offered (`validate_calendar_access()`), else the only offered calendar, else none. Before, the first save from a calendar's view was refused for want of a calendar.
+
 ## What does an event id change in the cards?
 - Create (0): start and end prefilled with the next half hour and one hour later; initial spots row shown; product picker `get_product_options()` (same as `true, 0`).
 - Edit (id): no default times; a stored unpublish 0 shows as empty; a Remaining Spots field; the initial spots row starts hidden and the separate reservations switch re-runs `toggle_calendar_event_recurrence()`, which tells the screens apart by `#number_of_remaining_spots_row`; the stored product stays in the picker.

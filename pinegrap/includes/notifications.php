@@ -106,8 +106,10 @@ function pg_notification_visible($notification, $rights)
 		return ((ECOMMERCE === true) && $rights['manage_ecommerce']);
 	}
 
+	// A submission is for whoever may open it: edit_submitted_form.php also
+	// asks for edit access to the folder of the form's page.
 	if ($action == 'form_submited') {
-		return ((FORMS === true) && $rights['manage_forms']);
+		return ((FORMS === true) && $rights['manage_forms'] && pg_notification_form_visible($notification, $rights));
 	}
 
 	if ($action == 'software_update') {
@@ -218,6 +220,33 @@ function pg_notification_comment_visible($notification, $rights)
 	return $access[$key];
 }
 
+// A form submission is visible to whoever may edit the folder of the form's
+// page, as edit_submitted_form.php asks. Manager and above edit every folder;
+// the rest are cached per request and per person like a comment.
+function pg_notification_form_visible($notification, $rights)
+{
+	static $access = array();
+
+	if ((int) $rights['role'] < 3) {
+		return true;
+	}
+
+	$form_id = isset($notification['form_id']) ? (string) $notification['form_id'] : '';
+	$key = $rights['id'] . ':' . $form_id;
+
+	if (!isset($access[$key])) {
+
+		$folder_id = db_value("SELECT page.page_folder
+			FROM forms
+			LEFT JOIN page ON page.page_id = forms.page_id
+			WHERE forms.id = '" . escape($form_id) . "'");
+
+		$access[$key] = (pg_folder_edit_access($folder_id, $rights['id'], $rights['role']) == true);
+	}
+
+	return $access[$key];
+}
+
 // The notification ids this person has already read. One query per request; the
 // dropdown asks about every row it draws.
 function pg_notification_read_ids($user_id)
@@ -253,7 +282,7 @@ function pg_notification_unread_rows($user_id, $full_row = false)
 
 	// The badge only needs enough to run the visibility ladder. Anything that
 	// has to render the notification asks for the whole row instead.
-	$columns = ($full_row) ? 'notifications.*' : 'notifications.id, notifications.action, notifications.comment_id';
+	$columns = ($full_row) ? 'notifications.*' : 'notifications.id, notifications.action, notifications.comment_id, notifications.form_id';
 
 	// Rows addressed to somebody else are not even read.
 	$target_filter = '';
@@ -264,7 +293,7 @@ function pg_notification_unread_rows($user_id, $full_row = false)
 	}
 
 	if (!pg_notification_reads_available()) {
-		return db_items("SELECT " . (($full_row) ? '*' : 'id, action, comment_id, readed') . " FROM notifications
+		return db_items("SELECT " . (($full_row) ? '*' : 'id, action, comment_id, form_id, readed') . " FROM notifications
 			WHERE readed = 0
 			ORDER BY timestamp DESC");
 	}
@@ -286,7 +315,7 @@ function pg_notification_unread_rows($user_id, $full_row = false)
 // row addressed to somebody else passes it.
 function pg_notification_ladder_columns()
 {
-	return 'id, action, comment_id' . (pg_notification_targets_available() ? ', target_user_id' : '');
+	return 'id, action, comment_id, form_id' . (pg_notification_targets_available() ? ', target_user_id' : '');
 }
 
 // What a notification says and where it points.
@@ -302,7 +331,7 @@ function pg_notification_ladder_columns()
 // comment message typed by an anonymous visitor, a product name, a billing
 // name - and must never reach the panel as markup. pg_notification_body()
 // strips the tags and decodes the entities again for a plain-text banner.
-function pg_notification_display($notification)
+function pg_notification_display($notification, $reader_role = null)
 {
 	$action = isset($notification['action']) ? $notification['action'] : '';
 
@@ -563,7 +592,7 @@ function pg_notification_display($notification)
 
 		if (isset($codes[$code])) {
 			$display['title'] = h($codes[$code]['label']);
-			$display['url']   = $codes[$code]['url'];
+			$display['url']   = pg_ops_alert_reader_url($code, $reader_role);
 		} else {
 			$display['title'] = h(lang('Operations alert'));
 			$display['url']   = 'welcome.php';

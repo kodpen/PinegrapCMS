@@ -109,3 +109,32 @@ function test_calendar_event_form_select_all_switches_name_their_list()
 		pg_assert_contains('<label for="' . $id . '" class="" id="' . $id . '_label">', $source, $heading . ' Select All label has an id');
 	}
 }
+
+function test_calendar_event_form_start_calendars_tick_the_requested_offered_calendar()
+{
+	pg_assert_same(array('7'), pg_calendar_event_form_start_calendars(array('3', '7', '9'), '7'));
+	pg_assert_same(array('7'), pg_calendar_event_form_start_calendars(array(3, 7, 9), '7'));
+}
+
+function test_calendar_event_form_start_calendars_tick_the_only_offered_calendar()
+{
+	pg_assert_same(array('4'), pg_calendar_event_form_start_calendars(array('4'), ''));
+	pg_assert_same(array('4'), pg_calendar_event_form_start_calendars(array('4'), '99'));
+}
+
+function test_calendar_event_form_start_calendars_tick_nothing_without_a_clear_choice()
+{
+	pg_assert_same(array(), pg_calendar_event_form_start_calendars(array('3', '7'), ''));
+	pg_assert_same(array(), pg_calendar_event_form_start_calendars(array('3', '7'), '99'));
+	pg_assert_same(array(), pg_calendar_event_form_start_calendars(array(), '7'));
+	pg_assert_same(array(), pg_calendar_event_form_start_calendars(array('3', '7'), null));
+}
+
+function test_calendar_event_form_create_link_carries_the_viewed_calendar()
+{
+	$calendars = file_get_contents(PG_FUNCTIONS_DIR . '/calendars.php');
+	pg_assert_true(strpos($calendars, "add_calendar_event.php?calendar_id=' . h(urlencode(") !== false, 'calendars.php does not pass the viewed calendar to the create screen');
+
+	$add = file_get_contents(PG_FUNCTIONS_DIR . '/add_calendar_event.php');
+	pg_assert_true(strpos($add, 'pg_calendar_event_form_start_calendars(') !== false, 'add_calendar_event.php does not tick the start calendar');
+}
