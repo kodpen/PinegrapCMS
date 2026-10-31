@@ -56,3 +56,43 @@ function test_explorer_file_usage_setting_hits()
 
 	pg_assert_same(array(), pg_explorer_file_usage_setting_hits($config, $labels ? array_keys($labels) : array(), $labels, 'other.png'), 'no match');
 }
+
+// A hit links only to a screen that admits the viewer: the page's folder
+// for pages and page regions, Designer for common and designer regions and
+// classic styles, Administrator for dynamic regions, the commerce right for
+// products and product groups, and the ad's region for a role-3 user.
+function test_explorer_file_usage_screen_open()
+{
+	pg_assert_true(pg_explorer_file_usage_screen_open('page', 3, true), 'page in an editable folder');
+	pg_assert_false(pg_explorer_file_usage_screen_open('page', 3, false), 'page outside the folders');
+	pg_assert_true(pg_explorer_file_usage_screen_open('designer', 1, false), 'designer screen for a Designer');
+	pg_assert_false(pg_explorer_file_usage_screen_open('designer', 2, false), 'designer screen refuses a Manager');
+	pg_assert_true(pg_explorer_file_usage_screen_open('administrator', 0, false), 'administrator screen');
+	pg_assert_false(pg_explorer_file_usage_screen_open('administrator', 1, false), 'administrator screen refuses a Designer');
+	pg_assert_true(pg_explorer_file_usage_screen_open('commerce', 2, false), 'commerce for a Manager');
+	pg_assert_true(pg_explorer_file_usage_screen_open('commerce', 3, true), 'commerce for a user with the right');
+	pg_assert_false(pg_explorer_file_usage_screen_open('commerce', 3, false), 'commerce refuses a user without the right');
+	pg_assert_true(pg_explorer_file_usage_screen_open('ad', 2, false), 'ad for a Manager');
+	pg_assert_true(pg_explorer_file_usage_screen_open('ad', 3, true), 'ad in an editable region');
+	pg_assert_false(pg_explorer_file_usage_screen_open('ad', 3, false), 'ad outside the regions');
+	pg_assert_false(pg_explorer_file_usage_screen_open('other', 0, true), 'unknown screen');
+}
+
+// Every edit-screen link of the handler passes through that check, and the
+// selects carry what it needs.
+function test_explorer_file_usage_links_are_gated()
+{
+	$handler = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/explorer/handle_file_usage.php');
+
+	pg_assert_contains('pregion.pregion_id, pregion.pregion_name, page.page_id, page.page_name, page.page_folder', $handler, 'page region select');
+	pg_assert_contains("'page_id, page_name, page_folder'", $handler, 'page select');
+	pg_assert_contains("'id, name, ad_region_id'", $handler, 'ad select');
+	pg_assert_contains("\$usage_open('designer', false) ? (((\$row['cregion_designer_type'] == 'yes')", $handler, 'common regions');
+	pg_assert_contains("\$usage_open('administrator', false) ? ('edit_dynamic_region.php?id='", $handler, 'dynamic regions');
+	pg_assert_contains("\$usage_open('designer', false) ? ('edit_custom_style.php?id='", $handler, 'classic styles');
+	pg_assert_contains("'edit_system_style.php?id=' . (int) \$row['style_id']", $handler, 'visual designer styles stay linked');
+	pg_assert_contains("\$usage_open('commerce', \$usage_commerce) ? ('edit_product.php?id='", $handler, 'products');
+	pg_assert_contains("\$usage_open('commerce', \$usage_commerce) ? ('edit_product_group.php?id='", $handler, 'product groups');
+	pg_assert_contains("\$usage_open('ad', in_array((int) \$row['ad_region_id'], \$usage_ad_regions, true)) ? ('edit_ad.php?id='", $handler, 'ads');
+	pg_assert_same(2, substr_count($handler, "\$usage_open('page', \$usage_page_folder_editable(\$row['page_folder']))"), 'pages and page regions');
+}

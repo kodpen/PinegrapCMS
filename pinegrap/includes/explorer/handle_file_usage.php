@@ -34,6 +34,32 @@ function pg_explorer_file_usage_setting_hits($config, $columns, $labels, $name)
     return $hits;
 }
 
+// Whether the edit screen a hit would link to admits the viewer, so the
+// list keeps every name but links only where the screen will open; a hit
+// without a link is drawn as plain text. 'page' takes whether the page's
+// folder is editable (edit_page.php, check_edit_access()), 'commerce'
+// whether the viewer holds the commerce right (validate_ecommerce_access()),
+// 'ad' whether a role-3 viewer edits the ad's region (edit_ad.php);
+// 'designer' and 'administrator' are the screens' validate_area_access().
+function pg_explorer_file_usage_screen_open($screen, $role, $allowed)
+{
+    $role = (int) $role;
+
+    switch ($screen) {
+        case 'page':
+            return (bool) $allowed;
+        case 'designer':
+            return $role <= 1;
+        case 'administrator':
+            return $role === 0;
+        case 'commerce':
+        case 'ad':
+            return ($role < 3) || (bool) $allowed;
+    }
+
+    return false;
+}
+
 // "Can I delete this?" is the question the file manager could not
 // answer, and the way it was answered instead was by deleting it and
 // waiting to see what broke.
@@ -97,6 +123,27 @@ function pg_explorer_handle_file_usage($type, $request, $user, $folders_that_use
         return $out;
     };
 
+    $usage_role = (int) $user['role'];
+
+    $usage_open = function ($screen, $allowed) use ($usage_role) {
+        return pg_explorer_file_usage_screen_open($screen, $usage_role, $allowed);
+    };
+
+    // The folder answer is asked once per folder: many hits share one.
+    $usage_folder_answers = array();
+
+    $usage_page_folder_editable = function ($folder_id) use (&$usage_folder_answers) {
+        $folder_id = (int) $folder_id;
+
+        if (!isset($usage_folder_answers[$folder_id])) {
+            $usage_folder_answers[$folder_id] = (bool) check_edit_access($folder_id);
+        }
+
+        return $usage_folder_answers[$folder_id];
+    };
+
+    $usage_commerce = defined('USER_MANAGE_ECOMMERCE') && USER_MANAGE_ECOMMERCE;
+
     // One source: a table, the columns worth scanning, and how to name
     // and reach what was found.
     $usage_scan = function ($table, $columns, $select, $label, $link) use ($usage_like, &$usage_groups, &$usage_total, &$usage_truncated, $usage_cap) {
@@ -141,13 +188,13 @@ function pg_explorer_handle_file_usage($type, $request, $user, $folders_that_use
     $usage_scan(
         'pregion LEFT JOIN page ON pregion.pregion_page = page.page_id',
         $usage_columns('pregion', array('pregion_content')),
-        'pregion.pregion_id, pregion.pregion_name, page.page_id, page.page_name',
+        'pregion.pregion_id, pregion.pregion_name, page.page_id, page.page_name, page.page_folder',
         lang('Page Regions'),
-        function ($row) {
+        function ($row) use ($usage_open, $usage_page_folder_editable) {
             return array(
                 'name' => ($row['page_name'] !== null) ? (string) $row['page_name'] : (string) $row['pregion_name'],
                 'note' => (string) $row['pregion_name'],
-                'url' => ($row['page_id'] > 0) ? ('edit_page.php?id=' . (int) $row['page_id']) : '');
+                'url' => (($row['page_id'] > 0) && $usage_open('page', $usage_page_folder_editable($row['page_folder']))) ? ('edit_page.php?id=' . (int) $row['page_id']) : '');
         });
 
     $usage_scan(
@@ -155,11 +202,11 @@ function pg_explorer_handle_file_usage($type, $request, $user, $folders_that_use
         $usage_columns('cregion', array('cregion_content')),
         'cregion_id, cregion_name, cregion_designer_type',
         lang('Common Regions'),
-        function ($row) {
+        function ($row) use ($usage_open) {
             return array(
                 'name' => (string) $row['cregion_name'],
                 'note' => '',
-                'url' => (($row['cregion_designer_type'] == 'yes') ? 'edit_designer_region.php?id=' : 'edit_common_region.php?id=') . (int) $row['cregion_id']);
+                'url' => $usage_open('designer', false) ? ((($row['cregion_designer_type'] == 'yes') ? 'edit_designer_region.php?id=' : 'edit_common_region.php?id=') . (int) $row['cregion_id']) : '');
         });
 
     $usage_scan(
@@ -167,8 +214,8 @@ function pg_explorer_handle_file_usage($type, $request, $user, $folders_that_use
         $usage_columns('dregion', array('dregion_code')),
         'dregion_id, dregion_name',
         lang('Dynamic Regions'),
-        function ($row) {
-            return array('name' => (string) $row['dregion_name'], 'note' => '', 'url' => 'edit_dynamic_region.php?id=' . (int) $row['dregion_id']);
+        function ($row) use ($usage_open) {
+            return array('name' => (string) $row['dregion_name'], 'note' => '', 'url' => $usage_open('administrator', false) ? ('edit_dynamic_region.php?id=' . (int) $row['dregion_id']) : '');
         });
 
     // The visual designer keeps a page's markup on the page itself and
@@ -176,10 +223,10 @@ function pg_explorer_handle_file_usage($type, $request, $user, $folders_that_use
     $usage_scan(
         'page',
         $usage_columns('page', array('page_tree_code', 'page_tree_json')),
-        'page_id, page_name',
+        'page_id, page_name, page_folder',
         lang('Pages'),
-        function ($row) {
-            return array('name' => (string) $row['page_name'], 'note' => '', 'url' => 'edit_page.php?id=' . (int) $row['page_id']);
+        function ($row) use ($usage_open, $usage_page_folder_editable) {
+            return array('name' => (string) $row['page_name'], 'note' => '', 'url' => $usage_open('page', $usage_page_folder_editable($row['page_folder'])) ? ('edit_page.php?id=' . (int) $row['page_id']) : '');
         });
 
     $usage_scan(
@@ -187,11 +234,19 @@ function pg_explorer_handle_file_usage($type, $request, $user, $folders_that_use
         $usage_columns('style', array('style_code', 'style_head', 'style_tree_json', 'style_custom_css', 'style_custom_js')),
         'style_id, style_name, style_layout',
         lang('Styles'),
-        function ($row) {
+        function ($row) use ($usage_open) {
+            // The visual designer admits Managers and users at content
+            // level (pg_designer_access()); a classic style is Designer's.
+            if ($row['style_layout'] == 'visual_designer') {
+                $url = 'edit_system_style.php?id=' . (int) $row['style_id'];
+            } else {
+                $url = $usage_open('designer', false) ? ('edit_custom_style.php?id=' . (int) $row['style_id']) : '';
+            }
+
             return array(
                 'name' => (string) $row['style_name'],
                 'note' => '',
-                'url' => (($row['style_layout'] == 'visual_designer') ? 'edit_system_style.php?id=' : 'edit_custom_style.php?id=') . (int) $row['style_id']);
+                'url' => $url);
         });
 
     // Shared components and system widgets have no screen of their own
@@ -214,11 +269,11 @@ function pg_explorer_handle_file_usage($type, $request, $user, $folders_that_use
             $usage_columns('products', array('image_name', 'full_description', 'details', 'short_description')),
             'id, name, short_description',
             lang('Products'),
-            function ($row) {
+            function ($row) use ($usage_open, $usage_commerce) {
                 return array(
                     'name' => (string) $row['name'],
                     'note' => (string) $row['short_description'],
-                    'url' => 'edit_product.php?id=' . (int) $row['id']);
+                    'url' => $usage_open('commerce', $usage_commerce) ? ('edit_product.php?id=' . (int) $row['id']) : '');
             });
 
         $usage_scan(
@@ -226,20 +281,29 @@ function pg_explorer_handle_file_usage($type, $request, $user, $folders_that_use
             $usage_columns('product_groups', array('image_name', 'description', 'short_description')),
             'id, name',
             lang('Product Groups'),
-            function ($row) {
-                return array('name' => (string) $row['name'], 'note' => '', 'url' => 'edit_product_group.php?id=' . (int) $row['id']);
+            function ($row) use ($usage_open, $usage_commerce) {
+                return array('name' => (string) $row['name'], 'note' => '', 'url' => $usage_open('commerce', $usage_commerce) ? ('edit_product_group.php?id=' . (int) $row['id']) : '');
             });
     }
 
     if (defined('ADS') && ADS === true) {
 
+        // A role-3 user opens an ad only in a region they edit (edit_ad.php).
+        $usage_ad_regions = array();
+
+        if ($usage_role == 3) {
+            foreach ((array) get_items_user_can_edit('ad_regions', $user['id']) as $usage_ad_region) {
+                $usage_ad_regions[] = (int) $usage_ad_region;
+            }
+        }
+
         $usage_scan(
             'ads',
             $usage_columns('ads', array('content')),
-            'id, name',
+            'id, name, ad_region_id',
             lang('Ads'),
-            function ($row) {
-                return array('name' => (string) $row['name'], 'note' => '', 'url' => 'edit_ad.php?id=' . (int) $row['id']);
+            function ($row) use ($usage_open, $usage_ad_regions) {
+                return array('name' => (string) $row['name'], 'note' => '', 'url' => $usage_open('ad', in_array((int) $row['ad_region_id'], $usage_ad_regions, true)) ? ('edit_ad.php?id=' . (int) $row['id']) : '');
             });
     }
 
