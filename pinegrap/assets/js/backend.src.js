@@ -2008,6 +2008,7 @@ $(document).ready(function () {
     pgUI.menu.on('#notification_toggle', 'hidden', function () {
         $('#notification_toggle').removeClass('show');
         $('#notifications').scrollTop(0);
+        pgBellFilter = pg_bell_filter_kept();
     });
 
     pg_push_open_requested();
@@ -4081,11 +4082,31 @@ function get_notifications($read_mark, keep_place) {
                     var notification_time;
                     var notification_type;
                     var notification_readed;
+                    var notification_group;
+                    var notification_fold_head;
+                    var notification_fold_count;
+                    var notification_glyph;
+                    var notification_join;
+                    var notification_bell;
                     while (i < data_length) {
                         notification_id = parseInt(response.data[i].id, 10) || 0;
                         notification_user = h(String(response.data[i].user || ''));
                         notification_time = String(response.data[i].time || '');
                         notification_type = h(String(response.data[i].type || ''));
+                        // The bell is the one inbox: a row is the site's or
+                        // the workspace's (the filters), and the older runs
+                        // of a flow follow the newest folded under it
+                        // (pg_notification_fold()).
+                        notification_group = (response.data[i].group === 'workspace') ? 'workspace' : 'site';
+                        notification_fold_head = parseInt(response.data[i].fold_head, 10) || 0;
+                        notification_fold_count = parseInt(response.data[i].fold_count, 10) || 1;
+                        notification_glyph = /^bi-[a-z0-9-]+$/.test(String(response.data[i].glyph || '')) ? String(response.data[i].glyph) : '';
+                        notification_join = /^https?:\/\//i.test(String(response.data[i].join || '')) ? String(response.data[i].join) : '';
+                        notification_bell = ' data-pg-bell-group="' + notification_group + '"';
+
+                        if (notification_fold_head > 0) {
+                            notification_bell += ' data-pg-bell-fold="' + notification_fold_head + '"';
+                        }
 
                         response.data[i].description = '<div class="notification-description bg-2" style="--bs-bg-opacity: 0.2;">' + response.data[i].description + '</div>';
                         response.data[i].details = '<div notification-details>' + response.data[i].details + '</div>';
@@ -4095,7 +4116,16 @@ function get_notifications($read_mark, keep_place) {
 
                             output_button_bar += '<button type="button" class="fs-smaller menu-item bi bi-check-square bi-me-2 fg-emphasis-secondary" onclick="edit_notification(\'' + notification_id + '\', \'mark_unread\'); this.remove();">' + lang('Mark as unread') + '</button>';
 
-                            output_data_title = '<small class="notification-title text-wrap text-break w-100">' + response.data[i].title + '</small>';
+                            // A meeting about to start: its call, one tap away.
+                            if (notification_join !== '') {
+                                output_button_bar = '<button type="button" class="menu-item bi bi-camera-video bi-me-2 fg-emphasis-primary pg-bell-join" data-url="' + h(notification_join) + '">' + lang('Join') + '</button>' + output_button_bar;
+                            }
+
+                            if (notification_fold_count > 1) {
+                                output_button_bar += pg_bell_fold_button(notification_id, notification_fold_count);
+                            }
+
+                            output_data_title = '<small class="notification-title text-wrap text-break w-100">' + ((notification_glyph !== '') ? '<span class="bi ' + notification_glyph + ' pg-bell-glyph" aria-hidden="true"></span>' : '') + response.data[i].title + '</small>';
                         } else {
                             output_data_title = '<div class="notification-title text-wrap w-100">' + response.data[i].title + '</div>';
                         }
@@ -4116,7 +4146,7 @@ function get_notifications($read_mark, keep_place) {
                         //we complete notification skeleton and output it before clear notification button.
                         // OUTPUT
                         output_notifications += '\
-                        <li notification-id="' + notification_id + '" class="software_notification custom-contextmenu position-relative list-group-item border-0 p-0 viewed bg-transparent ' + notification_readed + ' ' + notification_type + '">\
+                        <li notification-id="' + notification_id + '"' + notification_bell + ' class="software_notification custom-contextmenu position-relative list-group-item border-0 p-0 viewed bg-transparent ' + notification_readed + ' ' + notification_type + (((notification_fold_head > 0) && !pgBellOpenFolds[notification_fold_head]) ? ' pg-bell-shut' : '') + '">\
                             <div class="container-fluid">\
                             <div class="row notification-card ' + $output_border_classes + '" style="--bs-border-opacity:0.08;">\
                                     <div class="col-12 ps-7 p-3 border-bottom border-secondary " style="--bs-border-opacity:0.04;">\
@@ -4142,6 +4172,7 @@ function get_notifications($read_mark, keep_place) {
                     }
 
                     notifications_body.append(output_notifications);
+                    pg_bell_filter_apply();
                     if (keep_place) {
                         restore_place();
                     } else {
@@ -4152,6 +4183,7 @@ function get_notifications($read_mark, keep_place) {
                     spinner.remove();
                     // show no notification content.
                     notifications_empty.removeClass('d-none');
+                    pg_bell_filter_apply();
                     notifications.scrollTop(0);
                 }
 
@@ -4166,6 +4198,151 @@ function get_notifications($read_mark, keep_place) {
         }
     });
 };
+
+// The bell's filters (output.php, for a member of the team): everything, the
+// site's notices or what the workspace told the person. The reader's choice
+// stays for the next visit; the Workspace list's Inbox opens the bell on
+// Workspace for that once (pgBellOpen()).
+var pgBellFilters = ['all', 'site', 'workspace'];
+var pgBellFilter = pg_bell_filter_kept();
+// The folded runs the reader opened, kept across the unread poll's redraw.
+var pgBellOpenFolds = {};
+
+function pg_bell_filter_kept() {
+    var kept = 'all';
+
+    try {
+        kept = String(localStorage.getItem('pg-bell-filter') || 'all');
+    } catch (error) {
+        kept = 'all';
+    }
+
+    return (pgBellFilters.indexOf(kept) > -1) ? kept : 'all';
+}
+
+// Shows the rows of the chosen filter, the unread count of each, and the
+// empty line when the filter leaves nothing.
+function pg_bell_filter_apply() {
+    var box = document.getElementById('notifications');
+    var bar = box ? box.querySelector('.pg-bell-filters') : null;
+
+    if (!box) {
+        return;
+    }
+
+    var filter = bar ? pgBellFilter : 'all';
+    var rows = box.querySelectorAll('li.software_notification');
+    var counts = { all: 0, site: 0, workspace: 0 };
+    var shown = 0;
+
+    Array.prototype.forEach.call(rows, function (row) {
+        var group = (row.getAttribute('data-pg-bell-group') === 'workspace') ? 'workspace' : 'site';
+        var off = (filter !== 'all') && (group !== filter);
+
+        row.classList.toggle('pg-bell-off', off);
+
+        if (row.classList.contains('new')) {
+            counts.all++;
+            counts[group]++;
+        }
+
+        if (!off && !row.classList.contains('pg-bell-shut')) {
+            shown++;
+        }
+    });
+
+    if (bar) {
+        Array.prototype.forEach.call(bar.querySelectorAll('[data-pg-bell-filter]'), function (chip) {
+            var key = chip.getAttribute('data-pg-bell-filter');
+            var count = chip.querySelector('.pg-bell-count');
+
+            chip.setAttribute('aria-pressed', (key === filter) ? 'true' : 'false');
+
+            if (count) {
+                count.textContent = (counts[key] > 99) ? '99+' : String(counts[key] || '');
+                count.hidden = !counts[key];
+            }
+        });
+    }
+
+    if (rows.length) {
+        $(box).find('.notifications_empty').toggleClass('d-none', shown > 0);
+    }
+
+    // Deleting everything is offered only while everything is shown.
+    $(box).find('.notification-remove-btn').toggleClass('d-none', filter !== 'all');
+}
+
+// The way to a flow's older runs folded under its newest, and back.
+function pg_bell_fold_button(notification_id, count) {
+    var open = !!pgBellOpenFolds[notification_id];
+
+    return '<button type="button" class="menu-item bi ' + (open ? 'bi-chevron-up' : 'bi-chevron-down') + ' bi-me-2 fg-emphasis-secondary pg-bell-more" data-pg-bell-more="' + notification_id + '" data-pg-bell-runs="' + (count - 1) + '" aria-expanded="' + (open ? 'true' : 'false') + '">'
+        + h(open ? lang('Show fewer') : lang('+{var:1} more').replace('{var:1}', String(count - 1))) + '</button>';
+}
+
+// Opens the bell on one filter: the Workspace list's Inbox asks for
+// 'workspace'. The kept choice comes back when the bell closes.
+window.pgBellOpen = function (filter) {
+    var toggle = document.getElementById('notification_toggle');
+
+    if (!toggle || !document.getElementById('notifications')) {
+        return false;
+    }
+
+    pgBellFilter = (pgBellFilters.indexOf(filter) > -1) ? filter : pg_bell_filter_kept();
+
+    if (pgUI.menu.isOpen('#notification_toggle')) {
+        pg_bell_filter_apply();
+    } else {
+        toggle.click();
+    }
+
+    return true;
+};
+
+$(document).on('click', '#notifications [data-pg-bell-filter]', function () {
+    pgBellFilter = String($(this).attr('data-pg-bell-filter'));
+
+    try {
+        localStorage.setItem('pg-bell-filter', pgBellFilter);
+    } catch (error) {
+        // Kept for this page only.
+    }
+
+    pg_bell_filter_apply();
+});
+
+$(document).on('click', '#notifications .pg-bell-more', function () {
+    var head = parseInt($(this).attr('data-pg-bell-more'), 10) || 0;
+    var open = !pgBellOpenFolds[head];
+
+    if (open) {
+        pgBellOpenFolds[head] = true;
+    } else {
+        delete pgBellOpenFolds[head];
+    }
+
+    $('#notifications li[data-pg-bell-fold="' + head + '"]').toggleClass('pg-bell-shut', !open);
+    $(this).replaceWith(pg_bell_fold_button(head, (parseInt($(this).attr('data-pg-bell-runs'), 10) || 0) + 1));
+    $('#notifications [data-pg-bell-more="' + head + '"]').trigger('focus');
+    pg_bell_filter_apply();
+});
+
+// A meeting's call opens in a tab of its own, cut off from the panel.
+$(document).on('click', '#notifications .pg-bell-join', function () {
+    var url = String($(this).attr('data-url') || '');
+
+    if (!/^https?:\/\//i.test(url)) {
+        return;
+    }
+
+    var opened = window.open(url, '_blank', 'noopener');
+
+    if (opened) {
+        opened.opener = null;
+    }
+});
 
 // Opens the page a notification points to. The URL sits in a data attribute
 // (see get_notifications()), so a notification title or comment that

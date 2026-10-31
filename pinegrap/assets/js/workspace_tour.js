@@ -414,10 +414,27 @@
         });
     }
 
+    // The place of the workspace a selector of the list names
+    // ([data-ws-nav="…"]), '' for any other selector.
+    function navKeyOf(selector) {
+        var match = /\[data-ws-nav="([a-z_]+)"\]/.exec(String(selector));
+
+        return match ? match[1] : '';
+    }
+
     function present(selectors) {
         return [].concat(selectors || []).some(function (selector) {
             selector = String(selector);
-            return !!document.querySelector((selector.indexOf('last:') === 0) ? selector.slice(5) : selector);
+
+            if (document.querySelector((selector.indexOf('last:') === 0) ? selector.slice(5) : selector)) {
+                return true;
+            }
+
+            // A place in a closed section of the list or behind More is
+            // there all the same: before() opens what hides it.
+            var key = navKeyOf(selector);
+
+            return !!(key && window.PGWsSide && window.PGWsSide.has && window.PGWsSide.has(key));
         });
     }
 
@@ -433,6 +450,15 @@
             window.PGWsSide.reveal({});
             waited = 350;
         }
+
+        // An entry in a closed section or behind More is drawn first.
+        [].concat(selectors || []).forEach(function (selector) {
+            var key = navKeyOf(selector);
+
+            if (key && window.PGWsSide && window.PGWsSide.openFor && !document.querySelector(String(selector).replace(/^last:/, ''))) {
+                window.PGWsSide.openFor(key);
+            }
+        });
 
         [].concat(selectors || []).some(function (selector) {
             var node = document.querySelector(String(selector).replace(/^last:/, ''));

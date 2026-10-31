@@ -118,6 +118,9 @@ function output_control_panel_header_includes($include_assistant = true, $help_t
         'The maximum link pin limit has been reached. Remove one to pin a new one.' => lang('The maximum link pin limit has been reached. Remove one to pin a new one.'),
         'Please Wait' => lang('Please Wait'),
         'Go to the relevant page' => lang('Go to the relevant page'),
+        '+{var:1} more' => lang('+{var:1} more'),
+        'Show fewer' => lang('Show fewer'),
+        'Join' => lang('Join'),
         'Add Page' => lang('Add Page'),
         'Add Product' => lang('Add Product'),
         'Files' => lang('Files'),
@@ -1948,6 +1951,21 @@ function output_header($properties = false)
         $output_quick_note = ws_notes_quick_markup($output_workspace_rights, $output_parent_target);
     }
 
+    // The bell is the one inbox: for a member of the team its list shows
+    // everything, the site's notices or what the workspace told them
+    // (backend.src.js; the Workspace list's Inbox opens it on Workspace).
+    $output_bell_filters = '';
+    if ($output_workspace_rights && $output_workspace_rights['member']) {
+        $output_bell_filters = '<div class="pg-bell-filters" role="group" aria-label="' . lang('Filter') . '">';
+
+        foreach (array('all' => lang('All'), 'site' => lang('Site'), 'workspace' => lang('Workspace')) as $filter => $label) {
+            $output_bell_filters .= '<button type="button" class="pg-bell-filter no-popover" data-pg-bell-filter="' . $filter . '" aria-pressed="' . (($filter === 'all') ? 'true' : 'false') . '">'
+                . '<span class="pg-bell-filter-name">' . $label . '</span><span class="pg-bell-count" hidden></span></button>';
+        }
+
+        $output_bell_filters .= '</div>';
+    }
+
     $output_home_page_link_url = '';
     // get home page(s)
     $query = "SELECT page_name FROM page WHERE page_home = 'yes'";
@@ -2266,6 +2284,7 @@ function output_header($properties = false)
                             <span class="has-notification-icon bi bi-bell"></span>
                         </button>
                         <div id="notifications" class="menu shadow p-0 bg-body backdrop mt-nav-link-sm border-dropdown-menu position-fixed end-0 top-0" tabindex="-1" aria-labelledby="notification_toggle" aria-hidden="true">
+                            ' . $output_bell_filters . '
                             <div class="menu-scroll-area position-relative overflow-auto h-100"></div>
                             <div class="notifications_empty text-center my-3 py-3">' . lang('No Notification') . '<br><span class="bi fs-lg bi-wind"></span></div>
                             <div id="push_row" class="d-none align-items-center justify-content-between gap-3 border-top px-5 py-3">

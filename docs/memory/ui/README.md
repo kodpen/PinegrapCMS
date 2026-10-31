@@ -187,6 +187,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - name-length-refusal.md: File and Catalog Manager, folder screens and Pages Find & Replace refuse a name longer than its varchar column instead of letting the non-strict session cut it
 - notice-button-names.md: A notice, hint or dialog names the control it means by its label, never "OK", "the button", a colour or a direction
 - notifications-menu.md: Header notifications panel (#notifications, bell #notification_toggle): one Menu on the bell, Ctrl+Q, events on the toggle (#2578), poll redraws the open list only on a rise; titles wrap, no ellipsis
+- notifications-one-inbox.md: The bell as the panel's one inbox (#3817): All, Site, Workspace filters, a flow's runs folded, the meeting call, pgBellOpen(), the Workspace list's Inbox opening it with no count of its own
 - offer-editor.md: Offer editor (edit_offer.php, offer_editor.js) rules: single JSON save, auto names, copy shared rows, two-sided type registry, write order, currency entity.
 - order-filter-names.md: Advanced Filters panel: printed after the toolbar on every list; on Orders, filter_ ids named by labels, Date Type name, no address autofill, phone and e-mail keyboards
 - order-report-totals.md: Order Report figures: gift card, card surcharge and installment charge columns so every row adds up to Total; carts read from their active lines in every summarize-by
