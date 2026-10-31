@@ -3158,8 +3158,11 @@ body:not(.toolbar) .software-content {
    their buttons join one wrapping row directly. */
 
 /* A bar with nothing in it is a stray rule across the page. Several screens
-   build the strip unconditionally and fill it only for some roles. */
-#button_bar:not(:has(.btn)) {
+   build the strip unconditionally and fill it only for some roles. Only a bar
+   with no control and no fact is empty: a filter select (whose Apply button
+   sits in <noscript>), tabs, a field or a grow slot with text keep it shown.
+   The empty grow spacer and hidden inputs do not count. */
+#button_bar:not(:has(.btn, a, button, select, input:not([type="hidden"]), textarea, .pg-toolbar-grow > *, .pg-toolbar-grow:not(:empty))) {
   display: none;
 }
 
