@@ -173,9 +173,9 @@ function test_settings_category_screens_follow_the_gate_of_each_screen()
 {
 	$administrator = pg_settings_category_screens(array('role' => 0));
 	pg_assert_same(array('translations.php'), array_column($administrator['languages'], 'url'), 'an administrator gets Translations');
-	pg_assert_same(array('private_label.php'), array_column($administrator['appearance'], 'url'), 'and Private Label Branding');
+	pg_assert_same(array('languages'), array_keys($administrator), 'Private Label Branding is a card of Appearance, not a screen beside it');
 
-	pg_assert_same(array('languages'), array_keys(pg_settings_category_screens(array('role' => 1))), 'Private Label Branding is the administrator\'s alone');
+	pg_assert_same(array('languages'), array_keys(pg_settings_category_screens(array('role' => 1))), 'a designer gets Translations');
 	pg_assert_same(array('languages'), array_keys(pg_settings_category_screens(array('role' => 2))), 'a manager gets Translations');
 	pg_assert_same(array(), pg_settings_category_screens(array('role' => 3)), 'a user gets none');
 	pg_assert_same(array(), pg_settings_category_screens(array()), 'no role counts as a user');

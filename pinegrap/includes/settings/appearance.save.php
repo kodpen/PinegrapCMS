@@ -3,7 +3,7 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Site Settings - what the Appearance screen writes: the panel theme, the
- * dashboard and the rich-text editor.
+ * dashboard, the rich-text editor and the private label branding.
  *
  * Runs in the scope of includes/settings/screen.php, after the token check and
  * after post_value() is defined. Only the columns edited by the cards on this
@@ -60,6 +60,25 @@ if ($dashboard_save) {
     }
 }
 
+// Private Label Branding: the administrator's card (appearance.php). Read
+// only when that card was drawn and posted, so another role's save, or one
+// from a page drawn before the card existed, leaves the branding alone.
+// Every field holds one value: one posted as a list would reach the
+// data/config.php writer as an array, so it refuses the whole save before
+// anything is written.
+$private_label_save = ((int) $user['role'] === 0) && (post_value('private_label_card') !== null);
+
+if ($private_label_save) {
+
+    $private_label_fields = array_merge(array('private_label'), array_keys(pg_private_label_config_keys()));
+    $private_label_lists = pg_request_unexpected_lists(array_intersect_key($_POST, array_flip($private_label_fields)));
+
+    if ($private_label_lists) {
+        $liveform->add_error(lang(array('string' => 'Sorry, the value you entered for {var:1} is not valid.', 'vars' => h(implode(', ', $private_label_lists)))));
+        return;
+    }
+}
+
 
     // Only what the cards on this screen edit.
     db("UPDATE config
@@ -103,5 +122,32 @@ if ($dashboard_save) {
         $_SESSION['software']['welcome']['widget']['reset'] = 1;
 
         $liveform->add_notice(lang('The dashboard widgets are back in their default order.'));
+    }
+}
+
+if ($private_label_save) {
+
+    $private_label_on = (post_value('private_label') == 1);
+
+    db_q("UPDATE config SET private_label = ?", array($private_label_on ? '1' : '0'));
+
+    // The constants as this request loaded them tell a changed value from
+    // one left as it was (pg_private_label_config_content()).
+    $private_label_current = array();
+
+    foreach (pg_private_label_config_keys() as $private_label_constant) {
+        $private_label_current[$private_label_constant] = defined($private_label_constant) ? (string) constant($private_label_constant) : null;
+    }
+
+    $private_label_original = is_readable(CONFIG_FILE_PATH) ? (string) @file_get_contents(CONFIG_FILE_PATH) : '';
+    $private_label_content = pg_private_label_config_content($private_label_original, $private_label_on, $_POST, $private_label_current);
+
+    // Rewritten only from a successful read: an empty result would replace
+    // config.php with an empty file. pg_write_config_file() goes through a
+    // temp file and rename, so a failure leaves the old file intact.
+    if ($private_label_content === '') {
+        $liveform->add_error(lang('Config file could not be opened.'));
+    } elseif (($private_label_content !== $private_label_original) && !pg_write_config_file($private_label_content)) {
+        $liveform->add_error(lang('The config file could not be written.'));
     }
 }

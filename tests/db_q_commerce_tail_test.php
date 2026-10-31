@@ -151,7 +151,7 @@ function db_q_commerce_tail_test_files()
 		'duplicate_product_group.php' => 0,
 		'delete_key_codes.php' => 0,
 		'add_to_cart.php' => 1,
-		'private_label.php' => 1,
+		'includes/settings/appearance.save.php' => 1,
 		'includes/panel/commerce.php' => 2,
 		'includes/settings/general.save.php' => 0,
 		'includes/dashboard/widgets/widget_5.php' => 1,
