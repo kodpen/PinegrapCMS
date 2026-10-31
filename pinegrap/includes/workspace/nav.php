@@ -28,7 +28,8 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  * @param array|null $flags  what the gates found, for a test (notes,
  *                           calendar_feed, actions, messages, flows, mcp, base);
  *                           null asks them
- * @return array[] top, work, records, foot => items (key, label, icon, url)
+ * @return array[] head (the settings gear beside the search), top (the
+ *                 places), work, records => items (key, label, icon, url)
  */
 function ws_nav_groups($viewer, $flags = null)
 {
@@ -57,18 +58,17 @@ function ws_nav_groups($viewer, $flags = null)
     $base = isset($flags['base']) ? (string) $flags['base'] : OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/';
 
     $groups = array(
+        'head' => array(),
         'top' => array(
             array('key' => 'home', 'label' => lang('Overview'), 'icon' => 'bi-house', 'url' => $base . 'workspace.php?view=home'),
             array('key' => 'inbox', 'label' => lang('Inbox'), 'icon' => 'bi-inbox', 'url' => $base . 'workspace.php?view=home&inbox=1', 'inbox' => true),
-        ),
-        'work' => array(
             array('key' => 'tasks', 'label' => lang('My Tasks'), 'icon' => 'bi-check2-square', 'url' => $base . 'workspace_tasks.php'),
         ),
+        'work' => array(),
         'records' => array(
             array('key' => 'timeline', 'label' => lang('Decision Timeline'), 'icon' => 'bi-clock-history', 'url' => $base . 'workspace_timeline.php'),
             array('key' => 'archived', 'label' => lang('Archived channels'), 'icon' => 'bi-archive', 'url' => $base . 'workspace.php?view=home&panel=archived'),
         ),
-        'foot' => array(),
     );
 
     if (!empty($flags['mail'])) {
@@ -112,7 +112,7 @@ function ws_nav_groups($viewer, $flags = null)
     }
 
     if (!empty($viewer['settings'])) {
-        $groups['foot'][] = array('key' => 'settings', 'label' => lang('Workspace Settings'), 'icon' => 'bi-sliders', 'url' => $base . 'workspace_settings.php');
+        $groups['head'][] = array('key' => 'settings', 'label' => lang('Workspace Settings'), 'icon' => 'bi-sliders', 'url' => $base . 'workspace_settings.php');
     }
 
     return $groups;
@@ -168,13 +168,13 @@ function ws_side_screen($script)
  * with only what the browser needs.
  *
  * @param array $groups ws_nav_groups()
- * @return array top, work, records, foot => [key, label, icon, url, inbox]
+ * @return array head, top, work, records => [key, label, icon, url, inbox]
  */
 function ws_side_nav($groups)
 {
     $out = array();
 
-    foreach (array('top', 'work', 'records', 'foot') as $group) {
+    foreach (array('head', 'top', 'work', 'records') as $group) {
         $out[$group] = array();
 
         foreach ((array) ($groups[$group] ?? array()) as $item) {
@@ -200,8 +200,8 @@ function ws_side_nav($groups)
 function ws_side_js_keys()
 {
     return array(
-        'search_messages', 'new_channel', 'tour_start', 'pal_shortcut', 'pal_open', 'pinned', 'pin', 'unpin',
-        'th_section', 'th_show_all', 'th_show_fewer', 'my_channels', 'other_channels', 'no_channels',
+        'pal_open', 'pal_shortcut', 'new_channel', 'tour_start', 'pin', 'unpin', 'channels',
+        'th_mine', 'th_show_all', 'th_show_fewer', 'no_channels',
         'side_expand', 'side_collapse', 'grp_expand', 'grp_collapse', 'grp_access', 'grp_empty', 'grp_new',
         'more', 'loading', 'error_generic',
     );
@@ -215,6 +215,7 @@ function ws_side_js_keys()
 function ws_side_js_strings()
 {
     $all = array_merge(
+        array('th_mine' => lang('My discussions')),
         ws_js_strings(),
         ws_threads_js_strings(),
         ws_groups_js_strings(),

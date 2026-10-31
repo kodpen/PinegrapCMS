@@ -82,7 +82,8 @@ if (!$_POST) {
                 }
             });
             $("#get_form").on("click", function(){
-                window.location.href += "?tags=" + $("select#page_options").val();
+                // Built from the path so a #fragment (the skip link) does not swallow the query.
+                window.location.href = window.location.pathname + "?tags=" + encodeURIComponent(String($("select#page_options").val() || ""));
             });
 
         </script>';

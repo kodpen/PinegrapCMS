@@ -24,8 +24,9 @@
 (function () {
     'use strict';
 
-    // The drawer: who it goes to, the answer, Send.
-    function compose(message, view, h) {
+    // The drawer: who it goes to, the answer, Send. A draft fills the
+    // answer; nothing leaves before the member presses Send.
+    function compose(message, view, h, draft) {
         var t = h.t;
         var el = h.el;
         var node = h.offcanvas('ws-mail-reply', t('mail_reply'));
@@ -43,6 +44,7 @@
         text.id = h.nextId('ws-mail-reply-');
         text.rows = 10;
         text.maxLength = 50000;
+        text.value = draft || '';
         body.appendChild(h.formRow(t('mail_reply_text'), text, t('mail_reply_hint')));
 
         var send = h.button('btn btn-solid theme-primary rounded-pill px-5', t('mail_reply_send'), 'bi-send');
@@ -147,7 +149,24 @@
         row.appendChild(hold);
     }
 
+    // Under Pinegrap AI's suggestion: its reply draft, opened in the drawer.
+    function draftNode(message, view, h) {
+        var row = h.el('div', 'ws-mail-draft mt-1');
+        var open = h.button('btn btn-sm btn-outline theme-primary py-0', h.t('mail_draft_open'), 'bi-pencil-square');
+        var offer = message.mail_draft;
+
+        open.addEventListener('click', function (event) {
+            event.stopPropagation();
+            compose({ mail_reply: offer.conversation_id, sender: { title: offer.to } }, view, h, offer.text);
+        });
+
+        row.appendChild(open);
+
+        return row;
+    }
+
     window.PGWsMail = {
-        node: node
+        node: node,
+        draft: draftNode
     };
 })();

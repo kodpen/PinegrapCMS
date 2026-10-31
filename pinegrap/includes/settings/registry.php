@@ -626,6 +626,100 @@ function pg_settings_tool_groups($user)
 
 
 /**
+ * How many links the tool groups hold, over all groups.
+ *
+ * @param array $groups pg_settings_tool_groups()
+ * @return int
+ */
+function pg_settings_tool_count($groups)
+{
+    $count = 0;
+
+    foreach ((array) $groups as $group) {
+        $count += isset($group['items']) ? count($group['items']) : 0;
+    }
+
+    return $count;
+}
+
+
+/**
+ * The System tools screen's body: one card per group, its links under it.
+ *
+ * Each link keeps what the group gave it: its target, and its question
+ * (data-confirm-content, which the panel's confirm handler asks before the
+ * link is followed). A group with no link is not drawn.
+ *
+ * @param array  $groups   pg_settings_tool_groups()
+ * @param string $base_url the software directory, ending in a slash
+ * @return string
+ */
+function pg_settings_tool_cards($groups, $base_url)
+{
+    $output = '';
+
+    foreach ((array) $groups as $group) {
+
+        if (empty($group['items'])) {
+            continue;
+        }
+
+        $links = '';
+
+        foreach ($group['items'] as $item) {
+
+            $target  = isset($item['target']) ? ' target="' . h($item['target']) . '" rel="noopener"' : '';
+            $confirm = isset($item['confirm']) ? ' data-confirm-content="' . h($item['confirm']) . '"' : '';
+            $away    = isset($item['target']) ? '<i class="bi bi-box-arrow-up-right ms-auto fg-secondary" aria-hidden="true"></i>' : '';
+
+            $links .= '
+                        <a class="list-group-item list-group-item-action d-flex align-items-center gap-5" href="' . h($base_url . $item['url']) . '"' . $target . $confirm . '>
+                            <i class="bi ' . h($item['icon']) . '" aria-hidden="true"></i>
+                            <span>' . h($item['label']) . '</span>' . $away . '
+                        </a>';
+        }
+
+        $output .= '
+            <div class="col-12 md:col-6 xl:col-4">
+                <div class="card h-100">
+                    <div class="card-header d-flex align-items-center gap-5">
+                        <i class="bi ' . h($group['icon']) . '" aria-hidden="true"></i>
+                        <h2 class="h6 mb-0">' . h($group['label']) . '</h2>
+                    </div>
+                    <div class="list-group list-group-flush">' . $links . '
+                    </div>
+                </div>
+            </div>';
+    }
+
+    return ($output === '') ? '' : '
+        <div class="row g-12 my-12">' . $output . '
+        </div>';
+}
+
+
+/**
+ * The "System tools" row at the end of the dialog's list, or an empty string
+ * when the user has no tool. It leaves the dialog, like the rows it replaced.
+ *
+ * @param array $groups pg_settings_tool_groups()
+ * @return string
+ */
+function pg_settings_tools_link($groups)
+{
+    if (pg_settings_tool_count($groups) === 0) {
+        return '';
+    }
+
+    return
+        '<a class="pg-sm-link pg-sm-away" href="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/system_tools.php') . '">'
+        . '<i class="bi bi-tools" aria-hidden="true"></i>'
+        . '<span>' . h(lang('System tools')) . '</span>'
+        . '<i class="bi bi-chevron-right pg-sm-out" aria-hidden="true"></i></a>';
+}
+
+
+/**
  * "Last modified 5 hours ago by admin", or an empty string.
  *
  * Shown by the hub and by the category screens, from one place: the hub is

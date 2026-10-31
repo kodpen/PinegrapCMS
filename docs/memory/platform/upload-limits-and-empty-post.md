@@ -37,4 +37,4 @@ description: Why an empty $_POST is an error (post_max_size), pg_post_body_disca
 - `pg_upload_limit_hint($app_max)` under the box: the lower of the server's and the screen's own limit.
 - Used by the CSV imports (contacts, key codes, campaign profiles, submitted forms, users, products, shipments, short links, translations), Import Zip, Add Theme File and Workspace tables (#3664).
 
-Related: docs/memory/platform/browser-image-preshrink.md
+Related: docs/memory/platform/browser-image-preshrink.md, docs/memory/platform/editor-image-upload-refusals.md (editor_add_file.php)

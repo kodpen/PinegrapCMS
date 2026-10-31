@@ -23,6 +23,11 @@ $user = validate_user();
 
 validate_token_field();
 
+// Only a page form sets these; a product or variant-set form reads them blank
+// in the activity log and the redirect below.
+$page_type = '';
+$page_name = '';
+
 // if there is a page_id supplied in the query string, this is a page form
 if ((isset($_POST['page_id'])) && ($_POST['page_id'] != '')) {
     validate_area_access($user, 'user');

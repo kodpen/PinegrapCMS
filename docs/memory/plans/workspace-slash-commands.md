@@ -24,14 +24,15 @@ description: Plan (2026-10-23, 1 done #1440, 2-3 #1499, 4 #1731, 5 #1991, 6 #189
 4. Done (#1731). Live line: `ws_command_suggest` runs the parser; "Will create: …", `@word` warning; "next week", datives, `14:00` (`due_time`); `1.5 saat` is an estimate; a typed `@username` assigns on one exact team match.
 5. Done (#1991). API (no schema): `GET /workspace/commands` (workspace:read, `'mcp' => false`) lists the registry (workspace/workspace-command-api.md).
 6. New commands, a PR each (no schema): `/durum /status` done (#1896, workspace/workspace-command-registry.md); `/zamanla /schedule`, `/süre /timer`, `/izin /away`, `/toplantı /meeting` done (#1938, workspace/workspace-command-schedule.md, workspace-command-plan-items.md).
+7. `POST /workspace/commands/run` (#3801, no schema; the shape is in `workflow/decisions-made-product-11.md`): route `workspace.commands.run`, workspace:write, `'mcp' => false`, the composer's options, `dry_run` returns the preview without a write, no command → 400 `not_a_command`. Then the plan's rules move to `workspace/` and it is deleted.
 
 ## Open questions (recommendation)
 1. Answered (owner, 2026-10-26): (a) a typed `@ayse` assigns on one exact team username, else warns.
 2. Unknown `/word`: (a) refuse with a hint, (b) post with a hint → a.
-3. API: (a) list only, effects have endpoints, (b) run them, dry_run → a.
-4. First commands: (a) slice 6, (b) plus record cards (`/sipariş`…) → a.
-5. Enter on a /price, /stock card: (a) Save only, (b) saves like /task → a.
+3. API: decided #3801 (`workflow/decisions-made-product-11.md`): (b) run them, slice 7.
+4. First commands: decided #3801: (a) slice 6, no record cards.
+5. Enter on a /price, /stock card: decided #3801: (a) Save only.
 
 ## Where to start?
-- Question 3 (run commands over the API) waits for the owner; listing is done.
+- Slice 7 (the run route, `includes/workspace/api.php`, `api_commands.php`, tests/workspace_commands_test.php).
 - Slice 6 is done; a further command is declared in `ws_commands()` like /status, with `live` and a `ws_command_*_suggest()` for a live line.

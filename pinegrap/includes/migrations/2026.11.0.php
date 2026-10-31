@@ -125,6 +125,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_erp_quote_links();        // 11.0.64
 	upgrade_2026_11_0_erp_invoice_public_link(); // 11.0.65
 	upgrade_2026_11_0_form_field_rules();       // 11.0.135
+	upgrade_2026_11_0_contact_iys_sms_status(); // 11.0.136
 
 }
 
@@ -3961,5 +3962,33 @@ function upgrade_2026_11_0_form_field_rules() {
 	install_add_column('form_fields', 'rules', "TEXT NULL");
 
 	install_note('Designed forms: a date field can refuse dates before today and a field can be required only when another field has a given answer.');
+
+}
+
+// The İYS SMS status of a contact (2026.11.0, 11.0.136; includes/iys/).
+//
+// iys_sms_status is what İYS last said about the contact's mobile number on
+// the MESAJ channel: '' not known, 'approved' or 'refused', written by the
+// daily İYS job when it pushes an SMS consent or pulls a change, as
+// iys_email_status (11.0.39) is for the address. A VARCHAR, not an ENUM, so a
+// state added later needs no step. Added in place where the server can;
+// elsewhere contacts is copied once (install_heavy_tables()).
+function upgrade_2026_11_0_contact_iys_sms_status() {
+
+	$columns = array(
+		'iys_sms_status' => "VARCHAR(16) NOT NULL DEFAULT ''",
+	);
+
+	if (!install_add_columns_instant('contacts', $columns)) {
+
+		foreach ($columns as $column => $definition) {
+
+			install_add_column('contacts', $column, $definition);
+
+		}
+
+	}
+
+	install_note('Contacts: a column keeps what İYS last said about each mobile number on the SMS channel. It stays empty until an İYS account is set up.');
 
 }

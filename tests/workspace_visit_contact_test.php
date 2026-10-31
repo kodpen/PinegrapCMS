@@ -143,3 +143,88 @@ function test_workspace_visit_contact_is_a_contact_holder()
 	pg_assert_same(array('contact_id' => 'contact_ids'), $erase['ws_events']['find'] ?? null, 'found by the person\'s contacts');
 	pg_assert_same(array('contact_id' => 0), $erase['ws_events']['fields'] ?? null, 'the visit stays on the plan and names nobody');
 }
+
+function test_workspace_visit_contact_api_input_passes_it_only_when_sent()
+{
+	$sent = ws_api_plan_item_input(array('kind' => 'visit', 'title' => 'Showroom visit', 'contact_id' => '42'));
+
+	pg_assert_same(42, $sent['contact_id'] ?? null, 'sent, it goes to ws_event_save()');
+	pg_assert_same(0, ws_api_plan_item_input(array('kind' => 'visit', 'contact_id' => -3))['contact_id'] ?? null, 'below 0 clears it');
+	pg_assert_true(!array_key_exists('contact_id', ws_api_plan_item_input(array('kind' => 'visit', 'title' => 'Showroom visit'))), 'left out, the item keeps its customer');
+}
+
+function test_workspace_visit_contact_api_refusal_on_the_customer_is_422()
+{
+	pg_assert_same('contact_id', ws_api_plan_item_refused_field('contact_id'), 'a customer the owner cannot open is the request\'s');
+	pg_assert_same('start_date', ws_api_plan_item_refused_field('start'), 'dates keep their names');
+	pg_assert_same('end_date', ws_api_plan_item_refused_field('end'));
+	pg_assert_same(null, ws_api_plan_item_refused_field(''), 'anything else is a right: 403');
+	pg_assert_true(strpos(workspace_visit_contact_test_source('ws_api_plan_item_refused'), 'ws_api_plan_item_refused_field(') !== false, 'the refusal asks it');
+}
+
+function test_workspace_visit_contact_api_schema_and_would()
+{
+	pg_assert_same('WorkspacePlanItemContact?', ws_api_plan_item_schema()['contact'] ?? null, 'the plan item lists contact');
+	pg_assert_same(array('id' => 'integer?', 'label' => 'string?', 'hidden' => 'boolean'), ws_api_plan_item_contact_schema());
+
+	$would = ws_api_plan_item_would(array('event_id' => 0, 'item' => array('kind' => 'visit', 'scope' => 'people', 'title' => 'Visit', 'starts_at' => 0, 'ends_at' => 0, 'all_day' => 0, 'people' => array(), 'contact_id' => 42)));
+
+	pg_assert_same(42, $would['contact_id'] ?? null, 'a dry run echoes the customer');
+
+	$params = array();
+
+	foreach (ws_api_routes() as $route) {
+		if ($route['id'] === 'workspace.plan_items.update') {
+			$params = $route['params'];
+		}
+	}
+
+	$field = array_values(array_filter($params, function ($param) {
+		return $param['name'] === 'contact_id';
+	}));
+
+	pg_assert_same('int', $field[0]['type'] ?? null, 'the route takes contact_id');
+	pg_assert_same(0, $field[0]['min'] ?? null, '0 clears it');
+}
+
+function test_workspace_visit_contact_api_names_it_only_with_customers_read()
+{
+	$rows = array(
+		array('id' => '42', 'first_name' => 'Ada', 'last_name' => 'Lovelace', 'company' => '', 'email_address' => 'ada@example.com'),
+		array('id' => '43', 'first_name' => '', 'last_name' => '', 'company' => 'Analytical Ltd', 'email_address' => ''),
+	);
+
+	pg_assert_same(array(42 => null, 43 => null), ws_api_plan_item_contact_names($rows, array(42, 43), array('tasks:read')), 'a key without customers:read names nobody');
+	pg_assert_same(array(42 => 'Ada Lovelace', 43 => null), ws_api_plan_item_contact_names($rows, array(42), array('tasks:read', 'customers:read')), 'named with customers:read, where the owner may open the contact');
+
+	$viewer = array('id' => 5, 'role' => 1, 'settings' => true);
+	$visit = array(
+		'id' => 77, 'kind' => 'visit', 'title' => 'Showroom visit', 'note' => '', 'scope' => 'people', 'department_id' => 0, 'people' => array(5),
+		'all_day' => 0, 'starts_at' => mktime(10, 0, 0, 11, 4, 2026), 'ends_at' => mktime(11, 0, 0, 11, 4, 2026), 'yearly' => 0, 'feed_id' => 0,
+		'meeting_url' => '', 'created_by' => 5, 'created_at' => mktime(9, 0, 0, 11, 1, 2026), 'contact_id' => 42,
+	);
+	$contacts = array(42 => 'Ada Lovelace', 43 => null);
+
+	pg_assert_same(array('id' => 42, 'label' => 'Ada Lovelace', 'hidden' => false), ws_api_plan_item_present($viewer, $visit, $contacts)['contact'], 'the named form');
+	pg_assert_same(array('id' => null, 'label' => null, 'hidden' => true), ws_api_plan_item_present($viewer, array('contact_id' => 43) + $visit, $contacts)['contact'], 'the hidden form: no id, no label');
+	pg_assert_same(null, ws_api_plan_item_present($viewer, array('contact_id' => 44) + $visit, $contacts)['contact'], 'a deleted contact names nobody');
+	pg_assert_same(null, ws_api_plan_item_present($viewer, array('kind' => 'meeting') + $visit, $contacts)['contact'], 'only a visit names one');
+	pg_assert_same(null, ws_api_plan_item_present($viewer, array('contact_id' => 0) + $visit, $contacts)['contact'], 'a visit about nobody');
+}
+
+function test_workspace_visit_contact_api_lists_look_up_in_one_batch()
+{
+	foreach (array('ws_api_plan_items_list', 'ws_api_my_day_get') as $function) {
+		$source = workspace_visit_contact_test_source($function);
+
+		pg_assert_true(strpos($source, 'ws_api_plan_item_contacts($viewer, ') !== false, $function . ' looks the contacts up once');
+		pg_assert_true(preg_match('~ws_api_plan_item_present\(\$viewer, \$event, \$\w+\)~', $source) === 1, $function . ' hands them to each item');
+	}
+
+	$batch = workspace_visit_contact_test_source('ws_api_plan_item_contacts');
+
+	pg_assert_true(strpos($batch, 'ws_event_contacts_ready()') !== false, 'only once the column is there');
+	pg_assert_true(strpos($batch, 'ws_viewer_contacts_open($viewer, ') !== false, 'the owner\'s own rule');
+	pg_assert_true(strpos($batch, 'api_current_scopes()') !== false, 'the key\'s scopes');
+	pg_assert_same(1, substr_count($batch, 'db_items('), 'one query for the page');
+}

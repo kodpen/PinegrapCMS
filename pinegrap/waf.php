@@ -2466,13 +2466,14 @@ function waf_rate_sweep()
  * in seconds. A bucket's row records when its window started, so a day-long
  * window swept on the firewall's hour would be forgotten 23 hours early and
  * the limit would never be reached. 'cfr' is the custom form's per-address
- * limit (pg_cf_throttle_subjects()).
+ * limit (pg_cf_throttle_subjects()); 'eaf' is E-mail a Friend's daily limit
+ * per visitor address (email_a_friend.php).
  *
  * @return array scope => seconds
  */
 function waf_rate_long_scopes()
 {
-    return array('cfr' => 86400);
+    return array('cfr' => 86400, 'eaf' => 86400);
 }
 
 /**

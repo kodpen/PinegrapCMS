@@ -1309,7 +1309,7 @@ if (($mail_invoice !== null) && ((string) $invoice['direction'] === 'sales') && 
 
     if (($mail_refusal === '') && !$mail_readonly) {
         $output_mail_form = '
-            <form name="mail_form" action="' . $self_action . '" method="post" class="row g-3">
+            <form name="mail_form" action="' . $self_action . '" method="post" class="row g-3" data-erp-send-once>
                 ' . get_token_field() . '
                 <input type="hidden" name="id" value="' . $invoice_id . '" />
                 <input type="hidden" name="erp_action" value="mail" />
@@ -1329,8 +1329,9 @@ if (($mail_invoice !== null) && ((string) $invoice['direction'] === 'sales') && 
                     <textarea class="form-control" id="mail_message" name="mail_message" rows="3" maxlength="5000">' . h((string) $mail_defaults['message']) . '</textarea>
                     <div class="form-text"><i class="bi bi-paperclip" aria-hidden="true"></i> ' . h($mail_note) . '</div>
                 </div>
-                <div class="col-12">
+                <div class="col-12 d-flex flex-wrap gap-3 align-items-center">
                     <button type="submit" class="btn btn-sm btn-solid theme-primary"><i class="bi bi-envelope me-3" aria-hidden="true"></i>' . lang('Send the e-mail') . '</button>
+                    <span class="small fg-secondary" role="status" aria-live="polite" data-erp-send-once-status></span>
                 </div>
             </form>';
         $output_mail_button = '<a class="btn btn-sm btn-outline theme-secondary" href="#erp-mail"><i class="bi bi-envelope me-1" aria-hidden="true"></i>' . lang('E-mail') . '</a>';
@@ -1704,6 +1705,34 @@ pg_page_shell([
         </div>
     </div>
 </main>
+<script>
+(function () {
+    // Send the e-mail is sent once: building the PDF and sending the mail run
+    // inside the request and can take longer than the 3 seconds the window
+    // guard covers, and a second press then sent the same e-mail again. The
+    // button is never disabled; a submit a handler cancelled does not count.
+    var sent = [];
+    window.addEventListener("submit", function (event) {
+        var form = event.target;
+        if (!form || !form.hasAttribute || !form.hasAttribute("data-erp-send-once")) { return; }
+        if (sent.indexOf(form) !== -1) { event.preventDefault(); return; }
+        if (event.defaultPrevented) { return; }
+        sent.push(form);
+        form.setAttribute("aria-busy", "true");
+        var status = form.querySelector("[data-erp-send-once-status]");
+        if (status) { status.textContent = "' . escape_javascript(lang('Working on it. Wait for the answer before leaving this page.')) . '"; }
+    });
+    window.addEventListener("pageshow", function (event) {
+        if (!event.persisted) { return; }
+        sent.forEach(function (form) {
+            form.removeAttribute("aria-busy");
+            var status = form.querySelector("[data-erp-send-once-status]");
+            if (status) { status.textContent = ""; }
+        });
+        sent = [];
+    });
+})();
+</script>
 ' . get_date_picker_format() . pg_fields_script() .
 output_footer();
 
