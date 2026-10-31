@@ -532,7 +532,7 @@ if (!empty($_POST['quick_add']) && $oid > 0 && function_exists('add_order_item')
             switch ((string)$qa_product['selection_type']) {
                 case 'checkbox':
                 case 'autoselect':
-                    add_order_item($qa_pid, (int)$qa_product['default_quantity'], 0, $qa_ship_to, $qa_add_name);
+                    add_order_item($qa_pid, pg_product_default_quantity($qa_product['default_quantity']), 0, $qa_ship_to, $qa_add_name);
                     $qa_added = true;
                     break;
 
@@ -561,7 +561,7 @@ if (!empty($_POST['quick_add']) && $oid > 0 && function_exists('add_order_item')
                     break;
 
                 default:
-                    add_order_item($qa_pid, max(1, (int)$qa_product['default_quantity']), 0, $qa_ship_to, $qa_add_name);
+                    add_order_item($qa_pid, pg_product_default_quantity($qa_product['default_quantity']), 0, $qa_ship_to, $qa_add_name);
                     $qa_added = true;
             }
 

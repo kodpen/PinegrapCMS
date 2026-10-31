@@ -17,6 +17,15 @@
 if (!defined('PG_FUNCTIONS_DIR')) {
     exit;
 }
+// The quantity a product enters the cart with when the visitor gives none
+// (a checked or auto-selected product, a quick add, a donation without a
+// quantity box): products.default_quantity, at least 1. The column is NULL on
+// rows made without it, and a NULL or 0 would write a zero-quantity line.
+function pg_product_default_quantity($default_quantity)
+{
+    $quantity = is_numeric($default_quantity) ? (int) $default_quantity : 0;
+    return max(1, $quantity);
+}
 function add_order_item($product_id, $quantity, $donation_amount, $ship_to, $add_name, $calendar_event_id = 0, $recurrence_number = 0)
 {
     // Check if product exists and is enabled and get product info.

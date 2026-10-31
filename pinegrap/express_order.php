@@ -229,7 +229,7 @@ if (!empty($_POST['quick_add'])) {
                     switch ($selection_type) {
                         case 'checkbox':
                         case 'autoselect':
-                            add_order_item($_POST['quick_add_product_id'], $default_quantity, 0, $_POST['quick_add_ship_to'], $_POST['quick_add_add_name']);
+                            add_order_item($_POST['quick_add_product_id'], pg_product_default_quantity($default_quantity), 0, $_POST['quick_add_ship_to'], $_POST['quick_add_add_name']);
                             $order_item_added = true;
                             break;
                             

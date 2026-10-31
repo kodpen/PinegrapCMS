@@ -1141,6 +1141,13 @@ function pg_pb_create_product($product, $relations = array())
 
     pg_pb_apply_stock_flag($product);
 
+    // A product made without a default quantity (a template catalog, a caller
+    // that leaves the key out, an empty box) stores 1, the value the edit
+    // screen shows, instead of the column's NULL.
+    if (!isset($product['default_quantity']) || !is_numeric($product['default_quantity']) || (int) $product['default_quantity'] < 1) {
+        $product['default_quantity'] = 1;
+    }
+
     // address_name needs the row's own id to disambiguate, so it is written in
     // a second pass below.
     $address_source = isset($product['address_name']) ? trim($product['address_name']) : '';

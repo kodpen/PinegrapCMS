@@ -159,7 +159,7 @@ if (($liveform->field_in_session('submit_add') == true) || ($liveform->field_in_
                                 
                                 $selected_products[] = array(
                                     'id' => $product['id'],
-                                    'quantity' => $product['default_quantity'],
+                                    'quantity' => pg_product_default_quantity($product['default_quantity']),
                                     'donation_amount' => 0,
                                     'ship_to' => $liveform->get_field_value('ship_to'),
                                     'add_name' => $liveform->get_field_value('add_name'),
@@ -291,7 +291,7 @@ if (($liveform->field_in_session('submit_add') == true) || ($liveform->field_in_
                                 
                                 $selected_products[] = array(
                                     'id' => $product['id'],
-                                    'quantity' => $product['default_quantity'],
+                                    'quantity' => pg_product_default_quantity($product['default_quantity']),
                                     'donation_amount' => 0,
                                     'ship_to' => $liveform->get_field_value('ship_to'),
                                     'add_name' => $liveform->get_field_value('add_name'),
@@ -525,7 +525,7 @@ if (($liveform->field_in_session('submit_add') == true) || ($liveform->field_in_
                     // Otherwise a quantity field was not displayed to the user, or the quantity is invalid,
                     // so use default quantity.
                     } else {
-                        $actual_quantity = $product['default_quantity'];
+                        $actual_quantity = pg_product_default_quantity($product['default_quantity']);
                     }
 
                     $donation_amount = $product['price'] * $actual_quantity;
