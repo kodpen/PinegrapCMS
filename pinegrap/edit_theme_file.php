@@ -257,12 +257,17 @@ if (!$_POST) {
     $original_activated_mobile_theme = $row['activated_mobile_theme'];
 
     $name = prepare_file_name($liveform->get_field_value('name'));
+
+    // The row every write below acts on, for its Audit Trail line.
+    $audit_id = (int) $liveform->get_field_value('id');
     
     // if file was selected for delete
     if (!empty($_POST['delete'])) {
         // delete file row
+        $audit_before = pg_audit_fetch('files', $audit_id);
         $query = "DELETE FROM files WHERE id = ?";
         $result=db_q($query, array((string) $liveform->get_field_value('id'))) or output_error('Query failed');
+        pg_audit_record('delete', 'files', $audit_id, $audit_before);
         
         // delete file's system css properties
         $query = "DELETE FROM system_theme_css_rules WHERE file_id = ?";
@@ -362,6 +367,7 @@ if (!$_POST) {
                 }
 
                 // Deactivate old theme.
+                $old_theme_audit_before = pg_audit_fetch('files', (int) $old_activated_theme_id);
                 $query =
                     "UPDATE files
                     SET activated_desktop_theme = '0'
@@ -369,6 +375,7 @@ if (!$_POST) {
                         (activated_desktop_theme = '1')
                         AND (id != ?)";
                 $result = db_q($query, array((string) $liveform->get_field_value('id'))) or output_error('Query failed.');
+                pg_audit_record('update', 'files', (int) $old_activated_theme_id, $old_theme_audit_before);
             }
         }
 
@@ -417,6 +424,7 @@ if (!$_POST) {
                 }
 
                 // Deactivate old theme.
+                $old_theme_audit_before = pg_audit_fetch('files', (int) $old_activated_theme_id);
                 $query =
                     "UPDATE files
                     SET activated_mobile_theme = '0'
@@ -424,10 +432,12 @@ if (!$_POST) {
                         (activated_mobile_theme = '1')
                         AND (id != ?)";
                 $result = db_q($query, array((string) $liveform->get_field_value('id'))) or output_error('Query failed.');
+                pg_audit_record('update', 'files', (int) $old_activated_theme_id, $old_theme_audit_before);
             }
         }
 
         // update theme
+        $audit_before = pg_audit_fetch('files', $audit_id);
         $query =
             "UPDATE files 
             SET 
@@ -442,6 +452,7 @@ if (!$_POST) {
             WHERE id = ?";
         
         $result = db_q($query, array((string) $name, (string) $liveform->get_field_value('folder'), (string) $liveform->get_field_value('description'), (string) $file_extension, (string) $liveform->get_field_value('activated_desktop_theme'), (string) $liveform->get_field_value('activated_mobile_theme'), (string) $user['id'], (string) $liveform->get_field_value('id'))) or output_error('Query failed.');
+        pg_audit_record('update', 'files', $audit_id, $audit_before);
         
         // Rename the file when its name changed and it is on the disk. A theme
         // recorded here but missing from the disk has nothing to rename (that

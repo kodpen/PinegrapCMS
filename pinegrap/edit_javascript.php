@@ -204,7 +204,8 @@ if (!$_POST) {
             (string) filesize(FILE_DIRECTORY_PATH . '/' . $new_file_name),
             (string) $user['id'],
         )) or output_error('Query failed.');
-        $new_file_id = mysqli_insert_id(db::$con);
+        $new_file_id = (int) mysqli_insert_id(db::$con);
+        pg_audit_record('create', 'files', $new_file_id);
 
         log_activity(lang(array('string'=>'a new copy of the JS file ({var:1}) was created', 'vars'=>$file_name)), $_SESSION['sessionusername']);
         include_once('liveform.class.php');
@@ -229,6 +230,7 @@ if (!$_POST) {
         }
         
         // update file in database
+        $audit_before = pg_audit_fetch('files', (int) $id);
         $query =
             "UPDATE files 
             SET 
@@ -241,6 +243,7 @@ if (!$_POST) {
             (string) $user['id'],
             (string) $id,
         )) or output_error('Query failed.');
+        pg_audit_record('update', 'files', (int) $id, $audit_before);
         
         // log the change that the file was modified
         log_activity(lang(array('string'=>'the JavaScript for theme file ({var:1}) was modified','vars'=>$file_name)), $_SESSION['sessionusername']);

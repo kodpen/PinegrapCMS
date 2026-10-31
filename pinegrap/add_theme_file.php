@@ -510,6 +510,9 @@ article,aside,details,figcaption,figure,footer,header,hgroup,nav,section,summary
         // update the file size now that we have a file
         $query = "UPDATE files SET size = ? WHERE id = ?";
         $result = db_q($query, array((string) filesize(FILE_DIRECTORY_PATH . '/' . $file_name), (string) $theme_id)) or output_error('Query failed.');
+
+        // One create line carries the row with its final size.
+        pg_audit_record('create', 'files', (int) $theme_id);
         
         // if a new theme was created, then log the activity, output a message and then send the user to the theme's CSS editor
         if ($liveform->get_field_value('create_system_theme_option') == 'new') {
@@ -617,6 +620,8 @@ article,aside,details,figcaption,figure,footer,header,hgroup,nav,section,summary
                 '1',
                 UNIX_TIMESTAMP())";
         $result = db_q($query, array((string) $file_name, (string) $liveform->get_field_value('folder'), (string) $liveform->get_field_value('description'), (string) $file_extension, (string) $file_size, (string) $user['id'])) or output_error('Query failed.');
+        $theme_id = (int) mysqli_insert_id(db::$con);
+        pg_audit_record('create', 'files', $theme_id);
         
         // if overwrite is true, then log the appropriate notice
         if ($overwrite == true) {
