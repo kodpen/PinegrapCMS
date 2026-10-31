@@ -184,6 +184,95 @@ function pg_email_campaign_profile_schedule_time($time)
 }
 
 /**
+ * Which profile each "campaign sent" profile follows, read from every
+ * profile whatever the user may see, so a ring through a profile the user
+ * cannot see is still found.
+ *
+ * @return array profile id => the id of the profile it follows
+ */
+function pg_email_campaign_profile_follow_map()
+{
+    $follows = array();
+
+    foreach (db_items("SELECT id, action_item_id FROM email_campaign_profiles WHERE action = 'email_campaign_sent'") as $profile) {
+        $follows[(int) $profile['id']] = (int) $profile['action_item_id'];
+    }
+
+    return $follows;
+}
+
+/**
+ * The profile plus every profile that follows it, directly or further down
+ * the chain: none of them may be its trigger, or the campaigns run in a ring
+ * that never ends.
+ *
+ * @param int   $profile_id  The profile being edited, 0 for a new one
+ * @param array $follows     pg_email_campaign_profile_follow_map()
+ * @return int[]  Sorted ids, empty for a new profile
+ */
+function pg_email_campaign_profile_downstream($profile_id, $follows)
+{
+    $profile_id = (int) $profile_id;
+
+    if (!$profile_id) {
+        return array();
+    }
+
+    $followers = array();
+
+    foreach ($follows as $id => $followed_id) {
+        $followers[(int) $followed_id][] = (int) $id;
+    }
+
+    $visited = array($profile_id => true);
+    $queue = array($profile_id);
+
+    while ($queue) {
+        $id = array_shift($queue);
+
+        foreach ($followers[$id] ?? array() as $follower_id) {
+            if (!isset($visited[$follower_id])) {
+                $visited[$follower_id] = true;
+                $queue[] = $follower_id;
+            }
+        }
+    }
+
+    $ids = array_keys($visited);
+    sort($ids);
+
+    return $ids;
+}
+
+/**
+ * Whether following $pick would close a ring: walks up from the pick along
+ * what each profile follows until it meets the edited profile, a profile
+ * that follows nothing, or one already visited (a ring elsewhere).
+ *
+ * @param int        $profile_id  The profile being edited, 0 for a new one
+ * @param int|string $pick        The profile picked as the trigger
+ * @param array      $follows     pg_email_campaign_profile_follow_map()
+ * @return bool
+ */
+function pg_email_campaign_profile_closes_ring($profile_id, $pick, $follows)
+{
+    $profile_id = (int) $profile_id;
+    $id = (int) $pick;
+    $visited = array();
+
+    while ($profile_id && $id && !isset($visited[$id])) {
+        if ($id == $profile_id) {
+            return true;
+        }
+
+        $visited[$id] = true;
+        $id = (int) ($follows[$id] ?? 0);
+    }
+
+    return false;
+}
+
+/**
  * The five field cards of the form, wrapped in their row.
  *
  * @param liveform $liveform
@@ -193,12 +282,19 @@ function pg_email_campaign_profile_schedule_time($time)
  *                              (0 on the create screen)
  * @param array    $keep_pages  The stored 'custom_form_page_id' and 'page_id',
  *                              kept in their page pickers even in an archived
- *                              folder (empty on the create screen)
+ *                              folder, and the stored 'email_campaign_profile_id',
+ *                              kept in its picker even when it closes a ring
+ *                              (empty on the create screen)
+ * @param int      $profile_id  The profile being edited, 0 for a new one; it
+ *                              and the profiles downstream of it are left out
+ *                              of the "campaign sent" picker
  * @return string  HTML
  */
-function pg_email_campaign_profile_form_cards($liveform, $user, $product_id = 0, $keep_pages = array())
+function pg_email_campaign_profile_form_cards($liveform, $user, $product_id = 0, $keep_pages = array(), $profile_id = 0)
 {
     $rows = pg_email_campaign_profile_action_rows($liveform->get_field_value('action'));
+
+    $exclude_ids = $profile_id ? pg_email_campaign_profile_downstream($profile_id, pg_email_campaign_profile_follow_map()) : array();
 
     $output_body_preview_iframe_source = '';
 
@@ -289,7 +385,7 @@ function pg_email_campaign_profile_form_cards($liveform, $user, $product_id = 0,
                                         </div>
                                         <div class="col-12 md:col-6 lg:col-4 my-3 collapse ' . $rows['email_campaign_profile_id'] . '" id="email_campaign_profile_id_row">
                                             <label for="email_campaign_profile_id" class="form-label">' . lang('Campaign Profile for Campaign that was sent') . '</label>
-                                            ' . $liveform->output_field(array('type'=>'select', 'name'=>'email_campaign_profile_id', 'id'=>'email_campaign_profile_id', 'class'=>'form-control', 'options'=>get_email_campaign_profile_options() )) . '
+                                            ' . $liveform->output_field(array('type'=>'select', 'name'=>'email_campaign_profile_id', 'id'=>'email_campaign_profile_id', 'class'=>'form-control', 'options'=>get_email_campaign_profile_options($exclude_ids, $keep_pages['email_campaign_profile_id'] ?? 0) )) . '
                                         </div>
                                         ' . $output_product_id_row . '
                                         ' . $output_subscription_fields_row . '
@@ -532,6 +628,16 @@ function pg_email_campaign_profile_form_validate($liveform, $profile_id = 0)
                 ) {
                     log_activity(lang('access denied for user to set campaign profile action for a campaign profile, because user does not have access to campaign profile'), $_SESSION['sessionusername']);
                     $liveform->mark_error('email_campaign_profile_id', lang('Sorry, you do not have access to that campaign profile.'));
+                }
+
+                // Each profile has one action, so a profile that follows itself or a
+                // profile downstream of it has nothing that ever starts it, and
+                // queued campaigns of it would send again after every run.
+                if (
+                    ($liveform->check_field_error('email_campaign_profile_id') == false)
+                    && pg_email_campaign_profile_closes_ring($profile_id, $liveform->get_field_value('email_campaign_profile_id'), pg_email_campaign_profile_follow_map())
+                ) {
+                    $liveform->mark_error('email_campaign_profile_id', lang('A campaign profile cannot follow itself or a profile that follows it.'));
                 }
 
                 break;
