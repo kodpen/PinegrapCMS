@@ -200,6 +200,36 @@ function test_short_link_redirects_url_name_reads_addresses_on_this_site()
 	pg_assert_same(null, pg_short_link_url_name('mailto:x@example.com', 'example.com', '/'), 'not a web address');
 }
 
+function test_short_link_redirects_url_name_drops_a_language_prefix_as_the_router_does()
+{
+	$prefixes = array('en' => 'en', 'pt-br' => 'pt-BR');
+
+	pg_assert_same('a/b', pg_short_link_url_name('/en/a/b', 'example.com', '/', $prefixes), 'path from the root');
+	pg_assert_same('a', pg_short_link_url_name('http://example.com/en/a', 'example.com', '/', $prefixes), 'full address');
+	pg_assert_same('a', pg_short_link_url_name('en/a', 'example.com', '/', $prefixes), 'path below the site');
+	pg_assert_same('a', pg_short_link_url_name('/sub/pt-br/a', 'example.com', '/sub/', $prefixes), 'under the base path');
+	pg_assert_same('', pg_short_link_url_name('/en/', 'example.com', '/', $prefixes), 'the home page in another language');
+	pg_assert_same('de/a', pg_short_link_url_name('/de/a', 'example.com', '/', $prefixes), 'a language the site does not serve');
+	pg_assert_same('EN/a', pg_short_link_url_name('/EN/a', 'example.com', '/', $prefixes), 'capitals: the router matches lower case only');
+	pg_assert_same('english/a', pg_short_link_url_name('/english/a', 'example.com', '/', $prefixes), 'a longer first segment');
+	pg_assert_same('en/a', pg_short_link_url_name('/en/a', 'example.com', '/', array()), 'no languages');
+}
+
+function test_short_link_redirects_refuses_a_loop_through_a_language_prefix()
+{
+	$prefixes = array('en' => 'en');
+	$problem = function ($link, $links = array()) use ($prefixes) {
+		$found = pg_short_link_redirect_problem($link, $links, 'example.com', '/', $prefixes);
+
+		return ($found === null) ? '' : $found['code'];
+	};
+
+	pg_assert_same('to_self', $problem(short_link_redirects_test_link(0, 'pg-a', '/en/pg-a')), 'its own address with a prefix');
+	pg_assert_same('to_self', $problem(short_link_redirects_test_link(0, 'pg-a', 'http://example.com/en/pg-a')), 'full address with a prefix');
+	pg_assert_same('to_loop', $problem(short_link_redirects_test_link(0, 'pg-a', '/en/pg-b'), array(short_link_redirects_test_link(1, 'pg-b', '/en/pg-a'))), 'a -> /en/b -> /en/a');
+	pg_assert_same('', $problem(short_link_redirects_test_link(0, 'pg-a', '/en/pg-b')), 'to another name in another language');
+}
+
 function test_short_link_redirects_refuses_a_link_to_itself()
 {
 	pg_assert_same('to_self', short_link_redirects_test_problem(short_link_redirects_test_link(0, 'eski', '/eski')), 'same path');

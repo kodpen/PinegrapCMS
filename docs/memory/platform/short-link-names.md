@@ -12,7 +12,8 @@ description: Short link names (2026.11.0): the name rule, a pasted old address a
 - Symptom before (#1006): the pasted old address itself answered 404 (a WordPress permalink ends in `/`; an address with a space or `//`), only the `_` spelling or the one without the slash worked, from every save path and the CSV import alike.
 - Patterns at 404 (`pg_short_link_not_found()` -> `pg_short_link_match_in()`): each pattern in its turn, the path as it came first, then the stored form; `$n` takes what the matching form gave.
 - The loop checks walk `pg_short_link_match_in()` too and compare the link's own name in both forms, so an address that reaches a link only through its stored form counts as reaching it.
-- IIS hands a non-ASCII path re-encoded in the ANSI code page (`ui/ascii-names-in-urls-iis.md`); `router_utf8_name()` reads it back from Windows-1254 (ISO-8859-9 where mbstring lacks it) before the lookup.
+- IIS hands a non-ASCII path re-encoded in the ANSI code page (`ui/ascii-names-in-urls-iis.md`); `router.php` cuts the request (base path, language prefix, query string) with byte functions, then `router_utf8_name()` reads the name back from Windows-1254 (ISO-8859-9 where mbstring lacks it) before any lookup.
+- Symptom before (#4346): `mb_substr()` turned each such byte into `?`, taken for the query string, so `/pg-test-kısa-çay` looked up `pg-test-k` (404), `/çay-x` drew the home page with 200 and the 404 log merged different addresses into one cut row.
 
 ## How do two names compare?
 - As the router's `WHERE name = '…'` does: `pg_short_link_key()` is the database's weight string of the name under the column's collation (`pg_short_link_name_collation()`, `SHOW FULL COLUMNS`), a hundred names per query (`pg_short_link_keys()`), kept for the request. PHP does not imitate the collation.

@@ -678,14 +678,17 @@ function pg_short_link_target_references($target)
  * The name on this site a destination address leads to, the way router.php
  * completes an address: a full address on this site's host, a path from the
  * host's root (/x) or a path below the site (x). '' is the home page; null is
- * an address elsewhere, or not one a link can follow.
+ * an address elsewhere, or not one a link can follow. A language prefix the
+ * site serves (/en/x) is dropped, as the router cuts it before it looks a
+ * name up.
  *
- * @param string $url
- * @param string $site_host The site's host name (HOSTNAME_SETTING)
- * @param string $base_path The site's base path (PATH)
+ * @param string     $url
+ * @param string     $site_host The site's host name (HOSTNAME_SETTING)
+ * @param string     $base_path The site's base path (PATH)
+ * @param array|null $prefixes  prefix => language code; null reads the site's
  * @return string|null
  */
-function pg_short_link_url_name($url, $site_host = '', $base_path = '/')
+function pg_short_link_url_name($url, $site_host = '', $base_path = '/', $prefixes = null)
 {
     $url = trim((string) $url);
     $parts = @parse_url($url);
@@ -729,10 +732,60 @@ function pg_short_link_url_name($url, $site_host = '', $base_path = '/')
             $path = trim((string) substr($path, strlen($base)), '/');
         }
 
-        return $path;
+        return pg_short_link_without_language($path, $prefixes);
     }
 
-    return trim($path, '/');
+    return pg_short_link_without_language(trim($path, '/'), $prefixes);
+}
+
+/**
+ * A path below the site without the language prefix router.php cuts from its
+ * first segment: a lower-case prefix of a language the site serves.
+ *
+ * @param string     $path     Without slashes at its ends
+ * @param array|null $prefixes prefix => language code; null reads the site's
+ * @return string
+ */
+function pg_short_link_without_language($path, $prefixes = null)
+{
+    if ($prefixes === null) {
+        $prefixes = pg_short_link_language_prefixes();
+    }
+
+    $parts = explode('/', (string) $path, 2);
+
+    if (!isset($prefixes[$parts[0]]) || (preg_match('#^[a-z]{2,8}(?:-[a-z]{2,4})?$#', $parts[0]) !== 1)) {
+        return (string) $path;
+    }
+
+    return isset($parts[1]) ? trim($parts[1], '/') : '';
+}
+
+/**
+ * The language prefixes the site serves, prefix => language code, from
+ * TRANSLATION_PREFIXES (init.php) in lower case as the router reads them;
+ * empty before init.php or the 2026.4.6 upgrade.
+ *
+ * @return array
+ */
+function pg_short_link_language_prefixes()
+{
+    $map = array();
+
+    if (!defined('TRANSLATION_PREFIXES')) {
+        return $map;
+    }
+
+    foreach (explode(',', (string) TRANSLATION_PREFIXES) as $pair) {
+        $parts = explode('=', trim($pair), 2);
+        $prefix = strtolower(trim($parts[0]));
+
+        if ($prefix !== '') {
+            $map[$prefix] = isset($parts[1]) ? trim($parts[1]) : $prefix;
+        }
+    }
+
+    return $map;
 }
 
 /**
@@ -827,9 +880,10 @@ function pg_short_link_match_in($name, $index, $exact_too = true)
  * @param array[] $links     The stored links, or pg_short_link_prepare() of them
  * @param string  $site_host The site's host name
  * @param string  $base_path The site's base path
+ * @param array|null $prefixes Language prefixes (pg_short_link_url_name()); null reads the site's
  * @return array|null array('field' => name|url, 'code' => string, 'message' => string)
  */
-function pg_short_link_redirect_problem($link, $links = array(), $site_host = '', $base_path = '/')
+function pg_short_link_redirect_problem($link, $links = array(), $site_host = '', $base_path = '/', $prefixes = null)
 {
     $id = isset($link['id']) ? (int) $link['id'] : 0;
     $name = isset($link['name']) ? (string) $link['name'] : '';
@@ -862,7 +916,7 @@ function pg_short_link_redirect_problem($link, $links = array(), $site_host = ''
     }
 
     $start = $is_pattern ? pg_short_link_fill_target($url, array_fill(0, max(1, $stars), 'pg-sample'), false) : $url;
-    $path = pg_short_link_url_name($start, $site_host, $base_path);
+    $path = pg_short_link_url_name($start, $site_host, $base_path, $prefixes);
 
     // Another site or the home page ends it; what the stars match cannot
     // change that (a star in the host is refused above).
@@ -930,7 +984,7 @@ function pg_short_link_redirect_problem($link, $links = array(), $site_host = ''
             ? pg_short_link_fill_target($next['link']['url'], $next['captures'], false)
             : (string) $next['link']['url'];
 
-        $path = pg_short_link_url_name($next_url, $site_host, $base_path);
+        $path = pg_short_link_url_name($next_url, $site_host, $base_path, $prefixes);
 
         if (($path === null) || ($path === '')) {
             $chain_ends = true;
@@ -1013,7 +1067,7 @@ function pg_short_link_redirect_problem($link, $links = array(), $site_host = ''
                 ? pg_short_link_fill_target($next['link']['url'], $next['captures'], false)
                 : (string) $next['link']['url'];
 
-            $at = pg_short_link_url_name($next_url, $site_host, $base_path);
+            $at = pg_short_link_url_name($next_url, $site_host, $base_path, $prefixes);
 
             if (($at === null) || ($at === '')) {
                 break;

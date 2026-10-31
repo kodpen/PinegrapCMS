@@ -242,7 +242,12 @@ waf_prime_config($router_config_row);
 waf_send_security_headers();
 waf_run('router');
 
-$request_url_without_path = mb_substr(REQUEST_URL, mb_strlen(PATH));
+// IIS hands PHP a path it decoded and re-encoded in the server's ANSI code
+// page (docs/memory/ui/ascii-names-in-urls-iis.md): a Turkish letter arrives
+// as a byte that is not UTF-8, and an mb_ function turns it into "?", which
+// would then be taken for the start of the query string. So the request is
+// cut with byte functions until the name is read back as UTF-8 below.
+$request_url_without_path = (string) substr(REQUEST_URL, strlen(PATH));
 
 // ── Language directory ───────────────────────────────────────────────────
 // /en/about is the page "about" drawn in English (includes/translate/). The
@@ -264,10 +269,10 @@ if (preg_match('#^([a-z]{2,8}(?:-[a-z]{2,4})?)(/|\?|$)#', $request_url_without_p
         define('LANGUAGE_PREFIX', $router_prefix);
         define('LANGUAGE_PATH', PATH . $router_prefix . '/');
 
-        $request_url_without_path = mb_substr($request_url_without_path, mb_strlen($router_prefix));
+        $request_url_without_path = (string) substr($request_url_without_path, strlen($router_prefix));
 
-        if (mb_substr($request_url_without_path, 0, 1) == '/') {
-            $request_url_without_path = mb_substr($request_url_without_path, 1);
+        if (substr($request_url_without_path, 0, 1) === '/') {
+            $request_url_without_path = (string) substr($request_url_without_path, 1);
         }
 
         // A file has one address. A relative src="logo.png" on a translated
@@ -278,7 +283,7 @@ if (preg_match('#^([a-z]{2,8}(?:-[a-z]{2,4})?)(/|\?|$)#', $request_url_without_p
 }
 
 // Get first 6 characters so that we can test if visitor used old address format.
-$first_6_characters = mb_strtolower(mb_substr($request_url_without_path, 0, 6));
+$first_6_characters = strtolower(substr($request_url_without_path, 0, 6));
 
 // If the visitor requested the old address format for an item (e.g. /pages/example),
 // then send 301 redirect to new address format (e.g. /example).
@@ -296,24 +301,26 @@ if (
     $config = mysqli_fetch_assoc($result);
 
     // Create a new request uri without "pages/" or "files/".
-    $new_request_url_without_path = mb_substr($request_url_without_path, 6);
+    $new_request_url_without_path = (string) substr($request_url_without_path, 6);
 
     header('Location: ' . $config['url_scheme'] . $config['hostname'] . PATH . $new_request_url_without_path, true, 301);
     exit();
 }
 
-$query_string_position = mb_strpos($request_url_without_path, '?');
+$query_string_position = strpos($request_url_without_path, '?');
 
 // If a query string was found, then remove the query string in order to set the item name.
 if ($query_string_position !== false) {
-    $item_name = mb_substr($request_url_without_path, 0, $query_string_position);
+    $item_name = (string) substr($request_url_without_path, 0, $query_string_position);
 
 // Otherwise there is no query string, so just set the item name to the request uri with path.
 } else {
     $item_name = $request_url_without_path;
 }
 
-$item_name = rawurldecode($item_name);
+// A name with a Turkish letter that IIS re-encoded (see above), or one sent
+// percent-encoded in that code page, is looked up in UTF-8 like every name.
+$item_name = router_utf8_name(rawurldecode($item_name));
 
 // The page cache (includes/fn/page_cache.php): an anonymous visit to a page
 // kept on disk is answered here and the request ends, before any lookup. A
@@ -431,11 +438,9 @@ $short_link_select =
     LEFT JOIN product_groups ON short_links.product_group_id = product_groups.id
     LEFT JOIN products ON short_links.product_id = products.id";
 
-// IIS hands PHP a path it decoded and re-encoded in the server's ANSI code
-// page (docs/memory/ui/ascii-names-in-urls-iis.md), so a name with a Turkish
-// letter arrives as bytes that are not UTF-8. Short link names may be old
-// addresses with such letters, so they are looked up in UTF-8.
-$short_link_name = router_utf8_name($item_name);
+// Short link names may be old addresses with Turkish letters; the name is
+// already UTF-8 (router_utf8_name() above).
+$short_link_name = $item_name;
 
 $query = $short_link_select . "
     WHERE short_links.name = '" . router_escape($short_link_name) . "'";
@@ -818,13 +823,13 @@ function router_translation_prefixes()
 function router_language_file_redirect($rest)
 {
     $name = $rest;
-    $query_position = mb_strpos($name, '?');
+    $query_position = strpos($name, '?');
 
     if ($query_position !== false) {
-        $name = mb_substr($name, 0, $query_position);
+        $name = (string) substr($name, 0, $query_position);
     }
 
-    $name = rawurldecode($name);
+    $name = router_utf8_name(rawurldecode($name));
 
     if ($name === '') {
         return;
