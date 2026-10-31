@@ -79,3 +79,12 @@ function test_photo_gallery_widget_registered()
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/widgets_photo_gallery.php');
 	pg_assert_contains("_pg_inject_messages_node(\$tree, 'photo_gallery')", $source, 'Messages named after the classic liveform');
 }
+
+function test_photo_gallery_image_types_take_webp_and_avif()
+{
+	$types = pg_gal_image_types();
+	foreach (pg_public_image_file_types() as $type) {
+		pg_assert_true(in_array($type, $types, true), 'a public image type is a photo: ' . $type);
+	}
+	pg_assert_true(in_array('tiff', $types, true), 'the classic TIFF types stay');
+}

@@ -23,13 +23,16 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 }
 
 /**
- * The file types a gallery shows as photos (the classic page's list).
+ * The file types a gallery shows as photos, on the classic page and in the
+ * widget: the public image types (WebP and AVIF included, so a photo turned
+ * into WebP in the file manager stays in the gallery) and the TIFF types
+ * the classic page always listed.
  *
  * @return array
  */
 function pg_gal_image_types()
 {
-    return array('gif', 'jpg', 'jpeg', 'png', 'bmp', 'tif', 'tiff');
+    return array('gif', 'jpg', 'jpeg', 'png', 'webp', 'avif', 'bmp', 'tif', 'tiff');
 }
 
 /**
