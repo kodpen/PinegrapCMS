@@ -216,3 +216,14 @@ function test_field_form_posted_field()
 	$field = pg_field_form_posted_field($stored, array('label' => array('A', 'B')));
 	pg_assert_same('A', $field['label'], 'an array value gives its first entry');
 }
+
+function test_field_form_name_taken()
+{
+	pg_assert_same(true, pg_field_form_name_taken('klasor', array('ad', 'klasor')), 'a name another field of the form has');
+	pg_assert_same(true, pg_field_form_name_taken('Klasör', array('KLASÖR')), 'compared without case, multibyte too');
+	pg_assert_same(false, pg_field_form_name_taken('klasor', array('ad', 'soyad')), 'a free name');
+	pg_assert_same(false, pg_field_form_name_taken('klasor', array()), 'the first field');
+	pg_assert_same(false, pg_field_form_name_taken('klasor', array('klasor'), 'Klasor'), 'an existing duplicate saved under its own name keeps working');
+	pg_assert_same(true, pg_field_form_name_taken('klasor', array('klasor'), 'dosya'), 'renamed onto a name in use');
+	pg_assert_same(false, pg_field_form_name_taken('', array('')), 'a blank name is the blank check\'s business');
+}
