@@ -100,3 +100,32 @@ function test_explorer_catalog_recycle_message()
 	pg_assert_same('2 binned. Root. Other.', pg_explorer_catalog_recycle_message('2 binned.', 2, array('Root.', 'Other.', 'Root.')), 'after the count');
 	pg_assert_same('Root.', pg_explorer_catalog_recycle_message('Sorry.', 0, array('Root.', 'Root.')), 'instead of the count');
 }
+
+// Rename reads the live row before its UPDATE and refuses a product or group
+// that is gone or in the bin, so a stale grid, tree row or Bulk Rename is not
+// told the name changed.
+function test_explorer_catalog_rename_refuses_gone_or_binned_item()
+{
+	$handlers = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/explorer/handle_catalog.php');
+
+	$start = strpos($handlers, 'function pg_explorer_handle_catalog_rename(');
+	pg_assert_true($start !== false, 'rename handler found');
+	$end = strpos($handlers, "\nfunction ", $start + 10);
+	$body = substr($handlers, $start, ($end === false ? strlen($handlers) : $end) - $start);
+
+	$refusal = "respond(array('status' => 'error', 'message' => lang('Sorry, we could not accept your request.')));";
+
+	$group_read = strpos($body, "FROM product_groups WHERE id = '\" . e(\$item_id) . \"'\" . pg_catalog_live_filter('product_groups'));");
+	$group_check = strpos($body, "if (!\$group_row) {\n            " . $refusal);
+	$group_update = strpos($body, 'UPDATE product_groups SET name');
+	pg_assert_true($group_read !== false, 'group read keeps binned rows out');
+	pg_assert_true(($group_check !== false) && ($group_read < $group_check), 'missing group refused after the read');
+	pg_assert_true(($group_update !== false) && ($group_check < $group_update), 'group refusal before its UPDATE');
+
+	$product_read = strpos($body, "db_item(\"SELECT id FROM products WHERE id = '\" . e(\$item_id) . \"'\" . pg_catalog_live_filter('products'))");
+	$product_update = strpos($body, 'UPDATE products SET name');
+	$product_check = strpos($body, $refusal, (int) $group_update);
+	pg_assert_true($product_read !== false, 'product read keeps binned rows out');
+	pg_assert_true(($product_check !== false) && ($product_read < $product_check), 'missing product refused after the read');
+	pg_assert_true(($product_update !== false) && ($product_check < $product_update), 'product refusal before its UPDATE');
+}
