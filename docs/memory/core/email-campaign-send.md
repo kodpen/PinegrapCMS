@@ -5,7 +5,7 @@ module: email_campaign_send
 ---
 
 ## Which code do Send now and the job share?
-- `includes/fn/email_campaign_send.php`, loaded with `require_once` by `send_email_campaign.php` and `email_campaign_job.php` (PR #PRNUM, #4223, #4224).
+- `includes/fn/email_campaign_send.php`, loaded with `require_once` by `send_email_campaign.php` and `email_campaign_job.php` (PR #4278, #4223, #4224).
 - `pg_email_campaign_mail_properties($campaign, $to, $to_name, $subject, $body)`: the `email()` array, `type` `campaign` and the campaign's `purpose`. `email()` adds `List-Unsubscribe` and `List-Unsubscribe-Post` only for `purpose === 'commercial'`; Send now used to pass no purpose, so a marketing campaign sent by hand had no one-click unsubscribe headers. The caller adds `notify_sender` (true only on the last attempt, in both paths).
 - `pg_email_campaign_record_failure($id, $address, $attempts_before, $claim_token, $user)`: the UPDATE of a refused delivery, built from the pure `pg_email_campaign_failure()`: `attempts` + 1, `last_error` (500 chars), then either `next_attempt_at = now + pg_mail_backoff()` or, at `pg_mail_max_attempts()`, `complete = 1, failed = 1` and a "given up" activity line. The job passes its claim token (row written only while claimed, claim released); Send now passes `null`.
 
