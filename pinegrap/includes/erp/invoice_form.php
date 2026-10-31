@@ -570,7 +570,11 @@ function erp_invoice_form_cards($liveform, $options = array())
                     <div class="d-flex justify-content-between py-3 border-top h5 mb-0">
                         <span>' . lang('Total') . '</span><b data-erp-total="grand_total">&mdash;</b>
                     </div>
-                    <div class="form-text text-end">' . lang('A preview; the figures are worked out again when the invoice is saved.') . '</div>
+                    <div class="form-text text-end">' . ($is_quote
+                        ? lang('A preview; the figures are worked out again when the quote is saved.')
+                        : ($is_order
+                            ? lang('A preview; the figures are worked out again when the purchase order is saved.')
+                            : lang('A preview; the figures are worked out again when the invoice is saved.'))) . '</div>
                 </div>
             </div>
         </div>

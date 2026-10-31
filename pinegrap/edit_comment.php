@@ -603,13 +603,20 @@ if (!$_POST) {
                 seller_reply_at = '" . pg_review_reply_time($seller_reply, $new_seller_reply, $seller_reply_at, time()) . "',";
         }
 
+        // The stars are drawn only while the page has its rating on; with it
+        // off the stored rating stays, since the missing radios would write 0.
+        $sql_rating = '';
+        if ($comments_rating != false) {
+            $sql_rating = "rating = '" . escape($liveform->get_field_value('rating')) . "',";
+        }
+
         // update comment
         $query =
             "UPDATE comments
             SET
                 name = '" . escape($liveform->get_field_value('name')) . "',
                 message = '" . escape($liveform->get_field_value('message')) . "',
-                rating = '" . escape($liveform->get_field_value('rating')) . "',
+                $sql_rating
                 $sql_file_id
                 $sql_seller_reply
                 published = '" . $new_published . "',

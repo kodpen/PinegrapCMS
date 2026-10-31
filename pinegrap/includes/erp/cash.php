@@ -40,6 +40,39 @@ function erp_cash_payment_methods()
 }
 
 /**
+ * The line under a till picker that offers too few tills for its save: it says
+ * what is missing and links to Open a Till. Tills are only opened by hand
+ * (add_erp_till.php), so a fresh ERP has none, and the save's refusal ("Choose
+ * a till or bank account.") would ask for a choice the list cannot give. The
+ * refusals stay as they are because the API returns them too.
+ *
+ * @param int    $usable_count  Tills the picker offers
+ * @param string $kind          'till' (one is needed), 'transfer' (two are
+ *                              needed) or 'cheque' (one besides the portfolio)
+ * @return string  HTML, empty when the picker offers enough
+ */
+function erp_no_till_hint($usable_count, $kind = 'till')
+{
+    $usable_count = (int) $usable_count;
+    $needed = ($kind === 'transfer') ? 2 : 1;
+
+    if ($usable_count >= $needed) {
+        return '';
+    }
+
+    if ($kind === 'cheque') {
+        $text = lang('No bank account is set up besides the till the cheque is kept in.');
+    } elseif ($usable_count > 0) {
+        $text = lang('A transfer needs a second till or bank account.');
+    } else {
+        $text = lang('No till or bank account is set up yet.');
+    }
+
+    return '<div class="form-text"><i class="bi bi-exclamation-circle fg-warning me-1" aria-hidden="true"></i>' . h($text)
+        . ' <a href="add_erp_till.php" class="pg-link-body-emphasis">' . h(lang('Open a Till')) . '</a></div>';
+}
+
+/**
  * Append one movement to a till or bank account.
  *
  * Runs inside the caller's transaction, like its counterpart in the ledger.

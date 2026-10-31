@@ -77,8 +77,10 @@ $received = ((string) $cheque['direction'] === 'received');
 $name = trim(($kinds[(string) $cheque['kind']] ?? '') . ' ' . (string) $cheque['serial_no']);
 
 $tills = '';
+$till_count = 0;
 foreach ((array) db_items("SELECT id, name, currency, kind FROM erp_cash_accounts WHERE is_active = 1 AND id <> '" . (int) $cheque['portfolio_till_id'] . "' ORDER BY (kind = 'bank') DESC, sort_order ASC, id ASC") as $till) {
     $tills .= '<option value="' . (int) $till['id'] . '"' . (((int) $till['id'] === (int) $cheque['bank_till_id']) ? ' selected' : '') . '>' . h($till['name'] . ' (' . $till['currency'] . ')') . '</option>';
+    $till_count++;
 }
 
 $accounts = '';
@@ -104,7 +106,7 @@ $step_form = function ($step, $title, $button, $class, $fields, $note) use ($che
 };
 
 $date_field = '<div class="col-6 md:col-3"><label class="form-label small">' . lang('Date') . '</label><input type="date" data-pg-date class="form-control form-control-sm" name="date" value="' . date('Y-m-d') . '" /></div>';
-$bank_field = '<div class="col-6 md:col-4"><label class="form-label small">' . lang('Bank account') . '</label><select class="form-control form-control-sm" name="bank_till_id" aria-label="' . h(lang('Bank account')) . '">' . $tills . '</select></div>';
+$bank_field = '<div class="col-6 md:col-4"><label class="form-label small">' . lang('Bank account') . '</label><select class="form-control form-control-sm" name="bank_till_id" aria-label="' . h(lang('Bank account')) . '">' . $tills . '</select>' . erp_no_till_hint($till_count, 'cheque') . '</div>';
 
 $output_steps = '';
 if (!$readonly) {

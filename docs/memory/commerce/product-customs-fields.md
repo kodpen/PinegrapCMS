@@ -1,6 +1,6 @@
 ---
 name: product-customs-fields
-description: products.hs_code and origin_country (2026.11.0, 11.0.130, #3408): customs data per product, empty is the shop default; product screen, copy, import/export; API with C2
+description: products.hs_code and origin_country (2026.11.0, 11.0.130, #3408): customs data per product, empty is the shop default; product screen, copy, import/export, products API
 module: product_customs
 ---
 
@@ -15,7 +15,8 @@ module: product_customs
 - Copy: `duplicate_product()` and `duplicate_products.php` add `pg_product_customs_copy_sql($row)` beside the compare-at price; a stored value the screen would refuse is copied as ''.
 - Export (`export_products_f.php`): `hs_code`, `origin_country` after `compare_at_price`. Import: same headings; `pg_product_customs_import_row()` normalises the cells, a bad cell leaves the whole row out and names it in its own error ("…HS code or country of origin is not valid"); an empty cell leaves the stored value, as for every column.
 - Labels (C2 #3449): the label's line query reads both columns; Shippo declares them with the shop defaults of its settings (`carrier-label-customs.md`); Sendcloud as `parcel_items` (C3 #3474, `carrier-label-sendcloud-customs.md`).
-- Not yet: the products external API (`includes/api/schema.php` is held by #3298; the fields follow once it merges), the mass edit screen and the product list's in-place edit.
+- External API (#3975): the product object carries `hs_code`/`origin_country` (null for '' or a site before 11.0.130); `POST /products` and `POST /products/{id}` take both (nullable, '' clears) through `api_products_customs_param()`: the screen's parsers, 422 on a bad value, 503 without the columns, read before the dry run. Tests: `tests/api_product_customs_test.php`.
+- Not yet: the mass edit screen and the product list's in-place edit.
 
 ## Why these rules?
 - One HS code for a mixed catalogue misdeclares goods, so the code is per product with a shop fallback (#3408 (c)). Two empty columns change nothing on a running site.
