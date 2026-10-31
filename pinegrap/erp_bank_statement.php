@@ -117,30 +117,31 @@ if ($_POST) {
 
     if ($action === 'record_suggested') {
         $recorded = 0;
-        $failed = 0;
+        $missed = array();
+        $lines = erp_bank_statement_lines($statement_id);
+        // Worked out once, as the screen showed them, before the first line
+        // is recorded: recording one closes the invoice a later line pointed at.
+        $suggestions = erp_bank_statement_suggestions($lines);
 
-        foreach (erp_bank_statement_lines($statement_id) as $line) {
-            if ((string) $line['status'] !== 'new') {
+        foreach ($lines as $line) {
+            if (!isset($suggestions[(int) $line['id']])) {
                 continue;
             }
 
-            // Recording posts with the line's own date, which the lock refuses.
-            if (erp_lock_refusal((string) $line['doc_date']) !== '') {
-                continue;
-            }
-
-            $suggestion = erp_bank_line_suggestion($line);
-
-            if ($suggestion['account_id'] <= 0) {
-                continue;
-            }
-
+            $suggestion = $suggestions[(int) $line['id']];
             $done = erp_bank_line_record((int) $line['id'], array('kind' => 'account', 'account_id' => $suggestion['account_id'], 'invoice_id' => $suggestion['invoice_id']), (int) $user['id']);
-            $done['success'] ? $recorded++ : $failed++;
+
+            if ($done['success']) {
+                $recorded++;
+            } else {
+                $missed[] = prepare_form_data_for_output((string) $line['doc_date'], 'date') . ' ' . erp_money_out_currency((int) $line['amount'], (string) $statement['till_currency']) . ' (' . $done['error'] . ')';
+            }
         }
 
         log_activity(lang(array('string' => 'erp bank statement (#{var:1}): {var:2} suggested line(s) recorded', 'vars' => array($statement_id, $recorded))), $_SESSION['sessionusername']);
-        $liveform->add_notice(h(lang(array('string' => '{var:1} line(s) recorded as suggested; {var:2} could not be.', 'vars' => array($recorded, $failed)))));
+        $liveform->add_notice(h($missed
+            ? lang(array('string' => '{var:1} line(s) recorded as suggested; {var:2} could not be: {var:3}', 'vars' => array($recorded, count($missed), implode('; ', $missed))))
+            : lang(array('string' => '{var:1} line(s) recorded as suggested; {var:2} could not be.', 'vars' => array($recorded, 0)))));
         go($self);
     }
 
@@ -260,6 +261,9 @@ if ((string) $statement['status'] === 'mapping') {
     // One number: an array (?line[]=x) cast to 1 and opened the first line.
     $open_line = is_scalar($_GET['line'] ?? null) ? (int) $_GET['line'] : 0;
     $lines = erp_bank_statement_lines($statement_id);
+    // One pass for the whole statement, the one Record the suggested lines
+    // takes: each open invoice is offered on one line only.
+    $suggestions = $readonly ? array() : erp_bank_statement_suggestions($lines);
     $suggested = 0;
 
     $all_accounts = null;
@@ -277,7 +281,7 @@ if ((string) $statement['status'] === 'mapping') {
             // A line dated inside the locked books cannot be recorded (it posts
             // with its own date): the reason replaces the Record steps.
             $line_locked = erp_lock_refusal((string) $line['doc_date']);
-            $suggestion = ($line_locked === '') ? erp_bank_line_suggestion($line) : array('account_id' => 0);
+            $suggestion = $suggestions[(int) $line['id']] ?? array('account_id' => 0);
 
             if ($line_locked !== '') {
                 $action .= '<div class="small fg-secondary" style="max-width:24rem">' . h(lang(array('string' => 'The books are locked up to {var:1}, so this line cannot be recorded. Set it aside, or ask whoever keeps the books to move the lock.', 'vars' => prepare_form_data_for_output(erp_lock_date(), 'date', false)))) . '</div>';

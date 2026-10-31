@@ -551,3 +551,38 @@ function test_erp_bank_line_hash_large_amount()
 	pg_assert_same(1, erp_bank_line_occurrence($seen, 7, '2026-10-15', $amount, 'EFT GIDEN'), 'first');
 	pg_assert_same(1, erp_bank_line_occurrence($seen, 7, '2026-10-15', erp_bank_amount('12.949.672,96'), 'EFT GIDEN'), 'an amount the cast would wrap onto is counted apart');
 }
+// The suggestions of a statement are worked out once for every new line, and
+// one open invoice goes to the first line that points at it: two lines of the
+// same amount no longer both offer "the one open invoice of this amount".
+function test_erp_bank_statement_suggestions_one_line_per_invoice()
+{
+	$lines = array(
+		array('id' => 1, 'status' => 'new', 'doc_date' => '2026-10-01', 'amount' => 30000),
+		array('id' => 2, 'status' => 'new', 'doc_date' => '2026-10-02', 'amount' => 30000),
+		array('id' => 3, 'status' => 'matched', 'doc_date' => '2026-10-02', 'amount' => 30000),
+		array('id' => 4, 'status' => 'new', 'doc_date' => '2026-09-01', 'amount' => 30000),
+		array('id' => 5, 'status' => 'new', 'doc_date' => '2026-10-03', 'amount' => 500),
+		array('id' => 6, 'status' => 'new', 'doc_date' => '2026-10-04', 'amount' => 700),
+		array('id' => 7, 'status' => 'new', 'doc_date' => '2026-10-05', 'amount' => 900),
+	);
+	$asked = array();
+	$suggest = function ($line) use (&$asked) {
+		$asked[] = (int) $line['id'];
+		$by_amount = array(
+			30000 => array('account_id' => 9, 'invoice_id' => 41, 'why' => 'the one open invoice of this amount'),
+			500 => array('account_id' => 0, 'invoice_id' => 0, 'why' => ''),
+			700 => array('account_id' => 8, 'invoice_id' => 0, 'why' => 'name in the line'),
+			900 => array('account_id' => 8, 'invoice_id' => 0, 'why' => 'name in the line'),
+		);
+		return $by_amount[(int) $line['amount']];
+	};
+	$locked = function ($date) {
+		return ($date < '2026-09-30') ? 'locked' : '';
+	};
+
+	$suggestions = erp_bank_statement_suggestions($lines, $suggest, $locked);
+
+	pg_assert_same(array(1, 6, 7), array_keys($suggestions), 'the first line takes the invoice; an account alone can go to several');
+	pg_assert_same(41, $suggestions[1]['invoice_id'], 'the invoice');
+	pg_assert_same(array(1, 2, 5, 6, 7), $asked, 'only new lines outside the lock are asked');
+}

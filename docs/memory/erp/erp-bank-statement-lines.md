@@ -19,7 +19,7 @@ description: ERP bank statement lines: each line once (line_hash), matching to t
 ## How is an unmatched line recorded?
 - Nothing is written until the operator says so. `erp_bank_line_record()`: a collection or payment through `erp_post_receipt()` (closing an invoice when one is named), or an expense paid from the bank through `erp_expense_save()` (VAT 0, not deductible). Or the line is set aside (`erp_bank_line_ignore()`). No bank API: statements come as files.
 
-Reading the file, CSV separator and amount: `erp-bank-statements.md`. Tests: `tests/erp_bank_import_test.php`. The invoice a line suggests: erp-receipt-not-for-return.
+Reading the file, CSV separator and amount: `erp-bank-statements.md`. Tests: `tests/erp_bank_import_test.php`. The invoice a line suggests: erp-receipt-not-for-return; which lines get one: erp-bank-statement-suggestions.
 
 ## What does a refused step keep, and which forms send once?
 - A column choice without a Date column, or with none of Amount, Money out and Money in, is refused by `erp_bank_statement.php` before the build: the posted columns, "Dates are written" and the heading box go to the liveform session and the missing select is marked (`col_date`, `col_amount`); the screen shows them instead of the bank account's remembered columns. Before, everything chosen was reset and only a general error showed.

@@ -710,6 +710,7 @@
     "The OpenAI feed needs the seller name on every product; enter it below.": "OpenAI akışı her üründe satıcı adını istiyor; aşağıya yazın.",
     "The OpenSSL extension is not available, so the downloaded certificates cannot be checked.": "OpenSSL eklentisi yok, bu yüzden indirilen sertifikalar denetlenemiyor.",
     "The PDF could not be generated because of the following error: ": "Şu hata nedeniyle PDF oluşturulamadı: ",
+    "The PDF could not be made, so this preview shows the HTML it is made from; the PDF may look different.": "PDF oluşturulamadı; bu önizleme PDF'in oluşturulduğu HTML'i gösteriyor, PDF farklı görünebilir.",
     "The PDF could not be made.": "PDF oluşturulamadı.",
     "The PDF could not be read from the address Paraşüt gave.": "PDF, Paraşüt'ün verdiği adresten okunamadı.",
     "The PDF library is not installed.": "PDF kütüphanesi kurulu değil.",
