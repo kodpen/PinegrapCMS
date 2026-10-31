@@ -322,6 +322,13 @@ function get_random_string($properties = array())
 }
 
 // outputs the form's <select> page list for selecting a page (value is page id)
+//
+// Pages in archived folders are left out (the Recycle Bin is one), except the
+// selected page: the record being edited already points at it, so it stays
+// and is marked, or a plain Save would write the blank option over it. Like
+// get_page_options() it is marked in the bin under the name it had before the
+// bin parked it, or archived. A basic user still sees only pages in folders
+// they can edit.
 function select_page($page_id = '', $page_type = '')
 {
     global $user;
@@ -330,6 +337,9 @@ function select_page($page_id = '', $page_type = '')
     if ($user['role'] == 3) {
         $folders_that_user_has_access_to = get_folders_that_user_has_access_to($user['id']);
     }
+    // A posted value can be anything; only a whole id is kept.
+    $keep_id = is_scalar($page_id) ? (int) $page_id : 0;
+    $bin_folders = ($keep_id > 0) ? array_flip(pg_recycle_bin_folder_ids()) : array();
     $where_values = array();
     // if a page type was given, prepare to only return pages with that page type
     if ($page_type) {
@@ -359,7 +369,12 @@ function select_page($page_id = '', $page_type = '')
     } else {
         $where .= ' AND ';
     }
-    $where .= '(folder.folder_archived = "0")';
+    if ($keep_id > 0) {
+        $where .= '((folder.folder_archived = "0") OR (page.page_id = ?))';
+        $where_values[] = (string) $keep_id;
+    } else {
+        $where .= '(folder.folder_archived = "0")';
+    }
     // get pages
     $query = "SELECT
 
@@ -367,7 +382,9 @@ function select_page($page_id = '', $page_type = '')
 
             page.page_name as name,
 
-            page.page_folder as folder_id
+            page.page_folder as folder_id,
+
+            folder.folder_archived
 
         FROM page
 
@@ -387,14 +404,27 @@ function select_page($page_id = '', $page_type = '')
     foreach ($pages as $page) {
         // if user has access to folder that page is in, then output option
         if (check_folder_access_in_array($page['folder_id'], $folders_that_user_has_access_to) == true) {
+            $kept = ((int) $page['id'] === $keep_id);
+            $status = pg_page_option_status((string) $page['folder_archived'] !== '0', isset($bin_folders[(int) $page['folder_id']]), true, $kept);
+            if ($status === 'skip') {
+                continue;
+            }
+            $page_name = $page['name'];
+            if ($status === 'bin') {
+                require_once(PG_FUNCTIONS_DIR . '/view_folder_and_files_f.php');
+                $original = pg_recycle_parked_original($page_name, $page['id']);
+                $page_name = (($original !== '') ? $original : $page_name) . ' [' . lang('IN RECYCLE BIN') . ']';
+            } elseif ($status === 'archived') {
+                $page_name .= ' [' . lang('ARCHIVED') . ']';
+            }
             // if this page should be selected, then select it
-            if ($page['id'] == $page_id) {
+            if ($kept) {
                 $selected = ' selected="selected"';
             } else {
                 $selected = '';
             }
             // output option
-            $output .= '<option value="' . $page['id'] . '"' . $selected . '>' . h($page['name']) . '</option>';
+            $output .= '<option value="' . $page['id'] . '"' . $selected . '>' . h($page_name) . '</option>';
         }
     }
     return $output;
@@ -2697,7 +2727,9 @@ function select_offer($offer_id = '')
 
             code,
 
-            description
+            description,
+
+            status
 
         FROM offers
 
@@ -2724,6 +2756,11 @@ function select_offer($offer_id = '')
                     $description = mb_substr($description, 0, 50) . '...';
                 }
                 $output_label .= h($description);
+            }
+            // A key code or grant for an offer that is not enabled never
+            // applies, so the offer is marked rather than picked unknowingly.
+            if ($offer['status'] !== 'enabled') {
+                $output_label .= ' [' . lang('DISABLED') . ']';
             }
             $output .= '<option value="' . $offer['id'] . '"' . $selected . '>' . $output_label . '</option>';
         }

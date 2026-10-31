@@ -1,6 +1,6 @@
 ---
 name: stored-choice-kept
-description: Selects whose list leaves out the stored choice add it back selected and marked (Edit Product private folder, Workspace template department and assignees)
+description: Selects that drop the stored choice add it back selected and marked (product private folder, Workspace template, select_page(), calendar Next Page, disabled offers)
 ---
 
 ## What was the symptom?
@@ -14,3 +14,9 @@ description: Selects whose list leaves out the stored choice add it back selecte
 
 ## Where are the tests?
 - `tests/stored_choice_kept_test.php`.
+
+## How do the page and offer pickers keep a stored choice?
+- `select_page()` (includes/fn/forms.php, about 50 pickers: User Start Page, Edit Page next and confirmation pages, commerce and security settings pages, offer upsell) left out every page in an archived folder, the Recycle Bin included, the selected one too, so the select opened blank and a plain Save wrote ''. It now lets only the selected page past the archived rule and marks it as `get_page_options()` does (`pg_page_option_status()`: " [ARCHIVED]", or the unparked name plus " [IN RECYCLE BIN]"). The role-3 folder filter still applies to it: a posted id on a refused Edit Page save would otherwise show page names the user cannot edit. Pages in folders sent to the bin stay listed, as `get_page_options()`'s default does.
+- Edit Calendar Event passes the stored `next_page_id` (read from `calendar_events` on every draw, never from the post) to `pg_calendar_event_form_cards(..., $keep_next_page_id)`, which hands it to `get_page_options()`; before, a stored next page in an archived folder, or one a role-3 editor cannot edit, refused the save with "Next Page is required." while reservations were on.
+- `select_offer()` (Edit Page Grant Offer, Affiliate Group Offer) marks an offer whose status is not 'enabled' " [DISABLED]": key codes and grants for it never apply.
+- Tests: `tests/page_pickers_keep_test.php`.

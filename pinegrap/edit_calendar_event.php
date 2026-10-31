@@ -226,6 +226,10 @@ if (!$_POST) {
         }
     }
 
+    // The stored next page stays in the Next Page picker even when its folder
+    // was archived or sent to the bin; read from the row, never the post.
+    $stored_next_page_id = (int) db_value("SELECT next_page_id FROM calendar_events WHERE id = '" . $id . "'");
+
     // Where it was talked about in the workspace, and the tasks about it.
     $output_workspace_button = '';
 
@@ -271,7 +275,7 @@ if (!$_POST) {
                     <input type="hidden" name="id" value="' . h($_GET['id']) . '" />
                     ' . $liveform->output_field(array('type'=>'hidden', 'name'=>'send_to', 'value'=>($_GET['send_to'] ?? ''))) . '
                     ' . $liveform->output_field(array('type'=>'hidden', 'name'=>'recurrence_number', 'value'=>$requested_recurrence_number)) . '
-                    ' . pg_calendar_event_form_cards($liveform, $user, $calendars, $calendar_event_locations, $id) . '
+                    ' . pg_calendar_event_form_cards($liveform, $user, $calendars, $calendar_event_locations, $id, $stored_next_page_id) . '
                     <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
