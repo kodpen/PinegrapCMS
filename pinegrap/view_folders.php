@@ -3313,10 +3313,10 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 // The bin is a place, so the undo entry is the same shape the
                 // file manager uses: one step back puts these rows exactly
                 // where they were, with the published state they had.
-                undoToast(fmt(L.moved_to_bin_count, [payload.length]), pushUndo({
+                binToast(response, payload.length, pushUndo({
                     undo: { type: 'catalog_restore', items: payload },
                     redo: { type: 'catalog_recycle', items: payload }
-                }));
+                }), true);
 
                 reload();
             });
@@ -8583,6 +8583,27 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         toast(message, true, (entry && entry.undo) ? { label: L.undo, run: function () { undoEntry(entry); } } : null);
     }
 
+    // The Undo toast after a move to the bin counts what the server moved,
+    // not what was selected. When some items stayed, the server's message
+    // carries the reasons: the catalog's already starts with the count, so
+    // it becomes the Undo text; the file manager's holds only the reasons,
+    // so it follows as a danger toast.
+    function binToast(response, selectedCount, entry, catalog) {
+        var moved = Number(catalog ? response.count : response.binned);
+        var stayed = ((response.status === 'partial') || (Number(response.skipped) > 0));
+
+        if (isNaN(moved)) { moved = selectedCount; }
+
+        if (stayed && catalog && response.message) {
+            undoToast(response.message, entry);
+            return;
+        }
+
+        undoToast(fmt(L.moved_to_bin_count, [moved]), entry);
+
+        if (stayed) { toast(response.message || L.request_failed, false); }
+    }
+
     function runOperation(op, done) {
         if (!op) { done && done(); return; }
 
@@ -11020,7 +11041,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
                         if (response.status === 'error') { toast(response.message || L.request_failed, false); return; }
 
-                        undoToast(fmt(L.moved_to_bin_count, [items.length]),
+                        binToast(response, items.length,
                             pushUndo({ undo: { type: 'restore', items: items }, redo: { type: 'bin', items: items } }));
 
                         reload();
@@ -11034,7 +11055,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
                 if (response.status === 'error') { toast(response.message || L.request_failed, false); return; }
 
-                undoToast(fmt(L.moved_to_bin_count, [payload.length]),
+                binToast(response, payload.length,
                     pushUndo({ undo: { type: 'restore', items: payload }, redo: { type: 'bin', items: payload } }));
 
                 reload();
