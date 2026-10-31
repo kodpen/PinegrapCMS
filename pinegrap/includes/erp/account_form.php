@@ -505,15 +505,29 @@ function erp_account_form_contact_summary($contact)
         $lines[] = h($place);
     }
 
+    // Each button leads to a screen with its own door (contacts access and
+    // the contact's groups, or the user screen's role rule); an ERP clerk
+    // the door refuses reads the order count and the user as plain text.
+    $can_open_contact = pg_can_open_contact(null, (int) $contact['id']);
+    $viewer = array('role' => defined('USER_ROLE') ? (int) USER_ROLE : 3);
+
     $links = array();
-    $links[] = '<a href="edit_contact.php?id=' . (int) $contact['id'] . '" class="btn btn-sm btn-outline theme-secondary"><i class="bi bi-person-vcard me-1"></i>' . lang('Contact') . '</a>';
+    if ($can_open_contact) {
+        $links[] = '<a href="edit_contact.php?id=' . (int) $contact['id'] . '" class="btn btn-sm btn-outline theme-secondary"><i class="bi bi-person-vcard me-1"></i>' . lang('Contact') . '</a>';
+    }
 
     if (defined('ECOMMERCE') && ECOMMERCE) {
-        $links[] = '<a href="view_orders_for_contact.php?id=' . (int) $contact['id'] . '" class="btn btn-sm btn-outline theme-secondary"><i class="bi bi-bag me-1"></i>' . h(lang(array('string' => '{var:1} order(s)', 'vars' => (int) $contact['orders']))) . '</a>';
+        $orders_label = '<i class="bi bi-bag me-1"></i>' . h(lang(array('string' => '{var:1} order(s)', 'vars' => (int) $contact['orders'])));
+        $links[] = $can_open_contact
+            ? '<a href="view_orders_for_contact.php?id=' . (int) $contact['id'] . '" class="btn btn-sm btn-outline theme-secondary">' . $orders_label . '</a>'
+            : '<span class="small fg-secondary align-self-center">' . $orders_label . '</span>';
     }
 
     if ($contact['user_id'] > 0) {
-        $links[] = '<a href="edit_user.php?id=' . (int) $contact['user_id'] . '" class="btn btn-sm btn-outline theme-secondary"><i class="bi bi-person-badge me-1"></i>' . h(lang(array('string' => 'User: {var:1}', 'vars' => $contact['username']))) . '</a>';
+        $user_label = '<i class="bi bi-person-badge me-1"></i>' . h(lang(array('string' => 'User: {var:1}', 'vars' => $contact['username'])));
+        $links[] = pg_can_open_user($viewer, $contact['user_role'] ?? 0)
+            ? '<a href="edit_user.php?id=' . (int) $contact['user_id'] . '" class="btn btn-sm btn-outline theme-secondary">' . $user_label . '</a>'
+            : '<span class="small fg-secondary align-self-center">' . $user_label . '</span>';
     }
 
     // The contact's own picture, at the size the rest of the panel uses for
@@ -531,7 +545,7 @@ function erp_account_form_contact_summary($contact)
                         <div class="flex-grow-1 min-w-0">
                             <div class="fw-bold">' . h($contact['name']) . '</div>
                             ' . (($lines !== array()) ? '<div class="small fg-secondary">' . implode('<br>', $lines) . '</div>' : '') . '
-                            <div class="d-flex flex-wrap gap-3 mt-3">' . implode('', $links) . '</div>
+                            ' . (($links !== array()) ? '<div class="d-flex flex-wrap gap-3 mt-3">' . implode('', $links) . '</div>' : '') . '
                         </div>
                     </div>';
 }
