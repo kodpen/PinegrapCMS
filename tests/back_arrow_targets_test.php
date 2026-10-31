@@ -116,3 +116,34 @@ function test_back_arrow_edit_calendar_goes_to_the_calendar()
 {
 	pg_assert_contains("'url' => 'calendars.php?calendar_id=' . (int) \$_GET['id']", back_arrow_targets_cancel_line('edit_calendar.php'), 'Edit Calendar Properties goes back to that calendar like its Save');
 }
+
+// The way back is the arrow and the breadcrumb: a screen draws no copy of it
+// as a toolbar button, card link or bottom link.
+function test_back_arrow_replaces_back_to_list_copies()
+{
+	$screens = array(
+		'add_return.php' => array("'view_returns.php'", "href=\"view_returns.php\""),
+		'view_return.php' => array("'view_returns.php'", "href=\"view_returns.php\"><i"),
+		'view_returns.php' => array("'view_orders.php'", "href=\"view_orders.php\"><i"),
+		'view_subscriptions.php' => array("\$cancel_url", "href=\"view_orders.php\"><i"),
+		'view_cart_quotes.php' => array("'view_orders.php'", "href=\"view_orders.php\"><i"),
+		'product_builder.php' => array("'view_products.php?mode=products'", "href=\"view_products.php?mode=products\"><i"),
+		'marketplace_products.php' => array("'marketplace_settings.php'", 'bi-arrow-left'),
+		'workspace_template.php' => array('$settings_url', 'bi-arrow-left'),
+		'workspace_wtables.php' => array('$cancel', 'bi-arrow-left'),
+		'workspace_mcp.php' => array("'workspace_settings.php#ws-mcp'", 'href="workspace_settings.php#ws-mcp"'),
+		'find_and_replace.php' => array("'find_and_replace.php'", 'Back to Find & Replace'),
+		'erp_stock.php' => array("'erp_stock.php'", "lang('All products')"),
+		'erp_cashflow.php' => array("'erp_cash.php'", 'href="erp_cash.php"'),
+	);
+
+	foreach ($screens as $file => $screen) {
+		$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
+
+		pg_assert_contains($screen[0], implode("\n", back_arrow_targets_cancel_lines($file)), $file . ': the arrow goes back');
+		pg_assert_contains("'breadcrumb'", $source, $file . ': a breadcrumb shows the parent');
+		pg_assert_false(strpos($source, $screen[1]) !== false, $file . ': no back-to-list copy');
+	}
+
+	pg_assert_false(strpos((string) file_get_contents(PG_FUNCTIONS_DIR . '/workspace_calendar.php'), 'workspace_calendar_feed.php') !== false, 'workspace_calendar.php: no bottom link');
+}

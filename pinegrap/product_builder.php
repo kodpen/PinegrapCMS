@@ -3645,6 +3645,7 @@ function pg_pb_variant_sets_screen()
         'icon'          => 'store',
         'heading'       => lang('Variant Sets'),
         'heading_description' => lang('Product groups that present several forms of the same product as one catalog item.'),
+        'cancel'        => array('enable' => 'true', 'url' => 'view_products.php?mode=products'),
         'breadcrumb'    => array(
             // ?mode=products is required, not tidy: without it the session sends
             // the operator straight back here and the breadcrumb becomes a loop.
@@ -3663,7 +3664,6 @@ function pg_pb_variant_sets_screen()
                         
                         <nav id="button_bar" class="navigation" aria-label="' . h(lang('Button Bar')) . '">
                             <a class="btn btn-sm btn-solid theme-primary m-1" href="add_product.php"><i class="bi bi-plus-circle me-3"></i>' . lang('Create') . '</a>
-                            <a class="btn btn-sm btn-outline theme-secondary m-1" href="view_products.php?mode=products"><i class="bi bi-list-ul me-3"></i>' . lang('All Products') . '</a>
                         </nav>
                     </div>
 

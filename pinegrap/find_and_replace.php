@@ -556,25 +556,21 @@ if (!$_POST) {
         ));
 
         echo
-        output_header([
+        pg_page_shell([
             'title'        => lang('Find Results'),
             'extra classes'=> 'setting',
             'icon'         => 'setting',
             'heading'      => lang('Find Results'),
+            'heading_description' => $summary,
+            'cancel'       => array('enable' => 'true', 'url' => 'find_and_replace.php'),
+            'breadcrumb'   => array(
+                array('label' => lang('Find & Replace'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/find_and_replace.php'),
+                array('label' => lang('Find Results')),
+            ),
         ]) . '
         <main id="content" class="container-fluid">
             <div class="row">
                 <div class="col-12">
-                    <div class="row mb-3 flex-wrap">
-                        <div class="col-12 text-center md:text-start">
-                            <h2>' . lang('Find Results') . '</h2>
-                            <p class="fg-secondary">' . h($summary) . '</p>
-                            <a href="find_and_replace.php" class="btn btn-outline theme-secondary btn-sm mb-7">
-                                <span class="material-icons me-1" style="font-size:1rem" aria-hidden="true">arrow_back</span>
-                                ' . lang('Back to Find & Replace') . '
-                            </a>
-                        </div>
-                    </div>
                     ' . $results_html . '
                 </div>
             </div>

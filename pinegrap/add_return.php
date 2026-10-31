@@ -153,9 +153,6 @@ if ($order_id <= 0) {
 <main id="content" class="container-fluid">
     ' . $liveform->output_errors() . '
     ' . $liveform->output_notices() . '
-    <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . h(lang('Button Bar')) . '">
-        <a class="btn btn-sm btn-text theme-secondary" href="view_returns.php"><i class="bi bi-arrow-return-left me-1" aria-hidden="true"></i>' . h(lang('All Returns')) . '</a>
-    </nav>
     <div class="row g-7">
         <div class="col-12 lg:col-8 2xl:col-9 order-1">
             <div class="card mb-7">
@@ -345,12 +342,7 @@ if ($order_id <= 0) {
 <main id="content" class="container-fluid">
     ' . $liveform->output_errors() . '
     ' . $liveform->output_notices() . '
-    <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . h(lang('Button Bar')) . '">
-        <a class="btn btn-sm btn-text theme-secondary" href="view_order.php?id=' . $order_id . '"><i class="bi bi-receipt me-1" aria-hidden="true"></i>' . h(lang('View Order')) . '</a>
-        <a class="btn btn-sm btn-text theme-secondary" href="view_returns.php"><i class="bi bi-arrow-return-left me-1" aria-hidden="true"></i>' . h(lang('All Returns')) . '</a>
-        <div class="pg-toolbar-grow"></div>
-        ' . $output_switch . '
-    </nav>
+    ' . pg_screen_toolbar(array('search' => $output_switch)) . '
     ' . $output_breach . '
     <form method="post" action="add_return.php" autocomplete="off" submitshortcut="submit_create">
         ' . get_token_field() . '

@@ -1586,6 +1586,7 @@ echo pg_page_shell(array(
 	// The heading is printed as markup; the account name is the operator's text.
 	'heading'             => $account ? h($account['name']) . ' · ' . h($provider_name) : lang('Marketplace Products'),
 	'heading_description' => lang('Match what you sell on the marketplace to the products in this shop. Matched products get their stock and price from here.'),
+	'cancel'              => array('enable' => 'true', 'url' => 'marketplace_settings.php' . ($account ? '?account=' . $account_id : '')),
 	'breadcrumb'          => array(
 		array('label' => lang('Marketplaces'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/marketplace_settings.php' . ($account ? '?account=' . $account_id : '')),
 		array('label' => lang('Marketplace Products'))
@@ -1715,10 +1716,6 @@ a.mpp-title:hover { text-decoration: underline; }
 }</style>
 
 <main id="content" class="container-fluid">
-	<nav id="button_bar" class="pg-toolbar navigation" aria-label="' . h(lang('Button Bar')) . '">
-		<a class="btn btn-sm btn-text theme-secondary" href="marketplace_settings.php' . ($account ? '?account=' . $account_id : '') . '">'
-			. '<i class="bi bi-arrow-left me-1" aria-hidden="true"></i>' . h(lang('Marketplaces')) . '</a>
-	</nav>
 	<div id="mpp-flash" aria-live="polite"></div>';
 
 // The views this account has: the catalogue where the connector lists the

@@ -359,16 +359,17 @@ pg_page_shell(array(
     'icon'                => 'workspace',
     'heading'             => lang('My MCP connections'),
     'heading_description' => lang('Your own accounts on the other services\' MCP servers of the Workspace, and their tools that read, run with a form.'),
-    'cancel'              => false,
+    // Only someone who manages the Workspace has the server list to go back to.
+    'cancel'              => $viewer['settings'] ? array('enable' => 'true', 'url' => 'workspace_settings.php#ws-mcp') : false,
+    'breadcrumb'          => $viewer['settings'] ? array(
+        array('label' => lang('MCP servers'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/workspace_settings.php#ws-mcp'),
+        array('label' => lang('My MCP connections')),
+    ) : array(),
 )) . '
 <main id="content" class="container-fluid p-0">
 <div class="ws-shell">
 <div class="ws-shell-main">
     ' . $liveform_messages . '
-    ' . ($viewer['settings'] ? '
-    <nav id="button_bar" class="pg-toolbar navigation mb-5" aria-label="' . lang('Button Bar') . '">
-        <a class="btn btn-sm btn-text theme-secondary" href="workspace_settings.php#ws-mcp"><i class="bi bi-sliders me-1" aria-hidden="true"></i>' . h(lang('MCP servers')) . '</a>
-    </nav>' : '') . '
     ' . (empty($servers)
         ? pg_empty_state('bi-plug', lang('No MCP server yet'), lang('An administrator adds the other services\' MCP servers under Workspace Settings › MCP servers. They appear here once they are on.'))
         : '<div class="row g-5">

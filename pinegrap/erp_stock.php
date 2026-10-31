@@ -144,7 +144,12 @@ pg_page_shell(array(
         'icon' => 'erp',
         'heading' => lang('Stock and cost'),
         'heading_description' => lang('What each product has cost and what the stock on hand is worth at that cost, in the base currency; with the movements the documents made.'),
-        'cancel' => false,
+        // One product's movements go back to the whole stock.
+        'cancel' => ($product_id > 0) ? array('enable' => 'true', 'url' => 'erp_stock.php') : false,
+        'breadcrumb' => ($product_id > 0) ? array(
+            array('label' => lang('Stock and cost'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_stock.php'),
+            array('label' => ($product_title !== '') ? $product_title : ('#' . $product_id)),
+        ) : array(),
     )) . '
 <main id="content" class="container-fluid">
     <div class="row">
@@ -197,7 +202,6 @@ pg_page_shell(array(
                     <span>' . (($product_id > 0)
                         ? h(lang(array('string' => 'Movements: {var:1}', 'vars' => ($product_title !== '') ? $product_title : ('#' . $product_id))))
                         : lang('Stock movements')) . '</span>
-                    ' . (($product_id > 0) ? '<a class="btn btn-sm btn-outline theme-secondary m-1" href="erp_stock.php#erp_stock_moves">' . lang('All products') . '</a>' : '') . '
                 </div>
                 <div class="card-body p-0 table-responsive">
                     <table class="table table-hover align-middle mb-0" data-pg-sort>
