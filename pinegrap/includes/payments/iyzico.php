@@ -1693,3 +1693,127 @@ function pg_payment_iyzico_subscription_cancel_with($subscription, $settings)
 
     return array('success' => true, 'status' => 'cancelled');
 }
+
+/* ---------------------------------------------------------------------------
+   Installment table of the Order Preview and Express Order
+   --------------------------------------------------------------------------- */
+
+/**
+ * The card families the installment table lists, each with a test card
+ * number whose bin iyzico answers for that family.
+ *
+ * @return array family => card number
+ */
+function pg_payment_iyzico_installment_cards()
+{
+    return array(
+        'Maximum'    => '4543590000000006',
+        'Advantage'  => '5504720000000003',
+        'Cardfinans' => '9792030000000000',
+        'Paraf'      => '5528790000000008',
+        'World'      => '5451030000000000',
+        'Bonus'      => '374427000000003',
+        'Axess'      => '4355084355084358',
+    );
+}
+
+/**
+ * One card family's installment prices from iyzico's reply, null when the
+ * reply failed or holds no installment details.
+ *
+ * @param string $raw the reply's JSON
+ * @return array|null family (string), prices (number => array(price, total))
+ */
+function pg_payment_iyzico_installment_detail($raw)
+{
+    $reply = json_decode((string) $raw, true);
+    if (!is_array($reply) || ($reply['status'] ?? '') !== 'success') return null;
+    $detail = $reply['installmentDetails'][0] ?? null;
+    if (!is_array($detail) || !isset($detail['installmentPrices']) || !is_array($detail['installmentPrices'])) return null;
+
+    // A row without its number takes the place it has always had in the
+    // reply: 1, 2, 3, 6, 9 and 12 installments.
+    $positions = array(1, 2, 3, 6, 9, 12);
+    $prices = array();
+    foreach (array_values($detail['installmentPrices']) as $i => $row) {
+        if (!is_array($row)) continue;
+        $number = isset($row['installmentNumber']) ? (int) $row['installmentNumber'] : ($positions[$i] ?? 0);
+        if ($number < 1) continue;
+        $prices[$number] = array($row['installmentPrice'] ?? null, $row['totalPrice'] ?? null);
+    }
+
+    return array('family' => (string) ($detail['cardFamilyName'] ?? ''), 'prices' => $prices);
+}
+
+/**
+ * The installment table the Order Preview and Express Order show under the
+ * card fields: a row per card family with the monthly and total amount of
+ * each installment count up to the configured limit. iyzico is asked only
+ * when the limit is 2 or more and both keys are set; a family whose reply
+ * failed is left out. A family's answer is kept in $cache for ten minutes
+ * by amount, so a page drawn again does not ask again.
+ *
+ * @param float|int $amount the total to pay, in major units
+ * @param array     $settings pg_payment_iyzico_settings()
+ * @param mixed     $cache a session slot (an array, or null for a new one)
+ * @return array html (the table, '' when there are no rows), rows (int)
+ */
+function pg_payment_iyzico_installment_table($amount, $settings, &$cache)
+{
+    $none = array('html' => '', 'rows' => 0);
+    $limit = (int) ($settings['installments'] ?? 1);
+    if ($limit < 2 || (string) ($settings['api_key'] ?? '') === '' || (string) ($settings['secret_key'] ?? '') === '' || !($amount > 0)) {
+        return $none;
+    }
+
+    $now = time();
+    if (!is_array($cache)) $cache = array();
+    foreach ($cache as $key => $entry) {
+        if (!is_array($entry) || ($entry['at'] ?? 0) < $now - 600) unset($cache[$key]);
+    }
+
+    $steps = array_values(array_filter(array(2, 3, 6, 9, 12), function ($n) use ($limit) { return $n <= $limit; }));
+    $symbol = defined('BASE_CURRENCY_SYMBOL') ? BASE_CURRENCY_SYMBOL : null;
+    $cell = function ($price) use ($symbol) {
+        if (!$price[0]) return '<td></td>';
+        return '<td><span class="installment_per_month">' . pg_format_money($price[0], $symbol) . ' / ' . h(lang('month'))
+            . '</span><br/><span class="installment_month_total">' . h(lang('Total')) . ': ' . pg_format_money($price[1], $symbol) . '</span></td>';
+    };
+
+    $options = null;
+    $body = '';
+    $rows = 0;
+    foreach (pg_payment_iyzico_installment_cards() as $card_number) {
+        $bin = substr($card_number, 0, 6);
+        $key = md5($settings['base_url'] . '|' . $settings['api_key'] . '|' . $settings['locale'] . '|' . $amount . '|' . $bin);
+        if (isset($cache[$key])) {
+            $detail = $cache[$key]['detail'];
+        } else {
+            if ($options === null) $options = pg_payment_iyzico_options($settings);
+            $request = new \Iyzipay\Request\RetrieveInstallmentInfoRequest();
+            $request->setLocale($settings['locale']);
+            $request->setConversationId(pg_payment_iyzico_conversation_id());
+            $request->setBinNumber($bin);
+            $request->setPrice($amount);
+            $detail = pg_payment_iyzico_installment_detail(\Iyzipay\Model\InstallmentInfo::retrieve($request, $options)->getRawResult());
+            if ($detail !== null) $cache[$key] = array('at' => $now, 'detail' => $detail);
+        }
+        if ($detail === null || empty($detail['prices'][1][0])) continue;
+
+        $rows++;
+        $body .= '<tr><td  scope="row">' . h($detail['family']) . '</td>';
+        foreach ($steps as $n) $body .= $cell($detail['prices'][$n] ?? array(null, null));
+        $body .= '</tr>';
+    }
+    if ($rows === 0) return $none;
+
+    $head = '<tr><th>' . h(lang('Card Type')) . '</th>';
+    foreach ($steps as $n) $head .= '<th>' . h(lang(array('string' => '{var:1} installments', 'vars' => $n))) . '</th>';
+    $head .= '</tr>';
+
+    return array(
+        'html' => '<style>td[scope=row] {font-weight: 700;}span.installment_per_month {font-size: initial;}</style><div class="table-responsive"><table id="software_installment_table"  class="table responsive-table  table-striped" style="width:100%;" >'
+            . '<thead class="thead-dark">' . $head . '</thead><tbody>' . $body . '</tbody></table></div>',
+        'rows' => $rows,
+    );
+}

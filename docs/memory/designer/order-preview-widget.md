@@ -5,10 +5,10 @@ module: widgets_order_preview
 ---
 
 ## What is it?
-- Kind `order_preview` (`includes/fn/widgets_order_preview.php`), the last classic checkout widget ([[system-widget-page-types]]). Posts to `order_preview.php` (gift card apply, else `submit_order('order preview')`) with the classic names; checks, charge, receipt, redirects unchanged.
+- Kind `order_preview` (`includes/fn/widgets_order_preview.php`), the last classic checkout widget ([[system-widget-page-types]]). Posts to `order_preview.php` (gift card apply, else `submit_order('order preview')`) with the classic names.
 
 ## Where do the totals come from?
-- From `get_order_preview()`: with `layout_data_only` its custom-layout branch returns the array it would hand `render_layout()` (form included). So every figure, payment method, default method, surcharge and installment table is the classic computation (owner decision 2026-10-19, `workflow/decisions-made-product.md`).
+- From `get_order_preview()`: with `layout_data_only` its custom-layout branch returns the array it would hand `render_layout()` (form included). So every figure, payment method, default method, surcharge and installment table is the classic computation (owner decision 2026-10-19).
 - The tree's HTML, wrapped in the form with the branch's `system` hidden fields and scripts, goes through the branch's liveform `prepare()`: the posted `total` / `total_with_surcharge`, a single method's hidden `payment_method`, required marks and kept values.
 - Tokens: the cart's names (`__cart_subtotal` …) and the order view's billing names (`__billing_name` …).
 
@@ -24,8 +24,7 @@ module: widgets_order_preview
 ## How do the payment service methods and On Account get a radio?
 - Saved trees have rows only for card, PayPal Express, iyzico, Offline. With 2+ methods `pg_op_add_method_rows()` adds one per driver method (`$d['payment_driver_methods']`, before Offline) and On Account (last): copies of the tree's card or Offline row, value, id `op_pm_<value>` and label set, flag removed; no new flag or token (#3126).
 - On Account: `pg_op_offer_on_account()` (`pg_erp_open_account_option()`): never with a recurring line (`submit_order.php` refuses it), only beside another method. Counted in `number_of_payment_methods`; making one method two drops the hidden `payment_method` from `$d['system']` (`init_payment_method()` reads it before the radios).
-- Copies have no `pays_by_card` flag, so card stamping is unchanged.
 
 ## What is left out?
 - Nothing: hosted card fields come with `$d['system']` (`commerce/payment-hosted-classic-pages.md`); currency picker [[checkout-currency-picker]].
-- A background render draws nothing.
+- A background, SEO score or search index render draws nothing (#4019); step links and post-save SEO: [[order-preview-step-links-and-installments]].
