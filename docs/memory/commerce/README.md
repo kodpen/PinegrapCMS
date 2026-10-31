@@ -106,6 +106,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - offer-percent-rounding.md: An offer's percentage as a figure (order discount, product, gift, shipping): the exact product rounded half away from zero, pg_percent_of() / pg_percent_off(), on every PHP version (PR #1367)
 - order-address-postcode-note.md: The order screen's warning-only note when a Turkish postcode belongs to another province than the address's state (pg_shipping_postcode_province())
 - order-auto-registration-set-password-link.md: An account an order's auto-registration opens has no password and gets the set password link; the receipt e-mail is split so the store's BCC copy never carries the link (PR #1220).
+- order-cancel-commissions.md: Affiliate commissions on order cancel and restore (#4174): voided to ineligible with status_before_cancel, profiles stopped with disabled_by_cancel, hand edit clears it, list badge
 - order-cancel-gift-cards.md: Gift cards on cancel and restore, REFUND ACTION REQUIRED for cards that paid; what a cancelled order still owes (0 payment when paid_at = 0); log lines name the order number
 - order-cancel-refunded-payment.md: What a cancellation does to the payment (pg_order_cancel_payment_plan()): refunded in full or in part, bank transfer received or not, the wording, the log order number (PR #1222, #974, #4298, #4299)
 - order-cancel-shipping-gate.md: Who the shipping gate blocks on order cancel (customer only, by tracking code), why ship_date is ignored, USER_MANAGE_ECOMMERCE check, validate_user id key.

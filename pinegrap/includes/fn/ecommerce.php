@@ -11108,6 +11108,15 @@ function process_order_cancellation($order_id, $reason = '', $is_admin = false, 
 
     log_activity($cancel_line);
 
+    // ── Void the affiliate commissions of this order ───────────────────
+    // Only the request that cancelled the order (the guarded write above)
+    // gets here, so two cancellations at once void them once.
+    $cancelled_commissions = pg_order_cancel_commissions($order_id, $user_id);
+    $commission_line = pg_order_commission_cancel_line($order_log_number, $cancelled_commissions['voided'], $cancelled_commissions['stopped']);
+    if ($commission_line !== '') {
+        log_activity($commission_line);
+    }
+
     // ── Automatic refund (opt-in) ───────────────────────────────────────
     // Default OFF. When ECOMMERCE_ORDER_CANCEL_AUTO_REFUND === true and the
     // order's payment has a driver that can cancel (pg_payment_cancel_driver():
@@ -11452,9 +11461,130 @@ function pg_order_restore_cancelled($order_id, $status = 'complete')
 
     pg_order_restore_gift_cards($order_id, (string) $cancelled_order['order_number'], $cancelled_order['cancelled_at'] ?? 0);
 
+    $restored_commissions = pg_order_restore_commissions($order_id);
+    $commission_line = pg_order_commission_restore_line(pg_order_log_number($cancelled_order), $restored_commissions['restored'], $restored_commissions['started']);
+    if ($commission_line !== '') {
+        log_activity($commission_line);
+    }
+
     log_activity(pg_log_lang(array('string' => 'Restored cancelled order #{var:1} to {var:2}.', 'vars' => array(pg_order_log_number($cancelled_order), pg_order_log_status($status)))));
 
     return true;
+}
+
+// Cancelling an order voids the affiliate commissions it earned: a pending or
+// payable commission becomes ineligible, keeping the status it had in
+// commissions.status_before_cancel, and each enabled recurring commission
+// profile of the order is stopped with disabled_by_cancel = 1, so the
+// periodic job writes no more commissions for it. A paid commission stays as
+// it is (the Commissions screen marks it for clawback). The two columns come
+// with the 2026.11.0 upgrade; before it runs, nothing is changed, since a
+// void that could not be restored would lose the status. Returns how many
+// commissions were voided and how many profiles were stopped.
+function pg_order_cancel_commissions($order_id, $user_id = 0)
+{
+    $order_id = (int) $order_id;
+    $result   = array('voided' => 0, 'stopped' => 0);
+
+    if ($order_id <= 0) {
+        return $result;
+    }
+
+    if (pg_schema_has('commissions', 'status_before_cancel')) {
+        db("UPDATE commissions SET
+                status_before_cancel    = status,
+                status                  = 'ineligible',
+                last_modified_user_id   = '" . (int) $user_id . "',
+                last_modified_timestamp = UNIX_TIMESTAMP()
+            WHERE order_id = '" . $order_id . "'
+              AND status IN ('pending', 'payable')");
+        $result['voided'] = max(0, (int) mysqli_affected_rows(db::$con));
+    }
+
+    if (pg_schema_has('recurring_commission_profiles', 'disabled_by_cancel')) {
+        db("UPDATE recurring_commission_profiles SET
+                enabled                 = 0,
+                disabled_by_cancel      = 1,
+                last_modified_user_id   = '" . (int) $user_id . "',
+                last_modified_timestamp = UNIX_TIMESTAMP()
+            WHERE order_id = '" . $order_id . "'
+              AND enabled = 1");
+        $result['stopped'] = max(0, (int) mysqli_affected_rows(db::$con));
+    }
+
+    return $result;
+}
+
+// Restoring a cancelled order gives back what pg_order_cancel_commissions()
+// took: a commission still ineligible with its marker set gets the status it
+// had, a profile still disabled with its marker set is enabled again. A hand
+// edit clears the marker (edit_commission.php,
+// edit_recurring_commission_profile.php), so a restore never undoes the
+// operator's later choice, and a commission made ineligible by hand before
+// the cancellation has no marker and stays. Returns how many commissions and
+// profiles were put back.
+function pg_order_restore_commissions($order_id)
+{
+    $order_id = (int) $order_id;
+    $result   = array('restored' => 0, 'started' => 0);
+
+    if ($order_id <= 0) {
+        return $result;
+    }
+
+    if (pg_schema_has('commissions', 'status_before_cancel')) {
+        db("UPDATE commissions SET
+                status                  = status_before_cancel,
+                status_before_cancel    = '',
+                last_modified_timestamp = UNIX_TIMESTAMP()
+            WHERE order_id = '" . $order_id . "'
+              AND status = 'ineligible'
+              AND status_before_cancel IN ('pending', 'payable')");
+        $result['restored'] = max(0, (int) mysqli_affected_rows(db::$con));
+    }
+
+    if (pg_schema_has('recurring_commission_profiles', 'disabled_by_cancel')) {
+        db("UPDATE recurring_commission_profiles SET
+                enabled                 = 1,
+                disabled_by_cancel      = 0,
+                last_modified_timestamp = UNIX_TIMESTAMP()
+            WHERE order_id = '" . $order_id . "'
+              AND enabled = 0
+              AND disabled_by_cancel = 1");
+        $result['started'] = max(0, (int) mysqli_affected_rows(db::$con));
+    }
+
+    return $result;
+}
+
+// The site log line of a cancellation's commissions, '' when it changed none.
+function pg_order_commission_cancel_line($order_log_number, $voided, $stopped)
+{
+    $voided  = max(0, (int) $voided);
+    $stopped = max(0, (int) $stopped);
+
+    if ($voided === 0 && $stopped === 0) {
+        return '';
+    }
+
+    return pg_log_lang(array(
+        'string' => 'Order #{var:1} cancelled: {var:2} affiliate commission(s) set to Ineligible, {var:3} recurring commission profile(s) stopped.',
+        'vars'   => array((string) $order_log_number, $voided, $stopped)));
+}
+
+// The site log line of a restore's commissions, '' when it changed none.
+function pg_order_commission_restore_line($order_log_number, $restored, $started)
+{
+    $restored = max(0, (int) $restored);
+    $started  = max(0, (int) $started);
+
+    if ($restored === 0 && $started === 0) {
+        return '';
+    }
+
+    return pg_log_lang(array(
+        'string' => 'Order #{var:1} restored: {var:2} affiliate commission(s) got their status back, {var:3} recurring commission profile(s) enabled again.',
+        'vars'   => array((string) $order_log_number, $restored, $started)));
 }
 
 // Restoring a cancelled order: the gift cards it issued that the cancellation

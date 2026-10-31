@@ -119,3 +119,28 @@ function test_commission_profile_list_row()
 	pg_assert_contains('task_alt', $html);
 	pg_assert_false(strpos($html, 'Box - ') !== false, 'no dash without a short description');
 }
+
+// A commission or profile of a cancelled order carries the badge, whatever
+// its status; any other order state, or no order, shows none.
+function test_commission_list_cancelled_order_badge()
+{
+	pg_assert_same('', pg_commission_list_cancelled_badge('complete'));
+	pg_assert_same('', pg_commission_list_cancelled_badge(null), 'no order');
+	pg_assert_contains(lang('Cancelled order'), pg_commission_list_cancelled_badge('cancelled'));
+
+	$plain = pg_list_row_html(pg_commission_list_row(commission_list_test_commission(array('order_status' => 'complete'))));
+	pg_assert_false(strpos($plain, lang('Cancelled order')) !== false, 'a complete order has no badge');
+
+	foreach (array('pending', 'payable', 'ineligible', 'paid') as $status) {
+		$html = pg_list_row_html(pg_commission_list_row(commission_list_test_commission(array('status' => $status, 'order_status' => 'cancelled'))));
+		pg_assert_contains(lang('Cancelled order'), $html, $status . ' of a cancelled order is marked');
+	}
+
+	$profile = array(
+		'id' => '3', 'affiliate_code' => 'A1', 'enabled' => '0', 'amount' => '500', 'start_date' => '2026-01-02',
+		'period' => 'Weekly', 'number_of_commissions' => '0', 'product_name' => 'Box', 'product_short_description' => '',
+		'created_timestamp' => (string) time(), 'last_modified_timestamp' => (string) time(), 'affiliate_name' => 'B',
+		'order_number' => '9', 'order_status' => 'cancelled', 'created_username' => '', 'last_modified_username' => 'ali',
+	);
+	pg_assert_contains(lang('Cancelled order'), pg_list_row_html(pg_commission_profile_list_row($profile)), 'the profile of a cancelled order is marked');
+}
