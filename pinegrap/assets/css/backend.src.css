@@ -11465,7 +11465,7 @@ body.workspace:is(.workspace_settings, .workspace_mcp, .workspace_template, .wor
   flex-shrink: 0;
   align-items: center;
   gap: .5rem;
-  margin: .6rem var(--ws-space-3) 0;
+  margin: .6rem var(--ws-space-3);
   padding: .3rem .35rem .3rem .75rem;
   border-radius: .75rem;
   background: var(--ws-soft);
