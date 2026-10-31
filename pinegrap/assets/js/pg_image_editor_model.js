@@ -629,6 +629,39 @@
         return [corner, edge, corner, edge, 1 + 0.75 * a, edge, corner, edge, corner].map(function (x) { return Math.round(x * 1e6) / 1e6; });
     }
 
+    // Whether the focused element uses Enter or Space itself (key ' '), so
+    // the editor leaves the key alone and the element gets pressed: a
+    // button, a link, a text field, a checkbox's Space. On the stage, a
+    // slider or the dialog the keys stay the editor's (apply the crop, pan).
+    // info: { tag, type, role, editable } of the focused element.
+    var KEY_ROLES = /^(button|link|menuitem|menuitemradio|menuitemcheckbox|tab|option|checkbox|radio|switch|textbox|combobox)$/;
+
+    function ownsKey(info, key) {
+        if (!info || ((key !== 'Enter') && (key !== ' '))) {
+            return false;
+        }
+
+        var tag = String(info.tag || '').toUpperCase(), type = String(info.type || '').toLowerCase();
+
+        if (info.editable || /^(BUTTON|A|SUMMARY|SELECT|TEXTAREA)$/.test(tag) || KEY_ROLES.test(String(info.role || ''))) {
+            return true;
+        }
+
+        if (tag !== 'INPUT') {
+            return false;
+        }
+
+        if (type === 'range') {
+            return false;
+        }
+
+        if (/^(checkbox|radio)$/.test(type)) {
+            return key === ' ';
+        }
+
+        return true;
+    }
+
     var api = {
         mul: mul, inv: inv, apply: apply, translate: translate, scale: scale, rotate: rotate, clamp: clamp,
         flipRot: flipRot, coverScale: coverScale, fitZoom: fitZoom, centred: centred, zoomAt: zoomAt,
@@ -637,7 +670,8 @@
         RATIOS: RATIOS, cropBox: cropBox, pictureMatrix: pictureMatrix, fitRatio: fitRatio, resizeCrop: resizeCrop,
         moveCrop: moveCrop, mapLayer: mapLayer, reorient: reorient, turnDocument: turnDocument, flipDocument: flipDocument,
         outputSize: outputSize, ADJUST: ADJUST, FILTERS: FILTERS, FILTER_NAMES: FILTER_NAMES, colorValues: colorValues,
-        colorMatrix: colorMatrix, applyColor: applyColor, vignetteStops: vignetteStops, sharpenKernel: sharpenKernel
+        colorMatrix: colorMatrix, applyColor: applyColor, vignetteStops: vignetteStops, sharpenKernel: sharpenKernel,
+        ownsKey: ownsKey
     };
 
     if ((typeof module === 'object') && module.exports) {

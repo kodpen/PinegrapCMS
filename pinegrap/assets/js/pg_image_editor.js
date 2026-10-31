@@ -316,10 +316,15 @@
         this.root = el('div', { class: 'pgie' + (theme === 'dark' ? ' pgie-dark' : '') + (mini ? ' pgie-ismini' : '') }, [this.fxSvg, top, body, foot]);
         this.dialog = el('dialog', { class: 'pgie-dialog', 'aria-label': name ? t('dialog') + ': ' + name : t('dialog') }, [this.root]);
 
+        // Escape is handled on keydown (onKey), whose prevented default
+        // sends no cancel; this catches the other close requests (a back
+        // gesture). The browser may refuse to hold a second cancel without a
+        // click between, so a close the editor did not make reopens it.
         this.dialog.addEventListener('cancel', function (e) {
             e.preventDefault();
             self.onEscape();
         });
+        this.dialog.addEventListener('close', function () { self.onDialogClosed(); });
         this.dialog.addEventListener('keydown', function (e) { self.onKey(e); });
         // A press outside the save menu closes it.
         this.dialog.addEventListener('pointerdown', function (e) {
@@ -816,7 +821,7 @@
     // Entering the crop tool remembers the document, so Cancel can bring it
     // back and drop the steps taken since.
     Editor.prototype.enterCrop = function () {
-        this.cropEntry = { doc: M.clone(this.doc), depth: this.history.past.length };
+        this.cropEntry = { doc: M.clone(this.doc), depth: this.history.past.length, dirty: this.dirty };
         this.cropRatio = 0;
     };
 
@@ -852,6 +857,7 @@
 
         this.history.future = [];
         this.history.key = null;
+        this.dirty = entry.dirty;
         this.cropEntry = null;
         this.tool = 'select';
         this.sheetOpen = false;
@@ -1287,13 +1293,41 @@
     // ---- keys ----
 
     Editor.prototype.onKey = function (e) {
-        var mod = e.ctrlKey || e.metaKey, k = e.key;
+        var mod = e.ctrlKey || e.metaKey, k = e.key, tg = e.target;
         // A slider, a checkbox or a button keeps the editor's keys.
         var typing = (/^(TEXTAREA|SELECT)$/.test((e.target && e.target.tagName) || '') || (e.target && e.target.isContentEditable))
             || ((e.target && e.target.tagName) === 'INPUT' && !/^(range|checkbox|radio|button)$/.test(e.target.type));
 
+        // A focused button, link or field that uses Enter or Space itself
+        // gets pressed instead of the editor's shortcut.
+        var owns = M.ownsKey(tg && tg.tagName ? {
+            tag: tg.tagName,
+            type: tg.type,
+            role: tg.getAttribute ? tg.getAttribute('role') : null,
+            editable: tg.isContentEditable
+        } : null, k);
+
+        if (e.isComposing) {
+            return;
+        }
+
         if (this.saving) {
             e.preventDefault();
+            return;
+        }
+
+        // Escape on the key itself, in every state: the dialog's cancel
+        // event can no longer be held after one press without a click.
+        if (k === 'Escape') {
+            e.preventDefault();
+
+            if (this.saveMenu) {
+                this.toggleSaveMenu(false);
+                this.menuBtn.focus();
+            } else {
+                this.onEscape();
+            }
+
             return;
         }
 
@@ -1303,20 +1337,11 @@
             return;
         }
 
-        // Escape closes the save menu here, on the key itself: the dialog's
-        // cancel event is not sent for every press.
-        if (this.saveMenu && (k === 'Escape')) {
-            e.preventDefault();
-            this.toggleSaveMenu(false);
-            this.menuBtn.focus();
-            return;
-        }
-
         if (this.confirmBox || this.saveMenu || typing) {
             return;
         }
 
-        if (this.cropping() && (k === 'Enter')) {
+        if (this.cropping() && (k === 'Enter') && !owns) {
             e.preventDefault();
             this.applyCrop();
             return;
@@ -1344,7 +1369,9 @@
             return;
         }
 
-        if (k === ' ' && !this.space) {
+        if (k === ' ' && owns) {
+            return;
+        } else if (k === ' ' && !this.space) {
             e.preventDefault();
             this.space = true;
             this.stage.classList.add('pgie-panning');
@@ -1631,7 +1658,33 @@
         }
     };
 
+    // The dialog closed without finish(): the browser let a close request
+    // through. Show it again with its state, the question too if open;
+    // where it cannot be shown again, end the editing as unsaved so the
+    // promise settles and the editor opens again.
+    Editor.prototype.onDialogClosed = function () {
+        if (this.finished) {
+            return;
+        }
+
+        try {
+            this.dialog.showModal();
+        } catch (err) {
+            this.finish(null);
+            return;
+        }
+
+        var keep = this.confirmBox && this.confirmBox.querySelector('button');
+
+        (keep || this.stage).focus();
+    };
+
     Editor.prototype.finish = function (result) {
+        if (this.finished) {
+            return;
+        }
+
+        this.finished = true;
         this.hideMessage();
 
         if (this.resizer) {
