@@ -116,7 +116,13 @@ function test_audit_code_editors_record_copy_and_save()
 {
 	foreach (array('edit_javascript.php', 'edit_theme_css.php', 'editor_edit_file.php') as $file) {
 		audit_design_file_writers_test_creates($file, 1);
-		audit_design_file_writers_test_writes($file, 'UPDATE files', 'update', 1);
+		$source = audit_design_file_writers_test_source($file);
+		$read = strpos($source, 'pg_audit_fetch_file((int) $id, ');
+		$write = ($read === false) ? false : strpos($source, 'pg_file_write_whole(', $read);
+		$update = ($write === false) ? false : strpos($source, 'UPDATE files', $write);
+		$record = ($update === false) ? false : strpos($source, 'pg_audit_record_file((int) $id, $audit_before, ', $update);
+		pg_assert_true(($write !== false) && ($update !== false), $file . ': the row and its content digest are read before the file is written');
+		pg_assert_true($record !== false, $file . ': the save records a line with the new content digest');
 	}
 }
 

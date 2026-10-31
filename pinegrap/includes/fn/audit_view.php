@@ -553,3 +553,56 @@ function pg_audit_view_label($kind, $word)
 {
     return pg_audit_view_labels($kind)[$word] ?? (string) $word;
 }
+
+/**
+ * The settings categories' names in the panel language, by key, read from
+ * the settings registry once per request.
+ *
+ * @return array  key => name
+ */
+function pg_audit_view_settings_names()
+{
+    static $names = null;
+
+    if ($names === null) {
+        if (!defined('PG_SETTINGS_MENU')) {
+            define('PG_SETTINGS_MENU', true);
+        }
+
+        include_once(PG_FUNCTIONS_DIR . '/includes/settings/registry.php');
+
+        $names = array();
+
+        foreach (pg_settings_categories() as $key => $category) {
+            $names[(string) $key] = (string) ($category['label'] ?? '');
+        }
+    }
+
+    return $names;
+}
+
+/**
+ * The name a line's record is shown under. A settings line stores the key
+ * of the category its save wrote ('seo', 'api'), which stays the same when
+ * the category is renamed; it is shown under the category's name in the
+ * panel language. Any other label is shown as stored.
+ *
+ * @param string     $type   entity_type
+ * @param string     $label  the stored label
+ * @param array|null $names  key => name; pg_audit_view_settings_names() when null
+ * @return string
+ */
+function pg_audit_view_record_name($type, $label, $names = null)
+{
+    $label = (string) $label;
+
+    if (((string) $type !== 'settings') || (preg_match('/^[a-z_]+$/', $label) !== 1)) {
+        return $label;
+    }
+
+    if (!is_array($names)) {
+        $names = pg_audit_view_settings_names();
+    }
+
+    return ((string) ($names[$label] ?? '') !== '') ? (string) $names[$label] : $label;
+}

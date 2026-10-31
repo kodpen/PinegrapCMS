@@ -176,10 +176,16 @@ function pg_settings_apply($key, $user, $liveform)
 
     include(PG_FUNCTIONS_DIR . '/includes/settings/' . $key . '.save.php');
 
+    // The Site Log line names the category in the panel language; the key
+    // stands in for one the registry does not know.
+    $pg_settings_log_category = pg_settings_category($key);
+    $pg_settings_log_name = (($pg_settings_log_category !== null) && ((string) ($pg_settings_log_category['label'] ?? '') !== '')) ? (string) $pg_settings_log_category['label'] : (string) $key;
+    $pg_settings_log_line = lang(array('string' => 'the {var:1} settings were modified', 'vars' => $pg_settings_log_name));
+
     // A module that marked a field wrote nothing and returned early; the log
     // must not say otherwise.
     if (!$liveform->check_form_errors()) {
-        log_activity(lang('settings were modified'), $_SESSION['sessionusername']);
+        log_activity($pg_settings_log_line, $_SESSION['sessionusername']);
 
         pg_audit_record('update', 'config', 0, $pg_settings_audit_before, $key);
 
