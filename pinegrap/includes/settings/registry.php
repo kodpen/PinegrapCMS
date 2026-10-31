@@ -400,9 +400,12 @@ function pg_settings_categories()
 
     // Private Label Branding is drawn and saved for administrators only, as
     // private_label.php was; for anyone else no chip or search result points
-    // at it.
+    // at it. An administrator also sees the Dashboard card, so the
+    // description names all four cards.
     if (!defined('USER_ROLE') || ((int) USER_ROLE !== 0)) {
         unset($categories['appearance']['sections']['pgset-private-label'], $categories['appearance']['keywords']['pgset-private-label']);
+    } else {
+        $categories['appearance']['description'] = lang('The panel theme, the dashboard, the rich-text editor and private label branding.');
     }
 
     return $categories;

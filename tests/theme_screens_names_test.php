@@ -68,7 +68,7 @@ function test_theme_screens_private_label_cards_and_labels()
 	pg_assert_false(strpos($source, 'show_or_hide_private_label') !== false, 'no inline display script');
 	pg_assert_contains('class="collapse-switcher" type="checkbox" id="private_label" name="private_label" data-bs-target="#private_label_fields"', $source, 'switch opens the fields');
 	pg_assert_contains('id="private_label_fields"', $source, 'fields section');
-	pg_assert_contains('<div class="form-text">\' . lang(\'leave blank to use the default product logo\')', $source, 'logo hint as form text');
+	pg_assert_contains('<div class="form-text">\' . lang(\'Leave blank to use the default Pinegrap logo\')', $source, 'logo hint as form text');
 
 	foreach (array('logo_url', 'control_panel_stylesheet_url') as $field) {
 		pg_assert_contains('<label for="' . $field . '" class="form-label">', $source, $field . ' label');

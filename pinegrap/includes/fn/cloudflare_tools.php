@@ -70,6 +70,41 @@ function pg_cloudflare_answer_reason($answer)
 }
 
 /**
+ * A Cloudflare setting value (development_mode, security_level, ...) as a word
+ * in the panel language, for the notice and the Site Log line after a
+ * toggle. A value this list does not know is returned as it came, so a new
+ * Cloudflare value still reads; anything but a string gives ''. Not escaped.
+ *
+ * @param mixed $value the value sent to Cloudflare, such as 'on' or 'under_attack'
+ * @return string
+ */
+function pg_cloudflare_setting_value_label($value)
+{
+    if (!is_string($value)) {
+        return '';
+    }
+
+    switch ($value) {
+        case 'on':
+            return lang('on');
+        case 'off':
+            return lang('off');
+        case 'under_attack':
+            return lang('under attack');
+        case 'essentially_off':
+            return lang('essentially off');
+        case 'low':
+            return lang('low');
+        case 'medium':
+            return lang('medium');
+        case 'high':
+            return lang('high');
+    }
+
+    return $value;
+}
+
+/**
  * Totals of the three analytics reads: the daily request groups, the
  * adaptive visit groups and the daily uniques fallback (null when it was not
  * sent). 'error' is the reason the request totals could not be read,

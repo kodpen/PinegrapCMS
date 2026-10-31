@@ -282,7 +282,7 @@ if ((int) $user['role'] === 0) {
                                         <div class="col-12">
                                             <div class="form-field">
                                                 <div class="switch"><input value="1"' . ($private_label_on ? ' checked="checked"' : '') . ' class="collapse-switcher" type="checkbox" id="private_label" name="private_label" data-bs-target="#private_label_fields"/></div>
-                                                <label class="" for="private_label">' . lang('Enable Private Label') . '</label>
+                                                <label class="" for="private_label">' . lang('Enable private label branding') . '</label>
                                             </div>
                                             <div class="form-text">' . lang('Update the branding for the control panel.') . '</div>
                                         </div>
@@ -291,7 +291,7 @@ if ((int) $user['role'] === 0) {
                                                 <div class="col-12 md:col-6">
                                                     <label for="logo_url" class="form-label">' . lang('Logo URL') . '</label>
                                                     <input type="text" inputmode="url" spellcheck="false" autocapitalize="off" name="logo_url" id="logo_url" class="form-control" value="' . h($private_label_values['logo_url']) . '" />
-                                                    <div class="form-text">' . lang('leave blank to use the default product logo') . '</div>
+                                                    <div class="form-text">' . lang('Leave blank to use the default Pinegrap logo') . '</div>
                                                 </div>
                                                 <div class="col-12 md:col-6">
                                                     <label for="control_panel_stylesheet_url" class="form-label">' . lang('Control Panel Stylesheet URL') . '</label>

@@ -19,7 +19,7 @@ description: Generated from the module field of the memory files: each includes/
 - `cart_quotes`: [[cart-quotes]], [[cart-quotes-api]]
 - `classic_style_design`: [[classic-style-design-files]], [[classic-style-folder-pages]], [[classic-style-to-design]]
 - `cloud_file_picker`: [[cloud-file-picker]], [[cloud-file-picker-onedrive]]
-- `cloudflare_tools`: [[cloudflare-tools-failed-reads]]
+- `cloudflare_tools`: [[cloudflare-tools-failed-reads]], [[panel-turkish-terms-2]]
 - `collections`: [[collection-references]]
 - `comments`: [[comment-anonymous-name]], [[comment-moderation-recycle-bin]], [[comment-replies]], [[comment-thread-rules]], [[comment-thread-verify]], [[comments-moderation-counters]], [[comments-widget-item-threads]], [[comments-widget-pages]], [[comments-widget-product-page]], [[designed-page-comment-names]], [[product-review-order]]
 - `commission_list`: [[commission-list-paging]]
