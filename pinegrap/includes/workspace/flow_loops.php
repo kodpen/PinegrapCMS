@@ -261,10 +261,10 @@ function ws_flow_loop_problems($graph, $nodes)
         }
 
         if ((string) $node['kind'] === 'for_each') {
-            if ((string) $node['config']['list'] === '') {
-                $problems[] = ws_flow_problem('bad_config', (string) $id, null, lang(array('string' => 'The box {var:1} needs the list it goes through.', 'vars' => $name($id))));
-            } elseif (!$single($node['config']['list'])) {
-                $problems[] = ws_flow_problem('bad_config', (string) $id, null, lang(array('string' => 'The box {var:1} reads its list from one value only, such as a webhook\'s answer.', 'vars' => $name($id))));
+            $refused = ws_flow_loop_list_problem((string) $node['config']['list'], $name($id));
+
+            if ($refused !== '') {
+                $problems[] = ws_flow_problem('bad_config', (string) $id, null, $refused);
             }
 
             foreach ((array) $node['config']['fields'] as $field) {
@@ -342,7 +342,9 @@ function ws_flow_loop_problems($graph, $nodes)
         if ($collect !== '') {
             $box = (preg_match(WS_STEP_VALUE_PATTERN, $collect, $match) === 1) ? (string) $match[1] : '';
 
-            if (!$single($collect) || !in_array($box, $loop['body'], true)) {
+            if (ws_step_value_has_fallback($collect)) {
+                $problems[] = ws_flow_problem('bad_config', $end, null, lang(array('string' => 'The value {var:1} gathers cannot have a “When empty, write” text: remove it, the value is gathered as it is.', 'vars' => $name($end))));
+            } elseif (!$single($collect) || !in_array($box, $loop['body'], true)) {
                 $problems[] = ws_flow_problem('bad_config', $end, null, lang(array('string' => 'The End box {var:1} gathers one value of a box inside its loop, not {var:2}.', 'vars' => array($name($end), $collect))));
             }
         }
@@ -519,6 +521,104 @@ function ws_flow_loop_value_text($value)
     }
 
     return ($value === null) ? '' : (string) json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+}
+
+/**
+ * What is wrong with a For each box's list as written, '' for nothing: it
+ * is one value alone, read as it is, so it takes no "When empty, write"
+ * text. Pure.
+ *
+ * @param string $list the box's list setting
+ * @param string $name the box's name
+ * @return string
+ */
+function ws_flow_loop_list_problem($list, $name)
+{
+    if (trim((string) $list) === '') {
+        return lang(array('string' => 'The box {var:1} needs the list it goes through.', 'vars' => $name));
+    }
+
+    if (ws_step_value_has_fallback($list)) {
+        return lang(array('string' => 'The list of {var:1} cannot have a “When empty, write” text: remove it, the list is read as it is.', 'vars' => $name));
+    }
+
+    if (!ws_step_value_single($list)) {
+        return lang(array('string' => 'The box {var:1} reads its list from one value only, such as a webhook\'s answer.', 'vars' => $name));
+    }
+
+    return '';
+}
+
+/**
+ * "Try this box" for a For each box or its End box, which run nothing:
+ * the For each box reads its list from the values given (a chosen run's
+ * and the value boxes') and tells how many items it holds or why it cannot
+ * be read; the End box tells what it gathers. Never a refusal: the try of
+ * these boxes does not fail. Null for another kind. Pure but for a row
+ * start box's columns (the value's name).
+ *
+ * @param array $graph
+ * @param array $node   the box
+ * @param array $values box id => key => text, WS_STEP_TRIGGER for the start
+ * @param bool  $chosen a run was chosen
+ * @return array|null said, outcome
+ */
+function ws_flow_loop_try($graph, $node, $values, $chosen)
+{
+    $kind = (string) ($node['kind'] ?? '');
+    $config = (array) ($node['config'] ?? array());
+    $name = ws_flow_box_name($node);
+
+    if ($kind === 'for_each') {
+        $refused = ws_flow_loop_list_problem((string) ($config['list'] ?? ''), $name);
+
+        if ($refused !== '') {
+            return array('said' => $refused, 'outcome' => '');
+        }
+
+        preg_match(WS_STEP_VALUE_PATTERN, trim((string) $config['list']), $match);
+        $text = (string) ($values[ws_step_value_box($match)][$match[2]] ?? '');
+
+        if ($text === '') {
+            return array('said' => $chosen ? lang('The run chosen gave no value for the list.') : lang('Choose a run to read the list with the values it gave.'), 'outcome' => '');
+        }
+
+        $list = ws_flow_loop_items($text, (string) ($config['path'] ?? ''));
+
+        if (!$list['ok']) {
+            return array('said' => lang(array('string' => 'The list cannot be read: {var:1}', 'vars' => $list['error'])), 'outcome' => 'failed');
+        }
+
+        return array('said' => lang(array('string' => 'The list holds {var:1} items.', 'vars' => count($list['items']))), 'outcome' => 'each');
+    }
+
+    if ($kind !== 'for_each_end') {
+        return null;
+    }
+
+    $loops = ws_flow_loops($graph);
+    $loop = (string) ($config['for_each'] ?? '');
+
+    if (!isset($loops[$loop])) {
+        return array('said' => lang(array('string' => 'The box {var:1} ends no loop: choose the loop it ends.', 'vars' => $name)), 'outcome' => '');
+    }
+
+    $start = ws_flow_graph_node($graph, $loop);
+    $loop_name = $start ? ws_flow_box_name($start) : $loop;
+    $collect = trim((string) ($config['collect'] ?? ''));
+
+    if ($collect === '') {
+        return array('said' => lang(array('string' => 'Counts the items of the loop of {var:1} done and failed; it gathers no value.', 'vars' => $loop_name)), 'outcome' => 'done');
+    }
+
+    if (ws_step_value_has_fallback($collect)) {
+        return array('said' => lang(array('string' => 'The value {var:1} gathers cannot have a “When empty, write” text: remove it, the value is gathered as it is.', 'vars' => $name)), 'outcome' => '');
+    }
+
+    return array(
+        'said'    => lang(array('string' => 'For each item of the loop of {var:1}, gathers {var:2} into its list and counts the items done and failed.', 'vars' => array($loop_name, ws_flow_condition_value_name($collect, $graph)))),
+        'outcome' => 'done',
+    );
 }
 
 /**

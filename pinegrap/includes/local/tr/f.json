@@ -524,6 +524,7 @@
     "For e-documents this account is missing: {var:1}. The invoice is issued, but it cannot go out until the card is completed.": "e-Belge için bu caride eksik: {var:1}. Fatura kesilir ama kart tamamlanana kadar gönderilemez.",
     "For each": "Her biri için",
     "For each item": "Her öğe için",
+    "For each item of the loop of {var:1}, gathers {var:2} into its list and counts the items done and failed.": "{var:1} döngüsünün her öğesi için {var:2} değerini listesine toplar, tamamlanan ve başarısız olan öğeleri sayar.",
     "For every language": "Her dil için",
     "For everyone on the list": "Listedeki herkes için",
     "For example": "Örnek olarak",

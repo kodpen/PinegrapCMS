@@ -517,7 +517,7 @@ function test_workspace_flow_loops_box_try()
 	pg_assert_same('The list of for_each_1 cannot have a “When empty, write” text: remove it, the list is read as it is.', ws_flow_loop_try($graph, $each, array(), true)['said']);
 
 	$tried = ws_flow_loop_try($graph, $nodes['for_each_end_1'], array(), false);
-	pg_assert_same('For each item of the loop of for_each_1, gathers notify_1 › told into its list and counts the items done and failed.', $tried['said']);
+	pg_assert_same('For each item of the loop of for_each_1, gathers Let people know › People told into its list and counts the items done and failed.', $tried['said']);
 	pg_assert_same('done', $tried['outcome']);
 
 	$end = $nodes['for_each_end_1'];
