@@ -13,7 +13,7 @@ description: Edit Product writes the stock count only when it was changed on the
 ## What does the operator see on a conflict?
 - Everything else is saved (this screen does not refill typed fields after a refusal, so the whole save is not refused). `pg_pb_update_product()` returns `stock_kept`; `edit_product.php` adds the warning "The stock of this product changed while the screen was open: it is now {var:1}; the count you typed was not saved." On a save that would leave for a screen other than the product list, it stays on Edit Product so the warning is drawn.
 
-## Why?
+## Why? (PR #4175)
 - Checkout lowers stock relatively (`inventory_quantity - n`, `includes/fn/order_completion.php`). The screen wrote back the count read when it opened on every save: stock 10, two orders took 3, a description save put it back to 10, unflagged a sold-out product and announced `inventory.changed` 7→10 (webhooks, back-in-stock mails, marketplace queue). Same mechanism as the gift card screen's `balance_was` ([[gift-card-balance-edit]]) and the Workspace drawer's `ws_quick_edit_moved`.
 
 ## How was it checked?
