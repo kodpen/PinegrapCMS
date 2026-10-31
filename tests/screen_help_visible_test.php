@@ -72,7 +72,7 @@ function test_screen_help_visible_instructions_printed()
 		'includes/templates/edit_auto_dialog.php' => "lang('Create a new auto dialog that can automatically popup for visitors.",
 		'includes/templates/edit_key_code.php' => "lang('Create one or more key codes",
 		'includes/templates/generate_layout.php' => "lang('Copy & paste the code below into your custom layout.')",
-		'edit_custom_style.php' => "lang('Update this HTML template that is applied to all associated pages.')",
+		'edit_custom_style.php' => "'heading_description' => lang('Update this HTML template that is applied to all associated pages.')",
 		'add_submitted_form.php' => "lang('Manually create a submitted form for this custom form.",
 		'preview_form.php' => "lang('The form layout will look like this when displayed within a page.')",
 		'editor_select_page_or_file.php' => "lang('Select the Page, File, or Short Link that you want to link to.')",
@@ -83,6 +83,11 @@ function test_screen_help_visible_instructions_printed()
 		$source = screen_help_visible_source($path);
 		$at = strpos($source, $needle);
 		pg_assert_true($at !== false, $path . ': instruction missing');
+
+		// The screen's description under the heading is printed as is.
+		if (strpos($needle, "'heading_description'") === 0) {
+			continue;
+		}
 
 		// The instruction sits inside a visible form-text paragraph.
 		$open = strrpos(substr($source, 0, (int) $at), '<p');
