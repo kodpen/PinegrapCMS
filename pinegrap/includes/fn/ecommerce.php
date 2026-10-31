@@ -3256,6 +3256,28 @@ function pg_parse_commission_rate($raw)
     return number_format($rate, 2, '.', '');
 }
 
+/**
+ * One cell of a contact row in the contact or user importer, trimmed, as the
+ * contacts column stores it. affiliate_commission_rate (decimal(5,2)
+ * unsigned) goes through pg_parse_commission_rate(), as Site Settings reads
+ * its rate: a ';' CSV from a Turkish spreadsheet writes "12,5", which the
+ * non-strict session would cut to 12.00. Empty stays 0.00.
+ *
+ * @param string $column_name contacts column
+ * @param mixed  $value
+ * @return string
+ */
+function pg_import_contact_cell($column_name, $value)
+{
+    $value = trim((string) $value);
+
+    if ($column_name === 'affiliate_commission_rate') {
+        return pg_parse_commission_rate($value);
+    }
+
+    return $value;
+}
+
 
 /**
  * The reward program goal (points) typed in Site Settings as
@@ -12519,6 +12541,33 @@ function pg_products_import_row_value($row, $key)
     }
 
     return (string) $row[$key];
+}
+
+/**
+ * A weight, dimension or commission rate limit cell of a product import, as
+ * the column stores it, read as the product screen reads the box (needs
+ * product_builder.php): either separator, so "0,125" from a ';' CSV is
+ * 0.1250 and an exported "0.1250" loads the same. weight, length, width and
+ * height (decimal(12,4) unsigned) keep four places; commission_rate_limit
+ * goes through pg_pb_commission_rate_from_input(). Written raw, the
+ * non-strict session cut the cell at the comma (0,125 became 0.0000).
+ * null for any other column.
+ *
+ * @param string $column_name products column
+ * @param mixed  $value
+ * @return string|null
+ */
+function pg_products_import_decimal_cell($column_name, $value)
+{
+    if (in_array($column_name, array('weight', 'length', 'width', 'height'), true)) {
+        return number_format(round(pg_pb_decimal_from_input($value), 4), 4, '.', '');
+    }
+
+    if ($column_name === 'commission_rate_limit') {
+        return pg_pb_commission_rate_from_input($value);
+    }
+
+    return null;
 }
 
 /**
