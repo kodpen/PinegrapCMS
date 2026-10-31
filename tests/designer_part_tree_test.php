@@ -172,3 +172,82 @@ function test_designer_part_tree_panels_wired()
 	pg_assert_true(strpos(_dpt_js_fn($js, '_sdListBandIn'), '_sdValueSidOf(node)') !== false, 'the list band reads the drawn widget');
 	pg_assert_true(strpos(_dpt_js_fn($js, '_sdNodeSetBinding'), 'var sid = _isInsideSystemWidget(node);') !== false, 'a binding marks only the widget it stands in');
 }
+
+// The Bind Data panel of a part placed outside its widget draws the widget's
+// "Show only when" flag row, the Format row and "Hide when empty", read from
+// the part's widget; the action and field rows stay widget-only. A node of
+// no part gets none of them.
+function test_designer_part_tree_panel_draws_flag_format_and_hide_empty()
+{
+	$out = array();
+	$code = 1;
+	@exec('node --version 2>&1', $out, $code);
+	if ($code !== 0) {
+		return;
+	}
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
+	$code_js = "var _sdPartDrawing = 0;\n";
+	foreach (array('propsDataBinding', '_sdBindingActionRows', '_sdVisibilityFlagRows', '_sdFormatRows', '_sdFormatRowsIn',
+		'_sdFillKindOf', '_sdHideEmptyRows', '_sdHideEmptyRowsIn', '_sdInWidgetScope', '_sdWithValueSid', '_sdValueSidOf',
+		'_sdParseFilter') as $fn) {
+		$body = _dpt_js_fn($js, $fn);
+		pg_assert_true($body !== '', $fn . '() is found');
+		$code_js .= $body . "\n";
+	}
+	$code_js .= <<<'JS'
+var title = { type: 'content', props: { contentType: 'heading', tag: 'h1', partOf: 12,
+    _bindings: { text: '__short_description', eo_visible_if: 'no_rating' }, _bindFormats: { text: 'upper' } }, children: [] };
+var btn = { type: 'semantic', props: { tag: 'button' }, children: [] };
+var part = { type: 'semantic', props: { tag: 'div', partOf: 12 }, children: [btn] };
+var plain = { type: 'content', props: { contentType: 'heading', tag: 'h1', _bindings: { text: '__short_description' } }, children: [] };
+var tree = { type: 'root', props: {}, children: [title, part, plain] };
+var _sharedCache = { 12: { system_region_config: '{"regionType":"catalog_item_view"}' } };
+var SW_VISIBILITY_FLAGS = { catalog_item_view: [['has_rating', 'Has a rating'], ['no_rating', 'No rating yet']] };
+var SW_DATE_FIELD_TOKENS = {};
+var _SD_FILTER_KINDS = { catalog_item_view: true };
+var _SD_TEXT_FILTERS = [['', 'As it is'], ['upper', 'UPPER CASE']];
+var _SD_FILTER_ARG = {};
+var _SD_PARSE_FILTERS = null;
+var SD_HIDE_EMPTY = 'pg-hide-if-empty', SD_FIELD_VALUE = 'pg-field-value';
+function _sdT(s) { return s; }
+function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;'); }
+function row(label, html) { return '<div class="row">' + label + html + '</div>'; }
+function sect(icon, title, html) { return '<div class="sect">' + title + '<div>' + html + '</div></div>'; }
+function swAttr(attr, on) { return '<input type="checkbox" ' + attr + (on ? ' checked' : '') + '>'; }
+function _isInsideSystemWidget(node) { return 0; }
+function _sdPartOf(node) { return (node && node.props && node.props.partOf) || 0; }
+function _sdPartSidAt(node) { return (node === title || node === part || node === btn) ? 12 : 0; }
+function _getSystemWidgetRegionType(node) { return _sdValueSidOf(node) === 12 ? 'catalog_item_view' : ''; }
+function _swNameKind(cfg) { return cfg.regionType; }
+function _sdListRowFlags(node) { return []; }
+function _sdFormFieldIsDate() { return false; }
+function _sdNodeClassHas(node, cls) { return String(node.props.cssClass || '').split(/\s+/).indexOf(cls) !== -1; }
+function _sdAnyParent(node) {
+    var hit = null;
+    (function walk(n) { (n.children || []).forEach(function (c) { if (c === node) hit = n; else if (!hit) walk(c); }); })(tree);
+    return hit ? { parent: hit, sid: 0 } : null;
+}
+function _propsDataBindingCore(node) { return ''; }
+function _sdConditionRows(node) { return ''; }
+function _sdBindingTextNote(node) { return ''; }
+function has(html, s) { return html.indexOf(s) !== -1; }
+var a = propsDataBinding(title), b = propsDataBinding(btn), c = propsDataBinding(plain);
+console.log(JSON.stringify({
+    flag: has(a, 'data-bind-visible'), flagSet: has(a, '<option value="no_rating" selected>'),
+    format: has(a, 'sd-sw-bindfilter'), formatSet: has(a, '<option value="upper" selected>'),
+    hide: has(a, 'data-sd-hide-empty'), section: has(a, 'Bind Data (System Widget)'),
+    btnAction: has(b, 'data-bind-action'), btnHide: has(b, 'data-sd-hide-empty'), btnBoxed: has(b, 'data-sd-field-value'),
+    plain: c, drawing: _sdPartDrawing
+}));
+JS;
+	$file = tempnam(sys_get_temp_dir(), 'pgdpt');
+	file_put_contents($file, $code_js);
+	$out = array();
+	exec('node ' . escapeshellarg($file) . ' 2>&1', $out, $code);
+	unlink($file);
+	pg_assert_same(0, $code, 'the Node script runs: ' . implode("\n", array_slice($out, 0, 8)));
+	pg_assert_same(array(
+		'flag' => true, 'flagSet' => true, 'format' => true, 'formatSet' => true, 'hide' => true, 'section' => true,
+		'btnAction' => false, 'btnHide' => true, 'btnBoxed' => false, 'plain' => '', 'drawing' => 0,
+	), json_decode(implode("\n", $out), true));
+}

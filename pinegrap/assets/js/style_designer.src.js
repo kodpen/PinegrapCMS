@@ -38756,7 +38756,7 @@ const StyleDesigner = (function () {
     // (submitted_forms_list, form_list, blog_list) are form lists, as
     // pg_sw_finish_kind() reads them on the server; '' is the empty widget.
     function _sdFillKindOf(node) {
-        var sid = _isInsideSystemWidget(node);
+        var sid = _sdValueSidOf(node);
         if (!sid || !_sharedCache[sid]) return '';
         var cfg = null;
         try { cfg = JSON.parse(_sharedCache[sid].system_region_config); } catch (e) { return ''; }
@@ -38768,8 +38768,14 @@ const StyleDesigner = (function () {
     // value, a text filter for any other. '' outside a widget, in a kind
     // whose fill does not read a format, and for a date in the form views
     // and my_account, whose binding rows carry the date format already.
+    // A part placed outside its widget gets the row of its widget, which
+    // draws it and reads the format (_sdInWidgetScope()).
     function _sdFormatRows(node) {
-        if (!node || !node.props || !_isInsideSystemWidget(node)) return '';
+        if (!node || !node.props) return '';
+        return _sdInWidgetScope(node, function () { return _sdFormatRowsIn(node); });
+    }
+
+    function _sdFormatRowsIn(node) {
         var kind = _sdFillKindOf(node);
         if (!_SD_FILTER_KINDS[kind]) return '';
         var token = node.props._bindings && node.props._bindings.text;
@@ -39503,15 +39509,23 @@ const StyleDesigner = (function () {
     // widget but its root and its loops (the class pg-hide-if-empty), and on
     // an element inside a marked one, "Value of the box around it" (the class
     // pg-field-value): the box is judged by that element alone, so its
-    // heading and words go with it.
+    // heading and words go with it. A part placed outside its widget gets
+    // the rows too: its widget draws it with the same last pass.
     function _sdHideEmptyRows(node) {
-        if (!node || !node.props || !_isInsideSystemWidget(node)) return '';
+        if (!node || !node.props) return '';
+        return _sdInWidgetScope(node, function () { return _sdHideEmptyRowsIn(node); });
+    }
+
+    function _sdHideEmptyRowsIn(node) {
         if (node.type === 'root' || node.type === 'loop_area' || node.type === 'recipient_loop_area') return '';
         var note = function (text) { return '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(text) + '</div>'; };
         var html = row(esc(_sdT('Hide when empty')), swAttr('data-sd-hide-empty="1"', _sdNodeClassHas(node, SD_HIDE_EMPTY)) +
             note(_sdT('The page leaves the element out, with its frame and its words, when what it shows is empty. The canvas leaves it out in the Empty values state.')));
         var boxed = false;
-        for (var up = _sdAnyParent(node); up && up.parent; up = _sdAnyParent(up.parent)) {
+        for (var child = node, up = _sdAnyParent(node); up && up.parent; child = up.parent, up = _sdAnyParent(up.parent)) {
+            // A part is judged within itself: the page's boxes around it are
+            // not drawn by its widget.
+            if (_sdPartOf(child)) break;
             if (_sdNodeClassHas(up.parent, SD_HIDE_EMPTY)) { boxed = true; break; }
             if (up.parent.type === 'root') break;
         }
@@ -43249,21 +43263,31 @@ const StyleDesigner = (function () {
                 _sdT('The input behaves according to the system widget it sits in.'));
         }
 
-        // Show-only-when: any element of a widget that evaluates visibility
-        // flags. A flag written by an older starter that is no longer in the
-        // list is still shown, so it can be seen and cleared.
-        // Inside a list, the flags of its rows and of the lists around it
-        // too: the row decides (pg_sw_list_flag_alias()).
-        var visFlags = (SW_VISIBILITY_FLAGS[region] || []).concat(_sdListRowFlags(node));
-        if (visFlags.length && node.type !== 'loop_area' && node.type !== 'root') {
-            var vis = [['', _sdT('Always')]].concat(visFlags);
-            var curVis = cur.eo_visible_if || '';
-            if (curVis && !visFlags.some(function (f) { return f[0] === curVis; })) vis.push([curVis, curVis]);
-            out += mkSelect('data-bind-visible', curVis, vis, _sdT('Show only when'),
-                _sdT('The element is left out of the page while the condition is false.'));
-        }
-
         return out;
+    }
+
+    // The "Show only when" row: any element of a widget that evaluates
+    // visibility flags, and a part placed outside its widget, with the flags
+    // of the part's widget, which draws it and tests the flag. A flag
+    // written by an older starter that is no longer in the list is still
+    // shown, so it can be seen and cleared. Inside a list, the flags of its
+    // rows and of the lists around it too: the row decides
+    // (pg_sw_list_flag_alias()).
+    function _sdVisibilityFlagRows(node) {
+        if (!node || !node.props || node.type === 'loop_area' || node.type === 'root') return '';
+        return _sdInWidgetScope(node, function () {
+            var visFlags = (SW_VISIBILITY_FLAGS[_getSystemWidgetRegionType(node) || ''] || []).concat(_sdListRowFlags(node));
+            if (!visFlags.length) return '';
+            var curVis = (node.props._bindings && node.props._bindings.eo_visible_if) || '';
+            var vis = [['', _sdT('Always')]].concat(visFlags);
+            if (curVis && !visFlags.some(function (f) { return f[0] === curVis; })) vis.push([curVis, curVis]);
+            return row(_sdT('Show only when'),
+                '<select class="form-control form-control-sm" data-bind-visible>' +
+                vis.map(function (o) {
+                    return '<option value="' + esc(o[0]) + '"' + (o[0] === curVis ? ' selected' : '') + '>' + esc(o[1]) + '</option>';
+                }).join('') + '</select>' +
+                '<div style="font-size:.66rem;color:#888;margin-top:3px">' + _sdT('The element is left out of the page while the condition is false.') + '</div>');
+        });
     }
 
     // Public entry point: the token-binding section (built by the core below)
@@ -43272,7 +43296,8 @@ const StyleDesigner = (function () {
     // `sect(...)` returns inside the core keeps the two concerns separate.
     function propsDataBinding(node) {
         var html  = _propsDataBindingCore(node);
-        var extra = _sdBindingActionRows(node) + _sdFormatRows(node) + _sdConditionRows(node) + _sdHideEmptyRows(node);
+        // Action and field rows stay widget-only: a part sends nothing.
+        var extra = _sdBindingActionRows(node) + _sdVisibilityFlagRows(node) + _sdFormatRows(node) + _sdConditionRows(node) + _sdHideEmptyRows(node);
         if (html) {
             var note = _sdBindingTextNote(node);
             if (note) extra = note + (extra || '');
@@ -46536,6 +46561,15 @@ const StyleDesigner = (function () {
         var keep = _sdPartDrawing;
         _sdPartDrawing = sid;
         try { return fn(); } finally { _sdPartDrawing = keep; }
+    }
+
+    // fn() for a node of a widget's tree; for a node of a part placed
+    // outside its widget, fn() while the value lookups read the part's
+    // widget (_sdPartSidAt()); '' for any other node.
+    function _sdInWidgetScope(node, fn) {
+        if (_isInsideSystemWidget(node)) return fn();
+        var sid = _sdPartSidAt(node);
+        return sid ? _sdWithValueSid(sid, fn) : '';
     }
 
     // The placement of shared component `sid` that the open page shows: a
