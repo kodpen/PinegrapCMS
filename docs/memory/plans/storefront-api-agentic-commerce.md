@@ -14,13 +14,26 @@ description: Plan (approved 2026-10-19; design note first, code after 2026.11.0 
 - Web Bot Auth: the WAF learns to verify HTTP Message Signatures of known agent directories so verified shopping agents are not rate-limited as unknown bots (`docs/memory/waf/waf-ai-bots-ranges.md` pattern).
 - MCP: the storefront routes become MCP tools under the customer's own consent, like today's routes.
 
-## What remains?
-- Decided #3798 (`workflow/decisions-made-product-11.md`): the design note now, a memory-only PR here (route table, token model, error vocabulary, the `auth_tokens.kind` proposal, ACP/UCP mapping), reviewed by the architect; code after 2026.11.0 ships; the customer-token migration step is approved when the auth slice starts.
-- Then slices: auth (M), cart (M), checkout (L), customer (M), ACP (M), UCP manifest (S), WAF agent verification (S).
+## Where is the design note? (#3798)
+- `storefront-api-callers.md`, `-routes-cart.md`, `-routes-checkout.md`, `-routes-customer.md`, `-cart-token.md`, `-customer-token.md`, `-errors.md`, `-acp-ucp.md` (`storefront-api-*` here). Guest checkout: cart token + e-mail.
+
+## What remains? (slices after 2026.11.0 ships, in this order)
+- Auth (M): `auth_tokens.kind` step (approved when the slice starts), customer sign-in/up, refresh, sign-out, reset; `kind = 'web'` on old readers.
+
+- Cart (M): cart token, `pg_storefront_with_cart()`, cart routes, shipping methods and choice.
+
+- Checkout (L, two PRs if needed): routes, totals parity test, payment intent, confirm, `submit_order()` input split.
+
+- Customer (M): profile, orders, addresses, returns.
+
+- ACP (M): `/acp/checkout_sessions` translators, signed order webhooks.
+
+- UCP manifest (S): `/.well-known/ucp`, feed checkout eligibility.
+
+- WAF agent verification (S): Web Bot Auth signatures.
 
 ## Open questions?
-- Guest checkout over the API without a customer token: yes, with a cart token; e-mail required.
 - Which agent platforms matter for Turkish merchants first? Re-check each quarter; Trendyol/Hepsiburada remain the real channels.
 
 ## Where to start?
-- Not before the payment driver layer ships. Then the design note; read `includes/api/schema.php`, `includes/panel/actions.php:124-135` and `workflow/decisions-made.md`.
+- After 2026.11.0 ships, the auth slice: `storefront-api-customer-token.md`, `includes/authentication.php`, `includes/fn/auth.php`, `workflow/decisions-made.md`. The open questions in `storefront-api-acp-ucp.md` are settled before the ACP slice.
