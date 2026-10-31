@@ -360,13 +360,7 @@ function pg_iys_push_number($row)
  */
 function pg_iys_number_variants($digits)
 {
-    if (!preg_match('/^905\d{9}$/', (string) $digits)) {
-        return array();
-    }
-
-    $national = substr($digits, 2);
-
-    return array($national, '0' . $national, $digits, '+' . $digits, '00' . $digits, '+900' . $national);
+    return preg_match('/^905\d{9}$/', (string) $digits) ? pg_sms_number_variants($digits) : array();
 }
 
 /**
@@ -892,11 +886,7 @@ function pg_iys_apply_sms_changes($changes)
         return $applied;
     }
 
-    $stripped = 'mobile_phone';
-
-    foreach (array(' ', '-', '(', ')', '.', '/') as $separator) {
-        $stripped = "REPLACE(" . $stripped . ", '" . $separator . "', '')";
-    }
+    $stripped = pg_sms_number_sql('mobile_phone');
 
     $contacts = array();
 

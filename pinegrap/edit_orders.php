@@ -166,7 +166,7 @@ if (!empty($_POST['orders'])) {
                     }
                 }
                 $product_tax_rate = $_POST['tax_rate_for_parasut'];
-                $product_tax_rate_included = $_POST['tax_rate_included_for_parasut'];
+                $product_tax_rate_included = $_POST['tax_rate_included_for_parasut'] ?? '';
                 //if tax is empty than its 0
                 if($product_tax_rate == ''){
                     $product_tax_rate = 0;

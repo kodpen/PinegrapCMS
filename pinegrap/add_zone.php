@@ -92,7 +92,7 @@ if (!$_POST) {
 
     // load all allowed countries in array by exploding string that has allowed country ids separated by commas
     
-    $allowed_countries = $_POST['allowed_countries'];
+    $allowed_countries = (isset($_POST['allowed_countries']) && is_array($_POST['allowed_countries'])) ? $_POST['allowed_countries'] : array();
     
     // foreach allowed country insert row in zones_countries_xref table
     foreach ($allowed_countries as $country_id) {
@@ -104,7 +104,7 @@ if (!$_POST) {
     }
 
     // load all allowed states in array by exploding string that has allowed state ids separated by commas
-    $allowed_states = $_POST['allowed_states'];
+    $allowed_states = (isset($_POST['allowed_states']) && is_array($_POST['allowed_states'])) ? $_POST['allowed_states'] : array();
 
     // foreach allowed state insert row in zones_states_xref table
     foreach ($allowed_states as $state_id) {

@@ -1645,6 +1645,13 @@ if (!$_POST) {
             WHERE user_id = '" . escape($_POST['id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
+        // The session keeps its own copy of the username from sign-in; the
+        // greeting, the account menu, the Site Log and the developer lock
+        // read it, so a rename of your own account must update it here.
+        if ((int) ($_POST['id'] ?? 0) === (int) USER_ID) {
+            $_SESSION['sessionusername'] = (string) $username;
+        }
+
         pg_audit_record('update', 'user', $audit_user_id, $audit_before);
 
         pg_user_form_save_access($_POST['id'] ?? '', $saved_role, $_POST, true);
