@@ -899,7 +899,8 @@ if (!$_POST) {
         // This button is printed inside the main form, and Return in a field
         // presses the form's first submit button. The form therefore opens
         // with a hidden nameless submit, which reaches the save branch (the
-        // final else, which reads no button name).
+        // final else, which reads no button name). The button itself also
+        // reaches that branch: it saves the form, then creates the contact.
         $output_contact_body =
             '<p class="small fg-secondary mb-3">' . h(lang('This User does not currently have a Contact connected to it. Connecting a Contact to this User is required to use the Membership features. A Contact will be created and connected to this User automatically when the User performs certain actions (e.g. updates his/her profile, submits a Custom Form, submits an Order, and etc.). However, if for any reason, you would like to do this now, you can.')) . '</p>'
             . '<button type="submit" id="submit_create_contact" name="submit_create_contact" value="Create Contact" class="btn btn-sm btn-outline theme-secondary rounded-pill px-5"><i class="bi bi-person-plus me-1"></i><span class="pg-btn-label">' . h(lang('Create Contact')) . '</span></button>';
@@ -1013,8 +1014,12 @@ if (!$_POST) {
         </div>';
 
     // ── Recent activity ──────────────────────────────────────────────────
+    // The drawer lists the last 100 entries; the button counts them all, so
+    // it says how many of the total the drawer holds.
     $log_all   = db_items("SELECT log_description, log_ip, log_timestamp FROM log
         WHERE log_user = '" . escape($username) . "' ORDER BY log_id DESC LIMIT 100");
+    $result    = db_q("SELECT COUNT(*) AS total FROM log WHERE log_user = ?", array((string) $username));
+    $log_total = $result ? (int) (mysqli_fetch_assoc($result)['total'] ?? 0) : 0;
 
     $log_recent_rows = '';
     $log_panel_rows  = '';
@@ -1045,7 +1050,7 @@ if (!$_POST) {
         '<div class="card mb-5">
             <div class="card-header bg-reset border-0 d-flex justify-content-between align-items-center">
                 <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . h(lang('Recent Activity')) . '</span>
-                ' . (($log_count > 5) ? '<button type="button" class="btn btn-sm btn-text theme-secondary" data-bs-toggle="drawer" data-bs-target="#pg_activity_panel">' . h(lang(array('string' => 'All ({var:1})', 'vars' => $log_count))) . '</button>' : '') . '
+                ' . (($log_count > 5) ? '<button type="button" class="btn btn-sm btn-text theme-secondary" data-bs-toggle="drawer" data-bs-target="#pg_activity_panel">' . h(($log_total > $log_count) ? lang(array('string' => 'Last {var:1} of {var:2}', 'vars' => array($log_count, pg_format_number($log_total, 0)))) : lang(array('string' => 'All ({var:1})', 'vars' => $log_count))) . '</button>' : '') . '
             </div>
             <div class="card-body">
                 ' . (($log_count > 0) ? $log_recent_rows : '<p class="small fg-secondary mb-0">' . h(lang('No activity recorded yet.')) . '</p>') . '
@@ -1318,53 +1323,8 @@ if (!$_POST) {
     // The account this request changes, as the audit trail names it.
     $audit_user_id = (isset($_POST['id']) && is_scalar($_POST['id'])) ? (int) $_POST['id'] : 0;
     
-    // if create contact was selected, then create contact
-    if (($_POST['submit_create_contact'] ?? '') == 'Create Contact') {
-        // get e-mail address for this user
-        $query =
-            "SELECT user_email
-            FROM user
-            WHERE user_id = ?";
-        $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
-        $row = mysqli_fetch_assoc($result);
-        $email_address = $row['user_email'];
-        
-        $query =
-            "INSERT INTO contacts (
-                email_address,
-                user,
-                timestamp)
-            VALUES (
-                ?,
-                ?,
-                UNIX_TIMESTAMP())";
-        $result = db_q($query, array((string) $email_address, (string) $user['id'])) or output_error('Query failed.');
-        
-        $contact_id = mysqli_insert_id(db::$con);
-
-        // A user account that had no contact record now has one.
-        pg_announce_contact_created($contact_id);
-        
-        $audit_before = pg_audit_fetch('user', $audit_user_id);
-
-        // connect contact to user
-        $query =
-            "UPDATE user
-            SET
-                user_contact = ?,
-                user_user = ?,
-                user_timestamp = UNIX_TIMESTAMP()
-            WHERE user_id = ?";
-        $result = db_q($query, array((string) $contact_id, (string) $user['id'], (string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
-
-        pg_audit_record('update', 'user', $audit_user_id, $audit_before);
-        
-        // forward user to contact that was just created
-        header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_contact.php?id=' . $contact_id . '&send_to=' . urlencode($_POST['current_url']));
-        exit();
-    
-    // else if user was selected for delete
-    } else if (($_POST['submit_delete'] ?? '') == 'Delete') {
+    // if user was selected for delete
+    if (($_POST['submit_delete'] ?? '') == 'Delete') {
         // get role for user that is being deleted
         $query =
             "SELECT user_role
@@ -1681,6 +1641,55 @@ if (!$_POST) {
         pg_user_form_save_access($_POST['id'] ?? '', $saved_role, $_POST, true);
 
         log_activity(lang(array('string'=>'user ({var:1}) was modified','vars'=>$username)), $_SESSION['sessionusername']);
+
+        // Create Contact is a submit of this form: the edits above are saved
+        // first, with every check of this branch, and only then is the
+        // contact created and opened, so nothing typed is dropped.
+        if (($_POST['submit_create_contact'] ?? '') == 'Create Contact') {
+            $result = db_q("SELECT user_email, user_contact FROM user WHERE user_id = ?", array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
+            $saved_user = mysqli_fetch_assoc($result);
+            $contact_id = (int) ($saved_user['user_contact'] ?? 0);
+
+            // A second press (Back, then the button again) opens the contact
+            // the first one created instead of creating another.
+            $result = db_q("SELECT COUNT(*) AS found FROM contacts WHERE id = ?", array((string) $contact_id)) or output_error('Query failed.');
+            $contact_found = (int) (mysqli_fetch_assoc($result)['found'] ?? 0);
+
+            if (($contact_id < 1) || ($contact_found < 1)) {
+                $result = db_q(
+                    "INSERT INTO contacts (
+                        email_address,
+                        user,
+                        timestamp)
+                    VALUES (
+                        ?,
+                        ?,
+                        UNIX_TIMESTAMP())",
+                    array((string) ($saved_user['user_email'] ?? ''), (string) $user['id'])) or output_error('Query failed.');
+
+                $contact_id = (int) mysqli_insert_id(db::$con);
+
+                // A user account that had no contact record now has one.
+                pg_announce_contact_created($contact_id);
+
+                $audit_before = pg_audit_fetch('user', $audit_user_id);
+
+                $result = db_q(
+                    "UPDATE user
+                    SET
+                        user_contact = ?,
+                        user_user = ?,
+                        user_timestamp = UNIX_TIMESTAMP()
+                    WHERE user_id = ?",
+                    array((string) $contact_id, (string) $user['id'], (string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
+
+                pg_audit_record('update', 'user', $audit_user_id, $audit_before);
+            }
+
+            header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_contact.php?id=' . $contact_id . '&send_to=' . urlencode((string) ($_POST['current_url'] ?? '')));
+            exit();
+        }
+
         $liveform_view_users->add_notice(lang('The user has been saved.'));
         
         // If there is a send to value then send user back to that screen

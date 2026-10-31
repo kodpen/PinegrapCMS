@@ -268,7 +268,7 @@ if (!$_POST) {
     print
     pg_page_shell(
         array(
-            'title'=> lang('Edit Contact') . ' : ' . h($row['first_name'])  . ' ' . h($row['last_name']),
+            'title'=> lang('Edit Contact') . ' : ' . h(pg_contact_heading_name($row)),
             'extra classes'=>'contact',
             'icon'=>'contact', 
             'heading'=>lang('Edit Contact'),

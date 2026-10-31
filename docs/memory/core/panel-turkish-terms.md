@@ -1,10 +1,11 @@
 ---
 name: panel-turkish-terms
-description: Turkish words for panel terms translated in several ways (Manager role, password pages, Guide, short link, opt-in/opt-out, visitor order steps, ERP quotes, Anonymous)
+description: Turkish words for panel terms translated in several ways (Manager role, contact group, password pages, Guide, short link, opt-in/opt-out, visitor order steps, ERP quotes, Anonymous)
 ---
 
 ## Which word does the panel use?
-- Role 2 "Manager": "Menajer" (TDK spelling; it was "Menejer" in 14 values). "Yönetici" stays Administrator; "… Manager" screen names ("Content Manager", "Calendar Manager") are "… Yöneticisi" and do not name the role.
+- Role 2 "Manager": "Menajer" (TDK spelling; it was "Menejer" in 14 values; the users list's "Site Manager" column, role < 3, is "Site Menajeri", #4066). "Yönetici" stays Administrator; "… Manager" screen names ("Content Manager", "Calendar Manager") are "… Yöneticisi" and do not name the role.
+- Contact group: "Rehber Grubu/Grupları", "Contact Manager" "Rehber Yöneticisi"; never "İletişim Grupları", "kişi grubu" (#4066).
 - Password: "Parola" ("Parola Değiştir", "Parolayı Belirle", "Parolamı Unuttum"); "Şifre" left in other values is an old form, replaced when met.
 - Password page addresses (the keys `forgot-password`, `set-password`, `change-password`, read only by the design templates at install): `parolami-unuttum`, `parola-belirle`, `parola-degistir` (#3622). An installed site keeps its `sifre…` pages: no migration, no redirect step; a rename in the designer leaves the old address as a 301 (`platform/page-rename-redirect.md`).
 - "Guide" (the forum template's guide pages, the Workspace `bi-book` icon label): "Rehber", the word the forum design uses; "Leader" stays "Kılavuz Çizgi" (#3622).

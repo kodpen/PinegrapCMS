@@ -408,7 +408,7 @@
     "Bot IP lists: {var:1} updated, {var:2} could not be fetched. The stored copies were kept.": "Bot IP listeleri: {var:1} güncellendi, {var:2} alınamadı. Kayıtlı kopyalar korundu.",
     "Both are viruses, so antibiotics do not help. Rest, drink plenty and take something for the fever if you need it.": "İkisi de virüs kaynaklıdır, bu yüzden antibiyotik işe yaramaz. Dinlenin, bol sıvı için ve gerekirse ateş düşürücü alın.",
     "Both documents are filled from the order and a copy is kept with it as the customer saw it, so a later change to a template never changes an accepted copy.": "İki belge de siparişten doldurulur ve müşterinin gördüğü haliyle bir kopyası siparişle saklanır; şablonda sonradan yapılan bir değişiklik onaylanmış kopyayı değiştirmez.",
-    "Both rights apply only to the contact groups selected here.": "Her iki yetki de yalnızca burada seçilen kişi grupları için geçerlidir.",
+    "Both rights apply only to the contact groups selected here.": "Her iki yetki de yalnızca burada seçilen rehber grupları için geçerlidir.",
     "Both the application key and the secret are required.": "Uygulama anahtarı ve gizli anahtarın ikisi de gereklidir.",
     "Both ways": "Her iki yön",
     "Bots": "Botlar",

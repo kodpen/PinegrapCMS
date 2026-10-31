@@ -147,6 +147,7 @@
     "Last used (relative time, else \"Never\")": "Son kullanım (göreli zaman, yoksa \"Hiç\")",
     "Last used {var:1}.": "Son kullanım {var:1}.",
     "Last {var:1} left": "Son {var:1} adet kaldı",
+    "Last {var:1} of {var:2}": "Son {var:1} (toplam {var:2})",
     "Late": "Gecikti",
     "Late opening until 21:00 on reading nights.": "Okuma gecelerinde 21:00'e kadar açığız.",
     "Late payment fee": "Vade farkı",
