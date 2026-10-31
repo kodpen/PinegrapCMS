@@ -42,29 +42,70 @@ function pg_panel_backend_search($request, $action)
     $can_manage_forms = ($role <= 2) || !empty($user['manage_forms']);
     $can_contacts = ($role <= 2) || !empty($user['manage_contacts']);
 
+    // Each chip is offered under the rule of the main-menu entry that opens
+    // the same screen (output_menu() in includes/fn/output.php). The
+    // rights that need a query are read once, and only for role 3: lower
+    // roles pass every one of them.
+    $gate = pg_panel_search_chip_gates(array(
+        'role'                     => $role,
+        'create_pages'             => !empty($user['create_pages']),
+        'manage_visitors'          => ($user['manage_visitors'] == true),
+        'manage_forms'             => ($user['manage_forms'] == true),
+        'manage_emails'            => ($user['manage_emails'] == true),
+        // The rules of USER_MANAGE_ECOMMERCE(_REPORTS) in initialize_user().
+        'manage_ecommerce'         => ($user['manage_ecommerce'] == 'yes'),
+        'manage_ecommerce_reports' => !empty($user['manage_ecommerce_reports']),
+        'folder_edit'              => ($role == 3) && no_acl_check($user['id']),
+        'contact_group'            => ($role == 3) && validate_contacts_access($user, true),
+        'calendar'                 => ($role == 3) && validate_calendars_access($user, true),
+        'ad_region'                => ($role == 3) && (ADS === true) && (count(get_items_user_can_edit('ad_regions', $user['id'])) > 0),
+        'ecommerce_module'         => (ECOMMERCE === true),
+        'calendars_module'         => (CALENDARS === true),
+        'forms_module'             => (FORMS === true),
+        'ads_module'               => (ADS === true),
+        'dynamic_regions_module'   => defined('DYNAMIC_REGIONS') && (DYNAMIC_REGIONS == true),
+        'not_found_log_ready'      => ($role < 3) && pg_not_found_log_ready(),
+    ));
+
     // Build quick actions based on role (used for both empty and typed searches)
     $base_url = PATH . SOFTWARE_DIRECTORY;
     $actions = array();
 
-    // ── Sayfalar / Pages ──────────────────────────────────────────────────
-    $actions[] = array('label' => lang('Pages'), 'icon' => 'bi-file-earmark-text', 'url' => $base_url . '/view_pages.php', 'keys' => array('sayfa', 'sayfalar', 'page', 'pages', 'say'));
-    $actions[] = array('label' => lang('Add Page'), 'icon' => 'bi-file-earmark-plus', 'url' => $base_url . '/add_page.php', 'keys' => array('sayfa ekle', 'page add', 'yeni sayfa', 'add page', 'sayfaekle'));
-    $actions[] = array('label' => lang('File Manager'), 'icon' => 'bi-folder2', 'url' => $base_url . '/view_folders.php', 'keys' => array('klasor', 'klasör', 'folder', 'fol', 'kla', 'dosya', 'yonetici', 'file', 'manager'));
-    $actions[] = array('label' => lang('Add Folder'), 'icon' => 'bi-folder-plus', 'url' => $base_url . '/add_folder.php', 'keys' => array('klasor ekle', 'add folder', 'yeni klasor', 'klasorekle'));
-    if ($can_manage) {
+    // ── Pages ─────────────────────────────────────────────────────────────
+    if ($gate['folders']) {
+        $actions[] = array('label' => lang('Pages'), 'icon' => 'bi-file-earmark-text', 'url' => $base_url . '/view_pages.php', 'keys' => array('sayfa', 'sayfalar', 'page', 'pages', 'say'));
+    }
+    if ($gate['add_page']) {
+        $actions[] = array('label' => lang('Add Page'), 'icon' => 'bi-file-earmark-plus', 'url' => $base_url . '/add_page.php', 'keys' => array('sayfa ekle', 'page add', 'yeni sayfa', 'add page', 'sayfaekle'));
+    }
+    if ($gate['folders']) {
+        $actions[] = array('label' => lang('File Manager'), 'icon' => 'bi-folder2', 'url' => $base_url . '/view_folders.php', 'keys' => array('klasor', 'klasör', 'folder', 'fol', 'kla', 'dosya', 'yonetici', 'file', 'manager'));
+        $actions[] = array('label' => lang('Add Folder'), 'icon' => 'bi-folder-plus', 'url' => $base_url . '/add_folder.php', 'keys' => array('klasor ekle', 'add folder', 'yeni klasor', 'klasorekle'));
+    }
+    if ($gate['manage']) {
         $actions[] = array('label' => lang('Short Links'), 'icon' => 'bi-link-45deg', 'url' => $base_url . '/view_short_links.php', 'keys' => array('kisa link', 'kisa', 'short', 'link', 'kis'));
+    }
+    if ($gate['not_found_log']) {
         $actions[] = array('label' => lang('404 Log'), 'icon' => 'bi-sign-dead-end', 'url' => $base_url . '/view_not_found_log.php', 'keys' => array('404', 'bulunamadi', 'bulunamayan', 'not found', 'kirik link', 'broken link', 'yonlendirme', 'redirect'));
+    }
+    if ($gate['manage']) {
         $actions[] = array('label' => lang('Accessibility report'), 'icon' => 'bi-universal-access', 'url' => $base_url . '/view_accessibility.php', 'keys' => array('erisilebilirlik', 'erişilebilirlik', 'accessibility', 'a11y', 'wcag', 'engelli'));
     }
-    $actions[] = array('label' => lang('Comments'), 'icon' => 'bi-chat-dots', 'url' => $base_url . '/view_comments.php', 'keys' => array('yorum', 'comment', 'com', 'yor'));
-    $actions[] = array('label' => lang('Auto Dialogs'), 'icon' => 'bi-chat-square-text', 'url' => $base_url . '/view_auto_dialogs.php', 'keys' => array('dialog', 'auto', 'oto', 'diy'));
+    if ($gate['folders']) {
+        $actions[] = array('label' => lang('Comments'), 'icon' => 'bi-chat-dots', 'url' => $base_url . '/view_comments.php', 'keys' => array('yorum', 'comment', 'com', 'yor'));
+    }
+    if ($gate['manage']) {
+        $actions[] = array('label' => lang('Auto Dialogs'), 'icon' => 'bi-chat-square-text', 'url' => $base_url . '/view_auto_dialogs.php', 'keys' => array('dialog', 'auto', 'oto', 'diy'));
+    }
 
-    // ── Dosyalar / Files ──────────────────────────────────────────────────
-    $actions[] = array('label' => lang('Files'), 'icon' => 'bi-folder2-open', 'url' => $base_url . '/view_files.php', 'keys' => array('dosya', 'dosyalar', 'file', 'files', 'fil', 'dos'));
-    $actions[] = array('label' => lang('Add File'), 'icon' => 'bi-file-earmark-arrow-up', 'url' => $base_url . '/add_file.php', 'keys' => array('dosya yukle', 'dosya ekle', 'upload', 'add file', 'yukle'));
+    // ── Files ─────────────────────────────────────────────────────────────
+    if ($gate['folders']) {
+        $actions[] = array('label' => lang('Files'), 'icon' => 'bi-folder2-open', 'url' => $base_url . '/view_files.php', 'keys' => array('dosya', 'dosyalar', 'file', 'files', 'fil', 'dos'));
+        $actions[] = array('label' => lang('Add File'), 'icon' => 'bi-file-earmark-arrow-up', 'url' => $base_url . '/add_file.php', 'keys' => array('dosya yukle', 'dosya ekle', 'upload', 'add file', 'yukle'));
+    }
 
-    // ── e-Ticaret / eCommerce ─────────────────────────────────────────────
-    if ($can_ecommerce) {
+    // ── eCommerce ─────────────────────────────────────────────────────────
+    if ($gate['ecommerce']) {
         $actions[] = array('label' => lang('Orders'), 'icon' => 'bi-receipt', 'url' => $base_url . '/view_orders.php', 'keys' => array('siparis', 'siparisler', 'order', 'orders', 'ord', 'sip'));
         $actions[] = array('label' => lang('Products'), 'icon' => 'bi-box-seam', 'url' => $base_url . '/view_products.php', 'keys' => array('urun', 'urunler', 'product', 'products', 'pro', 'uru'));
         $actions[] = array('label' => lang('Add Product'), 'icon' => 'bi-box-seam', 'url' => $base_url . '/add_product.php', 'keys' => array('urun ekle', 'add product', 'yeni urun', 'urunek'));
@@ -79,36 +120,54 @@ function pg_panel_backend_search($request, $action)
         $actions[] = array('label' => lang('Tax Zones'), 'icon' => 'bi-receipt-cutoff', 'url' => $base_url . '/view_tax_zones.php', 'keys' => array('vergi', 'kdv', 'tax', 'ver'));
         $actions[] = array('label' => lang('Zones'), 'icon' => 'bi-map', 'url' => $base_url . '/view_zones.php', 'keys' => array('bolge', 'bölge', 'zone', 'zon', 'böl'));
         $actions[] = array('label' => lang('States'), 'icon' => 'bi-geo-alt', 'url' => $base_url . '/view_states.php', 'keys' => array('sehir', 'şehir', 'eyalet', 'state', 'seh'));
+    }
+
+    // ── Order reports ─────────────────────────────────────────────────────
+    // A right of its own: a role 3 user may hold it without manage_ecommerce.
+    if ($gate['order_reports']) {
         $actions[] = array('label' => lang('Order Reports'), 'icon' => 'bi-bar-chart', 'url' => $base_url . '/view_order_reports.php', 'keys' => array('siparis rapor', 'order report', 'rapor sip', 'raporord'));
     }
 
     // ── Visitors ──────────────────────────────────────────────────────────
-    $actions[] = array('label' => lang('Visitor Reports'), 'icon' => 'bi-people', 'url' => $base_url . '/view_visitor_reports.php', 'keys' => array('ziyaretci', 'ziyaretçi', 'visitor', 'visit', 'zia', 'rap'));
-    $actions[] = array('label' => lang('Visitor Report'), 'icon' => 'bi-graph-up', 'url' => $base_url . '/view_visitor_report.php', 'keys' => array('ziyaret rapor', 'visitor report', 'rapor ziy', 'ziyrapor'));
-    $actions[] = array('label' => lang('Google Search Console'), 'icon' => 'bi-google', 'url' => $base_url . '/search_console.php', 'keys' => array('search console', 'arama konsolu', 'google arama', 'gsc', 'site haritasi', 'sitemap', 'tiklama', 'gosterim'));
+    if ($gate['visitors']) {
+        $actions[] = array('label' => lang('Visitor Reports'), 'icon' => 'bi-people', 'url' => $base_url . '/view_visitor_reports.php', 'keys' => array('ziyaretci', 'ziyaretçi', 'visitor', 'visit', 'zia', 'rap'));
+        $actions[] = array('label' => lang('Visitor Report'), 'icon' => 'bi-graph-up', 'url' => $base_url . '/view_visitor_report.php', 'keys' => array('ziyaret rapor', 'visitor report', 'rapor ziy', 'ziyrapor'));
+        $actions[] = array('label' => lang('Google Search Console'), 'icon' => 'bi-google', 'url' => $base_url . '/search_console.php', 'keys' => array('search console', 'arama konsolu', 'google arama', 'gsc', 'site haritasi', 'sitemap', 'tiklama', 'gosterim'));
+    }
 
     // ── Contacts ──────────────────────────────────────────────────────────
-    if ($can_contacts) {
+    if ($gate['contacts']) {
         $actions[] = array('label' => lang('Contacts'), 'icon' => 'bi-people', 'url' => $base_url . '/view_contacts.php', 'keys' => array('kisi', 'kişi', 'contact', 'rehber', 'con', 'kis', 'reh'));
         $actions[] = array('label' => lang('Add Contact'), 'icon' => 'bi-person-plus', 'url' => $base_url . '/add_contact.php', 'keys' => array('kisi ekle', 'add contact', 'yeni kisi', 'kisieki'));
         $actions[] = array('label' => lang('Contact Groups'), 'icon' => 'bi-people-fill', 'url' => $base_url . '/view_contact_groups.php', 'keys' => array('grup kisi', 'contact group', 'kisigrup'));
     }
 
     // ── Users ─────────────────────────────────────────────────────────────
-    if ($can_manage) {
+    if ($gate['users']) {
         $actions[] = array('label' => lang('Users'), 'icon' => 'bi-person-gear', 'url' => $base_url . '/view_users.php', 'keys' => array('kullanici', 'kullanıcı', 'user', 'usr', 'kul'));
         $actions[] = array('label' => lang('Add User'), 'icon' => 'bi-person-plus', 'url' => $base_url . '/add_user.php', 'keys' => array('kullanici ekle', 'add user', 'yeni kullanici', 'kullanicieki'));
     }
 
-    // ── Campaigns ─────────────────────────────────────────────────────────
-    if ($can_manage) {
+    // ── Campaigns, calendars, forms, menus, ads ───────────────────────────
+    if ($gate['campaigns']) {
         $actions[] = array('label' => lang('Email Campaigns'), 'icon' => 'bi-megaphone', 'url' => $base_url . '/view_email_campaigns.php', 'keys' => array('kampanya', 'mail', 'email', 'campaign', 'kamp'));
         $actions[] = array('label' => lang('Add Email Campaign'), 'icon' => 'bi-megaphone', 'url' => $base_url . '/add_email_campaign.php', 'keys' => array('kampanya ekle', 'add campaign', 'kampanyaekle'));
+    }
+    if ($gate['calendars']) {
         $actions[] = array('label' => lang('Calendars'), 'icon' => 'bi-calendar3', 'url' => $base_url . '/view_calendars.php', 'keys' => array('takvim', 'calendar', 'tak', 'cal'));
+    }
+    if ($gate['forms']) {
         $actions[] = array('label' => lang('Submitted Forms'), 'icon' => 'bi-ui-checks', 'url' => $base_url . '/view_submitted_forms.php', 'keys' => array('form', 'gonderilen', 'submitted', 'frm', 'gon'));
+    }
+    if ($gate['menus']) {
         $actions[] = array('label' => lang('Menus'), 'icon' => 'bi-menu-button', 'url' => $base_url . '/view_menus.php', 'keys' => array('menu', 'men'));
+    }
+    if ($gate['ads']) {
         $actions[] = array('label' => lang('Ads'), 'icon' => 'bi-badge-ad', 'url' => $base_url . '/view_ads.php', 'keys' => array('reklam', 'ad', 'ads', 'rek'));
+    }
 
+    // ── Settings and system tools ─────────────────────────────────────────
+    if ($gate['manage']) {
         // Every settings section, from the one list the hub and the sidebar
         // of the dialog draw from (includes/settings/registry.php).
         // Registering them is what answers "where is that setting": the
@@ -155,7 +214,7 @@ function pg_panel_backend_search($request, $action)
     }
 
     // ── Design ────────────────────────────────────────────────────────────
-    if ($can_design) {
+    if ($gate['design']) {
         $actions[] = array('label' => lang('Styles'), 'icon' => 'bi-window', 'url' => $base_url . '/view_styles.php', 'keys' => array('stil', 'stiller', 'style', 'styles', 'stl'));
         $actions[] = array('label' => lang('Add Style'), 'icon' => 'bi-window-plus', 'url' => $base_url . '/add_style.php', 'keys' => array('stil ekle', 'add style', 'yeni stil', 'stilekle'));
         $actions[] = array('label' => lang('Themes'), 'icon' => 'bi-palette', 'url' => $base_url . '/view_themes.php', 'keys' => array('tema', 'theme', 'them', 'tem'));
@@ -163,15 +222,21 @@ function pg_panel_backend_search($request, $action)
         $actions[] = array('label' => lang('Common Regions'), 'icon' => 'bi-columns-gap', 'url' => $base_url . '/view_regions.php?filter=all_common_regions', 'keys' => array('ortak bolge', 'common region', 'region', 'reg', 'ort', 'common', 'bol'));
         $actions[] = array('label' => lang('Login Regions'), 'icon' => 'bi-shield-lock', 'url' => $base_url . '/view_regions.php?filter=all_login_regions', 'keys' => array('giris bolge', 'login region', 'logi', 'gir'));
         $actions[] = array('label' => lang('Designer Regions'), 'icon' => 'bi-code-square', 'url' => $base_url . '/view_regions.php?filter=all_designer_regions', 'keys' => array('tasarim bolge', 'designer region', 'desi'));
-        $actions[] = array('label' => lang('Dynamic Regions'), 'icon' => 'bi-arrow-repeat', 'url' => $base_url . '/view_regions.php?filter=all_dynamic_regions', 'keys' => array('dinamik bolge', 'dynamic region', 'dyna', 'din'));
         $actions[] = array('label' => lang('Find & Replace'), 'icon' => 'bi-search', 'url' => $base_url . '/find_and_replace.php', 'keys' => array('bul degistir', 'find replace', 'degistir', 'bul'));
+    }
+
+    // view_regions.php lists dynamic regions for administrators only.
+    if ($gate['dynamic_regions']) {
+        $actions[] = array('label' => lang('Dynamic Regions'), 'icon' => 'bi-arrow-repeat', 'url' => $base_url . '/view_regions.php?filter=all_dynamic_regions', 'keys' => array('dinamik bolge', 'dynamic region', 'dyna', 'din'));
     }
 
     // ── Help ──────────────────────────────────────────────────────────────
     // The keyboard shortcuts are a dialog of the header, not a screen: the
     // fragment is what the chip handler in backend.src.js answers to by
     // opening it, as the ? key does.
-    $actions[] = array('label' => lang('Keyboard Shortcuts'), 'icon' => 'bi-keyboard', 'url' => '#keyboard-shortcuts', 'keys' => array('klavye', 'kisayol', 'kısayol', 'keyboard', 'shortcut', 'tus', 'tuş'));
+    if ($gate['help']) {
+            $actions[] = array('label' => lang('Keyboard Shortcuts'), 'icon' => 'bi-keyboard', 'url' => '#keyboard-shortcuts', 'keys' => array('klavye', 'kisayol', 'kısayol', 'keyboard', 'shortcut', 'tus', 'tuş'));
+    }
 
     // Empty search: return only quick actions (no DB query needed)
     if (strlen($search) < 1) {
@@ -662,4 +727,49 @@ function pg_panel_search_tool_actions($groups, $base_url, $actions)
     ));
 
     return $rows;
+}
+
+// Which chips of the panel search box the viewer gets: each one under the
+// rule of the main-menu entry that opens the same screen (output_menu() in
+// includes/fn/output.php), so a chip never ends on "Access denied" and
+// none is missing for someone the screen lets in. $rights holds the role,
+// the user's rights, the rights that need a query (folder_edit: an edit
+// folder, contact_group, calendar, ad_region), the module switches and
+// whether the 404 log table is there.
+function pg_panel_search_chip_gates($rights)
+{
+    $r = array_merge(array(
+        'role' => 3, 'create_pages' => false, 'manage_visitors' => false,
+        'manage_forms' => false, 'manage_emails' => false, 'manage_ecommerce' => false,
+        'manage_ecommerce_reports' => false, 'folder_edit' => false, 'contact_group' => false,
+        'calendar' => false, 'ad_region' => false, 'ecommerce_module' => false,
+        'calendars_module' => false, 'forms_module' => false, 'ads_module' => false,
+        'dynamic_regions_module' => false, 'not_found_log_ready' => false,
+    ), (array) $rights);
+
+    $role = (int) $r['role'];
+    $below_user = ($role < 3);
+    // validate_area_access('user') lets a role 3 user in with an edit folder.
+    $folders = $below_user || $r['folder_edit'];
+
+    return array(
+        'folders'         => $folders,
+        // add_page.php also asks a role 3 user for create_pages.
+        'add_page'        => $folders && ($below_user || $r['create_pages']),
+        'manage'          => $below_user,
+        'not_found_log'   => $below_user && $r['not_found_log_ready'],
+        'ecommerce'       => $r['ecommerce_module'] && ($below_user || $r['manage_ecommerce']),
+        'order_reports'   => $r['ecommerce_module'] && ($below_user || $r['manage_ecommerce_reports']),
+        'visitors'        => $below_user || $r['manage_visitors'],
+        'contacts'        => $below_user || $r['contact_group'],
+        'users'           => $below_user,
+        'campaigns'       => $below_user || $r['manage_emails'],
+        'calendars'       => $r['calendars_module'] && ($below_user || $r['calendar']),
+        'forms'           => $r['forms_module'] && ($below_user || $r['manage_forms']),
+        'ads'             => $r['ads_module'] && ($below_user || $r['ad_region']),
+        'menus'           => ($role < 2),
+        'design'          => ($role < 2),
+        'dynamic_regions' => ($role < 1) && $r['dynamic_regions_module'],
+        'help'            => true,
+    );
 }
