@@ -2,8 +2,9 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Site Settings - the application API: the master switch, HTTPS, the public
- * description, log retention and the upload folder.
+ * Site Settings - Integrations: the application API (the master switch, HTTPS,
+ * the public description, log retention, the upload folder), Google reviews and
+ * the screens that connect the site to other services.
  *
  * One of the category screens the settings were split into on 2026-09-12.
  * Everything the screen does lives in the shared flow and in the two modules

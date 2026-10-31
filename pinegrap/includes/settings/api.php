@@ -2,7 +2,7 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Site Settings - the API cards: the master switch, HTTPS, the public description, log retention and the upload folder.
+ * Site Settings - the Integrations cards: the application API (master switch, HTTPS, public description, log retention, upload folder), Google reviews and the related screens.
  *
  * Fills $pg_settings_cards, one grid column per card, in reading order. Which
  * cards belong here is said once, in includes/settings/registry.php; this file
@@ -127,3 +127,47 @@ $pg_settings_cards[] = '
             </div>
         </div>
     </div>';
+
+// ── Google Reviews ──
+// The Places API key and the Place ID, kept sealed with the cache of what
+// Google answered (includes/fn/google_reviews.php).
+$pg_settings_cards[] = '
+                        <div id="pgset-google-reviews" class="pg-set-card">
+                            <div class="card">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                    ' . lang('Google Reviews') . '
+                                </div>
+                                <div class="card-body">
+                                   <div class="row gy-5">' . pg_grev_settings_fields() . '
+                                    </div>
+                                </div>
+                            </div>
+                        </div>';
+
+
+// ── Related screens ──
+// The screens that connect the site to other services, each under the gate
+// of the screen itself (pg_settings_integration_links()). No card when the
+// user may open none of them.
+$output_integration_links = '';
+
+foreach (pg_settings_integration_links($user) as $integration_link) {
+    $output_integration_links .= '
+                        <a class="list-group-item list-group-item-action d-flex align-items-center gap-5" href="' . h($integration_link['url']) . '">
+                            <i class="bi ' . h($integration_link['icon']) . '" aria-hidden="true"></i>
+                            <span>' . h($integration_link['label']) . '</span>
+                        </a>';
+}
+
+if ($output_integration_links !== '') {
+    $pg_settings_cards[] = '
+    <div id="pgset-integration-links" class="pg-set-card">
+        <div class="card">
+            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                ' . lang('Related screens') . '
+            </div>
+            <div class="list-group list-group-flush">' . $output_integration_links . '
+            </div>
+        </div>
+    </div>';
+}

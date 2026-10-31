@@ -8,7 +8,7 @@ module: google_reviews, widgets_google_reviews
 - Decided in #3180: the business's Google rating and up to five reviews, read-only, with a Places API key; no OAuth, no schema. Kind `google_reviews`, label "Google Reviews", renderer `_render_system_widget_google_reviews()` (`includes/fn/widgets_google_reviews.php`); reading, cache and settings in `includes/fn/google_reviews.php`.
 
 ## Where are the key and the Place ID?
-- Site Settings › Communication › Google Reviews (`pgset-google-reviews`, `includes/settings/contact.php`; saved by `pg_grev_settings_check()` / `pg_grev_settings_save()` from `contact.save.php`). The key is never drawn back: an empty box keeps it, the form text names its last four characters, "Remove the saved key" clears it. Both empty: the entry is deleted. "Save and test" (named submit, `ui/settings-card-own-button.md`) reads the place and names it with its rating.
+- Site Settings › Integrations › Google Reviews (`pgset-google-reviews`, `includes/settings/api.php`; saved by `pg_grev_settings_check()` / `pg_grev_settings_save()` from `api.save.php`; in Communication until #R7CPR). The key is never drawn back: an empty box keeps it, the form text names its last four characters, "Remove the saved key" clears it. Both empty: the entry is deleted. "Save and test" (named submit, `ui/settings-card-own-button.md`) reads the place and names it with its rating.
 - One sealed service entry `pg_connect_service_put('google_reviews', …)`: `key`, `place_id`, `cache`. Without `ENCRYPTION_KEY` the card warns and keeps nothing. A changed key or Place ID empties the cache.
 
 ## How is Google asked?
