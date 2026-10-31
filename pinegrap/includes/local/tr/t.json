@@ -4085,6 +4085,7 @@
     "The {var:1} has been duplicated, and you are now editing the duplicate.": "{var:1|c} çoğaltıldı ve şimdi kopyayı düzenliyorsunuz.",
     "The {var:1} has been saved.": "{var:1} kaydedildi.",
     "The {var:1} invoice type is not sent through the Paraşüt API.": "{var:1} fatura türü Paraşüt API'siyle gönderilmez.",
+    "The {var:1} key code(s) of the saved code will follow the new code when you save.": "Kayıtlı koda bağlı {var:1} anahtar kod, kaydettiğinizde yeni koda taşınacak.",
     "The {var:1} keys are incomplete or cannot be read with this site's encryption key, so forms show the built-in question. Enter them again.": "{var:1} anahtarları eksik ya da bu sitenin şifreleme anahtarıyla okunamıyor, bu yüzden formlar yerleşik soruyu gösteriyor. Anahtarları yeniden girin.",
     "The {var:1} keys were not saved: {var:2}": "{var:1} anahtarları kaydedilmedi: {var:2}",
     "The {var:1} number series could not be opened.": "{var:1} numara serisi açılamadı.",

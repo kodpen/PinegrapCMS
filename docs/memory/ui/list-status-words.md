@@ -12,7 +12,7 @@ module: output
 
 ## Where, and which word?
 - Edit Product Group, products in the group (`edit_product_group.php`) and the rows offered for it, preloaded (`pg_product_group_form_unselected_rows()`) and Ajax-loaded (`includes/panel/commerce.php`): Disabled under a disabled product's name. The three places stay alike.
-- All Key Codes: `pg_key_code_list_cells()` now returns `html` for the `code` cell, the escaped code plus the reason it does not work today: Disabled, else Expired (the code's own date), else Offer not running (the offer is off or outside its dates). The template prints that html, so the quick-edit answer repaints the reason through `paint()` with no JS change.
+- All Key Codes: `pg_key_code_list_cells()` now returns `html` for the `code` cell, the escaped code plus the reason it does not work today: Disabled, else Expired (the code's own date), else No offer has this code (`offer_status` null from the LEFT JOIN: the key code's offer code matches no offer), else Offer not running (the offer is off or outside its dates). The template prints that html, so the quick-edit answer repaints the reason through `paint()` with no JS change.
 - All Shipping Arrival Dates: Inactive under the name outside the date window; the Status badge still says Enabled there.
 - All Gift Cards: Expired, else No balance, under the red code badge.
 - ERP Expenses list and Expense screen: an Overdue badge after Unpaid when the due date has passed, as on the cheques list.

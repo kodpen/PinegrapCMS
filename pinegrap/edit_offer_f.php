@@ -597,6 +597,7 @@ function _pg_offer_editor_context($state)
         'group_discount'   => _pg_offer_group_discount_column(),
         'offer_conditions' => _pg_offer_conditions_table(),
         'cheapest_target'  => _pg_offer_target_column(),
+        'savedCode'        => (string) $offer['code'],
         'same_code_count'  => $same_code_count,
         'key_code_count'   => $key_code_count,
         'order_count'      => $order_count,
@@ -1006,6 +1007,7 @@ function _pg_offer_save($clean, $user)
     if ($is_new) {
         $offer_id = 0;
     }
+    $old_code = $is_new ? '' : (string) $existing['code'];
     $audit_before = $is_new ? array() : _pg_offer_audit_state($offer_id);
     $products = _pg_offer_products();
 
@@ -1069,6 +1071,17 @@ function _pg_offer_save($clean, $user)
         db("UPDATE offers SET " . implode(', ', $assignments) . " WHERE id = '" . e($offer_id) . "'");
         db("DELETE FROM offers_offer_actions_xref WHERE offer_id = '" . e($offer_id) . "'");
     }
+
+    // Key codes point at an offer by its code, so a changed code takes them
+    // along; otherwise every code already handed out stops working at
+    // checkout. Offers may share a code: while another offer still has the
+    // old one, the key codes stay with it. Past orders keep the code they used.
+    $moved_key_codes = 0;
+    if (!$is_new && ($old_code !== '') && ($old_code !== $offer['code'])
+        && ((int) db_value("SELECT COUNT(*) FROM offers WHERE code = '" . e($old_code) . "'") == 0)) {
+        db("UPDATE key_codes SET offer_code = '" . e($offer['code']) . "' WHERE offer_code = '" . e($old_code) . "'");
+        $moved_key_codes = max(0, (int) mysqli_affected_rows(db::$con));
+    }
     foreach ($action_ids as $action_id) {
         db("INSERT INTO offers_offer_actions_xref (offer_id, offer_action_id)
             VALUES ('" . e($offer_id) . "', '" . e($action_id) . "')");
@@ -1084,7 +1097,12 @@ function _pg_offer_save($clean, $user)
     } else {
         log_activity(lang(array('string' => 'offer ({var:1}) was modified', 'vars' => $offer['code'])), $_SESSION['sessionusername']);
     }
-    pg_audit($is_new ? 'create' : 'update', 'offer', $offer_id, $audit_before, _pg_offer_audit_state($offer_id), $offer['code']);
+    $audit_after = _pg_offer_audit_state($offer_id);
+    if ($moved_key_codes > 0) {
+        log_activity(lang(array('string' => '{var:1} key code(s) moved from offer code {var:2} to {var:3}', 'vars' => array($moved_key_codes, $old_code, $offer['code']))), $_SESSION['sessionusername']);
+        $audit_after['key_codes_moved'] = $moved_key_codes;
+    }
+    pg_audit($is_new ? 'create' : 'update', 'offer', $offer_id, $audit_before, $audit_after, $offer['code']);
     return $offer_id;
 }
 
