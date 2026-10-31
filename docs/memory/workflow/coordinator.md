@@ -7,7 +7,7 @@ description: Coordinator session (pilot, 2026-10-26): one per account, keeps its
 - Sessions stopped and waited to be told to go on while the quotas were 20-30% used. A coordinator keeps its account's workers busy.
 
 ## What does it do each turn?
-- Reads the state from GitHub and the plan files, never from its own memory: open PRs and drafts (the claims), the queue count (Working mode 8); `docs/memory/plans/README.md` and the open plan steps only when a worker slot is free.
+- Reads the state from GitHub and the plan files, never from its own memory: open PRs and drafts (the claims), the queue count (Working mode 8); `docs/memory/plans/README.md`, the open plan steps and the open `bug` issues (`test-coordinator.md`) only when a worker slot is free.
 - Picks work no open PR holds: one plan or area per worker, never two workers on the same files or the same plan (Claim work, step 1); steps of one plan in parallel when the owner assigned them so or when they touch different files.
 - Starts each worker as a cloud session with a short brief: the plan file and step (or the task), the memory folder to read, and "follow CLAUDE.md". The worker claims with its own draft PR and works as every session does, its plan's next steps included (Working mode 2 and 6).
 - Keeps 3 to 6 workers busy (since 2026-10-31); fewer only as `coordinator-limits.md` allows.
