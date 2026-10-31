@@ -195,6 +195,7 @@ if (!$_POST) {
     // paid_at exists from 2026.4.4 on; without it nothing here can tell an
     // unpaid bank transfer from a paid one, so the awaiting state is simply off.
     $order_awaiting_payment    = isset($row['paid_at']) && pg_order_awaiting_payment($row);
+    $order_paid_at             = isset($row['paid_at']) ? (int) $row['paid_at'] : null;
     $order_cancelled_at        = isset($row['cancelled_at']) ? (int) $row['cancelled_at'] : 0;
     $order_cancellation_reason = isset($row['cancellation_reason']) ? trim((string) $row['cancellation_reason']) : '';
 
@@ -2451,7 +2452,7 @@ if (!$_POST) {
 
     $refund_instructions = '';
     if ($refund_owed['payment'] > 0 || $refund_owed['gift_card'] <= 0) {
-        $refund_instructions .= '<div class="small">' . lang('The payment was NOT refunded automatically. Process the refund in your payment provider dashboard.') . '</div>';
+        $refund_instructions .= '<div class="small">' . pg_order_refund_instruction($payment_method) . '</div>';
     }
     if ($gift_card_discount_cents > 0) {
         $refund_instructions .= '<div class="small">' . lang(array(
@@ -2518,21 +2519,28 @@ if (!$_POST) {
 
         // The decision process_order_cancellation() makes when this window
         // is confirmed (it forces the void, hence the auto refund on): the
-        // same driver, and the money left after earlier refunds.
+        // same driver, the money left after earlier refunds, and whether a
+        // bank transfer or pending payment arrived at all (paid_at). The
+        // window speaks of a refund only when the cancellation flags one.
         $cancel_driver = pg_payment_cancel_driver($payment_method);
-        $cancel_payment_plan = pg_order_cancel_payment_plan($total_cents, $refunded_amount_cents, $payment_method, (bool) $transaction_id, $cancel_driver, true);
+        $cancel_payment_plan = pg_order_cancel_payment_plan($total_cents, $refunded_amount_cents, $payment_method, (bool) $transaction_id, $cancel_driver, true, $order_paid_at);
+        $cancel_by_transfer = ($payment_method === 'Offline Payment');
 
         if ($cancel_payment_plan['action'] === 'void') {
             $cancel_payment_note = '<p class="fg-secondary small">' . lang(array('string' => 'This will void the payment via {var:1}.', 'vars' => h(pg_payment_driver($cancel_driver)['label']))) . '</p>';
-        } elseif ($cancel_payment_plan['remaining'] > 0 && $cancel_payment_plan['refunded'] > 0) {
+        } elseif ($cancel_payment_plan['action'] === 'manual' && $cancel_payment_plan['refunded'] > 0) {
             $cancel_payment_note = '<p class="fg-warning small">' . lang(array(
-                'string' => '{var:1} of the payment was refunded already. The remaining {var:2} will NOT be refunded automatically. Process the refund in your payment provider dashboard.',
+                'string' => $cancel_by_transfer
+                    ? '{var:1} of the payment was refunded already. The remaining {var:2} will NOT be refunded automatically. Send it back to the customer by bank transfer.'
+                    : '{var:1} of the payment was refunded already. The remaining {var:2} will NOT be refunded automatically. Process the refund in your payment provider dashboard.',
                 'vars'   => array(
                     pg_format_money($cancel_payment_plan['refunded'] / 100, BASE_CURRENCY_SYMBOL),
                     pg_format_money($cancel_payment_plan['remaining'] / 100, BASE_CURRENCY_SYMBOL)))) . '</p>';
-        } elseif ($cancel_payment_plan['remaining'] > 0) {
-            $cancel_payment_note = '<p class="fg-warning small">' . lang('The payment will NOT be refunded automatically. Process the refund in your payment provider dashboard.') . '</p>';
-        } elseif ($cancel_payment_plan['refunded'] > 0) {
+        } elseif ($cancel_payment_plan['action'] === 'manual') {
+            $cancel_payment_note = '<p class="fg-warning small">' . ($cancel_by_transfer
+                ? lang('The payment will NOT be refunded automatically. Send the amount back to the customer by bank transfer.')
+                : lang('The payment will NOT be refunded automatically. Process the refund in your payment provider dashboard.')) . '</p>';
+        } elseif ($cancel_payment_plan['remaining'] <= 0 && $cancel_payment_plan['refunded'] > 0) {
             $cancel_payment_note = '<p class="fg-secondary small">' . lang('The payment was already refunded in full. Cancelling the order does not touch it.') . '</p>';
         } else {
             $cancel_payment_note = '';
@@ -3099,7 +3107,8 @@ if (!$_POST) {
         // provider wording applies only to payment money not refunded before
         // the cancellation; what gift cards paid is told apart, as it never
         // goes back by itself.
-        $cancelled_owed = pg_order_cancel_refund_owed((array) db_item("SELECT * FROM orders WHERE id = '" . e($order_id) . "'"));
+        $cancelled_order_row = (array) db_item("SELECT * FROM orders WHERE id = '" . e($order_id) . "'");
+        $cancelled_owed = pg_order_cancel_refund_owed($cancelled_order_row);
         $cancelled_total_cents     = $cancelled_owed['payment'];
         $cancelled_gift_card_cents = $cancelled_owed['gift_card'];
 
@@ -3107,7 +3116,7 @@ if (!$_POST) {
             $liveform->add_notice(lang('The payment has been refunded.'));
         } elseif (($response['refund_status'] == 'manual_required' || $response['refund_status'] == 'failed')
             && ($cancelled_total_cents > 0 || $cancelled_gift_card_cents <= 0)) {
-            $liveform->add_notice(lang('The payment was NOT refunded automatically. Process the refund in your payment provider dashboard.'));
+            $liveform->add_notice(pg_order_refund_instruction($cancelled_order_row['payment_method'] ?? ''));
         }
 
         if ($cancelled_gift_card_cents > 0) {

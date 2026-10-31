@@ -1015,6 +1015,7 @@
     "{var:1} of the flagged addresses also show signed-in activity or a completed order. Review them below before switching to Block.": "İşaretlenen adreslerden {var:1} tanesi aynı zamanda oturum açmış etkinlik ya da tamamlanmış sipariş gösteriyor. Engelleme moduna geçmeden önce aşağıda gözden geçirin.",
     "{var:1} of the open tasks here are yours.": "Buradaki açık görevlerin {var:1} tanesi sizde.",
     "{var:1} of the payment was refunded already. The remaining {var:2} will NOT be refunded automatically. Process the refund in your payment provider dashboard.": "Ödemenin {var:1} tutarı zaten iade edildi. Kalan {var:2} otomatik olarak iade EDİLMEYECEK. İadeyi ödeme sağlayıcınızın panelinden yapın.",
+    "{var:1} of the payment was refunded already. The remaining {var:2} will NOT be refunded automatically. Send it back to the customer by bank transfer.": "Ödemenin {var:1} tutarı zaten iade edildi. Kalan {var:2} otomatik olarak iade EDİLMEYECEK. Bu tutarı müşteriye havaleyle geri gönderin.",
     "{var:1} of the selected files are images that can be optimized.": "Seçilenlerin {var:1} tanesi optimize edilebilecek görsel.",
     "{var:1} of the ticked products are not matched, or their match was refused, and were not queued.": "İşaretlenen ürünlerden {var:1} tanesi eşleşmemiş ya da eşleşmesi reddedilmiş; bunlar kuyruğa alınmadı.",
     "{var:1} of the {var:2} open tasks here are past their due date.": "Buradaki {var:2} açık görevin {var:1} tanesinin tarihi geçti.",

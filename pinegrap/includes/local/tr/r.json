@@ -3,6 +3,7 @@
     "READ/EDIT": "OKUMA/DÜZENLEME",
     "REFUND ACTION REQUIRED — order #{var:1} was cancelled. Gift cards paid {var:2} of it: {var:3}. Return the amounts to the cards.": "İADE İŞLEMİ GEREKLİ — #{var:1} numaralı sipariş iptal edildi. Siparişin {var:2} tutarındaki kısmı hediye kartlarıyla ödendi: {var:3}. Tutarları kartlara geri yükleyin.",
     "REFUND ACTION REQUIRED — order #{var:1} was cancelled. Payment method: {var:2}. Amount: {var:3}. Process refund in the gateway dashboard.": "İADE İŞLEMİ GEREKLİ — #{var:1} numaralı sipariş iptal edildi. Ödeme yöntemi: {var:2}. Tutar: {var:3}. İadeyi ödeme sağlayıcısının panelinden yapın.",
+    "REFUND ACTION REQUIRED — order #{var:1} was cancelled. Payment method: {var:2}. Amount: {var:3}. Send the amount back to the customer by bank transfer.": "İADE İŞLEMİ GEREKLİ — #{var:1} numaralı sipariş iptal edildi. Ödeme yöntemi: {var:2}. Tutar: {var:3}. Tutarı müşteriye havaleyle geri gönderin.",
     "RETURN INVOICE": "İADE FATURASI",
     "RSS / Search Element": "RSS / Arama Öğesi",
     "RSS / list role": "RSS / liste rolü",
