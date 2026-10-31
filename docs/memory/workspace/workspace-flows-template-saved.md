@@ -15,11 +15,11 @@ description: Flow templates saved on the site (G3a #3146, G3b #3242): ws_flow_te
 
 ## How is it read?
 - `ws_flow_templates_for()` appends `ws_flow_templates_saved($viewer)`: to everyone who may build flows (`ws_can_schedule()`), latest changed first. So the gallery, the setup action and the API's template list and Use take them with no more code.
-- Entry (`ws_flow_template_saved_entry()`): category `saved` ("Saved on this site", last in `ws_flow_template_categories()`), the row's own group in `saved.category`; `start`, `boxes`, `threads`, `motion` computed from the graph; settings of unknown types or on gone boxes dropped; `saved` also has id, created_by, source flow, updated_at, `edit`.
+- Entry (`ws_flow_template_saved_entry()`): category `saved` ("Saved on this site", last in `ws_flow_template_categories()`), the row's own group in `saved.category`; `start` is the start box's kind (`ws_flow_trigger_node()`, '' without one; #3984: the first box was taken, so a start placed after a Task said "Task"), `boxes`, `threads`, `motion` computed from the graph; settings of unknown types or on gone boxes dropped; `saved` also has id, created_by, source flow, updated_at, `edit`.
 
 ## Who may change or delete one?
-- `ws_flow_template_may_change()`: its saver, or a staff member at role 2 (Manager) or above (0, 1). Builders are role < 3 today, so all may. Delete sets `binned_at`; flows made from it keep their boxes.
-- Erasure: as `ws_flows`, nothing rewritten; `created_by`/`updated_by` keep the number.
+- `ws_flow_template_may_change()`: its saver, or a staff member at role 2 (Manager) or above (0, 1). Delete sets `binned_at`; flows made from it keep their boxes.
+- Erasure: as `ws_flows`; `created_by`/`updated_by` keep the number.
 
 ## Which panel actions?
 - `ws_flow_template_save` (flow_id, title, help, category), `ws_flow_template_update` (key, any of title, help, category), `ws_flow_template_bin` (key): `includes/workspace/actions.php`, rows in `pg_panel_actions()`.
@@ -27,4 +27,4 @@ description: Flow templates saved on the site (G3a #3146, G3b #3242): ws_flow_te
 ## Where does the panel use them? (G3b, #3242)
 - Editor ⋯ menu: "Save as template" when `ws_flow_js_config()`'s `template_save` (builders, table there), the flow editable (one without boxes is refused in the dialog). One dialog (`templateDialog()`, `workspace_flow.js`): title (the flow's name), one line, group (the categories but saved); saving `flush()`es first, as the server reads the draft.
 - Gallery: saved cards under "Saved on this site" with a badge of their own group (`savedMark()`); edit (same dialog) and delete (`K.ask`) only where `saved.edit`. `FL.templates` is kept in step by `templatesKept()` (pure, Node test in the canvas test); no reload.
-- Focus: the gallery is drawn again only once every dialog is closed (`whenDialogsClosed()`: the page behind a modal dialog takes no focus; `K.ask` answers before its fade ends); `showGallery()` keeps `state.refocus` past `showNone()`, which would spend it on the flow list. Harness scenario "Save as template".
+- Focus: the gallery is drawn again only once every dialog is closed (`whenDialogsClosed()`; `K.ask` answers before its fade ends); `showGallery()` keeps `state.refocus` past `showNone()`. Harness scenario "Save as template".

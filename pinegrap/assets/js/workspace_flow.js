@@ -989,9 +989,9 @@
             return false;
         }
 
-        var text = [flow.name, flow.start_text, flow.channel_name].join(' ').toLowerCase();
+        var text = K.foldText([flow.name, flow.start_text, flow.channel_name].join(' '));
 
-        return String(query || '').toLowerCase().split(/\s+/).every(function (word) {
+        return K.foldText(query).split(/\s+/).every(function (word) {
             return !word || (text.indexOf(word) !== -1);
         });
     }
@@ -4084,13 +4084,13 @@
     // The palette's groups in their order, each with the items whose name
     // holds every word searched for; a group with none is left out.
     function paletteGroups(items, query) {
-        var words = String(query || '').toLowerCase().split(/\s+/).filter(Boolean);
+        var words = K.foldText(query).split(/\s+/).filter(Boolean);
 
         return PALETTE_GROUPS.map(function (group) {
             return {
                 group: group[0],
                 items: items.filter(function (item) {
-                    var name = t(item[1]).toLowerCase();
+                    var name = K.foldText(t(item[1]));
 
                     return KINDS[item[0]] && (KINDS[item[0]].group === group[0]) && words.every(function (word) { return name.indexOf(word) !== -1; });
                 })
@@ -7847,10 +7847,10 @@
             filter.setAttribute('aria-label', t('fl_people_filter'));
             filter.disabled = !state.edit;
             filter.addEventListener('input', function () {
-                var query = filter.value.trim().toLocaleLowerCase();
+                var query = K.foldText(filter.value.trim());
 
                 Array.prototype.forEach.call(list.children, function (row) {
-                    row.classList.toggle('d-none', query !== '' && row.textContent.toLocaleLowerCase().indexOf(query) === -1);
+                    row.classList.toggle('d-none', query !== '' && K.foldText(row.textContent).indexOf(query) === -1);
                 });
             });
             wrap.appendChild(filter);
