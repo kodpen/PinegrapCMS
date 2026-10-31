@@ -142,3 +142,24 @@ function test_explorer_restore_reports_changes()
 	pg_assert_same(3, substr_count($names, "return array('from' => \$original, 'to' => \$name);"), 'release name returns what it wrote');
 	pg_assert_contains("\$out['original_name'] = \$name;", $styles, 'style restore returns its names');
 }
+
+// Only a page whose style stayed in the bin gets the style note; the name
+// starts empty for every restored item, so a file or folder never reads an
+// undefined variable or the previous page's style.
+function test_explorer_restore_style_note()
+{
+	pg_assert_same(array(), pg_explorer_restore_style_note('pg-test-photo.png', ''), 'no style left');
+	pg_assert_same(
+		array('The page about came back without its style Blue, which stays in the recycle bin until a designer restores it.'),
+		pg_explorer_restore_style_note('about', 'Blue'), 'style left in the bin');
+
+	$handler = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/explorer/handle_recycle.php');
+	$delete = substr($handler, strpos($handler, 'function pg_explorer_handle_recycle_delete('), strpos($handler, 'function pg_explorer_restore_target(') - strpos($handler, 'function pg_explorer_handle_recycle_delete('));
+	$restore = substr($handler, strpos($handler, 'function pg_explorer_handle_recycle_restore('));
+	$loop = substr($restore, strpos($restore, 'foreach ($restore_items as $item) {'));
+
+	pg_assert_false(strpos($delete, '$page_style_left_name') !== false, 'not in the delete handler');
+	pg_assert_true(strpos($loop, '$page_style_left_name = \'\';') !== false, 'reset in the loop');
+	pg_assert_true(strpos($loop, '$page_style_left_name = \'\';') < strpos($loop, 'continue;'), 'reset before anything skips or reads it');
+	pg_assert_contains('pg_explorer_restore_style_note($item_name, $page_style_left_name)', $handler, 'note built by the helper');
+}
