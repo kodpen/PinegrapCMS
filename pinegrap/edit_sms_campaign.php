@@ -27,7 +27,7 @@ if (!pg_sms_campaigns_ready()) {
 
 pg_request_single_values(array('id'));
 
-$id = (int) ($_REQUEST['id'] ?? 0);
+$id = is_scalar($_REQUEST['id'] ?? null) ? (int) $_REQUEST['id'] : 0;
 
 $campaign = array(
     'id' => 0, 'name' => '', 'body' => '', 'status' => 'draft', 'start_at' => 0,
