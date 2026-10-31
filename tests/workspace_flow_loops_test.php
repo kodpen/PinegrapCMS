@@ -444,7 +444,7 @@ function test_workspace_flow_loops_runner_wiring()
 
 	$values = ws_flow_loops_test_source('ws_step_run_values');
 	pg_assert_contains('pass IN (0, " . $pass . ")', $values, 'its own item and the boxes outside the loops');
-	pg_assert_contains('ws_flow_loop_item_values(', $values);
+	pg_assert_contains('ws_flow_loop_pass_values(', $values);
 	pg_assert_contains('ws_step_run_values($run, $graph, $owner, $context, $step)', ws_flow_loops_test_source('ws_step_run'));
 	pg_assert_contains('ws_step_run_values($run, $graph, $owner, $source_context, $step)', ws_flow_loops_test_source('ws_flow_chain_start'));
 
