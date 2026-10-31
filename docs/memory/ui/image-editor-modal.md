@@ -16,7 +16,7 @@ module: image_editor
 
 ## Which keys and gestures work?
 - Ctrl/Cmd+Z undo, Ctrl/Cmd+Shift+Z or Ctrl+Y redo; + and - zoom, 0 fits, 1 is actual size. Ctrl/Cmd and the wheel (a trackpad pinch) zoom at the pointer; the wheel pans, with Shift sideways. Space and drag, the middle button, or two fingers move the view; two fingers pinch. One finger and the left button stay free for the tools.
-- Escape closes the unsaved-changes question or the save menu, else leaves full screen, else closes (asking first when the document changed). The full-screen button sets a full-window class and asks the browser for full screen; leaving the browser's full screen drops back to the window. Double click (two taps on touch) on the stage: actual size there from the fitted view, else fit again.
+- Escape closes the unsaved-changes question or the save menu, else clears the layer selection, else leaves full screen, else closes (asking first when the document changed). The full-screen button sets a full-window class and asks the browser for full screen; leaving the browser's full screen drops back to the window. Double click (two taps on touch) on the stage: actual size there from the fitted view, else fit again.
 
 ## How does it look on a phone?
 - Below 768 px wide or 500 px tall the dialog fills the screen and the panel is a sheet the editor opens and closes (`.pgie-sheet-closed`): a tool opens it, pressing the active tool again toggles it, Select opens it only on that second press, the panel's close button shuts it.

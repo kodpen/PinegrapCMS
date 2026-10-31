@@ -291,7 +291,9 @@
 
     // Layers that keep their size and stay upright when the picture turns
     // or flips: only their centre moves.
-    var UPRIGHT = ['text', 'sticker'];
+    // Layers whose content a turn or a flip of the picture does not turn:
+    // only their place follows it.
+    var UPRIGHT = ['text', 'sticker', 'image'];
 
     function sourceTurns(doc) {
         var g = doc.geometry, src = doc.source || { width: 0, height: 0 };
@@ -434,6 +436,13 @@
                 n.ox = o[0];
                 n.oy = o[1];
             });
+        }
+
+        // A mirror turns a box's own angle the other way.
+        var o = fn(0, 0), ex = fn(1, 0), ey = fn(0, 1);
+
+        if (l.rot && (UPRIGHT.indexOf(l.type) < 0) && ((ex[0] - o[0]) * (ey[1] - o[1]) - (ex[1] - o[1]) * (ey[0] - o[0]) < 0)) {
+            l.rot = -l.rot;
         }
 
         if ((typeof l.x === 'number') && (typeof l.w === 'number')) {
@@ -629,6 +638,193 @@
         return [corner, edge, corner, edge, 1 + 0.75 * a, edge, corner, edge, corner].map(function (x) { return Math.round(x * 1e6) / 1e6; });
     }
 
+    // ---- layers ----
+
+    // A layer id not yet in the document.
+    function newId(doc) {
+        var n = doc.layers.length;
+
+        while (doc.layers.some(function (l) { return l.id === 'l' + n; })) {
+            n++;
+        }
+
+        return 'l' + n;
+    }
+
+    // The corners of a box layer, turned by its angle (rot, degrees
+    // clockwise) around its centre.
+    function corners(l) {
+        var m = mul(translate(l.x + l.w / 2, l.y + l.h / 2), mul(rotate(l.rot || 0), translate(-l.w / 2, -l.h / 2)));
+
+        return [[0, 0], [l.w, 0], [l.w, l.h], [0, l.h]].map(function (p) { return apply(m, p[0], p[1]); });
+    }
+
+    // The upright box around layers.
+    function bounds(list) {
+        var xs = [], ys = [];
+
+        list.forEach(function (l) {
+            corners(l).forEach(function (p) {
+                xs.push(p[0]);
+                ys.push(p[1]);
+            });
+        });
+
+        if (!xs.length) {
+            return null;
+        }
+
+        var x = Math.min.apply(null, xs), y = Math.min.apply(null, ys);
+
+        return { x: x, y: y, w: Math.max.apply(null, xs) - x, h: Math.max.apply(null, ys) - y };
+    }
+
+    // A point in a layer's own frame: 0, 0 its top left before its angle.
+    function local(l, x, y) {
+        return apply(mul(translate(l.w / 2, l.h / 2), mul(rotate(-(l.rot || 0)), translate(-l.x - l.w / 2, -l.y - l.h / 2))), x, y);
+    }
+
+    // The topmost visible, unlocked layer under x, y (slack in document units).
+    function hitLayer(doc, x, y, slack) {
+        for (var i = doc.layers.length - 1; i >= 0; i--) {
+            var l = doc.layers[i], p = local(l, x, y);
+
+            if (!l.hidden && !l.locked && (p[0] >= -slack) && (p[1] >= -slack) && (p[0] <= l.w + slack) && (p[1] <= l.h + slack)) {
+                return l;
+            }
+        }
+
+        return null;
+    }
+
+    // A box layer resized by dragging handle h (nw, n, ne, e, se, s, sw, w)
+    // to x, y: the opposite edge or corner stays where it is in the layer's
+    // own turned frame; keep holds the ratio; no side under min.
+    function resizeBox(l, h, x, y, keep, min) {
+        var p = local(l, x, y), x0 = 0, y0 = 0, x1 = l.w, y1 = l.h;
+
+        if (h.indexOf('w') >= 0) { x0 = Math.min(p[0], l.w - min); }
+        if (h.indexOf('e') >= 0) { x1 = Math.max(p[0], min); }
+        if (h.indexOf('n') >= 0) { y0 = Math.min(p[1], l.h - min); }
+        if (h.indexOf('s') >= 0) { y1 = Math.max(p[1], min); }
+
+        if (keep && (h.length === 2)) {
+            var k = Math.max((x1 - x0) / l.w, (y1 - y0) / l.h);
+
+            if (h.indexOf('w') >= 0) { x0 = l.w - l.w * k; } else { x1 = l.w * k; }
+            if (h.indexOf('n') >= 0) { y0 = l.h - l.h * k; } else { y1 = l.h * k; }
+        }
+
+        // The new box's centre, from the layer's frame back to the document.
+        var m = mul(translate(l.x + l.w / 2, l.y + l.h / 2), mul(rotate(l.rot || 0), translate(-l.w / 2, -l.h / 2)));
+        var c = apply(m, (x0 + x1) / 2, (y0 + y1) / 2), w = x1 - x0, hh = y1 - y0;
+
+        return { x: c[0] - w / 2, y: c[1] - hh / 2, w: w, h: hh };
+    }
+
+    // The angle that turns l's top towards x, y (degrees clockwise, in
+    // (-180, 180]); snap gives steps of 15.
+    function angleTo(l, x, y, snap) {
+        var a = Math.atan2(x - (l.x + l.w / 2), (l.y + l.h / 2) - y) * 180 / Math.PI;
+
+        if (snap) {
+            a = Math.round(a / 15) * 15;
+        }
+
+        return (a <= -180) ? a + 360 : ((a > 180) ? a - 360 : a);
+    }
+
+    // Moves that line boxes up to target: left, center, right, top, middle
+    // or bottom.
+    function align(boxes, how, target) {
+        return boxes.map(function (b) {
+            var dx = 0, dy = 0;
+
+            if (how === 'left') { dx = target.x - b.x; }
+            if (how === 'center') { dx = target.x + target.w / 2 - (b.x + b.w / 2); }
+            if (how === 'right') { dx = target.x + target.w - (b.x + b.w); }
+            if (how === 'top') { dy = target.y - b.y; }
+            if (how === 'middle') { dy = target.y + target.h / 2 - (b.y + b.h / 2); }
+            if (how === 'bottom') { dy = target.y + target.h - (b.y + b.h); }
+
+            return [dx, dy];
+        });
+    }
+
+    // Moves that space three or more boxes evenly along axis x or y, the
+    // first and the last staying.
+    function distribute(boxes, axis) {
+        var pos = (axis === 'y') ? 'y' : 'x', size = (axis === 'y') ? 'h' : 'w';
+        var order = boxes.map(function (b, i) { return i; }).sort(function (a, b) { return boxes[a][pos] - boxes[b][pos]; });
+        var first = boxes[order[0]], last = boxes[order[order.length - 1]], total = 0, out = boxes.map(function () { return [0, 0]; });
+
+        order.forEach(function (i) { total += boxes[i][size]; });
+
+        var gap = (last[pos] + last[size] - first[pos] - total) / Math.max(1, boxes.length - 1), at = first[pos];
+
+        order.forEach(function (i) {
+            out[i][(pos === 'x') ? 0 : 1] = at - boxes[i][pos];
+            at += boxes[i][size] + gap;
+        });
+
+        return out;
+    }
+
+    // Snapping a moved box: the shortest pull within tol that lines one of
+    // its edges or its centre up with a line of xs or ys; the lines it meets
+    // are the guides.
+    function snapBox(box, xs, ys, tol) {
+        var pull = function (mine, lines) {
+            var best = null;
+
+            mine.forEach(function (m) {
+                lines.forEach(function (line) {
+                    var d = line - m;
+
+                    if ((Math.abs(d) <= tol) && ((best === null) || (Math.abs(d) < Math.abs(best)))) {
+                        best = d;
+                    }
+                });
+            });
+
+            return best || 0;
+        };
+        var dx = pull([box.x, box.x + box.w / 2, box.x + box.w], xs), dy = pull([box.y, box.y + box.h / 2, box.y + box.h], ys);
+        var near = function (v, lines) { return lines.filter(function (line) { return Math.abs(line - v) < 0.01; }); };
+
+        return {
+            dx: dx,
+            dy: dy,
+            gx: near(box.x + dx, xs).concat(near(box.x + dx + box.w / 2, xs), near(box.x + dx + box.w, xs)),
+            gy: near(box.y + dy, ys).concat(near(box.y + dy + box.h / 2, ys), near(box.y + dy + box.h, ys))
+        };
+    }
+
+    // The layers in a new order: ids moved up or down one place, or to the
+    // top or the bottom.
+    function reorder(layers, ids, how) {
+        var list = layers.slice(), picked = function (l) { return ids.indexOf(l.id) >= 0; };
+
+        if ((how === 'top') || (how === 'bottom')) {
+            var moved = list.filter(picked), rest = list.filter(function (l) { return !picked(l); });
+
+            return (how === 'top') ? rest.concat(moved) : moved.concat(rest);
+        }
+
+        var step = (how === 'up') ? 1 : -1, i = (step > 0) ? list.length - 2 : 1;
+
+        for (; (i >= 0) && (i < list.length); i -= step) {
+            if (picked(list[i]) && !picked(list[i + step])) {
+                var swap = list[i];
+
+                list[i] = list[i + step];
+                list[i + step] = swap;
+            }
+        }
+
+        return list;
+    }
+
     var api = {
         mul: mul, inv: inv, apply: apply, translate: translate, scale: scale, rotate: rotate, clamp: clamp,
         flipRot: flipRot, coverScale: coverScale, fitZoom: fitZoom, centred: centred, zoomAt: zoomAt,
@@ -637,7 +833,9 @@
         RATIOS: RATIOS, cropBox: cropBox, pictureMatrix: pictureMatrix, fitRatio: fitRatio, resizeCrop: resizeCrop,
         moveCrop: moveCrop, mapLayer: mapLayer, reorient: reorient, turnDocument: turnDocument, flipDocument: flipDocument,
         outputSize: outputSize, ADJUST: ADJUST, FILTERS: FILTERS, FILTER_NAMES: FILTER_NAMES, colorValues: colorValues,
-        colorMatrix: colorMatrix, applyColor: applyColor, vignetteStops: vignetteStops, sharpenKernel: sharpenKernel
+        colorMatrix: colorMatrix, applyColor: applyColor, vignetteStops: vignetteStops, sharpenKernel: sharpenKernel,
+        newId: newId, corners: corners, bounds: bounds, local: local, hitLayer: hitLayer, resizeBox: resizeBox, angleTo: angleTo,
+        align: align, distribute: distribute, snapBox: snapBox, reorder: reorder
     };
 
     if ((typeof module === 'object') && module.exports) {
