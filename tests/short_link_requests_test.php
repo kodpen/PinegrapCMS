@@ -271,4 +271,20 @@ function test_short_link_page_rename_screens_keep_the_old_address()
 	pg_assert_contains('rec.page_name_redirect = (p.page_name_redirect === 0) ? 0 : 1;', $editor, 'the editor asks unless the box was switched off');
 	pg_assert_contains("document.getElementById('sd-page-name-redirect')", $editor, 'from the box under the name');
 	pg_assert_contains('id="sd-page-name-redirect"', short_link_requests_test_source('includes/designer_screen.php'), 'which the settings draw');
+
+	// The File Manager rename (inline and Bulk Rename) and Mass Edit (the
+	// Page Name grid and Find & Replace) let the page take back a name its
+	// own redirect holds and delete that redirect, with no new one: they
+	// have no box to switch it off.
+	$explorer = short_link_requests_test_function_body(short_link_requests_test_source('includes/explorer/handle_items.php'), 'pg_explorer_handle_rename');
+
+	pg_assert_contains("'ignore_redirects_to_page' => \$item_id", $explorer, 'the File Manager name check lets the page\'s own redirect go');
+	pg_assert_contains("pg_short_link_page_renamed(\$item_id, \$page['page_name'], \$name, false, \$user['id'], \$page['page_folder'])", $explorer, 'and the rename deletes it');
+
+	$mass = short_link_requests_test_source('mass_edit.php');
+
+	pg_assert_contains("'ignore_redirects_to_page' => \$row['page_id']", $mass, 'the Find & Replace name check lets the page\'s own redirect go');
+	pg_assert_contains("pg_short_link_page_renamed(\$row['page_id'], \$row['page_name'], \$new_val, false, \$user['id'], \$row['page_folder'])", $mass, 'and Find & Replace deletes it');
+	pg_assert_contains("'ignore_redirects_to_page' => \$page_id", $mass, 'the grid name check lets the page\'s own redirect go');
+	pg_assert_contains("pg_short_link_page_renamed(\$page_id, \$current_page_name, \$new_page_name, false, \$user['id'], \$row['page_folder'])", $mass, 'and the grid deletes it');
 }
