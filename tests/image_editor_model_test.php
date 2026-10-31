@@ -241,3 +241,107 @@ function test_image_editor_model_history()
 	pg_assert_true($r['canRedo'] === false, 'a new change drops the redo steps');
 	pg_assert_same(null, $r['empty'], 'nothing to undo answers null');
 }
+
+// A ratio gives the largest box of that shape on the picture, centred
+// where the crop was; free keeps the box.
+function test_image_editor_model_fit_ratio()
+{
+	$r = image_editor_model_node(
+		'var full = { x: 0, y: 0, w: 400, h: 300 };' . "\n"
+		. 'console.log(JSON.stringify({ square: M.fitRatio(full, 1, 400, 300), wide: M.fitRatio(full, 16 / 9, 400, 300),'
+		. ' free: M.fitRatio({ x: 5, y: 6, w: 7, h: 8 }, 0, 400, 300), edge: M.fitRatio({ x: 380, y: 0, w: 20, h: 20 }, 1, 400, 300) }));'
+	);
+
+	if ($r === null) {
+		return;
+	}
+
+	pg_assert_false(isset($r['error']), isset($r['error']) ? $r['error'] : 'ran');
+	pg_assert_same(array('x' => 50, 'y' => 0, 'w' => 300, 'h' => 300), $r['square'], '1:1 is the full height, centred');
+	pg_assert_same(array('x' => 0, 'y' => 37.5, 'w' => 400, 'h' => 225), $r['wide'], '16:9 is the full width, centred');
+	pg_assert_same(array('x' => 5, 'y' => 6, 'w' => 7, 'h' => 8), $r['free'], 'free keeps the box');
+	pg_assert_same(100, $r['edge']['x'], 'a box near the edge is pulled back onto the picture');
+}
+
+// Free handles follow the pointer; with a ratio the opposite corner stays,
+// an edge keeps the other axis centred, and the box never leaves the picture.
+function test_image_editor_model_resize_crop()
+{
+	$r = image_editor_model_node(
+		'console.log(JSON.stringify({'
+		. ' free: M.resizeCrop({ x: 0, y: 0, w: 400, h: 300 }, "se", 200, 100, 0, 400, 300),'
+		. ' corner: M.resizeCrop({ x: 0, y: 0, w: 200, h: 200 }, "se", 390, 390, 1, 400, 300),'
+		. ' edge: M.resizeCrop({ x: 100, y: 100, w: 100, h: 100 }, "e", 350, 0, 1, 400, 300),'
+		. ' nw: M.resizeCrop({ x: 100, y: 100, w: 100, h: 100 }, "nw", 90, 0, 1, 400, 300),'
+		. ' tiny: M.resizeCrop({ x: 0, y: 0, w: 100, h: 100 }, "e", -50, 0, 0, 400, 300, 16),'
+		. ' moved: M.moveCrop({ x: 0, y: 0, w: 100, h: 100 }, -50, 500, 400, 300) }));'
+	);
+
+	if ($r === null) {
+		return;
+	}
+
+	pg_assert_false(isset($r['error']), isset($r['error']) ? $r['error'] : 'ran');
+	pg_assert_same(array('x' => 0, 'y' => 0, 'w' => 200, 'h' => 100), $r['free'], 'a free corner follows the pointer');
+	pg_assert_same(array('x' => 0, 'y' => 0, 'w' => 300, 'h' => 300), $r['corner'], 'a square stops at the picture\'s height');
+	pg_assert_same(array('x' => 100, 'y' => 25, 'w' => 250, 'h' => 250), $r['edge'], 'an edge grows the other axis around its centre');
+	pg_assert_same(array('x' => 0, 'y' => 0, 'w' => 200, 'h' => 200), $r['nw'], 'the opposite corner stays');
+	pg_assert_same(16, $r['tiny']['w'], 'a box keeps its smallest size');
+	pg_assert_same(array('x' => 0, 'y' => 200, 'w' => 100, 'h' => 100), $r['moved'], 'a moved box stays on the picture');
+}
+
+// A turn to the right moves the crop and the layers clockwise with the
+// picture; an upright layer keeps its size; under a flip the turn is still
+// clockwise on screen; turning swaps the output size.
+function test_image_editor_model_turns_move_crop_and_layers()
+{
+	$r = image_editor_model_node(
+		'var d = M.newDocument({});' . "\n"
+		. 'd.source.width = 400; d.source.height = 300;' . "\n"
+		. 'd.geometry.crop = { x: 0, y: 0, w: 200, h: 100 }; d.geometry.output = { w: 100, h: 50 };' . "\n"
+		. 'd.layers = [{ type: "rect", x: 0, y: 0, w: 100, h: 50 }, { type: "text", x: 10, y: 10, w: 80, h: 20 }];' . "\n"
+		. 'var t = M.turnDocument(d, 1);' . "\n"
+		. 'var f = M.newDocument({}); f.source.width = 400; f.source.height = 300;' . "\n"
+		. 'f = M.flipDocument(f, "x"); f.layers = [{ type: "rect", x: 0, y: 0, w: 1, h: 1 }];' . "\n"
+		. 'var ft = M.turnDocument(f, 1), back = M.turnDocument(M.turnDocument(M.turnDocument(t, 1), 1), 1);' . "\n"
+		. 'console.log(JSON.stringify({ rot: t.geometry.rot, crop: t.geometry.crop, rect: t.layers[0], text: t.layers[1], output: t.geometry.output,'
+		. ' flippedRot: ft.geometry.rot, flippedRect: ft.layers[0], full: back.layers[0], original: d.layers[0].x }));'
+	);
+
+	if ($r === null) {
+		return;
+	}
+
+	pg_assert_false(isset($r['error']), isset($r['error']) ? $r['error'] : 'ran');
+	pg_assert_same(90, $r['rot'], 'the picture turns a quarter');
+	pg_assert_same(array('x' => 200, 'y' => 0, 'w' => 100, 'h' => 200), $r['crop'], 'the crop box turns with it');
+	pg_assert_same(array('type' => 'rect', 'x' => 250, 'y' => 0, 'w' => 50, 'h' => 100), $r['rect'], 'a box turns with the picture');
+	pg_assert_same(array('type' => 'text', 'x' => 240, 'y' => 40, 'w' => 80, 'h' => 20), $r['text'], 'a text moves its centre and stays upright');
+	pg_assert_same(array('w' => 50, 'h' => 100), $r['output'], 'the output size is swapped');
+	pg_assert_same(270, $r['flippedRot'], 'under a flip the picture itself turns the other way');
+	pg_assert_same(array('type' => 'rect', 'x' => 299, 'y' => 0, 'w' => 1, 'h' => 1), $r['flippedRect'], 'the top-left corner still goes to the top right');
+	pg_assert_same(array('type' => 'rect', 'x' => 0, 'y' => 0, 'w' => 100, 'h' => 50), $r['full'], 'four turns bring a layer back');
+	pg_assert_same(0, $r['original'], 'the document turned is a copy');
+}
+
+// The picture's matrix is the identity without turns or straightening, and
+// follows the quarter turn; the output size is the crop box rounded.
+function test_image_editor_model_picture_matrix_and_output()
+{
+	$r = image_editor_model_node(
+		'var d = M.newDocument({}); d.source.width = 400; d.source.height = 300;' . "\n"
+		. 'var id = M.pictureMatrix(d);' . "\n"
+		. 'var t = M.turnDocument(d, 1);' . "\n"
+		. 'd.geometry.crop = { x: 0, y: 0, w: 200.4, h: 100.6 };' . "\n"
+		. 'console.log(JSON.stringify({ identity: id, corner: M.apply(M.pictureMatrix(t), 400, 0), out: M.outputSize(d) }));'
+	);
+
+	if ($r === null) {
+		return;
+	}
+
+	pg_assert_false(isset($r['error']), isset($r['error']) ? $r['error'] : 'ran');
+	pg_assert_same(array(1, 0, 0, 1, 0, 0), $r['identity'], 'no turn, no straightening: the identity');
+	pg_assert_same(array(300, 400), $r['corner'], 'after a turn the top-right corner is at the bottom right');
+	pg_assert_same(array('w' => 200, 'h' => 101), $r['out'], 'the output is the crop box in whole pixels');
+}

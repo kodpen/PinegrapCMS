@@ -14,7 +14,7 @@ description: Steps E1-E10 of plans/image-editor.md: core modal, crop, server sav
   - Narrower than 600 px: the rail becomes a scrolling bottom bar, the tool's panel a sheet above it (handle, at most 42 % of the height; closed for Select until something is chosen), the top bar keeps close, name, undo, redo and save; the mini bar sits at the bottom; handles get 44 px touch targets; safe-area insets.
   - Lower than 500 px (a phone held sideways): an icon rail on the left and the panel as a sheet over the right of the stage. Replaces E1's rule that hides the panel under 768 px.
 
-- E2 (M) Crop and geometry. Screen 02.
+- E2 (M) Crop and geometry. Screen 02. Done in #4208 (`ui/image-editor-crop.md`).
   - Crop box and handles, ratios (free, original, 1:1, 4:3, 3:2, 16:9, 4:5, 9:16), quarter turns, flips, straighten ±45° with cover scale, output size with presets, crop shape (rounded, circle).
   - Layers follow turns and flips; cancel restores them.
 
