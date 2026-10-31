@@ -607,7 +607,7 @@ function api_schema() {
 			'description' => 'Cursor paged and ordered by the order date, oldest first, so updated_since walks new orders in one direction without repeating any; sort=placed_desc lists the newest first and resumes the same way. modified_since lists the orders changed at or after a moment, oldest change first, so a client asks what changed since its last read and walks forward: a status change, a cancellation, a restore, a refund, notes, shipping or an export moves an order\'s modified_at. A cursor works only under the sort (or the modified_since listing) it was made for; under another one it is 400 invalid_cursor. Each order carries type (online, local for a counter sale, or marketplace), cancelled_at (null unless cancelled), cancellation_reason (\'\' when none) and refund_status (\'\', pending, refunded, failed or manual_required); each is null on a site whose database lacks its column.',
 			'params'  => array(
 				array('name' => 'updated_since', 'in' => 'query', 'type' => 'datetime', 'description' => 'Only orders placed at or after this moment.'),
-				array('name' => 'date_to',       'in' => 'query', 'type' => 'datetime'),
+				array('name' => 'date_to',       'in' => 'query', 'type' => 'datetime', 'description' => 'Only orders placed at or before this moment. A date alone (YYYY-MM-DD) counts that day whole, to 23:59:59 in the site\'s time zone; a value with a time is that moment.'),
 				array('name' => 'modified_since', 'in' => 'query', 'type' => 'datetime', 'description' => 'Only orders changed at or after this moment (modified_at), oldest change first. Cannot be combined with sort.'),
 				array('name' => 'status',        'in' => 'query', 'type' => 'string', 'max_length' => 100, 'description' => 'One status or several, comma separated: incomplete, complete, exported, cancelled (complete,exported are the placed orders that count as sales). An unknown value is refused with 422.'),
 				array('name' => 'sort',          'in' => 'query', 'type' => 'enum', 'values' => array('placed', 'placed_desc'), 'description' => 'placed (the default) lists the oldest placed first, placed_desc the newest first.'),
@@ -1246,7 +1246,7 @@ function api_schema() {
 			'description' => 'What was done on the site, newest first, cursor paged, as the Site Log screen lists it: the sentence it was logged with (in the site\'s language), the account that did it and the address it came from. user is null for what visitors and the site\'s own jobs did. Read only. The PHP error logs on the same screen are not here.',
 			'params'  => array(
 				array('name' => 'from',   'in' => 'query', 'type' => 'datetime'),
-				array('name' => 'to',     'in' => 'query', 'type' => 'datetime'),
+				array('name' => 'to',     'in' => 'query', 'type' => 'datetime', 'description' => 'Only entries logged at or before this moment. A date alone (YYYY-MM-DD) counts that day whole, to 23:59:59 in the site\'s time zone; a value with a time is that moment.'),
 				array('name' => 'user',   'in' => 'query', 'type' => 'string', 'max_length' => 100, 'description' => 'Only what this username did.'),
 				array('name' => 'q',      'in' => 'query', 'type' => 'string', 'max_length' => 100, 'description' => 'Matches the description.'),
 				array('name' => 'limit',  'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
@@ -1267,7 +1267,7 @@ function api_schema() {
 			'description' => 'Who changed what, newest first, cursor paged, as the Audit trail screen lists it: settings, users, products, pages, orders, files, offers, API keys and personal data exports and erasures, each line with the record (entity_type, entity_id and label, its name at that moment) and only the fields that changed. source is panel (an operator), api (an application: username is its name, user_id its owner) or job (a scheduled job; no user). before and after are the changed fields as stored: null for a side that holds nothing (before a create, after a delete); a secret is "***", an empty one stays empty; a long text is {truncated, length, sha1, start}; a JSON text is the decoded object or list; a side too large as a whole is {truncated: true, fields: [names]}. Lines written by one request share request_id. Read only.',
 			'params'  => array(
 				array('name' => 'from',        'in' => 'query', 'type' => 'datetime'),
-				array('name' => 'to',          'in' => 'query', 'type' => 'datetime'),
+				array('name' => 'to',          'in' => 'query', 'type' => 'datetime', 'description' => 'Only lines written at or before this moment. A date alone (YYYY-MM-DD) counts that day whole, to 23:59:59 in the site\'s time zone; a value with a time is that moment.'),
 				array('name' => 'source',      'in' => 'query', 'type' => 'enum', 'values' => array('panel', 'api', 'job', 'site')),
 				array('name' => 'user',        'in' => 'query', 'type' => 'string', 'max_length' => 100, 'description' => 'A number is a user id (the operator, or the owner of an application); any other text matches part of the name the line was written under.'),
 				array('name' => 'action',      'in' => 'query', 'type' => 'string', 'max_length' => 64, 'description' => 'create, update, delete, recycle, restore, rotate, revoke, cancel, refund, export or erase.'),
@@ -1834,7 +1834,7 @@ function api_schema() {
 			'description' => 'Orders and money added up by period, so a chart does not have to be drawn by paging through forty thousand orders. Completed and exported orders count as sales; an incomplete one is an abandoned basket and a cancelled one is money that went back - ask for either with status, which is a real question for a shop measuring abandonment. Amounts are minor units. Defaults to the last thirty days by day. Only periods that hold orders come back, at most 400: a window whose orders fall on more days (or months) is refused with 422 rather than answered short, so totals always cover the whole window. Periods are the site\'s days and months: calendar days in site.timezone of GET /meta, by that zone\'s rules on either side of a clock change.',
 			'params'  => array(
 				array('name' => 'from',     'in' => 'query', 'type' => 'datetime', 'description' => 'Start of the window. Defaults to thirty days before to.'),
-				array('name' => 'to',       'in' => 'query', 'type' => 'datetime', 'description' => 'End of the window. Defaults to now.'),
+				array('name' => 'to',       'in' => 'query', 'type' => 'datetime', 'description' => 'End of the window. A date alone (YYYY-MM-DD) counts that day whole, to 23:59:59 in the site\'s time zone; a value with a time is that moment. Defaults to now.'),
 				array('name' => 'interval', 'in' => 'query', 'type' => 'enum', 'values' => array('day', 'month'), 'default' => 'day'),
 				array('name' => 'status',   'in' => 'query', 'type' => 'enum', 'values' => array('incomplete', 'complete', 'exported', 'cancelled'), 'description' => 'One status instead of the two that count as sales.')
 			)
@@ -3393,6 +3393,20 @@ function api_schema() {
 //
 // Not included: the 409s, which are named at the endpoint that can produce
 // them, because 'order_already_shipped' means nothing on a page about pages.
+// What a lost database connection answers on every entry (integration.php and
+// mcp.php): a code of its own, told apart from the service_unavailable a
+// feature answers while the database waits for its update, and a Retry-After,
+// since an outage only calls for a retry.
+function api_database_unavailable_answer() {
+
+	return array(
+		'status'  => 503,
+		'code'    => 'database_unavailable',
+		'headers' => array('Retry-After' => '30')
+	);
+
+}
+
 function api_error_catalogue() {
 
 	return array(

@@ -623,7 +623,7 @@ function pg_mcp_gate() {
 
 	if (!defined('DB_CONNECTED')) {
 
-		api_fail(503, 'service_unavailable', lang('No database connection.'));
+		api_fail_database_unavailable();
 
 	}
 
