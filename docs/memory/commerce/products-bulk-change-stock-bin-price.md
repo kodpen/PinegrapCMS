@@ -1,6 +1,6 @@
 ---
 name: products-bulk-change-stock-bin-price
-description: Change Selected (edit_products.php) and the Catalog Manager bulk edit: out_of_stock by the shared rule, binned products skipped, only real price changes reported (#4214, #4215, #4220)
+description: Change Selected (edit_products.php) and the Catalog Manager bulk edit: out_of_stock by the shared rule, binned products skipped, only real price changes reported (#4214, #4215, #4220, PR #4279)
 ---
 
 ## How do the two bulk edits set the out-of-stock mark?
