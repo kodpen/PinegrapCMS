@@ -2210,6 +2210,7 @@
     "cancellation_reason goes only with status cancelled.": "cancellation_reason yalnız status cancelled ile birlikte gönderilir.",
     "cancelled": "iptal edildi",
     "captcha, spam, robot, bot, turnstile, cloudflare, hcaptcha, site key, secret key, stopforumspam, form limits": "captcha, spam, robot, bot, turnstile, cloudflare, hcaptcha, site anahtarı, gizli anahtar, stopforumspam, form sınırları",
+    "captcha, spam, robot, bot, turnstile, cloudflare, hcaptcha, site key, secret key, stopforumspam, form limits, blocked email": "captcha, spam, robot, bot, turnstile, cloudflare, hcaptcha, site anahtarı, gizli anahtar, stopforumspam, form sınırları, blocked email, engelli e-posta, eposta engel",
     "care, cleaning, storage, jewellery care, leather care": "bakım, temizlik, saklama, takı bakımı, deri bakımı",
     "careers": "kariyer",
     "cart": "sepet",

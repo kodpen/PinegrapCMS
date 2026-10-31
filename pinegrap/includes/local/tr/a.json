@@ -1322,6 +1322,7 @@
     "Accounting rules": "Muhasebe kuralları",
     "Accounts": "Cari Hesaplar",
     "Accounts (CSV)": "Cari hesaplar (CSV)",
+    "Accounts and sign-in": "Hesaplar ve Giriş",
     "Accounts that can sign in through an external provider. The connection is tied to the provider account itself, not to the email address, and it outlives any session - remove it on the user screen.": "Dış bir sağlayıcı ile giriş yapabilen hesaplar. Bağlantı e-posta adresine değil sağlayıcı hesabının kendisine bağlıdır ve oturumlardan bağımsız olarak kalıcıdır — kaldırmak için kullanıcı ekranını kullanın.",
     "Accounts with the same tax number:": "Aynı vergi numarasını taşıyan cariler:",
     "Accounts, cash and invoicing": "Cari hesap, kasa ve faturalama",

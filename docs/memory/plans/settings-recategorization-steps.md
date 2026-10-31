@@ -16,7 +16,7 @@ description: Steps R1-R9 of plans/settings-recategorization.md: what each moves,
   - R2b, done in #3840 (decided #3828, A; `erp/erp-settings-cards.md`): the `erp_settings.php` cards in the pane, the screen kept for role 3; no redirect while the template editor is only there.
   - After #3141 (holds `output.php`, `get_help_url.php`), with R1b: the menu's ERP Settings row links `#settings/accounting`; `case 'settings_accounting.php'` in `output_menu()`; a `settings_accounting` help row.
 
-- R3 (M) Renames and the security moves. Labels become Accounts and sign-in, Firewall and HTTPS; the keys `security` and `firewall` stay. The encryption key block moves from Payment Methods to its own card, and the MFA hint (`security.php` 200) points there. Trusted Proxies moves out from under Enable Firewall. Blocked Email Addresses moves from IP Lists to Spam Protection.
+- R3 (M) Renames and the security moves. Done in #3858 (`ui/settings-modal-architecture.md`).
 
 - R4 (M) General › Organization. One card for the organization's name, address, logo, support e-mail and tax number and office; each field keeps its column and save file. The two "Support E-mail Address" fields: decided #3799, Organization takes the site's; the Affiliate Program card's field is relabelled "Affiliate Program E-mail Address" (`tr_add.php`), no column or reader change. ERP Settings' pointer card goes.
 
