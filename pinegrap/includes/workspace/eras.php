@@ -301,7 +301,7 @@ function ws_channel_clear($viewer, $channel, $title = '')
 
     // What stayed unread is in the version before now: nobody is counted
     // unread for lines they can no longer see in front of them.
-    db("UPDATE ws_channel_members SET last_read_id = GREATEST(last_read_id, '" . $last_id . "') WHERE channel_id = '" . $channel_id . "'");
+    db("UPDATE ws_channel_members SET last_read_id = GREATEST(last_read_id, " . (int) $last_id . ") WHERE channel_id = '" . $channel_id . "'");
 
     // A message pinned above the conversation belonged to it.
     if (function_exists('ws_pins_ready') && ws_pins_ready()) {

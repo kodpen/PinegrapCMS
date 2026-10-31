@@ -921,7 +921,8 @@ function ws_channel_mark_read($channel_id, $user_id, $message_id)
         return;
     }
 
-    db("UPDATE ws_channel_members SET last_read_id = GREATEST(last_read_id, '" . $message_id . "')
+    // A bare integer: a quoted id makes MySQL 8 compare as text ('9' > '157').
+    db("UPDATE ws_channel_members SET last_read_id = GREATEST(last_read_id, " . $message_id . ")
         WHERE channel_id = '" . (int) $channel_id . "' AND user_id = '" . (int) $user_id . "'");
 
     db("UPDATE ws_inbox SET read_at = '" . time() . "'

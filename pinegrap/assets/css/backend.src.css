@@ -14285,8 +14285,11 @@ a.ws-chip:hover {
   max-height: 12rem;
   padding: .15rem .25rem;
 }
+/* The row wraps where it has no room (a phone with the tools open, the
+   narrow discussion panel), so Send and Send later stay inside the box. */
 .ws-composer-tools {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: .15rem;
 }
@@ -14322,9 +14325,6 @@ a.ws-chip:hover {
 .ws-composer .ws-rich.is-expanded {
   min-height: 7.5rem;
   max-height: min(24rem, 50vh);
-}
-.ws-composer-tools.is-expanded {
-  flex-wrap: wrap;
 }
 .ws-composer-tools.is-expanded .ws-composer-format {
   display: flex;
@@ -16974,6 +16974,10 @@ body.ws-drawer-open #pg-chat-root .pg-chat-launcher {
     flex-basis: 100%;
     order: 3;
   }
+  /* Send keeps its icon and a narrow pad, so the open row fits a phone. */
+  .ws-composer-tools .btn.px-5 {
+    padding-inline: .6rem;
+  }
   .ws-composer.is-tools-open > .ws-composer-more .bi {
     transform: rotate(45deg);
   }
@@ -17089,8 +17093,20 @@ body.ws-drawer-open #pg-chat-root .pg-chat-launcher {
   .ws-catchup-label {
     display: none;
   }
+  /* Buttons a finger hits (2.5rem, like the composer's) inside the thin
+     line: the negative margins keep the row's height. */
   .ws-catchup-action {
+    min-width: 2.5rem;
+    min-height: 2.5rem;
+    margin-block: -.35rem;
+    justify-content: center;
     padding: .2rem .45rem;
+  }
+  .ws-catchup-close {
+    min-width: 2.5rem;
+    min-height: 2.5rem;
+    margin-block: -.35rem;
+    mask-size: .6rem;
   }
   .ws-catchup-text strong {
     display: none;
