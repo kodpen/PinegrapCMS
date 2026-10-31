@@ -16,8 +16,8 @@ module: layouts
 ## Hosted sites?
 - `pg_hosted()`: the editor is read only with a note, no Save or Regenerate; read shows the generated layout, which is what the site draws.
 
-## What is left for L5?
-- `page_designer.php?type=layout` is no longer linked from Edit Layout; `get_layout` / `update_layout` go with `page_designer.php` (`plans/legacy-page-designer-l5-list.md`). Help row `edit_page_layout` in `get_help_url.php`.
+## What did it replace?
+- The page designer's layout editor (`page_designer.php?type=layout`, actions `get_layout` / `update_layout`), removed with the page designer (`page-designer-retired.md`). Help row `edit_page_layout` in `get_help_url.php`.
 
 ## Tests?
 - `tests/designer_layout_retirement_test.php`: the URL choice (designed -> layout tab, other -> this screen, hosted too) and the screen's gates and wiring.

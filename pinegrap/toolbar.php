@@ -96,8 +96,7 @@ require_once(dirname(__FILE__) . '/seo.php');
 // send_to has to be handed over: the block works it out from REQUEST_URL when
 // nobody says otherwise, and in here that is toolbar.php\'s own address rather
 // than the page it describes. Every screen opened from the panel would then
-// come back to the bare bar - and "Open Page Designer" would open the designer
-// on it.
+// come back to the bare bar.
 $pg_toolbar_panel = pg_seo_page_toolbar($page_id, $_GET['style_id'] ?? 0, $user, array(
     'close'   => false,
     'hidden'  => false,

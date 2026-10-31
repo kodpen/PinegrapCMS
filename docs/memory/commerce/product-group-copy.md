@@ -20,3 +20,8 @@ description: Product group copies (duplicate_product_group.php, pg_catalog_copy_
 
 ## Does the copy keep an attribute's default option?
 - Yes, both paths copy `product_groups_attributes_xref.default_option_id` as a whole number. The Catalog Manager copy used to drop it, so the copied set showed no preselected option on Edit Product Group and the product page.
+
+## Can a group be copied into itself?
+- No. `pg_explorer_handle_catalog_paste()` checks every group of a copy paste with `pg_catalog_group_is_within()` (`includes/explorer/catalog.php`, a parent walk over the group map) before anything is copied, and refuses with "A product group cannot be copied into itself."; the panel shows it as the error toast. A cut already had the same refusal.
+- As a second guard `pg_catalog_copy_group()` reads a group's children before it inserts the copy, and the depth cap of 30 stays.
+- Symptom it fixed: Paste on the group itself, Ctrl+V inside it or Ctrl/Alt-drag onto a subgroup copied the fresh copy into itself again and again, leaving about 30 nested groups.

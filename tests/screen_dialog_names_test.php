@@ -4,9 +4,9 @@
  *
  * Source pins for dialogs and script-built fields that carry their own
  * accessible name: the file manager's delete, access, one-time link and
- * inline edit boxes, the Orders list Paraşüt export dialog, the image
- * editors and the Page Designer dialogs. These fields are built after
- * DOMContentLoaded, so the label binding in backend.src.js never reaches them.
+ * inline edit boxes, the Orders list Paraşüt export dialog and the image
+ * editors. These fields are built after DOMContentLoaded, so the label
+ * binding in backend.src.js never reaches them.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -57,17 +57,4 @@ function test_screen_dialog_names_image_editor_edit()
 	pg_assert_true(strpos($source, 'id="save_option_title"') !== false, 'save option title has its id');
 	pg_assert_true(strpos($source, 'id="save_option_item_type" name="save_option_item_type" aria-label="\' . h(lang(\'File Format\')) . \'"') !== false, 'file format select is named');
 	pg_assert_true(strpos($source, 'exampleModalLabel') === false, 'no shared placeholder id');
-}
-
-function test_screen_dialog_names_page_designer()
-{
-	$source = screen_dialog_names_source('assets/js/page_designer.js');
-	pg_assert_true(strpos($source, 'aria-label="Close"') === false, 'no untranslated Close label');
-	pg_assert_true(substr_count($source, 'aria-label="${h(labels[\'Close\'])}"') === 4, 'four close buttons use the label map');
-	pg_assert_true(strpos($source, 'id="editor_region_modal" aria-labelledby="editor_region_title"') !== false, 'System Tags dialog names its title');
-	pg_assert_true(strpos($source, 'id="editor_region_title"') !== false, 'System Tags title has its id');
-	pg_assert_true(strpos($source, 'exampleModalLabel') === false, 'no shared placeholder id');
-
-	$php = screen_dialog_names_source('page_designer.php');
-	pg_assert_true(strpos($php, '"Close":"\' . lang(\'Close\') . \'"') !== false, 'label map carries Close');
 }

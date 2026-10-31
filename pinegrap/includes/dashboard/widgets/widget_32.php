@@ -42,7 +42,7 @@ function pg_dashboard_widget_32($request, $user)
     // Settings are for managers and above; below that the link is left out.
     $footer = ($user['role'] < 3) ? '
     <div class="card-footer border-0 bg-reset py-1 text-center">
-        <a href="' . h(pg_settings_link('seo', 'pgset-analytics')) . '" class="text-decoration-none" style="font-size:.6875rem">'
+        <a href="' . h(pg_settings_link('privacy', 'pgset-analytics')) . '" class="text-decoration-none" style="font-size:.6875rem">'
         . h($state['property_name']) . ' <i class="bi bi-arrow-right-short" aria-hidden="true"></i></a>
     </div>' : '';
 

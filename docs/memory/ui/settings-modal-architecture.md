@@ -4,7 +4,7 @@ description: Site Settings modal architecture: file map, the categories and thei
 ---
 
 ## Why is Site Settings a modal and not a screen?
-- A setting is almost always needed in the middle of another job; going to a page means abandoning it. The old single screen (5219 lines, one `<form>` writing 247 columns per save) was split into categories, which then moved into a modal.
+- A setting is mostly needed in the middle of another job, and a page means leaving it. The old single screen (one `<form>`, 247 columns per save) was split into categories, then moved into a modal.
 
 ## Which files make it up?
 ```
@@ -16,8 +16,6 @@ Modal (main path)
 Page (no-JavaScript path; linked from the main menu's Site Settings row, main-menu-settings-row.md)
   settings_<category>.php          thin wrappers, one per category: init + PG_SETTINGS_KEY + screen.php
   includes/settings/screen.php     page flow: shell, toolbar, save bar, POST/redirect
-  settings2.php                    hub (deleted later)
-  settings.php                     OLD single screen; orphan, in the Cleanup list
 Shared
   includes/settings/registry.php   the ONE list: categories, sections, keywords, tool groups
   system_tools.php                 the tool groups as cards; the dialog's list ends in one row to it (settings-system-tools.md)
@@ -27,8 +25,9 @@ Shared
 ```
 
 ## Which categories and cards exist?
-- `registry.php` is the list; read it for the cards. Order: `general`, `appearance`, `features`, `seo`, `languages`, `contact` (Communication), `security` (Accounts and sign-in), `firewall` (Firewall and HTTPS), `commerce` (Ecommerce), `accounting`, `api`. The keys stay when a label changes, so `#settings/<key>/…` links and `settings_<key>.php` keep working.
+- `registry.php` is the list; read it for the cards. Order: `general`, `appearance`, `features`, `seo`, `privacy` (Visitors and privacy), `languages`, `contact` (Communication), `security` (Accounts and sign-in), `firewall` (Firewall and HTTPS), `commerce` (Ecommerce), `accounting`, `api`. The keys stay when a label changes, so `#settings/<key>/…` links and `settings_<key>.php` keep working.
 - `accounting` (Accounting, as in the main menu): the ERP and E-Invoice cards, out of Ecommerce since #3819 with the same fields, columns and save (`accounting.save.php`, Paraşüt and e-document provider code included). E-Invoice is hidden outside Turkey as before (`pg_edoc_settings_shown()`). The rules, late fee, e-Fatura threshold and template cards come from `includes/erp/settings_cards.php`, shared with `erp_settings.php` (`erp/erp-settings-cards.md`).
+- `privacy`: Visitor Tracking (and `privacy_analytics.php`) and Cookie Consent from SEO, Legal Documents from Ecommerce (#3899), fields, columns and checks unchanged.
 - General › Organization: the organization's identity on one card (`settings-organization-card.md`).
 - Accounts and sign-in and Firewall and HTTPS: the cards moved in #3858 (`settings-security-cards.md`).
 - Dashboard (Appearance) is listed for role < 2 only (`settings-dashboard-card.md`).
@@ -39,7 +38,7 @@ Shared
 - When moving to another category also add a row to `pg_settings_legacy_anchors()` (see settings-modal-entry-points).
 
 ## How do you add a new category?
-- Entry in `registry.php` + `includes/settings/<key>.php` + `<key>.save.php` + `settings_<key>.php` wrapper (for the page path), and a `case 'settings_<key>.php'` in `output_menu()`'s switch so the main menu's Site Settings row is marked on it (`main-menu-settings-row.md`); the row's panels list the category by themselves.
+- Entry in `registry.php` + `includes/settings/<key>.php` + `<key>.save.php` + `settings_<key>.php` wrapper (for the page path), and a `case 'settings_<key>.php'` in `output_menu()`'s switch so the main menu's Site Settings row is marked on it (`main-menu-settings-row.md`).
 
 ## What does the page path do with a refused save?
 - It redirects back and draws the cards from storage, so what was typed is lost there; the dialog keeps it (settings-invalid-vs-error). The cards are plain HTML: `liveform::prepare()` cannot refill them, it rebuilds every select from options the session does not hold.

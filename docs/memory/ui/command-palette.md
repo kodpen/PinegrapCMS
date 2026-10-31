@@ -24,3 +24,7 @@ description: Panel search box (Ctrl+K): where the chips come from, how text is m
 ## Where does focus go on Load More?
 - Load More (the next 20 results) is removed while the page loads; if it held the focus, the result above it takes it first, so focus never falls to `<body>` (`focus-after-removal.md`). The spinner is `role="status"` with a `.visually-hidden` `t('Loading...')`. When the page arrives, focus moves to its first result (`appendResults()` returns it), or to the new Load More when the page brought none.
 - A later page that fails, or answers anything but success, goes to `loadMoreFailed()`: `currentOffset` goes back by 20, a `role="alert"` `t('An error occurred.')` line and a new Load More (focused) come back. Before, the spinner went and nothing replaced it, so the rest of the results could not be reached until the query changed. A click while a page loads is ignored. Pinned by `tests/list_page_state_test.php`.
+
+## Which records may a result show?
+- Those whose edit screen opens for the viewer: each type's WHERE appends `pg_panel_search_scope_sql()` (`fn/auth.php`), so the cap and Load More count only those. Role 3: pages, form pages, files in their edit folders; contacts of their groups. Roles 1-2: users of lower roles; role 3 none. No grant: `(0 = 1)`. Files drop design files below designers and ERP-kept documents; menus are for designers.
+- Before, a limited user saw names and e-mails their lists hide, then "Access denied". Chips unchanged. Pinned by `tests/panel_search_access_test.php`.

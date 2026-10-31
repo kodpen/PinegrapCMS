@@ -4,8 +4,8 @@ description: How the visitors table is kept small: retention days, daily summary
 ---
 
 ## Why does this exist?
-- One `visitors` row per visit, never deleted: 3.8 million rows, over 800 MB on busy sites. One big `DELETE` locks the table for minutes; on MyISAM every visit waits. A client's 950 MB backup could not be restored because of this table (incident 2026-10-14).
-- Code: `includes/fn/visitor_retention.php`; settings: Settings › SEO › Visitor tracking; card: Database engine › Visitor records. Schema step 10.3.
+- One `visitors` row per visit, never deleted: 3.8 million rows, over 800 MB on busy sites. A big `DELETE` locks the table for minutes; on MyISAM every visit waits. A client's 950 MB backup could not be restored because of it (incident 2026-10-14).
+- Code: `includes/fn/visitor_retention.php`; settings: Visitors and privacy › Visitor tracking; card: Database engine › Visitor records. Schema step 10.3.
 
 ## What are the rules and defaults?
 - `config.visitor_retention_days`: default 90, 0 = keep forever, allowed 7–3650 (invalid input is refused with a field error). The column was added with `DEFAULT 90`, so upgraded sites get 90; 0 only where someone chose it, and no step overwrites that choice.

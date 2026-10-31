@@ -1008,6 +1008,7 @@
     "No templates yet.": "Henüz şablon yok.",
     "No templates yet. Type the lines below and keep them as a template.": "Henüz şablon yok. Aşağıya satırları yazın ve şablon olarak saklayın.",
     "No term yet. A term with the translation to use, or a name to keep as written: the engines follow the glossary on every text they are sent.": "Henüz terim yok. Kullanılacak çevirisiyle bir terim ya da olduğu gibi bırakılacak bir ad: motorlar gönderilen her metinde sözlüğe uyar.",
+    "No test email was sent: the saved settings name no SMTP account or connected account.": "Test e-postası gönderilmedi: kaydedilen ayarlarda SMTP hesabı ya da bağlı hesap yok.",
     "No text has been scanned yet. Press \"Update translations\": the pages are read and their texts are listed here.": "Henüz hiçbir metin taranmadı. \"Çevirileri güncelle\"ye basın: sayfalar okunur ve metinleri burada listelenir.",
     "No text has been scanned yet. Press \"{var:1}\": the pages are read and their texts are listed here.": "Henüz hiçbir metin taranmadı. \"{var:1}\" düğmesine basın: sayfalar okunur ve metinleri burada listelenir.",
     "No text matches the filter.": "Filtreye uyan metin yok.",

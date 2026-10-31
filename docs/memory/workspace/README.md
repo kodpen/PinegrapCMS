@@ -81,6 +81,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-change-proposals.md: Record changes an application proposes as cards (proposals.php, api_proposals.php): routes, agents oauth:/app:, checks, role-3 contacts, the hourly limit and its lock, who applies, what is written
 - workspace-change-text-limits.md: Workspace change catalogue text limits must fit their columns (non-strict cuts in silence): the six once over, the channel summary kept, longer values, line breaks in one-line drawer fields, the test
 - workspace-channel-catchup.md: Over a channel's conversation (C2, C3 of plans/workspace-channel-layout.md): the catch-up line in place of the greeting card, the pinned line, one row on a phone
+- workspace-channel-composer.md: The channel's writing box in one row (C5, plans/workspace-channel-layout.md): no hint line, marks behind Aa; a phone's one row with the tools switch, the keyboard rules
 - workspace-channel-group-events.md: Webhook events about Workspace channel groups themselves (workspace.channel_group.created/updated/access_changed/deleted): payload, who hears them, what stays quiet
 - workspace-channel-head.md: The channel header in one line (C1, plans/workspace-channel-layout.md): name and tags, people, search, info, task, menu; a phone keeps back, name, ⋯; the purpose in the info drawer
 - workspace-channel-icon-templates.md: A channel template's colour and icon onto a channel made from it (ws_template_channel_look()), only where the creator chose none; the form's free bi- class vs the curated list
@@ -215,7 +216,8 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-notes-import.md: Notes brought in from other apps (workspace_notes_import.php, notes_import.php): Markdown/text or a zip staged, previewed, written in batches; how an export of ours updates its own note
 - workspace-notes-revision.md: A note's revision (ws_notes.revision, schema 11.0.84, PR #1663): which writes move it, the API's revision field and 409, the panel's revision, why code checks for the column, base kept
 - workspace-notes-slash-inserts.md: "/" in a note's writing box lists the box's own inserts (lists, quote, checklist, table, calculation, code block, highlight); where it opens, keys, undo, what it never does
-- workspace-notes-sources.md: Where an imported note came from (ws_note_sources, schema 11.0.86): the id per provider, how the import plan turns a known file into "same" or "update", when rows are written and dropped
+- workspace-notes-sources.md: Where an imported note came from (ws_note_sources, schema 11.0.86, PR #1812): the id per provider, how the import plan turns a known file into "same" or "update", when rows are written and dropped
+- workspace-notes-sync-decisions.md: How note apps sync with Workspace notes (OAuth 2.1, REST notes routes, 30-day deletions, export vault), no secret-address feed (#3880), import routes, headings and lists (#2420)
 - workspace-notes-voice.md: A recording made in a Workspace note (V6): the note toolbar's microphone, kept as a note file through ws_note_file and linked at the caret, players under the text, no transcript
 - workspace-notes.md: Workspace notes (ws_notes): tables, limits, body format, versions, an assistant's answer under the line that asked, the paged list, what the API offers and lacks
 - workspace-office-edits.md: The cells of an Excel file or the paragraphs of a Word file posted in a channel, changed in its preview window (ws_file_office, ws_file_office_save, PR #656, #702): who may, replace or copy
