@@ -182,6 +182,9 @@ function pg_settings_apply($key, $user, $liveform)
         log_activity(lang('settings were modified'), $_SESSION['sessionusername']);
 
         pg_audit_record('update', 'config', 0, $pg_settings_audit_before, $key);
+
+        // System Status tiles link here; the next draw shows the saved state.
+        pg_system_status_forget();
     }
 
     // The General screen can turn Secure Mode on in the same request, so the

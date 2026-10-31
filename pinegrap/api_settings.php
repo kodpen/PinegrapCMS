@@ -314,6 +314,9 @@ if ($_POST) {
 				'vars'   => array($hook['url'], $new_status)
 			)), $_SESSION['sessionusername']);
 
+			// The Webhooks tile on System Status reads these rows.
+			pg_system_status_forget();
+
 		}
 
 		header('Location: ' . $screen_url);
@@ -338,6 +341,9 @@ if ($_POST) {
 			db("UPDATE api_webhook_queue
 				SET attempts = '0', next_attempt_at = UNIX_TIMESTAMP(), last_error = ''
 				WHERE webhook_id = '" . (int)$hook['id'] . "'");
+
+			// The Webhooks tile on System Status reads these rows.
+			pg_system_status_forget();
 
 			$liveform->add_notice(lang(array(
 				'string' => 'Waiting events for {var:1} will be sent again on the next run of the scheduled task.',
