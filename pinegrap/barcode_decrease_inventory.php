@@ -341,6 +341,7 @@ if ( !isset( $_GET['request'] ) && empty( $_GET['request'] ) && ($_GET['request'
             }
 
             // update the product
+            $audit_before = pg_audit_fetch('products', (int) $id);
             $query =
                 "UPDATE products
                 SET
@@ -351,6 +352,7 @@ if ( !isset( $_GET['request'] ) && empty( $_GET['request'] ) && ($_GET['request'
                     timestamp = UNIX_TIMESTAMP()
                 WHERE id = ?";
             $result = db_q($query, array((string) $new_inventory_quantity, (string) $user['id'], (string) (int) $id)) or output_error('Query failed');
+            pg_audit_record('update', 'products', (int) $id, $audit_before);
 
             // A scan is a stock write like any other: inventory.changed (and
             // stock.low on the crossing) is announced and the marketplace

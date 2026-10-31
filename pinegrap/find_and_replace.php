@@ -629,7 +629,12 @@ if (!$_POST) {
                         if ($sql_set != '') $sql_set .= ', ';
                         $sql_set .= "$col = '" . e($item[$col]) . "'";
                     }
+                    // Products are traced in the audit trail; the other tables here are not.
+                    $audit_before = ($def['table'] === 'products') ? pg_audit_fetch('products', (int) $item[$def['id_column']]) : array();
                     db("UPDATE {$def['table']} SET $sql_set WHERE {$def['id_column']} = '" . $item[$def['id_column']] . "'");
+                    if ($def['table'] === 'products') {
+                        pg_audit_record('update', 'products', (int) $item[$def['id_column']], $audit_before);
+                    }
                     $number_of_items++;
                 }
             }

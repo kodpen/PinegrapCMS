@@ -333,6 +333,47 @@ function pg_subscription_operator_rows($filter, $limit)
 }
 
 /**
+ * An order's cell on the row page: its order number (the internal id with a
+ * '#' only when it has none), linked to View Order while the order row
+ * exists, plain text once it is gone.
+ *
+ * @param int    $order_id
+ * @param string $order_number
+ * @param bool   $exists
+ * @return string HTML
+ */
+function pg_subscription_operator_order_cell($order_id, $order_number, $exists)
+{
+    $order_id = (int) $order_id;
+
+    if ($order_id <= 0) {
+        return '';
+    }
+
+    $label = h(((string) $order_number !== '') ? (string) $order_number : '#' . $order_id);
+
+    return $exists ? '<a href="view_order.php?id=' . $order_id . '">' . $label . '</a>' : $label;
+}
+
+/**
+ * An order status code in the panel language; an unknown code as stored.
+ *
+ * @param string $status
+ * @return string
+ */
+function pg_subscription_operator_order_status_label($status)
+{
+    $labels = array(
+        'incomplete' => lang('Incomplete'),
+        'complete'   => lang('Complete'),
+        'exported'   => lang('Exported'),
+        'cancelled'  => lang('Cancelled'),
+    );
+
+    return $labels[(string) $status] ?? (string) $status;
+}
+
+/**
  * One row for the row page, with its history (newest first) and its renewal
  * orders (the events that name an order other than the first).
  *
@@ -351,9 +392,14 @@ function pg_subscription_operator_record($id)
         return null;
     }
 
-    $events = (array) db_items("SELECT id, kind, order_id, amount, detail, created_at FROM subscription_events
-        WHERE subscription_id = '" . e((int) $id) . "'
-        ORDER BY id DESC
+    // The order's number names it as View Order and the Orders list do;
+    // order_row is 0 when the order row is gone.
+    $events = (array) db_items("SELECT se.id, se.kind, se.order_id, se.amount, se.detail, se.created_at,
+            COALESCE(o.order_number, '') AS order_number, COALESCE(o.id, 0) AS order_row
+        FROM subscription_events AS se
+        LEFT JOIN orders AS o ON o.id = se.order_id
+        WHERE se.subscription_id = '" . e((int) $id) . "'
+        ORDER BY se.id DESC
         LIMIT 200");
 
     $orders = (array) db_items("SELECT id, order_number, order_date, status, total FROM orders
