@@ -20,4 +20,6 @@ description: İYS client (PR #1895): account in connect_apps iys, dry run, daily
 ## What is not verified?
 - No İYS account was reached: endpoints, field names, the `errors[].code/message` shape, whether a duplicate consent comes back as an error, and the `changes` paging come from İYS's published API documents and client libraries. The 3-business-day limit is not checked here; İYS refuses older rows and the summary logs them.
 
-Related: docs/memory/platform/iys-settings-card.md, docs/memory/plans/sms-and-iys.md, docs/memory/core/consent-log-writers.md, docs/memory/platform/sms-provider-layer.md
+- The SMS (MESAJ) side of the same job: `platform/iys-sms-channel.md`.
+
+Related: docs/memory/platform/iys-sms-channel.md, docs/memory/platform/iys-settings-card.md, docs/memory/plans/sms-and-iys.md, docs/memory/core/consent-log-writers.md, docs/memory/platform/sms-provider-layer.md

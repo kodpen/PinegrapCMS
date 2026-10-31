@@ -17,4 +17,8 @@ description: Edit calendar event screen (edit_calendar_event.php): which recurri
 - `?recurrence_number[]=x`, or a posted array with separated reservations, answered 500 (`escape()` on an array); a posted array with a form error redirected to `recurrence_number=Array`.
 - The page HTML and the saved remaining spots are unchanged for a real number or no number.
 
+## Does a refused save keep the return address?
+- Yes: the redirect adds `send_to` through `urlencode()`, so a site event page's address (`/event?id=12&recurrence_number=3`) survives whole and the back arrow (`pg_send_to_url('calendars.php')`) opens that occurrence. Before, the address was cut at its first `&` and the arrow opened the first occurrence. Pinned by `tests/edit_return_address_test.php`.
+
+
 Related: `core/request-parameter-arrays.md` (array = not given).

@@ -2395,7 +2395,7 @@ function logout()
     unset($_COOKIE['software']['device_type']);
     // if user was logged in
     if ($username) {
-        log_activity(lang('user logged out'), $username);
+        log_activity(pg_log_lang(array('string' => 'user logged out')), $username);
         // else there was no user to logout
     } else {
         output_error(lang('You are not logged in.'));

@@ -7,7 +7,7 @@ description: How a mail is drawn in a Workspace channel (ws_mail_card_html(), se
 - `ws_message_payloads()` reads the page's mails once (`ws_mail_items_map()`: items with their conversation) into `$extra['mail']`; `ws_message_payload()` gives a `sender_kind 'mail'` message `ws_mail_sender()` (name from the mail, else the address; `id` 0, `title` the address, letters avatar, `mail: true`, like `ws_guest_sender()`) and `html` from `ws_mail_card_html()`, never `ws_render_body()`: mail text is untrusted and is not Workspace markup.
 - The card: badge "E-mail" (`auth` pass) or "Sender not verified" (fail / none) with the address; the subject only on the conversation's card (`conversation.message_id` = the message); the message text escaped with `nl2br`; `<details>` "Show all" with `body_text` (first 100,000 characters) when it is longer than the message; "Not taken in: …" from `refused_files`. An attachment's own message (file, no text) draws only its file; a missing item says "This e-mail is no longer available."
 - Pinned bar, Ctrl+K, Home, board files: `ws_message_rows_senders()` reads a list's mails and people (answer writers too) once; `ws_message_row_sender()` names each row (messages.php). They drew a mail nameless before (PR #3765).
-- No JavaScript change: the screen draws `sender` and `html` as for any message. Mail messages cannot be edited, marked or deleted (those checks know `user` / `guest` only).
+- No JavaScript change: the screen draws `sender` and `html` as for any message. Mail messages cannot be edited, marked or deleted.
 
 ## Where are mailboxes added?
 - Workspace settings (`workspace_settings.php`, holders of the settings right), card `#ws-mail` from `ws_mail_settings_card()`; posts `mail_box_save` and `mail_eml` go to `ws_mail_settings_post()` (`includes/workspace/mail_settings.php`).
@@ -16,10 +16,10 @@ description: How a mail is drawn in a Workspace channel (ws_mail_card_html(), se
 - The password is drawn empty with "Stored. Type a new one…"; an empty box keeps it, but a new server or user needs it typed again; no key (`pg_connect_can_seal()` false) refuses to save one.
 - "Test connection" (`mail_test`, `ws_mail_box_test()`): connect, sign in, EXAMINE the folder, read the newest mail's topmost `Authentication-Results` (`ws_mail_authserv_id()`) and EXAMINE the move folder; changes nothing in the mailbox. It writes `checked_at`, `ok_at`, `last_error` (`code|server words`, `ws_mail_last_error()`), and an empty checking server takes the name found. `ws_mail_error_text()` words each code (Gmail's app-password hint); `ws_mail_box_check_line()` shows the last check under the box.
 - "Bring in an .eml file" per box: the uploaded file goes to `ws_mail_ingest()`; `ws_mail_ingest_message()` turns each status / reason into a notice or an error. This is how a box without a server is fed; one with a server is read by the general job every minute (`mail-fetch.md`).
-- `ws_mail_ready()`: the three tables exist; the card is hidden before the upgrade.
+- `ws_mail_ready()`: the tables exist, else the card is hidden.
 
-## How do the assistants name a mail's sender?
-- `ws_ai_mail_author()` (workspace-assistant-reach.md), never "System".
+## How do the assistants name a mail's sender? Their suggestion?
+- `ws_ai_mail_author()` (workspace-assistant-reach.md), never "System". Suggestion: `mail-triage.md`.
 
 ## Tests?
 - `tests/workspace_mail_card_test.php`, `tests/workspace_mail_sender_name_test.php`.

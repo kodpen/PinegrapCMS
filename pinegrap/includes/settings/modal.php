@@ -91,28 +91,10 @@ function pg_settings_modal_markup($user)
 
     // ── the neighbouring screens ─────────────────────────────────────────
     //
-    // These are pages, not panes: they leave the modal, and the arrow on the
-    // row says so. Same list and the same gates the Settings menu used to
-    // apply, so nothing an operator could reach has gone missing.
-    $output_tools = '';
-
-    foreach (pg_settings_tool_groups($user) as $group) {
-
-        $output_tools .= '<div class="pg-sm-group">' . h($group['label']) . '</div>';
-
-        foreach ($group['items'] as $item) {
-
-            $target  = isset($item['target']) ? ' target="' . h($item['target']) . '" rel="noopener"' : '';
-            $confirm = isset($item['confirm']) ? ' data-confirm-content="' . h($item['confirm']) . '"' : '';
-
-            $output_tools .=
-                '<a class="pg-sm-link pg-sm-away" href="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/' . $item['url']) . '"'
-                . $target . $confirm . '>'
-                . '<i class="bi ' . h($item['icon']) . '" aria-hidden="true"></i>'
-                . '<span>' . h($item['label']) . '</span>'
-                . '<i class="bi bi-arrow-up-right pg-sm-out" aria-hidden="true"></i></a>';
-        }
-    }
+    // The list holds only categories. The screens that leave the dialog
+    // (logs, connections, jobs, backups) sit on the System tools screen,
+    // reached by one row at the end, shown when the user has a tool there.
+    $output_tools = pg_settings_tools_link(pg_settings_tool_groups($user));
 
     // Where an old #pgset- link should land, for the script that follows them.
     $output_anchors = array();
