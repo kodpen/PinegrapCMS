@@ -156,7 +156,7 @@ if (!$_POST) {
                 <div class="mt-3">
                     <select class="form-control" id="optimize_mode" aria-label="' . h(lang('Optimize Images')) . '">
                         <option value="optimize">' . lang('Compress only, keep the original size') . '</option>
-                        <option value="resize">' . lang(array('string' => 'Compress, and shrink anything wider than {var:1} pixels', 'vars' => array($optimize_resize_trigger))) . '</option>
+                        <option value="resize">' . lang(array('string' => 'Compress, and shrink any image whose longest edge is over {var:1} pixels', 'vars' => array($optimize_resize_trigger))) . '</option>
                     </select>
                     <div class="form-text">' . lang(array('string' => 'Shrinking scales the longest edge down to {var:1} pixels, keeping the proportions. Smaller images are left alone.', 'vars' => array($optimize_resize_target))) . '</div>
                 </div>

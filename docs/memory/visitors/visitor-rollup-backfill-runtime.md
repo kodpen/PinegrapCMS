@@ -5,7 +5,7 @@ description: Backfill runtime rules for visitor rollups: MySQL time zone sync, i
 
 ## Why must the backfill set its own time zone?
 - The live counter picks the bucket with PHP time (`date('Y-m-d')` / `date('G')`); backfill uses MySQL time (`DATE(FROM_UNIXTIME(...))`). If they differ, old and new data land in different hours and a seam of that size appears where they meet.
-- Normal requests are fine: `init.php` runs `SET time_zone = date('P')` on every request, right after setting PHP's zone. BUT `install/index.php` never loads `init.php` (only `config.php` and `functions.php`), so an upgrade runs with the MySQL server's default zone. Hence `pg_visitor_backfill_step()` first calls `pg_sync_mysql_timezone()`.
+- Normal requests get today's offset: `init.php` runs `SET time_zone = date('P')` on every request, right after setting PHP's zone. In a daylight saving zone a timestamp from the other season then reads an hour off in `FROM_UNIXTIME()`; a report that groups or filters days in SQL goes through `pg_site_time_sql()` (`visitor-report-site-time.md`). The backfill's buckets match the live counter only within one season. BUT `install/index.php` never loads `init.php` (only `config.php` and `functions.php`), so an upgrade runs with the MySQL server's default zone. Hence `pg_visitor_backfill_step()` first calls `pg_sync_mysql_timezone()`.
 - Write the OFFSET (`date('P')`), not a name: named zones need MySQL's timezone tables, often empty on shared hosting.
 - Hours that look shifted are usually the site's own time zone setting (Ayarlar -> Saat Dilimi), not code. If the shift is consistent on all screens look there first; only if it is on report screens alone look at code.
 

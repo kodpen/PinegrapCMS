@@ -5608,7 +5608,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                                     <div class="col-12 lg:col-4">
                                                         <label class="form-label" for="add_comment_name">' . lang('Name') . '</label>
                                                         <input type="text" class="form-control" id="add_comment_name" name="add_comment_name" maxlength="100" value="' . h($v('add_comment_name')) . '" />
-                                                        <div class="form-text">' . lang('Leave blank to use the name on the order.') . '</div>
+                                                        <div class="form-text">' . lang('Leave blank to post as Anonymous. ^^billing_first_name^^ ^^billing_last_name^^ puts the name on the order here.') . '</div>
                                                     </div>
                                                     <div class="col-12 my-3">
                                                         <label class="form-label" for="add_comment_message">' . lang('Message') . '</label>

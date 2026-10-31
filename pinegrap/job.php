@@ -733,6 +733,11 @@ if (pg_mail_queue_ready()) {
 // each message is a paid call that waits on the provider.
 if (pg_sms_queue_ready()) {
 
+    // A due SMS campaign is queued first, so one that starts now goes out
+    // in this run (includes/fn/sms_campaigns.php).
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/sms_campaigns.php');
+    pg_sms_campaigns_run_due();
+
     pg_sms_queue_run(10, 15);
 
 }

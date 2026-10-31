@@ -625,14 +625,6 @@ $pg_settings_cards[] = '
                                                                                                 </div>
                                                                                             </div>
                                                                                         </div>' . pg_payment_settings_card_rows($ecommerce_payment_gateway, ($ecommerce_credit_debit_card == 1)) . '
-
-                                                                                        <div class="col-12 " id="ecommerce_reset_encryption_key_row" style="' . $ecommerce_reset_encryption_key_row_style . '">
-                                                                                            <div class="form-field">
-                                                                                                <div class="switch"><input value="1"' . $ecommerce_reset_encryption_key_disabled . ' class="collapse-switcher" type="checkbox" id="ecommerce_reset_encryption_key" name="ecommerce_reset_encryption_key"/></div>
-                                                                                                <label class="" for="ecommerce_reset_encryption_key">' . lang('Reset Encryption Key') . '</label>
-                                                                                                <div class="form-text">' . $ecommerce_reset_encryption_key_disabled_message . '</div>
-                                                                                            </div>
-                                                                                        </div>
                                                                                     </div>
                                                                                 </div>
                                                                             </div>
@@ -907,7 +899,7 @@ $pg_settings_cards[] = '
                                                             <select class="form-control" id="affiliate_contact_group_id" name="affiliate_contact_group_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Contact Group')) )) . '-</option>' . select_contact_group($affiliate_contact_group_id, $user) . '</select>
                                                         </div>
                                                         <div class="pg-f-sm">
-                                                            <label for="affiliate_email_address" class="form-label">' . lang('Support E-mail Address') . '</label>
+                                                            <label for="affiliate_email_address" class="form-label">' . lang('Affiliate Program E-mail Address') . '</label>
                                                             <input type="text" name="affiliate_email_address" id="affiliate_email_address" class="form-control" value="' . h($affiliate_email_address) . '" inputmode="email" data-inputmask-alias="email"/>
                                                         </div>
                                                         <div class="pg-f-md">

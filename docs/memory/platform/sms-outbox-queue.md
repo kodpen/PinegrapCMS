@@ -27,4 +27,4 @@ description: SMS queue (sms_outbox, step 11.0.10, PR #610): pg_sms_enqueue() opt
 ## How was it verified?
 - `tests/sms_test.php` (row options, outcome ladder, uncertain flags). A sandbox instance: step created and run twice, enqueue, duplicate and refusals, runs through a proxy that refused the tunnel (retried), expiry, a stuck row, retry, delete, sweep, the `job.php` pass, the tab and the card. Netgsm itself was not reached.
 
-Related: docs/memory/platform/sms-provider-layer.md, docs/memory/platform/sms-netgsm-driver.md, docs/memory/plans/sms-and-iys.md
+Related: docs/memory/platform/sms-provider-layer.md, docs/memory/platform/sms-netgsm-driver.md, docs/memory/platform/sms-and-iys-rules.md

@@ -83,7 +83,7 @@ function pg_explorer_handle_upload($type, $request, $user)
             'status' => 'error',
             'message' => lang(array(
                 'string' => 'The file is too large. The maximum allowed size is {var:1}.',
-                'vars' => convert_bytes_to_string($upload_limits['json_max'])))));
+                'vars' => convert_bytes_to_string($upload_limits['json_max'], 'floor')))));
     }
 
     // Same rules the upload screen applies: URL-safe ASCII name and
@@ -221,8 +221,8 @@ function pg_explorer_handle_upload($type, $request, $user)
             'string' => 'image ({var:1}) was optimized on upload ({var:2} -> {var:3})',
             'vars' => array(
                 $name,
-                convert_bytes_to_string($image_report['bytes_before']),
-                convert_bytes_to_string($image_report['bytes_after'])))),
+                convert_bytes_to_string($image_report['bytes_before'], 'auto'),
+                convert_bytes_to_string($image_report['bytes_after'], 'auto')))),
             $_SESSION['sessionusername']);
     }
 
@@ -232,6 +232,6 @@ function pg_explorer_handle_upload($type, $request, $user)
         'file' => array(
             'id' => (int) $file_id,
             'name' => $name,
-            'size_label' => convert_bytes_to_string(filesize($file_path))),
+            'size_label' => convert_bytes_to_string(filesize($file_path), 'auto')),
         'message' => lang(array('string' => 'The file, {var:1}, has been uploaded.', 'vars' => $name))));
 }

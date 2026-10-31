@@ -142,17 +142,6 @@ function pg_parasut_credentials_for_save()
     // Foreign currency in the ERP (2026.4.4). The currency list is whatever
     // was ticked, kept to three-letter codes the store lists; the base is
     // never stored because it is always allowed.
-    // The seller's tax number, kept the way the store's country writes it:
-    // digits in Turkey (VKN/TCKN), as typed elsewhere - an EU VAT id carries
-    // its country prefix and letters. Never longer than the column holds
-    // (32 from 2026.4.4/4.70, 11 before it), so the save never fails on it.
-    $erp_seller_vkn_width = (int) db_value("SELECT CHARACTER_MAXIMUM_LENGTH FROM information_schema.COLUMNS
-        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'config' AND COLUMN_NAME = 'erp_seller_vkn' LIMIT 1");
-    $erp_seller_vkn_width = ($erp_seller_vkn_width > 0) ? $erp_seller_vkn_width : 11;
-    $erp_seller_vkn_value = trim((string) post_value('erp_seller_vkn'));
-    $erp_seller_vkn_value = (pg_erp_store_country() === 'TR')
-        ? substr(preg_replace('/\D/', '', $erp_seller_vkn_value), 0, 11)
-        : mb_substr($erp_seller_vkn_value, 0, $erp_seller_vkn_width);
 
     $sql_erp_fx = "";
 
@@ -364,8 +353,6 @@ function pg_parasut_credentials_for_save()
             erp_enabled = '" . escape(post_value('erp_enabled')) . "',
             erp_default_series = '" . escape(trim(post_value('erp_default_series'))) . "',
             erp_web_address = '" . escape(trim(post_value('erp_web_address'))) . "',
-            erp_seller_vkn = '" . escape($erp_seller_vkn_value) . "',
-            erp_seller_tax_office = '" . escape(trim(post_value('erp_seller_tax_office'))) . "',
             " . $sql_erp_fx . "
             " . $sql_erp_due . "
             " . $sql_erp_overdue . "

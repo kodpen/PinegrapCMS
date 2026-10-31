@@ -34,7 +34,7 @@ function test_settings_links_by_role_erp_settings_links_only_for_managers()
 {
 	$source = settings_links_by_role_source('erp_settings.php');
 	pg_assert_contains("\$can_site_settings = ((int) \$user['role'] < 3);", $source, 'the settings links follow the dialog gate');
-	foreach (array('contact', 'settings', 'edoc') as $name) {
+	foreach (array('organization', 'settings', 'edoc') as $name) {
 		pg_assert_contains("(\$can_site_settings ? '<a href=\"' . h(\$" . $name . "_url) . '\">' . \$" . $name . "_place . '</a>' : \$" . $name . "_place)", $source, $name . ' link goes through the role check');
 }
 	}

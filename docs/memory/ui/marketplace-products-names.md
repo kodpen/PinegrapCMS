@@ -19,6 +19,7 @@ description: Marketplace products screen: named row boxes, focus kept on redrawn
 
 ## How is the pager drawn?
 - `mp_products_pager_arrow()` prints a link, or a `<span class="btn … disabled" aria-disabled="true">` when there is no page that way. Bootstrap 6 `.btn.disabled` only sets `pointer-events: none`, so a disabled `<a href>` stayed in the tab order and Enter followed it.
+- An empty page read while the view still has rows (`mp_products_page_past_end()`) is read again on `pg_list_page_clamp()`'s last page: a bulk accept reloads `?page=N`, which showed an empty list and "Page 3 of 2" (#3862).
 
 ## Which colours carry the status text?
 - Matched and ready figures, the matched/sure score and the "Sure" tag: `--pg-success-fg-emphasis`; not-sent figures and error lines (`.mpp-err`): `--pg-danger-fg-emphasis`. The fills read 1.85:1 and 2.74:1 as text. The meter, row tints and card borders keep the fills.

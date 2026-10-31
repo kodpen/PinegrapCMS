@@ -27,4 +27,4 @@ description: Order SMS (received, shipped, delivered) and back in stock: templat
 ## How was it verified?
 - `tests/sms_messages_test.php` (render, normalize, the card's decision). Not run on a sandbox: the hooks are one call each after paths the shipment and order tests already pin; Netgsm was not reached.
 
-Related: docs/memory/platform/sms-outbox-queue.md, docs/memory/platform/sms-provider-layer.md, docs/memory/commerce/shipment-write-path.md, docs/memory/plans/sms-and-iys.md
+Related: docs/memory/platform/sms-outbox-queue.md, docs/memory/platform/sms-provider-layer.md, docs/memory/commerce/shipment-write-path.md, docs/memory/platform/sms-and-iys-rules.md

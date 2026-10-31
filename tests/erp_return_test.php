@@ -481,3 +481,47 @@ function test_erp_return_of_a_fractional_credit_remainder_with_the_last_goods()
 	pg_assert_same(5599, $last['totals']['grand_total']);
 	pg_assert_same(8399, $first['totals']['grand_total'] + $last['totals']['grand_total']);
 }
+
+// Whether a return can still be offered (erp_return_lines_left()): a line
+// with any quantity left keeps it open, lines given back in full close it.
+function pg_test_erp_return_lines_left($remaining)
+{
+	$lines = array();
+
+	foreach ($remaining as $index => $qty) {
+		$lines[] = array('id' => $index + 1, 'quantity' => 2, 'unit_price' => 5000, 'remaining_qty' => $qty);
+	}
+
+	return $lines;
+}
+
+function test_erp_return_lines_left_none_returned()
+{
+	pg_assert_same(true, erp_return_lines_left(pg_test_erp_return_lines_left(array(2, 1))));
+}
+
+function test_erp_return_lines_left_part_returned()
+{
+	pg_assert_same(true, erp_return_lines_left(pg_test_erp_return_lines_left(array(0, 0.5))));
+}
+
+function test_erp_return_lines_left_all_returned()
+{
+	pg_assert_same(false, erp_return_lines_left(pg_test_erp_return_lines_left(array(0, 0))));
+	pg_assert_same(false, erp_return_lines_left(pg_test_erp_return_lines_left(array(0.000001, -0.000001))));
+	pg_assert_same(false, erp_return_lines_left(array()));
+}
+
+// A credit line is priced below zero but its quantity is positive: with
+// the goods back and the credit not, the credit is still left to return.
+function test_erp_return_lines_left_credit_line_below_zero()
+{
+	$lines = pg_test_erp_return_lines_left(array(0, 2));
+	$lines[1]['unit_price'] = -1500;
+
+	pg_assert_same(true, erp_return_lines_left($lines));
+
+	$lines[1]['remaining_qty'] = 0;
+
+	pg_assert_same(false, erp_return_lines_left($lines));
+}

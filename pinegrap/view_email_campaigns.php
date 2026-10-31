@@ -80,6 +80,14 @@ if (email_campaign_job_enabled()) {
     $output_start_time_heading = '';
 }
 
+// SMS campaigns sit beside the e-mail campaigns once SMS is set up
+// (view_sms_campaigns.php).
+$output_sms_campaigns_link = '';
+
+if (pg_sms_ready() && pg_schema_has('sms_campaigns')) {
+    $output_sms_campaigns_link = '<a class="btn btn-link pg-link-secondary py-0 m-1" href="view_sms_campaigns.php"><span class="material-icons me-1" aria-hidden="true">sms</span>' . lang('My SMS Campaigns') . '</a>';
+}
+
 $my_campaigns = 0;
 $all_campaigns = 0;
 
@@ -247,6 +255,7 @@ pg_page_shell(
                         <div class="disable_shortcut d-inline-block">
                             <div class=" btn-group btn-group-sm flex-wrap">
                                 <a class="btn btn-link pg-link-secondary py-0 m-1" href="view_email_campaign_history.php"><span class="material-icons me-1" aria-hidden="true">history</span>' . lang(array('string'=>'My Campaign History') ) . '</a>
+                                ' . $output_sms_campaigns_link . '
                             </div>
                         </div>
                         <div class="pg-toolbar-grow"></div>

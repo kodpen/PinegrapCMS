@@ -91,6 +91,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - marketplace-webhook-registration.md: How a marketplace order webhook is registered and removed from the account screen, which saves are refused while one exists, what account delete does with it, and Trendyol's webhook facts.
 - merchant-center.md: Google Merchant Center via the Merchant API (PR #3213): feed.php as a fetched data source, cached product issues on System Status, state in config.product_feeds
 - n11-api-facts.md: n11 REST API facts for the connector: headers, connection test, async price/stock task flow, REJECT vs IN_QUEUE, order endpoints and page cap, GMT+3 dates, discount fields, stockCode.
+- n11-old-address-order.md: The 2026.11.0 data step 11.0.138 that swaps old n11-imported ship_tos rows (province in city, town in state) into the checkout's order (#3836)
 - n11-warehouse.md: Products n11 ships from its own warehouse (n11depom): read into the catalogue with sender=ALL and marked, their stock never pushed, their orders not pulled
 - offer-discounted-units.md: How many units of a cart line an offer discounts (cheapest item: one, gift from a paid line: the action's quantity, product or group: all) and the spread unit price that charges it
 - offer-donation-lines.md: Donation lines and offers: never the cheapest item, never discounted by a product offer, not counted toward "cart quantity", their typed amount kept when offers are taken off the cart (#987, PR #1259)

@@ -454,13 +454,13 @@ if ($number_of_results > 0) {
         }
 
         $output_details =
-            lang('Size') . ': ' . h(convert_bytes_to_string($images[$key]['size'])) . '<br/>' .
+            lang('Size') . ': ' . h(convert_bytes_to_string($images[$key]['size'], 'auto')) . '<br/>' .
             lang('Dimensions') . ': ' . $output_dimensions . '<br/>' .
             lang('Folder') . ': ' . h($images[$key]['folder_name']) . '<br/>' .
             lang('Access') . ': ' . h((string) get_access_control_type_name($images[$key]['access_control_type'])) . '<br/>' .
             lang('Last Modified') . ': ' . get_relative_time(array('timestamp' => $images[$key]['last_modified_timestamp'], 'format' => 'plain_text')) . ' ' . $output_last_modified_username;
 
-        $output_meta = h(convert_bytes_to_string($images[$key]['size']));
+        $output_meta = h(convert_bytes_to_string($images[$key]['size'], 'auto'));
 
         if ($image_width > 0) {
             $output_meta .= ' &middot; ' . h($image_width) . ' x ' . h($image_height);

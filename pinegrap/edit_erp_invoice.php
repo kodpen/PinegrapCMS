@@ -436,6 +436,16 @@ if (!empty($provider_cancellable['manual'])) {
 }
 $can_return = (!$is_cancelled && !$is_return && ($invoice['doc_type'] === 'invoice'));
 
+// A fully returned invoice stays issued or paid (it is never cancelled), so
+// the button goes by the quantities left: once every line is back it would
+// only lead to a refusal, and a short line says why it is gone.
+$returned_in_full = false;
+
+if ($can_return && !erp_return_lines_left(erp_returnable_lines($invoice_id))) {
+    $can_return = false;
+    $returned_in_full = true;
+}
+
 $status_labels = array(
     'draft' => lang('Draft'),
     'issued' => lang('Issued'),
@@ -1565,6 +1575,9 @@ pg_page_shell([
                 </div>
             </div>
 
+            ' . ($returned_in_full
+                ? '<p class="small fg-secondary text-center mb-3"><i class="bi bi-check2-circle me-2" aria-hidden="true"></i>' . lang('Returned in full') . '</p>'
+                : '') . '
             ' . (($can_return || $can_cancel || ($cancel_locked !== ''))
                 ? '<form name="form" action="' . $self_action . '" method="post" class="disable_shortcut">
                 ' . get_token_field() . '

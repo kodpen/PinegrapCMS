@@ -22,4 +22,4 @@ description: ERP overdue receivable SMS (PR #3626): event erp_overdue (kind remi
 ## How was it verified?
 - `tests/erp_overdue_sms_test.php` (decision, stage, references), `tests/sms_messages_test.php` (event, render, hidden fields). Not run against a live provider.
 
-Related: docs/memory/platform/sms-order-messages.md, docs/memory/erp/erp-overdue-second-notice.md, docs/memory/plans/sms-and-iys.md
+Related: docs/memory/platform/sms-order-messages.md, docs/memory/erp/erp-overdue-second-notice.md, docs/memory/platform/sms-and-iys-rules.md

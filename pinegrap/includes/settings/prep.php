@@ -65,7 +65,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $passkey_signin_ready = array_key_exists('passkey_signin', $row);
     $passkey_signin = $passkey_signin_ready ? (int) $row['passkey_signin'] : 0;
     $passkeys_available = function_exists('pg_passkeys_available') && pg_passkeys_available();
-    // Commerce warns before the encryption key is reset when somebody's
+    // The Encryption Key card warns before the key is reset when somebody's
     // second factor would become unreadable by it.
     $mfa_enabled_accounts = pg_mfa_table_exists()
         ? (int) db_value("SELECT COUNT(*) FROM user_mfa WHERE enabled_at > 0")
@@ -741,6 +741,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     // Only built where the columns behind them exist: a control that saves
     // nothing is worse than no control at all.
     $output_share_image_pickers = '';
+    $output_organization_logo_picker = '';
     $output_app_icon_picker = '';
     $output_site_icon_picker = '';
 
@@ -861,17 +862,21 @@ if (!defined('PG_SETTINGS_ENTRY')) {
                                             <label for="og_default_image" class="form-label">' . lang('Default Share Image') . '</label>
                                             <select name="og_default_image" id="og_default_image" class="form-control">' . $og_image_options . '</select>
                                             <div class="form-text">' . lang('Used as the social share picture for pages that do not have one of their own.') . '</div>' . $og_default_forms_notice . '
-                                        </div>
-                                        <div class="pg-f-md">
-                                            <label for="organization_logo" class="form-label">' . lang('Organization Logo') . '</label>
-                                            <select name="organization_logo" id="organization_logo" class="form-control">' . $logo_image_options . '</select>
-                                            <div class="form-text">' . lang('Used in the structured data that introduces your organization and as the publisher logo on blog posts.') . '</div>
                                         </div>';
+
+        // Drawn on General › Organization and written by its save, under the
+        // same column check as the share image above.
+        $output_organization_logo_picker = '
+                    <div class="pg-f-lg">
+                        <label for="organization_logo" class="form-label">' . lang('Organization Logo') . '</label>
+                        <select name="organization_logo" id="organization_logo" class="form-control">' . $logo_image_options . '</select>
+                        <div class="form-text">' . lang('Used in the structured data that introduces your organization and as the publisher logo on blog posts.') . '</div>
+                    </div>';
 
         // Everything in here exists ONLY as structured data output, so it
         // hides with the switch, the way the other dependent groups on this
-        // screen do. The share image and logo above stay out of it: the share
-        // image feeds Open Graph, which has its own setting.
+        // screen do. The share image above stays out of it: it feeds Open
+        // Graph, which has its own setting.
         $output_structured_data_dependent = '
                                         <div class="collapse popover fade bs-popover-bottom p-0  w-100" id="strutured_data_dependent_row">
                                             <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(30px, 0px);"></div>
@@ -1711,7 +1716,6 @@ if (!defined('PG_SETTINGS_ENTRY')) {
 	$ecommerce_iyzipay_3ds_row_style = 'display: none';
     $ecommerce_iyzipay_protected_currency_row_style = 'display: none';
     $ecommerce_surcharge_percentage_row_style = 'display: none';
-    $ecommerce_reset_encryption_key_row_style = 'display: none';
     
     // if e-commerce is on then prepare to show e-commerce fields
     if ($ecommerce_on_or_off == 1) {
@@ -1719,7 +1723,6 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         // if credit/debit card is on, then prepare to show credit/debit card fields
         if ($ecommerce_credit_debit_card == 1) {
             $ecommerce_surcharge_percentage_row_style = '';
-            $ecommerce_reset_encryption_key_row_style = '';
             
             // if there is a payment gateway selected, then prepare to show payment gateway fields
             if ($ecommerce_payment_gateway != '') {

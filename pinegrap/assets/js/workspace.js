@@ -17981,7 +17981,9 @@
         function draw(data) {
             var board = clear(wrap);
             var grid = el('div', 'ws-board');
-            grid.style.gridTemplateColumns = 'var(--ws-board-person, 14rem) repeat(' + data.days.length + ', minmax(var(--ws-board-day, 7.5rem), 1fr))';
+            // The person column gives way to 11rem before the days do, so seven
+            // days fit a 1280 px window; .ws-board's min-width is this minimum.
+            grid.style.gridTemplateColumns = 'minmax(min(11rem, var(--ws-board-person, 14rem)), var(--ws-board-person, 14rem)) repeat(' + data.days.length + ', minmax(var(--ws-board-day, 7rem), 1fr))';
             board.appendChild(grid);
 
             range.textContent = data.days[0].label + ' – ' + data.days[data.days.length - 1].label;

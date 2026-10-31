@@ -88,8 +88,9 @@ function pg_settings_categories()
         'general' => array(
             'label' => lang('General'),
             'icon'  => 'bi-sliders',
-            'description' => lang('Server, domain, licence, update channel, date and time.'),
+            'description' => lang('The organization, server, domain, licence, update channel, date and time.'),
             'sections' => array(
+                'pgset-organization' => lang('Organization'),
                 'pgset-server'   => lang('Server & Domain'),
                 'pgset-software' => lang('Software'),
                 'pgset-channel'  => lang('Update Channel'),
@@ -100,7 +101,8 @@ function pg_settings_categories()
                 'pgset-maintenance' => lang('Maintenance Mode'),
             ),
             'keywords' => array(
-                'pgset-server'   => pg_settings_keywords(lang('hostname, domain, ip, ssl, https, secure mode, secure, email, support, proxy')),
+                'pgset-organization' => pg_settings_keywords(lang('organization, company, name, address, logo, support, email, tax number, tax office, vkn, seller')),
+                'pgset-server'   => pg_settings_keywords(lang('hostname, domain, ip, ssl, https, secure mode, secure, proxy')),
                 'pgset-software' => pg_settings_keywords(lang('software, language, licence, license, subscription, error, debug')),
                 'pgset-channel'  => pg_settings_keywords(lang('update, channel, beta, stable, version')),
                 'pgset-datetime' => pg_settings_keywords(lang('date, time, timezone, format')),
@@ -206,7 +208,7 @@ function pg_settings_categories()
                 'pgset-google-reviews' => lang('Google Reviews'),
             ),
             'keywords' => array(
-                'pgset-campaigns' => pg_settings_keywords(lang('campaign, newsletter, subscribe, organization, address')),
+                'pgset-campaigns' => pg_settings_keywords(lang('campaign, newsletter, subscribe, opt-in, footer')),
                 'pgset-chat'      => pg_settings_keywords(lang('chat, live support, operator, bubble, message')),
                 'pgset-mailchimp' => pg_settings_keywords(lang('mailchimp, mail chimp, list, list id, api key, key, sync, automation, store')),
                 'pgset-sms'       => pg_settings_keywords(lang('sms, text message, netgsm, sender name, header, msgheader, mobile, phone, iys, test message')),
@@ -217,9 +219,9 @@ function pg_settings_categories()
         ),
 
         'security' => array(
-            'label' => lang('Security'),
+            'label' => lang('Accounts and sign-in'),
             'icon'  => 'bi-shield-lock',
-            'description' => lang('Passwords, devices, sign-in with Google, Microsoft and Apple, registration and membership.'),
+            'description' => lang('Passwords, devices, sign-in with Google, Microsoft and Apple, registration and membership, spam protection and the encryption key.'),
             'sections' => array(
                 'pgset-session'    => lang('Session & Password'),
                 'pgset-captcha'    => lang('Spam Protection'),
@@ -228,10 +230,11 @@ function pg_settings_categories()
                 'pgset-audit'      => lang('Audit Trail'),
                 'pgset-signin'     => lang('Sign in with Google, Microsoft and Apple'),
                 'pgset-membership' => lang('Registration & Membership'),
+                'pgset-encryption' => lang('Encryption Key'),
             ),
             'keywords' => array(
                 'pgset-session'    => pg_settings_keywords(lang('security, password, session, captcha, login, throttle, bulk delete')),
-                'pgset-captcha'    => pg_settings_keywords(lang('captcha, spam, robot, bot, turnstile, cloudflare, hcaptcha, site key, secret key, stopforumspam, form limits')),
+                'pgset-captcha'    => pg_settings_keywords(lang('captcha, spam, robot, bot, turnstile, cloudflare, hcaptcha, site key, secret key, stopforumspam, form limits, blocked email')),
                 'pgset-device'     => pg_settings_keywords(lang('device, remember me, remember, limit')),
                 'pgset-mfa'        => pg_settings_keywords(lang('two-step, two factor, 2fa, totp, authenticator, mfa, verification code')),
                 'pgset-audit'      => pg_settings_keywords(lang('audit, audit trail, changes, history, retention, kvkk, gdpr, who changed')),
@@ -239,15 +242,17 @@ function pg_settings_categories()
                     . ', ' . lang('microsoft, entra, azure, outlook, office 365, sign in with microsoft, sso')
                     . ', ' . lang('apple, icloud, sign in with apple, services id, team id, key id, p8')),
                 'pgset-membership' => pg_settings_keywords(lang('membership, registration, sign up, signup, approval, verification, member number')),
+                'pgset-encryption' => pg_settings_keywords(lang('encryption, encryption key, config.php, card number, two-step, secret, openssl')),
             ),
         ),
 
         'firewall' => array(
-            'label' => lang('Firewall'),
+            'label' => lang('Firewall and HTTPS'),
             'icon'  => 'bi-bricks',
-            'description' => lang('The request filter, bot policy and address lists.'),
+            'description' => lang('The request filter, trusted proxies, bot policy, address lists, HTTPS and security headers.'),
             'sections' => array(
                 'pgset-waf'     => lang('Firewall'),
+                'pgset-proxies' => lang('Trusted Proxies'),
                 'pgset-bots'    => lang('Bot Filtering'),
                 'pgset-iplists' => lang('IP Lists'),
                 'pgset-countries' => lang('Country Restriction'),
@@ -255,8 +260,9 @@ function pg_settings_categories()
             ),
             'keywords' => array(
                 'pgset-waf'     => pg_settings_keywords(lang('waf, firewall, attack, signature, rate limit, ban')),
+                'pgset-proxies' => pg_settings_keywords(lang('proxy, trusted proxy, load balancer, cdn, x-forwarded-for, visitor address, real ip')),
                 'pgset-bots'    => pg_settings_keywords(lang('bot, crawler, googlebot, ai, gptbot, claudebot')),
-                'pgset-iplists' => pg_settings_keywords(lang('ip, ip block, block, allow, allow list, blocked email, banned')),
+                'pgset-iplists' => pg_settings_keywords(lang('ip, ip block, block, allow, allow list, banned')),
                 'pgset-countries' => pg_settings_keywords(lang('country, countries, geo, geoblocking, location, region, tor, block country, allow country')),
                 'pgset-headers' => pg_settings_keywords(lang('https, ssl, secure mode, certificate, header, csp, content security policy, hsts, frame, clickjacking, fail2ban, iptables, nosniff, referrer')),
             ),
@@ -464,6 +470,7 @@ function pg_settings_legacy_anchors()
         'pgset-seo'        => array('seo',        'pgset-seo'),
         'pgset-analytics'  => array('seo',        'pgset-analytics'),
         'pgset-campaigns'  => array('contact',    'pgset-campaigns'),
+        'pgset-organization' => array('general',  'pgset-organization'),
         'pgset-chat'       => array('contact',    'pgset-chat'),
         'pgset-security'   => array('security',   'pgset-session'),
         'pgsub-devices'    => array('security',   'pgset-device'),

@@ -27,8 +27,10 @@ Shared
 ```
 
 ## Which categories and cards exist?
-- `registry.php` is the list; read it for the cards. Order: `general`, `appearance`, `features`, `seo`, `languages`, `contact` (Communication), `security`, `firewall`, `commerce` (Ecommerce), `accounting`, `api`.
+- `registry.php` is the list; read it for the cards. Order: `general`, `appearance`, `features`, `seo`, `languages`, `contact` (Communication), `security` (Accounts and sign-in), `firewall` (Firewall and HTTPS), `commerce` (Ecommerce), `accounting`, `api`. The keys stay when a label changes, so `#settings/<key>/…` links and `settings_<key>.php` keep working.
 - `accounting` (Accounting, as in the main menu): the ERP and E-Invoice cards, out of Ecommerce since #3819 with the same fields, columns and save (`accounting.save.php`, Paraşüt and e-document provider code included). E-Invoice is hidden outside Turkey as before (`pg_edoc_settings_shown()`). The rules, late fee, e-Fatura threshold and template cards come from `includes/erp/settings_cards.php`, shared with `erp_settings.php` (`erp/erp-settings-cards.md`).
+- General › Organization: the organization's identity on one card (`settings-organization-card.md`).
+- Accounts and sign-in and Firewall and HTTPS: the cards moved in #3858 (`settings-security-cards.md`).
 - Dashboard (Appearance) is listed for role < 2 only (`settings-dashboard-card.md`).
 
 ## How do you move a card?

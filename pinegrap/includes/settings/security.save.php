@@ -2,7 +2,7 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Site Settings - what the Security screen writes: who gets an account and how they sign in.
+ * Site Settings - what the Accounts and sign-in screen writes: who gets an account, how they sign in, the blocked e-mail addresses and the encryption key.
  *
  * Runs in the scope of includes/settings/screen.php, after the token check and
  * after post_value() is defined. Only the columns edited by the cards on this
@@ -87,7 +87,91 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         return;
     }
 
+    // The Encryption Key card: a new key in config.php, then the stored card
+    // numbers and the payment gateway secrets sealed again with it. Checked
+    // after every refusal above, so a refused save changes no key.
+    if (post_value('ecommerce_reset_encryption_key') == 1) {
+    
+        // if OpenSSL is disabled, then output error
+        if (extension_loaded('openssl') == FALSE) {
+            output_error(lang('The encryption key could not be reset, because the OpenSSL PHP extension is not enabled') . '. <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+        }
+        
+        // get contents of config.php file in order to reset encryption key
+        $config_content = @file_get_contents(CONFIG_FILE_PATH);
 
+        // A file that could not be read must not be rewritten from nothing.
+        if (!is_string($config_content) || (trim($config_content) === '')) {
+            output_error(lang('Config file could not be opened.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+        }
+        
+        $old_encryption_key = (defined('ENCRYPTION_KEY') == TRUE) ? ENCRYPTION_KEY : '';
+        $new_encryption_key = generate_encryption_key();
+        
+        // if there is not an old encryption key in the config.php file, then add new encryption key to config.php file
+        if (defined('ENCRYPTION_KEY') == FALSE) {
+            $config_content = pg_config_insert_line($config_content, pg_config_define_line('ENCRYPTION_KEY', $new_encryption_key) . ' // DO NOT MODIFY OR SHARE');
+            
+        // else there is an old encryption key in the config.php file, so update it
+        } else {
+            $config_content = str_replace($old_encryption_key, $new_encryption_key, $config_content);
+        }
+        
+        // Write the new content before any card number is re-encrypted; a key
+        // that is not on disk must not be used on the stored data.
+        if (!pg_write_config_file($config_content)) {
+            output_error(lang(array('string'=>'The encryption key could not be reset, because the config.php file ({var:1}) is not writable. Please configure the config.php file so it can be written to and then try again. For Unix, set the permissions for the file to 777. For Windows, give the anonymous web user rights to write to and delete the file.','vars'=>array(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/data/config.php') )) . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+        }
+        
+        // get all orders that have an unencrypted credit card number or encrypted credit card number
+        $query = 
+            "SELECT
+                id,
+                card_number
+            FROM orders
+            WHERE
+                (card_number != '')
+                AND (SUBSTRING(card_number, 1, 1) != '*')";
+        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        
+        $orders = array();
+        
+        while ($row = mysqli_fetch_assoc($result)) {
+            $orders[] = $row;
+        }
+        
+        // loop through all orders in order to re-encrypt or encrypt credit card numbers
+        foreach ($orders as $order) {
+            // if the credit card number is already encrypted, then decrypt it with old key and encrypt it with new key
+            if (mb_strlen($order['card_number']) > 16) {
+                $order['card_number'] = decrypt_credit_card_number($order['card_number'], $old_encryption_key);
+                
+                // if the decryption was successful, then encrypt it with new key and store it
+                if (is_numeric($order['card_number']) == TRUE) {
+                    $query = "UPDATE orders SET card_number = ? WHERE id = ?";
+                    $result = db_q($query, array((string) encrypt_credit_card_number($order['card_number'], $new_encryption_key), (string) (int) $order['id'])) or output_error('Query failed.');
+                }
+                
+            // else the credit card number is not already encrypted, so encrypt it for the first time
+            } else {
+                $query = "UPDATE orders SET card_number = ? WHERE id = ?";
+                $result = db_q($query, array((string) encrypt_credit_card_number($order['card_number'], $new_encryption_key), (string) (int) $order['id'])) or output_error('Query failed.');
+            }
+        }
+
+        // The gateway secrets, sealed with the old key, follow the new one;
+        // one that does not open with the old key is left as it is.
+        $gateway_secret_stored = db_item("SELECT " . implode(', ', array_keys(pg_gateway_secret_fields())) . " FROM config LIMIT 1");
+        $gateway_secret_sql = array();
+        $gateway_secret_values = array();
+
+        foreach (pg_gateway_secret_fields() as $gateway_secret_column => $gateway_secret_width) {
+            $gateway_secret_sql[] = $gateway_secret_column . ' = ?';
+            $gateway_secret_values[] = (string) pg_gateway_secret_for_save('', (string) ($gateway_secret_stored[$gateway_secret_column] ?? ''), (string) $old_encryption_key, (string) $new_encryption_key, $gateway_secret_width);
+        }
+
+        db_q("UPDATE config SET " . implode(', ', $gateway_secret_sql), $gateway_secret_values) or output_error('Query failed.');
+    }
 
     // ── Firewall settings ────────────────────────────────────────────────
     // Built as a fragment rather than inlined, so an install that has not run
@@ -164,6 +248,77 @@ if (!defined('PG_SETTINGS_ENTRY')) {
 
     if ($audit_retention_post) {
         db("UPDATE config SET audit_log_retention_years = '" . (int) $audit_retention_input . "'");
+    }
+
+    // Email block list (the Spam Protection card). Its column arrives with migration 4.15, so a database
+    // that has not been upgraded yet must not break the rest of this save.
+    // Normalised on the way in: trimmed, lower-cased, de-duplicated - the list
+    // is matched case-insensitively, and a tidy list is one an operator can
+    // still read a year from now.
+    if (pg_schema_has('config', 'banned_email_addresses')) {
+        $bea_entries = array();
+
+        foreach (preg_split('/[\r\n,;]+/', (string) post_value('banned_email_addresses')) as $bea_entry) {
+            $bea_entry = pg_email_fold(trim($bea_entry));
+
+            if (($bea_entry !== '') && !in_array($bea_entry, $bea_entries, true)) {
+                $bea_entries[] = $bea_entry;
+            }
+        }
+
+        db("UPDATE config SET banned_email_addresses = '" . escape(implode(',', $bea_entries)) . "'");
+
+        // Blocking an address has to reach the session that is already open,
+        // or the person being blocked simply carries on until their token
+        // expires - which is the whole complaint the list exists to answer.
+        // Only accounts that actually hold a live token are examined, and only
+        // members: a revoked token ends the session on that browser's very
+        // next request (initialize_user treats a missing token as fatal).
+        //
+        // The freshly saved list is read here rather than the constant, which
+        // still holds the value this request started with.
+        $bea_live = mysqli_query(db::$con,
+            "SELECT DISTINCT user.user_id, user.user_email
+            FROM auth_tokens
+            INNER JOIN user ON auth_tokens.user_id = user.user_id
+            WHERE user.user_role = 3");
+
+        if ($bea_live) {
+            $bea_list = implode(',', $bea_entries);
+
+            while ($bea_row = mysqli_fetch_assoc($bea_live)) {
+                $bea_email = pg_email_fold(trim((string) $bea_row['user_email']));
+
+                if (($bea_email === '') || ($bea_list === '')) {
+                    continue;
+                }
+
+                $bea_at = strrpos($bea_email, '@');
+                $bea_domain = ($bea_at === false) ? '' : substr($bea_email, $bea_at);
+
+                foreach ($bea_entries as $bea_entry) {
+                    $bea_entry = ltrim($bea_entry, '*');
+
+                    if (strpos($bea_entry, '@') === false) {
+                        $bea_entry = '@' . $bea_entry;
+                    }
+
+                    $bea_hit = (strpos($bea_entry, '@') === 0)
+                        ? (($bea_domain !== '') && ($bea_domain === $bea_entry))
+                        : ($bea_entry === $bea_email);
+
+                    if ($bea_hit) {
+                        pg_auth_token_revoke_user((int) $bea_row['user_id']);
+
+                        log_activity(lang(array(
+                            'string' => 'sessions ended because the email address was blocked ({var:1})',
+                            'vars'   => array($bea_row['user_email']))), $_SESSION['sessionusername'] ?? '');
+
+                        break;
+                    }
+                }
+            }
+        }
     }
 
 
