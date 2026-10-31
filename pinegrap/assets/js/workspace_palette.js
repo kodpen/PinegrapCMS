@@ -688,7 +688,9 @@
         return (here && here.id) ? here : null;
     }
 
-    function open() {
+    // options.scope 'here': searched in the open channel only, as the
+    // channel header's search asks.
+    function open(options) {
         if (!window.pgUI || !kit()) {
             return;
         }
@@ -698,6 +700,8 @@
 
         if (!state.here) {
             state.scope = 'all';
+        } else if (options && (options.scope === 'here')) {
+            state.scope = 'here';
         }
 
         state.open = true;
