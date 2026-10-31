@@ -34,6 +34,9 @@
   lines    (list) .no .description .quantity .unit .unit_price .discount
            .has_discount .base .tax_rate .tax .total .withholding
            .tax2_rate .tax2
+  The totals box adds up to the grand total: shipping and surcharge are
+  invoice lines inside the subtotal, so .shipping_total and .surcharge_total
+  only say how much of it they are and are not printed as rows of their own.
   totals   .subtotal .discount_total .shipping_total .surcharge_total
            .gift_card_total .tax_total .tax2_total .grand_total
            .grand_total_base .withholding_total .tax_inclusive
@@ -189,8 +192,6 @@
 <table class="totals">
     <tr><td>{{label.subtotal}}</td><td class="v">{{totals.subtotal}}</td></tr>
     {{#totals.has_discount}}<tr><td>{{label.discount}}</td><td class="v">&minus;{{totals.discount_total}}</td></tr>{{/totals.has_discount}}
-    {{#totals.has_shipping}}<tr><td>{{label.shipping}}</td><td class="v">{{totals.shipping_total}}</td></tr>{{/totals.has_shipping}}
-    {{#totals.has_surcharge}}<tr><td>{{label.surcharge}}</td><td class="v">{{totals.surcharge_total}}</td></tr>{{/totals.has_surcharge}}
     <tr><td>{{label.vat_total}}</td><td class="v">{{totals.tax_total}}</td></tr>
     {{#totals.has_tax2}}<tr><td>{{label.tax2}}</td><td class="v">{{totals.tax2_total}}</td></tr>{{/totals.has_tax2}}
     {{#totals.has_withholding}}<tr><td>{{label.tax_inclusive}}</td><td class="v">{{totals.tax_inclusive}}</td></tr>
