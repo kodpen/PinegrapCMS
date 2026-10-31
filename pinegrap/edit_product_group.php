@@ -248,6 +248,7 @@ if (!$_POST) {
     }
 
     $output_attributes = '';
+    $output_enable_attributes_checked = '';
 
     // If there is at least one attribute in the system, then output area for them.
     if (db_value("SELECT COUNT(*) FROM product_attributes")) {
@@ -792,7 +793,7 @@ if (!$_POST) {
         $sql_enable_attributes = "";
 
         // If the enable attributes check box appeared on the form, then update value.
-        if ($_POST['enable_attributes_exists'] == 'true') {
+        if (($_POST['enable_attributes_exists'] ?? '') == 'true') {
             $sql_enable_attributes = "attributes = '" . escape($_POST['enable_attributes'] ?? '') . "',";
         }
 
@@ -879,8 +880,8 @@ if (!$_POST) {
         db("DELETE FROM product_groups_attributes_xref WHERE product_group_id = '" . e($_POST['id'] ?? '') . "'");
 
         // If there are attributes to save, then save them.
-        if ($_POST['attributes']) {
-            $attributes = decode_json($_POST['attributes']);
+        if ($_POST['attributes'] ?? '') {
+            $attributes = decode_json($_POST['attributes'] ?? '');
 
             $sort_order = 0;
 
@@ -903,11 +904,11 @@ if (!$_POST) {
 
         // If the status of the product group has changed, then update status
         // for child items.
-        if ($_POST['enabled'] != $old_enabled) {
+        if (($_POST['enabled'] ?? '') != $old_enabled) {
 
             require_once(dirname(__FILE__) . '/update_product_group_status.php');
 
-            if ($_POST['enabled']) {
+            if ($_POST['enabled'] ?? '') {
                 $status = 'enabled';
             } else {
                 $status = 'disabled';

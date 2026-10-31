@@ -19,7 +19,8 @@ Page (no-JavaScript path; linked from the main menu's Site Settings row, main-me
   settings2.php                    hub (deleted later)
   settings.php                     OLD single screen; orphan, in the Cleanup list
 Shared
-  includes/settings/registry.php   the ONE list: categories, sections, keywords, related screens
+  includes/settings/registry.php   the ONE list: categories, sections, keywords, tool groups
+  system_tools.php                 the tool groups as cards; the dialog's list ends in one row to it (settings-system-tools.md)
   includes/settings/prep.php       GET preparation (every category runs all of it)
   includes/settings/<cat>.php      cards -> $pg_settings_cards (+ $pg_settings_modals, $pg_settings_scripts)
   includes/settings/<cat>.save.php what that category writes

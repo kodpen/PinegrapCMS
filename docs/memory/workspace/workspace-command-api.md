@@ -12,7 +12,7 @@ description: GET /workspace/commands (PR #1991): the command registry for the ke
 - `'mcp' => false`: a model gains nothing from the picker's list; it calls the endpoints a command would (tasks, plan items, scheduled messages, changes).
 
 ## Does it run commands?
-- No. Listing only; running them over the API is plan question 3 (plans/workspace-slash-commands.md), still waiting for the owner.
+- No. Listing only; decided #3801: a run route `POST /workspace/commands/run` is plan slice 7 (plans/workspace-slash-commands.md); until it lands the API only lists.
 
 ## Tests?
 - tests/workspace_commands_test.php: the route's declaration, presenters matching their schemas, registry order. tools/check_api_schema.php pairs both schemas with their presenters.

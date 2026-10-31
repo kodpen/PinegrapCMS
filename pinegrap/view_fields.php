@@ -286,7 +286,7 @@ if ((isset($_GET['page_id'])) && ($_GET['page_id'] != '')) {
     <div class=" btn-group btn-group-sm flex-wrap ">
         <button type="button" class="btn btn-link pg-link-secondary py-0 mb-3 " onclick="document.location.href = \'preview_form.php?product_id=\' + document.getElementById(\'product_id\').value"><span class="material-icons me-1">preview</span>' . lang('Preview') . '</button>
     </div>';
-    $output_form_designer_footer = '<button type="submit" value="Delete Selected" class=" btn mb-1 mt-1 btn-solid theme-danger disabled" data-confirm-content="' . lang(array('string'=>'WARNING: Selected {var:1} will be permanently deleted.','vars'=>array(lang('field(s)'),$delete_data_warning))) . '"><span class="material-icons me-3">delete</span>' . lang(array('string'=>'Delete Selected') ) . '</button>';
+    $output_form_designer_footer = '<button type="submit" value="Delete Selected" class=" btn mb-1 mt-1 btn-solid theme-danger disabled" data-confirm-content="' . lang(array('string'=>'WARNING: Selected {var:1} will be permanently deleted.','vars'=>array(lang('field(s)')))) . '"><span class="material-icons me-3">delete</span>' . lang(array('string'=>'Delete Selected') ) . '</button>';
     
     // Send the product id through the browser url.
     $output_product_id_to_url = '&product_id=' . h(escape_javascript(urlencode($_GET['product_id'])));

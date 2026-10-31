@@ -2,8 +2,10 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Workspace - the list in the main menu's Workspace panel, on every panel
- * page: the search, the overview and the inbox, the discussions, the groups
- * of channels, the channels, the workspace's screens and its settings.
+ * page: the search of the workspace with a new channel, the settings and the
+ * tour beside it, the places (overview, inbox, tasks), one section of
+ * channels (pinned, the groups, the rest), the person's discussions and the
+ * workspace's other screens.
  *
  * What is in it comes from the server only (ws_side_payload(),
  * includes/workspace/nav.php), which leaves out whatever the person may not
@@ -16,8 +18,8 @@
  * any page. The workspace's screens hand in what they answer on the spot
  * (PGWsSide.attach(): assets/js/workspace.js): the channel screen opens a
  * channel, a discussion or the overview in place and adds the pin, the
- * dragging and the right-click menus; the other screens open the inbox and
- * the search box. Which sections and groups are closed is the person's, on
+ * dragging and the right-click menus; the other screens open the inbox in
+ * place. Which sections and groups are closed is the person's, on
  * this browser, the same on every page.
  *
  * @author      Erdal Güral (Kodpen)
@@ -366,73 +368,29 @@
         var data = current();
         var now = here();
         var scroller = root.closest('.menu-body');
-        var beforeSearch = root.querySelector('.ws-side-head input[type="search"]');
         var focused = document.activeElement && root.contains(document.activeElement) ? document.activeElement.getAttribute('data-ws-side-key') : '';
         var keep = {
-            top: scroller ? scroller.scrollTop : 0,
-            search: beforeSearch ? beforeSearch.value : ''
+            top: scroller ? scroller.scrollTop : 0
         };
         var closedParts = readKept('ws-side-closed');
         var closedGroups = readKept('ws-groups-closed');
         var fragment = document.createDocumentFragment();
 
-        // ── Head: the search of the messages, the tour, the search box of the
-        // whole workspace, a new channel ──
+        var nav = state.data.nav || {};
+        var titles = state.data.titles || {};
+
+        // ── Head: one search field for the whole workspace, a new channel,
+        // the settings and the tour ──
 
         var head = el('div', 'ws-side-head');
-        var search = el('input', 'form-control form-control-sm rounded-pill');
-
-        search.type = 'search';
-        search.placeholder = t('search_messages');
-        search.setAttribute('aria-label', search.placeholder);
-        search.setAttribute('data-ws-side-key', 'search');
-        search.value = keep.search;
-        search.addEventListener('keydown', function (event) {
-            if (event.key === 'Enter') {
-                event.preventDefault();
-
-                var text = search.value.trim();
-
-                if (text === '') {
-                    return;
-                }
-
-                if (typeof hooks.search === 'function') {
-                    if (menu()) {
-                        menu().dismiss();
-                    }
-
-                    hooks.search(text);
-                } else {
-                    go(workspaceUrl('view=home&search=' + encodeURIComponent(text)));
-                }
-            } else if (((event.key === 'Escape') || (event.key === 'Esc')) && (search.value !== '')) {
-                // A box with words in it clears first; the panel steps back
-                // on the next Escape.
-                event.preventDefault();
-                event.stopPropagation();
-                search.value = '';
-            }
-        });
-        head.appendChild(search);
-
-        // The workspace's own tour (includes/workspace/tour.php), played
-        // again from here, on the screen it is about.
-        if (typeof hooks.tour === 'function') {
-            var tour = button('btn btn-sm btn-text theme-secondary rounded-pill', '', 'bi-signpost-split', t('tour_start'));
-
-            tour.setAttribute('data-ws-tour', '1');
-            tour.setAttribute('data-ws-side-key', 'tour');
-            tour.addEventListener('click', function () { hooks.tour(); });
-            head.appendChild(tour);
-        }
-
-        // The search box of the whole workspace (workspace_palette.js), or
-        // the way to it on a page without it.
         var find;
 
+        // The workspace search (workspace_palette.js) finds channels,
+        // people, messages, decisions, tasks, notes and files; a page
+        // without it goes to the overview, which opens it.
         if (typeof hooks.palette === 'function') {
-            find = button('btn btn-sm btn-text theme-secondary rounded-pill', '', 'bi-search', t('pal_shortcut'));
+            find = button('ws-side-find no-popover', '', '', '');
+            find.title = t('pal_shortcut');
             find.addEventListener('click', function () {
                 if (menu()) {
                     menu().dismiss();
@@ -443,20 +401,21 @@
         } else {
             // Ctrl+K is the panel's own search on such a page: the way to
             // the workspace's names no key.
-            find = link('btn btn-sm btn-text theme-secondary rounded-pill no-popover', workspaceUrl('view=home&palette=1'));
+            find = link('ws-side-find no-popover', workspaceUrl('view=home&palette=1'));
             find.title = t('pal_open');
-            find.setAttribute('aria-label', find.title);
             find.setAttribute('data-pg-menu-skip', '');
-            find.appendChild(icon('bi-search'));
         }
 
+        find.setAttribute('aria-label', t('pal_open'));
         find.setAttribute('data-ws-side-key', 'palette');
+        find.appendChild(icon('bi-search'));
+        find.appendChild(el('span', 'ws-side-find-text', t('pal_open')));
         head.appendChild(find);
 
         var add;
 
         if (typeof hooks.newChannel === 'function') {
-            add = button('btn btn-sm btn-solid theme-primary rounded-pill', '', 'bi-plus-lg', t('new_channel'));
+            add = button('btn btn-sm btn-solid theme-primary rounded-pill ws-side-tool', '', 'bi-plus-lg', t('new_channel'));
             add.addEventListener('click', function () {
                 if (menu()) {
                     menu().dismiss();
@@ -465,7 +424,7 @@
                 hooks.newChannel();
             });
         } else {
-            add = link('btn btn-sm btn-solid theme-primary rounded-pill no-popover', workspaceUrl('view=home&new=channel'));
+            add = link('btn btn-sm btn-solid theme-primary rounded-pill ws-side-tool no-popover', workspaceUrl('view=home&new=channel'));
             add.title = t('new_channel');
             add.setAttribute('aria-label', add.title);
             add.setAttribute('data-pg-menu-skip', '');
@@ -474,6 +433,36 @@
 
         add.setAttribute('data-ws-side-key', 'new');
         head.appendChild(add);
+
+        // Workspace Settings, for whoever holds the right (ws_nav_groups()).
+        (nav.head || []).forEach(function (item) {
+            var gear = link('btn btn-sm btn-text theme-secondary rounded-pill ws-side-tool no-popover' + (navActive(item) ? ' active' : ''), item.url);
+
+            gear.setAttribute('data-ws-nav', item.key);
+            gear.setAttribute('data-ws-side-key', 'nav:' + item.key);
+            gear.title = item.label;
+            gear.setAttribute('aria-label', item.label);
+            gear.appendChild(icon('bi-gear'));
+
+            if (navActive(item)) {
+                gear.setAttribute('aria-current', 'page');
+            }
+
+            inPlace(gear, navHooks[item.key]);
+            head.appendChild(gear);
+        });
+
+        // The workspace's own tour (includes/workspace/tour.php), played
+        // again from here, on the screen it is about.
+        if (typeof hooks.tour === 'function') {
+            var tour = button('btn btn-sm btn-text theme-secondary rounded-pill ws-side-tool', '', 'bi-signpost-split', t('tour_start'));
+
+            tour.setAttribute('data-ws-tour', '1');
+            tour.setAttribute('data-ws-side-key', 'tour');
+            tour.addEventListener('click', function () { hooks.tour(); });
+            head.appendChild(tour);
+        }
+
         fragment.appendChild(head);
 
         var scroll = el('div', 'ws-side-scroll');
@@ -559,8 +548,8 @@
             return box;
         }
 
-        var nav = state.data.nav || {};
-        var titles = state.data.titles || {};
+        // ── The places, without a heading: Overview, Inbox, My Tasks ──
+
         var top = group('', '').box;
 
         (nav.top || []).forEach(function (item) {
@@ -611,9 +600,9 @@
             }
 
             if (channel.mentions) {
-                node.appendChild(el('span', 'ws-count ws-count-mention', channel.mentions));
+                node.appendChild(countBadge(channel.mentions, true));
             } else if (channel.unread && channel.notify !== 'none') {
-                node.appendChild(el('span', 'ws-count', channel.unread > 99 ? '99+' : channel.unread));
+                node.appendChild(countBadge(channel.unread, false));
             }
 
             // A pin at the end of the line, shown on hover (and always on a
@@ -648,37 +637,19 @@
             return node;
         }
 
-        function section(title, list, sortable, iconName, dropOut, key) {
-            var box = el('div', 'ws-side-section' + (sortable ? ' ws-sortable' : ''));
-            var heading = el('div', 'ws-side-title');
-            var shut = !!closedParts[key];
-
-            sectionToggle(heading, key, title, iconName, shut, channelsBadge(list));
-            box.appendChild(heading);
-
-            // A channel dropped on the heading comes out of its group.
-            if (dropOut && manage && (typeof hooks.dropTarget === 'function')) {
-                hooks.dropTarget(heading, 0, null);
+        // One part of the Channels section, without a heading of its own.
+        function part(box, list, sortable, className) {
+            if (!list.length) {
+                return;
             }
 
-            // Closed, a section still shows the one that is on the screen.
-            if (shut) {
-                list.forEach(function (channel) {
-                    if (now.channel === channel.id) {
-                        box.appendChild(channelLink(channel, box, false));
-                    }
-                });
-            } else {
-                list.forEach(function (channel) {
-                    box.appendChild(channelLink(channel, box, sortable));
-                });
+            var inner = el('div', 'ws-side-part ' + className + (sortable ? ' ws-sortable' : ''));
 
-                if (!list.length) {
-                    box.appendChild(emptyLine('channels', t('no_channels'), 'ws-empty-side'));
-                }
-            }
+            list.forEach(function (channel) {
+                inner.appendChild(channelLink(channel, inner, sortable));
+            });
 
-            scroll.appendChild(box);
+            box.appendChild(inner);
         }
 
         var children = groupTree(data.groups);
@@ -710,7 +681,7 @@
             var unread = groupUnread(data.channels, children, item.id);
 
             if (shut && unread) {
-                toggle.appendChild(el('span', 'ws-count', unread > 99 ? '99+' : unread));
+                toggle.appendChild(countBadge(unread, false));
             }
 
             if (manage && item.access) {
@@ -762,14 +733,64 @@
             parent.appendChild(box);
         }
 
-        if (pinned.length) {
-            section(t('pinned'), pinned, true, 'bi-pin-angle', false, 'pinned');
+        // ── Channels, under one heading: pinned, the groups, the person's
+        // other channels, then those they are not in (dimmed) ──
+
+        var channelsBox = el('div', 'ws-side-section ws-side-channels');
+        var channelsHead = el('div', 'ws-side-title');
+        var channelsShut = !!closedParts.channels;
+
+        sectionToggle(channelsHead, 'channels', t('channels'), '', channelsShut, channelsBadge(joined));
+        channelsBox.appendChild(channelsHead);
+
+        // A channel dropped on the heading comes out of its group.
+        if (manage && (typeof hooks.dropTarget === 'function')) {
+            hooks.dropTarget(channelsHead, 0, null);
         }
 
-        // The open discussions the person is in (threads.php); none, no
-        // section. The open one and those of the open channel come first,
-        // then the unread ones, then the latest; a few are shown until the
-        // rest are asked for.
+        if (channelsShut) {
+            // Closed, the section still shows the one that is on the screen.
+            data.channels.forEach(function (channel) {
+                if (now.channel === channel.id) {
+                    channelsBox.appendChild(channelLink(channel, channelsBox, false));
+                }
+            });
+        } else {
+            part(channelsBox, pinned, true, 'ws-side-pinned');
+
+            if ((children[0] || []).length || manage) {
+                var groupSection = el('div', 'ws-side-part ws-side-groups');
+
+                (children[0] || []).forEach(function (item) {
+                    groupBox(item, groupSection, 0);
+                });
+
+                if (manage && (typeof hooks.newGroup === 'function')) {
+                    var newGroup = button('btn btn-sm btn-link pg-link-secondary ws-group-new', t('grp_new'), 'bi-folder-plus');
+
+                    newGroup.setAttribute('data-ws-side-key', 'new-group');
+                    newGroup.addEventListener('click', function () { hooks.newGroup(); });
+                    groupSection.appendChild(newGroup);
+                }
+
+                channelsBox.appendChild(groupSection);
+            }
+
+            part(channelsBox, mine, true, 'ws-side-mine');
+            part(channelsBox, others, false, 'ws-side-others');
+
+            if (!data.channels.length) {
+                channelsBox.appendChild(emptyLine('channels', t('no_channels'), 'ws-empty-side'));
+            }
+        }
+
+        scroll.appendChild(channelsBox);
+
+        // ── My discussions: the open discussions the person is in
+        // (threads.php); none, no section. The open one and those of the
+        // open channel come first, then the unread ones, then the latest; a
+        // few are shown until the rest are asked for ──
+
         var rank = function (item) {
             return (item.thread.id === now.thread) ? 0 : ((item.thread.channel_id === now.channel) ? 1 : (item.thread.unread ? 2 : 3));
         };
@@ -788,7 +809,7 @@
             var talksShut = !!closedParts.threads;
             var talksUnread = threads.reduce(function (sum, thread) { return sum + (thread.unread || 0); }, 0);
 
-            sectionToggle(talksHead, 'threads', t('th_section'), 'bi-chat-square-dots', talksShut, countBadge(talksUnread, false));
+            sectionToggle(talksHead, 'threads', t('th_mine'), '', talksShut, countBadge(talksUnread, false));
             talks.appendChild(talksHead);
 
             (talksShut ? [] : (state.threadsAll ? threads : threads.slice(0, THREADS_SHOWN))).forEach(function (thread) {
@@ -807,7 +828,7 @@
                 item.appendChild(names);
 
                 if (thread.unread) {
-                    item.appendChild(el('span', 'ws-count', thread.unread > 99 ? '99+' : thread.unread));
+                    item.appendChild(countBadge(thread.unread, false));
                 }
 
                 if (typeof hooks.openThread === 'function') {
@@ -831,30 +852,6 @@
             scroll.appendChild(talks);
         }
 
-        if ((children[0] || []).length || manage) {
-            var groupSection = el('div', 'ws-side-section ws-side-groups');
-
-            (children[0] || []).forEach(function (item) {
-                groupBox(item, groupSection, 0);
-            });
-
-            if (manage && (typeof hooks.newGroup === 'function')) {
-                var newGroup = button('btn btn-sm btn-link pg-link-secondary ws-group-new', t('grp_new'), 'bi-folder-plus');
-
-                newGroup.setAttribute('data-ws-side-key', 'new-group');
-                newGroup.addEventListener('click', function () { hooks.newGroup(); });
-                groupSection.appendChild(newGroup);
-            }
-
-            scroll.appendChild(groupSection);
-        }
-
-        section(t('my_channels'), mine, true, '', true, 'mine');
-
-        if (others.length) {
-            section(t('other_channels'), others, false, '', true, 'others');
-        }
-
         ['work', 'records'].forEach(function (key) {
             var items = nav[key] || [];
 
@@ -873,18 +870,6 @@
                 }
             });
         });
-
-        // The settings stay at the foot of the list, however long the list
-        // of channels grows.
-        if ((nav.foot || []).length) {
-            var foot = el('div', 'ws-side-foot');
-
-            nav.foot.forEach(function (item) {
-                navLink(foot, item, navActive(item), 0);
-            });
-
-            fragment.appendChild(foot);
-        }
 
         clear(root).appendChild(fragment);
         root.removeAttribute('aria-busy');

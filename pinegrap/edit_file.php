@@ -287,7 +287,7 @@ if (!isset($_POST['name'])) {
     $image_buttons = '';
     $output_rotate_form = '';
     $output_convert_rows = '';
-    $output_image_edit_link = '' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/image_editor_edit.php?file_name=' . h($file_name) . '&send_to=' . h(escape_javascript(REQUEST_URL)) . '';
+    $output_image_edit_link = '' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/image_editor_edit.php?file_name=' . h(urlencode($file_name)) . '&send_to=' . h(urlencode(REQUEST_URL)) . '';
     // Convert file size to a user friendly output.
     $output_file_size = convert_bytes_to_string ($row['size']);
     // get file extension
