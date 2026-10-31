@@ -70,6 +70,7 @@ ERP (accounting) module: invoices, payments, waybills, cash, e-documents, report
 - erp-expense-receipts.md: An ERP expense's receipt file: one door for form and API, type read from the bytes, replacing keeps the old copy (erp_archive_store again), readers take the newest row, MAX(id) in direct joins.
 - erp-expense-recurring-restart.md: Starting a stopped repeating expense again goes on from where it stopped and does not write past periods a second time; a restart keeps the first expense as its source
 - erp-expenses.md: ERP expenses (4.95): why an expense is nobody's debt, how payment and cancel post to the till, amount and base figures, date and till rules, categories, the API's cash gate and events.
+- erp-file-manager-purchase-invoices.md: What the File Manager's ERP "Purchase invoices" folder lists for a purchase invoice: its record, no PDF, no download, no kept copy shown.
 - erp-file-map-features.md: Where ERP work lives, part 2: stock, accountant pack, period lock, expenses, reports, rules, quotes, purchase orders, recurring documents, prices, cheques, bank statements, storefront, CSV.
 - erp-file-map.md: Where ERP work lives, part 1: the core (entry, money, ledger, accounts, settlement, orders, invoices, waybills, documents, aging, e-documents, API seam). Part 2: erp-file-map-features.md.
 - erp-input-keyboards.md: Phone keyboards of ERP boxes: liveform's opt-in autocapitalize, the till IBAN, the expense VKN/TCKN, the send-by-e-mail recipient list and the account card's e-mail, phone and postcode

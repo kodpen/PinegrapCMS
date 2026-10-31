@@ -24,5 +24,6 @@ description: ERP account CSV import wizard (steps, matching, batches, defaults) 
 - `erp_export_log` (4.52: entity, doc_id, profile, run_token) records what was exported. `erp_parasut_log` was the API call trace (renamed `erp_edoc_log` in 4.62); never mix the two.
 - Cancelled documents never export; returns count as returns and are skipped; drafts are optional.
 - Currency mapping is only TRY→TRL.
+- Generic CSV words: the invoices file writes the status through `erp_invoice_status_label()`, the receipts file the payment method through `erp_export_payment_method_words()` (the accountant pack's list); an unknown code is written as it is. Both were raw codes (`paid`, `transfer`) until #4290 (PR #4323). Test: `tests/erp_export_words_test.php`.
 
 Related: docs/memory/erp/erp-account-save-partial-writes.md
