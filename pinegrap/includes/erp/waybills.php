@@ -119,6 +119,35 @@ function erp_order_link_html($order_id, $order_number, $exists, $class = '', $ca
 }
 
 /**
+ * A receipt or payment for an ERP list, statement or trail line: a link to
+ * erp_receipt.php when the viewer may open it, otherwise the label as plain
+ * text. The receipt screens are cash-gated, so a clerk without the cash right
+ * would end on "Access denied".
+ *
+ * @param int         $receipt_id The receipt's id.
+ * @param string      $label      Plain text to show; "#id" when empty.
+ * @param string      $class      Class of the link.
+ * @param bool|null   $can_open   Whether the viewer may open it; null reads
+ *                                USER_MANAGE_ERP_CASH (no link when unset).
+ * @return string  HTML
+ */
+function erp_receipt_link_html($receipt_id, $label, $class = '', $can_open = null)
+{
+    $receipt_id = (int) $receipt_id;
+    $label = ((string) $label !== '') ? (string) $label : ('#' . $receipt_id);
+
+    if ($can_open === null) {
+        $can_open = defined('USER_MANAGE_ERP_CASH') && USER_MANAGE_ERP_CASH;
+    }
+
+    if (!$can_open || ($receipt_id <= 0)) {
+        return h($label);
+    }
+
+    return '<a href="erp_receipt.php?id=' . $receipt_id . '"' . (($class !== '') ? ' class="' . h($class) . '"' : '') . '>' . h($label) . '</a>';
+}
+
+/**
  * The lines of a delivery note, with the live product name beside the
  * description that was written.
  *

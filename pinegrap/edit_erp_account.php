@@ -159,7 +159,7 @@ if (!$_POST) {
         // allocated or cancelled.
         $output_description = h($row['description']);
         if (in_array((string) $row['doc_type'], array('collection', 'payment'), true) && ((int) $row['doc_id'] > 0)) {
-            $output_description = '<a href="erp_receipt.php?id=' . (int) $row['doc_id'] . '" class="pg-link-body-emphasis">' . (($output_description !== '') ? $output_description : ('#' . (int) $row['doc_id'])) . '</a>';
+            $output_description = erp_receipt_link_html((int) $row['doc_id'], (string) $row['description'], 'pg-link-body-emphasis');
         }
 
         $output_statement_rows .= '
