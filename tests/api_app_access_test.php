@@ -116,3 +116,16 @@ function test_api_app_access_log_time_type()
 	pg_assert_same(array('type' => '', 'year' => false), api_app_log_time_type(mktime(23, 50, 0, 10, 30, 2026), $now), 'yesterday');
 	pg_assert_same(array('type' => '', 'year' => true), api_app_log_time_type(mktime(12, 0, 0, 12, 31, 2025), $now), 'last year');
 }
+
+// Application Access reads its log per application and refuses a second
+// active OAuth application before api_app_create() runs.
+function test_api_app_access_screen_wiring()
+{
+	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/api_settings.php');
+
+	pg_assert_false(strpos($screen, 'LIMIT 300') !== false, 'no site-wide 300-row window');
+	pg_assert_contains('api_app_log_sql(', $screen, 'per-application log query');
+	pg_assert_contains('current.log_errors', $screen, 'Errors only reads the errors list');
+	pg_assert_true(strpos($screen, 'api_app_oauth_create_refusal(') < strpos($screen, '$made = api_app_create('), 'refused before the row is made');
+	pg_assert_contains('api_app_oauth_unused(', $screen, 'an unused OAuth row is marked');
+}
