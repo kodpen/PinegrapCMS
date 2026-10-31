@@ -25,3 +25,8 @@ description: How the design importer fetches a page (import_design.php): each ho
 
 ## How is the typed start address read?
 - `import_design_start_url()` lower-cases a typed http/https scheme in any case (`Https://x` → `https://x`; a phone capitalised the first letter and the address became `http://Https://x`, "could not find a web page") and adds `http://` only when no scheme is there. The crawler's guard `import_design_url_is_web()` takes http/https in any case and refuses `file:`, `php:` and every other scheme. The box has `spellcheck=false autocapitalize=off` (`ui/settings-input-keyboards.md`). Tests: `tests/import_design_start_url_test.php`.
+
+## What does the final Import say about skipped items?
+- Each scanned item the import leaves out is recorded with its reason: `name` (`pg_upload_name_blocked()` refused it) or `download` (`fetch_url_content()` answered false: no answer, refused address, status outside 200-399). The scan does not fetch images, fonts, PDFs or media, so their broken links only show here.
+- `import_design_import_summary()` builds the end: notice "Items imported: N." on view_pages, or an error "No items could be imported." when none was created; a warning lists up to five `h()`-escaped addresses with their reason, then "and N more". The command-line run echoes the count and every skipped address before `Complete`.
+- Before, it always said "All scanned items have been imported successfully." even with pages, stylesheets or pictures missing. Tests: `tests/import_design_summary_test.php`.

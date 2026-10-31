@@ -775,6 +775,7 @@
     "No invoices, returns or expenses in this period.": "Bu dönemde fatura, iade ya da gider yok.",
     "No issue has been published yet.": "Henüz yayımlanmış bir sayı yok.",
     "No issues found": "Sorun bulunamadı",
+    "No items could be imported.": "Hiçbir öğe içe aktarılamadı.",
     "No items have been added.": "Henüz ürün eklenmedi.",
     "No items in cart.": "Sepette ürün yok.",
     "No items were found for {var:1}.": "{var:1} için hiçbir öğe bulunamadı.",
