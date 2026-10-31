@@ -8156,7 +8156,7 @@
             // the info (showMembers()) and on the name's tooltip. On a phone
             // the line keeps the way back, the name and the menu, which then
             // holds the rest.
-            var head = el('div', 'ws-head');
+            var head = el('div', 'ws-head ws-head-channel');
             head.appendChild(channelsToggle());
 
             // The channel's colour on its icon tile and a thin stripe.
@@ -8165,7 +8165,7 @@
                 head.setAttribute('data-ws-colored', '1');
             }
 
-            var title = el('div', 'ws-head-title');
+            var title = el('div', 'ws-head-title ws-head-row');
             var h = el('h2');
             var tile = el('span', 'ws-head-icon');
             tile.setAttribute('aria-hidden', 'true');
