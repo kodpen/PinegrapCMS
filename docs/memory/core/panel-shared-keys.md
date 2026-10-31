@@ -1,6 +1,6 @@
 ---
 name: panel-shared-keys
-description: Short keys shared by many screens that were read in the wrong sense (SEO, Created, Given, Return, the audit actions, UTM Medium, the uptime note, Quotes, reviews, Edit/Restore as a source) and the separate keys used instead
+description: Short keys read in the wrong sense (SEO, Created, Given, Return, audit actions, UTM Medium, Quotes, reviews, Edit/Restore, Open) and the separate keys used instead
 ---
 
 ## Which shared keys were wrong, and how were they fixed (#3608)?
