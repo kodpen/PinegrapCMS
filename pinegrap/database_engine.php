@@ -515,7 +515,7 @@ if (($visitor_settings === false) || ($visitor_catalog === null)) {
     $visitor_preview = pg_visitor_cleanup_preview(array('rows' => $visitor_figures['rows']) + $visitor_catalog);
     $visitor_last = pg_visitor_cleanup_last();
     $visitor_through = $visitor_settings['summary'] ? pg_visitor_summary_through() : '';
-    $visitor_settings_link = '<a href="settings_seo.php#pgset-analytics">' . h(lang('Change')) . '</a>';
+    $visitor_settings_link = '<a href="settings_privacy.php#pgset-analytics">' . h(lang('Change')) . '</a>';
 
     $visitor_alert = '';
 

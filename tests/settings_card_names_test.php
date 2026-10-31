@@ -106,9 +106,9 @@ function test_settings_card_required_markers_are_not_read()
 	pg_assert_contains('aria-required="true"', $prep, 'a required e-document field says so to screen readers');
 	pg_assert_false(strpos($prep, "\$erp_edoc_required ? ' required") !== false, 'the e-document fields carry no required attribute that would refuse the whole save');
 
-	$seo = settings_card_names_source('seo.php');
-	pg_assert_false(strpos($seo, '>*\' . lang(\'Tracking Code Duration\')') !== false, 'Tracking Code Duration has no leading star');
-	pg_assert_contains('lang(\'Tracking Code Duration\') . \'<span class="pg-required-marker fg-danger ms-1" aria-hidden="true">*</span></label>', $seo, 'Tracking Code Duration has the hidden trailing marker');
+	$privacy = settings_card_names_source('privacy.php');
+	pg_assert_false(strpos($privacy, '>*\' . lang(\'Tracking Code Duration\')') !== false, 'Tracking Code Duration has no leading star');
+	pg_assert_contains('lang(\'Tracking Code Duration\') . \'<span class="pg-required-marker fg-danger ms-1" aria-hidden="true">*</span></label>', $privacy, 'Tracking Code Duration has the hidden trailing marker');
 }
 
 function test_settings_card_tsa_placeholder_is_neutral()
