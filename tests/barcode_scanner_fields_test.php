@@ -65,3 +65,16 @@ function test_barcode_scanner_fields_create_order()
 	pg_assert_true($guard !== false, 'add_order.js drops a scan in a dialog or a blank one');
 	pg_assert_true($guard < strpos($options, 'addItem('), 'add_order.js checks before it adds');
 }
+
+// After a window of the Create Order screen closes, the product box takes the
+// focus once the dialog is gone: focused right after hide() it fell to
+// <body> (a Bootstrap 6 dialog keeps the page inert until it has closed), and
+// the next scan went nowhere.
+function test_barcode_scanner_fields_create_order_focus_after_windows()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/add_order.js');
+
+	pg_assert_contains('pgUI.dialog.hide(el.accountModal).then(function () { el.product.focus(); });', $source, 'after a new customer is saved');
+	pg_assert_contains("pgUI.dialog.hide(byId('pg_sale_clear')).then(function () { el.product.focus(); });", $source, 'after the cart is emptied');
+	pg_assert_same(0, preg_match('/pgUI\.dialog\.hide\([^)]*\);\s*\n[^\n]*\n?\s*el\.product\.focus\(\);/', $source), 'never focused right after hide()');
+}

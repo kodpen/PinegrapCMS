@@ -20603,13 +20603,15 @@
         });
         bar.appendChild(personSelect);
 
-        // The two days stay side by side when the toolbar wraps.
-        var dates = el('div', 'd-flex gap-1');
+        // The two days stay side by side when the toolbar wraps, sharing the
+        // row on a phone; each says what it is while empty.
+        var dates = el('div', 'd-flex gap-1 ws-tl-dates');
         var dateField = function (key, label) {
-            var input = el('input', 'form-control form-control-sm w-auto');
+            var input = el('input', 'form-control form-control-sm');
             pgDateField(input, 'date');
             input.value = state[key];
             input.title = label;
+            input.placeholder = label;
             input.setAttribute('aria-label', label);
             input.addEventListener('change', function () {
                 state[key] = dateOf(input.value);

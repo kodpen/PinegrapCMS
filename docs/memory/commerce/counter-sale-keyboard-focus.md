@@ -19,3 +19,6 @@ description: Create Order screen (add_order.js): focus kept on the cart row, qui
 - The scanner listener ignores fields and drops a blank code or a scan in an open dialog (`ui/barcode-scanner-detection.md`, PR #3377).
 
 PR #3065. Test: `tests/order_cart_focus_test.php` (source pins).
+
+## Where does the focus go after a window of the screen closes?
+- To the product box, once the window has closed (`pgUI.dialog.hide(…).then()`): after the new-customer window saves and after Empty the cart. Focused right after `hide()` it fell to `<body>`, since a Bootstrap 6 dialog keeps the page inert until its closing animation ends (`ui/dialog-result-after-close.md`).
