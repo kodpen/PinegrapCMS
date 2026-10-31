@@ -1,6 +1,6 @@
 ---
 name: coordinator-limits
-description: Coordinator rules (2026-10-27): quota guard before a worker starts, worker cap per account shared by its coordinators, a card for a draft PR whose decision came after its session ended
+description: Coordinator rules (2026-10-27): quota guard before a worker starts, 3 to 6 workers per coordinator, a card for a draft PR whose decision came after its session ended
 ---
 
 ## Why?
@@ -9,7 +9,7 @@ description: Coordinator rules (2026-10-27): quota guard before a worker starts,
 
 ## Which quota guard?
 - Before starting a worker the coordinator calls `get_session` on itself and reads `rate_limit_info`: a status other than `allowed` means no new worker until `resetsAt`. A session of its account that fails within a minute of its start is read as a limit hit: no new worker for 10 minutes, the owner told once.
-- The worker cap is per account, shared by its coordinators (the owner sets it: 6 since 2026-10-28; the coordinators split it between them), never per coordinator; the queue rule (at most 6 of the 20 places per coordinator; 4 of 15 before 2026-10-28) stays.
+- Each coordinator keeps at least 3 and at most 6 workers busy (since 2026-10-31; before, 6 per account shared by its coordinators). Fewer than 3 only while the quota guard, the queue limit (CLAUDE.md, Working mode 8) or a lack of free steps stops a start. The queue rule (at most 6 of the 20 places per coordinator; 4 of 15 before 2026-10-28) stays.
 - Starts are staggered: at most one new worker a minute. The architect starts no sub-agents for the same reason.
 
 ## Which draft PR gets a card?

@@ -130,7 +130,7 @@ decision questions.
    at most 6 of the 20.
    `gh api 'repos/kodpen/pinegrapcms/pulls?state=open&per_page=100' --jq '[.[]|select(.draft|not)|select(.head.ref|startswith("merge-train")|not)]|length'`
 9. **Coordinators.** One coordinator per account starts its cloud workers within
-   the account's quota and worker cap (`coordinator-limits.md`); it writes
+   the account's quota, 3 to 6 workers each (`coordinator-limits.md`); it writes
    no code and merges nothing. It tells the owner when the merging session
    seems stopped (`coordinator.md`).
 10. **Decisions go to the architect.** A question only the owner can
