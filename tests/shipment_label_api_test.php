@@ -67,7 +67,7 @@ function shipment_label_api_test_row($changes = array())
 		'reference' => 'shp-77', 'barcode' => 'BC77', 'label_format' => 'pdf',
 		'label_file' => '7_9_geliver_0123456789abcdef.pdf', 'state' => 'active', 'is_return' => '0',
 		'user_id' => '3', 'created_at' => '1790000000', 'cancelled_at' => '0', 'label_removed_at' => '0',
-		'order_return_id' => '0',
+		'order_return_id' => '0', 'pickup_ref' => '', 'pickup_at' => '0',
 	), $changes);
 }
 
@@ -158,6 +158,8 @@ function test_shipment_label_api_list_shape()
 	pg_assert_same(gmdate('Y-m-d\\TH:i:s\\Z', 1790000000), $label['created_at']);
 	pg_assert_same(null, $label['cancelled_at']);
 	pg_assert_true($label['file_kept']);
+	pg_assert_same(null, $label['pickup_ref'], 'no pickup booked');
+	pg_assert_same(null, $label['pickup_at']);
 	pg_assert_same('https://shop.test/pinegrap/integration.php/orders/7/shipments/labels/42/document', $label['document_url']);
 
 	$encoded = json_encode($label);
@@ -179,6 +181,30 @@ function test_shipment_label_api_list_shape()
 	$order = api_order_schema();
 	pg_assert_same(array(api_order_label_schema()), $order['shipments'][0]['labels'], 'GET /orders/{id} declares the list');
 	pg_assert_same('api_order_label_schema', api_openapi_objects()['OrderShipmentLabel']);
+}
+
+// A booked pickup shows its confirmation and window start; a site whose
+// table lacks the two columns answers null for both.
+function test_shipment_label_api_pickup_fields()
+{
+	$booked = api_order_label_present(shipment_label_api_test_row(array(
+		'pickup_ref' => 'PU-123', 'pickup_at' => '1790086400',
+	)), '');
+
+	pg_assert_same('PU-123', $booked['pickup_ref']);
+	pg_assert_same(gmdate('Y-m-d\\TH:i:s\\Z', 1790086400), $booked['pickup_at']);
+
+	$row = shipment_label_api_test_row();
+	unset($row['pickup_ref'], $row['pickup_at']);
+	$older = api_order_label_present($row, '');
+
+	pg_assert_same(null, $older['pickup_ref'], 'a site before the pickup columns');
+	pg_assert_same(null, $older['pickup_at']);
+	pg_assert_same(array_keys(api_order_label_schema()), array_keys($older));
+
+	$description = shipment_label_api_test_route('orders.get')['description'];
+	pg_assert_true(strpos($description, 'pickup_ref') !== false, 'GET /orders/{id} names pickup_ref');
+	pg_assert_true(strpos($description, 'pickup_at') !== false, 'GET /orders/{id} names pickup_at');
 }
 
 // An SVG goes only as a sandboxed attachment, never as a page.
