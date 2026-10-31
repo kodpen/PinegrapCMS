@@ -110,12 +110,11 @@ $reply_allowed = $review && pg_review_replies_ready();
 $form_reference_code = '';
 $output_reference_button = '';
 $output_reference_line = '';
-$output_reference_buttons = '';
 if($item_type === 'submitted_form'){
     //if this is custom page check referance code from forms
     $form_reference_code = $row['reference_code'];
     if($form_reference_code != ''){
-        $output_reference_button = '<a class="btn btn-link pg-link-secondary py-0 mb-3 " href="' . h(OUTPUT_PATH . get_page_name($page_id) . pg_comment_view_query('?r=' . $form_reference_code, $comment_id) . '#c-' . $comment_id) . '"><i class="bi bi-link bi-me-2"></i>' . lang('Go To Comment') . '</a>';
+        $output_reference_button = '<a class="btn btn-sm btn-text theme-secondary" href="' . h(OUTPUT_PATH . get_page_name($page_id) . pg_comment_view_query('?r=' . $form_reference_code, $comment_id) . '#c-' . $comment_id) . '"><i class="bi bi-link me-2" aria-hidden="true"></i>' . lang('Go To Comment') . '</a>';
         $output_reference_line = '<p class="p-0 m-0">' . lang('Form Reference Code') . ': ' . $form_reference_code . '</p>';
     }
     
@@ -123,17 +122,17 @@ if($item_type === 'submitted_form'){
     //if this is product group check address name from product groups
     $product_group_address_name = $row['product_group_address_name'];
     if($product_group_address_name != ''){
-        $output_reference_button = '<a class="btn btn-link pg-link-secondary py-0 mb-3 " href="' . h(OUTPUT_PATH . get_page_name($page_id) . '/' . $product_group_address_name . pg_comment_view_query('', $comment_id) . '#c-' . $comment_id) . '"><i class="bi bi-link bi-me-2"></i>' . lang('Go To Comment') . '</a>';
+        $output_reference_button = '<a class="btn btn-sm btn-text theme-secondary" href="' . h(OUTPUT_PATH . get_page_name($page_id) . '/' . $product_group_address_name . pg_comment_view_query('', $comment_id) . '#c-' . $comment_id) . '"><i class="bi bi-link me-2" aria-hidden="true"></i>' . lang('Go To Comment') . '</a>';
     }
 
 }else if($item_type === 'product'){
     //if this is product group check address name from product groups
     $product_address_name = $row['product_address_name'];
     if($product_address_name != ''){
-        $output_reference_button = '<a class="btn btn-link pg-link-secondary py-0 mb-3 " href="' . h(OUTPUT_PATH . get_page_name($page_id) . '/' . $product_address_name . pg_comment_view_query('', $comment_id) . '#c-' . $comment_id) . '"><i class="bi bi-link bi-me-2"></i>' . lang('Go To Comment') . '</a>';
+        $output_reference_button = '<a class="btn btn-sm btn-text theme-secondary" href="' . h(OUTPUT_PATH . get_page_name($page_id) . '/' . $product_address_name . pg_comment_view_query('', $comment_id) . '#c-' . $comment_id) . '"><i class="bi bi-link me-2" aria-hidden="true"></i>' . lang('Go To Comment') . '</a>';
     }
 }else if($item_type === ''){
-    $output_reference_button = '<a class="btn btn-link pg-link-secondary py-0 mb-3 " href="' . h(OUTPUT_PATH . get_page_name($page_id) . pg_comment_view_query('', $comment_id) . '#c-' . $comment_id) . '"><i class="bi bi-link bi-me-2"></i>' . lang('Go To Comment') . '</a>';
+    $output_reference_button = '<a class="btn btn-sm btn-text theme-secondary" href="' . h(OUTPUT_PATH . get_page_name($page_id) . pg_comment_view_query('', $comment_id) . '#c-' . $comment_id) . '"><i class="bi bi-link me-2" aria-hidden="true"></i>' . lang('Go To Comment') . '</a>';
 }
 
 // A page in the Recycle Bin is not on the site, so its comment gets no link.
@@ -143,11 +142,6 @@ if ($binned) {
     $output_reference_button = '';
 }
 
-//if there is a command button to output
-// prepare button bar
-if($output_reference_button != ''){
-    $output_reference_buttons = pg_screen_toolbar(array('secondary' => $output_reference_button));
-}
 
 
 
@@ -366,13 +360,12 @@ if (!$_POST) {
                 ' . $liveform->output_errors() . '
                 ' . $liveform->get_warnings() . '
                 ' . $liveform->output_notices() . '
-                <div class="mb-3 text-center md:text-start">
-                    <p class="p-0 m-0">' . lang('Added') . ': ' . get_relative_time(array('timestamp' => $created_timestamp)) . ' ' . $created_username . '</p>
+                ' . pg_screen_toolbar(array(
+                    'secondary' => $output_reference_button,
+                    'grow' => '<p class="p-0 m-0">' . lang('Added') . ': ' . get_relative_time(array('timestamp' => $created_timestamp)) . ' ' . $created_username . '</p>
                     <p class="p-0 m-0">' . lang('Page') . ': ' . h(pg_comment_page_label(get_page_name($page_id), $page_id)) . ($binned ? ' (' . h(lang('In the Recycle Bin')) . ')' : '') . '</p>
-                    ' . $output_reference_line . '
-                    ' . $output_review_line . '
-                </div>
-                ' . $output_reference_buttons . '
+                    ' . $output_reference_line . $output_review_line,
+                )) . '
                 <form name="form" action="edit_comment.php" method="post">
                     ' . get_token_field() . '
                     ' . $liveform->output_field(array('type'=>'hidden', 'name'=>'send_to')) . '

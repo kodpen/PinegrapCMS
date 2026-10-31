@@ -206,7 +206,7 @@ if (!$_POST) {
     
     // if this is a home page, then prepare to output description in sub-navigation area
     if ($page_home == 'yes') {
-        $output_subnav_home = '<span class="badge material-icons fg-primary h2">home</span>';
+        $output_subnav_home = '<span class="badge material-icons fg-primary align-middle">home</span>';
     }
     
     $output_subnav_search = '';
@@ -413,7 +413,7 @@ if (!$_POST) {
     
     // The page type area below is only prepared when this user may set the
     // page's type; the form template prints these three either way.
-    $output_button_bar = '';
+    $output_button_bar_buttons = array();
     $output_page_type_selector = '';
     $output_page_type_properties = '';
 
@@ -497,26 +497,14 @@ if (!$_POST) {
                 break;
         }
 
-        // if there is a edit button to display output the button bar.
-        if (
-            ($output_edit_custom_form != '')
-            || ($output_edit_form_list_view != '')
-            || ($output_edit_form_item_view != '')
-            || ($output_edit_custom_shipping_form != '')
-            || ($output_edit_custom_billing_form != '')
-            || ($output_layout_buttons != '')
-        ) {
-            $output_button_bar = pg_screen_toolbar(array(
-                'secondary' => array(
-                    $output_edit_custom_form,
-                    $output_edit_form_list_view,
-                    $output_edit_form_item_view,
-                    $output_edit_custom_shipping_form,
-                    $output_edit_custom_billing_form,
-                    $output_layout_buttons,
-                ),
-            ));
-        }
+        $output_button_bar_buttons = array(
+            $output_edit_custom_form,
+            $output_edit_form_list_view,
+            $output_edit_form_item_view,
+            $output_edit_custom_shipping_form,
+            $output_edit_custom_billing_form,
+            $output_layout_buttons,
+        );
 
         // A refused save opens on the type chosen, with its settings as typed.
         $form_page_type = pg_page_form_redraw_type($posted, $page_type, $user);
@@ -804,6 +792,14 @@ if (!$_POST) {
     $ai_title_marker = $ai_marks_ready ? pg_ai_fields_marker('page_title', 'title', in_array('page_title', $ai_marks, true)) : '';
     $ai_description_marker = $ai_marks_ready ? pg_ai_fields_marker('page_meta_description', 'meta_description', in_array('page_meta_description', $ai_marks, true)) : '';
 
+    // The page's facts (access, type, short link, search, next pages) sit in
+    // the bar's grow slot, so the bar is drawn even when the page has no edit
+    // buttons or the user may not set its type.
+    $output_button_bar = pg_screen_toolbar(array(
+        'secondary' => $output_button_bar_buttons,
+        'grow' => '<p class="mb-0">' . $output_subnav_home . lang('Access') . ': ' . h(get_access_control_type_name(get_access_control_type($page_folder))) . $output_subnav_page_type . $output_subnav_short_link . $output_subnav_search . $output_subnav_search_keywords . $output_subnav_next_page . $output_subnav_skip_page . '</p>',
+    ));
+
     print
     pg_page_shell(
         array(
@@ -832,10 +828,6 @@ if (!$_POST) {
             <div class="col-12">
                 ' . $liveform->output_errors() . '
                 ' . $liveform->output_notices() . '
-                <div class="text-center md:text-start">
-' . $output_subnav_home . '
-                    <p>' . lang('Access') . ': ' . h(get_access_control_type_name(get_access_control_type($page_folder))) . $output_subnav_page_type . $output_subnav_short_link . $output_subnav_search . $output_subnav_search_keywords . $output_subnav_next_page . $output_subnav_skip_page . '</p>
-                </div>
                 ' . $output_button_bar . '
                 <form name="form" action="edit_page.php" method="post">
                     ' . get_token_field() . '
