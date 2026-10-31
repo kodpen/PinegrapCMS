@@ -11405,9 +11405,6 @@ body.workspace:is(.workspace_settings, .workspace_mcp, .workspace_template) .ws-
 .ws-app.ws-thread-resizing iframe {
   pointer-events: none;
 }
-.ws-app.ws-thread-open .ws-composer-hint {
-  display: none !important;
-}
 .ws-send-group .btn {
   white-space: nowrap;
 }
@@ -12474,7 +12471,7 @@ html[data-bs-theme="dark"] .ws-head[data-ws-colored] .ws-head-icon {
 .ws-tabs::-webkit-scrollbar {
   display: none;
 }
-/* The hint is hidden on narrow screens; the send button still goes right. */
+/* Send goes right even where nothing grows before it. */
 .ws-composer-tools > .btn-solid.theme-primary:last-child {
   margin-left: auto;
 }
@@ -14008,42 +14005,29 @@ a.ws-chip:hover {
 .ws-composer-tools .ws-grow {
   flex: 1 1 auto;
 }
-.ws-composer-hint {
-  font-size: .72rem;
-  color: var(--pg-fg-2);
-}
-/* The composer's own marks and steps (PGWsEditor.toolbar()): two small
-   groups after the inserts. Where the row is too narrow for them (a phone,
-   the discussion panel, a narrow window) they are left out and the row
-   stays as it was; the bar over a selection still formats there. The widest
-   row (Turkish "Gönder" with the scheduled-send clock beside it) needs about
-   33rem with them; the cut-off leaves a margin for wider system fonts. */
-.ws-composer-tools {
-  container-type: inline-size;
-}
+/* The composer's own marks and steps (PGWsEditor.toolbar()) wait behind
+   "Aa": the row is one line of inserts, then Send; "Aa" opens the taller box
+   with every mark (below). The bar over a selection still formats. */
 .ws-composer-format {
-  display: flex;
+  display: none;
   align-items: center;
   gap: .15rem;
   margin-left: .1rem;
   padding-left: .25rem;
   border-left: 1px solid var(--pg-border-color-translucent);
 }
-@container (max-width: 34rem) {
-  .ws-composer-format {
-    display: none;
-  }
+/* The phone's switch for the row of tools: a wider screen shows the row. */
+.ws-composer-more {
+  display: none;
 }
-/* The lists' group adds about 6rem: it goes first. */
-@container (max-width: 41rem) {
-  .ws-composer-format:has([data-ws-tool="bullets"]) {
-    display: none;
-  }
-}
-@media (max-width: 767.98px) {
-  .ws-composer-format {
-    display: none;
-  }
+/* Empty in the one-line box; the expanded box names its keys there. */
+.ws-composer-hint {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--pg-fg-2);
+  font-size: .72rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 /* The "Aa" expanded box (PGWsEditor, expand()): a taller field, and every
    tool of the row, wrapped onto a second line where it has no room. */
@@ -14060,14 +14044,6 @@ a.ws-chip:hover {
 .ws-rich-expand {
   font-weight: 600;
   letter-spacing: -.02em;
-}
-/* The hint gives way to the buttons on one line rather than growing the row
-   by several. */
-.ws-composer-tools .ws-composer-hint {
-  min-width: 0;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
 }
 /* The length meter near the message limit, before Send; empty while the
    text is short. */
@@ -14478,7 +14454,7 @@ a.ws-chip:hover {
 }
 @media (max-width: 767.98px) {
   .ws-composer .ws-rich {
-    min-height: 2.9rem;
+    min-height: 2.5rem;
   }
   .ws-rich-block-text > span {
     max-width: 12rem;
@@ -16662,10 +16638,44 @@ body.ws-drawer-open #pg-chat-root .pg-chat-launcher {
   /* 16px keeps iOS from zooming in on the field when it is tapped. */
   .ws-composer textarea {
     font-size: 16px;
-    min-height: 2.9rem;
+    min-height: 2.5rem;
   }
   .ws-composer-tools .btn {
     padding: .3rem .5rem;
+  }
+  /* One row: the switch, the field, then Send or the microphone; the
+     switch opens the row of tools under the field. */
+  .ws-composer {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: .15rem;
+    padding: .3rem .35rem;
+  }
+  .ws-composer > .ws-composer-more {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-self: flex-end;
+    margin-bottom: .2rem;
+  }
+  .ws-composer > :is(.ws-rich, textarea) {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+  .ws-composer > .ws-composer-tools {
+    flex: 0 0 auto;
+    align-self: flex-end;
+    margin-bottom: .2rem;
+  }
+  .ws-composer:not(.is-tools-open) > .ws-composer-tools > :not(.ws-send-group, .ws-voice-mic, .btn-solid, .ws-composer-meter) {
+    display: none;
+  }
+  .ws-composer.is-tools-open > .ws-composer-tools {
+    flex-basis: 100%;
+    order: 3;
+  }
+  .ws-composer.is-tools-open > .ws-composer-more .bi {
+    transform: rotate(45deg);
   }
   /* A recording row as tall as the box it stands in for, with buttons a
      finger hits; the player's small buttons the same. */
@@ -16808,7 +16818,9 @@ body.ws-drawer-open #pg-chat-root .pg-chat-launcher {
   .ws-strip:has(.ws-catchup) .ws-pin-bar > :not(.ws-pin-text) {
     display: none;
   }
-  body.ws-keyboard .ws-center > .ws-strip {
+  /* While the keyboard is up the tabs wait too: the conversation keeps
+     the height between the header and the box. */
+  body.ws-keyboard .ws-center > :is(.ws-strip, .ws-tabs) {
     display: none;
   }
 }

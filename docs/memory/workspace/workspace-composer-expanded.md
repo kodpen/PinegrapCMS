@@ -4,7 +4,7 @@ description: The composer's "Aa" expanded box (Editor.expand()): Enter a new lin
 ---
 
 ## What does the "Aa" switch do?
-- A box made with `onEnter` (only the channel composer) has an "Aa" button on its row of tools. On: the field is taller (`.ws-rich.is-expanded`, 7.5rem up to min(24rem, 50vh)), the row shows every tool group even where the container query hides them (`.ws-composer-tools.is-expanded`, wrapping), and the hint under it reads "… Ctrl+Enter to send" (⌘ on a Mac).
+- A box made with `onEnter` (only the channel composer) has an "Aa" button on its row of tools. On: the field is taller (`.ws-rich.is-expanded`, 7.5rem up to min(24rem, 50vh)), the row shows the formatting groups, hidden otherwise (`.ws-composer-tools.is-expanded`, wrapping), and the hint, empty otherwise, reads "… Ctrl+Enter to send" (⌘ on a Mac).
 - Keys there: Enter is a new line (lists and headings go on as usual), Ctrl+Enter or Cmd+Enter sends; Ctrl+Shift+Enter does not. `enterSends(keys, expanded, touch)` decides for every box that sends; the one-line box is unchanged (Enter sends, Shift+Enter or a touch screen's Enter a new line, Ctrl+Enter still sends).
 - The Ctrl+/ sheet lists Enter = new line, Ctrl+Enter = send while expanded (`shortcutRows('ctrl', true)`).
 
