@@ -255,6 +255,7 @@ function ws_js_strings()
         'people'                 => lang('Responsible people'),
         'people_help'            => lang('Everyone chosen is responsible for the task.'),
         'percent'                => ws_js_template('{var:1}%', 1),
+        'not_workday'            => lang('Not a working day'),
         'person'                 => lang('Team member'),
         'pick_channel'           => lang('Choose a channel from the channel list, or create one.'),
         'plan_saved'             => lang('The plan was saved.'),

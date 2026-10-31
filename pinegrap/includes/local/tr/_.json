@@ -959,6 +959,7 @@
     "{var:1} more note file(s) were not read: one import reads at most {var:2}.": "{var:1} not dosyası daha okunmadı: bir içe aktarma en fazla {var:2} dosya okur.",
     "{var:1} more open": "{var:1} açık daha",
     "{var:1} more out of stock": "{var:1} ürün daha tükendi",
+    "{var:1} more task(s) · My Tasks": "{var:1} görev daha · Görevlerim",
     "{var:1} more waiting": "{var:1} tane daha bekliyor",
     "{var:1} more were not listed this time; press Fix again.": "{var:1} tanesi bu sefer listelenmedi; Onar'a yeniden basın.",
     "{var:1} moved to InnoDB ({var:2} rows, {var:3}, {var:4} s)": "{var:1} InnoDB'ye taşındı ({var:2} satır, {var:3}, {var:4} sn)",

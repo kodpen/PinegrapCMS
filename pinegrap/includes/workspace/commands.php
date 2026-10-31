@@ -2403,8 +2403,11 @@ function ws_command_plan($viewer, $text)
             continue;
         }
 
-        $state = $cell['leave'] ? lang('Away') : ($cell['holiday'] ? lang('Holiday') : lang(array('string' => '{var:1}%', 'vars' => $cell['load'])));
-        $class = ($cell['leave'] || $cell['holiday']) ? 'ws-load-away' : (($cell['load'] > 100) ? 'ws-load-over' : (($cell['load'] >= 80) ? 'ws-load-full' : 'ws-load-ok'));
+        $day_state = ws_plan_day_state($cell);
+        $words = array('away' => lang('Away'), 'holiday' => lang('Holiday'), 'off' => lang('Not a working day'));
+        $classes = array('away' => 'ws-load-away', 'holiday' => 'ws-load-away', 'off' => 'ws-load-away', 'over' => 'ws-load-over', 'full' => 'ws-load-full', 'ok' => 'ws-load-ok');
+        $state = $words[$day_state] ?? lang(array('string' => '{var:1}%', 'vars' => $cell['load']));
+        $class = $classes[$day_state];
         $titles = array();
 
         foreach ($cell['tasks'] as $task) {
