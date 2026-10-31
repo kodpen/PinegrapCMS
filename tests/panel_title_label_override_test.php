@@ -130,7 +130,7 @@ function test_panel_title_label_override_finder()
 function test_panel_title_label_override_named_selects()
 {
 	$products = file_get_contents(PG_FUNCTIONS_DIR . '/view_products.php');
-	pg_assert_true((bool) preg_match('/<select id="filter_select" aria-label="\' \. h\(lang\(\'Content that viewed\'\)\) \. \'"/', $products), 'view_products: #filter_select has its aria-label');
+	pg_assert_true((bool) preg_match('/<select id="filter_select" aria-label="\' \. h\(lang\(\'Products shown\'\)\) \. \'"/', $products), 'view_products: #filter_select has its aria-label');
 
 	$builder = file_get_contents(PG_FUNCTIONS_DIR . '/product_builder.php');
 	pg_assert_true((bool) preg_match('/<select id="status" aria-label="\' \. h\(lang\(\'Enabled\'\)\) \. \'"/', $builder), 'product_builder: #status has its aria-label');
