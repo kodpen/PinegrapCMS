@@ -104,11 +104,7 @@ if ($action and !$command_line) {
     $url = (string) $liveform->get_field_value('url');
     $import_name = $liveform->get_field_value('import_name');
 
-    // If the URL does not start with "http://" or "https://" then add
-    // http:// to the front of it, in order to avoid an error.
-    if ((mb_substr($url, 0, 7) != 'http://') && (mb_substr($url, 0, 8) != 'https://')) {
-        $url = 'http://' . $url;
-    }
+    $url = import_design_start_url($url);
 
     // If the action is scan and there is not already an error for the URL field,
     // then check if that URL is online.
@@ -160,7 +156,7 @@ if ($action != 'import') {
                                 <div class="row">
                                     <div class="col-12 my-3">
                                         <label for="url" class="form-label">' . lang('Website URL') . '</label>
-                                        ' . $liveform->output_field(array('type'=>'text','name'=>'url','id'=>'url','class'=>'form-control','required'=>'required','inputmode'=>'url','placeholder'=>'https://www.example.com')) . '
+                                        ' . $liveform->output_field(array('type'=>'text','name'=>'url','id'=>'url','class'=>'form-control','required'=>'required','inputmode'=>'url','spellcheck'=>'false','autocapitalize'=>'off','placeholder'=>'https://www.example.com')) . '
                                         <div class="form-text fg-secondary">' . lang('Enter the full address of the website to import pages and files from.') . '</div>
                                     </div>
                                     <div class="col-12 md:col-6 my-3">
@@ -848,10 +844,9 @@ function scan($properties) {
         return false;
     }
 
-    // If the URL does not start with "http://" or "https://" then return false.
-    // We do this for security reasons, because we call file_get_contents()
-    // below and we don't want someone to be able to crawl a local file.
-    if ((mb_substr($url, 0, 7) != 'http://') && (mb_substr($url, 0, 8) != 'https://')) {
+    // Only http and https addresses are fetched, so a local file or another
+    // stream wrapper can never be crawled.
+    if (!import_design_url_is_web($url)) {
         return false;
     }
 
@@ -1433,6 +1428,24 @@ function remove_dynamic_code_blocks($content)
     }
 
     return $content;
+}
+
+// The typed start address with its http or https scheme lower-cased (a phone
+// may capitalise the first letter, an address may be pasted in capitals), or
+// with http:// in front when no scheme is typed.
+function import_design_start_url($url)
+{
+    if (preg_match('#^(https?)://#i', $url, $match)) {
+        return mb_strtolower($match[1]) . substr($url, strlen($match[1]));
+    }
+
+    return 'http://' . $url;
+}
+
+// Whether an address has an http or https scheme, in any case.
+function import_design_url_is_web($url)
+{
+    return (bool) preg_match('#^https?://#i', $url);
 }
 
 // Which address the import may fetch. Every fetch here is made by the server,
