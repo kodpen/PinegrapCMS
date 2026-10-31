@@ -277,7 +277,7 @@ if (!$_POST) {
                                 ' . (($preset_invoice !== null)
                                     ? '<input type="hidden" name="currency" value="' . h($preset_currency) . '" />
                                 <input class="form-control" type="text" id="currency_locked" value="' . h($preset_currency) . '" readonly="readonly" />
-                                <div class="form-text">' . lang('The invoice\'s currency; the receipt is entered in it.') . '</div>'
+                                <div class="form-text">' . ($is_collection ? lang('The invoice\'s currency; the receipt is entered in it.') : lang('The invoice\'s currency; the payment is entered in it.')) . '</div>'
                                     : $liveform->output_field(array(
                                         'type' => 'select', 'id' => 'currency', 'name' => 'currency',
                                         'class' => 'form-control', 'options' => erp_fx_currency_options())) . '
@@ -288,8 +288,8 @@ if (!$_POST) {
                                 ' . $liveform->output_field(array(
                                     'type' => 'text', 'id' => 'exchange_rate', 'name' => 'exchange_rate',
                                     'class' => 'form-control text-end', 'maxlength' => '20', 'inputmode' => 'decimal',
-                                    'autocomplete' => 'off', 'placeholder' => lang('rate of the receipt date'))) . '
-                                <div class="form-text">' . h(lang(array('string' => '{var:1} per unit; leave empty for the recorded rate of the receipt date. Ignored for the base currency.', 'vars' => erp_base_currency()))) . (($output_rate_hints !== '') ? ' ' . $output_rate_hints : '') . '</div>
+                                    'autocomplete' => 'off', 'placeholder' => $is_collection ? lang('rate of the receipt date') : lang('rate of the payment date'))) . '
+                                <div class="form-text">' . h(lang(array('string' => $is_collection ? '{var:1} per unit; leave empty for the recorded rate of the receipt date. Ignored for the base currency.' : '{var:1} per unit; leave empty for the recorded rate of the payment date. Ignored for the base currency.', 'vars' => erp_base_currency()))) . (($output_rate_hints !== '') ? ' ' . $output_rate_hints : '') . '</div>
                             </div>
                         </div>'
                             : '') . '
