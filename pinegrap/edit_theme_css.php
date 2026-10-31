@@ -49,7 +49,13 @@ if (!$_POST) {
     // note instead of a PHP warning; Save writes it again.
     $output_file_missing = '';
 
-    if (is_file(FILE_DIRECTORY_PATH . '/' . $file_name)) {
+    // A save that could not be written comes back with the typed code, so
+    // the editor shows it instead of the file as it still is on the disk.
+    $kept_code = $liveform->get_field_value('code');
+
+    if (is_string($kept_code)) {
+        $code = $kept_code;
+    } elseif (is_file(FILE_DIRECTORY_PATH . '/' . $file_name)) {
         $code = file_get_contents(FILE_DIRECTORY_PATH . '/' . $file_name);
     } else {
         $code = '';
@@ -151,6 +157,16 @@ if (!$_POST) {
         header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_theme_css.php?id=' . $id);
         exit();
     }
+
+    // A file that could not be written is not recorded and no success is
+    // shown: the editor opens again with the error and the typed code.
+    function edit_theme_css_write_failed($liveform, $id, $file_name)
+    {
+        $liveform->assign_field_value('code', $_POST['code']);
+        $liveform->add_error(lang(array('string' => '{var:1} could not be written to disk.', 'vars' => h($file_name))));
+        header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_theme_css.php?id=' . $id . '&send_to=' . urlencode($_POST['send_to'] ?? '') . '&from=' . urlencode($_POST['from'] ?? ''));
+        exit();
+    }
     
     // if save new copy was selected, then save a new copy of the file
     if (($_POST['submit_duplicate'] ?? '') == 'Duplicate') {
@@ -172,10 +188,10 @@ if (!$_POST) {
             $file_extension = mb_substr($new_file_name, $position_of_last_period + 1);
         }
         
-        // save the file
-        $handle = fopen(FILE_DIRECTORY_PATH . '/' . $new_file_name, 'w');
-        fwrite($handle, $_POST['code']);
-        fclose($handle);
+        // save the file; a copy that could not be written gets no record
+        if (!pg_file_write_whole(FILE_DIRECTORY_PATH . '/' . $new_file_name, $_POST['code'])) {
+            edit_theme_css_write_failed($liveform, $id, $new_file_name);
+        }
         
         // data from the file we are duplicating
         $row = $file;
@@ -263,15 +279,11 @@ if (!$_POST) {
         // posted name: a posted name is under the caller's control and could
         // point anywhere on the file system.
 
-        // delete the existing file. we have to do this in order to avoid permission errors in certain cirumstances
-        if (is_file(FILE_DIRECTORY_PATH . '/' . $file_name)) {
-            unlink(FILE_DIRECTORY_PATH . '/' . $file_name);
+        // update the content in the file; the stored file is replaced only
+        // once the whole content is written
+        if (!pg_file_write_whole(FILE_DIRECTORY_PATH . '/' . $file_name, $_POST['code'])) {
+            edit_theme_css_write_failed($liveform, $id, $file_name);
         }
-        
-        // update the content in the file
-        $handle = fopen(FILE_DIRECTORY_PATH . '/' . $file_name, 'w');
-        fwrite($handle, $_POST['code']);
-        fclose($handle);
         
         // update file in database
         $query =

@@ -52,7 +52,13 @@ if (!$_POST) {
     // note instead of a PHP warning; Save writes it again.
     $output_file_missing = '';
 
-    if (is_file(FILE_DIRECTORY_PATH . '/' . $file_name)) {
+    // A save that could not be written comes back with the typed code, so
+    // the editor shows it instead of the file as it still is on the disk.
+    $kept_code = $liveform->get_field_value('code');
+
+    if (is_string($kept_code)) {
+        $code = $kept_code;
+    } elseif (is_file(FILE_DIRECTORY_PATH . '/' . $file_name)) {
         $code = file_get_contents(FILE_DIRECTORY_PATH . '/' . $file_name);
     } else {
         $code = '';
@@ -148,6 +154,16 @@ if (!$_POST) {
         exit();
     }
 
+    // A file that could not be written is not recorded and no success is
+    // shown: the editor opens again with the error and the typed code.
+    function editor_edit_file_write_failed($liveform, $id, $file_name)
+    {
+        $liveform->assign_field_value('code', $_POST['code']);
+        $liveform->add_error(lang(array('string' => '{var:1} could not be written to disk.', 'vars' => h($file_name))));
+        header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/editor_edit_file.php?id=' . $id . '&send_to=' . urlencode($_POST['send_to'] ?? ''));
+        exit();
+    }
+
     if (($_POST['submit_duplicate'] ?? '') == 'Duplicate') {
 
         // The copy is named after the stored file, never the posted name,
@@ -156,9 +172,10 @@ if (!$_POST) {
         $new_file_name = get_unique_name(array('name' => $new_file_name, 'type' => 'file'));
         $file_extension = pathinfo($new_file_name, PATHINFO_EXTENSION);
 
-        $handle = fopen(FILE_DIRECTORY_PATH . '/' . $new_file_name, 'w');
-        fwrite($handle, $_POST['code']);
-        fclose($handle);
+        // A copy that could not be written gets no record.
+        if (!pg_file_write_whole(FILE_DIRECTORY_PATH . '/' . $new_file_name, $_POST['code'])) {
+            editor_edit_file_write_failed($liveform, $id, $new_file_name);
+        }
 
         $row = $file;
 
@@ -200,12 +217,10 @@ if (!$_POST) {
         // posted name: a posted name is under the caller's control and could
         // point anywhere on the file system.
 
-        if (is_file(FILE_DIRECTORY_PATH . '/' . $file_name)) {
-            unlink(FILE_DIRECTORY_PATH . '/' . $file_name);
+        // The stored file is replaced only once the whole content is written.
+        if (!pg_file_write_whole(FILE_DIRECTORY_PATH . '/' . $file_name, $_POST['code'])) {
+            editor_edit_file_write_failed($liveform, $id, $file_name);
         }
-        $handle = fopen(FILE_DIRECTORY_PATH . '/' . $file_name, 'w');
-        fwrite($handle, $_POST['code']);
-        fclose($handle);
 
         $query = "UPDATE files 
             SET size = ?,

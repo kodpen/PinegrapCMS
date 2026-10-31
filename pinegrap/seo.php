@@ -2022,7 +2022,7 @@ function pg_seo_page_toolbar($page_id, $style_id = 0, $user = null, $options = a
                         <span class="pg_seo_tb_glabel">' . h($line[0]) . '</span>
                         <span class="pg_seo_tb_gbar"><i style="width:' . (int) $line[1] . '%;background:' . pg_seo_score_hex((int) $line[1]) . '"></i></span>
                         <span class="pg_seo_tb_gscore">' . (int) $line[1] . '</span>
-                        <span class="pg_seo_tb_gweight">%' . (int) $line[2] . '</span>
+                        <span class="pg_seo_tb_gweight">' . h(lang(array('string' => '{var:1}%', 'vars' => (int) $line[2]))) . '</span>
                     </div>';
             }
         }
@@ -2430,27 +2430,27 @@ function pg_seo_check_label($check)
         case 'speed_response':
             return lang(array(
                 'string' => 'Average server response: {var:1} ms over {var:2} requests (under 800 ms is the target)',
-                'vars' => array((int) ($d['ms'] ?? 0), (int) ($d['hits'] ?? 0))));
+                'vars' => array(pg_format_number($d['ms'] ?? 0, 0), pg_format_number($d['hits'] ?? 0, 0))));
 
         case 'speed_slow_ratio':
             if ($check['s'] == 'ok') {
                 return lang(array(
                     'string' => 'Slow requests: {var:1}% of {var:2}',
-                    'vars' => array($d['percent'] ?? 0, (int) ($d['hits'] ?? 0))));
+                    'vars' => array(pg_format_number($d['percent'] ?? 0, 1), pg_format_number($d['hits'] ?? 0, 0))));
             }
 
             return lang(array(
                 'string' => '{var:1} of {var:2} requests took longer than {var:3} ms ({var:4}%)',
                 'vars' => array(
-                    (int) ($d['slow'] ?? 0),
-                    (int) ($d['hits'] ?? 0),
-                    (int) ($d['threshold'] ?? 1000),
-                    $d['percent'] ?? 0)));
+                    pg_format_number($d['slow'] ?? 0, 0),
+                    pg_format_number($d['hits'] ?? 0, 0),
+                    pg_format_number($d['threshold'] ?? 1000, 0),
+                    pg_format_number($d['percent'] ?? 0, 1))));
 
         case 'speed_memory':
             return lang(array(
                 'string' => 'Average memory per request: {var:1} MB',
-                'vars' => round(((int) ($d['kb'] ?? 0)) / 1024, 1)));
+                'vars' => pg_format_number(((int) ($d['kb'] ?? 0)) / 1024, 1)));
 
         case 'slug':
             if ($check['s'] == 'ok') {
