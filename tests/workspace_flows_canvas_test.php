@@ -803,7 +803,7 @@ function ws_flows_canvas_test_node(array $names, $script)
 	$body .= implode("\n", $timings[0]) . "\n";
 
 	// The token helpers every reader of a value token calls.
-	$names = array_unique(array_merge($names, array('tokenBare', 'tokenFallback', 'tokenWith', 'holdsToken'), in_array('runValue', $names, true) ? array('runValueOf') : array()));
+	$names = array_unique(array_merge($names, array('tokenBare', 'tokenFallback', 'tokenWith', 'holdsToken'), in_array('runValue', $names, true) ? array('runValueOf', 'runStepOf', 'loopValueOf') : array()));
 
 	foreach ($names as $name) {
 		$function = ws_flows_canvas_test_script_function($source, $name);
@@ -2665,4 +2665,88 @@ JS
 	pg_assert_same(100, $result['cut'], 'cut to its length');
 	pg_assert_same(array(true, false), $result['holds']);
 	pg_assert_same(array('post_1 | post_2 | {{node.post_1.message_id}} | a}} | b \\ {c | skipped'), $result['threads'], 'one thread, from and to kept, the first fallback');
+}
+
+// A box inside a For each loop is shown in the run view at the pass it is
+// shown by (its last row): the loop's place, item and fields are read from
+// the For each row's items at that pass, and a value of another body box
+// from that box's row of the same pass. When the items are held back or
+// cannot be read, the value is named as one that cannot be shown for this
+// item, never empty, and its fallback is not put in its place. Before,
+// these values read the For each row's outputs, which hold only count and
+// items, so they showed as empty or as their fallback.
+function test_workspace_flows_canvas_run_loop_values()
+{
+	$result = ws_flows_canvas_test_node(
+		array('nodeById', 'stepOf', 'runValue'),
+		<<<'JS'
+function box(id, kind, config) { return { id: id, kind: kind, label: '', config: config || {}, x: 0, y: 0 }; }
+function thread(field, fallback, to) { return { from: 'for_each_1', to: to || 'post_1', token: '{{node.for_each_1.' + field + '}}', fallback: fallback || '' }; }
+var items = JSON.stringify([{ ad: 'Bir' }, { ad: '' }, { ad: 'Üç', n: true }]);
+function run(passes, outputs) {
+    var steps = [{ node_id: 'for_each_1', pass: 0, status: 'done', outcome: 'each', result: '', outputs: outputs }];
+    passes.forEach(function (pass) {
+        steps.push({ node_id: 'notify_1', pass: pass, status: 'done', outcome: 'done', result: '', outputs: { told: 'n' + pass } });
+        steps.push({ node_id: 'post_1', pass: pass, status: 'done', outcome: 'done', result: '', outputs: {} });
+    });
+    return { id: 9, steps: steps };
+}
+state = { graph: { nodes: [
+    box('for_each_1', 'for_each', { list: '{{node.c.l}}', path: '', fields: ['ad', 'n'] }),
+    box('notify_1', 'notify', {}),
+    box('post_1', 'post', {})
+], edges: [] }, run: run([1, 2, 3], { count: 3, items: items }) };
+var out = { last: [runValue(thread('index')), runValue(thread('ad', 'adsız')), runValue(thread('item')), runValue(thread('n')), runValue(thread('count'))] };
+state.run = run([1, 2], { count: 3, items: items });
+out.second = [runValue(thread('index')), runValue(thread('ad', 'adsız'))];
+state.run.steps.push({ node_id: 'notify_1', pass: 3, status: 'done', outcome: 'done', result: '', outputs: { told: 'n3' } });
+out.same = runValue({ from: 'notify_1', to: 'post_1', token: '{{node.notify_1.told}}', fallback: '' });
+state.run = run([1, 2, 3], { count: 3 });
+out.held = [runValue(thread('ad', 'adsız')), runValue(thread('index'))];
+state.run = run([1, 2, 3], { count: 3, items: '[{"ad":"Bi' });
+out.cut = runValue(thread('ad', 'adsız'));
+console.log(JSON.stringify(out));
+JS
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same(array(array('text' => '3'), array('text' => 'Üç'), array('text' => '{"ad":"Üç","n":true}'), array('text' => '1'), array('text' => '3')), $result['last']);
+	pg_assert_same(array(array('text' => '2'), array('text' => 'adsız')), $result['second'], 'an empty field takes its fallback, as the run did');
+	pg_assert_same(array('text' => 'n2'), $result['same'], 'a body box read at the pass shown');
+	$unknown = array('text' => '', 'note' => 'fl_run_value_item', 'unknown' => true);
+	pg_assert_same(array($unknown, array('text' => '3')), $result['held'], 'held items: not shown, no fallback; the place is the pass');
+	pg_assert_same($unknown, $result['cut']);
+}
+
+// The list of a For each box and the value its End box gathers are read as
+// they are: their chips offer no "When empty, write…" and say nothing of
+// it. Before, a click opened it and the box then failed the graph check.
+function test_workspace_flows_canvas_loop_fields_take_no_fallback()
+{
+	$result = ws_flows_canvas_test_node(
+		array('fieldFallback', 'valueChip'),
+		<<<'JS'
+state = { edit: true };
+var names = { '{{node.c.l}}': { label: 'Constants › l', skipped: false } };
+console.log(JSON.stringify({
+    takes: [fieldFallback({ kind: 'for_each' }, 'list'), fieldFallback({ kind: 'for_each_end' }, 'collect'), fieldFallback({ kind: 'post' }, 'body'), fieldFallback({ kind: 'for_each' }, 'path')],
+    bare: valueChip('{{node.c.l}}', names, true).title,
+    tap: valueChip('{{node.c.l}}', names).title
+}));
+JS
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same(array(false, false, true, true), $result['takes']);
+	pg_assert_same('{{node.c.l}}', $result['bare']);
+	pg_assert_same('{{node.c.l}} fl_values_empty_tap', $result['tap']);
+
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js');
+	pg_assert_contains("bare && names[tokenBare(", ws_flows_canvas_test_script_function($source, 'valueInput'), 'a click asks for a fallback only where the field takes one');
 }
