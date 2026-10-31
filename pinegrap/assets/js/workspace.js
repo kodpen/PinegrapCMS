@@ -12715,6 +12715,24 @@
             }
 
             self.input = input;
+
+            // On a phone the box is one row, the field between this switch
+            // and Send (or the microphone); the switch opens the row of
+            // tools under it. A wider screen always shows that row.
+            var toolsSwitch = button('btn btn-sm btn-text theme-secondary ws-composer-more', '', 'bi-plus-lg', t('composer_tools'));
+
+            toolsSwitch.setAttribute('aria-expanded', 'false');
+            toolsSwitch.addEventListener('click', function () {
+                var open = !box.classList.contains('is-tools-open');
+
+                box.classList.toggle('is-tools-open', open);
+                toolsSwitch.setAttribute('aria-expanded', open ? 'true' : 'false');
+
+                if (typeof self.fit === 'function') {
+                    self.fit();
+                }
+            });
+            box.appendChild(toolsSwitch);
             box.appendChild(input);
 
             // The row under the box, in order: the inserts, then the box's own
@@ -12830,7 +12848,10 @@
                 parts.push(self.aiRewrite);
             }
 
-            parts.push(el('span', 'ws-grow ws-composer-hint d-none lg:d-inline', t('composer_hint')));
+            // Send, the microphone and the count stand at the row's end. The
+            // space before them says which keys send while the box is
+            // expanded ("Aa", workspace_editor.js), and nothing otherwise.
+            parts.push(el('span', 'ws-grow ws-composer-hint'));
 
             // The count near the message limit (drawMeter()), empty while
             // the text is short; the hidden region beside it speaks only when
