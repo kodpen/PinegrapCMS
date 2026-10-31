@@ -26,6 +26,7 @@ $pg_api_directory = dirname(__FILE__);
 
 require_once($pg_api_directory . '/db.php');
 require_once($pg_api_directory . '/response.php');
+require_once($pg_api_directory . '/time.php');
 require_once($pg_api_directory . '/log.php');
 require_once($pg_api_directory . '/keys.php');
 require_once($pg_api_directory . '/scopes.php');
@@ -129,6 +130,22 @@ function api_settings() {
 
 }
 
+// The answer to a lost database connection, for integration.php and mcp.php
+// alike (api_database_unavailable_answer()).
+function api_fail_database_unavailable() {
+
+	$answer = api_database_unavailable_answer();
+
+	foreach ($answer['headers'] as $name => $value) {
+
+		api_extra_headers($name, $value);
+
+	}
+
+	api_fail($answer['status'], $answer['code'], lang('No database connection.'));
+
+}
+
 function api_run() {
 
 	$settings = api_settings();
@@ -141,9 +158,7 @@ function api_run() {
 	// hides that feature, while an outage only calls for a retry.
 	if (!defined('DB_CONNECTED')) {
 
-		api_extra_headers('Retry-After', '30');
-
-		api_fail(503, 'database_unavailable', lang('No database connection.'));
+		api_fail_database_unavailable();
 
 	}
 

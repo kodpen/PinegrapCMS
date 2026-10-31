@@ -31,11 +31,44 @@ function test_api_database_unavailable_is_a_503_of_its_own()
 	pg_assert_same(503, $catalogue['service_unavailable'][0], 'service_unavailable stays for features');
 }
 
-// The bootstrap answers a missing connection with the new code, never with
-// the code features use for "update the database first".
-function test_api_bootstrap_answers_a_lost_connection_with_database_unavailable()
+// One answer for a lost connection, whatever the entry: the status, the code
+// and the Retry-After header come from api_database_unavailable_answer().
+function test_api_database_unavailable_answer_carries_retry_after()
 {
-	$source = file_get_contents(PG_FUNCTIONS_DIR . '/includes/api/bootstrap.php');
+	$answer = api_database_unavailable_answer();
 
-	pg_assert_true((bool)preg_match("/if \(!defined\('DB_CONNECTED'\)\) \{\s*(?:[^}]*?)api_fail\(503, 'database_unavailable'/", $source), 'database_unavailable');
+	pg_assert_same(503, $answer['status'], 'status');
+	pg_assert_same('database_unavailable', $answer['code'], 'code');
+	pg_assert_same(array('Retry-After' => '30'), $answer['headers'], 'Retry-After');
+	pg_assert_same(503, api_error_catalogue()[$answer['code']][0], 'catalogued with the same status');
+}
+
+// integration.php (api_run()) and mcp.php (pg_mcp_gate()) both answer a
+// missing connection through the shared helper, never with their own code.
+function test_api_and_mcp_entries_share_the_database_unavailable_answer()
+{
+	$pattern = "/if \(!defined\('DB_CONNECTED'\)\) \{\s*api_fail_database_unavailable\(\);/";
+
+	$entries = array(
+		'includes/api/bootstrap.php' => 'function api_run(',
+		'includes/mcp/protocol.php'  => 'function pg_mcp_gate(',
+	);
+
+	foreach ($entries as $file => $function) {
+
+		$source = file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
+
+		$start = strpos($source, $function);
+
+		pg_assert_true($start !== false, $file . ' defines ' . $function);
+
+		$body = substr($source, $start, 1500);
+
+		pg_assert_true((bool)preg_match($pattern, $body), $file . ' answers through api_fail_database_unavailable()');
+		pg_assert_true(strpos($body, "'service_unavailable'") === false, $file . ' never answers service_unavailable for it');
+	}
+
+	$bootstrap = file_get_contents(PG_FUNCTIONS_DIR . '/includes/api/bootstrap.php');
+
+	pg_assert_true((bool)preg_match('/function api_fail_database_unavailable\(\) \{.*?api_database_unavailable_answer\(\).*?api_extra_headers\(\$name, \$value\).*?api_fail\(\$answer\[\'status\'\], \$answer\[\'code\'\]/s', $bootstrap), 'the helper sends the shared answer');
 }

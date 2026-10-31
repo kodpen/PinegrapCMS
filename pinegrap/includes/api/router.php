@@ -688,7 +688,9 @@ function api_validate_value($param, $raw) {
 
 		case 'datetime':
 
-			$parsed = api_time_parse($raw);
+			// An end bound given as a bare day counts that day whole
+			// (includes/api/time.php).
+			$parsed = api_param_is_end_bound($name) ? api_time_parse_end_bound($raw) : api_time_parse($raw);
 
 			if ($parsed === null) {
 

@@ -79,3 +79,43 @@ function test_audit_iys_writes_are_recorded_as_job()
 	pg_assert_same(2, substr_count($source, "pg_audit_fetch_many('contacts'"), 'the SMS push and pull read the contacts first');
 	pg_assert_same(4, substr_count($source, "pg_audit_record_many('update', 'contacts'"), 'push and pull record after, e-mail and SMS');
 }
+
+// Delete All Contacts reads each chunk before its deletes and records a delete line per contact after them.
+function test_audit_view_contacts_mass_delete_is_recorded()
+{
+	$source = audit_contact_writers_test_source('view_contacts.php');
+	$branch = strpos($source, "== 'Delete Contacts'");
+	pg_assert_true($branch !== false, 'Delete Contacts branch');
+	$source = substr($source, $branch);
+	$chunk = strpos($source, 'array_chunk(');
+	$read = strpos($source, "pg_audit_fetch_many('contacts', \$audit_ids)");
+	$delete = strpos($source, 'DELETE FROM contacts WHERE id = ?');
+	$record = strpos($source, "pg_audit_record_many('delete', 'contacts', \$audit_before)");
+
+	pg_assert_true(($chunk !== false) && ($read !== false) && ($delete !== false) && ($record !== false), 'chunk, read, delete and record');
+	pg_assert_true(($chunk < $read) && ($read < $delete) && ($delete < $record), 'read before the deletes, record after them');
+}
+
+// Approve Affiliate reads the contact before its update and records the update after it.
+function test_audit_approve_affiliate_is_recorded()
+{
+	$source = audit_contact_writers_test_source('approve_affiliate.php');
+	$read = strpos($source, "\$audit_before = pg_audit_fetch('contacts', \$contact_id);");
+	$update = strpos($source, "affiliate_approved = '1'");
+	$record = strpos($source, "pg_audit_record('update', 'contacts', \$contact_id, \$audit_before);");
+
+	pg_assert_true(($read !== false) && ($update !== false) && ($record !== false), 'read, update and record');
+	pg_assert_true(($read < $update) && ($update < $record), 'read before the update, record after it');
+}
+
+// The campaign's new recipient contact gets a create line, its id read before the line's own insert.
+function test_audit_email_campaign_recipient_contact_is_recorded()
+{
+	$source = audit_contact_writers_test_source('add_email_campaign.php');
+	$insert = strpos($source, 'INSERT INTO contacts');
+	$id = strpos($source, '$new_contact_id = (int) mysqli_insert_id(db::$con);');
+	$record = strpos($source, "pg_audit_record('create', 'contacts', \$new_contact_id);");
+
+	pg_assert_true(($insert !== false) && ($id !== false) && ($record !== false), 'insert, id and record');
+	pg_assert_true(($insert < $id) && ($id < $record), 'id read after the insert, record after it');
+}

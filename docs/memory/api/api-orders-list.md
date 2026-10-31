@@ -7,7 +7,7 @@ description: GET /orders: status comma list, sort placed_desc, modified_since on
 - `status`: one status or several, comma separated (`complete,exported`), each one of `api_order_statuses()`; an unknown or empty value refuses the whole call with 422 on `status` (`api_orders_status_filter()`), so a typo never widens the list. Declared `string` (max 100), checked by the handler.
 - `sort`: `placed` (default, oldest placed first) or `placed_desc` (`ORDER BY order_date DESC, id DESC`, keyset backward). A new order takes the current time, so it lands before the first newest-first page, never inside a later one.
 - `modified_since`: orders whose `last_modified_timestamp` is at or after it, oldest change first, keyset on (stamp, id). Sent with `sort` it is 422 on `sort` (no default on `sort`, so the handler sees it).
-- `updated_since` / `date_to` still compare `order_date` ("placed at or after"). `include_count` counts with the same filters, without the cursor (`api_orders_list_where()`).
+- `updated_since` / `date_to` still compare `order_date` ("placed at or after" / "at or before"); a date-only `date_to` counts that day whole (`api-datetime-end-bound.md`). `include_count` counts with the same filters, without the cursor (`api_orders_list_where()`).
 - Page SQL: `api_orders_list_sql()`; listing chosen by `api_orders_list_order()` (`placed`, `placed_desc`, `modified`).
 
 ## How does the cursor know its listing?

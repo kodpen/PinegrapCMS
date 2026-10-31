@@ -7,7 +7,7 @@ description: İYS MESAJ channel (PR #3806): contacts.iys_sms_status (11.0.136), 
 - `contacts.iys_sms_status` VARCHAR(16) '' / approved / refused (11.0.136, #3570): what İYS last said about the contact's mobile number on the MESAJ channel, as `iys_email_status` (11.0.39) for the address. Nothing reads it to narrow sending (#2430: sending is every opted-in number İYS has not refused, and a refusal stops it through the consent log).
 
 ## When does the job handle SMS?
-- In the same `pg_iys_run()` as e-mail, behind the same gate (complete account, e-mail switch on), once `pg_schema_has('contacts', 'iys_sms_status')`. There is no separate SMS switch on the card. One shared push cursor and one changes cursor serve both channels.
+- In the same `pg_iys_run()` as e-mail, behind the same gate (complete account, e-mail switch on), once `pg_schema_has('contacts', 'iys_sms_status')`. There is no separate SMS switch: the card labels the one switch "E-mail and SMS" (`iys-settings-card.md`). One shared push cursor and one changes cursor serve both channels.
 - Dry run as for e-mail: counts the rows ("consent answer(s) would be pushed"), calls nothing, leaves the cursor.
 
 ## Which number does a row go to?

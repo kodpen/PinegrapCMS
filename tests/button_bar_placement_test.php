@@ -2,7 +2,7 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * The toolbar of the content screens sits straight under the title: it is
+ * The toolbar of the panel screens sits straight under the title: it is
  * drawn by pg_screen_toolbar(), never inside a .row > .col-* md:text-start
  * column beside a second tool column, and View Pages keeps at most four
  * buttons in the bar itself, the rest in one menu.
@@ -18,7 +18,7 @@ if (!defined('PG_TEST_RUNNER')) {
 }
 
 /**
- * The content screens whose bar left its column.
+ * The screens whose bar left its column.
  */
 function button_bar_placement_test_screens()
 {
@@ -30,6 +30,14 @@ function button_bar_placement_test_screens()
 		'edit_file.php', 'includes/templates/edit_auto_dialog.php', 'includes/templates/view_auto_dialogs.php',
 		'includes/templates/view_key_codes.php', 'view_contact_groups.php', 'view_email_campaigns.php',
 		'view_email_campaign_profiles.php', 'view_email_campaign_history.php', 'view_sms_campaigns.php',
+		// Commerce, contacts and the edit screens.
+		'duplicate_products.php', 'edit_comment.php', 'edit_contact.php', 'edit_email_campaign.php', 'edit_page.php',
+		'edit_theme_file.php', 'product_builder.php', 'view_arrival_dates.php', 'view_commissions.php',
+		'view_countries.php', 'view_currencies.php', 'view_gift_cards.php', 'view_order.php', 'view_order_reports.php',
+		'view_orders_for_contact.php', 'view_parasut_inbox.php', 'view_product_attributes.php',
+		'view_recurring_commission_profiles.php', 'view_referral_sources.php', 'view_ship_date_adjustments.php',
+		'view_shipping_methods.php', 'view_states.php', 'view_tax_zones.php', 'view_verified_shipping_addresses.php',
+		'view_visitor_reports.php', 'view_zones.php',
 	);
 }
 

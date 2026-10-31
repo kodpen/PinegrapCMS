@@ -111,11 +111,13 @@ function pg_settings_categories()
                 'pgset-theme'     => lang('Theme'),
                 'pgset-dashboard' => lang('Dashboard'),
                 'pgset-editor'    => lang('Rich-text Editor'),
+                'pgset-private-label' => lang('Private Label Branding'),
             ),
             'keywords' => array(
                 'pgset-theme'     => pg_settings_keywords(lang('theme, appearance, color, custom css, acrylic')),
                 'pgset-dashboard' => pg_settings_keywords(lang('dashboard, widget, card style, backdrop, refresh, reset widgets, welcome')),
                 'pgset-editor'    => pg_settings_keywords(lang('editor, text, wysiwyg, rich, font')),
+                'pgset-private-label' => pg_settings_keywords(lang('private label, branding, white label, logo, stylesheet, footer links')),
             ),
         ),
 
@@ -379,6 +381,13 @@ function pg_settings_categories()
         $categories['appearance']['description'] = lang('The panel theme and the rich-text editor.');
     }
 
+    // Private Label Branding is drawn and saved for administrators only, as
+    // private_label.php was; for anyone else no chip or search result points
+    // at it.
+    if (!defined('USER_ROLE') || ((int) USER_ROLE !== 0)) {
+        unset($categories['appearance']['sections']['pgset-private-label'], $categories['appearance']['keywords']['pgset-private-label']);
+    }
+
     return $categories;
 }
 
@@ -557,12 +566,6 @@ function pg_settings_category_screens($user)
     // for role < 2 only, so a manager had no way to it.
     if ($role <= 2) {
         $screens['languages'][] = array('label' => lang('Translations'), 'icon' => 'bi-translate', 'url' => 'translations.php');
-    }
-
-    // The panel's own logo, stylesheet and footer links:
-    // validate_area_access($user, 'administrator'). No other link led to it.
-    if ($role === 0) {
-        $screens['appearance'][] = array('label' => lang('Private Label Branding'), 'icon' => 'bi-badge-tm', 'url' => 'private_label.php');
     }
 
     return $screens;

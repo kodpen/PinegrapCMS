@@ -52,7 +52,7 @@ function pg_user_form_rights_cards($permission_rows)
 }
 
 /**
- * The edit screen's "Reset & Send Password" link. The confirmation's texts go
+ * The edit screen's "Reset Password & Send Link" link. The confirmation's texts go
  * into the handler as one JSON object and the handler through h(), so an
  * apostrophe or a quote in any language's wording cannot end a JavaScript
  * string and leave the link doing nothing.
@@ -62,16 +62,16 @@ function pg_user_form_rights_cards($permission_rows)
 function pg_user_form_reset_password_button()
 {
     $options = array(
-        'title'       => lang('Reset & Send Password'),
-        'message'     => lang('Are you sure you want to reset the user\'s password and email a new password to the user?'),
-        'confirmText' => lang('Reset & Send Password'),
+        'title'       => lang('Reset Password & Send Link'),
+        'message'     => lang('Are you sure you want to reset the user\'s password and email the user a link to set a new password?'),
+        'confirmText' => lang('Reset Password & Send Link'),
         'cancelText'  => lang('Cancel'),
         'variant'     => 'warning',
     );
 
     $onclick = 'event.preventDefault(); pgConfirm(' . json_encode($options) . ').then(function(ok){if(ok) document.reset_password_form.submit();}); return false;';
 
-    return '<a class="btn btn-sm btn-outline theme-warning rounded-pill px-5" href="#" onclick="' . h($onclick) . '"><i class="bi bi-key me-1"></i>' . h(lang('Reset & Send Password')) . '</a>';
+    return '<a class="btn btn-sm btn-outline theme-warning rounded-pill px-5" href="#" onclick="' . h($onclick) . '"><i class="bi bi-key me-1"></i>' . h(lang('Reset Password & Send Link')) . '</a>';
 }
 
 /**

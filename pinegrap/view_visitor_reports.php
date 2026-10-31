@@ -27,7 +27,7 @@ $output_web_statistics_link = '';
 
 // if an external web stats link is supplied in the settings, then prepare link to web stats
 if ((defined('STATS_URL') == true) && (STATS_URL != '')) {
-	$output_web_statistics_link = '<a class="btn btn-sm btn-solid theme-secondary m-1 " href="' . STATS_URL . '" target="_blank"><span class="bi bi-box-arrow-up-right me-3"></span>' . lang(array('string'=>'Website Analytics') ) . '</a>';
+	$output_web_statistics_link = '<a class="btn btn-sm btn-text theme-secondary" href="' . h(STATS_URL) . '" target="_blank"><i class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></i>' . lang('Website Analytics') . '</a>';
 }
 
 
@@ -150,17 +150,11 @@ print
             ' . $liveform->get_warnings() . '
             ' . $liveform->output_notices() . '
            
-            <div class="row mb-3  flex-wrap">
-                <div class="col-12 text-center md:text-start">
-                    
-                    <nav id="button_bar" class="navigation " aria-label="' . h(lang('Button Bar')) . '">
-                        <a class="btn btn-sm btn-solid theme-primary m-1 " href="view_visitor_report.php"><span class="bi bi-plus-circle me-3"></span>' . lang(array('string'=>'Create') ) . '</a>
-                        ' . $output_web_statistics_link . '
-                        <div class="pg-toolbar-grow"></div>
-                        ' . pg_list_sort_menu('view_visitor_reports.php', $sort_columns, $sort_levels, $sort_default) . '
-                    </nav>
-                </div>
-            </div>
+            ' . pg_screen_toolbar(array(
+                'primary'   => array('label' => lang('Create'), 'url' => 'view_visitor_report.php', 'icon' => 'bi-plus-circle'),
+                'secondary' => $output_web_statistics_link,
+                'search'    => pg_list_sort_menu('view_visitor_reports.php', $sort_columns, $sort_levels, $sort_default),
+            )) . '
             <div class="card my-7">
                 <div class="card-body p-0 position-relative">
                     <table class="chart table-hover table " style="width:100%;display:none">

@@ -2,7 +2,7 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Tests for the user and session screens: the Reset & Send Password
+ * Tests for the user and session screens: the Reset Password & Send Link
  * confirmation survives an apostrophe in any language, session and password
  * dates are drawn by get_absolute_time(), and the controls of the users list
  * and the user forms carry a translated accessible name.
@@ -38,8 +38,8 @@ function test_user_screens_reset_password_confirm_is_valid_json()
 	$decoded = json_decode($options[1], true);
 
 	pg_assert_true(is_array($decoded), 'the options are valid JSON, so an apostrophe cannot end a string');
-	pg_assert_same(lang('Are you sure you want to reset the user\'s password and email a new password to the user?'), $decoded['message'], 'the message keeps its apostrophe');
-	pg_assert_same(lang('Reset & Send Password'), $decoded['title'], 'the title');
+	pg_assert_same(lang('Are you sure you want to reset the user\'s password and email the user a link to set a new password?'), $decoded['message'], 'the message keeps its apostrophe');
+	pg_assert_same(lang('Reset Password & Send Link'), $decoded['title'], 'the title');
 	pg_assert_same(lang('Cancel'), $decoded['cancelText'], 'the cancel text');
 	pg_assert_contains('document.reset_password_form.submit()', $script, 'confirming submits the form');
 }

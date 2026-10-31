@@ -314,19 +314,32 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
         $contacts[] = $row;
     }
 
-    // loop through all contacts that need to be deleted, so they can be deleted
-    foreach ($contacts as $contact) {
-        // delete contact
-        $query = "DELETE FROM contacts WHERE id = ?";
-        $result = db_q($query, array((string) $contact['id'])) or output_error('Query failed.');
+    // Delete in chunks of 200: each chunk's rows are read before its deletes and
+    // written to the Audit Trail after them, a delete line per contact.
+    foreach (array_chunk($contacts, 200) as $chunk) {
+        $audit_ids = array();
 
-        // delete contact references in contacts_contact_groups_xref
-        $query = "DELETE FROM contacts_contact_groups_xref WHERE contact_id = ?";
-        $result = db_q($query, array((string) $contact['id'])) or output_error('Query failed.');
+        foreach ($chunk as $contact) {
+            $audit_ids[] = (int) $contact['id'];
+        }
 
-        // delete contact references in opt_in
-        $query = "DELETE FROM opt_in WHERE contact_id = ?";
-        $result = db_q($query, array((string) $contact['id'])) or output_error('Query failed.');
+        $audit_before = pg_audit_fetch_many('contacts', $audit_ids);
+
+        foreach ($chunk as $contact) {
+            // delete contact
+            $query = "DELETE FROM contacts WHERE id = ?";
+            $result = db_q($query, array((string) $contact['id'])) or output_error('Query failed.');
+
+            // delete contact references in contacts_contact_groups_xref
+            $query = "DELETE FROM contacts_contact_groups_xref WHERE contact_id = ?";
+            $result = db_q($query, array((string) $contact['id'])) or output_error('Query failed.');
+
+            // delete contact references in opt_in
+            $query = "DELETE FROM opt_in WHERE contact_id = ?";
+            $result = db_q($query, array((string) $contact['id'])) or output_error('Query failed.');
+        }
+
+        pg_audit_record_many('delete', 'contacts', $audit_before);
     }
 
     // prepare list of contact groups for log

@@ -146,13 +146,7 @@ if ($binned) {
 //if there is a command button to output
 // prepare button bar
 if($output_reference_button != ''){
-    $output_reference_buttons = '
-    <nav id="button_bar" class="navigation " aria-label="' . h(lang('Button Bar')) . '">
-        <div class=" btn-group btn-group-sm flex-wrap">
-            ' . $output_reference_button . '
-        </div>
-    </nav>
-    ';
+    $output_reference_buttons = pg_screen_toolbar(array('secondary' => $output_reference_button));
 }
 
 
@@ -372,20 +366,13 @@ if (!$_POST) {
                 ' . $liveform->output_errors() . '
                 ' . $liveform->get_warnings() . '
                 ' . $liveform->output_notices() . '
-                <div class="row mb-3  flex-wrap">
-                    <div class="col-12 sm:col-12 text-center md:text-start">
-<div class="row mb-3">
-                            <div class="col-12 md:col">
-                                
-                                <p class="p-0 m-0">' . lang('Added') . ': ' . get_relative_time(array('timestamp' => $created_timestamp)) . ' ' . $created_username . '</p>
-                                <p class="p-0 m-0">' . lang('Page') . ': ' . h(pg_comment_page_label(get_page_name($page_id), $page_id)) . ($binned ? ' (' . h(lang('In the Recycle Bin')) . ')' : '') . '</p>
-                                ' . $output_reference_line . '
-                                ' . $output_review_line . '
-                            </div>
-                        </div>
-                        ' . $output_reference_buttons . '
-                    </div>
+                <div class="mb-3 text-center md:text-start">
+                    <p class="p-0 m-0">' . lang('Added') . ': ' . get_relative_time(array('timestamp' => $created_timestamp)) . ' ' . $created_username . '</p>
+                    <p class="p-0 m-0">' . lang('Page') . ': ' . h(pg_comment_page_label(get_page_name($page_id), $page_id)) . ($binned ? ' (' . h(lang('In the Recycle Bin')) . ')' : '') . '</p>
+                    ' . $output_reference_line . '
+                    ' . $output_review_line . '
                 </div>
+                ' . $output_reference_buttons . '
                 <form name="form" action="edit_comment.php" method="post">
                     ' . get_token_field() . '
                     ' . $liveform->output_field(array('type'=>'hidden', 'name'=>'send_to')) . '

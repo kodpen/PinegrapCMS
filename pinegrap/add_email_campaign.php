@@ -441,6 +441,10 @@ if (!$_POST) {
                              (email_address, user, timestamp)
                              VALUES (?, ?, UNIX_TIMESTAMP())";
                     $result = db_q($query, array((string) ($_POST['entered_email_address'] ?? ''), (string) $user['id'])) or output_error('Query failed.');
+
+                    // Read the id first: the audit line is itself an insert.
+                    $new_contact_id = (int) mysqli_insert_id(db::$con);
+                    pg_audit_record('create', 'contacts', $new_contact_id);
                 }
             }
 

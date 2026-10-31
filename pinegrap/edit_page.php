@@ -506,17 +506,16 @@ if (!$_POST) {
             || ($output_edit_custom_billing_form != '')
             || ($output_layout_buttons != '')
         ) {
-            $output_button_bar = '
-            <nav id="button_bar" class="navigation " aria-label="' . h(lang('Button Bar')) . '">
-                <div class=" btn-group btn-group-sm flex-wrap">' .
-                        $output_edit_custom_form .
-                        $output_edit_form_list_view .
-                        $output_edit_form_item_view .
-                        $output_edit_custom_shipping_form .
-                        $output_edit_custom_billing_form .
-                        $output_layout_buttons . '
-                    </div>
-                </nav>';
+            $output_button_bar = pg_screen_toolbar(array(
+                'secondary' => array(
+                    $output_edit_custom_form,
+                    $output_edit_form_list_view,
+                    $output_edit_form_item_view,
+                    $output_edit_custom_shipping_form,
+                    $output_edit_custom_billing_form,
+                    $output_layout_buttons,
+                ),
+            ));
         }
 
         // A refused save opens on the type chosen, with its settings as typed.
@@ -833,14 +832,11 @@ if (!$_POST) {
             <div class="col-12">
                 ' . $liveform->output_errors() . '
                 ' . $liveform->output_notices() . '
-                <div class="row mb-3  flex-wrap">
-                    <div class="col-12 sm:col-12 text-center md:text-start">
+                <div class="text-center md:text-start">
 ' . $output_subnav_home . '
-                        
-                        <p>' . lang('Access') . ': ' . h(get_access_control_type_name(get_access_control_type($page_folder))) . $output_subnav_page_type . $output_subnav_short_link . $output_subnav_search . $output_subnav_search_keywords . $output_subnav_next_page . $output_subnav_skip_page . '</p>
-                        ' . $output_button_bar . '
-                    </div>
+                    <p>' . lang('Access') . ': ' . h(get_access_control_type_name(get_access_control_type($page_folder))) . $output_subnav_page_type . $output_subnav_short_link . $output_subnav_search . $output_subnav_search_keywords . $output_subnav_next_page . $output_subnav_skip_page . '</p>
                 </div>
+                ' . $output_button_bar . '
                 <form name="form" action="edit_page.php" method="post">
                     ' . get_token_field() . '
                     <input type="hidden" name="send_to" value="' . h(($_GET['send_to'] ?? '')) . '" />

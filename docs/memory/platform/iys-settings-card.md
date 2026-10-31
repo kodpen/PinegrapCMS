@@ -5,11 +5,15 @@ description: The İYS card of Settings › Communication (includes/iys/settings.
 
 ## Where is the card?
 - `#pgset-iys`, last card of the `contact` pane; markup `pg_iys_settings_fields()`, check and write `pg_iys_settings_check()` / `pg_iys_settings_save()` in `includes/iys/settings.php` (required by `contact.php` and `contact.save.php`). Same shape as the SMS card (`sms-provider-layer.md`).
-- Fields: switch `iys_enabled`, API user, password (sealed, never drawn back, "Stored" placeholder), İYS code (digits), brand, environment (`live` / `test` = sandbox), mode (`iys_live` 0 = dry run, 1 = live), e-mail switch. A new account starts in dry run.
+- Fields: switch `iys_enabled`, API user, password (sealed, never drawn back, "Stored" placeholder), İYS code (digits), brand, environment (`live` / `test` = sandbox), mode (`iys_live` 0 = dry run, 1 = live), the channel switch. A new account starts in dry run.
+
+## What do the card's texts say?
+- One switch, labelled "E-mail and SMS", stored as `options.email` (field `iys_email`): it gates the whole `pg_iys_run()`, which carries the SMS (`MESAJ`) answers too once `contacts.iys_sms_status` exists (`iys-sms-channel.md`). Off, neither channel is synced. There is no separate SMS switch; one would be a product decision.
+- The description names both channels (e-mail and SMS answers pushed daily, İYS refusals pulled back; an e-mail refusal stops e-mail campaigns, an SMS refusal stops marketing SMS) and says a consent İYS does not know stays valid, only a refusal in İYS stops sending (#2430). Before #4092 it spoke of e-mail alone and said a consent missing from İYS counted as not given (#3954). Pinned by `tests/iys_card_text_test.php`.
 
 ## How is the brand picked?
 - The brand list `pg_iys_brands()` gave is stored in the row's `options.brands`; with a list the card draws a select, before one a digits box (empty = take it from İYS).
-- On save İYS is asked (token + brand list) when the user, a typed password, the İYS code or the environment changed, when the account is switched on, while no brand is set or no list is stored. A change of mode or e-mail switch alone asks nothing.
+- On save İYS is asked (token + brand list) when the user, a typed password, the İYS code or the environment changed, when the account is switched on, while no brand is set or no list is stored. A change of mode or channel switch alone asks nothing.
 - One brand and none chosen → taken. Several and none chosen → saved without a brand, notice "pick the brand"; the card's warning ("not complete") stays and the job does nothing. A chosen brand İYS does not list → marked, nothing written. No brand at all → İYS code marked.
 - İYS refused or could not be asked → saved unchecked with a notice (the answer reader does not tell a refusal from an outage).
 
