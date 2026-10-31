@@ -68,6 +68,10 @@ $now = time();
 $badges = array('open' => 'badge theme-success', 'ordered' => 'badge theme-primary', 'expired' => 'badge theme-secondary', 'cancelled' => 'badge theme-danger');
 $output_rows = '';
 
+// The list asks only for the ecommerce right; a contact name links only when
+// edit_contact.php admits the viewer (contacts right and contact group).
+$contacts_access = (validate_contacts_access($user, true) == true);
+
 foreach ($rows as $row) {
     $id = (int) $row['id'];
     $state = pg_cart_quote_state($row, $now);
@@ -86,9 +90,15 @@ foreach ($rows as $row) {
             . '<button type="submit" name="cancel" value="' . $id . '" class="btn-data-control m-1 btn btn-outline theme-danger border-2" data-confirm-content="' . h(lang('The link of this cart quote stops working. This cannot be undone.')) . '" title="' . h(lang('Cancel the cart quote')) . '" aria-label="' . h(lang('Cancel the cart quote')) . '"><i class="bi bi-x-lg" aria-hidden="true"></i></button>';
     }
 
-    $output_contact = ((int) $row['contact_id'] > 0)
-        ? '<a href="edit_contact.php?id=' . (int) $row['contact_id'] . '">' . h(($row['contact_name'] !== '') ? $row['contact_name'] : '#' . (int) $row['contact_id']) . '</a>'
-        : '<span class="fg-secondary">' . h(lang('Nobody named')) . '</span>';
+    $contact_label = h(($row['contact_name'] !== '') ? $row['contact_name'] : '#' . (int) $row['contact_id']);
+
+    if ((int) $row['contact_id'] < 1) {
+        $output_contact = '<span class="fg-secondary">' . h(lang('Nobody named')) . '</span>';
+    } elseif (pg_can_open_contact($user, $row['contact_id'], $contacts_access)) {
+        $output_contact = '<a href="edit_contact.php?id=' . (int) $row['contact_id'] . '">' . $contact_label . '</a>';
+    } else {
+        $output_contact = $contact_label;
+    }
 
     $output_order = ((int) $row['order_id'] > 0) && ($state === 'ordered')
         ? '<div class="small"><a href="view_order.php?id=' . (int) $row['order_id'] . '">' . h(lang('Open the order')) . '</a></div>'
