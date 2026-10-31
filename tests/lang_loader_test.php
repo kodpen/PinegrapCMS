@@ -41,3 +41,43 @@ function test_lang_loader_get_file_loads_it()
 	pg_assert_true(($define !== false) && ($define > $load), 'the language is defined after the load');
 	pg_assert_true(($first_log !== false) && ($first_log > $define), 'before the first log line');
 }
+
+// A staff e-mail built in a visitor's request is built under the
+// translation hold, which is let go again after the builder, even when it
+// throws, and an outer hold stays held.
+function test_lang_loader_staff_text_holds_translation()
+{
+	if (!function_exists('pg_tr_suspend')) {
+		return;
+	}
+
+	$seen = pg_staff_lang(function () {
+		return pg_tr_suspend();
+	});
+
+	pg_assert_true($seen, 'held while the builder runs');
+	pg_assert_false(pg_tr_suspend(), 'released after it');
+	pg_assert_same(array('a', 'b'), pg_staff_lang(function () {
+		return array('a', 'b');
+	}), 'the builder\'s value is returned');
+
+	$thrown = false;
+
+	try {
+		pg_staff_lang(function () {
+			throw new RuntimeException('failed');
+		});
+	} catch (RuntimeException $e) {
+		$thrown = true;
+	}
+
+	pg_assert_true($thrown, 'the exception passes through');
+	pg_assert_false(pg_tr_suspend(), 'released after an exception');
+
+	pg_tr_suspend(true);
+	pg_staff_lang(function () {
+		return '';
+	});
+	pg_assert_true(pg_tr_suspend(), 'an outer hold stays');
+	pg_tr_suspend(false);
+}

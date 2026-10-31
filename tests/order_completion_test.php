@@ -101,7 +101,7 @@ function test_order_completion_tail_writes_in_order()
 		'order SMS queued' => array('pg_sms_order_received('),
 		'key code use' => array('"UPDATE key_codes'),
 		'gift card redemption' => array('"UPDATE gift_cards'),
-		'gift card error mail' => array("'subject' => 'Gift card error'"),
+		'gift card error mail' => array("'subject' => pg_log_lang(array('string' => 'Gift card error'))"),
 		'affiliate commission' => array('"INSERT INTO commissions ('),
 		'recurring commission profiles' => array('"INSERT INTO recurring_commission_profiles ('),
 		'receipt e-mail' => array('pg_legal_documents_attachments('),
@@ -651,7 +651,7 @@ function test_order_completion_gift_card_error_message()
 		array('gift_card_code' => '603628123456789013', 'amount' => 1000, 'error_message' => 'Card expired', 'givex' => true),
 	));
 
-	pg_assert_contains('Order (1001) was accepted however', $message, 'names the order');
+	pg_assert_contains('Order (1001) was accepted, but', $message, 'names the order');
 	pg_assert_contains('Gift card: ' . protect_gift_card_code('ABCDEFGHIJKL') . '. Attempted redemption amount: ', $message, 'a card of the store, masked');
 	pg_assert_contains(' Gift card was deleted or balance of card changed right when order was submitted.', $message, 'its error');
 	pg_assert_contains('Gift card: ' . protect_givex_gift_card_code('603628123456789012') . '.', $message, 'a Givex card, masked');

@@ -3564,7 +3564,7 @@ function pg_order_complete_gift_cards($order_id, $order_number, $required_amount
                 $gift_card_errors[] = array(
                     'gift_card_code' => $applied_gift_card['code'],
                     'amount' => $amount,
-                    'error_message' => 'Gift card was deleted or balance of card changed right when order was submitted.',
+                    'error_message' => pg_log_lang(array('string' => 'Gift card was deleted or balance of card changed right when order was submitted.')),
                     'givex' => false
                 );
 
@@ -3646,12 +3646,18 @@ function pg_order_complete_gift_cards($order_id, $order_number, $required_amount
 
     log_activity($error_message, $log_user);
 
+    // The e-mail adds a link to the order; the log line names it already.
     email(array(
         'to' => ECOMMERCE_EMAIL_ADDRESS,
         'from_name' => ORGANIZATION_NAME,
         'from_email_address' => EMAIL_ADDRESS,
-        'subject' => 'Gift card error',
-        'body' => $error_message));
+        'subject' => pg_log_lang(array('string' => 'Gift card error')),
+        'body' =>
+            $error_message . "\n" .
+            "\n" .
+            pg_log_lang(array('string' => 'View the order: {var:1}', 'vars' => array(
+                URL_SCHEME . HOSTNAME_SETTING . PATH . SOFTWARE_DIRECTORY . '/view_order.php?id=' . (int) $order_id
+            ))) . "\n"));
 }
 
 /**
@@ -3677,21 +3683,28 @@ function pg_order_gift_card_error_message($order_number, $required_amount, $rede
             $protected_gift_card_code = protect_givex_gift_card_code($error['gift_card_code']);
         }
 
-        $detail .= ' Gift card: ' . $protected_gift_card_code . '. Attempted redemption amount: ' . pg_money_text($error['amount'] / 100, BASE_CURRENCY_SYMBOL) . '.';
+        $detail .= ' ' . pg_log_lang(array('string' => 'Gift card: {var:1}. Attempted redemption amount: {var:2}.', 'vars' => array(
+            $protected_gift_card_code,
+            pg_money_text($error['amount'] / 100, BASE_CURRENCY_SYMBOL)
+        )));
 
         if (isset($error['curl_errno']) == TRUE) {
-            $detail .= ' cURL Error Number: ' . $error['curl_errno'] . '. cURL Error Message: ' . $error['curl_error'] . '.';
+            $detail .= ' ' . pg_log_lang(array('string' => 'cURL Error Number: {var:1}. cURL Error Message: {var:2}.', 'vars' => array($error['curl_errno'], $error['curl_error'])));
 
         } else if (isset($error['error_message']) == TRUE) {
             if ($error['givex'] == true) {
-                $detail .= ' Givex error:';
+                $detail .= ' ' . pg_log_lang(array('string' => 'Givex error:'));
             }
 
-            $detail .= ' ' . $error['error_message'] . '.';
+            $detail .= ' ' . rtrim($error['error_message'], '.') . '.';
         }
     }
 
-    return 'Order (' . $order_number . ') was accepted however one or more gift cards could not be redeemed properly because there was an error with at least one gift card. The order should probably not be fulfilled until the payment issue is resolved. Total attempted redemption amount: ' . pg_money_text($required_amount / 100, BASE_CURRENCY_SYMBOL) . '. Total successfull redemption amount: ' . pg_money_text($redeemed_amount / 100, BASE_CURRENCY_SYMBOL) . '.' . $detail;
+    return pg_log_lang(array('string' => 'Order ({var:1}) was accepted, but one or more gift cards could not be redeemed. The order should not be fulfilled until the payment is settled. Total to redeem: {var:2}. Total redeemed: {var:3}.', 'vars' => array(
+        $order_number,
+        pg_money_text($required_amount / 100, BASE_CURRENCY_SYMBOL),
+        pg_money_text($redeemed_amount / 100, BASE_CURRENCY_SYMBOL)
+    ))) . $detail;
 }
 
 /**
