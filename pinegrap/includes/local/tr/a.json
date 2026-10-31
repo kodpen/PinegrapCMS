@@ -2418,6 +2418,7 @@
     "An update writes only the columns the file supplies; balances are never touched.": "Güncelleme yalnız dosyanın verdiği sütunları yazar; bakiyelere hiç dokunulmaz.",
     "An İYS code is made of digits only.": "İYS numarası yalnızca rakamlardan oluşur.",
     "Analytics": "Analitik",
+    "Analytics could not be read: {var:1}": "Analizler okunamadı: {var:1}",
     "Analyze HTML": "HTML'i denetle",
     "Analyze HTML Structure": "HTML Yapısını Denetle",
     "Anchor": "Çapa",
