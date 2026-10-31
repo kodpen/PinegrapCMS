@@ -61,7 +61,7 @@ function test_seo_share_image_classic_feed_asks_first()
 
 	$ask       = strpos($page, "if (pg_file_open_to_everyone(\$submitted_form['media_file'])) {");
 	$enclosure = strpos($page, '<enclosure url="\' . URL_SCHEME . HOSTNAME_SETTING . PATH');
-	$typed     = strpos($page, '<enclosure url="\' . h($submitted_form[\'media_text\'])');
+	$typed     = strpos($page, "pg_sw_feed_url_enclosure_xml(\$submitted_form['media_text']");
 	pg_assert_true($ask !== false && $enclosure !== false && $typed !== false);
 	pg_assert_true($ask < $enclosure && $enclosure < $typed, 'the upload inside the check, the typed address after it');
 	pg_assert_same(1, substr_count($page, 'pg_file_open_to_everyone('));
