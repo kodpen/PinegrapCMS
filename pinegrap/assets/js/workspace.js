@@ -8970,17 +8970,20 @@
             // Assistants' answers read aloud: this browser's own choice, as in
             // the channel menu (speakAnswer()).
             if (window.PGWsVoice && window.PGWsVoice.speakSupported() && (BOOT.claude || BOOT.ai || (BOOT.mcp || []).length)) {
-                var speak = el('label', 'form-check ws-info-check');
-                var speakBox = el('input', 'form-check-input');
+                var speak = el('div', 'form-field mb-0 ws-info-check');
+                var speakBox = el('input', 'check');
+                var speakLabel = el('label', '', t('voice_speak'));
 
                 speakBox.type = 'checkbox';
+                speakBox.id = nextId('ws-info-speak-');
                 speakBox.checked = !!window.PGWsVoice.speakOn(CFG.api_url, CFG.me);
                 speakBox.addEventListener('change', function () {
                     window.PGWsVoice.speakSet(CFG.api_url, CFG.me, speakBox.checked);
                     toast(t(speakBox.checked ? 'voice_speak_on' : 'voice_speak_off'), 'info');
                 });
+                speakLabel.htmlFor = speakBox.id;
                 speak.appendChild(speakBox);
-                speak.appendChild(el('span', 'form-check-label', t('voice_speak')));
+                speak.appendChild(speakLabel);
                 body.appendChild(speak);
             }
 
