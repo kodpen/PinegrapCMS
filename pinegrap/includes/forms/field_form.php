@@ -195,7 +195,7 @@ function pg_field_form_name_has_reserved_chars($name)
  * @param liveform $liveform
  * @param string $name  the trimmed name
  */
-function pg_field_form_validate_name($liveform, $name)
+function pg_field_form_validate_name($liveform, $name, $names_in_use = array(), $stored_name = null)
 {
     if ($name == '') {
         $liveform->mark_error('name', lang('The field must have a name. Please type in a name for the field.'));
@@ -204,6 +204,61 @@ function pg_field_form_validate_name($liveform, $name)
     if (pg_field_form_name_has_reserved_chars($name)) {
         $liveform->mark_error('name', lang('The field name cannot contain the following special characters') . ': ^ &amp; [ ] &lt; &gt; /');
     }
+
+    if (pg_field_form_name_taken($name, $names_in_use, $stored_name)) {
+        $liveform->mark_error('name', lang('Another field of this form already has this name. Please type in a different name.'));
+    }
+}
+
+/**
+ * Whether a field name is already used by another field of the same form.
+ * The export headings, the import mapping, the API value keys, the ^^name^^
+ * merge field and the "required when" rule all find a field by its name, so
+ * a second field with the same name loses its data on each of those paths.
+ * Names are compared without case, as pg_cf_rule_other_field() does. A field
+ * saved again under its own stored name is not refused, so a form that
+ * already holds two equal names keeps saving.
+ *
+ * @param string $name           the trimmed posted name
+ * @param array $names_in_use    the names of the form's other fields
+ * @param string|null $stored_name  the field's stored name (edit), null for a new field
+ * @return bool
+ */
+function pg_field_form_name_taken($name, $names_in_use, $stored_name = null)
+{
+    $want = mb_strtolower(trim((string) $name), 'UTF-8');
+
+    if ($want === '') {
+        return false;
+    }
+
+    if (($stored_name !== null) && (mb_strtolower(trim((string) $stored_name), 'UTF-8') === $want)) {
+        return false;
+    }
+
+    foreach ((array) $names_in_use as $used) {
+        if (mb_strtolower(trim((string) $used), 'UTF-8') === $want) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/**
+ * The names of a form's fields, the field $exclude_id left out.
+ *
+ * @param string $form_type_filter  pg_field_form_filter()'s answer
+ * @param int $exclude_id           the field being edited, 0 for a new field
+ * @return array
+ */
+function pg_field_form_names_in_use($form_type_filter, $exclude_id = 0)
+{
+    $names = db_values(
+        "SELECT name FROM form_fields
+        WHERE (" . $form_type_filter . ") AND (form_fields.id <> '" . (int) $exclude_id . "')");
+
+    return is_array($names) ? $names : array();
 }
 
 /**
