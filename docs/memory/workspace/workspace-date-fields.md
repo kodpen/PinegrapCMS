@@ -7,7 +7,7 @@ description: Workspace date and time fields on the one control: pgDateField(), t
 - Build the native input with `pgDateField(input, 'date' | 'time' | 'datetime-local')` (`assets/js/workspace.js`): it sets the type and the `data-pg-*` hook. The input stays the ISO store every post reads (`2026-10-26`, `17:05`, `2026-10-26T17:05`); the control (`ui/pg-datepicker.md`) draws one typed box after it in the site's date order and clock.
 - Never set `.type = 'date'` (or `time`, `datetime-local`) directly: `tests/workspace_datetime_fields_test.php` counts the fields that go through `pgDateField()`.
 - The bundle's modules (approvals, customer, recurrence, task time, task approval) get it as `h.dateField` from `partHelpers()`, `featureHelpers()` and the repeat field's helpers (P10).
-- The timeline toolbar has its own local `dateField(key, label)`; the helper is named `pgDateField` so it is not shadowed there.
+- The timeline toolbar has its own local `dateField(key, label)`; the helper is named `pgDateField` so it is not shadowed there. Its two boxes carry their label as placeholder (they were blank) and share `.ws-tl-dates` (`flex: 0 1 22rem`, each box `flex: 1 1 0`): `w-auto` boxes pushed the page 100px sideways on a phone.
 
 ## When is the box drawn?
 - `watchDateFields()`, started by `start()`, observes `document.body`: any added node holding a hooked field is passed to `pgFields.init()`. Forms are built off the page and added later (drawers, dialogs, panels), so no call site draws its own fields.
