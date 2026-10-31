@@ -6,6 +6,7 @@ module: shipment_labels
 
 ## What is kept?
 - `shipment_labels.pickup_ref` VARCHAR(64) (the carrier's confirmation) and `pickup_at` (the start of the window asked for, unix time), step `upgrade_2026_11_0_shipment_label_pickup()` (11.0.131, `install_add_column()` only; decided in `workflow/decisions-made-schema-5.md`). Every label one request covered gets the same pair; '' and 0 mean none. Readers ask `pg_shipment_labels_pickup_ready()` (exact-name `pg_schema_has()`).
+- The API shows the pair on each label of `GET /orders/{id}` (#3937, `shipment-label-api.md`): null for ''/0.
 
 ## What does a driver answer?
 - The contract's `pg_label_<key>_pickup($request, $account)` (`carrier-label-drivers.md`): `$request` = `references` (the labels' service references), `start`, `end` (unix). Success = `reference` is the confirmation (at most 64 characters, else the caller treats it as unclear). A driver without `pickup` is not offered (`pg_shipment_label_pickup_drivers()`: `pg_label_can()` + `pg_label_ready()`).
@@ -21,6 +22,5 @@ module: shipment_labels
 - Double booking: without `pickup_again` any booked label (`pg_shipment_label_pickup_booked()`) stops the whole request with `pg_shipment_label_pickup_warning()` naming the confirmations; nothing is sent.
 - Only a success writes `pickup_ref`/`pickup_at` on the group's ids, with `log_activity()`. Notices go back to the list or the order.
 
-## What is not done yet?
-- The shipments API fields `pickup_ref`/`pickup_at` (after #3298).
+## How is it tested?
 - Tests: `tests/shipment_label_pickup_test.php` (step source, probe, groups, warning, window, dialog); the drivers' in `shipment-label-pickup-drivers.md`.

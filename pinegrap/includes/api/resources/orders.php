@@ -1827,6 +1827,9 @@ function api_order_label_present($row, $base_url) {
 		'is_return'    => ((int)$row['is_return'] === 1),
 		'created_at'   => api_time((int)$row['created_at']),
 		'cancelled_at' => api_time((int)$row['cancelled_at']),
+		// isset() answers null on a site whose table lacks the pickup columns.
+		'pickup_ref'   => (isset($row['pickup_ref']) && (string)$row['pickup_ref'] !== '') ? (string)$row['pickup_ref'] : null,
+		'pickup_at'    => api_time(isset($row['pickup_at']) ? (int)$row['pickup_at'] : 0),
 		'file_kept'    => (((string)$row['label_file'] !== '') && ((int)$row['label_removed_at'] === 0)),
 		'document_url' => $base_url . '/orders/' . (int)$row['order_id'] . '/shipments/labels/' . (int)$row['id'] . '/document'
 	);
@@ -1846,6 +1849,8 @@ function api_order_label_schema() {
 		'is_return'    => 'boolean',
 		'created_at'   => 'string?',
 		'cancelled_at' => 'string?',
+		'pickup_ref'   => 'string?',
+		'pickup_at'    => 'string?',
 		'file_kept'    => 'boolean',
 		'document_url' => 'string'
 	);
