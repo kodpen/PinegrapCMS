@@ -90,8 +90,11 @@ function test_erp_bank_statement_steps_locked_line()
 	pg_assert_true(strpos($rows, "if (\$line_locked !== '') {") < strpos($rows, '$suggested++;'), 'locked line not counted');
 	pg_assert_contains("'The books are locked up to {var:1}, so this line cannot be recorded. Set it aside, or ask whoever keeps the books to move the lock.'", $source, 'bank line lock sentence');
 
-	// Record the suggested lines skips them instead of counting them failed.
-	$bulk = substr($source, strpos($source, "if (\$action === 'record_suggested') {"), 700);
-	pg_assert_contains("if (erp_lock_refusal((string) \$line['doc_date']) !== '') {", $bulk, 'bulk step skips locked lines');
-	pg_assert_true(strpos($bulk, "erp_lock_refusal((string) \$line['doc_date'])") < strpos($bulk, 'erp_bank_line_record('), 'skipped before recording');
+	// Record the suggested lines takes the screen's one-pass suggestions,
+	// which leave locked lines out (test_erp_bank_statement_suggestions_one_line_per_invoice),
+	// so they are skipped instead of counted failed.
+	$bulk = substr($source, strpos($source, "if (\$action === 'record_suggested') {"), 1200);
+	pg_assert_contains('$suggestions = erp_bank_statement_suggestions($lines);', $bulk, 'bulk step works the suggestions out once');
+	pg_assert_true(strpos($bulk, 'erp_bank_statement_suggestions(') < strpos($bulk, 'erp_bank_line_record('), 'worked out before recording');
+	pg_assert_contains("\$suggestion = \$suggestions[(int) \$line['id']] ?? array('account_id' => 0);", $rows, 'the rows show the same suggestions');
 }

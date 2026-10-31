@@ -84,7 +84,12 @@ if ($html === false) {
     exit();
 }
 
-if (($preview_template !== null) || !empty($_REQUEST['html'])) {
+// A template preview is the PDF the template makes, never kept.
+if ($preview_template !== null) {
+    erp_template_preview_send($html);
+}
+
+if (!empty($_REQUEST['html'])) {
     header('Content-Type: text/html; charset=utf-8');
     header('X-Robots-Tag: noindex');
     echo $html;
