@@ -292,8 +292,10 @@ echo pg_page_shell(array(
     'icon'                => 'workspace',
     'heading'             => lang('Calendar subscription'),
     'heading_description' => lang('Your tasks, plan items, days off and approval deadlines in the calendar on your phone or computer.'),
-    'actions'             => array(
-        array('label' => lang('Work Calendar'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/workspace_calendar.php', 'icon' => 'bi-calendar3'),
+    'cancel'              => array('enable' => 'true', 'url' => 'workspace_calendar.php'),
+    'breadcrumb'          => array(
+        array('label' => lang('Work Calendar'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/workspace_calendar.php'),
+        array('label' => lang('Calendar subscription')),
     ),
 )) . '
 
