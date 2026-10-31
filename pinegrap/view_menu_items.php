@@ -53,6 +53,8 @@ if (($user['role'] == 3) && !in_array($_GET['id'], $user_editable_menus)) {
 
 $number_of_results = 0;
 
+$output_subheading = '';
+
 if ($user['role'] < 2) {
     $output_subheading = '<p>' . lang('Page Style Body Tag') . ': <strong>' . h('<menu>' . $menu_name . '</menu>') . '</strong></p>';
 }
