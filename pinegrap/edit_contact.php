@@ -40,6 +40,7 @@ if (validate_contact_access($user, $_REQUEST['id']) == false) {
 if (!$_POST) {
     $output_orders_button = '';
     $output_bar_links = '';
+    $output_bar_overflow = '';
 
     // if ecommerce is on, then output orders button to show orders for contact
     if ((ECOMMERCE === true) && (($user['role'] < 3) || ($user['manage_ecommerce'] == true))) {
@@ -72,10 +73,15 @@ if (!$_POST) {
     // Everything the site keeps about this contact, and its erasure, for a
     // KVKK / GDPR request (privacy_export.php and privacy_erase.php are open
     // to staff only).
+    // They are rare and screen-specific, so they sit in the overflow menu.
     if ($user['role'] < 3) {
-        $output_bar_links .= '
-                    <a class="btn btn-link pg-link-secondary py-0 mb-3 " href="privacy_export.php?contact_id=' . (int) $id . '"><i class="bi bi-person-down me-1" aria-hidden="true"></i>' . lang('Export personal data') . '</a>
-                    <a class="btn btn-link pg-link-secondary py-0 mb-3 " href="privacy_erase.php?contact_id=' . (int) $id . '"><i class="bi bi-person-x me-1" aria-hidden="true"></i>' . lang('Erase personal data') . '</a>';
+        $output_bar_overflow = '<div class="pg-menu-wrap">
+            <button type="button" class="btn btn-sm btn-text theme-secondary" data-bs-toggle="menu" data-bs-placement="bottom-end" aria-expanded="false" title="' . h(lang('More')) . '" aria-label="' . h(lang('More')) . '"><i class="bi bi-three-dots-vertical" aria-hidden="true"></i></button>
+            <ul class="menu pg-menu-end">
+                <li><a class="menu-item pg-link-body-emphasis" href="privacy_export.php?contact_id=' . (int) $id . '"><i class="bi bi-person-down me-3" aria-hidden="true"></i>' . lang('Export personal data') . '</a></li>
+                <li><a class="menu-item pg-link-body-emphasis" href="privacy_erase.php?contact_id=' . (int) $id . '"><i class="bi bi-person-x me-3" aria-hidden="true"></i>' . lang('Erase personal data') . '</a></li>
+            </ul>
+        </div>';
     }
 
     // Where the contact was talked about in the workspace, its customer
@@ -89,13 +95,10 @@ if (!$_POST) {
         $output_bar_links .= ws_record_button($user, 'contact', (int) $_REQUEST['id'], $workspace_label, 'btn btn-link pg-link-secondary py-0 mb-3');
     }
 
-    if ($output_bar_links !== '') {
-        $output_orders_button = '
-            <nav id="button_bar" class="navigation " aria-label="' . h(lang('Button Bar')) . '">
-                <div class=" btn-group btn-group-sm flex-wrap">' . $output_bar_links . '
-                </div>
-            </nav>';
-    }
+    $output_orders_button = pg_screen_toolbar(array(
+        'secondary' => $output_bar_links,
+        'overflow'  => $output_bar_overflow,
+    ));
 
     $query =
         "SELECT
@@ -278,12 +281,7 @@ if (!$_POST) {
 <main id="content" class="container-fluid">
             <div class="row">
             <div class="col-12">
-                <div class="row mb-3  flex-wrap">
-                    <div class="col-12 sm:col-12 text-center md:text-start">
-
-                        ' . $output_orders_button . '
-                    </div>
-                </div>
+                ' . $output_orders_button . '
                 <form name="form" action="edit_contact.php" method="post">
                     ' . get_token_field() . '
                     <input type="hidden" id="send_to" name="send_to" value="' . (isset($_REQUEST['send_to']) ? h($_REQUEST['send_to']) : '') . '" />

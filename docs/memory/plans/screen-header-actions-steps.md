@@ -18,9 +18,8 @@ description: Steps H1-H6 of plans/screen-header-actions.md: which screens each f
   - Also drop the bottom link of `workspace_calendar.php` and the JS-drawn ones in `workspace_flow.js` and `workspace.js`; rebuild the bundles.
   - Add the six unlisted `history.go(-1)` arrows to `back-arrow-targets.md`: `privacy_erase`, `privacy_export`, `generate_layout`, `barcode_increase_inventory`, `barcode_decrease_inventory`, `import_design`.
 
-- H3 (M) Bars out of `.row`/`.col`. H3a done (#4050): the 25 content screens (list in `ui/page-button-bar.md`). H3b: the other wrapped bars, `product_builder` included.
-  - The screens that wrap `#button_bar` move it directly into `<main>` through the helper; a second tool column joins the bar's right end (`product_builder` left).
-  - Split the screens into two PRs if needed.
+- H3 (M) Bars out of `.row`/`.col`. Done (#4050, #4089); screens in `ui/page-button-bar.md`.
+  - Left for H6: `mass_edit.php` (it was held by another PR). The empty `md:text-start` column beside the date changer of `view_order_report` / `view_visitor_report` holds no bar.
 
 - H4 (M) Lone controls and fact lines. Done (#3966, #4048).
   - Right-only bars, report headers, lone buttons, Duplicate rows: one `pg_screen_toolbar()` bar directly in `<main>`, Duplicate as slot 2.

@@ -365,21 +365,11 @@ if (($_GET['submit_data'] ?? '') == 'Export Gift Cards') {
                 ' . $liveform->get_warnings() . '
                 ' . $liveform->output_notices() . '
                
-                <div class="row mb-3  flex-wrap">
-                    <div class="col-12 text-center md:text-start">
-                        
-                        <nav id="button_bar" class="navigation " aria-label="' . h(lang('Button Bar')) . '">
-                            <a class="btn btn-sm btn-solid theme-primary m-1 " href="add_gift_card.php"><span class="bi bi-plus-circle me-3"></span>' . lang(array('string'=>'Create') ) . '</a>
-                            <form id="export_form" class="disable_shortcut d-inline-block" method="get">
-                                <div class=" btn-group btn-group-sm flex-wrap">
-                                    <button type="submit" name="submit_data" value="Export Gift Cards" class="btn btn-link pg-link-secondary py-0 m-1"><span class="bi bi-file-earmark-arrow-down bi-me-2"></span>' . lang(array('string'=>'Export') ) . '</button>
-                                </div>
-                            </form>
-                            <div class="pg-toolbar-grow"></div>
-                            ' . pg_list_sort_menu('view_gift_cards.php', $sort_columns, $sort_levels, $sort_default) . '
-                        </nav>
-                    </div>
-                </div>
+                ' . pg_screen_toolbar(array(
+                    'primary'   => array('label' => lang('Create'), 'url' => 'add_gift_card.php', 'icon' => 'bi-plus-circle'),
+                    'secondary' => '<form id="export_form" class="disable_shortcut" method="get"><button type="submit" name="submit_data" value="Export Gift Cards" class="btn btn-sm btn-text theme-secondary"><i class="bi bi-file-earmark-arrow-down me-1" aria-hidden="true"></i>' . lang('Export') . '</button></form>',
+                    'search'    => pg_list_sort_menu('view_gift_cards.php', $sort_columns, $sort_levels, $sort_default),
+                )) . '
                 <div class="card my-7">
                     <div class="card-body p-0 position-relative">
                         <table class="chart table-hover table " style="width:100%;display:none"' . pg_list_edit_table('view_gift_cards.php', $quick_edit) . '>

@@ -3731,32 +3731,23 @@ function pg_pb_variant_sets_screen()
                 ' . $liveform->get_warnings() . '
                 ' . $liveform->output_notices() . '
 
-                <div class="row mb-3 flex-wrap">
-                    <div class="col-12 sm:col-12 md:col-6 xl:col-9 text-center md:text-start">
-                        
-                        <nav id="button_bar" class="navigation" aria-label="' . h(lang('Button Bar')) . '">
-                            <a class="btn btn-sm btn-solid theme-primary m-1" href="add_product.php"><i class="bi bi-plus-circle me-3"></i>' . lang('Create') . '</a>
-                        </nav>
-                    </div>
-
-                    <!-- Filters live top right, where every other list screen puts
-                         them. A GET form so the URL is shareable and the back button
-                         behaves; the choice is also kept in the session. -->
-                    <div class="col-12 sm:col-12 md:col-6 xl:col-3">
-                        <div class="row justify-content-center md:justify-content-end">
-                            <form id="search_form" action="view_products.php?mode=variant_sets" method="get" class="search_form col-auto">
-                                <div class="input-group input-group-sm">
-                                    <label class="input-group-text mt-1 mb-1" for="status" title="' . lang('Enabled') . '"><i class="bi bi-eye"></i></label>
-                                    <select id="status" aria-label="' . h(lang('Enabled')) . '" name="status" class="form-control mt-1 mb-1" title="' . lang('Enabled') . '" onchange="submit_form(\'search_form\')">' . $output_status_options . '</select>
-                                    <select id="parent" name="parent" class="form-control mt-1 mb-1" title="' . lang('Parent Product Group') . '" onchange="submit_form(\'search_form\')">' . $output_parent_options . '</select>
-                                    ' . ($filters_active
-                                        ? '<a class="btn btn-outline theme-secondary mt-1 mb-1 no-submit" href="view_products.php?mode=variant_sets&amp;status=&amp;parent=0" title="' . lang('Clear Filters') . '"><i class="bi bi-x-lg"></i></a>'
-                                        : '') . '
-                                </div>
-                            </form>
+                <!-- The filters sit at the right end of the toolbar. A GET form so the
+                     URL is shareable and the back button behaves; the choice is
+                     also kept in the session. -->
+                ' . pg_screen_toolbar(array(
+                    'primary' => array('label' => lang('Create'), 'url' => 'add_product.php', 'icon' => 'bi-plus-circle'),
+                    'search'  => '<form id="search_form" action="view_products.php?mode=variant_sets" method="get" class="pg-toolbar-filter disable_shortcut">
+                        <div class="input-group input-group-sm w-auto flex-nowrap">
+                            <label class="input-group-text" for="status" title="' . h(lang('Enabled')) . '"><i class="bi bi-eye" aria-hidden="true"></i></label>
+                            <select id="status" aria-label="' . h(lang('Enabled')) . '" name="status" class="form-control form-control-sm w-auto" onchange="this.form.submit()">' . $output_status_options . '</select>
+                            <select id="parent" aria-label="' . h(lang('Parent Product Group')) . '" name="parent" class="form-control form-control-sm w-auto" onchange="this.form.submit()">' . $output_parent_options . '</select>
+                            ' . ($filters_active
+                                ? '<a class="btn btn-outline theme-secondary no-submit" href="view_products.php?mode=variant_sets&amp;status=&amp;parent=0" title="' . h(lang('Clear Filters')) . '" aria-label="' . h(lang('Clear Filters')) . '"><i class="bi bi-x-lg" aria-hidden="true"></i></a>'
+                                : '') . '
                         </div>
-                    </div>
-                </div>
+                        <noscript><button type="submit" class="btn btn-sm btn-outline theme-secondary">' . h(lang('Apply')) . '</button></noscript>
+                    </form>',
+                )) . '
 
                 <div class="card my-7">
                     <div class="card-body p-0 position-relative">

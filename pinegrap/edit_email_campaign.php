@@ -106,12 +106,9 @@ if (!$_POST) {
     
     // if e-mail campaign job is off and e-mail campaign status is ready, then prepare to output button bar with send campaign button
     if ((email_campaign_job_enabled() == false) && ($status == 'ready')) {
-        $output_button_bar =
-            '<nav id="button_bar" class="navigation " aria-label="' . h(lang('Button Bar')) . '">
-                <div class=" btn-group btn-group-sm flex-wrap">
-                    <a class="btn btn-link pg-link-secondary py-0 mb-3 " href="send_email_campaign.php?id=' . h($_GET['id']) . get_token_query_string_field() . '" onclick="window.open(\'send_email_campaign.php?id=' . h($_GET['id']) . get_token_query_string_field() . '\', \'\', \'width=450, height=350, resizable=1, scrollbars=0\'); return false;"><span class="material-icons me-1" aria-hidden="true">send</span>' . lang('Send Campaign') . '</a>
-                </div>
-            </nav>';
+        $output_button_bar = pg_screen_toolbar(array(
+            'secondary' => '<a class="btn btn-sm btn-text theme-secondary" href="send_email_campaign.php?id=' . h($_GET['id']) . get_token_query_string_field() . '" onclick="window.open(\'send_email_campaign.php?id=' . h($_GET['id']) . get_token_query_string_field() . '\', \'\', \'width=450, height=350, resizable=1, scrollbars=0\'); return false;"><i class="bi bi-send me-1" aria-hidden="true"></i>' . lang('Send Campaign') . '</a>',
+        ));
     }
     
     // A completed campaign is shown with its values as text.
@@ -424,13 +421,8 @@ if (!$_POST) {
 <main id="content" class="container-fluid">
             <div class="row">
             <div class="col-12">
-                <div class="row mb-3  flex-wrap">
-                    <div class="col-12 sm:col-12 text-center md:text-start">
-
-                        <p>' . lang(array('string'=>'Created {var:1} by {var:2}.','vars'=>array( get_relative_time(array('timestamp' => $created_timestamp)),h($creator_username) ))) . '</p>
-                        ' . $output_button_bar . '
-                    </div>
-                </div>
+                <p class="text-center md:text-start">' . lang(array('string'=>'Created {var:1} by {var:2}.','vars'=>array( get_relative_time(array('timestamp' => $created_timestamp)),h($creator_username) ))) . '</p>
+                ' . $output_button_bar . '
                 ' . $output_form_start . '
                 <div class="row">
 

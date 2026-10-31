@@ -98,7 +98,8 @@ function test_product_screen_accessible_names_card_and_list_fields()
 	pg_assert_contains('class="form-control form-control-sm pg-pb-attr-default" id="pg_pb_attr_default_', $php);
 	pg_assert_contains("<select id=\"pg-barcode-type\" aria-label=\"' . h(lang('Barcode Type')) . '\"", $php);
 	pg_assert_contains("name=\"group_ids[]\" value=\"' . \$set_id . '\" aria-label=\"' . h(lang(array('string' => 'Select {var:1}', 'vars' => array(", $php);
-	pg_assert_contains("<nav id=\"button_bar\" class=\"navigation\" aria-label=\"' . h(lang('Button Bar')) . '\">", $php);
+	pg_assert_contains('pg_screen_toolbar(', $php, 'the toolbar is named by pg_screen_toolbar()');
+	pg_assert_contains("<select id=\"parent\" aria-label=\"' . h(lang('Parent Product Group')) . '\"", $php);
 }
 
 function test_product_screen_accessible_names_option_boxes()

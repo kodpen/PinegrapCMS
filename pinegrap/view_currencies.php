@@ -143,19 +143,11 @@ pg_page_shell(
             ' . $liveform->output_errors() . '
             ' . $liveform->get_warnings() . '
             ' . $liveform->output_notices() . '
-            <div class="row mb-3  flex-wrap">
-                <div class="col-12 text-center md:text-start">
-                    
-                    <nav id="button_bar" class="navigation " aria-label="' . h(lang('Button Bar')) . '">
-                        <a class="btn btn-sm btn-solid theme-primary m-1 " href="add_currency.php"><span class="bi bi-plus-circle me-3"></span>' . lang(array('string'=>'Create') ) . '</a>
-                        <div class=" btn-group btn-group-sm flex-wrap">
-                            <a class="btn btn-link pg-link-secondary py-0 m-1 bi bi-currency-exchange bi-me-2" href="update_exchange_rates.php?send_to=' . h(get_request_uri()) . '">' . lang(array('string'=>'Update Exchange Rates') ) . '</a>
-                        </div>
-                        <div class="pg-toolbar-grow"></div>
-                        ' . pg_list_sort_menu('view_currencies.php', $sort_columns, $sort_levels, $sort_default) . '
-                    </nav>
-                </div>
-            </div>
+            ' . pg_screen_toolbar(array(
+                'primary'   => array('label' => lang('Create'), 'url' => 'add_currency.php', 'icon' => 'bi-plus-circle'),
+                'secondary' => array('label' => lang('Update Exchange Rates'), 'url' => 'update_exchange_rates.php?send_to=' . get_request_uri(), 'icon' => 'bi-currency-exchange'),
+                'search'    => pg_list_sort_menu('view_currencies.php', $sort_columns, $sort_levels, $sort_default),
+            )) . '
             <div class="card my-7">
                 <div class="card-body p-0 position-relative">
                     <table class="chart table-hover table " style="width:100%;display:none">
