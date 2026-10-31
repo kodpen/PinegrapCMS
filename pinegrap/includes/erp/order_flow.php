@@ -826,7 +826,7 @@ function erp_order_flow_run($order_id, $action, $user_id = 0)
             if (!$result['success']) {
                 return array('success' => false, 'messages' => array(), 'error' => $result['error']);
             }
-            log_activity(lang(array('string' => 'erp invoice ({var:1}) was created', 'vars' => $result['full_number'])));
+            log_activity(pg_log_lang(array('string' => 'erp invoice ({var:1}) was created', 'vars' => $result['full_number'])));
             $messages = array(lang(array('string' => 'Invoice {var:1} created.', 'vars' => $result['full_number'])));
 
             // A delivery note written before the invoice is tied to it now,
@@ -867,7 +867,7 @@ function erp_order_flow_run($order_id, $action, $user_id = 0)
             if (!$result['success']) {
                 return array('success' => false, 'messages' => array(), 'error' => $result['error']);
             }
-            log_activity(lang(array('string' => 'erp delivery note ({var:1}) was created', 'vars' => $result['full_number'])));
+            log_activity(pg_log_lang(array('string' => 'erp delivery note ({var:1}) was created', 'vars' => $result['full_number'])));
             $messages = array(lang(array('string' => 'Delivery note {var:1} created.', 'vars' => $result['full_number'])));
             $written_back = (array) ($result['written_back'] ?? array());
             if (isset($written_back['invoice_shipment_date']) || isset($written_back['invoice_carrier'])) {
@@ -924,7 +924,7 @@ function erp_order_flow_run($order_id, $action, $user_id = 0)
             if (!$result['success']) {
                 return array('success' => false, 'messages' => array(), 'error' => (string) $result['error']);
             }
-            log_activity(lang(array('string' => 'erp invoice for cancelled order ({var:1}) was cancelled', 'vars' => (string) $state['order']['order_number'])));
+            log_activity(pg_log_lang(array('string' => 'erp invoice for cancelled order ({var:1}) was cancelled', 'vars' => (string) $state['order']['order_number'])));
             return array('success' => true, 'error' => '', 'messages' => array_values(array_filter(array((string) $provider_cancel['message'], lang('The invoice has been cancelled.')))));
 
         default:

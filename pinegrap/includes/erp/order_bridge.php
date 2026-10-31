@@ -1566,8 +1566,8 @@ function erp_auto_invoice_for_order($order_id, $trigger)
     $vars = array((string) $order['order_number'], $answer['number']);
 
     log_activity(($trigger === 'order_shipped')
-        ? lang(array('string' => 'Order (#{var:1}) was invoiced automatically once it was shipped: {var:2}.', 'vars' => $vars))
-        : lang(array('string' => 'Order (#{var:1}) was invoiced automatically once it was paid: {var:2}.', 'vars' => $vars)));
+        ? pg_log_lang(array('string' => 'Order (#{var:1}) was invoiced automatically once it was shipped: {var:2}.', 'vars' => $vars))
+        : pg_log_lang(array('string' => 'Order (#{var:1}) was invoiced automatically once it was paid: {var:2}.', 'vars' => $vars)));
 
     return $answer;
 }
@@ -1612,7 +1612,7 @@ function erp_auto_invoice_refused($order, $reason)
 {
     $reason = trim((string) $reason);
 
-    log_activity(lang(array(
+    log_activity(pg_log_lang(array(
         'string' => 'Order (#{var:1}) could not be invoiced automatically: {var:2}',
         'vars' => array((string) ($order['order_number'] ?? ''), $reason),
     )));

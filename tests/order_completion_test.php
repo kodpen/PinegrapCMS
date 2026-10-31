@@ -130,7 +130,7 @@ function test_order_completion_tail_writes_in_order()
 		'contact groups' => array('"INSERT INTO contacts_contact_groups_xref ('),
 		'abandoned campaigns cancelled' => array('"UPDATE email_campaigns'),
 		'visitor record' => array('UPDATE visitors'),
-		'activity log' => array("lang('Order was completed')"),
+		'activity log' => array("pg_log_lang(array('string' => 'Order was completed'))"),
 		'new_order notification' => array("'action' => 'new_order'"),
 		'receipt order id kept' => array("\$_SESSION['ecommerce']['completed_order_id'] = (\$_SESSION"),
 		'post-save hook' => array('eval(prepare_for_eval($post_save_hook_code))'),

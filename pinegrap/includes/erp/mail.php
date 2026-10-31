@@ -505,7 +505,7 @@ function erp_mail_invoice_send($invoice_id, $to, $subject, $message, $user_id = 
 
     erp_mail_settle($mail_id, true, $attachment['name'], '');
 
-    log_activity(lang(array(
+    log_activity(pg_log_lang(array(
         'string' => 'erp invoice {var:1} was e-mailed to {var:2}',
         'vars' => array((string) $invoice['full_number'], implode(', ', $addresses['addresses'])),
     )), ($mode === 'auto') ? 'SYSTEM' : (string) ($_SESSION['sessionusername'] ?? ''));
