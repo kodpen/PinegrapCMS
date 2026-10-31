@@ -9,7 +9,7 @@ description: The İYS card of Settings › Communication (includes/iys/settings.
 
 ## What do the card's texts say?
 - One switch, labelled "E-mail and SMS", stored as `options.email` (field `iys_email`): it gates the whole `pg_iys_run()`, which carries the SMS (`MESAJ`) answers too once `contacts.iys_sms_status` exists (`iys-sms-channel.md`). Off, neither channel is synced. There is no separate SMS switch; one would be a product decision.
-- The description names both channels (e-mail and SMS answers pushed daily, İYS refusals pulled back; an e-mail refusal stops e-mail campaigns, an SMS refusal stops marketing SMS) and says a consent İYS does not know stays valid, only a refusal in İYS stops sending (#2430). Before #<PR> it spoke of e-mail alone and said a consent missing from İYS counted as not given (#3954). Pinned by `tests/iys_card_text_test.php`.
+- The description names both channels (e-mail and SMS answers pushed daily, İYS refusals pulled back; an e-mail refusal stops e-mail campaigns, an SMS refusal stops marketing SMS) and says a consent İYS does not know stays valid, only a refusal in İYS stops sending (#2430). Before #4092 it spoke of e-mail alone and said a consent missing from İYS counted as not given (#3954). Pinned by `tests/iys_card_text_test.php`.
 
 ## How is the brand picked?
 - The brand list `pg_iys_brands()` gave is stored in the row's `options.brands`; with a list the card draws a select, before one a digits box (empty = take it from İYS).
