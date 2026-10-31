@@ -5963,6 +5963,9 @@
         // An earlier version of the conversation open on the screen
         // (includes/workspace/eras.php), or null for the current one.
         era: null,
+        // The channel's info beside the conversation (showMembers()).
+        infoOpen: false,
+        infoPanel: null,
         fit: function () {},
 
         start: function (root) {
@@ -7347,8 +7350,9 @@
             self.scheduledPart = part;
 
             self.stop();
-            // The discussion beside the channel goes with it.
+            // The discussion or the info beside the channel goes with it.
             self.closeThread();
+            self.closeInfo();
             self.channel = null;
             self.view = 'scheduled';
             self.drawSide();
@@ -7418,8 +7422,9 @@
             var self = this;
 
             self.stop();
-            // The discussion beside the channel goes with it.
+            // The discussion or the info beside the channel goes with it.
             self.closeThread();
+            self.closeInfo();
             self.channel = null;
             self.view = 'home';
             self.drawSide();
@@ -7787,6 +7792,9 @@
         },
 
         openThread: function (threadId, messageId) {
+            // One panel beside the channel at a time.
+            app.closeInfo();
+
             if (!this.threadView) {
                 this.threadView = makeThreadView(this);
             }
@@ -8246,7 +8254,9 @@
             find.addEventListener('click', function () { self.searchChannel(); });
             actions.appendChild(find);
 
-            var info = button('btn btn-sm btn-text theme-secondary ws-head-wide', '', 'bi-info-circle', t('channel_info'));
+            var info = button('btn btn-sm btn-text theme-secondary ws-head-wide ws-head-info', '', 'bi-info-circle', t('channel_info'));
+            info.setAttribute('aria-pressed', self.infoOpen ? 'true' : 'false');
+            info.classList.toggle('active', !!self.infoOpen);
             info.addEventListener('click', function () { self.showMembers(); });
             actions.appendChild(info);
 
@@ -8257,6 +8267,11 @@
             actions.appendChild(self.channelMenu());
             head.appendChild(actions);
             center.appendChild(head);
+
+            // The info beside it follows the channel shown (drawInfo()).
+            if (self.infoOpen) {
+                self.drawInfo(false);
+            }
 
             if (channel.audit) {
                 var auditBar = el('div', 'alert theme-warning rounded-0 m-0 py-3 small');
@@ -8687,103 +8702,224 @@
             return wrap;
         },
 
-        // The channel's info: what it is for, its customer and department,
-        // then its people.
+        // The channel's info beside the conversation, in the place a
+        // discussion takes (one of the two at a time): what it is for, how
+        // its work stands, its people, the reader's notifications and
+        // read-aloud choice, the time spent on its tasks and its settings.
+        // The info button opens and closes it; on a phone it covers the
+        // channel until it is closed.
         showMembers: function () {
-            var self = this;
-            var channel = self.channel;
-            var node = offcanvas('ws-members', t('channel_info'));
-            var body = clear(node.querySelector('.drawer-body'));
-            var footer = clear(node.querySelector('.drawer-footer'));
-
-            footer.classList.add('d-none');
-
-            var about = el('div', 'ws-info-about');
-
-            if (channel.topic) {
-                about.appendChild(el('div', 'ws-info-label', t('purpose')));
-                about.appendChild(el('p', 'ws-info-purpose', channel.topic));
+            if (app.infoOpen) {
+                app.closeInfo();
+                return;
             }
 
+            app.closeThread();
+            app.infoOpen = true;
+            app.drawInfo(true);
+        },
+
+        // The screen's own panel, whichever view asks (the discussion panel
+        // is made from the screen with Object.create).
+        closeInfo: function () {
+            var self = app;
+
+            if (!self.infoOpen) {
+                return;
+            }
+
+            var hadFocus = !!(self.infoPanel && self.infoPanel.contains(document.activeElement));
+
+            self.infoOpen = false;
+            self.root.classList.remove('ws-info-open');
+
+            if (self.infoPanel) {
+                clear(self.infoPanel);
+            }
+
+            self.markInfoButton();
+
+            // The focus goes back to the button that opened it, where it
+            // shows; else to the channel's messages.
+            if (hadFocus) {
+                var opener = self.center ? self.center.querySelector('.ws-head-info') : null;
+
+                if (opener && opener.offsetParent) {
+                    opener.focus();
+                } else if (self.pane) {
+                    self.pane.focus({ preventScroll: true });
+                }
+            }
+        },
+
+        markInfoButton: function () {
+            var opener = app.center ? app.center.querySelector('.ws-head-info') : null;
+
+            if (opener) {
+                opener.setAttribute('aria-pressed', app.infoOpen ? 'true' : 'false');
+                opener.classList.toggle('active', !!app.infoOpen);
+            }
+        },
+
+        // Drawn again with the channel (drawCenter()), so a change made from
+        // it shows at once and another channel shows its own.
+        drawInfo: function (focus) {
+            var self = app;
+            var channel = self.channel;
+
+            if (!self.infoOpen) {
+                return;
+            }
+
+            if (!channel) {
+                self.closeInfo();
+                return;
+            }
+
+            if (!self.infoPanel) {
+                self.infoPanel = el('aside', 'ws-info-panel');
+                self.infoPanel.setAttribute('aria-label', t('channel_info'));
+                self.infoPanel.addEventListener('keydown', function (event) {
+                    if (event.key === 'Escape') {
+                        event.stopPropagation();
+                        self.closeInfo();
+                    }
+                });
+                self.root.appendChild(self.infoPanel);
+            }
+
+            var panel = clear(self.infoPanel);
+
+            self.root.classList.add('ws-info-open');
+            self.markInfoButton();
+
+            var head = el('div', 'ws-panel-head');
+            var title = el('h2', 'ws-panel-title', t('channel_info'));
+
+            title.tabIndex = -1;
+            head.appendChild(title);
+
+            var shut = button('btn btn-sm btn-text theme-secondary', '', 'bi-x-lg', t('info_close'));
+            shut.addEventListener('click', function () { self.closeInfo(); });
+            head.appendChild(shut);
+            panel.appendChild(head);
+
+            var body = el('div', 'ws-panel-body');
+            panel.appendChild(body);
+
+            function section(label) {
+                body.appendChild(el('h3', 'ws-panel-kicker', label));
+            }
+
+            // What it is for, its customer and its department.
             var customer = self.customerNode(channel);
 
-            if (customer) {
-                about.appendChild(customer);
+            if (channel.topic || customer || channel.department) {
+                section(t('purpose'));
+
+                if (channel.topic) {
+                    body.appendChild(el('p', 'ws-info-purpose', channel.topic));
+                }
+
+                var tags = el('div', 'ws-info-tags');
+
+                if (customer) {
+                    tags.appendChild(customer);
+                }
+
+                if (channel.department) {
+                    var department = tags.appendChild(el('span', 'badge', channel.department.name));
+                    department.style.background = channel.department.color;
+                    department.style.color = readableInk(channel.department.color);
+                }
+
+                if (tags.firstChild) {
+                    body.appendChild(tags);
+                }
             }
 
-            if (channel.department) {
-                var department = about.appendChild(el('span', 'badge ms-1', channel.department.name));
-                department.style.background = channel.department.color;
-                department.style.color = readableInk(channel.department.color);
+            // How its work stands, from the latest status update
+            // (workspace_status.js).
+            var statusPill = window.PGWsStatus ? window.PGWsStatus.pill(channel, self, featureHelpers()) : null;
+
+            if (statusPill) {
+                section(t('info_status'));
+                body.appendChild(statusPill);
             }
 
-            if (about.firstChild) {
-                body.appendChild(about);
+            section(t('members') + ' · ' + channel.members.length);
+
+            var people = el('div', 'ws-info-people');
+
+            // A row of the list: the face, the name and under it the role.
+            function personRow(face, name, role) {
+                var row = el('div', 'ws-info-person');
+                var text = el('div', 'ws-info-person-text');
+
+                row.appendChild(face);
+                text.appendChild(name);
+
+                if (role) {
+                    text.appendChild(el('div', 'ws-info-person-role', role));
+                }
+
+                row.appendChild(text);
+                people.appendChild(row);
+
+                return row;
             }
 
-            body.appendChild(el('div', 'ws-info-label', t('members') + ' (' + channel.members.length + ')'));
-
-            // Claude, where it can be asked: listed, but no person to open.
+            // Claude and Pinegrap AI, where they can be asked: listed, but
+            // no person to open.
             if (BOOT.claude && channel.claude && channel.claude.available) {
-                var claudeRow = el('div', 'd-flex align-items-center gap-3 py-3 border-bottom');
-                var claudeFace = avatar({ avatar: BOOT.claude.avatar }, '2rem');
-                claudeRow.appendChild(claudeFace);
-
-                var claudeText = el('div', 'flex-grow-1');
-                claudeText.appendChild(el('div', 'fw-semibold', BOOT.claude.name));
-                claudeText.appendChild(el('small', 'fg-secondary', t('claude_member')));
-                claudeRow.appendChild(claudeText);
-                body.appendChild(claudeRow);
+                personRow(avatar({ avatar: BOOT.claude.avatar }), el('div', 'ws-info-person-name', BOOT.claude.name), t('claude_member'));
             }
 
             if (BOOT.ai && channel.ai && channel.ai.available) {
-                var aiRow = el('div', 'd-flex align-items-center gap-3 py-3 border-bottom');
-                var aiFace = avatar({ avatar: BOOT.ai.avatar }, '2rem');
-                aiRow.appendChild(aiFace);
-
-                var aiText = el('div', 'flex-grow-1');
-                aiText.appendChild(el('div', 'fw-semibold', BOOT.ai.name));
-                aiText.appendChild(el('small', 'fg-secondary', t('ai_member')));
-                aiRow.appendChild(aiText);
-                body.appendChild(aiRow);
+                personRow(avatar({ avatar: BOOT.ai.avatar }), el('div', 'ws-info-person-name', BOOT.ai.name), t('ai_member'));
             }
 
             channel.members.forEach(function (member) {
-                var row = el('div', 'd-flex align-items-center gap-3 py-3 border-bottom');
+                var role = [(member.id === channel.owner_id) ? t('owner') : '', member.title || ''].filter(Boolean).join(' · ');
+                var name = personLink(el('div', 'ws-info-person-name', member.name), member);
+                var row = personRow(avatar(member, null, true), name, role);
+
+                // Online or not is the dot on the face; said in words too.
+                name.appendChild(el('span', 'visually-hidden', ' (' + t('presence_' + member.presence) + ')'));
                 onContext(row, function () { return personMenu(member); });
-                var memberFace = avatar(member, '2rem', true);
-                row.appendChild(personLink(memberFace, member));
-                var text = el('div', 'flex-grow-1');
-                text.appendChild(personLink(el('div', 'fw-semibold', member.name), member));
-                text.appendChild(el('small', 'fg-secondary', [(member.id === channel.owner_id) ? t('owner') : '', member.title || ''].filter(Boolean).join(' · ')));
-                row.appendChild(text);
-                row.appendChild(el('span', 'badge rounded-pill ' + (member.presence === 'online' ? 'theme-success' : 'theme-secondary'), t('presence_' + member.presence)));
 
                 if (channel.can_manage && member.id !== channel.owner_id && member.id !== BOOT.me.id) {
                     var remove = button('btn btn-sm btn-text theme-secondary', '', 'bi-x-lg', t('remove'));
                     remove.addEventListener('click', function () {
                         api('ws_channel_member_remove', { channel_id: channel.id, user_id: member.id }).then(function () {
-                            hideOffcanvas(node);
                             self.open(channel.id, 0);
                         }).catch(fail);
                     });
                     row.appendChild(remove);
                 }
-
-                body.appendChild(row);
             });
 
+            body.appendChild(people);
+
+            // Adding people: a button that opens the picker in place.
             if (channel.can_post && (channel.kind === 'public' || channel.joined)) {
                 var inside = channel.members.map(function (member) { return member.id; });
                 var outside = BOOT.people.filter(function (member) { return inside.indexOf(member.id) === -1; }).map(function (member) { return member.id; });
 
                 if (outside.length) {
-                    body.appendChild(el('div', 'form-label mt-5', t('add_people')));
-                    var picker = peoplePicker([], outside);
-                    body.appendChild(picker);
+                    var addOpen = button('btn btn-sm btn-outline theme-secondary rounded-pill mt-2', t('add_people'), 'bi-person-plus');
+                    var addBox = el('div', 'ws-info-add');
 
-                    footer.classList.remove('d-none');
-                    var add = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('add_people'), 'bi-person-plus');
+                    addBox.hidden = true;
+                    addOpen.setAttribute('aria-expanded', 'false');
+                    addOpen.addEventListener('click', function () {
+                        addBox.hidden = !addBox.hidden;
+                        addOpen.setAttribute('aria-expanded', addBox.hidden ? 'false' : 'true');
+                    });
+
+                    var picker = peoplePicker([], outside);
+                    var add = button('btn btn-sm btn-solid theme-primary rounded-pill px-4 mt-2', t('add_people'), 'bi-person-plus');
+
                     add.addEventListener('click', function () {
                         var ids = picker.value();
 
@@ -8792,15 +8928,100 @@
                         }
 
                         api('ws_channel_members_add', { channel_id: channel.id, user_ids: ids }).then(function () {
-                            hideOffcanvas(node);
                             self.open(channel.id, 0);
                         }).catch(fail);
                     });
-                    footer.appendChild(add);
+
+                    addBox.appendChild(picker);
+                    addBox.appendChild(add);
+                    body.appendChild(addOpen);
+                    body.appendChild(addBox);
                 }
             }
 
-            showOffcanvas(node);
+            // The reader's notifications from this channel, the menu's three
+            // choices side by side.
+            if (channel.joined) {
+                section(t('info_notify'));
+
+                var choices = el('div', 'ws-seg');
+
+                choices.setAttribute('role', 'group');
+                choices.setAttribute('aria-label', t('info_notify'));
+
+                [['all', 'notify_short_all', 'notify_all'], ['mentions', 'notify_short_mentions', 'notify_mentions'], ['none', 'notify_short_none', 'notify_none']].forEach(function (option) {
+                    var choice = button('ws-seg-item', t(option[1]));
+
+                    choice.title = t(option[2]);
+                    choice.setAttribute('aria-pressed', (channel.notify === option[0]) ? 'true' : 'false');
+                    choice.addEventListener('click', function () {
+                        if (channel.notify === option[0]) {
+                            return;
+                        }
+
+                        api('ws_channel_notify', { channel_id: channel.id, notify: option[0] }).then(function () { self.reloadChannels(channel.id); }).catch(fail);
+                    });
+                    choices.appendChild(choice);
+                });
+
+                body.appendChild(choices);
+            }
+
+            // Assistants' answers read aloud: this browser's own choice, as in
+            // the channel menu (speakAnswer()).
+            if (window.PGWsVoice && window.PGWsVoice.speakSupported() && (BOOT.claude || BOOT.ai || (BOOT.mcp || []).length)) {
+                var speak = el('div', 'form-field mb-0 ws-info-check');
+                var speakBox = el('input', 'check');
+                var speakLabel = el('label', '', t('voice_speak'));
+
+                speakBox.type = 'checkbox';
+                speakBox.id = nextId('ws-info-speak-');
+                speakBox.checked = !!window.PGWsVoice.speakOn(CFG.api_url, CFG.me);
+                speakBox.addEventListener('change', function () {
+                    window.PGWsVoice.speakSet(CFG.api_url, CFG.me, speakBox.checked);
+                    toast(t(speakBox.checked ? 'voice_speak_on' : 'voice_speak_off'), 'info');
+                });
+                speakLabel.htmlFor = speakBox.id;
+                speak.appendChild(speakBox);
+                speak.appendChild(speakLabel);
+                body.appendChild(speak);
+            }
+
+            // The time spent on its tasks (task_time.php), as the Summary
+            // tab reads it, when there is any; the panel does not wait for it.
+            if (CFG.task_time && CFG.task_time.ready) {
+                var time = el('div', 'ws-info-time');
+
+                time.hidden = true;
+                body.appendChild(time);
+
+                api('ws_task_time_channel', { channel_id: channel.id }).then(function (data) {
+                    var card = data ? data.card : null;
+
+                    if (!card || !card.entries || (self.channel !== channel) || !self.infoOpen) {
+                        return;
+                    }
+
+                    time.appendChild(el('h3', 'ws-panel-kicker', t('info_time')));
+                    time.appendChild(el('p', 'ws-info-time-line', t('info_time_line', card.month_label, card.total_label)));
+                    time.hidden = false;
+                }).catch(function () {
+                    // Without it the rest of the info stands.
+                });
+            }
+
+            if (channel.can_manage) {
+                var settings = button('btn btn-sm btn-outline theme-secondary rounded-pill w-100 ws-info-settings', t('edit_channel'), 'bi-gear');
+
+                settings.addEventListener('click', function () {
+                    channelForm(channel, {}, function (id) { self.reloadChannels(id); });
+                });
+                body.appendChild(settings);
+            }
+
+            if (focus) {
+                title.focus();
+            }
         },
 
         // ── Messages ──
@@ -16507,8 +16728,8 @@
             var head = el('div', 'ws-head ws-thread-head');
             var title = el('div', 'ws-head-title');
             var h = el('h2');
-            h.appendChild(icon('bi-chat-square-dots', 'me-1 fg-secondary'));
-            h.appendChild(document.createTextNode(channel.name));
+            h.appendChild(el('span', 'ws-head-name', channel.name));
+            h.title = channel.name;
             title.appendChild(h);
 
             var where = el('div', 'ws-topic');
@@ -16637,22 +16858,24 @@
                 return null;
             }
 
-            var line = el('div', 'ws-thread-follow d-flex align-items-center gap-2 px-3 py-1 small fg-secondary');
+            // As drawn: a soft line under the head, the assistant's sign, what
+            // it does, and Stop (or Follow again).
+            var line = el('div', 'ws-thread-follow' + (thread.follow ? '' : ' ws-thread-follow-off'));
 
             if (thread.follow) {
-                var text = el('span', 'flex-grow-1');
-                text.appendChild(icon('bi-eye', 'me-1'));
+                var text = el('span', 'ws-thread-follow-text');
+                text.appendChild(icon('bi-stars', 'ws-thread-follow-icon'));
                 text.appendChild(document.createTextNode(t('th_follows', handle)));
                 text.title = t('th_follows_help');
                 line.appendChild(text);
             } else {
-                line.appendChild(el('span', 'flex-grow-1'));
+                line.appendChild(el('span', 'ws-thread-follow-text'));
             }
 
             if (thread.can_follow) {
                 var change = thread.follow
-                    ? button('btn btn-sm btn-text theme-secondary py-0', t('th_follow_stop'), 'bi-eye-slash', t('th_follow_stop_label', handle))
-                    : button('btn btn-sm btn-text theme-secondary py-0', t('th_follow_again'), 'bi-eye', t('th_follow_again_label', handle));
+                    ? button('btn btn-sm btn-outline theme-secondary rounded-pill', t('th_follow_stop'), '', t('th_follow_stop_label', handle))
+                    : button('btn btn-sm btn-outline theme-secondary rounded-pill', t('th_follow_again'), 'bi-stars', t('th_follow_again_label', handle));
 
                 change.addEventListener('click', function () {
                     change.disabled = true;

@@ -219,10 +219,12 @@ if (!$_POST) {
         if (mysqli_num_rows($result) > 0) {
             $row = mysqli_fetch_assoc($result);
             $liveform->assign_field_value('number_of_remaining_spots', $row['number_of_remaining_spots']);
+            $liveform->assign_field_value('number_of_remaining_spots_was', (string) $row['number_of_remaining_spots']);
             
         // else a remaining spots record was not found, so use initial spots
         } else {
             $liveform->assign_field_value('number_of_remaining_spots', $liveform->get_field_value('number_of_initial_spots'));
+            $liveform->assign_field_value('number_of_remaining_spots_was', (string) $liveform->get_field_value('number_of_initial_spots'));
         }
     }
 
@@ -270,6 +272,7 @@ if (!$_POST) {
                     <input type="hidden" name="id" value="' . h($_GET['id']) . '" />
                     ' . $liveform->output_field(array('type'=>'hidden', 'name'=>'send_to', 'value'=>($_GET['send_to'] ?? ''))) . '
                     ' . $liveform->output_field(array('type'=>'hidden', 'name'=>'recurrence_number', 'value'=>$requested_recurrence_number)) . '
+                    ' . $liveform->output_field(array('type'=>'hidden', 'name'=>'number_of_remaining_spots_was')) . '
                     ' . pg_calendar_event_form_cards($liveform, $user, $calendars, $calendar_event_locations, $id, $stored_next_page_id) . '
                     <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                         <div class="container">
@@ -338,7 +341,38 @@ if (!$_POST) {
         $end_time = $checked['end_time'];
         $calendars = $checked['calendars'];
         $calendar_event_locations = $checked['calendar_event_locations'];
-        
+
+        // Remaining Spots is written only when it was changed on this screen,
+        // and only over the value the screen opened with: a reservation takes
+        // spots off while the screen is open. When checkout moved it meanwhile
+        // nothing is saved and the field says what it is now.
+        $spots_decision = '';
+
+        if (
+            ($liveform->check_form_errors() == false)
+            && ($liveform->get_field_value('reservations') == 1)
+            && ($liveform->get_field_value('limit_reservations') == 1)
+        ) {
+            $spots_recurrence_number = 0;
+
+            if (($liveform->get_field_value('recurrence') != 0) && ($liveform->get_field_value('separate_reservations') != 0)) {
+                $spots_recurrence_number = (int) $liveform->get_field_value('recurrence_number');
+            }
+
+            $spots_now = pg_calendar_event_stored_spots($liveform->get_field_value('id'), $spots_recurrence_number);
+            $spots_decision = pg_calendar_event_spots_decision(
+                $liveform->get_field_value('number_of_remaining_spots'),
+                $liveform->get_field_value('number_of_remaining_spots_was'),
+                $spots_now);
+
+            if ($spots_decision === 'stale') {
+                $liveform->assign_field_value('number_of_remaining_spots_was', (string) $spots_now);
+                $liveform->mark_error('number_of_remaining_spots', lang(array(
+                    'string' => 'The remaining spots of this event changed while the screen was open: it is now {var:1}. Check them and save again.',
+                    'vars'   => (string) $spots_now)));
+            }
+        }
+
         // if there is an error, forward user back to edit calendar event screen
         if ($liveform->check_form_errors() == true) {
             $query_string_recurrence_number = '';
@@ -550,11 +584,8 @@ if (!$_POST) {
             }
         }
         
-        // if reservations are enabled and limit reservations is enabled then update remaining spots
-        if (
-            ($liveform->get_field_value('reservations') == 1)
-            && ($liveform->get_field_value('limit_reservations') == 1)
-        ) {
+        // Remaining spots are written only when the check above allowed it.
+        if ($spots_decision === 'write') {
             // if this is not a recurring event or if separate reservations is disabled, then set recurrence number to 0
             if (
                 ($liveform->get_field_value('recurrence') == 0)

@@ -42,11 +42,37 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $site_icon_save_ready = pg_schema_has('config_text') && array_key_exists('site_icon', $_POST);
     $site_icon_input = $site_icon_save_ready ? trim((string) post_value('site_icon')) : '';
 
-    if (($site_icon_input !== '') && ($site_icon_input !== pg_site_icon_name())
-        && ((pg_site_icon_kind($site_icon_input) === '')
-            || !db_value("SELECT COUNT(*) FROM files WHERE (name = '" . e($site_icon_input) . "') AND (attachment = 0)"))
-    ) {
+    if (($site_icon_input !== '') && ($site_icon_input !== pg_site_icon_name()) && (pg_site_icon_kind($site_icon_input) === '')) {
         $liveform->mark_error('site_icon', lang('The site icon must be a PNG or SVG picture.'));
+        return;
+    }
+
+    // The site icon, the app icon and the default share image are shown to
+    // everyone: none may name an attachment or an ERP document
+    // (pg_public_image_choice_ok()), nor a name no file carries unless it was
+    // stored before.
+    if ($site_icon_save_ready && !pg_public_image_choice_ok($site_icon_input, pg_site_icon_name(), array('png', 'svg'))) {
+        $liveform->mark_error('site_icon', lang('Choose a picture from the Files screen that everyone may see.'));
+        return;
+    }
+
+    $app_icon_save_ready = waf_table_has_column('config', 'app_icon');
+    $app_icon_input = $app_icon_save_ready ? trim((string) post_value('app_icon')) : '';
+
+    if ($app_icon_save_ready
+        && !pg_public_image_choice_ok($app_icon_input, (string) db_value("SELECT app_icon FROM config"), pg_public_image_file_types())
+    ) {
+        $liveform->mark_error('app_icon', lang('Choose a picture from the Files screen that everyone may see.'));
+        return;
+    }
+
+    $og_default_image_ready = waf_table_has_column('config', 'og_default_image');
+    $og_default_image_input = $og_default_image_ready ? trim((string) post_value('og_default_image')) : '';
+
+    if ($og_default_image_ready
+        && !pg_public_image_choice_ok($og_default_image_input, (string) db_value("SELECT og_default_image FROM config"), pg_public_image_file_types())
+    ) {
+        $liveform->mark_error('og_default_image', lang('Choose a picture from the Files screen that everyone may see.'));
         return;
     }
 
@@ -171,8 +197,8 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $sql_seo_jsonld_fields = "";
     $sql_app_icon_field = "";
 
-    if (waf_table_has_column('config', 'app_icon')) {
-        $sql_app_icon_field = "app_icon = '" . escape(trim(post_value('app_icon'))) . "',";
+    if ($app_icon_save_ready) {
+        $sql_app_icon_field = "app_icon = '" . escape($app_icon_input) . "',";
     }
 
     if ($seo_jsonld_ready) {
@@ -200,7 +226,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         $merchant_transit_days_max_value = max($merchant_transit_days_min_value, min(60, (int) post_value('merchant_transit_days_max')));
 
         $sql_seo_jsonld_fields =
-            "og_default_image = '" . escape(trim(post_value('og_default_image'))) . "',
+            "og_default_image = '" . escape($og_default_image_input) . "',
             merchant_country = '" . escape($merchant_country_input) . "',
             merchant_shipping_rate = '" . $merchant_shipping_rate_value . "',
             merchant_transit_days_min = '" . $merchant_transit_days_min_value . "',
@@ -263,12 +289,13 @@ if (!defined('PG_SETTINGS_ENTRY')) {
             last_modified_timestamp = UNIX_TIMESTAMP()");
 
     // The site icon: its sizes are drawn now, so a picture that cannot be
-    // drawn is said here rather than found missing on the site.
+    // drawn is said here rather than found missing on the site. A save draws
+    // again even a source marked as failed (the server may have changed).
     if ($site_icon_save_ready) {
         pg_config_text_save('site_icon', $site_icon_input);
 
         if (pg_site_icon_kind($site_icon_input) === 'png') {
-            $site_icon_drawn = pg_site_icon_generate($site_icon_input);
+            $site_icon_drawn = pg_site_icon_generate($site_icon_input, true);
 
             if (!$site_icon_drawn['ok']) {
                 $liveform->add_notice(pg_site_icon_error_text($site_icon_drawn['reason']));

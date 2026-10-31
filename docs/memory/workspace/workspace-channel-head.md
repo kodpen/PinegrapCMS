@@ -13,7 +13,7 @@ description: The channel header in one line (C1, plans/workspace-channel-layout.
 
 ## What do search and info open?
 - Search: `searchChannel()` calls `PGWsPalette.open({ scope: 'here' })`; `open(options)` in `workspace_palette.js` starts on the open channel's scope, any other call keeps the scope the person left.
-- Info: `showMembers()` titled Channel info: the purpose, the customer, the department, then Members (n). A member's line no longer ends in " · " when they have no title.
+- Info: `showMembers()` opens the channel's info beside the conversation (workspace-channel-panels.md). A member's line no longer ends in " · " when they have no title.
 
 ## Why?
 - Owner (2026-10-31, `workflow/decisions-made-workspace-5.md`): the drawn design, and on a phone a header of one short line so the messages keep the height.

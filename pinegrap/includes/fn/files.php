@@ -1495,6 +1495,95 @@ function pg_files_include_erp_document($file_ids)
     return ((int) db_value("SELECT COUNT(*) FROM files WHERE id IN (" . implode(',', $ids) . ") AND erp_doc_type <> ''") > 0);
 }
 
+/**
+ * The image types a public picture picker of Site Settings offers (Default
+ * Share Image, Organization Logo, App Icon); the Site Icon takes PNG and SVG.
+ *
+ * @return array
+ */
+function pg_public_image_file_types()
+{
+    return array('jpg', 'jpeg', 'png', 'gif', 'webp', 'avif', 'bmp');
+}
+
+/**
+ * The `files` condition of a picker whose choice is shown to everyone (site
+ * icon, app icon, share image, logo): no attachment and no ERP document. An
+ * ERP document (an invoice, a quote signature, an expense receipt) is served
+ * to the ERP right only, and a site icon is redrawn and served without a
+ * session, so naming one would publish it.
+ *
+ * @param bool|null $erp_ready  Whether files.erp_doc_type exists; asked when null
+ * @return string
+ */
+function pg_public_image_files_where($erp_ready = null)
+{
+    if ($erp_ready === null) {
+        $erp_ready = function_exists('waf_table_has_column') && waf_table_has_column('files', 'erp_doc_type');
+    }
+
+    return '(attachment = 0)' . ($erp_ready ? " AND (erp_doc_type = '')" : '');
+}
+
+/**
+ * Whether a save may write $input into a public picture setting.
+ *
+ * Empty is always allowed. A files row is allowed when it is no attachment,
+ * no ERP document and one of $types. A name no files row carries is allowed
+ * only when it is the stored value (an old hand-typed address the picker
+ * keeps as its own option), so saving the screen never clears it; a stored
+ * file that is now private is refused all the same. A stored public file of
+ * a type the picker no longer lists is kept for the same reason.
+ *
+ * @param string     $input   The posted name
+ * @param string     $stored  The value saved before
+ * @param array      $types   The files.type values the picker lists
+ * @param array|null $row     The files row named $input: type, attachment, erp_doc_type
+ * @return bool
+ */
+function pg_public_image_choice_verdict($input, $stored, $types, $row)
+{
+    $input = (string) $input;
+
+    if ($input === '') {
+        return true;
+    }
+
+    if (!is_array($row)) {
+        return ($input === (string) $stored);
+    }
+
+    if (((int) ($row['attachment'] ?? 0) !== 0) || ((string) ($row['erp_doc_type'] ?? '') !== '')) {
+        return false;
+    }
+
+    return in_array(strtolower((string) ($row['type'] ?? '')), (array) $types, true) || ($input === (string) $stored);
+}
+
+/**
+ * pg_public_image_choice_verdict() with the files row read by name. A failed
+ * query reads as no row, so only the stored value gets through.
+ *
+ * @param string $input
+ * @param string $stored
+ * @param array  $types
+ * @return bool
+ */
+function pg_public_image_choice_ok($input, $stored, $types)
+{
+    $input = trim((string) $input);
+
+    if ($input === '') {
+        return true;
+    }
+
+    $erp_ready = function_exists('waf_table_has_column') && waf_table_has_column('files', 'erp_doc_type');
+
+    $row = db_item("SELECT type, attachment" . ($erp_ready ? ', erp_doc_type' : '') . " FROM files WHERE name = '" . e($input) . "' LIMIT 1");
+
+    return pg_public_image_choice_verdict($input, trim((string) $stored), $types, (is_array($row) && $row) ? $row : null);
+}
+
 // The width of the name columns the File and Catalog Manager and the folder
 // screens write: folder.folder_name, page.page_name, products.name,
 // product_groups.name and product_groups.short_description are varchar(100).

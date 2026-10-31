@@ -2127,9 +2127,24 @@ $(document).ready(function () {
         $button.prop("disabled", true);
         $result.html('<div class="fg-secondary small"><span class="spinner-border spinner-border-sm me-3" aria-hidden="true"></span><span class="visually-hidden">' + h(pgLang('Please Wait')) + '</span></div>');
 
+        // A refusal of the endpoint (ended session, stale token) comes as
+        // JSON with a 401/403 in the card's own shape, so its body is read
+        // whatever the status. A redirect means the sign-in page was followed
+        // and anything that is not that shape is a failed page: both get the
+        // translated failure line, never the raw parse error.
         window.fetch(action, { method: "POST", body: data, credentials: "same-origin" })
             .then(function (response) {
-                return response.ok ? response.json() : Promise.reject(new Error(String(response.status)));
+                if (response.redirected) {
+                    return Promise.reject(new Error("redirected"));
+                }
+
+                return response.json().then(function (answer) {
+                    if (!answer || !$.isArray(answer.lines)) {
+                        return Promise.reject(new Error("shape"));
+                    }
+
+                    return answer;
+                });
             })
             .then(function (answer) {
 
@@ -2166,8 +2181,12 @@ $(document).ready(function () {
                     $status.find("span").text(answer.status.text);
                 }
             })
-            .catch(function (error) {
-                $result.html($("<div>").addClass("alert theme-danger mb-1").text("HTTP " + error.message));
+            .catch(function () {
+                $result.empty().append(
+                    $("<div>").addClass("alert theme-danger d-flex align-items-start gap-3 mb-1").attr("role", "alert")
+                        .append($("<i>").addClass("bi bi-x-circle fs-lg").attr("aria-hidden", "true"))
+                        .append($("<div>").text(lang("An error occurred.")))
+                );
             })
             .then(function () {
                 $button.prop("disabled", false);
@@ -3946,6 +3965,28 @@ function check_unread_notifications(refresh_type) {
 };
 var notification_scrollTop = 0;
 
+// What a refused or failed bell request says: the server's own sentence (a
+// translated refusal such as an ended session) or the generic failure line.
+function pg_bell_refusal(response, xhr) {
+    if (response && response.message) {
+        return String(response.message);
+    }
+
+    if (xhr && xhr.responseJSON && xhr.responseJSON.message) {
+        return String(xhr.responseJSON.message);
+    }
+
+    return lang('An error occurred.');
+}
+
+// Shows a refused bell action as a danger toast, so the reader learns the
+// list did not change on the server.
+function pg_bell_refused(response, xhr) {
+    if (typeof window.pgToast === 'function') {
+        window.pgToast({ message: pg_bell_refusal(response, xhr), variant: 'danger' });
+    }
+}
+
 function remove_all_notifications() {
     $.ajax({
         contentType: 'application/json',
@@ -3963,13 +4004,13 @@ function remove_all_notifications() {
                 // if success we check notifications if we really done it. and it trigger all other checks.
                 get_notifications();
             } else {
-                // there is a error from api.php so we log in console user may check. notifications not removed.
-                console.log(response.message);
+                // Refused (an ended session, a stale token): nothing was
+                // deleted, and the reader is told so.
+                pg_bell_refused(response);
             }
         },
-        error: function (xhr, ajaxOptions, thrownError) {
-            // there is a error from ajax so we log in console user may check. this notification get is not done.
-            console.log('Error while delete notifications.EC:' + xhr.status);
+        error: function (xhr) {
+            pg_bell_refused(null, xhr);
         }
     });
 };
@@ -4030,9 +4071,27 @@ function get_notifications($read_mark, keep_place) {
     };
 
     var spinner = $('#notifications .spinner');
+    var kept_badge = $('#notification_toggle .has-notification-icon').html();
+    var kept_badge_on = $('#notification_toggle').hasClass('fg-success');
     // we will get new notifications that user can access and this notifications will set readed so we remove badges from notification button.
     $('#notification_toggle .has-notification-icon').html('');
     $('#notification_toggle').removeClass('fg-success');
+
+    // A refused or failed load: the unread badge comes back (nothing was
+    // marked read) and a list the reader opened shows why it is empty in
+    // place of the spinner. A keep_place redraw keeps the list it had.
+    var load_failed = function (response, xhr) {
+        $('#notification_toggle .has-notification-icon').html(kept_badge);
+        $('#notification_toggle').toggleClass('fg-success', kept_badge_on);
+
+        if (keep_place) {
+            return;
+        }
+
+        spinner.remove();
+        notifications_body.find('.pg-bell-failed').remove();
+        notifications_body.prepend($('<div class="pg-bell-failed fg-danger small text-center p-5" role="alert"></div>').text(pg_bell_refusal(response, xhr)));
+    };
 
     // we check notifications from api.php with ajax.
     $.ajax({
@@ -4188,13 +4247,11 @@ function get_notifications($read_mark, keep_place) {
                 }
 
             } else {
-                // there is a error from api.php so we log in console user may check. this notification get is not done.
-                console.log(response.message);
+                load_failed(response);
             }
         },
-        error: function (xhr, ajaxOptions, thrownError) {
-            // there is a error from ajax so we log in console user may check. this notification get is not done.
-            console.log('Error while get notifications.EC:' + xhr.status);
+        error: function (xhr) {
+            load_failed(null, xhr);
         }
     });
 };
@@ -4369,13 +4426,26 @@ $(document).on('click', '#notifications .notification-go', function () {
 
 function edit_notification(notification_id, do_action) {
 
-    $target = $('#notifications li[notification-id= ' + notification_id + ']');
+    var $target = $('#notifications li[notification-id="' + String(notification_id).replace(/["\\]/g, '') + '"]');
+    var was_new = $target.hasClass('new');
+    var was_viewed = $target.hasClass('viewed');
 
+    // The row changes at once, but it is removed only once the server has
+    // deleted it: a refused edit puts the row back as it was, so the list
+    // never hides a notification that is still on the server.
+    var put_back = function () {
+        $target.stop(true, true).show();
+        $target.toggleClass('new', was_new).toggleClass('viewed', was_viewed);
+
+        // The 'Mark as unread' button removed itself on the click; a quiet
+        // redraw brings it back with the row's state as the server holds it.
+        if (do_action === 'mark_unread') {
+            get_notifications(false, true);
+        }
+    };
 
     if (do_action === 'remove') {
-        $target.hide('slow', function () {
-            $target.remove();
-        });
+        $target.hide('slow');
     } else if (do_action === 'mark_unread') {
         $target.addClass('new');
         $target.removeClass('viewed');
@@ -4396,17 +4466,21 @@ function edit_notification(notification_id, do_action) {
             // if we get response and its response.status is "success" than we get all notifications json encoded from api.php.
             $status = response.status;
             if ($status == "success") {
+                if (do_action === 'remove') {
+                    $target.stop(true, true).remove();
+                }
+
                 //we check notifications because maybe change notification number
 
                 check_unread_notifications('editcallback_check');
             } else {
-                // there is a error from api.php so we log in console user may check. this notification get is not done.
-                console.log(response.message);
+                put_back();
+                pg_bell_refused(response);
             }
         },
-        error: function (xhr, ajaxOptions, thrownError) {
-            // there is a error from ajax so we log in console user may check. this notification get is not done.
-            console.log('Error while delete notification.EC:' + xhr.status);
+        error: function (xhr) {
+            put_back();
+            pg_bell_refused(null, xhr);
         }
     });
 };

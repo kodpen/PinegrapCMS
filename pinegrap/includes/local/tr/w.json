@@ -586,6 +586,7 @@
     "When it runs, and what must hold then. Every rule has to hold; if one does not, the run is skipped.": "Ne zaman çalışacağı ve o sırada neyin sağlanması gerektiği. Her kural sağlanmalı; biri sağlanmazsa o çalışma atlanır.",
     "When it was written (\"2 weeks ago\")": "Ne zaman yazıldığı (\"2 hafta önce\")",
     "When left empty, VISITOR_CURRENCY_SYMBOL from the site settings is used.": "Boş bırakılırsa site ayarındaki VISITOR_CURRENCY_SYMBOL kullanılır.",
+    "When mentioned": "Anıldığımda",
     "When nobody is signed in, elements bound to \"{var}\" show this message.": "Giriş yapılmamışsa \"{var}\" alanına bağlanan öğeler bu mesajı gösterir.",
     "When nobody is signed in, the ^^__not_logged_in^^ token is filled with this message.": "Giriş yapılmamışsa ^^__not_logged_in^^ token'ı bu mesajla dolar.",
     "When nothing is chosen, all of the user's form submissions are listed.": "Seçilmezse kullanıcının tüm form gönderileri listelenir.",

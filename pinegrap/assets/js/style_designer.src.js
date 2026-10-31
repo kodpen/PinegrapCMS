@@ -39107,11 +39107,16 @@ const StyleDesigner = (function () {
     // The tokens the condition row offers `node`: its Bind Data tokens
     // (_swBindTokenOptions(), the row position group inside a list
     // included) that a condition may read.
+    // A part placed outside its widget is offered its widget's values: the
+    // widget decides its conditions.
     function _sdCondTokenOptions(node) {
-        if (!_isInsideSystemWidget(node)) {
-            return SD_PAGE_FACTS.map(function (f) { return { token: f[0], label: f[1] }; }).concat(_sdPageRecordOptions());
-        }
-        return _swBindTokenOptions(node).filter(function (o) { return _sdCondTokenAllowed(o.token); });
+        var widgetOpts = function () {
+            return _swBindTokenOptions(node).filter(function (o) { return _sdCondTokenAllowed(o.token); });
+        };
+        if (_isInsideSystemWidget(node)) return widgetOpts();
+        var partSid = _sdPartSidAt(node);
+        if (partSid) return _sdWithValueSid(partSid, widgetOpts);
+        return SD_PAGE_FACTS.map(function (f) { return { token: f[0], label: f[1] }; }).concat(_sdPageRecordOptions());
     }
 
     // The facts of the visit an element outside a widget may be shown by
@@ -39538,8 +39543,8 @@ const StyleDesigner = (function () {
         // Outside a widget the list holds the visit's facts only
         // (_sdCondTokenOptions()); a condition written by hand on another
         // value is still listed, so it can be seen and cleared.
-        var inWidget = _isInsideSystemWidget(node);
         if (node.type === 'root' || node.type === 'loop_area' || node.type === 'recipient_loop_area') return '';
+        var inWidget = _isInsideSystemWidget(node) || _sdPartSidAt(node);
         var label = esc(_sdT('Show only when a value…'));
         var note = function (text) { return '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(text) + '</div>'; };
         var rows = _sdCondRowsOf(node);
@@ -43176,7 +43181,7 @@ const StyleDesigner = (function () {
         // Node has an action/value binding but no token bindings (a plain
         // "Add to Cart" button, say) — still show the section, so every
         // binding is reachable from the panel named after the job.
-        if (!html) return sect('bi-link-45deg', _isInsideSystemWidget(node) ? _sdT('Bind Data (System Widget)') : _sdT('Show by the visit'), extra);
+        if (!html) return sect('bi-link-45deg', (_isInsideSystemWidget(node) || _sdPartSidAt(node)) ? _sdT('Bind Data (System Widget)') : _sdT('Show by the visit'), extra);
         // sect() closes with `</div></div>`; slot the rows in just before it
         // so they land INSIDE the section body.
         var idx = html.lastIndexOf('</div></div>');
@@ -43297,10 +43302,21 @@ const StyleDesigner = (function () {
         sdToast(esc(_sdT('The link is an element of its own now. Bind its address in this panel.')), 'success');
     }
 
+    // Bind Data: inside a widget its values; on a part placed outside its
+    // widget the same values, read from the part's widget, which draws it
+    // (the page's record values are not offered there: the widget's values
+    // are the record's); elsewhere the page's record. A change marks only
+    // the tree the node stands in (_sdNodeSetBinding()), the page's for a
+    // part.
     function _propsDataBindingCore(node) {
         if (!node) return '';
-        var swSid = _isInsideSystemWidget(node);
-        if (!swSid) return _sdPageRecordBindRows(node);
+        if (_isInsideSystemWidget(node)) return _propsDataBindingRows(node);
+        var partSid = _sdPartSidAt(node);
+        if (!partSid) return _sdPageRecordBindRows(node);
+        return _sdWithValueSid(partSid, function () { return _propsDataBindingRows(node); });
+    }
+
+    function _propsDataBindingRows(node) {
         var bindable = _getBindableProps(node);
         var regionType = _getSystemWidgetRegionType(node);
 
@@ -46469,6 +46485,30 @@ const StyleDesigner = (function () {
         return _isInsideSystemWidget(node) || _sdPartDrawing;
     }
 
+    // The widget whose values part `node` (or an element inside one) shows
+    // on the page tree, as the server draws it inside that widget: the
+    // part's widget, unless the part stands in a shared tree or its widget
+    // is not on the page or opens no record (_sdPartInfo()); 0 for a node
+    // of no part. The panels read it; the canvas holds it in _sdPartDrawing.
+    function _sdPartSidAt(node) {
+        if (!node || typeof tree === 'undefined' || !tree || _resolveSharedSid(node)) return 0;
+        for (var cur = node, guard = 0; cur && guard < 500; guard++) {
+            if (_sdPartOf(cur)) {
+                var info = _sdPartInfo(cur);
+                return (info && ['inside', 'gone', 'kind'].indexOf(info.state) === -1) ? info.sid : 0;
+            }
+            cur = (cur === tree) ? null : findParent(cur, tree);
+        }
+        return 0;
+    }
+
+    // fn() run while the value lookups (_sdValueSidOf()) read widget `sid`.
+    function _sdWithValueSid(sid, fn) {
+        var keep = _sdPartDrawing;
+        _sdPartDrawing = sid;
+        try { return fn(); } finally { _sdPartDrawing = keep; }
+    }
+
     // The placement of shared component `sid` that the open page shows: a
     // shared_ref on the page tree itself first, else the first one inside a
     // component placed on this page (a widget in the header). Cached trees
@@ -46661,9 +46701,7 @@ const StyleDesigner = (function () {
     // fn(probe) run as if `probe`, a node of no tree, stood in widget
     // `sid`: the value lookups read the widget through _sdValueSidOf().
     function _sdPaletteAsIn(sid, fn) {
-        var keep = _sdPartDrawing;
-        _sdPartDrawing = sid;
-        try { return fn({ type: 'semantic', props: {}, children: [] }); } finally { _sdPartDrawing = keep; }
+        return _sdWithValueSid(sid, function () { return fn({ type: 'semantic', props: {}, children: [] }); });
     }
 
     // The first detail widget (SD_PART_KINDS) the open page shows, on the
@@ -59085,7 +59123,17 @@ const StyleDesigner = (function () {
     // What the band over a list says on the canvas, and whether the site
     // draws nothing for it (off: the canvas fades it). The canvas shows the
     // row once; the page repeats it for every value the record holds.
+    // A list in a part placed outside its widget is read in that widget,
+    // which draws it.
     function _sdListBand(node) {
+        if (!_isInsideSystemWidget(node) && !_sdPartDrawing) {
+            var partSid = _sdPartSidAt(node);
+            if (partSid) return _sdWithValueSid(partSid, function () { return _sdListBandIn(node); });
+        }
+        return _sdListBandIn(node);
+    }
+
+    function _sdListBandIn(node) {
         var src = SW_LIST_SOURCES[node.props.source];
         if (!src) return { off: true, text: _sdT('A list of a kind this site does not know: nothing is drawn') };
         var spec = _sdListSpec(node.props);
@@ -59093,7 +59141,7 @@ const StyleDesigner = (function () {
             var needsArg = src.argRequired && String(node.props.sourceArg == null ? '' : node.props.sourceArg).replace(/[^a-z0-9_\-]/gi, '') === '';
             return { off: true, text: needsArg ? _sdT('{var}: choose the field it lists', src.label) : _sdT('{var}: settings the site cannot read, nothing is drawn', src.label) };
         }
-        var kind = _sdListWidgetKind(_isInsideSystemWidget(node));
+        var kind = _sdListWidgetKind(_sdValueSidOf(node));
         if (_sdKindLists(kind).indexOf(spec.source) === -1) return { off: true, text: _sdT('{var}: this widget draws no such list', src.label) };
         if (_sdListNeedsMainLoop(kind, spec.source) && !_sdInMainLoopAt(node)) return { off: true, text: _sdT('{var}: outside the record, no record fills it', src.label) };
         if (kind === 'calendar_view' && _sdInMainLoopAt(node)) return { off: true, text: _sdT('{var}: inside the event loop, nothing is drawn', src.label) };
