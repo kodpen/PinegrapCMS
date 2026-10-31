@@ -5,8 +5,8 @@ description: ERP expenses (4.95): why an expense is nobody's debt, how payment a
 
 ## What is an expense in the books? (`includes/erp/expenses.php`, 2026.4.4 step 4.95)
 - A receipt that is not a purchase invoice (rent, fuel, a subscription): one `erp_expenses` row, in its own currency and in the base currency. Status `unpaid` (to pay), `paid`, `cancelled`. Screens `erp_expenses.php`, `add_erp_expense.php`, `edit_erp_expense.php`, `erp_expense_categories.php`.
-- It is nobody's debt: nothing is written to an account's ledger. Paying is `erp_cash_post()` with `doc_type = 'expense'`, `doc_id` = the expense, `account_id = 0`, in the same transaction as the paid status. Cancelling a paid one turns that movement round, dated today: `doc_type = 'cancel'`, `doc_id` = the movement, so the till book strikes it through like a cancelled receipt.
-- A screen that names a till movement by its type needs an `expense` branch (the till book in `edit_erp_till.php` and the dashboard have one).
+- It is nobody's debt: nothing is written to an account's ledger. Paying is `erp_cash_post()` with `doc_type = 'expense'`, `doc_id` = the expense, `account_id = 0`, in the same transaction as the paid status. Cancelling a paid one turns that movement round, dated today: `doc_type = 'cancel'`, `doc_id` = the movement, struck through in the till book.
+- A screen that names a till movement by its type needs an `expense` branch.
 
 ## How are the amounts worked out?
 - `erp_expense_figures($amount, $includes_tax, $rate, $typed_tax)`: the amount is the receipt total (VAT included) or the net. A VAT amount typed from the receipt wins over the rate's, but only within the slack the receipt's line rounding allows.
@@ -17,6 +17,7 @@ description: ERP expenses (4.95): why an expense is nobody's debt, how payment a
 - The expense date and the payment date cannot be after today; a payment cannot be dated before the expense; neither may fall in a locked period (`erp_lock_refusal()`).
 - The paying till must be active and, while foreign currency is on, kept in the expense's currency (`erp_expense_till_refusal()`); the pay form lists only those tills, and the repeat run and the bank statement go through the same gate (erp-till-inactive-payments.md, #1229).
 - A refused Pay or Repeat (`edit_erp_expense.php`) stores the post; only the form sent (`$kept()` on `erp_action`) reads back its till, method, period, due days and paid switch, so a retry is not written as Cash or monthly (#3553, `tests/erp_refused_forms_keep_test.php`).
+- A new expense preselects the last expense's till only if `erp_expense_till_row_refusal($till, $base)` passes, so a default Save is not refused under FX (`tests/erp_expense_prefill_test.php`).
 
 ## What about the categories?
 - Switched off, never deleted: a switched-off category keeps its expenses and is offered for no new one. The first read of an empty table writes the defaults in the operator's language (`erp_expense_categories()`, under a named lock so two first visits write them once).

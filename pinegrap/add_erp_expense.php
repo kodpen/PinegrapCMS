@@ -101,7 +101,15 @@ if (!$_POST) {
 
             if (is_array($last)) {
                 $liveform->assign_field_value('category_id', (string) (int) $last['category_id']);
-                $liveform->assign_field_value('cash_account_id', ((int) $last['cash_account_id'] > 0) ? (string) (int) $last['cash_account_id'] : '');
+
+                // The last till only when the save would take it in the
+                // currency the form starts in: under foreign currency a till
+                // kept in another code is refused, so it is left to choose.
+                $last_till = ((int) $last['cash_account_id'] > 0) ? db_item("SELECT id, currency, is_active FROM erp_cash_accounts WHERE id = '" . (int) $last['cash_account_id'] . "'") : null;
+
+                if (is_array($last_till) && (erp_expense_till_row_refusal($last_till, $base) === '')) {
+                    $liveform->assign_field_value('cash_account_id', (string) (int) $last_till['id']);
+                }
             }
         }
     }
