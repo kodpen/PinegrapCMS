@@ -4332,7 +4332,9 @@ function update_tag_cloud_keywords_for_search_results_page_product_group($page_i
 
             products.name,
 
-            products.keywords 
+            products.keywords,
+
+            products.enabled
 
         FROM products_groups_xref
 
@@ -4345,7 +4347,8 @@ function update_tag_cloud_keywords_for_search_results_page_product_group($page_i
             'type' => 'product',
             'id' => $row['id'],
             'name' => $row['name'],
-            'keywords' => $row['keywords']
+            'keywords' => $row['keywords'],
+            'enabled' => $row['enabled']
         );
     }
     $tag_cloud_keywords = array();
@@ -4382,6 +4385,11 @@ function update_tag_cloud_keywords_for_search_results_page_product_group($page_i
         }
         // remove duplicates from the array
         $item_keywords = array_unique($item_keywords);
+        // A disabled product offers no keywords; its xref row below stays, so
+        // turning it back on brings its keywords back (pg_pb_sync_tag_cloud_keywords()).
+        if (($item['type'] == 'product') && ((string) $item['enabled'] !== '1')) {
+            $item_keywords = array();
+        }
         // loop through the keywords and add them to the tag cloud if able
         foreach ($item_keywords as $item_keyword) {
             $record_exits = false;
