@@ -1825,7 +1825,7 @@ function api_schema() {
 			'handler' => 'api_reports_sales',
 			'returns' => 'SalesReport',
 			'summary' => 'Sales by day or month',
-			'description' => 'Orders and money added up by period, so a chart does not have to be drawn by paging through forty thousand orders. Completed and exported orders count as sales; an incomplete one is an abandoned basket and a cancelled one is money that went back - ask for either with status, which is a real question for a shop measuring abandonment. Amounts are minor units. Defaults to the last thirty days by day. Only periods that hold orders come back, at most 400: a window whose orders fall on more days (or months) is refused with 422 rather than answered short, so totals always cover the whole window.',
+			'description' => 'Orders and money added up by period, so a chart does not have to be drawn by paging through forty thousand orders. Completed and exported orders count as sales; an incomplete one is an abandoned basket and a cancelled one is money that went back - ask for either with status, which is a real question for a shop measuring abandonment. Amounts are minor units. Defaults to the last thirty days by day. Only periods that hold orders come back, at most 400: a window whose orders fall on more days (or months) is refused with 422 rather than answered short, so totals always cover the whole window. Periods are the site\'s days and months: calendar days in site.timezone of GET /meta, by that zone\'s rules on either side of a clock change.',
 			'params'  => array(
 				array('name' => 'from',     'in' => 'query', 'type' => 'datetime', 'description' => 'Start of the window. Defaults to thirty days before to.'),
 				array('name' => 'to',       'in' => 'query', 'type' => 'datetime', 'description' => 'End of the window. Defaults to now.'),
@@ -3436,6 +3436,7 @@ function api_error_catalogue() {
 
 		'api_disabled'             => array(503, 'The API is switched off for this site.'),
 		'not_installed'            => array(503, 'The site is not finished installing.'),
+		'database_unavailable'     => array(503, 'The site cannot reach its database for a moment. Retry later, after Retry-After; nothing is wrong with the call.'),
 		'service_unavailable'      => array(503, 'The site is up but cannot answer right now.')
 
 	);

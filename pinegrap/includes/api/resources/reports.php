@@ -44,10 +44,13 @@ function api_reports_sales($params) {
 	$interval = isset($params['interval']) ? (string)$params['interval'] : 'day';
 
 	// The order date is a unix column, so the grouping is done on the date the
-	// site's own timezone makes of it - the same day the panel shows, not the
-	// day UTC would have made of an order placed at half past two in the
-	// morning.
-	$format = ($interval === 'month') ? '%Y-%m' : '%Y-%m-%d';
+	// site's own zone makes of it - the same day the panel shows, not the day
+	// UTC would have made of an order placed at half past two in the morning.
+	// The session's time_zone is only the offset of the moment of the request,
+	// so the zone's offsets over the window are worked out here and added to
+	// each order date: an order on the other side of a clock change keeps its
+	// own day.
+	$period = api_reports_sales_period_sql(api_reports_sales_zone_offsets($from, $to, date_default_timezone_get()), $interval);
 
 	$statuses = array('complete', 'exported');
 
@@ -72,7 +75,7 @@ function api_reports_sales($params) {
 
 	// One row past the most an answer carries tells a window that holds more
 	// apart from one that holds exactly that many.
-	$rows = api_rows("SELECT DATE_FORMAT(FROM_UNIXTIME(order_date), '" . $format . "') AS period,
+	$rows = api_rows("SELECT " . $period . " AS period,
 			COUNT(*) AS orders,
 			SUM(subtotal) AS subtotal,
 			SUM(discount) AS discount,
@@ -126,6 +129,76 @@ function api_reports_sales($params) {
 function api_reports_sales_max_periods() {
 
 	return 400;
+
+}
+
+// The site zone's offsets from UTC over a window, as stretches: array(first
+// second, offset in seconds), the first starting at $from. A zone without
+// clock changes is one stretch. An unknown zone name reads as the zone PHP
+// runs in.
+function api_reports_sales_zone_offsets($from, $to, $zone_name) {
+
+	try {
+
+		$zone = new DateTimeZone($zone_name);
+
+	} catch (Exception $e) {
+
+		$zone = new DateTimeZone(date_default_timezone_get());
+
+	}
+
+	$stretches = array();
+
+	$transitions = $zone->getTransitions($from, $to);
+
+	if (!is_array($transitions) || !$transitions) {
+
+		$moment = new DateTime('@' . $from);
+
+		return array(array($from, $zone->getOffset($moment)));
+
+	}
+
+	foreach ($transitions as $transition) {
+
+		$start = max($from, (int)$transition['ts']);
+
+		$offset = (int)$transition['offset'];
+
+		// The first entry repeats the offset in force at $from, and some PHP
+		// versions list a change twice: keep only real changes.
+		if ($stretches && ($stretches[count($stretches) - 1][1] === $offset)) {
+
+			continue;
+
+		}
+
+		$stretches[] = array($start, $offset);
+
+	}
+
+	return $stretches;
+
+}
+
+// The period of an order as an SQL expression: the order date plus the offset
+// of its stretch, read as a date on a fixed start rather than through
+// FROM_UNIXTIME, so neither the session's time_zone nor MySQL's named zone
+// tables (missing on many hosts) take part.
+function api_reports_sales_period_sql($stretches, $interval) {
+
+	$offset = (string)(int)$stretches[0][1];
+
+	for ($i = 1; $i < count($stretches); $i++) {
+
+		$offset = 'CASE WHEN order_date >= ' . (int)$stretches[$i][0] . ' THEN ' . (int)$stretches[$i][1] . ' ELSE ' . $offset . ' END';
+
+	}
+
+	$format = ($interval === 'month') ? '%Y-%m' : '%Y-%m-%d';
+
+	return "DATE_FORMAT(DATE_ADD(CAST('1970-01-01 00:00:00' AS DATETIME), INTERVAL (order_date + " . $offset . ") SECOND), '" . $format . "')";
 
 }
 
