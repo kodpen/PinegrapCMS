@@ -196,6 +196,7 @@
     "Image compression limits, registration and membership.": "Görsel sıkıştırma sınırları, kayıt ve üyelik akışı.",
     "Image derivatives": "Görsel türevleri",
     "Image derivatives ({var:1})": "Görsel türevleri ({var:1})",
+    "Image editor": "Görsel düzenleyici",
     "Image engine": "Görsel motoru",
     "Image library in use: {var:1}": "Kullanılan görsel kütüphanesi: {var:1}",
     "Image optimization is not available on this server.": "Bu sunucuda görsel optimizasyonu kullanılamıyor.",

@@ -16116,6 +16116,10 @@ if (($user['role'] < 2) && ($explorer_area != 'catalog')) {
     echo pg_designer_target_modal();
 }
 
+// window.pgImageEditor: an inline loader that fetches the image editor's
+// files the first time a picture is opened in it.
+echo pg_image_editor_includes();
+
 echo output_footer();
 
 // The messages above were rendered, so their session forms are cleared the

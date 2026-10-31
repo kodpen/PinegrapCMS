@@ -39,6 +39,11 @@ function pg_panel_check_unread_notifications($request, $action)
     // see includes/panel/actions.php.
     global $user;
 
+    // Exempt: an ended session gets the JSON refusal here, before
+    // validate_user() could redirect the request to the sign-in page.
+    if (!USER_LOGGED_IN) {
+        respond(panel_login_refusal());
+    }
     $user = validate_user();
     include_once(PG_FUNCTIONS_DIR . '/includes/notifications.php');
 
