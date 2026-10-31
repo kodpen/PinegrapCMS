@@ -1778,6 +1778,50 @@ function pg_state_plate_country_ids($rows)
 }
 
 /**
+ * The checkout's order for a Turkish ship_tos row stored the other way round
+ * (province in city, town in state), as n11 imports kept it before #2004:
+ * city, state and district to write, or an empty array when the row is not
+ * reversed. A row counts as reversed when its country is Turkey (empty, a
+ * code or a name the sales map reads as TR), its city names a province and
+ * its state names none, so a row already in the checkout's order, or one an
+ * earlier run swapped, never matches. The district takes the town only when
+ * it is empty.
+ *
+ * @param  array $row city, state, district, country (missing reads as empty)
+ * @return array city, state, district, or array()
+ */
+function pg_ship_to_reversed_tr_swap($row)
+{
+    if (!is_array($row)) {
+        return array();
+    }
+
+    $read = function ($key) use ($row) {
+        return (isset($row[$key]) && is_scalar($row[$key])) ? (string) $row[$key] : '';
+    };
+
+    $country = trim($read('country'));
+    $city = $read('city');
+    $state = $read('state');
+    $district = $read('district');
+
+    require_once(PG_FUNCTIONS_DIR . '/includes/sales_map.php');
+
+    if (($country !== '') && (pg_sales_map_canonical_country($country, $country) !== 'TR')) {
+        return array();
+    }
+
+    if ((pg_sales_map_match_region('TR', $city) === '') || (pg_sales_map_match_region('TR', $state) !== '')) {
+        return array();
+    }
+
+    return array(
+        'city'     => $state,
+        'state'    => $city,
+        'district' => (trim($district) === '') ? $state : $district);
+}
+
+/**
  * The note under an address whose postcode belongs to another province.
  *
  * @param  string $province the province the postcode points to
