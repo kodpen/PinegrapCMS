@@ -245,11 +245,24 @@ if (count($products) > 0) {
         $month_and_day_format = 'j M';
     }
 
+    // view_orders.php and edit_product.php ask for commerce, not for commerce
+    // reports: a user who may only read the report gets the headings and
+    // product names without links rather than links to "Access denied".
+    $can_open_commerce = (defined('USER_MANAGE_ECOMMERCE') && USER_MANAGE_ECOMMERCE);
+
+    $output_orders_heading = function ($url, $label, $link_class = '', $text_class = '') use ($can_open_commerce) {
+        if (!$can_open_commerce) {
+            return ($text_class !== '') ? '<span class="' . $text_class . '">' . $label . '</span>' : $label;
+        }
+
+        return '<a' . (($link_class !== '') ? ' class="' . $link_class . '"' : '') . ' href="' . $url . '">' . $label . '</a>';
+    };
+
     $output_date_heading_cells = '';
 
     // Loop through the dates in order to get the date headings.
     foreach ($dates as $date) {
-        $output_date_heading_cells .= '<th style="text-align: center"><a class="btn btn-sm btn-link badge rounded-pill fg-primary" href="view_orders.php?reset=true&amp;status=complete_or_exported&amp;advanced_filters=true' . $output_view_orders_shipping_status . '&amp;date_type=ship_date&amp;start_month=' . date('m', strtotime($date)) . '&amp;start_day=' . date('d', strtotime($date)) . '&amp;start_year=' . date('Y', strtotime($date)) . '&amp;stop_month=' . date('m', strtotime($date)) . '&amp;stop_day=' . date('d', strtotime($date)) . '&amp;stop_year=' . date('Y', strtotime($date)) . '">' . lang(date('D', strtotime($date))) . '<br />' . date('j', strtotime($date)) . ' ' . lang(date('M', strtotime($date))) . '</a></th>';
+        $output_date_heading_cells .= '<th style="text-align: center">' . $output_orders_heading('view_orders.php?reset=true&amp;status=complete_or_exported&amp;advanced_filters=true' . $output_view_orders_shipping_status . '&amp;date_type=ship_date&amp;start_month=' . date('m', strtotime($date)) . '&amp;start_day=' . date('d', strtotime($date)) . '&amp;start_year=' . date('Y', strtotime($date)) . '&amp;stop_month=' . date('m', strtotime($date)) . '&amp;stop_day=' . date('d', strtotime($date)) . '&amp;stop_year=' . date('Y', strtotime($date)) . '', lang(date('D', strtotime($date))) . '<br />' . date('j', strtotime($date)) . ' ' . lang(date('M', strtotime($date))), 'btn btn-sm btn-link badge rounded-pill fg-primary', 'badge rounded-pill fg-primary') . '</th>';
     }
 
     rsort($products);
@@ -312,7 +325,7 @@ if (count($products) > 0) {
 
         $output_product_rows .=
             '<tr>
-                <th scope="row" class="chart_label fw-normal"><a href="' . h('edit_product.php?id=' . (int) $product['id']) . '">' . $output_description . '</a></th>
+                <th scope="row" class="chart_label fw-normal">' . ($can_open_commerce ? '<a href="' . h('edit_product.php?id=' . (int) $product['id']) . '">' . $output_description . '</a>' : $output_description) . '</th>
                 <td style="text-align: center">' . $output_before . '</td>
                 ' . $output_date_cells . '
                 <td style="text-align: center">' . $output_after . '</td>
@@ -360,10 +373,10 @@ if (count($products) > 0) {
             <thead>
                 <tr>
                     <th>' . lang('Product') . '</th>
-                    <th style="text-align: center"><a href="view_orders.php?reset=true&amp;status=complete_or_exported&amp;advanced_filters=true' . $output_view_orders_shipping_status . '&amp;date_type=ship_date&amp;start_month=01&amp;start_day=01&amp;start_year=2000&amp;stop_month=' . date('m', strtotime('-1 day', strtotime($start_date))) . '&amp;stop_day=' . date('d', strtotime('-1 day', strtotime($start_date))) . '&amp;stop_year=' . date('Y', strtotime('-1 day', strtotime($start_date))) . '">' . lang('Before')  . '</a></th>
+                    <th style="text-align: center">' . $output_orders_heading('view_orders.php?reset=true&amp;status=complete_or_exported&amp;advanced_filters=true' . $output_view_orders_shipping_status . '&amp;date_type=ship_date&amp;start_month=01&amp;start_day=01&amp;start_year=2000&amp;stop_month=' . date('m', strtotime('-1 day', strtotime($start_date))) . '&amp;stop_day=' . date('d', strtotime('-1 day', strtotime($start_date))) . '&amp;stop_year=' . date('Y', strtotime('-1 day', strtotime($start_date))) . '', lang('Before')) . '</th>
                     ' . $output_date_heading_cells . '
-                    <th style="text-align: center"><a href="view_orders.php?reset=true&amp;status=complete_or_exported&amp;advanced_filters=true' . $output_view_orders_shipping_status . '&amp;date_type=ship_date&amp;start_month=' . date('m', strtotime('+1 day', strtotime($end_date))) . '&amp;start_day=' . date('d', strtotime('+1 day', strtotime($end_date))) . '&amp;start_year=' . date('Y', strtotime('+1 day', strtotime($end_date))) . '&amp;stop_month=12&amp;stop_day=31&amp;stop_year=2030">' . lang('After') . '</a></th>
-                    <th style="text-align: center"><a href="view_orders.php?reset=true&amp;status=complete_or_exported&amp;advanced_filters=true' . $output_view_orders_shipping_status . '&amp;date_type=ship_date&amp;start_month=01&amp;start_day=01&amp;start_year=2000&amp;stop_month=12&amp;stop_day=31&amp;stop_year=2030">' . lang('Total') . '</a></th>
+                    <th style="text-align: center">' . $output_orders_heading('view_orders.php?reset=true&amp;status=complete_or_exported&amp;advanced_filters=true' . $output_view_orders_shipping_status . '&amp;date_type=ship_date&amp;start_month=' . date('m', strtotime('+1 day', strtotime($end_date))) . '&amp;start_day=' . date('d', strtotime('+1 day', strtotime($end_date))) . '&amp;start_year=' . date('Y', strtotime('+1 day', strtotime($end_date))) . '&amp;stop_month=12&amp;stop_day=31&amp;stop_year=2030', lang('After')) . '</th>
+                    <th style="text-align: center">' . $output_orders_heading('view_orders.php?reset=true&amp;status=complete_or_exported&amp;advanced_filters=true' . $output_view_orders_shipping_status . '&amp;date_type=ship_date&amp;start_month=01&amp;start_day=01&amp;start_year=2000&amp;stop_month=12&amp;stop_day=31&amp;stop_year=2030', lang('Total')) . '</th>
                 </tr>
             </thead>
             <tbody>' . $output_product_rows . '</tbody>
