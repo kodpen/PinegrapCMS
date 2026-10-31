@@ -587,9 +587,9 @@ function pg_image_scaled_dimensions($width, $height, $max)
  * @param bool $exact_resize  'exact_size' asked and the picture is resized
  * @return bool
  */
-function pg_image_engine_no_gain($bytes_after, $bytes_before, $format_conversion, $rotate, $exact_resize)
+function pg_image_engine_no_gain($bytes_after, $bytes_before, $format_conversion, $rotate, $exact_resize, $edited = false)
 {
-    if ($format_conversion || ((int) $rotate !== 0) || $exact_resize) {
+    if ($format_conversion || ((int) $rotate !== 0) || $exact_resize || $edited) {
         return false;
     }
 
@@ -616,6 +616,16 @@ function pg_image_engine_no_gain($bytes_after, $bytes_before, $format_conversion
  *                         reason no_webp / no_avif when nothing here can
  *                         write it.
  *   rotate          int   90, 180 or 270, clockwise.
+ *   edit            array the image editor's recipe, checked by
+ *                         pg_image_edit_validate() (includes/fn/image_editor.php):
+ *                         rot, flip_x, flip_y, straighten, crop, space_w,
+ *                         space_h, shape, out_w, out_h, overlay (a PNG's
+ *                         path), first_frame (an animated picture gives its
+ *                         first frame instead of being refused). Applied to
+ *                         the upright picture before encoding
+ *                         (pg_image_edit_imagick(), pg_image_edit_gd()); no
+ *                         resize or rotate on top, and the result is written
+ *                         even when it is heavier.
  *   write           bool  true (default) rewrites the file in place.
  *
  * Two rules about writing, both of which the old code got wrong:
@@ -686,6 +696,13 @@ function pg_process_image_file($file_path, $options = array())
         $rotate = 0;
     }
 
+    $edit = (isset($options['edit']) && is_array($options['edit'])) ? $options['edit'] : null;
+
+    if ($edit) {
+        $rotate = 0;
+        $max_dimension = 0;
+    }
+
     $size = @getimagesize($file_path);
 
     if (!$size || empty($size[0]) || empty($size[1])) {
@@ -711,7 +728,10 @@ function pg_process_image_file($file_path, $options = array())
     }
 
     // An animated GIF, PNG or WebP: both libraries would keep only one frame.
+    // An edit saved as a copy may take the first frame of an animated
+    // picture: the file itself keeps its animation.
     if (in_array($type, array(IMAGETYPE_GIF, IMAGETYPE_PNG, defined('IMAGETYPE_WEBP') ? IMAGETYPE_WEBP : -1), true)
+        && empty($edit['first_frame'])
         && pg_image_is_animated($file_path)
     ) {
         $report['reason'] = 'animated';
@@ -799,14 +819,28 @@ function pg_process_image_file($file_path, $options = array())
 
     $quality = max(1, min(100, $quality));
 
+    // An edit holds the picture, its straightened copy and the result at
+    // once: room for the largest of them. The editor measured the picture
+    // upright, so a photo stored on its side has its edges swapped here.
+    if ($edit && !$use_imagick) {
+        $upright = ($type == IMAGETYPE_JPEG) && (pg_image_jpeg_orientation($file_path) >= 5);
+
+        list($edit_width, $edit_height) = pg_image_edit_work_size($upright ? $height : $width, $upright ? $width : $height, $edit);
+
+        if (!pg_image_ensure_memory($edit_width, $edit_height)) {
+            $report['reason'] = 'too_large_to_process';
+            return $report;
+        }
+    }
+
     if (!$use_imagick && !pg_image_ensure_memory($width, $height)) {
         $report['reason'] = 'too_large_to_process';
         return $report;
     }
 
     $data = $use_imagick
-        ? pg_process_image_with_imagick($file_path, $type, $resize, $target_width, $target_height, $quality, $format, $rotate)
-        : pg_process_image_with_gd($file_path, $type, $resize, $target_width, $target_height, $quality, $format, $rotate);
+        ? pg_process_image_with_imagick($file_path, $type, $resize, $target_width, $target_height, $quality, $format, $rotate, $edit)
+        : pg_process_image_with_gd($file_path, $type, $resize, $target_width, $target_height, $quality, $format, $rotate, $edit);
 
     if (($data === false) || ($data === '') || ($data === null)) {
         $report['status'] = 'error';
@@ -881,7 +915,7 @@ function pg_process_image_file($file_path, $options = array())
     // A resize with 'exact_size' is exempt too: see the option above.
     $format_conversion = (($format !== '') && ($format !== image_type_to_extension($type, false)));
 
-    if (pg_image_engine_no_gain(strlen($data), $report['bytes_before'], $format_conversion, $rotate, $exact_size && $resize)) {
+    if (pg_image_engine_no_gain(strlen($data), $report['bytes_before'], $format_conversion, $rotate, $exact_size && $resize, (bool) $edit)) {
         $report['reason']  = 'no_gain';
         $report['resized'] = false;
 
@@ -925,13 +959,13 @@ function pg_process_image_file($file_path, $options = array())
  *
  * @return string|false
  */
-function pg_process_image_with_imagick($file_path, $type, $resize, $target_width, $target_height, $quality, $format = '', $rotate = 0)
+function pg_process_image_with_imagick($file_path, $type, $resize, $target_width, $target_height, $quality, $format = '', $rotate = 0, $edit = null)
 {
     $image = null;
 
     try {
         $image = new Imagick();
-        $image->readImage($file_path);
+        $image->readImage(empty($edit['first_frame']) ? $file_path : ($file_path . '[0]'));
 
         // Rotate the pixels to match the EXIF orientation and then drop the
         // tag, rather than stripping the metadata and leaving the pixels
@@ -969,6 +1003,12 @@ function pg_process_image_with_imagick($file_path, $type, $resize, $target_width
         // did with setColorspace(), is the other half of the same problem.
         if ($image->getImageColorspace() == Imagick::COLORSPACE_CMYK) {
             $image->transformImageColorspace(Imagick::COLORSPACE_SRGB);
+        }
+
+        if ($edit && !pg_image_edit_imagick($image, $edit, pg_image_edit_keeps_alpha($type, $format))) {
+            $image->clear();
+            $image->destroy();
+            return false;
         }
 
         if ($resize) {
@@ -1118,7 +1158,7 @@ function pg_image_apply_imagick_orientation($image)
  *
  * @return string|false
  */
-function pg_process_image_with_gd($file_path, $type, $resize, $target_width, $target_height, $quality, $format = '', $rotate = 0)
+function pg_process_image_with_gd($file_path, $type, $resize, $target_width, $target_height, $quality, $format = '', $rotate = 0, $edit = null)
 {
     $source = pg_image_gd_read($file_path, $type);
 
@@ -1141,6 +1181,20 @@ function pg_process_image_with_gd($file_path, $type, $resize, $target_width, $ta
     $gif_transparent = ($type == IMAGETYPE_GIF) && (imagecolortransparent($source) >= 0);
 
     $image = $source;
+
+    if ($edit) {
+        $image = pg_image_edit_gd($source, $edit, pg_image_edit_keeps_alpha($type, $format));
+
+        if (!$image) {
+            return false;
+        }
+
+        // The corners a crop shape cut are rgb 0,0,0 alpha 127, which the
+        // GIF case below writes transparent.
+        if (!empty($edit['shape']) && ($edit['shape'] !== 'rect')) {
+            $gif_transparent = true;
+        }
+    }
 
     if ($resize) {
 
@@ -1299,6 +1353,481 @@ function pg_process_image_with_gd($file_path, $type, $resize, $target_width, $ta
     return $data;
 }
 
+
+/**
+ * Whether the written picture can keep transparency. A crop shape cut into a
+ * JPEG or BMP gets white corners instead.
+ *
+ * @param int    $type   the source's IMAGETYPE_*
+ * @param string $format '', 'webp' or 'avif'
+ * @return bool
+ */
+function pg_image_edit_keeps_alpha($type, $format)
+{
+    if ($format !== '') {
+        return true;
+    }
+
+    return in_array($type, array(IMAGETYPE_PNG, IMAGETYPE_GIF, defined('IMAGETYPE_WEBP') ? IMAGETYPE_WEBP : -1), true);
+}
+
+/**
+ * The smallest scale of a picture turned by $degrees around the centre of its
+ * rw x rh box that still covers the crop box, so a straightened picture never
+ * shows its corners: coverScale() of assets/js/pg_image_editor_model.js, which
+ * draws the preview.
+ *
+ * @param array $crop x, y, w, h inside the rw x rh box
+ * @return float
+ */
+function pg_image_edit_cover_scale($crop, $rw, $rh, $degrees)
+{
+    if (!$degrees) {
+        return 1.0;
+    }
+
+    $a = -$degrees * M_PI / 180;
+    $co = cos($a);
+    $si = sin($a);
+    $scale = 1.0;
+    $corners = array(
+        array($crop['x'], $crop['y']),
+        array($crop['x'] + $crop['w'], $crop['y']),
+        array($crop['x'], $crop['y'] + $crop['h']),
+        array($crop['x'] + $crop['w'], $crop['y'] + $crop['h']));
+
+    foreach ($corners as $corner) {
+        $dx = $corner[0] - $rw / 2;
+        $dy = $corner[1] - $rh / 2;
+        $scale = max($scale, 2 * abs($dx * $co - $dy * $si) / $rw, 2 * abs($dx * $si + $dy * $co) / $rh);
+    }
+
+    return $scale;
+}
+
+/**
+ * An edit recipe made concrete for a w x h picture (upright, before the
+ * recipe's quarter turn): the turned size rw x rh, the crop box in it, the
+ * straightening's cover scale and the output size.
+ *
+ * The crop is measured in the editor's turned space, space_w x space_h: the
+ * picture as the browser loaded it. A file of another size is cropped at the
+ * same place.
+ *
+ * @return array rw, rh, crop {x, y, w, h}, scale, out_w, out_h
+ */
+function pg_image_edit_plan($width, $height, $edit)
+{
+    $rot = isset($edit['rot']) ? (int) $edit['rot'] : 0;
+    $rw = ($rot % 180) ? $height : $width;
+    $rh = ($rot % 180) ? $width : $height;
+    $crop = array('x' => 0, 'y' => 0, 'w' => $rw, 'h' => $rh);
+
+    if (!empty($edit['crop']) && is_array($edit['crop'])) {
+        $fx = !empty($edit['space_w']) ? ($rw / $edit['space_w']) : 1;
+        $fy = !empty($edit['space_h']) ? ($rh / $edit['space_h']) : 1;
+        $c = $edit['crop'];
+
+        $crop['x'] = max(0, min($rw - 1, $c['x'] * $fx));
+        $crop['y'] = max(0, min($rh - 1, $c['y'] * $fy));
+        $crop['w'] = max(1, min($rw - $crop['x'], $c['w'] * $fx));
+        $crop['h'] = max(1, min($rh - $crop['y'], $c['h'] * $fy));
+    }
+
+    $out_w = !empty($edit['out_w']) ? (int) $edit['out_w'] : (int) round($crop['w']);
+    $out_h = !empty($edit['out_h']) ? (int) $edit['out_h'] : (int) round($crop['h']);
+
+    return array(
+        'rw'    => $rw,
+        'rh'    => $rh,
+        'crop'  => $crop,
+        'scale' => pg_image_edit_cover_scale($crop, $rw, $rh, isset($edit['straighten']) ? (float) $edit['straighten'] : 0),
+        'out_w' => max(1, $out_w),
+        'out_h' => max(1, $out_h));
+}
+
+/**
+ * The largest picture an edit of a w x h picture (upright) holds, for
+ * pg_image_ensure_memory(): the turned picture, its straightened copy (grown
+ * to hold the turned corners) or the output.
+ *
+ * @return array width, height
+ */
+function pg_image_edit_work_size($width, $height, $edit)
+{
+    $plan = pg_image_edit_plan($width, $height, $edit);
+    $a = abs((isset($edit['straighten']) ? (float) $edit['straighten'] : 0) * M_PI / 180);
+    $bw = $plan['scale'] * ($plan['rw'] * cos($a) + $plan['rh'] * sin($a));
+    $bh = $plan['scale'] * ($plan['rw'] * sin($a) + $plan['rh'] * cos($a));
+
+    return array(
+        (int) ceil(max($plan['rw'], $bw, $plan['out_w'])),
+        (int) ceil(max($plan['rh'], $bh, $plan['out_h'])));
+}
+
+/**
+ * The crop box at (x, y) as whole pixels inside a w x h picture.
+ *
+ * @return array x, y, w, h
+ */
+function pg_image_edit_source_box($x, $y, $crop, $width, $height)
+{
+    $w = max(1, min($width, (int) round($crop['w'])));
+    $h = max(1, min($height, (int) round($crop['h'])));
+
+    return array(
+        max(0, min($width - $w, (int) round($x))),
+        max(0, min($height - $h, (int) round($y))),
+        $w,
+        $h);
+}
+
+/**
+ * The image editor's recipe on an Imagick picture, in place, in the order the
+ * preview draws it (pictureMatrix() of the model): the quarter turn, the flips
+ * of the turned picture, the straightening scaled to keep the crop covered,
+ * the crop, the output size, the overlay, the crop shape. The shape comes
+ * last because the preview clips the layers to it too.
+ *
+ * @param Imagick $image upright, sRGB
+ * @param array   $edit  the recipe of pg_image_edit_validate()
+ * @param bool    $alpha the written format keeps transparency
+ * @return bool
+ */
+function pg_image_edit_imagick($image, $edit, $alpha)
+{
+    $none = new ImagickPixel('none');
+    $rot = isset($edit['rot']) ? (int) $edit['rot'] : 0;
+
+    // Imagick's positive angle is clockwise, as the editor's.
+    if ($rot > 0) {
+        $image->rotateImage($none, $rot);
+    }
+
+    if (!empty($edit['flip_x'])) {
+        $image->flopImage();
+    }
+
+    if (!empty($edit['flip_y'])) {
+        $image->flipImage();
+    }
+
+    $image->setImagePage(0, 0, 0, 0);
+
+    // Planned on the turned picture: its own size, no turn left to make.
+    $plan = pg_image_edit_plan($image->getImageWidth(), $image->getImageHeight(), array_merge($edit, array('rot' => 0)));
+    $degrees = isset($edit['straighten']) ? (float) $edit['straighten'] : 0;
+    $x = $plan['crop']['x'];
+    $y = $plan['crop']['y'];
+
+    if ($degrees != 0) {
+        // Scaled, then turned around its centre: the canvas grows to hold the
+        // turned corners, and the crop box moves by half the growth.
+        $image->resizeImage(max(1, (int) round($plan['rw'] * $plan['scale'])), max(1, (int) round($plan['rh'] * $plan['scale'])), Imagick::FILTER_LANCZOS, 1);
+        $image->rotateImage($none, $degrees);
+        $image->setImagePage(0, 0, 0, 0);
+        $x += ($image->getImageWidth() - $plan['rw']) / 2;
+        $y += ($image->getImageHeight() - $plan['rh']) / 2;
+    }
+
+    list($sx, $sy, $sw, $sh) = pg_image_edit_source_box($x, $y, $plan['crop'], $image->getImageWidth(), $image->getImageHeight());
+
+    $image->cropImage($sw, $sh, $sx, $sy);
+    $image->setImagePage(0, 0, 0, 0);
+
+    if (($sw != $plan['out_w']) || ($sh != $plan['out_h'])) {
+        $image->resizeImage($plan['out_w'], $plan['out_h'], Imagick::FILTER_LANCZOS, 1);
+    }
+
+    if (!empty($edit['overlay'])) {
+        $overlay = new Imagick($edit['overlay']);
+        $image->compositeImage($overlay, Imagick::COMPOSITE_OVER, 0, 0);
+        $overlay->clear();
+        $overlay->destroy();
+    }
+
+    $shape = isset($edit['shape']) ? (string) $edit['shape'] : 'rect';
+
+    if (($shape !== 'rounded') && ($shape !== 'circle')) {
+        return true;
+    }
+
+    // Drawing coordinates name pixel centres, so the edges of a w x h
+    // picture lie at -0.5 and w - 0.5.
+    $w = $plan['out_w'];
+    $h = $plan['out_h'];
+    $mask = new Imagick();
+    $mask->newImage($w, $h, new ImagickPixel('transparent'), 'png');
+    $draw = new ImagickDraw();
+    $draw->setFillColor(new ImagickPixel('white'));
+
+    if ($shape === 'circle') {
+        $draw->ellipse(($w - 1) / 2, ($h - 1) / 2, $w / 2, $h / 2, 0, 360);
+    } else {
+        $radius = min($w, $h) * 0.12;
+        $draw->roundRectangle(-0.5, -0.5, $w - 0.5, $h - 0.5, $radius, $radius);
+    }
+
+    $mask->drawImage($draw);
+    $image->setImageAlphaChannel(Imagick::ALPHACHANNEL_SET);
+    $image->compositeImage($mask, Imagick::COMPOSITE_DSTIN, 0, 0);
+    $mask->clear();
+    $mask->destroy();
+
+    // No alpha in the written format: the cut corners are white.
+    if (!$alpha) {
+        $white = new Imagick();
+        $white->newImage($w, $h, new ImagickPixel('white'));
+        $image->compositeImage($white, Imagick::COMPOSITE_DSTOVER, 0, 0);
+        $white->clear();
+        $white->destroy();
+    }
+
+    return true;
+}
+
+// A transparent truecolor GD canvas that keeps its alpha when written. The
+// clear colour is rgb 0,0,0 alpha 127, the one a GIF writes transparent.
+function pg_image_edit_gd_canvas($width, $height)
+{
+    $canvas = imagecreatetruecolor(max(1, (int) $width), max(1, (int) $height));
+
+    if (!$canvas) {
+        return false;
+    }
+
+    imagealphablending($canvas, false);
+    imagesavealpha($canvas, true);
+    imagefilledrectangle($canvas, 0, 0, imagesx($canvas) - 1, imagesy($canvas) - 1, imagecolorallocatealpha($canvas, 0, 0, 0, 127));
+
+    return $canvas;
+}
+
+/**
+ * The image editor's recipe on a GD picture, as pg_image_edit_imagick() does
+ * it. The picture given is destroyed.
+ *
+ * @param resource|GdImage $image upright
+ * @param array            $edit  the recipe of pg_image_edit_validate()
+ * @param bool             $alpha the written format keeps transparency
+ * @return resource|GdImage|false the edited picture
+ */
+function pg_image_edit_gd($image, $edit, $alpha)
+{
+    if (function_exists('imageistruecolor') && !imageistruecolor($image) && function_exists('imagepalettetotruecolor')) {
+        imagepalettetotruecolor($image);
+    }
+
+    imagealphablending($image, false);
+    imagesavealpha($image, true);
+
+    // GD's positive angle is counter-clockwise, the editor's clockwise.
+    $rot = isset($edit['rot']) ? (int) $edit['rot'] : 0;
+
+    if ($rot > 0) {
+        $turned = @imagerotate($image, -$rot, imagecolorallocatealpha($image, 0, 0, 0, 127));
+        pg_image_destroy($image);
+
+        if (!$turned) {
+            return false;
+        }
+
+        $image = $turned;
+        imagealphablending($image, false);
+        imagesavealpha($image, true);
+    }
+
+    if (!empty($edit['flip_x'])) {
+        imageflip($image, IMG_FLIP_HORIZONTAL);
+    }
+
+    if (!empty($edit['flip_y'])) {
+        imageflip($image, IMG_FLIP_VERTICAL);
+    }
+
+    $plan = pg_image_edit_plan(imagesx($image), imagesy($image), array_merge($edit, array('rot' => 0)));
+    $degrees = isset($edit['straighten']) ? (float) $edit['straighten'] : 0;
+    $x = $plan['crop']['x'];
+    $y = $plan['crop']['y'];
+
+    if ($degrees != 0) {
+        $scaled = pg_image_edit_gd_canvas(round($plan['rw'] * $plan['scale']), round($plan['rh'] * $plan['scale']));
+
+        if (!$scaled) {
+            pg_image_destroy($image);
+            return false;
+        }
+
+        imagecopyresampled($scaled, $image, 0, 0, 0, 0, imagesx($scaled), imagesy($scaled), imagesx($image), imagesy($image));
+        pg_image_destroy($image);
+
+        $image = @imagerotate($scaled, -$degrees, imagecolorallocatealpha($scaled, 0, 0, 0, 127));
+        pg_image_destroy($scaled);
+
+        if (!$image) {
+            return false;
+        }
+
+        imagealphablending($image, false);
+        imagesavealpha($image, true);
+        $x += (imagesx($image) - $plan['rw']) / 2;
+        $y += (imagesy($image) - $plan['rh']) / 2;
+    }
+
+    list($sx, $sy, $sw, $sh) = pg_image_edit_source_box($x, $y, $plan['crop'], imagesx($image), imagesy($image));
+    $out = pg_image_edit_gd_canvas($plan['out_w'], $plan['out_h']);
+
+    if (!$out) {
+        pg_image_destroy($image);
+        return false;
+    }
+
+    imagecopyresampled($out, $image, 0, 0, $sx, $sy, $plan['out_w'], $plan['out_h'], $sw, $sh);
+    pg_image_destroy($image);
+
+    if (!empty($edit['overlay'])) {
+        $overlay = @imagecreatefrompng($edit['overlay']);
+
+        if (!$overlay) {
+            pg_image_destroy($out);
+            return false;
+        }
+
+        imagealphablending($out, true);
+        imagecopyresampled($out, $overlay, 0, 0, 0, 0, $plan['out_w'], $plan['out_h'], imagesx($overlay), imagesy($overlay));
+        imagealphablending($out, false);
+        pg_image_destroy($overlay);
+    }
+
+    $shape = isset($edit['shape']) ? (string) $edit['shape'] : 'rect';
+
+    if (($shape === 'rounded') || ($shape === 'circle')) {
+        pg_image_edit_gd_shape($out, $shape, $alpha);
+    }
+
+    return $out;
+}
+
+/**
+ * How far in from the left (and from the right) the edge of a crop shape lies
+ * at height y of a w x h picture: the ellipse of a circle, the corner arcs of
+ * a box with rounded corners. Half the width above and below the picture.
+ *
+ * @return float
+ */
+function pg_image_edit_shape_inset($shape, $y, $width, $height, $radius)
+{
+    if (($y < 0) || ($y > $height)) {
+        return $width / 2;
+    }
+
+    if ($shape === 'circle') {
+        $dy = ($y - $height / 2) / ($height / 2);
+
+        return (abs($dy) >= 1) ? ($width / 2) : (($width / 2) * (1 - sqrt(1 - $dy * $dy)));
+    }
+
+    $d = min($y, $height - $y);
+
+    if ($d >= $radius) {
+        return 0;
+    }
+
+    $e = $radius - $d;
+
+    return $radius - sqrt(max(0, $radius * $radius - $e * $e));
+}
+
+/**
+ * The crop shape on a GD picture, in place: what lies outside the ellipse
+ * (circle) or the box with rounded corners (12 % of the shorter side, as the
+ * preview draws it) is cleared, transparent, or white where the format has no
+ * alpha. The whole pixels outside are one rectangle a row; the few the edge
+ * crosses keep the share of a 4 x 4 sample that lies inside, so the curve is
+ * smooth.
+ */
+function pg_image_edit_gd_shape($image, $shape, $alpha)
+{
+    $w = imagesx($image);
+    $h = imagesy($image);
+    $radius = min($w, $h) * 0.12;
+    $clear = $alpha ? imagecolorallocatealpha($image, 0, 0, 0, 127) : imagecolorallocate($image, 255, 255, 255);
+
+    imagealphablending($image, false);
+
+    for ($row = 0; $row < $h; $row++) {
+        // The edge at the top and the bottom of the row, and in its middle
+        // when the row holds the widest point of the shape.
+        $insets = array(
+            pg_image_edit_shape_inset($shape, $row, $w, $h, $radius),
+            pg_image_edit_shape_inset($shape, $row + 1, $w, $h, $radius));
+
+        if (($row < $h / 2) && ($row + 1 > $h / 2)) {
+            $insets[] = pg_image_edit_shape_inset($shape, $h / 2, $w, $h, $radius);
+        }
+
+        $outside = (int) floor(min($insets));
+        $crossed = (int) min(ceil($w / 2), ceil(max($insets)));
+
+        if ($outside * 2 >= $w) {
+            imagefilledrectangle($image, 0, $row, $w - 1, $row, $clear);
+            continue;
+        }
+
+        if ($outside > 0) {
+            imagefilledrectangle($image, 0, $row, $outside - 1, $row, $clear);
+            imagefilledrectangle($image, $w - $outside, $row, $w - 1, $row, $clear);
+        }
+
+        for ($x = $outside; $x < $crossed; $x++) {
+            pg_image_edit_gd_cover($image, $x, $row, $shape, $radius, $alpha);
+
+            if ($w - 1 - $x > $x) {
+                pg_image_edit_gd_cover($image, $w - 1 - $x, $row, $shape, $radius, $alpha);
+            }
+        }
+    }
+}
+
+// The share of pixel (x, y) inside the crop shape, from a 4 x 4 sample,
+// taken off its opacity (or, without alpha, mixed with white).
+function pg_image_edit_gd_cover($image, $x, $y, $shape, $radius, $alpha)
+{
+    $w = imagesx($image);
+    $h = imagesy($image);
+    $inside = 0;
+
+    for ($j = 0; $j < 4; $j++) {
+        $inset = pg_image_edit_shape_inset($shape, $y + ($j + 0.5) / 4, $w, $h, $radius);
+
+        for ($i = 0; $i < 4; $i++) {
+            $px = $x + ($i + 0.5) / 4;
+
+            if (($px >= $inset) && ($px <= $w - $inset)) {
+                $inside++;
+            }
+        }
+    }
+
+    if ($inside === 16) {
+        return;
+    }
+
+    $cover = $inside / 16;
+    $rgba = imagecolorat($image, $x, $y);
+    $r = ($rgba >> 16) & 0xFF;
+    $g = ($rgba >> 8) & 0xFF;
+    $b = $rgba & 0xFF;
+
+    if (!$alpha) {
+        $color = imagecolorallocate($image, (int) round($r * $cover + 255 * (1 - $cover)), (int) round($g * $cover + 255 * (1 - $cover)), (int) round($b * $cover + 255 * (1 - $cover)));
+    } else {
+        $a = (int) round(127 - (127 - (($rgba >> 24) & 0x7F)) * $cover);
+        $color = ($a >= 127) ? imagecolorallocatealpha($image, 0, 0, 0, 127) : imagecolorallocatealpha($image, $r, $g, $b, $a);
+    }
+
+    imagesetpixel($image, $x, $y, $color);
+}
 
 /**
  * Open an image with GD by its detected type.

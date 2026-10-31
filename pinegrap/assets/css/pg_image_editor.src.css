@@ -228,6 +228,86 @@
   color: #ffffff;
 }
 
+.pgie-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* Save: a split button when Save writes over a file, and its menu */
+
+.pgie-savebox {
+  position: relative;
+  display: flex;
+  flex: none;
+}
+
+.pgie-split > .pgie-btn.pgie-primary:first-child {
+  border-radius: 10px 0 0 10px;
+}
+
+.pgie-btn.pgie-caret {
+  padding: 0 8px;
+  border-left-color: rgba(0, 0, 0, 0.18);
+  border-radius: 0 10px 10px 0;
+}
+
+.pgie-menu {
+  position: absolute;
+  top: 44px;
+  right: 0;
+  z-index: 20;
+  min-width: 220px;
+  display: flex;
+  flex-direction: column;
+  padding: 6px;
+  border: 1px solid var(--pgie-line);
+  border-radius: 12px;
+  background: var(--pgie-surface);
+  box-shadow: var(--pgie-shadow);
+}
+
+.pgie-menu button {
+  height: 38px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  text-align: start;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.pgie-menu button:hover {
+  background: var(--pgie-hover);
+}
+
+/* While a save runs nothing on the stage moves. */
+
+.pgie-busy .pgie-body {
+  pointer-events: none;
+}
+
+.pgie-toast {
+  position: absolute;
+  left: 50%;
+  bottom: 16px;
+  z-index: 30;
+  max-width: calc(100% - 32px);
+  width: max-content;
+  padding: 10px 16px;
+  border-radius: 12px;
+  background: #1f2328;
+  color: #ffffff;
+  font-size: 13.5px;
+  text-align: center;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  transform: translateX(-50%);
+}
+
+.pgie-toast.pgie-error {
+  background: var(--pgie-danger);
+}
+
 /* Rail, stage, panel */
 
 .pgie-body {

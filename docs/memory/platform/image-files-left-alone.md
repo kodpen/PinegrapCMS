@@ -25,7 +25,7 @@ description: Images the engine refuses to process: animated (PR #1234), unreadab
 - Derivatives (`get_file.php ?w=&f=`): the original is sent. Animated: an empty `.skip` remembers it (docs/memory/platform/image-derivatives.md). Unreadable orientation: `pg_image_oriented_size()` gives 0×0, so no attempt is made.
 - Optimize, the file manager's buttons, `edit_file.php`: one sentence per reason ("is an animated image ... left alone" and the orientation one), file untouched.
 - Product and API uploads: the file is stored byte for byte.
-- Image editor Replace (`image_editor_save.php`): any animated file (`pg_image_is_animated()`) is refused with a JSON message; Save as new file still works. The footer hides Replace only for `.gif` names, so an APNG or animated WebP learns it on save.
+- Image editor: Replace refuses any animated file (`pg_image_is_animated()`) in JSON; a copy is its first frame (the engine's `edit` with `first_frame`, image-editor-save.md). The old editor's footer hides Replace only for `.gif` names.
 - Markup: `pg_img_responsive()` returns null, so the Image element and widget images get no `srcset` or `<source>` (a browser that reads WebP would pick a still frame).
 
 ## What went wrong before?

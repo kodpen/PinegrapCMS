@@ -4672,6 +4672,7 @@
     "This field has no room for another value.": "Bu alanda başka bir değere yer yok.",
     "This field is not in the form, so no record is shown. Choose the field again.": "Bu alan formda yok, bu yüzden hiçbir kayıt gösterilmiyor. Alanı yeniden seçin.",
     "This file cannot be edited here.": "Bu dosya burada düzenlenemez.",
+    "This file cannot be opened in the image editor.": "Bu dosya görsel düzenleyicide açılamıyor.",
     "This file is already in the Workspace. Forward the message that carries it instead.": "Bu dosya zaten Çalışma Alanı'nda. Onun yerine dosyayı taşıyan mesajı iletin.",
     "This file is already in the recycle bin.": "Bu dosya zaten geri dönüşüm kutusunda.",
     "This file is in the Recycle Bin. Restore it in the File Manager or it will be lost when the bin is emptied.": "Bu dosya Geri Dönüşüm Kutusu'nda. Dosya Yöneticisi'nden geri yükleyin; kutu boşaltılınca kaybolur.",
