@@ -101,7 +101,8 @@ function pg_explorer_handle_catalog_quick_edit($type, $request, $user)
     // Live rows only, the same rule the rest of this screen follows: a
     // product in the bin is restored before it is edited.
     $quick_row = db_item(
-        "SELECT id, name, price, inventory, inventory_quantity, out_of_stock, short_description
+        "SELECT id, name, price, inventory, inventory_quantity, out_of_stock, short_description"
+        . (pg_bundles_ready() ? ', bundle, bundle_pricing' : '') . "
         FROM products
         WHERE id = '" . e($quick_id) . "'" . pg_catalog_live_filter('products'));
 
@@ -120,6 +121,12 @@ function pg_explorer_handle_catalog_quick_edit($type, $request, $user)
 
     if ($quick_field === 'price') {
 
+        // A bundle priced as the sum of its products follows them: a price
+        // written here would be overwritten by the next refresh.
+        if (pg_bundle_price_is_summed($quick_row)) {
+            respond(array('status' => 'error', 'message' => lang('A bundle priced as the sum of its products takes no price of its own.')));
+        }
+
         $quick_number = pg_explorer_catalog_quick_price($quick_value);
 
         if ($quick_number === null) {
@@ -132,6 +139,12 @@ function pg_explorer_handle_catalog_quick_edit($type, $request, $user)
         $quick_new = $quick_number;
 
     } elseif ($quick_field === 'quantity') {
+
+        // A bundle's stock follows its components (includes/fn/bundles.php):
+        // a typed number would only last until the next refresh.
+        if (pg_bundle_ids_among(array($quick_id))) {
+            respond(array('status' => 'error', 'message' => lang('This product is a bundle: its stock follows the products in it. Change their stock instead.')));
+        }
 
         // A number written against a product that does not count its
         // stock is a number nobody will ever read. Saying so is better
@@ -177,6 +190,13 @@ function pg_explorer_handle_catalog_quick_edit($type, $request, $user)
     }
 
     $quick_changed = ((string) $quick_row[$quick_target] !== (string) $quick_new);
+
+    // The SEO analysis reads the short description (pg_seo_recalculate()):
+    // a changed one leaves the stored score stale until it is worked out
+    // again.
+    if (($quick_field === 'short_description') && $quick_changed) {
+        $quick_sql .= ", seo_analysis_current = '0'";
+    }
 
     // address_name is left alone on purpose. It is derived from the
     // short description when a product is created, but by the time it
