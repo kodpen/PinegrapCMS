@@ -52,7 +52,10 @@ function settings_system_tools_sample_groups()
 function test_settings_system_tools_modal_has_no_tool_groups()
 {
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/settings/modal.php');
-	pg_assert_same(false, strpos($source, 'pg-sm-group'), 'no tool group heading in the list');
+	// The headings over the list are the category groups (pg_settings_grouped()),
+	// not the tool groups, which stay on the System tools screen.
+	pg_assert_same(false, strpos($source, 'pg_settings_tool_groups($user) as'), 'no tool group heading in the list');
+	pg_assert_contains('pg_settings_grouped(', $source, 'headings come from the category groups');
 	pg_assert_same(false, strpos($source, "\$group['items']"), 'no tool link drawn in the list');
 	pg_assert_contains('pg_settings_tools_link(pg_settings_tool_groups($user))', $source, 'one System tools row, from the gated groups');
 }

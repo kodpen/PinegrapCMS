@@ -21,4 +21,9 @@ description: Settings modal vs rest of panel: no settings breadcrumbs/back butto
 - Those tools write `add_notice()` / `mark_error()` on `liveform('settings')` and redirect; no screen is left to read them. The endpoint takes them over in the GET branch with `get_notices()` + `get_errors()`, drops the form with `remove_form()`, and the dialog shows them on the first pane.
 - Exactly once: removing before takeover destroys the sentence; taking over without removing brings it back on every open.
 
+## How does the search in the dialog work? (#4118)
+- A box over the category list (`#pg_settings_modal_search`, outside the form: never posted, never makes a pane dirty). On first use it asks `settings_pane.php?search=1` once per page: `pg_settings_search_build()` draws every category with `pg_settings_fragment()` (output buffered, one failing category keeps its registry row) and reads each card's heading, labels and legends (`pg_settings_card_labels()`); `pg_settings_search_index()` keeps only the sections the registry lists for this role. No hand list: a field added to a card is found.
+- Matching (`backend.src.js`, `score()`): card name, then keywords (the palette's prefix rule), then field labels, then every word of a multi-word query somewhere; Turkish letters folded. Hits replace the list; a hit calls `open(pane, card)`, the same as a `#settings/<cat>/<card>` link. Escape empties the box before it closes anything; Down/Return go to the first hit.
+- Palette keywords fixed with it: "logo" no longer lands on E-Invoice (Logo İşbaşı stays findable by "isbasi"), "prefetch" finds Feature Options, "workspace" finds Related screens in Turkish too.
+
 Related: docs/memory/ui/settings-modal-entry-points.md

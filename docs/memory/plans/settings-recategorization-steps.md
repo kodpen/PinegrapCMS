@@ -31,8 +31,8 @@ description: Steps R1-R9 of plans/settings-recategorization.md: what each moves,
   - R7c, done in #4067: API is named Integrations, holds Google Reviews (from Communication) and a Related screens card (`pg_settings_integration_links()`).
   - R7d, done in #4095: Private Label Branding is an Appearance card for role 0; `private_label.php` redirects to it.
 
-- Next: R8, then R9; both free after #4095 lands.
+- Next: R9.
 
-- R8 (M) Search. A search box in the dialog covers every category's cards and field labels, from the registry plus the drawn labels. Palette keywords: false hits ("logo" on E-Invoice) and misses (favicon, kvkk, workspace, prefetch, encryption). Headings over the list as decided #3879 (Site, Security, Selling, Running the site; `.pg-sm-group`, a `group` key per category).
+- R8 (M) Search. Done in #4118 (`ui/settings-modal-navigation.md`, `ui/settings-list-headings.md`). A search box in the dialog covers every category's cards and field labels, from the registry plus the drawn labels. Palette keywords: false hits ("logo" on E-Invoice) and misses (favicon, kvkk, workspace, prefetch, encryption). Headings over the list as decided #3879 (Site, Security, Selling, Running the site; `.pg-sm-group`, a `group` key per category).
 
 - R9 (S) Links and notes. `private_label.php` is a redirect since #4095; its `output_menu()` case and `private_label` help row may go with the other old links. Update the text links that name old places ("Site Settings › Contact" in `erp_settings.php`, "Settings › General" in `workspace/ai.php`). Check deep links (#3558). Refresh descriptions, help. Remove `pg_settings_status()` and `pg_settings_facts()`, which have no callers. Rewrite `ui/settings-modal-architecture.md`, write the decisions into the decisions list, and delete this plan.

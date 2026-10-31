@@ -74,19 +74,29 @@ function pg_settings_modal_markup($user)
     $output_help = array();
     $output_help_start = pg_help_url(array('topic' => 'site-settings#site-settings-intro'));
 
-    foreach (pg_settings_categories() as $key => $category) {
+    // Under the headings of pg_settings_groups(), drawn like the main menu's:
+    // a label over its rows, not a link and not a fold.
+    $categories = pg_settings_categories();
 
-        $help = pg_help_url(array('screen' => 'settings_' . $key));
+    foreach (pg_settings_grouped($categories) as $group) {
 
-        if ($help !== '') {
-            $output_help[$key] = $help;
+        $output_links .= '<div class="pg-sm-group">' . h($group['label']) . '</div>';
+
+        foreach ($group['categories'] as $key) {
+
+            $category = $categories[$key];
+            $help = pg_help_url(array('screen' => 'settings_' . $key));
+
+            if ($help !== '') {
+                $output_help[$key] = $help;
+            }
+
+            $output_links .=
+                '<button type="button" class="pg-sm-link" data-pane="' . h($key) . '"'
+                . ' title="' . h($category['description']) . '">'
+                . '<i class="bi ' . h($category['icon']) . '" aria-hidden="true"></i>'
+                . '<span>' . h($category['label']) . '</span></button>';
         }
-
-        $output_links .=
-            '<button type="button" class="pg-sm-link" data-pane="' . h($key) . '"'
-            . ' title="' . h($category['description']) . '">'
-            . '<i class="bi ' . h($category['icon']) . '" aria-hidden="true"></i>'
-            . '<span>' . h($category['label']) . '</span></button>';
     }
 
     // ── the neighbouring screens ─────────────────────────────────────────
@@ -114,6 +124,8 @@ function pg_settings_modal_markup($user)
     data-pgstay="' . h(lang('Keep Editing')) . '"
     data-pgclose="' . h(lang('Close')) . '"
     data-pgfailed="' . h(lang('The request could not be completed. Please try again.')) . '"
+    data-pgsearching="' . h(lang('Searching...')) . '"
+    data-pgnohits="' . h(lang('No settings match.')) . '"
     data-pgfilled="' . h(lang('A password manager filled in a field nobody was editing, so it has been put back.')) . '">
 
             <aside class="pg-sm-side" id="pg_settings_modal_side">
@@ -121,6 +133,19 @@ function pg_settings_modal_markup($user)
                     <i class="bi bi-gear" aria-hidden="true"></i>
                     <span>' . h(lang('Site Settings')) . '</span>
                 </div>
+                <!--
+                    Outside the form: what is typed here is never posted and
+                    never makes the pane read as changed. The index behind it
+                    is asked for once, on first use (settings_pane.php?search=1).
+                -->
+                <div class="pg-sm-search" role="search">
+                    <i class="bi bi-search" aria-hidden="true"></i>
+                    <input type="search" id="pg_settings_modal_search" class="form-control form-control-sm"
+                        placeholder="' . h(lang('Search settings')) . '" aria-label="' . h(lang('Search settings')) . '"
+                        aria-controls="pg_settings_modal_hits" autocomplete="off" spellcheck="false"
+                        data-lpignore="true" data-1p-ignore data-bwignore data-form-type="other" />
+                </div>
+                <div class="pg-sm-nav pg-sm-hits" id="pg_settings_modal_hits" role="region" aria-live="polite" aria-label="' . h(lang('Search results')) . '" hidden></div>
                 <nav class="pg-sm-nav" id="pg_settings_modal_nav" aria-label="' . h(lang('Site Settings')) . '">
                     ' . $output_links . '
                     ' . $output_tools . '

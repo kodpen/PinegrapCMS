@@ -15,6 +15,7 @@ description: Endpoints that speak JSON: rejections and CSRF failures in JSON wit
 
 ## What does a session or token refusal say?
 - The way out, in the panel language: a missing session answers "Your session has expired. Reload the page and sign in again." (`panel_login_refusal()` in `api.php`, `code: session`), a token that does not match the session "Your session expired. Reload the page and try again.". Never the bare "Invalid login." / "Invalid token.": the panel toasts `message` as is (#3307, `tests/panel_session_refusal_test.php`). Only a request that sent a wrong user name and password still gets "Invalid login.".
+- A JSON request on an HTML screen refuses before `validate_user()` in its own shape: `api_docs.php` `test_credential` (`code`/`message`, `getCredential()` rejects on `!r.ok`, `r.redirected` or no key) and the `database_engine.php` cleanup step `ajax=1` (`ok:false`, `state:'stopped'`, `text`; the step loop reads the JSON on a non-OK status). Pinned in `tests/json_side_door_refusals_test.php`.
 - A barcode scan whose request got no answer says the quantity may already have changed: the UPDATE can run before a dropped connection or a failed page, so a blind re-scan could count twice.
 
 ## Does `api.php` read a form body?
