@@ -71,7 +71,8 @@ function pg_ops_alert_codes()
         'integrity' => array(
             'label' => lang('Software files were changed'),
             'type'  => 'error',
-            'url'   => 'software_repair.php',
+            // Repair Software is refused on a hosted site.
+            'url'   => pg_hosted() ? 'welcome.php' : 'software_repair.php',
         ),
         'error_spike' => array(
             'label' => lang('Many PHP errors'),
@@ -241,6 +242,48 @@ function pg_ops_alert_clean_detail($detail)
     }
 
     return $detail;
+}
+
+/**
+ * Whether Repair Software (software_repair.php) opens for this reader: an
+ * administrator, on a site that is not hosted. A caller with no role, such as
+ * the external API, is not an administrator.
+ *
+ * @param int|string|null $role
+ * @param bool            $hosted pg_hosted()
+ * @return bool
+ */
+function pg_software_repair_open_to($role, $hosted)
+{
+    return (($role !== null) && ((string) $role !== '') && ((int) $role === 0) && !$hosted);
+}
+
+/**
+ * The panel address an alert points at for one reader: the catalogue's, but
+ * the dashboard instead of a screen that would refuse them.
+ *
+ * @param string          $code
+ * @param int|string|null $role   the reader's role; null when unknown
+ * @param bool|null       $hosted pg_hosted() when null
+ * @return string
+ */
+function pg_ops_alert_reader_url($code, $role, $hosted = null)
+{
+    $codes = pg_ops_alert_codes();
+
+    if (!isset($codes[$code])) {
+        return 'welcome.php';
+    }
+
+    if ($hosted === null) {
+        $hosted = pg_hosted();
+    }
+
+    if (($code === 'integrity') && !pg_software_repair_open_to($role, $hosted)) {
+        return 'welcome.php';
+    }
+
+    return $codes[$code]['url'];
 }
 
 /**
