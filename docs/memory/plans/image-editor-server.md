@@ -22,9 +22,10 @@ description: Server side of plans/image-editor.md: what the browser and the serv
 - Replace keeps the `files` row's id and name, so every link keeps working; copy and new add a row in the chosen folder (name, folder, type, size, image_width, image_height, user, design, optimized, timestamp).
 - Animated files: replace refused, copy allowed (`platform/image-files-left-alone.md`); ERP rows refused (`platform/erp-documents-in-file-manager.md`).
 
-## What does the versions table hold? (E11; columns through an architect question)
-- Proposal `file_versions`: id, file_id, version (1 = the original), doc (MEDIUMTEXT JSON), stored_name (pixels under `data/file_versions/`), width, height, size, redacted, created_at, created_by; KEY (file_id, version).
-- Opening loads the original and the newest doc, so layers and texts edit again; restore makes a version current; deleting the file deletes its versions.
+## What does the versions table hold? (E11, #4202)
+- `file_versions`, columns in `workflow/decisions-made-schema-7.md`: one row per version, the document in `doc_json` (MEDIUMTEXT, '' for version 1), the pixels as a file under `data/file_versions/` (`stored_name`), `version_no` 1 = the original as uploaded; an unchanged document (`doc_hash`) writes no row.
+- Version 1 is copied from the original at the first save, before the replace; later versions keep the result pixels, so restore and the drawer's preview need no render (a GD host cannot redo the browser's colour layer). `pg_file_versions_dir()` creates the folder on demand; no URL maps to it: the drawer reads through the editor API (session token, `check_edit_access()`).
+- Opening loads the original and the newest document, so layers and texts edit again; restore makes a version current; the original plus the last 10 saves are kept (#4203); deleting the file (File Manager, the Recycle Bin's permanent delete, erasure) deletes rows and files; the bytes count in Disk Usage. The document refuses inline pixel data and a size over 1 MB; an inserted picture is its own `files` row referenced by id.
 
 ## What does security need?
 - Each call: the session token check `image_editor_save.php` does today, `check_edit_access()` on the target folder, the doc validated against limits (sizes, counts, number ranges) before any pixel work, the overlay PNG decoded and its size checked.

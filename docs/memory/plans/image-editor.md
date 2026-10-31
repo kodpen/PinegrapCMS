@@ -20,15 +20,15 @@ description: Plan (owner 2026-10-31): Pinegrap's own image editor, a core modal 
 - `image-editor-steps.md` (E1-E10) and `image-editor-steps-2.md` (E11-E20).
 
 ## Which decisions bind it?
-- Owner, 2026-10-31 (`workflow/decisions-made-product-14.md`; the table in `decisions-made-schema-7.md`): own code, no engine; core modal with full screen; callable with a tool subset; texts through `lang()`; work on the server where it is efficient, else in JS; a versions table; no video; optimisation inside; ready-made shapes and corner rounding; artboard sizing; File Manager "New image" opens the canvas.
+- Owner, 2026-10-31 (`workflow/decisions-made-product-14.md`; the table in `decisions-made-schema-7.md`, the five answers of 2026-10-31 in `decisions-made-product-15.md`): own code, no engine; core modal with full screen; callable with a tool subset; texts through `lang()`; work on the server where it is efficient, else in JS; a versions table; no video; optimisation inside; ready-made shapes and corner rounding; artboard sizing; File Manager "New image" opens the canvas.
 
 ## Where does it start?
 - E1, after the visuals and the two design files.
 
-## Which questions are open? (recommendation first)
-1. Redacted save: replace in place, delete every version that holds unredacted pixels, strip metadata; "Save as copy" keeps the original.
-2. Retention: the original plus the last 10 saves per file; deleting the file deletes them; they count in disk usage.
-3. The document's home: a column of the version row, or a file under `data/`.
-4. The live site's edit button (`includes/fn/content.php`, `frontend.src.js`): the modal on the page, loaded only for a signed-in editor, or a jump to the File Manager.
-5. SVG animation (E19): CSS keyframe presets per layer in the saved SVG, or none.
-- A step that meets one asks it through the architect (CLAUDE.md Working mode 10) unless an answer stands here.
+## Which questions were answered? (#4202, #4203, 2026-10-31)
+1. Redacted save (owner): replace in place and strip the served file's metadata; the earlier versions, the original included, stay under the normal retention, read only through the editor API behind `check_edit_access()`; "Save as copy" keeps the original file.
+2. Retention (owner): the original plus the last 10 saves per file; deleting the file deletes them; they count in Disk Usage.
+3. The document's home (architect): a MEDIUMTEXT column of the version row; the pixels under `data/file_versions/` (`image-editor-server.md`).
+4. The live site's edit button (owner): the modal on the page, loaded only for a signed-in editor.
+5. SVG animation (owner): E19 stays, CSS keyframe presets per layer in the saved SVG, the last step.
+- A new question goes through the architect (CLAUDE.md Working mode 10).
