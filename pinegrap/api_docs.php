@@ -25,6 +25,37 @@
 
 include('init.php');
 
+// The Try it credential is asked for by fetch and read as JSON. An ended
+// session, a missing right or a stale token is answered here in JSON:
+// validate_user() would redirect to the sign-in page, which fetch follows as a
+// 200, and validate_area_access() and validate_token_field() print HTML pages.
+if (isset($_POST['test_credential'])) {
+
+	$api_docs_refuse = function ($code, $message, $status) {
+		http_response_code($status);
+		header('Content-Type: application/json; charset=utf-8');
+		header('Cache-Control: no-store');
+		print json_encode(array('ok' => false, 'code' => $code, 'message' => $message), JSON_UNESCAPED_UNICODE);
+		exit();
+	};
+
+	if (!defined('USER_LOGGED_IN') || !USER_LOGGED_IN) {
+		$api_docs_refuse('session', lang('Your session has expired. Reload the page and sign in again.'), 401);
+	}
+
+	if (!defined('USER_ROLE') || ((int)USER_ROLE > 2)) {
+		$api_docs_refuse('denied', lang('Access denied.'), 403);
+	}
+
+	$api_docs_session_token = (string)($_SESSION['software']['token'] ?? '');
+	$api_docs_post_token = (isset($_POST['token']) && is_string($_POST['token'])) ? $_POST['token'] : '';
+
+	if (($api_docs_session_token === '') || !hash_equals($api_docs_session_token, $api_docs_post_token)) {
+		$api_docs_refuse('token', lang('Your session expired. Reload the page and try again.'), 403);
+	}
+
+}
+
 $user = validate_user();
 validate_area_access($user, 'manager');
 
@@ -69,8 +100,8 @@ if (isset($_GET['openapi'])) {
 // so the answer here matches the answer that application would get.
 if (isset($_POST['test_credential'])) {
 
-	validate_token_field();
-
+	// The token was compared at the top of the file, where a mismatch is
+	// answered in JSON.
 	header('Content-Type: application/json; charset=utf-8');
 
 	$source_id = isset($_POST['app_id']) ? (int)$_POST['app_id'] : 0;
@@ -256,6 +287,8 @@ echo pg_page_shell(array(
 	var BASE = ' . json_encode($api_base_url, JSON_UNESCAPED_UNICODE) . ';
 	var TOKEN = ' . json_encode(isset($_SESSION['software']['token']) ? $_SESSION['software']['token'] : '', JSON_UNESCAPED_UNICODE) . ';
 	var credential = null;
+	var SESSION_ENDED = ' . json_encode(lang('Your session has expired. Reload the page and sign in again.'), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) . ';
+	var FAILED = ' . json_encode(lang('Something went wrong. Please try again.'), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) . ';
 
 	// The temporary credential is fetched on demand and kept in this closure
 	// only: it is never written into the page, so a screenshot of this screen
@@ -268,7 +301,20 @@ echo pg_page_shell(array(
 		var body = new URLSearchParams({ test_credential: "1", app_id: appId, token: TOKEN });
 		return fetch("api_docs.php", { method: "POST", body: body,
 			headers: { "Content-Type": "application/x-www-form-urlencoded" } })
-			.then(function (r) { return r.json(); })
+			.then(function (r) {
+				// A redirect is the sign-in page: the session has ended.
+				if (r.redirected) {
+					throw new Error(SESSION_ENDED);
+				}
+				return r.json().then(function (c) {
+					if (!r.ok || !c || !c.key) {
+						throw new Error((c && c.message) ? c.message : SESSION_ENDED);
+					}
+					return c;
+				}, function () {
+					throw new Error(FAILED);
+				});
+			})
 			.then(function (c) {
 				credential = { appId: appId, key: c.key, secret: c.secret, until: Date.now() + (c.expires_in - 30) * 1000 };
 				return credential;
