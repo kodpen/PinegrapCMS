@@ -21,3 +21,8 @@ description: The contact create and edit screens share includes/forms/contact_fo
 - `pg_contact_form_text_field()` takes a fifth `$keyboard` argument printed through `pg_contact_form_keyboard_attributes()`: `'tel'` → `inputmode="tel"` (Business Phone/Fax, Home Phone/Fax, Mobile Phone), `'url'` → `inputmode="url" spellcheck="false" autocapitalize="off"` (Website; iOS capitalised its first letter). Same set as the Contacts filters (`contact-filter-keyboards.md`).
 - Every box stays `type="text"`: phone values carry spaces, `+` and parentheses, and Website accepts a bare `www.example.com`. Zip codes keep the text keyboard; the e-mail box (`inputmode="email"`) and VKN/TCKN (`inputmode="numeric"`) are written in their own markup.
 - Test: `tests/contact_form_keyboards_test.php`.
+
+## How do the Contacts list's bulk opt-in, opt-out and organize work?
+- Opt-In/Opt-Out Selected (`edit_contacts.php` `optin`/`optout`) call `pg_contact_bulk_set_opt_in($user, $ids, '1'|'0')`: every accessible ticked contact and every contact with its address get the status, as `edit_contact.php` does. One write per address (`pg_contact_bulk_opt_in_targets()`, case-insensitive); the notice counts only contacts whose status changed (`pg_contact_bulk_opt_in_changed()`), the address's other rows included. Before, only the ticked row changed and every ticked row was counted.
+- Organize Selected skips a posted group id `validate_contact_group_access()` refuses (the popup lists only allowed groups; a crafted post got past it).
+- Test: `tests/contact_bulk_opt_in_test.php`.
