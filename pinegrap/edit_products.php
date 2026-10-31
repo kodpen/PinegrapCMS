@@ -92,6 +92,28 @@ if (!$_POST) {
 		}
 	}
 
+    // The stock quantity is read once, the panel's way (1.200 on a Turkish
+    // panel is twelve hundred), with the Catalog Manager's reader. A figure
+    // that is not a whole count of zero or more stops the whole change
+    // before any product is touched: MySQL would keep 1 of 1.200.
+    require_once(PG_FUNCTIONS_DIR . '/includes/explorer/handle_products_bulk.php');
+
+    $quantity_process = (string) ($_POST['edit_inventory_quantity_process'] ?? '');
+    $quantity_value = null;
+
+    if (!in_array($quantity_process, array('value', 'increase', 'decrease'), true)) {
+        $quantity_process = '';
+    }
+
+    if (($quantity_process !== '') && (trim((string) ($_POST['edit_inventory_quantity'] ?? '')) !== '')) {
+        $quantity_value = pg_products_mass_quantity_value($_POST['edit_inventory_quantity']);
+
+        if ($quantity_value === null) {
+            $liveform->add_error(lang('Enter an inventory quantity.'));
+            go(PATH . SOFTWARE_DIRECTORY . '/view_products.php');
+        }
+    }
+
     // If at least one product was selected then continue.
     if ($_POST['products']) {
         $number_of_products = 0;
@@ -105,7 +127,7 @@ if (!$_POST) {
                     || ($_POST['edit_allowed_zones'])
                     || ($_POST['edit_disallowed_zones'])
                     || ($_POST['edit_inventory'] != '')
-                    || ($_POST['edit_inventory_quantity'] != '')
+                    || ($quantity_value !== null)
 					|| (($_POST['edit_change_price_method'] != '') && !$price_value_refused)
                     || (($_POST['edit_tax_rate_method'] ?? '') != '')
                 ) {
@@ -202,40 +224,18 @@ if (!$_POST) {
                     
                         $sql_inventory_quantity = '';
                         $new_inventory_quantity = '';
-                        // if inventroy quantity and is process is not empty
-                        if($_POST['edit_inventory_quantity_process'] != '' && $_POST['edit_inventory_quantity'] != ''){
-                            $query = "SELECT 
-                            products.id as id, 
-                            inventory,
-                            inventory_quantity
-                            FROM products  WHERE id = ?";
-                            $result = db_q($query, array((string) $product_id)) or output_error('Query failed.');
-                            $row = mysqli_fetch_assoc($result);
-                            $inventory_quantity = $row['inventory_quantity'];
-                            // its value, item inventory_quantity update with new value
-                            if($_POST['edit_inventory_quantity_process'] == 'value'){
-                                $sql_inventory_quantity = "inventory_quantity = '" . e($_POST['edit_inventory_quantity'] ?? '') . "',";
-                                $new_inventory_quantity = $_POST['edit_inventory_quantity'];
-                            // else its not value we check old value and process
-                            }else if($_POST['edit_inventory_quantity_process'] == 'increase'){
-                                $sql_inventory_quantity = "inventory_quantity = '" . e($inventory_quantity + $_POST['edit_inventory_quantity']) . "',";
-                                $new_inventory_quantity = $inventory_quantity + $_POST['edit_inventory_quantity'];
-                            }else if($_POST['edit_inventory_quantity_process'] == 'decrease'){
-                                // if new value is bigger than old we output 0
-                                if(  $inventory_quantity <= $_POST['edit_inventory_quantity'] ){
-                                    $sql_inventory_quantity = "inventory_quantity = '0',";
-                                    $new_inventory_quantity = '0';
-                                }else{
-                                    $sql_inventory_quantity = "inventory_quantity = '" . e($inventory_quantity - $_POST['edit_inventory_quantity']) . "',";
-                                    $new_inventory_quantity = $inventory_quantity - $_POST['edit_inventory_quantity'];
-                                }
-                            }
+                        // The new count, worked out from the stored one by the
+                        // Catalog Manager's rule: never below zero.
+                        if ($quantity_value !== null) {
+                            $inventory_quantity = (int) db_value("SELECT inventory_quantity FROM products WHERE id = '" . e((int) $product_id) . "'");
+                            $new_inventory_quantity = (int) pg_explorer_bulk_product_new_quantity($inventory_quantity, $quantity_process, $quantity_value);
+                            $sql_inventory_quantity = "inventory_quantity = '" . $new_inventory_quantity . "',";
                         }
 
-                        // if user select inventroy option value, we set value to sql inventory.
+                        // Stock tracking on or off, when it was chosen.
                         $sql_inventory = '';
                         if($_POST['edit_inventory'] != ''){
-                            $sql_inventory = "inventory = '" . e($_POST['edit_inventory'] ?? '') . "',";
+                            $sql_inventory = "inventory = '" . (((string) $_POST['edit_inventory'] === '1') ? '1' : '0') . "',";
                         }                        
                         // The tax rate is set or cleared, never nudged: a rate is
                         // a statement about what the article is, not a quantity to
@@ -259,14 +259,14 @@ if (!$_POST) {
                             }
                         }
 
-                        // if inventroy tracking is (0/1) disabled or new quantity is bigger than 0 we remove out_of_stock status
+                        // Tracking switched off, or a new quantity above zero, takes the out-of-stock mark off.
                         $sql_out_of_stock = '';
                         // The first test is deliberately strict about emptiness: on PHP 7
                         // '' == 0 is true, so an untouched inventory field used to read as
                         // "tracking switched off" and cleared out_of_stock on every product
                         // in the selection.
                         if ((($_POST['edit_inventory'] ?? '') !== '' && (int)$_POST['edit_inventory'] === 0)
-                            || ($new_inventory_quantity != '' && $new_inventory_quantity > 0) ) {
+                            || ($new_inventory_quantity !== '' && $new_inventory_quantity > 0) ) {
                             $sql_out_of_stock = "out_of_stock = '0',";
                         }
 
@@ -379,7 +379,7 @@ if (!$_POST) {
                             $changes[] = ($_POST['edit_inventory'] == '1') ? lang('stock tracking on') : lang('stock tracking off');
                         }
 
-                        if ($_POST['edit_inventory_quantity_process'] != '' && $_POST['edit_inventory_quantity'] != '') {
+                        if ($quantity_value !== null) {
                             $changes[] = lang('stock quantity changed');
                         }
 

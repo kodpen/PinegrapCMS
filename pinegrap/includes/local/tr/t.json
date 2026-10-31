@@ -4392,6 +4392,7 @@
     "These rights cover the whole store, not one product group. They are the same switches the user screen carries.": "Bu yetkiler tek bir ürün grubunu değil, mağazanın tamamını kapsar. Kullanıcı ekranındaki anahtarların aynısıdır.",
     "These rows name no earlier row with a step to come after, so they follow the row before: {var:1}.": "Bu satırlar ardından gelecekleri, adımı olan önceki bir satır adlandırmıyor, bu yüzden bir önceki satırı izliyorlar: {var:1}.",
     "These rows were not imported because a price, compare-at price or extra shipping cost in them is not an amount: {var:1}.": "Şu satırlar, içlerindeki fiyat, karşılaştırma fiyatı ya da ek kargo ücreti bir tutar olmadığı için içe aktarılmadı: {var:1}.",
+    "These rows were not imported because a weight, dimension or commission rate limit in them is not a number: {var:1}.": "Şu satırlar, içlerindeki ağırlık, boyut ya da komisyon oranı sınırı bir sayı olmadığı için içe aktarılmadı: {var:1}.",
     "These rows were not imported because their HS code or country of origin is not valid: {var:1}.": "Bu satırlar, GTİP / HS kodu veya menşe ülkesi geçerli olmadığı için içe aktarılmadı: {var:1}.",
     "These scheduled actions could not become flows and still run as before. Edit tries the conversion again.": "Bu zamanlanmış eylemler akışa dönüştürülemedi ve eskisi gibi çalışmaya devam ediyor. Düzenle dönüştürmeyi yeniden dener.",
     "These settings apply only to": "Bu ayarlar yalnızca şu sayfaya uygulanır:",

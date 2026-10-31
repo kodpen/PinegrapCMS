@@ -158,7 +158,7 @@ function test_products_mass_change_quantity_is_read_before_the_write()
 	pg_assert_true(strpos($screen, 'pg_products_mass_quantity_value(') < strpos($screen, 'foreach ($_POST[\'products\'] as $product_id)'), 'before any product is touched');
 	pg_assert_true(strpos($screen, 'pg_explorer_bulk_product_new_quantity(') !== false, 'the new count is worked out by the shared helper');
 	pg_assert_same(0, preg_match('/[+\-]\s*\$_POST\[\'edit_inventory_quantity\'\]/', $screen), 'no arithmetic on the posted text');
-	pg_assert_same(false, strpos($screen, "e(\$_POST['edit_inventory_quantity']"), 'the posted text is not written');
+	pg_assert_same(false, strpos($screen, "'\" . e(\$_POST['edit_inventory_quantity']"), 'the posted text is not written');
 
 	$template = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/templates/edit_products.php');
 	$box = substr($template, (int) strpos($template, "'id' => 'inventory_quantity'"), 400);

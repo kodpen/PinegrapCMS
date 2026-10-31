@@ -287,8 +287,23 @@ if (!$_POST) {
         }
     }
 
+    // The weight, dimension and commission limit columns, by position, read
+    // with the product screen's readers (pg_products_import_row_measures()):
+    // written raw, a Turkish 1,5 was stored as 1. A row whose cell is not a
+    // figure is left out whole and named in the result.
+    $measure_positions = array();
+
+    foreach (array('weight', 'length', 'width', 'height', 'commission_rate_limit') as $measure_column) {
+        $measure_position = array_search($measure_column, $column_names, true);
+
+        if ($measure_position !== false) {
+            $measure_positions[$measure_column] = $measure_position;
+        }
+    }
+
     $rows_not_amounts = array();
     $rows_not_customs = array();
+    $rows_not_measures = array();
     // Rows of products already on file, left as they are because Update
     // Existing Products is off.
     $rows_left_alone = array();
@@ -323,6 +338,15 @@ if (!$_POST) {
             }
 
             $row = $customs_row;
+
+            $measures_row = pg_products_import_row_measures($row, $measure_positions);
+
+            if ($measures_row === false) {
+                $rows_not_measures[] = $row_number . ' (' . htmlspecialchars((string) $row[$name_key], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . ')';
+                continue;
+            }
+
+            $row = $measures_row;
 
             // get product information if it exists
             $query =
@@ -884,6 +908,11 @@ if (!$_POST) {
     if ($rows_not_customs) {
         $rows_listed = implode(', ', array_slice($rows_not_customs, 0, 50)) . ((count($rows_not_customs) > 50) ? ', ...' : '');
         $liveform_view_products->add_error(lang(array('string' => 'These rows were not imported because their HS code or country of origin is not valid: {var:1}.', 'vars' => array($rows_listed))));
+    }
+
+    if ($rows_not_measures) {
+        $rows_listed = implode(', ', array_slice($rows_not_measures, 0, 50)) . ((count($rows_not_measures) > 50) ? ', ...' : '');
+        $liveform_view_products->add_error(lang(array('string' => 'These rows were not imported because a weight, dimension or commission rate limit in them is not a number: {var:1}.', 'vars' => array($rows_listed))));
     }
 
     if (pg_csv_headings_text($unknown_headings) !== '') {

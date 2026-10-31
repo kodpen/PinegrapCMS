@@ -12499,6 +12499,45 @@ function pg_products_import_row_prices($row, $money_positions)
     return array('prices' => $prices, 'refused' => false);
 }
 
+// The weight, dimension and commission limit cells of an import row, keyed
+// by column => position, read with the product screen's readers
+// (pg_pb_decimal_from_input() and pg_pb_commission_rate_from_input(),
+// product_builder.php, which the importer loads): a Turkish 1,5 is 1.5, as
+// it is in the box, where MySQL kept 1 of the raw text. A spreadsheet's
+// exponent (1E-3) is read as the number it stores. An empty cell (or spaces)
+// is left as it is, so the column keeps its stored value. The row comes back
+// with the figures written the way the columns store them, or false when a
+// cell is not a figure (words, a unit, a minus sign, more than 15 digits):
+// the row is then left out and named, as a money cell's row is.
+function pg_products_import_row_measures($row, $positions)
+{
+    foreach ($positions as $column => $position) {
+        $cell = trim(pg_products_import_row_value($row, $position));
+
+        if ($cell === '') {
+            continue;
+        }
+
+        if (preg_match('/^\d+(\.\d+)?[eE][+-]?\d+$/', $cell)) {
+            $cell = rtrim(rtrim(number_format((float) $cell, 10, '.', ''), '0'), '.');
+        }
+
+        $digits = strlen((string) preg_replace('/[^0-9]/', '', $cell));
+
+        if (!preg_match('/^[0-9.,]+$/', $cell) || ($digits === 0) || ($digits > 15)) {
+            return false;
+        }
+
+        if ($column === 'commission_rate_limit') {
+            $row[$position] = pg_pb_commission_rate_from_input($cell);
+        } else {
+            $row[$position] = rtrim(rtrim(number_format(pg_pb_decimal_from_input($cell), 4, '.', ''), '0'), '.');
+        }
+    }
+
+    return $row;
+}
+
 // The column name an import file's heading stands for: trimmed, lower-cased
 // (UTF-8) and with each run of spaces or dashes read as one underscore, so
 // "Price", " PRICE " and "Short Description" match price and
