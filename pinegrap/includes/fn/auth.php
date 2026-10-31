@@ -709,13 +709,22 @@ function pg_member_register($form, $opts = array())
     connect_user_to_order();
 
     if (REGISTRATION_EMAIL_ADDRESS) {
+        // Staff read the software language and follow the link from their
+        // mailbox: build the notice outside the page's language and point
+        // its link at the site's own host, never the sign-up's Host header.
+        list($subject, $body) = pg_staff_lang(function () {
+            return array(
+                lang('Registration Confirmation'),
+                get_registration_confirmation_screen(HOSTNAME_SETTING));
+        });
+
         email(array(
             'to'                 => REGISTRATION_EMAIL_ADDRESS,
             'from_name'          => ORGANIZATION_NAME,
             'from_email_address' => EMAIL_ADDRESS,
-            'subject'            => lang('Registration Confirmation'),
+            'subject'            => $subject,
             'format'             => 'html',
-            'body'               => get_registration_confirmation_screen()));
+            'body'               => $body));
     }
 
     $form->remove();
@@ -990,13 +999,22 @@ function pg_member_activate($form, $opts = array())
     connect_user_to_order();
 
     if (MEMBERSHIP_EMAIL_ADDRESS) {
+        // Staff read the software language and follow the link from their
+        // mailbox: build the notice outside the page's language and point
+        // its link at the site's own host, never the sign-up's Host header.
+        list($subject, $body) = pg_staff_lang(function () {
+            return array(
+                lang('Registration Confirmation'),
+                get_membership_confirmation_screen(HOSTNAME_SETTING));
+        });
+
         email(array(
             'to'                 => MEMBERSHIP_EMAIL_ADDRESS,
             'from_name'          => ORGANIZATION_NAME,
             'from_email_address' => EMAIL_ADDRESS,
-            'subject'            => lang('Registration Confirmation'),
+            'subject'            => $subject,
             'format'             => 'html',
-            'body'               => get_membership_confirmation_screen()));
+            'body'               => $body));
     }
 
     $form->remove();
