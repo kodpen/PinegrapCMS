@@ -195,12 +195,15 @@ function pg_recycle_park_name($item_kind, $item_id, $user)
 }
 
 // Give a restored row its name back, or the next free "[1]" form of it.
+// Returns array('from' => the name it went in with, 'to' => the name it got),
+// or array() when the row was not parked and nothing was written; 'from' and
+// 'to' differ when its own name was taken while it sat in the bin.
 function pg_recycle_release_name($item_kind, $item_id, $user)
 {
     $item_id = (int) $item_id;
 
     if ($item_id <= 0) {
-        return;
+        return array();
     }
 
     if ($item_kind == 'folder') {
@@ -208,20 +211,20 @@ function pg_recycle_release_name($item_kind, $item_id, $user)
         $folder = db_item("SELECT folder_id, folder_name FROM folder WHERE folder_id = '" . e($item_id) . "'");
 
         if (!$folder) {
-            return;
+            return array();
         }
 
         $original = pg_recycle_parked_original($folder['folder_name'], $item_id);
 
         if ($original == '') {
-            return;
+            return array();
         }
 
         $name = get_unique_name(array('name' => $original, 'type' => 'folder'));
 
         db("UPDATE folder SET folder_name = '" . e($name) . "' WHERE folder_id = '" . e($item_id) . "'");
 
-        return;
+        return array('from' => $original, 'to' => $name);
     }
 
     if ($item_kind == 'page') {
@@ -229,20 +232,20 @@ function pg_recycle_release_name($item_kind, $item_id, $user)
         $page = db_item("SELECT page_id, page_name FROM page WHERE page_id = '" . e($item_id) . "'");
 
         if (!$page) {
-            return;
+            return array();
         }
 
         $original = pg_recycle_parked_original($page['page_name'], $item_id);
 
         if ($original == '') {
-            return;
+            return array();
         }
 
         $name = get_unique_name(array('name' => $original, 'type' => 'page'));
 
         db("UPDATE page SET page_name = '" . e($name) . "' WHERE page_id = '" . e($item_id) . "'");
 
-        return;
+        return array('from' => $original, 'to' => $name);
     }
 
     if ($item_kind == 'file') {
@@ -250,13 +253,13 @@ function pg_recycle_release_name($item_kind, $item_id, $user)
         $file = db_item("SELECT id, name FROM files WHERE id = '" . e($item_id) . "'");
 
         if (!$file) {
-            return;
+            return array();
         }
 
         $original = pg_recycle_parked_original($file['name'], $item_id);
 
         if ($original == '') {
-            return;
+            return array();
         }
 
         $name = prepare_file_name(get_unique_name(array('name' => $original, 'type' => 'file')));
@@ -265,13 +268,38 @@ function pg_recycle_release_name($item_kind, $item_id, $user)
         $new_path = FILE_DIRECTORY_PATH . '/' . $name;
 
         if ((file_exists($old_path) == true) && (@rename($old_path, $new_path) == false)) {
-            return;
+            return array();
         }
 
         $extension = mb_strtolower(pathinfo($name, PATHINFO_EXTENSION));
 
         db("UPDATE files SET name = '" . e($name) . "', type = '" . e($extension) . "' WHERE id = '" . e($item_id) . "'");
+
+        return array('from' => $original, 'to' => $name);
     }
+
+    return array();
+}
+
+// The name a folder, page or file is shown under: its own, unparked when it
+// is still parked; '' when the row is gone.
+function pg_recycle_display_name($item_kind, $item_id)
+{
+    $columns = array(
+        'folder' => array('folder', 'folder_name', 'folder_id'),
+        'page' => array('page', 'page_name', 'page_id'),
+        'file' => array('files', 'name', 'id'));
+
+    if (isset($columns[$item_kind]) == false) {
+        return '';
+    }
+
+    list($table, $name_column, $id_column) = $columns[$item_kind];
+
+    $name = (string) db_value("SELECT " . $name_column . " FROM " . $table . " WHERE " . $id_column . " = '" . e((int) $item_id) . "'");
+    $original = pg_recycle_parked_original($name, $item_id);
+
+    return ($original !== '') ? $original : $name;
 }
 
 // Purge bin entries older than the retention window. Claimed once a day by

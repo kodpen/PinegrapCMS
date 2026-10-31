@@ -286,11 +286,13 @@ function pg_recycle_style_record($style_id)
 // adds them to the restore it is running, so they come back through the same
 // path as any other page and are counted with the rest.
 //
-// Returns array('status' => 'success' | 'error', 'message', 'id').
+// Returns array('status' => 'success' | 'error', 'message', 'id', 'name',
+// 'original_name'): the name it came back under and the one it went in with,
+// which differ when that one was taken meanwhile.
 function pg_recycle_restore_style($style_id, $user)
 {
     $style_id = (int) $style_id;
-    $out = array('status' => 'error', 'message' => '', 'id' => 0);
+    $out = array('status' => 'error', 'message' => '', 'id' => 0, 'name' => '', 'original_name' => '');
 
     // A style is the designer's, in the bin as out of it.
     if ((int) $user['role'] > 1) {
@@ -391,6 +393,8 @@ function pg_recycle_restore_style($style_id, $user)
 
     $out['status'] = 'success';
     $out['id'] = $new_id;
+    $out['name'] = isset($row['style_name']) ? (string) $row['style_name'] : '';
+    $out['original_name'] = $name;
 
     return $out;
 }
