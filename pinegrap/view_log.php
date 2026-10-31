@@ -789,6 +789,12 @@ if (!$_POST) {
             // Delete all logs in a single query
             $query = "DELETE FROM log";
             mysqli_query(db::$con, $query) or output_error('Query failed.');
+
+            // The emptied log starts with who emptied it.
+            log_activity(lang(array(
+                'string' => '{var:1} site log(s) were deleted.',
+                'vars'   => array(pg_format_number($number_of_logs, 0))
+            )), $_SESSION['sessionusername']);
         
             $liveform->add_notice(
                 lang(array(
@@ -835,6 +841,7 @@ if (!$_POST) {
         }
     
         if ($deleted > 0) {
+            log_activity(lang(array('string' => '{var:1} error_log file(s) deleted.', 'vars' => array($deleted))), $_SESSION['sessionusername']);
             $liveform->add_notice(lang(array('string'=>'{var:1} error_log file(s) deleted.','vars'=>array($deleted))));
         } else {
             $liveform->mark_error('', lang('No error_log files were deleted.'));

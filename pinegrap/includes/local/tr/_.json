@@ -1081,6 +1081,7 @@
     "{var:1} order(s) were cancelled and skipped": "{var:1} sipariş iptal edilmiş olduğu için atlandı",
     "{var:1} order(s) were deleted": "{var:1} sipariş silindi",
     "{var:1} order(s) were exported for parasut.com": "{var:1} sipariş parasut.com için dışa aktarıldı",
+    "{var:1} order(s) were exported.": "{var:1} sipariş dışa aktarıldı.",
     "{var:1} order(s) were marked shipped": "{var:1} sipariş kargoya verildi olarak işaretlendi",
     "{var:1} order(s) were never completed and skipped": "{var:1} sipariş hiç tamamlanmadığı için atlandı",
     "{var:1} order(s), by the order date": "{var:1} sipariş, sipariş tarihine göre",
