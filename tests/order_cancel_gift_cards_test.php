@@ -148,3 +148,26 @@ function test_order_cancel_gift_card_expiration_before_operator_lines()
 	pg_assert_same(null, pg_gift_card_expiration_before_cancel("Order #1042 was cancelled. Its expiration date was 2027-01-31.", '1042'), 'a line that only looks like the note');
 	pg_assert_same('2027-01-31', pg_gift_card_expiration_before_cancel("  " . $cancelled . "  ", '1042'), 'spaces around the line');
 }
+// The site log lines of the commissions a cancellation voided and a restore
+// gave back: none when nothing changed, the order number and both counts.
+function test_order_commission_cancel_and_restore_lines()
+{
+	pg_assert_same('', pg_order_commission_cancel_line('1186', 0, 0), 'nothing voided');
+	pg_assert_same('', pg_order_commission_restore_line('1186', 0, 0), 'nothing restored');
+
+	$line = pg_order_commission_cancel_line('1186', 2, 1);
+	pg_assert_contains('#1186', $line);
+	pg_assert_contains('2 affiliate commission(s) set to Ineligible', $line);
+	pg_assert_contains('1 recurring commission profile(s) stopped', $line);
+
+	$line = pg_order_commission_restore_line('1186', 0, 3);
+	pg_assert_contains('0 affiliate commission(s) got their status back', $line);
+	pg_assert_contains('3 recurring commission profile(s) enabled again', $line);
+}
+
+// An order id that is no order touches no commission.
+function test_order_cancel_commissions_bad_id()
+{
+	pg_assert_same(array('voided' => 0, 'stopped' => 0), pg_order_cancel_commissions(0));
+	pg_assert_same(array('restored' => 0, 'started' => 0), pg_order_restore_commissions(-4));
+}
