@@ -136,11 +136,11 @@ if (!$_POST) {
         require_once(PG_FUNCTIONS_DIR . '/includes/fn/submitted_form_list.php');
 
         foreach (pg_submitted_form_list_custom_forms() as $custom_form) {
-            $label = h($custom_form['name']);
-            if (isset($custom_form_options[$label])) {
-                $label .= ' (#' . (int) $custom_form['id'] . ')';
+            $name = $custom_form['name'];
+            if (isset($custom_form_options[h($name)])) {
+                $name .= ' (#' . (int) $custom_form['id'] . ')';
             }
-            $custom_form_options[$label] = $custom_form['id'];
+            $custom_form_options[h($name)] = $custom_form['id'];
         }
 
         print
