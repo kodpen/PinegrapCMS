@@ -26,3 +26,6 @@ description: ERP account CSV import wizard (steps, matching, batches, defaults) 
 - Currency mapping is only TRY→TRL.
 
 Related: docs/memory/erp/erp-account-save-partial-writes.md
+
+## Which words do the generic invoice and receipt CSVs write?
+- The panel's: the invoices file's status through `erp_invoice_status_label()`, the receipts file's method through `erp_export_payment_method_label()` (Cash, Bank transfer, Card, Cheque, Other); an unknown code is written as it is. The Paraşüt profiles keep their own value sets (#4320, bug #4290). Test: `tests/erp_export_csv_words_test.php`.

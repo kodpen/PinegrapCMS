@@ -27,7 +27,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/erp/export.php');
 
 function erp_export_csv_words_receipt_row($method)
 {
-	$profile = erp_export_profile('csv_receipts');
+	$profile = array('format' => 'csv', 'decimal' => '.', 'date' => 'Y-m-d', 'currency_map' => array());
 	$rows = erp_export_rows_csv_receipts(array(array(
 		'doc_date' => '2026-10-31',
 		'doc_type' => 'collection',
