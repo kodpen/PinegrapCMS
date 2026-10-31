@@ -197,3 +197,21 @@ function test_csv_export_orders_guard_shopper_typed_text()
 	pg_assert_true(strpos($source, "'\"#' . \$card_number . '\",'") !== false, 'the card number cell is unchanged');
 	pg_assert_true(strpos($source, "'\"' . \$order['order_number'] . '\",'") !== false, 'the order number cell is unchanged');
 }
+
+function test_csv_export_gift_cards_guard_shopper_typed_text()
+{
+	$source = file_get_contents(dirname(__DIR__) . '/pinegrap/view_gift_cards.php');
+
+	// The sender name, recipient e-mail and message come from the shopper's
+	// recipient form; notes and user names are typed in the panel.
+	foreach (array('notes', 'from_name', 'recipient_email_address', 'message', 'created_username', 'last_modified_username') as $field) {
+		$cell = "\$gift_card['" . $field . "']";
+		pg_assert_true(strpos($source, "'\"' . csv_cell(" . $cell . ") . '\"") !== false, $cell . ' goes through csv_cell()');
+		pg_assert_true(strpos($source, 'escape_csv(' . $cell . ')') === false, $cell . ' is not only quote-escaped');
+	}
+
+	// The code, money and dates stay as they are.
+	pg_assert_true(strpos($source, "'\"' . output_gift_card_code(\$gift_card['code']) . '\",'") !== false, 'the code cell is unchanged');
+	pg_assert_true(strpos($source, "'\"' . sprintf('%01.2lf', \$gift_card['balance'] / 100) . '\",'") !== false, 'the balance cell is unchanged');
+	pg_assert_true(strpos($source, "'\"' . pg_csv_export_time(\$gift_card['created_timestamp']) . '\",'") !== false, 'the created date cell is unchanged');
+}

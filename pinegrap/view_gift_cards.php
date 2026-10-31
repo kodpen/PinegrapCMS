@@ -174,16 +174,16 @@ if (($_GET['submit_data'] ?? '') == 'Export Gift Cards') {
             '"' . sprintf('%01.2lf', $gift_card['balance'] / 100) . '",' .
             '"' . sprintf('%01.2lf', $gift_card['amount'] / 100) . '",' .
             '"' . $expiration_date . '",' .
-            '"' . escape_csv($gift_card['notes']) . '",' .
+            '"' . csv_cell($gift_card['notes']) . '",' .
             '"' . $gift_card['order_number'] . '",' .
-            '"' . escape_csv($gift_card['from_name']) . '",' .
-            '"' . escape_csv($gift_card['recipient_email_address']) . '",' .
-            '"' . escape_csv($gift_card['message']) . '",' .
+            '"' . csv_cell($gift_card['from_name']) . '",' .
+            '"' . csv_cell($gift_card['recipient_email_address']) . '",' .
+            '"' . csv_cell($gift_card['message']) . '",' .
             '"' . $delivery_date . '",' .
             '"' . pg_csv_export_time($gift_card['created_timestamp']) . '",' .
-            '"' . escape_csv($gift_card['created_username']) . '",' .
+            '"' . csv_cell($gift_card['created_username']) . '",' .
             '"' . pg_csv_export_time($gift_card['last_modified_timestamp']) . '",' .
-            '"' . escape_csv($gift_card['last_modified_username']) . '"' . "\n";
+            '"' . csv_cell($gift_card['last_modified_username']) . '"' . "\n";
     }
 
     exit;
