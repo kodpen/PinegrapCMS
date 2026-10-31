@@ -56,7 +56,8 @@ Work from `development`, PRs to `development`, never to `main`.
 ## Claim work before starting it
 
 Work is claimed on GitHub with a draft PR, never an issue; the only issues
-between sessions are decision questions (Working mode 10). Use REST (`gh api repos/kodpen/pinegrapcms/…`):
+between sessions are decision questions (Working mode 10) and the test
+coordinator's `bug` reports (Working mode 9). Use REST (`gh api repos/kodpen/pinegrapcms/…`):
 `gh issue`, `gh pr` (GraphQL) and the search API are blocked in cloud
 sessions.
 
@@ -132,7 +133,9 @@ decision questions.
 9. **Coordinators.** One coordinator per account starts its cloud workers within
    the account's quota, 3 to 6 workers each (`coordinator-limits.md`); it writes
    no code and merges nothing. It tells the owner when the merging session
-   seems stopped (`coordinator.md`).
+   seems stopped (`coordinator.md`). The test coordinator on the owner's
+   local account starts no workers: it tests and opens `bug` issues, which
+   the other coordinators give to workers as free work (`test-coordinator.md`).
 10. **Decisions go to the architect.** A question only the owner can
    decide (product behaviour, a schema change, an entry of the decisions
    list), an architecture question, a large migration or a logic clash
