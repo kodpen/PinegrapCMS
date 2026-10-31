@@ -67,15 +67,18 @@ function ws_home($viewer)
         }
     }
 
-    // Due today or before, the earliest first, as the my-day route reads
-    // them (api_day.php).
-    $due = array();
+    // Due today or before, as the my-day route reads them (api_day.php):
+    // the ones due today always among the six shown, the card tells how
+    // many more there are.
+    $due = ws_home_due_pick(ws_tasks_list($viewer, array('scope' => 'mine', 'status' => 'open', 'to' => $today, 'limit' => 200)), $today, 6);
 
-    foreach (ws_tasks_list($viewer, array('scope' => 'mine', 'status' => 'open', 'to' => $today, 'limit' => 20)) as $brief) {
-        if (($brief['due_date'] !== null) && (count($due) < 6)) {
-            $due[] = $brief;
-        }
-    }
+    // The pressing ones as the urgent list of My Tasks counts them (urgent
+    // and high, due within a week or overdue), not only the five shown.
+    $hot_count = (int) db_value("SELECT COUNT(DISTINCT t.id) FROM ws_tasks t
+        INNER JOIN ws_task_assignees a ON a.task_id = t.id AND a.user_id = '" . $me . "'
+        WHERE t.status IN ('todo', 'doing', 'waiting') AND t.priority IN ('urgent', 'high')
+        AND t.due_date IS NOT NULL AND t.due_date > '0000-00-00'
+        AND t.due_date <= '" . e(date('Y-m-d', strtotime('+7 days'))) . "'");
 
     // The unread messages and mentions of the joined channels, as the
     // sidebar counts them.
@@ -111,7 +114,7 @@ function ws_home($viewer)
         'calendar'      => ws_home_calendar($viewer, $today),
         'digest'        => ws_home_digest($viewer, $channels, 5),
         'tasks'         => $tasks,
-        'tasks_hot'     => count($hot),
+        'tasks_hot'     => max($hot_count, count($hot)),
         'tasks_open'    => (int) ($counts['open_count'] ?? 0),
         'tasks_overdue' => (int) ($counts['overdue_count'] ?? 0),
         'talk'          => ws_home_talk($viewer, 5),
@@ -123,6 +126,62 @@ function ws_home($viewer)
         'claude'        => function_exists('ws_claude_ready') && ws_claude_ready(),
         'ai'            => function_exists('ws_ai_ready') && ws_ai_ready(),
     );
+}
+
+/**
+ * The tasks the Today card lists out of the ones due today or before: the
+ * ones due today first, so overdue ones never push today's work out, then
+ * the earliest overdue; shown by their due date. Undated rows are left out.
+ *
+ * @param array  $rows  task briefs with due_date (Y-m-d or null)
+ * @param string $today Y-m-d
+ * @param int    $max   how many fit
+ * @return array
+ */
+function ws_home_due_pick($rows, $today, $max)
+{
+    $today_rows = array();
+    $overdue = array();
+
+    foreach ((array) $rows as $row) {
+        $due = (string) ($row['due_date'] ?? '');
+
+        if (($due === '') || ($due === '0000-00-00') || ($due > $today)) {
+            continue;
+        }
+
+        if ($due === $today) {
+            $today_rows[] = $row;
+        } else {
+            $overdue[] = $row;
+        }
+    }
+
+    $by_due = function ($a, $b) {
+        return strcmp((string) $a['due_date'], (string) $b['due_date']);
+    };
+
+    // usort() is not stable before PHP 8: keep the given order on ties.
+    $stable = function ($list) use ($by_due) {
+        $keyed = array();
+
+        foreach (array_values($list) as $index => $row) {
+            $keyed[] = array($row, $index);
+        }
+
+        usort($keyed, function ($a, $b) use ($by_due) {
+            $order = $by_due($a[0], $b[0]);
+
+            return ($order !== 0) ? $order : ($a[1] - $b[1]);
+        });
+
+        return array_map(function ($pair) { return $pair[0]; }, $keyed);
+    };
+
+    $picked = array_slice($today_rows, 0, max(0, (int) $max));
+    $picked = array_merge(array_slice($stable($overdue), 0, max(0, (int) $max - count($picked))), $picked);
+
+    return $stable($picked);
 }
 
 /**
@@ -557,6 +616,7 @@ function ws_home_js_strings()
         'home_tasks'          => lang('Coming up'),
         'home_tasks_count'    => ws_js_template('{var:1} open task(s)', 1),
         'home_tasks_overdue'  => ws_js_template('{var:1} overdue', 1),
+        'home_tasks_more'     => ws_js_template('{var:1} more task(s) · My Tasks', 1),
         'home_tasks_empty'    => lang('No open task is yours. Tasks handed to you show here, the nearest due date first.'),
         'home_reply'          => lang('replied'),
         'home_mention'        => lang('mentioned you'),

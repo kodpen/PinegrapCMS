@@ -7771,13 +7771,16 @@
 
                 var open = button('ws-home-task-open');
                 var text = el('span', 'ws-home-row-text');
-                var titleLine = el('span', 'ws-home-row-title', task.title);
+                // The badge sits beside the shortened title, never inside
+                // it, so a long title cannot cut it off.
+                var head = el('span', 'ws-home-task-head');
+                head.appendChild(el('span', 'ws-home-row-title', task.title));
 
                 if (hot) {
-                    titleLine.appendChild(el('span', 'ws-home-priority ws-home-priority-' + task.priority, (BOOT.priorities || {})[task.priority] || task.priority));
+                    head.appendChild(el('span', 'ws-home-priority ws-home-priority-' + task.priority, (BOOT.priorities || {})[task.priority] || task.priority));
                 }
 
-                text.appendChild(titleLine);
+                text.appendChild(head);
                 text.appendChild(el('small', task.overdue ? 'fg-danger' : 'fg-secondary', task.number + ' · ' + task.due_label));
                 open.appendChild(text);
                 open.addEventListener('click', function () {
@@ -7786,6 +7789,13 @@
                 row.appendChild(open);
                 card.body.appendChild(row);
             });
+
+            // The due ones the card has no room for, a link to all of them.
+            if (data.due && data.due.length && ((data.tasks_due || 0) > data.due.length)) {
+                var more = el('a', 'ws-home-more', t('home_tasks_more', data.tasks_due - data.due.length));
+                more.href = CFG.urls.tasks;
+                card.body.appendChild(more);
+            }
 
             if (data.tasks_open) {
                 var counts = el('div', 'ws-home-counts');
@@ -18831,7 +18841,10 @@
 
                 data.conflicts.forEach(function (item) {
                     var row = el('div', 'ws-conflict');
-                    row.appendChild(el('span', 'ws-load ' + (item.type === 'leave' ? 'ws-load-away' : 'ws-load-over'), item.type === 'leave' ? t('away') : t('percent', item.load)));
+                    // Work on a day off is named as such: its load is the
+                    // grid's internal marker, not a percentage.
+                    var away = (item.type === 'leave') || item.day_off;
+                    row.appendChild(el('span', 'ws-load ' + (away ? 'ws-load-away' : 'ws-load-over'), item.type === 'leave' ? t('away') : (item.day_off ? t('not_workday') : t('percent', item.load))));
                     var text = el('div');
                     text.appendChild(el('div', 'fw-semibold', item.name + ' · ' + item.day));
                     text.appendChild(el('small', 'fg-secondary', item.tasks.map(function (task) { return task.title; }).join(', ')));

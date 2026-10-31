@@ -463,6 +463,33 @@ function ws_plan_grid($user_ids, $from, $to, $extra = null, $exclude_task_id = 0
 }
 
 /**
+ * How a day of the plan grid reads: away, holiday, off (work falls on a day
+ * with no working hours, whose load is the internal 999 marker, never shown
+ * as a percentage), over (above 100%), full (80% or more) or ok.
+ *
+ * @param array $cell a cell of ws_plan_grid()
+ * @return string
+ */
+function ws_plan_day_state($cell)
+{
+    if (!empty($cell['leave'])) {
+        return 'away';
+    }
+
+    if (!empty($cell['holiday'])) {
+        return 'holiday';
+    }
+
+    if (((int) ($cell['capacity'] ?? 0) <= 0) && ((int) ($cell['minutes'] ?? 0) > 0)) {
+        return 'off';
+    }
+
+    $load = (int) ($cell['load'] ?? 0);
+
+    return ($load > 100) ? 'over' : (($load >= 80) ? 'full' : 'ok');
+}
+
+/**
  * What handing a piece of work to these people would do to their days.
  *
  * @param array $viewer
@@ -523,15 +550,20 @@ function ws_assignment_check($viewer, $task, $user_ids)
         $name = $names[$user_id]['name'] ?? '';
         $over = array();
         $leave = array();
+        $off = array();
         $free = 0;
 
         foreach ($grid[$user_id]['days'] ?? array() as $date => $cell) {
-            if ($cell['leave'] || $cell['holiday']) {
+            $state = ws_plan_day_state($cell);
+
+            if (($state === 'away') || ($state === 'holiday')) {
                 $leave[] = ws_day_label($date);
                 continue;
             }
 
-            if ($cell['load'] > 100) {
+            if ($state === 'off') {
+                $off[] = ws_day_label($date);
+            } elseif ($state === 'over') {
                 $over[] = ws_day_label($date) . ' ' . lang(array('string' => '{var:1}%', 'vars' => $cell['load']));
             }
 
@@ -545,6 +577,15 @@ function ws_assignment_check($viewer, $task, $user_ids)
                 'type'    => 'leave',
                 'level'   => 'hard',
                 'message' => lang(array('string' => '{var:1} is away on {var:2}.', 'vars' => array($name, implode(', ', $leave)))),
+            );
+        }
+
+        if (!empty($off)) {
+            $out['items'][] = array(
+                'user_id' => $user_id,
+                'type'    => 'day_off',
+                'level'   => 'warning',
+                'message' => lang(array('string' => 'Not a working day for {var:1}: {var:2}.', 'vars' => array($name, implode(', ', $off)))),
             );
         }
 
@@ -649,6 +690,7 @@ function ws_conflicts($viewer, $from, $to)
                     'day'     => ws_day_label($date),
                     'type'    => 'capacity',
                     'load'    => $cell['load'],
+                    'day_off' => (ws_plan_day_state($cell) === 'off'),
                     'tasks'   => $cell['tasks'],
                 );
             }
