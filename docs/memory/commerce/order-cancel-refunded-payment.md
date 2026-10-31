@@ -11,11 +11,11 @@ description: What a cancellation does to the payment (pg_order_cancel_payment_pl
 - `paid_at` null (schema without the column) counts as arrived: the same rule as `pg_order_cancel_refund_owed()`, so the flag and the owed figure agree.
 - `process_order_cancellation()` reads `refunded_amount` and `paid_at` (guarded by `pg_schema_has()`) and acts on it; the cancel window of view_order.php asks it with the auto refund on, since that window forces the void, and words its note by `action` (no refund sentence for `none`).
 
-## How is a bank transfer refund worded? (PR #NNNN, #4298)
+## How is a bank transfer refund worded? (PR #4312, #4298)
 - A received bank transfer (`paid_at > 0`) cancelled is `manual`: before, `Offline Payment` was always `none`, so a paid transfer raised no flag, banner, list card or dashboard lane, while the window of an unpaid one still said "refund it in your payment provider's panel".
 - `pg_order_refund_instruction($method)` gives the banner and the post-cancel notices (view_order.php, cancel_order.php) "send the amount back by bank transfer" for `Offline Payment`, the provider sentence otherwise; the window and the `REFUND ACTION REQUIRED` log line have the same two wordings.
 
-## How do the auto refund log lines name the order? (PR #NNNN, #4299)
+## How do the auto refund log lines name the order? (PR #4312, #4299)
 - `pg_payment_cancel_outcome($order_number, …)` (payments.php) takes `pg_order_log_number()`, not the row id: its SUCCESS / FAILED / EXCEPTION lines name the order number like the cancellation's other lines.
 
 ## Why is a partly refunded payment not voided?
