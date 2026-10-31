@@ -38,8 +38,8 @@ function pg_product_list_filters()
             'description' => lang('Merchandise, downloads, donations, recurring fees, memberships, and simple payments.'),
             'where' => ''),
         'all_product_actions' => array(
-            'label' => lang('All Product Actions'),
-            'description' => lang('Actions triggered by each product when it is ordered.'),
+            'label' => lang('Actions After an Order'),
+            'description' => lang('What each product does once it is ordered: e-mails, memberships, access and forms.'),
             'where' => ''),
         'shippable_products' => array(
             'label' => lang('Shippable Products'),
@@ -63,7 +63,7 @@ function pg_product_list_filters()
             'where' => "products.membership_renewal != '0'"),
         'out_of_stock_products' => array(
             'label' => lang('All Out of Stock Products'),
-            'description' => lang('All out of stock products, Products purchased by customers and out of stock.'),
+            'description' => lang('Products that are out of stock, including those sold out by customer orders.'),
             'where' => "products.out_of_stock = '1'"),
     );
 
@@ -84,6 +84,31 @@ function pg_product_list_filters()
     }
 
     return $filters;
+}
+
+/**
+ * The price change methods of the Mass Change window (edit_products.php),
+ * label => value. Each label shows a sample written the way the panel writes
+ * an amount (pg_format_money()) and a percent ("{var:1}%"), so the sample
+ * follows the site's separators and currency symbol.
+ *
+ * @param string $symbol The base currency symbol as stored (HTML-safe; an
+ *                       entity such as &#8378; is printed as it is)
+ * @return array label => '' (prompt), '2' increase, '1' decrease,
+ *               '4' increase by percent, '3' decrease by percent
+ */
+function pg_product_mass_price_method_options($symbol)
+{
+    $amount = pg_format_money(30, (string) $symbol);
+    $percent = lang(array('string' => '{var:1}%', 'vars' => array(pg_format_number(30, 0))));
+
+    return array(
+        lang(array('string' => 'Select a {var:1}', 'vars' => array(lang('Price Change Method')))) => '',
+        lang(array('string' => 'Increase by an amount (e.g. {var:1})', 'vars' => array('+ ' . $amount))) => '2',
+        lang(array('string' => 'Decrease by an amount (e.g. {var:1})', 'vars' => array('- ' . $amount))) => '1',
+        lang(array('string' => 'Increase by a percentage (e.g. {var:1})', 'vars' => array('+ ' . $percent))) => '4',
+        lang(array('string' => 'Decrease by a percentage (e.g. {var:1})', 'vars' => array('- ' . $percent))) => '3',
+    );
 }
 
 /**

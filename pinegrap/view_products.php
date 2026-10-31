@@ -109,7 +109,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Products') {
     $all_products = null;
 
     foreach (pg_product_list_filters() as $option => $option_view) {
-        // All Product Actions lists every product, as All Products does.
+        // The Actions After an Order view lists every product, as All Products does.
         if (($option_view['where'] === '') && ($all_products !== null)) {
             $count = $all_products;
         } else {
@@ -165,8 +165,8 @@ if (($_GET['submit_data'] ?? '') == 'Export Products') {
                             ' . pg_list_sort_menu('view_products.php', $view['sort_columns'], $view['sort_levels'], $view['sort_default']) . '
                             <form id="search_form" action="view_products.php" method="get" class="search_form">
                                 <div class="input-group input-group-sm">
-                                    <label class="input-group-text material-icons" title="' . lang('Content that viewed') . '" for="filter_select">visibility</label>
-                                    <select id="filter_select" aria-label="' . h(lang('Content that viewed')) . '" name="filter" class="form-control" title="' . lang('Content that viewed') . '" onchange="submit_form(\'search_form\')">' . $output_filter_options . '</select>
+                                    <label class="input-group-text material-icons" title="' . lang('Products shown') . '" for="filter_select">visibility</label>
+                                    <select id="filter_select" aria-label="' . h(lang('Products shown')) . '" name="filter" class="form-control" title="' . lang('Products shown') . '" onchange="submit_form(\'search_form\')">' . $output_filter_options . '</select>
                                 </div>
                             </form>
                 </nav>

@@ -36,13 +36,8 @@ if (!$_POST) {
             FROM zones
             ORDER BY name");
     }
-	$price_change_method_options = array(
-        lang(array('string'=>'Select a {var:1}','vars'=>array(lang('Price Change Method')) )) => '',
-        lang(array('string'=>'increase (eg. + 30.00 {var:1})','vars'=>array(BASE_CURRENCY_SYMBOL) )) => '2',
-        lang(array('string'=>'decrease (eg. - 30.00 {var:1})','vars'=>array(BASE_CURRENCY_SYMBOL) )) => '1',
-        lang('increase percentage (eg. + 30%)') => '4',
-        lang('decrease percentage (eg. - 30%)') => '3',
-    );
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/product_list.php');
+    $price_change_method_options = pg_product_mass_price_method_options(BASE_CURRENCY_SYMBOL);
     $inventory_options = array(
         lang(array('string'=>'Select a {var:1}','vars'=>array(lang('Option for Track Inventory')) ))=>'',
         lang('Enable Track Inventory')=>'1',
@@ -51,8 +46,8 @@ if (!$_POST) {
     $inventory_quantity_process_options = array(
         lang(array('string'=>'Select a {var:1}','vars'=>array(lang('Process')) ))=>'',
         lang('Enter an Inventory Quantity instead of the Current Inventory Quantity.')=>'value',
-        lang('Increase Current Inventory Quantity(+)')=>'increase',
-        lang('Decrease Current Inventory Quantity(-)')=>'decrease',
+        lang('Increase Current Inventory Quantity (+)')=>'increase',
+        lang('Decrease Current Inventory Quantity (-)')=>'decrease',
     );
     $tax_rate_method_options = array(
         lang(array('string'=>'Select a {var:1}','vars'=>array(lang('Process')) ))=>'',
@@ -143,7 +138,7 @@ if (!$_POST) {
                         $disallowed_zones = array();
                     }
 
-					$number_of_undecerease_products =0;
+					$number_of_unchanged_price_products =0;
 					
                     // Loop through selected products in order to edit them.
                     foreach ($_POST['products'] as $product_id) {
@@ -216,8 +211,8 @@ if (!$_POST) {
 							$change = pg_bulk_price_change($row['price'], $edit_change_price_method, $price_value);
 							$price = $change['price'];
 							if($change['refused']){
-								$number_of_undecerease_products++;
-								$liveform->mark_error('Update Error', lang(array( 'string'=>'{var:1} product(s) price cant be decerease. Product price equal or smaller than 0!','vars'=>array($number_of_undecerease_products) )) );
+								$number_of_unchanged_price_products++;
+								$liveform->mark_error('Update Error', lang(array( 'string'=>'{var:1} product(s) were not changed because their price would fall to zero or below.','vars'=>array($number_of_unchanged_price_products) )) );
 							}
 							$sql_new_prices = "price = '" . e($price) . "',";
 						}

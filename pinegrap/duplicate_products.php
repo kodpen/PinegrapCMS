@@ -85,7 +85,7 @@ if (!$_POST) {
             $sql_join = "LEFT JOIN contact_groups ON contact_groups.id = products.contact_group_id ";
 
             // Change the heading and subheading.
-            $heading = lang(array('string'=>'All Product Actions') );
+            $heading = lang('Actions After an Order');
             $subheading = lang(array('string'=>'Actions triggered by each product when it is ordered.') );
 
             // select the filter option
@@ -232,7 +232,7 @@ if (!$_POST) {
                 $where .= "out_of_stock = '1'";
                 // Change the heading and subheading.
                 $heading = lang(array('string'=>'All Out of Stock Products') );
-                $subheading = lang(array('string'=>'All out of stock products, Products purchased by customers and out of stock.') );
+                $subheading = lang('Products that are out of stock, including those sold out by customer orders.');
 
                 // select the filter option
                 $out_of_stock_products_filter_selected = ' selected="selected"';
@@ -776,7 +776,7 @@ if (!$_POST) {
         $output_filter_options = '<option value="all_products"' . $all_products_filter_selected . '>' . lang(array('string'=>'All Products') ) . ' (' . pg_format_number($all_products, 0) . ')</option>';
 
         // set all product actions option
-        $output_filter_options .= '<option value="all_product_actions"' . $all_product_actions_filter_selected . '>' . lang(array('string'=>'All Product Actions') ) . ' (' . pg_format_number($all_products, 0) . ')</option>';
+        $output_filter_options .= '<option value="all_product_actions"' . $all_product_actions_filter_selected . '>' . lang('Actions After an Order') . ' (' . pg_format_number($all_products, 0) . ')</option>';
 
         // get the amount of shippable products
         $query = "SELECT count(id) FROM products WHERE shippable = '1'";
