@@ -240,31 +240,76 @@ function erp_quote_template_find($template_id, $user_id)
 }
 
 /**
- * The id of the template a save under this name would write over, or 0.
+ * The key two template names are compared by: spaces tidied, letter case
+ * ignored the Turkish way (İ, I, ı and i are one letter, the rule of
+ * pg_list_search_fold()). Other letters stay apart, so "şablon" and
+ * "sablon" are two names. The column's own collation is never asked: it
+ * also ignores accents and calls those two one name.
+ *
+ * @param string $name
+ * @return string
+ */
+function erp_quote_template_name_key($name)
+{
+    return pg_list_search_fold(trim((string) preg_replace('/\s+/u', ' ', (string) $name)));
+}
+
+/**
+ * The template among these rows a save under this name writes over: the
+ * oldest whose name has the same key (erp_quote_template_name_key()).
+ *
+ * @param array  $rows  [['id' => int, 'name' => string], ...]
+ * @param string $name
+ * @return array|null ['id' => int, 'name' => string] with the stored spelling
+ */
+function erp_quote_template_name_match(array $rows, $name)
+{
+    $key = erp_quote_template_name_key($name);
+    $found = null;
+
+    foreach ($rows as $row) {
+        if (!is_array($row) || ((int) ($row['id'] ?? 0) <= 0) || (erp_quote_template_name_key((string) ($row['name'] ?? '')) !== $key)) {
+            continue;
+        }
+        if (($found === null) || ((int) $row['id'] < $found['id'])) {
+            $found = array('id' => (int) $row['id'], 'name' => (string) $row['name']);
+        }
+    }
+
+    return $found;
+}
+
+/**
+ * The template a save under this name would write over, or null.
  *
  * @param string $scope
  * @param int    $owner_id  0 for a site template
  * @param string $name
- * @return int
+ * @return array|null ['id' => int, 'name' => string]
  */
-function erp_quote_template_existing_id($scope, $owner_id, $name)
+function erp_quote_template_existing($scope, $owner_id, $name)
 {
-    return (int) db_value("SELECT id FROM erp_quote_templates
-        WHERE scope = '" . escape($scope) . "' AND user_id = '" . (int) $owner_id . "' AND name = '" . escape($name) . "'
-        ORDER BY id LIMIT 1");
+    $rows = db_items("SELECT id, name FROM erp_quote_templates
+        WHERE scope = '" . escape($scope) . "' AND user_id = '" . (int) $owner_id . "'
+        ORDER BY id");
+
+    return erp_quote_template_name_match(is_array($rows) ? $rows : array(), $name);
 }
 
 /**
  * Everything a save asks before it writes, for the panel and the API alike.
  * A template of the same name in the same scope (and owner) is the row the
- * save writes over.
+ * save writes over (erp_quote_template_name_key()); the answer then carries
+ * that row's stored name, so the reply, the log and the event name the
+ * template actually written.
  *
  * @param string        $name
  * @param string        $scope
  * @param array         $lines     Stored lines
  * @param int           $user_id
  * @param bool          $readonly  The accountant's read-only ERP right
- * @param callable|null $existing  fn($scope, $owner_id, $name) => id; erp_quote_template_existing_id() when null
+ * @param callable|null $existing  fn($scope, $owner_id, $name) => ['id', 'name'] or null (an id alone is
+ *                                 taken too); erp_quote_template_existing() when null
  * @return array ['error' => string, 'field' => string, 'name', 'scope', 'owner_id', 'form_data', 'replaces' => int]
  */
 function erp_quote_template_save_check($name, $scope, $lines, $user_id, $readonly, $existing = null)
@@ -296,9 +341,17 @@ function erp_quote_template_save_check($name, $scope, $lines, $user_id, $readonl
     $result['owner_id'] = ($scope === 'personal') ? (int) $user_id : 0;
 
     if ($existing === null) {
-        $existing = 'erp_quote_template_existing_id';
+        $existing = 'erp_quote_template_existing';
     }
-    $result['replaces'] = (int) call_user_func($existing, (string) $scope, $result['owner_id'], $result['name']);
+    $match = call_user_func($existing, (string) $scope, $result['owner_id'], $result['name']);
+    if (is_array($match)) {
+        $result['replaces'] = (int) ($match['id'] ?? 0);
+        if (($result['replaces'] > 0) && ((string) ($match['name'] ?? '') !== '')) {
+            $result['name'] = (string) $match['name'];
+        }
+    } else {
+        $result['replaces'] = (int) $match;
+    }
 
     return $result;
 }
@@ -526,7 +579,7 @@ function erp_quote_templates_box($liveform, $user_id)
                         ' . $liveform->output_field(array(
                             'type' => 'select', 'id' => 'template_id', 'name' => 'template_id',
                             'class' => 'form-control w-auto flex-grow-1', 'options' => $options)) . '
-                        <button type="submit" name="template_action" value="apply" class="btn btn-outline theme-primary" formnovalidate><i class="bi bi-box-arrow-in-down me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Fill the lines') . '</span></button>
+                        <button type="submit" name="template_action" value="apply" class="btn btn-outline theme-primary" formnovalidate data-confirm-content="' . h(lang('Replace the lines typed below with the lines of this template?')) . '"><i class="bi bi-box-arrow-in-down me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Fill the lines') . '</span></button>
                         <button type="submit" name="template_action" value="delete" class="btn btn-text theme-danger" formnovalidate data-confirm-content="' . h(lang('Delete this template?')) . '"><i class="bi bi-trash me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Delete') . '</span></button>
                     </div>
                     <div class="form-text">' . lang('Replaces the lines below; the account, dates and currency stay as they are.') . '</div>';

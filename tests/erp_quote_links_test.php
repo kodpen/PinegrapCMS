@@ -103,6 +103,33 @@ function test_erp_quote_link_issue_revokes_earlier_links()
 	pg_assert_false(stripos($revoke, 'DELETE') !== false, 'rows are never deleted');
 }
 
+// A link sent by e-mail replaces the live one only after the e-mail has
+// gone: a refused address or a failed send used to revoke the customer's
+// link while the new one reached nobody.
+function test_erp_quote_link_mail_rotates_after_the_send()
+{
+	$issue = pg_test_function_source('erp_quote_link_issue');
+	pg_assert_contains('function erp_quote_link_issue($quote_id, $user_id, $replace = true)', $issue);
+	pg_assert_contains("if (\$replace) {\n        erp_quote_link_revoke(", $issue, 'the earlier links stay when asked');
+	pg_assert_contains("'id' => \$link_id", $issue, 'the new row is named');
+
+	$revoke = pg_test_function_source('erp_quote_link_revoke');
+	pg_assert_contains("AND id <> '", $revoke, 'the new link is kept');
+	$drop = pg_test_function_source('erp_quote_link_drop');
+	pg_assert_contains("WHERE id = '", $drop, 'one row');
+	pg_assert_contains("AND quote_id = '", $drop, 'of this quote');
+
+	$page = (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_erp_quote.php');
+	$start = strpos($page, "if (\$action === 'mail') {");
+	$branch = substr($page, $start, strpos($page, "go(\$self_url);", $start) - $start);
+	$send = strpos($branch, 'erp_quote_mail_send(');
+
+	pg_assert_contains('erp_quote_link_issue($quote_id, (int) $user[\'id\'], false)', $branch, 'issued without revoking');
+	pg_assert_false(strpos($branch, 'erp_quote_link_revoke(') < $send, 'nothing revoked before the send');
+	pg_assert_true(strpos($branch, 'erp_quote_link_drop($quote_id, $link_id)') > $send, 'a failed send drops the new link');
+	pg_assert_true(strpos($branch, 'erp_quote_link_revoke($quote_id, $link_id)') > strpos($branch, 'erp_quote_link_drop('), 'the old link goes after a sent e-mail');
+}
+
 // Acceptance goes through the refusal, the signature store and the panel's writer.
 function test_erp_quote_link_accept_path()
 {
