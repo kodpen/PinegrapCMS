@@ -68,6 +68,23 @@ function pg_catalog_live_filter($table, $recycled = false)
     return ' AND (' . $table . '.recycled = ' . ($recycled ? "'1'" : "'0'") . ')';
 }
 
+// How many groups the bin lists: the tops of the binned subtrees. A group
+// binned inside a binned parent comes back with that parent and is not a
+// tile of its own, so the badge does not count it either.
+function pg_catalog_bin_top_group_count($recycled_map)
+{
+    $count = 0;
+
+    foreach ((array) $recycled_map as $row) {
+
+        if (isset($recycled_map[(int) $row['parent_id']]) == false) {
+            $count++;
+        }
+    }
+
+    return $count;
+}
+
 // Every group, once, keyed by id. The table is small -- a few dozen rows on a
 // large store -- so the whole tree is walked in memory rather than through a
 // recursive CTE, which is also what the catalog widget settled on.
