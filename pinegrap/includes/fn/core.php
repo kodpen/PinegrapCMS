@@ -2232,6 +2232,8 @@ function get_absolute_time($properties)
     if ($timestamp == '') {
         $timestamp = 0;
     }
+    // The time of a long date and time, joined to the date at the end.
+    $long_time = null;
     // If the time format is twelve hour system, then use that format.
     if (TIME_FORMAT == 'twelve_hours') {
         $hour_system_format = 'g:i A';
@@ -2311,16 +2313,20 @@ function get_absolute_time($properties)
             if ($year) {
                 $year_format = ', Y';
             }
+            // The date and the time are joined below, after the names are
+            // translated, with the language's word for "at".
             // If we should output time for site's timezone, then do that.
             if ($timezone_type == 'site') {
-                $absolute_time = date('l, ' . $month_and_day_format . $year_format . ' \a\t ' . $hour_system_format . ' T', $timestamp);
+                $absolute_time = date('l, ' . $month_and_day_format . $year_format, $timestamp);
+                $long_time = date($hour_system_format . ' T', $timestamp);
                 // Otherwise we should output time for user's timezone, so do that.
             } else {
 
                 $date = new DateTime('@' . $timestamp);
                 $date->setTimezone(pg_timezone_object(USER_TIMEZONE));
 
-                $absolute_time = $date->format('l, ' . $month_and_day_format . $year_format . ' \a\t ' . $hour_system_format . ' T');
+                $absolute_time = $date->format('l, ' . $month_and_day_format . $year_format);
+                $long_time = $date->format($hour_system_format . ' T');
             }
         } else {
             // If the date format is month and then day, then use that format.
@@ -2454,6 +2460,14 @@ function get_absolute_time($properties)
     // never looks at what it has written, which is exactly the rule a name
     // table needs.
     $absolute_time = strtr($absolute_time, array_combine($search, $replace));
+
+    // The long date and time: the translated date, then the time, joined in
+    // the language's words ("Saturday, 31 October, 2026 at 16:12 +03"). The
+    // time is kept out of the name table, so a zone abbreviation is never
+    // read as a day name.
+    if ($long_time !== null) {
+        $absolute_time = lang(array('string' => '{var:1} at {var:2}', 'vars' => array($absolute_time, $long_time)));
+    }
 
     // If the format is plain text, then just return the absolute time without a time tag around it.
     if ($format == 'plain_text') {
