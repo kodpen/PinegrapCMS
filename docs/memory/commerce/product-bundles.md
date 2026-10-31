@@ -19,7 +19,7 @@ module: bundles
 - `pg_marketplace_product_changed()` calls `pg_bundle_refresh_for()` first: every stock and price writer ends there, `pg_product_stock_changed()` included; a static guard skips the bundle's own call.
 - `import_products.php` ends with `pg_bundle_refresh_all()`, which also overwrites a stock or price the file gave a bundle.
 - A bundle's stock is never written directly: inventory API 409 `bundle` (bulk: status `bundle`); barcode screens and ERP stock count refuse it; bulk edits (`edit_products.php`, `handle_products_bulk.php`) end with `pg_bundle_refresh()`; the quick stock cells (`pg_pb_quick_update()` code `bundle`, #2826; Catalog Manager `handle_catalog_edit.php`) refuse it.
-- A sum-priced bundle takes no typed price: API bulk prices (status `bundle`), the Products list quick price (code `bundle`) and the Catalog Manager's refuse it (`pg_bundle_price_is_summed()`). `pg_bundle_refresh_for()` never refreshes the edited bundle itself, so a typed value would stay until a component changed.
+- A sum-priced bundle takes no typed price: API bulk prices (status `bundle`), the Products list quick price (code `bundle`) and the Catalog Manager's refuse it (`pg_bundle_price_is_summed()`). `pg_bundle_refresh_for()` skips the edited bundle itself, so a typed value would stay until a component changed.
 
 ## How is a bundle sold? (#2691)
 - Counter sale (`local_sale_complete()`): a bundle line calls `pg_bundle_take_stock()`: one `order_item_components` row per component (unit_cost from `erp_product_costs.avg_cost`), each tracked component goes down; `$stock_left` is shared.
