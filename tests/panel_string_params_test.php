@@ -24,7 +24,6 @@ function panel_string_params_screens()
 {
 	return array(
 		'translations'           => array('_GET', array('language', 'page_id', 'group', 'filter', 'q')),
-		'page_designer'          => array('_GET', array('type', 'id', 'url')),
 		'settings_pane'          => array('_REQUEST', array('pane')),
 		'workspace_template'     => array('_GET', array('id', 'copy', 'channel')),
 		'view_regions'           => array('_GET', array('filter')),

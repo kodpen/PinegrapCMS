@@ -19,3 +19,7 @@ description: ERP period lock (config.erp_lock_date, 4.79): what it refuses, the 
 - The e-document "move to today" step refuses an invoice that sits inside the closed period.
 
 Related: docs/memory/erp/erp-invoice-cancel-and-open-amount.md
+
+## Which screens hide a step the lock would refuse?
+- The invoice screen (`edit_erp_invoice.php`) and the receipt screen (`erp_receipt.php`) show their Cancel button disabled for a document dated on or before the lock, with `erp_lock_refusal()`'s sentence printed under it (`aria-describedby`); the receipt's reason dialog is not drawn. Before (PR #3884), the receipt dialog opened and the POST came back refused.
+- The bank statement (`erp_bank_statement.php`) shows, for a new line dated inside the lock, a short lock sentence in place of the Record steps (the line's date cannot change, so "Date it after the lock" does not fit); Set aside stays. Such lines are not counted in "Record the N suggested lines", and that step skips them instead of counting them as "could not be". Pins: `tests/erp_receipt_lock_test.php`, `tests/erp_bank_statement_steps_test.php`.

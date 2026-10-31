@@ -194,6 +194,11 @@ function pg_panel_backend_search($request, $action)
         return pg_panel_search_score($name, $search, $secondary);
     };
 
+    // Each type's query keeps to the records its edit screen would open for
+    // this viewer (pg_panel_search_scope_sql()), so a result never ends on
+    // "Access denied" and the per-type cap counts only those.
+    $folder_ids = ($role == 3) ? get_folders_that_user_has_access_to($user['id']) : array();
+
     $add = function ($type, $id, $name, $sub, $score, $extra = array ()) use (&$results) {
         $results[] = array_merge(array(
             'type' => $type,
@@ -204,11 +209,11 @@ function pg_panel_backend_search($request, $action)
         ), $extra);
     };
 
-    // ── Pages (all authenticated users) ──────────────────────────────────
+    // ── Pages (folders the viewer may edit) ──────────────────────────────
     $rows = db_items(
         "SELECT page_id AS id, page_name AS name, page_type AS type
          FROM page
-         WHERE page_name LIKE '$s'
+         WHERE page_name LIKE '$s'" . pg_panel_search_scope_sql('folder', $role, 'page_folder', $folder_ids) . "
          " . $rank('page_name', 'page_id') . "
          LIMIT $per_limit"
     );
@@ -216,18 +221,24 @@ function pg_panel_backend_search($request, $action)
         $add('page', $r['id'], $r['name'], $r['type'], $score_fn($r['name']));
     }
 
-    // ── Files (all authenticated users) ──────────────────────────────────
+    // ── Files (folders the viewer may edit) ──────────────────────────────
+    // Design files only for designers and up, and never a document the ERP
+    // module keeps: edit_file.php refuses both.
+    $file_where = pg_panel_search_scope_sql('folder', $role, 'folder', $folder_ids);
+    if (!$can_design) {
+        $file_where .= ' AND design = 0';
+    }
+    if (waf_table_has_column('files', 'erp_doc_type')) {
+        $file_where .= " AND erp_doc_type = ''";
+    }
     $rows = db_items(
         "SELECT id, name, folder AS folder_id, design
          FROM files
-         WHERE name LIKE '$s'
+         WHERE name LIKE '$s'" . $file_where . "
          " . $rank('name', 'id') . "
          LIMIT $per_limit"
     );
     foreach ($rows as $r) {
-        // Design files restricted to designers+
-        if ($r['design'] && !$can_design)
-            continue;
         $add(
             'file',
             $r['id'],
@@ -238,8 +249,8 @@ function pg_panel_backend_search($request, $action)
         );
     }
 
-    // ── Menus (manager+) ─────────────────────────────────────────────────
-    if ($can_manage) {
+    // ── Menus (designer+, as edit_menu.php) ──────────────────────────────
+    if ($can_design) {
         $rows = db_items(
             "SELECT id, name
              FROM menus
@@ -286,7 +297,7 @@ function pg_panel_backend_search($request, $action)
             "SELECT page_id AS id, page_name AS name
              FROM page
              WHERE " . pg_form_page_sql('page') . "
-               AND page_name LIKE '$s'
+               AND page_name LIKE '$s'" . pg_panel_search_scope_sql('folder', $role, 'page_folder', $folder_ids) . "
              " . $rank('page_name', 'page_id') . "
              LIMIT $per_limit"
         );
@@ -295,7 +306,7 @@ function pg_panel_backend_search($request, $action)
         }
     }
 
-    // ── Users (manager+) ─────────────────────────────────────────────────
+    // ── Users (manager+; only accounts below the viewer's role) ──────────
     if ($can_manage) {
         $rows = db_items(
             "SELECT user_id AS id,
@@ -303,7 +314,7 @@ function pg_panel_backend_search($request, $action)
                     user_email AS sub
              FROM user
              WHERE (user_username LIKE '$s'
-                OR user_email LIKE '$s')
+                OR user_email LIKE '$s')" . pg_panel_search_scope_sql('user_role', $role, 'user_role') . "
              " . $rank('user_username', 'user_id') . "
              LIMIT $per_limit"
         );
@@ -414,6 +425,7 @@ function pg_panel_backend_search($request, $action)
 
     // ── Contacts / Rehber (manager+ or manage_contacts) ──────────────────
     if ($can_contacts) {
+        $contact_group_ids = ($role == 3) ? get_items_user_can_edit('contact_groups', $user['id']) : array();
         $rows = db_items(
             "SELECT c.id,
                     TRIM(CONCAT(c.first_name, ' ', c.last_name)) AS name,
@@ -424,7 +436,7 @@ function pg_panel_backend_search($request, $action)
              WHERE (c.first_name LIKE '$s'
                 OR c.last_name LIKE '$s'
                 OR c.email_address LIKE '$s'
-                OR c.company LIKE '$s')
+                OR c.company LIKE '$s')" . pg_panel_search_scope_sql('contact_group', $role, 'c.id', $contact_group_ids) . "
              " . $rank("TRIM(CONCAT(c.first_name, ' ', c.last_name))", 'c.id') . "
              LIMIT $per_limit"
         );

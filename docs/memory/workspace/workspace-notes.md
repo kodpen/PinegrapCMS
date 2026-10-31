@@ -19,4 +19,4 @@ description: Workspace notes (ws_notes): tables, limits, body format, versions, 
 - Every note carries a revision that an update can send back (PR #1663): workspace-notes-revision.md.
 - A message sharing a note carries `note_card` {id, name, excerpt} (#2082, PR #2239): one `ws_note_cards_map()` per page, `ws_api_message_note_card()` per row; null with no share, a share taken back (row gone) or a deleted message. Before, a client saw only "Shared a note: …". Test: `tests/workspace_api_note_card_test.php`.
 - A note is deleted over the API too, and remembered 30 days for sync clients (PR #1674), as is a person share taken back (PR #1983): workspace-notes-deletions.md.
-- Still missing: re-import de-duplication (plan N3c, `plans/notes-import-export-sync.md`).
+- Re-import: PR #1812 (workspace-notes-sources.md). Sync: workspace-notes-sync-decisions.md.

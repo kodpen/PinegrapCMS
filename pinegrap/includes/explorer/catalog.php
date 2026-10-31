@@ -125,6 +125,32 @@ function pg_catalog_child_groups($parent_id)
     return $children;
 }
 
+// Whether $target_id is $group_id itself or sits somewhere under it, walking
+// the target's parents through a group map (id => row with parent_id). A
+// parent_id ring ends the walk instead of hanging it.
+function pg_catalog_group_is_within($map, $target_id, $group_id)
+{
+    $current = (int) $target_id;
+    $group_id = (int) $group_id;
+    $seen = array();
+
+    while (($current > 0) && (isset($seen[$current]) == false)) {
+
+        if ($current == $group_id) {
+            return true;
+        }
+
+        if (isset($map[$current]) == false) {
+            return false;
+        }
+
+        $seen[$current] = true;
+        $current = (int) $map[$current]['parent_id'];
+    }
+
+    return false;
+}
+
 // The group itself plus everything under it. Guarded against a parent_id loop,
 // which a hand-edited database can produce and which would otherwise hang the
 // request rather than fail it.

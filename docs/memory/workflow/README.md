@@ -23,7 +23,7 @@ Project overview, owner rules, decisions already made, git and branches, sandbox
 - architect.md: Decision questions (2026-10-27): an architect issue; the architect analyses it, decides technical ones, asks the owner schema and product-behaviour ones as a selectable list (erdal), records it
 - branch-guards.md: tools/check_pr.php (#1878): CI and pre-push fail a commit trailer, an author or committer other than Erdal Güral, a changelog.txt or data/config.php change; warn above 1,000 product lines
 - ci-workflows.md: GitHub Actions workflows: what each runs and when, the PHP versions the checks run on (8.3, 7.1), action versions (major tags, node24) and how to bump them, the Node line, runner labels
-- coordinator-limits.md: Coordinator rules (2026-10-27): quota guard before a worker starts, worker cap per account shared by its coordinators, a card for a draft PR whose decision came after its session ended
+- coordinator-limits.md: Coordinator rules (2026-10-27): quota guard before a worker starts, 3 to 6 workers per coordinator, a card for a draft PR whose decision came after its session ended
 - coordinator-todo-list.md: Coordinator's to-do list (2026-10-27): one item per worker PR in the list shown in its own window, added when the draft is on GitHub, struck through once the PR is merged
 - coordinator.md: Coordinator session (pilot, 2026-10-26): one per account, keeps its cloud workers on free plan steps, looks at them every 10 minutes, writes no code, merges nothing; questions go to the architect
 - decisions-made-access.md: Decisions list, access part: public pi.php/si.php and test_secure_mode.php, guest order linking, backup, dashboard and role 3 gates, secrets shown on screen, the TLS escape flag, escape_url().
@@ -76,7 +76,7 @@ Project overview, owner rules, decisions already made, git and branches, sandbox
 - project-overview.md: What Pinegrap is, supported PHP range, stack, repo layout (pinegrap/ root), dev-only folders, files never in any branch
 - sandbox-and-environment.md: Cloud sandbox (PHP 8.3, no Composer), when and how to run tools/setup_sandbox.sh, the owner's dev machine dev.pinegrap.com and how a linked session updates its checkout
 - session-checks.md: Working rule (2026-10-25): how much a session checks before its PR: the tests of its area and what the change touches, a private static-analysis cache, a sandbox only with a reason, no review chains
-- session-lifecycle.md: A session from green CI to its next step: the ready label, staying subscribed with one check-in, no base merge after it, the merge as wake-up, the next step (three at most), a PR sent back
+- session-lifecycle.md: A session from green CI to its next step: the ready label, one check-in, no base merge after it, the merge as wake-up, the next step (three at most), a PR sent back, an idle draft
 - static-analysis-kept-apis.md: Removed PHP APIs kept on purpose (mcrypt, pfpro, libxml_disable_entity_loader): phpcs:ignore marker or baseline entry; the brace-less foreach false positive
 - static-analysis.md: CI's PHPStan level 0 and PHPCompatibility (PHP 7.1+) checks: what they catch, baselines and how they shrink, guarded newer APIs, pinned tools, running them in a session
 - unit-test-database-exit.md: A unit test statement that reaches db() ends the whole tools/test.php run with exit code 0 through output_error(); make it throw with pg_error_throws(true), or keep the tested part free of queries

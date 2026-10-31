@@ -708,7 +708,7 @@ $explorer_lang = array(
     'rename_clash' => lang('the same name twice'),
     'rename_nothing' => lang('Nothing would change.'),
     'rename_apply' => lang('Rename {var:1} item(s)'),
-    'rename_server_note' => lang('A name may still be adjusted when it is saved: what goes into an address is reduced to plain letters.'),
+    'rename_server_note' => lang('File names are shown as they will be saved: accented letters become plain letters, spaces and signs become underscores.'),
     'renaming' => lang('Renaming'),
     'rename_done' => lang('{var:1} item(s) renamed'),
     // Editing a figure in the list rather than opening the product.
@@ -10208,6 +10208,11 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
     var bulkRenameOffcanvas = null;
     var bulkRenameItems = [];
+    // Typed file name -> the name the server stores it under, from the
+    // preview of explorer_rename; names on their way are in the second map.
+    var bulkRenameStored = {};
+    var bulkRenameAsking = {};
+    var bulkRenameAskTimer = null;
 
     function bulkRenameTargets() {
         return selectedItems().filter(function (item) {
@@ -10268,6 +10273,47 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         return element ? element.checked : false;
     }
 
+    // A file outside the catalog is stored under the name prepare_file_name()
+    // makes of it: plain letters, '_' for spaces and signs, no trailing dot,
+    // at most 100 characters. Folders, pages, groups and products keep what
+    // was typed. Undefined while the server's answer is still on its way.
+    function bulkRenameStoredName(item, typed) {
+
+        if ((typed === '') || (item.kind !== 'file') || insideCatalog()) { return typed; }
+
+        return Object.prototype.hasOwnProperty.call(bulkRenameStored, typed) ? bulkRenameStored[typed] : undefined;
+    }
+
+    // Asks the server's own rule for the names not known yet; the answer
+    // redraws the preview. A failed answer does not redraw, so it is not
+    // asked again in a loop: the next change asks again.
+    function bulkRenameAskStored(names) {
+
+        var missing = names.filter(function (name) { return !bulkRenameAsking[name]; }).slice(0, 500);
+
+        if (missing.length === 0) { return; }
+
+        missing.forEach(function (name) { bulkRenameAsking[name] = true; });
+
+        api({ type: 'explorer_rename', preview: 1, names: missing }, function (response) {
+
+            var names = ((response.status === 'success') && Array.isArray(response.names)) ? response.names : null;
+
+            missing.forEach(function (name, index) {
+                delete bulkRenameAsking[name];
+                if (names && (typeof names[index] === 'string')) { bulkRenameStored[name] = names[index]; }
+            });
+
+            if (!names) { toast(response.message || L.request_failed, false); return; }
+
+            bulkRenameRefresh();
+
+        }, function () {
+            missing.forEach(function (name) { delete bulkRenameAsking[name]; });
+            toast(L.request_failed, false);
+        });
+    }
+
     function bulkRenamePlan() {
 
         var mode = bulkRenameField('rename_mode');
@@ -10304,20 +10350,26 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                     .split('{name}').join(parts.base);
             }
 
-            var name = (base + parts.ext).trim();
+            var typed = (base + parts.ext).trim();
+            var stored = bulkRenameStoredName(item, typed);
+            var pending = (stored === undefined);
+            var name = pending ? typed : stored;
 
             // Two rows asking for one name is the mistake this preview exists
             // to catch: the server would take the first and refuse the second,
-            // and the operator would be left working out which.
+            // and the operator would be left working out which. Compared as
+            // stored, so "Ürün 1.jpg" and "Urun_1.jpg" are one name.
             var key = name.toLocaleLowerCase('tr');
-            var clash = (name !== '') && (taken[key] === true);
+            var clash = (!pending) && (name !== '') && (taken[key] === true);
 
-            if (name !== '') { taken[key] = true; }
+            if ((!pending) && (name !== '')) { taken[key] = true; }
 
             plan.push({
                 item: item,
+                typed: typed,
                 name: name,
-                unchanged: ((name === '') || (name === item.name)),
+                pending: pending,
+                unchanged: ((name === '') || ((!pending) && (name === item.name))),
                 clash: clash
             });
         });
@@ -10330,6 +10382,13 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         var mode = bulkRenameField('rename_mode');
         var plan = bulkRenamePlan();
         var doable = plan.filter(function (row) { return (!row.unchanged) && (!row.clash); });
+        var asked = plan.filter(function (row) { return row.pending; }).map(function (row) { return row.typed; });
+        var waiting = (asked.length > 0);
+
+        // Asked once the typing pauses, not on every key.
+        clearTimeout(bulkRenameAskTimer);
+
+        if (waiting) { bulkRenameAskTimer = setTimeout(function () { bulkRenameAskStored(asked); }, 250); }
 
         ['replace', 'affix', 'number'].forEach(function (name) {
             var block = document.getElementById('rename_block_' + name);
@@ -10352,18 +10411,23 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 '</div>';
         });
 
-        document.getElementById('rename_preview_list').innerHTML = html;
+        var list = document.getElementById('rename_preview_list');
+
+        list.innerHTML = html;
+        list.setAttribute('aria-busy', waiting ? 'true' : 'false');
 
         var apply = document.getElementById('rename_apply_button');
 
-        apply.disabled = (doable.length === 0);
+        // Until every stored name is known the count and the clash check
+        // are not final, so nothing can be applied yet.
+        apply.disabled = (doable.length === 0) || waiting;
         apply.innerHTML = '<i class="bi bi-input-cursor-text me-1"></i>' +
             esc((doable.length === 0) ? L.rename_nothing : fmt(L.rename_apply, [doable.length]));
     }
 
     function runBulkRename() {
 
-        var queue = bulkRenamePlan().filter(function (row) { return (!row.unchanged) && (!row.clash); });
+        var queue = bulkRenamePlan().filter(function (row) { return (!row.unchanged) && (!row.clash) && (!row.pending); });
         var total = queue.length;
 
         if (total === 0) { return; }
@@ -10400,9 +10464,13 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 return;
             }
 
-            api({ type: endpoint, item_kind: row.item.kind, item_id: row.item.id, name: row.name }, function (response) {
+            // The typed name goes, so the server keeps its own refusals (a
+            // blocked extension) and prepares it the same way again.
+            api({ type: endpoint, item_kind: row.item.kind, item_id: row.item.id, name: row.typed }, function (response) {
 
-                if (response.status === 'success') {
+                // A success that kept the old name changed nothing: it is
+                // neither counted nor undone.
+                if ((response.status === 'success') && (response.name !== row.item.name)) {
                     done++;
                     // Pushed in front, so undoing walks back the way it came.
                     back.unshift({ kind: row.item.kind, id: row.item.id, name: row.item.name });
@@ -10472,7 +10540,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             '<h6 id="rename_preview_heading" class="text-uppercase fg-secondary fw-bold" style="font-size:.72rem;letter-spacing:.05em;">' + esc(L.rename_preview) + '</h6>' +
             // A long list scrolls from the keyboard too, named by its heading.
             '<div id="rename_preview_list" class="mb-3" role="region" aria-labelledby="rename_preview_heading" tabindex="0" style="max-height:40vh;overflow-y:auto;"></div>' +
-            '<div class="form-text mb-5">' + esc(L.rename_server_note) + '</div>' +
+            ((anyFile && !insideCatalog()) ? ('<div class="form-text mb-5">' + esc(L.rename_server_note) + '</div>') : '<div class="mb-5"></div>') +
 
             '<div class="d-grid"><button type="button" class="btn btn-solid theme-primary btn-sm" id="rename_apply_button"></button></div>';
 

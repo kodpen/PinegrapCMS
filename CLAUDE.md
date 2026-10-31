@@ -65,8 +65,10 @@ sessions.
    gh api 'repos/kodpen/pinegrapcms/pulls?state=open&per_page=100' --jq '.[]|"#\(.number) \(if .draft then "draft" else "open" end) \(.head.ref) \(.title)"'
    ```
    A PR on the same plan file (any step) or the same files (`…/pulls/<n>/files`)
-   holds it: do not start, even if it looks stale, and tell the owner which
-   PR. One plan's steps run in parallel only where the owner allowed it or
+   holds it: do not start, and tell the owner which PR; a draft with no push
+   for 12 hours and no stated wait is continued on its own branch by a
+   coordinator's worker (`workflow/session-lifecycle.md`), never re-claimed.
+   One plan's steps run in parallel only where the owner allowed it or
    the coordinator chose it (they touch different files).
    Check the queue limit (Working mode 8) here too.
 2. **Claim.** Branch from `origin/development`, push the first commit (the
@@ -128,7 +130,7 @@ decision questions.
    at most 6 of the 20.
    `gh api 'repos/kodpen/pinegrapcms/pulls?state=open&per_page=100' --jq '[.[]|select(.draft|not)|select(.head.ref|startswith("merge-train")|not)]|length'`
 9. **Coordinators.** One coordinator per account starts its cloud workers within
-   the account's quota and worker cap (`coordinator-limits.md`); it writes
+   the account's quota, 3 to 6 workers each (`coordinator-limits.md`); it writes
    no code and merges nothing. It tells the owner when the merging session
    seems stopped (`coordinator.md`).
 10. **Decisions go to the architect.** A question only the owner can

@@ -299,32 +299,25 @@ if (!$_POST) {
     // Only set when a contact image is found below, but read in both branches.
     $accent_color = '';
 
-    if($contact_file_id == 0){
-        if($contact_image){
-            $accent_color = get_dominant_area_color(FILE_DIRECTORY_PATH . '/' . $contact_image);
-            $output_contact_image = '
-            <div class="col-auto overflow-hidden pg-print-none rounded-circle bg-1 border border-2" style="width:50px;height:50px;background-color:' . h($accent_color) . ';">
-                <img class="lazy object-fit-contain w-100 h-100" alt="" src="' . OUTPUT_PATH . SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="' . PATH . h($contact_image) . '" />
-            </div>';
-        }else{
-            $output_contact_image = '
-            <div class="col-auto pg-print-none">' . pg_avatar_markup_for($contact_first_name, $contact_last_name, '', isset($contact_id) ? $contact_id : '', 'pg-avatar-50') . '</div>';
-        }
-       
-    }else{
-        $query = 
-        "SELECT 
-            files.name
-        FROM files 
-        WHERE files.id = ?";
-        $result = db_q($query, array((string) $contact_file_id)) or output_error('Query failed.');
-        $file = mysqli_fetch_array($result);
-        $file_name = $file['name'];
-        $accent_color = get_dominant_area_color(FILE_DIRECTORY_PATH . '/' . $file_name);
+    // A picture file deleted in the File Manager leaves contacts.file_id
+    // behind; without its files row the contact gets the letters.
+    $contact_picture_name = pg_contact_picture_name($contact_file_id);
+
+    if ($contact_picture_name !== '') {
+        $accent_color = get_dominant_area_color(FILE_DIRECTORY_PATH . '/' . $contact_picture_name);
         $output_contact_image = '
         <div class="col-auto overflow-hidden pg-print-none rounded-circle bg-1 border border-2" style="width:50px;height:50px;background-color:' . h($accent_color) . ';">
-            <img class="lazy  object-fit-contain w-100 h-100" alt="" src="' . OUTPUT_PATH . SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="' . PATH . h($file_name) . '" />
+            <img class="lazy object-fit-contain w-100 h-100" alt="" src="' . OUTPUT_PATH . SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="' . PATH . h($contact_picture_name) . '" />
         </div>';
+    } elseif (((int) $contact_file_id == 0) && $contact_image) {
+        $accent_color = get_dominant_area_color(FILE_DIRECTORY_PATH . '/' . $contact_image);
+        $output_contact_image = '
+        <div class="col-auto overflow-hidden pg-print-none rounded-circle bg-1 border border-2" style="width:50px;height:50px;background-color:' . h($accent_color) . ';">
+            <img class="lazy object-fit-contain w-100 h-100" alt="" src="' . OUTPUT_PATH . SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="' . PATH . h($contact_image) . '" />
+        </div>';
+    } else {
+        $output_contact_image = '
+        <div class="col-auto pg-print-none">' . pg_avatar_markup_for($contact_first_name, $contact_last_name, '', isset($contact_id) ? $contact_id : '', 'pg-avatar-50') . '</div>';
     }
 
 

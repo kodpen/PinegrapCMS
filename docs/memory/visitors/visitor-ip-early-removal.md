@@ -5,7 +5,7 @@ description: A visit's IP address set to 0 after config.visitor_ip_days (default
 
 ## What does it do and why? (PR #500)
 - Every `visitors` row kept the visitor's IP address (`INET_ATON()`, IPv4 only, 0 for IPv6) for as long as the record: 90 days by default, forever with retention 0. An address is personal data (KVKK/GDPR) and nothing needs it for long: the duplicate visit check looks at 30 minutes, and the reports, the daily summary and the hourly rollups never count it. Plan item 3 of docs/memory/plans/visitor-records-deferred.md.
-- `config.visitor_ip_days` (2026.4.10, step 10.8, `SMALLINT UNSIGNED DEFAULT 30`): after that many days the general job sets `ip_address = 0`; the record, its source and its figures stay. 0 keeps the address as long as the record; allowed 1–3650 (Settings › SEO › Visitor Tracking, invalid input refused with a field error). Upgraded sites get 30, so older visits lose their address after the upgrade.
+- `config.visitor_ip_days` (2026.4.10, step 10.8, `SMALLINT UNSIGNED DEFAULT 30`): after that many days the general job sets `ip_address = 0`; the record, its source and its figures stay. 0 keeps the address as long as the record; allowed 1–3650 (Settings › Visitors and privacy › Visitor Tracking, invalid input refused with a field error). Upgraded sites get 30, so older visits lose their address after the upgrade.
 - Code: `includes/fn/visitor_ip.php`, called by `pg_visitor_cleanup_run()` after the removal (rows about to go are not written first). The cleanup now also runs when records are kept without a limit but the address has a period.
 
 ## How does a pass run?
