@@ -21,6 +21,6 @@ description: The rules block every language-model prompt ends with (pg_ai_prompt
 
 ## How is it kept?
 - tests/ai_prompt_rules_test.php scans the product for `'role' => 'system'` and fails for a file not listed with its builder, or a builder that does not call `pg_ai_prompt_rules()` with its profile. A new prompt is built with the rules and added to that list.
-- Claude's instructions and briefing from the site: workspace/workspace-claude-bootstrap.md. Still planned (a preamble for MCP agents): plans/ai-agent-prompts.md.
+- Claude's instructions and briefing from the site: workspace/workspace-claude-bootstrap.md. The MCP agents' preamble (#2795): workspace/workspace-agent-preamble.md.
 
 - Untrusted text inside data blocks (`pg_ai_data_block()`): core/ai-prompt-data-blocks.md.

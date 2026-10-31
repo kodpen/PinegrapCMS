@@ -33,7 +33,7 @@ Open: 5. Pinegrap AI: (a) measure first, (b) change limits → a; ai.pinegrap.co
 
 ## What could explain "Pinegrap AI worked inefficiently"? (open)
 - Not the key. Nobody picks the model (`ws_ai_model()`: the first GET /models lists); `WS_AI_MAX_STEPS` 8; past `WS_AI_BUDGET` 20 s the next call waits for an open screen or hourly job; timeout 55 s; `max_tokens` 3000; 20-30 context messages; `ws_ai_tools()`, `ws_ai_system_prompt()` size.
-- Measure `ws_ai_requests` (agent `ai`): `ai_steps`, `ai_attempts`, `claimed_at` to `answered_at`, `error`, `ai_state` size; tokens not kept. Briefing: plans/ai-agent-prompts.md.
+- Measure `ws_ai_requests` (agent `ai`): `ai_steps`, `ai_attempts`, `claimed_at` to `answered_at`, `error`, `ai_state` size; tokens not kept. Briefing: workspace/workspace-claude-bootstrap.md.
 
 ## Where to start?
-- Slice 4 (waits on question 5). The sheet shows `ws_claude_routine_prompt()`, a bootstrap after plans/ai-agent-prompts.md step 3; the config link fits plans/workspace-agent-handles.md.
+- Slice 4 (waits on question 5). The sheet shows `ws_claude_routine_prompt()`, a bootstrap since #2736 (workspace/workspace-claude-bootstrap.md); the config link fits plans/workspace-agent-handles.md.

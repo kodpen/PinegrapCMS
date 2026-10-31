@@ -17,7 +17,7 @@ description: Shared names and single owners across the Workspace growth plans (2
 - "Change card" is a `ws_ai_changes` row; "task drafts" are `ws_ai_drafts`.
 
 ## Which single owner holds a shared piece?
-- One proposal route for every plan: `workspace.changes.propose` (POST /workspace/channels/{id}/changes, plus a task twin): plans/workspace-mcp-capabilities.md. No per-kind proposal routes.
+- One proposal route for every plan: `workspace.changes.propose` (POST /workspace/channels/{id}/changes, plus a task twin): workspace/workspace-change-proposals.md. No per-kind proposal routes.
 - Direct record writes by AI apps (one owner question): the MCP plan; catalogue and quotes follow its answer.
 - Scheduled-actions API and who may create actions: workspace/workspace-scheduled-actions-api.md.
 - Flows (canvas, rules, process templates), their engine and step library: plans/workspace-flows.md, plans/workspace-flows-engine.md.
@@ -25,4 +25,4 @@ description: Shared names and single owners across the Workspace growth plans (2
 - Saved replies: workspace/workspace-saved-replies.md (built). Channel `/` commands: workspace/workspace-command-registry.md (built); other plans add registry entries (`/product` after its slice 2).
 - Contacts in the audit trail and erasure: core/audit-trail-writers.md, core/personal-data-erasure.md; the CRM merge and erasure share one list of every `contact_id` holder (with `cart_quotes` and workflow-table cells).
 - Recorded audio and transcripts: workspace/workspace-voice-recording.md (done); live dictation: composer tools.
-- The site's own MCP server: plans/workspace-mcp-capabilities.md; outside MCP servers the Workspace calls: plans/workspace-mcp-connectors.md.
+- The site's own MCP server: api/api-mcp-server.md; outside MCP servers the Workspace calls: workspace/workspace-mcp-servers-card.md, api/api-mcp-client.md.

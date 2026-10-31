@@ -13,7 +13,7 @@ description: Workspace "MCP servers" card (mcp.php, mcp_catalogue.php): ready-ma
 
 ## How is an entry added?
 - A row in `ws_mcp_catalogue()`: an address that answers initialize with 200, or 401 with a challenge whose service registers the site (curl it first); a `bi-*` icon of assets/fonts/bootstrap-icons, no logos; an alias outside `ws_mcp_reserved_aliases()`; `tools` read_only; the description's Turkish text through `php tools/tr_add.php`. The tests read every row.
-- 2026-10-24: 12 rows answered (5 open, 6 OAuth, GitHub by token); Stripe stayed out.
+- 2026-10-24: 12 one-step rows (5 open, 6 OAuth, GitHub by token); no own-app ones (Slack, Asana, #2423); Stripe out.
 
 ## Which tools are on after a server is added?
 - Symptom "no tool on, @alias missing": tools started off, so the @ picker (`ws_mcp_boot()`), form run and agent mode skipped the server.
@@ -29,4 +29,4 @@ description: Workspace "MCP servers" card (mcp.php, mcp_catalogue.php): ready-ma
 
 ## How is it checked?
 - tests/workspace_mcp_test.php: catalogue rows and icons, alias from a host, Already added, the probe with a stand-in fetch, first read, declare, kept fields, link due; workspace_api_test.php: the route. The API of the added servers: `workspace-mcp-servers-api.md`.
-- CLI harness, 2026-10-24: adds and probes against live servers; OAuth sign-in never run live.
+- CLI harness, 2026-10-24: adds and probes against live servers; OAuth sign-in (CIMD, DCR) never run live.

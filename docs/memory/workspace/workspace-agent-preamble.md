@@ -19,4 +19,4 @@ description: The site preamble an MCP agent (switch ws_mcp_servers.agent_preambl
 ## Tests
 - tests/ai_agent_preamble_test.php: place lines, the text's order, a forged mark harmless, no channel context or people in the MCP builder, the run asking the switch and the column probe.
 
-Related: core/ai-prompt-data-blocks.md, workspace/workspace-claude-bootstrap.md, plans/ai-agent-prompts.md
+Related: core/ai-prompt-data-blocks.md, workspace/workspace-claude-bootstrap.md, core/ai-prompt-rules.md

@@ -10,4 +10,10 @@ description: Untrusted text set apart in AI prompts, tool answers and the design
 - The designer's page brief (`pg_design_ai_brief()`, built for `pg_design_ai_start()`, PR #1953): the page or selected element in a `page` block, a cut page's outline in `page outline`, the CSS in `page css`, the request in `request`. "The page is longer than shown…", "Where it stands…" (a `<<<` in a parent's name neutralised there too) and "Answer in …" (last) stay outside.
 - Claude reads the same blocks through GET /workspace/claude/requests/{id}/brief (workspace/workspace-claude-bootstrap.md). An MCP agent whose server sends the preamble gets its request in a `request` block (workspace/workspace-agent-preamble.md); with the switch off the message goes as it is. Tests: tests/ai_prompt_framing_test.php.
 
-Related: docs/memory/core/ai-prompt-rules.md, docs/memory/plans/ai-agent-prompts.md
+## What was decided around the prompts? (#2443)
+- The rules text stays in code, not editable in settings (#1124); a site note below the rules stays possible later, as data.
+- The MCP agents' preamble is off by default per server (`ws_mcp_servers.agent_preamble`, #2795).
+- Claude's instructions come from the site through the versioned bootstrap (#2736).
+- Not run yet: a live injection test on dev with the owner, Pinegrap AI and the routine.
+
+Related: docs/memory/core/ai-prompt-rules.md, docs/memory/workspace/workspace-agent-preamble.md
