@@ -19,7 +19,7 @@ module: shipping
 ## Who reads or writes the district so far?
 - `pg_ship_to_district_ready()` (`includes/fn/shipping.php`) probes the column by exact name; code that reads or writes it asks first (files land before the upgrade runs).
 - A subscription renewal copies it with the rest of the address (`pg_subscription_renewal_order_write()`).
-- Carrier drivers and marketplace imports (#3654): `tr-district-carriers.md`; the API field (D3b): `plans/shipping-tr-district.md`.
+- Carrier drivers and marketplace imports (#3654): `tr-district-carriers.md`; the API field (#3917): `shipment-api-fields.md`.
 
 ## Where is the district box (#3641)?
 - Express order widget (default tree after City, JS starter twins, the server's per-recipient form), the Shipping Address and Arrival widget (starter after City) and the classic page `get_shipping_address_and_arrival.php`. A layout designed before the box gets it after City's column (`pg_ship_to_district_tree_fit()`); one that has it keeps it where it is; while the column is missing the box is dropped.
