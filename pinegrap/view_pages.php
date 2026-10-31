@@ -23,6 +23,15 @@ $liveform = new liveform('view_pages');
 $user = validate_user();
 validate_area_access($user, 'user');
 
+// Where the SEO tools return: the list in the view they were started from.
+// Only a plain filter name is carried; the list checks it against its known
+// filters again before using it.
+$seo_return = PATH . SOFTWARE_DIRECTORY . '/view_pages.php';
+
+if (isset($_GET['filter']) && is_string($_GET['filter']) && preg_match('/^[a-z_]+$/', $_GET['filter'])) {
+    $seo_return = PATH . SOFTWARE_DIRECTORY . '/view_pages.php?filter=' . urlencode($_GET['filter']);
+}
+
 // Manual SEO score refresh from the button bar. A GET link with a token, like
 // the other state-changing links on this screen. When nothing is stale the
 // whole site is queued first (a refresh means "recompute everything"); when
@@ -38,7 +47,7 @@ if (isset($_GET['recalculate_seo']) && (USER_ROLE < 3)) {
     if (!pg_seo_schema_ready()) {
         $liveform->add_notice(lang('Please run the software upgrade to enable SEO scores.'));
 
-        go(PATH . SOFTWARE_DIRECTORY . '/view_pages.php');
+        go($seo_return);
     }
 
     if (!db_value("SELECT COUNT(*) FROM page WHERE seo_analysis_current = 0")) {
@@ -61,7 +70,7 @@ if (isset($_GET['recalculate_seo']) && (USER_ROLE < 3)) {
 
     log_activity(lang('recalculated SEO scores'), $_SESSION['sessionusername']);
 
-    go(PATH . SOFTWARE_DIRECTORY . '/view_pages.php');
+    go($seo_return);
 }
 
 // The HTML structure pass, on demand instead of waiting for tonight. It runs
@@ -86,13 +95,13 @@ if (isset($_GET['analyze_seo']) && (USER_ROLE < 3)) {
     if (!pg_seo_structure_schema_ready()) {
         $liveform->add_notice(lang('Please run the software upgrade to enable SEO scores.'));
 
-        go(PATH . SOFTWARE_DIRECTORY . '/view_pages.php');
+        go($seo_return);
     }
 
     if (!class_exists('DOMDocument')) {
         $liveform->add_notice(lang('The PHP DOM extension is not available, so the HTML structure cannot be analyzed.'));
 
-        go(PATH . SOFTWARE_DIRECTORY . '/view_pages.php');
+        go($seo_return);
     }
 
     // Deliberately shorter than the job's budget. A browser request that keeps
@@ -121,7 +130,7 @@ if (isset($_GET['analyze_seo']) && (USER_ROLE < 3)) {
 
     log_activity(lang('analyzed HTML structure'), $_SESSION['sessionusername']);
 
-    go(PATH . SOFTWARE_DIRECTORY . '/view_pages.php');
+    go($seo_return);
 }
 
 $output_clear_button = '';
@@ -332,8 +341,8 @@ if (($user['role'] < '3') || ($user['create_pages'] == TRUE)) {
     // SEO score refresh sits with the other maintenance tools. Managers and
     // above, same threshold the scores themselves matter to.
     if (USER_ROLE < 3) {
-        $view_pages_tools[] = '<li><a class="menu-item pg-link-body-emphasis" href="view_pages.php?recalculate_seo=1' . get_token_query_string_field() . '"><i class="bi bi-speedometer2 me-3" aria-hidden="true"></i>' . lang('Refresh SEO Scores') . '</a></li>';
-        $view_pages_tools[] = '<li><a class="menu-item pg-link-body-emphasis" href="view_pages.php?analyze_seo=1' . get_token_query_string_field() . '" title="' . lang('Renders each page and examines the resulting HTML. Covers products and product groups too. Slower than a score refresh, and it may take several clicks on a large site.') . '"><i class="bi bi-code-slash me-3" aria-hidden="true"></i>' . lang('Analyze HTML Structure') . '</a></li>';
+        $view_pages_tools[] = '<li><a class="menu-item pg-link-body-emphasis" href="view_pages.php?recalculate_seo=1' . $output_filter_for_links . get_token_query_string_field() . '"><i class="bi bi-speedometer2 me-3" aria-hidden="true"></i>' . lang('Refresh SEO Scores') . '</a></li>';
+        $view_pages_tools[] = '<li><a class="menu-item pg-link-body-emphasis" href="view_pages.php?analyze_seo=1' . $output_filter_for_links . get_token_query_string_field() . '" title="' . lang('Renders each page and examines the resulting HTML. Covers products and product groups too. Slower than a score refresh, and it may take several clicks on a large site.') . '"><i class="bi bi-code-slash me-3" aria-hidden="true"></i>' . lang('Analyze HTML Structure') . '</a></li>';
         $view_pages_tools[] = '<li><a class="menu-item pg-link-body-emphasis" href="view_accessibility.php"><i class="bi bi-universal-access me-3" aria-hidden="true"></i>' . lang('Accessibility report') . '</a></li>';
     }
 }
