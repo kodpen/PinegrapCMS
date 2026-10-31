@@ -7,7 +7,7 @@ description: Steps H1-H6 of plans/screen-header-actions.md: which screens each f
 - S is under 400 product lines, M is about 1,000. File lists are from a29a87c68; re-read before use. Steps that touch different screens may run side by side.
 - H1 comes first: H2-H6 draw their bars through its helper.
 
-- H1 (S) Toolbar helper.
+- H1 (S) Toolbar helper. Done in #3912.
   - Add `pg_screen_toolbar()` in `includes/fn/output.php`. It draws `nav#button_bar.pg-toolbar` from slots: primary, secondary, grow, search, view, overflow. It draws nothing when no slot is filled.
   - Remove `pg_page_shell()`'s `actions`/`primary_button`/`action_bar_class` and the orphan docblock in `includes/fn/tour.php` (22-41).
   - `workspace_calendar_feed.php` gets a back arrow and breadcrumb to Work Calendar instead.
