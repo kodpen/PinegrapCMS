@@ -73,7 +73,9 @@ if ($_POST) {
 
 		if ($count > 0) {
 
-			$liveform->add_notice(lang(array('string' => '{var:1} connections were ended.', 'vars' => $count)));
+			$liveform->add_notice(($count == 1)
+				? lang(array('string' => '{var:1} connection was ended.', 'vars' => $count))
+				: lang(array('string' => '{var:1} connections were ended.', 'vars' => $count)));
 
 			log_activity(lang('ended all of their OAuth connections'), $_SESSION['sessionusername']);
 
@@ -157,7 +159,7 @@ foreach ($connections as $connection) {
 	}
 
 	$meta = array(
-		lang(array('string' => 'Connected on {var:1}', 'vars' => get_absolute_time(array('timestamp' => (int)$connection['created_timestamp'], 'type' => 'date')))),
+		lang(array('string' => 'Connected on {var:1}', 'vars' => get_absolute_time(array('timestamp' => (int)$connection['created_timestamp'], 'type' => 'date', 'format' => 'plain_text')))),
 		lang('Last used') . ' ' . connected_apps_ago($connection['last_used_timestamp'])
 	);
 

@@ -16,7 +16,7 @@ description: Routing incoming Workspace e-mail (G6, mail_route.php): box routes 
 
 ## What does a known customer's channel get?
 - Only for a new conversation whose sender is tied to a record, so only a DMARC `pass` from the box's server (`mail-ingest.md`): `ws_mail_customer_lines()` writes a system line (`ws_message_system()`) into `ws_customer_channels('contact', contact_id)`, else `('user_account', user_id)`: open or private channels only (never a guest room or a discussion), not the conversation's own channel, at most `WS_MAIL_CUSTOMER_LINES_MAX` = 3, most recently used first.
-- Text `ws_mail_customer_line_text()`: "An e-mail from {name} came into <#channel:ID>: {subject}" (owner answer 4, #2444). The channel is a tag, drawn per reader by what they may see; `<@…>` / `<#…>` a sender typed in the name or subject lose their brackets, so they name and notify nobody. Answers to the conversation add no line.
+- Text `ws_mail_customer_line_text()`: "An e-mail from {name} came into <#channel:ID>: {subject}" (owner answer 5, #2444). The channel is a tag, drawn per reader by what they may see; `<@…>` / `<#…>` a sender typed in the name or subject lose their brackets, so they name and notify nobody. Answers to the conversation add no line.
 
 ## Tests?
 - `tests/workspace_mail_route_test.php` (pure parts and wiring). The channel writes were not run against a database in the cloud session (PR #2904).

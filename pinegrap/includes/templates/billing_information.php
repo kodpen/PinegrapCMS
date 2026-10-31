@@ -89,6 +89,15 @@ if (!defined('PG_INIT_LOADED')) {
 		</label>
 	</div>
 	<?php endif ?>
+	<?php if ($opt_in_sms): ?>
+	<div class="checkbox">
+		<label>
+		<input type="checkbox" name="opt_in_sms" value="1">
+		<?=h($opt_in_sms_label)?>
+		</label>
+		<input type="hidden" name="opt_in_sms_shown" value="1">
+	</div>
+	<?php endif ?>
 	<?php if ($po_number): ?>
 	<div class="form-group">
 		<label for="po_number"><?=h(lang('PO Number'))?></label>

@@ -67,6 +67,7 @@ function pg_contact_holders()
         'ws_approvals'                 => array('column' => 'record_id', 'type' => array('record_type' => 'contact'), 'merge' => 'move', 'erase' => 'none'),
         'ws_ai_changes'                => array('column' => 'record_id', 'type' => array('record_type' => 'contact'), 'merge' => 'move', 'erase' => 'none'),
         'ws_mail_conversations'        => array('column' => 'contact_id', 'merge' => 'move', 'erase' => 'none'),
+        'ws_events'                    => array('column' => 'contact_id', 'merge' => 'move', 'erase' => 'find'),
         'ws_wtable_cells'              => array('table' => 'ws_wtable_rows', 'column' => 'cells', 'merge' => 'cells', 'erase' => 'scope'),
         'cart_quotes'                  => array('column' => 'contact_id', 'merge' => 'move', 'erase' => 'find'),
     );
@@ -857,6 +858,38 @@ function pg_initials_upper($text)
 }
 
 /**
+ * Each word's first letter upper-cased for the panel's language, the rest
+ * left as it is: a multibyte ucwords() that knows "i" is "İ" in Turkish.
+ *
+ * @param string $text
+ * @return string
+ */
+function pg_upper_words($text)
+{
+    return (string) preg_replace_callback('/(^|[\s\-])(\pL)/u', function ($match) {
+        return $match[1] . pg_initials_upper($match[2]);
+    }, (string) $text);
+}
+
+/**
+ * A name in Turkish title case whatever the panel's language ("AYŞE YILDIZ
+ * IŞIK" is "Ayşe Yıldız Işık", "İLKER" is "İlker"), for files read by
+ * Turkish-only services such as Paraşüt. mb_convert_case() lowers "I" to "i"
+ * and "İ" to "i" plus a combining dot.
+ *
+ * @param string $text
+ * @return string
+ */
+function pg_turkish_title_case($text)
+{
+    $text = mb_strtolower(str_replace(array('I', 'İ'), array('ı', 'i'), (string) $text), 'UTF-8');
+
+    return (string) preg_replace_callback('/(^|[\s\-])(\pL)/u', function ($match) {
+        return $match[1] . mb_strtoupper(str_replace(array('i', 'ı'), array('İ', 'I'), $match[2]), 'UTF-8');
+    }, $text);
+}
+
+/**
  * The letters a person is shown by.
  *
  * @param string $first_name
@@ -1067,6 +1100,35 @@ function pg_avatar_markup_for($first_name, $last_name, $username = '', $seed = '
     $named = (trim((string) $first_name) !== '') || (trim((string) $last_name) !== '');
 
     return pg_avatar_markup(array('avatar_kind' => $named ? 'contact' : 'user') + pg_avatar_letters(pg_initials($first_name, $last_name, $username), (string) $seed), '', $class);
+}
+
+/**
+ * The file name of a contact's picture (contacts.file_id), or '' when the
+ * contact has none or its files row was deleted in the File Manager, which
+ * leaves contacts.file_id in place. A screen draws its no-picture branch on
+ * '', so no <img> points at PATH alone (the site's home page).
+ *
+ * @param int|string $file_id contacts.file_id
+ * @param array|null $names   id => name already read (a list); null reads the files row
+ * @return string
+ */
+function pg_contact_picture_name($file_id, $names = null)
+{
+    $file_id = (int) $file_id;
+
+    if ($file_id <= 0) {
+        return '';
+    }
+
+    if ($names === null) {
+        $result = db_q('SELECT name FROM files WHERE id = ?', array($file_id));
+        $row = $result ? mysqli_fetch_assoc($result) : null;
+        $name = $row ? $row['name'] : '';
+    } else {
+        $name = isset($names[$file_id]) ? $names[$file_id] : '';
+    }
+
+    return (string) $name;
 }
 
 /**
@@ -1457,4 +1519,89 @@ function pg_contact_owner_sql($user_id, $column)
     return $column . " IN (SELECT contacts_contact_groups_xref.contact_id FROM contacts_contact_groups_xref"
         . " INNER JOIN users_contact_groups_xref ON users_contact_groups_xref.contact_group_id = contacts_contact_groups_xref.contact_group_id"
         . " WHERE users_contact_groups_xref.user_id = '" . (int) $user_id . "')";
+}
+
+/**
+ * The referral sources a contact's lead source is chosen from, in the order
+ * the checkout and the forms show them: rows of name and code. The code is
+ * what is stored, as the billing information already writes it into
+ * contacts.lead_source.
+ *
+ * @return array
+ */
+function pg_referral_sources()
+{
+    $rows = db_items("SELECT name, code FROM referral_sources ORDER BY sort_order, name");
+
+    return is_array($rows) ? $rows : array();
+}
+
+/**
+ * The choices of a contact's lead source: an empty one, then each referral
+ * source (value its code, label its name). A stored value that is no code of
+ * the list (free text kept from before the list was used, or a source since
+ * removed) is one more choice, kept as it is, so saving the contact does not
+ * change it.
+ *
+ * @param array  $sources rows of name and code (pg_referral_sources())
+ * @param mixed  $current the contact's stored lead_source, '' for a new one
+ * @return array of array(value, label, kept)
+ */
+function pg_contact_lead_source_options(array $sources, $current)
+{
+    $current = is_scalar($current) ? (string) $current : '';
+    $options = array(array('value' => '', 'label' => '', 'kept' => false));
+    $listed = false;
+
+    foreach ($sources as $source) {
+        $code = (string) ($source['code'] ?? '');
+        $options[] = array('value' => $code, 'label' => (string) ($source['name'] ?? ''), 'kept' => false);
+        $listed = $listed || ($code === $current);
+    }
+
+    if (($current !== '') && !$listed) {
+        $options[] = array('value' => $current, 'label' => $current, 'kept' => true);
+    }
+
+    return $options;
+}
+
+/**
+ * Checks a new lead source for a contact: '' empties it, a referral source's
+ * code or name (any case, trimmed) is stored as its code, and the contact's
+ * current value is kept as it is even when it is no source. Anything else is
+ * refused, with the value returned as sent.
+ *
+ * @param mixed  $value   the value sent
+ * @param array  $sources rows of name and code (pg_referral_sources())
+ * @param mixed  $current the contact's stored lead_source, '' for a new one
+ * @return array array('value' => string, 'error' => string, '' when accepted)
+ */
+function pg_contact_lead_source_check($value, array $sources, $current)
+{
+    if (!is_scalar($value)) {
+        return array('value' => '', 'error' => lang('The lead source has to be a text.'));
+    }
+
+    $value = (string) $value;
+    $current = is_scalar($current) ? (string) $current : '';
+
+    if (($value === $current) || (trim($value) === '')) {
+        return array('value' => ($value === $current) ? $current : '', 'error' => '');
+    }
+
+    $wanted = mb_strtolower(trim($value), 'UTF-8');
+
+    foreach ($sources as $source) {
+        $code = (string) ($source['code'] ?? '');
+
+        if (($wanted === mb_strtolower($code, 'UTF-8')) || ($wanted === mb_strtolower((string) ($source['name'] ?? ''), 'UTF-8'))) {
+            return array('value' => $code, 'error' => '');
+        }
+    }
+
+    return array(
+        'value' => $value,
+        'error' => lang(array('string' => 'The lead source "{var:1}" is not one of the referral sources.', 'vars' => array($value))),
+    );
 }

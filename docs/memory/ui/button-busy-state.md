@@ -13,4 +13,7 @@ description: Buttons never change their label or lock for a fixed time while a r
 ## What does a button that sends its own request do?
 - It is `disabled` exactly while its request runs, and enabled again on every path: success, an error answer and a network failure.
 
-Related: docs/memory/ui/admin-screen-toolbar-rules.md
+## Which screens send once for longer than 3 s?
+- A request that writes something new on every run and may take longer than 3 s is sent once by the screen itself; the screens and how each does it are in `send-once-screens.md`.
+
+Related: docs/memory/ui/admin-screen-toolbar-rules.md, docs/memory/ui/send-once-screens.md

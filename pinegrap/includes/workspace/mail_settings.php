@@ -563,11 +563,11 @@ function ws_mail_settings_post($viewer, $action, $liveform)
         db("UPDATE ws_mail_boxes SET " . $set . " WHERE id = '" . $box_id . "'");
 
         if (!$result['ok']) {
-            $liveform->add_error(ws_mail_error_text($result['error'], $result['detail'], (string) ($settings['host'] ?? '')));
+            $liveform->add_error(h(ws_mail_error_text($result['error'], $result['detail'], (string) ($settings['host'] ?? ''))));
             return;
         }
 
-        $liveform->add_notice(lang(array('string' => 'Connected: {var:1} e-mails in {var:2}.', 'vars' => array(pg_format_number($result['exists'], 0), (string) $box['folder']))));
+        $liveform->add_notice(lang(array('string' => 'Connected: {var:1} e-mails in {var:2}.', 'vars' => array(pg_format_number($result['exists'], 0), h((string) $box['folder'])))));
 
         if ($filled) {
             $liveform->add_notice(lang(array('string' => 'The checking server was set to {var:1}, the name the newest e-mail was checked under.', 'vars' => $result['auth_server'])));
@@ -620,6 +620,7 @@ function ws_mail_settings_post($viewer, $action, $liveform)
     $settings = ws_mail_box_settings($box);
     $settings['routes'] = $routes['routes'];
     $settings['first_reply_hours'] = $first['hours'];
+    $settings = ws_mail_triage_input($_POST, $settings, ws_mail_triage_ai_ready());
 
     // A password typed now replaces the kept one; an empty box keeps it.
     if ($values['password'] !== '') {
@@ -685,9 +686,10 @@ function ws_mail_settings_post($viewer, $action, $liveform)
  * @param string     $self_url
  * @param array|null $box
  * @param array[]    $channels ws_mail_box_channels()
+ * @param bool       $ai_ready Pinegrap AI can be asked (ws_mail_triage_ai_ready())
  * @return string
  */
-function ws_mail_box_form($self_url, $box, $channels)
+function ws_mail_box_form($self_url, $box, $channels, $ai_ready = false)
 {
     $id = $box ? (int) $box['id'] : 0;
     $prefix = 'ws_mail_' . $id . '_';
@@ -725,13 +727,14 @@ function ws_mail_box_form($self_url, $box, $channels)
                 </div>
                 <div class="md:col-6">
                     <label class="form-label" for="' . $prefix . 'auth">' . h(lang('Checking server')) . '</label>
-                    <input class="form-control form-control-sm font-monospace" type="text" name="auth_server" id="' . $prefix . 'auth" maxlength="255" value="' . h((string) ($settings['auth_server'] ?? '')) . '" placeholder="mx.google.com" autocomplete="off">
+                    <input class="form-control form-control-sm font-monospace" type="text" inputmode="url" spellcheck="false" autocapitalize="off" name="auth_server" id="' . $prefix . 'auth" maxlength="255" value="' . h((string) ($settings['auth_server'] ?? '')) . '" placeholder="mx.google.com" autocomplete="off">
                     <div class="form-text">' . h(lang('The server that receives this mailbox\'s mail and writes Authentication-Results. Only its verdict is believed; left empty, every sender stays unverified and no mail is tied to a customer.')) . '</div>
                 </div>
                 ' . ws_mail_route_fields($prefix, $box, $channels) . '
                 ' . ws_mail_box_server_fields($prefix, $box, $settings) . '
                 ' . ws_mail_first_reply_field($prefix, $box) . '
                 ' . ws_mail_auto_reply_fields($prefix, $box) . '
+                ' . ws_mail_triage_field($prefix, $box, $ai_ready) . '
                 <div class="md:col-12">
                     <div class="form-field">
                         <div class="switch"><input type="checkbox" name="enabled" value="1" id="' . $prefix . 'enabled"' . ((!$box || (int) $box['enabled'] === 1) ? ' checked' : '') . '></div>
@@ -793,7 +796,7 @@ function ws_mail_box_server_fields($prefix, $box, $settings)
                 </div>
                 <div class="md:col-5">
                     <label class="form-label" for="' . $prefix . 'host">' . h(lang('IMAP server')) . '</label>
-                    <input class="form-control form-control-sm font-monospace" type="text" name="host" id="' . $prefix . 'host" maxlength="253" value="' . h((string) ($settings['host'] ?? '')) . '" placeholder="imap.example.com" autocomplete="off">
+                    <input class="form-control form-control-sm font-monospace" type="text" inputmode="url" spellcheck="false" autocapitalize="off" name="host" id="' . $prefix . 'host" maxlength="253" value="' . h((string) ($settings['host'] ?? '')) . '" placeholder="imap.example.com" autocomplete="off">
                 </div>
                 <div class="md:col-3">
                     <label class="form-label" for="' . $prefix . 'port">' . h(lang('Port')) . '</label>
@@ -801,7 +804,7 @@ function ws_mail_box_server_fields($prefix, $box, $settings)
                 </div>
                 <div class="md:col-6">
                     <label class="form-label" for="' . $prefix . 'user">' . h(lang('User name')) . '</label>
-                    <input class="form-control form-control-sm" type="text" name="user" id="' . $prefix . 'user" maxlength="255" value="' . h((string) ($settings['user'] ?? '')) . '" autocomplete="off">
+                    <input class="form-control form-control-sm" type="text" spellcheck="false" autocapitalize="off" name="user" id="' . $prefix . 'user" maxlength="255" value="' . h((string) ($settings['user'] ?? '')) . '" autocomplete="off">
                 </div>
                 <div class="md:col-6">
                     <label class="form-label" for="' . $prefix . 'password">' . h(lang('Password')) . '</label>
@@ -840,7 +843,7 @@ function ws_mail_box_server_fields($prefix, $box, $settings)
                 </div>
                 <div class="md:col-5">
                     <label class="form-label" for="' . $prefix . 'smtp_host">' . h(lang('SMTP server')) . '</label>
-                    <input class="form-control form-control-sm font-monospace" type="text" name="smtp_host" id="' . $prefix . 'smtp_host" maxlength="253" value="' . h((string) ($settings['smtp_host'] ?? '')) . '" placeholder="smtp.example.com" autocomplete="off">
+                    <input class="form-control form-control-sm font-monospace" type="text" inputmode="url" spellcheck="false" autocapitalize="off" name="smtp_host" id="' . $prefix . 'smtp_host" maxlength="253" value="' . h((string) ($settings['smtp_host'] ?? '')) . '" placeholder="smtp.example.com" autocomplete="off">
                 </div>
                 <div class="md:col-3">
                     <label class="form-label" for="' . $prefix . 'smtp_port">' . h(lang('Port')) . '</label>
@@ -967,6 +970,7 @@ function ws_mail_settings_card($self_url, $viewer)
     }
 
     $channels = ws_mail_box_channels($viewer);
+    $ai_ready = ws_mail_triage_ai_ready();
     $rows = '';
 
     foreach ((array) db_items("SELECT b.*, (SELECT MAX(i.created_at) FROM ws_mail_items i WHERE i.box_id = b.id) AS last_mail_at
@@ -994,7 +998,7 @@ function ws_mail_settings_card($self_url, $viewer)
                 <button type="button" class="btn btn-sm btn-text theme-secondary" data-bs-toggle="collapse" data-bs-target="#ws-mail-' . $id . '" aria-expanded="false"><i class="bi bi-pencil me-1" aria-hidden="true"></i>' . h(lang('Edit')) . '</button>
             </div>
             <div class="collapse" id="ws-mail-' . $id . '">
-                ' . ws_mail_box_form($self_url, $box, $channels) . '
+                ' . ws_mail_box_form($self_url, $box, $channels, $ai_ready) . '
                 <form method="post" action="' . h($self_url) . '#ws-mail" enctype="multipart/form-data" class="pb-5 d-flex flex-wrap align-items-end gap-3">
                     ' . get_token_field() . '
                     <input type="hidden" name="ws_action" value="mail_eml">
@@ -1019,7 +1023,7 @@ function ws_mail_settings_card($self_url, $viewer)
                 <button type="button" class="btn btn-sm btn-text theme-primary" data-bs-toggle="collapse" data-bs-target="#ws-mail-new" aria-expanded="false"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i>' . h(lang('Add a mailbox')) . '</button>
             </div>
             <div class="card-body">
-                <div class="collapse" id="ws-mail-new">' . ws_mail_box_form($self_url, null, $channels) . '</div>
+                <div class="collapse" id="ws-mail-new">' . ws_mail_box_form($self_url, null, $channels, $ai_ready) . '</div>
                 ' . $rows . '
                 <div class="form-text mt-5">' . h(lang('A mailbox with a server is read every minute while the general scheduled job runs; an .eml file saved from a mail program can also be brought in by hand.')) . '</div>
                 ' . ws_mail_connect_form($viewer) . '

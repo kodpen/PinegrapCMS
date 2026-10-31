@@ -129,13 +129,13 @@ while ($row = mysqli_fetch_assoc($result)) {
     $row['total'] = pg_format_money($row['total'] / 100, BASE_CURRENCY_SYMBOL);
     $row['order_date'] = get_relative_time(array('timestamp' => $row['order_date']));
 
-    $output_link_url = 'view_order.php?id=' . $row['id'];
+    $output_link_url = 'view_order.php?id=' . $row['id'] . '&send_to=' . urlencode(REQUEST_URL);
 
     $output_rows .=
     '<tr class="unselectable ">
         
         <td class="align-middle text-start action-buttons">
-            <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2 " title="' . h(lang('View Order')) . '" aria-label="' . h(lang('View Order')) . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-eye" aria-hidden="true"></i></button>
+            <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2 " title="' . h(lang('View Order')) . '" aria-label="' . h(lang('View Order')) . '" onclick="window.location.href=\'' . h(escape_javascript($output_link_url)) . '\'"><i class="bi bi-eye" aria-hidden="true"></i></button>
             <!--<button type="button" class="m-1 btn-data-control btn btn-outline theme-danger border-2 " title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
         </td>
         <td>' . h($row['order_number'] ?? '') . '</td>
@@ -152,7 +152,7 @@ pg_page_shell(
         'icon'=>'contact',
         'heading'=>lang('All Orders for Contact'),
         'heading_description' => lang('All orders for this contact.'),
-        'cancel'=>array('enable'=>'true','url'=>'view_contacts.php'),
+        'cancel'=>array('enable'=>'true','url'=>'edit_contact.php?id=' . (int) $id),
         'breadcrumb' => array(
             array('label' => lang('All My Contacts'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_contacts.php'),
             array('label' => lang('Edit Contact'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_contact.php?id=' . $id),

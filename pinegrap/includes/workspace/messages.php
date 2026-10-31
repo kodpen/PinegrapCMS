@@ -387,6 +387,8 @@ function ws_message_payload($viewer, $row, $refs, $people, $tasks, $assignees, $
         // Its status and holder, for the same reader (mail_status.php), null for none.
         'mail_state'  => ($mail && !$deleted && function_exists('ws_mail_state_offer'))
             ? ws_mail_state_offer($extra['mail'][(int) $row['sender_id']] ?? null, ws_mail_reply_offer($row, $extra['mail'][(int) $row['sender_id']] ?? null, $can_post), (int) $viewer['id']) : null,
+        // Pinegrap AI's reply draft under a conversation's card (mail_triage.php), null for none.
+        'mail_draft'  => (!$deleted && function_exists('ws_mail_triage_draft_offer')) ? ws_mail_triage_draft_offer($row, $can_post) : null,
         // The same test as ws_ack_can_request(), from what is known already.
         'ack_can_request' => $can_post && !$deleted && function_exists('ws_acks_ready') && ws_acks_ready()
             && in_array($row['kind'], array('message', 'note', 'decision'), true) && in_array($row['sender_kind'], array('user', 'app'), true)
@@ -507,6 +509,62 @@ function ws_app_sender($app_id)
     }
 
     return $cache[$app_id];
+}
+
+/**
+ * The senders a list of message rows names, read once for the whole list:
+ * the people (user senders and the team's writers of mail answers) and the
+ * mails (ws_mail_items_map()).
+ *
+ * @param array[] $rows ws_messages rows
+ * @return array array(people, mail), for ws_message_row_sender()
+ */
+function ws_message_rows_senders($rows)
+{
+    $mail = function_exists('ws_mail_items_map') ? ws_mail_items_map($rows) : array();
+    $ids = array();
+
+    foreach ((array) $rows as $row) {
+        if ((string) $row['sender_kind'] === 'user') {
+            $ids[] = (int) $row['sender_id'];
+        }
+    }
+
+    foreach ($mail as $item) {
+        if (((string) ($item['direction'] ?? 'in') === 'out') && ((int) $item['user_id'] > 0)) {
+            $ids[] = (int) $item['user_id'];
+        }
+    }
+
+    return array(ws_people(array_unique($ids)), $mail);
+}
+
+/**
+ * Who wrote a message row where it is listed outside its channel (pinned
+ * bar, Ctrl+K, Home): a person, an application, a guest of a room or the
+ * sender of a mail (an answer the team sent: its writer).
+ *
+ * @param array $row    ws_messages row
+ * @param array $people ws_message_rows_senders() people
+ * @param array $mail   ws_message_rows_senders() mail
+ * @return array|null
+ */
+function ws_message_row_sender($row, $people, $mail = array())
+{
+    $id = (int) $row['sender_id'];
+
+    switch ((string) $row['sender_kind']) {
+        case 'user':
+            return $people[$id] ?? null;
+        case 'app':
+            return ws_app_sender($id);
+        case 'guest':
+            return function_exists('ws_guest_sender') ? ws_guest_sender($id) : null;
+        case 'mail':
+            return function_exists('ws_mail_sender') ? ws_mail_sender($mail[$id] ?? null, $people) : null;
+    }
+
+    return null;
 }
 
 /**

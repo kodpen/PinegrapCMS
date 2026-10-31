@@ -155,7 +155,7 @@ $repair_warning = '
                             <li>' . h(lang('The package is the current release of this site\'s channel (Stable or Beta), downloaded from kodpen.com over a verified connection.')) . '</li>
                             <li>' . h(lang('It is written over every software file. Changes made to those files by hand are lost; files that are not in the package stay where they are. The data folder and the database are not touched.')) . '</li>
                             <li>' . h(lang('Afterwards the upgrade screen opens and runs any upgrade steps that are due.')) . '</li>
-                            <li>' . h(lang('Take a backup first. If File Integrity is red on System Status, this is the button that puts it right.')) . '</li>
+                            <li>' . h(lang('Take a backup first. If the Files check on System Status shows Problem, Repair Software puts it right.')) . '</li>
                             <li>' . h(lang('This replaces the code the site runs. Use it yourself or let an administrator you trust use it; only administrators can open this screen.')) . '</li>
                         </ul>
                     </div>';
@@ -266,7 +266,7 @@ echo '
                     </div>
                 </div>
                 <div class="col-12 xl:col-6">
-                    <div class="card h-100" id="rerun" style="scroll-margin-top: 5rem;">
+                    <div class="card h-100" id="rerun" style="scroll-margin-top: 1.5rem;">
                         <div class="card-header d-flex justify-content-between align-items-center">
                             <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . h(lang('Run the database upgrade steps again')) . '</span>
                             <a class="btn btn-sm btn-outline theme-secondary" href="backups.php"><i class="bi bi-archive me-1" aria-hidden="true"></i>' . h(lang('Backup Manager')) . '</a>
@@ -274,7 +274,7 @@ echo '
                         <div class="card-body">
                             <p>' . h(lang('Writes the chosen version into the database as the installed one and opens the upgrade screen, which applies every version after it again. Each step asks before it changes anything, so a step that already ran is skipped in a moment; a step that was missed — an upgrade cut short, a table restored from an older backup — is done now.')) . '</p>
                             <p>' . h(lang('Versions before 2026 cannot be repeated; their steps were written without those checks.')) . '</p>
-                            <p>' . h(lang('The upgrade screen opens and starts by itself, one version per request. Take a database backup before you press the button.')) . '</p>' . $rerun_body . '
+                            <p>' . h(lang('The upgrade screen opens and starts by itself, one version per request. Take a database backup before you press "Run the steps again".')) . '</p>' . $rerun_body . '
                         </div>
                     </div>
                 </div>
@@ -282,7 +282,7 @@ echo '
 
             <div class="row g-5 mb-5">
                 <div class="col-12">
-                    <div class="card" id="rollback" style="scroll-margin-top: 5rem;">
+                    <div class="card" id="rollback" style="scroll-margin-top: 1.5rem;">
                         <div class="card-header d-flex justify-content-between align-items-center">
                             <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . h(lang('Roll back an update')) . '</span>
                             <a class="btn btn-sm btn-outline theme-secondary" href="backups.php"><i class="bi bi-archive me-1" aria-hidden="true"></i>' . h(lang('Backup Manager')) . '</a>

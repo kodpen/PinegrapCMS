@@ -2048,7 +2048,8 @@ function waf_scan_request()
 
 /**
  * Scripts where automated abuse is expensive: credential stuffing, card
- * testing, form spam, coupon brute-forcing, cart quote link guessing.
+ * testing, form spam, coupon brute-forcing, cart, sales quote and public
+ * invoice link guessing.
  */
 function waf_sensitive_scripts()
 {
@@ -2059,7 +2060,7 @@ function waf_sensitive_scripts()
         'get_express_order.php', 'forgot_password.php', 'reset_password.php',
         'email_a_friend.php', 'add_comment.php', 'api.php',
         'cancel_order.php', 'retrieve_order.php', 'order_history_retrieve_order.php',
-        'cart_quote.php',
+        'cart_quote.php', 'erp_quote.php', 'erp_invoice.php',
     );
 }
 
@@ -2465,13 +2466,14 @@ function waf_rate_sweep()
  * in seconds. A bucket's row records when its window started, so a day-long
  * window swept on the firewall's hour would be forgotten 23 hours early and
  * the limit would never be reached. 'cfr' is the custom form's per-address
- * limit (pg_cf_throttle_subjects()).
+ * limit (pg_cf_throttle_subjects()); 'eaf' is E-mail a Friend's daily limit
+ * per visitor address (email_a_friend.php).
  *
  * @return array scope => seconds
  */
 function waf_rate_long_scopes()
 {
-    return array('cfr' => 86400);
+    return array('cfr' => 86400, 'eaf' => 86400);
 }
 
 /**
@@ -4298,7 +4300,8 @@ function waf_address_has_staff_sign_in($ip)
  * marketplace's servers post order packages to marketplace_webhook.php with
  * the key they were given in a header, under no browser's user agent, and a
  * payment service's servers post its events to payment_callback.php signed
- * with the endpoint's secret. The
+ * with the endpoint's secret; a carrier label service's servers post parcel
+ * statuses to carrier_webhook.php with a secret key in the address. The
  * ShipWorks client posts to shipworks.php with a password the sign-in
  * throttle counts, one call per order it downloads or ships, from a
  * warehouse's address; a guest room's page posts to workspace_guest.php
@@ -4335,7 +4338,7 @@ function waf_is_api_request()
     static $answer = null;
 
     if ($answer === null) {
-        $names = array('integration.php', 'api.php', 'mcp.php', 'oauth.php', 'workspace_ical.php', 'feed.php', 'marketplace_webhook.php', 'workspace_guest.php', 'payment_callback.php');
+        $names = array('integration.php', 'api.php', 'mcp.php', 'oauth.php', 'workspace_ical.php', 'feed.php', 'marketplace_webhook.php', 'workspace_guest.php', 'payment_callback.php', 'carrier_webhook.php');
 
         // ShipWorks is spared the counters sized for a sign-in screen only
         // while the sign-in throttle counts its password; with the throttle
@@ -5158,7 +5161,7 @@ function waf_country_staff_signed_in()
  */
 function waf_country_api_scripts()
 {
-    return array('integration.php', 'mcp.php', 'oauth.php', 'workspace_ical.php', 'feed.php', 'marketplace_webhook.php', 'payment_callback.php');
+    return array('integration.php', 'mcp.php', 'oauth.php', 'workspace_ical.php', 'feed.php', 'marketplace_webhook.php', 'payment_callback.php', 'carrier_webhook.php');
 }
 
 function waf_country_request_exempt()

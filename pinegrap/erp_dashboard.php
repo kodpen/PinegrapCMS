@@ -163,14 +163,14 @@ $output_tills = '';
 foreach ($cash['tills'] as $till) {
     $output_tills .= '
                         <tr>
-                            <td class="text-truncate" style="max-width:200px">' . h($till['name']) . '</td>
+                            <td class="text-break" style="max-width:200px">' . h($till['name']) . '</td>
                             <td class="text-end ' . (((int) $till['balance'] < 0) ? 'fg-danger' : '') . '">' . h(erp_money_out((int) $till['balance'])) . '</td>
                         </tr>';
 }
 foreach ($cash['foreign'] as $till) {
     $output_tills .= '
                         <tr class="fg-secondary">
-                            <td class="text-truncate" style="max-width:200px">' . h($till['name']) . ' <span class="small">' . h(lang('not added in')) . '</span></td>
+                            <td class="text-break" style="max-width:200px">' . h($till['name']) . ' <span class="small">' . h(lang('not added in')) . '</span></td>
                             <td class="text-end">' . h(erp_money_out_currency((int) $till['balance'], (string) $till['currency'])) . '</td>
                         </tr>';
 }
@@ -181,7 +181,8 @@ if ($output_tills === '') {
 
 // -------------------------------------------------------- receivables by age
 // Widths are the share of the open total, so the bar reads at a glance; the
-// legend under it carries the figures.
+// legend under it carries the figures. The shares are split once so they add
+// up to 100 and the segments fill the track.
 $bucket_classes = array(
     'current' => 'bg-success',
     'd1_30' => 'bg-info',
@@ -192,13 +193,18 @@ $bucket_classes = array(
 
 $output_bar = '';
 $output_legend = '';
-$total = (int) $receivables['total_base'];
+$amounts = array();
+foreach ($buckets as $key => $label) {
+    $amounts[$key] = (int) $receivables['buckets'][$key];
+}
+$shares = erp_percent_shares($amounts);
 
 foreach ($buckets as $key => $label) {
-    $amount = (int) $receivables['buckets'][$key];
-    $share = ($total > 0) ? round($amount * 100 / $total) : 0;
+    $amount = $amounts[$key];
+    $share = $shares[$key];
 
-    if ($amount > 0) {
+    // A bucket under half a percent gets no segment; its legend reads <1%.
+    if ($share > 0) {
         $output_bar .= '
                         <div class="progress" role="progressbar" aria-label="' . h($label) . '" aria-valuenow="' . $share . '" aria-valuemin="0" aria-valuemax="100" style="width:' . $share . '%">
                             <div class="progress-bar ' . $bucket_classes[$key] . '"></div>
@@ -208,7 +214,7 @@ foreach ($buckets as $key => $label) {
     $output_legend .= '
                         <tr>
                             <td><span class="d-inline-block rounded-circle ' . $bucket_classes[$key] . ' me-3" style="width:.65rem;height:.65rem;"></span>' . h($label) . '</td>
-                            <td class="text-end fg-secondary">' . erp_percent_text($share) . '</td>
+                            <td class="text-end fg-secondary">' . (($amount > 0 && $share === 0) ? '&lt;' . erp_percent_text(1) : erp_percent_text($share)) . '</td>
                             <td class="text-end">' . (($amount > 0)
                                 ? '<a href="erp_invoices.php?filter=open&amp;direction=sales&amp;bucket=' . h($key) . '" class="pg-link-body-emphasis">' . h(erp_money_out($amount)) . '</a>'
                                 : '<span class="fg-secondary">' . h(erp_money_out(0)) . '</span>') . '</td>
@@ -220,8 +226,8 @@ $output_top = '';
 foreach ($receivables['top'] as $account) {
     $output_top .= '
                         <tr>
-                            <td class="text-truncate" style="max-width:220px"><a href="edit_erp_account.php?id=' . (int) $account['id'] . '" class="pg-link-body-emphasis">' . h($account['title']) . '</a></td>
-                            <td class="text-end text-nowrap fg-secondary" data-sort="' . (int) $account['oldest_days'] . '">' . h(lang(array('string' => '{var:1} days', 'vars' => (int) $account['oldest_days']))) . '</td>
+                            <td class="text-break" style="max-width:220px"><a href="edit_erp_account.php?id=' . (int) $account['id'] . '" class="pg-link-body-emphasis">' . h($account['title']) . '</a></td>
+                            <td class="text-end text-nowrap fg-secondary" data-sort="' . (int) $account['oldest_days'] . '">' . h(lang(array('string' => '{var:1} day{suffix:1}', 'vars' => (int) $account['oldest_days'], 'suffix' => ((int) $account['oldest_days'] == 1) ? '' : 's'))) . '</td>
                             <td class="text-end text-nowrap" data-sort="' . (int) $account['total'] . '"><a href="erp_invoices.php?filter=overdue&amp;direction=sales&amp;account_id=' . (int) $account['id'] . '" class="pg-link-body-emphasis">' . h(erp_money_out((int) $account['total'])) . '</a></td>
                         </tr>';
 }
@@ -367,10 +373,10 @@ if ($can_see_cash) {
                             <td class="text-nowrap fg-secondary" data-sort="' . h(str_replace('-', '', (string) $movement['doc_date'])) . '">' . h(prepare_form_data_for_output((string) $movement['doc_date'], 'date')) . '</td>
                             <td class="text-nowrap"><a href="' . h($movement_url) . '" class="pg-link-body-emphasis">' . h($movement_label) . '</a>'
                                 . (((int) $movement['reversal_id'] > 0) ? ' <span class="badge theme-secondary">' . lang('Cancelled') . '</span>' : '') . '</td>
-                            <td class="text-truncate" style="max-width:220px">' . (((int) $movement['account_id'] > 0)
+                            <td class="text-break" style="max-width:220px">' . (((int) $movement['account_id'] > 0)
                                 ? '<a href="edit_erp_account.php?id=' . (int) $movement['account_id'] . '" class="pg-link-body-emphasis">' . h((string) $movement['account_title']) . '</a>'
                                 : '<span class="fg-secondary">' . h($movement_description) . '</span>') . '</td>
-                            <td class="text-truncate fg-secondary" style="max-width:160px">' . h((string) $movement['till_name']) . '</td>
+                            <td class="text-break fg-secondary" style="max-width:160px">' . h((string) $movement['till_name']) . '</td>
                             <td class="text-end text-nowrap ' . (($movement_amount < 0) ? 'fg-danger' : 'fg-success') . '" data-sort="' . (int) $movement_amount . '">' . h(erp_money_out_currency($movement_amount, strtoupper(trim((string) $movement['currency'])))) . '</td>
                         </tr>';
     }

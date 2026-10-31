@@ -385,11 +385,13 @@ function ws_note($note_id)
  * What the person may do with a note: it is theirs, they may change it, they
  * may read it, or nothing at all. Being staff gives nothing here.
  *
- * @param array $viewer
- * @param array $note
+ * @param array      $viewer
+ * @param array      $note
+ * @param array|null $shares the note's ws_note_shares rows when read already
+ *                           (ws_note_shares_map()), else read here
  * @return string owner | edit | view | ''
  */
-function ws_note_access($viewer, $note)
+function ws_note_access($viewer, $note, $shares = null)
 {
     if (!$note) {
         return '';
@@ -401,7 +403,11 @@ function ws_note_access($viewer, $note)
 
     $access = '';
 
-    foreach ((array) db_items("SELECT user_id, channel_id, can_edit FROM ws_note_shares WHERE note_id = '" . (int) $note['id'] . "'") as $share) {
+    if ($shares === null) {
+        $shares = db_items("SELECT user_id, channel_id, can_edit FROM ws_note_shares WHERE note_id = '" . (int) $note['id'] . "'");
+    }
+
+    foreach ((array) $shares as $share) {
         if ((int) $share['user_id'] === (int) $viewer['id']) {
             if (!empty($share['can_edit'])) {
                 return 'edit';
@@ -1152,6 +1158,10 @@ function ws_note_save($viewer, $data)
             ws_blocks_index('note', $note_id, $sets['body'], (int) $viewer['id']);
         }
 
+        if ($note_id > 0) {
+            ws_ref_source_write('note', array($note_id => ws_note_ref_tokens($sets['body'])));
+        }
+
         return ($note_id > 0)
             ? array('ok' => true, 'error' => '', 'note_id' => $note_id, 'conflict' => false)
             : array('ok' => false, 'error' => lang('The note could not be saved.'), 'note_id' => 0, 'conflict' => false);
@@ -1185,6 +1195,10 @@ function ws_note_save($viewer, $data)
 
     if (isset($sets['body']) && function_exists('ws_blocks_index')) {
         ws_blocks_index('note', $note_id, $sets['body'], (int) $note['user_id']);
+    }
+
+    if (isset($sets['body'])) {
+        ws_ref_source_write('note', array($note_id => ws_note_ref_tokens($sets['body'])));
     }
 
     // The others who keep it are told it changed - once, until they look.
@@ -1395,6 +1409,7 @@ function ws_note_delete($viewer, $note)
 
     db("DELETE FROM ws_note_shares WHERE note_id = '" . $id . "'");
     db("DELETE FROM ws_notes WHERE id = '" . $id . "'");
+    ws_ref_source_write('note', array($id => array()));
 
     // The same file brought in again is a new note.
     if (ws_note_sources_ready()) {
@@ -1480,6 +1495,8 @@ function ws_note_from_message($viewer, $message)
     if ($note_id <= 0) {
         return array('ok' => false, 'error' => lang('The note could not be saved.'), 'note_id' => 0, 'existing' => false);
     }
+
+    ws_ref_source_write('note', array($note_id => ws_note_ref_tokens($body)));
 
     return array('ok' => true, 'error' => '', 'note_id' => $note_id, 'existing' => false);
 }
@@ -1883,31 +1900,10 @@ function ws_note_channel_sync($channel_id)
 }
 
 /**
- * Keeps a file for a note in the note's folder, base64 as the panel sends
- * files (see ws_note_file_store_bytes()).
- *
- * @param array  $viewer
- * @param array  $note one the person may change
- * @param string $original_name
- * @param string $data
- * @return array ok, error, id, name, url, image
- */
-function ws_note_file_store($viewer, $note, $original_name, $data)
-{
-    $parts = explode('base64,', (string) $data, 2);
-    $binary = base64_decode(str_replace(' ', '+', end($parts)), true);
-
-    if (($binary === false) || ($binary === '')) {
-        return array('ok' => false, 'error' => lang('The file could not be read.'), 'id' => 0, 'name' => '', 'url' => '', 'image' => false);
-    }
-
-    return ws_note_file_store_bytes($viewer, $note, $original_name, $binary);
-}
-
-/**
  * Keeps a file for a note in the note's folder, from its bytes: what the
- * screen sends (ws_note_file_store()) and what a note brought in from another
- * app carries with it (includes/workspace/notes_import.php). What a channel
+ * screen sends (ws_note_file, read by ws_upload_request_file()) and what a
+ * note brought in from another app carries with it
+ * (includes/workspace/notes_import.php). What a channel
  * refuses is refused here too.
  *
  * @param array  $viewer
@@ -2219,6 +2215,8 @@ function ws_note_claude_deliver($viewer, $note, $request_id)
         ws_blocks_index('note', (int) $note['id'], $body, (int) $note['user_id']);
     }
 
+    ws_ref_source_write('note', array((int) $note['id'] => ws_note_ref_tokens($body)));
+
     ws_note_notify_change($viewer, $note, (int) $row['requested_by']);
 
     return true;
@@ -2404,6 +2402,27 @@ function ws_notes_js_strings()
         'notes_import_linking'  => lang('Linking the notes to each other…'),
         'notes_import_done'     => ws_js_template('{var:1} note(s) added, {var:2} brought up to date, {var:3} left as they were.', 3),
         'notes_import_failed'   => lang('Not imported:'),
+        // The From Notion part of the import window (notes_notion.php).
+        'notes_notion_tab'      => lang('From Notion'),
+        'notes_files_tab'       => lang('From files'),
+        'notes_notion_intro'    => lang('Search your Notion pages, pick the ones to bring in, and each becomes a note of yours. Pages already imported are brought up to date.'),
+        'notes_notion_search'   => lang('Search Notion'),
+        'notes_notion_searching' => lang('Searching Notion…'),
+        'notes_notion_none'     => lang('No page matches.'),
+        'notes_notion_untitled' => lang('Untitled'),
+        'notes_notion_fetching' => lang('Fetching the pages from Notion…'),
+        'notes_notion_go'       => ws_js_template('Fetch {var:1} page(s)', 1),
+        'notes_notion_max'      => ws_js_template('Pick at most {var:1} pages at a time.', 1),
+        'notes_notion_settings' => lang('Open Workspace settings'),
+        // The From OneNote part of the import window (notes_onenote.php).
+        'notes_onenote_tab'     => lang('From OneNote'),
+        'notes_onenote_intro'   => lang('Open a section of your OneNote notebooks, pick the pages to bring in, and each becomes a note of yours. Pages already imported are brought up to date.'),
+        'notes_onenote_connect' => lang('Connect Microsoft account'),
+        'notes_onenote_back'    => lang('All sections'),
+        'notes_onenote_none'    => lang('This section has no pages.'),
+        'notes_onenote_empty'   => lang('No OneNote notebook was found in your account.'),
+        'notes_onenote_more'    => lang('Only the most recently changed pages are listed.'),
+        'notes_onenote_fetching' => lang('Fetching the pages from OneNote…'),
         'notes_mine'            => lang('My notes'),
         'notes_shared'          => lang('Shared with me'),
         'notes_new'             => lang('New note'),
@@ -2416,7 +2435,7 @@ function ws_notes_js_strings()
         'notes_empty_search'    => lang('No note matches.'),
         'notes_none'            => lang('A clean page - your first note is one click away.'),
         'notes_intro'           => lang('Your notes are yours alone - nobody else sees them, administrators included - until you share them. Keep any message here from its menu with "Save to my notes", or write your own.'),
-        'notes_pick'            => lang('Pick a note on the left, or start a new one.'),
+        'notes_pick'            => lang('Pick a note from the note list, or start a new one.'),
         'notes_title'           => lang('Title'),
         'notes_text'            => lang('Write here. # tags a person or a record, @Claude asks Claude; a line that ends with = is worked out.'),
         'notes_saving'          => lang('Saving…'),

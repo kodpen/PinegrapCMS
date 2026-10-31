@@ -21,11 +21,21 @@ require('init.php');
 // A job also when a signed-in manager opens it: its contact lines name no one.
 pg_audit_as_job(true);
 
+// Subscriptions run by the store through a payment driver (iyzico, Stripe):
+// the due ones are charged and each paid renewal becomes an order
+// (includes/fn/subscription_renewal.php). First, so a legacy gateway that
+// stops the job below never holds them up.
+pg_subscription_renewals_run(time());
+
+// A subscription the customer cancelled runs until the end of the period
+// already paid, then ends here (includes/fn/subscriptions_account.php).
+pg_subscription_cancelled_ends_run(time());
+
 // if credit/debit card payment method is enabled and payment gateway is PayPal Payments Pro, then check status of recurring profiles
 if ((ECOMMERCE_CREDIT_DEBIT_CARD == true) && (ECOMMERCE_PAYMENT_GATEWAY == 'PayPal Payments Pro')) {
     // if cURL is not installed, then output error
     if (function_exists('curl_init') == false) {
-        $error_message = 'The recurring payment job failed.  This website cannot communicate with the payment gateway.  The administrator of this website should install cURL.';
+        $error_message = lang('The recurring payment job failed. This website cannot communicate with the payment gateway. The administrator of this website should install cURL.');
         log_activity($error_message, 'UNKNOWN');
         exit($error_message);
     }
@@ -251,7 +261,7 @@ if ((ECOMMERCE_CREDIT_DEBIT_CARD == true) && (ECOMMERCE_PAYMENT_GATEWAY == 'PayP
     
     // if recurring payment job did something, then log activity
     if (($number_of_expired_memberships > 0) || ($number_of_revoked_private_access > 0) || ($number_of_emails_sent > 0)) {
-        log_activity('recurring payment job expired membership for ' . $number_of_expired_memberships . ' user(s), revoked private access for ' . $number_of_revoked_private_access . ' user(s), and sent e-mail to ' . $number_of_emails_sent . ' user(s)', 'UNKNOWN');
+        log_activity(lang(array('string' => 'recurring payment job expired membership for {var:1} user(s), revoked private access for {var:2} user(s), and sent e-mail to {var:3} user(s)', 'vars' => array($number_of_expired_memberships, $number_of_revoked_private_access, $number_of_emails_sent))), 'UNKNOWN');
     }
 }
 

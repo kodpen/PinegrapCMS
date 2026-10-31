@@ -234,7 +234,7 @@ function pg_recycle_style($style_id, $user, $page_ids = array())
     require_once(PG_FUNCTIONS_DIR . '/includes/fn/prototype_links.php');
     pg_proto_links_revoke_design($style_id, (int) $user['id']);
 
-    log_activity(lang(array('string' => 'The page style, {var:1}, was moved to the Recycle Bin.', 'vars' => h($style['style_name']))), isset($_SESSION['sessionusername']) ? $_SESSION['sessionusername'] : '');
+    log_activity(lang(array('string' => 'The page style, {var:1}, was moved to the Recycle Bin.', 'vars' => $style['style_name'])), isset($_SESSION['sessionusername']) ? $_SESSION['sessionusername'] : '');
 
     $out['status'] = 'binned';
 
@@ -387,7 +387,7 @@ function pg_recycle_restore_style($style_id, $user)
 
     db("DELETE FROM recycle_bin WHERE (item_type = 'style') AND (item_id = '" . e($style_id) . "')");
 
-    log_activity(lang(array('string' => 'The page style, {var:1}, was restored.', 'vars' => h($row['style_name']))), isset($_SESSION['sessionusername']) ? $_SESSION['sessionusername'] : '');
+    log_activity(lang(array('string' => 'The page style, {var:1}, was restored.', 'vars' => $row['style_name'])), isset($_SESSION['sessionusername']) ? $_SESSION['sessionusername'] : '');
 
     $out['status'] = 'success';
     $out['id'] = $new_id;

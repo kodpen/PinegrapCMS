@@ -2,7 +2,7 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Site Settings - the Firewall cards: the request filter, the bot policy and the address lists.
+ * Site Settings - the Firewall and HTTPS cards: the request filter, the trusted proxies, the bot policy, the address lists and the HTTPS headers.
  *
  * Fills $pg_settings_cards, one grid column per card, in reading order. Which
  * cards belong here is said once, in includes/settings/registry.php; this file
@@ -185,13 +185,6 @@ $pg_settings_cards[] = '
                                                             </div>
                                                         </div>
                                                         <div class="pg-f-lg">
-                                                            <label for="waf_trusted_proxies" class="form-label">' . lang('Trusted Proxies') . '</label>
-                                                            ' . pg_fields_script() . '
-                                                            <input type="text" value="' . h(waf_list_to_string($waf_trusted_proxies)) . '" name="waf_trusted_proxies" id="waf_trusted_proxies" class="form-control tagin min-height-tagin" data-pg-chips data-placeholder="' . lang('Add Address') . '"/>
-                                                            <div class="form-text">' . lang('Addresses of your own load balancer or CDN. Only these are allowed to declare a visitor address through forwarding headers, since those headers are trivially forged. A proxy is read through X-Forwarded-For unless the header it sets follows its address, for example 203.0.113.5 true-client-ip; the others are cf-connecting-ip, x-real-ip, x-sucuri-clientip, fastly-client-ip and incap-client-ip. An address saved before this choice existed keeps reading all of them until it is edited. Cloudflare is recognised automatically.') . '</div>
-                                                            ' . (($waf_own_address !== '' && waf_ip_is_private_or_reserved($waf_own_address) && !waf_ip_in_any($waf_own_address, array('127.0.0.0/8', '::1/128'))) ? '<div class="form-text fg-warning">' . lang(array('string' => 'The firewall sees this request as coming from {var:1}, a private address: a proxy in front of the site that is not listed here, or a local network. Visitors behind it cannot be told apart by address, so the address limits do not apply to them.', 'vars' => h($waf_own_address))) . '</div>' : '') . '
-                                                        </div>
-                                                        <div class="pg-f-lg">
                                                             <label for="waf_exclusions" class="form-label">' . lang('Excluded Paths') . '</label>
                                                             ' . pg_fields_script() . '
                                                             <input type="text" value="' . h(waf_list_to_string($waf_exclusions)) . '" name="waf_exclusions" id="waf_exclusions" class="form-control tagin min-height-tagin" data-pg-chips data-placeholder="' . lang('Add Path') . '"/>
@@ -201,6 +194,30 @@ $pg_settings_cards[] = '
                                                 </div>
                                             </div>
                                         </div>
+                </div>
+            </div>
+        </div>
+    </div>';
+
+// ── Trusted Proxies ──
+// Its own card rather than under Enable Firewall: the visitor address it
+// decides is read whether or not the firewall is on (the IP lists, the bot
+// policy and the sign-in throttle use it too). firewall.save.php writes it.
+$pg_settings_cards[] = '
+    <div id="pgset-proxies" class="pg-set-card">
+        <div class="card">
+            <div class="card-header bg-reset border-0 d-flex flex-wrap justify-content-between align-items-center">
+                <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . lang('Trusted Proxies') . '</span>
+            </div>
+            <div class="card-body">
+                <div class="row gy-5">
+                    <div class="pg-f-lg">
+                        <label for="waf_trusted_proxies" class="form-label">' . lang('Trusted Proxies') . '</label>
+                        ' . pg_fields_script() . '
+                        <input type="text" value="' . h(waf_list_to_string($waf_trusted_proxies)) . '" name="waf_trusted_proxies" id="waf_trusted_proxies" class="form-control tagin min-height-tagin" data-pg-chips data-placeholder="' . lang('Add Address') . '"/>
+                        <div class="form-text">' . lang('Addresses of your own load balancer or CDN. Only these are allowed to declare a visitor address through forwarding headers, since those headers are trivially forged. A proxy is read through X-Forwarded-For unless the header it sets follows its address, for example 203.0.113.5 true-client-ip; the others are cf-connecting-ip, x-real-ip, x-sucuri-clientip, fastly-client-ip and incap-client-ip. An address saved before this choice existed keeps reading all of them until it is edited. Cloudflare is recognised automatically.') . '</div>
+                        ' . (($waf_own_address !== '' && waf_ip_is_private_or_reserved($waf_own_address) && !waf_ip_in_any($waf_own_address, array('127.0.0.0/8', '::1/128'))) ? '<div class="form-text fg-warning">' . lang(array('string' => 'The firewall sees this request as coming from {var:1}, a private address: a proxy in front of the site that is not listed here, or a local network. Visitors behind it cannot be told apart by address, so the address limits do not apply to them.', 'vars' => h($waf_own_address))) . '</div>' : '') . '
+                    </div>
                 </div>
             </div>
         </div>
@@ -273,12 +290,6 @@ $pg_settings_cards[] = '
                                                     ' . pg_fields_script() . '
                                                     <input type="text" value="' . h($output_banned_ip_addresses) . '" name="banned_ip_addresses" id="banned_ip_addresses" class="form-control tagin min-height-tagin border-subtle-danger" data-pg-chips data-placeholder="' . lang('Block an address') . '"/>
                                                     <div class="form-text">' . lang('Wildcards and CIDR ranges are supported. For example: 192.168.0.1, 192.168.1.*, 10.0.0.0/8, 2001:db8::/32') . ' ' . lang('Enforced whatever mode the firewall is in, including Monitor, and before the database is even opened. Allowed addresses above still win.') . '</div>
-                                                </div>
-                                                <div class="col-12">
-                                                    <label for="banned_email_addresses" class="form-label"><i class="bi bi-envelope-slash fg-danger me-1"></i>' . lang('Blocked Email Addresses') . '</label>
-                                                    ' . pg_fields_script() . '
-                                                    <input type="text" value="' . h($banned_email_addresses) . '" name="banned_email_addresses" id="banned_email_addresses" class="form-control tagin min-height-tagin border-subtle-danger" data-pg-chips data-placeholder="' . lang('Block an address') . '"/>
-                                                    <div class="form-text">' . lang('A whole address or a domain. For example: spam@example.com, tempmail.com, @disposable.net. A blocked address cannot register through any form, cannot connect Google, and cannot sign in.') . '</div>
                                                 </div>
                                                 ' . ($output_auto_bans ? '<div class="col-12 ">
                                                     <label class="form-label">' . lang('Automatic Temporary Bans') . '</label>
@@ -378,8 +389,8 @@ if (!empty($waf_country_ready)) {
                             <div class="form-text">' . lang('Off: a request no source can place is let in, so a missing location database never shuts the site.') . '</div>
                         </div>
                     </div>
-                    <div class="col-12">
-                        <label class="form-label">' . lang('Always let in') . '</label>' . $output_waf_country_exemptions . '
+                    <div class="col-12" role="group" aria-labelledby="waf_country_exempt_title">
+                        <div class="form-label" id="waf_country_exempt_title">' . lang('Always let in') . '</div>' . $output_waf_country_exemptions . '
                         <div class="form-text">' . lang('Allowed IP addresses, robots.txt, certificate renewal (.well-known) and the uptime check address (health.php) are always let in.') . '</div>
                     </div>' . $output_waf_country_check . '
                     <div class="col-12">' . pg_geo_settings_note() . '

@@ -5,7 +5,7 @@ module: widgets_order_form
 ---
 
 ## What is it?
-- Kind `order_form` (`includes/fn/widgets_order_form.php`), the first type of the owner's order in [[system-widget-missing-types]] (5a, #2367). A product group's products go into the cart at once. It posts the classic names (`product_<id>`, `donation_<id>`, `recurring_payment_period_<id>`, `recurring_number_of_payments_<id>`, `recurring_start_date_<id>`, `product_id`, `quantity`, `ship_to`, `add_name`, `submit_add`, `submit_skip`, hidden `page_id`, `require_cookies`) to `order_form.php`; its checks, the items it adds and its redirects are unchanged.
+- Kind `order_form` (`includes/fn/widgets_order_form.php`), the first type of the owner's order in [[system-widget-page-types]] (5a, #2367). A product group's products go into the cart at once. It posts the classic names (`product_<id>`, `donation_<id>`, `recurring_payment_period_<id>`, `recurring_number_of_payments_<id>`, `recurring_start_date_<id>`, `product_id`, `quantity`, `ship_to`, `add_name`, `submit_add`, `submit_skip`, hidden `page_id`, `require_cookies`) to `order_form.php`; its checks, the items it adds and its redirects are unchanged.
 
 ## Where are the page's settings?
 - In the page's `order_form_pages` row: the handler finds the page by it (no page type check). A designed page gets one at render (`INSERT IGNORE`, not in a background render).
@@ -17,8 +17,8 @@ module: widgets_order_form
 - `submit_add` / `submit_skip` buttons get the label as `value`; the skip button needs a label.
 
 ## Which flags and tokens?
-- `pg_of_flags()`: `has_products`, `no_products`, `is_list_layout`, `is_dropdown_layout`, `has_quantity` (not only donations), `has_recipient_choice` (multi-recipient and an available shippable product), `has_skip_button`. Rows: `pg_of_row_flags()`.
-- Row tokens use the catalog's names (`__name`, `__short_description`, `__description`, `__price_formatted`, `__image_url`, `__image_alt`, `__out_of_stock_message`, `__id`). Row section `recurring_schedule`: the classic schedule fields with the date picker.
+- `pg_of_flags()`: `has_products`, `no_products`, `is_list_layout`, `is_dropdown_layout`, `has_quantity` (not only donations), `has_recipient_choice` (multi-recipient and an available shippable product), `has_skip_button`, `has_currency_choice`. Rows: `pg_of_row_flags()`.
+- Row tokens use the catalog's names (`__name`, `__short_description`, `__description`, `__price_formatted`, `__image_url`, `__image_alt`, `__out_of_stock_message`, `__id`). Row section `recurring_schedule`: the classic schedule fields, the start date on the date-and-time control (`data-pg-date`, #3168).
 
 ## What is left out?
-- The currency switcher the classic custom layout offers. No PHP default tree: like the checkout widgets, only the JS starter.
+- Nothing of the classic custom layout (currency picker: [[checkout-currency-picker]]). No PHP default tree: like the checkout widgets, only the JS starter.

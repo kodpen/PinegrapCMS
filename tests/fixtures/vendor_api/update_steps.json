@@ -1,0 +1,489 @@
+{
+    "schema": 1,
+    "description": "The ordered checks the Pinegrap 2026.11 client runs on a panel update before pg_extract_archive(). The check step pins one record in $_SESSION['software'] (version, channel, build, package URL, size, sha256, manifest_sha256, sig_key_id) from the GET /v1/releases/latest answer; download, backup and replace use only that record. Each case sets values over the baseline (dotted paths) and states where the run stops. Any refusal installs nothing and has no fallback: no legacy api2, no other host. Decision table: docs/plan/bridge-matrix.md.",
+    "outcomes": {
+        "extract": "Every check passed; pg_extract_archive() runs.",
+        "refuse": "The update stops with an error; nothing is downloaded further or installed.",
+        "blocked": "Nothing is downloaded; the operator is told to update to blocked.stepping_stone first.",
+        "no_update": "No update is offered from this answer and nothing is downloaded; the installed software is not refused or touched, and the screen shows the answer's own message."
+    },
+    "steps": [
+        {
+            "id": "check",
+            "order": 1,
+            "check": "The /v1/releases/latest answer: a 403 access_blocked offers no update (own message, not a refusal of the installed software); a 200 must carry no blocked object, and its release.channel must equal the requested channel (pg_update_channel()). A blocked answer stops with the stepping-stone message; a channel mismatch refuses. An update is offered only when release.version is newer than VERSION (version_compare), or, on the beta channel, when it equals VERSION and release.build differs from the installed build (the build id kept in a small file under data/, '' when the site has none); otherwise nothing is pinned.",
+            "on_fail": "no_update, blocked or refuse"
+        },
+        {
+            "id": "signature",
+            "order": 2,
+            "check": "openssl_verify() exists; the pinned sig_key_id names one of the embedded P-256 public keys; openssl_verify(manifest bytes, signature, that key, OPENSSL_ALGO_SHA256) === 1. Any other result (0, -1, false) refuses.",
+            "on_fail": "refuse"
+        },
+        {
+            "id": "manifest",
+            "order": 3,
+            "check": "sha256 of the manifest bytes equals the pinned manifest_sha256; manifest version, build ('' or absent on stable) and channel equal the pinned record; the pinned channel still equals pg_update_channel(); the manifest's update package size and sha256 equal the pinned ones.",
+            "on_fail": "refuse"
+        },
+        {
+            "id": "download",
+            "order": 4,
+            "check": "The package URL is the pinned one: https, host equal to the API base host. The answer is HTTP 200 with no redirect followed, over pg_curl_tls().",
+            "on_fail": "refuse"
+        },
+        {
+            "id": "package",
+            "order": 5,
+            "check": "The downloaded byte count equals the pinned size and hash_file('sha256') equals the pinned sha256 (hash_equals).",
+            "on_fail": "refuse"
+        },
+        {
+            "id": "zip_magic",
+            "order": 6,
+            "check": "pg_looks_like_zip() on the first bytes.",
+            "on_fail": "refuse"
+        },
+        {
+            "id": "zip_version",
+            "order": 7,
+            "check": "The last version listed in pinegrap/includes/migrations/versions.php inside the ZIP (pg_upgrade_versions_from_source()) equals the pinned version, and either version_compare(it, VERSION, '>') holds or, for another beta build of the installed version, it equals VERSION and the pinned build differs from the installed build.",
+            "on_fail": "refuse"
+        }
+    ],
+    "baseline": {
+        "installed_version": "2026.11.0",
+        "installed_build": "",
+        "update_channel": "stable",
+        "api_base": "https://api.kodpen.com/v1",
+        "embedded_key_ids": [
+            "kp-2026a",
+            "kp-2026b"
+        ],
+        "openssl_verify_exists": true,
+        "answer_status": 200,
+        "answer_code": null,
+        "answer": {
+            "version": "2026.11.1",
+            "channel": "stable",
+            "build": "",
+            "min_from_version": null,
+            "manifest_url": "https://api.kodpen.com/dl/2026.11.1/manifest.json",
+            "signature_url": "https://api.kodpen.com/dl/2026.11.1/manifest.json.sig",
+            "manifest_sha256": "fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210",
+            "sig_key_id": "kp-2026a",
+            "update": {
+                "url": "https://api.kodpen.com/dl/2026.11.1/pinegrap_software_update.zip",
+                "size": 31000000,
+                "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+            },
+            "blocked": null
+        },
+        "observed": {
+            "manifest_sha256": "fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210",
+            "openssl_verify_result": 1,
+            "manifest": {
+                "version": "2026.11.1",
+                "channel": "stable",
+                "build": "",
+                "update": {
+                    "size": 31000000,
+                    "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                }
+            },
+            "download": {
+                "url_host": "api.kodpen.com",
+                "http_status": 200,
+                "redirected": false
+            },
+            "size": 31000000,
+            "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+            "first_bytes_hex": "504b0304",
+            "zip_versions_last": "2026.11.1"
+        }
+    },
+    "cases": [
+        {
+            "id": "happy_path",
+            "set": {},
+            "expect": {
+                "outcome": "extract",
+                "stopped_at": null,
+                "reason": null
+            }
+        },
+        {
+            "id": "second_key_id",
+            "note": "The backup key verifies as well as the primary.",
+            "set": {
+                "answer.sig_key_id": "kp-2026b"
+            },
+            "expect": {
+                "outcome": "extract",
+                "stopped_at": null,
+                "reason": null
+            }
+        },
+        {
+            "id": "blocked_by_min_from_version",
+            "set": {
+                "answer.version": "2027.3.0",
+                "answer.min_from_version": "2026.12.0",
+                "answer.blocked": {
+                    "reason": "min_from_version",
+                    "stepping_stone": "2026.12.4"
+                }
+            },
+            "expect": {
+                "outcome": "blocked",
+                "stopped_at": "check",
+                "reason": "blocked_min_from_version"
+            }
+        },
+        {
+            "id": "blocked_with_unknown_reason",
+            "note": "A reason the client does not know still means blocked.",
+            "set": {
+                "answer.blocked": {
+                    "reason": "future_reason",
+                    "stepping_stone": "2026.11.0"
+                }
+            },
+            "expect": {
+                "outcome": "blocked",
+                "stopped_at": "check",
+                "reason": "blocked_min_from_version"
+            }
+        },
+        {
+            "id": "access_blocked_403",
+            "note": "The site or its address is under an access block with scope updates or all.",
+            "set": {
+                "answer_status": 403,
+                "answer_code": "access_blocked"
+            },
+            "expect": {
+                "outcome": "no_update",
+                "stopped_at": "check",
+                "reason": "access_blocked"
+            }
+        },
+        {
+            "id": "answer_channel_mismatch",
+            "set": {
+                "answer.channel": "beta"
+            },
+            "expect": {
+                "outcome": "refuse",
+                "stopped_at": "check",
+                "reason": "channel_mismatch"
+            }
+        },
+        {
+            "id": "openssl_verify_missing",
+            "note": "A site that cannot verify refuses the update.",
+            "set": {
+                "openssl_verify_exists": false
+            },
+            "expect": {
+                "outcome": "refuse",
+                "stopped_at": "signature",
+                "reason": "signature_unverifiable"
+            }
+        },
+        {
+            "id": "signature_invalid",
+            "set": {
+                "observed.openssl_verify_result": 0
+            },
+            "expect": {
+                "outcome": "refuse",
+                "stopped_at": "signature",
+                "reason": "signature_invalid"
+            }
+        },
+        {
+            "id": "signature_error",
+            "set": {
+                "observed.openssl_verify_result": -1
+            },
+            "expect": {
+                "outcome": "refuse",
+                "stopped_at": "signature",
+                "reason": "signature_invalid"
+            }
+        },
+        {
+            "id": "signature_verify_false",
+            "set": {
+                "observed.openssl_verify_result": false
+            },
+            "expect": {
+                "outcome": "refuse",
+                "stopped_at": "signature",
+                "reason": "signature_invalid"
+            }
+        },
+        {
+            "id": "signature_missing_file",
+            "note": "The signature URL did not give a signature (openssl_verify is not called).",
+            "set": {
+                "observed.openssl_verify_result": null
+            },
+            "expect": {
+                "outcome": "refuse",
+                "stopped_at": "signature",
+                "reason": "signature_invalid"
+            }
+        },
+        {
+            "id": "unknown_key_id",
+            "set": {
+                "answer.sig_key_id": "kp-2099z"
+            },
+            "expect": {
+                "outcome": "refuse",
+                "stopped_at": "signature",
+                "reason": "unknown_key_id"
+            }
+        },
+        {
+            "id": "manifest_bytes_not_pinned",
+            "set": {
+                "observed.manifest_sha256": "1111111111111111111111111111111111111111111111111111111111111111"
+            },
+            "expect": {
+                "outcome": "refuse",
+                "stopped_at": "manifest",
+                "reason": "manifest_mismatch"
+            }
+        },
+        {
+            "id": "manifest_version_mismatch",
+            "set": {
+                "observed.manifest.version": "2026.11.2"
+            },
+            "expect": {
+                "outcome": "refuse",
+                "stopped_at": "manifest",
+                "reason": "manifest_mismatch"
+            }
+        },
+        {
+            "id": "manifest_channel_mismatch",
+            "set": {
+                "observed.manifest.channel": "beta"
+            },
+            "expect": {
+                "outcome": "refuse",
+                "stopped_at": "manifest",
+                "reason": "manifest_mismatch"
+            }
+        },
+        {
+            "id": "site_channel_changed_since_check",
+            "set": {
+                "update_channel": "beta"
+            },
+            "expect": {
+                "outcome": "refuse",
+                "stopped_at": "manifest",
+                "reason": "manifest_mismatch"
+            }
+        },
+        {
+            "id": "manifest_package_hash_mismatch",
+            "set": {
+                "observed.manifest.update.sha256": "2222222222222222222222222222222222222222222222222222222222222222"
+            },
+            "expect": {
+                "outcome": "refuse",
+                "stopped_at": "manifest",
+                "reason": "manifest_mismatch"
+            }
+        },
+        {
+            "id": "manifest_package_size_mismatch",
+            "set": {
+                "observed.manifest.update.size": 31000001
+            },
+            "expect": {
+                "outcome": "refuse",
+                "stopped_at": "manifest",
+                "reason": "manifest_mismatch"
+            }
+        },
+        {
+            "id": "package_host_not_api_host",
+            "set": {
+                "answer.update.url": "https://downloads.example.net/pinegrap_software_update.zip",
+                "observed.download.url_host": "downloads.example.net"
+            },
+            "expect": {
+                "outcome": "refuse",
+                "stopped_at": "download",
+                "reason": "download_refused"
+            }
+        },
+        {
+            "id": "package_redirected",
+            "set": {
+                "observed.download.http_status": 302,
+                "observed.download.redirected": true
+            },
+            "expect": {
+                "outcome": "refuse",
+                "stopped_at": "download",
+                "reason": "download_refused"
+            }
+        },
+        {
+            "id": "package_http_404",
+            "set": {
+                "observed.download.http_status": 404
+            },
+            "expect": {
+                "outcome": "refuse",
+                "stopped_at": "download",
+                "reason": "download_refused"
+            }
+        },
+        {
+            "id": "package_size_mismatch",
+            "set": {
+                "observed.size": 30999999
+            },
+            "expect": {
+                "outcome": "refuse",
+                "stopped_at": "package",
+                "reason": "package_mismatch"
+            }
+        },
+        {
+            "id": "package_sha256_mismatch",
+            "set": {
+                "observed.sha256": "3333333333333333333333333333333333333333333333333333333333333333"
+            },
+            "expect": {
+                "outcome": "refuse",
+                "stopped_at": "package",
+                "reason": "package_mismatch"
+            }
+        },
+        {
+            "id": "not_a_zip",
+            "set": {
+                "observed.first_bytes_hex": "3c68746d"
+            },
+            "expect": {
+                "outcome": "refuse",
+                "stopped_at": "zip_magic",
+                "reason": "not_a_zip"
+            }
+        },
+        {
+            "id": "zip_version_not_announced",
+            "set": {
+                "observed.zip_versions_last": "2026.11.2"
+            },
+            "expect": {
+                "outcome": "refuse",
+                "stopped_at": "zip_version",
+                "reason": "zip_version_mismatch"
+            }
+        },
+        {
+            "id": "zip_versions_missing",
+            "note": "versions.php absent or unreadable inside the ZIP.",
+            "set": {
+                "observed.zip_versions_last": null
+            },
+            "expect": {
+                "outcome": "refuse",
+                "stopped_at": "zip_version",
+                "reason": "zip_version_mismatch"
+            }
+        },
+        {
+            "id": "zip_version_not_newer_than_installed",
+            "note": "The site reached the pinned version another way after the check step.",
+            "set": {
+                "installed_version": "2026.11.1"
+            },
+            "expect": {
+                "outcome": "refuse",
+                "stopped_at": "zip_version",
+                "reason": "not_newer"
+            }
+        },
+        {
+            "id": "beta_newer_build_of_installed_version",
+            "note": "Another beta build of the installed open version is an update: the same version, a different build.",
+            "set": {
+                "update_channel": "beta",
+                "answer.channel": "beta",
+                "observed.manifest.channel": "beta",
+                "installed_version": "2026.11.1",
+                "installed_build": "aaaaaaa.202611010900",
+                "answer.build": "bbbbbbb.202611051500",
+                "observed.manifest.build": "bbbbbbb.202611051500"
+            },
+            "expect": {
+                "outcome": "extract",
+                "stopped_at": null,
+                "reason": null
+            }
+        },
+        {
+            "id": "beta_newer_version_any_build",
+            "note": "A newer version is an update whatever the builds are.",
+            "set": {
+                "update_channel": "beta",
+                "answer.channel": "beta",
+                "observed.manifest.channel": "beta",
+                "installed_build": "aaaaaaa.202611010900",
+                "answer.build": "ccccccc.202611200800",
+                "observed.manifest.build": "ccccccc.202611200800"
+            },
+            "expect": {
+                "outcome": "extract",
+                "stopped_at": null,
+                "reason": null
+            }
+        },
+        {
+            "id": "beta_build_already_installed",
+            "note": "The site reached the pinned build another way after the check step.",
+            "set": {
+                "update_channel": "beta",
+                "answer.channel": "beta",
+                "observed.manifest.channel": "beta",
+                "installed_version": "2026.11.1",
+                "installed_build": "bbbbbbb.202611051500",
+                "answer.build": "bbbbbbb.202611051500",
+                "observed.manifest.build": "bbbbbbb.202611051500"
+            },
+            "expect": {
+                "outcome": "refuse",
+                "stopped_at": "zip_version",
+                "reason": "not_newer"
+            }
+        },
+        {
+            "id": "manifest_build_mismatch",
+            "note": "A signed manifest of another build of the same version is not the pinned release.",
+            "set": {
+                "update_channel": "beta",
+                "answer.channel": "beta",
+                "observed.manifest.channel": "beta",
+                "answer.build": "bbbbbbb.202611051500",
+                "observed.manifest.build": "ddddddd.202611061000"
+            },
+            "expect": {
+                "outcome": "refuse",
+                "stopped_at": "manifest",
+                "reason": "manifest_mismatch"
+            }
+        }
+    ]
+}

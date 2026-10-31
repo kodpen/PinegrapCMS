@@ -1,0 +1,10 @@
+{
+  "accountType": "CORPORATE",
+  "accountTypeLabel": "Kurumsal",
+  "taxExempt": false,
+  "status": "APPROVED",
+  "statusLabel": "Onaylandı",
+  "approved": true,
+  "approvedAt": "2026-09-01T10:00:00",
+  "summary": "Hesabınız onaylı."
+}

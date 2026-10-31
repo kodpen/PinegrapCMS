@@ -1,0 +1,9 @@
+{
+  "object_created": "2026-10-29T10:00:00.000Z",
+  "object_id": "b1c2d3e4f5a64b7c8d9e0f1a2b3c4d5e",
+  "object_owner": "shop@example.com",
+  "object_updated": "2026-10-29T10:00:00.000Z",
+  "status": "QUEUED",
+  "test": true,
+  "transaction": "915d94940ea54c3a80cbfa328722f5a1"
+}

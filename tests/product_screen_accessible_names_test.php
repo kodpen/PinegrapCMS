@@ -46,6 +46,20 @@ function test_product_screen_accessible_names_advanced_row_labels()
 	}
 }
 
+function test_product_screen_accessible_names_advanced_toggle_state()
+{
+	$js = product_screen_accessible_names_source('assets/js/product_builder.js');
+
+	// The toggle names its variant and says whether the row it opens is open.
+	pg_assert_contains('function advancedToggle(index, combo)', $js);
+	pg_assert_contains('advancedToggle(index, combo) +', $js);
+	pg_assert_contains('aria-controls="pg_pb_adv_\' + index + \'" aria-expanded="false"', $js);
+	pg_assert_contains("esc(label('Advanced Settings') + ': ' + comboLabel(combo))", $js);
+	pg_assert_contains('<i class="bi bi-chevron-down me-1" aria-hidden="true"></i>', $js);
+	pg_assert_same(2, substr_count($js, '<tr class="pg-pb-adv-row d-none" id="pg_pb_adv_\' + index + \'" data-pg-pb-adv="'), 'both advanced rows carry the id');
+	pg_assert_contains("$(this).attr('aria-expanded', open ? 'true' : 'false');", $js);
+}
+
 function test_product_screen_accessible_names_image_chip_remove()
 {
 	$js = product_screen_accessible_names_source('assets/js/product_builder.js');
@@ -85,4 +99,20 @@ function test_product_screen_accessible_names_card_and_list_fields()
 	pg_assert_contains("<select id=\"pg-barcode-type\" aria-label=\"' . h(lang('Barcode Type')) . '\"", $php);
 	pg_assert_contains("name=\"group_ids[]\" value=\"' . \$set_id . '\" aria-label=\"' . h(lang(array('string' => 'Select {var:1}', 'vars' => array(", $php);
 	pg_assert_contains("<nav id=\"button_bar\" class=\"navigation\" aria-label=\"' . h(lang('Button Bar')) . '\">", $php);
+}
+
+function test_product_screen_accessible_names_option_boxes()
+{
+	$php = product_screen_accessible_names_source('product_builder.php');
+	$js  = product_screen_accessible_names_source('assets/js/product_builder.js');
+
+	// The Add Option box says which attribute it adds to.
+	pg_assert_contains("pg-pb-option-add-input\" maxlength=\"255\" placeholder=\"' . lang('Label') . '\" aria-label=\"' . h(lang(array('string' => 'New option for {var:1}', 'vars' => array(\$attribute['name'])))) . '\" />", $php);
+
+	// The New Attribute option rows are numbered and grouped under their caption.
+	pg_assert_contains('<label class="form-label" id="pg_pb_attr_options_label">', $php);
+	pg_assert_contains('<div id="pg_pb_attr_options" role="group" aria-labelledby="pg_pb_attr_options_label"></div>', $php);
+	pg_assert_contains("'option_n'           => lang(array('string' => 'Option {var:1}', 'vars' => array('{n}'))),", $php);
+	pg_assert_contains("function numberOptionRows()", $js);
+	pg_assert_contains("\$(this).attr('aria-label', label('option_n').replace('{n}', index + 1));", $js);
 }

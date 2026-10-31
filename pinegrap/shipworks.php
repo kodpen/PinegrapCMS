@@ -528,27 +528,39 @@ switch ($_REQUEST['action']) {
                 shipped_quantity = quantity
             WHERE ship_to_id = '$ship_to_id'");
 
-        $tracking_number = trim($_REQUEST['tracking']);
+        $tracking_number = isset($_REQUEST['tracking']) ? trim((string) $_REQUEST['tracking']) : '';
 
-        // If the tracking number is not blank, then determine if we should add it.
+        // If the tracking number is not blank, then record it through the
+        // shipment write path. A number already on this recipient stays one
+        // row (the write path updates it in place and reports no new row).
         if ($tracking_number != '') {
-            // If the tracking number has not already been added to this recipient, then add it.
-            if (db_value(
-                "SELECT COUNT(*)
-                FROM shipping_tracking_numbers
-                WHERE
-                    (ship_to_id = '$ship_to_id')
-                    AND (number = '" . escape($tracking_number) . "')") == 0
-            ) {
-                db(
-                    "INSERT INTO shipping_tracking_numbers (
-                        order_id,
-                        ship_to_id,
-                        number)
-                    VALUES (
-                        '$order_id',
-                        '$ship_to_id',
-                        '" . escape($tracking_number) . "')");
+
+            // ShipWorks names the carrier and the day it shipped; a carrier
+            // the store does not know is left to the write path's own guess,
+            // a day it cannot read becomes now.
+            $shipped_at = isset($_REQUEST['shippingdate']) ? strtotime((string) $_REQUEST['shippingdate']) : false;
+
+            $recorded = pg_shipment_record((int) $order_id, (int) $ship_to_id, $tracking_number, array(
+                'carrier'    => isset($_REQUEST['carrier']) ? (string) $_REQUEST['carrier'] : '',
+                'source'     => 'shipworks',
+                'shipped_at' => ($shipped_at !== false) ? (int) $shipped_at : 0,
+            ));
+
+            // The same event the order screen, the API and a marketplace
+            // import produce, once per new number. Nothing is mailed and no
+            // invoice is issued from here: ShipWorks sites never had either
+            // on this path.
+            if ($recorded['created']) {
+                require_once(dirname(__FILE__) . '/includes/api/outbound/webhooks.php');
+
+                api_webhook_enqueue('order.shipped', array(
+                    'id'               => (int) $order_id,
+                    'order_number'     => db_value("SELECT order_number FROM orders WHERE id = '" . (int) $order_id . "' LIMIT 1"),
+                    'ship_to_id'       => (int) $ship_to_id,
+                    'tracking_numbers' => array($recorded['number']),
+                    'ship_date'        => null,
+                    'parcels'          => pg_shipment_api_parcels((int) $ship_to_id, null, $recorded['number']),
+                ));
             }
         }
 

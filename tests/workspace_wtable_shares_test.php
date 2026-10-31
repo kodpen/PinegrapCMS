@@ -104,6 +104,9 @@ function test_workspace_wtable_shares_writes()
 	$body = isset($match[1]) ? $match[1] : '';
 	pg_assert_true(strpos($body, 'ws_wtable_share_set_check(') < strpos($body, 'INSERT INTO ws_wtable_shares'), 'checked before written');
 	pg_assert_contains("if (\$created && (\$type === 'user'))", $body, 'only a person newly shared with is told');
+	pg_assert_true(strpos($body, 'mysqli_query(') === false, 'the share is written through db_q()');
+	pg_assert_true((bool) preg_match('/db_q\("INSERT INTO ws_wtable_shares \([^)]*\) VALUES \((\?, ){5}\?\)",\s*array\(([^;]*)\)\);/', $body, $insert), 'six placeholders');
+	pg_assert_true(isset($insert[2]) && !preg_match('/\be\(/', $insert[2]), 'no escaped values in the insert');
 
 	preg_match('/^function ws_wtable_share_tell\(.*?\)\n\{\n(.*?)\n\}\n/ms', $source, $match);
 	pg_assert_contains("'separate' => true", isset($match[1]) ? $match[1] : '');

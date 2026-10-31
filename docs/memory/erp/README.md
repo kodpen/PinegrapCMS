@@ -39,9 +39,11 @@ ERP (accounting) module: invoices, payments, waybills, cash, e-documents, report
 - erp-api-events-and-testing.md: The ERP event door erp_event() (webhook queue, audit trail, alerts), where writers announce, what a new event needs, and how to test the ERP API on dev without creating keys.
 - erp-api-seam.md: ERP's only door into the external API, includes/erp/api.php: five hooks, load chain, name clashes, schema pairs, paging, scope groups, owner ceiling, error codes, drafts, wire rules.
 - erp-audit-trail.md: ERP audit trail (erp_audit_log, 4.90): its two writers (events and ERP log lines), the calling-file rule, why it is never deleted, what a line carries, who may read it.
+- erp-auto-invoice-marketplace.md: Marketplace orders (Trendyol, n11) in the automatic invoice: config.erp_auto_invoice_marketplace (11.0.62, default off), where import and tracking fire it, what stays manual (#3670)
 - erp-auto-invoice.md: An order's invoice issued on its own once it is paid or shipped (config.erp_auto_invoice_on): setting, two filters, triggers, decision, writer, invoicing lock, after-response run, refusal notice
 - erp-awaiting-transfer-orders.md: Awaiting-payment (bank transfer) orders: derived state predicate, pg_order_mark_paid, ERP settlement hook, auto-cancel sweep in job.php, cancel-reason display.
-- erp-bank-statement-lines.md: ERP bank statement lines: each line once (line_hash with an occurrence count for repeated lines), matching to till movements, recording an unmatched line.
+- erp-back-targets.md: ERP detail screens go back to the filtered list they were opened from through send_to (row link, drawer Open in full, reloads, forms); which screens, which are left
+- erp-bank-statement-lines.md: ERP bank statement lines: each line once (line_hash), matching to till movements, recording a line; what a refused step keeps, the send-once forms.
 - erp-bank-statements.md: ERP bank statement import (4.102): readers, the PHPExcel libxml trap, title-block cut, CSV separator, amount sign and decimals; the lines are in erp-bank-statement-lines.md.
 - erp-bundle-lines.md: A product bundle on an ERP invoice (#2727): one line, the component snapshot in erp_invoice_item_components, one stock move per component on issue, return and cancel, the profit report.
 - erp-cash-forecast.md: ERP cash forecast: what counts as money in and out over 30, 60 or 90 days, the item shape, cheque tills left out of today's cash, how a new source is added, the API's scope.
@@ -69,11 +71,14 @@ ERP (accounting) module: invoices, payments, waybills, cash, e-documents, report
 - erp-expenses.md: ERP expenses (4.95): why an expense is nobody's debt, how payment and cancel post to the till, amount and base figures, date and till rules, categories, the API's cash gate and events.
 - erp-file-map-features.md: Where ERP work lives, part 2: stock, accountant pack, period lock, expenses, reports, rules, quotes, purchase orders, recurring documents, prices, cheques, bank statements, storefront, CSV.
 - erp-file-map.md: Where ERP work lives, part 1: the core (entry, money, ledger, accounts, settlement, orders, invoices, waybills, documents, aging, e-documents, API seam). Part 2: erp-file-map-features.md.
+- erp-input-keyboards.md: Phone keyboards of ERP boxes: liveform's opt-in autocapitalize, the till IBAN, the expense VKN/TCKN, the send-by-e-mail recipient list and the account card's e-mail, phone and postcode
 - erp-internal-waybill.md: Internal ERP waybill (irsaliye; no driver sends e-Irsaliye): files, series, one open waybill per order, derived invoiced state, editor reuse, units and templates.
 - erp-invoice-cancel-and-open-amount.md: When an ERP invoice can be cancelled, what the screen asks before the provider, what cancel does to ledger, number, gift card, stock and order, the period lock, open amount and returns.
 - erp-invoice-document-pdf.md: ERP invoice document layer (includes/erp/document.php): template syntax, placeholders, HTML/PDF endpoint, template editor, seller identity, dompdf traps.
 - erp-invoice-editor-catalog-offers.md: Invoice/waybill editor catalogue read (product name rule, erp_product_for_line shape), zone rate on a new account, product offers, two-discount order, field-level errors, barcode box.
 - erp-invoice-mail.md: E-mailing an issued ERP invoice (4.97): the attachment, erp_document_mails rows, the automatic send decided at the invoice's announcement and sent after the response, testing on dev.
+- erp-invoice-public-link.md: Public address of an invoice PDF (#3743, step 11.0.65, PR #3780): erp_invoices.public_token_hash, erp_invoice.php, token rules, revoke, 404s, WAF; what n11 and Trendyol require of the link
+- erp-invoice-register-cap.md: The ERP invoice register reads at most 500 rows; a full list is counted over the same conditions and the note and a line under the table name both numbers
 - erp-invoice-settlement.md: ERP invoice closing by settlement (erp_settlements): why it posts no money, derived paid_total, no auto matching, transaction nesting, and why balance caches never feed a report.
 - erp-isbasi-driver.md: Logo İşbaşı e-document driver (edoc/isbasi.php): source document, fields and environments, login without getplatform, session and quota, request helper, success envelope, test limits.
 - erp-isbasi-internet-sale.md: What an internet sale adds to the İşbaşı SimpleInv body: the e-Arşiv block, the carrier, the payment type codes, and the open test-environment refusal.
@@ -105,6 +110,7 @@ ERP (accounting) module: invoices, payments, waybills, cash, e-documents, report
 - erp-parasut-final-consumer-card.md: Which Paraşüt card the invoice of a buyer without a TCKN (final consumer, 11111111111) goes on, why a name match is not enough, how many pages of cards are read, and what is still open
 - erp-parasut-invoice-lines.md: How an ERP invoice's lines go to Paraşüt, how Paraşüt takes VAT and withholding (per group, not per line), why some ERP totals are refused or unreachable there; shapes tried live
 - erp-parasut-legacy-buyer-card.md: The Paraşüt card the order screen's buttons put an order on: the one Paraşüt holds for the buyer's VKN/TCKN (#1543), else a new one with the order's identity (#1408) and address (#1518)
+- erp-parasut-legacy-export-text-cells.md: Orders > Export for Paraşüt writes typed text (names, e-mail, address, identity number, product name) as explicit text cells, never through PHPExcel's default binder.
 - erp-parasut-legacy-inbox.md: Legacy Paraşüt inbox (view_parasut_inbox.php): what its tabs read, the list query (gteq/lteq, #1505), the totals it shows and the VKN/TCKN it refuses (#1600), flaky purchase_bills
 - erp-parasut-legacy-invoice-shipment.md: The order screen's Paraşüt Create Invoice and E-Shipment on one order: shipment_included, the link between the two records, which press is refused, and the stock counted out twice before #1506
 - erp-parasut-legacy-invoice.md: What the order screen's legacy Paraşüt "Create Invoice" sends: its lines and refusals (#1268), an unanswered create (#1416), the buyer card (#1408), its e-document (#1278), after E-Shipment (#1506)
@@ -122,11 +128,14 @@ ERP (accounting) module: invoices, payments, waybills, cash, e-documents, report
 - erp-parasut-sent-cancel.md: Why Cancel of a Paraşüt e-Fatura handed to GİB is refused from the row, the way out, the company guard on the deleted-record 404, and what is still open
 - erp-parasut-shipped-order.md: The ERP driver's sales invoice for an order the legacy E-Shipment already shipped: sent without shipment and naming the shipment document, so Paraşüt counts the goods out once (#1530)
 - erp-parasut-stale-kept-ids.md: Paraşüt ids Pinegrap sends without a read (product card, default warehouse, buyer card, the driver's shipment document): a create answered 404 naming one forgets it and is sent once more (#1627)
+- erp-percent-shares.md: Whole-percent shares of a set of amounts (erp_percent_shares()) add up to 100; the dashboard's Receivables by age card reads them once for its bar and legend.
 - erp-period-lock.md: ERP period lock (config.erp_lock_date, 4.79): what it refuses, the two checks every ledger or till write meets, which date a cancel, return or payment is judged by, who moves the lock.
 - erp-product-suggestion-list.md: Invoice/waybill line editors: the product suggestion list leaves the lines table for the overlay host while open, fixed placement, keyboard, why (.table-responsive clipping).
 - erp-profit-report.md: ERP profit and loss (includes/erp/profit.php): what counts as revenue and cost, the optional uninvoiced orders, the negative margin text, and where a new cost or revenue source goes.
 - erp-purchase-orders.md: ERP purchase orders (10.58): own table and series, the line key that ties invoice lines back, status read from purchase invoices, the draft made from an order, shared refusals, API line keys.
-- erp-quotes.md: ERP sales quotes (4.92) and their signature (8.58): own table, numbering, state, printing, turning into an invoice draft, signature evidence, expiry notice, the Workspace tag.
+- erp-quote-guest-link.md: Sales quote guest link (#3761, 2026.11.0 step 11.0.64): erp_quote_links, erp_quote.php, one live link, expiry, acceptance through erp_signatures and erp_quote_set_status(), WAF, e-mail
+- erp-quote-templates.md: Sales quote templates (#3717, 2026.11.0 step 11.0.63): the table, who sees and writes one, what a template keeps, the box on add_erp_quote.php.
+- erp-quotes.md: ERP sales quotes (4.92) and their signature (8.58): own table, numbering, state, printing, invoicing, signature, guest link, expiry, Workspace tag.
 - erp-readonly-accountant-right.md: The ERP read-only right for an accountant (user.manage_erp_readonly, 4.78): what the gate refuses, its areas, USER_ERP_READONLY, the writers outside ERP screens, the Workspace's erp_readonly.
 - erp-receipt-corrections-and-gift-card.md: ERP receipt cancel, settlement removal/late allocation, FX reversal, and the gift card as the only automatic settlement.
 - erp-receipt-not-for-return.md: A receipt is never allocated to a return document: erp_post_receipt() and POST /erp/receipts refuse it (#1063, PR #1132), and the bank statement suggestion offers only invoices (PR #1228).
@@ -136,6 +145,7 @@ ERP (accounting) module: invoices, payments, waybills, cash, e-documents, report
 - erp-return-documents.md: ERP return (credit) documents: series naming, full vs partial return arithmetic, currency and date of a return, line VAT rate, returned_qty and parent_line_id.
 - erp-return-quantities-and-currency.md: An ERP return's currency, rate and date, and how returned quantities are tracked on the parent (returned_qty, parent_line_id 4.50, the product-match fallback, withholding and second tax caps).
 - erp-screen-status-column-pattern.md: Owner decision on ERP screen width: form column plus sticky status column and sticky save bar, modeled on product_builder.php.
+- erp-settings-cards.md: The ERP Settings cards drawn in two places (Accounting pane and erp_settings.php) from includes/erp/settings_cards.php; who sees which, how each saves, why the template editor stays on the screen.
 - erp-stock-count.md: ERP stock count (4.100): scanning and corrections, applying it to products in one transaction, why it writes no stock move and carries no cost, what is kept, the event and the marketplace hook.
 - erp-stock-moves-and-cost.md: ERP stock and cost from documents (4.77): which invoices change the count, stock_wanted, moves written in the transaction and applied after commit, idempotent moves, the average cost rules.
 - erp-tax-names-zones-and-second-tax.md: ERP tax captions (erp_tax_label, config.erp_tax_name), the zone rate for store and account sales, and the second tax (4.75): columns, SQL helpers, captions, the e-document limit.

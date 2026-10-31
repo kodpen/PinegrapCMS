@@ -1663,7 +1663,8 @@ function workspace_flows_parity_caps_in($place, $code)
 }
 
 // The caps written as numbers (workspace_flows_parity_caps_in()) in the code
-// that checks an action, which no WS_SCHEDULED_* constant names. The places:
+// that checks an action, which no WS_SCHEDULED_* constant names, a field
+// length of ws_scheduled_text_limits() included. The places:
 // the action's own check (action, ws_scheduled_input()), each branch of a
 // rule's check (rule kind) and of a step's (step kind), and the
 // ws_scheduled_* functions those call.
@@ -1696,10 +1697,18 @@ function workspace_flows_parity_read_caps()
 		$places[$function . '()'] = workspace_flows_parity_source($function);
 	}
 
+	// A field length the form reads from ws_scheduled_text_limits() counts
+	// as written there.
+	$limits = array();
+
+	foreach (ws_scheduled_text_limits() as $key => $limit) {
+		$limits['$limits[\'' . $key . '\']'] = (string) $limit;
+	}
+
 	$out = array();
 
 	foreach ($places as $place => $code) {
-		$out = array_merge($out, workspace_flows_parity_caps_in($place, $code));
+		$out = array_merge($out, workspace_flows_parity_caps_in($place, strtr($code, $limits)));
 	}
 
 	return $out;
@@ -2451,6 +2460,7 @@ function workspace_flows_parity_table()
 			array(array('ws_event_depth in ws_scheduled_execute'), 3, 'depth through flow runs: a run hands its depth to the events it causes'),
 			array(array('ws_event_depth in ws_event'), 3, 'depth through events: a Workspace event carries the depth of the run that caused it'),
 			array(array('ws_event_depth in ws_step_run'), 3, 'depth through step boxes: a flow\'s step says its run\'s depth while it works, so the Workspace and site events it causes carry it'),
+			array(array('ws_event_depth in ws_step_change_approved_write'), 3, 'depth through an approved change: the change a role-3 member\'s box proposed is written at its run\'s depth, as a step box writes'),
 		),
 		'starts' => array(
 			array(array('ws_scheduled_run() in includes/workspace/actions.php ws_handle_action case \'ws_tick\''), 3, 'driver: an open screen\'s ws_tick runs what is due, anchors too'),
@@ -2540,7 +2550,7 @@ function workspace_flows_parity_table()
 			array(array('draft kind scheduled in ws_changes_input'), 4, 'AI drafts on the canvas: an application\'s proposed scheduled action, rehearsed by the save\'s check, is kept as a flow draft card (ws_scheduled_draft_proposal_row(), C5b)'),
 		),
 		'links_in' => array(
-			array(array('?view=scheduled'), 1, 'staff land on the Scheduled actions section of Flows, their Messages tab kept; others on Scheduled messages'),
+			array(array('?view=scheduled'), 1, 'staff land on the flow list of Flows, which ends with their scheduled actions, their Messages tab kept; others on Scheduled messages'),
 			array(array('menu data-ws-nav="scheduled" Scheduled actions'), 1, 'the Workspace list of the main menu (ws_nav_groups()): staff get one Flows entry in its place'),
 			array(array('menu data-ws-nav="scheduled" Scheduled messages'), 1, 'the Workspace list of the main menu: others keep Scheduled messages, and so do staff once Flows lists their actions'),
 			array(array('menu data-ws-nav from the ws_nav_groups() key'), 1, 'workspace_side.js draws each place with data-ws-nav from its key, so the list has one source'),
@@ -2802,19 +2812,21 @@ function test_workspace_flows_parity_whole_action_uses()
 	}
 }
 
-// A new rule is made on the canvas: the Scheduled actions section puts New
-// flow in the toolbar, and the list offers no New anywhere.
+// A new rule is made on the canvas: the flow list, which ends with the
+// scheduled actions, puts New flow in the toolbar, and the list of their
+// cards offers no New anywhere.
 function test_workspace_flows_parity_scheduled_section_new_is_a_flow()
 {
 	$flow = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js');
-	$start = strpos($flow, 'function showScheduled(');
+	$start = strpos($flow, 'function showNone(');
 
-	pg_assert_true($start !== false, 'showScheduled() in workspace_flow.js');
+	pg_assert_true($start !== false, 'showNone() in workspace_flow.js');
 
 	$body = substr($flow, $start, strpos($flow, "\n    }\n", $start) - $start);
 
-	pg_assert_true(strpos($body, 'newFlowButton();') !== false, 'New flow in the section\'s toolbar');
-	pg_assert_true(strpos($body, 'K.scheduledList(ui.scheduled);') !== false, 'the list without its New');
+	pg_assert_true(strpos($body, 'newFlowButton();') !== false, 'New flow in the flow list\'s toolbar');
+	pg_assert_true(strpos($body, 'drawFlows();') !== false, 'the flow list, with its scheduled groups');
+	pg_assert_true(strpos($flow, 'K.scheduledList(cards);') !== false, 'the not converted group: the list without its New');
 
 	$channels = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace.js');
 	$start = strpos($channels, 'function scheduledList(body) {');

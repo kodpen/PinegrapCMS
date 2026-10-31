@@ -111,6 +111,11 @@ if (!isset($_POST['name'])) {
     $optimized = $row['optimized'];
     $folder_archived = $row['folder_archived'];
 
+    // A row whose file is gone from the disk (a site restored without
+    // data/files, a file removed by hand) gets a note in place of the
+    // preview, and no tool or link that needs the file.
+    $on_disk = is_file(FILE_DIRECTORY_PATH . '/' . $file_name);
+
     // The signing key is listed without its content: it never leaves the
     // server (pg_file_withheld()).
     if (pg_file_withheld($file_name)) {
@@ -121,7 +126,7 @@ if (!isset($_POST['name'])) {
     // page that never shows it is work nobody sees.
     $code = '';
 
-    if (in_array(mb_strtolower(pathinfo($file_name, PATHINFO_EXTENSION)), $viewable_formats)) {
+    if ($on_disk && in_array(mb_strtolower(pathinfo($file_name, PATHINFO_EXTENSION)), $viewable_formats)) {
         $code = file_get_contents(FILE_DIRECTORY_PATH . '/' . $file_name);
     }
 
@@ -145,7 +150,10 @@ if (!isset($_POST['name'])) {
     // Get file path
     $file_path = FILE_DIRECTORY_PATH . '/' . $file_name;
 
-    if (mb_strtolower($row['type']) == 'pdf') {
+    if (!$on_disk) {
+        $output_thumbnail = '<div class="alert theme-warning">' . lang('The file is recorded here but is not on the disk.') . '</div>';
+
+    } elseif (mb_strtolower($row['type']) == 'pdf') {
         // PDF preview
         $output_thumbnail = '
             <div class="col-12">
@@ -154,6 +162,7 @@ if (!isset($_POST['name'])) {
                         <embed 
                             src="' . OUTPUT_PATH . $file_name . '" 
                             type="application/pdf" 
+                            title="' . h($file_name) . '" 
                             class="w-100 h-100" />
                     </div>
                 </div>
@@ -199,7 +208,7 @@ if (!isset($_POST['name'])) {
                     <img 
                         src="' . OUTPUT_PATH . $file_name . '" 
                         class="img-fluid" 
-                        alt="icon preview" 
+                        alt="" 
                         style="max-width:128px; height:auto;" />
                    
                 </div>
@@ -207,7 +216,7 @@ if (!isset($_POST['name'])) {
     }
 
     // If file type is an image.
-    if (
+    if ($on_disk && (
             (mb_strtolower($row['type']) == 'bmp') ||
             (mb_strtolower($row['type']) == 'gif') ||
             (mb_strtolower($row['type']) == 'jpg') ||
@@ -216,7 +225,7 @@ if (!isset($_POST['name'])) {
             (mb_strtolower($row['type']) == 'jpeg') ||
             (mb_strtolower($row['type']) == 'png') ||
             (mb_strtolower($row['type']) == 'tif')
-    ) {
+    )) {
 
         $output_content_based_classes = 'md:col';
         
@@ -286,7 +295,7 @@ if (!isset($_POST['name'])) {
     $image_buttons = '';
     $output_rotate_form = '';
     $output_convert_rows = '';
-    $output_image_edit_link = '' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/image_editor_edit.php?file_name=' . h($file_name) . '&send_to=' . h(escape_javascript(REQUEST_URL)) . '';
+    $output_image_edit_link = '' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/image_editor_edit.php?file_name=' . h(urlencode($file_name)) . '&send_to=' . h(urlencode(REQUEST_URL)) . '';
     // Convert file size to a user friendly output.
     $output_file_size = convert_bytes_to_string ($row['size']);
     // get file extension
@@ -338,7 +347,7 @@ if (!isset($_POST['name'])) {
                 <div class="card-body">
                     <div class="row">
                         <div class="col-12 my-3">
-                            <label class="form-label">' . lang( array('string'=>'{var:1} file','vars'=>strtoupper($file_extension)) )
+                            <label class="form-label" for="code">' . lang( array('string'=>'{var:1} file','vars'=>strtoupper($file_extension)) )
                                 . ($read_only ? ' <span class="badge theme-secondary">' . lang('Read only') . '</span>' : '') . '</label>
                             <div id="edit_custom">
                                 <textarea name="code" id="code" rows="25" cols="60" wrap="off"' . ($read_only ? ' readonly="readonly"' : '') . '>' . h($code) . '</textarea>
@@ -356,7 +365,7 @@ if (!isset($_POST['name'])) {
 
 
     // SVG → raster conversion UI
-    if ($file['type'] === 'svg') {
+    if ($on_disk && $file['type'] === 'svg') {
         
         $output_content_based_classes = 'md:col-4';
         $svg_w = (is_numeric($image_width)  && $image_width  > 0) ? (int)$image_width  : 0;
@@ -411,14 +420,15 @@ if (!isset($_POST['name'])) {
     if (!isset($image_height)) { $image_height = 0; }
 
     $output_rotate_image_button ='';
-    if (    ($file['type'] == 'jpg')
+    if ($on_disk && (
+            ($file['type'] == 'jpg')
             or ($file['type'] == 'jpeg')
             or ($file['type'] == 'png')
             or ($file['type'] == 'gif')
             or ($file['type'] == 'bmp')
             or ($file['type'] == 'tiff')
             or ($file['type'] == 'webp')
-        ){
+        )){
             $image_library_available = (extension_loaded('imagick') || extension_loaded('gd'));
 
              if (!$optimized && $image_library_available) {
@@ -457,6 +467,7 @@ if (!isset($_POST['name'])) {
                     ' . get_token_field() . '
                     <input type="hidden" name="id" value="' . h($_GET['id']) . '">
                     <input type="hidden" name="name" value="' . h($file_name) . '">
+                    <input type="hidden" name="send_to" value="' . h(pg_send_to_url('')) . '">
                 </form>';
 
             $image_buttons = $optimize_button . $resize_button . '<button type="submit" form="edit_file_rotate" class="btn btn-link pg-link-secondary py-0 mb-3" name="rotate_left" value="1"><i class="bi bi-arrow-counterclockwise bi-me-2"></i>' . lang('Rotate Left') . '</button> <button type="submit" form="edit_file_rotate" class="btn btn-link pg-link-secondary py-0 mb-3" name="rotate_right" value="1"><i class="bi bi-arrow-clockwise bi-me-2"></i>' . lang('Rotate right') . '</button><a class="btn btn-link pg-link-secondary py-0 mb-3" href="' . $output_image_edit_link . '"><i class="bi bi-flower2 bi-me-2"></i>' . lang(array('string'=>'Edit this image with {var:1}','vars'=>array(lang('Image Editor')) )) . '</a>';
@@ -496,6 +507,14 @@ if (!isset($_POST['name'])) {
 
     }
 
+    // Both links would lead to the site's 404 page without the file.
+    $output_file_links = '';
+
+    if ($on_disk) {
+        $output_file_links = '<a class="btn btn-link pg-link-secondary py-0 mb-3"  href="' . OUTPUT_PATH . h($file_name) . '" target="_blank"><span class="material-icons me-1">open_in_browser</span>' . lang('Open in New Tab') . '</a>
+            <a class="btn btn-link pg-link-secondary py-0 mb-3" download="' . h($file_name) . '" href="' . OUTPUT_PATH . h($file_name) . '" ><span class="bi bi-file-earmark-arrow-down bi-me-2"></span>' . lang('Download') . '</a>';
+    }
+
     $output =
     pg_page_shell(
         array(
@@ -510,7 +529,7 @@ if (!isset($_POST['name'])) {
                 'url'=>$back_url
             ),
             'breadcrumb' => array(
-                array('label' => lang('Files'), 'url' => $back_url),
+                array('label' => lang('Files'), 'url' => pg_send_to_list_url(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_files.php')),
                 array('label' => $file_name),
             ),
         )
@@ -538,8 +557,7 @@ if (!isset($_POST['name'])) {
                             <nav id="button_bar" class="navigation " aria-label="' . h(lang('Button Bar')) . '">
                                 <div class=" btn-group btn-group-sm flex-wrap">
                                     ' . $image_buttons . '
-                                    <a class="btn btn-link pg-link-secondary py-0 mb-3"  href="' . OUTPUT_PATH . h($file_name) . '" target="_blank"><span class="material-icons me-1">open_in_browser</span>' . lang('Open in New Tab') . '</a>
-                                    <a class="btn btn-link pg-link-secondary py-0 mb-3" download="' . h($file_name) . '" href="' . OUTPUT_PATH . h($file_name) . '" ><span class="bi bi-file-earmark-arrow-down bi-me-2"></span>' . lang('Download') . '</a>
+                                    ' . $output_file_links . '
                                 </div>
                             </nav>
                             <div class="row mb-3">
@@ -599,12 +617,29 @@ if (!isset($_POST['name'])) {
         var form = cb.closest("form");
         if (!form) return;
 
+        // Set while the canvas draws; the converted data is then sent once
+        // through requestSubmit(), which fires a real submit event (so the
+        // window-level double-submit guard marks the form) and keeps the
+        // pressed button\'s name in the request.
+        var busy = false;
+
         form.addEventListener("submit", function (e) {
-            if (!cb.checked) return;
-            if (document.getElementById("svg_convert_data").value) return; // prevent double-submit
+            var submitter = e.submitter || null;
+
+            if (busy) {
+                e.preventDefault();
+                return;
+            }
+
+            // Only Save and Save & Return convert; Delete and Duplicate go
+            // through untouched.
+            if (!cb.checked || !submitter || ((submitter.name !== "submit_save") && (submitter.name !== "submit_save_and_return"))) return;
+
+            // The second pass, sent by requestSubmit() below.
+            if (document.getElementById("svg_convert_data").value) return;
 
             e.preventDefault();
-            e.stopImmediatePropagation();
+            busy = true;
 
             var format = document.getElementById("svg_convert_format").value;
             var svgW   = parseInt(document.getElementById("svg_convert_width").value, 10);
@@ -624,9 +659,21 @@ if (!isset($_POST['name'])) {
                 ctx.drawImage(img, 0, 0, w, h);
                 var mime = format === "jpeg" ? "image/jpeg" : (format === "webp" ? "image/webp" : "image/png");
                 document.getElementById("svg_convert_data").value = canvas.toDataURL(mime, 0.92);
-                form.submit();
+                busy = false;
+
+                if (typeof form.requestSubmit === "function") {
+                    form.requestSubmit(submitter);
+                } else {
+                    var field = document.createElement("input");
+                    field.type = "hidden";
+                    field.name = submitter.name;
+                    field.value = submitter.value;
+                    form.appendChild(field);
+                    form.submit();
+                }
             };
             img.onerror = function () {
+                busy = false;
                 alert(' . json_encode(lang('SVG could not be rendered for conversion. Make sure the SVG file is valid.')) . ');
             };
             img.src = svgUrl;
@@ -670,7 +717,7 @@ $liveform->remove_form('edit_file');
         include_once('liveform.class.php');
         $liveform = new liveform('view_files');
         $liveform->add_notice(lang('The file was deleted successfully.'));
-        header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/view_files.php');
+        header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path(pg_send_to_url(''), PATH . SOFTWARE_DIRECTORY . '/view_files.php'));
         exit();
     }
 
@@ -679,6 +726,12 @@ $liveform->remove_form('edit_file');
     // Renaming "photo.jpg" to "photo.php" is uploading a PHP file with an
     // extra step, so a new name keeps the upload rule. The file's current
     // name is let through as it is, so an old file can still be edited.
+    // A blank name is refused here, after Delete: prepare_file_name() would
+    // turn it into 'file' and break every link to the stored file.
+    if (trim((string) $_POST['name']) === '') {
+        output_error(lang('Please enter a name.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+    }
+
     if ($name === '.htaccess') {
         output_error(lang('File name is invalid') . '. <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
     }
@@ -781,7 +834,7 @@ $liveform->remove_form('edit_file');
                 $row['name'],
                 lang(array('string' => 'Sorry, we could not rotate that image ({var:1}).', 'vars' => $row['name'])))));
 
-            header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_file.php?id=' . urlencode($_POST['id']));
+            header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_file.php?id=' . urlencode($_POST['id']) . '&send_to=' . urlencode(pg_send_to_url('')));
             exit();
         }
 
@@ -808,7 +861,7 @@ $liveform->remove_form('edit_file');
 
         $liveform->add_notice(lang('The file was rotated successfully.'));
 
-        header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_file.php?id=' . urlencode($_POST['id']));
+        header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_file.php?id=' . urlencode($_POST['id']) . '&send_to=' . urlencode(pg_send_to_url('')));
         exit();
     }
 
@@ -981,7 +1034,7 @@ $liveform->remove_form('edit_file');
 
             $liveform_redirect = new liveform('edit_file');
             $liveform_redirect->add_notice(lang('SVG was converted and saved as a new file.'));
-            header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_file.php?id=' . urlencode($new_id));
+            header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_file.php?id=' . urlencode($new_id) . '&send_to=' . urlencode(pg_send_to_url('')));
             exit();
 
         } else {
@@ -1007,7 +1060,7 @@ $liveform->remove_form('edit_file');
 
             $liveform_redirect = new liveform('edit_file');
             $liveform_redirect->add_notice(lang('SVG was converted successfully.'));
-            header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_file.php?id=' . urlencode($_POST['id']));
+            header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_file.php?id=' . urlencode($_POST['id']) . '&send_to=' . urlencode(pg_send_to_url('')));
             exit();
         }
     }
@@ -1074,12 +1127,12 @@ $liveform->remove_form('edit_file');
         if (!empty($_POST['submit_save']) && ($_POST['submit_save'] ?? '') === 'Save') {
             $liveform = new liveform('edit_file');
             $liveform->add_notice(lang('The file was edited successfully.'));
-            header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_file.php?id=' . urlencode($_POST['id']) . '&send_to=' . urlencode($_POST['send_to']));
+            header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_file.php?id=' . urlencode($_POST['id']) . '&send_to=' . urlencode(pg_send_to_url('')));
             exit();
         } elseif (!empty($_POST['submit_save_and_return']) && ($_POST['submit_save_and_return'] ?? '') === 'Save & Return') {
             $liveform = new liveform('view_files');
             $liveform->add_notice(lang('The file was edited successfully.'));
-            header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/view_files.php');
+            header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path(pg_send_to_url(''), PATH . SOFTWARE_DIRECTORY . '/view_files.php'));
             exit();
         }
     }
@@ -1102,8 +1155,8 @@ $liveform->remove_form('edit_file');
         // Always copy from filesystem, never from $_POST['code']
         copy(FILE_DIRECTORY_PATH . '/' . $original_name, $new_file_path);
 
-        // Fetch folder and description from DB
-        $query = "SELECT folder, description, design FROM files WHERE id = ?";
+        // Fetch folder, description and the picture's optimisation state from DB
+        $query = "SELECT folder, description, design, optimized, image_width, image_height, optimization_percent FROM files WHERE id = ?";
         $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
         $row = mysqli_fetch_assoc($result);
 
@@ -1111,9 +1164,18 @@ $liveform->remove_form('edit_file');
         // from the current user's role.
         $sql_design = "'" . (int) $row['design'] . "',";
 
+        // The copy is byte-identical, so it keeps the source's optimisation
+        // flag and cached size; otherwise an optimised picture would be
+        // offered for (and given) another lossy pass.
+        $sql_optimization = "'" . (int) $row['optimized'] . "', ";
+
+        foreach (array('image_width', 'image_height', 'optimization_percent') as $column) {
+            $sql_optimization .= (($row[$column] !== null && $row[$column] !== '') ? "'" . escape($row[$column]) . "'" : 'NULL') . ', ';
+        }
+
         // Insert new file record
         $query = "INSERT INTO files (
-            name, folder, description, type, size, design, user, timestamp
+            name, folder, description, type, size, design, optimized, image_width, image_height, optimization_percent, user, timestamp
         ) VALUES (
             '" . escape($new_file_name) . "',
             '" . escape($row['folder']) . "',
@@ -1121,6 +1183,7 @@ $liveform->remove_form('edit_file');
             '" . escape($file_extension) . "',
             '" . escape(filesize($new_file_path)) . "',
             " . $sql_design . "
+            " . $sql_optimization . "
             '" . $user['id'] . "',
             UNIX_TIMESTAMP()
         )";
@@ -1138,7 +1201,7 @@ $liveform->remove_form('edit_file');
         $liveform = new liveform('edit_file');
         $liveform->add_notice(lang('A new copy of the file has been created.'));
 
-        header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_file.php?id=' . $new_file_id);
+        header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_file.php?id=' . $new_file_id . '&send_to=' . urlencode(pg_send_to_url('')));
         exit();
     }
 

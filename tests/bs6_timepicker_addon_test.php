@@ -2,11 +2,11 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Source test for the jQuery UI timepicker add-on leaving the panel: no
+ * Source test for the jQuery UI timepicker add-on leaving the product: no
  * panel screen calls .datetimepicker() or .timepicker() since the date and
  * time fields moved to pg_fields.js, so the converted screens no longer load
  * the add-on, while they still print the picker options pg_fields.js reads.
- * The site branch of get_form_content() keeps loading it.
+ * The site renderers draw theirs on the same control, so no file loads it.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -59,23 +59,16 @@ function test_bs6_timepicker_addon_left_the_panel_screens()
 	pg_assert_contains('get_date_picker_format()', bs6_timepicker_addon_test_source('view_order.php'), 'view_order.php keeps the date options');
 }
 
-function test_bs6_timepicker_addon_only_site_files_load_it()
+function test_bs6_timepicker_addon_loaded_nowhere()
 {
-	// The checkout renderers keep jQuery UI and the add-on until they move to
-	// the date-and-time control; custom forms, form views and comments have
-	// moved. No other PHP file may load it.
-	$site = array(
-		'get_billing_information.php',
-		'get_express_order.php',
-		'get_shipping_address_and_arrival.php',
-		'get_shopping_cart.php',
-	);
-
+	// Custom forms, form views, comments, the checkout and order pages draw
+	// their date and time fields on the date-and-time control: no PHP or
+	// JavaScript file outside the vendored libraries loads the add-on.
 	$root = dirname(__DIR__) . '/pinegrap/';
 	$found = array();
 	$iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($root, FilesystemIterator::SKIP_DOTS));
 	foreach ($iterator as $file) {
-		if ($file->getExtension() !== 'php') {
+		if (($file->getExtension() !== 'php') && ($file->getExtension() !== 'js')) {
 			continue;
 		}
 		$path = str_replace('\\', '/', substr($file->getPathname(), strlen($root)));
@@ -86,10 +79,8 @@ function test_bs6_timepicker_addon_only_site_files_load_it()
 			$found[] = $path;
 		}
 	}
-	sort($found);
 
-	sort($site);
-	pg_assert_same($site, $found, 'only the site files load the timepicker add-on');
+	pg_assert_same(array(), $found, 'no file loads the timepicker add-on');
 }
 
 function test_bs6_timepicker_addon_form_content_branches()

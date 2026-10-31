@@ -29,4 +29,4 @@ module: sms_codes
 ## How does it reach the queue?
 - `pg_sms_code_queue_options($purpose, $subject, $now, $nonce)`: a reference per send (`code:<purpose>:<subject>:<time>:<nonce>`, the queue's characters only, at most 64), since the queue dedupes a reference and a code sent again is a new message; `expires_at` at the code's end, so a send the queue could not make in time is dropped (decided in #2432: the normal SMS route, kind `otp`).
 
-Related: docs/memory/platform/sms-outbox-queue.md, docs/memory/platform/sms-order-messages.md, docs/memory/plans/sms-and-iys.md
+Related: docs/memory/platform/sms-outbox-queue.md, docs/memory/platform/sms-order-messages.md, docs/memory/platform/sms-and-iys-rules.md

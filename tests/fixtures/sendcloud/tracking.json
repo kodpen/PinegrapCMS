@@ -1,0 +1,38 @@
+{
+  "announced_at": "2026-10-28T09:00:00Z",
+  "created_at": "2026-10-28T09:00:00Z",
+  "details": {
+    "is_return": false
+  },
+  "source_id": "",
+  "from_address": {},
+  "to_address": {},
+  "updated_at": "2026-10-28T09:00:00Z",
+  "tracking_numbers": [
+    {
+      "carrier_code": "dpd",
+      "tracking_number": "05212345678901",
+      "tracking_url": "https://tracking.eu-central-1-0.sendcloud.sc/forward?carrier=dpd&code=05212345678901&destination=DE&lang=en-us"
+    }
+  ],
+  "events": [
+    {
+      "event_at": "2026-10-29T08:12:00Z",
+      "event_type": "carrier",
+      "phase": "in_delivery",
+      "exception": "none",
+      "sub_status": "none",
+      "description": "The parcel is out for delivery.",
+      "status_type": "success"
+    },
+    {
+      "event_at": "2026-10-28T17:40:00Z",
+      "event_type": "carrier",
+      "phase": "accepted",
+      "exception": "none",
+      "sub_status": "none",
+      "description": "Parcel has been accepted by the carrier.",
+      "status_type": "success"
+    }
+  ]
+}

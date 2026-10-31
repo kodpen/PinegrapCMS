@@ -24,7 +24,7 @@ $liveform = new liveform('view_parasut_inbox');
 
 if (!defined('ENABLE_PARASUT') || !ENABLE_PARASUT || !defined('PARASUT_COMPANY_ID') || PARASUT_COMPANY_ID === '') {
     $liveform->mark_error('_error', lang('Parasut integration is not enabled. Please configure it in Settings.'));
-    go(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/' . pg_settings_return_url('commerce', 'pgset-invoice'));
+    go(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/' . pg_settings_return_url('accounting', 'pgset-invoice'));
 }
 
 // Determine active tab.
@@ -163,11 +163,13 @@ function _parasut_pagination($current, $total, $tab, $extra_params = []) {
     foreach ($extra_params as $k => $v) {
         if ($v !== '') $base .= '&' . urlencode($k) . '=' . urlencode($v);
     }
-    // A disabled arrow and the current page are no links, so Tab skips them.
+    // A disabled arrow and the current page are no links, so Tab skips them;
+    // a span carries no aria-label, so the disabled arrow says its name in
+    // visually-hidden text.
     $arrow = function ($page, $enabled, $label, $glyph) use ($base) {
         $inner = '<span aria-hidden="true">' . $glyph . '</span>';
         if (!$enabled) {
-            return '<li class="page-item disabled"><span class="page-link" aria-label="' . h($label) . '">' . $inner . '</span></li>';
+            return '<li class="page-item disabled"><span class="page-link">' . $inner . '<span class="visually-hidden">' . h($label) . '</span></span></li>';
         }
         return '<li class="page-item"><a class="page-link" href="' . $base . '&pg=' . $page . '" aria-label="' . h($label) . '">' . $inner . '</a></li>';
     };
@@ -277,7 +279,7 @@ if ($tab === 'incoming') {
             $total      = pg_format_number($totals['total'], 2);
             $item_type  = $attr['item_type']  ?? '';
             $status     = $attr['payment_status'] ?? ($attr['status'] ?? '');
-            $description = h($attr['description'] ?? '');
+            $description = (string) ($attr['description'] ?? '');
 
             $js_detail_id = 'detail_' . preg_replace('/[^a-z0-9]/i', '_', $bid);
 
@@ -365,7 +367,7 @@ if ($tab === 'outgoing') {
             $total       = pg_format_number($totals['total'], 2);
             $item_type   = $attr['item_type']   ?? '';
             $status      = $attr['payment_status'] ?? ($attr['status'] ?? '');
-            $description = h($attr['description'] ?? '');
+            $description = (string) ($attr['description'] ?? '');
 
             $rows .= '
             <tr>

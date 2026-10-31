@@ -102,7 +102,8 @@ $output = pg_page_shell( array(
                 <div class="col-12 sm:col-12 text-center md:text-start">
 <div class="row mb-3">
                         <div class="col-12 md:col">
-                            <h2 class="d-inline-block text-break" data-bs-content="' . lang('The form layout will look like this when displayed within a page.') . '" title="' . lang('Preview Form') . '">' . h($form_description) . '</h2>
+                            <h2 class="d-inline-block text-break">' . h($form_description) . '</h2>
+                            <p class="form-text mt-0">' . lang('The form layout will look like this when displayed within a page.') . '</p>
                         </div>
                     </div>
                 </div>

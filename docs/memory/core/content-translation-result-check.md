@@ -14,3 +14,6 @@ Before #850 (PR #1023) the check split the source without the glossary: a text t
 
 ## Where is it tested?
 `tests/translate_result_check_test.php`.
+
+## What does the CSV import report for a refused row?
+`pg_tr_csv_import()` returns `problems` ("Line n: reason", the file line counting breaks inside quoted cells) for a bad hash and for each `placeholders` / `markup` / `empty` refusal (`pg_tr_csv_import_reason()`), and `error` for a file without the `hash` or `translation` column (it writes nothing). A blank line or a row of empty cells counts as skipped, not rejected. `translations_action.php` marks the missing-column error on the `csv` field and lists the first 20 problems as an error under the counts notice. Tested in `tests/translation_csv_import_test.php` (the DB-backed rows are not).

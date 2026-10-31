@@ -93,6 +93,12 @@ function pg_explorer_handle_file_save($type, $request, $user)
 
     $requested_name = trim(isset($request['name']) ? (string) $request['name'] : $file['name']);
 
+    // Checked before prepare_file_name(), which turns a blank name into
+    // 'file'.
+    if ($requested_name === '') {
+        respond(array('status' => 'error', 'message' => lang('Please enter a name.')));
+    }
+
     // Renaming "photo.jpg" to "photo.php" is uploading a PHP file
     // with an extra step, so the window keeps the upload rule.
     if (($requested_name != $file['name']) && pg_upload_name_blocked($requested_name)) {
@@ -102,10 +108,6 @@ function pg_explorer_handle_file_save($type, $request, $user)
     // The same preparation every other way of naming a file applies:
     // ASCII conversion, reserved names, length and character rules.
     $name = prepare_file_name($requested_name);
-
-    if ($name == '') {
-        respond(array('status' => 'error', 'message' => lang('Please enter a name.')));
-    }
 
     // Under another name the signing key would be served.
     if (($name != $file['name']) && pg_file_withheld($file['name'])) {

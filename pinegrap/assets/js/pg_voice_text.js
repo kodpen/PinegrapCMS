@@ -198,14 +198,20 @@
         status.className = 'fg-secondary fst-italic';
         status.hidden = true;
         status.setAttribute('role', 'status');
+        // Holds the focus while the button is hidden, so a keyboard user
+        // stays in the control and hears each step.
+        status.setAttribute('tabindex', '-1');
 
         meter.max = 1;
         meter.hidden = true;
         meter.style.width = '100%';
+        meter.setAttribute('aria-label', texts('voice_text_working'));
 
         result.hidden = true;
         result.style.whiteSpace = 'pre-wrap';
         result.style.overflowWrap = 'anywhere';
+        // Takes the focus once written, so the text is read out.
+        result.setAttribute('tabindex', '-1');
 
         by.className = 'fg-secondary fst-italic mt-1';
         by.hidden = true;
@@ -227,19 +233,39 @@
             status.hidden = !text;
         }
 
+        // True while the focus is still where the click left it (the
+        // status) or was lost to the page; focus the person moved elsewhere
+        // is not taken back.
+        function held() {
+            var active = document.activeElement;
+
+            return !active || (active === status) || (active === document.body);
+        }
+
         // Done: the text with its mark, or, after an error or a recording
         // in which nothing was heard, the failure and the button again.
         function finish(error) {
+            var keep = held();
+
             meter.hidden = true;
 
             if (error || (result.textContent === '')) {
                 say(texts('voice_text_failed'));
                 button.hidden = false;
+
+                if (keep) {
+                    button.focus();
+                }
+
                 return;
             }
 
             say('');
             by.hidden = false;
+
+            if (keep) {
+                result.focus();
+            }
         }
 
         button.addEventListener('click', function () {
@@ -257,17 +283,27 @@
                 monitor: function (monitor) {
                     monitor.addEventListener('downloadprogress', function (event) {
                         say(texts('voice_text_download'));
+                        meter.setAttribute('aria-label', texts('voice_text_download'));
                         meter.hidden = false;
                         meter.value = event.loaded || 0;
                     });
                 }
             });
 
-            button.hidden = true;
+            var focused = (document.activeElement === button);
+
             result.textContent = '';
             result.hidden = true;
             by.hidden = true;
             say(texts('voice_text_working'));
+
+            // The focus moves to the status before the button hides, or it
+            // falls to <body>.
+            if (focused) {
+                status.focus();
+            }
+
+            button.hidden = true;
 
             Promise.all([created, decode(url, abort.signal)]).then(function (both) {
                 var session = both[0];
@@ -276,6 +312,7 @@
 
                 meter.hidden = list.length < 2;
                 meter.value = 0;
+                meter.setAttribute('aria-label', texts('voice_text_working'));
                 say(texts('voice_text_working'));
 
                 var next = function () {

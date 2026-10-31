@@ -88,8 +88,9 @@ function pg_settings_categories()
         'general' => array(
             'label' => lang('General'),
             'icon'  => 'bi-sliders',
-            'description' => lang('Server, domain, licence, update channel, date and time.'),
+            'description' => lang('The organization, server, domain, licence, update channel, date and time.'),
             'sections' => array(
+                'pgset-organization' => lang('Organization'),
                 'pgset-server'   => lang('Server & Domain'),
                 'pgset-software' => lang('Software'),
                 'pgset-channel'  => lang('Update Channel'),
@@ -100,7 +101,8 @@ function pg_settings_categories()
                 'pgset-maintenance' => lang('Maintenance Mode'),
             ),
             'keywords' => array(
-                'pgset-server'   => pg_settings_keywords(lang('hostname, domain, ip, ssl, https, secure mode, secure, email, support, proxy')),
+                'pgset-organization' => pg_settings_keywords(lang('organization, company, name, address, logo, support, email, tax number, tax office, vkn, seller')),
+                'pgset-server'   => pg_settings_keywords(lang('hostname, domain, ip, ssl, https, secure mode, secure, proxy')),
                 'pgset-software' => pg_settings_keywords(lang('software, language, licence, license, subscription, error, debug')),
                 'pgset-channel'  => pg_settings_keywords(lang('update, channel, beta, stable, version')),
                 'pgset-datetime' => pg_settings_keywords(lang('date, time, timezone, format')),
@@ -203,21 +205,23 @@ function pg_settings_categories()
                 'pgset-sms'       => lang('SMS'),
                 'pgset-sms-messages' => lang('SMS Messages'),
                 'pgset-iys'       => lang('İYS'),
+                'pgset-google-reviews' => lang('Google Reviews'),
             ),
             'keywords' => array(
-                'pgset-campaigns' => pg_settings_keywords(lang('campaign, newsletter, subscribe, organization, address')),
+                'pgset-campaigns' => pg_settings_keywords(lang('campaign, newsletter, subscribe, opt-in, footer')),
                 'pgset-chat'      => pg_settings_keywords(lang('chat, live support, operator, bubble, message')),
                 'pgset-mailchimp' => pg_settings_keywords(lang('mailchimp, mail chimp, list, list id, api key, key, sync, automation, store')),
                 'pgset-sms'       => pg_settings_keywords(lang('sms, text message, netgsm, sender name, header, msgheader, mobile, phone, iys, test message')),
                 'pgset-sms-messages' => pg_settings_keywords(lang('sms, text message, order received, order shipped, order delivered, tracking number, template')),
                 'pgset-iys'       => pg_settings_keywords(lang('iys, ileti yönetim sistemi, consent, permission, brand, marketing, opt-in, refusal')),
+                'pgset-google-reviews' => pg_settings_keywords(lang('google reviews, reviews, rating, google maps, places api, place id, business profile')),
             ),
         ),
 
         'security' => array(
-            'label' => lang('Security'),
+            'label' => lang('Accounts and sign-in'),
             'icon'  => 'bi-shield-lock',
-            'description' => lang('Passwords, devices, sign-in with Google, Microsoft and Apple, registration and membership.'),
+            'description' => lang('Passwords, devices, sign-in with Google, Microsoft and Apple, registration and membership, spam protection and the encryption key.'),
             'sections' => array(
                 'pgset-session'    => lang('Session & Password'),
                 'pgset-captcha'    => lang('Spam Protection'),
@@ -226,10 +230,11 @@ function pg_settings_categories()
                 'pgset-audit'      => lang('Audit Trail'),
                 'pgset-signin'     => lang('Sign in with Google, Microsoft and Apple'),
                 'pgset-membership' => lang('Registration & Membership'),
+                'pgset-encryption' => lang('Encryption Key'),
             ),
             'keywords' => array(
                 'pgset-session'    => pg_settings_keywords(lang('security, password, session, captcha, login, throttle, bulk delete')),
-                'pgset-captcha'    => pg_settings_keywords(lang('captcha, spam, robot, bot, turnstile, cloudflare, hcaptcha, site key, secret key, stopforumspam, form limits')),
+                'pgset-captcha'    => pg_settings_keywords(lang('captcha, spam, robot, bot, turnstile, cloudflare, hcaptcha, site key, secret key, stopforumspam, form limits, blocked email')),
                 'pgset-device'     => pg_settings_keywords(lang('device, remember me, remember, limit')),
                 'pgset-mfa'        => pg_settings_keywords(lang('two-step, two factor, 2fa, totp, authenticator, mfa, verification code')),
                 'pgset-audit'      => pg_settings_keywords(lang('audit, audit trail, changes, history, retention, kvkk, gdpr, who changed')),
@@ -237,15 +242,17 @@ function pg_settings_categories()
                     . ', ' . lang('microsoft, entra, azure, outlook, office 365, sign in with microsoft, sso')
                     . ', ' . lang('apple, icloud, sign in with apple, services id, team id, key id, p8')),
                 'pgset-membership' => pg_settings_keywords(lang('membership, registration, sign up, signup, approval, verification, member number')),
+                'pgset-encryption' => pg_settings_keywords(lang('encryption, encryption key, config.php, card number, two-step, secret, openssl')),
             ),
         ),
 
         'firewall' => array(
-            'label' => lang('Firewall'),
+            'label' => lang('Firewall and HTTPS'),
             'icon'  => 'bi-bricks',
-            'description' => lang('The request filter, bot policy and address lists.'),
+            'description' => lang('The request filter, trusted proxies, bot policy, address lists, HTTPS and security headers.'),
             'sections' => array(
                 'pgset-waf'     => lang('Firewall'),
+                'pgset-proxies' => lang('Trusted Proxies'),
                 'pgset-bots'    => lang('Bot Filtering'),
                 'pgset-iplists' => lang('IP Lists'),
                 'pgset-countries' => lang('Country Restriction'),
@@ -253,8 +260,9 @@ function pg_settings_categories()
             ),
             'keywords' => array(
                 'pgset-waf'     => pg_settings_keywords(lang('waf, firewall, attack, signature, rate limit, ban')),
+                'pgset-proxies' => pg_settings_keywords(lang('proxy, trusted proxy, load balancer, cdn, x-forwarded-for, visitor address, real ip')),
                 'pgset-bots'    => pg_settings_keywords(lang('bot, crawler, googlebot, ai, gptbot, claudebot')),
-                'pgset-iplists' => pg_settings_keywords(lang('ip, ip block, block, allow, allow list, blocked email, banned')),
+                'pgset-iplists' => pg_settings_keywords(lang('ip, ip block, block, allow, allow list, banned')),
                 'pgset-countries' => pg_settings_keywords(lang('country, countries, geo, geoblocking, location, region, tor, block country, allow country')),
                 'pgset-headers' => pg_settings_keywords(lang('https, ssl, secure mode, certificate, header, csp, content security policy, hsts, frame, clickjacking, fail2ban, iptables, nosniff, referrer')),
             ),
@@ -263,13 +271,11 @@ function pg_settings_categories()
         'commerce' => array(
             'label' => lang('Ecommerce'),
             'icon'  => 'bi-shop',
-            'description' => lang('Store, shipping, gift cards, e-invoice, payment and affiliates.'),
+            'description' => lang('Store, shipping, gift cards, payment and affiliates.'),
             'sections' => array(
                 'pgset-store'     => lang('Store'),
                 'pgset-shipping'  => lang('Shipping'),
                 'pgset-giftcards' => lang('Gift Cards & Rewards'),
-                'pgset-invoice'   => lang('E-Invoice'),
-                'pgset-erp'       => lang('ERP'),
                 'pgset-payments'  => lang('Payment Methods'),
                 'pgset-reference-price' => lang('Reference Price'),
                 'pgset-legal'     => lang('Legal Documents'),
@@ -279,12 +285,32 @@ function pg_settings_categories()
                 'pgset-store'     => pg_settings_keywords(lang('store, commerce, ecommerce, order number, tax, vat, barcode, currency')),
                 'pgset-shipping'  => pg_settings_keywords(lang('shipping, cargo, delivery, ups, fedex, usps, recipient, address verification')),
                 'pgset-giftcards' => pg_settings_keywords(lang('gift card, points, reward, givex')),
-                'pgset-invoice'   => pg_settings_keywords(lang('invoice, e-invoice, e-archive, e-document, provider, parasut, isbasi, logo, accounting')),
-                'pgset-erp'       => pg_settings_keywords(lang('erp, account, cash, bank, bookkeeping, waybill, collection, overdue, reminder, automatic invoice')),
                 'pgset-payments'  => pg_settings_keywords(lang('payment, card, credit card, iyzico, iyzipay, paypal, stripe, installment, wire transfer, cash on delivery, 3d secure')),
                 'pgset-reference-price' => pg_settings_keywords(lang('reference price, price before discount, lowest price, 30 days, 10 days, compare-at price, omnibus, price label')),
                 'pgset-legal'     => pg_settings_keywords(lang('legal, contract, distance sales contract, pre-information form, terms, withdrawal, consumer')),
                 'pgset-affiliate' => pg_settings_keywords(lang('affiliate, commission, referral')),
+            ),
+        ),
+
+        'accounting' => array(
+            'label' => lang('Accounting'),
+            'icon'  => 'bi-calculator',
+            'description' => lang('The ERP, the e-document provider, the accounting rules and the document templates.'),
+            'sections' => array(
+                'pgset-erp'       => lang('ERP'),
+                'pgset-invoice'   => lang('E-Invoice'),
+                'pgset-erp-rules' => lang('Accounting rules'),
+                'pgset-late-fee'  => lang('Late payment fee'),
+                'pgset-efatura-threshold' => lang('e-Fatura threshold'),
+                'pgset-erp-templates' => lang('Document Templates'),
+            ),
+            'keywords' => array(
+                'pgset-erp'       => pg_settings_keywords(lang('erp, account, cash, bank, bookkeeping, waybill, collection, overdue, reminder, automatic invoice')),
+                'pgset-invoice'   => pg_settings_keywords(lang('invoice, e-invoice, e-archive, e-document, provider, parasut, isbasi, logo, accounting')),
+                'pgset-erp-rules' => pg_settings_keywords(lang('accounting rules, vat, withholding, exemption code, zero-rated, expense category')),
+                'pgset-late-fee'  => pg_settings_keywords(lang('late payment fee, late fee, interest, overdue, default interest')),
+                'pgset-efatura-threshold' => pg_settings_keywords(lang('e-fatura, threshold, limit, gross sales, system status')),
+                'pgset-erp-templates' => pg_settings_keywords(lang('template, invoice template, delivery note, reconciliation letter, pdf, print, html')),
             ),
             'lists' => array(
                 'erp_fx_currencies' => 1,
@@ -307,12 +333,14 @@ function pg_settings_categories()
 
     );
 
-    // The e-invoice card carries Turkish e-document providers only; outside
-    // Turkey, with none in use, it is left out of the list (the card is still
-    // drawn, hidden, so a save never finds its fields missing).
+    // The e-invoice card carries Turkish e-document providers only, and the
+    // e-Fatura threshold is a Turkish rule; outside Turkey, with no provider
+    // in use, both are left out of the list (the cards are still drawn,
+    // hidden, so a save never finds their fields missing).
     if (function_exists('pg_edoc_settings_shown') && !pg_edoc_settings_shown()) {
-        unset($categories['commerce']['sections']['pgset-invoice'], $categories['commerce']['keywords']['pgset-invoice']);
-        $categories['commerce']['description'] = lang('Store, shipping, gift cards, payment and affiliates.');
+        unset($categories['accounting']['sections']['pgset-invoice'], $categories['accounting']['keywords']['pgset-invoice']);
+        unset($categories['accounting']['sections']['pgset-efatura-threshold'], $categories['accounting']['keywords']['pgset-efatura-threshold']);
+        $categories['accounting']['description'] = lang('The ERP, the accounting rules and the document templates.');
     }
 
     // The Dashboard card is drawn for designers and administrators only
@@ -442,6 +470,7 @@ function pg_settings_legacy_anchors()
         'pgset-seo'        => array('seo',        'pgset-seo'),
         'pgset-analytics'  => array('seo',        'pgset-analytics'),
         'pgset-campaigns'  => array('contact',    'pgset-campaigns'),
+        'pgset-organization' => array('general',  'pgset-organization'),
         'pgset-chat'       => array('contact',    'pgset-chat'),
         'pgset-security'   => array('security',   'pgset-session'),
         'pgsub-devices'    => array('security',   'pgset-device'),
@@ -455,7 +484,9 @@ function pg_settings_legacy_anchors()
         'pgsub-store'      => array('commerce',   'pgset-store'),
         'pgsub-shipping'   => array('commerce',   'pgset-shipping'),
         'pgsub-giftcards'  => array('commerce',   'pgset-giftcards'),
-        'pgsub-invoice'    => array('commerce',   'pgset-invoice'),
+        'pgsub-invoice'    => array('accounting', 'pgset-invoice'),
+        'pgset-invoice'    => array('accounting', 'pgset-invoice'),
+        'pgset-erp'        => array('accounting', 'pgset-erp'),
         'pgsub-payments'   => array('commerce',   'pgset-payments'),
         'pgset-affiliate'  => array('commerce',   'pgset-affiliate'),
         'pgset-cron'       => array('general',    'pgset-cron'),
@@ -620,6 +651,100 @@ function pg_settings_tool_groups($user)
     $groups[] = array('label' => lang('Infrastructure'), 'icon' => 'bi-hdd-stack', 'items' => $infrastructure);
 
     return $groups;
+}
+
+
+/**
+ * How many links the tool groups hold, over all groups.
+ *
+ * @param array $groups pg_settings_tool_groups()
+ * @return int
+ */
+function pg_settings_tool_count($groups)
+{
+    $count = 0;
+
+    foreach ((array) $groups as $group) {
+        $count += isset($group['items']) ? count($group['items']) : 0;
+    }
+
+    return $count;
+}
+
+
+/**
+ * The System tools screen's body: one card per group, its links under it.
+ *
+ * Each link keeps what the group gave it: its target, and its question
+ * (data-confirm-content, which the panel's confirm handler asks before the
+ * link is followed). A group with no link is not drawn.
+ *
+ * @param array  $groups   pg_settings_tool_groups()
+ * @param string $base_url the software directory, ending in a slash
+ * @return string
+ */
+function pg_settings_tool_cards($groups, $base_url)
+{
+    $output = '';
+
+    foreach ((array) $groups as $group) {
+
+        if (empty($group['items'])) {
+            continue;
+        }
+
+        $links = '';
+
+        foreach ($group['items'] as $item) {
+
+            $target  = isset($item['target']) ? ' target="' . h($item['target']) . '" rel="noopener"' : '';
+            $confirm = isset($item['confirm']) ? ' data-confirm-content="' . h($item['confirm']) . '"' : '';
+            $away    = isset($item['target']) ? '<i class="bi bi-box-arrow-up-right ms-auto fg-secondary" aria-hidden="true"></i>' : '';
+
+            $links .= '
+                        <a class="list-group-item list-group-item-action d-flex align-items-center gap-5" href="' . h($base_url . $item['url']) . '"' . $target . $confirm . '>
+                            <i class="bi ' . h($item['icon']) . '" aria-hidden="true"></i>
+                            <span>' . h($item['label']) . '</span>' . $away . '
+                        </a>';
+        }
+
+        $output .= '
+            <div class="col-12 md:col-6 xl:col-4">
+                <div class="card h-100">
+                    <div class="card-header d-flex align-items-center gap-5">
+                        <i class="bi ' . h($group['icon']) . '" aria-hidden="true"></i>
+                        <h2 class="h6 mb-0">' . h($group['label']) . '</h2>
+                    </div>
+                    <div class="list-group list-group-flush">' . $links . '
+                    </div>
+                </div>
+            </div>';
+    }
+
+    return ($output === '') ? '' : '
+        <div class="row g-12 my-12">' . $output . '
+        </div>';
+}
+
+
+/**
+ * The "System tools" row at the end of the dialog's list, or an empty string
+ * when the user has no tool. It leaves the dialog, like the rows it replaced.
+ *
+ * @param array $groups pg_settings_tool_groups()
+ * @return string
+ */
+function pg_settings_tools_link($groups)
+{
+    if (pg_settings_tool_count($groups) === 0) {
+        return '';
+    }
+
+    return
+        '<a class="pg-sm-link pg-sm-away" href="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/system_tools.php') . '">'
+        . '<i class="bi bi-tools" aria-hidden="true"></i>'
+        . '<span>' . h(lang('System tools')) . '</span>'
+        . '<i class="bi bi-chevron-right pg-sm-out" aria-hidden="true"></i></a>';
 }
 
 

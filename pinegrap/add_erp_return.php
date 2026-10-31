@@ -52,15 +52,7 @@ if (!$_POST) {
     $back_order_id = is_scalar($_GET['back_order'] ?? null) ? (int) $_GET['back_order'] : 0;
     $lines = erp_returnable_lines($invoice_id);
 
-    $anything_left = false;
-
-    foreach ($lines as $line) {
-        if ($line['remaining_qty'] > 0.00001) {
-            $anything_left = true;
-        }
-    }
-
-    if (!$anything_left) {
+    if (!erp_return_lines_left($lines)) {
         output_error(lang('Everything on this invoice has already been returned.')
             . ' <a href="' . h($invoice_url) . '">' . lang('Invoice') . '</a>');
         exit();
@@ -237,8 +229,11 @@ if (!$_POST) {
     $quantities = array();
 
     foreach ($returnable as $line) {
-        $raw =str_replace(',', '.', trim((string) $liveform->get_field_value('qty_' . (int) $line['id'])));
-        $quantities[(int) $line['id']] = ($raw === '') ? 0 : (float) $raw;
+        // erp_quantity_in() reads 1.250,5 and 1,250 the way the store writes
+        // them; it drops a minus sign, so a negative figure stays a line
+        // that is not returned.
+        $raw = trim((string) $liveform->get_field_value('qty_' . (int) $line['id']));
+        $quantities[(int) $line['id']] = (($raw === '') || (strpos($raw, '-') !== false)) ? 0 : erp_quantity_in($raw);
     }
 
     $result = erp_invoice_return(array(

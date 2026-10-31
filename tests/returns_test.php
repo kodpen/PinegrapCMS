@@ -924,3 +924,57 @@ function test_returns_erp_hand_off()
 	pg_assert_false(pg_return_erp_hand_off($manager, false), 'the ERP is off');
 	pg_assert_false(pg_return_erp_hand_off('x', true), 'not a user row');
 }
+
+// A label's code goes into carrier_code; the carrier only when the approval
+// named none and the service named a known one.
+function test_returns_label_code_change()
+{
+	pg_assert_same(array('carrier_code' => 'RC-77'), pg_return_label_code_change(array('carrier' => 'aras', 'carrier_code' => 'OLD'), ' RC-77 ', 'yurtici'), 'code written, carrier kept');
+	pg_assert_same(array('carrier_code' => 'RC-77', 'carrier' => 'aras'), pg_return_label_code_change(array('carrier' => '', 'carrier_code' => ''), 'RC-77', 'aras'), 'carrier filled');
+	pg_assert_same(array('carrier_code' => 'RC-77'), pg_return_label_code_change(array('carrier' => '', 'carrier_code' => ''), 'RC-77', 'nowhere'), 'an unknown carrier is not written');
+	pg_assert_same(64, mb_strlen(pg_return_label_code_change(array('carrier' => 'aras'), str_repeat('9', 80), '')['carrier_code']), 'cut to its column');
+
+	$after = array_merge(array('status' => 'approved', 'carrier' => 'aras', 'carrier_code' => 'OLD'), pg_return_label_code_change(array('carrier' => 'aras', 'carrier_code' => 'OLD'), 'RC-77', ''));
+	pg_assert_same('RC-77', pg_return_audit_fields($after)['carrier_code'], 'in the audit trail');
+}
+
+// The short mail after the approval carries the code only.
+function test_returns_label_mail_body()
+{
+	$body = pg_return_label_mail_body(array(
+		'customer'     => 'Jane <Cooper>',
+		'order_number' => '1172',
+		'carrier'      => 'Aras Kargo',
+		'carrier_code' => 'RC<1>',
+		'from_name'    => 'ACME',
+	));
+
+	pg_assert_contains('Jane &lt;Cooper&gt;', $body, 'name, escaped');
+	pg_assert_contains('1172', $body, 'order number');
+	pg_assert_contains('Aras Kargo', $body, 'carrier');
+	pg_assert_contains('<strong>RC&lt;1&gt;</strong>', $body, 'code, escaped');
+	pg_assert_contains('ACME', $body, 'shop');
+
+	$bare = pg_return_label_mail_body(array('order_number' => '9', 'carrier_code' => 'RC-2'));
+	pg_assert_contains('Give the carrier this return code:', $bare, 'no carrier named');
+}
+
+// A request with a carrier return label offers its download; one without
+// offers none.
+function test_returns_list_html_return_label()
+{
+	$return = array(
+		'id' => 6, 'status' => 'approved', 'status_label' => 'Return approved',
+		'requested' => '', 'lines' => array(), 'reason_label' => '', 'customer_note' => '', 'decision_note' => '',
+		'carrier' => 'UPS', 'carrier_code' => '1Z999', 'tracking_number' => '', 'refund_deadline' => '',
+		'can_withdraw' => false, 'can_mark_sent' => true,
+		'label_url' => '/software/order_return.php?action=label&order_id=9&return_id=6',
+	);
+
+	$html = pg_returns_list_html(array($return), returns_test_form());
+	pg_assert_contains('href="/software/order_return.php?action=label&amp;order_id=9&amp;return_id=6"', $html, 'the link, escaped');
+	pg_assert_contains(h(lang('Download return label')), $html, 'its words');
+
+	$html = pg_returns_list_html(array(array_merge($return, array('label_url' => ''))), returns_test_form());
+	pg_assert_false(strpos($html, 'action=label') !== false, 'no label: no link');
+}

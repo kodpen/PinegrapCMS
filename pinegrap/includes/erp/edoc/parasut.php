@@ -296,7 +296,7 @@ function erp_edoc_parasut_ping($credentials)
     $company = defined('PARASUT_COMPANY_ID') ? trim((string) PARASUT_COMPANY_ID) : '';
 
     if ($company === '') {
-        return array('success' => false, 'message' => lang('The Paraşüt company id is empty. Connect on the Paraşüt card of the commerce settings, or enter it there.'), 'details' => array());
+        return array('success' => false, 'message' => lang('The Paraşüt company id is empty. Connect on the E-Invoice card of the Ecommerce settings (Enable Parasut Configuration), or enter it there.'), 'details' => array());
     }
 
     $token = parasut_get_token();
@@ -932,7 +932,7 @@ function erp_edoc_parasut_product_refusal($lines, $default = null)
 function erp_edoc_parasut_no_product_text($line)
 {
     return lang(array(
-        'string' => 'Line "{var:1}" has no Paraşüt product to go on. Enter a default product/service id on the Paraşüt card of the commerce settings (a generic service opened in Paraşüt).',
+        'string' => 'Line "{var:1}" has no Paraşüt product to go on. Enter the id of a generic service opened in Paraşüt as the default product/service on the E-Invoice card of the Ecommerce settings (Enable Parasut Configuration).',
         'vars' => (string) ($line['description'] ?? ''),
     ));
 }

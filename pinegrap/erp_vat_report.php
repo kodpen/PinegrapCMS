@@ -83,8 +83,12 @@ $has_withholding = !empty($report['withholding']) || ($totals['withheld_sales'] 
 $net_withholding = $report['net_withholding'] && ($totals['withheld_sales'] !== 0);
 
 // The statement: calculated, deductible, difference.
+// The label is the row header and keeps the row's weight: a th is bold
+// by default, so a plain row sets fw-normal and a semibold row its own.
 $statement_line = function ($label, $kurus, $class = '') use ($money) {
-    return '<tr' . (($class !== '') ? ' class="' . $class . '"' : '') . '><td>' . $label . '</td><td class="text-end">' . $money($kurus) . '</td></tr>';
+    $weight = (strpos($class, 'fw-bold') !== false) ? '' : ((strpos($class, 'fw-semibold') !== false) ? ' class="fw-semibold"' : ' class="fw-normal"');
+
+    return '<tr' . (($class !== '') ? ' class="' . $class . '"' : '') . '><th scope="row"' . $weight . '>' . $label . '</th><td class="text-end">' . $money($kurus) . '</td></tr>';
 };
 
 $output_statement = '
@@ -123,12 +127,14 @@ $output_aside = empty($aside) ? '' : '
     </table>';
 
 // By rate: the order means something (kind, tax, rate), so it does not sort.
+// A group shows its document type once; the later rows keep it for screen
+// readers only, so no row reads with an empty Document type cell.
 $output_rates = '';
 $previous_kind = '';
 foreach ($report['rates'] as $item) {
     $output_rates .= '
         <tr' . ((($previous_kind !== '') && ($previous_kind !== $item['key'])) ? ' class="border-top"' : '') . '>
-            <td>' . (($previous_kind !== $item['key']) ? h($labels[$item['key']]) : '') . '</td>
+            <td>' . (($previous_kind !== $item['key']) ? h($labels[$item['key']]) : ('<span class="visually-hidden">' . h($labels[$item['key']]) . '</span>')) . '</td>
             <td>' . h(($item['tax'] === 'tax2') ? $tax2_label : $tax_label) . '</td>
             <td class="text-end">' . h(erp_percent_text($item['rate'])) . '</td>
             <td class="text-end">' . (int) $item['documents'] . '</td>
@@ -432,7 +438,7 @@ pg_page_shell([
                     <label class="small fg-secondary" for="erp_vat_kind">' . lang('Document type') . '</label>
                     <select class="form-control form-control-sm w-auto" id="erp_vat_kind">' . $kind_options . '</select>
                 </div>
-                <div class="card-body p-0 table-responsive" style="max-height:40rem">
+                <div class="card-body p-0 table-responsive" style="max-height:40rem;scroll-padding-top:2.5rem">
                     <table class="table table-sm table-hover align-middle mb-0" data-pg-sort id="erp_vat_documents">
                         <thead class="sticky-top">
                             <tr>

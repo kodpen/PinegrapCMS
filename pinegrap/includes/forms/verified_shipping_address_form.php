@@ -64,7 +64,7 @@ function pg_verified_shipping_address_form_card($liveform)
                                             </div>
                                             <div class="col-12 my-3">
                                                 <label for="address_1" class="form-label">' . lang('Address 1') . '</label>
-                                                <input type="text" name="address_1" id="address_1" maxlength="50" value="' . h($liveform->get_field_value('address_1')) . '" class="form-control' . ($liveform->check_field_error('address_1') ? ' is-invalid' : '') . '" />
+                                                <input type="text" name="address_1" id="address_1" maxlength="50" required value="' . h($liveform->get_field_value('address_1')) . '" class="form-control' . ($liveform->check_field_error('address_1') ? ' is-invalid' : '') . '" />
                                             </div>
                                             <div class="col-12 my-3">
                                                 <label for="address_2" class="form-label">' . lang('Address 2') . '</label>
@@ -72,7 +72,7 @@ function pg_verified_shipping_address_form_card($liveform)
                                             </div>
                                             <div class="col-12 lg:col-6 my-3">
                                                 <label for="city" class="form-label">' . lang('City') . '</label>
-                                                <input type="text" name="city" id="city" maxlength="50" value="' . h($liveform->get_field_value('city')) . '" class="form-control' . ($liveform->check_field_error('city') ? ' is-invalid' : '') . '" />
+                                                <input type="text" name="city" id="city" maxlength="50" required value="' . h($liveform->get_field_value('city')) . '" class="form-control' . ($liveform->check_field_error('city') ? ' is-invalid' : '') . '" />
                                             </div>
                                             <div class="col-12 lg:col-4 my-3">
                                                 <label for="state_id" class="form-label">' . lang('State') . '</label>
@@ -80,7 +80,7 @@ function pg_verified_shipping_address_form_card($liveform)
                                             </div>
                                             <div class="col-12 lg:col-2 my-3">
                                                 <label for="zip_code" class="form-label">' . lang('Zip Code') . '</label>
-                                                <input type="text" name="zip_code" id="zip_code" maxlength="50" value="' . h($liveform->get_field_value('zip_code')) . '" class="form-control' . ($liveform->check_field_error('zip_code') ? ' is-invalid' : '') . '" />
+                                                <input type="text" name="zip_code" id="zip_code" maxlength="50" required value="' . h($liveform->get_field_value('zip_code')) . '" class="form-control' . ($liveform->check_field_error('zip_code') ? ' is-invalid' : '') . '" />
                                             </div>
                                         </div>
                                     </div>

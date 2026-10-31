@@ -11,4 +11,4 @@ description: W8 account values (the member's own): which widgets offer them, the
 ## How are they read?
 - `pg_sw_entity_account_tokens($user_id, $tree_json)` (`includes/fn/widgets_entity_fields.php`): nothing, and no query, unless the tree binds one (the login region sits on every page). `pg_sw_entity_account_read()`: one user + contact query (tax columns probed with `pg_schema_has()`), one for the country's name.
 - Reward points only while `ECOMMERCE_REWARD_PROGRAM` is on (`0` shows then); the affiliate code only for an approved affiliate while `AFFILIATE_PROGRAM` is on; the expiry date in the site's date format, empty for `0000-00-00`; the time zone is the member's, else the site's, by its pick-list label, as the classic my account page shows it.
-- Salutations are stored abbreviations (Dr., Mr.) and stay as stored, as the profile form shows them.
+- Salutations are stored abbreviations (Dr., Mr.) and the tokens print them as stored. The pick lists show translated labels (`get_salutation_options()` returns label => value, `lang('Mr.')` => `'Mr.'`, #3579) and still post the abbreviation.

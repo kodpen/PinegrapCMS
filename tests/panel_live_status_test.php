@@ -58,7 +58,7 @@ function test_panel_live_status_health_job_keeps_focus()
 // polite region, and the spinner says what it is.
 function test_panel_live_status_edoc_result_is_live()
 {
-	$commerce = panel_live_status_source('includes/settings/commerce.php');
+	$commerce = panel_live_status_source('includes/settings/accounting.php');
 
 	pg_assert_same(2, substr_count($commerce, '<div class="pg-edoc-test-result mt-3" role="status" aria-live="polite"></div>'));
 	pg_assert_same(0, substr_count($commerce, '<div class="pg-edoc-test-result mt-3"></div>'));

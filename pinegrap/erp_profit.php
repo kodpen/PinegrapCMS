@@ -88,7 +88,7 @@ $output_expense_lines = '';
 foreach ((array) $report['expenses']['categories'] as $category) {
     $output_expense_lines .= '
         <tr class="small">
-            <td class="ps-7 fg-secondary">' . h($category['name']) . (($category['code'] !== '') ? ' <span class="font-monospace">' . h($category['code']) . '</span>' : '') . '</td>
+            <th scope="row" class="ps-7 fg-secondary fw-normal">' . h($category['name']) . (($category['code'] !== '') ? ' <span class="font-monospace">' . h($category['code']) . '</span>' : '') . '</th>
             <td class="text-end fg-secondary">' . $money(-$category['cost']) . '</td>
         </tr>';
 }
@@ -96,18 +96,18 @@ foreach ((array) $report['expenses']['categories'] as $category) {
 $output_statement = '
     <table class="table table-sm align-middle mb-0">
         <tbody>
-            <tr><td>' . lang('Sales') . '</td><td class="text-end">' . $money($totals['sales']) . '</td></tr>
-            ' . ($report['orders']['included'] ? '<tr><td>' . lang('Completed orders without an invoice') . '<div class="small fg-secondary">' . h(lang(array('string' => '{var:1} order(s), by the order date', 'vars' => (int) $report['orders']['count']))) . '</div></td><td class="text-end">' . $money($totals['order_sales']) . '</td></tr>' : '') . '
-            <tr><td>' . lang('Returns') . '</td><td class="text-end">' . $money(-$totals['returns']) . '</td></tr>
-            <tr class="fw-semibold border-top"><td>' . lang('Net sales') . '</td><td class="text-end">' . $money($totals['revenue']) . '</td></tr>
-            <tr><td>' . lang('Cost of goods sold')
+            <tr><th scope="row" class="fw-normal">' . lang('Sales') . '</th><td class="text-end">' . $money($totals['sales']) . '</td></tr>
+            ' . ($report['orders']['included'] ? '<tr><th scope="row" class="fw-normal">' . lang('Completed orders without an invoice') . '<div class="small fg-secondary">' . h(lang(array('string' => '{var:1} order(s), by the order date', 'vars' => (int) $report['orders']['count']))) . '</div></th><td class="text-end">' . $money($totals['order_sales']) . '</td></tr>' : '') . '
+            <tr><th scope="row" class="fw-normal">' . lang('Returns') . '</th><td class="text-end">' . $money(-$totals['returns']) . '</td></tr>
+            <tr class="fw-semibold border-top"><th scope="row" class="fw-semibold">' . lang('Net sales') . '</th><td class="text-end">' . $money($totals['revenue']) . '</td></tr>
+            <tr><th scope="row" class="fw-normal">' . lang('Cost of goods sold')
                 . (((int) $totals['cogs_estimated'] !== 0) ? '<div class="small fg-secondary">' . h(lang(array('string' => 'of which {var:1} estimated at today\'s average cost', 'vars' => erp_money_out((int) $totals['cogs_estimated'])))) . '</div>' : '')
-                . '</td><td class="text-end">' . $money(-$totals['cogs']) . '</td></tr>
-            <tr class="fw-semibold border-top"><td>' . lang('Gross profit') . ' <span class="fg-secondary fw-normal small">' . $margin($gross_margin) . '</span></td><td class="text-end">' . $money($totals['gross']) . '</td></tr>
-            <tr><td>' . lang('Costs from purchase invoices') . '<div class="small fg-secondary">' . lang('Purchase lines with no product: services and costs bought on an invoice.') . '</div></td><td class="text-end">' . $money(-$totals['purchase_costs']) . '</td></tr>
-            <tr><td>' . lang('Expenses') . ' <a class="small" href="erp_expenses.php?' . h(http_build_query(array('period' => 'dates', 'from' => $period['from'], 'to' => $period['to']))) . '">' . lang('List') . '</a></td><td class="text-end">' . $money(-$totals['expenses']) . '</td></tr>
+                . '</th><td class="text-end">' . $money(-$totals['cogs']) . '</td></tr>
+            <tr class="fw-semibold border-top"><th scope="row" class="fw-semibold">' . lang('Gross profit') . ' <span class="fg-secondary fw-normal small">' . $margin($gross_margin) . '</span></th><td class="text-end">' . $money($totals['gross']) . '</td></tr>
+            <tr><th scope="row" class="fw-normal">' . lang('Costs from purchase invoices') . '<div class="small fg-secondary">' . lang('Purchase lines with no product: services and costs bought on an invoice.') . '</div></th><td class="text-end">' . $money(-$totals['purchase_costs']) . '</td></tr>
+            <tr><th scope="row" class="fw-normal">' . lang('Expenses') . ' <a class="small" href="erp_expenses.php?' . h(http_build_query(array('period' => 'dates', 'from' => $period['from'], 'to' => $period['to']))) . '">' . lang('List') . '</a></th><td class="text-end">' . $money(-$totals['expenses']) . '</td></tr>
             ' . $output_expense_lines . '
-            <tr class="fw-bold border-top border-2"><td>' . lang('Net profit') . ' <span class="fg-secondary fw-normal small">' . $margin($net_margin) . '</span></td><td class="text-end">' . $money($totals['net'], 'fs-lg') . '</td></tr>
+            <tr class="fw-bold border-top border-2"><th scope="row">' . lang('Net profit') . ' <span class="fg-secondary fw-normal small">' . $margin($net_margin) . '</span></th><td class="text-end">' . $money($totals['net'], 'fs-lg') . '</td></tr>
         </tbody>
     </table>';
 
@@ -336,7 +336,7 @@ pg_page_shell([
                     <div class="card h-100">
                         <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('By month') . '</div>
                         <div class="card-body">
-                            ' . ($many_months ? '<div style="height:16rem"><canvas id="erp_profit_chart" aria-label="' . h(lang('By month')) . '" role="img"></canvas></div>' : '') . '
+                            ' . ($many_months ? '<div style="height:16rem"><canvas id="erp_profit_chart" aria-hidden="true"></canvas></div>' : '') . '
                             <div class="table-responsive' . ($many_months ? ' mt-5' : '') . '">
                                 <table class="table table-sm table-hover align-middle mb-0" data-pg-sort id="erp_profit_months">
                                     <thead>
@@ -382,7 +382,7 @@ pg_page_shell([
                 <div class="col-12 2xl:col-5">
                     <div class="card h-100">
                         <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('By account') . '</div>
-                        <div class="card-body p-0 table-responsive" style="max-height:36rem">
+                        <div class="card-body p-0 table-responsive" style="max-height:36rem;scroll-padding-top:2.5rem">
                             <table class="table table-sm table-hover align-middle mb-0" data-pg-sort id="erp_profit_accounts">
                                 <thead class="sticky-top">
                                     <tr>
@@ -434,15 +434,23 @@ pg_page_shell([
     probe.style.color = "var(--pg-fg-2)";
     document.body.appendChild(probe);
     var ink = getComputedStyle(probe).color;
+    // The pastel fills read about 2:1 on the light card, so bar edges and the
+    // line take the ink tones of the theme.
+    probe.style.color = "var(--pg-primary-ink)";
+    var primaryInk = getComputedStyle(probe).color;
+    probe.style.color = "var(--pg-secondary-ink)";
+    var secondaryInk = getComputedStyle(probe).color;
+    probe.style.color = "var(--pg-success-ink)";
+    var successInk = getComputedStyle(probe).color;
     probe.remove();
     var grid = "rgba(128,128,128,.2)";
     new Chart(canvas, {
         data: {
             labels: data.labels,
             datasets: [
-                { type: "bar", label: ' . json_encode(lang('Net sales')) . ', data: data.revenue, backgroundColor: color("--bs-primary", "#0d6efd"), borderRadius: 4 },
-                { type: "bar", label: ' . json_encode(lang('Costs and expenses')) . ', data: data.costs, backgroundColor: color("--bs-secondary-bg", "#adb5bd"), borderRadius: 4 },
-                { type: "line", label: ' . json_encode(lang('Net profit')) . ', data: data.net, borderColor: color("--bs-success", "#198754"), backgroundColor: color("--bs-success", "#198754"), tension: 0.3, pointRadius: 3 }
+                { type: "bar", label: ' . json_encode(lang('Net sales')) . ', data: data.revenue, backgroundColor: color("--bs-primary", "#0d6efd"), borderColor: primaryInk, borderWidth: 2, borderRadius: 4 },
+                { type: "bar", label: ' . json_encode(lang('Costs and expenses')) . ', data: data.costs, backgroundColor: "transparent", borderColor: secondaryInk, borderWidth: 2, borderRadius: 4 },
+                { type: "line", label: ' . json_encode(lang('Net profit')) . ', data: data.net, borderColor: successInk, backgroundColor: successInk, tension: 0.3, pointRadius: 3 }
             ]
         },
         options: {

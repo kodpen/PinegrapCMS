@@ -307,6 +307,11 @@ function pg_explorer_handle_catalog_create_group($type, $request, $user)
         respond(array('status' => 'error', 'message' => lang('Please enter a name.')));
     }
 
+    // name and short_description are varchar(100).
+    if (pg_name_too_long($name)) {
+        respond(array('status' => 'error', 'message' => lang(array('string' => 'The name can be at most {var:1} characters long.', 'vars' => array(pg_name_max_length())))));
+    }
+
     // The address is derived the way add_product_group.php derives it,
     // and made unique the same way, so a group created here and one
     // created there are the same kind of row.
@@ -359,13 +364,13 @@ function pg_explorer_handle_catalog_create_group($type, $request, $user)
 
     $group_id = mysqli_insert_id(db::$con);
 
-    log_activity(lang(array('string' => 'The product group, {var:1}, was added.', 'vars' => h($name))), $_SESSION['sessionusername']);
+    log_activity(lang(array('string' => 'The product group, {var:1}, was added.', 'vars' => $name)), $_SESSION['sessionusername']);
 
     respond(array(
         'status' => 'success',
         'request' => $type,
         'group' => array('id' => (int) $group_id, 'name' => $name),
-        'message' => lang(array('string' => 'The product group, {var:1}, was added.', 'vars' => h($name)))));
+        'message' => lang(array('string' => 'The product group, {var:1}, was added.', 'vars' => $name))));
 }
 
 // ── Rename a group or a product ──────────────────────────────────
@@ -386,6 +391,12 @@ function pg_explorer_handle_catalog_rename($type, $request, $user)
 
     if (($item_id <= 0) || ($name == '')) {
         respond(array('status' => 'error', 'message' => lang('Please enter a name.')));
+    }
+
+    // products.name, product_groups.name and short_description are
+    // varchar(100).
+    if (pg_name_too_long($name)) {
+        respond(array('status' => 'error', 'message' => lang(array('string' => 'The name can be at most {var:1} characters long.', 'vars' => array(pg_name_max_length())))));
     }
 
     if ($item_kind == 'group') {
@@ -451,7 +462,7 @@ function pg_explorer_handle_catalog_membership_remove($type, $request, $user)
 
     $product = db_item("SELECT name FROM products WHERE id = '" . e($product_id) . "'");
 
-    log_activity(lang(array('string' => 'The product, {var:1}, was removed from a product group.', 'vars' => h(isset($product['name']) ? $product['name'] : ''))), $_SESSION['sessionusername']);
+    log_activity(lang(array('string' => 'The product, {var:1}, was removed from a product group.', 'vars' => isset($product['name']) ? $product['name'] : '')), $_SESSION['sessionusername']);
 
     respond(array(
         'status' => 'success',
@@ -550,6 +561,20 @@ function pg_explorer_handle_catalog_paste($type, $request, $user)
 
     if ((is_array($items) == false) || (count($items) == 0)) {
         respond(array('status' => 'error', 'message' => lang('Invalid request.')));
+    }
+
+    // A group copied into itself or into one of its subgroups would find its
+    // own fresh copy among the children it copies and nest until the depth
+    // cap, so every group is checked before anything is copied.
+    if ($mode == 'copy') {
+
+        foreach ($items as $item) {
+
+            if ((isset($item['kind'])) && ($item['kind'] == 'group')
+                && (pg_catalog_group_is_within($map, $target_id, (int) (isset($item['id']) ? $item['id'] : 0)))) {
+                respond(array('status' => 'error', 'message' => lang('A product group cannot be copied into itself.')));
+            }
+        }
     }
 
     $moved = 0;
@@ -777,7 +802,7 @@ function pg_explorer_handle_catalog_recycle($type, $request, $user)
                 db($statement);
             }
 
-            log_activity(lang(array('string' => 'The product group, {var:1}, was moved to the Recycle Bin.', 'vars' => h($map[$item_id]['name']))), $_SESSION['sessionusername']);
+            log_activity(lang(array('string' => 'The product group, {var:1}, was moved to the Recycle Bin.', 'vars' => $map[$item_id]['name'])), $_SESSION['sessionusername']);
 
             $binned++;
 
@@ -796,7 +821,7 @@ function pg_explorer_handle_catalog_recycle($type, $request, $user)
 
             pg_audit_record('recycle', 'products', $item_id, $audit_before);
 
-            log_activity(lang(array('string' => 'The product, {var:1}, was moved to the Recycle Bin.', 'vars' => h($product_name))), $_SESSION['sessionusername']);
+            log_activity(lang(array('string' => 'The product, {var:1}, was moved to the Recycle Bin.', 'vars' => $product_name)), $_SESSION['sessionusername']);
 
             $binned++;
         }
@@ -1066,7 +1091,7 @@ function pg_explorer_handle_catalog_enable($type, $request, $user)
                     user = '" . e($user['id']) . "'
                 WHERE id = '" . e($item_id) . "'" . pg_catalog_live_filter('product_groups'));
 
-            log_activity(lang(array('string' => 'product group ({var:1}) was updated', 'vars' => array(h($map[$item_id]['name'])))), $_SESSION['sessionusername']);
+            log_activity(lang(array('string' => 'product group ({var:1}) was updated', 'vars' => array($map[$item_id]['name']))), $_SESSION['sessionusername']);
 
             $changed++;
 
@@ -1087,7 +1112,7 @@ function pg_explorer_handle_catalog_enable($type, $request, $user)
                 WHERE id = '" . e($item_id) . "'");
             pg_audit_record('update', 'products', $item_id, $audit_before);
 
-            log_activity(lang(array('string' => 'product ({var:1}) was updated', 'vars' => array(h($product['name'])))), $_SESSION['sessionusername']);
+            log_activity(lang(array('string' => 'product ({var:1}) was updated', 'vars' => array($product['name']))), $_SESSION['sessionusername']);
 
             $changed++;
         }

@@ -190,8 +190,8 @@ function optimize_image($file_id, $mode = 'optimize') {
                 $file['name'],
                 $report['width'],
                 $report['height'],
-                convert_bytes_to_string($report['bytes_before']),
-                convert_bytes_to_string($report['bytes_after']),
+                convert_bytes_to_string($report['bytes_before'], 'auto'),
+                convert_bytes_to_string($report['bytes_after'], 'auto'),
                 $report['percent'])));
 
     } else {
@@ -200,8 +200,8 @@ function optimize_image($file_id, $mode = 'optimize') {
             'string' => '{var:1} has been optimized ({var:2} -> {var:3}, {var:4}%).',
             'vars' => array(
                 $file['name'],
-                convert_bytes_to_string($report['bytes_before']),
-                convert_bytes_to_string($report['bytes_after']),
+                convert_bytes_to_string($report['bytes_before'], 'auto'),
+                convert_bytes_to_string($report['bytes_after'], 'auto'),
                 $report['percent'])));
     }
 

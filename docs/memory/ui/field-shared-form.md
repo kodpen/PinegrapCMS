@@ -18,3 +18,7 @@ description: The form field create and edit screens share includes/forms/field_f
 
 ## What stays in edit_field.php?
 - The not-found guard, the field row read, the read-only view of a designer form's field (a POST is refused), the page / variant set / product branches (product branches set `$page_type = ''`), the position (the field above), the delete with its submitted data and files, the folder check that allows the old upload folder, the UPDATE, the pretty URL refresh when the RSS field becomes title, both redirects.
+
+## What does a refused save keep?
+- A refused name (blank, or `^ & [ ] < > /`) stores the post (`add_fields_to_session()`) before the redirect. The screen reads it back with `pg_field_form_session_values()` (null when the form was not sent back, or was sent back for another field id) and lays it over the new or stored field with `pg_field_form_posted_field()` (a check box missing from the post is off; tested). Both screens call `remove_form()` once drawn; edit also drops any other entry before drawing.
+- Symptom fixed: Create Field came back empty, Edit Field came back with the stored field, and the left-over `name` error entry of the shared `edit_field` liveform emptied the Name box of every later Edit Field screen in the session.

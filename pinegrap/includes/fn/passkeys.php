@@ -1324,7 +1324,7 @@ function pg_passkey_passwordless_signin()
     if ($error !== '') {
         log_activity(lang(array(
             'string' => 'access denied (passkey not accepted: {var:1})',
-            'vars'   => array($error))), is_array($account) ? (string) $account['user_username'] : lang('UNKNOWN'));
+            'vars'   => array($error))), is_array($account) ? (string) $account['user_username'] : 'UNKNOWN');
 
         $liveform = new liveform('login');
         $liveform->mark_error('email', ($error === 'attempts')

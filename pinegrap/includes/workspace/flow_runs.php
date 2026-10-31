@@ -867,6 +867,31 @@ function ws_flow_effect_approval_id($effect)
 }
 
 /**
+ * The effect of a box whose call was approved and is still to be made (an
+ * MCP box whose tool asks first, steps.php): approved:<id>, the request
+ * that approved it. Nothing waits on it: the box is ready again.
+ *
+ * @param int $approval_id
+ * @return string
+ */
+function ws_flow_approved_key($approval_id)
+{
+    return 'approved:' . (int) $approval_id;
+}
+
+/**
+ * The approval request an effect says approved the box's call
+ * (approved:<id>), 0 for none.
+ *
+ * @param string $effect
+ * @return int
+ */
+function ws_flow_effect_approved_id($effect)
+{
+    return preg_match('/^approved:([1-9][0-9]{0,9})$/', (string) $effect, $match) ? (int) $match[1] : 0;
+}
+
+/**
  * How the way a request ended settles the approval box that asked it.
  * Approved and rejected are decisions: the box is done on them, and a
  * decision no arrow leaves on ends the branch. Expired and withdrawn
@@ -893,6 +918,28 @@ function ws_flow_approval_settlement($outcome, $routed)
     $outcome = ($outcome === 'expired') ? 'expired' : 'withdrawn';
 
     return array('status' => $routed ? 'done' : 'failed', 'outcome' => $outcome);
+}
+
+/**
+ * How the way a request ended settles a change box that proposed its change
+ * (a role-3 member's). Approved is not settled here: the box goes back to
+ * ready to write the change (ws_flow_approved_ready()). Rejected, expired,
+ * withdrawn or gone made no change: the box failed, leaving on failed where
+ * an arrow does, as any change box that could not make its change. One still
+ * open keeps it waiting (status ''). Pure.
+ *
+ * @param string|null $outcome what the request ended with ('' while open,
+ *                             null when it is gone)
+ * @param bool        $failed_routed an arrow leaves the box on failed
+ * @return array status (done | failed | ''), outcome
+ */
+function ws_flow_change_asked_settlement($outcome, $failed_routed)
+{
+    if (($outcome === '') || ($outcome === 'approved')) {
+        return array('status' => '', 'outcome' => '');
+    }
+
+    return ws_step_settlement(false, $failed_routed);
 }
 
 /**
@@ -940,6 +987,81 @@ function ws_flow_start_token_valid($token)
 function ws_flow_start_key($token)
 {
     return 'manual:' . sha1((string) $token);
+}
+
+/**
+ * The start key of a run about a customer: the contact and the last ended
+ * run of the flow about them (0 for none). While a run about the contact is
+ * open the key stays the same, so a second start meets it in the unique
+ * (flow_id, start_key) and answers that run; once it ends the next start
+ * gets a key of its own. A run swept later never brings an older key back:
+ * the runs ended after it are swept no sooner.
+ *
+ * @param int $contact_id
+ * @param int $last_ended_id
+ * @return string
+ */
+function ws_flow_contact_start_key($contact_id, $last_ended_id)
+{
+    return 'contact:' . max(0, (int) $contact_id) . ':' . max(0, (int) $last_ended_id);
+}
+
+/**
+ * What a start about a customer does with the flow's open run about them:
+ * none starts one, one the starter reads is answered, one they do not read
+ * refuses the start (it is neither shown nor doubled).
+ *
+ * @param int  $open_run_id 0 for none
+ * @param bool $readable    the starter reads it (ws_flow_run_for())
+ * @return string start | answer | busy
+ */
+function ws_flow_run_subject_answer($open_run_id, $readable)
+{
+    if ((int) $open_run_id <= 0) {
+        return 'start';
+    }
+
+    return $readable ? 'answer' : 'busy';
+}
+
+/**
+ * Whether the person reads the contact a run is to be about: they hold the
+ * contacts right and the contact is among those they may open
+ * (ws_viewer_contacts_open()).
+ *
+ * @param array $viewer
+ * @param int[] $open_ids ws_viewer_contacts_open() of the contact
+ * @param int   $contact_id
+ * @return bool
+ */
+function ws_flow_run_contact_readable($viewer, $open_ids, $contact_id)
+{
+    $contact_id = (int) $contact_id;
+
+    return ($contact_id > 0) && !empty($viewer['contacts']) && in_array($contact_id, array_map('intval', (array) $open_ids), true);
+}
+
+/**
+ * The title of a task a run about a customer opens: the box's title and the
+ * customer's name after it, the title cut so that the name stays within
+ * what a task title keeps.
+ *
+ * @param string $title
+ * @param string $name  the customer's name, '' for a run about nobody
+ * @return string
+ */
+function ws_flow_task_title_customer($title, $name)
+{
+    $title = (string) $title;
+    $name = trim((string) $name);
+
+    if ($name === '') {
+        return $title;
+    }
+
+    $tail = ' – ' . mb_substr($name, 0, 100);
+
+    return rtrim(mb_substr($title, 0, 200 - mb_strlen($tail))) . $tail;
 }
 
 /**
@@ -1150,19 +1272,27 @@ function ws_flow_task_marker($flow_name, $run_id, $box_name)
  * change the flow's home at once, so the channel a run opens its tasks in,
  * and whose readers read it, is the one it started with.
  *
- * @param array    $flow       ws_flows row
- * @param array    $trigger    the start box
- * @param int|null $channel_id the channel the starter named, null for the flow's home
- * @return array trigger, node, channel_id, flow_name
+ * @param array      $flow       ws_flows row
+ * @param array      $trigger    the start box
+ * @param int|null   $channel_id the channel the starter named, null for the flow's home
+ * @param array|null $subject    the customer the run is about (type, id, name), null for none
+ * @return array trigger, node, channel_id, flow_name; subject_name for a run about a customer
  */
-function ws_flow_run_context_new($flow, $trigger, $channel_id = null)
+function ws_flow_run_context_new($flow, $trigger, $channel_id = null, $subject = null)
 {
-    return array(
+    $context = array(
         'trigger'    => 'manual',
         'node'       => (string) $trigger['id'],
         'channel_id' => max(0, (int) ($channel_id ?? ($flow['channel_id'] ?? 0))),
         'flow_name'  => (string) ($flow['name'] ?? ''),
     );
+
+    // The customer's name as the run starts, carried by its tasks' titles.
+    if (is_array($subject) && ((int) ($subject['id'] ?? 0) > 0)) {
+        $context['subject_name'] = (string) ($subject['name'] ?? '');
+    }
+
+    return $context;
 }
 
 /**
@@ -1315,8 +1445,10 @@ function ws_flow_step_states($rows)
  * The result a run's flag shows: the sentence of the box that failed it
  * first for a failed run, else the sentence of the box that moved last (a
  * box still open counts as the latest), so a run done shows what it ended
- * on and a waiting one what it waits at. Boxes without a sentence are
- * passed over; none at all gives ''. Trimmed and cut to
+ * on and a waiting one what it waits at. A box not reached (skipped) comes
+ * after every other box whenever it settled: the walk writes it in the
+ * same second as the box the run ended on, with a larger id. Boxes without
+ * a sentence are passed over; none at all gives ''. Trimmed and cut to
  * WS_FLOW_RUN_RESULT_CHARS. Pure.
  *
  * @param string  $run_status ws_flow_run_statuses()
@@ -1342,6 +1474,8 @@ function ws_flow_run_result_pick($run_status, $lines)
             // The first failure: the earliest settled, a failed box never
             // being open.
             $key = array(0, -$finished, -$id);
+        } elseif ((string) ($line['status'] ?? '') === 'skipped') {
+            $key = array(-2, $finished, $id);
         } else {
             $key = array(-1, ($finished > 0) ? $finished : PHP_INT_MAX, $id);
         }
@@ -1742,6 +1876,33 @@ function ws_flow_run_channel_check($viewer, $flow, $channel_id, $owner = null)
 }
 
 /**
+ * Whether a run may be about the contact the person names: one that exists
+ * and that they read (ws_flow_run_contact_readable()). A contact they do not
+ * read is refused as one that is not there, so whether it exists is not told.
+ *
+ * @param array $viewer     the starter
+ * @param int   $contact_id
+ * @return array ok, error, status, field, subject (type, id, name)
+ */
+function ws_flow_run_contact_check($viewer, $contact_id)
+{
+    $contact_id = (int) $contact_id;
+    $row = ($contact_id > 0) ? db_item("SELECT id, first_name, last_name, company, email_address FROM contacts WHERE id = '" . $contact_id . "'") : null;
+
+    if (!$row || !ws_flow_run_contact_readable($viewer, ws_viewer_contacts_open($viewer, array($contact_id)), $contact_id)) {
+        return ws_flow_refusal(lang('That customer could not be found.'), 422, 'contact_id');
+    }
+
+    $name = pg_contact_display_name($row['first_name'], $row['last_name']);
+
+    foreach (array('company', 'email_address') as $column) {
+        $name = ($name !== '') ? $name : trim((string) $row[$column]);
+    }
+
+    return array('ok' => true, 'error' => '', 'status' => 200, 'field' => '', 'subject' => array('type' => 'contact', 'id' => $contact_id, 'name' => $name));
+}
+
+/**
  * Whether the person may start a run of the flow now: the checks of
  * ws_flow_run_start(), made on their own so that the API's dry run meets the
  * same refusals. The flow is live with a version that is started by hand,
@@ -1756,12 +1917,16 @@ function ws_flow_run_channel_check($viewer, $flow, $channel_id, $owner = null)
  * see, or the 403 of a flow shared with them at view, never a refusal of the
  * token's shape. A channel_id names the channel the run opens its tasks in
  * instead of the flow's home (ws_flow_run_channel_check(), 403 otherwise);
- * a token's run is answered whatever channel the retry names.
+ * a token's run is answered whatever channel the retry names. A contact_id
+ * makes the run about that customer (ws_flow_run_contact_check()): its start
+ * key is the flow's and the contact's (ws_flow_contact_start_key()) in place
+ * of the token's, and the flow's open run about them is answered, before the
+ * limits, as a token's run is (ws_flow_run_subject_answer()).
  *
  * @param array      $viewer
  * @param array|null $flow
- * @param array      $data   token (optional, ws_flow_start_token_valid()), channel_id (optional)
- * @return array ok, error, status, field, version, graph, trigger, start_key ('' when one is to be made), existing (the run the token started, 0 for none), channel_id (the run's channel, null for the flow's home)
+ * @param array      $data   token (optional, ws_flow_start_token_valid()), channel_id (optional), contact_id (optional)
+ * @return array ok, error, status, field, version, graph, trigger, start_key ('' when one is to be made), existing (the run the token started or the customer's open run, 0 for none), channel_id (the run's channel, null for the flow's home), subject (the customer, null for none)
  */
 function ws_flow_run_start_check($viewer, $flow, $data = array())
 {
@@ -1787,6 +1952,7 @@ function ws_flow_run_start_check($viewer, $flow, $data = array())
             'trigger'    => ws_flow_trigger_node($graph),
             'existing'   => (int) $run['id'],
             'channel_id' => null,
+            'subject'    => null,
         );
     };
 
@@ -1820,6 +1986,33 @@ function ws_flow_run_start_check($viewer, $flow, $data = array())
         return $found($existing, $start_key);
     }
 
+    // A run about a customer: one open run per flow and contact.
+    $subject = null;
+
+    if ((int) ($data['contact_id'] ?? 0) > 0) {
+        $contact = ws_flow_run_contact_check($viewer, $data['contact_id']);
+
+        if (!$contact['ok']) {
+            return $contact;
+        }
+
+        $subject = $contact['subject'];
+        $about = "flow_id = '" . (int) $flow['id'] . "' AND subject_type = 'contact' AND subject_id = '" . (int) $subject['id'] . "'";
+        $open_id = (int) db_value("SELECT id FROM ws_flow_runs WHERE " . $about . " AND status IN ('running', 'waiting') ORDER BY id DESC LIMIT 1");
+        $open_run = ($open_id > 0) ? ws_flow_run_for($viewer, $open_id) : null;
+
+        switch (ws_flow_run_subject_answer($open_id, (bool) $open_run)) {
+            case 'answer':
+                return $found($open_run, (string) $open_run['start_key']);
+
+            case 'busy':
+                return ws_flow_refusal(lang('This flow already has an open run for that customer.'), 409, 'contact_id');
+        }
+
+        $start_key = ws_flow_contact_start_key($subject['id'], db_value("SELECT MAX(id) FROM ws_flow_runs WHERE " . $about . " AND status NOT IN ('running', 'waiting')"));
+        $ok['start_key'] = $start_key;
+    }
+
     $version = (((string) $flow['status'] === 'live') && ((int) $flow['version_id'] > 0)) ? ws_flow_version($flow['version_id']) : null;
 
     if (!is_array($version)) {
@@ -1835,8 +2028,22 @@ function ws_flow_run_start_check($viewer, $flow, $data = array())
 
     $owner = ws_change_viewer_for_id($flow['owner_id']);
 
-    if (!is_array($owner) || !ws_can_schedule($owner)) {
+    if (!is_array($owner) || !ws_flow_builder($owner)) {
         return ws_flow_refusal(lang('The owner of this flow is no longer on the staff, so it cannot run.'));
+    }
+
+    // A role-3 member's own flow: run by its owner alone, under the cap of
+    // starts of all their flows (flow_member.php).
+    $refused = ws_flow_member_starter_refusal(ws_flow_builder_kind($owner), $flow['owner_id'], $viewer['id']);
+
+    if ($refused !== '') {
+        return ws_flow_refusal($refused, 403);
+    }
+
+    $refused = ws_flow_member_starts_check($owner);
+
+    if ($refused !== '') {
+        return ws_flow_refusal($refused);
     }
 
     $channel_id = null;
@@ -1862,7 +2069,7 @@ function ws_flow_run_start_check($viewer, $flow, $data = array())
             return ws_flow_refusal(lang(array('string' => 'This flow was started {var:1} times in the last hour; try again later.', 'vars' => WS_FLOW_STARTS_HOURLY)));
     }
 
-    return $ok + array('version' => $version, 'graph' => $graph, 'trigger' => $trigger, 'existing' => 0, 'channel_id' => $channel_id);
+    return $ok + array('version' => $version, 'graph' => $graph, 'trigger' => $trigger, 'existing' => 0, 'channel_id' => $channel_id, 'subject' => $subject);
 }
 
 /**
@@ -1898,16 +2105,18 @@ function ws_flow_run_start($viewer, $flow, $data = array())
 
     $flow_id = (int) $flow['id'];
     $start_key = ($check['start_key'] !== '') ? $check['start_key'] : 'manual:' . bin2hex(random_bytes(16));
-    $context = json_encode(ws_flow_run_context_new($flow, $check['trigger'], $check['channel_id']), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    $context = json_encode(ws_flow_run_context_new($flow, $check['trigger'], $check['channel_id'], $check['subject']), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    $subject_type = $check['subject'] ? (string) $check['subject']['type'] : '';
+    $subject_id = $check['subject'] ? (int) $check['subject']['id'] : 0;
     $now = time();
 
     // Not db(): a failed statement there ends the request with an HTML page,
     // and the duplicate start key is an answer here.
     $written = db_q("INSERT INTO ws_flow_runs (flow_id, version_id, status, started_by, actor_id, start_key,
             subject_type, subject_id, context, depth, boxes_run, started_at, updated_at, finished_at)
-        SELECT ?, ?, 'running', ?, ?, ?, '', 0, ?, 0, 0, ?, ?, 0
+        SELECT ?, ?, 'running', ?, ?, ?, ?, ?, ?, 0, 0, ?, ?, 0
         FROM ws_flows WHERE id = ? AND status = 'live'",
-        array($flow_id, (int) $check['version']['id'], (int) $viewer['id'], (int) $flow['owner_id'], (string) $start_key, (string) $context, $now, $now, $flow_id));
+        array($flow_id, (int) $check['version']['id'], (int) $viewer['id'], (int) $flow['owner_id'], (string) $start_key, $subject_type, $subject_id, (string) $context, $now, $now, $flow_id));
 
     if (!$written) {
         $existing = ((int) mysqli_errno(db::$con) === 1062)
@@ -1961,26 +2170,27 @@ function ws_flow_run_refresh($run_id)
     // is how ws_flow_runs_heal() knows a waiting state written from boxes
     // read too early.
     $now = time();
-    $steps = ws_flow_step_states(ws_flow_run_steps($run['id']));
-    $walk = ws_flow_walk($graph, $steps);
+    $steps = ws_flow_run_steps($run['id']);
+    $walk = ws_flow_loop_walk($graph, $steps);
 
     // Two requests that settle the boxes before a join at the same moment
-    // may both find it ready: the unique (run, box, pass) keeps one row.
-    foreach ($walk['ready'] as $node_id) {
+    // may both find it ready: the unique (run, box, pass) keeps one row. A
+    // box inside a loop runs at its item's pass (flow_loops.php).
+    foreach ($walk['ready'] as $box) {
         db("INSERT IGNORE INTO ws_flow_run_steps (run_id, node_id, pass, status, ready_at)
-            VALUES ('" . (int) $run['id'] . "', '" . e($node_id) . "', 0, 'ready', '" . $now . "')");
+            VALUES ('" . (int) $run['id'] . "', '" . e($box[0]) . "', '" . (int) $box[1] . "', 'ready', '" . $now . "')");
     }
 
-    foreach ($walk['skipped'] as $node_id) {
+    foreach ($walk['skipped'] as $box) {
         db("INSERT IGNORE INTO ws_flow_run_steps (run_id, node_id, pass, status, finished_at, result)
-            VALUES ('" . (int) $run['id'] . "', '" . e($node_id) . "', 0, 'skipped', '" . $now . "', '" . e(ws_flow_result_pack(lang('Not reached in this run.'))) . "')");
+            VALUES ('" . (int) $run['id'] . "', '" . e($box[0]) . "', '" . (int) $box[1] . "', 'skipped', '" . $now . "', '" . e(ws_flow_result_pack(lang('Not reached in this run.'))) . "')");
     }
 
     if (!empty($walk['ready']) || !empty($walk['skipped'])) {
-        $steps = ws_flow_step_states(ws_flow_run_steps($run['id']));
+        $steps = ws_flow_run_steps($run['id']);
     }
 
-    $state = ws_flow_run_state($graph, $steps);
+    $state = ws_flow_loop_run_state($graph, $steps);
 
     if (ws_flow_run_open($state)) {
         if ($state !== (string) $run['status']) {
@@ -2006,11 +2216,15 @@ function ws_flow_run_refresh($run_id)
 /**
  * Tells the flow's owner that a run ended, in their inbox. The sentence sits
  * beside the inbox row as a scheduled action's notice does
- * (ws_scheduled_notices), so the line names the flow and the run. Every run
- * that ends gets a line of its own ('separate'): the inbox keys a line by its
- * channel, message and task, all 0 here, so a line still unread would
- * otherwise take the sentence of any later run of any of the owner's flows,
- * and a failure would be written over by an unrelated success.
+ * (ws_scheduled_notices), so the line names the flow and the run; the
+ * notice's action_id holds the run, which the line opens. A chain of runs
+ * that start one another tells its root's owner on one line
+ * (flow_run_chain_notice.php). A run of another owner's flow in a chain gets
+ * a line of its own ('separate'): the inbox keys a line by its channel,
+ * message and task, all 0 here, so a line still unread would otherwise take
+ * the sentence of any later run of any of the owner's flows, and a failure
+ * would be written over by an unrelated success. The start box's tell
+ * choice may keep a run's end from the owner (ws_flow_run_tell_wanted()).
  *
  * @param array  $run
  * @param string $state done | failed
@@ -2025,26 +2239,28 @@ function ws_flow_run_tell_owner($run, $state)
         return 0;
     }
 
-    if ($state === 'failed') {
-        $failed = db_item("SELECT node_id, result FROM ws_flow_run_steps
-            WHERE run_id = '" . (int) $run['id'] . "' AND status = 'failed' ORDER BY finished_at, id LIMIT 1");
-        $node = is_array($failed) ? ws_flow_graph_node(ws_flow_run_graph($run), $failed['node_id']) : null;
+    $chained = ws_flow_run_tell_chain($run, $state, $flow, $owner_id);
 
-        $text = lang(array('string' => 'Flow “{var:1}”, run {var:2}, failed at the box {var:3}: {var:4}', 'vars' => array(
-            $flow['name'],
-            (int) $run['id'],
-            $node ? ws_flow_box_name($node) : (is_array($failed) ? (string) $failed['node_id'] : '?'),
-            is_array($failed) ? ws_flow_result_text($failed['result']) : '',
-        )));
-    } else {
-        $text = lang(array('string' => 'Flow “{var:1}”, run {var:2}, is done.', 'vars' => array($flow['name'], (int) $run['id'])));
+    if ($chained !== null) {
+        return $chained;
     }
 
+    // Told alone: by the start box's choice of the version the run used.
+    $tell = ws_flow_tell_of(ws_flow_run_graph($run));
+
+    if (!ws_flow_run_tell_wanted($tell, $tell, $state, false)) {
+        return 0;
+    }
+
+    $text = ws_flow_chain_notice_text($flow['name'], (int) $run['id'], 0, ($state === 'failed') ? ws_flow_run_failure($run, $flow) : null);
     $inbox_id = ws_notify($owner_id, 'flow_finished', array('channel_id' => 0, 'message_id' => 0, 'actor_id' => 0, 'separate' => true));
 
+    // The notice keeps the run's id where a scheduled action's notice keeps
+    // the action's, so the line opens that run on the canvas
+    // (ws_inbox_flow_run()).
     if (($inbox_id > 0) && ws_scheduled_chains_ready()) {
         db("REPLACE INTO ws_scheduled_notices (inbox_id, action_id, text, created_at)
-            VALUES ('" . (int) $inbox_id . "', 0, '" . e(mb_substr($text, 0, 1000)) . "', '" . time() . "')");
+            VALUES ('" . (int) $inbox_id . "', '" . (int) $run['id'] . "', '" . e(mb_substr($text, 0, 1000)) . "', '" . time() . "')");
     }
 
     return $inbox_id;
@@ -2196,10 +2412,10 @@ function ws_flow_runs_heal($run_id = 0)
  * Carries the runs on: boxes that stopped half way are taken care of, runs
  * a request left half walked are walked again, waiting boxes whose next look
  * has come look at their task, then the ready boxes are claimed and carried
- * out, oldest first, at most WS_FLOW_BOXES_PER_RUN of one run and
+ * out, oldest first, at most WS_FLOW_BOXES_PER_RUN of one run a round and
  * WS_FLOW_ADVANCE_MAX in all, and none started once the time budget is
  * spent (ws_flow_advance_boxes()). A box that ends makes the next ones
- * ready, which a later round of the same call takes.
+ * ready, which a later batch or round of the same call takes.
  *
  * @param int $budget seconds: WS_FLOW_BUDGET_TICK on a screen, WS_FLOW_BUDGET_JOB in a job
  * @param int $run_id only this run (the one just started), 0 for all
@@ -2248,11 +2464,14 @@ function ws_flow_advance($budget = WS_FLOW_BUDGET_TICK, $run_id = 0)
  * The ready boxes one call of ws_flow_advance() carries out, oldest first: a
  * batch read at a time ($select, told the runs that had their share so that
  * it leaves them out), each box taken ($claim) and carried out ($carry) in
- * turn. At most WS_FLOW_BOXES_PER_RUN boxes of one run, also when one batch
- * holds more of it, and WS_FLOW_ADVANCE_MAX in all; none started once the
- * deadline has passed. A box another request took counts for nothing; a
- * batch that starts no box ends the call. A box that ends makes the next
- * ones ready, which a later batch takes. Pure but for its callables.
+ * turn. A round gives each run at most WS_FLOW_BOXES_PER_RUN boxes, also
+ * when one batch holds more of it; once no run without its share has a box
+ * to start, the next round gives every run a new share, so a lone run walks
+ * on. WS_FLOW_ADVANCE_MAX in all; none started once the deadline has
+ * passed. A box another request took counts for nothing; a batch that
+ * starts no box ends the call when no run had its share this round. A box
+ * that ends makes the next ones ready, which a later batch takes. Pure but
+ * for its callables.
  *
  * @param callable $select   function (int[] $full): array[], ready rows of runs not in $full
  * @param callable $claim    function (array $row): bool, whether this request took the box
@@ -2266,7 +2485,7 @@ function ws_flow_advance_boxes($select, $claim, $carry, $deadline)
     $per_run = array();
     $full = array();
 
-    for ($round = 0; $round < WS_FLOW_ADVANCE_MAX; $round++) {
+    while (($ran < WS_FLOW_ADVANCE_MAX) && (microtime(true) < $deadline)) {
         $started = 0;
 
         foreach ((array) $select($full) as $row) {
@@ -2296,7 +2515,16 @@ function ws_flow_advance_boxes($select, $claim, $carry, $deadline)
         }
 
         if ($started === 0) {
-            break;
+            // Nothing left for the runs still under their share: a new round
+            // when some run had its share, else the call ends. Every batch
+            // that starts a box counts towards WS_FLOW_ADVANCE_MAX, and a
+            // round that starts none ends the call, so the loop ends.
+            if (empty($full)) {
+                break;
+            }
+
+            $full = array();
+            $per_run = array();
         }
     }
 
@@ -2419,9 +2647,41 @@ function ws_flow_step_run($step)
         return;
     }
 
+    // A loop's boxes open tasks, approvals and e-mails under a cap per run.
+    $refusal = ws_flow_loop_effects_check($run, $step, $node);
+
+    // The owner as they stand now: on the team, and, while a role-3
+    // member, with a box their own flow may hold (flow_member.php). What
+    // the box reaches is asked by the box itself.
+    if ($refusal === '') {
+        $refusal = ws_flow_member_box_refusal(ws_flow_builder_kind(ws_change_viewer_for_id($run['actor_id'])), $node);
+    }
+
+    if ($refusal !== '') {
+        ws_flow_step_settle($step, 'running', 'failed', '', $refusal);
+        return;
+    }
+
     switch ($node['kind']) {
         case 'end':
             ws_flow_step_settle($step, 'running', 'done', '', lang('The flow reached its end.'));
+            return;
+
+        // A loop's end only counts what its items gave.
+        case 'for_each_end':
+            ws_flow_loop_end_run($run, $step, $node);
+            return;
+
+        // A loop's list, read with the owner's rights now.
+        case 'for_each':
+            $owner = ws_change_viewer_for_id($run['actor_id']);
+
+            if (!is_array($owner) || !ws_flow_builder($owner)) {
+                ws_flow_step_settle($step, 'running', 'failed', '', lang('The owner of the flow is no longer on the staff, so the box did not run.'));
+                return;
+            }
+
+            ws_flow_loop_start_run($run, $step, $node, $owner);
             return;
 
         // A wait acts on nothing, so it needs nobody's rights.
@@ -2434,7 +2694,7 @@ function ws_flow_step_run($step)
         case 'task':
             $owner = ws_change_viewer_for_id($run['actor_id']);
 
-            if (!is_array($owner) || !ws_can_schedule($owner)) {
+            if (!is_array($owner) || !ws_flow_builder($owner)) {
                 ws_flow_step_settle($step, 'running', 'failed', '', lang('The owner of the flow is no longer on the staff, so the task was not opened.'));
                 return;
             }
@@ -2446,7 +2706,7 @@ function ws_flow_step_run($step)
         case 'start_flow':
             $owner = ws_change_viewer_for_id($run['actor_id']);
 
-            if (!is_array($owner) || !ws_can_schedule($owner)) {
+            if (!is_array($owner) || !ws_flow_builder($owner)) {
                 ws_flow_step_settle($step, 'running', 'failed', '', lang('The owner of the flow is no longer on the staff, so the box did not run.'));
                 return;
             }
@@ -2458,7 +2718,7 @@ function ws_flow_step_run($step)
         case 'condition':
             $owner = ws_change_viewer_for_id($run['actor_id']);
 
-            if (!is_array($owner) || !ws_can_schedule($owner)) {
+            if (!is_array($owner) || !ws_flow_builder($owner)) {
                 ws_flow_step_settle($step, 'running', 'failed', '', lang('The owner of the flow is no longer on the staff, so the box did not run.'));
                 return;
             }
@@ -2472,7 +2732,7 @@ function ws_flow_step_run($step)
     if (!empty(ws_flow_kinds()[$node['kind']]['step'])) {
         $owner = ws_change_viewer_for_id($run['actor_id']);
 
-        if (!is_array($owner) || !ws_can_schedule($owner)) {
+        if (!is_array($owner) || !ws_flow_builder($owner)) {
             ws_flow_step_settle($step, 'running', 'failed', '', lang('The owner of the flow is no longer on the staff, so the box did not run.'));
             return;
         }
@@ -2593,14 +2853,15 @@ function ws_flow_step_task($run, $flow, $step, $node, $owner)
     // The title and description filled as a step box's texts are: the
     // values of the boxes before it and of what started the run with the
     // owner's rights now, then the run's {{date}}, {{record}} and the rest.
-    $values = ws_step_run_values($run, $graph, $owner, $context);
+    $values = ws_step_run_values($run, $graph, $owner, $context, $step);
     $fill = array('viewer' => $owner, 'row' => ws_step_action_row($run, $context, ws_step_run_anchor($context))) + ws_step_trigger_context($context);
     $texts = ws_flow_task_texts($config, $values, function ($text) use ($fill) {
         return ws_scheduled_fill($text, $fill);
     });
 
-    // A title that was only values the run left empty: the box's name.
-    $title = ($texts['title'] !== '') ? $texts['title'] : ws_flow_box_name($node);
+    // A title that was only values the run left empty: the box's name; a
+    // run about a customer adds their name.
+    $title = ws_flow_task_title_customer(($texts['title'] !== '') ? $texts['title'] : ws_flow_box_name($node), (string) ($context['subject_name'] ?? ''));
     $marker = ws_flow_task_marker((string) ($context['flow_name'] ?? $flow['name']), (int) $run['id'], ws_flow_box_unique_name($graph, $node));
     $channel_id = ws_flow_run_channel_id($run);
     $channel = ($channel_id > 0) ? ws_channel($channel_id) : null;
@@ -2698,6 +2959,11 @@ function ws_flow_step_recheck($step)
 
     if (ws_flow_effect_approval_id($step['wait_key']) > 0) {
         return ws_flow_approval_recheck($step);
+    }
+
+    // A table box waiting for its table's owner to be back (steps.php).
+    if (ws_step_row_wait_table($step['wait_key']) > 0) {
+        return ws_step_row_recheck($step);
     }
 
     $task_id = ws_flow_effect_task_id($step['wait_key']);
@@ -2928,14 +3194,16 @@ function ws_flow_retry_recheck($step)
  * and has its next look in WS_FLOW_RECHECK seconds, in case the event is
  * lost. A step that gave no request fails. A box that ended while its
  * request was being asked (the run cancelled at that moment) still names
- * the request, which stays as it is.
+ * the request, which stays as it is. An MCP box whose tool asks first waits
+ * the same way for the request that asks its owner to approve the call.
  *
  * @param array  $step        ws_flow_run_steps row, running
  * @param int    $approval_id the request asked
  * @param string $text        the step's sentence
  * @param array  $data        ws_step_result_data()
+ * @param string $kind        the box's kind: approval or mcp
  */
-function ws_flow_approval_wait($step, $approval_id, $text, $data)
+function ws_flow_approval_wait($step, $approval_id, $text, $data, $kind = 'approval')
 {
     if ((int) $approval_id <= 0) {
         ws_flow_step_settle($step, 'running', 'failed', '', lang('The approval request could not be asked.'), $data);
@@ -2960,7 +3228,7 @@ function ws_flow_approval_wait($step, $approval_id, $text, $data)
     }
 
     db("UPDATE ws_flow_run_steps SET effect = '" . e($key) . "'
-        WHERE id = '" . (int) $step['id'] . "' AND effect = '" . e(WS_STEP_BEGAN . 'approval') . "' AND status IN ('skipped', 'failed')");
+        WHERE id = '" . (int) $step['id'] . "' AND effect = '" . e(WS_STEP_BEGAN . $kind) . "' AND status IN ('skipped', 'failed')");
 }
 
 /**
@@ -2969,6 +3237,13 @@ function ws_flow_approval_wait($step, $approval_id, $text, $data)
  * values; still open, it goes on waiting. The request as it stands now is
  * what counts, not what an event said. A box of a run that ended is let go;
  * its request stays as it is.
+ *
+ * An MCP box waits on the request for its call: approved, it is made ready
+ * again to make the call (ws_flow_approved_ready()); ended any other way, it
+ * settles as an approval box, with the values of an MCP box. A change box
+ * that proposed its change (a role-3 member's, steps.php) is made ready
+ * again to write it once approved; ended any other way, the change was not
+ * made and the box fails (ws_flow_change_asked_settlement()).
  *
  * @param array $step ws_flow_run_steps row, waiting
  * @return bool whether this request settled it
@@ -2994,14 +3269,47 @@ function ws_flow_approval_recheck($step)
         $outcome = 'withdrawn';
     }
 
-    $routed = ($outcome !== '') && ws_flow_outcome_routed(ws_flow_run_graph($run), $step['node_id'], ($outcome === 'expired') ? 'expired' : 'withdrawn');
+    $graph = ws_flow_run_graph($run);
+    $node = ws_flow_graph_node($graph, $step['node_id']);
+    $mcp = $node && ((string) $node['kind'] === 'mcp');
+    $change = $node && ((string) $node['kind'] === 'change');
+    $title = $approval ? (string) $approval['title'] : '';
+
+    if (($mcp || $change) && ($outcome === 'approved')) {
+        return ws_flow_approved_ready($step, $approval_id, lang(array('string' => 'The approval request “{var:1}” was approved.', 'vars' => $title)));
+    }
+
+    if ($change) {
+        $settled = ws_flow_change_asked_settlement($outcome, ws_flow_outcome_routed($graph, $step['node_id'], 'failed'));
+
+        if ($settled['status'] === '') {
+            return false;
+        }
+
+        switch ($outcome) {
+            case 'rejected':
+                $text = lang(array('string' => 'The change was not made: the approval request “{var:1}” was rejected.', 'vars' => $title));
+                break;
+
+            case 'expired':
+                $text = lang(array('string' => 'The change was not made: the approval request “{var:1}” expired without a decision.', 'vars' => $title));
+                break;
+
+            default:
+                $text = $approval
+                    ? lang(array('string' => 'The change was not made: the approval request “{var:1}” was closed without a decision.', 'vars' => $title))
+                    : lang('The change was not made: the approval request is gone.');
+        }
+
+        return ws_flow_step_settle($step, 'waiting', $settled['status'], $settled['outcome'], $text, ws_step_result_data('change', $node['config'], array()));
+    }
+
+    $routed = ($outcome !== '') && ws_flow_outcome_routed($graph, $step['node_id'], ($outcome === 'expired') ? 'expired' : 'withdrawn');
     $settled = ws_flow_approval_settlement($outcome, $routed);
 
     if ($settled['status'] === '') {
         return false;
     }
-
-    $title = $approval ? (string) $approval['title'] : '';
 
     switch ($settled['outcome']) {
         case 'approved':
@@ -3022,9 +3330,47 @@ function ws_flow_approval_recheck($step)
                 : lang('The approval request is gone.');
     }
 
-    $data = array('approval_id' => $approval_id, 'message_id' => $approval ? (((int) $approval['message_id'] > 0) ? (int) $approval['message_id'] : null) : null);
+    // An MCP box keeps the values it declares (no answer: the call was not
+    // made); an approval box its request and the request's message.
+    $data = $mcp
+        ? ws_step_result_data('mcp', $node['config'], array())
+        : array('approval_id' => $approval_id, 'message_id' => $approval ? (((int) $approval['message_id'] > 0) ? (int) $approval['message_id'] : null) : null);
 
     return ws_flow_step_settle($step, 'waiting', $settled['status'], $settled['outcome'], $text, $data);
+}
+
+/**
+ * A box whose call its owner approved goes back to ready, so the next claim
+ * makes the call (an MCP box, steps.php, ws_step_mcp_approved_call()): from
+ * waiting on that request only, in one write, so two looks make it ready
+ * once. Its effect names the request that approved it
+ * (ws_flow_approved_key()); its result keeps the arguments it asked with.
+ * The claim that takes it counts no new try: asking and calling are one try
+ * of the box (ws_flow_retry_until(), ws_flow_stale_action()).
+ *
+ * @param array  $step        ws_flow_run_steps row, waiting
+ * @param int    $approval_id the request that approved the call
+ * @param string $text        the box's sentence meanwhile
+ * @return bool whether this request made it ready
+ */
+function ws_flow_approved_ready($step, $approval_id, $text)
+{
+    $result = json_decode((string) ($step['result'] ?? ''), true);
+    $data = is_array($result['data'] ?? null) ? $result['data'] : array();
+
+    ws_flow_run_touch((int) $step['run_id']);
+
+    db("UPDATE ws_flow_run_steps SET status = 'ready', outcome = '', effect = '" . e(ws_flow_approved_key($approval_id)) . "',
+            wait_event = '', wait_key = '', wake_at = 0, ready_at = '" . time() . "', claimed_at = 0, finished_at = 0,
+            attempt = '" . max(0, (int) ($step['attempt'] ?? 0) - 1) . "',
+            result = '" . e(ws_flow_result_pack($text, $data)) . "'
+        WHERE id = '" . (int) $step['id'] . "' AND status = 'waiting' AND wait_key = '" . e(ws_flow_approval_key($approval_id)) . "'");
+
+    $ready = ((int) mysqli_affected_rows(db::$con) === 1);
+
+    ws_flow_run_refresh((int) $step['run_id']);
+
+    return $ready;
 }
 
 /**
@@ -3178,15 +3524,26 @@ function ws_flow_run_cancel($viewer, $run)
 
     ws_flow_anchor_run_ended($run, 'cancelled');
 
-    // A box waiting for its task says that the task stays.
+    // A box that opened a task says that the task stays, a box that asked
+    // for an approval that its request stays open; any other box only that
+    // it was cancelled. A box another request made ready meanwhile is
+    // skipped by the last UPDATE.
     $name = ws_person_name($viewer['id']);
+    $kinds = array();
+
+    foreach (ws_flow_run_steps($run['id']) as $step) {
+        if (ws_flow_step_open($step['status'])) {
+            $kinds[ws_flow_cancel_result($step['effect'], $name)][] = (int) $step['id'];
+        }
+    }
+
+    foreach ($kinds as $result => $ids) {
+        db("UPDATE ws_flow_run_steps SET status = 'skipped', finished_at = '" . $now . "', result = '" . e(ws_flow_result_pack($result)) . "'
+            WHERE id IN ('" . implode("', '", $ids) . "') AND status IN ('ready', 'running', 'waiting')");
+    }
 
     db("UPDATE ws_flow_run_steps SET status = 'skipped', finished_at = '" . $now . "',
-            result = '" . e(ws_flow_result_pack(lang(array('string' => 'Cancelled with the run by {var:1}; its task stays as it is.', 'vars' => $name)))) . "'
-        WHERE run_id = '" . (int) $run['id'] . "' AND status IN ('ready', 'running', 'waiting') AND effect <> ''");
-
-    db("UPDATE ws_flow_run_steps SET status = 'skipped', finished_at = '" . $now . "',
-            result = '" . e(ws_flow_result_pack(lang(array('string' => 'Cancelled with the run by {var:1}.', 'vars' => $name)))) . "'
+            result = '" . e(ws_flow_result_pack(ws_flow_cancel_result('', $name))) . "'
         WHERE run_id = '" . (int) $run['id'] . "' AND status IN ('ready', 'running', 'waiting')");
 
     $flow = ws_flow($run['flow_id']);
@@ -3197,6 +3554,29 @@ function ws_flow_run_cancel($viewer, $run)
     ws_flow_run_announce_cancelled((int) $run['id'], (int) $viewer['id']);
 
     return $check;
+}
+
+/**
+ * What an open box of a cancelled run says: a box that opened a task, that
+ * the task stays as it is; a box that asked for an approval, that the
+ * request stays open (ws_flow_approval_settlement()); any other box (a
+ * delay, a box not yet carried out) only that it was cancelled.
+ *
+ * @param string $effect the box's effect (task:<id>, approval:<id>, …)
+ * @param string $name   who cancelled the run
+ * @return string
+ */
+function ws_flow_cancel_result($effect, $name)
+{
+    if (ws_flow_effect_task_id($effect) > 0) {
+        return lang(array('string' => 'Cancelled with the run by {var:1}; its task stays as it is.', 'vars' => $name));
+    }
+
+    if (ws_flow_effect_approval_id($effect) > 0) {
+        return lang(array('string' => 'Cancelled with the run by {var:1}; its approval request stays open.', 'vars' => $name));
+    }
+
+    return lang(array('string' => 'Cancelled with the run by {var:1}.', 'vars' => $name));
 }
 
 /**
@@ -3230,8 +3610,10 @@ function ws_flow_step_mend_check($viewer, $run, $node_id)
     $rows = ws_flow_run_steps($run['id']);
     $step = null;
 
+    // A box inside a loop has a row per item: its latest failed one, else
+    // its latest.
     foreach ($rows as $row) {
-        if ((string) $row['node_id'] === (string) $node_id) {
+        if (((string) $row['node_id'] === (string) $node_id) && (!$step || ((string) $step['status'] !== 'failed') || ((string) $row['status'] === 'failed'))) {
             $step = $row;
         }
     }
@@ -3254,7 +3636,9 @@ function ws_flow_step_mend_check($viewer, $run, $node_id)
         'status' => 200,
         'field'  => '',
         'step'   => $step,
-        'behind' => ws_flow_skipped_behind(ws_flow_run_graph($run), ws_flow_step_states($rows), $step['node_id']),
+        'behind' => ws_flow_skipped_behind(ws_flow_run_graph($run), ws_flow_step_states(array_filter($rows, function ($row) use ($step) {
+            return (int) $row['pass'] === (int) $step['pass'];
+        })), $step['node_id']),
     );
 }
 
@@ -3311,7 +3695,7 @@ function ws_flow_step_mend($viewer, $run, $node_id, $how)
     if (!empty($check['behind'])) {
         db("DELETE FROM ws_flow_run_steps WHERE run_id = '" . (int) $run['id'] . "'
             AND node_id IN ('" . implode("', '", array_map('e', $check['behind'])) . "')
-            AND status = 'skipped' AND attempt = 0");
+            AND pass = '" . (int) $step['pass'] . "' AND status = 'skipped' AND attempt = 0");
     }
 
     db("UPDATE ws_flow_runs SET status = 'running', finished_at = 0, updated_at = '" . $now . "'
@@ -3529,17 +3913,20 @@ function ws_flow_chain_key($run_id, $node_id, $pass)
  * @param array  $source_context ws_flow_run_context() of the run that started it
  * @param string $source         the name of the flow that started it
  * @param string $source_result  the sentence of the box that led to the start
+ * @param int    $root_id        the run the chain began with, kept last so
+ *                               its line finds the chain's runs
+ *                               (flow_run_chain_notice.php); 0 for none
  * @return array
  */
-function ws_flow_chain_context($flow, $trigger, $source_context, $source, $source_result)
+function ws_flow_chain_context($flow, $trigger, $source_context, $source, $source_result, $root_id = 0)
 {
     $carried = ws_step_trigger_context($source_context);
-    unset($carried['source'], $carried['source_result']);
+    unset($carried['source'], $carried['source_result'], $carried['chain_root']);
 
     return array('trigger' => 'chain') + ws_flow_run_context_new($flow, $trigger) + $carried + array(
         'source'        => (string) $source,
         'source_result' => (string) $source_result,
-    );
+    ) + (((int) $root_id > 0) ? array('chain_root' => (int) $root_id) : array());
 }
 
 /**
@@ -3668,12 +4055,9 @@ function ws_flow_chain_start($run, $step, $node, $owner)
     }
 
     $source_context = ws_flow_run_context($run);
-    $values = ws_step_node_values(db_items("SELECT node_id, status, outcome, result FROM ws_flow_run_steps
-        WHERE run_id = '" . (int) $run['id'] . "' AND status IN ('done', 'failed', 'skipped')"));
-    $values[WS_STEP_TRIGGER] = ws_step_trigger_values_for($owner, $source_context);
-    $values = ws_flow_pure_values($graph, $values) + $values;
+    $values = ws_step_run_values($run, $graph, $owner, $source_context, $step);
     $context = json_encode(ws_flow_chain_context($flow, $trigger, $source_context, (string) ($source_context['flow_name'] ?? ''),
-        ws_flow_chain_source_result($graph, $node['id'], $values)), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        ws_flow_chain_source_result($graph, $node['id'], $values), ws_flow_chain_root($run, 'ws_flow_run')), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     $now = time();
 
     // Started by the owner of the flow whose box starts it, acting as the

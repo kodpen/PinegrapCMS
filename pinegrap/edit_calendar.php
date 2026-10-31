@@ -53,11 +53,14 @@ if (!$_POST) {
     $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
 
-    $liveform->assign_field_value('name', $row['name']);
+    // A name sent back by a refused save stays as it was typed.
+    if ($liveform->prefill()) {
+        $liveform->assign_field_value('name', $row['name']);
+    }
     
     // if there are no calendar events in this calendar, allow delete
     if ($number_of_calendar_events == 0) {
-        $output_delete_button = '<button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-solid theme-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('calendar')))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>';
+        $output_delete_button = '<button type="submit" name="submit_delete" value="Delete" formnovalidate class="btn my-1  btn-solid theme-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('calendar')))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>';
 
     // else there is at least one calendar event in this calendar, so disable delete button
     } else {
@@ -73,7 +76,7 @@ if (!$_POST) {
             'icon'=>'calendar',
             'heading'=> lang(array('string'=>'Edit Calendar Properties') ),
             'heading_description' => lang('Edit the properties for this calendar.'),
-            'cancel'=>array('enable'=>'true','url'=>'view_calendars.php'),
+            'cancel'=>array('enable'=>'true','url' => 'calendars.php?calendar_id=' . (int) $_GET['id']),
             'breadcrumb' => array(
                 array('label' => lang('Calendars'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_calendars.php'),
                 array('label' => lang('View Calendars'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/calendars.php?calendar_id=' . h($_GET['id'])),

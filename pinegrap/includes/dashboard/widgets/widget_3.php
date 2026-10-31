@@ -37,8 +37,8 @@ function pg_dashboard_widget_3($request, $user)
         // and the week inside the month, which is what a reader
         // assumes when four periods are stacked.
         $midnight   = strtotime(date('Y-m-d'));
-        $from_week  = $midnight - (6 * 86400);
-        $from_month = $midnight - (29 * 86400);
+        $from_week  = pg_dashboard_days_back($midnight, 6);
+        $from_month = pg_dashboard_days_back($midnight, 29);
 
         $order_summary = db_item(
             "SELECT
@@ -65,14 +65,16 @@ function pg_dashboard_widget_3($request, $user)
         // Products card, which does not filter on it either. A
         // product can be marked out of stock without inventory
         // tracking, and the operator who reads both cards should
-        // not have to know that.
+        // not have to know that. Products in the Recycle Bin are left
+        // out, as the products list leaves them out.
         $stock_summary = db_item(
             "SELECT
                 COALESCE(SUM(CASE WHEN products.inventory = 1 THEN 1 ELSE 0 END), 0) AS product_count,
                 COALESCE(SUM(CASE WHEN products.inventory = 1 THEN products.inventory_quantity ELSE 0 END), 0) AS quantity_total,
                 COALESCE(SUM(CASE WHEN products.inventory = 1 THEN products.price * products.inventory_quantity ELSE 0 END), 0) AS stock_value,
                 COALESCE(SUM(CASE WHEN products.out_of_stock = '1' THEN 1 ELSE 0 END), 0) AS out_of_stock_count
-            FROM products"
+            FROM products
+            WHERE (1 = 1)" . pg_catalog_bin_live_sql('products')
         );
 
         $all_count          = (int) ($order_summary['all_count'] ?? 0);
@@ -96,9 +98,15 @@ function pg_dashboard_widget_3($request, $user)
         };
 
         // ── Head: stock on one line, two facts under it ──────────
-        $output_stock_sub = $pg_count($product_count) . ' ' . lang('Product(s)')
+        $output_stock_sub = lang(array(
+                'string' => '{var:1} product{suffix:1}',
+                'vars' => $pg_count($product_count),
+                'suffix' => ($product_count == 1) ? '' : 's'))
             . ' <span class="pg-ec-dot">&middot;</span> '
-            . $pg_count($quantity_total) . ' ' . lang('Piece(s)');
+            . lang(array(
+                'string' => '{var:1} piece{suffix:1}',
+                'vars' => $pg_count($quantity_total),
+                'suffix' => ($quantity_total == 1) ? '' : 's'));
 
         // Only when there is something to act on. A steady "0
         // out of stock" is a phrase the eye learns to skip, and then the
@@ -196,7 +204,7 @@ function pg_dashboard_widget_3($request, $user)
         // days says what is selling now and reads a month of lines.
         // A shop with no sales in the month falls back to all time, so
         // a quiet season still shows what the shop is known for.
-        $best_since = $midnight - (29 * 86400);
+        $best_since = pg_dashboard_days_back($midnight, 29);
         $best_sellers = pg_dashboard_best_sellers($best_since, 6);
         $best_window = lang('Last 30 days');
 
@@ -207,10 +215,14 @@ function pg_dashboard_widget_3($request, $user)
 
         $output_best = '';
 
+        // edit_product.php asks for commerce, not for commerce reports: a
+        // user who may only read the card gets the rows without links.
+        $ec_can_open = (defined('USER_MANAGE_ECOMMERCE') && USER_MANAGE_ECOMMERCE);
+
         foreach ($best_sellers as $rank => $best) {
             $output_best .= pg_widget_row(array(
                 'small' => true,
-                'href'  => 'edit_product.php?id=' . (int) $best['id'],
+                'href'  => $ec_can_open ? 'edit_product.php?id=' . (int) $best['id'] : '',
                 'badge' => ($best['image_name'] != '')
                     ? '<img src="' . PATH . h($best['image_name']) . '" alt="">'
                     : '<span class="pg-rank">' . ($rank + 1) . '</span>',

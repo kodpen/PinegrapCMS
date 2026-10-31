@@ -19,6 +19,6 @@ description: The İYS card of Settings › Communication (includes/iys/settings.
 - A save with İYS on calls `pg_iys_job_switch_on()`: `iys_job` joins `config.job_dispatch` when the general job runs the jobs.
 
 ## What is not verified?
-- No İYS account existed: the card was checked by unit tests and a stubbed render only; the token and brand calls, and the first live run against the sandbox, are still to be done once the owner gives test credentials.
+- No İYS account existed: the card was checked by unit tests and a stubbed render only; the token and brand calls, and the first live run against the sandbox, are still to be done once the owner gives test credentials: fill the card in test environment and live mode, then run `iys_job.php`.
 
-Related: docs/memory/platform/iys-client.md, docs/memory/platform/sms-provider-layer.md, docs/memory/plans/sms-and-iys.md
+Related: docs/memory/platform/iys-client.md, docs/memory/platform/sms-provider-layer.md, docs/memory/platform/sms-and-iys-rules.md

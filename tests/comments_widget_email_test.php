@@ -1120,8 +1120,8 @@ function comments_widget_email_test_fold($body, $var)
 function test_comments_widget_email_mail_functions_folded_back()
 {
 	$frozen = array(
-		'send_comment_email_to_custom_form_submitter' => array('$comments_submitter_email_page_id', 'a69c5fc2598c95c5fdca3731fa0060cbdeba4aa5', 5354),
-		'send_comment_email_to_watchers' => array('$comments_watcher_email_page_id', 'fd3294726eb673f6f37deba39b8b9627ea58ac53', 6627),
+		'send_comment_email_to_custom_form_submitter' => array('$comments_submitter_email_page_id', '7ec6fc4e86acb95bc8e64503ccc3886116d7cc94', 5351),
+		'send_comment_email_to_watchers' => array('$comments_watcher_email_page_id', '8c9064796be68f8c32e9383675c668c818551a56', 6624),
 	);
 
 	foreach ($frozen as $fn => $want) {

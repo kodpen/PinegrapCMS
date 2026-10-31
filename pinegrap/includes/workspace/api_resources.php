@@ -1326,13 +1326,7 @@ function ws_api_upload_input($params)
 
     // A form part is held to the server's own upload limit as well, which
     // may be the lower of the two.
-    $limits = function_exists('pg_upload_limits') ? pg_upload_limits() : array();
-    $form_max = ws_upload_max_bytes();
-
-    if (((int) ($limits['file_max'] ?? 0) > 0) && ((int) $limits['file_max'] < $form_max)) {
-        $form_max = (int) $limits['file_max'];
-    }
-
+    $form_max = ws_upload_form_max_bytes();
     $too_large = lang(array('string' => 'The file is larger than {var:1} MB.', 'vars' => (int) floor($form_max / 1048576)));
 
     if (($part !== null) && ($base64 !== '')) {
@@ -1341,17 +1335,11 @@ function ws_api_upload_input($params)
 
     if ($part !== null) {
         $error = is_array($part['error']) ? UPLOAD_ERR_NO_FILE : (int) $part['error'];
+        $uploaded = ($error === UPLOAD_ERR_OK) && is_uploaded_file((string) $part['tmp_name']);
+        $refusal = ws_upload_part_error($error, $uploaded, $uploaded ? (int) @filesize((string) $part['tmp_name']) : 0, $form_max);
 
-        if (in_array($error, array(UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE), true)) {
-            api_fail_validation($too_large, 'file');
-        }
-
-        if (($error !== UPLOAD_ERR_OK) || !is_uploaded_file((string) $part['tmp_name'])) {
-            api_fail_validation(lang('The file could not be read.'), 'file');
-        }
-
-        if ((int) @filesize((string) $part['tmp_name']) > $form_max) {
-            api_fail_validation($too_large, 'file');
+        if ($refusal !== '') {
+            api_fail_validation($refusal, 'file');
         }
 
         return array(
@@ -4227,6 +4215,18 @@ function ws_api_refs_schema()
         )),
         'tasks'    => array('integer'),
         'channels' => array(array('id' => 'integer', 'name' => 'string')),
+        'notes'    => array(array(
+            'id'      => 'integer',
+            'name'    => 'string',
+            'excerpt' => 'string',
+            'updated' => 'string',
+        )),
+        'rows'     => array(array(
+            'id'       => 'integer',
+            'table_id' => 'integer',
+            'table'    => 'string',
+            'title'    => 'string',
+        )),
     );
 }
 
@@ -4270,6 +4270,25 @@ function ws_api_refs_get($params)
     $viewer = ws_api_viewer();
     $refs = ws_record_refs($viewer, (string) $params['type'], (int) $params['id'], 100);
 
+    // A note and a table reach the application Claude works through as
+    // they do on their own routes; the channel gate below keeps only the
+    // three lists that sit in channels.
+    $notes = array();
+
+    foreach ($refs['notes'] as $note) {
+        if (ws_api_note_reachable($viewer, $note)) {
+            $notes[] = array('id' => (int) $note['id'], 'name' => (string) $note['name'], 'excerpt' => (string) $note['excerpt'], 'updated' => (string) $note['time']);
+        }
+    }
+
+    $rows = array();
+
+    foreach ($refs['rows'] as $row) {
+        if (ws_api_wtable_reachable($viewer, array('id' => (int) $row['table_id'], 'access' => (string) $row['access']))) {
+            $rows[] = array('id' => (int) $row['id'], 'table_id' => (int) $row['table_id'], 'table' => (string) $row['table'], 'title' => (string) $row['title']);
+        }
+    }
+
     // The application Claude works through reads only where Claude may be
     // asked, as it does everywhere else: ws_record_refs() counts every
     // channel the owner reads, private ones and guest rooms included.
@@ -4307,7 +4326,7 @@ function ws_api_refs_get($params)
         $channels[] = array('id' => (int) $channel['id'], 'name' => (string) $channel['name']);
     }
 
-    api_ok(array('messages' => $messages, 'tasks' => $tasks, 'channels' => $channels));
+    api_ok(array('messages' => $messages, 'tasks' => $tasks, 'channels' => $channels, 'notes' => $notes, 'rows' => $rows));
 }
 
 // What ws_api_plan_get() returns, one row per person.

@@ -125,6 +125,31 @@ function pg_dashboard_widgets_run_many($request, $user)
     );
 }
 
+// Midnight $days calendar days before $midnight. A day is not always 86,400
+// seconds: across a clock change it is 23 or 25 hours, and subtracting
+// seconds lands on 23:00 of the day before or 01:00, so a window would start
+// on the wrong date or an hour off.
+function pg_dashboard_days_back($midnight, $days)
+{
+    return (int) strtotime('-' . (int) $days . ' days', (int) $midnight);
+}
+
+// The address of a list screen opened on the period a dashboard figure
+// counted. The list screens copy every request value into their session, so
+// the start_/stop_ date parts replace whatever range an earlier visit left
+// there; $query carries the list's other filters.
+function pg_dashboard_list_url($screen, $query, $start, $stop)
+{
+    $query['start_month'] = date('m', $start);
+    $query['start_day']   = date('d', $start);
+    $query['start_year']  = date('Y', $start);
+    $query['stop_month']  = date('m', $stop);
+    $query['stop_day']    = date('d', $stop);
+    $query['stop_year']   = date('Y', $stop);
+
+    return $screen . '?' . http_build_query($query);
+}
+
 // Eight daily counts -- seven days ago through today -- for one timestamp
 // column, in ONE query.
 //
@@ -144,7 +169,7 @@ function pg_activity_daily($table, $column, $extra = '')
     // order the chart draws them.
     $edges = array();
     for ($day = 7; $day >= 0; $day--) {
-        $edges[] = $midnight - ($day * 86400);
+        $edges[] = pg_dashboard_days_back($midnight, $day);
     }
 
     $sums = array();
@@ -390,7 +415,11 @@ function pg_widget_row_heading($label, $aside = '')
 // The tallest day fills the box and the rest are drawn against it; a week
 // with nothing in it draws seven stubs, so the shape is still there to read
 // as "quiet" rather than as missing.
-function pg_widget_bars($series)
+//
+// The bars are aria-hidden. $label, when not null, adds the week's total as
+// visually hidden text ("in 7 days 42", after "$label: " when $label is not
+// empty) for a card that has no other text copy of the week.
+function pg_widget_bars($series, $label = null)
 {
     $series = array_slice(array_map('intval', (array) $series), -7);
     $top = max(1, max(array_merge(array(0), $series)));
@@ -401,7 +430,16 @@ function pg_widget_bars($series)
             . (($value > 0) ? '' : ' class="is-zero"') . '></i>';
     }
 
-    return '<span class="pg-bars" aria-hidden="true">' . $out . '</span>';
+    $summary = '';
+
+    if ($label !== null) {
+        $summary = '<span class="visually-hidden">'
+            . (($label !== '') ? h($label) . ': ' : '')
+            . lang(array('string' => 'in 7 days {var:1}', 'vars' => pg_format_number(array_sum($series), 0)))
+            . '</span>';
+    }
+
+    return '<span class="pg-bars" aria-hidden="true">' . $out . '</span>' . $summary;
 }
 
 // One entry of a filter list or a lane strip: the switch a card's rows are
@@ -411,13 +449,16 @@ function pg_widget_bars($series)
 // after every refresh, so a refresh never throws the reader back to "all".
 //
 // $properties: key, label, icon (Bootstrap class), color (CSS colour for the
-// icon tile), count (shown when not ''), count_class, sub (a second line,
-// already escaped), bars (a daily series for pg_widget_bars), title.
+// icon tile), count (shown when not ''), count_class, count_text (what a
+// screen reader hears in place of the bare count, e.g. "3 today"), sub (a
+// second line, already escaped), bars (a daily series for pg_widget_bars,
+// read as the week's total), title.
 function pg_widget_filter($properties)
 {
     $key   = (string) ($properties['key'] ?? 'all');
     $color = (string) ($properties['color'] ?? '');
     $count = (string) ($properties['count'] ?? '');
+    $count_text = (string) ($properties['count_text'] ?? '');
     $sub   = (string) ($properties['sub'] ?? '');
 
     $output_color = ($color !== '')
@@ -434,8 +475,12 @@ function pg_widget_filter($properties)
         . '<span class="pg-filter-label">' . h((string) ($properties['label'] ?? '')) . '</span>'
         . (($sub !== '') ? '<span class="pg-filter-sub">' . $sub . '</span>' : '')
         . '</span>'
-        . (isset($properties['bars']) ? pg_widget_bars($properties['bars']) : '')
-        . (($count !== '') ? '<span class="pg-filter-count ' . h((string) ($properties['count_class'] ?? '')) . '">' . h($count) . '</span>' : '')
+        . (isset($properties['bars']) ? pg_widget_bars($properties['bars'], '') : '')
+        . (($count !== '')
+            ? '<span class="pg-filter-count ' . h((string) ($properties['count_class'] ?? '')) . '"'
+                . (($count_text !== '') ? ' aria-hidden="true">' . h($count) . '</span><span class="visually-hidden">' . h($count_text) : '>' . h($count))
+                . '</span>'
+            : '')
         . '</button>';
 }
 
@@ -532,26 +577,6 @@ function pg_dashboard_workspace_rights($user)
     $rights = ws_rights($user);
 
     return !empty($rights['member']) ? $rights : null;
-}
-
-/**
- * Who a site log row names in the Activity card. A row with no user, or the
- * literal UNKNOWN a job writes, and no address came from a scheduled job; with
- * an address it is a visitor nobody knows.
- *
- * @param string $user The row's log_user.
- * @param string $ip   The row's log_ip.
- * @return string Plain text.
- */
-function pg_dashboard_log_actor($user, $ip)
-{
-    $user = (string) $user;
-
-    if (($user !== '') && ($user !== 'UNKNOWN')) {
-        return $user;
-    }
-
-    return ((string) $ip === '') ? lang('Scheduled job') : lang('Unknown');
 }
 
 /**

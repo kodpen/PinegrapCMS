@@ -479,14 +479,57 @@
             return options;
         }
 
-        // Rows move by dragging their handle.
+        // Rows move by dragging their handle, or by the arrow keys on it.
         var dragged = null;
+        var reorderHint = null;
 
         function draggable(row, list, items, item, redraw) {
             var handle = button('btn btn-sm btn-text theme-secondary ws-tpl-handle', '', 'bi-grip-vertical', t('tpl_drag'));
 
+            // One hidden hint, shared by every grip on the screen.
+            if (!reorderHint) {
+                reorderHint = el('span', 'visually-hidden', t('tpl_reorder_hint'));
+                reorderHint.id = 'ws-tpl-reorder-hint';
+                form.appendChild(reorderHint);
+            }
+
+            handle.setAttribute('aria-describedby', reorderHint.id);
+
             handle.addEventListener('mousedown', function () { row.draggable = true; });
             handle.addEventListener('touchstart', function () { row.draggable = true; }, { passive: true });
+
+            handle.addEventListener('keydown', function (event) {
+                var step = (event.key === 'ArrowUp') ? -1 : ((event.key === 'ArrowDown') ? 1 : 0);
+
+                if (!step || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) {
+                    return;
+                }
+
+                event.preventDefault();
+
+                var from = items.indexOf(item);
+                var to = from + step;
+
+                if ((from === -1) || (to < 0) || (to >= items.length)) {
+                    return;
+                }
+
+                collect();
+                items.splice(from, 1);
+                items.splice(to, 0, item);
+                redraw();
+
+                // The rows are drawn anew: focus the moved row's grip again.
+                var grips = list.querySelectorAll('.ws-tpl-handle');
+
+                if (grips[to]) {
+                    grips[to].focus();
+                }
+
+                if (typeof window.pgAnnounce === 'function') {
+                    window.pgAnnounce(t('tpl_position').split('{position}').join(String(to + 1)).split('{total}').join(String(items.length)));
+                }
+            });
 
             row.addEventListener('dragstart', function (event) {
                 dragged = item;

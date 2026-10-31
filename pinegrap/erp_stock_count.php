@@ -46,8 +46,14 @@ if ($_POST) {
     $action = (string) ($_POST['erp_action'] ?? 'scan');
 
     if ($action === 'scan') {
-        $quantity = trim((string) ($_POST['quantity'] ?? ''));
-        $scanned = erp_stock_count_scan($count_id, (string) ($_POST['code'] ?? ''), ($quantity === '') ? 1 : (int) $quantity, !empty($_POST['set']));
+        $quantity = erp_stock_count_scan_quantity((string) ($_POST['quantity'] ?? ''));
+
+        if ($quantity === null) {
+            $liveform->mark_error('code', h(lang('A count is a whole number of pieces.')));
+            go($self);
+        }
+
+        $scanned = erp_stock_count_scan($count_id, (string) ($_POST['code'] ?? ''), $quantity, !empty($_POST['set']));
 
         if ($scanned['success']) {
             $liveform->add_notice(h(lang(array('string' => '{var:1}: {var:2} counted.', 'vars' => array($scanned['product'], $scanned['counted'])))));

@@ -237,7 +237,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         $merchant_shipping_rate_input = trim(post_value('merchant_shipping_rate'));
         $merchant_shipping_rate_value = ($merchant_shipping_rate_input === '')
             ? -1
-            : max(0, (int) round(((float) str_replace(',', '.', $merchant_shipping_rate_input)) * 100));
+            : max(0, (int) round(pg_parse_amount($merchant_shipping_rate_input) * 100));
 
         $merchant_return_days_input = trim(post_value('merchant_return_days'));
         $merchant_return_days_value = ($merchant_return_days_input === '')
@@ -249,7 +249,6 @@ if (!defined('PG_SETTINGS_ENTRY')) {
 
         $sql_seo_jsonld_fields =
             "og_default_image = '" . escape(trim(post_value('og_default_image'))) . "',
-            organization_logo = '" . escape(trim(post_value('organization_logo'))) . "',
             merchant_country = '" . escape($merchant_country_input) . "',
             merchant_shipping_rate = '" . $merchant_shipping_rate_value . "',
             merchant_transit_days_min = '" . $merchant_transit_days_min_value . "',
@@ -408,6 +407,47 @@ if (!defined('PG_SETTINGS_ENTRY')) {
                 $liveform->add_notice($product_feeds_result['ok']
                     ? lang(array('string' => '{var:1} was built with {var:2} product(s).', 'vars' => array($product_feeds_texts[$product_feeds_format]['label'], (int) $product_feeds_result['count'])))
                     : lang(array('string' => '{var:1} was not built: {var:2}', 'vars' => array($product_feeds_texts[$product_feeds_format]['label'], pg_product_feed_error_text($product_feeds_result['error'])))));
+            }
+        }
+    }
+
+    // Google Analytics figures (includes/fn/google_analytics.php): choose a
+    // GA4 property, read its figures now or stop using it. The messages
+    // carry Google's own words, so they are escaped whole.
+    if (array_key_exists('ga_card', $_POST)) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/google_analytics.php');
+
+        foreach (pg_ga_save_from_screen(array(
+            'property' => (string) post_value('ga_property'),
+            'refresh'  => (bool) post_value('ga_refresh'),
+            'unlink'   => (bool) post_value('ga_unlink'),
+        )) as $ga_message) {
+            if ($ga_message[0] === 'error') {
+                $liveform->add_error(h($ga_message[1]));
+            } else {
+                $liveform->add_notice(h($ga_message[1]));
+            }
+        }
+    }
+
+    // Google Merchant Center (includes/fn/merchant_center.php), after the
+    // feeds so a Google feed switched on in the same save already has the
+    // address that is registered. The messages carry Google's own words, so
+    // they are escaped whole.
+    if ($product_feeds_save_ready && array_key_exists('merchant_card', $_POST) && function_exists('pg_merchant_save_from_screen')) {
+        $merchant_messages = pg_merchant_save_from_screen(array(
+            'account'  => (string) post_value('merchant_account'),
+            'country'  => (string) post_value('merchant_center_country'),
+            'register' => (bool) post_value('merchant_register'),
+            'check'    => (bool) post_value('merchant_check'),
+            'unlink'   => (bool) post_value('merchant_unlink'),
+        ));
+
+        foreach ($merchant_messages as $merchant_message) {
+            if ($merchant_message[0] === 'error') {
+                $liveform->add_error(h($merchant_message[1]));
+            } else {
+                $liveform->add_notice(h($merchant_message[1]));
             }
         }
     }

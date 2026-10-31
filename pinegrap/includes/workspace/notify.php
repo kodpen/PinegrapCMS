@@ -120,6 +120,61 @@ function ws_notify($user_id, $kind, $data)
 }
 
 /**
+ * Sends an unread line again: its created_at moves, so it rises in the
+ * inbox and GET /workspace/inbox?changed_since= reports it once more, and
+ * its bell row takes its title now. A line read meanwhile is left as the
+ * person read it: nothing is changed and the caller writes a new line.
+ *
+ * @param int           $user_id
+ * @param int           $inbox_id
+ * @param bool          $push   wake the person's devices as for a new line
+ * @param callable|null $change what else changes with the line, called once
+ *                              it is known to be unread, before the bell
+ *                              reads its title
+ * @return bool false for a line no longer unread
+ */
+function ws_inbox_send_again($user_id, $inbox_id, $push, $change = null)
+{
+    $user_id = (int) $user_id;
+    $inbox_id = (int) $inbox_id;
+
+    db("UPDATE ws_inbox SET created_at = '" . time() . "' WHERE id = '" . $inbox_id . "' AND user_id = '" . $user_id . "' AND read_at = 0");
+
+    if ((int) mysqli_affected_rows(db::$con) !== 1) {
+        return false;
+    }
+
+    if (is_callable($change)) {
+        $change();
+    }
+
+    if (ws_bell_ready()) {
+        $row = db_item("SELECT * FROM ws_inbox WHERE id = '" . $inbox_id . "'");
+
+        if (is_array($row)) {
+            $described = ws_inbox_describe(ws_rights_for_id($user_id) + array('ecommerce' => false, 'contacts' => false, 'erp' => false), $row);
+
+            db("UPDATE notifications SET title = '" . e(mb_substr($described['title'], 0, 250)) . "', timestamp = UNIX_TIMESTAMP()
+                WHERE action = 'workspace' AND target_user_id = '" . $user_id . "' AND reference_id = '" . $inbox_id . "'");
+        }
+    }
+
+    if ($push) {
+        include_once(PG_FUNCTIONS_DIR . '/includes/push.php');
+
+        if (function_exists('pg_push_enqueue')) {
+            pg_push_enqueue($user_id, 'ws', $inbox_id, 0);
+
+            if (function_exists('pg_push_queue_run')) {
+                pg_push_queue_run(5);
+            }
+        }
+    }
+
+    return true;
+}
+
+/**
  * Wakes the devices a batch of ws_notify(..., batch) calls queued: the queue
  * is worked once for all of them rather than once per person told.
  *
@@ -352,16 +407,12 @@ function ws_inbox_describe($viewer, $row)
 
         // A run of one of the person's flows ended (flow_runs.php): the
         // sentence that names the flow and the run sits beside the inbox row,
-        // as a scheduled action's notice does.
+        // as a scheduled action's notice does, and the line opens that run
+        // on the canvas.
         case 'flow_finished':
             $notice = function_exists('ws_scheduled_notice') ? ws_scheduled_notice((int) ($row['id'] ?? 0)) : null;
 
-            return array(
-                'title' => lang('A run of your flow ended'),
-                'body'  => $notice ? (string) $notice['text'] : '',
-                'url'   => $base . 'workspace_flows.php',
-                'icon'  => 'bi-diagram-3',
-            );
+            return array('body' => $notice ? (string) $notice['text'] : '') + ws_inbox_flow_run_line(ws_inbox_flow_run((int) ($row['id'] ?? 0)), $base);
 
         // A flow was shared with the person (flow_shares.php): the sentence
         // that names the flow and what they may do with it sits beside the
@@ -391,10 +442,11 @@ function ws_inbox_describe($viewer, $row)
                 'icon'  => 'bi-table',
             );
 
-        // Without a card in a channel, the list of scheduled actions: in
-        // Flows when it lists them (ws_flows_scheduled()).
+        // Without a card in a channel, the list of scheduled actions: the
+        // flow list, which ends with them, when Flows lists them
+        // (ws_flows_scheduled()).
         case 'scheduled_failed':
-            $list = (function_exists('ws_flows_scheduled') && ws_flows_scheduled($viewer)) ? 'workspace_flows.php?view=scheduled' : 'workspace.php?view=scheduled';
+            $list = (function_exists('ws_flows_scheduled') && ws_flows_scheduled($viewer)) ? 'workspace_flows.php' : 'workspace.php?view=scheduled';
 
             return array(
                 'title' => lang('A scheduled action you wrote failed'),
@@ -1118,7 +1170,8 @@ function ws_bell_user($session, $app)
  *
  * @param int $inbox_id
  * @param int $user_id
- * @return array|null title, body, url
+ * @return array|null title, body, url; kind, icon (a bi- class), join (the
+ *                    call of a meeting about to start), fold (ws_bell_fold_key())
  */
 function ws_bell_describe($inbox_id, $user_id)
 {
@@ -1136,8 +1189,36 @@ function ws_bell_describe($inbox_id, $user_id)
     }
 
     $described = ws_inbox_describe($viewer, $row);
+    $kind = (string) ($row['kind'] ?? '');
 
-    return array('title' => $described['title'], 'body' => $described['body'], 'url' => $described['url']);
+    return array(
+        'title' => $described['title'],
+        'body'  => $described['body'],
+        'url'   => $described['url'],
+        'kind'  => $kind,
+        'icon'  => (string) ($described['icon'] ?? ''),
+        'join'  => (string) ($described['join'] ?? ''),
+        'fold'  => ws_bell_fold_key($kind, ($kind === 'flow_finished') ? ws_inbox_flow_run((int) $row['id']) : null),
+    );
+}
+
+/**
+ * Which bell rows fold into one line: the runs of one flow that ended the
+ * same way, so a flow that runs every few minutes is one line, not a page of
+ * them. A failed run folds only with the failed ones and still stands out; a
+ * run no longer known, and every other kind, stays a line of its own ('').
+ *
+ * @param string     $kind the inbox row's kind
+ * @param array|null $run  ws_inbox_flow_run(): id, flow_id, status
+ * @return string
+ */
+function ws_bell_fold_key($kind, $run)
+{
+    if (((string) $kind !== 'flow_finished') || !is_array($run) || ((int) ($run['flow_id'] ?? 0) <= 0)) {
+        return '';
+    }
+
+    return 'flow:' . (int) $run['flow_id'] . ':' . (((string) ($run['status'] ?? '') === 'failed') ? 'failed' : 'ended');
 }
 
 /**
@@ -1231,4 +1312,48 @@ function ws_push_pending($user, $limit = 3)
     }
 
     return $out;
+}
+
+/**
+ * The run a flow_finished line is about: its notice keeps the run's id in
+ * action_id (ws_flow_run_tell_owner()). A line written before it did, or a
+ * run deleted since (its flow binned), has none.
+ *
+ * @param int $inbox_id
+ * @return array|null id, flow_id, status
+ */
+function ws_inbox_flow_run($inbox_id)
+{
+    if (!function_exists('ws_scheduled_chains_ready') || !ws_scheduled_chains_ready() || !function_exists('ws_flows_ready') || !ws_flows_ready()) {
+        return null;
+    }
+
+    $run = db_item("SELECT r.id, r.flow_id, r.status
+        FROM ws_scheduled_notices n
+        JOIN ws_flow_runs r ON r.id = n.action_id
+        WHERE n.inbox_id = '" . (int) $inbox_id . "' AND n.action_id > 0");
+
+    return is_array($run) ? $run : null;
+}
+
+/**
+ * Title, address and icon of a flow_finished line: the run on the canvas
+ * (workspace_flows.php?flow=…&run=…), else the flow list; a failed run has
+ * a title and an icon of its own, so it stands out among the runs that went
+ * well.
+ *
+ * @param array|null $run id, flow_id, status (ws_inbox_flow_run())
+ * @param string     $base the panel's address
+ * @return array title, url, icon
+ */
+function ws_inbox_flow_run_line($run, $base)
+{
+    $known = is_array($run) && ((int) ($run['id'] ?? 0) > 0) && ((int) ($run['flow_id'] ?? 0) > 0);
+    $failed = $known && ((string) ($run['status'] ?? '') === 'failed');
+
+    return array(
+        'title' => $failed ? lang('A run of your flow failed') : lang('A run of your flow ended'),
+        'url'   => $base . 'workspace_flows.php' . ($known ? '?flow=' . (int) $run['flow_id'] . '&run=' . (int) $run['id'] : ''),
+        'icon'  => $failed ? 'bi-exclamation-octagon' : 'bi-diagram-3',
+    );
 }

@@ -1,0 +1,47 @@
+{
+  "object_created": "2026-10-29T09:12:04.115Z",
+  "object_updated": "2026-10-29T09:12:05.902Z",
+  "object_id": "5e40ead7cffe4cc1ad45108696162e42",
+  "object_owner": "shop@example.com",
+  "status": "SUCCESS",
+  "address_from": {"object_id": "0943ae4e373e4120a99c337e496dcce8", "name": "Example Shop", "city": "Berlin", "country": "DE"},
+  "address_to": {"object_id": "4c7185d353764d0985a6a7825aed8ffb", "name": "Jane Doe", "city": "London", "country": "GB"},
+  "parcels": [{"object_id": "ec952343dd4843c39b42aca9a8d1ce3c", "length": "30.0000", "width": "20.0000", "height": "10.5000", "distance_unit": "cm", "weight": "1.2500", "mass_unit": "kg"}],
+  "shipment_date": "2026-10-29T09:12:04.115Z",
+  "extra": {"reference_1": "10042"},
+  "rates": [
+    {
+      "object_id": "545ab0a1a6ea4c9f9adb2512a57d6d8b",
+      "amount": "32.50", "currency": "EUR", "amount_local": "32.50", "currency_local": "EUR",
+      "provider": "DHL Express",
+      "servicelevel": {"name": "Express Worldwide", "token": "dhl_express_worldwide", "terms": ""},
+      "estimated_days": 2, "attributes": ["FASTEST"],
+      "carrier_account": "078870331023437cb917f5187429b093",
+      "shipment": "5e40ead7cffe4cc1ad45108696162e42",
+      "messages": [], "test": true
+    },
+    {
+      "object_id": "a7e5b9c39c3b4b9a8e0a4b5b7c5d6e1f",
+      "amount": "11.90", "currency": "EUR", "amount_local": "11.90", "currency_local": "EUR",
+      "provider": "DPD DE",
+      "servicelevel": {"name": "Classic", "token": "dpd_de_classic", "terms": ""},
+      "estimated_days": 4, "attributes": ["CHEAPEST", "BESTVALUE"],
+      "carrier_account": "1a2b3c4d5e6f40718293a4b5c6d7e8f9",
+      "shipment": "5e40ead7cffe4cc1ad45108696162e42",
+      "messages": [], "test": true
+    },
+    {
+      "object_id": "c1d2e3f4a5b64c7d8e9f0a1b2c3d4e5f",
+      "amount": "14.20", "currency": "EUR", "amount_local": "14.20", "currency_local": "EUR",
+      "provider": "Deutsche Post",
+      "servicelevel": {"name": "Paket International", "token": "deutsche_post_paket_international", "terms": ""},
+      "estimated_days": 5, "attributes": [],
+      "carrier_account": "9f8e7d6c5b4a43219876543210fedcba",
+      "shipment": "5e40ead7cffe4cc1ad45108696162e42",
+      "messages": [], "test": true
+    }
+  ],
+  "messages": [],
+  "metadata": "Order 10042",
+  "test": true
+}

@@ -322,6 +322,13 @@ function get_random_string($properties = array())
 }
 
 // outputs the form's <select> page list for selecting a page (value is page id)
+//
+// Pages in archived folders are left out (the Recycle Bin is one), except the
+// selected page: the record being edited already points at it, so it stays
+// and is marked, or a plain Save would write the blank option over it. Like
+// get_page_options() it is marked in the bin under the name it had before the
+// bin parked it, or archived. A basic user still sees only pages in folders
+// they can edit.
 function select_page($page_id = '', $page_type = '')
 {
     global $user;
@@ -330,6 +337,9 @@ function select_page($page_id = '', $page_type = '')
     if ($user['role'] == 3) {
         $folders_that_user_has_access_to = get_folders_that_user_has_access_to($user['id']);
     }
+    // A posted value can be anything; only a whole id is kept.
+    $keep_id = is_scalar($page_id) ? (int) $page_id : 0;
+    $bin_folders = ($keep_id > 0) ? array_flip(pg_recycle_bin_folder_ids()) : array();
     $where_values = array();
     // if a page type was given, prepare to only return pages with that page type
     if ($page_type) {
@@ -359,7 +369,12 @@ function select_page($page_id = '', $page_type = '')
     } else {
         $where .= ' AND ';
     }
-    $where .= '(folder.folder_archived = "0")';
+    if ($keep_id > 0) {
+        $where .= '((folder.folder_archived = "0") OR (page.page_id = ?))';
+        $where_values[] = (string) $keep_id;
+    } else {
+        $where .= '(folder.folder_archived = "0")';
+    }
     // get pages
     $query = "SELECT
 
@@ -367,7 +382,9 @@ function select_page($page_id = '', $page_type = '')
 
             page.page_name as name,
 
-            page.page_folder as folder_id
+            page.page_folder as folder_id,
+
+            folder.folder_archived
 
         FROM page
 
@@ -387,14 +404,27 @@ function select_page($page_id = '', $page_type = '')
     foreach ($pages as $page) {
         // if user has access to folder that page is in, then output option
         if (check_folder_access_in_array($page['folder_id'], $folders_that_user_has_access_to) == true) {
+            $kept = ((int) $page['id'] === $keep_id);
+            $status = pg_page_option_status((string) $page['folder_archived'] !== '0', isset($bin_folders[(int) $page['folder_id']]), true, $kept);
+            if ($status === 'skip') {
+                continue;
+            }
+            $page_name = $page['name'];
+            if ($status === 'bin') {
+                require_once(PG_FUNCTIONS_DIR . '/view_folder_and_files_f.php');
+                $original = pg_recycle_parked_original($page_name, $page['id']);
+                $page_name = (($original !== '') ? $original : $page_name) . ' [' . lang('IN RECYCLE BIN') . ']';
+            } elseif ($status === 'archived') {
+                $page_name .= ' [' . lang('ARCHIVED') . ']';
+            }
             // if this page should be selected, then select it
-            if ($page['id'] == $page_id) {
+            if ($kept) {
                 $selected = ' selected="selected"';
             } else {
                 $selected = '';
             }
             // output option
-            $output .= '<option value="' . $page['id'] . '"' . $selected . '>' . h($page['name']) . '</option>';
+            $output .= '<option value="' . $page['id'] . '"' . $selected . '>' . h($page_name) . '</option>';
         }
     }
     return $output;
@@ -1633,6 +1663,26 @@ function log_activity($description, $user = '')
         $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
     }
 }
+/**
+ * Who a site log row names, on the Site Log and in the dashboard's Activity
+ * card. A row with no user, or the literal UNKNOWN older jobs wrote, and no
+ * address came from a scheduled job (they run from the command line); with an
+ * address it is a visitor nobody knows.
+ *
+ * @param string $user The row's log_user.
+ * @param string $ip   The row's log_ip.
+ * @return string Plain text.
+ */
+function pg_log_actor($user, $ip)
+{
+    $user = (string) $user;
+
+    if (($user !== '') && ($user !== 'UNKNOWN')) {
+        return $user;
+    }
+
+    return ((string) $ip === '') ? lang('Scheduled job') : lang('Unknown');
+}
 function get_number_of_contacts($contact_group, $require_email = false)
 {
     $where_values = array();
@@ -1700,9 +1750,11 @@ function validate_date_and_time($date_and_time)
         return false;
     }
 }
+// The top-level domain is 2 to 63 letters (.istanbul, .digital) or an
+// xn-- punycode label, the lengths a DNS label allows.
 function validate_email_address($email_address)
 {
-    if (preg_match("/^([-!#\$%&'*+.\/0-9=?A-Z^_`a-z{|}~])+@([-!#\$%&'*+\/0-9=?A-Z^_`a-z{|}~]+\\.)+[a-zA-Z]{2,6}\$/i", $email_address) == 1) {
+    if (preg_match("/^([-!#\$%&'*+.\/0-9=?A-Z^_`a-z{|}~])+@([-!#\$%&'*+\/0-9=?A-Z^_`a-z{|}~]+\\.)+([a-zA-Z]{2,63}|xn--[a-zA-Z0-9-]{1,59})\$/i", $email_address) == 1) {
         return true;
     } else {
         return false;
@@ -2255,6 +2307,12 @@ function select_contact_field($selected_contact_field = '')
         'value' => 'opt_in',
         'name' => lang('Opt-In')
     );
+    // The SMS marketing answer: no contacts column holds it, it is written
+    // to the consent log (pg_cf_contact_column()).
+    $contact_fields[] = array(
+        'value' => 'opt_in_sms',
+        'name' => lang('SMS Opt-In')
+    );
     $contact_fields[] = array(
         'value' => 'description',
         'name' => lang('Description')
@@ -2367,7 +2425,7 @@ function logout()
     unset($_COOKIE['software']['device_type']);
     // if user was logged in
     if ($username) {
-        log_activity(lang('user logged out'), $username);
+        log_activity(pg_log_lang(array('string' => 'user logged out')), $username);
         // else there was no user to logout
     } else {
         output_error(lang('You are not logged in.'));
@@ -2669,7 +2727,9 @@ function select_offer($offer_id = '')
 
             code,
 
-            description
+            description,
+
+            status
 
         FROM offers
 
@@ -2689,11 +2749,18 @@ function select_offer($offer_id = '')
             // If there is a description, then add it to the label.
             if ($offer['description'] != '') {
                 $output_label .= ' - ';
-                // If the description is greater than 50 characters, then truncate it to 50 characters.
-                if (mb_strlen($offer['description']) > 50) {
-                    $offer['description'] = mb_substr($offer['description'], 0, 50) . '...';
+                // Truncate the raw description to 50 characters, then escape it,
+                // so the cut never splits an entity.
+                $description = $offer['description'];
+                if (mb_strlen($description) > 50) {
+                    $description = mb_substr($description, 0, 50) . '...';
                 }
-                $output_label .= $offer['description'];
+                $output_label .= h($description);
+            }
+            // A key code or grant for an offer that is not enabled never
+            // applies, so the offer is marked rather than picked unknowingly.
+            if ($offer['status'] !== 'enabled') {
+                $output_label .= ' [' . lang('DISABLED') . ']';
             }
             $output .= '<option value="' . $offer['id'] . '"' . $selected . '>' . $output_label . '</option>';
         }
@@ -2794,130 +2861,62 @@ function create_or_update_page_type_record($page_type, $properties)
         $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
     }
 }
+/**
+ * Every page type, stored code => the name the panel shows for it.
+ *
+ * @return array
+ */
+function get_page_type_names()
+{
+    return array(
+        'standard' => lang('Standard'),
+        'change password' => lang('Change Password'),
+        'set password' => lang('Set Password'),
+        'email a friend' => lang('E-mail a Friend'),
+        'error' => lang('Error'),
+        'folder view' => lang('Folder View'),
+        'forgot password' => lang('Forgot Password'),
+        'login' => lang('Login'),
+        'logout' => lang('Logout'),
+        'photo gallery' => lang('Photo Gallery'),
+        'membership confirmation' => lang('Membership Confirmation'),
+        'membership entrance' => lang('Membership Entrance'),
+        'my account' => lang('My Account'),
+        'my account profile' => lang('My Account Profile'),
+        'email preferences' => lang('E-mail Preferences'),
+        'view order' => lang('View Order'),
+        'update address book' => lang('Update Address Book'),
+        'custom form' => lang('Custom Form'),
+        'custom form confirmation' => lang('Custom Form Confirmation'),
+        'form list view' => lang('Form List View'),
+        'form item view' => lang('Form Item View'),
+        'form view directory' => lang('Form View Directory'),
+        'calendar view' => lang('Calendar View'),
+        'calendar event view' => lang('Calendar Event View'),
+        'catalog' => lang('Catalog'),
+        'catalog detail' => lang('Catalog Detail'),
+        'express order' => lang('Express Order'),
+        'order form' => lang('Order Form'),
+        'shopping cart' => lang('Shopping Cart'),
+        'shipping address and arrival' => lang('Shipping Address & Arrival'),
+        'shipping method' => lang('Shipping Method'),
+        'billing information' => lang('Billing Information'),
+        'order preview' => lang('Order Preview'),
+        'order receipt' => lang('Order Receipt'),
+        'registration confirmation' => lang('Registration Confirmation'),
+        'registration entrance' => lang('Registration Entrance'),
+        'search results' => lang('Search Results'),
+        'affiliate sign up form' => lang('Affiliate Sign Up Form'),
+        'affiliate sign up confirmation' => lang('Affiliate Sign Up Confirmation'),
+        'affiliate welcome' => lang('Affiliate Welcome'),
+    );
+}
+
 function get_page_type_name($page_type)
 {
-    switch ($page_type) {
-        case 'standard':
-            return lang('Standard');
-            break;
-        case 'change password':
-            return lang('Change Password');
-            break;
-        case 'set password':
-            return lang('Set Password');
-            break;
-        case 'email a friend':
-            return lang('E-mail a Friend');
-            break;
-        case 'error':
-            return lang('Error');
-            break;
-        case 'folder view':
-            return lang('Folder View');
-            break;
-        case 'forgot password':
-            return lang('Forgot Password');
-            break;
-        case 'login':
-            return lang('Login');
-            break;
-        case 'logout':
-            return lang('Logout');
-            break;
-        case 'photo gallery':
-            return lang('Photo Gallery');
-            break;
-        case 'membership confirmation':
-            return lang('Membership Confirmation');
-            break;
-        case 'membership entrance':
-            return lang('Membership Entrance');
-            break;
-        case 'my account':
-            return lang('My Account');
-            break;
-        case 'my account profile':
-            return lang('My Account Profile');
-            break;
-        case 'email preferences':
-            return lang('E-mail Preferences');
-            break;
-        case 'view order':
-            return lang('View Order');
-            break;
-        case 'update address book':
-            return lang('Update Address Book');
-            break;
-        case 'custom form':
-            return lang('Custom Form');
-            break;
-        case 'custom form confirmation':
-            return lang('Custom Form Confirmation');
-            break;
-        case 'form list view':
-            return lang('Form List View');
-            break;
-        case 'form item view':
-            return lang('Form Item View');
-            break;
-        case 'form view directory':
-            return lang('Form View Directory');
-            break;
-        case 'calendar view':
-            return lang('Calendar View');
-            break;
-        case 'calendar event view':
-            return lang('Calendar Event View');
-            break;
-        case 'catalog':
-            return lang('Catalog');
-            break;
-        case 'catalog detail':
-            return lang('Catalog Detail');
-            break;
-        case 'express order':
-            return lang('Express Order');
-            break;
-        case 'order form':
-            return lang('Order Form');
-            break;
-        case 'shopping cart':
-            return lang('Shopping Cart');
-            break;
-        case 'shipping address and arrival':
-            return lang('Shipping Address & Arrival');
-            break;
-        case 'shipping method':
-            return lang('Shipping Method');
-            break;
-        case 'billing information':
-            return lang('Billing Information');
-            break;
-        case 'order preview':
-            return lang('Order Preview');
-            break;
-        case 'order receipt':
-            return lang('Order Receipt');
-            break;
-        case 'registration confirmation':
-            return lang('Registration Confirmation');
-            break;
-        case 'registration entrance':
-            return lang('Registration Entrance');
-            break;
-        case 'search results':
-            return lang('Search Results');
-            break;
-        case 'affiliate sign up form':
-            return lang('Affiliate Sign Up Form');
-            break;
-        case 'affiliate sign up confirmation':
-            return lang('Affiliate Sign Up Confirmation');
-            break;
-        case 'affiliate welcome':
-            return lang('Affiliate Welcome');
-            break;
-    }
+    $names = get_page_type_names();
+
+    return isset($names[$page_type]) ? $names[$page_type] : null;
 }
 function get_currency_name_from_code($currency_code)
 {
@@ -3089,15 +3088,17 @@ function get_login_region_content($login_region_id)
 }
 function get_salutation_options()
 {
+    // Label => stored value: the label is in the site's language, the value
+    // stays the English abbreviation that orders and addresses keep.
     return array(
         '' => '',
-        'Dr.' => 'Dr.',
-        'Miss' => 'Miss',
-        'Mr.' => 'Mr.',
-        'Mrs.' => 'Mrs.',
-        'Ms.' => 'Ms.',
-        'Prof.' => 'Prof.',
-        'Rev.' => 'Rev.'
+        lang('Dr.') => 'Dr.',
+        lang('Miss') => 'Miss',
+        lang('Mr.') => 'Mr.',
+        lang('Mrs.') => 'Mrs.',
+        lang('Ms.') => 'Ms.',
+        lang('Prof.') => 'Prof.',
+        lang('Rev.') => 'Rev.'
     );
 }
 function get_suffix_options()
@@ -3820,6 +3821,21 @@ function get_dynamic_value($dynamic_value, $dynamic_value_attribute = '')
             return $viewers_email_address;
             break;
     }
+}
+// A panel report's dynamic filter value for a field of $field_type. The Order
+// and Visitor reports compare a date field as a bare 'Y-m-d' string, so
+// 'days ago' becomes a whole calendar date there (a date-and-time would sort
+// after the same day and drop it); strtotime() keeps it right across DST.
+// Everything else is get_dynamic_value()'s value.
+function pg_report_dynamic_value($dynamic_value, $dynamic_value_attribute, $field_type, $now = null)
+{
+    if ($dynamic_value === 'days ago' && $field_type === 'date') {
+        if ($now === null) {
+            $now = time();
+        }
+        return date('Y-m-d', strtotime('-' . (int) $dynamic_value_attribute . ' days', $now));
+    }
+    return get_dynamic_value($dynamic_value, $dynamic_value_attribute);
 }
 function generate_email_recipient_reference_code()
 {
@@ -5154,4 +5170,19 @@ function get_field_type_name($field_type)
         default:
             return h($field_type);
     }
+}
+
+// Whether a row read from an import file holds no value: fgetcsv() gives
+// array(null) for a blank line and empty strings for a row of commas.
+// Import Submitted Forms passes over such a row instead of creating an
+// empty submitted form for it.
+function pg_import_row_is_blank($row)
+{
+    foreach ((array) $row as $cell) {
+        if (trim((string) $cell) !== '') {
+            return false;
+        }
+    }
+
+    return true;
 }

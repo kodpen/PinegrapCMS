@@ -49,7 +49,13 @@ if (!$_POST) {
     // note instead of a PHP warning; Save writes it again.
     $output_file_missing = '';
 
-    if (is_file(FILE_DIRECTORY_PATH . '/' . $file_name)) {
+    // A save that could not be written comes back with the typed code, so
+    // the editor shows it instead of the file as it still is on the disk.
+    $kept_code = $liveform->get_field_value('code');
+
+    if (is_string($kept_code)) {
+        $code = $kept_code;
+    } elseif (is_file(FILE_DIRECTORY_PATH . '/' . $file_name)) {
         $code = file_get_contents(FILE_DIRECTORY_PATH . '/' . $file_name);
     } else {
         $code = '';
@@ -92,7 +98,7 @@ if (!$_POST) {
                     ' . $liveform->output_notices() . $output_file_missing . '
                     <div class="row mb-3  flex-wrap">
                         <div class="col-12 sm:col-12 text-center md:text-start">
-<h2 class="d-inline-block text-break" data-bs-content="' . lang('You are editing this CSS file.') . '" title="' . lang('Edit CSS') . '">[' . h($file_name) . ']</h2>
+<h2 class="d-inline-block text-break">[' . h($file_name) . ']</h2>
                         </div>
                     </div>
                     <form name="form" action="edit_theme_css.php" method="post">
@@ -110,7 +116,7 @@ if (!$_POST) {
                                     <div class="card-body">
                                         <div class="row">
                                             <div class="col-12 my-3">
-                                                <label class="form-label">' . lang('CSS File') . '</label>
+                                                <label class="form-label" for="code">' . lang('CSS File') . '</label>
                                                 <div id="edit_custom">
                                                     <textarea name="code" id="code" rows="25" cols="60" wrap="off">' . h($code) . '</textarea>
                                                     ' . pg_code_editor_attach(array('id' => 'code', 'code_type' => 'css')) . '
@@ -151,6 +157,16 @@ if (!$_POST) {
         header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_theme_css.php?id=' . $id);
         exit();
     }
+
+    // A file that could not be written is not recorded and no success is
+    // shown: the editor opens again with the error and the typed code.
+    function edit_theme_css_write_failed($liveform, $id, $file_name)
+    {
+        $liveform->assign_field_value('code', $_POST['code']);
+        $liveform->add_error(lang(array('string' => '{var:1} could not be written to disk.', 'vars' => h($file_name))));
+        header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_theme_css.php?id=' . $id . '&send_to=' . urlencode($_POST['send_to'] ?? '') . '&from=' . urlencode($_POST['from'] ?? ''));
+        exit();
+    }
     
     // if save new copy was selected, then save a new copy of the file
     if (($_POST['submit_duplicate'] ?? '') == 'Duplicate') {
@@ -172,10 +188,10 @@ if (!$_POST) {
             $file_extension = mb_substr($new_file_name, $position_of_last_period + 1);
         }
         
-        // save the file
-        $handle = fopen(FILE_DIRECTORY_PATH . '/' . $new_file_name, 'w');
-        fwrite($handle, $_POST['code']);
-        fclose($handle);
+        // save the file; a copy that could not be written gets no record
+        if (!pg_file_write_whole(FILE_DIRECTORY_PATH . '/' . $new_file_name, $_POST['code'])) {
+            edit_theme_css_write_failed($liveform, $id, $new_file_name);
+        }
         
         // data from the file we are duplicating
         $row = $file;
@@ -263,15 +279,11 @@ if (!$_POST) {
         // posted name: a posted name is under the caller's control and could
         // point anywhere on the file system.
 
-        // delete the existing file. we have to do this in order to avoid permission errors in certain cirumstances
-        if (is_file(FILE_DIRECTORY_PATH . '/' . $file_name)) {
-            unlink(FILE_DIRECTORY_PATH . '/' . $file_name);
+        // update the content in the file; the stored file is replaced only
+        // once the whole content is written
+        if (!pg_file_write_whole(FILE_DIRECTORY_PATH . '/' . $file_name, $_POST['code'])) {
+            edit_theme_css_write_failed($liveform, $id, $file_name);
         }
-        
-        // update the content in the file
-        $handle = fopen(FILE_DIRECTORY_PATH . '/' . $file_name, 'w');
-        fwrite($handle, $_POST['code']);
-        fclose($handle);
         
         // update file in database
         $query =

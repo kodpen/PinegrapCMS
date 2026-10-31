@@ -9,11 +9,11 @@ description: Workspace "MCP servers" card (mcp.php, mcp_catalogue.php): ready-ma
 - Check the address (`mcp_probe`, `ws_mcp_probe()`): initialize and tools/list with no credential; on a 401 `pg_mcp_client_discover_auth()`: oauth when the site can register (`ws_mcp_oauth_registration()`), else bearer; else the client's error. The short form (alias from `ws_mcp_alias_from_host()`, a token for bearer) posts `mcp_save`. A probe registers nothing.
 
 ## What do designers and managers (roles 1-2) see?
-- No refresh, Save or live switches: the tools pane says "An administrator can …" (workspace_mcp_settings_texts_test.php).
+- No refresh, Save or live switches: the tools pane says "An administrator can …"; an administrator's never-read text names the icon-only refresh by its title, "Ask the server for its tools again" (workspace_mcp_settings_texts_test.php).
 
 ## How is an entry added?
 - A row in `ws_mcp_catalogue()`: an address that answers initialize with 200, or 401 with a challenge whose service registers the site (curl it first); a `bi-*` icon of assets/fonts/bootstrap-icons, no logos; an alias outside `ws_mcp_reserved_aliases()`; `tools` read_only; the description's Turkish text through `php tools/tr_add.php`. The tests read every row.
-- 2026-10-24: 12 rows answered (5 open, 6 OAuth, GitHub by token: its sign-in registers nobody); Stripe stayed out.
+- 2026-10-24: 12 rows answered (5 open, 6 OAuth, GitHub by token); Stripe stayed out.
 
 ## Which tools are on after a server is added?
 - Symptom "no tool on, @alias missing": tools started off, so the @ picker (`ws_mcp_boot()`), form run and agent mode skipped the server.
@@ -29,4 +29,4 @@ description: Workspace "MCP servers" card (mcp.php, mcp_catalogue.php): ready-ma
 
 ## How is it checked?
 - tests/workspace_mcp_test.php: catalogue rows and icons, alias from a host, Already added, the probe with a stand-in fetch, first read, declare, kept fields, link due; workspace_api_test.php: the route. The API of the added servers: `workspace-mcp-servers-api.md`.
-- CLI harness on a bare MariaDB, 2026-10-24: one-click adds and probes against the live servers. No browser session; OAuth registration and sign-in never run live.
+- CLI harness, 2026-10-24: adds and probes against live servers; OAuth sign-in never run live.

@@ -74,7 +74,7 @@ if (isset($_SESSION['software']['design']['view_themes']['query']) == false) {
     $_SESSION['software']['design']['view_themes']['query'] = '';
 }
 
-$search_query = mb_strtolower(($_SESSION['software']['design']['view_themes']['query'] ?? ''));
+$search_query = pg_search_lower($_SESSION['software']['design']['view_themes']['query'] ?? '');
 
 // create where clause for sql
 $sql_search = "(LOWER(CONCAT_WS(',', files.name, folder.folder_name, user.user_username)) LIKE '" . escape(pg_list_like_pattern($search_query)) . "')";
@@ -154,7 +154,7 @@ if ($files) {
                 </td>
                 <td class="align-middle chart_label">' . h($file['name']) . '</td>
                 <td class="align-middle">' . nl2br(h($file['description'])) . '</td>
-                <td class="align-middle text-start ' . $folder_access_control_type . '" title="' . h($file['folder_name']) . '"><span class="d-block overflow-hidden text-truncate" style="width: 100px;max-width:100%;"><span class="material-icons d-inline" aria-hidden="true">folder</span><span class="badge fw-light fg-reset d-inline">' . h($file['folder_name']) . '</span></span><span class="badge fw-light fg-reset d-inline">(' . $output_access_control . ')</span></td>
+                <td class="align-middle text-start text-wrap ' . $folder_access_control_type . '">' . pg_folder_list_name($file['folder_name']) . '<span class="badge fw-light fg-reset d-inline">(' . $output_access_control . ')</span></td>
                 <td class="align-middle text-center">' . $output_activated_desktop_theme_check_mark . '</td>
                 <td class="align-middle text-center">' . $output_activated_mobile_theme_check_mark . '</td>
                 <td class="align-middle">' . get_relative_time(array('timestamp' => $file['timestamp'])) . ' ' . $output_created_by_user . '</td>

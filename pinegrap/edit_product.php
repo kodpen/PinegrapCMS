@@ -141,7 +141,7 @@ if ($_POST) {
     $name = isset($_POST['name']) ? trim($_POST['name']) : '';
 
     if ($name === '') {
-        $liveform->mark_error('name', lang(array('string' => '{var:1|c} is required', 'vars' => lang('Product ID / SKU'))));
+        $liveform->mark_error('name', lang(array('string' => '{var:1} is required', 'vars' => lang('Product ID / SKU'))));
         go(PATH . SOFTWARE_DIRECTORY . '/edit_product.php?id=' . $product_id . '&send_to=' . urlencode($send_to));
     }
 

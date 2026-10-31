@@ -1,0 +1,7 @@
+{
+  "object_id": "5e40ead7cffe4cc1ad45108696162e42",
+  "status": "SUCCESS",
+  "rates": [],
+  "messages": [{"source": "DHLExpress", "code": "", "text": "Destination postal code is not valid."}],
+  "test": true
+}

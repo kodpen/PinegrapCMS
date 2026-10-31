@@ -753,6 +753,52 @@ function ws_template_archive($viewer, $id, $archive = true)
     return array('ok' => true, 'error' => '', 'name' => $template['name']);
 }
 
+/**
+ * The stored choices of a template that the editor's lists no longer offer:
+ * its own department and the departments its tasks name when archived, and
+ * the people its tasks name who left the team. The editor adds them back,
+ * marked, so a plain Save keeps them instead of "No department" or "creator".
+ *
+ * @param array $template     department_id, body (tasks with assign rules)
+ * @param array $departments  every department, archived ones included (id, archived)
+ * @param int[] $team_ids     the ids the team list offers
+ * @return array department_ids, user_ids
+ */
+function ws_template_kept_choices($template, $departments, $team_ids)
+{
+    $archived = array();
+
+    foreach ($departments as $department) {
+        if (!empty($department['archived'])) {
+            $archived[(int) $department['id']] = true;
+        }
+    }
+
+    $team = array_flip(array_map('intval', $team_ids));
+    $department_ids = array();
+    $user_ids = array();
+
+    $wanted = (int) ($template['department_id'] ?? 0);
+
+    if (isset($archived[$wanted])) {
+        $department_ids[$wanted] = $wanted;
+    }
+
+    $tasks = (is_array($template['body'] ?? null) && is_array($template['body']['tasks'] ?? null)) ? $template['body']['tasks'] : array();
+
+    foreach ($tasks as $task) {
+        $rule = is_array($task) ? (string) ($task['assign'] ?? '') : '';
+
+        if (preg_match('/^department:([1-9][0-9]{0,9})$/', $rule, $match) && isset($archived[(int) $match[1]])) {
+            $department_ids[(int) $match[1]] = (int) $match[1];
+        } elseif (preg_match('/^user:([1-9][0-9]{0,9})$/', $rule, $match) && !isset($team[(int) $match[1]])) {
+            $user_ids[(int) $match[1]] = (int) $match[1];
+        }
+    }
+
+    return array('department_ids' => array_values($department_ids), 'user_ids' => array_values($user_ids));
+}
+
 /* ---------------------------------------------------------------------------
    Applying a template
    --------------------------------------------------------------------------- */
@@ -1267,6 +1313,8 @@ function ws_templates_js_strings()
         'tpl_remove_task'     => lang('Remove the task'),
         'tpl_remove_note'     => lang('Remove the note'),
         'tpl_drag'            => lang('Drag to change the order'),
+        'tpl_reorder_hint'    => lang('Use the arrow keys to change the order.'),
+        'tpl_position'        => lang('Position {position} of {total}'),
         'tpl_start_in'        => lang('Starts after (days)'),
         'tpl_due_in'          => lang('Due after (days)'),
         'tpl_estimate'        => lang('Estimate (minutes)'),
@@ -1276,7 +1324,7 @@ function ws_templates_js_strings()
         'tpl_assign_none'     => lang('Nobody yet'),
         'tpl_assign_dept'     => ws_js_template('Pool of {var:1}', 1),
         'tpl_after'           => lang('After these tasks'),
-        'tpl_after_help'      => lang('Only an earlier task can be chosen; drag the task down to wait for a later one.'),
+        'tpl_after_help'      => lang('Only an earlier task can be chosen. To wait for a later one, move this task below it with the Drag to change the order button: drag it, or use the arrow keys on it.'),
         'tpl_task_n'          => ws_js_template('Task {var:1}', 1),
         'tpl_note_body'       => lang('Text'),
         'tpl_no_tasks'        => lang('No tasks in the template yet.'),

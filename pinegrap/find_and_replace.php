@@ -183,10 +183,15 @@ function find_match_context($text, $find, $case_sensitive, $is_regex, $context_l
         $matched = $m[0];
         $pos     = $case_sensitive ? mb_strpos($text, $matched) : mb_stripos($text, $matched);
         if ($pos === false) return '';
-    } else {
-        $pos = $case_sensitive ? mb_strpos($text, $find) : mb_stripos($text, $find);
+    } elseif ($case_sensitive) {
+        $pos = mb_strpos($text, $find);
         if ($pos === false) return '';
-        $matched = mb_substr($text, $pos, mb_strlen($find));
+        $matched = $find;
+    } else {
+        // The same matcher as the count and the replace (pg_search_ci_pattern()).
+        if (!@preg_match(pg_search_ci_pattern($find), $text, $m, PREG_OFFSET_CAPTURE)) return '';
+        $matched = $m[0][0];
+        $pos     = mb_strlen(substr($text, 0, $m[0][1]));
     }
 
     $start     = max(0, $pos - $context_len);
@@ -225,7 +230,7 @@ function build_find_where($columns, $find, $case_sensitive, $is_regex) {
         } elseif ($case_sensitive) {
             $parts[] = "($col LIKE BINARY '%" . e(escape_like($find)) . "%')";
         } else {
-            $parts[] = "(LOWER($col) LIKE '%" . e(escape_like(mb_strtolower($find))) . "%')";
+            $parts[] = "(LOWER($col) LIKE '%" . e(escape_like(pg_search_lower($find))) . "%')";
         }
     }
     return implode(' OR ', $parts);
@@ -458,7 +463,7 @@ if (!$_POST) {
                     } elseif ($case_sensitive) {
                         $cnt = substr_count($item[$col], $find);
                     } else {
-                        $cnt = substr_count(mb_strtolower($item[$col]), mb_strtolower($find));
+                        $cnt = pg_search_ci_count($item[$col], $find);
                     }
 
                     if ($cnt > 0) {
@@ -613,7 +618,7 @@ if (!$_POST) {
                     } elseif ($case_sensitive) {
                         $item[$col] = str_replace($find, $replace, $item[$col], $count);
                     } else {
-                        $item[$col] = str_ireplace($find, $replace, $item[$col], $count);
+                        $item[$col] = pg_search_ci_replace($find, $replace, $item[$col], $count);
                     }
 
                     if ($count > 0) {
@@ -639,19 +644,13 @@ if (!$_POST) {
             go($_SERVER['PHP_SELF']);
         }
 
-        if ($number_of_replacements == 1) {
-            $match_plural_suffix = '';
-            $match_verb          = 'was';
-        } else {
-            $match_plural_suffix = 'es';
-            $match_verb          = 'were';
-        }
+        $match_plural_suffix = $number_of_replacements == 1 ? '' : 'es';
 
         $item_plural_suffix = $number_of_items == 1 ? '' : 's';
 
         $message = lang(array(
-            'string' => '{var:1} match{suffix:1} {var:2} found and replaced in {var:3} item{suffix:2}.',
-            'vars'   => array(pg_format_number($number_of_replacements, 0), $match_verb, pg_format_number($number_of_items, 0)),
+            'string' => '{var:1} match{suffix:1} found and replaced in {var:2} item{suffix:2}.',
+            'vars'   => array(pg_format_number($number_of_replacements, 0), pg_format_number($number_of_items, 0)),
             'suffix' => array($match_plural_suffix, $item_plural_suffix),
         ));
 

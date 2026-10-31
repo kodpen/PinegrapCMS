@@ -334,6 +334,34 @@ function ws_api_flow_editable($viewer, $id)
 }
 
 /**
+ * The error code a refused flow write is answered with: a 409 about a
+ * customer is the flow's open run about them (ws_flow_run_start_check()),
+ * any other 409 a change made meanwhile.
+ *
+ * @param int    $status
+ * @param string $field
+ * @return string
+ */
+function ws_api_flow_refusal_code($status, $field)
+{
+    switch ((int) $status) {
+        case 403:
+            return 'forbidden';
+
+        case 404:
+            return 'not_found';
+
+        case 409:
+            return ((string) $field === 'contact_id') ? 'run_open' : 'changed_meanwhile';
+
+        case 503:
+            return 'service_unavailable';
+    }
+
+    return 'validation_failed';
+}
+
+/**
  * A refused flow write, as the API answers it.
  *
  * @param array $result a ws_flow_*_check() or write result
@@ -352,7 +380,7 @@ function ws_api_flow_refused($result)
             break;
 
         case 409:
-            api_fail(409, 'changed_meanwhile', $result['error'], ($field !== '') ? $field : null);
+            api_fail(409, ws_api_flow_refusal_code(409, $field), $result['error'], ($field !== '') ? $field : null);
             break;
 
         case 503:
@@ -1169,7 +1197,8 @@ function ws_api_flow_step_outputs($kind, $stored, $edit)
 }
 
 /**
- * One box of a run as the API hands it out: which box, how it stands, the
+ * One box of a run as the API hands it out: which box and its pass (the
+ * item of a For each loop, from 1; 0 outside the loops), how it stands, the
  * task it opened, its times, the arrows into it as the run took them, the
  * values it kept and how it went, in short (a change box's record and
  * values only to whoever may change the flow, ws_step_result_shown()).
@@ -1189,6 +1218,7 @@ function ws_api_flow_run_step_present($step, $graph, $edit = false, $states = nu
 
     return array(
         'node_id'     => (string) $step['node_id'],
+        'pass'        => (int) ($step['pass'] ?? 0),
         'kind'        => $kind,
         'name'        => $node ? ws_flow_box_name($node) : (string) $step['node_id'],
         'status'      => (string) $step['status'],
@@ -1209,6 +1239,7 @@ function ws_api_flow_run_step_schema()
 {
     return array(
         'node_id'     => 'string',
+        'pass'        => 'integer',
         'kind'        => 'string',
         'name'        => 'string',
         'status'      => 'string',
@@ -1222,6 +1253,19 @@ function ws_api_flow_run_step_schema()
         'outputs'     => 'object',
         'result'      => 'string',
     );
+}
+
+/**
+ * The customer a run is about (started with contact_id), null for none.
+ *
+ * @param array $run ws_flow_runs row
+ * @return int|null
+ */
+function ws_api_flow_run_contact_id($run)
+{
+    $id = (int) ($run['subject_id'] ?? 0);
+
+    return ((string) ($run['subject_type'] ?? '') === 'contact') && ($id > 0) ? $id : null;
 }
 
 /**
@@ -1265,6 +1309,7 @@ function ws_api_flow_run_present($viewer, $run, $n, $steps = null, $graph = null
         'started_by'  => (int) $run['started_by'],
         'actor_id'    => (int) $run['actor_id'],
         'channel_id'  => (ws_flow_run_channel_id($run) > 0) ? ws_flow_run_channel_id($run) : null,
+        'contact_id'  => ws_api_flow_run_contact_id($run),
         'boxes_run'   => (int) $run['boxes_run'],
         'started_at'  => ws_flow_time($run['started_at']),
         'updated_at'  => ws_flow_time($run['updated_at']),
@@ -1291,6 +1336,7 @@ function ws_api_flow_run_schema()
         'started_by'  => 'integer',
         'actor_id'    => 'integer',
         'channel_id'  => 'integer?',
+        'contact_id'  => 'integer?',
         'boxes_run'   => 'integer',
         'started_at'  => 'string?',
         'updated_at'  => 'string?',
@@ -1428,6 +1474,12 @@ function ws_api_flow_runs_start($params)
         $data['channel_id'] = (int) $params['channel_id'];
     }
 
+    // A run about a customer: the panel's contact check, and the flow's open
+    // run about them answered or refused, in ws_flow_run_start_check().
+    if (array_key_exists('contact_id', $params) && ($params['contact_id'] !== null)) {
+        $data['contact_id'] = (int) $params['contact_id'];
+    }
+
     // A start retried with its token after the flow was paused, or after the
     // person's share was lowered to view: they may no longer run the flow,
     // but the run the token started is answered to them while they may read
@@ -1451,6 +1503,7 @@ function ws_api_flow_runs_start($params)
         'boxes'      => count($checked['graph']['nodes']),
         'existing'   => ($checked['existing'] > 0) ? (int) $checked['existing'] : null,
         'channel_id' => ($checked['existing'] > 0) ? null : ($checked['channel_id'] ?? (((int) $flow['channel_id'] > 0) ? (int) $flow['channel_id'] : null)),
+        'contact_id' => (($checked['existing'] <= 0) && !empty($checked['subject'])) ? (int) $checked['subject']['id'] : null,
     ));
 
     $result = ws_api_as_owner(function () use ($viewer, $flow, $data) {

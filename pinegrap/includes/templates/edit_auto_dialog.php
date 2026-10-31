@@ -29,12 +29,10 @@ if (!defined('PG_INIT_LOADED')) {
                             <li class="breadcrumb-item active" aria-current="page"><?php if ($screen == 'create'): ?><?=lang('Create Auto Dialog')?><?php else: ?><?=lang('Edit Auto Dialog')?><?php endif ?></li>
                         </ol> 
                     </nav>
-                    <h2 
-						class="d-inline-block text-break header-content-for-add-page" 
-						data-bs-content="<?php if ($screen == 'create'): ?><?=lang('Create a new auto dialog that can automatically popup for visitors. You may preview the auto dialog on the next screen and then enable it for all visitors when desired.')?><?php else: ?><?=lang('Edit an auto dialog that can automatically popup for visitors.')?><?php endif ?>" 
-						title="<?php if ($screen == 'create'): ?><?=lang('Create Auto Dialog')?><?php else: ?><?=lang('Edit Auto Dialog')?><?php endif ?>">
+                    <h2 class="d-inline-block text-break header-content-for-add-page">
 						[<?php if ($screen == 'create'): ?><?=lang('Auto Dialog Name')?><?php else: ?><?=h($auto_dialog['name'])?><?php endif ?>]
 					</h2>
+					<p class="form-text mt-0"><?php if ($screen == 'create'): ?><?=lang('Create a new auto dialog that can automatically popup for visitors. You may preview the auto dialog on the next screen and then enable it for all visitors when desired.')?><?php else: ?><?=lang('Edit an auto dialog that can automatically popup for visitors.')?><?php endif ?></p>
 					<?php if ($screen == 'edit'): ?>
 						<nav id="button_bar" class="navigation " aria-label="<?= h(lang('Button Bar')) ?>">
                 			<div class=" btn-group btn-group-sm flex-wrap">
@@ -62,8 +60,8 @@ if (!defined('PG_INIT_LOADED')) {
 											'name' => 'name',
 											'placeholder'=>lang('Auto Dialog Name'),
 											'class' => 'form-control add-header-content-updater',
-											'maxlength' => '50'))?>
-										<div class="invalid-feedback"><?=lang('Required Area')?></div>
+											'maxlength' => '50',
+											'required' => 'required'))?>
                                     </div>
                                     <div class="col-12 sm:col-6 md:col-8 my-3">
                                         <label for="url" class="form-label"><?=lang('URL')?></label>
@@ -72,8 +70,8 @@ if (!defined('PG_INIT_LOADED')) {
 											'id' => 'url',
 											'name' => 'url',
 											'class' => 'form-control',
-											'maxlength' => '255'))?>
-										<div class="invalid-feedback"><?=lang('Required Area')?></div>
+											'maxlength' => '255',
+											'required' => 'required'))?>
                                     </div>
 									<?php if ($screen == 'edit'): ?>
 										<div class="col-12 my-5">
@@ -155,7 +153,6 @@ if (!defined('PG_INIT_LOADED')) {
 											'name' => 'page',
 											'class' => 'form-control',
 											'maxlength' => '100'))?>
-										<div class="invalid-feedback"><?=lang('Required Area')?></div>
 										<div class="form-text text-end"><?=lang('leave blank to open on any page')?></div>
                                     </div>
 								</div>
@@ -168,7 +165,7 @@ if (!defined('PG_INIT_LOADED')) {
                         <div class=" btn-group flex-wrap justify-content-center">
                             <button type="submit" id="save_button" name="submit_button" value="<?php if ($screen == 'create'): ?>Create<?php else: ?>Save<?php endif ?>" class="btn my-1 btn-solid theme-success "><span class="material-icons me-3"><?php if ($screen == 'create'): ?>add<?php else: ?>save<?php endif ?></span><span class="pg-btn-label" ><?php if ($screen == 'create'): ?><?=lang(array('string'=>'Create') )?><?php else: ?><?=lang(array('string'=>'Save') )?><?php endif ?></span></button>
                             <?php if ($screen == 'edit'): ?>
-								<button type="submit" name="delete" value="Delete" class="btn my-1  btn-solid theme-danger " data-confirm-content="<?=lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('auto dialog'))))?>"><span class="material-icons me-3">delete</span><span class="pg-btn-label" ><?=lang(array('string'=>'Delete') )?></span></button>
+								<button type="submit" name="delete" value="Delete" formnovalidate class="btn my-1  btn-solid theme-danger " data-confirm-content="<?=lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('auto dialog'))))?>"><span class="material-icons me-3">delete</span><span class="pg-btn-label" ><?=lang(array('string'=>'Delete') )?></span></button>
 							<?php endif ?>
 						</div>
                     </div>

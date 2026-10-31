@@ -20,11 +20,14 @@
     if (global.pgLightbox && global.pgLightbox.__pgInit) return; // idempotent
 
     // ── Tunables ────────────────────────────────────────────────────────────
-    var MIN_ZOOM        = 1;       // 1x = fit-to-screen baseline
-    var MAX_ZOOM        = 6;       // max user-driven zoom
+    // Zoom is the image's scale against its natural size; the fitted size
+    // (fitScale) is the lower bound and the baseline for "zoomed".
+    var MAX_ZOOM        = 6;       // max zoom against the natural size (fitScale <= 1)
     var WHEEL_STEP      = 0.18;    // % zoom per wheel notch (decimal scale)
-    var DBLCLICK_ZOOM   = 2.4;     // double-click zoom level
-    var SWIPE_THRESHOLD = 60;      // px horizontal drag at scale=1 to flip slide
+    var DBLCLICK_ZOOM   = 2.4;     // double-click zoom, times the fitted size
+    var KEY_PAN_STEP    = 0.1;     // arrow key pan, share of the stage size
+    var KEY_PAN_STEP_BIG = 0.33;   // Shift + arrow key pan
+    var SWIPE_THRESHOLD = 60;      // px horizontal drag at the fitted size to flip slide
     var SWIPE_VELOCITY  = 0.4;     // px/ms — fast flick triggers nav at lower threshold
     var TAP_MAX_MOVE    = 8;       // px movement still counts as tap (close on background)
     var TAP_MAX_TIME    = 220;     // ms hold still counts as tap
@@ -42,6 +45,7 @@
     var prevBtn = null;
     var nextBtn = null;
     var openedAt = 0;
+    var opener  = null;     // element that had focus before the viewer opened
 
     // Per-image transform state (rebuilt on each navigation)
     var scale = 1;
@@ -53,9 +57,11 @@
     // ── Labels ──────────────────────────────────────────────────────────────
     // The carousel renderer emits window.pgLightboxLabels through lang() next
     // to this script; the English key is the fallback when the map is absent.
-    function L(key) {
+    // Escaped for innerHTML unless raw is set (setAttribute, textContent).
+    function L(key, raw) {
         var map = window.pgLightboxLabels;
         var v = (map && Object.prototype.hasOwnProperty.call(map, key)) ? map[key] : null;
+        if (raw) return String(v || key);
         return String(v || key).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
 
@@ -65,7 +71,10 @@
         overlay = document.createElement('div');
         overlay.className = 'pgl-overlay';
         overlay.setAttribute('role', 'dialog');
-        overlay.setAttribute('aria-modal', 'true');
+        overlay.setAttribute('aria-label', L('Image viewer', true));
+        // Closed: out of the tab order and the accessibility tree. aria-modal
+        // is set only while open, so a closed dialog is not announced.
+        overlay.inert = true;
         overlay.innerHTML = [
             '<div class="pgl-toolbar">',
                 '<span class="pgl-counter" data-pgl="counter">0 / 0</span>',
@@ -119,18 +128,32 @@
             }
         });
 
-        // Background click (clicking the dim area, not the image) closes
-        overlay.addEventListener('mousedown', function (e) {
-            // Only handle clicks DIRECTLY on the overlay or stage (not on
-            // descendants like the image, buttons, caption). Combined with
-            // the tap detection in pointer handlers below.
-            if (e.target === overlay) close();
+        // A tap on the dim background closes. The stage captures every press
+        // for its gestures, so the click event lands on the stage even when
+        // the press was on the image; the tap is therefore judged from the
+        // pointer events: a primary press that starts on the background,
+        // stays under TAP_MAX_MOVE and TAP_MAX_TIME, and is released over
+        // the background. Presses on the image, toolbar, nav, thumbnails or
+        // caption, drags and long presses leave the viewer open.
+        var tapStart = null;   // {id, x, y, time} of a background press
+        function isBackground(el) {
+            return el === overlay || el === stage;
+        }
+        overlay.addEventListener('pointerdown', function (e) {
+            tapStart = (e.isPrimary && e.button === 0 && isBackground(e.target))
+                ? { id: e.pointerId, x: e.clientX, y: e.clientY, time: Date.now() }
+                : null;
         });
-        // Stage tap (image area) — tap on the dim margin around the image
-        // closes; tap on the image itself does nothing (gesture handlers run).
-        stage.addEventListener('click', function (e) {
-            if (e.target === stage) close();
+        overlay.addEventListener('pointerup', function (e) {
+            var t = tapStart;
+            tapStart = null;
+            if (!t || t.id !== e.pointerId) return;
+            if (Math.hypot(e.clientX - t.x, e.clientY - t.y) > TAP_MAX_MOVE) return;
+            if (Date.now() - t.time > TAP_MAX_TIME) return;
+            if (!isBackground(document.elementFromPoint(e.clientX, e.clientY))) return;
+            close();
         });
+        overlay.addEventListener('pointercancel', function () { tapStart = null; });
 
         bindStageGestures();
     }
@@ -149,7 +172,7 @@
         function updateClass() {
             stage.classList.toggle('pgl-grabbing', !!dragStart);
             stage.classList.toggle('pgl-pinching', Object.keys(pointers).length >= 2);
-            stage.classList.toggle('pgl-zoomed',   scale > 1.001);
+            stage.classList.toggle('pgl-zoomed',   isZoomed());
         }
 
         // Pointer down
@@ -197,7 +220,7 @@
                 var dist = Math.hypot(p1.x - p2.x, p1.y - p2.y);
                 if (pinchStartDist > 0) {
                     var ratio = dist / pinchStartDist;
-                    var newScale = clamp(startScale * ratio, MIN_ZOOM, MAX_ZOOM);
+                    var newScale = clamp(startScale * ratio, fitScale, MAX_ZOOM);
                     var sRect = stage.getBoundingClientRect();
                     var cx = pinchCenter.x - sRect.left;
                     var cy = pinchCenter.y - sRect.top;
@@ -217,7 +240,7 @@
             if (dragStart) {
                 var dx = e.clientX - dragStart.x;
                 var dy = e.clientY - dragStart.y;
-                if (scale > 1.01) {
+                if (isZoomed()) {
                     // Pan when zoomed
                     tx = dragStart.startTx + dx;
                     ty = dragStart.startTy + dy;
@@ -257,10 +280,10 @@
                     var dist = Math.hypot(totalDx, totalDy);
                     var elapsed = Date.now() - dragStart.time;
                     var velocity = Math.abs(totalDx) / Math.max(1, elapsed);
-                    if (scale <= 1.01 && (Math.abs(totalDx) > SWIPE_THRESHOLD || velocity > SWIPE_VELOCITY)) {
+                    if (!isZoomed() && (Math.abs(totalDx) > SWIPE_THRESHOLD || velocity > SWIPE_VELOCITY)) {
                         // Swipe → navigate
                         navigate(totalDx < 0 ? +1 : -1);
-                    } else if (scale <= 1.01 && dist > 0) {
+                    } else if (!isZoomed() && dist > 0) {
                         // Snap back if drag at fit-zoom didn't trigger swipe
                         applyTransform();
                     } else {
@@ -286,21 +309,25 @@
             zoomAt(cx, cy, scale * (1 + delta));
         }, { passive: false });
 
-        // Double-click toggle zoom (1x ↔ 2.4x at click point)
+        // Double-click toggles between the fit and 2.4x the fit at the click point
         stage.addEventListener('dblclick', function (e) {
             if (e.target.closest('button, .pgl-thumbs, .pgl-toolbar, .pgl-nav')) return;
             var sRect = stage.getBoundingClientRect();
             var cx = e.clientX - sRect.left;
             var cy = e.clientY - sRect.top;
-            if (scale > 1.01) {
+            if (isZoomed()) {
                 resetTransform(true);
             } else {
-                zoomAt(cx, cy, DBLCLICK_ZOOM);
+                zoomAt(cx, cy, fitScale * DBLCLICK_ZOOM);
             }
         });
     }
 
     // ── Zoom helpers ────────────────────────────────────────────────────────
+    function isZoomed() {
+        return scale > fitScale * 1.01;
+    }
+
     function zoomBy(direction) {
         // Zoom around image center
         var sRect = stage.getBoundingClientRect();
@@ -308,7 +335,7 @@
     }
 
     function zoomAt(cx, cy, newScale) {
-        newScale = clamp(newScale, MIN_ZOOM, MAX_ZOOM);
+        newScale = clamp(newScale, fitScale, MAX_ZOOM);
         if (Math.abs(newScale - scale) < 0.001) return;
         // Keep the point under (cx,cy) anchored as zoom changes
         var imgX = (cx - tx) / scale;
@@ -316,6 +343,13 @@
         tx = cx - imgX * newScale;
         ty = cy - imgY * newScale;
         scale = newScale;
+        clampPan();
+        applyTransform();
+    }
+
+    function panBy(dx, dy) {
+        tx += dx;
+        ty += dy;
         clampPan();
         applyTransform();
     }
@@ -362,6 +396,7 @@
         if (!img) return;
         img.style.transition = ''; // ensure default applies (cleared during gestures)
         img.style.transform = 'translate(' + tx + 'px,' + ty + 'px) scale(' + scale + ')';
+        if (stage) stage.classList.toggle('pgl-zoomed', isZoomed());
     }
 
     function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
@@ -375,7 +410,7 @@
         stage.classList.add('pgl-loading');
         // Reset transforms preemptively so the previous image's pan doesn't
         // briefly flash on the new one.
-        scale = 1; tx = 0; ty = 0;
+        scale = 1; fitScale = 1; tx = 0; ty = 0;
         img.style.transition = 'none';
         img.style.transform = 'translate(0,0) scale(1)';
         // Stage rect for fit calculation
@@ -417,6 +452,7 @@
         if (thumbs) {
             Array.prototype.forEach.call(thumbs.children, function (t, i) {
                 t.classList.toggle('pgl-thumb-active', i === currentIndex);
+                t.setAttribute('aria-current', i === currentIndex ? 'true' : 'false');
             });
             // Scroll active thumb into view
             var active = thumbs.children[currentIndex];
@@ -442,11 +478,16 @@
         }
         thumbs.hidden = false;
         images.forEach(function (rec, i) {
-            var t = document.createElement('img');
+            var t = document.createElement('button');
+            t.type = 'button';
             t.className = 'pgl-thumb';
-            t.src = rec.src;
-            t.alt = '';
-            t.loading = 'lazy';
+            t.setAttribute('aria-label', L('Image {n} of {total}', true).replace('{n}', i + 1).replace('{total}', images.length));
+            var pic = document.createElement('img');
+            pic.src = rec.src;
+            pic.alt = '';
+            pic.loading = 'lazy';
+            pic.draggable = false;
+            t.appendChild(pic);
             t.addEventListener('click', function () { showImageAt(i); });
             thumbs.appendChild(t);
         });
@@ -464,13 +505,18 @@
         }).filter(function (r) { return r.src; });
         if (!images.length) return;
         currentIndex = clamp(startIndex || 0, 0, images.length - 1);
+        if (!overlay.classList.contains('pgl-open')) opener = document.activeElement;
         buildThumbs();
         document.body.classList.add('pgl-lock');
+        overlay.inert = false;
+        overlay.setAttribute('aria-modal', 'true');
         overlay.classList.add('pgl-open');
         openedAt = Date.now();
         showImageAt(currentIndex);
+        focusInto(overlay.querySelector('[data-pgl="close"]'));
         // Keyboard listener attached on open, removed on close
         document.addEventListener('keydown', onKeydown, true);
+        document.addEventListener('focusin', onFocusin, true);
         // Window resize → recompute fit
         window.addEventListener('resize', onResize);
     }
@@ -478,21 +524,71 @@
     function close() {
         if (!overlay || !overlay.classList.contains('pgl-open')) return;
         overlay.classList.remove('pgl-open');
+        overlay.inert = true;
+        overlay.removeAttribute('aria-modal');
         document.body.classList.remove('pgl-lock');
         document.removeEventListener('keydown', onKeydown, true);
+        document.removeEventListener('focusin', onFocusin, true);
         window.removeEventListener('resize', onResize);
         // Exit fullscreen if the lightbox put us there
         if (fullscreenElement()) {
             leaveFullscreen();
         }
+        // Give focus back to the thumbnail that opened the viewer, unless the
+        // page replaced it meanwhile.
+        var back = opener;
+        opener = null;
+        if (back && back.isConnected && typeof back.focus === 'function') {
+            try { back.focus({ preventScroll: true }); } catch (_) { back.focus(); }
+        }
+    }
+
+    // ── Focus containment ───────────────────────────────────────────────────
+    function focusInto(el) {
+        if (!el) el = focusables()[0];
+        if (!el) return;
+        try { el.focus({ preventScroll: true }); } catch (_) { el.focus(); }
+    }
+
+    // Enabled, rendered buttons inside the overlay, in document order.
+    function focusables() {
+        var nodes = overlay.querySelectorAll('button:not([disabled])');
+        return Array.prototype.filter.call(nodes, function (n) {
+            return n.getClientRects().length > 0;
+        });
+    }
+
+    // Tab and Shift+Tab wrap inside the overlay instead of walking the page
+    // hidden behind it.
+    function trapTab(e) {
+        var list = focusables();
+        e.preventDefault();
+        if (!list.length) return;
+        var at = list.indexOf(document.activeElement);
+        var next;
+        if (e.shiftKey) {
+            next = at <= 0 ? list[list.length - 1] : list[at - 1];
+        } else {
+            next = (at === -1 || at === list.length - 1) ? list[0] : list[at + 1];
+        }
+        focusInto(next);
+    }
+
+    // Focus that reaches the page behind (a script, assistive technology)
+    // is brought back into the overlay.
+    function onFocusin(e) {
+        if (overlay && !overlay.contains(e.target)) focusInto(null);
     }
 
     function onKeydown(e) {
         if (e.defaultPrevented) return;
         switch (e.key) {
             case 'Escape':     e.preventDefault(); close(); break;
-            case 'ArrowLeft':  e.preventDefault(); navigate(-1); break;
-            case 'ArrowRight': e.preventDefault(); navigate(+1); break;
+            case 'Tab':        trapTab(e); break;
+            case 'ArrowLeft':
+            case 'ArrowRight':
+            case 'ArrowUp':
+            case 'ArrowDown':  onArrowKey(e); break;
             case '+':
             case '=':          e.preventDefault(); zoomBy(+1); break;
             case '-':
@@ -501,6 +597,22 @@
             case '1':          e.preventDefault(); resetTransform(true); break;
             case 'f':
             case 'F':          e.preventDefault(); toggleFullscreen(); break;
+        }
+    }
+
+    // A zoomed picture pans with the arrow keys (the key shows that side of
+    // the picture); at the fitted size Left/Right change the picture.
+    function onArrowKey(e) {
+        var horizontal = e.key === 'ArrowLeft' || e.key === 'ArrowRight';
+        var back = e.key === 'ArrowLeft' || e.key === 'ArrowUp';
+        if (isZoomed()) {
+            e.preventDefault();
+            var share = e.shiftKey ? KEY_PAN_STEP_BIG : KEY_PAN_STEP;
+            var step = (horizontal ? stageRect.w : stageRect.h) * share * (back ? 1 : -1);
+            panBy(horizontal ? step : 0, horizontal ? 0 : step);
+        } else if (horizontal) {
+            e.preventDefault();
+            navigate(back ? -1 : +1);
         }
     }
 

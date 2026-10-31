@@ -127,6 +127,11 @@ function get_shipping_address_and_arrival($properties) {
         $form->assign_field_value('address_1', $row['address_1']);
         $form->assign_field_value('address_2', $row['address_2']);
         $form->assign_field_value('city', $row['city']);
+
+        // The district is kept on the recipient only: the address book has none.
+        if (pg_ship_to_district_ready()) {
+            $form->assign_field_value('district', (string) db_value("SELECT district FROM ship_tos WHERE id = '" . (int) $_GET['ship_to_id'] . "'"));
+        }
         $form->assign_field_value('state', $row['state']);
         $form->assign_field_value('zip_code', $row['zip_code']);
         $form->assign_field_value('country', $row['country']);
@@ -378,6 +383,19 @@ function get_shipping_address_and_arrival($properties) {
                 </div>';
         }
         
+        // The optional district, shown by its script while the country is
+        // Turkey or the recipient's carrier asks for it.
+        $output_district_row = '';
+
+        if (pg_ship_to_district_ready()) {
+            $district_asks = pg_ship_to_district_method_asks((int) db_value("SELECT shipping_method_id FROM ship_tos WHERE id = '" . (int) $_GET['ship_to_id'] . "'"));
+            $output_district_row =
+                '<tr data-pg-district-wrap>
+                    <td><label for="district">' . h(lang('District')) . '</label></td>
+                    <td><input type="text" id="district" name="district" size="40" maxlength="50" class="software_input_text" value="' . h((string) $form->get_field_value('district')) . '" data-pg-district="country" data-pg-district-codes="' . h(implode(',', pg_ship_to_district_tr_codes())) . '"' . ($district_asks ? ' data-pg-district-asks="1"' : '') . '>' . pg_ship_to_district_script() . '</td>
+                </tr>';
+        }
+
         $output_shipping_address_fields =
             '<table>
                 <tr>
@@ -408,6 +426,7 @@ function get_shipping_address_and_arrival($properties) {
                     <td>City*</td>
                     <td>' . $form->output_field(array('type'=>'text', 'id'=>'city', 'name'=>'city', 'size'=>'40', 'maxlength'=>'50', 'class'=>'software_input_text', 'required' => 'true')) . '</td>
                 </tr>
+                ' . $output_district_row . '
                 <tr>
                     <td>Country*</td>
                     <td>' . $form->output_field(array('type'=>'select', 'id'=>'country', 'name'=>'country', 'options'=>$country_options, 'class'=>'software_select', 'required' => 'true')) . '</td>
@@ -691,7 +710,7 @@ function get_shipping_address_and_arrival($properties) {
             // if this arrival date displays a custom arrival date field, prepare field
             if ($row['custom']) {
                 $custom_field =
-                    $form->output_field(array('type'=>'text', 'id'=>'custom_arrival_date_' . $row['id'], 'name'=>'custom_arrival_date_' . $row['id'], 'size'=>'10', 'class'=>'software_input_text')) . '
+                    $form->output_field(array('type'=>'text', 'id'=>'custom_arrival_date_' . $row['id'], 'name'=>'custom_arrival_date_' . $row['id'], 'size'=>'10', 'class'=>'software_input_text', 'data-pg-date' => '')) . '
                     <script>
                         software.init_custom_arrival_date({
                             radio_field_id: "arrival_date_' . $row['id'] . '",
@@ -734,8 +753,7 @@ function get_shipping_address_and_arrival($properties) {
         }
 
         $output =
-            get_date_picker_format() . '
-            ' . $form->output_errors() . '
+            $form->output_errors() . '
             <form action="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/shipping_address_and_arrival.php" method="post">
                 ' . get_token_field() . '
                 <input type="hidden" name="page_id" value="' . $page_id . '" />
@@ -810,6 +828,13 @@ function get_shipping_address_and_arrival($properties) {
         $edit = false;
         $edit_start = '';
         $edit_end = '';
+        $wysiwyg_fields = array();
+
+        // The date, date and time, and time boxes of the layout, by id, for
+        // the date-and-time control (pg_site_datetime_bind()).
+        $date_fields = array();
+        $date_and_time_fields = array();
+        $time_fields = array();
 
         if ($form_enabled) {
             $custom_shipping_form = true;
@@ -835,10 +860,6 @@ function get_shipping_address_and_arrival($properties) {
                 WHERE page_id = '" . e($page_id) . "'
                 ORDER BY sort_order",
                 'id');
-
-            $wysiwyg_fields = array();
-            $date_fields = array();
-            $date_and_time_fields = array();
 
             foreach ($fields as $field) {
                 $html_name = 'field_' . $field['id'];
@@ -922,6 +943,11 @@ function get_shipping_address_and_arrival($properties) {
 
                     case 'date and time':
                         $date_and_time_fields[] = $html_name;
+
+                        break;
+
+                    case 'time':
+                        $time_fields[] = $html_name;
 
                         break;
 
@@ -1077,56 +1103,26 @@ function get_shipping_address_and_arrival($properties) {
             $system .= get_wysiwyg_editor_code($wysiwyg_fields);
         }
 
-        // If there is a date or date and time field, then prepare system content,
-        // for the date/time picker.
-        if (
-            (
-                $form_enabled
-                && ($date_fields || $date_and_time_fields)
-            )
-            || $custom_arrival_dates
-        ) {
-            $system .= get_date_picker_format();
+        foreach ($custom_arrival_dates as $custom_arrival_date) {
+            $date_fields[] = 'custom_arrival_date_' . $custom_arrival_date;
 
-            if ($form_enabled) {
-
-                foreach ($date_fields as $date_field) {
-                    $system .=
-                        '<script>
-                            software_$("#' . escape_javascript($date_field) . '").datepicker({
-                                dateFormat: date_picker_format
-                            });
-                        </script>';
-                }
-
-                // If there is a date and time field, then prepare JS for those.
-                if ($date_and_time_fields) {
-                    // Include JS file for timepicker.
-                    $system .=
-                        '<script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Jquery/jquery-ui-timepicker-addon-1.2.1.min.js"></script>';
-
-                    foreach ($date_and_time_fields as $date_and_time_field) {
-                        $system .=
-                            '<script>
-                                software_$("#' . escape_javascript($date_and_time_field) . '").datetimepicker({
-                                    dateFormat: date_picker_format,
-                                    timeFormat: "' . pg_picker_time_format() . '"
-                                });
-                            </script>';
-                    }
-                }
-
-            }
-
-            foreach ($custom_arrival_dates as $custom_arrival_date) {
-                $system .=
-                    '<script>
-                        software.init_custom_arrival_date({
-                            radio_field_id: "arrival_date_' . $custom_arrival_date . '",
-                            date_field_id: "custom_arrival_date_' . $custom_arrival_date . '"})
-                    </script>';
-            }
+            $system .=
+                '<script>
+                    software.init_custom_arrival_date({
+                        radio_field_id: "arrival_date_' . $custom_arrival_date . '",
+                        date_field_id: "custom_arrival_date_' . $custom_arrival_date . '"})
+                </script>';
         }
+
+        // Date, date and time, and time boxes are drawn by the date-and-time
+        // control, found by their ids: a custom layout's markup carries no
+        // hook. The marker brings the control's scripts
+        // (pg_site_datetime_inject()).
+        $system .= pg_site_datetime_bind(array(
+            'date' => $date_fields,
+            'datetime' => $date_and_time_fields,
+            'time' => $time_fields,
+        ));
 
         $output = render_layout(array(
             'page_id' => $page_id,

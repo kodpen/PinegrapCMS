@@ -196,6 +196,11 @@ function api_http_post($url, $body, $headers = array(), $timeout = 10) {
 //             received, not a wait until the server closes or the timeout.
 //             curl reports the stop as error 23 (a write refused), which is
 //             not passed on. Without it the body is read as before.
+//   write     a callable given each piece of the body as curl hands it over,
+//             for a download kept out of memory (the cloud file picker
+//             streams to a file). false ends the transfer as a failure
+//             (curl's error 23); the answer's body is then empty, the
+//             caller holds what was written.
 //
 // Options for a caller that reads public pages rather than sending anything
 // (the design importer), all off by default:
@@ -338,7 +343,26 @@ function api_http_request($method, $url, $options = array()) {
 
 	}
 
+	$write = (($complete === null) && isset($options['write']) && is_callable($options['write'])) ? $options['write'] : null;
+
+	if ($write !== null) {
+
+		curl_setopt($handle, CURLOPT_WRITEFUNCTION, function ($curl, $chunk) use ($write) {
+
+			return call_user_func($write, (string)$chunk) ? strlen($chunk) : 0;
+
+		});
+
+	}
+
 	$response = curl_exec($handle);
+
+	// With a write callable curl_exec() answers true, not the body.
+	if (($write !== null) && ($response === true)) {
+
+		$response = '';
+
+	}
 
 	// A server that refuses HEAD is asked the same with GET; the headers
 	// start over at the new status line.

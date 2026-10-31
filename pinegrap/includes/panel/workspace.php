@@ -26,10 +26,7 @@ function pg_panel_ws($request, $action)
     // Session + CSRF token here; who may read, post, assign and plan is
     // decided in includes/workspace/actions.php.
     if (!USER_LOGGED_IN) {
-        respond(array(
-            'status' => 'error',
-            'message' => 'Invalid login.'
-        ));
+        respond(panel_login_refusal());
     }
 
     validate_token();

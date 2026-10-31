@@ -140,7 +140,7 @@ function pg_tax_zone_form_save_links($tax_zone_id, $post)
  * The form's three cards, from the opening row to its closing tag; the
  * screens print the form tag, the buttons and the edit screen's id around it.
  *
- * @param array|null $values          'name', 'tax_rate' (plain text); null on
+ * @param array|null $values          'name', 'tax_rate' (as stored); null on
  *                                    create, where the name shows a placeholder
  * @param string     $country_options pg_tax_zone_form_choices()['countries']
  * @param string     $state_options   pg_tax_zone_form_choices()['states']
@@ -153,7 +153,8 @@ function pg_tax_zone_form_cards($values, $country_options, $state_options)
         $tax_rate_attribute = '';
     } else {
         $name_attribute = 'value="' . h($values['name']) . '"';
-        $tax_rate_attribute = ' value="' . h($values['tax_rate']) . '"';
+        // 8.250 as stored reads as 8.25; zero stays 0, not an empty box.
+        $tax_rate_attribute = ' value="' . h(format_tax_rate($values['tax_rate'])) . '"';
     }
 
     return '
@@ -171,7 +172,7 @@ function pg_tax_zone_form_cards($values, $country_options, $state_options)
                                             </div>
                                             <div class="col-12 md:col-6 lg:col-4 my-3">
                                                 <label for="tax_rate" class="form-label">' . lang('Tax Rate') . ' (%)</label>
-                                                <input type="text" name="tax_rate" id="tax_rate" maxlength="10"' . $tax_rate_attribute . ' class="form-control" />
+                                                <input type="number" min="0" max="100" step="0.001" name="tax_rate" id="tax_rate" required' . $tax_rate_attribute . ' class="form-control" />
                                             </div>
                                         </div>
                                     </div>

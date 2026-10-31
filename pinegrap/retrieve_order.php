@@ -44,24 +44,24 @@ function retrieve_order($request) {
     $reference_code = retrieve_order_reference_code();
 
     if ($reference_code == '') {
-        $message = 'The ' . $order_label . ' could not be retrieved, because there is no reference code in the URL.';
-        log_activity($message);
-        return error_response($message);
+        $message = array('string' => 'The {var:1} could not be retrieved, because there is no reference code in the URL.', 'vars' => array($order_label));
+        log_activity(pg_log_lang($message));
+        return error_response(lang($message));
     }
 
     $order = db_item("
         SELECT id, status FROM orders WHERE reference_code = '" . e($reference_code) . "'");
 
     if (!$order) {
-        $message = 'The ' . $order_label . ' could not be retrieved, because it could not be found (' . $reference_code . ').';
-        log_activity($message);
-        return error_response($message);
+        $message = array('string' => 'The {var:1} could not be retrieved, because it could not be found ({var:2}).', 'vars' => array($order_label, $reference_code));
+        log_activity(pg_log_lang($message));
+        return error_response(lang($message));
     }
 
     if ($order['status'] != 'incomplete') {
-        $message = 'The ' . $order_label . ' could not be retrieved, because it has already been completed (' . $reference_code . ').';
-        log_activity($message);
-        return error_response($message);
+        $message = array('string' => 'The {var:1} could not be retrieved, because it has already been completed ({var:2}).', 'vars' => array($order_label, $reference_code));
+        log_activity(pg_log_lang($message));
+        return error_response(lang($message));
     }
 
     // If the order is already active for the customer, then return success.  It is important that
@@ -140,6 +140,6 @@ function retrieve_order($request) {
                 AND (order_retrieved = '0')");
     }
 
-    log_activity('The ' . $order_label . ' was retrieved (' . $reference_code . ').');
+    log_activity(pg_log_lang(array('string' => 'The {var:1} was retrieved ({var:2}).', 'vars' => array($order_label, $reference_code))));
     return success_response('The ' . $order_label . ' was retrieved.');
 } 

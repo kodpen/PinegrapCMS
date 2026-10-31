@@ -74,11 +74,11 @@ if (!$is_gateway_return) {
     // The billing, payment and quick add fields post one value each, and so do each
     // recipient's address, arrival date and shipping method; the custom forms' fields are
     // checked by submit_custom_form(), the totals by submit_order().
-    pg_liveform_single_values($liveform, array('billing_salutation', 'billing_first_name', 'billing_last_name', 'billing_company', 'billing_address_1', 'billing_address_2', 'billing_city', 'billing_state', 'billing_zip_code', 'billing_country', 'billing_phone_number', 'billing_fax_number', 'billing_email_address', 'billing_same_as_shipping', 'custom_field_1', 'custom_field_2', 'opt_in', 'opt_in_displayed', 'tax_exempt', 'tax_number', 'tax_office', 'po_number', 'referral_source', 'update_contact', 'offline_payment_allowed', 'special_offer_code', 'gift_card_code', 'payment_method', 'card_number', 'cardholder', 'expiration', 'expiration_month', 'expiration_year', 'card_verification_number', 'installment', 'notes', 'terms', 'legal_preinfo', 'legal_contract', 'legal_kvkk', 'quick_add_product_id', 'quick_add_quantity', 'quick_add_amount', 'quick_add_ship_to', 'quick_add_add_name'));
+    pg_liveform_single_values($liveform, array('billing_salutation', 'billing_first_name', 'billing_last_name', 'billing_company', 'billing_address_1', 'billing_address_2', 'billing_city', 'billing_state', 'billing_zip_code', 'billing_country', 'billing_phone_number', 'billing_fax_number', 'billing_email_address', 'billing_same_as_shipping', 'custom_field_1', 'custom_field_2', 'opt_in', 'opt_in_displayed', 'opt_in_sms', 'opt_in_sms_shown', 'tax_exempt', 'tax_number', 'tax_office', 'po_number', 'referral_source', 'update_contact', 'offline_payment_allowed', 'special_offer_code', 'gift_card_code', 'payment_method', 'card_number', 'cardholder', 'expiration', 'expiration_month', 'expiration_year', 'card_verification_number', 'installment', 'notes', 'terms', 'legal_preinfo', 'legal_contract', 'legal_kvkk', 'quick_add_product_id', 'quick_add_quantity', 'quick_add_amount', 'quick_add_ship_to', 'quick_add_add_name'));
 
     foreach (db_values("SELECT id FROM ship_tos WHERE order_id = '" . e($_SESSION['ecommerce']['order_id'] ?? '') . "'") as $pg_ship_to_id) {
         $pg_prefix = 'shipping_' . $pg_ship_to_id . '_';
-        pg_liveform_single_values($liveform, array($pg_prefix . 'salutation', $pg_prefix . 'first_name', $pg_prefix . 'last_name', $pg_prefix . 'company', $pg_prefix . 'address_1', $pg_prefix . 'address_2', $pg_prefix . 'city', $pg_prefix . 'state', $pg_prefix . 'zip_code', $pg_prefix . 'country', $pg_prefix . 'address_type', $pg_prefix . 'phone_number', $pg_prefix . 'arrival_date', $pg_prefix . 'method'));
+        pg_liveform_single_values($liveform, array($pg_prefix . 'salutation', $pg_prefix . 'first_name', $pg_prefix . 'last_name', $pg_prefix . 'company', $pg_prefix . 'address_1', $pg_prefix . 'address_2', $pg_prefix . 'city', $pg_prefix . 'district', $pg_prefix . 'state', $pg_prefix . 'zip_code', $pg_prefix . 'country', $pg_prefix . 'address_type', $pg_prefix . 'phone_number', $pg_prefix . 'arrival_date', $pg_prefix . 'method'));
         pg_liveform_single_values($liveform, array($pg_prefix . 'custom_arrival_date_' . $liveform->get_field_value($pg_prefix . 'arrival_date')));
     }
 
@@ -1055,7 +1055,8 @@ if ($order_submitted == false) {
             // The box's answer goes to the consent log as the contact now
             // holds it, here where the contact takes it: the order may never
             // be submitted, and the contact keeps the answer then too.
-            pg_consent_log_checkout($liveform->get_field_value('billing_email_address'), $user_id, $contact_id, $liveform->get_field_value('opt_in_displayed'), $ghost, $opt_in);
+            pg_consent_log_checkout($liveform->get_field_value('billing_email_address'), $user_id, $contact_id, $liveform->get_field_value('opt_in_displayed'), $ghost, $opt_in,
+                pg_consent_checkout_sms_answers($liveform->get_field_value('opt_in_sms_shown'), $ghost, $liveform->get_field_value('billing_phone_number'), $liveform->get_field_value('opt_in_sms')));
         } elseif ($liveform->field_in_session('tax_number')) {
             // The card is not updated from the billing block, but a card with no
             // tax number still takes the one typed here: the order keeps none of
@@ -1842,7 +1843,9 @@ if (ECOMMERCE_SHIPPING) {
 
                 // Log activity because it is important for an admin to know if there are shipping
                 // method issues preventing orders from being completed.
-                log_activity($response['message'] . ' (Order ID: ' . $order_id . ', Reference Code: ' . db("SELECT reference_code FROM orders WHERE id = '"  . e($order_id) . "'") . ', Ship to Name: ' . $recipient['ship_to_name'] . ') Request: ' . print_r($request, true));
+                log_activity(pg_log_lang(array(
+                    'string' => '{var:1} (Order ID: {var:2}, Reference Code: {var:3}, Ship to Name: {var:4}) Request: {var:5}',
+                    'vars'   => array($response['message'], $order_id, db("SELECT reference_code FROM orders WHERE id = '" . e($order_id) . "'"), $recipient['ship_to_name'], print_r($request, true)))));
             }
         }
 
@@ -1876,7 +1879,8 @@ if (ECOMMERCE_SHIPPING) {
                 shipping_method_id = '" . e($shipping_method['id'] ?? '') . "',
                 shipping_method_code = '" . e($shipping_method['code'] ?? '') . "',
                 zone_id = '" . e($zone['id'] ?? '') . "',
-                complete = '$complete'
+                complete = '$complete'"
+                . pg_ship_to_district_address_sql($liveform->get($prefix . 'district'), $liveform->get($prefix . 'country'), $shipping_method['id'] ?? 0) . "
             WHERE id = '" . e($recipient['id']) . "'");
 
         // If the recipient is complete, then update shipping cost for recipient

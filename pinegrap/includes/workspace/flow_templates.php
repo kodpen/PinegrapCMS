@@ -44,7 +44,8 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 }
 
 /**
- * The groups the gallery shows templates in.
+ * The groups the gallery shows templates in; saved holds the templates
+ * saved on the site (flow_templates_saved.php), whatever their own group.
  *
  * @return array key => label
  */
@@ -54,18 +55,20 @@ function ws_flow_template_categories()
         'team'  => lang('Team'),
         'site'  => lang('Site'),
         'sales' => lang('Sales'),
+        'saved' => lang('Saved on this site'),
     );
 }
 
 /**
  * The kinds of value a template asks for: a channel id, people (a list of
- * ids), a time of day (HH:MM), a web address, e-mail addresses.
+ * ids), a time of day (HH:MM), a web address, e-mail addresses, the id of a
+ * workflow table (a saved template's row boxes).
  *
  * @return string[]
  */
 function ws_flow_template_setting_types()
 {
-    return array('channel', 'person', 'time', 'url', 'address');
+    return array('channel', 'person', 'time', 'url', 'address', 'table');
 }
 
 /**
@@ -518,11 +521,11 @@ function ws_flow_template_threads($graph)
             }
 
             foreach ($texts as $text) {
-                if (!is_string($text) || !preg_match_all('/\{\{node\.([a-z][a-z0-9_]*)\.[a-z_][a-z0-9_]*\}\}/', $text, $matches)) {
+                if (!is_string($text) || !preg_match_all(WS_STEP_VALUE_PATTERN, $text, $matches)) {
                     continue;
                 }
 
-                foreach ($matches[1] as $from) {
+                foreach (array_filter($matches[1], 'strlen') as $from) {
                     $thread = array('from' => $from, 'to' => $node['id'], 'key' => (string) $key);
 
                     if (in_array($from, $ids, true) && !in_array($thread, $out, true)) {
@@ -588,7 +591,7 @@ function ws_flow_template_motion($graph)
  * The setup panel's answers checked, one for each setting of the template,
  * and given back as the boxes keep them: a channel id, people ids (at most
  * 20, each once), a time HH:MM, a web address, e-mail addresses joined by
- * ", ". Answers to settings the template does not have are dropped. Pure
+ * ", ", a table id (its reach is checked by ws_flow_template_setup()). Answers to settings the template does not have are dropped. Pure
  * but for the address check (validate_email_address()).
  *
  * @param array $template ws_flow_templates() entry
@@ -651,6 +654,11 @@ function ws_flow_template_answers_check($template, $answers)
                 $error = $addresses['error'];
                 break;
 
+            case 'table':
+                $value = is_scalar($given) ? (int) $given : 0;
+                $error = ($value > 0) ? '' : lang('Choose a table');
+                break;
+
             default:
                 continue 2;
         }
@@ -669,7 +677,10 @@ function ws_flow_template_answers_check($template, $answers)
  * A flow's graph with the setup panel's values written into the box
  * settings the template names. Only a box that is still the template's (the
  * same id and kind) is written; anything changed meanwhile on the canvas
- * stays as it is. Pure.
+ * stays as it is. A row box given another table loses what named the old
+ * table's columns and rows, as the canvas form clears them: the column a
+ * row start waits on, the cells, a row change's row given by its number
+ * (a row read from a box before stays). Pure.
  *
  * @param array $template ws_flow_templates() entry
  * @param array $graph    the flow's draft (ws_flow_graph_normalize())
@@ -687,9 +698,15 @@ function ws_flow_template_apply($template, $graph, $values)
 
         foreach ($setting['targets'] as $target) {
             foreach ($graph['nodes'] as $n => $node) {
-                if (($node['id'] === $target[0]) && (($kinds[$node['id']] ?? '') === $node['kind'])) {
-                    $graph['nodes'][$n]['config'][$target[1]] = $values[$setting['type']];
+                if (($node['id'] !== $target[0]) || (($kinds[$node['id']] ?? '') !== $node['kind'])) {
+                    continue;
                 }
+
+                if (($target[1] === 'table_id') && ((int) ($node['config']['table_id'] ?? 0) !== (int) $values[$setting['type']])) {
+                    $graph['nodes'][$n]['config'] = ws_flow_template_table_cleared($node['kind'], $graph['nodes'][$n]['config']);
+                }
+
+                $graph['nodes'][$n]['config'][$target[1]] = $values[$setting['type']];
             }
         }
     }
@@ -698,8 +715,83 @@ function ws_flow_template_apply($template, $graph, $values)
 }
 
 /**
+ * A row box's settings without those that belong to its table: the column
+ * a row start waits on, the cells a box writes (column ids), a row change's
+ * row given by its number. Pure.
+ *
+ * @param string $kind   row | row_add | row_set
+ * @param array  $config the box's settings
+ * @return array
+ */
+function ws_flow_template_table_cleared($kind, $config)
+{
+    if ($kind === 'row') {
+        $config['column_id'] = 0;
+    }
+
+    if (in_array($kind, array('row_add', 'row_set'), true)) {
+        $config['cells'] = '';
+    }
+
+    if (($kind === 'row_set') && preg_match('/^\s*\d+\s*$/', (string) ($config['row'] ?? ''))) {
+        $config['row'] = '';
+    }
+
+    return $config;
+}
+
+/**
+ * How far the person must reach the table a template asks: change (edit)
+ * once one of its boxes adds or changes rows (ws_step_row_check()), read
+ * (view) for a row start alone (ws_flow_row_check()); '' when it asks no
+ * table. Pure.
+ *
+ * @param array $template ws_flow_templates() entry
+ * @return string '' | view | edit
+ */
+function ws_flow_template_table_need($template)
+{
+    $kinds = array_column((array) ($template['graph']['nodes'] ?? array()), 'kind', 'id');
+    $need = '';
+
+    foreach ((array) ($template['settings'] ?? array()) as $setting) {
+        if ((string) $setting['type'] !== 'table') {
+            continue;
+        }
+
+        foreach ($setting['targets'] as $target) {
+            $kind = $kinds[$target[0]] ?? '';
+            $need = in_array($kind, array('row_add', 'row_set'), true) ? 'edit' : (($need === '') ? 'view' : $need);
+        }
+    }
+
+    return $need;
+}
+
+/**
+ * Why the person may not give the template this table, '' when they may:
+ * their reach of it (ws_wtable_access()) is below what its boxes need. Pure.
+ *
+ * @param array  $template ws_flow_templates() entry
+ * @param string $access   owner | edit | view | ''
+ * @return string
+ */
+function ws_flow_template_table_refusal($template, $access)
+{
+    $need = ws_flow_template_table_need($template);
+    $ranks = array('' => 0, 'view' => 1, 'edit' => 2, 'owner' => 3);
+
+    if (($need === '') || (($ranks[(string) $access] ?? 0) >= $ranks[$need])) {
+        return '';
+    }
+
+    return ($need === 'edit') ? lang('Choose a table you may change.') : lang('Choose a table you may read.');
+}
+
+/**
  * The templates offered to the person, filled for them as the gallery fills
- * them: their texts go to them, no channel open.
+ * them: their texts go to them, no channel open; then the ones saved on the
+ * site (ws_flow_templates_saved()), so Use of either passes the same checks.
  *
  * @param array      $viewer
  * @param array|null $scheduled ws_scheduled_js_config() of the person, when at hand
@@ -715,7 +807,7 @@ function ws_flow_templates_for($viewer, $scheduled = null)
         return array();
     }
 
-    return ws_flow_templates(array(
+    $templates = ws_flow_templates(array(
         'me'       => (int) $viewer['id'],
         'channel'  => 0,
         'site'     => (string) $scheduled['site'],
@@ -726,6 +818,8 @@ function ws_flow_templates_for($viewer, $scheduled = null)
         'join'     => !empty($scheduled['join']),
         'events'   => array_keys((array) ($scheduled['events']['list'] ?? array())),
     ));
+
+    return function_exists('ws_flow_templates_saved') ? array_merge($templates, ws_flow_templates_saved($viewer)) : $templates;
 }
 
 /**
@@ -761,6 +855,17 @@ function ws_flow_template_setup($viewer, $flow, $data)
 
     if (!$check['ok']) {
         return ws_flow_refusal($check['error'], 422, $check['field']) + $none;
+    }
+
+    // A table the person does not reach as far as its boxes need is refused
+    // whatever the picker offered.
+    if (isset($check['values']['table'])) {
+        $table = function_exists('ws_wtable') ? ws_wtable($check['values']['table']) : null;
+        $refused = ws_flow_template_table_refusal($template, $table ? ws_wtable_access($viewer, $table) : '');
+
+        if ($refused !== '') {
+            return ws_flow_refusal($refused, 403, 'table') + $none;
+        }
     }
 
     $graph = ws_flow_template_apply($template, ws_flow_graph_of($flow), $check['values']);

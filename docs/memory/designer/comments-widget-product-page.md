@@ -10,7 +10,6 @@ module: comments
 
 ## What did it show before, and why change it?
 - Before 2c1 such a page's comments were the page's own thread: no purchase check, no verified badge, no rating, every product sharing one list. Under 28/B only verified purchases may review a product, and the plan's `__reviews` list is the comments widget ([[comments-widget-item-threads]]).
-- Comments already stored there under the page's own thread no longer show on it; they stay in Comment Moderation.
 
 ## Who reads the type through it?
 - `pg_comment_thread_verify()` (so `add_comment.php`), when the page shows no record: a post takes only the product or group the page could show, the review gate then applies by item type.
@@ -25,8 +24,9 @@ module: comments
 - `aggregateRating` in `_pg_build_product_jsonld()` only when `pg_comment_product_view_rating_shown()` (pure `pg_comment_rating_markup_decision()`): comments and stars on, a comments widget on the page, the address thread is this product's (a select group's thread counts in no rating).
 
 ## What is left as it was?
-- The classic `comments_block` region on a designed page still reads the page's own thread.
-- The address is read as `get_catalog_item_from_url()` reads it (groups first, any display type); the catalog_item_view widget shows only a select group, so a browsing group's address shows its group thread under "not found".
+- The classic comments block there now reads the product's thread too, and its Reviews frame is left out when it draws nothing ([[comments-block-product-page]]).
+- `aggregateRating` stays widget-only.
+- The address is read as `get_catalog_item_from_url()` reads it (groups first): a browsing group's address shows its group thread under the widget's "not found".
 
 ## Where is it tested?
 - `tests/comments_product_view_test.php`: the type table, the address item with `product_view`, the readers, the rating decision, the templates; the canvas in `comments_widget_designer_test.php` (item threads).

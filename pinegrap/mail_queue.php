@@ -90,7 +90,7 @@ if ($_POST) {
                     AND (status IN ('queued', 'failed'))");
 
             if (mysqli_affected_rows(db::$con) > 0) {
-                $liveform->add_notice(lang('The message will be sent on the next run of the general job.'));
+                $liveform->add_notice(lang('The message will be sent on the next run of the general job or mail_job.php.'));
             }
 
         } else {
@@ -242,9 +242,9 @@ if ($mail_queue_tab === 'sms') {
                             <td class="align-middle"><span class="badge ' . $sms_queue_status[1] . '">' . h($sms_queue_status[0]) . '</span></td>
                             <td class="align-middle">' . h(isset($sms_queue_kind_labels[$sms_queue_row['kind']]) ? $sms_queue_kind_labels[$sms_queue_row['kind']] : $sms_queue_row['kind']) . '</td>
                             <td class="align-middle text-nowrap">+' . h($sms_queue_row['recipient']) . '</td>
-                            <td class="align-middle" title="' . h($sms_queue_row['body']) . '">' . h(truncate($sms_queue_row['body'], 80)) . (($sms_queue_reference !== '') ? '<div class="small fg-secondary">' . h($sms_queue_reference) . '</div>' : '') . '</td>
+                            <td class="align-middle text-wrap text-break" style="max-width: 28rem;">' . h($sms_queue_row['body']) . (($sms_queue_reference !== '') ? '<div class="small fg-secondary">' . h($sms_queue_reference) . '</div>' : '') . '</td>
                             <td class="align-middle">' . (int) $sms_queue_row['attempts'] . '</td>
-                            <td class="align-middle small fg-danger" title="' . h($sms_queue_error) . '">' . h(truncate($sms_queue_error, 80)) . '</td>
+                            <td class="align-middle small fg-danger text-wrap text-break" style="max-width: 28rem;">' . h($sms_queue_error) . '</td>
                             <td class="align-middle small text-nowrap">' . h($sms_queue_provider) . '</td>
                             <td class="align-middle text-nowrap">' . prepare_form_data_for_output(date('Y-m-d H:i:s', (int) $sms_queue_row['created_at']), 'date and time') . '</td>
                             <td class="align-middle text-nowrap">' . $sms_queue_when . '</td>
@@ -308,7 +308,10 @@ if ($mail_queue_tab === 'sms') {
 
     $mail_queue_runs = pg_cron_last_runs();
 
-    $mail_queue_job_run = (is_array($mail_queue_runs) && isset($mail_queue_runs['job'])) ? (int) $mail_queue_runs['job'] : 0;
+    // Both the general job and mail_job.php record 'mail_job' after working
+    // the queue, so this row is the queue's last run whichever one is
+    // scheduled.
+    $mail_queue_job_run = (is_array($mail_queue_runs) && isset($mail_queue_runs['mail_job'])) ? (int) $mail_queue_runs['mail_job'] : 0;
 
     $mail_queue_status_labels = array(
         'queued'  => array(lang('Queued'), 'theme-secondary'),
@@ -344,14 +347,32 @@ if ($mail_queue_tab === 'sms') {
     }
 
     if (pg_mail_job_alive()) {
-        $mail_queue_state = '<span class="badge theme-success">' . lang('Queue active') . '</span> <span class="small fg-secondary">' . lang('E-mail is handed to the general job.') . '</span>';
+        $mail_queue_state = '<span class="badge theme-success">' . lang('Queue active') . '</span> <span class="small fg-secondary">' . lang('E-mail is handed to the scheduled job (the general job or mail_job.php).') . '</span>';
     } else {
-        $mail_queue_state = '<span class="badge theme-secondary">' . lang('Queue inactive') . '</span> <span class="small fg-secondary">' . lang('The general job has not run in the last 15 minutes, so e-mail is sent immediately.') . '</span>';
+        $mail_queue_state = '<span class="badge theme-secondary">' . lang('Queue inactive') . '</span> <span class="small fg-secondary">' . lang('Neither the general job nor mail_job.php has run in the last 15 minutes, so e-mail is sent immediately.') . '</span>';
     }
 
     $mail_queue_job_text = ($mail_queue_job_run > 0)
         ? prepare_form_data_for_output(date('Y-m-d H:i:s', $mail_queue_job_run), 'date and time')
         : lang('Never');
+
+    // The newest message the queue tried: while it failed because PHP mail()
+    // cannot send, nothing goes out until an SMTP server is set up.
+    $mail_queue_transport_warning = '';
+
+    if (pg_mail_transport_warning_shown(db_item(
+        "SELECT status, last_error
+        FROM mail_outbox
+        WHERE (status = 'sent') OR (attempts > 0)
+        ORDER BY id DESC
+        LIMIT 1"))) {
+        $mail_queue_transport_warning = '
+            <div class="alert theme-warning d-flex flex-wrap align-items-center gap-3 mt-5" role="alert">
+                <i class="bi bi-exclamation-triangle" aria-hidden="true"></i>
+                <span>' . h(pg_mail_transport_failure_sentence()) . '</span>
+                <a class="btn btn-sm btn-solid theme-warning ms-auto" href="' . h(PATH . SOFTWARE_DIRECTORY . '/smtp_settings.php') . '">' . h(lang('Open SMTP Settings')) . '</a>
+            </div>';
+    }
 
     $mail_queue_rows = '';
 
@@ -402,7 +423,7 @@ if ($mail_queue_tab === 'sms') {
                             <td class="align-middle">' . h($mail_queue_row['recipient']) . '</td>
                             <td class="align-middle">' . h($mail_queue_row['subject']) . '</td>
                             <td class="align-middle">' . (int) $mail_queue_row['attempts'] . '</td>
-                            <td class="align-middle small fg-danger" title="' . h($mail_queue_error) . '">' . h(truncate($mail_queue_error, 80)) . '</td>
+                            <td class="align-middle small fg-danger text-wrap text-break" style="max-width: 28rem;">' . h($mail_queue_error) . '</td>
                             <td class="align-middle text-nowrap">' . prepare_form_data_for_output(date('Y-m-d H:i:s', (int) $mail_queue_row['created_at']), 'date and time') . '</td>
                             <td class="align-middle text-nowrap">' . $mail_queue_when . '</td>
                         </tr>';
@@ -417,11 +438,11 @@ if ($mail_queue_tab === 'sms') {
                 <div class="pg-toolbar-grow"></div>
                 <div class="small">' . $mail_queue_state . '</div>
             </nav>
-
+' . $mail_queue_transport_warning . '
             <div class="row g-5 my-3">' . $mail_queue_stats . '
             </div>
 
-            <p class="small fg-secondary mt-5 mb-0">' . lang('Last run of the general job') . ': ' . $mail_queue_job_text . '</p>
+            <p class="small fg-secondary mt-5 mb-0">' . lang('Last run of the mail queue') . ': ' . $mail_queue_job_text . '</p>
 
             <form action="mail_queue.php" method="post" class="disable_shortcut">
                 ' . get_token_field() . '
@@ -480,7 +501,7 @@ pg_page_shell(array(
         'heading'             => lang('Mail queue'),
         'heading_description' => ($mail_queue_tab === 'sms')
             ? lang('Text messages waiting for the general job, sent in the last week and not sent in the last month.')
-            : lang('E-mail waiting for the general job, sent in the last week and given up on in the last month.'),
+            : lang('E-mail waiting for the general job or mail_job.php, sent in the last week and given up on in the last month.'),
         'cancel'              => true,
     )) . '
 <main id="content" class="container-fluid">

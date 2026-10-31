@@ -17,11 +17,11 @@ description: Plan (decided in #2693, 2026-10-28): one date-and-time control for 
 
 ## In which order, and where are the stops?
 - P1 → P2 → P3, one after the other; then P4-P11 (dependencies in `datetime-picker-steps.md`). **Stop** after P11: the panel is done; the last panel step's PR body names the `[NEW] Added …` changelog line.
-- Then S1 → S2 → S3. **Stop** after S3. Then S4.
+- Then S1 → S2 → S3a → S3b. **Stop** after S3b. Then S4.
 - Never in parallel: P11 and S4 (both `style_designer.js`), P4 and S2 (both `includes/fn/content.php`), P9 and P10 (`workspace.min.js`).
 - Each step about 1,000 product lines; claim as `[plan:datetime-picker] P<n> — <topic>`.
 
 ## Where to start?
-- The panel is done: P1-P11 merged (P7 #2862, P9 #2867, P10 #2881 last). S1 #3113 (site loader, `ui/site-datetime-loader.md`), S2 #3132. Next, after the claim check (`CLAUDE.md`, Claim work): S3 (`datetime-picker-site-steps.md`); F1 is the Flows team's.
+- The panel is done: P1-P11 merged (P7 #2862, P9 #2867, P10 #2881 last). S1 #3113 (site loader, `ui/site-datetime-loader.md`), S2 #3132, S3a #3168. Next, after the claim check (`CLAUDE.md`, Claim work): S3b (`datetime-picker-site-steps.md`) once #3141 has merged; then **stop**: S4 waits. F1 is the Flows team's.
 
 Related: docs/memory/plans/datetime-picker-steps.md, docs/memory/plans/datetime-picker-site-steps.md, docs/memory/ui/pg-datepicker.md, docs/memory/ui/pg-date-stores.md, docs/memory/ui/pg-field-wrappers.md, docs/memory/workflow/decisions-made-panel.md

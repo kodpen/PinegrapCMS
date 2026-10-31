@@ -3,8 +3,9 @@
  *
  * Workspace - the customer card on a channel's Summary tab: who the channel's
  * customer is, the records tied to them, their latest orders, the balance of
- * their current accounts, their open sales quotes and the forms they sent,
- * and "Remind me" for a follow-up on a day.
+ * their current accounts, their open sales and cart quotes, the forms they
+ * sent and the visits that name them, "Remind me" for a follow-up on a day, and "New cart quote" for
+ * the new cart quote screen on the customer's contact.
  *
  * assets/js/workspace.js asks this file for the card and lends it its own
  * helpers (api, t, el, ...), so nothing here talks to the server or shows a
@@ -127,10 +128,26 @@
             shown = true;
         }
 
+        if (sections.cart_quotes) {
+            body.appendChild(sectionTitle(h, h.t('cust_cart_quotes'), 'bi-cart3', sections.cart_quotes.count));
+            sections.cart_quotes.latest.forEach(function (quote) {
+                body.appendChild(line(h, quote.number, quote.url, [quote.lines_text, quote.valid_until_text], ''));
+            });
+            shown = true;
+        }
+
         if (sections.forms) {
             body.appendChild(sectionTitle(h, h.t('cust_forms'), 'bi-ui-checks', 0));
             sections.forms.forEach(function (form) {
                 body.appendChild(line(h, [form.name, form.reference_code].filter(Boolean).join(' '), form.url, [form.status_label, form.date_text], ''));
+            });
+            shown = true;
+        }
+
+        if (sections.visits) {
+            body.appendChild(sectionTitle(h, h.t('cust_visits'), 'bi-geo-alt', 0));
+            sections.visits.forEach(function (visit) {
+                body.appendChild(line(h, visit.title, visit.url, [visit.date_text], ''));
             });
             shown = true;
         }
@@ -149,7 +166,11 @@
         sales_quote: 'bi-file-earmark-text',
         form: 'bi-ui-checks',
         message: 'bi-chat-left-text',
-        task: 'bi-check2-square'
+        task: 'bi-check2-square',
+        note: 'bi-journal-text',
+        wtable_row: 'bi-table',
+        visit: 'bi-geo-alt',
+        cart_quote: 'bi-cart3'
     };
 
     // What happened with the customer, newest first, read only when asked
@@ -329,19 +350,35 @@
         return { button: open, part: part };
     }
 
+    // "New cart quote": the new cart quote screen with the customer's contact
+    // filled in. The address comes with the card, built on the server only
+    // for whoever may make cart quotes and only for a contact they may see;
+    // the quote is made, and its link shown once, on that screen.
+    function cartQuoteLink(h, url) {
+        var link = h.el('a', 'btn btn-sm btn-outline theme-secondary');
+
+        link.href = url;
+        link.appendChild(h.icon('bi-cart-plus', 'me-1'));
+        link.appendChild(document.createTextNode(h.t('cust_cart_quote_new')));
+
+        return link;
+    }
+
     function card(channel, h) {
         var node = h.el('div', 'card ws-customer-card mt-7');
-        var header = h.el('div', 'card-header d-flex justify-content-between align-items-center');
+        var header = h.el('div', 'card-header d-flex flex-wrap justify-content-between align-items-center gap-3');
+        var actions = h.el('div', 'd-flex flex-wrap justify-content-end gap-3');
         var body = h.el('div', 'card-body');
 
         header.appendChild(h.el('span', 'text-uppercase h5 fg-primary fw-bold mb-0', h.t('customer')));
+        header.appendChild(actions);
         node.appendChild(header);
 
         // Only where the reader may write: the follow-up is a task of the channel.
         if (channel.can_post && !channel.archived) {
             var remind = remindPart(h, channel);
 
-            header.appendChild(remind.button);
+            actions.appendChild(remind.button);
             node.appendChild(remind.part);
         }
 
@@ -351,6 +388,10 @@
         h.api('ws_channel_customer', { channel_id: channel.id }).then(function (data) {
             if (data.card) {
                 draw(h, body, data.card, channel.id);
+
+                if (data.card.cart_quote_url) {
+                    actions.insertBefore(cartQuoteLink(h, data.card.cart_quote_url), actions.firstChild);
+                }
             } else {
                 node.remove();
             }

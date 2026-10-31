@@ -313,7 +313,14 @@ function pg_notification_display($notification)
 		'url'         => '#!',
 		'action'      => 'custom',
 		'icon'        => '',
-		'badge'       => ''
+		'badge'       => '',
+		// A workspace row's own: what kind of inbox row it is, its bi- icon,
+		// the call of a meeting about to start and the key that folds the
+		// runs of one flow into a line (ws_bell_describe()).
+		'kind'        => '',
+		'glyph'       => '',
+		'join'        => '',
+		'fold'        => ''
 	);
 
 	if ($action == 'new_order') {
@@ -417,6 +424,10 @@ function pg_notification_display($notification)
 				$display['title']       = h($described['title']);
 				$display['description'] = h($described['body']);
 				$display['url']         = $described['url'];
+				$display['kind']        = (string) ($described['kind'] ?? '');
+				$display['glyph']       = (string) ($described['icon'] ?? '');
+				$display['join']        = (string) ($described['join'] ?? '');
+				$display['fold']        = (string) ($described['fold'] ?? '');
 			}
 		}
 
@@ -696,4 +707,53 @@ function pg_notification_seed_user($user_id)
 
 	db("INSERT IGNORE INTO notification_reads (notification_id, user_id, timestamp)
 		SELECT id, '" . $user_id . "', '" . time() . "' FROM notifications");
+}
+
+// The bell's list folds the lines that share a fold key (the runs of one flow
+// that ended the same way, ws_bell_fold_key()) under the newest of them: that
+// line carries how many there are (fold_count) and the older ones follow it
+// right after, each with the id of the line it folds under (fold_head), drawn
+// once that line is opened. Everything else keeps its place, newest first.
+function pg_notification_fold($items)
+{
+	$heads = array();
+	$members = array();
+
+	foreach (array_values($items) as $index => $item) {
+		$key = (string) ($item['fold'] ?? '');
+
+		$item['fold_count'] = 1;
+		$item['fold_head'] = 0;
+		$items[$index] = $item;
+
+		if ($key === '') {
+			continue;
+		}
+
+		if (!isset($heads[$key])) {
+			$heads[$key] = $index;
+			$members[$index] = array();
+			continue;
+		}
+
+		$items[$heads[$key]]['fold_count']++;
+		$items[$index]['fold_head'] = (int) $items[$heads[$key]]['id'];
+		$members[$heads[$key]][] = $index;
+	}
+
+	$folded = array();
+
+	foreach ($items as $index => $item) {
+		if ($item['fold_head'] > 0) {
+			continue;
+		}
+
+		$folded[] = $item;
+
+		foreach ($members[$index] ?? array() as $member) {
+			$folded[] = $items[$member];
+		}
+	}
+
+	return $folded;
 }

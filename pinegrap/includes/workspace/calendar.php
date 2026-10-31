@@ -295,6 +295,16 @@ function ws_calendar($viewer, $month, $person_id = 0, $department_id = 0)
         }
     }
 
+    // ── The reader's own calendars, a read-only layer only they see ──
+
+    if ((($person_id === 0) || ($person_id === (int) $viewer['id'])) && function_exists('ws_personal_ical_layer')) {
+        $layer = array_filter(ws_personal_ical_layer((int) $viewer['id']), function ($event) use ($from_ts, $to_ts) {
+            return ((int) $event['starts_at'] <= $to_ts) && ((int) $event['ends_at'] >= $from_ts);
+        });
+
+        $days = ws_personal_ical_place($days, $layer);
+    }
+
     // ── Conversations: channels opened, and how much was said each day ──
 
     $readable = array();

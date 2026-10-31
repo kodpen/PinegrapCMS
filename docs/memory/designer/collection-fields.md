@@ -1,10 +1,10 @@
 ---
 name: collection-fields
-description: Collection forms and field kinds (11.0.43, C2): the three columns, where the kind is written and read, which kinds each field type takes, templates that opt in (C6a), the slug kind (C5b)
+description: Collection forms and field kinds: columns, where the kind is written and read, kinds per field type, template collections (C6a), the slug kind (C5b)
 ---
 
 ## What is stored?
-- `custom_form_pages.collection` (TINYINT, 0): the form is a collection; its records are items other forms' records point at. `form_fields.collection_kind` (VARCHAR(32), ''): `number`, `image`, `reference`, `product`, `page` or `slug`; `form_fields.reference_page_id` (INT, 0): the form page a reference points into. Step `upgrade_2026_11_0_collections()` (11.0.43); owner's approval recorded in `plans/designer-collections-steps.md`.
+- `custom_form_pages.collection` (TINYINT, 0): the form is a collection; its records are items other forms' records point at. `form_fields.collection_kind` (VARCHAR(32), ''): `number`, `image`, `reference`, `product`, `page` or `slug`; `form_fields.reference_page_id` (INT, 0): the form page a reference points into. Step `upgrade_2026_11_0_collections()` (11.0.43); owner's approval (#2393) in `collections-decisions.md`.
 - VARCHAR, not ENUM, so a new kind needs no migration; `form_fields.type` is never altered (classic screens read it).
 - Every reader and writer probes `pg_coll_ready()` (all three columns): before the upgrade nothing changes.
 
@@ -25,7 +25,8 @@ description: Collection forms and field kinds (11.0.43, C2): the three columns, 
 
 ## What does the slug kind do?
 - The record's address name (pretty URLs) comes from the first non-blank slug value, else the Title field (`pg_coll_address_source()`, read by `update_submitted_form_address_name()`; the slug column is probed only when `pg_coll_ready()`). A blank slug falls back to the title, so old records keep their names.
+- The panel's "already in use" check runs on the Title only while it makes the address (`pg_coll_address_field()` in `pg_submitted_form_check_field()`). A slug is never refused: a clashing one saves with a `-1` suffix.
 - Adding a slug field or moving the kind on a design save renames every record, as moving the Title role does: `pg_cf_address_sources()` before and after the save (`pg_cf_refresh_address_names()`).
-- Why: a kind that did not feed the address name would be a visible but dead choice.
+- Why: a kind not feeding the address would be a dead choice.
 
 Tests: `tests/collections_kinds_test.php`, `tests/design_template_collections_test.php`.

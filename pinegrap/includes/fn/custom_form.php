@@ -119,6 +119,114 @@ function pg_cf_contact_fields()
     return $out;
 }
 
+// Bindings in pg_cf_contact_fields() that are no contacts column: opt_in_sms
+// is the SMS marketing answer, kept only as a consent_log row, so every path
+// that reads or writes contacts.<contact_field> skips it.
+function pg_cf_contact_column($contact_field)
+{
+    $contact_field = (string)$contact_field;
+    return $contact_field !== '' && $contact_field !== 'opt_in_sms';
+}
+
+/**
+ * Whether a custom form asks a mobile number: a field bound to mobile_phone
+ * that is not office use only and not hidden by ?show_<id>=false in $query.
+ * Pure.
+ *
+ * @param array $fields form_fields rows (id, contact_field, office_use_only)
+ * @param array $query  the form page's query parameters
+ * @return bool
+ */
+function pg_cf_fields_ask_mobile($fields, $query = array())
+{
+    foreach ((array)$fields as $field) {
+        if (!is_array($field) || !isset($field['contact_field']) || (string)$field['contact_field'] !== 'mobile_phone') continue;
+        if (!empty($field['office_use_only'])) continue;
+        $id = isset($field['id']) ? (string)$field['id'] : '';
+        if (is_array($query) && isset($query['show_' . $id]) && $query['show_' . $id] === 'false') continue;
+        return true;
+    }
+    return false;
+}
+
+/**
+ * Whether a custom form draws its SMS question (a field bound to
+ * opt_in_sms) for a visitor: while SMS is ready and the form asks a mobile
+ * number or the visitor's contact holds one. No SMS, no number, no box. The
+ * editor always draws it. Pure when $sms_ready is given.
+ *
+ * @param bool       $asks_mobile    pg_cf_fields_ask_mobile()
+ * @param mixed      $contact_number the visitor's contacts.mobile_phone, or ''
+ * @param bool|null  $sms_ready      pg_sms_ready(), read when null
+ * @return bool
+ */
+function pg_cf_sms_question_drawn($asks_mobile, $contact_number, $sms_ready = null)
+{
+    return pg_consent_sms_offered($asks_mobile || pg_consent_sms_number_known($contact_number), $sms_ready);
+}
+
+/**
+ * The fields of a custom form a visitor is shown: an opt_in_sms field goes
+ * when pg_cf_sms_question_drawn() says no. Keys are kept.
+ *
+ * @param array $fields  form_fields rows (id, contact_field, office_use_only)
+ * @param array $contact the visitor's contacts row, or none
+ * @param array $query   the form page's query parameters
+ * @return array
+ */
+function pg_cf_drop_sms_question($fields, $contact, $query = array())
+{
+    $fields = (array)$fields;
+    $number = (is_array($contact) && isset($contact['mobile_phone'])) ? $contact['mobile_phone'] : '';
+    $drawn  = null;
+    foreach ($fields as $key => $field) {
+        if (!is_array($field) || !isset($field['contact_field']) || pg_cf_contact_column($field['contact_field'])
+            || (string)$field['contact_field'] === '') continue;
+        if ($drawn === null) $drawn = pg_cf_sms_question_drawn(pg_cf_fields_ask_mobile($fields, $query), $number);
+        if (!$drawn) unset($fields[$key]);
+    }
+    return $fields;
+}
+
+/**
+ * The value an opt_in_sms field starts with for the visitor's contact:
+ * '1' (ticked) unless the person's last sms:marketing row is a refusal,
+ * then '0'. '' without a contact: the field's own default applies.
+ *
+ * @param array $contact the visitor's contacts row, or none
+ * @return string
+ */
+function pg_cf_sms_start_value($contact)
+{
+    if (!is_array($contact) || empty($contact['id'])) return '';
+    $person = array(
+        'email'      => isset($contact['email_address']) ? (string)$contact['email_address'] : '',
+        'contact_id' => (int)$contact['id'],
+    );
+    return pg_consent_sms_start_for($person) ? '1' : '0';
+}
+
+/**
+ * The sms:marketing answer of a custom form submission, for
+ * pg_consent_log_answers(): only when the visitor was asked and the contact
+ * has a mobile number after the save. Ticked is a posted 1, as the opt_in
+ * column stores it; a check box group counts when one of its boxes posted
+ * 1. Pure.
+ *
+ * @param bool  $asked  a visible choice field bound to opt_in_sms
+ * @param mixed $number the contact's mobile_phone after the save
+ * @param mixed $posted the field's posted value
+ * @return array
+ */
+function pg_cf_sms_answers($asked, $number, $posted)
+{
+    if (is_array($posted)) {
+        $posted = in_array('1', array_map('strval', array_filter($posted, 'is_scalar')), true) ? '1' : '0';
+    }
+    $ticked = is_scalar($posted) && ((int)$posted === 1);
+    return pg_consent_sms_answers($asked, pg_consent_sms_number_known($number), $ticked ? '1' : '0');
+}
+
 /**
  * Whether a signed-in person's form submission is about somebody else: the
  * e-mail address the form writes to the contact (a field wired to the
@@ -754,8 +862,9 @@ function pg_cf_confirmation_message_or_default($message)
 
 /**
  * What the legacy page screen refuses to save for a custom form: an e-mail
- * that is switched on with nothing to send (plain text without a body, HTML
- * without a page) and a "Next Page" confirmation without a page. Only the
+ * that is switched on with a broken address or with nothing to send (plain
+ * text without a body, HTML without a page) and a "Next Page" confirmation
+ * without a page. Only the
  * 'page' confirmation type needs a page: an empty or missing type is the
  * message, as on submit (pg_cf_confirmation_shows_message()).
  *
@@ -772,8 +881,20 @@ function pg_cf_legacy_settings_errors($settings, $page_exists)
         return isset($settings[$key]) ? (string)$settings[$key] : '';
     };
 
+    // The addresses of each e-mail, one address per box (a blank box is allowed).
+    $addresses = array(
+        'submitter' => array('submitter_email_from_email_address'),
+        'administrator' => array('administrator_email_to_email_address', 'administrator_email_bcc_email_address'),
+    );
+
     foreach (array('submitter' => lang('E-mail Submitter'), 'administrator' => lang('E-mail Administrator')) as $who => $label) {
         if ($value($who . '_email') !== '1') continue;
+
+        $typed = array();
+        foreach ($addresses[$who] as $key) {
+            $typed['custom_form_' . $key] = $value($key);
+        }
+        $errors += pg_email_field_errors($typed);
 
         // custom_form.php sends plain text only for 'plain_text'; anything else is the page.
         if ($value($who . '_email_format') === 'plain_text') {
@@ -1007,6 +1128,7 @@ function pg_cf_sync_page_form($page_id, $fields, $form_name, $user_id, $settings
     $has_upload_col = pg_cf_form_fields_has_column('upload_folder_id');
     $has_validation = pg_cf_form_fields_has_column('validation_regex');
     $has_translate  = pg_schema_has('form_fields', 'translate_values');
+    $has_rules      = pg_schema_has('form_fields', 'rules');
     $has_coll       = pg_coll_ready();
     $user_id        = (int)$user_id;
 
@@ -1096,6 +1218,11 @@ function pg_cf_sync_page_form($page_id, $fields, $form_name, $user_id, $settings
                 ($id > 0 && isset($existing[$id])) ? $existing[$id] : null);
         }
 
+        // The visitor rules (form_fields.rules), NULL when there are none.
+        if ($has_rules) {
+            $set['rules'] = pg_cf_rules_json(isset($f['rules']) ? $f['rules'] : array(), $type);
+        }
+
         // A collection field's kind, kept only where the field's type can
         // have it, and the form a reference points into, kept only while that
         // page holds a form (includes/fn/collections.php).
@@ -1120,7 +1247,7 @@ function pg_cf_sync_page_form($page_id, $fields, $form_name, $user_id, $settings
         if ($id > 0) {
             $pairs = array();
             foreach ($set as $col => $val) {
-                $pairs[] = '`' . $col . "` = '" . e($val) . "'";
+                $pairs[] = '`' . $col . '` = ' . (($val === null && $col === 'rules') ? 'NULL' : "'" . e($val) . "'");
             }
             $pairs[] = "user = '$user_id'";
             $pairs[] = 'timestamp = UNIX_TIMESTAMP()';
@@ -1130,7 +1257,7 @@ function pg_cf_sync_page_form($page_id, $fields, $form_name, $user_id, $settings
             $set['page_id']   = $page_id;
             $cols = array();
             $vals = array();
-            foreach ($set as $col => $val) { $cols[] = '`' . $col . '`'; $vals[] = "'" . e($val) . "'"; }
+            foreach ($set as $col => $val) { $cols[] = '`' . $col . '`'; $vals[] = ($val === null && $col === 'rules') ? 'NULL' : "'" . e($val) . "'"; }
             $cols[] = '`user`';      $vals[] = "'$user_id'";
             $cols[] = '`timestamp`'; $vals[] = 'UNIX_TIMESTAMP()';
             db("INSERT INTO form_fields (" . implode(', ', $cols) . ") VALUES (" . implode(', ', $vals) . ")");
@@ -1358,7 +1485,8 @@ function pg_cf_field_map($page_id)
                 contact_field, office_use_only, wysiwyg, information, rss_field"
          . (pg_cf_form_fields_has_column('validation_regex')
                 ? ", validation_regex, validation_message" : ", '' AS validation_regex, '' AS validation_message")
-         . (pg_coll_ready() ? ", collection_kind, reference_page_id" : ", '' AS collection_kind, 0 AS reference_page_id") . "
+         . (pg_coll_ready() ? ", collection_kind, reference_page_id" : ", '' AS collection_kind, 0 AS reference_page_id")
+         . (pg_schema_has('form_fields', 'rules') ? ", rules" : ", NULL AS rules") . "
          FROM form_fields
          WHERE page_id = '$page_id' AND form_type = 'custom'
          ORDER BY sort_order ASC, id ASC") as $row) {
@@ -1575,7 +1703,12 @@ function pg_cf_field_initial_value($field, $lf, $folder_id = 0, $url_value = '')
     if (!empty($field['contact_field'])) {
         $contact = pg_cf_submitter_contact();
         $key     = (string)$field['contact_field'];
-        if (isset($contact[$key]) && $contact[$key] !== '') return (string)$contact[$key];
+        if (!pg_cf_contact_column($key)) {
+            $start = pg_cf_sms_start_value($contact);
+            if ($start !== '') return $start;
+        } elseif (isset($contact[$key]) && $contact[$key] !== '') {
+            return (string)$contact[$key];
+        }
     }
     if (!empty($field['use_folder_name_for_default_value']) && (int)$folder_id > 0) {
         $name = (string)db_value("SELECT folder_name FROM folder WHERE folder_id = '" . (int)$folder_id . "' LIMIT 1");
@@ -1796,6 +1929,23 @@ function pg_cf_apply_field_bindings(&$tree, $map, $lf = null, $cf_folder_id = 0,
                 $set_attr($tree['props']['_attrs'], 'title', $cf_msg);
             }
 
+            // The visitor rules in the browser (custom_form.php checks them
+            // again): a day picker starts at today, and a field required for
+            // some answers of another names that field's control and the
+            // answers, for pg_cf_validation_script() to switch `required`.
+            // Not on a box of a group, which never carries `required` here,
+            // nor on a field that is always required.
+            $cf_rules = pg_cf_rules_clean(isset($row['rules']) ? $row['rules'] : '', (string)$row['type']);
+            if (isset($cf_rules['min_date']) && $input_type === 'date') {
+                $set_attr($tree['props']['_attrs'], 'min', pg_cf_rules_today());
+            }
+            $cf_other = pg_cf_rule_other_field($cf_rules, $map);
+            if ($cf_other !== null && empty($row['required']) && $input_type !== 'checkbox' && !$cf_rich) {
+                $set_attr($tree['props']['_attrs'], 'data-pg-required-when', (string)(int)$cf_other['id']);
+                $set_attr($tree['props']['_attrs'], 'data-pg-required-answers',
+                    json_encode($cf_rules['required_when']['answers'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+            }
+
             // A field's kind draws its control: a number field takes decimal
             // numbers, an image field offers images; a reference pick list
             // lists the records of the form it points into (a product or
@@ -1903,7 +2053,8 @@ function pg_cf_apply_field_bindings(&$tree, $map, $lf = null, $cf_folder_id = 0,
                 if (!in_array($ct, array('input', 'select', 'textarea'), true)) continue;
                 $ca = _pg_cf_node_attrs($child);
                 $ck = mb_strtolower(pg_cf_clean_field_name(isset($ca['name']) ? $ca['name'] : ''), 'UTF-8');
-                if ($ck === '' || !isset($map[$ck]) || empty($map[$ck]['office_use_only'])) continue;
+                if ($ck === '' || !isset($map[$ck])
+                    || (empty($map[$ck]['office_use_only']) && empty($map[$ck]['_pg_cf_sms_dropped']))) continue;
                 $drop_ids[] = array('node' => $child, 'id' => isset($ca['id']) ? (string)$ca['id'] : '');
             }
             if (!empty($drop_ids)) {
@@ -2161,9 +2312,175 @@ function pg_cf_validation_script()
          . 'if(!file||!/^image\\//.test(file.type)||!window.URL){if(img)img.hidden=true;return;}'
          . 'if(!img){img=document.createElement("img");img.className="img-thumbnail d-block mt-2";img.alt="";'
          . 'img.style.maxHeight="12rem";input.insertAdjacentElement("afterend",img);}'
-         . 'url=URL.createObjectURL(file);img.src=url;img.hidden=false;});});});};'
+         . 'url=URL.createObjectURL(file);img.src=url;img.hidden=false;});});'
+         // A field required only for some answers of another
+         // (data-pg-required-when names that field's control, posted as its
+         // id or id[]) is required while one of them is chosen, compared
+         // without case or surrounding spaces as the server compares them.
+         . 'Array.prototype.forEach.call(form.querySelectorAll("[data-pg-required-when]"),function(c){'
+         . 'var id=c.getAttribute("data-pg-required-when"),norm=function(v){return String(v).trim().toLowerCase();},answers=[];'
+         . 'try{answers=JSON.parse(c.getAttribute("data-pg-required-answers")||"[]").map(norm);}catch(x){}'
+         . 'var sync=function(){var on=false;Array.prototype.forEach.call(form.elements,function(o){'
+         . 'if(o.name!==id&&o.name!==id+"[]")return;if((o.type==="radio"||o.type==="checkbox")&&!o.checked)return;'
+         . 'var vals=(o.tagName==="SELECT")?Array.prototype.filter.call(o.options,function(p){return p.selected;}).map(function(p){return p.value;}):[o.value];'
+         . 'vals.forEach(function(v){if(answers.indexOf(norm(v))!==-1)on=true;});});c.required=on;};'
+         . 'form.addEventListener("change",sync);form.addEventListener("input",sync);sync();});});};'
          . 'if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded",bind);}else{bind();}'
          . '})();</script>';
+}
+
+/**
+ * A field's visitor rules (form_fields.rules) in their one shape: an array
+ * with `min_date` => 'today' (a date control only) and/or `required_when` =>
+ * array('field' => <other field's name>, 'answers' => array(...)). Anything
+ * else is dropped; no rule is an empty array.
+ *
+ * The other field is named the way the design names it, never by its row id
+ * (a re-sync may renumber it), and is looked up when the form is checked.
+ * Answers may come as a list or as text, one answer per line.
+ *
+ * @param array|string|null $rules the stored JSON or the control's `_cf.rules`
+ * @param string            $type  form_fields.type; '' when not known
+ * @return array
+ */
+function pg_cf_rules_clean($rules, $type = '')
+{
+    if (is_string($rules)) {
+        $rules = (trim($rules) === '') ? array() : json_decode($rules, true);
+    }
+    if (!is_array($rules)) return array();
+
+    $out = array();
+    if (isset($rules['min_date']) && $rules['min_date'] === 'today' && ($type === '' || $type === 'date')) {
+        $out['min_date'] = 'today';
+    }
+    if (isset($rules['required_when']) && is_array($rules['required_when'])) {
+        $rw    = $rules['required_when'];
+        $field = pg_cf_clean_field_name((isset($rw['field']) && is_scalar($rw['field'])) ? (string)$rw['field'] : '');
+        $given = isset($rw['answers']) ? $rw['answers'] : array();
+        if (is_string($given)) $given = preg_split('/\r\n|\r|\n/', $given);
+        $answers = array();
+        foreach ((array)$given as $a) {
+            if (!is_scalar($a)) continue;
+            $a = mb_substr(trim((string)$a), 0, 255);
+            if ($a !== '' && !in_array($a, $answers, true)) $answers[] = $a;
+        }
+        if ($field !== '' && !empty($answers)) {
+            $out['required_when'] = array('field' => $field, 'answers' => $answers);
+        }
+    }
+    return $out;
+}
+
+// The form_fields.rules value for a field: its cleaned rules as JSON, or null
+// (NULL in the column) when it has none.
+function pg_cf_rules_json($rules, $type = '')
+{
+    $rules = pg_cf_rules_clean($rules, $type);
+    return empty($rules) ? null : json_encode($rules, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+}
+
+// Today as Y-m-d in the site's time zone, the default init.php sets from
+// TIMEZONE.
+function pg_cf_rules_today()
+{
+    return date('Y-m-d');
+}
+
+/**
+ * The field a `required_when` rule depends on, among the form's field rows
+ * (each with `name`), compared without case; null when the rule names no
+ * field or the field is gone or renamed, and then the rule asks nothing.
+ */
+function pg_cf_rule_other_field($rules, $fields)
+{
+    if (!isset($rules['required_when']['field'])) return null;
+    $want = mb_strtolower((string)$rules['required_when']['field'], 'UTF-8');
+    foreach ((array)$fields as $f) {
+        if (is_array($f) && isset($f['name']) && mb_strtolower((string)$f['name'], 'UTF-8') === $want) return $f;
+    }
+    return null;
+}
+
+/**
+ * Which visitor rule a field's value breaks: '' (none), 'min_date' or
+ * 'required'.
+ *
+ * $value is the field's value, an ISO date (Y-m-d) for a date field, or an
+ * array for a box group. $other is the value of the field `required_when`
+ * names, null when that field does not exist. A date before $today is
+ * refused whenever it is given; an empty value is the required check's
+ * business, and a value that is no ISO date the type check's. `required_when`
+ * holds only for a submission ($submit), as a field's own `required` does.
+ */
+function pg_cf_rule_verdict($rules, $value, $other, $today, $submit)
+{
+    $rules = is_array($rules) ? $rules : array();
+    $empty = is_array($value)
+        ? (count(array_filter($value, function ($v) { return trim((string)$v) !== ''; })) === 0)
+        : (trim((string)$value) === '');
+
+    if (isset($rules['min_date']) && $rules['min_date'] === 'today' && !$empty && !is_array($value)
+        && preg_match('/^\d{4}-\d{2}-\d{2}$/', trim((string)$value)) === 1
+        && strcmp(trim((string)$value), (string)$today) < 0) {
+        return 'min_date';
+    }
+
+    if ($submit && $empty && $other !== null && isset($rules['required_when']['answers'])) {
+        $answers = array();
+        foreach ((array)$rules['required_when']['answers'] as $a) $answers[] = mb_strtolower(trim((string)$a), 'UTF-8');
+        foreach ((array)$other as $o) {
+            if (is_scalar($o) && in_array(mb_strtolower(trim((string)$o), 'UTF-8'), $answers, true)) return 'required';
+        }
+    }
+    return '';
+}
+
+/**
+ * Checks a field's visitor rules on a site submission (custom_form.php),
+ * after its type checks, and marks the error on the liveform: the field's own
+ * message when it has one, otherwise the standard refusal. Staff paths (the
+ * panel edit, the API, MCP) never call this: the rules are about what a
+ * visitor may send, and staff may record a past booking.
+ *
+ * @param object $liveform
+ * @param array  $field    the field's row, with `rules`
+ * @param array  $fields   every field row of the form
+ * @param bool   $submit   false when the visitor saves for later
+ */
+function pg_cf_check_rules($liveform, $field, $fields, $submit)
+{
+    $rules = pg_cf_rules_clean(isset($field['rules']) ? $field['rules'] : '', (string)$field['type']);
+    if (empty($rules) || $liveform->check_field_error($field['id'])) return;
+
+    $value_of = function ($row) use ($liveform) {
+        if ((string)$row['type'] === 'file upload') {
+            return (isset($_FILES[$row['id']]['name']) && is_string($_FILES[$row['id']]['name'])) ? $_FILES[$row['id']]['name'] : '';
+        }
+        $v = $liveform->get_field_value($row['id']);
+        return ($v === null) ? '' : $v;
+    };
+
+    $value = $value_of($field);
+    if ((string)$field['type'] === 'date' && is_string($value) && trim($value) !== '') {
+        $value = prepare_form_data_for_input($value, 'date');
+    }
+    $other_row = pg_cf_rule_other_field($rules, $fields);
+    $other     = ($other_row !== null) ? $value_of($other_row) : null;
+
+    $verdict = pg_cf_rule_verdict($rules, $value, $other, pg_cf_rules_today(), $submit);
+    if ($verdict === '') return;
+
+    $label   = h(function_exists('pg_tr_label') ? pg_tr_label($field['label']) : $field['label']);
+    $message = isset($field['validation_message']) ? trim((string)$field['validation_message']) : '';
+    if ($message !== '') {
+        $message = h(function_exists('pg_tr_label') ? pg_tr_label($message) : $message);
+    } elseif ($verdict === 'min_date') {
+        $message = lang(array('string' => '{var:1} cannot be before today.', 'vars' => $label));
+    } else {
+        $message = lang(array('string' => '{var:1} is required.', 'vars' => $label));
+    }
+    $liveform->mark_error($field['id'], $message);
 }
 
 /**
@@ -2446,6 +2763,8 @@ function _pg_cf_node_record($node)
         // (pg_coll_field_kind(), pg_coll_field_reference()).
         'kind'               => (isset($cf['kind']) && is_string($cf['kind'])) ? $cf['kind'] : '',
         'ref'                => (isset($cf['ref']) && (is_int($cf['ref']) || is_string($cf['ref']))) ? $cf['ref'] : 0,
+        // The visitor rules, as written (pg_cf_rules_clean()).
+        'rules'              => isset($cf['rules']) ? $cf['rules'] : array(),
     );
 }
 
@@ -2597,6 +2916,9 @@ function _pg_cf_controls($widget_tree, $page_id = 0)
                         'information'     => '',
                         'regex'           => $pattern,
                         'regex_message'   => $cf['validation_message'],
+                        // "Not before today" is for a day picker, not a
+                        // month or week control that is stored as a date.
+                        'rules'           => pg_cf_rules_clean($cf['rules'], ($type === 'date' && $it !== 'date') ? 'month' : $type),
                         'options'         => array(),
                     );
                     // A <select> carries its answers as <option> children.
@@ -2618,7 +2940,9 @@ function _pg_cf_controls($widget_tree, $page_id = 0)
                     $ov = isset($a['value']) ? (string)$a['value'] : '';
                     if ($ov !== '') {
                         $dup = false;
-                        foreach ($out[$key]['options'] as $ex) if ($ex['value'] === $ov) { $dup = true; break; }
+                        foreach ($out[$key]['options'] as $ex) {
+                            if ($ex['value'] === $ov) { $dup = true; break; }
+                        }
                         if (!$dup) {
                             $ol = ($id !== '' && isset($labels[$id])) ? $labels[$id] : $ov;
                             $out[$key]['options'][] = array('label' => $ol, 'value' => $ov,
@@ -3341,6 +3665,7 @@ function prepare_custom_form($properties)
     }
     $date_fields = array();
     $date_and_time_fields = array();
+    $time_fields = array();
     $wysiwyg_fields = array();
     $form_type_filter = "";
     if ($form_type) {
@@ -3453,6 +3778,9 @@ function prepare_custom_form($properties)
             case 'date and time':
                 $date_and_time_fields[] = $html_name;
                 break;
+            case 'time':
+                $time_fields[] = $html_name;
+                break;
             case 'pick list':
                 $field['pick_list_options'] = array();
                 foreach ($field['options'] as $option) {
@@ -3529,6 +3857,7 @@ function prepare_custom_form($properties)
         'fields' => $fields,
         'date_fields' => $date_fields,
         'date_and_time_fields' => $date_and_time_fields,
+        'time_fields' => $time_fields,
         'wysiwyg_fields' => $wysiwyg_fields,
         'edit_start' => $edit_start,
         'edit_end' => $edit_end

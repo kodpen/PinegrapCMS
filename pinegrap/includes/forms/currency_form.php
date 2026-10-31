@@ -39,12 +39,10 @@ function pg_currency_form_card($liveform)
                                         <div class="col-12 md:col-6 my-3">
                                             <label for="name" class="form-label">' . lang(array('string'=>'{var:1} Name','vars'=>lang('Currency'))) . '</label>
                                             ' . $liveform->output_field(array('type'=>'text', 'name'=>'name', 'id'=>'name', 'class'=>'form-control', 'maxlength'=>'100', 'required'=>'required')) . '
-                                            <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                         </div>
                                         <div class="col-12 md:col-3 my-3">
                                             <label for="code" class="form-label">' . lang('Code') . '</label>
                                             ' . $liveform->output_field(array('type'=>'text', 'name'=>'code', 'id'=>'code', 'class'=>'form-control', 'maxlength'=>'3', 'required'=>'required')) . '
-                                            <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                         </div>
                                         <div class="col-12 md:col-3 my-3">
                                             <label for="symbol" class="form-label">' . lang('Symbol') . '</label>

@@ -122,7 +122,7 @@ foreach ($country_rows as $row) {
             <td style="text-align: center">' . $zip_code_required_check_mark . '</td>
             <td style="text-align: right;">' . $transit_adjustment_days . '</td>
             <td style="text-align: center">' . $default_selected . '</td>
-            <td class="align-middle">' . get_relative_time(array('timestamp' => $timestamp)) . ' ' . lang(array('string'=>'by {var:1}','vars'=>array( h($username) ) ) ) . '</td>
+            <td class="align-middle">' . pg_list_when($timestamp, $username) . '</td>
         </tr>';
 }
 

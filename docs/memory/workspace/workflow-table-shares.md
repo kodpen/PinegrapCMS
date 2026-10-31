@@ -20,4 +20,4 @@ description: Workflow table shares (wtable_shares.php, T1c, #2820): owner-only, 
 - Those are keyed by a channel's lines; a table share writes no channel line, and `ws_inbox` has no column naming a table (adding one is a schema change). So a removed share leaves its bell line, as a removed flow share does: it names the table and opens nothing.
 
 ## What happens to flows when the table's owner is gone?
-- A flow's row start box (`workspace-flows-row-box.md`) and its later table boxes ask `ws_wtable_flow_check($owner_rights, $table_id, 'view'|'edit')` → `ws_wtable_flow_gate()`: owner gone → `paused` (wait, go on when the owner is back); not reached far enough → `refused` (the box fails). The shares stay and give nothing meanwhile.
+- A flow's row start box (`workspace-flows-row-box.md`) asks `ws_wtable_flow_check($owner_rights, $table_id, 'view')`, its table boxes (`workspace-flows-table-boxes.md`) at `'edit'` → `ws_wtable_flow_gate()`: owner gone → `paused` (no run starts; a table box waits and goes on when the owner is back); not reached far enough → `refused` (the box fails). The shares stay and give nothing meanwhile.

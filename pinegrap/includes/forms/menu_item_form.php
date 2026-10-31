@@ -4,7 +4,7 @@
  *
  * The menu item form, shared by the create and the edit screens
  * (add_menu_item.php, edit_menu_item.php): the Options card, the page or
- * URL a menu item links to, the sort order of a new last item and the
+ * URL a menu item links to and the addresses it refuses, the sort order of a new last item and the
  * menu's last modified stamp. The screens keep what differs: the edit
  * screen loads the record, offers the position and delete, and reorders
  * the level it is saved on.
@@ -26,9 +26,12 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  * @param liveform $liveform
  * @param string $parent_id_options  <option> markup of get_menu_item_options()
  * @param string $extra  Fields printed after the classes (the edit screen's position)
+ * @param int $keep_page_id  The page the stored item links to, kept in the
+ *                           page picker even in an archived folder or one the
+ *                           user cannot edit (0 on the create screen)
  * @return string
  */
-function pg_menu_item_form_card($liveform, $parent_id_options, $extra = '')
+function pg_menu_item_form_card($liveform, $parent_id_options, $extra = '', $keep_page_id = 0)
 {
     $link_target_options =
         array(
@@ -46,8 +49,7 @@ function pg_menu_item_form_card($liveform, $parent_id_options, $extra = '')
                                     <div class="row">
                                         <div class="col-12 md:col-6 lg:col-4 my-3">
                                             <label for="name" class="form-label">' . lang('Menu Item Name') . '</label>
-                                            ' . $liveform->output_field(array('type'=>'text', 'name'=>'name', 'id'=>'name', 'class'=>'form-control', 'maxlength'=>'100')) . '
-                                            <div class="invalid-feedback">' . lang('Required Area') . '</div>
+                                            ' . $liveform->output_field(array('type'=>'text', 'name'=>'name', 'id'=>'name', 'class'=>'form-control', 'maxlength'=>'100', 'required'=>'required')) . '
                                         </div>
                                         <div class="col-12 md:col-6 lg:col-4 my-3">
                                             <label for="link_target" class="form-label">' . lang('Link Target') . '</label>
@@ -61,14 +63,15 @@ function pg_menu_item_form_card($liveform, $parent_id_options, $extra = '')
                                         <div class="col-12 md:col-12 lg:col-5 my-3">
                                             <label for="link_page_id" class="form-label">' . lang('Page') . '</label>
                                             <div class="input-group flex-wrap">
-                                                ' . $liveform->output_field(array('type'=>'select', 'name'=>'link_page_id', 'id'=>'link_page_id', 'class'=>'form-control', 'style'=>'min-width:100px', 'options'=>get_page_options(), 'onclick'=>'if (this.selectedIndex != 0) {document.getElementById(\'link_url\').value = \'\'}')) . '
+                                                ' . $liveform->output_field(array('type'=>'select', 'name'=>'link_page_id', 'id'=>'link_page_id', 'class'=>'form-control', 'style'=>'min-width:100px', 'options'=>get_page_options('', '', 'edit', true, $keep_page_id), 'onclick'=>'if (this.selectedIndex != 0) {document.getElementById(\'link_url\').value = \'\'}')) . '
                                                 <div class="input-group-text">
                                                     <div class="form-field">
-                                                        <div class="switch">' . $liveform->output_field(array('type'=>'checkbox', 'name'=>'security', 'id'=>'security', 'value'=>'1', 'class'=>'no-bs')) . '</div>
-                                                        <label class="" for="security" title="' . lang('Enable Security') . '" data-bs-content="' . lang('only show Menu Item if Visitor has access to view Page') . '">' . lang('Enable Security') . ' (?)</label>
+                                                        <div class="switch">' . $liveform->output_field(array('type'=>'checkbox', 'name'=>'security', 'id'=>'security', 'value'=>'1', 'class'=>'no-bs', 'aria-describedby'=>'security_hint')) . '</div>
+                                                        <label class="" for="security">' . lang('Enable Security') . '</label>
                                                     </div>
                                                 </div>
                                             </div>
+                                            <div class="form-text" id="security_hint">' . lang('only show Menu Item if Visitor has access to view Page') . '</div>
                                         </div>
                                         <div class="col-12 md:col-12 lg:col-2  my-3 lg:text-center">
                                             <label class="form-label">-' . lang('or') . '-</label>
@@ -122,7 +125,41 @@ function pg_menu_item_form_link($post)
         return array('link_page_id' => $post['link_page_id'], 'link_url' => '');
     }
 
-    return array('link_page_id' => '', 'link_url' => $post['link_url'] ?? '');
+    return array('link_page_id' => '', 'link_url' => trim((string) ($post['link_url'] ?? '')));
+}
+
+/**
+ * Why an address cannot be a menu item's URL, or '' when it can: http,
+ * https, mailto or tel, or one on this site (a path, a query or an anchor).
+ * Anything a browser would run (javascript:, data:), a protocol-relative
+ * address and a backslash are refused, and so are spaces and control
+ * characters, which browsers skip while they read the scheme. The panel
+ * screens and the external API share this rule.
+ *
+ * @param string $url
+ * @return string  The translated message, or ''
+ */
+function pg_menu_item_url_problem($url)
+{
+    $url = trim((string) $url);
+
+    if ($url === '') {
+        return '';
+    }
+
+    if (preg_match('/[\x00-\x20\x7f]/', $url)) {
+        return lang('The address cannot contain spaces or control characters.');
+    }
+
+    if (
+        (preg_match('/^([A-Za-z][A-Za-z0-9+.-]*):/', $url, $found) && !in_array(strtolower($found[1]), array('http', 'https', 'mailto', 'tel'), true))
+        || strpos($url, '//') === 0
+        || strpos($url, '\\') !== false
+    ) {
+        return lang('The address must be a web, e-mail or phone address, or a path on this site.');
+    }
+
+    return '';
 }
 
 /**

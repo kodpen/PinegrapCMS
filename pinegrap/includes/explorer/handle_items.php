@@ -90,6 +90,12 @@ function pg_explorer_handle_create_folder($type, $request, $user)
         respond(array('status' => 'error', 'message' => lang('The folder must have a name. Please type in a name for the folder.')));
     }
 
+    // Checked before get_unique_name(), so the '[1]' it may add is not cut
+    // off a name already at the column's width.
+    if (pg_name_too_long($name)) {
+        respond(array('status' => 'error', 'message' => lang(array('string' => 'The name can be at most {var:1} characters long.', 'vars' => array(pg_name_max_length())))));
+    }
+
     $name = get_unique_name(array('name' => $name, 'type' => 'folder'));
 
     $parent_level = (int) db_value("SELECT folder_level FROM folder WHERE folder_id = '" . e($parent_id) . "'");
@@ -196,14 +202,45 @@ function pg_explorer_handle_create_file($type, $request, $user)
 }
 
 // A new name for one folder, page or file.
+// Each typed file name as prepare_file_name() stores it, in the order sent,
+// for the Bulk Rename preview; a blank or a value that is not text stays
+// blank. At most 500 names, the most a preview asks for at once.
+function pg_explorer_rename_preview_names($names)
+{
+    $prepared = array();
+
+    if (!is_array($names)) {
+        return $prepared;
+    }
+
+    foreach (array_slice(array_values($names), 0, 500) as $name) {
+        $name = is_string($name) ? trim($name) : '';
+        $prepared[] = ($name === '') ? '' : prepare_file_name($name);
+    }
+
+    return $prepared;
+}
+
 function pg_explorer_handle_rename($type, $request, $user)
 {
+    // A preview writes nothing: it answers the names as a file rename would
+    // store them, so Bulk Rename shows and compares those before applying.
+    if (!empty($request['preview'])) {
+        respond(array('status' => 'success', 'request' => $type, 'names' => pg_explorer_rename_preview_names(isset($request['names']) ? $request['names'] : array())));
+    }
+
     $item_kind = isset($request['item_kind']) ? $request['item_kind'] : '';
     $item_id = (int) (isset($request['item_id']) ? $request['item_id'] : 0);
     $name = trim(isset($request['name']) ? $request['name'] : '');
 
     if (($item_id <= 0) || ($name == '')) {
         respond(array('status' => 'error', 'message' => lang('Please enter a name.')));
+    }
+
+    // The folder and page name columns are varchar(100); a cut page name
+    // could also match another page's address the check below never saw.
+    if (($item_kind != 'file') && pg_name_too_long($name)) {
+        respond(array('status' => 'error', 'message' => lang(array('string' => 'The name can be at most {var:1} characters long.', 'vars' => array(pg_name_max_length())))));
     }
 
     switch ($item_kind) {
@@ -492,7 +529,9 @@ function pg_explorer_handle_move($type, $request, $user)
 
     if ($moved > 0) {
         $target_name = db_value("SELECT folder_name FROM folder WHERE folder_id = '" . e($target_id) . "'");
-        log_activity($moved . ' ' . lang('item(s)') . ' ' . lang(array('string' => 'were moved to {var:1}', 'vars' => $target_name)), $_SESSION['sessionusername']);
+        log_activity(($moved == 1)
+            ? lang(array('string' => '{var:1} item was moved to the folder {var:2}', 'vars' => array($moved, $target_name)))
+            : lang(array('string' => '{var:1} items were moved to the folder {var:2}', 'vars' => array($moved, $target_name))), $_SESSION['sessionusername']);
 
         // An item dragged out of the bin is restored: forget it.
         if (pg_recycle_ready()) {
@@ -514,5 +553,7 @@ function pg_explorer_handle_move($type, $request, $user)
         'errors' => $errors,
         'message' => (count($errors) > 0)
             ? implode(' ', $errors)
-            : lang(array('string' => '{var:1} item(s) were moved.', 'vars' => $moved))));
+            : (($moved == 1)
+                ? lang(array('string' => '{var:1} item was moved.', 'vars' => $moved))
+                : lang(array('string' => '{var:1} items were moved.', 'vars' => $moved)))));
 }

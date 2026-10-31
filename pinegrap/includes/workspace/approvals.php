@@ -1073,8 +1073,12 @@ function ws_approval_inbox_describe($viewer, $row, $actor, $base)
     $url = $base . 'workspace.php?channel=' . (int) $row['channel_id'] . '&message=' . (int) $row['message_id'];
 
     if ($row['kind'] === 'approval_requested') {
+        // A request in the person's own name that asks them (a flow's MCP
+        // box asks its owner to approve a call, steps.php).
         return array(
-            'title' => lang(array('string' => '{var:1} asks you to approve', 'vars' => $actor)),
+            'title' => ((int) $row['actor_id'] === (int) $viewer['id'])
+                ? lang('One of your flows asks you to approve')
+                : lang(array('string' => '{var:1} asks you to approve', 'vars' => $actor)),
             'body'  => $title,
             'url'   => $url,
             'icon'  => 'bi-patch-question',

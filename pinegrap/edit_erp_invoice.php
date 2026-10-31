@@ -31,10 +31,16 @@ $liveform = new liveform('edit_erp_invoice');
 
 $list_url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_invoices.php';
 
+// The filtered register the document was opened from: the back arrow, the
+// breadcrumb and every reload and form of this screen keep it.
+$send_to = pg_send_to_url('');
+$send_to_query = ($send_to !== '') ? '&send_to=' . urlencode($send_to) : '';
+$self_action = h('edit_erp_invoice.php' . (($send_to !== '') ? '?send_to=' . urlencode($send_to) : ''));
+
 $invoice_id = is_scalar($_REQUEST['id'] ?? null) ? (int) $_REQUEST['id'] : 0;
 
 $invoice = ($invoice_id > 0)
-    ? db_item("SELECT i.*, a.title AS live_account_title, a.tax_number AS live_tax_number, a.tax_office AS live_tax_office, o.order_number
+    ? db_item("SELECT i.*, a.title AS live_account_title, a.tax_number AS live_tax_number, a.tax_office AS live_tax_office, o.order_number, o.id AS order_exists
         FROM erp_invoices i
         LEFT JOIN erp_accounts a ON i.account_id = a.id
         LEFT JOIN orders o ON i.order_id = o.id
@@ -48,7 +54,7 @@ if (!is_array($invoice)) {
 
 // A draft has no number and no movement; it is edited, not read.
 if ((string) $invoice['status'] === 'draft') {
-    go(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_erp_invoice_draft.php?id=' . $invoice_id);
+    go(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_erp_invoice_draft.php?id=' . $invoice_id . $send_to_query);
 }
 
 if ($_POST) {
@@ -63,6 +69,21 @@ if ($_POST) {
         'fix_city', 'fix_district', 'fix_carrier_title', 'fix_carrier_vkn', 'recur_every', 'recur_first', 'recur_end', 'recur_mode', 'recurrence_id',
         'mail_to', 'mail_subject', 'mail_message'));
 
+    // Taking the invoice's public PDF address back (erp_invoice.php): the
+    // address answers 404 from now on, and the next send makes a new one.
+    if (($_POST['erp_action'] ?? '') === 'public_link_revoke') {
+
+        if (defined('USER_ERP_READONLY') && USER_ERP_READONLY) {
+            $liveform->mark_error('_error', lang('Access denied'));
+        } elseif (erp_invoice_public_link_revoke($invoice_id)) {
+            $liveform->add_notice(lang('The public address of this invoice was taken back. It no longer opens the PDF.'));
+        } else {
+            $liveform->mark_error('_error', lang('The change could not be saved.'));
+        }
+
+        go(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_erp_invoice.php?id=' . $invoice_id . $send_to_query);
+    }
+
     if (($_POST['erp_action'] ?? '') === 'notes') {
 
         $notes = mb_substr(trim((string) ($_POST['notes'] ?? '')), 0, 5000);
@@ -73,7 +94,7 @@ if ($_POST) {
             $liveform->mark_error('_error', lang('The note could not be saved.'));
         }
 
-        go(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_erp_invoice.php?id=' . $invoice_id);
+        go(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_erp_invoice.php?id=' . $invoice_id . $send_to_query);
     }
 
     // Putting the overdue reminders off, or letting them resume. The date
@@ -93,7 +114,7 @@ if ($_POST) {
             $liveform->mark_error('snooze_until', $result['error']);
         }
 
-        go(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_erp_invoice.php?id=' . $invoice_id);
+        go(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_erp_invoice.php?id=' . $invoice_id . $send_to_query);
     }
 
     if (($_POST['erp_action'] ?? '') === 'unsnooze') {
@@ -105,7 +126,7 @@ if ($_POST) {
             $liveform->mark_error('_error', lang('The change could not be saved.'));
         }
 
-        go(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_erp_invoice.php?id=' . $invoice_id);
+        go(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_erp_invoice.php?id=' . $invoice_id . $send_to_query);
     }
 
     // Taking an allocation off moves money about on paper, so it takes the
@@ -114,7 +135,7 @@ if ($_POST) {
 
         if (!defined('USER_MANAGE_ERP_CASH') || !USER_MANAGE_ERP_CASH) {
             $liveform->mark_error('_error', lang('Access denied'));
-            go(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_erp_invoice.php?id=' . $invoice_id);
+            go(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_erp_invoice.php?id=' . $invoice_id . $send_to_query);
         }
 
         $result = erp_settlement_remove((int) ($_POST['settlement_id'] ?? 0), (int) $user['id']);
@@ -126,7 +147,7 @@ if ($_POST) {
             $liveform->mark_error('_error', ($result['error'] !== '') ? $result['error'] : lang('The allocation could not be found.'));
         }
 
-        go(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_erp_invoice.php?id=' . $invoice_id);
+        go(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_erp_invoice.php?id=' . $invoice_id . $send_to_query);
     }
 
     // The e-document: off to the provider, or a question about where it
@@ -141,7 +162,7 @@ if ($_POST) {
             $liveform->mark_error('_error', h($result['error']));
         }
 
-        go(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_erp_invoice.php?id=' . $invoice_id);
+        go(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_erp_invoice.php?id=' . $invoice_id . $send_to_query);
     }
 
     // The draft the provider is holding, handed to the tax authority. A
@@ -157,7 +178,7 @@ if ($_POST) {
             $liveform->mark_error('_error', h($result['error']));
         }
 
-        go(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_erp_invoice.php?id=' . $invoice_id);
+        go(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_erp_invoice.php?id=' . $invoice_id . $send_to_query);
     }
 
     // The buyer completed where the refusal was read. Writes the account
@@ -175,7 +196,7 @@ if ($_POST) {
             $liveform->mark_error('_error', h($result['error']));
         }
 
-        go(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_erp_invoice.php?id=' . $invoice_id . '#edoc_date');
+        go(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_erp_invoice.php?id=' . $invoice_id . $send_to_query . '#edoc_date');
     }
 
     // The same move, and the send straight after it: once the provider has
@@ -187,7 +208,7 @@ if ($_POST) {
 
         if (!$moved['success']) {
             $liveform->mark_error('_error', h($moved['error']));
-            go(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_erp_invoice.php?id=' . $invoice_id . '#edoc_date');
+            go(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_erp_invoice.php?id=' . $invoice_id . $send_to_query . '#edoc_date');
         }
 
         $liveform->add_notice(h($moved['message']));
@@ -199,7 +220,7 @@ if ($_POST) {
             $liveform->mark_error('_error', h($result['error']));
         }
 
-        go(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_erp_invoice.php?id=' . $invoice_id);
+        go(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_erp_invoice.php?id=' . $invoice_id . $send_to_query);
     }
 
     if (($_POST['erp_action'] ?? '') === 'edoc_fix') {
@@ -218,7 +239,7 @@ if ($_POST) {
 
         if ($result['success']) {
             $liveform->add_notice($result['message']);
-            go(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_erp_invoice.php?id=' . $invoice_id);
+            go(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_erp_invoice.php?id=' . $invoice_id . $send_to_query);
         }
 
         // A refused save writes nothing, so the form comes back with what was
@@ -231,7 +252,7 @@ if ($_POST) {
 
         $liveform->mark_error(((string) ($result['field'] ?? '') !== '') ? 'fix_' . $result['field'] : '_error', $result['error']);
 
-        go(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_erp_invoice.php?id=' . $invoice_id . '#edoc_fix');
+        go(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_erp_invoice.php?id=' . $invoice_id . $send_to_query . '#edoc_fix');
     }
 
     if (($_POST['erp_action'] ?? '') === 'edoc_poll') {
@@ -244,7 +265,7 @@ if ($_POST) {
             $liveform->mark_error('_error', h($result['error']));
         }
 
-        go(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_erp_invoice.php?id=' . $invoice_id);
+        go(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_erp_invoice.php?id=' . $invoice_id . $send_to_query);
     }
 
     if (($_POST['erp_action'] ?? '') === 'cancel') {
@@ -266,7 +287,7 @@ if ($_POST) {
 
         if ($cancel_refusal !== '') {
             $liveform->mark_error('_error', $cancel_refusal);
-            go(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_erp_invoice.php?id=' . $invoice_id);
+            go(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_erp_invoice.php?id=' . $invoice_id . $send_to_query);
         }
 
         // A document the provider has is taken back there first, the way the
@@ -278,7 +299,7 @@ if ($_POST) {
 
         if (!$provider_cancel['success']) {
             $liveform->mark_error('_error', h($provider_cancel['error']));
-            go(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_erp_invoice.php?id=' . $invoice_id);
+            go(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_erp_invoice.php?id=' . $invoice_id . $send_to_query);
         }
 
         if ((string) $provider_cancel['message'] !== '') {
@@ -294,7 +315,7 @@ if ($_POST) {
             $liveform->mark_error('_error', h($result['error']));
         }
 
-        go(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_erp_invoice.php?id=' . $invoice_id);
+        go(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_erp_invoice.php?id=' . $invoice_id . $send_to_query);
     }
 
     // Repeating the invoice: started here with how often, from when, until
@@ -315,7 +336,7 @@ if ($_POST) {
             $liveform->mark_error('_error', h($started['error']));
         }
 
-        go(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_erp_invoice.php?id=' . $invoice_id . '#erp-recurring');
+        go(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_erp_invoice.php?id=' . $invoice_id . $send_to_query . '#erp-recurring');
     }
 
     if (($_POST['erp_action'] ?? '') === 'recur_stop') {
@@ -325,7 +346,7 @@ if ($_POST) {
             $liveform->add_notice(lang('The invoice no longer repeats. The invoices it wrote stay.'));
         }
 
-        go(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_erp_invoice.php?id=' . $invoice_id . '#erp-recurring');
+        go(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_erp_invoice.php?id=' . $invoice_id . $send_to_query . '#erp-recurring');
     }
 
     if (($_POST['erp_action'] ?? '') === 'mail') {
@@ -338,7 +359,7 @@ if ($_POST) {
                 ? lang('The invoice was e-mailed, with the official copy of the e-document.')
                 : lang('The invoice was e-mailed.'));
         } else {
-            $liveform->mark_error('mail_to', h($sent['error']));
+            $liveform->mark_error($sent['field'], h($sent['error']));
             $_SESSION['software']['erp_mail_draft'][$invoice_id] = array(
                 'to' => (string) ($_POST['mail_to'] ?? ''),
                 'subject' => (string) ($_POST['mail_subject'] ?? ''),
@@ -346,7 +367,7 @@ if ($_POST) {
             );
         }
 
-        go(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_erp_invoice.php?id=' . $invoice_id . '#erp-mail');
+        go(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_erp_invoice.php?id=' . $invoice_id . $send_to_query . '#erp-mail');
     }
 }
 
@@ -399,7 +420,31 @@ $can_cancel = $can_cancel && !empty($provider_cancellable['ok']);
 // The reason is printed under the buttons: a title on a disabled button is a
 // hover popover that keyboard and touch users never see.
 $cancel_note = ($cancel_locked !== '') ? $cancel_locked : ($can_cancel ? (string) $provider_cancellable['reason'] : '');
+
+// The cancel button's ask names the document and what happens at the
+// provider: a document the provider has is taken back there first
+// (erp_edoc_invoice_provider_cancel()), and neither side can be undone.
+$cancel_provider_label = ((string) ($provider_cancellable['provider'] ?? '') !== '') ? (string) (erp_edoc_info($provider_cancellable['provider'])['label'] ?? '') : '';
+$cancel_at_provider = (trim((string) ($invoice['edoc_external_id'] ?? '')) !== '') || !in_array((string) ($invoice['edoc_status'] ?? 'none'), array('none', 'error', 'rejected'), true);
+
+if (!empty($provider_cancellable['manual'])) {
+    $cancel_confirm = lang(array('string' => 'Cancel {var:1} here too? Do it only once it has been taken back at {var:2}. It keeps its number and stays in the register as cancelled; this cannot be undone.', 'vars' => array($invoice['full_number'], $cancel_provider_label)));
+} elseif ($cancel_at_provider && ($cancel_provider_label !== '')) {
+    $cancel_confirm = lang(array('string' => 'Cancel {var:1}? It is taken back at {var:2} first (a draft is deleted there, an e-Archive document is cancelled at the tax office), then it stays in the register here as cancelled. This cannot be undone.', 'vars' => array($invoice['full_number'], $cancel_provider_label)));
+} else {
+    $cancel_confirm = lang(array('string' => 'Cancel {var:1}? It keeps its number and stays in the register as cancelled. This cannot be undone.', 'vars' => $invoice['full_number']));
+}
 $can_return = (!$is_cancelled && !$is_return && ($invoice['doc_type'] === 'invoice'));
+
+// A fully returned invoice stays issued or paid (it is never cancelled), so
+// the button goes by the quantities left: once every line is back it would
+// only lead to a refusal, and a short line says why it is gone.
+$returned_in_full = false;
+
+if ($can_return && !erp_return_lines_left(erp_returnable_lines($invoice_id))) {
+    $can_return = false;
+    $returned_in_full = true;
+}
 
 $status_labels = array(
     'draft' => lang('Draft'),
@@ -548,7 +593,7 @@ if (!empty($settlements)) {
             $output_actions .= '<a class="btn btn-sm btn-outline theme-secondary" href="erp_receipt.php?id=' . (int) $settlement['cash_id'] . '" title="' . lang('Receipt') . '"><i class="bi bi-receipt"></i></a> ';
         }
         if ($can_unsettle && ((string) $settlement['source_type'] !== 'gift_card')) {
-            $output_actions .= '<form method="post" action="edit_erp_invoice.php" class="d-inline">
+            $output_actions .= '<form method="post" action="' . $self_action . '" class="d-inline">
                                         ' . get_token_field() . '
                                         <input type="hidden" name="id" value="' . $invoice_id . '" />
                                         <input type="hidden" name="erp_action" value="unsettle" />
@@ -607,7 +652,7 @@ if (!empty($returns)) {
 }
 
 $output_order = ((int) $invoice['order_id'] > 0)
-    ? '<a href="view_order.php?id=' . (int) $invoice['order_id'] . '">' . h($invoice['order_number'] ?: ('#' . (int) $invoice['order_id'])) . '</a>'
+    ? erp_order_link_html($invoice['order_id'], $invoice['order_number'], $invoice['order_exists'] !== null)
     : '<span class="fg-secondary">&mdash;</span>';
 
 // The quote the invoice was made from (8.58), when it is still there.
@@ -766,6 +811,12 @@ if (($reminder['phase'] !== 'off') || ($reminder['notified_at'] > 0) || ($remind
         }
     }
 
+    $sms_queued_at = erp_overdue_sms_queued_at((int) $invoice['account_id'], $reminder['notified_at'], $reminder['second_notified_at']);
+
+    if ($sms_queued_at > 0) {
+        $reminder_lines[] = lang(array('string' => 'A reminder text message to the customer was queued on {var:1}.', 'vars' => $date_stamp($sms_queued_at)));
+    }
+
     $output_reminder_lines = '';
     foreach ($reminder_lines as $line) {
         $output_reminder_lines .= '<div>' . h($line) . '</div>';
@@ -785,7 +836,7 @@ if (($reminder['phase'] !== 'off') || ($reminder['notified_at'] > 0) || ($remind
         }
 
         $output_snooze = '
-                        <form name="snooze_form" action="edit_erp_invoice.php" method="post" class="row g-3 align-items-end">
+                        <form name="snooze_form" action="' . $self_action . '" method="post" class="row g-3 align-items-end">
                             ' . get_token_field() . '
                             <input type="hidden" name="id" value="' . $invoice_id . '" />
                             <input type="hidden" name="erp_action" value="snooze" />
@@ -802,7 +853,7 @@ if (($reminder['phase'] !== 'off') || ($reminder['notified_at'] > 0) || ($remind
                         </form>'
             . (($reminder['phase'] === 'snoozed')
                 ? '
-                        <form name="unsnooze_form" action="edit_erp_invoice.php" method="post" class="mt-3">
+                        <form name="unsnooze_form" action="' . $self_action . '" method="post" class="mt-3">
                             ' . get_token_field() . '
                             <input type="hidden" name="id" value="' . $invoice_id . '" />
                             <input type="hidden" name="erp_action" value="unsnooze" />
@@ -894,7 +945,7 @@ if (((string) $invoice['direction'] === 'sales')
     } elseif ($edoc_gate['ok'] && $edoc_date_blocked) {
         $output_edoc_buttons .= '<a class="btn btn-sm btn-outline theme-warning m-1" href="#edoc_date"><i class="bi bi-calendar-x me-3" aria-hidden="true"></i>' . lang('Fix the date') . '</a>';
     } elseif ($edoc_gate['ok']) {
-        $output_edoc_buttons .= '<form method="post" action="edit_erp_invoice.php" class="d-inline">
+        $output_edoc_buttons .= '<form method="post" action="' . $self_action . '" class="d-inline">
                         ' . get_token_field() . '
                         <input type="hidden" name="id" value="' . $invoice_id . '" />
                         <input type="hidden" name="erp_action" value="edoc_send" />
@@ -905,7 +956,7 @@ if (((string) $invoice['direction'] === 'sales')
     // Only while the document is still a draft there: once it has gone, the
     // button goes with it, so nothing is handed over twice.
     if (($edoc_status === 'created') && ($edoc_provider !== '') && ((string) $invoice['edoc_external_id'] !== '') && erp_edoc_supports('submit_invoice', $edoc_provider)) {
-        $output_edoc_buttons .= '<form method="post" action="edit_erp_invoice.php" class="d-inline">
+        $output_edoc_buttons .= '<form method="post" action="' . $self_action . '" class="d-inline">
                         ' . get_token_field() . '
                         <input type="hidden" name="id" value="' . $invoice_id . '" />
                         <input type="hidden" name="erp_action" value="edoc_submit" />
@@ -914,7 +965,7 @@ if (((string) $invoice['direction'] === 'sales')
     }
 
     if (($edoc_provider !== '') && ((string) $invoice['edoc_external_id'] !== '') && erp_edoc_supports('poll', $edoc_provider)) {
-        $output_edoc_buttons .= '<form method="post" action="edit_erp_invoice.php" class="d-inline">
+        $output_edoc_buttons .= '<form method="post" action="' . $self_action . '" class="d-inline">
                         ' . get_token_field() . '
                         <input type="hidden" name="id" value="' . $invoice_id . '" />
                         <input type="hidden" name="erp_action" value="edoc_poll" />
@@ -966,13 +1017,13 @@ if (((string) $invoice['direction'] === 'sales')
                             </div>
                         </div>
                         ' . ($edoc_redate['ok'] ? '<div class="d-flex flex-wrap gap-3">
-                        ' . ($edoc_gate['ok'] && empty($edoc_send_gaps) ? '<form method="post" action="edit_erp_invoice.php">
+                        ' . ($edoc_gate['ok'] && empty($edoc_send_gaps) ? '<form method="post" action="' . $self_action . '">
                             ' . get_token_field() . '
                             <input type="hidden" name="id" value="' . $invoice_id . '" />
                             <input type="hidden" name="erp_action" value="edoc_redate_send" />
                             <button type="submit" class="btn btn-sm btn-solid theme-primary" data-confirm-content="' . h(lang(array('string' => 'Date the invoice {var:1} instead of {var:2} and send it to {var:3}?', 'vars' => array(prepare_form_data_for_output(date('Y-m-d'), 'date', false), prepare_form_data_for_output((string) $invoice['issue_date'], 'date', false), $edoc_carrier_label)))) . '"><i class="bi bi-send-check me-3" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang(array('string' => 'Move to today ({var:1}) and send', 'vars' => prepare_form_data_for_output(date('Y-m-d'), 'date', false)))) . '</span></button>
                         </form>' : '') . '
-                        <form method="post" action="edit_erp_invoice.php">
+                        <form method="post" action="' . $self_action . '">
                             ' . get_token_field() . '
                             <input type="hidden" name="id" value="' . $invoice_id . '" />
                             <input type="hidden" name="erp_action" value="edoc_redate" />
@@ -1108,7 +1159,7 @@ if (((string) $invoice['direction'] === 'sales')
                             <i class="bi bi-exclamation-triangle-fill"></i>
                             <div>' . h(lang(array('string' => '{var:1} will not take this document until these are filled in.', 'vars' => $edoc_missing['label']))) . '</div>
                         </div>
-                        <form method="post" action="edit_erp_invoice.php">
+                        <form method="post" action="' . $self_action . '">
                             ' . get_token_field() . '
                             <input type="hidden" name="id" value="' . $invoice_id . '" />
                             <input type="hidden" name="erp_action" value="edoc_fix" />
@@ -1268,13 +1319,13 @@ if (($mail_invoice !== null) && ((string) $invoice['direction'] === 'sales') && 
 
     if (($mail_refusal === '') && !$mail_readonly) {
         $output_mail_form = '
-            <form name="mail_form" action="edit_erp_invoice.php" method="post" class="row g-3">
+            <form name="mail_form" action="' . $self_action . '" method="post" class="row g-3" data-erp-send-once>
                 ' . get_token_field() . '
                 <input type="hidden" name="id" value="' . $invoice_id . '" />
                 <input type="hidden" name="erp_action" value="mail" />
                 <div class="col-12 md:col-6">
                     <label class="form-label" for="mail_to">' . lang('Recipient e-mail') . '</label>
-                    <input type="text" class="form-control" id="mail_to" name="mail_to" value="' . h((string) $mail_defaults['to']) . '" maxlength="500" autocomplete="off" required />
+                    <input type="text" class="form-control" id="mail_to" name="mail_to" value="' . h((string) $mail_defaults['to']) . '" maxlength="500" inputmode="email" spellcheck="false" autocapitalize="off" autocomplete="off" required />
                     <div class="form-text">' . (((string) $mail_defaults['to'] === '')
                         ? lang('The account has no e-mail address. Type one, or add it to the account.')
                         : lang('More than one address: separate them with commas.')) . '</div>
@@ -1288,8 +1339,9 @@ if (($mail_invoice !== null) && ((string) $invoice['direction'] === 'sales') && 
                     <textarea class="form-control" id="mail_message" name="mail_message" rows="3" maxlength="5000">' . h((string) $mail_defaults['message']) . '</textarea>
                     <div class="form-text"><i class="bi bi-paperclip" aria-hidden="true"></i> ' . h($mail_note) . '</div>
                 </div>
-                <div class="col-12">
+                <div class="col-12 d-flex flex-wrap gap-3 align-items-center">
                     <button type="submit" class="btn btn-sm btn-solid theme-primary"><i class="bi bi-envelope me-3" aria-hidden="true"></i>' . lang('Send the e-mail') . '</button>
+                    <span class="small fg-secondary" role="status" aria-live="polite" data-erp-send-once-status></span>
                 </div>
             </form>';
         $output_mail_button = '<a class="btn btn-sm btn-outline theme-secondary" href="#erp-mail"><i class="bi bi-envelope me-1" aria-hidden="true"></i>' . lang('E-mail') . '</a>';
@@ -1329,7 +1381,7 @@ if (function_exists('erp_invoice_recurring_ready') && erp_invoice_recurring_read
             . (((string) $recurrence['end_date'] !== '0000-00-00') ? ' ' . h(lang(array('string' => 'Until {var:1}.', 'vars' => prepare_form_data_for_output((string) $recurrence['end_date'], 'date', false)))) : '') . '</p>'
             . (((int) $recurrence['occurrences'] > 0) ? '<p class="small fg-secondary mb-3">' . h(lang(array('string' => '{var:1} invoice(s) written so far.', 'vars' => (int) $recurrence['occurrences']))) . '</p>' : '')
             . (((string) $recurrence['last_error'] !== '') ? '<div class="alert theme-warning small py-3">' . h((string) $recurrence['last_error']) . '</div>' : '')
-            . (!$recur_readonly ? '<form method="post" action="edit_erp_invoice.php">' . get_token_field() . '<input type="hidden" name="id" value="' . $invoice_id . '" /><input type="hidden" name="erp_action" value="recur_stop" /><input type="hidden" name="recurrence_id" value="' . (int) $recurrence['id'] . '" />'
+            . (!$recur_readonly ? '<form method="post" action="' . $self_action . '">' . get_token_field() . '<input type="hidden" name="id" value="' . $invoice_id . '" /><input type="hidden" name="erp_action" value="recur_stop" /><input type="hidden" name="recurrence_id" value="' . (int) $recurrence['id'] . '" />'
                 . '<button type="submit" class="btn btn-sm btn-outline theme-secondary" data-confirm-content="' . h(lang('Stop repeating this invoice? The invoices it already wrote stay.')) . '"><i class="bi bi-stop-circle me-1" aria-hidden="true"></i>' . lang('Stop repeating') . '</button></form>' : '');
     } elseif ($recur_refusal !== '') {
         $recur_body = '<p class="fg-secondary mb-0">' . h($recur_refusal) . '</p>';
@@ -1343,7 +1395,7 @@ if (function_exists('erp_invoice_recurring_ready') && erp_invoice_recurring_read
             $mode_options .= '<option value="' . h($mode) . '">' . h($label) . '</option>';
         }
         $recur_body = '
-                    <form method="post" action="edit_erp_invoice.php" class="row g-3 align-items-end">
+                    <form method="post" action="' . $self_action . '" class="row g-3 align-items-end">
                         ' . get_token_field() . '
                         <input type="hidden" name="id" value="' . $invoice_id . '" />
                         <input type="hidden" name="erp_action" value="recur_start" />
@@ -1393,9 +1445,9 @@ pg_page_shell([
         'icon' => 'erp',
         'heading' => h($invoice['full_number']),
         'heading_description' => lang('The document as it was issued, and the lines it was built from.'),
-        'cancel' => array('enable' => 'true', 'url' => 'erp_invoices.php'),
+        'cancel' => array('enable' => 'true', 'url' => pg_send_to_url('erp_invoices.php')),
         'breadcrumb' => array(
-            array('label' => lang('Invoices'), 'url' => $list_url),
+            array('label' => lang('Invoices'), 'url' => pg_send_to_list_url($list_url)),
             array('label' => $invoice['full_number']),
         ),
     ]) . '
@@ -1454,8 +1506,19 @@ pg_page_shell([
             ' . $output_edoc . '
             ' . $output_mail . '
             ' . $output_recurring . '
+            ' . (((string) ($invoice['public_token_hash'] ?? '') !== '')
+                ? '<form name="public_link_form" action="' . $self_action . '" method="post" class="d-flex flex-wrap align-items-center gap-3 my-7">
+                ' . get_token_field() . '
+                <input type="hidden" name="id" value="' . $invoice_id . '" />
+                <input type="hidden" name="erp_action" value="public_link_revoke" />
+                <span class="small"><i class="bi bi-link-45deg me-1" aria-hidden="true"></i>' . lang('This invoice has a public PDF address, sent to the marketplace as the order\'s invoice link.') . '</span>'
+                . (!(defined('USER_ERP_READONLY') && USER_ERP_READONLY)
+                    ? '<button type="submit" class="btn btn-sm btn-outline theme-danger" onclick="return confirm(this.dataset.confirm);" data-confirm="' . h(lang('The buyer and the marketplace will no longer open the PDF at this address. Take it back?')) . '">' . lang('Take the address back') . '</button>'
+                    : '') . '
+            </form>'
+                : '') . '
 
-            <form name="notes_form" action="edit_erp_invoice.php" method="post">
+            <form name="notes_form" action="' . $self_action . '" method="post">
                 ' . get_token_field() . '
                 <input type="hidden" name="id" value="' . $invoice_id . '" />
                 <input type="hidden" name="erp_action" value="notes" />
@@ -1512,8 +1575,11 @@ pg_page_shell([
                 </div>
             </div>
 
+            ' . ($returned_in_full
+                ? '<p class="small fg-secondary text-center mb-3"><i class="bi bi-check2-circle me-2" aria-hidden="true"></i>' . lang('Returned in full') . '</p>'
+                : '') . '
             ' . (($can_return || $can_cancel || ($cancel_locked !== ''))
-                ? '<form name="form" action="edit_erp_invoice.php" method="post">
+                ? '<form name="form" action="' . $self_action . '" method="post" class="disable_shortcut">
                 ' . get_token_field() . '
                 <input type="hidden" name="id" value="' . $invoice_id . '" />
                 <input type="hidden" name="erp_action" value="cancel" />
@@ -1524,7 +1590,7 @@ pg_page_shell([
                                 ? '<a class="btn my-1 btn-outline theme-warning" href="add_erp_return.php?invoice_id=' . $invoice_id . '"><i class="bi bi-arrow-return-left me-3" aria-hidden="true"></i>' . lang('Return an Invoice') . '</a>'
                                 : '') . '
                             ' . ($can_cancel
-                                ? '<button type="submit" name="submit_cancel" value="Cancel" class="btn my-1 btn-outline theme-danger"' . (($cancel_note !== '') ? ' aria-describedby="erp_cancel_note"' : '') . '><i class="bi bi-x-circle me-3" aria-hidden="true"></i><span class="pg-btn-label">' . (!empty($provider_cancellable['manual']) ? lang('Cancelled there: cancel it here too') : lang('Cancel the Document')) . '</span></button>'
+                                ? '<button type="submit" name="submit_cancel" value="Cancel" class="btn my-1 btn-outline theme-danger" data-confirm-content="' . h($cancel_confirm) . '"' . (($cancel_note !== '') ? ' aria-describedby="erp_cancel_note"' : '') . '><i class="bi bi-x-circle me-3" aria-hidden="true"></i><span class="pg-btn-label">' . (!empty($provider_cancellable['manual']) ? lang('Cancelled there: cancel it here too') : lang('Cancel the Document')) . '</span></button>'
                                 : '') . '
                             ' . (($cancel_locked !== '')
                                 ? '<button type="button" class="btn my-1 btn-outline theme-danger" disabled aria-describedby="erp_cancel_note"><i class="bi bi-x-circle me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Cancel the Document') . '</span></button>'
@@ -1652,6 +1718,34 @@ pg_page_shell([
         </div>
     </div>
 </main>
+<script>
+(function () {
+    // Send the e-mail is sent once: building the PDF and sending the mail run
+    // inside the request and can take longer than the 3 seconds the window
+    // guard covers, and a second press then sent the same e-mail again. The
+    // button is never disabled; a submit a handler cancelled does not count.
+    var sent = [];
+    window.addEventListener("submit", function (event) {
+        var form = event.target;
+        if (!form || !form.hasAttribute || !form.hasAttribute("data-erp-send-once")) { return; }
+        if (sent.indexOf(form) !== -1) { event.preventDefault(); return; }
+        if (event.defaultPrevented) { return; }
+        sent.push(form);
+        form.setAttribute("aria-busy", "true");
+        var status = form.querySelector("[data-erp-send-once-status]");
+        if (status) { status.textContent = "' . escape_javascript(lang('Working on it. Wait for the answer before leaving this page.')) . '"; }
+    });
+    window.addEventListener("pageshow", function (event) {
+        if (!event.persisted) { return; }
+        sent.forEach(function (form) {
+            form.removeAttribute("aria-busy");
+            var status = form.querySelector("[data-erp-send-once-status]");
+            if (status) { status.textContent = ""; }
+        });
+        sent = [];
+    });
+})();
+</script>
 ' . get_date_picker_format() . pg_fields_script() .
 output_footer();
 

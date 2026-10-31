@@ -694,6 +694,9 @@ define('ERP_AUTO_INVOICE_ON', $row['erp_auto_invoice_on'] ?? 'off');
 // Off and 0 until the step has run.
 define('ERP_AUTO_INVOICE_TAX_NUMBER_ONLY', isset($row['erp_auto_invoice_tax_number_only']) ? (int) $row['erp_auto_invoice_tax_number_only'] : 0);
 define('ERP_AUTO_INVOICE_MIN_TOTAL', isset($row['erp_auto_invoice_min_total']) ? (int) $row['erp_auto_invoice_min_total'] : 0);
+// Whether marketplace orders are invoiced on their own too (2026.11.0,
+// 11.0.62). Off until the step has run.
+define('ERP_AUTO_INVOICE_MARKETPLACE', isset($row['erp_auto_invoice_marketplace']) ? (int) $row['erp_auto_invoice_marketplace'] : 0);
 // The e-Fatura thresholds (2026.11.0, 11.0.61) in minor units of the base
 // currency: sales over the internet and every sale. 0 (off) until the step
 // has run.
@@ -829,6 +832,11 @@ define('MAINTENANCE_ALLOW_IPS', (string) ($row['maintenance_allow_ips'] ?? ''));
 define('PAGE_REVISIONS_KEEP', isset($row['page_revisions_keep']) ? (int) $row['page_revisions_keep'] : 30);
 define('PAGE_REVISIONS_DAYS', isset($row['page_revisions_days']) ? (int) $row['page_revisions_days'] : 90);
 
+// Speculation Rules prefetch of menu links (2026.11.0, 11.0.127;
+// includes/fn/speculation.php). Off while the column is not there: before the
+// upgrade there is no switch to turn it off.
+define('SPECULATION_PREFETCH', isset($row['speculation_prefetch']) ? (int) $row['speculation_prefetch'] : 0);
+
 
 if (!defined('SOFTWARE_LANGUAGE')) {
     $lang = isset($row['software_language']) && $row['software_language'] !== '' && $row['software_language'] !== 'undefined'
@@ -899,20 +907,6 @@ if (!defined('LOGO_URL')) {
 // Check if we need to set a default value for control_panel_stylesheet_url
 if (!defined('CONTROL_PANEL_STYLESHEET_URL')) {
     define('CONTROL_PANEL_STYLESHEET_URL', pg_default_control_panel_stylesheet_url());
-}
-
-
-// PHP+8 depricated//..
-// if magic quotes is on, remove slashes from data so our data is clean
-if (
-    (function_exists("get_magic_quotes_gpc") && get_magic_quotes_gpc())
-    || (ini_get('magic_quotes_sybase') && (strtolower(ini_get('magic_quotes_sybase')) != "off"))
-) {
-
-    $_REQUEST = array_stripslashes($_REQUEST);
-    $_GET = array_stripslashes($_GET);
-    $_POST = array_stripslashes($_POST);
-    $_COOKIE = array_stripslashes($_COOKIE);
 }
 
 // Where a form goes once it is saved (send_to) and the screen it was opened

@@ -7,6 +7,7 @@ description: How the ERP reads typed quantities, amounts and rates and writes fi
 - `erp_quantity_in()` (`includes/erp/money.php`): both separators are accepted; with both, the last one is the decimal one; a separator that appears twice groups; a single point is a decimal point (what the ERP writes back into its own fields).
 - The one ambiguous case, a single comma with three digits behind it (`1,500`: one and a half in Istanbul, fifteen hundred in Chicago), is settled by the store's country: `erp_decimal_comma()` (a list of decimal-point countries; every other country writes a decimal comma).
 - Never `str_replace(',', '.')` and never `erp_fx_rate_in()` for a quantity: the rate reader always takes the last separator as the decimal one.
+- The return screen (`add_erp_return.php`) reads each line's quantity with it; a figure with a minus sign is 0, so the line is not returned (before, `str_replace` read `1.250,5` as 1.25; #3643).
 - The scripts follow the same rule through `data-decimal-comma` on the form: `erp_invoice_editor.js` for the invoice and waybill editors (`invoice_form.php`, `waybill_form.php`), the expense form's own script (`add_erp_expense.php`).
 - Amounts are read by `erp_kurus()` (the last separator with at most two digits behind it is the decimal one), rates by `erp_fx_rate_in()`.
 
@@ -22,7 +23,7 @@ description: How the ERP reads typed quantities, amounts and rates and writes fi
 - Files and the API keep their own fixed formats.
 
 ## What else follows the store's country?
-- CSV delimiter `erp_csv_delimiter()`: `;` where the decimal comma is used, `,` elsewhere; the importers detect either.
+- CSV delimiter `erp_csv_delimiter()`: `;` where the decimal comma is used, `,` elsewhere; the importers detect either. Every ERP CSV uses it, the audit trail download included.
 - PDF paper `erp_paper_size()` (`includes/erp/document.php`): `letter` for the US, Canada, Mexico and a few other American countries, `A4` elsewhere. The built-in templates write `@page { size: {{paper}} portrait; … }`.
 
 ## How does the counter sale screen write money?

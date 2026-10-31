@@ -5,7 +5,7 @@ description: Flow templates over the external API (A6, #2298): GET /workspace/fl
 
 ## What does the listing give?
 - `GET /workspace/flow-templates` (`ws_api_flow_templates_list()`, a read MCP tool): `ws_flow_templates_for($viewer)`, the canvas gallery's list filled for the owner of the application (their e-mail, site, counts). Nobody who may not schedule (`ws_can_schedule()`) gets any: the fill is null for them.
-- Per template (`ws_api_flow_template_present()`): key, category, title, help, start, boxes, threads, settings (the types only: channel, person, time, url, address), graph (`ws_flow_graph_present(…, true)`). Icon and motion stay canvas-only.
+- Per template (`ws_api_flow_template_present()`): key, category, title, help, start, boxes, threads, settings (the types only: channel, person, time, url, address), graph (`ws_flow_graph_present(…, true)`). Icon and motion stay canvas-only. Templates saved on the site come too, category `saved` (`workspace-flows-template-saved.md`).
 
 ## How is a draft made from one?
 - `POST /workspace/flows` takes `template` (a key) and `answers` (object, setting type => value). `ws_api_flow_from_template()` (pure) builds the input before `ws_flow_save_check()`, so a dry run meets the same refusals.

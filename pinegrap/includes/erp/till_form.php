@@ -72,7 +72,8 @@ function erp_till_form_cards($liveform, $currency_locked = false)
                     <label for="iban" class="form-label">' . lang('IBAN') . '</label>
                     ' . $liveform->output_field(array(
                         'type' => 'text', 'id' => 'iban', 'name' => 'iban',
-                        'class' => 'form-control', 'maxlength' => '34', 'autocomplete' => 'off')) . '
+                        'class' => 'form-control', 'maxlength' => '34', 'autocomplete' => 'off',
+                        'spellcheck' => 'false', 'autocapitalize' => 'characters')) . '
                 </div>
                 <div class="col-12 sm:col-4 lg:col-3 my-3">
                     <label for="opening_balance" class="form-label">' . lang('Opening Balance') . '</label>

@@ -26,6 +26,16 @@ $ready = erp_bank_import_ready();
 $readonly = defined('USER_ERP_READONLY') && USER_ERP_READONLY;
 $self = PATH . SOFTWARE_DIRECTORY . '/erp_bank_statements.php';
 
+// A statement over post_max_size makes PHP throw the whole request away;
+// without this the screen drew itself again as if nothing had been sent.
+if (pg_post_body_discarded()) {
+    $liveform->mark_error('statement', h(erp_upload_discarded_message()));
+    go($self);
+}
+
+// The statement box's limit, or the server's when that is lower.
+$statement_max = erp_upload_max_bytes(5 * 1024 * 1024);
+
 if ($_POST) {
     validate_token_field();
 
@@ -33,15 +43,23 @@ if ($_POST) {
     // (int) read it as till 1 and took the statement in there.
     pg_request_single_values(array('cash_account_id'));
 
+    // A refused file comes back with the bank account still chosen; without
+    // it the select fell back to the first account.
+    $liveform->add_fields_to_session();
+
     $file = $_FILES['statement'] ?? null;
 
-    if (!is_array($file) || ((int) ($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) || !is_uploaded_file((string) $file['tmp_name'])) {
-        $liveform->mark_error('statement', h(lang('Choose the file the bank gave you.')));
+    // An oversize or broken upload is named as such, with the limit, before
+    // the empty box's message.
+    $refusal = erp_upload_refusal($file, 5 * 1024 * 1024);
+
+    if ($refusal !== '') {
+        $liveform->mark_error('statement', h($refusal));
         go($self);
     }
 
-    if ((int) $file['size'] > 5 * 1024 * 1024) {
-        $liveform->mark_error('statement', h(lang('The file is larger than 5 MB.')));
+    if (!is_array($file) || ((int) ($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) || !is_uploaded_file((string) $file['tmp_name'])) {
+        $liveform->mark_error('statement', h(lang('Choose the file the bank gave you.')));
         go($self);
     }
 
@@ -52,6 +70,7 @@ if ($_POST) {
         go($self);
     }
 
+    $liveform->remove_form();
     log_activity(lang(array('string' => 'erp bank statement (#{var:1}) was taken in', 'vars' => $uploaded['id'])), $_SESSION['sessionusername']);
     go(PATH . SOFTWARE_DIRECTORY . '/erp_bank_statement.php?id=' . (int) $uploaded['id']);
 }
@@ -62,7 +81,7 @@ if (!$ready) {
 
 $tills = '';
 foreach ((array) db_items("SELECT id, name, currency, kind FROM erp_cash_accounts WHERE is_active = 1 ORDER BY (kind = 'bank') DESC, sort_order ASC, id ASC") as $till) {
-    $tills .= '<option value="' . (int) $till['id'] . '">' . h($till['name'] . ' (' . $till['currency'] . ')') . '</option>';
+    $tills .= '<option value="' . (int) $till['id'] . '"' . (((string) $till['id'] === (string) $liveform->get_field_value('cash_account_id')) ? ' selected' : '') . '>' . h($till['name'] . ' (' . $till['currency'] . ')') . '</option>';
 }
 
 $output_rows = '';
@@ -101,7 +120,7 @@ pg_page_shell([
             ' . $liveform->get_warnings() . '
             ' . $liveform->output_notices() . '
 
-            ' . (($ready && !$readonly) ? '<form method="post" action="erp_bank_statements.php" enctype="multipart/form-data" class="card my-7">
+            ' . (($ready && !$readonly) ? '<form method="post" action="erp_bank_statements.php" enctype="multipart/form-data" class="card my-7" data-erp-send-once>
                 ' . get_token_field() . '
                 <div class="card-body row g-3 align-items-end">
                     <div class="col-12 md:col-4">
@@ -115,7 +134,8 @@ pg_page_shell([
                     <div class="col-12 md:col-3">
                         <button type="submit" class="btn btn-solid theme-primary w-100"><i class="bi bi-upload me-3" aria-hidden="true"></i>' . lang('Take in') . '</button>
                     </div>
-                    <div class="col-12 form-text">' . lang('Download the statement from internet banking as Excel (.xlsx or .xls), OpenDocument (.ods) or CSV and take it in as it is; the first sheet is read and the bank\'s title rows above the transactions are skipped. You choose the columns on the next screen; they are remembered for this bank account. A line already taken in is not added twice.') . '</div>
+                    <p class="col-12 small fg-secondary mb-0" role="status" aria-live="polite" data-erp-send-once-status></p>
+                    <div class="col-12 form-text">' . lang('Download the statement from internet banking as Excel (.xlsx or .xls), OpenDocument (.ods) or CSV and take it in as it is; the first sheet is read and the bank\'s title rows above the transactions are skipped. You choose the columns on the next screen; they are remembered for this bank account. A line already taken in is not added twice.') . ' ' . h(lang(array('string' => 'Up to {var:1} MB.', 'vars' => erp_upload_mb_text($statement_max)))) . '</div>
                 </div>
             </form>' : '') . '
 
@@ -137,7 +157,35 @@ pg_page_shell([
             </div>
         </div>
     </div>
-</main>' .
+</main>
+<script>
+(function () {
+    // Take in is sent once: reading a large workbook can take longer than the
+    // 3 seconds the window guard covers, and a second press took the file in
+    // again as another statement. The button is never disabled; a submit a handler
+    // cancelled does not count.
+    var sent = [];
+    window.addEventListener("submit", function (event) {
+        var form = event.target;
+        if (!form || !form.hasAttribute || !form.hasAttribute("data-erp-send-once")) { return; }
+        if (sent.indexOf(form) !== -1) { event.preventDefault(); return; }
+        if (event.defaultPrevented) { return; }
+        sent.push(form);
+        form.setAttribute("aria-busy", "true");
+        var status = form.querySelector("[data-erp-send-once-status]");
+        if (status) { status.textContent = "' . escape_javascript(lang('Working on it. Wait for the answer before leaving this page.')) . '"; }
+    });
+    window.addEventListener("pageshow", function (event) {
+        if (!event.persisted) { return; }
+        sent.forEach(function (form) {
+            form.removeAttribute("aria-busy");
+            var status = form.querySelector("[data-erp-send-once-status]");
+            if (status) { status.textContent = ""; }
+        });
+        sent = [];
+    });
+})();
+</script>' .
 output_footer();
 
 $liveform->remove_form();

@@ -74,11 +74,8 @@ function test_content_edit_names_one_label_per_name_field()
 		$source = content_edit_names_source($path);
 		pg_assert_same(1, substr_count($source, 'for="name"'), $path . ': labels on #name');
 		pg_assert_false((bool) preg_match('/<label[^>]*material-icons[^>]*>public</', $source), $path . ': the public ligature is a label');
-		if ($path === 'includes/forms/short_link_form.php') {
-			// The short link form shows its address pattern as form text (content_form_group_names_test.php).
-			continue;
-		}
-		pg_assert_true((bool) preg_match('/<span class="input-group-text material-icons" title="[^"]+" data-bs-content="/', $source), $path . ': the ligature keeps its hint');
+		// Every one shows its address pattern as form text (field_hint_visible_test.php).
+		pg_assert_true((bool) preg_match('/<span class="input-group-text material-icons" aria-hidden="true">public</', $source), $path . ': the ligature is hidden');
 	}
 }
 
@@ -88,6 +85,13 @@ function test_content_edit_names_menu_effect_group()
 	pg_assert_contains('role="radiogroup" aria-labelledby="effect_label"', $source, 'Submenu Effect group');
 	pg_assert_contains('id="effect_label"', $source, 'Submenu Effect heading');
 	pg_assert_false(strpos($source, 'alt="img"') !== false, 'menu effect pictures read as img');
+	// The opaque light pictures are inverted in the dark theme and drawn at
+	// their own width.
+	pg_assert_contains('html[data-bs-theme="dark"] .pg-menu-effect-picture { filter: invert(1); }', $source, 'menu effect pictures in the dark theme');
+	pg_assert_same(3, substr_count($source, 'class="pg-menu-effect-picture"'), 'every menu effect picture carries the class');
+	pg_assert_contains('menu_effect_popup.png" width="71" height="75" alt=""', $source, 'popup picture size');
+	pg_assert_contains('menu_effect_accordion.png" width="56" height="75" alt=""', $source, 'accordion picture size');
+	pg_assert_contains('menu_effect_none.png" width="56" height="75" alt=""', $source, 'none picture size');
 }
 
 function test_content_edit_names_code_fields_named()
@@ -113,7 +117,8 @@ function test_content_edit_names_code_fields_named()
 function test_content_edit_names_code_editor_takes_the_name()
 {
 	$source = content_edit_names_source('assets/js/pg_code_editor.js');
-	pg_assert_contains("window.PgCM.view.EditorView.contentAttributes.of({ 'aria-label': name })", $source, 'attach() names the content element');
+	pg_assert_contains("if (name) attrs['aria-label'] = name;", $source, 'attach() names the content element');
+	pg_assert_contains('window.PgCM.view.EditorView.contentAttributes.of(attrs)', $source, 'through its content attributes');
 	pg_assert_contains('function pgCeTextareaName(textarea)', $source, 'name reader');
 	pg_assert_contains("getAttribute('aria-labelledby')", $source, 'aria-labelledby is read');
 	pg_assert_contains('textarea.labels', $source, 'the label is read');

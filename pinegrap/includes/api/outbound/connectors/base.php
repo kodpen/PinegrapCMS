@@ -37,6 +37,15 @@
 //   ship_package($account, $package, $tracking_url)
 //                                         tell them the seller shipped it with
 //                                         their own carrier
+//   request_label($account, $number, $boxes)
+//                                         ask them for the shipping label of the
+//                                         parcel with that cargo number, one per
+//                                         box, made by their own carrier
+//   read_label($account, $number)         that label: data['label'] (one file,
+//                                         '' while it is not made yet) and
+//                                         data['format'] (pg_label_formats())
+//   label_carrier($name)                  whether they label a parcel of the
+//                                         carrier a package names (a bool)
 //   update_order($account, $lines, $to)   move their order along
 //   category_tree($account)               their category tree, flattened
 //   category_attributes($account, $id)    what a category demands, with values

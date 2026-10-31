@@ -1,0 +1,6 @@
+{
+  "data": [
+    {"id": 4012, "shop_name": "Webshop", "shop_url": "https://shop.example", "type": "shopify", "webhook_active": false, "webhook_url": null, "feedback_type": "eager"},
+    {"id": 4013, "shop_name": "Pinegrap", "shop_url": "https://shop.example", "type": "api", "webhook_active": false, "webhook_url": null, "feedback_type": "eager"}
+  ]
+}

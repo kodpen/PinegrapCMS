@@ -223,7 +223,8 @@ function get_wysiwyg_editor_code($editor_ids, $activate_editors = true, $folder_
             $output_include_source_plugin = ',"Source"';
             $output_remove_sourcedialog_plugin = ',sourcedialog';
             foreach ($editor_ids as $editor_id) {
-                $output_editor_initialization .= 'CKEDITOR.replace("' . $editor_id . '", software_ckeditor_config);';
+                // Each editor named by its field's caption (pg_ckeditor_source.js).
+                $output_editor_initialization .= 'pgCkeditorReplace("' . $editor_id . '", software_ckeditor_config);';
             }
             $output_editor_initialization = 'if (typeof(software_$) != "undefined") {
                     software_$(document).ready(function() {
@@ -713,7 +714,12 @@ function pg_code_editor_includes()
 
     $config = pg_code_editor_urls();
     $config['phrases'] = pg_code_editor_phrases();
-    $config['labels'] = array('syntaxError' => lang('Syntax error'));
+    // keysHint: the line under a rich text editor in Source mode
+    // (pg_ckeditor_source.js), as under a code field.
+    $config['labels'] = array(
+        'syntaxError' => lang('Syntax error'),
+        'keysHint'    => lang('Tab indents. {var} makes Tab move to the next field.'),
+    );
 
     return '<script>window.pgCodeEditorConfig = ' . pg_code_editor_json($config) . ';</script>';
 }
@@ -779,7 +785,23 @@ function pg_code_editor_attach($properties)
     // follows setLanguage()).
     $format = '';
 
+    // An editable field also says, at the row's left, that Tab indents and
+    // how to make it move to the next field instead (Ctrl+M, bound in the
+    // facade); the editor's content names this line in aria-describedby.
+    // Tab already moves on from a read-only field.
+    $hint = '';
+
     if (empty($properties['readonly'])) {
+        $options['describedBy'] = $id . '_keys_hint';
+
+        $hint = '
+                    var hint = document.createElement("span");
+                    hint.id = options.describedBy;
+                    hint.className = "form-text me-auto align-self-center";
+                    var platform = (navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || navigator.userAgent || "";
+                    hint.textContent = ' . pg_code_editor_json(lang('Tab indents. {var} makes Tab move to the next field.')) . '.replace("{var}", /mac|iphone|ipad|ipod/i.test(platform) ? "Shift+Alt+M" : "Ctrl+M");
+                    tools.insertBefore(hint, tools.firstChild);';
+
         $format = '
                     var formats = ["css","javascript","json"];
                     var format = document.createElement("button");
@@ -802,6 +824,35 @@ function pg_code_editor_attach($properties)
                     sync();';
     }
 
+    // An editable field asks before the page is left while its text differs
+    // from what the editor held when it arrived (read from the editor, which
+    // may have normalised the line ends). Left out: a field with no form
+    // (edit_page_layout.php guards its own), a field in the settings dialog
+    // (it tracks its own changes) and an editor released since. The form's
+    // own submit stops the question unless a handler prevented it; it is
+    // heard through jQuery, because the Ctrl+S fallback calls jQuery's
+    // form.submit(), which no native listener hears.
+    $guard = '';
+
+    if (empty($properties['readonly'])) {
+        $guard = '
+                    var form = field.form;
+                    if (form && !(field.closest && field.closest("#pg_settings_modal"))) {
+                        var saved = editor.getValue();
+                        var sent = null;
+                        var onSubmit = function (e) { sent = e; };
+                        if (window.jQuery) window.jQuery(form).on("submit", onSubmit);
+                        else form.addEventListener("submit", onSubmit);
+                        window.addEventListener("beforeunload", function (e) {
+                            if (window.pgCodeEditors[field.id] !== instance) return;
+                            if (sent && !(sent.isDefaultPrevented ? sent.isDefaultPrevented() : sent.defaultPrevented)) return;
+                            if (editor.getValue() === saved) return;
+                            e.preventDefault();
+                            e.returnValue = "";
+                        });
+                    }';
+    }
+
     $tools = '
                     var tools = document.createElement("div");
                     tools.className = "pg-code-field-tools gap-3";
@@ -820,7 +871,7 @@ function pg_code_editor_attach($properties)
                         editor.focus();
                     });
                     syncMinimap();
-                    tools.appendChild(minimap);' . $format . '
+                    tools.appendChild(minimap);' . $format . $hint . '
                     var destroy = editor.destroy;
                     editor.destroy = function () {
                         if (tools.parentNode) tools.parentNode.removeChild(tools);
@@ -853,7 +904,7 @@ function pg_code_editor_attach($properties)
                 if (typeof PgCodeEditor === "undefined") return;
                 PgCodeEditor.attach(field, options).then(function (instance) {
                     editor = instance;
-                    window.pgCodeEditors[field.id] = instance;' . $tools . '
+                    window.pgCodeEditors[field.id] = instance;' . $tools . $guard . '
                     // A screen that changes the editor (its language, after a
                     // choice made before it arrived) hears when it is there.
                     try { field.dispatchEvent(new CustomEvent("pgcodeeditorready", { detail: instance })); } catch (e) {}

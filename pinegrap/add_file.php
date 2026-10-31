@@ -21,6 +21,7 @@ $user = validate_user();
 validate_area_access($user, 'user');
 
 require_once(PG_FUNCTIONS_DIR . '/includes/forms/design_file_form.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/cloud_file_picker.php');
 
 $upload_limits = pg_upload_limits();
 
@@ -32,6 +33,20 @@ $upload_limits = pg_upload_limits();
 $upload_wants_json =
     ((($_REQUEST['jsonreturn'] ?? '') === 'true')
      || (strtolower($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '') === 'xmlhttprequest'));
+
+// Answers a JSON caller with a refusal and stops. A status other than 200
+// lets the caller tell it apart from an upload without reading the sentence
+// (Dropzone counts any 2xx answer as success); "error" repeats the sentence
+// because Dropzone writes that key into each file's bubble.
+$upload_refusal_answer = function ($status, $message) {
+    http_response_code($status);
+    header('Content-Type: application/json; charset=utf-8');
+    echo encode_json(array(
+        'status'  => 'error',
+        'message' => $message,
+        'error'   => $message));
+    exit();
+};
 
 // A POST whose body PHP threw away for being over post_max_size.
 //
@@ -52,14 +67,7 @@ if (pg_post_body_discarded()) {
     log_activity($upload_message);
 
     if ($upload_wants_json) {
-        // 413 rather than 200: the caller has to be able to tell this apart
-        // from a successful upload without reading the sentence.
-        http_response_code(413);
-        header('Content-Type: application/json; charset=utf-8');
-        echo encode_json(array(
-            'status'  => 'error',
-            'message' => $upload_message));
-        exit();
+        $upload_refusal_answer(413, $upload_message);
     }
 
     output_error(h($upload_message) . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
@@ -120,6 +128,61 @@ if (!$_POST) {
             . '</p>';
     }
 
+    // Picking a file from the person's own cloud storage: a button per
+    // provider they can pick from, a Connect button per provider whose
+    // application is set up but whose account they have not connected.
+    // Nothing set up, nothing shown.
+    $cloud_choices = pg_cloud_picker_choices((int) $user['id']);
+
+    $output_cloud = '';
+    $output_cloud_forms = '';
+
+    if ($cloud_choices['pick'] || $cloud_choices['connect']) {
+
+        $cloud_config = array(
+            'pick'  => array(),
+            'texts' => array(
+                'downloading' => lang('Downloading the file to the server…'),
+                'failed'      => lang('Sorry, the file could not be added. Please try again.'),
+                'load_failed' => lang('The picker could not be loaded. Check the connection and try again.'),
+                'popup_blocked' => lang('The browser blocked the picker window. Allow pop-ups for this site and try again.'),
+            ));
+
+        $cloud_icons = array('google' => 'bi-google', 'onedrive' => 'bi-microsoft', 'dropbox' => 'bi-dropbox');
+
+        foreach ($cloud_choices['pick'] as $cloud_key => $cloud_pick) {
+            $cloud_config['pick'][$cloud_key] = $cloud_pick['client'];
+
+            $output_cloud .= '
+                <button type="button" class="btn btn-sm btn-outline theme-primary mt-4 ms-2" data-pg-cloud-pick="' . h($cloud_key) . '">
+                    <i class="bi ' . h($cloud_icons[$cloud_key]) . ' me-3" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang(array('string' => 'Pick from {var:1}', 'vars' => array($cloud_pick['label'])))) . '</span></button>';
+        }
+
+        foreach ($cloud_choices['connect'] as $cloud_key => $cloud_label) {
+            // The button sits inside the upload form but submits its own
+            // form, placed outside it (the settings Connect-button pattern).
+            $output_cloud .= '
+                <button type="submit" form="pg_cloud_connect_' . h($cloud_key) . '" class="btn btn-sm btn-outline theme-secondary mt-4 ms-2">
+                    <i class="bi ' . h($cloud_icons[$cloud_key]) . ' me-3" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang(array('string' => 'Connect your {var:1} account', 'vars' => array($cloud_label)))) . '</span></button>';
+
+            $output_cloud_forms .= '
+    <form id="pg_cloud_connect_' . h($cloud_key) . '" action="connect.php" method="post" hidden>
+        ' . pg_connect_start_fields(pg_cloud_picker_connect_provider($cloud_key), 'file_picker', 'add_file.php?picker_connect=1', 'person') . '
+    </form>';
+        }
+
+        $cloud_flash = isset($_GET['picker_connect']) ? pg_connect_flash_take() : null;
+
+        $output_cloud .= '
+                <p id="pg_cloud_status" class="small mt-3 mb-0' . (($cloud_flash && ($cloud_flash['kind'] === 'error')) ? ' fg-danger' : '') . '" role="status" aria-live="polite">' . ($cloud_flash ? h($cloud_flash['text']) : '') . '</p>';
+
+        if ($cloud_choices['pick']) {
+            $output_cloud_forms .= '
+    <script type="application/json" id="pg_cloud_picker_config">' . str_replace('</', '<\/', encode_json($cloud_config)) . '</script>'
+                . pg_js_bundle_tags('assets/js/cloud_file_picker.min.js');
+        }
+    }
+
     echo
     pg_page_shell(
         array(
@@ -128,9 +191,9 @@ if (!$_POST) {
             'icon'=>'file',
             'heading'=>lang('Upload File'),
             'heading_description' => lang('Drop files below, update the settings (if necessary), and then click Upload.'),
-            'cancel'=>array('enable'=>'true','url'=>'view_files.php'),
+            'cancel'=>array('enable'=>'true','url'=>pg_send_to_url('view_files.php')),
             'breadcrumb' => array(
-                array('label' => lang('All My Files'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_files.php'),
+                array('label' => lang('All My Files'), 'url' => pg_send_to_list_url(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_files.php')),
                 array('label' => lang('Upload Files')),
             ),
 
@@ -152,6 +215,7 @@ if (!$_POST) {
             dictCancelUploadConfirmation : "' . lang('Are you sure you want to cancel this upload?') . '",
             dictMaxFilesExceeded : "' . lang('You can not upload any more files.') . '",
             dictCancelUpload : "' . lang('Cancel upload') . '",
+            dictResponseError : ' . encode_json(lang(array('string' => 'The server answered {var:1} without a readable error message.', 'vars' => array('{{statusCode}}')))) . ',
 
             dictRemoveFile : "<span class=\'material-icons btn btn-sm fg-danger p-1 rounded-4 position-absolute top-0 end-0\' style=\'z-index:20;\'>delete</span>",
             // Had to set high value for parallelUploads in order for
@@ -159,7 +223,12 @@ if (!$_POST) {
             parallelUploads: 9999,
             // What this server accepts for one file, in MB.
             maxFilesize: ' . $dropzone_file_max_mb . ',
-            dictFileTooBig: "' . lang('This file is too big to upload ({{filesize}} MB). The limit is {{maxFilesize}} MB.') . '",
+            // Names the limit as the line above the drop area does; the Dropzone
+            // own figures are base 1024 with two "." decimals.
+            dictFileTooBig: ' . encode_json(lang(array(
+                'string' => 'The file can be at most {var:1}.',
+                'vars'   => array(convert_bytes_to_string(($upload_limits['file_max'] > 0) ? $upload_limits['file_max'] : $dropzone_file_max_mb * 1048576, 1))))) . ',
+            filesizeBase: 1024,
             previewsContainer: ".dropzone_previews",
             // The drop area is a plain div that takes no focus; the button
             // beside it opens the same file dialog from the keyboard.
@@ -199,9 +268,34 @@ if (!$_POST) {
 
                 // Shown only once Dropzone runs; without it the fallback input below is used.
                 document.getElementById("pg_upload_choose").hidden = false;
+
+                // The size under each file in the panel units and decimal
+                // mark (B and KB whole, MB and up with one decimal), so it
+                // reads like the limit line above the drop area.
+                var sizeSeparators = ' . encode_json(pg_number_separators()) . ';
+                myDropzone.filesize = function (size) {
+                    var value = size;
+                    var unit = " B";
+                    var decimals = 0;
+                    var parts;
+
+                    if (size >= 1073741824) {
+                        value = size / 1073741824; unit = " GB"; decimals = 1;
+                    } else if (size >= 1048576) {
+                        value = size / 1048576; unit = " MB"; decimals = 1;
+                    } else if (size >= 1024) {
+                        value = size / 1024; unit = " KB";
+                    }
+
+                    parts = value.toFixed(decimals).split(".");
+                    parts[0] = parts[0].replace(/\\B(?=(\\d{3})+(?!\\d))/g, sizeSeparators.thousands);
+
+                    return "<strong>" + parts.join(sizeSeparators.decimal) + "</strong>" + unit;
+                };
                
                 // First change the button to actually tell Dropzone to process the queue.
-                this.element.querySelector("button[type=submit]").addEventListener("click", function(e) {
+                // By id: a Connect button of the cloud picker is a submit button too.
+                document.getElementById("submit").addEventListener("click", function(e) {
                   // Make sure that the form isnt actually being sent.
                   e.preventDefault();
                   e.stopPropagation();
@@ -209,24 +303,42 @@ if (!$_POST) {
                 });
 
                 this.on("sendingmultiple", function() {
+                    $("#pg_upload_error").prop("hidden", true).text("");
                     $("#submit").prop("disabled", true);
                     $("#submit").addClass("disabled");
                 });
 
                 this.on("successmultiple", function(files, response) {
-                    var send_to = $("#send_to").val();
-
-                    if (send_to) {
-                        window.location = send_to;
-                    } else {
-                        window.location = "view_files.php";
-                    }
+                    // send_to is checked on the server: only a path on this site.
+                    window.location = ' . json_encode(pg_send_to_url('view_files.php'), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) . ';
                     
                 });
-                this.on("errormultiple", function(files, response) {
+                this.on("errormultiple", function(files, response, xhr) {
                     $("#submit").prop("disabled", false);
                     $("#submit").removeClass("disabled");
-                    console.log("' . lang('Sorry, the files could not be uploaded.  Please refresh and try again.') . '");
+
+                    // A refusal answers JSON {status, message}; a timeout or an
+                    // answer with no body gives a string; any other answer is
+                    // the raw text of an error page, which is not shown as is.
+                    var message = "";
+                    if (response && typeof response === "object" && response.message) {
+                        message = String(response.message);
+                    } else if (typeof response === "string" && $.trim(response) !== "" && !/<[a-z!\/]/i.test(response)) {
+                        message = response;
+                    } else if (xhr && xhr.status) {
+                        message = ' . encode_json(lang('The server answered {var:1} without a readable error message.')) . '.replace("{var:1}", xhr.status);
+                    } else {
+                        message = ' . encode_json(lang('Sorry, the files could not be uploaded.  Please refresh and try again.')) . ';
+                    }
+
+                    $("#pg_upload_error").text(message).prop("hidden", false);
+
+                    // Dropzone wrote the raw answer into each file bubble.
+                    $.each(files, function(i, file) {
+                        if (file.previewElement) {
+                            $(file.previewElement).find("[data-dz-errormessage]").text(message);
+                        }
+                    });
                 });
             }
         }
@@ -240,6 +352,7 @@ if (!$_POST) {
                         ' . $output_upload_limits . '
                     </div>
                 </div>
+                <div id="pg_upload_error" class="alert theme-danger" role="alert" hidden></div>
                 <form enctype="multipart/form-data" action="add_file.php" method="post" id="dropzone" class="dropzone" style="border: none;background: unset;padding: unset;">
                     ' . get_token_field() . '
                     <input type="hidden" id="send_to" name="send_to" value="' . (isset($_REQUEST['send_to']) ? h($_REQUEST['send_to']) : '') . '" />
@@ -263,7 +376,7 @@ if (!$_POST) {
                                             </div>
                                         </div>
                                     </div>
-                                    <button type="button" id="pg_upload_choose" class="btn btn-sm btn-outline theme-primary mt-4" hidden><span class="material-icons me-3" aria-hidden="true">upload_file</span><span class="pg-btn-label">' . lang('Select File(s)') . '</span></button>
+                                    <button type="button" id="pg_upload_choose" class="btn btn-sm btn-outline theme-primary mt-4" hidden><span class="material-icons me-3" aria-hidden="true">upload_file</span><span class="pg-btn-label">' . lang('Select File(s)') . '</span></button>' . $output_cloud . '
                                 </div>
                             </div>
                         </div>
@@ -281,7 +394,7 @@ if (!$_POST) {
                             </div>
                         </div>
                     </nav>
-                </form>
+                </form>' . $output_cloud_forms . '
             </div>
         </div>
     
@@ -289,16 +402,67 @@ if (!$_POST) {
     output_footer();
 
 } else {
-    validate_token_field();
+    // The Google Picker's or the OneDrive picker's token, asked for when the
+    // person opens it.
+    if (($_POST['cloud_action'] ?? '') === 'token') {
+        pg_cloud_picker_token_answer($user);
+    }
 
-    // If the user didn't select a file then output error.
-    if (empty($_FILES['file']['name'][0])) {
-        output_error(lang('Please select a file.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+    // A file picked from the person's cloud storage: the browser sends only
+    // its id or link, the server downloads it and stores it below through
+    // the same function as a browser upload. Answered in JSON.
+    $cloud_provider = (string) ($_POST['cloud_provider'] ?? '');
+
+    if ($cloud_provider !== '') {
+        if (!pg_cloud_picker_token_valid()) {
+            pg_cloud_picker_json(403, array('status' => 'error', 'message' => lang('Your session expired. Reload the page and try again.')));
+        }
+
+        $cloud_choices = pg_cloud_picker_choices((int) $user['id']);
+
+        if (!isset($cloud_choices['pick'][$cloud_provider])) {
+            pg_cloud_picker_json(404, array('status' => 'error', 'message' => lang('This kind of connection is not available.')));
+        }
+
+        if (check_edit_access($_POST['folder'] ?? '') == false) {
+            log_activity(lang('access denied to upload file into folder'), $_SESSION['sessionusername']);
+            pg_cloud_picker_json(403, array('status' => 'error', 'message' => lang('Access denied.')));
+        }
+
+        $_POST['jsonreturn'] = 'true';
+
+    } else {
+        if ($upload_wants_json) {
+            // The same comparison validate_token_field() makes, answered in
+            // JSON: its HTML page answers 200, which Dropzone reads as success.
+            $session_token = (string) ($_SESSION['software']['token'] ?? '');
+            $post_token = (isset($_POST['token']) && is_string($_POST['token'])) ? $_POST['token'] : '';
+            $get_token = (isset($_GET['token']) && is_string($_GET['token'])) ? $_GET['token'] : '';
+            if (($session_token === '') || (!hash_equals($session_token, $post_token) && !hash_equals($session_token, $get_token))) {
+                $upload_refusal_answer(403, lang('Your session expired. Reload the page and try again.'));
+            }
+        }
+
+        validate_token_field();
+
+        // If the user didn't select a file then output error.
+        if (empty($_FILES['file']['name'][0])) {
+            if ($upload_wants_json) {
+                $upload_refusal_answer(400, lang('Please select a file.'));
+            }
+
+            output_error(lang('Please select a file.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+        }
     }
 
     // check that user has access to place file in selected folder
-    if (check_edit_access($_POST['folder']) == false) {
+    if (check_edit_access($_POST['folder'] ?? '') == false) {
         log_activity(lang('access denied to upload file into folder'), $_SESSION['sessionusername']);
+
+        if ($upload_wants_json) {
+            $upload_refusal_answer(403, lang('Access denied.'));
+        }
+
         output_error(lang('Access denied.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
     }
 
@@ -330,7 +494,17 @@ if (!$_POST) {
     // optimize button reported the file missing.
     $failed_files = array();
 
-    foreach ($_FILES['file']['name'] as $index => $file_name) {
+    // Every file is stored by pg_file_store_upload() (includes/fn/files.php),
+    // the browser's and the cloud picker's alike, so neither skips a rule.
+    $store_options = array(
+        'folder'         => $_POST['folder'] ?? '',
+        'description'    => $_POST['description'] ?? '',
+        'design'         => ($user['role'] <= 1) ? (string) ($_POST['design'] ?? '') : null,
+        'image_profile'  => $image_profile,
+        'image_settings' => $image_settings,
+        'file_max'       => $upload_limits['file_max']);
+
+    foreach (($_FILES['file']['name'] ?? array()) as $index => $file_name) {
 
         $upload_error = isset($_FILES['file']['error'][$index])
             ? (int) $_FILES['file']['error'][$index]
@@ -369,154 +543,49 @@ if (!$_POST) {
             continue;
         }
 
-        // A name the web server would run or read as its own settings is
-        // refused, not renamed: the operator should know it did not arrive.
-        if (pg_upload_name_blocked($file_name)) {
+        $stored = pg_file_store_upload(
+            $_FILES['file']['tmp_name'][$index],
+            $file_name,
+            (int) $_FILES['file']['size'][$index],
+            $store_options);
 
-            $failed_message = pg_upload_blocked_message($file_name);
-
-            log_activity($failed_message);
-
-            $failed_files[] = array(
-                'name'    => $file_name,
-                'message' => $failed_message);
-
-            continue;
-        }
-
-        $file_name = prepare_file_name($file_name);
-
-        $file_name = get_unique_name(array(
-            'name' => $file_name,
-            'type' => 'file'));
-
-        $array_file_extension = explode('.', $file_name);
-        $size_of_array = count($array_file_extension);
-        $file_extension = $array_file_extension[$size_of_array - 1];
-
-        // A failed copy used to be followed by an INSERT anyway, which is how
-        // a row can point at a file that was never written. Nothing is
-        // recorded for a file that is not on the disk.
-        if (!@copy($_FILES['file']['tmp_name'][$index], FILE_DIRECTORY_PATH . '/' . $file_name)) {
-
-            $failed_message = lang(array(
-                'string' => 'The server could not accept {var:1}. Please try again.',
-                'vars'   => array($file_name)));
-
-            log_activity($failed_message);
+        if ($stored['ok']) {
+            $uploaded_files[] = $stored['file'];
+        } else {
+            log_activity($stored['message']);
 
             $failed_files[] = array(
                 'name'    => $file_name,
-                'message' => $failed_message);
+                'message' => $stored['message']);
+        }
+    }
 
-            continue;
+    if ($cloud_provider !== '') {
+        $cloud_choice = json_decode((string) ($_POST['cloud_choice'] ?? ''), true);
+
+        $fetched = pg_cloud_picker_fetch(
+            $cloud_provider,
+            $cloud_choice,
+            pg_cloud_picker_connection($cloud_provider, (int) $user['id']),
+            $upload_limits['file_max']);
+
+        $stored = $fetched['ok']
+            ? pg_file_store_upload($fetched['path'], $fetched['name'], $fetched['size'], $store_options)
+            : array('ok' => false, 'message' => $fetched['message']);
+
+        if ($fetched['ok']) {
+            @unlink($fetched['path']);
         }
 
-        $file_path = FILE_DIRECTORY_PATH . '/' . $file_name;
-        $file_size = $_FILES['file']['size'][$index];
+        if ($stored['ok']) {
+            $uploaded_files[] = $stored['file'];
+        } else {
+            log_activity($stored['message']);
 
-        // Product photos are compressed on the way in, and scaled down when
-        // they are over the ceiling. Nothing is refused and nothing is
-        // enlarged: an image below the minimum is stored as it is and reported
-        // back so the screen can say so.
-        $image_report   = NULL;
-        $sql_image_1    = "";
-        $sql_image_2    = "";
-
-        if ($image_profile === 'product') {
-
-            // A 24 megapixel photo takes a couple of seconds to resample, and
-            // the picker sends a whole selection in one request. The default
-            // 30 seconds is a page that dies half way through the third file.
-            @set_time_limit(120);
-
-            $image_report = pg_process_image_file($file_path, array(
-                'max_dimension' => $image_settings['product_max_dimension'],
-                'min_dimension' => $image_settings['product_min_dimension'],
-                'quality'       => $image_settings['resize_quality']));
-
-            if ($image_report['status'] === 'success') {
-
-                @clearstatcache(true, $file_path);
-                $file_size = filesize($file_path);
-
-                // Flagged optimized so the Files screen does not offer to do
-                // it again — the badge there would promise a saving that has
-                // already been taken, and pressing it would recompress an
-                // image that is already at its target quality.
-                $sql_image_1 = "optimized, image_width, image_height, optimization_percent,";
-                $sql_image_2 =
-                    "'1',
-                     '" . (int) $image_report['width'] . "',
-                     '" . (int) $image_report['height'] . "',
-                     '0',";
-
-                if ($image_report['changed']) {
-                    log_activity(lang(array(
-                        'string' => 'image ({var:1}) was optimized on upload ({var:2} -> {var:3})',
-                        'vars'   => array(
-                            $file_name,
-                            convert_bytes_to_string($image_report['bytes_before']),
-                            convert_bytes_to_string($image_report['bytes_after'])))));
-                }
-            }
+            $failed_files[] = array(
+                'name'    => ($fetched['name'] !== '') ? $fetched['name'] : $cloud_provider,
+                'message' => $stored['message']);
         }
-
-        $sql_design_1 = "";
-        $sql_design_2 = "";
-
-        // if the user is a designer or administrator, then save design property
-        if ($user['role'] <= 1) {
-            $sql_design_1 = "design,";
-            $sql_design_2 = "'" . escape($_POST['design'] ?? '') . "',";
-        }
-
-        db(
-            "INSERT INTO files (
-                name,
-                folder,
-                description,
-                type,
-                size,
-                " . $sql_image_1 . "
-                " . $sql_design_1 . "
-                user,
-                timestamp)
-            VALUES (
-                '" . escape($file_name) . "',
-                '" . escape($_POST['folder'] ?? '') . "',
-                '" . escape($_POST['description'] ?? '') . "',
-                '" . escape($file_extension) . "',
-                '" . escape($file_size) . "',
-                " . $sql_image_2 . "
-                " . $sql_design_2 . "
-                '" . USER_ID . "',
-                UNIX_TIMESTAMP())");
-
-        $new_file_id = (int) mysqli_insert_id(db::$con);
-
-        pg_audit_record('create', 'files', $new_file_id);
-
-        log_activity(lang(array('string'=>'file ({var:1}) was created','vars'=>$file_name )), $_SESSION['sessionusername']);
-
-        // A file uploaded from the panel is as new to an integration as one
-        // posted to the API, so it is announced the same way.
-        pg_announce('file.created', array('id' => $new_file_id, 'name' => $file_name));
-
-        $uploaded_files[] = array(
-            'id'        => $new_file_id,
-            'name'      => $file_name,
-            'type'      => $file_extension,
-            'size'      => $file_size,
-            // What the browser sent, so the caller can add up the saving.
-            'original_size' => (int) $_FILES['file']['size'][$index],
-            // Zero when the file was not measured, which is every upload that
-            // did not ask for a profile. The caller reads too_small rather
-            // than comparing these itself, so the minimum lives in one place.
-            'width'     => $image_report ? (int) $image_report['width'] : 0,
-            'height'    => $image_report ? (int) $image_report['height'] : 0,
-            'resized'   => (bool) ($image_report && $image_report['resized']),
-            'too_small' => (bool) ($image_report && $image_report['too_small']));
     }
 
     // Screens that upload in the background and then have to show the file
@@ -541,6 +610,16 @@ if (!$_POST) {
             // second copy of the limit.
             'minimum_dimension' => ($image_profile === 'product') ? (int) $image_settings['product_min_dimension'] : 0));
         exit();
+    }
+
+    // A Dropzone batch where nothing was written is refused here rather than
+    // sent on to the list, so the screen says why and keeps the queue.
+    if (!$uploaded_files && $upload_wants_json) {
+        $upload_failed_message = $failed_files
+            ? implode(' ', array_column($failed_files, 'message'))
+            : lang('Nothing was uploaded.');
+
+        $upload_refusal_answer(400, $upload_failed_message);
     }
 
     include_once('liveform.class.php');

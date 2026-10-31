@@ -42,10 +42,13 @@ if (defined('BASE_CURRENCY_SYMBOL') == false) {
 // instead of ending in an error page)
 if (!is_scalar($_GET['visitor_report_id'] ?? null)) {
     $pg_previous_screen_item = array('label' => lang('Visitor Report'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_visitor_report.php');
+    $pg_back_arrow_url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_visitor_report.php';
 
 // else the user was editing a visitor report on the previous screen, so prepare previous screen link
 } else {
     $pg_previous_screen_item = array('label' => lang('Visitor Report'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_visitor_report.php?id=' . h($_GET['visitor_report_id']));
+    // The arrow url goes through pg_output_go_script(), so it is not h()-escaped.
+    $pg_back_arrow_url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_visitor_report.php?id=' . (int) $_GET['visitor_report_id'];
 }
 
 // get visitor information (a newer visit names its referring address in the
@@ -259,7 +262,7 @@ pg_page_shell(
         'icon'=>'visitor',
         'heading'=> lang('Visit Details'),
         'heading_description' => lang('View this computer\'s visit to the website.'),
-        'cancel'=>array('enable'=>'true','url'=>'view_visitor_reports.php'),
+        'cancel'=>array('enable'=>'true','url' => $pg_back_arrow_url),
         'breadcrumb' => array(
             array('label' => lang('All Visitor Reports'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_visitor_reports.php'),
             $pg_previous_screen_item,

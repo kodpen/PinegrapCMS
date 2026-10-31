@@ -56,6 +56,10 @@ if (!$_POST) {
         output_error(lang('Sorry, the item could not be found.'), 404);
     }
 
+    // Notices from Duplicate and Save wait for this screen.
+    include_once('liveform.class.php');
+    $liveform = new liveform('edit_custom_style');
+
     $style_id = $row['style_id'];
     $style_name = $row['style_name'];
     $style_timestamp = $row['style_timestamp'];
@@ -118,7 +122,7 @@ if (!$_POST) {
         $delete_confirmation = pg_recycle_style_ready()
             ? lang('This page style will be moved to the Recycle Bin.')
             : lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('page style'))));
-        $output_delete_button = '<button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-solid theme-danger " data-confirm-content="' . $delete_confirmation . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>';
+        $output_delete_button = '<button type="submit" name="submit_delete" value="Delete" formnovalidate class="btn my-1  btn-solid theme-danger " data-confirm-content="' . $delete_confirmation . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>';
     }
 
     print
@@ -127,7 +131,9 @@ if (!$_POST) {
             <div class="col-12">
                 <div class="row mb-3  flex-wrap">
                     <div class="col-12 sm:col-12 text-center md:text-start">
-<h2 class="d-inline-block text-break header-content-for-add-page" data-bs-content="' . lang('Update this HTML template that is applied to all associated pages.') . '" title="' . lang('Edit Custom Page Style') . '">[' . h($style_name) . ']</h2>
+<h2 class="d-inline-block text-break header-content-for-add-page">[' . h($style_name) . ']</h2>
+                        ' . $liveform->output_notices() . '
+                        <p class="form-text mt-0">' . lang('Update this HTML template that is applied to all associated pages.') . '</p>
                         <p>' . lang('Last Modified') . ': ' . get_relative_time(array('timestamp' => $style_timestamp)) . ' ' . h($user_username) . '</p>
                         
                         <nav id="button_bar" class="navigation " aria-label="' . h(lang('Button Bar')) . '">
@@ -157,6 +163,7 @@ if (!$_POST) {
     
 </main>' .
         output_footer();
+    $liveform->remove_form();
 }
 else
 {
@@ -227,6 +234,11 @@ else
         $values = pg_custom_style_form_values($_POST, SOCIAL_NETWORKING == TRUE);
         $name = $values['style_name'];
 
+        // A name of only spaces passes the browser's required check and is trimmed to ''.
+        if ($name === '') {
+            output_error(lang('Name is required.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+        }
+
         // update style
         $result = db_q(
             "UPDATE style SET " . implode(' = ?, ', array_keys($values)) . " = ?, style_timestamp = UNIX_TIMESTAMP(), style_user = ? WHERE style_id = ?",
@@ -243,6 +255,8 @@ else
         if (($_POST['send_to'] ?? '') != '') {
             $send_to = '&send_to=' . urlencode($_POST['send_to']);
         }
+
+        (new liveform('edit_custom_style'))->add_notice($notice);
 
         header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_custom_style.php?id=' . urlencode($_POST['id']) . $send_to);
         exit();

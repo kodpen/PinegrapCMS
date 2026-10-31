@@ -105,6 +105,13 @@ if (!$_POST) {
         }
     }
 
+    // The currency beside the amount: the form's own value, so a refused
+    // form keeps the choice it came back with; an invoice fixes it.
+    $amount_currency = ($preset_invoice !== null) ? $preset_currency : strtoupper(trim((string) $liveform->get_field_value('currency')));
+    if ($amount_currency === '') {
+        $amount_currency = $preset_currency;
+    }
+
     // Today's recorded rate for each currency the money may come in, so the
     // operator sees what an empty rate box will be filled with.
     $output_rate_hints = '';
@@ -252,7 +259,7 @@ if (!$_POST) {
                             <div class="col-12 sm:col-6 lg:col-3 my-3">
                                 <label for="amount" class="form-label">' . lang('Amount') . '</label>
                                 <label class="form-control form-adorn form-adorn-end">
-                                    <span class="form-adorn-text" aria-hidden="true">' . ($fx_on ? h($preset_currency) : BASE_CURRENCY_SYMBOL) . '</span>
+                                    <span class="form-adorn-text" id="erp_receipt_currency_label" aria-hidden="true">' . ($fx_on ? h($amount_currency) : BASE_CURRENCY_SYMBOL) . '</span>
                                     ' . $liveform->output_field(array(
                                         'type' => 'text', 'id' => 'amount', 'name' => 'amount',
                                         'class' => 'form-ghost text-end', 'maxlength' => '15',
@@ -318,7 +325,19 @@ if (!$_POST) {
             ' . (($preset_invoice === null) ? erp_account_quick_modal() : '') . '
         </div>
     </div>
-</main>' .
+</main>
+<script>
+(function () {
+    // The amount box names the currency the money is entered in.
+    var currency = document.getElementById("currency");
+    if (currency) {
+        currency.addEventListener("change", function () {
+            document.getElementById("erp_receipt_currency_label").textContent = currency.value;
+        });
+    }
+})();
+</script>
+' .
     output_footer();
 
     $liveform->remove_form();

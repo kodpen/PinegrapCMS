@@ -64,7 +64,7 @@ if (!$_POST) {
     output_header_secure(array('title'=>lang('Modify Files'),'icon'=>'file')) . '
     <nav id="header" class="navbar sticky-top rounded-0 navbar-expand border-bottom shadow-sm bg-body">
         <div class="container-fluid">
-            <span class="navbar-text me-auto" data-bs-content="' . lang('You may update the selected Files via the form below. You may leave an option unselected if you do not want to modify a property.') . '" title="' . lang('Modify Files') . '">' . lang('Modify Files') . '</span>
+            <span class="navbar-text me-auto">' . lang('Modify Files') . '</span>
             <ul class="navbar-nav ms-auto">
                 <li class="nav-item pg-menu-wrap no-popover"  title="' . lang('Software Theme') . '">
                     <button class="nav-link nav-link-sm position-relative pg-menu-caret d-none" data-bs-toggle="menu" data-bs-placement="bottom-end" id="bd-theme" type="button"><span class="bi bi-circle-half"></span></button>
@@ -108,14 +108,21 @@ if (!$_POST) {
 
                 opener.scrollTo(0, 0);
 
-                opener.$("#content").prepend(\'\
-                    <div class=" alert theme-secondary software_notice">\
+                // The status region goes in empty and is filled a moment
+                // later, so screen readers hear the notice. The bar is
+                // indeterminate: it is named but claims no value.
+                var notice = opener.$(\'<div class="alert theme-secondary software_notice" role="status"></div>\');
+
+                opener.$("#content").prepend(notice);
+
+                setTimeout(function () {
+                    notice.html(\'\
                         <h4 class="alert-heading">' . lang('Optimizing images') . '...</h4>\
-                        <p>' . lang('Please stay on this page until this process is complete.') . '<p>\
+                        <p>' . lang('Please stay on this page until this process is complete.') . '</p>\
                         <div class="progress">\
-                          <div class="progress-bar progress-bar-striped progress-bar-animated bg-secondary" role="progressbar" aria-valuenow="75" aria-valuemin="0" aria-valuemax="100" style="width: 100%"></div>\
-                        </div>\
-                    </div>\');
+                          <div class="progress-bar progress-bar-striped progress-bar-animated bg-secondary" role="progressbar" aria-label="' . h(lang('Optimizing images')) . '" style="width: 100%"></div>\
+                        </div>\');
+                }, 50);
 
                 // Add delay before submitting form in parent window so loading image
                 // has time to load.
@@ -132,6 +139,7 @@ if (!$_POST) {
         }
     </script>
     <main id="content" class="container-fluid">
+        <p class="mt-1 mb-3">' . lang('You may update the selected Files via the form below. You may leave an option unselected if you do not want to modify a property.') . '</p>
         <div class="row">
             <div class="col-12 col-xs-8 sm:col-8 md:col-auto">
                 <div class="form-floating mt-1 mb-3">
@@ -148,7 +156,7 @@ if (!$_POST) {
                 <div class="mt-3">
                     <select class="form-control" id="optimize_mode" aria-label="' . h(lang('Optimize Images')) . '">
                         <option value="optimize">' . lang('Compress only, keep the original size') . '</option>
-                        <option value="resize">' . lang(array('string' => 'Compress, and shrink anything wider than {var:1} pixels', 'vars' => array($optimize_resize_trigger))) . '</option>
+                        <option value="resize">' . lang(array('string' => 'Compress, and shrink any image whose longest edge is over {var:1} pixels', 'vars' => array($optimize_resize_trigger))) . '</option>
                     </select>
                     <div class="form-text">' . lang(array('string' => 'Shrinking scales the longest edge down to {var:1} pixels, keeping the proportions. Smaller images are left alone.', 'vars' => array($optimize_resize_target))) . '</div>
                 </div>
@@ -307,45 +315,37 @@ if (!$_POST) {
                     
                     // if more than 0 files were modified, then log activity
                     if ($number_of_files) {
-                        $log_message = '';
-                        
-                        // if a folder was selected to move the files(s) to, then output message for log
+                        // Each change is a verb-free phrase; they are joined with ', ' inside one sentence key.
+                        $changes = array();
+
+                        // if a folder was selected to move the files(s) to, then name the folder
                         if ($_POST['move_to_folder']) {
-                            // get folder name for log
                             $query = "SELECT folder_name FROM folder WHERE folder_id = ?";
                             $result = db_q($query, array((string) ($_POST['move_to_folder'] ?? ''))) or output_error('Query failed.');
                             $row = mysqli_fetch_assoc($result);
-                            
-                            // output message for log
-                            $log_message = lang(array('string'=>'were moved to {var:1}','vars'=>$row['folder_name']));
+
+                            $changes[] = lang(array('string' => 'moved to the folder {var:1}', 'vars' => array($row['folder_name'])));
                         }
-                        
+
                         // if the design property was selected to be edited and the user is a design or administrator,
-                        // then set message for log
+                        // then say which way
                         if (
                             ($_POST['edit_design'] != '')
                             && ($user['role'] <= 1)
                         ) {
-                            // if the log message is not blank, then add separator
-                            if ($log_message != '') {
-                                $log_message .= ', ' . lang('and') . ' ';
-                            }
-                            
-                            // prepare design value for log
-                            if ($_POST['edit_design'] == '1') {
-                                $on_off = lang('on');
-                            } else {
-                                $on_off = lang('off');
-                            }
-                            
-                            // output message for log
-                            $log_message .= lang(array('string'=>'had design turned {var:1}','vars'=>$on_off));
+                            $changes[] = ($_POST['edit_design'] == '1') ? lang('design turned on') : lang('design turned off');
                         }
-                        
-                        // if there is a log message, then log it and add notice
-                        if ($log_message != '') {
-                            log_activity($number_of_files . ' ' . lang('file(s)') . ' ' . $log_message, $_SESSION['sessionusername']);
-                            $liveform->add_notice($number_of_files . ' ' . lang('file(s)') . ' ' . h($log_message) . '.');
+
+                        // if there is a change, then log it and add notice
+                        if ($changes) {
+                            if ($number_of_files == 1) {
+                                $message = lang(array('string' => '{var:1} file was changed: {var:2}.', 'vars' => array($number_of_files, implode(', ', $changes))));
+                            } else {
+                                $message = lang(array('string' => '{var:1} files were changed: {var:2}.', 'vars' => array($number_of_files, implode(', ', $changes))));
+                            }
+
+                            log_activity($message, $_SESSION['sessionusername']);
+                            $liveform->add_notice(h($message));
                         }
                     }
 
@@ -421,8 +421,14 @@ if (!$_POST) {
 
                 // if more than 0 files were deleted, then log activity
                 if ($number_of_files > 0) {
-                    log_activity(lang(array('string'=>'{var:1} file(s) were deleted','vars'=>$number_of_files)), $_SESSION['sessionusername']);
-                    $liveform->add_notice(lang(array('string'=>'{var:1} file(s) were deleted','vars'=>$number_of_files)));
+                    if ($number_of_files == 1) {
+                        $deleted_message = lang(array('string' => '{var:1} file was deleted.', 'vars' => $number_of_files));
+                    } else {
+                        $deleted_message = lang(array('string' => '{var:1} files were deleted.', 'vars' => $number_of_files));
+                    }
+
+                    log_activity($deleted_message, $_SESSION['sessionusername']);
+                    $liveform->add_notice($deleted_message);
                 }
                 
                 break;

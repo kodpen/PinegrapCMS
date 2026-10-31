@@ -103,8 +103,7 @@ if (!$_POST) {
             'icon'=>'ads',
             'heading'=>lang('Edit Ad'),
             'heading_description' => lang('Update this ad and assign it to any existing ad region.'),
-            'cancel'=>array('enable'=>'true','url'=>'view_ads.php')
-        ,
+            'cancel' => array('enable' => 'true', 'url' => pg_send_to_url(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_ads.php')),
             'breadcrumb' => array(array('label' => lang('All My Ads'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_ads.php?filter=all_ad_regions'), array('label' => lang('Edit Ad'))),
         ]) . '
 <main id="content" class="container-fluid">
@@ -123,7 +122,7 @@ if (!$_POST) {
                             <div class="container">
                                 <div class=" btn-group flex-wrap justify-content-center">
                                     <button type="submit" id="submit_save" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><span class="material-icons me-3">save</span><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>
-                                    <button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-solid theme-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('ad')))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>
+                                    <button type="submit" name="submit_delete" value="Delete" formnovalidate class="btn my-1  btn-solid theme-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('ad')))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>
                                 </div>
                             </div>
                         </nav>

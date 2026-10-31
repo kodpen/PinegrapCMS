@@ -733,6 +733,11 @@ if (pg_mail_queue_ready()) {
 // each message is a paid call that waits on the provider.
 if (pg_sms_queue_ready()) {
 
+    // A due SMS campaign is queued first, so one that starts now goes out
+    // in this run (includes/fn/sms_campaigns.php).
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/sms_campaigns.php');
+    pg_sms_campaigns_run_due();
+
     pg_sms_queue_run(10, 15);
 
 }
@@ -784,6 +789,13 @@ if (
         ws_scheduled_run(WS_SCHEDULED_BATCH, WS_FLOW_BUDGET_JOB);
     }
 
+    // The tags of the notes and workflow table rows saved before ws_refs
+    // took them (includes/workspace/refs.php), a few seconds a tick until
+    // they are through; then one small read of the marker.
+    if (ws_enabled()) {
+        ws_ref_sources_backfill_run();
+    }
+
 }
 
 // Workspace mailboxes read over IMAP (includes/workspace/mail_fetch.php), on
@@ -811,6 +823,15 @@ if (
 // fetched while a setting reads the visitor's location. The look is a file
 // read; the fetch happens about once a month, and a failed one is tried again
 // twelve hours later, not on every tick.
+// Google reviews (includes/fn/google_reviews.php): the kept answers past
+// their fresh hour are read again; nothing happens without a key and a
+// Place ID.
+if (function_exists('pg_grev_job_run')) {
+
+    pg_grev_job_run();
+
+}
+
 if (function_exists('pg_geo_db_due') && pg_geo_db_due()) {
 
     pg_geo_db_refresh();

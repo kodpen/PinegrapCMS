@@ -1768,13 +1768,23 @@ function install_heavy_tables() {
 		// the tables holding the page trees and the order lines are copied whole;
 		// on a table still on MyISAM every added index copies it too.
 		// contacts.iys_email_status (11.0.39) copies the contact list where
-		// it cannot be added in place.
-		'2026.11.0' => array('products', 'page', 'style', 'comments', 'order_items', 'contacts'),
+		// it cannot be added in place. ship_tos.district (11.0.134) copies the
+		// recipients, one or more rows per order.
+		'2026.11.0' => array('products', 'page', 'style', 'comments', 'order_items', 'contacts', 'ship_tos'),
 	);
 
 }
 
+// A database or disk size in the panel's decimal mark (2,5 GB in Turkish).
+// pg_innodb_size_label() and pg_format_number() come from functions.php; the
+// fallbacks keep the pre-flight card working where they are not loaded.
 function install_size_label($bytes) {
+
+	if (function_exists('pg_innodb_size_label')) {
+
+		return pg_innodb_size_label($bytes);
+
+	}
 
 	$bytes = (float) $bytes;
 
@@ -1794,23 +1804,17 @@ function install_size_label($bytes) {
 
 }
 
+// A row count written in full with the panel's thousands separator
+// (1.500.000 in Turkish): an abbreviated 1.5M or 3,456 reads as a decimal there.
 function install_count_label($count) {
 
-	$count = (float) $count;
+	if (function_exists('pg_format_number')) {
 
-	if ($count >= 1000000) {
-
-		return number_format($count / 1000000, 1) . 'M';
+		return pg_format_number($count, 0);
 
 	}
 
-	if ($count >= 1000) {
-
-		return number_format($count / 1000, 0) . 'k';
-
-	}
-
-	return number_format($count);
+	return number_format((float) $count, 0);
 
 }
 

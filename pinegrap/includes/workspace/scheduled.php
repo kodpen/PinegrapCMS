@@ -618,7 +618,8 @@ function ws_scheduled_metric_value($viewer, $key, $param = 0, $since = 0)
             break;
 
         case 'comments_pending':
-            $value = (int) db_value("SELECT COUNT(*) FROM comments WHERE published = '0'");
+            // Comments on pages in the Recycle Bin are not waiting on anyone.
+            $value = (int) db_value("SELECT COUNT(*) FROM comments LEFT JOIN page ON comments.page_id = page.page_id WHERE comments.published = '0'" . pg_comment_live_page_sql(pg_recycle_bin_folder_ids()));
             break;
 
         case 'visitors_yesterday':
@@ -747,6 +748,39 @@ function ws_scheduled_placeholders()
 }
 
 /**
+ * The longest text each filled field keeps: the action form cuts the text
+ * as written to it, and the action cuts the filled text to it again where
+ * it lands, since placeholders may put in far more than was written.
+ *
+ * @return array field => characters
+ */
+function ws_scheduled_text_limits()
+{
+    return array(
+        'email_subject'  => 250,
+        'email_body'     => 20000,
+        'digest_subject' => 250,
+        'digest_intro'   => 2000,
+        'webhook_text'   => 4000,
+        'summary_title'  => 160,
+    );
+}
+
+/**
+ * Cuts a filled text to a field's length, by character (never mid-UTF-8).
+ *
+ * @param string $text
+ * @param int    $limit characters
+ * @return string
+ */
+function ws_scheduled_fill_cut($text, $limit)
+{
+    $text = (string) $text;
+
+    return (mb_strlen($text) > $limit) ? mb_substr($text, 0, $limit) : $text;
+}
+
+/**
  * Fills the placeholders of a text in one pass over the text as written:
  * a value (a customer's name, a form field, a follow-up's result) is never
  * read again as a placeholder, a count included.
@@ -820,11 +854,15 @@ function ws_scheduled_fill($text, $context)
  * actions screens.
  *
  * @param array $viewer
+ * @param bool  $flows  asked by the flow canvas: a role-3 member building
+ *                      their own flows has it too
  * @return array|null
  */
-function ws_scheduled_js_config($viewer)
+function ws_scheduled_js_config($viewer, $flows = false)
 {
-    if (!ws_can_schedule($viewer)) {
+    // The flow canvas also asks it for a role-3 member building their own
+    // flows (its conditions, times and events); the scheduled screens do not.
+    if (!ws_can_schedule($viewer) && !($flows && function_exists('ws_flow_member') && ws_flow_member($viewer))) {
         return null;
     }
 
@@ -1457,6 +1495,7 @@ function ws_scheduled_url_input($url)
  */
 function ws_scheduled_action_input($viewer, $action, $channel_id = 0, $self_id = 0, $joined = false)
 {
+    $limits = ws_scheduled_text_limits();
     $fail = function ($error) {
         return array('ok' => false, 'error' => $error, 'action' => null);
     };
@@ -1502,7 +1541,7 @@ function ws_scheduled_action_input($viewer, $action, $channel_id = 0, $self_id =
             }
 
             $to = $addresses['to'];
-            $subject = mb_substr(trim(preg_replace('/[\r\n]+/', ' ', (string) ($action['subject'] ?? ''))), 0, 250);
+            $subject = mb_substr(trim(preg_replace('/[\r\n]+/', ' ', (string) ($action['subject'] ?? ''))), 0, $limits['email_subject']);
             $page_id = (int) ($action['page_id'] ?? 0);
 
             // A page: sent as the e-mail campaigns send one.
@@ -1524,7 +1563,7 @@ function ws_scheduled_action_input($viewer, $action, $channel_id = 0, $self_id =
                 return $fail(lang('Write the e-mail, or choose a page to send.'));
             }
 
-            return array('ok' => true, 'error' => '', 'action' => array('type' => 'email', 'to' => $to, 'subject' => $subject, 'page_id' => 0, 'body' => mb_substr($body, 0, 20000)));
+            return array('ok' => true, 'error' => '', 'action' => array('type' => 'email', 'to' => $to, 'subject' => $subject, 'page_id' => 0, 'body' => mb_substr($body, 0, $limits['email_body'])));
 
         // A line in the inbox of some people, with their bell and their phone.
         case 'notify':
@@ -1613,8 +1652,8 @@ function ws_scheduled_action_input($viewer, $action, $channel_id = 0, $self_id =
                 'channel_id' => $digest_channel,
                 'user_ids'   => ws_scheduled_people($action['user_ids'] ?? array()),
                 'only'       => $only,
-                'subject'    => mb_substr(trim(preg_replace('/[\r\n]+/', ' ', (string) ($action['subject'] ?? ''))), 0, 250),
-                'intro'      => mb_substr(trim(str_replace("\r\n", "\n", (string) ($action['intro'] ?? ''))), 0, 2000),
+                'subject'    => mb_substr(trim(preg_replace('/[\r\n]+/', ' ', (string) ($action['subject'] ?? ''))), 0, $limits['digest_subject']),
+                'intro'      => mb_substr(trim(str_replace("\r\n", "\n", (string) ($action['intro'] ?? ''))), 0, $limits['digest_intro']),
                 'missed'     => empty($action['missed']) ? 0 : 1,
                 'ai'         => (empty($action['missed']) || empty($action['ai'])) ? 0 : 1,
             ));
@@ -1633,7 +1672,7 @@ function ws_scheduled_action_input($viewer, $action, $channel_id = 0, $self_id =
                 $format = 'generic';
             }
 
-            $text = mb_substr(trim(str_replace("\r\n", "\n", (string) ($action['text'] ?? ''))), 0, 4000);
+            $text = mb_substr(trim(str_replace("\r\n", "\n", (string) ($action['text'] ?? ''))), 0, $limits['webhook_text']);
 
             if (($format !== 'generic') && ($text === '')) {
                 return $fail(lang('Write the message to send.'));
@@ -1713,7 +1752,7 @@ function ws_scheduled_action_input($viewer, $action, $channel_id = 0, $self_id =
 
             return array('ok' => true, 'error' => '', 'action' => array(
                 'type'       => 'report',
-                'title'      => mb_substr(trim((string) ($action['title'] ?? '')), 0, 160),
+                'title'      => mb_substr(trim((string) ($action['title'] ?? '')), 0, $limits['summary_title']),
                 'metrics'    => array_slice($list, 0, 20),
                 'channel_id' => $report_channel,
                 'to'         => $addresses['to'],
@@ -3572,7 +3611,11 @@ function ws_scheduled_execute($id, $by_hand = false, $context = array())
         ws_event_depth($context['depth']);
     }
 
-    if (!is_array($viewer) || !ws_can_schedule($viewer)) {
+    // A flow's anchor also runs for a role-3 member's own flow
+    // (flow_member.php); a scheduled action is staff's alone.
+    $anchor = ((int) ($row['flow_id'] ?? 0) > 0) && function_exists('ws_flow_builder');
+
+    if (!is_array($viewer) || !($anchor ? ws_flow_builder($viewer) : ws_can_schedule($viewer))) {
         $status = 'failed';
         $steps[] = array('step' => 'rules', 'ok' => false, 'text' => lang('The one who wrote it is no longer on the staff.'));
     } else {
@@ -3863,7 +3906,8 @@ function ws_scheduled_hours_hold($from, $to, $minute)
 }
 
 /**
- * One comparison of a rule.
+ * One comparison of a rule. Texts are compared without case, the Turkish
+ * capitals and dotted or dotless i folded alike (ws_fold()).
  *
  * @param mixed  $current what the record holds
  * @param string $operator
@@ -3894,7 +3938,7 @@ function ws_scheduled_compare($current, $operator, $value, $kind)
             return !$empty;
 
         case 'contains':
-            return ($value !== '') && (mb_stripos($text, (string) $value) !== false);
+            return ((string) $value !== '') && ws_text_contains($text, (string) $value);
 
         // A date, today or within so many days from today.
         case 'within':
@@ -3931,10 +3975,10 @@ function ws_scheduled_compare($current, $operator, $value, $kind)
             return $a <= $b;
 
         case 'neq':
-            return mb_strtolower($text) !== mb_strtolower(trim((string) $value));
+            return ws_fold($text) !== ws_fold(trim((string) $value));
 
         default:
-            return mb_strtolower($text) === mb_strtolower(trim((string) $value));
+            return ws_fold($text) === ws_fold(trim((string) $value));
     }
 }
 
@@ -3979,9 +4023,11 @@ function ws_scheduled_do($viewer, $row, $action, $context = array())
             return array('ok' => true, 'text' => lang(array('string' => 'written in #{var:1}', 'vars' => $channel['name'])), 'message_id' => (int) $sent['message_id']);
 
         case 'email':
-            $subject = ws_scheduled_fill((string) $action['subject'], $context);
+            // A page body below is site HTML, not filled, and stays whole.
+            $limits = ws_scheduled_text_limits();
+            $subject = ws_scheduled_fill_cut(ws_scheduled_fill((string) $action['subject'], $context), $limits['email_subject']);
             $format = 'plain_text';
-            $body = ws_scheduled_fill((string) $action['body'], $context);
+            $body = ws_scheduled_fill_cut(ws_scheduled_fill((string) $action['body'], $context), $limits['email_body']);
 
             if ((int) $action['page_id'] > 0) {
                 $page = db_item("SELECT page_id, page_name, page_title FROM page WHERE page_id = '" . (int) $action['page_id'] . "'");
@@ -4244,8 +4290,9 @@ function ws_scheduled_task_digest($viewer, $row, $action, $context)
         ? (array) db_items("SELECT t.* FROM ws_tasks t WHERE " . implode(' AND ', $where) . " ORDER BY (t.due_date IS NULL), t.due_date, t.id LIMIT 200")
         : array();
 
-    $subject = ws_scheduled_fill(((string) ($action['subject'] ?? '') !== '') ? (string) $action['subject'] : (string) $row['name'], $context);
-    $intro = ws_scheduled_fill((string) ($action['intro'] ?? ''), $context);
+    $limits = ws_scheduled_text_limits();
+    $subject = ws_scheduled_fill_cut(ws_scheduled_fill(((string) ($action['subject'] ?? '') !== '') ? (string) $action['subject'] : (string) $row['name'], $context), $limits['digest_subject']);
+    $intro = ws_scheduled_fill_cut(ws_scheduled_fill((string) ($action['intro'] ?? ''), $context), $limits['digest_intro']);
     $sent = 0;
     $tried = 0;
     $listed = 0;
@@ -4467,7 +4514,8 @@ function ws_scheduled_webhook($viewer, $row, $action, $context)
         require_once(PG_FUNCTIONS_DIR . '/includes/api/outbound/http.php');
     }
 
-    $text = ws_scheduled_fill((string) ($action['text'] ?? ''), $context);
+    $limits = ws_scheduled_text_limits();
+    $text = ws_scheduled_fill_cut(ws_scheduled_fill((string) ($action['text'] ?? ''), $context), $limits['webhook_text']);
 
     switch ($action['format'] ?? 'generic') {
         case 'text':
@@ -4691,7 +4739,8 @@ function ws_scheduled_ssl_check($action)
  */
 function ws_scheduled_summary($viewer, $row, $action, $context)
 {
-    $title = ws_scheduled_fill(((string) ($action['title'] ?? '') !== '') ? (string) $action['title'] : (string) $row['name'], $context);
+    $limits = ws_scheduled_text_limits();
+    $title = ws_scheduled_fill_cut(ws_scheduled_fill(((string) ($action['title'] ?? '') !== '') ? (string) $action['title'] : (string) $row['name'], $context), $limits['summary_title']);
     $lines = array();
     $plain = array();
     $counts = array();

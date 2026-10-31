@@ -504,19 +504,22 @@ function ws_mcp_form_message_body($alias, $tool, $person, $text, $failed = false
 /**
  * Calls a tool of a server with a person's own account when they have one,
  * else with the site's: the one way a form (ws_mcp_form_run()) and a flow's
- * MCP box (ws_step_mcp_do()) reach a server. A token the service no longer
- * takes is renewed once (OAuth servers). The server keeps the state of the
- * call and when it was last used; the caller keeps the call itself.
+ * MCP box (ws_step_mcp_do()) reach a server. A call that changes something
+ * there goes with their own account only ($person_only): it acts in their
+ * name. A token the service no longer takes is renewed once (OAuth
+ * servers). The server keeps the state of the call and when it was last
+ * used; the caller keeps the call itself.
  *
- * @param int    $user_id whose own account comes first
+ * @param int    $user_id     whose own account comes first
  * @param array  $server
- * @param string $name    the tool's name
- * @param string $json    the arguments, a JSON object
+ * @param string $name        the tool's name
+ * @param string $json        the arguments, a JSON object
+ * @param bool   $person_only never the site's account
  * @return array called (the server was asked), reached (it answered), error
  *               ('' when the tool answered without an error), out
  *               (pg_mcp_client_call_tool()), duration_ms
  */
-function ws_mcp_tool_call($user_id, $server, $name, $json)
+function ws_mcp_tool_call($user_id, $server, $name, $json, $person_only = false)
 {
     $answer = array('called' => false, 'reached' => false, 'error' => '', 'out' => null, 'duration_ms' => 0);
 
@@ -524,10 +527,12 @@ function ws_mcp_tool_call($user_id, $server, $name, $json)
         return array('error' => lang('This server cannot make outgoing HTTPS requests (cURL is missing).')) + $answer;
     }
 
-    $conn = ws_mcp_connection($server, WS_MCP_SCREEN_TIMEOUT, (int) $user_id);
+    $conn = ws_mcp_connection($server, WS_MCP_SCREEN_TIMEOUT, (int) $user_id, $person_only);
 
     if (($server['auth_kind'] === 'oauth') && empty($conn['headers'])) {
-        return array('error' => lang(array('string' => 'Connect your own account to @{var:1} first: nobody\'s account is connected there for you.', 'vars' => $server['alias']))) + $answer;
+        return array('error' => $person_only
+            ? lang(array('string' => 'Connect your own account to @{var:1} to run it: the call runs with it.', 'vars' => $server['alias']))
+            : lang(array('string' => 'Connect your own account to @{var:1} first: nobody\'s account is connected there for you.', 'vars' => $server['alias']))) + $answer;
     }
 
     $started = microtime(true);

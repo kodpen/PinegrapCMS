@@ -15,6 +15,10 @@ module: contacts
 - Every person brief carries `initials` and `tone` beside `avatar`/`avatar_kind`: `ws_person_brief()` (`ws_avatar_letters()`, seed the user id), the former member (`?`, 0), guests (`guest<id>`), applications (`app<id>`, now also `avatar_kind` `contact`), approval guests (`approval-guest<id>`), MCP identities (`mcp<id>`), and the chat's person and peer rows (`chat.php`, seed the user id).
 - The external API presents people as `{user_id, name}` and does not carry these fields.
 
+## How are letters upper-cased?
+- Through `pg_initials_upper()` (panel language: `i` is `İ` in Turkish), never bare `mb_strtoupper()` ("irem" showed `I` in `widget_7.php` and Edit User). The chat window's fallback letter uses `toLocaleUpperCase(document.documentElement.lang)`.
+- `pg_upper_words()` is the multibyte `ucwords()` on the same rule (Add Field's "Ürün Formu" line; byte-wise `ucwords()` gave "ürün Formu"). `pg_turkish_title_case()` writes Paraşüt export names ("AYŞE YILDIZ IŞIK" → "Ayşe Yıldız Işık") whatever the panel language; `mb_convert_case()` gave "Yildiz" and a combining dot after "İ".
+
 ## Which tones?
 - In place order: `theme-primary`, `theme-info`, `theme-warning`, `theme-accent`, `theme-danger`, `theme-secondary`, `theme-success`, `theme-inverse`, near the old hex list (blue, teal, orange, violet, pink, sky, green, amber).
 

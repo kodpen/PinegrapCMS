@@ -1959,7 +1959,8 @@ function ws_claude_settings_card($self_url, $viewer, $credentials = null)
             : '<input class="form-control form-control-sm font-monospace" type="text" id="' . h($id) . '" value="' . h($value) . '"' . $name . ' readonly>';
 
         return '<div class="ws-claude-copy">' . $field
-            . '<button type="button" class="btn btn-sm btn-outline theme-secondary no-popover" data-ws-copy-field="' . h($id) . '" data-bs-toggle="tooltip" title="' . h(lang('Copy')) . '" aria-label="' . h(lang('Copy')) . '"><i class="bi bi-clipboard" aria-hidden="true"></i></button></div>';
+            . '<button type="button" class="btn btn-sm btn-outline theme-secondary no-popover" data-ws-copy-field="' . h($id) . '" data-bs-toggle="tooltip" title="' . h(lang('Copy')) . '" aria-label="' . h(lang('Copy')) . '"><i class="bi bi-clipboard" aria-hidden="true"></i></button>'
+            . '<span class="visually-hidden" role="status" aria-live="polite" data-copied="' . h(lang('Copied')) . '" data-refused="' . h(lang('The browser did not let the text be copied. Select it and copy it from here.')) . '"></span></div>';
     };
 
     // The steps, each with its picture (claude_setup.php).
@@ -2153,17 +2154,43 @@ function ws_claude_settings_card($self_url, $viewer, $credentials = null)
                 return;
             }
 
-            field.select();
+            // The status sits beside the button, inside the open sheet when
+            // there is one, so it is heard while the rest of the page is inert.
+            var status = trigger.parentNode.querySelector(\'[role="status"]\');
+            var say = function (text) {
+                if (status) {
+                    status.textContent = text;
+                }
+            };
 
             var done = function () {
                 trigger.querySelector(\'.bi\').className = \'bi bi-check2\';
-                window.setTimeout(function () { trigger.querySelector(\'.bi\').className = \'bi bi-clipboard\'; }, 1400);
+                say(status ? status.getAttribute(\'data-copied\') : \'\');
+                window.setTimeout(function () {
+                    trigger.querySelector(\'.bi\').className = \'bi bi-clipboard\';
+                    say(\'\');
+                }, 1500);
+            };
+
+            // Plain http has no clipboard API and a write can be refused:
+            // copy the selected text the old way, and when that fails too,
+            // leave it selected and say so.
+            var fallback = function () {
+                var copied = false;
+                field.focus();
+                field.select();
+                try { copied = document.execCommand(\'copy\'); } catch (error) {}
+                if (copied) {
+                    done();
+                } else {
+                    say(status ? status.getAttribute(\'data-refused\') : \'\');
+                }
             };
 
             if (navigator.clipboard && window.isSecureContext) {
-                navigator.clipboard.writeText(field.value).then(done).catch(function () {});
+                navigator.clipboard.writeText(field.value).then(done, fallback);
             } else {
-                try { document.execCommand(\'copy\'); done(); } catch (error) {}
+                fallback();
             }
         });
         </script>';

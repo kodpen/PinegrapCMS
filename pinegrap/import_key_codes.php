@@ -17,6 +17,10 @@
  */
 
 include('init.php');
+
+// A file over post_max_size empties the whole request; say so instead of
+// drawing the form again as if nothing had been sent.
+pg_upload_refuse_discarded_body();
 $user = validate_user();
 validate_ecommerce_access($user);
 
@@ -49,6 +53,7 @@ if (!$_POST) {
                                         <div class="col-12  my-3">
                                             <label for="file" class="form-label">' . lang('Select Formatted Text File to Upload') . '</label>
                                             <input type="file" id="file" name="file" class="form-control w-auto" required />
+                                            ' . pg_upload_limit_hint() . '
                                         </div>
                                     </div>
                                 </div>       
@@ -79,15 +84,24 @@ if (!$_POST) {
         output_error(lang('Please select a file') . '. <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
     }
 
+    $upload_limits = pg_upload_limits();
+    $upload_refusal = pg_upload_file_refusal($_FILES['file'], $upload_limits['file_max']);
+
+    if ($upload_refusal !== '') {
+        output_error(h($upload_refusal) . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+    }
+
     // get file handle for uploaded CSV file
     $handle = pg_csv_open($_FILES['file']['tmp_name']);
 
-    // The header line says which separator the file uses. A byte order mark
-    // (Excel's "CSV UTF-8") is stepped over before the cells are read: left
+    // The header line says which separator the file uses; the cells are then
+    // read from where it starts. pg_csv_open() has stepped over a byte order
+    // mark (Excel's "CSV UTF-8"), so the handle is not rewound onto it: left
     // in front of a quoted heading it keeps the quotes in the name.
+    $header_start = (int) ftell($handle);
     $header_line = (string) fgets($handle);
     $separator = pg_key_code_import_separator($header_line);
-    fseek($handle, (substr($header_line, 0, 3) === "\xEF\xBB\xBF") ? 3 : 0);
+    fseek($handle, $header_start + ((substr($header_line, 0, 3) === "\xEF\xBB\xBF") ? 3 : 0));
 
     // get column names from first row of CSV file
     $columns = fgetcsv($handle, 100000, $separator, '"', '\\');

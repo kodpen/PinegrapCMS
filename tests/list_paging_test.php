@@ -111,6 +111,111 @@ function test_list_search_where_column_term()
 	pg_assert_same(array('%mug%'), $where['params']);
 }
 
+function test_list_search_fold()
+{
+	foreach (array('YILDIZ', 'yildiz', 'Yıldız', 'yıldız', 'YıLDIZ') as $term) {
+		pg_assert_same('yildiz', pg_list_search_fold($term), $term);
+	}
+
+	foreach (array('İSİM', 'ISIM', 'isim', 'ısım', 'İsim') as $term) {
+		pg_assert_same('isim', pg_list_search_fold($term), $term);
+	}
+
+	foreach (array('isik', 'ISIK', 'ışık', 'IŞIK', 'Işık') as $term) {
+		pg_assert_same(str_replace('ş', 's', pg_list_search_fold($term)), 'isik', $term);
+	}
+
+	pg_assert_same('çağri', pg_list_search_fold('ÇAĞRI'), 'other letters only lowered');
+	pg_assert_same(mb_strlen('İSTANBUL', 'UTF-8'), mb_strlen(pg_list_search_fold('İSTANBUL'), 'UTF-8'), 'one letter for one letter');
+}
+
+function test_list_search_where_turkish_i()
+{
+	$fold = "REPLACE(REPLACE(CONVERT(contacts.last_name USING utf8mb4), 'İ', 'i'), 'ı', 'i') LIKE ?";
+
+	$where = pg_list_search_where(array('YILDIZ'), array('contacts.last_name'), array(), 'utf8mb4');
+	pg_assert_same('(contacts.last_name LIKE ? OR CONVERT(contacts.last_name USING utf8mb4) COLLATE utf8mb4_turkish_ci LIKE ? OR ' . $fold . ')', $where['sql'], 'a capital I also finds ı, and every i letter is one');
+	pg_assert_same(array('%YILDIZ%', '%YILDIZ%', '%yildiz%'), $where['params']);
+
+	foreach (array('yıldız', 'YALÇIN') as $term) {
+		$where = pg_list_search_where(array($term), array('contacts.last_name'), array(), 'utf8mb4');
+		pg_assert_contains('utf8mb4_turkish_ci', $where['sql'], $term);
+		pg_assert_contains($fold, $where['sql'], $term);
+		pg_assert_same(substr_count($where['sql'], '?'), count($where['params']), $term);
+	}
+
+	// "yildiz" finds "Yıldız" and "isik" finds "Işık": a word with any i
+	// letter is also compared folded, the term folded in PHP and bound.
+	foreach (array('yildiz' => '%yildiz%', 'isik' => '%isik%', 'DEMİR' => '%demir%', 'demir' => '%demir%', 'ali' => '%ali%') as $term => $pattern) {
+		$where = pg_list_search_where(array($term), array('contacts.last_name'), array(), 'utf8mb4');
+		pg_assert_same('(contacts.last_name LIKE ? OR ' . $fold . ')', $where['sql'], $term . ' has no I or ı');
+		pg_assert_same(array(pg_list_like_pattern($term), $pattern), $where['params'], $term);
+	}
+
+	$where = pg_list_search_where(array('ALÇ'), array('contacts.last_name'), array(), 'utf8mb4');
+	pg_assert_same('(contacts.last_name LIKE ?)', $where['sql'], 'no i letter: the plain match only');
+	pg_assert_same(array('%ALÇ%'), $where['params']);
+
+	$where = pg_list_search_where(array('100%_ı'), array('contacts.last_name'), array(), 'utf8mb4');
+	pg_assert_same('%100\\%\\_i%', $where['params'][2], 'the folded term escapes LIKE wildcards');
+	pg_assert_true(strpos($where['sql'], '100') === false, 'the term is never written into the query');
+
+	foreach (array('YILDIZ', 'yildiz') as $term) {
+		$where = pg_list_search_where(array($term), array('contacts.last_name'), array(), '');
+		pg_assert_same('(contacts.last_name LIKE ?)', $where['sql'], 'not Turkish: the plain match only');
+		pg_assert_same(array('%' . $term . '%'), $where['params']);
+	}
+
+	$where = pg_list_search_where(array('YILDIZ'), array('contacts.last_name'), array(), 'utf8');
+	pg_assert_same('(contacts.last_name LIKE ? OR CONVERT(contacts.last_name USING utf8) COLLATE utf8_turkish_ci LIKE ? OR ' . str_replace('utf8mb4', 'utf8', $fold) . ')', $where['sql'], 'a utf8 (mb3) connection');
+
+	$column = array('expr' => 'products.price', 'term' => function ($term) {
+		return $term;
+	});
+	$where = pg_list_search_where(array('IKI'), array($column), array(), 'utf8mb4');
+	pg_assert_same('(products.price LIKE ?)', $where['sql'], 'a term column keeps its own match');
+	pg_assert_same(array('%IKI%'), $where['params']);
+}
+
+function test_list_search_where_turkish_labels()
+{
+	$labels = array(array('expr' => 'user.user_role', 'labels' => array(3 => 'Kullanıcı', 2 => 'Yönetici')));
+
+	$where = pg_list_search_where(array('KULLANICI'), array(), $labels, 'utf8mb4');
+	pg_assert_same('(user.user_role IN (?))', $where['sql']);
+	pg_assert_same(array('3'), $where['params']);
+
+	// Without Turkish rules only mb_stripos() decides; mbstring before PHP 7.3
+	// upper-cases ı to I and so already matches here.
+	$plain = mb_stripos('Kullanıcı', 'KULLANICI', 0, 'UTF-8') !== false;
+	$where = pg_list_search_where(array('KULLANICI'), array(), $labels, '');
+	pg_assert_same($plain ? '(user.user_role IN (?))' : '(1 = 0)', $where['sql'], 'not Turkish: mb_stripos() alone');
+	pg_assert_same($plain ? array('3') : array(), $where['params']);
+
+	$labels = array(array('expr' => 'orders.status', 'labels' => array('r' => 'İade', 'p' => 'Ödendi')));
+	$where = pg_list_search_where(array('İADE'), array(), $labels, 'utf8mb4');
+	pg_assert_same('(orders.status IN (?))', $where['sql']);
+	pg_assert_same(array('r'), $where['params']);
+
+	$where = pg_list_search_where(array('kullanici'), array(), array(array('expr' => 'user.user_role', 'labels' => array(3 => 'Kullanıcı'))), 'utf8mb4');
+	pg_assert_same('(user.user_role IN (?))', $where['sql'], 'a label matches folded too');
+
+	$where = pg_list_search_where(array('kullanici'), array(), array(array('expr' => 'user.user_role', 'labels' => array(3 => 'Kullanıcı'))), '');
+	$plain = mb_stripos('Kullanıcı', 'kullanici', 0, 'UTF-8') !== false;
+	pg_assert_same($plain ? '(user.user_role IN (?))' : '(1 = 0)', $where['sql'], 'not Turkish: mb_stripos() alone, no fold');
+}
+
+function test_list_when_leaves_out_an_unknown_user()
+{
+	$time = (string) (time() - 3600);
+	$alone = get_relative_time(array('timestamp' => $time));
+
+	pg_assert_same($alone, pg_list_when($time, ''));
+	pg_assert_same($alone, pg_list_when($time, null));
+	pg_assert_same($alone, pg_list_when($time, '   '), 'spaces are no name');
+	pg_assert_same($alone . ' ' . lang(array('string' => 'by {var:1}', 'vars' => array('a&lt;b'))), pg_list_when($time, 'a<b'), 'escaped');
+}
+
 function test_list_cell_attributes()
 {
 	$row = array('class' => '', 'cells' => array(

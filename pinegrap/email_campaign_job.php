@@ -21,7 +21,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/iys/client.php');
 
 // if the e-mail campaign job is not activated, then output error
 if (email_campaign_job_enabled() == false) {
-    $error_message = 'The e-mail campaign job did not run because it is not activated in the config.php file.';
+    $error_message = lang('The e-mail campaign job did not run because it is not activated in the config.php file.');
     log_activity($error_message, 'UNKNOWN');
     print 'Error: ' . $error_message;
     exit();
@@ -716,7 +716,7 @@ foreach ($email_campaigns as $email_campaign_id) {
 
 // if e-mail campaign job e-mailed at least 1 recipient, then log action
 if ($count > 0) {
-    log_activity('e-mail campaign job sent e-mail(s) to ' . $count . ' recipient(s)', $_SESSION['sessionusername']);
+    log_activity(lang(array('string' => 'e-mail campaign job sent e-mail(s) to {var:1} recipient(s)', 'vars' => array($count))), $_SESSION['sessionusername']);
 }
 
 // Scheduled-task health: record that this job finished. See pg_cron_ran().

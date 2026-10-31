@@ -6,7 +6,7 @@ module: collections
 
 ## What does it do?
 - A record keeps a reference as a value of one of its own fields: the other record's `reference_code`, or its `address_name`; several joined by `, ` like a multiple pick list. An element in `form_list_view` (and its three old names) or `form_item_view` prints a field of the record pointed at: a category's title, an author's photo, a tag's address name.
-- No schema: any field can hold references (C2 adds field kinds, `plans/designer-collections-steps.md`).
+- No schema: any field can hold references (C2 added field kinds, `collection-fields.md`).
 
 ## How is it stored?
 - `_bindings.<prop> = '__ref'` with `_bindParams.<prop> = {field, page_id, show}` on text, alt, src or href. `field` and `show` are binding tokens (lowercased); `show` is a field of the other form or `reference_code` / `address_name`; `page_id` an id or `tab:<key>` until Publish (`pg_sw_page_link_resolve_tabs()` resolves every `_bindParams.*.page_id`).

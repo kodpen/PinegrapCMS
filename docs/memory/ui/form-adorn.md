@@ -28,5 +28,5 @@ description: Bootstrap 6 form-adorn in the panel (step B9f): which input-groups 
 - A wrapper toggled by script keeps its id (container `#weight_pound` / `#weight_kg`); `d-none` on the label works. `is-invalid` stays on the input (`:has()` marks the wrapper); its message goes after the wrapper (`inline-feedback-placement.md`).
 
 ## What stays an input-group on purpose?
-- Several inputs or add-ons (shipping days, container dimensions), ERP +/-, `edit_erp_expense.php` files, a button (invoice scan, tax-number lookup, contact e-mail), a select (`view_contacts.php` filters, workspace "repeat every"), `label.unit` (rewritten by script), a `title` hint (product group address, start days, contact Parasut id).
+- Several inputs or add-ons (shipping days), ERP +/-, `edit_erp_expense.php` files, a button (invoice scan, tax-number lookup, contact e-mail), a select (`view_contacts.php` filters, workspace "repeat every"), `label.unit` (rewritten by script), a `title` hint (product group address, start days, contact Parasut id).
 - Settings cards: `form-adorn-settings-cards.md`. Order screens: quantity +/-, day/year and status selects, ship date adjustment. Site output (`includes/templates/`, `data/layouts`, returns, express order): 5.3.8.

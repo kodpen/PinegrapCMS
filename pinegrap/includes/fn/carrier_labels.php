@@ -17,7 +17,7 @@
  *   pg_label_<key>_info()                      required: carriers (the
  *                                              pg_shipping_carriers() keys the
  *                                              service ships with) and formats
- *                                              (pdf, zpl) of its labels
+ *                                              (pdf, zpl, svg) of its labels
  *   pg_label_<key>_fields()                    the account fields the Shipping
  *                                              card asks for (the field shape of
  *                                              pg_payment_fields_normalize())
@@ -58,7 +58,7 @@
  *   status           string  pg_shipment_statuses(), '' when not given
  *   status_at        int     unix time of that status, 0 when not given
  *   label            string  the label document itself (bytes)
- *   label_format     string  pdf or zpl, '' without a label
+ *   label_format     string  pdf, zpl or svg, '' without a label
  *   barcode          string  the text the label's barcode holds
  *   account          string  test(): the account's name at the service
  *   log              array   sentences for the activity log, in order
@@ -109,7 +109,7 @@ function pg_label_operations()
  */
 function pg_label_formats()
 {
-    return array('pdf', 'zpl');
+    return array('pdf', 'zpl', 'svg');
 }
 
 /**
@@ -151,7 +151,12 @@ function pg_label_function_name($key, $operation)
 function pg_label_builtin_drivers()
 {
     return array(
-        'geliver' => array('label' => 'Geliver', 'file' => 'geliver.php', 'portal' => 'https://app.geliver.io/apitokens'),
+        'geliver'    => array('label' => 'Geliver', 'file' => 'geliver.php', 'portal' => 'https://app.geliver.io/apitokens'),
+        'basitkargo' => array('label' => 'Basit Kargo', 'file' => 'basitkargo.php', 'portal' => 'https://basitkargo.com/api'),
+        'shippo'     => array('label' => 'Shippo', 'file' => 'shippo.php', 'portal' => 'https://portal.goshippo.com/api-config/api'),
+        'sendcloud'  => array('label' => 'Sendcloud', 'file' => 'sendcloud.php', 'portal' => 'https://app.sendcloud.com/v2/settings/integrations/manage'),
+        'aras'       => array('label' => 'Aras Kargo', 'file' => 'aras.php', 'portal' => 'https://esasweb.araskargo.com.tr'),
+        'kargonomi'  => array('label' => 'Kargonomi', 'file' => 'kargonomi.php', 'portal' => 'https://app.kargonomi.com.tr'),
     );
 }
 
@@ -365,6 +370,26 @@ function pg_label_can($key, $operation)
 }
 
 
+/**
+ * The recipient's district (ilçe) for a carrier that asks for one: the
+ * district entered at checkout (ship_tos.district), else the city, which
+ * held the district before that column existed. Pure.
+ *
+ * @param array $recipient the shipment's recipient
+ * @return string
+ */
+function pg_label_recipient_district($recipient)
+{
+    foreach (array('district', 'city') as $name) {
+        if (is_array($recipient) && isset($recipient[$name]) && is_scalar($recipient[$name]) && (trim((string) $recipient[$name]) !== '')) {
+            return trim((string) $recipient[$name]);
+        }
+    }
+
+    return '';
+}
+
+
 /* ---------------------------------------------------------------------------
    Answers
    --------------------------------------------------------------------------- */
@@ -389,7 +414,8 @@ function pg_label_failure($error, $raw = array(), $unclear = false)
 
 /**
  * Whether a label document is of the format it is said to be: a PDF starts
- * with its header, a ZPL label holds a format start command.
+ * with its header, a ZPL label holds a format start command, an SVG is one
+ * pg_label_svg_valid() accepts.
  *
  * @param string $label
  * @param string $format
@@ -405,7 +431,57 @@ function pg_label_document_valid($label, $format)
         return strncmp($label, '%PDF-', 5) === 0;
     }
 
+    if ($format === 'svg') {
+        return pg_label_svg_valid($label);
+    }
+
     return ($format === 'zpl') && (stripos($label, '^XA') !== false);
+}
+
+/**
+ * Whether an SVG label can be kept and shown: an <svg> root after at most
+ * an XML declaration and comments, and nothing that reaches outside the
+ * document. A label is shapes and text; a reference to another address
+ * (href, src, url(), @import), a document type (entities), script, event
+ * attributes or embedded HTML are refused, so the file stays inert wherever
+ * it is opened. An embedded PNG, JPEG or GIF (a logo) is allowed. Pure.
+ *
+ * @param string $svg
+ * @return bool
+ */
+function pg_label_svg_valid($svg)
+{
+    if (!is_string($svg) || ($svg === '') || (strlen($svg) > 5242880)) {
+        return false;
+    }
+
+    if (strncmp($svg, "\xEF\xBB\xBF", 3) === 0) {
+        $svg = substr($svg, 3);
+    }
+
+    if ((preg_match('/^(?:\s*(?:<\?xml\s[^>]*\?>|<!--.*?-->))*\s*<svg[\s>]/si', $svg) !== 1)
+        || (stripos($svg, '</svg>') === false)) {
+        return false;
+    }
+
+    if (preg_match('/<!(?:DOCTYPE|ENTITY)|<\?xml-stylesheet|<(?:[\w-]+:)?(?:script|foreignObject|iframe|object|embed)[\s>\/]|@import|[\s"\'\/]on[a-z]+\s*=/i', $svg) === 1) {
+        return false;
+    }
+
+    // Every address an attribute or a style names must point into the
+    // document itself or be an embedded raster image.
+    preg_match_all('/(?:^|[\s"\'])(?:[\w-]+:)?(?:href|src)\s*=\s*(["\'])(.*?)\1/si', $svg, $attributes);
+    preg_match_all('/url\(\s*(["\']?)(.*?)\1\s*\)/si', $svg, $urls);
+
+    foreach (array_merge($attributes[2], $urls[2]) as $address) {
+        $address = trim(html_entity_decode($address, ENT_QUOTES | ENT_XML1, 'UTF-8'));
+
+        if (($address !== '') && ($address[0] !== '#') && (preg_match('/^data:image\/(?:png|jpeg|gif);base64,/i', $address) !== 1)) {
+            return false;
+        }
+    }
+
+    return true;
 }
 
 /**
@@ -852,6 +928,12 @@ function pg_label_settings_decide($key, $fields, $post, $stored)
         }
     }
 
+    // The customs block's codes are read with the product screen's rules
+    // (pg_label_customs_fields()).
+    foreach (pg_label_customs_settings_problems($values) as $name => $sentence) {
+        $marks[pg_label_input_name($key, $name)] = $sentence;
+    }
+
     if (!empty($stored['exists'])) {
         $compare = isset($stored['values']) ? $stored['values'] : array();
         $changed = ($enabled !== !empty($stored['enabled']));
@@ -966,7 +1048,11 @@ function pg_label_settings_store($key, $values, $secrets, $enabled, $user_id)
 
 /**
  * Writes what pg_label_settings_check() decided, then runs the connection
- * test that was asked for, with the settings as now stored.
+ * test that was asked for, with the settings as now stored, and registers or
+ * removes the service's status webhook (includes/fn/carrier_webhook.php).
+ * A service that
+ * is on and can say where its parcels are puts the hourly shipment tracking
+ * job in the general job's list (includes/fn/shipment_tracking.php).
  *
  * @param array    $decisions pg_label_settings_check()
  * @param int      $user_id
@@ -974,6 +1060,8 @@ function pg_label_settings_store($key, $values, $secrets, $enabled, $user_id)
  */
 function pg_label_settings_save($decisions, $user_id, $liveform)
 {
+    $tracking = false;
+
     foreach ($decisions as $key => $decision) {
         if (empty($decision['posted'])) {
             continue;
@@ -986,6 +1074,17 @@ function pg_label_settings_save($decisions, $user_id, $liveform)
         if ($decision['test']) {
             pg_label_settings_test($key, $liveform);
         }
+
+        // The service's status webhook, for a driver that has one.
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/carrier_webhook.php');
+        pg_carrier_webhook_sync($key, $decision, $liveform);
+
+        $tracking = $tracking || ($decision['enabled'] && pg_label_can($key, 'track'));
+    }
+
+    if ($tracking) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/shipment_tracking.php');
+        pg_shipment_tracking_job_switch_on();
     }
 }
 
@@ -1102,6 +1201,9 @@ function pg_label_settings_rows()
                                                                                             ' . $input . $help . '
                                                                                         </div>';
         }
+
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/carrier_webhook.php');
+        $html .= pg_carrier_webhook_card_row($key, $settings);
 
         if (pg_label_can($key, 'test')) {
             $html .= '

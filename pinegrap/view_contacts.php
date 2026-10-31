@@ -211,9 +211,10 @@ if ($filter != 'all_duplicate_contacts') {
 
 // if user requested to export contacts, export contacts
 if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
-    // force download dialog
-    header("Content-type: text/csv");
-    header("Content-disposition: attachment; filename=contacts.csv");
+    pg_csv_download_start('contacts.csv');
+
+    $output_affiliate_headings = '';
+    $output_affiliate_values = '';
 
     if (AFFILIATE_PROGRAM == true) {
         $output_affiliate_headings = ',affiliate_approved,affiliate_name,affiliate_code,affiliate_commission_rate';
@@ -382,7 +383,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
         $liveform->add_notice(lang('No contacts were deleted'));
     }
 
-    header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/view_contacts.php');
+    header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/view_contacts.php?filter=' . urlencode($filter));
 
 // else, if the user selected to merge contacts, then merge them
 } elseif (($_GET['submit_data'] ?? '') == 'Merge Contacts') {
@@ -731,9 +732,10 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
             '<div class="advanced_filters advanced-filter-bar  position-fixed-md"  id="advanced_filters" >
                 <div class="p-3 border justify-content-between d-flex flex-wrap header">
                     <p class="m-0"><span class="material-icons pe-1" aria-hidden="true">filter_list</span>' . lang('Filters') . '</p>
-                    <a class="btn btn-close " title="' . $output_advanced_filters_label . '" href="view_contacts.php?advanced_filters=' . $output_advanced_filters_value . '" ></a>
+                    <a class="btn btn-close " title="' . $output_advanced_filters_label . '" href="view_contacts.php?advanced_filters=' . $output_advanced_filters_value . '&amp;filter=' . h(urlencode($filter)) . '" ></a>
                 </div>
                 <form class="advanced-filter-body p-3 pt-0 disable_shortcut" id="search_advanced" action="view_contacts.php" method="get">
+                    <input type="hidden" name="filter" value="' . h($filter) . '">
                     <div class="row">
                         <div class="col-12"><h5 class="fg-success fw-bold mt-7 mb-3">' . lang('Contact Groups') . '</h5></div>
                         <div class="col-12 md:col-12 my-1">
@@ -758,11 +760,11 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
                         </div>
                         <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label for="first_name" class="form-label">' . lang('First Name') . '</label>
-                            <input type="text" id="first_name" name="first_name" class="form-control" value="' . h(($_SESSION['software']['view_contacts']['first_name'] ?? '')) . '" />
+                            <input type="text" id="first_name" name="first_name" class="form-control" autocomplete="pg-no-autofill" value="' . h(($_SESSION['software']['view_contacts']['first_name'] ?? '')) . '" />
                         </div>
                         <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label for="last_name" class="form-label">' . lang('Last Name') . '</label>
-                            <input type="text" id="last_name" name="last_name" class="form-control" value="' . h(($_SESSION['software']['view_contacts']['last_name'] ?? '')) . '" />
+                            <input type="text" id="last_name" name="last_name" class="form-control" autocomplete="pg-no-autofill" value="' . h(($_SESSION['software']['view_contacts']['last_name'] ?? '')) . '" />
                         </div>
                         <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label for="suffix" class="form-label">' . lang('Suffix') . '</label>
@@ -774,7 +776,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
                         </div>
                         <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label for="company" class="form-label">' . lang('Company') . '</label>
-                            <input type="text" id="company" name="company" class="form-control" value="' . h(($_SESSION['software']['view_contacts']['company'] ?? '')) . '" />
+                            <input type="text" id="company" name="company" class="form-control" autocomplete="pg-no-autofill" value="' . h(($_SESSION['software']['view_contacts']['company'] ?? '')) . '" />
                         </div>
                         <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label for="title" class="form-label">' . lang('Title') . '</label>
@@ -790,27 +792,27 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
                         </div>
                         <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label for="business_phone" class="form-label">' . lang('Business Phone') . '</label>
-                            <input type="text" id="business_phone" name="business_phone" class="form-control" value="' . h(($_SESSION['software']['view_contacts']['business_phone'] ?? '')) . '" />
+                            <input type="text" id="business_phone" name="business_phone" class="form-control" autocomplete="pg-no-autofill" inputmode="tel" value="' . h(($_SESSION['software']['view_contacts']['business_phone'] ?? '')) . '" />
                         </div>
                         <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label for="home_phone" class="form-label">' . lang('Home Phone') . '</label>
-                            <input type="text" id="home_phone" name="home_phone" class="form-control" value="' . h(($_SESSION['software']['view_contacts']['home_phone'] ?? '')) . '" />
+                            <input type="text" id="home_phone" name="home_phone" class="form-control" autocomplete="pg-no-autofill" inputmode="tel" value="' . h(($_SESSION['software']['view_contacts']['home_phone'] ?? '')) . '" />
                         </div>
                         <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label for="mobile_phone" class="form-label">' . lang('Mobile Phone') . '</label>
-                            <input type="text" id="mobile_phone" name="mobile_phone" class="form-control" value="' . h(($_SESSION['software']['view_contacts']['mobile_phone'] ?? '')) . '" />
+                            <input type="text" id="mobile_phone" name="mobile_phone" class="form-control" autocomplete="pg-no-autofill" inputmode="tel" value="' . h(($_SESSION['software']['view_contacts']['mobile_phone'] ?? '')) . '" />
                         </div>
                         <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label for="business_fax" class="form-label">' . lang('Business Fax') . '</label>
-                            <input type="text" id="business_fax" name="business_fax" class="form-control" value="' . h(($_SESSION['software']['view_contacts']['business_fax'] ?? '')) . '" />
+                            <input type="text" id="business_fax" name="business_fax" class="form-control" autocomplete="pg-no-autofill" inputmode="tel" value="' . h(($_SESSION['software']['view_contacts']['business_fax'] ?? '')) . '" />
                         </div>
                         <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label for="home_fax" class="form-label">' . lang('Home Fax') . '</label>
-                            <input type="text" id="home_fax" name="home_fax" class="form-control" value="' . h(($_SESSION['software']['view_contacts']['home_fax'] ?? '')) . '" />
+                            <input type="text" id="home_fax" name="home_fax" class="form-control" autocomplete="pg-no-autofill" inputmode="tel" value="' . h(($_SESSION['software']['view_contacts']['home_fax'] ?? '')) . '" />
                         </div>
                         <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label for="email_address" class="form-label">' . lang('Email') . '</label>
-                            <input type="text" id="email_address" name="email_address" class="form-control" value="' . h(($_SESSION['software']['view_contacts']['email_address'] ?? '')) . '" maxlength="100" inputmode="email" data-inputmask-alias="email" />
+                            <input type="text" id="email_address" name="email_address" class="form-control" autocomplete="pg-no-autofill" value="' . h(($_SESSION['software']['view_contacts']['email_address'] ?? '')) . '" maxlength="100" inputmode="email" spellcheck="false" autocapitalize="off" />
                         </div>
                         <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label for="opt_in_status" class="form-label">' . lang('Opt-In Status') . '</label>
@@ -818,7 +820,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
                         </div>
                         <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label for="website" class="form-label">' . lang('Website') . '</label>
-                            <input type="text" id="website" name="website" class="form-control" value="' . h(($_SESSION['software']['view_contacts']['website'] ?? '')) . '"/>
+                            <input type="text" id="website" name="website" class="form-control" inputmode="url" spellcheck="false" autocapitalize="off" value="' . h(($_SESSION['software']['view_contacts']['website'] ?? '')) . '"/>
                         </div>
                         <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label for="lead_source" class="form-label">' . lang('Lead Source') . '</label>
@@ -832,53 +834,53 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
                         <div class="col-12"><h5 class="fg-success fw-bold mt-7 mb-3">' . lang('Business') . '</h5></div>
                         <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label for="business_address_1" class="form-label">' . lang('Address') . ' 1</label>
-                            <input type="text" id="business_address_1" name="business_address_1" class="form-control" value="' . h(($_SESSION['software']['view_contacts']['business_address_1'] ?? '')) . '"/>
+                            <input type="text" id="business_address_1" name="business_address_1" class="form-control" autocomplete="pg-no-autofill" value="' . h(($_SESSION['software']['view_contacts']['business_address_1'] ?? '')) . '"/>
                         </div>
                         <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label for="business_address_2" class="form-label">' . lang('Address') . ' 2</label>
-                            <input type="text" id="business_address_2" name="business_address_2" class="form-control" value="' . h(($_SESSION['software']['view_contacts']['business_address_2'] ?? '')) . '"/>
+                            <input type="text" id="business_address_2" name="business_address_2" class="form-control" autocomplete="pg-no-autofill" value="' . h(($_SESSION['software']['view_contacts']['business_address_2'] ?? '')) . '"/>
                         </div>
                         <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label for="business_city" class="form-label">' . lang('City') . '</label>
-                            <input type="text" id="business_city" name="business_city" class="form-control" value="' . h(($_SESSION['software']['view_contacts']['business_city'] ?? '')) . '"/>
+                            <input type="text" id="business_city" name="business_city" class="form-control" autocomplete="pg-no-autofill" value="' . h(($_SESSION['software']['view_contacts']['business_city'] ?? '')) . '"/>
                         </div>
                         <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label for="business_state" class="form-label">' . lang('State') . '</label>
-                            <input type="text" id="business_state" name="business_state" class="form-control" value="' . h(($_SESSION['software']['view_contacts']['business_state'] ?? '')) . '"/>
+                            <input type="text" id="business_state" name="business_state" class="form-control" autocomplete="pg-no-autofill" value="' . h(($_SESSION['software']['view_contacts']['business_state'] ?? '')) . '"/>
                         </div>
                         <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label for="business_zip_code" class="form-label">' . lang('Zip Code') . '</label>
-                            <input type="text" id="business_zip_code" name="business_zip_code" class="form-control" value="' . h(($_SESSION['software']['view_contacts']['business_zip_code'] ?? '')) . '"/>
+                            <input type="text" id="business_zip_code" name="business_zip_code" class="form-control" autocomplete="pg-no-autofill" value="' . h(($_SESSION['software']['view_contacts']['business_zip_code'] ?? '')) . '"/>
                         </div>
                         <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label for="business_country" class="form-label">' . lang('Country') . '</label>
-                            <input type="text" id="business_country" name="business_country" class="form-control" value="' . h(($_SESSION['software']['view_contacts']['business_country'] ?? '')) . '"/>
+                            <input type="text" id="business_country" name="business_country" class="form-control" autocomplete="pg-no-autofill" value="' . h(($_SESSION['software']['view_contacts']['business_country'] ?? '')) . '"/>
                         </div>
 
                         <div class="col-12"><h5 class="fg-success fw-bold mt-7 mb-3">' . lang('Home') . '</h5></div>
                         <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label for="home_address_1" class="form-label">' . lang('Address') . ' 1</label>
-                            <input type="text" id="home_address_1" name="home_address_1" class="form-control" value="' . h(($_SESSION['software']['view_contacts']['home_address_1'] ?? '')) . '"/>
+                            <input type="text" id="home_address_1" name="home_address_1" class="form-control" autocomplete="pg-no-autofill" value="' . h(($_SESSION['software']['view_contacts']['home_address_1'] ?? '')) . '"/>
                         </div>
                         <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label for="home_address_2" class="form-label">' . lang('Address') . ' 2</label>
-                            <input type="text" id="home_address_2" name="home_address_2" class="form-control" value="' . h(($_SESSION['software']['view_contacts']['home_address_2'] ?? '')) . '"/>
+                            <input type="text" id="home_address_2" name="home_address_2" class="form-control" autocomplete="pg-no-autofill" value="' . h(($_SESSION['software']['view_contacts']['home_address_2'] ?? '')) . '"/>
                         </div>
                         <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label for="home_city" class="form-label">' . lang('City') . '</label>
-                            <input type="text" id="home_city" name="home_city" class="form-control" value="' . h(($_SESSION['software']['view_contacts']['home_city'] ?? '')) . '"/>
+                            <input type="text" id="home_city" name="home_city" class="form-control" autocomplete="pg-no-autofill" value="' . h(($_SESSION['software']['view_contacts']['home_city'] ?? '')) . '"/>
                         </div>
                         <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label for="home_state" class="form-label">' . lang('State') . '</label>
-                            <input type="text" id="home_state" name="home_state" class="form-control" value="' . h(($_SESSION['software']['view_contacts']['home_state'] ?? '')) . '"/>
+                            <input type="text" id="home_state" name="home_state" class="form-control" autocomplete="pg-no-autofill" value="' . h(($_SESSION['software']['view_contacts']['home_state'] ?? '')) . '"/>
                         </div>
                         <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label for="home_zip_code" class="form-label">' . lang('Zip Code') . '</label>
-                            <input type="text" id="home_zip_code" name="home_zip_code" class="form-control" value="' . h(($_SESSION['software']['view_contacts']['home_zip_code'] ?? '')) . '"/>
+                            <input type="text" id="home_zip_code" name="home_zip_code" class="form-control" autocomplete="pg-no-autofill" value="' . h(($_SESSION['software']['view_contacts']['home_zip_code'] ?? '')) . '"/>
                         </div>
                         <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label for="home_country" class="form-label">' . lang('Country') . '</label>
-                            <input type="text" id="home_country" name="home_country" class="form-control" value="' . h(($_SESSION['software']['view_contacts']['home_country'] ?? '')) . '"/>
+                            <input type="text" id="home_country" name="home_country" class="form-control" autocomplete="pg-no-autofill" value="' . h(($_SESSION['software']['view_contacts']['home_country'] ?? '')) . '"/>
                         </div>
 
                         <div class="col-12"><h5 class="fg-success fw-bold mt-7 mb-3">' . lang('Membership') . '</h5></div>
@@ -1045,8 +1047,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
                     
         )
     ) . '
-<main id="content" class="container-fluid">  
-    ' . $output_advanced_filters . '
+<main id="content" class="container-fluid">
             <div class="row">
             <div class="col-12">
                 ' . $liveform->output_errors() . '
@@ -1055,9 +1056,10 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
                 <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . h(lang('Button Bar')) . '">
                             <form id="export_form" class="disable_shortcut d-inline-block" method="get">
                                 ' . get_token_field() . '
-                                <a class="btn btn-sm btn-solid theme-primary m-1 " href="add_contact.php?send_to=' . h(REQUEST_URL) . '"><span class="bi bi-plus-circle me-3"></span>' . lang(array('string'=>'Create') ) . '</a>
+                                <input type="hidden" name="filter" value="' . h($filter) . '">
+                                <a class="btn btn-sm btn-solid theme-primary m-1 " href="add_contact.php?send_to=' . h(urlencode(REQUEST_URL)) . '"><span class="bi bi-plus-circle me-3"></span>' . lang(array('string'=>'Create') ) . '</a>
                                 <div class=" btn-group btn-group-sm flex-wrap">
-                                    <a class="btn btn-link pg-link-secondary py-0 m-1" href="import_contacts.php?send_to=' . h(REQUEST_URL) . '"><span class="bi bi-box-arrow-in-right me-1"></span>' . lang(array('string'=>'Import') ) . '</a>
+                                    <a class="btn btn-link pg-link-secondary py-0 m-1" href="import_contacts.php?send_to=' . h(urlencode(REQUEST_URL)) . '"><span class="bi bi-box-arrow-in-right me-1"></span>' . lang(array('string'=>'Import') ) . '</a>
                                     <button type="submit" name="submit_data" value="Export Contacts" class="btn btn-link pg-link-secondary py-0 m-1"><span class="bi bi-file-earmark-arrow-down bi-me-2"></span>' . lang(array('string'=>'Export') ) . '</button>
                                 </div>
                                 ' . $output_merge_contacts_button . $output_delete_contacts_button . '
@@ -1072,7 +1074,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
                                 </div>
                                 ' . $output_contact_group_selection . '
                             </form>
-                            <a class="btn btn-sm btn-text theme-secondary' . $output_advanced_filters_class . '" title="' . $output_advanced_filters_label . '" aria-label="' . $output_advanced_filters_label . '" href="view_contacts.php?advanced_filters=' . $output_advanced_filters_value . '"><i class="bi ' . $advanced_filters_icon . '" aria-hidden="true"></i></a>
+                            <a class="btn btn-sm btn-text theme-secondary' . $output_advanced_filters_class . '" title="' . $output_advanced_filters_label . '" aria-label="' . $output_advanced_filters_label . '" href="view_contacts.php?advanced_filters=' . $output_advanced_filters_value . '&amp;filter=' . h(urlencode($filter)) . '"><i class="bi ' . $advanced_filters_icon . '" aria-hidden="true"></i></a>
                             ' . (($show_hide_date_range === '') ? pg_period_nav('view_contacts.php', ($_SESSION['software']['view_contacts'] ?? array()), array(
                                 'day'   => array($decrease_day, $current_day, $increase_day),
                                 'week'  => array($decrease_week, $current_week, $increase_week),
@@ -1080,6 +1082,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
                                 'year'  => array($decrease_year, $current_year, $increase_year),
                             ), $output_date_range_time) : '') . '
                 </nav>
+                ' . $output_advanced_filters . '
                 <div class="card my-7">
                     <div class="card-body p-0 position-relative">
                         <form name="form"  action="edit_contacts.php" method="post" class="view_orders"> 

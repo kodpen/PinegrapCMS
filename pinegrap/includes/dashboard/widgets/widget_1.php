@@ -133,6 +133,7 @@ function pg_dashboard_widget_1($request, $user)
             'maps'  => $sm_maps,
             'rows'  => array(),
             'names' => array(),
+            'label' => lang('Sales Map'),
             'none'  => '<span class="fg-secondary">' . h(lang('No sales')) . '</span>');
 
         foreach ($sm_views as $sm_view_key => $sm_view_label) {
@@ -164,7 +165,7 @@ function pg_dashboard_widget_1($request, $user)
 
             $sm_switch .=
                 '<li><button type="button" class="menu-item'
-                . (($sm_view_key === $sm_view) ? ' active' : '') . '" data-smap-view="' . h($sm_view_key) . '">'
+                . (($sm_view_key === $sm_view) ? ' active" aria-pressed="true' : '" aria-pressed="false') . '" data-smap-view="' . h($sm_view_key) . '">'
                 . '<i class="bi bi-check2 pg-smap-tick"></i>' . h($sm_view_label) . '</button></li>';
 
             foreach ($sales_map['periods'] as $sm_period_key => $sm_period) {
@@ -261,10 +262,6 @@ function pg_dashboard_widget_1($request, $user)
                     $sm_rows = pg_widget_empty('bi-map', lang('There are no sales in this period.'));
                 }
 
-                $sm_lists .=
-                    '<div class="pg-list' . $sm_hidden . '" data-smap-list="' . $sm_slot . '">'
-                    . $sm_rows . '</div>';
-
                 // ── What the map colours ─────────────────────────
                 //
                 // Countries on the world view, regions on a
@@ -272,15 +269,20 @@ function pg_dashboard_widget_1($request, $user)
                 // the same reason the rows are: money formatting,
                 // plurals and the translation table all live on
                 // this side.
+                //
+                // The same figures go into a visually hidden table
+                // beside the list: the list names only the top eight
+                // regions, so on the world view no country's own
+                // figures are written anywhere else, and the tooltip
+                // is for the mouse alone. The table carries no links;
+                // a focusable link nobody can see is a lost focus
+                // stop, and the list rows already link.
                 $sm_entries = $sm_is_world ? $sm_period['countries'] : $sm_regions;
                 $sm_steps = pg_sales_map_steps($sm_entries);
                 $sm_tips = array();
+                $sm_table_rows = '';
 
                 foreach ($sm_entries as $sm_entry_key => $sm_entry) {
-
-                    if ($sm_entry['code'] === '') {
-                        continue;
-                    }
 
                     $sm_share = ($sm_total > 0)
                         ? round(($sm_entry['total'] / $sm_total) * 100)
@@ -310,13 +312,28 @@ function pg_dashboard_widget_1($request, $user)
                         }
                     }
 
+                    $sm_place = h($sm_is_world ? lang($sm_entry['name']) : $sm_entry['name']);
+
+                    $sm_table_rows .=
+                        '<tr><th scope="row">' . $sm_place . '</th>'
+                        . '<td>' . $sm_money($sm_entry['total']) . '</td>'
+                        . '<td>' . $sm_count($sm_entry['count']) . '</td>'
+                        . '<td>' . h(lang(array('string' => '{var:1}%', 'vars' => $sm_share))) . '</td>'
+                        . '<td>' . (!empty($sm_detail) ? implode(', ', $sm_detail) : '–') . '</td></tr>';
+
+                    // A place the outlines have no shape for is
+                    // listed in the table and coloured nowhere.
+                    if ($sm_entry['code'] === '') {
+                        continue;
+                    }
+
                     $sm_tips[$sm_entry['code']] = array(
                         'b' => (int) ($sm_steps[$sm_entry_key] ?? 0),
                         'u' => $sm_url(
                             $sm_is_world ? $sm_entry['name'] : $sm_entry['country_name'],
                             $sm_is_world ? '' : $sm_entry['state'],
                             $sm_period['from']),
-                        'p' => '<b>' . h($sm_is_world ? lang($sm_entry['name']) : $sm_entry['name']) . '</b>'
+                        'p' => '<b>' . $sm_place . '</b>'
                             . '<span>' . $sm_money($sm_entry['total']) . ' &middot; '
                             . $sm_orders($sm_entry['count']) . '</span>'
                             . '<span>' . lang(array('string' => '{var:1}% share', 'vars' => $sm_share)) . '</span>'
@@ -326,6 +343,27 @@ function pg_dashboard_widget_1($request, $user)
                 }
 
                 $sm_payload['rows'][$sm_view_key][$sm_period_key] = $sm_tips;
+
+                $sm_table = '';
+
+                if ($sm_table_rows !== '') {
+                    $sm_table = '<table class="visually-hidden">'
+                        . '<caption>' . h($sm_view_label . ' · ' . $sm_period['label']) . '</caption>'
+                        . '<thead><tr>'
+                        . '<th scope="col">' . h(lang($sm_is_world ? 'Country' : 'Region')) . '</th>'
+                        . '<th scope="col">' . h(lang('Total')) . '</th>'
+                        . '<th scope="col">' . h(lang('Orders')) . '</th>'
+                        . '<th scope="col">' . h(lang('Share of sales')) . '</th>'
+                        . '<th scope="col">' . h(lang($sm_is_world ? 'Regions' : 'Cities')) . '</th>'
+                        . '</tr></thead><tbody>' . $sm_table_rows . '</tbody></table>';
+                }
+
+                // The table sits inside the slot, so the d-none that
+                // show() toggles for a period or view switch hides
+                // and reveals it with the list.
+                $sm_lists .=
+                    '<div class="pg-list' . $sm_hidden . '" data-smap-list="' . $sm_slot . '">'
+                    . $sm_rows . $sm_table . '</div>';
             }
         }
 
@@ -334,7 +372,7 @@ function pg_dashboard_widget_1($request, $user)
 
             $sm_tabs .=
                 '<li><button type="button" class="menu-item'
-                . (($sm_period_key === $sales_map['period']) ? ' active' : '') . '"'
+                . (($sm_period_key === $sales_map['period']) ? ' active" aria-pressed="true' : '" aria-pressed="false') . '"'
                 . ' data-smap="' . $sm_period_key . '">'
                 . '<i class="bi bi-check2 pg-smap-tick"></i>' . h($sm_period['label']) . '</button></li>';
         }
@@ -354,7 +392,7 @@ function pg_dashboard_widget_1($request, $user)
             '<div class="pg-menu-wrap pg-smap-menu">'
             . '<button type="button" class="btn btn-sm btn-text theme-secondary pg-smap-menu-btn" id="pg_smap_menu"'
             . ' data-bs-toggle="menu" data-bs-placement="bottom-end" aria-expanded="false" aria-label="' . h(lang('Filter')) . '">'
-            . '<i class="bi bi-sliders"></i></button>'
+            . '<i class="bi bi-sliders" aria-hidden="true"></i></button>'
             . '<ul class="menu pg-menu-end">'
             . '<li><h6 class="menu-header">' . h(lang('Period')) . '</h6></li>'
             . $sm_tabs
@@ -375,8 +413,10 @@ function pg_dashboard_widget_1($request, $user)
             '<div class="card-body p-0 pg-split" id="pg_smap">'
             . '<div class="pg-split-half pg-smap-main">'
             . $sm_heads
-            . '<div class="pg-smap-canvas' . ($sm_can_open ? '' : ' is-static') . '" id="pg_smap_canvas" role="img" aria-label="' . h(lang('Sales Map')) . '">'
-            . '<div class="pg-smap-tip" id="pg_smap_tip"></div>'
+            . '<div class="pg-smap-canvas' . ($sm_can_open ? '' : ' is-static') . '" id="pg_smap_canvas">'
+            // Only a mouse brings the tooltip up; its figures are in the
+            // visually hidden table inside each list slot.
+            . '<div class="pg-smap-tip" id="pg_smap_tip" aria-hidden="true"></div>'
             . $sm_menu
             . '</div>'
             . '</div>'
@@ -451,6 +491,12 @@ function pg_dashboard_widget_1($request, $user)
                         .then(function(markup){
                             var layer = document.createElement("div");
                             layer.className = "pg-smap-layer";
+                            // The layer is the picture, not the box
+                            // around it: that box also holds the
+                            // Filter menu, and everything inside a
+                            // role=img is hidden from screen readers.
+                            layer.setAttribute("role", "img");
+                            layer.setAttribute("aria-label", data.label);
                             layer.innerHTML = markup;
                             canvas.appendChild(layer);
                             layers[view] = layer;
@@ -460,7 +506,7 @@ function pg_dashboard_widget_1($request, $user)
                         .catch(function(){
                             // The outlines are a presentation
                             // layer: every number they carry is
-                            // already written in the list beside
+                            // in the list and the table beside
                             // them, so a missing file costs the
                             // picture and nothing else.
                             canvas.classList.add("d-none");
@@ -478,10 +524,12 @@ function pg_dashboard_widget_1($request, $user)
 
                     root.querySelectorAll("[data-smap]").forEach(function(btn){
                         btn.classList.toggle("active", btn.getAttribute("data-smap") === mode);
+                        btn.setAttribute("aria-pressed", btn.getAttribute("data-smap") === mode ? "true" : "false");
                     });
 
                     root.querySelectorAll("[data-smap-view]").forEach(function(btn){
                         btn.classList.toggle("active", btn.getAttribute("data-smap-view") === view);
+                        btn.setAttribute("aria-pressed", btn.getAttribute("data-smap-view") === view ? "true" : "false");
                     });
 
                     ensure();

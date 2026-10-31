@@ -318,3 +318,52 @@ function test_carrier_labels_mask_walks_arrays()
 {
 	pg_assert_same(array('a' => '****x', 'b' => array('c' => 'y****'), 'n' => 5), pg_label_mask(array('a' => 'sec1x', 'b' => array('c' => 'ysec2')), array('sec1', 'sec2')) + array('n' => 5));
 }
+
+function carrier_labels_test_svg($inside = '<text x="10" y="20">10042</text>')
+{
+	return '<?xml version="1.0" encoding="UTF-8"?>' . "\n" . '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="100mm" height="150mm" viewBox="0 0 400 600">' . $inside . '</svg>';
+}
+
+function test_carrier_labels_svg_needs_an_svg_root()
+{
+	pg_assert_true(in_array('svg', pg_label_formats(), true));
+	pg_assert_true(pg_label_document_valid(carrier_labels_test_svg(), 'svg'));
+	pg_assert_true(pg_label_document_valid("\xEF\xBB\xBF<!-- label --><svg><rect width=\"1\" height=\"1\"/></svg>", 'svg'), 'byte order mark and comment');
+	pg_assert_false(pg_label_document_valid('<html><svg></svg></html>', 'svg'), 'not the root');
+	pg_assert_false(pg_label_document_valid('<svgx></svgx>', 'svg'));
+	pg_assert_false(pg_label_document_valid('<svg width="1">', 'svg'), 'never closed');
+	pg_assert_false(pg_label_document_valid("%PDF-1.4\n", 'svg'));
+	pg_assert_false(pg_label_document_valid(carrier_labels_test_svg(), 'pdf'));
+
+	$answer = pg_label_answer('label', array('success' => true, 'label' => carrier_labels_test_svg(), 'label_format' => 'svg'));
+	pg_assert_true($answer['success']);
+	pg_assert_same('svg', $answer['label_format']);
+}
+
+function test_carrier_labels_svg_refuses_external_references()
+{
+	$refused = array(
+		'image href'       => '<image href="https://evil.example/p.png" width="1" height="1"/>',
+		'xlink href'       => '<image xlink:href="//evil.example/p.png"/>',
+		'link'             => '<a href="javascript:alert(1)"><text>x</text></a>',
+		'encoded link'     => '<a xlink:href="&#106;avascript:alert(1)"><text>x</text></a>',
+		'use of a file'    => '<use href="other.svg#a"/>',
+		'style url'        => '<rect style="fill:url(https://evil.example/x)"/>',
+		'fill url'         => '<rect fill="url(\'http://evil.example/x\')"/>',
+		'import'           => '<style>@import "https://evil.example/a.css";</style>',
+		'script'           => '<script>alert(1)</script>',
+		'event'            => '<rect onload="alert(1)"/>',
+		'foreign object'   => '<foreignObject><iframe src="https://evil.example"></iframe></foreignObject>',
+		'nested svg image' => '<image href="data:image/svg+xml;base64,PHN2Zz48L3N2Zz4="/>',
+	);
+
+	foreach ($refused as $name => $inside) {
+		pg_assert_false(pg_label_svg_valid(carrier_labels_test_svg($inside)), $name);
+	}
+
+	pg_assert_false(pg_label_svg_valid('<?xml version="1.0"?><!DOCTYPE svg [<!ENTITY x SYSTEM "file:///etc/passwd">]><svg>&x;</svg>'), 'entities');
+	pg_assert_false(pg_label_svg_valid('<?xml-stylesheet href="https://evil.example/a.css"?><svg></svg>'), 'stylesheet');
+
+	pg_assert_true(pg_label_svg_valid(carrier_labels_test_svg('<defs><path id="b" d="M0 0h2v40H0z"/></defs><use xlink:href="#b"/><rect fill="url(#g)"/><image href="data:image/png;base64,iVBORw0KGgo=" width="10" height="10"/>')), 'own references and an embedded PNG');
+	pg_assert_true(pg_label_svg_valid(carrier_labels_test_svg('<text>Teslim: Ayşe, Konak</text>')), 'text naming no address');
+}

@@ -1235,6 +1235,13 @@ function pg_product_feed_settings_parse($json)
         $settings['excluded_group_ids'] = array_keys($ids);
     }
 
+    // Google Merchant Center's account, data source and last issue reading
+    // (includes/fn/merchant_center.php) ride along untouched; that module
+    // types them with pg_merchant_state_parse().
+    if (isset($stored['merchant']) && is_array($stored['merchant'])) {
+        $settings['merchant'] = $stored['merchant'];
+    }
+
     if (!isset($stored['formats']) || !is_array($stored['formats'])) {
         return $settings;
     }

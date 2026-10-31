@@ -694,3 +694,74 @@ function test_code_editor_dialog_offers_a_minimap_toggle()
 	pg_assert_contains('_editor.hasMinimap()', $modal, 'and starts from the editor\'s state');
 	pg_assert_contains("'Minimap'      => lang('Minimap'),", $screen, 'the designer prints the label');
 }
+
+// Tab indents in a code field, so the facade binds CodeMirror's tab focus
+// mode to Ctrl+M (Shift+Alt+M on a Mac) in its own keymap: the vscode
+// keymap a panel field uses has no such key, and without it a keyboard
+// user could leave the field only through the unannounced Escape-then-Tab
+// rule (which inside Site Settings reaches the dialog instead).
+function test_code_editor_ctrl_m_switches_tab_to_moving_focus()
+{
+	$facade = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_code_editor.js');
+	$from = strpos($facade, 'function keymapExtensions(');
+	$keymap = ($from !== false) ? substr($facade, $from, strpos($facade, "\n        }\n", $from) - $from) : '';
+
+	pg_assert_contains("{ key: 'Ctrl-m', mac: 'Shift-Alt-m', run: C.toggleTabFocusMode }", $keymap, 'Ctrl+M toggles the tab focus mode');
+	pg_assert_true(strpos($keymap, 'toggleTabFocusMode') < strpos($keymap, 'if (useVscode)'), 'in the own keymap, for both keymaps');
+
+	$bundle = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/lib/code_editor/cm6.bundle.js');
+	pg_assert_contains('toggleTabFocusMode:', $bundle, 'the engine exports the command');
+}
+
+// An editable field says under it how Tab works and how to leave it, and
+// its editor content points at that line with aria-describedby; a
+// read-only field, where Tab already moves on, gets no line.
+function test_code_editor_attach_tells_how_to_leave_the_field()
+{
+	$facade = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_code_editor.js');
+	$from = strpos($facade, '    function attach(');
+	$attach = ($from !== false) ? substr($facade, $from, strpos($facade, "\n    window.PgCodeEditor = {", $from) - $from) : '';
+
+	pg_assert_contains("attrs['aria-describedby'] = opts.describedBy;", $attach, 'attach() links the content to a description');
+
+	if (!function_exists('exec') || !defined('PHP_BINARY') || (PHP_BINARY === '')) {
+		return;
+	}
+
+	$file = @tempnam(sys_get_temp_dir(), 'pgcodehint');
+
+	if ($file === false) {
+		return;
+	}
+
+	file_put_contents($file, '<?php' . "\n"
+		. "define('PG_TEST_RUNNER', true);\n"
+		. "define('OUTPUT_PATH', '/');\n"
+		. "define('OUTPUT_SOFTWARE_DIRECTORY', 'pinegrap');\n"
+		. 'require ' . var_export(PG_FUNCTIONS_DIR . '/functions.php', true) . ";\n"
+		. "echo json_encode(array("
+		. "'css' => pg_code_editor_attach(array('id' => 'code', 'code_type' => 'css')),"
+		. "'ro' => pg_code_editor_attach(array('id' => 'code', 'code_type' => 'css', 'readonly' => true)),"
+		. "'text' => lang('Tab indents. {var} makes Tab move to the next field.')));\n");
+
+	$out = array();
+	$code = 1;
+	@exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg($file) . ' 2>&1', $out, $code);
+	@unlink($file);
+	$res = json_decode(implode("\n", $out), true);
+
+	pg_assert_same(0, $code, 'drawn: ' . implode("\n", array_slice($out, 0, 8)));
+	if (!is_array($res)) {
+		pg_assert_true(false, 'the process answers');
+		return;
+	}
+
+	$css = $res['css'];
+	$ro = $res['ro'];
+
+	pg_assert_contains('"describedBy":"code_keys_hint"', $css, 'the editor is told which element describes it');
+	pg_assert_contains('hint.id = options.describedBy;', $css, 'the line carries that id');
+	pg_assert_contains(pg_code_editor_json($res['text']), $css, 'with the translated text');
+	pg_assert_contains('"Shift+Alt+M" : "Ctrl+M"', $css, 'naming the key of the platform');
+	pg_assert_false(strpos($ro, 'describedBy') !== false, 'a read-only field has no line');
+}

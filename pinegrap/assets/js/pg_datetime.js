@@ -293,12 +293,11 @@
     }
 
     // The library's own month layout with the time row under the dates, as
-    // its default layout has it; the Done button after them in a popup, in
-    // the classes the tag gives (a site page's Bootstrap 5.3.8 ones), else
-    // the panel's.
-    function layout(mode, inline) {
+    // its default layout has it; the Done button after them, in the classes
+    // the tag gives (a site page's Bootstrap 5.3.8 ones), else the panel's.
+    function layout(mode) {
         var s = settings();
-        var done = inline ? '' : '<div class="pg-vc-actions"><button type="button" class="' + escapeText(s.button) + '" data-pg-vc-done>' + escapeText(s.done) + '</button></div>';
+        var done = '<div class="pg-vc-actions"><button type="button" class="' + escapeText(s.button) + '" data-pg-vc-done>' + escapeText(s.done) + '</button></div>';
         if (mode === 'time') {
             return '<#ControlTime />' + done;
         }
@@ -320,9 +319,86 @@
         return parseTime(c.selectedHours + ':' + c.selectedMinutes + (c.selectedKeeping ? ' ' + c.selectedKeeping : ''));
     }
 
-    // A calendar for the typed box `box`, as a popup under it, or drawn open
-    // after it (options.inline: in a drawer, where a popup would hang off
-    // the drawer's scrolling body).
+    // Whether `node` is `root` or inside it.
+    function within(root, node) {
+        for (; node; node = node.parentNode) {
+            if (node === root) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // In a drawer (options.inline) the calendar is drawn in a wrapper after
+    // the box, in the drawer's own flow: a popup would hang off the drawer's
+    // scrolling body. The wrapper is hidden until the box gets focus, a
+    // click or ArrowDown, as a popup opens, and hidden again by a date pick,
+    // Done, Escape (focus back on the box) and focus leaving both the box
+    // and the calendar. Returns { close(focusBack), off() }.
+    function onDemand(box, wrap, cal) {
+        var quiet = false, pressed = false;
+        var open = function () {
+            if (!quiet && wrap.hidden) {
+                wrap.hidden = false;
+                syncTheme(box, cal);
+            }
+        };
+        var close = function (focusBack) {
+            wrap.hidden = true;
+            if (focusBack && box.focus) {
+                // Focus coming back from the calendar does not open it again.
+                quiet = true;
+                try {
+                    box.focus();
+                } finally {
+                    quiet = false;
+                }
+            }
+        };
+        var boxKeys = function (event) {
+            if (event.key === 'ArrowDown' && !event.ctrlKey && !event.metaKey) {
+                open();
+            } else if (event.key === 'Escape' && !wrap.hidden) {
+                // The drawer closes on Escape too; this one is the calendar's.
+                event.preventDefault();
+                event.stopPropagation();
+                close(false);
+            }
+        };
+        var calendarKeys = function (event) {
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                event.stopPropagation();
+                close(true);
+            }
+        };
+        // A press inside the calendar may leave no element focused (a
+        // button in Safari, a day redrawn under the pointer); it keeps the
+        // calendar open until the click is done.
+        var press = function () {
+            pressed = true;
+            window.setTimeout(function () { pressed = false; }, 0);
+        };
+        var left = function (event) {
+            var to = event.relatedTarget || null;
+            if (to === box || within(wrap, to) || (!to && pressed)) {
+                return;
+            }
+            close(false);
+        };
+        var bound = [[box, 'focus', open], [box, 'click', open], [box, 'keydown', boxKeys], [box, 'focusout', left],
+            [wrap, 'keydown', calendarKeys], [wrap, 'pointerdown', press], [wrap, 'mousedown', press], [wrap, 'focusout', left]];
+        bound.forEach(function (b) { b[0].addEventListener(b[1], b[2]); });
+        return {
+            close: close,
+            off: function () {
+                bound.forEach(function (b) { b[0].removeEventListener(b[1], b[2]); });
+            }
+        };
+    }
+
+    // A calendar for the typed box `box`, as a popup under it, or in a
+    // drawer drawn after it and opened on demand (options.inline, onDemand()).
     //   options.mode           'date' (the default), 'datetime' (the time row
     //                          under the dates) or 'time' (the time row only)
     //   options.iso            the date it shows ('' for none)
@@ -333,20 +409,23 @@
     //   options.onPick(iso, hhmm)  a day was clicked or the time moved: the
     //                          shown date ('' for none) and time ('' in date mode)
     //   options.host(box)      the element the popup goes into
-    // A date closes a date popup; with a time row the popup stays open for
-    // it and closes with Done, Escape or a click outside. Returns
+    // A date closes a date calendar; with a time row it stays open for it
+    // and closes with Done, Escape or a click (focus) outside. Returns
     // { calendar, set(iso, hhmm), destroy() }; set() moves the calendar to a
     // date and time without drawing it again.
     function attach(box, options) {
-        var o = options || {}, mode = o.mode || 'date', inline = !!o.inline, target = box, wrap = null, offs = [];
+        var o = options || {}, mode = o.mode || 'date', inline = !!o.inline, target = box, wrap = null, offs = [], demand = null;
         // The calendar takes over the element it is drawn in, classes
         // included, so it gets a box of its own inside ours.
         if (inline) {
             wrap = document.createElement('div');
             wrap.className = 'pg-date-inline';
+            wrap.hidden = true;
             target = document.createElement('div');
             wrap.appendChild(target);
             box.parentNode.insertBefore(wrap, box.nextSibling);
+            demand = onDemand(box, wrap, target);
+            offs.push(demand.off);
         }
         var theme = themeOf(box), shown = false, calendar = null, timeMode = settings().timeMode;
         var place = function () {
@@ -383,10 +462,14 @@
                 var main = self.context.mainElement;
                 dressed(main);
                 // Done is ours: the library has no such button.
-                if (mode !== 'date' && !inline && main && main !== box) {
+                if (mode !== 'date' && main && main !== box) {
                     main.addEventListener('click', function (event) {
                         if (event.target && event.target.closest && event.target.closest('[data-pg-vc-done]')) {
-                            self.hide();
+                            if (demand) {
+                                demand.close(true);
+                            } else {
+                                self.hide();
+                            }
                         }
                     });
                 }
@@ -403,9 +486,13 @@
             },
             onClickDate: function (self) {
                 pick(self, mode === 'date' ? '' : shownTime(self));
-                // A date closes a date popup; focus goes back to the box.
-                if (mode === 'date' && !inline && (self.context.selectedDates || []).length) {
-                    self.hide();
+                // A date closes a date calendar; focus goes back to the box.
+                if (mode === 'date' && (self.context.selectedDates || []).length) {
+                    if (demand) {
+                        demand.close(true);
+                    } else {
+                        self.hide();
+                    }
                 }
             }
         };
@@ -421,7 +508,7 @@
         if (mode !== 'date') {
             calendarOptions.selectionTimeMode = timeMode;
             calendarOptions.selectedTime = libraryTime(o.time, timeMode);
-            calendarOptions.layouts = { default: layout(mode, inline) };
+            calendarOptions.layouts = { default: layout(mode) };
             calendarOptions.onChangeTime = function (self, event, isError) {
                 if (!isError) {
                     pick(self, shownTime(self));

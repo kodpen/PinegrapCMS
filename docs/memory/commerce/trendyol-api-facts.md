@@ -31,7 +31,7 @@ description: Trendyol seller API (V2) facts for the connector: hosts, Basic auth
 - The connector spends at most 45 value calls per category (`mp_trendyol_value_call_budget()`); over budget or a 429 midway is an error, nothing half-stored.
 
 ## What is the error body?
-- Not fully documented. Read `errors[].message`, then `errors[].key`, then `message`, then `exception` (`mp_trendyol_error_message()`).
+- Not fully documented. Read `errors[].message`, `title`, `key` (also under `error`, the common label's), then `message`, `exception` (`mp_trendyol_error_message()`).
 
 ## What is still unknown?
 - Status for a valid key with a wrong seller id (401 or 403). Whether stage has the same category ids as live (the cache is per provider, not per environment).

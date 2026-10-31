@@ -41,15 +41,15 @@ if (!$_POST) {
     $output =
         pg_page_shell(
             array(
-                'title'=> lang('Edit Refferal Source'),
+                'title'=> lang('Edit Referral Source'),
                 'extra classes'=>'setting',
                 'icon'=>'setting',
-                'heading'=>lang('Edit Refferal Source'),
+                'heading'=>lang('Edit Referral Source'),
                 'heading_description' => lang('Create a new referral source to gather marketing information during checkout. (Delete all will hide feature.)'),
                 'cancel'=>array('enable'=>'true','url'=>'view_referral_sources.php'),
                 'breadcrumb' => array(
                     array('label' => lang('All Referral Sources'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_referral_sources.php'),
-                    array('label' => lang('Edit Refferal Source')),
+                    array('label' => lang('Edit Referral Source')),
                 ),
             )
         ) . '
@@ -66,7 +66,7 @@ if (!$_POST) {
                             <div class="container">
                                 <div class=" btn-group flex-wrap justify-content-center">
                                     <button type="submit" id="submit_save" name="submit_save" value="Save" class="btn my-1  btn-solid theme-success "><span class="material-icons me-3">save</span><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>
-                                    <button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-solid theme-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('referral source')))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>
+                                    <button type="submit" name="submit_delete" value="Delete" formnovalidate class="btn my-1  btn-solid theme-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('referral source')))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>
                                 </div>
                             </div>
                         </nav>
@@ -99,6 +99,10 @@ if (!$_POST) {
                     timestamp = UNIX_TIMESTAMP()
                 WHERE id = ?";
         $values = pg_referral_source_form_values($_POST);
+        $error = pg_referral_source_form_error($values);
+        if ($error !== '') {
+            output_error($error . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+        }
         $result = db_q($query, array($values['name'], $values['code'], $values['sort_order'], (string) $user['id'], (string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
 
         log_activity(lang(array('string'=>'referral source ({var:1}) was modified','vars'=>array($_POST['name']) )) , $_SESSION['sessionusername']);

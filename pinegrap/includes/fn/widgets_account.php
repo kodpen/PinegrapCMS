@@ -81,8 +81,46 @@ function pg_sw_page_type_widget_url($page_type)
     if (function_exists('pg_multi_page_design_ready') && !pg_multi_page_design_ready()) return '';
 
     $pages = pg_sw_widget_pages($map[$page_type]);
+    // The order receipt e-mail page carries an order view too, sits in a
+    // private folder and sorts before the public order page by title.
+    if ($page_type === 'view order') $pages = pg_sw_pages_without($pages, _pg_sw_order_receipt_email_page_ids());
     if (!$pages) return '';
     return $cache[$page_type] = (defined('PATH') ? PATH : '/') . encode_url_path((string)$pages[0]['page_name']);
+}
+
+// $pages (rows with page_id) without those whose id is in $skip_ids, in the
+// same order, re-indexed.
+function pg_sw_pages_without(array $pages, array $skip_ids)
+{
+    $skip = array();
+    foreach ($skip_ids as $id) $skip[(int)$id] = true;
+    $left = array();
+    foreach ($pages as $page) {
+        if (!isset($skip[(int)$page['page_id']])) $left[] = $page;
+    }
+    return $left;
+}
+
+// Ids of the pages set as an order receipt e-mail: the express order and
+// order preview page rows, and the widgets' own settings (a template site
+// mirrors the widget value into express_order_pages only once it renders).
+function _pg_sw_order_receipt_email_page_ids()
+{
+    $ids = array();
+    foreach (array('express_order_pages', 'order_preview_pages') as $table) {
+        $rows = db_items("SELECT order_receipt_email_page_id FROM $table WHERE order_receipt_email_page_id > 0");
+        foreach ((is_array($rows) ? $rows : array()) as $row) $ids[] = (int)$row['order_receipt_email_page_id'];
+    }
+    $rows = db_items(
+        "SELECT system_region_config FROM shared_components
+         WHERE system_region_config LIKE '%order_receipt_email_page_id%'");
+    foreach ((array)$rows as $row) {
+        $cfg = json_decode((string)$row['system_region_config'], true);
+        if (!is_array($cfg) || !isset($cfg['regionType'], $cfg['order_receipt_email_page_id'])) continue;
+        if (!in_array($cfg['regionType'], array('express_order', 'order_preview'), true)) continue;
+        if ((int)$cfg['order_receipt_email_page_id'] > 0) $ids[] = (int)$cfg['order_receipt_email_page_id'];
+    }
+    return $ids;
 }
 
 // Where a visitor who has to sign in before a page opens is sent: the
@@ -738,7 +776,8 @@ function _render_system_widget_account_profile($tree_json, $widget_id, $cfg = ar
 // from a campaign's "email preferences" link - the contact the link's signed
 // ?id=&sig= names. Anyone else is asked to sign in.
 //
-// Controls by name: email_address, opt_in. loop_area: one row per mailing
+// Controls by name: email_address, opt_in, opt_in_sms (drawn only while SMS
+// is on and the contact has a mobile number). loop_area: one row per mailing
 // list the contact may see (open lists, and closed ones the contact is on);
 // the row's checkbox, named contact_group, becomes contact_group_<list id>
 // and is checked by the server. Trees saved before that carry the name
@@ -809,14 +848,27 @@ function _render_system_widget_email_preferences($tree_json, $widget_id, $cfg = 
         $groups[] = $g;
     }
 
+    // The SMS box (opt_in_sms) beside the opt-in, while SMS is on and the
+    // contact has a mobile number; it starts from the person's last SMS
+    // answer in the consent log, ticked when there is none.
+    $sms_offered = ($mode === 'edit')
+        || pg_consent_sms_offered(pg_consent_sms_number_known(pg_consent_sms_contact_number($contact_id)));
+
     $lf = new liveform('email_preferences');
     $submitted = $lf->field_in_session('token');
     if ($submitted) {
         _pg_member_fill_control($tree, 'email_address', (string)$lf->get_field_value('email_address'));
         _pg_member_fill_control($tree, 'opt_in', '1', (bool)$lf->get_field_value('opt_in'));
+        _pg_member_fill_control($tree, 'opt_in_sms', '1', (bool)$lf->get_field_value('opt_in_sms'));
     } else {
+        $sms_on = $sms_offered && pg_consent_sms_start_for(array(
+            'email' => $email, 'user_id' => $signed_in ? (int)USER_ID : 0, 'contact_id' => $contact_id));
         _pg_member_fill_control($tree, 'email_address', $email);
         _pg_member_fill_control($tree, 'opt_in', '1', $opt_in === 1);
+        _pg_member_fill_control($tree, 'opt_in_sms', '1', $sms_on);
+    }
+    if (!$sms_offered) {
+        _pg_member_drop_control($tree, 'opt_in_sms');
     }
 
     $account_url = $signed_in ? _pg_acct_page_url(isset($cfg['my_account_page_id']) ? $cfg['my_account_page_id'] : 0, 'my account') : '';
@@ -995,7 +1047,8 @@ function _render_system_widget_address_book($tree_json, $widget_id, $cfg = array
         foreach ($recipients as $r) {
             $rid  = (int)$r['id'];
             $name = trim(implode(' ', array_filter(array((string)$r['salutation'], (string)$r['first_name'], (string)$r['last_name']), 'strlen')));
-            $country = isset($countries[(string)$r['country']]) ? $countries[(string)$r['country']] : (string)$r['country'];
+            // The country in the site language, as the address forms list it.
+            $country = isset($countries[(string)$r['country']]) ? pg_geo_country_label($countries[(string)$r['country']], (string)$r['country']) : (string)$r['country'];
             $lines = array_values(array_filter(array(
                 (string)$r['address_1'],
                 (string)$r['address_2'],
@@ -1701,9 +1754,11 @@ function _pg_acct_staff_url($staff_page_id)
 // ^^__my_account_wishlist_url^^ (shop sites: the first page carrying a
 // Favourites widget, which has no legacy page type),
 // ^^__logout_url^^, ^^__staff_url^^ (cfg staff_page_id, only for a member
-// the staff page's folder lets in). Section: order_history (the member's
-// orders, newest first, each linking to the order view page). Flags:
-// has_orders, no_orders, is_staff.
+// the staff page's folder lets in). Sections: order_history (the member's
+// orders, newest first, each linking to the order view page), subscriptions
+// (the member's subscriptions with their actions,
+// pg_subscription_customer_section_html()). Flags: has_orders, no_orders,
+// is_staff.
 function _pg_my_account_extras($logged_in, $cfg = array())
 {
     $shop  = defined('ECOMMERCE') && ECOMMERCE;
@@ -1718,7 +1773,7 @@ function _pg_my_account_extras($logged_in, $cfg = array())
     );
     // 'orders' and 'order_view_url': the history's rows and the view order
     // page, for a list of the member's orders (pg_sw_list_account_rows()).
-    $out = array('links' => $links, 'sections' => array('order_history' => ''),
+    $out = array('links' => $links, 'sections' => array('order_history' => '', 'subscriptions' => ''),
                  'flags' => array('has_orders' => false, 'no_orders' => true, 'is_staff' => false),
                  'orders' => array(), 'order_view_url' => '');
     if (!$logged_in) return $out;
@@ -1763,6 +1818,12 @@ function _pg_my_account_extras($logged_in, $cfg = array())
             $out['flags']['has_orders'] = true;
             $out['flags']['no_orders']  = false;
         }
+        // The actions post back to the page the member is on.
+        $out['sections']['subscriptions'] = pg_subscription_customer_section_html(
+            pg_subscription_customer_rows((int)USER_ID),
+            _pg_acct_software_path() . '/subscription_action.php',
+            pg_safe_redirect_path(isset($_SERVER['REQUEST_URI']) ? strtok((string)$_SERVER['REQUEST_URI'], '?') : '', defined('PATH') ? PATH : '/'),
+            isset($_SESSION['software']['token']) ? (string)$_SESSION['software']['token'] : '');
     }
     return $out;
 }

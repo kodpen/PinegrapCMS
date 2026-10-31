@@ -112,6 +112,28 @@ function erp_returnable_lines($invoice_id)
 }
 
 /**
+ * Whether any of erp_returnable_lines() still has a quantity to give back.
+ *
+ * A fully returned invoice is never cancelled and stays issued or paid, so
+ * this, not the status, decides whether a return can be offered. A credit
+ * line counts like any other: its quantity is positive, only its price is
+ * below zero.
+ *
+ * @param array $lines
+ * @return bool
+ */
+function erp_return_lines_left(array $lines)
+{
+    foreach ($lines as $line) {
+        if ((float) ($line['remaining_qty'] ?? 0) > 0.00001) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/**
  * Build the lines of a return from the quantities somebody chose.
  *
  * Each piece takes its share of the line's amount and discount, rounded on

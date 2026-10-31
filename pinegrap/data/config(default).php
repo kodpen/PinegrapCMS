@@ -33,10 +33,6 @@ define('DB_USERNAME', 'pinegrap');  // Example: 'root'
 define('DB_PASSWORD', 'secret');    // Example: 'mypassword'
 define('DB_DATABASE', 'cmsdb');     // Example: 'pinegrap_cms'
 
-// Legacy MySQL connection (for PHP < 7)
-// Only enable if old custom code requires mysql_* functions
-define('DB_LEGACY', false);
-
 /* -----------------------------
    General Settings
 ------------------------------ */
@@ -306,7 +302,10 @@ define('ECOMMERCE_GOOGLE_TAXONOMY_LOCALE', '');
 //   surat     Sürat Kargo          fedex   FedEx
 //   aras      Aras Kargo           usps    USPS
 //   mng       MNG Kargo
-//   ptt       PTT Kargo
+//   ptt       PTT Kargo            dhl            DHL
+//                                  deutschepost   Deutsche Post
+//                                  dpd            DPD
+//                                  royalmail      Royal Mail
 //
 // The list lives in pg_shipping_carriers() (includes/fn/ecommerce.php) with
 // each carrier's name and tracking address beside it. A value outside it does

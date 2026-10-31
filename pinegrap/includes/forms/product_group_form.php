@@ -23,6 +23,19 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 }
 
 /**
+ * The order the products offered for the group are paged in, first batch
+ * and Load More alike. Imports and bulk edits stamp many rows with the same
+ * second, and MySQL may return tied rows in a different order when the LIMIT
+ * differs, so the id breaks the tie and batches never overlap or skip a row.
+ *
+ * @return string
+ */
+function pg_product_group_form_unselected_order_sql()
+{
+    return 'ORDER BY timestamp DESC, id DESC';
+}
+
+/**
  * The table rows of products offered for the group (not in it yet): ticked
  * off, no sort order.
  *
@@ -82,10 +95,9 @@ function pg_product_group_form_cards($liveform, $values, $form)
 
     // A new group's name is a liveform field, so a refused save keeps it.
     if ($form['is_new']) {
-        $output_name = $liveform->output_field(array('type'=>'text','id'=>'name','name'=>'name', 'class'=>'form-control ', 'required'=>'required')) . '
-                                            <div class="invalid-feedback">' . lang('Required Area') . '</div>';
+        $output_name = $liveform->output_field(array('type'=>'text','id'=>'name','name'=>'name', 'class'=>'form-control ', 'maxlength'=>'100', 'required'=>'required'));
     } else {
-        $output_name = '<input type="text" name="name" id="name" class="form-control" value="' . h($v['name']) . '"/>';
+        $output_name = '<input type="text" name="name" id="name" class="form-control" maxlength="100" required value="' . h($v['name']) . '"/>';
     }
 
     $enabled_checked = $v['enabled'] ? ' checked="checked"' : '';
@@ -132,17 +144,19 @@ function pg_product_group_form_cards($liveform, $values, $form)
                                         </div>
 
                                         <div class="col-12 my-5">
-                                            <div class="col-12">
-                                                <label class="form-label">' . lang('Display Type') . '</label>
-                                            </div>
-                                            <div class="form-field  d-inline-grid me-5" title="' . lang('Display contents for browsing on catalog page') . '">
-                                                <input class="radio collapse-switcher"  type="radio" id="browse" name="display_type" value="browse" ' . $display_type_browse_checked . '/>
-                                                <label for="browse">' . lang('Browse') . '</label>
-                                            </div>
-                                            <div class="form-field  d-inline-grid me-5" title="' . lang('Display contents for selection on catalog detail page') . '">
-                                                <input class="radio collapse-switcher"  type="radio" id="select" name="display_type" value="select" ' . $display_type_select_checked . ' data-bs-target="#display_type_select_row"/>
-                                                <label for="select">' . lang('Select') . '</label>
-                                            </div>
+                                            <fieldset>
+                                                <legend class="form-label fs-md">' . lang('Display Type') . '</legend>
+                                                <div class="form-field  d-inline-grid me-5" title="' . lang('Display contents for browsing on catalog page') . '">
+                                                    <input class="radio collapse-switcher"  type="radio" id="browse" name="display_type" value="browse" aria-describedby="display_type_browse_help" ' . $display_type_browse_checked . '/>
+                                                    <label for="browse">' . lang('Browse') . '</label>
+                                                    <span class="visually-hidden" id="display_type_browse_help">' . lang('Display contents for browsing on catalog page') . '</span>
+                                                </div>
+                                                <div class="form-field  d-inline-grid me-5" title="' . lang('Display contents for selection on catalog detail page') . '">
+                                                    <input class="radio collapse-switcher"  type="radio" id="select" name="display_type" value="select" aria-describedby="display_type_select_help" ' . $display_type_select_checked . ' data-bs-target="#display_type_select_row"/>
+                                                    <label for="select">' . lang('Select') . '</label>
+                                                    <span class="visually-hidden" id="display_type_select_help">' . lang('Display contents for selection on catalog detail page') . '</span>
+                                                </div>
+                                            </fieldset>
                                             <div class="collapse popover fade bs-popover-bottom p-0 mb-3 w-100" id="display_type_select_row">
                                                 <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(111px, 0px);"></div>
                                                 <div class="popover-body">
@@ -213,13 +227,14 @@ function pg_product_group_form_cards($liveform, $values, $form)
                                         <div class="col-12 mt-1 mb-3">
                                             <label for="address_name" class="form-label">' . lang('Catalog Name') . '</label>
                                             <div class="input-group ">
-                                                <label class="input-group-text material-icons" aria-hidden="true" title="' . lang('This option determines the url address of the product. Automatically assigned if left blank.') . '" data-bs-content="' . URL_SCHEME . HOSTNAME . OUTPUT_PATH . '{' . lang('Catalog Name') . '}">public</label>
-                                                <input type="text" name="address_name" id="address_name" class="form-control" value="' . h($v['address_name']) . '" />
+                                                <label class="input-group-text material-icons" aria-hidden="true">public</label>
+                                                <input type="text" name="address_name" id="address_name" aria-describedby="address_name_hint" class="form-control" value="' . h($v['address_name']) . '" />
                                             </div>
+                                            <div class="form-text" id="address_name_hint">' . lang('This option determines the url address of the product. Automatically assigned if left blank.') . ' <code>' . h(URL_SCHEME . HOSTNAME . OUTPUT_PATH . '{' . lang('Catalog Name') . '}') . '</code></div>
                                         </div>
                                         <div class="col-12 mt-1 mb-3">
                                             <label for="title" class="form-label">' . lang('Web Browser Title') . '</label>
-                                            <input type="text" name="title" id="title" class="form-control" value="' . h($v['title']) . '" />
+                                            <input type="text" name="title" id="title" class="form-control" maxlength="255" value="' . h($v['title']) . '" />
                                         </div>
                                         <div class="col-12 mt-1 mb-3">
                                             <label for="meta_description" class="form-label">' . lang('Web Browser Description') . '</label>
@@ -286,11 +301,28 @@ function pg_product_group_form_products_card($form)
                             var loadedOffset = ' . (int) $form['loaded'] . ';
                             var loadMoreBusy = false;
 
+                            // The button is enabled again or hidden on every answer: a batch
+                            // can come back empty when products were binned, deleted or added
+                            // to the group elsewhere since the screen opened.
+                            function loadMoreRestore($btn) {
+                                $btn.prop("disabled", false).find("i").removeClass("bi-hourglass-split").addClass("bi-arrow-down-circle");
+                            }
+
                             $("#btn_load_more_products").on("click", function() {
                                 if (loadMoreBusy) return;
                                 loadMoreBusy = true;
                                 var $btn = $(this);
                                 $btn.prop("disabled", true).find("i").removeClass("bi-arrow-down-circle").addClass("bi-hourglass-split");
+
+                                // A network failure, an expired session (the sign-in page is
+                                // not JSON) and refused commerce access all end here.
+                                function loadMoreFailed(message) {
+                                    loadMoreBusy = false;
+                                    loadMoreRestore($btn);
+                                    if (typeof window.pgToast === "function") {
+                                        window.pgToast({ variant: "danger", message: message || ' . json_encode(lang('Query failed.')) . ' });
+                                    }
+                                }
 
                                 $.ajax({
                                     url: "api.php",
@@ -303,9 +335,22 @@ function pg_product_group_form_products_card($form)
                                         offset: loadedOffset
                                     }),
                                     success: function(response) {
-                                        if (response.status === "success" && response.rows) {
-                                            var $rows = $(response.rows);
-                                            var dt = $("#' . $form['table_id'] . '").DataTable();
+                                        if (!(response && response.status === "success")) {
+                                            loadMoreFailed(response && response.message);
+                                            return;
+                                        }
+
+                                        var $table = $("#' . $form['table_id'] . '");
+                                        var $rows = response.rows ? $(response.rows).filter("tr") : $();
+                                        // A product already in the table is not added again. The tick
+                                        // box is the key: a selected child group row uses its group id
+                                        // as the row id, which can equal a product id.
+                                        $rows = $rows.filter(function() {
+                                            var id = $(this).find("input[name=\"products[]\"]").val();
+                                            return !id || !$table.find("input[name=\"products[]\"][value=\"" + id + "\"]").length;
+                                        });
+                                        if ($rows.length) {
+                                            var dt = $table.DataTable();
                                             $rows.each(function() {
                                                 dt.row.add(this);
                                             });
@@ -319,18 +364,30 @@ function pg_product_group_form_products_card($form)
                                                 }
                                             });
 
-                                            loadedOffset += response.loaded;
-                                            if (!response.has_more) {
-                                                $btn.closest(".border-top").hide();
-                                            } else {
-                                                $btn.prop("disabled", false).find("i").removeClass("bi-hourglass-split").addClass("bi-arrow-down-circle");
+                                            if (typeof pgInitInjected === "function") {
+                                                pgInitInjected($rows);
                                             }
                                         }
+
+                                        loadedOffset += parseInt(response.loaded, 10) || 0;
                                         loadMoreBusy = false;
+                                        if (!response.has_more) {
+                                            $btn.closest(".border-top").hide();
+                                        } else {
+                                            loadMoreRestore($btn);
+                                        }
+
+                                        // Focus goes to the first row the batch brought; when none came
+                                        // and the strip holding the button is gone, to Select All.
+                                        var $first = $rows.find("input.check").first();
+                                        if ($first.length && $first.is(":visible")) {
+                                            $first.trigger("focus");
+                                        } else if (!response.has_more) {
+                                            $("#select_all").trigger("focus");
+                                        }
                                     },
                                     error: function() {
-                                        loadMoreBusy = false;
-                                        $btn.prop("disabled", false).find("i").removeClass("bi-hourglass-split").addClass("bi-arrow-down-circle");
+                                        loadMoreFailed();
                                     }
                                 });
                             });
@@ -415,6 +472,30 @@ function pg_product_group_form_search_results_pages($product_group_id, $parent_i
 }
 
 /**
+ * The product ids to link from the posted products[] values: each once, in
+ * the order posted, without values that are no product id.
+ * products_groups_xref has no unique key, so a doubled value would link the
+ * product twice.
+ *
+ * @param array $posted
+ * @return int[]
+ */
+function pg_product_group_form_link_ids($posted)
+{
+    $ids = array();
+    foreach ($posted as $value) {
+        if (!is_scalar($value) || !ctype_digit((string) $value)) {
+            continue;
+        }
+        $id = (int) $value;
+        if ($id > 0 && !in_array($id, $ids, true)) {
+            $ids[] = $id;
+        }
+    }
+    return $ids;
+}
+
+/**
  * Links the ticked products to the group with their sort orders.
  *
  * @param mixed $product_group_id
@@ -428,7 +509,7 @@ function pg_product_group_form_link_products($product_group_id, $post, $kept_pro
         return;
     }
 
-    foreach ($post['products'] as $product_id) {
+    foreach (pg_product_group_form_link_ids($post['products']) as $product_id) {
         // A form opened before the product went to the bin still posts it;
         // its row is the one kept.
         if (in_array((int) $product_id, $kept_product_ids, true)) {

@@ -173,25 +173,6 @@ function db_connect()
     if (db::$con) {
         @mysqli_query(db::$con, "SET SESSION sql_mode = 'NO_ENGINE_SUBSTITUTION'");
     }
-
-    // Legacy mysql extension support (only if explicitly enabled and functions exist).
-    if (defined('DB_LEGACY') && DB_LEGACY === true && function_exists('mysql_connect')) {
-        $link = @mysql_connect(DB_HOST, DB_USERNAME, DB_PASSWORD);
-        if ($link && @mysql_select_db(DB_DATABASE)) {
-            $mysql_version = preg_replace('#[^0-9\.]#', '', mysql_get_server_info());
-            if (version_compare($mysql_version, '5.5.3', '>=') === true) {
-                $mysql_character_set = 'utf8mb4';
-            } else {
-                $mysql_character_set = 'utf8';
-            }
-            if (function_exists('mysql_set_charset')) {
-                @mysql_set_charset($mysql_character_set);
-            }
-            if (function_exists('mysql_query')) {
-                @mysql_query("SET NAMES '" . $mysql_character_set . "' COLLATE '" . $mysql_character_set . "_unicode_ci'");
-            }
-        }
-    }
 }
 
 function init_mysql_charset()
@@ -1050,18 +1031,64 @@ function escape_csv($string)
     return str_replace('"', '""', $string);
 }
 
-// Prepares an untrusted value for a double-quoted CSV cell. Besides doubling
-// embedded quotes it prefixes a leading formula trigger (=, +, -, @, tab or
-// carriage return) with an apostrophe so spreadsheet software shows the text
-// instead of evaluating it. Returns the cell body only; the caller adds the
-// surrounding quotes.
-function csv_cell($value)
+// Prefixes a leading formula trigger (=, +, -, @, tab or carriage return)
+// with an apostrophe so spreadsheet software shows untrusted text instead of
+// evaluating it. Only for text cells: a negative amount would gain the
+// apostrophe too and stop being a number.
+function pg_csv_formula_guard($value)
 {
     $value = (string) $value;
     if (($value !== '') && (strpos("=+-@\t\r", $value[0]) !== false)) {
         $value = "'" . $value;
     }
-    return str_replace('"', '""', $value);
+    return $value;
+}
+
+// Prepares an untrusted value for a double-quoted CSV cell: the formula guard
+// plus doubled embedded quotes. Returns the cell body only; the caller adds
+// the surrounding quotes.
+function csv_cell($value)
+{
+    return str_replace('"', '""', pg_csv_formula_guard($value));
+}
+
+// The headers of a panel CSV download: UTF-8 named in the content type and
+// the file offered as an attachment called $filename.
+function pg_csv_download_headers($filename)
+{
+    return array(
+        'Content-Type: text/csv; charset=utf-8',
+        'Content-Disposition: attachment; filename=' . $filename,
+    );
+}
+
+// Starts a panel CSV download: sends pg_csv_download_headers() and writes a
+// UTF-8 byte order mark. Excel opens a CSV file without the mark in the
+// system's ANSI code page, which turns Turkish letters into 'Ã¼' and 'ÅŸ'.
+// The importers step over the mark (pg_csv_open()).
+function pg_csv_download_start($filename)
+{
+    foreach (pg_csv_download_headers($filename) as $header) {
+        header($header);
+    }
+
+    echo "\xEF\xBB\xBF";
+}
+
+// A date and time cell of a panel CSV export: the site's day/month order and
+// clock with seconds and the time zone ('4/3/2026 17:05:09 +03' on a 24-hour
+// site, '4/3/2026 5:05:09 PM +03' otherwise). The settings are read from
+// DATE_FORMAT and TIME_FORMAT unless values are passed (tests).
+function pg_csv_export_time($timestamp, $date_format = null, $time_format = null)
+{
+    if ($date_format === null) {
+        $date_format = defined('DATE_FORMAT') ? DATE_FORMAT : 'month_day';
+    }
+
+    $day_code = ($date_format === 'month_day') ? 'n/j' : 'j/n';
+    $time_code = (pg_time_format_code($time_format) === 'H:i') ? 'H:i:s' : 'g:i:s A';
+
+    return date($day_code . '/Y ' . $time_code . ' T', (int) $timestamp);
 }
 
 // Opens an uploaded CSV file for fgetcsv(), which splits lines only on LF.
@@ -1069,6 +1096,8 @@ function csv_cell($value)
 // line break is a lone CR, is copied into a temporary stream with each lone CR
 // turned into LF. This replaces the auto_detect_line_endings setting,
 // deprecated since PHP 8.1, and reads the same rows on every version.
+// A leading UTF-8 byte order mark (Excel's "CSV UTF-8", the panel exports)
+// is stepped over, so the first heading reads without it.
 // Returns the handle, or false when the file cannot be opened.
 function pg_csv_open($path)
 {
@@ -1088,7 +1117,9 @@ function pg_csv_open($path)
     $cr = strpos($head, "\r");
     $lf = strpos($head, "\n");
 
-    rewind($handle);
+    $start = (substr($head, 0, 3) === "\xEF\xBB\xBF") ? 3 : 0;
+
+    fseek($handle, $start);
 
     if (($cr === false) || (($lf !== false) && ($lf <= $cr + 1))) {
         return $handle;
@@ -1119,6 +1150,97 @@ function pg_csv_open($path)
     rewind($copy);
 
     return $copy;
+}
+
+// The separator of an imported CSV file, read from its header line: of the
+// comma, the semicolon and the tab, the one the line holds most; the comma
+// when it holds none (a file of one column). Excel saves a CSV file with the
+// list separator of the computer's region, a semicolon in Turkish.
+function pg_csv_separator($header_line)
+{
+    $header_line = (string) $header_line;
+    $best = ',';
+    $most = substr_count($header_line, ',');
+
+    foreach (array(';', "\t") as $separator) {
+        $count = substr_count($header_line, $separator);
+
+        if ($count > $most) {
+            $best = $separator;
+            $most = $count;
+        }
+    }
+
+    return $best;
+}
+
+// Reads the header line of a handle from pg_csv_open() for its separator and
+// moves back to where that line started, so fgetcsv() reads the headings
+// next. Never back to 0: that would land on a byte order mark the open
+// stepped over, which left in front of a quoted heading keeps the quotes in
+// the name.
+function pg_csv_read_separator($handle)
+{
+    $start = (int) ftell($handle);
+    $header_line = (string) fgets($handle);
+    fseek($handle, $start);
+
+    return pg_csv_separator($header_line);
+}
+
+// The number of file lines a row read by fgetcsv() took: a quoted cell can
+// hold line breaks. Used to name a row by the line it starts on.
+function pg_csv_row_lines($row)
+{
+    return 1 + preg_match_all('/\r\n?|\n/', implode('', (array) $row));
+}
+
+// Whether a row read by fgetcsv() holds no value: a blank line, or one of
+// separators and spaces only, which Excel writes for an emptied row.
+function pg_csv_row_blank($row)
+{
+    foreach ((array) $row as $value) {
+        if (trim((string) $value) !== '') {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+// The headings of an imported file as one line of text for a message:
+// trimmed, blank ones left out, joined with commas. Not escaped.
+function pg_csv_headings_text($headings)
+{
+    $names = array();
+
+    foreach ((array) $headings as $heading) {
+        $heading = trim((string) $heading);
+
+        if ($heading !== '') {
+            $names[] = $heading;
+        }
+    }
+
+    return implode(', ', $names);
+}
+
+// The lines of an imported file that were skipped or changed, as
+// 'Line n: reason' texts: the first $limit of them, then one line counting
+// the rest. $problems is a list of array(line number, reason). Not escaped.
+function pg_csv_problem_list($problems, $limit = 20)
+{
+    $list = array();
+
+    foreach (array_slice((array) $problems, 0, $limit) as $problem) {
+        $list[] = lang(array('string' => 'Line {var:1}: {var:2}', 'vars' => array($problem[0], $problem[1])));
+    }
+
+    if (count($problems) > $limit) {
+        $list[] = lang(array('string' => 'and {var:1} more line(s) that could not be used.', 'vars' => array(count($problems) - $limit)));
+    }
+
+    return $list;
 }
 
 // glob() with brace alternatives ("{csv,xlsx}", "{,.}") on every PHP build.
@@ -1642,8 +1764,9 @@ function pg_regex_replacement($text)
  * It is a request value, so it may only ever be a path on this site: one leading
  * slash and no more. An absolute URL, a "//host" that borrows our scheme, or a
  * "javascript:" that would run the moment Cancel is clicked are all refused and
- * the screen's own default is used instead. A newline is refused for the same
- * reason a header must not carry one.
+ * the screen's own default is used instead; so is "/\host", which browsers
+ * follow as "//host". Control characters are refused too, as in
+ * pg_safe_redirect_path().
  *
  * @param  string $fallback where to go when there is no usable send_to
  * @return string
@@ -1656,11 +1779,44 @@ function pg_send_to_url($fallback = '')
         return $fallback;
     }
 
-    if ((strpbrk($send_to, "\r\n") !== false) || (mb_substr($send_to, 0, 1) !== '/') || (mb_substr($send_to, 0, 2) === '//')) {
+    // Any control character: CR/LF split a header, and browsers drop a tab or
+    // newline inside a URL, which can turn "/<TAB>/host" into "//host".
+    if (preg_match('/[\x00-\x1F\x7F]/', $send_to) === 1) {
+        return $fallback;
+    }
+
+    if (mb_substr($send_to, 0, 1) !== '/') {
+        return $fallback;
+    }
+
+    // Browsers read "/\host" as "//host", so a backslash is refused like a slash.
+    $second = mb_substr($send_to, 1, 1);
+
+    if (($second === '/') || ($second === '\\')) {
         return $fallback;
     }
 
     return $send_to;
+}
+/**
+ * The list breadcrumb of a screen opened from that list: send_to when its
+ * path is the same list (so the filter in its address stays), else the bare
+ * list, since send_to may also be another screen such as Edit User.
+ *
+ * @param string $list_url the list's own address, without a query string
+ * @return string
+ */
+function pg_send_to_list_url($list_url)
+{
+    $send_to = pg_send_to_url('');
+
+    if ($send_to === '') {
+        return $list_url;
+    }
+
+    $path = (string) parse_url($send_to, PHP_URL_PATH);
+
+    return (basename($path) === basename($list_url)) ? $send_to : $list_url;
 }
 /**
  * Whether get_relative_time() and get_absolute_time() show a time in the
@@ -1835,6 +1991,40 @@ function pg_timezone_object($name)
     }
 }
 
+/**
+ * The '(UTC+03:00)' prefix of a zone's pick list label, from this PHP's time
+ * zone database rather than a fixed text: offsets change (Moscow has been
+ * +03:00 since 2014, Caracas -04:00 since 2016). The offset is the zone's
+ * standard one, the smaller of its offsets on 1 January and 1 July, so
+ * summer time on either hemisphere is left out. Minutes are kept (+05:30,
+ * +05:45, -03:30). '' when this PHP cannot build the zone.
+ *
+ * @param string   $zone
+ * @param int|null $year the year whose offsets are read; the current UTC year
+ * @return string
+ */
+function pg_timezone_offset_label($zone, $year = null)
+{
+    if ($year === null) {
+        $year = (int) gmdate('Y');
+    }
+
+    try {
+        $object = new DateTimeZone((string) $zone);
+        $january = $object->getOffset(new DateTime(sprintf('%04d-01-01 00:00:00', $year), new DateTimeZone('UTC')));
+        $july = $object->getOffset(new DateTime(sprintf('%04d-07-01 00:00:00', $year), new DateTimeZone('UTC')));
+    } catch (Throwable $exception) {
+        // An Exception for an unknown name; a ValueError (PHP 8) for one
+        // with a NUL byte.
+        return '';
+    }
+
+    $offset = min($january, $july);
+    $minutes = intdiv(abs($offset), 60);
+
+    return sprintf('(UTC%s%02d:%02d)', ($offset < 0) ? '-' : '+', intdiv($minutes, 60), $minutes % 60);
+}
+
 // Create function that will allow us to get a time, like "5 days ago", from a timestamp.
 // Properties:
 // timestamp: The Unix timestamp for the time that you want to compare to now.
@@ -1876,13 +2066,6 @@ function get_relative_time($properties)
         $timezone_type = 'site';
     }
     $current_timestamp = time();
-    // If the time format is twelve hour system, then use that format.
-    if (TIME_FORMAT == 'twelve_hours') {
-        $hour_system_format = 'g:i A';
-        // Otherwise the time format is twenty hour system, so use that format.
-    } else {
-        $hour_system_format = 'H:i';
-    }
     // if the timestamp is in the past or right now, then prepare values for the past
     if ($current_timestamp >= $timestamp) {
         $difference_in_seconds = $current_timestamp - $timestamp;
@@ -1982,31 +2165,18 @@ function get_relative_time($properties)
         return $relative_time;
         // Otherwise the format is html, so add time tag with tooltip for absolute time around relative time.
     } else {
-        // If the date format is month and then day, then use that format.
-        if (DATE_FORMAT == 'month_day') {
-            $month_and_day_format = 'M j';
-            // Otherwise the date format is day and then month, so use that format.
-        } else {
-            $month_and_day_format = 'j M';
-        }
-        // If the type is just date, then prepare datetime and title attributes with just the date.
+        // The tooltip is the absolute time for the same moment, drawn by
+        // get_absolute_time() so its day and month names follow the panel
+        // language and its zone follows the same pg_time_uses_user_zone() rule.
+        $title = get_absolute_time(array_merge($properties, array('timestamp' => $timestamp, 'format' => 'plain_text', 'type' => (($type == 'date') ? 'date' : 'date_and_time'), 'size' => 'short', 'year' => true)));
+        // If the type is just date, then the datetime attribute holds just the date.
         if ($type == 'date') {
             $datetime = date('Y-m-d', $timestamp);
-            $title = date('D ' . $month_and_day_format . ' Y', $timestamp);
-            // Otherwise the type is date & time, so prepare datetime and title attributes with both the date and time.
+            // Otherwise the type is date & time, so the datetime attribute holds both.
         } else {
             $datetime = gmdate('Y-m-d\TH:i:s\Z', $timestamp);
-            // If we should output time for site's timezone, then do that.
-            if ($timezone_type == 'site') {
-                $title = date('D ' . $month_and_day_format . ' Y ' . $hour_system_format . ' T', $timestamp);
-                // Otherwise we should output time for user's timezone, so do that.
-            } else {
-                $date = new DateTime('@' . $timestamp);
-                $date->setTimezone(pg_timezone_object(USER_TIMEZONE));
-                $title = $date->format('D ' . $month_and_day_format . ' Y ' . $hour_system_format . ' T');
-            }
         }
-        return '<time datetime="' . $datetime . '" title="' . $title . '">' . $relative_time . '</time>';
+        return '<time datetime="' . $datetime . '" title="' . h($title) . '">' . $relative_time . '</time>';
     }
 }
 // Create function that will allow us to get an absolute time (e.g. Mon Feb 3 2020 12:00 PM CST).
@@ -3412,11 +3582,11 @@ function pg_short_link_state($row)
     $used = (int) ($row['used_at'] ?? 0);
 
     if (($expires > 0) && ($expires <= time())) {
-        return array('status' => 'expired', 'label' => lang(array('string' => 'Expired on {var:1}', 'vars' => date('d.m.Y H:i', $expires))));
+        return array('status' => 'expired', 'label' => lang(array('string' => 'Expired on {var:1}', 'vars' => get_absolute_time(array('timestamp' => $expires, 'format' => 'plain_text')))));
     }
 
     if (($mode === 'once') && ($used > 0)) {
-        return array('status' => 'used', 'label' => lang(array('string' => 'Opened on {var:1}; no longer works', 'vars' => date('d.m.Y H:i', $used))));
+        return array('status' => 'used', 'label' => lang(array('string' => 'Opened on {var:1}; no longer works', 'vars' => get_absolute_time(array('timestamp' => $used, 'format' => 'plain_text')))));
     }
 
     if ($mode === 'once') {
@@ -3424,7 +3594,7 @@ function pg_short_link_state($row)
     }
 
     if ($expires > 0) {
-        return array('status' => 'open', 'label' => lang(array('string' => 'Valid until {var:1}', 'vars' => date('d.m.Y H:i', $expires))));
+        return array('status' => 'open', 'label' => lang(array('string' => 'Valid until {var:1}', 'vars' => get_absolute_time(array('timestamp' => $expires, 'format' => 'plain_text')))));
     }
 
     return array('status' => 'open', 'label' => '');
@@ -3520,14 +3690,25 @@ function output_gift_card_code($code)
  * 7.3.18 and 7.4 before 7.4.6 embed older databases). A zone this PHP knows
  * by neither name is left out, so no list offers a zone that cannot be used.
  *
+ * Each label's '(UTC±hh:mm)' prefix is the zone's standard offset in this
+ * PHP's database (pg_timezone_offset_label()), the fixed one only where the
+ * zone cannot be built, and the list is ordered by that offset. The zone
+ * values never change: stored names are checked against them.
+ *
  * @param callable|null $known whether this PHP knows a name; pg_timezone_known()
  * @return array
  */
 function get_timezones($known = null)
 {
+    static $cache = null;
+
+    if (($known === null) && ($cache !== null)) {
+        return $cache;
+    }
+
     $zones = array(
         '(UTC-11:00) Midway Island' => 'Pacific/Midway',
-        '(UTC-11:00) Samoa' => 'Pacific/Pago_Pago',
+        '(UTC-11:00) American Samoa' => 'Pacific/Pago_Pago',
         '(UTC-10:00) Hawaii' => 'Pacific/Honolulu',
         '(UTC-09:00) Alaska' => 'America/Anchorage',
         '(UTC-08:00) Pacific Time (US & Canada)' => 'America/Los_Angeles',
@@ -3554,7 +3735,7 @@ function get_timezones($known = null)
         '(UTC-03:00) Brasilia' => 'America/Sao_Paulo',
         '(UTC-03:00) Buenos Aires' => 'America/Argentina/Buenos_Aires',
         '(UTC-03:00) Greenland' => 'America/Nuuk',
-        '(UTC-02:00) Mid-Atlantic' => 'America/Noronha',
+        '(UTC-02:00) Fernando de Noronha' => 'America/Noronha',
         '(UTC-01:00) Azores' => 'Atlantic/Azores',
         '(UTC-01:00) Cape Verde Is.' => 'Atlantic/Cape_Verde',
         '(UTC+00:00) Casablanca' => 'Africa/Casablanca',
@@ -3645,7 +3826,7 @@ function get_timezones($known = null)
         '(UTC+11:00) New Caledonia' => 'Pacific/Noumea',
         '(UTC+12:00) Auckland' => 'Pacific/Auckland',
         '(UTC+12:00) Fiji' => 'Pacific/Fiji',
-        '(UTC+12:00) International Date Line West' => 'Pacific/Kwajalein',
+        '(UTC+12:00) Marshall Islands' => 'Pacific/Kwajalein',
         '(UTC+12:00) Kamchatka' => 'Asia/Kamchatka',
         '(UTC+12:00) Magadan' => 'Asia/Magadan',
         '(UTC+13:00) Nuku\'alofa' => 'Pacific/Tongatapu'
@@ -3656,12 +3837,61 @@ function get_timezones($known = null)
     foreach ($zones as $label => $zone) {
         $zone = pg_timezone_canonical($zone, $known);
 
-        if ($zone !== '') {
-            $offered[$label] = $zone;
+        if ($zone === '') {
+            continue;
         }
+
+        $prefix = pg_timezone_offset_label($zone);
+
+        if ($prefix !== '') {
+            $label = preg_replace('/^\(UTC[^)]*\)/', $prefix, $label);
+        }
+
+        $offered[] = array(
+            'label' => $label,
+            'zone' => $zone,
+            'minutes' => pg_timezone_label_minutes($label),
+            'index' => count($offered),
+        );
     }
 
-    return $offered;
+    // The index breaks ties: usort() is not stable before PHP 8.
+    usort($offered, function ($a, $b) {
+        if ($a['minutes'] !== $b['minutes']) {
+            return ($a['minutes'] < $b['minutes']) ? -1 : 1;
+        }
+
+        return $a['index'] - $b['index'];
+    });
+
+    $list = array();
+
+    foreach ($offered as $entry) {
+        $list[$entry['label']] = $entry['zone'];
+    }
+
+    if ($known === null) {
+        $cache = $list;
+    }
+
+    return $list;
+}
+
+/**
+ * The offset of a '(UTC-03:30) …' label in minutes, 0 without a prefix.
+ *
+ * @param string $label
+ * @return int
+ */
+function pg_timezone_label_minutes($label)
+{
+    if (!preg_match('/^\(UTC([+-])(\d{2}):(\d{2})\)/', (string) $label, $match)) {
+        return 0;
+    }
+
+    $minutes = ((int) $match[2]) * 60 + (int) $match[3];
+
+    return ($match[1] === '-') ? -$minutes : $minutes;
 }
 
 
@@ -4300,375 +4530,6 @@ function url_exists($url)
     }
 
     return false;
-}
-
-// The language map kept as shards in $dir (includes/local/<code>/): every
-// *.json there in name order, merged; null when $dir is not a folder or holds
-// no shard, so the caller falls back to the single <code>.json file. A shard
-// that is not valid JSON is skipped, as a broken single file is.
-function pg_lang_read_folder($dir)
-{
-    $dir = rtrim((string) $dir, '/\\');
-
-    if (($dir === '') || !is_dir($dir)) {
-        return null;
-    }
-
-    $files = glob($dir . '/*.json');
-
-    if (!is_array($files) || (count($files) === 0)) {
-        return null;
-    }
-
-    sort($files, SORT_STRING);
-
-    $map = array();
-
-    foreach ($files as $file) {
-        $decoded = @json_decode((string) @file_get_contents($file), true);
-
-        if (!is_array($decoded)) {
-            continue;
-        }
-
-        foreach ($decoded as $key => $value) {
-            $map[$key] = $value;
-        }
-    }
-
-    return $map;
-}
-
-// Where language $code keeps its wording under $local (by default
-// includes/local): its folder of shards when that holds a *.json, else its
-// single <code>.json; null when it has neither, or when $code is not a plain
-// name (no path may be built from it). A <code>.json left beside a folder by
-// an update that could not delete it is never read: the folder wins.
-function pg_lang_source($code, $local = null)
-{
-    $code = (string) $code;
-
-    if (!preg_match('/^[A-Za-z0-9_-]{1,32}$/', $code)) {
-        return null;
-    }
-
-    $local = rtrim(($local === null) ? PG_FUNCTIONS_DIR . '/includes/local' : (string) $local, '/\\');
-
-    $shards = glob($local . '/' . $code . '/*.json');
-
-    if (is_array($shards) && (count($shards) > 0)) {
-        return $local . '/' . $code;
-    }
-
-    return is_file($local . '/' . $code . '.json') ? $local . '/' . $code . '.json' : null;
-}
-
-// Every file language $source (a folder of shards or a single file) is read
-// from, file name => array(mtime, size), for pg_lang_cache_signature().
-function pg_lang_source_stats($source)
-{
-    $files = is_dir($source) ? glob(rtrim($source, '/\\') . '/*.json') : array($source);
-    $stats = array();
-
-    foreach ((is_array($files) ? $files : array()) as $file) {
-        $stat = @stat($file);
-
-        if (is_array($stat)) {
-            $stats[basename($file)] = array($stat['mtime'], $stat['size']);
-        }
-    }
-
-    return $stats;
-}
-
-// The map in compiled cache file $path when it was built from files with
-// $signature; null when there is no such file, it does not parse, or the
-// language files changed since it was written.
-function pg_lang_cache_read($path, $signature)
-{
-    if (!is_file($path)) {
-        return null;
-    }
-
-    try {
-        $data = @include $path;
-    } catch (Throwable $e) {
-        return null;
-    }
-
-    if (!is_array($data) || !isset($data['signature'], $data['map']) || !is_array($data['map'])
-        || ((string) $data['signature'] !== (string) $signature)) {
-        return null;
-    }
-
-    return $data['map'];
-}
-
-// Writes the compiled cache of $map to $path through a temporary file and
-// rename(), so a request never includes a half-written file, and drops the
-// old copy from opcache (which may not check file times at all). false when
-// the folder is missing or not writable: lang() then decodes the JSON each
-// request, as it did before the cache.
-function pg_lang_cache_write($path, $signature, array $map)
-{
-    $dir = dirname($path);
-
-    if (!is_dir($dir) || !is_writable($dir)) {
-        return false;
-    }
-
-    if (!pg_lang_write_file($path, pg_lang_cache_text($signature, $map))) {
-        return false;
-    }
-
-    if (function_exists('opcache_invalidate')) {
-        @opcache_invalidate($path, true);
-    }
-
-    return true;
-}
-
-// The wording of language $code as lang() reads it, key => text, from where
-// pg_lang_source() finds it. Every reader of a language file goes through
-// here, so none of them can read a stale single file beside the folder.
-// array() when the language has no file, or its single file does not decode.
-//
-// Decoding the Turkish shards (about 2.8 MB of JSON) costs every request
-// tens of milliseconds, so the map is also compiled into a PHP array in
-// $temp (by default data/temp) and read from there while its signature
-// matches the language files' names, times and sizes. A caller that names
-// its own $local gets the cache only when it names a $temp as well.
-function pg_lang_map($code, $local = null, $temp = null)
-{
-    $source = pg_lang_source($code, $local);
-
-    if ($source === null) {
-        return array();
-    }
-
-    $cache = (($local === null) || ($temp !== null)) ? pg_lang_cache_path($code, $temp) : null;
-    $signature = '';
-
-    if ($cache !== null) {
-        $signature = pg_lang_cache_signature(pg_lang_source_stats($source));
-        $map = pg_lang_cache_read($cache, $signature);
-
-        if ($map !== null) {
-            return $map;
-        }
-    }
-
-    $map = is_dir($source) ? pg_lang_read_folder($source) : @json_decode((string) @file_get_contents($source), true);
-
-    if (!is_array($map)) {
-        return array();
-    }
-
-    if ($cache !== null) {
-        pg_lang_cache_write($cache, $signature, $map);
-    }
-
-    return $map;
-}
-
-// Software localization / translation helper.
-// Usage scenarios:
-//   echo lang('Hello World');
-//   echo lang(array('string' => 'Hello {var:1}', 'vars' => array('World')));
-//   echo lang(array('string' => 'Welcome {var:1|c}', 'vars' => array('john doe'))); // capitalize variable
-//   echo lang(array('string' => 'Count: {var:1}', 'vars' => 5));
-//   $lang = lang(array('info' => true)); // returns enforced or configured SOFTWARE_LANGUAGE (e.g. 'en' or 'tr')
-//   echo lang(array('string' => 'Save', 'language' => 'tr')); // one language explicitly
-//   $tr = lang(array('string' => 'Save', 'language' => 'tr', 'if_known' => true)); // the file's wording, null when it has none
-//
-// Notes:
-// - Works on PHP 7.0 up to PHP 8.5.
-// - Reads a language through pg_lang_map(): its shards in includes/local/{lang}/, else includes/local/{lang}.json.
-// - If mbstring is not available, falls back to single-byte string helpers.
-// - in english language file you can overwrite strings.
-function lang($properties = false)
-{
-    static $translations = array(); // cache translations per language
-
-    // Helper: safe multibyte case conversion with fallbacks
-    $safe_case = function ($text, $mode) {
-        if (!is_string($text)) {
-            $text = (string) $text;
-        }
-        if (function_exists('mb_convert_case')) {
-            switch ($mode) {
-                case 'title':
-                    return mb_convert_case($text, MB_CASE_TITLE, "UTF-8");
-                case 'upper':
-                    return mb_convert_case($text, MB_CASE_UPPER, "UTF-8");
-                case 'lower':
-                    return mb_convert_case($text, MB_CASE_LOWER, "UTF-8");
-                default:
-                    return $text;
-            }
-        }
-        // Fallbacks when mbstring not available
-        switch ($mode) {
-            case 'title':
-                return ucwords(strtolower($text));
-            case 'upper':
-                return strtoupper($text);
-            case 'lower':
-                return strtolower($text);
-            default:
-                return $text;
-        }
-    };
-
-    // If explicit info request (get current software language)
-    if (is_array($properties) && isset($properties['info'])) {
-        // A front-end page drawn in another language (router.php found a
-        // language prefix) speaks that language, whatever the panel is set to.
-        if (defined('FRONTEND_LANGUAGE') && FRONTEND_LANGUAGE && !(function_exists('pg_tr_suspend') && pg_tr_suspend())) {
-            return FRONTEND_LANGUAGE;
-        }
-        if (defined('ENFORCEMENT_SOFTWARE_LANGUAGE') && ENFORCEMENT_SOFTWARE_LANGUAGE) {
-            return ENFORCEMENT_SOFTWARE_LANGUAGE;
-        }
-        if (defined('SOFTWARE_LANGUAGE') && SOFTWARE_LANGUAGE) {
-            return SOFTWARE_LANGUAGE;
-        }
-        return 'en';
-    }
-
-    // Normalize input: allow lang('text') or lang(array(...))
-    $string = '';
-    $vars = null;
-    $suffixes = null;
-    if (is_array($properties)) {
-        if (isset($properties['string'])) {
-            $string = (string) $properties['string'];
-        }
-        if (isset($properties['vars'])) {
-            $vars = $properties['vars'];
-        }
-        if (isset($properties['suffix'])) {
-            $suffixes = $properties['suffix'];
-        }
-    } else {
-        // properties may be scalar string or null/false
-        $string = ($properties === null || $properties === false) ? '' : (string) $properties;
-    }
-
-    // quick return for empty string
-    if ($string === '') {
-        return '';
-    }
-
-    // Determine selected language (en default). A front-end page drawn in
-    // another language comes first: the enforced language is the panel's.
-    $selected_software_language = 'en';
-    $frontend_language_selected = false;
-    if (defined('FRONTEND_LANGUAGE') && FRONTEND_LANGUAGE && !(function_exists('pg_tr_suspend') && pg_tr_suspend())) {
-        $selected_software_language = FRONTEND_LANGUAGE;
-        $frontend_language_selected = true;
-    } elseif (defined('ENFORCEMENT_SOFTWARE_LANGUAGE') && ENFORCEMENT_SOFTWARE_LANGUAGE) {
-        $selected_software_language = ENFORCEMENT_SOFTWARE_LANGUAGE;
-    } elseif (defined('SOFTWARE_LANGUAGE') && SOFTWARE_LANGUAGE) {
-        $selected_software_language = SOFTWARE_LANGUAGE;
-    }
-
-    // A caller may ask for one language explicitly - the source language of
-    // the site, say, to recognise a label the designer saved in it.
-    if (is_array($properties) && isset($properties['language']) && is_string($properties['language'])
-        && preg_match('/^[a-z]{2,3}(-[A-Za-z]{2,4})?$/', $properties['language'])) {
-        $selected_software_language = $properties['language'];
-        $frontend_language_selected = false;
-    }
-
-    // Load translations for language (cache)
-    if (!isset($translations[$selected_software_language])) {
-        // The shards in includes/local/<code>/, else includes/local/<code>.json;
-        // an empty map when the language has neither or it does not decode.
-        $translations[$selected_software_language] = pg_lang_map($selected_software_language);
-    }
-
-    // if_known: the wording the language's file has for the string, or null
-    // when the file does not know it - nothing filled in.
-    if (is_array($properties) && !empty($properties['if_known'])) {
-        return isset($translations[$selected_software_language][$string]) ? $translations[$selected_software_language][$string] : null;
-    }
-
-    // If translation exists, replace string
-    if (isset($translations[$selected_software_language][$string])) {
-        $string = $translations[$selected_software_language][$string];
-    } elseif ($frontend_language_selected && function_exists('pg_tr_ui_text')) {
-        // A front-end page in a language with no language file: the site's
-        // own translation of the wording, while it has one.
-        $ui_template = pg_tr_ui_text($string);
-        if ($ui_template !== null) {
-            $string = $ui_template;
-        }
-    }
-
-
-    // Replace variables {var}, {var:1}, with optional modifiers |c |u |l
-    if ($vars !== null) {
-        // Normalize single scalar to first var
-        if (!is_array($vars)) {
-            $vars = array($vars);
-        }
-
-        foreach ($vars as $index => $value) {
-            $pos = $index + 1;
-            $replacement = $value;
-
-            // Look for modifier patterns {var:N|c} {var:N|u} {var:N|l}
-            if (strpos($string, '{var:' . $pos . '|c}') !== false || strpos($string, '{var|' . ($pos) . '|c}') !== false) {
-                $replacement = $safe_case($replacement, 'title');
-                $string = str_replace('{var:' . $pos . '|c}', '{var:' . $pos . '}', $string);
-                $string = str_replace('{var|' . ($pos) . '|c}', '{var:' . $pos . '}', $string);
-            } elseif (strpos($string, '{var:' . $pos . '|u}') !== false || strpos($string, '{var|' . ($pos) . '|u}') !== false) {
-                $replacement = $safe_case($replacement, 'upper');
-                $string = str_replace('{var:' . $pos . '|u}', '{var:' . $pos . '}', $string);
-                $string = str_replace('{var|' . ($pos) . '|u}', '{var:' . $pos . '}', $string);
-            } elseif (strpos($string, '{var:' . $pos . '|l}') !== false || strpos($string, '{var|' . ($pos) . '|l}') !== false) {
-                $replacement = $safe_case($replacement, 'lower');
-                $string = str_replace('{var:' . $pos . '|l}', '{var:' . $pos . '}', $string);
-                $string = str_replace('{var|' . ($pos) . '|l}', '{var:' . $pos . '}', $string);
-            }
-
-            // Also support shorthand {var|c} or {var} when only one var placeholder exists
-            if ($pos === 1) {
-                if (strpos($string, '{var|c}') !== false) {
-                    $replacement = $safe_case($replacement, 'title');
-                    $string = str_replace('{var|c}', '{var:1}', $string);
-                } elseif (strpos($string, '{var|u}') !== false) {
-                    $replacement = $safe_case($replacement, 'upper');
-                    $string = str_replace('{var|u}', '{var:1}', $string);
-                } elseif (strpos($string, '{var|l}') !== false) {
-                    $replacement = $safe_case($replacement, 'lower');
-                    $string = str_replace('{var|l}', '{var:1}', $string);
-                }
-            }
-
-            // Final replacements
-            $string = str_replace('{var:' . $pos . '}', $replacement, $string);
-        }
-    }
-
-    // Replace suffix placeholders {suffix} and {suffix:N}
-    if ($suffixes !== null) {
-        if (!is_array($suffixes)) {
-            $suffixes = array($suffixes);
-        }
-        foreach ($suffixes as $index => $sval) {
-            $pos = $index + 1;
-            $string = str_replace('{suffix:' . $pos . '}', $sval, $string);
-        }
-        // generic {suffix} => first suffix if exists
-        if (strpos($string, '{suffix}') !== false) {
-            $first = isset($suffixes[0]) ? $suffixes[0] : '';
-            $string = str_replace('{suffix}', $first, $string);
-        }
-    }
-
-    return $string;
 }
 
 // This function get mime type name from file extention

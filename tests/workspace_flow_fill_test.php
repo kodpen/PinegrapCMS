@@ -22,6 +22,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flows.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_runs.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/steps.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/scheduled.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_values.php');
 
 // Both fillers in the order a box runs them.
 function ws_flow_fill_test_both($text, $values, $context)
@@ -146,7 +147,7 @@ function test_workspace_flow_fill_webhook_value_by_format()
 	$action = ws_step_fill_action('webhook', array('type' => 'webhook', 'format' => 'generic', 'url' => 'https://example.com/{{node.form.text}}', 'text' => 'Got: {{node.form.text}}'), $values);
 	$body = ws_flow_fill_test_body($action);
 
-	pg_assert_same('https://example.com/{{node.form.text}}', $action['url'], 'an address is never filled');
+	pg_assert_same('https://example.com/', $action['url'], 'a text is never filled into the address');
 	pg_assert_same('Got: ' . $values['form']['text'], $body['text'], 'the value as one JSON string');
 
 	$action = ws_step_fill_action('webhook', array('type' => 'webhook', 'format' => 'text', 'text' => '<!here> {{node.form.text}}'), $values);
@@ -158,4 +159,75 @@ function test_workspace_flow_fill_webhook_value_by_format()
 	$body = ws_flow_fill_test_body($action);
 
 	pg_assert_same("@here a<{$j}b & \"c\" 'd'\nnext\x07end <{$j}@user:5> <{$j}#order:7> <{$j}!channel> @{$j}everyone", $body['content']);
+}
+
+// The delay box's waited_until reaches a message, a chat post and an e-mail
+// in the site's date and time, a webhook's body as the machine value.
+function test_workspace_flow_fill_waited_until_local()
+{
+	$zone = date_default_timezone_get();
+	date_default_timezone_set('Europe/Istanbul');
+
+	pg_assert_same('30.10.2026 03:50', ws_step_local_time('2026-10-30T00:50:44Z', 'day_month', 'twenty_four_hours'));
+	pg_assert_same('10/30/2026 3:50 AM', ws_step_local_time('2026-10-30T00:50:44Z', 'month_day', 'twelve_hours'));
+	pg_assert_same('soon', ws_step_local_time('soon', 'day_month', ''), 'anything else stays');
+
+	$values = array('delay_1' => array('waited_until' => '2026-10-30T00:50:44Z', 'text' => 'Waited'));
+	$local = ws_step_local_time('2026-10-30T00:50:44Z', defined('DATE_FORMAT') ? DATE_FORMAT : '', defined('TIME_FORMAT') ? TIME_FORMAT : '');
+
+	$post = ws_step_fill_action('post', array('type' => 'post', 'body' => 'Until {{node.delay_1.waited_until}}'), $values);
+	$email = ws_step_fill_action('email', array('type' => 'email', 'subject' => '{{node.delay_1.waited_until}}', 'body' => '{{node.delay_1.waited_until}}'), $values);
+	$chat = ws_step_fill_action('webhook', array('type' => 'webhook', 'format' => 'text', 'text' => '{{node.delay_1.waited_until}}'), $values);
+	$hook = ws_step_fill_action('webhook', array('type' => 'webhook', 'format' => 'generic', 'text' => '{{node.delay_1.waited_until}}'), $values);
+	$row = ws_step_fill_action('row_add', array('type' => 'row_add', 'cells' => '{{node.delay_1.waited_until}}'), $values);
+
+	date_default_timezone_set($zone);
+
+	pg_assert_same('Until ' . $local, $post['body']);
+	pg_assert_same($local, $email['subject']);
+	pg_assert_same($local, $email['body']);
+	pg_assert_same($local, $chat['text']);
+	pg_assert_same('2026-10-30T00:50:44Z', $hook['text'], 'a webhook body keeps the machine value');
+	pg_assert_same('2026-10-30T00:50:44Z', $row['cells'], 'a table cell keeps the machine value');
+	pg_assert_same('2026-10-30T00:50:44Z', $values['delay_1']['waited_until'], 'the run values themselves are unchanged');
+}
+
+// A value's fallback stands in when its box gave nothing (skipped, not run)
+// and never when it ran; it is made safe as the value would be.
+function test_workspace_flow_fill_empty_fallback()
+{
+	$token = ws_step_value_token('post_1', 'message_id', 'none yet');
+
+	pg_assert_same('{{node.post_1.message_id|none yet}}', $token);
+	pg_assert_same('Id: none yet', ws_step_fill_nodes('Id: ' . $token, array()), 'the box was skipped');
+	pg_assert_same('Id: none yet', ws_step_fill_nodes('Id: ' . $token, array('post_1' => array('message_id' => ''))), 'the box gave an empty value');
+	pg_assert_same('Id: 42', ws_step_fill_nodes('Id: ' . $token, array('post_1' => array('message_id' => '42'))), 'the box ran');
+	pg_assert_same('Id: ', ws_step_fill_nodes('Id: {{node.post_1.message_id}}', array()), 'no fallback stays empty');
+
+	// "}}", "|", "\" and "{" are escaped in the token and come back as written.
+	$odd = ws_step_value_token('post_1', 'text', 'a}} | b \\ {c');
+
+	pg_assert_same('{{node.post_1.text|a\\}\\} \\| b \\\\ \\{c}}', $odd);
+	pg_assert_same('a}} | b \\ {c', (preg_match(WS_STEP_VALUE_PATTERN, $odd, $match) ? ws_step_value_fallback($match) : ''));
+	pg_assert_same('[' . ws_step_fill_value('a}} | b \\ {c', 'text') . ']', ws_step_fill_nodes('[' . $odd . ']', array()), 'filled as a value is');
+	pg_assert_same(array(), ws_step_fill_missing('x ' . $odd, array()), 'a value with a fallback is not missing');
+	pg_assert_same(array('{{node.post_1.text}}'), ws_step_fill_missing('{{node.post_1.text}}', array()));
+
+	// Escaped like a value: tags in a message are text, placeholders stay literal.
+	$message = ws_step_fill_nodes(ws_step_value_token('a', 'text', '<@user:5> {{date}}'), array(), 'message');
+
+	pg_assert_true(strpos($message, '<@user:5>') === false, 'a tag in a fallback is no mention: ' . $message);
+	pg_assert_true(strpos(ws_flow_fill_test_both(ws_step_value_token('a', 'text', '{{date}}'), array(), array()), date('d.m.Y')) === false, 'a fallback does not pull in the date');
+
+	// One line, cut to its length; an empty one is none.
+	pg_assert_same('{{trigger.count|a b}}', ws_step_value_token('', 'count', "a\nb"));
+	pg_assert_same('{{node.a.b}}', ws_step_value_token('a', 'b', '  '));
+	pg_assert_same(WS_STEP_FALLBACK_LENGTH, mb_strlen(ws_step_fill_nodes(ws_step_value_token('a', 'b', str_repeat('ş', 150)), array())));
+}
+
+// A derived value box's input takes the fallback as it is.
+function test_workspace_flow_fill_derived_input_fallback()
+{
+	pg_assert_same('n/a!', ws_flow_derived_fill(ws_step_value_token('a', 'b', 'n/a') . '!', array()));
+	pg_assert_same('7!', ws_flow_derived_fill(ws_step_value_token('a', 'b', 'n/a') . '!', array('a' => array('b' => '7'))));
 }

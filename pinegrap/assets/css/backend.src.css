@@ -3147,7 +3147,7 @@ body:not(.toolbar) .software-content {
    Two things it does need of its own. The markup is legacy and cannot be
    rewritten across seventy files: the actions arrive wrapped in .btn-group and
    dressed as .btn-link, where the toolbar's own recipe would be a bare button
-   with .btn-ghost. Both are mapped onto the toolbar's language below, so the
+   with .btn-text.theme-secondary. Both are mapped onto the toolbar's language below, so the
    two bars read the same without a single page being touched.
 
    A group is also the wrong component for what these are: it welds its children
@@ -3240,7 +3240,8 @@ body:not(.toolbar) .software-content {
 
 /* The helper links are the quiet half, and quiet here means exactly what it
    means on the explorer's toolbar: no border until hovered, secondary ink,
-   the theme's own surface underneath. Same declarations as .btn-ghost, reached
+   the theme's own surface underneath. Same declarations as
+   .btn-text.theme-secondary, reached
    through the class the legacy markup happens to carry. */
 #button_bar .btn-link {
   --bs-btn-color: var(--pg-fg-2);
@@ -3508,7 +3509,10 @@ body:not(.toolbar) .software-content {
 .pg-breadcrumb .breadcrumb {
   --bs-breadcrumb-divider: "\203A";   /* › — escaped so no encoding can break it */
   --bs-breadcrumb-item-padding-x: 0.4rem;
-  margin: 0;
+  /* The strip scrolls, so it clips: inner room for a crumb's focus ring,
+     which is drawn 2-4px outside the link, given back by the margin. */
+  padding: 4px;
+  margin: -4px;
   flex-wrap: nowrap;
   /* A deep trail scrolls sideways instead of wrapping onto a second line and
      doubling the height of the bar. */
@@ -3977,6 +3981,11 @@ body:not(.toolbar) .software-content {
 #header .pg-lic-row:is(:hover, :focus-visible) {
   box-shadow: inset 0 0 0 9999px var(--pg-tint);
 }
+/* The card clips (overflow: hidden) and the row fills it: the ring inset. */
+#header .pg-lic-row:focus-visible {
+  outline: 2px solid var(--pg-primary-ink);
+  outline-offset: -2px;
+}
 #header .pg-lic-label {
   flex: 1 1 auto;
   min-width: 0;
@@ -4139,7 +4148,7 @@ body:not(.toolbar) .software-content {
     .btn-outline.theme-danger
   ):not(.btn-outline.theme-warning):not(.btn-outline.theme-info):not(
     .btn-outline-light
-  ):not(.btn-outline-dark):not(.btn-close):not(.btn-ghost):not(.btn-text.theme-secondary) {
+  ):not(.btn-outline-dark):not(.btn-close):not(.btn-text.theme-secondary) {
   --bs-btn-bg: transparent;
   --bs-btn-hover-bg: var(--pg-bg-1);
   --bs-btn-active-bg: color-mix(in srgb, var(--pg-bg-1) 50%, transparent);
@@ -4216,8 +4225,10 @@ table.chart thead th {
 }
 
 /*NOTIFICATIONS*/
+/* The one inbox of the panel: the site's notices and what the workspace told
+   the person, so it has room for a sentence and its filters. */
 #notifications {
-  width: 350px;
+  width: 26rem;
   right: 2px !important;
   left: auto;
   top: calc(var(--pg-navbar-h) + 2px) !important;
@@ -4243,8 +4254,8 @@ table.chart thead th {
 }
 
 #notifications .list-group-item .notification-description {
-  line-height: 15px;
-  font-size: 13px;
+  line-height: 0.9375rem;
+  font-size: 0.8125rem;
   padding: 0 5px;
   margin: 0;
   margin-bottom: 0.3rem;
@@ -4343,6 +4354,82 @@ table.chart thead th {
 #notifications #push_row,
 #notifications #push_hint {
   flex: 0 0 auto;
+}
+
+/* The filters over the list (output.php, backend.src.js): All, the site's
+   notices, what the workspace told the person, each with its unread count. */
+/* One row however narrow the phone: it scrolls sideways before it wraps. */
+#notifications .pg-bell-filters {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 0.375rem;
+  padding: 0.625rem 0.75rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+  border-bottom: 1px solid var(--pg-border-color-translucent);
+}
+#notifications .pg-bell-filter {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 0.375rem;
+  min-height: 1.875rem;
+  padding: 0.125rem 0.625rem;
+  border: 1px solid var(--pg-border-color);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--pg-fg-2);
+  font-size: 0.8125rem;
+  line-height: 1.2;
+  white-space: nowrap;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+#notifications .pg-bell-filter:hover {
+  background: var(--pg-tint);
+  color: var(--pg-fg-body);
+}
+#notifications .pg-bell-filter:focus-visible {
+  outline: 2px solid var(--pg-primary);
+  outline-offset: 1px;
+}
+#notifications .pg-bell-filter[aria-pressed="true"] {
+  border-color: var(--pg-primary);
+  background: var(--pg-primary);
+  color: var(--pg-on-accent);
+  font-weight: 600;
+}
+#notifications .pg-bell-count {
+  min-width: 1.25rem;
+  padding: 0 0.3rem;
+  border-radius: 999px;
+  background: var(--pg-tint-strong);
+  color: var(--pg-fg-body);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  line-height: 1.25rem;
+  text-align: center;
+}
+#notifications .pg-bell-filter[aria-pressed="true"] .pg-bell-count {
+  background: color-mix(in srgb, var(--pg-on-accent) 16%, transparent);
+  color: inherit;
+}
+/* A row of another filter, and a flow's older runs while its newest is
+   closed. */
+#notifications .software_notification:is(.pg-bell-off, .pg-bell-shut) {
+  display: none;
+}
+/* An older run hangs under its newest. */
+#notifications .software_notification[data-pg-bell-fold] .notification-card {
+  margin-left: 0.75rem;
+  border-left: 2px solid var(--pg-border-color-translucent);
+}
+/* A workspace row's icon, in the workspace's colour. */
+#notifications .pg-bell-glyph {
+  margin-right: 0.375rem;
+  color: var(--workspace-color);
+}
+html[data-bs-theme="dark"] #notifications .pg-bell-glyph {
+  color: var(--workspace-color-highlight);
 }
 
 .alert p.notice,
@@ -4787,6 +4874,13 @@ nav.buttons.navigation .btn-solid.theme-secondary {
   border: var(--pg-border-width) solid var(--pg-border-color);
   border-radius: var(--pg-radius);
   overflow: hidden;
+}
+/* The editor's own focus mark (a dotted outline) falls outside the clipped
+   box, so the field wears the panel ring, inset so it also shows when F11
+   fills the window. */
+.pg-code-field:focus-within {
+  outline: 2px solid var(--pg-primary-ink);
+  outline-offset: -2px;
 }
 
 .pg-code-field .cm-editor {
@@ -5432,11 +5526,11 @@ div#software_image_picker_container {
 /* Calendar */
 .widget table.monthly_calendar td,
 .widget table.monthly_calendar th {
-  line-height: 20px;
+  line-height: 1.25rem;
   padding: 5px;
   vertical-align: top;
-  min-width: 30px;
-  width: 36px;
+  min-width: 1.875rem;
+  width: 2.25rem;
 }
 
 .widget table.monthly_calendar td:not(.inactive),
@@ -5446,15 +5540,15 @@ div#software_image_picker_container {
   overflow: hidden;
   border-radius: var(--pg-radius-sm);
   white-space: nowrap;
-  height: 33px;
+  height: 2.0625rem;
 }
 
 .widget table.monthly_calendar th {
-  max-width: 33px !important;
+  max-width: 2.0625rem !important;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 10px;
+  font-size: 0.625rem;
 }
 
 
@@ -5473,6 +5567,7 @@ div#software_image_picker_container {
 
 
 .widget table.monthly_calendar .calendar-day-wrapper {
+  font-size: 1.25rem;
   text-align: center !important;
   margin-top: 2px;
   margin-bottom: 0 !important;
@@ -5487,10 +5582,10 @@ div#software_image_picker_container {
 
 .widget table.monthly_calendar .calendar-day-wrapper span.today {
   background: #e3e3e300;
-  width: 20px;
-  height: 20px;
+  width: 1.25rem;
+  height: 1.25rem;
   display: inline-block;
-  line-height: 20px;
+  line-height: 1.25rem;
 }
 
 
@@ -5557,8 +5652,8 @@ div#software_image_picker_container {
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  width: 34px;
-  height: 34px;
+  width: 2.125rem;
+  height: 2.125rem;
   border-radius: var(--pg-radius-lg);
   background: var(--pg-accent, #64748b);
   /* The glyph is white on a dark tile and near-black on a light one. Several
@@ -5567,7 +5662,7 @@ div#software_image_picker_container {
      text and wants 4.5:1, and white on #f59e0b is 2.15:1. Each widget declares
      whichever of the two reads better against its own accent. */
   color: var(--pg-accent-ink, #fff);
-  font-size: 14px;
+  font-size: 0.875rem;
   font-weight: 600;
   line-height: 1;
 }
@@ -5579,7 +5674,7 @@ div#software_image_picker_container {
 }
 /* A person's Avatar fills the tile; the tile's corners round it. */
 .pg-row-badge > .avatar {
-  --bs-avatar-size: 34px;
+  --bs-avatar-size: 2.125rem;
   --bs-avatar-border-radius: 0;
 }
 .pg-row-text {
@@ -5596,11 +5691,11 @@ div#software_image_picker_container {
 }
 .pg-row-name {
   min-width: 0;
-  font-size: 13px;
+  font-size: 0.8125rem;
   font-weight: 600;
 }
 .pg-row-meta {
-  font-size: 11px;
+  font-size: 0.6875rem;
 }
 .pg-row-name,
 .pg-row-meta {
@@ -5610,7 +5705,7 @@ div#software_image_picker_container {
 }
 .pg-row-aside {
   flex: 0 0 auto;
-  font-size: 11px;
+  font-size: 0.6875rem;
 }
 .pg-row-go {
   flex: 0 0 auto;
@@ -5625,13 +5720,13 @@ div#software_image_picker_container {
   padding: 0.25rem 0.375rem;
 }
 .pg-row-sm .pg-row-badge {
-  width: 22px;
-  height: 22px;
+  width: 1.375rem;
+  height: 1.375rem;
   border-radius: var(--pg-radius);
-  font-size: 11px;
+  font-size: 0.6875rem;
 }
 .pg-row-sm .pg-row-name {
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 500;
 }
 .pg-row-sm .pg-row-go {
@@ -5661,13 +5756,13 @@ div#software_image_picker_container {
 }
 .pg-eg-stat-value {
   flex: 0 0 auto;
-  font-size: 15px;
+  font-size: 0.9375rem;
   font-weight: 700;
 }
 .pg-eg-stat-label {
   overflow: hidden;
   min-width: 0;
-  font-size: 11px;
+  font-size: 0.6875rem;
   white-space: nowrap;
   text-overflow: ellipsis;
 }
@@ -5675,7 +5770,7 @@ div#software_image_picker_container {
   flex: 0 0 auto;
   margin-left: auto;
   opacity: 0.6;
-  font-size: 9px;
+  font-size: 0.5625rem;
   white-space: nowrap;
 }
 
@@ -5685,7 +5780,7 @@ div#software_image_picker_container {
   align-items: center;
   gap: 6px;
   padding: 0.25rem 0.375rem;
-  font-size: 11px;
+  font-size: 0.6875rem;
   font-weight: 600;
 }
 
@@ -5725,6 +5820,38 @@ div#software_image_picker_container {
   opacity: 1;
 }
 
+/* The drag grip (welcome.php, role < 2) sits at the right end of every header,
+   in the same place on every card, and is the only place a drag starts. Out of
+   the flow, so the centred title is centred on the card, not on what is left
+   beside the grip. Faint until the card is hovered or the grip has focus, but
+   never hidden: a touch screen has no hover. A header action moves left of it. */
+.widget .card-header .pg-widget-move {
+  position: absolute;
+  top: 50%;
+  right: 0.5rem;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--pg-radius);
+  line-height: 1;
+  opacity: 0.45;
+  cursor: grab;
+  touch-action: none;
+}
+.widget .card-header .pg-widget-move:active {
+  cursor: grabbing;
+}
+.widget:hover .card-header .pg-widget-move,
+.widget .card-header .pg-widget-move:focus-visible {
+  opacity: 1;
+}
+.widget .card-header .pg-widget-move ~ .pg-widget-action {
+  right: 2.25rem;
+}
+
 .pg-row-heading .pg-row-aside {
   margin-left: auto;
   font-weight: 400;
@@ -5749,12 +5876,12 @@ div#software_image_picker_container {
   gap: 5px;
 }
 .pg-head-num {
-  font-size: 22px;
+  font-size: 1.375rem;
   font-weight: 700;
   line-height: 1;
 }
 .pg-head-unit {
-  font-size: 10px;
+  font-size: 0.625rem;
 }
 .pg-head-dir {
   font-size: 9px;
@@ -5763,7 +5890,7 @@ div#software_image_picker_container {
    period total in the same place on every widget. */
 .pg-head-total {
   margin-left: auto;
-  font-size: 10px;
+  font-size: 0.625rem;
 }
 /* The box owns the height and the canvas fills it. Sizing the canvas itself
    let Chart.js measure the padded parent instead and the line spilled out
@@ -5819,7 +5946,7 @@ div#software_image_picker_container {
   row-gap: 1px;
 }
 .pg-vs-eyebrow {
-  font-size: 10px;
+  font-size: 0.625rem;
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -5829,13 +5956,13 @@ div#software_image_picker_container {
   display: flex;
   align-items: baseline;
   gap: 7px;
-  font-size: 22px;
+  font-size: 1.375rem;
   font-weight: 700;
   line-height: 1.15;
   color: var(--pg-vs-accent);
 }
 .pg-vs-unit {
-  font-size: 11px;
+  font-size: 0.6875rem;
   font-weight: 500;
   color: var(--pg-fg-2);
 }
@@ -5844,14 +5971,14 @@ div#software_image_picker_container {
   align-items: center;
   gap: 7px;
   margin-top: 0;
-  min-height: 16px;
+  min-height: 1rem;
 }
 /* The badge carries the direction, the sentence beside it says what the
    comparison is against. "dün 119" on its own never said which 119. */
 .pg-vs-pill {
   padding: 2px 7px;
   border-radius: var(--pg-radius-pill);
-  font-size: 10px;
+  font-size: 0.625rem;
   font-weight: 700;
   line-height: 1.5;
 }
@@ -5866,19 +5993,19 @@ div#software_image_picker_container {
   color: color-mix(in srgb, var(--pg-danger-fg-emphasis) 80%, var(--pg-fg-emphasis));
 }
 .pg-vs-cmp {
-  font-size: 11.5px;
+  font-size: 0.71875rem;
 }
 .pg-vs-sub {
   margin-top: 0;
-  font-size: 10px;
+  font-size: 0.625rem;
   opacity: 0.7;
-  min-height: 16px;
+  min-height: 1rem;
 }
 .pg-vs-legend {
   display: flex;
   gap: 14px;
   padding-top: 4px;
-  font-size: 11px;
+  font-size: 0.6875rem;
   opacity: 0.75;
 }
 .pg-vs-legend.no-prev .pg-vs-key:last-child {
@@ -5951,14 +6078,14 @@ button.pg-vs-cell.is-active {
   background: rgba(var(--pg-vs-accent-rgb), 0.1);
 }
 .pg-vs-cell-label {
-  font-size: 10px;
+  font-size: 0.625rem;
   opacity: 0.7;
 }
 .pg-vs-cell-value {
   display: flex;
   align-items: baseline;
   gap: 6px;
-  font-size: 14px;
+  font-size: 0.875rem;
   font-weight: 700;
 }
 .pg-vs-spark {
@@ -5979,14 +6106,14 @@ button.pg-vs-cell.is-active {
 .pg-vs-page {
   overflow: hidden;
   max-width: 100%;
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 600;
   color: var(--pg-vs-accent);
   white-space: nowrap;
   text-overflow: ellipsis;
 }
 .pg-vs-views {
-  font-size: 10px;
+  font-size: 0.625rem;
   opacity: 0.7;
 }
 /* Today's busiest page under the period's. Two different questions, so a rule
@@ -5997,7 +6124,7 @@ button.pg-vs-cell.is-active {
   padding-top: 2px;
   border-top: var(--pg-border-width) dashed var(--pg-rule-dashed);
   overflow: hidden;
-  font-size: 10px;
+  font-size: 0.625rem;
   opacity: 0.75;
   white-space: nowrap;
   text-overflow: ellipsis;
@@ -6021,7 +6148,7 @@ html[data-bs-theme="dark"] button.pg-vs-cell.is-active {
   padding: 0.875rem 1rem 0.125rem;
   text-align: center;
 }
-.pg-health-gauge circle,
+.pg-health-dial circle,
 .pg-health-gauge {
   overflow: visible;
 }
@@ -6036,19 +6163,35 @@ html[data-bs-theme="dark"] button.pg-vs-cell.is-active {
      The room comes from the chips below, which gave up a point of type and a
      couple of pixels of padding each and lost nothing -- they are read one at
      a time, up close. */
-  max-width: 200px;
+  max-width: 12.5rem;
   margin: 0 auto;
 }
+/* The top SVG -- cells and hairline, no filter -- stays in the flow and gives
+   the dial its height; position:relative paints it over the absolute layers
+   that precede it. Its own compositing layer means the cells repainting every
+   frame never invalidate the blurred layers under it. */
 .pg-health-gauge {
+  position: relative;
   display: block;
   width: 100%;
+  will-change: transform;
+}
+/* The four SVGs under it (groove and defs, bloom, glow, halo) cover the same
+   box on the same viewBox, so they line up with the top one unit for unit. */
+.pg-health-layer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
 }
 /* No transform here any more. The half turn that puts the drawn half on top is
    folded into the coordinates api.php writes, because a clip on a transformed
    element is resolved in the space the element was WRITTEN in, not the space it
    ends up in -- and the squares are clipped by the bar now. The gradient is
    mirrored there for the same reason. */
-.pg-health-gauge circle {
+.pg-health-dial circle {
   fill: none;
   stroke-linecap: round;
   /* A circle path starts at 3 o'clock and runs clockwise, so half a turn puts
@@ -6086,17 +6229,14 @@ html[data-bs-theme="dark"] button.pg-vs-cell.is-active {
    which is exactly where the squares are. Whatever light is under a square is
    light that stays lit while the square dims, so the twinkle was being read
    against a lamp rather than against the card. */
-/* Each carries the two ends of its own breath as well as the value it rests
-   at. The still value is what a reduced-motion visitor sees, and it sits
-   between the two rather than at either end. */
-.pg-health-glow {
-  --pg-glow-lo: 0.52;
-  --pg-glow-hi: 0.72;
+/* The strength sits on the layer SVG that holds each one, not on the filtered
+   circle, so the breathing below changes a composited layer's opacity and the
+   blur inside is drawn once. The rest value is what a reduced-motion visitor
+   sees, and it sits between the two ends of the breath rather than at either. */
+.pg-health-layer-glow {
   opacity: 0.62;
 }
-.pg-health-bloom {
-  --pg-glow-lo: 0.31;
-  --pg-glow-hi: 0.5;
+.pg-health-layer-bloom {
   opacity: 0.4;
 }
 html[data-bs-theme="light"] .pg-health-track {
@@ -6116,15 +6256,13 @@ html[data-bs-theme="light"] .pg-health-track {
    So on white the same bar is drawn rather than lit: no bloom at all, a
    quarter of the glow, a wash thin enough that the gaps read as page, and a
    cell that never fades below half. */
-html[data-bs-theme="light"] .pg-health-bloom {
+html[data-bs-theme="light"] .pg-health-layer-bloom {
   /* Not merely faint -- absent. A wide blur on white is fog whatever its
      opacity, and it is fog sitting exactly where the four hues have to be
      told apart. */
   display: none;
 }
-html[data-bs-theme="light"] .pg-health-glow {
-  --pg-glow-lo: 0.11;
-  --pg-glow-hi: 0.21;
+html[data-bs-theme="light"] .pg-health-layer-glow {
   opacity: 0.16;
 }
 /* A cell at a tenth over a white page is gone. The floor comes up so the cell
@@ -6167,7 +6305,7 @@ html[data-bs-theme="light"] .pg-health-inner {
    disagreeing about where the site stands is worse than either being wrong. */
 .pg-health-score {
   color: rgb(var(--pg-health-ink-text));
-  font-size: 32px;
+  font-size: 2rem;
   font-weight: 700;
   line-height: 1;
 }
@@ -6175,13 +6313,13 @@ html[data-bs-theme="dark"] .pg-health-score {
   color: rgb(var(--pg-health-ink));
 }
 .pg-health-score span {
-  font-size: 15px;
+  font-size: 0.9375rem;
   font-weight: 600;
 }
 .pg-health-label {
   margin-top: 3px;
   color: var(--pg-fg-2);
-  font-size: 9.5px;
+  font-size: 0.59375rem;
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -6223,7 +6361,7 @@ html[data-bs-theme="dark"] .pg-health-score {
   background: var(--pg-tint);
   color: inherit;
   font: inherit;
-  font-size: 10px;
+  font-size: 0.625rem;
   font-weight: 600;
   line-height: 1.5;
   text-decoration: none;
@@ -6405,32 +6543,62 @@ html[data-bs-theme="light"] .pg-health {
      never comes back into step -- a swell the squares twinkle inside of,
      rather than a second rhythm to notice.
 
-     These two are filtered, and a filter is re-run when what it filters
-     changes. What changes here is the opacity of the RESULT, which is applied
-     after the blur, so the blur itself is computed once and reused. */
-  .pg-health-glow,
-  .pg-health-bloom {
-    animation-name: pg-health-breathe;
+     A filter in the same SVG as animating content is redrawn every frame, so
+     the breath runs on the layer SVG around each blurred circle: the layer is
+     composited (will-change) and only its opacity changes, the blur inside it
+     is drawn once. Literal values per layer and theme, so nothing in the
+     keyframes has to be resolved again each frame. */
+  .pg-health-layer-glow,
+  .pg-health-layer-bloom {
+    will-change: opacity;
     animation-timing-function: ease-in-out;
     animation-iteration-count: infinite;
   }
-  .pg-health-glow {
+  .pg-health-layer-glow {
+    animation-name: pg-health-glow-breathe;
     animation-duration: 5.1s;
     animation-delay: -2.4s;
   }
-  .pg-health-bloom {
+  .pg-health-layer-bloom {
+    animation-name: pg-health-bloom-breathe;
     animation-duration: 7.1s;
     animation-delay: -6.1s;
   }
+  html[data-bs-theme="light"] .pg-health-layer-glow {
+    animation-name: pg-health-glow-breathe-light;
+  }
 }
-@keyframes pg-health-breathe {
+@keyframes pg-health-glow-breathe {
   0%,
   100% {
-    opacity: var(--pg-glow-lo);
+    opacity: 0.52;
   }
   50% {
-    opacity: var(--pg-glow-hi);
+    opacity: 0.72;
   }
+}
+@keyframes pg-health-bloom-breathe {
+  0%,
+  100% {
+    opacity: 0.31;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+@keyframes pg-health-glow-breathe-light {
+  0%,
+  100% {
+    opacity: 0.11;
+  }
+  50% {
+    opacity: 0.21;
+  }
+}
+/* An off-screen dial (widget_2.php's IntersectionObserver) holds its frame. */
+.pg-health-dial.is-paused .pg-health-cells > rect,
+.pg-health-dial.is-paused .pg-health-layer {
+  animation-play-state: paused;
 }
 /* How dark a square gets at the bottom of its breath. This is the whole
    amplitude of the animation, and at 0.28 -- with a lit arc under it -- the
@@ -6513,7 +6681,7 @@ html[data-bs-theme="light"] .pg-health {
 .pg-jobs-heading {
   padding: 0.5rem 0.75rem 0.125rem;
   color: var(--pg-fg-2);
-  font-size: 10px;
+  font-size: 0.625rem;
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -6574,7 +6742,7 @@ button.pg-job-open {
 .pg-job-name {
   flex: 0 1 auto;
   overflow: hidden;
-  font-size: 11.5px;
+  font-size: 0.71875rem;
   font-weight: 600;
   line-height: 1.35;
   white-space: nowrap;
@@ -6584,7 +6752,7 @@ button.pg-job-open {
   flex: 1 1 2.5rem;
   min-width: 0;
   overflow: hidden;
-  font-size: 10.5px;
+  font-size: 0.65625rem;
   line-height: 1.35;
   white-space: nowrap;
   text-overflow: ellipsis;
@@ -6607,7 +6775,7 @@ button.pg-job-open {
   border-radius: 50rem;
   background: var(--pg-tint-strong);
   color: inherit;
-  font-size: 10.5px;
+  font-size: 0.65625rem;
   font-weight: 600;
   line-height: 1.5;
   text-decoration: none;
@@ -6660,7 +6828,7 @@ button.pg-job-open {
   gap: 8px;
   padding: 3px 6px;
   border-radius: var(--pg-radius-sm);
-  font-size: 10px;
+  font-size: 0.625rem;
 }
 .pg-job-panel-row:nth-child(odd) {
   background: var(--pg-tint-soft);
@@ -6762,7 +6930,7 @@ button.pg-job-open {
      content. balance evens the lines out: without it the longer messages broke
      with a single word stranded on the last line. */
   max-width: 26ch;
-  font-size: 12px;
+  font-size: 0.75rem;
   line-height: 1.4;
   text-wrap: balance;
 }
@@ -6780,7 +6948,7 @@ button.pg-job-open {
    offer, not the point of the card, and several of these sit on one screen. */
 .pg-widget-empty > .btn {
   margin-top: 0.15rem;
-  font-size: 11px;
+  font-size: 0.6875rem;
 }
 
 /* Some cards hand their rows to .pg-list, so the empty state lands one box
@@ -6900,14 +7068,14 @@ html[data-bs-theme="dark"] .card.widget ::-webkit-scrollbar-track {
   flex-wrap: wrap;
 }
 .pg-ec-val {
-  font-size: 19px;
+  font-size: 1.1875rem;
   font-weight: 700;
   letter-spacing: -0.3px;
   line-height: 1.15;
 }
 .pg-ec-lbl,
 .pg-ec-sub {
-  font-size: 10.5px;
+  font-size: 0.65625rem;
 }
 .pg-ec-sub {
   margin-top: 1px;
@@ -6927,11 +7095,11 @@ html[data-bs-theme="dark"] .card.widget ::-webkit-scrollbar-track {
 }
 .pg-ec-fact span {
   display: block;
-  font-size: 10.5px;
+  font-size: 0.65625rem;
 }
 .pg-ec-fact b {
   display: block;
-  font-size: 13px;
+  font-size: 0.8125rem;
   font-weight: 700;
   margin-top: 1px;
   white-space: nowrap;
@@ -7640,11 +7808,11 @@ html[data-bs-theme="dark"] #content[data-panel-backdrop="ember"] {
 .pg-ec-qty {
   background: color-mix(in srgb, var(--pg-accent) 16%, transparent);
   color: var(--pg-fg-body);
-  font-size: 10px;
+  font-size: 0.625rem;
   font-weight: 600;
 }
 .pg-rank {
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 700;
 }
 
@@ -8231,7 +8399,8 @@ textarea:focus-visible,
 .nav-link:focus-visible,
 .menu-item:focus-visible,
 .breadcrumb-item a:focus-visible,
-.form-adorn:has(> .form-ghost:focus-visible) {
+.form-adorn:has(> .form-ghost:focus-visible),
+.chip-input.pg-chips:has(> .form-ghost:focus-visible) {
   outline: 2px solid var(--pg-primary-ink);
   outline-offset: 2px;
   box-shadow: 0 0 0 0.2rem var(--pg-focus-ring-color);
@@ -8262,11 +8431,11 @@ button.no-popover:focus-visible {
 
      <div class="pg-toolbar">
        <div class="dropdown">…primary: btn btn-sm btn-primary rounded-pill px-3…</div>
-       <button class="btn btn-sm btn-ghost">…secondary tools…</button>
+       <button class="btn btn-sm btn-text theme-secondary">…secondary tools…</button>
        <div class="pg-toolbar-grow">…breadcrumb / title / location…</div>
        <div class="input-group input-group-sm rounded-pill pg-toolbar-search">…</div>
-       <div class="btn-group btn-group-sm">…view switches: btn-ghost + .active…</div>
-       <div class="dropdown ms-auto">…overflow: btn-ghost with bi-three-dots-vertical…</div>
+       <div class="btn-group btn-group-sm">…view switches: btn-text theme-secondary + .active…</div>
+       <div class="dropdown ms-auto">…overflow: btn-text theme-secondary with bi-three-dots-vertical…</div>
      </div>
 
    Rules that go with it: one recipe per intent, more than four buttons go
@@ -8329,36 +8498,18 @@ button.no-popover:focus-visible {
 .pg-toolbar-search { width: 200px; }
 
 /* Ghost button: a toolbar full of outlined buttons reads as a row of boxes,
-   so secondary tools carry no border until they are hovered. Defined through
-   Bootstrap's own button variables, which is what makes it follow the light
-   and dark themes without a second rule.
+   so secondary tools carry no border until they are hovered. Bootstrap 6's
+   text button in the secondary theme is that object; its tokens are set to
+   the panel's ink and surfaces, so it follows the light and dark themes:
+   - colours: the panel's secondary ink and hover surface, not the theme's;
+   - focus: the panel-wide focus ring above still wins over the theme's;
+   - disabled: left undefined, so the label keeps the parent's ink and the
+     border falls back to it.
 
    The house rule for a button with no variant on it (the long :not() chain
    further up) has to exclude this one by name. That selector carries a class
-   for every :not() in it - eighteen of them - so it outweighs a single class
-   many times over, and this block would never have taken effect. It went
-   unnoticed because the file manager scoped its own copy under an id, and an
-   id beats any number of classes; the moment that screen moved onto the
-   shared class the buttons came back with borders. */
-.btn-ghost {
-  --bs-btn-color: var(--pg-fg-2);
-  --bs-btn-hover-color: var(--pg-fg-body);
-  --bs-btn-hover-bg: var(--pg-bg-2);
-  --bs-btn-active-color: var(--pg-fg-body);
-  --bs-btn-active-bg: var(--pg-bg-2);
-  --bs-btn-border-color: transparent;
-  --bs-btn-hover-border-color: transparent;
-  --bs-btn-active-border-color: transparent;
-}
-
-/* Bootstrap 6's text button in the secondary theme is the same object, and
-   the panel carries it instead of .btn-ghost (only the Workspace flows
-   still use the class above). Its tokens are set to what the ghost
-   resolves to, so the two look alike in every state:
-   - colours: the ghost's ink and hover surface, not the secondary theme's;
-   - focus: the panel-wide focus ring above still wins over the theme's;
-   - disabled: left undefined like the ghost's, so the label keeps the
-     parent's ink and the border falls back to it, as before. */
+   for every :not() in it, so it outweighs these two classes many times over,
+   and this block would never take effect otherwise. */
 .btn-text.theme-secondary {
   --bs-btn-color: var(--pg-fg-2);
   --bs-btn-hover-color: var(--pg-fg-body);
@@ -8374,16 +8525,21 @@ button.no-popover:focus-visible {
 
 /* A view switch that is currently on. Not :active - that is the pressed
    state and lasts a moment; this one has to hold. */
-.btn-text.theme-secondary.active,
-.btn-ghost.active {
+.btn-text.theme-secondary.active {
   background: var(--pg-bg-2);
   color: var(--pg-fg-body);
 }
 
-/* Narrow screens: the controls keep the first line, and the two elements that
-   actually need width - the location and the search box - each get a line of
-   their own. Without this the location gets about two hundred pixels to say
-   where you are, which is the one thing it cannot do in two hundred pixels. */
+/* Narrow screens: the two elements that actually need width - the location
+   and the search box - each get a line of their own. Without this the location
+   gets about two hundred pixels to say where you are, which is the one thing
+   it cannot do in two hundred pixels.
+
+   They take that line where they stand in the markup, not at the bottom of the
+   bar: moving them with `order` would draw them below controls that Tab and a
+   screen reader still reach after them, so focus would jump down and climb
+   back up. A grow left empty is only a spacer pushing the rest to the right;
+   on a full line it would split the bar in two, so it is hidden here. */
 @media (max-width: 767.98px) {
 
   .pg-toolbar,
@@ -8391,13 +8547,12 @@ button.no-popover:focus-visible {
 
   .pg-toolbar-grow,
   .pg-toolbar-search {
-    order: 9;
     flex: 1 1 100%;
     width: auto !important;
     min-width: 0;
   }
 
-  .pg-toolbar-search { order: 10; }
+  .pg-toolbar-grow:empty { display: none; }
 }
 
 /* The orders list's statistics strip (view_orders.php): a sparkline under a
@@ -8419,10 +8574,55 @@ button.no-popover:focus-visible {
 
    The same applies to #pgsub- ids, the jump points inside the longer sections,
    and to the product screen's #pg_pb_sec_ ids -- all three are reached from a
-   rail the same way and land under the header for the same reason. */
+   rail the same way and land under the header for the same reason.
+
+   The product screen's #pg_pb_sec_ ids scroll the window, where the html
+   scroll padding below already clears the top bar; their margin only adds the
+   air, or the two would stack. */
 [id^="pgset-"],
-[id^="pgsub-"],
-[id^="pg_pb_sec_"] { scroll-margin-top: 5rem; }
+[id^="pgsub-"] { scroll-margin-top: 5rem; }
+[id^="pg_pb_sec_"] { scroll-margin-top: 1.5rem; }
+
+/* ── Window scroll padding ────────────────────────────────────────────────
+   The panel scrolls the window under the fixed, opaque top bar, so whatever
+   the browser scrolls into view - the field Shift+Tab reaches, the target of
+   a #fragment, the skip link's #content - was parked at y=0 behind the bar.
+   Scroll padding on the root scroller moves that line below the bar.
+
+   Once a list is scrolled, DataTables FixedHeader floats the heading row
+   just under the bar (.dtfh-floatingparent-head), so the line moves below
+   the heading too. At the bottom, the sticky save bar and the marketplace
+   bulk bar cover the control Tab brings in, so the bottom line clears them;
+   on a phone the save bar wraps two actions per row and, beside the chat
+   bubble, sits --pg-chat-clearance higher (that token lives on the bar, so
+   the root reads its fallback). Each predicate is its own :has(): a :has()
+   inside a :has() is invalid and drops the whole rule. */
+html {
+  scroll-padding-top: calc(var(--pg-navbar-h) + 0.5rem);
+}
+html:has(.dtfh-floatingparent-head) {
+  scroll-padding-top: calc(var(--pg-navbar-h) + 3.25rem);
+}
+html:has(nav.buttons.navigation.position-sticky),
+html:has(.position-sticky > nav.buttons.navigation) {
+  scroll-padding-bottom: 4rem;
+}
+html:has(.mpp-bulk:not(.d-none)) {
+  scroll-padding-bottom: 5rem;
+}
+@media (max-width: 575.98px) {
+  html:has(nav.buttons.navigation.position-sticky),
+  html:has(.position-sticky > nav.buttons.navigation) {
+    scroll-padding-bottom: 7rem;
+  }
+  html:has(#pg-chat-root):has(nav.buttons.navigation.position-sticky),
+  html:has(#pg-chat-root):has(.position-sticky > nav.buttons.navigation) {
+    scroll-padding-bottom: calc(7rem + var(--pg-chat-clearance, 5.125rem));
+  }
+  html:has(.mpp-bulk:not(.d-none)) {
+    scroll-padding-bottom: 7.5rem;
+  }
+}
 
 
 /* ── Admin screen stepper with cards ──────────────────────────────────────
@@ -8463,6 +8663,10 @@ button.no-popover:focus-visible {
   gap: 1px;
   max-height: calc(100vh - var(--pg-navbar-h) - 2rem);
   overflow-y: auto;
+  /* The rail scrolls, so it clips: inner room for the full-width links'
+     focus ring, given back by the margin so the rail does not move. */
+  padding: 4px;
+  margin: -4px;
 }
 .pg-settings-group {
   padding: 0.75rem 0.5rem 0.25rem;
@@ -8691,6 +8895,7 @@ button.no-popover:focus-visible {
     z-index: 3;
     display: none;
     max-height: 60vh;
+    margin: 0;
     padding: 0.5rem;
     border: var(--pg-border-width) solid var(--pg-border-color-translucent);
     border-radius: var(--pg-radius-lg);
@@ -8738,6 +8943,14 @@ button.no-popover:focus-visible {
     visibility: hidden;
     pointer-events: none;
     transition: opacity .26s ease, visibility 0s linear .26s;
+}
+/* A done curtain stops its loops rather than running them unseen. Paused, not
+   animation:none: pgPreloaderShow() takes is-done off again on a link click,
+   and the bar and dots then carry on at once, while the mark, which rests at
+   opacity 0 until its own delayed fade-in, is left alone. */
+.pg-preloader.is-done .pg-preloader-bar i,
+.pg-preloader.is-done .pg-preloader-dots i {
+    animation-play-state: paused;
 }
 
 .pg-preloader-bar {
@@ -9451,7 +9664,10 @@ body.pg-side-panel-open .pg-chat-launcher {
   flex-wrap: nowrap;
   overflow-x: auto;
   scrollbar-width: thin;
-  padding-bottom: .15rem;
+  /* Room for a chip's focus ring inside the scrolling (so clipping) strip;
+     the block margin keeps the bar's height. */
+  padding: 4px;
+  margin-block: -4px;
 }
 
 /* ── The cards of a category screen ──────────────────────────────────────
@@ -10300,7 +10516,7 @@ body.pg-side-panel-open .pg-chat-launcher {
   border-radius: var(--pg-radius);
   background: var(--pg-bg-body);
   box-shadow: 0 .5rem 1rem rgba(0, 0, 0, .15);
-  font-size: 11px;
+  font-size: 0.6875rem;
   line-height: 1.35;
   /* It follows the pointer, so it must never be under it. */
   pointer-events: none;
@@ -10308,7 +10524,7 @@ body.pg-side-panel-open .pg-chat-launcher {
 .pg-smap-tip.is-on { display: block; }
 .pg-smap-tip b {
   display: block;
-  font-size: 12px;
+  font-size: 0.75rem;
 }
 .pg-smap-tip span { display: block; }
 
@@ -10337,7 +10553,7 @@ body.pg-side-panel-open .pg-chat-launcher {
   background: color-mix(in srgb, var(--pg-bg-body) 72%, transparent);
 }
 .pg-smap-menu .menu {
-  --bs-menu-font-size: 12px;
+  --bs-menu-font-size: 0.75rem;
   --bs-menu-item-padding-y: .25rem;
   --bs-menu-min-width: 9rem;
 }
@@ -10476,6 +10692,13 @@ body.pg-side-panel-open .pg-chat-launcher {
   color: var(--pg-fg-2);
 }
 .pg-sale-ig > .btn { border-radius: 0; }
+/* The box clips and the frame glows for any of its controls: the focused
+   one wears its own ring, inset. */
+.pg-sale-ig input:focus-visible,
+.pg-sale-ig > .btn:focus-visible {
+  outline: 2px solid var(--pg-primary-ink);
+  outline-offset: -2px;
+}
 .pg-sale-mult {
   display: flex;
   align-items: center;
@@ -10678,7 +10901,12 @@ body.pg-side-panel-open .pg-chat-launcher {
   font-variant-numeric: tabular-nums;
   outline: 0;
 }
-.pg-sale-step input:focus-visible { box-shadow: inset 0 -2px 0 var(--pg-primary); }
+.pg-sale-step input:focus-visible {
+  outline: 2px solid var(--pg-primary-ink);
+  outline-offset: -2px;
+  border-radius: var(--pg-radius);
+  box-shadow: none;
+}
 .pg-sale[data-mode="kasa"] .pg-sale-step button { width: 38px; height: 38px; }
 .pg-sale-linemsg {
   display: block;
@@ -10984,7 +11212,8 @@ html[data-bs-theme="dark"] body .workspace-color {
 
 /* The workspace's own accent, on its screens and in its drawers elsewhere,
    and the scale every workspace rule measures with: four corner radii from
-   a chip to a drawer, four spaces, four sizes of face, two shadows. The
+   a chip to a drawer, four spaces, a row's and a header's padding,
+   four sizes of face, two shadows. The
    RGB numbers are --workspace-color written out, for rgba(); the two are
    kept together here so a change to one is a change to both. */
 body.workspace,
@@ -11001,6 +11230,9 @@ body.workspace,
   --ws-space-2: .5rem;
   --ws-space-3: .75rem;
   --ws-space-4: 1rem;
+  --ws-row-y: .3rem;
+  --ws-head-y: .6rem;
+  --ws-head-h: 3.4rem;
   --ws-avatar-xs: 1rem;
   --ws-avatar-sm: 1.6rem;
   --ws-avatar: 2.2rem;
@@ -11016,6 +11248,20 @@ html[data-bs-theme="dark"] [id^="ws-"] {
   --ws-soft: rgba(var(--ws-accent-rgb), .1);
   --ws-shadow: 0 1px 2px rgba(0, 0, 0, .2), 0 10px 30px -14px rgba(0, 0, 0, .5);
   --ws-shadow-accent: 0 .75rem 1.5rem -.75rem rgba(var(--ws-accent-rgb), .35);
+}
+/* Compact density, chosen per browser in the overview's header
+   (workspace.js sets the class on <html> before the first draw): the same
+   screens with the spaces narrowed, so only the tokens change here. */
+html.ws-compact body.workspace,
+html.ws-compact .ws-app,
+html.ws-compact [id^="ws-"] {
+  --ws-space-1: .15rem;
+  --ws-space-2: .35rem;
+  --ws-space-3: .5rem;
+  --ws-space-4: .65rem;
+  --ws-row-y: .1rem;
+  --ws-head-y: .35rem;
+  --ws-head-h: 2.8rem;
 }
 
 /* Focus rings follow the keyboard, not the mouse: the workspace is full of
@@ -11292,16 +11538,16 @@ button.ws-thread-bar:hover {
   }
 }
 .ws-side-head {
-  padding: .75rem .75rem .5rem;
+  padding: var(--ws-space-3, .75rem) var(--ws-space-3, .75rem) var(--ws-space-2, .5rem);
   display: flex;
-  gap: .5rem;
+  gap: var(--ws-space-2, .5rem);
   align-items: center;
 }
 .ws-side-scroll {
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
-  padding: 0 .5rem .75rem;
+  padding: 0 var(--ws-space-2, .5rem) var(--ws-space-3, .75rem);
 }
 .ws-side-section {
   margin-top: .75rem;
@@ -11362,7 +11608,7 @@ button.ws-thread-bar:hover {
   color: var(--pg-fg-body);
   text-align: left;
   border-radius: var(--ws-radius-sm);
-  padding: .3rem .5rem;
+  padding: var(--ws-row-y, .3rem) var(--ws-space-2, .5rem);
   font-size: .9rem;
   text-decoration: none;
 }
@@ -11428,35 +11674,39 @@ button.ws-thread-bar:hover {
 }
 /* Each tone keeps 3:1 on the active row's tint (#ded6ef), not only on the
    sidebar ground. */
-.ws-channel-link[data-ws-nav="home"] > .bi { color: #4679a0; }
-.ws-channel-link[data-ws-nav="inbox"] > .bi { color: #3a8071; }
-.ws-channel-link[data-ws-nav="tasks"] > .bi { color: #498055; }
-.ws-channel-link[data-ws-nav="notes"] > .bi { color: #936e2c; }
-.ws-channel-link[data-ws-nav="board"] > .bi { color: #6b5ca5; }
-.ws-channel-link[data-ws-nav="calendar"] > .bi,
-.ws-channel-link[data-ws-nav="calendar_feed"] > .bi { color: #a5578e; }
-.ws-channel-link[data-ws-nav="scheduled"] > .bi { color: #a7633d; }
-.ws-channel-link[data-ws-nav="timeline"] > .bi { color: #5468a8; }
-.ws-channel-link[data-ws-nav="archived"] > .bi { color: #70757c; }
-.ws-channel-link[data-ws-nav="audit"] > .bi { color: #b5534b; }
-.ws-channel-link[data-ws-nav="settings"] > .bi { color: #6f6a5e; }
-.ws-channel-link[data-ws-nav="flows"] > .bi,
-.ws-channel-link[data-ws-nav="mcp"] > .bi { color: #3b7d90; }
+:is(.ws-channel-link, .ws-side-tile)[data-ws-nav="home"] > .bi { color: #4679a0; }
+:is(.ws-channel-link, .ws-side-tile)[data-ws-nav="inbox"] > .bi { color: #3a8071; }
+:is(.ws-channel-link, .ws-side-tile)[data-ws-nav="tasks"] > .bi { color: #498055; }
+:is(.ws-channel-link, .ws-side-tile)[data-ws-nav="notes"] > .bi { color: #936e2c; }
+:is(.ws-channel-link, .ws-side-tile)[data-ws-nav="board"] > .bi { color: #6b5ca5; }
+:is(.ws-channel-link, .ws-side-tile)[data-ws-nav="calendar"] > .bi,
+:is(.ws-channel-link, .ws-side-tile)[data-ws-nav="calendar_feed"] > .bi { color: #a5578e; }
+:is(.ws-channel-link, .ws-side-tile)[data-ws-nav="scheduled"] > .bi { color: #a7633d; }
+:is(.ws-channel-link, .ws-side-tile)[data-ws-nav="timeline"] > .bi { color: #5468a8; }
+:is(.ws-channel-link, .ws-side-tile)[data-ws-nav="archived"] > .bi { color: #70757c; }
+:is(.ws-channel-link, .ws-side-tile)[data-ws-nav="audit"] > .bi { color: #b5534b; }
+:is(.ws-channel-link, .ws-side-tile)[data-ws-nav="settings"] > .bi { color: #6f6a5e; }
+:is(.ws-channel-link, .ws-side-tile)[data-ws-nav="flows"] > .bi,
+:is(.ws-channel-link, .ws-side-tile)[data-ws-nav="mcp"] > .bi { color: #3b7d90; }
+:is(.ws-channel-link, .ws-side-tile)[data-ws-nav="wtables"] > .bi { color: #6c7a2e; }
+:is(.ws-channel-link, .ws-side-tile)[data-ws-nav="mail"] > .bi { color: #9b4f6a; }
 /* The same tones lifted for the dark theme, where the ones above sink. */
-html[data-bs-theme="dark"] .ws-channel-link[data-ws-nav="home"] > .bi { color: #8fbde3; }
-html[data-bs-theme="dark"] .ws-channel-link[data-ws-nav="inbox"] > .bi { color: #7fc9b8; }
-html[data-bs-theme="dark"] .ws-channel-link[data-ws-nav="tasks"] > .bi { color: #8fcf9b; }
-html[data-bs-theme="dark"] .ws-channel-link[data-ws-nav="notes"] > .bi { color: #e6bb6c; }
-html[data-bs-theme="dark"] .ws-channel-link[data-ws-nav="board"] > .bi { color: #b1a4e0; }
-html[data-bs-theme="dark"] .ws-channel-link[data-ws-nav="calendar"] > .bi,
-html[data-bs-theme="dark"] .ws-channel-link[data-ws-nav="calendar_feed"] > .bi { color: #dc95c7; }
-html[data-bs-theme="dark"] .ws-channel-link[data-ws-nav="scheduled"] > .bi { color: #e9a67f; }
-html[data-bs-theme="dark"] .ws-channel-link[data-ws-nav="timeline"] > .bi { color: #99a8e0; }
-html[data-bs-theme="dark"] .ws-channel-link[data-ws-nav="archived"] > .bi { color: #a9aeb5; }
-html[data-bs-theme="dark"] .ws-channel-link[data-ws-nav="audit"] > .bi { color: #e08a82; }
-html[data-bs-theme="dark"] .ws-channel-link[data-ws-nav="settings"] > .bi { color: #b3ab9b; }
-html[data-bs-theme="dark"] .ws-channel-link[data-ws-nav="flows"] > .bi,
-html[data-bs-theme="dark"] .ws-channel-link[data-ws-nav="mcp"] > .bi { color: #86c4d4; }
+html[data-bs-theme="dark"] :is(.ws-channel-link, .ws-side-tile)[data-ws-nav="home"] > .bi { color: #8fbde3; }
+html[data-bs-theme="dark"] :is(.ws-channel-link, .ws-side-tile)[data-ws-nav="inbox"] > .bi { color: #7fc9b8; }
+html[data-bs-theme="dark"] :is(.ws-channel-link, .ws-side-tile)[data-ws-nav="tasks"] > .bi { color: #8fcf9b; }
+html[data-bs-theme="dark"] :is(.ws-channel-link, .ws-side-tile)[data-ws-nav="notes"] > .bi { color: #e6bb6c; }
+html[data-bs-theme="dark"] :is(.ws-channel-link, .ws-side-tile)[data-ws-nav="board"] > .bi { color: #b1a4e0; }
+html[data-bs-theme="dark"] :is(.ws-channel-link, .ws-side-tile)[data-ws-nav="calendar"] > .bi,
+html[data-bs-theme="dark"] :is(.ws-channel-link, .ws-side-tile)[data-ws-nav="calendar_feed"] > .bi { color: #dc95c7; }
+html[data-bs-theme="dark"] :is(.ws-channel-link, .ws-side-tile)[data-ws-nav="scheduled"] > .bi { color: #e9a67f; }
+html[data-bs-theme="dark"] :is(.ws-channel-link, .ws-side-tile)[data-ws-nav="timeline"] > .bi { color: #99a8e0; }
+html[data-bs-theme="dark"] :is(.ws-channel-link, .ws-side-tile)[data-ws-nav="archived"] > .bi { color: #a9aeb5; }
+html[data-bs-theme="dark"] :is(.ws-channel-link, .ws-side-tile)[data-ws-nav="audit"] > .bi { color: #e08a82; }
+html[data-bs-theme="dark"] :is(.ws-channel-link, .ws-side-tile)[data-ws-nav="settings"] > .bi { color: #b3ab9b; }
+html[data-bs-theme="dark"] :is(.ws-channel-link, .ws-side-tile)[data-ws-nav="flows"] > .bi,
+html[data-bs-theme="dark"] :is(.ws-channel-link, .ws-side-tile)[data-ws-nav="mcp"] > .bi { color: #86c4d4; }
+html[data-bs-theme="dark"] :is(.ws-channel-link, .ws-side-tile)[data-ws-nav="wtables"] > .bi { color: #c3d27a; }
+html[data-bs-theme="dark"] :is(.ws-channel-link, .ws-side-tile)[data-ws-nav="mail"] > .bi { color: #e2a1b8; }
 /* Groups of channels: a heading with its colour, one inside another. */
 .ws-side-group {
   margin-bottom: .2rem;
@@ -11655,38 +11905,50 @@ html[data-bs-theme="dark"] .ws-group-icon {
 .ws-sa-follow-line.ws-sa-on-skipped b {
   color: var(--pg-fg-2);
 }
-/* The pinned message, under the channel's greeting. */
+/* The catch-up line and the pinned message over the conversation
+   (drawCenter()): one above the other, on a phone one thin row. */
+.ws-strip {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+.ws-strip:not(:has(.ws-catchup, .ws-pin-bar)) {
+  display: none;
+}
+/* The pinned message: one line, a click opens it in the conversation. */
 .ws-pin-bar {
   display: flex;
   align-items: center;
   gap: .5rem;
-  margin: .5rem .75rem 0;
-  padding: .35rem .5rem .35rem .65rem;
-  border: 1px solid var(--pg-border-color);
+  margin: .5rem 1rem 0;
+  padding: .3rem .4rem .3rem .65rem;
+  border: 1px solid var(--pg-border-color-translucent);
   border-left: 3px solid var(--ws-accent);
   border-radius: var(--ws-radius-sm);
   background: var(--pg-bg-1);
   font-size: .85rem;
 }
 .ws-pin-icon {
+  flex: 0 0 auto;
   color: var(--ws-accent);
 }
 .ws-pin-text {
+  display: flex;
   flex: 1 1 auto;
+  align-items: center;
+  gap: .45rem;
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  padding: 0;
   border: 0;
   background: transparent;
   color: inherit;
   text-align: left;
-  padding: 0;
 }
-.ws-pin-by {
-  flex-shrink: 0;
-  font-size: .72rem;
-  color: var(--pg-fg-2);
+.ws-pin-words {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .ws-msg-pinned {
   color: var(--ws-accent);
@@ -11954,14 +12216,97 @@ html[data-bs-theme="dark"] .ws-group-icon {
 .ws-head {
   display: flex;
   align-items: center;
-  gap: .75rem;
-  padding: .6rem 1rem;
+  gap: var(--ws-space-3, .75rem);
+  padding: var(--ws-head-y, .6rem) var(--ws-space-4, 1rem);
   border-bottom: 1px solid var(--pg-border-color);
-  min-height: 3.4rem;
+  min-height: var(--ws-head-h, 3.4rem);
 }
+/* One line: the sign and the name, then how the work stands, the
+   department and the customer, cut before they push the tools away. */
 .ws-head-title {
+  display: flex;
   flex: 1 1 auto;
+  align-items: center;
+  gap: .5rem;
   min-width: 0;
+}
+.ws-head-title h2 {
+  display: flex;
+  flex: 0 1 auto;
+  align-items: center;
+  min-width: 0;
+}
+.ws-head-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ws-head-tags {
+  display: flex;
+  flex: 0 1 auto;
+  align-items: center;
+  gap: .375rem;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.ws-head-tags > * {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 16rem;
+}
+.ws-head-tags .ws-customer {
+  flex-wrap: nowrap;
+  overflow: hidden;
+}
+.ws-head-tags .ws-status-pill {
+  margin-right: 0;
+}
+.ws-head-tags .ws-head-tag.badge {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ws-head-faces {
+  align-items: center;
+  gap: .25rem;
+}
+/* The channel's info (showMembers()): what it is for, its customer and
+   department, then its people. */
+.ws-info-about {
+  margin-bottom: .75rem;
+  padding-bottom: .75rem;
+  border-bottom: 1px solid var(--pg-border-color-translucent);
+}
+.ws-info-label {
+  margin: .25rem 0;
+  color: var(--pg-fg-2);
+  font-size: .72rem;
+  font-weight: 600;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+.ws-info-purpose {
+  margin: 0 0 .5rem;
+  white-space: pre-wrap;
+}
+/* The header's tools a phone finds in the channel's menu, and the other way
+   round. */
+@media (min-width: 768px) {
+  .menu .ws-head-narrow {
+    display: none;
+  }
+}
+@media (max-width: 767.98px) {
+  .ws-head .ws-head-wide {
+    display: none;
+  }
+  .ws-head-tags > :not(.ws-status-pill) {
+    display: none;
+  }
+  .ws-head .ws-status-pill .ws-status-text {
+    display: none;
+  }
 }
 /* The way to the channel list where the menu's Workspace list is out of
    sight: below lg, where the menu is a drawer, and on the mini rail (the
@@ -12001,8 +12346,6 @@ html[data-bs-theme="dark"] .ws-group-icon {
   letter-spacing: -.01em;
   font-weight: 700;
   margin: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
 }
 /* The channel's sign: its icon on a soft tile in its colour, and a thin
@@ -12109,7 +12452,7 @@ html[data-bs-theme="dark"] .ws-head[data-ws-colored] .ws-head-icon {
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
-  padding: .75rem 1rem;
+  padding: var(--ws-space-3, .75rem) var(--ws-space-4, 1rem);
 }
 /* Only the pane gives way when the screen is short: the header, the tabs and
    the composer keep their height (the tabs scroll sideways, so without this
@@ -12120,9 +12463,9 @@ html[data-bs-theme="dark"] .ws-head[data-ws-colored] .ws-head-icon {
 .ws-center > .alert {
   flex-shrink: 0;
 }
-.ws-center > .ws-brief {
+.ws-strip > .ws-catchup {
   flex-shrink: 0;
-  max-height: 40%;
+  max-height: 40vh;
   overflow-y: auto;
 }
 .ws-tabs {
@@ -12158,7 +12501,7 @@ html[data-bs-theme="dark"] .ws-head[data-ws-colored] .ws-head-icon {
   display: grid;
   grid-template-columns: 2.2rem minmax(0, 1fr);
   gap: .6rem;
-  padding: .3rem .5rem;
+  padding: var(--ws-row-y, .3rem) var(--ws-space-2, .5rem);
   border-radius: var(--ws-radius-sm);
 }
 .ws-msg:hover {
@@ -14767,7 +15110,9 @@ a.ws-chip:hover {
 }
 .ws-board {
   display: grid;
-  min-width: 56rem;
+  /* The grid's real minimum: an 11rem person column and seven 7rem days
+     (workspace.js); a larger grid would scroll inside the wrapper. */
+  min-width: 60rem;
 }
 .ws-board-cell,
 .ws-board-head,
@@ -15440,11 +15785,8 @@ a.ws-chip:hover {
 .office-sheet[role="grid"] td {
   cursor: cell;
 }
-.office-sheet td:focus {
-  outline: none;
-}
 .office-sheet td.office-selected {
-  box-shadow: inset 0 0 0 2px var(--pg-primary);
+  box-shadow: inset 0 0 0 2px var(--pg-primary-ink);
 }
 .office-sheet td.office-edited {
   background: var(--pg-warning-bg-subtle);
@@ -15555,8 +15897,16 @@ a.ws-chip:hover {
 .office-doc [data-p] {
   border-radius: .2rem;
 }
-.office-doc [data-p]:focus {
-  outline: none;
+/* The preview frame clips (overflow: hidden), so a focused cell, paragraph
+   or scrolling box wears the ring inset; .office-view outranks the global
+   [tabindex] ring. */
+.office-view .office-sheet td:focus-visible,
+.office-view .office-doc [data-p]:focus-visible,
+.office-view .office-pane:focus-visible,
+.office-view .office-doc:focus-visible {
+  outline: 2px solid var(--pg-primary-ink);
+  outline-offset: -2px;
+  box-shadow: none;
 }
 .office-doc-edit .office-para {
   cursor: text;
@@ -15624,89 +15974,68 @@ a.ws-chip:hover {
   max-width: 22rem;
 }
 
-/* The channel's greeting. */
-.ws-brief {
-  position: relative;
-  display: flex;
-  gap: .8rem;
-  align-items: flex-start;
-  margin: .6rem 1rem 0;
-  padding: .7rem 2.4rem .7rem .8rem;
-  border: 1px solid rgba(var(--ws-accent-rgb), .22);
+/* The channel's catch-up line (catchupNode()): what came while the reader
+   was away, the way to it, the late tasks, Pinegrap AI's summary. */
+.ws-catchup {
+  margin: .5rem 1rem 0;
+  border: 1px solid color-mix(in srgb, var(--ws-accent) 24%, transparent);
   border-radius: var(--ws-radius);
-  background: linear-gradient(120deg, rgba(var(--ws-accent-rgb), .12), rgba(var(--ws-accent-rgb), .03) 60%, transparent);
+  background: color-mix(in srgb, var(--ws-accent) 7%, var(--pg-bg-body));
 }
-.ws-brief-icon {
-  flex: 0 0 auto;
-  width: 2.3rem;
-  height: 2.3rem;
-  border-radius: 50%;
+.ws-catchup-row {
   display: flex;
   align-items: center;
-  justify-content: center;
-  font-size: 1.15rem;
-  color: #fff;
-  background: linear-gradient(135deg, var(--ws-accent), rgba(var(--ws-accent-rgb), .65));
-  box-shadow: 0 4px 12px -4px rgba(var(--ws-accent-rgb), .7);
+  gap: .5rem;
+  min-height: 2.5rem;
+  padding: .3rem .4rem .3rem .75rem;
 }
-.ws-brief-greeting {
-  font-weight: 700;
-  color: var(--pg-fg-emphasis);
+.ws-catchup-icon {
+  flex: 0 0 auto;
+  color: var(--ws-accent);
 }
-.ws-brief-line {
-  font-size: .88rem;
-  color: var(--pg-fg-body);
-  line-height: 1.45;
-}
-.ws-brief-hint {
-  font-size: .8rem;
+.ws-catchup-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
   color: var(--pg-fg-2);
-  margin-top: .2rem;
+  font-size: .85rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-.ws-brief-action {
-  margin-top: .45rem;
-  border-radius: 999px;
-  padding: .15rem .7rem;
-  font-size: .8rem;
-  color: var(--ws-accent);
-  border: 1px solid rgba(var(--ws-accent-rgb), .45);
-  background: var(--pg-bg-body);
+.ws-catchup-text strong {
+  color: var(--pg-fg-emphasis);
+  font-weight: 600;
 }
-.ws-brief-action:hover {
-  background: rgba(var(--ws-accent-rgb), .12);
-  color: var(--ws-accent);
+.ws-catchup-action {
+  flex: 0 0 auto;
+  gap: .3rem;
+  font-size: .78rem;
+  white-space: nowrap;
 }
-.ws-brief-close {
-  position: absolute;
-  top: .55rem;
-  right: .6rem;
-  font-size: .65rem;
+.ws-catchup-close {
+  flex: 0 0 auto;
+  margin-left: .1rem;
+  font-size: .6rem;
 }
-.ws-brief-buttons {
-  display: flex;
-  flex-wrap: wrap;
-  column-gap: .4rem;
+/* Pinegrap AI's summary of what was missed, under the line. */
+.ws-catchup-recap {
+  margin: 0 .75rem .6rem 2.1rem;
+  padding-left: .65rem;
+  border-left: 2px solid color-mix(in srgb, var(--ws-accent) 45%, transparent);
 }
-.ws-brief-buttons:empty,
-.ws-brief-recap:empty {
+.ws-catchup-recap:empty {
   display: none;
 }
-/* Pinegrap AI's summary of what was missed. */
-.ws-brief-recap {
-  margin-top: .45rem;
-  padding-left: .65rem;
-  border-left: 2px solid rgba(var(--ws-accent-rgb), .45);
-}
-.ws-brief-recap-text {
+.ws-catchup-recap-text {
+  color: var(--pg-fg-body);
   font-size: .88rem;
   line-height: 1.5;
   white-space: pre-line;
-  color: var(--pg-fg-body);
 }
-.ws-brief-recap-by {
-  font-size: .72rem;
-  color: var(--pg-fg-2);
+.ws-catchup-recap-by {
   margin-top: .15rem;
+  color: var(--pg-fg-2);
+  font-size: .72rem;
 }
 
 /* Context menus: the panel's own look, placed at the pointer. Built
@@ -16355,9 +16684,6 @@ body.ws-drawer-open #pg-chat-root .pg-chat-launcher {
   .ws-voice {
     gap: var(--ws-space-1);
   }
-  body.ws-keyboard .ws-center > .ws-brief {
-    display: none;
-  }
   body.workspace_channels #pg-chat-root .pg-chat-launcher {
     right: 12px;
     bottom: calc(var(--ws-composer-h, 6rem) + 12px);
@@ -16440,28 +16766,51 @@ body.ws-drawer-open #pg-chat-root .pg-chat-launcher {
   .ws-cal-task .ws-avatars {
     display: none;
   }
-  .ws-brief {
-    gap: .55rem;
-    margin: .4rem .5rem 0;
-    padding: .5rem 2rem .5rem .65rem;
+  /* One thin line on a phone: the buttons keep their icons. */
+  .ws-catchup {
+    margin: .35rem .5rem 0;
   }
-  .ws-brief-icon {
+  .ws-catchup-row {
+    gap: .35rem;
+    min-height: 2.25rem;
+    padding: .2rem .3rem .2rem .6rem;
+  }
+  .ws-catchup-label {
     display: none;
   }
-  .ws-brief-greeting {
-    font-size: .9rem;
+  .ws-catchup-action {
+    padding: .2rem .45rem;
   }
-  .ws-brief-line {
-    font-size: .8rem;
+  .ws-catchup-text strong {
+    display: none;
   }
-  .ws-brief-action {
-    margin-top: .3rem;
+  .ws-pin-bar {
+    margin: .35rem .5rem 0;
   }
-}
-@media (max-width: 767.98px) and (max-height: 620px) {
-  /* A short screen (a phone on its side) keeps the greeting to one line. */
-  .ws-brief-line ~ .ws-brief-line,
-  .ws-brief-action {
+  /* Both there: one row, the catch-up line first and the pin a button
+     beside it. */
+  .ws-strip:has(.ws-catchup):has(.ws-pin-bar) {
+    flex-direction: row;
+    gap: .35rem;
+    margin: .35rem .5rem 0;
+  }
+  .ws-strip:has(.ws-catchup):has(.ws-pin-bar) > .ws-catchup {
+    flex: 1 1 auto;
+    min-width: 0;
+    margin: 0;
+  }
+  .ws-strip:has(.ws-catchup) > .ws-pin-holder {
+    display: flex;
+  }
+  .ws-strip:has(.ws-catchup) .ws-pin-bar {
+    margin: 0;
+    padding: 0 .55rem;
+  }
+  .ws-strip:has(.ws-catchup) .ws-pin-words,
+  .ws-strip:has(.ws-catchup) .ws-pin-bar > :not(.ws-pin-text) {
+    display: none;
+  }
+  body.ws-keyboard .ws-center > .ws-strip {
     display: none;
   }
 }
@@ -16623,18 +16972,43 @@ body.ws-drawer-open #pg-chat-root .pg-chat-launcher {
 .ws-fd-pane svg {
   display: block;
 }
+/* The mini flow window in px, to the visual spec: control arrows 2 px with a
+   filled head, data threads 1 px in their type's tone, boxes 128 x 60. */
+.ws-fd-arrow {
+  fill: none;
+  stroke: #7d8696;
+  stroke-width: 2;
+}
+.ws-fd-head {
+  fill: #7d8696;
+}
 .ws-fd-thread {
   fill: none;
-  stroke: var(--pg-fg-3);
-  stroke-width: 3;
+  stroke: var(--ws-fd-tone);
+  stroke-width: 1;
 }
+.ws-fd-dot {
+  fill: var(--ws-fd-tone);
+}
+.ws-fd-tone-number-0 { --ws-fd-tone: #2f6fcc; }
+.ws-fd-tone-number-1 { --ws-fd-tone: #5a8fdd; }
+.ws-fd-tone-number-2 { --ws-fd-tone: #1d56a8; }
+.ws-fd-tone-text-0 { --ws-fd-tone: #a8760f; }
+.ws-fd-tone-text-1 { --ws-fd-tone: #c08f2e; }
+.ws-fd-tone-text-2 { --ws-fd-tone: #8c6200; }
+html[data-bs-theme="dark"] .ws-fd-tone-number-0 { --ws-fd-tone: #6ea8ff; }
+html[data-bs-theme="dark"] .ws-fd-tone-number-1 { --ws-fd-tone: #9cc4ff; }
+html[data-bs-theme="dark"] .ws-fd-tone-number-2 { --ws-fd-tone: #4d8fe8; }
+html[data-bs-theme="dark"] .ws-fd-tone-text-0 { --ws-fd-tone: #e9b44c; }
+html[data-bs-theme="dark"] .ws-fd-tone-text-1 { --ws-fd-tone: #f5cf7d; }
+html[data-bs-theme="dark"] .ws-fd-tone-text-2 { --ws-fd-tone: #f0c060; }
 .ws-fd-box {
   cursor: pointer;
 }
 .ws-fd-box rect {
   fill: var(--pg-bg-body);
   stroke: var(--pg-border-color);
-  stroke-width: 3;
+  stroke-width: 1.5;
 }
 .ws-fd-box.is-outbound rect {
   stroke: var(--pg-warning);
@@ -16642,30 +17016,54 @@ body.ws-drawer-open #pg-chat-root .pg-chat-launcher {
 .ws-fd-box.is-added rect,
 .ws-fd-box.is-changed rect {
   stroke: var(--pg-info);
-  stroke-dasharray: 12 8;
+  stroke-dasharray: 5 3;
   fill: var(--pg-info-bg-subtle);
 }
 .ws-fd-box.is-picked rect,
 .ws-fd-box:focus-visible rect {
   stroke: rgb(var(--ws-accent-rgb));
-  stroke-width: 6;
+  stroke-width: 2.5;
 }
 .ws-fd-box:focus {
   outline: none;
 }
 .ws-fd-name {
   fill: var(--pg-fg-body);
-  font-size: 26px;
+  font-size: 11px;
   font-weight: 600;
 }
-.ws-fd-kind {
+.ws-fd-kind,
+.ws-fd-said {
   fill: var(--pg-fg-2);
-  font-size: 22px;
+  font-size: 10px;
+}
+.ws-fd-said.is-failed {
+  fill: var(--pg-danger-ink);
+}
+.ws-fd-icon {
+  fill: none;
+  stroke: var(--pg-fg-2);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+/* A flow box kind's line icon (flowIcon() in workspace.js), in the colour
+   of the text around it, 16 px so its stroke stays 1.5 px. */
+.ws-flow-icon {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vertical-align: -.125em;
 }
 .ws-fd-out {
   fill: none;
   stroke: var(--pg-warning);
-  stroke-width: 4;
+  stroke-width: 1.5;
   stroke-linecap: round;
 }
 .ws-fd-tools {
@@ -16676,6 +17074,19 @@ body.ws-drawer-open #pg-chat-root .pg-chat-launcher {
 }
 .ws-fd-try {
   white-space: pre-line;
+}
+/* Edit here: a box's form under the card's window. */
+.ws-fd-form {
+  max-width: 32rem;
+  margin-top: .5rem;
+  padding: .75rem;
+  border: 1px solid var(--pg-border-color);
+  border-radius: .5rem;
+  background: var(--pg-body-bg);
+  color: var(--pg-body-color);
+}
+.ws-fd-form .mb-5 {
+  margin-bottom: .6rem;
 }
 .ws-draft-actions {
   display: flex;
@@ -17016,24 +17427,15 @@ body.ws-drawer-open #pg-chat-root .pg-chat-launcher {
     padding: .55rem .65rem;
   }
 }
-/* The foot of the sidebar: the settings, however long the list above. */
-.ws-side-foot {
-  flex: 0 0 auto;
-  padding: .4rem .5rem;
-  border-top: 1px solid var(--pg-border-color);
-}
 /* The Workspace list in the main menu's Workspace panel (workspace_side.js,
    includes/workspace/nav.php). The menu body is the one scroller, so the
-   search head and the settings foot stick to its edges instead of the list
-   scrolling in a column of its own; both take the menu's own ground so the
-   list does not show through them. The ws- id brings the --ws-* tokens to
-   every panel page. */
-/* The menu body keeps room under the rows of the other panels; with the
-   list open the foot takes the bottom edge, so the room goes, and an entry
-   scrolled to stops clear of the head and the foot. */
+   search head sticks to its top edge instead of the list scrolling in a
+   column of its own; it takes the menu's own ground so the list does not
+   show through it. The ws- id brings the --ws-* tokens to every panel
+   page. */
+/* An entry scrolled to stops clear of the head. */
 #menu .menu-body:has(.pg-menu-panel.is-open #ws-menu-side) {
-  padding-bottom: 0;
-  scroll-padding: 3rem 0;
+  scroll-padding: 3rem 0 0;
 }
 #ws-menu-side .ws-side-head {
   position: sticky;
@@ -17044,9 +17446,135 @@ body.ws-drawer-open #pg-chat-root .pg-chat-launcher {
   padding: .25rem 2px .5rem;
   background: var(--pg-navbar-bg);
 }
-#ws-menu-side .ws-side-head input[type="search"] {
+/* The one search field: a button drawn as a field, opening the workspace
+   search (workspace_palette.js) or the page that opens it. */
+#ws-menu-side .ws-side-find {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: .4rem;
+  min-width: 0;
+  height: 1.9rem;
+  padding: 0 .7rem;
+  border: 1px solid var(--pg-border-color);
+  border-radius: 999px;
+  background: var(--pg-bg-body);
+  color: var(--pg-fg-2);
+  font-size: .8rem;
+  text-align: start;
+  text-decoration: none;
+  cursor: text;
+}
+#ws-menu-side .ws-side-find:hover {
+  border-color: color-mix(in srgb, var(--ws-accent) 45%, var(--pg-border-color));
+}
+#ws-menu-side .ws-side-find:focus-visible {
+  outline: 2px solid var(--ws-accent);
+  outline-offset: 1px;
+}
+#ws-menu-side .ws-side-find-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+#ws-menu-side .ws-side-tool {
+  flex: 0 0 auto;
+  width: 1.9rem;
+  height: 1.9rem;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+#ws-menu-side .ws-side-tool.active {
+  color: var(--ws-accent);
+}
+/* The parts of the Channels section follow each other without headings:
+   pinned, the groups, the person's other channels, those not joined. */
+#ws-menu-side .ws-side-part + .ws-side-part {
+  margin-top: .35rem;
+}
+#ws-menu-side .ws-side-groups:empty {
+  display: none;
+}
+#ws-menu-side .ws-channel-link.ws-notjoined {
+  opacity: .72;
+}
+#ws-menu-side .ws-channel-link.ws-notjoined:hover,
+#ws-menu-side .ws-channel-link.ws-notjoined.active {
+  opacity: 1;
+}
+/* A mention count in the workspace accent; an unread count stays neutral. */
+#ws-menu-side .ws-count.ws-count-mention {
+  background: var(--ws-accent);
+  color: #fff;
+}
+/* White on the dark theme's light lavender reads at 2.2:1; the panel's
+   near-black ink on it reads at 7:1. */
+html[data-bs-theme="dark"] #ws-menu-side .ws-count.ws-count-mention {
+  color: var(--pg-on-accent);
+}
+/* Tools: two tiles to a row, each the screen's icon in the colour its row
+   had (the [data-ws-nav] rules) and a short name; More, the last tile,
+   opens the rarer screens as rows under them. */
+#ws-menu-side .ws-side-tiles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .35rem;
+  padding: .15rem 0 0;
+}
+#ws-menu-side .ws-side-tile {
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+  min-width: 0;
+  min-height: 2.25rem;
+  padding: .3rem .5rem;
+  border: 1px solid var(--pg-border-color-translucent);
+  border-radius: var(--ws-radius-sm);
+  background: var(--pg-bg-body);
+  color: var(--pg-fg-body);
+  font-size: .82rem;
+  line-height: 1.2;
+  text-align: start;
+  text-decoration: none;
+  transition: background .12s ease, border-color .12s ease;
+}
+#ws-menu-side .ws-side-tile:hover {
+  border-color: var(--pg-border-color);
+  background: var(--pg-bg-1);
+}
+#ws-menu-side .ws-side-tile.active {
+  border-color: color-mix(in srgb, var(--ws-accent) 55%, transparent);
+  background: var(--ws-soft);
+  color: var(--pg-fg-emphasis);
+  font-weight: 600;
+}
+#ws-menu-side .ws-side-tile > .bi {
+  flex: 0 0 auto;
+}
+/* Without a colour of its own (the [data-ws-nav] rules above) a tile's icon
+   takes the secondary ink. */
+.ws-side-tile > .bi {
+  color: var(--pg-fg-2);
+}
+#ws-menu-side .ws-side-tile-name {
   flex: 1 1 auto;
   min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* Open, More reads as pressed: the rows it opened hang under it. */
+#ws-menu-side .ws-side-more-tile[aria-expanded="true"] {
+  border-color: var(--pg-border-color);
+  background: var(--pg-bg-2);
+}
+#ws-menu-side .ws-side-more {
+  margin-top: .35rem;
+  padding: .2rem;
+  border: 1px solid var(--pg-border-color-translucent);
+  border-radius: var(--ws-radius-sm);
 }
 #ws-menu-side .ws-side-scroll {
   overflow: visible;
@@ -17054,14 +17582,6 @@ body.ws-drawer-open #pg-chat-root .pg-chat-launcher {
 }
 #ws-menu-side .ws-side-section:first-child {
   margin-top: .25rem;
-}
-#ws-menu-side .ws-side-foot {
-  position: sticky;
-  bottom: 0;
-  z-index: 2;
-  margin: 0 -2px;
-  padding: .4rem 2px;
-  background: var(--pg-navbar-bg);
 }
 /* A long press on a phone is the item's own menu on the channel screen,
    not the browser's link card. */
@@ -17097,7 +17617,7 @@ body.ws-drawer-open #pg-chat-root .pg-chat-launcher {
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
-  padding: 1rem;
+  padding: var(--ws-space-4, 1rem);
 }
 .ws-home-hello {
   font-size: 1.15rem;
@@ -18980,7 +19500,7 @@ button.ws-ack-count:hover {
 @supports (height: 100dvh) {
   .wsf-app { height: calc(100dvh - 14rem); }
 }
-.wsf-list,
+.wsf-palette,
 .wsf-side {
   min-height: 0;
   overflow-y: auto;
@@ -18992,7 +19512,6 @@ button.ws-ack-count:hover {
 .wsf-app.wsf-nothing .wsf-side {
   visibility: hidden;
 }
-.wsf-list-title,
 .wsf-side-title {
   margin-bottom: var(--ws-space-2);
   font-size: .72rem;
@@ -19001,49 +19520,115 @@ button.ws-ack-count:hover {
   text-transform: uppercase;
   color: var(--pg-fg-2);
 }
-.wsf-list-item {
-  display: flex;
-  align-items: center;
-  gap: var(--ws-space-2);
-  width: 100%;
-  padding: .4rem .5rem;
-  border: 0;
-  border-radius: var(--ws-radius-sm);
-  background: transparent;
-  color: var(--pg-fg-body);
-  font-size: .875rem;
-  text-align: left;
-}
-.wsf-list-item:hover {
-  background: var(--pg-bg-2);
-}
-.wsf-list-item.active {
-  background: var(--ws-soft);
-  color: var(--ws-accent);
-  font-weight: 600;
-}
-.wsf-list-name {
-  flex: 1 1 auto;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.wsf-status-sm {
-  font-size: .65rem;
-}
-/* Somebody else's flow in the list: its name, and under it what the person
-   may do with it (Can view, Can run, Can edit). */
-.wsf-list-text {
-  display: flex;
-  flex: 1 1 auto;
-  flex-direction: column;
-  min-width: 0;
-}
+/* Somebody else's flow in the list: under its name what the person may do
+   with it (Can view, Can run, Can edit). */
 .wsf-list-level {
   font-size: .72rem;
   font-weight: 400;
   color: var(--pg-fg-2);
+}
+/* The flow list, full width while no flow is open (drawFlows() in
+   workspace_flow.js): a search field and the filter chips over a table. */
+.wsf-flows-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ws-space-2) var(--ws-space-3);
+  margin-bottom: var(--ws-space-3);
+}
+.wsf-flows-search {
+  flex: 0 1 18rem;
+}
+.wsf-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ws-space-2);
+}
+.wsf-chip {
+  border: 1px solid var(--pg-border-color);
+  color: var(--pg-fg-body);
+}
+.wsf-chip.active {
+  border-color: var(--ws-accent);
+  background: var(--ws-soft);
+  color: var(--ws-accent);
+  font-weight: 600;
+}
+.wsf-chip-count {
+  color: var(--pg-fg-2);
+  font-variant-numeric: tabular-nums;
+}
+.wsf-flow-table th,
+.wsf-flow-table td {
+  vertical-align: top;
+}
+.wsf-flow-row {
+  cursor: pointer;
+}
+.wsf-flow-row:hover > * {
+  background: var(--pg-bg-2);
+}
+.wsf-flow-open {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--pg-fg-body);
+  font-weight: 600;
+  text-align: left;
+}
+.wsf-flow-open:hover {
+  text-decoration: underline;
+}
+.wsf-flow-name .wsf-list-level {
+  display: block;
+}
+.wsf-flow-start {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--ws-space-2);
+}
+.wsf-flow-start .ws-flow-icon {
+  margin-top: .15rem;
+  color: var(--wsf-kind);
+}
+.wsf-flow-last .wsf-flag {
+  max-width: 22rem;
+}
+/* The scheduled actions the flow list ends with (drawScheduled()): the
+   converted rows, then the cards of the rows not converted, whose state
+   chips have nothing to filter there. */
+.wsf-sched-group {
+  margin-top: 1.5rem;
+}
+.wsf-sched-title {
+  margin-bottom: var(--ws-space-3);
+}
+.wsf-sched-title:focus {
+  outline: none;
+}
+.wsf-sched-row {
+  padding: var(--ws-space-2) 0 var(--ws-space-3);
+  border-bottom: 1px solid var(--pg-border-color-translucent);
+  font-size: .85rem;
+}
+.wsf-sched-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ws-space-2);
+  margin-bottom: .2rem;
+}
+.wsf-sched-mark {
+  font-weight: 400;
+}
+.wsf-sched-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ws-space-2);
+  margin-top: var(--ws-space-2);
+}
+.wsf-sched-refused .ws-sa-filters {
+  display: none;
 }
 /* The Share dialog: one row per person or channel, the owner first. */
 .wsf-share-row {
@@ -19342,7 +19927,6 @@ html[data-bs-theme="dark"] .wsf-node { --wsf-ring: #a78bfa; }
   text-align: center;
   pointer-events: none;
 }
-.wsf-palette,
 .wsf-zoom {
   position: absolute;
   display: flex;
@@ -19353,15 +19937,56 @@ html[data-bs-theme="dark"] .wsf-node { --wsf-ring: #a78bfa; }
   background: var(--pg-bg-body);
   box-shadow: var(--ws-shadow);
 }
+/* The palette, the editor's left column (drawPalette()): a search field,
+   then the boxes to add in their groups, each heading in its group's
+   colour. Without it (a flow read-only, no flow open) the canvas takes its
+   width. */
 .wsf-palette {
-  top: var(--ws-space-3);
-  left: var(--ws-space-3);
+  display: flex;
   flex-direction: column;
+  gap: var(--ws-space-2);
 }
+.wsf-app.wsf-no-palette {
+  grid-template-columns: minmax(0, 1fr) 19rem;
+}
+.wsf-app.wsf-no-palette .wsf-palette {
+  display: none;
+}
+/* The search field keeps its height. The groups under it are taller than
+   the column, so the column shrinks its items, and Bootstrap 6 draws the
+   field as a flex box whose smallest height is its padding: it was squeezed
+   to a thin line. */
+.wsf-palette-search {
+  flex-shrink: 0;
+}
+.wsf-palette-group {
+  display: flex;
+  flex-direction: column;
+  margin-top: var(--ws-space-2);
+}
+.wsf-palette-head {
+  margin: 0 0 var(--ws-space-1);
+  padding-left: .5rem;
+  border-left: 3px solid var(--wsf-kind);
+  font-size: .72rem;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--wsf-kind);
+}
+/* A long box name wraps inside the column. Bootstrap 6 keeps a button's
+   text on one line, which pushed the longer names past the column's edge
+   and gave the palette a sideways scroll bar. */
 .wsf-palette-item {
+  --bs-btn-white-space: normal;
   justify-content: flex-start;
+  min-width: 0;
   text-align: left;
+  overflow-wrap: anywhere;
   cursor: grab;
+}
+.wsf-palette-item .ws-flow-icon {
+  color: var(--wsf-kind);
 }
 .wsf-zoom {
   right: var(--ws-space-3);
@@ -19406,6 +20031,13 @@ html[data-bs-theme="dark"] .wsf-node { --wsf-ring: #a78bfa; }
 }
 .wsf-start-card > .bi {
   font-size: 1.25rem;
+}
+.wsf-start-ai:focus-within {
+  border-color: var(--pg-primary, #a78bfa);
+}
+.wsf-ai-sketch-notes {
+  flex-basis: 100%;
+  padding-left: 1.25rem;
 }
 .wsf-start-title,
 .wsf-tpl-name {
@@ -19491,6 +20123,11 @@ html[data-bs-theme="dark"] .wsf-tone-text-2 { --wsf-tone: #f0c060; }
   pointer-events: none;
 }
 .wsf-thread-skipped {
+  stroke-dasharray: 4 3;
+}
+/* A value whose box was deleted (goneThread()). */
+.wsf-thread-gone {
+  stroke: var(--pg-danger);
   stroke-dasharray: 4 3;
 }
 /* Placed from the box's outer edge (drawData()), so the box's 1.5 px border
@@ -19831,6 +20468,18 @@ html[data-bs-theme="dark"] .wsf-tone-text-2 { --wsf-tone: #f0c060; }
   font-size: 1rem;
   font-weight: 600;
 }
+.wsf-outline-toggle {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+}
 .wsf-outline-kind {
   margin-right: .25rem;
   color: var(--pg-fg-2);
@@ -19935,10 +20584,6 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
   z-index: 2;
   width: 208px;
   transform: translateY(calc(-100% - 8px));
-}
-/* Under a flow's entry in the list. */
-.wsf-list .wsf-flag {
-  margin: -.15rem .75rem .35rem 2.1rem;
 }
 @media (prefers-reduced-motion: reduce) {
   .wsf-flag-fold .bi { transition: none; }
@@ -20063,6 +20708,7 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
 }
 @media (max-width: 1279.98px) {
   .wsf-app { grid-template-columns: 12rem minmax(0, 1fr) 16rem; }
+  .wsf-app.wsf-no-palette { grid-template-columns: minmax(0, 1fr) 16rem; }
 }
 @media (max-width: 767.98px) {
   .wsf-app {
@@ -20070,12 +20716,20 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
     height: auto;
     min-height: 0;
   }
-  .wsf-list { display: none; }
-  .wsf-app.wsf-show-list .wsf-list { display: block; }
+  .wsf-app.wsf-no-palette { grid-template-columns: minmax(0, 1fr); }
+  .wsf-palette { display: none; }
   .wsf-stage { height: 60vh; }
   .wsf-outline { height: auto; overflow: visible; }
   .wsf-bar .wsf-name { flex: 1 1 8rem; min-width: 0; }
   .wsf-bar .wsf-unpublished { display: none; }
+  /* The flow list on a phone: each flow a block of stacked rows, each
+     value under its column's name. */
+  .wsf-flow-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .wsf-flow-table tr { display: block; padding: var(--ws-space-2) 0; border-bottom: 1px solid var(--pg-border-color-translucent); }
+  .wsf-flow-table th,
+  .wsf-flow-table td { display: block; padding: .2rem 0; border: 0; }
+  .wsf-flow-table td::before { content: attr(data-label); display: block; font-size: .72rem; color: var(--pg-fg-2); }
+  .wsf-flow-table .wsf-flow-start { display: block; }
 }
 /* ── /Workspace ── */
 /* A scheduled action drawn read-only in the Scheduled actions section of
@@ -20112,6 +20766,125 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
   text-align: left;
 }
 
+/* Windows High Contrast (forced colours). The browser paints every author
+   background as Canvas and drops box-shadow, so a state drawn only by a fill,
+   a ::before background or mask, or a shadow ring disappears. These rules
+   draw those states in system colours; outside this query nothing changes. */
+@media (forced-colors: active) {
+  /* The tick, the radio dot and the switch knob are ::before backgrounds or
+     masks; a checked switch fills its track. */
+  .check::before,
+  .radio::before,
+  .switch::before {
+    forced-color-adjust: none;
+    background-color: CanvasText;
+  }
+  .switch:has(input:checked) {
+    forced-color-adjust: none;
+    background-color: Highlight;
+    border-color: Highlight;
+  }
+  .switch:has(input:checked)::before {
+    background-color: HighlightText;
+  }
+  /* The X is a mask over currentcolor. */
+  .btn-close {
+    forced-color-adjust: none;
+    background-color: ButtonText;
+  }
+
+  /* The current or pressed item, shown elsewhere only by a fill, a tint or a
+     shadow. :is() takes its most specific selector, so this beats every
+     screen rule it repeats. */
+  :is(
+    .nav-link.active,
+    .page-link.active,
+    .active > .page-link,
+    .list-group-item.active,
+    .menu-item.active,
+    input.btn-check:checked + .btn,
+    .btn-text.theme-secondary.active,
+    #header .pg-um-themebtn.active,
+    .pg-filter[aria-pressed="true"],
+    #notifications .pg-bell-filter[aria-pressed="true"],
+    button.pg-vs-cell.is-active,
+    .pg-sale-switch .btn.active,
+    .pg-sale-switch .btn[aria-pressed="true"],
+    .pg-sale-method[aria-pressed="true"],
+    .ws-rich-tools .btn-text.theme-secondary[aria-pressed="true"],
+    .ws-format-tool.active,
+    .btn-check:checked + .pg-role-card,
+    .btn-check:checked + .ws-status-choice
+  ) {
+    forced-color-adjust: none;
+    background-color: Highlight;
+    color: HighlightText;
+    border-color: Highlight;
+  }
+  /* Labels and icons inside take the item's text colour, not their own. */
+  :is(
+    .nav-link.active,
+    .page-link.active,
+    .active > .page-link,
+    .list-group-item.active,
+    .menu-item.active,
+    input.btn-check:checked + .btn,
+    .btn-text.theme-secondary.active,
+    #header .pg-um-themebtn.active,
+    .pg-filter[aria-pressed="true"],
+    #notifications .pg-bell-filter[aria-pressed="true"],
+    button.pg-vs-cell.is-active,
+    .pg-sale-switch .btn.active,
+    .pg-sale-switch .btn[aria-pressed="true"],
+    .pg-sale-method[aria-pressed="true"],
+    .ws-rich-tools .btn-text.theme-secondary[aria-pressed="true"],
+    .ws-format-tool.active,
+    .btn-check:checked + .pg-role-card,
+    .btn-check:checked + .ws-status-choice
+  ) * {
+    color: inherit;
+    background-color: transparent;
+    border-color: currentcolor;
+  }
+
+  /* Progress bars: the track gets a frame, the bar a fill. */
+  .progress,
+  .progress-stacked {
+    border: 1px solid CanvasText;
+  }
+  .progress-bar {
+    forced-color-adjust: none;
+    background-color: Highlight;
+    color: HighlightText;
+  }
+
+  /* Stepper: every disc gets a frame, a reached step a fill, the current step
+     a ring as well. */
+  .stepper-item::before {
+    border: 1px solid CanvasText;
+  }
+  .stepper-item.active::before {
+    forced-color-adjust: none;
+    background-color: Highlight;
+    color: HighlightText;
+    border-color: Highlight;
+  }
+  .stepper-item.active::after {
+    forced-color-adjust: none;
+    background-color: Highlight;
+  }
+  .stepper-item[aria-current="step"]::before {
+    outline: 2px solid CanvasText;
+    outline-offset: 2px;
+  }
+
+  /* Focus drawn only as a shadow ring: the role card and the chips field. */
+  .btn-check:focus-visible + .pg-role-card,
+  .pg-chips:focus-within {
+    outline: 2px solid Highlight;
+    outline-offset: 2px;
+  }
+}
 }
 
 /* Unlayered: Bootstrap 6 gives .fixed-top 1020 in its helpers layer, which

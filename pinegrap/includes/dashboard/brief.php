@@ -35,6 +35,10 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  */
 function pg_dashboard_brief($user, $changelog_sections)
 {
+    // pg_dashboard_days_back() and pg_dashboard_list_url(), shared with the
+    // cards.
+    require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/widgets.php');
+
     // Which part of the day it is. The old split called 19:00 night, which is when
     // most people are still working; evening now runs to 23:00 and only the small
     // hours are night.
@@ -138,7 +142,7 @@ function pg_dashboard_brief($user, $changelog_sections)
     // "This week" is today and the six days before it from midnight, the
     // window the E-Commerce Summary card counts as its last week, so a sentence
     // and the card beside it never give two numbers for the same week.
-    $greeting_week_start = strtotime(date('Y-m-d', $greeting_now)) - (6 * 86400);
+    $greeting_week_start = pg_dashboard_days_back(strtotime(date('Y-m-d', $greeting_now)), 6);
 
     $sig = array(
         'orders_today'    => null,
@@ -161,7 +165,9 @@ function pg_dashboard_brief($user, $changelog_sections)
         'orders_prev_week'  => null,
         'pending_shipments' => null,
         'pending_shipments_oldest' => null,
+        'pending_shipments_since' => null,
         'refunds_pending'   => null,
+        'refunds_oldest'    => null,
         'low_stock'         => null,
         'forms_today'       => null,
         'forms_week'        => null,
@@ -183,14 +189,15 @@ function pg_dashboard_brief($user, $changelog_sections)
 
     // ── signals ──────────────────────────────────────────────────────────────────
 
-    // Comment moderation. Same scope marker as view_comments.php: unpublished.
+    // Comment moderation: unpublished comments, as the Comment Moderation
+    // card counts them, without those on pages in the Recycle Bin.
     if ($user['role'] < 3) {
-        $sig['comments'] = (int) db_value("SELECT COUNT(*) FROM comments WHERE published = '0'");
+        $sig['comments'] = (int) db_value("SELECT COUNT(*) FROM comments LEFT JOIN page ON comments.page_id = page.page_id WHERE comments.published = '0'" . pg_comment_live_page_sql(pg_recycle_bin_folder_ids()));
     }
 
     if ((ECOMMERCE == true) && (($user['role'] < 3) || ($user['manage_ecommerce'] == true))) {
 
-        $sig['out_of_stock'] = (int) db_value("SELECT COUNT(*) FROM products WHERE out_of_stock = '1'");
+        $sig['out_of_stock'] = (int) db_value("SELECT COUNT(*) FROM products WHERE out_of_stock = '1'" . pg_catalog_bin_live_sql('products'));
 
         // Today against the same stretch of yesterday, which is what makes the
         // number mean something: eleven orders is good news or bad news depending
@@ -329,9 +336,20 @@ function pg_dashboard_brief($user, $changelog_sections)
             "SELECT COUNT(*) FROM visitors WHERE stop_timestamp >= " . (int) ($greeting_now - 1200));
     }
 
-    if (($user['role'] < 3) || ($user['manage_contacts'] == true)) {
+    // A User sees on the contacts list only the contacts in groups they may
+    // edit, so their count reads those groups alone, each contact once.
+    if ($user['role'] < 3) {
         $sig['new_contacts'] = (int) db_value(
             "SELECT COUNT(*) FROM contacts WHERE timestamp >= " . (int) $greeting_week_start);
+    } elseif ($user['manage_contacts'] == true) {
+        $greeting_groups = array_map('intval', get_items_user_can_edit('contact_groups', $user['id']));
+
+        $sig['new_contacts'] = empty($greeting_groups) ? 0 : (int) db_value(
+            "SELECT COUNT(DISTINCT contacts.id)
+             FROM contacts
+             JOIN contacts_contact_groups_xref ON contacts.id = contacts_contact_groups_xref.contact_id
+             WHERE contacts.timestamp >= " . (int) $greeting_week_start . "
+             AND contacts_contact_groups_xref.contact_group_id IN (" . implode(',', $greeting_groups) . ")");
     }
 
     if ($user['role'] < 3) {
@@ -467,7 +485,7 @@ function pg_dashboard_brief($user, $changelog_sections)
             $greeting_saved_sql = " AND (order_items.saved_for_later = 0)";
         }
 
-        $greeting_ship_since = strtotime(date('Y-m-d')) - (30 * 86400);
+        $greeting_ship_since = pg_dashboard_days_back(strtotime(date('Y-m-d')), 30);
 
         $greeting_ship = db_item(
             "SELECT COUNT(*) AS pending_count, MIN(order_date) AS oldest FROM (
@@ -485,6 +503,7 @@ function pg_dashboard_brief($user, $changelog_sections)
             ) AS pending");
 
         $sig['pending_shipments'] = (int) ($greeting_ship['pending_count'] ?? 0);
+        $sig['pending_shipments_since'] = $greeting_ship_since;
 
         // When the longest waiting of them was placed, so the advice can tell a
         // normal day's packing from a parcel that has been left behind.
@@ -497,10 +516,16 @@ function pg_dashboard_brief($user, $changelog_sections)
 
         // Cancelled orders whose money has not gone back yet: the same three
         // states the orders list files under "Refund Pending". The column came
-        // with a later schema step, so it is asked about first.
+        // with a later schema step, so it is asked about first. The oldest of
+        // them sets where the list's range starts, so every order counted here
+        // is on it.
         if (pg_schema_has('orders', 'refund_status')) {
-            $sig['refunds_pending'] = (int) db_value(
-                "SELECT COUNT(*) FROM orders WHERE refund_status IN ('manual_required', 'failed', 'pending')");
+            $greeting_refunds = db_item(
+                "SELECT COUNT(*) AS pending_count, MIN(order_date) AS oldest
+                 FROM orders WHERE refund_status IN ('manual_required', 'failed', 'pending')");
+
+            $sig['refunds_pending'] = (int) ($greeting_refunds['pending_count'] ?? 0);
+            $sig['refunds_oldest']  = (int) ($greeting_refunds['oldest'] ?? 0);
         }
 
         // Running low but not out yet -- the out of stock count above already
@@ -512,7 +537,8 @@ function pg_dashboard_brief($user, $changelog_sections)
             $sig['low_stock'] = (int) db_value(
                 "SELECT COUNT(*) FROM products
                  WHERE inventory = '1' AND backorder != '1'
-                 AND inventory_quantity BETWEEN 1 AND " . (int) ECOMMERCE_LOW_STOCK_THRESHOLD);
+                 AND inventory_quantity BETWEEN 1 AND " . (int) ECOMMERCE_LOW_STOCK_THRESHOLD
+                 . pg_catalog_bin_live_sql('products'));
         }
 
         // Offers that stop within the week. Switched off ones are left out: an
@@ -530,8 +556,8 @@ function pg_dashboard_brief($user, $changelog_sections)
     // Form submissions, today and over the week, in one pass. Roles above User
     // only: for a User with the forms permission the submitted forms screen
     // narrows the list to the folders they may edit, and a site-wide count would
-    // promise rows the link does not show.
-    if ($user['role'] < 3) {
+    // promise rows the link does not show. Nothing while Forms is switched off.
+    if ((FORMS === true) && ($user['role'] < 3)) {
 
         $greeting_forms = db_item(
             "SELECT
@@ -666,30 +692,47 @@ function pg_dashboard_brief($user, $changelog_sections)
 
     if (((int) $sig['comments']) > 0) {
 
+        // Two link phrases: Turkish puts the object of "Approving the ..." in
+        // the accusative ("5 yorumu") and the subject of "There are ..." in
+        // the nominative ("5 onay bekleyen yorum").
+        $greeting_comments_one = (((int) $sig['comments']) === 1);
+        $greeting_comments_suffix = $greeting_comments_one ? '' : 's';
         $greeting_comments_link = $greeting_link('view_comments.php', lang(array(
-            'string' => '{var:1} waiting comments', 'vars' => pg_format_number($sig['comments'], 0))));
+            'string' => '{var:1} waiting comment{suffix:1}', 'vars' => pg_format_number($sig['comments'], 0),
+            'suffix' => $greeting_comments_suffix)));
+        $greeting_comments_there = $greeting_link('view_comments.php', lang(array(
+            'string' => '{var:1} comment{suffix:1} waiting for approval', 'vars' => pg_format_number($sig['comments'], 0),
+            'suffix' => $greeting_comments_suffix)));
 
-        $greeting_options[] = array('tier' => 1, 'topic' => 'comments', 'text' => lang(array(
-            'string' => 'Approving the {var:1} puts them on the pages they belong to.',
-            'vars' => $greeting_comments_link)));
-        $greeting_options[] = array('tier' => 1, 'topic' => 'comments', 'text' => lang(array(
-            'string' => 'There are {var:1}, and publishing them keeps those pages alive.',
-            'vars' => $greeting_comments_link)));
+        $greeting_options[] = array('tier' => 1, 'topic' => 'comments', 'text' => $greeting_comments_one
+            ? lang(array('string' => 'Approving the {var:1} puts it on the page it belongs to.', 'vars' => $greeting_comments_link))
+            : lang(array('string' => 'Approving the {var:1} puts them on the pages they belong to.', 'vars' => $greeting_comments_link)));
+        $greeting_options[] = array('tier' => 1, 'topic' => 'comments', 'text' => $greeting_comments_one
+            ? lang(array('string' => 'There is {var:1}, and publishing it keeps that page alive.', 'vars' => $greeting_comments_there))
+            : lang(array('string' => 'There are {var:1}, and publishing them keeps those pages alive.', 'vars' => $greeting_comments_there)));
     }
 
     if (((int) $sig['out_of_stock']) > 0) {
 
         // The filtered list, not the catalogue. Advice that drops you in front of
         // four thousand products has made you do the finding yourself.
-        $greeting_stock_link = $greeting_link('view_products.php?filter=out_of_stock_products', lang(array(
-            'string' => '{var:1} empty products', 'vars' => pg_format_number($sig['out_of_stock'], 0))));
+        // Accusative and nominative link phrases, as with the comments above.
+        $greeting_stock_one = (((int) $sig['out_of_stock']) === 1);
+        $greeting_stock_suffix = $greeting_stock_one ? '' : 's';
+        $greeting_stock_url = 'view_products.php?filter=out_of_stock_products';
+        $greeting_stock_link = $greeting_link($greeting_stock_url, lang(array(
+            'string' => '{var:1} empty product{suffix:1}', 'vars' => pg_format_number($sig['out_of_stock'], 0),
+            'suffix' => $greeting_stock_suffix)));
+        $greeting_stock_there = $greeting_link($greeting_stock_url, lang(array(
+            'string' => '{var:1} out-of-stock product{suffix:1}', 'vars' => pg_format_number($sig['out_of_stock'], 0),
+            'suffix' => $greeting_stock_suffix)));
 
-        $greeting_options[] = array('tier' => 1, 'topic' => 'stock', 'text' => lang(array(
-            'string' => 'Restocking the {var:1} would keep those pages selling.',
-            'vars' => $greeting_stock_link)));
-        $greeting_options[] = array('tier' => 1, 'topic' => 'stock', 'text' => lang(array(
-            'string' => 'There are {var:1} on the site, and each one is a page that cannot sell.',
-            'vars' => $greeting_stock_link)));
+        $greeting_options[] = array('tier' => 1, 'topic' => 'stock', 'text' => $greeting_stock_one
+            ? lang(array('string' => 'Restocking the {var:1} would keep that page selling.', 'vars' => $greeting_stock_link))
+            : lang(array('string' => 'Restocking the {var:1} would keep those pages selling.', 'vars' => $greeting_stock_link)));
+        $greeting_options[] = array('tier' => 1, 'topic' => 'stock', 'text' => $greeting_stock_one
+            ? lang(array('string' => 'There is {var:1} on the site, and that is a page that cannot sell.', 'vars' => $greeting_stock_there))
+            : lang(array('string' => 'There are {var:1} on the site, and each one is a page that cannot sell.', 'vars' => $greeting_stock_there)));
     }
 
     if ($has_perf && ($sig['perf_today'] > $sig['perf_before']) && ($sig['perf_today'] > 500)) {
@@ -709,15 +752,17 @@ function pg_dashboard_brief($user, $changelog_sections)
         // reset=true first, because this screen keeps its filters in the session
         // and a month-old date range left behind from the last visit would hide
         // the very rows the sentence just promised.
+        $greeting_carts_one = (((int) $sig['carts_week']) === 1);
         $greeting_carts_link = $greeting_link('view_orders.php?reset=true&status=incomplete', lang(array(
-            'string' => '{var:1} baskets', 'vars' => pg_format_number($sig['carts_week'], 0))));
+            'string' => '{var:1} basket{suffix:1}', 'vars' => pg_format_number($sig['carts_week'], 0),
+            'suffix' => $greeting_carts_one ? '' : 's')));
 
-        $greeting_options[] = array('tier' => 2, 'topic' => 'carts', 'text' => lang(array(
-            'string' => 'There are {var:1} left half full this week, and it is worth a look at who walked away.',
-            'vars' => $greeting_carts_link)));
-        $greeting_options[] = array('tier' => 2, 'topic' => 'carts', 'text' => lang(array(
-            'string' => 'Someone filled {var:1} this week and left them; they are all still on the list.',
-            'vars' => $greeting_carts_link)));
+        $greeting_options[] = array('tier' => 2, 'topic' => 'carts', 'text' => $greeting_carts_one
+            ? lang(array('string' => 'There is {var:1} left half full this week, and it is worth a look at who walked away.', 'vars' => $greeting_carts_link))
+            : lang(array('string' => 'There are {var:1} left half full this week, and it is worth a look at who walked away.', 'vars' => $greeting_carts_link)));
+        $greeting_options[] = array('tier' => 2, 'topic' => 'carts', 'text' => $greeting_carts_one
+            ? lang(array('string' => 'Someone filled {var:1} this week and left it; it is still on the list.', 'vars' => $greeting_carts_link))
+            : lang(array('string' => 'Someone filled {var:1} this week and left them; they are all still on the list.', 'vars' => $greeting_carts_link)));
     }
 
     if (((int) $sig['new_contacts']) > 0) {
@@ -725,12 +770,18 @@ function pg_dashboard_brief($user, $changelog_sections)
         // Not a problem to fix -- an opening to take. Most days the dashboard has
         // nothing wrong with it, and "nothing is wrong" is not the same as "there
         // is nothing worth doing".
-        $greeting_people_link = $greeting_link('view_contacts.php', lang(array(
-            'string' => '{var:1} people', 'vars' => pg_format_number($sig['new_contacts'], 0))));
+        $greeting_people_one = (((int) $sig['new_contacts']) === 1);
+        // The list keeps its range and group in the session, so the link sets
+        // the week that was counted and clears the group and advanced filters.
+        $greeting_people_link = $greeting_link(pg_dashboard_list_url('view_contacts.php', array(
+                'advanced_filters' => 'false',
+                'contact_group'    => '[' . lang('All') . ']'), $greeting_week_start, $greeting_now), $greeting_people_one
+            ? lang(array('string' => '{var:1} person', 'vars' => pg_format_number($sig['new_contacts'], 0)))
+            : lang(array('string' => '{var:1} people', 'vars' => pg_format_number($sig['new_contacts'], 0))));
 
-        $greeting_options[] = array('tier' => 2, 'topic' => 'contacts', 'text' => lang(array(
-            'string' => 'The {var:1} who joined this week have not heard from you yet.',
-            'vars' => $greeting_people_link)));
+        $greeting_options[] = array('tier' => 2, 'topic' => 'contacts', 'text' => $greeting_people_one
+            ? lang(array('string' => 'The {var:1} who joined this week has not heard from you yet.', 'vars' => $greeting_people_link))
+            : lang(array('string' => 'The {var:1} who joined this week have not heard from you yet.', 'vars' => $greeting_people_link)));
         $greeting_options[] = array('tier' => 2, 'topic' => 'contacts', 'text' => lang(array(
             'string' => '{var:1} joined this week, and a first hello tends to land well.',
             'vars' => $greeting_people_link)));
@@ -819,22 +870,29 @@ function pg_dashboard_brief($user, $changelog_sections)
 
         $greeting_refunds_count = (int) $sig['refunds_pending'];
 
+        // Every type of order and from the oldest one waiting: the list's own
+        // range is the last month of online orders.
+        $greeting_refunds_url = pg_dashboard_list_url('view_orders.php', array(
+            'reset'  => 'true',
+            'status' => 'refund_pending',
+            'type'   => 'any'), ($sig['refunds_oldest'] > 0) ? $sig['refunds_oldest'] : $greeting_now, $greeting_now);
+
         $greeting_options[] = array('tier' => 1, 'topic' => 'refunds', 'text' => lang(array(
             'string' => 'Money is still owed on {var:1}; the customers are waiting.',
-            'vars' => $greeting_link('view_orders.php?reset=true&status=refund_pending', lang(array(
+            'vars' => $greeting_link($greeting_refunds_url, lang(array(
                 'string' => 'the {var:1} cancelled order{suffix:1}',
                 'vars'   => pg_format_number($greeting_refunds_count, 0),
                 'suffix' => array(($greeting_refunds_count == 1) ? '' : 's')))))));
         $greeting_options[] = array('tier' => 1, 'topic' => 'refunds', 'text' => lang(array(
             'string' => 'Customers are waiting on {var:1}, and it is worth settling before anything new.',
-            'vars' => $greeting_link('view_orders.php?reset=true&status=refund_pending', lang(array(
+            'vars' => $greeting_link($greeting_refunds_url, lang(array(
                 'string' => '{var:1} refund{suffix:1}',
                 'vars'   => pg_format_number($greeting_refunds_count, 0),
                 'suffix' => array(($greeting_refunds_count == 1) ? '' : 's')))))));
     }
 
-    // Orders waiting to leave. The orders list has no shipping filter, so the link
-    // opens the list itself, cleared of whatever was left in the session.
+    // Orders waiting to leave. The link opens the orders list on the same
+    // thirty days with its "Unshipped" filter.
     //
     // A shop with orders has orders to pack on any given day, and an order that
     // came in this morning and is not boxed yet is the ordinary state of things,
@@ -847,7 +905,10 @@ function pg_dashboard_brief($user, $changelog_sections)
         $greeting_ship_tier = (($sig['pending_shipments_oldest'] !== null)
             && ($sig['pending_shipments_oldest'] < ($greeting_now - 172800))) ? 1 : 2;
 
-        $greeting_ship_link = $greeting_link('view_orders.php?reset=true', lang(array(
+        $greeting_ship_link = $greeting_link(pg_dashboard_list_url('view_orders.php', array(
+                'reset'            => 'true',
+                'advanced_filters' => 'true',
+                'shipping_status'  => 'unshipped'), $sig['pending_shipments_since'], $greeting_now), lang(array(
             'string' => '{var:1} order{suffix:1}',
             'vars'   => pg_format_number($greeting_ship_count, 0),
             'suffix' => array(($greeting_ship_count == 1) ? '' : 's'))));
@@ -945,7 +1006,12 @@ function pg_dashboard_brief($user, $changelog_sections)
 
         $greeting_forms_count = (int) $sig['forms_week'];
 
-        $greeting_forms_link = $greeting_link('view_submitted_forms.php', lang(array(
+        // The list keeps its range, form and search in the session; the link
+        // sets the week that was counted and clears the other two.
+        $greeting_forms_link = $greeting_link(pg_dashboard_list_url('view_submitted_forms.php', array(
+                'advanced_filters' => 'false',
+                'custom_form'      => '[All]',
+                'query'            => ''), $greeting_week_start, $greeting_now), lang(array(
             'string' => '{var:1} form{suffix:1}',
             'vars'   => pg_format_number($greeting_forms_count, 0),
             'suffix' => array(($greeting_forms_count == 1) ? '' : 's'))));
@@ -1072,8 +1138,8 @@ function pg_dashboard_brief($user, $changelog_sections)
     // arrives every time is an instruction.
     $greeting_tips = array_map('h', array(
         lang('Search opens on Ctrl+K from anywhere, if you would rather not reach for the mouse.'),
-        lang('Did you know the widgets can be dragged around by their headers?'),
-        lang('If you prefer the light theme, it is in the user menu at the top right.'),
+        lang('Did you know the widgets can be dragged by the grip at the right of their headers?'),
+        lang('If you prefer the light theme, choose Light under Appearance in My Menu at the top right.'),
     ));
 
     // The widget theme settings are on the Dashboard card of Site Settings >
@@ -1124,32 +1190,48 @@ function pg_dashboard_brief($user, $changelog_sections)
         return ' ' . $greeting_link($href, $text);
     };
 
+    // Each line is offered only to a reader its screen admits, under the gate the
+    // screen itself uses. The line with no link has no gate, so the pool is never
+    // empty.
     $greeting_features = array(
-        h(lang('By the way, you can build a variant product in one go now.'))
-            . $greeting_ask('add_product.php', lang('Want to add one and see?')),
-
-        h(lang('The file manager was rebuilt, by the way. Folders, uploads and previews all on one screen.'))
-            . $greeting_ask('view_folders.php', lang('Shall we take a look?')),
-
-        h(lang('You can put an offer together in one place these days, rule and outcome on the same screen.'))
-            . $greeting_ask('add_offer.php', lang('Feel like making one now?')),
-
-        h(lang('You can cap how many devices one account stays signed in from, did you know?'))
-            . $greeting_ask('settings_security.php#pgset-session', lang('Want to turn it on?')),
-
-        h(lang('Product groups have a management screen of their own these days.'))
-            . $greeting_ask('view_product_groups.php', lang('Care to have a look?')),
-
-        h(lang('Your pages and products carry an SEO score now, out of 100.'))
-            . $greeting_ask('view_pages.php', lang('Want to see how yours are doing?')),
-
         // No offer on this one: the widget it is about is further down this very
         // screen, and pointing somebody somewhere they already are is not help.
         h(lang('You can start a deep database check from the system status widget whenever you like.')),
-
-        h(lang('The comments waiting for approval turn up on the dashboard now, newest first.'))
-            . $greeting_ask('view_comments.php', lang('Want to go through them?')),
     );
+
+    // validate_ecommerce_access(), as add_product.php, add_offer.php and
+    // view_product_groups.php ask, and nothing while Ecommerce is switched off.
+    if ((ECOMMERCE === true) && (($user['role'] < 3) || ($user['manage_ecommerce'] == true))) {
+
+        $greeting_features[] =
+            h(lang('By the way, you can build a variant product in one go now.'))
+            . $greeting_ask('add_product.php', lang('Want to add one and see?'));
+
+        $greeting_features[] =
+            h(lang('You can put an offer together in one place these days, rule and outcome on the same screen.'))
+            . $greeting_ask('add_offer.php', lang('Feel like making one now?'));
+
+        $greeting_features[] =
+            h(lang('Product groups have a management screen of their own these days.'))
+            . $greeting_ask('view_product_groups.php', lang('Care to have a look?'));
+    }
+
+    // validate_area_access($user, 'user'), as view_folders.php, view_pages.php and
+    // view_comments.php ask: a User needs a folder right.
+    if (($user['role'] < 3) || no_acl_check($user['id'])) {
+
+        $greeting_features[] =
+            h(lang('The file manager was rebuilt, by the way. Folders, uploads and previews all on one screen.'))
+            . $greeting_ask('view_folders.php', lang('Shall we take a look?'));
+
+        $greeting_features[] =
+            h(lang('Your pages and products carry an SEO score now, out of 100.'))
+            . $greeting_ask('view_pages.php', lang('Want to see how yours are doing?'));
+
+        $greeting_features[] =
+            h(lang('The comments waiting for approval turn up on the dashboard now, newest first.'))
+            . $greeting_ask('view_comments.php', lang('Want to go through them?'));
+    }
 
     // Manager and above, which is what settings_pane.php asks for
     // (validate_area_access($user, 'manager'), so role <= 2). Pointing a
@@ -1159,6 +1241,10 @@ function pg_dashboard_brief($user, $changelog_sections)
     // category screens are what it knows about, and the dialog recognises its own
     // addresses and opens over whatever screen the reader is on.
     if ($user['role'] <= 2) {
+
+        $greeting_features[] =
+            h(lang('You can cap how many devices one account stays signed in from, did you know?'))
+            . $greeting_ask('settings_security.php#pgset-device', lang('Want to turn it on?'));
 
         $greeting_features[] =
             h(lang('Settings are split into sections these days, and they open over whatever screen you are on.'))
@@ -1366,7 +1452,9 @@ function pg_dashboard_brief($user, $changelog_sections)
 
     if ($orders_up && (((int) $sig['out_of_stock']) > 0)) {
         $greeting_smart[] = array('topic' => 'stock', 'text' => lang(array(
-            'string' => 'Orders are running ahead of yesterday while {var:1} products sit out of stock.',
+            'string' => (((int) $sig['out_of_stock']) === 1)
+                ? 'Orders are running ahead of yesterday while {var:1} product sits out of stock.'
+                : 'Orders are running ahead of yesterday while {var:1} products sit out of stock.',
             'vars' => pg_format_number($sig['out_of_stock'], 0))));
     }
 
@@ -1374,7 +1462,9 @@ function pg_dashboard_brief($user, $changelog_sections)
     // where nothing happened at all, and no tile on this screen says it.
     if ($has_orders && ($sig['orders_today'] === 0) && (((int) $sig['carts_week']) > 0)) {
         $greeting_smart[] = array('topic' => 'carts', 'text' => lang(array(
-            'string' => 'No orders today, though {var:1} baskets were filled and left this week.',
+            'string' => (((int) $sig['carts_week']) === 1)
+                ? 'No orders today, though {var:1} basket was filled and left this week.'
+                : 'No orders today, though {var:1} baskets were filled and left this week.',
             'vars' => pg_format_number($sig['carts_week'], 0))));
     }
 
@@ -1480,9 +1570,11 @@ function pg_dashboard_brief($user, $changelog_sections)
     }
 
     if (((int) $sig['visitors_now']) > 0) {
-        $greeting_plain[] = array('topic' => 'visitors', 'text' => lang(array(
-            'string' => '{var:1} people are looking around the site right now.',
-            'vars' => pg_format_number($sig['visitors_now'], 0))));
+        $greeting_plain[] = array('topic' => 'visitors', 'text' => (((int) $sig['visitors_now']) === 1)
+            ? lang('One person is looking around the site right now.')
+            : lang(array(
+                'string' => '{var:1} people are looking around the site right now.',
+                'vars' => pg_format_number($sig['visitors_now'], 0))));
     }
 
     // Where the week's orders are coming from. The place is named rather than
@@ -1501,9 +1593,11 @@ function pg_dashboard_brief($user, $changelog_sections)
     }
 
     if (((int) $sig['new_contacts']) > 0) {
-        $greeting_plain[] = array('topic' => 'contacts', 'text' => lang(array(
-            'string' => '{var:1} new people joined your contacts this week.',
-            'vars' => pg_format_number($sig['new_contacts'], 0))));
+        $greeting_plain[] = array('topic' => 'contacts', 'text' => (((int) $sig['new_contacts']) === 1)
+            ? lang('One new person joined your contacts this week.')
+            : lang(array(
+                'string' => '{var:1} new people joined your contacts this week.',
+                'vars' => pg_format_number($sig['new_contacts'], 0))));
     }
 
     if (((int) $sig['low_stock']) > 0) {

@@ -14,7 +14,10 @@
  * way round a right the reader does not hold.
  *
  * Each tag is also a row in ws_refs, which is what lets the order screen, the
- * contact card and the product editor ask where they were talked about.
+ * contact card and the product editor ask where they were talked about. The
+ * records a note tags and those a workflow table row links to are kept there
+ * too (source note, wtable_row), each listed only to who reaches the note or
+ * the table.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -80,7 +83,7 @@ function ws_viewer($user)
 function ws_record_type_keys()
 {
     return array(
-        'order', 'product', 'product_group', 'offer',
+        'order', 'product', 'product_group', 'offer', 'cart_quote',
         'contact', 'user_account',
         'erp_account', 'invoice', 'waybill', 'receipt', 'edoc', 'erp_quote',
         'form', 'calendar_event',
@@ -105,7 +108,7 @@ function ws_record_type_keys()
  *   (ws_ai_type_scope()); workspace:read when no API scope reads the kind;
  * - change: the ws_change_types() kind that writes it, '' when the Workspace
  *   never writes it (the ERP's documents are tag-only, but a sales quote,
- *   which it adds);
+ *   which it adds; a cart quote is tag-only too);
  * - audit: the pg_audit_tables() table a Workspace write of it is recorded
  *   on (ws_change_audit_target()), '' when the trail does not follow it;
  * - quick_edit: the record drawer edits it (ws_quick_edit_types());
@@ -154,6 +157,20 @@ function ws_record_kinds()
             'change'     => 'offer',
             'audit'      => 'offers',
             'quick_edit' => true,
+            'customer'   => false,
+        ),
+        // The products and quantities sent to a customer as a link that fills
+        // their cart (cart_quotes), never the ERP's sales quote (erp_quote).
+        // Made and changed on its own screens: the Workspace writes none.
+        // Read with the order routes' scope: its screens open to the same
+        // right as the order screens.
+        'cart_quote' => array(
+            'prefixes'   => array('sepet', 'sepetteklifi', 'cartquote'),
+            'right'      => 'ecommerce',
+            'scope'      => 'orders:read',
+            'change'     => '',
+            'audit'      => '',
+            'quick_edit' => false,
             'customer'   => false,
         ),
         'contact' => array(
@@ -308,6 +325,9 @@ function ws_ref_types($viewer)
         $add('product', lang('Product'), 'bi-box-seam', array('urun', 'ürün', 'product', 'p'));
         $add('product_group', lang('Product Group'), 'bi-collection', array('grup', 'urungrubu', 'ürüngrubu', 'kategori', 'group'));
         $add('offer', lang('Offer'), 'bi-tag', array('teklif', 'kampanya', 'kupon', 'offer'));
+        // The product list sent to a customer as a link (cart_quotes): neither
+        // the offer's "teklif" nor the sales quote's "satis" picks it.
+        $add('cart_quote', lang('Cart quote'), 'bi-cart3', array('sepet', 'sepetteklifi', 'cartquote'));
     }
 
     // A contact (the address book), a user (a login) and a current account
@@ -432,7 +452,397 @@ function ws_refs_store($source_type, $source_id, $channel_id, $tokens)
 }
 
 /**
- * A money amount in minor units, as the panel prints prices.
+ * The texts whose tags ws_refs keeps, as its source_type names them:
+ * messages and tasks, and since 2026.11.0 (11.0.116) notes and the rows of
+ * workflow tables, whose tags are written once the column takes them
+ * (ws_ref_sources_ready()).
+ *
+ * @return string[]
+ */
+function ws_ref_source_types()
+{
+    return array('message', 'task', 'note', 'wtable_row');
+}
+
+/**
+ * The ids of ws_refs rows grouped by the text each tag was written in, per
+ * source of ws_ref_source_types(), each id once, in the order read. A row of
+ * any other source is left out rather than read as one of these: its id
+ * belongs to another table, and who may see it is that source's own check.
+ * That includes the '' an ENUM column keeps, under the site's non-strict
+ * sql_mode, for a value it does not list.
+ *
+ * @param array[] $rows source_type, source_id
+ * @return array source type => int[] (id => id)
+ */
+function ws_ref_sources($rows)
+{
+    $out = array_fill_keys(ws_ref_source_types(), array());
+
+    foreach ((array) $rows as $row) {
+        $type = (string) ($row['source_type'] ?? '');
+        $id = (int) ($row['source_id'] ?? 0);
+
+        if (isset($out[$type]) && ($id > 0)) {
+            $out[$type][$id] = $id;
+        }
+    }
+
+    return $out;
+}
+
+/**
+ * The seconds one run of the general job gives the backfill of older notes
+ * and table rows (ws_ref_sources_backfill_run()), and how many it reads at a
+ * time.
+ */
+define('WS_REF_BACKFILL_SECONDS', 5);
+define('WS_REF_BACKFILL_BATCH', 100);
+
+/**
+ * Does ws_refs take the tags of notes and workflow table rows: is its
+ * source_type a VARCHAR (2026.11.0, 11.0.116)? On the ENUM('message','task')
+ * of 2026.4.4 such a row would be kept as '' (the site's sql_mode is not
+ * strict), and the files land before the step runs, so their writers
+ * (ws_ref_source_write()) and the backfill wait for it. The readers need not:
+ * ws_ref_sources() leaves an unknown source out. Asked once a request.
+ *
+ * @return bool
+ */
+function ws_ref_sources_ready()
+{
+    static $ready = null;
+
+    if ($ready === null) {
+        $ready = (strtolower((string) db_value("SELECT DATA_TYPE FROM information_schema.COLUMNS
+            WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'ws_refs' AND COLUMN_NAME = 'source_type'")) === 'varchar');
+    }
+
+    return $ready;
+}
+
+/**
+ * The records a note's text tags, as ws_refs keeps them for it: the record
+ * tokens (<#order:1045>) whose sign belongs to their kind, each once, in the
+ * order written. People, departments, applications, tasks, plan items and
+ * channels are left out: only a record's own screen and a customer's history
+ * ask where it was written about. Pure.
+ *
+ * @param string $body
+ * @return array[] type, id
+ */
+function ws_note_ref_tokens($body)
+{
+    $records = array_flip(ws_record_type_keys());
+    $out = array();
+
+    foreach (ws_tokens(ws_tokens_normalise((string) $body)) as $token) {
+        if (isset($records[$token['type']]) && ($token['id'] > 0)) {
+            $out[$token['type'] . ':' . $token['id']] = array('type' => $token['type'], 'id' => $token['id']);
+        }
+    }
+
+    return array_values($out);
+}
+
+/**
+ * The records a workflow table row points at, as ws_refs keeps them for it:
+ * its record-link cells ({kind, id}) in the link columns the table has now,
+ * whose kind is a record's (ws_record_type_keys()), each once. The cell of a
+ * deleted column, kept in the row's JSON until the row is next written, does
+ * not count. Pure.
+ *
+ * @param array $columns column id => column (type), ws_wtable_columns()
+ * @param array $cells   column id => stored value
+ * @return array[] type, id
+ */
+function ws_wtable_row_ref_tokens($columns, $cells)
+{
+    $records = array_flip(ws_record_type_keys());
+    $out = array();
+
+    foreach ((array) $cells as $column_id => $value) {
+        if ((($columns[(string) $column_id]['type'] ?? '') !== 'link') || !is_array($value)) {
+            continue;
+        }
+
+        $kind = is_string($value['kind'] ?? null) ? $value['kind'] : '';
+        $id = is_numeric($value['id'] ?? null) ? (int) $value['id'] : 0;
+
+        if (isset($records[$kind]) && ($id > 0)) {
+            $out[$kind . ':' . $id] = array('type' => $kind, 'id' => $id);
+        }
+    }
+
+    return array_values($out);
+}
+
+/**
+ * Writes the record tags of notes or of workflow table rows into ws_refs,
+ * replacing what each had, as ws_refs_store() does for a message: one DELETE
+ * and one INSERT for all of them. Their channel_id is 0: a note or a table
+ * is no channel's, and a tag kept with a channel would make that channel
+ * watch the record (ws_watch_channels()). Nothing is written before the
+ * column takes the source (ws_ref_sources_ready()).
+ *
+ * @param string $source_type note | wtable_row
+ * @param array  $tags        source id => ws_note_ref_tokens() or
+ *                            ws_wtable_row_ref_tokens(); an empty list
+ *                            removes that source's rows
+ */
+function ws_ref_source_write($source_type, $tags)
+{
+    if (!in_array($source_type, array('note', 'wtable_row'), true) || empty($tags) || !ws_ref_sources_ready()) {
+        return;
+    }
+
+    $ids = array();
+    $values = array();
+    $now = time();
+
+    foreach ((array) $tags as $source_id => $tokens) {
+        if ((int) $source_id <= 0) {
+            continue;
+        }
+
+        $ids[] = (int) $source_id;
+
+        foreach ((array) $tokens as $token) {
+            $values[] = "('" . $source_type . "', '" . (int) $source_id . "', 0, '" . e($token['type']) . "', '" . (int) $token['id'] . "', '" . $now . "')";
+        }
+    }
+
+    if (empty($ids)) {
+        return;
+    }
+
+    db("DELETE FROM ws_refs WHERE source_type = '" . $source_type . "' AND source_id IN (" . implode(',', $ids) . ")");
+
+    if (!empty($values)) {
+        db("INSERT INTO ws_refs (source_type, source_id, channel_id, ref_type, ref_id, created_at)
+            VALUES " . implode(', ', $values));
+    }
+}
+
+/**
+ * The notes among $ids the reader may read (ws_note_access(): its owner, a
+ * person it is shared with, a reader of a channel it is shared in; being an
+ * administrator gives nothing), the latest changed first, each with its
+ * access; with $before, only those last changed before it. The text is read
+ * as far as a list reads it, enough for a name and an excerpt.
+ *
+ * @param array $viewer
+ * @param int[] $ids
+ * @param int   $before 0 for any
+ * @return array[] id, user_id, title, body, created_at, updated_at, access
+ */
+function ws_ref_notes_open($viewer, $ids, $before = 0)
+{
+    $ids = array_filter(array_map('intval', (array) $ids));
+    $out = array();
+
+    if (empty($ids) || !ws_notes_ready()) {
+        return $out;
+    }
+
+    $rows = (array) db_items("SELECT id, user_id, title, LEFT(body, " . (int) WS_NOTE_LIST_BODY . ") AS body, created_at, updated_at
+        FROM ws_notes
+        WHERE id IN (" . implode(',', $ids) . ")" . (((int) $before > 0) ? " AND updated_at < '" . (int) $before . "'" : '') . "
+        ORDER BY updated_at DESC, id DESC");
+    $shares = ws_note_shares_map(array_column($rows, 'id'));
+
+    foreach ($rows as $row) {
+        $row['access'] = ws_note_access($viewer, $row, $shares[(int) $row['id']] ?? array());
+
+        if ($row['access'] !== '') {
+            $out[] = $row;
+        }
+    }
+
+    return $out;
+}
+
+/**
+ * The workflow table rows among $ids whose table the reader reaches
+ * (ws_wtable_access(): its owner while in the team, a person or a channel it
+ * is shared with; being an administrator gives nothing) and that still point
+ * at one of $records (a link column deleted since, or a cell an erasure
+ * emptied, no longer counts), the latest changed first; with $before, only
+ * those last changed before it. Each comes with its table's name, the
+ * reader's access to the table and a title: its first filled text cell, else
+ * "Row n".
+ *
+ * @param array    $viewer
+ * @param int[]    $ids
+ * @param string[] $records the records asked about, as type:id
+ * @param int      $before  0 for any
+ * @return array[] id, table_id, table, access, title, updated_at
+ */
+function ws_ref_rows_open($viewer, $ids, $records, $before = 0)
+{
+    $ids = array_filter(array_map('intval', (array) $ids));
+    $records = array_flip((array) $records);
+    $out = array();
+
+    if (empty($ids) || !ws_wtables_ready()) {
+        return $out;
+    }
+
+    $tables = array();
+
+    foreach ((array) db_items("SELECT id, table_id, position, cells, updated_at FROM ws_wtable_rows
+        WHERE id IN (" . implode(',', $ids) . ")" . (((int) $before > 0) ? " AND updated_at < '" . (int) $before . "'" : '') . "
+        ORDER BY updated_at DESC, id DESC") as $row) {
+        $table_id = (int) $row['table_id'];
+
+        if (!array_key_exists($table_id, $tables)) {
+            $table = ws_wtable($table_id);
+            $access = ws_wtable_access($viewer, $table);
+            $tables[$table_id] = ($access !== '') ? array('name' => (string) $table['name'], 'access' => $access, 'columns' => ws_wtable_columns($table_id)) : null;
+        }
+
+        if ($tables[$table_id] === null) {
+            continue;
+        }
+
+        $columns = $tables[$table_id]['columns'];
+        $cells = ws_wtable_cells_decode($row['cells']);
+        $points = false;
+
+        foreach (ws_wtable_row_ref_tokens($columns, $cells) as $token) {
+            $points = $points || isset($records[$token['type'] . ':' . $token['id']]);
+        }
+
+        if (!$points) {
+            continue;
+        }
+
+        $title = '';
+
+        foreach ($columns as $column_id => $column) {
+            if (($title === '') && ($column['type'] === 'text') && is_scalar($cells[$column_id] ?? null)) {
+                $title = mb_substr(trim((string) preg_replace('/\s+/u', ' ', (string) $cells[$column_id])), 0, 140);
+            }
+        }
+
+        $out[] = array(
+            'id'         => (int) $row['id'],
+            'table_id'   => $table_id,
+            'table'      => $tables[$table_id]['name'],
+            'access'     => $tables[$table_id]['access'],
+            'title'      => ($title !== '') ? $title : lang(array('string' => 'Row {var:1}', 'vars' => (int) $row['position'])),
+            'updated_at' => (int) $row['updated_at'],
+        );
+    }
+
+    return $out;
+}
+
+/**
+ * Where the indexing of the notes and table rows saved before ws_refs took
+ * them stands, as kept in config_text (ws_refs_backfill): the source being
+ * read (note, then wtable_row), the last id done, and done once both are
+ * through. Anything else reads as the start. Pure.
+ *
+ * @param string $text
+ * @return array source, after, done
+ */
+function ws_ref_backfill_cursor($text)
+{
+    $cursor = json_decode((string) $text, true);
+    $cursor = is_array($cursor) ? $cursor : array();
+
+    return array(
+        'source' => (($cursor['source'] ?? '') === 'wtable_row') ? 'wtable_row' : 'note',
+        'after'  => max(0, (int) ($cursor['after'] ?? 0)),
+        'done'   => !empty($cursor['done']),
+    );
+}
+
+/**
+ * The cursor after a batch: on past the last id read while the batch was
+ * full; a shorter batch ends its source, the notes going on to the rows and
+ * the rows ending the work. Pure.
+ *
+ * @param array $cursor  ws_ref_backfill_cursor()
+ * @param int   $last_id the last id the batch read
+ * @param int   $read    how many it read
+ * @param int   $batch   how many it asked for
+ * @return array source, after, done
+ */
+function ws_ref_backfill_next($cursor, $last_id, $read, $batch)
+{
+    if ((int) $read >= (int) $batch) {
+        return array('source' => $cursor['source'], 'after' => (int) $last_id, 'done' => false);
+    }
+
+    return array('source' => 'wtable_row', 'after' => 0, 'done' => ($cursor['source'] === 'wtable_row'));
+}
+
+/**
+ * Writes the tags of the notes and workflow table rows saved before ws_refs
+ * took them (2026.11.0, 11.0.116), from the general job, for at most
+ * $seconds a run: the notes first, then the rows, each batch's tags replaced
+ * as a save replaces them, and the place kept in config_text after every
+ * batch, so the next run goes on where this one stopped. Once through, the
+ * marker says so and a run reads nothing more; with the marker removed, it
+ * starts again, which changes nothing that is right. Waits for the column
+ * (ws_ref_sources_ready()).
+ *
+ * @param int $seconds
+ * @return array the cursor as left (ws_ref_backfill_cursor())
+ */
+function ws_ref_sources_backfill_run($seconds = WS_REF_BACKFILL_SECONDS)
+{
+    $cursor = ws_ref_backfill_cursor(pg_config_text('ws_refs_backfill'));
+
+    if ($cursor['done'] || !pg_schema_has('config_text') || !ws_ref_sources_ready()) {
+        return $cursor;
+    }
+
+    $started = microtime(true);
+
+    while (!$cursor['done'] && ((microtime(true) - $started) < $seconds)) {
+        $tags = array();
+        $last = $cursor['after'];
+
+        if ($cursor['source'] === 'note') {
+            $rows = ws_notes_ready() ? (array) db_items("SELECT id, body FROM ws_notes
+                WHERE id > '" . $cursor['after'] . "' ORDER BY id LIMIT " . WS_REF_BACKFILL_BATCH) : array();
+
+            foreach ($rows as $row) {
+                $tags[(int) $row['id']] = ws_note_ref_tokens($row['body']);
+                $last = (int) $row['id'];
+            }
+        } else {
+            $rows = ws_wtables_ready() ? (array) db_items("SELECT id, table_id, cells FROM ws_wtable_rows
+                WHERE id > '" . $cursor['after'] . "' ORDER BY id LIMIT " . WS_REF_BACKFILL_BATCH) : array();
+            $columns = array();
+
+            foreach ($rows as $row) {
+                if (!isset($columns[(int) $row['table_id']])) {
+                    $columns[(int) $row['table_id']] = ws_wtable_columns((int) $row['table_id']);
+                }
+
+                $tags[(int) $row['id']] = ws_wtable_row_ref_tokens($columns[(int) $row['table_id']], ws_wtable_cells_decode($row['cells']));
+                $last = (int) $row['id'];
+            }
+        }
+
+        ws_ref_source_write($cursor['source'], $tags);
+
+        $cursor = ws_ref_backfill_next($cursor, $last, count($rows), WS_REF_BACKFILL_BATCH);
+
+        pg_config_text_save('ws_refs_backfill', (string) json_encode($cursor['done'] ? array('done' => 1) : $cursor));
+    }
+
+    return $cursor;
+}
+
+/**
+ * A base-currency money amount in minor units, as the panel prints prices
+ * (prepare_amount(): the base symbol, no conversion to the currency the
+ * operator's browser picked for the shop). Plain text the caller escapes.
  *
  * @param int $minor
  * @return string
@@ -441,11 +851,38 @@ function ws_money_out($minor)
 {
     // The currency symbol is kept as an HTML entity (&#8378;); the text is
     // escaped where it is printed, so it travels decoded.
-    if (function_exists('prepare_price_for_output') && defined('VISITOR_CURRENCY_EXCHANGE_RATE')) {
-        return html_entity_decode(prepare_price_for_output((int) $minor, false, 0, 'plain_text'), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    if (function_exists('prepare_amount') && defined('BASE_CURRENCY_SYMBOL')) {
+        return html_entity_decode(prepare_amount(((int) $minor) / 100), ENT_QUOTES | ENT_HTML5, 'UTF-8');
     }
 
     return function_exists('pg_format_number') ? pg_format_number(((int) $minor) / 100, 2) : number_format(((int) $minor) / 100, 2);
+}
+
+/**
+ * An ERP document's amount in minor units, in the document's own currency,
+ * as the ERP screens print it (erp_money_out_currency()). Loads the ERP
+ * money helpers alone when the module's bootstrap has not run. Plain text
+ * the caller escapes.
+ *
+ * @param int    $minor
+ * @param string $currency ISO code; '' for the base currency
+ * @return string
+ */
+function ws_erp_money_out($minor, $currency)
+{
+    if (!function_exists('erp_money_out_currency')) {
+        // The gate every file under includes/erp/ checks; the ERP bootstrap
+        // defines it the same way.
+        if (!defined('PG_ERP_ENTRY')) {
+            define('PG_ERP_ENTRY', true);
+        }
+
+        require_once(PG_FUNCTIONS_DIR . '/includes/erp/money.php');
+    }
+
+    $currency = trim((string) $currency);
+
+    return erp_money_out_currency((int) $minor, ($currency !== '') ? $currency : (defined('BASE_CURRENCY_CODE') ? BASE_CURRENCY_CODE : ''));
 }
 
 /**
@@ -538,6 +975,34 @@ function ws_erp_quotes_readable()
     }
 
     return erp_quotes_ready();
+}
+
+/**
+ * What a cart quote's tag shows a reader with the ecommerce right: its
+ * number, whom it was made for and how many lines it holds, where it stands
+ * now and its row on the cart quote list. An open quote past its last day
+ * reads as expired, as on that list: nothing writes the expired status.
+ * Pure.
+ *
+ * @param array  $row  cart_quotes row (id, status, valid_until) with its
+ *                     contact's first_name, last_name, company and its
+ *                     line_count
+ * @param int    $now
+ * @param string $base the panel's address, ending in /
+ * @return array label, url, meta, status
+ */
+function ws_cart_quote_ref($row, $now, $base)
+{
+    $person = trim(trim((string) ($row['first_name'] ?? '')) . ' ' . trim((string) ($row['last_name'] ?? '')));
+    $customer = ($person !== '') ? $person : trim((string) ($row['company'] ?? ''));
+    $lines = lang(array('string' => '{var:1} item(s)', 'vars' => array((int) ($row['line_count'] ?? 0))));
+
+    return array(
+        'label'  => lang('Cart quote') . ' #' . (int) $row['id'],
+        'url'    => $base . 'view_cart_quotes.php?id=' . (int) $row['id'],
+        'meta'   => ($customer !== '') ? $customer . ' · ' . $lines : $lines,
+        'status' => pg_cart_quote_state_label(pg_cart_quote_state($row, $now)),
+    );
 }
 
 /**
@@ -699,7 +1164,7 @@ function ws_refs_resolve($viewer, $tokens)
 
     if (!empty($ids['invoice'])) {
         $rows = (defined('ERP_ENABLED') && ERP_ENABLED)
-            ? (array) db_items("SELECT i.id, i.full_number, i.status, i.grand_total, i.doc_type, a.title AS account_title
+            ? (array) db_items("SELECT i.id, i.full_number, i.status, i.grand_total, i.currency, i.doc_type, a.title AS account_title
                 FROM erp_invoices i LEFT JOIN erp_accounts a ON a.id = i.account_id
                 WHERE i.id IN (" . $in('invoice') . ")")
             : array();
@@ -716,7 +1181,7 @@ function ws_refs_resolve($viewer, $tokens)
                 );
 
                 $put('invoice', $row['id'], lang('Invoice') . ' ' . $number, $base . 'edit_erp_invoice.php?id=' . (int) $row['id'],
-                    trim((string) $row['account_title'] . ' · ' . ws_money_out($row['grand_total']), ' ·'),
+                    trim((string) $row['account_title'] . ' · ' . ws_erp_money_out($row['grand_total'], $row['currency']), ' ·'),
                     $invoice_statuses[$row['status']] ?? (string) $row['status'], true, 'bi-receipt');
             } else {
                 $put('invoice', $row['id'], lang('Invoice'), '', '', '', false, 'bi-receipt');
@@ -784,6 +1249,31 @@ function ws_refs_resolve($viewer, $tokens)
         }
     }
 
+    if (!empty($ids['cart_quote'])) {
+        // Whom each quote was made for and how many lines it holds, in one
+        // query. The contact's name is shown to whoever opens the cart quote
+        // list, which names it too: the ecommerce right.
+        $rows = ((defined('ECOMMERCE') && ECOMMERCE === true) && pg_cart_quotes_ready())
+            ? (array) db_items("SELECT q.id, q.status, q.valid_until, c.first_name, c.last_name, c.company,
+                    (SELECT COUNT(*) FROM cart_quote_items AS i WHERE i.cart_quote_id = q.id) AS line_count
+                FROM cart_quotes AS q
+                LEFT JOIN contacts AS c ON c.id = q.contact_id
+                WHERE q.id IN (" . $in('cart_quote') . ")")
+            : array();
+
+        $now = time();
+
+        foreach ($rows as $row) {
+            if ($viewer['ecommerce']) {
+                $ref = ws_cart_quote_ref($row, $now, $base);
+
+                $put('cart_quote', $row['id'], $ref['label'], $ref['url'], $ref['meta'], $ref['status'], true, 'bi-cart3');
+            } else {
+                $put('cart_quote', $row['id'], lang('Cart quote'), '', '', '', false, 'bi-cart3');
+            }
+        }
+    }
+
     if (!empty($ids['user_account'])) {
         $roles = array(0 => lang('Administrator'), 1 => lang('Designer'), 2 => lang('Manager'), 3 => lang('User'));
 
@@ -840,7 +1330,7 @@ function ws_refs_resolve($viewer, $tokens)
 
     if (!empty($ids['receipt'])) {
         $rows = (defined('ERP_ENABLED') && ERP_ENABLED)
-            ? (array) db_items("SELECT c.id, c.doc_type, c.doc_date, c.amount, a.title AS account_title
+            ? (array) db_items("SELECT c.id, c.doc_type, c.doc_date, c.amount, c.currency, a.title AS account_title
                 FROM erp_cash_transactions c LEFT JOIN erp_accounts a ON a.id = c.account_id
                 WHERE c.id IN (" . $in('receipt') . ") AND c.doc_type IN ('collection', 'payment')")
             : array();
@@ -850,7 +1340,7 @@ function ws_refs_resolve($viewer, $tokens)
 
             if ($viewer['erp_cash']) {
                 $put('receipt', $row['id'], $title . ' #' . (int) $row['id'], $base . 'erp_receipt.php?id=' . (int) $row['id'],
-                    trim((string) $row['account_title'] . ' · ' . ws_money_out($row['amount']) . ' · ' . $date_out($row['doc_date']), ' ·'),
+                    trim((string) $row['account_title'] . ' · ' . ws_erp_money_out($row['amount'], $row['currency']) . ' · ' . $date_out($row['doc_date']), ' ·'),
                     '', true, 'bi-cash-coin');
             } else {
                 $put('receipt', $row['id'], lang('Cash receipt'), '', '', '', false, 'bi-cash-coin');
@@ -860,7 +1350,7 @@ function ws_refs_resolve($viewer, $tokens)
 
     if (!empty($ids['edoc'])) {
         $rows = (defined('ERP_ENABLED') && ERP_ENABLED)
-            ? (array) db_items("SELECT id, gib_number, supplier_title, total, issue_date, status FROM erp_edoc_inbox WHERE id IN (" . $in('edoc') . ")")
+            ? (array) db_items("SELECT id, gib_number, supplier_title, total, currency, issue_date, status FROM erp_edoc_inbox WHERE id IN (" . $in('edoc') . ")")
             : array();
 
         $statuses = array('new' => lang('New'), 'imported' => lang('Imported'), 'ignored' => lang('Ignored'));
@@ -868,7 +1358,7 @@ function ws_refs_resolve($viewer, $tokens)
         foreach ($rows as $row) {
             if ($viewer['erp']) {
                 $put('edoc', $row['id'], lang('Incoming e-invoice') . ' ' . $row['gib_number'], $base . 'erp_inbox_document.php?id=' . (int) $row['id'],
-                    trim((string) $row['supplier_title'] . ' · ' . ws_money_out($row['total']), ' ·'),
+                    trim((string) $row['supplier_title'] . ' · ' . ws_erp_money_out($row['total'], $row['currency']), ' ·'),
                     $statuses[$row['status']] ?? (string) $row['status'], true, 'bi-envelope-paper');
             } else {
                 $put('edoc', $row['id'], lang('Incoming e-invoice'), '', '', '', false, 'bi-envelope-paper');
@@ -898,7 +1388,7 @@ function ws_refs_resolve($viewer, $tokens)
                 // grand_total is in the quote's own currency (erp_quote_save()
                 // keeps the base figure apart), so it is printed in that
                 // currency, as the quote screens print it; ws_money_out()
-                // would show it in the visitor's currency.
+                // would show it under the base symbol.
                 $put('erp_quote', $row['id'], lang('Sales quote') . ' ' . $number, $base . 'edit_erp_quote.php?id=' . (int) $row['id'],
                     trim((string) $row['account_title'] . ' · ' . erp_money_out_currency((int) $row['grand_total'], (string) $row['currency']), ' ·'),
                     $statuses[$state][0] ?? $state, true, 'bi-file-earmark-text');
@@ -1072,7 +1562,7 @@ function ws_ref_search($viewer, $type, $query, $limit = 8, $only = null)
     if (($type === 'user') || ($type === 'dept')) {
         if ($type === 'user') {
             foreach (ws_team_members() as $person) {
-                if (($query === '') || (mb_stripos($person['name'], $query) !== false) || (mb_stripos($person['username'], $query) !== false)) {
+                if (($query === '') || ws_text_contains($person['name'], $query) || ws_text_contains($person['username'], $query)) {
                     $out[] = array('token' => '<@user:' . $person['id'] . '>', 'type' => 'user', 'id' => $person['id'],
                         'label' => $person['name'], 'meta' => $person['title'], 'icon' => 'bi-person', 'avatar' => $person['avatar']);
                 }
@@ -1083,7 +1573,7 @@ function ws_ref_search($viewer, $type, $query, $limit = 8, $only = null)
             }
         } else {
             foreach (ws_departments() as $department) {
-                if (($query === '') || (mb_stripos($department['name'], $query) !== false)) {
+                if (($query === '') || ws_text_contains($department['name'], $query)) {
                     $out[] = array('token' => '<@dept:' . $department['id'] . '>', 'type' => 'dept', 'id' => $department['id'],
                         'label' => $department['name'], 'meta' => lang('Department'), 'icon' => 'bi-people');
                 }
@@ -1201,6 +1691,26 @@ function ws_ref_search($viewer, $type, $query, $limit = 8, $only = null)
                 ORDER BY (status = 'enabled') DESC, id DESC LIMIT " . $limit);
             break;
 
+        case 'cart_quote':
+            // By its number (12 or #12), else by whom it was made for;
+            // newest first.
+            if (preg_match('/^#?([0-9]{1,10})$/', $query, $digits)) {
+                $where = "q.id = '" . (int) $digits[1] . "'";
+            } elseif ($query === '') {
+                $where = "1 = 1";
+            } else {
+                $where = "(c.first_name LIKE '%" . $like . "%' OR c.last_name LIKE '%" . $like . "%'
+                    OR CONCAT(c.first_name, ' ', c.last_name) LIKE '%" . $like . "%'
+                    OR c.company LIKE '%" . $like . "%' OR c.email_address LIKE '%" . $like . "%')";
+            }
+
+            $found = pg_cart_quotes_ready()
+                ? db_values("SELECT q.id FROM cart_quotes AS q LEFT JOIN contacts AS c ON c.id = q.contact_id
+                    WHERE " . $where . "
+                    ORDER BY q.id DESC LIMIT " . $limit)
+                : array();
+            break;
+
         case 'user_account':
             $found = db_values("SELECT user_id FROM user
                 WHERE (user_username LIKE '%" . $like . "%' OR user_email LIKE '%" . $like . "%'" . (($number !== '') ? " OR user_id = '" . (int) $number . "'" : '') . ")
@@ -1303,39 +1813,32 @@ function ws_ref_search($viewer, $type, $query, $limit = 8, $only = null)
  * Where a record was talked about and which tasks point at it, for the
  * "Workspace" drawer on the record's own screen. Only what the reader may
  * see is counted: a mention in a channel they cannot read is not even
- * admitted to exist.
+ * admitted to exist, nor a note or a table they do not reach.
  *
  * @param array  $viewer
  * @param string $type
  * @param int    $id
  * @param int    $limit
- * @return array messages, tasks, channels (customer channels, for a contact)
+ * @return array messages, tasks, notes, rows (of workflow tables), channels
+ *               (customer channels, for a contact), count
  */
 function ws_record_refs($viewer, $type, $id, $limit = 20)
 {
     $id = (int) $id;
-    $out = array('messages' => array(), 'tasks' => array(), 'channels' => array(), 'count' => 0);
+    $out = array('messages' => array(), 'tasks' => array(), 'notes' => array(), 'rows' => array(), 'channels' => array(), 'count' => 0);
 
     if (!$viewer['member'] || ($id <= 0)) {
         return $out;
     }
 
-    $rows = (array) db_items("SELECT r.source_type, r.source_id, r.channel_id
+    $sources = ws_ref_sources(db_items("SELECT r.source_type, r.source_id, r.channel_id
         FROM ws_refs r
         WHERE r.ref_type = '" . e($type) . "' AND r.ref_id = '" . $id . "'
         ORDER BY r.id DESC
-        LIMIT 200");
+        LIMIT 200"));
 
-    $message_ids = array();
-    $task_ids = array();
-
-    foreach ($rows as $row) {
-        if ($row['source_type'] === 'message') {
-            $message_ids[(int) $row['source_id']] = (int) $row['source_id'];
-        } else {
-            $task_ids[(int) $row['source_id']] = (int) $row['source_id'];
-        }
-    }
+    $message_ids = $sources['message'];
+    $task_ids = $sources['task'];
 
     if (!empty($message_ids)) {
         $messages = (array) db_items("SELECT m.id, m.channel_id, m.sender_id, m.body, m.kind, m.created_at, m.task_id
@@ -1394,6 +1897,34 @@ function ws_record_refs($viewer, $type, $id, $limit = 20)
             $out['tasks'][] = $brief;
             $out['count']++;
         }
+    }
+
+    // Notes and table rows that tag it: each only where the reader reaches
+    // the note or the row's table.
+    $base = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/';
+
+    foreach (ws_ref_notes_open($viewer, $sources['note']) as $note) {
+        if (count($out['notes']) < $limit) {
+            $out['notes'][] = array(
+                'id'      => (int) $note['id'],
+                'name'    => ws_note_title($viewer, $note),
+                'owner'   => ws_person_name($note['user_id']),
+                'excerpt' => ws_plain_excerpt($viewer, $note['body'], 140),
+                'time'    => ws_time_label($note['updated_at']),
+                'access'  => (string) $note['access'],
+                'url'     => $base . 'workspace_notes.php?note=' . (int) $note['id'],
+            );
+        }
+
+        $out['count']++;
+    }
+
+    foreach (ws_ref_rows_open($viewer, $sources['wtable_row'], array($type . ':' . $id)) as $row) {
+        if (count($out['rows']) < $limit) {
+            $out['rows'][] = $row + array('url' => $base . 'workspace_wtables.php?id=' . $row['table_id'] . '&row=' . $row['id'] . '#ws-wt-row-form');
+        }
+
+        $out['count']++;
     }
 
     // The channels about the customer this record is, or is tied to.

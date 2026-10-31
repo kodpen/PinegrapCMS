@@ -23,6 +23,6 @@ description: Flow list filters start, status, channel_id, updated_since and the 
 
 ## How does the Flows screen filter by start? (C4, PR #2391)
 - `ws_flow_list` (panel action) reads every listed flow's start with `ws_flows_start_kinds()` and `ws_flow_brief()` answers it as `start` ('' for no start box); `ws_flow_detail()` works it out with `ws_flow_start_graph()`, so `listEntry()` keeps it after a save.
-- `drawList()` puts a select over the list (`startFilter()`, `state.startFilter`, filtered in the browser): every start, time, manual, event, join. A part left empty says "No flow starts this way."
+- The flow list filters by start in the browser with chips (Time, By hand, Event, Join): `workspace-flows-list.md`.
 
 Related: docs/memory/workspace/workspace-flows-store.md, docs/memory/workspace/workspace-flows-anchors.md

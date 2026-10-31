@@ -88,10 +88,15 @@ function ws_api_channel_customer($params)
  * @param array|null $identity ws_customer_identity()
  * @param array      $summary  ws_customer_summary()
  * @param string     $origin   scheme and host the panel's addresses are made whole with
+ * @param string|null $base     the panel's path, ending in /; null for this site's
  * @return array
  */
-function ws_api_channel_customer_present($channel, $identity, $summary, $origin)
+function ws_api_channel_customer_present($channel, $identity, $summary, $origin, $base = null)
 {
+    if ($base === null) {
+        $base = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/';
+    }
+
     $record = function ($item) use ($origin) {
         return ws_api_customer_record_present($item, $origin);
     };
@@ -103,6 +108,7 @@ function ws_api_channel_customer_present($channel, $identity, $summary, $origin)
         'orders'       => isset($summary['orders']) ? ws_api_customer_orders_present($summary['orders']) : null,
         'erp_accounts' => isset($summary['erp_accounts']) ? array_map('ws_api_customer_account_present', $summary['erp_accounts']) : null,
         'sales_quotes' => isset($summary['sales_quotes']) ? ws_api_customer_quotes_present($summary['sales_quotes']) : null,
+        'cart_quotes'  => isset($summary['cart_quotes']) ? ws_api_customer_cart_quotes_present($summary['cart_quotes'], $origin, $base) : null,
         'forms'        => isset($summary['forms']) ? array_map('ws_api_customer_form_present', $summary['forms']) : null,
     );
 }
@@ -117,6 +123,7 @@ function ws_api_channel_customer_schema()
         'orders'       => 'WorkspaceCustomerOrders?',
         'erp_accounts' => 'WorkspaceCustomerAccount[]?',
         'sales_quotes' => 'WorkspaceCustomerQuotes?',
+        'cart_quotes'  => 'WorkspaceCustomerCartQuotes?',
         'forms'        => 'WorkspaceCustomerForm[]?',
     );
 }
@@ -269,6 +276,64 @@ function ws_api_customer_quote_schema()
         'currency'      => 'string',
         'total'         => 'integer',
         'total_text'    => 'string',
+    );
+}
+
+/**
+ * The customer's open cart quotes: how many, and the latest with the panel's
+ * address of each. A cart quote holds quantities only, priced when it fills a
+ * cart, so it has no amount; the link's token and its hint never leave.
+ *
+ * @param array  $section ws_customer_summary_build()'s cart_quotes
+ * @param string $origin  see ws_api_channel_customer_present()
+ * @param string $base    the panel's path, ending in /
+ * @return array
+ */
+function ws_api_customer_cart_quotes_present($section, $origin, $base)
+{
+    $latest = array();
+
+    foreach ((array) $section['latest'] as $row) {
+        $latest[] = ws_api_customer_cart_quote_present($row, $origin, $base);
+    }
+
+    return array(
+        'count'  => (int) $section['count'],
+        'latest' => $latest,
+    );
+}
+
+// What ws_api_customer_cart_quotes_present() returns.
+function ws_api_customer_cart_quotes_schema()
+{
+    return array(
+        'count'  => 'integer',
+        'latest' => 'WorkspaceCustomerCartQuote[]',
+    );
+}
+
+function ws_api_customer_cart_quote_present($row, $origin, $base)
+{
+    return array(
+        'id'          => (int) $row['id'],
+        'state'       => (string) $row['state'],
+        'lines'       => (int) $row['lines'],
+        'valid_until' => ((int) $row['valid_until'] > 0) ? api_time($row['valid_until']) : null,
+        'created_at'  => api_time($row['created_at']),
+        'url'         => ws_api_inbox_url($base . 'view_cart_quotes.php?id=' . (int) $row['id'], $origin),
+    );
+}
+
+// What ws_api_customer_cart_quote_present() returns.
+function ws_api_customer_cart_quote_schema()
+{
+    return array(
+        'id'          => 'integer',
+        'state'       => 'string',
+        'lines'       => 'integer',
+        'valid_until' => 'string?',
+        'created_at'  => 'string?',
+        'url'         => 'string',
     );
 }
 

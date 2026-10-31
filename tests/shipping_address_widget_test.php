@@ -83,6 +83,9 @@ function test_shipping_address_widget_flags()
 	$off = pg_sa_flags(false, true, true, true);
 	pg_assert_true($off['no_recipient'] && $off['is_multi_recipient'], 'no recipient');
 	pg_assert_false($off['has_arrival_dates'] || $off['has_custom_form'], 'the form blocks need a recipient');
+	pg_assert_false($on['has_verified_addresses'], 'no verified address, no help box');
+	pg_assert_true(pg_sa_flags(true, false, false, false, true)['has_verified_addresses'], 'verified addresses show the help box');
+	pg_assert_false(pg_sa_flags(false, false, false, false, true)['has_verified_addresses'], 'the help box needs a recipient');
 }
 
 function test_shipping_address_widget_arrival_row_names()
@@ -139,4 +142,60 @@ function test_shipping_address_widget_registered()
 	pg_assert_contains("shipping_address_and_arrival: SW_SHIPPING_ADDRESS_TOKEN_GROUPS", $js, 'has a token palette');
 	$handler = (string) file_get_contents(PG_FUNCTIONS_DIR . '/shipping_address_and_arrival.php');
 	pg_assert_contains('shipping_address_and_arrival_pages.page_id IS NOT NULL', $handler, 'the handler takes a designed page with a row');
+}
+
+function test_shipping_address_widget_verified_box()
+{
+	$html = pg_sa_verified_box_html('pg-sa-verified-w4', array(array('', ''), array('US', 'United States'), array('XX', 'Bad <b> & "co"')), 'US');
+	pg_assert_contains('id="pg-sa-verified-w4"', $html, 'the box carries its id');
+	pg_assert_contains('<option value="US" selected>United States</option>', $html, 'the default country is chosen');
+	pg_assert_contains('Bad &lt;b&gt; &amp; &quot;co&quot;', $html, 'a country label is escaped');
+	pg_assert_false(strpos($html, '<b>') !== false, 'no raw markup from a label');
+	pg_assert_false(strpos($html, ' name=') !== false, 'the pick lists post nothing');
+	foreach (array('country', 'state', 'address', 'message', 'summary', 'use') as $part) {
+		pg_assert_contains('data-pg-sa-v="' . $part . '"', $html, 'the script finds ' . $part);
+	}
+	pg_assert_contains('type="button"', $html, 'the button does not submit the form');
+	pg_assert_same(1, substr_count($html, '<option value=""></option>'), 'one empty country choice');
+}
+
+function test_shipping_address_widget_verified_script()
+{
+	$js = pg_sa_verified_script('pg-sa-form-w4', 'pg-sa-verified-w4', array(array('7', 'California', 'US')), array(array(
+		'id' => '3', 'label' => 'Acme</script>, LA', 'company' => 'Acme</script>', 'address_1' => '1 Main', 'address_2' => '',
+		'city' => 'LA', 'state_id' => '7', 'state_code' => 'CA', 'zip_code' => '90001', 'country_code' => 'US', 'country_name' => 'United States')));
+	pg_assert_contains('getElementById("pg-sa-form-w4")', $js, 'scoped to the widget form');
+	pg_assert_contains('getElementById("pg-sa-verified-w4")', $js, 'and to its box');
+	pg_assert_false(strpos($js, 'Acme</script>') !== false, 'an address cannot close the script');
+	pg_assert_contains('"fields":["company","address_1","address_2","city","zip_code","country","state"]', $js, 'the controls it fills');
+	pg_assert_contains('textContent', $js, 'the picked address is written as text');
+	pg_assert_false(strpos($js, 'innerHTML=a') !== false || strpos($js, 'innerHTML=t') !== false, 'never as markup');
+}
+
+function test_shipping_address_widget_verified_fill_names()
+{
+	$fields = pg_sa_verified_fill_fields();
+	pg_assert_same(array(), array_values(array_diff($fields, pg_sa_address_fields())), 'every filled control is an address control of the widget');
+	pg_assert_true(array_search('country', $fields) < array_search('state', $fields), 'the country is set before the state');
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
+	$from = strpos($js, "case 'shipping_address_and_arrival': {");
+	$to = strpos($js, "case 'wishlist': {", (int)$from);
+	pg_assert_true($from !== false && $to !== false, 'the starter tree is found');
+	$starter = substr($js, (int)$from, (int)$to - (int)$from);
+	foreach ($fields as $f) {
+		pg_assert_true(strpos($starter, "'" . $f . "'") !== false, 'the starter has a control named ' . $f);
+	}
+}
+
+function test_shipping_address_widget_verified_starter()
+{
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
+	$from = strpos($js, "case 'shipping_address_and_arrival': {");
+	$starter = substr($js, (int)$from, (int)strpos($js, "case 'wishlist': {", (int)$from) - (int)$from);
+	pg_assert_contains("eo_visible_if: 'has_verified_addresses'", $starter, 'the help box is shown by the flag');
+	pg_assert_contains("section: 'verified_addresses'", $starter, 'the starter places the server-drawn section');
+	pg_assert_contains("_sectionOpts.push(['verified_addresses'", $js, 'the section can be bound in the designer');
+	$php = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/widgets_shipping_address.php');
+	pg_assert_contains("'verified_addresses' => ''", $php, 'the renderer fills the same section');
+	pg_assert_contains("'has_verified_addresses' =>", $php, 'and sets the same flag');
 }

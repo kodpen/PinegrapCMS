@@ -6,6 +6,7 @@ description: Workflow table rows (wtable_rows.php, T1b): add, change, delete, mo
 ## Where are rows read and written?
 - `includes/workspace/wtable_rows.php`, loaded after `wtables.php`. Each write has a `*_check()` the API's dry run will call: `ws_wtable_row_create`, `_update`, `_delete`, `_move`; access `write` (edit+) or 404. Reads: `ws_wtable_row()` (stored), `ws_wtable_rows()` (in order, as read). Tests `tests/workspace_wtable_rows_test.php`.
 - Input: `cells` (column id => value), `revision`, `position` (move, 1-based). Cell refusals answer `cells_invalid` (422) with `errors` by column id.
+- Every add, change and delete (an import adds through the create) keeps the row's record links in `ws_refs` as source `wtable_row`, channel 0; a table delete drops its rows' (`workspace-ref-sources.md`, #3135).
 
 ## How are row_count and the limit kept?
 - Add: `UPDATE ws_wtables SET row_count = row_count + 1 … AND row_count < 5000` first; no affected row is `too_many_rows` (409), so two adds at once cannot pass the limit. A failed INSERT gives the count back.

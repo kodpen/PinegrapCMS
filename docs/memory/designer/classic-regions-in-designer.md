@@ -18,7 +18,7 @@ description: Where each classic region type goes in the visual designer (common,
 
 ## What did the owner answer on 2026-10-27?
 - A role-3 user granted a component but no folder edit right opens the component on its own in the designer (`shared-component-opened-alone.md`). Reason: their right is on the component, not on any page.
-- A converted common region's source is the shared component; the `cregion` row is kept unread until the legacy designer retires. Reason: one source of truth, so a classic and a converted page never show two versions.
+- A converted common region's source is the shared component; the `cregion` row is kept unread, and it stays after the legacy designer retires (#3156, `workflow/decisions-made-product-3.md`). Reason: one source of truth, so a classic and a converted page never show two versions.
 - Front-end inline editing of common and page regions ends for converted content. Reason: one editor for designed content, the one that keeps content rights (`_editable`, the merge gate).
 
 ## What is still open?

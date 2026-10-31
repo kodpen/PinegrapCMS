@@ -30,6 +30,13 @@ $report = (defined('ECOMMERCE') && (ECOMMERCE === true))
     ? pg_product_feed_refresh()
     : array('error' => 'ecommerce_off', 'formats' => array());
 
+// Google Merchant Center's product issues, read again once the cached
+// reading is older than PG_MERCHANT_ISSUES_TTL; nothing while no Merchant
+// Center account is chosen.
+if (function_exists('pg_merchant_refresh_issues')) {
+    pg_merchant_refresh_issues();
+}
+
 if (function_exists('pg_cron_ran')) {
     pg_cron_ran('product_feed_job');
 }

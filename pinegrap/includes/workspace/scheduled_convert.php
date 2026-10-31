@@ -332,14 +332,18 @@ function ws_scheduled_flow_new($viewer, $channel_id, $data = array())
 
 /**
  * The two boxes of Add › Scheduled flow as the mini window draws them before
- * anything is written (ws_flow_card_graph()), with the start's settings the
- * form opens on. Only where the person may post and build flows.
+ * anything is written (ws_flow_card_graph()), each with its dry run as its
+ * third line, tried with the person's own rights on the flow in memory
+ * (ws_flow_card_try_flow()), with the start's settings the form opens on.
+ * What the form holds so far (ws_scheduled_flow_fill()) is drawn and tried
+ * in place of the defaults. Only where the person may post and build flows.
  *
  * @param array $viewer
  * @param int   $channel_id
+ * @param array $fill ws_scheduled_flow_fill(), none for the first drawing
  * @return array ok, error, graph, start
  */
-function ws_scheduled_flow_sketch($viewer, $channel_id)
+function ws_scheduled_flow_sketch($viewer, $channel_id, $fill = array())
 {
     $channel = ws_channel((int) $channel_id);
 
@@ -347,9 +351,10 @@ function ws_scheduled_flow_sketch($viewer, $channel_id)
         return array('ok' => false, 'error' => lang('That channel could not be found.'), 'graph' => null, 'start' => null);
     }
 
-    $graph = ws_scheduled_flow_graph($channel['id'], date('Y-m-d'));
+    $graph = ws_scheduled_flow_graph($channel['id'], date('Y-m-d'), $fill);
+    $flow = ws_flow_card_try_flow($viewer, 'new', $graph, null, false, (string) ($fill['name'] ?? lang('Scheduled flow')));
 
-    return array('ok' => true, 'error' => '', 'graph' => ws_flow_card_graph($graph), 'start' => $graph['nodes'][0]['config']);
+    return array('ok' => true, 'error' => '', 'graph' => ws_flow_card_tries($viewer, $flow, ws_flow_card_graph($graph)), 'start' => $graph['nodes'][0]['config']);
 }
 
 /**

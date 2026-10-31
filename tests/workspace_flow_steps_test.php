@@ -199,7 +199,7 @@ function test_workspace_flow_steps_types()
 	$steps = array_keys(ws_scheduled_outcomes()) ? ws_step_kinds() : array();
 
 	foreach ($steps as $kind => $info) {
-		pg_assert_true(in_array($info['type'], array('post', 'email', 'notify', 'task', 'webhook', 'web_check', 'task_digest', 'report', 'checkin', 'trigger', 'change', 'lead', 'approval', 'mcp'), true), $kind);
+		pg_assert_true(in_array($info['type'], array('post', 'email', 'notify', 'task', 'webhook', 'web_check', 'task_digest', 'report', 'checkin', 'trigger', 'change', 'lead', 'approval', 'mcp', 'row_add', 'row_set'), true), $kind);
 		pg_assert_same(array(), array_diff($info['lines'], $info['texts']), $kind . ': one-line texts are texts');
 	}
 
@@ -389,6 +389,13 @@ function test_workspace_flow_steps_change_config()
 	pg_assert_same(array('type' => 'change', 'record' => 'page', 'action' => 'delete', 'id' => 4, 'fields' => array()),
 		ws_step_action('change', ws_step_config_normalize('change', array('record' => 'page', 'action' => 'delete', 'id' => 4))));
 
+	// Where a proposed change is asked is the box's own setting, kept with
+	// it and left out of the scheduled step.
+	$asked = ws_step_config_normalize('change', array('record' => 'contact', 'id' => 4, 'channel_id' => '9', 'closes_in' => '9999'));
+	pg_assert_same(9, $asked['channel_id']);
+	pg_assert_same(WS_STEP_APPROVAL_CLOSES_MAX, $asked['closes_in']);
+	pg_assert_same('', ws_step_config_normalize('change', array())['closes_in']);
+
 	// ws_scheduled_change() reads the channel of the action that runs it: a
 	// box has none, so no decision is posted under a scheduled action's name;
 	// a converted action's run is that action, its card and channel.
@@ -496,7 +503,7 @@ function test_workspace_flow_steps_try_writes_nothing()
 		pg_assert_true(strpos($try, $call) === false, $call);
 	}
 
-	foreach (array('ws_step_check($owner', 'ws_flow_condition_check($owner', 'ws_flow_anchor_check($owner', 'ws_scheduled_rules_hold($owner', 'ws_step_try_texts(', 'ws_step_node_values(', "'edit'", 'ws_can_schedule($owner)') as $call) {
+	foreach (array('ws_step_check($owner', 'ws_flow_condition_check($owner', 'ws_flow_anchor_check($owner', 'ws_scheduled_rules_hold($owner', 'ws_step_try_texts(', 'ws_step_node_values(', "'edit'", 'ws_flow_builder($owner)', 'ws_flow_member_box_refusal(') as $call) {
 		pg_assert_contains($call, $try);
 	}
 
@@ -645,9 +652,9 @@ function test_workspace_flow_steps_scheduled_texts()
 	pg_assert_false((bool) preg_match('~ws_scheduled_fill\([^;]*\$action\[\'question\'\]~', $source));
 
 	foreach ($kinds as $kind => $info) {
-		// An MCP box's arguments go to the tool as filled, in no scheduled
-		// action's step.
-		if (($info['texts'] !== array()) && !in_array($kind, array('checkin', 'mcp'), true)) {
+		// An MCP box's arguments go to the tool as filled, and a table box's
+		// cells and row to the table's store, in no scheduled action's step.
+		if (($info['texts'] !== array()) && !in_array($kind, array('checkin', 'mcp', 'row_add', 'row_set'), true)) {
 			pg_assert_true(isset($map[$kind]), $kind . ' has its line');
 		}
 	}
@@ -722,7 +729,7 @@ function test_workspace_flow_steps_mcp_kind()
 	pg_assert_same(array('result', 'duration_ms'), array_column(ws_step_outputs('mcp', ws_step_config_normalize('mcp', array())), 'key'));
 	pg_assert_same(array('text', 'number'), array_column($kinds['mcp']['outputs'], 'type'));
 	pg_assert_true(ws_flow_kinds()['mcp']['step'], 'a step box');
-	pg_assert_same(array('done', 'failed'), ws_flow_kinds()['mcp']['outcomes']);
+	pg_assert_same(array('done', 'failed', 'rejected', 'expired', 'withdrawn'), ws_flow_kinds()['mcp']['outcomes'], 'a call that asks first leaves on how its request ended');
 	pg_assert_same(array('duration_ms' => 40), ws_step_outputs_shown('mcp', array('result' => 'secret', 'duration_ms' => 40), false));
 	pg_assert_same(array('result' => 'secret', 'duration_ms' => 40), ws_step_outputs_shown('mcp', array('result' => 'secret', 'duration_ms' => 40), true));
 
@@ -743,13 +750,14 @@ function ws_flow_kind_catalogue_for_test()
 }
 
 // Its settings: the arguments kept as JSON text, an object given as one
-// written as its JSON; a box without server, tool or an object is named.
+// written as its JSON, the channel and deadline of a call that asks first;
+// a box without server, tool or an object is named.
 function test_workspace_flow_steps_mcp_config()
 {
-	pg_assert_same(array('server_id' => 7, 'tool' => 'search', 'arguments' => '{"q":"x"}'), ws_step_config_normalize('mcp', array('server_id' => '7', 'tool' => " search\n", 'arguments' => '{"q":"x"}', 'other' => 1)));
+	pg_assert_same(array('server_id' => 7, 'tool' => 'search', 'arguments' => '{"q":"x"}', 'channel_id' => 0, 'closes_in' => ''), ws_step_config_normalize('mcp', array('server_id' => '7', 'tool' => " search\n", 'arguments' => '{"q":"x"}', 'other' => 1)));
 	pg_assert_same('{"q":"a/b","n":2}', ws_step_config_normalize('mcp', array('arguments' => array('q' => 'a/b', 'n' => 2)))['arguments']);
 	pg_assert_same('{}', ws_step_config_normalize('mcp', array('arguments' => array()))['arguments']);
-	pg_assert_same(array('server_id' => 0, 'tool' => '', 'arguments' => ''), ws_step_config_normalize('mcp', array('arguments' => null)));
+	pg_assert_same(array('server_id' => 0, 'tool' => '', 'arguments' => '', 'channel_id' => 0, 'closes_in' => ''), ws_step_config_normalize('mcp', array('arguments' => null)));
 
 	pg_assert_same(array(), ws_step_mcp_arguments(''));
 	pg_assert_same(array('q' => ''), ws_step_mcp_arguments('{"q": "{{node.a.text}}"}'), 'a value inside quotes');
@@ -764,9 +772,11 @@ function test_workspace_flow_steps_mcp_config()
 	pg_assert_same(2, count(ws_step_config_problems('mcp', ws_step_config_normalize('mcp', array('tool' => 'search', 'arguments' => '[1]')), 'B')));
 }
 
-// Only a tool that runs without an approval: one the server says reads, or
-// the administrator declared; one that asks first, or is off, is refused.
-function test_workspace_flow_steps_mcp_refuses_write_tools()
+// A tool that is turned on: one the server says reads, one the
+// administrator declared, and one that asks first (each call then waits for
+// the owner's approval, tests/workspace_flow_mcp_asks_test.php); one that is
+// off is refused.
+function test_workspace_flow_steps_mcp_tools_turned_on()
 {
 	require_once(PG_FUNCTIONS_DIR . '/includes/workspace/mcp.php');
 
@@ -774,7 +784,7 @@ function test_workspace_flow_steps_mcp_refuses_write_tools()
 
 	pg_assert_same('', ws_step_mcp_tool_problem($server, 'search'));
 	pg_assert_same('', ws_step_mcp_tool_problem($server, 'fetch'));
-	pg_assert_contains('asks before each call', ws_step_mcp_tool_problem($server, 'create_page'));
+	pg_assert_same('', ws_step_mcp_tool_problem($server, 'create_page'));
 	pg_assert_contains('is not turned on', ws_step_mcp_tool_problem($server, 'delete_page'));
 	pg_assert_contains('is not turned on', ws_step_mcp_tool_problem($server, 'missing'));
 
@@ -839,4 +849,65 @@ function test_workspace_flow_steps_mcp_form_servers()
 	pg_assert_same(array('fetch', 'search'), array_column($out[0]['tools'], 'name'), 'the tools that read, by name');
 	pg_assert_same(200, mb_strlen($out[0]['tools'][1]['description'], 'UTF-8'), 'a description cut at a character');
 	pg_assert_same(array('create_page'), $out[0]['asks'], 'a tool that asks first is named, not offered');
+}
+
+// A role-3 member's change box proposes its change: checked with the
+// owner's rights and the channel to ask in, asked instead of written, and
+// written only from the approved effect after the change is checked again.
+function test_workspace_flow_steps_change_proposed_by_a_member_owner()
+{
+	$check = ws_flow_steps_test_source('ws_step_check');
+	pg_assert_contains('ws_flow_change_asks(ws_flow_builder_kind($viewer))', $check);
+	pg_assert_contains('ws_step_change_ask_check($viewer', $check);
+
+	$run = ws_flow_steps_test_source('ws_step_run');
+	pg_assert_contains('ws_step_change_ask($owner', $run);
+	pg_assert_true(strpos($run, 'ws_step_change_approved_write(') < strpos($run, 'ws_step_mcp_approved_call('), 'an approved change is written, never called as a tool');
+	pg_assert_true(strpos($run, 'ws_step_change_ask($owner') < strpos($run, 'ws_scheduled_do($owner'), 'a proposing box asks before any write');
+
+	$write = ws_flow_steps_test_source('ws_step_change_approved_write');
+	pg_assert_contains('e(ws_flow_approved_key($approval_id))', $write);
+	pg_assert_true(strpos($write, 'ws_step_change_reach_check($owner') < strpos($write, 'ws_scheduled_do($owner'), 'a lost right stops the write');
+	pg_assert_contains('ws_step_starter_refusal($run', $write);
+
+	// The starter is held to the change alone, not to the owner's channel.
+	pg_assert_contains("\$check = 'ws_step_change_reach_check'", ws_flow_steps_test_source('ws_step_starter_refusal'));
+
+	$try = ws_flow_steps_test_source('ws_flow_box_try');
+	pg_assert_contains('ws_step_change_ask_said(', $try);
+}
+
+// Staff change boxes write as publishing decided.
+function test_workspace_flow_steps_change_written_directly_for_staff()
+{
+	pg_assert_true(!ws_flow_change_asks(ws_flow_builder_kind(array('member' => true, 'role' => 2))));
+	pg_assert_true(ws_flow_change_asks(ws_flow_builder_kind(array('member' => true, 'role' => 3))));
+}
+
+// A rejected, expired or withdrawn proposal fails the box; approved makes it
+// ready to write; an open one keeps it waiting.
+function test_workspace_flow_steps_change_proposal_settlement()
+{
+	pg_assert_same(array('status' => '', 'outcome' => ''), ws_flow_change_asked_settlement('', false));
+	pg_assert_same(array('status' => '', 'outcome' => ''), ws_flow_change_asked_settlement('approved', false));
+
+	foreach (array('rejected', 'expired', 'withdrawn', null) as $outcome) {
+		pg_assert_same(array('status' => 'failed', 'outcome' => 'failed'), ws_flow_change_asked_settlement($outcome, false), (string) $outcome);
+		pg_assert_same(array('status' => 'done', 'outcome' => 'failed'), ws_flow_change_asked_settlement($outcome, true), (string) $outcome);
+	}
+
+	$recheck = ws_flow_steps_test_source('ws_flow_approval_recheck');
+	pg_assert_contains('($mcp || $change) && ($outcome === \'approved\')', $recheck);
+	pg_assert_contains('ws_flow_change_asked_settlement($outcome', $recheck);
+}
+
+// The words a change box asks with: the flow, the approver, the change; a
+// tag stays text and long words are cut to the room.
+function test_workspace_flow_steps_change_ask_text()
+{
+	$text = ws_step_change_ask_text('Change <#contact:4>: Name → “Ada”', 'Leads', 'Jane', '', 500);
+	pg_assert_contains('Flow “Leads” proposes this change and waits for Jane to approve it.', $text);
+	pg_assert_contains("<\u{2060}#contact:4>", $text);
+	pg_assert_contains('started by Sam', ws_step_change_ask_text('x', 'Leads', 'Jane', 'Sam', 500));
+	pg_assert_true(mb_strlen(ws_step_change_ask_text(str_repeat('y', 900), 'Leads', 'Jane', '', 200)) <= 200);
 }

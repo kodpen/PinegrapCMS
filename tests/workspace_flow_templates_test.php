@@ -437,3 +437,244 @@ function test_workspace_flow_templates_chain_is_a_manual_start()
 	pg_assert_same(lang('{{source}} finished: {{source_result}}'), $chain['graph']['nodes'][1]['config']['text'], 'says which flow finished');
 	pg_assert_true(strpos($chain['help'], 'Start a flow') !== false, 'the line names the box that starts it');
 }
+
+/* ---------------------------------------------------------------------------
+   Templates saved on the site (flow_templates_saved.php)
+   --------------------------------------------------------------------------- */
+
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_templates_saved.php');
+
+// A draft as a person built it: a time, a channel, people, an address, a
+// site checked and a chat hook whose address holds its secret.
+function ws_flow_templates_test_draft()
+{
+	return ws_flow_graph_normalize(array('v' => 1, 'nodes' => array(
+		array('id' => 'start', 'kind' => 'schedule', 'x' => 0, 'y' => 0, 'config' => array('date' => '2026-11-02', 'time' => '07:45', 'repeat' => 'daily')),
+		array('id' => 'check', 'kind' => 'web_check', 'x' => 256, 'y' => 0, 'config' => array('url' => 'https://ops:hunter2@shop.example.com/health', 'mode' => 'status')),
+		array('id' => 'hook', 'kind' => 'webhook', 'x' => 512, 'y' => 0, 'config' => array('url' => 'https://hooks.slack.com/services/T0/B0/secret', 'text' => 'Down: {{node.check.text}}')),
+		array('id' => 'say', 'kind' => 'post', 'x' => 512, 'y' => 112, 'config' => array('channel_id' => 12, 'body' => 'Down: {{node.check.text}}')),
+		array('id' => 'tell', 'kind' => 'notify', 'x' => 512, 'y' => 224, 'config' => array('user_ids' => array(4, 8), 'text' => 'Down')),
+		array('id' => 'other', 'kind' => 'notify', 'x' => 768, 'y' => 224, 'config' => array('user_ids' => array(3), 'text' => 'Also')),
+		array('id' => 'mail', 'kind' => 'email', 'x' => 512, 'y' => 336, 'config' => array('to' => 'ops@example.com', 'subject' => 'Down', 'body' => 'Down')),
+	), 'edges' => array(
+		array('from' => 'start', 'to' => 'check', 'on' => 'next'),
+		array('from' => 'check', 'to' => 'hook', 'on' => 'failed'),
+		array('from' => 'check', 'to' => 'say', 'on' => 'failed'),
+		array('from' => 'check', 'to' => 'tell', 'on' => 'failed'),
+		array('from' => 'tell', 'to' => 'other', 'on' => 'done'),
+		array('from' => 'check', 'to' => 'mail', 'on' => 'failed'),
+	), 'notes' => array()));
+}
+
+// Secrets in box settings are never saved: a hook's address is dropped, a
+// password in an address is taken out; threads stay.
+function test_workspace_flow_templates_saved_drop_secrets()
+{
+	$graph = ws_flow_template_secrets_dropped(ws_flow_templates_test_draft());
+	$by_id = array_column($graph['nodes'], null, 'id');
+
+	pg_assert_same('', $by_id['hook']['config']['url'], 'the hook address is dropped');
+	pg_assert_same('https://shop.example.com/health', $by_id['check']['config']['url'], 'no user and password in an address');
+	pg_assert_same('Down: {{node.check.text}}', $by_id['hook']['config']['text'], 'threads are kept');
+	pg_assert_same(2, count(ws_flow_template_threads($graph)), 'two boxes read the check');
+	pg_assert_false(strpos(json_encode($graph), 'hunter2') !== false || strpos(json_encode($graph), 'secret') !== false, 'no secret anywhere');
+}
+
+// The values in the boxes become the settings Use asks, one per type, the
+// boxes holding the first box's value as its targets.
+function test_workspace_flow_templates_saved_settings_extracted()
+{
+	$graph = ws_flow_template_secrets_dropped(ws_flow_templates_test_draft());
+	$settings = array_column(ws_flow_template_settings_of($graph), 'targets', 'type');
+
+	pg_assert_same(array('time', 'url', 'channel', 'person', 'address'), array_keys($settings), 'one setting per type, in box order');
+	pg_assert_same(array(array('start', 'time')), $settings['time']);
+	pg_assert_same(array(array('check', 'url')), $settings['url'], 'the hook keeps its own (empty) address');
+	pg_assert_same(array(array('say', 'channel_id')), $settings['channel']);
+	pg_assert_same(array(array('tell', 'user_ids')), $settings['person'], 'a box with other people keeps them');
+	pg_assert_same(array(array('mail', 'to')), $settings['address']);
+
+	// Values the setup cannot give are no setting: any channel, the channel
+	// joined, nobody, a value read from an earlier box.
+	$empty = ws_flow_graph_normalize(array('v' => 1, 'nodes' => array(
+		array('id' => 'start', 'kind' => 'join', 'config' => array('channel_id' => 0)),
+		array('id' => 'say', 'kind' => 'post', 'config' => array('channel_id' => -1, 'body' => 'Hi')),
+		array('id' => 'tell', 'kind' => 'notify', 'config' => array('user_ids' => array(), 'text' => 'x')),
+		array('id' => 'mail', 'kind' => 'email', 'config' => array('to' => '{{trigger.email}}', 'subject' => 'x', 'body' => 'x')),
+	), 'edges' => array(), 'notes' => array()));
+	pg_assert_same(array(), ws_flow_template_settings_of($empty), 'nothing to ask');
+
+	// A hook's dropped address is asked when it is the first address.
+	$hook = ws_flow_graph_normalize(array('v' => 1, 'nodes' => array(
+		array('id' => 'start', 'kind' => 'manual', 'config' => array()),
+		array('id' => 'hook', 'kind' => 'webhook', 'config' => array('url' => 'https://hooks.example.com/abc', 'text' => 'x')),
+	), 'edges' => array(array('from' => 'start', 'to' => 'hook', 'on' => 'next')), 'notes' => array()));
+	$asked = ws_flow_template_settings_of(ws_flow_template_secrets_dropped($hook));
+	pg_assert_same(array(array('type' => 'url', 'targets' => array(array('hook', 'url')))), $asked, 'the hook address is asked');
+}
+
+// A saved row read back as a gallery entry: its key, the saved category,
+// counts and motion computed, settings kept only where they still point.
+function test_workspace_flow_templates_saved_entry()
+{
+	$graph = ws_flow_template_secrets_dropped(ws_flow_templates_test_draft());
+	$settings = ws_flow_template_settings_of($graph);
+	$settings[] = array('type' => 'person', 'targets' => array(array('gone', 'user_ids')));
+	$settings[] = array('type' => 'colour', 'targets' => array(array('say', 'body')));
+
+	$entry = ws_flow_template_saved_entry(array('id' => 42, 'template_key' => 'site_42', 'category' => 'site', 'title' => 'Site down', 'help' => 'Tells us',
+		'icon' => '', 'graph' => json_encode($graph), 'settings' => json_encode($settings), 'source_flow_id' => 3, 'created_by' => 5, 'updated_at' => 100),
+		array('id' => 9, 'role' => 3, 'member' => true));
+
+	pg_assert_same('site_42', $entry['key']);
+	pg_assert_same('saved', $entry['category'], 'listed under saved on this site');
+	pg_assert_same('site', $entry['saved']['category'], 'its own category kept');
+	pg_assert_same('schedule', $entry['start']);
+	pg_assert_same(7, $entry['boxes']);
+	pg_assert_same(2, $entry['threads']);
+	pg_assert_same(7, count($entry['motion']['boxes']));
+	pg_assert_same(5, count($entry['settings']), 'unknown types and gone boxes left out');
+	pg_assert_false($entry['saved']['edit'], 'somebody else may not change it');
+	pg_assert_true(isset(ws_flow_template_categories()['saved']), 'the gallery has the category');
+
+	// A built-in key is never a saved one.
+	pg_assert_same('site_42', ws_flow_template_saved_key(42));
+	$builtin = array_column(ws_flow_templates(ws_flow_templates_test_fill()), 'key');
+	pg_assert_same(array(), array_values(array_filter($builtin, function ($key) {
+		return strpos($key, 'site_') === 0;
+	})), 'no built-in key starts with site_');
+	pg_assert_same(42, ws_flow_template_saved_id('site_42'));
+	pg_assert_same(0, ws_flow_template_saved_id('uptime'));
+	pg_assert_same(0, ws_flow_template_saved_id('site_x'));
+}
+
+// Its saver or a Manager and above changes and bins it; Designer (1) is above
+// Manager (2), a user (3) only their own.
+function test_workspace_flow_templates_saved_rights()
+{
+	$row = array('created_by' => 5);
+
+	pg_assert_true(ws_flow_template_may_change(array('id' => 5, 'role' => 3, 'member' => true), $row), 'the saver');
+	pg_assert_true(ws_flow_template_may_change(array('id' => 6, 'role' => 2, 'member' => true), $row), 'a manager');
+	pg_assert_true(ws_flow_template_may_change(array('id' => 6, 'role' => 1, 'member' => true), $row), 'a designer');
+	pg_assert_true(ws_flow_template_may_change(array('id' => 6, 'role' => 0, 'member' => true), $row), 'an administrator');
+	pg_assert_false(ws_flow_template_may_change(array('id' => 6, 'role' => 3, 'member' => true), $row), 'another user');
+	pg_assert_false(ws_flow_template_may_change(array('id' => 5, 'role' => 2, 'member' => false), $row), 'a site member');
+	pg_assert_false(ws_flow_template_may_change(array('id' => 0, 'role' => 3, 'member' => true), array('created_by' => 0)), 'nobody saved it');
+}
+
+// Title, help and category as written, checked.
+function test_workspace_flow_templates_saved_fields()
+{
+	$ok = ws_flow_template_fields_check(array('title' => "  Site\tdown ", 'help' => 'Tells us', 'category' => 'sales'));
+	pg_assert_true($ok['ok']);
+	pg_assert_same(array('title' => 'Site down', 'help' => 'Tells us', 'category' => 'sales'), $ok['sets']);
+
+	pg_assert_same('title', ws_flow_template_fields_check(array('title' => '  ', 'category' => 'team'))['field'], 'a title is needed');
+	pg_assert_same('category', ws_flow_template_fields_check(array('title' => 'x', 'category' => 'saved'))['field'], 'only the built-ins\' categories');
+	pg_assert_same(160, mb_strlen(ws_flow_template_fields_check(array('title' => str_repeat('ş', 300)))['sets']['title']), 'cut by characters');
+	pg_assert_same(array('help' => 'New'), ws_flow_template_fields_check(array('help' => 'New'), true)['sets'], 'an update sets only what came');
+}
+
+// A row box's table: a flow started by a row, a row added to the same table
+// and a row changed in another.
+function ws_flow_templates_test_rows()
+{
+	return ws_flow_graph_normalize(array('v' => 1, 'nodes' => array(
+		array('id' => 'start', 'kind' => 'row', 'x' => 0, 'y' => 0, 'config' => array('table_id' => 7, 'what' => 'updated', 'column_id' => 31)),
+		array('id' => 'add', 'kind' => 'row_add', 'x' => 256, 'y' => 0, 'config' => array('table_id' => 7, 'cells' => '{"31":"x"}')),
+		array('id' => 'set', 'kind' => 'row_set', 'x' => 512, 'y' => 0, 'config' => array('table_id' => 9, 'row' => '12', 'cells' => '{"40":1}')),
+		array('id' => 'set2', 'kind' => 'row_set', 'x' => 768, 'y' => 0, 'config' => array('table_id' => 7, 'row' => '{{node.add.row_id}}', 'cells' => '{"31":"y"}')),
+	), 'edges' => array(
+		array('from' => 'start', 'to' => 'add', 'on' => 'next'),
+		array('from' => 'add', 'to' => 'set', 'on' => 'done'),
+		array('from' => 'set', 'to' => 'set2', 'on' => 'done'),
+	), 'notes' => array()));
+}
+
+// A saved template asks the table of its row boxes: the boxes on the first
+// box's table are its targets, a box on another table keeps it, no table is
+// no setting.
+function test_workspace_flow_templates_saved_table_setting()
+{
+	pg_assert_true(in_array('table', ws_flow_template_setting_types(), true), 'a table is a setting type');
+
+	$settings = array_column(ws_flow_template_settings_of(ws_flow_templates_test_rows()), 'targets', 'type');
+
+	pg_assert_same(array(array('start', 'table_id'), array('add', 'table_id'), array('set2', 'table_id')), $settings['table'] ?? null, 'the boxes on the first table');
+
+	$none = ws_flow_graph_normalize(array('v' => 1, 'nodes' => array(
+		array('id' => 'start', 'kind' => 'manual', 'config' => array()),
+		array('id' => 'add', 'kind' => 'row_add', 'config' => array('table_id' => 0, 'cells' => '')),
+	), 'edges' => array(array('from' => 'start', 'to' => 'add', 'on' => 'next')), 'notes' => array()));
+	pg_assert_same(array(), ws_flow_template_settings_of($none), 'no table chosen, nothing asked');
+
+	$answer = array('settings' => array(array('type' => 'table', 'targets' => array(array('add', 'table_id')))));
+	pg_assert_same('table', ws_flow_template_answers_check($answer, array('table' => 0))['field'], 'a table is needed');
+	pg_assert_same(array('table' => 5), ws_flow_template_answers_check($answer, array('table' => '5'))['values']);
+}
+
+// The table chosen is written into its boxes; a box whose table changed
+// loses what belonged to the old one (cells, the column a change writes, a
+// row named by its number), a row read from a box before stays.
+function test_workspace_flow_templates_saved_table_applied()
+{
+	$graph = ws_flow_templates_test_rows();
+	$template = array('graph' => $graph, 'settings' => ws_flow_template_settings_of($graph));
+	$by_id = array_column(ws_flow_template_apply($template, $graph, array('table' => 8))['nodes'], 'config', 'id');
+
+	pg_assert_same(8, $by_id['start']['table_id']);
+	pg_assert_same(0, $by_id['start']['column_id'], 'the column was the old table\'s');
+	pg_assert_same('updated', $by_id['start']['what'], 'what happens stays');
+	pg_assert_same(8, $by_id['add']['table_id']);
+	pg_assert_same('', $by_id['add']['cells'], 'the cells were the old table\'s');
+	pg_assert_same('{{node.add.row_id}}', $by_id['set2']['row'], 'a row read from a box stays');
+	pg_assert_same('', $by_id['set2']['cells']);
+	pg_assert_same(9, $by_id['set']['table_id'], 'a box on its own table keeps it');
+	pg_assert_same('{"40":1}', $by_id['set']['cells']);
+	pg_assert_same('12', $by_id['set']['row']);
+
+	$same = array_column(ws_flow_template_apply($template, $graph, array('table' => 7))['nodes'], 'config', 'id');
+	pg_assert_same(31, $same['start']['column_id'], 'the same table keeps its column');
+	pg_assert_same('{"31":"x"}', $same['add']['cells'], 'the same table keeps its cells');
+
+	// A literal row of a row change goes with its table.
+	$set = ws_flow_graph_normalize(array('v' => 1, 'nodes' => array(
+		array('id' => 'start', 'kind' => 'manual', 'config' => array()),
+		array('id' => 'set', 'kind' => 'row_set', 'config' => array('table_id' => 9, 'row' => '12', 'cells' => '{"40":1}')),
+	), 'edges' => array(array('from' => 'start', 'to' => 'set', 'on' => 'next')), 'notes' => array()));
+	$one = array('graph' => $set, 'settings' => ws_flow_template_settings_of($set));
+	$changed = array_column(ws_flow_template_apply($one, $set, array('table' => 8))['nodes'], 'config', 'id');
+	pg_assert_same('', $changed['set']['row'], 'a row number was the old table\'s');
+}
+
+// The table chosen must be one the person reaches as far as its boxes need:
+// read for a row start, change for a box that adds or changes rows.
+function test_workspace_flow_templates_saved_table_rights()
+{
+	$graph = ws_flow_templates_test_rows();
+	$writes = array('graph' => $graph, 'settings' => ws_flow_template_settings_of($graph));
+	$start = array('graph' => $graph, 'settings' => array(array('type' => 'table', 'targets' => array(array('start', 'table_id')))));
+
+	pg_assert_same('edit', ws_flow_template_table_need($writes), 'a row written needs change');
+	pg_assert_same('view', ws_flow_template_table_need($start), 'a row start needs read');
+	pg_assert_same('', ws_flow_template_table_need(array('graph' => $graph, 'settings' => array())), 'no table asked');
+
+	pg_assert_true(ws_flow_template_table_refusal($writes, '') !== '', 'a table out of reach');
+	pg_assert_true(ws_flow_template_table_refusal($writes, 'view') !== '', 'read is not enough to write');
+	pg_assert_same('', ws_flow_template_table_refusal($writes, 'edit'));
+	pg_assert_same('', ws_flow_template_table_refusal($writes, 'owner'));
+	pg_assert_same('', ws_flow_template_table_refusal($start, 'view'));
+	pg_assert_true(ws_flow_template_table_refusal($start, '') !== '');
+}
+
+// A value with a fallback is a thread of a template as one without is.
+function test_workspace_flow_template_threads_with_a_fallback()
+{
+	$graph = array('nodes' => array(
+		array('id' => 'check', 'kind' => 'web_check', 'config' => array('url' => 'https://example.com')),
+		array('id' => 'hook', 'kind' => 'webhook', 'config' => array('text' => 'Down: {{node.check.text|no answer \\| try later}}')),
+	));
+
+	pg_assert_same(array(array('from' => 'check', 'to' => 'hook', 'key' => 'text')), ws_flow_template_threads($graph));
+}

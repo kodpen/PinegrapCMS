@@ -195,20 +195,21 @@ function test_panel_id_gate_file_editors_check_name_and_type()
 		pg_assert_true(strpos($source, "\$_POST['name']") === false, $screen . ' does not read the posted name');
 		pg_assert_contains("\$new_file_name = prepare_file_name(\$file_name);", $source, $screen . ' copy named after the stored file');
 		pg_assert_contains("pg_request_single_values(array('code'));\n\n    if (!isset(\$_POST['code'])) {", $source, $screen . ' code is one value');
-		pg_assert_true(strpos($source, "pg_request_single_values(array('code'))") < strpos($source, 'fopen('), $screen . ' code checked before a file is written');
+		pg_assert_true(strpos($source, "pg_request_single_values(array('code'))") < strpos($source, 'pg_file_write_whole('), $screen . ' code checked before a file is written');
 	}
 
 	// The CSS copy opens only on one of the two screens that link to the editor.
 	pg_assert_contains("!in_array(\$_POST['from'] ?? '', array('edit_theme_file', 'edit_design_file'), true)", file_get_contents(PG_FUNCTIONS_DIR . '/edit_theme_css.php'), 'edit_theme_css from');
 
 	// A file recorded here but missing from the disk opens empty with a note,
-	// and Save deletes the old file only when it is there: no PHP warning.
+	// and Save replaces it through pg_file_write_whole(), which deletes the
+	// old file only when it is there: no PHP warning.
 	foreach (array('edit_theme_css', 'edit_javascript', 'editor_edit_file') as $screen) {
 		$source = file_get_contents(PG_FUNCTIONS_DIR . '/' . $screen . '.php');
 
 		pg_assert_contains("if (is_file(FILE_DIRECTORY_PATH . '/' . \$file_name)) {\n        \$code = file_get_contents(", $source, $screen . ' reads only a file on the disk');
 		pg_assert_contains("lang('The file is recorded here but is not on the disk.')", $source, $screen . ' missing file note');
-		pg_assert_contains("if (is_file(FILE_DIRECTORY_PATH . '/' . \$file_name)) {\n            unlink(", $source, $screen . ' unlinks only a file on the disk');
+		pg_assert_contains("pg_file_write_whole(FILE_DIRECTORY_PATH . '/' . \$file_name, \$_POST['code'])", $source, $screen . ' replaces the stored file through the whole-write helper');
 	}
 
 	// The design file screen renames and deletes: only a design file under a

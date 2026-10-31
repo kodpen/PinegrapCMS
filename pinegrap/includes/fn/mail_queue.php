@@ -68,6 +68,26 @@ function pg_mail_last_error($set = null)
     return $error;
 }
 
+// The sentence a screen shows after email() returned false: the mail server's
+// reason from pg_mail_last_error() when email() left one, else $fallback.
+// Read it right after the failed call, before any other email() resets the
+// reason. $test words it for a test message. Returned raw: escape it with
+// h() where it is printed.
+function pg_mail_failure_sentence($fallback, $test = false)
+{
+    $reason = trim(pg_mail_last_error());
+
+    if ($reason === '') {
+        return (string) $fallback;
+    }
+
+    if ($test) {
+        return lang(array('string' => 'The test e-mail could not be sent: {var:1}', 'vars' => array($reason)));
+    }
+
+    return lang(array('string' => 'The e-mail could not be sent: {var:1}', 'vars' => array($reason)));
+}
+
 // Whether the last email() call in this request failed in a way that no
 // later attempt can change: the message as stored has no content, no
 // recipient, or an address PHPMailer refuses. Set next to
@@ -82,6 +102,61 @@ function pg_mail_last_error_permanent($set = null)
     }
 
     return $permanent;
+}
+
+// The reason stored and shown when the server cannot send e-mail with PHP
+// mail() (pg_mail_send_built()). PHPMailer's own text for it says nothing of
+// the cause or the remedy, and its Turkish translation is wrong.
+function pg_mail_transport_failure_sentence()
+{
+    return lang('The server cannot send e-mail with PHP mail(). Set up an SMTP server in SMTP Settings.');
+}
+
+// What email() records for a failure: the reason, whether a later attempt
+// can succeed, and whether the sender may be told by e-mail. A failure of
+// the PHP mail() transport is permanent and stores the product's sentence
+// instead of PHPMailer's; the "Email delivery failed" notice is not sent
+// for it, as it would go through the same mail() that just failed.
+function pg_mail_failure_outcome($error, $permanent, $transport_failed)
+{
+    if ($transport_failed) {
+        return array('error' => pg_mail_transport_failure_sentence(), 'permanent' => true, 'notify' => false);
+    }
+
+    return array('error' => (string) $error, 'permanent' => (bool) $permanent, 'notify' => true);
+}
+
+// Whether the mail queue screen warns that the server cannot send e-mail
+// without an SMTP server: the newest message the queue tried ($row, with
+// status and last_error) failed because PHP mail() refused it or is
+// disabled. A message sent after that, once SMTP Settings are filled in,
+// ends the warning. The stored reason is the product's own sentence,
+// written in the language of the run, so both the English source and the
+// current translation are accepted.
+function pg_mail_transport_warning_shown($row)
+{
+    if (!is_array($row) || !isset($row['status']) || ((string) $row['status'] !== 'failed')) {
+        return false;
+    }
+
+    $error = trim(isset($row['last_error']) ? (string) $row['last_error'] : '');
+
+    if ($error === '') {
+        return false;
+    }
+
+    $sentences = array(
+        'The server cannot send e-mail with PHP mail(). Set up an SMTP server in SMTP Settings.',
+        'Email could not be sent because the PHP mail() function is disabled.',
+    );
+
+    foreach ($sentences as $sentence) {
+        if (($error === $sentence) || ($error === lang($sentence))) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 // What rules a message out before anything is built from it, read from the
@@ -480,7 +555,7 @@ function pg_mail_queue_run($limit = 25, $seconds = 20)
                     claimed_at = 0
                 WHERE id = '" . $id . "'");
 
-            log_activity(lang(array(
+            log_activity(pg_log_lang(array(
                 'string' => 'An e-mail to {var:1} was given up after {var:2} attempts: {var:3}',
                 'vars'   => array($row['recipient'], $attempt, $error),
             )), 'UNKNOWN');

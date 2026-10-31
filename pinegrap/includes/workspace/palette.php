@@ -93,7 +93,7 @@ function ws_palette_snippet($text, $query, $length = 120)
         return $text;
     }
 
-    $at = ((string) $query !== '') ? mb_stripos($text, (string) $query) : false;
+    $at = ((string) $query !== '') ? ws_text_position($text, (string) $query) : false;
 
     // Found near the start, or not at all: the start of the text.
     if (($at === false) || ($at < (int) ($length / 3))) {
@@ -173,24 +173,13 @@ function ws_palette_message_rows($viewer, $where, $channel_id, $limit)
  * Who wrote a message, as a name.
  *
  * @param array $row
- * @param array $people ws_people() of the user senders
+ * @param array $people ws_message_rows_senders() people
+ * @param array $mail   ws_message_rows_senders() mail
  * @return string
  */
-function ws_palette_sender_name($row, $people)
+function ws_palette_sender_name($row, $people, $mail = array())
 {
-    if ($row['sender_kind'] === 'user') {
-        return (string) ($people[(int) $row['sender_id']]['name'] ?? '');
-    }
-
-    if ($row['sender_kind'] === 'app') {
-        return (string) (ws_app_sender((int) $row['sender_id'])['name'] ?? '');
-    }
-
-    if (($row['sender_kind'] === 'guest') && function_exists('ws_guest_sender')) {
-        return (string) (ws_guest_sender((int) $row['sender_id'])['name'] ?? '');
-    }
-
-    return '';
+    return (string) (ws_message_row_sender($row, $people, $mail)['name'] ?? '');
 }
 
 /**
@@ -205,20 +194,15 @@ function ws_palette_sender_name($row, $people)
 function ws_palette_message_items($viewer, $rows, $type, $query)
 {
     $base = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/';
-    $senders = array();
     $files = array();
 
     foreach ($rows as $row) {
-        if ($row['sender_kind'] === 'user') {
-            $senders[] = (int) $row['sender_id'];
-        }
-
         if ((int) $row['file_id'] > 0) {
             $files[] = (int) $row['file_id'];
         }
     }
 
-    $people = ws_people(array_unique($senders));
+    list($people, $mail) = ws_message_rows_senders($rows);
     $stored = array();
 
     if (!empty($files)) {
@@ -251,7 +235,7 @@ function ws_palette_message_items($viewer, $rows, $type, $query)
         }
 
         $sub = array('#' . (string) $channel['name']);
-        $sender = ws_palette_sender_name($row, $people);
+        $sender = ws_palette_sender_name($row, $people, $mail);
 
         if ($sender !== '') {
             $sub[] = $sender;
@@ -295,7 +279,7 @@ function ws_palette_channels($viewer, $query, $limit)
     $out = array();
 
     foreach (ws_channels_for($viewer) as $channel) {
-        if ((mb_stripos($channel['name'], $query) === false) && (mb_stripos($channel['topic'], $query) === false)) {
+        if (!ws_text_contains($channel['name'], $query) && !ws_text_contains($channel['topic'], $query)) {
             continue;
         }
 
@@ -546,7 +530,7 @@ function ws_palette_people($viewer, $query, $channel_id, $limit)
     $people = array();
 
     foreach (ws_team_members() as $person) {
-        if (($query === '') || (mb_stripos($person['name'], $query) !== false) || (mb_stripos($person['username'], $query) !== false)) {
+        if (($query === '') || ws_text_contains($person['name'], $query) || ws_text_contains($person['username'], $query)) {
             $people[] = $person;
         }
     }
@@ -865,7 +849,7 @@ function ws_palette_js_strings()
         'pal_recent'      => lang('Recent searches'),
         'pal_clear_recent' => lang('Forget the recent searches'),
         'pal_short'       => lang('Type at least two letters.'),
-        'pal_hint'        => lang('↑ ↓ to move, Enter to open, Esc to close'),
+        'pal_hint'        => lang('↑ ↓ to move, Enter to open, Shift+Enter for a person\'s account, Esc to close'),
         'pal_no_composer' => lang('Commands are written in a channel\'s writing box: open a channel first.'),
         'pal_profile'     => lang('Open the account'),
         'pal_count'       => ws_js_template('{var:1} found', 1),

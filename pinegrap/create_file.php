@@ -64,8 +64,8 @@ if (!$_POST) {
                                             <div class="row">
                                                 <div class="col-12 my-3">
                                                     <div class="input-group">
-                                                        <input type="text" name="name" id="name" class="form-control " style="width:70%"/>
-                                                        <select class="form-control" id="type" name="type" required>
+                                                        <input type="text" name="name" id="name" aria-label="' . h(lang('File Name')) . '" class="form-control " style="width:70%"/>
+                                                        <select class="form-control" id="type" aria-label="' . h(lang('File Type')) . '" name="type" required>
                                                             <option value="txt" selected>.txt</option>
                                                             <option value="json">.json</option>
                                                             <option value="svg">.svg</option>
@@ -204,16 +204,15 @@ if (!$_POST) {
 
 
 
-    // Create file and write content if applicable
-    $handle = fopen($file_path, 'w');
-    if ($handle) {
-        if ($code !== '' && in_array($type, array('json','txt','svg','xml','css','js'))) {
-            fwrite($handle, $code);
-        }
-        fclose($handle);
+    // Create the file, with the content when the type takes one. A file
+    // that could not be written gets no record and no success notice.
+    $content = (is_string($code) && in_array($type, array('json','txt','svg','xml','css','js'))) ? $code : '';
+
+    if (!pg_file_write_whole($file_path, $content)) {
+        output_error(lang(array('string' => '{var:1} could not be written to disk.', 'vars' => h($name))) . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
     }
 
-    $size = filesize($file_path);
+    $size = strlen($content);
 
     $sql_design_1 = '';
     $sql_design_2 = '';

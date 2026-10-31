@@ -2166,29 +2166,30 @@ var software = {
     },
 
     // Setup a custom arrival date field that appears on a shipping address & arrival page.
+    // The date field carries data-pg-date, or is bound by its id
+    // (pg_site_datetime_bind()): the date-and-time control draws it.
     init_custom_arrival_date: function(properties) {
 
         var radio_field_id = properties.radio_field_id;
         var date_field_id = properties.date_field_id;
 
-        // Init the date-picker.
-        software_$('#' + date_field_id).datepicker(datetimepicker_options);
-
         // When the radio button for this arrival date is selected,
         // then place the focus in the custom arrival date field,
-        // so that the date-picker automatically appears.
+        // so that its calendar automatically appears.
         software_$('#' + radio_field_id).click(function() {
-            if (software_$(this).attr('checked') == 'checked') {
-                software_$('#' + date_field_id).focus();
+            if (this.checked) {
+                software.focus_date_field(document.getElementById(date_field_id));
             }
         });
 
         // When the custom date field value is changed,
         // then, if the field contains something, select the radio button
         // for this arrival date, because the visitor might forget to select it.
+        // The checked property, not the attribute: a radio the visitor has
+        // clicked no longer follows its attribute.
         software_$('#' + date_field_id).change(function() {
             if (software_$.trim(software_$(this).val()).length != 0) {
-                software_$('#' + radio_field_id).attr('checked', 'checked');
+                software_$('#' + radio_field_id).prop('checked', true);
             }
         });
     },

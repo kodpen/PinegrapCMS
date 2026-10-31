@@ -45,6 +45,11 @@ class pg_test_submitted_form_liveform
 	{
 		$this->errors[$name] = $message;
 	}
+
+	public function assign_field_value($name, $value)
+	{
+		$this->values[$name] = $value;
+	}
 }
 
 function pg_test_submitted_form_field($id, $type)
@@ -119,4 +124,38 @@ function test_submitted_form_file_field_without_a_row()
 	$edit = (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_submitted_form.php');
 	pg_assert_same(2, substr_count($edit, "if (\$file && \$file['id'] != '')"), 'replace and delete');
 	pg_assert_false(strpos($edit, "if (\$file['id'] != '')") !== false);
+}
+
+function test_submitted_form_marks_files_to_choose_again()
+{
+	$liveform = new pg_test_submitted_form_liveform(array());
+	$liveform->errors['3'] = 'blocked name';
+
+	$fields = array(
+		pg_test_submitted_form_field('1', 'file upload'),
+		pg_test_submitted_form_field('2', 'file upload'),
+		pg_test_submitted_form_field('3', 'file upload'),
+		pg_test_submitted_form_field('4', 'text box'),
+	);
+	$files = array(
+		'1' => array('name' => 'contract.pdf'),
+		'2' => array('name' => ''),
+		'3' => array('name' => 'run.php'),
+		'4' => array('name' => 'other.pdf'),
+	);
+
+	pg_submitted_form_mark_chosen_files($liveform, $fields, $files);
+
+	pg_assert_same(array('1'), $liveform->get_field_value(PG_SUBMITTED_FORM_CHOOSE_AGAIN), 'only a chosen file without its own error is marked');
+
+	pg_submitted_form_mark_chosen_files($liveform, $fields, array());
+	pg_assert_same(array(), $liveform->get_field_value(PG_SUBMITTED_FORM_CHOOSE_AGAIN), 'no file chosen, no mark');
+}
+
+function test_submitted_form_screens_mark_chosen_files()
+{
+	foreach (array('add_submitted_form.php', 'edit_submitted_form.php') as $screen) {
+		$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $screen);
+		pg_assert_contains('pg_submitted_form_mark_chosen_files(', $source, $screen . ' marks the files to choose again before sending the form back');
+	}
 }

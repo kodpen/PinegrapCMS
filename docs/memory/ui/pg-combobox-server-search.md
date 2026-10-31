@@ -10,11 +10,14 @@ description: data-pg-source combobox (google_product_category) on Bootstrap 6 Co
 - `serverSearch()` in `pg_fields.js`: Bootstrap gets `search: false` and our own box (`.pg-combobox-query`, never `.combobox-search-input`: Bootstrap finds that class whatever its option and hides answers not containing the typed text word for word). Under it `.pg-combobox-status` (`role="status"`) says "Type to search...", "Searching…", "No results found" or the server's `{error}` text (labels `data-pg-type-label`, `data-pg-searching-label` from `pg_fields_script()`).
 - 250 ms after the last key it GETs `source&q=<text>` (`credentials: same-origin`, `AbortController` when there is one); an answer to an older text is dropped. Under `data-pg-min-length` nothing is asked. `{results:[{id,text}]}` becomes the items, the stored one marked, the typed text last as its own item with `data-pg-free-text` (google_taxonomy_action.php's contract is unchanged).
 
+## How does google_taxonomy_action.php match?
+- `pg_pb_google_taxonomy_search()` (product_builder.php) folds the query and each path with `fold_keyword_for_matching()` (paths folded once per request in a static) and compares with `mb_strpos()`: "interkom" finds "İnterkomlar", "ışık" finds "Işık". Leaf matches first. Before, `mb_stripos()` missed İ and I/ı, in a Turkish taxonomy where every segment starts with a capital. Pinned by a source scan in `tests/marketplace_listing_articles_test.php`.
+
 ## What does a pick write?
 - A pick writes the select (`keepChosenOptions()`: the empty option and the chosen one with the item's text stay, the rest go) and fires the native change. Opening shows the empty item and the stored choice again; the cursor goes into the search box.
 
 ## Which keys and ARIA?
-- Keys: arrows, Home/End and Escape are Bootstrap's menu keys (focus moves to the items, as in every combobox; no `aria-activedescendant`); Enter in the search box picks the first item and never submits the form. `aria-expanded` is Bootstrap's on the toggle; the box has `aria-controls` the menu (`<select id>_menu`).
+- Keys: arrows, Home/End and Escape are Bootstrap's menu keys (focus moves to the items, as in every combobox; no `aria-activedescendant`); Enter in the search box picks the first item and never submits the form. `aria-expanded` is Bootstrap's on the toggle; the box has `aria-controls` the listbox (`<select id>_combobox_list`), whose items the answers replace.
 
 ## What does the product screen print?
 - product_builder prints the stored category as `path  (id)` through `pg_pb_google_taxonomy_lookup()`, as the search answers it, not the bare id.

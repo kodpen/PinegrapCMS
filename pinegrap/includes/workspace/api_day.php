@@ -37,12 +37,18 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 /**
  * One plan item as the API shows it.
  *
- * @param array $viewer
- * @param array $event ws_events row with people (user ids)
+ * @param array      $viewer
+ * @param array      $event    ws_events row with people (user ids)
+ * @param array|null $contacts ws_api_plan_item_contacts() of the page; null
+ *                             looks up this item's alone
  * @return array
  */
-function ws_api_plan_item_present($viewer, $event)
+function ws_api_plan_item_present($viewer, $event, $contacts = null)
 {
+    if ($contacts === null) {
+        $contacts = ws_api_plan_item_contacts($viewer, array($event));
+    }
+
     $all_day = ((int) $event['all_day'] === 1);
 
     return array(
@@ -65,7 +71,97 @@ function ws_api_plan_item_present($viewer, $event)
         'meeting_url'   => (string) ($event['meeting_url'] ?? ''),
         'created_by'    => (int) $event['created_by'],
         'can_edit'      => ws_can_edit_event($viewer, $event),
+        'contact'       => ws_api_plan_item_contact($event, $contacts),
         'created_at'    => api_time($event['created_at']),
+    );
+}
+
+/**
+ * The customer a visit names, as the API shows it: id and label where the key
+ * may name it, else only that there is one.
+ *
+ * @param array $event    ws_events row
+ * @param array $contacts ws_api_plan_item_contacts()
+ * @return array|null id, label, hidden; null for an item about nobody, or
+ *                    whose contact was deleted
+ */
+function ws_api_plan_item_contact($event, $contacts)
+{
+    $id = (int) ($event['contact_id'] ?? 0);
+
+    if ((($event['kind'] ?? '') !== 'visit') || ($id <= 0) || !array_key_exists($id, $contacts)) {
+        return null;
+    }
+
+    if ($contacts[$id] === null) {
+        return array('id' => null, 'label' => null, 'hidden' => true);
+    }
+
+    return array('id' => $id, 'label' => (string) $contacts[$id], 'hidden' => false);
+}
+
+/**
+ * The customers of a page of plan items, looked up at once: contact id =>
+ * label where the key holds customers:read and the owner may open the
+ * contact, null where it may not. A contact that is not there is left out.
+ *
+ * @param array   $viewer
+ * @param array[] $events ws_events rows
+ * @return array
+ */
+function ws_api_plan_item_contacts($viewer, $events)
+{
+    $ids = array();
+
+    if (ws_event_contacts_ready()) {
+        foreach ($events as $event) {
+            $id = (int) ($event['contact_id'] ?? 0);
+
+            if (($event['kind'] === 'visit') && ($id > 0)) {
+                $ids[$id] = $id;
+            }
+        }
+    }
+
+    if (empty($ids)) {
+        return array();
+    }
+
+    $rows = (array) db_items("SELECT id, first_name, last_name, company, email_address FROM contacts WHERE id IN ('" . implode("','", $ids) . "')");
+
+    return ws_api_plan_item_contact_names($rows, ws_viewer_contacts_open($viewer, array_values($ids)), api_current_scopes());
+}
+
+/**
+ * Which of the contacts found the key may name: the customer summary's rule,
+ * customers:read and a contact the owner may open.
+ *
+ * @param array[]  $rows   contacts rows (id, first_name, last_name, company,
+ *                         email_address)
+ * @param int[]    $open   ws_viewer_contacts_open() of the owner
+ * @param string[] $scopes the key's scopes
+ * @return array contact id => label, or null when hidden
+ */
+function ws_api_plan_item_contact_names($rows, $open, $scopes)
+{
+    $named = api_has_scope($scopes, 'customers:read') ? array_flip(array_map('intval', (array) $open)) : array();
+    $out = array();
+
+    foreach ($rows as $row) {
+        $id = (int) $row['id'];
+        $out[$id] = isset($named[$id]) ? ws_event_contact_label($row) : null;
+    }
+
+    return $out;
+}
+
+// What ws_api_plan_item_contact() returns.
+function ws_api_plan_item_contact_schema()
+{
+    return array(
+        'id'     => 'integer?',
+        'label'  => 'string?',
+        'hidden' => 'boolean',
     );
 }
 
@@ -92,6 +188,7 @@ function ws_api_plan_item_schema()
         'meeting_url'   => 'string',
         'created_by'    => 'integer',
         'can_edit'      => 'boolean',
+        'contact'       => 'WorkspacePlanItemContact?',
         'created_at'    => 'string?',
     );
 }
@@ -160,6 +257,7 @@ function ws_api_plan_items_list($params)
     $user_id = (int) ($params['user_id'] ?? 0);
     $departments = ($user_id > 0) ? ws_user_department_ids($user_id) : array();
     $kind = (string) ($params['kind'] ?? '');
+    $events = array();
     $out = array();
 
     foreach (ws_events_between($from, $to) as $event) {
@@ -167,7 +265,13 @@ function ws_api_plan_items_list($params)
             continue;
         }
 
-        $out[] = ws_api_plan_item_present($viewer, $event);
+        $events[] = $event;
+    }
+
+    $contacts = ws_api_plan_item_contacts($viewer, $events);
+
+    foreach ($events as $event) {
+        $out[] = ws_api_plan_item_present($viewer, $event, $contacts);
     }
 
     api_ok_list($out, count($out));
@@ -254,6 +358,11 @@ function ws_api_plan_item_input($params, $current = null)
         $data['people'] = ws_api_user_ids($params['people'], 'people');
     }
 
+    // The customer of a visit: kept as it is unless sent (ws_event_contact_pick()).
+    if (array_key_exists('contact_id', $params)) {
+        $data['contact_id'] = max(0, (int) $params['contact_id']);
+    }
+
     // The video call: kept as it is unless sent.
     if (array_key_exists('meeting_url', $params)) {
         if (ws_meeting_url_clean($params['meeting_url']) === false) {
@@ -271,17 +380,33 @@ function ws_api_plan_item_input($params, $current = null)
 }
 
 /**
- * A plan item write that was refused, as the API answers it: refused dates
- * are the request's; anything else is a right the owner does not hold.
+ * The request field a refused plan item write names, or null when the refusal
+ * is about a right: refused dates and a customer the owner cannot open are
+ * the request's.
+ *
+ * @param string $field ws_event_save_check() field
+ * @return string|null
+ */
+function ws_api_plan_item_refused_field($field)
+{
+    $fields = array('start' => 'start_date', 'end' => 'end_date', 'contact_id' => 'contact_id');
+
+    return $fields[(string) $field] ?? null;
+}
+
+/**
+ * A plan item write that was refused, as the API answers it: 422 on a field
+ * of the request (ws_api_plan_item_refused_field()); anything else is a right
+ * the owner does not hold.
  *
  * @param array $result ws_event_save() or ws_event_save_check()
  */
 function ws_api_plan_item_refused($result)
 {
-    $fields = array('start' => 'start_date', 'end' => 'end_date');
+    $field = ws_api_plan_item_refused_field($result['field']);
 
-    if (isset($fields[$result['field']])) {
-        api_fail_validation($result['error'], $fields[$result['field']]);
+    if ($field !== null) {
+        api_fail_validation($result['error'], $field);
     }
 
     api_fail(403, 'forbidden', $result['error']);
@@ -306,6 +431,7 @@ function ws_api_plan_item_would($checked)
         'ends_at'   => api_time($item['ends_at']),
         'all_day'   => (bool) $item['all_day'],
         'people'    => array_values(array_map('intval', $item['people'])),
+        'contact_id' => (int) ($item['contact_id'] ?? 0),
     );
 }
 
@@ -397,6 +523,7 @@ function ws_api_search_record_scopes()
         'product'        => 'products:read',
         'product_group'  => 'products:read',
         'offer'          => 'offers:read',
+        'cart_quote'     => 'orders:read',
         'contact'        => 'customers:read',
         'erp_account'    => 'erp:read',
         'invoice'        => 'erp:read',
@@ -712,10 +839,13 @@ function ws_api_my_day_get($params)
 
         $departments = ws_user_department_ids($me);
 
-        foreach (ws_events_between($today, $today) as $event) {
-            if (ws_event_applies($event, $me, $departments)) {
-                $day['plan_items'][] = ws_api_plan_item_present($viewer, $event);
-            }
+        $events = array_values(array_filter(ws_events_between($today, $today), function ($event) use ($me, $departments) {
+            return ws_event_applies($event, $me, $departments);
+        }));
+        $contacts = ws_api_plan_item_contacts($viewer, $events);
+
+        foreach ($events as $event) {
+            $day['plan_items'][] = ws_api_plan_item_present($viewer, $event, $contacts);
         }
     }
 

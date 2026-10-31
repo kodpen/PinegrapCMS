@@ -18,7 +18,7 @@ description: How a parcel's carrier, name and tracking link are found (pg_shippi
 - System Status's "Default Shipping Carrier" tile reads the value the same way: unknown → warning, known → the carrier's name.
 
 ## Which carriers are known?
-- `yurtici`, `surat`, `aras`, `mng`, `ptt` (no number patterns: they all issue plain digits), `ups`, `fedex`, `usps`. Each entry: `name`, `aliases`, `url` with `{code}`, `patterns`; order matters (FedEx before USPS).
+- `yurtici`, `surat`, `aras`, `mng`, `ptt` (no number patterns: they all issue plain digits), `ups`, `fedex`, `usps`, `dhl`, `deutschepost`, `dpd`, `royalmail` (#3192, `carrier-label-shippo.md`). Each entry: `name`, `aliases`, `url` with `{code}`, `patterns`; order matters (FedEx before USPS).
 
 ## How do I add a carrier?
 - One entry in `pg_shipping_carriers()`, with a tracking address checked on the carrier's own site; `tests/shipping_test.php` requires `{code}` in it. Add the key to the accepted values in `data/config(default).php`.

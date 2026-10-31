@@ -184,6 +184,52 @@ function ws_action_flow_refused($result)
 }
 
 /**
+ * "Describe it to AI" in New flow: a new draft flow of the person from one
+ * sentence (ws_flow_ai_sketch()), never published here; publishing stays
+ * theirs, on the canvas.
+ *
+ * @param array         $viewer
+ * @param array         $request  sentence
+ * @param callable|null $ask      messages => answer; pg_ai_chat() when null
+ * @return array
+ */
+function ws_action_flow_ai_sketch($viewer, $request, $ask = null)
+{
+    $sentence = $request['sentence'] ?? '';
+
+    if (!is_string($sentence)) {
+        return ws_action_error(lang('Write in a sentence what the flow should do.'), 'sentence');
+    }
+
+    $result = ws_flow_ai_sketch($viewer, $sentence, 0, $ask);
+    $flow = $result['ok'] ? ws_flow_for($viewer, (int) $result['flow_id'], 'edit') : null;
+
+    return ws_action_flow_ai_sketch_answer($result, $flow ? ws_flow_detail($viewer, $flow) : null);
+}
+
+/**
+ * What the New flow card reads of a drafted flow (pure): the flow to open
+ * on the canvas, what is left to fix and the model's notes; a refusal in
+ * words on the sentence field.
+ *
+ * @param array      $result ws_flow_ai_sketch()
+ * @param array|null $flow   ws_flow_detail() of the new flow
+ * @return array
+ */
+function ws_action_flow_ai_sketch_answer($result, $flow)
+{
+    if (!$result['ok']) {
+        return ws_action_error((string) $result['error'], 'sentence');
+    }
+
+    if (!$flow) {
+        return ws_action_error(lang('That flow could not be found.'), 'sentence');
+    }
+
+    return ws_action_ok(array('flow' => $flow, 'problems' => array_values($result['problems']), 'notes' => array_values($result['notes'])));
+}
+
+/**
  * Only what a start of a run may carry: the client's token, which makes a
  * start sent twice (a double click, a request sent again after its answer
  * was lost) one run. It comes as start_token: `token` of a panel request is
@@ -201,6 +247,11 @@ function ws_action_flow_run_fields($request)
     // The composer's Start a flow names the channel the run opens its tasks in.
     if ((int) ($request['channel_id'] ?? 0) > 0) {
         $fields['channel_id'] = (int) $request['channel_id'];
+    }
+
+    // Run's optional customer: the run is about that contact.
+    if ((int) ($request['contact_id'] ?? 0) > 0) {
+        $fields['contact_id'] = (int) $request['contact_id'];
     }
 
     return $fields;
@@ -393,10 +444,21 @@ function ws_handle_action($action, $request)
                 return ws_action_error(lang('Only staff can schedule actions.'));
             }
 
-            return ws_action_ok(array('items' => ws_scheduled_list($viewer, array(
+            $items = ws_scheduled_list($viewer, array(
                 'status'     => (string) ($request['status'] ?? ''),
                 'channel_id' => (int) ($request['channel_id'] ?? 0),
-            ))));
+            ));
+
+            // Where Flows lists them, this list is the flow list's "Not
+            // converted" group: a converted action is a row of its own
+            // there and a cancelled one never converted is not listed.
+            if (ws_flows_scheduled($viewer)) {
+                $items = array_values(array_filter($items, function ($item) {
+                    return empty($item['flow']) && ((string) $item['status'] !== 'cancelled');
+                }));
+            }
+
+            return ws_action_ok(array('items' => $items));
 
         case 'ws_scheduled_get':
             $scheduled = ws_can_schedule($viewer) ? ws_scheduled_action((int) ($request['id'] ?? 0)) : null;
@@ -597,16 +659,22 @@ function ws_handle_action($action, $request)
             // (the composer's Add › Start a flow).
             $rows = ((int) ($request['runnable_in'] ?? 0) > 0) ? ws_flows_runnable_in($viewer, (int) $request['runnable_in']) : ws_flows_list($viewer);
             $numbers = ws_flow_version_numbers($rows);
-            $starts = empty($rows) ? array() : ws_flows_start_kinds($rows);
+            // How each flow starts (its kind and the list's sentence) and
+            // the name of its home channel, each read once for the list.
+            $starts = empty($rows) ? array() : ws_flows_starts($viewer, $rows);
+            $channels = empty($rows) ? array() : ws_flows_channel_names($viewer, $rows);
             // Each flow's last run, for its flag in the list and on the canvas.
             $last = ws_flow_last_runs($viewer, $rows);
             $run_numbers = ws_flow_version_numbers($last);
 
-            return ws_action_ok(array('flows' => array_map(function ($row) use ($viewer, $numbers, $starts, $last, $run_numbers) {
+            return ws_action_ok(array('scheduled' => ((int) ($request['runnable_in'] ?? 0) > 0) ? null : ws_flows_scheduled_rows($viewer), 'flows' => array_map(function ($row) use ($viewer, $numbers, $starts, $channels, $last, $run_numbers) {
                 $run = $last[(int) $row['id']] ?? null;
+                $start = $starts[(int) $row['id']] ?? array('kind' => '', 'text' => '');
 
-                return ws_flow_brief($viewer, $row, $numbers[(int) $row['version_id']] ?? 0, $starts[(int) $row['id']] ?? '') + array(
-                    'last_run' => $run ? ws_action_flow_run_present($viewer, $run, $run_numbers[(int) $run['version_id']] ?? 0) : null,
+                return ws_flow_brief($viewer, $row, $numbers[(int) $row['version_id']] ?? 0, $start['kind']) + array(
+                    'start_text'   => $start['text'],
+                    'channel_name' => $channels[(int) $row['channel_id']] ?? '',
+                    'last_run'     => $run ? ws_action_flow_run_present($viewer, $run, $run_numbers[(int) $run['version_id']] ?? 0) : null,
                 );
             }, $rows)));
 
@@ -634,8 +702,26 @@ function ws_handle_action($action, $request)
 
             return $result['ok'] ? ws_action_ok(array('graph' => $result['graph'])) : ws_action_error($result['error']);
 
+        // Edit here on a box of an opened flow draft card (flow_draft.php):
+        // the box's form, then its save through the canvas's own save, a
+        // draft moved meanwhile told apart as on the canvas.
+        case 'ws_flow_draft_box':
+            $result = ws_flow_draft_box_read($viewer, (int) ($request['change_id'] ?? 0), (string) ($request['node_id'] ?? ''));
+
+            return $result['ok'] ? ws_action_ok(array('box' => $result['box'])) : ws_action_error($result['error']);
+
+        case 'ws_flow_draft_box_save':
+            $result = ws_flow_draft_box_save($viewer, (int) ($request['change_id'] ?? 0), (string) ($request['node_id'] ?? ''), array(
+                'label'     => $request['label'] ?? '',
+                'settings'  => $request['settings'] ?? array(),
+                'draft_rev' => (int) ($request['draft_rev'] ?? 0),
+            ));
+
+            return $result['ok'] ? ws_action_ok(array('draft_rev' => $result['draft_rev'], 'problems' => $result['problems'])) : ws_action_flow_refused($result);
+
         // Add › Scheduled flow in a channel's composer (scheduled_convert.php):
-        // with sketch, the two boxes its mini window draws, nothing written;
+        // with sketch, the two boxes its mini window draws with what the form
+        // holds so far, each with its dry run, nothing written;
         // else what the window holds saved as the person's draft flow, then
         // published when asked or opened on the canvas. Duplicate on a
         // scheduled action's card opens a new draft on the canvas too.
@@ -643,7 +729,7 @@ function ws_handle_action($action, $request)
             $channel_id = (int) ($request['channel_id'] ?? 0);
 
             if (!empty($request['sketch'])) {
-                $result = ws_scheduled_flow_sketch($viewer, $channel_id);
+                $result = ws_scheduled_flow_sketch($viewer, $channel_id, ws_scheduled_flow_fill($request));
 
                 return $result['ok'] ? ws_action_ok(array('graph' => $result['graph'], 'start' => $result['start'])) : ws_action_error($result['error']);
             }
@@ -753,6 +839,47 @@ function ws_handle_action($action, $request)
 
             return ws_action_ok(array('flow' => ws_flow_detail($viewer, ws_flow_for($viewer, $flow['id'], 'edit')),
                 'published' => $result['published'], 'publish_error' => $result['publish_error']));
+
+        // "Describe it to AI" in New flow: a draft flow from one sentence.
+        case 'ws_flow_ai_sketch':
+            return ws_action_flow_ai_sketch($viewer, $request);
+
+        // A flow's draft saved as a template of the site, and a saved
+        // template's title, help and group changed or binned by its saver or
+        // a Manager and above (flow_templates_saved.php).
+        case 'ws_flow_template_save':
+            $flow = ws_flow_for($viewer, (int) ($request['flow_id'] ?? 0), 'edit');
+
+            if (!$flow) {
+                return ws_action_error(lang('Only the owner of a flow can change it.'));
+            }
+
+            $result = ws_flow_template_save($viewer, $flow, array_intersect_key($request, array('title' => true, 'help' => true, 'category' => true)));
+
+            if (!$result['ok']) {
+                return ws_action_flow_refused($result);
+            }
+
+            return ws_action_ok(array('template' => $result['template']));
+
+        case 'ws_flow_template_update':
+            $result = ws_flow_template_update($viewer, ws_flow_template_saved_id((string) ($request['key'] ?? '')),
+                array_intersect_key($request, array('title' => true, 'help' => true, 'category' => true)));
+
+            if (!$result['ok']) {
+                return ws_action_flow_refused($result);
+            }
+
+            return ws_action_ok(array('template' => $result['template']));
+
+        case 'ws_flow_template_bin':
+            $result = ws_flow_template_bin($viewer, ws_flow_template_saved_id((string) ($request['key'] ?? '')));
+
+            if (!$result['ok']) {
+                return ws_action_flow_refused($result);
+            }
+
+            return ws_action_ok(array());
 
 
         // canvas: started, listed, read and cancelled through the runner's
@@ -1073,7 +1200,14 @@ function ws_handle_action($action, $request)
                 return ws_action_error(lang('That note could not be found.'));
             }
 
-            $result = ws_note_file_store($viewer, $note, (string) ($request['name'] ?? ''), (string) ($request['data'] ?? ''));
+            // A form part as the screen sends it, or base64 (ws_upload_request_file()).
+            $file = ws_upload_request_file($request);
+
+            if (!$file['ok']) {
+                return ws_action_error($file['error']);
+            }
+
+            $result = ws_note_file_store_bytes($viewer, $note, $file['name'], (string) $file['binary']);
 
             if (!$result['ok']) {
                 return ws_action_error($result['error']);
@@ -1307,7 +1441,8 @@ function ws_handle_action($action, $request)
                 // The days, estimates and priorities the argument popup
                 // offers after a command.
                 'command_values' => ws_command_suggestions(),
-                'upload'      => array('max' => ws_upload_max_bytes(), 'accept' => ''),
+                // The screen sends files as form parts (apiUpload()).
+                'upload'      => array('max' => ws_upload_form_max_bytes(), 'accept' => ''),
                 'interact'    => ws_interact_ready(),
                 'reactions'   => ws_reaction_quick(),
                 'claude'      => function_exists('ws_claude_boot') ? ws_claude_boot() : null,
@@ -2014,6 +2149,14 @@ function ws_handle_action($action, $request)
 
             $body = (string) ($request['body'] ?? '');
 
+            // A form part as the screen sends it, or base64 as older screens
+            // and scripts do (ws_upload_request_file()).
+            $file = ws_upload_request_file($request);
+
+            if (!$file['ok']) {
+                return ws_action_error($file['error']);
+            }
+
             // "/create product" sent with a CSV or spreadsheet: the file is
             // posted on its own, then made into one bulk card of drafts
             // (ws_command_product_file()). Refused before the file is posted
@@ -2021,7 +2164,7 @@ function ws_handle_action($action, $request)
             $product_file = ws_command_is_product_file($body);
 
             if ($product_file) {
-                if (!ws_bulk_file_is_table((string) ($request['name'] ?? ''))) {
+                if (!ws_bulk_file_is_table($file['name'])) {
                     return ws_action_error(lang('Products are made from a CSV, Excel or OpenDocument file.'));
                 }
 
@@ -2040,7 +2183,7 @@ function ws_handle_action($action, $request)
             // long) keeps no file, as the external API does.
             // A recording also carries the length and waveform its recorder
             // measured, cleaned before they are kept (ws_voice_queue()).
-            $result = ws_message_send_file($viewer, $channel, $body, (string) ($request['name'] ?? ''), (string) ($request['data'] ?? ''), array(
+            $result = ws_message_send_file_bytes($viewer, $channel, $body, $file['name'], $file['binary'], array(
                 'parent_id' => $parent_id,
                 'voice'     => array('duration_ms' => $request['voice_duration_ms'] ?? 0, 'peaks' => $request['voice_peaks'] ?? ''),
             ));
@@ -3571,6 +3714,8 @@ function ws_handle_action($action, $request)
             $event['start_time'] = date('H:i', (int) $event['starts_at']);
             $event['end_time'] = date('H:i', (int) $event['ends_at']);
             $event['can_edit'] = ws_can_edit_event($viewer, $event);
+            $event['contact'] = ws_event_contacts_ready() ? ws_event_contact_of($viewer, $event) : null;
+            unset($event['contact_id']);
 
             return ws_action_ok(array('event' => $event));
 

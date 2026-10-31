@@ -85,7 +85,7 @@ function test_bs6_js_leftovers_loader_metrics()
 	// v6 .spinner-border is 1em; 2rem gives v5's 32px with a 4px ring.
 	foreach (array('assets/js/add_order.js' => 2, 'assets/js/erp_lists.js' => 1) as $path => $count) {
 		$source = bs6_js_leftovers_source($path);
-		pg_assert_same($count, substr_count($source, '<span class="spinner-border fg-secondary" style="font-size:2rem" role="status" aria-hidden="true"></span>'), $path);
+		pg_assert_same($count, substr_count($source, '<span class="spinner-border fg-secondary" style="font-size:2rem" role="status"><span class="visually-hidden"></span></span>'), $path);
 		pg_assert_same($count, substr_count($source, 'spinner-border'), $path . ': spinner without the size');
 	}
 

@@ -5,7 +5,7 @@ module: widgets_shipping_address
 ---
 
 ## What is it?
-- Kind `shipping_address_and_arrival` (`includes/fn/widgets_shipping_address.php`), the first of four widgets for the classic multi-step checkout ([[system-widget-missing-types]]). It posts to `shipping_address_and_arrival.php` with the classic field names; the handler's checks, address book write and redirects are unchanged.
+- Kind `shipping_address_and_arrival` (`includes/fn/widgets_shipping_address.php`), the first of four widgets for the classic multi-step checkout ([[system-widget-page-types]]). It posts to `shipping_address_and_arrival.php` with the classic field names; the handler's checks, address book write and redirects are unchanged.
 - The cart sends the visitor here with `?ship_to_id=` (`next_page_id_with_shipping`). `pg_sw_page_type_widgets()` maps the classic type to it.
 
 ## Where are the page's settings?
@@ -26,6 +26,8 @@ module: widgets_shipping_address
 - One loop row per active date: the `arrival_date` radio gets the date id as value; `custom_arrival_date` is renamed `custom_arrival_date_<id>` and dropped for a date without a custom day (row flag `arrival_is_custom`). It is an `<input type="date">`: the handler reads ISO dates (`prepare_form_data_for_input()`).
 - Static flags are applied with `arrival_is_custom => true`, so the row flag is decided per row.
 
+## Where is the verified addresses box?
+- In [[shipping-address-verified-box]] (#3177).
+
 ## What is left out?
-- The verified shipping addresses help box of the classic page.
 - The staff edit grid around the custom shipping form; the form's rows are the classic markup in the `custom_shipping_form` section (only a classic page has `form = 1`).

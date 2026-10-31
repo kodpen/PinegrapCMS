@@ -61,7 +61,7 @@ foreach ($products as $row) {
             <td class="align-middle text-start">
                 <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2" title="' . lang('Stock movements') . '" onclick="window.location.href=\'erp_stock.php?product_id=' . (int) $row['product_id'] . '#erp_stock_moves\'"><i class="bi bi-list-ul"></i></button>
             </td>
-            <td style="max-width:280px" class="text-truncate align-middle">' . h($name)
+            <td style="max-width:280px" class="text-wrap text-break align-middle">' . h($name)
                 . ((trim((string) $row['product_sku']) !== '') ? '<div class="small fg-secondary font-monospace">' . h($row['product_sku']) . '</div>' : '') . '</td>
             <td class="align-middle text-end" data-order="' . ($tracked ? (int) $row['inventory_quantity'] : -1) . '">'
                 . ($tracked ? h(erp_quantity_text($row['inventory_quantity'])) : '<span class="fg-secondary">' . lang('Stock not tracked') . '</span>') . '</td>
@@ -84,7 +84,7 @@ foreach ($moves as $move) {
             <td class="align-middle text-nowrap"><a class="pg-link-body-emphasis" href="edit_erp_invoice.php?id=' . (int) $move['invoice_id'] . '">' . h($document) . '</a></td>
             <td class="align-middle">' . h($kinds[(string) $move['kind']] ?? (string) $move['kind']) . '</td>
             <td class="align-middle"><a class="pg-link-body-emphasis" href="erp_stock.php?product_id=' . (int) $move['product_id'] . '#erp_stock_moves">' . h($name) . '</a></td>
-            <td class="align-middle">' . h(erp_stock_effect_text($move)) . '</td>
+            <td class="align-middle" data-sort="' . sprintf('%.4F', (((string) $move['direction'] === 'in') ? 1 : -1) * (float) $move['quantity']) . '">' . h(erp_stock_effect_text($move)) . '</td>
             <td class="align-middle text-end text-nowrap" data-sort="' . (int) $move['unit_cost'] . '">' . h(erp_money_out((int) $move['unit_cost'])) . '</td>
             <td class="align-middle text-end text-nowrap" data-sort="' . (int) $move['cost_total'] . '">' . h(erp_money_out((int) $move['cost_total'])) . '</td>
         </tr>';

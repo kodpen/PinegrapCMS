@@ -92,7 +92,7 @@ $user_manage_visitors = $row['user_manage_visitors'];
 // and the editor's role is less than or equal to the user that the editor is trying to reset the password for,
 // output error because user does not have access to do this
 if (($user['role'] > 0) && ($user['role'] >= $user_role)) {
-    log_activity("access denied because user does not have access to reset password for user", $_SESSION['sessionusername']);
+    log_activity(lang('access denied because user does not have access to reset password for user'), $_SESSION['sessionusername']);
     output_error(lang('Access denied.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
 }
 
@@ -158,7 +158,7 @@ email(array(
         lang('Password') . ': ' . $random_password . "\n\n" .
         $login . "\n"));
     
-log_activity("password was reset for user ($user_username)", $_SESSION['sessionusername']);
+log_activity(lang(array('string' => 'password was reset for user ({var:1})', 'vars' => array($user_username))), $_SESSION['sessionusername']);
 $liveform_view_users->add_notice(lang(array('string' => 'The user\'s password has been reset, and a new password, &quot;{var:1}&quot;, has been e-mailed to the user.', 'vars' => array(h($random_password)))));
 
 // If there is a send to value then send user back to that screen

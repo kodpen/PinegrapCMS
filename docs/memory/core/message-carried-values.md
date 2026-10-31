@@ -14,5 +14,9 @@ description: Values a liveform message carries (records, panel input, service an
 - An exception that is a PHP warning (`RecursiveDirectoryIterator`) is already HTML-escaped by PHP when `html_errors` is on; `backups.php` escapes it only when it is off.
 - A form field's label and the validation message written for it are text in every form's messages (`custom_form.php`, designer forms, cart and express order fields, the submitted-form screens), although a classic form prints the label as it is: a label typed with tags shows them in the message.
 
+## Are Site Log lines HTML?
+- No. `log_activity()` and `ws_change_log()` store plain text and every reader escapes it once: Site Log (`convert_text_to_html()`), the dashboard Activity card, Edit User's activity list; `GET /site-log` returns it raw. Pass names raw in a log sentence's `vars`. An explorer JSON `message` is plain too (the File/Catalog Manager toast sets it with `textContent`); the backup screen's error `message` stays escaped because it is appended as HTML.
+- Symptom fixed: about twenty bin, restore, upload, Image Editor and catalog lines wrapped the name in `h()`, so "Çay & Kahve" showed as `Çay &amp; Kahve` there and in the group-created and quick-edit toasts (`tests/log_lines_plain_text_test.php`).
+
 ## What is still left?
 - `submit_order.php` (claimed by #928), `edit_currency.php` (open PR #1341) and `view_contacts.php` (claimed by #723): their message calls get the same treatment once that work merges.

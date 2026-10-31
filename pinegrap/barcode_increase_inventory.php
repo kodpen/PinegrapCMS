@@ -45,17 +45,19 @@ if ( !isset( $_GET['request'] ) && empty( $_GET['request'] ) && ($_GET['request'
                         <div class="card-body">
                             <div class="row">
                                 <div class="col-12 md:col-auto">
-                                    <label for="scanner_input" class="form-label" data-bs-content="' . lang('-Last Scan: shows last readed scan for barcode scanners and no need to any action.</br>-Manuel Scan: if scanner read wrong or dont read, you can input manuel and read it with \'Read\' button.') . '" title="' . lang('Last Scan & Manuel Read') . '">' . lang('Last Scan & Manuel Read') . ' (' . lang('what is this?') . ')</label>
+                                    <label for="scanner_input" class="form-label">' . lang('Last Scan & Manual Read') . '</label>
                                     <label class="form-control form-adorn my-3">
                                         <span class="form-adorn-text" aria-hidden="true">' . lang('Barcode') . ':</span>
-                                        <input type="text" value=""  placeholder="' . lang('Barcode') . '" class="form-ghost text-center md:text-start" id="scanner_input" aria-label="' . h(lang('Barcode')) . '" ></input>
+                                        <input type="text" value=""  placeholder="' . lang('Barcode') . '" class="form-ghost text-center md:text-start" id="scanner_input" aria-label="' . h(lang('Barcode')) . '" aria-describedby="scanner_input_hint" ></input>
                                     </label>
+                                    <div class="form-text" id="scanner_input_hint">' . lang('Last Scan shows the last barcode the scanner read; nothing else needs doing.') . '<br>' . lang('Manual Read: if the scanner reads a barcode wrong or not at all, type it and press Read.') . '</div>
                                     <label class="form-control form-adorn my-3">
                                         <span class="form-adorn-text" aria-hidden="true">' . lang('Quantity') . ':</span>
                                         <input type="number" min="1" value="1"  placeholder="' . lang('Quantity') . '" class="form-ghost text-center md:text-start" id="scanner_quantity_input" aria-label="' . h(lang('Quantity')) . '" ></input>
                                     </label>
                                     <div class="text-center">
-                                        <button type="button" onclick="read_manual()" class="btn btn-sm btn-white border my-1">' . lang('Read') . '</button>
+                                        <button type="button" id="barcode_read_button" class="btn btn-sm btn-white border my-1">' . lang('Read') . '</button>
+                                        <div id="barcode_status" class="visually-hidden" role="status" aria-live="polite"></div>
                                     </div>
                                 </div>
                             </div>
@@ -105,7 +107,16 @@ if ( !isset( $_GET['request'] ) && empty( $_GET['request'] ) && ($_GET['request'
                 $(document).scannerDetection({
                 	timeBeforeScanTest: 200, // wait for the next character for upto 200ms
                 	avgTimeByChar: 100, // its not a barcode if a character takes longer than 100ms
+                	// Keys typed into a field (the header search, the quick note,
+                	// a settings dialog) are not collected as a scan.
+                	ignoreIfFocusOn: \'input, textarea, select, [contenteditable="true"], [contenteditable=""]\',
                 	onComplete: function(barcode, qty){
+
+                        // A scan while a dialog is open, or one made only of
+                        // blanks (Space or Enter pressed twice on a button), is dropped.
+                        if ((window.pgUI && pgUI.anyOpen(\'dialog\')) || String(barcode).trim() === \'\') {
+                            return;
+                        }
 
                         if ($("input#scanner_input,input#scanner_quantity_input").is( ":focus" )) {
                             
@@ -120,19 +131,26 @@ if ( !isset( $_GET['request'] ) && empty( $_GET['request'] ) && ($_GET['request'
                     } // main callback function	
                 });
                 
-                function read_manual(){
+                // The Read button is disabled while its own request runs, so a
+                // double click does not move the stock twice; a scan is never
+                // held back, as a repeated scan is a real second unit.
+                var read_button = document.getElementById("barcode_read_button");
+                read_button.addEventListener("click", function(){
                     var barcode = $("input#scanner_input").val();
                     var quantity = $("input#scanner_quantity_input").val();
-                    request_barcode(barcode,quantity);
-                }
+                    request_barcode(barcode,quantity,read_button);
+                });
 
-                function request_barcode(barcode,quantity){
+                function request_barcode(barcode,quantity,button){
                     //we reset quantity to 1 if its not.
                     if($("input#scanner_quantity_input") != 1){
                         $("input#scanner_quantity_input").val(1);
                     }
                     
                     if(barcode != "" && quantity != "" && quantity >= 1){
+                        if(button){
+                            read_button.disabled = true;
+                        }
                         $.ajax({
                             contentType: "application/json",
                             url: "barcode_increase_inventory.php?request=action",
@@ -156,6 +174,8 @@ if ( !isset( $_GET['request'] ) && empty( $_GET['request'] ) && ($_GET['request'
                                         <td class=\'align-middle text-center h5 fw-bolder \'>" + response.data.new_inventory_quantity + "</td>\
                                         <td class=\'align-middle \'>" + response.data.scanned_at + "</td>\
                                     </tr>");
+                                    // Said to screen readers too: the table row is not announced.
+                                    document.getElementById("barcode_status").textContent = "' . escape_javascript(lang('{var:1}: the inventory quantity is now {var:2}.')) . '".replace("{var:1}", function(){ return String(response.data.name); }).replace("{var:2}", function(){ return String(response.data.new_inventory_quantity); });
 
                                 }
                                 if(response.status == "error"){
@@ -163,7 +183,14 @@ if ( !isset( $_GET['request'] ) && empty( $_GET['request'] ) && ($_GET['request'
                                 }
                             },
                             error: function() {
-                                alert("' . escape_javascript(lang('Please try again.')) . '");
+                                // A dropped connection or a failed page can come after the
+                                // stock was written, so scanning again blindly may count twice.
+                                alert("' . escape_javascript(lang('No answer came, so the inventory quantity may or may not have changed. Check the inventory of the product before scanning again.')) . '");
+                            },
+                            complete: function() {
+                                if(button){
+                                    read_button.disabled = false;
+                                }
                             }
                         });
                     }
@@ -213,7 +240,7 @@ if ( !isset( $_GET['request'] ) && empty( $_GET['request'] ) && ($_GET['request'
         ) {
             respond(array(
                 'status' => 'error',
-                'message' => lang('Invalid token.')));
+                'message' => lang('Your session expired. Reload the page and try again.')));
         }
     }
 
@@ -223,7 +250,8 @@ if ( !isset( $_GET['request'] ) && empty( $_GET['request'] ) && ($_GET['request'
     if (!USER_LOGGED_IN) {
         respond(array(
             'status' => 'error',
-            'message' => lang('Invalid login.')));
+            'code' => 'session',
+            'message' => lang('Your session has expired. Reload the page and sign in again.')));
     }
     // User Must be logged in.
     $user = validate_user();

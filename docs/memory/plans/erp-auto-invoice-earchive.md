@@ -18,6 +18,7 @@ description: Plan (approved 2026-10-19): auto invoice with its two filters and t
 - Queue worker: the e-document send depends on the `erp_edoc_queue` worker from `erp-edocument-leftovers.md`; until it exists the invoice is created and the send stays a panel step (the card says so). Built that way.
 - Internet-sale marker: e-Arşiv invoices created from web orders carry the "Bu satış internet üzerinden yapılmıştır" note and the payment method/date fields the UBL profile needs (verify with the İşbaşı test environment); POS sales do not.
 - Threshold warnings: built (step 4); a daily cached sum replaced the monthly job.
+- Marketplace orders (#3670, `workflow/decisions-made-product-9.md`, PR #3692): behind `config.erp_auto_invoice_marketplace`, default off (`erp/erp-auto-invoice-marketplace.md`); the public PDF address and link push: built (#3743, PR #3780, `erp/erp-invoice-public-link.md`).
 - Legacy Paraşüt order export (`includes/fn/parasut.php`) stays untouched.
 
 ## What remains?
@@ -26,8 +27,7 @@ description: Plan (approved 2026-10-19): auto invoice with its two filters and t
 5. When done: decisions move to docs/memory/erp/erp-auto-invoice.md and this file is deleted.
 
 ## Open questions?
-- Marketplace orders: auto-invoice too (the marketplace needs the invoice link) once `marketplace-trendyol-hepsiburada.md` pushes links; default on for them. Until then the decision skips them.
 - Once the queue worker exists: enqueue the e-document send right after the automatic invoice, as first planned.
 
 ## Where to start?
-- Step 3 is the only step left; it waits for the İşbaşı test environment, to check the internet-sale note and payment fields against the provider's UBL profile (no field is guessed, `erp-edoc-driver-layer.md`). Read docs/memory/erp/erp-auto-invoice.md first.
+- Step 3 and the marketplace switch (#3670, free to claim) are left; step 3 waits for the İşbaşı test environment, to check the internet-sale note and payment fields against the provider's UBL profile (no field is guessed, `erp-edoc-driver-layer.md`). Read docs/memory/erp/erp-auto-invoice.md first.

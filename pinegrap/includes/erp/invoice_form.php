@@ -217,7 +217,7 @@ function erp_invoice_form_line_row($liveform, $index, $line, $withholding_shown 
                     <input type="hidden" name="' . h($name('source_line')) . '" value="' . h((string) ($line['source_line'] ?? '')) . '" />
                     ' . $liveform->output_field(array(
                         'type' => 'text', 'id' => $id('product_search'), 'name' => $name('product_name'),
-                        'value' => h($line['product_name']),
+                        'value' => $line['product_name'],
                         'class' => 'form-control form-control-sm erp-product-search', 'maxlength' => '100', 'autocomplete' => 'off',
                         'placeholder' => lang('Search products'), 'aria-label' => lang('Product'))) . '
                     <div class="menu shadow-sm" id="' . h($id('product_results')) . '" data-erp-product-results></div>
@@ -228,45 +228,45 @@ function erp_invoice_form_line_row($liveform, $index, $line, $withholding_shown 
                 </td>
                 <td>' . $liveform->output_field(array(
                     'type' => 'text', 'id' => $id('description'), 'name' => $name('description'),
-                    'value' => h($line['description']),
+                    'value' => $line['description'],
                     'class' => 'form-control form-control-sm', 'maxlength' => '255', 'autocomplete' => 'off',
                     'aria-label' => lang('Description'))) . '</td>
                 <td>' . $liveform->output_field(array(
                     'type' => 'text', 'id' => $id('quantity'), 'name' => $name('quantity'),
-                    'value' => h($line['quantity']),
+                    'value' => $line['quantity'],
                     'class' => 'form-control form-control-sm text-end', 'maxlength' => '12', 'inputmode' => 'decimal', 'autocomplete' => 'off',
                     'aria-label' => lang('Quantity'))) . '</td>
                 <td>' . $liveform->output_field(array(
                     'type' => 'select', 'id' => $id('unit_code'), 'name' => $name('unit_code'),
-                    'value' => h($unit_code),
+                    'value' => $unit_code,
                     'class' => 'form-control form-control-sm', 'options' => $unit_options,
                     'aria-label' => lang('Unit'))) . '</td>
                 <td>' . $liveform->output_field(array(
                     'type' => 'text', 'id' => $id('unit_price'), 'name' => $name('unit_price'),
-                    'value' => h($line['unit_price']),
+                    'value' => $line['unit_price'],
                     'class' => 'form-control form-control-sm text-end', 'maxlength' => '15', 'inputmode' => 'decimal', 'autocomplete' => 'off',
                     'aria-label' => lang('Unit price'))) . '</td>
                 <td>
                     <input type="hidden" name="' . h($name('offer_id')) . '" value="' . (int) $line['offer_id'] . '" data-erp-offer-id />
                     ' . $liveform->output_field(array(
                     'type' => 'text', 'id' => $id('offer_discount_rate'), 'name' => $name('offer_discount_rate'),
-                    'value' => h($line['offer_discount_rate']),
+                    'value' => $line['offer_discount_rate'],
                     'class' => 'form-control form-control-sm text-end', 'maxlength' => '7', 'inputmode' => 'decimal', 'autocomplete' => 'off',
                     'aria-label' => lang('Campaign %'))) . '
                 </td>
                 <td>' . $liveform->output_field(array(
                     'type' => 'text', 'id' => $id('discount_rate'), 'name' => $name('discount_rate'),
-                    'value' => h($line['discount_rate']),
+                    'value' => $line['discount_rate'],
                     'class' => 'form-control form-control-sm text-end', 'maxlength' => '7', 'inputmode' => 'decimal', 'autocomplete' => 'off',
                     'aria-label' => lang('Discount %'))) . '</td>
                 <td>' . $liveform->output_field(array(
                     'type' => 'text', 'id' => $id('tax_rate'), 'name' => $name('tax_rate'),
-                    'value' => h($line['tax_rate']),
+                    'value' => $line['tax_rate'],
                     'class' => 'form-control form-control-sm text-end', 'maxlength' => '7', 'inputmode' => 'decimal', 'autocomplete' => 'off',
                     'aria-label' => erp_tax_label('percent'))) . '</td>' . (erp_tax2_enabled() ? '
                 <td>' . $liveform->output_field(array(
                     'type' => 'text', 'id' => $id('tax2_rate'), 'name' => $name('tax2_rate'),
-                    'value' => h((string) ($line['tax2_rate'] ?? '')),
+                    'value' => (string) ($line['tax2_rate'] ?? ''),
                     'class' => 'form-control form-control-sm text-end', 'maxlength' => '7', 'inputmode' => 'decimal', 'autocomplete' => 'off',
                     'aria-label' => erp_tax2_name() . ' %')) . '</td>' : '') . '
                 <td data-erp-withholding-col' . ($withholding_shown ? '' : ' class="d-none"') . '>
@@ -281,11 +281,43 @@ function erp_invoice_form_line_row($liveform, $index, $line, $withholding_shown 
 }
 
 /**
+ * Keep a stored account in the account list after it turned passive.
+ *
+ * The list offers active accounts only, so a draft, quote or purchase order
+ * whose account was made passive later would open on "Choose an account" and
+ * its plain save would be refused. The stored account is drawn as one more
+ * option marked Passive; nothing is written to the account.
+ *
+ * @param array      $account_options  The list as erp_invoice_form_cards() builds it
+ * @param array|null $account          The stored account row, or null when it is gone
+ * @return array
+ */
+function erp_invoice_form_keep_account($account_options, $account)
+{
+    if (!is_array($account) || ((int) ($account['id'] ?? 0) <= 0)) {
+        return $account_options;
+    }
+
+    $key = 'account_' . (int) $account['id'];
+
+    if (!isset($account_options[$key])) {
+        $account_options[$key] = array(
+            'label' => h((string) ($account['title'] ?? '')) . ' (' . lang('Passive') . ')',
+            'value' => (string) (int) $account['id'],
+        );
+    }
+
+    return $account_options;
+}
+
+/**
  * The cards of the typed invoice form.
  *
  * @param liveform $liveform
  * @param array    $options  lines (display rows), invoice_id, quote (bool),
- *                           valid_days, purchase_order (bool)
+ *                           valid_days, purchase_order (bool),
+ *                           keep_account_id (the stored account an edit
+ *                           screen keeps listed when it is passive)
  * @return string  HTML
  */
 function erp_invoice_form_cards($liveform, $options = array())
@@ -306,6 +338,11 @@ function erp_invoice_form_cards($liveform, $options = array())
     // Keyed by id with the title as the label, so two accounts of the same name stay two options.
     foreach (erp_accounts(array('status' => 'active')) as $account) {
         $account_options['account_' . (int) $account['id']] = array('label' => h($account['title']), 'value' => (string) (int) $account['id']);
+    }
+
+    $keep_account_id = isset($options['keep_account_id']) ? (int) $options['keep_account_id'] : 0;
+    if (($keep_account_id > 0) && !isset($account_options['account_' . $keep_account_id])) {
+        $account_options = erp_invoice_form_keep_account($account_options, erp_account($keep_account_id));
     }
 
     $direction_options = array();
@@ -465,19 +502,24 @@ function erp_invoice_form_cards($liveform, $options = array())
             <span>' . lang('Lines') . '</span>
             <div class="d-flex flex-wrap align-items-center gap-3 ms-auto">
                 ' . (($withholding_shown || erp_turkish_features())
-                    ? '<div class="form-field mb-0 fg-body fw-normal fs-md" style="text-transform:none" title="' . h(lang('The buyer pays part of the VAT to the tax office: pick the withholding code on each line it applies to.')) . '">
-                    <div class="switch"><input class="" type="checkbox" role="switch" id="erp_withholding_on" data-erp-withholding-toggle' . ($withholding_shown ? ' checked' : '') . ' /></div>
+                    ? '<div class="form-field mb-0 fg-body fw-normal fs-md" style="text-transform:none">
+                    <div class="switch"><input class="" type="checkbox" role="switch" id="erp_withholding_on" data-erp-withholding-toggle aria-describedby="erp_withholding_hint"' . ($withholding_shown ? ' checked' : '') . ' /></div>
                     <label class="small" for="erp_withholding_on">' . lang('VAT withholding') . '</label>
                 </div>'
                     : '') . '
-                <div class="input-group input-group-sm" style="width: 16rem;" title="' . h(lang('Scan a barcode or type a SKU and press Enter: the product lands on a line, or its quantity goes up by one.')) . '">
-                    <span class="input-group-text"><i class="bi bi-upc-scan"></i></span>
-                    <input type="text" class="form-control" data-erp-barcode autocomplete="off" placeholder="' . h(lang('Scan a barcode')) . '" aria-label="' . h(lang('Barcode')) . '" />
+                <div class="fg-body fw-normal fs-md" style="width: 16rem; text-transform:none">
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text"><i class="bi bi-upc-scan" aria-hidden="true"></i></span>
+                        <input type="text" class="form-control" data-erp-barcode aria-describedby="erp_barcode_hint" autocomplete="off" placeholder="' . h(lang('Scan a barcode')) . '" aria-label="' . h(lang('Barcode')) . '" />
+                    </div>
                 </div>
                 <button type="button" class="btn btn-sm btn-outline theme-secondary no-submit" data-erp-add-line><i class="bi bi-plus-lg me-3"></i>' . lang('Add line') . '</button>
             </div>
         </div>
         <div class="card-body">
+            <div class="form-text mt-0 mb-3"><span id="erp_barcode_hint">' . lang('Scan a barcode or type a SKU and press Enter: the product lands on a line, or its quantity goes up by one.') . '</span>' . (($withholding_shown || erp_turkish_features())
+                ? ' <span id="erp_withholding_hint">' . lang('The buyer pays part of the VAT to the tax office: pick the withholding code on each line it applies to.') . ' ' . lang(array('string' => '{var:1}: {var:2}', 'vars' => array(lang('Withholding'), lang('Withholding code and the share of the VAT the buyer pays to the tax office.')))) . '</span>'
+                : '') . '</div>
             <div class="table-responsive">
                 <table class="table table-sm align-middle mb-0" data-erp-lines-table>
                     <thead>
@@ -488,11 +530,11 @@ function erp_invoice_form_cards($liveform, $options = array())
                             <th class="text-end" style="width:8%">' . lang('Quantity') . '</th>
                             <th style="width:11%">' . lang('Unit') . '</th>
                             <th class="text-end" style="width:11%">' . lang('Unit price') . '</th>
-                            <th class="text-end" style="width:7%" title="' . h(lang('The store\'s campaign on the product, applied before the typed discount. Clear it to sell at the list price.')) . '">' . lang('Campaign %') . '</th>
-                            <th class="text-end" style="width:7%" title="' . h(lang('Your discount, applied on what the campaign leaves.')) . '">' . lang('Discount %') . '</th>
+                            <th class="text-end" style="width:7%">' . lang('Campaign %') . '</th>
+                            <th class="text-end" style="width:7%">' . lang('Discount %') . '</th>
                             <th class="text-end" style="width:7%">' . h(erp_tax_label('percent')) . '</th>' . (erp_tax2_enabled() ? '
                             <th class="text-end" style="width:7%">' . h(erp_tax2_name() . ' %') . '</th>' : '') . '
-                            <th style="width:9%" data-erp-withholding-col' . ($withholding_shown ? '' : ' class="d-none"') . ' title="' . h(lang('Withholding code and the share of the VAT the buyer pays to the tax office.')) . '">' . lang('Withholding') . '</th>
+                            <th style="width:9%" data-erp-withholding-col' . ($withholding_shown ? '' : ' class="d-none"') . '>' . lang('Withholding') . '</th>
                             <th class="text-end" style="width:11%">' . lang('Line total') . '</th>
                             <th style="width:2.5rem"></th>
                         </tr>
@@ -501,6 +543,7 @@ function erp_invoice_form_cards($liveform, $options = array())
                 </table>
             </div>
             <template data-erp-line-template>' . $output_template . '</template>
+            <div class="form-text" id="erp_lines_columns_hint">' . lang(array('string' => '{var:1}: {var:2}', 'vars' => array(lang('Campaign %'), lang('The store\'s campaign on the product, applied before the typed discount. Clear it to sell at the list price.')))) . ' ' . lang(array('string' => '{var:1}: {var:2}', 'vars' => array(lang('Discount %'), lang('Your discount, applied on what the campaign leaves.')))) . '</div>
             <div class="form-text">' . lang('Amounts are in the document currency. Empty rows are ignored. Picking a product fills the line; everything on it stays editable.') . '</div>
         </div>
     </div>

@@ -826,6 +826,14 @@ function pg_panel_shared_component($request, $action)
                 $sc_tl_tpl, $sc_tl_kind, pg_sw_template_page_map($sc_tl_tpl, $sc_tl_style))));
             break;
 
+        // ── STARTER LAYOUTS ─────────────────────────────────────────────
+        // The layout gallery's "Starters": the layouts the release ships
+        // for a widget kind (pg_sw_starter_layouts()). Read only.
+        case 'starter_layouts':
+            $sc_st_kind = isset($request['kind']) && is_string($request['kind']) ? $request['kind'] : '';
+            respond(array('status' => 'success', 'layouts' => pg_sw_starter_layouts($sc_st_kind)));
+            break;
+
         default:
             respond(array('status' => 'error', 'message' => lang('Invalid action.')));
     }

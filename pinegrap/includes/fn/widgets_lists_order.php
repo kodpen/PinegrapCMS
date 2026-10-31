@@ -198,6 +198,8 @@ function pg_sw_list_order_sources()
                 array('__return_actions_html', lang('The customer\'s moves: sent, withdraw (HTML)')),
                 array('__return_can_mark_sent', lang('The customer may say the parcel is sent (1 or empty)')),
                 array('__return_can_withdraw', lang('The customer may withdraw the request (1 or empty)')),
+                array('__return_label_url', lang('Return label download URL')),
+                array('__return_has_label', lang('Has a return label to download (1 or empty)')),
             ),
         ),
         'order.return_lines' => array(
@@ -732,6 +734,8 @@ function pg_sw_list_order_return_rows($returns, $form)
         if ($lines) $out['order.return_lines'][$id] = $lines;
         $how = ((string)$return['status'] === 'approved') ? pg_return_how($return) : array('text' => '');
         $asked = (string)$return['requested'];
+        // Set only while the label is offered (pg_return_customer_view()).
+        $label = isset($return['label_url']) ? (string)$return['label_url'] : '';
         $out['order.returns'][0][] = array(
             '__return_id'                 => (string)$id,
             '__return_title'              => lang(array('string' => 'Return request #{var:1}', 'vars' => array($id))),
@@ -751,6 +755,8 @@ function pg_sw_list_order_return_rows($returns, $form)
             '__return_actions_html'       => pg_return_actions_html($return, $form),
             '__return_can_mark_sent'      => !empty($return['can_mark_sent']) ? '1' : '',
             '__return_can_withdraw'       => !empty($return['can_withdraw']) ? '1' : '',
+            '__return_label_url'          => $label,
+            '__return_has_label'          => ($label !== '') ? '1' : '',
         );
     }
     return $out;

@@ -70,3 +70,15 @@ function test_csv_line_endings_missing_file_is_false()
 {
 	pg_assert_false(pg_csv_open(sys_get_temp_dir() . '/pg-csv-missing-' . uniqid() . '.csv'));
 }
+
+function test_csv_line_endings_byte_order_mark_is_skipped()
+{
+	// Excel's "CSV UTF-8" starts the file with EF BB BF; left in place it
+	// becomes part of the first heading.
+	$expected = array(array('first_name', 'email'), array('Ayşe', 'a@example.com'));
+
+	pg_assert_same($expected, csv_line_endings_test_rows("\xEF\xBB\xBFfirst_name,email\nAyşe,a@example.com\n"), 'LF');
+	pg_assert_same($expected, csv_line_endings_test_rows("\xEF\xBB\xBFfirst_name,email\r\nAyşe,a@example.com\r\n"), 'CRLF');
+	pg_assert_same($expected, csv_line_endings_test_rows("\xEF\xBB\xBFfirst_name,email\rAyşe,a@example.com\r"), 'CR');
+	pg_assert_same(array(array('name'), array('x')), csv_line_endings_test_rows("\xEF\xBB\xBF\"name\"\n\"x\"\n"), 'quoted heading');
+}

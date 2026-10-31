@@ -21,8 +21,10 @@
 // approved, send the title, description and pictures over approved ones, send
 // stock and price, read the result of a batch, read order
 // packages (pulled, or delivered by their webhook), accept one (Picking),
-// report one shipped with the seller's own carrier, send the link of a
-// package's invoice, read the buyers' returns and approve or reject the ones
+// report one shipped with the seller's own carrier, ask for and read the
+// shipping label Trendyol makes for its own carrier's parcel, send the link of
+// a package's invoice or mark it Invoiced with the invoice number, read the
+// buyers' returns and approve or reject the ones
 // that came back, read the buyers' questions and answer them, register or remove
 // that webhook, and read the seller's catalogue a page at a time for matching
 // it to the shop's products. What it does not
@@ -81,7 +83,11 @@ function mp_trendyol_connector() {
 		'order_stage'         => 'mp_trendyol_order_stage',
 		'approve_lines'       => 'mp_trendyol_approve_lines',
 		'ship_package'        => 'mp_trendyol_ship_package',
+		'request_label'       => 'mp_trendyol_request_common_label',
+		'read_label'          => 'mp_trendyol_common_label',
+		'label_carrier'       => 'mp_trendyol_common_label_carrier',
 		'send_invoice_link'   => 'mp_trendyol_send_invoice_link',
+		'mark_invoiced'       => 'mp_trendyol_mark_invoiced',
 		'claims'              => 'mp_trendyol_claims',
 		'approve_claim'       => 'mp_trendyol_approve_claim',
 		'claim_issue_reasons' => 'mp_trendyol_claim_issue_reasons',
@@ -336,14 +342,28 @@ function mp_trendyol_read($outcome, $environment = 'production', $allow_empty = 
 // Their error text, or '' when the answer is not an error.
 //
 // The envelope is {"timestamp", "exception", "errors": [{"key", "message",
-// "errorParams"}]} on the services that document one. A bare "message" is read
-// too; the exception class alone is the last resort, because it names a Java
-// type rather than a reason.
+// "errorParams"}]} on the services that document one. The common label
+// services wrap theirs one level down, {"error": {"status", "errors": [{"code",
+// "type", "title"}]}}, and their sentence is the title. A bare "message" is
+// read too; the exception class alone is the last resort, because it names a
+// Java type rather than a reason.
 function mp_trendyol_error_message($decoded) {
 
 	if (!is_array($decoded)) {
 
 		return '';
+
+	}
+
+	if (isset($decoded['error']) && is_array($decoded['error'])) {
+
+		$nested = mp_trendyol_error_message($decoded['error']);
+
+		if ($nested !== '') {
+
+			return $nested;
+
+		}
 
 	}
 
@@ -358,6 +378,10 @@ function mp_trendyol_error_message($decoded) {
 				if (isset($entry['message']) && trim((string)$entry['message']) !== '') {
 
 					$parts[] = trim((string)$entry['message']);
+
+				} elseif (isset($entry['title']) && is_scalar($entry['title']) && trim((string)$entry['title']) !== '') {
+
+					$parts[] = trim((string)$entry['title']);
 
 				} elseif (isset($entry['key']) && trim((string)$entry['key']) !== '') {
 
@@ -2385,6 +2409,11 @@ function mp_trendyol_seller_discount($line, $quantity) {
 //
 // address2 is often a copy of address1, and is then replaced by the
 // neighbourhood, which their address1 does not always name.
+//
+// Their city is the province and their district the town within it; the
+// store keeps the town as the city and the province as the state, the way a
+// Turkish address is entered at checkout (as mp_n11_address() does); the
+// town also goes to ship_tos.district.
 function mp_trendyol_address($entry, $key) {
 
 	$address = (isset($entry[$key]) && is_array($entry[$key])) ? $entry[$key] : array();
@@ -2418,8 +2447,9 @@ function mp_trendyol_address($entry, $key) {
 		'company'   => mp_trendyol_text($address, array('company')),
 		'address_1' => $line_1,
 		'address_2' => $line_2,
-		'city'      => mp_trendyol_text($address, array('city')),
-		'state'     => mp_trendyol_text($address, array('district')),
+		'city'      => mp_trendyol_text($address, array('district')),
+		'state'     => mp_trendyol_text($address, array('city')),
+		'district'  => mp_trendyol_text($address, array('district')),
 		'zip'       => mp_trendyol_text($address, array('postalCode')),
 		'country'   => mp_trendyol_text($address, array('countryCode')),
 		'phone'     => mp_trendyol_text($address, array('phone'))
@@ -2765,6 +2795,291 @@ function mp_trendyol_send_invoice_link($account, $package, $url, $transport = nu
 	}
 
 	return $result;
+
+}
+
+// What is wrong with an invoice number before the package is marked
+// Invoiced, or ''.
+//
+// Their status service names no format for it (its example is the sixteen
+// characters of an e-Archive number), so only what cannot be an invoice
+// number is refused: an empty field, a link, spaces or punctuation. Letters,
+// digits and a hyphen, at most 50; the cap is ours.
+function mp_trendyol_invoice_number_problem($number) {
+
+	$number = is_scalar($number) ? trim((string)$number) : '';
+
+	if ($number === '') {
+
+		return lang('Type the invoice number first.');
+
+	}
+
+	if (preg_match('/^[A-Za-z0-9][A-Za-z0-9-]{0,49}$/D', $number) !== 1) {
+
+		return lang('The invoice number can hold only letters, digits and hyphens, at most 50, without spaces.');
+
+	}
+
+	return '';
+
+}
+
+// The body of their package status call for Invoiced: every line of the
+// package with its quantity, the invoice number under params, and the status.
+// Line ids are JSON numbers, so only ids that pass mp_trendyol_id_fits() are
+// taken; the caller refuses a body without lines.
+function mp_trendyol_invoiced_body($package, $invoice_number) {
+
+	$lines = array();
+
+	foreach ((array)(isset($package['lines']) ? $package['lines'] : array()) as $line) {
+
+		$line_id = isset($line['remote_line_id']) ? trim((string)$line['remote_line_id']) : '';
+
+		if (!mp_trendyol_id_fits($line_id)) {
+
+			continue;
+
+		}
+
+		$lines[] = array(
+			'lineId'   => (int)$line_id,
+			'quantity' => isset($line['quantity']) ? max(1, (int)$line['quantity']) : 1
+		);
+
+	}
+
+	return array(
+		'lines'  => $lines,
+		'params' => array('invoiceNumber' => trim((string)$invoice_number)),
+		'status' => 'Invoiced'
+	);
+
+}
+
+// Mark a package Invoiced with the number of the invoice the seller cut.
+//
+// The same PUT …/shipment-packages/{packageId} as accepting, with status
+// Invoiced and params.invoiceNumber. They want Picking sent first, so the
+// caller accepts a package still Created before this. Their answer to a
+// successful update has no documented body, and no error status is
+// documented for this call, so any 2xx is success and a 4xx shows the message
+// of their error body when it has one.
+function mp_trendyol_mark_invoiced($account, $package, $invoice_number, $transport = null) {
+
+	$package_id = isset($package['remote_package_id']) ? trim((string)$package['remote_package_id']) : '';
+
+	if (!mp_trendyol_id_fits($package_id)) {
+
+		return mp_error(lang('That order has no package number to mark invoiced.'));
+
+	}
+
+	$problem = mp_trendyol_invoice_number_problem($invoice_number);
+
+	if ($problem !== '') {
+
+		return mp_error($problem);
+
+	}
+
+	$body = mp_trendyol_invoiced_body($package, $invoice_number);
+
+	if (!$body['lines']) {
+
+		return mp_error(lang('That order has no lines to mark invoiced.'));
+
+	}
+
+	$send = ($transport === null) ? 'api_http_request' : $transport;
+
+	$status = 0;
+
+	$watched = function ($method, $address, $options) use ($send, &$status) {
+
+		$outcome = call_user_func($send, $method, $address, $options);
+
+		$status = isset($outcome['status']) ? (int)$outcome['status'] : 0;
+
+		return $outcome;
+
+	};
+
+	$result = mp_trendyol_call($account,
+		'/integration/order/sellers/' . mp_trendyol_seller_id($account) . '/shipment-packages/' . $package_id,
+		65536, $watched, $body, 'PUT', true);
+
+	if ($result['ok']) {
+
+		return mp_ok(array('invoiced' => true));
+
+	}
+
+	// Their error body may carry its reason as a bare message, which the
+	// shared reader does not take (see mp_trendyol_send_invoice_link()).
+	$message = (isset($result['data']['message']) && is_scalar($result['data']['message']))
+		? trim((string)$result['data']['message']) : '';
+
+	if ($message !== '' && $status >= 400 && $status < 500 && empty($result['retry'])) {
+
+		return mp_error(mb_substr($message, 0, 500), false, $result['data']);
+
+	}
+
+	return $result;
+
+}
+
+/* ------------------------------------------------------------ common label */
+
+// The shipping label Trendyol makes for a parcel that Trendyol Express or Aras
+// Kargo carries on Trendyol's account (their "common label"), keyed by the
+// package's cargo tracking number. Two calls under
+// /integration/sellers/{sellerId}/common-label/{cargoTrackingNumber}: a POST
+// that asks for it, answered with its status alone, and a GET that hands over
+// what was made, one label per box, as ZPL for a thermal printer (the only
+// format they offer). The label is made after the request, so a GET straight
+// after it may come back empty. They advise asking once the package is
+// Picking or Invoiced.
+
+// Whether a cargo tracking number may go into the path: five to forty letters
+// and digits. Theirs are digits; nothing that could leave the path segment is
+// let through.
+function mp_trendyol_cargo_number_fits($number) {
+
+	return is_string($number) && (preg_match('/^[A-Za-z0-9]{5,40}$/D', $number) === 1);
+
+}
+
+// The body of the request: ZPL, and the boxes the package goes in, one label
+// each. volumetricHeight is optional and left out: nothing here knows it.
+function mp_trendyol_common_label_body($boxes) {
+
+	return array('format' => 'ZPL', 'boxQuantity' => (int)$boxes);
+
+}
+
+// Whether Trendyol makes the label of a parcel its carrier name names: Trendyol
+// Express (TEX) or Aras Kargo, as the package's cargoProviderName spells them
+// ("Trendyol Express Marketplace", "Aras Kargo Marketplace"). A parcel whose
+// carrier is not known is asked about all the same, and so is the other
+// condition, that Trendyol pays the carriage, which a package does not show:
+// their answer decides.
+function mp_trendyol_common_label_carrier($name) {
+
+	$text = pg_shipping_carrier_text(is_scalar($name) ? (string)$name : '');
+
+	if ($text === '') {
+
+		return true;
+
+	}
+
+	$words = preg_split('/[^a-z0-9]+/', $text, -1, PREG_SPLIT_NO_EMPTY);
+
+	return (strpos($text, 'trendyol express') !== false)
+		|| (is_array($words) && in_array('tex', $words, true))
+		|| (pg_shipping_method_carrier($text) === 'aras');
+
+}
+
+// Ask Trendyol for the label of a package, by its cargo tracking number.
+//
+// Their answer to a request taken has no body, so any 2xx is success. Their
+// 400 says the cargo number is wrong, their 404 that no parcel has it.
+function mp_trendyol_request_common_label($account, $number, $boxes, $transport = null) {
+
+	$number = is_scalar($number) ? trim((string)$number) : '';
+
+	if (!mp_trendyol_cargo_number_fits($number)) {
+
+		return mp_error(lang('That order has no cargo tracking number to ask a label for.'));
+
+	}
+
+	if (!is_int($boxes) || $boxes < 1) {
+
+		return mp_error(lang('The number of boxes has to be a whole number of at least one.'));
+
+	}
+
+	$result = mp_trendyol_call($account,
+		'/integration/sellers/' . mp_trendyol_seller_id($account) . '/common-label/' . $number,
+		65536, $transport, mp_trendyol_common_label_body($boxes), 'POST', true);
+
+	if (!$result['ok']) {
+
+		return $result;
+
+	}
+
+	return mp_ok(array('requested' => true));
+
+}
+
+// The label Trendyol made for a package, read by its cargo tracking number.
+//
+// Answers data['label'], the ZPL of every box one after the other (a printer
+// takes several labels in one file), data['format'] 'zpl' and data['count'],
+// the number of labels. A label not made yet is an empty one, not an error.
+function mp_trendyol_common_label($account, $number, $transport = null) {
+
+	$number = is_scalar($number) ? trim((string)$number) : '';
+
+	if (!mp_trendyol_cargo_number_fits($number)) {
+
+		return mp_error(lang('That order has no cargo tracking number to ask a label for.'));
+
+	}
+
+	$result = mp_trendyol_call($account,
+		'/integration/sellers/' . mp_trendyol_seller_id($account) . '/common-label/' . $number,
+		4194304, $transport);
+
+	if (!$result['ok']) {
+
+		return $result;
+
+	}
+
+	$labels = mp_trendyol_common_label_documents($result['data']);
+
+	return mp_ok(array('label' => implode("\n", $labels), 'format' => 'zpl', 'count' => count($labels)));
+
+}
+
+// The ZPL labels of their answer, {"data": [{"label", "format"}]}, in their
+// order. An entry that is not a ZPL label of the parcel is left out: another
+// format, or a product label, which their export variant of the call puts in
+// the same list (labelType PRODUCT, a link or a message).
+function mp_trendyol_common_label_documents($decoded) {
+
+	$entries = (is_array($decoded) && isset($decoded['data']) && is_array($decoded['data'])) ? $decoded['data'] : array();
+
+	$labels = array();
+
+	foreach ($entries as $entry) {
+
+		if (!is_array($entry) || !isset($entry['label']) || !is_string($entry['label'])) {
+
+			continue;
+
+		}
+
+		$format = (isset($entry['format']) && is_scalar($entry['format'])) ? strtoupper(trim((string)$entry['format'])) : 'ZPL';
+
+		$type = (isset($entry['labelType']) && is_scalar($entry['labelType'])) ? strtoupper(trim((string)$entry['labelType'])) : 'CARGO';
+
+		if (($format === 'ZPL') && ($type === 'CARGO') && pg_label_document_valid($entry['label'], 'zpl')) {
+
+			$labels[] = $entry['label'];
+
+		}
+
+	}
+
+	return $labels;
 
 }
 

@@ -182,7 +182,7 @@ if (is_array($privacy_export_result) && ($privacy_export_result['status'] === 'r
     }
 
     $privacy_export_side = '
-            <div class="position-sticky" style="top:1rem">
+            <div class="position-sticky" style="top:3.3rem;">
                 <div class="card mb-12">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . h(lang('Who this is about')) . '</span>

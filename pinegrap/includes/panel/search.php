@@ -27,7 +27,11 @@ function pg_panel_backend_search($request, $action)
     $search = isset($request['search']) ? trim($request['search']) : '';
 
     $offset = isset($request['offset']) ? max(0, (int) $request['offset']) : 0;
-    $per_limit = $offset + 21; // +1 extra to detect has_more
+    // Every call reads the same candidates, best first, whatever the
+    // offset: a limit that grew with it let a better match found by a later
+    // call jump ahead of rows already shown, so Load More repeated one and
+    // never showed the other.
+    $per_limit = PG_PANEL_SEARCH_PER_TYPE;
     $results = array();
 
     // Role helpers
@@ -144,10 +148,10 @@ function pg_panel_backend_search($request, $action)
                         : array());
             }
         }
-        $actions[] = array('label' => lang('Log'), 'icon' => 'bi-journal-text', 'url' => $base_url . '/view_log.php', 'keys' => array('log', 'kayit', 'journal', 'akt'));
-        $actions[] = array('label' => lang('Backups'), 'icon' => 'bi-database', 'url' => $base_url . '/backups.php', 'keys' => array('yedek', 'backup', 'bak', 'yed'));
-        $actions[] = array('label' => lang('SMTP Settings'), 'icon' => 'bi-envelope-at', 'url' => $base_url . '/smtp_settings.php', 'keys' => array('smtp', 'mail ayar', 'email ayar', 'smtpayar'));
-        $actions[] = array('label' => lang('Connected accounts'), 'icon' => 'bi-link-45deg', 'url' => $base_url . '/connections.php', 'keys' => array('bagli hesap', 'connected account', 'google', 'microsoft', 'oauth', 'bagla', 'connect'));
+        // The System tools screen and every tool on it, from the groups the
+        // screen draws (pg_settings_tool_groups()), so each tool keeps the
+        // gate it has there.
+        $actions = array_merge($actions, pg_panel_search_tool_actions(pg_settings_tool_groups($user), $base_url, $actions));
     }
 
     // ── Design ────────────────────────────────────────────────────────────
@@ -175,23 +179,19 @@ function pg_panel_backend_search($request, $action)
         exit();
     }
 
-    $s = escape(pg_list_like_pattern($search));
+    $like = pg_list_like_pattern($search);
+    $s = escape($like);
+    $s_exact = escape($search);
+    $s_prefix = escape(substr($like, 1));
 
-    // Relevance score: exact=100, starts-with=60, contains=30, secondary=15
+    // ORDER BY of a type's query: exact name, then starts with, then the
+    // rest, the order pg_panel_search_score() ranks them in.
+    $rank = function ($column, $tie) use ($s_exact, $s_prefix) {
+        return "ORDER BY CASE WHEN $column = '$s_exact' THEN 0 WHEN $column LIKE '$s_prefix' THEN 1 ELSE 2 END, $tie";
+    };
+
     $score_fn = function ($name, $secondary = '') use ($search) {
-        $n = mb_strtolower((string) ($name ?? ''));
-        $q = mb_strtolower($search);
-        $sc = mb_strtolower((string) ($secondary ?? ''));
-        $score = 0;
-        if ($n === $q)
-            $score += 100;
-        elseif (mb_strpos($n, $q) === 0)
-            $score += 60;
-        elseif (mb_strpos($n, $q) !== false)
-            $score += 30;
-        if ($sc !== '' && mb_strpos($sc, $q) !== false)
-            $score += 15;
-        return $score;
+        return pg_panel_search_score($name, $search, $secondary);
     };
 
     $add = function ($type, $id, $name, $sub, $score, $extra = array ()) use (&$results) {
@@ -209,6 +209,7 @@ function pg_panel_backend_search($request, $action)
         "SELECT page_id AS id, page_name AS name, page_type AS type
          FROM page
          WHERE page_name LIKE '$s'
+         " . $rank('page_name', 'page_id') . "
          LIMIT $per_limit"
     );
     foreach ($rows as $r) {
@@ -220,6 +221,7 @@ function pg_panel_backend_search($request, $action)
         "SELECT id, name, folder AS folder_id, design
          FROM files
          WHERE name LIKE '$s'
+         " . $rank('name', 'id') . "
          LIMIT $per_limit"
     );
     foreach ($rows as $r) {
@@ -242,6 +244,7 @@ function pg_panel_backend_search($request, $action)
             "SELECT id, name
              FROM menus
              WHERE name LIKE '$s'
+             " . $rank('name', 'id') . "
              LIMIT $per_limit"
         );
         foreach ($rows as $r) {
@@ -255,6 +258,7 @@ function pg_panel_backend_search($request, $action)
             "SELECT id, name
              FROM calendars
              WHERE name LIKE '$s'
+             " . $rank('name', 'id') . "
              LIMIT $per_limit"
         );
         foreach ($rows as $r) {
@@ -268,6 +272,7 @@ function pg_panel_backend_search($request, $action)
             "SELECT id, name
              FROM email_campaign_profiles
              WHERE name LIKE '$s'
+             " . $rank('name', 'id') . "
              LIMIT $per_limit"
         );
         foreach ($rows as $r) {
@@ -282,6 +287,7 @@ function pg_panel_backend_search($request, $action)
              FROM page
              WHERE " . pg_form_page_sql('page') . "
                AND page_name LIKE '$s'
+             " . $rank('page_name', 'page_id') . "
              LIMIT $per_limit"
         );
         foreach ($rows as $r) {
@@ -298,6 +304,7 @@ function pg_panel_backend_search($request, $action)
              FROM user
              WHERE (user_username LIKE '$s'
                 OR user_email LIKE '$s')
+             " . $rank('user_username', 'user_id') . "
              LIMIT $per_limit"
         );
         foreach ($rows as $r) {
@@ -313,6 +320,7 @@ function pg_panel_backend_search($request, $action)
             "SELECT id, name, short_description, image_name
              FROM products
              WHERE (name LIKE '$s' OR short_description LIKE '$s')" . pg_catalog_bin_live_sql('products') . "
+             " . $rank('name', 'id') . "
              LIMIT $per_limit"
         );
         foreach ($rows as $r) {
@@ -331,6 +339,7 @@ function pg_panel_backend_search($request, $action)
             "SELECT id, name
              FROM product_groups
              WHERE (name LIKE '$s')" . pg_catalog_bin_live_sql('product_groups') . "
+             " . $rank('name', 'id') . "
              LIMIT $per_limit"
         );
         foreach ($rows as $r) {
@@ -342,6 +351,7 @@ function pg_panel_backend_search($request, $action)
             "SELECT id, code, description
              FROM offers
              WHERE (code LIKE '$s' OR description LIKE '$s')
+             " . $rank('code', 'id') . "
              LIMIT $per_limit"
         );
         foreach ($rows as $r) {
@@ -355,7 +365,10 @@ function pg_panel_backend_search($request, $action)
         }
 
         // Orders — search by order_number, customer name, email
-        $s_order_num = escape('%' . ltrim($search, '#') . '%');
+        $order_query = ltrim($search, '#');
+        $s_order_num = escape(pg_list_like_pattern($order_query));
+        $s_order_exact = escape($order_query);
+        $s_order_prefix = escape(substr(pg_list_like_pattern($order_query), 1));
         $rows = db_items(
             "SELECT
                 orders.id,
@@ -368,7 +381,7 @@ function pg_panel_backend_search($request, $action)
                 OR contacts.first_name LIKE '$s'
                 OR contacts.last_name  LIKE '$s'
                 OR contacts.email_address LIKE '$s')
-             ORDER BY orders.order_date DESC
+             ORDER BY CASE WHEN orders.order_number = '$s_order_exact' THEN 0 WHEN orders.order_number LIKE '$s_order_prefix' THEN 1 ELSE 2 END, orders.order_date DESC, orders.id
              LIMIT $per_limit"
         );
         foreach ($rows as $r) {
@@ -377,7 +390,7 @@ function pg_panel_backend_search($request, $action)
                 $r['id'],
                 '#' . $r['order_number'],
                 $r['customer'],
-                $score_fn($r['order_number'], $r['customer'])
+                pg_panel_search_score($r['order_number'], $order_query, $r['customer'])
             );
         }
     }
@@ -388,6 +401,7 @@ function pg_panel_backend_search($request, $action)
             "SELECT style_id AS id, style_name AS name, style_type AS style_type
              FROM style
              WHERE style_name LIKE '$s'
+             " . $rank('style_name', 'style_id') . "
              LIMIT $per_limit"
         );
         foreach ($rows as $r) {
@@ -411,6 +425,7 @@ function pg_panel_backend_search($request, $action)
                 OR c.last_name LIKE '$s'
                 OR c.email_address LIKE '$s'
                 OR c.company LIKE '$s')
+             " . $rank("TRIM(CONCAT(c.first_name, ' ', c.last_name))", 'c.id') . "
              LIMIT $per_limit"
         );
         foreach ($rows as $r) {
@@ -433,6 +448,7 @@ function pg_panel_backend_search($request, $action)
              FROM cregion
              WHERE cregion_designer_type = 'no'
                AND cregion_name LIKE '$s'
+             " . $rank('cregion_name', 'cregion_id') . "
              LIMIT $per_limit"
         );
         foreach ($rows as $r) {
@@ -444,6 +460,7 @@ function pg_panel_backend_search($request, $action)
              FROM cregion
              WHERE cregion_designer_type = 'yes'
                AND cregion_name LIKE '$s'
+             " . $rank('cregion_name', 'cregion_id') . "
              LIMIT $per_limit"
         );
         foreach ($rows as $r) {
@@ -454,6 +471,7 @@ function pg_panel_backend_search($request, $action)
             "SELECT id, name
              FROM login_regions
              WHERE name LIKE '$s'
+             " . $rank('name', 'id') . "
              LIMIT $per_limit"
         );
         foreach ($rows as $r) {
@@ -467,6 +485,7 @@ function pg_panel_backend_search($request, $action)
             "SELECT id, name, destination_type
              FROM short_links
              WHERE name LIKE '$s' AND name <> ''
+             " . $rank('name', 'id') . "
              LIMIT $per_limit"
         );
         foreach ($rows as $r) {
@@ -474,13 +493,161 @@ function pg_panel_backend_search($request, $action)
         }
     }
 
-    // Sort by score desc, paginate
-    usort($results, function ($a, $b) {
-        return $b['score'] - $a['score'];
-    });
-    $has_more = count($results) > $offset + 20;
-    $results = array_slice($results, $offset, 20);
+    $page = pg_panel_search_page($results, $offset, 20);
 
-    echo encode_json(array('status' => 'success', 'results' => $results, 'actions' => $actions, 'has_more' => $has_more));
+    echo encode_json(array('status' => 'success', 'results' => $page['results'], 'actions' => $actions, 'has_more' => $page['has_more']));
     exit();
+}
+
+// Results read per type on every call, Load More or not.
+if (!defined('PG_PANEL_SEARCH_PER_TYPE')) {
+    define('PG_PANEL_SEARCH_PER_TYPE', 100);
+}
+
+// One page of the merged results, $limit long from $offset, and whether
+// more follow. Each result has one fixed place (pg_panel_search_compare()),
+// so pages asked for at two offsets never share a result and together are
+// the best results.
+function pg_panel_search_page($results, $offset, $limit)
+{
+    usort($results, 'pg_panel_search_compare');
+    return array(
+        'results'  => array_slice($results, $offset, $limit),
+        'has_more' => count($results) > $offset + $limit
+    );
+}
+
+// Order of two results: score high to low, then the type's place in the
+// list below, then id low to high. usort() is not stable before PHP 8.0,
+// so equal scores need the full tie-break to keep their place between calls.
+function pg_panel_search_compare($a, $b)
+{
+    static $types = array(
+        'page', 'file', 'menu', 'calendar', 'email_campaign', 'form', 'user',
+        'product', 'product_group', 'offer', 'order', 'style', 'contact',
+        'common_region', 'design_region', 'login_region', 'short_link'
+    );
+    if ($a['score'] != $b['score']) {
+        return $a['score'] < $b['score'] ? 1 : -1;
+    }
+    $rank_a = array_search($a['type'], $types, true);
+    $rank_b = array_search($b['type'], $types, true);
+    $rank_a = $rank_a === false ? count($types) : $rank_a;
+    $rank_b = $rank_b === false ? count($types) : $rank_b;
+    if ($rank_a !== $rank_b) {
+        return $rank_a < $rank_b ? -1 : 1;
+    }
+    if ($a['type'] !== $b['type']) {
+        return strcmp($a['type'], $b['type']);
+    }
+    return (int) $a['id'] - (int) $b['id'];
+}
+
+// Relevance score of one result: exact=100, starts-with=60, contains=30, plus
+// 15 when the secondary text contains the query. Both sides are folded with
+// fold_keyword_for_duplicates() (I, İ and ı read as i): mb_strtolower() turns
+// İ into i + U+0307, so "iade" never matched "İade" although the database,
+// being utf8mb4_unicode_ci, had found it.
+function pg_panel_search_score($name, $query, $secondary = '')
+{
+    $n = fold_keyword_for_duplicates((string) ($name ?? ''));
+    $q = fold_keyword_for_duplicates((string) $query);
+    $sc = fold_keyword_for_duplicates((string) ($secondary ?? ''));
+    $score = 0;
+    if ($q === '')
+        return $score;
+    if ($n === $q)
+        $score += 100;
+    elseif (mb_strpos($n, $q) === 0)
+        $score += 60;
+    elseif (mb_strpos($n, $q) !== false)
+        $score += 30;
+    if ($sc !== '' && mb_strpos($sc, $q) !== false)
+        $score += 15;
+    return $score;
+}
+
+// Search words of each tool, by its script, in Turkish and English. A tool
+// missing here is still found by its own label.
+function pg_panel_search_tool_keys()
+{
+    return array(
+        'system_tools.php'          => array('sistem araclari', 'sistem araçları', 'araclar', 'araçlar', 'system tools', 'tools', 'sis'),
+        'view_log.php'              => array('log', 'kayit', 'site log', 'journal', 'akt'),
+        'view_audit_log.php'        => array('denetim', 'denetim izi', 'audit', 'audit trail', 'kim degistirdi', 'den'),
+        'view_sessions.php'         => array('oturum', 'oturumlar', 'session', 'sessions', 'giris yapan', 'otu'),
+        'smtp_settings.php'         => array('smtp', 'mail ayar', 'email ayar', 'smtpayar'),
+        'api_settings.php'          => array('uygulama erisimi', 'uygulama erişimi', 'api anahtar', 'application access', 'api key', 'token', 'uyg'),
+        'connections.php'           => array('bagli hesap', 'connected account', 'google', 'microsoft', 'oauth', 'bagla', 'connect'),
+        'marketplace_settings.php'  => array('pazaryeri', 'pazar yeri', 'marketplace', 'trendyol', 'hepsiburada', 'n11', 'paz'),
+        'view_referral_sources.php' => array('yonlendiren', 'yönlendiren', 'referans kaynak', 'referral', 'referral source', 'yon'),
+        'view_currencies.php'       => array('para', 'doviz', 'döviz', 'currency', 'cur'),
+        'software_update.php'       => array('guncelle', 'güncelle', 'guncelleme', 'güncelleme', 'update', 'updates', 'gun'),
+        'software_repair.php'       => array('onar', 'onarim', 'onarım', 'repair', 'yazilim onar', 'ona'),
+        'si.php'                    => array('sistem bilgi', 'system info', 'php info', 'phpinfo', 'sunucu bilgi', 'server info'),
+        'view_performance_log.php'  => array('performans', 'performance', 'yavas', 'slow', 'per'),
+        'clean_up.php'              => array('temizle', 'temizlik', 'clean', 'clean up', 'eski dosya', 'tem'),
+        'database_engine.php'       => array('veritabani', 'veritabanı', 'database', 'innodb', 'myisam', 'tablo onar', 'motor', 'vt'),
+        'purge_cache.php'           => array('onbellek', 'önbellek', 'cache', 'purge', 'purge cache', 'temizle cache', 'onb'),
+        'mail_queue.php'            => array('posta kuyrugu', 'posta kuyruğu', 'mail kuyruk', 'mail queue', 'queue', 'giden posta', 'kuy'),
+        'install'                   => array('yeniden kur', 'kurulum', 'reinstall', 'upgrade', 'install', 'kur'),
+        'backups.php'               => array('yedek', 'yedekler', 'backup', 'backups', 'bak', 'yed'),
+        'cloudflare.php'            => array('cloudflare', 'cdn', 'clo'),
+    );
+}
+
+// Palette rows for the System tools screen and each of its tools, from
+// pg_settings_tool_groups(). A tool that asks first (a confirm) opens the
+// screen, where the question is asked: the palette follows its row without
+// one. A screen the palette already lists ($actions) is not repeated. No
+// tool, no row, not even the screen's.
+function pg_panel_search_tool_actions($groups, $base_url, $actions)
+{
+    $keys = pg_panel_search_tool_keys();
+    $screen_url = $base_url . '/system_tools.php';
+
+    $listed = array();
+
+    foreach ((array) $actions as $action) {
+        $listed[$action['url']] = true;
+    }
+
+    $rows = array();
+
+    foreach ((array) $groups as $group) {
+
+        foreach ($group['items'] as $item) {
+
+            $script = strtok($item['url'], '?');
+            $url = isset($item['confirm']) ? $screen_url : $base_url . '/' . $item['url'];
+
+            if (isset($listed[$url]) && !isset($item['confirm'])) {
+                continue;
+            }
+
+            $listed[$url] = true;
+
+            $rows[] = array(
+                'label' => $item['label'],
+                'icon'  => $item['icon'],
+                'url'   => $url,
+                'keys'  => array_merge(
+                    array(mb_strtolower($item['label'], 'UTF-8')),
+                    isset($keys[$script]) ? $keys[$script] : array()),
+            );
+        }
+    }
+
+    if (count($rows) === 0) {
+        return array();
+    }
+
+    array_unshift($rows, array(
+        'label' => lang('System tools'),
+        'icon'  => 'bi-tools',
+        'url'   => $screen_url,
+        'keys'  => $keys['system_tools.php'],
+    ));
+
+    return $rows;
 }

@@ -20,6 +20,10 @@ if (!defined('PG_FUNCTIONS_DIR')) {
     exit;
 }
 
+// The liveform entry that lists the file upload fields whose chosen file was
+// dropped when the form was sent back (a browser never refills a file box).
+const PG_SUBMITTED_FORM_CHOOSE_AGAIN = '__choose_file_again';
+
 /**
  * The "Form Data" fields of a custom form, with the scripts its fields need.
  *
@@ -78,6 +82,9 @@ function pg_submitted_form_fields_markup($liveform, $user, $page_id, $office_use
     // Prepare to keep track if whether there are file upload fields or not,
     // in order to know later if we need to output enctype for form.
     $file_upload_exists = false;
+
+    $choose_again = $liveform->get_field_value(PG_SUBMITTED_FORM_CHOOSE_AGAIN);
+    $choose_again = is_array($choose_again) ? array_map('strval', $choose_again) : array();
 
     foreach ($fields as $field) {
         $field_required = '';
@@ -213,7 +220,7 @@ function pg_submitted_form_fields_markup($liveform, $user, $page_id, $office_use
                 $pick_list_options = array();
 
                 foreach ($options as $option) {
-                    $pick_list_options[$option['label']] =
+                    $pick_list_options[h($option['label'])] =
                         array(
                             'value' => $option['value'],
                             'default_selected' => $option['default_selected']
@@ -222,8 +229,8 @@ function pg_submitted_form_fields_markup($liveform, $user, $page_id, $office_use
 
                 $output_fields .=
                     '<div class="col-12 md:col-6 lg:col-4 my-3 ' . $row_class . '">
-                        <label class="form-label">' . h($field['label']) . '</label>
-                        ' . $liveform->output_field(array('type'=>'select', 'name'=>$name, 'value'=>$field['default_value'], 'options'=>$pick_list_options, 'class'=>'form-control', 'size'=>$field['size'], 'multiple'=>$multiple)) . '
+                        <label class="form-label" for="' . h($field['id']) . '">' . h($field['label']) . '</label>
+                        ' . $liveform->output_field(array('type'=>'select', 'name'=>$name, 'id'=>$field['id'], 'value'=>$field['default_value'], 'options'=>$pick_list_options, 'class'=>'form-control', 'size'=>$field['size'], 'multiple'=>$multiple)) . '
                         ' . $field_required . '
                     </div>';
 
@@ -249,8 +256,10 @@ function pg_submitted_form_fields_markup($liveform, $user, $page_id, $office_use
 
                 $output_fields .=
                     '<div class="col-12 my-3 ' . $row_class . '">
-                        <label class="form-label">' . h($field['label']) . '</label>
-                        ' . $output_options . '
+                        <fieldset>
+                            <legend class="form-label fs-md">' . h($field['label']) . '</legend>
+                            ' . $output_options . '
+                        </fieldset>
                     </div>';
 
                 break;
@@ -301,9 +310,11 @@ function pg_submitted_form_fields_markup($liveform, $user, $page_id, $office_use
 
                 $output_fields .=
                     '<div class="col-12 my-3 ' . $row_class . '">
-                        <label class="form-label">' . h($field['label']) . '</label>
-                        ' . $output_hidden . '
-                        ' . $output_options . '
+                        <fieldset>
+                            <legend class="form-label fs-md">' . h($field['label']) . '</legend>
+                            ' . $output_hidden . '
+                            ' . $output_options . '
+                        </fieldset>
                     </div>';
 
                 break;
@@ -389,13 +400,24 @@ function pg_submitted_form_fields_markup($liveform, $user, $page_id, $office_use
                     }
                 }
 
+                $file_attributes = array('type'=>'file', 'name'=>$field['id'], 'id'=>$field['id'], 'class'=>'form-control', 'style'=>'min-width:200px;', 'size'=>$field['size']);
+                $output_choose_again = '';
+
+                // The form came back with an error elsewhere: the file chosen
+                // here was not kept, so say so next to the box.
+                if (in_array((string) $field['id'], $choose_again, true)) {
+                    $file_attributes['aria-describedby'] = 'choose_again_' . $field['id'];
+                    $output_choose_again = '<div id="choose_again_' . h($field['id']) . '" class="form-text fg-warning">' . lang('The file you chose was not kept because the form was sent back. Please choose it again.') . '</div>';
+                }
+
                 $output_fields .=
                 '<div class="col-12 border py-3 my-3 ' . $row_class . '">
-                    <label class="form-label">' . h($field['label']) . '</label>
+                    <label class="form-label" for="' . h($field['id']) . '">' . h($field['label']) . '</label>
                     <div class="input-group d-flex flex-row flex-wrap">
                         ' . $output_file_info . '
-                        ' . $output_upload_label . $liveform->output_field(array('type'=>'file', 'name'=>$field['id'], 'class'=>'form-control', 'style'=>'min-width:200px;', 'size'=>$field['size'] )) . $output_delete_option . '
+                        ' . $output_upload_label . $liveform->output_field($file_attributes) . $output_delete_option . '
                     </div>
+                    ' . $output_choose_again . '
                     ' . ($existing ? '' : $field_required) . '
                 </div>';
 
@@ -435,7 +457,7 @@ function pg_submitted_form_fields_markup($liveform, $user, $page_id, $office_use
                         <label class="form-label">' . h($field['label']) . '</label>
                         ' . $liveform->output_field(array('type'=>'text', 'id' => $field['id'], 'name'=>$field['id'], 'value'=>$field['default_value'], 'size'=>$field['size'], 'class'=>'form-control', 'maxlength'=>'11', 'data-pg-time' => '')) . '
                         ' . $field_required . '
-                        <div class="form-text text-end">' . lang('Format: h:mm AM/PM') . '</div>
+                        <div class="form-text text-end">' . lang(array('string' => 'Format: {var:1}', 'vars' => array(pg_time_format_help()))) . '</div>
                     </div>';
                 break;
 
@@ -484,12 +506,44 @@ function pg_submitted_form_fields_markup($liveform, $user, $page_id, $office_use
         $output_fields .= pg_signature_includes();
     }
 
+    // The note shows once; the add screen keeps its values in the session.
+    if ($choose_again) {
+        $liveform->assign_field_value(PG_SUBMITTED_FORM_CHOOSE_AGAIN, array());
+    }
+
     return array(
         'fields' => $output_fields,
         'wysiwyg_javascript' => $output_wysiwyg_javascript,
         // A file upload field needs a multipart post.
         'enctype' => $file_upload_exists ? ' enctype="multipart/form-data"' : '',
     );
+}
+
+/**
+ * Records the file upload fields that had a file chosen when the form is
+ * sent back with an error, so the screen can ask for the file again. A field
+ * refused for its own file name already says so and is left out.
+ *
+ * @param liveform $liveform
+ * @param array $fields  the custom form's fields (id, type)
+ * @param array $files   the posted files ($_FILES)
+ */
+function pg_submitted_form_mark_chosen_files($liveform, $fields, $files)
+{
+    $field_ids = array();
+
+    foreach ($fields as $field) {
+        if (
+            ($field['type'] == 'file upload')
+            && isset($files[$field['id']]['name'])
+            && ($files[$field['id']]['name'] != '')
+            && ($liveform->check_field_error($field['id']) == false)
+        ) {
+            $field_ids[] = (string) $field['id'];
+        }
+    }
+
+    $liveform->assign_field_value(PG_SUBMITTED_FORM_CHOOSE_AGAIN, $field_ids);
 }
 
 /**
@@ -520,6 +574,22 @@ function pg_submitted_form_check_field($liveform, $field, $page_id, $pretty_urls
         $liveform->mark_error($field['id'], pg_upload_blocked_message(htmlspecialchars($_FILES[$field['id']]['name'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')));
     }
 
+    // A file PHP did not take in whole (over upload_max_filesize, cut off)
+    // arrives with an error code and no temporary file: the field is marked
+    // with the file and the limit named, before any row is written.
+    if (
+        ($field['type'] == 'file upload')
+        && ($liveform->check_field_error($field['id']) == false)
+        && (isset($_FILES[$field['id']]) == true)
+        && is_array($_FILES[$field['id']])
+    ) {
+        $refusal = pg_submitted_form_upload_refusal($_FILES[$field['id']]);
+
+        if ($refusal !== '') {
+            $liveform->mark_error($field['id'], h($refusal));
+        }
+    }
+
     // if field has date type and there is not already an error for this field and user entered value for field and submitted date is invalid, prepare error
     if (($field['type'] == 'date') && ($liveform->check_field_error($field['id']) == false) && ($liveform->get_field_value($field['id']) != '') && (validate_date($liveform->get_field_value($field['id'])) == false)) {
         $liveform->mark_error($field['id'], lang(array('string'=>'Please enter a valid date for {var:1}','vars'=>h($field['label']))) );
@@ -540,16 +610,20 @@ function pg_submitted_form_check_field($liveform, $field, $page_id, $pretty_urls
         $liveform->mark_error($field['id'], lang(array('string'=>'Please enter a valid time for {var:1}','vars'=>h($field['label']))) );
     }
 
-    // If this field is a title field and there is not already an error for this field,
-    // and a value was entered for this field, and pretty URLs are enabled,
-    // then check if address name is already in use.
+    $kinds = pg_coll_field_kinds((int) $page_id);
+
+    // When pretty URLs are enabled, a Title field is checked for an address
+    // name already in use only while it makes the record's address: a filled
+    // slug field comes first, and the Title is then not refused.
     if (
         ($field['rss_field'] == 'title')
         && ($liveform->check_field_error($field['id']) == false)
         && ($liveform->get_field_value($field['id']) != '')
         && ($pretty_urls == true)
+        && ($source = pg_coll_address_field(pg_submitted_form_address_rows($liveform, $page_id, $kinds)))
+        && ((string) $source['id'] === (string) $field['id'])
     ) {
-        $address_name = create_address_name($liveform->get_field_value($field['id']));
+        $address_name = create_address_name($source['data']);
 
         // A new submitted form has no id yet, so every other one counts.
         $sql_other_forms = '';
@@ -565,19 +639,123 @@ function pg_submitted_form_check_field($liveform, $field, $page_id, $pretty_urls
     }
 
     // A number, an image or a reference of a collection's field.
-    pg_coll_check_field($liveform, $field, pg_coll_field_kinds((int) $page_id));
+    pg_coll_check_field($liveform, $field, $kinds);
+}
+
+/**
+ * The posted values of a form's Title and slug fields in field order, the
+ * rows pg_coll_address_field() reads.
+ *
+ * @param object $liveform
+ * @param int|string $page_id  The custom form's page
+ * @param array $kinds  pg_coll_field_kinds() of that page
+ * @return array  Each row: id, data, kind, rss
+ */
+function pg_submitted_form_address_rows($liveform, $page_id, $kinds)
+{
+    $slug_ids = array();
+
+    foreach ($kinds as $id => $kind) {
+        if ($kind['kind'] === 'slug') {
+            $slug_ids[] = (int) $id;
+        }
+    }
+
+    $sql_slugs = $slug_ids ? ' OR (id IN (' . implode(',', $slug_ids) . '))' : '';
+
+    $rows = array();
+
+    foreach ((array) db_items(
+        "SELECT id, rss_field FROM form_fields
+        WHERE (page_id = '" . escape($page_id) . "') AND ((rss_field = 'title')" . $sql_slugs . ")
+        ORDER BY sort_order ASC") as $row
+    ) {
+        $id = (int) $row['id'];
+        $rows[] = array(
+            'id' => $id,
+            'data' => (string) $liveform->get_field_value($id),
+            'kind' => isset($kinds[$id]) ? $kinds[$id]['kind'] : '',
+            'rss' => $row['rss_field']);
+    }
+
+    return $rows;
+}
+
+/**
+ * Why the file posted for a file upload field is refused, naming the file
+ * and, for an oversize one, the biggest single file the server accepts; ''
+ * for a file that arrived whole and for an empty box.
+ *
+ * @param array $upload  one entry of $_FILES
+ * @param int|null $file_max  bytes; null reads pg_upload_limits()
+ * @return string  Plain text
+ */
+function pg_submitted_form_upload_refusal($upload, $file_max = null)
+{
+    $error = (int) ($upload['error'] ?? UPLOAD_ERR_NO_FILE);
+    $name = (string) ($upload['name'] ?? '');
+
+    if (($error === UPLOAD_ERR_OK) || ($error === UPLOAD_ERR_NO_FILE)) {
+        return '';
+    }
+
+    if (in_array($error, array(UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE), true)) {
+        if ($file_max === null) {
+            $limits = function_exists('pg_upload_limits') ? pg_upload_limits() : array();
+            $file_max = (int) ($limits['file_max'] ?? 0);
+        }
+
+        return lang(array(
+            'string' => '{var:1} is larger than {var:2}, the biggest single file this server accepts.',
+            'vars' => array($name, convert_bytes_to_string((int) $file_max, 1))));
+    }
+
+    return lang(array('string' => '{var:1} did not arrive whole. Please choose it again.', 'vars' => array($name)));
+}
+
+/**
+ * What Add and Edit Submitted Form say when PHP threw the request away for
+ * being over post_max_size (pg_post_body_discarded()): nothing typed
+ * arrived, so the screen names the size sent and the most one request may
+ * carry.
+ *
+ * @return string  Plain text
+ */
+function pg_submitted_form_discarded_message()
+{
+    $limits = function_exists('pg_upload_limits') ? pg_upload_limits() : array();
+
+    return lang(array(
+        'string' => 'Nothing was saved: the request was {var:1} and this server accepts at most {var:2} in one request. Choose a smaller file, or raise post_max_size and upload_max_filesize on the server.',
+        'vars' => array(convert_bytes_to_string((int) ($_SERVER['CONTENT_LENGTH'] ?? 0), 1), convert_bytes_to_string((int) ($limits['post_max'] ?? 0), 1))));
 }
 
 /**
  * Stores the file posted for a file upload field in the field's upload
  * folder under a free name and creates its files record.
  *
+ * A file that is not a whole upload, or that cannot be copied in, is not
+ * recorded: 0 comes back, which the screens write as a form_data row without
+ * a file, the same as an empty box. copy('') throws on PHP 8 and an ignored
+ * failed copy left a files row with nothing on the disk.
+ *
  * @param array $field  form_fields row: id, upload_folder_id
  * @param int|string $user_id  Stored as the file's owner
- * @return int  The new files.id
+ * @return int  The new files.id, or 0
  */
 function pg_submitted_form_store_upload($field, $user_id)
 {
+    $upload = $_FILES[$field['id']] ?? null;
+
+    if (
+        !is_array($upload)
+        || ((int) ($upload['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK)
+        || ((string) ($upload['tmp_name'] ?? '') === '')
+        || !is_uploaded_file((string) $upload['tmp_name'])
+    ) {
+        return 0;
+    }
+
     $file_name = prepare_file_name($_FILES[$field['id']]['name']);
 
     // Check if file name is already in use and change it if necessary.
@@ -599,7 +777,9 @@ function pg_submitted_form_store_upload($field, $user_id)
     }
 
     // create file
-    copy($file_temp_name, FILE_DIRECTORY_PATH . '/' . $file_name);
+    if (!@copy($file_temp_name, FILE_DIRECTORY_PATH . '/' . $file_name)) {
+        return 0;
+    }
 
     // create file record in database
     $query = "INSERT INTO files (

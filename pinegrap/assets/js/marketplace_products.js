@@ -125,11 +125,23 @@
             sure.classList.toggle('d-none', !counts.sure);
         }
 
-        var meter = document.querySelector('#mpp-meter > i');
-
-        if (meter && counts.all) {
-            meter.style.width = Math.round(100 * counts.matched / counts.all) + '%';
+        if (counts.all) {
+            setMeter(Math.round(100 * counts.matched / counts.all), label('matched'));
         }
+    }
+
+    // The meter shows either the matched share or, while a read runs, the
+    // read share; the value and name it reads always follow the width.
+    function setMeter(value, name) {
+        var meter = document.getElementById('mpp-meter');
+
+        if (!meter) {
+            return;
+        }
+
+        meter.querySelector('i').style.width = value + '%';
+        meter.setAttribute('aria-valuenow', value);
+        meter.setAttribute('aria-label', name);
     }
 
     /* ------------------------------------------------------------- the read */
@@ -139,6 +151,23 @@
     // Where a read that stopped goes on from: the page to ask for, the read's
     // start and how many rows it had stored. Null starts a new read.
     var resume = null;
+
+    // The progress line is a status region, so it changes only at steps
+    // (every 10% of the read or 10 seconds), not on every page.
+    var announced = { share: 0, time: 0 };
+
+    function announceProgress(read, total) {
+        var text = document.getElementById('mpp-progress-text');
+        var share = Math.round(100 * read / total);
+        var now = Date.now();
+
+        if (!text || !(share - announced.share >= 10 || now - announced.time >= 10000)) {
+            return;
+        }
+
+        announced = { share: share, time: now };
+        text.textContent = label('read_progress', [number(read), number(total)]);
+    }
 
     function readFrom(page, run, readSoFar) {
         var meter = document.getElementById('mpp-meter');
@@ -152,6 +181,7 @@
 
         if (text && !readSoFar) {
             text.textContent = label('reading');
+            announced = { share: 0, time: Date.now() };
         }
 
         post('read', { page: page, run: run }).then(function (answer) {
@@ -172,12 +202,9 @@
             var read = readSoFar + (answer.read || 0);
             var total = Math.max(answer.total || 0, read);
 
-            if (meter && total) {
-                meter.querySelector('i').style.width = Math.min(100, Math.round(100 * read / total)) + '%';
-            }
-
-            if (text) {
-                text.textContent = label('read_progress', [number(read), number(total)]);
+            if (total) {
+                setMeter(Math.min(100, Math.round(100 * read / total)), label('reading_meter'));
+                announceProgress(read, total);
             }
 
             if (answer.done) {
@@ -338,6 +365,10 @@
             function (box) { return box.getAttribute('data-mp-select'); });
     }
 
+    // The count on load is the baseline; only a change from it is announced.
+    var announcedCount = selected().length;
+    var announceTimer = null;
+
     function updateBulk() {
         if (!bulk) {
             return;
@@ -346,7 +377,29 @@
         var ids = selected();
 
         document.getElementById('mpp-bulk-n').textContent = number(ids.length);
+
+        // Clear (or any step that empties the selection) hides the bar that
+        // holds the focused button; hand the focus to Select all, else the
+        // first row box, so the next Tab does not start at the page top.
+        if (!ids.length && bulk.contains(document.activeElement)) {
+            var target = selectAll || document.querySelector('[data-mp-select]');
+
+            if (target) {
+                target.focus();
+            }
+        }
+
         bulk.classList.toggle('d-none', !ids.length);
+
+        // The bar is not a live region: say its visible count ("3 selected")
+        // once the ticking settles, and only when the count changed.
+        if (ids.length !== announcedCount && typeof window.pgAnnounce === 'function') {
+            announcedCount = ids.length;
+            window.clearTimeout(announceTimer);
+            announceTimer = window.setTimeout(function () {
+                window.pgAnnounce(bulk.querySelector('#mpp-bulk-n').parentNode.textContent.replace(/\s+/g, ' ').trim());
+            }, 400);
+        }
 
         if (selectAll) {
             var boxes = document.querySelectorAll('[data-mp-select]');
@@ -607,6 +660,10 @@
         var caption = element('div', 'small fg-secondary mt-5');
         var grid = element('div', 'mpp-pick-grid');
 
+        // Loading, the result title, Nothing found and errors are read out.
+        caption.setAttribute('role', 'status');
+        caption.setAttribute('aria-live', 'polite');
+
         built.body.appendChild(head);
         built.body.appendChild(search);
         built.body.appendChild(caption);
@@ -808,7 +865,12 @@
         var caption = element('div', 'small fg-secondary mb-3');
         var search = element('input', 'form-control');
         var hint = element('div', 'form-text', label('category_hint'));
+        var status = element('div', 'small fg-secondary');
         var results = element('div', 'mpa-results');
+
+        // Loading, Nothing found and errors are read out.
+        status.setAttribute('role', 'status');
+        status.setAttribute('aria-live', 'polite');
 
         search.type = 'search';
         search.placeholder = label('category_search');
@@ -817,6 +879,7 @@
         built.body.appendChild(caption);
         built.body.appendChild(search);
         built.body.appendChild(hint);
+        built.body.appendChild(status);
         built.body.appendChild(results);
         document.body.appendChild(built.root);
 
@@ -833,7 +896,7 @@
             }
         });
 
-        categories = { root: built.root, caption: caption, search: search, results: results, ids: [], request: 0 };
+        categories = { root: built.root, caption: caption, search: search, status: status, results: results, ids: [], request: 0 };
     }
 
     function findCategories() {
@@ -841,12 +904,13 @@
         var request = ++categories.request;
 
         categories.results.innerHTML = '';
+        categories.status.textContent = '';
 
         if (q === '') {
             return;
         }
 
-        categories.results.appendChild(element('div', 'small fg-secondary', label('loading')));
+        categories.status.textContent = label('loading');
 
         post('list_categories', { q: q }).then(function (answer) {
             if (request !== categories.request) {
@@ -854,9 +918,10 @@
             }
 
             categories.results.innerHTML = '';
+            categories.status.textContent = '';
 
             if (!answer.ok || !answer.categories.length) {
-                categories.results.appendChild(element('div', 'small fg-secondary', answer.ok ? label('nothing') : (answer.error || label('failed'))));
+                categories.status.textContent = answer.ok ? label('nothing') : (answer.error || label('failed'));
                 return;
             }
 
@@ -913,6 +978,7 @@
         categories.ids = ids;
         categories.caption.textContent = row ? row.getAttribute('data-mp-title') : label('category_for', [number(ids.length)]);
         categories.results.innerHTML = '';
+        categories.status.textContent = '';
 
         pgUI.dialog.show(categories.root).then(function () {
             categories.search.focus();

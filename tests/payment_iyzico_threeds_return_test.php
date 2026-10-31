@@ -322,7 +322,7 @@ function test_payment_iyzico_threeds_return_needs_its_row_and_order()
 
 		pg_assert_false($answer['success'], $label);
 		pg_assert_same(lang('Session could not be verified. Please try again.'), $answer['error'], $label);
-		pg_assert_same(array("Iyzipay 3DS callback: state not found or order mismatch for conversationId=$conversation_id, order_id=$order_id"), $answer['log'], $label);
+		pg_assert_same(array(lang(array('string' => 'Iyzipay 3D Secure answer matches no payment started for order #{var:1} (conversation {var:2}).', 'vars' => array($order_id, $conversation_id)))), $answer['log'], $label);
 		pg_assert_same(array(), $store['claimed'], $label . ': the row is not claimed');
 		pg_assert_same(array(), $http->posts, $label . ': iyzico is not asked');
 		pg_assert_same(array('installment' => 3), $answer['state'], $label . ': the wait goes on');
@@ -337,7 +337,7 @@ function test_payment_iyzico_threeds_return_is_taken_once()
 
 	pg_assert_false($answer['success']);
 	pg_assert_same(lang('Session could not be verified. Please try again.'), $answer['error']);
-	pg_assert_same(array('Iyzipay 3DS callback: state already used for conversationId=123456789'), $answer['log']);
+	pg_assert_same(array(lang(array('string' => 'Iyzipay 3D Secure answer was already used (conversation {var:1}).', 'vars' => array('123456789')))), $answer['log']);
 	pg_assert_same(array(array('91', '24680')), $store['claimed']);
 	pg_assert_same(array(), $http->posts, 'iyzico is not asked');
 	pg_assert_same(array('installment' => 3), $answer['state']);
@@ -349,15 +349,15 @@ function test_payment_iyzico_threeds_return_bank_and_fraud_refusals()
 		'3-D Secure failed' => array(
 			array('status' => 'failure', 'errorCode' => '5002', 'errorMessage' => '3D doğrulaması başarısız', 'paymentId' => '24680'),
 			lang('3D Secure verification failed. Please try again.'),
-			array('Iyzipay 3DS error 5002: paymentId=24680')),
+			array(lang(array('string' => 'Iyzipay 3D Secure verification failed (error 5002) for payment {var:1}.', 'vars' => array('24680'))))),
 		'not paid' => array(
 			array('status' => 'failure', 'errorCode' => '10051', 'errorMessage' => 'Yetersiz bakiye'),
 			lang('Payment could not be verified. Please try again.'),
-			array('Iyzipay 3DS status!=success: code=10051, message=Yetersiz bakiye')),
+			array(lang(array('string' => 'Iyzipay 3D Secure payment was not accepted: code {var:1}, message {var:2}', 'vars' => array('10051', 'Yetersiz bakiye'))))),
 		'fraud' => array(
 			payment_iyzico_threeds_return_test_paid(array('fraudStatus' => -1)),
 			lang('Payment was found to be risky and rejected.'),
-			array('Iyzipay 3DS fraud rejected: paymentId=24680')),
+			array(lang(array('string' => 'Iyzipay rejected payment {var:1} as fraud.', 'vars' => array('24680'))))),
 	);
 
 	foreach ($cases as $label => $case) {
@@ -377,7 +377,7 @@ function test_payment_iyzico_threeds_return_bank_and_fraud_refusals()
 	$review = payment_iyzico_threeds_return_test_complete(payment_iyzico_threeds_return_test_post(), array('installment' => 3), $store);
 
 	pg_assert_true($review['success'], 'a payment under review completes the order, as before');
-	pg_assert_same(array('Iyzipay 3DS fraud pending review: paymentId=24680', payment_iyzico_threeds_return_test_completed_line()), $review['log']);
+	pg_assert_same(array(lang(array('string' => 'Iyzipay holds payment {var:1} for a fraud review.', 'vars' => array('24680'))), payment_iyzico_threeds_return_test_completed_line()), $review['log']);
 }
 
 // The order must still total what the payment was started with, and iyzico
@@ -386,10 +386,10 @@ function test_payment_iyzico_threeds_return_bank_and_fraud_refusals()
 function test_payment_iyzico_threeds_return_cancels_a_payment_for_another_total()
 {
 	$cases = array(
-		'cart changed'  => array(10914, 110.35, payment_iyzico_threeds_return_test_row(), 'current_total=10914, stored_total=10714, gateway_paid=11035, expected_paid=11035'),
-		'paid less'     => array(10714, 107.14, payment_iyzico_threeds_return_test_row(), 'current_total=10714, stored_total=10714, gateway_paid=10714, expected_paid=11035'),
-		'paid more'     => array(10714, 110.36, payment_iyzico_threeds_return_test_row(), 'current_total=10714, stored_total=10714, gateway_paid=11036, expected_paid=11035'),
-		'no base total' => array(0, 3.21, payment_iyzico_threeds_return_test_row(array('base_total_cents' => '0')), 'current_total=0, stored_total=0, gateway_paid=321, expected_paid=321'),
+		'cart changed'  => array(10914, 110.35, payment_iyzico_threeds_return_test_row(), array('109.14', '107.14', '110.35', '110.35')),
+		'paid less'     => array(10714, 107.14, payment_iyzico_threeds_return_test_row(), array('107.14', '107.14', '107.14', '110.35')),
+		'paid more'     => array(10714, 110.36, payment_iyzico_threeds_return_test_row(), array('107.14', '107.14', '110.36', '110.35')),
+		'no base total' => array(0, 3.21, payment_iyzico_threeds_return_test_row(array('base_total_cents' => '0')), array('0.00', '0.00', '3.21', '3.21')),
 	);
 
 	foreach ($cases as $label => $case) {
@@ -407,8 +407,8 @@ function test_payment_iyzico_threeds_return_cancels_a_payment_for_another_total(
 		pg_assert_same('/payment/cancel', $http->posts[1]['path'], $label);
 		pg_assert_same(legacy_iyzico_void_request('24680', '123456789', 'Order total changed during 3D Secure verification'), $http->posts[1]['body'], $label);
 		pg_assert_same(array(
-			'Iyzipay 3DS amount mismatch: paymentId=24680, order_id=438, ' . $figures,
-			'Iyzipay payment 24680 was cancelled: Order total changed during 3D Secure verification.',
+			lang(array('string' => 'Iyzipay payment {var:1} does not match order #{var:2}: the order totals {var:3}, the payment was started for {var:4}, iyzico took {var:5} (expected {var:6}).', 'vars' => array('24680', 438, $figures[0], $figures[1], $figures[2], $figures[3]))),
+			lang(array('string' => 'Iyzipay payment {var:1} was cancelled: {var:2}.', 'vars' => array('24680', 'Order total changed during 3D Secure verification'))),
 		), $answer['log'], $label);
 		pg_assert_same(array(), $answer['state'], $label);
 	}
@@ -420,7 +420,7 @@ function test_payment_iyzico_threeds_return_cancels_a_payment_for_another_total(
 
 	$refused = payment_iyzico_threeds_return_test_complete(payment_iyzico_threeds_return_test_post(), array('installment' => 3), $store);
 
-	pg_assert_same('Iyzipay payment 24680 could not be cancelled (Order total changed during 3D Secure verification). MANUAL REFUND REQUIRED. Gateway message: İptal süresi geçti', $refused['log'][1]);
+	pg_assert_same(lang(array('string' => 'Iyzipay payment {var:1} could not be cancelled ({var:2}). MANUAL REFUND REQUIRED. Gateway message: {var:3}', 'vars' => array('24680', 'Order total changed during 3D Secure verification', 'İptal süresi geçti'))), $refused['log'][1]);
 }
 
 // In the protected currency iyzico's amount is converted at today's rate,
@@ -453,6 +453,6 @@ function test_payment_iyzico_threeds_return_in_the_protected_currency()
 		$answer = payment_iyzico_threeds_return_test_complete(payment_iyzico_threeds_return_test_post(), array('installment' => 3), $store, array('settings' => $settings));
 
 		pg_assert_false($answer['success'], 'paid ' . $paid);
-		pg_assert_same('Iyzipay 3DS amount mismatch: paymentId=24680, order_id=438, current_total=10714, stored_total=10714, gateway_paid=' . $cents . ', expected_paid=328', $answer['log'][0], 'paid ' . $paid);
+		pg_assert_same(lang(array('string' => 'Iyzipay payment {var:1} does not match order #{var:2}: the order totals {var:3}, the payment was started for {var:4}, iyzico took {var:5} (expected {var:6}).', 'vars' => array('24680', 438, '107.14', '107.14', pg_payment_decimal($cents), '3.28'))), $answer['log'][0], 'paid ' . $paid);
 	}
 }

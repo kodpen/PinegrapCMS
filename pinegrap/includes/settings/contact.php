@@ -3,7 +3,7 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Site Settings - the Communication cards: e-mail campaigns, live chat,
- * MailChimp, SMS and İYS.
+ * MailChimp, SMS, İYS and Google reviews.
  *
  * Fills $pg_settings_cards, one grid column per card, in reading order. Which
  * cards belong here is said once, in includes/settings/registry.php; this file
@@ -31,34 +31,6 @@ $pg_settings_cards[] = '
                                 </div>
                                 <div class="card-body">
                                    <div class="row gy-5">
-                                        <div class="pg-f-md">
-                                            <label for="organization_name" class="form-label">' . lang('Organization Name') . '</label>
-                                            <input type="text" name="organization_name" id="organization_name" class="form-control" value="' . h($organization_name) . '"/>
-                                        </div>
-                                        <div class="pg-f-md">
-                                            <label for="organization_address_1" class="form-label">' . lang('Organization Address') . ' 1</label>
-                                            <input type="text" name="organization_address_1" id="organization_address_1" class="form-control" value="' . h($organization_address_1) . '"/>
-                                        </div>
-                                        <div class="pg-f-md">
-                                            <label for="organization_address_2" class="form-label">' . lang('Organization Address') . ' 2</label>
-                                            <input type="text" name="organization_address_2" id="organization_address_2" class="form-control" value="' . h($organization_address_2) . '"/>
-                                        </div>
-                                        <div class="pg-f-md">
-                                            <label for="organization_city" class="form-label">' . lang('Organization City') . '</label>
-                                            <input type="text" name="organization_city" id="organization_city" class="form-control" value="' . h($organization_city) . '"/>
-                                        </div>
-                                        <div class="pg-f-md">
-                                            <label for="organization_state" class="form-label">' . lang('Organization State') . '</label>
-                                            <input type="text" name="organization_state" id="organization_state" class="form-control" value="' . h($organization_state) . '"/>
-                                        </div>
-                                        <div class="pg-f-md">
-                                            <label for="organization_zip_code" class="form-label">' . lang('Organization Zip Code') . '</label>
-                                            <input type="text" name="organization_zip_code" id="organization_zip_code" class="form-control" value="' . h($organization_zip_code) . '"/>
-                                        </div>
-                                        <div class="pg-f-md">
-                                            <label for="organization_country" class="form-label">' . lang('Organization Country') . '</label>
-                                            <input type="text" name="organization_country" id="organization_country" class="form-control" value="' . h($organization_country) . '"/>
-                                        </div>
                                         <div class="pg-f-md">
                                             <label for="opt_in_label" class="form-label">' . lang('Opt-In Label') . '</label>
                                             <input type="text" name="opt_in_label" id="opt_in_label" class="form-control" value="' . h($opt_in_label) . '" maxlength="255"/>
@@ -184,7 +156,7 @@ $pg_settings_cards[] = '
                         <div id="pgset-mailchimp" class="pg-set-card">
                             <div class="card">
                                 <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                                    ' . lang('MailChimp') . '
+                                    <span lang="en">' . lang('MailChimp') . '</span>
                                 </div>
                                 <div class="card-body">
                                    <div class="row gy-5">
@@ -213,13 +185,13 @@ $pg_settings_cards[] = '
                                                             <label for="mailchimp_sync_days" class="form-label">' . lang('Historical Sync') . '</label>
                                                             <label class="form-control form-adorn form-adorn-end">
                                                                 <span class="form-adorn-text" aria-hidden="true">' . lang('days in the past') . '</span>
-                                                                <input type="text" name="mailchimp_sync_days" id="mailchimp_sync_days" class="form-ghost text-end" value="' . h($mailchimp_sync_days) . '" maxlength="6" inputmode="numeric" data-inputmask-alias="decimal"/>
+                                                                <input type="text" name="mailchimp_sync_days" id="mailchimp_sync_days" class="form-ghost text-end" value="' . h($mailchimp_sync_days ? $mailchimp_sync_days : '') . '" maxlength="6" inputmode="numeric" data-inputmask-alias="decimal"/>
                                                             </label>
                                                             <div class="form-text">' . lang('Set how far in the past to sync orders. Leave blank to sync all historical orders.') . '</div>
                                                         </div>
                                                         <div class="pg-f-xs">
                                                             <label for="mailchimp_sync_limit" class="form-label">' . lang('Limit Sync') . '</label>
-                                                            <input type="text" name="mailchimp_sync_limit" id="mailchimp_sync_limit" class="form-control text-end" value="' . h($mailchimp_sync_limit) . '" maxlength="6" inputmode="numeric" data-inputmask-alias="decimal"/>
+                                                            <input type="text" name="mailchimp_sync_limit" id="mailchimp_sync_limit" class="form-control text-end" value="' . h($mailchimp_sync_limit ? $mailchimp_sync_limit : '') . '" maxlength="6" inputmode="numeric" data-inputmask-alias="decimal"/>
                                                             <div class="form-text">' . lang('max number of orders to sync each time cron job runs') . '</div>
                                                         </div>
                                                         <div class="col-12">
@@ -253,6 +225,8 @@ $pg_settings_cards[] = '
                             </div>
                         </div>';
 
+$pg_settings_scripts[] = pg_sms_settings_script();
+
 // ── SMS messages ──
 // The order's own text messages: a switch and a template per event
 // (includes/fn/sms_messages.php).
@@ -279,6 +253,22 @@ $pg_settings_cards[] = '
                                 </div>
                                 <div class="card-body">
                                    <div class="row gy-5">' . pg_iys_settings_fields() . '
+                                    </div>
+                                </div>
+                            </div>
+                        </div>';
+
+// ── Google Reviews ──
+// The Places API key and the Place ID, kept sealed with the cache of what
+// Google answered (includes/fn/google_reviews.php).
+$pg_settings_cards[] = '
+                        <div id="pgset-google-reviews" class="pg-set-card">
+                            <div class="card">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                    ' . lang('Google Reviews') . '
+                                </div>
+                                <div class="card-body">
+                                   <div class="row gy-5">' . pg_grev_settings_fields() . '
                                     </div>
                                 </div>
                             </div>

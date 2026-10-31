@@ -27,9 +27,10 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  * @param string $content       The stored content ('' on create)
  * @param string $beside        Markup of a column printed after the name (edit: the region type)
  * @param bool   $with_content  False leaves the content field out
+ * @param bool   $name_taken    True marks the name as used by another region
  * @return string
  */
-function pg_common_region_form_card($name = '', $content = '', $beside = '', $with_content = true)
+function pg_common_region_form_card($name = '', $content = '', $beside = '', $with_content = true, $name_taken = false)
 {
     $output_content = '';
 
@@ -55,9 +56,9 @@ function pg_common_region_form_card($name = '', $content = '', $beside = '', $wi
                                             <label for="name" class="form-label">' . lang('Common Region Name') . '</label>
                                             <div class="input-group">
                                                 <div class="input-group-text">' . h('<cregion>') . '</div>
-                                                <input value="' . h($name) . '" name="name" id="name" type="text" class="form-control" maxlength="100" />
+                                                <input value="' . h($name) . '" name="name" id="name" type="text" class="form-control' . pg_region_form_name_error_attributes($name_taken) . '" maxlength="100" />
                                                 <div class="input-group-text">' . h('</cregion>') . '</div>
-                                            </div>
+                                            </div>' . pg_region_form_name_error($name_taken) . '
                                         </div>' . $beside . $output_content . '
                                     </div>
                                 </div>
@@ -84,4 +85,89 @@ function pg_common_region_form_values($post)
         is_scalar($name) ? trim((string) $name) : '',
         is_scalar($content) ? (string) $content : '',
     );
+}
+
+/**
+ * The rest of the name input's class attribute and its error attributes:
+ * empty unless the name is used by another region.
+ *
+ * @param bool $name_taken
+ * @return string
+ */
+function pg_region_form_name_error_attributes($name_taken)
+{
+    return $name_taken ? ' is-invalid" aria-invalid="true" aria-describedby="name_error' : '';
+}
+
+/**
+ * The message printed under the name input when another region of the same
+ * table already has that name.
+ *
+ * @param bool $name_taken
+ * @return string
+ */
+function pg_region_form_name_error($name_taken)
+{
+    if (!$name_taken) {
+        return '';
+    }
+
+    return '
+                                            <div id="name_error" class="invalid-feedback d-block">' . h(lang('The name that you entered is already in use, so please enter a different name.')) . '</div>';
+}
+
+/**
+ * Whether another common or designer region already has this name: both
+ * kinds share the cregion table and the <cregion> tag, and the site reads
+ * only one row per name. The comparison is SQL '=' under the column
+ * collation. An empty name is not checked. On edit ($id given) the check
+ * runs only when the name differs from the stored one, so a region that
+ * already shares its name with another still saves its content.
+ *
+ * @param string        $name    The trimmed posted name
+ * @param int|null      $id      The region being edited, null on create
+ * @param callable|null $lookup  function ($sql, $values) returning the first column of the first row (tests)
+ * @return bool
+ */
+function pg_cregion_name_taken($name, $id = null, $lookup = null)
+{
+    $name = (string) $name;
+
+    if ($name === '') {
+        return false;
+    }
+
+    if ($lookup === null) {
+        $lookup = 'pg_region_form_lookup';
+    }
+
+    $query = "SELECT COUNT(*) FROM cregion WHERE cregion_name = ?";
+    $values = array($name);
+
+    if ($id !== null) {
+        if ((string) $lookup("SELECT cregion_name FROM cregion WHERE cregion_id = ?", array((int) $id)) === $name) {
+            return false;
+        }
+
+        $query .= " AND cregion_id != ?";
+        $values[] = (int) $id;
+    }
+
+    return (int) $lookup($query, $values) > 0;
+}
+
+/**
+ * The first column of the first row a bound query returns (null when no
+ * row); a failed query stops the screen.
+ *
+ * @param string $sql
+ * @param array  $values
+ * @return string|null
+ */
+function pg_region_form_lookup($sql, $values)
+{
+    $result = db_q($sql, $values) or output_error('Query failed.');
+    $row = mysqli_fetch_row($result);
+
+    return $row ? $row[0] : null;
 }

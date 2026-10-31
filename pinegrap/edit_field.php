@@ -188,6 +188,10 @@ $liveform = new liveform('edit_field');
 $pg_breadcrumb_items = isset($pg_breadcrumb_parent_items) ? $pg_breadcrumb_parent_items : (isset($pg_breadcrumb_parent) ? array($pg_breadcrumb_parent) : array());
 $pg_breadcrumb_items[] = array('label' => $output_form_designer_content_heading);
 
+// The back arrow goes where Save and Delete go: the fields of this form, with
+// the Express Order form type (shipping or billing) and send_to.
+$pg_back_arrow_url = 'view_fields.php?' . $form_type_identifier_id . '=' . urlencode((string) ${$form_type_identifier_id}) . pg_field_form_express_query($page_type, $form_type) . '&send_to=' . urlencode(is_scalar($_GET['send_to'] ?? null) ? (string) $_GET['send_to'] : '');
+
 // The canvas is the record of a designer form: every column of the field is
 // written from it on each design save (pg_cf_sync_page_form()), so a change
 // saved here would quietly come undone. The field is shown read-only with the
@@ -256,7 +260,7 @@ if ($designer_form) {
         'icon' => 'design',
         'heading' => $output_form_designer_content_heading,
         'heading_description' => lang('The fields of this form are edited in the visual editor.'),
-        'cancel' => array('enable' => 'true', 'url' => 'view_fields.php?page_id=' . (int) $page_id),
+        'cancel' => array('enable' => 'true', 'url' => $pg_back_arrow_url),
         'breadcrumb' => $pg_breadcrumb_items,
     ]) . '
 <main id="content" class="container-fluid">
@@ -324,6 +328,19 @@ if (!$_POST) {
     $row = mysqli_fetch_assoc($result);
     $position = $row ? $row['id'] : 'top';
 
+    // A form sent back by a refused save shows what was typed. Anything else
+    // left in this screen's session (a post sent back for another field, a
+    // name error without a value) is dropped, so it never empties this
+    // field's Name box.
+    $posted = pg_field_form_session_values($liveform, $field);
+
+    if ($posted !== null) {
+        $field = pg_field_form_posted_field($field, $posted);
+        $position = $posted['position'] ?? $position;
+    } else {
+        $liveform->remove_form();
+    }
+
     // A custom form's submitted data goes with the field.
     $delete_data_warning = ($form_type == 'custom') ? lang(' and ALL SUBMITTED FORM DATA for this field') : '';
     
@@ -334,7 +351,7 @@ if (!$_POST) {
         'icon'=>'design',
         'heading'=>$output_form_designer_content_heading,
         'heading_description' => $output_form_designer_content_subheading,
-        'cancel'=>array('enable'=>'true','url'=>'view_fields.php?' . $form_type_identifier_id . '=' . (int) ${$form_type_identifier_id}),
+        'cancel'=>array('enable'=>'true','url' => $pg_back_arrow_url),
         'breadcrumb' => $pg_breadcrumb_items,
     ]) . '
 <main id="content" class="container-fluid">
@@ -377,8 +394,7 @@ if (!$_POST) {
 </main>' .
     output_footer();
     
-    $liveform->unmark_errors();
-    $liveform->clear_notices();
+    $liveform->remove_form();
 
 } else {
     validate_token_field();
@@ -458,6 +474,7 @@ if (!$_POST) {
         
         // if there are errors in the liveform then send the user back to the edit field screen
         if ($liveform->check_form_errors() == true) {
+            $liveform->add_fields_to_session();
             header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_field.php?id=' . $_POST['id'] . '&send_to=' . urlencode($_POST['send_to']));
             exit();
         }

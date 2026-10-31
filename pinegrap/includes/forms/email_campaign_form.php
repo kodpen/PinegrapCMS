@@ -129,7 +129,7 @@ function pg_email_campaign_from_card($values, $readonly = false)
         if ($readonly) {
             $fields[$name] = '<p>' . h($values[$name]) . '</p>';
         } elseif ($name == 'from_name') {
-            $fields[$name] = '<input value="' . h($values[$name]) . '" type="text" class="form-control" id="from_name" name="from_name" />';
+            $fields[$name] = '<input value="' . h($values[$name]) . '" type="text" class="form-control" id="from_name" name="from_name" maxlength="100" />';
         } else {
             $fields[$name] = '<input value="' . h($values[$name]) . '" type="text" class="form-control text-end" id="' . $name . '" name="' . $name . '" maxlength="100" inputmode="email" data-inputmask-alias="email"/>';
         }

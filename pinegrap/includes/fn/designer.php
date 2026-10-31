@@ -1205,6 +1205,12 @@ function _expand_system_widgets($html, $mode = 'preview', $email = false)
                 return _render_system_widget_tag_cloud_region($tree_json, $sid, $cfg, $mode);
             }
 
+            // 'google_reviews' — the business's Google rating and reviews (widgets_google_reviews.php).
+            if ($region_type === 'google_reviews') {
+                if (!$tree_json) return '<!-- pg-system-widget:' . $sid . ' has no tree_json (designer never saved) -->';
+                return _render_system_widget_google_reviews($tree_json, $sid, $cfg, $mode);
+            }
+
             // 'billing_information' — the third step of the classic checkout,
             // posting to billing_information.php (widgets_billing_information.php).
             if ($region_type === 'billing_information') {
@@ -4279,6 +4285,8 @@ function _pg_lightbox_assets_once()
         'Previous'                       => lang('Previous'),
         'Next'                           => lang('Next'),
         'The image could not be loaded.' => lang('The image could not be loaded.'),
+        'Image viewer'                   => lang('Image viewer'),
+        'Image {n} of {total}'           => lang(array('string' => 'Image {var:1} of {var:2}', 'vars' => array('{n}', '{total}'))),
     );
     return '<link rel="stylesheet" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/css/pg_lightbox.css?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/css/pg_lightbox.css') . '">
     <script>window.pgLightboxLabels = ' . encode_json($labels) . ';</script>
@@ -4794,7 +4802,7 @@ function _render_tree_node($node, $indent = 0, $depth = 0)
     // body, a shared component, a system widget - passes through this one
     // door, so one hook covers them all (includes/fn/translate.php).
     if (defined('FRONTEND_LANGUAGE')) {
-        $props = pg_tr_props($props, $type);
+        $props = pg_tr_lang_attr_props(pg_tr_props($props, $type));
     }
 
     // Outside a widget, a binding to a value of the page's record prints
@@ -4957,7 +4965,7 @@ function _render_tree_node($node, $indent = 0, $depth = 0)
                 if ($_sets && $_sets['srcset'] !== '') {
                     $_lazy  = (isset($_loading['loading']) ? $_loading['loading'] : strtolower(_user_attr_value($props, 'loading'))) === 'lazy';
                     $attrs .= ' srcset="' . h($_sets['srcset']) . '"';
-                    if (!in_array('sizes', $_written, true)) $attrs .= ' sizes="' . h(pg_img_sizes(_user_attr_value($props, 'width'), $_sets['width'], $_lazy && pg_img_fills_width(isset($props['cssClass']) ? $props['cssClass'] : ''))) . '"';
+                    if (!in_array('sizes', $_written, true)) $attrs .= ' sizes="' . h(pg_img_sizes(_user_attr_value($props, 'width'), $_sets['width'], $_lazy && pg_img_fills_width(isset($props['cssClass']) ? $props['cssClass'] : '') && pg_img_height_given('<img' . $attrs . '>'))) . '"';
                 }
             }
             $void_tags = array('area','base','br','col','embed','hr','img','input','link','meta','param','source','track','wbr');
@@ -5920,7 +5928,11 @@ function _render_content_html($props, $pad, $kids = '')
             if ($_sets) {
                 $_lazy  = (isset($_loading['loading']) ? $_loading['loading'] : strtolower(_user_attr_value($props, 'loading'))) === 'lazy';
                 $_fills = pg_img_fills_width($cls) || ($_in_ratio && $_sets['sources']);
-                $_sizes = in_array('sizes', $_written, true) ? _user_attr_value($props, 'sizes') : pg_img_sizes($img_w_raw, $_sets['width'], $_lazy && $_fills);
+                // sizes=auto drops the file's ratio (pg_img_height_given()):
+                // only with a height from the markup or from its own ratio
+                // box, whose height the image takes.
+                $_auto  = $_lazy && $_fills && ($_in_ratio || pg_img_height_given('<img' . $h_attr . $obj_pos . $img_extra . '>'));
+                $_sizes = in_array('sizes', $_written, true) ? _user_attr_value($props, 'sizes') : pg_img_sizes($img_w_raw, $_sets['width'], $_auto);
                 if ($_sets['srcset'] !== '') {
                     $_resp .= ' srcset="' . h($_sets['srcset']) . '"';
                     if (!in_array('sizes', $_written, true)) $_resp .= ' sizes="' . h($_sizes) . '"';
@@ -8725,6 +8737,10 @@ function pg_design_template_install($template_id, $user, $opts = array())
             try { pg_seo_recalculate('page', $written_pages); } catch (Throwable $t) {}
         }
     }
+
+    // The new design's pages and records are in the site search after the
+    // next scheduled tick, not the next day's index run.
+    if (function_exists('pg_search_index_refresh_soon')) pg_search_index_refresh_soon();
 
     log_activity(lang(array('string' => 'style ({var:1}) was created', 'vars' => array($tp['style_name']))), isset($user['username']) ? (string)$user['username'] : '');
 

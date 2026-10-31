@@ -104,7 +104,7 @@ function ws_wtable_screen_error_text($code)
         case 'out_of_range':
             return lang('The number is too large.');
         case 'not_minor_units':
-            return lang('Write an amount, such as 12.50.');
+            return lang(array('string' => 'Write an amount, such as {var:1}.', 'vars' => ws_wtable_screen_figure_text('12.50')));
         case 'not_date':
             return lang('Write a date.');
         case 'not_person':
@@ -125,8 +125,8 @@ function ws_wtable_screen_error_text($code)
 }
 
 /**
- * Money in minor units as typed: 1250 with 2 decimals is 12.50. Worked in
- * whole numbers, so that no float rounding shows.
+ * Money in minor units as a machine figure: 1250 with 2 decimals is 12.50.
+ * Worked in whole numbers, so that no float rounding shows.
  *
  * @param int $minor
  * @param int $decimals
@@ -144,6 +144,69 @@ function ws_wtable_screen_money_text($minor, $decimals)
     }
 
     return (($minor < 0) ? '-' : '') . $digits;
+}
+
+/**
+ * A machine figure (-1234.5) written the way the site writes figures, with
+ * the separators ws_calc_number() reads back: 1.234,5 on a Turkish site,
+ * 1,234.5 elsewhere. Without grouping for a field the person edits, since a
+ * lone group of three digits would be read as thousands there.
+ *
+ * @param string $figure
+ * @param bool   $group  thousands separated
+ * @return string
+ */
+function ws_wtable_screen_figure_text($figure, $group = true)
+{
+    $comma = ws_calc_decimal_comma();
+    $figure = (string) $figure;
+    $sign = (substr($figure, 0, 1) === '-') ? '-' : '';
+    $parts = explode('.', ltrim($figure, '-'), 2);
+    $whole = $parts[0];
+
+    if ($group) {
+        $whole = strrev(implode($comma ? '.' : ',', str_split(strrev($whole), 3)));
+    }
+
+    return $sign . $whole . (isset($parts[1]) ? ($comma ? ',' : '.') . $parts[1] : '');
+}
+
+/**
+ * A stored number or formula result as a machine figure: at most 10
+ * decimals, no trailing noughts. Text (a value the store did not check) is
+ * left as it is.
+ *
+ * @param mixed $value
+ * @return string
+ */
+function ws_wtable_screen_number_text($value)
+{
+    if (is_float($value)) {
+        $text = rtrim(rtrim(number_format($value, 10, '.', ''), '0'), '.');
+
+        return ($text === '-0') ? '0' : $text;
+    }
+
+    return is_scalar($value) ? (string) $value : '';
+}
+
+/**
+ * A figure typed into an amount or number field, read the way the site
+ * writes figures (ws_calc_number(), the reader of the workspace's sums): on
+ * a Turkish site 1.250 is one thousand two hundred and fifty and 1.250,50
+ * has decimals; elsewhere 1,250.50. A currency mark around it is dropped; a
+ * share (5%) is no figure here.
+ *
+ * @param string $raw
+ * @return float|null null when it is no figure
+ */
+function ws_wtable_screen_figure($raw)
+{
+    if (strpos($raw, '%') !== false) {
+        return null;
+    }
+
+    return ws_calc_number($raw);
 }
 
 /**
@@ -248,8 +311,9 @@ function ws_wtable_screen_options_from_form($type, $form, $old = null)
 }
 
 /**
- * A cell as typed into its field, for the store's check: money from 12.50
- * to minor units (rounded, never cut), a date and time from the picker's
+ * A cell as typed into its field, for the store's check: money and numbers
+ * read the site's way (ws_wtable_screen_figure()), money to minor units
+ * (rounded, never cut), a date and time from the picker's
  * text, a ticked box, a record link from kind:id. What cannot be read is
  * handed over as typed, so that the store refuses it with its own code.
  *
@@ -278,18 +342,21 @@ function ws_wtable_screen_cell_from_form($column, $raw)
 
     switch ($type) {
         case 'money':
-            $amount = str_replace(array(' ', ','), array('', '.'), $raw);
+            $amount = ws_wtable_screen_figure($raw);
 
-            if (!preg_match('/^-?(?:[0-9]{1,15}(?:\.[0-9]*)?|\.[0-9]+)$/', $amount)) {
+            if ($amount === null) {
                 return $raw;
             }
 
-            $decimals = isset($options['decimals']) ? (int) $options['decimals'] : 2;
+            $minor = round($amount * pow(10, isset($options['decimals']) ? (int) $options['decimals'] : 2));
 
-            return (int) round((float) $amount * pow(10, $decimals));
+            // Too large for an integer: the store answers out_of_range.
+            return (abs($minor) < 1e15) ? (int) $minor : $minor;
 
         case 'number':
-            return str_replace(',', '.', $raw);
+            $number = ws_wtable_screen_figure($raw);
+
+            return ($number === null) ? $raw : $number;
 
         case 'date':
             return str_replace('T', ' ', $raw);
@@ -330,7 +397,10 @@ function ws_wtable_screen_cell_to_form($column, $value)
             return $value ? '1' : '';
 
         case 'money':
-            return is_int($value) ? ws_wtable_screen_money_text($value, isset($options['decimals']) ? (int) $options['decimals'] : 2) : '';
+            return is_int($value) ? ws_wtable_screen_figure_text(ws_wtable_screen_money_text($value, isset($options['decimals']) ? (int) $options['decimals'] : 2), false) : '';
+
+        case 'number':
+            return ws_wtable_screen_figure_text(ws_wtable_screen_number_text($value), false);
 
         case 'link':
             return (is_array($value) && isset($value['kind'], $value['id'])) ? $value['kind'] . ':' . (int) $value['id'] : '';
@@ -362,17 +432,13 @@ function ws_wtable_screen_cell_text($column, $value, $people = array())
 
     switch ($type) {
         case 'money':
-            $text = ws_wtable_screen_money_text((int) $value, isset($options['decimals']) ? (int) $options['decimals'] : 2);
+            $text = ws_wtable_screen_figure_text(ws_wtable_screen_money_text((int) $value, isset($options['decimals']) ? (int) $options['decimals'] : 2));
 
             return (($options['currency'] ?? '') !== '') ? $text . ' ' . $options['currency'] : $text;
 
         case 'number':
         case 'formula':
-            if (is_float($value)) {
-                return rtrim(rtrim(number_format($value, 10, '.', ''), '0'), '.');
-            }
-
-            return is_scalar($value) ? (string) $value : '';
+            return ws_wtable_screen_figure_text(ws_wtable_screen_number_text($value));
 
         case 'person':
             return isset($people[(int) $value]['name']) ? (string) $people[(int) $value]['name'] : '#' . (int) $value;

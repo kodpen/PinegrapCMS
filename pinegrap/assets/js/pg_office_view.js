@@ -316,10 +316,15 @@
         return table;
     }
 
+    // Each rendered book gets its own pane id, so two previews on one page
+    // never share the id their sheet tabs point to.
+    var bookCount = 0;
+
     function renderBook(container, office, strings, options) {
         var book = el('div', 'office-book');
         var tabs = el('div', 'office-tabs');
         var pane = el('div', 'office-pane');
+        var paneId = 'office_pane_' + (++bookCount);
         var status = el('div', 'office-note office-status');
         var current = null;
         var editable = !!(options && options.editable);
@@ -426,8 +431,27 @@
             var list = changesNow();
 
             Array.prototype.forEach.call(tabs.querySelectorAll('.office-tab'), function (tab, index) {
-                tab.classList.toggle('office-tab-edited', Object.keys(list[index]).length > 0);
+                var edited = Object.keys(list[index]).length > 0;
+                var mark = tab.querySelector('.office-tab-changed');
+
+                tab.classList.toggle('office-tab-edited', edited);
+
+                // The dot is drawn in CSS; a screen reader hears the word.
+                if (mark) {
+                    mark.hidden = !edited;
+                }
             });
+        }
+
+        // The column-letter row and the row-number column stick over the
+        // grid; the pane's scroll padding keeps a cell scrolled into view
+        // beside them, not under them. Measured again each time, since the
+        // row-number column widens with the sheet and a hidden pane reads 0.
+        function padHeadings() {
+            var corner = shown.table ? shown.table.querySelector('.office-corner') : null;
+
+            pane.style.scrollPaddingTop = corner ? corner.offsetHeight + 'px' : '';
+            pane.style.scrollPaddingLeft = corner ? corner.offsetWidth + 'px' : '';
         }
 
         function select(td) {
@@ -446,6 +470,7 @@
             td.setAttribute('aria-selected', 'true');
             td.tabIndex = 0;
             td.focus({ preventScroll: true });
+            padHeadings();
 
             if (td.scrollIntoView) {
                 td.scrollIntoView({ block: 'nearest', inline: 'nearest' });
@@ -615,6 +640,16 @@
         }
 
         function wireGrid(table) {
+            // A cell reached with Tab is selected as a click would select it,
+            // so the arrows, Enter and typing work on it at once.
+            table.addEventListener('focusin', function (event) {
+                var td = event.target;
+
+                if (td.tagName === 'TD' && td !== shown.cell && !shown.editor && !td.classList.contains('office-editing')) {
+                    select(td);
+                }
+            });
+
             table.addEventListener('mousedown', function (event) {
                 var td = event.target.closest('td');
 
@@ -710,29 +745,67 @@
 
                 if (offered) {
                     wireGrid(shown.table);
+
+                    // The grid's one Tab stop until a cell is selected.
+                    var first = shown.table.querySelector('tbody td');
+
+                    if (first) {
+                        first.tabIndex = 0;
+                    }
                 }
+            }
+
+            // A sheet only read scrolls from the keyboard through its pane;
+            // an editable grid is entered through its cells.
+            if (offered && shown.table) {
+                pane.removeAttribute('tabindex');
+            } else {
+                pane.tabIndex = 0;
             }
 
             if (sheet.truncated) {
                 pane.appendChild(el('div', 'office-note', strings.truncated || ''));
             }
 
+            padHeadings();
             drawStatus();
         }
+
+        tabs.setAttribute('role', 'tablist');
+        tabs.setAttribute('aria-label', strings.sheets || '');
+        pane.id = paneId;
+        pane.setAttribute('role', 'tabpanel');
 
         office.sheets.forEach(function (sheet, index) {
             var tab = el('button', 'office-tab' + (sheet.hidden ? ' office-tab-hidden' : ''), sheet.name || ('#' + (index + 1)));
             tab.type = 'button';
+            tab.id = paneId + '_tab_' + index;
+            tab.setAttribute('role', 'tab');
+            tab.setAttribute('aria-selected', 'false');
+            tab.setAttribute('aria-controls', paneId);
+            tab.tabIndex = -1;
 
+            // A hidden sheet shows only in italics and a changed one only by
+            // a dot, so both are said in words too.
             if (sheet.hidden) {
                 tab.title = strings.hidden || '';
+                tab.appendChild(el('span', 'visually-hidden', ', ' + (strings.hidden || '')));
             }
+
+            var changedMark = el('span', 'visually-hidden office-tab-changed', ', ' + (strings.changed_mark || ''));
+            changedMark.hidden = true;
+            tab.appendChild(changedMark);
 
             tab.addEventListener('click', function () {
                 Array.prototype.forEach.call(tabs.querySelectorAll('.office-tab'), function (other) {
                     other.classList.remove('active');
+                    other.setAttribute('aria-selected', 'false');
+                    other.tabIndex = -1;
                 });
                 tab.classList.add('active');
+                tab.setAttribute('aria-selected', 'true');
+                tab.tabIndex = 0;
+                pane.setAttribute('aria-labelledby', tab.id);
                 show(index);
             });
 
@@ -747,6 +820,34 @@
         if (current === null && tabs.firstChild) {
             current = tabs.firstChild;
         }
+
+        // Arrow keys, Home and End move between the sheet tabs and open the
+        // one they land on; only the open tab sits in the Tab order.
+        tabs.addEventListener('keydown', function (event) {
+            var list = Array.prototype.slice.call(tabs.querySelectorAll('.office-tab'));
+            var at = list.indexOf(event.target);
+            var next = null;
+
+            if (at < 0 || event.altKey || event.ctrlKey || event.metaKey) {
+                return;
+            }
+
+            if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
+                next = list[(at + 1) % list.length];
+            } else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
+                next = list[(at - 1 + list.length) % list.length];
+            } else if (event.key === 'Home') {
+                next = list[0];
+            } else if (event.key === 'End') {
+                next = list[list.length - 1];
+            }
+
+            if (next) {
+                event.preventDefault();
+                next.focus();
+                next.click();
+            }
+        });
 
         book.appendChild(tabs);
         book.appendChild(pane);
@@ -940,6 +1041,8 @@
         var nodes = [];
         var shown = { node: null, pressed: null, editor: null, note: '' };
 
+        doc.setAttribute('aria-label', strings.doc || '');
+
         // The server made this markup itself from the file's text, escaped,
         // with its own small set of tags; nothing the file wrote reaches here
         // as markup.
@@ -959,7 +1062,9 @@
             container.appendChild(el('div', 'office-note', strings.truncated || ''));
         }
 
+        // A document only read scrolls from the keyboard through its own box.
         if (!editable) {
+            doc.tabIndex = 0;
             return null;
         }
 
@@ -1229,7 +1334,20 @@
         if (nodes.length) {
             nodes[0].tabIndex = 0;
             doc.classList.add('office-doc-edit');
+        } else {
+            doc.tabIndex = 0;
         }
+
+        // A paragraph reached with Tab is picked as a click would pick it, so
+        // the arrows, Enter and F2 work on it at once. A link inside one keeps
+        // its own focus.
+        doc.addEventListener('focusin', function (event) {
+            var node = event.target;
+
+            if (node.hasAttribute && node.hasAttribute('data-p') && nodes.indexOf(node) !== -1 && node !== shown.node && !shown.editor) {
+                select(node);
+            }
+        });
 
         doc.addEventListener('mousedown', function (event) {
             if (shown.editor && shown.editor.node.contains(event.target)) {

@@ -918,13 +918,7 @@ function get_shopping_cart($properties) {
                                 '<tr>
                                     <td>Start Date*:</td>
                                     <td>
-                                        ' . $form->output_field(array('type'=>'text', 'id' => 'recurring_start_date_' . $order_item_id, 'name'=>'recurring_start_date_' . $order_item_id, 'size'=>'10', 'maxlength'=>'10', 'class'=>'software_input_text', 'required' => 'true')) . '
-                                        ' . get_date_picker_format() . '
-                                        <script>
-                                            software_$("#recurring_start_date_' . $order_item_id . '").datepicker({
-                                                dateFormat: date_picker_format
-                                            });
-                                        </script>
+                                        ' . $form->output_field(array('type'=>'text', 'id' => 'recurring_start_date_' . $order_item_id, 'name'=>'recurring_start_date_' . $order_item_id, 'size'=>'10', 'maxlength'=>'10', 'class'=>'software_input_text', 'required' => 'true', 'data-pg-date' => '')) . '
                                     </td>
                                 </tr>';
                         }
@@ -1037,13 +1031,7 @@ function get_shopping_cart($properties) {
                                         <tr>
                                             <td>Delivery Date:</td>
                                             <td>
-                                                ' . $form->output_field(array('type' => 'text', 'id' => 'order_item_' . $order_item_id . '_quantity_number_' . $quantity_number . '_gift_card_delivery_date', 'name' => 'order_item_' . $order_item_id . '_quantity_number_' . $quantity_number . '_gift_card_delivery_date', 'size' => '10', 'maxlength' => '10', 'class' => 'software_input_text')) . '
-                                                ' . get_date_picker_format() . '
-                                                <script>
-                                                    software_$("#order_item_' . $order_item_id . '_quantity_number_' . $quantity_number . '_gift_card_delivery_date").datepicker({
-                                                        dateFormat: date_picker_format
-                                                    });
-                                                </script>
+                                                ' . $form->output_field(array('type' => 'text', 'id' => 'order_item_' . $order_item_id . '_quantity_number_' . $quantity_number . '_gift_card_delivery_date', 'name' => 'order_item_' . $order_item_id . '_quantity_number_' . $quantity_number . '_gift_card_delivery_date', 'size' => '10', 'maxlength' => '10', 'class' => 'software_input_text', 'data-pg-date' => '')) . '
                                             </td>
                                         </tr>
                                     </table>
@@ -2105,7 +2093,6 @@ function get_shopping_cart($properties) {
         $number_of_payments_message = '';
         $number_of_payments_required = false;
         $start_date = false;
-        $date_picker_format_added = false;
         $subtotal = 0;
         $subtotal_info = '';
         $discount = 0;
@@ -2161,8 +2148,12 @@ function get_shopping_cart($properties) {
             $inventory_quantities = array();
 
             $wysiwyg_fields = array();
+
+            // The date, date and time, and time boxes of the layout, by id,
+            // for the date-and-time control (pg_site_datetime_bind()).
             $date_fields = array();
             $date_and_time_fields = array();
+            $time_fields = array();
 
             foreach ($recipients as $key => $recipient) {
 
@@ -2311,20 +2302,7 @@ function get_shopping_cart($properties) {
                         // If we need to deal with the start date, then do that.
                         if ($start_date) {
                             $form->set('recurring_start_date_' . $item['id'], 'maxlength', 10);
-
-                            // If we have not already added the date picker format code,
-                            // then add it.
-                            if (!$date_picker_format_added) {
-                                $system .= get_date_picker_format();
-                                $date_picker_format_added = true;
-                            }
-
-                            $system .=
-                                '<script>
-                                    software_$("#recurring_start_date_' . $item['id'] . '").datepicker({
-                                        dateFormat: date_picker_format
-                                    });
-                                </script>';
+                            $date_fields[] = 'recurring_start_date_' . $item['id'];
                         }
 
                     }
@@ -2490,19 +2468,7 @@ function get_shopping_cart($properties) {
                                 $form->set('order_item_' . $item['id'] . '_quantity_number_' . $quantity_number . '_gift_card_delivery_date', date($month_and_day_format . '/Y'));
                             }
 
-                            // If we have not already added the date picker format code,
-                            // then add it.
-                            if (!$date_picker_format_added) {
-                                $system .= get_date_picker_format();
-                                $date_picker_format_added = true;
-                            }
-
-                            $system .=
-                                '<script>
-                                    software_$("#order_item_' . $item['id'] . '_quantity_number_' . $quantity_number . '_gift_card_delivery_date").datepicker({
-                                        dateFormat: date_picker_format
-                                    });
-                                </script>';
+                            $date_fields[] = 'order_item_' . $item['id'] . '_quantity_number_' . $quantity_number . '_gift_card_delivery_date';
 
                         }
 
@@ -2791,6 +2757,7 @@ function get_shopping_cart($properties) {
 
                                     case 'time':
                                         $form->set($html_name, 'maxlength', 11);
+                                        $time_fields[] = $html_name;
 
                                         break;
 
@@ -2907,44 +2874,15 @@ function get_shopping_cart($properties) {
                 $system .= get_wysiwyg_editor_code($wysiwyg_fields);
             }
 
-            // If there is a date or date and time field, then prepare system content,
-            // for the date/time picker.
-            if ($date_fields || $date_and_time_fields) {
-
-                // If we have not already added the date picker format code,
-                // then add it.
-                if (!$date_picker_format_added) {
-                    $system .= get_date_picker_format();
-                    $date_picker_format_added = true;
-                }
-
-                foreach ($date_fields as $date_field) {
-                    $system .=
-                        '<script>
-                            software_$("#' . escape_javascript($date_field) . '").datepicker({
-                                dateFormat: date_picker_format
-                            });
-                        </script>';
-                }
-
-                // If there is a date and time field, then prepare JS for those.
-                if ($date_and_time_fields) {
-                    // Include JS file for timepicker.
-                    $system .=
-                        '<script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Jquery/jquery-ui-timepicker-addon-1.2.1.min.js"></script>';
-
-                    foreach ($date_and_time_fields as $date_and_time_field) {
-                        $system .=
-                            '<script>
-                                software_$("#' . escape_javascript($date_and_time_field) . '").datetimepicker({
-                                    dateFormat: date_picker_format,
-                                    timeFormat: "' . pg_picker_time_format() . '"
-                                });
-                            </script>';
-                    }
-                }
-
-            }
+            // Date, date and time, and time boxes are drawn by the
+            // date-and-time control, found by their ids: a custom layout's
+            // markup carries no hook. The marker brings the control's
+            // scripts (pg_site_datetime_inject()).
+            $system .= pg_site_datetime_bind(array(
+                'date' => $date_fields,
+                'datetime' => $date_and_time_fields,
+                'time' => $time_fields,
+            ));
 
             $subtotal_info = prepare_price_for_output($subtotal * 100, false, $discounted_price = '', 'html');
 

@@ -28,6 +28,11 @@ define('WS_FLOW_CONSTANT_LENGTH', 500);
 define('WS_FLOW_DERIVED_LENGTH', 500);
 define('WS_FLOW_DERIVED_DAYS', 3650);
 
+// The longest value a derived value box gives, and the longest input once
+// filled, in characters: an input may cite a value many times, so without a
+// limit a chain of joins grows the value many-fold per box.
+define('WS_FLOW_DERIVED_VALUE_LENGTH', 4000);
+
 /**
  * The types a constant takes: those of the values the boxes give
  * (ws_step_output_types()).
@@ -123,7 +128,7 @@ function ws_flow_constants_problems($config, $name)
 
         $seen[$key] = true;
 
-        if (($row['type'] === 'number') && !is_numeric($row['value'])) {
+        if (($row['type'] === 'number') && (ws_flow_typed_number($row['value']) === null)) {
             $out[] = lang(array('string' => 'The value {var:2} of the box {var:1} is not a number.', 'vars' => array($name, ($key !== '') ? $key : '?')));
         }
     }
@@ -411,6 +416,51 @@ function ws_flow_derived_number($number)
 }
 
 /**
+ * A number typed into a flow (a condition's value, a constant) read the way
+ * the site writes it (ws_calc_number()): in Turkish 1.000 is a thousand and
+ * 1.000,50 has decimals. A machine number (1500, 1000.5, 0.125) keeps its
+ * value; only 1.000 shaped figures read by the language. The canvas stores a
+ * typed comma of a condition's number as a dot, so 1.000.50 is 1.000,50
+ * where commas mark decimals. Pure but for the site's language.
+ *
+ * @param string $text
+ * @return float|null null when it is no number
+ */
+function ws_flow_typed_number($text)
+{
+    $text = trim((string) $text);
+    $comma = ws_calc_decimal_comma();
+
+    if (is_numeric($text) && !($comma && preg_match('/^[+-]?[1-9][0-9]{0,2}(\.[0-9]{3})+$/', $text))) {
+        return (float) $text;
+    }
+
+    $number = ws_calc_number($text);
+
+    if (($number === null) && $comma && (strpos($text, ',') === false) && (substr_count($text, '.') > 1)) {
+        $at = strrpos($text, '.');
+        $number = ws_calc_number(substr($text, 0, $at) . ',' . substr($text, $at + 1));
+    }
+
+    return $number;
+}
+
+/**
+ * A number read by ws_flow_typed_number() as the site writes it, with every
+ * place it has (up to six), so a sentence shows the value that was read.
+ *
+ * @param float $number
+ * @return string
+ */
+function ws_flow_typed_number_shown($number)
+{
+    $machine = ws_flow_derived_number($number);
+    $point = strpos($machine, '.');
+
+    return ws_calc_format($number, ($point === false) ? 0 : strlen($machine) - $point - 1);
+}
+
+/**
  * A date a derived value reads: Y-m-d, Y-m-d H:i, Y-m-d H:i:s, or a Unix
  * time (written in the site's time zone). The time of day only when the
  * text gives one. Pure.
@@ -454,8 +504,8 @@ function ws_flow_derived_date($text)
  */
 function ws_flow_derived_value($config, $a, $b)
 {
-    $a = trim((string) $a);
-    $b = trim((string) $b);
+    $a = trim(mb_substr((string) $a, 0, WS_FLOW_DERIVED_VALUE_LENGTH));
+    $b = trim(mb_substr((string) $b, 0, WS_FLOW_DERIVED_VALUE_LENGTH));
     $numbers = is_numeric($a) && is_numeric($b);
 
     switch ($config['rule']) {
@@ -474,7 +524,7 @@ function ws_flow_derived_value($config, $a, $b)
             return ws_scheduled_compare($a, $op, $b, 'text') ? '1' : '0';
 
         case 'join':
-            return trim($a . ' ' . $b);
+            return mb_substr(trim($a . ' ' . $b), 0, WS_FLOW_DERIVED_VALUE_LENGTH);
 
         case 'add':
         case 'subtract':
@@ -505,9 +555,11 @@ function ws_flow_derived_value($config, $a, $b)
 }
 
 /**
- * A derived value box's input with the run's values in it, as they are:
- * the box that reads the value makes it safe where it lands
- * (ws_step_fill_value()). Pure.
+ * A derived value box's input with the run's values in it, as they are
+ * (an empty one by its fallback, ws_step_value_of()): the box that reads the value makes it safe where it lands
+ * (ws_step_fill_value()). Cut to WS_FLOW_DERIVED_VALUE_LENGTH characters:
+ * each value placed takes only the room left, so the text never grows past
+ * the limit and the written input's own length. Pure.
  *
  * @param string $text
  * @param array  $values node id => key => value, the trigger's under WS_STEP_TRIGGER
@@ -515,9 +567,16 @@ function ws_flow_derived_value($config, $a, $b)
  */
 function ws_flow_derived_fill($text, $values)
 {
-    return (string) preg_replace_callback(WS_STEP_VALUE_PATTERN, function ($match) use ($values) {
-        return (string) ($values[ws_step_value_box($match)][$match[2]] ?? '');
+    $room = WS_FLOW_DERIVED_VALUE_LENGTH;
+
+    $text = (string) preg_replace_callback(WS_STEP_VALUE_PATTERN, function ($match) use ($values, &$room) {
+        $value = mb_substr(ws_step_value_of($match, $values), 0, max(0, $room));
+        $room -= mb_strlen($value);
+
+        return $value;
     }, (string) $text);
+
+    return mb_substr($text, 0, WS_FLOW_DERIVED_VALUE_LENGTH);
 }
 
 /**
@@ -550,7 +609,10 @@ function ws_flow_pure_values($graph, $values = array())
 
         foreach ((array) ($node['config']['rows'] ?? array()) as $row) {
             if (preg_match('/^[a-z_][a-z0-9_]{0,31}$/', (string) ($row['key'] ?? '')) && !isset($kept[$row['key']])) {
-                $kept[$row['key']] = (string) $row['value'];
+                $number = (($row['type'] ?? '') === 'number') ? ws_flow_typed_number($row['value']) : null;
+
+                // A number as the site writes it reaches the boxes as a machine number.
+                $kept[$row['key']] = ($number === null) ? (string) $row['value'] : ws_flow_derived_number($number);
             }
         }
 

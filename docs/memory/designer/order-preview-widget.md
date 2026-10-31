@@ -5,7 +5,7 @@ module: widgets_order_preview
 ---
 
 ## What is it?
-- Kind `order_preview` (`includes/fn/widgets_order_preview.php`), the last classic checkout widget ([[system-widget-missing-types]]). Posts to `order_preview.php` (gift card apply, else `submit_order('order preview')`) with the classic names; checks, charge, receipt, redirects unchanged.
+- Kind `order_preview` (`includes/fn/widgets_order_preview.php`), the last classic checkout widget ([[system-widget-page-types]]). Posts to `order_preview.php` (gift card apply, else `submit_order('order preview')`) with the classic names; checks, charge, receipt, redirects unchanged.
 
 ## Where do the totals come from?
 - From `get_order_preview()`: with `layout_data_only` its custom-layout branch returns the array it would hand `render_layout()` (form included). So every figure, payment method, default method, surcharge and installment table is the classic computation (owner decision 2026-10-19, `workflow/decisions-made-product.md`).
@@ -27,5 +27,5 @@ module: widgets_order_preview
 - Copies have no `pays_by_card` flag, so card stamping is unchanged.
 
 ## What is left out?
-- The currency switcher. (The hosted card fields come with `$d['system']`: `commerce/payment-hosted-classic-pages.md`.)
-- A background render draws nothing (the visitor's own order).
+- Nothing: hosted card fields come with `$d['system']` (`commerce/payment-hosted-classic-pages.md`); currency picker [[checkout-currency-picker]].
+- A background render draws nothing.

@@ -563,6 +563,28 @@ function pg_consent_checkout_person($email, $user_id, $contact_id)
 }
 
 /**
+ * The SMS marketing answer of a checkout post, or array() when it is not the
+ * buyer's own: the box marks itself with opt_in_sms_shown=1 where it is
+ * drawn (a layout without it posts nothing, and its silence is no refusal),
+ * a ghosting staff member answers for nobody, and a billing phone that is
+ * not a mobile number gives no answer (pg_consent_sms_answers()). Pure.
+ *
+ * @param mixed $shown   the posted opt_in_sms_shown
+ * @param mixed $ghost   $_SESSION['software']['ghost']
+ * @param mixed $phone   the billing phone number written to the order
+ * @param mixed $posted  the posted opt_in_sms, '1' when ticked
+ * @return array  "channel:purpose" => bool, for pg_consent_log_checkout()
+ */
+function pg_consent_checkout_sms_answers($shown, $ghost, $phone, $posted)
+{
+    if ($ghost || !is_scalar($shown) || ((string) $shown !== '1')) {
+        return array();
+    }
+
+    return pg_consent_sms_answers(true, pg_consent_sms_number_known($phone), $posted);
+}
+
+/**
  * Record the e-mail marketing answer a checkout has just written to the
  * contact (billing_information.php, express_order.php, submit_order()). The
  * handlers call it right after the UPDATE contacts that carries opt_in, in
@@ -577,17 +599,162 @@ function pg_consent_checkout_person($email, $user_id, $contact_id)
  * @param mixed $opt_in_displayed  the posted opt_in_displayed
  * @param mixed $ghost             $_SESSION['software']['ghost']
  * @param mixed $opt_in            the opt_in written to the contact, 0 or 1
+ * @param array $sms               pg_consent_checkout_sms_answers(), written in the same call
  * @return int  rows written
  */
-function pg_consent_log_checkout($email, $user_id, $contact_id, $opt_in_displayed, $ghost, $opt_in)
+function pg_consent_log_checkout($email, $user_id, $contact_id, $opt_in_displayed, $ghost, $opt_in, array $sms = array())
 {
-    $answers = pg_consent_checkout_answers($opt_in_displayed, $ghost, $opt_in);
+    $answers = pg_consent_checkout_answers($opt_in_displayed, $ghost, $opt_in) + $sms;
 
     if (!$answers) {
         return 0;
     }
 
     return pg_consent_log_answers(pg_consent_checkout_person($email, $user_id, $contact_id), $answers, 'checkout');
+}
+
+/**
+ * Whether the SMS marketing box is drawn: only while the site can send SMS
+ * (a provider switched on with a complete account, pg_sms_ready()) and the
+ * screen has a mobile number to send to, either one it asks for or the one
+ * the contact holds. A site without SMS draws nothing new. Pure when
+ * $sms_ready is given.
+ *
+ * @param bool      $has_number  the screen asks for the mobile number, or
+ *                               the contact's number is one (pg_consent_sms_number_known())
+ * @param bool|null $sms_ready   whether SMS is on; read from the site when null
+ * @return bool
+ */
+function pg_consent_sms_offered($has_number, $sms_ready = null)
+{
+    if ($sms_ready === null) {
+        $sms_ready = function_exists('pg_sms_ready') && pg_sms_ready();
+    }
+
+    return (bool) $sms_ready && (bool) $has_number;
+}
+
+/**
+ * Whether a stored or posted number is one an SMS can go to
+ * (pg_sms_number()). Pure.
+ *
+ * @param mixed $number  contacts.mobile_phone, or the posted value
+ * @return bool
+ */
+function pg_consent_sms_number_known($number)
+{
+    return function_exists('pg_sms_number') && is_scalar($number) && (pg_sms_number((string) $number) !== '');
+}
+
+/**
+ * Whether the SMS box starts ticked on a screen that shows the person's
+ * answer (the e-mail preferences): unticked only after a recorded refusal.
+ * The log is the record of the SMS answer; a person with no answer yet starts
+ * ticked, as the e-mail box of a contact stored with the default opt-in does.
+ * Pure.
+ *
+ * @param array $current  pg_consent_log_current() of the person
+ * @return bool
+ */
+function pg_consent_sms_start(array $current)
+{
+    return !(isset($current['sms:marketing']['status']) && ($current['sms:marketing']['status'] === 'refused'));
+}
+
+/**
+ * The SMS marketing answer of a post, or array() when the box was not on the
+ * screen or the person has no mobile number (no number, no answer). Pure.
+ *
+ * @param bool  $asked         the screen drew the box
+ * @param bool  $number_known  the contact's number after the save is one (pg_consent_sms_number_known())
+ * @param mixed $posted        the posted opt_in_sms, '1' when ticked
+ * @return array  "channel:purpose" => bool, for pg_consent_log_answers()
+ */
+function pg_consent_sms_answers($asked, $number_known, $posted)
+{
+    if (!$asked || !$number_known) {
+        return array();
+    }
+
+    return array('sms:marketing' => (is_scalar($posted) && ((string) $posted === '1')));
+}
+
+/**
+ * The SMS box's start state for a person, read from their log rows.
+ *
+ * @param array $person  see pg_consent_log_person_where()
+ * @return bool
+ */
+function pg_consent_sms_start_for(array $person)
+{
+    return pg_consent_sms_start(pg_consent_log_current(pg_consent_log_rows($person)));
+}
+
+/**
+ * Whether a checkout draws the SMS box: while it is offered (the checkout
+ * asks the billing phone number) and the person has not said yes already,
+ * as the e-mail box is drawn only for a contact not opted in. Pure.
+ *
+ * @param array $current  pg_consent_log_current() of the buyer
+ * @param bool  $offered  pg_consent_sms_offered()
+ * @return bool
+ */
+function pg_consent_sms_checkout_ask(array $current, $offered)
+{
+    return (bool) $offered
+        && !(isset($current['sms:marketing']['status']) && ($current['sms:marketing']['status'] === 'granted'));
+}
+
+/**
+ * Whether a checkout draws the SMS box for this buyer, read from their log
+ * rows. Guests with no contact yet have no rows.
+ *
+ * @param array|null $contact  the buyer's contacts row (id, email_address), or none
+ * @return bool
+ */
+function pg_consent_sms_checkout_shown($contact)
+{
+    if (!pg_consent_sms_offered(true)) {
+        return false;
+    }
+
+    $contact = is_array($contact) ? $contact : array();
+    $person = pg_consent_checkout_person(isset($contact['email_address']) ? $contact['email_address'] : '', 0, isset($contact['id']) ? $contact['id'] : 0);
+
+    return pg_consent_sms_checkout_ask(pg_consent_log_current(pg_consent_log_rows($person)), true);
+}
+
+/**
+ * The SMS box row of the classic billing information and express order
+ * tables, with its opt_in_sms_shown mark.
+ *
+ * @param liveform $form
+ * @return string
+ */
+function pg_consent_sms_checkout_row($form)
+{
+    return
+        '<tr>
+            <td>&nbsp;</td>
+            <td>' . $form->output_field(array('type' => 'checkbox', 'name' => 'opt_in_sms', 'id' => 'opt_in_sms', 'value' => '1', 'class' => 'software_input_checkbox')) . '<label for="opt_in_sms"> ' . h(lang('I want to receive campaign and offer messages by SMS.')) . '</label><input type="hidden" name="opt_in_sms_shown" value="1"></td>
+        </tr>';
+}
+
+/**
+ * The mobile number a contact holds, '' for none.
+ *
+ * @param int $contact_id
+ * @return string
+ */
+function pg_consent_sms_contact_number($contact_id)
+{
+    $contact_id = (int) $contact_id;
+
+    if ($contact_id <= 0) {
+        return '';
+    }
+
+    return (string) db_value("SELECT mobile_phone FROM contacts WHERE id = '" . $contact_id . "'");
 }
 
 
@@ -710,6 +877,11 @@ function pg_privacy_erase_tables()
         )),
         // A cart quote keeps its products for the store; only whom it was
         // made for goes.
+        // A customer visit on the Work Calendar stays on the team's plan; it
+        // no longer names the person.
+        'ws_events' => array('find' => array('contact_id' => 'contact_ids'), 'action' => 'anonymise', 'fields' => array(
+            'contact_id' => 0,
+        )),
         'cart_quotes' => array('find' => array('contact_id' => 'contact_ids'), 'action' => 'anonymise', 'fields' => array(
             'contact_id' => 0,
         )),
@@ -826,6 +998,7 @@ function pg_privacy_erase_labels()
         'comments'                     => lang('Comments and reviews'),
         'consent_log'                  => lang('Consents'),
         'ws_approval_guests'           => lang('Workspace approvals'),
+        'ws_events'                    => lang('Customer visits'),
         'cart_quotes'                  => lang('Cart quotes'),
         'audit_log'                    => lang('Audit trail'),
         'record_revisions'             => lang('Item revisions'),

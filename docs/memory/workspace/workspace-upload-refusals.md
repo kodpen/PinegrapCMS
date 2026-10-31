@@ -15,7 +15,7 @@ description: What a Workspace channel refuses to take (ws_upload_refused()): the
 
 ## Which doors does it cover?
 - All end in `ws_upload_refused()`:
-  - the panel's paperclip, drop and paste (`ws_attach` → `ws_message_send_file()` → `ws_upload_inspect()`);
+  - the panel's paperclip, drop and paste (`ws_attach` → `ws_message_send_file_bytes()` → `ws_upload_inspect()`);
   - `POST /workspace/channels/{id}/files`, its dry run included (`ws_upload_check()` runs before `api_dry_run_stop()`; 422);
   - the file manager's "Send to a channel" (`ws_library_send()` → `ws_message_send_file_bytes()`);
   - the picker "From the file manager", which lists the file greyed with "Channels do not take this kind of file." (`ws_library_file_payload()`);

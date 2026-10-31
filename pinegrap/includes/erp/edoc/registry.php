@@ -8,8 +8,8 @@
  * The invoice, the return and the delivery note are Pinegrap's own records;
  * turning them into an e-Fatura, an e-Arşiv or an e-İrsaliye at the tax
  * authority is done through a provider (Paraşüt, Logo İşbaşı, a private
- * integrator). The store picks one on the E-Invoice card of the commerce
- * settings (includes/settings/commerce.php, saved by commerce.save.php) and nothing
+ * integrator). The store picks one on the E-Invoice card of the accounting
+ * settings (includes/settings/accounting.php, saved by accounting.save.php) and nothing
  * else in the module knows which: every caller goes through erp_edoc_call(),
  * and the provider is a driver file under includes/erp/edoc/.
  *

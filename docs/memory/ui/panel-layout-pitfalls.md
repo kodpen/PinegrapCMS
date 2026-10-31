@@ -10,6 +10,7 @@ description: Panel CSS and JS traps that fail silently, with their files: hiding
 
 ## How is a menu placed inside a scrolling box?
 - Floating UI with `strategy: "fixed"`, passed as `floatingConfig` through `pgUI.menu.get()`: an absolutely positioned menu is clipped by the scroll box (`dashboard-sales-map-panel.md`). A menu a screen opens itself on `.menu` takes its keys on `window` (`own-menu-dropdown-keydown.md`).
+- A scroll box under a `thead.sticky-top` needs `scroll-padding-top:2.5rem` beside its `max-height`, or a focused row link hides under the heading (ERP Profit, VAT report); the office grid pads from `.office-corner`.
 
 ## Which layouts collapse only on narrow screens?
 - `overflow` other than `visible` on a flex item drops its automatic minimum size: give the axis a floor first (`flex-overflow-hidden-pitfall.md`).

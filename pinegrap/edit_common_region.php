@@ -50,6 +50,17 @@ if (!isset($_POST['name']) && !isset($_POST['submit_convert'])) {
     $cregion_content = $row['cregion_content'];
     $cregion_designer_type = $row['cregion_designer_type'];
 
+    // The stored values, or the posted ones after a refused name.
+    $form_name = $cregion_name;
+    $form_content = $cregion_content;
+    $form_type = 'common';
+    $name_taken = $liveform->check_field_error('name');
+
+    if ($liveform->field_in_session('name')) {
+        list($form_name, $form_content) = pg_common_region_form_values(array('name' => $liveform->get_field_value('name'), 'content' => $liveform->get_field_value('content')));
+        $form_type = ($liveform->get_field_value('type') == 'designer') ? 'designer' : 'common';
+    }
+
     if ($component_id) {
         $component_name = (string) db_value("SELECT name FROM shared_components WHERE id = '" . (int) $component_id . "'");
         $output_component =
@@ -104,12 +115,12 @@ if (!isset($_POST['name']) && !isset($_POST['submit_convert'])) {
                 <form name="form" action="edit_common_region.php" method="post">
                     ' . get_token_field() . '
                     <input type="hidden" name="id" value="' . h($_GET['id']) . '">
-                    ' . pg_common_region_form_card($cregion_name, $cregion_content, '
+                    ' . pg_common_region_form_card($form_name, $form_content, '
                                         <div class="col-12 md:col-6 my-3">
                                             <label for="type" class="form-label">' . lang('Region Type') . '</label>
-                                            <select name="type" id="type" class="form-control"' . ($component_id ? ' disabled' : '') . '><option value="common" selected="selected">' . lang('Common Region') . '</option><option value="designer">' . lang('Designer Region') . '</option></select>
+                                            <select name="type" id="type" class="form-control"' . ($component_id ? ' disabled' : '') . '><option value="common"' . ($form_type == 'common' ? ' selected="selected"' : '') . '>' . lang('Common Region') . '</option><option value="designer"' . ($form_type == 'designer' ? ' selected="selected"' : '') . '>' . lang('Designer Region') . '</option></select>
                                             ' . ($component_id ? '<input type="hidden" name="type" value="common">' : '<div class="form-text text-end">' . lang('You can change Region Type') . '</div>') . '
-                                        </div>', !$component_id) . '
+                                        </div>', !$component_id, $name_taken) . '
                     <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
@@ -178,6 +189,16 @@ if (!isset($_POST['name']) && !isset($_POST['submit_convert'])) {
         $notice = lang(array('string'=>'{var:1} was deleted successfully','vars'=>lang('Common Region') ));
     } else {
         list($name, $content) = pg_common_region_form_values($_POST);
+
+        // A rename onto a name another region already has is refused: the
+        // site reads only one row per name. The screen comes back with the
+        // posted values.
+        if (pg_cregion_name_taken($name, $id)) {
+            $liveform->add_fields_to_session(array('trim' => false));
+            $liveform->mark_error('name', lang('The name that you entered is already in use, so please enter a different name.'));
+            header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_common_region.php?id=' . $id);
+            exit();
+        }
 
         if ($_POST['type'] == 'common') {
             $cregion_designer_type = 'no';

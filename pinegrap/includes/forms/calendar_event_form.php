@@ -449,9 +449,11 @@ function pg_calendar_event_form_choices()
  * @param array    $calendars                pg_calendar_event_form_choices()['calendars']
  * @param array    $calendar_event_locations pg_calendar_event_form_choices()['calendar_event_locations']
  * @param int      $calendar_event_id        The event being edited, 0 on the create screen
+ * @param int      $keep_next_page_id        The event's stored next page, kept in the Next Page
+ *                                           picker whatever its folder (0 on the create screen)
  * @return string  HTML
  */
-function pg_calendar_event_form_cards($liveform, $user, $calendars, $calendar_event_locations, $calendar_event_id = 0)
+function pg_calendar_event_form_cards($liveform, $user, $calendars, $calendar_event_locations, $calendar_event_id = 0, $keep_next_page_id = 0)
 {
     $edit = ($calendar_event_id > 0);
 
@@ -570,12 +572,12 @@ function pg_calendar_event_form_cards($liveform, $user, $calendars, $calendar_ev
 
         $output_locations = '
             <div class="col-12 my-3">
-                <h3 class="h5">' . lang('Available Event Location(s)') . '</h3>
+                <h3 class="h5" id="multiselect-checkbox-checker-0_title">' . lang('Available Event Location(s)') . '</h3>
                 <div class="card multiselect-checkbox-container rounded-0 mb-1">
                     <div class="card-header border-0 bg-reset">
                         <div class="form-field">
-                            <div class="switch"><input id="multiselect-checkbox-checker-0" class="multiselect-checkbox-checker" type="checkbox"></div>
-                            <label for="multiselect-checkbox-checker-0" class="">' . lang('Select All') . '</label>
+                            <div class="switch"><input id="multiselect-checkbox-checker-0" class="multiselect-checkbox-checker" type="checkbox" aria-labelledby="multiselect-checkbox-checker-0_label multiselect-checkbox-checker-0_title"></div>
+                            <label for="multiselect-checkbox-checker-0" class="" id="multiselect-checkbox-checker-0_label">' . lang('Select All') . '</label>
                         </div>
                     </div>
                     <div class="card-body overflow-auto" style="max-height:300px">
@@ -609,7 +611,7 @@ function pg_calendar_event_form_cards($liveform, $user, $calendars, $calendar_ev
         $output_number_of_remaining_spots_row = '
                                                                         <div class="col-12 sm:col-auto my-3" id="number_of_remaining_spots_row" style="display:block;">
                                                                             <label class="form-label" for="number_of_remaining_spots">' . lang('Remaining Spots') . '</label>
-                                                                            ' . $liveform->output_field(array('type'=>'text', 'id'=>'number_of_remaining_spots', 'name'=>'number_of_remaining_spots', 'size'=>'3', 'maxlength'=>'9', 'class' => 'form-control text-end', 'inputmode'=>'numeric', 'data-inputmask-alias'=>'decimal')) . '
+                                                                            ' . $liveform->output_field(array('type'=>'text', 'id'=>'number_of_remaining_spots', 'name'=>'number_of_remaining_spots', 'size'=>'3', 'maxlength'=>'9', 'class' => 'form-control text-end', 'inputmode'=>'numeric', 'data-inputmask-alias'=>'integer')) . '
                                                                         </div> ';
         $product_id = $liveform->get_field_value('product_id');
     }
@@ -626,12 +628,10 @@ function pg_calendar_event_form_cards($liveform, $user, $calendars, $calendar_ev
                                         <div class="col-12 md:col-4 my-3">
                                             <label for="name" class="form-label">' . lang(array('string'=>'{var:1} Name','vars'=>lang('Event'))) . '</label>
                                             ' . $liveform->output_field(array('type'=>'text', 'name'=>'name', 'id'=>'name', 'class'=>'form-control', 'maxlength'=>'100', 'required'=>'required')) . '
-                                            <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                         </div>
                                         <div class="col-12 md:col-8 my-3">
                                             <label for="short_description" class="form-label">' . lang('Short Description') . '</label>
                                             ' . $liveform->output_field(array('type'=>'text', 'name'=>'short_description', 'id'=>'short_description', 'class'=>'form-control', 'maxlength'=>'255')) . '
-                                            <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                         </div>
                                         <div class="col-12 my-5">
                                             <label for="full_description" class="form-label">' . lang('Full Description') . '</label>
@@ -696,8 +696,8 @@ function pg_calendar_event_form_cards($liveform, $user, $calendars, $calendar_ev
                                                         <div class="col-auto my-1">
                                                             <div class="input-group">
                                                                 <div class="input-group-text">' . lang('Up To') . ':</div>
-                                                                ' . $liveform->output_field(array('type'=>'text', 'id'=>'total_recurrence_number', 'name'=>'total_recurrence_number', 'size'=>'5', 'maxlength'=>'9', 'class' => 'form-control text-end', 'inputmode'=>'numeric', 'data-inputmask-alias'=>'decimal')) . ' 
-                                                                ' . $liveform->output_field(array('type'=>'select', 'id'=>'recurrence_type', 'name'=>'recurrence_type', 'class' => 'form-control', 'options'=>$recurrence_type_options, 'onchange'=>'change_calendar_event_recurrence_type()')) . '
+                                                                ' . $liveform->output_field(array('type'=>'text', 'id'=>'total_recurrence_number', 'name'=>'total_recurrence_number', 'aria-label'=>lang('Up To'), 'size'=>'5', 'maxlength'=>'9', 'class' => 'form-control text-end', 'inputmode'=>'numeric', 'data-inputmask-alias'=>'decimal')) . ' 
+                                                                ' . $liveform->output_field(array('type'=>'select', 'id'=>'recurrence_type', 'name'=>'recurrence_type', 'aria-label'=>lang('Repeat'), 'class' => 'form-control', 'options'=>$recurrence_type_options, 'onchange'=>'change_calendar_event_recurrence_type()')) . '
                                                             </div>
                                                         </div>
                                                         <div class="col-12 my-3" id="recurrence_days_of_the_week_row"' . $output_recurrence_days_of_the_week_row_style . '>
@@ -825,12 +825,12 @@ function pg_calendar_event_form_cards($liveform, $user, $calendars, $calendar_ev
                                 <div class="card-body">
                                     <div class="row">
                                         <div class="col-12 my-3">
-                                            <h3 class="h5">' . lang('Post to any of my Calendars') . '</h3>
+                                            <h3 class="h5" id="multiselect-checkbox-checker-1_title">' . lang('Post to any of my Calendars') . '</h3>
                                             <div class="card multiselect-checkbox-container rounded-0 mb-1">
                                                 <div class="card-header border-0 bg-reset">
                                                     <div class="form-field">
-                                                        <div class="switch"><input id="multiselect-checkbox-checker-1" class="multiselect-checkbox-checker" type="checkbox"></div>
-                                                        <label for="multiselect-checkbox-checker-1" class="">' . lang('Select All') . '</label>
+                                                        <div class="switch"><input id="multiselect-checkbox-checker-1" class="multiselect-checkbox-checker" type="checkbox" aria-labelledby="multiselect-checkbox-checker-1_label multiselect-checkbox-checker-1_title"></div>
+                                                        <label for="multiselect-checkbox-checker-1" class="" id="multiselect-checkbox-checker-1_label">' . lang('Select All') . '</label>
                                                     </div>
                                                 </div>
                                                 <div class="card-body overflow-auto" style="max-height:300px">
@@ -876,7 +876,7 @@ function pg_calendar_event_form_cards($liveform, $user, $calendars, $calendar_ev
                                                                     <div class="row">
                                                                         <div class="col-12 sm:col-auto my-3" id="number_of_initial_spots_row" style="display:' . $number_of_initial_spots_row_display . ';">
                                                                             <label class="form-label" for="number_of_initial_spots">' . lang('Number Of Initial Spots') . '</label>
-                                                                            ' . $liveform->output_field(array('type'=>'text', 'id'=>'number_of_initial_spots', 'name'=>'number_of_initial_spots', 'size'=>'3', 'maxlength'=>'9', 'class' => 'form-control text-end', 'inputmode'=>'numeric', 'data-inputmask-alias'=>'decimal')) . '
+                                                                            ' . $liveform->output_field(array('type'=>'text', 'id'=>'number_of_initial_spots', 'name'=>'number_of_initial_spots', 'size'=>'3', 'maxlength'=>'9', 'class' => 'form-control text-end', 'inputmode'=>'numeric', 'data-inputmask-alias'=>'integer')) . '
                                                                         </div> ' . $output_number_of_remaining_spots_row . '
                                                                         <div class="col-12 my-3">
                                                                             <label class="form-label" for="no_remaining_spots_message">' . lang('No Longer Available Message') . '</label>
@@ -889,17 +889,14 @@ function pg_calendar_event_form_cards($liveform, $user, $calendars, $calendar_ev
                                                         <div class="col-12 md:col-4 my-3">
                                                             <label for="reserve_button_label" class="form-label">' . lang('Reserve Button Label') . '</label>
                                                             ' . $liveform->output_field(array('type'=>'text', 'name'=>'reserve_button_label', 'id'=>'reserve_button_label', 'class'=>'form-control', 'maxlength'=>'50')) . '
-                                                            <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                                         </div>
                                                         <div class="col-12 md:col-4 my-3">
                                                             <label for="product_id" class="form-label">' . lang('Reservation Product') . '</label>
                                                             ' . $liveform->output_field(array('type'=>'select', 'name'=>'product_id', 'id'=>'product_id', 'class'=>'form-control', 'options'=>get_product_options(true, $product_id))) . '
-                                                            <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                                         </div>
                                                         <div class="col-12 md:col-4 my-3">
                                                             <label for="next_page_id" class="form-label">' . lang('Next Page') . '</label>
-                                                            ' . $liveform->output_field(array('type'=>'select', 'name'=>'next_page_id', 'id'=>'next_page_id', 'class'=>'form-control', 'options'=>get_page_options())) . '
-                                                            <div class="invalid-feedback">' . lang('Required Area') . '</div>
+                                                            ' . $liveform->output_field(array('type'=>'select', 'name'=>'next_page_id', 'id'=>'next_page_id', 'class'=>'form-control', 'options'=>get_page_options('', '', 'edit', true, $keep_next_page_id))) . '
                                                         </div>
                                                     </div>
                                                 </div>

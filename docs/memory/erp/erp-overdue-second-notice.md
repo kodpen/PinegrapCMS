@@ -21,5 +21,6 @@ description: ERP overdue round 2 (migration 4.56): candidate states, second noti
 - Store switch `erp_overdue_notify_customer` ships OFF; account switch `erp_accounts.overdue_notify_customer` ships ON.
 - Sender/reply `ECOMMERCE_EMAIL_ADDRESS → EMAIL_ADDRESS`.
 - A sent mail stamps `customer_notified_at`; a failed mail does not stamp and is never retried.
+- The same run can also text each account (SMS event `erp_overdue`, its own switch): `platform/sms-erp-overdue.md`.
 
 Related: docs/memory/erp/erp-overdue-reminders.md

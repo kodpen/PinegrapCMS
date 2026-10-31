@@ -51,6 +51,8 @@ function pg_commission_list_range()
         }
     }
 
+    $state = pg_list_period_ordered($state);
+
     return array(
         'start' => mktime(0, 0, 0, (int) $state['start_month'], (int) $state['start_day'], (int) $state['start_year']),
         'stop' => mktime(23, 59, 59, (int) $state['stop_month'], (int) $state['stop_day'], (int) $state['stop_year']),
@@ -139,9 +141,9 @@ function pg_commission_list_sort()
         'affiliate_name' => 'contacts.affiliate_name',
         'affiliate_code' => 'commissions.affiliate_code',
         'reference_code' => 'commissions.reference_code',
-        'status'         => 'commissions.status',
+        'status'         => pg_list_label_order('commissions.status', pg_commission_list_statuses()),
         'amount'         => 'commissions.amount',
-        'frequency'      => 'recurring_commission_profiles.period',
+        'frequency'      => pg_list_label_order("IFNULL(recurring_commission_profiles.period, '')", pg_commission_list_periods()),
         'order_number'   => 'orders.order_number',
         'product'        => 'recurring_commission_profiles.product_name',
         'created'        => 'commissions.created_timestamp',
@@ -200,8 +202,7 @@ function pg_commission_list_from()
  */
 function pg_commission_list_when($timestamp, $username)
 {
-    return get_relative_time(array('timestamp' => $timestamp))
-        . (((string) $username !== '') ? ' ' . lang(array('string' => 'by {var:1}', 'vars' => array(h($username)))) : '');
+    return pg_list_when($timestamp, $username);
 }
 
 /**
@@ -296,7 +297,7 @@ function pg_commission_profile_list_sort()
         'enabled'        => 'recurring_commission_profiles.enabled',
         'amount'         => 'recurring_commission_profiles.amount',
         'start_date'     => 'recurring_commission_profiles.start_date',
-        'frequency'      => 'recurring_commission_profiles.period',
+        'frequency'      => pg_list_label_order("IFNULL(recurring_commission_profiles.period, '')", pg_commission_list_periods()),
         'commissions'    => 'recurring_commission_profiles.number_of_commissions',
         'order_number'   => 'orders.order_number',
         'product'        => 'recurring_commission_profiles.product_name',

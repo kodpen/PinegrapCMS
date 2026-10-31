@@ -160,7 +160,6 @@ function ws_home_talk($viewer, $limit = 5)
     }
 
     $channels = array();
-    $people_ids = array();
     $tokens = array();
     $kept = array();
 
@@ -179,17 +178,13 @@ function ws_home_talk($viewer, $limit = 5)
         $kept[] = $row;
         $tokens = array_merge($tokens, ws_tokens($row['body']));
 
-        if ($row['sender_kind'] === 'user') {
-            $people_ids[] = (int) $row['sender_id'];
-        }
-
         if (count($kept) >= $limit) {
             break;
         }
     }
 
     $refs = ws_refs_resolve($viewer, $tokens);
-    $people = ws_people(array_unique($people_ids));
+    list($people, $mail) = ws_message_rows_senders($kept);
     $base = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/workspace.php';
     $out = array();
 
@@ -204,15 +199,7 @@ function ws_home_talk($viewer, $limit = 5)
             $unread = $membership ? ($id > (int) $membership['last_read_id']) : false;
         }
 
-        $sender = null;
-
-        if ($row['sender_kind'] === 'user') {
-            $sender = $people[(int) $row['sender_id']] ?? null;
-        } elseif ($row['sender_kind'] === 'app') {
-            $sender = ws_app_sender((int) $row['sender_id']);
-        } elseif (($row['sender_kind'] === 'guest') && function_exists('ws_guest_sender')) {
-            $sender = ws_guest_sender((int) $row['sender_id']);
-        }
+        $sender = ws_message_row_sender($row, $people, $mail);
 
         $text = ws_plain_text($viewer, $row['body'], $refs);
 
@@ -279,6 +266,9 @@ function ws_home_js_strings()
     return array(
         'home'                => lang('Overview'),
         'home_hello'          => ws_js_template('Hello, {var:1}', 1),
+        'density'             => lang('Density'),
+        'density_comfortable' => lang('Comfortable'),
+        'density_compact'     => lang('Compact'),
         'home_tasks'          => lang('Coming up'),
         'home_tasks_count'    => ws_js_template('{var:1} open task(s)', 1),
         'home_tasks_overdue'  => ws_js_template('{var:1} overdue', 1),

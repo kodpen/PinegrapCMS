@@ -4,8 +4,8 @@
  *
  * Tests for the login region form shared by the create and the edit
  * screens (includes/forms/login_region_form.php): the values a save
- * writes, the default a new region starts with, and that both screens use
- * the shared form.
+ * writes, the default a new region starts with, what a refused create
+ * comes back with, and that both screens use the shared form.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -15,6 +15,10 @@
 
 if (!defined('PG_TEST_RUNNER')) {
 	exit;
+}
+
+if (!class_exists('liveform', false)) {
+	require_once(PG_FUNCTIONS_DIR . '/liveform.class.php');
 }
 
 require_once(PG_FUNCTIONS_DIR . '/includes/forms/login_region_form.php');
@@ -53,7 +57,7 @@ function test_login_region_form_default_only_on_create()
 {
 	$form = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/forms/login_region_form.php');
 
-	pg_assert_contains('pg_login_region_form_card($liveform, true)', (string) file_get_contents(PG_FUNCTIONS_DIR . '/add_login_region.php'), 'create checks Show Login Form');
+	pg_assert_contains('pg_login_region_form_card($liveform, $liveform->prefill())', (string) file_get_contents(PG_FUNCTIONS_DIR . '/add_login_region.php'), 'create checks Show Login Form only on a first draw');
 	pg_assert_contains('pg_login_region_form_card($liveform)', (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_login_region.php'), 'edit shows the stored value');
 	pg_assert_same(1, substr_count($form, '$checked + array('), 'only the login form switch has a default');
 }
@@ -70,4 +74,38 @@ function test_login_region_form_screens_use_shared_form()
 		pg_assert_contains('validate_token_field()', $source, $file . ' checks the token');
 		pg_assert_false(strpos($source, 'Show Login Form') !== false, $file . ' keeps no copy of the card');
 	}
+}
+
+// Returns the card drawn the way the create screen draws it, after
+// $request was posted and refused (no post: a first draw).
+function _test_login_region_form_create_card($request)
+{
+	$saved = isset($_SESSION) ? $_SESSION : null;
+	$saved_request = $_REQUEST;
+	$_SESSION = array();
+
+	$liveform = new liveform('login_region_form_test');
+
+	if ($request !== null) {
+		$_REQUEST = $request;
+		$liveform->add_fields_to_session();
+		$_REQUEST = $saved_request;
+	}
+
+	$card = pg_login_region_form_card($liveform, $liveform->prefill());
+
+	if ($saved === null) {
+		unset($_SESSION);
+	} else {
+		$_SESSION = $saved;
+	}
+
+	return $card;
+}
+
+function test_login_region_form_refused_create_keeps_the_login_form_switch()
+{
+	pg_assert_true((bool) preg_match('/id="login_form"[^>]*checked="checked"/', _test_login_region_form_create_card(null)), 'a new region shows the login form');
+	pg_assert_false((bool) preg_match('/id="login_form"[^>]*checked/', _test_login_region_form_create_card(array('name' => 'members'))), 'a switch turned off stays off');
+	pg_assert_true((bool) preg_match('/id="login_form"[^>]*checked="checked"/', _test_login_region_form_create_card(array('name' => 'members', 'login_form' => '1'))), 'a switch left on stays on');
 }

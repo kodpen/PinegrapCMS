@@ -39,23 +39,27 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - catalog-rating-tokens.md: Product rating in the catalog widgets: __rating_avg / __rating_count tokens, has_rating / no_rating flags per card and on the product page, columns before 11.0.14, variant payload and switch
 - catalog-rss-structured-data.md: RSS feeds and JSON-LD for system widget pages: _pg_ bridge functions, integration points in get_page.php/get_page_content.php, channel/entity/review rules.
 - catalog-stock-notify-form.md: The back-in-stock form of the catalog item view: stock_notify_email and stock_notify bindings, the can_notify flag and its variant switch, the hidden form after the widget, the starter block
+- checkout-currency-picker.md: Currency picker of the Order Preview, Shipping Method and Order Form widgets (#3164): controls in the tree, a separate update_currency.php form after the widget, has_currency_choice
 - classic-regions-in-designer.md: Where each classic region type goes in the visual designer (common, designer, dynamic, page, data-driven regions), the owner's decisions behind it, and what is still open
 - classic-style-design-files.md: A classic style converted to a visual design: its own linked CSS/JS files become managed file entries, editable in the designer (P7, #2484, #2532)
 - classic-style-folder-pages.md: Save of a converted classic style also converts the pages that take it from their folder (#2411 (c)): the box, which pages, what is written
 - classic-style-import.md: A classic style's code read by the HTML importer (L1): placeholders to region nodes, meta_tags/stylesheet dropped, title and body on the root, site paths kept, what stays text
 - classic-style-to-design.md: A classic style opened in the visual designer (L2, #2370): the style list button, the frame as one shared component, page trees placing it, what Save writes and what stays
 - code-view-tab-search.md: Search in all tabs of the designer's code view (page and file tabs): the bar, PgCodeEditor.findAll(), why it searches only and does not replace
-- collection-fields.md: Collection forms and field kinds (11.0.43, C2): the three columns, where the kind is written and read, which kinds each field type takes, templates that opt in (C6a), the slug kind (C5b)
+- collection-fields.md: Collection forms and field kinds: columns, where the kind is written and read, kinds per field type, template collections (C6a), the slug kind (C5b)
 - collection-history.md: History section of a collection item (C7b, #3099): list, compare with the current values, Load, the save with source restore, what happens to files and signatures
 - collection-inputs.md: Inputs of a collection's fields by kind (C3, C3b, C3c): number, image, reference, product and page controls on the site form and the panel, radios and boxes, image preview, server checks
 - collection-lists.md: Collection fields in lists and feeds (C4a, C4b2, C5a): numeric sort, reference filters printing the label, records referencing the shown record, feed categories by label, images
 - collection-references.md: A form list or detail element prints a field of the record, product or page a reference points at (__ref binding, spec, one read per form, escaping, what is never read)
 - collection-revisions.md: Collection item revisions (record_revisions, 11.0.123, C7a #3068; History and restore C7b #3099): which items, which writers, what a row holds, the History section, restore, retention, erasure
 - collection-template-refs.md: A template's reference into another tab's form (_cf.ref tab:<key>): Publish, forms target first, sample references by label, blog categories, export (C6b1, C6b2)
+- collections-decisions.md: Typed collections over designer forms: why a form with a flag, the approved schema (#2393, #3051), why items have no schedule columns (#3746), what C1–C7 built and where it is described
+- comment-anonymous-name.md: The stored literal 'Anonymous' of a nameless comment and every reader that shows it in the site or panel language through pg_comment_display_name()
 - comment-counters-recount.md: Upgrade step 11.0.33 (data only) counts the comments of form records on designed pages again: two walks, a time pause, a per-database data/temp progress file with a done marker
 - comment-replies.md: Which comment a reply may answer (pg_comment_parent_ok()): same thread, visible to the writer, else refused with the text kept; ?reply_to=, staff mails, API parent_id, deleted parents, page copies
 - comment-thread-rules.md: Comment rules the classic comments block shares with the widget (pg_comments_settings, _allow_new, _viewer, _rows, _thread_order); its HTML stays byte for byte, its quirks kept
 - comment-thread-verify.md: Which thread a posted comment joins (pg_comment_thread_verify()): a record view page only its record, a classic catalog or event page only an item it shows; refusals after the page gates
+- comments-block-product-page.md: The classic comments block on a designed product page (#3546): the product's reviews with the review gate, and its Reviews tab or section left out when it draws nothing; canvas twin
 - comments-moderation-counters.md: Comment moderation on designed record pages: the stored row decides, edit_comment.php and the API rebuild submitted_form_info and mail the record's submitter unless they wrote it
 - comments-watcher-mail.md: Who gets the watcher e-mail about a new comment: each watcher's address once, never the comment's own writer, on every path that publishes it
 - comments-widget-canvas.md: The comments widget on the canvas: visitor states (the e-mail one too), the thread flag twin, hide versus fade, picking a node, sample comments, token previews
@@ -83,6 +87,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - comments-widget.md: The comments system widget (regionType comments): whose thread it shows, options, the recent mode, e-mails, tokens, flags, escaping, default layout, checks
 - common-region-to-shared-component.md: A common region made a shared component (R2): one _editable block opened to content editors, grants carried over, the <cregion> tag drawing the component, the old write paths refused
 - custom-form-email-and-confirmation-fallbacks.md: Custom form submit fallbacks (empty plain text body -> field list without hidden fields for the submitter; missing or binned next page -> message) and what the legacy page screen refuses (#1209).
+- custom-form-field-rules.md: Visitor rules of a designed form field (form_fields.rules, step 11.0.135, PR #3737): "Not before today" and "Required when", where they are written and checked, the staff exemption, Cafe and Clinic.
 - custom-form-model.md: custom_form widget model: controls are the fields (no field list), column sources, props._cf record, form_source page vs existing.
 - custom-form-options-and-rules.md: custom_form options live on the element, page_type is not the form marker (pg_form_page_sql), validation, confirmation, email body, CAPTCHA, migration, legacy field screens read-only.
 - custom-form-render.md: custom_form visitor-facing behaviour: hide-from-visitor (office_use_only) and pg_cf_apply_field_bindings render rules (name/id, select options, required, defaults).
@@ -95,6 +100,8 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - data-binding-to-content.md: Bind data to content elements (span, h1-h6, p, a, img), never structural table tags; tooling, the text slot a binding fills inside markup, and the characters a bound field name keeps.
 - design-asset-records.md: The design's CSS/JS asset rows (style_custom_css / style_custom_js JSON): module scripts, the per-page `pages` list and its tab:/key: references, where they are resolved, the Bootstrap Icons sheet.
 - design-framework.md: A visual design's framework (style.style_framework, bootstrap5 or custom): the pg_design_frameworks() registry, written once at creation, what a custom design does without, the new-design question.
+- design-template-cafe.md: Cafe template (and Clinic where shared): sample event weekdays, menu price hint, rating numbers through lang(), the catering guests pattern, the privacy page the consent boxes link (#3573, #3572).
+- design-template-comment-labels.md: Which comments labels the design templates set (singular nouns; `reply` on the forum topic and every conversation page) and why not the verb key `Reply` (#3453).
 - design-template-forum-decisions.md: Owner decisions behind the forum template (2026-10-23): general features only, replies as comments, what is not built, and the general features it was built on, with their PRs
 - design-template-forum-layout.md: Forum template look: pf- User Styles, Figtree and JetBrains Mono, tint after card, count strips, vanishing bands, raised badge and byline links, reply cards, focus rings, light e-mail frames.
 - design-template-forum-moderation.md: Forum template moderators: dashboard counts and lists (replies awaiting approval too), desks, reports, the folders a moderator needs, hiding, solving, best answers, e-mails, renaming.
@@ -164,7 +171,8 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - designer-form-uploads-for-readers.md: Designed-form uploads open for visitors when a public designed record view or list shows the record and prints the field (get_file.php, includes/record_files.php); what keeps them closed
 - designer-grid-node-tag.md: Opening tag of designer container/row/col on the page and in the editor HTML: twin helpers, classes once, attribute order, column widths, sizing props; page bodies drawn before
 - designer-gutter-overflow.md: Why wide row gutters (g-5) overflow inside .container on phones, the g-4 g-lg-5 rule, and how to measure responsive overflow of a block.
-- designer-home-screen.md: Visual Page Editor home (view_system_styles.php): drawn start cards, the site's design shown large, tiles, the right-click menu, rename (designer/design_rename)
+- designer-home-colours.md: Visual Page Editor home colours (#3267): neutral greys plus the panel's primary token, the previews keep theirs, token-class drawings, status as words and a shaped mark, tooltips
+- designer-home-screen.md: Visual Page Editor home (view_system_styles.php): one-accent colours, drawn start cards, the site's design shown large, tiles, the right-click menu, rename (designer/design_rename)
 - designer-import-validation-theme.md: Designer HTML/ZIP import rules, SEO validation badges (client twin), theme as files row, canvas direct-child CSS rules, image placeholder and loop band.
 - designer-inline-text-editing.md: Canvas in-place text editing: button-label spaces, colour/date/file input labels, no hint on bound text, an ended edit's key handler, shared-component edits, <html lang>.
 - designer-interactions-panel.md: Interactions section of the properties panel and on the canvas: nodes, rows, _sdFxSet(), undo, canvas binding, Play button, code view back to props._fx.
@@ -211,9 +219,11 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - form-item-ai-summary.md: AI on a designed form item view (2026.4.8): four assistant links and when they fill, the prompt setting, the in-browser summary wired by bindings, why the box is an aside, the translator bridge.
 - form-list-filters-fail-closed.md: A form list filter on a missing field or unknown operator shows no record (page, feeds, sitemap, index); address filters unchanged; editor warning; unanswered lists use comments less than 1
 - form-list-result-count.md: form_list_view ^^__result_count^^ (records matched, capped at max_results, grouped digits), the flags has_records / no_records, the count strip (empty loop area), canvas and installer preview
+- form-list-search-empty.md: The form list's empty state when a visitor's search matches nothing: "Nothing matched your search", not the configured empty message
 - form-list-url-filters.md: form_list_view filters valued from the page address (author, tag archives): reserved names, value rules, who passes the address, canonical/title/noindex, token, flags, feed
 - form-list-viewer-filter.md: A form list's viewer filter (submitter, editor, watcher, ORed): who counts as which; watchers of the detail page, classic or designed with a record view of the list's form
 - frontend-conventions-layers.md: Palette component vs system widget layers and where each is documented, legacy pages as production and yardstick, no dead code in the widget layer, the invariant principles for system widget work.
+- google-reviews-widget.md: Google Reviews widget (kind google_reviews): Place Details with a Places API key, the settings card, the sealed state and short cache, tokens, attribution, nothing drawn when not set up
 - html-import-and-paste.md: Designer HTML import: three entry points, one converter, inline SVG and Bootstrap icons, framework files, repeated blocks made shared, and why a canvas paste is not an import.
 - image-editor-tool.md: Bindable image editor (Pintura): save endpoint contract, write rules, openImageEditor modal, designer-side contract, images save independently of the design.
 - image-loading.md: How designer images load: page body order (first image first, the rest lazy), a node's own loading attribute, the Image element's Loading row and why it writes the attribute
@@ -244,6 +254,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - options-panel-style-labels.md: Labels of the options panel selects built from utility classes (selStyleGroup) and of the colour pickers: how options and placeholders are translated, the Text/Background Color row keys (#2046)
 - order-form-widget.md: The Order Form widget (classic "order form" page type): handler and page row, list and drop-down layouts, row controls by name, flags, schedule section, what is left out.
 - order-preview-widget.md: The Order Preview widget (last classic checkout step): values from get_order_preview()'s custom-layout branch, page row, controls by name, sections, what is left out.
+- order-view-not-found.md: Order view widget with no, unknown or foreign order id: message with a My Account link and a 404 with noindex; account order links skip order receipt e-mail pages
 - page-conditions.md: W18: an element outside a widget shown by visit facts (signed in, cart) or the page's record (found, allow-listed values); stored-body markers decided per request, cache, editor
 - page-designer-retired.md: The legacy page designer (page_designer.php) retired in 2026.11.0: the owner's decision, where each of its jobs went, what was removed and kept, the rules that stay, what is left
 - page-drafts.md: Drafts of visual-designer pages (2026.4.7): the private Drafts folder, page_drafts and the folder a page returns to, how a save sets the state, new pages start as drafts, Save vs Publish, copies.
@@ -279,12 +290,15 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - shared-component-model.md: How a shared_ref places a shared component: id link and name snapshot, empty children, unique names, nesting without loops, request-time markers, depth cap, deleted rows, editor colours.
 - shared-component-opened-alone.md: A shared component opened on its own in the designer (edit_system_style.php ?component=): who may, which design draws it, the one synthetic tab, Save writing only the component, the edit links
 - shared-components-panel.md: Deleting shared components and system widgets without opening a design (designs home panel), how usage is counted, and why deleting a design leaves those rows alone (pg_designer_delete_design()).
+- shipping-address-verified-box.md: Verified shipping addresses help box of the Shipping Address widget (#3177): has_verified_addresses, the verified_addresses section, the fill script by name
 - shipping-address-widget.md: The Shipping Address and Arrival widget (first step of the classic multi-step checkout): handler, page row, recipient gate, controls by name, state switch, arrival date rows, what is left out.
 - shipping-method-widget.md: The Shipping Method widget (second step of the classic multi-step checkout): handler, next page, methods from get_shipping_methods(), the chosen method, items section, what is left out.
 - signature-field-evidence.md: Signature form field (form_fields.type 'signature'): legal status, seal vs document hash, and the immutable capture and storage rules.
 - signature-receipt-and-output.md: Signature evidence receipt, the ^^field^^ token output, the h() ampersand pitfall, and why 'signature' was added to the form_fields.type enum.
 - signature-timestamp-rfc3161.md: RFC 3161 timestamping of signatures: what is stamped, storage, network call policy, config columns, settings-test pitfall, auth list, hand-written ASN.1.
+- site-search-query-and-freshness.md: Advanced site search over search_items: the query text in MATCH, the binned-page filter, record and file labels, the index made due after a template install (#3550, #3551, #3552)
 - sizing-panel-lengths.md: Display & Sizing panel lengths (width, height, min/max, top/right/bottom/left): a number without a unit is written in px by the page, the editor and the canvas, in one order
+- store-template-front-end.md: Store template front-end fixes (#3621): footer contact column, no card hint at checkout, product tabs on one line, the product page's edit pencil on the widget and clear of headings.
 - style-complete.md: pg_style_complete.js: smart completion in the designer code editors (attributes, CSS values, var(--…) tokens, Bootstrap JS API), no duplicate options, tests
 - style-fields.md: Smart completion in the designer's panel inputs: pg_style_fields.js (caret part, pick splice), the Attributes rows and Styles panel fields wired to it, when a list opens, how a pick is written
 - style-predictor.md: The smart completion predictor assets/js/pg_style_predict.js: its API, the context object, suggestion fields, reason codes, how classes are ranked, the hand-kept hint tables, tests
@@ -295,6 +309,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - system-widget-change-checklist.md: Checklist when changing system widgets (legacy comparison, subgroup test, PHP/JS twins, three places for defaults, node --check, logged-out live check) plus the escape-$ rule in heredocs.
 - system-widget-form-records.md: Form list and form detail widgets: one record address (pg_sw_record_url), how get_page.php answers it, layout_type is not the editor marker, list filters, the no-record layout, the record title.
 - system-widget-functional-classes.md: Which pg-eo-* / pg-qty-stepper classes and data-* attributes in system widget trees are functional (keep) versus decorative (deletable).
+- system-widget-page-types.md: Which classic page types have designer system widgets, which stay `system` nodes (#2436), confirmations as a widget setting, and what a converted page uses until a widget exists.
 - system-widget-render-rules.md: System widget renderer rules: Messages node named after the liveform, state messages fitted to the loop parent, pg-hide-if-empty, stretched links, the PHP tree renderer mirroring the exporter.
 - system-widget-test-pages.md: System widget test URLs (/c /d /e /b/<slug>), the two dev.pinegrap.com backends, legacy page confusion, saved-cart link, stale-output causes.
 - system-widget-type-and-name.md: Designer system widget rules: SW_TYPES, auto names, empty widget, gated type change (fork/all/cancel), the panel's copy button, walking all page tabs, pg_shared_component_usage() and usage_all rows.
@@ -323,6 +338,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - widget-default-parts.md: W16 placed beats pushed: the one placement rule (pg_sw_placed()), default parts drawing old HTML tokens with design elements, tail and lead parts, slices left
 - widget-designability-decisions-2.md: Owner's 2026-10-27 widget designability answers: OR conditions, hide-if-empty, words beside a value, converter (W22), page facts, placement settings, form parts, express lists, W12, W19.
 - widget-designability-decisions.md: The owner's 2026-10-26 answers for widget designability: W16 old blocks equal in look and behaviour (not bytes), W5 gallery sources, W8 entity fields (who sees what, secrets, yes/no, words).
+- widget-designability.md: Legacy-layout power in system widgets (W1-W26, done): the finish pass, its rules, the owner's decisions, and the topic file of each piece
 - widget-edit-chip-coverage.md: Which system widget records carry the front-end edit pencil (products, groups, form records, calendar events), the calendar rule, and which renders and widget kinds draw none.
 - widget-entity-fields-account.md: W8 account values (the member's own): which widgets offer them, the __member_ names, gates (reward and affiliate programs), country and time zone words, when they are read.
 - widget-entity-fields-address.md: W8 address values: the order's recipients (ship_to, order view, receipt e-mail, recipient list) and the address book's saved recipients; tokens, words, dates, row tokens of the order lists.
@@ -333,7 +349,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - widget-fill-shop.md: A bound value's format in the shop widgets (catalog, catalog detail, cart, express order, order view): fills, no change without a format, order view dates, fallback words (#1701).
 - widget-finish-pass.md: The finish pass every system widget render goes through: scope, markers, carriers, nonce, row positions, cut points, pg-hide-if-empty, the edit pencil, the strip (#1592).
 - widget-hide-if-empty.md: pg-hide-if-empty in every widget kind (W23, #2225): how an element is judged, the value element, the finish pass, the variant wait, the editor switch and its canvas state
-- widget-layout-gallery.md: W5 layout gallery of a system widget: sources (Default, From the template, On this site), the filters, Try/Keep/Cancel, undo, saves and rights
+- widget-layout-gallery.md: W5 layout gallery of a system widget: sources (Default, Starters, From the template, On this site), the filters, Try/Keep/Cancel, undo, saves and rights
 - widget-list-flags.md: A widget flag (eo_visible_if) inside a list's row naming a row value is a value condition on it (W23): the alias, the two tree walkers that leave it, the editor's offer, what is not covered
 - widget-list-paging-catalog-search.md: Catalog listing and search results paging (W12c, #1968): own page parameter, offset, paging tokens and flags as the form list has them; what differs from the form list, the canonical, what is left
 - widget-list-paging.md: Form list widget paging (W12a, #1924): own page parameter (page_param), offset, paging tokens and flags, canonical of a later page; what W12 still leaves for its next slices
@@ -350,5 +366,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - widget-parts-anywhere.md: W17 parts anywhere (#3074, #3085, #3111): a read-only part of the page's record placed outside its detail widget, drawn by that widget's renderer in the same request
 - widget-parts-palette.md: W20a parts palette: a Components group following the selection with a widget's parts and values, row items kept in their loop, the detail widget's placed outside it as parts
 - widget-placement-settings.md: W21 per-placement content of a system widget (#2326 #2345): what a placement may narrow, props.placement, the pg-placement marker, narrowing rules, the panel section, records filter.
+- widget-starters-detail.md: W20b-2 whole-layout starters of the detail widgets (#3234): the starterKeep markers that put the Default tree's parts in place, what each kind keeps, one main loop
+- widget-starters.md: W20b layout starters (#3179): style-neutral layouts per widget kind shipped as files, the gallery's fourth source, how the editor builds one, the kinds, the binding test
 - wishlist-widget.md: Favourites system widget (kind wishlist, widgets_wishlist.php): whose list it shows, tokens, flags, the two row actions and their hidden forms, page cache, My Account link, shop templates
 - wysiwyg-text-binding.md: Rich text in widgets: a short block-wrapped field is reduced to inline (_pg_rich_text_to_inline()), a long description binds to a div, img-responsive gets img-fluid at render; no extra .alert box.

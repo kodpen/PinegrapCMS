@@ -17,6 +17,7 @@
  */
 
 include('init.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/email_campaign_schedule.php');
 $user = validate_user();
 validate_email_access($user);
 
@@ -43,12 +44,29 @@ $sort_default = array('sort' => 'last_modified', 'order' => 'desc');
 $list_state = pg_list_state('view_email_campaign_profiles', $sort_columns, $sort_default);
 $sort_levels = $list_state['sorts'];
 
+// The name each action is shown under; the Action column sorts by it.
+$action_names = array(
+    'calendar_event_reserved' => lang('Calendar Event Reserved'),
+    'custom_form_submitted' => lang('Custom Form Submitted'),
+    'email_campaign_sent' => lang('Auto Campaign Sent'),
+    'order_abandoned' => lang('Order Abandoned'),
+    'order_completed' => lang('Order Completed'),
+    'order_review_request' => lang('Order Review Request'),
+    'order_shipped' => lang('Order Shipped'),
+    'order_delivered' => lang('Order Delivered'),
+    'subscription_renewed' => lang('Subscription Renewed'),
+    'subscription_failed' => lang('Subscription Payment Failed'),
+    'subscription_cancelled' => lang('Subscription Cancelled'),
+    'subscription_price_changed' => lang('Subscription Price Changed'),
+    'product_ordered' => lang('Product Ordered'),
+);
+
 // What each sort code orders by. Only codes pg_list_state() let through
 // reach pg_list_order_by(), and it writes nothing but these.
 $order_by = pg_list_order_by($sort_levels, array(
     'name'          => 'email_campaign_profiles.name',
     'enabled'       => 'email_campaign_profiles.enabled',
-    'action'        => 'email_campaign_profiles.action',
+    'action'        => pg_list_label_order('email_campaign_profiles.action', $action_names),
     'subject'       => 'email_campaign_profiles.subject',
     'page_to_send'  => 'page.page_name',
     'purpose'       => 'email_campaign_profiles.purpose',
@@ -81,8 +99,7 @@ if (USER_ROLE == 3) {
 
 // If user requested to export, then export them.
 if (isset($_GET['export'])) {
-    header('Content-type: text/csv');
-    header('Content-disposition: attachment; filename=campaign_profiles.csv');
+    pg_csv_download_start('campaign_profiles.csv');
 
     // Output column headings for CSV data.
     echo
@@ -142,8 +159,6 @@ if (isset($_GET['export'])) {
         LEFT JOIN user AS last_modified_user ON email_campaign_profiles.last_modified_user_id = last_modified_user.user_id
         $where
         ORDER BY $order_by");
-
-    $date_format_code = get_date_format_code();
 
     // Loop through the campaign profiles in order to output CSV data.
     foreach ($email_campaign_profiles as $email_campaign_profile) {
@@ -225,9 +240,9 @@ if (isset($_GET['export'])) {
             '"' . $email_campaign_profile['schedule_base'] . '",' .
             '"' . $schedule_time . '",' .
             '"' . $email_campaign_profile['purpose'] . '",' .
-            '"' . date($date_format_code . '/Y g:i:s A T', $email_campaign_profile['created_timestamp']) . '",' .
+            '"' . pg_csv_export_time($email_campaign_profile['created_timestamp']) . '",' .
             '"' . escape_csv($email_campaign_profile['created_username']) . '",' .
-            '"' . date($date_format_code . '/Y g:i:s A T', $email_campaign_profile['last_modified_timestamp']) . '",' .
+            '"' . pg_csv_export_time($email_campaign_profile['last_modified_timestamp']) . '",' .
             '"' . escape_csv($email_campaign_profile['last_modified_username']) . '"' . "\n";
     }
 
@@ -288,50 +303,22 @@ if (isset($_GET['export'])) {
                 $output_enabled_check_mark = '<span class="material-icons" aria-hidden="true">task_alt</span><span class="visually-hidden">' . lang('Yes') . '</span>';
             }
 
+            $output_action = isset($action_names[$email_campaign_profile['action']]) ? $action_names[$email_campaign_profile['action']] : '';
+
             switch ($email_campaign_profile['action']) {
                 case 'calendar_event_reserved':
-                    $output_action = lang('Calendar Event Reserved');
                     $output_action_item = h(db_value("SELECT name FROM calendar_events WHERE id = '" . $email_campaign_profile['action_item_id'] . "'"));
                     break;
 
                 case 'custom_form_submitted':
-                    $output_action = lang('Custom Form Submitted');
                     $output_action_item = h(db_value("SELECT page_name FROM page WHERE page_id = '" . $email_campaign_profile['action_item_id'] . "'"));
                     break;
 
                 case 'email_campaign_sent':
-                    $output_action = lang('Auto Campaign Sent');
                     $output_action_item = h(db_value("SELECT name FROM email_campaign_profiles WHERE id = '" . $email_campaign_profile['action_item_id'] . "'"));
                     break;
 
-                case 'order_abandoned':
-                    $output_action = lang('Order Abandoned');
-                    $output_action_item = '';
-                    break;
-
-                case 'order_completed':
-                    $output_action = lang('Order Completed');
-                    $output_action_item = '';
-                    break;
-
-                case 'order_review_request':
-                    $output_action = lang('Order Review Request');
-                    $output_action_item = '';
-                    break;
-
-                case 'order_shipped':
-                    $output_action = lang('Order Shipped');
-                    $output_action_item = '';
-                    break;
-
-                case 'order_delivered':
-                    $output_action = lang('Order Delivered');
-                    $output_action_item = '';
-                    break;
-
                 case 'product_ordered':
-                    $output_action = lang('Product Ordered');
-
                     $product = db_item(
                         "SELECT
                             name,
@@ -354,6 +341,10 @@ if (isset($_GET['export'])) {
                     }
 
                     break;
+
+                default:
+                    $output_action_item = '';
+                    break;
             }
 
             $output_page_name = '';
@@ -363,60 +354,13 @@ if (isset($_GET['export'])) {
                 $output_page_name = h($email_campaign_profile['page_name']);
             }
 
-            $output_schedule = '';
-            $output_schedule_time_title = '';
+            $output_schedule_time = '';
 
-            // If the length is 0, then use "immediately" terminology.
-            if ($email_campaign_profile['schedule_length'] == 0) {
-                $output_schedule_time_title = ' ' . lang('immediately') .' ';
-
-            // Otherwise the length is greater than 0, so prepare content for that.
-            } else {
-                $output_schedule_time_title = $email_campaign_profile['schedule_length'] . ' ';
-
-                // If the unit is days then prepare to output unit is a certain way.
-                if ($email_campaign_profile['schedule_unit'] == 'days') {
-                    // If the length is 1 the use singular unit.
-                    if ($email_campaign_profile['schedule_length'] == 1) {
-                        $output_schedule_time_title .= ' ' . lang('day') .' ';
-
-                    // Otherwise the length is 0 or more than 1, so output plural unit.
-                    } else {
-                        $output_schedule_time_title .= ' ' . lang('days') .' ';
-                    }
-
-                // Otherwise the unit is hours, so prepare to output unit in a different way.
-                } else {
-                    // If the length is 1 the use singular unit.
-                    if ($email_campaign_profile['schedule_length'] == 1) {
-                        $output_schedule_time_title .= ' ' . lang('hour') .' ';
-
-                    // Otherwise the length is 0 or more than 1, so output plural unit.
-                    } else {
-                        $output_schedule_time_title .= ' ' . lang('hours') .' ';
-                    }
-                }
-            }
-
-            $output_schedule_after_before = lang($email_campaign_profile['schedule_period']) . ' ';
-
-            // If the base is action, then prepare to output that.
-            if ($email_campaign_profile['schedule_base'] == 'action') {
-                $output_schedule_action = ' ' . lang('from action') .' ';
-
-            // Otherwise the base is calendar event start time, so output that.
-            } else {
-                $output_schedule_action = ' ' . lang('from calendar event start time') .' '; 
-            }
-
-            // If there is a time, then add it to schedule.
             if ($email_campaign_profile['schedule_time'] != '00:00:00') {
-                $output_schedule_action .= ' (' . date(pg_time_format_code(), strtotime($email_campaign_profile['schedule_time'])) . ')';
+                $output_schedule_time = date(pg_time_format_code(), strtotime($email_campaign_profile['schedule_time']));
             }
 
-          
-
-            $output_schedule = lang(array('string'=>'Schedule: {var:1}{var:2}{var:3}','vars'=>array($output_schedule_time_title,$output_schedule_after_before,$output_schedule_action) ));
+            $output_schedule = h(pg_email_campaign_profile_schedule_label($email_campaign_profile['schedule_length'], $email_campaign_profile['schedule_unit'], $email_campaign_profile['schedule_period'], $email_campaign_profile['schedule_base'], $output_schedule_time));
             
 
 

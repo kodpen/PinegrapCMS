@@ -96,3 +96,16 @@ function test_calendar_event_form_both_screens_validate_through_the_shared_form(
 		pg_assert_false(strpos($source, 'check_calendar_event_location_availability(') !== false, $file . ' still checks locations on its own');
 	}
 }
+
+function test_calendar_event_form_select_all_switches_name_their_list()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/forms/calendar_event_form.php');
+
+	foreach (array('0' => 'Available Event Location(s)', '1' => 'Post to any of my Calendars') as $n => $heading) {
+		$id = 'multiselect-checkbox-checker-' . $n;
+
+		pg_assert_contains('<h3 class="h5" id="' . $id . '_title">\' . lang(\'' . $heading . '\') . \'</h3>', $source, $heading . ' heading has an id');
+		pg_assert_contains('<input id="' . $id . '" class="multiselect-checkbox-checker" type="checkbox" aria-labelledby="' . $id . '_label ' . $id . '_title">', $source, $heading . ' Select All reads its list');
+		pg_assert_contains('<label for="' . $id . '" class="" id="' . $id . '_label">', $source, $heading . ' Select All label has an id');
+	}
+}

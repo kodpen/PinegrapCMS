@@ -41,7 +41,7 @@ if (!$order_item) {
 
 // If the order item is for a different order, then log and output error.
 if ($order_item['order_id'] != ($_SESSION['ecommerce']['order_id'] ?? '')) {
-    log_activity('Access denied to remove item from different cart.');
+    log_activity(pg_log_lang(array('string' => 'Access denied to remove item from different cart.')));
     output_error('Sorry, we can\'t allow you to remove that item, because it is not in your cart.');
 }
 

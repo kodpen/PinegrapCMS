@@ -18,6 +18,10 @@
 
 include('init.php');
 
+// A file over post_max_size empties the whole request; say so instead of
+// drawing the form again as if nothing had been sent.
+pg_upload_refuse_discarded_body();
+
 $user = validate_user();
 validate_email_access($user);
 
@@ -64,6 +68,7 @@ if (!$_POST) {
                                         <div class="col-12  my-3">
                                             <label for="file" class="form-label">' . lang('Select Formatted Text File to Upload') . '</label>
                                             ' . $liveform->output_field(array('type'=>'file', 'id'=>'file', 'name'=>'file', 'size'=>'60', 'class'=>'form-control w-auto', 'required'=>'required')) . '
+                                            ' . pg_upload_limit_hint() . '
                                         </div>
                                     </div>
                                 </div>       
@@ -97,11 +102,23 @@ if (!$_POST) {
         go($_SERVER['PHP_SELF']);
     }
 
+    $upload_limits = pg_upload_limits();
+    $upload_refusal = pg_upload_file_refusal($_FILES['file'], $upload_limits['file_max']);
+
+    if ($upload_refusal !== '') {
+        $liveform->mark_error('file', h($upload_refusal));
+        go($_SERVER['PHP_SELF']);
+    }
+
     // Get file handle for uploaded CSV file.
     $handle = pg_csv_open($_FILES['file']['tmp_name']);
 
+    // The header line says which separator the file uses (Excel in Turkish
+    // writes ';').
+    $separator = pg_csv_read_separator($handle);
+
     // Get column names from first row of CSV file.
-    $row = fgetcsv($handle, 100000, ',', '"', '\\');
+    $row = fgetcsv($handle, 100000, $separator, '"', '\\');
     
     // If the file is empty then add error and forward user back to previous screen.
     if (!$row) {
@@ -113,9 +130,15 @@ if (!$_POST) {
     $row = array_map('trim', $row);
 
     $columns = array();
+    // Headings the import does not know, named in the result.
+    $unknown_headings = array();
     
     // Loop through the columns in order to determine which are valid.
     foreach ($row as $number => $name) {
+        // The heading is matched whatever its case and spacing ("Subject",
+        // "From Name").
+        $name = pg_import_heading($name);
+
         // If this column is valid, then add it to the columns array.
         if (
             ($name == 'name')
@@ -140,6 +163,8 @@ if (!$_POST) {
             $columns[$name] = array(
                 'name' => $name,
                 'number' => $number);
+        } else {
+            $unknown_headings[] = $row[$number];
         }
     }
 
@@ -150,7 +175,7 @@ if (!$_POST) {
     }
 
     // If there is no name column then add error and forward user back to previous screen.
-    if (!$columns['name']) {
+    if (!isset($columns['name'])) {
         $liveform->mark_error('file', lang('Sorry, we could not find a \'name\' column in the CSV file.'));
         go($_SERVER['PHP_SELF']);
     }
@@ -160,10 +185,14 @@ if (!$_POST) {
     $updated_count = 0;
     $skipped_count = 0;
 
+    // Empty cells up to the last column used, for rows shorter than that.
+    $empty_row = array_fill(0, max(array_column($columns, 'number')) + 1, '');
+
     // Loops through all rows of data in CSV file, in order to create or update campaign profiles.
-    while ($row = fgetcsv($handle, 100000, ',', '"', '\\')) {
-        // Trim all values.
-        $row = array_map('trim', $row);
+    while ($row = fgetcsv($handle, 100000, $separator, '"', '\\')) {
+        // Trim all values; a row shorter than the header (a blank line is
+        // array(null)) reads its missing cells as empty.
+        $row = array_map('trim', array_map('strval', $row)) + $empty_row;
 
         $name = $row[$columns['name']['number']];
 
@@ -237,7 +266,7 @@ if (!$_POST) {
 
             // If an enabled column was not included,
             // then set campaign profile to be enabled by default.
-            if (!$columns['enabled']) {
+            if (!isset($columns['enabled'])) {
                 $sql_columns .= "enabled,";
                 $sql_values .= "'1',";
             }
@@ -285,6 +314,10 @@ if (!$_POST) {
     }
 
     $liveform_view_email_campaign_profiles->add_notice($message);
+
+    if (pg_csv_headings_text($unknown_headings) !== '') {
+        $liveform_view_email_campaign_profiles->add_warning(h(lang(array('string' => 'These columns were not recognised and were left out: {var:1}', 'vars' => array(pg_csv_headings_text($unknown_headings))))));
+    }
 
     go(PATH . SOFTWARE_DIRECTORY . '/view_email_campaign_profiles.php');
 }

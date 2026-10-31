@@ -2,10 +2,11 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Workspace - the history of a channel's customer: their orders, invoices,
- * sales quotes and submitted forms, and the messages and tasks elsewhere in
- * the Workspace that tag them or a record tied to them, as one list, newest
- * first.
+ * Workspace - the history of a channel's customer: their orders, cart quotes,
+ * invoices, sales quotes and submitted forms, and the messages, tasks, notes and
+ * workflow table rows elsewhere in the Workspace that tag them or a record
+ * tied to them, and the customer visits on the Work Calendar that name them,
+ * as one list, newest first.
  *
  * It is read from the tables those records live in, each time it is asked
  * for; there is no activity table to keep in step, so records from before
@@ -48,11 +49,11 @@ function ws_customer_history_limit($limit)
 }
 
 /**
- * Which sources the reader may see: orders the ecommerce right, invoices and
- * sales quotes the ERP right (the read-only right holds it too: the history
- * only reads), submitted forms the forms right; the messages and tasks that
- * tag the customer any member of the Workspace, each only where they may see
- * it.
+ * Which sources the reader may see: orders and cart quotes the ecommerce
+ * right (the right of the cart quote screens), invoices and sales quotes the
+ * ERP right (the read-only right holds it too: the history only reads),
+ * submitted forms the forms right; the messages and tasks that tag the
+ * customer any member of the Workspace, each only where they may see it.
  *
  * @param array $viewer ws_viewer(), or the API's copy narrowed to the key's
  *                      scopes (ws_api_customer_viewer())
@@ -64,6 +65,7 @@ function ws_customer_history_rights($viewer)
 
     return array(
         'orders'       => !empty($viewer['ecommerce']),
+        'cart_quotes'  => !empty($viewer['ecommerce']),
         'invoices'     => $erp,
         'sales_quotes' => $erp,
         'forms'        => !empty($viewer['forms']),
@@ -94,6 +96,10 @@ function ws_customer_history($viewer, $channel, $identity, $before, $limit)
         $data['orders'] = ws_customer_history_order_rows($identity, $before, $read);
     }
 
+    if ($rights['cart_quotes']) {
+        $data['cart_quotes'] = ws_customer_history_cart_quote_rows($identity, $before, $read);
+    }
+
     if ($rights['invoices']) {
         $data['invoices'] = ws_customer_history_invoice_rows($identity, $before, $read);
     }
@@ -108,6 +114,7 @@ function ws_customer_history($viewer, $channel, $identity, $before, $limit)
 
     if ($rights['workspace']) {
         $data = array_merge($data, ws_customer_history_ref_rows($viewer, $channel, $identity, $before, $read));
+        $data['visits'] = ws_customer_history_visit_rows($identity, $before, $read);
     }
 
     return ws_customer_history_build($rights, $data, 'ws_customer_money_text', OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/', $limit);
@@ -124,10 +131,13 @@ function ws_customer_history($viewer, $channel, $identity, $before, $limit)
  * one second alone keeps it, and the next page starts below that second.
  *
  * @param array    $rights ws_customer_history_rights()
- * @param array    $data   rows per source: orders, invoices, sales_quotes
+ * @param array    $data   rows per source: orders, cart_quotes (each with
+ *                         line_count, state_label), invoices, sales_quotes
  *                         (each with state_label), forms (each with open),
  *                         messages (channel_name, sender_name, excerpt),
- *                         tasks (title, status_label)
+ *                         tasks (title, status_label), notes (name, excerpt,
+ *                         updated_at), rows (table_id, table, title,
+ *                         updated_at), visits (title, starts_at)
  * @param callable $money  function ($minor, $currency): string
  * @param string   $base   the panel's address, ending in /
  * @param int      $limit  the entries the page holds
@@ -162,6 +172,16 @@ function ws_customer_history_build($rights, $data, $money, $base, $limit)
 
             $entries[] = $entry('order', $row['id'], $row['order_date'] ?? 0, lang('Order') . ' #' . $row['order_number'], '',
                 $statuses[$row['status']] ?? (string) $row['status'], $total, call_user_func($money, $total, ''), $base . 'view_order.php?id=' . (int) $row['id']);
+        }
+    }
+
+    // A cart quote holds quantities only and is priced when it fills a cart,
+    // so it has no amount.
+    if (!empty($rights['cart_quotes'])) {
+        foreach ((array) ($data['cart_quotes'] ?? array()) as $row) {
+            $entries[] = $entry('cart_quote', $row['id'], $row['created_at'] ?? 0, lang('Cart quote') . ' #' . (int) $row['id'],
+                lang(array('string' => '{var:1} item(s)', 'vars' => array((int) ($row['line_count'] ?? 0)))),
+                (string) ($row['state_label'] ?? ''), null, '', $base . 'view_cart_quotes.php?id=' . (int) $row['id']);
         }
     }
 
@@ -218,6 +238,22 @@ function ws_customer_history_build($rights, $data, $money, $base, $limit)
         foreach ((array) ($data['tasks'] ?? array()) as $row) {
             $entries[] = $entry('task', $row['id'], $row['created_at'] ?? 0, (string) $row['title'], lang('Task'),
                 (string) ($row['status_label'] ?? ''), null, '', $base . 'workspace_tasks.php?task=' . (int) $row['id']);
+        }
+
+        foreach ((array) ($data['notes'] ?? array()) as $row) {
+            $entries[] = $entry('note', $row['id'], $row['updated_at'] ?? 0, (string) $row['name'], (string) $row['excerpt'], '', null, '',
+                $base . 'workspace_notes.php?note=' . (int) $row['id']);
+        }
+
+        // A customer visit on the Work Calendar, at the time it starts.
+        foreach ((array) ($data['visits'] ?? array()) as $row) {
+            $entries[] = $entry('visit', $row['id'], $row['starts_at'] ?? 0, (string) $row['title'], lang('Customer visit'), '', null, '',
+                $base . 'workspace_calendar.php?month=' . date('Y-m', (int) ($row['starts_at'] ?? 0)) . '&event=' . (int) $row['id']);
+        }
+
+        foreach ((array) ($data['rows'] ?? array()) as $row) {
+            $entries[] = $entry('wtable_row', $row['id'], $row['updated_at'] ?? 0, (string) $row['title'], (string) $row['table'], '', null, '',
+                $base . 'workspace_wtables.php?id=' . (int) $row['table_id'] . '&row=' . (int) $row['id'] . '#ws-wt-row-form');
         }
     }
 
@@ -278,6 +314,41 @@ function ws_customer_history_order_rows($identity, $before, $limit)
         WHERE " . $where . (($before > 0) ? " AND order_date < '" . (int) $before . "'" : '') . "
         ORDER BY order_date DESC, id DESC
         LIMIT " . max(1, (int) $limit));
+}
+
+/**
+ * The cart quotes made for the customer's contact below the page's start, in
+ * every state, newest first by when they were made, each with how many lines
+ * it holds and its state as the cart quote list calls it (pg_cart_quote_state():
+ * an open quote past its last day is expired). Nothing before the tables are
+ * there. The link's token and its hint are never read.
+ *
+ * @param array $identity ws_customer_identity()
+ * @param int   $before   0 for none
+ * @param int   $limit
+ * @return array[] id, status, valid_until, created_at, line_count, state_label
+ */
+function ws_customer_history_cart_quote_rows($identity, $before, $limit)
+{
+    $contact_id = (int) ($identity['contact_id'] ?? 0);
+
+    if (($contact_id <= 0) || !pg_cart_quotes_ready()) {
+        return array();
+    }
+
+    $rows = (array) db_items("SELECT q.id, q.status, q.valid_until, q.created_at,
+            (SELECT COUNT(*) FROM cart_quote_items AS i WHERE i.cart_quote_id = q.id) AS line_count
+        FROM cart_quotes AS q
+        WHERE q.contact_id = '" . $contact_id . "'" . (($before > 0) ? " AND q.created_at < '" . (int) $before . "'" : '') . "
+        ORDER BY q.created_at DESC, q.id DESC
+        LIMIT " . max(1, (int) $limit));
+    $now = time();
+
+    foreach ($rows as $index => $row) {
+        $rows[$index]['state_label'] = pg_cart_quote_state_label(pg_cart_quote_state($row, $now));
+    }
+
+    return $rows;
 }
 
 /**
@@ -380,15 +451,17 @@ function ws_customer_history_form_rows($viewer, $identity, $before, $limit)
 }
 
 /**
- * The messages and tasks that tag the customer or a record tied to it
- * (ws_refs), below the page's start, newest first: a message only in a
- * channel the reader may read and not in this channel, whose own messages
- * are on screen already; a task only where the reader may see it. Nothing for
- * whoever is no member of the Workspace. The API marks its reader: without
- * tasks:read no task (history_tasks false), and Claude's key reads messages
- * and tasks only in channels Claude may be asked in (history_claude), as
- * every other Workspace read of channel content (ws_api_refs_within()). The
- * panel's reader carries neither mark.
+ * The messages, tasks, notes and workflow table rows that tag the customer
+ * or a record tied to it (ws_refs), below the page's start, newest first: a
+ * message only in a channel the reader may read and not in this channel,
+ * whose own messages are on screen already; a task only where the reader may
+ * see it; a note only where the reader may read it, a row only where they
+ * reach its table. Nothing for whoever is no member of the Workspace. The
+ * API marks its reader: without tasks:read no task (history_tasks false),
+ * and Claude's key reads messages and tasks only in channels Claude may be
+ * asked in (history_claude), as every other Workspace read of channel
+ * content (ws_api_refs_within()), and notes and tables as their own routes
+ * do. The panel's reader carries neither mark.
  *
  * @param array $viewer
  * @param array $channel  the customer's channel
@@ -396,11 +469,13 @@ function ws_customer_history_form_rows($viewer, $identity, $before, $limit)
  * @param int   $before   0 for none
  * @param int   $limit
  * @return array messages (id, channel_id, channel_name, sender_name, excerpt,
- *               created_at), tasks (id, title, status_label, created_at)
+ *               created_at), tasks (id, title, status_label, created_at),
+ *               notes (id, name, excerpt, updated_at), rows (id, table_id,
+ *               table, title, updated_at)
  */
 function ws_customer_history_ref_rows($viewer, $channel, $identity, $before, $limit)
 {
-    $out = array('messages' => array(), 'tasks' => array());
+    $out = array('messages' => array(), 'tasks' => array(), 'notes' => array(), 'rows' => array());
 
     if (empty($viewer['member']) || !is_array($identity)) {
         return $out;
@@ -413,10 +488,15 @@ function ws_customer_history_ref_rows($viewer, $channel, $identity, $before, $li
     );
     $records[$identity['customer']['type']][] = (int) $identity['customer']['id'];
     $where = array();
+    $keys = array();
 
     foreach ($records as $type => $ids) {
         if (!empty($ids)) {
             $where[] = "(ref_type = '" . e($type) . "' AND ref_id IN ('" . implode("','", ws_customer_ids($ids)) . "'))";
+
+            foreach (ws_customer_ids($ids) as $id) {
+                $keys[] = $type . ':' . $id;
+            }
         }
     }
 
@@ -424,16 +504,9 @@ function ws_customer_history_ref_rows($viewer, $channel, $identity, $before, $li
         return $out;
     }
 
-    $message_ids = array();
-    $task_ids = array();
-
-    foreach ((array) db_items("SELECT source_type, source_id FROM ws_refs WHERE " . implode(' OR ', $where) . " ORDER BY id DESC LIMIT 500") as $row) {
-        if ($row['source_type'] === 'message') {
-            $message_ids[(int) $row['source_id']] = (int) $row['source_id'];
-        } else {
-            $task_ids[(int) $row['source_id']] = (int) $row['source_id'];
-        }
-    }
+    $sources = ws_ref_sources(db_items("SELECT source_type, source_id FROM ws_refs WHERE " . implode(' OR ', $where) . " ORDER BY id DESC LIMIT 500"));
+    $message_ids = $sources['message'];
+    $task_ids = $sources['task'];
 
     $after = ($before > 0) ? " AND created_at < '" . (int) $before . "'" : '';
     $claude = !empty($viewer['history_claude']);
@@ -501,5 +574,59 @@ function ws_customer_history_ref_rows($viewer, $channel, $identity, $before, $li
         }
     }
 
+    foreach (ws_ref_notes_open($viewer, $sources['note'], $before) as $note) {
+        if ($claude && !ws_api_note_reachable($viewer, $note)) {
+            continue;
+        }
+
+        $out['notes'][] = array(
+            'id'         => (int) $note['id'],
+            'name'       => ws_note_title($viewer, $note),
+            'excerpt'    => ws_plain_excerpt($viewer, $note['body'], 140),
+            'updated_at' => (int) $note['updated_at'],
+        );
+
+        if (count($out['notes']) >= $limit) {
+            break;
+        }
+    }
+
+    foreach (ws_ref_rows_open($viewer, $sources['wtable_row'], $keys, $before) as $row) {
+        if ($claude && !ws_api_wtable_reachable($viewer, array('id' => $row['table_id'], 'access' => $row['access']))) {
+            continue;
+        }
+
+        $out['rows'][] = $row;
+
+        if (count($out['rows']) >= $limit) {
+            break;
+        }
+    }
+
     return $out;
+}
+
+/**
+ * The customer visits on the Work Calendar that name the customer's contact
+ * (ws_events.contact_id, 2026.11.0, 11.0.118) and start below the page's
+ * start, latest first. Every member of the Workspace reads the plan, so
+ * nothing more is asked of the reader; nothing before the column is there.
+ *
+ * @param array $identity ws_customer_identity()
+ * @param int   $before   0 for none
+ * @param int   $limit
+ * @return array[] id, title, starts_at
+ */
+function ws_customer_history_visit_rows($identity, $before, $limit)
+{
+    $contact_id = (int) ($identity['contact_id'] ?? 0);
+
+    if (($contact_id <= 0) || !ws_event_contacts_ready()) {
+        return array();
+    }
+
+    return (array) db_items("SELECT id, title, starts_at FROM ws_events
+        WHERE contact_id = '" . $contact_id . "' AND kind = 'visit'" . (($before > 0) ? " AND starts_at < '" . (int) $before . "'" : '') . "
+        ORDER BY starts_at DESC, id DESC
+        LIMIT " . max(1, (int) $limit));
 }

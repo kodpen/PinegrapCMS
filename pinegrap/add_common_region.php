@@ -20,8 +20,14 @@ include('init.php');
 $user = validate_user();
 validate_area_access($user, 'designer');
 require_once(PG_FUNCTIONS_DIR . '/includes/forms/common_region_form.php');
+include_once('liveform.class.php');
+$liveform = new liveform('add_common_region');
 
 if (!isset($_POST['name'])) {
+    // Empty on a first visit; the posted values after a refused name.
+    list($name, $content) = pg_common_region_form_values(array('name' => $liveform->get_field_value('name'), 'content' => $liveform->get_field_value('content')));
+    $name_taken = $liveform->check_field_error('name');
+
     $output = '';
     $output .= 
     pg_page_shell([
@@ -37,10 +43,10 @@ if (!isset($_POST['name'])) {
 <main id="content" class="container-fluid">
             <div class="row">
             <div class="col-12">
-                
+                ' . $liveform->output_errors() . '
                 <form name="form" action="add_common_region.php" method="post">
                     ' . get_token_field() . '
-                    ' . pg_common_region_form_card() . '
+                    ' . pg_common_region_form_card($name, $content, '', true, $name_taken) . '
                     <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
@@ -62,13 +68,21 @@ if (!isset($_POST['name'])) {
     $output = preg_replace('/(<\/head>)/i', $output_wysiwyg_editor_code . '$1', $output);
     
     print $output;
-    
+
+    $liveform->remove_form();
 } else {
     validate_token_field();
-    
-    include_once('liveform.class.php');
-    
+
     list($name, $content) = pg_common_region_form_values($_POST);
+
+    // A name another region already has is refused: the site reads only one
+    // row per name. The screen comes back with the posted values.
+    if (pg_cregion_name_taken($name)) {
+        $liveform->add_fields_to_session(array('trim' => false));
+        $liveform->mark_error('name', lang('The name that you entered is already in use, so please enter a different name.'));
+        header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/add_common_region.php');
+        exit();
+    }
 
     $query = "INSERT INTO cregion (cregion_name, cregion_content, cregion_designer_type, cregion_user, cregion_timestamp) "
             ."VALUES (?, ?, 'no', ?, UNIX_TIMESTAMP())";
@@ -79,6 +93,7 @@ if (!isset($_POST['name'])) {
         (int) $user['id'],
     )) or output_error('Query failed');
     log_activity(lang(array('string'=>'{var:1} ({var:2}) was created','vars'=>array(lang('common region'), $name))), $_SESSION['sessionusername']);
+    $liveform->remove_form();
     $notice = lang(array('string'=>'{var:1} was created successfully','vars'=>lang('Common Region') ));
 
     

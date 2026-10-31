@@ -685,6 +685,88 @@ function pg_field_form_checked($value)
 }
 
 /**
+ * The check box columns of the field form: a box that is not ticked is not
+ * posted at all, so a sent-back form reads it as off.
+ *
+ * @return array
+ */
+function pg_field_form_check_box_columns()
+{
+    return array('required', 'wysiwyg', 'multiple', 'spacing_above', 'spacing_below',
+        'use_folder_name_for_default_value', 'office_use_only', 'translate_values', 'quiz_question');
+}
+
+/**
+ * The field form drawn from a sent-back post: each posted value is laid over
+ * $field (a new or stored field), and a check box missing from the post is
+ * off. A box the form did not show keeps the value of $field.
+ *
+ * @param array $field
+ * @param array $posted  column => posted value, for the columns found in the post
+ * @return array
+ */
+function pg_field_form_posted_field($field, $posted)
+{
+    $check_boxes = pg_field_form_check_box_columns();
+
+    foreach ($check_boxes as $column) {
+        $field[$column] = (isset($posted[$column]) && ($posted[$column] == 1)) ? 1 : 0;
+    }
+
+    foreach ($posted as $column => $value) {
+        if (($column == 'id') || in_array($column, $check_boxes, true) || !array_key_exists($column, $field)) {
+            continue;
+        }
+
+        if (is_array($value)) {
+            $value = (string) reset($value);
+        }
+
+        $field[$column] = (string) $value;
+    }
+
+    return $field;
+}
+
+/**
+ * The values of a field form sent back to its screen: column => value for
+ * each field form column found in the liveform session, or null when the
+ * form was not sent back (or was sent back for another field id).
+ *
+ * @param liveform $liveform
+ * @param array $field  the new or stored field; its id must match the post
+ * @return array|null
+ */
+function pg_field_form_session_values($liveform, $field)
+{
+    if ($liveform->prefill()) {
+        return null;
+    }
+
+    if ((string) $field['id'] !== (string) $liveform->get_field_value('id')) {
+        return null;
+    }
+
+    $posted = array();
+
+    foreach (array_keys($field) as $column) {
+        $value = $liveform->get_field_value($column);
+
+        if ($value !== null) {
+            $posted[$column] = $value;
+        }
+    }
+
+    $position = $liveform->get_field_value('position');
+
+    if ($position !== null) {
+        $posted['position'] = $position;
+    }
+
+    return $posted;
+}
+
+/**
  * The field type card and the settings, information and choices cards.
  *
  * @param liveform $liveform
@@ -728,7 +810,7 @@ function pg_field_form_cards($liveform, $field, $context)
                         <div class="row">
                             <div class="col-12 my-3">
                                 <label for="quiz_answer" class="form-label">' . lang('Correct Answer') . '</label>
-                                <input value="' . h(prepare_form_data_for_output($field['quiz_answer'], $field['type'])) . '" type="text" name="quiz_answer" id="quiz_answer" class="form-control"  maxlength="255"/>
+                                <input value="' . h(prepare_form_data_for_output($field['quiz_answer'], $field['type'], false)) . '" type="text" name="quiz_answer" id="quiz_answer" class="form-control"  maxlength="255"/>
                             </div>
                         </div>
                     </div>
@@ -777,7 +859,7 @@ function pg_field_form_cards($liveform, $field, $context)
 
     // A new field's name is required in the browser too; a stored one is
     // filled in.
-    $name_attributes = array('type' => 'text', 'id' => 'name', 'name' => 'name', 'placeholder' => lang('Field Name'), 'class' => 'form-control ');
+    $name_attributes = array('type' => 'text', 'id' => 'name', 'name' => 'name', 'placeholder' => lang('Field Name'), 'maxlength' => '100', 'class' => 'form-control ');
 
     if ($field['id'] == '') {
         $name_attributes['required'] = 'required';
@@ -820,7 +902,7 @@ function pg_field_form_cards($liveform, $field, $context)
                                         ' . $output_rss_field_row . '
                                         <div class="col-12 md:col-12 lg:col-4 my-3 collapse" id="label_row">
                                             <label for="label" class="form-label">' . lang('Label') . '</label>
-                                            <input type="text" name="label" value="' . h($field['label']) . '" placeholder="' . lang('Label to display on pages') . '" id="label" class="form-control" />
+                                            <input type="text" name="label" value="' . h($field['label']) . '" placeholder="' . lang('Label to display on pages') . '" id="label" class="form-control" maxlength="255" />
                                         </div>
                                         <div class="col-12 md:col-6 lg:col-4 my-3 collapse" id="size_row">
                                             <label for="size" class="form-label">' . lang('Size') . '</label>
@@ -904,13 +986,13 @@ function pg_field_form_cards($liveform, $field, $context)
                                 </div>
                             </div>
                             <div class="card my-7 collapse" id="information_row">
-                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold" id="information_heading">
                                 ' . lang('Information') . '
                                 </h2>
                                 <div class="card-body p-0">
                                     <div class="row">
                                         <div class="col-12">
-                                            <textarea id="information" name="information">' . h(prepare_rich_text_editor_content_for_output($field['information'])) . '</textarea>
+                                            <textarea id="information" name="information" aria-labelledby="information_heading">' . h(prepare_rich_text_editor_content_for_output($field['information'])) . '</textarea>
                                         </div>
                                     </div>
                                 </div>

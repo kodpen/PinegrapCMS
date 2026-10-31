@@ -8,9 +8,9 @@ description: IIS re-encodes non-ASCII URL paths to the ANSI code page so Turkish
 - Result: no record whose name has a Turkish character can be found from the URL. The file stays on disk and shows in the panel, but its address gives 404.
 - The error is "page not found", NOT "file not found": when the router cannot find the file it goes on to look for a page.
 
-## What fixes it and where is the open gap?
+## What fixes it?
 - `prepare_file_name()` solves it with `pg_ascii_file_name()` (Turkish mapping first: the general accent stripper breaks `İ` and does not know `ş`/`ğ`).
-- The same gap remains in `prepare_catalog_item_address_name()`: product pages with Turkish addresses 404 the same way. Changing it would affect live links, so it is a separate decision.
+- `prepare_catalog_item_address_name()` transliterates with `pg_transliterate_to_ascii()` and turns what is left outside `A-Za-z0-9[]_-` into `_`. It runs only when an address is built (new product, changed Catalog Name box), so an address stored earlier keeps its letters.
 
 ## Why does no stored file name end in a dot?
 - Windows drops the dots at the end of a file name: `photo.jpg.` is written over `photo.jpg`, while the record keeps `photo.jpg.`, so the name check (`check_name_availability()`, records only) sees no clash. Two records then share one file, and a basic user could store the signing key as `dkim.key.` (`platform/dkim-key-in-file-manager.md`).

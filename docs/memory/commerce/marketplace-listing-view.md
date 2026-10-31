@@ -12,6 +12,9 @@ description: Listings view of marketplace_products.php (#2066): article cards wi
 - "Required" is `mandatory` and not `is_variant`, the same test `mp_listing_items()` refuses by; a variant attribute is answered by the products (`marketplace-variant-attributes.md`).
 - States are worked out from the cache only (`mp_articles_definitions()`); nothing is asked of the marketplace to draw the page.
 
+## How does the Listings search match?
+- `mp_articles_page()` folds the code, the title and `?q=` with `fold_keyword_for_matching()` (İ/I/ı/i, accents) and compares with `mb_strpos()`, so "ipek" or "bahce" finds the row as on the Shop and Remote tabs, whose `LIKE` runs under utf8mb4_unicode_ci. Before, `mb_stripos()` missed İ, I/ı and accents. Test: `tests/marketplace_listing_articles_test.php`.
+
 ## How is a category chosen?
 - A search box: every typed word (split on spaces and `>`, at most six) must be in the leaf's path (`mp_articles_category_search()`, `LIKE` with `%` and `_` escaped), shortest paths first, 40 at most. So "oto ampul" finds "Otomobil > Aydınlatma > Ampul".
 - Tick many cards and "Choose category" files them all (`mp_articles_set_category()`); groups without attributes are skipped. A changed category drops the old answers (`attributes_json` assigned before `remote_category_id`, `marketplace-listings.md`). The attributes are read once, right then; a failure is shown as a warning.

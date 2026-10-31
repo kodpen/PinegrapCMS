@@ -745,9 +745,31 @@ function pg_not_found_log_answers($names)
  * the screen's own checks apply on save.
  *
  * @param string $name
+ * @param string $send_to the filtered log the screen comes back to; '' for
+ *                        the short link list
  * @return string a relative address, not escaped for HTML
  */
-function pg_not_found_log_redirect_url($name)
+function pg_not_found_log_redirect_url($name, $send_to = '')
 {
-    return 'add_short_link.php?' . http_build_query(array('name' => (string) $name, 'redirect_code' => 301), '', '&', PHP_QUERY_RFC3986);
+    $query = array('name' => (string) $name, 'redirect_code' => 301);
+
+    if ((string) $send_to !== '') {
+        $query['send_to'] = (string) $send_to;
+    }
+
+    return 'add_short_link.php?' . http_build_query($query, '', '&', PHP_QUERY_RFC3986);
+}
+
+/**
+ * The liveform whose notices the screen a short link save or delete lands on
+ * prints: the 404 log's when send_to is the log, else the short link list's.
+ *
+ * @param string $send_to pg_send_to_url('') of the short link screen
+ * @return string
+ */
+function pg_short_link_return_form($send_to)
+{
+    $path = parse_url((string) $send_to, PHP_URL_PATH);
+
+    return (is_string($path) && (basename($path) === 'view_not_found_log.php')) ? 'view_not_found_log' : 'view_short_links';
 }

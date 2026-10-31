@@ -1,11 +1,14 @@
 ---
 name: designer-home-screen
-description: Visual Page Editor home (view_system_styles.php): drawn start cards, the site's design shown large, tiles, the right-click menu, rename (designer/design_rename)
+description: Visual Page Editor home (view_system_styles.php): one-accent colours, drawn start cards, the site's design shown large, tiles, the right-click menu, rename (designer/design_rename)
 ---
 
+## Which colours may the screen use?
+- Greys plus the panel's primary as the one accent; previews keep theirs (`designer-home-colours.md`, tooltips there too).
+
 ## What does the home show?
-- Top: four starts as cards with a drawing each (`pg_designer_home_start_card()`, `pg_designer_home_drawing()`): blank canvas, ZIP into tabs, pasted markup, and the template card fanning three real template thumbnails (`pg_design_thumb_svg()`). Designers only; below that level a one-line alert. Phones: two by two, title only.
-- Below: no DataTable since PR #584 (most sites have one design, and a one-row table said nothing about it). `pg_designer_home_featured_id()` picks the design shown large: the only one, or the single design holding the home page; otherwise all are tiles. The large card has the preview in a browser frame, status block, facts (framework, template, theme, last modified), page chips (12, then "+n more") and at most four buttons.
+- Top: four starts as cards of one height: a small drawing (3:1), icon, title, one short sentence (`pg_designer_home_start_card()`, `pg_designer_home_drawing()`): blank canvas, ZIP into tabs, pasted markup, and the template card with three real template thumbnails side by side (`pg_design_thumb_svg()`). Designers only; below that level a one-line alert. Phones: two by two, title only.
+- Below: no DataTable since PR #584. `pg_designer_home_featured_id()` picks the design shown large: the only one, or the single design holding the home page; otherwise all are tiles. The large card: preview in a browser frame, then name, status, the home-page line, facts as a label/value grid (framework, template, theme, last modified), page chips (12, then "+n more") and at most four buttons. Tiles: preview, name, status, pages, time.
 - No designs: a dashed box with the three steps (start, build, publish). More than six designs: a name search (accent and dotless-i folding).
 
 ## Where is the data from?
@@ -23,9 +26,6 @@ description: Visual Page Editor home (view_system_styles.php): drawn start cards
 
 ## How does rename work?
 - `api.php designer/design_rename` -> `pg_designer_rename_design()` (includes/fn/designer.php): designers only, visual designs only, name cleaned by `pg_designer_design_name_clean()` (one line, 100 chars), a name another style has is refused, refused while the design is open in the editor (its next save would write the old name back). Logged as "{var:1} was renamed to {var:2}".
-
-## Tooltips?
-- Only icon-only controls get one, compact (`no-popover` + `data-bs-toggle="tooltip"`); see docs/memory/ui/panel-hint-tooltip-or-popover.md. The template gallery's labels use the same; its details card is a trimmed popover (`sd-tpl-info`).
 
 ## Files and tests?
 - `includes/designer_screen.php` (home functions), `assets/js/designer_home.js`, `assets/css/designer_home.css` (also the template gallery CSS). Tests: `tests/designer_home_test.php`.

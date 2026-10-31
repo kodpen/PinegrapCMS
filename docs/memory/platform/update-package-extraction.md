@@ -16,6 +16,7 @@ description: How update packages must be downloaded and extracted (pg_extract_ar
 
 ## What must a package download check?
 - Before processing a downloaded package verify HTTP 200, the expected byte count and the `PK` signature (`pg_looks_like_zip()`). Always extract via `pg_extract_archive()`.
+- With `PG_VENDOR_API_V1` on the package is the pinned release's, in `data/temp/vendor_update_<16 hex>.zip`, signed, hashed and version-checked before backup and again right before `pg_extract_archive()` (`vendor-api-update-download.md`).
 - `download_assistant.php` must run standalone, so it carries its own copy of the same logic.
 
 Related: docs/memory/platform/update-channel-stable-beta.md

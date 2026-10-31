@@ -88,7 +88,7 @@ if (is_array($tracking_rows)) {
 // Ownership — same rule as cancel_order.php. Customer can print own; admin can print any.
 if (!$is_admin) {
     if ($current_user_id <= 0 || (int)$order['user_id'] !== $current_user_id) {
-        log_activity('Access denied — non-owner attempted to print invoice for order #' . $order_id);
+        log_activity(pg_log_lang(array('string' => 'Access denied — non-owner attempted to print invoice for order #{var:1}', 'vars' => array($order_id))));
         output_error('You are not allowed to view this invoice.');
     }
 }

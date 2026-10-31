@@ -133,3 +133,47 @@ function test_site_datetime_renderers_hook_their_fields()
 		pg_assert_contains('window.pgFields.focus(', $js, $path . ': focus lands on the box people type in');
 	}
 }
+
+function test_site_datetime_checkout_renderers_hook_their_fields()
+{
+	$source = function ($path) {
+		return (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $path);
+	};
+
+	// The classic pages print the hook on their own boxes: recurring start
+	// dates, gift card delivery dates, custom arrival dates.
+	foreach (array(
+		'get_shopping_cart.php' => 2,
+		'get_express_order.php' => 3,
+		'get_order_form.php' => 1,
+		'get_shipping_address_and_arrival.php' => 1,
+	) as $path => $count) {
+		pg_assert_same($count, substr_count($source($path), "'data-pg-date' => ''"), $path . ' hooks its own date boxes');
+	}
+	pg_assert_contains('maxlength="10" value="\' . h($start) . \'" data-pg-date>', $source('includes/fn/widgets_order_form.php'), 'the order form widget\'s start date');
+
+	// A custom layout's boxes come from the site's files: bound by id, a time
+	// box on the time row alone, a custom arrival date among the dates.
+	foreach (array('get_shopping_cart.php', 'get_express_order.php', 'get_billing_information.php', 'get_shipping_address_and_arrival.php') as $path) {
+		pg_assert_contains('$system .= pg_site_datetime_bind(array(', $source($path), $path . ' binds its layout\'s boxes by id');
+		pg_assert_contains("'time' => \$time_fields,", $source($path), $path . ' binds its time boxes too');
+	}
+	pg_assert_contains("\$system .= pg_site_datetime_bind(array('date' => \$start_date_fields));", $source('get_order_form.php'), 'the order form binds its start dates');
+	pg_assert_contains("'time_fields' => \$time_fields,", $source('includes/fn/custom_form.php'), 'prepare_custom_form() names the time boxes of a custom shipping or billing form');
+	pg_assert_contains("\$date_fields[] = \$prefix . 'custom_arrival_date_' . \$custom_arrival_date;", $source('get_express_order.php'), 'the express order binds its custom arrival dates');
+	pg_assert_contains("\$date_fields[] = 'custom_arrival_date_' . \$custom_arrival_date;", $source('get_shipping_address_and_arrival.php'), 'the shipping page binds its custom arrival dates');
+
+	// The page brings the picker options with the control
+	// (pg_site_datetime_inject()); no jQuery UI picker is left.
+	foreach (array('get_shopping_cart.php', 'get_express_order.php', 'get_billing_information.php', 'get_shipping_address_and_arrival.php', 'get_order_form.php', 'includes/fn/widgets_order_form.php') as $path) {
+		pg_assert_false((bool) preg_match('/\\.(date)?(time)?picker\\(/', $source($path)), $path . ' calls no jQuery UI picker');
+		pg_assert_false(strpos($source($path), 'get_date_picker_format()') !== false, $path . ' prints no picker options of its own');
+	}
+
+	foreach (array('frontend.src.js', 'frontend.min.js') as $path) {
+		$js = $source($path);
+		pg_assert_false(strpos($js, 'datetimepicker_options') !== false, $path . ': no jQuery UI picker is set up');
+		pg_assert_contains('software.focus_date_field(document.getElementById(', $js, $path . ': the custom arrival date\'s radio opens its calendar');
+		pg_assert_false(strpos($js, '.attr("checked"') !== false || strpos($js, ".attr('checked'") !== false, $path . ': the radio is read and ticked by its checked property');
+	}
+}

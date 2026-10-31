@@ -26,5 +26,5 @@ description: The panel order screen's shipping cards (view_order.php): one card 
 
 ## What is not done here?
 - The postcode-province note under the address: `order-address-postcode-note.md`.
-- `print_order.php` builds `$output_shipping_details` but never prints it (seen, not changed).
+- The printed order's card: `print-order-shipping-card.md`.
 - Customer side, mail-merge fields and the API fields are later steps of `plans/shipping-management.md`.

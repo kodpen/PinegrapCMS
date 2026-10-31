@@ -28,6 +28,51 @@
     var self = parseInt(search.getAttribute('data-self'), 10) || 0;
     var timer = null;
     var asked = 0;
+    var announceTimer = null;
+
+    // The list and the polite status line are described here, so the card's
+    // markup stays as product_builder.php prints it.
+    var status = document.createElement('div');
+
+    status.className = 'visually-hidden';
+    status.setAttribute('role', 'status');
+    status.setAttribute('aria-live', 'polite');
+    status.setAttribute('aria-atomic', 'true');
+    results.parentNode.insertBefore(status, results.nextSibling);
+
+    search.setAttribute('role', 'combobox');
+    search.setAttribute('aria-autocomplete', 'list');
+    search.setAttribute('aria-controls', results.id);
+    search.setAttribute('aria-expanded', 'false');
+
+    // Emptied first and filled a moment later, so the same sentence twice in
+    // a row is read again.
+    function announce(text) {
+        clearTimeout(announceTimer);
+        status.textContent = '';
+        announceTimer = setTimeout(function () {
+            status.textContent = text;
+        }, 150);
+    }
+
+    // The translated words come from the page's fields script tag
+    // (pg_fields_script()), printed further down the screen, so they are
+    // read when needed rather than on load.
+    function noResultsText() {
+        var tag = document.querySelector('script[data-pg-no-results-label]');
+
+        return (tag && tag.getAttribute('data-pg-no-results-label')) || 'No results found';
+    }
+
+    function quantityWord() {
+        var head = rows.closest('table').querySelector('thead th:nth-child(2)');
+
+        return head ? head.textContent.trim() : '';
+    }
+
+    function resultItems() {
+        return Array.prototype.slice.call(results.querySelectorAll('button'));
+    }
 
     function productLabel(product) {
         var name = (product.short_description || '').trim();
@@ -55,6 +100,7 @@
         if (existing) {
             var quantity = existing.querySelector('input[name="bundle_item_quantity[]"]');
             quantity.value = (parseInt(quantity.value, 10) || 0) + 1;
+            announce(productLabel(product) + ', ' + quantityWord() + ': ' + quantity.value);
             return;
         }
 
@@ -63,10 +109,24 @@
         row.querySelector('input[name="bundle_item_product_id[]"]').value = product.id;
         row.firstElementChild.insertBefore(document.createTextNode(productLabel(product)), row.firstElementChild.firstChild);
         rows.appendChild(row);
+        announce(productLabel(product) + ', ' + quantityWord() + ': ' + row.querySelector('input[name="bundle_item_quantity[]"]').value);
     }
 
     function clearResults() {
         results.textContent = '';
+        search.setAttribute('aria-expanded', 'false');
+    }
+
+    // Shown and read out alike, for an empty answer and a failed request.
+    function showNothing() {
+        clearResults();
+
+        var empty = document.createElement('div');
+
+        empty.className = 'list-group-item fg-secondary small';
+        empty.textContent = noResultsText();
+        results.appendChild(empty);
+        announce(empty.textContent);
     }
 
     function show(list) {
@@ -91,6 +151,14 @@
 
             results.appendChild(item);
         });
+
+        // Nothing came back, or only the product itself.
+        if (!results.querySelector('button')) {
+            showNothing();
+            return;
+        }
+
+        search.setAttribute('aria-expanded', 'true');
     }
 
     function lookup() {
@@ -106,14 +174,24 @@
             credentials: 'same-origin',
             headers: { 'X-Requested-With': 'XMLHttpRequest' }
         })
-            .then(function (response) { return response.json(); })
+            .then(function (response) {
+                if (!response.ok) {
+                    throw new Error(String(response.status));
+                }
+
+                return response.json();
+            })
             .then(function (data) {
                 // An answer to an older query that came in late is dropped.
                 if (ask === asked) {
                     show((data && data.results) || []);
                 }
             })
-            .catch(clearResults);
+            .catch(function () {
+                if (ask === asked) {
+                    showNothing();
+                }
+            });
     }
 
     search.addEventListener('input', function () {
@@ -121,10 +199,42 @@
         timer = setTimeout(lookup, 250);
     });
 
-    // Enter in the search box would submit the product form.
+    // Enter in the search box would submit the product form. ArrowDown
+    // moves into the results, Escape closes them.
     search.addEventListener('keydown', function (event) {
         if (event.key === 'Enter') {
             event.preventDefault();
+        } else if (event.key === 'ArrowDown') {
+            var first = resultItems()[0];
+
+            if (first) {
+                event.preventDefault();
+                first.focus();
+            }
+        } else if (event.key === 'Escape' && results.firstChild) {
+            event.preventDefault();
+            clearResults();
+        }
+    });
+
+    // The arrows move through the results; up from the first one and Escape
+    // go back to the search box.
+    results.addEventListener('keydown', function (event) {
+        var items = resultItems();
+        var at = items.indexOf(document.activeElement);
+
+        if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+            event.preventDefault();
+
+            if (event.key === 'ArrowUp' && at <= 0) {
+                search.focus();
+            } else if (items.length) {
+                items[Math.min(items.length - 1, Math.max(0, at + (event.key === 'ArrowDown' ? 1 : -1)))].focus();
+            }
+        } else if (event.key === 'Escape') {
+            event.preventDefault();
+            clearResults();
+            search.focus();
         }
     });
 

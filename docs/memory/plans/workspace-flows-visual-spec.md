@@ -10,7 +10,7 @@ description: Plan (owner request 2026-10-27, draft): the Flows canvas look in nu
 - The selected box's threads at full colour, the rest dimmed; a "Data threads" toggle hides them all.
 
 ## Which colours?
-- Types: number `#6ea8ff`, text `#e9b44c`, yes/no `#4cc38a`, person `#b49cff`, date `#c3c9d3`, address `#ff9aa0` (no thread may end in an address field).
+- Types: number `#6ea8ff`, text `#e9b44c`, yes/no `#4cc38a`, person `#b49cff`, date `#c3c9d3`, address `#ff9aa0` (no thread may end in an address field; the one exception, #3410: a number thread into a webhook URL's path or query).
 - Tones: threads of one type stay a few tones apart, even from the same dot: numbers `#6ea8ff`, `#9cc4ff`, `#4d8fe8`; texts `#e9b44c`, `#f5cf7d`, `#f0c060`. A field chip takes its thread's tone.
 - Box kind labels: start `#6fdca6`, system `#45c4d6`, logic `#e9b44c`, message `#6ea8ff`, people and tasks `#b49cff`, value boxes `#e58fd0` with a dashed border. Selection ring `#a78bfa`.
 
@@ -24,9 +24,9 @@ description: Plan (owner request 2026-10-27, draft): the Flows canvas look in nu
 - Shown above the flow's last box on the canvas, in the list's last-run column and on the run's card in a channel.
 
 ## Mini window and templates?
-- The AI draft card and Add › Scheduled flow draw the same canvas small (boxes 128 × 60 px): the dry run's result is each box's third line; clicking a box opens "Edit here" under it; "Open on canvas" opens the same draft.
+- The AI draft card and Add › Scheduled flow draw the same canvas small (boxes 128 × 60 px): the dry run's result is each box's third line; clicking a box opens "Edit here" under it (on a waiting card it opens the draft first, #3444); "Open on canvas" opens the same draft.
 - Template placement: boxes appear one by one (420 ms each, 150 ms apart, rising and scaling up from 92 %), arrows grow (200 ms), threads draw (650 ms, 200 ms apart), then the setup panel slides in. With prefers-reduced-motion it is placed at once.
 
 ## Where are the rules behind it?
-- workspace-flows-data-threads.md, workspace-flows-channels.md, workspace-flows-templates.md, workspace-flows-data-passing.md (D8).
+- workspace/workspace-flows-thread-drawing.md, workspace-flows-channels.md, workspace/workspace-flows-template-format.md, workspace-flows-data-passing.md (D8).
 - The steps that bring the boxes, arrows, icons, palette and flow list to it: workspace-flows-look.md.

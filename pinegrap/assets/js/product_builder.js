@@ -696,10 +696,10 @@
 
         }, function (xhr) {
 
-            /* add_file.php answers a request it could not take with a JSON
-               body and a 413, so the reason survives. An expired token or a
-               folder the operator cannot write to still arrives as an HTML
-               error page, which is the fallback sentence. */
+            /* add_file.php answers a request it could not take (a body over
+               post_max_size, an expired token, a folder the operator cannot
+               write to) with a JSON body and a 4xx, so the reason survives.
+               Anything else is the fallback sentence. */
             var payload = xhr && xhr.responseJSON;
 
             if (!payload && xhr && xhr.responseText) {
@@ -1755,11 +1755,15 @@
     /* Always rendered. It used to appear only while recurring was on, when the
        panel had nothing else in it; the panel now also holds the GTIN and the
        barcode, which every variant has whether or not it is a subscription. */
-    function advancedToggle(index) {
+    function advancedToggle(index, combo) {
 
+        /* Every row has one, so the name carries the combination, the way
+           cellName() names the matrix inputs. */
         return '<div class="mt-1">' +
-            '<button type="button" class="btn btn-sm btn-link text-decoration-none p-0 pg-pb-adv-toggle" data-pg-pb-adv="' + index + '">' +
-            '<i class="bi bi-chevron-down me-1"></i>' + esc(label('Advanced Settings')) +
+            '<button type="button" class="btn btn-sm btn-link text-decoration-none p-0 pg-pb-adv-toggle" data-pg-pb-adv="' + index + '"' +
+            ' aria-controls="pg_pb_adv_' + index + '" aria-expanded="false"' +
+            ' aria-label="' + esc(label('Advanced Settings') + ': ' + comboLabel(combo)) + '">' +
+            '<i class="bi bi-chevron-down me-1" aria-hidden="true"></i>' + esc(label('Advanced Settings')) +
             '</button></div>';
     }
 
@@ -1800,7 +1804,7 @@
         if (!recurringIsOn()) {
             /* The recurring fields are gone but the row still has to exist —
                the identifiers above are not conditional. */
-            return '<tr class="pg-pb-adv-row d-none" data-pg-pb-adv="' + index + '">' +
+            return '<tr class="pg-pb-adv-row d-none" id="pg_pb_adv_' + index + '" data-pg-pb-adv="' + index + '">' +
                 '<td colspan="6" class="bg-1">' +
                 '<div class="row g-3 align-items-start">' + identifiers + '</div>' +
                 '</td></tr>';
@@ -1821,7 +1825,7 @@
            with height:0 and overflow:hidden renders differently in every
            browser. The cell keeps its colspan and is deliberately NOT given
            d-block: a cell taken out of table layout loses colspan entirely. */
-        return '<tr class="pg-pb-adv-row d-none" data-pg-pb-adv="' + index + '">' +
+        return '<tr class="pg-pb-adv-row d-none" id="pg_pb_adv_' + index + '" data-pg-pb-adv="' + index + '">' +
             '<td colspan="6" class="bg-1">' +
             '<div class="row g-3 align-items-start">' +
 
@@ -1876,6 +1880,7 @@
         var open  = $row.hasClass('d-none');
 
         $row.toggleClass('d-none', !open);
+        $(this).attr('aria-expanded', open ? 'true' : 'false');
         $(this).find('i').attr('class', open ? 'bi bi-chevron-up me-1' : 'bi bi-chevron-down me-1');
     });
 
@@ -1928,17 +1933,17 @@
             '<td class="d-block lg:d-table-cell align-middle">' +
             '<span class="badge theme-secondary me-1">' + (index + 1) + '</span>' +
             '<span class="fw-semibold">' + esc(comboLabel(combo)) + '</span>' +
-            advancedToggle(index) +
+            advancedToggle(index, combo) +
             '</td>' +
 
             '<td class="d-block lg:d-table-cell align-middle">' +
             cellLabel(label('Product ID / SKU')) +
-            '<input type="text" class="form-control form-control-sm pg-pb-v-name" value="' + esc(sku) + '"' + cellName('Product ID / SKU', combo) + ' />' +
+            '<input type="text" class="form-control form-control-sm pg-pb-v-name" maxlength="100" value="' + esc(sku) + '"' + cellName('Product ID / SKU', combo) + ' />' +
             '</td>' +
 
             '<td class="d-block lg:d-table-cell align-middle">' +
             cellLabel(label('Short Description')) +
-            '<input type="text" class="form-control form-control-sm pg-pb-v-short" value="' + esc(short) + '"' + cellName('Short Description', combo) + ' />' +
+            '<input type="text" class="form-control form-control-sm pg-pb-v-short" maxlength="100" value="' + esc(short) + '"' + cellName('Short Description', combo) + ' />' +
             '</td>' +
 
             '<td class="d-block lg:d-table-cell align-middle">' +
@@ -2245,21 +2250,48 @@
     }
 
     /* The address a visitor lands on, built the way the server builds it.
-       prepare_catalog_item_address_name() replaces spaces and ampersands and
-       nothing else, and falls back to the short description, then the name —
-       so an operator who leaves the catalog name blank still sees what their
-       URL is going to be.
+       The steps are prepare_catalog_item_address_name()'s: trim, transliterate
+       with the server's own accent table (cfg.asciiTable, from
+       pg_transliterate_ascii_table()), every character outside A-Z a-z 0-9
+       [ ] _ - to an underscore, runs of underscores to one, none at either
+       end, and 'item' when nothing is left. The duplicate number the server
+       appends ("[1]") needs the database and is not shown.
+
+       The source falls back the way the save does: the catalog name, then the
+       short description, then the name. On Edit the save rebuilds the address
+       only when the box changed, so a blank or unchanged box shows the stored
+       address (cfg.storedAddress) as it is.
 
        The middle segment is an ellipsis on purpose. A product sits under
        whichever page the catalog is on, and that page is not chosen on this
        screen; printing a guess would be inventing a URL. */
     function previewAddress() {
 
-        var raw = $.trim($('#address_name').val() || '') ||
+        var typed  = $.trim($('#address_name').val() || '');
+        var stored = cfg.storedAddress || '';
+
+        if (stored && (typed === '' || typed === stored)) {
+            return stored;
+        }
+
+        var raw = typed ||
                   $.trim($('#short_description').val() || '') ||
                   $.trim($('#name').val() || '');
 
-        return raw.replace(/ /g, '_').replace(/&/g, '_');
+        if (!raw) {
+            return '';
+        }
+
+        var table = cfg.asciiTable || {};
+
+        Object.keys(table).forEach(function (accented) {
+            raw = raw.split(accented).join(table[accented]);
+        });
+
+        return raw
+            .replace(/[^A-Za-z0-9\[\]_-]/g, '_')
+            .replace(/_{2,}/g, '_')
+            .replace(/^_+|_+$/g, '') || 'item';
     }
 
     /* Rich text fields are CKEditor 4 instances, and CKEditor hides the original
@@ -2842,17 +2874,27 @@
             '</div>';
     }
 
+    /* Each option row is named by its position ("Option 2"): the placeholder
+       alone repeated the word of the attribute's own Label field. */
+    function numberOptionRows() {
+        $('#pg_pb_attr_options .pg-pb-attr-option-label').each(function (index) {
+            $(this).attr('aria-label', label('option_n').replace('{n}', index + 1));
+        });
+    }
+
     function resetAttributeModal() {
         $('#pg_pb_attribute_modal_error').addClass('d-none').text('');
         $('#pg_pb_attr_name').val('').removeClass('is-invalid');
         $('#pg_pb_attr_label').val('');
         $('#pg_pb_attr_options').html(optionRow() + optionRow());
+        numberOptionRows();
     }
 
     pgUI.dialog.on('#pg_pb_attribute_modal', 'show', resetAttributeModal);
 
     $('#pg_pb_attr_add_option').on('click', function () {
         $('#pg_pb_attr_options').append(optionRow());
+        numberOptionRows();
         $('#pg_pb_attr_options .pg-pb-attr-option-label').last().trigger('focus');
     });
 
@@ -2860,6 +2902,7 @@
         var $rows = $('#pg_pb_attr_options .pg-pb-attr-option');
         if ($rows.length > 1) {
             $(this).closest('.pg-pb-attr-option').remove();
+            numberOptionRows();
         } else {
             $rows.find('.pg-pb-attr-option-label').val('');
         }
@@ -3039,6 +3082,75 @@
         return meta;
     }
 
+    /* ------------------------------------------------- unsaved changes */
+
+    /* A rich text field's own editor says whether it changed (CKEditor's
+       checkDirty(), the previous editor TinyMCE's isDirty()); its textarea
+       is written back only on submit, so it is left out of pbState(). */
+    function pbRichEditor(id) {
+
+        if (!id) {
+            return null;
+        }
+
+        if (window.CKEDITOR && CKEDITOR.instances && CKEDITOR.instances[id]) {
+            return { dirty: function () { return CKEDITOR.instances[id].checkDirty(); } };
+        }
+
+        var mce = window.tinyMCE || window.tinymce;
+        var editor = (mce && mce.get) ? mce.get(id) : null;
+
+        if (editor && editor.isDirty) {
+            return { dirty: function () { return editor.isDirty(); } };
+        }
+
+        return null;
+    }
+
+    /* Everything the save would send that lives in the page: the fields
+       (uploaded photos are hidden inputs), the variant rows and the
+       attribute choices held in the script. */
+    function pbState() {
+
+        return {
+            fields: $form.serializeArray(),
+            script: JSON.stringify([collectVariants(), collectAttributeMeta()])
+        };
+    }
+
+    /* The fields compared without the rich text ones, filtered on both sides
+       when compared: a rich text editor may arrive after the snapshot. */
+    function pbFields(fields) {
+
+        return JSON.stringify($.grep(fields, function (field) {
+            var element = $form[0].elements[field.name];
+            return !(element && element.tagName === 'TEXTAREA' && pbRichEditor(element.id));
+        }));
+    }
+
+    function pbChanged(snapshot) {
+
+        var now = pbState();
+
+        return (now.script !== snapshot.script) || (pbFields(now.fields) !== pbFields(snapshot.fields));
+    }
+
+    function pbRichDirty() {
+
+        var dirty = false;
+
+        $form.find('textarea').each(function () {
+            var editor = pbRichEditor(this.id);
+
+            if (editor && editor.dirty()) {
+                dirty = true;
+                return false;
+            }
+        });
+
+        return dirty;
+    }
+
     $form.on('submit', function (event) {
 
         var $name = $('#name');
@@ -3180,5 +3292,38 @@
     /* ---------------------------------------------------------- first run */
 
     renderMatrix();
+
+    /* Leaving the screen asks while the product differs from what it was
+       after the first render, except during the form's own submit; a submit
+       the checks above prevented (a blank name or SKU) still asks. Taken on
+       ready, after the other ready handlers have set the fields up. */
+    var pbSnapshot = null;
+    var pbSubmit   = null;
+
+    $form.on('submit', function (event) {
+        pbSubmit = event;
+    });
+
+    $(function () {
+        pbSnapshot = pbState();
+    });
+
+    window.addEventListener('beforeunload', function (event) {
+
+        if (pbSnapshot === null) {
+            return;
+        }
+
+        if (pbSubmit && !pbSubmit.isDefaultPrevented()) {
+            return;
+        }
+
+        if (!pbChanged(pbSnapshot) && !pbRichDirty()) {
+            return;
+        }
+
+        event.preventDefault();
+        event.returnValue = '';
+    });
 
 }(jQuery));

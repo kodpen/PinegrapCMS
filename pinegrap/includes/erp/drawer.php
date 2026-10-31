@@ -46,9 +46,9 @@ function erp_drawer_markup($type)
 
     return '
 <style>@layer custom {tr[data-erp-drawer-id] { cursor: pointer; } .pg-erp-drawer { --pg-drawer-width: min(560px, 100vw); } .pg-erp-drawer table.table { margin-top: 0; }}</style>
-<dialog class="drawer drawer-end pg-erp-drawer" id="erp_drawer" aria-labelledby="erp_drawer_title" data-erp-drawer-type="' . h($type) . '" data-erp-drawer-url="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/get_erp_drawer.php') . '" data-erp-drawer-error="' . h(lang('The details could not be loaded.')) . '">
+<dialog class="drawer drawer-end pg-erp-drawer" id="erp_drawer" aria-labelledby="erp_drawer_title" data-erp-drawer-type="' . h($type) . '" data-erp-drawer-url="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/get_erp_drawer.php') . '" data-erp-drawer-error="' . h(lang('The details could not be loaded.')) . '" data-erp-drawer-loading="' . h(lang('Loading...')) . '">
     <div class="drawer-header border-bottom gap-3">
-        <h5 class="drawer-title text-truncate me-auto" id="erp_drawer_title"></h5>
+        <h5 class="drawer-title text-break me-auto" id="erp_drawer_title"></h5>
         <a class="btn btn-sm btn-outline theme-secondary d-none" id="erp_drawer_open" href="#"><i class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></i>' . lang('Open in full') . '</a>
         <button type="button" class="btn-close" data-bs-dismiss="drawer" aria-label="' . lang('Close') . '"></button>
     </div>
@@ -159,9 +159,14 @@ function erp_drawer_account($account_id)
     ))));
 
     $contact = ((int) $account['contact_id'] > 0) ? erp_contact_summary((int) $account['contact_id']) : null;
-    $output_contact = is_array($contact)
-        ? '<a href="edit_contact.php?id=' . (int) $account['contact_id'] . '" class="pg-link-body-emphasis">' . h((string) ($contact['name'] ?? ('#' . (int) $account['contact_id']))) . '</a>'
-        : '';
+    $output_contact = '';
+    if (is_array($contact)) {
+        $output_contact = h((string) ($contact['name'] ?? ('#' . (int) $account['contact_id'])));
+        // Linked only for a viewer edit_contact.php would let in.
+        if (pg_can_open_contact(null, (int) $account['contact_id'])) {
+            $output_contact = '<a href="edit_contact.php?id=' . (int) $account['contact_id'] . '" class="pg-link-body-emphasis">' . $output_contact . '</a>';
+        }
+    }
 
     $output_card = '
     <div class="d-flex align-items-baseline flex-wrap gap-3 mb-5">
@@ -204,7 +209,7 @@ function erp_drawer_account($account_id)
     }
 
     $output_statement = ($output_statement !== '')
-        ? '<div class="table-responsive"><table class="table table-sm small mb-1"><tbody>' . $output_statement . '</tbody></table></div>'
+        ? '<div class="table-responsive"><table class="table table-sm small mb-1"><thead><tr class="fg-secondary"><th class="fw-normal">' . lang('Date') . '</th><th class="fw-normal">' . lang('Description') . '</th><th class="fw-normal text-end">' . lang('Amount') . '</th><th class="fw-normal text-end">' . lang('Balance') . '</th></tr></thead><tbody>' . $output_statement . '</tbody></table></div>'
             . ((count($statement['rows']) > ERP_DRAWER_STATEMENT_ROWS)
                 ? '<a href="edit_erp_account.php?id=' . $account_id . '" class="small pg-link-body-emphasis">' . h(lang(array('string' => 'All {var:1} movements', 'vars' => count($statement['rows'])))) . '</a>'
                 : '')
@@ -264,7 +269,7 @@ function erp_drawer_account($account_id)
 function erp_drawer_invoice($invoice_id)
 {
     $invoice_id = (int) $invoice_id;
-    $invoice = db_item("SELECT i.*, a.title AS live_account_title, o.order_number
+    $invoice = db_item("SELECT i.*, a.title AS live_account_title, o.order_number, o.id AS order_exists
         FROM erp_invoices i
         LEFT JOIN erp_accounts a ON a.id = i.account_id
         LEFT JOIN orders o ON o.id = i.order_id
@@ -291,7 +296,7 @@ function erp_drawer_invoice($invoice_id)
         lang('Direction') => h(((string) $invoice['direction'] === 'purchase') ? lang('Purchase') : lang('Sales')),
         lang('Date') => h(prepare_form_data_for_output((string) $invoice['issue_date'], 'date')),
         lang('Due Date') => ((string) ($invoice['due_date'] ?? '') > '0000-00-00') ? h(prepare_form_data_for_output((string) $invoice['due_date'], 'date')) : '',
-        lang('Order') => ((int) $invoice['order_id'] > 0) ? '<a href="view_order.php?id=' . (int) $invoice['order_id'] . '" class="pg-link-body-emphasis">' . h($invoice['order_number'] ?: ('#' . (int) $invoice['order_id'])) . '</a>' : '',
+        lang('Order') => erp_order_link_html($invoice['order_id'], $invoice['order_number'], $invoice['order_exists'] !== null, 'pg-link-body-emphasis'),
         erp_tax_label('tax') => h(erp_money_out_currency((int) $invoice['tax_total'] - (int) ($invoice['tax2_total'] ?? 0), $currency)),
         ((erp_tax2_name() !== '') ? erp_tax2_name() : lang('Second tax')) => ((int) ($invoice['tax2_total'] ?? 0) !== 0) ? h(erp_money_out_currency((int) $invoice['tax2_total'], $currency)) : '',
     ));
@@ -388,7 +393,7 @@ function erp_drawer_waybill($waybill_id)
         lang('Ship Date') => ((string) $waybill['ship_date'] > '0000-00-00') ? h(prepare_form_data_for_output((string) $waybill['ship_date'], 'date')) : '',
         lang('Carrier') => h(trim((string) $waybill['carrier_title'] . (((string) $waybill['carrier_vkn'] !== '') ? ' · ' . $waybill['carrier_vkn'] : ''))),
         lang('Plate') => h((string) $waybill['plate']),
-        lang('Order') => ((int) $waybill['order_id'] > 0) ? '<a href="view_order.php?id=' . (int) $waybill['order_id'] . '" class="pg-link-body-emphasis">' . h($waybill['order_number'] ?: ('#' . (int) $waybill['order_id'])) . '</a>' : '',
+        lang('Order') => erp_order_link_html($waybill['order_id'], $waybill['order_number'], $waybill['order_exists'] !== null, 'pg-link-body-emphasis'),
         lang('Invoice') => ((int) $waybill['invoice_id'] > 0) ? '<a href="edit_erp_invoice.php?id=' . (int) $waybill['invoice_id'] . '" class="pg-link-body-emphasis">' . h((string) ($waybill['invoice_number'] ?: ('#' . (int) $waybill['invoice_id']))) . '</a>' : '',
     ));
 
@@ -402,7 +407,7 @@ function erp_drawer_waybill($waybill_id)
     }
 
     $output_lines = ($output_lines !== '')
-        ? '<div class="table-responsive"><table class="table table-sm small mb-0"><tbody>' . $output_lines . '</tbody></table></div>'
+        ? '<div class="table-responsive"><table class="table table-sm small mb-0"><thead><tr class="fg-secondary"><th class="fw-normal">' . lang('Description') . '</th><th class="fw-normal text-end">' . lang('Quantity') . '</th></tr></thead><tbody>' . $output_lines . '</tbody></table></div>'
         : '<p class="small fg-secondary mb-0">' . lang('The document has no lines yet.') . '</p>';
 
     $output_actions = '

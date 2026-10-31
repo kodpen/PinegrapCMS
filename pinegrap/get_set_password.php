@@ -57,7 +57,7 @@ function get_set_password($properties) {
             // If query to database return no results for token
             if (!is_array($user) || !$user['id']) {
 
-                log_activity('Set Password: invalid token');
+                log_activity(pg_log_lang(array('string' => 'Set Password: invalid token')));
 
                 output_error(lang(array('string' => 'Sorry, the token is not valid, so we can\'t allow you to set a password. Please check if your email client possibly broke the link. If so, then you might try fixing the link. Otherwise, the token might be old, so please <a href="{var:1}">request a new email</a>.', 'vars' => array(h(pg_sign_in_screen_url('forgot password', 'forgot_password.php'))))));
             }
@@ -68,7 +68,7 @@ function get_set_password($properties) {
             // Check to see if token has expired after 24 hours
             if (($token_timestamp + $time_24hrs) < time()) {
                 
-                log_activity('Set Password: expired token');
+                log_activity(pg_log_lang(array('string' => 'Set Password: expired token')));
 
                 output_error(lang(array('string' => 'Sorry, the token has expired. Please <a href="{var:1}">request a new email</a>.', 'vars' => array(h(pg_sign_in_screen_url('forgot password', 'forgot_password.php'))))));
             }   
@@ -79,7 +79,7 @@ function get_set_password($properties) {
         // to be able to view page/form and edit it.
         } else if (!check_edit_access($folder_id)) {
 
-            log_activity('Set Password: missing token');
+            log_activity(pg_log_lang(array('string' => 'Set Password: missing token')));
 
             output_error(lang('Sorry, the token is missing from the address, so we can\'t allow you to set a password.'));
         }
@@ -130,6 +130,15 @@ function get_set_password($properties) {
                 $output_email = '<p class="fg-secondary mb-5">' . h($user['email']) . '</p>';
             }
 
+            // Password managers take the account from a username field in
+            // the same form; without one they save the new password against
+            // no account. Hidden from view and from the keyboard, and with no
+            // name, so set_password.php receives nothing new.
+            $output_username = '';
+            if (is_array($user)) {
+                $output_username = '<input type="text" id="set_password_username" class="visually-hidden" value="' . h($user['email'] ?: $user['username']) . '" autocomplete="username" readonly tabindex="-1" aria-hidden="true">';
+            }
+
             $output_strong_password_help = '';
             if ($strong_password_help != '') {
                 $output_strong_password_help = '<div class="small fg-secondary mb-5">' . $strong_password_help . '</div>';
@@ -147,6 +156,7 @@ function get_set_password($properties) {
             $output = pg_secure_card('bi-key', lang('Set Password'),
                 $output_email . $form->get_messages() . '
                 <form ' . $attributes . '>
+                    ' . $output_username . '
                     ' . $output_strong_password_help . '
                     <div class="mb-5">
                         <label for="new_password" class="form-label">' . lang('Password') . '</label>

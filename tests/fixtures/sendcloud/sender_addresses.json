@@ -1,0 +1,32 @@
+{
+  "data": [
+    {
+      "id": 192,
+      "name": "Marie Doe",
+      "company_name": "Example Shop",
+      "address_line_1": "Stadhuisplein",
+      "house_number": "10",
+      "address_line_2": "",
+      "postal_code": "5611 EM",
+      "city": "Eindhoven",
+      "country_code": "NL",
+      "state_province_code": "null",
+      "email": "shop@example.com",
+      "phone_number": "+31626262626"
+    },
+    {
+      "id": 193,
+      "name": "Frits Joep",
+      "company_name": "Example Shop UK",
+      "address_line_1": "Kamal Chunchie Way",
+      "house_number": "10",
+      "address_line_2": "",
+      "postal_code": "E16 1ZE",
+      "city": "London",
+      "country_code": "GB",
+      "state_province_code": "GB-ENG",
+      "email": "uk@example.com",
+      "phone_number": "+442079460000"
+    }
+  ]
+}

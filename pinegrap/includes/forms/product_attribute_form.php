@@ -63,8 +63,8 @@ function pg_product_attribute_form_cards($liveform)
                                                 'id' => 'name',
                                                 'placeholder'=>lang('Attribute Name'),
                                                 'class'=>'form-control',
-                                                'maxlength' => '100')) . '
-                                            <div class="invalid-feedback">' . lang('Required Area') . '</div>
+                                                'maxlength' => '100',
+                                                'required' => 'required')) . '
                                         </div>
                                         <div class="col-12 sm:col-8 my-3">
                                             <label for="label" class="form-label">' . lang('Label') . '</label>

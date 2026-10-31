@@ -44,7 +44,7 @@ if (!$_POST) {
         lang('decrease percentage (eg. - 30%)') => '3',
     );
     $inventory_options = array(
-        lang(array('string'=>'Select a {var:1}','vars'=>array(lang('Option for Track Inventroy')) ))=>'',
+        lang(array('string'=>'Select a {var:1}','vars'=>array(lang('Option for Track Inventory')) ))=>'',
         lang('Enable Track Inventory')=>'1',
         lang('Disable Track Inventory')=>'0',
     );
@@ -363,114 +363,47 @@ if (!$_POST) {
 
                     // If at least one product was modified, then log activity.
                     if ($number_of_products > 0) {
-                        $log_message = '';
-                        
-                        // If the enabled property was selected to be edited then set message for log.
+                        // Each change is a verb-free phrase; the count and
+                        // the verb live in one notice key, so the sentence
+                        // can be translated as a whole.
+                        $changes = array();
+
                         if ($_POST['edit_enabled'] != '') {
-                            // If the log message is not blank, then add separator.
-                            if ($log_message != '') {
-                                $log_message .= ',';
-                            }
-
-                            if ($number_of_products == 1) {
-                                $verb = 'was';
-                            } else {
-                                $verb = 'were';
-                            }
-
-                            if ($_POST['edit_enabled'] == '1') {
-                                $log_message .= lang($verb . ' enabled');
-                            } else {
-                                $log_message .= lang($verb . ' disabled');
-                            }
+                            $changes[] = ($_POST['edit_enabled'] == '1') ? lang('enabled') : lang('disabled');
                         }
 
-
-                        // If the inventory property was selected to be edited then set message for log.
                         if ($_POST['edit_inventory'] != '') {
-                            // If the log message is not blank, then add separator.
-                            if ($log_message != '') {
-                                $log_message .= ',';
-                            }
-
-                            if ($number_of_products == 1) {
-                                $verb = 'was';
-                            } else {
-                                $verb = 'were';
-                            }
-
-                            if ($_POST['edit_inventory'] == '1') {
-                                $log_message .= lang($verb . ' set stock tracking enabled');
-                            } else {
-                                $log_message .= lang($verb . ' set stock tracking disabled');
-                            }
-                        }
-                    
-                        // If the edit_inventory_quantity_process property was selected to be edited and edit_inventory_quantity has value then set message for log.
-                        if($_POST['edit_inventory_quantity_process'] != '' && $_POST['edit_inventory_quantity'] != ''){
-                            // If the log message is not blank, then add separator.
-                            if ($log_message != '') {
-                                $log_message .= ',';
-                            }
-
-                            if ($number_of_products == 1) {
-                                $verb = 'was';
-                            } else {
-                                $verb = 'were';
-                            }
-                            $log_message .= lang(' had inventory quantity changed');
+                            $changes[] = ($_POST['edit_inventory'] == '1') ? lang('stock tracking on') : lang('stock tracking off');
                         }
 
+                        if ($_POST['edit_inventory_quantity_process'] != '' && $_POST['edit_inventory_quantity'] != '') {
+                            $changes[] = lang('stock quantity changed');
+                        }
 
-
-
-                        // If there were allowed or disallowed zones then set message for log.
                         if (
                             ($_POST['edit_allowed_zones'])
                             || ($_POST['edit_disallowed_zones'])
                         ) {
-                            // If the log message is not blank, then add separator.
-                            if ($log_message != '') {
-                                $log_message .= ',';
-                            }
-
-                            $log_message .=  lang(' had shipping zones allowed/disallowed');
+                            $changes[] = lang('shipping zones changed');
                         }
 
-
-						// If the enabled property was selected to be edited then set message for log.
-                        if ($edit_change_price_method != '')  {
-                            // If the log message is not blank, then add separator.
-                            if ($log_message != '') {
-                                $log_message .= ',';
-                            }
-                            $log_message .= lang(' had price changed');
-
+                        if ($edit_change_price_method != '') {
+                            $changes[] = lang('price changed');
                         }
 
-                        // If the tax rate was set or cleared then set message for log.
                         if ($sql_tax_rate != '') {
-                            // If the log message is not blank, then add separator.
-                            if ($log_message != '') {
-                                $log_message .= ',';
-                            }
-
-                            if ($tax_rate_method === 'zone') {
-                                $log_message .= lang(' had the tax rate cleared');
-                            } else {
-                                $log_message .= lang(' had the tax rate changed');
-                            }
+                            $changes[] = ($tax_rate_method === 'zone') ? lang('tax rate cleared') : lang('tax rate changed');
                         }
 
-                        // If there is a log message, then log it and add notice.
-                        if ($log_message != '') {
-                            $plural_suffix = '';
-
-                            if ($number_of_products > 1) {
-                                $plural_suffix = 's';
+                        if ($changes) {
+                            if ($number_of_products == 1) {
+                                $message = lang(array('string' => '{var:1} product was updated ({var:2}).', 'vars' => array($number_of_products, implode(', ', $changes))));
+                            } else {
+                                $message = lang(array('string' => '{var:1} products were updated ({var:2}).', 'vars' => array($number_of_products, implode(', ', $changes))));
                             }
-                            log_activity(lang(array('string'=>'{var:1} product{suffix:1} {var:2}.','vars'=>array($number_of_products,$log_message),'suffix'=>$plural_suffix )), $_SESSION['sessionusername']);
-                            $liveform->add_notice(lang(array('string'=>'{var:1} product{suffix:1} {var:2}.','vars'=>array($number_of_products,h($log_message)),'suffix'=>$plural_suffix )));
+
+                            log_activity($message, $_SESSION['sessionusername']);
+                            $liveform->add_notice(h($message));
                         }
                     }
                 }
@@ -580,15 +513,13 @@ if (!$_POST) {
 
                 } elseif ($number_of_products > 0) {
                     if ($number_of_products == 1) {
-                        $plural_suffix = '';
-                        $verb = 'was';
+                        $message = lang(array('string' => '{var:1} product was deleted.', 'vars' => array($number_of_products)));
                     } else {
-                        $plural_suffix = 's';
-                        $verb = 'were';
+                        $message = lang(array('string' => '{var:1} products were deleted.', 'vars' => array($number_of_products)));
                     }
 
-                    log_activity(lang(array('string'=>'{var:1} product{suffix:1} ' . $verb . ' deleted','vars'=>array($number_of_products),'suffix'=>$plural_suffix )), $_SESSION['sessionusername']);
-                    $liveform->add_notice(lang(array('string'=>'{var:1} product{suffix:1} ' . $verb . ' deleted','vars'=>array($number_of_products),'suffix'=>$plural_suffix )));
+                    log_activity($message, $_SESSION['sessionusername']);
+                    $liveform->add_notice(h($message));
                 }
                 
                 break;

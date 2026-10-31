@@ -107,6 +107,27 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_record_revisions();       // 11.0.123
 	upgrade_2026_11_0_cart_quotes();            // 11.0.124
 	upgrade_2026_11_0_shipment_labels();        // 11.0.125
+	upgrade_2026_11_0_workspace_flow_templates(); // 11.0.115
+	upgrade_2026_11_0_workspace_ref_sources();  // 11.0.116
+	upgrade_2026_11_0_shipment_label_returns(); // 11.0.126
+	upgrade_2026_11_0_speculation_prefetch();   // 11.0.127
+	upgrade_2026_11_0_subscriptions();          // 11.0.128
+	upgrade_2026_11_0_workspace_personal_ical(); // 11.0.117
+	upgrade_2026_11_0_subscription_campaigns(); // 11.0.129
+	upgrade_2026_11_0_product_customs();       // 11.0.130
+	upgrade_2026_11_0_shipment_label_pickup(); // 11.0.131
+	upgrade_2026_11_0_subscription_price_notice(); // 11.0.132
+	upgrade_2026_11_0_workspace_visit_contact(); // 11.0.118
+	upgrade_2026_11_0_starter_addthis();        // 11.0.133
+	upgrade_2026_11_0_tr_district_plate();      // 11.0.134
+	upgrade_2026_11_0_erp_auto_invoice_marketplace(); // 11.0.62
+	upgrade_2026_11_0_erp_quote_templates();    // 11.0.63
+	upgrade_2026_11_0_erp_quote_links();        // 11.0.64
+	upgrade_2026_11_0_erp_invoice_public_link(); // 11.0.65
+	upgrade_2026_11_0_form_field_rules();       // 11.0.135
+	upgrade_2026_11_0_contact_iys_sms_status(); // 11.0.136
+	upgrade_2026_11_0_sms_campaigns();           // 11.0.137
+	upgrade_2026_11_0_n11_old_address_order(); // 11.0.138
 
 }
 
@@ -1020,6 +1041,94 @@ function upgrade_2026_11_0_erp_auto_invoice() {
 	install_add_column('config', 'erp_auto_invoice_min_total', "BIGINT NOT NULL DEFAULT 0");
 
 	install_note('ERP: the invoice the ERP issues on its own for a paid or shipped web order can now be kept to buyers with a tax number and to orders from an amount up, under Site Settings, Ecommerce, ERP. Both are off until set there.');
+
+}
+
+// The switch that lets the order invoice the ERP issues on its own
+// (config.erp_auto_invoice_on, erp_auto_invoice_decision() in
+// includes/erp/order_bridge.php) take marketplace orders too, weighed like a
+// web order with the same trigger and filters. It starts off, so a store that
+// invoices its marketplace orders somewhere else gets no second invoice.
+function upgrade_2026_11_0_erp_auto_invoice_marketplace() {
+
+	install_add_column('config', 'erp_auto_invoice_marketplace', "TINYINT(1) NOT NULL DEFAULT 0");
+
+	install_note('ERP: the invoice the ERP issues on its own for a paid or shipped order can now be issued for marketplace orders (Trendyol, n11) too, under Site Settings, Ecommerce, ERP. It is off until ticked there.');
+
+}
+
+// Sales quote templates and the switch for the quote expiry follow-up
+// (includes/erp/quote_templates.php, includes/erp/quotes.php).
+//
+// erp_quote_templates keeps the lines of the quote editor under a name, as
+// JSON in form_data: never an account, a date or a number. scope is
+// 'personal' (seen only by user_id, its owner) or 'site' (seen by everyone
+// with the ERP right); a VARCHAR rather than an ENUM, so a later scope needs
+// no migration. KEY (scope, user_id) serves the one list the editor reads.
+//
+// config.erp_quote_expiry_followup is the Settings checkbox for the Workspace
+// follow-up of a quote about to run out. It starts at 0, so a site keeps the
+// behaviour of the ERP_QUOTE_EXPIRY_FOLLOWUP constant it may already have.
+function upgrade_2026_11_0_erp_quote_templates() {
+
+	install_create_table('erp_quote_templates', "CREATE TABLE erp_quote_templates (
+		id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		name VARCHAR(100) NOT NULL DEFAULT '',
+		scope VARCHAR(16) NOT NULL DEFAULT 'personal',
+		user_id INT UNSIGNED NOT NULL DEFAULT 0,
+		form_data MEDIUMTEXT NULL,
+		created_at INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_scope_user (scope, user_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_add_column('config', 'erp_quote_expiry_followup', "TINYINT(1) NOT NULL DEFAULT 0");
+
+	install_note('ERP: the lines of a sales quote can be kept as a personal or a site-wide template and filled into a new quote. A sales quote about to run out can open a Workspace follow-up, switched on under Site Settings, Ecommerce, ERP.');
+
+}
+
+// Guest links of sales quotes (includes/erp/quote_links.php, erp_quote.php).
+//
+// A customer without an account opens a quote by link and accepts it with a
+// drawn signature. Only the SHA-256 of the link's token is kept (token_hash,
+// unique: one row per token) with its first characters as a hint for the
+// screen. expires_at is the end of the quote's valid_until day at issue;
+// used_at marks the link that accepted, revoked_at a link a newer one
+// replaced or staff took back. Rows are never deleted, so who issued which
+// link, and when, stays. Times are unix seconds, 0 for not yet.
+function upgrade_2026_11_0_erp_quote_links() {
+
+	install_create_table('erp_quote_links', "CREATE TABLE erp_quote_links (
+		id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		quote_id INT UNSIGNED NOT NULL,
+		token_hash CHAR(64) NOT NULL DEFAULT '',
+		token_hint VARCHAR(8) NOT NULL DEFAULT '',
+		expires_at INT UNSIGNED NOT NULL DEFAULT 0,
+		used_at INT UNSIGNED NOT NULL DEFAULT 0,
+		revoked_at INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at INT UNSIGNED NOT NULL DEFAULT 0,
+		created_by INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY idx_token_hash (token_hash),
+		KEY idx_quote (quote_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('ERP: a sales quote can be sent as a link the customer opens without an account, to read the quote and accept it with a signature. Nothing changes until a link is made on the quote screen.');
+
+}
+
+// The public address of an invoice's PDF (includes/erp/invoice_public_link.php,
+// erp_invoice.php), which a marketplace keeps with the order and the buyer
+// opens without signing in. Only the SHA-256 of the address's token is kept;
+// empty means the invoice has no public address. A token is made the first
+// time one is needed, and clearing the hash takes the address back.
+function upgrade_2026_11_0_erp_invoice_public_link() {
+
+	install_add_column('erp_invoices', 'public_token_hash', "CHAR(64) NOT NULL DEFAULT ''");
+
+	install_note('ERP: an issued invoice can have a public address for its PDF, which marketplace orders (Trendyol, n11) receive on their own when Site Settings, Ecommerce, ERP invoices marketplace orders. Nothing changes while that switch is off.');
 
 }
 
@@ -3415,5 +3524,596 @@ function upgrade_2026_11_0_cart_quotes() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('Cart quotes: the tables for cart quote links are in place. Nothing changes on the site until a cart quote is made.');
+
+}
+
+// Flow templates saved on the site (2026.11.0, 11.0.115;
+// includes/workspace/flow_templates_saved.php). A person saves a flow's draft as a
+// template; the gallery lists it beside the built-in ones under "Saved on this
+// site". template_key is 'site_<id>', so it never meets a built-in key. graph
+// is the normalized draft graph with the secrets of its boxes dropped;
+// settings is the JSON list of the values the setup panel asks on Use, in the
+// built-ins' shape. Box, thread and motion counts are computed on read, never
+// stored. created_by, updated_by and binned_at follow ws_flows. Nothing is
+// read until somebody saves a template.
+function upgrade_2026_11_0_workspace_flow_templates() {
+
+	install_create_table('ws_flow_templates', "CREATE TABLE ws_flow_templates (
+		id              INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		template_key    VARCHAR(40) NOT NULL DEFAULT '',
+		category        VARCHAR(16) NOT NULL DEFAULT '',
+		title           VARCHAR(160) NOT NULL DEFAULT '',
+		help            VARCHAR(255) NOT NULL DEFAULT '',
+		icon            VARCHAR(40) NOT NULL DEFAULT '',
+		graph           MEDIUMTEXT NULL,
+		settings        TEXT NULL,
+		source_flow_id  INT UNSIGNED NOT NULL DEFAULT 0,
+		created_by      INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_by      INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		binned_at       INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY uq_template_key (template_key),
+		KEY idx_created_by (created_by)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Workspace: the table for flow templates saved on the site is added. It stays empty until somebody saves a flow as a template.');
+
+}
+
+// Notes and workflow table rows as tag sources (2026.11.0, 11.0.116;
+// includes/workspace/refs.php). ws_refs.source_type was ENUM('message','task')
+// from 2026.4.4, and a value it does not list is kept as '' under the site's
+// non-strict sql_mode, so the column becomes VARCHAR(20), the width of
+// ref_type: message and task stay as text, idx_source keeps its definition
+// and a later source needs no schema. The table is rebuilt once; it holds one
+// narrow row per tag. The type is read first, so a second run, or a column
+// that is no enum, changes nothing. The writers of the new sources wait for
+// the VARCHAR (ws_ref_sources_ready()); the general job adds the notes and
+// rows saved before (ws_ref_sources_backfill_run()).
+function upgrade_2026_11_0_workspace_ref_sources() {
+
+	$column = install_column_info('ws_refs', 'source_type');
+
+	if (!is_array($column)) {
+		install_skipped(lang(array('string' => '{var:1} does not exist, skipped', 'vars' => 'ws_refs.source_type')));
+	} elseif (stripos(trim((string) $column['Type']), 'enum(') === 0) {
+		install_modify_column('ws_refs', 'source_type', "VARCHAR(20) NOT NULL DEFAULT 'message'");
+	} else {
+		install_skipped(lang(array('string' => '{var:1} already exists', 'vars' => 'ws_refs.source_type varchar')));
+	}
+
+	install_note('Workspace: the records a note tags and those a workflow table row links to are now listed in the record\'s Workspace drawer and the customer\'s history, each only to who may read the note or the table. Notes and rows saved before this update are added by the scheduled general job, a few seconds at a time.');
+
+}
+
+// Return labels made from a customer return (2026.11.0, 11.0.126;
+// includes/fn/shipment_labels.php, pg_shipment_label_create_for_return()).
+//
+// order_return_id is the order_returns row a return label was made for; 0 for
+// every label made on the order screen, whose one-active-label rule stays per
+// address. A label made from a request is looked up by this column, so one
+// request never buys a second label while another request on the same
+// address still can get its own.
+function upgrade_2026_11_0_shipment_label_returns() {
+
+	install_add_column('shipment_labels', 'order_return_id', "INT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_index('shipment_labels', 'idx_shipment_label_return', "KEY idx_shipment_label_return (order_return_id)");
+
+	install_note('Returns: an approved return request can get a return label from the carrier label service that ships with its return carrier; the label\'s code is given to the customer by e-mail and on their order page.');
+
+}
+
+// Speculation Rules prefetch (2026.11.0, 11.0.127; includes/fn/speculation.php).
+//
+// The Settings > Features switch of the menu-link prefetch: published pages
+// list the same-site page addresses of their menus in a speculationrules
+// block, so Chromium browsers fetch a page a moment before the visitor opens
+// it. On by default, so running sites get it with the upgrade and may switch
+// it off.
+function upgrade_2026_11_0_speculation_prefetch() {
+
+	install_add_column('config', 'speculation_prefetch', "TINYINT(1) UNSIGNED NOT NULL DEFAULT 1");
+
+	install_note('Pages now tell Chrome and Edge the addresses in their menus, so a menu page opens at once; visitors who are signed in are left out. It can be switched off under Settings, Features.');
+
+}
+
+// Subscriptions run by the store through the payment drivers (2026.11.0,
+// 11.0.128; includes/fn/subscriptions.php). A subscription row is made from a
+// paid order line whose driver declares recurring mode 'store'; the cron
+// charges card_ref (the PSP's token, sealed) when next_charge_at comes.
+// Amounts are minor units, times unix seconds. subscription_events keeps what
+// happened to a subscription; a renewal order is marked only there, through
+// order_id. remote_event_id is NULL for store-side events, so the unique key
+// de-duplicates webhook deliveries only. The three campaign profile actions
+// are appended to the enum read first, in the order_delivered shape. No
+// driver declares store mode yet, so nothing writes these tables.
+function upgrade_2026_11_0_subscriptions() {
+
+	install_create_table('subscriptions', "CREATE TABLE subscriptions (
+		id              INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		user_id         INT UNSIGNED NOT NULL DEFAULT 0,
+		product_id      INT UNSIGNED NOT NULL DEFAULT 0,
+		order_id        INT UNSIGNED NOT NULL DEFAULT 0,
+		order_item_id   INT UNSIGNED NOT NULL DEFAULT 0,
+		driver          VARCHAR(32) NOT NULL DEFAULT '',
+		remote_id       VARCHAR(100) NOT NULL DEFAULT '',
+		status          VARCHAR(16) NOT NULL DEFAULT 'active',
+		period          VARCHAR(16) NOT NULL DEFAULT '',
+		amount          INT UNSIGNED NOT NULL DEFAULT 0,
+		currency        CHAR(3) NOT NULL DEFAULT '',
+		next_charge_at  INT UNSIGNED NOT NULL DEFAULT 0,
+		retry_count     TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		card_last4      VARCHAR(4) NOT NULL DEFAULT '',
+		card_ref        VARCHAR(255) NOT NULL DEFAULT '',
+		created_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		cancelled_at    INT UNSIGNED NOT NULL DEFAULT 0,
+		ended_at        INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_user (user_id),
+		KEY idx_status_next_charge (status, next_charge_at),
+		KEY idx_order (order_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('subscription_events', "CREATE TABLE subscription_events (
+		id               INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		subscription_id  INT UNSIGNED NOT NULL DEFAULT 0,
+		kind             VARCHAR(24) NOT NULL DEFAULT '',
+		order_id         INT UNSIGNED NOT NULL DEFAULT 0,
+		amount           INT UNSIGNED NOT NULL DEFAULT 0,
+		remote_event_id  VARCHAR(100) NULL DEFAULT NULL,
+		detail           VARCHAR(255) NOT NULL DEFAULT '',
+		created_at       INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY uk_subscription_event_remote (remote_event_id),
+		KEY idx_subscription (subscription_id, id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	// Widened from what is there, never narrowed, and each value only once:
+	// a value another step added stays, and the default is kept as it stands.
+	$action = install_column_info('email_campaign_profiles', 'action');
+
+	if (is_array($action)) {
+
+		preg_match_all("/'((?:[^'\\\\]|\\\\.)*)'/", (string) $action['Type'], $matches);
+		$values = array();
+
+		foreach ($matches[1] as $value) {
+			$values[] = "'" . $value . "'";
+		}
+
+		$added = false;
+
+		foreach (array('subscription_renewed', 'subscription_failed', 'subscription_cancelled') as $value) {
+
+			if (!in_array("'" . $value . "'", $values, true)) {
+				$values[] = "'" . $value . "'";
+				$added = true;
+			}
+
+		}
+
+		if ($added) {
+
+			$default = ((string) $action['Default'] !== '') ? (string) $action['Default'] : 'calendar_event_reserved';
+
+			install_modify_column('email_campaign_profiles', 'action', "ENUM(" . implode(',', $values) . ") NOT NULL DEFAULT '" . $default . "'");
+
+		} else {
+
+			install_skipped(lang(array('string' => '{var:1} already exists', 'vars' => 'email_campaign_profiles.action subscription_*')));
+
+		}
+
+	}
+
+	install_note('Subscriptions: the tables for subscriptions charged by the store are in place, and automatic e-mails gain the subscription renewed, failed and cancelled actions. Nothing changes on the site until a payment service offers subscriptions.');
+
+}
+
+// A person's own calendar address as a read-only layer on their Work Calendar
+// (2026.11.0, 11.0.117; includes/workspace/personal_ical.php).
+//
+// ws_holiday_feeds.user_id is the person a calendar address belongs to; 0 for
+// every address added on Workspace Settings, which stay the site's public
+// holiday calendars exactly as before. A person's row keeps its address and
+// the events read from it sealed with the site's key in url, never in
+// ws_events, so they reach no other reader, no holiday count and no export.
+// KEY idx_user serves the person's own list and the site-wide list (user_id 0).
+function upgrade_2026_11_0_workspace_personal_ical() {
+
+	install_add_column('ws_holiday_feeds', 'user_id', "INT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_index('ws_holiday_feeds', 'idx_user', "INDEX idx_user (user_id)");
+
+	install_note('Workspace: a person can add the secret address of their own Google, Outlook or Apple calendar under My calendar subscription and see it on their Work Calendar, read-only and only for themselves. The public holiday calendars of the site stay as they were.');
+
+}
+
+// A campaign made from a subscription profile copies the profile's action into
+// email_campaigns.action (create_auto_email_campaigns()). 11.0.128 widened only
+// the profiles' enum with the three subscription actions, so such a campaign
+// would be stored with action ''. As in upgrade_2026_11_0_delivered_campaigns():
+// the list is read first and only widened at its end, each value once, and the
+// null rule and the default are kept as they are.
+function upgrade_2026_11_0_subscription_campaigns() {
+
+	$action = install_column_info('email_campaigns', 'action');
+
+	if (!$action) {
+
+		return;
+
+	}
+
+	preg_match_all("/'((?:[^']|'')*)'/", (string) $action['Type'], $matches);
+
+	$values = $matches[1];
+	$added = false;
+
+	foreach (array('subscription_renewed', 'subscription_failed', 'subscription_cancelled') as $value) {
+
+		if (!in_array($value, $values, true)) {
+
+			$values[] = $value;
+			$added = true;
+
+		}
+
+	}
+
+	if (!$added) {
+
+		install_skipped(lang(array('string' => '{var:1} already exists', 'vars' => 'email_campaigns.action subscription_*')));
+
+		return;
+
+	}
+
+	$definition = "ENUM('" . implode("','", $values) . "')"
+		. ((($action['Null'] ?? '') === 'YES') ? ' NULL' : ' NOT NULL')
+		. (($action['Default'] !== null) ? " DEFAULT '" . e((string) $action['Default']) . "'" : '');
+
+	install_modify_column('email_campaigns', 'action', $definition);
+
+	install_note('E-mail campaigns: a campaign started by a subscription renewed, failed or cancelled profile keeps its action.');
+
+}
+
+// Customs data of a product (2026.11.0, 11.0.130; includes/fn/product_customs.php).
+//
+// hs_code is the Harmonized System code a customs declaration names the
+// goods by (digits and dots, a national tariff number of up to 16
+// characters), origin_country the ISO 3166-1 alpha-2 code of the country the
+// goods were made in. A label service declares each order line of a parcel
+// that leaves the customs area with both. Empty means "use the shop default"
+// of the label driver's settings, so two empty columns change nothing on a
+// running site until a shop fills a default or a product.
+function upgrade_2026_11_0_product_customs() {
+
+	install_add_column('products', 'hs_code', "VARCHAR(16) NOT NULL DEFAULT ''");
+	install_add_column('products', 'origin_country', "CHAR(2) NOT NULL DEFAULT ''");
+
+	install_note('Products: an HS code and a country of origin can be set in the shipping part of the product screen, for the customs declaration of parcels sent abroad.');
+
+}
+
+// Carrier pickup of a label (2026.11.0, 11.0.131; includes/fn/shipment_labels.php).
+//
+// pickup_ref is the carrier's confirmation of the pickup a label was booked
+// into, pickup_at the start of the window asked for (unix time). Every label
+// a request covered carries the same pair; '' and 0 mean no pickup, so the
+// two columns change nothing on existing rows.
+function upgrade_2026_11_0_shipment_label_pickup() {
+
+	install_add_column('shipment_labels', 'pickup_ref', "VARCHAR(64) NOT NULL DEFAULT ''");
+	install_add_column('shipment_labels', 'pickup_at', "INT UNSIGNED NOT NULL DEFAULT 0");
+
+	install_note('Shipping labels: a carrier pickup can be requested for active labels from the orders list and the order screen; its confirmation is kept on each label.');
+
+}
+
+// The subscription price change mail (2026.11.0, 11.0.132;
+// includes/fn/subscription_renewal.php). A price change is told to the
+// customer at least 14 days before it is charged, through the campaign
+// profiles of the subscription_price_changed action; the campaign row copies
+// the profile's action, so both lists carry it. As in
+// upgrade_2026_11_0_subscription_campaigns(): each list is read first and only
+// widened at its end, the null rule and the default are kept as they are, and
+// a list that has the value already is left alone. The pending amount is a
+// subscription_events row (kind price_notice), no column.
+function upgrade_2026_11_0_subscription_price_notice() {
+
+	foreach (array('email_campaign_profiles', 'email_campaigns') as $table) {
+
+		$action = install_column_info($table, 'action');
+
+		if (!$action) {
+
+			continue;
+
+		}
+
+		preg_match_all("/'((?:[^']|'')*)'/", (string) $action['Type'], $matches);
+
+		$values = $matches[1];
+
+		if (in_array('subscription_price_changed', $values, true)) {
+
+			install_skipped(lang(array('string' => '{var:1} already exists', 'vars' => $table . '.action subscription_price_changed')));
+
+			continue;
+
+		}
+
+		$values[] = 'subscription_price_changed';
+
+		$definition = "ENUM('" . implode("','", $values) . "')"
+			. ((($action['Null'] ?? '') === 'YES') ? ' NULL' : ' NOT NULL')
+			. (($action['Default'] !== null) ? " DEFAULT '" . e((string) $action['Default']) . "'" : '');
+
+		install_modify_column($table, 'action', $definition);
+
+	}
+
+	install_note('Subscriptions: a price change is e-mailed to the customer at least 14 days before it is charged, through campaign profiles of the new subscription price changed action.');
+
+}
+
+// The customer a Workspace plan item is about (2026.11.0, 11.0.118;
+// includes/workspace/schedule.php). A customer visit on the Work Calendar
+// may name the contact it is with; it then shows on that customer's card and
+// history. 0 for every item made before, and for meetings, leave and
+// holidays. The column is a contact holder (pg_contact_holders()), so a merge
+// re-points it and an erasure finds it. KEY idx_contact serves the history
+// read of one customer.
+function upgrade_2026_11_0_workspace_visit_contact() {
+
+	install_add_column('ws_events', 'contact_id', "INT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_index('ws_events', 'idx_contact', "INDEX idx_contact (contact_id)");
+
+	install_note('Workspace: a customer visit on the Work Calendar can name the customer, and it shows on that customer\'s card and history.');
+
+}
+
+// The sharing code of the starter sites (2026.11.0, 11.0.133). Both starter
+// dumps shipped an AddThis script as the advanced sharing code; AddThis closed
+// on 2023-05-31, so every page sent a request that only failed. The dumps now
+// ship an empty code, and get_page_content.php prints nothing for an empty
+// code. On a running site the code is emptied only while it is still, byte
+// for byte, one of the two stock scripts: a code the owner wrote or edited
+// stays. BINARY keeps the comparison exact (case, trailing spaces, CR LF).
+function upgrade_2026_11_0_starter_addthis() {
+
+	$stock = array(
+		"<!-- register for a addthis.com account and change the pubid -->\r\n<script type=\"text/javascript\" src=\"//s7.addthis.com/js/300/addthis_widget.js#pubid=ra-577d4f644c7cc90c\"></script>\r\n\r\n",
+		"<!-- Go to www.addthis.com/dashboard to customize your tools -->\r\n<script type=\"text/javascript\" src=\"//s7.addthis.com/js/300/addthis_widget.js#pubid=ra-5be52cac894a13b9\"></script>\r\n",
+	);
+
+	db("UPDATE config SET social_networking_code = ''
+		WHERE BINARY social_networking_code IN ('" . e($stock[0]) . "', '" . e($stock[1]) . "')");
+
+	install_note('Sharing: the AddThis script the starter sites came with is removed where it was never changed, since AddThis closed in 2023 and the script only failed. A sharing code written on the site stays.');
+
+}
+
+// Turkish addresses (2026.11.0, 11.0.134; includes/fn/shipping.php).
+//
+// ship_tos.district is the recipient's district (ilçe) as typed, free text
+// and optional; until now it was squeezed into city, which Turkish carriers
+// and marketplaces read as the district while state holds the province.
+// states.plate_code is a Turkish province's licence plate number ('34'),
+// filled here for the states of every countries row that stands for Turkey
+// by matching the province name (pg_state_plate_codes(): accents and case
+// folded, older spellings such as Afyon known). A name no province carries
+// stays empty, and only empty plate codes are written, so a code the
+// operator set by hand survives and a second run changes nothing. Both
+// columns default to '', which changes nothing on a running site.
+function upgrade_2026_11_0_tr_district_plate() {
+
+	install_add_column('ship_tos', 'district', "VARCHAR(50) NOT NULL DEFAULT ''");
+	install_add_column('states', 'plate_code', "VARCHAR(4) NOT NULL DEFAULT ''");
+
+	if (!function_exists('pg_state_plate_codes') || !install_column_exists('states', 'plate_code')) {
+
+		install_skipped('states: the plate codes of the Turkish provinces were not filled in, because includes/fn/shipping.php is out of date. Upload the files of this version again and run the upgrade.');
+
+	} else {
+
+		$country_ids = pg_state_plate_country_ids((array) db_items("SELECT id, name, code FROM countries ORDER BY id"));
+
+		$filled = 0;
+
+		if (!empty($country_ids)) {
+
+			$rows = (array) db_items("SELECT id, name, plate_code FROM states
+				WHERE country_id IN (" . implode(', ', array_map('intval', $country_ids)) . ") AND (plate_code = '')
+				ORDER BY id");
+
+			foreach (pg_state_plate_codes($rows) as $id => $plate) {
+
+				db("UPDATE states SET plate_code = '" . e($plate) . "'
+					WHERE (id = '" . (int) $id . "') AND (plate_code = '')");
+
+				$filled += max(0, (int) mysqli_affected_rows(db::$con));
+
+			}
+
+		}
+
+		if ($filled > 0) {
+			install_ran('states: the plate code of ' . $filled . ' Turkish province(s) filled in');
+		} else {
+			install_skipped('states: no Turkish province without its plate code, nothing to fill in');
+		}
+
+	}
+
+	install_note('Addresses: a recipient can carry a district, and the Turkish provinces in the states list now carry their plate numbers.');
+
+}
+
+// A designed form field can carry visitor rules: a date not before today and a
+// field required only for some answers of another field. The rules are a JSON
+// object written by the designer sync and checked on site submissions only.
+// NULL means no rule, which changes nothing on a running site.
+function upgrade_2026_11_0_form_field_rules() {
+
+	install_add_column('form_fields', 'rules', "TEXT NULL");
+
+	install_note('Designed forms: a date field can refuse dates before today and a field can be required only when another field has a given answer.');
+
+}
+
+// The İYS SMS status of a contact (2026.11.0, 11.0.136; includes/iys/).
+//
+// iys_sms_status is what İYS last said about the contact's mobile number on
+// the MESAJ channel: '' not known, 'approved' or 'refused', written by the
+// daily İYS job when it pushes an SMS consent or pulls a change, as
+// iys_email_status (11.0.39) is for the address. A VARCHAR, not an ENUM, so a
+// state added later needs no step. Added in place where the server can;
+// elsewhere contacts is copied once (install_heavy_tables()).
+function upgrade_2026_11_0_contact_iys_sms_status() {
+
+	$columns = array(
+		'iys_sms_status' => "VARCHAR(16) NOT NULL DEFAULT ''",
+	);
+
+	if (!install_add_columns_instant('contacts', $columns)) {
+
+		foreach ($columns as $column => $definition) {
+
+			install_add_column('contacts', $column, $definition);
+
+		}
+
+	}
+
+	install_note('Contacts: a column keeps what İYS last said about each mobile number on the SMS channel. It stays empty until an İYS account is set up.');
+
+}
+
+// SMS campaigns (2026.11.0, 11.0.137; includes/fn/sms_campaigns.php).
+//
+// A text sent to the contacts of chosen contact groups, now or at a time,
+// beside the e-mail campaigns but not in their tables: every reader of
+// email_campaigns mails a ready row. start_at is when the general job queues
+// it (epoch, 0 for a draft); status draft, ready, queued or cancelled, a
+// VARCHAR so a state added later needs no step. Each message is a sms_outbox
+// row whose reference names the campaign and the contact, so the queue's
+// unique reference keeps a second run from queueing it again; queued_count
+// and refused_count stay after the queue sweeps its rows.
+function upgrade_2026_11_0_sms_campaigns() {
+
+	install_create_table('sms_campaigns', "CREATE TABLE sms_campaigns (
+		id             INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		name           VARCHAR(100) NOT NULL DEFAULT '',
+		body           TEXT NOT NULL,
+		start_at       INT UNSIGNED NOT NULL DEFAULT 0,
+		status         VARCHAR(16) NOT NULL DEFAULT 'draft',
+		queued_count   INT UNSIGNED NOT NULL DEFAULT 0,
+		refused_count  INT UNSIGNED NOT NULL DEFAULT 0,
+		queued_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at     INT UNSIGNED NOT NULL DEFAULT 0,
+		created_by     INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at     INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_by     INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_due (status, start_at)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('contact_groups_sms_campaigns_xref', "CREATE TABLE contact_groups_sms_campaigns_xref (
+		contact_group_id  INT UNSIGNED NOT NULL DEFAULT 0,
+		sms_campaign_id   INT UNSIGNED NOT NULL DEFAULT 0,
+		type              VARCHAR(16) NOT NULL DEFAULT 'included',
+		KEY contact_group_id (contact_group_id),
+		KEY sms_campaign_id (sms_campaign_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('SMS campaigns: a text message can be sent to the contacts of chosen contact groups, now or at a time. Nothing is sent until SMS is set up and a campaign is created.');
+
+}
+
+// n11 orders imported before #2004 kept a Turkish address the other way round
+// from the checkout: the province in city and the town in state, with
+// ship_tos.district (11.0.134, called before this step) empty. Screens read
+// them reversed and a carrier label got the province as the district. Each
+// such row is swapped and its empty district takes the town. Only ship_tos
+// rows of orders mapped to an n11 account are read; pg_ship_to_reversed_tr_swap()
+// decides per row (Turkey, city a province, state none), so a row in the
+// checkout's order never matches and a rerun finds nothing to swap. The
+// UPDATE repeats the values it read, so an edit made in between is kept.
+function upgrade_2026_11_0_n11_old_address_order() {
+
+	if (!function_exists('pg_ship_to_reversed_tr_swap')) {
+
+		install_skipped('ship_tos: the addresses of older n11 orders were not put in the checkout\'s order, because includes/fn/shipping.php is out of date. Upload the files of this version again and run the upgrade.');
+
+		return;
+
+	}
+
+	if (!install_table_exists('marketplace_order_map') || !install_table_exists('marketplace_accounts') || !install_column_exists('ship_tos', 'district')) {
+
+		install_skipped('ship_tos: no n11 order tables or no district column, no n11 address to put in order');
+
+		return;
+
+	}
+
+	$last_id = 0;
+	$swapped = 0;
+
+	do {
+
+		$rows = (array) db_items("SELECT DISTINCT ship_tos.id, ship_tos.city, ship_tos.state, ship_tos.district, ship_tos.country
+			FROM ship_tos
+			INNER JOIN marketplace_order_map ON marketplace_order_map.order_id = ship_tos.order_id
+			INNER JOIN marketplace_accounts ON marketplace_accounts.id = marketplace_order_map.account_id
+			WHERE (marketplace_accounts.provider = 'n11') AND (marketplace_order_map.order_id > 0) AND (ship_tos.id > '" . (int) $last_id . "')
+			ORDER BY ship_tos.id
+			LIMIT 500");
+
+		foreach ($rows as $row) {
+
+			$last_id = (int) $row['id'];
+			$swap = pg_ship_to_reversed_tr_swap($row);
+
+			if (!$swap) {
+				continue;
+			}
+
+			$updated = db_q("UPDATE ship_tos SET city = ?, state = ?, district = ?
+				WHERE (id = ?) AND (city = ?) AND (state = ?) AND (district = ?)",
+				array(mb_substr($swap['city'], 0, 50), mb_substr($swap['state'], 0, 50), mb_substr($swap['district'], 0, 50),
+					$last_id, (string) $row['city'], (string) $row['state'], (string) $row['district']));
+
+			if ($updated !== false) {
+				$swapped += max(0, (int) mysqli_affected_rows(db::$con));
+			}
+
+		}
+
+		// A later pass starts over from the first row: the rows swapped so far
+		// no longer match, so it only reads them again. It pauses only after a
+		// swap, so every pass gets further and a pass of reads alone never
+		// pauses.
+		if (($swapped > 0) && (install_pass_seconds() >= install_pause_budget())) {
+			install_pause('ship_tos: putting older n11 order addresses in the checkout\'s order, up to id ' . $last_id . '.');
+		}
+
+	} while (count($rows) === 500);
+
+	if ($swapped > 0) {
+
+		install_ran('ship_tos: ' . $swapped . ' older n11 order address(es) put in the checkout\'s order (town in city, province in state)');
+
+		install_note('n11 orders: the addresses of orders imported before this version now carry the town as the city and the province as the state, as checkout addresses do, and the town as the district.');
+
+	} else {
+		install_skipped('ship_tos: no older n11 order address the other way round, nothing to swap');
+	}
 
 }

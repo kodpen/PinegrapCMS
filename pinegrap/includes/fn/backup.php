@@ -51,6 +51,27 @@ function pg_backup_auto_name($time)
 
 
 /**
+ * The folder a hand-made backup is written to, from the name typed for it.
+ *
+ * The last segment only (pg_basename(), which keeps a first letter outside
+ * ASCII on PHP 7), Turkish and other Latin letters mapped to ASCII
+ * (pg_ascii_file_name()), then everything outside letters, digits, "_" and
+ * "-" made "_" -- dots too, so "." and ".." cannot name a folder. Runs of
+ * "_" collapse and the ends are trimmed, so a second pass gives the same
+ * name: every backup step sends the name back and computes it again.
+ *
+ * @param string $name
+ * @return string empty when nothing usable is left
+ */
+function pg_backup_folder_name($name)
+{
+    $name = preg_replace('/[^A-Za-z0-9_-]/', '_', pg_ascii_file_name(pg_basename((string) $name)));
+
+    return trim(preg_replace('/_{2,}/', '_', $name), '_');
+}
+
+
+/**
  * Whether a directory entry is an automatic backup, as a folder or an archive.
  *
  * The one gate in front of every delete this module makes, so it is strict:
@@ -256,6 +277,73 @@ function pg_backup_delete_tree($path)
     }
 
     return @rmdir($path);
+}
+
+
+/**
+ * Copy the regular files of one folder into another.
+ *
+ * Directories, '.' and '..' are skipped. A file counts as not copied when
+ * copy() fails or the copy's size differs from the source's: on a full disk
+ * copy() can stop partway, and a backup holding a truncated picture or
+ * layout must not be reported as complete.
+ *
+ * @param string $source folder to read
+ * @param string $target folder to write; it must already exist
+ * @return array the names that could not be copied, in reading order
+ */
+function pg_backup_copy_folder($source, $target)
+{
+    $failed = array();
+
+    $handle = is_dir($source) ? @opendir($source) : false;
+
+    if (!$handle) {
+        return $failed;
+    }
+
+    while (false !== ($entry = readdir($handle))) {
+
+        $from = $source . '/' . $entry;
+
+        if (($entry === '.') || ($entry === '..') || !is_file($from)) {
+            continue;
+        }
+
+        $to = $target . '/' . $entry;
+
+        clearstatcache(true, $to);
+
+        if (!@copy($from, $to) || !is_file($to) || (@filesize($to) !== @filesize($from))) {
+            $failed[] = $entry;
+        }
+    }
+
+    closedir($handle);
+
+    return $failed;
+}
+
+
+/**
+ * The message a backup gives when files could not be copied.
+ *
+ * Names the count and the first few files, so the person can see whether
+ * it is one broken file or the disk running out.
+ *
+ * @param array $failed names returned by pg_backup_copy_folder()
+ * @param int $shown how many names to list
+ * @return string
+ */
+function pg_backup_copy_failure_message(array $failed, $shown = 3)
+{
+    $names = implode(', ', array_slice($failed, 0, $shown));
+
+    if (count($failed) > $shown) {
+        $names .= ', ...';
+    }
+
+    return lang(array('string' => '{var:1} files could not be copied into the backup ({var:2}), so it was removed. Free some disk space and try again.', 'vars' => array(count($failed), $names)));
 }
 
 
@@ -963,15 +1051,12 @@ function pg_backup_run_folder($name)
             }
         }
 
-        $handle = is_dir($source) ? @opendir($source) : false;
+        $failed = pg_backup_copy_folder($source, $target);
 
-        if ($handle) {
-            while (false !== ($entry = readdir($handle))) {
-                if (($entry !== '.') && ($entry !== '..') && is_file($source . '/' . $entry)) {
-                    @copy($source . '/' . $entry, $target . '/' . $entry);
-                }
-            }
-            closedir($handle);
+        if ($failed) {
+            pg_backup_delete_tree($folder);
+            log_activity(pg_backup_last_error(lang(array('string' => 'Software Auto Backup error: {var:1}', 'vars' => array(pg_backup_copy_failure_message($failed))))), 'SYSTEM');
+            return false;
         }
     }
 

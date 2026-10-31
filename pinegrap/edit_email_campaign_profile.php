@@ -137,12 +137,16 @@ if (!$_POST) {
                 <form action="edit_email_campaign_profile.php" method="post">
                     ' . get_token_field() . '
                     ' . $liveform->output_field(array('type'=>'hidden', 'name'=>'id', 'value'=>$_GET['id'])) . '
-                    ' . pg_email_campaign_profile_form_cards($liveform, $user, $liveform->get_field_value('product_id')) . '
+                    ' . pg_email_campaign_profile_form_cards($liveform, $user, $liveform->get_field_value('product_id'), array(
+                        'custom_form_page_id' => ($email_campaign_profile['action'] == 'custom_form_submitted') ? (int) $email_campaign_profile['action_item_id'] : 0,
+                        'page_id' => (int) $email_campaign_profile['page_id'],
+                        'email_campaign_profile_id' => ($email_campaign_profile['action'] == 'email_campaign_sent') ? (int) $email_campaign_profile['action_item_id'] : 0,
+                    ), $id) . '
                     <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
                                 <button type="submit" id="create_button" name="submit_save" value="Save" class="btn my-1  btn-solid theme-success "><span class="material-icons me-3" aria-hidden="true">save</span><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>
-                                <button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-solid theme-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('campaign profile')))) . '"><span class="material-icons me-3" aria-hidden="true">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>
+                                <button type="submit" name="submit_delete" value="Delete" formnovalidate class="btn my-1  btn-solid theme-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('campaign profile')))) . '"><span class="material-icons me-3" aria-hidden="true">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>
                             </div>
                         </div>
                     </nav>

@@ -2,7 +2,7 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Site Settings - the Security cards: who gets an account and how they sign in.
+ * Site Settings - the Accounts and sign-in cards: who gets an account, how they sign in, spam protection and the encryption key.
  *
  * Fills $pg_settings_cards, one grid column per card, in reading order. Which
  * cards belong here is said once, in includes/settings/registry.php; this file
@@ -82,8 +82,8 @@ $pg_settings_cards[] = '
                                         </div>
                                         <div class="col-12 ">
                                             <div class="form-field">
-                                                <div class="switch"><input value="1"' . $password_hint_checked . ' class="" type="checkbox" id="password_hint" name="password_hint"/></div>
-                                                <label class="" for="password_hint">' . lang('Allow Password Hint') . '</label>
+                                                <div class="switch"><input value="1"' . $password_hint_checked . ' class="" type="checkbox" id="setting_password_hint" name="password_hint"/></div>
+                                                <label class="" for="setting_password_hint">' . lang('Allow Password Hint') . '</label>
                                             </div>
                                         </div>
                                         <div class="col-12 ">
@@ -124,6 +124,12 @@ $pg_settings_cards[] = '
                                         </div>
 ' . (function_exists('pg_captcha_settings_fields') ? pg_captcha_settings_fields() : '') . '
 ' . $output_form_limits . '
+                                        <div class="col-12">
+                                            <label for="banned_email_addresses" class="form-label"><i class="bi bi-envelope-slash fg-danger me-1"></i>' . lang('Blocked Email Addresses') . '</label>
+                                            ' . pg_fields_script() . '
+                                            <input type="text" value="' . h($banned_email_addresses) . '" name="banned_email_addresses" id="banned_email_addresses" class="form-control tagin min-height-tagin border-subtle-danger" data-pg-chips data-placeholder="' . lang('Block an address') . '"/>
+                                            <div class="form-text">' . lang('A whole address or a domain. For example: spam@example.com, tempmail.com, @disposable.net. A blocked address cannot register through any form, cannot connect Google, and cannot sign in.') . '</div>
+                                        </div>
                 </div>
             </div>
         </div>
@@ -197,7 +203,7 @@ $pg_settings_cards[] = '
                                             <label for="mfa_required_role" class="form-label">' . lang('Required for') . '</label>
                                             <select name="mfa_required_role" id="mfa_required_role" class="form-control pg-f-md"' . ($mfa_available ? '' : ' disabled="disabled"') . '>' . $mfa_role_options . '</select>
                                             <div class="form-text">' . lang('Two-step verification asks for a code from an authenticator app after the password. People in a required role who have not set it up are asked to when they next sign in. Anybody can turn it on from their account page.') . '</div>
-                                            ' . ($mfa_available ? '' : '<div class="alert theme-warning mt-3 mb-0" role="alert"><i class="bi bi-exclamation-triangle-fill me-3" aria-hidden="true"></i>' . lang('Two-step verification needs an encryption key in config.php; set one from Settings › Commerce (Reset Encryption Key) first.') . '</div>') . '
+                                            ' . ($mfa_available ? '' : '<div class="alert theme-warning mt-3 mb-0" role="alert"><i class="bi bi-exclamation-triangle-fill me-3" aria-hidden="true"></i>' . lang('Two-step verification needs an encryption key in config.php. Make one on the Encryption Key card: switch on Reset Encryption Key and save.') . ' <a class="pg-link-secondary" href="' . h(pg_settings_link('security', 'pgset-encryption')) . '">' . lang('Encryption Key') . '</a></div>') . '
                                         </div>
                                         ' . ($passkey_signin_ready ? '<div class="col-12">
                                             <div class="form-field">
@@ -394,7 +400,7 @@ $pg_settings_cards[] = '
     <div id="pgset-signin" class="pg-set-card">
         <div class="card">
             <div class="card-header bg-reset border-0 d-flex flex-wrap justify-content-between align-items-center">
-                <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . lang('Sign in with Google, Microsoft and Apple') . '</span>
+                <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . lang(array('string' => 'Sign in with {var:1}, {var:2} and {var:3}', 'vars' => array('<span lang="en">Google</span>', '<span lang="en">Microsoft</span>', '<span lang="en">Apple</span>'))) . '</span>
             </div>
             <div class="card-body">
                 <div class="row gy-5">
@@ -473,3 +479,28 @@ $pg_settings_cards[] = '
                                 </div>
                             </div>
                         </div>';
+
+// ── Encryption Key ──
+// The key in config.php that seals stored card numbers, the payment gateway
+// secrets and the two-step verification keys. The switch keeps its post name;
+// security.save.php makes the key and seals the card numbers and gateway
+// secrets again with it.
+$pg_settings_cards[] = '
+    <div id="pgset-encryption" class="pg-set-card">
+        <div class="card">
+            <div class="card-header bg-reset border-0 d-flex flex-wrap justify-content-between align-items-center">
+                <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . lang('Encryption Key') . '</span>
+            </div>
+            <div class="card-body">
+                <div class="row gy-5">
+                                        <div class="col-12">
+                                            <div class="form-field">
+                                                <div class="switch"><input value="1"' . $ecommerce_reset_encryption_key_disabled . ' class="" type="checkbox" id="ecommerce_reset_encryption_key" name="ecommerce_reset_encryption_key"/></div>
+                                                <label class="" for="ecommerce_reset_encryption_key">' . lang('Reset Encryption Key') . '</label>
+                                                <div class="form-text">' . lang('Makes a new key in config.php. Card numbers kept with orders and the payment gateway secrets are encrypted again with it; two-step verification needs a key.') . $ecommerce_reset_encryption_key_disabled_message . '</div>
+                                            </div>
+                                        </div>
+                </div>
+            </div>
+        </div>
+    </div>';

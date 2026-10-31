@@ -60,10 +60,7 @@ function pg_panel_sitemap_check($request, $action)
     // so they happen here: regenerating the sitemap and pinging the search
     // engines is work an anonymous request must not be able to start.
     if (!USER_LOGGED_IN) {
-        respond(array(
-            'status' => 'error',
-            'message' => 'Invalid login.'
-        ));
+        respond(panel_login_refusal());
     }
 
     validate_token();
@@ -162,10 +159,7 @@ function pg_panel_user_pinned_app_update($request, $action)
     // Exempt from the general gate, which answered a request without a
     // session this way; the same answer is kept.
     if (!USER_LOGGED_IN) {
-        respond(array(
-            'status' => 'error',
-            'message' => 'Invalid login.'
-        ));
+        respond(panel_login_refusal());
     }
     $user = validate_user();
     validate_token();
@@ -200,10 +194,7 @@ function pg_panel_update_dashboard_widgets($request, $action)
     // checks, so they happen here: without them an anonymous POST could
     // reset or reorder the site-wide layout.
     if (!USER_LOGGED_IN) {
-        respond(array(
-            'status' => 'error',
-            'message' => 'Invalid login.'
-        ));
+        respond(panel_login_refusal());
     }
 
     validate_token();

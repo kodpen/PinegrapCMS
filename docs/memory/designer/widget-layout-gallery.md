@@ -1,10 +1,10 @@
 ---
 name: widget-layout-gallery
-description: W5 layout gallery of a system widget: sources (Default, From the template, On this site), the filters, Try/Keep/Cancel, undo, saves and rights
+description: W5 layout gallery of a system widget: sources (Default, Starters, From the template, On this site), the filters, Try/Keep/Cancel, undo, saves and rights
 ---
 
 ## What does the gallery offer?
-- The widget panel's "Layout Template" section lists layouts for the widget's kind: Default (the starter tree; a form view with a form chosen gets the layout built from that form's fields), From the template (only in a design made from a template) and On this site (every other widget of the same kind, `_swKindOf()`).
+- The widget panel's "Layout Template" section lists layouts for the widget's kind: Default (the starter tree; a form view with a form chosen gets the layout built from that form's fields), Starters (layouts the release ships, [[widget-starters]]), From the template (only in a design made from a template) and On this site (every other widget of the same kind, `_swKindOf()`).
 
 ## Which widgets on this site are offered?
 - Same kind; a stored tree that is not empty and not a template placeholder (`_swIsTemplatePlaceholder()`); not the same tree as this widget's; identical trees once.

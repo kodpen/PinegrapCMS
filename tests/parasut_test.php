@@ -118,7 +118,10 @@ function test_parasut_connection_line()
 		'company_name' => 'Deneme Ltd.', 'connected_at' => mktime(17, 39, 0, 10, 19, 2026),
 	));
 	pg_assert_same('success', $line['tone']);
-	pg_assert_contains('a@example.com · Deneme Ltd. · 19.10.2026 17:39', $line['text']);
+	// The connection time follows the site's date order and clock and the
+	// person's zone, like every other stored time in the panel.
+	pg_assert_contains('a@example.com · Deneme Ltd. · ' . get_absolute_time(array('timestamp' => mktime(17, 39, 0, 10, 19, 2026), 'format' => 'plain_text')), $line['text']);
+	pg_assert_same(false, strpos($line['text'], '19.10.2026'), 'no fixed d.m.Y date');
 
 	$bare = parasut_connection_line(array('connected' => true, 'grant' => 'password', 'email' => '', 'company_name' => '', 'connected_at' => 0));
 	pg_assert_same(false, strpos($bare['text'], ' · '));

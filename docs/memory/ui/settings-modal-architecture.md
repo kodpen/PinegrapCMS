@@ -4,7 +4,7 @@ description: Site Settings modal architecture: file map, the categories and thei
 ---
 
 ## Why is Site Settings a modal and not a screen?
-- A setting is almost always needed in the middle of another job; going to a page means abandoning it. The old single screen (5219 lines, one `<form>` writing 247 columns per save) was split into eight categories, which then moved into a modal.
+- A setting is almost always needed in the middle of another job; going to a page means abandoning it. The old single screen (5219 lines, one `<form>` writing 247 columns per save) was split into categories, which then moved into a modal.
 
 ## Which files make it up?
 ```
@@ -19,23 +19,19 @@ Page (no-JavaScript path; linked from the main menu's Site Settings row, main-me
   settings2.php                    hub (deleted later)
   settings.php                     OLD single screen; orphan, in the Cleanup list
 Shared
-  includes/settings/registry.php   the ONE list: categories, sections, keywords, related screens
+  includes/settings/registry.php   the ONE list: categories, sections, keywords, tool groups
+  system_tools.php                 the tool groups as cards; the dialog's list ends in one row to it (settings-system-tools.md)
   includes/settings/prep.php       GET preparation (every category runs all of it)
   includes/settings/<cat>.php      cards -> $pg_settings_cards (+ $pg_settings_modals, $pg_settings_scripts)
   includes/settings/<cat>.save.php what that category writes
 ```
 
-## Which categories and cards exist (27 sections)?
-| Pane | Cards |
-|---|---|
-| `general` | server, software, channel, datetime, cron |
-| `appearance` | theme, dashboard (role < 2 only, `settings-dashboard-card.md`), editor |
-| `features` | features, images |
-| `seo` | seo, analytics |
-| `contact` | campaigns, chat, mailchimp, sms, sms-messages, iys |
-| `security` | session, device, signin, membership |
-| `firewall` | waf, bots, iplists |
-| `commerce` | store, shipping, giftcards, invoice, payments, affiliate |
+## Which categories and cards exist?
+- `registry.php` is the list; read it for the cards. Order: `general`, `appearance`, `features`, `seo`, `languages`, `contact` (Communication), `security` (Accounts and sign-in), `firewall` (Firewall and HTTPS), `commerce` (Ecommerce), `accounting`, `api`. The keys stay when a label changes, so `#settings/<key>/…` links and `settings_<key>.php` keep working.
+- `accounting` (Accounting, as in the main menu): the ERP and E-Invoice cards, out of Ecommerce since #3819 with the same fields, columns and save (`accounting.save.php`, Paraşüt and e-document provider code included). E-Invoice is hidden outside Turkey as before (`pg_edoc_settings_shown()`). The rules, late fee, e-Fatura threshold and template cards come from `includes/erp/settings_cards.php`, shared with `erp_settings.php` (`erp/erp-settings-cards.md`).
+- General › Organization: the organization's identity on one card (`settings-organization-card.md`).
+- Accounts and sign-in and Firewall and HTTPS: the cards moved in #3858 (`settings-security-cards.md`).
+- Dashboard (Appearance) is listed for role < 2 only (`settings-dashboard-card.md`).
 
 ## How do you move a card?
 - Two edits: the `sections` entry in `registry.php`, and moving the card block between `includes/settings/<key>.php` files.

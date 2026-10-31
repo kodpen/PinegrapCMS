@@ -226,6 +226,10 @@ if (!$_POST) {
         }
     }
 
+    // The stored next page stays in the Next Page picker even when its folder
+    // was archived or sent to the bin; read from the row, never the post.
+    $stored_next_page_id = (int) db_value("SELECT next_page_id FROM calendar_events WHERE id = '" . $id . "'");
+
     // Where it was talked about in the workspace, and the tasks about it.
     $output_workspace_button = '';
 
@@ -243,7 +247,7 @@ if (!$_POST) {
             'icon'=>'calendar', 
             'heading'=> lang(array('string'=>'Edit {var:1}','vars'=>lang('Event'))),
             'heading_description' => lang('View, edit, or publish this calendar event.'),
-            'cancel'=>array('enable'=>'true','url'=>'view_calendars.php'),
+            'cancel'=>array('enable'=>'true','url'=>pg_send_to_url('calendars.php')),
         
             'breadcrumb' => array(array('label' => lang('View Calendars'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/calendars.php'), array('label' => lang(array('string'=>'Edit {var:1}','vars'=>lang('Event'))))),
         )
@@ -271,12 +275,12 @@ if (!$_POST) {
                     <input type="hidden" name="id" value="' . h($_GET['id']) . '" />
                     ' . $liveform->output_field(array('type'=>'hidden', 'name'=>'send_to', 'value'=>($_GET['send_to'] ?? ''))) . '
                     ' . $liveform->output_field(array('type'=>'hidden', 'name'=>'recurrence_number', 'value'=>$requested_recurrence_number)) . '
-                    ' . pg_calendar_event_form_cards($liveform, $user, $calendars, $calendar_event_locations, $id) . '
+                    ' . pg_calendar_event_form_cards($liveform, $user, $calendars, $calendar_event_locations, $id, $stored_next_page_id) . '
                     <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
                                 <button type="submit" id="submit_save" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><span class="material-icons me-3">save</span><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>
-                                <button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-solid theme-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('Event')))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>
+                                <button type="submit" name="submit_delete" value="Delete" formnovalidate class="btn my-1  btn-solid theme-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('Event')))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>
                             </div>
                         </div>
                     </nav>
@@ -353,7 +357,7 @@ if (!$_POST) {
             
             // if there is a send to, then add send to to query string
             if ($liveform->get_field_value('send_to') != '') {
-                $query_string_send_to = '&send_to=' . $liveform->get_field_value('send_to');
+                $query_string_send_to = '&send_to=' . urlencode($liveform->get_field_value('send_to'));
             }
             
             header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/edit_calendar_event.php?id=' . $liveform->get_field_value('id') . $query_string_recurrence_number . $query_string_send_to);

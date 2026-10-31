@@ -227,10 +227,21 @@ class liveform {
             $output_aria_label = ' aria-label="' . h((string) $attributes['aria-label']) . '"';
         }
 
+        // A hint printed under the field is tied to it by its id.
+        if (isset($attributes['aria-describedby']) && is_scalar($attributes['aria-describedby']) && (string) $attributes['aria-describedby'] !== '') {
+            $output_aria_label .= ' aria-describedby="' . h((string) $attributes['aria-describedby']) . '"';
+        }
+
         $spellcheck = '';
 
         if (isset($attributes['spellcheck']) && $attributes['spellcheck']) {
             $spellcheck = ' spellcheck="' . h($attributes['spellcheck']) . '"';
+        }
+
+        // Printed only when given (an IBAN asks for "characters", an e-mail
+        // list for "off"), so site forms keep the browser default.
+        if (isset($attributes['autocapitalize']) && is_scalar($attributes['autocapitalize']) && (string) $attributes['autocapitalize'] !== '') {
+            $spellcheck .= ' autocapitalize="' . h((string) $attributes['autocapitalize']) . '"';
         }
         
         $output_inputmode = '';
@@ -629,8 +640,10 @@ class liveform {
                 
                 $output_onclick = ($onclick) ? ' onclick="' . $onclick . '"' : '';
                 $output_onfocus = ($onfocus) ? ' onfocus="' . $onfocus . '"' : '';
+                // The picker offers only the types the screen takes.
+                $output_accept = isset($attributes['accept']) ? ' accept="' . h($attributes['accept']) . '"' : '';
                 
-                return '<input type="file" name="' . h($field) . '"' . $output_id_attribute . ' size="' . $size . '" class="' . $class . '" style="' . $style . '"' . $output_onclick . $output_onfocus . $output_required . $output_aria_label . $output_aria_invalid . $autofocus . '>' . $output_inline_feedback;
+                return '<input type="file" name="' . h($field) . '"' . $output_id_attribute . ' size="' . $size . '" class="' . $class . '" style="' . $style . '"' . $output_accept . $output_onclick . $output_onfocus . $output_required . $output_aria_label . $output_aria_invalid . $autofocus . '>' . $output_inline_feedback;
                 break;
 
             case 'submit':
@@ -1270,12 +1283,12 @@ class liveform {
                 
             // if there is 1 warning, then output description and warning
             if (count($_SESSION['software']['liveforms'][$this->form][$this->index]['warnings']) == 1) {
-                $output_warnings = '<h5 class="alert-heading description"><img src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/icon_warning.png" alt="Warning" title="" class="icon" style="display: inline-block;margin-right: 0.5em;min-width: 18px;min-height: 16px;">' . lang('Warning') . ':</h5> <p class="warning" style="color:' . $warning_color . ';">' . $_SESSION['software']['liveforms'][$this->form][$this->index]['warnings'][0] . '</p>';
+                $output_warnings = '<h5 class="alert-heading description"><img src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/icon_warning.png" alt="" title="" class="icon" style="display: inline-block;margin-right: 0.5em;min-width: 18px;min-height: 16px;">' . lang('Warning') . ':</h5> <p class="warning" style="color:' . $warning_color . ';">' . $_SESSION['software']['liveforms'][$this->form][$this->index]['warnings'][0] . '</p>';
                 
             // else there is more than 1 warning, so output description and list of warnings
             } else {
                 $output_warnings =
-                    '<h5 class="alert-heading description"><img src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/icon_warning.png" alt="Warning" title="" class="icon" style="display: inline-block;margin-right: 0.5em;min-width: 18px;min-height: 16px;">' . lang('Warnings') . ':</h5>';
+                    '<h5 class="alert-heading description"><img src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/icon_warning.png" alt="" title="" class="icon" style="display: inline-block;margin-right: 0.5em;min-width: 18px;min-height: 16px;">' . lang('Warnings') . ':</h5>';
                 
                 // loop through the warnings in order to output them
                 foreach ($_SESSION['software']['liveforms'][$this->form][$this->index]['warnings'] as $warning) {

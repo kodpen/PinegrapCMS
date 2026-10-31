@@ -7,8 +7,8 @@ description: Code fields on panel screens: pg_code_editor_attach(), loading thro
 - `pg_code_editor_attach(array('id' => 'code', 'code_type' => 'css', 'readonly' => false))` (`includes/fn/editor.php`) after the textarea: the facade's editor (`assets/js/pg_code_editor.js`, CodeMirror 6) takes the textarea's place, keeps its value current and raises `input` on it, so the form submits as before. `pg_code_editor_language()` maps the code type to `css`, `javascript`, `json`, else `html`; a plain-text type turns the lint off. Optional `height`; without it the field grows to 80vh and scrolls inside; a read-only field is as tall as its text.
 - `attach()` gives the editor's content the textarea's name (`aria-label`, labelledby, label; #2887): every code field needs one.
 - The syntax lint (`_syntaxLinter()`: empty documents, files over 100 KB): docs/memory/core/code-editor-syntax-lint.md.
-- F11 fills the window, Esc leaves. The instance is kept in `window.pgCodeEditors[id]` and the textarea raises `pgcodeeditorready` when it is there (`create_file.php` then follows the chosen type with `setLanguage()` / `setLint()`).
-- CodeMirror 5 is gone (2026.11.0): no `get_codemirror_*()`, no `'code_editor'` page property, no template in the head. `clean_up.php` lists its old folders.
+- Tab indents, Ctrl+M moves focus (`code-field-keyboard-exit.md`); F11 fills the window, Esc leaves. The instance is kept in `window.pgCodeEditors[id]` and the textarea raises `pgcodeeditorready` when it is there (`create_file.php` then follows the chosen type with `setLanguage()` / `setLint()`).
+- CodeMirror 5 is gone (2026.11.0): no `get_codemirror_*()`, no `'code_editor'` page property, no head template; `clean_up.php` lists its old folders.
 
 ## How is the facade loaded?
 - Not in the head. The panel header names the facade and its engine in `window.pgCodeEditorConfig` (`pg_code_editor_urls()`); `pg_code_editor_includes()` (once per request) adds the engine's translated texts and labels. Both are inline scripts: jQuery fetches a `<script src>` in pane markup with a blocking request.
@@ -17,7 +17,7 @@ description: Code fields on panel screens: pg_code_editor_attach(), loading thro
 
 ## What must happen around AJAX markup?
 - The settings dialog: `pgCodeEditorReady(markup, done)` waits for the facade and its engine when the markup calls `pgCodeEditorUse`, so the pane is painted with its editors.
-- `window.pgReleaseEditors(scope)` destroys every editor of `window.pgCodeEditors` inside the scope (an editor view keeps document listeners and a resize observer). Call it before replacing or closing markup that may hold one, like `destroy_widget_charts()` for charts; the settings dialog does it for the pane, the card's own dialogs (`clearExtras()`) and on close.
+- `window.pgReleaseEditors(scope)` destroys every editor of `window.pgCodeEditors` inside the scope (it keeps document listeners and a resize observer). Call it before replacing or closing markup that may hold one, like `destroy_widget_charts()` for charts; the settings dialog does it for the pane, the card's own dialogs (`clearExtras()`) and on close.
 
 ## Which other places use the facade?
 - The File Manager's file window (`view_folders.php`): `PgCodeEditor.create()` after the hidden textarea, `destroy()` on close, language from `pg_explorer_editor_language()`.

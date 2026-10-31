@@ -882,6 +882,7 @@
             var results = (data && data.results) || [];
             if (!results.length) {
                 productList.show('<div class="pg-sale-res-empty">' + esc(t.noProductsEnter) + '</div>', []);
+                announce(t.noProductsEnter);
                 return;
             }
             var html = results.map(function (p, index) {
@@ -899,6 +900,7 @@
         }).catch(function () {
             if (ticket === productTicket) {
                 productList.show('<div class="pg-sale-res-empty">' + esc(t.searchFailed) + '</div>', []);
+                announce(t.searchFailed);
             }
         });
     }
@@ -1103,6 +1105,7 @@
         }).catch(function () {
             if (ticket === customerTicket) {
                 customerList.show('<div class="pg-sale-res-empty">' + esc(t.searchFailed) + '</div>', []);
+                announce(t.searchFailed);
             }
         });
     }
@@ -1117,6 +1120,8 @@
 
         if (!results.length) {
             html = '<div class="pg-sale-res-empty">' + esc(t.noCustomers) + '</div>';
+            // A plain line in the list is not an option, so it is read out.
+            announce(t.noCustomers);
         }
 
         // Somebody the shop has not met yet: a new account from the name typed.
@@ -1241,9 +1246,12 @@
         var title = byId('erp_drawer_title');
         var body = byId('erp_drawer_body');
         var open = byId('erp_drawer_open');
-        title.textContent = '';
+        // Named by its title while the account loads (see erp_lists.js).
+        title.textContent = t.loading;
+        panel.setAttribute('aria-busy', 'true');
         open.classList.add('d-none');
-        body.innerHTML = '<div class="d-flex justify-content-center py-12"><span class="spinner-border fg-secondary" style="font-size:2rem" role="status" aria-hidden="true"></span></div>';
+        body.innerHTML = '<div class="d-flex justify-content-center py-12"><span class="spinner-border fg-secondary" style="font-size:2rem" role="status"><span class="visually-hidden"></span></span></div>';
+        body.querySelector('.visually-hidden').textContent = t.loading;
         pgUI.drawer.show(panel);
 
         fetch(cfg.drawerUrl + '?type=account&id=' + encodeURIComponent(button.getAttribute('data-sale-ledger')), {
@@ -1252,6 +1260,7 @@
         }).then(function (response) {
             return response.json();
         }).then(function (data) {
+            panel.removeAttribute('aria-busy');
             if (!data || data.error || !data.html) {
                 throw new Error('drawer');
             }
@@ -1260,6 +1269,7 @@
             open.classList.remove('d-none');
             body.innerHTML = data.html;
         }).catch(function () {
+            panel.removeAttribute('aria-busy');
             body.innerHTML = '<div class="alert theme-warning mb-0"></div>';
             body.firstChild.textContent = t.loadFailed;
         });
@@ -1421,7 +1431,8 @@
         });
         pgUI.drawer.on(el.recent, 'show', function () {
             document.body.classList.add('pg-side-panel-open');
-            el.recentBody.innerHTML = '<div class="d-flex justify-content-center py-12"><span class="spinner-border fg-secondary" style="font-size:2rem" role="status" aria-hidden="true"></span></div>';
+            el.recentBody.innerHTML = '<div class="d-flex justify-content-center py-12"><span class="spinner-border fg-secondary" style="font-size:2rem" role="status"><span class="visually-hidden"></span></span></div>';
+            el.recentBody.querySelector('.visually-hidden').textContent = t.loading;
             getJson({ request: 'recent' }).then(function (data) {
                 el.recentBody.innerHTML = (data && data.html) ? data.html : '';
             }).catch(function () {
@@ -1480,9 +1491,11 @@
         jQuery(document).scannerDetection({
             timeBeforeScanTest: 200,
             avgTimeByChar: 100,
-            ignoreIfFocusOn: 'input, textarea, select, [contenteditable="true"]',
+            ignoreIfFocusOn: 'input, textarea, select, [contenteditable="true"], [contenteditable=""]',
             onComplete: function (code) {
-                if (pgUI.anyOpen('dialog')) {
+                // A code made only of blanks (Space or Enter pressed twice on
+                // a focused button) is not a scan.
+                if (pgUI.anyOpen('dialog') || String(code).trim() === '') {
                     return;
                 }
                 var dot = el.foot.querySelector('.pg-sale-dot');

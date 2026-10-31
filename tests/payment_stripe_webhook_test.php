@@ -272,6 +272,24 @@ function test_payment_stripe_webhook_other_events_are_acknowledged()
 	pg_assert_same(200, pg_payment_notify_outcome('stripe', $answer, null)['http']);
 }
 
+function test_payment_stripe_webhook_renewal_names_its_subscription()
+{
+	$answer = payment_stripe_webhook_test_notify(payment_stripe_webhook_test_event('payment_intent.succeeded', payment_stripe_webhook_test_intent(array('metadata' => array('subscription_id' => '7')))));
+
+	pg_assert_true($answer['success']);
+	pg_assert_same('paid', $answer['status']);
+	pg_assert_same('7', $answer['raw']['subscription_id']);
+	pg_assert_same('subscription-7', $answer['order_reference']);
+
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/includes/payments/callback.php');
+	pg_assert_true(strpos($source, 'pg_payment_callback_renewal($key, $answer);') < strpos($source, '$order = $answer[\'success\'] ? pg_payment_notify_order($answer) : null;'), 'taken before any order lookup');
+
+	// An order's payment keeps its order even with a subscription named.
+	$order = payment_stripe_webhook_test_notify(payment_stripe_webhook_test_event('payment_intent.succeeded', payment_stripe_webhook_test_intent(array('metadata' => array('order_id' => '438', 'subscription_id' => '7')))));
+	pg_assert_same('438', $order['order_reference']);
+	pg_assert_false(isset($order['raw']['subscription_id']));
+}
+
 function test_payment_stripe_webhook_unknown_order_is_acknowledged_quietly()
 {
 	$answer = payment_stripe_webhook_test_notify(payment_stripe_webhook_test_event('payment_intent.succeeded', payment_stripe_webhook_test_intent(array('metadata' => array('order_id' => '9999')))));

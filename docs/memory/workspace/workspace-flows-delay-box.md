@@ -4,7 +4,7 @@ description: The delay box of a flow (F5b, PR #2135): amount and unit up to a we
 ---
 
 ## What does it do?
-- Kind `delay` in `ws_flow_kinds()` (not a step): outcome `done` only, output `waited_until` (text, ISO UTC from `ws_flow_time()`). Helpers in `includes/workspace/flow_runs.php`; tests `tests/workspace_flow_delay_test.php`.
+- Kind `delay` in `ws_flow_kinds()` (not a step): outcome `done` only, output `waited_until` (text, ISO UTC from `ws_flow_time()`; conditions compare that). Filled into a message, chat post, notice or e-mail it is the site's date and time in the site's zone (`ws_step_values_local_times()` in `ws_step_fill_action()`, `30.10.2026 03:50`); a generic webhook body, MCP arguments and table cells keep ISO (#3515, bug #3373). Helpers in `includes/workspace/flow_runs.php`; tests `tests/workspace_flow_delay_test.php`.
 - Settings `{amount, unit}` (`ws_flow_delay_normalize()`): unit minutes, hours or days; amount '' when unset.
 
 ## What range, and why?

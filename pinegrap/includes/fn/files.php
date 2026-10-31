@@ -470,6 +470,63 @@ function prepare_file_name($file_name)
     }
     return $file_name;
 }
+
+// Writes $content to $path as a whole and returns true, or returns false
+// with the stored file left as it was. The content goes to a temporary file
+// in the same folder first; only when every byte is written and the file is
+// closed does it take the stored file's place, so a full disk or a folder
+// PHP may not write never leaves a cut-off or empty file behind. A file
+// another account owns cannot always be replaced in place, so when the
+// rename over it fails it is deleted and the rename tried again (the editors
+// deleted the old file before writing for the same reason).
+function pg_file_write_whole($path, $content)
+{
+    $path = (string) $path;
+    $content = (string) $content;
+    $folder = dirname($path);
+
+    if (($path === '') || !is_dir($folder) || is_dir($path)) {
+        return false;
+    }
+
+    $temporary = $folder . '/.' . basename($path) . '.' . bin2hex(random_bytes(6)) . '.tmp';
+    $handle = @fopen($temporary, 'xb');
+
+    if ($handle === false) {
+        return false;
+    }
+
+    $length = strlen($content);
+    $written = 0;
+
+    while ($written < $length) {
+        $bytes = @fwrite($handle, substr($content, $written));
+
+        if (($bytes === false) || ($bytes === 0)) {
+            break;
+        }
+
+        $written += $bytes;
+    }
+
+    $closed = @fclose($handle);
+    clearstatcache(true, $temporary);
+
+    if (($written === $length) && $closed && (@filesize($temporary) === $length)) {
+        if (@rename($temporary, $path)) {
+            return true;
+        }
+
+        if (is_file($path) && @unlink($path) && @rename($temporary, $path)) {
+            return true;
+        }
+    }
+
+    @unlink($temporary);
+
+    return false;
+}
+
 // Create a function that is used in order to determine if a page type
 // requires that "from=control_panel" be added to links to the page so that
 // errors about missing information are not outputted when an editor is simply
@@ -754,6 +811,324 @@ function pg_post_body_discarded()
     }
 
     return ((int) ($_SERVER['CONTENT_LENGTH'] ?? 0) > 0);
+}
+
+/**
+ * What to tell the person about a body PHP threw away for being over
+ * post_max_size, naming the most one request may carry.
+ *
+ * @param int $post_max bytes, post_max_size (0: not known)
+ * @return string
+ */
+function pg_upload_body_discarded_message($post_max)
+{
+    $sentence = lang('The request was too large for this server and arrived empty.');
+
+    if ((int) $post_max <= 0) {
+        return $sentence;
+    }
+
+    return $sentence . ' ' . lang(array(
+        'string' => 'The file can be at most {var:1}.',
+        'vars'   => array(convert_bytes_to_string((int) $post_max, 1))));
+}
+
+/**
+ * Ends a form-POST screen whose body PHP threw away (pg_post_body_discarded())
+ * with a 413 page that names the limit, instead of drawing the form again as
+ * if nothing had been sent. Called right after init.php; never from an
+ * endpoint whose body is JSON.
+ */
+function pg_upload_refuse_discarded_body()
+{
+    if (!pg_post_body_discarded()) {
+        return;
+    }
+
+    $limits = pg_upload_limits();
+
+    output_error(h(pg_upload_body_discarded_message($limits['post_max'])) . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.', 413);
+}
+
+/**
+ * What to tell the person about a file PHP did not take in whole, naming the
+ * file and, for an oversize one, the limit.
+ *
+ * @param string $name     the file's name as it was sent
+ * @param int    $error    PHP's upload error code
+ * @param int    $file_max bytes, the largest single file the server takes
+ * @return string '' for UPLOAD_ERR_OK
+ */
+function pg_upload_error_message($name, $error, $file_max)
+{
+    $error = (int) $error;
+
+    if ($error === UPLOAD_ERR_OK) {
+        return '';
+    }
+
+    if (in_array($error, array(UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE), true)) {
+        return lang(array(
+            'string' => '{var:1} is larger than {var:2}, the biggest single file this server accepts.',
+            'vars'   => array($name, convert_bytes_to_string($file_max, 1))));
+    }
+
+    if ($error === UPLOAD_ERR_PARTIAL) {
+        return lang(array(
+            'string' => '{var:1} only arrived in part, so it was not saved. Please try again.',
+            'vars'   => array($name)));
+    }
+
+    return lang(array(
+        'string' => 'The server could not accept {var:1}. Please try again.',
+        'vars'   => array($name)));
+}
+
+/**
+ * The refusal for one $_FILES entry of a single-file box, read before the
+ * file is opened: an oversize file arrives with an empty tmp_name, which
+ * fopen() and copy() turn into an error page (PHP 8 throws on an empty path)
+ * or a misleading "empty" or "not a valid zip" answer.
+ *
+ * @param array|null $file     the $_FILES entry
+ * @param int        $file_max bytes, the largest single file the server takes
+ * @return string '' when the file arrived or none was chosen (the screen's
+ *                own "choose a file" answer covers that)
+ */
+function pg_upload_file_refusal($file, $file_max)
+{
+    if (!is_array($file) || !isset($file['error']) || is_array($file['error'])) {
+        return '';
+    }
+
+    $error = (int) $file['error'];
+
+    if ($error === UPLOAD_ERR_NO_FILE) {
+        return '';
+    }
+
+    return pg_upload_error_message(pg_basename((string) ($file['name'] ?? '')), $error, $file_max);
+}
+
+/**
+ * The sentence under a single-file box: the largest file it takes, the
+ * screen's own limit when that is lower than the server's.
+ *
+ * @param int      $app_max  bytes, the screen's own limit (0: none)
+ * @param int|null $file_max bytes, the server's limit (null: pg_upload_limits())
+ * @return string '' when neither limits the file
+ */
+function pg_upload_limit_sentence($app_max = 0, $file_max = null)
+{
+    if ($file_max === null) {
+        $limits = pg_upload_limits();
+        $file_max = $limits['file_max'];
+    }
+
+    $max = (int) $file_max;
+    $app_max = (int) $app_max;
+
+    if (($app_max > 0) && (($max <= 0) || ($app_max < $max))) {
+        $max = $app_max;
+    }
+
+    if ($max <= 0) {
+        return '';
+    }
+
+    return lang(array(
+        'string' => 'The file can be at most {var:1}.',
+        'vars'   => array(convert_bytes_to_string($max, 1))));
+}
+
+/**
+ * pg_upload_limit_sentence() as the hint line under a file box.
+ *
+ * @param int $app_max bytes, the screen's own limit (0: none)
+ * @return string HTML, '' when there is no limit to state
+ */
+function pg_upload_limit_hint($app_max = 0)
+{
+    $sentence = pg_upload_limit_sentence($app_max);
+
+    return ($sentence === '') ? '' : '<div class="form-text">' . h($sentence) . '</div>';
+}
+
+/**
+ * Stores one file that arrived for the file library: the rules every file
+ * of the Upload File screen goes through (add_file.php), whether the browser
+ * sent it or the server downloaded it from the person's cloud storage
+ * (includes/fn/cloud_file_picker.php).
+ *
+ * In order: a name the web server would run is refused, a file over the
+ * biggest single upload this server accepts is refused, the name is
+ * prepared and made unique, the bytes are copied in, a product photo is
+ * processed (image_profile 'product'), and only then is the row written and
+ * announced. Nothing is recorded for a file that is not on the disk.
+ *
+ * The caller has checked the token and the person's right to the folder,
+ * and logs a refusal.
+ *
+ * @param string $source_path the file as it arrived (PHP's temporary upload, a download)
+ * @param string $file_name   the name it was given, before prepare_file_name()
+ * @param int    $file_size   its size in bytes
+ * @param array  $options     folder, description, design (null when the
+ *                            person may not set it), image_profile,
+ *                            image_settings (pg_image_settings()), file_max
+ *                            (0: no limit)
+ * @return array ok, message (when refused), file (when stored: id, name,
+ *               type, size, original_size, width, height, resized, too_small)
+ */
+function pg_file_store_upload($source_path, $file_name, $file_size, $options)
+{
+    $file_size = (int) $file_size;
+    $file_max = isset($options['file_max']) ? (int) $options['file_max'] : 0;
+
+    // The caller writes a refusal to the Site Log, so these rules run
+    // without a database too (tests/cloud_file_picker_test.php).
+    $refuse = function ($message) {
+        return array('ok' => false, 'message' => $message);
+    };
+
+    // A name the web server would run or read as its own settings is
+    // refused, not renamed: the operator should know it did not arrive.
+    if (pg_upload_name_blocked($file_name)) {
+        return $refuse(pg_upload_blocked_message($file_name));
+    }
+
+    // PHP enforces this itself for a browser upload; a downloaded file is
+    // held to the same ceiling here.
+    if (($file_max > 0) && ($file_size > $file_max)) {
+        return $refuse(lang(array(
+            'string' => '{var:1} is larger than {var:2}, the biggest single file this server accepts.',
+            'vars'   => array($file_name, convert_bytes_to_string($file_max, 1)))));
+    }
+
+    $file_name = prepare_file_name($file_name);
+
+    $file_name = get_unique_name(array(
+        'name' => $file_name,
+        'type' => 'file'));
+
+    $array_file_extension = explode('.', $file_name);
+    $file_extension = $array_file_extension[count($array_file_extension) - 1];
+
+    $file_path = FILE_DIRECTORY_PATH . '/' . $file_name;
+
+    // A failed copy used to be followed by an INSERT anyway, which is how a
+    // row can point at a file that was never written.
+    if (!@copy($source_path, $file_path)) {
+        return $refuse(lang(array(
+            'string' => 'The server could not accept {var:1}. Please try again.',
+            'vars'   => array($file_name))));
+    }
+
+    $original_size = $file_size;
+    $image_profile = isset($options['image_profile']) ? (string) $options['image_profile'] : '';
+    $image_settings = isset($options['image_settings']) ? $options['image_settings'] : array();
+
+    // Product photos are compressed on the way in, and scaled down when they
+    // are over the ceiling. Nothing is refused and nothing is enlarged: an
+    // image below the minimum is stored as it is and reported back so the
+    // screen can say so.
+    $image_report = null;
+    $sql_image_1 = "";
+    $sql_image_2 = "";
+
+    if ($image_profile === 'product') {
+
+        // A 24 megapixel photo takes a couple of seconds to resample, and the
+        // picker sends a whole selection in one request. The default 30
+        // seconds is a page that dies half way through the third file.
+        @set_time_limit(120);
+
+        $image_report = pg_process_image_file($file_path, array(
+            'max_dimension' => $image_settings['product_max_dimension'],
+            'min_dimension' => $image_settings['product_min_dimension'],
+            'quality'       => $image_settings['resize_quality']));
+
+        if ($image_report['status'] === 'success') {
+
+            @clearstatcache(true, $file_path);
+            $file_size = filesize($file_path);
+
+            // Flagged optimized so the Files screen does not offer to do it
+            // again: the badge there would promise a saving that has already
+            // been taken, and pressing it would recompress an image that is
+            // already at its target quality.
+            $sql_image_1 = "optimized, image_width, image_height, optimization_percent,";
+            $sql_image_2 =
+                "'1',
+                 '" . (int) $image_report['width'] . "',
+                 '" . (int) $image_report['height'] . "',
+                 '0',";
+
+            if ($image_report['changed']) {
+                log_activity(lang(array(
+                    'string' => 'image ({var:1}) was optimized on upload ({var:2} -> {var:3})',
+                    'vars'   => array(
+                        $file_name,
+                        convert_bytes_to_string($image_report['bytes_before'], 'auto'),
+                        convert_bytes_to_string($image_report['bytes_after'], 'auto')))));
+            }
+        }
+    }
+
+    $sql_design_1 = "";
+    $sql_design_2 = "";
+
+    // Only a designer or administrator sets the design property.
+    if (isset($options['design']) && ($options['design'] !== null)) {
+        $sql_design_1 = "design,";
+        $sql_design_2 = "'" . escape($options['design']) . "',";
+    }
+
+    db(
+        "INSERT INTO files (
+            name,
+            folder,
+            description,
+            type,
+            size,
+            " . $sql_image_1 . "
+            " . $sql_design_1 . "
+            user,
+            timestamp)
+        VALUES (
+            '" . escape($file_name) . "',
+            '" . escape($options['folder'] ?? '') . "',
+            '" . escape($options['description'] ?? '') . "',
+            '" . escape($file_extension) . "',
+            '" . escape($file_size) . "',
+            " . $sql_image_2 . "
+            " . $sql_design_2 . "
+            '" . USER_ID . "',
+            UNIX_TIMESTAMP())");
+
+    $new_file_id = (int) mysqli_insert_id(db::$con);
+
+    pg_audit_record('create', 'files', $new_file_id);
+
+    log_activity(lang(array('string' => 'file ({var:1}) was created', 'vars' => $file_name)), $_SESSION['sessionusername']);
+
+    // A file uploaded from the panel is as new to an integration as one
+    // posted to the API, so it is announced the same way.
+    pg_announce('file.created', array('id' => $new_file_id, 'name' => $file_name));
+
+    return array('ok' => true, 'file' => array(
+        'id'            => $new_file_id,
+        'name'          => $file_name,
+        'type'          => $file_extension,
+        'size'          => $file_size,
+        // What arrived, so the caller can add up the saving.
+        'original_size' => $original_size,
+        // Zero when the file was not measured, which is every upload that
+        // did not ask for a profile. The caller reads too_small rather than
+        // comparing these itself, so the minimum lives in one place.
+        'width'         => $image_report ? (int) $image_report['width'] : 0,
+        'height'        => $image_report ? (int) $image_report['height'] : 0,
+        'resized'       => (bool) ($image_report && $image_report['resized']),
+        'too_small'     => (bool) ($image_report && $image_report['too_small'])));
 }
 
 /**
@@ -1118,4 +1493,24 @@ function pg_files_include_erp_document($file_ids)
     }
 
     return ((int) db_value("SELECT COUNT(*) FROM files WHERE id IN (" . implode(',', $ids) . ") AND erp_doc_type <> ''") > 0);
+}
+
+// The width of the name columns the File and Catalog Manager and the folder
+// screens write: folder.folder_name, page.page_name, products.name,
+// product_groups.name and product_groups.short_description are varchar(100).
+function pg_name_max_length()
+{
+    return 100;
+}
+
+// True when a name is longer than its column. The session is not strict, so
+// a longer value would be cut without an error; the limit is in characters,
+// as a utf8mb4 varchar's is.
+function pg_name_too_long($name, $limit = null)
+{
+    if ($limit === null) {
+        $limit = pg_name_max_length();
+    }
+
+    return mb_strlen((string) $name, 'UTF-8') > (int) $limit;
 }

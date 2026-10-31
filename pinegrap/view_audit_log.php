@@ -213,7 +213,7 @@ pg_page_shell(array(
             </div>
             <div class="card mb-5">
                 <div class="card-body p-0 position-relative">
-                    <table class="chart table-hover table align-top" style="width:100%;display:none" data-pg-list-action="audit_log_list_rows" data-pg-list-params="' . h(encode_json(array('filters' => (object) $audit_view_query))) . '" data-pg-audit-failed="' . h(lang('Query failed.')) . '">
+                    <table class="chart table-hover table align-top" style="width:100%;display:none" data-pg-list-action="audit_log_list_rows" data-pg-list-params="' . h(encode_json(array('filters' => (object) $audit_view_query))) . '" data-pg-audit-failed="' . h(lang('Query failed.')) . '" data-pg-audit-loading="' . h(lang('Loading...')) . '">
                         <thead>
                             <tr>
                                 <th>' . $audit_view_heading('date') . '</th>
@@ -245,9 +245,11 @@ pg_page_shell(array(
             fold.setAttribute("data-pg-audit-read", "1");
 
             var body = fold.querySelector(".pg-audit-changes-body");
-            var failed = (fold.closest("table") && fold.closest("table").getAttribute("data-pg-audit-failed")) || "";
+            var table = fold.closest("table");
+            var failed = (table && table.getAttribute("data-pg-audit-failed")) || "";
 
-            body.textContent = "…";
+            body.textContent = (table && table.getAttribute("data-pg-audit-loading")) || "";
+            body.setAttribute("aria-busy", "true");
 
             window.jQuery.ajax({
                 contentType: "application/json",
@@ -256,6 +258,7 @@ pg_page_shell(array(
                 dataType: "json",
                 data: JSON.stringify({ action: "audit_log_changes", token: software_token, id: fold.getAttribute("data-pg-audit-line") })
             }).done(function (response) {
+                body.removeAttribute("aria-busy");
                 if (response && (response.status === "success")) {
                     body.innerHTML = response.html;
                 } else {
@@ -263,6 +266,7 @@ pg_page_shell(array(
                     fold.removeAttribute("data-pg-audit-read");
                 }
             }).fail(function (xhr) {
+                body.removeAttribute("aria-busy");
                 body.textContent = (xhr.responseJSON && xhr.responseJSON.message) || failed;
                 fold.removeAttribute("data-pg-audit-read");
             });

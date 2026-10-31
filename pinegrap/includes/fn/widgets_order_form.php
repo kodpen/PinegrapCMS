@@ -59,9 +59,10 @@ function pg_of_layout($layout)
  * @param bool   $recipient the visitor picks the recipient (multi-recipient
  *                          shipping and an available shippable product)
  * @param string $skip_label the skip button's label ('' for none)
+ * @param array  $currencies pg_sw_currency_rows()
  * @return array
  */
-function pg_of_flags($layout, $products, $recipient, $skip_label)
+function pg_of_flags($layout, $products, $recipient, $skip_label, $currencies = array())
 {
     $available = 0;
     $non_donations = 0;
@@ -81,6 +82,7 @@ function pg_of_flags($layout, $products, $recipient, $skip_label)
         'has_quantity'         => !$list && $non_donations > 0,
         'has_recipient_choice' => $available > 0 && (bool)$recipient,
         'has_skip_button'      => trim((string)$skip_label) !== '',
+        'has_currency_choice'  => count((array)$currencies) > 1,
     );
     return $of_flags;
 }
@@ -186,8 +188,8 @@ function _pg_of_products($group_id)
 
 // A recurring product's payment schedule, with the classic field names:
 // frequency, number of payments and, unless the gateway sets it, the start
-// date with its date picker. The values come from the liveform; on a first
-// visit the product's own schedule.
+// date on the date-and-time control. The values come from the liveform; on a
+// first visit the product's own schedule.
 function _pg_of_schedule_html($product, $lf, $prefill)
 {
     $id = (int)$product['id'];
@@ -216,10 +218,10 @@ function _pg_of_schedule_html($product, $lf, $prefill)
         . '<input type="text" class="form-control form-control-sm" id="' . $f . 'count" name="recurring_number_of_payments_' . $id . '" maxlength="9" value="' . h($count) . '">'
         . '<div class="form-text">' . h(trim(get_number_of_payments_message())) . '</div></div>';
     if ($with_start) {
-        // The classic page's date picker reads the box by its id.
+        // data-pg-date brings the date-and-time control
+        // (pg_site_datetime_inject()); the box posts the site's date text.
         $html .= '<div class="col-sm-4"><label class="form-label small" for="recurring_start_date_' . $id . '">' . h(lang('Start Date')) . '*</label>'
-            . '<input type="text" class="form-control form-control-sm" id="recurring_start_date_' . $id . '" name="recurring_start_date_' . $id . '" maxlength="10" value="' . h($start) . '">'
-            . '<script>software_$("#recurring_start_date_' . $id . '").datepicker(datetimepicker_options);</script></div>';
+            . '<input type="text" class="form-control form-control-sm" id="recurring_start_date_' . $id . '" name="recurring_start_date_' . $id . '" maxlength="10" value="' . h($start) . '" data-pg-date></div>';
     }
     return $html . '</div></fieldset>';
 }
@@ -302,6 +304,8 @@ function pg_of_row_html($row_tree, $product, $posted, $prefill, $schedule, $widg
 // add_name (the recipient), the submit_add and submit_skip buttons.
 // Tokens: ^^__add_button_label^^, ^^__skip_button_label^^,
 // ^^__currency_symbol^^, ^^__cart_url^^.
+// Currency picker: the currency_id select and the currency_update button
+// (pg_sw_currency_picker()), shown by has_currency_choice.
 // Flags: pg_of_flags(). Errors: liveform 'order_form'.
 // cfg: product_group_id, product_layout, add_button_label,
 // add_button_next_page_id, skip_button_label, skip_button_next_page_id.
@@ -341,7 +345,8 @@ function _render_system_widget_order_form($tree_json, $widget_id, $cfg = array()
     }
     $recipient = defined('ECOMMERCE_SHIPPING') && ECOMMERCE_SHIPPING
         && defined('ECOMMERCE_RECIPIENT_MODE') && ECOMMERCE_RECIPIENT_MODE === 'multi-recipient' && $shippable;
-    $of_flags = pg_of_flags($layout, $products, $recipient, $skip_label);
+    $currencies = pg_sw_currency_rows();
+    $of_flags = pg_of_flags($layout, $products, $recipient, $skip_label, $currencies);
 
     $price_html = function ($p) use ($discounted) {
         $id = $p['id'];
@@ -361,6 +366,7 @@ function _render_system_widget_order_form($tree_json, $widget_id, $cfg = array()
         _pg_member_drop_control($tree, 'add_name');
     }
     if (!$of_flags['has_skip_button']) _pg_member_drop_control($tree, 'submit_skip');
+    pg_sw_currency_picker($tree, $widget_id, $currencies, defined('VISITOR_CURRENCY_ID') ? (int)VISITOR_CURRENCY_ID : 0);
 
     // The drop-down layout's pick list: each available product with its
     // price; one the stock leaves out carries its out-of-stock words.
@@ -397,7 +403,6 @@ function _render_system_widget_order_form($tree_json, $widget_id, $cfg = array()
     // uses it up.
     $split = _split_widget_tree($tree);
     $rows = '';
-    $has_schedule = false;
     if ($split['loop_children'] !== null && $of_flags['is_list_layout'] && $products) {
         $row_tree = array('type' => 'root', 'props' => array(), 'children' => $split['loop_children']);
         foreach ($products as $p) {
@@ -405,7 +410,6 @@ function _render_system_widget_order_form($tree_json, $widget_id, $cfg = array()
             $schedule = '';
             if (pg_of_row_flags($p)['has_recurring_schedule']) {
                 $schedule = _pg_of_schedule_html($p, $lf, $prefill);
-                $has_schedule = true;
             }
             $p['price_html'] = $price_html($p);
             $rows .= pg_of_row_html($row_tree, $p, array(
@@ -424,14 +428,12 @@ function _render_system_widget_order_form($tree_json, $widget_id, $cfg = array()
         '__cart_url'          => h($cart_url),
     );
     $rendered = _pg_member_apply_tokens($rendered, $tokens);
-    if (!$of_flags['has_products'] && !$of_flags['has_skip_button']) return $rendered;
+    // The picker's own form follows the widget's: forms cannot nest.
+    $currency_form = pg_sw_currency_form_html($widget_id, $currencies, get_request_uri());
+    if (!$of_flags['has_products'] && !$of_flags['has_skip_button']) return $rendered . $currency_form;
 
-    // The start date boxes' picker reads its options from the classic script.
-    if ($has_schedule && (!ECOMMERCE_CREDIT_DEBIT_CARD || ECOMMERCE_PAYMENT_GATEWAY != 'ClearCommerce')) {
-        $rendered = get_date_picker_format() . $rendered;
-    }
     return _pg_member_form_wrap($rendered, _pg_acct_software_path() . '/order_form.php', array(
         'page_id'         => $page_id,
         'require_cookies' => 'true',
-    ), 'pg-order-form');
+    ), 'pg-order-form') . $currency_form;
 }

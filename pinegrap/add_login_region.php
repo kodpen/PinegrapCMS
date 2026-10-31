@@ -33,7 +33,7 @@ if (!$_POST) {
         'icon'=>'page',
         'heading'=>lang(array('string'=>'Create {var:1}','vars'=>lang('Login Region'))),
         'heading_description' => lang('Create the messages displayed in the login region before and after users log in.'),
-        'cancel'=>array('enable'=>'true','url'=>'view_regions.php')
+        'cancel'=>array('enable'=>'true','url'=>'view_regions.php?filter=all_login_regions')
     ,
             'breadcrumb' => array(array('label' => lang('All Login Regions'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_regions.php?filter=all_login_regions'), array('label' => lang(array('string'=>'Create {var:1}','vars'=>lang('Login Region'))))),
         ]) . '
@@ -45,7 +45,7 @@ if (!$_POST) {
                 
                 <form name="form" action="add_login_region.php" method="post">
                     ' . get_token_field() . '
-                    ' . pg_login_region_form_card($liveform, true) . '
+                    ' . pg_login_region_form_card($liveform, $liveform->prefill()) . '
                     <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">

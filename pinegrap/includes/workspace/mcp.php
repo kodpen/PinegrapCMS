@@ -2067,7 +2067,7 @@ function ws_mcp_settings_tools($self_url, $server, $admin)
             $empty = lang('The server lists no tools.');
         } else {
             $empty = $admin
-                ? lang('The tools have not been read yet. Ask the server for them with the button above.')
+                ? lang('The tools have not been read yet. Ask the server for them with the Ask the server for its tools again button.')
                 : lang('The tools have not been read yet. An administrator can ask the server for them.');
         }
 
@@ -2131,7 +2131,7 @@ function ws_mcp_settings_tools($self_url, $server, $admin)
         }
 
         $rows .= '
-            <li class="ws-dept-row align-items-start" data-ws-mcp-tool="' . h(mb_strtolower($name . ' ' . $tool['title'] . ' ' . $description)) . '"' . (($can === 'read') ? ' data-ws-mcp-reads' : '') . '>
+            <li class="ws-dept-row align-items-start" data-ws-mcp-tool="' . h(ws_fold($name . ' ' . $tool['title'] . ' ' . $description)) . '"' . (($can === 'read') ? ' data-ws-mcp-reads' : '') . '>
                 ' . $control . '
                 <label class="ws-grow" for="' . $field . '">
                     <span class="fw-semibold"><code>' . h($name) . '</code></span>
@@ -2172,7 +2172,9 @@ function ws_mcp_settings_tools($self_url, $server, $admin)
                 ' . (($admin && ($reads > 0)) ? '<button type="button" class="btn btn-sm btn-outline theme-secondary text-nowrap" data-ws-mcp-all-read><i class="bi bi-check2-all me-1" aria-hidden="true"></i>' . h(lang('Every tool that reads only')) . '</button>' : '') . '
                 ' . (($admin && ($unsaid_off > 0)) ? '<button type="submit" name="mcp_declare_all" value="1" class="btn btn-sm btn-outline theme-warning text-nowrap" onclick="return confirm(' . h(json_encode($declare_warning)) . ');"><i class="bi bi-shield-exclamation me-1" aria-hidden="true"></i>' . h(lang('Declare the "Not said" ones read-only')) . '</button>' : '') . '
             </div>
+            <div class="visually-hidden" role="status" data-ws-mcp-filter-status data-found="' . h(lang(array('string' => '{var:1} found', 'vars' => '{1}'))) . '" data-none="' . h(lang('Nothing found.')) . '"></div>
             <ul class="list-unstyled ws-mcp-tools mb-0">' . $rows . '</ul>
+            <p class="small fg-2 mb-0 d-none" data-ws-mcp-empty>' . h(lang('Nothing found.')) . '</p>
         </form>';
 }
 
@@ -2413,11 +2415,48 @@ function ws_mcp_settings_card($self_url, $viewer, $liveform = null)
                 field.value = \'\';
             }
 
-            var words = field.value.toLocaleLowerCase().trim();
+            // Both sides folded (pgFoldTR() of backend.src.js, ws_fold() on
+            // the server), so İ, I, ı and i match alike in any browser language.
+            var fold = window.pgFoldTR || function (text) { return String(text).toLowerCase(); };
+            var words = fold(field.value).trim();
+            var form = field.closest(\'form\');
+            var status = form.querySelector(\'[data-ws-mcp-filter-status]\');
+            var rows = form.querySelectorAll(\'[data-ws-mcp-tool]\');
+            var shown = 0;
 
-            field.closest(\'form\').querySelectorAll(\'[data-ws-mcp-tool]\').forEach(function (row) {
-                row.classList.toggle(\'d-none\', words !== \'\' && row.getAttribute(\'data-ws-mcp-tool\').indexOf(words) === -1);
+            rows.forEach(function (row) {
+                var hide = words !== \'\' && fold(row.getAttribute(\'data-ws-mcp-tool\')).indexOf(words) === -1;
+
+                row.classList.toggle(\'d-none\', hide);
+
+                if (!hide) {
+                    shown++;
+                }
             });
+
+            form.querySelector(\'[data-ws-mcp-empty]\').classList.toggle(\'d-none\', words === \'\' || rows.length === 0 || shown > 0);
+
+            // The count is read once the typing stops, not after every key.
+            clearTimeout(status.pgTimer);
+            status.textContent = \'\';
+
+            if (words === \'\' || rows.length === 0) {
+                return;
+            }
+
+            status.pgTimer = setTimeout(function () {
+                status.textContent = shown > 0
+                    ? status.getAttribute(\'data-found\').replace(\'{1}\', shown)
+                    : status.getAttribute(\'data-none\');
+            }, 500);
+        });
+
+        // Enter in the filter would press the form\'s first submit button:
+        // Save for an administrator, a refused post for anyone else.
+        document.addEventListener(\'keydown\', function (event) {
+            if (event.key === \'Enter\' && !event.isComposing && event.target.matches && event.target.matches(\'[data-ws-mcp-filter]\')) {
+                event.preventDefault();
+            }
         });
 
         document.addEventListener(\'click\', function (event) {

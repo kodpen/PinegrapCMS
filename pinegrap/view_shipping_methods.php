@@ -210,8 +210,8 @@ while ($row = mysqli_fetch_array($result)) {
                 <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
                 <!--<button type="button" class="m-1 btn-data-control btn btn-outline theme-danger border-2 " title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
             </td>
-            <td style="max-width:100px" class="text-nowrap text-truncate align-middle chart_label ' . $status_color_class . '">' . h($name) . '</td>
-            <td style="max-width:200px" class="text-nowrap text-truncate align-middle">' . h($description) . '</td>
+            <td class="align-middle chart_label ' . $status_color_class . '"><div class="text-wrap text-break" style="max-width:20rem;">' . h($name) . '</div></td>
+            <td class="align-middle"><div class="text-wrap text-break" style="max-width:20rem;">' . h($description) . '</div></td>
             <td class="align-middle"><span class="badge fg-body fw-light">' . h($code) . '</span></td>
             <td class="align-middle">' . h(get_shipping_service_name($service)) . '</td>
             <td class="align-middle text-center">' . $realtime_rate . '</td>

@@ -1324,6 +1324,8 @@ function ws_note_import_write($viewer, &$stage, $index, $row, $mode)
         ws_blocks_index('note', $note_id, $body, (int) $viewer['id']);
     }
 
+    ws_ref_source_write('note', array($note_id => ws_note_ref_tokens($body)));
+
     return array('state' => 'added', 'note_id' => $note_id, 'written' => $updated, 'links' => ws_note_import_links_notes($stage, $index, $entry, $body), 'error' => '');
 }
 

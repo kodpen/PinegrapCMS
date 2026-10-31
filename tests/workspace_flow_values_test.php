@@ -264,3 +264,47 @@ function test_workspace_flow_derived_in_the_graph_check()
 		'edges' => array(),
 	)), 'no input, days not a number');
 }
+
+// A derived value keeps a length limit: an input citing a value many times,
+// through a chain of joins, never grows past WS_FLOW_DERIVED_VALUE_LENGTH.
+function test_workspace_flow_derived_value_length_limit()
+{
+	pg_assert_true(defined('WS_FLOW_DERIVED_VALUE_LENGTH'), 'the limit is a constant');
+	$cite = function ($ref, $times) {
+		return str_repeat('{{' . $ref . '}}', $times);
+	};
+	$graph = ws_flow_graph_normalize(array(
+		'nodes' => array(
+			ws_flow_values_test_node('manual_1', 'manual'),
+			ws_flow_values_test_node('c', 'constants', array('rows' => array(array('key' => 'v', 'type' => 'text', 'value' => str_repeat('a', 500))))),
+			ws_flow_values_test_node('j1', 'value', array('rule' => 'join', 'a' => $cite('node.c.v', 41), 'b' => $cite('node.c.v', 41))),
+			ws_flow_values_test_node('j2', 'value', array('rule' => 'join', 'a' => $cite('node.j1.value', 29), 'b' => $cite('node.j1.value', 29))),
+			ws_flow_values_test_node('j3', 'value', array('rule' => 'join', 'a' => $cite('node.j2.value', 29), 'b' => $cite('node.j2.value', 29))),
+		),
+		'edges' => array(),
+	));
+	$values = ws_flow_pure_values($graph);
+
+	foreach (array('j1', 'j2', 'j3') as $id) {
+		pg_assert_same(WS_FLOW_DERIVED_VALUE_LENGTH, mb_strlen($values[$id]['value']), $id . ' is cut at the limit');
+	}
+
+	$rule = function ($rule, $a, $b, $more = array()) {
+		return ws_flow_derived_value(ws_flow_derived_normalize(array('rule' => $rule) + $more), $a, $b);
+	};
+	$half = str_repeat('x', (int) (WS_FLOW_DERIVED_VALUE_LENGTH / 2) - 1);
+
+	pg_assert_same($half . ' ' . $half, $rule('join', $half, $half), 'a join below the limit is whole');
+	pg_assert_same('1', $rule('compare', 'abc', 'ABC'), 'compare below the limit');
+	pg_assert_same('3.5', $rule('add', '1.25', '2.25'), 'add below the limit');
+
+	$long = str_repeat('ğ', WS_FLOW_DERIVED_VALUE_LENGTH);
+	$joined = $rule('join', $long, $long);
+	pg_assert_same(WS_FLOW_DERIVED_VALUE_LENGTH, mb_strlen($joined), 'a multibyte join is cut by character');
+	pg_assert_true(mb_check_encoding($joined, 'UTF-8'), 'never in the middle of a character');
+
+	$filled = ws_flow_derived_fill('é' . $cite('node.c.v', 3), array('c' => array('v' => $long)));
+	pg_assert_same(WS_FLOW_DERIVED_VALUE_LENGTH, mb_strlen($filled), 'a filled input is cut at the limit');
+	pg_assert_true(mb_check_encoding($filled, 'UTF-8'), 'the filled input is valid UTF-8');
+	pg_assert_same('Hi Ada.', ws_flow_derived_fill('Hi {{trigger.name}}.', array(WS_STEP_TRIGGER => array('name' => 'Ada'))), 'a short input is filled whole');
+}

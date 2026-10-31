@@ -107,10 +107,6 @@ if (!$_POST) {
     $show_image = (bool) ECOMMERCE_SHOW_PRODUCT_IMAGES;
     $output_image_header = $show_image ? '<th>' . lang('Image') . '</th>' : '';
 
-    // initialize arrays that will store data for sorting
-    $item_sort_orders = array();
-    $item_names = array();
-    
     // get all product groups currently in this product group
     //
     // Groups and products in the Recycle Bin are not listed or counted here, as
@@ -134,9 +130,6 @@ if (!$_POST) {
     while ($row = mysqli_fetch_assoc($result)) {
         $row['type'] = 'product_group';
         $items[] = $row;
-        
-        $item_sort_orders[] = $row['sort_order'];
-        $item_names[] = mb_strtolower($row['name']);
     }
     
     // if there are product groups inside of this product group
@@ -168,13 +161,10 @@ if (!$_POST) {
         
         $selected_products[] = $row['id'];
         $items[] = $row;
-        
-        $item_sort_orders[] = $row['sort_order'];
-        $item_names[] = mb_strtolower($row['name']);
     }
 
     // sort the items by sort order and then by name
-    array_multisort($item_sort_orders, $item_names, $items);
+    $items = pg_list_sort_by_order_and_name($items);
 
     // The pictures behind each product's cover, for the image viewer.
     $more_images = $show_image ? pg_product_more_images($selected_products) : array();
@@ -240,7 +230,7 @@ if (!$_POST) {
     $initial_unselected = db_items(
         "SELECT id, name, enabled, short_description, image_name, price
          FROM products $unselected_exclude_sql
-         ORDER BY timestamp DESC
+         " . pg_product_group_form_unselected_order_sql() . "
          LIMIT 20"
     );
 
@@ -258,6 +248,7 @@ if (!$_POST) {
     }
 
     $output_attributes = '';
+    $output_enable_attributes_checked = '';
 
     // If there is at least one attribute in the system, then output area for them.
     if (db_value("SELECT COUNT(*) FROM product_attributes")) {
@@ -461,11 +452,11 @@ if (!$_POST) {
     } elseif ($parent_id != 0) {
         // if there is a child product group in this product group, then disable delete button
         if ($child_product_group_exists == true) {
-            $output_delete_button = '<button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-solid theme-danger " onclick="alert(\'' . lang('Please delete all product groups in this product group before deleting this product group.') . '\')" ><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>';
+            $output_delete_button = '<button type="button" name="submit_delete" value="Delete" class="btn my-1  btn-solid theme-danger " onclick="alert(\'' . lang('Please delete all product groups in this product group before deleting this product group.') . '\');return false;" ><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>';
         // else there is not a child object in this product group, so allow delete
         } else {
             $output_delete_button = '
-            <button type="submit" name="submit_button" value="Delete" class="btn my-1  btn-solid theme-danger " data-confirm-content="' . h(pg_catalog_bin_ready() ? lang(array('string' => 'This {var:1} will be moved to the Recycle Bin. It can be restored from the Recycle Bin in the Catalog Manager.', 'vars' => array(lang('product group')))) : lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('product group'))))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>';
+            <button type="submit" name="submit_button" value="Delete" class="btn my-1  btn-solid theme-danger " formnovalidate data-confirm-content="' . h(pg_catalog_bin_ready() ? lang(array('string' => 'This {var:1} will be moved to the Recycle Bin. It can be restored from the Recycle Bin in the Catalog Manager.', 'vars' => array(lang('product group')))) : lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('product group'))))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>';
         }
     } else {
         $output_delete_button = '';
@@ -642,7 +633,7 @@ if (!$_POST) {
         $binned_name = pg_catalog_bin_group((int) ($_POST['id'] ?? 0), $user['id']);
 
         if ($binned_name !== false) {
-            log_activity(lang(array('string' => 'The product group, {var:1}, was moved to the Recycle Bin.', 'vars' => h($binned_name))), $_SESSION['sessionusername']);
+            log_activity(lang(array('string' => 'The product group, {var:1}, was moved to the Recycle Bin.', 'vars' => $binned_name)), $_SESSION['sessionusername']);
         }
 
     // if product group was selected for delete
@@ -802,7 +793,7 @@ if (!$_POST) {
         $sql_enable_attributes = "";
 
         // If the enable attributes check box appeared on the form, then update value.
-        if ($_POST['enable_attributes_exists'] == 'true') {
+        if (($_POST['enable_attributes_exists'] ?? '') == 'true') {
             $sql_enable_attributes = "attributes = '" . escape($_POST['enable_attributes'] ?? '') . "',";
         }
 
@@ -889,8 +880,8 @@ if (!$_POST) {
         db("DELETE FROM product_groups_attributes_xref WHERE product_group_id = '" . e($_POST['id'] ?? '') . "'");
 
         // If there are attributes to save, then save them.
-        if ($_POST['attributes']) {
-            $attributes = decode_json($_POST['attributes']);
+        if ($_POST['attributes'] ?? '') {
+            $attributes = decode_json($_POST['attributes'] ?? '');
 
             $sort_order = 0;
 
@@ -913,11 +904,11 @@ if (!$_POST) {
 
         // If the status of the product group has changed, then update status
         // for child items.
-        if ($_POST['enabled'] != $old_enabled) {
+        if (($_POST['enabled'] ?? '') != $old_enabled) {
 
             require_once(dirname(__FILE__) . '/update_product_group_status.php');
 
-            if ($_POST['enabled']) {
+            if ($_POST['enabled'] ?? '') {
                 $status = 'enabled';
             } else {
                 $status = 'disabled';

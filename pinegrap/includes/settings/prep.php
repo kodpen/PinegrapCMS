@@ -65,7 +65,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $passkey_signin_ready = array_key_exists('passkey_signin', $row);
     $passkey_signin = $passkey_signin_ready ? (int) $row['passkey_signin'] : 0;
     $passkeys_available = function_exists('pg_passkeys_available') && pg_passkeys_available();
-    // Commerce warns before the encryption key is reset when somebody's
+    // The Encryption Key card warns before the key is reset when somebody's
     // second factor would become unreadable by it.
     $mfa_enabled_accounts = pg_mfa_table_exists()
         ? (int) db_value("SELECT COUNT(*) FROM user_mfa WHERE enabled_at > 0")
@@ -467,10 +467,9 @@ if (!defined('PG_SETTINGS_ENTRY')) {
 
         $output_erp_edoc_options = '
                                                             <div class="form-field">
-                                                                <input class="radio collapse-switcher" type="radio" name="edoc_provider" id="edoc_provider_none" value="" data-bs-target="#edoc_fields_none"' . (($erp_edoc_active === '') ? ' checked="checked"' : '') . ' />
-                                                                <label class="" for="edoc_provider_none"><b>' . lang('Off') . '</b>
-                                                                    <div class="form-text mt-0">' . lang('Invoices and delivery notes are printed as PDF and sent to the tax authority by other means.') . '</div>
-                                                                </label>
+                                                                <input class="radio collapse-switcher" type="radio" name="edoc_provider" id="edoc_provider_none" value="" aria-describedby="edoc_provider_none_help" data-bs-target="#edoc_fields_none"' . (($erp_edoc_active === '') ? ' checked="checked"' : '') . ' />
+                                                                <label class="" for="edoc_provider_none"><b>' . lang('Off') . '</b></label>
+                                                                <div class="form-text mt-0" id="edoc_provider_none_help">' . lang('Invoices and delivery notes are printed as PDF and sent to the tax authority by other means.') . '</div>
                                                             </div>
                                                             <div id="edoc_fields_none" style="display:none"></div>';
 
@@ -545,12 +544,11 @@ if (!defined('PG_SETTINGS_ENTRY')) {
 
             $output_erp_edoc_options .= '
                                                             <div class="form-field">
-                                                                <input class="radio collapse-switcher" type="radio" name="edoc_provider" id="edoc_provider_' . h($erp_edoc_code) . '" value="' . h($erp_edoc_code) . '" data-bs-target="#edoc_fields_' . h($erp_edoc_code) . '"' . (($erp_edoc_active === $erp_edoc_code) ? ' checked="checked"' : '') . ' />
-                                                                <label class="" for="edoc_provider_' . h($erp_edoc_code) . '"><b>' . h($erp_edoc_info['label']) . '</b>' . $erp_edoc_badges . '
-                                                                    <div class="form-text mt-0">' . h($erp_edoc_info['description'])
-                                                                        . (($erp_edoc_info['docs_url'] !== '') ? ' <a href="' . h($erp_edoc_info['docs_url']) . '" target="_blank" rel="noopener">' . lang('API documentation') . '</a>' : '') . '</div>'
-                                                                    . $erp_edoc_status . '
-                                                                </label>
+                                                                <input class="radio collapse-switcher" type="radio" name="edoc_provider" id="edoc_provider_' . h($erp_edoc_code) . '" value="' . h($erp_edoc_code) . '" aria-describedby="edoc_provider_' . h($erp_edoc_code) . '_help" data-bs-target="#edoc_fields_' . h($erp_edoc_code) . '"' . (($erp_edoc_active === $erp_edoc_code) ? ' checked="checked"' : '') . ' />
+                                                                <label class="" for="edoc_provider_' . h($erp_edoc_code) . '"><b>' . h($erp_edoc_info['label']) . '</b>' . $erp_edoc_badges . '</label>
+                                                                <div class="form-text mt-0" id="edoc_provider_' . h($erp_edoc_code) . '_help">' . h($erp_edoc_info['description'])
+                                                                    . (($erp_edoc_info['docs_url'] !== '') ? ' <a href="' . h($erp_edoc_info['docs_url']) . '" target="_blank" rel="noopener">' . lang('API documentation') . '</a>' : '')
+                                                                    . $erp_edoc_status . '</div>
                                                             </div>
                                                             <div id="edoc_fields_' . h($erp_edoc_code) . '" class="ms-7 mb-5" style="display:none">
                                                                 ' . (($erp_edoc_info['settings_note'] !== '') ? '<div class="form-text mb-3">' . h($erp_edoc_info['settings_note']) . '</div>' : '') . '
@@ -625,6 +623,9 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         && array_key_exists('erp_auto_invoice_min_total', $row);
     $erp_auto_invoice_tax_number_only_checked = ((int) ($row['erp_auto_invoice_tax_number_only'] ?? 0) === 1) ? ' checked' : '';
     $erp_auto_invoice_min_total = (int) floor(max(0, (int) ($row['erp_auto_invoice_min_total'] ?? 0)) / 100);
+    // Marketplace orders too (11.0.62), off by default.
+    $erp_auto_invoice_marketplace_ready = $erp_auto_invoice_ready && array_key_exists('erp_auto_invoice_marketplace', $row);
+    $erp_auto_invoice_marketplace_checked = ((int) ($row['erp_auto_invoice_marketplace'] ?? 0) === 1) ? ' checked' : '';
     // Checkout legal documents (11.0.1): the switch and the two templates. An
     // empty template is shown as the built-in one, so it is edited rather than
     // written from nothing.
@@ -657,6 +658,8 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $erp_quote_alert_ready = array_key_exists('erp_notify_quote_expiry', $row);
     $erp_notify_quote_expiry_checked = ((int) ($row['erp_notify_quote_expiry'] ?? 1) === 1) ? ' checked="checked"' : '';
     $erp_notify_quote_expiry_days = min(30, max(1, (int) ($row['erp_notify_quote_expiry_days'] ?? 3)));
+    $erp_quote_followup_ready = array_key_exists('erp_quote_expiry_followup', $row);
+    $erp_quote_expiry_followup_checked = ((int) ($row['erp_quote_expiry_followup'] ?? 0) === 1) ? ' checked="checked"' : '';
     $erp_credit_limit_mode = ((string) ($row['erp_credit_limit_mode'] ?? 'warn') === 'block') ? 'block' : 'warn';
     // How an order's shipping and surcharge are taxed on its invoice (4.76);
     // empty lets the store's country decide.
@@ -738,6 +741,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     // Only built where the columns behind them exist: a control that saves
     // nothing is worse than no control at all.
     $output_share_image_pickers = '';
+    $output_organization_logo_picker = '';
     $output_app_icon_picker = '';
     $output_site_icon_picker = '';
 
@@ -858,17 +862,21 @@ if (!defined('PG_SETTINGS_ENTRY')) {
                                             <label for="og_default_image" class="form-label">' . lang('Default Share Image') . '</label>
                                             <select name="og_default_image" id="og_default_image" class="form-control">' . $og_image_options . '</select>
                                             <div class="form-text">' . lang('Used as the social share picture for pages that do not have one of their own.') . '</div>' . $og_default_forms_notice . '
-                                        </div>
-                                        <div class="pg-f-md">
-                                            <label for="organization_logo" class="form-label">' . lang('Organization Logo') . '</label>
-                                            <select name="organization_logo" id="organization_logo" class="form-control">' . $logo_image_options . '</select>
-                                            <div class="form-text">' . lang('Used in the structured data that introduces your organization and as the publisher logo on blog posts.') . '</div>
                                         </div>';
+
+        // Drawn on General › Organization and written by its save, under the
+        // same column check as the share image above.
+        $output_organization_logo_picker = '
+                    <div class="pg-f-lg">
+                        <label for="organization_logo" class="form-label">' . lang('Organization Logo') . '</label>
+                        <select name="organization_logo" id="organization_logo" class="form-control">' . $logo_image_options . '</select>
+                        <div class="form-text">' . lang('Used in the structured data that introduces your organization and as the publisher logo on blog posts.') . '</div>
+                    </div>';
 
         // Everything in here exists ONLY as structured data output, so it
         // hides with the switch, the way the other dependent groups on this
-        // screen do. The share image and logo above stay out of it: the share
-        // image feeds Open Graph, which has its own setting.
+        // screen do. The share image above stays out of it: it feeds Open
+        // Graph, which has its own setting.
         $output_structured_data_dependent = '
                                         <div class="collapse popover fade bs-popover-bottom p-0  w-100" id="strutured_data_dependent_row">
                                             <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(30px, 0px);"></div>
@@ -890,7 +898,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
                                                     </div>
                                                     <div class="pg-f-sm">
                                                         <label for="merchant_shipping_rate" class="form-label">' . lang('Standard Shipping Rate') . '</label>
-                                                        <input type="text" name="merchant_shipping_rate" id="merchant_shipping_rate" class="form-control" value="' . (($merchant_shipping_rate >= 0) ? h(sprintf('%01.2f', $merchant_shipping_rate / 100)) : '') . '"/>
+                                                        <input type="text" inputmode="decimal" name="merchant_shipping_rate" id="merchant_shipping_rate" class="form-control" value="' . (($merchant_shipping_rate >= 0) ? h(sprintf('%01.2f', $merchant_shipping_rate / 100)) : '') . '"/>
                                                         <div class="form-text">' . lang('Leave blank to leave shipping out of the markup. Enter 0 for free shipping.') . '</div>
                                                     </div>
                                                     <div class="pg-f-xs">
@@ -903,7 +911,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
                                                     </div>
                                                     <div class="pg-f-xs">
                                                         <label for="merchant_return_days" class="form-label">' . lang('Return Window (days)') . '</label>
-                                                        <input type="text" name="merchant_return_days" id="merchant_return_days" class="form-control" value="' . (($merchant_return_days >= 0) ? (int) $merchant_return_days : '') . '"/>
+                                                        <input type="text" inputmode="numeric" name="merchant_return_days" id="merchant_return_days" class="form-control" value="' . (($merchant_return_days >= 0) ? (int) $merchant_return_days : '') . '"/>
                                                         <div class="form-text">' . lang('Leave blank to leave the return policy out of the markup. Enter 0 if returns are not accepted.') . '</div>
                                                     </div>
                                                     <div class="pg-f-md">
@@ -1188,9 +1196,9 @@ if (!defined('PG_SETTINGS_ENTRY')) {
       
         foreach($currencies as $currency){
             if($iyzipay_protected_currency_code == $currency['code']){
-                $output_iyzipay_protected_currency_select_options .= '<option value="' . $currency['code'] . '" selected="selected">' . $currency['code'] . ' - ' . $currency['name'] . '</option>';
+                $output_iyzipay_protected_currency_select_options .= '<option value="' . h($currency['code']) . '" selected="selected">' . h($currency['code']) . ' - ' . h($currency['name']) . '</option>';
             }else{
-                $output_iyzipay_protected_currency_select_options .= '<option value="' . $currency['code'] . '" >' . $currency['code'] . ' - ' . $currency['name'] . '</option>';
+                $output_iyzipay_protected_currency_select_options .= '<option value="' . h($currency['code']) . '" >' . h($currency['code']) . ' - ' . h($currency['name']) . '</option>';
             }
 
         }
@@ -1708,7 +1716,6 @@ if (!defined('PG_SETTINGS_ENTRY')) {
 	$ecommerce_iyzipay_3ds_row_style = 'display: none';
     $ecommerce_iyzipay_protected_currency_row_style = 'display: none';
     $ecommerce_surcharge_percentage_row_style = 'display: none';
-    $ecommerce_reset_encryption_key_row_style = 'display: none';
     
     // if e-commerce is on then prepare to show e-commerce fields
     if ($ecommerce_on_or_off == 1) {
@@ -1716,7 +1723,6 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         // if credit/debit card is on, then prepare to show credit/debit card fields
         if ($ecommerce_credit_debit_card == 1) {
             $ecommerce_surcharge_percentage_row_style = '';
-            $ecommerce_reset_encryption_key_row_style = '';
             
             // if there is a payment gateway selected, then prepare to show payment gateway fields
             if ($ecommerce_payment_gateway != '') {

@@ -1410,6 +1410,12 @@ function pg_page_cache_panel_dirties($action, $entry, array $request = array())
         $key = $sub_actions[$action]['key'];
         $sub = (isset($request[$key]) && is_string($request[$key])) ? $request[$key] : '';
 
+        // Bulk Rename asks how its names would be stored while the operator
+        // types; that answer writes nothing.
+        if (($action === 'file_explorer') && ($sub === 'explorer_rename') && !empty($request['preview'])) {
+            return false;
+        }
+
         return in_array($sub, $sub_actions[$action]['dirty'], true);
     }
 
@@ -1464,7 +1470,7 @@ function pg_page_cache_panel_sub_actions()
             'clean' => array('list', 'usage_all', 'prefetch', 'get', 'list_custom_forms',
                 'list_form_item_view_pages', 'list_calendars', 'list_calendar_event_pages',
                 'list_product_groups', 'list_catalog_pages', 'list_catalog_listing_pages',
-                'list_catalog_detail_pages', 'list_shopping_cart_pages', 'list_all_pages', 'list_form_fields', 'template_layouts'),
+                'list_catalog_detail_pages', 'list_shopping_cart_pages', 'list_all_pages', 'list_form_fields', 'template_layouts', 'starter_layouts'),
         ),
         'file_explorer' => array(
             'key' => 'type',

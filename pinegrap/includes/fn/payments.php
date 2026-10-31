@@ -994,7 +994,9 @@ function pg_payment_settings_card_rows($gateway, $card_enabled)
     $html = '';
 
     foreach (pg_payment_drivers() as $key => $definition) {
-        $fields = (($definition['kind'] === 'card') && ($definition['settings'] === 'connect')) ? pg_payment_fields($key) : array();
+        // A shipped driver that keeps its keys in config columns may still
+        // have fields of its own (iyzico's stored-card renewals switch).
+        $fields = ($definition['kind'] === 'card') ? pg_payment_fields($key) : array();
 
         if (!$fields) {
             continue;
@@ -1343,6 +1345,27 @@ function pg_payment_hosted_card_driver($gateway = null)
 }
 
 /**
+ * Whether an order has a recurring line with a price, as submit_order.php
+ * decides it before the payment: the card is then kept for the renewals, and
+ * the hosted card fields must be built saying so.
+ *
+ * @param int $order_id
+ * @return bool
+ */
+function pg_payment_order_recurring($order_id)
+{
+    if ((int) $order_id <= 0) {
+        return false;
+    }
+
+    return (bool) db_value("SELECT 1
+        FROM order_items
+        LEFT JOIN products ON order_items.product_id = products.id
+        WHERE (order_items.order_id = '" . e((int) $order_id) . "') AND (products.recurring = '1') AND (order_items.price > 0)" . pg_order_item_active_sql() . "
+        LIMIT 1");
+}
+
+/**
  * The sources the site's built-in Content-Security-Policy adds for the
  * payment drivers whose pages load from their service: the card gateway's
  * driver while the store takes cards, and each redirect driver that frames
@@ -1650,6 +1673,25 @@ function pg_payment_refund_driver($method, $gateway = null)
 }
 
 /**
+ * The name of the lock the order screen's refund runs under, so a second
+ * request for one order cannot read the refunded total before the first one
+ * has written it. GET_LOCK names belong to the whole database server, so the
+ * name carries the database.
+ *
+ * @param int         $order_id
+ * @param string|null $database database@host; null = the connection's
+ * @return string
+ */
+function pg_payment_refund_lock_name($order_id, $database = null)
+{
+    if ($database === null) {
+        $database = defined('DB_DATABASE') ? DB_DATABASE . '@' . (defined('DB_HOST') ? DB_HOST : '') : (string) db_value("SELECT DATABASE()");
+    }
+
+    return 'pg_refund_' . md5((string) $database) . '_' . (int) $order_id;
+}
+
+/**
  * The driver that voids an order's payment when the order is cancelled. A
  * gateway that is not driver-based leaves the refund to the operator.
  *
@@ -1685,7 +1727,7 @@ function pg_payment_cancel_outcome($order_id, $transaction_id, $answer, $service
 
     if ($answer['success']) {
         $reference = ($answer['refund_reference'] !== '') ? $answer['refund_reference'] : (string) $transaction_id;
-        $log[] = 'Auto-refund SUCCESS via ' . $service . ' — order #' . $order_id . ' (payment ' . $reference . ').';
+        $log[] = pg_log_lang(array('string' => 'Auto-refund SUCCESS via {var:1} — order #{var:2} (payment {var:3}).', 'vars' => array($service, $order_id, $reference)));
 
         return array('refund_status' => 'refunded', 'refund_reference' => $reference, 'log' => $log);
     }
@@ -1693,10 +1735,11 @@ function pg_payment_cancel_outcome($order_id, $transaction_id, $answer, $service
     $message = (isset($answer['raw']['message']) && is_scalar($answer['raw']['message'])) ? (string) $answer['raw']['message'] : '';
 
     if (isset($answer['raw']['exception'])) {
-        $log[] = 'Auto-refund EXCEPTION — order #' . $order_id . '. MANUAL REFUND REQUIRED. ' . $message;
+        $log[] = pg_log_lang(array('string' => 'Auto-refund EXCEPTION — order #{var:1}. MANUAL REFUND REQUIRED. {var:2}', 'vars' => array($order_id, $message)));
     } else {
-        $log[] = 'Auto-refund FAILED via ' . $service . ' — order #' . $order_id .
-            '. MANUAL REFUND REQUIRED. Gateway message: ' . ($message !== '' ? $message : '(no message)');
+        $log[] = pg_log_lang(array(
+            'string' => 'Auto-refund FAILED via {var:1} — order #{var:2}. MANUAL REFUND REQUIRED. Gateway message: {var:3}',
+            'vars'   => array($service, $order_id, ($message !== '') ? $message : pg_log_lang(array('string' => '(no message)')))));
     }
 
     return array('refund_status' => 'manual_required', 'refund_reference' => '', 'log' => $log);

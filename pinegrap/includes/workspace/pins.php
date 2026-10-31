@@ -164,16 +164,8 @@ function ws_channel_pin_present($viewer, $channel, $membership)
         return null;
     }
 
-    $sender = null;
-
-    if ($message['sender_kind'] === 'user') {
-        $people = ws_people(array((int) $message['sender_id']));
-        $sender = $people[(int) $message['sender_id']] ?? null;
-    } elseif ($message['sender_kind'] === 'app') {
-        $sender = ws_app_sender((int) $message['sender_id']);
-    } elseif (($message['sender_kind'] === 'guest') && function_exists('ws_guest_sender')) {
-        $sender = ws_guest_sender((int) $message['sender_id']);
-    }
+    list($people, $mail) = ws_message_rows_senders(array($message));
+    $sender = ws_message_row_sender($message, $people, $mail);
 
     $text = ws_plain_excerpt($viewer, (string) $message['body'], 280);
 

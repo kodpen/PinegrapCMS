@@ -17,6 +17,7 @@ description: How the merging session keeps waking (2026-10-26): a 5-minute sessi
 
 ## What does a new merging session set up first?
 - All three: the 5-minute tick, the 10-minute `send_later` chain and the hourly routine (delete an older routine or chain of a session that is no longer merging). Then it lands or builds as the tick says. A recurring cron expires after 7 days; the hourly routine re-creates it.
+- A fresh merging session per window (a routine that creates a session on each firing) is equally safe: the open `merge-train/*` PR is the lock.
 - Reviews of a train run while its CI runs, not before the push: CI takes about ten minutes, a review by sub-agents about as long.
 
 ## Is the next train built before the open one lands?

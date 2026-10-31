@@ -151,7 +151,7 @@ function pg_explorer_handle_backups_list($type, $request, $user)
                     'type' => mb_strtolower(pathinfo($name, PATHINFO_EXTENSION)),
                     'is_image' => false,
                     'size' => $size,
-                    'size_label' => convert_bytes_to_string($size),
+                    'size_label' => convert_bytes_to_string($size, 'auto'),
                     'design' => false,
                     'optimized' => false,
                     'image_width' => 0,
@@ -197,7 +197,7 @@ function pg_explorer_handle_backups_list($type, $request, $user)
             'backup_blocked_names' => pg_explorer_blocked_upload_names(),
             'backup_blocked_extensions' => pg_explorer_blocked_upload_extensions(),
             'backup_allowed_names' => pg_explorer_backup_upload_allowed_names(),
-            'upload_max_label' => convert_bytes_to_string($upload_limits['json_max'])),
+            'upload_max_label' => convert_bytes_to_string($upload_limits['json_max'], 'floor')),
         'total_label' => convert_bytes_to_string(folderSize($root), 2)));
 }
 
@@ -316,7 +316,7 @@ function pg_explorer_handle_backup_extract($type, $request, $user)
 
     // Its own folder, named after the archive, so extracting twice
     // does not merge two backups into one heap.
-    $base = pathinfo($path, PATHINFO_FILENAME);
+    $base = pg_file_name_stem($path);
     $destination = dirname($path) . '/' . $base;
 
     for ($number = 1; (is_dir($destination) || is_file($destination)) && ($number < 200); $number++) {
@@ -391,7 +391,7 @@ function pg_explorer_handle_backup_extract($type, $request, $user)
         @rmdir($destination_real);
     }
 
-    log_activity(lang(array('string' => '{var:1} files were extracted', 'vars' => $extracted)), $_SESSION['sessionusername']);
+    log_activity((($extracted == 1) ? lang(array('string' => '{var:1} file was extracted', 'vars' => 1)) : lang(array('string' => '{var:1} files were extracted', 'vars' => $extracted))), $_SESSION['sessionusername']);
 
     respond(array(
         'status' => ($extracted > 0) ? 'success' : 'error',
@@ -400,7 +400,7 @@ function pg_explorer_handle_backup_extract($type, $request, $user)
         'skipped' => $skipped,
         'name' => basename($destination_real),
         'message' => ($extracted > 0)
-            ? lang(array('string' => '{var:1} files were extracted', 'vars' => $extracted))
+            ? (($extracted == 1) ? lang(array('string' => '{var:1} file was extracted', 'vars' => 1)) : lang(array('string' => '{var:1} files were extracted', 'vars' => $extracted)))
             : lang('The zip archive could not be opened.')));
 }
 
@@ -513,7 +513,7 @@ function pg_explorer_handle_backup_rename_copy_delete($type, $request, $user)
     if ($type == 'explorer_backup_rename') {
 
         $name = trim(isset($request['name']) ? (string) $request['name'] : '');
-        $name = basename(str_replace('\\', '/', $name));
+        $name = pg_basename(str_replace('\\', '/', $name));
 
         if (($name == '') || (mb_substr($name, 0, 1) == '.') || pg_explorer_unsafe_archive_name($name)) {
             respond(array('status' => 'error', 'message' => lang('Sorry, that name is not allowed here.')));
@@ -650,7 +650,7 @@ function pg_explorer_handle_backup_zip($type, $request, $user)
         'request' => $type,
         'name' => basename($zip_path),
         'path' => trim(str_replace('\\', '/', substr($zip_path, strlen($root))), '/'),
-        'size_label' => convert_bytes_to_string(filesize($zip_path)),
+        'size_label' => convert_bytes_to_string(filesize($zip_path), 'auto'),
         'files' => $added,
-        'message' => lang(array('string' => '{var:1} files were compressed', 'vars' => $added))));
+        'message' => (($added == 1) ? lang(array('string' => '{var:1} file was compressed', 'vars' => 1)) : lang(array('string' => '{var:1} files were compressed', 'vars' => $added)))));
 }

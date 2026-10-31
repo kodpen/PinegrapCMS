@@ -278,7 +278,8 @@ function erp_overdue_notify_threshold($account_days)
  * 'snoozed' put off by the operator until a date not yet reached: left out
  *
  * Each row is what erp_aging_invoices() returns, plus 'threshold', the
- * stamps, and the account's customer-mail choice and address.
+ * stamps, and the account's customer-mail choice, address, phone and its
+ * contact's mobile number.
  *
  * @param int $now
  * @return array  ['new' => rows, 'second' => rows, 'known' => rows, 'snoozed' => rows]
@@ -308,9 +309,12 @@ function erp_overdue_notify_candidates($now = 0)
     $accounts = array();
 
     if ($account_ids && erp_overdue_column_exists('erp_accounts', 'overdue_notify_days')) {
-        $account_columns = "id, email, overdue_notify_days" . ($followups ? ", overdue_notify_customer" : "");
+        $account_columns = "a.id, a.email, a.phone, c.mobile_phone AS contact_mobile, a.overdue_notify_days" . ($followups ? ", a.overdue_notify_customer" : "");
 
-        foreach ((array) db_items("SELECT " . $account_columns . " FROM erp_accounts WHERE id IN (" . implode(',', array_unique($account_ids)) . ")") as $account) {
+        foreach ((array) db_items("SELECT " . $account_columns . "
+            FROM erp_accounts AS a
+            LEFT JOIN contacts AS c ON c.id = a.contact_id
+            WHERE a.id IN (" . implode(',', array_unique($account_ids)) . ")") as $account) {
             $accounts[(int) $account['id']] = $account;
         }
     }
@@ -340,6 +344,8 @@ function erp_overdue_notify_candidates($now = 0)
         $row['snoozed_until'] = (int) (isset($stamp['overdue_snoozed_until']) ? $stamp['overdue_snoozed_until'] : 0);
         $row['customer_notified_at'] = (int) (isset($stamp['customer_notified_at']) ? $stamp['customer_notified_at'] : 0);
         $row['account_email'] = trim((string) (isset($account['email']) ? $account['email'] : ''));
+        $row['account_phone'] = trim((string) (isset($account['phone']) ? $account['phone'] : ''));
+        $row['contact_mobile'] = trim((string) (isset($account['contact_mobile']) ? $account['contact_mobile'] : ''));
         $row['customer_wanted'] = !isset($account['overdue_notify_customer']) || ((int) $account['overdue_notify_customer'] === 1);
 
         if ($row['snoozed_until'] > $now) {
@@ -473,9 +479,10 @@ function erp_overdue_notify_table_html($rows, $with_account, $with_link)
  * @param array $second     Rows announced for the second and last time
  * @param array $known      Rows already announced, still open
  * @param int   $customers  How many customers were written to by this digest
+ * @param int   $texted     How many customers' text messages were queued
  * @return string
  */
-function erp_overdue_notify_digest_html($new, $second, $known, $customers = 0)
+function erp_overdue_notify_digest_html($new, $second, $known, $customers = 0, $texted = 0)
 {
     $paragraph = 'font-size: 14px;';
     $heading = 'font-size: 15px; margin: 22px 0 8px 0;';
@@ -513,6 +520,11 @@ function erp_overdue_notify_digest_html($new, $second, $known, $customers = 0)
     if ((int) $customers > 0) {
         $output_customers = '
         <p style="' . $paragraph . ' color: #555555;">' . h(lang(array('string' => 'A reminder e-mail went to {var:1} customer(s).', 'vars' => (int) $customers))) . '</p>';
+    }
+
+    if ((int) $texted > 0) {
+        $output_customers .= '
+        <p style="' . $paragraph . ' color: #555555;">' . h(lang(array('string' => 'A reminder text message was queued for {var:1} customer(s).', 'vars' => (int) $texted))) . '</p>';
     }
 
     return '<!DOCTYPE html>
@@ -604,21 +616,20 @@ function erp_overdue_customer_mail_html($account_title, $rows, $has_second)
  * customers were reached. A mail that went out stamps its documents with
  * customer_notified_at so the invoice screen can say so.
  *
+ * Beside the mail, and whatever the mail switch says, one text message per
+ * account is queued while the SMS Messages card's overdue reminder is on
+ * (erp_overdue_sms_queue()).
+ *
  * @param array $rows  New and second rows together
  * @param int   $now
- * @return array  ['sent' => accounts written to, 'skipped' => accounts passed over, 'failed' => mails refused]
+ * @return array  ['sent' => accounts written to, 'skipped' => accounts passed over, 'failed' => mails refused,
+ *                 'texted' => accounts whose text message was queued]
  */
 function erp_overdue_notify_customers($rows, $now)
 {
-    $result = array('sent' => 0, 'skipped' => 0, 'failed' => 0);
+    $result = array('sent' => 0, 'skipped' => 0, 'failed' => 0, 'texted' => 0);
 
-    if (!defined('ERP_OVERDUE_NOTIFY_CUSTOMER') || !ERP_OVERDUE_NOTIFY_CUSTOMER || !erp_overdue_notify_followups_ready()) {
-        return $result;
-    }
-
-    $sender = erp_overdue_notify_sender();
-
-    if ($sender === '') {
+    if (!erp_overdue_notify_followups_ready()) {
         return $result;
     }
 
@@ -626,6 +637,18 @@ function erp_overdue_notify_customers($rows, $now)
 
     foreach ($rows as $row) {
         $by_account[(int) $row['account_id']][] = $row;
+    }
+
+    $result['texted'] = erp_overdue_sms_queue($by_account, $now);
+
+    if (!defined('ERP_OVERDUE_NOTIFY_CUSTOMER') || !ERP_OVERDUE_NOTIFY_CUSTOMER) {
+        return $result;
+    }
+
+    $sender = erp_overdue_notify_sender();
+
+    if ($sender === '') {
+        return $result;
     }
 
     foreach ($by_account as $account_id => $documents) {
@@ -637,14 +660,11 @@ function erp_overdue_notify_customers($rows, $now)
             continue;
         }
 
-        $has_second = false;
+        $has_second = (erp_overdue_sms_stage($documents) === 'second');
         $ids = array();
 
         foreach ($documents as $row) {
             $ids[] = (int) $row['id'];
-            if ((int) $row['notified_at'] > 0) {
-                $has_second = true;
-            }
         }
 
         $sent = email(array(
@@ -667,6 +687,187 @@ function erp_overdue_notify_customers($rows, $now)
     }
 
     return $result;
+}
+
+/**
+ * The number an account's overdue reminder is texted to, or why there is
+ * none (pure). The account's own phone when it is a mobile number, else the
+ * mobile number of the contact it is linked to. The e-mail address plays no
+ * part: an account without one is still texted.
+ *
+ * @param array $account  account_phone, contact_mobile, customer_wanted (the
+ *                        account's overdue_notify_customer switch)
+ * @param bool  $erp_on   ERP_ENABLED
+ * @param bool  $event_on the SMS Messages card's erp_overdue switch
+ * @return array  ['number' => E.164 digits or '', 'reason' => '' or one of
+ *                 module_off, event_off, account_off, no_phone, not_mobile]
+ */
+function erp_overdue_sms_decide($account, $erp_on, $event_on)
+{
+    $refuse = function ($reason) {
+        return array('number' => '', 'reason' => $reason);
+    };
+
+    if (!$erp_on) {
+        return $refuse('module_off');
+    }
+
+    if (!$event_on) {
+        return $refuse('event_off');
+    }
+
+    if (isset($account['customer_wanted']) && !$account['customer_wanted']) {
+        return $refuse('account_off');
+    }
+
+    $typed = false;
+
+    foreach (array('account_phone', 'contact_mobile') as $key) {
+        $phone = trim((string) (isset($account[$key]) ? $account[$key] : ''));
+
+        if ($phone === '') {
+            continue;
+        }
+
+        $typed = true;
+        $number = pg_sms_number($phone);
+
+        if ($number !== '') {
+            return array('number' => $number, 'reason' => '');
+        }
+    }
+
+    return $refuse($typed ? 'not_mobile' : 'no_phone');
+}
+
+/**
+ * Which notice an account's documents in this run make (pure): 'second' when
+ * any of them was announced before, else 'first'.
+ *
+ * @param array $documents rows with notified_at
+ * @return string
+ */
+function erp_overdue_sms_stage($documents)
+{
+    foreach ($documents as $row) {
+        if ((int) $row['notified_at'] > 0) {
+            return 'second';
+        }
+    }
+
+    return 'first';
+}
+
+/**
+ * The SMS queue reference of an account's reminder (pure): one per account,
+ * notice and day, so a run repeated the same day queues nothing new.
+ *
+ * @param int    $account_id
+ * @param string $stage 'first' or 'second'
+ * @param int    $now   the run's time, which the documents are stamped with
+ * @return string
+ */
+function erp_overdue_sms_reference($account_id, $stage, $now)
+{
+    return 'erp_overdue:' . (int) $account_id . ':' . $stage . ':' . date('Ymd', (int) $now);
+}
+
+/**
+ * The references one invoice's text message may have been queued under, from
+ * its two stamps (pure). A document announced for the first time can ride a
+ * run that is another document's second notice, so both stages are asked.
+ *
+ * @param int $account_id
+ * @param int $notified_at
+ * @param int $second_notified_at
+ * @return string[]
+ */
+function erp_overdue_sms_references($account_id, $notified_at, $second_notified_at)
+{
+    $references = array();
+
+    if ((int) $account_id <= 0) {
+        return $references;
+    }
+
+    foreach (array_unique(array_filter(array((int) $notified_at, (int) $second_notified_at))) as $stamp) {
+        foreach (array('first', 'second') as $stage) {
+            $references[] = erp_overdue_sms_reference($account_id, $stage, $stamp);
+        }
+    }
+
+    return array_values(array_unique($references));
+}
+
+/**
+ * Queues the overdue reminder's text message, one per account.
+ *
+ * @param array $by_account account id => that account's rows in this run
+ * @param int   $now
+ * @return int  accounts whose message is queued (or already was)
+ */
+function erp_overdue_sms_queue($by_account, $now)
+{
+    if (!function_exists('pg_sms_message_queue') || !pg_sms_queue_ready()) {
+        return 0;
+    }
+
+    $erp_on = defined('ERP_ENABLED') && ERP_ENABLED;
+    $event_on = pg_sms_message_settings()['erp_overdue']['on'];
+    $texted = 0;
+
+    foreach ($by_account as $account_id => $documents) {
+        if ((int) $account_id <= 0) {
+            continue;
+        }
+
+        $first = $documents[0];
+        $decision = erp_overdue_sms_decide($first, $erp_on, $event_on);
+
+        if ($decision['number'] === '') {
+            continue;
+        }
+
+        $stage = erp_overdue_sms_stage($documents);
+        $fields = array(
+            'account' => (string) $first['title'],
+            'count'   => (string) count($documents),
+            'total'   => erp_money_out(erp_overdue_notify_total($documents), false),
+        );
+
+        if (pg_sms_message_queue('erp_overdue', $decision['number'], $fields, erp_overdue_sms_reference($account_id, $stage, $now))) {
+            $texted++;
+        }
+    }
+
+    return $texted;
+}
+
+/**
+ * The time an invoice's reminder text message was queued, 0 when none was or
+ * its queue row has been swept (sent rows are kept 7 days). A failed message
+ * does not count.
+ *
+ * @param int $account_id
+ * @param int $notified_at
+ * @param int $second_notified_at
+ * @return int
+ */
+function erp_overdue_sms_queued_at($account_id, $notified_at, $second_notified_at)
+{
+    $references = erp_overdue_sms_references($account_id, $notified_at, $second_notified_at);
+
+    if (!$references || !function_exists('pg_sms_queue_ready') || !pg_sms_queue_ready()) {
+        return 0;
+    }
+
+    $quoted = array();
+
+    foreach ($references as $reference) {
+        $quoted[] = "'" . e($reference) . "'";
+    }
+
+    return (int) db_value("SELECT MAX(created_at) FROM sms_outbox WHERE reference IN (" . implode(',', $quoted) . ") AND status <> 'failed'");
 }
 
 /**
@@ -824,7 +1025,7 @@ function erp_overdue_unsnooze($invoice_id)
  * @return array  ['ran' => bool, 'reason' => string, 'new' => rows, 'second' => rows,
  *                 'known' => rows, 'snoozed' => rows, 'notification_id' => int,
  *                 'email' => bool|null, 'push' => bool, 'recipients' => array,
- *                 'customers' => ['sent' => int, 'skipped' => int, 'failed' => int],
+ *                 'customers' => ['sent' => int, 'skipped' => int, 'failed' => int, 'texted' => int],
  *                 'followups' => int]
  */
 function erp_overdue_check($force = false, $from_job = false)
@@ -840,7 +1041,7 @@ function erp_overdue_check($force = false, $from_job = false)
         'email'           => null,
         'push'            => false,
         'recipients'      => array(),
-        'customers'       => array('sent' => 0, 'skipped' => 0, 'failed' => 0),
+        'customers'       => array('sent' => 0, 'skipped' => 0, 'failed' => 0, 'texted' => 0),
         'followups'       => 0,
     );
 
@@ -963,7 +1164,7 @@ function erp_overdue_check($force = false, $from_job = false)
                 'from_email_address' => EMAIL_ADDRESS,
                 'subject'            => lang(array('string' => '{var:1}: {var:2} overdue receivable(s)', 'vars' => array(ORGANIZATION_NAME, $count + $count_second))),
                 'format'             => 'html',
-                'body'               => erp_overdue_notify_digest_html($candidates['new'], $candidates['second'], $candidates['known'], $result['customers']['sent']),
+                'body'               => erp_overdue_notify_digest_html($candidates['new'], $candidates['second'], $candidates['known'], $result['customers']['sent'], $result['customers']['texted']),
                 'type'               => 'system',
             ));
         } else {

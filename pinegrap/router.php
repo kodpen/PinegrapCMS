@@ -166,27 +166,6 @@ $router_config_row = ($router_config_result !== false) ? mysqli_fetch_assoc($rou
 // script is run then it will know it does not need to connect to the database.
 define('DB_CONNECTED', true);
 
-// If this site has enabled the legacy MySQL connection in the config.php and it is using a version
-// of PHP that supports that (i.e. before PHP 7), then create a legacy DB connection.  Sites might
-// enable this feature because they have old custom code in hook code, styles, custom layouts, or etc.
-// that uses the old mysql extension and relies on Pinegrap to start that connection.
-// If a site enables this feature, then a second db connection will be opened for every request,
-// which might have a negative performance effect.
-
-if (defined('DB_LEGACY') and DB_LEGACY and function_exists('mysql_connect')) {
-
-    $link=@mysql_connect(DB_HOST, DB_USERNAME, DB_PASSWORD);
-
-    if ($link and @mysql_select_db(DB_DATABASE)) {
-        
-        if (function_exists('mysql_set_charset')) {
-            @mysql_set_charset($mysql_character_set);
-        }
-
-        @mysql_query("SET NAMES '" . $mysql_character_set . "' COLLATE '" . $mysql_character_set . "_unicode_ci'");
-    }
-}
-
 // Get software directory in order to get path.
 
 // if this server is on Windows, then path delimiter is a backslash

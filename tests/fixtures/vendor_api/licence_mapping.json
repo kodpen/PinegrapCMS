@@ -1,0 +1,1404 @@
+{
+    "schema": 1,
+    "description": "How the Pinegrap 2026.11 client maps one answer of POST /v1/licenses/verify onto the licence state license_check() keeps in $_SESSION['software']['settings']['license']. There is no fallback to the legacy api2. 'session' is the legacy-shaped answer the existing code consumes (status, error_code, P_end_d) plus the licence card's fields (type, sites_used, sites_total: from a schema-valid 200 only, otherwise '', null, null); 'retry' is what pg_license_check_due() then does with it: an answered state is trusted 12 hours, an unusable one ('' status) is asked again after 15 minutes. Only a schema-valid 200, a 401 application/problem+json answer with code invalid_license and a 403 one with code seats_full or access_blocked change the stored state; every other outcome, any other 401 included, is unusable. 'card' says what the licence card shows. Case ids are stable. Decision table: docs/plan/bridge-matrix.md.",
+    "request": {
+        "method": "POST",
+        "url": "https://api.kodpen.com/v1/licenses/verify",
+        "headers": {
+            "Authorization": "Bearer <licence key without dashes>",
+            "X-Pinegrap-Site": "<HOSTNAME_SETTING>",
+            "Content-Type": "application/json",
+            "Accept": "application/json, application/problem+json"
+        },
+        "body": {
+            "version": "<VERSION>",
+            "channel": "<pg_update_channel()>"
+        },
+        "connect_timeout_s": 4,
+        "total_timeout_s": 8,
+        "follow_redirects": false
+    },
+    "retry": {
+        "answered": {
+            "next_check_after_s": 43200,
+            "meaning": "A non-empty status: trusted for 12 hours."
+        },
+        "unusable": {
+            "next_check_after_s": 900,
+            "meaning": "Status '': asked again after 15 minutes; the licence card shows the technical-reason text meanwhile."
+        }
+    },
+    "card": {
+        "type": "The client's own name (a lang() text of the Pinegrap PR) for demo, premium and enterprise; the code itself, escaped, for any other code; nothing when type is ''. The type decides nothing else.",
+        "sites": "sites_used / sites_total (for example 3 / 5) when both are set; nothing when they are null.",
+        "messages": {
+            "seats_full": {
+                "en": "Every site right of this license is in use; to use it on a new site, first have one of its sites released.",
+                "tr": "Bu lisansın site hakkı dolu; yeni bir site için önce bir siteyi boşalttırın"
+            },
+            "access_blocked": {
+                "en": "Service access is closed for this site.",
+                "tr": "Bu site için hizmet erişimi kapatıldı"
+            }
+        },
+        "messages_note": "Shown for the error_code of the same name. 'tr' is binding; 'en' is the suggested lang() source, which the Pinegrap PR may reword (its Turkish shard carries 'tr')."
+    },
+    "today": "2026-11-15",
+    "categories": [
+        "active",
+        "expired",
+        "suspended",
+        "invalid_license",
+        "other_401",
+        "seats_full",
+        "access_blocked",
+        "not_live",
+        "rate_limited",
+        "server_error",
+        "timeout",
+        "unreachable",
+        "non_json",
+        "schema_invalid",
+        "other_status"
+    ],
+    "cases": [
+        {
+            "id": "active_200",
+            "covers": "active",
+            "response": {
+                "kind": "http",
+                "status": 200,
+                "content_type": "application/json",
+                "headers": {},
+                "body": {
+                    "license": {
+                        "id": "lic_4n1x0e8g5t2m7q9r3v6w",
+                        "status": "active",
+                        "starts_on": "2026-01-01",
+                        "valid_until": "2027-01-01",
+                        "type": "premium",
+                        "sites": {
+                            "used": 1,
+                            "total": 1
+                        },
+                        "entitlements": {
+                            "ai": {
+                                "enabled": false,
+                                "daily_tokens": 0
+                            }
+                        }
+                    }
+                }
+            },
+            "expect": {
+                "session": {
+                    "status": "success",
+                    "error_code": "",
+                    "P_end_d": "2027-01-01",
+                    "type": "premium",
+                    "sites_used": 1,
+                    "sites_total": 1
+                },
+                "retry": "answered"
+            }
+        },
+        {
+            "id": "active_200_with_unknown_fields",
+            "covers": "active",
+            "note": "Unknown fields at any level are ignored.",
+            "response": {
+                "kind": "http",
+                "status": 200,
+                "content_type": "application/json",
+                "headers": {},
+                "body": {
+                    "license": {
+                        "id": "lic_4n1x0e8g5t2m7q9r3v6w",
+                        "status": "active",
+                        "starts_on": "2026-01-01",
+                        "valid_until": "2027-01-01",
+                        "type": "premium",
+                        "sites": {
+                            "used": 1,
+                            "total": 1
+                        },
+                        "entitlements": {
+                            "ai": {
+                                "enabled": true,
+                                "daily_tokens": 50000
+                            },
+                            "future_feature": {
+                                "enabled": true
+                            }
+                        },
+                        "future_field": "ignored"
+                    },
+                    "notice": "ignored"
+                }
+            },
+            "expect": {
+                "session": {
+                    "status": "success",
+                    "error_code": "",
+                    "P_end_d": "2027-01-01",
+                    "type": "premium",
+                    "sites_used": 1,
+                    "sites_total": 1
+                },
+                "retry": "answered"
+            }
+        },
+        {
+            "id": "active_200_ending_today",
+            "covers": "active",
+            "note": "valid_until is the last valid day, inclusive; the existing code shows 0 days left and still valid.",
+            "response": {
+                "kind": "http",
+                "status": 200,
+                "content_type": "application/json",
+                "headers": {},
+                "body": {
+                    "license": {
+                        "id": "lic_4n1x0e8g5t2m7q9r3v6w",
+                        "status": "active",
+                        "starts_on": "2025-11-16",
+                        "valid_until": "2026-11-15",
+                        "type": "premium",
+                        "sites": {
+                            "used": 1,
+                            "total": 1
+                        },
+                        "entitlements": {
+                            "ai": {
+                                "enabled": false,
+                                "daily_tokens": 0
+                            }
+                        }
+                    }
+                }
+            },
+            "expect": {
+                "session": {
+                    "status": "success",
+                    "error_code": "",
+                    "P_end_d": "2026-11-15",
+                    "type": "premium",
+                    "sites_used": 1,
+                    "sites_total": 1
+                },
+                "retry": "answered"
+            }
+        },
+        {
+            "id": "no_end_date_200",
+            "covers": "active",
+            "note": "A licence without an end date carries 2099-12-31.",
+            "response": {
+                "kind": "http",
+                "status": 200,
+                "content_type": "application/json",
+                "headers": {},
+                "body": {
+                    "license": {
+                        "id": "lic_4n1x0e8g5t2m7q9r3v6w",
+                        "status": "active",
+                        "starts_on": "2026-01-01",
+                        "valid_until": "2099-12-31",
+                        "type": "premium",
+                        "sites": {
+                            "used": 1,
+                            "total": 1
+                        },
+                        "entitlements": {
+                            "ai": {
+                                "enabled": false,
+                                "daily_tokens": 0
+                            }
+                        }
+                    }
+                }
+            },
+            "expect": {
+                "session": {
+                    "status": "success",
+                    "error_code": "",
+                    "P_end_d": "2099-12-31",
+                    "type": "premium",
+                    "sites_used": 1,
+                    "sites_total": 1
+                },
+                "retry": "answered"
+            }
+        },
+        {
+            "id": "enterprise_200",
+            "covers": "active",
+            "note": "One licence serving several sites: this site holds one of the five rights, three are in use.",
+            "response": {
+                "kind": "http",
+                "status": 200,
+                "content_type": "application/json",
+                "headers": {},
+                "body": {
+                    "license": {
+                        "id": "lic_4n1x0e8g5t2m7q9r3v6w",
+                        "status": "active",
+                        "starts_on": "2026-01-01",
+                        "valid_until": "2027-01-01",
+                        "type": "enterprise",
+                        "sites": {
+                            "used": 3,
+                            "total": 5
+                        },
+                        "entitlements": {
+                            "ai": {
+                                "enabled": true,
+                                "daily_tokens": 50000
+                            }
+                        }
+                    }
+                }
+            },
+            "expect": {
+                "session": {
+                    "status": "success",
+                    "error_code": "",
+                    "P_end_d": "2027-01-01",
+                    "type": "enterprise",
+                    "sites_used": 3,
+                    "sites_total": 5
+                },
+                "retry": "answered"
+            }
+        },
+        {
+            "id": "demo_200",
+            "covers": "active",
+            "note": "A demo licence: one site, 30 days by default.",
+            "response": {
+                "kind": "http",
+                "status": 200,
+                "content_type": "application/json",
+                "headers": {},
+                "body": {
+                    "license": {
+                        "id": "lic_4n1x0e8g5t2m7q9r3v6w",
+                        "status": "active",
+                        "starts_on": "2026-11-01",
+                        "valid_until": "2026-11-30",
+                        "type": "demo",
+                        "sites": {
+                            "used": 1,
+                            "total": 1
+                        },
+                        "entitlements": {
+                            "ai": {
+                                "enabled": false,
+                                "daily_tokens": 0
+                            }
+                        }
+                    }
+                }
+            },
+            "expect": {
+                "session": {
+                    "status": "success",
+                    "error_code": "",
+                    "P_end_d": "2026-11-30",
+                    "type": "demo",
+                    "sites_used": 1,
+                    "sites_total": 1
+                },
+                "retry": "answered"
+            }
+        },
+        {
+            "id": "unknown_type_200",
+            "covers": "active",
+            "note": "A type added to the catalog later. The answer stays usable; the card shows the code itself.",
+            "response": {
+                "kind": "http",
+                "status": 200,
+                "content_type": "application/json",
+                "headers": {},
+                "body": {
+                    "license": {
+                        "id": "lic_4n1x0e8g5t2m7q9r3v6w",
+                        "status": "active",
+                        "starts_on": "2026-01-01",
+                        "valid_until": "2027-01-01",
+                        "type": "partner",
+                        "sites": {
+                            "used": 2,
+                            "total": 10
+                        },
+                        "entitlements": {
+                            "ai": {
+                                "enabled": false,
+                                "daily_tokens": 0
+                            }
+                        }
+                    }
+                }
+            },
+            "expect": {
+                "session": {
+                    "status": "success",
+                    "error_code": "",
+                    "P_end_d": "2027-01-01",
+                    "type": "partner",
+                    "sites_used": 2,
+                    "sites_total": 10
+                },
+                "retry": "answered"
+            }
+        },
+        {
+            "id": "expired_200",
+            "covers": "expired",
+            "note": "Pinegrap derives 'expired' from the past date, as it did with the legacy answer.",
+            "response": {
+                "kind": "http",
+                "status": 200,
+                "content_type": "application/json",
+                "headers": {},
+                "body": {
+                    "license": {
+                        "id": "lic_4n1x0e8g5t2m7q9r3v6w",
+                        "status": "expired",
+                        "starts_on": "2025-10-01",
+                        "valid_until": "2026-10-01",
+                        "type": "premium",
+                        "sites": {
+                            "used": 1,
+                            "total": 1
+                        },
+                        "entitlements": {
+                            "ai": {
+                                "enabled": false,
+                                "daily_tokens": 0
+                            }
+                        }
+                    }
+                }
+            },
+            "expect": {
+                "session": {
+                    "status": "success",
+                    "error_code": "",
+                    "P_end_d": "2026-10-01",
+                    "type": "premium",
+                    "sites_used": 1,
+                    "sites_total": 1
+                },
+                "retry": "answered"
+            }
+        },
+        {
+            "id": "expired_200_no_right_held",
+            "covers": "expired",
+            "note": "An expired or suspended licence gives no right, so a site that holds none gets the status without taking one, and used counts only the sites that hold one: here none. The card shows the numbers as sent; the client compares nothing.",
+            "response": {
+                "kind": "http",
+                "status": 200,
+                "content_type": "application/json",
+                "headers": {},
+                "body": {
+                    "license": {
+                        "id": "lic_4n1x0e8g5t2m7q9r3v6w",
+                        "status": "expired",
+                        "starts_on": "2025-10-01",
+                        "valid_until": "2026-10-01",
+                        "type": "premium",
+                        "sites": {
+                            "used": 0,
+                            "total": 1
+                        },
+                        "entitlements": {
+                            "ai": {
+                                "enabled": false,
+                                "daily_tokens": 0
+                            }
+                        }
+                    }
+                }
+            },
+            "expect": {
+                "session": {
+                    "status": "success",
+                    "error_code": "",
+                    "P_end_d": "2026-10-01",
+                    "type": "premium",
+                    "sites_used": 0,
+                    "sites_total": 1
+                },
+                "retry": "answered"
+            }
+        },
+        {
+            "id": "suspended_200",
+            "covers": "suspended",
+            "note": "Definitive. The client shows its own text for error_code suspended.",
+            "response": {
+                "kind": "http",
+                "status": 200,
+                "content_type": "application/json",
+                "headers": {},
+                "body": {
+                    "license": {
+                        "id": "lic_4n1x0e8g5t2m7q9r3v6w",
+                        "status": "suspended",
+                        "starts_on": "2026-01-01",
+                        "valid_until": "2027-01-01",
+                        "type": "premium",
+                        "sites": {
+                            "used": 1,
+                            "total": 1
+                        },
+                        "entitlements": {
+                            "ai": {
+                                "enabled": false,
+                                "daily_tokens": 0
+                            }
+                        }
+                    }
+                }
+            },
+            "expect": {
+                "session": {
+                    "status": "error",
+                    "error_code": "suspended",
+                    "P_end_d": "",
+                    "type": "premium",
+                    "sites_used": 1,
+                    "sites_total": 1
+                },
+                "retry": "answered"
+            }
+        },
+        {
+            "id": "invalid_license_401",
+            "covers": "invalid_license",
+            "note": "Definitive: the same 'not valid' state the legacy no_match gave.",
+            "response": {
+                "kind": "http",
+                "status": 401,
+                "content_type": "application/problem+json",
+                "headers": {},
+                "body": {
+                    "type": "https://api.kodpen.com/problems/invalid_license",
+                    "title": "Invalid license",
+                    "status": 401,
+                    "code": "invalid_license",
+                    "detail": "The license key is not known.",
+                    "request_id": "req_0f3a9c2e71b84d65"
+                }
+            },
+            "expect": {
+                "session": {
+                    "status": "error",
+                    "error_code": "no_match",
+                    "P_end_d": "",
+                    "type": "",
+                    "sites_used": null,
+                    "sites_total": null
+                },
+                "retry": "answered"
+            }
+        },
+        {
+            "id": "missing_credentials_401",
+            "covers": "other_401",
+            "note": "For example a proxy on the path dropped the Authorization header; the key itself was not judged.",
+            "response": {
+                "kind": "http",
+                "status": 401,
+                "content_type": "application/problem+json",
+                "headers": {},
+                "body": {
+                    "type": "https://api.kodpen.com/problems/missing_credentials",
+                    "title": "Missing credentials",
+                    "status": 401,
+                    "code": "missing_credentials",
+                    "detail": "The route needs a credential and none was sent.",
+                    "request_id": "req_6c19f4a07e2b8d53"
+                }
+            },
+            "expect": {
+                "session": {
+                    "status": "",
+                    "error_code": "",
+                    "P_end_d": "",
+                    "type": "",
+                    "sites_used": null,
+                    "sites_total": null
+                },
+                "retry": "unusable"
+            }
+        },
+        {
+            "id": "html_401",
+            "covers": "other_401",
+            "note": "A WAF or proxy page, not a problem object.",
+            "response": {
+                "kind": "http",
+                "status": 401,
+                "content_type": "text/html",
+                "headers": {},
+                "body_text": "<html><body><h1>401 Authorization Required</h1></body></html>"
+            },
+            "expect": {
+                "session": {
+                    "status": "",
+                    "error_code": "",
+                    "P_end_d": "",
+                    "type": "",
+                    "sites_used": null,
+                    "sites_total": null
+                },
+                "retry": "unusable"
+            }
+        },
+        {
+            "id": "empty_401",
+            "covers": "other_401",
+            "response": {
+                "kind": "http",
+                "status": 401,
+                "content_type": "application/problem+json",
+                "headers": {},
+                "body_text": ""
+            },
+            "expect": {
+                "session": {
+                    "status": "",
+                    "error_code": "",
+                    "P_end_d": "",
+                    "type": "",
+                    "sites_used": null,
+                    "sites_total": null
+                },
+                "retry": "unusable"
+            }
+        },
+        {
+            "id": "seats_full_403",
+            "covers": "seats_full",
+            "note": "Every site right of the licence is held by another site and this site holds none. Definitive for 12 hours; the card shows its own message. The answer names no site and carries no licence data, so the card shows no type or site count. A right is released by Kodpen staff only; the manager can then ask again with Check License.",
+            "response": {
+                "kind": "http",
+                "status": 403,
+                "content_type": "application/problem+json",
+                "headers": {},
+                "body": {
+                    "type": "https://api.kodpen.com/problems/seats_full",
+                    "title": "Site rights full",
+                    "status": 403,
+                    "code": "seats_full",
+                    "detail": "Every site right of this license is in use.",
+                    "request_id": "req_8b3d6f20a4c19e57"
+                }
+            },
+            "expect": {
+                "session": {
+                    "status": "error",
+                    "error_code": "seats_full",
+                    "P_end_d": "",
+                    "type": "",
+                    "sites_used": null,
+                    "sites_total": null
+                },
+                "retry": "answered"
+            }
+        },
+        {
+            "id": "access_blocked_403",
+            "covers": "access_blocked",
+            "note": "Kodpen closed the licence service for this site or address (scope licence or all). Definitive; the client shows its own message (service access closed for this site).",
+            "response": {
+                "kind": "http",
+                "status": 403,
+                "content_type": "application/problem+json",
+                "headers": {},
+                "body": {
+                    "type": "https://api.kodpen.com/problems/access_blocked",
+                    "title": "Access blocked",
+                    "status": 403,
+                    "code": "access_blocked",
+                    "detail": "Access to this service is closed.",
+                    "request_id": "req_1f7c0a92d5e843b6"
+                }
+            },
+            "expect": {
+                "session": {
+                    "status": "error",
+                    "error_code": "access_blocked",
+                    "P_end_d": "",
+                    "type": "",
+                    "sites_used": null,
+                    "sites_total": null
+                },
+                "retry": "answered"
+            }
+        },
+        {
+            "id": "not_live_503",
+            "covers": "not_live",
+            "note": "Before the cutover licence verification is off; the client keeps asking every 15 minutes and does not read Retry-After.",
+            "response": {
+                "kind": "http",
+                "status": 503,
+                "content_type": "application/problem+json",
+                "headers": {
+                    "Retry-After": "3600"
+                },
+                "body": {
+                    "type": "https://api.kodpen.com/problems/not_live",
+                    "title": "Not live",
+                    "status": 503,
+                    "code": "not_live",
+                    "detail": "License verification is not switched on yet.",
+                    "request_id": "req_5d0b7e19c4a2f683"
+                }
+            },
+            "expect": {
+                "session": {
+                    "status": "",
+                    "error_code": "",
+                    "P_end_d": "",
+                    "type": "",
+                    "sites_used": null,
+                    "sites_total": null
+                },
+                "retry": "unusable"
+            }
+        },
+        {
+            "id": "rate_limited_429",
+            "covers": "rate_limited",
+            "response": {
+                "kind": "http",
+                "status": 429,
+                "content_type": "application/problem+json",
+                "headers": {
+                    "Retry-After": "60"
+                },
+                "body": {
+                    "type": "https://api.kodpen.com/problems/rate_limited",
+                    "title": "Too many requests",
+                    "status": 429,
+                    "code": "rate_limited",
+                    "detail": "Too many calls from this address.",
+                    "request_id": "req_93e1c07a5b2d4f18"
+                }
+            },
+            "expect": {
+                "session": {
+                    "status": "",
+                    "error_code": "",
+                    "P_end_d": "",
+                    "type": "",
+                    "sites_used": null,
+                    "sites_total": null
+                },
+                "retry": "unusable"
+            }
+        },
+        {
+            "id": "server_error_500",
+            "covers": "server_error",
+            "response": {
+                "kind": "http",
+                "status": 500,
+                "content_type": "application/problem+json",
+                "headers": {},
+                "body": {
+                    "type": "https://api.kodpen.com/problems/server_error",
+                    "title": "Server error",
+                    "status": 500,
+                    "code": "server_error",
+                    "detail": "Something failed inside the service.",
+                    "request_id": "req_2b6f8d04e19c7a35"
+                }
+            },
+            "expect": {
+                "session": {
+                    "status": "",
+                    "error_code": "",
+                    "P_end_d": "",
+                    "type": "",
+                    "sites_used": null,
+                    "sites_total": null
+                },
+                "retry": "unusable"
+            }
+        },
+        {
+            "id": "unavailable_503",
+            "covers": "server_error",
+            "response": {
+                "kind": "http",
+                "status": 503,
+                "content_type": "application/problem+json",
+                "headers": {
+                    "Retry-After": "120"
+                },
+                "body": {
+                    "type": "https://api.kodpen.com/problems/unavailable",
+                    "title": "Unavailable",
+                    "status": 503,
+                    "code": "unavailable",
+                    "detail": "The database does not answer.",
+                    "request_id": "req_c41e6a9f02d8b573"
+                }
+            },
+            "expect": {
+                "session": {
+                    "status": "",
+                    "error_code": "",
+                    "P_end_d": "",
+                    "type": "",
+                    "sites_used": null,
+                    "sites_total": null
+                },
+                "retry": "unusable"
+            }
+        },
+        {
+            "id": "bad_gateway_502_html",
+            "covers": "server_error",
+            "note": "A proxy page, not a problem object.",
+            "response": {
+                "kind": "http",
+                "status": 502,
+                "content_type": "text/html",
+                "headers": {},
+                "body_text": "<html><body><h1>502 Bad Gateway</h1></body></html>"
+            },
+            "expect": {
+                "session": {
+                    "status": "",
+                    "error_code": "",
+                    "P_end_d": "",
+                    "type": "",
+                    "sites_used": null,
+                    "sites_total": null
+                },
+                "retry": "unusable"
+            }
+        },
+        {
+            "id": "origin_timeout_524_html",
+            "covers": "server_error",
+            "note": "Cloudflare 52x pages are HTML.",
+            "response": {
+                "kind": "http",
+                "status": 524,
+                "content_type": "text/html",
+                "headers": {},
+                "body_text": "<!DOCTYPE html><html><head><title>A timeout occurred</title></head><body>Error code 524</body></html>"
+            },
+            "expect": {
+                "session": {
+                    "status": "",
+                    "error_code": "",
+                    "P_end_d": "",
+                    "type": "",
+                    "sites_used": null,
+                    "sites_total": null
+                },
+                "retry": "unusable"
+            }
+        },
+        {
+            "id": "timeout",
+            "covers": "timeout",
+            "note": "No answer within the 8-second total (cURL errno 28).",
+            "response": {
+                "kind": "transport_error",
+                "error": "timeout",
+                "curl_errno": 28
+            },
+            "expect": {
+                "session": {
+                    "status": "",
+                    "error_code": "",
+                    "P_end_d": "",
+                    "type": "",
+                    "sites_used": null,
+                    "sites_total": null
+                },
+                "retry": "unusable"
+            }
+        },
+        {
+            "id": "connect_failed",
+            "covers": "unreachable",
+            "note": "Name resolution or connection refused (cURL errno 6 or 7).",
+            "response": {
+                "kind": "transport_error",
+                "error": "connect_failed",
+                "curl_errno": 7
+            },
+            "expect": {
+                "session": {
+                    "status": "",
+                    "error_code": "",
+                    "P_end_d": "",
+                    "type": "",
+                    "sites_used": null,
+                    "sites_total": null
+                },
+                "retry": "unusable"
+            }
+        },
+        {
+            "id": "tls_failed",
+            "covers": "unreachable",
+            "note": "The certificate does not verify (cURL errno 60); the site's TLS setting is never relaxed for this call.",
+            "response": {
+                "kind": "transport_error",
+                "error": "tls_failed",
+                "curl_errno": 60
+            },
+            "expect": {
+                "session": {
+                    "status": "",
+                    "error_code": "",
+                    "P_end_d": "",
+                    "type": "",
+                    "sites_used": null,
+                    "sites_total": null
+                },
+                "retry": "unusable"
+            }
+        },
+        {
+            "id": "redirect_301",
+            "covers": "other_status",
+            "note": "Redirects are never followed.",
+            "response": {
+                "kind": "http",
+                "status": 301,
+                "content_type": "text/html",
+                "headers": {
+                    "Location": "https://www.example.net/"
+                },
+                "body_text": ""
+            },
+            "expect": {
+                "session": {
+                    "status": "",
+                    "error_code": "",
+                    "P_end_d": "",
+                    "type": "",
+                    "sites_used": null,
+                    "sites_total": null
+                },
+                "retry": "unusable"
+            }
+        },
+        {
+            "id": "validation_failed_422",
+            "covers": "other_status",
+            "note": "A client fault (for example a missing X-Pinegrap-Site); nothing is learned about the licence.",
+            "response": {
+                "kind": "http",
+                "status": 422,
+                "content_type": "application/problem+json",
+                "headers": {},
+                "body": {
+                    "type": "https://api.kodpen.com/problems/validation_failed",
+                    "title": "Validation failed",
+                    "status": 422,
+                    "code": "validation_failed",
+                    "detail": "A parameter is missing.",
+                    "request_id": "req_7a2c5e81f09d3b46",
+                    "errors": [
+                        {
+                            "field": "X-Pinegrap-Site",
+                            "code": "required"
+                        }
+                    ]
+                }
+            },
+            "expect": {
+                "session": {
+                    "status": "",
+                    "error_code": "",
+                    "P_end_d": "",
+                    "type": "",
+                    "sites_used": null,
+                    "sites_total": null
+                },
+                "retry": "unusable"
+            }
+        },
+        {
+            "id": "not_found_404",
+            "covers": "other_status",
+            "response": {
+                "kind": "http",
+                "status": 404,
+                "content_type": "application/problem+json",
+                "headers": {},
+                "body": {
+                    "type": "https://api.kodpen.com/problems/not_found",
+                    "title": "Not found",
+                    "status": 404,
+                    "code": "not_found",
+                    "detail": "No route answers this address.",
+                    "request_id": "req_e8d41b6c3a907f25"
+                }
+            },
+            "expect": {
+                "session": {
+                    "status": "",
+                    "error_code": "",
+                    "P_end_d": "",
+                    "type": "",
+                    "sites_used": null,
+                    "sites_total": null
+                },
+                "retry": "unusable"
+            }
+        },
+        {
+            "id": "html_200",
+            "covers": "non_json",
+            "note": "A captive portal or WAF page answered 200.",
+            "response": {
+                "kind": "http",
+                "status": 200,
+                "content_type": "text/html",
+                "headers": {},
+                "body_text": "<html><body>Please wait while we check your browser</body></html>"
+            },
+            "expect": {
+                "session": {
+                    "status": "",
+                    "error_code": "",
+                    "P_end_d": "",
+                    "type": "",
+                    "sites_used": null,
+                    "sites_total": null
+                },
+                "retry": "unusable"
+            }
+        },
+        {
+            "id": "empty_200",
+            "covers": "non_json",
+            "response": {
+                "kind": "http",
+                "status": 200,
+                "content_type": "application/json",
+                "headers": {},
+                "body_text": ""
+            },
+            "expect": {
+                "session": {
+                    "status": "",
+                    "error_code": "",
+                    "P_end_d": "",
+                    "type": "",
+                    "sites_used": null,
+                    "sites_total": null
+                },
+                "retry": "unusable"
+            }
+        },
+        {
+            "id": "legacy_shaped_200",
+            "covers": "schema_invalid",
+            "note": "A legacy api2 answer is not a v1 answer and is never read as one.",
+            "response": {
+                "kind": "http",
+                "status": 200,
+                "content_type": "application/json",
+                "headers": {},
+                "body": {
+                    "status": "success",
+                    "P_start_d": "2026-01-01",
+                    "P_end_d": "2027-01-01"
+                }
+            },
+            "expect": {
+                "session": {
+                    "status": "",
+                    "error_code": "",
+                    "P_end_d": "",
+                    "type": "",
+                    "sites_used": null,
+                    "sites_total": null
+                },
+                "retry": "unusable"
+            }
+        },
+        {
+            "id": "license_not_an_object_200",
+            "covers": "schema_invalid",
+            "response": {
+                "kind": "http",
+                "status": 200,
+                "content_type": "application/json",
+                "headers": {},
+                "body": {
+                    "license": "active"
+                }
+            },
+            "expect": {
+                "session": {
+                    "status": "",
+                    "error_code": "",
+                    "P_end_d": "",
+                    "type": "",
+                    "sites_used": null,
+                    "sites_total": null
+                },
+                "retry": "unusable"
+            }
+        },
+        {
+            "id": "json_array_200",
+            "covers": "schema_invalid",
+            "response": {
+                "kind": "http",
+                "status": 200,
+                "content_type": "application/json",
+                "headers": {},
+                "body": []
+            },
+            "expect": {
+                "session": {
+                    "status": "",
+                    "error_code": "",
+                    "P_end_d": "",
+                    "type": "",
+                    "sites_used": null,
+                    "sites_total": null
+                },
+                "retry": "unusable"
+            }
+        },
+        {
+            "id": "missing_valid_until_200",
+            "covers": "schema_invalid",
+            "response": {
+                "kind": "http",
+                "status": 200,
+                "content_type": "application/json",
+                "headers": {},
+                "body": {
+                    "license": {
+                        "id": "lic_4n1x0e8g5t2m7q9r3v6w",
+                        "status": "active",
+                        "starts_on": "2026-01-01",
+                        "type": "premium",
+                        "sites": {
+                            "used": 1,
+                            "total": 1
+                        },
+                        "entitlements": {
+                            "ai": {
+                                "enabled": false,
+                                "daily_tokens": 0
+                            }
+                        }
+                    }
+                }
+            },
+            "expect": {
+                "session": {
+                    "status": "",
+                    "error_code": "",
+                    "P_end_d": "",
+                    "type": "",
+                    "sites_used": null,
+                    "sites_total": null
+                },
+                "retry": "unusable"
+            }
+        },
+        {
+            "id": "null_valid_until_200",
+            "covers": "schema_invalid",
+            "note": "valid_until is never null; a licence without an end date carries 2099-12-31.",
+            "response": {
+                "kind": "http",
+                "status": 200,
+                "content_type": "application/json",
+                "headers": {},
+                "body": {
+                    "license": {
+                        "id": "lic_4n1x0e8g5t2m7q9r3v6w",
+                        "status": "active",
+                        "starts_on": "2026-01-01",
+                        "valid_until": null,
+                        "type": "premium",
+                        "sites": {
+                            "used": 1,
+                            "total": 1
+                        },
+                        "entitlements": {
+                            "ai": {
+                                "enabled": false,
+                                "daily_tokens": 0
+                            }
+                        }
+                    }
+                }
+            },
+            "expect": {
+                "session": {
+                    "status": "",
+                    "error_code": "",
+                    "P_end_d": "",
+                    "type": "",
+                    "sites_used": null,
+                    "sites_total": null
+                },
+                "retry": "unusable"
+            }
+        },
+        {
+            "id": "valid_until_not_a_date_200",
+            "covers": "schema_invalid",
+            "response": {
+                "kind": "http",
+                "status": 200,
+                "content_type": "application/json",
+                "headers": {},
+                "body": {
+                    "license": {
+                        "id": "lic_4n1x0e8g5t2m7q9r3v6w",
+                        "status": "active",
+                        "starts_on": "2026-01-01",
+                        "valid_until": "01-01-2027",
+                        "type": "premium",
+                        "sites": {
+                            "used": 1,
+                            "total": 1
+                        },
+                        "entitlements": {
+                            "ai": {
+                                "enabled": false,
+                                "daily_tokens": 0
+                            }
+                        }
+                    }
+                }
+            },
+            "expect": {
+                "session": {
+                    "status": "",
+                    "error_code": "",
+                    "P_end_d": "",
+                    "type": "",
+                    "sites_used": null,
+                    "sites_total": null
+                },
+                "retry": "unusable"
+            }
+        },
+        {
+            "id": "unknown_status_value_200",
+            "covers": "schema_invalid",
+            "note": "License.status names no meaning for a value the client does not know, so the answer is unusable.",
+            "response": {
+                "kind": "http",
+                "status": 200,
+                "content_type": "application/json",
+                "headers": {},
+                "body": {
+                    "license": {
+                        "id": "lic_4n1x0e8g5t2m7q9r3v6w",
+                        "status": "grace",
+                        "starts_on": "2026-01-01",
+                        "valid_until": "2027-01-01",
+                        "type": "premium",
+                        "sites": {
+                            "used": 1,
+                            "total": 1
+                        },
+                        "entitlements": {
+                            "ai": {
+                                "enabled": false,
+                                "daily_tokens": 0
+                            }
+                        }
+                    }
+                }
+            },
+            "expect": {
+                "session": {
+                    "status": "",
+                    "error_code": "",
+                    "P_end_d": "",
+                    "type": "",
+                    "sites_used": null,
+                    "sites_total": null
+                },
+                "retry": "unusable"
+            }
+        },
+        {
+            "id": "plan_instead_of_type_200",
+            "covers": "schema_invalid",
+            "note": "The shape before site rights: plan, no type, no sites. Never sent; unusable.",
+            "response": {
+                "kind": "http",
+                "status": 200,
+                "content_type": "application/json",
+                "headers": {},
+                "body": {
+                    "license": {
+                        "id": "lic_4n1x0e8g5t2m7q9r3v6w",
+                        "status": "active",
+                        "starts_on": "2026-01-01",
+                        "valid_until": "2027-01-01",
+                        "plan": "premium",
+                        "entitlements": {
+                            "ai": {
+                                "enabled": false,
+                                "daily_tokens": 0
+                            }
+                        }
+                    }
+                }
+            },
+            "expect": {
+                "session": {
+                    "status": "",
+                    "error_code": "",
+                    "P_end_d": "",
+                    "type": "",
+                    "sites_used": null,
+                    "sites_total": null
+                },
+                "retry": "unusable"
+            }
+        },
+        {
+            "id": "type_not_a_string_200",
+            "covers": "schema_invalid",
+            "response": {
+                "kind": "http",
+                "status": 200,
+                "content_type": "application/json",
+                "headers": {},
+                "body": {
+                    "license": {
+                        "id": "lic_4n1x0e8g5t2m7q9r3v6w",
+                        "status": "active",
+                        "starts_on": "2026-01-01",
+                        "valid_until": "2027-01-01",
+                        "type": null,
+                        "sites": {
+                            "used": 1,
+                            "total": 1
+                        },
+                        "entitlements": {
+                            "ai": {
+                                "enabled": false,
+                                "daily_tokens": 0
+                            }
+                        }
+                    }
+                }
+            },
+            "expect": {
+                "session": {
+                    "status": "",
+                    "error_code": "",
+                    "P_end_d": "",
+                    "type": "",
+                    "sites_used": null,
+                    "sites_total": null
+                },
+                "retry": "unusable"
+            }
+        },
+        {
+            "id": "sites_used_not_an_integer_200",
+            "covers": "schema_invalid",
+            "response": {
+                "kind": "http",
+                "status": 200,
+                "content_type": "application/json",
+                "headers": {},
+                "body": {
+                    "license": {
+                        "id": "lic_4n1x0e8g5t2m7q9r3v6w",
+                        "status": "active",
+                        "starts_on": "2026-01-01",
+                        "valid_until": "2027-01-01",
+                        "type": "premium",
+                        "sites": {
+                            "used": "1",
+                            "total": 1
+                        },
+                        "entitlements": {
+                            "ai": {
+                                "enabled": false,
+                                "daily_tokens": 0
+                            }
+                        }
+                    }
+                }
+            },
+            "expect": {
+                "session": {
+                    "status": "",
+                    "error_code": "",
+                    "P_end_d": "",
+                    "type": "",
+                    "sites_used": null,
+                    "sites_total": null
+                },
+                "retry": "unusable"
+            }
+        },
+        {
+            "id": "sites_total_zero_200",
+            "covers": "schema_invalid",
+            "note": "Every licence has at least one right.",
+            "response": {
+                "kind": "http",
+                "status": 200,
+                "content_type": "application/json",
+                "headers": {},
+                "body": {
+                    "license": {
+                        "id": "lic_4n1x0e8g5t2m7q9r3v6w",
+                        "status": "active",
+                        "starts_on": "2026-01-01",
+                        "valid_until": "2027-01-01",
+                        "type": "premium",
+                        "sites": {
+                            "used": 0,
+                            "total": 0
+                        },
+                        "entitlements": {
+                            "ai": {
+                                "enabled": false,
+                                "daily_tokens": 0
+                            }
+                        }
+                    }
+                }
+            },
+            "expect": {
+                "session": {
+                    "status": "",
+                    "error_code": "",
+                    "P_end_d": "",
+                    "type": "",
+                    "sites_used": null,
+                    "sites_total": null
+                },
+                "retry": "unusable"
+            }
+        }
+    ]
+}

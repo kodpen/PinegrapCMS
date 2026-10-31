@@ -427,7 +427,7 @@ function pg_office_zip_stream()
         @stream_wrapper_restore('zip');
 
         if (function_exists('libxml_disable_entity_loader')) {
-            @libxml_disable_entity_loader(false);
+            @libxml_disable_entity_loader(false); // phpcs:ignore PHPCompatibility.FunctionUse.RemovedFunctions.libxml_disable_entity_loaderDeprecated -- guarded by function_exists(); undoes PHPExcel's switch-off, which stops XMLReader opening the sheet
         }
     }
 }
@@ -1808,6 +1808,8 @@ function pg_office_view_strings()
 {
     return array(
         'hidden'            => lang('Hidden sheet'),
+        'sheets'            => lang('Sheets'),
+        'changed_mark'      => lang('Changed'),
         'truncated'         => lang('Only the beginning is shown. Download the file to see all of it.'),
         'images_lost'       => lang('{1} picture(s) could not be shown.'),
         'empty'             => lang('The sheet is empty.'),
@@ -1833,6 +1835,7 @@ function pg_office_view_strings()
         'doc_hint'          => lang('Click a paragraph, then click it again (or press Enter) to change its text. Enter keeps the change, Shift+Enter starts a new line, Esc undoes it.'),
         'doc_changed'       => lang('{1} paragraph(s) changed.'),
         'doc_format'        => lang('Changed paragraphs show their formatting again once saved.'),
+        'doc'               => lang('Document preview'),
         'doc_editor'        => lang('Text of the paragraph'),
         'doc_link'          => lang('Hold Ctrl (Cmd on a Mac) and click to follow the link.'),
         'doc_signed'        => lang('The file is digitally signed, so its text is not changed here.'),

@@ -514,7 +514,7 @@ function get_usps_delivery_date($properties) {
     // If USPS did not return a delivery date for the service, then log and return error.
     if ($delivery_date === '') {
 
-        $message = 'Could not get a delivery date for ' . get_shipping_service_name($service) . ', because USPS did not return info for that service, for an unknown reason. This likely means that the carrier does not offer that service for the zip code (' . $zip_code . '). Request: ' . $path . ' Response: ' . $response['body'];
+        $message = lang(array('string' => 'Could not get a delivery date for {var:1}, because USPS did not return info for that service, for an unknown reason. This likely means that the carrier does not offer that service for the zip code ({var:2}). Request: {var:3} Response: {var:4}', 'vars' => array(get_shipping_service_name($service), $zip_code, $path, $response['body'])));
 
         log_activity($message);
 
@@ -560,7 +560,7 @@ function get_fedex_delivery_date($properties) {
     $weight = $properties['weight'];
 
     if (!FEDEX) {
-        $message = 'This website cannot communicate with FedEx to get delivery date, because FedEx is disabled in the site settings.';
+        $message = lang(array('string' => 'This website cannot communicate with FedEx to get delivery date, because FedEx is disabled in the site settings.'));
 
         log_activity($message);
 
@@ -731,7 +731,7 @@ function get_fedex_delivery_date($properties) {
     // made for, then log and return error.
     if (!$service_delivery_date) {
 
-        $message = 'Could not get a delivery date for ' . get_shipping_service_name($service) . ', because FedEx did not return info for that service, for an unknown reason. This likely means that the carrier does not offer that service for the zip code (' . $zip_code . ').';
+        $message = lang(array('string' => 'Could not get a delivery date for {var:1}, because FedEx did not return info for that service, for an unknown reason. This likely means that the carrier does not offer that service for the zip code ({var:2}).', 'vars' => array(get_shipping_service_name($service), $zip_code)));
 
         log_activity($message);
 
@@ -1006,11 +1006,9 @@ function get_shipping_realtime_rate($properties) {
                 // If there was a BoxPacker error, then log activity and return false, so we don't
                 // report an incorrect real-time rate.
                 } catch (Exception $e) {
-                    log_activity(
-                        'Container packer error: ' . $e->getMessage() . "\n" .
-                        'Containers: ' . print_r($containers, true) . "\n" .
-                        'Items: ' . print_r($container_items, true) . "\n" .
-                        'Packer: ' . print_r($packer, true));
+                    log_activity(pg_log_lang(array(
+                        'string' => 'Container packer error: {var:1} Containers: {var:2} Items: {var:3} Packer: {var:4}',
+                        'vars' => array($e->getMessage(), print_r($containers, true), print_r($container_items, true), print_r($packer, true)))));
 
                     return false;
                 }
@@ -1159,9 +1157,7 @@ function get_shipping_realtime_rate($properties) {
     if ($pending_packages) {
 
         if (!function_exists('curl_init')) {
-            log_activity(
-                'This website cannot communicate with shipping carrier for real-time rates, because
-                cURL is not installed. The administrator of this website should install cURL.');
+            log_activity(pg_log_lang(array('string' => 'This website cannot communicate with shipping carrier for real-time rates, because cURL is not installed. The administrator of this website should install cURL.')));
             return false;
         }
 
@@ -1261,7 +1257,7 @@ function get_shipping_realtime_rate($properties) {
             case 'ups':
 
                 if (!UPS) {
-                    log_activity('This website cannot communicate with UPS for real-time rates, because UPS is disabled in the site settings.');
+                    log_activity(pg_log_lang(array('string' => 'This website cannot communicate with UPS for real-time rates, because UPS is disabled in the site settings.')));
                     return false;
                 }
 
@@ -1461,16 +1457,9 @@ function get_shipping_realtime_rate($properties) {
         $packages[$key] = $package;
     }
 
-    log_activity(
-        'Real-time shipping rate calculation' . "\n" .
-        'Total Rate: ' . prepare_amount($rate / 100) . "\n" .
-        'Order ID: ' . ($_SESSION['ecommerce']['order_id'] ?? '') . "\n" .
-        'Ship To ID: ' . $ship_to_id . "\n" .
-        'Service: ' . get_shipping_service_name($service) . "\n" .
-        'State: ' . $state . "\n" .
-        'Zip Code: ' . $zip_code . "\n" .
-        'Error: ' . $error . "\n" .
-        'Packages: ' . print_r($packages, true));
+    log_activity(pg_log_lang(array(
+        'string' => 'Real-time shipping rate calculation: total rate {var:1}, order ID {var:2}, ship to ID {var:3}, service {var:4}, state {var:5}, zip code {var:6}, error {var:7}. Packages: {var:8}',
+        'vars' => array(prepare_amount($rate / 100), $_SESSION['ecommerce']['order_id'] ?? '', $ship_to_id, get_shipping_service_name($service), $state, $zip_code, $error, print_r($packages, true)))));
 
     if ($error) {
         return false;

@@ -63,6 +63,12 @@ foreach ($translation_languages as $translation_code => $translation_row) {
     }
 
     $translation_name = 'languages[' . h($translation_code) . ']';
+    // An empty format box falls back to the language's own default, so that
+    // default is the example shown in it.
+    $translation_is_known = isset($translation_known[$translation_code]);
+    $translation_number_example = $translation_is_known ? $translation_known[$translation_code][3] : '1,234.56';
+    $translation_date_example = $translation_is_known ? $translation_known[$translation_code][4] : 'n/j/Y';
+    $translation_og_example = $translation_is_known ? $translation_known[$translation_code][2] : 'en_US';
     $translation_label = ($translation_row['label'] !== '') ? $translation_row['label'] : (isset($translation_known[$translation_code]) ? $translation_known[$translation_code][1] : $translation_code);
     $translation_prefix = mb_strtolower(($translation_row['prefix'] !== '') ? $translation_row['prefix'] : $translation_code);
 
@@ -89,10 +95,10 @@ foreach ($translation_languages as $translation_code => $translation_row) {
     }
 
     $output_translation_rows .= '
-                        <div class="pg-tr-language border rounded-4 p-5" data-code="' . h($translation_code) . '">
+                        <div class="pg-tr-language border rounded-4 p-5" data-code="' . h($translation_code) . '" role="group" aria-labelledby="tr_name_' . h($translation_code) . '">
                             <div class="d-flex flex-wrap align-items-center gap-3 mb-5">
                                 <span class="badge theme-secondary font-monospace">' . h($translation_code) . '</span>
-                                <strong class="me-auto">' . h($translation_label) . '</strong>
+                                <strong class="me-auto" id="tr_name_' . h($translation_code) . '">' . h($translation_label) . '</strong>
                                 <div class="form-field mb-0">
                                     <div class="switch"><input value="1"' . (((int) $translation_row['enabled'] === 1) ? ' checked="checked"' : '') . ' class="" type="checkbox" id="tr_enabled_' . h($translation_code) . '" name="' . $translation_name . '[enabled]"/></div>
                                     <label class="" for="tr_enabled_' . h($translation_code) . '">' . lang('Served') . '</label>
@@ -133,15 +139,18 @@ foreach ($translation_languages as $translation_code => $translation_row) {
                                 </div>
                                 <div class="col-12 md:col-6 xl:col-3">
                                     <label class="form-label" for="tr_number_' . h($translation_code) . '">' . lang('Number format') . '</label>
-                                    <input type="text" class="form-control font-monospace" id="tr_number_' . h($translation_code) . '" name="' . $translation_name . '[locale_number]" value="' . h($translation_row['locale_number']) . '" maxlength="16" placeholder="1,234.56"/>
+                                    <input type="text" class="form-control font-monospace" id="tr_number_' . h($translation_code) . '" name="' . $translation_name . '[locale_number]" value="' . h($translation_row['locale_number']) . '" maxlength="16" placeholder="' . h($translation_number_example) . '" aria-describedby="tr_formats_hint_' . h($translation_code) . '"/>
                                 </div>
                                 <div class="col-12 md:col-6 xl:col-3">
                                     <label class="form-label" for="tr_date_' . h($translation_code) . '">' . lang('Date format') . '</label>
-                                    <input type="text" class="form-control font-monospace" id="tr_date_' . h($translation_code) . '" name="' . $translation_name . '[locale_date]" value="' . h($translation_row['locale_date']) . '" maxlength="32" placeholder="j/n/Y"/>
+                                    <input type="text" class="form-control font-monospace" id="tr_date_' . h($translation_code) . '" name="' . $translation_name . '[locale_date]" value="' . h($translation_row['locale_date']) . '" maxlength="32" placeholder="' . h($translation_date_example) . '" aria-describedby="tr_formats_hint_' . h($translation_code) . '"/>
                                 </div>
                                 <div class="col-12 md:col-6 xl:col-3">
                                     <label class="form-label" for="tr_og_' . h($translation_code) . '">og:locale</label>
-                                    <input type="text" class="form-control font-monospace" id="tr_og_' . h($translation_code) . '" name="' . $translation_name . '[og_locale]" value="' . h($translation_row['og_locale']) . '" maxlength="16" placeholder="en_US"/>
+                                    <input type="text" class="form-control font-monospace" id="tr_og_' . h($translation_code) . '" name="' . $translation_name . '[og_locale]" value="' . h($translation_row['og_locale']) . '" maxlength="16" placeholder="' . h($translation_og_example) . '" aria-describedby="tr_formats_hint_' . h($translation_code) . '"/>
+                                </div>
+                                <div class="col-12">
+                                    <div class="form-text" id="tr_formats_hint_' . h($translation_code) . '">' . lang('Number: how 1234.56 is written in this language, for example 1.234,56. Date: PHP date letters (j day, n month, Y year; d and m with a leading zero). og:locale: language_COUNTRY, for example tr_TR; any other shape is cleared on save. An empty number or date box uses the language\'s own format.') . '</div>
                                 </div>
                             </div>
                         </div>';
@@ -174,8 +183,8 @@ $output_translation_languages = '
                             <div class="form-text">' . lang('The language the pages are written in. It is separate from the panel language and starts out equal to it.') . '</div>
                         </div>
                     </div>
-                    <div class="col-12">
-                        <label class="form-label">' . lang('Target languages') . '</label>
+                    <div class="col-12" role="group" aria-labelledby="translation_targets_title">
+                        <div class="form-label" id="translation_targets_title">' . lang('Target languages') . '</div>
                         <div class="d-flex flex-column gap-5">' . $output_translation_rows . '
                         </div>
                         <div class="form-text">' . lang('A served language is reachable under its address prefix (for example /en/about).') . '</div>' . ($translation_auto_column ? '

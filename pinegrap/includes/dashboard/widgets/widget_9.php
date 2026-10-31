@@ -123,7 +123,7 @@ function pg_dashboard_ops_shipping()
     // and bury this week's real work under last year's. Anchored to midnight
     // so a row does not drop off mid-morning.
     $window_days = 30;
-    $since = strtotime(date('Y-m-d')) - ($window_days * 86400);
+    $since = pg_dashboard_days_back(strtotime(date('Y-m-d')), $window_days);
     $sql_window = " AND (orders.order_date >= " . (int) $since . ")";
 
     // Per order rather than per recipient: orders.total must be summed once
@@ -300,20 +300,16 @@ function pg_dashboard_ops_refunds()
     // off idx_refund_status for nothing.
     $states = "('manual_required', 'failed', 'pending')";
 
-    // Grouped by currency on purpose: summing 500 TRY and 40 EUR into "540"
-    // would be a made-up number, so a total is only shown when every waiting
-    // refund is in one currency.
-    $groups = db_items(
-        "SELECT currency_code, COUNT(*) AS orders_count, SUM(total) AS orders_total
+    // One sum: orders.total is kept in the store's base currency, the unit
+    // every payment driver charges. orders.currency_code is only the currency
+    // the visitor was shown prices in, so it does not split the money.
+    $summary = db_item(
+        "SELECT COUNT(*) AS orders_count, SUM(total) AS orders_total, MIN(order_date) AS oldest
          FROM orders
-         WHERE refund_status IN " . $states . "
-         GROUP BY currency_code");
+         WHERE refund_status IN " . $states);
 
-    $count = 0;
-
-    foreach ($groups as $group) {
-        $count += (int) $group['orders_count'];
-    }
+    $count = (int) ($summary['orders_count'] ?? 0);
+    $oldest = (int) ($summary['oldest'] ?? 0);
 
     // Oldest first: the customer who has waited longest is the one closest
     // to opening a dispute.
@@ -324,7 +320,6 @@ function pg_dashboard_ops_refunds()
             orders.billing_first_name,
             orders.billing_last_name,
             orders.total,
-            orders.currency_code,
             orders.cancelled_at,
             orders.refund_status
          FROM orders
@@ -352,24 +347,30 @@ function pg_dashboard_ops_refunds()
             'aside' => '<span class="' . ($late ? 'fg-danger' : 'fg-emphasis-warning') . '">'
                 . get_relative_time(array('timestamp' => (int) $row['cancelled_at'])) . '</span>',
             'meta'  => '#' . h($number) . ' &middot; '
-                . pg_format_number(((float) $row['total']) / 100, 2) . ' ' . h($row['currency_code']),
+                . pg_format_money(((float) $row['total']) / 100, BASE_CURRENCY_SYMBOL),
         ));
     }
 
     if ($output_rows === '') {
         $output_rows = pg_widget_empty('bi-check2-circle', lang('No refunds are waiting.'), 'good');
     } elseif ($count > count($rows)) {
-        $output_rows .= '<a class="pg-filter-more" href="view_orders.php?reset=true&amp;status=refund_pending">'
+        // Every type of order and from the oldest one waiting: the list's own
+        // range is the last month of online orders, which would leave some of
+        // the ones counted here off it.
+        $more_url = pg_dashboard_list_url('view_orders.php', array(
+            'reset'  => 'true',
+            'status' => 'refund_pending',
+            'type'   => 'any'), ($oldest > 0) ? $oldest : time(), time());
+
+        $output_rows .= '<a class="pg-filter-more" href="' . h($more_url) . '">'
             . lang(array('string' => '{var:1} more waiting', 'vars' => pg_format_number($count - count($rows), 0)))
             . ' <i class="bi bi-arrow-right-short"></i></a>';
     }
 
     $sub = h(lang('Nothing owed'));
 
-    if (($count > 0) && (count($groups) === 1)) {
-        $sub = h(pg_format_number(((float) $groups[0]['orders_total']) / 100, 2) . ' ' . $groups[0]['currency_code']);
-    } elseif ($count > 0) {
-        $sub = h(lang('In several currencies'));
+    if ($count > 0) {
+        $sub = pg_format_money(((float) $summary['orders_total']) / 100, BASE_CURRENCY_SYMBOL);
     }
 
     return array(
@@ -392,8 +393,9 @@ function pg_dashboard_ops_stock()
 {
     // Not filtered on inventory, so it agrees with the products list's own
     // out of stock filter: a product can be marked out of stock without
-    // inventory tracking.
-    $count = (int) db_value("SELECT COUNT(*) FROM products WHERE out_of_stock = '1'");
+    // inventory tracking. Products in the Recycle Bin are left out, as that
+    // list leaves them out of its rows and its count.
+    $count = (int) db_value("SELECT COUNT(*) FROM products WHERE out_of_stock = '1'" . pg_catalog_bin_live_sql('products'));
 
     $rows = db_items(
         "SELECT
@@ -404,7 +406,7 @@ function pg_dashboard_ops_stock()
             products.price,
             products.out_of_stock_timestamp AS timestamp
         FROM products
-        WHERE products.out_of_stock = '1'
+        WHERE products.out_of_stock = '1'" . pg_catalog_bin_live_sql('products') . "
         ORDER BY products.out_of_stock_timestamp DESC
         LIMIT 8");
 
@@ -420,20 +422,22 @@ function pg_dashboard_ops_stock()
         $low_where = "inventory = '1' AND backorder != '1'
             AND inventory_quantity BETWEEN 1 AND " . (int) ECOMMERCE_LOW_STOCK_THRESHOLD;
 
-        $low_count = (int) db_value("SELECT COUNT(*) FROM products WHERE " . $low_where);
+        $low_count = (int) db_value("SELECT COUNT(*) FROM products WHERE " . $low_where . pg_catalog_bin_live_sql('products'));
 
         if ($low_count > 0) {
             $low_rows = db_items(
                 "SELECT id, name, short_description, image_name, inventory_quantity
                  FROM products
-                 WHERE " . $low_where . "
+                 WHERE " . $low_where . pg_catalog_bin_live_sql('products') . "
                  ORDER BY inventory_quantity ASC, id ASC
                  LIMIT 5");
         }
     }
 
+    // A picture deleted in the File Manager leaves image_name behind; the
+    // badge then keeps its icon instead of an empty <img>.
     $thumb = function ($row, $icon) {
-        return (!empty($row['image_name']))
+        return (!empty($row['image_name']) && is_file(FILE_DIRECTORY_PATH . '/' . basename($row['image_name'])))
             ? '<img src="' . PATH . h($row['image_name']) . '" alt="">'
             : '<i class="bi ' . $icon . '"></i>';
     };

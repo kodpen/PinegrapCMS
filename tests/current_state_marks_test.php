@@ -78,3 +78,12 @@ function test_current_state_site_log_type_filter()
 	pg_assert_contains('buttons[i].setAttribute("aria-pressed", "false");', $source);
 	pg_assert_contains('type_filter.setAttribute("aria-pressed", "true");', $source);
 }
+
+function test_current_state_sales_map_choices()
+{
+	$source = current_state_marks_source('includes/dashboard/widgets/widget_1.php');
+	pg_assert_contains("(\$sm_view_key === \$sm_view) ? ' active\" aria-pressed=\"true' : '\" aria-pressed=\"false'", $source, 'map choice');
+	pg_assert_contains("(\$sm_period_key === \$sales_map['period']) ? ' active\" aria-pressed=\"true' : '\" aria-pressed=\"false'", $source, 'period choice');
+	pg_assert_contains('btn.setAttribute("aria-pressed", btn.getAttribute("data-smap") === mode ? "true" : "false");', $source);
+	pg_assert_contains('btn.setAttribute("aria-pressed", btn.getAttribute("data-smap-view") === view ? "true" : "false");', $source);
+}

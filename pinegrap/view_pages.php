@@ -49,7 +49,7 @@ if (isset($_GET['recalculate_seo']) && (USER_ROLE < 3)) {
 
     if ($seo_run['remaining'] > 0) {
         $liveform->add_notice(lang(array(
-            'string' => 'SEO scores were updated for {var:1} page{suffix:1}. {var:2} page{suffix:2} still need to be calculated - click the button again to continue.',
+            'string' => 'SEO scores were updated for {var:1} page{suffix:1}. {var:2} page{suffix:2} still need to be calculated - click Refresh SEO Scores again to continue.',
             'vars' => array($seo_run['processed'], $seo_run['remaining']),
             'suffix' => array((($seo_run['processed'] == 1) ? '' : 's'), (($seo_run['remaining'] == 1) ? '' : 's')))));
     } else {
@@ -104,7 +104,7 @@ if (isset($_GET['analyze_seo']) && (USER_ROLE < 3)) {
 
     if ($analyze_run['remaining'] > 0) {
         $liveform->add_notice(lang(array(
-            'string' => 'The HTML structure of {var:1} record{suffix:1} was analyzed. {var:2} record{suffix:2} still need to be analyzed - click the button again to continue.',
+            'string' => 'The HTML structure of {var:1} record{suffix:1} was analyzed. {var:2} record{suffix:2} still need to be analyzed - click Analyze HTML Structure again to continue.',
             'vars' => array($analyze_run['analyzed'], $analyze_run['remaining']),
             'suffix' => array((($analyze_run['analyzed'] == 1) ? '' : 's'), (($analyze_run['remaining'] == 1) ? '' : 's')))));
     } elseif ($analyze_run['analyzed'] > 0) {
@@ -286,7 +286,7 @@ $sort_sql = array(
     'form_enabled'  => 'custom_form_pages.enabled',
     'folder'        => 'folder.folder_name',
     'style'         => 'style.style_name',
-    'page_type'     => 'page.page_type',
+    'page_type'     => pg_list_label_order('page.page_type', get_page_type_names()),
     'searchable'    => 'page.page_search',
     'comments'      => 'page.comments',
     'sitemap'       => 'page.sitemap',
@@ -1146,6 +1146,7 @@ if ($pages) {
         $output_link_url = h(escape_javascript(PATH)) . h(escape_javascript(encode_url_path($page['page_name']))) . $query_string_from;
 
         $output_style_name = '';
+        $output_no_mobile_style_warning_class = '';
 
         // If the user is previewing a theme, and it is not the activated theme,
         // then get preview style if one exists.
@@ -1168,8 +1169,6 @@ if ($pages) {
         // If a style has not been found yet, then that means user is not previewing themes
         // or there is no preview style, so just output activated style.
         if ($output_style_name == '') {
-            $output_no_mobile_style_warning_class = '';
-
             // if the page has a style specifically defined for it, then prepare to output style name
             if ($page['style_name'] != '') {
                 $output_style_name = h($page['style_name']);
@@ -1270,7 +1269,7 @@ if ($pages) {
                 <td class="align-middle chart_label position-relative">' . $output_home_icon . h($page['page_name']) . '<a href="javascript:void(0)" class="pg-seo-open d-block text-decoration-none" aria-label="' . h(pg_seo_link_name($page)) . '" title="' . lang('SEO Detail') . '" data-seo-url="get_seo_analysis.php?type=page&amp;id=' . $page['page_id'] . get_token_query_string_field() . '">' . pg_seo_render_bar($page) . '</a></td>
                 ' . $output_form_name_row . '
                 ' . $output_form_enabled_row . '
-                <td class="align-middle text-start ' . $page['folder_access_control_type'] . '" title="' . h($page['folder_name']) . '"><span class="d-block overflow-hidden text-truncate" style="width: 100px;max-width:100%;">' . pg_folder_access_mark($page['folder_access_control_type']) . '<span class="material-icons d-inline" aria-hidden="true">folder</span><span class="badge fw-light fg-reset d-inline">' . h($page['folder_name']) . '</span></span></td>
+                <td class="align-middle text-start text-wrap ' . $page['folder_access_control_type'] . '">' . pg_folder_list_name($page['folder_name'], $page['folder_access_control_type']) . '</td>
                 <td class="align-middle ' . $output_no_mobile_style_warning_class . '">' . $output_style_name . '</td>
                 <td class="align-middle">' . h(get_page_type_name($page['page_type'])) . '</td>
                 <td class="align-middle text-center">' . $output_search_check_mark . '</td>

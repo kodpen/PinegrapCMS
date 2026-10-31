@@ -56,6 +56,15 @@
     var maxLines = parseInt(root.getAttribute('data-max-lines'), 10) || 200;
     var textNoResults = root.getAttribute('data-text-no-results') || '';
     var textMaxLines = root.getAttribute('data-text-max-lines') || '';
+    // A polite status line for what the product search finds: the popup
+    // moves to the overlay host, and a plain line in it is not read out.
+    var liveStatus = document.createElement('div');
+    var announceTimer = null;
+    liveStatus.className = 'visually-hidden';
+    liveStatus.setAttribute('role', 'status');
+    liveStatus.setAttribute('aria-live', 'polite');
+    liveStatus.setAttribute('aria-atomic', 'true');
+    root.appendChild(liveStatus);
     var texts = {
         stock: root.getAttribute('data-text-stock') || 'In stock: {var:1}',
         noStockTracking: root.getAttribute('data-text-no-stock-tracking') || '',
@@ -708,6 +717,16 @@
         input.setAttribute('aria-expanded', 'false');
     }
 
+    // Emptied first and filled a moment later, so the same sentence twice in
+    // a row is read again.
+    function announce(text) {
+        window.clearTimeout(announceTimer);
+        liveStatus.textContent = '';
+        announceTimer = window.setTimeout(function () {
+            liveStatus.textContent = text;
+        }, 150);
+    }
+
     function resultItems() {
         return openList ? Array.prototype.slice.call(openList.menu.querySelectorAll('.menu-item')) : [];
     }
@@ -791,11 +810,9 @@
         } else if (!isPurchase() && row.dataset.erpAvgCost && texts.avgCost) {
             parts.push(fill(texts.avgCost, row.dataset.erpAvgCost));
         }
-
-        // Where the VAT rate came from is said on the box, not in the line.
-        var taxRate = field(row, 'tax_rate');
-        if (taxRate) {
-            taxRate.title = (row.dataset.erpZoneRate === '1' && texts.zoneRate) ? texts.zoneRate : '';
+        // Where the VAT rate came from: the product has none of its own.
+        if (row.dataset.erpZoneRate === '1' && texts.zoneRate) {
+            parts.push(texts.zoneRate);
         }
 
         hint.textContent = parts.join(' \u00b7 ');
@@ -916,6 +933,7 @@
             empty.className = 'menu-text fg-secondary small';
             empty.textContent = textNoResults;
             menu.appendChild(empty);
+            announce(textNoResults);
         }
 
         products.forEach(function (product) {
@@ -1037,6 +1055,16 @@
         return target;
     }
 
+    // Marks the barcode box with its "not found" message under it, or clears
+    // both; the class alone when the panel helper is missing.
+    function markBarcode(on) {
+        if (typeof window.pgFieldInvalid === 'function') {
+            window.pgFieldInvalid(barcodeInput, on, texts.notFound);
+        } else {
+            barcodeInput.classList.toggle('is-invalid', on);
+        }
+    }
+
     function scan(code) {
         code = String(code || '').trim();
         if (!code || !productsUrl) {
@@ -1050,12 +1078,11 @@
             .then(function (data) {
                 barcodeInput.disabled = false;
                 if (data && data.product) {
-                    barcodeInput.classList.remove('is-invalid');
+                    markBarcode(false);
                     barcodeInput.value = '';
                     placeProduct(data.product);
                 } else {
-                    barcodeInput.classList.add('is-invalid');
-                    barcodeInput.title = texts.notFound;
+                    markBarcode(true);
                     barcodeInput.select();
                 }
                 barcodeInput.focus();
@@ -1281,7 +1308,7 @@
             }
         });
         barcodeInput.addEventListener('input', function () {
-            barcodeInput.classList.remove('is-invalid');
+            markBarcode(false);
         });
     }
 

@@ -38,6 +38,23 @@ function test_erp_allocate_hands_out_the_remainder()
 	pg_assert_same(array(34, 33, 33), erp_allocate(100, array(1, 1, 1)));
 }
 
+// Whole-percent shares of a total add up to 100: rounding each on its own
+// read 33% + 33% + 33% = 99% and 17% + 17% + 67% = 101%.
+function test_erp_percent_shares_add_up_to_100()
+{
+	pg_assert_same(array('a' => 34, 'b' => 33, 'c' => 33), erp_percent_shares(array('a' => 10000, 'b' => 10000, 'c' => 10000)));
+	pg_assert_same(array(17, 16, 67), erp_percent_shares(array(10000, 10000, 40000)));
+	pg_assert_same(array(0, 100), erp_percent_shares(array(50, 99950)));
+	pg_assert_same(100, array_sum(erp_percent_shares(array(1, 2, 3, 4, 5))));
+}
+
+// No total gives every share 0, not 100 on the first key.
+function test_erp_percent_shares_of_nothing_are_zero()
+{
+	pg_assert_same(array('a' => 0, 'b' => 0), erp_percent_shares(array('a' => 0, 'b' => 0)));
+	pg_assert_same(array(), erp_percent_shares(array()));
+}
+
 // Equal remainders take the left-over kurus in the lines' own order however
 // many lines there are: before PHP 8.0 sorting was not stable, and the equal
 // remainders of more than 16 lines went to other lines than on PHP 8.

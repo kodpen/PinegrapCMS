@@ -63,13 +63,20 @@ if (!$_POST) {
 } else {
     validate_token_field();
 
+    // tax_zones.tax_rate is NOT NULL: a blank or unreadable rate is refused,
+    // never stored as 0, and "8,25" is read as 8.25, not 8.
+    $tax_rate = parse_tax_rate($_POST['tax_rate'] ?? '');
+    if ($tax_rate === NULL) {
+        output_error(lang('Enter a tax rate between 0 and 100.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+    }
+
     $query = "INSERT INTO tax_zones (name, tax_rate, user, timestamp)
               VALUES (
                 ?,
                 ?,
                 ?,
                 UNIX_TIMESTAMP())";
-    $result = db_q($query, array((string) ($_POST['name'] ?? ''), (string) ($_POST['tax_rate'] ?? ''), (int) $user['id'])) or output_error('Query failed.');
+    $result = db_q($query, array((string) ($_POST['name'] ?? ''), $tax_rate, (int) $user['id'])) or output_error('Query failed.');
 
     $tax_zone_id = mysqli_insert_id(db::$con);
 

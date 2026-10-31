@@ -754,19 +754,8 @@ if (!$_POST) {
 
         // if at least 1 product was exported, then log activity
         if (count($products) > 0) {
-            // if only 1 product was exported, then prepare message phrasing in a certain way
-            if (count($products) == 1) {
-                $plural_suffix = '';
-                $was_or_were = 'was';
-
-            // else more than 1 product was exported, so prepare message phrasing in a different way
-            } else {
-                $plural_suffix = 's';
-                $was_or_were = 'were';
-            }
-
             // add log message about products being exported
-            log_activity(count($products) . ' product' . $plural_suffix . ' ' . $was_or_were . ' exported', $_SESSION['sessionusername']);
+            log_activity(lang(array('string' => '{var:1} product(s) were exported', 'vars' => count($products))), $_SESSION['sessionusername']);
         }
 
     // else the user did not select to export products, so just list products
@@ -1492,7 +1481,7 @@ if (!$_POST) {
                 ' . ($output_private_folder_access_columns ?? '') . '
                 ' . ($output_add_membership_column ?? '') . '
                 ' . ($output_all_product_actions_columns ?? '') . '
-                <td class="align-middle">' . get_relative_time(array('timestamp' => $row['timestamp'])) . ' ' . lang(array('string'=>'by {var:1}','vars'=>array( h($row['user']) ) ) ) . '</td>
+                <td class="align-middle">' . pg_list_when($row['timestamp'], $row['user'] ?? '') . '</td>
                 ' . ($output_out_of_stock_timestamp_column ?? '') . '
             </tr>';
         }
@@ -1658,17 +1647,21 @@ if (!$_POST) {
         $compare_at_column = array_key_exists('compare_at_price', $row) ? 'compare_at_price,' : '';
         $compare_at_value  = array_key_exists('compare_at_price', $row) ? pg_compare_at_price_sql($row['compare_at_price']) . ',' : '';
 
-        // products.ai_fields (2026.11.0) likewise: the copy keeps the marks of
-        // the texts it writes unchanged; the short description, whose last
-        // letters are replaced, keeps its mark only if it is still the same.
-        $ai_fields = pg_ai_fields_copy('product', $row, array(
+        // products.hs_code and origin_country (2026.11.0) the same way.
+        $customs = pg_product_customs_copy_sql($row);
+
+        // products.ai_fields, vat_exemption_code and the bundle columns the
+        // same way (pg_product_copy_extra_sql(), shared with
+        // duplicate_product()): the copy keeps the marks of the texts it
+        // writes unchanged; the short description, whose last letters are
+        // replaced, keeps its mark only if it is still the same.
+        $extra = pg_product_copy_extra_sql($row, pg_ai_fields_copy('product', $row, array(
             'short_description' => $short_description,
             'full_description'  => $row['full_description'],
             'title'             => $row['title'],
             'meta_description'  => $row['meta_description'],
-        ));
-        $ai_fields_column = ($ai_fields !== false) ? 'ai_fields,' : '';
-        $ai_fields_value  = ($ai_fields !== false) ? (($ai_fields === null) ? 'NULL' : "'" . e($ai_fields) . "'") . ',' : '';
+        )));
+        $is_bundle = !empty($row['bundle']);
 
         // insert row into product table
         $query        = "INSERT INTO products (
@@ -1855,7 +1848,9 @@ if (!$_POST) {
     
                 " . $compare_at_column . "
     
-                " . $ai_fields_column . "
+                " . $customs['columns'] . "
+    
+                " . $extra['columns'] . "
     
                 user,
     
@@ -2044,8 +2039,10 @@ if (!$_POST) {
                 '" . escape($row['mpn']) . "',
     
                 " . $compare_at_value . "
+
+                " . $customs['values'] . "
     
-                " . $ai_fields_value . "
+                " . $extra['values'] . "
     
                 '" . USER_ID . "',
     
@@ -2311,8 +2308,23 @@ if (!$_POST) {
                     '" . $products_group['product_group'] . "')");
         }
     
+        // The gallery pictures beside the cover, in the order they were
+        // written: the table has no order column and is read back in that order.
+        $images = db_values("SELECT file_name FROM products_images_xref WHERE product = '" . (int) $id . "' AND file_name != ''");
+
+        foreach ($images as $image) {
+            db_q("INSERT INTO products_images_xref (product, file_name) VALUES (?, ?)", array((int) $new_product_id, (string) $image));
+        }
+
         // The copy starts a price history of its own at the original's price.
         pg_price_history_record($new_product_id, 'panel');
+
+        // A bundle copy takes the same contents, then its stock and price are
+        // derived from them like any bundle's instead of kept from the copied row.
+        if ($is_bundle && pg_bundles_ready()) {
+            pg_bundle_items_save($new_product_id, pg_bundle_items($id));
+            pg_bundle_refresh($new_product_id);
+        }
 
         pg_audit_record('create', 'products', (int) $new_product_id);
     

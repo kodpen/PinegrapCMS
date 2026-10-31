@@ -12,12 +12,13 @@ description: Value boxes of a flow (T3, decision #2415 1a): the constants box's 
 - `ws_flow_constants_outputs()`: one output per row with a valid key, the first of a key twice. `ws_flow_node_fields()` gives those only: no text, outcome or status (it never runs).
 
 ## How are its values read in a run?
+- A number row is read by `ws_flow_typed_number()` (Turkish `1.250` is 1250, #3500) and reaches the boxes as a machine number (`ws_flow_derived_number()`: `1250`, `1250.5`); a text row stays as typed.
 - `ws_flow_pure_values($graph, $values)` (pure) gives the value boxes' node id => key => value; `$values` are the run's settled boxes (`ws_step_node_values()`) with the trigger's under `WS_STEP_TRIGGER`, which a derived box works from. Each reader builds those first, then `$values = ws_flow_pure_values($graph, $values) + $values`: a step box's run (`ws_step_run()`), a box try (always, even without a run), a value condition (`ws_flow_run_graph($run)`), a start-flow box's source result (flow_runs.php). A reader that skipped the call would read derived values empty.
 
 ## What does the check say?
 - Not `unreachable` without arrows; an arrow into it `bad_edge`; one out of it `bad_outcome` (no outcomes).
 - A reference to it is never "does not come before" nor `skippable_reference`; a field it does not give is `bad_reference`.
-- `ws_flow_constants_problems()`: no row, a name that is not a key, a name twice, a number that is not one (`bad_config`).
+- `ws_flow_constants_problems()`: no row, a name that is not a key, a name twice, a number `ws_flow_typed_number()` cannot read (`bad_config`).
 - Tests `tests/workspace_flow_values_test.php`.
 
 ## And on the canvas?

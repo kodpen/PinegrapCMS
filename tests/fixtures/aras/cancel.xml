@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <soap:Body>
+    <CancelDispatchResponse xmlns="http://tempuri.org/">
+      <CancelDispatchResult>
+        <ResultCode>0</ResultCode>
+        <ResultMessage>İptal işlemi başarılı.</ResultMessage>
+        <CargoKey>10042483920</CargoKey>
+      </CancelDispatchResult>
+    </CancelDispatchResponse>
+  </soap:Body>
+</soap:Envelope>

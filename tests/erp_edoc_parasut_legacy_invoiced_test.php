@@ -212,7 +212,7 @@ function test_erp_edoc_parasut_legacy_invoiced_unsure_mark_names_the_way_out()
 	// The labels are the screens' own: the settings card's provider radio
 	// and the order screen's button.
 	$prep = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/settings/prep.php');
-	$commerce = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/settings/commerce.php');
+	$commerce = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/settings/accounting.php');
 	$view_order = (string) file_get_contents(PG_FUNCTIONS_DIR . '/view_order.php');
 
 	pg_assert_contains('id="edoc_provider_none" value=""', $prep);

@@ -74,14 +74,14 @@ if ((isset($_REQUEST['page_id'])) && ($_REQUEST['page_id'] != '')) {
     
     // validate user's access
     if (check_edit_access($folder_id) == false) {
-        log_activity('access denied to add field to ' . $form_type . ' because user does not have access to modify folder that ' . $form_type . ' is in', $_SESSION['sessionusername']);
+        log_activity(lang(array('string' => 'access denied to add field to {var:1} because user does not have access to modify folder that {var:1} is in', 'vars' => array($form_type))), $_SESSION['sessionusername']);
         output_error(lang('Access denied.'));
     }
 
     list($form_name, $quiz) = pg_field_form_page_form_name($page_type, $form_type, $_REQUEST['page_id'], $page_name);
 
     $pg_breadcrumb_parent = array('label' => lang('All My Pages'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_pages.php');
-    $output_form_designer_content_heading = lang(array('string'=>'Create {var:1} Field','vars'=>array(ucwords($form_type_name)) ));
+    $output_form_designer_content_heading = lang(array('string'=>'Create {var:1} Field','vars'=>array(pg_upper_words($form_type_name)) ));
     $output_form_designer_content_subheading = lang(array('string'=>'Create a new field on this {var:1}.','vars'=>$form_type_name ) );
     
 // Else if there is a product_group_id, this is a variant set's form template
@@ -159,6 +159,10 @@ if ((isset($_REQUEST['page_id'])) && ($_REQUEST['page_id'] != '')) {
 $pg_breadcrumb_items = isset($pg_breadcrumb_parent_items) ? $pg_breadcrumb_parent_items : (isset($pg_breadcrumb_parent) ? array($pg_breadcrumb_parent) : array());
 $pg_breadcrumb_items[] = array('label' => $output_form_designer_content_heading);
 
+// The back arrow goes where Save goes: the fields of this form, with the
+// Express Order form type (shipping or billing) and send_to.
+$pg_back_arrow_url = 'view_fields.php?' . $form_type_identifier_id . '=' . urlencode((string) $_REQUEST[$form_type_identifier_id]) . pg_field_form_express_query($page_type, $form_type) . '&send_to=' . urlencode(is_scalar($_GET['send_to'] ?? null) ? (string) $_GET['send_to'] : '');
+
 // if the form has not been submitted yet, then prepare to output form
 if (!$_POST) {
     // The new field goes below the form's last field by default.
@@ -170,6 +174,15 @@ if (!$_POST) {
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
     $position = $row ? $row['id'] : 'top';
+
+    // A form sent back by a refused save shows what was typed.
+    $field = pg_field_form_new_field($folder_id);
+    $posted = pg_field_form_session_values($liveform, $field);
+
+    if ($posted !== null) {
+        $field = pg_field_form_posted_field($field, $posted);
+        $position = $posted['position'] ?? $position;
+    }
     
     echo
     pg_page_shell([
@@ -178,7 +191,7 @@ if (!$_POST) {
         'icon'=>'design',
         'heading'=>$output_form_designer_content_heading,
         'heading_description' => $output_form_designer_content_subheading,
-        'cancel'=>array('enable'=>'true','url'=>'view_fields.php?' . $form_type_identifier_id . '=' . urlencode($_REQUEST[$form_type_identifier_id])),
+        'cancel'=>array('enable'=>'true','url' => $pg_back_arrow_url),
         'breadcrumb' => $pg_breadcrumb_items,
     ]) . '
 <main id="content" class="container-fluid">
@@ -190,7 +203,7 @@ if (!$_POST) {
                 <div class="row mb-3  flex-wrap">
                     <div class="col-12 sm:col-12 text-center md:text-start">
 
-                        <p class="p-0 m-0">' . ucwords($form_type_name) . ': ' . h($form_name) . '</p>
+                        <p class="p-0 m-0">' . pg_upper_words($form_type_name) . ': ' . h($form_name) . '</p>
                     </div>
                 </div>
                 <form name="form" action="add_field.php" method="post">
@@ -198,7 +211,7 @@ if (!$_POST) {
                     <input type="hidden" name="send_to" value="' . h(($_GET['send_to'] ?? '')) . '">
                     <input type="hidden" id="' . $form_type_identifier_id . '" name="' . $form_type_identifier_id . '" value="' . h($_REQUEST[$form_type_identifier_id]) . '">
                     <input type="hidden" name="form_type" value="' . $form_type . '">
-                    ' . pg_field_form_cards($liveform, pg_field_form_new_field($folder_id), array(
+                    ' . pg_field_form_cards($liveform, $field, array(
                         'form_type' => $form_type,
                         'quiz' => $quiz,
                         'position' => $position,
@@ -220,8 +233,7 @@ if (!$_POST) {
 </main>' .
     output_footer();
     
-    $liveform->unmark_errors();
-    $liveform->clear_notices();
+    $liveform->remove_form();
     
 } else {
     validate_token_field();
@@ -234,6 +246,7 @@ if (!$_POST) {
 
     // if there are errors in the liveform then send the user back to the add field screen
     if ($liveform->check_form_errors()) {
+        $liveform->add_fields_to_session();
         header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/add_field.php?' . $form_type_identifier_id . '=' . urlencode($_POST[$form_type_identifier_id]) . $url_form_type . '&send_to=' . urlencode($_POST['send_to']));
         exit();
     }

@@ -32,6 +32,10 @@ ini_set('memory_limit', '512M');
 ignore_user_abort(true);
 
 include('init.php');
+
+// A file over post_max_size empties the whole request; say so instead of
+// drawing the form again as if nothing had been sent.
+pg_upload_refuse_discarded_body();
 include_once('liveform.class.php');
 $liveform = new liveform('import_products');
 $liveform_view_products = new liveform('view_products');
@@ -74,6 +78,7 @@ if (!$_POST) {
                                             <label for="file" class="form-label">' . lang('Select Formatted Text File to Upload') . '</label>
                                             ' . $liveform->output_field(array('type'=>'file', 'id'=>'file', 'name'=>'file', 'size'=>'60', 'class'=>'form-control w-auto', 'required'=>'required')) . '
                                             <div class="form-text">' . lang('A .csv, .xlsx or .ods file. The first row holds the column names.') . '</div>
+                                            ' . pg_upload_limit_hint() . '
                                         </div>
                                         <div class="col-12 my-3">
                                             <div class="form-field">
@@ -114,6 +119,16 @@ if (!$_POST) {
         exit();
     }
 
+    $upload_limits = pg_upload_limits();
+    $upload_refusal = pg_upload_file_refusal($_FILES['file'], $upload_limits['file_max']);
+
+    if ($upload_refusal !== '') {
+        $liveform->mark_error('file', h($upload_refusal));
+
+        header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/import_products.php');
+        exit();
+    }
+
     // A spreadsheet is turned into the CSV this importer already reads, and
     // everything below carries on unaware. See import_products_f.php for why
     // it is done at the door rather than inside the loop.
@@ -147,8 +162,12 @@ if (!$_POST) {
 
     // get file handle for uploaded CSV file
     $handle = pg_csv_open($import_path);
+    // An uploaded .csv file is read with the separator of its header line
+    // (Excel in Turkish writes ';'); a converted spreadsheet is written with
+    // commas.
+    $separator = ($import_temp_path != '') ? ',' : pg_csv_read_separator($handle);
     // get column names from first row of CSV file
-    $columns = fgetcsv($handle, 100000, ",", '"', '\\');
+    $columns = fgetcsv($handle, 100000, $separator, '"', '\\');
     
     // if file is empty
     if (!$columns) {
@@ -163,6 +182,9 @@ if (!$_POST) {
     }
 
     $submit_form_fields = array();
+    $column_names = array();
+    // Headings the import does not know, named in the result.
+    $unknown_headings = array();
     
     // create array with column field names
     foreach ($columns as $key => $value) {
@@ -187,7 +209,12 @@ if (!$_POST) {
 
         // Otherwise this is a normal column, so deal with it in the general way.
         } else {
-            $column_names[] = convert_column_name($value);
+            $column_name = convert_column_name($value);
+            $column_names[] = $column_name;
+
+            if ($column_name === false) {
+                $unknown_headings[] = $value;
+            }
         }
     }
 
@@ -213,6 +240,18 @@ if (!$_POST) {
         }
     }
     
+    // Every row is matched to a product by its name, so a file without a name
+    // column imports nothing; say so instead of skipping every row.
+    if (!in_array('name', $column_names, true)) {
+        $liveform->mark_error('file', lang('The file has no name column. Add a column with the heading name for the product ID (SKU).'));
+        fclose($handle);
+
+        if ($import_temp_path != '') { unlink($import_temp_path); }
+
+        header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/import_products.php');
+        exit();
+    }
+
     // Predefine variables
     $product_imported_count = 0;
     $product_updated_count = 0;
@@ -234,11 +273,29 @@ if (!$_POST) {
         }
     }
 
+    // The customs columns, by position, read with the product screen's rules
+    // (pg_product_customs_import_row()); a row whose cell cannot be stored is
+    // left out whole and named in the result, like a row of a money cell
+    // that is not an amount.
+    $customs_positions = array();
+
+    foreach (array('hs_code', 'origin_country') as $customs_column) {
+        $customs_position = array_search($customs_column, $column_names, true);
+
+        if ($customs_position !== false) {
+            $customs_positions[$customs_column] = $customs_position;
+        }
+    }
+
     $rows_not_amounts = array();
+    $rows_not_customs = array();
+    // Rows of products already on file, left as they are because Update
+    // Existing Products is off.
+    $rows_left_alone = array();
     $row_number = 1;
 
     // loops through all rows of data in CSV file
-    while ($row = fgetcsv($handle, 100000, ",", '"', '\\')) {
+    while ($row = fgetcsv($handle, 100000, $separator, '"', '\\')) {
         $row_number++;
 
         // If product name is not blank, do something with the rows data.
@@ -257,6 +314,15 @@ if (!$_POST) {
                 $rows_not_amounts[] = $row_number . ' (' . htmlspecialchars((string) $row[$name_key], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . ')';
                 continue;
             }
+
+            $customs_row = pg_product_customs_import_row($row, $customs_positions);
+
+            if ($customs_row === false) {
+                $rows_not_customs[] = $row_number . ' (' . htmlspecialchars((string) $row[$name_key], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . ')';
+                continue;
+            }
+
+            $row = $customs_row;
 
             // get product information if it exists
             $query =
@@ -551,6 +617,11 @@ if (!$_POST) {
                     }
 
                     $product_updated_count ++;
+
+                // Otherwise the product is left as it is; say so, so the row
+                // is not taken for imported.
+                } else {
+                    $rows_left_alone[] = array($row_number, lang(array('string' => 'A product named "{var:1}" already exists and was left as it is, because Update Existing Products is off.', 'vars' => array((string) $row[$name_key]))));
                 }
 
             // Else, the product name was not already in use.
@@ -809,6 +880,20 @@ if (!$_POST) {
         $liveform_view_products->add_error(lang(array('string' => 'These rows were not imported because a price, compare-at price or extra shipping cost in them is not an amount: {var:1}.', 'vars' => array($rows_listed))));
     }
 
+    // Rows left out because an HS code or a country of origin cannot be stored.
+    if ($rows_not_customs) {
+        $rows_listed = implode(', ', array_slice($rows_not_customs, 0, 50)) . ((count($rows_not_customs) > 50) ? ', ...' : '');
+        $liveform_view_products->add_error(lang(array('string' => 'These rows were not imported because their HS code or country of origin is not valid: {var:1}.', 'vars' => array($rows_listed))));
+    }
+
+    if (pg_csv_headings_text($unknown_headings) !== '') {
+        $liveform_view_products->add_warning(h(lang(array('string' => 'These columns were not recognised and were left out: {var:1}', 'vars' => array(pg_csv_headings_text($unknown_headings))))));
+    }
+
+    if ($rows_left_alone) {
+        $liveform_view_products->add_warning(implode('<br>', array_map('h', pg_csv_problem_list($rows_left_alone))));
+    }
+
     // Display notices to tell the user what has been done. Redirect them to proper page.
     if (($product_imported_count > 0) && ($product_updated_count > 0)) {
         $liveform_view_products->add_notice( lang(array('string'=>'{var:1} {var:3} have been imported, and {var:2} {var:3} have been updated.','vars'=>array( $product_imported_count, $product_updated_count,lang('product(s)')))) );
@@ -860,7 +945,9 @@ function convert_column_name($column_name)
         return 'custom_field_4';
     }
 
-    switch ($column_name) {
+    // The heading is matched whatever its case and spacing ("Price",
+    // "Short Description").
+    switch (pg_import_heading($column_name)) {
         case 'name':
             return('name');
             break;
@@ -1209,6 +1296,11 @@ function convert_column_name($column_name)
         // missing column fails, and that stops the whole import.
         case 'compare_at_price':
             return pg_compare_at_price_ready() ? 'compare_at_price' : false;
+
+        // Customs data (2026.11.0), on the same condition.
+        case 'hs_code':
+        case 'origin_country':
+            return pg_product_customs_ready() ? $column_name : false;
     }
     
     return false;

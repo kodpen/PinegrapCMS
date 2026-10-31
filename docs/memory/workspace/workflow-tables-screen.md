@@ -11,7 +11,7 @@ description: The workflow tables screen workspace_wtables.php (T1e, #2966): serv
 ## How are rows shown and written?
 - 100 rows a page (`ws_wtable_rows_page()`, `?after=` the last position), formulas as read (`#CODE` on an error), status as a badge in its colour, person by name (`ws_people()`).
 - The row form (`#ws-wt-row-form`): a new row, or `?row=M` one row with its `revision`; formula columns have no field. A refusal brings the typed values back once through `$_SESSION['software']['ws_wtable_row']` with each refused cell named; `changed_meanwhile` shows the row as it is now instead.
-- `includes/workspace/wtable_screen.php` turns fields into cells: money typed `12.50`/`12,5` → minor units with `round()`, a datetime's `T` → space, a checkbox `1`/hidden `0`, a record link `kind:id` or `kind #id`. What it cannot read goes to the store as typed so the store's code answers. Dates use `data-pg-date`/`data-pg-datetime` + `pg_fields_script()`. Tests `tests/workspace_wtable_screen_test.php`.
+- `includes/workspace/wtable_screen.php` turns fields into cells: money and numbers read the site's way (`workflow-tables-numbers.md`), money → minor units with `round()`, a datetime's `T` → space, a checkbox `1`/hidden `0`, a record link `kind:id` or `kind #id`. What it cannot read goes to the store as typed so the store's code answers. Dates use `data-pg-date`/`data-pg-datetime` + `pg_fields_script()`. Tests `tests/workspace_wtable_screen_test.php`.
 
 ## How are columns and shares edited?
 - Column options from the form (`ws_wtable_screen_options_from_form()`): decimals, currency, date time, link kinds (comma list), formula expression; status choices one label a line, a label kept keeps its key and colour (`ws_wtable_screen_status_choices()`), so cells keep their choice. The type is chosen once (`type_fixed`).
@@ -20,6 +20,7 @@ description: The workflow tables screen workspace_wtables.php (T1e, #2966): serv
 ## Where is the board view?
 - `?view=board`: the rows as cards by a status column (`workflow-table-board.md`).
 - A table from a file, or rows from a file (`workflow-table-import.md`).
+- Run from table: the rows as a draft flow (`workspace-flows-from-table.md`).
 
 ## What is left out?
 - Editing in place, column reorder, row move (the store has `ws_wtable_row_move()`), a record-link picker (typed `kind:id`, shown `kind #id`, not resolved to a name), a table bin.

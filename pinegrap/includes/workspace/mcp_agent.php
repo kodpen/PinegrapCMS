@@ -812,11 +812,7 @@ function ws_mcp_agent_text($asker, $body, $limit)
  */
 function ws_mcp_agent_author($row)
 {
-    if ($row['sender_kind'] === 'user') {
-        return ws_person_name((int) $row['sender_id']);
-    }
-
-    return trim(preg_replace('/<[@#][a-z_]+:[0-9]+>/', '', ws_ai_author($row)));
+    return ws_ai_author($row, null, false);
 }
 
 /**

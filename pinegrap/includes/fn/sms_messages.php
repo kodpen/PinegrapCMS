@@ -3,7 +3,8 @@
  * Pinegrap - Enterprise Website Platform
  *
  * The text messages the shop sends on its own: an order received, shipped,
- * delivered, and the back-in-stock notice a customer asked for.
+ * delivered, the back-in-stock notice a customer asked for, and the ERP
+ * module's overdue receivable reminder.
  *
  * Each event has a switch and a template on the Communication settings' SMS
  * Messages card. They are kept in connect_apps under 'sms_templates', beside
@@ -16,7 +17,9 @@
  * customer. A message is only queued (pg_sms_enqueue()), with a reference per
  * order and event, so the same event saved twice is texted once while its
  * queue row is kept. These are transactional messages: no promotion goes in
- * them, which the card says, and pg_sms_check() refuses a commercial kind.
+ * them, which the card says. The same card holds the marketing messages'
+ * sender identity and type label (options.marketing), which pg_sms_check()
+ * appends to a marketing message and to no other kind.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -33,7 +36,8 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  *
  * @return array event => kind (pg_sms_kinds()), label, text (the built-in
  *               template), fields (the ^^name^^ fields it may use), note
- *               (optional: what switching it on changes)
+ *               (optional: what switching it on changes), erp (optional:
+ *               only offered while the ERP module is on)
  */
 function pg_sms_message_events()
 {
@@ -83,6 +87,17 @@ function pg_sms_message_events()
             'text'   => lang('^^store^^: Your sign-in code is ^^code^^. Do not share it with anyone.'),
             'fields' => array('store', 'code'),
             'note'   => lang('While this is on, a member account (User role) with two-step verification may ask for a code to its contact\'s mobile phone number instead of the code from its app. Staff accounts are never offered it.'),
+        ),
+        // Sent with the overdue receivables digest (includes/erp/notify.php):
+        // one per account at each of its two notices. A reminder of a debt,
+        // so it carries the total and nothing to sell.
+        'erp_overdue' => array(
+            'kind'   => 'reminder',
+            'label'  => lang('Overdue receivable reminder'),
+            'text'   => lang('^^store^^: ^^count^^ document(s) of ^^account^^ are past their due date. Total due: ^^total^^. If you have already paid, please disregard this message.'),
+            'fields' => array('store', 'account', 'count', 'total'),
+            'note'   => lang('Sent with the overdue receivable reminders of the ERP module, once per account at each of the two notices, to the account\'s phone number or else its contact\'s mobile phone number. An account set not to receive reminders is not texted.'),
+            'erp'    => true,
         ),
     );
 }
@@ -250,6 +265,42 @@ function pg_sms_message_field_list($fields)
 }
 
 /**
+ * Whether the card offers an event: an ERP event only while the module is on.
+ *
+ * @param array $definition pg_sms_message_events() row
+ * @param bool  $erp_on     ERP_ENABLED
+ * @return bool
+ */
+function pg_sms_message_event_shown($definition, $erp_on)
+{
+    return empty($definition['erp']) || $erp_on;
+}
+
+/**
+ * An event the card does not offer, carried in hidden fields: a save keeps
+ * its switch and text for when the module is switched on again.
+ *
+ * @param string $event
+ * @param array  $stored pg_sms_message_settings() row
+ * @return string
+ */
+function pg_sms_message_event_hidden_fields($event, $stored)
+{
+    $name = 'sms_msg_' . $event . '_';
+    $html = '';
+
+    if (!empty($stored['on'])) {
+        $html .= '<input type="hidden" name="' . h($name) . 'on" value="1"/>';
+    }
+
+    if (isset($stored['text']) && ((string) $stored['text'] !== '')) {
+        $html .= '<input type="hidden" name="' . h($name) . 'text" value="' . h($stored['text']) . '"/>';
+    }
+
+    return $html;
+}
+
+/**
  * Checks the SMS Messages card before the Communication settings are
  * written: a refused template is marked, so nothing of the category is.
  *
@@ -264,6 +315,11 @@ function pg_sms_message_settings_check($post, $liveform)
     if ($decision === null) {
         return null;
     }
+
+    $marketing = pg_sms_marketing_settings_decide($post, pg_sms_marketing_settings());
+    $decision['marketing'] = $marketing['marketing'];
+    $decision['changed'] = $decision['changed'] || $marketing['changed'];
+    $decision['marks'] += $marketing['marks'];
 
     foreach ($decision['marks'] as $field => $sentence) {
         $liveform->mark_error($field, $sentence);
@@ -289,7 +345,13 @@ function pg_sms_message_settings_save($decision, $user_id)
         return;
     }
 
-    $options = e(json_encode(array('events' => $decision['events'])));
+    $options = array('events' => $decision['events']);
+
+    if (isset($decision['marketing'])) {
+        $options['marketing'] = $decision['marketing'];
+    }
+
+    $options = e(json_encode($options));
 
     db("INSERT INTO connect_apps
         SET
@@ -315,14 +377,22 @@ function pg_sms_message_settings_fields()
 
     $html = '
                                         <input type="hidden" name="sms_msg_card" value="1"/>
-                                        <div class="col-12 form-text">' . lang('Sent to the order\'s billing phone number, or for a product back in stock to the number the customer gave, if it is a mobile number and SMS is set up. These are informational messages: put no promotion, discount or campaign in them, or they need the recipient\'s consent recorded in İYS. Leave a text empty to send the built-in one.') . '</div>';
+                                        <div class="col-12 form-text">' . lang('Sent to the order\'s billing phone number, for a product back in stock to the number the customer gave, or for an overdue receivable to the ERP account\'s phone number, if it is a mobile number and SMS is set up. These are informational messages: put no promotion, discount or campaign in them, or they need the recipient\'s consent recorded in İYS. Leave a text empty to send the built-in one.') . '</div>';
 
     if (!pg_sms_ready()) {
         $html .= '
                                         <div class="col-12"><div class="alert theme-warning mb-0">' . lang('SMS is not set up: no message is sent until an SMS account is saved and switched on.') . '</div></div>';
     }
 
+    $erp_on = defined('ERP_ENABLED') && ERP_ENABLED;
+
     foreach (pg_sms_message_events() as $event => $definition) {
+        if (!pg_sms_message_event_shown($definition, $erp_on)) {
+            $html .= '
+                                        ' . pg_sms_message_event_hidden_fields($event, $settings[$event]);
+            continue;
+        }
+
         $name = 'sms_msg_' . $event . '_';
         $text = ($settings[$event]['text'] !== '') ? $settings[$event]['text'] : $definition['text'];
 
@@ -330,15 +400,47 @@ function pg_sms_message_settings_fields()
                                         <div class="col-12">
                                             <div class="form-field">
                                                 <div class="switch"><input type="checkbox" name="' . h($name) . 'on" id="' . h($name) . 'on" value="1"' . ($settings[$event]['on'] ? ' checked="checked"' : '') . ' class=""/></div>
-                                                <label class="" for="' . h($name) . 'on">' . h($definition['label']) . '</label>
+                                                <label class="" for="' . h($name) . 'on" id="' . h($name) . 'label">' . h($definition['label']) . '</label>
                                             </div>
-                                            <textarea name="' . h($name) . 'text" id="' . h($name) . 'text" class="form-control mt-3" rows="2" maxlength="' . (int) pg_sms_message_max_length() . '">' . h($text) . '</textarea>
+                                            <textarea name="' . h($name) . 'text" id="' . h($name) . 'text" aria-labelledby="' . h($name) . 'label" class="form-control mt-3" rows="2" maxlength="' . (int) pg_sms_message_max_length() . '">' . h($text) . '</textarea>
                                             <div class="form-text">' . lang(array('string' => 'Fields: {var:1}', 'vars' => array(h(pg_sms_message_field_list($definition['fields']))))) . '</div>' . (isset($definition['note']) ? '
                                             <div class="form-text">' . h($definition['note']) . '</div>' : '') . '
                                         </div>';
     }
 
-    return $html;
+    return $html . pg_sms_marketing_settings_fields();
+}
+
+/**
+ * The marketing messages' fields on the SMS Messages card: the sender
+ * identity and the type label every marketing message carries.
+ *
+ * @return string
+ */
+function pg_sms_marketing_settings_fields()
+{
+    $marketing = pg_sms_marketing_settings();
+    $label = ($marketing['label'] !== '') ? $marketing['label'] : pg_sms_marketing_label_default();
+
+    return '
+                                        <div class="col-12">
+                                            <h6 class="fw-bold mb-1">' . lang('Marketing Messages') . '</h6>
+                                            <div class="form-text">' . lang('Every marketing SMS ends with the sender identity and the type label below, as İYS and BTK rules require. A marketing SMS goes only to a number whose owner consented to marketing SMS on the site and refused it neither here nor in İYS, and none goes while both identity fields are empty. Order, shipping, code and reminder messages never carry them.') . '</div>
+                                        </div>
+                                        <div class="col-12 md:col-6">
+                                            <label class="form-label" for="sms_mkt_trade_name">' . lang('Trade Name') . '</label>
+                                            <input type="text" name="sms_mkt_trade_name" id="sms_mkt_trade_name" value="' . h($marketing['trade_name']) . '" maxlength="120" class="form-control"/>
+                                        </div>
+                                        <div class="col-12 md:col-6">
+                                            <label class="form-label" for="sms_mkt_mersis">' . lang('MERSİS Number') . '</label>
+                                            <input type="text" name="sms_mkt_mersis" id="sms_mkt_mersis" value="' . h($marketing['mersis']) . '" maxlength="20" inputmode="numeric" class="form-control"/>
+                                            <div class="form-text">' . lang('16 digits.') . '</div>
+                                        </div>
+                                        <div class="col-12">
+                                            <label class="form-label" for="sms_mkt_label">' . lang('Type Label') . '</label>
+                                            <input type="text" name="sms_mkt_label" id="sms_mkt_label" value="' . h($label) . '" maxlength="120" class="form-control"/>
+                                            <div class="form-text">' . lang('Leave it unchanged to send the built-in label in the site\'s language.') . '</div>
+                                        </div>';
 }
 
 /**
@@ -385,8 +487,8 @@ function pg_sms_message_queue($event, $to, $fields, $reference)
         return false;
     }
 
-    // News of an order or of stock is no use days late: a queue held up that
-    // long (the general job stopped) drops it instead.
+    // News of an order, of stock or of a debt is no use days late: a queue
+    // held up that long (the general job stopped) drops it instead.
     $queued = pg_sms_enqueue($to, pg_sms_message_text($event, $fields, $settings), $definitions[$event]['kind'], array(
         'reference'  => $reference,
         'expires_at' => time() + 2 * 86400,

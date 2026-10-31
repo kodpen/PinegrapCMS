@@ -40,17 +40,32 @@
         return match ? { start: before.length - match[2].length - 1, word: match[2] } : null;
     }
 
+    // Lower case with the Turkish letters as their plain Latin ones, so İ,
+    // I, ı and i are one letter: the server stores a shortcut through
+    // ws_lower(), which keeps "IBAN" as "ıban". workspace.js shares its own
+    // foldText() through window.PGWsKit; this copy serves until it has.
+    function foldText(value) {
+        if (window.PGWsKit && window.PGWsKit.foldText) {
+            return window.PGWsKit.foldText(value);
+        }
+
+        return String(value || '').toLocaleLowerCase('tr')
+            .replace(/ı/g, 'i').replace(/\u0307/g, '').replace(/ş/g, 's').replace(/ğ/g, 'g')
+            .replace(/ü/g, 'u').replace(/ö/g, 'o').replace(/ç/g, 'c')
+            .replace(/â/g, 'a').replace(/î/g, 'i').replace(/û/g, 'u');
+    }
+
     // The replies a typed word picks: shortcuts starting with it first, then
-    // titles holding it, in Turkish lower case; at most limit.
+    // titles holding it, both sides folded (foldText()); at most limit.
     function match(items, word, limit) {
-        var typed = String(word || '').toLocaleLowerCase('tr');
+        var typed = foldText(word);
         var first = [];
         var rest = [];
 
         (items || []).forEach(function (item) {
-            if (String(item.shortcut).toLocaleLowerCase('tr').indexOf(typed) === 0) {
+            if (foldText(item.shortcut).indexOf(typed) === 0) {
                 first.push(item);
-            } else if (typed !== '' && String(item.title).toLocaleLowerCase('tr').indexOf(typed) !== -1) {
+            } else if (typed !== '' && foldText(item.title).indexOf(typed) !== -1) {
                 rest.push(item);
             }
         });

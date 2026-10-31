@@ -73,6 +73,30 @@ function test_explorer_bulk_product_new_price()
 	pg_assert_same(100, pg_explorer_bulk_product_new_price(100, 'other', 10.0), 'unknown method');
 }
 
+// The bulk price change value: an amount is read the way the product screen
+// reads it and turned into minor units; a percentage stays a percentage;
+// empty, non-numeric, zero and negative values are refused.
+function test_explorer_bulk_price_value()
+{
+	pg_assert_same(1250.0, pg_explorer_bulk_price_value('increase', '12,50'), 'comma');
+	pg_assert_same(1250.0, pg_explorer_bulk_price_value('decrease', '12.50'), 'dot');
+	pg_assert_same(125000.0, pg_explorer_bulk_price_value('increase', '1.250,00'), 'Turkish grouped');
+	pg_assert_same(125000.0, pg_explorer_bulk_price_value('decrease', '1,250.00'), 'English grouped');
+	pg_assert_same(12.5, pg_explorer_bulk_price_value('increase_percent', '12,5'), 'percent, comma');
+	pg_assert_same(10.0, pg_explorer_bulk_price_value('decrease_percent', '10'), 'percent');
+
+	$decimal = pg_number_separators()['decimal'];
+	$thousands = ($decimal === ',') ? '.' : ',';
+
+	pg_assert_same(150000.0, pg_explorer_bulk_price_value('increase', '1' . $thousands . '500'), 'three digits after the grouping separator');
+	pg_assert_same(150.0, pg_explorer_bulk_price_value('increase', '1' . $decimal . '500'), 'three digits after the decimal separator');
+
+	foreach (array('', 'abc', '0', '-5', '0,00') as $refused) {
+		pg_assert_same(null, pg_explorer_bulk_price_value('increase', $refused), 'amount refused: ' . $refused);
+		pg_assert_same(null, pg_explorer_bulk_price_value('increase_percent', $refused), 'percent refused: ' . $refused);
+	}
+}
+
 // Stock is set, raised or lowered, and never goes below zero.
 function test_explorer_bulk_product_new_quantity()
 {
@@ -81,4 +105,24 @@ function test_explorer_bulk_product_new_quantity()
 	pg_assert_same(1, pg_explorer_bulk_product_new_quantity(8, 'decrease', 7), 'decrease');
 	pg_assert_same(0, pg_explorer_bulk_product_new_quantity(3, 'decrease', 7), 'not below zero');
 	pg_assert_same(0, pg_explorer_bulk_product_new_quantity(3, 'value', -2), 'a negative value is zero');
+}
+
+// The bulk quantity box reads a grouped figure whole and refuses one that is
+// not a whole count, so 1.200 no longer sets every selected product to 1.
+function test_explorer_bulk_quantity_value()
+{
+	pg_assert_same(7, pg_explorer_bulk_quantity_value('7'), 'number');
+	pg_assert_same(7, pg_explorer_bulk_quantity_value(' 7 '), 'trimmed');
+	pg_assert_same(-2, pg_explorer_bulk_quantity_value('-2'), 'a negative value is kept for the mode to settle');
+	pg_assert_same(1200, pg_explorer_bulk_quantity_value('1.200,00'), 'Turkish grouped');
+	pg_assert_same(1200, pg_explorer_bulk_quantity_value('1,200.00'), 'English grouped');
+
+	$decimal = pg_number_separators()['decimal'];
+	$thousands = ($decimal === ',') ? '.' : ',';
+
+	pg_assert_same(1200, pg_explorer_bulk_quantity_value('1' . $thousands . '200'), 'grouped the panel\'s way');
+
+	foreach (array('', 'abc', '3.7', '2,5', '1' . $decimal . '200') as $refused) {
+		pg_assert_same(null, pg_explorer_bulk_quantity_value($refused), 'refused: ' . $refused);
+	}
 }

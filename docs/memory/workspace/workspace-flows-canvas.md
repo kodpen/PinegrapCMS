@@ -4,13 +4,12 @@ description: The flow canvas (workspace_flows.php, workspace_flow.js): who sees 
 ---
 
 ## What is there?
-- Screen `workspace_flows.php` (mode `flows`, list key `flows`). `ws_flows_nav_visible()` shows it to staff, live flows' home readers and sharees (`ws_nav_groups()`).
-- `workspace.js` calls `window.PGWsFlow.start(root, BOOT)` and lends `PGWsKit` (`api` with `{keepalive}`, `ask`, `toast`, `select`, `peoplePicker`, `openTask`). Bundle `workspace_flow.min.js`, mode `flows` only.
+- Screen `workspace_flows.php` (mode `flows`, list key `flows`); no `?flow=`: `workspace-flows-list.md`. `ws_flows_nav_visible()` shows it to staff, live flows' home readers and sharees (`ws_nav_groups()`).
+- `workspace.js` calls `window.PGWsFlow.start(root, BOOT)` and lends `PGWsKit`. Bundle `workspace_flow.min.js`, mode `flows` only.
 - Texts `ws_flow_js_strings()` (`fl_*`). Config `ws_flow_js_config($viewer, $mode)`: `nav`; mode `record`: `nav: false`, no query; `flows` adds build, subjects, limits.
 
 ## Where are staff's scheduled actions?
-- `ws_flows_scheduled($viewer)` (staff, flow tables there; `CFG.flows.scheduled`): an entry under the flow list opens a section in place of the canvas (`?view=scheduled`), drawn by `scheduledList(body, bar)` of workspace.js through `PGWsKit`; the Workspace list then has Scheduled messages, not Scheduled actions, workspace.php's `?view=scheduled` shows their scheduled messages only (`&part=messages` names that tab without flow tables). Parity: `workspace-flows-parity-test.md`.
-- "Show on canvas" on a card there: `ws_scheduled_get` answers `graph` (pure `ws_scheduled_graph()` of the staff card: when, conditions, step, follow-ups by outcome; chips: starters, started, self-retry); `showAction()` draws it read-only on a scrolling stage; Edit opens the form.
+- At the end of the flow list, converted and not converted (V5, #3222); no section of their own, `?view=scheduled` opens the list: `workspace-flows-scheduled-section.md`.
 
 ## Which panel actions?
 - `ws_flow_list`, `_get`, `_create`, `_save`, `_publish`, `_pause`, `_bin`, `ws_flow_run_start`, `ws_flow_runs_list` (20 a page), `ws_flow_run_get`, `_cancel`, `ws_flow_shares`, `ws_flow_share_set`, `_remove`: `ws_` rows (exempt, token, write); the store's, runner's, shares' `*_check()` decide.
@@ -18,10 +17,11 @@ description: The flow canvas (workspace_flows.php, workspace_flow.js): who sees 
 - Runs and shares answer with the API's presenters (`api_flows.php`), times via `ws_flow_time()` (`api_time()` is API-only). `ws_flow_run_get` adds `due` (`ws_scheduled_due()`).
 
 ## How is the editor built?
-- Toolbar: "New flow" (slot 1, primary), name, status, save state, Outline, Flow runs, Run, Problems, Publish, Pause, ⋯; below: list | stage | side.
+- Toolbar: "New flow" (slot 1, primary), "Flows ›", name, status, save state, Outline, Flow runs, Run, Problems, Publish, Pause, ⋯; below: palette | stage | side.
+- Palette (`drawPalette()`, left column, edit access only; else `wsf-no-palette`): Start from a template while empty, a search, `PALETTE_GROUPS` (start, values, logic, people, message, system) with coloured headings; start says "This flow: <kind>" (`paletteHeading()`). Click or drag; phones: the outline's buttons.
 - Stage: a layer moved by translate+scale; SVG arrows under 208×80 HTML boxes, grid 16. Pan: empty canvas, Space+drag, middle button, wheel. Zoom: Ctrl+wheel, pinch, − % + fit (0.25-2).
-- Run/view access: the live graph (never published: its draft) read-only, no palette, drag, Publish. Share dialog (⋯): `workspace-flows-shares.md`.
-- Box look: `workspace-flows-box-look.md`.
+- Run/view access: the live graph read-only, no palette, drag, Publish. Share dialog (⋯): `workspace-flows-shares.md`.
+- Box look, kind icons: `workspace-flows-box-look.md`; titles with values, live-flow hint: `workspace-flows-run-notice.md`.
 
 ## How is it saved?
 - 1.5 s after the last change, on blur, Ctrl+S; Publish, Pause, another flow, "New flow" save first.
@@ -33,11 +33,11 @@ description: The flow canvas (workspace_flows.php, workspace_flow.js): who sees 
 - Tab in arrow order; arrows move 16 (Shift 64); C "Connect to…"; Delete; Enter: first field; + − 0; Esc. Undo: `workspace-flows-undo.md`.
 
 ## What is the outline view?
-- A toggle, default under 768 px: boxes in arrow order with settings and "Connect to…"; the hidden canvas redraws when shown.
+- A toggle, default under 768 px: boxes in arrow order; a box's heading opens its settings and "Connect to…" (the selected box, `outlineOpen()`), one at a time; the hidden canvas redraws when shown. All forms at once was 686 controls at 97 boxes (#3497).
 
 ## Where is the run view?
 - `workspace-flows-run-view.md`: Run, the runs list, a run shown box by box, how it is read again and what a failed read shows.
 
 ## What is left?
-- Notes on the canvas, auto-layout, multi-select; retry or skip a box (F5). Tests `tests/workspace_flows_canvas_test.php`.
+- Canvas notes, auto-layout, multi-select. Tests `tests/workspace_flows_canvas_test.php`, `workspace-flows-canvas-harness.md`.
 - Templates and the gallery: `workspace-flows-template-format.md`.

@@ -108,6 +108,7 @@ function get_billing_information($properties) {
     $wysiwyg_fields = array();
     $date_fields = array();
     $date_and_time_fields = array();
+    $time_fields = array();
 
     $form = new liveform('billing_information');
 
@@ -288,6 +289,9 @@ function get_billing_information($properties) {
             $form->assign_field_value('opt_in', '');
         }
 
+        // The SMS box starts ticked, as the e-mail box of a new order does.
+        $form->assign_field_value('opt_in_sms', '1');
+
         // If the visitor is logged in and not ghosting and the visitor has selected
         // that he/she does not want his/her contact info updated with the billing info
         // previously in this session, then uncheck the update contact check box.
@@ -457,6 +461,9 @@ function get_billing_information($properties) {
             
             $output_opt_in_displayed_value = 'true';
         }
+
+        // The SMS box beside it, while SMS is on and the buyer has not said yes.
+        $output_opt_in_sms = pg_consent_sms_checkout_shown($contact) ? pg_consent_sms_checkout_row($form) : '';
         
         // if po number is enabled, output po number field
         if ($po_number) {
@@ -667,6 +674,7 @@ function get_billing_information($properties) {
                         <td>' . $form->output_field(array('type'=>'text', 'name'=>'tax_office', 'maxlength'=>'100', 'class'=>'software_input_text')) . '</td>
                     </tr>
                     ' . $output_opt_in . '
+                    ' . $output_opt_in_sms . '
                     ' . $output_po_number . '
                     ' . $output_referral_source . '
 
@@ -763,6 +771,9 @@ function get_billing_information($properties) {
             $opt_in_displayed_value = 'false';
         }
 
+        // The SMS box: the layout draws it with its own opt_in_sms_shown mark.
+        $opt_in_sms = pg_consent_sms_checkout_shown($contact);
+
         settype($po_number, 'bool');
 
         if ($po_number) {
@@ -849,6 +860,7 @@ function get_billing_information($properties) {
             $wysiwyg_fields = array();
             $date_fields = array();
             $date_and_time_fields = array();
+            $time_fields = array();
 
             foreach ($fields as $field) {
 
@@ -932,6 +944,11 @@ function get_billing_information($properties) {
 
                     case 'date and time':
                         $date_and_time_fields[] = $html_name;
+
+                        break;
+
+                    case 'time':
+                        $time_fields[] = $html_name;
 
                         break;
 
@@ -1064,37 +1081,15 @@ function get_billing_information($properties) {
             $system .= get_wysiwyg_editor_code($wysiwyg_fields);
         }
 
-        // If there is a date or date and time field, then prepare system content,
-        // for the date/time picker.
-        if ($date_fields || $date_and_time_fields) {
-            $system .= get_date_picker_format();
-
-            foreach ($date_fields as $date_field) {
-                $system .=
-                    '<script>
-                        software_$("#' . escape_javascript($date_field) . '").datepicker({
-                            dateFormat: date_picker_format
-                        });
-                    </script>';
-            }
-
-            // If there is a date and time field, then prepare JS for those.
-            if ($date_and_time_fields) {
-                // Include JS file for timepicker.
-                $system .=
-                    '<script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Jquery/jquery-ui-timepicker-addon-1.2.1.min.js"></script>';
-
-                foreach ($date_and_time_fields as $date_and_time_field) {
-                    $system .=
-                        '<script>
-                            software_$("#' . escape_javascript($date_and_time_field) . '").datetimepicker({
-                                dateFormat: date_picker_format,
-                                timeFormat: "' . pg_picker_time_format() . '"
-                            });
-                        </script>';
-                }
-            }
-        }
+        // Date, date and time, and time boxes are drawn by the date-and-time
+        // control, found by their ids: a custom layout's markup carries no
+        // hook. The marker brings the control's scripts
+        // (pg_site_datetime_inject()).
+        $system .= pg_site_datetime_bind(array(
+            'date' => $date_fields,
+            'datetime' => $date_and_time_fields,
+            'time' => $time_fields,
+        ));
 
         $output = render_layout(array(
             'page_id' => $page_id,
@@ -1109,6 +1104,8 @@ function get_billing_information($properties) {
             'custom_field_2_required' => $custom_field_2_required,
             'opt_in' => $opt_in,
             'opt_in_label' => $opt_in_label,
+            'opt_in_sms' => $opt_in_sms,
+            'opt_in_sms_label' => lang('I want to receive campaign and offer messages by SMS.'),
             'po_number' => $po_number,
             'referral_source' => $referral_source,
             'update_contact' => $update_contact,

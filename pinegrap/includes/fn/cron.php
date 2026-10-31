@@ -425,6 +425,19 @@ function pg_cron_jobs()
             'dispatch'    => true,
             'lane'        => 'light',
         ),
+        // Google Analytics figures for the dashboard card: read again once
+        // the kept report is older than PG_GA_TTL. Hourly, so a reading is
+        // never much older than the window; a site with no GA4 property chosen
+        // records the run and calls nothing. Choosing a property puts it in
+        // the dispatch list.
+        'google_analytics_job' => array(
+            'label'       => lang('Google Analytics'),
+            'script'      => 'google_analytics_job.php',
+            'interval'    => 3600,
+            'stale_after' => 172800,
+            'dispatch'    => true,
+            'lane'        => 'light',
+        ),
         // Refunds of returns falling due: the staff's bell rings for each
         // return whose refund is due within three days, and once more when it
         // is late. Daily; a run with no goods on their way back is one indexed
@@ -460,6 +473,22 @@ function pg_cron_jobs()
             'script'      => 'iys_job.php',
             'interval'    => 86400,
             'stale_after' => 259200,
+            'dispatch'    => true,
+            'lane'        => 'light',
+        ),
+        // Parcels a carrier label service opened: each open one is asked
+        // where it stands and the answer written back, its arrival
+        // announced once (includes/fn/shipment_tracking.php). Hourly; a run
+        // asks a hundred parcels at most and starts nothing after ninety
+        // seconds, so the light lane is not held, and more open parcels than
+        // that are asked in turns over the next runs. Saving a service that
+        // can track puts it in the dispatch list; with none on a run records
+        // itself and reads nothing.
+        'shipment_tracking_job' => array(
+            'label'       => lang('Shipment Tracking'),
+            'script'      => 'shipment_tracking_job.php',
+            'interval'    => 3600,
+            'stale_after' => 172800,
             'dispatch'    => true,
             'lane'        => 'light',
         ),

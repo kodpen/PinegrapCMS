@@ -7,6 +7,16 @@ window.pgLang = function (key) {
     return (v !== undefined && v !== null) ? String(v) : key;
 };
 
+// Folds text for the panel's live filters: lowercase, then the dot that
+// toLowerCase() leaves on a capital İ (i + U+0307) removed and ı, ğ, ü, ş, ö,
+// ç folded to their plain letters, so "ist" finds "İstanbul" and "cerez"
+// finds "Çerez". String() first: a stray number must not stop a filter.
+window.pgFoldTR = function (s) {
+    return String(s).toLowerCase().replace(/\u0307/g, '')
+        .replace(/\u011f/g, 'g').replace(/\u00fc/g, 'u').replace(/\u015f/g, 's')
+        .replace(/\u0131/g, 'i').replace(/\u00f6/g, 'o').replace(/\u00e7/g, 'c');
+};
+
 // Says a short answer to a screen reader without moving focus. A live region
 // is only heard when its words change after it is in the document, so the two
 // regions (polite and assertive) are made empty once the page has loaded and
@@ -87,6 +97,21 @@ window.pgLang = function (key) {
 
                 return mask;
             }
+        },
+        // The stock alias is a fixed mask (at most four local-part dots and
+        // four domain labels, "_" placeholders), so it dropped the dot of a
+        // fifth label (ali@mail.cs.hacettepe.edu.tr became ...edutr) and
+        // padded a partial value with "@_._". Any run of non-space
+        // characters is accepted here; validate_email_address() checks the
+        // address on the server.
+        email: {
+            mask: function (opts) {
+                opts.regex = '[^\\s]*';
+
+                return null;
+            },
+            placeholder: '',
+            greedy: false
         }
     });
 })();
@@ -230,6 +255,43 @@ function getPreferredThemeColor() {
     }
 }
 
+// Lazy panel pictures start on the animated loading.gif, which loops forever.
+// jQuery Lazy leaves that src in place when the real address fails, so a
+// missing product, file or contact picture would spin as if still loading.
+// onError puts a still, text-free picture mark in its place (the grey of the
+// No Image boxes) and keeps the alt the screen drew.
+var pgLazyFailedSrc = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E"
+    + "%3Crect width='64' height='64' fill='%23868e96'/%3E"
+    + "%3Cpath d='M18 20h28v24H18z' fill='none' stroke='%23dee2e6' stroke-width='3'/%3E"
+    + "%3Cpath d='M18 44l10-12 8 9 5-5 5 8' fill='none' stroke='%23dee2e6' stroke-width='3'/%3E"
+    + "%3Cpath d='M14 50L50 14' stroke='%23dee2e6' stroke-width='3'/%3E%3C/svg%3E";
+
+// A plain still square shown instead of the spinning GIF while a picture
+// loads, for people who asked their system for less motion: a GIF ignores
+// prefers-reduced-motion.
+var pgLazyPendingSrc = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E"
+    + "%3Crect width='64' height='64' fill='%23868e96' fill-opacity='.25'/%3E%3C/svg%3E";
+
+var pgLazyOptions = {
+    onError: function (element) {
+        $(element).attr('src', pgLazyFailedSrc).addClass('pg-lazy-failed');
+    }
+};
+
+// Swaps the loading.gif of pictures that have not loaded yet for the still
+// square when reduced motion is asked for.
+function pgLazyStill($images) {
+    if (!window.matchMedia || !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        return;
+    }
+
+    $images.each(function () {
+        if (/loading\.gif(\?|$)/.test(this.getAttribute('src') || '')) {
+            this.setAttribute('src', pgLazyPendingSrc);
+        }
+    });
+}
+
 $(document).ready(function () {
 
 
@@ -238,7 +300,8 @@ $(document).ready(function () {
 
     //init lazy if there is img with lazy class.
     if ($("img.lazy").length > 0) {
-        $("img.lazy:not(.delayed)").Lazy();
+        pgLazyStill($("img.lazy"));
+        $("img.lazy:not(.delayed)").Lazy(pgLazyOptions);
     }
 
     // Get the page designer button so that we can add a click event
@@ -252,12 +315,14 @@ $(document).ready(function () {
     // settings dialog is open that is the category in it, not the screen
     // underneath. The help controls are plain links; this only follows one,
     // so a private-labelled site, which prints none, gets nothing here either.
+    // The dialog is a Bootstrap 6 <dialog>: open means [open] and not .hiding,
+    // it never gets the Bootstrap 5 .show class.
     $(document).on('keydown', function (e) {
         if ((e.key !== 'F1') || e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) {
             return;
         }
 
-        var link = $('#pg_settings_modal.show #pg_settings_modal_help:not(.d-none)').get(0)
+        var link = $('#pg_settings_modal[open]:not(.hiding) #pg_settings_modal_help:not(.d-none)').get(0)
             || document.getElementById('help_button')
             || $('#help_link a').get(0);
 
@@ -273,6 +338,55 @@ $(document).ready(function () {
         $(this).find('button.btn-close').attr('style', '');
     });
 
+
+    // Orders > Export for Paraşüt Selected. edit_orders.php marks the orders
+    // exported, then streams a zip. The form is sent with fetch so the page
+    // waits for that zip however long the export takes: a reload or a new
+    // navigation before the answer would cancel the download while the
+    // orders stay marked. The reload after saving shows the marks and the
+    // notice; any answer other than a zip leaves the page as it is. The
+    // Confirm button carries the translated wait and error texts.
+    function pgParasutOrderExport(form, $button) {
+        // The hidden input named "action" shadows form.action.
+        var url = form.getAttribute('action');
+        var $overlay = $('<div class="pg-parasut-export-wait" role="status" style="z-index: 999;background: color-mix(in srgb, var(--pg-bg-body) 70%, transparent);color: var(--pg-fg-body);position: fixed;inset: 0;display: flex;align-items: center;justify-content: center;gap: 1rem;backdrop-filter: blur(4px);font-size: 1.5rem;"></div>');
+        $overlay.append('<span class="spinner-border" aria-hidden="true"></span>', $('<span></span>').text($button.attr('data-wait-text') || lang('Please Wait')));
+        $('body').prepend($overlay).css('overflow', 'hidden');
+
+        var fail = function () {
+            $overlay.remove();
+            $('body').css('overflow', '');
+            if (typeof window.pgToast === 'function') {
+                window.pgToast({ message: $button.attr('data-error-text') || lang('An error occurred.'), variant: 'danger' });
+            }
+        };
+
+        fetch(url, { method: 'POST', body: new FormData(form), credentials: 'same-origin' }).then(function (response) {
+            var type = response.headers.get('Content-Type') || '';
+            if (!response.ok || type.indexOf('application/zip') === -1) {
+                fail();
+                return;
+            }
+            // The name is sent unquoted: filename=parasut_<date>.zip
+            var disposition = response.headers.get('Content-Disposition') || '';
+            var match = /filename="?([^";]+)"?/i.exec(disposition);
+            var name = match ? match[1].trim() : 'parasut.zip';
+            return response.blob().then(function (blob) {
+                var href = URL.createObjectURL(blob);
+                var link = document.createElement('a');
+                link.href = href;
+                link.download = name;
+                document.body.appendChild(link);
+                link.click();
+                link.remove();
+                // Revoking at once can cut the save short in some browsers.
+                window.setTimeout(function () {
+                    URL.revokeObjectURL(href);
+                    window.location.reload();
+                }, 500);
+            });
+        }).catch(fail);
+    }
 
     // Buttons are never relabelled or held while a request runs. A label
     // swapped to "Saving" and a button kept disabled for a fixed time made
@@ -332,15 +446,12 @@ $(document).ready(function () {
         }
         if (confirm_content || autoconfirm == true) {
             if (confirmation == true) {
-                // if this is parasut export button, than output page refresh for user to see the changed order results.
+                // The Paraşüt export answers with a zip; it is fetched and
+                // saved, then the page reloads to show the marks and notice.
                 if (value == 'Export Orders For Parasut') {
                     pgUI.dialog.hide('#xlsl_setup_modal');
-                    //reload this page to show user exported orders.
-                    $('body').prepend('<div id="couldown_for_order_exporting_10000" style="z-index: 999;background: color-mix(in srgb, var(--pg-bg-body) 70%, transparent);color: var(--pg-fg-body);position: fixed;left: 0;top: 0;width: 100%;height: 100%;text-align: center;line-height: 100vh;backdrop-filter: blur(4px);font-size: 40px;">' + lang('Please Wait') + '...</div>');
-                    $('body').attr('style', 'overflow:hidden');
-                    setTimeout(function () {
-                        window.location.reload();
-                    }, 4000);//4sec wait
+                    pgParasutOrderExport(document.form, el);
+                    return true;
                 }
 
                 //if form need to be send also send it.
@@ -923,6 +1034,36 @@ $(document).ready(function () {
                 if (inMenu && toggle) {
                     toggle.focus();
                 }
+            }
+        });
+
+        // Focus leaving the open drawer shuts it, as it shuts the widened
+        // rail of a wide screen: the sidebar comes before the screen in the
+        // page, so Tab past its last row would walk the controls under the
+        // scrim. Not for a layer that belongs to the menu ([data-pg-menu-hold])
+        // or the bar button, whose own click toggles the drawer. Focus with no
+        // relatedTarget (a frame, a blank spot) is read on the next turn.
+        function drawerLostFocus(next) {
+            if (!isMenuDrawerMode() || !isMenuDrawerOpen() || !next || (next === document.body) || (next.nodeType !== 1)) {
+                return;
+            }
+
+            if (next.closest('.software-sidebar') || next.closest('[data-pg-menu-hold]') || (next.id === 'menu_mode_toggle')) {
+                return;
+            }
+
+            closeMenuDrawer();
+        }
+
+        $('.software-sidebar').on('focusout', function (e) {
+            var next = e.relatedTarget;
+
+            if (next) {
+                drawerLostFocus(next);
+            } else {
+                window.setTimeout(function () {
+                    drawerLostFocus(document.activeElement);
+                }, 0);
             }
         });
 
@@ -1605,6 +1746,16 @@ $(document).ready(function () {
                 checkedKeyDataAttributeName: "jquery-multi-select-checkbox-checked-key"
             });
         });
+
+        // The plugin sets the "Select All" switch to all or nothing and fires
+        // change only for that switch, so the mixed state is read back from
+        // the boxes on every change in a list, and once for lists that load
+        // half-ticked (a saved event or filter).
+        $(document).on('change', '.multiselect-checkbox-container', function () {
+            pgSyncCheckboxList(this);
+        });
+
+        pgSyncCheckboxLists();
     }
 
 
@@ -1707,9 +1858,15 @@ $(document).ready(function () {
         datatable.columns.adjust();
 
         // A list paged on the server would ask for the same page again.
+        // false keeps the page: a bare draw() puts the list back on page 1
+        // and would throw away the page restored from history.state.
         if (!options.serverSide) {
-            datatable.draw();
+            datatable.draw(false);
         }
+
+        // DataTables names its pager landmark "pagination" in English
+        // whatever the language; the panel language's file names it.
+        $(datatable.table().container()).find('div.dt-paging nav').attr('aria-label', datatable.i18n('aria.paging', 'Pagination'));
         $('table.dataTable tbody tr td.dataTables_empty').parent('tr').addClass('unselectable');
     };
 
@@ -1780,8 +1937,44 @@ $(document).ready(function () {
             pgListServerOptions(options, $('table.chart[data-pg-list-action]'));
         }
 
+        // A list comes back on the page, length and search it was left on:
+        // panel pages are sent no-store, so Back loads the screen again.
+        // Every table.chart shares these options, so only a single list is
+        // restored. DataTables' stateSave stays off: it would also keep the
+        // column order and visibility the Reset button starts afresh.
+        var pgListKey = null;
+        if ($('table.chart').length === 1 && options["paging"]) {
+            pgListKey = $('table.chart').attr('id') || '0';
+            var pgListKept = pgListState(pgListKey);
+            if (pgListKept && options["lengthMenu"][0].indexOf(pgListKept.length) !== -1) {
+                options["displayStart"] = pgListKept.start;
+                options["pageLength"] = pgListKept.length;
+                options["search"] = { search: pgListKept.search };
+            }
+        }
+
         var datatable = $("table.chart").DataTable(options);
         datatable.buttons().container().appendTo($(".chart-buttons"));
+        // A Turkish panel finds "Yıldız" for "YILDIZ" in a list searched in
+        // the browser; a list paged on the server searches in SQL.
+        if (/^tr/i.test(String(software_system_language || '')) && options["searching"]
+            && !options.serverSide) {
+            pgListTurkishSearch(datatable);
+        }
+        // Each draw follows a page, length or search change, after
+        // DataTables has settled the start (a new search goes to page 1).
+        if (pgListKey !== null) {
+            datatable.on('draw.dt', function () {
+                var info = datatable.page.info();
+                pgListKeep(pgListKey, { start: info.start, length: info.length, search: String(datatable.search()) });
+            });
+        }
+        datatable.on('draw.dt column-sizing.dt fixedheader-mode.dt', function (e) {
+            pgListHeadingCopies(e.dt);
+        });
+        datatable.tables().every(function () {
+            pgListHeadingCopies(this);
+        });
         $(window).on("resize", function () {
             datatable.columns.adjust();
         });
@@ -1792,7 +1985,7 @@ $(document).ready(function () {
             const query = new URLSearchParams(window.location.search).get('query');
             let params = new URLSearchParams(location.search);
             params.delete('query');
-            history.replaceState(null, '', '?' + params + location.hash);
+            history.replaceState(history.state, '', '?' + params + location.hash);
             datatable.search(query).draw();
         }
     }
@@ -1815,6 +2008,7 @@ $(document).ready(function () {
     pgUI.menu.on('#notification_toggle', 'hidden', function () {
         $('#notification_toggle').removeClass('show');
         $('#notifications').scrollTop(0);
+        pgBellFilter = pg_bell_filter_kept();
     });
 
     pg_push_open_requested();
@@ -2221,12 +2415,10 @@ $(document).ready(function () {
             return (v !== undefined && v !== null) ? v : key;
         }
 
-        // String() first: one term that arrives as a number would otherwise
-        // stop the matcher, and with it every search typed into the box.
+        // pgFoldTR() reads String(s): one term that arrives as a number would
+        // otherwise stop the matcher, and with it every search typed into the box.
         function normalizeTR(s) {
-            return String(s).toLowerCase()
-                .replace(/\u011f/g, 'g').replace(/\u00fc/g, 'u').replace(/\u015f/g, 's')
-                .replace(/\u0131/g, 'i').replace(/\u00f6/g, 'o').replace(/\u00e7/g, 'c');
+            return window.pgFoldTR(s);
         }
 
         function actionMatches(q, keys) {
@@ -2333,7 +2525,9 @@ $(document).ready(function () {
             });
         }
 
+        // Returns the first result button it added (empty when none).
         function appendResults(results) {
+            var $first = $();
             $.each(results, function (_i, r) {
                 var meta = TYPE_META[r.type];
                 if (!meta) return;
@@ -2345,7 +2539,29 @@ $(document).ready(function () {
                 $btn.append($wrap);
                 $btn.on('click', function () { pgUI.dialog.hide($modal); leave(meta.url(r)); });
                 $results.append($btn);
+                if (!$first.length) { $first = $btn; }
             });
+            return $first;
+        }
+
+        // The next 20 results of the same query.
+        function loadMoreButton() {
+            var $more = $('<button type="button" class="srch-load-more btn btn-sm btn-outline theme-secondary w-100 mt-3 mb-1"><span class="bi bi-chevron-down me-1"></span>' + t('Load More') + '</button>');
+            $more.on('click', function () {
+                if (loading) return;
+                currentOffset += 20;
+                runSearch(currentQuery, currentOffset);
+            });
+            return $more;
+        }
+
+        // A later page that failed: the same page can be asked again, with
+        // the reason above the button that takes the focus back.
+        function loadMoreFailed() {
+            currentOffset -= 20;
+            var $more = loadMoreButton();
+            $results.append($('<p class="srch-more-error fg-danger my-3" role="alert"></p>').text(t('An error occurred.')), $more);
+            $more.trigger('focus');
         }
 
         function runSearch(query, offset) {
@@ -2353,14 +2569,20 @@ $(document).ready(function () {
             loading = true;
             $clearBtn.removeClass('d-none');
             $emptyBox.addClass('d-none');
-            $results.find('.srch-load-more').remove();
+            // Load More is about to go; the result above it holds the focus
+            // until the next page arrives, not <body>.
+            var $oldMore = $results.find('.srch-load-more');
+            if ($oldMore.is(':focus')) {
+                $oldMore.prevAll('button').first().trigger('focus');
+            }
+            $results.find('.srch-load-more, .srch-more-error').remove();
 
             if (offset === 0) {
                 $results.empty().addClass('show').append(
                     '<div class="text-center py-3 fg-secondary"><span class="spinner-border spinner-border-sm me-1"></span>' + t('Please Wait') + '</div>'
                 );
             } else {
-                $results.append('<div class="srch-load-more text-center py-3 fg-secondary"><span class="spinner-border spinner-border-sm"></span></div>');
+                $results.append('<div class="srch-load-more text-center py-3 fg-secondary" role="status"><span class="spinner-border spinner-border-sm" aria-hidden="true"></span><span class="visually-hidden">' + t('Loading...') + '</span></div>');
             }
 
             $.ajax({
@@ -2372,6 +2594,12 @@ $(document).ready(function () {
                     loading = false;
                     $results.find('.srch-load-more').remove();
 
+                    // Only the first page's branch below reads the status.
+                    if (offset > 0 && !(resp && resp.status === 'success')) {
+                        loadMoreFailed();
+                        return;
+                    }
+
                     if (offset === 0) {
                         $results.empty();
                         if (resp.status !== 'success') {
@@ -2380,7 +2608,7 @@ $(document).ready(function () {
                         }
                         if (resp.actions) cachedActions = resp.actions;
                         var actions = cachedActions || [];
-                        var q = query.toLowerCase();
+                        var q = query;
                         var matched = actions.filter(function (a) { return actionMatches(q, a.keys); });
                         if (matched.length) {
                             var $actRow = $('<div class="d-flex flex-wrap gap-1 mb-3 pb-3 border-bottom"></div>');
@@ -2464,22 +2692,27 @@ $(document).ready(function () {
                     }
 
                     if (resp.results && resp.results.length) {
-                        appendResults(resp.results);
+                        var $first = appendResults(resp.results);
+                        // The Load More button that held the focus is gone.
+                        if (offset > 0) {
+                            $first.trigger('focus');
+                        }
                     }
 
                     if (resp.has_more) {
-                        var $more = $('<button type="button" class="srch-load-more btn btn-sm btn-outline theme-secondary w-100 mt-3 mb-1"><span class="bi bi-chevron-down me-1"></span>' + t('Load More') + '</button>');
-                        $more.on('click', function () {
-                            currentOffset += 20;
-                            runSearch(currentQuery, currentOffset);
-                        });
+                        var $more = loadMoreButton();
                         $results.append($more);
+                        if (offset > 0 && !(resp.results && resp.results.length)) {
+                            $more.trigger('focus');
+                        }
                     }
                 },
                 error: function () {
                     loading = false;
                     $results.find('.srch-load-more').remove();
-                    if (offset === 0) $results.empty().append('<p class="fg-danger my-3">' + t('An error occurred.') + '</p>');
+                    if (offset > 0) { loadMoreFailed(); } else {
+                        $results.empty().append('<p class="fg-danger my-3">' + t('An error occurred.') + '</p>');
+                    }
                 }
             });
         }
@@ -2696,9 +2929,194 @@ function pgListServerOptions(options, $table) {
         pgInitInjected($table.find('tbody'));
 
         if ($.fn.Lazy) {
-            $table.find('img.lazy:not(.delayed)').Lazy();
+            pgLazyStill($table.find('img.lazy'));
+            $table.find('img.lazy:not(.delayed)').Lazy(pgLazyOptions);
         }
     });
+}
+
+// Folds text for a Turkish list search with window.pgFoldTR (I, İ, ı and i
+// are one letter, ş is s, ç is c), then the other marks stripped as
+// DataTables strips them, the same on both sides of a comparison.
+function pgListTurkishFold(s) {
+    s = window.pgFoldTR(s);
+
+    return s.normalize ? s.normalize('NFD').replace(/[\u0300-\u036f]/g, '') : s;
+}
+
+/**
+ * Whether a row's search text holds every word of a search the way a Turkish
+ * reader means it. The words are DataTables' smart search words: split on
+ * spaces, a "quoted phrase" is one word, a !word must be missing. A word is
+ * found when DataTables' own case-insensitive match finds it (IPHONE finds
+ * iPhone, DEMİR finds Demir) or when it occurs folded the Turkish way
+ * (YILDIZ and yildiz find Yıldız, isik finds Işık).
+ */
+function pgListTurkishMatch(term, text) {
+    var words = String(term).match(/!?["“][^"”]+["”]|[^ ]+/g) || [];
+    var plain = String(text);
+    var folded = pgListTurkishFold(plain);
+
+    // DataTables' own match: the text as it is and with its marks stripped,
+    // the word with its marks stripped, case-insensitive.
+    if (plain.normalize) {
+        plain = plain + '\n' + plain.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    }
+
+    for (var i = 0; i < words.length; i++) {
+        var word = words[i];
+        var negative = word.charAt(0) === '!';
+
+        if (negative) {
+            word = word.substring(1);
+        }
+
+        word = word.replace(/^["“](.*)["”]$/, '$1').replace(/"/g, '');
+
+        if (word === '' || (negative && word.length < 2)) {
+            continue;
+        }
+
+        var bare = word.normalize ? word.normalize('NFD').replace(/[\u0300-\u036f]/g, '') : word;
+        var found = new RegExp(bare.replace(/[.*+?^${}()|[\]\\\-]/g, '\\$&'), 'i').test(plain)
+            || folded.indexOf(pgListTurkishFold(word)) !== -1;
+
+        if (found === negative) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+/**
+ * Searches a list drawn in the browser with pgListTurkishMatch(). The typed
+ * text stays the table's search, so the search box, datatable.search() and
+ * the kept list state still see the string; DataTables' filter reads the
+ * search through a getter that hands it a matcher for that text, the one
+ * search form whose test is not a case-insensitive RegExp (JavaScript never
+ * pairs I with ı). A diacritics hook would lower both sides alike, and
+ * lowering IPHONE to ıphone the Turkish way would lose iPhone.
+ */
+function pgListTurkishSearch(datatable) {
+    datatable.settings().each(function (settings) {
+        var search = settings.oPreviousSearch;
+        var text = String(search.search || '');
+        var matcher = null;
+
+        Object.defineProperty(search, 'search', {
+            configurable: true,
+            enumerable: true,
+            get: function () {
+                if (text === '') {
+                    return '';
+                }
+
+                if (!matcher) {
+                    var typed = text;
+
+                    matcher = function (data) {
+                        return pgListTurkishMatch(typed, data);
+                    };
+                    // The search box compares its value with the search.
+                    matcher.toString = function () {
+                        return typed;
+                    };
+                }
+
+                return matcher;
+            },
+            set: function (value) {
+                value = (value === null || value === undefined) ? '' : String(value);
+
+                if (value !== text) {
+                    text = value;
+                    matcher = null;
+                }
+            }
+        });
+
+        // DataTables empties its box for a function search; the box shows
+        // the typed text again unless the reader is typing in it. Later:
+        // with the language file loading, DataTables binds its own handler
+        // after this one.
+        $(settings.nTable).on('search.dt', function (e, s) {
+            if (s === settings) {
+                setTimeout(function () {
+                    $(datatable.table(settings.nTable).container()).find('div.dt-search input').not(document.activeElement).val(text);
+                }, 0);
+            }
+        });
+
+        if (text !== '' && settings._bInitComplete) {
+            datatable.table(settings.nTable).draw(false);
+        }
+    });
+}
+
+/**
+ * The page, length and search a paged list was left on, kept in the history
+ * entry by pgListKeep() so Back opens it where it was; null when the entry
+ * holds none for the list or holds something unusable.
+ */
+function pgListState(key) {
+    var state = (window.history && $.isPlainObject(history.state)) ? history.state : {};
+    var lists = $.isPlainObject(state.pgList) ? state.pgList : {};
+    var kept = Object.prototype.hasOwnProperty.call(lists, key) ? lists[key] : null;
+
+    if (kept && typeof kept.start === 'number' && kept.start >= 0 && kept.start % 1 === 0
+        && typeof kept.length === 'number'
+        && typeof kept.search === 'string') {
+        return kept;
+    }
+
+    return null;
+}
+
+// Keeps a list's {start, length, search} in the current history entry,
+// beside whatever else the entry holds.
+function pgListKeep(key, kept) {
+    if (!window.history || !history.replaceState) {
+        return;
+    }
+
+    var state = $.extend({}, $.isPlainObject(history.state) ? history.state : null);
+    state.pgList = $.extend({}, $.isPlainObject(state.pgList) ? state.pgList : null);
+    state.pgList[key] = kept;
+
+    try {
+        history.replaceState(state, '', location.href);
+    } catch (e) {
+        // A refused state (size limit) leaves the entry as it was.
+    }
+}
+
+// With scrollX, DataTables keeps a copy of a list's heading in the body table
+// to size the columns, inside 0px boxes. Screen readers take the column
+// headers from that copy, so its text stays readable, but its sort links and
+// select-all box leave the Tab order: Tab used to pass through them a second
+// time with no focus to see. While FixedHeader floats the real heading, its
+// floating table is aria-hidden and a placeholder copy with live links stays
+// in place; the floating heading is shown to screen readers again and the
+// placeholder is made inert, as focus there is lost when it is removed.
+// FixedHeader builds both again on each mode change.
+function pgListHeadingCopies(api) {
+    var header = api.table().header();
+
+    $(api.table().node()).children('thead').not(header)
+        .find('a[href], button, input, select, textarea, [tabindex]').attr('tabindex', '-1')
+        .end()
+        .find('button, input, select, textarea').attr('aria-hidden', 'true');
+
+    var holder = $(header).closest('table');
+
+    if (holder.length && (holder[0] !== api.table().node()) && !$(api.table().container()).find(holder).length) {
+        holder.removeAttr('aria-hidden');
+
+        $(api.table().container()).find('div.dt-scroll-head thead').not(header)
+            .attr('inert', '')
+            .find('a[href], button, input, select, textarea, [tabindex]').attr('tabindex', '-1');
+    }
 }
 
 // An empty page with the reason in the table's empty row.
@@ -2708,18 +3126,27 @@ function pgListServerFailed(callback, draw, $table, message) {
 }
 
 function chart_checkbox_state_change() {
+    // The multiselect plugin only ever sets the select-all box to all or
+    // nothing, so a part-ticked list read as "not checked". The count is taken
+    // over the enabled boxes of the rows the plugin itself selects.
+    var $boxes = $('tr:not(.unselectable) .select-all input').not(':disabled');
+    var ticked = $boxes.filter(':checked').length;
+
+    $('#select_all')
+        .prop('indeterminate', (ticked > 0) && (ticked < $boxes.length))
+        .prop('checked', (ticked > 0) && (ticked === $boxes.length));
+
+    // The property as well as the class: .btn.disabled only stops the pointer,
+    // so a bulk button outside the bottom bar stayed focusable and pressable
+    // with nothing ticked.
     if ($('.select-all input[type=checkbox]').is(':checked')) {
-        $('.enable-on-selected button').each(function () {
-            $(this).removeClass('disabled');
-        });
+        $('.enable-on-selected button').removeClass('disabled').prop('disabled', false);
         $('.dataTable .action-buttons *').each(function () {
             $(this).attr('style', 'visibility:hidden !important;');
         });
 
     } else {
-        $('.enable-on-selected button').each(function () {
-            $(this).addClass('disabled');
-        });
+        $('.enable-on-selected button').addClass('disabled').prop('disabled', true);
         $('.dataTable .action-buttons *').each(function () {
             $(this).attr('style', '');
         });
@@ -3655,11 +4082,31 @@ function get_notifications($read_mark, keep_place) {
                     var notification_time;
                     var notification_type;
                     var notification_readed;
+                    var notification_group;
+                    var notification_fold_head;
+                    var notification_fold_count;
+                    var notification_glyph;
+                    var notification_join;
+                    var notification_bell;
                     while (i < data_length) {
                         notification_id = parseInt(response.data[i].id, 10) || 0;
                         notification_user = h(String(response.data[i].user || ''));
                         notification_time = String(response.data[i].time || '');
                         notification_type = h(String(response.data[i].type || ''));
+                        // The bell is the one inbox: a row is the site's or
+                        // the workspace's (the filters), and the older runs
+                        // of a flow follow the newest folded under it
+                        // (pg_notification_fold()).
+                        notification_group = (response.data[i].group === 'workspace') ? 'workspace' : 'site';
+                        notification_fold_head = parseInt(response.data[i].fold_head, 10) || 0;
+                        notification_fold_count = parseInt(response.data[i].fold_count, 10) || 1;
+                        notification_glyph = /^bi-[a-z0-9-]+$/.test(String(response.data[i].glyph || '')) ? String(response.data[i].glyph) : '';
+                        notification_join = /^https?:\/\//i.test(String(response.data[i].join || '')) ? String(response.data[i].join) : '';
+                        notification_bell = ' data-pg-bell-group="' + notification_group + '"';
+
+                        if (notification_fold_head > 0) {
+                            notification_bell += ' data-pg-bell-fold="' + notification_fold_head + '"';
+                        }
 
                         response.data[i].description = '<div class="notification-description bg-2" style="--bs-bg-opacity: 0.2;">' + response.data[i].description + '</div>';
                         response.data[i].details = '<div notification-details>' + response.data[i].details + '</div>';
@@ -3669,7 +4116,16 @@ function get_notifications($read_mark, keep_place) {
 
                             output_button_bar += '<button type="button" class="fs-smaller menu-item bi bi-check-square bi-me-2 fg-emphasis-secondary" onclick="edit_notification(\'' + notification_id + '\', \'mark_unread\'); this.remove();">' + lang('Mark as unread') + '</button>';
 
-                            output_data_title = '<small class="notification-title" title="' + response.data[i].title + '">' + response.data[i].title + '</small>';
+                            // A meeting about to start: its call, one tap away.
+                            if (notification_join !== '') {
+                                output_button_bar = '<button type="button" class="menu-item bi bi-camera-video bi-me-2 fg-emphasis-primary pg-bell-join" data-url="' + h(notification_join) + '">' + lang('Join') + '</button>' + output_button_bar;
+                            }
+
+                            if (notification_fold_count > 1) {
+                                output_button_bar += pg_bell_fold_button(notification_id, notification_fold_count);
+                            }
+
+                            output_data_title = '<small class="notification-title text-wrap text-break w-100">' + ((notification_glyph !== '') ? '<span class="bi ' + notification_glyph + ' pg-bell-glyph" aria-hidden="true"></span>' : '') + response.data[i].title + '</small>';
                         } else {
                             output_data_title = '<div class="notification-title text-wrap w-100">' + response.data[i].title + '</div>';
                         }
@@ -3690,7 +4146,7 @@ function get_notifications($read_mark, keep_place) {
                         //we complete notification skeleton and output it before clear notification button.
                         // OUTPUT
                         output_notifications += '\
-                        <li notification-id="' + notification_id + '" class="software_notification custom-contextmenu position-relative list-group-item border-0 p-0 viewed bg-transparent ' + notification_readed + ' ' + notification_type + '">\
+                        <li notification-id="' + notification_id + '"' + notification_bell + ' class="software_notification custom-contextmenu position-relative list-group-item border-0 p-0 viewed bg-transparent ' + notification_readed + ' ' + notification_type + (((notification_fold_head > 0) && !pgBellOpenFolds[notification_fold_head]) ? ' pg-bell-shut' : '') + '">\
                             <div class="container-fluid">\
                             <div class="row notification-card ' + $output_border_classes + '" style="--bs-border-opacity:0.08;">\
                                     <div class="col-12 ps-7 p-3 border-bottom border-secondary " style="--bs-border-opacity:0.04;">\
@@ -3716,6 +4172,7 @@ function get_notifications($read_mark, keep_place) {
                     }
 
                     notifications_body.append(output_notifications);
+                    pg_bell_filter_apply();
                     if (keep_place) {
                         restore_place();
                     } else {
@@ -3726,6 +4183,7 @@ function get_notifications($read_mark, keep_place) {
                     spinner.remove();
                     // show no notification content.
                     notifications_empty.removeClass('d-none');
+                    pg_bell_filter_apply();
                     notifications.scrollTop(0);
                 }
 
@@ -3740,6 +4198,151 @@ function get_notifications($read_mark, keep_place) {
         }
     });
 };
+
+// The bell's filters (output.php, for a member of the team): everything, the
+// site's notices or what the workspace told the person. The reader's choice
+// stays for the next visit; the Workspace list's Inbox opens the bell on
+// Workspace for that once (pgBellOpen()).
+var pgBellFilters = ['all', 'site', 'workspace'];
+var pgBellFilter = pg_bell_filter_kept();
+// The folded runs the reader opened, kept across the unread poll's redraw.
+var pgBellOpenFolds = {};
+
+function pg_bell_filter_kept() {
+    var kept = 'all';
+
+    try {
+        kept = String(localStorage.getItem('pg-bell-filter') || 'all');
+    } catch (error) {
+        kept = 'all';
+    }
+
+    return (pgBellFilters.indexOf(kept) > -1) ? kept : 'all';
+}
+
+// Shows the rows of the chosen filter, the unread count of each, and the
+// empty line when the filter leaves nothing.
+function pg_bell_filter_apply() {
+    var box = document.getElementById('notifications');
+    var bar = box ? box.querySelector('.pg-bell-filters') : null;
+
+    if (!box) {
+        return;
+    }
+
+    var filter = bar ? pgBellFilter : 'all';
+    var rows = box.querySelectorAll('li.software_notification');
+    var counts = { all: 0, site: 0, workspace: 0 };
+    var shown = 0;
+
+    Array.prototype.forEach.call(rows, function (row) {
+        var group = (row.getAttribute('data-pg-bell-group') === 'workspace') ? 'workspace' : 'site';
+        var off = (filter !== 'all') && (group !== filter);
+
+        row.classList.toggle('pg-bell-off', off);
+
+        if (row.classList.contains('new')) {
+            counts.all++;
+            counts[group]++;
+        }
+
+        if (!off && !row.classList.contains('pg-bell-shut')) {
+            shown++;
+        }
+    });
+
+    if (bar) {
+        Array.prototype.forEach.call(bar.querySelectorAll('[data-pg-bell-filter]'), function (chip) {
+            var key = chip.getAttribute('data-pg-bell-filter');
+            var count = chip.querySelector('.pg-bell-count');
+
+            chip.setAttribute('aria-pressed', (key === filter) ? 'true' : 'false');
+
+            if (count) {
+                count.textContent = (counts[key] > 99) ? '99+' : String(counts[key] || '');
+                count.hidden = !counts[key];
+            }
+        });
+    }
+
+    if (rows.length) {
+        $(box).find('.notifications_empty').toggleClass('d-none', shown > 0);
+    }
+
+    // Deleting everything is offered only while everything is shown.
+    $(box).find('.notification-remove-btn').toggleClass('d-none', filter !== 'all');
+}
+
+// The way to a flow's older runs folded under its newest, and back.
+function pg_bell_fold_button(notification_id, count) {
+    var open = !!pgBellOpenFolds[notification_id];
+
+    return '<button type="button" class="menu-item bi ' + (open ? 'bi-chevron-up' : 'bi-chevron-down') + ' bi-me-2 fg-emphasis-secondary pg-bell-more" data-pg-bell-more="' + notification_id + '" data-pg-bell-runs="' + (count - 1) + '" aria-expanded="' + (open ? 'true' : 'false') + '">'
+        + h(open ? lang('Show fewer') : lang('+{var:1} more').replace('{var:1}', String(count - 1))) + '</button>';
+}
+
+// Opens the bell on one filter: the Workspace list's Inbox asks for
+// 'workspace'. The kept choice comes back when the bell closes.
+window.pgBellOpen = function (filter) {
+    var toggle = document.getElementById('notification_toggle');
+
+    if (!toggle || !document.getElementById('notifications')) {
+        return false;
+    }
+
+    pgBellFilter = (pgBellFilters.indexOf(filter) > -1) ? filter : pg_bell_filter_kept();
+
+    if (pgUI.menu.isOpen('#notification_toggle')) {
+        pg_bell_filter_apply();
+    } else {
+        toggle.click();
+    }
+
+    return true;
+};
+
+$(document).on('click', '#notifications [data-pg-bell-filter]', function () {
+    pgBellFilter = String($(this).attr('data-pg-bell-filter'));
+
+    try {
+        localStorage.setItem('pg-bell-filter', pgBellFilter);
+    } catch (error) {
+        // Kept for this page only.
+    }
+
+    pg_bell_filter_apply();
+});
+
+$(document).on('click', '#notifications .pg-bell-more', function () {
+    var head = parseInt($(this).attr('data-pg-bell-more'), 10) || 0;
+    var open = !pgBellOpenFolds[head];
+
+    if (open) {
+        pgBellOpenFolds[head] = true;
+    } else {
+        delete pgBellOpenFolds[head];
+    }
+
+    $('#notifications li[data-pg-bell-fold="' + head + '"]').toggleClass('pg-bell-shut', !open);
+    $(this).replaceWith(pg_bell_fold_button(head, (parseInt($(this).attr('data-pg-bell-runs'), 10) || 0) + 1));
+    $('#notifications [data-pg-bell-more="' + head + '"]').trigger('focus');
+    pg_bell_filter_apply();
+});
+
+// A meeting's call opens in a tab of its own, cut off from the panel.
+$(document).on('click', '#notifications .pg-bell-join', function () {
+    var url = String($(this).attr('data-url') || '');
+
+    if (!/^https?:\/\//i.test(url)) {
+        return;
+    }
+
+    var opened = window.open(url, '_blank', 'noopener');
+
+    if (opened) {
+        opened.opener = null;
+    }
+});
 
 // Opens the page a notification points to. The URL sits in a data attribute
 // (see get_notifications()), so a notification title or comment that
@@ -4898,6 +5501,7 @@ function change_email_campaign_profile_action() {
     $('#schedule_period').removeClass('show');
     $('#schedule_base').removeClass('show');
     $('#standard_schedule_period_and_base').removeClass('show');
+    $('#subscription_fields_row').removeClass('show');
 
     schedule_period
     // Show certain rows based on which destination type was selected.
@@ -4924,6 +5528,14 @@ function change_email_campaign_profile_action() {
 
         case 'product_ordered':
             $('#product_id_row').addClass('show');
+            $('#standard_schedule_period_and_base').addClass('show');
+            break;
+
+        case 'subscription_renewed':
+        case 'subscription_failed':
+        case 'subscription_cancelled':
+        case 'subscription_price_changed':
+            $('#subscription_fields_row').addClass('show');
             $('#standard_schedule_period_and_base').addClass('show');
             break;
 
@@ -5030,9 +5642,9 @@ function pgCloseAclExpiry(container) {
 }
 
 /* The "select all" switch of one checkbox list: three states rather than two,
-   plus the count beside it. The plugin that drives the list only ever sets
-   checked/unchecked, so a half-selected list used to show the switch off - the
-   one state it could not be. */
+   plus the count beside it where the list has one. The plugin that drives the
+   list only ever sets checked/unchecked, so a half-selected list used to show
+   the switch off - the one state it could not be. */
 function pgSyncCheckboxList(list) {
 
     var boxes = Array.prototype.filter.call(
@@ -5057,7 +5669,7 @@ function pgSyncCheckboxList(list) {
 }
 
 function pgSyncCheckboxLists(scope) {
-    Array.prototype.forEach.call((scope || document).querySelectorAll('.pg-perm-list'), pgSyncCheckboxList);
+    Array.prototype.forEach.call((scope || document).querySelectorAll('.multiselect-checkbox-container'), pgSyncCheckboxList);
 }
 
 function change_user_role(user_role) {
@@ -6281,6 +6893,29 @@ function init_edit_comment_publish() {
         publish_schedule.fadeIn();
     }
 
+    // An arrow key on a closed select changes its value at once, so after a
+    // navigation key the date box is shown but focus stays on the select;
+    // Enter moves it there. A pointer pick, or a key that opens the list,
+    // moves focus as soon as the schedule is picked.
+    var publish_keyed = false;
+
+    publish.on('keydown', function (event) {
+        if (!event.altKey && (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Home', 'End', 'PageUp', 'PageDown'].indexOf(event.key) !== -1)) {
+            publish_keyed = true;
+        } else if ((event.key === 'Enter') && (publish.val() == 'schedule')) {
+            if (window.pgFields) {
+                event.preventDefault();
+                window.pgFields.focus(publish_date_and_time[0]);
+            }
+        } else if (event.altKey || (event.key === 'F4') || (event.key === ' ')) {
+            publish_keyed = false;
+        }
+    });
+
+    publish.on('pointerdown', function () {
+        publish_keyed = false;
+    });
+
     // When the publish pick list is changed, then update fields.
     publish.change(function () {
         // If the schedule option is selected, then show fields for it.
@@ -6289,7 +6924,7 @@ function init_edit_comment_publish() {
 
             // Focus the box of the date and time field, which opens its
             // calendar; the field itself is the hidden store.
-            if (window.pgFields) {
+            if (!publish_keyed && window.pgFields) {
                 window.pgFields.focus(publish_date_and_time[0]);
             }
 
@@ -8876,12 +9511,22 @@ function pg_background_calls_allowed() {
             c = document.createElement('div');
             c.id = 'pg-toast-container';
             c.className = 'toast-container position-fixed top-0 end-0 p-5';
-            c.style.zIndex = '1090';
             c.setAttribute('aria-live', 'polite');
             c.setAttribute('aria-atomic', 'true');
             document.body.appendChild(c);
         }
         return c;
+    }
+
+    // On the body under the panel's top bar the container starts below the
+    // bar and stays under its stacking level (1030), above sticky bars
+    // (1020): a lasting toast would otherwise cover the bell and account
+    // buttons, and the header menus open inside the bar's stacking context.
+    // Inside a dialog (pgUI.hostLayer) or without a bar it keeps the top.
+    function placeToastContainer(c) {
+        var underBar = c.parentNode === document.body && !!document.querySelector('.software-navbar.fixed-top');
+        c.style.top = underBar ? 'var(--pg-navbar-h)' : '';
+        c.style.zIndex = underBar ? '1025' : '1090';
     }
 
     /**
@@ -8912,6 +9557,7 @@ function pg_background_calls_allowed() {
         if (window.pgUI && pgUI.hostLayer) {
             pgUI.hostLayer(container);
         }
+        placeToastContainer(container);
         var key = variant + '\n' + message;
         if (sticky) {
             for (var i = 0; i < container.children.length; i++) {
@@ -9079,6 +9725,91 @@ function pg_background_calls_allowed() {
         } else {
             el.removeAttribute('aria-describedby');
         }
+    }
+
+    var PG_HELP_CONTROLS = 'input, select, textarea';
+    var PG_HELP_SKIP_TYPES = /^(hidden|submit|button|reset|image)$/;
+    var pgHelpSeq = 0;
+
+    // The input, select or textarea a field help belongs to, when there is
+    // exactly one in el; the chips box's typing input does not count.
+    function pgHelpOneControl(el) {
+        if (!el || !el.querySelectorAll) return null;
+
+        var found = [];
+
+        Array.prototype.forEach.call(el.querySelectorAll(PG_HELP_CONTROLS), function (c) {
+            if (c.tagName === 'INPUT' && PG_HELP_SKIP_TYPES.test(c.type || '')) return;
+            if (c.classList.contains('form-ghost')) return;
+            found.push(c);
+        });
+
+        return found.length === 1 ? found[0] : null;
+    }
+
+    // Ties each panel field's visible .form-text help to its field through
+    // aria-describedby, so a screen reader reads the help on focus, not the
+    // label alone. The field is the one control in the help's parent, else
+    // the one control (not a radio) of the element just before the help: a
+    // switch in a .form-field with its help after it. Left alone: help inside
+    // a label, help after a group of controls or a radio, help already bound
+    // by hand, date and time hook fields, and fields with a popover title
+    // (Bootstrap's Tooltip removes aria-describedby when it hides). Runs once
+    // per help; a combobox toggle or chips box already drawn is linked too.
+    function pgBindFieldHelp(root) {
+        root = root || document;
+
+        var referenced = {};
+
+        Array.prototype.forEach.call(document.querySelectorAll('[aria-describedby]'), function (el) {
+            el.getAttribute('aria-describedby').split(/\s+/).forEach(function (id) {
+                if (id) referenced[id] = true;
+            });
+        });
+
+        Array.prototype.forEach.call(root.querySelectorAll('.form-text'), function (helpEl) {
+            if (helpEl.dataset.pgHelpBound === '1') return;
+            helpEl.dataset.pgHelpBound = '1';
+
+            if (helpEl.id && referenced[helpEl.id]) return;
+            if (helpEl.closest('label')) return;
+
+            var control = pgHelpOneControl(helpEl.parentElement);
+
+            if (!control) {
+                control = pgHelpOneControl(helpEl.previousElementSibling);
+                if (control && control.type === 'radio') control = null;
+            }
+
+            if (!control || control.type === 'radio') return;
+            if (control.hasAttribute('title') || control.hasAttribute('data-bs-original-title')) return;
+            if (control.hasAttribute('data-pg-date') || control.hasAttribute('data-pg-datetime') || control.hasAttribute('data-pg-time')) return;
+            if (control.closest('[data-pg-date-selects]')) return;
+
+            var bound = (control.getAttribute('aria-describedby') || '').split(/\s+/).some(function (id) {
+                var target = id ? document.getElementById(id) : null;
+
+                return !!(target && target.classList.contains('form-text'));
+            });
+
+            if (bound) return;
+
+            if (!helpEl.id) {
+                var base = (control.id || 'pg-field') + '-help';
+                var id = base;
+
+                while (document.getElementById(id)) id = base + '-' + (++pgHelpSeq);
+                helpEl.id = id;
+            }
+
+            pgDescribedBy(control, helpEl.id, true);
+
+            if (control.pgComboboxToggle) pgDescribedBy(control.pgComboboxToggle, helpEl.id, true);
+
+            var ghost = control.pgChipsBox ? control.pgChipsBox.querySelector('.form-ghost') : null;
+
+            if (ghost) pgDescribedBy(ghost, helpEl.id, true);
+        });
     }
 
     // Mirrors .is-invalid into aria-invalid and links the field's message
@@ -9267,9 +9998,13 @@ function pg_background_calls_allowed() {
     }
 
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', function () { pgInjectAriaAndRequiredMarkers(); });
+        document.addEventListener('DOMContentLoaded', function () {
+            pgInjectAriaAndRequiredMarkers();
+            pgBindFieldHelp();
+        });
     } else {
         pgInjectAriaAndRequiredMarkers();
+        pgBindFieldHelp();
     }
 
     // Scripts mark fields after the page is drawn (a product code already in
@@ -9293,6 +10028,7 @@ function pg_background_calls_allowed() {
     // Expose for callers that render forms after initial load.
     window.pgInjectAriaAndRequiredMarkers = pgInjectAriaAndRequiredMarkers;
     window.pgFieldInvalid = pgFieldInvalid;
+    window.pgBindFieldHelp = pgBindFieldHelp;
 })(window);
 
 /* ── User permission rows (add_user.php, edit_user.php) ────────────────────
@@ -9844,7 +10580,7 @@ function initSettingsFilter() {
     // reading it per keystroke on the commerce screen is a hundred kilobytes of
     // textContent per character.
     cards.forEach(function (card) {
-        card.setAttribute('data-pgtext', (card.textContent || '').replace(/\s+/g, ' ').toLowerCase());
+        card.setAttribute('data-pgtext', window.pgFoldTR((card.textContent || '').replace(/\s+/g, ' ')));
     });
 
     // Only what a person typed filters. A password manager writes the saved
@@ -9860,7 +10596,7 @@ function initSettingsFilter() {
             field.value = '';
         }
 
-        var needle = field.value.trim().toLowerCase();
+        var needle = window.pgFoldTR(field.value.trim());
         var shown = 0;
 
         cards.forEach(function (card) {
@@ -9921,7 +10657,9 @@ var _pgNoTitlePopover = ':not([data-bs-toggle="menu"]):not([data-bs-toggle="tab"
 
 
 /**
- * The software's own tooltips, over one scope.
+ * The software's own tooltips, over one scope. A title alone is text (the
+ * panel escapes it once, for the attribute); a title with data-bs-content is
+ * a details card whose content is HTML.
  */
 function pgBindTitlePopovers(scope) {
 
@@ -9931,7 +10669,7 @@ function pgBindTitlePopovers(scope) {
         pgUI.popover.get(this, {
             trigger: 'hover',
             placement: 'auto',
-            html: true,
+            html: this.hasAttribute('data-bs-content'),
             container: 'body'
         });
     });
@@ -9940,7 +10678,7 @@ function pgBindTitlePopovers(scope) {
         pgUI.popover.get(this, {
             trigger: 'click',
             placement: 'auto',
-            html: true,
+            html: this.hasAttribute('data-bs-content'),
             container: 'body'
         });
     });
@@ -10007,12 +10745,17 @@ function pgSyncCollapseSwitchers(scope) {
 /**
  * Everything a freshly injected piece of the panel still needs.
  */
-// Bootstrap 6 Ranges marked data-pg-range, with the value bubble; the
-// attribute's value is the unit after the number ("%").
+// Bootstrap 6 Ranges marked data-pg-range, with the value bubble. The
+// attribute is the translated wording with {var:1} for the value
+// (lang('{var:1}%'), "%{var:1}" in Turkish); a value without {var:1} is a
+// unit appended after the number.
 function pgBindRanges(scope) {
     $(scope).find('.form-range[data-pg-range]').each(function () {
-        var unit = this.getAttribute('data-pg-range') || '';
-        pgUI.range.bubble(this, function (value) { return value + unit; });
+        var tpl = this.getAttribute('data-pg-range') || '';
+        if (tpl.indexOf('{var:1}') === -1) {
+            tpl = '{var:1}' + tpl;
+        }
+        pgUI.range.bubble(this, function (value) { return tpl.replace('{var:1}', value); });
     });
 }
 
@@ -10035,6 +10778,12 @@ function pgInitInjected(scope) {
             showMaskOnHover: false,
             showMaskOnFocus: false
         });
+    }
+
+    // Field help read with its field; before pgFields.init, so a combobox
+    // toggle copies the link when it is drawn.
+    if (window.pgBindFieldHelp) {
+        window.pgBindFieldHelp($scope[0]);
     }
 
     // Chips, combobox, date and time fields marked with a data-pg-* hook; a
@@ -10291,6 +11040,41 @@ var pgSettingsModal = (function () {
 
         $(el).on('click', '#pg_settings_modal_scrim', function () {
             drawer(false);
+        });
+
+        // On a phone the list is a drawer over the pane: Tab past its last
+        // row would land on the covered list button and the fields under the
+        // scrim. Focus leaving the list shuts it. A focus with no
+        // relatedTarget (a click on a blank spot, a frame) is read on the
+        // next turn, once it has settled.
+        function sideLostFocus(next) {
+
+            var side = byId('pg_settings_modal_side');
+
+            if (!side || !drawerOpen() || !window.matchMedia || !window.matchMedia('(max-width: 575.98px)').matches) {
+                return;
+            }
+
+            if (next && (next !== document.body) && !side.contains(next)) {
+                drawer(false);
+            }
+        }
+
+        el.addEventListener('focusout', function (event) {
+
+            var side = byId('pg_settings_modal_side');
+
+            if (!side || !side.contains(event.target)) {
+                return;
+            }
+
+            if (event.relatedTarget) {
+                sideLostFocus(event.relatedTarget);
+            } else {
+                window.setTimeout(function () {
+                    sideLostFocus(document.activeElement);
+                }, 0);
+            }
         });
 
         // Escape closes the drawer before it closes the dialog. Bound to the
@@ -11364,6 +12148,19 @@ window.pgCodeEditorReady = function (markup, done) {
                 return;
             }
 
+            // The panel language changed: the page behind the dialog and the
+            // dialog's own frame were drawn in the old one. The page is loaded
+            // again at this pane, which opens the dialog from the hash and is
+            // handed the confirmation there. replaceState rather than a hash
+            // assignment, whose hashchange would load the pane before the
+            // reload.
+            if (response.relocalize) {
+                dirty = false;
+                history.replaceState(history.state, '', '#settings/' + pane);
+                window.location.reload();
+                return;
+            }
+
             var said = (response.notices && response.notices.length)
                 ? response.notices.join(' ')
                 : '';
@@ -11753,7 +12550,7 @@ $(function () {
         style.textContent = '.pg-sort-btn{background:none;border:0;padding:0;margin:0;color:inherit;font:inherit;'
             + 'text-transform:inherit;letter-spacing:inherit;text-align:inherit;display:inline-flex;align-items:center;'
             + 'gap:.3em;cursor:pointer;white-space:nowrap}'
-            + '.pg-sort-btn:focus-visible{outline:2px solid var(--pg-primary);outline-offset:2px;border-radius:2px}'
+            + '.pg-sort-btn:focus-visible{outline:2px solid var(--pg-primary-ink);outline-offset:2px;border-radius:2px}'
             + '.pg-sort-btn .pg-sort-icon{opacity:.35;font-size:.8em}'
             + '.pg-sort-btn .pg-sort-rank{font-size:.8em}'
             + 'th[data-pg-sort-level] .pg-sort-btn .pg-sort-icon{opacity:1}'
@@ -12124,7 +12921,9 @@ $(function () {
  * A cell marked data-pg-edit opens an input on a click, a tap, Enter or F2.
  * Enter or leaving the input saves, Escape puts the cell back as it was, Tab
  * saves and opens the same column on the next row (Shift+Tab: the row
- * before). A choice list saves as soon as something is picked. The value
+ * before). A choice list saves as soon as something is picked with the
+ * pointer or in its opened list; an arrow key on the closed list only moves
+ * the choice, which Enter, Tab or leaving the list saves. The value
  * goes to the table's data-pg-edit-url with the session token; the answer
  * redraws the cell from what was stored, and the other cells of the row it
  * names. A refusal, or a request that never got an answer, puts the cell back
@@ -12151,7 +12950,7 @@ $(function () {
         var style = document.createElement('style');
         style.id = 'pg_list_edit_style';
         style.textContent = 'td[data-pg-edit]{cursor:pointer}'
-            + 'td[data-pg-edit]:focus-visible{outline:2px solid var(--pg-primary);outline-offset:-2px}'
+            + 'td[data-pg-edit]:focus-visible{outline:2px solid var(--pg-primary-ink);outline-offset:-2px}'
             + 'td[data-pg-edit]:not([data-pg-editing]):not([data-pg-edit-busy])::after{content:"\\f4cb";font-family:bootstrap-icons;'
             + 'font-style:normal;font-weight:400;font-size:.75rem;line-height:1;margin-inline-start:.35em;vertical-align:.05em;'
             + 'color:var(--pg-fg-2);opacity:0}'
@@ -12243,7 +13042,8 @@ $(function () {
         }
     }
 
-    // The same column on the next row (or the one before) that can change.
+    // The same column on the next row (or the one before) that can change;
+    // false when there is none (Tab on the last row, Shift+Tab on the first).
     function step(cell, direction) {
         var field = cell.getAttribute('data-pg-edit');
         var row = cell.closest('tr');
@@ -12255,9 +13055,11 @@ $(function () {
 
             if (next && !next.hasAttribute('data-pg-edit-busy')) {
                 open(next);
-                return;
+                return true;
             }
         }
+
+        return false;
     }
 
     function close(state) {
@@ -12370,8 +13172,12 @@ $(function () {
             send(state, value, (control.tagName === 'SELECT') ? control.options[control.selectedIndex].text : value);
         }
 
+        // With no row to go on to, the cell keeps the focus: its input has
+        // just left the page, which would drop the focus to <body>.
         if (direction) {
-            step(state.cell, direction);
+            if (!step(state.cell, direction)) {
+                state.cell.focus();
+            }
         } else if (refocus) {
             state.cell.focus();
         }
@@ -12430,7 +13236,7 @@ $(function () {
 
         control.setAttribute('aria-label', String(column.label || ''));
 
-        var state = { cell: cell, table: table, control: control, value: value, html: cell.innerHTML, done: false };
+        var state = { cell: cell, table: table, control: control, value: value, html: cell.innerHTML, done: false, keyed: false };
 
         cell.setAttribute('data-pg-editing', '');
         cell.innerHTML = '';
@@ -12452,6 +13258,15 @@ $(function () {
             // here is for this input.
             event.stopPropagation();
 
+            // An arrow key on a closed choice list changes its value at once;
+            // that change waits for Enter, Tab, Ctrl+S or leaving the list.
+            // The keys that open the list let a pick there save at once.
+            if (!event.altKey && (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Home', 'End', 'PageUp', 'PageDown'].indexOf(event.key) !== -1)) {
+                state.keyed = true;
+            } else if (event.altKey || (event.key === 'F4') || (event.key === ' ')) {
+                state.keyed = false;
+            }
+
             if (event.key === 'Enter') {
                 event.preventDefault();
                 commit(state, 0, true);
@@ -12472,8 +13287,14 @@ $(function () {
         });
 
         if (control.tagName === 'SELECT') {
+            control.addEventListener('pointerdown', function () {
+                state.keyed = false;
+            });
+
             control.addEventListener('change', function () {
-                commit(state);
+                if (!state.keyed) {
+                    commit(state);
+                }
             });
         }
     }

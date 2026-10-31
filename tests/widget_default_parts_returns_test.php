@@ -29,7 +29,8 @@ function _pret_form()
 }
 
 // Four requests: asked (a note over two lines, may be withdrawn), approved
-// with a carrier and a code (may be marked sent), approved with nothing
+// with a carrier, a code and a return label (may be marked sent), approved
+// with nothing
 // (no lines, no date asked), refunded (a tracking number, a refund date).
 function _pret_returns()
 {
@@ -38,13 +39,14 @@ function _pret_returns()
 		'requested' => '19 October 2026', 'lines' => array(array('name' => 'Mug <XL>', 'quantity' => 2), array('name' => 'Cup', 'quantity' => 1)),
 		'reason_label' => 'It arrived damaged', 'customer_note' => "Box <torn>\nsorry", 'decision_note' => '',
 		'carrier' => '', 'carrier_code' => '', 'tracking_number' => '', 'refund_deadline' => '',
-		'can_withdraw' => true, 'can_mark_sent' => false,
+		'can_withdraw' => true, 'can_mark_sent' => false, 'label_url' => '',
 	);
 	return array(
 		$base,
 		array_merge($base, array('id' => 6, 'status' => 'approved', 'status_label' => 'Return approved',
 			'carrier' => 'Yurtiçi Kargo', 'carrier_code' => 'IADE<77>', 'decision_note' => 'Use the code.',
-			'customer_note' => '', 'can_withdraw' => false, 'can_mark_sent' => true)),
+			'customer_note' => '', 'can_withdraw' => false, 'can_mark_sent' => true,
+			'label_url' => '/software/order_return.php?action=label&order_id=9&return_id=6')),
 		array_merge($base, array('id' => 7, 'status' => 'approved', 'status_label' => 'Return approved',
 			'requested' => '', 'lines' => array(), 'reason_label' => '', 'customer_note' => '', 'can_withdraw' => false)),
 		array_merge($base, array('id' => 8, 'status' => 'refunded', 'status_label' => 'Money refunded',
@@ -70,6 +72,9 @@ function test_widget_parts_returns_rows()
 	pg_assert_contains('value="withdraw"', $r[0]['__return_actions_html']);
 	pg_assert_contains('value="shipped"', $r[1]['__return_actions_html']);
 	pg_assert_same('', $r[3]['__return_actions_html'], 'nothing left to do');
+	pg_assert_same(array('', '/software/order_return.php?action=label&order_id=9&return_id=6', '', ''),
+		array_column($r, '__return_label_url'), 'the label only where it is offered, raw: the pass escapes it');
+	pg_assert_same(array('', '1', '', ''), array_column($r, '__return_has_label'));
 	pg_assert_same(array(5, 6, 8), array_keys($rows['order.return_lines']), 'a return without products has no lines');
 	pg_assert_same(array(array('__return_line_name' => 'Mug <XL>', '__return_line_qty' => '2'), array('__return_line_name' => 'Cup', '__return_line_qty' => '1')),
 		$rows['order.return_lines'][5]);
@@ -169,6 +174,8 @@ function test_widget_parts_returns_match_the_old_list()
 		pg_assert_contains('role="status"', $new, $case . ': the alert keeps its role');
 		pg_assert_same(4, substr_count($new, 'class="pg-ov-return '), $case . ': a box per request');
 		pg_assert_same(4, substr_count($new, 'class="badge '), $case . ': one badge per request');
+		pg_assert_same(1, substr_count($new, '>' . lang('Download return label') . '</a>'), $case . ': one label link, on the offered request');
+		pg_assert_contains('href="/software/order_return.php?action=label&amp;order_id=9&amp;return_id=6"', $new, $case . ': the label URL escaped once');
 		pg_assert_true(strpos($new, '^^') === false && strpos($new, '<!--pg-') === false && strpos($new, '{{') === false, $case . ': nothing left');
 	}
 

@@ -58,7 +58,7 @@ if ($_POST) {
         $result = erp_reconciliation_send($account_id, $options, $to, (int) $user['id']);
 
         if (!$result['success']) {
-            $liveform->mark_error('to', $result['error']);
+            $liveform->mark_error($result['field'], h($result['error']));
             $liveform->assign_field_value('to', $to);
             go($self_url);
         }

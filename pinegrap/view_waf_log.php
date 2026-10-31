@@ -633,11 +633,11 @@ if ($csp_entries || $csp_mode !== 'off') {
                 <span class="text-uppercase h6 fg-primary fw-bold mb-0">' . lang('Content Security Policy Reports') . '</span>
                 <span class="badge border fw-normal ' . h($csp_mode_badge[0]) . '">' . h($csp_mode_badge[1]) . '</span>
             </span>
-            <span class="d-flex align-items-center gap-3">
+            <span class="d-flex flex-wrap align-items-center gap-3 row-gap-2">
                 <a href="' . pg_settings_link('firewall', 'pgset-headers') . '" class="btn btn-sm btn-outline theme-secondary"><i class="bi bi-sliders me-1"></i>' . lang('Policy Settings') . '</a>'
-                . ($csp_entries ? '<form method="post" action="view_waf_log.php" class="d-inline">'
+                . ($csp_entries ? '<form method="post" action="view_waf_log.php" class="d-inline disable_shortcut">'
                     . get_token_field() . '
-                    <button type="submit" name="submit_csp_clear" value="1" class="btn btn-sm btn-outline theme-danger">
+                    <button type="submit" name="submit_csp_clear" value="1" class="btn btn-sm btn-outline theme-danger" data-confirm-content="' . h(lang(array('string' => 'Delete all {var:1} Content Security Policy reports? This cannot be undone.', 'vars' => count($csp_entries)))) . '">
                         <i class="bi bi-trash me-1"></i>' . lang('Clear Reports') . '
                     </button>
                 </form>' : '') . '

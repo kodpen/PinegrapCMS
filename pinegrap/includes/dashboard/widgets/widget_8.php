@@ -34,8 +34,7 @@ function pg_dashboard_widget_8($request, $user)
             FROM orders
             LEFT JOIN user ON orders.user_id = user.user_id
             LEFT JOIN contacts ON orders.contact_id = contacts.id
-            LEFT JOIN ship_tos ON orders.id = ship_tos.order_id
-            WHERE status != 'incomplete'
+            WHERE orders.status != 'incomplete'
             ORDER BY orders.order_date DESC
             LIMIT 50";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
@@ -102,12 +101,16 @@ function pg_dashboard_widget_8($request, $user)
                     'href'  => $output_link_url,
                     'color' => $order_canceled ? '#dc3545' : '',
                     'badge' => $order_canceled
-                        ? '<i class="bi bi-x-circle" title="' . lang('Canceled') . '"></i>'
-                        : '<i class="bi ' . ($shipped ? 'bi-truck' : 'bi-box-seam') . '" title="' . $ship_title . '"></i>',
+                        ? '<i class="bi bi-x-circle" aria-hidden="true" title="' . lang('Canceled') . '"></i>'
+                        : '<i class="bi ' . ($shipped ? 'bi-truck' : 'bi-box-seam') . '" aria-hidden="true" title="' . $ship_title . '"></i>',
                     'name'  => h($name),
                     'aside' => prepare_amount($order['total'] / 100),
+                    // The state is written out, since the glyph's title
+                    // shows on mouse hover only.
                     'meta'  => h($order['order_number'])
-                        . ($order_canceled ? ' &mdash; <span class="fg-danger">' . lang('Canceled') . '</span>' : '')
+                        . ($order_canceled
+                            ? ' &mdash; <span class="fg-danger">' . lang('Canceled') . '</span>'
+                            : ((ECOMMERCE_SHIPPING == true) ? ' &mdash; ' . $ship_title : ''))
                         . ' &middot; ' . get_relative_time(array('timestamp' => $order['timestamp'])),
                 ));
             }
@@ -208,7 +211,7 @@ function pg_dashboard_widget_8($request, $user)
             'id' => 'w8_spark',
             'rgb' => '5,150,105',
             'unit' => lang('orders today'),
-            'series' => pg_activity_daily('orders', 'orders.order_date', " AND (orders.status = 'complete')"),
+            'series' => pg_activity_daily('orders', 'orders.order_date', " AND (orders.status != 'incomplete')"),
         ));
 
         // Orders and carts side by side rather than behind tabs. They

@@ -60,7 +60,8 @@ require_once(dirname(__FILE__) . '/webhooks.php');
 //   placed_at          unix seconds
 //   customer           array(first_name, last_name, email, phone, company)
 //   billing            array(address_1, address_2, city, state, zip, country)
-//   shipping_address   the same shape, or an empty array
+//   shipping_address   the same shape, plus district (the town, written to
+//                      ship_tos.district), or an empty array
 //   currency           three letters
 //   lines              array of array(remote_line_id, code, name, quantity,
 //                      price, tax, discount, and optionally discount_total
@@ -225,6 +226,11 @@ function mp_import_claimed($account, $package, $map_id) {
 	// order.shipped or order.delivered of the same pass.
 	mp_order_announce('marketplace.order.imported', $account, $map_id, (string)$package['remote_status']);
 
+	// The marketplace took the money, so the order is written paid: the
+	// invoice the ERP issues on its own once an order is paid, where the store
+	// invoices marketplace orders too. After the response, as at checkout.
+	pg_erp_auto_invoice($order_id, 'order_paid', true);
+
 	// A package can also arrive already shipped or delivered, with its tracking
 	// number. The feed is not guaranteed to hand it back, so what a known
 	// package would get on its next poll it gets now.
@@ -285,6 +291,19 @@ function mp_order_stage($account, $package) {
 
 	return (string) mp_call($account['provider'], 'order_stage',
 		array(isset($package['remote_status']) ? (string)$package['remote_status'] : ''));
+
+}
+
+// Whether the Imported orders card offers to mark a package Invoiced: an
+// imported row with an order, a package still the seller's to prepare
+// (mp_order_stage() 'open'), and not marked Invoiced already. The caller has
+// asked mp_can(…, 'mark_invoiced').
+function mp_invoiced_offer($row, $stage) {
+
+	return isset($row['status']) && ($row['status'] === 'imported')
+		&& !empty($row['order_id'])
+		&& ($stage === 'open')
+		&& (!isset($row['remote_status']) || ((string)$row['remote_status'] !== 'Invoiced'));
 
 }
 
@@ -412,6 +431,12 @@ function mp_order_apply_tracking($order_id, $package, $account = null) {
 			WHERE (id = '" . e($ship_to_id) . "') AND (shipping_method_code = '')");
 
 	}
+
+	// A new number is the order shipped, as on the order screen: the invoice
+	// the ERP issues on its own once an order is shipped, where the store
+	// invoices marketplace orders too (erp_auto_invoice_decision()). After
+	// the response, so a webhook delivery or a long pull is not held up.
+	pg_erp_auto_invoice((int)$order_id, 'order_shipped', true);
 
 }
 
@@ -1030,9 +1055,18 @@ function mp_order_ship_to($order_id, $package) {
 		state           = '" . e(mb_substr(isset($address['state']) ? (string)$address['state'] : '', 0, 50)) . "',
 		zip_code        = '" . e(mb_substr(isset($address['zip']) ? (string)$address['zip'] : '', 0, 50)) . "',
 		country         = '" . e(mb_substr(isset($address['country']) ? (string)$address['country'] : '', 0, 50)) . "',
-		phone_number    = '" . e(mb_substr(isset($address['phone']) ? (string)$address['phone'] : '', 0, 50)) . "'");
+		phone_number    = '" . e(mb_substr(isset($address['phone']) ? (string)$address['phone'] : '', 0, 50)) . "'"
+		. mp_order_ship_to_district_sql($address));
 
 	return (int) mysqli_insert_id(db::$con);
+
+}
+
+// The district part of the recipient's INSERT: the package's district once
+// ship_tos.district exists, nothing before step 11.0.134.
+function mp_order_ship_to_district_sql($address, $ready = null) {
+
+	return pg_ship_to_district_set_sql(isset($address['district']) ? $address['district'] : '', $ready);
 
 }
 

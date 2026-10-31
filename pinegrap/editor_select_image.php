@@ -109,7 +109,7 @@ $output_sort_items = '';
 foreach ($sort_options as $sort_key => $sort_option) {
 
     $output_sort_items .=
-        '<li><a class="menu-item pg-menu-item-sm rounded-4 p-0 my-1 d-flex align-items-center' . (($sort_key == $current_sort) ? ' active' : '') . '" href="editor_select_image.php?sort=' . h($sort_key) . '&' . $url_parameters . '"><i class="bi ' . $sort_option['icon'] . ' m-3"></i>' . $sort_option['label'] . '</a></li>';
+        '<li><a class="menu-item pg-menu-item-sm rounded-4 p-0 my-1 d-flex align-items-center' . (($sort_key == $current_sort) ? ' active" aria-current="page' : '') . '" href="editor_select_image.php?sort=' . h($sort_key) . '&' . $url_parameters . '"><i class="bi ' . $sort_option['icon'] . ' m-3"></i>' . $sort_option['label'] . '</a></li>';
 }
 
 $output_sort_link =
@@ -176,7 +176,7 @@ $where = "";
 
 // If there is a search query and it is not blank, then prepare filter.
 if ((isset($_SESSION['software']['editor_select_image']['query']) == true) && (($_SESSION['software']['editor_select_image']['query'] ?? '') != '')) {
-    $where .= "AND (LOWER(CONCAT_WS(',', files.name, folder.folder_name, user.user_username)) LIKE '%" . escape(escape_like(mb_strtolower(($_SESSION['software']['editor_select_image']['query'] ?? '')))) . "%')";
+    $where .= "AND (LOWER(CONCAT_WS(',', files.name, folder.folder_name, user.user_username)) LIKE '%" . escape(escape_like(pg_search_lower($_SESSION['software']['editor_select_image']['query'] ?? ''))) . "%')";
 }
 
 // Get all images.
@@ -353,18 +353,24 @@ if ($number_of_results > 0) {
         }
 
         $output_screen_links .= '
-            <nav class="navigation" aria-label="data pagination">
+            <nav class="navigation" aria-label="' . h(lang('Pagination')) . '">
                 <ul class="pagination pagination-sm flex-wrap justify-content-center mb-0">';
+
+        // A disabled arrow is no link, so Tab skips it; a span carries no
+        // aria-label, so it says its name in visually-hidden text.
+        $arrow = function ($target, $enabled, $label, $glyph) use ($url_parameters) {
+            $inner = '<span class="bi ' . $glyph . '" aria-hidden="true"></span>';
+            if (!$enabled) {
+                return '<li class="page-item disabled"><span class="page-link">' . $inner . '<span class="visually-hidden">' . h($label) . '</span></span></li>';
+            }
+            return '<li class="page-item"><a class="page-link" href="editor_select_image.php?screen=' . $target . '&' . $url_parameters . '" aria-label="' . h($label) . '">' . $inner . '</a></li>';
+        };
 
         // build Previous button if necessary
         $previous = $screen - 1;
 
         // if previous screen is greater than zero, output previous link
-        if ($previous > 0) {
-            $output_screen_links .= '<li class="page-item"><a class="page-link" href="editor_select_image.php?screen=' . $previous . '&' . $url_parameters . '" aria-label="Previous"><span class="bi bi-chevron-left"></span></a></li>';
-        } else {
-            $output_screen_links .= '<li class="page-item disabled"><span class="page-link"><span class="bi bi-chevron-left"></span></span></li>';
-        }
+        $output_screen_links .= $arrow($previous, $previous > 0, lang('Previous page'), 'bi-chevron-left');
 
         // if the window does not start at the beginning, output the first screen and a gap
         if ($window_start > 1) {
@@ -400,11 +406,7 @@ if ($number_of_results > 0) {
         $next = $screen + 1;
 
         // if next screen is less than or equal to the total number of screens, output next link
-        if ($next <= $number_of_screens) {
-            $output_screen_links .= '<li class="page-item"><a class="page-link" href="editor_select_image.php?screen=' . $next . '&' . $url_parameters . '" aria-label="Next"><span class="bi bi-chevron-right"></span></a></li>';
-        } else {
-            $output_screen_links .= '<li class="page-item disabled"><span class="page-link"><span class="bi bi-chevron-right"></span></span></li>';
-        }
+        $output_screen_links .= $arrow($next, $next <= $number_of_screens, lang('Next page'), 'bi-chevron-right');
 
         $output_screen_links .= '</ul></nav>';
     }
@@ -452,13 +454,13 @@ if ($number_of_results > 0) {
         }
 
         $output_details =
-            lang('Size') . ': ' . h(convert_bytes_to_string($images[$key]['size'])) . '<br/>' .
+            lang('Size') . ': ' . h(convert_bytes_to_string($images[$key]['size'], 'auto')) . '<br/>' .
             lang('Dimensions') . ': ' . $output_dimensions . '<br/>' .
             lang('Folder') . ': ' . h($images[$key]['folder_name']) . '<br/>' .
             lang('Access') . ': ' . h((string) get_access_control_type_name($images[$key]['access_control_type'])) . '<br/>' .
             lang('Last Modified') . ': ' . get_relative_time(array('timestamp' => $images[$key]['last_modified_timestamp'], 'format' => 'plain_text')) . ' ' . $output_last_modified_username;
 
-        $output_meta = h(convert_bytes_to_string($images[$key]['size']));
+        $output_meta = h(convert_bytes_to_string($images[$key]['size'], 'auto'));
 
         if ($image_width > 0) {
             $output_meta .= ' &middot; ' . h($image_width) . ' x ' . h($image_height);
@@ -469,7 +471,7 @@ if ($number_of_results > 0) {
 
             $output_images .=
                 '<div class="col">
-                    <div class="esi-tile esi-tile-missing" title="' . lang('File not found') . '" data-bs-content="' . $output_details . '">
+                    <div class="esi-tile esi-tile-missing no-popover" tabindex="0" title="' . lang('File not found') . '" data-bs-content="' . h($output_details) . '">
                         <span class="esi-thumb d-flex align-items-center justify-content-center">
                             <span class="bi bi-exclamation-triangle fg-warning fs-2xl"></span>
                         </span>
@@ -496,9 +498,9 @@ if ($number_of_results > 0) {
 
         $output_images .=
             '<div class="col">
-                <button type="button" class="esi-tile hover-lift image' . h($images[$key]['access_control_type']) . '" onclick="' . $output_onclick . '" title="' . lang('Image Details') . '" data-bs-content="' . $output_details . '">
+                <button type="button" class="esi-tile no-popover hover-lift image' . h($images[$key]['access_control_type']) . '" onclick="' . $output_onclick . '" title="' . lang('Image Details') . '" data-bs-content="' . h($output_details) . '">
                     <span class="esi-thumb">
-                        <img src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="' . OUTPUT_PATH . h($images[$key]['name']) . '" class="lazy" alt="' . h($images[$key]['name']) . '">
+                        <img src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="' . OUTPUT_PATH . h($images[$key]['name']) . '" class="lazy" alt="">
                         <span class="esi-overlay"><span class="bi bi-check-lg me-1"></span>' . lang('Select') . '</span>
                     </span>
                     <span class="esi-caption text-truncate">' . h($images[$key]['name']) . '</span>
@@ -734,8 +736,9 @@ output_header_secure(array('title'=>lang('Browse Images'),'icon'=>'file')) . '
 }
 
 /* A phone ignores the window size the picker asks for and does not zoom, so
-   the bar splits into rows: title and buttons on the first, the filter pill
-   full width below, its fields sharing what is left. */
+   the bar splits into rows at markup position: title, then the filter pill
+   full width with its fields sharing what is left, then Refresh and Close at
+   the right end. No `order`, so Tab follows the rows as drawn. */
 @media (max-width: 767.98px) {
     #esi_toolbar {
         flex-wrap: wrap;
@@ -743,10 +746,11 @@ output_header_secure(array('title'=>lang('Browse Images'),'icon'=>'file')) . '
     }
 
     #files_nav_controls {
-        order: 1;
         flex-basis: 100%;
         margin-left: 0 !important;
     }
+
+    #files_nav_controls + .navbar-nav { margin-left: auto; }
 
     #files_nav_controls > .nav-item,
     #files_nav_controls form { flex: 1 1 auto; min-width: 0; }
@@ -761,10 +765,7 @@ output_header_secure(array('title'=>lang('Browse Images'),'icon'=>'file')) . '
 }</style>
 <nav id="header" class="navbar sticky-top rounded-0 navbar-expand border-bottom shadow-sm bg-body">
     <div class="container-fluid" id="esi_toolbar">
-        <span
-            class="navbar-text d-flex align-items-center gap-3 py-0"
-            data-bs-content="' . lang('Select the image that you want to embed in your content. Hover over an image to see more info.') . '"
-            title="' . lang('Browse Images') . '">
+        <span class="navbar-text d-flex align-items-center gap-3 py-0">
             <span class="bi bi-images"></span>
             <span class="d-none md:d-inline">' . lang('Browse Images') . '</span>
             <span class="badge rounded-pill theme-secondary fw-normal">' . $number_of_results . '</span>
@@ -827,17 +828,21 @@ output_header_secure(array('title'=>lang('Browse Images'),'icon'=>'file')) . '
 
 <main class="container-fluid pb-7">
 
+    <p class="form-text mt-5 mb-0">' . lang('Select the image that you want to embed in your content. Hover over or focus an image to see more info.') . '</p>
+
     ' . ($show_unsplash ? '
     <!-- Tab nav -->
     <ul class="nav nav-tabs mt-5 mb-0" id="esi_tabs" role="tablist">
         <li class="nav-item" role="presentation">
             <button class="nav-link active" id="esi_tab_files_btn" type="button" role="tab"
+                aria-selected="true" aria-controls="esi_tab_files"
                 onclick="esiSwitchTab(\'files\', this)">
                 <i class="bi bi-folder2-open me-1"></i>' . lang('My Files') . '
             </button>
         </li>
         <li class="nav-item" role="presentation">
             <button class="nav-link" id="esi_tab_unsplash_btn" type="button" role="tab"
+                aria-selected="false" aria-controls="esi_tab_unsplash" tabindex="-1"
                 onclick="esiSwitchTab(\'unsplash\', this)">
                 <i class="bi bi-image me-1"></i>Unsplash
             </button>
@@ -846,7 +851,7 @@ output_header_secure(array('title'=>lang('Browse Images'),'icon'=>'file')) . '
     ' : '') . '
 
     <!-- My Files tab panel -->
-    <div id="esi_tab_files">
+    <div id="esi_tab_files"' . ($show_unsplash ? ' role="tabpanel" aria-labelledby="esi_tab_files_btn"' : '') . '>
 
         ' . $output_filter_chips . '
         ' . $output_warning . '
@@ -863,7 +868,7 @@ output_header_secure(array('title'=>lang('Browse Images'),'icon'=>'file')) . '
 
     ' . ($show_unsplash ? '
     <!-- Unsplash tab panel -->
-    <div id="esi_tab_unsplash" style="display:none">
+    <div id="esi_tab_unsplash" role="tabpanel" aria-labelledby="esi_tab_unsplash_btn" style="display:none">
         <div class="my-5">
             <div class="input-group">
                 <input type="text" id="unsplash_query" class="form-control"
@@ -886,6 +891,18 @@ output_header_secure(array('title'=>lang('Browse Images'),'icon'=>'file')) . '
 
 </main>
 <script>
+/* The global title binder opens popovers on hover only; the tiles carry
+   no-popover so their details also open when the keyboard focuses a tile. */
+document.addEventListener("DOMContentLoaded", function () {
+    if (!window.pgUI) {
+        return;
+    }
+
+    document.querySelectorAll(".esi-tile[data-bs-content]").forEach(function (tile) {
+        pgUI.popover.get(tile, {trigger: "hover focus", html: true, placement: "auto", container: "body"});
+    });
+});
+
 /* The picker opens as a bare popup with no browser chrome, so the keyboard is the only
    quick way around it: Escape gives it back, "/" jumps straight to the search box. */
 document.addEventListener("keydown", function (event) {
@@ -931,9 +948,38 @@ var _unsplashPage     = 1;
 var _unsplashQuery    = \'\';
 var _unsplashPopularLoaded = false;
 
+// Shows the tiles of a page. A later page that comes back empty keeps the
+// count already shown; when Load More hides while it holds focus, focus
+// moves to the first new tile (the last tile when none came) instead of
+// falling to the page body.
+function esiUnsplashShow(photos, loadMore, countText, hasMore) {
+    var status = document.getElementById(\'unsplash_status\');
+    var more   = document.getElementById(\'unsplash_load_more\');
+    if (!photos || !photos.length) {
+        status.textContent = loadMore ? status.getAttribute(\'data-count\') || \'\' : \'' . lang('Sorry, we could not find any images.') . '\';
+        if (more.contains(document.activeElement)) {
+            var picks = document.querySelectorAll(\'#unsplash_results .esi-unsplash-pick\');
+            if (picks.length) picks[picks.length - 1].focus();
+        }
+        more.style.display = \'none\';
+        return;
+    }
+    status.textContent = countText;
+    status.setAttribute(\'data-count\', countText);
+    var first = esiRenderUnsplash(photos);
+    if (!hasMore && more.contains(document.activeElement) && first) first.focus();
+    more.style.display = hasMore ? \'\' : \'none\';
+}
+
+// The two source tabs keep aria-selected and a roving tabindex in step with
+// the fill, so only the open tab sits in the Tab order.
 function esiSwitchTab(tab, btn) {
-    document.querySelectorAll(\'#esi_tabs .nav-link\').forEach(function(b){ b.classList.remove(\'active\'); });
-    btn.classList.add(\'active\');
+    document.querySelectorAll(\'#esi_tabs .nav-link\').forEach(function(b){
+        var on = (b === btn);
+        b.classList.toggle(\'active\', on);
+        b.setAttribute(\'aria-selected\', on ? \'true\' : \'false\');
+        b.setAttribute(\'tabindex\', on ? \'0\' : \'-1\');
+    });
     document.getElementById(\'esi_tab_files\').style.display    = (tab === \'files\')    ? \'\' : \'none\';
     document.getElementById(\'esi_tab_unsplash\').style.display = (tab === \'unsplash\') ? \'\' : \'none\';
     var nav = document.getElementById(\'files_nav_controls\');
@@ -943,6 +989,23 @@ function esiSwitchTab(tab, btn) {
         esiUnsplashPopular();
     }
 }
+
+// Arrow keys, Home and End move between the source tabs and open the one
+// they land on.
+document.addEventListener(\'keydown\', function (e) {
+    var btn = e.target.closest ? e.target.closest(\'#esi_tabs [role="tab"]\') : null;
+    if (!btn || e.altKey || e.ctrlKey || e.metaKey) return;
+    var tabs = Array.prototype.slice.call(document.querySelectorAll(\'#esi_tabs [role="tab"]\'));
+    var i = tabs.indexOf(btn), next = null;
+    if (e.key === \'ArrowRight\' || e.key === \'ArrowDown\') next = tabs[(i + 1) % tabs.length];
+    else if (e.key === \'ArrowLeft\' || e.key === \'ArrowUp\') next = tabs[(i - 1 + tabs.length) % tabs.length];
+    else if (e.key === \'Home\') next = tabs[0];
+    else if (e.key === \'End\') next = tabs[tabs.length - 1];
+    if (!next) return;
+    e.preventDefault();
+    next.focus();
+    next.click();
+});
 
 function esiUnsplashPopular(loadMore) {
     _unsplashPopularLoaded = true;
@@ -964,21 +1027,18 @@ function esiUnsplashPopular(loadMore) {
             return r.json().then(function(data){ return { data: data, total: total }; });
         })
         .then(function(res){
-            if (!res.data || !res.data.length) {
-                status.textContent = \'' . lang('Sorry, we could not find any images.') . '\';
-                document.getElementById(\'unsplash_load_more\').style.display = \'none\';
-                return;
-            }
-            status.textContent = res.total ? esiResultCount(res.total) : \'\';
-            esiRenderUnsplash(res.data);
             // Show "Load More" as long as a full page was returned
-            document.getElementById(\'unsplash_load_more\').style.display =
-                (res.data.length === 20) ? \'\' : \'none\';
+            esiUnsplashShow(res.data, loadMore, res.total ? esiResultCount(res.total) : \'\',
+                !!res.data && res.data.length === 20);
             // Wire "Load More" to popular loader instead of search
             document.getElementById(\'unsplash_load_more\').querySelector(\'button\')
                 .onclick = function(){ esiUnsplashPopular(true); };
         })
-        .catch(function(){ status.textContent = \'' . lang('Sorry, we could not find any images.') . '\'; });
+        .catch(function(){
+            // The page was not loaded, so Load More asks for it again
+            if (loadMore) _unsplashPage--;
+            status.textContent = \'' . lang('Sorry, we could not find any images.') . '\';
+        });
 }
 
 function esiUnsplashSearch(loadMore) {
@@ -997,20 +1057,17 @@ function esiUnsplashSearch(loadMore) {
             + \'&per_page=20&page=\' + _unsplashPage + \'&client_id=\' + ESI_UNSPLASH_KEY)
         .then(function(r){ return r.json(); })
         .then(function(data){
-            if (!data.results || !data.results.length) {
-                status.textContent = \'' . lang('Sorry, we could not find any images.') . '\';
-                document.getElementById(\'unsplash_load_more\').style.display = \'none\';
-                return;
-            }
-            status.textContent = esiResultCount(data.total);
-            esiRenderUnsplash(data.results);
-            document.getElementById(\'unsplash_load_more\').style.display =
-                (_unsplashPage < data.total_pages) ? \'\' : \'none\';
+            esiUnsplashShow(data.results, _unsplashPage > 1, esiResultCount(data.total),
+                _unsplashPage < data.total_pages);
             // Wire "Load More" back to search loader
             document.getElementById(\'unsplash_load_more\').querySelector(\'button\')
                 .onclick = function(){ esiUnsplashSearch(true); };
         })
-        .catch(function(){ status.textContent = \'' . lang('Sorry, we could not find any images.') . '\'; });
+        .catch(function(){
+            // The page was not loaded, so Load More asks for it again
+            if (_unsplashPage > 1) _unsplashPage--;
+            status.textContent = \'' . lang('Sorry, we could not find any images.') . '\';
+        });
 }
 
 function esiRenderUnsplash(photos) {
@@ -1027,6 +1084,7 @@ function esiRenderUnsplash(photos) {
         a.textContent = text;
         return a;
     };
+    var first = null;
     photos.forEach(function(photo) {
         var photographerUrl = (photo.user.links && photo.user.links.html)
             ? photo.user.links.html + utm : \'#\';
@@ -1053,6 +1111,7 @@ function esiRenderUnsplash(photos) {
             pick.setAttribute(\'aria-label\', \'' . lang('Select') . ': \' + photo.user.name);
         }
         pick.appendChild(img);
+        if (!first) first = pick;
 
         /* Attribution - required by Unsplash API guidelines */
         var footer = document.createElement(\'div\');
@@ -1074,6 +1133,7 @@ function esiRenderUnsplash(photos) {
         col.appendChild(card);
         grid.appendChild(col);
     });
+    return first;
 }
 
 

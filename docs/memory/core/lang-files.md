@@ -14,7 +14,7 @@ module: lang_files
 - `en.json` (English overrides) stays one small file; a new language may take either form.
 
 ## Who reads a language?
-- Only `pg_lang_map($code)` (`core.php`): `pg_lang_source()` takes the folder when it holds a `*.json`, else `<code>.json` (a code that is not a plain name builds no path); `pg_lang_read_folder()` merges the shards in name order and skips one that does not decode. Through it: `lang()`, `pg_tr_ui_has_file()` (a folder counts), the install screen's designer texts, the tests (`tests/helpers/language_map.php`). `test_secure_mode.php` loads no functions and repeats the order itself.
+- Only `pg_lang_map($code)` (`lang.php`): `pg_lang_source()` takes the folder when it holds a `*.json`, else `<code>.json` (a code that is not a plain name builds no path); `pg_lang_read_folder()` merges the shards in name order and skips one that does not decode. Through it: `lang()`, `pg_tr_ui_has_file()` (a folder counts), the install screen's designer texts, the tests (`tests/helpers/language_map.php`). `test_secure_mode.php` loads no functions and repeats the order itself.
 - An update writes the package's files and deletes none, so an updated site keeps its old `tr.json` beside the folder. It is harmless (the folder wins, so it is never read) and Cleanup (`clean_up.php`) keeps it: a pre-update backup holds only the files the package overwrote, so a rollback to a version before the shards would find no `tr.json` and speak English.
 
 ## How do I add a key?

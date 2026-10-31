@@ -87,8 +87,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Key Codes') {
         'offer_message' => '(SELECT offers.description FROM offers WHERE offers.code = key_codes.offer_code LIMIT 1)',
     )));
 
-    header("Content-type: text/csv");
-    header("Content-disposition: attachment; filename=key_codes.csv");
+    pg_csv_download_start('key_codes.csv');
 
     // Output column headings for CSV data.
     echo
@@ -118,15 +117,6 @@ if (($_GET['submit_data'] ?? '') == 'Export Key Codes') {
         LEFT JOIN user AS last_modified_user ON key_codes.user = last_modified_user.user_id
         ORDER BY $export_order_by");
 
-    // If the date format is month and then day, then use that format.
-    if (DATE_FORMAT == 'month_day') {
-        $month_and_day_format = 'n/j';
-
-    // Otherwise the date format is day and then month, so use that format.
-    } else {
-        $month_and_day_format = 'j/n';
-    }
-
     // Loop through the key codes in order to output CSV data.
     foreach ($key_codes as $key_code) {
 
@@ -144,7 +134,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Key Codes') {
             '"' . escape_csv($key_code['notes']) . '",' .
             '"' . $key_code['single_use'] . '",' .
             '"' . $key_code['report'] . '",' .
-            '"' . date($month_and_day_format . '/Y g:i:s A T', $key_code['last_modified_timestamp']) . '",' .
+            '"' . pg_csv_export_time($key_code['last_modified_timestamp']) . '",' .
             '"' . escape_csv($key_code['last_modified_username']) . '"' . "\n";
     }
 

@@ -295,10 +295,7 @@ if (!$_POST) {
 
 function get_items_that_can_be_featured_and_new($parent_product_group_id = 0, $level = 0)
 {
-    // initialize arrays for storing items and sorting
     $items = array();
-    $item_sort_orders = array();
-    $item_names = array();
     
     // get product groups under this parent product group
     $query =
@@ -332,10 +329,6 @@ function get_items_that_can_be_featured_and_new($parent_product_group_id = 0, $l
                 'new_date' => $row['new_date'],
                 'level' => $level
             );
-        
-        // add data to sorting arrays
-        $item_sort_orders[] = $row['sort_order'];
-        $item_names[] = mb_strtolower($row['name']);
     }
     
     // get products under this parent id
@@ -372,14 +365,10 @@ function get_items_that_can_be_featured_and_new($parent_product_group_id = 0, $l
                 'new_date' => $row['new_date'],
                 'level' => $level
             );
-        
-        // add data to sorting arrays
-        $item_sort_orders[] = $row['sort_order'];
-        $item_names[] = mb_strtolower($row['name']);
     }
     
     // sort the items by sort order and then by name
-    array_multisort($item_sort_orders, $item_names, $items);
+    $items = pg_list_sort_by_order_and_name($items);
     
     $items_for_returning = array();
     

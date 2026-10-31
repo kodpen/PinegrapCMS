@@ -1,6 +1,6 @@
 ---
 name: update-screens-steps
-description: Software Updater, Repair Software and Backup Manager: the step loop with an error path, the status line below the bar, Return in Backup Name, labels kept while they work (PR #2987)
+description: Software Updater, Repair Software and Backup Manager: the step loop with an error path, the status line, Return in Backup Name, labels kept while they work, a failed file copy removes the backup
 ---
 
 ## How do the update and repair screens run their steps?
@@ -14,8 +14,12 @@ description: Software Updater, Repair Software and Backup Manager: the step loop
 ## Why does Return in Backup Name not download a backup?
 - The field sits in `form#backupform`, whose first submit button is the first row's Download. A `keyup` handler runs after the browser's implicit submission, so Return downloaded a backup and started a new one. `backups.php` catches Return on `keydown` (skipping `event.isComposing`), prevents it and clicks `#backup`; the duplicate `keyup` handler in `backend.src.js` is gone.
 
+## What happens when a backup cannot copy every file?
+- `move_files` and `move_layouts` (`includes/panel/software.php`) copy through `pg_backup_copy_folder()` (`includes/fn/backup.php`): regular files only, and a file counts as failed when `copy()` fails or the copy's size differs. On any failure the step answers status `error` with `pg_backup_copy_failure_message()` (count, first three names, "Free some disk space and try again."), logs `Software Backup (…) failed: …` and removes the folder with `pg_backup_delete_tree()`, which also gives the space back.
+- Before, `copy()` was never read: on a nearly full disk (the backup doubles data/files) a half-copied folder logged Success and was listed with a Download button by `backups.php`. The folder auto backup (`pg_backup_run_folder()`, no ZipArchive) uses the same helper and returns false with `pg_backup_last_error()`. A killed or timed-out request still leaves its folder.
+
 ## Other details
 - Row buttons are named `Download {var:1}` / `Delete {var:1}` by the backup; the unfinished-restore time and the rollback archive times use `get_absolute_time(..., 'format' => 'plain_text')` (the person's zone, `panel-times-user-time-zone.md`).
 - The heading, version arrow and Update ligatures are `aria-hidden` (`icon-ligature-button-names.md`).
 
-Test: `tests/update_screen_names_test.php`.
+Tests: `tests/update_screen_names_test.php`, `tests/backup_copy_folder_test.php`.

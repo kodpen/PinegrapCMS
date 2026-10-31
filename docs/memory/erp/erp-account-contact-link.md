@@ -26,4 +26,7 @@ description: ERP account to contact/user link: contact_id is the truth, mirror c
 - `erp_accounts.php` `erp_action=sync_contacts` → `erp_accounts_sync_contacts()` (confirmed POST): contacts with N orders but no account. Not run on dev.
 - The candidate query uses `INNER JOIN contacts`: `orders.contact_id` can point at a deleted contact (20 such orders on dev); if the count and the number opened disagree, that is the reason. `skipped` = exists but nameless card.
 
+## What if the linked contact was deleted?
+- Deleting a contact leaves `erp_accounts.contact_id` behind. `erp_accounts.php` asks once per page (`SELECT id FROM contacts WHERE id IN (…)`) and treats a gone contact as none: the "—" mark, sorted as unlinked, no link to edit_contact.php's "Record not found.". The drawer already gets null from `erp_contact_summary()`.
+
 Related: docs/memory/erp/erp-account-save-partial-writes.md

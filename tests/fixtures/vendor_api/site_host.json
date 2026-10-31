@@ -1,0 +1,311 @@
+{
+    "schema": 1,
+    "description": "The canonical site name, one rule for the server and the Pinegrap 2026.11 client: the server canonicalises X-Pinegrap-Site on POST /v1/licenses/verify before comparing it with the names that hold the licence's site rights (license_domains.domain) and before storing installations.hostname, and a name staff bind to a licence in advance goes through the same rule. The steps run in order; 'canonical' null means refused. A refused X-Pinegrap-Site is answered 422 validation_failed (field X-Pinegrap-Site); a refused name cannot be bound to a licence. A site right belongs to one canonical name and the match is exact: subdomains are not implied, so a subdomain or a test domain is a site of its own and takes a right of its own.",
+    "steps": [
+        "Lower-case the ASCII letters A-Z.",
+        "Remove a port: a final ':' followed by one or more digits.",
+        "Remove one trailing '.'.",
+        "If the name has a byte outside ASCII, convert it with idn_to_ascii(name, IDNA_DEFAULT, INTL_IDNA_VARIANT_UTS46); false refuses the name.",
+        "Remove one leading 'www.'.",
+        "Accept the result only when it is 1 to 253 characters of '.'-separated labels, each 1 to 63 characters of a-z, 0-9 and '-' that neither starts nor ends with '-'; an IPv4 address passes as it is. Anything else is refused."
+    ],
+    "cases": [
+        {
+            "id": "upper_case",
+            "covers": [
+                "case"
+            ],
+            "input": "Example.COM",
+            "canonical": "example.com"
+        },
+        {
+            "id": "www_prefix",
+            "covers": [
+                "www"
+            ],
+            "input": "www.example.com",
+            "canonical": "example.com"
+        },
+        {
+            "id": "www_upper_case",
+            "covers": [
+                "case",
+                "www"
+            ],
+            "input": "WWW.Example.com",
+            "canonical": "example.com"
+        },
+        {
+            "id": "www_www_keeps_one",
+            "covers": [
+                "www_www"
+            ],
+            "input": "www.www.example.com",
+            "canonical": "www.example.com",
+            "note": "Only one leading www. is removed."
+        },
+        {
+            "id": "trailing_dot",
+            "covers": [
+                "trailing_dot"
+            ],
+            "input": "example.com.",
+            "canonical": "example.com"
+        },
+        {
+            "id": "trailing_dot_and_www",
+            "covers": [
+                "trailing_dot",
+                "www"
+            ],
+            "input": "www.example.com.",
+            "canonical": "example.com"
+        },
+        {
+            "id": "port",
+            "covers": [
+                "port"
+            ],
+            "input": "example.com:8080",
+            "canonical": "example.com"
+        },
+        {
+            "id": "port_and_www",
+            "covers": [
+                "port",
+                "www"
+            ],
+            "input": "www.example.com:443",
+            "canonical": "example.com"
+        },
+        {
+            "id": "idn",
+            "covers": [
+                "idn"
+            ],
+            "input": "bücher.example",
+            "canonical": "xn--bcher-kva.example"
+        },
+        {
+            "id": "idn_upper_case",
+            "covers": [
+                "idn",
+                "case"
+            ],
+            "input": "BÜCHER.example",
+            "canonical": "xn--bcher-kva.example"
+        },
+        {
+            "id": "idn_and_www",
+            "covers": [
+                "idn",
+                "www"
+            ],
+            "input": "www.bücher.example",
+            "canonical": "xn--bcher-kva.example"
+        },
+        {
+            "id": "idn_already_ascii",
+            "covers": [
+                "idn"
+            ],
+            "input": "xn--bcher-kva.example",
+            "canonical": "xn--bcher-kva.example"
+        },
+        {
+            "id": "subdomain_kept",
+            "covers": [
+                "subdomain"
+            ],
+            "input": "shop.example.com",
+            "canonical": "shop.example.com",
+            "note": "Subdomains are not implied: shop.example.com and example.com are different names."
+        },
+        {
+            "id": "www2_is_not_www",
+            "covers": [
+                "www"
+            ],
+            "input": "www2.example.com",
+            "canonical": "www2.example.com"
+        },
+        {
+            "id": "www_without_dot",
+            "covers": [
+                "www"
+            ],
+            "input": "wwwexample.com",
+            "canonical": "wwwexample.com"
+        },
+        {
+            "id": "ipv4",
+            "covers": [
+                "ipv4"
+            ],
+            "input": "192.0.2.10",
+            "canonical": "192.0.2.10"
+        },
+        {
+            "id": "ipv4_port",
+            "covers": [
+                "ipv4",
+                "port"
+            ],
+            "input": "192.0.2.10:8080",
+            "canonical": "192.0.2.10"
+        },
+        {
+            "id": "single_label",
+            "covers": [
+                "subdomain",
+                "local"
+            ],
+            "input": "localhost",
+            "canonical": "localhost"
+        },
+        {
+            "id": "local_test_domain",
+            "covers": [
+                "local"
+            ],
+            "input": "shop.test",
+            "canonical": "shop.test",
+            "note": "A local or private name is canonical as it is and takes a site right like any other name (owner decision 27); the 2026.11 client warns beside the key field."
+        },
+        {
+            "id": "local_dot_local",
+            "covers": [
+                "local"
+            ],
+            "input": "site.local",
+            "canonical": "site.local"
+        },
+        {
+            "id": "private_ipv4_192_168",
+            "covers": [
+                "local",
+                "ipv4"
+            ],
+            "input": "192.168.1.10",
+            "canonical": "192.168.1.10"
+        },
+        {
+            "id": "private_ipv4_10",
+            "covers": [
+                "local",
+                "ipv4"
+            ],
+            "input": "10.0.0.5",
+            "canonical": "10.0.0.5"
+        },
+        {
+            "id": "empty",
+            "covers": [
+                "empty"
+            ],
+            "input": "",
+            "canonical": null
+        },
+        {
+            "id": "only_a_dot",
+            "covers": [
+                "empty"
+            ],
+            "input": ".",
+            "canonical": null
+        },
+        {
+            "id": "only_a_port",
+            "covers": [
+                "empty",
+                "port"
+            ],
+            "input": ":8080",
+            "canonical": null
+        },
+        {
+            "id": "empty_label",
+            "covers": [
+                "invalid"
+            ],
+            "input": "example..com",
+            "canonical": null
+        },
+        {
+            "id": "space",
+            "covers": [
+                "invalid"
+            ],
+            "input": "exa mple.com",
+            "canonical": null,
+            "note": "idn_to_ascii without STD3 rules lets a space through; step 6 refuses it."
+        },
+        {
+            "id": "leading_hyphen",
+            "covers": [
+                "invalid"
+            ],
+            "input": "-example.com",
+            "canonical": null
+        },
+        {
+            "id": "trailing_hyphen",
+            "covers": [
+                "invalid"
+            ],
+            "input": "example-.com",
+            "canonical": null
+        },
+        {
+            "id": "underscore",
+            "covers": [
+                "invalid"
+            ],
+            "input": "exa_mple.com",
+            "canonical": null
+        },
+        {
+            "id": "label_over_63",
+            "covers": [
+                "invalid"
+            ],
+            "input": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.com",
+            "canonical": null
+        },
+        {
+            "id": "scheme",
+            "covers": [
+                "invalid"
+            ],
+            "input": "https://example.com",
+            "canonical": null
+        },
+        {
+            "id": "path",
+            "covers": [
+                "invalid"
+            ],
+            "input": "example.com/shop",
+            "canonical": null
+        },
+        {
+            "id": "trailing_newline",
+            "covers": [
+                "invalid"
+            ],
+            "input": "example.com\n",
+            "canonical": null,
+            "note": "A final line break is refused, never trimmed: every step and the final check match up to the very end of the name."
+        },
+        {
+            "id": "port_then_newline",
+            "covers": [
+                "invalid",
+                "port"
+            ],
+            "input": "example.com:8080\n",
+            "canonical": null,
+            "note": "The port is not removed when a line break follows it, and the name is refused."
+        }
+    ]
+}

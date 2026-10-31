@@ -17,7 +17,8 @@ description: Where a panel field's error message goes on Bootstrap 6 (pgPlaceInl
 - `window.pgFieldInvalid(el, on, message)` marks or clears at once; with a message and none on the page it makes one (`data-pg-made`) where `pgPutFeedback()` puts it and removes it on clear. Scripts that only toggle the class need no change.
 
 ## What about forms with their own message?
-- `includes/forms/short_link_form.php`: the static "Required Area" inside the name's input-group is gone (liveform's message covers it).
+- A fixed `<div class="invalid-feedback">Required Area</div>` after a liveform field showed beside liveform's message (`.is-invalid ~ .invalid-feedback`): "already in use" next to "Required Area", or it twice. Removed from the shared forms of calendars, events, locations, currencies, menu items, product attributes, new product groups, ads, short links, campaign profiles, auto dialogs and key codes (`tests/required_boxes_forms_test.php`).
+- Kept (key stays): folder, mass edit, contact group, submitted form, `product_builder.php` (`product_name_check.js` reads it) and hand-written forms.
 - `includes/erp/account_quick.php`: the tax number message follows the GİB lookup group's `</div>`; out of reach of `.is-invalid ~ .invalid-feedback`, so `erp_account_quick.js` adds `d-block` with the text and removes it in `clearErrors()`.
 - A new form that prints a message for a field in a wrapper puts it after the wrapper and shows it itself.
 

@@ -105,3 +105,21 @@ function test_file_manager_contrast_script_marks()
 	pg_assert_true(strpos($source, "(row.unchanged ? ' opacity-50' : '')") === false, 'an unchanged rename row is not faded');
 	pg_assert_true(strpos($source, "(row.unchanged ? ' fg-2' : '')") !== false, 'an unchanged rename row prints its names in the secondary text colour');
 }
+
+// A grid tile's hover bubble prints no check: only a selected tile's filled
+// bubble shows it, in the ink every filled accent takes.
+function test_file_manager_contrast_selection_bubble()
+{
+	$source = file_manager_contrast_source();
+
+	$dot = file_manager_contrast_rule($source, '.sel-dot');
+	pg_assert_true($dot !== '', 'the .sel-dot rule is found');
+	pg_assert_true(stripos($dot, '#fff') === false, 'the hover bubble has no white check');
+	pg_assert_true(strpos($dot, 'color: transparent') !== false, 'the hover bubble draws its check transparent');
+
+	// file_manager_contrast_rule() returns the first rule naming a selector,
+	// which for this one is the shared display rule.
+	pg_assert_true(preg_match('/^\.explorer-item\.selected \.sel-dot \{([^}]*background: var\(--pg-primary\)[^}]*)\}/m', $source, $fill) === 1,
+		'the selected bubble has its own fill rule');
+	pg_assert_true(strpos($fill[1] ?? '', 'color: var(--pg-on-accent)') !== false, 'the selected bubble prints its check in the accent ink');
+}

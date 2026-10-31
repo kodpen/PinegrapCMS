@@ -67,7 +67,7 @@ if (!$_POST) {
         'icon'=>'design',
         'heading'=>lang('Create Menu Item'),
         'heading_description' => lang('Create a new menu item within this shared menu.'),
-        'cancel'=>array('enable'=>'true','url'=>'view_menu_items.php'),
+        'cancel'=>array('enable'=>'true','url'=>'view_menu_items.php?id=' . (int)$menu_id . '&from=' . urlencode((string)($_GET['from'] ?? '')) . '&send_to=' . urlencode((string)($_GET['send_to'] ?? ''))),
         'breadcrumb' => array(
             array('label' => lang('All Menus'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_menus.php'),
             array('label' => lang('Edit Menu'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_menu_items.php?id=' . $menu_id),
@@ -119,6 +119,13 @@ if (!$_POST) {
     
     $liveform->validate_required_field('name', lang('Name is required.'));
     
+    // An address a browser would run, or one the external API refuses, is
+    // refused here too; a chosen page blanks the URL, so it is not checked.
+    $url_problem = empty($_POST['link_page_id']) ? pg_menu_item_url_problem($_POST['link_url'] ?? '') : '';
+    if ($url_problem !== '') {
+        $liveform->mark_error('link_url', $url_problem);
+    }
+
     // if there is an error, forward user back to edit menu screen
     if ($liveform->check_form_errors() == true) {
         header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/add_menu_item.php?menu_id=' . $menu_id . '&from=' . urlencode($_POST['from'] ?? '') . '&send_to=' . urlencode($_POST['send_to'] ?? ''));

@@ -112,12 +112,12 @@ function test_workspace_scheduled_flow_window_rights()
 	$start = strpos($route, "case 'ws_flow_scheduled_new':");
 	$route = substr($route, $start, strpos($route, "case 'ws_flow_scheduled_copy':", $start) - $start);
 
-	pg_assert_contains('ws_scheduled_flow_sketch($viewer, $channel_id)', $route);
+	pg_assert_contains('ws_scheduled_flow_sketch($viewer, $channel_id, ws_scheduled_flow_fill($request))', $route);
 	pg_assert_contains('ws_scheduled_flow_fill($request)', $route);
 	pg_assert_contains("'publish'   => !empty(\$request['publish'])", $route);
 
 	// The store's own checks stay the gate.
-	pg_assert_contains('ws_can_schedule($viewer)', ws_scheduled_flow_window_test_source('ws_flow_save_check'));
+	pg_assert_contains('ws_flow_builder($viewer)', ws_scheduled_flow_window_test_source('ws_flow_save_check'));
 	pg_assert_contains('ws_flow_share_manager($viewer, $flow)', ws_scheduled_flow_window_test_source('ws_flow_publish_check'));
 }
 
@@ -141,10 +141,10 @@ function test_workspace_scheduled_flow_window_js_wiring()
 	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace.js');
 
 	pg_assert_contains("label: t('sa_flow_new'), action: function () {\n                        self.scheduledFlowWindow();", $js);
-	pg_assert_contains('self.flowWindowDraw(drawing, data.graph, function (picked) {', $js);
+	pg_assert_contains('self.flowWindowDraw(drawing, graph, function (picked) {', $js);
 	pg_assert_contains('flow_id: saved.flow_id,', $js);
 	pg_assert_contains('draft_rev: saved.draft_rev,', $js);
-	pg_assert_contains('publish: publish ? 1 : 0,', $js);
+	pg_assert_contains('publish: publish ? 1 : 0', $js);
 	pg_assert_false(strpos($js, "label: t('sa_new')") !== false, 'no Scheduled action entry');
 }
 

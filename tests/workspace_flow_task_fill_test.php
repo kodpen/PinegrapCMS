@@ -81,7 +81,7 @@ function test_workspace_flow_task_fill_wired()
 {
 	$task = ws_flow_task_fill_test_source('ws_flow_step_task');
 
-	pg_assert_contains('ws_step_run_values($run, $graph, $owner, $context)', $task);
+	pg_assert_contains('ws_step_run_values($run, $graph, $owner, $context, $step)', $task);
 	pg_assert_contains('ws_flow_task_texts($config, $values', $task);
 	pg_assert_contains("'viewer' => \$owner", $task);
 	pg_assert_contains('ws_step_trigger_context($context)', $task);
@@ -92,7 +92,7 @@ function test_workspace_flow_task_fill_wired()
 
 	pg_assert_contains('ws_step_trigger_values_for($owner, $context)', $values, 'the owner\'s rights decide the trigger values');
 	pg_assert_contains('ws_flow_pure_values($graph, $values)', $values);
-	pg_assert_contains('ws_step_run_values($run, $graph, $owner, $context)', ws_flow_task_fill_test_source('ws_step_run'));
+	pg_assert_contains('ws_step_run_values($run, $graph, $owner, $context, $step)', ws_flow_task_fill_test_source('ws_step_run'));
 
 	$find = ws_flow_task_fill_test_source('ws_flow_step_task_find');
 

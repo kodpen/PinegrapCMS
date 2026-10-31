@@ -218,6 +218,8 @@ $explorer_lang = array(
     'access_control' => lang('Access Control'),
     'last_modified' => lang('Last Modified'),
     'folder' => lang('Folder'),
+    'file_content' => lang('File Content'),
+    'tab_hint' => lang('Tab indents. {var} makes Tab move to the next field.'),
     'folders' => lang('Folders'),
     'pictures' => lang('Pictures'),
     'all_files' => lang('All files'),
@@ -244,6 +246,8 @@ $explorer_lang = array(
     'duplicate' => lang('Duplicate'),
     'delete' => lang('Delete'),
     'new_folder' => lang('New Folder'),
+    'expand' => lang('Expand'),
+    'collapse' => lang('Collapse'),
     'upload_file' => lang('Upload Files or Folders'),
     'create_file' => lang('Create File'),
     'new_page' => lang('New Page'),
@@ -329,6 +333,7 @@ $explorer_lang = array(
     'save' => lang('Save'),
     'user_column' => lang('User'),
     'rights_column' => lang('Rights'),
+    'rights_for_user' => lang('Rights for {var:1}'),
     'no_basic_users' => lang('There are no users with a basic user role.'),
     'access_note' => lang('Access Control for all Pages and Files within this Folder'),
     'rights_note' => lang('Edit rights also apply to all folders within this folder.'),
@@ -510,6 +515,7 @@ $explorer_lang = array(
     'bulk_description_mode' => lang('Description'),
     'bulk_description_set' => lang('Replace with the text below'),
     'bulk_description_clear' => lang('Clear'),
+    'bulk_description_text' => lang('New description'),
     'bulk_optimize_label' => lang('Optimize images'),
     'bulk_optimize_none' => lang('Do not optimize'),
     'bulk_optimize_only' => lang('Compress only, keep the original size'),
@@ -663,6 +669,8 @@ $explorer_lang = array(
     // Which columns the list draws.
     'columns' => lang('Columns'),
     'columns_reset' => lang('Show every column'),
+    'columns_widths_reset' => lang('Reset column widths'),
+    'column_resize' => lang('Resize column {var:1}'),
     // The two short lists above the tree.
     'pinned' => lang('Pinned'),
     'recent' => lang('Recent'),
@@ -700,7 +708,7 @@ $explorer_lang = array(
     'rename_clash' => lang('the same name twice'),
     'rename_nothing' => lang('Nothing would change.'),
     'rename_apply' => lang('Rename {var:1} item(s)'),
-    'rename_server_note' => lang('A name may still be adjusted when it is saved: what goes into an address is reduced to plain letters.'),
+    'rename_server_note' => lang('File names are shown as they will be saved: accented letters become plain letters, spaces and signs become underscores.'),
     'renaming' => lang('Renaming'),
     'rename_done' => lang('{var:1} item(s) renamed'),
     // Editing a figure in the list rather than opening the product.
@@ -714,6 +722,7 @@ $explorer_lang = array(
     // Narrowing the listing by what things are rather than by their name.
     'filters' => lang('Filters'),
     'clear_filters' => lang('Clear filters'),
+    'remove_filter' => lang('Remove filter: {var:1}'),
     'filters_on' => lang('{var:1} filter(s) on'),
     'filters_showing' => lang('{var:1} of {var:2} shown'),
     'filter_images' => lang('Pictures'),
@@ -811,8 +820,11 @@ $explorer_lang = array(
 //
 // The two areas walk the same controls, but those controls do different things
 // in each, so each area gets its own sentences instead of one set hedged to
-// cover both.  Raise the number after the dot in the key when a tour's own
-// words change, and everyone watches it once more.
+// cover both.  Raise the number after the dot in the key when a tour gains or
+// loses a step, and everyone watches it once more; rewording a step keeps the
+// key.  A step names the control it points at by the label the screen prints
+// (Filters, Grid view, More actions), never by its place or shape alone: the
+// bubble is read aloud, and "the sliders beside it" names nothing to look for.
 $explorer_tour_key = ($explorer_area == 'catalog') ? 'explorer_catalog.4' : 'explorer_files.4';
 
 $explorer_tour = ($explorer_area == 'catalog')
@@ -820,7 +832,7 @@ $explorer_tour = ($explorer_area == 'catalog')
         array(
             'at' => 'tree',
             'title' => lang('The product group tree'),
-            'text' => lang('Every product group in the store is here, in the Catalog Manager panel of the menu on the left. Clicking one opens it now, where the old screen only expanded it. Right-click a group to publish or unpublish it, edit it, rename it or send it to the Recycle Bin, and drag one onto another to move it.')),
+            'text' => lang('Every product group in the store is here, in the Catalog Manager panel of the main menu (on the left). Clicking one opens it now, where the old screen only expanded it. Right-click a group to publish or unpublish it, edit it, rename it or send it to the Recycle Bin, and drag one onto another to move it.')),
         array(
             'at' => 'tree_menu',
             'title' => lang('The product group menu'),
@@ -832,7 +844,7 @@ $explorer_tour = ($explorer_area == 'catalog')
         array(
             'at' => 'search',
             'title' => lang('Search and view'),
-            'text' => lang('This narrows what is on screen as you type, over the name and the short description both. The sliders beside it narrow by what things are instead: out of stock, not published, no picture, no price. The two buttons on the right switch between the grid and the list, and the grid draws its tiles in four sizes (right-click, View, or hold Ctrl and turn the wheel).')),
+            'text' => lang('Search, this box, narrows what is on screen as you type, over the name and the short description both. The Filters button narrows by what things are instead: out of stock, not published, no picture, no price. Grid view and List view switch between the grid and the list, and the grid draws its tiles in four sizes (right-click, View, or hold Ctrl and turn the wheel).')),
         array(
             'at' => 'all_row',
             'title' => lang('The whole store at once'),
@@ -840,11 +852,11 @@ $explorer_tour = ($explorer_area == 'catalog')
         array(
             'at' => 'menu',
             'title' => lang('Right-click an item'),
-            'text' => lang('Anything in the middle of the screen answers the right mouse button, and this is the menu it opens -- shown here on the group beside it. Publish and unpublish, edit, rename, cut, copy, paste and duplicate all live in it. A product also has Remove from this group, which takes it out of the group you are looking at without deleting it. Select several items first and the menu acts on all of them.')),
+            'text' => lang('Right-click a group or product in the listing, or press the Menu key or Shift+F10 on it (a long press on a touch screen), and this menu opens -- shown here on the group beside it. Publish and unpublish, edit, rename, cut, copy, paste and duplicate all live in it. A product also has Remove from this group, which takes it out of the group you are looking at without deleting it. Select several items first and the menu acts on all of them.')),
         array(
             'at' => 'selection',
             'title' => lang('What you have picked'),
-            'text' => lang('Pick something and the bar along the bottom becomes what can be done with it: edit it, publish or unpublish it, move it into another group, delete it, and the rest behind the three dots. Move to... opens the group list with a search box, and asks the two things separately -- moving a product takes it out of the group you are looking at, adding leaves it there as well. Picking works from the keyboard too: the arrow keys walk the listing, Shift takes everything in between, and typing the first letters of a name jumps to it.')),
+            'text' => lang('Pick something and the status bar under the listing says how many items are selected and becomes what can be done with them: edit, publish or unpublish, move into another group, delete, and the rest under More actions (the three dots). Move to... opens the group list with a search box, and asks the two things separately -- moving a product takes it out of the group you are looking at, adding leaves it there as well. Picking works from the keyboard too: the arrow keys walk the listing, Shift takes everything in between, and typing the first letters of a name jumps to it.')),
         array(
             'at' => 'bin',
             'title' => lang('The Recycle Bin'),
@@ -852,12 +864,12 @@ $explorer_tour = ($explorer_area == 'catalog')
         array(
             'at' => 'more',
             'title' => lang('Everything else'),
-            'text' => lang('The preview panel is switched on and off in this menu, and Commerce Management Rights lives here too. So does Watch the tour, if you would like to see this again.')))
+            'text' => lang('More, the three dots at the end of the toolbar, is where the preview panel is switched on and off, and Commerce Management Rights lives there too. So does Watch the tour, if you would like to see this again.')))
     : array(
         array(
             'at' => 'tree',
             'title' => lang('The folder tree'),
-            'text' => lang('Every folder on the site is here, in the File Manager panel of the menu on the left. Clicking one opens it now, where the old screen only expanded it. Right-click a folder for its own menu: a new folder, rename, access rules, settings and delete. Dragging one onto another moves it.')),
+            'text' => lang('Every folder on the site is here, in the File Manager panel of the main menu (on the left). Clicking one opens it now, where the old screen only expanded it. Right-click a folder for its own menu: a new folder, rename, access rules, settings and delete. Dragging one onto another moves it.')),
         array(
             'at' => 'tree_menu',
             'title' => lang('The folder menu'),
@@ -869,15 +881,15 @@ $explorer_tour = ($explorer_area == 'catalog')
         array(
             'at' => 'search',
             'title' => lang('Search and view'),
-            'text' => lang('This narrows what is on screen as you type. The sliders beside it narrow by what things are instead -- pictures nobody has optimised, files with no description, pages missing from the sitemap -- and says along the top what it is hiding. The two buttons on the right switch between the grid and the list; the list sorts by name, size and date when you click a column heading, and the grid draws its tiles in four sizes (right-click, View, or hold Ctrl and turn the wheel).')),
+            'text' => lang('Search, this box, narrows what is on screen as you type. The Filters button narrows by what things are instead -- pictures nobody has optimised, files with no description, pages missing from the sitemap -- and while one is on, a line above the listing says how many are on and what is shown, with Clear filters to bring everything back. Grid view and List view switch between the grid and the list; the list sorts by name, size and date when you click a column heading, and the grid draws its tiles in four sizes (right-click, View, or hold Ctrl and turn the wheel).')),
         array(
             'at' => 'menu',
             'title' => lang('Right-click an item'),
-            'text' => lang('Anything in the middle of the screen answers the right mouse button, and this is the menu it opens -- shown here on the folder beside it. Cut, copy, paste, duplicate, rename and delete all live in it, along with Copy address and the things that only fit one kind of item, such as optimising a picture or extracting an archive. Select several items first and the menu acts on all of them.')),
+            'text' => lang('Right-click a folder, page or file in the listing, or press the Menu key or Shift+F10 on it (a long press on a touch screen), and this menu opens -- shown here on the folder beside it. Cut, copy, paste, duplicate, rename and delete all live in it, along with Copy address and the things that only fit one kind of item, such as optimising a picture or extracting an archive. Select several items first and the menu acts on all of them.')),
         array(
             'at' => 'selection',
             'title' => lang('What you have picked'),
-            'text' => lang('Pick something and the bar along the bottom becomes what can be done with it: open it, move it, download it, delete it, and the rest behind the three dots. Move to... opens a list of every folder with a search box, so a folder four levels down needs no dragging at all. Picking works from the keyboard too: the arrow keys walk the listing, Shift takes everything in between, and typing the first letters of a name jumps to it.')),
+            'text' => lang('Pick something and the status bar under the listing says how many items are selected and becomes what can be done with them: open, move, download, delete, and the rest under More actions (the three dots). Move to... opens a list of every folder with a search box, so a folder four levels down needs no dragging at all. Picking works from the keyboard too: the arrow keys walk the listing, Shift takes everything in between, and typing the first letters of a name jumps to it.')),
         array(
             'at' => 'bin',
             'title' => lang('The Recycle Bin'),
@@ -885,7 +897,7 @@ $explorer_tour = ($explorer_area == 'catalog')
         array(
             'at' => 'more',
             'title' => lang('Everything else'),
-            'text' => lang('The preview panel is switched on and off in this menu, and the views across everything are here too. So is Watch the tour, if you would like to see this again.')));
+            'text' => lang('More, the three dots at the end of the toolbar, is where the preview panel is switched on and off, and the views across everything are there too. So is Watch the tour, if you would like to see this again.')));
 
 echo
     pg_page_shell(
@@ -962,24 +974,17 @@ echo
    backend.src.css) -- this screen is where that pattern was first built, and it
    was the last one still carrying its own copy of it.
 
-   What stays here is the one thing the shared rules cannot know: the order this
-   screen's own controls take when the bar wraps. The shared block puts the path
-   on line two (order 9) and the search box on line three (order 10), so
-   everything below has to stay under nine. */
+   When the bar wraps, every control keeps its markup position, so Tab follows
+   the rows as drawn; the view switches still start the right-hand group. */
 @media (max-width: 767.98px) {
 
-    #new_menu_wrap { order: 1; }
-    #explorer_transfer_wrap { order: 2; }
-    #up_button { order: 3; }
-    #explorer_filter_wrap { order: 4; }
-    #file_scope_wrap { order: 5; }
-    #explorer_view_group { order: 6; margin-left: auto; }
-    #recycle_bin_button { order: 7; }
-    #explorer_more_wrap { order: 8; }
+    #explorer_view_group { margin-left: auto; }
 }
 #file_scope_menu .menu-item [data-role="check"] { opacity: 0; }
 #file_scope_menu .menu-item.active [data-role="check"] { opacity: 1; }
 #file_scope_menu .menu-item.active { background: var(--pg-bg-2); color: var(--pg-fg-body); }
+#explorer_breadcrumb { position: relative; }
+#explorer_breadcrumb.is-scrolled::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 1.25rem; background: linear-gradient(to right, var(--pg-bg-body), transparent); pointer-events: none; z-index: 1; }
 #explorer_breadcrumb .breadcrumb { margin: 0; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
 #explorer_breadcrumb .breadcrumb::-webkit-scrollbar { display: none; }
 #explorer_breadcrumb .breadcrumb-item { white-space: nowrap; }
@@ -998,6 +1003,7 @@ echo
 #explorer_tree_pane .tree-toggle { width: .95rem; height: .95rem; display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; color: var(--pg-fg-2); font-size: .58rem; border-radius: .3rem; transition: transform .12s ease; }
 #explorer_tree_pane .tree-toggle.bi-chevron-right:hover { background: var(--pg-bg-1); }
 #explorer_tree_pane .tree-toggle.open { transform: rotate(90deg); }
+#explorer_tree_pane .tree-row:focus-visible, #explorer_tree_pane .tree-toggle:focus-visible { outline: 2px solid var(--pg-primary-ink); outline-offset: -2px; }
 #explorer_tree_pane .tree-row > .bi-folder-fill, #explorer_tree_pane .tree-row > .bi-file-earmark-image { font-size: .92rem; line-height: 1; }
 #explorer_tree_pane .tree-label { overflow: hidden; text-overflow: ellipsis; }
 #explorer_tree_pane .tree-section-label { font-size: .62rem; letter-spacing: .08em; text-transform: uppercase; color: var(--pg-fg-3); padding: .55rem .45rem .2rem; user-select: none; }
@@ -1029,9 +1035,11 @@ tr.explorer-item.selected > td { background: var(--pg-primary-bg-subtle) !import
 .stock-dot { position: absolute; top: .28rem; left: .28rem; width: .55rem; height: .55rem; border-radius: 50%;
   background: var(--pg-danger); box-shadow: 0 0 0 2px var(--pg-bg-body); z-index: 3; pointer-events: none; }
 #explorer_list_table .stock-dot { position: static; display: inline-block; box-shadow: none; margin-right: .3rem; vertical-align: middle; }
-.sel-dot { position: absolute; top: .4rem; left: .4rem; width: 1.15rem; height: 1.15rem; border-radius: 50%; border: 2px solid var(--pg-fg-3); background: var(--pg-bg-body); display: none; align-items: center; justify-content: center; font-size: .65rem; color: #fff; cursor: pointer; z-index: 2; }
+.sel-dot { position: absolute; top: .4rem; left: .4rem; width: 1.15rem; height: 1.15rem; border-radius: 50%; border: 2px solid var(--pg-fg-3); background: var(--pg-bg-body); display: none; align-items: center; justify-content: center; font-size: .65rem; color: transparent; cursor: pointer; z-index: 2; }
 #explorer_grid .item-card:hover .sel-dot, .explorer-item.selected .sel-dot { display: flex; }
-.explorer-item.selected .sel-dot { background: var(--pg-primary); border-color: var(--pg-primary); }
+/* The check shows only on a selected tile: a hover bubble that drew it looked
+   selected, as on the tile that moves under the pointer after a delete. */
+.explorer-item.selected .sel-dot { background: var(--pg-primary); border-color: var(--pg-primary); color: var(--pg-on-accent); }
 .item-thumb-area { height: var(--pg-tile-thumb); display: flex; align-items: center; justify-content: center; margin-bottom: .3rem; }
 .explorer-item .item-icon { font-size: var(--pg-tile-icon); line-height: 1; position: relative; display: inline-block; }
 
@@ -1171,6 +1179,29 @@ tr.explorer-item.selected > td { background: var(--pg-primary-bg-subtle) !import
 #explorer_list_table th.th-sortable { cursor: pointer; }
 #explorer_list_table th.th-sortable:hover { color: var(--pg-fg-body); }
 
+/* The label and caret of a sortable heading sit in a button, so the heading
+   takes the focus and sorts on Enter or Space; it looks like plain heading
+   text. */
+#explorer_list_table th .th-sort {
+    display: block;
+    width: 100%;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+    text-align: inherit;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+#explorer_list_table th .th-sort:focus-visible,
+#explorer_list_table th .col-grip:focus-visible {
+    outline: 2px solid var(--pg-primary-ink);
+    outline-offset: -2px;
+    border-radius: 2px;
+}
+
 #explorer_list_table th .col-grip {
     position: absolute;
     top: 0;
@@ -1179,9 +1210,16 @@ tr.explorer-item.selected > td { background: var(--pg-primary-bg-subtle) !import
     height: 100%;
     cursor: col-resize;
     z-index: 2;
+    touch-action: none;
+}
+
+/* A finger needs more than seven pixels to land on an edge. */
+@media (pointer: coarse) {
+    #explorer_list_table th .col-grip { right: -8px; width: 16px; }
 }
 
 #explorer_list_table th .col-grip:hover::after,
+#explorer_list_table th .col-grip:focus-visible::after,
 body.col-resizing #explorer_list_table th .col-grip::after {
     content: '';
     position: absolute;
@@ -1483,29 +1521,29 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         <div class="pg-menu-wrap d-none" id="file_scope_wrap">
             <button type="button" id="file_scope_button" class="btn btn-sm btn-text theme-secondary no-popover pg-menu-caret text-nowrap" data-bs-toggle="menu" data-bs-display="static" aria-expanded="false"><span class="bi bi-funnel me-1"></span><span id="file_scope_label"></span></button>
             <ul class="menu shadow" id="file_scope_menu" style="border-radius:.75rem;">
-                <li><button type="button" class="menu-item" data-scope=""><span class="bi bi-check2 me-3" data-role="check"></span><?php echo lang('All files'); ?></button></li>
+                <li><button type="button" class="menu-item" data-scope=""><span class="bi bi-check2 me-3" data-role="check" aria-hidden="true"></span><?php echo lang('All files'); ?></button></li>
                 <li><h6 class="menu-header"><?php echo lang('By type'); ?></h6></li>
-                <li><button type="button" class="menu-item" data-scope="documents"><span class="bi bi-check2 me-3" data-role="check"></span><?php echo lang('Documents'); ?></button></li>
-                <li><button type="button" class="menu-item" data-scope="media"><span class="bi bi-check2 me-3" data-role="check"></span><?php echo lang('Media'); ?></button></li>
-                <li><button type="button" class="menu-item" data-scope="attachments"><span class="bi bi-check2 me-3" data-role="check"></span><?php echo lang('Attachments'); ?></button></li>
-                <li><button type="button" class="menu-item" data-scope="archived"><span class="bi bi-check2 me-3" data-role="check"></span><?php echo lang('Archived files'); ?></button></li>
+                <li><button type="button" class="menu-item" data-scope="documents"><span class="bi bi-check2 me-3" data-role="check" aria-hidden="true"></span><?php echo lang('Documents'); ?></button></li>
+                <li><button type="button" class="menu-item" data-scope="media"><span class="bi bi-check2 me-3" data-role="check" aria-hidden="true"></span><?php echo lang('Media'); ?></button></li>
+                <li><button type="button" class="menu-item" data-scope="attachments"><span class="bi bi-check2 me-3" data-role="check" aria-hidden="true"></span><?php echo lang('Attachments'); ?></button></li>
+                <li><button type="button" class="menu-item" data-scope="archived"><span class="bi bi-check2 me-3" data-role="check" aria-hidden="true"></span><?php echo lang('Archived files'); ?></button></li>
                 <li><h6 class="menu-header"><?php echo lang('By access'); ?></h6></li>
-                <li><button type="button" class="menu-item" data-scope="public"><span class="bi bi-check2 me-3" data-role="check"></span><?php echo lang('Public'); ?></button></li>
-                <li><button type="button" class="menu-item" data-scope="guest"><span class="bi bi-check2 me-3" data-role="check"></span><?php echo lang('Guest'); ?></button></li>
-                <li><button type="button" class="menu-item" data-scope="registration"><span class="bi bi-check2 me-3" data-role="check"></span><?php echo lang('Registration'); ?></button></li>
-                <li><button type="button" class="menu-item" data-scope="membership"><span class="bi bi-check2 me-3" data-role="check"></span><?php echo lang('Membership'); ?></button></li>
-                <li><button type="button" class="menu-item" data-scope="private"><span class="bi bi-check2 me-3" data-role="check"></span><?php echo lang('Private'); ?></button></li>
+                <li><button type="button" class="menu-item" data-scope="public"><span class="bi bi-check2 me-3" data-role="check" aria-hidden="true"></span><?php echo lang('Public'); ?></button></li>
+                <li><button type="button" class="menu-item" data-scope="guest"><span class="bi bi-check2 me-3" data-role="check" aria-hidden="true"></span><?php echo lang('Guest'); ?></button></li>
+                <li><button type="button" class="menu-item" data-scope="registration"><span class="bi bi-check2 me-3" data-role="check" aria-hidden="true"></span><?php echo lang('Registration'); ?></button></li>
+                <li><button type="button" class="menu-item" data-scope="membership"><span class="bi bi-check2 me-3" data-role="check" aria-hidden="true"></span><?php echo lang('Membership'); ?></button></li>
+                <li><button type="button" class="menu-item" data-scope="private"><span class="bi bi-check2 me-3" data-role="check" aria-hidden="true"></span><?php echo lang('Private'); ?></button></li>
             </ul>
         </div>
-        <div class="btn-group btn-group-sm" id="explorer_view_group" role="group">
-            <button type="button" id="view_grid_button" class="btn btn-text theme-secondary no-popover" title="<?php echo lang('Grid view'); ?>"><span class="bi bi-grid-3x3-gap"></span></button>
-            <button type="button" id="view_list_button" class="btn btn-text theme-secondary no-popover" title="<?php echo lang('List view'); ?>"><span class="bi bi-list-ul"></span></button>
+        <div class="btn-group btn-group-sm" id="explorer_view_group" role="group" aria-label="<?php echo lang('View'); ?>">
+            <button type="button" id="view_grid_button" class="btn btn-text theme-secondary no-popover" aria-pressed="false" title="<?php echo lang('Grid view'); ?>"><span class="bi bi-grid-3x3-gap"></span></button>
+            <button type="button" id="view_list_button" class="btn btn-text theme-secondary no-popover" aria-pressed="false" title="<?php echo lang('List view'); ?>"><span class="bi bi-list-ul"></span></button>
         </div>
         <button type="button" id="recycle_bin_button" class="btn btn-sm btn-text theme-secondary no-popover position-relative d-none" title="<?php echo lang('Recycle Bin'); ?>"><span class="bi bi-trash3"></span><span id="recycle_bin_count" class="position-absolute top-0 start-100 translate-middle badge rounded-pill theme-danger d-none" style="font-size:.6rem;"></span></button>
         <div class="pg-menu-wrap" id="explorer_more_wrap">
-            <button type="button" id="explorer_more_button" class="btn btn-sm btn-text theme-secondary no-popover" data-bs-toggle="menu" data-bs-placement="bottom-end" data-bs-display="static" aria-expanded="false"><span class="bi bi-three-dots-vertical"></span></button>
+            <button type="button" id="explorer_more_button" class="btn btn-sm btn-text theme-secondary no-popover" data-bs-toggle="menu" data-bs-placement="bottom-end" data-bs-display="static" aria-expanded="false" title="<?php echo lang('More'); ?>" aria-label="<?php echo lang('More'); ?>"><span class="bi bi-three-dots-vertical"></span></button>
             <ul class="menu pg-menu-end shadow" style="border-radius:.75rem;">
-                <li class="d-none lg:d-block"><button type="button" class="menu-item" id="preview_toggle_button"><span class="bi bi-check2 me-3 opacity-0" data-role="check"></span><?php echo lang('Preview panel'); ?></button></li>
+                <li class="d-none lg:d-block"><button type="button" class="menu-item" id="preview_toggle_button" aria-pressed="false"><span class="bi bi-check2 me-3 opacity-0" data-role="check" aria-hidden="true"></span><?php echo lang('Preview panel'); ?></button></li>
                 <li class="d-none lg:d-block"><hr class="menu-divider" /></li>
                 <!-- The same shortcuts the tree carries. The tree is the main
                      menu's panel (the drawer on a phone); this menu repeats the
@@ -1578,17 +1616,17 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                  for these rows by id on every load, and a missing one would be a
                  null. The store rows lead to the other screen; the operator stays
                  in the same interface either way. -->
-            <div class="tree-row area-files" id="all_files_quick"><span class="tree-toggle"></span><span class="bi bi-file-earmark-image fg-primary"></span><span class="tree-label"><?php echo lang('Files'); ?></span></div>
-            <div class="tree-row area-files" id="all_images_quick"><span class="tree-toggle"></span><span class="bi bi-images fg-primary"></span><span class="tree-label"><?php echo lang('Pictures'); ?></span></div>
-            <div class="tree-row area-files" id="all_pages_quick"><span class="tree-toggle"></span><span class="bi bi-window-stack fg-primary"></span><span class="tree-label"><?php echo lang('Pages'); ?></span></div>
+            <div class="tree-row area-files" id="all_files_quick" role="link" tabindex="0"><span class="tree-toggle"></span><span class="bi bi-file-earmark-image fg-primary"></span><span class="tree-label"><?php echo lang('Files'); ?></span></div>
+            <div class="tree-row area-files" id="all_images_quick" role="link" tabindex="0"><span class="tree-toggle"></span><span class="bi bi-images fg-primary"></span><span class="tree-label"><?php echo lang('Pictures'); ?></span></div>
+            <div class="tree-row area-files" id="all_pages_quick" role="link" tabindex="0"><span class="tree-toggle"></span><span class="bi bi-window-stack fg-primary"></span><span class="tree-label"><?php echo lang('Pages'); ?></span></div>
             <?php if ($user['role'] <= 2) { ?>
-            <div class="tree-row area-files" id="short_links_quick"><span class="tree-toggle"></span><span class="bi bi-link-45deg fg-primary"></span><span class="tree-label"><?php echo lang('Short Links'); ?></span></div>
+            <div class="tree-row area-files" id="short_links_quick" role="link" tabindex="0"><span class="tree-toggle"></span><span class="bi bi-link-45deg fg-primary"></span><span class="tree-label"><?php echo lang('Short Links'); ?></span></div>
             <?php } ?>
-            <div class="tree-row area-catalog" id="all_products_quick"><span class="tree-toggle"></span><span class="bi bi-box2-heart fg-primary"></span><span class="tree-label"><?php echo lang('All Products'); ?></span><span class="tree-count" id="all_products_count"></span></div>
+            <div class="tree-row area-catalog" id="all_products_quick" role="link" tabindex="0"><span class="tree-toggle"></span><span class="bi bi-box2-heart fg-primary"></span><span class="tree-label"><?php echo lang('All Products'); ?></span><span class="tree-count" id="all_products_count"></span></div>
             <!-- A variant set is a group whose display type is 'select': one
                  product in several forms rather than a category. view_products.php
                  lists them on their own screen, so the store does too. -->
-            <div class="tree-row area-catalog" id="all_variant_sets_quick"><span class="tree-toggle"></span><span class="bi bi-collection-fill fg-primary"></span><span class="tree-label"><?php echo lang('All Variant Sets'); ?></span><span class="tree-count" id="all_variant_sets_count"></span></div>
+            <div class="tree-row area-catalog" id="all_variant_sets_quick" role="link" tabindex="0"><span class="tree-toggle"></span><span class="bi bi-collection-fill fg-primary"></span><span class="tree-label"><?php echo lang('All Variant Sets'); ?></span><span class="tree-count" id="all_variant_sets_count"></span></div>
 
             <!-- Two short lists above the tree: the ones marked to keep, and
                  the ones just visited. Both are drawn only when they hold
@@ -1609,8 +1647,8 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
             <?php if ($user['role'] <= 2) { ?>
             <div class="tree-section-label area-files" id="shared_section_label"><?php echo lang('Shared Items'); ?></div>
-            <div class="tree-row area-files" id="shared_quick"><span class="tree-toggle"></span><span class="bi bi-shield-lock fg-primary"></span><span class="tree-label"><?php echo lang('Shared Folders'); ?></span></div>
-            <div class="tree-row area-files" id="backups_quick"><span class="tree-toggle"></span><span class="bi bi-database fg-primary"></span><span class="tree-label"><?php echo lang('Backups'); ?></span></div>
+            <div class="tree-row area-files" id="shared_quick" role="link" tabindex="0"><span class="tree-toggle"></span><span class="bi bi-shield-lock fg-primary"></span><span class="tree-label"><?php echo lang('Shared Folders'); ?></span></div>
+            <div class="tree-row area-files" id="backups_quick" role="link" tabindex="0"><span class="tree-toggle"></span><span class="bi bi-database fg-primary"></span><span class="tree-label"><?php echo lang('Backups'); ?></span></div>
             <?php } ?>
 
             <?php if ($explorer_erp) { ?>
@@ -1621,7 +1659,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                  menu or its drop targets take them for folders. -->
             <div class="tree-section-label area-files" id="erp_section_label"><?php echo lang('ERP'); ?></div>
             <div class="area-files" id="erp_tree_wrap">
-                <div class="tree-row" id="erp_quick"><span class="tree-toggle bi bi-chevron-right" data-role="erp-toggle"></span><i class="bi bi-safe2 fg-primary" aria-hidden="true"></i><span class="tree-label"><?php echo lang('ERP Files'); ?></span></div>
+                <div class="tree-row" id="erp_quick" role="link" tabindex="0" aria-label="<?php echo lang('ERP Files'); ?>"><span class="tree-toggle bi bi-chevron-right" data-role="erp-toggle" role="button" tabindex="0" aria-expanded="false" aria-label="<?php echo lang('Expand'); ?>"></span><i class="bi bi-safe2 fg-primary" aria-hidden="true"></i><span class="tree-label"><?php echo lang('ERP Files'); ?></span></div>
                 <ul id="erp_tree" style="display:none"></ul>
             </div>
             <?php } ?>
@@ -1683,7 +1721,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
      form post in any case, so posting to it is also the plain way to do this.
      send_to brings the operator back to this screen when it is finished. -->
 <dialog class="dialog pg-dialog-centered" id="import_zip_modal" aria-labelledby="import_zip_modal_label">
-        <form class="d-contents" style="border-radius:.9rem;" action="import_zip.php" method="post" enctype="multipart/form-data">
+        <form id="import_zip_form" class="d-contents" style="border-radius:.9rem;" action="import_zip.php" method="post" enctype="multipart/form-data">
             <div class="dialog-header">
                 <h5 class="dialog-title" id="import_zip_modal_label"><span class="bi bi-file-earmark-zip me-3"></span><?php echo lang('Import ZIP File'); ?></h5>
                 <button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="<?php echo lang('Close'); ?>"></button>
@@ -1701,6 +1739,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                     <input type="text" class="form-control" id="import_zip_name" name="import_name" maxlength="100" />
                     <div class="form-text"><?php echo lang('appended to imported items and filenames for easy reference, recommended, e.g. \'mysite\''); ?></div>
                 </div>
+                <p class="small fg-secondary mt-3 mb-0" id="import_zip_status" role="status" aria-live="polite"></p>
             </div>
             <div class="dialog-footer">
                 <button type="button" class="btn btn-solid theme-secondary" data-bs-dismiss="dialog"><?php echo lang('Cancel'); ?></button>
@@ -1715,7 +1754,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
      the browser lands in the editor on it. The plain Import ZIP above makes
      ordinary pages and files; this one makes a design. -->
 <dialog class="dialog pg-dialog-centered" id="import_design_zip_modal" aria-labelledby="import_design_zip_modal_label">
-        <form class="d-contents" style="border-radius:.9rem;" action="import_design_zip.php" method="post" enctype="multipart/form-data">
+        <form id="import_design_zip_form" class="d-contents" style="border-radius:.9rem;" action="import_design_zip.php" method="post" enctype="multipart/form-data">
             <div class="dialog-header">
                 <h5 class="dialog-title" id="import_design_zip_modal_label"><span class="bi bi-magic me-3"></span><?php echo lang('Import ZIP for the Visual Page Editor'); ?></h5>
                 <button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="<?php echo lang('Close'); ?>"></button>
@@ -1733,6 +1772,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                     <input type="text" class="form-control" id="import_design_zip_project" name="project_name" maxlength="60" />
                     <div class="form-text"><?php echo lang('Defaults to the file name'); ?></div>
                 </div>
+                <p class="small fg-secondary mt-3 mb-0" id="import_design_zip_status" role="status" aria-live="polite"></p>
             </div>
             <div class="dialog-footer">
                 <button type="button" class="btn btn-solid theme-secondary" data-bs-dismiss="dialog"><?php echo lang('Cancel'); ?></button>
@@ -1740,6 +1780,39 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             </div>
         </form>
 </dialog>
+<script>
+    // Both ZIP imports upload, unzip and write rows before they answer,
+    // often longer than the window guard's 3 seconds, and every run makes a
+    // new folder, design or file rows under unique names. Each form is sent
+    // once: the first submit goes, any later one is cancelled until a page
+    // restored from the cache resets it. The button is never disabled, so
+    // its value travels.
+    (function () {
+        ['import_zip', 'import_design_zip'].forEach(function (id) {
+            var form = document.getElementById(id + '_form');
+            var status = document.getElementById(id + '_status');
+            var sent = false;
+
+            if (!form) { return; }
+
+            window.addEventListener('submit', function (event) {
+                if (event.target !== form) { return; }
+                if (sent) { event.preventDefault(); return; }
+                if (event.defaultPrevented) { return; }
+                sent = true;
+                form.setAttribute('aria-busy', 'true');
+                if (status) { status.textContent = <?php echo encode_json(lang('Importing…')); ?>; }
+            });
+
+            window.addEventListener('pageshow', function (event) {
+                if (!event.persisted) { return; }
+                sent = false;
+                form.removeAttribute('aria-busy');
+                if (status) { status.textContent = ''; }
+            });
+        });
+    })();
+</script>
 
 <!-- Upload.
      add_file.php is still the upload screen and view_files.php still goes
@@ -1840,7 +1913,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
                 <div class="row g-5 mt-0">
                     <div class="col-12 md:col-6">
-                        <label class="form-label" for="upload_folder"><?php echo lang('Folder'); ?></label>
+                        <label class="form-label" for="upload_folder" id="upload_folder_label"><?php echo lang('Folder'); ?></label>
                         <select class="form-control" id="upload_folder"></select>
                         <!-- In the backup folder there is nothing to choose:
                              the upload lands where you are standing, and it is
@@ -2098,6 +2171,10 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     // own folder, whose files already belong to a conversation.
     var wsSend = <?php echo $explorer_ws_send ? 'true' : 'false'; ?>;
     var wsFolderId = <?php echo (int) $explorer_ws_folder_id; ?>;
+
+    // The narrowest and widest a list column may be made.
+    var COLUMN_MIN_WIDTH = 48;
+    var COLUMN_MAX_WIDTH = 1200;
 
     var state = {
         area: '<?php echo $explorer_area; ?>',
@@ -2799,7 +2876,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         var html = '';
 
         (state.erpTree || []).forEach(function (node) {
-            html += '<li><div class="tree-row erp-tree-row' + ((node.count > 0) ? '' : ' is-empty') + '" data-erp-folder="' + esc(node.key) + '" title="' + esc(node.note || node.label) + '">' +
+            html += '<li><div class="tree-row erp-tree-row' + ((node.count > 0) ? '' : ' is-empty') + '" role="link" tabindex="0" data-erp-folder="' + esc(node.key) + '" title="' + esc(node.note || node.label) + '">' +
                 '<span class="tree-toggle"></span><i class="bi ' + esc(node.icon || 'bi-folder') + ' fg-primary" aria-hidden="true"></i>' +
                 '<span class="tree-label">' + esc(node.label) + '</span><span class="tree-count">' + (parseInt(node.count, 10) || 0) + '</span></div></li>';
         });
@@ -2813,10 +2890,10 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
         if (!root) { return; }
 
-        root.classList.toggle('active', insideErp() && (state.erpFolder === ''));
+        markTreeRow(root, insideErp() && (state.erpFolder === ''));
 
         document.querySelectorAll('#erp_tree [data-erp-folder]').forEach(function (row) {
-            row.classList.toggle('active', insideErp() && (row.getAttribute('data-erp-folder') === state.erpFolder));
+            markTreeRow(row, insideErp() && (row.getAttribute('data-erp-folder') === state.erpFolder));
         });
     }
 
@@ -2831,7 +2908,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
         if (!root || !list) { return; }
 
-        root.querySelector('.tree-toggle').classList.toggle('open', open);
+        syncTreeToggle(root.querySelector('.tree-toggle'), open);
         list.style.display = open ? 'block' : 'none';
         storageSet('pg_explorer_erp_open', open ? '1' : '0');
 
@@ -3024,7 +3101,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         if (item.picture && item.kept && item.url) {
             media = '<img src="' + esc(item.url) + '" alt="" class="img-fluid rounded-4 border" style="max-height:24rem;" />';
         } else if (viewable && item.kept) {
-            media = '<iframe loading="lazy" src="' + esc(item.url) + '"></iframe>';
+            media = '<iframe loading="lazy" src="' + esc(item.url) + '" title="' + esc(item.name) + '"></iframe>';
         } else if (viewable) {
             media = '<div class="erp-preview-wait text-center">' +
                 '<span class="bi bi-filetype-pdf pg-display-5 d-block mb-3 private"></span>' +
@@ -3099,7 +3176,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         if (previewButton) {
             previewButton.addEventListener('click', function () {
                 var wait = pane.querySelector('.erp-preview-wait');
-                if (wait) { wait.outerHTML = '<iframe src="' + esc(item.url) + '"></iframe>'; }
+                if (wait) { wait.outerHTML = '<iframe src="' + esc(item.url) + '" title="' + esc(item.name) + '"></iframe>'; }
             });
         }
 
@@ -4208,7 +4285,26 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         newButton.classList.toggle('disabled', !anyAction);
     }
 
+    // The bar is a horizontal scroll container with a hidden scrollbar; drawn
+    // from its start, a narrow toolbar would hide the open folder's name, so
+    // every draw ends scrolled to the last crumb.
     function renderBreadcrumb() {
+        drawBreadcrumb();
+        showBreadcrumbEnd();
+    }
+
+    // Scrolls the bar to its end and fades its left edge while crumbs are
+    // hidden there. Reading scrollWidth lays the new markup out first.
+    function showBreadcrumbEnd() {
+        var list = document.querySelector('#explorer_breadcrumb .breadcrumb');
+
+        if (!list) { return; }
+
+        list.scrollLeft = list.scrollWidth;
+        document.getElementById('explorer_breadcrumb').classList.toggle('is-scrolled', list.scrollLeft > 0);
+    }
+
+    function drawBreadcrumb() {
         if (state.mode === 'catalog') {
 
             var catalogCrumbs = '<li class="breadcrumb-item"><a href="#" draggable="false" data-catalog-id="0" class="pg-link-secondary"><span class="bi bi-boxes me-1"></span>' + esc(L.catalog_root) + '</a></li>';
@@ -4359,25 +4455,48 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         document.getElementById('explorer_breadcrumb').innerHTML = html;
     }
 
+    // Lowers a text for matching so İ, I, ı and i are one letter: the Turkish
+    // rules turn İ into i and I into ı, and ı is then written as i. Every
+    // character stays one character, so an index into the folded text is an
+    // index into the original (bulkRenameReplace() slices by it).
+    function foldText(text) {
+        return String(text || '').toLocaleLowerCase('tr').replace(/\u0131/g, 'i');
+    }
+
+    // Text sort keys follow the panel language's order (Ç after C, not after
+    // Z) and read digits as numbers, as the panel table sorter does. Null
+    // where the browser has no Intl, and sortItems() compares code units.
+    var sortCollator;
+
+    function textCollator() {
+        if (sortCollator === undefined) {
+            sortCollator = (typeof Intl !== 'undefined' && Intl.Collator)
+                ? new Intl.Collator(document.documentElement.lang || undefined, { numeric: true, sensitivity: 'base' })
+                : null;
+        }
+        return sortCollator;
+    }
+
     function sortItems(list) {
         var key = state.sort.key;
         var dir = state.sort.dir === 'desc' ? -1 : 1;
+        var collator = textCollator();
 
         return list.slice().sort(function (a, b) {
             var va, vb;
             if (key === 'size') { va = a.size || 0; vb = b.size || 0; }
             else if (key === 'timestamp') { va = a.timestamp || 0; vb = b.timestamp || 0; }
-            else if (key === 'type') { va = (a.type || '').toLowerCase(); vb = (b.type || '').toLowerCase(); }
+            else if (key === 'type') { va = (a.type || ''); vb = (b.type || ''); }
             // Keys the table has and the menu does not: a heading can be
             // clicked for any column that holds something worth ordering by.
-            else if (key === 'folder') { va = (a.folder_name || '').toLowerCase(); vb = (b.folder_name || '').toLowerCase(); }
+            else if (key === 'folder') { va = (a.folder_name || ''); vb = (b.folder_name || ''); }
             // The ERP columns. A date is ISO, so it sorts as written; a
             // letter carries a balance where an invoice carries a total.
             else if (key === 'date') { va = a.date || ''; vb = b.date || ''; }
             else if (key === 'total') { va = (typeof a.total === 'number') ? a.total : (a.balance || 0); vb = (typeof b.total === 'number') ? b.total : (b.balance || 0); }
-            else if (key === 'account') { va = (a.account_title || a.recipient || '').toLowerCase(); vb = (b.account_title || b.recipient || '').toLowerCase(); }
-            else if (key === 'status') { va = (a.status_label || '').toLowerCase(); vb = (b.status_label || '').toLowerCase(); }
-            else if (key === 'access') { va = (a.access_control_type || '').toLowerCase(); vb = (b.access_control_type || '').toLowerCase(); }
+            else if (key === 'account') { va = (a.account_title || a.recipient || ''); vb = (b.account_title || b.recipient || ''); }
+            else if (key === 'status') { va = (a.status_label || ''); vb = (b.status_label || ''); }
+            else if (key === 'access') { va = (a.access_control_type || ''); vb = (b.access_control_type || ''); }
             else if (key === 'enabled') { va = (a.enabled === false) ? 0 : 1; vb = (b.enabled === false) ? 0 : 1; }
             else if (key === 'quantity') { va = (a.kind === 'product') ? (a.quantity || 0) : ((a.counts && a.counts.products_deep) || 0); vb = (b.kind === 'product') ? (b.quantity || 0) : ((b.counts && b.counts.products_deep) || 0); }
             else if (key === 'impact') { va = ((a.impact === null || a.impact === undefined) ? -1 : a.impact); vb = ((b.impact === null || b.impact === undefined) ? -1 : b.impact); }
@@ -4385,7 +4504,11 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             // A group has no price of its own, so it sorts by the cheapest
             // thing under it -- the same figure its tile already shows.
             else if (key === 'price') { va = (a.kind === 'group') ? (a.price_min || 0) : (a.price || 0); vb = (b.kind === 'group') ? (b.price_min || 0) : (b.price || 0); }
-            else { va = (a.name || '').toLowerCase(); vb = (b.name || '').toLowerCase(); }
+            else { va = (a.name || ''); vb = (b.name || ''); }
+            if (collator && (key !== 'date') && (typeof va === 'string') && (typeof vb === 'string')) {
+                return collator.compare(va, vb) * dir;
+            }
+            if (!collator && (typeof va === 'string') && (typeof vb === 'string')) { va = va.toLowerCase(); vb = vb.toLowerCase(); }
             if (va < vb) { return -1 * dir; }
             if (va > vb) { return 1 * dir; }
             return 0;
@@ -4512,8 +4635,8 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             if (group[1] !== '') { menu += '<li><h6 class="menu-header">' + esc(group[1]) + '</h6></li>'; }
 
             defs.forEach(function (def) {
-                menu += '<li><button type="button" class="menu-item" data-filter="' + esc(def.key) + '">' +
-                    '<i class="bi bi-check2 me-3' + (state.filters[def.key] ? '' : ' opacity-0') + '"></i>' + esc(def.label()) + '</button></li>';
+                menu += '<li><button type="button" class="menu-item" data-filter="' + esc(def.key) + '" aria-pressed="' + (state.filters[def.key] ? 'true' : 'false') + '">' +
+                    '<i class="bi bi-check2 me-3' + (state.filters[def.key] ? '' : ' opacity-0') + '" aria-hidden="true"></i>' + esc(def.label()) + '</button></li>';
             });
         });
 
@@ -4537,8 +4660,8 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             esc(fmt(L.filters_on, [active.length])) + ' · ' + esc(fmt(L.filters_showing, [state.ordered.length, total])) + '</span>';
 
         active.forEach(function (def) {
-            chips += '<button type="button" class="btn btn-sm btn-outline theme-primary rounded-pill py-0 px-3 no-popover" data-filter="' + esc(def.key) + '">' +
-                esc(def.label()) + '<i class="bi bi-x ms-1"></i></button>';
+            chips += '<button type="button" class="btn btn-sm btn-outline theme-primary rounded-pill py-0 px-3 no-popover" data-filter="' + esc(def.key) + '" aria-label="' + esc(fmt(L.remove_filter, [def.label()])) + '">' +
+                esc(def.label()) + '<i class="bi bi-x ms-1" aria-hidden="true"></i></button>';
         });
 
         chips += '<button type="button" class="btn btn-sm btn-text theme-secondary no-popover ms-auto" data-filter-clear="1">' + esc(L.clear_filters) + '</button>';
@@ -4549,7 +4672,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     }
 
     function visibleItems() {
-        var filter = state.filter.toLowerCase();
+        var filter = foldText(state.filter);
         var narrowing = activeFilters();
 
         function match(item) {
@@ -4561,9 +4684,9 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             // The ERP folders are searched on the server, over fields a
             // document's name does not carry; what came back already matched.
             if ((!filter) || insideErp()) { return true; }
-            return (item.name || '').toLowerCase().indexOf(filter) !== -1
-                || (item.description || '').toLowerCase().indexOf(filter) !== -1
-                || (item.short_description || '').toLowerCase().indexOf(filter) !== -1;
+            return foldText(item.name).indexOf(filter) !== -1
+                || foldText(item.description).indexOf(filter) !== -1
+                || foldText(item.short_description).indexOf(filter) !== -1;
         }
 
         return sortItems(state.items.folders.filter(match))
@@ -5046,11 +5169,19 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 var cls = (column.cls ? (column.cls + ' ') : '') + (column.at ? ('pg-at-' + column.at) : '');
                 var sorted = (column.key && (state.sort.key === column.key));
 
+                // The order is said by aria-sort on the sorted heading only;
+                // the caret is its picture. The grip stays outside the button:
+                // it is a control of its own.
+                var label = '<span class="th-label" title="' + esc(column.label || '') + '">' + esc(column.label || '') + '</span>' +
+                    (sorted ? ('<span class="bi ' + sortCaret + ' th-caret" aria-hidden="true"></span>') : '');
+
                 html += '<th class="' + cls + (column.key ? ' th-sortable' : '') + '"' +
-                    (column.key ? (' data-sort-key="' + column.key + '"') : '') + '>' +
-                    '<span class="th-label" title="' + esc(column.label || '') + '">' + esc(column.label || '') + '</span>' +
-                    (sorted ? ('<span class="bi ' + sortCaret + ' th-caret"></span>') : '') +
-                    ((column.id !== 'icon') ? ('<span class="col-grip" data-col-id="' + column.id + '"></span>') : '') +
+                    (column.key ? (' data-sort-key="' + column.key + '"') : '') +
+                    (sorted ? (' aria-sort="' + ((state.sort.dir === 'desc') ? 'descending' : 'ascending') + '"') : '') + '>' +
+                    (column.key ? ('<button type="button" class="th-sort" data-sort-key="' + column.key + '">' + label + '</button>') : label) +
+                    ((column.id !== 'icon') ? ('<span class="col-grip" data-col-id="' + column.id + '" role="separator" aria-orientation="vertical" tabindex="0"' +
+                        ' aria-valuemin="' + COLUMN_MIN_WIDTH + '" aria-valuemax="' + COLUMN_MAX_WIDTH + '" aria-valuenow="' + clampColumnWidth(column.w) + '"' +
+                        ' aria-label="' + esc(fmt(L.column_resize, [column.label || ''])) + '"></span>') : '') +
                     '</th>';
             });
 
@@ -5095,15 +5226,12 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             syncListMinWidth(listTable);
             attachColumnResize(listTable);
 
-            listTable.querySelectorAll('th.th-sortable').forEach(function (heading) {
+            // A press from the keyboard (detail 0) redraws the table and
+            // wants its heading focused again; a mouse click does not.
+            listTable.querySelectorAll('button.th-sort').forEach(function (button) {
 
-                heading.addEventListener('click', function (event) {
-
-                    // The grip belongs to the edge, not to the heading: a drag
-                    // that ends on the heading must not also sort it.
-                    if (event.target.classList.contains('col-grip')) { return; }
-
-                    sortByColumn(heading.getAttribute('data-sort-key'));
+                button.addEventListener('click', function (event) {
+                    sortByColumn(button.getAttribute('data-sort-key'), event.detail === 0);
                 });
             });
         }
@@ -5182,7 +5310,9 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         storageSet('pg_explorer_columns', JSON.stringify(widths));
     }
 
-    function listColumnsAll() {
+    // defaults: leave the remembered widths out, for the width a column is
+    // put back to.
+    function listColumnsAll(defaults) {
 
         var catalogColumns = insideCatalog();
         var siteColumns = !insideBackups() && !insideCatalog() && !insideShortLinks() && !insideErp();
@@ -5322,7 +5452,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             cell: function (item) { return (item.modified || '') + (item.username ? ' ' + fmt(L.modified_by, [esc(item.username)]) : ''); }
         });
 
-        var saved = listColumnWidths();
+        var saved = defaults ? {} : listColumnWidths();
 
         columns.forEach(function (column) {
             if (saved[column.id] > 40) { column.w = saved[column.id]; }
@@ -5402,6 +5532,10 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             html += menuDivider() + menuItem('bi-arrow-counterclockwise', L.columns_reset, 'columns_reset');
         }
 
+        if (Object.keys(listColumnWidths()).length > 0) {
+            html += ((hidden.length > 0) ? '' : menuDivider()) + menuItem('bi-arrows-collapse-vertical', L.columns_widths_reset, 'columns_widths_reset');
+        }
+
         return html;
     }
 
@@ -5414,7 +5548,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     // not offer, such as the folder or the access rule -- the menu simply shows
     // none of its entries ticked, which is true: the list is sorted by
     // something that is not on that menu.
-    function sortByColumn(key) {
+    function sortByColumn(key, refocus) {
 
         if (!key) { return; }
 
@@ -5427,59 +5561,177 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
         renderContent();
         applySelectionClasses();
+
+        // renderContent() replaced the heading that had the focus.
+        if (refocus) {
+            var button = document.querySelector('#explorer_list_table button.th-sort[data-sort-key="' + key + '"]');
+            if (button) { button.focus(); }
+        }
     }
 
-    // Dragging the edge of a heading. The width is written onto the <col>, so
-    // one number moves the whole column, and it is remembered per column for
-    // the next visit.
+    // The edge of a heading. A drag from any pointer (mouse, pen, finger)
+    // moves it; on the focused edge Left/Right narrow and widen it by 16 px
+    // (Shift: 64 px) and Home puts the default back; a double click fits the
+    // column to its widest cell. The width is written onto the <col>, so one
+    // number moves the whole column, and it is remembered per column for the
+    // next visit.
     function attachColumnResize(table) {
 
         table.querySelectorAll('.col-grip').forEach(function (grip) {
 
-            grip.addEventListener('mousedown', function (event) {
+            var id = grip.getAttribute('data-col-id');
 
-                event.preventDefault();
-                event.stopPropagation();
+            grip.addEventListener('pointerdown', function (event) {
 
-                var id = grip.getAttribute('data-col-id');
+                if ((event.pointerType === 'mouse') && (event.button !== 0)) { return; }
+
                 var col = table.querySelector('col[data-col-id="' + id + '"]');
 
                 if (!col) { return; }
 
+                // Also keeps the compatibility mousedown away from the band
+                // selection and the row drag.
+                event.preventDefault();
+                event.stopPropagation();
+
+                var pointerId = event.pointerId;
                 var startX = event.clientX;
                 var startWidth = parseInt(col.style.width, 10) || 100;
 
+                try { grip.setPointerCapture(pointerId); } catch (e) { /* the pointer is already gone */ }
+
                 function move(moveEvent) {
-                    var width = Math.max(48, startWidth + (moveEvent.clientX - startX));
-                    col.style.width = width + 'px';
+                    if (moveEvent.pointerId !== pointerId) { return; }
+                    col.style.width = clampColumnWidth(startWidth + (moveEvent.clientX - startX)) + 'px';
                 }
 
-                function up() {
-                    document.removeEventListener('mousemove', move);
-                    document.removeEventListener('mouseup', up);
+                function up(upEvent) {
+                    if (upEvent.pointerId !== pointerId) { return; }
+                    grip.removeEventListener('pointermove', move);
+                    grip.removeEventListener('pointerup', up);
+                    grip.removeEventListener('pointercancel', up);
                     document.body.classList.remove('col-resizing');
-                    saveListColumnWidth(id, parseInt(col.style.width, 10) || 100);
-                    syncListMinWidth(table);
+                    setColumnWidth(table, id, parseInt(col.style.width, 10) || 100);
                 }
 
                 document.body.classList.add('col-resizing');
-                document.addEventListener('mousemove', move);
-                document.addEventListener('mouseup', up);
+                grip.addEventListener('pointermove', move);
+                grip.addEventListener('pointerup', up);
+                grip.addEventListener('pointercancel', up);
             });
 
-            // A double click on the edge puts that column back to its default.
+            // The grip is not inside the heading's button, but a click on it
+            // must never reach anything that sorts or selects.
+            grip.addEventListener('click', function (event) { event.stopPropagation(); });
+
+            grip.addEventListener('keydown', function (event) {
+
+                var col = table.querySelector('col[data-col-id="' + id + '"]');
+
+                if (!col || event.altKey || event.ctrlKey || event.metaKey) { return; }
+
+                var step = event.shiftKey ? 64 : 16;
+                var width = parseInt(col.style.width, 10) || 100;
+
+                if (event.key === 'ArrowLeft') { width -= step; }
+                else if (event.key === 'ArrowRight') { width += step; }
+                else if (event.key === 'Home') { width = defaultColumnWidth(id); }
+                else { return; }
+
+                event.preventDefault();
+                event.stopPropagation();
+
+                setColumnWidth(table, id, width);
+            });
+
             grip.addEventListener('dblclick', function (event) {
 
                 event.preventDefault();
                 event.stopPropagation();
 
-                var widths = listColumnWidths();
-                delete widths[grip.getAttribute('data-col-id')];
-                storageSet('pg_explorer_columns', JSON.stringify(widths));
-                renderContent();
-                applySelectionClasses();
+                setColumnWidth(table, id, fitColumnWidth(table, id));
             });
         });
+    }
+
+    function clampColumnWidth(width) {
+        return Math.max(COLUMN_MIN_WIDTH, Math.min(COLUMN_MAX_WIDTH, Math.round(width)));
+    }
+
+    // One width onto the <col>, the grip's value, the table's minimum and the
+    // remembered widths. The default width is not remembered, so a column put
+    // back follows a later change of its default.
+    function setColumnWidth(table, id, width) {
+
+        var col = table.querySelector('col[data-col-id="' + id + '"]');
+        var grip = table.querySelector('.col-grip[data-col-id="' + id + '"]');
+
+        if (!col) { return; }
+
+        width = clampColumnWidth(width);
+        col.style.width = width + 'px';
+        if (grip) { grip.setAttribute('aria-valuenow', String(width)); }
+
+        if (width === defaultColumnWidth(id)) {
+            var widths = listColumnWidths();
+            delete widths[id];
+            storageSet('pg_explorer_columns', JSON.stringify(widths));
+        } else {
+            saveListColumnWidth(id, width);
+        }
+
+        syncListMinWidth(table);
+    }
+
+    function defaultColumnWidth(id) {
+
+        var width = 100;
+
+        listColumnsAll(true).forEach(function (column) {
+            if (column.id === id) { width = column.w; }
+        });
+
+        return width;
+    }
+
+    // The width the column needs to show its heading and the widest of the
+    // rows drawn without an ellipsis. Cells clip their text in a .cell-clip
+    // or in the cell itself; whichever clips reports the full width as its
+    // scrollWidth.
+    function fitColumnWidth(table, id) {
+
+        var heading = table.querySelector('.col-grip[data-col-id="' + id + '"]');
+        var width = COLUMN_MIN_WIDTH;
+
+        heading = heading ? heading.closest('th') : null;
+
+        if (heading) {
+            var label = heading.querySelector('.th-label');
+            var caret = heading.querySelector('.th-caret');
+            if (label) {
+                // The label is held under the width less 1.4rem for the caret.
+                width = Math.max(width, label.scrollWidth + (caret ? caret.offsetWidth + 8 : 0) + (heading.offsetWidth - label.offsetWidth) + 2);
+            }
+        }
+
+        var cells = table.querySelectorAll('tbody td[data-col-id="' + id + '"]');
+
+        for (var index = 0; (index < cells.length) && (index < 500); index++) {
+
+            var cell = cells[index];
+            var clip = cell.querySelector('.cell-clip');
+
+            width = Math.max(width, cell.scrollWidth + 2);
+            if (clip) { width = Math.max(width, clip.scrollWidth + (cell.clientWidth - clip.clientWidth) + 2); }
+        }
+
+        return width;
+    }
+
+    function columnWidthsReset() {
+        storageSet('pg_explorer_columns', '{}');
+        renderContent();
+        applySelectionClasses();
     }
 
     // The width below which the table stops being readable: the sum of the
@@ -5971,6 +6223,8 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     function syncViewButtons() {
         document.getElementById('view_grid_button').classList.toggle('active', state.viewType === 'grid');
         document.getElementById('view_list_button').classList.toggle('active', state.viewType === 'list');
+        document.getElementById('view_grid_button').setAttribute('aria-pressed', (state.viewType === 'grid') ? 'true' : 'false');
+        document.getElementById('view_list_button').setAttribute('aria-pressed', (state.viewType === 'list') ? 'true' : 'false');
 
         // Every mode's loader comes through here, which makes it the one
         // place that can hide the narrowing button on the views it does not
@@ -6132,9 +6386,9 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
     // Typing letters jumps to the row that starts with them.
     //
-    // The comparison is Turkish-aware: toLocaleLowerCase('tr') is what folds
-    // İ onto i and I onto ı, and an ASCII fold would send someone typing "İs"
-    // past every name they were aiming at.
+    // The comparison folds through foldText(): İ, I, ı and i are one letter,
+    // so "İs" finds "is" and "img" typed with the i key finds IMG_0001.JPG,
+    // where an ASCII fold would send someone past every name they aimed at.
     var typeAheadBuffer = '';
     var typeAheadAt = 0;
 
@@ -6145,7 +6399,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         typeAheadBuffer = ((now - typeAheadAt) > 900) ? character : (typeAheadBuffer + character);
         typeAheadAt = now;
 
-        var needle = typeAheadBuffer.toLocaleLowerCase('tr');
+        var needle = foldText(typeAheadBuffer);
         var count = state.ordered.length;
 
         if (count === 0) { return; }
@@ -6154,7 +6408,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         // stays put while the word is still being typed.
         var repeated = (typeAheadBuffer.length > 1) && (typeAheadBuffer.split('').every(function (each) { return each === typeAheadBuffer.charAt(0); }));
 
-        if (repeated) { needle = typeAheadBuffer.charAt(0).toLocaleLowerCase('tr'); }
+        if (repeated) { needle = foldText(typeAheadBuffer.charAt(0)); }
 
         var start = (state.cursor >= 0) ? state.cursor : -1;
 
@@ -6171,7 +6425,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             for (var step = 1; step <= count; step++) {
 
                 var index = (scanFrom + step + count * 2) % count;
-                var name = (state.ordered[index].name || '').toLocaleLowerCase('tr');
+                var name = foldText(state.ordered[index].name);
 
                 if (test(name)) { return index; }
             }
@@ -6417,11 +6671,11 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 : ('<div class="text-center empty-note"><i class="bi ' + ((item.kind === 'group') ? 'bi-boxes' : 'bi-box2-heart') + ' pg-display-1 d-block mb-3"></i>' + esc(L.no_preview) + '</div>');
         }
 
-        if (item.kind === 'page') { return '<iframe loading="lazy" src="' + esc(item.url) + '" referrerpolicy="no-referrer"></iframe>'; }
+        if (item.kind === 'page') { return '<iframe loading="lazy" src="' + esc(item.url) + '" title="' + esc(item.name) + '" referrerpolicy="no-referrer"></iframe>'; }
         // An ERP picture has no thumbnail sizes; the kept file is shown as is.
         if (item.erp && item.picture) { return '<img draggable="false" src="' + esc(item.url) + '" alt="" />'; }
         if (item.is_image) { return '<img draggable="false" src="' + esc(imageUrl(item)) + '" alt="" />'; }
-        if (item.type === 'pdf') { return '<iframe loading="lazy" src="' + esc(item.url) + '"></iframe>'; }
+        if (item.type === 'pdf') { return '<iframe loading="lazy" src="' + esc(item.url) + '" title="' + esc(item.name) + '"></iframe>'; }
         if (isOfficeType(item.type) && !item.erp) { return '<div class="office-view" id="quicklook_office"></div>'; }
         if (PREVIEW_VIDEO_TYPES.indexOf(item.type) !== -1) { return '<video controls autoplay preload="metadata" src="' + esc(item.url) + '"></video>'; }
         if (PREVIEW_AUDIO_TYPES.indexOf(item.type) !== -1) { return '<audio controls autoplay preload="metadata" src="' + esc(item.url) + '" style="width:min(32rem,80vw);"></audio>'; }
@@ -6543,8 +6797,10 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     function trapQuickLookTab(event) {
 
         var overlay = document.getElementById('explorer_quicklook');
-        var controls = Array.prototype.filter.call(overlay.querySelectorAll('button, a[href], video[controls], audio[controls]'), function (element) {
-            return !element.disabled && (element.offsetParent !== null);
+        // The PDF and page frames and the Office preview's scrolling boxes and
+        // cells take part; a roving tabindex's inactive members (-1) do not.
+        var controls = Array.prototype.filter.call(overlay.querySelectorAll('button, a[href], video[controls], audio[controls], iframe, [tabindex]'), function (element) {
+            return !element.disabled && (element.offsetParent !== null) && (element.getAttribute('tabindex') !== '-1') && (element !== overlay);
         });
 
         event.preventDefault();
@@ -6719,11 +6975,11 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                     '<a class="btn btn-sm btn-outline theme-primary" href="' + esc(backupDownloadUrl(item.path)) + '"><span class="bi bi-download me-1"></span>' + esc(L.download) + '</a></div>');
 
         } else if (item.kind === 'page') {
-            media = '<iframe loading="lazy" src="' + esc(item.url) + '" referrerpolicy="no-referrer"></iframe>';
+            media = '<iframe loading="lazy" src="' + esc(item.url) + '" title="' + esc(item.name) + '" referrerpolicy="no-referrer"></iframe>';
         } else if (item.kind === 'file' && item.is_image) {
-            media = '<a href="' + esc(imageUrl(item)) + '" target="_blank" draggable="false"><img class="preview-media" draggable="false" src="' + esc(imageUrl(item)) + '" alt="" /></a>';
+            media = '<a href="' + esc(imageUrl(item)) + '" target="_blank" draggable="false" aria-label="' + esc(L.open_in_new_tab + ': ' + item.name) + '"><img class="preview-media" draggable="false" src="' + esc(imageUrl(item)) + '" alt="" /></a>';
         } else if (item.kind === 'file' && item.type === 'pdf') {
-            media = '<iframe loading="lazy" src="' + esc(item.url) + '"></iframe>';
+            media = '<iframe loading="lazy" src="' + esc(item.url) + '" title="' + esc(item.name) + '"></iframe>';
         } else if (item.kind === 'file' && PREVIEW_VIDEO_TYPES.indexOf(item.type) !== -1) {
             media = '<video controls preload="metadata" style="width:100%;border-radius:.6rem;" src="' + esc(item.url) + '"></video>';
         } else if (item.kind === 'file' && PREVIEW_AUDIO_TYPES.indexOf(item.type) !== -1) {
@@ -7157,8 +7413,8 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     function menuDivider() { return '<li><hr class="menu-divider" /></li>'; }
 
     function menuCheckItem(label, action, checked, disabled) {
-        return '<li><button type="button" class="menu-item' + (disabled ? ' disabled' : '') + '" data-menu-action="' + action + '">' +
-            '<span class="menu-check bi ' + (checked ? 'bi-check2' : '') + '"></span>' + esc(label) + '</button></li>';
+        return '<li><button type="button" class="menu-item' + (disabled ? ' disabled' : '') + '" data-menu-action="' + action + '" aria-pressed="' + (checked ? 'true' : 'false') + '">' +
+            '<span class="menu-check bi ' + (checked ? 'bi-check2' : '') + '" aria-hidden="true"></span>' + esc(label) + '</button></li>';
     }
 
     function menuSubmenu(icon, label, innerHtml, disabled) {
@@ -7962,6 +8218,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             case 'view_grid': state.viewType = 'grid'; state.viewTypeExplicit = true; reload(); break;
             case 'view_list': state.viewType = 'list'; state.viewTypeExplicit = true; reload(); break;
             case 'columns_reset': columnsReset(); break;
+            case 'columns_widths_reset': columnWidthsReset(); break;
             case 'tile_small': setTileSize('small'); break;
             case 'tile_medium': setTileSize('medium'); break;
             case 'tile_large': setTileSize('large'); break;
@@ -8661,19 +8918,39 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         return blocked;
     }
 
+    // A pick redraws the whole list, which takes the focused row away with
+    // it; focus goes back to the row drawn for the same target so the next
+    // Tab or arrow starts from the pick, not from the top of the dialog.
+    function focusPickerRow(containerId, attribute, id) {
+        var row = document.getElementById(containerId).querySelector('[' + attribute + '="' + Number(id) + '"]');
+        if (row && !row.disabled) { row.focus(); }
+    }
+
+    // The empty text of a picker replaces its rows silently; it is said once
+    // through the status region when it appears, not again on every key.
+    var pickerEmptySaid = {};
+
+    function announcePickerEmpty(picker, text) {
+        if (pickerEmptySaid[picker] === text) { return; }
+        pickerEmptySaid[picker] = text;
+        if (text === '') { return; }
+        var region = document.getElementById('explorer_search_status');
+        if (region) { region.textContent = text; }
+    }
+
     function renderTransferTargets() {
 
         if (!transferState) { return; }
 
         var container = document.getElementById('transfer_targets');
-        var filter = (document.getElementById('transfer_filter').value || '').trim().toLocaleLowerCase('tr');
+        var filter = foldText((document.getElementById('transfer_filter').value || '').trim());
         var here = insideCatalog() ? (state.groupId || 0) : state.folderId;
         var html = '';
         var shown = 0;
 
         transferState.targets.forEach(function (target) {
 
-            if (filter && ((target.name || '').toLocaleLowerCase('tr').indexOf(filter) === -1)) { return; }
+            if (filter && (foldText(target.name).indexOf(filter) === -1)) { return; }
 
             var blocked = !!transferState.blocked[target.id];
             var indent = 'padding-left:' + (0.75 + (Math.min(target.depth, 8) * 0.9)) + 'rem;';
@@ -8682,7 +8959,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
             html += '<button type="button" class="list-group-item list-group-item-action d-flex align-items-center gap-3' +
                 (blocked ? ' disabled' : '') +
-                ((String(target.id) === String(transferState.picked)) ? ' active' : '') +
+                ((String(target.id) === String(transferState.picked)) ? ' active" aria-pressed="true' : '" aria-pressed="false') +
                 '" style="' + indent + '" data-target-id="' + target.id + '"' + (blocked ? ' disabled' : '') + '>' +
                 '<i class="bi ' + (insideCatalog() ? 'bi-boxes' : 'bi-folder-fill') + '"></i>' +
                 '<span class="text-truncate">' + esc(target.name) + '</span>' +
@@ -8695,6 +8972,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             ? html
             : ('<div class="text-center fg-secondary small py-5">' + esc(L.no_target_match) + '</div>');
 
+        announcePickerEmpty('transfer', (shown > 0) ? '' : L.no_target_match);
         syncTransferButtons();
     }
 
@@ -8785,6 +9063,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
             transferState.targets = targets;
             transferState.blocked = transferBlockedIds(targets, items, !!copy);
+            pickerEmptySaid.transfer = '';
             renderTransferTargets();
         });
     }
@@ -8837,11 +9116,11 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         if (!wsSendState) { return; }
 
         var container = document.getElementById('ws_send_channels');
-        var filter = (document.getElementById('ws_send_filter').value || '').trim().toLocaleLowerCase('tr');
+        var filter = foldText((document.getElementById('ws_send_filter').value || '').trim());
         var html = '';
 
         wsSendState.channels.forEach(function (channel) {
-            if (filter && (String(channel.name || '').toLocaleLowerCase('tr').indexOf(filter) === -1)) { return; }
+            if (filter && (foldText(channel.name).indexOf(filter) === -1)) { return; }
 
             var tint = /^#[0-9a-f]{3,8}$/i.test(channel.hex || '') ? (' style="color:' + channel.hex + '"') : '';
             var iconName = /^bi-[a-z0-9-]+$/.test(channel.icon || '') ? channel.icon : 'bi-hash';
@@ -8854,18 +9133,21 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 : '<i class="bi ' + iconName + '"' + tint + ' aria-hidden="true"></i>';
 
             html += '<button type="button" class="list-group-item list-group-item-action d-flex align-items-center gap-3' +
-                ((String(channel.id) === String(wsSendState.picked)) ? ' active' : '') +
+                ((String(channel.id) === String(wsSendState.picked)) ? ' active" aria-pressed="true' : '" aria-pressed="false') +
                 '" data-channel-id="' + Number(channel.id) + '">' +
                 sign +
                 '<span class="text-truncate">' + esc(channel.name) + '</span></button>';
         });
 
+        var empty = '';
+
         if (html === '') {
-            html = '<div class="text-center fg-secondary small py-5">' +
-                esc(wsSendState.channels.length ? L.no_target_match : L.ws_send_none) + '</div>';
+            empty = wsSendState.channels.length ? L.no_target_match : L.ws_send_none;
+            html = '<div class="text-center fg-secondary small py-5">' + esc(empty) + '</div>';
         }
 
         container.innerHTML = html;
+        announcePickerEmpty('ws_send', empty);
         document.getElementById('ws_send_confirm_button').disabled = (wsSendState.picked === null) || wsSendState.busy;
     }
 
@@ -8886,6 +9168,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
                 wsSendState.picked = Number(row.getAttribute('data-channel-id'));
                 renderWsSendChannels();
+                focusPickerRow('ws_send_channels', 'data-channel-id', wsSendState.picked);
             });
 
             document.getElementById('ws_send_confirm_button').addEventListener('click', runWsSend);
@@ -8922,6 +9205,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 wsSendState.picked = Number(wsSendState.channels[0].id);
             }
 
+            pickerEmptySaid.ws_send = '';
             renderWsSendChannels();
         });
     }
@@ -9924,6 +10208,11 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
     var bulkRenameOffcanvas = null;
     var bulkRenameItems = [];
+    // Typed file name -> the name the server stores it under, from the
+    // preview of explorer_rename; names on their way are in the second map.
+    var bulkRenameStored = {};
+    var bulkRenameAsking = {};
+    var bulkRenameAskTimer = null;
 
     function bulkRenameTargets() {
         return selectedItems().filter(function (item) {
@@ -9956,8 +10245,8 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
         if (caseSensitive) { return text.split(find).join(replace); }
 
-        var haystack = text.toLocaleLowerCase('tr');
-        var needle = find.toLocaleLowerCase('tr');
+        var haystack = foldText(text);
+        var needle = foldText(find);
         var out = '';
         var at = 0;
 
@@ -9982,6 +10271,47 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     function bulkRenameChecked(id) {
         var element = document.getElementById(id);
         return element ? element.checked : false;
+    }
+
+    // A file outside the catalog is stored under the name prepare_file_name()
+    // makes of it: plain letters, '_' for spaces and signs, no trailing dot,
+    // at most 100 characters. Folders, pages, groups and products keep what
+    // was typed. Undefined while the server's answer is still on its way.
+    function bulkRenameStoredName(item, typed) {
+
+        if ((typed === '') || (item.kind !== 'file') || insideCatalog()) { return typed; }
+
+        return Object.prototype.hasOwnProperty.call(bulkRenameStored, typed) ? bulkRenameStored[typed] : undefined;
+    }
+
+    // Asks the server's own rule for the names not known yet; the answer
+    // redraws the preview. A failed answer does not redraw, so it is not
+    // asked again in a loop: the next change asks again.
+    function bulkRenameAskStored(names) {
+
+        var missing = names.filter(function (name) { return !bulkRenameAsking[name]; }).slice(0, 500);
+
+        if (missing.length === 0) { return; }
+
+        missing.forEach(function (name) { bulkRenameAsking[name] = true; });
+
+        api({ type: 'explorer_rename', preview: 1, names: missing }, function (response) {
+
+            var names = ((response.status === 'success') && Array.isArray(response.names)) ? response.names : null;
+
+            missing.forEach(function (name, index) {
+                delete bulkRenameAsking[name];
+                if (names && (typeof names[index] === 'string')) { bulkRenameStored[name] = names[index]; }
+            });
+
+            if (!names) { toast(response.message || L.request_failed, false); return; }
+
+            bulkRenameRefresh();
+
+        }, function () {
+            missing.forEach(function (name) { delete bulkRenameAsking[name]; });
+            toast(L.request_failed, false);
+        });
     }
 
     function bulkRenamePlan() {
@@ -10020,20 +10350,26 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                     .split('{name}').join(parts.base);
             }
 
-            var name = (base + parts.ext).trim();
+            var typed = (base + parts.ext).trim();
+            var stored = bulkRenameStoredName(item, typed);
+            var pending = (stored === undefined);
+            var name = pending ? typed : stored;
 
             // Two rows asking for one name is the mistake this preview exists
             // to catch: the server would take the first and refuse the second,
-            // and the operator would be left working out which.
+            // and the operator would be left working out which. Compared as
+            // stored, so "Ürün 1.jpg" and "Urun_1.jpg" are one name.
             var key = name.toLocaleLowerCase('tr');
-            var clash = (name !== '') && (taken[key] === true);
+            var clash = (!pending) && (name !== '') && (taken[key] === true);
 
-            if (name !== '') { taken[key] = true; }
+            if ((!pending) && (name !== '')) { taken[key] = true; }
 
             plan.push({
                 item: item,
+                typed: typed,
                 name: name,
-                unchanged: ((name === '') || (name === item.name)),
+                pending: pending,
+                unchanged: ((name === '') || ((!pending) && (name === item.name))),
                 clash: clash
             });
         });
@@ -10046,6 +10382,13 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         var mode = bulkRenameField('rename_mode');
         var plan = bulkRenamePlan();
         var doable = plan.filter(function (row) { return (!row.unchanged) && (!row.clash); });
+        var asked = plan.filter(function (row) { return row.pending; }).map(function (row) { return row.typed; });
+        var waiting = (asked.length > 0);
+
+        // Asked once the typing pauses, not on every key.
+        clearTimeout(bulkRenameAskTimer);
+
+        if (waiting) { bulkRenameAskTimer = setTimeout(function () { bulkRenameAskStored(asked); }, 250); }
 
         ['replace', 'affix', 'number'].forEach(function (name) {
             var block = document.getElementById('rename_block_' + name);
@@ -10060,26 +10403,31 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
             html += '<div class="d-flex align-items-baseline gap-3 py-1 border-bottom small' +
                 '">' +
-                '<span class="text-truncate' + (row.unchanged ? ' fg-2' : '') + '" style="flex:1 1 0;">' + esc(row.item.name) + '</span>' +
-                '<i class="bi bi-arrow-right fg-secondary"></i>' +
-                '<span class="text-truncate' + (row.clash ? ' fg-danger' : '') + (row.unchanged ? ' fg-2' : '') + '" style="flex:1 1 0;">' +
+                '<span class="text-break' + (row.unchanged ? ' fg-2' : '') + '" style="flex:1 1 0;min-width:0;">' + esc(row.item.name) + '</span>' +
+                '<i class="bi bi-arrow-right fg-secondary" aria-hidden="true"></i>' +
+                '<span class="text-break' + (row.clash ? ' fg-danger' : '') + (row.unchanged ? ' fg-2' : '') + '" style="flex:1 1 0;min-width:0;">' +
                 esc(row.unchanged ? row.item.name : row.name) + '</span>' +
                 (note ? ('<span class="fg-secondary text-nowrap">' + esc(note) + '</span>') : '') +
                 '</div>';
         });
 
-        document.getElementById('rename_preview_list').innerHTML = html;
+        var list = document.getElementById('rename_preview_list');
+
+        list.innerHTML = html;
+        list.setAttribute('aria-busy', waiting ? 'true' : 'false');
 
         var apply = document.getElementById('rename_apply_button');
 
-        apply.disabled = (doable.length === 0);
+        // Until every stored name is known the count and the clash check
+        // are not final, so nothing can be applied yet.
+        apply.disabled = (doable.length === 0) || waiting;
         apply.innerHTML = '<i class="bi bi-input-cursor-text me-1"></i>' +
             esc((doable.length === 0) ? L.rename_nothing : fmt(L.rename_apply, [doable.length]));
     }
 
     function runBulkRename() {
 
-        var queue = bulkRenamePlan().filter(function (row) { return (!row.unchanged) && (!row.clash); });
+        var queue = bulkRenamePlan().filter(function (row) { return (!row.unchanged) && (!row.clash) && (!row.pending); });
         var total = queue.length;
 
         if (total === 0) { return; }
@@ -10116,9 +10464,13 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 return;
             }
 
-            api({ type: endpoint, item_kind: row.item.kind, item_id: row.item.id, name: row.name }, function (response) {
+            // The typed name goes, so the server keeps its own refusals (a
+            // blocked extension) and prepares it the same way again.
+            api({ type: endpoint, item_kind: row.item.kind, item_id: row.item.id, name: row.typed }, function (response) {
 
-                if (response.status === 'success') {
+                // A success that kept the old name changed nothing: it is
+                // neither counted nor undone.
+                if ((response.status === 'success') && (response.name !== row.item.name)) {
                     done++;
                     // Pushed in front, so undoing walks back the way it came.
                     back.unshift({ kind: row.item.kind, id: row.item.id, name: row.item.name });
@@ -10185,9 +10537,10 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                     '<label class="" for="rename_keep_extension">' + esc(L.rename_keep_extension) + '</label></div>')
                 : '') +
 
-            '<h6 class="text-uppercase fg-secondary fw-bold" style="font-size:.72rem;letter-spacing:.05em;">' + esc(L.rename_preview) + '</h6>' +
-            '<div id="rename_preview_list" class="mb-3" style="max-height:40vh;overflow-y:auto;"></div>' +
-            '<div class="form-text mb-5">' + esc(L.rename_server_note) + '</div>' +
+            '<h6 id="rename_preview_heading" class="text-uppercase fg-secondary fw-bold" style="font-size:.72rem;letter-spacing:.05em;">' + esc(L.rename_preview) + '</h6>' +
+            // A long list scrolls from the keyboard too, named by its heading.
+            '<div id="rename_preview_list" class="mb-3" role="region" aria-labelledby="rename_preview_heading" tabindex="0" style="max-height:40vh;overflow-y:auto;"></div>' +
+            ((anyFile && !insideCatalog()) ? ('<div class="form-text mb-5">' + esc(L.rename_server_note) + '</div>') : '<div class="mb-5"></div>') +
 
             '<div class="d-grid"><button type="button" class="btn btn-solid theme-primary btn-sm" id="rename_apply_button"></button></div>';
 
@@ -11937,6 +12290,8 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
         document.getElementById('upload_folder').classList.toggle('d-none', backupArea);
         document.getElementById('upload_backup_path').classList.toggle('d-none', !backupArea);
+        // The Folder label names whichever box is shown.
+        document.getElementById('upload_folder_label').htmlFor = backupArea ? 'upload_backup_path' : 'upload_folder';
         document.getElementById('upload_description_col').classList.toggle('d-none', backupArea);
         document.getElementById('upload_switches').classList.toggle('d-none', backupArea);
         document.getElementById('upload_folder_note').textContent = backupArea
@@ -12048,6 +12403,38 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
     function saveTreeExpanded() { storageSet(TREE_KEY, JSON.stringify(treeExpanded)); }
 
+    // A branch arrow is a toggle a keyboard can reach and a screen reader
+    // hears as Expand or Collapse; a row without children keeps an empty
+    // spacer so the labels line up.
+    function treeToggleMarkup(hasChildren, open) {
+        if (!hasChildren) { return '<span class="tree-toggle bi"></span>'; }
+
+        return '<span class="tree-toggle bi bi-chevron-right' + (open ? ' open' : '') + '" role="button" tabindex="0"' +
+            ' aria-expanded="' + (open ? 'true' : 'false') + '" aria-label="' + esc(open ? L.collapse : L.expand) + '"></span>';
+    }
+
+    // Every place that opens or closes a branch goes through here, including
+    // the create-in-tree paths that turn a childless row into a branch.
+    function syncTreeToggle(toggle, open) {
+        if (!toggle) { return; }
+
+        toggle.classList.add('bi', 'bi-chevron-right');
+        toggle.classList.toggle('open', open);
+        toggle.setAttribute('role', 'button');
+        toggle.setAttribute('tabindex', '0');
+        toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+        toggle.setAttribute('aria-label', open ? L.collapse : L.expand);
+    }
+
+    // The row showing in the listing: its fill and aria-current move together.
+    function markTreeRow(row, on) {
+        if (!row) { return; }
+
+        row.classList.toggle('active', on);
+
+        if (on) { row.setAttribute('aria-current', 'page'); } else { row.removeAttribute('aria-current'); }
+    }
+
     function loadTreeChildren(listElement, nodeId, done) {
 
         if (insideCatalog()) { loadCatalogTreeChildren(listElement, nodeId, done); return; }
@@ -12062,9 +12449,9 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 var expanded = !!treeExpanded[node.id];
 
                 li.innerHTML =
-                    '<div class="tree-row' + ((state.mode !== 'all' && node.id === state.folderId) ? ' active' : '') + '" data-folder-id="' + node.id + '"' +
+                    '<div class="tree-row' + ((state.mode !== 'all' && node.id === state.folderId) ? ' active" aria-current="page' : '') + '" role="link" tabindex="0" data-folder-id="' + node.id + '" aria-label="' + esc(node.name) + '"' +
                     ' data-name="' + esc(node.name) + '" data-parent-id="' + node.parent_id + '" data-can-edit="' + (node.can_edit ? '1' : '0') + '" data-is-root="' + (node.is_root ? '1' : '0') + '" data-empty="' + (node.empty ? '1' : '0') + '">' +
-                    '<span class="tree-toggle bi ' + (node.has_children ? ('bi-chevron-right' + (expanded ? ' open' : '')) : '') + '"></span>' +
+                    treeToggleMarkup(node.has_children, expanded) +
                     '<span class="bi bi-folder-fill ' + node.access_control_type + '"></span>' +
                     '<span class="tree-label' + (node.archived ? ' archived' : '') + '" data-role="tree-name" title="' + esc(node.name) + '">' + esc(node.name) + '</span>' +
                     '</div><ul style="display:' + (expanded ? 'block' : 'none') + '"></ul>';
@@ -12098,9 +12485,9 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 var icon = (node.catalog_role === 'variant_set') ? 'bi-collection-fill' : 'bi-boxes';
 
                 li.innerHTML =
-                    '<div class="tree-row' + ((node.id === state.groupId) ? ' active' : '') + (node.enabled ? '' : ' catalog-off') + '" data-folder-id="' + node.id + '"' +
+                    '<div class="tree-row' + (node.enabled ? '' : ' catalog-off') + ((node.id === state.groupId) ? ' active" aria-current="page' : '') + '" role="link" tabindex="0" data-folder-id="' + node.id + '" aria-label="' + esc(node.name) + '"' +
                     ' data-name="' + esc(node.name) + '" data-parent-id="' + node.parent_id + '" data-can-edit="0" data-is-root="' + (node.is_root ? '1' : '0') + '" data-empty="' + (node.empty ? '1' : '0') + '" data-has-children="' + (node.has_children ? '1' : '0') + '" data-enabled="' + (node.enabled ? '1' : '0') + '">' +
-                    '<span class="tree-toggle bi ' + (node.has_children ? ('bi-chevron-right' + (expanded ? ' open' : '')) : '') + '"></span>' +
+                    treeToggleMarkup(node.has_children, expanded) +
                     '<span class="bi ' + icon + ' fg-primary"></span>' +
                     '<span class="tree-label' + (node.enabled ? '' : ' archived') + '" data-role="tree-name" title="' + esc(node.name) + '">' + esc(node.name) + '</span>' +
                     ((node.count > 0) ? ('<span class="tree-count">' + node.count + '</span>') : '') +
@@ -12287,8 +12674,8 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
                 if (!shortcutsChecked || !(id > 0) || !shortcutNames[id]) { return; }
 
-                html += '<div class="tree-row' + ((live && (String(id) === String(here))) ? ' active' : '') +
-                    '" data-shortcut-id="' + id + '" title="' + esc(shortcutNames[id]) + '">' +
+                html += '<div class="tree-row' + ((live && (String(id) === String(here))) ? ' active" aria-current="page' : '') +
+                    '" role="link" tabindex="0" data-shortcut-id="' + id + '" title="' + esc(shortcutNames[id]) + '">' +
                     '<span class="tree-toggle"></span><span class="bi ' + icon + ' fg-primary"></span>' +
                     '<span class="tree-label">' + esc(shortcutNames[id]) + '</span></div>';
                 drawn++;
@@ -12306,26 +12693,26 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         var treeLive = insideCatalog() ? (state.allFilter === '') : ((state.mode !== 'all') && (state.mode !== 'erp'));
 
         document.querySelectorAll('#explorer_tree_pane .tree-row[data-folder-id]').forEach(function (element) {
-            element.classList.toggle('active', treeLive && String(element.getAttribute('data-folder-id')) === String(activeId));
+            markTreeRow(element, treeLive && String(element.getAttribute('data-folder-id')) === String(activeId));
         });
 
         var productsRow = document.getElementById('all_products_quick');
-        if (productsRow) { productsRow.classList.toggle('active', insideCatalog() && (state.allFilter === 'products')); }
+        if (productsRow) { markTreeRow(productsRow, insideCatalog() && (state.allFilter === 'products')); }
 
         var variantsRow = document.getElementById('all_variant_sets_quick');
-        if (variantsRow) { variantsRow.classList.toggle('active', insideCatalog() && (state.allFilter === 'variants')); }
+        if (variantsRow) { markTreeRow(variantsRow, insideCatalog() && (state.allFilter === 'variants')); }
 
-        document.getElementById('all_files_quick').classList.toggle('active', (state.mode === 'all') && (state.allFilter === ''));
-        document.getElementById('all_images_quick').classList.toggle('active', (state.mode === 'all') && (state.allFilter === 'images'));
-        document.getElementById('all_pages_quick').classList.toggle('active', (state.mode === 'all') && (state.allFilter === 'pages'));
+        markTreeRow(document.getElementById('all_files_quick'), (state.mode === 'all') && (state.allFilter === ''));
+        markTreeRow(document.getElementById('all_images_quick'), (state.mode === 'all') && (state.allFilter === 'images'));
+        markTreeRow(document.getElementById('all_pages_quick'), (state.mode === 'all') && (state.allFilter === 'pages'));
         var shortLinksRow = document.getElementById('short_links_quick');
-        if (shortLinksRow) { shortLinksRow.classList.toggle('active', state.mode === 'short_links'); }
+        if (shortLinksRow) { markTreeRow(shortLinksRow, state.mode === 'short_links'); }
 
         var sharedRow = document.getElementById('shared_quick');
-        if (sharedRow) { sharedRow.classList.toggle('active', state.mode === 'shared'); }
+        if (sharedRow) { markTreeRow(sharedRow, state.mode === 'shared'); }
 
         var backupsRow = document.getElementById('backups_quick');
-        if (backupsRow) { backupsRow.classList.toggle('active', state.mode === 'backups'); }
+        if (backupsRow) { markTreeRow(backupsRow, state.mode === 'backups'); }
 
         highlightErpTree();
 
@@ -12377,7 +12764,9 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         document.getElementById('file_scope_label').textContent = fileScopeLabel(state.fileScope);
 
         wrap.querySelectorAll('[data-scope]').forEach(function (button) {
-            button.classList.toggle('active', button.getAttribute('data-scope') === (state.fileScope || ''));
+            var current = (button.getAttribute('data-scope') === (state.fileScope || ''));
+            button.classList.toggle('active', current);
+            if (current) { button.setAttribute('aria-current', 'true'); } else { button.removeAttribute('aria-current'); }
         });
     }
 
@@ -12443,9 +12832,8 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             saveTreeExpanded();
 
             var childList = node.row.parentElement.querySelector('ul');
-            var toggle = node.row.querySelector('.tree-toggle');
 
-            toggle.classList.add('bi-chevron-right', 'open');
+            syncTreeToggle(node.row.querySelector('.tree-toggle'), true);
             childList.style.display = 'block';
 
             loadCatalogTreeChildren(childList, node.id, function () {
@@ -12471,8 +12859,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             saveTreeExpanded();
 
             var childList = node.row.parentElement.querySelector('ul');
-            var toggle = node.row.querySelector('.tree-toggle');
-            toggle.classList.add('bi-chevron-right', 'open');
+            syncTreeToggle(node.row.querySelector('.tree-toggle'), true);
             childList.style.display = 'block';
 
             loadTreeChildren(childList, node.id, function () {
@@ -12500,7 +12887,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         var childList = row.parentElement.querySelector('ul');
 
         if (toggle && toggle.classList.contains('bi-chevron-right') && !toggle.classList.contains('open')) {
-            toggle.classList.add('open');
+            syncTreeToggle(toggle, true);
             childList.style.display = 'block';
             treeExpanded[nodeId] = true;
             saveTreeExpanded();
@@ -12509,7 +12896,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         }
 
         if (toggle && toggle.classList.contains('open')) {
-            toggle.classList.remove('open');
+            syncTreeToggle(toggle, false);
             childList.style.display = 'none';
             delete treeExpanded[nodeId];
             saveTreeExpanded();
@@ -12526,6 +12913,21 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         }
 
         exitAllFiles(nodeId);
+    });
+
+    // Rows and arrows are focusable; Enter and Space press the focused one
+    // through the same click handlers a pointer uses. An inline rename's
+    // input keeps its own keys.
+    document.getElementById('explorer_tree_pane').addEventListener('keydown', function (event) {
+        if ((event.key !== 'Enter') && (event.key !== ' ')) { return; }
+        if (event.target.closest('input, textarea')) { return; }
+
+        var target = event.target.closest('.tree-row[tabindex], .tree-toggle[role="button"]');
+
+        if (!target || (target !== event.target)) { return; }
+
+        event.preventDefault();
+        target.click();
     });
 
     // In the main menu a click on a row changes the listing in place: the
@@ -12800,8 +13202,8 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
                 response.users.forEach(function (userRow) {
 
-                    html += '<div class="border-bottom pb-3 mb-3" data-user-id="' + userRow.id + '">' +
-                        '<div class="fw-semibold text-break mb-1">' + esc(userRow.username) + '</div>' +
+                    html += '<div class="border-bottom pb-3 mb-3" data-user-id="' + userRow.id + '" role="group" aria-labelledby="commerce_user_' + userRow.id + '">' +
+                        '<div class="fw-semibold text-break mb-1" id="commerce_user_' + userRow.id + '">' + esc(userRow.username) + '</div>' +
                         switchRow('manage', userRow.id, L.commerce_manage, userRow.manage) +
                         switchRow('reports', userRow.id, L.commerce_reports, userRow.reports) +
                         (response.offline_payment ? switchRow('offline_payment', userRow.id, L.commerce_offline_payment, userRow.offline_payment) : '') +
@@ -12894,7 +13296,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
                         usersHtml += '<tr data-user-id="' + userRow.id + '">' +
                             '<td class="text-break">' + esc(userRow.username) + '<div>' + inherited + '</div></td>' +
-                            '<td><select class="form-control form-control-sm access-rights-select">' +
+                            '<td><select class="form-control form-control-sm access-rights-select" aria-label="' + esc(fmt(L.rights_for_user, [userRow.username])) + '">' +
                             '<option value="0"' + (userRow.rights === 0 ? ' selected' : '') + '>' + esc(L.no_access) + '</option>' +
                             '<option value="1"' + (userRow.rights === 1 ? ' selected' : '') + '>' + esc(L.view_access) + '</option>' +
                             '<option value="2"' + (userRow.rights === 2 ? ' selected' : '') + '>' + esc(L.edit_access) + '</option>' +
@@ -13256,6 +13658,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                     ['clear', L.bulk_description_clear]
                 ]) +
                 bulkCompanion('bulk_description_wrap',
+                    '<label class="form-label" for="bulk_description">' + esc(L.bulk_description_text) + '</label>' +
                     '<textarea id="bulk_description" class="form-control" rows="3"></textarea>');
 
             // Optimizing is an action rather than a field: it is not written
@@ -13391,7 +13794,10 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
             function zoneChecks(name, label) {
 
-                var html = '<div class="mb-5"><label class="form-label">' + esc(label) + '</label>';
+                // The caption names the list as a group, so each zone is read with
+                // the list it belongs to.
+                var html = '<div class="mb-5" role="group" aria-labelledby="' + name + '_label">' +
+                    '<div class="form-label" id="' + name + '_label">' + esc(label) + '</div>';
 
                 (response.zones || []).forEach(function (zone) {
                     html += '<div class="form-field">' +
@@ -13865,7 +14271,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             case 'audio':
                 return '<audio controls preload="metadata" src="' + esc(file.url) + '"></audio>';
             case 'pdf':
-                return '<iframe loading="lazy" src="' + esc(file.url) + '"></iframe>';
+                return '<iframe loading="lazy" src="' + esc(file.url) + '" title="' + esc(file.name) + '"></iframe>';
             case 'office':
                 // Filled by loadOfficePreview() once the window stands.
                 return '<div class="office-view" id="file_edit_office"></div>';
@@ -14049,6 +14455,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 textarea.className = 'form-control font-monospace';
                 textarea.value = file.content || '';
                 textarea.readOnly = !file.editable;
+                textarea.setAttribute('aria-label', L.file_content);
             } else {
                 // The editor is built in place, in the window's own box;
                 // the text goes back through getValue() when the file is
@@ -14064,7 +14471,11 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                     lint: file.editable && (language !== 'text'),
                     theme: (document.documentElement.getAttribute('data-bs-theme') === 'dark') ? 'dark' : 'light',
                     labels: { syntaxError: L.syntax_error },
-                    keys: [{ key: 'Mod-s', run: function () { saveFileEditor(); return true; } }]
+                    keys: [{ key: 'Mod-s', run: function () { saveFileEditor(); return true; } }],
+                    // The editor's content is what a screen reader lands on;
+                    // the note under it says how Tab leaves the code, or that
+                    // the file is read-only.
+                    extensions: window.PgCM.view.EditorView.contentAttributes.of({ 'aria-label': L.file_content, 'aria-describedby': 'file_edit_editor_note' })
                 });
 
                 // The panel's colour scheme switch reaches the editors it
@@ -14072,7 +14483,14 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 window.pgCodeEditors = window.pgCodeEditors || {};
                 window.pgCodeEditors.file_edit_code = fileEdit.editor;
 
-                if (!file.editable) { note.textContent = L.file_read_only; }
+                if (!file.editable) {
+                    note.textContent = L.file_read_only;
+                } else {
+                    // Tab indents here and focus starts in the code, so the
+                    // way out (Ctrl+M, bound in the facade) is spelled out.
+                    var platform = (navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || navigator.userAgent || '';
+                    note.textContent = L.tab_hint.replace('{var}', /mac|iphone|ipad|ipod/i.test(platform) ? 'Shift+Alt+M' : 'Ctrl+M');
+                }
             }
         }
 
@@ -14237,7 +14655,26 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     // with no size of its own gets the size the row remembers, or a sensible
     // square; a JPG gets white behind it, since it has no transparency to
     // keep.
+    //
+    // Every run writes a new file, and the buttons are type=button, which the
+    // window's double-submit guard never sees: one conversion at a time, the
+    // three buttons disabled while it runs, labels left as they are.
+    var rasterizing = false;
+
     function rasterizeSvg(file, type) {
+
+        if (rasterizing) { return; }
+
+        function setBusy(busy) {
+            rasterizing = busy;
+            Array.prototype.forEach.call(document.querySelectorAll('#file_edit_tools [data-file-tool="rasterize"]'), function (button) {
+                button.disabled = busy;
+            });
+        }
+
+        function settle() { setBusy(false); }
+
+        setBusy(true);
 
         var picture = new Image();
 
@@ -14262,7 +14699,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             var mime = { jpg: 'image/jpeg', png: 'image/png', webp: 'image/webp' }[type];
             var data;
 
-            try { data = canvas.toDataURL(mime, 0.92); } catch (e) { toast(L.request_failed, false); return; }
+            try { data = canvas.toDataURL(mime, 0.92); } catch (e) { settle(); toast(L.request_failed, false); return; }
 
             fetch('image_editor_save.php', {
                 method: 'POST',
@@ -14271,15 +14708,17 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 body: JSON.stringify({ token: software_token, file_id: file.id, mode: 'copy', type: type, data: data })
             }).then(function (response) { return response.json(); }).then(function (result) {
 
+                settle();
+
                 if (!result || (result.status !== 'success')) { toast((result && result.message) || L.request_failed, false); return; }
 
                 toast(fmt(L.saved_named, [result.name]), true);
                 reload();
 
-            }).catch(function () { toast(L.request_failed, false); });
+            }).catch(function () { settle(); toast(L.request_failed, false); });
         };
 
-        picture.onerror = function () { toast(L.request_failed, false); };
+        picture.onerror = function () { settle(); toast(L.request_failed, false); };
         picture.src = imageUrl(file);
     }
 
@@ -14805,6 +15244,18 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         if ((Date.now() - keyboardMenuAt) < 1000) { event.preventDefault(); }
     });
 
+    // A wider or narrower bar keeps the open folder in view. Scroll does not
+    // bubble and the list is redrawn, so the bar listens in the capture phase.
+    if (window.ResizeObserver) {
+        new ResizeObserver(showBreadcrumbEnd).observe(document.getElementById('explorer_breadcrumb'));
+    } else {
+        window.addEventListener('resize', showBreadcrumbEnd);
+    }
+
+    document.getElementById('explorer_breadcrumb').addEventListener('scroll', function (event) {
+        this.classList.toggle('is-scrolled', event.target.scrollLeft > 0);
+    }, true);
+
     document.getElementById('explorer_breadcrumb').addEventListener('click', function (event) {
         // The crumbs carry href="#" only so the keyboard can reach them.
         if (event.target.closest('a[href="#"]')) { event.preventDefault(); }
@@ -14984,6 +15435,14 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     document.getElementById('quicklook_prev').addEventListener('click', function () { stepQuickLook(-1); });
     document.getElementById('quicklook_next').addEventListener('click', function () { stepQuickLook(1); });
 
+    // Tab inside a PDF or page frame is the frame's own, and leaving it moves
+    // focus on in the page outside the overlay; it is brought back.
+    document.addEventListener('focusin', function (event) {
+        if (quickLookIsOpen() && !document.getElementById('explorer_quicklook').contains(event.target)) {
+            document.getElementById('quicklook_close').focus();
+        }
+    });
+
     // Clicking the empty space around the picture closes it, the way a
     // lightbox does. The picture itself and the buttons do not: a click that
     // lands on what somebody is looking at should not take it away.
@@ -15016,6 +15475,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
         transferState.picked = parseInt(row.getAttribute('data-target-id'), 10);
         renderTransferTargets();
+        focusPickerRow('transfer_targets', 'data-target-id', transferState.picked);
     });
 
     document.getElementById('transfer_confirm_button').addEventListener('click', function () {
@@ -15044,6 +15504,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     function syncPaneButtons() {
         var previewOpen = !document.getElementById('explorer_preview_pane').classList.contains('pane-hidden');
         document.querySelector('#preview_toggle_button [data-role="check"]').classList.toggle('opacity-0', !previewOpen);
+        document.getElementById('preview_toggle_button').setAttribute('aria-pressed', previewOpen ? 'true' : 'false');
     }
 
     document.getElementById('preview_toggle_button').addEventListener('click', function () { togglePane('explorer_preview_pane', 'pg_explorer_preview_open'); });
@@ -15099,6 +15560,15 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
             // A video or a sound keeps its own keys: Space plays, the arrows seek.
             if (event.target.closest && event.target.closest('#explorer_quicklook video, #explorer_quicklook audio')) { return; }
+
+            // A key the Office preview already used (a sheet tab's arrow) is
+            // not a step to the next file as well.
+            if (event.defaultPrevented) { return; }
+
+            // Inside the Office preview the arrow, page, Home and End keys
+            // scroll a sheet or a document instead of stepping or being eaten.
+            if (event.target.closest && event.target.closest('#explorer_quicklook .office-view') &&
+                (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'PageUp', 'PageDown', 'Home', 'End'].indexOf(key) !== -1)) { return; }
 
             if ((key === 'Enter') && onControl) { return; }
             if (key === ' ') {

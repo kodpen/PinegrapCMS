@@ -218,7 +218,7 @@ $check = function ($name, $id, $label) {
 $card_cell = function ($row) {
     $sub = array_filter(array((string) $row['tax_number'], ((string) $row['code'] !== '') ? lang(array('string' => 'code {var:1}', 'vars' => (string) $row['code'])) : ''), 'strlen');
 
-    return '<div class="text-truncate">' . h(((string) $row['title'] !== '') ? $row['title'] : ('#' . $row['external_id'])) . '</div>'
+    return '<div class="text-wrap text-break">' . h(((string) $row['title'] !== '') ? $row['title'] : ('#' . $row['external_id'])) . '</div>'
         . '<div class="small fg-secondary">' . h(implode(' · ', $sub)) . '</div>';
 };
 
@@ -252,7 +252,7 @@ switch ($tab) {
                         <tr>
                             <td class="align-middle text-start">' . $view('erp_account_sync_item.php?id=' . (int) $row['id']) . '</td>
                             <td style="max-width:320px" class="align-middle">' . $card_cell($row) . $gone($row) . '</td>
-                            <td style="max-width:320px" class="align-middle"><a class="pg-link-body-emphasis" href="edit_erp_account.php?id=' . (int) $row['a_id'] . '">' . h($row['a_title']) . '</a>'
+                            <td style="max-width:320px" class="align-middle text-wrap text-break"><a class="pg-link-body-emphasis" href="edit_erp_account.php?id=' . (int) $row['a_id'] . '">' . h($row['a_title']) . '</a>'
                                 . '<div class="small fg-secondary">' . h($row['a_tax_number']) . '</div></td>
                             <td class="align-middle">' . $output_info . '</td>
                         </tr>';
@@ -292,8 +292,8 @@ switch ($tab) {
 
         $bulk = '
                 <span class="enable-on-selected d-inline-flex flex-wrap gap-1">
-                    <button type="submit" form="erp_account_sync_bulk" name="erp_action" value="bulk_import" class="btn btn-sm btn-outline theme-secondary disabled" data-confirm-content="' . h(lang('Take the ticked cards into the ERP as new accounts? A card whose number an account already carries is linked to that account instead.')) . '"><i class="bi bi-box-arrow-in-down me-1" aria-hidden="true"></i>' . lang('Take into the ERP') . '</button>
-                    <button type="submit" form="erp_account_sync_bulk" name="erp_action" value="bulk_aside" class="btn btn-sm btn-outline theme-secondary disabled"><i class="bi bi-archive me-1" aria-hidden="true"></i>' . lang('Set aside') . '</button>
+                    <button type="submit" form="erp_account_sync_bulk" name="erp_action" value="bulk_import" class="btn btn-sm btn-outline theme-secondary disabled" disabled data-confirm-content="' . h(lang('Take the ticked cards into the ERP as new accounts? A card whose number an account already carries is linked to that account instead.')) . '"><i class="bi bi-box-arrow-in-down me-1" aria-hidden="true"></i>' . lang('Take into the ERP') . '</button>
+                    <button type="submit" form="erp_account_sync_bulk" name="erp_action" value="bulk_aside" class="btn btn-sm btn-outline theme-secondary disabled" disabled><i class="bi bi-archive me-1" aria-hidden="true"></i>' . lang('Set aside') . '</button>
                 </span>';
         break;
 
@@ -310,7 +310,7 @@ switch ($tab) {
                         <tr>
                             ' . $check('account_ids', $account['id'], (string) $account['title']) . '
                             <td class="align-middle text-start">' . $view('erp_account_sync_item.php?account_id=' . (int) $account['id']) . '</td>
-                            <td style="max-width:320px" class="align-middle text-truncate"><a class="pg-link-body-emphasis" href="edit_erp_account.php?id=' . (int) $account['id'] . '">' . h($account['title']) . '</a></td>
+                            <td style="max-width:320px" class="align-middle text-wrap text-break"><a class="pg-link-body-emphasis" href="edit_erp_account.php?id=' . (int) $account['id'] . '">' . h($account['title']) . '</a></td>
                             <td class="align-middle text-nowrap">' . h($account['tax_number']) . '</td>
                             <td class="align-middle">' . h($account['city']) . '</td>
                             <td class="align-middle">' . h(erp_edoc_account_value_text('kind', $account['kind'])) . '</td>
@@ -319,8 +319,8 @@ switch ($tab) {
 
         $bulk = '
                 <span class="enable-on-selected d-inline-flex flex-wrap gap-1">
-                    <button type="submit" form="erp_account_sync_bulk" name="erp_action" value="bulk_push" class="btn btn-sm btn-outline theme-secondary disabled" data-confirm-content="' . h(lang(array('string' => 'Open a card at {var:1} for each ticked account?', 'vars' => $provider_label))) . '"><i class="bi bi-cloud-upload me-1" aria-hidden="true"></i>' . h(lang(array('string' => 'Send to {var:1}', 'vars' => $provider_label))) . '</button>
-                    <button type="submit" form="erp_account_sync_bulk" name="erp_action" value="bulk_aside" class="btn btn-sm btn-outline theme-secondary disabled"><i class="bi bi-archive me-1" aria-hidden="true"></i>' . lang('Set aside') . '</button>
+                    <button type="submit" form="erp_account_sync_bulk" name="erp_action" value="bulk_push" class="btn btn-sm btn-outline theme-secondary disabled" disabled data-confirm-content="' . h(lang(array('string' => 'Open a card at {var:1} for each ticked account?', 'vars' => $provider_label))) . '"><i class="bi bi-cloud-upload me-1" aria-hidden="true"></i>' . h(lang(array('string' => 'Send to {var:1}', 'vars' => $provider_label))) . '</button>
+                    <button type="submit" form="erp_account_sync_bulk" name="erp_action" value="bulk_aside" class="btn btn-sm btn-outline theme-secondary disabled" disabled><i class="bi bi-archive me-1" aria-hidden="true"></i>' . lang('Set aside') . '</button>
                 </span>';
         break;
 
@@ -347,7 +347,7 @@ switch ($tab) {
                         <tr class="fg-secondary">
                             ' . $check('account_ids', $account['id'], (string) $account['title']) . '
                             <td class="align-middle text-start">' . $view('erp_account_sync_item.php?account_id=' . (int) $account['id']) . '</td>
-                            <td style="max-width:320px" class="align-middle text-truncate">' . h($account['title']) . '</td>
+                            <td style="max-width:320px" class="align-middle text-wrap text-break">' . h($account['title']) . '</td>
                             <td class="align-middle text-nowrap">' . h($account['tax_number']) . '</td>
                             <td class="align-middle">' . lang('ERP account') . '</td>
                         </tr>';
@@ -355,7 +355,7 @@ switch ($tab) {
 
         $bulk = '
                 <span class="enable-on-selected d-inline-flex flex-wrap gap-1">
-                    <button type="submit" form="erp_account_sync_bulk" name="erp_action" value="bulk_restore" class="btn btn-sm btn-outline theme-secondary disabled"><i class="bi bi-arrow-counterclockwise me-1" aria-hidden="true"></i>' . lang('Bring back') . '</button>
+                    <button type="submit" form="erp_account_sync_bulk" name="erp_action" value="bulk_restore" class="btn btn-sm btn-outline theme-secondary disabled" disabled><i class="bi bi-arrow-counterclockwise me-1" aria-hidden="true"></i>' . lang('Bring back') . '</button>
                 </span>';
         break;
 }
@@ -382,7 +382,7 @@ if (!$installed) {
         . (($active === '')
             ? lang('The cards are compared with the e-document provider\'s, and no provider is selected.')
             : lang(array('string' => '{var:1} does not hand over its customer and supplier cards yet.', 'vars' => h(erp_edoc_info($active)['label']))))
-        . ' <a href="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/' . pg_settings_return_url('commerce', 'pgset-invoice')) . '">' . lang('E-Invoice settings') . '</a>'
+        . ' <a href="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/' . pg_settings_return_url('accounting', 'pgset-invoice')) . '">' . lang('E-Invoice settings') . '</a>'
         . '</div>';
 }
 

@@ -6,8 +6,8 @@ description: The ad region create and edit screens share includes/forms/ad_regio
 ## Where is the ad region form?
 - `includes/forms/ad_region_form.php` (gate `PG_FUNCTIONS_DIR`). `add_ad_region.php` and `edit_ad_region.php` stay at the root as thin wrappers and `require_once` it.
 - `pg_ad_region_form_card($liveform, $name_field, $defaults = false)` prints the Options card: the name between `<ad>` tags, display type, transition type and duration, autoplay with interval and continuous play.
-- `$name_field` is the name markup. Create passes a plain `<input>` (not a liveform field, so a name refused on submit comes back empty, as before). Edit passes a liveform field for a designer and the stored name as text for a manager, who may not rename.
-- `$defaults` (create) checks Static, Slide and Play Continuously.
+- `$name_field` is the name markup. Create passes a liveform field (required, 100 characters), so a refused name comes back as typed. Edit passes a liveform field for a designer and the stored name as text for a manager, who may not rename.
+- `$defaults` checks Static, Slide and Play Continuously. Create passes `$liveform->prefill()`: the defaults show only on a first draw. A box the user unticked is not posted, so it is not in the session and liveform would fall back to the default; with `true` a refused create came back with Play Continuously ticked again.
 
 ## What does a save share?
 - `pg_ad_region_form_validate_name($liveform, $id)` (`null` on create, the posted id on edit): required, the tag name rule (`tag_name_rule.php`, shared with the menu form), not used by another region. Edit runs it only for a designer.

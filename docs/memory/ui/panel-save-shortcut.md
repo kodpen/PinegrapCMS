@@ -9,7 +9,7 @@ description: Panel Ctrl+S (backend.src.js) and Return in a text field: which for
 - The visitor page (`frontend.src.js`) has its own block, which only presses the inline editing Save button.
 
 ## Which forms carry `disable_shortcut`?
-- Forms that only delete (the shortcut is too dangerous there) and helper forms that are never "the" form of a screen: the header search box, the account menu's quick form, `pg_filter_select()`'s filter, the licence check, the Site Settings dialog's form. The dashboard's widget settings, once a form in the Panel row's menu panel, are a card of Site Settings > Appearance now (`settings-dashboard-card.md`).
+- Forms that only delete (the shortcut is too dangerous there) and helper forms that are never "the" form of a screen: the header search box, the account menu's quick form, `pg_filter_select()`'s filter, the licence check, the Site Settings dialog's form. Forms that act at once: the Cloudflare Tools switches and Clear Cache (`cloudflare.php`); before, Ctrl+S on a fresh load submitted the first of them and flipped Development Mode on the live zone, and with focus on Clear Cache it purged the zone. A toggle redirects with `?focus=<switch id>` (and a custom period's dates), and that switch is drawn `autofocus`. The dashboard's widget settings, once a form in the Panel row's menu panel, are a card of Site Settings > Appearance now (`settings-dashboard-card.md`).
 - A screen that answers Ctrl+S itself puts it on its form and catches the key: the visual editor (`#style_designer_form`).
 
 ## What if a dialog saves on Ctrl+S itself?
@@ -22,4 +22,5 @@ description: Panel Ctrl+S (backend.src.js) and Return in a text field: which for
 ## And Return in a text field?
 - No script handles it: the browser submits the form with its first submit button. A screen whose first one is not Save runs that button on Return: on an image `edit_file.php` drew Rotate Left first, so Return in the name field turned the picture and dropped the new name (#1041, fixed in PR #1064).
 - A button that does its own job (rotate, connect, align) goes on a form of its own: the button gets `form="<id>"`, the form sits outside the edit form with `class="disable_shortcut d-none"` and its own token. Examples: `edit_file.php` (`edit_file_rotate`), `search_console.php`, `smtp_settings.php`, `erp_account_sync_item.php`. Return then reaches the edit form's first button (Save & Return); Ctrl+S is unchanged.
+- A form that keeps its action buttons (drawers) starts with a hidden nameless submit button instead; the guided tour's Enter: `return-key-default-button.md`.
 - `edit_file.php` tells a submission from a page view by `$_POST['name']`, so its rotate form also posts the stored name.

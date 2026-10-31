@@ -102,8 +102,7 @@ $where = "";
 
 // If user requested to export gift cards, then export them.
 if (($_GET['submit_data'] ?? '') == 'Export Gift Cards') {
-    header("Content-type: text/csv");
-    header("Content-disposition: attachment; filename=gift_cards.csv");
+    pg_csv_download_start('gift_cards.csv');
 
     // Output column headings for CSV data.
     echo
@@ -146,15 +145,6 @@ if (($_GET['submit_data'] ?? '') == 'Export Gift Cards') {
         $where
         ORDER BY $order_by");
 
-    // If the date format is month and then day, then use that format.
-    if (DATE_FORMAT == 'month_day') {
-        $month_and_day_format = 'n/j';
-
-    // Otherwise the date format is day and then month, so use that format.
-    } else {
-        $month_and_day_format = 'j/n';
-    }
-
     // Loop through the gift cards in order to output CSV data.
     foreach ($gift_cards as $gift_card) {
         $expiration_date = '';
@@ -164,7 +154,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Gift Cards') {
         }
 
         if (($gift_card['recipient_email_address'] != '') && ($gift_card['from_name'] == '')) {
-            $gift_card['from_name'] = 'Anonymous';
+            $gift_card['from_name'] = lang('Anonymous');
         }
 
         $delivery_date = '';
@@ -172,7 +162,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Gift Cards') {
         // If there is a recipient, then output the delivery date.
         if ($gift_card['recipient_email_address'] != '') {
             if ($gift_card['delivery_date'] == '0000-00-00') {
-                $delivery_date = 'Immediate';
+                $delivery_date = lang('Immediate');
 
             } else {
                 $delivery_date = $gift_card['delivery_date'];
@@ -190,9 +180,9 @@ if (($_GET['submit_data'] ?? '') == 'Export Gift Cards') {
             '"' . escape_csv($gift_card['recipient_email_address']) . '",' .
             '"' . escape_csv($gift_card['message']) . '",' .
             '"' . $delivery_date . '",' .
-            '"' . date($month_and_day_format . '/Y g:i:s A T', $gift_card['created_timestamp']) . '",' .
+            '"' . pg_csv_export_time($gift_card['created_timestamp']) . '",' .
             '"' . escape_csv($gift_card['created_username']) . '",' .
-            '"' . date($month_and_day_format . '/Y g:i:s A T', $gift_card['last_modified_timestamp']) . '",' .
+            '"' . pg_csv_export_time($gift_card['last_modified_timestamp']) . '",' .
             '"' . escape_csv($gift_card['last_modified_username']) . '"' . "\n";
     }
 

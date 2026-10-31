@@ -73,7 +73,7 @@ function erp_account_form_cards($liveform, $with_opening = false, $currency_lock
         $country_options['—'] = '';
     }
     foreach ((array) db_items("SELECT code, name FROM countries WHERE code <> '' ORDER BY name ASC") as $country_row) {
-        $country_options[(string) $country_row['name']] = strtoupper((string) $country_row['code']);
+        $country_options[h((string) $country_row['name'])] = strtoupper((string) $country_row['code']);
     }
 
     $output = '
@@ -219,13 +219,14 @@ function erp_account_form_cards($liveform, $with_opening = false, $currency_lock
                     <label for="email" class="form-label">' . lang('E-mail Address') . '</label>
                     ' . $liveform->output_field(array(
                         'type' => 'text', 'id' => 'email', 'name' => 'email',
-                        'class' => 'form-control', 'maxlength' => '255', 'autocomplete' => 'off')) . '
+                        'class' => 'form-control', 'maxlength' => '255', 'autocomplete' => 'off',
+                        'inputmode' => 'email', 'spellcheck' => 'false', 'autocapitalize' => 'off')) . '
                 </div>
                 <div class="col-12 lg:col-6 my-3">
                     <label for="phone" class="form-label">' . lang('Phone Number') . '</label>
                     ' . $liveform->output_field(array(
                         'type' => 'text', 'id' => 'phone', 'name' => 'phone',
-                        'class' => 'form-control', 'maxlength' => '50', 'autocomplete' => 'off')) . '
+                        'class' => 'form-control', 'maxlength' => '50', 'autocomplete' => 'off', 'inputmode' => 'tel')) . '
                 </div>
                 <div class="col-12 my-3">
                     <label for="address" class="form-label">' . lang('Address') . '</label>
@@ -253,9 +254,10 @@ function erp_account_form_cards($liveform, $with_opening = false, $currency_lock
                 </div>
                 <div class="col-12 sm:col-6 lg:col-3 my-3">
                     <label for="postcode" class="form-label">' . lang('Postal Code') . '</label>
-                    ' . $liveform->output_field(array(
+                    ' . $liveform->output_field(array_merge(array(
                         'type' => 'text', 'id' => 'postcode', 'name' => 'postcode',
-                        'class' => 'form-control', 'maxlength' => '20', 'autocomplete' => 'off')) . '
+                        'class' => 'form-control', 'maxlength' => '20',
+                        'autocomplete' => 'off'), $is_tr ? array('inputmode' => 'numeric') : array())) . '
                 </div>
                 <div class="col-12 sm:col-6 lg:col-4 my-3">
                     <label for="country_code" class="form-label">' . lang('Country') . '</label>
@@ -286,14 +288,18 @@ function erp_account_form_cards($liveform, $with_opening = false, $currency_lock
             if (label) {
                 label.textContent = label.getAttribute(tr ? "data-label-tr" : "data-label-other");
             }
-            var input = document.getElementById("tax_number");
-            if (input) {
+            // A Turkish tax number and postcode are digits only.
+            ["tax_number", "postcode"].forEach(function (id) {
+                var input = document.getElementById(id);
+                if (!input) {
+                    return;
+                }
                 if (tr) {
                     input.setAttribute("inputmode", "numeric");
                 } else {
                     input.removeAttribute("inputmode");
                 }
-            }
+            });
         });
     })();
     (function () {
@@ -499,15 +505,29 @@ function erp_account_form_contact_summary($contact)
         $lines[] = h($place);
     }
 
+    // Each button leads to a screen with its own door (contacts access and
+    // the contact's groups, or the user screen's role rule); an ERP clerk
+    // the door refuses reads the order count and the user as plain text.
+    $can_open_contact = pg_can_open_contact(null, (int) $contact['id']);
+    $viewer = array('role' => defined('USER_ROLE') ? (int) USER_ROLE : 3);
+
     $links = array();
-    $links[] = '<a href="edit_contact.php?id=' . (int) $contact['id'] . '" class="btn btn-sm btn-outline theme-secondary"><i class="bi bi-person-vcard me-1"></i>' . lang('Contact') . '</a>';
+    if ($can_open_contact) {
+        $links[] = '<a href="edit_contact.php?id=' . (int) $contact['id'] . '" class="btn btn-sm btn-outline theme-secondary"><i class="bi bi-person-vcard me-1"></i>' . lang('Contact') . '</a>';
+    }
 
     if (defined('ECOMMERCE') && ECOMMERCE) {
-        $links[] = '<a href="view_orders_for_contact.php?id=' . (int) $contact['id'] . '" class="btn btn-sm btn-outline theme-secondary"><i class="bi bi-bag me-1"></i>' . h(lang(array('string' => '{var:1} order(s)', 'vars' => (int) $contact['orders']))) . '</a>';
+        $orders_label = '<i class="bi bi-bag me-1"></i>' . h(lang(array('string' => '{var:1} order(s)', 'vars' => (int) $contact['orders'])));
+        $links[] = $can_open_contact
+            ? '<a href="view_orders_for_contact.php?id=' . (int) $contact['id'] . '" class="btn btn-sm btn-outline theme-secondary">' . $orders_label . '</a>'
+            : '<span class="small fg-secondary align-self-center">' . $orders_label . '</span>';
     }
 
     if ($contact['user_id'] > 0) {
-        $links[] = '<a href="edit_user.php?id=' . (int) $contact['user_id'] . '" class="btn btn-sm btn-outline theme-secondary"><i class="bi bi-person-badge me-1"></i>' . h(lang(array('string' => 'User: {var:1}', 'vars' => $contact['username']))) . '</a>';
+        $user_label = '<i class="bi bi-person-badge me-1"></i>' . h(lang(array('string' => 'User: {var:1}', 'vars' => $contact['username'])));
+        $links[] = pg_can_open_user($viewer, $contact['user_role'] ?? 0)
+            ? '<a href="edit_user.php?id=' . (int) $contact['user_id'] . '" class="btn btn-sm btn-outline theme-secondary">' . $user_label . '</a>'
+            : '<span class="small fg-secondary align-self-center">' . $user_label . '</span>';
     }
 
     // The contact's own picture, at the size the rest of the panel uses for
@@ -525,7 +545,7 @@ function erp_account_form_contact_summary($contact)
                         <div class="flex-grow-1 min-w-0">
                             <div class="fw-bold">' . h($contact['name']) . '</div>
                             ' . (($lines !== array()) ? '<div class="small fg-secondary">' . implode('<br>', $lines) . '</div>' : '') . '
-                            <div class="d-flex flex-wrap gap-3 mt-3">' . implode('', $links) . '</div>
+                            ' . (($links !== array()) ? '<div class="d-flex flex-wrap gap-3 mt-3">' . implode('', $links) . '</div>' : '') . '
                         </div>
                     </div>';
 }
@@ -562,8 +582,9 @@ function erp_account_form_contact_card($liveform, $contact)
             <div class="row">
                 <div class="col-12 lg:col-6 my-3 position-relative">
                     <label for="contact_search" class="form-label">' . lang('Find a contact') . '</label>
-                    <input type="text" id="contact_search" class="form-control" maxlength="100" autocomplete="off" placeholder="' . h(lang('Name, company or e-mail address')) . '" data-erp-contact-search />
-                    <div class="menu shadow-sm w-100" data-erp-contact-results></div>
+                    <input type="text" id="contact_search" class="form-control" maxlength="100" autocomplete="off" role="combobox" aria-autocomplete="list" aria-controls="erp_contact_results" aria-expanded="false" placeholder="' . h(lang('Name, company or e-mail address')) . '" data-erp-contact-search />
+                    <div class="menu shadow-sm w-100" id="erp_contact_results" data-erp-contact-results></div>
+                    <div class="visually-hidden" role="status" aria-live="polite" aria-atomic="true" data-erp-contact-status></div>
                     <div class="form-text">' . lang('Orders placed by the linked contact are billed to this account, and the contact screen shows the balance. One contact links to one account.') . '</div>
                 </div>
                 <div class="col-12 lg:col-6 my-3">
@@ -585,6 +606,7 @@ function erp_account_form_contact_card($liveform, $contact)
             var menu = card.querySelector("[data-erp-contact-results]");
             var summary = card.querySelector("[data-erp-contact-summary]");
             var unlink = card.querySelector("[data-erp-contact-unlink]");
+            var status = card.querySelector("[data-erp-contact-status]");
             var texts = ' . json_encode(array(
                 'none' => lang('No contact is linked to this account.'),
                 'noResults' => lang('No contacts found.'),
@@ -592,12 +614,20 @@ function erp_account_form_contact_card($liveform, $contact)
                 'unlinkPending' => lang('The link is removed when the account is saved.'),
                 'taken' => lang('already linked to another account'),
             ), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) . ';
-            var timer = 0, request = 0;
+            var timer = 0, request = 0, announceTimer = 0;
 
             function escapeHtml(text) {
                 return String(text).replace(/[&<>"]/g, function (c) { return {"&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;"}[c]; });
             }
-            function close() { menu.classList.remove("show"); menu.innerHTML = ""; }
+            function close() { menu.classList.remove("show"); menu.innerHTML = ""; input.setAttribute("aria-expanded", "false"); }
+            function items() { return Array.prototype.slice.call(menu.querySelectorAll("button:not([disabled])")); }
+            // Emptied first and filled a moment later, so the same sentence
+            // twice in a row is read again.
+            function announce(text) {
+                window.clearTimeout(announceTimer);
+                status.textContent = "";
+                announceTimer = window.setTimeout(function () { status.textContent = text; }, 150);
+            }
             function pick(contact) {
                 hidden.value = String(contact.id);
                 input.value = "";
@@ -609,7 +639,11 @@ function erp_account_form_contact_card($liveform, $contact)
                     + (lines.length ? "<div class=\"small fg-secondary\">" + lines.join("<br>") + "</div>" : "")
                     + "<div class=\"small fg-emphasis-warning mt-3\"><i class=\"bi bi-info-circle me-1\"></i>" + escapeHtml(texts.pending) + "</div>";
                 unlink.classList.remove("d-none");
+                // The picked result goes with the list: focus returns to the
+                // box instead of falling to the page.
                 close();
+                input.focus();
+                announce(contact.name + ". " + texts.pending);
             }
             function render(results) {
                 menu.innerHTML = "";
@@ -618,6 +652,7 @@ function erp_account_form_contact_card($liveform, $contact)
                     empty.className = "menu-text fg-secondary small";
                     empty.textContent = texts.noResults;
                     menu.appendChild(empty);
+                    announce(texts.noResults);
                 }
                 results.forEach(function (contact) {
                     var item = document.createElement("button");
@@ -633,6 +668,7 @@ function erp_account_form_contact_card($liveform, $contact)
                     menu.appendChild(item);
                 });
                 menu.classList.add("show");
+                input.setAttribute("aria-expanded", "true");
             }
             input.addEventListener("input", function () {
                 var query = input.value.trim();
@@ -651,7 +687,23 @@ function erp_account_form_contact_card($liveform, $contact)
             });
             input.addEventListener("keydown", function (event) {
                 if (event.key === "Enter") { event.preventDefault(); var first = menu.querySelector("button:not([disabled])"); if (first) { first.click(); } }
+                if (event.key === "ArrowDown") { event.preventDefault(); var first = items()[0]; if (first) { first.focus(); } }
                 if (event.key === "Escape") { close(); }
+            });
+            // The arrows move through the results; up from the first one and
+            // Escape go back to the box.
+            menu.addEventListener("keydown", function (event) {
+                var list = items();
+                var at = list.indexOf(document.activeElement);
+                if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+                    event.preventDefault();
+                    if (event.key === "ArrowUp" && at <= 0) {
+                        input.focus();
+                    } else if (list.length) {
+                        list[Math.min(list.length - 1, Math.max(0, at + (event.key === "ArrowDown" ? 1 : -1)))].focus();
+                    }
+                }
+                if (event.key === "Escape") { event.preventDefault(); close(); input.focus(); }
             });
             document.addEventListener("click", function (event) {
                 if (!card.contains(event.target)) { close(); }
@@ -795,6 +847,14 @@ function erp_account_form_check_formats($liveform, $country_code = '')
         $liveform->mark_error('credit_limit', lang('Enter the credit limit as an amount, or leave it empty for none.'));
     }
 
+    // Checked like the invoice address: the invoice mail falls back to it,
+    // and the mails skip an address filter_var() refuses.
+    $email = trim((string) $liveform->get_field_value('email'));
+
+    if (($email !== '') && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $liveform->mark_error('email', lang('Please enter a valid email address.'));
+    }
+
     $invoice_email = trim((string) $liveform->get_field_value('invoice_email'));
 
     if (($invoice_email !== '') && !filter_var($invoice_email, FILTER_VALIDATE_EMAIL)) {
@@ -806,6 +866,58 @@ function erp_account_form_check_formats($liveform, $country_code = '')
     if (($country === 'TR') && ((string) $liveform->get_field_value('is_person') === '1') && (trim((string) $liveform->get_field_value('title')) !== '')
         && function_exists('erp_edoc_person_name') && (erp_edoc_person_name((string) $liveform->get_field_value('title')) === null)) {
         $liveform->mark_error('title', lang('A person needs a first name and a surname. If this is a company, choose company as the taxpayer type.'));
+    }
+}
+
+/**
+ * Marks the tax number when another active account already holds it, with
+ * the message the New account dialog shows. The CSV import matches cards
+ * by this number and account sync skips a number two cards carry, so a
+ * second card with it would never be found again.
+ *
+ * Runs after erp_account_form_check_formats(): an empty or malformed
+ * number is not looked up. On edit ($stored_number given) only a changed
+ * number is checked, as the ERP API does, so cards that already share one
+ * still save.
+ *
+ * @param liveform      $liveform
+ * @param string        $country_code   The account's country; the store's when empty
+ * @param int           $account_id     The card being saved, 0 when new
+ * @param string|null   $stored_number  The card's saved number on edit, null on create
+ * @param callable|null $lookup         function ($number, $account_id): array('id', 'title')|null; the database by default
+ * @return void
+ */
+function erp_account_form_check_tax_number_taken($liveform, $country_code, $account_id = 0, $stored_number = null, $lookup = null)
+{
+    $country = erp_account_country($country_code);
+    $tax = erp_tax_number_check((string) $liveform->get_field_value('tax_number'), $country);
+
+    if (($tax['value'] === '') || ($tax['error'] !== '')) {
+        return;
+    }
+
+    // Both sides normalised: an older card may hold the number with spaces.
+    if (($stored_number !== null) && ($tax['value'] === erp_tax_number_check((string) $stored_number, $country)['value'])) {
+        return;
+    }
+
+    if ($lookup === null) {
+        $lookup = function ($number, $account_id) {
+            $other = db_item("SELECT id, title FROM erp_accounts
+                WHERE tax_number = '" . escape($number) . "' AND status = 'active' AND id <> '" . (int) $account_id . "'
+                ORDER BY id ASC LIMIT 1");
+
+            return is_array($other) ? $other : null;
+        };
+    }
+
+    $other = $lookup($tax['value'], (int) $account_id);
+
+    if (is_array($other)) {
+        $liveform->mark_error('tax_number', lang(array(
+            'string' => 'This number already belongs to the account “{var:1}”. Search for it instead.',
+            'vars' => array(h((string) $other['title'])),
+        )));
     }
 }
 

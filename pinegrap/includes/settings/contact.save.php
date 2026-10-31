@@ -3,7 +3,7 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Site Settings - what the Communication screen writes: e-mail campaigns,
- * live chat, MailChimp, SMS and İYS.
+ * live chat, MailChimp, SMS, İYS and Google reviews.
  *
  * Runs in the scope of includes/settings/screen.php, after the token check and
  * after post_value() is defined. Only the columns edited by the cards on this
@@ -120,6 +120,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/iys/settings.php');
     // Same order and reason as the SMS account: a changed account is asked
     // about at İYS before MailChimp can create anything.
     $iys_settings_post = pg_iys_settings_check($_POST, $liveform);
+    $google_reviews_post = pg_grev_settings_check($_POST, $liveform);
 
     // ── MailChimp ──
     //
@@ -135,8 +136,8 @@ require_once(PG_FUNCTIONS_DIR . '/includes/iys/settings.php');
     $mailchimp_key_post        = trim((string) post_value('mailchimp_key'));
     $mailchimp_list_post       = trim((string) post_value('mailchimp_list_id'));
     $mailchimp_store_post      = trim((string) post_value('mailchimp_store_id'));
-    $mailchimp_days_post       = trim((string) post_value('mailchimp_sync_days'));
-    $mailchimp_limit_post      = trim((string) post_value('mailchimp_sync_limit'));
+    $mailchimp_days_post       = pg_parse_whole_number(post_value('mailchimp_sync_days'), 65535);
+    $mailchimp_limit_post      = pg_parse_whole_number(post_value('mailchimp_sync_limit'), 4294967295);
     $mailchimp_automation_post = post_value('mailchimp_automation') ? 1 : 0;
 
     if ($mailchimp_post) {
@@ -248,21 +249,14 @@ require_once(PG_FUNCTIONS_DIR . '/includes/iys/settings.php');
     // Only what the cards on this screen edit.
     db("UPDATE config
         SET
-            organization_name = '" . escape(post_value('organization_name')) . "',
-            organization_address_1 = '" . escape(post_value('organization_address_1')) . "',
-            organization_address_2 = '" . escape(post_value('organization_address_2')) . "',
-            organization_city = '" . escape(post_value('organization_city')) . "',
-            organization_state = '" . escape(post_value('organization_state')) . "',
-            organization_zip_code = '" . escape(post_value('organization_zip_code')) . "',
-            organization_country = '" . escape(post_value('organization_country')) . "',
             opt_in_label = '" . escape(post_value('opt_in_label')) . "',
             plain_text_email_campaign_footer = '" . escape(trim(post_value('plain_text_email_campaign_footer'))) . "',
             mailchimp = '" . escape($mailchimp_post) . "',
             mailchimp_key = '" . escape($mailchimp_key_post) . "',
             mailchimp_list_id = '" . escape($mailchimp_list_post) . "',
             mailchimp_store_id = '" . escape($mailchimp_store_post) . "',
-            mailchimp_sync_days = '" . escape($mailchimp_days_post) . "',
-            mailchimp_sync_limit = '" . escape($mailchimp_limit_post) . "',
+            mailchimp_sync_days = '" . $mailchimp_days_post . "',
+            mailchimp_sync_limit = '" . $mailchimp_limit_post . "',
             mailchimp_automation = '" . escape($mailchimp_automation_post) . "',
             " . $sql_chat_settings . "
             last_modified_user_id = '" . USER_ID . "',
@@ -273,3 +267,4 @@ require_once(PG_FUNCTIONS_DIR . '/includes/iys/settings.php');
     pg_sms_settings_save($sms_settings_post, USER_ID, $liveform);
     pg_sms_message_settings_save($sms_messages_post, USER_ID);
     pg_iys_settings_save($iys_settings_post, USER_ID, $liveform);
+    pg_grev_settings_save($google_reviews_post, $liveform);

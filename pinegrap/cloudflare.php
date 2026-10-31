@@ -261,7 +261,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     // PRG pattern: redirect after POST so a refresh does not repeat the action.
-    header("Location: ".$_SERVER['PHP_SELF']);
+    // A toggled switch gets focus back on the new page, and a custom period
+    // keeps its dates.
+    $redirect_query = [];
+    $switch_ids = ['toggle_dev' => 'cf_dev', 'toggle_uam' => 'cf_uam', 'toggle_always_https' => 'cf_https', 'toggle_brotli' => 'cf_brotli', 'toggle_rocket' => 'cf_rocket'];
+    if (isset($switch_ids[$action])) {
+        $redirect_query['focus'] = $switch_ids[$action];
+    }
+    foreach (['start_date', 'end_date'] as $date_key) {
+        if (isset($_POST[$date_key]) && is_string($_POST[$date_key]) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $_POST[$date_key])) {
+            $redirect_query[$date_key] = $_POST[$date_key];
+        }
+    }
+    header("Location: ".$_SERVER['PHP_SELF'].($redirect_query ? '?'.http_build_query($redirect_query) : ''));
     exit;
 }
 
@@ -654,6 +666,17 @@ switch ($period) {
     default:      $days = 30;  break;
 }
 
+// The switches and Clear Cache post their own form: a custom period sends its
+// dates along so the redirect keeps them, and the switch toggled last gets
+// focus back after the redirect.
+$period_fields = ($start_date !== null)
+    ? '<input type="hidden" name="start_date" value="' . h($start_date) . '"><input type="hidden" name="end_date" value="' . h($end_date) . '">'
+    : '';
+$focus_switch = (isset($_GET['focus']) && is_string($_GET['focus'])) ? $_GET['focus'] : '';
+$switch_focus = function ($id) use ($focus_switch) {
+    return ($id === $focus_switch) ? ' autofocus' : '';
+};
+
 
 // -------------------- DNS TABLE --------------------
 $table_rows = '';
@@ -667,11 +690,20 @@ foreach ($records as $r) {
               data-proxied="'.(!empty($r['proxied']) ? '1' : '0').'"';
 
 
+    // Cloudflare returns an MX priority at the top level of the record; an
+    // SRV one sits in data, with the top-level value as the fallback.
+    if ($r['type'] === 'MX' && isset($r['priority'])) {
+        $attrs .= ' data-priority="'.(int)$r['priority'].'"';
+    }
+
     if ($r['type'] === 'SRV' && !empty($r['data'])) {
         foreach ($r['data'] as $k => $v) {
             $v = is_array($v) ? json_encode($v) : (string)$v;
             $attrs .= ' data-'.htmlspecialchars((string)$k, ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML401).'="'.htmlspecialchars((string)$v, ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML401).'"';
 
+        }
+        if (!isset($r['data']['priority']) && isset($r['priority'])) {
+            $attrs .= ' data-priority="'.(int)$r['priority'].'"';
         }
     }
 
@@ -794,52 +826,52 @@ print pg_page_shell([
       </div>
       <div class="card-body">
         <!-- Development Mode -->
-        <form method="post" class=" mx-5 my-12">'.get_token_field().'
+        <form method="post" class="disable_shortcut mx-5 my-12">'.get_token_field().$period_fields.'
           <input type="hidden" name="action" value="toggle_dev">
           <input type="hidden" name="value" value="'.($dev_mode==="on"?"off":"on").'">
           <div class="form-field">
-            <div class="switch"><input class="" type="checkbox" id="cf_dev" onchange="this.form.submit()" '.($dev_mode==="on"?"checked":"").'></div>
+            <div class="switch"><input class="" type="checkbox" id="cf_dev" onchange="this.form.submit()"'.$switch_focus('cf_dev').' '.($dev_mode==="on"?"checked":"").'></div>
             <label class="" for="cf_dev">' . lang('Development Mode') . '</label>
           </div>
         </form>
         <!-- Under Attack Mode -->
-        <form method="post" class=" mx-5 my-12">'.get_token_field().'
+        <form method="post" class="disable_shortcut mx-5 my-12">'.get_token_field().$period_fields.'
           <input type="hidden" name="action" value="toggle_uam">
           <input type="hidden" name="value" value="'.($uam_mode==="under_attack"?"medium":"under_attack").'">
           <div class="form-field">
-            <div class="switch"><input class="" type="checkbox" id="cf_uam" onchange="this.form.submit()" '.($uam_mode==="under_attack"?"checked":"").'></div>
+            <div class="switch"><input class="" type="checkbox" id="cf_uam" onchange="this.form.submit()"'.$switch_focus('cf_uam').' '.($uam_mode==="under_attack"?"checked":"").'></div>
             <label class="" for="cf_uam">' . lang('Under Attack Mode') . '</label>
           </div>
         </form>
         <!-- Always Use HTTPS -->
-        <form method="post" class=" mx-5 my-12">'.get_token_field().'
+        <form method="post" class="disable_shortcut mx-5 my-12">'.get_token_field().$period_fields.'
           <input type="hidden" name="action" value="toggle_always_https">
           <input type="hidden" name="value" value="'.($always_https==="on"?"off":"on").'">
           <div class="form-field">
-            <div class="switch"><input class="" type="checkbox" id="cf_https" onchange="this.form.submit()" '.($always_https==="on"?"checked":"").'></div>
+            <div class="switch"><input class="" type="checkbox" id="cf_https" onchange="this.form.submit()"'.$switch_focus('cf_https').' '.($always_https==="on"?"checked":"").'></div>
             <label class="" for="cf_https">' . lang('Always Use HTTPS') . '</label>
           </div>
         </form>
         <!-- Brotli -->
-        <form method="post" class=" mx-5 my-12">'.get_token_field().'
+        <form method="post" class="disable_shortcut mx-5 my-12">'.get_token_field().$period_fields.'
           <input type="hidden" name="action" value="toggle_brotli">
           <input type="hidden" name="value" value="'.($brotli==="on"?"off":"on").'">
           <div class="form-field">
-            <div class="switch"><input class="" type="checkbox" id="cf_brotli" onchange="this.form.submit()" '.($brotli==="on"?"checked":"").'></div>
+            <div class="switch"><input class="" type="checkbox" id="cf_brotli" onchange="this.form.submit()"'.$switch_focus('cf_brotli').' '.($brotli==="on"?"checked":"").'></div>
             <label class="" for="cf_brotli">' . lang('Brotli') . '</label>
           </div>
         </form>
         <!-- Rocket Loader -->
-        <form method="post" class=" mx-5 my-12">'.get_token_field().'
+        <form method="post" class="disable_shortcut mx-5 my-12">'.get_token_field().$period_fields.'
           <input type="hidden" name="action" value="toggle_rocket">
           <input type="hidden" name="value" value="'.($rocket==="on"?"off":"on").'">
           <div class="form-field">
-            <div class="switch"><input class="" type="checkbox" id="cf_rocket" onchange="this.form.submit()" '.($rocket==="on"?"checked":"").'></div>
+            <div class="switch"><input class="" type="checkbox" id="cf_rocket" onchange="this.form.submit()"'.$switch_focus('cf_rocket').' '.($rocket==="on"?"checked":"").'></div>
             <label class="" for="cf_rocket">' . lang('Rocket Loader') . '</label>
           </div>
         </form>
         <!-- Clear Cache -->
-        <form method="post" class=" mx-5 my-12">'.get_token_field().'
+        <form method="post" class="disable_shortcut mx-5 my-12">'.get_token_field().$period_fields.'
           <input type="hidden" name="action" value="clear_cache">
           <button type="submit" class="btn btn-solid theme-danger"><i class="bi bi-trash"></i> ' . lang('Clear Cache') . '</button>
         </form>
@@ -931,19 +963,19 @@ print pg_page_shell([
         </div>
         <div class="form-field proxied-only"><input class="check" type="checkbox" name="proxied" id="add_proxied"><label class="" for="add_proxied">' . lang('Proxied') . '</label></div>
         <!-- MX extra -->
-        <div class="mb-5 type-extra type-mx d-none"><label class="form-label" for="add_priority">' . lang('Priority') . '</label><input type="number" name="priority" id="add_priority" class="form-control"></div>
+        <div class="mb-5 type-extra type-mx d-none"><label class="form-label" for="add_priority">' . lang('Priority') . '</label><input type="number" name="priority" id="add_priority" class="form-control" min="0" max="65535"></div>
         <!-- SRV extra -->
         <div class="type-extra type-srv d-none">
           <div class="mb-5"><label for="add_service">' . lang('Service') . '</label><input type="text" name="service" id="add_service" class="form-control"></div>
           <div class="mb-5"><label for="add_proto">' . lang('Protocol') . '</label><input type="text" name="proto" id="add_proto" class="form-control"></div>
-          <div class="mb-5"><label for="add_priority2">' . lang('Priority') . '</label><input type="number" name="priority" id="add_priority2" class="form-control"></div>
-          <div class="mb-5"><label for="add_weight">' . lang('Weight') . '</label><input type="number" name="weight" id="add_weight" class="form-control"></div>
-          <div class="mb-5"><label for="add_port">' . lang('Port') . '</label><input type="number" name="port" id="add_port" class="form-control"></div>
+          <div class="mb-5"><label for="add_priority2">' . lang('Priority') . '</label><input type="number" name="priority" id="add_priority2" class="form-control" min="0" max="65535"></div>
+          <div class="mb-5"><label for="add_weight">' . lang('Weight') . '</label><input type="number" name="weight" id="add_weight" class="form-control" min="0" max="65535"></div>
+          <div class="mb-5"><label for="add_port">' . lang('Port') . '</label><input type="number" name="port" id="add_port" class="form-control" min="0" max="65535"></div>
           <div class="mb-5"><label for="add_target">' . lang('Target') . '</label><input type="text" name="target" id="add_target" class="form-control"></div>
         </div>
         <!-- CAA extra -->
         <div class="type-extra type-caa d-none">
-          <div class="mb-5"><label for="add_flags">' . lang('Flags') . '</label><input type="number" name="flags" id="add_flags" class="form-control"></div>
+          <div class="mb-5"><label for="add_flags">' . lang('Flags') . '</label><input type="number" name="flags" id="add_flags" class="form-control" min="0" max="255"></div>
           <div class="mb-5"><label for="add_tag">' . lang('Tag') . '</label>
             <select name="tag" id="add_tag" class="form-control">
               <option value="issue">issue</option>
@@ -983,19 +1015,19 @@ print pg_page_shell([
         </div>
         <div class="form-field proxied-only"><input class="check" type="checkbox" name="proxied" id="edit_proxied"><label class="" for="edit_proxied">' . lang('Proxied') . '</label></div>
         <!-- MX extra -->
-        <div class="mb-5 type-extra type-mx d-none"><label for="edit_priority">' . lang('Priority') . '</label><input type="number" name="priority" id="edit_priority" class="form-control"></div>
+        <div class="mb-5 type-extra type-mx d-none"><label for="edit_priority">' . lang('Priority') . '</label><input type="number" name="priority" id="edit_priority" class="form-control" min="0" max="65535"></div>
         <!-- SRV extra -->
         <div class="type-extra type-srv d-none">
           <div class="mb-5"><label for="edit_service">' . lang('Service') . '</label><input type="text" name="service" id="edit_service" class="form-control"></div>
           <div class="mb-5"><label for="edit_proto">' . lang('Protocol') . '</label><input type="text" name="proto" id="edit_proto" class="form-control"></div>
-          <div class="mb-5"><label for="edit_priority2">' . lang('Priority') . '</label><input type="number" name="priority" id="edit_priority2" class="form-control"></div>
-          <div class="mb-5"><label for="edit_weight">' . lang('Weight') . '</label><input type="number" name="weight" id="edit_weight" class="form-control"></div>
-          <div class="mb-5"><label for="edit_port">' . lang('Port') . '</label><input type="number" name="port" id="edit_port" class="form-control"></div>
+          <div class="mb-5"><label for="edit_priority2">' . lang('Priority') . '</label><input type="number" name="priority" id="edit_priority2" class="form-control" min="0" max="65535"></div>
+          <div class="mb-5"><label for="edit_weight">' . lang('Weight') . '</label><input type="number" name="weight" id="edit_weight" class="form-control" min="0" max="65535"></div>
+          <div class="mb-5"><label for="edit_port">' . lang('Port') . '</label><input type="number" name="port" id="edit_port" class="form-control" min="0" max="65535"></div>
           <div class="mb-5"><label for="edit_target">' . lang('Target') . '</label><input type="text" name="target" id="edit_target" class="form-control"></div>
         </div>
         <!-- CAA extra -->
         <div class="type-extra type-caa d-none">
-          <div class="mb-5"><label for="edit_flags">' . lang('Flags') . '</label><input type="number" name="flags" id="edit_flags" class="form-control"></div>
+          <div class="mb-5"><label for="edit_flags">' . lang('Flags') . '</label><input type="number" name="flags" id="edit_flags" class="form-control" min="0" max="255"></div>
           <div class="mb-5"><label for="edit_tag">' . lang('Tag') . '</label>
             <select name="tag" id="edit_tag" class="form-control">
               <option value="issue">issue</option>
@@ -1013,18 +1045,22 @@ print pg_page_shell([
 <script>
 function toggleExtraFields(selectEl, modalPrefix) {
   const modal = document.getElementById(modalPrefix+"Modal");
-  modal.querySelectorAll(".type-extra").forEach(el => el.classList.add("d-none"));
-  modal.querySelectorAll(".common-content").forEach(el => el.classList.remove("d-none"));
-  modal.querySelectorAll(".proxied-only").forEach(el => el.classList.remove("d-none"));
-
   const type = selectEl.value.toLowerCase();
-  if (["txt","mx","ns"].includes(type)) {
-    modal.querySelectorAll(".proxied-only").forEach(el => el.classList.add("d-none"));
-  }
-  if (["srv","caa"].includes(type)) {
-    modal.querySelectorAll(".common-content").forEach(el => el.classList.add("d-none"));
-  }
-  modal.querySelectorAll(".type-"+type).forEach(el => el.classList.remove("d-none"));
+  const hideProxied = ["txt","mx","ns"].includes(type);
+  const hideContent = ["srv","caa"].includes(type);
+
+  // A hidden group is disabled as well, so its fields are not posted: the
+  // MX and SRV priority boxes share one name and the last one would win.
+  const show = function (el, visible) {
+    el.classList.toggle("d-none", !visible);
+    el.querySelectorAll("input, select").forEach(field => { field.disabled = !visible; });
+  };
+  modal.querySelectorAll(".type-extra").forEach(el => show(el, el.classList.contains("type-"+type)));
+  modal.querySelectorAll(".common-content").forEach(el => show(el, !hideContent));
+  modal.querySelectorAll(".proxied-only").forEach(el => show(el, !hideProxied));
+
+  // Every type that shows Content (A, AAAA, CNAME, TXT, MX, NS) needs it.
+  modal.querySelectorAll(".common-content input").forEach(field => { field.required = !hideContent; });
 }
 
 document.addEventListener("DOMContentLoaded", function() {
@@ -1048,6 +1084,10 @@ document.addEventListener("DOMContentLoaded", function() {
     document.getElementById("edit_content").value = button.getAttribute("data-content") || "";
     document.getElementById("edit_ttl").value     = button.getAttribute("data-ttl");
     document.getElementById("edit_proxied").checked = (button.getAttribute("data-proxied") === "1");
+
+    if (button.getAttribute("data-type")==="MX") {
+      document.getElementById("edit_priority").value = button.getAttribute("data-priority") || "";
+    }
 
     // SRV populate
     if (button.getAttribute("data-type")==="SRV") {

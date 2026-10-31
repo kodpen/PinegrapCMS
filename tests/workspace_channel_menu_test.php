@@ -24,6 +24,7 @@ if (!defined('PG_TEST_RUNNER')) {
 function workspace_channel_menu_test_allowed()
 {
 	return array(
+		'channel_info', 'members', 'channel_search',
 		'edit_channel', 'sales_quote_new',
 		'notify_all', 'notify_mentions', 'notify_none',
 		'voice_speak', 'claude_allow', 'ai_allow', 'voice_allow',

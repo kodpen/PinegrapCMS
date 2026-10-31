@@ -11,7 +11,7 @@ description: Plan (2026-10-19) for Workspace notes: export, Markdown/zip, .enex,
 - The owner approved the three N3 schema changes on 2026-10-25: `ws_notes.revision`, `ws_note_deletions` and `ws_note_sources` (all built).
 
 ## What is left, in order? (one PR each)
-1. N4 outside apps: Notion through the MCP alias ("save to my notes" target in `mcp_form.php`), OneNote through a Microsoft connect purpose; both wait on the reverse-oauth decisions.
+1. N4 done: Notion through the MCP alias (#3212, workspace/workspace-notes-import-notion.md), OneNote through Graph (#3291, workspace/workspace-notes-import-onenote.md). Nothing is left: the close-out moves the lasting decisions to `workspace/` and deletes this plan.
 
 ## What is owed without a PR?
 - Run schema steps 11.0.84, 11.0.85 and 11.0.86 twice on a dev database (`docs/memory/release/rerun-upgrade-steps.md`): only CI's install and upgrade jobs ran them.
@@ -19,8 +19,8 @@ description: Plan (2026-10-19) for Workspace notes: export, Markdown/zip, .enex,
 
 ## What is still open?
 1. Headings and lists: answered in #2420 (headings in notes only); headings drawn and kept by the import since #2649 (workspace/workspace-text-headings.md); lists stay one level (every item `- `).
-2. A read-only token feed like the calendar's (default: no; sync clients use OAuth 2.1 + REST).
-3. Whether the Workspace's other upload doors (channel attachments sent one by one as base64, note attachments sent in parallel) take the import's upload steps (picked list, progress, cancel): not asked yet.
+2. Decided #3880 (`workflow/decisions-made-product-13.md`): no read-only token feed; sync clients use OAuth 2.1 + REST and the export vault.
+3. Answered #3745 (`workflow/decisions-made-product-10.md`): channel and note attachments go as a form part over XHR with progress and Cancel, no picked-file list; built in PR #3774 (`workspace/workspace-attachment-uploads.md`).
 
 ## Where to start?
-- Item 1 (N4) once the reverse-oauth decisions are made. Read docs/memory/workspace/README.md and the workspace-notes-*.md file of the part first; light mode, `CLAUDE.md` Claim work.
+- The close-out PR (`[plan:notes-import-export-sync] close-out`): read docs/memory/workspace/README.md and the workspace-notes-*.md files first; light mode, `CLAUDE.md` Claim work.

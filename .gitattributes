@@ -6,3 +6,7 @@
 # byte with the form tools/tr_add.php writes (docs/memory/core/lang-files.md).
 pinegrap/includes/local/*.json text eol=lf
 pinegrap/includes/local/*/*.json text eol=lf
+
+# Vendor API test vectors are compared byte for byte with the vendor's copies
+# (docs/memory/plans/kodpen-vendor-api-client-steps.md, P1): keep LF everywhere.
+tests/fixtures/vendor_api/*.json text eol=lf

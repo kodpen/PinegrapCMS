@@ -154,28 +154,28 @@ function pg_zone_form_cards($values, $country_options, $state_options)
                                             <label for="base_rate" class="form-label">' . lang('Base Rate') . '</label>
                                             <label class="form-control form-adorn form-adorn-end">
                                                 <span class="form-adorn-text" aria-hidden="true">' . BASE_CURRENCY_SYMBOL . '</span>
-                                                <input value="' . h($values['base_rate']) . '" type="text" name="base_rate" id="base_rate" class="form-ghost" maxlength="12" inputmode="numeric"' . pg_money_mask_html() . '  style="text-align: right;" />
+                                                <input value="' . h($values['base_rate']) . '" type="text" name="base_rate" id="base_rate" class="form-ghost" maxlength="12" inputmode="decimal"' . pg_money_mask_html() . '  style="text-align: right;" />
                                             </label>
                                         </div>
                                         <div class="col-12 lg:col-6 my-3">
                                             <label for="primary_weight_rate" class="form-label">' . lang('Primary Weight Rate') . '</label>
                                             <label class="form-control form-adorn form-adorn-end">
                                                 <span class="form-adorn-text" aria-hidden="true">' . BASE_CURRENCY_SYMBOL . '</span>
-                                                <input value="' . h($values['primary_weight_rate']) . '" type="text" name="primary_weight_rate" id="primary_weight_rate" class="form-ghost" maxlength="12" inputmode="numeric"' . pg_money_mask_html() . '  style="text-align: right;" />
+                                                <input value="' . h($values['primary_weight_rate']) . '" type="text" name="primary_weight_rate" id="primary_weight_rate" class="form-ghost" maxlength="12" inputmode="decimal"' . pg_money_mask_html() . '  style="text-align: right;" />
                                             </label>
                                         </div>
                                         <div class="col-12 lg:col-6 my-3">
                                             <label for="secondary_weight_rate" class="form-label">' . lang('Secondary Weight Rate') . '</label>
                                             <label class="form-control form-adorn form-adorn-end">
                                                 <span class="form-adorn-text" aria-hidden="true">' . BASE_CURRENCY_SYMBOL . '</span>
-                                                <input value="' . h($values['secondary_weight_rate']) . '" type="text" name="secondary_weight_rate" id="secondary_weight_rate" class="form-ghost" maxlength="12" inputmode="numeric"' . pg_money_mask_html() . '  style="text-align: right;" />
+                                                <input value="' . h($values['secondary_weight_rate']) . '" type="text" name="secondary_weight_rate" id="secondary_weight_rate" class="form-ghost" maxlength="12" inputmode="decimal"' . pg_money_mask_html() . '  style="text-align: right;" />
                                             </label>
                                         </div>
                                         <div class="col-12 lg:col-6 my-3">
                                             <label for="item_rate" class="form-label">' . lang('Item Rate') . '</label>
                                             <label class="form-control form-adorn form-adorn-end">
                                                 <span class="form-adorn-text" aria-hidden="true">' . BASE_CURRENCY_SYMBOL . '</span>
-                                                <input value="' . h($values['item_rate']) . '" type="text" name="item_rate" id="item_rate" class="form-ghost" maxlength="12" inputmode="numeric"' . pg_money_mask_html() . '  style="text-align: right;" />
+                                                <input value="' . h($values['item_rate']) . '" type="text" name="item_rate" id="item_rate" class="form-ghost" maxlength="12" inputmode="decimal"' . pg_money_mask_html() . '  style="text-align: right;" />
                                             </label>
                                         </div>
                                     </div>
