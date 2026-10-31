@@ -4,7 +4,7 @@ description: Panel search box (Ctrl+K): where the chips come from, how text is m
 ---
 
 ## Where do the chips come from?
-- `pg_panel_backend_search()` (`includes/panel/search.php`) answers with `actions`: label, icon, url and `keys`. The empty query returns the actions only; `backend.src.js` caches them when the box opens and matches the typed text against `keys` with `actionMatches()` (prefix either way, Turkish letters folded by `normalizeTR()`, which calls `window.pgFoldTR()`).
+- `pg_panel_backend_search()` (`includes/panel/search.php`) answers with `actions`: label, icon, url and `keys`. The empty query returns the actions only; `backend.src.js` caches them when the box opens and matches the typed text against `keys` with `actionMatches()` (prefix either way, folded by `normalizeTR()` → `window.pgFoldTR()`). Gates: `command-palette-chips.md`.
 
 ## How are the results ranked?
 - By `pg_panel_search_score()`, 20 at a time, in one fixed order so Load More never repeats or hides a result: `command-palette-ranking.md`.
@@ -27,4 +27,5 @@ description: Panel search box (Ctrl+K): where the chips come from, how text is m
 
 ## Which records may a result show?
 - Those whose edit screen opens for the viewer: each type's WHERE appends `pg_panel_search_scope_sql()` (`fn/auth.php`), so the cap and Load More count only those. Role 3: pages, form pages, files in their edit folders; contacts of their groups. Roles 1-2: users of lower roles; role 3 none. No grant: `(0 = 1)`. Files drop design files below designers and ERP-kept documents; menus are for designers.
-- Before, a limited user saw names and e-mails their lists hide, then "Access denied". Chips unchanged. Pinned by `tests/panel_search_access_test.php`.
+- Before, a limited user saw names and e-mails their lists hide, then "Access denied". Pinned by `tests/panel_search_access_test.php`.
+
