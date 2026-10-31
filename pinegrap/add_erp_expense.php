@@ -127,8 +127,10 @@ if (!$_POST) {
     }
 
     $till_options = array(lang('Choose a till or bank account') => '');
+    $till_count = 0;
     foreach ((array) db_items("SELECT id, name, currency FROM erp_cash_accounts WHERE is_active = 1 ORDER BY sort_order ASC, name ASC") as $till) {
         $till_options[h($till['name'] . ($fx_on ? (' (' . strtoupper(trim((string) $till['currency'])) . ')') : ''))] = (string) (int) $till['id'];
+        $till_count++;
     }
 
     $method_options = array(
@@ -196,7 +198,8 @@ if (!$_POST) {
                         <div class="row" id="erp_expense_pay_now" hidden>') . '
                             <div class="col-12 lg:col-5 my-3">
                                 <label for="cash_account_id" class="form-label">' . lang('Paid from') . '</label>
-                                ' . $liveform->output_field(array('type' => 'select', 'id' => 'cash_account_id', 'name' => 'cash_account_id', 'class' => 'form-control', 'options' => $till_options)) . '
+                                ' . $liveform->output_field(array('type' => 'select', 'id' => 'cash_account_id', 'name' => 'cash_account_id', 'class' => 'form-control', 'options' => $till_options))
+                                . erp_no_till_hint($till_count) . '
                             </div>
                             <div class="col-12 sm:col-6 lg:col-4 my-3">
                                 <label for="payment_method" class="form-label">' . lang('Payment Method') . '</label>

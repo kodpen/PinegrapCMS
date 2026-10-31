@@ -60,6 +60,7 @@ description: Generated from the module field of the memory files: each includes/
 - `order_report`: [[order-report-totals]]
 - `order_view`: [[order-view-screen-rows]], [[print-order-shipping-card]]
 - `output`: [[list-status-words]]
+- `page_bulk`: [[page-bulk-edit]]
 - `page_facts`: [[page-conditions]]
 - `payments`: [[payment-driver-paytr-installments]], [[payment-gateway-secrets]]
 - `pdf_merge`: [[shipment-label-bulk]]

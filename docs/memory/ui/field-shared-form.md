@@ -22,3 +22,6 @@ description: The form field create and edit screens share includes/forms/field_f
 ## What does a refused save keep?
 - A refused name (blank, or `^ & [ ] < > /`) stores the post (`add_fields_to_session()`) before the redirect. The screen reads it back with `pg_field_form_session_values()` (null when the form was not sent back, or was sent back for another field id) and lays it over the new or stored field with `pg_field_form_posted_field()` (a check box missing from the post is off; tested). Both screens call `remove_form()` once drawn; edit also drops any other entry before drawing.
 - Symptom fixed: Create Field came back empty, Edit Field came back with the stored field, and the left-over `name` error entry of the shared `edit_field` liveform emptied the Name box of every later Edit Field screen in the session.
+
+## When does Edit Field write the quiz columns?
+- `quiz_question` and `quiz_answer` only for a custom form whose quiz is on (`$quiz` from `pg_field_form_page_form_name()`), the only case that draws their rows. Otherwise the UPDATE leaves them out: a save while the quiz was off used to erase the flag and correct answer, so every submission was scored wrong once the quiz came back. Pinned in `tests/hidden_field_kept_test.php`.

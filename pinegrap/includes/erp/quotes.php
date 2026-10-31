@@ -186,6 +186,28 @@ function erp_quote_lines($quote)
 }
 
 /**
+ * What a stored quote line shows: its discount, its VAT rate and VAT, and its
+ * total after the discount with the VAT added. The amounts were rounded when
+ * the quote was saved, so the line totals add up to subtotal - discount + VAT,
+ * the totals printed under the lines.
+ *
+ * @param array $line  A row of erp_quote_lines()
+ * @return array  discount, tax_rate (float), tax and total, in minor units
+ */
+function erp_quote_line_amounts($line)
+{
+    $discount = (int) ($line['discount_amount'] ?? 0);
+    $tax = (int) ($line['tax_total'] ?? 0);
+
+    return array(
+        'discount' => $discount,
+        'tax_rate' => (float) ($line['tax_rate'] ?? 0),
+        'tax' => $tax,
+        'total' => (int) ($line['line_total'] ?? 0) - $discount + $tax,
+    );
+}
+
+/**
  * The lines for the editor, with the product names the editor shows.
  *
  * @param array $quote
