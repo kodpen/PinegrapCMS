@@ -5,7 +5,7 @@ description: The way back to a parent or list screen is only the back arrow and 
 
 ## How does a screen offer the way back?
 - Only by the back arrow (`pg_page_shell()` `'cancel'`) and the breadcrumb strip under the top bar. A toolbar button, card link or bottom link that repeats it ("All Orders", "All Returns", "← Marketplaces") is not drawn. A link to a related screen that is not the parent stays in the toolbar (`view_return.php` keeps "View Order").
-- Why: owner, 2026-10-30: buttons and links sitting alone under a screen's title, and "back to the parent" drawn nine ways (`plans/screen-header-actions.md`).
+- Why: owner, 2026-10-30: buttons and links sitting alone under a screen's title, and "back to the parent" drawn nine ways (`workflow/decisions-made-product-14.md`).
 
 ## Which screens lost their copy (#3933)?
 - Returns: `add_return.php` (arrow to Returns, or to the order on the second step), `view_return.php`, `view_returns.php` (arrow to All Orders).

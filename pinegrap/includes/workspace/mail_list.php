@@ -231,34 +231,28 @@ function ws_mail_list_html($rows, $base, $now)
 }
 
 /**
- * The filters as links, the chosen one marked.
+ * The screen toolbar with the filters: Status and Held by as selects, each
+ * keeping the other and the overdue switch, and "First answer overdue" as a
+ * toggle button.
  *
  * @param array $filters ws_mail_list_filters()
  * @return string HTML
  */
 function ws_mail_list_filters_html($filters)
 {
-    $link = function ($changes, $label, $on) use ($filters) {
-        $query = array_merge($filters, $changes);
-        $query['overdue'] = $query['overdue'] ? '1' : '';
-
-        return '<a class="btn btn-sm ' . ($on ? 'btn-solid theme-primary' : 'btn-outline theme-secondary') . ' rounded-pill"'
-            . ($on ? ' aria-current="true"' : '') . ' href="workspace_mail.php?' . h(http_build_query(array_filter($query, 'strlen'))) . '">' . h($label) . '</a>';
-    };
-
     $statuses = ws_mail_statuses() + array('all' => lang('All'));
     $holders = array('all' => lang('Anybody'), 'me' => lang('Held by me'), 'none' => lang('Held by nobody'));
-    $html = '<div class="d-flex flex-wrap gap-2 mb-3" role="group" aria-label="' . h(lang('Status')) . '">';
 
-    foreach ($statuses as $key => $label) {
-        $html .= $link(array('status' => $key), $label, $filters['status'] === $key);
-    }
+    $query = $filters;
+    $query['overdue'] = $filters['overdue'] ? '' : '1';
+    $overdue = '<a class="btn btn-sm btn-text theme-secondary' . ($filters['overdue'] ? ' active' : '') . '" aria-pressed="' . ($filters['overdue'] ? 'true' : 'false') . '"'
+        . ' href="workspace_mail.php?' . h(http_build_query(array_filter($query, 'strlen'))) . '"><i class="bi bi-alarm me-1" aria-hidden="true"></i>' . h(lang('First answer overdue')) . '</a>';
 
-    $html .= '</div><div class="d-flex flex-wrap gap-2 mb-5" role="group" aria-label="' . h(lang('Held by')) . '">';
-
-    foreach ($holders as $key => $label) {
-        $html .= $link(array('holder' => $key), $label, $filters['holder'] === $key);
-    }
-
-    return $html . $link(array('overdue' => !$filters['overdue']), lang('First answer overdue'), $filters['overdue']) . '</div>';
+    return pg_screen_toolbar(array(
+        'search' => array(
+            pg_filter_select('status', $statuses, $filters['status'], array('label' => lang('Status'), 'icon' => 'inbox', 'keep' => array('holder', 'overdue'))),
+            pg_filter_select('holder', $holders, $filters['holder'], array('label' => lang('Held by'), 'icon' => 'person', 'keep' => array('status', 'overdue'))),
+            $overdue,
+        ),
+    ));
 }

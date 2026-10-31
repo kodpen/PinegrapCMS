@@ -52,8 +52,6 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - prototype-sharing.md: Plan (2026-10-24; slices 1-4 done: #1867, #1579, #1595, #1578; 5 later): drafts play as a clickable prototype shared by a view-only link; flows with the team
 - refactor-candidates.md: Refactor and infrastructure items from the 2026-10-08 code audit that were still open on 2026-10-16 (designer JS twin, add/edit pairs, big lists, db_q, schema probes, fragment cache, _f gates)
 - reverse-oauth-leftovers.md: Remaining outside-account connections (calendar, notes, cloud picker, Meta, Merchant, GA4, Business Profile, social, AI), the connect.pinegrap.com broker and open decisions
-- screen-header-actions-steps.md: Steps H1-H6 of plans/screen-header-actions.md: which screens each fixes, its files and size; claim as [plan:screen-header-actions] H<n>
-- screen-header-actions.md: Plan (owner 2026-10-30): no lone buttons or texts under a screen's title; back only by arrow and breadcrumb, the rest in one toolbar; steps in screen-header-actions-steps.md
 - security-findings-2026-10.md: 2026-10-19 security audit: fixed by that day's PRs and #713; items 2-8 decided by the owner 2026-10-28 (labels, CVV, escape_like, sign-in message, gateway secrets, ERP host, rich text)
 - settings-recategorization-steps.md: Steps R1-R9 of plans/settings-recategorization.md: what each moves, its files and size, the order; claim as [plan:settings-recategorization] R<n>
 - settings-recategorization.md: Plan (owner 2026-10-30): Site Settings regrouped, one place per setting; System tools screen, Accounting category, clearer names; steps in settings-recategorization-steps.md
