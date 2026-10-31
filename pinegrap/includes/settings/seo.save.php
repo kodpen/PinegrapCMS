@@ -50,22 +50,6 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         return;
     }
 
-    // Product feeds (2026.11.0, 11.0.4): the addresses the feeds pass on must
-    // be absolute, so a wrong one is refused here, before anything on this
-    // screen is written. Only when the card's fields were posted and the
-    // column is there.
-    $product_feeds_save_ready = function_exists('pg_product_feed_schema_ready') && pg_product_feed_schema_ready()
-        && array_key_exists('product_feed_seller_name', $_POST);
-
-    if ($product_feeds_save_ready) {
-        foreach (array('product_feed_seller_url', 'product_feed_privacy_policy_url', 'product_feed_terms_url') as $product_feeds_field) {
-            if (!pg_product_feed_valid_url(post_value($product_feeds_field))) {
-                $liveform->mark_error($product_feeds_field, lang('Enter a full address starting with https://, or leave the field empty.'));
-                return;
-            }
-        }
-    }
-
     // Structured data settings (2026.4.4). Only written where the columns
     // exist, so this code also runs safely before the database upgrade.
     $seo_jsonld_ready = waf_table_has_column('config', 'og_default_image');
@@ -226,12 +210,20 @@ if (!defined('PG_SETTINGS_ENTRY')) {
             custom_jsonld = '" . escape($site_custom_jsonld_input) . "',";
     }
     // AI crawlers and llms.txt (2026.11.0, 11.0.21; includes/fn/ai_crawlers.php):
-    // only once the columns are there and the card's fields were posted. The
-    // firewall switches the card shows are written by the firewall screen.
+    // only once the columns are there and the card's fields were posted.
     $sql_ai_crawler_fields = '';
 
-    if (pg_schema_has('config', 'robots_ai_rules') && array_key_exists('additional_llms_content', $_POST)) {
+    // The firewall's AI bot switches sit on the same card. They are newer
+    // than the firewall base schema (2026.4.4 vs 2026.2.4), so they carry
+    // their own column guard.
+    if (waf_table_has_column('config', 'waf_allow_ai_fetchers') && array_key_exists('additional_llms_content', $_POST)) {
         $sql_ai_crawler_fields =
+            "waf_allow_ai_fetchers = '" . (post_value('waf_allow_ai_fetchers') ? 1 : 0) . "',
+            waf_allow_ai_search = '" . (post_value('waf_allow_ai_search') ? 1 : 0) . "',";
+    }
+
+    if (pg_schema_has('config', 'robots_ai_rules') && array_key_exists('additional_llms_content', $_POST)) {
+        $sql_ai_crawler_fields .=
             "robots_ai_rules = '" . ((post_value('robots_ai_rules') == '1') ? 1 : 0) . "',
             robots_ai_training = '" . ((post_value('robots_ai_training') == '1') ? 1 : 0) . "',
             llms_txt = '" . ((post_value('llms_txt') == '1') ? 1 : 0) . "',
@@ -284,79 +276,52 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         }
     }
 
-    // Product feeds: their own JSON column, written after the screen's
-    // columns. A new address that cannot be shown again (no site key) is shown
-    // once here; a build asked for, or caused by a feed just switched on, is
-    // reported the same way.
-    if ($product_feeds_save_ready) {
-        $product_feeds_offered = pg_product_feed_screen_groups();
-        $product_feeds_current = pg_product_feed_settings();
-        $product_feeds_enabled = array();
+    // The "Update Bot IP Lists" button submits the settings form with its own
+    // name, so the toggles the operator just set are saved first (above) and
+    // the fetch runs against the saved state. Forced: pressing the button is
+    // the explicit "now" the throttle exists to protect against.
+    if (post_value('waf_refresh_ranges') && function_exists('pg_waf_refresh_ai_ranges')) {
 
-        foreach (array_keys(pg_product_feed_formats()) as $product_feeds_format) {
-            $product_feeds_enabled[$product_feeds_format] = (post_value('product_feed_' . $product_feeds_format) == '1');
-        }
+        $waf_ranges_results = pg_waf_refresh_ai_ranges(true);
 
-        $product_feeds_new_address = (string) post_value('product_feed_new_address');
+        if (is_array($waf_ranges_results)) {
 
-        $product_feeds_saved = pg_product_feed_save_from_screen(array(
-            'seller_name'        => (string) post_value('product_feed_seller_name'),
-            'seller_url'         => (string) post_value('product_feed_seller_url'),
-            'privacy_policy_url' => (string) post_value('product_feed_privacy_policy_url'),
-            'terms_url'          => (string) post_value('product_feed_terms_url'),
-            'default_brand'      => (string) post_value('product_feed_default_brand'),
-            // The card offers no list while no catalog shows a group (or
-            // e-commerce is off); the stored choice is kept until it does.
-            'excluded_group_ids' => $product_feeds_offered
-                ? pg_product_feed_posted_groups(post_value('product_feed_excluded_groups'), array_keys($product_feeds_offered))
-                : $product_feeds_current['excluded_group_ids'],
-            'enabled'            => $product_feeds_enabled,
-            'new_address'        => isset($product_feeds_enabled[$product_feeds_new_address]) ? $product_feeds_new_address : '',
-            'build'              => (bool) post_value('product_feed_build'),
-        ));
+            $waf_ranges_updated = 0;
+            $waf_ranges_failed  = 0;
 
-        $product_feeds_texts = pg_product_feed_format_texts();
-
-        foreach ($product_feeds_saved['issued'] as $product_feeds_format => $product_feeds_token) {
-            $liveform->add_notice(lang(array('string' => 'The address of {var:1} is {var:2} - note it now: this site has no key to show it again.', 'vars' => array($product_feeds_texts[$product_feeds_format]['label'], h(pg_product_feed_url($product_feeds_token))))));
-        }
-
-        if ($product_feeds_saved['renewed'] !== '') {
-            $liveform->add_notice(lang(array('string' => '{var:1} has a new address; the old one no longer works.', 'vars' => array($product_feeds_texts[$product_feeds_saved['renewed']]['label']))));
-        }
-
-        if (is_array($product_feeds_saved['built'])) {
-            if ($product_feeds_saved['built']['error'] !== '') {
-                $liveform->add_notice(lang(array('string' => 'The product feeds were not built: {var:1}', 'vars' => array(pg_product_feed_error_text($product_feeds_saved['built']['error'])))));
+            foreach ($waf_ranges_results as $waf_ranges_result) {
+                if ($waf_ranges_result['status'] === 'updated') {
+                    $waf_ranges_updated++;
+                } elseif ($waf_ranges_result['status'] === 'failed') {
+                    $waf_ranges_failed++;
+                }
             }
 
-            foreach ($product_feeds_saved['built']['formats'] as $product_feeds_format => $product_feeds_result) {
-                $liveform->add_notice($product_feeds_result['ok']
-                    ? lang(array('string' => '{var:1} was built with {var:2} product(s).', 'vars' => array($product_feeds_texts[$product_feeds_format]['label'], (int) $product_feeds_result['count'])))
-                    : lang(array('string' => '{var:1} was not built: {var:2}', 'vars' => array($product_feeds_texts[$product_feeds_format]['label'], pg_product_feed_error_text($product_feeds_result['error'])))));
-            }
-        }
-    }
-
-    // Google Merchant Center (includes/fn/merchant_center.php), after the
-    // feeds so a Google feed switched on in the same save already has the
-    // address that is registered. The messages carry Google's own words, so
-    // they are escaped whole.
-    if ($product_feeds_save_ready && array_key_exists('merchant_card', $_POST) && function_exists('pg_merchant_save_from_screen')) {
-        $merchant_messages = pg_merchant_save_from_screen(array(
-            'account'  => (string) post_value('merchant_account'),
-            'country'  => (string) post_value('merchant_center_country'),
-            'register' => (bool) post_value('merchant_register'),
-            'check'    => (bool) post_value('merchant_check'),
-            'unlink'   => (bool) post_value('merchant_unlink'),
-        ));
-
-        foreach ($merchant_messages as $merchant_message) {
-            if ($merchant_message[0] === 'error') {
-                $liveform->add_error(h($merchant_message[1]));
+            if ($waf_ranges_failed == 0) {
+                $liveform->add_notice(lang(array(
+                    'string' => 'Bot IP lists refreshed: {var:1} list{suffix:1} updated.',
+                    'vars'   => $waf_ranges_updated,
+                    'suffix' => ($waf_ranges_updated == 1 ? '' : 's'),
+                )));
             } else {
-                $liveform->add_notice(h($merchant_message[1]));
+                $liveform->add_notice(lang(array(
+                    'string' => 'Bot IP lists: {var:1} updated, {var:2} could not be fetched. The stored copies were kept.',
+                    'vars'   => array($waf_ranges_updated, $waf_ranges_failed),
+                )));
+
+                // Name the first failure's cause. Four sources failing at once
+                // is nearly always one local condition (no CA bundle, blocked
+                // outbound), so one reason diagnoses all of them and four
+                // repeated hints would only bury it.
+                foreach ($waf_ranges_results as $waf_ranges_provider => $waf_ranges_result) {
+                    if ($waf_ranges_result['status'] === 'failed' && !empty($waf_ranges_result['reason'])) {
+                        $liveform->add_notice(lang(array(
+                            'string' => 'Bot IP list fetch error: {var:1}',
+                            'vars'   => h($waf_ranges_provider . ' — ' . $waf_ranges_result['reason']),
+                        )));
+                        break;
+                    }
+                }
             }
         }
     }
-

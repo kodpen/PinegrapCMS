@@ -3406,7 +3406,7 @@ function get_system_status_checks()
         if ($feeds_health['state'] !== 'none') {
 
             $feeds_texts = pg_product_feed_format_texts();
-            $feeds_href = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/settings_seo.php#pgset-feeds';
+            $feeds_href = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/settings_commerce.php#pgset-feeds';
             $feeds_detail = array();
 
             foreach ($feeds_health['rows'] as $feeds_row) {

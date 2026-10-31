@@ -39,7 +39,7 @@ function test_message_values_system_are_escaped()
 		array('includes/settings/features.save.php', '\'vars\' => h($test_reason),', 1),
 		array('includes/settings/firewall.save.php', '$secure_mode_test_link = \'<a class="alert-link" href="https://\' . h(HOSTNAME_SETTING) . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . \'/test_secure_mode.php" target="_blank">\' . lang(\'Secure Mode test page\') . \'</a>\';', 1),
 		array('includes/settings/firewall.save.php', '\'vars\'   => array(h(implode(\', \', $waf_country_post_wrong))))));', 1),
-		array('includes/settings/firewall.save.php', '\'vars\'   => h($waf_ranges_provider . \' — \' . $waf_ranges_result[\'reason\']),', 1),
+		array('includes/settings/seo.save.php', '\'vars\'   => h($waf_ranges_provider . \' — \' . $waf_ranges_result[\'reason\']),', 1),
 		array('includes/settings/general.php', '$liveform->add_error(h($backup_connect_flash[\'text\']));', 1),
 		array('includes/settings/general.php', '$liveform->add_notice(h($backup_connect_flash[\'text\']) . \' \' . lang(\'Save the settings to start sending the backups there.\'));', 1),
 		array('includes/settings/general.save.php', '\'vars\'   => array(h(implode(\', \', $maintenance_allow_invalid))),', 1),

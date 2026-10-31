@@ -766,7 +766,6 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         }
 
         $output_site_icon_picker = '
-                                        <div id="pgsub-site-icon" class="col-12  mb-0"><h6 class="fg-secondary text-uppercase">' . lang('Site Icon') . '</h6></div>
                                         <div class="pg-f-md">
                                             <label for="site_icon" class="form-label">' . lang('Site Icon') . '</label>
                                             <select name="site_icon" id="site_icon" class="form-control">' . $site_icon_options . '</select>
@@ -857,7 +856,6 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         }
 
         $output_share_image_pickers = '
-                                        <div id="pgsub-social" class="col-12  mb-0"><h6 class="fg-secondary text-uppercase">' . lang('Social Sharing') . '</h6></div>
                                         <div class="pg-f-md">
                                             <label for="og_default_image" class="form-label">' . lang('Default Share Image') . '</label>
                                             <select name="og_default_image" id="og_default_image" class="form-control">' . $og_image_options . '</select>
@@ -935,7 +933,6 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $strutured_data_switch_checked = ($strutured_data == 1) ? ' checked="checked"' : '';
 
     $output_structured_data_section = '
-                                        <div id="pgsub-structured" class="col-12  mb-0"><h6 class="fg-secondary text-uppercase">' . lang('Structured Data') . '</h6></div>
                                         <div class="col-12 ">
                                             <div class="form-field">
                                                 <div class="switch">

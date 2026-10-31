@@ -78,14 +78,37 @@ $pg_settings_cards[] = '
                                                 <a class="pg-link-secondary" href="https://www.indexnow.org/" target="_blank">' . lang('Learn more about IndexNow') . '</a>
                                             </div>
                                         </div>
-                                        ' . $output_site_icon_picker . '
-                                        ' . $output_app_icon_picker . '
-                                        ' . $output_share_image_pickers . '
-                                        ' . $output_structured_data_section . '
                                     </div>
                                 </div>
                             </div>
                         </div>';
+
+// ── Site Icon, Social Sharing, Structured Data ──
+// One card each for the blocks includes/settings/prep.php builds. A block
+// exists only where the columns behind it do, so a card with nothing to
+// show is not drawn; Structured Data always has its switch.
+foreach (array(
+    'pgset-site-icon'  => array(lang('Site Icon'), $output_site_icon_picker . $output_app_icon_picker),
+    'pgset-social'     => array(lang('Social Sharing'), $output_share_image_pickers),
+    'pgset-structured' => array(lang('Structured Data'), $output_structured_data_section),
+) as $seo_card_id => $seo_card) {
+    if ($seo_card[1] === '') {
+        continue;
+    }
+
+    $pg_settings_cards[] = '
+                        <div id="' . $seo_card_id . '" class="pg-set-card">
+                            <div class="card">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                    ' . $seo_card[0] . '
+                                </div>
+                                <div class="card-body">
+                                   <div class="row gy-5">' . $seo_card[1] . '
+                                   </div>
+                                </div>
+                            </div>
+                        </div>';
+}
 
 // The SEO card brings its own two scripts. They were page-level on the single
 // settings screen; they belong to the card that uses them, and nothing else
@@ -141,22 +164,13 @@ $pg_settings_scripts[] = '
     </script>';
 
 // ── AI Crawlers ──
-// What robots.txt tells AI crawlers, and llms.txt (includes/fn/ai_crawlers.php).
-// Whether assistants and AI search may come is the firewall's pair of
-// switches: shown here and changed there, so robots.txt and the firewall never
-// say different things. The fields are drawn before the 11.0.21 step as well;
-// seo.save.php writes nothing until the columns are there.
+// What robots.txt tells AI crawlers, and llms.txt (includes/fn/ai_crawlers.php),
+// with the firewall's two AI bot switches ($output_waf_ai_block, prepared in
+// includes/settings/prep.php): this card is the one place for AI bots, so
+// robots.txt and the firewall never say different things. The Firewall card
+// only reports the switches. The fields are drawn before the 11.0.21 step as
+// well; seo.save.php writes nothing until the columns are there.
 $ai_crawlers_catalog = pg_ai_crawler_catalog();
-$ai_crawlers_agents = implode(', ', $ai_crawlers_catalog['agent']);
-$ai_crawlers_search = implode(', ', $ai_crawlers_catalog['search']);
-
-$ai_crawlers_agents_text = $ai_crawlers['agents']
-    ? lang(array('string' => 'Assistants ({var:1}): let in by the firewall.', 'vars' => array($ai_crawlers_agents)))
-    : lang(array('string' => 'Assistants ({var:1}): turned away by the firewall.', 'vars' => array($ai_crawlers_agents)));
-
-$ai_crawlers_search_text = $ai_crawlers['search']
-    ? lang(array('string' => 'AI search ({var:1}): let in by the firewall.', 'vars' => array($ai_crawlers_search)))
-    : lang(array('string' => 'AI search ({var:1}): turned away by the firewall.', 'vars' => array($ai_crawlers_search)));
 
 $pg_settings_cards[] = '
                         <div id="pgset-ai" class="pg-set-card">
@@ -184,11 +198,10 @@ $pg_settings_cards[] = '
                                                 <div class="form-text">' . h(lang(array('string' => 'Lets {var:1} use the pages to train AI models. Turned off, robots.txt asks them to stay away and says ai-train=no. The firewall turns GPTBot, ClaudeBot and CCBot away either way, unless they are listed under Allowed Bots.', 'vars' => array(implode(', ', $ai_crawlers_catalog['train']))))) . '</div>
                                             </div>
                                         </div>
+                                        ' . (($output_waf_ai_block !== '') ? '<div class="col-12 mb-0"><h6 class="fg-secondary text-uppercase">' . lang('Firewall') . '</h6></div>
                                         <div class="col-12">
-                                            <div class="form-text">' . h($ai_crawlers_agents_text) . '</div>
-                                            <div class="form-text">' . h($ai_crawlers_search_text) . '</div>
-                                            <div class="form-text">' . lang('robots.txt says the same for them.') . ' <a class="pg-link-secondary" href="' . h(pg_settings_link('firewall', 'pgset-waf')) . '">' . lang('Change under Firewall') . '</a></div>
-                                        </div>
+                                            <div class="form-text">' . lang('Whether the firewall lets assistants and AI search in; robots.txt says the same for them.') . '</div>
+                                        </div>' . $output_waf_ai_block : '') . '
                                         <div class="col-12 mb-0"><h6 class="fg-secondary text-uppercase">llms.txt</h6></div>
                                         <div class="col-12">
                                             <div class="form-field">
@@ -207,123 +220,6 @@ $pg_settings_cards[] = '
                                             <a class="btn btn-sm btn-outline theme-secondary" href="' . h(PATH . 'robots.txt') . '" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></i>robots.txt</a>' . ($ai_crawlers['llms'] ? '
                                             <a class="btn btn-sm btn-outline theme-secondary" href="' . h(PATH . 'llms.txt') . '" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></i>llms.txt</a>' : '') . '
                                         </div>
-                                   </div>
-                                </div>
-                            </div>
-                        </div>';
-
-// ── Product Feeds ──
-// The shop's products as files shopping platforms read
-// (includes/fn/product_feeds.php): a switch, an address and the last build per
-// format, then the seller fields every format shares. The fields are drawn
-// even while e-commerce is off or before the 11.0.4 step, so a save never
-// finds them missing; seo.save.php writes nothing until the column is there.
-$product_feeds_groups = pg_product_feed_screen_groups();
-$product_feeds_rows = '';
-
-// The Google Merchant Center part of the card ($product_feeds_merchant).
-require(PG_FUNCTIONS_DIR . '/includes/settings/seo_merchant.php');
-
-foreach (pg_product_feed_format_texts() as $product_feeds_format => $product_feeds_text) {
-    $product_feeds_entry = $product_feeds_settings['formats'][$product_feeds_format];
-    $product_feeds_address = '';
-
-    if ($product_feeds_entry['token_hash'] !== '') {
-        $product_feeds_token = pg_product_feed_token($product_feeds_entry);
-
-        $product_feeds_address = '
-                                            <div class="input-group input-group-sm mt-3 pg-f-lg">
-                                                ' . (($product_feeds_token !== '')
-                                                    ? '<input type="text" class="form-control" readonly value="' . h(pg_product_feed_url($product_feeds_token)) . '" aria-label="' . h(lang('Feed address')) . '" onfocus="this.select()" />'
-                                                    : '<span class="form-control fg-secondary">' . h(lang('This address cannot be shown again on this site. Make a new address to see it.')) . '</span>') . '
-                                                <button type="submit" name="product_feed_new_address" value="' . h($product_feeds_format) . '" class="btn btn-sm btn-outline theme-warning" onclick="return confirm(' . h(json_encode(lang('Make a new address? The current address stops working at once, so the platforms that read it must be given the new one.'))) . ')"><i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . lang('New address') . '</button>
-                                            </div>';
-    }
-
-    $product_feeds_status = pg_product_feed_status_text($product_feeds_entry);
-
-    if ($product_feeds_entry['error'] !== '') {
-        $product_feeds_status = '<span class="fg-danger">' . h(lang(array('string' => 'The last build failed: {var:1} The file built before is still served.', 'vars' => array(pg_product_feed_error_text($product_feeds_entry['error']))))) . '</span>'
-            . (($product_feeds_status !== '') ? ' ' . h($product_feeds_status) : '');
-    } elseif ($product_feeds_entry['enabled'] && ((int) $product_feeds_entry['built_at'] === 0)) {
-        $product_feeds_status = h(lang('Not built yet.'));
-    } else {
-        $product_feeds_status = h($product_feeds_status);
-    }
-
-    $product_feeds_rows .= '
-                                        <div class="col-12">
-                                            <div class="form-field">
-                                                <div class="switch"><input value="1"' . ($product_feeds_entry['enabled'] ? ' checked="checked"' : '') . ' class="" type="checkbox" id="product_feed_' . h($product_feeds_format) . '" name="product_feed_' . h($product_feeds_format) . '"/></div>
-                                                <label class="" for="product_feed_' . h($product_feeds_format) . '">' . h($product_feeds_text['label']) . '</label>
-                                                <div class="form-text">' . h($product_feeds_text['help']) . '</div>
-                                            </div>' . $product_feeds_address . (($product_feeds_status !== '') ? '
-                                            <div class="form-text">' . $product_feeds_status . '</div>' : '') . '
-                                        </div>';
-}
-
-$product_feeds_group_options = '';
-
-foreach ($product_feeds_groups as $product_feeds_group_id => $product_feeds_group_path) {
-    $product_feeds_group_options .= '<option value="' . (int) $product_feeds_group_id . '"' . (in_array((int) $product_feeds_group_id, $product_feeds_settings['excluded_group_ids'], true) ? ' selected="selected"' : '') . '>' . h($product_feeds_group_path) . '</option>';
-}
-
-$product_feeds_notice = '';
-
-if (!$product_feeds_ready) {
-    $product_feeds_notice = lang('Product feeds become available once the database upgrade has run.');
-} elseif (!defined('ECOMMERCE') || (ECOMMERCE !== true)) {
-    $product_feeds_notice = lang('E-commerce is turned off, so no feed is built.');
-}
-
-$pg_settings_cards[] = '
-                        <div id="pgset-feeds" class="pg-set-card">
-                            <div class="card">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                                    ' . lang('Product Feeds') . '
-                                </div>
-                                <div class="card-body">
-                                   <div class="row gy-5">
-                                        <div class="col-12">
-                                            <div class="form-text">' . lang('Publishes the products of your catalog as files that shopping platforms and AI shopping assistants read. Each feed has its own private address and is built again every day.') . '</div>' . (($product_feeds_notice !== '') ? '
-                                            <div class="form-text fg-warning">' . h($product_feeds_notice) . '</div>' : '') . '
-                                        </div>
-                                        ' . $product_feeds_rows . '
-                                        <div class="col-12 mb-0"><h6 class="fg-secondary text-uppercase">' . lang('Seller') . '</h6></div>
-                                        <div class="pg-f-md">
-                                            <label for="product_feed_seller_name" class="form-label">' . lang('Seller name') . '</label>
-                                            <input type="text" name="product_feed_seller_name" id="product_feed_seller_name" class="form-control" maxlength="255" value="' . h(($product_feeds_settings['seller_name'] !== '') ? $product_feeds_settings['seller_name'] : (defined('ORGANIZATION_NAME') ? ORGANIZATION_NAME : '')) . '"/>
-                                            <div class="form-text">' . lang('The name shoppers see as the seller. The OpenAI feed needs it.') . '</div>
-                                        </div>
-                                        <div class="pg-f-md">
-                                            <label for="product_feed_default_brand" class="form-label">' . lang('Brand for products without one') . '</label>
-                                            <input type="text" name="product_feed_default_brand" id="product_feed_default_brand" class="form-control" maxlength="255" value="' . h($product_feeds_settings['default_brand']) . '"/>
-                                            <div class="form-text">' . lang('Usually your own brand. The OpenAI feed leaves out a product with no brand.') . '</div>
-                                        </div>
-                                        <div class="pg-f-lg">
-                                            <label for="product_feed_seller_url" class="form-label">' . lang('Seller website') . '</label>
-                                            <input type="text" inputmode="url" spellcheck="false" autocapitalize="off" name="product_feed_seller_url" id="product_feed_seller_url" class="form-control" maxlength="2000" value="' . h($product_feeds_settings['seller_url']) . '" placeholder="https://"/>
-                                        </div>
-                                        <div class="pg-f-lg">
-                                            <label for="product_feed_privacy_policy_url" class="form-label">' . lang('Privacy policy address') . '</label>
-                                            <input type="text" inputmode="url" spellcheck="false" autocapitalize="off" name="product_feed_privacy_policy_url" id="product_feed_privacy_policy_url" class="form-control" maxlength="2000" value="' . h($product_feeds_settings['privacy_policy_url']) . '" placeholder="https://"/>
-                                        </div>
-                                        <div class="pg-f-lg">
-                                            <label for="product_feed_terms_url" class="form-label">' . lang('Terms of sale address') . '</label>
-                                            <input type="text" inputmode="url" spellcheck="false" autocapitalize="off" name="product_feed_terms_url" id="product_feed_terms_url" class="form-control" maxlength="2000" value="' . h($product_feeds_settings['terms_url']) . '" placeholder="https://"/>
-                                            <div class="form-text">' . lang('Full addresses starting with https://. The OpenAI feed passes them on with every product.') . '</div>
-                                        </div>
-                                        <div class="pg-f-lg">
-                                            <label' . (($product_feeds_group_options !== '') ? ' for="product_feed_excluded_groups"' : '') . ' class="form-label">' . lang('Leave out these product groups') . '</label>
-                                            ' . (($product_feeds_group_options !== '')
-                                                ? '<select multiple size="6" name="product_feed_excluded_groups[]" id="product_feed_excluded_groups" class="form-control">' . $product_feeds_group_options . '</select>
-                                            <div class="form-text">' . lang('A product in a chosen group, or in a group under it, is in no feed. Hold Ctrl (or ⌘) to choose several.') . '</div>'
-                                                : '<div class="form-text">' . lang('No catalog shows a product group yet.') . '</div>') . '
-                                        </div>
-                                        <div class="col-12">
-                                            <div class="form-text mb-3">' . lang('Changes reach the feeds at the next daily build. A feed you switch on is built when you save.') . '</div>
-                                            <button type="submit" name="product_feed_build" value="1" class="btn btn-sm btn-outline theme-secondary"><i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . lang('Save and build now') . '</button>
-                                        </div>' . $product_feeds_merchant . '
                                    </div>
                                 </div>
                             </div>

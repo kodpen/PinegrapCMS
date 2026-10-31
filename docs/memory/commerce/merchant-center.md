@@ -5,7 +5,7 @@ module: merchant_center
 ---
 
 ## What does it do?
-- A site Google account connected for the purpose `merchant_center` (scope `https://www.googleapis.com/auth/content`, model A) picks one Merchant Center account on Settings › SEO › Product Feeds (`includes/settings/seo_merchant.php`). Saving registers the Google TSV feed address (`feed.php`) as a primary product data source Google fetches daily at 06:00 site time, and reads the product issues.
+- A site Google account connected for the purpose `merchant_center` (scope `https://www.googleapis.com/auth/content`, model A) picks one Merchant Center account on Settings › Ecommerce › Product Feeds (`includes/settings/commerce_merchant.php`). Saving registers the Google TSV feed address (`feed.php`) as a primary product data source Google fetches daily at 06:00 site time, and reads the product issues.
 - Merchant API only (`merchantapi.googleapis.com`, `datasources/v1`, `issueresolution/v1`, `accounts/v1`); the Content API for Shopping shut on 2026-08-18.
 
 ## Where is the state kept, and why no table?
@@ -14,7 +14,7 @@ module: merchant_center
 
 ## How is registering kept idempotent?
 - `pg_merchant_register()` lists the account's data sources; `pg_merchant_find_source()` keeps one whose `fetchUri` is the feed address, moves the one registered before (stored name) to a new address with PATCH `updateMask=fileInput.fetchSettings.fetchUri` (a renewed feed token), and only otherwise creates one (`pg_merchant_data_source_body()`). Google needs `contentLanguage` + `feedLabel` for a file input: the language is `TRANSLATION_SOURCE_LANGUAGE` cut to two letters, the label is the target country.
-- The country comes from the card (two letters, field `merchant_center_country`, apart from the structured-data `merchant_country` in `config`: one shared name made every save overwrite the seller country with this one, #3557), offered first from `ORGANIZATION_COUNTRY` when it is a code, else from the base currency (`pg_merchant_default_country()`).
+- The country comes from the card (two letters, field `merchant_center_country`, apart from the structured-data `merchant_country` in `config`: one shared name made every save overwrite the seller country with this one, #3557; since #3908 the two cards are in different categories, Ecommerce and SEO, and `tests/settings_seo_sharing_test.php` holds each save to its own field), offered first from `ORGANIZATION_COUNTRY` when it is a code, else from the base currency (`pg_merchant_default_country()`).
 
 ## When are the issues read?
 - `accounts.aggregateProductStatuses.list` by `pg_merchant_refresh_issues()`: from `product_feed_job.php` (daily) when the reading is older than `PG_MERCHANT_ISSUES_TTL` (12 h), and at once on "Check now" or when an account is chosen. Never on a panel load.

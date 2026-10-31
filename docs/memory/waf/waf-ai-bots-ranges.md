@@ -13,7 +13,7 @@ description: AI bot policy: training crawlers vs user fetchers, waf_ai_bots() ve
 - An AI token with verdict `unknown` does NOT get good-bot privilege: `waf_handle_bot()` turns it into class `unverified` and applies the unknown-bot policy, so while the list is not yet fetched (fresh upgrade, failed fetch) a fake "ChatGPT-User" UA cannot get in on text alone; behaviour equals pre-4.6. For rDNS bots (`googlebot` etc.) `unknown` stays fail-open; this rule is only for `waf_ai_bots()` tokens.
 
 ## Where does fetching happen?
-- There is NO HTTP in waf.php. Fetch only in `pg_waf_refresh_ai_ranges()` (`includes/fn/cron.php`, loaded through functions.php): settings button (force), dashboard WAF widget (6-hour attempt stamp), `waf_ranges_job.php` (cron catalog, daily).
+- There is NO HTTP in waf.php. Fetch only in `pg_waf_refresh_ai_ranges()` (`includes/fn/cron.php`, loaded through functions.php): the "Update Bot IP Lists" button on SEO › AI Crawlers (force, `seo.save.php`), dashboard WAF widget (6-hour attempt stamp), `waf_ranges_job.php` (cron catalog, daily).
 - A failed or empty fetch KEEPS the old rows: overwriting a good list would turn every real AI bot into an impostor.
 
 ## How is a new provider added?

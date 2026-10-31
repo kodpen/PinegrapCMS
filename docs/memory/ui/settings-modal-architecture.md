@@ -4,7 +4,7 @@ description: Site Settings modal architecture: file map, the categories and thei
 ---
 
 ## Why is Site Settings a modal and not a screen?
-- A setting is mostly needed in the middle of another job, and a page means leaving it. The old single screen (one `<form>`, 247 columns per save) was split into categories, then moved into a modal.
+- A setting is mostly needed in the middle of another job, and a page means leaving it. The old single screen (one form, 247 columns per save) became categories in a modal.
 
 ## Which files make it up?
 ```
@@ -26,8 +26,9 @@ Shared
 
 ## Which categories and cards exist?
 - `registry.php` is the list; read it for the cards. Order: `general`, `appearance`, `features`, `seo`, `privacy` (Visitors and privacy), `languages`, `contact` (Communication), `security` (Accounts and sign-in), `firewall` (Firewall and HTTPS), `commerce` (Ecommerce), `accounting`, `api`. The keys stay when a label changes, so `#settings/<key>/…` links and `settings_<key>.php` keep working.
-- `accounting` (Accounting, as in the main menu): the ERP and E-Invoice cards, out of Ecommerce since #3819 with the same fields, columns and save (`accounting.save.php`, Paraşüt and e-document provider code included). E-Invoice is hidden outside Turkey as before (`pg_edoc_settings_shown()`). The rules, late fee, e-Fatura threshold and template cards come from `includes/erp/settings_cards.php`, shared with `erp_settings.php` (`erp/erp-settings-cards.md`).
-- `privacy`: Visitor Tracking (and `privacy_analytics.php`) and Cookie Consent from SEO, Legal Documents from Ecommerce (#3899), fields, columns and checks unchanged.
+- `accounting`: the ERP and E-Invoice cards, out of Ecommerce since #3819 with the same fields, columns and save (`accounting.save.php`, Paraşüt and e-document provider code included). E-Invoice is hidden outside Turkey as before (`pg_edoc_settings_shown()`). The rules, late fee, e-Fatura threshold and template cards come from `includes/erp/settings_cards.php`, shared with `erp_settings.php` (`erp/erp-settings-cards.md`).
+- `seo`: Site Icon, Social Sharing, Structured Data cards (built in `prep.php`); AI Crawlers holds the AI bot switches; Product Feeds is in `commerce` (#3908).
+- `privacy`: Visitor Tracking (`privacy_analytics.php`), Cookie Consent, Legal Documents (#3899).
 - General › Organization: the organization's identity on one card (`settings-organization-card.md`).
 - Accounts and sign-in and Firewall and HTTPS: the cards moved in #3858 (`settings-security-cards.md`).
 - Dashboard (Appearance) is listed for role < 2 only (`settings-dashboard-card.md`).
