@@ -353,3 +353,37 @@ function _pg_search_index_drop_regions($html, array $names, array $keep_inside)
 
     return $html;
 }
+
+/**
+ * One line naming a record list or record that the search index run left
+ * out, for the run's Site Log line: "<page> (<reference code>): <message>",
+ * the reference code left out for a list whose query failed. The message is
+ * put on one line and cut to $max characters (UTF-8 safe), so a long stack
+ * trace does not fill the log. Pure.
+ *
+ * @param string $page_name
+ * @param string $reference_code '' for a record list
+ * @param string $message the error's message
+ * @param int $max characters of the message kept
+ * @return string
+ */
+function pg_search_index_failure_note($page_name, $reference_code, $message, $max = 200)
+{
+    $message = trim(_pg_search_index_replace('/\s+/u', ' ', (string) $message));
+    $max = max(1, (int) $max);
+
+    if (preg_match('/^.{' . ($max + 1) . '}/su', $message) === 1) {
+        $message = rtrim((string) preg_replace('/^(.{' . $max . '}).*$/su', '$1', $message)) . '...';
+    } elseif ((preg_match('//u', $message) !== 1) && (strlen($message) > $max)) {
+        // Not valid UTF-8: the pattern above cannot measure it.
+        $message = substr($message, 0, $max) . '...';
+    }
+
+    $label = (string) $page_name;
+
+    if ((string) $reference_code !== '') {
+        $label .= ' (' . $reference_code . ')';
+    }
+
+    return $label . ': ' . $message;
+}
