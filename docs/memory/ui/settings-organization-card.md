@@ -13,4 +13,4 @@ description: Site Settings General › Organization card: which fields it gather
 - Decided #3799: Organization's "Support E-mail Address" is the site's (`config.email_address`); the Affiliate Program card keeps `affiliate_email_address`, labelled "Affiliate Program E-mail Address". Its readers (`AFFILIATE_EMAIL_ADDRESS`, affiliate sign-up and approval) are unchanged.
 
 ## What does ERP Settings say?
-- `erp_settings.php`'s Seller Information card links General › Organization for the seller title, address, logo, tax number and office (plain text for role 3); the address the sale was made at stays on the Accounting › ERP card.
+- `erp_settings.php`'s Seller Information card (drawn only for role 3, who has no Site Settings) names General › Organization as plain text for the seller title, address, logo, tax number and office; the address the sale was made at stays on the Accounting › ERP card. Role < 3 sees no such card there (`erp/erp-settings-cards.md`).

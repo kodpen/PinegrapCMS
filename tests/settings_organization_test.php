@@ -166,7 +166,6 @@ function test_settings_organization_erp_settings_names_organization()
 	$screen = settings_organization_test_source('erp_settings.php');
 	pg_assert_false(strpos($screen, 'are on the ERP card of the accounting settings') !== false, 'the tax number is no longer said to be on the ERP card');
 	pg_assert_false(strpos($screen, "lang('Contact')") !== false, 'no Contact place');
-	pg_assert_contains("pg_settings_return_url('general', 'pgset-organization')", $screen, 'links the Organization card');
 	pg_assert_contains("lang('General') . ' &rsaquo; ' . lang('Organization')", $screen, 'names it for those without Site Settings');
 }
 

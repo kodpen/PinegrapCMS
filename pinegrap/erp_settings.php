@@ -5,8 +5,10 @@
  * ERP - settings
  *
  * Behind its own right: the shape of the printed invoice is not an everyday
- * choice. The seller's identity is kept with the rest of the site settings;
- * this screen points at it and owns the invoice template.
+ * choice. For role < 3 it is the document template editor; the seller, the
+ * accounting rules, the late payment fee and the e-Fatura threshold are in
+ * Site Settings > Accounting. A role 3 user with the ERP settings right has
+ * no Site Settings and edits those cards here too.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -39,9 +41,16 @@ $doc_url = $self_url . (($doc === 'invoice') ? '' : '?doc=' . $doc);
 // as not given: (string) read it as "Array" and saved that as the template.
 pg_request_single_values(array('rules', 'vat_net_withholding', 'vat_exemption_code', 'late_fee', 'late_fee_rate', 'late_fee_tax_rate', 'efatura_threshold', 'erp_efatura_web_threshold', 'erp_efatura_general_threshold', 'reset', 'template'));
 
-// The accounting rules, the late payment fee and the e-Fatura thresholds
-// have a form each on this screen, saved the way the Accounting pane of Site
-// Settings saves them (includes/erp/settings_cards.php).
+// The Site Settings dialog and screens are for role < 3. For them the
+// seller, the accounting rules, the late payment fee and the e-Fatura
+// thresholds live only in Site Settings > Accounting, and this screen is the
+// document template editor. A role 3 user with the ERP settings right has no
+// Site Settings, so the cards stay here for them.
+$can_site_settings = ((int) $user['role'] < 3);
+
+// For a role 3 user the accounting rules, the late payment fee and the
+// e-Fatura thresholds have a form each on this screen, saved the way the
+// Accounting pane of Site Settings saves them (includes/erp/settings_cards.php).
 $card_forms = array(
     'rules' => array('#erp_rules', lang('The accounting rules were saved.')),
     'late_fee' => array('#erp_late_fee', lang('The late payment fee terms were saved.')),
@@ -55,6 +64,13 @@ foreach ($card_forms as $card => $card_form) {
     if ($_POST && ((string) ($_POST[$card] ?? '') === '1')) {
 
         validate_token_field();
+
+        // A form left open from before the cards moved is not saved here:
+        // the pane is the one place that writes them for this user.
+        if ($can_site_settings) {
+            $liveform->add_notice(lang('These settings are kept in the accounting settings now; nothing was saved here.'));
+            go($self_url);
+        }
 
         $saved = erp_settings_cards_save($_POST, array($card));
 
@@ -139,13 +155,8 @@ function erp_settings_placeholders_from_data($data, $prefix = '')
     return $out;
 }
 
-$settings_url = PATH . SOFTWARE_DIRECTORY . '/' . pg_settings_return_url('accounting', 'pgset-erp');
-$organization_url = PATH . SOFTWARE_DIRECTORY . '/' . pg_settings_return_url('general', 'pgset-organization');
-$edoc_url = PATH . SOFTWARE_DIRECTORY . '/' . pg_settings_return_url('accounting', 'pgset-invoice');
-
-// The Site Settings dialog and screens are for role < 3; a role 3 user with
-// the ERP settings right sees where the setting is as plain text.
-$can_site_settings = ((int) $user['role'] < 3);
+// Where the seller's details are kept, named as plain text on the role 3
+// user's Seller Information card: that user has no Site Settings to link to.
 $organization_place = lang('Site Settings') . ' &rsaquo; ' . lang('General') . ' &rsaquo; ' . lang('Organization');
 $settings_place = lang('Site Settings') . ' &rsaquo; ' . lang('Accounting') . ' &rsaquo; ' . lang('ERP');
 $edoc_place = lang('Site Settings') . ' &rsaquo; ' . lang('Accounting') . ' &rsaquo; ' . lang('E-Invoice');
@@ -297,10 +308,11 @@ foreach ($placeholders as $group => $names) {
                                 </div>';
 }
 
-$output_rules = erp_settings_rules_fields();
+$output_cards = '';
 $output_late_fee = '';
+$output_efatura_threshold = '';
 
-if (erp_late_fee_ready()) {
+if (!$can_site_settings && erp_late_fee_ready()) {
     $output_late_fee = '
             <form action="erp_settings.php" method="post" id="erp_late_fee">
                 ' . get_token_field() . '
@@ -315,9 +327,7 @@ if (erp_late_fee_ready()) {
             </form>';
 }
 
-$output_efatura_threshold = '';
-
-if (erp_settings_efatura_threshold_shown()) {
+if (!$can_site_settings && erp_settings_efatura_threshold_shown()) {
     $output_efatura_threshold = '
             <form action="erp_settings.php" method="post" id="erp_efatura_threshold">
                 ' . get_token_field() . '
@@ -332,38 +342,25 @@ if (erp_settings_efatura_threshold_shown()) {
             </form>';
 }
 
-$output_document_pills = '';
-foreach ($documents as $key => $item) {
-    $output_document_pills .= '
-                            <li class="nav-item"><a class="nav-link py-1 px-3' . (($key === $doc) ? ' active" aria-current="page' : '') . '" href="' . h($self_url . (($key === 'invoice') ? '' : '?doc=' . $key)) . '">' . h($item['label']) . '</a></li>';
-}
+if ($can_site_settings) {
 
-echo pg_page_shell(array(
-    'title'               => lang('ERP Settings'),
-    'extra classes'       => 'erp erp_settings',
-    'icon'                => 'erp',
-    'heading'             => lang('ERP Settings'),
-    'heading_description' => lang('Where the seller is named, the accounting rules, the late payment fee and how the printed documents look.'),
-    'cancel'              => false,
-)) . '
-<main id="content" class="container-fluid">
-    <div class="row">
-        <div class="col-12">
-            ' . $liveform->output_errors() . '
-            ' . $liveform->get_warnings() . '
-            ' . $liveform->output_notices() . '
-
+    // One line instead of the cards: they are edited in the Accounting pane.
+    $output_cards = '
+            <p class="my-7">' . lang('The seller, the accounting rules, the late payment fee and the e-Fatura threshold are in the accounting settings.') . '
+                <a href="' . h(pg_settings_link('accounting')) . '">' . lang('Site Settings') . ' &rsaquo; ' . lang('Accounting') . '</a></p>';
+} else {
+    $output_cards = '
             <div class="card my-7">
                 <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                     ' . lang('Seller Information') . '
                 </div>
                 <div class="card-body">
                     <p class="mb-3">' . lang('The seller title, address, logo, tax number and tax office printed on the invoice are on the Organization card.') . '
-                        ' . ($can_site_settings ? '<a href="' . h($organization_url) . '">' . $organization_place . '</a>' : $organization_place) . '</p>
+                        ' . $organization_place . '</p>
                     <p class="mb-3">' . lang('The address the sale was made at is on the ERP card of the accounting settings.') . '
-                        ' . ($can_site_settings ? '<a href="' . h($settings_url) . '">' . $settings_place . '</a>' : $settings_place) . '</p>
+                        ' . $settings_place . '</p>
                     <p class="mb-0">' . lang('The e-document provider (Paraşüt, Logo İşbaşı) and its credentials are on the E-Invoice card of the accounting settings.') . '
-                        ' . ($can_site_settings ? '<a href="' . h($edoc_url) . '">' . $edoc_place . '</a>' : $edoc_place) . '</p>
+                        ' . $edoc_place . '</p>
                 </div>
             </div>
 
@@ -374,11 +371,37 @@ echo pg_page_shell(array(
                     <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Accounting rules') . '</div>
                     <div class="card-body">
                         <p class="fg-secondary">' . lang('Choices your accountant settles for the store; until then the ERP works as it always has.') . '</p>
-                        ' . $output_rules . '
+                        ' . erp_settings_rules_fields() . '
                         ' . (erp_settings_rules_editable() ? '<div class="mt-5"><button type="submit" class="btn btn-sm btn-solid theme-primary"><i class="bi bi-check2 me-3" aria-hidden="true"></i>' . lang('Save') . '</button></div>' : '') . '
                     </div>
                 </div>
-            </form>
+            </form>';
+}
+
+$output_document_pills = '';
+foreach ($documents as $key => $item) {
+    $output_document_pills .= '
+                            <li class="nav-item"><a class="nav-link py-1 px-3' . (($key === $doc) ? ' active" aria-current="page' : '') . '" href="' . h($self_url . (($key === 'invoice') ? '' : '?doc=' . $key)) . '">' . h($item['label']) . '</a></li>';
+}
+
+echo pg_page_shell(array(
+    'title'               => $can_site_settings ? lang('Document Templates') : lang('ERP Settings'),
+    'extra classes'       => 'erp erp_settings',
+    'icon'                => 'erp',
+    'heading'             => $can_site_settings ? lang('Document Templates') : lang('ERP Settings'),
+    'heading_description' => $can_site_settings
+        ? lang('How the printed invoice, delivery note and reconciliation letter look.')
+        : lang('Where the seller is named, the accounting rules, the late payment fee and how the printed documents look.'),
+    'cancel'              => false,
+)) . '
+<main id="content" class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            ' . $liveform->output_errors() . '
+            ' . $liveform->get_warnings() . '
+            ' . $liveform->output_notices() . '
+
+' . $output_cards . '
 ' . $output_late_fee . '
 ' . $output_efatura_threshold . '
 

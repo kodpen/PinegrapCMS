@@ -8,7 +8,7 @@ description: The e-Fatura threshold warning (includes/erp/efatura_threshold.php)
 
 ## Where are the thresholds kept?
 - `config.erp_efatura_web_threshold` and `erp_efatura_general_threshold` (11.0.61, BIGINT UNSIGNED, minor units, defaults 50000000 / 300000000); constants `ERP_EFATURA_WEB_THRESHOLD` / `ERP_EFATURA_GENERAL_THRESHOLD` (0 before the step). 0 switches that warning off; a site already on e-Fatura sets both to 0.
-- ERP Settings, card "e-Fatura threshold" (`erp_settings.php#erp_efatura_threshold`), only with `erp_turkish_features()`; typed in whole units, digits only (a thousands dot would turn 500.000 into 500), saved by `erp_efatura_threshold_save()`, which drops the System Status cache.
+- Card "e-Fatura threshold": Site Settings › Accounting (`#pgset-efatura-threshold`, where System Status links role < 3), `erp_settings.php#erp_efatura_threshold` only for role 3 (`erp-settings-cards.md`); shown only with `erp_turkish_features()`; typed in whole units, digits only (a thousands dot would turn 500.000 into 500), saved by `erp_efatura_threshold_save()`, which drops the System Status cache.
 
 ## What counts as a sale?
 - `erp_efatura_threshold_sales($year)`: orders with `erp_order_billable_statuses()` and `order_date` in the calendar year (site time zone), `total + gift_card_discount` (the whole sale, VAT included, base currency). Internet: every type but `local` (marketplace included). All: counter sales too. ERP invoices without an order are not counted.
