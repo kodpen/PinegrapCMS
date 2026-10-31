@@ -1,6 +1,6 @@
 ---
 name: panel-dates-site-order
-description: Application Access, Connected applications, Connections, the chat window and the barcode scan logs show dates in the site's date order and 12/24-hour clock
+description: Application Access, Connected applications, Connections, the chat window and the barcode scan logs show dates in the site's date order and 12/24-hour clock; chat times in the panel's zone
 ---
 
 ## Which screens print their dates through get_absolute_time()?
@@ -11,7 +11,11 @@ description: Application Access, Connected applications, Connections, the chat w
 - Left as they are: `api_settings.php`'s log `'time'` (H:i) and `'expires'` (Y-m-d, an input value).
 
 ## How does the chat window know the site's clock?
-- `chat.php` puts `'clock' => array('date_order' => 'month_day'|'day_month', 'twelve_hours' => bool)` in the window's config. `formatTime()` in `chat_backend.src.js` draws "2:05 PM" or "14:05" today, and "10/29 2:05 PM" or "29.10 14:05" on another day. The `.min.js` twin is rebuilt by hand (`chat-window-keyboard.md`).
+- `chat.php` puts `'clock' => array('date_order', 'twelve_hours', 'zone')` in the window's config. `formatTime()` in `chat_backend.src.js` draws "2:05 PM" or "14:05" today, and "10/29 2:05 PM" or "29.10 14:05" on another day. The `.min.js` twin is rebuilt by hand (`chat-window-keyboard.md`).
+
+## Which zone does the chat window draw its times in?
+- The panel's rule (`panel-times-user-time-zone.md`): `clock.zone` is `pg_timezone_canonical(USER_TIMEZONE)` when `pg_time_uses_user_zone(array())`, else `date_default_timezone_get()` (the site's). `zoneParts()` reads the message's and "now"'s date and time in it through `Intl.DateTimeFormat(…).formatToParts`, so "same day" is that zone's midnight; an unknown name falls back to the browser's getters.
+- Symptom: a browser in another zone read "11:05" in the list and bubble beside "Last seen" "14:05 +03".
 
 ## Where does the barcode scan log time come from?
 - `update_inventory_quantity` in `barcode_decrease_inventory.php` and `barcode_increase_inventory.php` returns `data.scanned_at`, `get_absolute_time(array('timestamp' => time()))`, and the log row prints it. The page built it by hand as "29/10/2026 9:5:3" (unpadded, neither the site's order nor its clock). The endpoint's success answer is unchanged otherwise.
