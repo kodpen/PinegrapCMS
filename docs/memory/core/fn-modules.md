@@ -125,7 +125,7 @@ description: Generated from the module field of the memory files: each includes/
 - `widgets_lists_product`: [[widget-lists-product]]
 - `widgets_menu`: [[menu-widget]]
 - `widgets_order_form`: [[order-form-widget]]
-- `widgets_order_preview`: [[order-preview-widget]]
+- `widgets_order_preview`: [[order-preview-step-links-and-installments]], [[order-preview-widget]]
 - `widgets_parts`: [[widget-default-parts]]
 - `widgets_parts_anywhere`: [[widget-parts-anywhere]]
 - `widgets_parts_forms`: [[widget-default-parts-cart-form]], [[widget-default-parts-order-forms]]

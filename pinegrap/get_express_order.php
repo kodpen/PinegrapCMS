@@ -5910,155 +5910,19 @@ function get_express_order($properties) {
                     // if supported installment, we output a table with all supported cards and banks installment prices.
                     switch (ECOMMERCE_PAYMENT_GATEWAY) {
                         case 'Iyzipay':
-                            //test credit cards for check cart for installment outputs.
-                            // use for get info and output installment table.
-                            $card_numbers = array(
-                                'Maximum'=>'4543590000000006',
-                                'Advantage'=>'5504720000000003',
-                                'Cardfinans'=>'9792030000000000',
-                                'Paraf'=>'5528790000000008',
-                                'World'=>'5451030000000000',
-                                'Bonus'=>'374427000000003',
-                                'Axess'=>'4355084355084358',
+                            require_once(PG_FUNCTIONS_DIR . '/includes/payments/iyzico.php');
+
+                            // The table of installment prices per card family, asked
+                            // only when installments are on and the keys are set.
+                            $iyzipay_installments = pg_payment_iyzico_installment_table(
+                                ($total_with_surcharge > 0) ? $total_with_surcharge : $total,
+                                pg_payment_iyzico_settings(),
+                                $_SESSION['ecommerce']['iyzipay_installments']
                             );
-                        
-						    // if test or live mode for iyzipay gateway.
-						    if (ECOMMERCE_PAYMENT_GATEWAY_MODE == 'test') {
-						    	$payment_gateway_host = 'https://sandbox-api.iyzipay.com';
-						    }else {
-						    	$payment_gateway_host = 'https://api.iyzipay.com';
+                            if ($iyzipay_installments['rows'] > 0) {
+                                $installment = true;
                             }
-                            //add total
-                             
-                            if($total_with_surcharge > 0){
-                                //if there is surcharge output total with surcharge
-                                $iyzipay_total = $total_with_surcharge;
-
-                            }else{
-                                //else output direct total
-                                $iyzipay_total = $total;
-                            }
-
-						    require_once('includes/iyzipay-php/IyzipayBootstrap.php');
-                            IyzipayBootstrap::init();
-                            //to get all cart type installment prices foreach them.
-                            foreach($card_numbers as $key => $card_number){
-						        $card_binNumber = substr($card_number, 0, 6);
-						        // Conversation ID Digits amount
-						        $digits = 9;
-						        // Random Conversation ID
-						        $conversationid = rand(pow(10, $digits-1), pow(10, $digits)-1);
-						        //config
-						        $options = new \Iyzipay\Options();
-						        $options->setApiKey(ECOMMERCE_IYZIPAY_API_KEY);
-						        $options->setSecretKey(ECOMMERCE_IYZIPAY_SECRET_KEY);
-						        $options->setBaseUrl($payment_gateway_host);
-						        $request = new \Iyzipay\Request\RetrieveInstallmentInfoRequest();
-						        $request->setLocale(strtoupper(lang(array('info'=>''))));//get location from sofware language, where set from software settings
-						        $request->setConversationId($conversationid);
-						        $request->setBinNumber($card_binNumber);
-						        $request->setPrice($iyzipay_total);
-						        $installmentInfo = \Iyzipay\Model\InstallmentInfo::retrieve($request, $options);
-						        $result = $installmentInfo->getRawResult();
-						        $oneinstallment_price = json_decode($result)->installmentDetails[0]->installmentPrices[0]->installmentPrice;
-                                $oneinstallment_totalprice = json_decode($result)->installmentDetails[0]->installmentPrices[0]->totalPrice;
-						        $twoinstallment_price = json_decode($result)->installmentDetails[0]->installmentPrices[1]->installmentPrice;
-						        $twoinstallment_totalprice = json_decode($result)->installmentDetails[0]->installmentPrices[1]->totalPrice;
-						        $threeinstallment_price = json_decode($result)->installmentDetails[0]->installmentPrices[2]->installmentPrice;
-						        $threeinstallment_totalprice = json_decode($result)->installmentDetails[0]->installmentPrices[2]->totalPrice;
-						        $sixinstallment_price = json_decode($result)->installmentDetails[0]->installmentPrices[3]->installmentPrice;
-						        $sixinstallment_totalprice = json_decode($result)->installmentDetails[0]->installmentPrices[3]->totalPrice;	
-						        $nineinstallment_price = json_decode($result)->installmentDetails[0]->installmentPrices[4]->installmentPrice;
-						        $nineinstallment_totalprice = json_decode($result)->installmentDetails[0]->installmentPrices[4]->totalPrice;
-						        $twelveinstallment_price = json_decode($result)->installmentDetails[0]->installmentPrices[5]->installmentPrice;
-                                $twelveinstallment_totalprice = json_decode($result)->installmentDetails[0]->installmentPrices[5]->totalPrice;
-
-                                if($twoinstallment_price){
-                                    $outout_installment_table_two_installment = '<td><span class="installment_per_month">' . pg_format_money($twoinstallment_price, BASE_CURRENCY_SYMBOL) . ' / ' . h(lang('month')) . '</span><br/><span class="installment_month_total">' . h(lang('Total')) . ': ' . pg_format_money($twoinstallment_totalprice, BASE_CURRENCY_SYMBOL) . '</span></td>';
-                                }else{
-                                    $outout_installment_table_two_installment = '<td></td>';
-                                }
-                                if($threeinstallment_price){
-                                    $outout_installment_table_three_installment = '<td><span class="installment_per_month">' . pg_format_money($threeinstallment_price, BASE_CURRENCY_SYMBOL)  . ' / ' . h(lang('month')) . '</span><br/><span class="installment_month_total">' . h(lang('Total')) . ': ' . pg_format_money($threeinstallment_totalprice, BASE_CURRENCY_SYMBOL) . '</span></td>';
-                                }else{
-                                    $outout_installment_table_three_installment = '<td></td>';
-                                }
-                                if($sixinstallment_price){
-                                    $outout_installment_table_six_installment = '<td><span class="installment_per_month">' . pg_format_money($sixinstallment_price, BASE_CURRENCY_SYMBOL) . ' / ' . h(lang('month')) . '</span><br/><span class="installment_month_total">' . h(lang('Total')) . ': ' . pg_format_money($sixinstallment_totalprice, BASE_CURRENCY_SYMBOL) . '</span></td>';
-                                }else{
-                                    $outout_installment_table_six_installment = '<td></td>';
-                                }
-                                if($nineinstallment_price){
-                                    $outout_installment_table_nine_installment = '<td><span class="installment_per_month">' . pg_format_money($nineinstallment_price, BASE_CURRENCY_SYMBOL) . ' / ' . h(lang('month')) . '</span><br/><span class="installment_month_total">' . h(lang('Total')) . ': ' . pg_format_money($nineinstallment_totalprice, BASE_CURRENCY_SYMBOL) . '</span></td>';
-                                }else{
-                                    $outout_installment_table_nine_installment = '<td></td>';
-                                }
-                                if($twelveinstallment_price){
-                                    $outout_installment_table_twelve_installment = '<td><span class="installment_per_month">' . pg_format_money($twelveinstallment_price, BASE_CURRENCY_SYMBOL) . ' / ' . h(lang('month')) . '</span><br/><span class="installment_month_total">' . h(lang('Total')) . ': ' . pg_format_money($twelveinstallment_totalprice, BASE_CURRENCY_SYMBOL) . '</span></td>';
-                                }else{
-                                    $outout_installment_table_twelve_installment = '<td></td>';
-                                }
-
-                                $cardFamilyName = json_decode($result)->installmentDetails[0]->cardFamilyName;
-
-                                //Check if there is at least 2x installment option activated from site settings.
-                                if( ($oneinstallment_price)&&(ECOMMERCE_IYZIPAY_INSTALLMENT >= 2) ){
-                                    //print_r($result);
-                                    $installment = true;
-                                    
-                                    $installment_table_content .='<tr>';
-                                    $installment_table_content .= '<td  scope="row">' . $cardFamilyName . '</td>';
-                                    $installment_table_content .= $outout_installment_table_two_installment;
-                                    //Check if there is at least 3x installment option activated from site settings.
-                                    if(ECOMMERCE_IYZIPAY_INSTALLMENT >= 3){
-                                        $installment_table_content .= $outout_installment_table_three_installment;
-                                    }
-                                    //Check if there is at least 6x installment option activated from site settings.
-                                    if(ECOMMERCE_IYZIPAY_INSTALLMENT >= 6){
-                                        $installment_table_content .= $outout_installment_table_six_installment;
-                                    }
-                                    //Check if there is at least 9x installment option activated from site settings.
-                                    if(ECOMMERCE_IYZIPAY_INSTALLMENT >= 9){
-                                        $installment_table_content .= $outout_installment_table_nine_installment;
-                                    }
-                                    //Check if there is at least 12x installment option activated from site settings.
-                                    if(ECOMMERCE_IYZIPAY_INSTALLMENT >= 12){
-                                        $installment_table_content .= $outout_installment_table_twelve_installment;
-                                    }
-                                    $installment_table_content .='</tr>';
-                                }
-                            }
-                            //for table headers.
-                            if( ($oneinstallment_price)&&(ECOMMERCE_IYZIPAY_INSTALLMENT >= 2) ){
-                                //print_r($result);
-                                $installment_table_header .= '<tr>';
-                                $installment_table_header .= '<th>' . h(lang('Card Type')) . '</th>';
-                                $installment_table_header .= '<th>' . h(lang(array('string' => '{var:1} installments', 'vars' => 2))) . '</th>';
-                                //Check if there is at least 3x installment option activated from site settings.
-                                if(ECOMMERCE_IYZIPAY_INSTALLMENT >= 3){
-                                    $installment_table_header .= '<th>' . h(lang(array('string' => '{var:1} installments', 'vars' => 3))) . '</th>';
-                                }
-                                //Check if there is at least 6x installment option activated from site settings.
-                                if(ECOMMERCE_IYZIPAY_INSTALLMENT >= 6){
-                                    $installment_table_header .= '<th>' . h(lang(array('string' => '{var:1} installments', 'vars' => 6))) . '</th>';
-                                }
-                                //Check if there is at least 9x installment option activated from site settings.
-                                if(ECOMMERCE_IYZIPAY_INSTALLMENT >= 9){
-                                    $installment_table_header .= '<th>' . h(lang(array('string' => '{var:1} installments', 'vars' => 9))) . '</th>';
-                                }
-                                //Check if there is at least 12x installment option activated from site settings.
-                                if(ECOMMERCE_IYZIPAY_INSTALLMENT >= 12){
-                                    $installment_table_header .= '<th>' . h(lang(array('string' => '{var:1} installments', 'vars' => 12))) . '</th>';
-                                }
-                                $installment_table_header .= '</tr>';
-                            }	       
-
-                            if( ECOMMERCE_IYZIPAY_INSTALLMENT >= 2 ){
-                                //we output installment table 
-                                $installment_table .= '<style>td[scope=row] {font-weight: 700;}span.installment_per_month {font-size: initial;}</style><div class="table-responsive"><table id="software_installment_table"  class="table responsive-table  table-striped" style="width:100%;" >';
-                                $installment_table .= '<thead class="thead-dark">' . $installment_table_header . '</thead>';
-                                $installment_table .= '<tbody>' . $installment_table_content .'</tbody></table></div>';
-                            }
+                            $installment_table .= $iyzipay_installments['html'];
 
                             //if this is iyzipay payment method than output 3Dsecure.
                             $threedsecure = true;
