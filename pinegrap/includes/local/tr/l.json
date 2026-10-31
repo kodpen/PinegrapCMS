@@ -370,6 +370,7 @@
     "Library not loaded.": "Kütüphane yüklenmedi.",
     "Licence": "Lisans",
     "Licence key": "Lisans anahtarı",
+    "License and update checks send Kodpen this site's Hostname, the server's IP address and the versions of the software, PHP, the database and the web server.": "Lisans ve güncelleme denetimleri Kodpen'e bu sitenin Sunucu Adını, sunucunun IP adresini ve yazılım, PHP, veritabanı ve web sunucusu sürümlerini gönderir.",
     "License verification failed due to technical reason. You cannot benefit from some features.": "Teknik bir nedenle lisans doğrulaması başarısız oldu. Bazı özelliklerden yararlanamazsınız.",
     "Lift the lock": "Kilidi kaldır",
     "Lifts a firewall ban. Run from the software directory:": "Bir güvenlik duvarı yasağını kaldırır. Yazılım klasöründe çalıştırın:",

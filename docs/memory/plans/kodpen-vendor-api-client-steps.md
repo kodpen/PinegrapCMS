@@ -12,7 +12,7 @@ description: Steps P1-P8 of plans/kodpen-vendor-api-client.md: changes, files, t
 
 - P3 done (#3255): `platform/vendor-api-client.md` (the request, options, problem reader, canonical name and `pg_vendor_api_site_local()` for P4's warning); `curl-run-wrapper.md` (`content_type`, `cap`, `sink`).
 
-- P4 (M) Licence. `output.php`: pure `pg_license_map_v1()`, the v1 call in `license_check()` (4720-5163), card. Settings (`includes/settings/general*.php`): key field (`h()`, `backend.src.js` masks, `build_js.php`), save, local-name warning. Tests: `license_v1_test.php` (`licence_mapping.json`), `output_test.php`. Memory: `license-check.md`. After P3.
+- P4 done (#4381): `platform/license-check.md`.
 
 - P5a done (#3282): `platform/vendor-api-update.md` (read, offer, pin in `software.update` with `package_file`, flag, texts; the installed build is still '').
 

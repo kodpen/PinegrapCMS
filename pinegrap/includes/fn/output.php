@@ -5096,6 +5096,12 @@ function license_check($properties = false)
         }
 
         $last_check = isset($_SESSION['software']['settings']['license']['last_check']) ? (int) ($_SESSION['software']['settings']['license']['last_check'] ?? '') : 0;
+        // With the Kodpen API on, a state the old server left in the session
+        // (an update installed during it) is asked again at once.
+        $license_v1 = defined('PG_VENDOR_API_V1') && (PG_VENDOR_API_V1 === true);
+        if ($license_v1 && (($_SESSION['software']['settings']['license']['source'] ?? '') !== 'v1')) {
+            $last_check = 0;
+        }
         $session_status = isset($_SESSION['software']['settings']['license']['status']) ? (string) $_SESSION['software']['settings']['license']['status'] : '';
         $need_check = pg_license_check_due($force_check, $session_status, $last_check, time());
 
@@ -5117,74 +5123,109 @@ function license_check($properties = false)
             $_SESSION['software']['settings']['license']['countdown'] = '';
             $_SESSION['software']['settings']['license']['expiration_date_formatted'] = '';
 
-            // Prepare request payload
-            $request = array(
-                'hostname' => (defined('HOSTNAME_SETTING') ? HOSTNAME_SETTING : (isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : '')),
-                'url' => (defined('URL_SCHEME') && defined('HOSTNAME_SETTING') && defined('PATH') ? (URL_SCHEME . HOSTNAME_SETTING . PATH) : ''),
-                'version' => (defined('VERSION') ? VERSION : ''),
-                'edition' => (defined('EDITION') ? EDITION : ''),
-                'uname' => function_exists('php_uname') ? php_uname() : '',
-                'os' => defined('PHP_OS') ? PHP_OS : (function_exists('php_uname') ? php_uname('s') : ''),
-                'web_server' => isset($_SERVER['SERVER_SOFTWARE']) ? $_SERVER['SERVER_SOFTWARE'] : '',
-                'php_version' => function_exists('phpversion') ? phpversion() : '',
-                // mysql_version - try safe call; db() helper used elsewhere in file, keep same approach
-                'mysql_version' => function_exists('db') ? db("SELECT VERSION()") : '',
-                'installer' => (defined('INSTALLER') ? INSTALLER : ''),
-                'private_label' => (defined('PRIVATE_LABEL') ? PRIVATE_LABEL : false),
-            );
+            // The card's type and site rights, and which server answered;
+            // only the Kodpen API sets them.
+            $_SESSION['software']['settings']['license']['type'] = '';
+            $_SESSION['software']['settings']['license']['sites_used'] = null;
+            $_SESSION['software']['settings']['license']['sites_total'] = null;
+            unset($_SESSION['software']['settings']['license']['source']);
 
-            $data = encode_json($request);
-            $subscription_key_clean = str_replace('-', '', SUBSCRIPTION_KEY);
-            $api_url = 'https://www.kodpen.com/api2?API=59593DS72233483322T669223344&REQUEST=license&LICENSE=' . h($subscription_key_clean);
+            if ($license_v1) {
+                // The Kodpen API. A key outside the licence alphabet is not
+                // sent: it is refused at once, like a key the server does
+                // not know.
+                $license_key = pg_license_key_normalize(SUBSCRIPTION_KEY);
 
-            $response = false;
-            $curl_errno = 0;
-            $curl_error = '';
-
-            // Prefer cURL if available
-            if (function_exists('curl_init')) {
-                // pg_curl_run() sends this installation's User-Agent (without one
-                // the licence server's firewall refused the check), applies
-                // pg_curl_tls() and PROXY_ADDRESS. An unanswered request leaves
-                // the body empty, which the decoding below treats as no answer.
-                $answer = pg_curl_run('POST', $api_url, pg_license_request_options($data, 5));
-                $response = $answer['body'];
-                $curl_errno = $answer['errno'];
-                $curl_error = $answer['error'];
-            } else {
-                // Fallback: file_get_contents with stream context if allow_url_fopen is enabled
-                // The certificate is verified here as well, against the same CA bundle
-                // pg_curl_tls() uses when one is configured.
-                $ssl_options = array(
-                    'verify_peer' => true,
-                    'verify_peer_name' => true
-                );
-                if (defined('CURL_CA_BUNDLE') && CURL_CA_BUNDLE !== '' && is_file(CURL_CA_BUNDLE)) {
-                    $ssl_options['cafile'] = CURL_CA_BUNDLE;
+                if (pg_license_key_valid($license_key)) {
+                    $answer = pg_vendor_api_request('POST', pg_vendor_api_url('/licenses/verify'),
+                        pg_license_v1_options($license_key, pg_vendor_api_version(), function_exists('pg_update_channel') ? pg_update_channel() : 'stable'));
+                    $decoded = pg_license_map_v1($answer);
+                    $response = $answer['body'];
+                    $curl_errno = $answer['errno'];
+                    $curl_error = $answer['error'];
+                } else {
+                    $decoded = array('status' => 'error', 'error_code' => 'no_match', 'P_end_d' => '', 'type' => '', 'sites_used' => null, 'sites_total' => null);
+                    $response = '';
+                    $curl_errno = 0;
+                    $curl_error = '';
                 }
-                $context = stream_context_create(array(
-                    'http' => array(
-                        'method' => 'POST',
-                        'header' => "Content-Type: application/json\r\n" .
-                            "Content-Length: " . strlen($data) . "\r\n",
-                        'content' => $data,
-                        'timeout' => 10
-                    ),
-                    'ssl' => $ssl_options
-                ));
-                $response = @file_get_contents($api_url, false, $context);
+
+                $_SESSION['software']['settings']['license']['type'] = $decoded['type'];
+                $_SESSION['software']['settings']['license']['sites_used'] = $decoded['sites_used'];
+                $_SESSION['software']['settings']['license']['sites_total'] = $decoded['sites_total'];
+                $_SESSION['software']['settings']['license']['source'] = 'v1';
+            } else {
+                // Prepare request payload
+                $request = array(
+                    'hostname' => (defined('HOSTNAME_SETTING') ? HOSTNAME_SETTING : (isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : '')),
+                    'url' => (defined('URL_SCHEME') && defined('HOSTNAME_SETTING') && defined('PATH') ? (URL_SCHEME . HOSTNAME_SETTING . PATH) : ''),
+                    'version' => (defined('VERSION') ? VERSION : ''),
+                    'edition' => (defined('EDITION') ? EDITION : ''),
+                    'uname' => function_exists('php_uname') ? php_uname() : '',
+                    'os' => defined('PHP_OS') ? PHP_OS : (function_exists('php_uname') ? php_uname('s') : ''),
+                    'web_server' => isset($_SERVER['SERVER_SOFTWARE']) ? $_SERVER['SERVER_SOFTWARE'] : '',
+                    'php_version' => function_exists('phpversion') ? phpversion() : '',
+                    // mysql_version - try safe call; db() helper used elsewhere in file, keep same approach
+                    'mysql_version' => function_exists('db') ? db("SELECT VERSION()") : '',
+                    'installer' => (defined('INSTALLER') ? INSTALLER : ''),
+                    'private_label' => (defined('PRIVATE_LABEL') ? PRIVATE_LABEL : false),
+                );
+
+                $data = encode_json($request);
+                $subscription_key_clean = str_replace('-', '', SUBSCRIPTION_KEY);
+                $api_url = 'https://www.kodpen.com/api2?API=59593DS72233483322T669223344&REQUEST=license&LICENSE=' . h($subscription_key_clean);
+
+                $response = false;
+                $curl_errno = 0;
+                $curl_error = '';
+
+                // Prefer cURL if available
+                if (function_exists('curl_init')) {
+                    // pg_curl_run() sends this installation's User-Agent (without one
+                    // the licence server's firewall refused the check), applies
+                    // pg_curl_tls() and PROXY_ADDRESS. An unanswered request leaves
+                    // the body empty, which the decoding below treats as no answer.
+                    $answer = pg_curl_run('POST', $api_url, pg_license_request_options($data, 5));
+                    $response = $answer['body'];
+                    $curl_errno = $answer['errno'];
+                    $curl_error = $answer['error'];
+                } else {
+                    // Fallback: file_get_contents with stream context if allow_url_fopen is enabled
+                    // The certificate is verified here as well, against the same CA bundle
+                    // pg_curl_tls() uses when one is configured.
+                    $ssl_options = array(
+                        'verify_peer' => true,
+                        'verify_peer_name' => true
+                    );
+                    if (defined('CURL_CA_BUNDLE') && CURL_CA_BUNDLE !== '' && is_file(CURL_CA_BUNDLE)) {
+                        $ssl_options['cafile'] = CURL_CA_BUNDLE;
+                    }
+                    $context = stream_context_create(array(
+                        'http' => array(
+                            'method' => 'POST',
+                            'header' => "Content-Type: application/json\r\n" .
+                                "Content-Length: " . strlen($data) . "\r\n",
+                            'content' => $data,
+                            'timeout' => 10
+                        ),
+                        'ssl' => $ssl_options
+                    ));
+                    $response = @file_get_contents($api_url, false, $context);
+                }
             }
 
             // Stamped for every attempt, answered or not: pg_license_check_due()
             // measures the wait from it, after a failure too.
             $_SESSION['software']['settings']['license']['last_check'] = time();
 
-            // decode result safely
-            $decoded = false;
-            if ($response !== false && $response !== null && $response !== '') {
-                $decoded = decode_json($response);
-                if (!is_array($decoded)) {
-                    $decoded = false;
+            if (!$license_v1) {
+                // decode result safely
+                $decoded = false;
+                if ($response !== false && $response !== null && $response !== '') {
+                    $decoded = decode_json($response);
+                    if (!is_array($decoded)) {
+                        $decoded = false;
+                    }
                 }
             }
 
@@ -5284,12 +5325,16 @@ function license_check($properties = false)
                 $output_extend_license_button = '<a href="https://www.kodpen.com/iletisim" class="menu-item text-truncate" target="_blank">' . lang('Buy License') . '</a>';
             } else {
                 // invalid or technical error
-                if ($error_code === 'no_match' || $error_code === 'no_key') {
-                    $output_notice_title = lang('Your license is not valid. You cannot benefit from some features.');
+                if (pg_license_error_notice($error_code) !== '') {
+                    // A definitive refusal: an unknown key, a suspended
+                    // licence, no free site right, closed service access.
+                    $output_notice_title = pg_license_error_notice($error_code);
                     $output_notice_title_classes .= ' rounded-4 fg-danger';
                     $output_license_status_color_class = ' fg-danger';
                     $output_check_license_button = true;
-                    $output_extend_license_button = '<a href="https://www.kodpen.com/iletisim" class="menu-item text-truncate" target="_blank">' . lang('Buy License') . '</a>';
+                    if (in_array($error_code, array('no_match', 'no_key', 'seats_full'), true)) {
+                        $output_extend_license_button = '<a href="https://www.kodpen.com/iletisim" class="menu-item text-truncate" target="_blank">' . lang('Buy License') . '</a>';
+                    }
                 } else {
                     $output_notice_title = lang('License verification failed due to technical reason. You cannot benefit from some features.');
                     $output_notice_title_classes .= ' rounded-4 fg-danger';
@@ -5323,9 +5368,9 @@ function license_check($properties = false)
                 $bar_status_text = lang('Expired');
             } else {
                 $bar_color = 'secondary';
-                $bar_status_text = ($error_code === 'no_match' || $error_code === 'no_key')
-                    ? lang('Invalid')
-                    : lang('Unavailable');
+                $bar_status_text = ($error_code === 'suspended')
+                    ? lang('Suspended')
+                    : ((pg_license_error_notice($error_code) !== '') ? lang('Invalid') : lang('Unavailable'));
             }
 
             $bar_icon_cls = 'text-' . $bar_color;
@@ -5381,6 +5426,13 @@ function license_check($properties = false)
                     <small class="fg-secondary">' . h($output_notice_title) . '</small>
                 </div>' . $bar_diag_html;
             }
+
+            // The Kodpen API's type and site rights, above the state.
+            $bar_body = pg_license_card_details(
+                $_SESSION['software']['settings']['license']['type'] ?? '',
+                $_SESSION['software']['settings']['license']['sites_used'] ?? null,
+                $_SESSION['software']['settings']['license']['sites_total'] ?? null
+            ) . $bar_body;
 
             // ── Action buttons ───────────────────────────────────────────────
             $bar_actions_html = '';
