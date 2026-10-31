@@ -215,12 +215,15 @@ function pg_field_form_validate_name($liveform, $name, $names_in_use = array(), 
  * The export headings, the import mapping, the API value keys, the ^^name^^
  * merge field and the "required when" rule all find a field by its name, so
  * a second field with the same name loses its data on each of those paths.
- * Names are compared without case, as pg_cf_rule_other_field() does. A field
- * saved again under its own stored name is not refused, so a form that
- * already holds two equal names keeps saving.
+ * The SQL paths match form_fields.name by its collation (utf8mb4_unicode_ci),
+ * which ignores case and diacritics ('klasor' = 'klasör'), so $names_in_use
+ * are the other fields' names the database compares equal to the posted one
+ * (pg_field_form_names_in_use()) and any of them makes the name taken. A
+ * field saved again under its own stored name (case aside) is not refused,
+ * so a form that already holds two equal names keeps saving.
  *
  * @param string $name           the trimmed posted name
- * @param array $names_in_use    the names of the form's other fields
+ * @param array $names_in_use    the form's other names equal to it in the database
  * @param string|null $stored_name  the field's stored name (edit), null for a new field
  * @return bool
  */
@@ -237,7 +240,7 @@ function pg_field_form_name_taken($name, $names_in_use, $stored_name = null)
     }
 
     foreach ((array) $names_in_use as $used) {
-        if (mb_strtolower(trim((string) $used), 'UTF-8') === $want) {
+        if (trim((string) $used) !== '') {
             return true;
         }
     }
@@ -246,19 +249,61 @@ function pg_field_form_name_taken($name, $names_in_use, $stored_name = null)
 }
 
 /**
- * The names of a form's fields, the field $exclude_id left out.
+ * The names of a form's other fields that the database compares equal to
+ * $name (the column's collation: no case, no diacritics), the field
+ * $exclude_id left out.
  *
  * @param string $form_type_filter  pg_field_form_filter()'s answer
  * @param int $exclude_id           the field being edited, 0 for a new field
+ * @param string $name              the posted name
  * @return array
  */
-function pg_field_form_names_in_use($form_type_filter, $exclude_id = 0)
+function pg_field_form_names_in_use($form_type_filter, $exclude_id, $name)
 {
     $names = db_values(
         "SELECT name FROM form_fields
-        WHERE (" . $form_type_filter . ") AND (form_fields.id <> '" . (int) $exclude_id . "')");
+        WHERE (" . $form_type_filter . ")
+            AND (form_fields.id <> '" . (int) $exclude_id . "')
+            AND (form_fields.name = '" . e((string) $name) . "')");
 
     return is_array($names) ? $names : array();
+}
+
+/**
+ * The field a name means among the rows the database matched by name. The
+ * column's collation ignores case and diacritics, so a form saved before
+ * names were checked may answer 'klasor' and 'klasör' for either: the exact
+ * name wins, then the same name in another case, then the first row.
+ *
+ * @param array $rows  rows with a 'name' key, in the database's order
+ * @param string $name the name looked for
+ * @return array|null
+ */
+function pg_field_form_pick_by_name($rows, $name)
+{
+    $name = (string) $name;
+    $lower = mb_strtolower($name, 'UTF-8');
+    $same_case_aside = null;
+
+    foreach ((array) $rows as $row) {
+        $row_name = (string) $row['name'];
+
+        if ($row_name === $name) {
+            return $row;
+        }
+
+        if (($same_case_aside === null) && (mb_strtolower($row_name, 'UTF-8') === $lower)) {
+            $same_case_aside = $row;
+        }
+    }
+
+    if ($same_case_aside !== null) {
+        return $same_case_aside;
+    }
+
+    $rows = array_values((array) $rows);
+
+    return $rows ? $rows[0] : null;
 }
 
 /**
@@ -382,13 +427,17 @@ function pg_field_form_save_options($field_id, $type, $options_text, $form_type_
             list($target_field_name, $target_options) = pg_field_form_parse_trigger($option['trigger']);
 
             if ($target_field_name != '') {
-                $target_field_id = db_value(
-                    "SELECT id
+                // The name matches by the column's collation (no case, no
+                // diacritics): a 'şehir' target must not land on 'sehir'.
+                $target = pg_field_form_pick_by_name(db_items(
+                    "SELECT id, name
                     FROM form_fields
                     WHERE
                         ($form_type_filter)
                         AND (name = '" . e($target_field_name) . "')
-                        AND (type = 'pick list')");
+                        AND (type = 'pick list')
+                    ORDER BY id"), $target_field_name);
+                $target_field_id = $target ? $target['id'] : '';
 
                 if (($target_field_id == '') || (count($target_options) == 0)) {
                     $target_field_id = '';

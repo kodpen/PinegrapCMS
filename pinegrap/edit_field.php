@@ -479,7 +479,7 @@ if (!$_POST) {
     } else {
         $name = trim($_POST['name']);
     
-        pg_field_form_validate_name($liveform, $name, pg_field_form_names_in_use($form_type_filter, $id), $field_name);
+        pg_field_form_validate_name($liveform, $name, pg_field_form_names_in_use($form_type_filter, $id, $name), $field_name);
         
         // if there are errors in the liveform then send the user back to the edit field screen
         if ($liveform->check_form_errors() == true) {

@@ -32,9 +32,12 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  * The custom forms the signed-in user may edit, by form name, the ones in the
  * Recycle Bin last and marked (pg_submitted_form_list_labels()).
  *
+ * @param callable|null $include  decides from a row (page_id, folder_id)
+ *                                whether a form is listed; null lists the
+ *                                forms whose folder the user may edit
  * @return array list of array('id', 'name', 'binned')
  */
-function pg_submitted_form_list_custom_forms()
+function pg_submitted_form_list_custom_forms($include = null)
 {
     $rows = db_items(
         "SELECT
@@ -52,7 +55,7 @@ function pg_submitted_form_list_custom_forms()
     $forms = array();
 
     foreach ($rows as $row) {
-        if (check_edit_access($row['folder_id']) == true) {
+        if (($include !== null) ? $include($row) : (check_edit_access($row['folder_id']) == true)) {
             $binned = isset($bin_folders[(int) $row['folder_id']]);
             $page_name = (string) $row['page_name'];
 
@@ -114,6 +117,30 @@ function pg_submitted_form_list_labels($forms)
     }
 
     return array_merge($live, $binned);
+}
+
+/**
+ * The options of a custom form picker built with output_field(): escaped
+ * label => page id, every form its own option. The labels are the keys, so
+ * a label that is still equal (two forms whose form and page names are the
+ * same) gets the form id.
+ *
+ * @param array $custom_forms pg_submitted_form_list_custom_forms()'s answer
+ * @return array
+ */
+function pg_submitted_form_list_options($custom_forms)
+{
+    $options = array();
+
+    foreach ($custom_forms as $custom_form) {
+        $label = h($custom_form['name']);
+        if (isset($options[$label])) {
+            $label .= ' (#' . (int) $custom_form['id'] . ')';
+        }
+        $options[$label] = $custom_form['id'];
+    }
+
+    return $options;
 }
 
 /**

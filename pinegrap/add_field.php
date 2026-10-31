@@ -249,7 +249,7 @@ if (!$_POST) {
 
     $name = trim($_POST['name']);
     
-    pg_field_form_validate_name($liveform, $name, pg_field_form_names_in_use($form_type_filter));
+    pg_field_form_validate_name($liveform, $name, pg_field_form_names_in_use($form_type_filter, 0, $name));
     
     $url_form_type = pg_field_form_express_query($page_type, $form_type);
 
