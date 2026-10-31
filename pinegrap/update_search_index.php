@@ -249,7 +249,7 @@ foreach ($pages as $page) {
     }
 
     // Get plain text version of page.
-    $content = convert_html_to_text($content);
+    $content = pg_search_index_text($content);
 
     // If the page title is blank, then use the name for the title.
     if ($page['title'] == '') {
@@ -435,7 +435,7 @@ foreach ($pages as $page) {
                                 }
 
                                 // Get plain text version of page.
-                                $content = convert_html_to_text($content);
+                                $content = pg_search_index_text($content);
 
                                 // Add title, meta description, calendar event short description, and the
                                 // promote on keyword terms to content
@@ -838,7 +838,7 @@ foreach ($pages as $page) {
                             }
 
                             // Get plain text version of page.
-                            $content = convert_html_to_text($content);
+                            $content = pg_search_index_text($content);
 
                             // Get title values for this submitted form.  The title field is the one where the RSS title
                             // setting is enabled for the field.  There can be multiple title fields (e.g. first name, last name).
@@ -1142,7 +1142,7 @@ foreach ($designer_hosts as $designer_host) {
                 // page need not print, then its text. The detail page's
                 // title and meta description are left out: every record of
                 // the page would match their words.
-                $content = $title . ' ' . $record_texts['description'] . ' ' . $detail_page['page_search_keywords'] . ' ' . convert_html_to_text($content);
+                $content = $title . ' ' . $record_texts['description'] . ' ' . $detail_page['page_search_keywords'] . ' ' . pg_search_index_text($content);
 
                 pg_sw_search_index_save_item(array(
                     'url' => $url,
