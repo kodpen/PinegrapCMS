@@ -14,6 +14,7 @@ description: ERP account CSV import wizard (steps, matching, batches, defaults) 
 - Default country is `erp_default_country_code()` (`countries.default_selected`), not `'TR'`.
 - The due-day field travels as "Vade (Gün)" (after Notlar) in both import and export (see erp-aging-and-due-date).
 - Optional-column rule: see erp-account-save-partial-writes.
+- An Accounts (CSV) export loads back in either panel language: `erp_import_field_synonyms()` holds each export heading's English source and Turkish wording beside the common names, and `erp_import_parse_kind()` reads "Customer and supplier" as `both`. Before, that row was refused as an unrecognised Type, and a heading in the other language (a file from another site, or one written before the language was switched) stayed unmapped, so an update kept the stored term, reminder and state. `tests/erp_account_csv_roundtrip_test.php` checks every heading and word of the export; a new export column needs its heading there too.
 
 ## How does the export work?
 `erp_export.php`, profiles in `includes/erp/export.php`.
