@@ -73,7 +73,7 @@ function test_settings_card_code_fields_are_named()
 	$appearance = settings_card_names_source('appearance.php');
 	pg_assert_contains('<label class="form-label" for="custom_css">', $appearance, 'the Custom CSS label points at its textarea');
 
-	$general = settings_card_names_source('general.php');
+	$general = settings_card_names_source('maintenance.php');
 	pg_assert_contains('<textarea id="cron_job_general_dispatch" aria-label="\' . h(lang(\'General job command\')) . \'">', $general, 'the dispatch command box has a translated name');
 
 	$jobs = array('general', 'webhook', 'push', 'exchange_rates', 'email_campaign', 'search_index', 'seo_score', 'seo_analyze', 'requrring_payment', 'membership', 'auto_backup');

@@ -66,7 +66,7 @@ function pg_ops_alert_codes()
         'cron_stalled' => array(
             'label' => lang('A scheduled task stopped running'),
             'type'  => 'error',
-            'url'   => 'settings_general.php#pgset-cron',
+            'url'   => 'settings_maintenance.php#pgset-cron',
         ),
         'integrity' => array(
             'label' => lang('Software files were changed'),

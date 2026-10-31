@@ -48,7 +48,7 @@ function test_pg_bind_ranges_fills_the_placeholder()
 
 function test_cron_title_marks_the_os_name_as_english()
 {
-	$src = settings_heading_source('general.php');
+	$src = settings_heading_source('maintenance.php');
 	pg_assert_contains("lang('Cron Jobs') . ' (<span lang=\"en\">' . h(\$output_os_family) . '</span>)", $src, 'the Cron Jobs title');
 	pg_assert_false(strpos($src, "' (' . \$output_os_family . ')") !== false, 'an unmarked OS name is left');
 }

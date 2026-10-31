@@ -81,6 +81,7 @@ function get_help_url($properties = array())
         'settings_accounting' => 'site-settings#accounting',
         'settings_privacy'    => 'site-settings#visitors-and-privacy',
         'settings_api'        => 'site-settings#api',
+        'settings_maintenance' => 'site-settings#updates-and-maintenance',
         'system_tools'        => 'site-settings#system-tools',
         'smtp_settings'       => 'site-settings#smtp-settings',
         'mail_queue'          => 'site-settings#mail-queue',

@@ -88,31 +88,20 @@ function pg_settings_categories()
         'general' => array(
             'label' => lang('General'),
             'icon'  => 'bi-sliders',
-            'description' => lang('The organization, server, domain, licence, update channel, date and time.'),
+            'description' => lang('The organization, server, domain, licence, date and time, and backups.'),
             'sections' => array(
                 'pgset-organization' => lang('Organization'),
                 'pgset-server'   => lang('Server & Domain'),
                 'pgset-software' => lang('Software'),
-                'pgset-channel'  => lang('Update Channel'),
                 'pgset-datetime' => lang('Date & Time'),
-                'pgset-cron'     => lang('Cron Jobs'),
                 'pgset-backup'   => lang('Backups'),
-                'pgset-alerts'   => lang('Alerts'),
-                'pgset-maintenance' => lang('Maintenance Mode'),
             ),
             'keywords' => array(
                 'pgset-organization' => pg_settings_keywords(lang('organization, company, name, address, logo, support, email, tax number, tax office, vkn, seller')),
                 'pgset-server'   => pg_settings_keywords(lang('hostname, domain, ip, ssl, https, secure mode, secure, proxy')),
                 'pgset-software' => pg_settings_keywords(lang('software, language, licence, license, subscription, error, debug')),
-                'pgset-channel'  => pg_settings_keywords(lang('update, channel, beta, stable, version')),
                 'pgset-datetime' => pg_settings_keywords(lang('date, time, timezone, format')),
-                'pgset-cron'     => pg_settings_keywords(lang('cron, scheduled, task, job, schedule, automatic')),
                 'pgset-backup'   => pg_settings_keywords(lang('backup, zip, ftp, s3, retention, remote, archive')),
-                'pgset-alerts'   => pg_settings_keywords(lang('alert, alerts, notification, e-mail, push, monitoring, backup failed, cron stopped, integrity, warning')),
-                'pgset-maintenance' => pg_settings_keywords(lang('maintenance, offline, closed, 503, coming soon, health, uptime, monitor')),
-            ),
-            'lists' => array(
-                'job_dispatch_job' => 1,
             ),
         ),
 
@@ -347,6 +336,27 @@ function pg_settings_categories()
             ),
         ),
 
+        'maintenance' => array(
+            'label' => lang('Updates and maintenance'),
+            'icon'  => 'bi-wrench-adjustable',
+            'description' => lang('The update channel, scheduled jobs, operations alerts and maintenance mode.'),
+            'sections' => array(
+                'pgset-channel'     => lang('Update Channel'),
+                'pgset-cron'        => lang('Cron Jobs'),
+                'pgset-alerts'      => lang('Alerts'),
+                'pgset-maintenance' => lang('Maintenance Mode'),
+            ),
+            'keywords' => array(
+                'pgset-channel'     => pg_settings_keywords(lang('update, channel, beta, stable, version')),
+                'pgset-cron'        => pg_settings_keywords(lang('cron, scheduled, task, job, schedule, automatic')),
+                'pgset-alerts'      => pg_settings_keywords(lang('alert, alerts, notification, e-mail, push, monitoring, backup failed, cron stopped, integrity, warning')),
+                'pgset-maintenance' => pg_settings_keywords(lang('maintenance, offline, closed, 503, coming soon, health, uptime, monitor')),
+            ),
+            'lists' => array(
+                'job_dispatch_job' => 1,
+            ),
+        ),
+
     );
 
     // The e-invoice card carries Turkish e-document providers only, and the
@@ -512,7 +522,10 @@ function pg_settings_legacy_anchors()
         'pgset-erp'        => array('accounting', 'pgset-erp'),
         'pgsub-payments'   => array('commerce',   'pgset-payments'),
         'pgset-affiliate'  => array('commerce',   'pgset-affiliate'),
-        'pgset-cron'       => array('general',    'pgset-cron'),
+        'pgset-channel'    => array('maintenance', 'pgset-channel'),
+        'pgset-cron'       => array('maintenance', 'pgset-cron'),
+        'pgset-alerts'     => array('maintenance', 'pgset-alerts'),
+        'pgset-maintenance' => array('maintenance', 'pgset-maintenance'),
         'pgset-backup'     => array('general',    'pgset-backup'),
     );
 }

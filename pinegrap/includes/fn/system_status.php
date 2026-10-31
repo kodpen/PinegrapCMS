@@ -3300,7 +3300,7 @@ function get_system_status_checks()
     // what went out. No tile before the upgrade adds the switch.
     if (function_exists('pg_ops_alert_recent') && pg_schema_has('config', 'ops_alerts')) {
 
-        $alerts_href = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/settings_general.php#pgset-alerts';
+        $alerts_href = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/settings_maintenance.php#pgset-alerts';
 
         if (!pg_ops_alerts_enabled()) {
 
@@ -3363,7 +3363,7 @@ function get_system_status_checks()
     if (function_exists('pg_maintenance_settings') && pg_schema_has('config', 'maintenance_mode')) {
 
         $maintenance = pg_maintenance_settings();
-        $maintenance_href = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/settings_general.php#pgset-maintenance';
+        $maintenance_href = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/settings_maintenance.php#pgset-maintenance';
 
         if ($maintenance['on'] && pg_maintenance_holds(true, $maintenance['until'], time())) {
 

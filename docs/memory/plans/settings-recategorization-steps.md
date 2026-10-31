@@ -26,7 +26,7 @@ description: Steps R1-R9 of plans/settings-recategorization.md: what each moves,
 - R6 (S) SEO and sharing — done (#3908). The Site icon, Social sharing and Structured data blocks (now drawn in `prep.php`) become cards. Product Feeds moves to Ecommerce. AI Crawlers becomes the one place for AI bots, and the Firewall card shows its state and a link there. If #3557 is open, fix it here: Structured Data and Merchant Center post the same `merchant_country` field.
 
 - R7, cut in four (size).
-  - R7a (M) New `maintenance` category "Updates and maintenance", last: Update Channel, Cron Jobs, Alerts, Maintenance Mode leave General; their anchors land on it; links in `software_update.php`, `system_status.php`, `ops_alerts.php`; menu case, help row.
+  - R7a, done in #3968: a `maintenance` category, "Updates and maintenance", last; Update Channel, Cron Jobs, Alerts, Maintenance Mode left General; their anchors land on it (`ui/settings-modal-architecture.md`).
   - R7b (M) Backups joins it (card, save, remote test, `?backup_connect=`), anchor `pgset-backup`.
   - R7c (S) API becomes Integrations, takes Google Reviews from Communication, gets the plan's links.
   - R7d (M) Private label under Appearance, from `private_label.php`.

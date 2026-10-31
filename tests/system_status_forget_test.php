@@ -122,13 +122,13 @@ function test_system_status_forget_after_a_webhook_switch_or_retry()
 
 function test_system_status_forget_is_the_one_way_to_drop_the_cache()
 {
-	foreach (array('includes/settings/general.save.php', 'includes/erp/efatura_threshold.php', 'includes/settings/fragment.php', 'includes/settings/screen.php', 'api_settings.php') as $path) {
+	foreach (array('includes/settings/general.save.php', 'includes/settings/maintenance.save.php', 'includes/erp/efatura_threshold.php', 'includes/settings/fragment.php', 'includes/settings/screen.php', 'api_settings.php') as $path) {
 		pg_assert_true(strpos(system_status_forget_code($path), 'system_status_cache.json') === false, $path . ' drops the cache through pg_system_status_forget(), not by its file name');
 	}
 
 	pg_assert_true(strpos(pg_test_function_source('erp_efatura_threshold_forget_status'), 'pg_system_status_forget();') !== false, 'the e-Fatura threshold save uses the helper');
 
-	$general = system_status_forget_code('includes/settings/general.save.php');
+	$general = system_status_forget_code('includes/settings/maintenance.save.php');
 	$branch = system_status_forget_between($general, 'if ($maintenance_switched !== null) {', '}');
 
 	pg_assert_true(strpos($branch, 'pg_system_status_forget();') !== false, 'the Maintenance Mode switch uses the helper');
