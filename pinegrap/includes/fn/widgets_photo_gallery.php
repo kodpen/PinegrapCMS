@@ -23,13 +23,34 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 }
 
 /**
- * The file types a gallery shows as photos (the classic page's list).
+ * The file types a gallery shows as photos, on the classic page and in the
+ * widget alike.
  *
  * @return array
  */
 function pg_gal_image_types()
 {
-    return array('gif', 'jpg', 'jpeg', 'png', 'bmp', 'tif', 'tiff');
+    return array('gif', 'jpg', 'jpeg', 'png', 'webp', 'avif', 'bmp', 'tif', 'tiff');
+}
+
+/**
+ * The alt text of a photo: its description, else its file name without the
+ * extension and with dashes and underscores read as spaces.
+ *
+ * @param string      $name        the file name
+ * @param string|null $description the file's description
+ * @return string
+ */
+function pg_gal_photo_alt($name, $description)
+{
+    $description = trim((string) $description);
+    if ($description !== '') {
+        return $description;
+    }
+
+    $stem = str_replace(array('-', '_'), ' ', pg_file_name_stem((string) $name));
+
+    return trim(preg_replace('/\s+/u', ' ', $stem));
 }
 
 /**
@@ -54,6 +75,24 @@ function pg_gal_folder_shown($root_id, $requested, $parent_of)
         $seen[$at] = true;
     }
     return $root_id;
+}
+
+/**
+ * A folder and every folder above it, nearest first: the folders whose
+ * gallery page shows a photo of this folder, as the page itself or through
+ * its albums.
+ *
+ * @param int      $folder_id
+ * @param callable $parent_of folder id => parent folder id (0 at the top)
+ * @return array
+ */
+function pg_gal_folder_chain($folder_id, $parent_of)
+{
+    $chain = array();
+    for ($at = (int)$folder_id; $at > 0 && !in_array($at, $chain, true); $at = (int)call_user_func($parent_of, $at)) {
+        $chain[] = $at;
+    }
+    return $chain;
 }
 
 /**

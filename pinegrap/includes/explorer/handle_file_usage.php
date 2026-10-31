@@ -343,6 +343,46 @@ function pg_explorer_handle_file_usage($type, $request, $user, $folders_that_use
             return array('name' => (string) $row['page_name'], 'note' => '', 'url' => $usage_open('page', $usage_page_folder_editable($row['page_folder'])) ? ('edit_page.php?id=' . (int) $row['page_id']) : '');
         });
 
+    // A Photo Gallery page shows every image of its folder and of the
+    // folders below it (its albums) without naming any of them, so it is
+    // found by the file's folder chain rather than by the file's name.
+    if (((int) $usage_file['design'] === 0) && in_array(mb_strtolower((string) $usage_file['type']), pg_gal_image_types(), true)) {
+        $usage_chain = pg_gal_folder_chain((int) $usage_file['folder'], function ($id) {
+            return (int) db_value("SELECT folder_parent FROM folder WHERE folder_id = '" . (int) $id . "'");
+        });
+        $usage_chain = array_diff($usage_chain, pg_recycle_bin_folder_ids());
+
+        if (count($usage_chain) > 0) {
+            $usage_gallery_pages = db_items(
+                "SELECT page_id, page_name, page_folder
+                FROM page
+                WHERE
+                    (page_type = 'photo gallery')
+                    AND (page_folder IN (" . implode(', ', array_map('intval', $usage_chain)) . "))
+                ORDER BY page_name
+                LIMIT " . ($usage_cap + 1));
+
+            if ($usage_gallery_pages) {
+                if (count($usage_gallery_pages) > $usage_cap) {
+                    $usage_truncated = true;
+                    $usage_gallery_pages = array_slice($usage_gallery_pages, 0, $usage_cap);
+                }
+
+                $usage_gallery_page_items = array();
+
+                foreach ($usage_gallery_pages as $usage_row) {
+                    $usage_gallery_page_items[] = array(
+                        'name' => (string) $usage_row['page_name'],
+                        'note' => '',
+                        'url' => $usage_open('page', $usage_page_folder_editable($usage_row['page_folder'])) ? ('edit_page.php?id=' . (int) $usage_row['page_id']) : '');
+                }
+
+                $usage_total += count($usage_gallery_page_items);
+                $usage_groups[] = array('label' => lang('Photo Gallery Pages'), 'items' => $usage_gallery_page_items);
+            }
+        }
+    }
+
     $usage_scan(
         'style',
         $usage_columns('style', array('style_code', 'style_head', 'style_tree_json', 'style_custom_css', 'style_custom_js')),

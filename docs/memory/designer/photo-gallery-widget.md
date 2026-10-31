@@ -1,11 +1,20 @@
 ---
 name: photo-gallery-widget
-description: The Photo Gallery widget (classic "photo gallery" page type): the folder it shows and the ?folder_id= scope check, album and photo rows, tokens, flags, what is left out.
+description: Photo Gallery widget and classic page: folder shown, ?folder_id= check, which files are photos, alt text, Where used, rows, tokens, flags, what is left out.
 module: widgets_photo_gallery
 ---
 
 ## What is it?
 - Kind `photo_gallery` (`includes/fn/widgets_photo_gallery.php`), step 5c (#2492) of [[system-widget-page-types]]. The page's folder is the gallery: its sub-folders the visitor may view (`check_view_access()`) are albums, its images (`pg_gal_image_types()`, not design files, by name) are photos. One main loop: the albums, then the photos.
+
+## Which files are photos?
+- `pg_gal_image_types()` is the one list for the widget and both layouts of `get_photo_gallery.php`: gif, jpg, jpeg, png, webp, avif, bmp, tif, tiff, never a design file. WebP and AVIF were missing until #4335, so a photo turned into WebP by the File Manager left the gallery and the album count.
+
+## What is a photo's alt text?
+- System layout: `pg_gal_photo_alt()`, the file's description, else its name without the extension and with `-`/`_` as spaces; the description stays in the link's `title`, and the `<a>` has no `alt` (#4342). The custom layout's template gives the `<img>` `alt=""`: the name and description are already the link's text.
+
+## Does Where used see a gallery's photos?
+- Yes (#4341): an image (above list, not a design file) whose folder or a folder above it (`pg_gal_folder_chain()`) is a Photo Gallery page's folder lists that page under "Photo Gallery Pages" in `includes/explorer/handle_file_usage.php`; folders in the Recycle Bin are left out. A designer page carrying the widget on another page type is not found this way.
 
 ## Which folder does it show?
 - `?folder_id=` opens an album on the same page, as on the classic page, only when the folder lies below the page's folder (`pg_gal_folder_shown()` walks the parents) and the visitor may view it; anything else shows the page's folder. The classic page sent a visitor without access to a sign-in screen; the widget shows the gallery's top instead. A background render ignores the address.

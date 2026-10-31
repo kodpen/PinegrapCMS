@@ -79,3 +79,32 @@ function test_photo_gallery_widget_registered()
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/widgets_photo_gallery.php');
 	pg_assert_contains("_pg_inject_messages_node(\$tree, 'photo_gallery')", $source, 'Messages named after the classic liveform');
 }
+
+function test_photo_gallery_image_types_include_webp_and_avif()
+{
+	$types = pg_gal_image_types();
+	pg_assert_true(in_array('webp', $types, true), 'WebP photos are shown');
+	pg_assert_true(in_array('avif', $types, true), 'AVIF photos are shown');
+	pg_assert_true(in_array('jpg', $types, true), 'JPEG photos are still shown');
+}
+
+function test_photo_gallery_photo_alt()
+{
+	pg_assert_same('Sunset over the bay', pg_gal_photo_alt('img-001.jpg', '  Sunset over the bay '), 'the description comes first');
+	pg_assert_same('beach day 2', pg_gal_photo_alt('beach-day_2.jpg', ''), 'without one, a readable name');
+	pg_assert_same('Çay bahçesi', pg_gal_photo_alt('Çay bahçesi.webp', null), 'a non-ASCII name keeps its letters');
+	pg_assert_same('photo', pg_gal_photo_alt('photo', ''), 'a name without an extension');
+}
+
+function test_photo_gallery_folder_chain()
+{
+	// 3 below 2 below 1; 5 and 6 a loop.
+	$parents = array(1 => 0, 2 => 1, 3 => 2, 5 => 6, 6 => 5);
+	$parent_of = function ($id) use ($parents) {
+		return isset($parents[$id]) ? $parents[$id] : 0;
+	};
+	pg_assert_same(array(3, 2, 1), pg_gal_folder_chain(3, $parent_of), 'a folder and every folder above it');
+	pg_assert_same(array(1), pg_gal_folder_chain(1, $parent_of), 'the top folder alone');
+	pg_assert_same(array(5, 6), pg_gal_folder_chain(5, $parent_of), 'a loop in the parents ends the walk');
+	pg_assert_same(array(), pg_gal_folder_chain(0, $parent_of), 'no folder');
+}

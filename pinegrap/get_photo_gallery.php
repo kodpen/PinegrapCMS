@@ -319,18 +319,10 @@ function get_photo_gallery($properties) {
                     folder
                 FROM files
                 WHERE 
-                    (
-                        (type = 'gif')
-                        || (type = 'jpg')
-                        || (type = 'jpeg')
-                        || (type = 'png')
-                        || (type = 'bmp')
-                        || (type = 'tif')
-                        || (type = 'tiff')
-                    )
+                    (type IN (" . implode(', ', array_fill(0, count(pg_gal_image_types()), '?')) . "))
                     AND (design = 0)
                 ORDER BY name";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $result = db_q($query, pg_gal_image_types()) or output_error('Query failed.');
             
             $all_images = array();
             
@@ -532,7 +524,7 @@ function get_photo_gallery($properties) {
                         }
                         
                         // output the image tag
-                        $output_photo_thumbnail_image_tag = '<img id="photo_' . $photo['id'] . '" class="image" src="' . OUTPUT_PATH . h(encode_url_path($photo['name'])) . '"' . $output_thumbnail_width . $output_thumbnail_height . ' alt="' . h($photo['name']) . '" border="0" />';
+                        $output_photo_thumbnail_image_tag = '<img id="photo_' . $photo['id'] . '" class="image" src="' . OUTPUT_PATH . h(encode_url_path($photo['name'])) . '"' . $output_thumbnail_width . $output_thumbnail_height . ' alt="' . h(pg_gal_photo_alt($photo['name'], $photo['description'])) . '" border="0" />';
                         
                         $output_starting_container_tag = '';
                         $output_ending_container_tag = '';
@@ -555,7 +547,7 @@ function get_photo_gallery($properties) {
                         }
 
                         // output the cell
-                        $output_photo_thumbnail_table_cells .= '<td class="photo mobile_left" style="vertical-align: top' . $output_max_cell . '">' . $output_starting_container_tag . '<a class="link" href="' . OUTPUT_PATH . h(encode_url_path($photo['name'])) . '" title="' . h($photo['description']) . '" alt="' . h($photo['name']) . '">' . $output_photo_thumbnail_image_tag . '</a>' . $output_ending_container_tag . '</td>';
+                        $output_photo_thumbnail_table_cells .= '<td class="photo mobile_left" style="vertical-align: top' . $output_max_cell . '">' . $output_starting_container_tag . '<a class="link" href="' . OUTPUT_PATH . h(encode_url_path($photo['name'])) . '" title="' . h($photo['description']) . '">' . $output_photo_thumbnail_image_tag . '</a>' . $output_ending_container_tag . '</td>';
                         
                         // if the cell counter is smaller than the number of thumbnails, then increment the counter and set close last row to false so that we know we will need to close the last row
                         if ($cell_counter < ($number_of_columns - 1)) {
@@ -946,18 +938,10 @@ function get_photo_gallery($properties) {
                 folder
             FROM files
             WHERE 
-                (
-                    (type = 'gif')
-                    || (type = 'jpg')
-                    || (type = 'jpeg')
-                    || (type = 'png')
-                    || (type = 'bmp')
-                    || (type = 'tif')
-                    || (type = 'tiff')
-                )
+                (type IN (" . implode(', ', array_fill(0, count(pg_gal_image_types()), '?')) . "))
                 AND (design = 0)
             ORDER BY name";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $result = db_q($query, pg_gal_image_types()) or output_error('Query failed.');
         
         $all_images = array();
         

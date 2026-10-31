@@ -46,7 +46,7 @@ if (!defined('PG_INIT_LOADED')) {
 	<div class="photo text-center">
 		<a href="<?=h($photo['url'])?>">
 			<div class="image">
-				<img src="<?=h($photo['url'])?>" class="img-responsive img-thumbnail center-block">
+				<img src="<?=h($photo['url'])?>" class="img-responsive img-thumbnail center-block" alt="">
 			</div>
 			<div class="name"><?=h($photo['name'])?></div>
 			<div class="description"><?=h($photo['description'])?></div>
