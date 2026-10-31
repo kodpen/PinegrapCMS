@@ -293,6 +293,7 @@
     "Firewall Events": "Güvenlik Duvarı Olayları",
     "Firewall Log": "Güvenlik Duvarı Kaydı",
     "Firewall and HTTPS": "Güvenlik Duvarı ve HTTPS",
+    "Firewall events request failed: {var:1}": "Güvenlik duvarı olayları isteği başarısız oldu: {var:1}",
     "Firewall is off": "Güvenlik duvarı kapalı",
     "Firewall is on": "Güvenlik duvarı açık",
     "Firewall log data has been cleared.": "Güvenlik duvarı kayıtları temizlendi.",

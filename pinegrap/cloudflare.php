@@ -22,6 +22,7 @@ $user = validate_user();
 validate_area_access($user, 'administrator');
 
 include_once('liveform.class.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/cloudflare_tools.php');
 
 $liveform = new liveform('cloudflare');
 
@@ -197,7 +198,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $existing_record = (!empty($existing['json']['success']) && is_array($existing['json']['result'] ?? null)) ? $existing['json']['result'] : array();
         $resp = cf_request('DELETE', "zones/{$CF_ZONE_ID}/dns_records/" . $record_id, null, $CF_API_BASE, $CF_API_TOKEN);
         if ($resp['status'] !== 200 || empty($resp['json']['success'])) {
-            $liveform->mark_error('error', lang('Delete record failed'));
+            $liveform->mark_error('error', lang('Delete record failed') . ': ' . h(pg_cloudflare_answer_reason($resp)));
         } else {
             $liveform->add_notice(lang('Record deleted successfully.'));
             log_activity(lang(array('string' => 'Cloudflare DNS record deleted: {var:1}.', 'vars' => array(cf_record_label($existing_record['type'] ?? '', $existing_record['name'] ?? '', $record_id)))), $_SESSION['sessionusername']);
@@ -210,7 +211,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $value = isset($_POST['value']) ? $_POST['value'] : 'off';
         $resp = cf_request('PATCH', "zones/{$CF_ZONE_ID}/settings/development_mode", ['value' => $value], $CF_API_BASE, $CF_API_TOKEN);
         if ($resp['status'] !== 200 || empty($resp['json']['success'])) {
-            $liveform->mark_error('error', lang('Development Mode toggle failed'));
+            $liveform->mark_error('error', lang('Development Mode toggle failed') . ': ' . h(pg_cloudflare_answer_reason($resp)));
         } else {
             $liveform->add_notice(lang(array('string' => 'Development Mode updated to {var:1}.', 'vars' => $value)));
             log_activity(lang(array('string' => 'Cloudflare {var:1} updated to {var:2}.', 'vars' => array(lang('Development Mode'), $value))), $_SESSION['sessionusername']);
@@ -222,7 +223,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $value = isset($_POST['value']) ? $_POST['value'] : 'medium';
         $resp = cf_request('PATCH', "zones/{$CF_ZONE_ID}/settings/security_level", ['value' => $value], $CF_API_BASE, $CF_API_TOKEN);
         if ($resp['status'] !== 200 || empty($resp['json']['success'])) {
-            $liveform->mark_error('error', lang('Under Attack Mode toggle failed'));
+            $liveform->mark_error('error', lang('Under Attack Mode toggle failed') . ': ' . h(pg_cloudflare_answer_reason($resp)));
         } else {
             $liveform->add_notice(lang(array('string' => 'Under Attack Mode updated to {var:1}.', 'vars' => $value)));
             log_activity(lang(array('string' => 'Cloudflare {var:1} updated to {var:2}.', 'vars' => array(lang('Under Attack Mode'), $value))), $_SESSION['sessionusername']);
@@ -234,7 +235,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $value = isset($_POST['value']) ? $_POST['value'] : 'off';
         $resp = cf_request('PATCH', "zones/{$CF_ZONE_ID}/settings/always_use_https", ['value' => $value], $CF_API_BASE, $CF_API_TOKEN);
         if ($resp['status'] !== 200 || empty($resp['json']['success'])) {
-            $liveform->mark_error('error', lang('Always Use HTTPS toggle failed'));
+            $liveform->mark_error('error', lang('Always Use HTTPS toggle failed') . ': ' . h(pg_cloudflare_answer_reason($resp)));
         } else {
             $liveform->add_notice(lang(array('string' => 'Always Use HTTPS updated to {var:1}.', 'vars' => $value)));
             log_activity(lang(array('string' => 'Cloudflare {var:1} updated to {var:2}.', 'vars' => array(lang('Always Use HTTPS'), $value))), $_SESSION['sessionusername']);
@@ -246,7 +247,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $value = isset($_POST['value']) ? $_POST['value'] : 'off';
         $resp = cf_request('PATCH', "zones/{$CF_ZONE_ID}/settings/brotli", ['value' => $value], $CF_API_BASE, $CF_API_TOKEN);
         if ($resp['status'] !== 200 || empty($resp['json']['success'])) {
-            $liveform->mark_error('error', lang('Brotli toggle failed'));
+            $liveform->mark_error('error', lang('Brotli toggle failed') . ': ' . h(pg_cloudflare_answer_reason($resp)));
         } else {
             $liveform->add_notice(lang(array('string' => 'Brotli updated to {var:1}.', 'vars' => $value)));
             log_activity(lang(array('string' => 'Cloudflare {var:1} updated to {var:2}.', 'vars' => array(lang('Brotli'), $value))), $_SESSION['sessionusername']);
@@ -273,7 +274,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($action === 'clear_cache') {
         $resp = cf_request('POST', "zones/{$CF_ZONE_ID}/purge_cache", ['purge_everything' => true], $CF_API_BASE, $CF_API_TOKEN);
         if ($resp['status'] !== 200 || empty($resp['json']['success'])) {
-            $liveform->mark_error('error', lang('Cache purge failed'));
+            $liveform->mark_error('error', lang('Cache purge failed') . ': ' . h(pg_cloudflare_answer_reason($resp)));
         } else {
             $liveform->add_notice(lang('Cache successfully purged.'));
             log_activity(lang('Cloudflare cache purged.'), $_SESSION['sessionusername']);
@@ -313,8 +314,38 @@ if (!($resp_dns['status'] === 200 && !empty($resp_dns['json']['success']))) {
     }
 }
 
+// Zone settings. A read that fails (a token without Zone Settings Read, a
+// timeout) is reported with the other errors and its switch is drawn
+// disabled, instead of showing Off for a setting that may be on.
+$zone_settings = array(
+    'development_mode' => array('cf_dev', lang('Development Mode'), 'off'),
+    'security_level'   => array('cf_uam', lang('Under Attack Mode'), 'medium'),
+    'always_use_https' => array('cf_https', lang('Always Use HTTPS'), 'off'),
+    'brotli'           => array('cf_brotli', lang('Brotli'), 'off'),
+    'rocket_loader'    => array('cf_rocket', lang('Rocket Loader'), 'off'),
+);
+$setting_values = array();
+$unread_switches = array();
+foreach ($zone_settings as $setting => $setting_info) {
+    $resp_setting = cf_request('GET', "zones/{$CF_ZONE_ID}/settings/" . $setting, null, $CF_API_BASE, $CF_API_TOKEN);
+    if (pg_cloudflare_answer_failed($resp_setting)) {
+        $setting_values[$setting] = $setting_info[2];
+        $unread_switches[$setting_info[0]] = true;
+        $permission_errors[] = lang(array('string' => '{var:1} could not be read: {var:2}', 'vars' => array($setting_info[1], h(pg_cloudflare_answer_reason($resp_setting)))));
+    } else {
+        $setting_value = $resp_setting['json']['result']['value'] ?? null;
+        $setting_values[$setting] = is_string($setting_value) ? $setting_value : $setting_info[2];
+    }
+}
+$dev_mode     = $setting_values['development_mode'];
+$uam_mode     = $setting_values['security_level'];
+$always_https = $setting_values['always_use_https'];
+$brotli       = $setting_values['brotli'];
+$rocket       = $setting_values['rocket_loader'];
+
 // Without this a token lacking the DNS permission produced an empty record
 // table and no explanation; the reasons are shown with the other form errors.
+// The zone-setting reads above add theirs the same way.
 foreach ($permission_errors as $index => $permission_error) {
     $liveform->mark_error('permission_' . $index, $permission_error);
 }
@@ -322,32 +353,6 @@ foreach ($permission_errors as $index => $permission_error) {
 $records = ($resp_dns['status'] === 200 && !empty($resp_dns['json']['success']))
     ? (isset($resp_dns['json']['result']) ? $resp_dns['json']['result'] : array())
     : array();
-
-// Settings
-$resp_dev = cf_request('GET', "zones/{$CF_ZONE_ID}/settings/development_mode", null, $CF_API_BASE, $CF_API_TOKEN);
-$dev_mode = ($resp_dev['status'] === 200 && !empty($resp_dev['json']['success']))
-    ? (isset($resp_dev['json']['result']['value']) ? $resp_dev['json']['result']['value'] : 'off')
-    : 'off';
-
-$resp_uam = cf_request('GET', "zones/{$CF_ZONE_ID}/settings/security_level", null, $CF_API_BASE, $CF_API_TOKEN);
-$uam_mode = ($resp_uam['status'] === 200 && !empty($resp_uam['json']['success']))
-    ? (isset($resp_uam['json']['result']['value']) ? $resp_uam['json']['result']['value'] : 'medium')
-    : 'medium';
-
-$resp_always = cf_request('GET', "zones/{$CF_ZONE_ID}/settings/always_use_https", null, $CF_API_BASE, $CF_API_TOKEN);
-$always_https = ($resp_always['status'] === 200 && !empty($resp_always['json']['success']))
-    ? (isset($resp_always['json']['result']['value']) ? $resp_always['json']['result']['value'] : 'off')
-    : 'off';
-
-$resp_brotli = cf_request('GET', "zones/{$CF_ZONE_ID}/settings/brotli", null, $CF_API_BASE, $CF_API_TOKEN);
-$brotli = ($resp_brotli['status'] === 200 && !empty($resp_brotli['json']['success']))
-    ? (isset($resp_brotli['json']['result']['value']) ? $resp_brotli['json']['result']['value'] : 'off')
-    : 'off';
-
-$resp_rocket = cf_request('GET', "zones/{$CF_ZONE_ID}/settings/rocket_loader", null, $CF_API_BASE, $CF_API_TOKEN);
-$rocket = ($resp_rocket['status'] === 200 && !empty($resp_rocket['json']['success']))
-    ? (isset($resp_rocket['json']['result']['value']) ? $resp_rocket['json']['result']['value'] : 'off')
-    : 'off';
 
 // -------------------- AUDIT LOGS FETCH --------------------
 $audit_logs = array();
@@ -390,7 +395,7 @@ if (!empty($CF_ACCOUNT_ID)) {
     } else {
         $audit_error = lang(array('string' => 'Audit Logs API error (HTTP {var:1})', 'vars' => $resp_audit['status']));
         if (!empty($resp_audit['json']['errors'][0]['message'])) {
-            $audit_error .= ': ' . $resp_audit['json']['errors'][0]['message'];
+            $audit_error .= ': ' . h($resp_audit['json']['errors'][0]['message']);
         }
     }
 }
@@ -435,7 +440,12 @@ $fw_query = [
 
 $resp_fw = cf_graphql($fw_query, $CF_API_TOKEN);
 $firewall_events = array();
-if ($resp_fw['status'] === 200 && !empty($resp_fw['json']['data']['viewer']['zones'][0]['firewallEventsAdaptiveGroups'])) {
+$firewall_error = '';
+if (pg_cloudflare_answer_failed($resp_fw, true)) {
+    // A refused read (no Analytics permission, a range the plan does not
+    // cover) is shown in the table instead of "No firewall events".
+    $firewall_error = lang(array('string' => 'Firewall events request failed: {var:1}', 'vars' => h(pg_cloudflare_answer_reason($resp_fw))));
+} elseif (!empty($resp_fw['json']['data']['viewer']['zones'][0]['firewallEventsAdaptiveGroups'])) {
     $firewall_events = $resp_fw['json']['data']['viewer']['zones'][0]['firewallEventsAdaptiveGroups'];
 }
 
@@ -529,7 +539,9 @@ if (!empty($firewall_events)) {
         </tr>';
     }
 } else {
-    $fw_rows = '<tr><td colspan="5" class="text-center fg-secondary">' . lang('No firewall events found for this period.') . '</td></tr>';
+    $fw_rows = ($firewall_error !== '')
+        ? '<tr><td colspan="5" class="text-center fg-danger">' . $firewall_error . '</td></tr>'
+        : '<tr><td colspan="5" class="text-center fg-secondary">' . lang('No firewall events found for this period.') . '</td></tr>';
 }
 
 
@@ -539,16 +551,10 @@ $log_end_val   = isset($_REQUEST['log_end'])   ? htmlspecialchars($_REQUEST['log
 
 
 // -------------------- ANALYTICS --------------------
-function getCloudflareAnalytics($CF_API_TOKEN, $CF_ZONE_ID, $days, $area, $start_date = null, $end_date = null) {
-    global $permission_errors;
-
-    $analytics = [
-        'requests'        => 0,
-        'bandwidth'       => 0,
-        'uniques'         => 0,
-        'cached_requests' => 0,
-        'cached_bytes'    => 0
-    ];
+// cf_read_analytics: the three GraphQL reads behind the analytics cards, sent
+// once per page; pg_cloudflare_analytics_totals() sums them and keeps the
+// reason of a failed read.
+function cf_read_analytics($CF_API_TOKEN, $CF_ZONE_ID, $days, $start_date = null, $end_date = null) {
 
     if ($start_date && $end_date) {
         $start = $start_date;
@@ -580,14 +586,6 @@ function getCloudflareAnalytics($CF_API_TOKEN, $CF_ZONE_ID, $days, $area, $start
     ];
 
     $resp = cf_graphql($graphql_query, $CF_API_TOKEN);
-    if ($resp['status'] === 200 && !empty($resp['json']['data']['viewer']['zones'][0]['httpRequests1dGroups'])) {
-        foreach ($resp['json']['data']['viewer']['zones'][0]['httpRequests1dGroups'] as $day) {
-            $analytics['requests']        += isset($day['sum']['requests']) ? $day['sum']['requests'] : 0;
-            $analytics['bandwidth']       += isset($day['sum']['bytes']) ? $day['sum']['bytes'] : 0;
-            $analytics['cached_requests'] += isset($day['sum']['cachedRequests']) ? $day['sum']['cachedRequests'] : 0;
-            $analytics['cached_bytes']    += isset($day['sum']['cachedBytes']) ? $day['sum']['cachedBytes'] : 0;
-        }
-    }
 
     // ---- Unique Visitors ----
     $graphql_uniques = [
@@ -606,13 +604,11 @@ function getCloudflareAnalytics($CF_API_TOKEN, $CF_ZONE_ID, $days, $area, $start
     ];
 
     $resp_uniques = cf_graphql($graphql_uniques, $CF_API_TOKEN);
-    if ($resp_uniques['status'] === 200 && !empty($resp_uniques['json']['data']['viewer']['zones'][0]['httpRequestsAdaptiveGroups'])) {
-        foreach ($resp_uniques['json']['data']['viewer']['zones'][0]['httpRequestsAdaptiveGroups'] as $row) {
-            $analytics['uniques'] += isset($row['sum']['visits']) ? $row['sum']['visits'] : 0;
-        }
-    }
+    $resp_uniques2 = null;
 
-    if ($analytics['uniques'] === 0) {
+    // No visits counted (or the read refused): ask the daily uniques instead.
+    $first = pg_cloudflare_analytics_totals($resp, $resp_uniques, null);
+    if ($first['uniques'] === 0) {
         $graphql_uniques2 = [
             'query' => 'query {
                 viewer {
@@ -628,30 +624,9 @@ function getCloudflareAnalytics($CF_API_TOKEN, $CF_ZONE_ID, $days, $area, $start
             }'
         ];
         $resp_uniques2 = cf_graphql($graphql_uniques2, $CF_API_TOKEN);
-        if ($resp_uniques2['status'] === 200 && !empty($resp_uniques2['json']['data']['viewer']['zones'][0]['httpRequests1dGroups'])) {
-            foreach ($resp_uniques2['json']['data']['viewer']['zones'][0]['httpRequests1dGroups'] as $row) {
-                $analytics['uniques'] += isset($row['uniq']['uniques']) ? $row['uniq']['uniques'] : 0;
-            }
-        }
     }
 
-    // ---- Format output ----
-    switch ($area) {
-        case 'requests':
-            return pg_format_number($analytics['requests'], 0);
-        case 'uniques':
-            return pg_format_number($analytics['uniques'], 0);
-        case 'bandwidth':
-            return pg_format_number((isset($analytics['bandwidth']) ? $analytics['bandwidth'] : 0) / 1000 / 1000, 2) . ' MB';
-        case 'percent_cached':
-            return ($analytics['bandwidth'] > 0)
-                ? pg_format_number(($analytics['cached_bytes'] / $analytics['bandwidth']) * 100, 2) . ' %'
-                : '0 %';
-        case 'cached_bytes':
-            return pg_format_number((isset($analytics['cached_bytes']) ? $analytics['cached_bytes'] : 0) / 1024 / 1024, 2) . ' MB';
-        default:
-            return '';
-    }
+    return pg_cloudflare_analytics_totals($resp, $resp_uniques, $resp_uniques2);
 }
 
 
@@ -696,6 +671,21 @@ $focus_switch = (isset($_GET['focus']) && is_string($_GET['focus'])) ? $_GET['fo
 $switch_focus = function ($id) use ($focus_switch) {
     return ($id === $focus_switch) ? ' autofocus' : '';
 };
+// A switch whose setting could not be read is disabled and says so, rather
+// than showing Off.
+$switch_unread = function ($id) use ($unread_switches) {
+    return isset($unread_switches[$id]) ? ' disabled aria-describedby="' . $id . '_unread"' : '';
+};
+$switch_unread_note = function ($id) use ($unread_switches) {
+    return isset($unread_switches[$id]) ? '<div id="' . $id . '_unread" class="form-text fg-danger">' . lang('Could not be read from Cloudflare.') . '</div>' : '';
+};
+
+
+$analytics = cf_read_analytics($CF_API_TOKEN, $CF_ZONE_ID, $days, $start_date, $end_date);
+$analytics_reasons = array_unique(array_filter(array($analytics['error'], $analytics['uniques_error'])));
+$analytics_note = $analytics_reasons
+    ? '<p class="fg-danger small">' . h(lang(array('string' => 'Analytics could not be read: {var:1}', 'vars' => implode(' ', $analytics_reasons)))) . '</p>'
+    : '';
 
 
 // -------------------- DNS TABLE --------------------
@@ -819,25 +809,26 @@ print pg_page_shell([
     <div class="row mb-7">
       <div class="md:col-2"><div class="card text-center"><div class="card-body">
         <h6>' . lang('Requests') . '</h6>
-        <p>'.getCloudflareAnalytics($CF_API_TOKEN,$CF_ZONE_ID,$days,'requests',$start_date,$end_date).'</p>
+        <p>'.pg_cloudflare_analytics_card($analytics, 'requests').'</p>
       </div></div></div>
       <div class="md:col-2"><div class="card text-center"><div class="card-body">
         <h6>' . lang('Unique Visitors') . '</h6>
-        <p>'.getCloudflareAnalytics($CF_API_TOKEN,$CF_ZONE_ID,$days,'uniques',$start_date,$end_date).'</p>
+        <p>'.pg_cloudflare_analytics_card($analytics, 'uniques').'</p>
       </div></div></div>
       <div class="md:col-2"><div class="card text-center"><div class="card-body">
         <h6>' . lang('Bandwidth') . '</h6>
-        <p>'.getCloudflareAnalytics($CF_API_TOKEN,$CF_ZONE_ID,$days,'bandwidth',$start_date,$end_date).'</p>
+        <p>'.pg_cloudflare_analytics_card($analytics, 'bandwidth').'</p>
       </div></div></div>
       <div class="md:col-2"><div class="card text-center"><div class="card-body">
         <h6>' . lang('Percent Cached') . '</h6>
-        <p>'.getCloudflareAnalytics($CF_API_TOKEN,$CF_ZONE_ID,$days,'percent_cached',$start_date,$end_date).'</p>
+        <p>'.pg_cloudflare_analytics_card($analytics, 'percent_cached').'</p>
       </div></div></div>
       <div class="md:col-2"><div class="card text-center"><div class="card-body">
         <h6>' . lang('Cached Data') . '</h6>
-        <p>'.getCloudflareAnalytics($CF_API_TOKEN,$CF_ZONE_ID,$days,'cached_bytes',$start_date,$end_date).'</p>
+        <p>'.pg_cloudflare_analytics_card($analytics, 'cached_bytes').'</p>
       </div></div></div>
     </div>
+    '.$analytics_note.'
 
     <!-- Settings -->
     <div class="card my-7">
@@ -850,8 +841,9 @@ print pg_page_shell([
           <input type="hidden" name="action" value="toggle_dev">
           <input type="hidden" name="value" value="'.($dev_mode==="on"?"off":"on").'">
           <div class="form-field">
-            <div class="switch"><input class="" type="checkbox" id="cf_dev" onchange="this.form.submit()"'.$switch_focus('cf_dev').' '.($dev_mode==="on"?"checked":"").'></div>
+            <div class="switch"><input class="" type="checkbox" id="cf_dev" onchange="this.form.submit()"'.$switch_focus('cf_dev').' '.($dev_mode==="on"?"checked":"").$switch_unread('cf_dev').'></div>
             <label class="" for="cf_dev">' . lang('Development Mode') . '</label>
+            '.$switch_unread_note('cf_dev').'
           </div>
         </form>
         <!-- Under Attack Mode -->
@@ -859,8 +851,9 @@ print pg_page_shell([
           <input type="hidden" name="action" value="toggle_uam">
           <input type="hidden" name="value" value="'.($uam_mode==="under_attack"?"medium":"under_attack").'">
           <div class="form-field">
-            <div class="switch"><input class="" type="checkbox" id="cf_uam" onchange="this.form.submit()"'.$switch_focus('cf_uam').' '.($uam_mode==="under_attack"?"checked":"").'></div>
+            <div class="switch"><input class="" type="checkbox" id="cf_uam" onchange="this.form.submit()"'.$switch_focus('cf_uam').' '.($uam_mode==="under_attack"?"checked":"").$switch_unread('cf_uam').'></div>
             <label class="" for="cf_uam">' . lang('Under Attack Mode') . '</label>
+            '.$switch_unread_note('cf_uam').'
           </div>
         </form>
         <!-- Always Use HTTPS -->
@@ -868,8 +861,9 @@ print pg_page_shell([
           <input type="hidden" name="action" value="toggle_always_https">
           <input type="hidden" name="value" value="'.($always_https==="on"?"off":"on").'">
           <div class="form-field">
-            <div class="switch"><input class="" type="checkbox" id="cf_https" onchange="this.form.submit()"'.$switch_focus('cf_https').' '.($always_https==="on"?"checked":"").'></div>
+            <div class="switch"><input class="" type="checkbox" id="cf_https" onchange="this.form.submit()"'.$switch_focus('cf_https').' '.($always_https==="on"?"checked":"").$switch_unread('cf_https').'></div>
             <label class="" for="cf_https">' . lang('Always Use HTTPS') . '</label>
+            '.$switch_unread_note('cf_https').'
           </div>
         </form>
         <!-- Brotli -->
@@ -877,8 +871,9 @@ print pg_page_shell([
           <input type="hidden" name="action" value="toggle_brotli">
           <input type="hidden" name="value" value="'.($brotli==="on"?"off":"on").'">
           <div class="form-field">
-            <div class="switch"><input class="" type="checkbox" id="cf_brotli" onchange="this.form.submit()"'.$switch_focus('cf_brotli').' '.($brotli==="on"?"checked":"").'></div>
+            <div class="switch"><input class="" type="checkbox" id="cf_brotli" onchange="this.form.submit()"'.$switch_focus('cf_brotli').' '.($brotli==="on"?"checked":"").$switch_unread('cf_brotli').'></div>
             <label class="" for="cf_brotli">' . lang('Brotli') . '</label>
+            '.$switch_unread_note('cf_brotli').'
           </div>
         </form>
         <!-- Rocket Loader -->
@@ -886,8 +881,9 @@ print pg_page_shell([
           <input type="hidden" name="action" value="toggle_rocket">
           <input type="hidden" name="value" value="'.($rocket==="on"?"off":"on").'">
           <div class="form-field">
-            <div class="switch"><input class="" type="checkbox" id="cf_rocket" onchange="this.form.submit()"'.$switch_focus('cf_rocket').' '.($rocket==="on"?"checked":"").'></div>
+            <div class="switch"><input class="" type="checkbox" id="cf_rocket" onchange="this.form.submit()"'.$switch_focus('cf_rocket').' '.($rocket==="on"?"checked":"").$switch_unread('cf_rocket').'></div>
             <label class="" for="cf_rocket">' . lang('Rocket Loader') . '</label>
+            '.$switch_unread_note('cf_rocket').'
           </div>
         </form>
         <!-- Clear Cache -->
