@@ -265,13 +265,11 @@ function pg_settings_categories()
         'commerce' => array(
             'label' => lang('Ecommerce'),
             'icon'  => 'bi-shop',
-            'description' => lang('Store, shipping, gift cards, e-invoice, payment and affiliates.'),
+            'description' => lang('Store, shipping, gift cards, payment and affiliates.'),
             'sections' => array(
                 'pgset-store'     => lang('Store'),
                 'pgset-shipping'  => lang('Shipping'),
                 'pgset-giftcards' => lang('Gift Cards & Rewards'),
-                'pgset-invoice'   => lang('E-Invoice'),
-                'pgset-erp'       => lang('ERP'),
                 'pgset-payments'  => lang('Payment Methods'),
                 'pgset-reference-price' => lang('Reference Price'),
                 'pgset-legal'     => lang('Legal Documents'),
@@ -281,12 +279,24 @@ function pg_settings_categories()
                 'pgset-store'     => pg_settings_keywords(lang('store, commerce, ecommerce, order number, tax, vat, barcode, currency')),
                 'pgset-shipping'  => pg_settings_keywords(lang('shipping, cargo, delivery, ups, fedex, usps, recipient, address verification')),
                 'pgset-giftcards' => pg_settings_keywords(lang('gift card, points, reward, givex')),
-                'pgset-invoice'   => pg_settings_keywords(lang('invoice, e-invoice, e-archive, e-document, provider, parasut, isbasi, logo, accounting')),
-                'pgset-erp'       => pg_settings_keywords(lang('erp, account, cash, bank, bookkeeping, waybill, collection, overdue, reminder, automatic invoice')),
                 'pgset-payments'  => pg_settings_keywords(lang('payment, card, credit card, iyzico, iyzipay, paypal, stripe, installment, wire transfer, cash on delivery, 3d secure')),
                 'pgset-reference-price' => pg_settings_keywords(lang('reference price, price before discount, lowest price, 30 days, 10 days, compare-at price, omnibus, price label')),
                 'pgset-legal'     => pg_settings_keywords(lang('legal, contract, distance sales contract, pre-information form, terms, withdrawal, consumer')),
                 'pgset-affiliate' => pg_settings_keywords(lang('affiliate, commission, referral')),
+            ),
+        ),
+
+        'accounting' => array(
+            'label' => lang('Accounting'),
+            'icon'  => 'bi-calculator',
+            'description' => lang('The ERP and the e-document provider.'),
+            'sections' => array(
+                'pgset-erp'       => lang('ERP'),
+                'pgset-invoice'   => lang('E-Invoice'),
+            ),
+            'keywords' => array(
+                'pgset-erp'       => pg_settings_keywords(lang('erp, account, cash, bank, bookkeeping, waybill, collection, overdue, reminder, automatic invoice')),
+                'pgset-invoice'   => pg_settings_keywords(lang('invoice, e-invoice, e-archive, e-document, provider, parasut, isbasi, logo, accounting')),
             ),
             'lists' => array(
                 'erp_fx_currencies' => 1,
@@ -313,8 +323,8 @@ function pg_settings_categories()
     // Turkey, with none in use, it is left out of the list (the card is still
     // drawn, hidden, so a save never finds its fields missing).
     if (function_exists('pg_edoc_settings_shown') && !pg_edoc_settings_shown()) {
-        unset($categories['commerce']['sections']['pgset-invoice'], $categories['commerce']['keywords']['pgset-invoice']);
-        $categories['commerce']['description'] = lang('Store, shipping, gift cards, payment and affiliates.');
+        unset($categories['accounting']['sections']['pgset-invoice'], $categories['accounting']['keywords']['pgset-invoice']);
+        $categories['accounting']['description'] = lang('The ERP: accounts, documents, payment terms and reminders.');
     }
 
     // The Dashboard card is drawn for designers and administrators only
@@ -457,7 +467,9 @@ function pg_settings_legacy_anchors()
         'pgsub-store'      => array('commerce',   'pgset-store'),
         'pgsub-shipping'   => array('commerce',   'pgset-shipping'),
         'pgsub-giftcards'  => array('commerce',   'pgset-giftcards'),
-        'pgsub-invoice'    => array('commerce',   'pgset-invoice'),
+        'pgsub-invoice'    => array('accounting', 'pgset-invoice'),
+        'pgset-invoice'    => array('accounting', 'pgset-invoice'),
+        'pgset-erp'        => array('accounting', 'pgset-erp'),
         'pgsub-payments'   => array('commerce',   'pgset-payments'),
         'pgset-affiliate'  => array('commerce',   'pgset-affiliate'),
         'pgset-cron'       => array('general',    'pgset-cron'),

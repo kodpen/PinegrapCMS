@@ -4,7 +4,7 @@ description: Plan (owner 2026-10-30): Site Settings regrouped, one place per set
 ---
 
 ## What is the goal?
-- Owner, 2026-10-30: people get lost in Site Settings. The list mixes 10 categories (54 cards, `includes/settings/registry.php` 84-310) with 18 links that leave the dialog (`registry.php` 515-625). Some topics sit in two or three places: the organization's identity, AI bots, the panel's look, privacy. Some names are near twins: Security/Firewall, API/Application API/Application Access, Cron Jobs/Jobs, Clean Up/Purge Cache.
+- Owner, 2026-10-30: people get lost in Site Settings. The list mixes 10 categories (54 cards, `includes/settings/registry.php` 84-310) with 18 links that leave the dialog (`registry.php` 515-625). Some topics sit in two or three places: the organization's identity, AI bots, the panel's look, privacy. Some names are near twins (Security/Firewall, Cron Jobs/Jobs).
 
 ## What is decided? (owner, 2026-10-30)
 - Tools leave the list. The 18 links (Monitoring, Connections, Store Lists, Jobs, Infrastructure) move to one new System tools screen, with the same rights per link. The dialog's list keeps only categories, plus one "System tools ›" link at its end. The main menu's System heading gets a row for the screen.
@@ -29,6 +29,7 @@ description: Plan (owner 2026-10-30): Site Settings regrouped, one place per set
 
 ## What is still open?
 - Headings over the list, for example Site, Selling, Security, Running the site? Ask before R8.
+- R2b: `erp_settings.php` admits role 3 with the ERP settings right (`validate_erp_access`), the dialog only role < 3. Keep the screen for them, or open the Accounting pane to that right? Ask before R2b.
 - Two "Support E-mail Address" fields (`general.php` 40, `commerce.php` 1281): one field, or two names? Ask before R4.
 
 ## Where to start?

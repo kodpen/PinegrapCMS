@@ -2,7 +2,7 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Tests for the Paraşüt card of the commerce settings and the connection it
+ * Tests for the Paraşüt card of the accounting settings and the connection it
  * makes (includes/fn/parasut.php): the owner stamp of a token from the
  * authorization code, the Client Secret and Password boxes drawn from what
  * is really stored, the company a code connection works in, the notice and
@@ -158,7 +158,7 @@ function test_parasut_connection_card_credential_boxes_follow_what_is_stored()
 // The card draws each box with its own placeholder and help.
 function test_parasut_connection_card_draws_each_box_from_its_own_value()
 {
-	$card = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/settings/commerce.php');
+	$card = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/settings/accounting.php');
 	$prep = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/settings/prep.php');
 
 	parasut_connection_card_test_has('placeholder="\' . h($parasut_secret_placeholder) . \'"', $card);
@@ -261,7 +261,7 @@ function test_parasut_connection_card_connect_report_warns_of_a_company_change()
 	$endpoint = (string) file_get_contents(PG_FUNCTIONS_DIR . '/parasut_connect.php');
 	parasut_connection_card_test_has('parasut_connect_report($result)', $endpoint);
 	parasut_connection_card_test_has("\$tone = \$ok ? (\$warned ? 'warning' : 'success') : 'danger';", $endpoint);
-	$save = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/settings/commerce.save.php');
+	$save = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/settings/accounting.save.php');
 	parasut_connection_card_test_has('parasut_connect_report($parasut_connected)', $save);
 	parasut_connection_card_test_has('$liveform->add_warning(h($parasut_line));', $save);
 
@@ -274,7 +274,7 @@ function test_parasut_connection_card_connect_report_warns_of_a_company_change()
 // card of their own; every Pinegrap product gets its own card.
 function test_parasut_connection_card_default_product_help()
 {
-	$card = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/settings/commerce.php');
+	$card = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/settings/accounting.php');
 
 	pg_assert_same(false, strpos($card, 'used for all invoice line items'));
 	parasut_connection_card_test_has("lang('Used for the invoice lines that have no Paraşüt product card of their own: shipping, charges, free-text lines and rounding. Each Pinegrap product gets its own card. Without this ID an invoice with such a line is refused. Create a generic product/service in Paraşüt and enter its ID here.')", $card);

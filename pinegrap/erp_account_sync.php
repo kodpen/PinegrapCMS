@@ -382,7 +382,7 @@ if (!$installed) {
         . (($active === '')
             ? lang('The cards are compared with the e-document provider\'s, and no provider is selected.')
             : lang(array('string' => '{var:1} does not hand over its customer and supplier cards yet.', 'vars' => h(erp_edoc_info($active)['label']))))
-        . ' <a href="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/' . pg_settings_return_url('commerce', 'pgset-invoice')) . '">' . lang('E-Invoice settings') . '</a>'
+        . ' <a href="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/' . pg_settings_return_url('accounting', 'pgset-invoice')) . '">' . lang('E-Invoice settings') . '</a>'
         . '</div>';
 }
 
