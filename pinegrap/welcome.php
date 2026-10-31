@@ -665,7 +665,7 @@ $widget_registry[20] = array(
     'title' => lang('Calendars'),
     'icon'  => 'bi-calendar3',
     'body'  => $placeholder_w20,
-    'show'  => (validate_calendars_access($user, true) != false));
+    'show'  => ((CALENDARS === true) && (validate_calendars_access($user, true) != false)));
 
 // Firewall: staff roles only. Contributors are excluded, because firewall
 // events carry raw attack payloads and visitor addresses.
