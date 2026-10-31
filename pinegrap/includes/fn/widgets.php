@@ -6486,6 +6486,12 @@ function _render_system_widget_search_results($tree_json, $widget_id, $cfg = arr
     $offset       = ($current_page - 1) * $per_page;
     $paging       = pg_sw_list_paging($page_param, $current_page, $total_pages);
 
+    // The visit records the search once: a later results page of the same
+    // search does not add it again.
+    if ($current_page === 1 && !isset($_GET[$page_param])) {
+        pg_search_record_visit_term($query);
+    }
+
     _pg_sw_apply_search_form_bindings($tree, array(
         'action_url'  => _pg_sw_current_path(),
         'hidden_html' => _pg_sw_hidden_query_inputs(array($param, $page_param)),

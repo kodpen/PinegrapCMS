@@ -118,6 +118,8 @@ function test_marketplace_product_matches_send_needs_an_active_account()
 // the other columns.
 function test_marketplace_product_matches_search_ignores_case_on_the_code()
 {
+	product_matches_test_db_stub();
+
 	pg_assert_contains("marketplace_product_map.remote_code COLLATE utf8mb4_unicode_ci LIKE '%abc-1%'", mp_matches_search_sql('abc-1'));
 	pg_assert_same('', mp_matches_search_sql('  '));
 }

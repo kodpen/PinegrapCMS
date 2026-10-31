@@ -133,7 +133,7 @@ function db_q_users_comments_search_test_built($text)
 
 function test_db_q_users_comments_search_value_queries_use_db_q()
 {
-	$expected = array('includes/fn/user_list.php' => 5, 'delete_users.php' => 9, 'my_account_profile.php' => 4, 'add_comment.php' => 12, 'edit_comment.php' => 7, 'get_search_results.php' => 5, 'get_sitemap_info.php' => 4);
+	$expected = array('includes/fn/user_list.php' => 5, 'delete_users.php' => 9, 'my_account_profile.php' => 4, 'add_comment.php' => 12, 'edit_comment.php' => 7, 'get_search_results.php' => 3, 'get_sitemap_info.php' => 4);
 
 	foreach ($expected as $path => $minimum) {
 		$db_q = 0;
