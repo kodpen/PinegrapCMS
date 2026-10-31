@@ -289,3 +289,26 @@ function test_short_link_page_rename_screens_keep_the_old_address()
 	pg_assert_contains("'ignore_redirects_to_page' => \$page_id", $mass, 'the grid name check lets the page\'s own redirect go');
 	pg_assert_contains("pg_short_link_page_renamed(\$page_id, \$current_page_name, \$new_page_name, false, \$user['id'], \$row['page_folder'])", $mass, 'and the grid deletes it');
 }
+
+// IIS hands the path re-encoded in the ANSI code page: a Turkish letter is a
+// byte that is not UTF-8, which an mb_ function turns into "?" and the router
+// then took for the start of the query string. The request is cut with byte
+// functions up to the point where the name is read back as UTF-8.
+function test_short_link_router_cuts_the_request_by_bytes_until_the_name_is_utf8()
+{
+	$router = short_link_requests_test_source('router.php');
+	$start = strpos($router, "define('REQUEST_URL', router_get_request_url());");
+	$utf8 = strpos($router, '$item_name = router_utf8_name(rawurldecode($item_name));');
+	$short_link = strpos($router, '$short_link_name = $item_name;');
+
+	pg_assert_true(($start !== false) && ($utf8 !== false) && ($short_link !== false) && ($start < $utf8) && ($utf8 < $short_link), 'the name is UTF-8 before any lookup');
+	pg_assert_same(0, preg_match('/\bmb_(substr|strpos|strlen|strtolower)\(/', substr($router, $start, $utf8 - $start)), 'no mb_ function on the raw request');
+
+	$file_redirect = short_link_requests_test_function_body($router, 'router_language_file_redirect');
+	pg_assert_same(false, strpos($file_redirect, "mb_strpos(\$name, '?')"), 'the language file redirect cuts the query string by bytes');
+	pg_assert_true(strpos($file_redirect, 'router_utf8_name(rawurldecode($name))') !== false, 'and reads the name as UTF-8');
+
+	// The byte IIS sends for ç is no "?" to a byte search (PHP 8's
+	// mb_substr() turns it into one; 7.x keeps it).
+	pg_assert_same(false, strpos("pg-test-k\xFDsa-\xE7ay", '?'), 'a byte search finds no query string');
+}
