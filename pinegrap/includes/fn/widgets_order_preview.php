@@ -321,6 +321,48 @@ function pg_op_page_row_changes($row, $cfg)
 }
 
 /**
+ * The page id an earlier checkout step left in the session (the cart,
+ * shipping and billing steps write theirs), 0 when the visitor came to the
+ * Order Preview without passing that step.
+ *
+ * @param array|null $ecommerce $_SESSION['ecommerce']
+ * @param string     $key       'shipping_address_and_arrival_page_id' or 'billing_information_page_id'
+ * @return int
+ */
+function pg_op_step_page_id($ecommerce, $key)
+{
+    $value = is_array($ecommerce) && isset($ecommerce[$key]) ? $ecommerce[$key] : 0;
+    if (!is_scalar($value) || !ctype_digit((string) $value)) return 0;
+    return (int) $value;
+}
+
+/**
+ * The address of an earlier checkout step's page for its "Change" link, ''
+ * when the session names no such page or the page is gone.
+ *
+ * @param string $key   see pg_op_step_page_id()
+ * @param string $query appended to the address, e.g. '?ship_to_id=5'
+ * @return string
+ */
+function pg_op_step_url($key, $query = '')
+{
+    $page_id = pg_op_step_page_id($_SESSION['ecommerce'] ?? null, $key);
+    $name = $page_id > 0 ? (string) get_page_name($page_id) : '';
+    return $name === '' ? '' : PATH . encode_url_path($name) . $query;
+}
+
+/**
+ * The classic page's "Change" button, '' without an address to point at.
+ *
+ * @param string $url pg_op_step_url()
+ * @return string
+ */
+function pg_op_change_link_html($url)
+{
+    return $url === '' ? '' : '<a class="software_button_tiny_secondary" href="' . h($url) . '">Change</a>';
+}
+
+/**
  * A reviewed custom form (get_form_review_info()'s fields) as a description
  * list: the fields the visitor filled, information fields left out. The
  * data is already prepared for output.
@@ -367,7 +409,8 @@ function _pg_op_recipients_html($d)
                 $html .= '<div class="small">' . h(lang('Shipping Method')) . ': ' . h((string)$r['shipping_method_name'])
                     . (isset($r['shipping_cost_info']) ? ' (' . $r['shipping_cost_info'] . ')' : '') . '</div>';
             }
-            $html .= '</div><a class="small" href="' . h((string)$r['update_url']) . '">' . h(lang('Change')) . '</a></div>';
+            $html .= '</div>' . ((string)($r['update_url'] ?? '') !== ''
+                ? '<a class="small" href="' . h((string)$r['update_url']) . '">' . h(lang('Change')) . '</a>' : '') . '</div>';
             if (!empty($r['form']) && !empty($r['form_data'])) {
                 $html .= '<div class="small mb-2">' . pg_op_review_fields_html($r['fields']) . '</div>';
             }
@@ -502,8 +545,12 @@ function _render_system_widget_order_preview($tree_json, $widget_id, $cfg = arra
     $tree = json_decode($tree_json, true);
     if (!is_array($tree)) return '';
     if (!defined('ECOMMERCE') || ECOMMERCE !== true) return '';
-    // The visitor's own order; a background render has none to show.
+    // The visitor's own order; a background render, the SEO score's render
+    // and the search index's have none to show (the operator who saves the
+    // page is not its visitor).
     if ($mode === 'background') return '';
+    if (function_exists('pg_seo_rendering') && pg_seo_rendering()) return '';
+    if (defined('UPDATE_SEARCH_INDEX') && UPDATE_SEARCH_INDEX === true) return '';
     if (function_exists('pg_page_cache_personal')) pg_page_cache_personal('checkout');
 
     $page_id = _pg_sa_page_id();

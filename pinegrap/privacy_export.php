@@ -154,8 +154,14 @@ if (is_array($privacy_export_result) && ($privacy_export_result['status'] === 'r
     $privacy_export_people = '';
 
     foreach ($privacy_export_found['users'] as $privacy_export_user) {
+        // edit_user.php refuses the viewer's own account and any role not
+        // below theirs: the name is plain text there.
+        $privacy_export_account = pg_can_open_user($user, $privacy_export_user['user_role'])
+            ? '<a href="edit_user.php?id=' . (int) $privacy_export_user['user_id'] . '">' . h($privacy_export_user['user_username']) . '</a>'
+            : h($privacy_export_user['user_username']);
+
         $privacy_export_people .= '
-                        <li class="mb-1"><i class="bi bi-person me-1" aria-hidden="true"></i><a href="edit_user.php?id=' . (int) $privacy_export_user['user_id'] . '">' . h($privacy_export_user['user_username']) . '</a> <span class="fg-secondary small">' . h(pg_user_role_name($privacy_export_user['user_role'])) . '</span></li>';
+                        <li class="mb-1"><i class="bi bi-person me-1" aria-hidden="true"></i>' . $privacy_export_account . ' <span class="fg-secondary small">' . h(pg_user_role_name($privacy_export_user['user_role'])) . '</span></li>';
     }
 
     foreach ($privacy_export_found['contacts'] as $privacy_export_contact) {

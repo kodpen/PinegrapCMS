@@ -121,6 +121,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - order-legal-documents.md: Legal documents (pre-information form, distance sales contract): settings, templates, order_documents, kept copy for customer and staff, receipt attachments, panel card
 - order-page-stored-figures.md: Order view (My Account) and receipt page/e-mail show a placed order's own orders.discount, tax and total (pg_order_page_figures), never the session cart's order_discount; what an unplaced order shows
 - order-payment-method-normalization.md: submit_order.php payment_method normalization to the four constants, the Pay With Iyzico ENUM addition (4.48) and the old Turkish layout cause.
+- order-preview-step-links-and-installments.md: Order Preview without earlier checkout step pages in the session (pg_op_step_page_id/url, no Change link) and the Iyzipay installment table shared with Express Order (#4019)
 - order-reference-code-link.md: How the cart, quote and express order pages read the ?r= / ?reference_code= saved-cart link (one string, list = not given), and the order history screens' translated messages.
 - order-returns-api-timing.md: Returns over the API and the customer's timing rules (owner 2026-10-24): staff-like by default, customer_rules and its 409s, repeat before timing, OrderReturn.withdrawal, pg_return_timing()
 - order-returns-api.md: Returns over the external API: GET/POST /orders/{id}/returns, body, errors, what source api skips, the create check split and its repeat, where the refund's amount and method are
@@ -191,7 +192,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - product-reviews-verified.md: Product reviews only from buyers (2026.11.0, 11.0.14, PR #698): which comments are reviews, the purchase check, the product rating and its refresh, aggregateRating
 - product-screen-units-and-commission.md: Product screen weight and dimensions (lb/in stored, metric keeps four places), the commission rate limit (decimal(5,2), #2056), stored "no limit" zeros shown blank, boxes sized to their columns
 - product-tax-rate.md: How product tax_rate and tax_zones combine, NULL vs 0.000 semantics, line-total tax in order_items.tax_total, deprecated order_items.tax, PayPal Express tax field.
-- products-list-bulk-writes.md: Products list bulk Delete Selected and Enable/Disable: the bundle component refusal it reports, and the SEO stale mark a change of the enabled state needs
+- products-list-bulk-writes.md: Products list and Catalog Manager bulk delete, enable and restore: bundle component refusal, restore limited to the bin, SEO stale mark and marketplace send
 - products-variant-model.md: products/product_groups access and price units, the no-separate-variant-table model and its xref tables, external API field source, and the no per-row queries list rule.
 - refund-amounts-base-currency.md: Refund and cancel amounts on the dashboard 'To refund' lane and the order screen are printed with BASE_CURRENCY_SYMBOL, never orders.currency_code
 - shipment-api-fields.md: The address (district) and parcels blocks of GET /orders/{id} shipments, the order.shipped / order.delivered parcels (pg_shipment_api_parcel), and the carrier POST /orders/{id}/shipment keeps

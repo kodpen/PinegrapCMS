@@ -236,7 +236,7 @@ function pg_explorer_handle_catalog_list($type, $request, $user)
             'retention_days' => pg_recycle_ready() ? pg_recycle_retention_days() : 0,
             'inside' => ($view_mode == 'recycled'),
             'count' => pg_catalog_recycle_ready()
-                ? ((int) db_value("SELECT COUNT(*) FROM product_groups WHERE recycled = '1'")
+                ? (pg_catalog_bin_top_group_count(pg_catalog_group_map(true))
                     + (int) db_value("SELECT COUNT(*) FROM products WHERE recycled = '1'"))
                 : 0),
         'bin_entries' => $bin_entries,
@@ -749,6 +749,7 @@ function pg_explorer_handle_catalog_recycle($type, $request, $user)
     // pressing Delete must not be undone by one group that still holds
     // groups. What was refused is said afterwards, once per reason.
     $errors = array();
+    $components = 0;
 
     $map = pg_catalog_group_map();
 
@@ -811,6 +812,13 @@ function pg_explorer_handle_catalog_recycle($type, $request, $user)
             // The same move every screen that deletes a product makes,
             // product.deleted with recycled: true included. False for a
             // product that is gone or already in the bin.
+            // A bundle component stays in the shop, and the operator is
+            // told why (pg_catalog_bin_product() refuses it silently).
+            if (pg_bundle_is_component($item_id)) {
+                $components++;
+                continue;
+            }
+
             $audit_before = pg_audit_fetch('products', $item_id);
 
             $product_name = pg_catalog_bin_product($item_id, $user['id']);
@@ -831,13 +839,19 @@ function pg_explorer_handle_catalog_recycle($type, $request, $user)
         ? lang(array('string' => '{var:1} item(s) were moved to the Recycle Bin.', 'vars' => $binned))
         : lang('Sorry, we could not accept your request.');
 
+    $skipped = count($errors) + $components;
+
+    if ($components > 0) {
+        $errors[] = pg_bundle_bulk_delete_refusal($components);
+    }
+
     $message = pg_explorer_catalog_recycle_message($message, $binned, $errors);
 
     respond(array(
         'status' => ($binned > 0) ? 'success' : 'error',
         'request' => $type,
         'count' => $binned,
-        'skipped' => count($errors),
+        'skipped' => $skipped,
         'message' => $message));
 }
 
@@ -914,30 +928,58 @@ function pg_explorer_handle_catalog_restore($type, $request, $user)
 
                 $audit_before = pg_audit_fetch_many('products', $variant_ids);
 
+                // The SEO score was last worked out for a product off sale
+                // (the full refresh scores binned rows too), and binning
+                // sent the marketplaces quantity 0: both follow the
+                // enabled state that comes back.
                 db(
                     "UPDATE products
                     SET recycled = '0',
-                        enabled = recycled_enabled
+                        enabled = recycled_enabled,
+                        seo_analysis_current = '0'
                     WHERE (id IN (" . $sql_variant_ids . ")) AND (recycled = '1')");
 
                 pg_audit_record_many('restore', 'products', $audit_before);
 
                 db("DELETE FROM recycle_bin WHERE (item_type = 'product') AND (item_id IN (" . $sql_variant_ids . "))");
+
+                if (function_exists('pg_marketplace_product_changed')) {
+                    foreach ($variant_ids as $variant_id) {
+                        pg_marketplace_product_changed($variant_id);
+                    }
+                }
             }
 
             $restored++;
 
         } elseif ($item_kind == 'product') {
 
+            // Only a product that is in the bin. Undo of a Delete sends
+            // back the whole selection, refused rows included; a bundle
+            // component the delete left on sale has a recycled_enabled
+            // of 0 or of an older binning, and writing it here would take
+            // the product off sale.
             $audit_before = pg_audit_fetch('products', $item_id);
             db(
                 "UPDATE products
                 SET recycled = '0',
-                    enabled = recycled_enabled
-                WHERE id = '" . e($item_id) . "'");
+                    enabled = recycled_enabled,
+                    seo_analysis_current = '0'
+                WHERE (id = '" . e($item_id) . "') AND (recycled = '1')");
+
+            if (mysqli_affected_rows(db::$con) <= 0) {
+                continue;
+            }
+
             pg_audit_record('restore', 'products', $item_id, $audit_before);
 
             db("DELETE FROM recycle_bin WHERE (item_type = 'product') AND (item_id = '" . e($item_id) . "')");
+
+            // Binning sent the marketplaces quantity 0; the listing
+            // follows the enabled state that comes back.
+            if (function_exists('pg_marketplace_product_changed')) {
+                pg_marketplace_product_changed($item_id);
+            }
 
             $restored++;
         }
@@ -1087,6 +1129,7 @@ function pg_explorer_handle_catalog_enable($type, $request, $user)
             db(
                 "UPDATE product_groups
                 SET enabled = '" . e($enabled) . "',
+                    seo_analysis_current = '0',
                     timestamp = UNIX_TIMESTAMP(),
                     user = '" . e($user['id']) . "'
                 WHERE id = '" . e($item_id) . "'" . pg_catalog_live_filter('product_groups'));
@@ -1107,10 +1150,17 @@ function pg_explorer_handle_catalog_enable($type, $request, $user)
             db(
                 "UPDATE products
                 SET enabled = '" . e($enabled) . "',
+                    seo_analysis_current = '0',
                     timestamp = UNIX_TIMESTAMP(),
                     user = '" . e($user['id']) . "'
                 WHERE id = '" . e($item_id) . "'");
             pg_audit_record('update', 'products', $item_id, $audit_before);
+
+            // A disabled product is listed with quantity 0, so the
+            // marketplaces hear of either change.
+            if (function_exists('pg_marketplace_product_changed')) {
+                pg_marketplace_product_changed($item_id);
+            }
 
             log_activity(lang(array('string' => 'product ({var:1}) was updated', 'vars' => array($product['name']))), $_SESSION['sessionusername']);
 

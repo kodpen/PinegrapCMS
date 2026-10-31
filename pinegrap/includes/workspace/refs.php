@@ -1279,7 +1279,13 @@ function ws_refs_resolve($viewer, $tokens)
 
         foreach ((array) db_items("SELECT user_id, user_username, user_email, user_role FROM user WHERE user_id IN (" . $in('user_account') . ")") as $row) {
             if ($viewer['users']) {
-                $put('user_account', $row['user_id'], $row['user_username'], $base . 'edit_user.php?id=' . (int) $row['user_id'],
+                // edit_user.php opens only a strictly lower role (any for an
+                // administrator): otherwise the chip keeps its text, no link.
+                $user_url = pg_can_open_user(array('role' => $viewer['role']), $row['user_role'])
+                    ? $base . 'edit_user.php?id=' . (int) $row['user_id']
+                    : '';
+
+                $put('user_account', $row['user_id'], $row['user_username'], $user_url,
                     (string) $row['user_email'], $roles[(int) $row['user_role']] ?? '', true, 'bi-person-badge');
             } else {
                 $put('user_account', $row['user_id'], lang('User'), '', '', '', false, 'bi-person-badge');

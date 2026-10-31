@@ -440,8 +440,10 @@ function pg_submitted_form_list_page($user, $filter, $terms, $window)
     $contacts_access = (validate_contacts_access($user, true) == true);
     $rows = array();
 
+    // edit_contact.php also wants a role-3 viewer's contact in one of their
+    // contact groups, so each row asks for its own contact.
     while ($row = mysqli_fetch_assoc($result)) {
-        $rows[] = pg_submitted_form_list_row($row, $contacts_access);
+        $rows[] = pg_submitted_form_list_row($row, $contacts_access && pg_can_open_contact($user, $row['contact_id'], $contacts_access));
     }
 
     return array('total' => $total, 'filtered' => $filtered, 'rows' => $rows);
@@ -451,7 +453,7 @@ function pg_submitted_form_list_page($user, $filter, $terms, $window)
  * One row of the submitted forms list.
  *
  * @param array $row             a row of pg_submitted_form_list_page()'s query
- * @param bool  $contacts_access whether the viewer may open contacts
+ * @param bool  $contacts_access whether the viewer may open this row's contact
  * @return array array('class', 'cells') for pg_list_row_html() / pg_list_row_data()
  */
 function pg_submitted_form_list_row($row, $contacts_access)

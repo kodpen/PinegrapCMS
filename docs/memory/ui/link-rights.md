@@ -14,6 +14,7 @@ module: auth
 
 ## Which screens use them?
 - `view_order.php` and `print_order.php` (User, Contact, affiliate; both read `user_role AS username_role` in the order query), `edit_gift_card.php` (From: user link, else contact link, else plain), `erp_accounts.php` (the contact icon shows unlinked with a hidden "Contact" label), ERP account drawer contact name, ERP order flow "Edit Contact" step link (left out), `view_sessions.php` (names, Manage button), `view_audit_log.php` (the Open icon of user lines, and of design files for roles 0-1: `core/audit-trail-screen.md`).
+- Submitted Forms list (per-row `pg_can_open_contact()`; `pg_submitted_form_list_row()` still takes a bool), `view_cart_quotes.php` (screen gate is the ecommerce right), `privacy_export.php` (own account of a Designer/Manager prints plain), Workspace `#user` tag and its customer card (`ws_refs_resolve()`: `url` empty, chip drawn as a span). Pinned by `tests/contact_user_link_rights_test.php`.
 - Older guards of the same kind: `includes/fn/contact_list.php`, `includes/dashboard/widgets/widget_4.php`, `chat.php`.
 
 ## Which order and product links need the commerce right?

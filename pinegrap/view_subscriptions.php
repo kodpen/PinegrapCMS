@@ -104,7 +104,7 @@ if ($subscription_id > 0) {
         array(lang('Period'), h(pg_subscription_operator_period_label((string) $row['period']))),
         array(lang('Status'), $output_status($status)
             . (((int) $row['retry_count'] > 0) ? ' <span class="small fg-secondary">' . h(lang(array('string' => 'Failed payment attempts: {var:1}', 'vars' => array((int) $row['retry_count'])))) . '</span>' : '')),
-        array($next_label, in_array($status, array('active', 'past_due', 'paused', 'cancelled'), true) ? $output_date($row['next_charge_at']) : $output_date(0)),
+        array($next_label, $output_date(pg_subscription_operator_next_charge($row))),
         array(lang('Card'), ((string) $row['card_last4'] !== '') ? h(lang(array('string' => 'Card ending {var:1}', 'vars' => array((string) $row['card_last4'])))) : $output_date(0)),
         array(lang('Payment service'), h((string) $row['driver'])),
         array(lang('First order'), ((int) $row['order_id'] > 0)

@@ -77,9 +77,11 @@ if (!defined('PG_INIT_LOADED')) {
                                                     <strong><?=h($recipient['ship_to_name'])?></strong>
                                                 <?php endif ?>
 
+                                                <?php if ($recipient['update_url'] !== ''): ?>
                                                 <a href="<?=h($recipient['update_url'])?>" class="btn btn-default btn-secondary btn-sm">
                                                     <?=h(lang('Update'))?>
                                                 </a>
+                                                <?php endif ?>
 
                                             </h3>
 
@@ -667,9 +669,11 @@ if (!defined('PG_INIT_LOADED')) {
                                                     <strong><?=h($recipient['ship_to_name'])?></strong>
                                                 <?php endif ?>
 
+                                                <?php if ($recipient['update_url'] !== ''): ?>
                                                 <a href="<?=h($recipient['update_url'])?>" class="btn btn-default btn-secondary btn-sm">
                                                     <?=h(lang('Update'))?>
                                                 </a>
+                                                <?php endif ?>
 
                                             </h3>
 
@@ -1030,9 +1034,11 @@ if (!defined('PG_INIT_LOADED')) {
         <h2>
             <?=h(lang('Billing'))?>
 
+            <?php if ($billing_update_url !== ''): ?>
             <a href="<?=h($billing_update_url)?>" class="btn btn-default btn-secondary btn-sm">
                 <?=h(lang('Update'))?>
             </a>
+            <?php endif ?>
 
         </h2>
 
