@@ -841,3 +841,64 @@ function pg_shipping_method_form_cards($values, $zone_options)
                         </div>
                     </div>';
 }
+
+/**
+ * What a shipping method delete takes with it: its ship date adjustments,
+ * and the offer actions that discount shipping on it.
+ *
+ * @param int $shipping_method_id
+ * @return array list of (adjustments, offer actions)
+ */
+function pg_shipping_method_form_delete_counts($shipping_method_id)
+{
+    $first = function ($result) {
+        $row = $result ? mysqli_fetch_row($result) : null;
+
+        return $row ? (int) $row[0] : 0;
+    };
+    $shipping_method_id = (int) $shipping_method_id;
+
+    return array(
+        $first(db_q("SELECT COUNT(*) FROM ship_date_adjustments WHERE shipping_method_id = ?", array($shipping_method_id))),
+        $first(db_q("SELECT COUNT(DISTINCT offer_action_id) FROM offer_actions_shipping_methods_xref WHERE shipping_method_id = ?", array($shipping_method_id))),
+    );
+}
+
+/**
+ * The Delete confirmation of Edit Shipping Method as lang() arguments.
+ *
+ * @param int $adjustments   ship date adjustments deleted with the method
+ * @param int $offer_actions offer actions that stop discounting shipping on it
+ * @return array list of lang() arguments, one per sentence
+ */
+function pg_shipping_method_form_delete_confirm($adjustments, $offer_actions)
+{
+    $adjustments = (int) $adjustments;
+    $offer_actions = (int) $offer_actions;
+
+    if ($adjustments > 0 && $offer_actions > 0) {
+        return array(array(
+            'string' => 'WARNING: This shipping method and its {var:1} ship date adjustment{suffix:1} will be permanently deleted, and {var:2} offer action{suffix:2} will no longer discount shipping on it.',
+            'vars' => array($adjustments, $offer_actions),
+            'suffix' => array($adjustments == 1 ? '' : 's', $offer_actions == 1 ? '' : 's'),
+        ));
+    }
+
+    if ($adjustments > 0) {
+        return array(array(
+            'string' => 'WARNING: This shipping method and its {var:1} ship date adjustment{suffix:1} will be permanently deleted.',
+            'vars' => array($adjustments),
+            'suffix' => array($adjustments == 1 ? '' : 's'),
+        ));
+    }
+
+    if ($offer_actions > 0) {
+        return array(array(
+            'string' => 'WARNING: This shipping method will be permanently deleted, and {var:1} offer action{suffix:1} will no longer discount shipping on it.',
+            'vars' => array($offer_actions),
+            'suffix' => array($offer_actions == 1 ? '' : 's'),
+        ));
+    }
+
+    return array(array('string' => 'WARNING: This {var:1} will be permanently deleted.', 'vars' => array(lang('shipping method'))));
+}
