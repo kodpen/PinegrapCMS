@@ -196,3 +196,46 @@ function test_commerce_delete_confirm_turkish_values()
 		pg_assert_true(strpos($map[$key], '{suffix') === false, 'Turkish drops the English ending: ' . $key);
 	}
 }
+
+function test_commerce_delete_confirm_turkish_words_match_the_screens()
+{
+	// The screens are "Nakliye Yöntemi" and "Eyalet/İl", an offer action is
+	// "Teklif Hareketi", and a warning starts with "UYARI:" everywhere.
+	$map = pg_test_language_map('tr');
+	$keys = array('WARNING: This {var:1} will be permanently deleted.', 'WARNING: Selected {var:1} will be permanently deleted.');
+
+	foreach (array_merge(
+		pg_state_form_delete_confirm(2),
+		pg_shipping_method_form_delete_confirm(2, 0),
+		pg_shipping_method_form_delete_confirm(0, 2),
+		pg_shipping_method_form_delete_confirm(2, 2),
+		pg_zone_form_delete_confirm(2, 2, 2, 2),
+		pg_zone_form_delete_confirm(0, 2, 0, 2)
+	) as $sentence) {
+		$keys[] = $sentence['string'];
+	}
+
+	foreach (array_unique($keys) as $key) {
+		$value = isset($map[$key]) ? $map[$key] : '';
+
+		pg_assert_false(stripos($value, 'teslimat yöntem') !== false, 'no "teslimat yöntemi": ' . $key);
+		pg_assert_false(stripos($value, 'kampanya eylem') !== false, 'no "kampanya eylemi": ' . $key);
+		pg_assert_false(strpos($value, 'Uyarı:') === 0, '"UYARI:" in one form: ' . $key);
+
+		if (stripos($key, 'shipping method') !== false) {
+			pg_assert_contains('nakliye yöntem', mb_strtolower($value, 'UTF-8'), 'the screen\'s name: ' . $key);
+		}
+
+		if (stripos($key, 'offer action') !== false) {
+			pg_assert_contains('teklif hareket', $value, 'the panel\'s offer action: ' . $key);
+		}
+
+		if (strpos($key, 'This state') !== false) {
+			pg_assert_contains('eyalet/il', $value, 'the screen\'s state name: ' . $key);
+		}
+	}
+
+	foreach (array('Shipping Methods' => 'Nakliye Yöntemleri', 'Shipping Method Code for Order Reporting' => 'Nakliye Yöntemi', 'Shipping Method is required.' => 'Nakliye yöntemi') as $key => $word) {
+		pg_assert_contains($word, isset($map[$key]) ? $map[$key] : '', 'the screen\'s name: ' . $key);
+	}
+}

@@ -170,6 +170,25 @@ function pg_list_period_week_steps($range, $first_day = null, $now = null)
 }
 
 /**
+ * The range of two 'Y-m-d' dates, for a screen that keeps its period as
+ * dates (the shipping report's start_date / end_date).
+ *
+ * @param string $start first day, 'Y-m-d'
+ * @param string $stop  last day, 'Y-m-d'
+ * @return array start_month, start_day, start_year, stop_month, stop_day, stop_year
+ */
+function pg_list_period_range_from_dates($start, $stop)
+{
+    $start = strtotime((string) $start);
+    $stop = strtotime((string) $stop);
+
+    return array(
+        'start_month' => date('m', $start), 'start_day' => date('d', $start), 'start_year' => date('Y', $start),
+        'stop_month' => date('m', $stop), 'stop_day' => date('d', $stop), 'stop_year' => date('Y', $stop),
+    );
+}
+
+/**
  * One date of a range in the site's date order with the month's name in
  * the panel language: '26 September 2026' or 'September 26, 2026'.
  *
