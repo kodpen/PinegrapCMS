@@ -778,30 +778,30 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
         $order_data .=
             '"' . $order['id'] . '",' .
             '"' . $order['order_number'] . '",' .
-            '"' . $order['custom_field_1'] . '",' .
-            '"' . $order['custom_field_2'] . '",' .
+            '"' . pg_csv_formula_guard($order['custom_field_1']) . '",' .
+            '"' . pg_csv_formula_guard($order['custom_field_2']) . '",' .
             '"' . $order['billing_salutation'] . '",' .
-            '"' . $order['billing_first_name'] . '",' .
-            '"' . $order['billing_last_name'] . '",' .
-            '"' . $order['billing_email_address'] . '",' .
-            '"' . $order['billing_company'] . '",' .
-            '"' . $order['billing_address_1'] . '",' .
-            '"' . $order['billing_address_2'] . '",' .
-            '"' . $order['billing_city'] . '",' .
-            '"' . $order['billing_state'] . '",' .
-            '"' . $order['billing_zip_code'] . '",' .
+            '"' . pg_csv_formula_guard($order['billing_first_name']) . '",' .
+            '"' . pg_csv_formula_guard($order['billing_last_name']) . '",' .
+            '"' . pg_csv_formula_guard($order['billing_email_address']) . '",' .
+            '"' . pg_csv_formula_guard($order['billing_company']) . '",' .
+            '"' . pg_csv_formula_guard($order['billing_address_1']) . '",' .
+            '"' . pg_csv_formula_guard($order['billing_address_2']) . '",' .
+            '"' . pg_csv_formula_guard($order['billing_city']) . '",' .
+            '"' . pg_csv_formula_guard($order['billing_state']) . '",' .
+            '"' . pg_csv_formula_guard($order['billing_zip_code']) . '",' .
             '"' . $order['billing_country'] . '",' .
-            '"' . $order['billing_phone_number'] . '",' .
-            '"' . $order['billing_fax_number'] . '",' .
+            '"' . pg_csv_formula_guard($order['billing_phone_number']) . '",' .
+            '"' . pg_csv_formula_guard($order['billing_fax_number']) . '",' .
             '"' . $order['payment_method'] . '",' .
             '"' . $order['card_type'] . '",' .
-            '"' . $order['cardholder'] . '",' .
+            '"' . pg_csv_formula_guard($order['cardholder']) . '",' .
             '"#' . $card_number . '",' .
             '"' . $order['expiration_month'] . '",' .
             '"' . $order['expiration_year'] . '",' .
             '"' . $card_verification_number . '",' .
-            '"' . $order['referral_source_code'] . '",' .
-            '"' . $order['po_number'] . '",' .
+            '"' . pg_csv_formula_guard($order['referral_source_code']) . '",' .
+            '"' . pg_csv_formula_guard($order['po_number']) . '",' .
             '"' . $tax_exempt . '",' .
             '"' . $opt_in . '",' .
             '"' . sprintf("%01.2lf", $order['subtotal'] / 100) . '",' .
@@ -815,25 +815,25 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
             '"' . pg_csv_export_time($order['order_date']) . '",' .
             '"' . $order['transaction_id'] . '",' .
             '"' . $order['authorization_code'] . '",' .
-            '"' . $order['special_offer_code'] . '",' .
+            '"' . pg_csv_formula_guard($order['special_offer_code']) . '",' .
             '"' . $order['reference_code'] . '",' .
-            '"' . $order['tracking_code'] . '",' .
-            '"' . $order['utm_source'] . '",' .
-            '"' . $order['utm_medium'] . '",' .
-            '"' . $order['utm_campaign'] . '",' .
-            '"' . $order['utm_term'] . '",' .
-            '"' . $order['utm_content'] . '",' .
-            '"' . $order['member_id'] . '",' .
-            '"' . $order['affiliate_code'] . '",' .
+            '"' . pg_csv_formula_guard($order['tracking_code']) . '",' .
+            '"' . pg_csv_formula_guard($order['utm_source']) . '",' .
+            '"' . pg_csv_formula_guard($order['utm_medium']) . '",' .
+            '"' . pg_csv_formula_guard($order['utm_campaign']) . '",' .
+            '"' . pg_csv_formula_guard($order['utm_term']) . '",' .
+            '"' . pg_csv_formula_guard($order['utm_content']) . '",' .
+            '"' . pg_csv_formula_guard($order['member_id']) . '",' .
+            '"' . pg_csv_formula_guard($order['affiliate_code']) . '",' .
             $currency_code .
-            '"' . $order['http_referer'] . '",' .
+            '"' . pg_csv_formula_guard($order['http_referer']) . '",' .
             '"' . $ip_address . '",' .
             '"' . sprintf("%01.2lf", $order['installment_charges'] / 100) . '"';
 
         // Loop through the custom billing field names in order to
         // output custom billing form data for this order row.
         foreach ($custom_billing_field_names as $custom_billing_field_name) {
-            $order_data .= ',"' . str_replace('"', '""', $custom_billing_form_data[$order['id']][$custom_billing_field_name]) . '"';
+            $order_data .= ',"' . csv_cell($custom_billing_form_data[$order['id']][$custom_billing_field_name]) . '"';
         }
 
         $order_data .= "\n";
@@ -986,16 +986,16 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
             '"' . $row['id'] . '",' .
             '"' . $row['order_id'] . '",' .
             '"' . $row['order_number'] . '",' .
-            '"' . $row['ship_to_name'] . '",' .
+            '"' . pg_csv_formula_guard($row['ship_to_name']) . '",' .
             '"' . $row['salutation'] . '",' .
-            '"' . $row['first_name'] . '",' .
-            '"' . $row['last_name'] . '",' .
-            '"' . $row['company'] . '",' .
-            '"' . $row['address_1'] . '",' .
-            '"' . $row['address_2'] . '",' .
-            '"' . $row['city'] . '",' .
-            '"' . $row['state'] . '",' .
-            '"' . $row['zip_code'] . '",' .
+            '"' . pg_csv_formula_guard($row['first_name']) . '",' .
+            '"' . pg_csv_formula_guard($row['last_name']) . '",' .
+            '"' . pg_csv_formula_guard($row['company']) . '",' .
+            '"' . pg_csv_formula_guard($row['address_1']) . '",' .
+            '"' . pg_csv_formula_guard($row['address_2']) . '",' .
+            '"' . pg_csv_formula_guard($row['city']) . '",' .
+            '"' . pg_csv_formula_guard($row['state']) . '",' .
+            '"' . pg_csv_formula_guard($row['zip_code']) . '",' .
             '"' . $row['country'] . '",' .
             '"' . $row['address_type'] . '",' .
             '"' . $row['arrival_date_code'] . '",' .
@@ -1007,7 +1007,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
         
         // loop through the custom field names in order to output custom shipping form data for this ship to row
         foreach ($custom_field_names as $custom_field_name) {
-            $ship_to_data .= ',"' . str_replace('"', '""', $ship_tos[$row['id']][$custom_field_name]) . '"';
+            $ship_to_data .= ',"' . csv_cell($ship_tos[$row['id']][$custom_field_name]) . '"';
         }
         
         $ship_to_data .= "\n";
@@ -1770,30 +1770,30 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
         // prepare order row
         echo
             '"' . $order['order_number'] . '",' .
-            '"' . $order['custom_field_1'] . '",' .
-            '"' . $order['custom_field_2'] . '",' .
+            '"' . pg_csv_formula_guard($order['custom_field_1']) . '",' .
+            '"' . pg_csv_formula_guard($order['custom_field_2']) . '",' .
             '"' . $order['billing_salutation'] . '",' .
-            '"' . $order['billing_first_name'] . '",' .
-            '"' . $order['billing_last_name'] . '",' .
-            '"' . $order['billing_email_address'] . '",' .
-            '"' . $order['billing_company'] . '",' .
-            '"' . $order['billing_address_1'] . '",' .
-            '"' . $order['billing_address_2'] . '",' .
-            '"' . $order['billing_city'] . '",' .
-            '"' . $order['billing_state'] . '",' .
-            '"' . $order['billing_zip_code'] . '",' .
+            '"' . pg_csv_formula_guard($order['billing_first_name']) . '",' .
+            '"' . pg_csv_formula_guard($order['billing_last_name']) . '",' .
+            '"' . pg_csv_formula_guard($order['billing_email_address']) . '",' .
+            '"' . pg_csv_formula_guard($order['billing_company']) . '",' .
+            '"' . pg_csv_formula_guard($order['billing_address_1']) . '",' .
+            '"' . pg_csv_formula_guard($order['billing_address_2']) . '",' .
+            '"' . pg_csv_formula_guard($order['billing_city']) . '",' .
+            '"' . pg_csv_formula_guard($order['billing_state']) . '",' .
+            '"' . pg_csv_formula_guard($order['billing_zip_code']) . '",' .
             '"' . $order['billing_country'] . '",' .
-            '"' . $order['billing_phone_number'] . '",' .
-            '"' . $order['billing_fax_number'] . '",' .
+            '"' . pg_csv_formula_guard($order['billing_phone_number']) . '",' .
+            '"' . pg_csv_formula_guard($order['billing_fax_number']) . '",' .
             '"' . $order['payment_method'] . '",' .
             '"' . $order['card_type'] . '",' .
-            '"' . $order['cardholder'] . '",' .
+            '"' . pg_csv_formula_guard($order['cardholder']) . '",' .
             '"#' . $card_number . '",' .
             '"' . $order['expiration_month'] . '",' .
             '"' . $order['expiration_year'] . '",' .
             '"' . $card_verification_number . '",' .
-            '"' . $order['referral_source_code'] . '",' .
-            '"' . $order['po_number'] . '",' .
+            '"' . pg_csv_formula_guard($order['referral_source_code']) . '",' .
+            '"' . pg_csv_formula_guard($order['po_number']) . '",' .
             '"' . $tax_exempt . '",' .
             '"' . $opt_in . '",' .
             '"' . sprintf("%01.2lf", $order['subtotal'] / 100) . '",' .
@@ -1807,24 +1807,24 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
             '"' . pg_csv_export_time($order['order_date']) . '",' .
             '"' . $order['transaction_id'] . '",' .
             '"' . $order['authorization_code'] . '",' .
-            '"' . $order['special_offer_code'] . '",' .
+            '"' . pg_csv_formula_guard($order['special_offer_code']) . '",' .
             '"' . $order['reference_code'] . '",' .
-            '"' . $order['tracking_code'] . '",' .
-            '"' . $order['utm_source'] . '",' .
-            '"' . $order['utm_medium'] . '",' .
-            '"' . $order['utm_campaign'] . '",' .
-            '"' . $order['utm_term'] . '",' .
-            '"' . $order['utm_content'] . '",' .
-            '"' . $order['member_id'] . '",' .
-            '"' . $order['affiliate_code'] . '",' .
+            '"' . pg_csv_formula_guard($order['tracking_code']) . '",' .
+            '"' . pg_csv_formula_guard($order['utm_source']) . '",' .
+            '"' . pg_csv_formula_guard($order['utm_medium']) . '",' .
+            '"' . pg_csv_formula_guard($order['utm_campaign']) . '",' .
+            '"' . pg_csv_formula_guard($order['utm_term']) . '",' .
+            '"' . pg_csv_formula_guard($order['utm_content']) . '",' .
+            '"' . pg_csv_formula_guard($order['member_id']) . '",' .
+            '"' . pg_csv_formula_guard($order['affiliate_code']) . '",' .
             $currency_code .
-            '"' . $order['http_referer'] . '",' .
+            '"' . pg_csv_formula_guard($order['http_referer']) . '",' .
             '"' . $ip_address . '",' .
             '"' . sprintf("%01.2lf", $order['installment_charges'] / 100) . '"';
         
         // Loop through the custom billing field names in order to output custom billing form data for this order row.
         foreach ($custom_billing_field_names as $custom_billing_field_name) {
-            echo ',"' . str_replace('"', '""', $order['custom_fields'][$custom_billing_field_name]) . '"';
+            echo ',"' . csv_cell($order['custom_fields'][$custom_billing_field_name]) . '"';
         }
         
         echo "\n";
@@ -1992,7 +1992,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                             $data = $form_data_item['data'];
                         }
 
-                        $data_rows .= '"' . str_replace('"', '""', $data) . '"';
+                        $data_rows .= '"' . csv_cell($data) . '"';
 
                         // if this is the last data item, then add a new line
                         if ($key == (count($form_data_items) - 1)) {
@@ -2039,16 +2039,16 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
             // prepare ship to row
             print
                 $ship_to_indentation .
-                '"' . $ship_to['ship_to_name'] . '",' .
+                '"' . pg_csv_formula_guard($ship_to['ship_to_name']) . '",' .
                 '"' . $ship_to['salutation'] . '",' .
-                '"' . $ship_to['first_name'] . '",' .
-                '"' . $ship_to['last_name'] . '",' .
-                '"' . $ship_to['company'] . '",' .
-                '"' . $ship_to['address_1'] . '",' .
-                '"' . $ship_to['address_2'] . '",' .
-                '"' . $ship_to['city'] . '",' .
-                '"' . $ship_to['state'] . '",' .
-                '"' . $ship_to['zip_code'] . '",' .
+                '"' . pg_csv_formula_guard($ship_to['first_name']) . '",' .
+                '"' . pg_csv_formula_guard($ship_to['last_name']) . '",' .
+                '"' . pg_csv_formula_guard($ship_to['company']) . '",' .
+                '"' . pg_csv_formula_guard($ship_to['address_1']) . '",' .
+                '"' . pg_csv_formula_guard($ship_to['address_2']) . '",' .
+                '"' . pg_csv_formula_guard($ship_to['city']) . '",' .
+                '"' . pg_csv_formula_guard($ship_to['state']) . '",' .
+                '"' . pg_csv_formula_guard($ship_to['zip_code']) . '",' .
                 '"' . $ship_to['country'] . '",' .
                 '"' . $ship_to['address_type'] . '",' .
                 '"' . $ship_to['arrival_date_code'] . '",' .
@@ -2061,7 +2061,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
             
             // loop through the custom field names in order to output custom shipping form data for this ship to row
             foreach ($custom_field_names as $custom_field_name) {
-                print ',"' . str_replace('"', '""', $ship_to['custom_fields'][$custom_field_name]) . '"';
+                print ',"' . csv_cell($ship_to['custom_fields'][$custom_field_name]) . '"';
             }
             
             print "\n";
@@ -2229,7 +2229,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                                 $data = $form_data_item['data'];
                             }
 
-                            $data_rows .= '"' . str_replace('"', '""', $data) . '"';
+                            $data_rows .= '"' . csv_cell($data) . '"';
 
                             // if this is the last data item, then add a new line
                             if ($key == (count($form_data_items) - 1)) {
