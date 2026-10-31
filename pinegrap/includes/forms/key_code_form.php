@@ -92,16 +92,29 @@ function pg_key_code_form_validate($liveform, $id = null, $taken = null)
  * offer code, enabled, expiration date (as stored), notes, single use,
  * report. The screens add the user and the timestamp after them.
  *
- * @param liveform $liveform
- * @param string   $code  the code to write (generated or typed on create)
+ * The edit screen passes the stored enabled value: when the posted box
+ * equals enabled_was (the value the screen opened with) the stored value is
+ * written back, so a single-use code a completed order disabled while the
+ * screen was open stays disabled. A form without enabled_was writes the box.
+ *
+ * @param liveform    $liveform
+ * @param string      $code            the code to write (generated or typed on create)
+ * @param string|null $stored_enabled  the row's enabled value now (edit only)
  * @return array
  */
-function pg_key_code_form_values($liveform, $code)
+function pg_key_code_form_values($liveform, $code, $stored_enabled = null)
 {
+    $enabled = (string) $liveform->get_field_value('enabled');
+    $enabled_was = (string) $liveform->get_field_value('enabled_was');
+
+    if (($stored_enabled !== null) && ($enabled_was !== '') && (($enabled == 1) === ($enabled_was == 1))) {
+        $enabled = (string) $stored_enabled;
+    }
+
     return array(
         (string) $code,
         (string) $liveform->get_field_value('offer_code'),
-        (string) $liveform->get_field_value('enabled'),
+        $enabled,
         (string) prepare_form_data_for_input((string) $liveform->get_field_value('expiration_date'), 'date'),
         (string) $liveform->get_field_value('notes'),
         (string) $liveform->get_field_value('single_use'),

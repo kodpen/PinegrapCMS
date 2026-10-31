@@ -43,6 +43,11 @@ if (!defined('PG_INIT_LOADED')) {
 
 					'name' => 'limit'))?>
 				<?php endif ?>
+				<?php if ($screen == 'edit'): ?>
+				<?=$liveform->field(array(
+					'type' => 'hidden',
+					'name' => 'enabled_was'))?>
+				<?php endif ?>
                 <div class="row">
                     <div class="col-12">
                         <div class="card my-7">
