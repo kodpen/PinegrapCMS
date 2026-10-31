@@ -158,7 +158,7 @@ echo
             ' . $output_limit . '
             <div class="card my-7">
                 <div class="card-body p-0 position-relative">
-                    <form name="form" action="' . h($self) . '" method="post">
+                    <form name="form" action="' . h($self) . '" method="post" class="disable_shortcut">
                         ' . get_token_field() . '
                         <table class="chart table-hover table" style="width:100%;display:none;">
                             <thead>
