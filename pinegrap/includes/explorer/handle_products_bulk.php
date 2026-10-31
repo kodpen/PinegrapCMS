@@ -494,13 +494,14 @@ function pg_explorer_handle_products_bulk_edit($type, $request, $user)
             }
         }
 
-        // Whatever wrote a price or a stock figure has to tell the
-        // marketplaces, and this panel writes both. edit_products.php
+        // Whatever wrote a price, a stock figure or the enabled state
+        // (a disabled product is listed with quantity 0) has to tell the
+        // marketplaces, and this panel writes all three. edit_products.php
         // -- the screen this one replaced -- has always done it; the
         // line did not come across, so a bulk change was the one way
         // to move a price that never reached n11.
         if (
-            (($bulk_price_method !== '') || ($bulk_quantity_mode !== '') || ($bulk_inventory !== ''))
+            (($bulk_price_method !== '') || ($bulk_quantity_mode !== '') || ($bulk_inventory !== '') || ($bulk_enabled !== ''))
             && function_exists('pg_marketplace_product_changed')
         ) {
             pg_marketplace_product_changed($product_id);
