@@ -233,7 +233,9 @@ if (!$_POST) {
                         $audit_before = pg_audit_fetch('page', $page['page_id']);
 
                         $decision = pg_page_bulk_decide($page, $set, $user['role']);
-                        pg_page_bulk_apply($page, $decision, $user['id'], $previewing ? (int) $_SESSION['software']['preview_theme_id'] : 0);
+                        if (!pg_page_bulk_apply($page, $decision, $user['id'], $previewing ? (int) $_SESSION['software']['preview_theme_id'] : 0)) {
+                            output_error('Query failed.');
+                        }
 
                         pg_audit_record('update', 'page', $page['page_id'], $audit_before);
 

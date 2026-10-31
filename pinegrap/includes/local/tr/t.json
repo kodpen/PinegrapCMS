@@ -2880,6 +2880,7 @@
     "The page you opened is no longer a draft of this design, so the prototype opens at its start page.": "Açtığınız sayfa artık bu tasarımın bir taslağı değil; bu yüzden prototip başlangıç sayfasıyla açılıyor.",
     "The page you opened is not a saved draft of this design, so the prototype starts at its first draft.": "Açtığınız sayfa bu tasarımın kaydedilmiş bir taslağı değil; bu yüzden prototip tasarımın ilk taslağıyla başlıyor.",
     "The page {var:1} came back without its style {var:2}, which stays in the recycle bin until a designer restores it.": "{var:1} sayfası {var:2} stili olmadan geri geldi; stil, bir tasarımcı geri yükleyene kadar geri dönüşüm kutusunda kalır.",
+    "The page {var:1} could not be saved.": "{var:1} sayfası kaydedilemedi.",
     "The page's content is now part of the page; save the page to keep it.": "Sayfanın içeriği artık sayfanın bir parçası; kalıcı olması için sayfayı kaydedin.",
     "The page's record is the product, event or form record its address opens.": "Sayfanın kaydı, adresinin açtığı ürün, etkinlik ya da form kaydıdır.",
     "The page, for the form you submitted, can no longer be found.": "Gönderdiğiniz formun sayfası bulunamadı.",
