@@ -90,6 +90,8 @@ if ($existing_affiliate_code) {
     $affiliate_code = generate_affiliate_code();
 }
 
+$audit_before = pg_audit_fetch('contacts', $contact_id);
+
 // update contact to be approved and update affiliate code
 $query = "UPDATE contacts
          SET
@@ -99,6 +101,8 @@ $query = "UPDATE contacts
             timestamp = UNIX_TIMESTAMP()
          WHERE id = ?";
 $result = db_q($query, array((string) $affiliate_code, (string) $user['id'], (string) $contact_id)) or output_error('Query failed.');
+
+pg_audit_record('update', 'contacts', $contact_id, $audit_before);
 
 // if there is a group offer, then determine if we need to add a key code for group offer for this affiliate
 if (AFFILIATE_GROUP_OFFER_ID != 0) {
