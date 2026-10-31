@@ -130,7 +130,7 @@ function pg_test_form_adorn_settings_fields()
 			'\' . $form_limit_input[0] . \'' => 'h($form_limit_input[3])',
 			'audit_log_retention_years' => "lang('years')",
 		),
-		'seo.php' => array(
+		'privacy.php' => array(
 			'tracking_code_duration' => "lang('day(s)')",
 			'visitor_retention_days' => "lang('day(s)')",
 			'visitor_ip_days' => "lang('day(s)')",
@@ -246,7 +246,7 @@ function test_bs6_form_adorn_settings_cards_keep_no_single_add_on_group()
 	// buttons (SEO, the Paraşüt connect code).
 	$left = array('accounting.php' => 1, 'languages.php' => 1, 'security.php' => 1, 'seo.php' => 2);
 
-	foreach (array('api.php', 'appearance.php', 'commerce.php', 'contact.php', 'features.php', 'firewall.php', 'languages.php', 'prep.php', 'screen.php', 'security.php', 'seo.php') as $file) {
+	foreach (array('api.php', 'appearance.php', 'commerce.php', 'contact.php', 'features.php', 'firewall.php', 'languages.php', 'prep.php', 'privacy.php', 'screen.php', 'security.php', 'seo.php') as $file) {
 		$source = (string) file_get_contents($root . $file);
 
 		pg_assert_same(isset($left[$file]) ? $left[$file] : 0, preg_match_all('/class="input-group[ "]/', $source), $file . ': input-groups left');

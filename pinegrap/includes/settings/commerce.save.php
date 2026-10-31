@@ -29,65 +29,6 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         $sql_reference_price_rule = "ecommerce_reference_price_rule = '" . e(pg_price_reference_rule_from_input(post_value('ecommerce_reference_price_rule'))) . "',";
     }
 
-    // Checkout legal documents (11.0.1). A template naming a field that does
-    // not exist would print nothing where a customer expects a fact, and a
-    // template past the column's size would be cut; either refuses the whole
-    // save before anything below writes.
-    $sql_legal_documents = '';
-    // The KVKK consent sentence: a config_text row, written after the config update.
-    $legal_kvkk_text = null;
-
-    if (pg_schema_has('config', 'ecommerce_legal_documents')) {
-        $legal_values = array();
-
-        foreach (pg_legal_document_types() as $legal_type => $legal_label) {
-            $legal_field = 'ecommerce_' . $legal_type . '_template';
-            // Browsers post a textarea's line breaks as CRLF.
-            $legal_value = trim(str_replace("\r\n", "\n", (string) post_value($legal_field)));
-
-            // The built-in template is not stored, so a later improvement to
-            // it reaches a store that never changed it.
-            if ($legal_value === trim(str_replace("\r\n", "\n", pg_legal_document_default_template($legal_type, lang(array('info' => true)))))) {
-                $legal_value = '';
-            }
-
-            $legal_unknown = pg_legal_document_unknown_placeholders($legal_value);
-
-            if ($legal_unknown) {
-                $liveform->mark_error($legal_field, lang(array('string' => '{var:1}: unknown field {var:2}.', 'vars' => array($legal_label, '^^' . implode('^^, ^^', array_map('h', $legal_unknown)) . '^^'))));
-            } elseif (strlen($legal_value) > 65535) {
-                $liveform->mark_error($legal_field, lang(array('string' => '{var:1} is too long.', 'vars' => array($legal_label))));
-            }
-
-            $legal_values[$legal_field] = $legal_value;
-        }
-
-        // The KVKK notice page and the explicit consent sentence (11.0.48).
-        $legal_kvkk_sql = '';
-
-        if (pg_schema_has('config', 'ecommerce_kvkk_page_id') && pg_schema_has('config_text')) {
-            $legal_kvkk_text = trim(str_replace("\r\n", "\n", (string) post_value('ecommerce_kvkk_consent_text')));
-
-            if (strlen($legal_kvkk_text) > 65535) {
-                $liveform->mark_error('ecommerce_kvkk_consent_text', lang(array('string' => '{var:1} is too long.', 'vars' => array(lang('Explicit Consent Sentence')))));
-            }
-
-            $legal_kvkk_sql = "
-            ecommerce_kvkk_page_id = '" . max(0, (int) post_value('ecommerce_kvkk_page_id')) . "',";
-        }
-
-        if ($liveform->check_form_errors()) {
-            return;
-        }
-
-        $sql_legal_documents = $legal_kvkk_sql . "ecommerce_legal_documents = '" . ((post_value('ecommerce_legal_documents') == 1) ? 1 : 0) . "',";
-
-        foreach ($legal_values as $legal_field => $legal_value) {
-            $sql_legal_documents .= "
-            " . $legal_field . " = " . (($legal_value === '') ? 'NULL' : "'" . escape($legal_value) . "'") . ",";
-        }
-    }
-
     // The payment drivers' settings (includes/fn/payments.php) are checked
     // here, so a refused one stops the whole card before anything is written,
     // and stored after the card's own columns.
@@ -197,7 +138,6 @@ if (!defined('PG_SETTINGS_ENTRY')) {
             ecommerce_reward_program_email_subject = '" . escape(post_value('ecommerce_reward_program_email_subject')) . "',
             ecommerce_reward_program_email_page_id = '" . escape(post_value('ecommerce_reward_program_email_page_id')) . "',
             " . $sql_review_photos . "
-            " . $sql_legal_documents . "
             " . $sql_reference_price_rule . "
             ecommerce_credit_debit_card = '" . escape(post_value('ecommerce_credit_debit_card')) . "',
             ecommerce_american_express = '" . escape(post_value('ecommerce_american_express')) . "',
@@ -256,10 +196,6 @@ if (!defined('PG_SETTINGS_ENTRY')) {
             affiliate_group_offer_id = '" . escape(post_value('affiliate_group_offer_id')) . "',
             last_modified_user_id = '" . USER_ID . "',
             last_modified_timestamp = UNIX_TIMESTAMP()");
-
-    if ($legal_kvkk_text !== null) {
-        pg_config_text_save('ecommerce_kvkk_consent_text', $legal_kvkk_text);
-    }
 
     // The carriers' API applications are kept with the connected accounts'
     // applications, the secrets sealed (includes/fn/carrier_api.php).

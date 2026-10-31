@@ -7,9 +7,9 @@
  * the GA4 property whose figures the dashboard's Google Analytics card shows,
  * read them now or stop using the property.
  *
- * Runs in the scope of includes/settings/seo.php and leaves the markup in
+ * Runs in the scope of includes/settings/privacy.php and leaves the markup in
  * $google_analytics_figures; the Connect form goes to $pg_settings_modals,
- * outside the settings form. seo.save.php hands the posted fields to
+ * outside the settings form. privacy.save.php hands the posted fields to
  * pg_ga_save_from_screen().
  *
  * @author      Erdal Güral (Kodpen)
@@ -55,7 +55,7 @@ if (function_exists('pg_connect_schema_ready') && pg_connect_schema_ready()) {
             // by its form attribute.
             $pg_settings_modals[] = '
             <form method="post" action="connect.php" id="pgset_ga_connect" class="disable_shortcut d-none">
-                ' . pg_connect_start_fields('google', 'google_analytics', pg_settings_url('seo') . '?ga_connect=1#pgset-analytics') . '
+                ' . pg_connect_start_fields('google', 'google_analytics', pg_settings_url('privacy') . '?ga_connect=1#pgset-analytics') . '
             </form>';
         } else {
             $ga_body = '
