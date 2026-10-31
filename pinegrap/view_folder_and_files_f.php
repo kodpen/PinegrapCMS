@@ -757,7 +757,7 @@ function pg_explorer_file_payload($file, $user)
         'type' => $type,
         'is_image' => in_array($type, $image_types, true),
         'size' => (int) $file['size'],
-        'size_label' => convert_bytes_to_string($file['size']),
+        'size_label' => convert_bytes_to_string($file['size'], 'auto'),
         'design' => ($file['design'] == '1'),
         'optimized' => ($file['optimized'] == '1'),
         'image_width' => (int) $file['image_width'],
