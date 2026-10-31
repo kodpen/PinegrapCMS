@@ -150,14 +150,10 @@ pg_page_shell(
             ' . $liveform->output_errors() . '
             ' . $liveform->output_notices() . '
             ' . $output_warning . '
-            <div class="row mb-3 flex-wrap">
-                <div class="col-12 text-center md:text-start">
-                    <nav id="button_bar" class="navigation" aria-label="' . h(lang('Button Bar')) . '">
-                        <a class="btn btn-sm btn-solid theme-primary m-1" href="edit_sms_campaign.php"><span class="bi bi-plus-circle me-3" aria-hidden="true"></span>' . lang('Create') . '</a>
-                        <a class="btn btn-link pg-link-secondary py-0 m-1" href="view_email_campaigns.php"><span class="material-icons me-1" aria-hidden="true">campaign</span>' . lang('My Campaigns') . '</a>
-                    </nav>
-                </div>
-            </div>
+            ' . pg_screen_toolbar(array(
+                'primary'   => array('label' => lang('Create'), 'url' => 'edit_sms_campaign.php', 'icon' => 'bi-plus-circle'),
+                'secondary' => array('label' => lang('My Campaigns'), 'url' => 'view_email_campaigns.php', 'icon' => 'bi-megaphone'),
+            )) . '
             <div class="card my-7">
                 <div class="card-body p-0 position-relative">
                     <form name="form" action="view_sms_campaigns.php" method="post" class="disable_shortcut">

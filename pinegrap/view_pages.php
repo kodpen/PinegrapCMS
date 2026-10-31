@@ -307,40 +307,54 @@ if ($user['role'] == 3) {
 
 $output_button_bar = '';
 
-// if the user is at least a manager or has create pages turned on, then output the create page button and button bar
-if (($user['role'] < '3') || ($user['create_pages'] == TRUE)) {
-    $output_button_bar .=
-        '<nav id="button_bar" class="navigation " aria-label="' . h(lang('Button Bar')) . '">
-        ' . ($user['role'] < 2
-            // A designer adds a visual page to a design of their choosing
-            // (pg_designer_target_modal()); the classic page screen stays
-            // beside it.
-            ? '<button type="button" class="btn btn-sm btn-solid theme-primary m-1" data-pg-design-target="add" data-from="pages"><span class="bi bi-plus-circle me-3"></span>' . lang('Add Page') . '</button>
-               <a class="btn btn-sm btn-outline theme-primary m-1" href="add_page.php"><span class="bi bi-plus-circle me-3"></span>' . lang('Add Page (Legacy)') . '</a>'
-            : '<a class="btn btn-sm btn-solid theme-primary m-1" href="add_page.php"><span class="bi bi-plus-circle me-3"></span>' . lang('Add Page') . '</a>') . '
-        ';
+// The screen toolbar: Add Page in slot 1, the page tools in one menu beside
+// it, the sort menu and the content filter at the right end.
+$view_pages_primary = '';
+$view_pages_tools = array();
 
-    // If advanced search is enabled and the user is a manager or above then output "Update Search Index" button.
-    if ((SEARCH_TYPE == 'advanced') && (USER_ROLE != 3)) {
-        $output_button_bar .= '
-        <div class=" btn-group btn-group-sm flex-wrap">
-            <button type="button" class="btn btn-link pg-link-secondary py-0 m-1" onclick="window.open(\'update_search_index.php\', \'popup\', \'toolbar=no,location=no,directories=no,status=yes,menubar=no,resizable=yes,copyhistory=no,scrollbars=yes,width=500,height=500\');"><span class="material-icons me-1">manage_search</span>' . lang(array('string'=>'Update Search Index') ) . '</button>
-        </div>';
+// if the user is at least a manager or has create pages turned on, then output the create page button
+if (($user['role'] < '3') || ($user['create_pages'] == TRUE)) {
+    if ($user['role'] < 2) {
+        // A designer adds a visual page to a design of their choosing
+        // (pg_designer_target_modal()); the classic page screen stays in the
+        // tools menu.
+        $view_pages_primary = '<button type="button" class="btn btn-sm btn-solid theme-primary rounded-pill px-5" data-pg-design-target="add" data-from="pages"><i class="bi bi-plus-circle me-2" aria-hidden="true"></i>' . lang('Add Page') . '</button>';
+        $view_pages_tools[] = '<li><a class="menu-item pg-link-body-emphasis" href="add_page.php"><i class="bi bi-plus-circle me-3" aria-hidden="true"></i>' . lang('Add Page (Legacy)') . '</a></li>';
+    } else {
+        $view_pages_primary = array('label' => lang('Add Page'), 'url' => 'add_page.php', 'icon' => 'bi-plus-circle');
     }
 
-    // SEO score refresh sits with the other maintenance buttons. Managers and
+    // If advanced search is enabled and the user is a manager or above then offer "Update Search Index".
+    if ((SEARCH_TYPE == 'advanced') && (USER_ROLE != 3)) {
+        $view_pages_tools[] = '<li><button type="button" class="menu-item pg-link-body-emphasis" onclick="window.open(\'update_search_index.php\', \'popup\', \'toolbar=no,location=no,directories=no,status=yes,menubar=no,resizable=yes,copyhistory=no,scrollbars=yes,width=500,height=500\');"><i class="bi bi-search me-3" aria-hidden="true"></i>' . lang('Update Search Index') . '</button></li>';
+    }
+
+    // SEO score refresh sits with the other maintenance tools. Managers and
     // above, same threshold the scores themselves matter to.
     if (USER_ROLE < 3) {
-        $output_button_bar .= '
-        <div class=" btn-group btn-group-sm flex-wrap">
-            <a class="btn btn-link pg-link-secondary py-0 m-1" href="view_pages.php?recalculate_seo=1' . get_token_query_string_field() . '"><span class="bi bi-speedometer2 me-1"></span>' . lang('Refresh SEO Scores') . '</a>
-            <a class="btn btn-link pg-link-secondary py-0 m-1" href="view_pages.php?analyze_seo=1' . get_token_query_string_field() . '" title="' . lang('Renders each page and examines the resulting HTML. Covers products and product groups too. Slower than a score refresh, and it may take several clicks on a large site.') . '"><span class="bi bi-code-slash me-1"></span>' . lang('Analyze HTML Structure') . '</a>
-            <a class="btn btn-link pg-link-secondary py-0 m-1" href="view_accessibility.php"><span class="bi bi-universal-access me-1"></span>' . lang('Accessibility report') . '</a>
-        </div>';
+        $view_pages_tools[] = '<li><a class="menu-item pg-link-body-emphasis" href="view_pages.php?recalculate_seo=1' . get_token_query_string_field() . '"><i class="bi bi-speedometer2 me-3" aria-hidden="true"></i>' . lang('Refresh SEO Scores') . '</a></li>';
+        $view_pages_tools[] = '<li><a class="menu-item pg-link-body-emphasis" href="view_pages.php?analyze_seo=1' . get_token_query_string_field() . '" title="' . lang('Renders each page and examines the resulting HTML. Covers products and product groups too. Slower than a score refresh, and it may take several clicks on a large site.') . '"><i class="bi bi-code-slash me-3" aria-hidden="true"></i>' . lang('Analyze HTML Structure') . '</a></li>';
+        $view_pages_tools[] = '<li><a class="menu-item pg-link-body-emphasis" href="view_accessibility.php"><i class="bi bi-universal-access me-3" aria-hidden="true"></i>' . lang('Accessibility report') . '</a></li>';
     }
-
-    $output_button_bar .= '</nav>';
 }
+
+$view_pages_tools_menu = '';
+
+if ($view_pages_tools) {
+    $view_pages_tools_menu = '<div class="pg-menu-wrap">
+        <button type="button" class="btn btn-sm btn-text theme-secondary" data-bs-toggle="menu" data-bs-display="static" aria-expanded="false"><i class="bi bi-tools me-1" aria-hidden="true"></i>' . lang('Tools') . '</button>
+        <ul class="menu">' . implode('', $view_pages_tools) . '</ul>
+    </div>';
+}
+
+$output_button_bar = pg_screen_toolbar(array(
+    'primary'   => $view_pages_primary,
+    'secondary' => $view_pages_tools_menu,
+    'search'    => array(
+        pg_list_sort_menu('view_pages.php', $sort_columns, $sort_levels, $sort_default, array('filter' => $filter)),
+        pg_filter_select('filter', $filters_in_array, $filter, array('label' => lang('Content that viewed'), 'icon' => 'eye', 'id' => 'filter_select')),
+    ),
+));
 
 // Set the name heading to the default.
 // This may be changed by different filters
@@ -1426,24 +1440,7 @@ pg_page_shell(
             ' . $liveform->output_errors() . '
             ' . $liveform->get_warnings() . '
             ' . $liveform->output_notices() . '
-            <div class="row mb-3  flex-wrap">
-                <div class="col-12 sm:col-12 md:col-6 xl:col-9 text-center md:text-start">
-                    
-                    ' . $output_button_bar . '
-                </div>
-                <div class="col-12 sm:col-12 md:col-6 xl:col-3 ">
-                    <div class="row justify-content-center md:justify-content-end">
-                        <div class="col-auto mt-1 mb-1">' . pg_list_sort_menu('view_pages.php', $sort_columns, $sort_levels, $sort_default, array('filter' => $filter)) . '</div>
-                        <form id="search_form" action="view_pages.php" method="get" class="search_form col-auto">
-                            <input type="hidden" name="filter" value="' . h($filter) . '" />
-                            <div class="input-group input-group-sm">
-                                <label class="input-group-text mt-1 mb-1 material-icons" title="' . lang('Content that viewed') . '" for="filter_select">visibility</label>
-                                <select id="filter_select" aria-label="' . h(lang('Content that viewed')) . '" name="filter" class="form-control mt-1 mb-1" title="' . lang('Content that viewed') . '" onchange="submit_form(\'search_form\')">' . get_filter_options($filters_in_array, $filter) . '</select>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            </div>
+            ' . $output_button_bar . '
             <div class="row">
                 ' . $output_seo_summary . '
             </div>

@@ -122,7 +122,6 @@ function test_panel_accessible_names_filter_selects()
 	// 'groups'...), which would otherwise name the select.
 	$expect = array(
 		'view_users.php' => array('filter_select' => 'Content that viewed'),
-		'view_pages.php' => array('filter_select' => 'Content that viewed'),
 		'view_files.php' => array('filter_select' => 'Content that viewed'),
 		'view_ads.php' => array('ad_region_id' => 'Content that viewed'),
 		'view_contacts.php' => array('contact_group' => 'Group', 'filter' => 'Content that viewed'),
@@ -138,6 +137,9 @@ function test_panel_accessible_names_filter_selects()
 			pg_assert_contains("aria-label=\"' . h(lang('" . $name . "')) . '\"", $match[0], $path . ' #' . $id);
 		}
 	}
+
+	// View Pages draws its filter with pg_filter_select(), which names the select by its label.
+	pg_assert_contains('pg_filter_select(\'filter\', $filters_in_array, $filter, array(\'label\' => lang(\'Content that viewed\'), \'icon\' => \'eye\', \'id\' => \'filter_select\'))', panel_accessible_names_source('view_pages.php'), 'view_pages.php #filter_select');
 
 	$source = panel_accessible_names_source('smtp_settings.php');
 	pg_assert_contains("<label class=\"visually-hidden\" for=\"dkim_selector\">' . h(lang('Selector')) . '</label>", $source);

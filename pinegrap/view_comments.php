@@ -304,15 +304,9 @@ print
             ' . $liveform->output_errors() . '
             ' . $liveform->get_warnings() . '
             ' . $liveform->output_notices() . '
-            <div class="row mb-3  flex-wrap">
-                <div class="col-12 text-center md:text-start">
-                    <nav id="button_bar" class="navigation " aria-label="' . h(lang('Button Bar')) . '">
-                        <div class="pg-toolbar-grow"></div>
-                        ' . pg_list_sort_menu('view_comments.php', $sort_columns, $sort_levels, $sort_default) . '
-                        ' . $output_verified_filter . '
-                    </nav>
-                </div>
-            </div>
+            ' . pg_screen_toolbar(array(
+                'search' => array(pg_list_sort_menu('view_comments.php', $sort_columns, $sort_levels, $sort_default), $output_verified_filter),
+            )) . '
             <div class="disable_shortcut">
                 <div class="card my-7">
                     <div class="card-body p-0 position-relative">

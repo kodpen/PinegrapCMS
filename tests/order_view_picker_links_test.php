@@ -48,7 +48,7 @@ function test_editor_link_picker_type_icons_are_silent()
 {
 	$source = order_view_picker_links_source('editor_select_page_or_file.php');
 
-	foreach (array('desktop_windows', 'insert_drive_file', 'link') as $ligature) {
-		pg_assert_contains('<span class="material-icons me-1" aria-hidden="true">' . $ligature . '</span>', $source);
+	foreach (array('bi-window', 'bi-file-earmark', 'bi-link-45deg') as $icon) {
+		pg_assert_contains('<i class="bi ' . $icon . ' me-1" aria-hidden="true"></i>', $source);
 	}
 }

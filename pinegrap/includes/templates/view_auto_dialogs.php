@@ -21,16 +21,13 @@ if (!defined('PG_INIT_LOADED')) {
 	<div class="row">
 	    <div class="col-12">
 			<?=$liveform->get_messages()?>
-	        <div class="row mb-3 flex-wrap">
-                <div class="col-12 sm:col-12 text-center md:text-start">
-                    <h2 class="d-inline-block "><?=lang('All Auto Dialogs')?></h2>
-                    <nav id="button_bar" class="navigation " aria-label="<?= h(lang('Button Bar')) ?>">
-                    	<a class="btn btn-sm btn-solid theme-primary m-1 " href="add_auto_dialog.php"><span class="bi bi-plus-circle me-3"></span><?=lang('Create')?></a>
-                    	<div class="pg-toolbar-grow"></div>
-                    	<?=pg_list_sort_menu('view_auto_dialogs.php', $sort_columns, $sort_levels, $sort_default)?>
-                    </nav>
-                </div>
+	        <div class="mb-3 text-center md:text-start">
+                <h2 class="d-inline-block "><?=lang('All Auto Dialogs')?></h2>
             </div>
+            <?=pg_screen_toolbar(array(
+                'primary' => array('label' => lang('Create'), 'url' => 'add_auto_dialog.php', 'icon' => 'bi-plus-circle'),
+                'search'  => pg_list_sort_menu('view_auto_dialogs.php', $sort_columns, $sort_levels, $sort_default),
+            ))?>
             <div class="card my-7">
                 <div class="card-body p-0 position-relative disable_shortcut">
 					<table class="chart table-hover table " style="width:100%;display:none">

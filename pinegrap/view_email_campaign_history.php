@@ -230,21 +230,11 @@ pg_page_shell(
                 ' . $liveform->get_warnings() . '
                 ' . $liveform->output_notices() . '
                
-                <div class="row mb-3  flex-wrap">
-                    <div class="col-12 text-center md:text-start">
-                        
-                        <nav id="button_bar" class="navigation " aria-label="' . h(lang('Button Bar')) . '">
-                            <a class="btn btn-sm btn-solid theme-primary m-1 "  href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY .'/add_email_campaign.php"><span class="bi bi-plus-circle me-3"></span>' . lang(array('string'=>'Create') ) . '</a>
-                            <div class="disable_shortcut d-inline-block">
-                                <div class=" btn-group btn-group-sm flex-wrap">
-                                    <a class="btn btn-link pg-link-secondary py-0 m-1" href="view_email_campaigns.php"><span class="material-icons me-1" aria-hidden="true">campaign</span>' . lang(array('string'=>'My Campaigns') ) . '</a>
-                                </div>
-                            </div>
-                            <div class="pg-toolbar-grow"></div>
-                            ' . pg_list_sort_menu('view_email_campaign_history.php', $sort_columns, $sort_levels, $sort_default) . '
-                        </nav>
-                    </div>
-                </div>
+                ' . pg_screen_toolbar(array(
+                    'primary'   => array('label' => lang('Create'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_email_campaign.php', 'icon' => 'bi-plus-circle'),
+                    'secondary' => array('label' => lang('My Campaigns'), 'url' => 'view_email_campaigns.php', 'icon' => 'bi-megaphone'),
+                    'search'    => pg_list_sort_menu('view_email_campaign_history.php', $sort_columns, $sort_levels, $sort_default),
+                )) . '
                 <div class="card my-7">
                     <div class="card-body p-0 position-relative">
                         <form name="form" action="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/delete_email_campaigns.php" method="post" class="disable_shortcut"> 

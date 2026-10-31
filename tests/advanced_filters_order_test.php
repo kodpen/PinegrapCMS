@@ -33,7 +33,11 @@ function test_advanced_filters_order_panel_after_toolbar_and_toggle()
 		pg_assert_true($main !== false, $file . ': <main> is found');
 
 		$page = substr($source, $main);
+		// The bar is written out (id="button_bar") or drawn by pg_screen_toolbar().
 		$toolbar = strpos($page, 'id="button_bar"');
+		if ($toolbar === false) {
+			$toolbar = strpos($page, 'pg_screen_toolbar(');
+		}
 		$toggle = strpos($page, $file . '?advanced_filters=');
 		$panel = strpos($page, '\' . $output_advanced_filters . \'');
 		$list = strpos($page, '<table class="chart');
