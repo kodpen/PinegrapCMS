@@ -6,10 +6,11 @@ description: ERP documents kept as issued (4.65, includes/erp/archive.php): what
 ## What is kept, and where?
 - The PDF a sales invoice or delivery note was issued with, the provider's copy of an e-document once GİB accepted it (only when the bytes are a PDF), every e-mailed reconciliation letter (with an `erp_reconciliation_log` row) and expense receipts (a new photo is kept beside the old one, `$again`: erp-expense-receipts.md).
 - Through `includes/erp/archive.php` only (`erp_archive_store()`): the file directory (`FILE_DIRECTORY_PATH`) and a `files` row with `folder = 0`, `erp_doc_type` / `erp_doc_id` set, named `erp-<type>-<number>-<random>.pdf`. Never a new folder or a write path of its own. The first copy is the document; a later call returns it.
-- Written as a temporary file then renamed. Do not ask `is_writable()` about the folder (on Windows it reads the read-only attribute); the write's result is the answer.
+- Written to a temporary file, then renamed; never ask `is_writable()` (on Windows it reads the read-only flag).
 
 ## Why is nothing of ours kept for a purchase invoice?
 - Its document is the supplier's (the incoming e-invoice). Our sales layout printed the store as its seller, and that copy went into the accountant pack's `belgeler/Alis_faturalari/` (#3997, decided in #4104). `erp_archive_keeps_rendering($direction)` (sales only) gates `erp_event_invoice()`'s deferral, `erp_archive_invoice()`, the pack's kept/rendered copy, the PDF / Download buttons of `edit_erp_invoice.php` and the drawer, and `get_erp_invoice_pdf.php` (a notice page for PDF, download and `?html=1`). Purchase PDFs kept before stay in `files`, unused; no data step. Test: `tests/erp_purchase_invoice_no_pdf_test.php`.
+- The file manager's Purchase invoices folder lists each as its record (#4320, bug #4216): `erp_files_invoice_target()` names it by its number without `.pdf`, opens `edit_erp_invoice.php`, has no type, download or kept copy (`source = 'record'`). Test: `tests/erp_files_purchase_invoice_test.php`.
 
 ## When is it rendered?
 - Asked for where the document is announced (`erp_archive_defer()` from `erp_event_invoice()` / `erp_event_waybill()`), which is inside the writer's transaction; the render runs at the end of the request, so a rolled-back writer leaves nothing to keep. The queue empties as it runs, so a document written during shutdown (the automatic invoice) still gets its copy.
@@ -20,9 +21,9 @@ description: ERP documents kept as issued (4.65, includes/erp/archive.php): what
 - A new query that lists files leaves ERP rows out (`erp_doc_type = ''`); a file operation by id (delete, move, rename, replace) refuses them: docs/memory/platform/erp-documents-in-file-manager.md.
 
 ## How does the file manager show them?
-- `includes/erp/files.php` owns the virtual folders (`erp_files_folders()`), their scope, counts, lists and item payloads; `view_folders.php` only draws them (label, icon, "Go to …" and preview by `erp_kind`). A new folder or kind updates both.
+- `includes/erp/files.php` owns the virtual folders (`erp_files_folders()`), their scope, counts, lists and item payloads; `view_folders.php` only draws them (by `erp_kind` and `source`); a new folder or kind updates both.
 - A picture item (expense receipt) carries `picture: true` and keeps `is_image` false: `is_image` would offer the image editor, optimising and the picture filters on a document.
 - The e-document folders appear only when e-documents are in use or already hold something.
 
 ## Why is each document listed once, by its newest kept copy?
-- A document can hold more than one kept `files` row: when its kept file is gone from the disk, `erp_archive_file()` answers null and the next opening keeps a new rendering beside the old row (history), and two people opening a never-kept invoice at once keep two. `erp_files_list()` therefore joins only `kf.id = (SELECT MAX(f2.id) …)`, as the expense list does; a join over every kept row listed the document twice (once on each side of a Show more page edge, in search too) and made the folder total one higher than `erp_files_count()` (PR #3759). Test: `tests/erp_files_listed_once_test.php`.
+- A document can hold several kept rows: a copy gone from the disk is rendered again beside the old row; two first openings at once keep two. `erp_files_list()` therefore joins only `kf.id = (SELECT MAX(f2.id) …)`, as the expense list does; a join over every kept row listed the document twice and made the folder total one higher than `erp_files_count()` (PR #3759). Test: `tests/erp_files_listed_once_test.php`.

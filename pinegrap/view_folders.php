@@ -798,6 +798,7 @@ $explorer_lang = array(
     'erp_source_generated' => lang('Created when opened, then kept'),
     'erp_source_provider' => lang('Fetched from the provider when opened'),
     'erp_source_draft' => lang('A draft has no document yet'),
+    'erp_source_record' => lang('A purchase invoice has no document of the store\'s own; the supplier\'s document is the invoice.'),
     'erp_source_missing' => lang('The copy that was sent is not on the disk'),
     'erp_show_preview' => lang('Show preview'),
     'erp_preview_generated' => lang('This document has no kept copy yet. Showing it creates the PDF and keeps it.'),
@@ -3068,6 +3069,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             case 'generated': return esc(L.erp_source_generated);
             case 'provider': return esc(L.erp_source_provider);
             case 'draft': return esc(L.erp_source_draft);
+            case 'record': return esc(L.erp_source_record);
             case 'missing': return esc(L.erp_source_missing);
         }
         return '';
@@ -3114,6 +3116,11 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 '<span class="bi bi-filetype-pdf pg-display-5 d-block mb-3 private"></span>' +
                 '<p class="small fg-secondary mb-3">' + esc((item.source === 'provider') ? L.erp_preview_provider : L.erp_preview_generated) + '</p>' +
                 '<button type="button" class="btn btn-sm btn-outline theme-secondary no-popover" data-role="erp-preview"><i class="bi bi-eye me-1" aria-hidden="true"></i>' + esc(L.erp_show_preview) + '</button></div>';
+        } else if (item.source === 'record') {
+            // A purchase invoice is its record: the supplier's e-document is
+            // the invoice, reached from the invoice screen.
+            media = '<div class="text-center empty-note my-5"><span class="bi bi-receipt fs-4xl d-block mb-3"></span>' +
+                esc(L.erp_source_record) + '</div>';
         } else {
             media = '<div class="text-center empty-note my-5"><span class="bi ' + ((item.source === 'draft') ? 'bi-pencil-square' : 'bi-file-earmark-x') + ' fs-4xl d-block mb-3"></span>' +
                 esc((item.source === 'draft') ? L.erp_source_draft : L.no_preview) + '</div>';
