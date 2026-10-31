@@ -4194,6 +4194,89 @@ function _eo_render_widget_js($widget_id, $form_id, $needs_shipping, $recipients
         pgApplyMask(pgCvc, function (d) { return d; }, 4);
     }
 
+    // ── Live tax on the address the page shows ─────────────────────────────
+    // submit_order() takes the tax on the posted address and refuses a total
+    // above the one posted, so an address edited on the page asks the server
+    // for the tax and totals again (eo_tax_totals, debounced like the method
+    // fetch). Wired before the recipient check below: a cart with nothing to
+    // ship is taxed on the billing address. The helpers it calls further
+    // down are function declarations, hoisted past that early return.
+    var TAX_FIELD = /^(billing_country|billing_state|billing_same_as_shipping|shipping_\d+_(country|state))$/;
+    var taxTimer = null, taxSeq = 0;
+    function taxFieldValues() {
+        var body = { action: 'eo_tax_totals' };
+        form.querySelectorAll('[name]').forEach(function (el) {
+            if (el.disabled || !TAX_FIELD.test(el.name)) return;
+            if (el.type === 'checkbox' || el.type === 'radio') {
+                if (el.checked) body[el.name] = el.value || '1';
+                else if (!(el.name in body)) body[el.name] = '';
+                return;
+            }
+            body[el.name] = el.value;
+        });
+        return body;
+    }
+    function fetchTax() {
+        clearTimeout(taxTimer);
+        taxTimer = setTimeout(_doFetchTax, 600);
+    }
+    function _doFetchTax() {
+        var seq = ++taxSeq;
+        fetch(API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(taxFieldValues()),
+            credentials: 'same-origin'
+        })
+        .then(function (r) { return r.json(); })
+        .then(function (json) {
+            // An answer overtaken by a later edit, or no answer the page can
+            // use: the page stays as drawn and submit_order() still guards.
+            if (seq !== taxSeq || !json || json.status !== 'success') return;
+            applyTaxTotals(json);
+        })
+        .catch(function () {});
+    }
+    function applyTaxTotals(json) {
+        // A tax row the template left out (has_tax false when drawn at 0)
+        // stays out; the totals below still move.
+        document.querySelectorAll('.pg-eo-tax-formatted').forEach(function (el) {
+            el.textContent = formatCost(json.tax / 100 * moneyRate());
+        });
+        // The server's figures are taken on the shipping stored on the order;
+        // they become the baselines the shipping picker moves the total from.
+        TOTAL_SHOWN  = json.total_with_surcharge;
+        POSTED_TOTAL = json.total;
+        SHIP_DRAWN   = json.shipping_drawn;
+        SHIP_CHARGED = json.shipping;
+        var totalSpan = document.querySelector('.pg-eo-total-formatted');
+        if (totalSpan) {
+            totalSpan.textContent = formatCost(json.total_with_surcharge / 100 * moneyRate());
+            totalSpan.setAttribute('data-pg-eo-total-cents', json.total);
+            if (totalSpan.hasAttribute('data-pg-eo-total-with-surcharge-cents')) {
+                totalSpan.setAttribute('data-pg-eo-total-with-surcharge-cents', json.total_with_surcharge);
+            }
+        }
+        var surSpan = document.querySelector('.pg-eo-surcharge-formatted');
+        if (surSpan && json.surcharge > 0) surSpan.textContent = formatCost(json.surcharge / 100 * moneyRate());
+        var hTotal = form.querySelector('input[name="total"]');
+        var hTws = form.querySelector('input[name="total_with_surcharge"]');
+        if (hTotal) hTotal.value = (json.total / 100).toFixed(2);
+        if (hTws) hTws.value = (json.total_with_surcharge / 100).toFixed(2);
+        // A method picked on the page is not stored yet: count it again on
+        // the new baselines, as updateMethodSelection() does.
+        var picked = form.querySelectorAll('input.pg-eo-method-radio:checked');
+        if (!picked.length) return;
+        var ship = 0;
+        picked.forEach(function (r) { ship += parseFloat(r.getAttribute('data-pg-eo-cost') || 0); });
+        var shipCents = Math.round(ship * 100);
+        if (shipCents === SHIP_DRAWN) shipCents = SHIP_CHARGED;
+        recomputeSidebarTotal(shipCents);
+    }
+    form.addEventListener('change', function (e) {
+        if (e.target && e.target.name && TAX_FIELD.test(e.target.name)) fetchTax();
+    });
+
     // Shipping JS only runs when there are recipients. For digital orders
     // (RIDS empty) the script terminates here after wiring the date
     // converter and the card masks — no shipping picker, no AJAX, no extra

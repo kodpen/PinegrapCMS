@@ -1,10 +1,10 @@
 ---
 name: working-mode
-description: Working rules (2026-10-25) for every session: why, one open PR, no stacked branches, issues only for decisions, PR size, queue limit, changelog through the PR body, docs-only PRs alone
+description: Working rules (2026-10-25) for every session: why, one open PR, no stacked branches, issues for decisions and bugs, PR size, queue limit, changelog through the PR body, docs-only PRs alone
 ---
 
 ## Why these rules?
-- 2026-10-25: about fifteen sessions on four accounts work at once and one session merges. Quotas ran out while PRs waited: every merge made open PRs conflict (mostly in the old single `tr.json`), each session merged `development` again and was woken by every CI event, and review chains cost millions of tokens per PR.
+- 2026-10-25: about fifteen sessions on four accounts work at once and one session merges. Quotas ran out while PRs waited: every merge made open PRs conflict, each session merged `development` again and was woken by every CI event, and review chains cost millions of tokens per PR.
 - They are the sessions' own arrangement, changed by a PR that gives its reason; never written as an owner decision (`CLAUDE.md`, Fixed rules 6).
 
 ## How many PRs may a session have open?
@@ -12,7 +12,7 @@ description: Working rules (2026-10-25) for every session: why, one open PR, no 
 - From green CI to the next step: `session-lifecycle.md`.
 
 ## Are issues used?
-- Only for decision questions: an issue labelled `architect`, which the architect session decides with the owner (`architect.md`). No claim, hand-off or follow-up issue: a claim is a draft PR and a hand-off is the PR itself.
+- For decision questions: an issue labelled `architect`, which the architect decides with the owner (`architect.md`). For faults found in testing: a `bug` issue, a worker's free work (`test-coordinator.md`). No claim, hand-off or follow-up issue: a claim is a draft PR and a hand-off is the PR itself.
 
 ## How much checking, how many agents?
 - The tests of your area and what the change touches, no sandbox without a reason, no sub-agents or review chains: `session-checks.md`.

@@ -7,6 +7,7 @@ description: How a green merge train lands (2026-10-25): one fast-forward push, 
 - `php tools/merge_train.php --land` runs the checks below and the push ([[merge-train-tool]]).
 - `git fetch origin development`; `origin/development` must be an ancestor of the train (`git merge-base --is-ancestor origin/development merge-train/<time>`), else merge it in and run CI again.
 - One push: `git push origin merge-train/<time>:development`, a fast-forward; `tools/pre_push.sh` runs on the tip. GitHub marks every PR whose head commit is now reachable from `development` as merged and closes it, the train PR included, which wakes each PR's session for its next step (`session-lifecycle.md`). Nothing is pushed to a PR branch, so no PR runs CI again; the push runs `development`'s own workflows once on the new tip. A bot PR taken with `--squash` (`merge-train.md`) is closed by hand with a comment naming its commit.
+- A landed PR whose body says `Fixes #<n>` for a `bug` issue: close the issue as completed with a comment naming the PR, since GitHub closes issues only on merges into `main` (`test-coordinator.md`).
 - `git log --first-parent development` reads one line per PR, `<PR title> (#n)`; the PR's own commits sit below its merge commit.
 
 ## Why not a squash merge per PR after the train?

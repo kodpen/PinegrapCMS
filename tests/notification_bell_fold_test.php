@@ -24,8 +24,8 @@ function test_notification_bell_fold_key_is_the_flow_and_how_its_run_ended()
 {
 	pg_assert_same('flow:12:ended', ws_bell_fold_key('flow_finished', array('id' => 40, 'flow_id' => 12, 'status' => 'done')), 'a run that went well');
 	pg_assert_same('flow:12:failed', ws_bell_fold_key('flow_finished', array('id' => 41, 'flow_id' => 12, 'status' => 'failed')), 'a failed run folds only with failed ones');
-	pg_assert_same('', ws_bell_fold_key('flow_finished', null), 'a run no longer known stands alone');
-	pg_assert_same('', ws_bell_fold_key('flow_finished', array('id' => 42, 'flow_id' => 0, 'status' => 'done')), 'a run without its flow stands alone');
+	pg_assert_same('flow:0:ended', ws_bell_fold_key('flow_finished', null), 'lines whose run is not known read alike and fold together');
+	pg_assert_same('flow:0:ended', ws_bell_fold_key('flow_finished', array('id' => 42, 'flow_id' => 0, 'status' => 'done')), 'a run without its flow folds with them');
 	pg_assert_same('', ws_bell_fold_key('mention', array('id' => 40, 'flow_id' => 12, 'status' => 'done')), 'every other kind stands alone');
 }
 

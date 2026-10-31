@@ -133,6 +133,9 @@ function pg_panel_actions()
         'get_delivery_date' => array('file' => 'commerce.php', 'handler' => 'pg_panel_get_delivery_date', 'exempt' => true, 'token' => false, 'write' => true, 'public' => true),
         'get_product' => array('file' => 'commerce.php', 'handler' => 'pg_panel_get_product', 'exempt' => true, 'token' => false, 'write' => false, 'public' => true),
         'get_shipping_methods' => array('file' => 'commerce.php', 'handler' => 'pg_panel_get_shipping_methods', 'exempt' => true, 'token' => false, 'write' => true, 'public' => true),
+        // The express order page's tax and totals on the address it shows:
+        // writes the session cart's billing address and line taxes.
+        'eo_tax_totals' => array('file' => 'commerce.php', 'handler' => 'pg_panel_eo_tax_totals', 'exempt' => true, 'token' => false, 'write' => true, 'public' => true),
         'delete_order' => array('file' => 'commerce.php', 'handler' => 'pg_panel_delete_order', 'exempt' => false, 'token' => true, 'write' => true),
         // The refund dialog is offered to the order screen's people with the
         // ERP right, past role 1; the handler checks them. Read only.
