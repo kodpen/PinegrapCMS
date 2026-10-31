@@ -854,7 +854,8 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
         // tax_total 0, and the stored sum alone left it out of the tax.
         $tax_cents = 0;
         $_pg_tax_lines = db_items(
-            "SELECT oi.price * oi.quantity AS amount, oi.tax_total, p.taxable, p.tax_rate
+            "SELECT oi.price * oi.quantity AS amount, oi.tax_total, p.taxable, p.tax_rate"
+             . (pg_schema_has('order_items', 'tax_rate') ? ", oi.tax_rate AS charged_rate" : "") . "
              FROM order_items oi
              LEFT JOIN products p ON oi.product_id = p.id
              WHERE oi.order_id = '$oid_esc'" . pg_order_item_active_sql('oi')
@@ -2061,8 +2062,17 @@ function pg_express_order_tax_addresses($recipients, $fields, $same_as_shipping)
  * only that line, so the tax is taken once per rate on the sum of the lines,
  * as the checkout takes it (pg_tax_by_rate()), and not rounded per batch.
  *
+ * The stored taxes are also stale when the amounts changed after the
+ * checkout (a quantity, a donation amount, an offer's price): with the
+ * charged rate on the line (order_items.tax_rate), the lines of each charged
+ * rate must still give their stored tax on today's amounts, and a stored tax
+ * with no charged rate cannot be checked. Every quantity and price writer
+ * would otherwise have to clear tax_total. A line without the charged_rate
+ * key (a schema before the column) is trusted as before.
+ *
  * @param array       $lines         per active line: amount (price × quantity), tax_total,
- *                                   taxable, tax_rate (products.tax_rate, null for the zone's)
+ *                                   taxable, tax_rate (products.tax_rate, null for the zone's),
+ *                                   charged_rate (order_items.tax_rate, when the column exists)
  * @param float|false $default_rate  get_default_tax_rate(): false when the default country is in no zone
  * @return int minor units
  */
@@ -2071,14 +2081,29 @@ function pg_cart_estimate_tax($lines, $default_rate)
     $stored = 0;
     $preview = array();
     $untaxed = false;
+    $charged = array();
 
     foreach ((array) $lines as $key => $line) {
         $stored += (int) ($line['tax_total'] ?? 0);
+        if (array_key_exists('charged_rate', (array) $line)) {
+            $charged_rate = (float) ($line['charged_rate'] ?? 0);
+            if ($charged_rate > 0) {
+                $group = sprintf('%.3F', $charged_rate);
+                $charged[$group]['lines'][$key] = array('amount' => (int) ($line['amount'] ?? 0), 'rate' => $charged_rate);
+                $charged[$group]['stored'] = ($charged[$group]['stored'] ?? 0) + (int) ($line['tax_total'] ?? 0);
+            } elseif ((int) ($line['tax_total'] ?? 0) !== 0) {
+                $untaxed = true;
+            }
+        }
         if (empty($line['taxable']) || $default_rate === false) continue;
         $rate = (float) get_effective_tax_rate($line['tax_rate'] ?? null, $default_rate);
         if ($rate <= 0) continue;
         $preview[$key] = array('amount' => (int) ($line['amount'] ?? 0), 'rate' => $rate);
         if ((int) ($line['tax_total'] ?? 0) === 0) $untaxed = true;
+    }
+
+    foreach ($charged as $group) {
+        if ((int) array_sum(pg_tax_by_rate($group['lines'])) !== $group['stored']) $untaxed = true;
     }
 
     if (!$untaxed) return $stored;
