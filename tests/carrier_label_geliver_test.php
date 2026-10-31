@@ -43,6 +43,8 @@ function carrier_label_geliver_test_pdf()
 // fixture name for a 200 answer. A request with nothing queued is not reached.
 function carrier_label_geliver_test_stub($answers)
 {
+	// A test run on its own (a filter) has not loaded the driver yet.
+	pg_label_load('geliver');
 	$GLOBALS['carrier_label_geliver_test_sent'] = array();
 
 	pg_label_geliver_transport(function ($method, $url, $headers, $body) use (&$answers) {

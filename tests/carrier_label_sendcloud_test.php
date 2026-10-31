@@ -41,6 +41,8 @@ function carrier_label_sendcloud_test_account($changes = array())
 // out after it was sent.
 function carrier_label_sendcloud_test_stub($answers)
 {
+	// A test run on its own (a filter) has not loaded the driver yet.
+	pg_label_load('sendcloud');
 	$GLOBALS['carrier_label_sendcloud_test_sent'] = array();
 
 	pg_label_sendcloud_transport(function ($method, $url, $headers, $body) use (&$answers) {
@@ -861,6 +863,7 @@ function test_carrier_label_sendcloud_long_refusal_is_cut_on_a_character()
 function test_carrier_label_sendcloud_long_name_keeps_the_body()
 {
 	$bodies = array();
+	pg_label_load('sendcloud');
 	pg_label_sendcloud_transport(function ($method, $url, $headers, $body) use (&$bodies) {
 		$bodies[] = $body;
 

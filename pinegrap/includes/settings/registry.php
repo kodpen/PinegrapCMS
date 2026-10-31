@@ -942,7 +942,7 @@ function pg_settings_tool_cards($groups, $base_url)
     }
 
     return ($output === '') ? '' : '
-        <div class="row g-12 my-12">' . $output . '
+        <div class="row g-8 my-12">' . $output . '
         </div>';
 }
 
