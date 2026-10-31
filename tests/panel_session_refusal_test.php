@@ -85,3 +85,47 @@ function test_panel_session_refusal_side_doors()
 		pg_assert_contains("lang('No answer came, so the inventory quantity may or may not have changed. Check the inventory of the product before scanning again.')", $source, $path);
 	}
 }
+
+function panel_session_refusal_handler_body($source, $handler)
+{
+	$start = strpos($source, 'function ' . $handler . '(');
+	if ($start === false) {
+		return '';
+	}
+	$end = strpos($source, "\nfunction ", $start + 1);
+	return $end === false ? substr($source, $start) : substr($source, $start, $end - $start);
+}
+
+function test_panel_session_refusal_exempt_handlers_refuse_before_validate_user()
+{
+	// Exempt handlers check the session themselves. validate_user() answers
+	// an ended session with a redirect to the sign-in page, which XHR and
+	// fetch follow and hand over as HTML, so the JSON refusal must come first.
+	$handlers = array(
+		'includes/panel/explorer.php' => array('pg_panel_file_explorer'),
+		'includes/panel/explorer_side.php' => array('pg_panel_explorer_side'),
+		'includes/panel/software.php' => array('pg_panel_software_backup', 'pg_panel_software_update'),
+		'includes/panel/dashboard.php' => array('pg_panel_contact_quick_save', 'pg_panel_tour_seen', 'pg_panel_user_pinned_app_update'),
+		'includes/panel/commerce.php' => array('pg_panel_get_unselected_products', 'pg_panel_erp_refund_preview', 'pg_panel_get_product_barcodes'),
+		'includes/panel/system.php' => array(
+			'pg_panel_database_deep_check',
+			'pg_panel_server_config_repair',
+			'pg_panel_write_permissions_repair',
+			'pg_panel_purge_cache',
+		),
+		'includes/panel/notifications.php' => array('pg_panel_check_unread_notifications', 'pg_panel_push_config'),
+	);
+	$guard = "if (!USER_LOGGED_IN) {\n        respond(panel_login_refusal());\n    }";
+	foreach ($handlers as $path => $names) {
+		$source = str_replace("\r\n", "\n", panel_session_refusal_source($path));
+		foreach ($names as $name) {
+			$body = panel_session_refusal_handler_body($source, $name);
+			pg_assert_true($body !== '', $path . ': ' . $name . ' not found');
+			$guard_at = strpos($body, $guard);
+			$validate_at = strpos($body, '= validate_user();');
+			pg_assert_true($guard_at !== false, $path . ': ' . $name . ' has no session refusal');
+			pg_assert_true($validate_at !== false, $path . ': ' . $name . ' has no validate_user()');
+			pg_assert_true($guard_at !== false && $guard_at < $validate_at, $path . ': ' . $name . ' calls validate_user() before the session refusal');
+		}
+	}
+}

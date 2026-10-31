@@ -448,6 +448,11 @@ function pg_panel_erp_refund_preview($request, $action)
     // see includes/panel/actions.php.
     global $user;
 
+    // Exempt: an ended session gets the JSON refusal here, before
+    // validate_user() could redirect the request to the sign-in page.
+    if (!USER_LOGGED_IN) {
+        respond(panel_login_refusal());
+    }
     $user = validate_user();
     validate_ecommerce_access($user);
 
@@ -979,6 +984,11 @@ function pg_panel_get_unselected_products($request, $action)
     // see includes/panel/actions.php.
     global $user;
 
+    // Exempt: an ended session gets the JSON refusal here, before
+    // validate_user() could redirect the request to the sign-in page.
+    if (!USER_LOGGED_IN) {
+        respond(panel_login_refusal());
+    }
     $user = validate_user();
     validate_ecommerce_access($user);
 
