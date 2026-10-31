@@ -517,12 +517,21 @@ if (!defined('PG_SETTINGS_ENTRY')) {
                     }
 
                     $erp_edoc_control .= '</select>';
+                } elseif ($erp_edoc_secret) {
+                    // A secret is never sent back to the browser: the box is
+                    // drawn empty ("Saved" when one is stored), a blank box
+                    // keeps it and the tick below removes it.
+                    $erp_edoc_control = '<input type="password" class="form-control" id="' . h($erp_edoc_name) . '" name="' . h($erp_edoc_name) . '" value="" autocomplete="new-password" placeholder="' . (($erp_edoc_value !== '') ? h(lang('Saved')) : '') . '"' . $erp_edoc_required . ' />';
+
+                    if ($erp_edoc_value !== '') {
+                        $erp_edoc_control .= '
+                                                                    <div class="form-field mb-0 mt-1">
+                                                                        <input value="1" class="check" type="checkbox" id="' . h($erp_edoc_name) . '_clear" name="' . h($erp_edoc_name) . '_clear" />
+                                                                        <label class="fg-danger" for="' . h($erp_edoc_name) . '_clear">' . lang('Remove the saved value') . '</label>
+                                                                    </div>';
+                    }
                 } else {
-                    // The stored value is still printed here: legacy behaviour
-                    // left from before the secret-storage rule, not a pattern
-                    // to copy. The payment gateways' secrets are sealed and
-                    // drawn as a mask (pg_gateway_secret_fields()).
-                    $erp_edoc_control = '<input type="' . ($erp_edoc_secret ? 'password' : 'text') . '" class="form-control" id="' . h($erp_edoc_name) . '" name="' . h($erp_edoc_name) . '" value="' . h($erp_edoc_value) . '" autocomplete="' . ($erp_edoc_secret ? 'new-password' : 'off') . '"' . $erp_edoc_required . ' />';
+                    $erp_edoc_control = '<input type="text" class="form-control" id="' . h($erp_edoc_name) . '" name="' . h($erp_edoc_name) . '" value="' . h($erp_edoc_value) . '" autocomplete="off"' . $erp_edoc_required . ' />';
                 }
 
                 $erp_edoc_fields .= '

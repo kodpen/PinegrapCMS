@@ -279,24 +279,32 @@ function erp_edoc_credentials($code)
 }
 
 /**
- * Store a provider's credentials: what was typed over what was there. An
- * empty password field keeps the stored one (the form shows a placeholder,
- * not the secret), so a save that changes nothing changes nothing.
+ * Lay the posted boxes over the stored credentials. A password box is drawn
+ * empty (the stored secret never goes back to the browser), so a blank one
+ * keeps the stored secret and only its "remove" tick clears it; the tick wins
+ * over a value typed beside it. A text or select box is stored as posted, an
+ * emptied one clears it. A field neither posted nor ticked is kept.
  *
- * @param string $code
- * @param array  $posted  name => value
- * @return bool
+ * @param array $fields   the driver's fields() rows
+ * @param array $current  name => stored value
+ * @param array $posted   name => value
+ * @param array $cleared  names of the password fields ticked for removal
+ * @return array
  */
-function erp_edoc_credentials_save($code, $posted)
+function erp_edoc_credentials_merge($fields, $current, $posted, $cleared)
 {
-    if (!erp_edoc_installed() || !erp_edoc_load($code)) {
-        return false;
-    }
+    $current = (array) $current;
+    $posted = (array) $posted;
+    $cleared = array_map('strval', (array) $cleared);
 
-    $current = erp_edoc_credentials($code);
-
-    foreach (erp_edoc_fields($code) as $field) {
+    foreach ((array) $fields as $field) {
         $name = (string) $field['name'];
+        $secret = (($field['type'] ?? '') === 'password');
+
+        if ($secret && in_array($name, $cleared, true)) {
+            $current[$name] = '';
+            continue;
+        }
 
         // A field the caller did not send at all is not a field the caller
         // cleared: a partial array (one box, one screen) leaves the rest as
@@ -305,11 +313,35 @@ function erp_edoc_credentials_save($code, $posted)
             continue;
         }
 
-        // Emptied means emptied. The box shows what is stored, so a blank
-        // one is the operator saying blank - not the old "empty means keep",
-        // which left no way to clear a key that should no longer be there.
-        $current[$name] = trim((string) $posted[$name]);
+        $value = trim((string) $posted[$name]);
+
+        if ($secret && ($value === '')) {
+            continue;
+        }
+
+        $current[$name] = $value;
     }
+
+    return $current;
+}
+
+/**
+ * Store a provider's credentials: what was typed over what was there
+ * (erp_edoc_credentials_merge()), so a save that changes nothing changes
+ * nothing.
+ *
+ * @param string $code
+ * @param array  $posted   name => value
+ * @param array  $cleared  names of the password fields ticked for removal
+ * @return bool
+ */
+function erp_edoc_credentials_save($code, $posted, $cleared = array())
+{
+    if (!erp_edoc_installed() || !erp_edoc_load($code)) {
+        return false;
+    }
+
+    $current = erp_edoc_credentials_merge(erp_edoc_fields($code), erp_edoc_credentials($code), $posted, $cleared);
 
     $encoded = '';
 

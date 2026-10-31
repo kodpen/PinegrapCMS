@@ -92,7 +92,7 @@ function pg_parasut_credentials_for_save()
 }
 
     // The e-document provider (4.61): the picked provider becomes the
-    // active one and only its credentials are written - a box left empty
+    // active one and only its credentials are written - a password box left empty
     // keeps the stored secret, like the Paraşüt fields above.
     //
     // Every value here is one string. The card always posts the provider
@@ -112,8 +112,15 @@ function pg_parasut_credentials_for_save()
 
         if ($erp_edoc_picked !== '') {
             $erp_edoc_posted = array();
+            $erp_edoc_cleared = array();
 
             foreach (erp_edoc_fields($erp_edoc_picked) as $erp_edoc_field) {
+                // A password box comes empty with a "remove" tick beside it:
+                // the tick is the only way to clear a stored secret.
+                if (($erp_edoc_field['type'] === 'password') && (post_value('edoc_' . $erp_edoc_picked . '_' . $erp_edoc_field['name'] . '_clear') === '1')) {
+                    $erp_edoc_cleared[] = $erp_edoc_field['name'];
+                }
+
                 $erp_edoc_value = post_value('edoc_' . $erp_edoc_picked . '_' . $erp_edoc_field['name']);
 
                 if (!is_string($erp_edoc_value)) {
@@ -128,8 +135,8 @@ function pg_parasut_credentials_for_save()
                 $erp_edoc_posted[$erp_edoc_field['name']] = $erp_edoc_value;
             }
 
-            if (!empty($erp_edoc_posted)) {
-                erp_edoc_credentials_save($erp_edoc_picked, $erp_edoc_posted);
+            if (!empty($erp_edoc_posted) || !empty($erp_edoc_cleared)) {
+                erp_edoc_credentials_save($erp_edoc_picked, $erp_edoc_posted, $erp_edoc_cleared);
             }
         }
 
