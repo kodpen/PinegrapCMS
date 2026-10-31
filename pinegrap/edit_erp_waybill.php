@@ -35,7 +35,12 @@ if (!is_array($waybill)) {
     exit();
 }
 
-$self_url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_erp_waybill.php?id=' . $waybill_id;
+// The filtered list the note was opened from: the back arrow, the
+// breadcrumb, the form and every reload of this screen keep it.
+$send_to = pg_send_to_url('');
+$send_to_query = ($send_to !== '') ? '&send_to=' . urlencode($send_to) : '';
+$self_action = h('edit_erp_waybill.php' . (($send_to !== '') ? '?send_to=' . urlencode($send_to) : ''));
+$self_url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_erp_waybill.php?id=' . $waybill_id . $send_to_query;
 
 if ($_POST) {
 
@@ -154,9 +159,9 @@ pg_page_shell([
         'icon' => 'erp',
         'heading' => h($waybill['full_number']),
         'heading_description' => lang('The note as it was written: what left, to whom and how.'),
-        'cancel' => array('enable' => 'true', 'url' => 'erp_waybills.php'),
+        'cancel' => array('enable' => 'true', 'url' => pg_send_to_url('erp_waybills.php')),
         'breadcrumb' => array(
-            array('label' => lang('Delivery Notes'), 'url' => $list_url),
+            array('label' => lang('Delivery Notes'), 'url' => pg_send_to_list_url($list_url)),
             array('label' => $waybill['full_number']),
         ),
     ]) . '
@@ -249,7 +254,7 @@ pg_page_shell([
                 : '') . '
 
             ' . (($can_invoice || $can_cancel)
-                ? '<form name="form" action="edit_erp_waybill.php" method="post">
+                ? '<form name="form" action="' . $self_action . '" method="post">
                 ' . get_token_field() . '
                 <input type="hidden" name="id" value="' . $waybill_id . '" />
                 <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
