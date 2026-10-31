@@ -706,6 +706,7 @@
     "Done": "Bitti",
     "Done choosing": "Seçimi bitir",
     "Done only when the action went well.": "Yalnız işlem başarılı olursa yapılır.",
+    "Done. The amount moved between your tills as a transfer.": "Tamam. Tutar kendi kasalarınız arasında virmanla aktarıldı.",
     "Done. The movement is in the till and on the account.": "Tamam. Hareket kasada ve caride.",
     "Dont share API keys with people you dont know, if youre sharing for a short time, delete the application you shared when youre done!": "API anahtarlarını tanımadığınız kişilerle paylaşmayın, kısa süreli paylaşım yapıyorsanız işiniz bittiğinde paylaştığınız uygulamayı silin!",
     "Dot": "Nokta",
