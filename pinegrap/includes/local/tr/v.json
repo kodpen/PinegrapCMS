@@ -176,6 +176,7 @@
     "View the HTML Source for this System Page Style and optionally insert additional head content.": "Bu Sistem Sayfa Stili için HTML kaynağını görüntüleyin ve isteğe bağlı olarak ek baş içeriği ekleyin.",
     "View the details of this order and update shipping information.": "Bu siparişin ayrıntılarını görüntüleyin ve gönderim bilgilerini güncelleyin.",
     "View the number of Products that need to be shipped or have been shipped on different days.": "Gönderilmesi gereken veya farklı günlerde gönderilen Ürünlerin sayısını görüntüleyin.",
+    "View the order: {var:1}": "Siparişi görüntüleyin: {var:1}",
     "View the picture": "Görseli görüntüle",
     "View the product": "Ürünü görüntüle",
     "View this computer's visit to the website.": "Bu bilgisayarın web sitesine yaptığı ziyareti görüntüleyin.",

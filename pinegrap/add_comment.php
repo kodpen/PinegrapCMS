@@ -838,128 +838,139 @@ if (count($administrator_email_addresses) > 0) {
         $output_submitter_name = ' (' . $submitter_name . ')';
     }
     
-    $attachment_line = '';
+    // The moderators read the software language, not the language of the
+    // page the comment was posted from.
+    list($subject, $body) = pg_staff_lang(function () use (
+        $body, $output_submitter_name, $published, $comments_administrator_email_subject,
+        $item_type, $page_id, $item_id, $page_type, $comment_label, $comment_label_lowercase,
+        $name, $comment_parent, $message, $file_id, $file_name, $file_size,
+        $publish_date_and_time, $publish_cancel, $comment_id
+    ) {
+        $attachment_line = '';
     
-    // if there is an attachment, then add line to e-mail content with link to attachment
-    if ($file_id != 0) {
-        $attachment_line =
-            "\n" .
-            lang('Attachment') . ': ' . URL_SCHEME . HOSTNAME_SETTING . PATH . encode_url_path($file_name) . ' (' . convert_bytes_to_string($file_size) . ')' . "\n";
-    }
+        // if there is an attachment, then add line to e-mail content with link to attachment
+        if ($file_id != 0) {
+            $attachment_line =
+                "\n" .
+                lang('Attachment') . ': ' . URL_SCHEME . HOSTNAME_SETTING . PATH . encode_url_path($file_name) . ' (' . convert_bytes_to_string($file_size) . ')' . "\n";
+        }
     
-    // if comment was published, then build a message that informs the administrator
-    if ($published == '1') {
-        $subject = '';
+        // if comment was published, then build a message that informs the administrator
+        if ($published == '1') {
+            $subject = '';
         
-        // if the administrator e-mail subject is not blank, then prepare it for output and set it to the e-mail subject
-        if ($comments_administrator_email_subject != '') {
-            // if the item is a submitted form, then prepare to replace variables in subject with submitted form data
-            if ($item_type == 'submitted_form') {
-                $subject = get_variable_submitted_form_data_for_content($page_id, $item_id, $comments_administrator_email_subject, $prepare_for_html = FALSE);
+            // if the administrator e-mail subject is not blank, then prepare it for output and set it to the e-mail subject
+            if ($comments_administrator_email_subject != '') {
+                // if the item is a submitted form, then prepare to replace variables in subject with submitted form data
+                if ($item_type == 'submitted_form') {
+                    $subject = get_variable_submitted_form_data_for_content($page_id, $item_id, $comments_administrator_email_subject, $prepare_for_html = FALSE);
                 
-            // else the item is not a submitted form, so just set the subject
+                // else the item is not a submitted form, so just set the subject
+                } else {
+                    $subject = $comments_administrator_email_subject;
+                }
+        
+            // else use the default subject
             } else {
-                $subject = $comments_administrator_email_subject;
+                $subject = lang(array('string'=>'A {var:1} has been added and published.','vars'=>$comment_label_lowercase));
             }
         
-        // else use the default subject
-        } else {
-            $subject = lang(array('string'=>'A {var:1} has been added and published.','vars'=>$comment_label_lowercase));
-        }
-        
-        // set body message
-        $body .=
-            lang(array('string'=>'The following {var:1} has been added and published','vars'=>$comment_label_lowercase)) . ':' . "\n" .
-            "\n" .
-            lang('Display Name') . ': ' . $name . $output_submitter_name . "\n" .
-            "\n" .
-            pg_comment_parent_mail_line($comment_parent) .
-            $comment_label . ': ' . $message . "\n" .
-            $attachment_line;
+            // set body message
+            $body .=
+                lang(array('string'=>'The following {var:1} has been added and published','vars'=>$comment_label_lowercase)) . ':' . "\n" .
+                "\n" .
+                lang('Display Name') . ': ' . $name . $output_submitter_name . "\n" .
+                "\n" .
+                pg_comment_parent_mail_line($comment_parent) .
+                $comment_label . ': ' . $message . "\n" .
+                $attachment_line;
             
-    // else build a message that tells the administrator that they need to publish the comment
-    } else {
-        $subject = '';
+        // else build a message that tells the administrator that they need to publish the comment
+        } else {
+            $subject = '';
         
-        // if the administrator e-mail subject is not blank, then prepare it for output and set it to the e-mail subject
-        if ($comments_administrator_email_subject != '') {
-            // if the item is a submitted form, then prepare to replace variables in subject with submitted form data
-            if ($item_type == 'submitted_form') {
-                $subject = get_variable_submitted_form_data_for_content($page_id, $item_id, $comments_administrator_email_subject, $prepare_for_html = FALSE);
+            // if the administrator e-mail subject is not blank, then prepare it for output and set it to the e-mail subject
+            if ($comments_administrator_email_subject != '') {
+                // if the item is a submitted form, then prepare to replace variables in subject with submitted form data
+                if ($item_type == 'submitted_form') {
+                    $subject = get_variable_submitted_form_data_for_content($page_id, $item_id, $comments_administrator_email_subject, $prepare_for_html = FALSE);
                 
-            // else the item is not a submitted form, so just set the subject
+                // else the item is not a submitted form, so just set the subject
+                } else {
+                    $subject = $comments_administrator_email_subject;
+                }
+        
+            // else use the default subject
             } else {
-                $subject = $comments_administrator_email_subject;
-            }
-        
-        // else use the default subject
-        } else {
-            $subject = lang(array('string'=>'A {var:1} has been added, but it has not been published yet.','vars'=>$comment_label_lowercase));
-
-        }
-
-        $output_dashes = '';
-        $output_schedule = '';
-
-        // If this is a scheduled comment, then output info about that.
-        if ($publish_date_and_time) {
-            // Output a line of dashes above and below the schedule comment intro,
-            // so that a moderator can quickly understand that the comment is
-            // scheduled.  We use 78 dashes because that should be wider
-            // than the intro line in most cases, depending on the comment label.
-            // Many email clients will wrap plain-text email lines after 78 chars,
-            // so we don't want to use more than that.  It is probably better visually,
-            // to use more than necessary, instead of less.  We could count
-            // the total characters in the comment label and intro line,
-            // but we are not going to bother with that for now.
-            // Many email clients don't use monospace for plain-text emails,
-            // so regardless of what we do, this will not line up properly anyway for many people.
-
-            $output_dashes = '------------------------------------------------------------------------------' . "\n";
-
-            $output_schedule = lang(array('string'=>'It is scheduled to be published on {var:1}.','vars'=>get_absolute_time(array('timestamp' => strtotime($publish_date_and_time), 'format' => 'plain_text', 'timezone_type' => 'site')))) . "\n";
-
-            // If the schedule is set to be cancelled if new comments are added,
-            // then add more info about that.
-            if ($publish_cancel) {
-                $output_schedule .= lang(array('string'=>'However, it will not be published if a new {var:1} is added first.','vars'=>$comment_label_lowercase)) . "\n";
+                $subject = lang(array('string'=>'A {var:1} has been added, but it has not been published yet.','vars'=>$comment_label_lowercase));
 
             }
-            $output_action = lang(array('string'=>'The {var:1} can be edit with the link below.','vars'=>$comment_label_lowercase));
 
-        } else {
-            $output_action = lang(array('string'=>'The {var:1} can be publish with the link below.','vars'=>$comment_label_lowercase));
+            $output_dashes = '';
+            $output_schedule = '';
+
+            // If this is a scheduled comment, then output info about that.
+            if ($publish_date_and_time) {
+                // Output a line of dashes above and below the schedule comment intro,
+                // so that a moderator can quickly understand that the comment is
+                // scheduled.  We use 78 dashes because that should be wider
+                // than the intro line in most cases, depending on the comment label.
+                // Many email clients will wrap plain-text email lines after 78 chars,
+                // so we don't want to use more than that.  It is probably better visually,
+                // to use more than necessary, instead of less.  We could count
+                // the total characters in the comment label and intro line,
+                // but we are not going to bother with that for now.
+                // Many email clients don't use monospace for plain-text emails,
+                // so regardless of what we do, this will not line up properly anyway for many people.
+
+                $output_dashes = '------------------------------------------------------------------------------' . "\n";
+
+                $output_schedule = lang(array('string'=>'It is scheduled to be published on {var:1}.','vars'=>get_absolute_time(array('timestamp' => strtotime($publish_date_and_time), 'format' => 'plain_text', 'timezone_type' => 'site')))) . "\n";
+
+                // If the schedule is set to be cancelled if new comments are added,
+                // then add more info about that.
+                if ($publish_cancel) {
+                    $output_schedule .= lang(array('string'=>'However, it will not be published if a new {var:1} is added first.','vars'=>$comment_label_lowercase)) . "\n";
+
+                }
+                $output_action = lang(array('string'=>'The {var:1} can be edit with the link below.','vars'=>$comment_label_lowercase));
+
+            } else {
+                $output_action = lang(array('string'=>'The {var:1} can be publish with the link below.','vars'=>$comment_label_lowercase));
            
-        }
+            }
         
-        // set body message
+            // set body message
+            $body .=
+                $output_dashes .
+                lang(array('string'=>'The following {var:1} has been added, but it has not been published yet.','vars'=>$comment_label_lowercase)) . "\n" .
+                $output_schedule .
+                $output_dashes .
+                "\n" .
+                lang('Display Name') . ': ' . $name . $output_submitter_name . "\n" .
+                "\n" .
+                pg_comment_parent_mail_line($comment_parent) .
+                $comment_label . ': ' . $message . "\n" .
+                $attachment_line .
+                "\n" .
+                $output_action . "\n" .
+                "\n" .
+                URL_SCHEME . HOSTNAME_SETTING . PATH . SOFTWARE_DIRECTORY . '/edit_comment.php?id=' . $comment_id . "\n";
+        }
+
+        // Every comment shows, featured or not, and a comments widget opens the
+        // page of the thread that holds this one (pg_comment_view_query()).
+        $query_string = pg_comment_view_query(get_query_string_for_page_url($page_type, $item_id, $item_type), $comment_id);
+
+        // build the view comment link
         $body .=
-            $output_dashes .
-            lang(array('string'=>'The following {var:1} has been added, but it has not been published yet.','vars'=>$comment_label_lowercase)) . "\n" .
-            $output_schedule .
-            $output_dashes .
             "\n" .
-            lang('Display Name') . ': ' . $name . $output_submitter_name . "\n" .
+            lang(array('string'=>'The {var:1} appears at the link below.','vars'=>$comment_label_lowercase)) . "\n" .
             "\n" .
-            pg_comment_parent_mail_line($comment_parent) .
-            $comment_label . ': ' . $message . "\n" .
-            $attachment_line .
-            "\n" .
-            $output_action . "\n" .
-            "\n" .
-            URL_SCHEME . HOSTNAME_SETTING . PATH . SOFTWARE_DIRECTORY . '/edit_comment.php?id=' . $comment_id . "\n";
-    }
+            URL_SCHEME . HOSTNAME_SETTING . PATH . get_page_name($page_id) . $query_string . '#c-' . $comment_id;
 
-    // Every comment shows, featured or not, and a comments widget opens the
-    // page of the thread that holds this one (pg_comment_view_query()).
-    $query_string = pg_comment_view_query(get_query_string_for_page_url($page_type, $item_id, $item_type), $comment_id);
-
-    // build the view comment link
-    $body .=
-        "\n" .
-        lang(array('string'=>'The {var:1} appears at the link below.','vars'=>$comment_label_lowercase)) . "\n" .
-        "\n" .
-        URL_SCHEME . HOSTNAME_SETTING . PATH . get_page_name($page_id) . $query_string . '#c-' . $comment_id;
+        return array($subject, $body);
+    });
 
     email(array(
         'to' => $administrator_email_addresses,
