@@ -20,6 +20,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - Write panel markup in Bootstrap 6, checked against the dist in `assets/lib/bootstrap-6`, never in site output (5.3.8); a branch older than the switch converts its added lines once with `php tools/bs6_migrate.php --write --diff=origin/development`, and `php tools/check_bs6.php --strict` passes (`bootstrap-6.md`, `bootstrap-6-codemod.md`).
 - Call Bootstrap's JavaScript and listen to its events only through `pgUI` (`assets/js/pg_ui.js`): kinds dialog/drawer/menu, `pgUI.on()` instead of jQuery `.on('….bs.modal')`, floating layers on `pgUI.overlayHost()` (`pg-ui-adapter.md`).
 - Hand a dialog's or drawer's result to a box of the page only once it has closed (`pgUI.dialog.hide(el).then(…)`): a Bootstrap 6 one keeps the page inert till its closing animation ends, and focus, the caret and editing commands there fail without an error (`dialog-result-after-close.md`).
+- A Bootstrap 6 `.menu` a script opens itself gets `.show`, or a rule of the screen draws it at `opacity: 1`: without either it opens invisible, clickable but unseen (`explorer-context-menu-visible.md`).
 - Show a screen change with `tools/screenshots/shoot.js` on a sandbox, images on a private page the PR links, never committed (`panel-screenshots.md`).
 - Panel CSS sits in `@layer custom` and reads `--pg-*` tokens, never `--bs-*` variables; colour with alpha is `color-mix(in srgb, var(--pg-…) N%, transparent)`, not `rgba(var(--bs-…-rgb))`; a missing name goes into the token block of backend.src.css (`panel-css-tokens.md`).
 - A button's label span is `<span class="pg-btn-label">`, never `btn-text`; a flyout menu inside a menu is `.pg-submenu`, never `.submenu`: Bootstrap 6 owns `.btn-text`, `.submenu` and `.menu` (`bootstrap-6.md`).
@@ -132,6 +133,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - explorer-bin-toast.md: File and Catalog Manager Delete toasts count what the server moved to the bin and show its refusal reasons
 - explorer-breadcrumb-narrow.md: Why the File and Catalog Manager's location bar scrolls to its end after every draw and on resize, and fades on its left edge.
 - explorer-bulk-rename.md: File Manager Bulk Rename shows, compares and counts file names as prepare_file_name() stores them, via explorer_rename's write-nothing preview; Apply waits for it
+- explorer-context-menu-visible.md: The file manager's right-click menu is a Bootstrap 6 .menu shown by display, not .show, so the screen draws it and its flyouts visible itself; a right click seemed dead before
 - explorer-copy-page-right.md: File Manager folder copy and page paste skip pages a role-3 user without 'Create pages' may not copy, and stay JSON
 - explorer-drawer-names.md: File and Catalog Manager drawer rows drawn by script name themselves: access selects per user, commerce switch groups, shipping-zone lists, bulk description, backup upload path, file window code field
 - explorer-grid-tiles.md: Explorer grid tiles (view_folders.php, catalog and files): the tile size scale, picture vs glyph, the missing-picture plate sized from --pg-tile-icon, the narrow pill it fixed (PR #2200)
