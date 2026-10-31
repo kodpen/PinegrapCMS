@@ -25,6 +25,7 @@
     "WARNING: The selected {var}(s) will be permanently deleted.": "UYARI: Seçilen {var} kayıtları kalıcı olarak silinecek.",
     "WARNING: The {var:1} key code(s) of this offer will be permanently deleted.": "UYARI: Bu teklife bağlı {var:1} anahtar kod kalıcı olarak silinecek.",
     "WARNING: This country and all states and verified shipping addresses in this country will be permanently deleted.": "UYARI: Bu ülke ve bu ülkedeki tüm eyaletler/iller ile doğrulanmış teslimat adresleri kalıcı olarak silinecektir.",
+    "WARNING: This folder will be permanently deleted. It is the upload folder of {var:1} form field{suffix:1}. Later uploads to a field left on it will not show in All Files or the File Manager.": "UYARI: Bu klasör kalıcı olarak silinecek. {var:1} form alanının yükleme klasörüdür. Bu klasörde bırakılan bir alana sonradan yüklenen dosyalar Tüm Dosyalar'da ve Dosya Yöneticisi'nde görünmez.",
     "WARNING: This person's data will be erased for good.": "UYARI: Bu kişinin verileri kalıcı olarak silinecek.",
     "WARNING: This {var:1} will be permanently deleted.": "Uyarı: Bu {var:1} kalıcı olarak silinecek.",
     "WARNING: error_log files will be permanently deleted around Software. If you would like to continue with the deletion, please click OK. Otherwise, please click Cancel.": "UYARI: error_log dosyaları Yazılım genelinde kalıcı olarak silinecektir. Silme işlemine devam etmek istiyorsanız, lütfen Tamam'ı tıklayın. Aksi takdirde, lütfen İptal'i tıklayın.",

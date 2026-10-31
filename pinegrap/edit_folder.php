@@ -183,7 +183,24 @@ if (empty($_POST['name'])) {
         $output_delete_button = '<button type="button" name="submit_delete" value="Delete" class="btn my-1  btn-solid theme-danger " onclick="alert(\'' . lang('Please delete all folders, pages, and files in this folder before deleting this folder.') . $output_design_file_notice . '\');return false; " ><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>';
     // else there is not a child object in this folder, so allow delete
     } else {
-        $output_delete_button = '<button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-solid theme-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('folder')))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>';
+        // Form upload and signature fields keep the folder id after the
+        // folder is gone, and their later uploads drop out of every file
+        // list, so the confirmation names how many fields use it.
+        $result = db_q("SELECT COUNT(*) FROM form_fields WHERE upload_folder_id = ? AND type IN ('file upload', 'signature')", array((string) $_GET['id'])) or output_error('Query failed');
+        $row = mysqli_fetch_row($result);
+        $upload_field_count = $row ? (int) $row[0] : 0;
+
+        if ($upload_field_count > 0) {
+            $delete_confirm = lang(array(
+                'string' => 'WARNING: This folder will be permanently deleted. It is the upload folder of {var:1} form field{suffix:1}. Later uploads to a field left on it will not show in All Files or the File Manager.',
+                'vars' => array($upload_field_count),
+                'suffix' => ($upload_field_count == 1 ? '' : 's'),
+            ));
+        } else {
+            $delete_confirm = lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('folder'))));
+        }
+
+        $output_delete_button = '<button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-solid theme-danger " data-confirm-content="' . h($delete_confirm) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>';
     }
     
     echo
