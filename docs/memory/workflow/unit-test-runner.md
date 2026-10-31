@@ -8,7 +8,7 @@ description: tools/test.php: what it loads, which errors fail a test, other PHP 
 
 ## Which PHP errors fail a test?
 - The error handler turns every warning, notice and deprecation into an `ErrorException`, so the test is an ERROR instead of printing and passing.
-- Not a deprecation raised inside a vendored library (the folders `tools/lint.php` skips: `includes/phpmailer`, `stripe`, `iyzipay-php`, `phpexcel`, `boxpacker`, `dompdf`, `assets/lib`): it is let through. Symptom fixed: on PHP 8.4 and later PHPExcel's implicitly nullable parameters (`PHPExcel.php:806` first) stopped the whole run with a fatal error at the first test file that loads it, before any test ran (#1283).
+- Not a deprecation raised inside a vendored library (the folders `tools/lint.php` skips: `includes/phpmailer`, `stripe`, `iyzipay-php`, `phpexcel`, `boxpacker`, `dompdf`, `assets/lib`): it is let through. Symptom fixed: on PHP 8.4+ PHPExcel's implicitly nullable parameters stopped the whole run with a fatal error before any test ran (#1283).
 - `pg_assert_contains()` counts an empty needle as contained on every version, as `str_contains()` does from PHP 8.0; `strpos()` before 8.0 warns "Empty needle". A test that shows PHP refusing something catches the runner's `ErrorException` beside PHP 8's `TypeError`: PHP 7 only warns (`tests/order_submit_affiliate_test.php`).
 
 ## What does a run on another PHP version need?
@@ -21,6 +21,9 @@ description: tools/test.php: what it loads, which errors fail a test, other PHP 
 ## How does a test run PHP in a process of its own?
 - `escapeshellarg(PHP_BINARY)` and a script file it wrote (`config_file_test_run()`), not `-r` with code holding `"`, `%` or `!`: on Windows `escapeshellarg()` makes those spaces and the code no longer parses (9 config tests failed there only, #1678).
 - Peak memory is measured that way too (`backup_restore_test_copy_alone()`), never with `memory_get_peak_usage()` in the runner: before PHP 8.2 that peak still holds earlier tests' data (44.4 MB read on 7.1 for a 2 MB copy).
+
+## What else fails only on Windows?
+- Walked paths use `\`: normalise to `/` before comparing. `chmod(0555)` sets only the read-only attribute, which folders ignore (#4028).
 
 ## How does a test run editor JavaScript under Node?
 - It cuts functions out of the source (`style_designer.js`), appends its own steps that `console.log(JSON.stringify(...))`, runs the file with `node` and decodes the output. Skip (return) only when `node --version` fails; output that is not JSON must fail with the output shown, never be treated as a skip.
