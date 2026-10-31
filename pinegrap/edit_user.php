@@ -1091,8 +1091,21 @@ if (!$_POST) {
             </div>';
 
     } elseif ($edit_user_mfa_on) {
+        // Turning it off removes the passkeys, and the sessions they opened
+        // end with them: this browser's too when it signed in with one.
+        $edit_user_mfa_ends_here = false;
+
+        if ($edit_user_mfa_self && ($edit_user_current_selector !== '') && pg_auth_tokens_have_passkey()) {
+            $edit_user_mfa_ends_here = pg_passkeys_forget_ends_session(db_item(
+                "SELECT passkey_id" . ($edit_user_pin_column ? ", pinned" : "") . "
+                FROM auth_tokens
+                WHERE selector = '" . escape($edit_user_current_selector) . "' AND user_id = '" . (int) USER_ID . "'"));
+        }
+
         $output_mfa_note = $edit_user_mfa_self
-            ? lang('Turning it off also signs out your other devices.')
+            ? ($edit_user_mfa_ends_here
+                ? lang('Turning it off also signs out your other devices and this browser, because it signed in with a passkey.')
+                : lang('Turning it off also signs out your other devices.'))
                 . (pg_mfa_required_for_user((int) USER_ID) ? ' ' . lang('Your role requires two-step verification; after you turn it off you will be asked to set it up again at your next sign-in.') : '')
             : lang('Turns off the person\'s second step and signs them out everywhere. Use it when they lost their authenticator app and recovery codes; they sign in with the password alone afterwards and can set it up again.');
 
@@ -1109,7 +1122,9 @@ if (!$_POST) {
                         . '<input type="hidden" name="id" value="' . h($_GET['id']) . '"/>'
                         . '<input type="hidden" name="send_to" value="' . (isset($_REQUEST['send_to']) ? h($_REQUEST['send_to']) : '') . '"/>'
                         . '<button type="submit" class="btn btn-sm btn-outline theme-danger" data-confirm-content="' . h($edit_user_mfa_self
-                            ? lang('Turn off two-step verification for your account? Your authenticator key, passkeys and recovery codes are deleted and your other devices are signed out. This cannot be undone.')
+                            ? ($edit_user_mfa_ends_here
+                                ? lang('Turn off two-step verification for your account? Your authenticator key, passkeys and recovery codes are deleted and your other devices are signed out. This browser signed in with a passkey, so it is signed out too. This cannot be undone.')
+                                : lang('Turn off two-step verification for your account? Your authenticator key, passkeys and recovery codes are deleted and your other devices are signed out. This cannot be undone.'))
                             : lang(array('string' => 'Turn off two-step verification for {var:1}? Their authenticator key, passkeys and recovery codes are deleted and they are signed out everywhere. This cannot be undone.', 'vars' => $username))) . '">' . h(lang('Turn off two-step verification')) . '</button>'
                     . '</form>
                 </div>
