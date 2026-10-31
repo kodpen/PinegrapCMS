@@ -21,7 +21,7 @@ description: Plan (approved 2026-10-19): SMS layer, order messages, consent writ
 5b. ~~İYS settings card~~ (done, PR #1940; `platform/iys-settings-card.md`). Left: the first live run against the sandbox with the owner's İYS test credentials.
 6. ~~API: consents read, webhook `customer.consent_changed`~~ (done, PR #1940; `api/api-customer-consents.md`).
 - Drivers done: İleti Merkezi (PR #3623), Twilio (PR #3647); `platform/sms-iletimerkezi-driver.md`, `sms-twilio-driver.md`.
-7-10. Marketing SMS, decided #3570 (`workflow/decisions-made-schema-6.md`, `-product-8.md`), one PR each in order: 7 the SMS consent box beside the e-mail box (as #2431) and `consent_log` channel `sms`; 8 `contacts.iys_sms_status` and the İYS `MESAJ` channel; 9 the sender name and type label settings, the `marketing` kind opened; 10 an SMS campaign beside the e-mail campaigns.
+7-10. Marketing SMS, decided #3570 (`workflow/decisions-made-schema-6.md`, `-product-8.md`), one PR each in order: 7 the SMS consent box beside the e-mail box (as #2431) and `consent_log` channel `sms`; 8 `contacts.iys_sms_status` and the İYS `MESAJ` channel; 9 the sender name and type label settings, the `marketing` kind opened; 10 an SMS campaign beside the e-mail campaigns (tables: #3847).
 - Done: 7 (PR #3660, #3694, #3715, `core/sms-consent-box.md`), 8 (PR #3806, `platform/iys-sms-channel.md`), 9 (PR #3820, `platform/sms-marketing-kind.md`).
 
 ## Open questions?
