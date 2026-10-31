@@ -2,8 +2,8 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * The Delete confirmations on Edit State, Edit Shipping Method, Edit Zone
- * and Edit Product Attribute name the records the delete removes or
+ * The Delete confirmations on Edit State, Edit Country, Edit Shipping
+ * Method, Edit Zone and Edit Product Attribute name the records the delete removes or
  * unlinks, with their counts, and keep the plain sentence when nothing
  * goes with the record.
  *
@@ -19,6 +19,7 @@ if (!defined('PG_TEST_RUNNER')) {
 
 require_once(__DIR__ . '/helpers/language_map.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/forms/state_form.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/forms/country_form.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/forms/shipping_method_form.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/forms/zone_form.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/forms/product_attribute_form.php');
@@ -54,6 +55,71 @@ function test_commerce_delete_confirm_state()
 
 	$many = pg_state_form_delete_confirm(12);
 	pg_assert_same(array('es'), $many[0]['suffix'], 'addresses take -es');
+
+	$zoned = pg_state_form_delete_confirm(0, 1, 1, 1, 1);
+	pg_assert_same(
+		array(
+			'WARNING: This {var:1} will be permanently deleted.',
+			'It will also be removed from {var:1} shipping zone{suffix:1} and {var:2} tax zone{suffix:2}.',
+			'{var:1} shipping zone{suffix:1} will have no state or country left and will match no address, and {var:2} tax zone{suffix:2} will have no state or country left and will charge no tax.',
+		),
+		commerce_delete_confirm_keys($zoned),
+		'the zones it leaves and those left empty are named');
+	pg_assert_same(array(1, 1), $zoned[2]['vars'], 'emptied counts');
+	pg_assert_same(array('', ''), $zoned[2]['suffix'], 'one zone reads singular');
+}
+
+function test_commerce_delete_confirm_zone_members()
+{
+	pg_assert_same(array(), pg_zone_form_member_delete_sentences(0, 0, 0, 0), 'in no zone adds nothing');
+
+	pg_assert_same(
+		array('It will also be removed from {var:1} shipping zone{suffix:1}.'),
+		commerce_delete_confirm_keys(pg_zone_form_member_delete_sentences(3, 0, 0, 0)),
+		'shipping zones only, none emptied');
+
+	pg_assert_same(
+		array('It will also be removed from {var:1} tax zone{suffix:1}.', '{var:1} tax zone{suffix:1} will have no state or country left and will charge no tax.'),
+		commerce_delete_confirm_keys(pg_zone_form_member_delete_sentences(0, 2, 0, 1)),
+		'a tax zone left without tax');
+
+	$zones = pg_zone_form_member_delete_sentences(4, 1, 2, 0);
+	pg_assert_same(
+		array('It will also be removed from {var:1} shipping zone{suffix:1} and {var:2} tax zone{suffix:2}.', '{var:1} shipping zone{suffix:1} will have no state or country left and will match no address.'),
+		commerce_delete_confirm_keys($zones),
+		'a shipping zone left matching nothing');
+	pg_assert_same(array(4, 1), $zones[0]['vars'], 'linked counts in order');
+	pg_assert_same(array('s', ''), $zones[0]['suffix'], 'each count picks its own ending');
+	pg_assert_same(array('s'), $zones[1]['suffix'], 'emptied ending');
+}
+
+function test_commerce_delete_confirm_country()
+{
+	pg_assert_same(
+		array('WARNING: This country and all states and verified shipping addresses in this country will be permanently deleted.'),
+		commerce_delete_confirm_keys(pg_country_form_delete_confirm(0, 0, 0, 0)),
+		'in no zone keeps the plain sentence');
+
+	pg_assert_same(
+		array(
+			'WARNING: This country and all states and verified shipping addresses in this country will be permanently deleted.',
+			'It will also be removed from {var:1} shipping zone{suffix:1} and {var:2} tax zone{suffix:2}.',
+			'{var:1} tax zone{suffix:1} will have no state or country left and will charge no tax.',
+		),
+		commerce_delete_confirm_keys(pg_country_form_delete_confirm(2, 1, 0, 1)),
+		'the zones of the country and its states');
+}
+
+function test_commerce_delete_confirm_member_count_queries()
+{
+	// The emptied zone check must look past the deleted members only: a
+	// state's own rows and, for a country, its rows and its states' rows.
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/forms/zone_form.php');
+	pg_assert_contains('s.state_id = ? OR s.state_id IN (SELECT id FROM states WHERE country_id = ?)', $source, 'the deleted state rows');
+	pg_assert_contains('s.state_id != ? AND s.state_id NOT IN (SELECT id FROM states WHERE country_id = ?)', $source, 'the other state rows');
+	pg_assert_contains('c.country_id != ?', $source, 'the other country rows');
+	pg_assert_contains("array('zones_states_xref', 'zones_countries_xref', 'zone_id')", $source, 'shipping zones');
+	pg_assert_contains("array('tax_zones_states_xref', 'tax_zones_countries_xref', 'tax_zone_id')", $source, 'tax zones');
 }
 
 function test_commerce_delete_confirm_shipping_method()
@@ -149,7 +215,8 @@ function test_commerce_delete_confirm_product_attribute()
 function test_commerce_delete_confirm_screens_use_the_helpers()
 {
 	$pins = array(
-		'edit_state.php' => 'pg_state_form_delete_confirm(pg_state_form_delete_counts(',
+		'edit_state.php' => 'pg_state_form_delete_confirm(...pg_state_form_delete_counts(',
+		'edit_country.php' => "pg_country_form_delete_confirm(...pg_zone_form_member_delete_counts('country', ",
 		'edit_shipping_method.php' => 'pg_shipping_method_form_delete_confirm(...pg_shipping_method_form_delete_counts(',
 		'edit_zone.php' => 'pg_zone_form_delete_confirm(...pg_zone_form_delete_counts(',
 		'edit_product_attribute.php' => 'pg_product_attribute_form_delete_confirm(...pg_product_attribute_form_delete_counts(',
@@ -168,6 +235,10 @@ function test_commerce_delete_confirm_turkish_values()
 	$map = pg_test_language_map('tr');
 	$sentences = array_merge(
 		pg_state_form_delete_confirm(2),
+		pg_zone_form_member_delete_sentences(2, 2, 2, 2),
+		pg_zone_form_member_delete_sentences(2, 0, 2, 0),
+		pg_zone_form_member_delete_sentences(0, 2, 0, 2),
+		pg_country_form_delete_confirm(0, 0, 0, 0),
 		pg_shipping_method_form_delete_confirm(2, 0),
 		pg_shipping_method_form_delete_confirm(0, 2),
 		pg_shipping_method_form_delete_confirm(2, 2),
@@ -189,7 +260,7 @@ function test_commerce_delete_confirm_turkish_values()
 			continue;
 		}
 
-		foreach (array_keys($sentence['vars']) as $index) {
+		foreach (array_keys(isset($sentence['vars']) ? $sentence['vars'] : array()) as $index) {
 			pg_assert_contains('{var:' . ($index + 1) . '}', $map[$key], 'Turkish keeps {var:' . ($index + 1) . '}: ' . $key);
 		}
 

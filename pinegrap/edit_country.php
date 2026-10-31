@@ -18,6 +18,7 @@
 
 include('init.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/forms/country_form.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/forms/zone_form.php');
 $user = validate_user();
 validate_ecommerce_access($user);
 
@@ -75,7 +76,7 @@ if (!$_POST || $errors) {
                             <div class="container">
                                 <div class="btn-group flex-wrap justify-content-center">
                                     <button type="submit" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><span class="material-icons me-3">save</span><span class="pg-btn-label">' . lang('Save') . '</span></button>
-                                    <button type="submit" name="submit_delete" value="Delete" class="btn my-1 btn-solid theme-danger" data-confirm-content="' . lang('WARNING: This country and all states and verified shipping addresses in this country will be permanently deleted.') . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label">' . lang('Delete') . '</span></button>
+                                    <button type="submit" name="submit_delete" value="Delete" class="btn my-1 btn-solid theme-danger" data-confirm-content="' . h(implode(' ', array_map('lang', pg_country_form_delete_confirm(...pg_zone_form_member_delete_counts('country', $id))))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label">' . lang('Delete') . '</span></button>
                                 </div>
                             </div>
                         </nav>
