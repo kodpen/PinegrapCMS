@@ -135,7 +135,11 @@ if ($page_id != 0) {
         WHERE id = '" . (int) $product_group_id . "'
         LIMIT 1");
 
-    $product_group = $product_group ? $product_group[0] : array('name' => '', 'short_description' => '', 'form_name' => '');
+    // The variant set was deleted after this screen was opened, or the link is stale.
+    if (!$product_group) {
+        output_error(lang('Record not found.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.', 404);
+    }
+    $product_group = $product_group[0];
 
     $product_name = $product_group['name'];
     $form_name = pg_field_form_product_form_name($product_group['form_name'], $product_group['short_description'], $product_name);
@@ -172,6 +176,11 @@ if ($page_id != 0) {
              WHERE id = ?";
     $result = db_q($query, array((string) $product_id)) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
+
+    // The product was deleted after this screen was opened, or the link is stale.
+    if (!$row) {
+        output_error(lang('Record not found.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.', 404);
+    }
     
     $form_name = pg_field_form_product_form_name($row['form_name'], $row['short_description'], $row['name']);
     

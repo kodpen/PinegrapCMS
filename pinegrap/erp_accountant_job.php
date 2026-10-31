@@ -37,6 +37,20 @@ if (defined('ERP_ENABLED') && ERP_ENABLED) {
     if (erp_accountant_ready()) {
         $result = erp_accountant_monthly_run();
     }
+
+    // A pack that could not be built, or was built but not sent, leaves one
+    // line so a failed run shows in the Site Log (and the ERP audit trail).
+    // A background run has no user; a hand run is logged under its user.
+    if (!in_array($result['reason'], array('off', 'done', 'sent'), true)) {
+        $period = erp_accountant_last_month();
+
+        log_activity(lang(array(
+            'string' => $result['ran']
+                ? 'The accountant pack for {var:1} - {var:2} was built but not sent: {var:3}'
+                : 'The accountant pack for {var:1} - {var:2} could not be built: {var:3}',
+            'vars' => array($period['from'], $period['to'], $result['reason']))),
+            pg_cron_is_background_run() ? 'UNKNOWN' : '');
+    }
 }
 
 if (function_exists('pg_cron_ran')) {
