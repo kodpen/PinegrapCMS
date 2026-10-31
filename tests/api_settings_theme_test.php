@@ -105,5 +105,6 @@ function test_api_settings_theme_dialogs_named()
 
 function test_api_settings_theme_toolbar_wraps()
 {
-	pg_assert_contains('<div class="d-flex flex-wrap align-items-center gap-3 mb-5">', api_settings_theme_source());
+	// The screen toolbar (.pg-toolbar) wraps its slots onto more lines.
+	pg_assert_contains('pg_screen_toolbar(', api_settings_theme_source());
 }

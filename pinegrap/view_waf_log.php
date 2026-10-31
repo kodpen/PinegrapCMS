@@ -474,6 +474,18 @@ foreach ($category_options as $value => $label) {
     $category_select .= '<option value="' . h($value) . '"' . ($category === $value ? ' selected="selected"' : '') . '>' . h($label) . '</option>';
 }
 
+// Clearing the log and the policy reports is screen-wide work: the overflow
+// menu, each row its own token form. The policy reports live in a file the
+// log clear does not reach, so they keep their own row.
+$clear_menu = '<div class="pg-menu-wrap">
+    <button type="button" class="btn btn-sm btn-text theme-secondary" data-bs-toggle="menu" data-bs-placement="bottom-end" aria-expanded="false" title="' . h(lang('More')) . '" aria-label="' . h(lang('More')) . '"><i class="bi bi-three-dots-vertical" aria-hidden="true"></i></button>
+    <ul class="menu pg-menu-end">
+        <li><form method="post" action="view_waf_log.php" class="disable_shortcut" onsubmit="return confirm(\'' . escape_javascript(lang('Clear all firewall log data?')) . '\');">' . get_token_field() . '<button type="submit" name="submit_clear" value="1" class="menu-item pg-link-body-emphasis"><i class="bi bi-trash me-3" aria-hidden="true"></i>' . lang('Clear Log') . '</button></form></li>'
+    . ($csp_entries ? '
+        <li><form method="post" action="view_waf_log.php" class="disable_shortcut">' . get_token_field() . '<button type="submit" name="submit_csp_clear" value="1" class="menu-item pg-link-body-emphasis" data-confirm-content="' . h(lang(array('string' => 'Delete all {var:1} Content Security Policy reports? This cannot be undone.', 'vars' => count($csp_entries)))) . '"><i class="bi bi-trash me-3" aria-hidden="true"></i>' . lang('Clear Reports') . '</button></form></li>' : '') . '
+    </ul>
+</div>';
+
 echo pg_screen_toolbar(array(
     'grow'   => '<span class="small fg-secondary">' . lang(array(
         'string' => 'Identical events within five minutes share one row. {var:1} requests are stored as {var:2} rows.',
@@ -486,6 +498,7 @@ echo pg_screen_toolbar(array(
         <button type="submit" class="btn btn-sm btn-solid theme-primary rounded-pill px-5"><i class="bi bi-funnel me-1" aria-hidden="true"></i>' . lang('Filter') . '</button>
     </form>',
     'view'   => ((int) $summary['rows_stored'] === 0) ? '' : pg_list_sort_menu('view_waf_log.php', $list_sort['sort_columns'], $list_sort['sort_levels'], $list_sort['sort_default'], $list_query),
+    'overflow' => $clear_menu,
 ), array('class' => 'mb-7'));
 
 echo $liveform->output_errors();
@@ -627,13 +640,7 @@ if ($csp_entries || $csp_mode !== 'off') {
                 <span class="badge border fw-normal ' . h($csp_mode_badge[0]) . '">' . h($csp_mode_badge[1]) . '</span>
             </span>
             <span class="d-flex flex-wrap align-items-center gap-3 row-gap-2">
-                <a href="' . pg_settings_link('firewall', 'pgset-headers') . '" class="btn btn-sm btn-outline theme-secondary"><i class="bi bi-sliders me-1"></i>' . lang('Policy Settings') . '</a>'
-                . ($csp_entries ? '<form method="post" action="view_waf_log.php" class="d-inline disable_shortcut">'
-                    . get_token_field() . '
-                    <button type="submit" name="submit_csp_clear" value="1" class="btn btn-sm btn-outline theme-danger" data-confirm-content="' . h(lang(array('string' => 'Delete all {var:1} Content Security Policy reports? This cannot be undone.', 'vars' => count($csp_entries)))) . '">
-                        <i class="bi bi-trash me-1"></i>' . lang('Clear Reports') . '
-                    </button>
-                </form>' : '') . '
+                <a href="' . pg_settings_link('firewall', 'pgset-headers') . '" class="btn btn-sm btn-outline theme-secondary"><i class="bi bi-sliders me-1"></i>' . lang('Policy Settings') . '</a>
             </span>
         </div>
         <div class="card-body">';
@@ -671,12 +678,6 @@ if ($csp_entries || $csp_mode !== 'off') {
 echo '<div class="card mb-7">
     <div class="card-header bg-reset border-0 d-flex justify-content-between align-items-center">
         <span class="text-uppercase h6 fg-primary fw-bold mb-0">' . lang('Recent Events') . '</span>
-        <form method="post" action="view_waf_log.php" onsubmit="return confirm(\'' . lang('Clear all firewall log data?') . '\');">'
-            . get_token_field() . '
-            <button type="submit" name="submit_clear" value="1" class="btn btn-sm btn-outline theme-danger">
-                <i class="bi bi-trash me-1"></i>' . lang('Clear Log') . '
-            </button>
-        </form>
     </div>
     <div class="card-body">';
 

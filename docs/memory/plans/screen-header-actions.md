@@ -17,7 +17,7 @@ description: Plan (owner 2026-10-30): no lone buttons or texts under a screen's 
 
 ## Which rules does a screen follow?
 - One toolbar directly under the title, in the slot order of `ui/admin-screen-toolbar.md`. Filters, sort and view controls go at its right end, never in a second column. More than four buttons go into a menu (`view_pages` shows eight today).
-- A related-screen link that is not the parent is a slot 2 `btn-sm btn-text theme-secondary`. `admin-screen-toolbar-rules.md` says `btn-outline-secondary`; it is aligned in H5.
+- A related-screen link that is not the parent is a slot 2 `btn-sm btn-text theme-secondary`.
 - No lone row: a single action goes into the toolbar; a fact ("Disk Usage") goes into a card or the toolbar's grow slot. No second heading that repeats the title.
 - A screen-wide action is never in a card header (for example "Clear Log" on `view_waf_log`, "New department" on `workspace_settings`).
 
