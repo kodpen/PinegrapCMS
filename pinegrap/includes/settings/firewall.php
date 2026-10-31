@@ -254,11 +254,11 @@ $pg_settings_cards[] = '
             <div class="card-body">
                 <div class="row gy-5">
                     <div class="col-12">
-                                            <div class="form-text ">' . lang('Works on its own, whether or not the firewall above is enabled. Search engines, social link previews, uptime monitors and payment gateway callbacks are recognised and never blocked.') . '</div>
+                                            <div class="form-text ">' . lang('Works only while the firewall above is enabled, and refuses bots only in Block mode; in Monitor mode it records the bots it would refuse. Search engines, social link previews, uptime monitors and payment gateway callbacks are recognised and never blocked.') . '</div>
                                             <div class="form-field">
                                                 <div class="switch"><input value="1"' . $block_unknown_bots_checked . ' class="collapse-switcher" type="checkbox" id="block_unknown_bots" name="block_unknown_bots" data-bs-target="#block_unknown_bots_row"/></div>
                                                 <label class="" for="block_unknown_bots">' . lang('Block Unknown Bots') . '</label>
-                                                <div class="form-text">' . lang('Crawlers that are not recognised and not on your allowed list receive a 403 response, reducing server load and preventing visitor count inflation. The REST API is exempt, so your own integrations keep working.') . '</div>
+                                                <div class="form-text">' . lang('In Block mode, crawlers that are not recognised and not on your allowed list receive a 403 response, reducing server load and preventing visitor count inflation; in Monitor mode they are only recorded. The REST API is exempt, so your own integrations keep working.') . '</div>
                                             </div>
                                             <div class="collapse popover fade bs-popover-bottom p-0  w-100" id="block_unknown_bots_row">
                                                 <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(52px, 0px);"></div>

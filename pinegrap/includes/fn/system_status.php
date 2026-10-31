@@ -2220,6 +2220,16 @@ function get_system_status_checks()
             'Unknown bots are not being blocked, because the firewall is disabled.'
         );
         $score -= $weights['bot_filter'];
+    } elseif (defined('BLOCK_UNKNOWN_BOTS') && BLOCK_UNKNOWN_BOTS && $waf_current_mode === 'monitor') {
+        // waf_deny() refuses nothing in monitor mode: the bot filter only
+        // logs would-block rows, so this is not an all clear either.
+        $output .= $makeIcon(
+            'bi-robot',
+            'fg-warning',
+            'Unknown Bot Filtering',
+            'Unknown bots are only being recorded, not blocked, because the firewall is in monitor mode.'
+        );
+        $score -= $weights['bot_filter'] * 0.5;
     } elseif (defined('BLOCK_UNKNOWN_BOTS') && BLOCK_UNKNOWN_BOTS) {
         $output .= $makeIcon(
             'bi-robot',
