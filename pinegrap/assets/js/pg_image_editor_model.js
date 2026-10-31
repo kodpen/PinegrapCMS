@@ -123,6 +123,20 @@
         return { k: k, x: (sw - w * k) / 2, y: (sh - h * k) / 2 };
     }
 
+    // The fitted view of a w x h document on a sw x sh stage whose right
+    // cover pixels lie under an open panel sheet: centred in the part left
+    // uncovered, never zoomed past the picture's own size. A panel that
+    // leaves less than 40 % of the stage is not counted.
+    function fitView(w, h, sw, sh, cover, pad) {
+        var aw = sw - Math.max(0, cover || 0);
+
+        if (aw < sw * 0.4) {
+            aw = sw;
+        }
+
+        return centred(w, h, aw, sh, Math.min(1, fitZoom(w, h, aw, sh, pad)));
+    }
+
     // Zoom by factor around the stage point (px, py): the document point under
     // the pointer stays under it.
     function zoomAt(view, factor, px, py, min, max) {
@@ -177,6 +191,32 @@
 
     function clone(v) {
         return JSON.parse(JSON.stringify(v));
+    }
+
+    // Whether two documents hold the same data, whatever the order of their
+    // keys: a document brought back by Cancel or undo is not a change.
+    function sameDocument(a, b) {
+        if (a === b) {
+            return true;
+        }
+
+        if (!a || !b || (typeof a !== 'object') || (typeof b !== 'object') || (Array.isArray(a) !== Array.isArray(b))) {
+            return false;
+        }
+
+        var ka = Object.keys(a), kb = Object.keys(b);
+
+        if (ka.length !== kb.length) {
+            return false;
+        }
+
+        for (var i = 0; i < ka.length; i++) {
+            if (!Object.prototype.hasOwnProperty.call(b, ka[i]) || !sameDocument(a[ka[i]], b[ka[i]])) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     // A new document: a picture (its size comes when it has loaded) or, with
@@ -860,9 +900,9 @@
 
     var api = {
         mul: mul, inv: inv, apply: apply, translate: translate, scale: scale, rotate: rotate, clamp: clamp,
-        flipRot: flipRot, coverScale: coverScale, fitZoom: fitZoom, centred: centred, zoomAt: zoomAt,
+        flipRot: flipRot, coverScale: coverScale, fitZoom: fitZoom, centred: centred, fitView: fitView, zoomAt: zoomAt,
         PROFILES: PROFILES, TOOLS: TOOLS, resolveTools: resolveTools,
-        clone: clone, newDocument: newDocument, docSize: docSize, History: History,
+        clone: clone, sameDocument: sameDocument, newDocument: newDocument, docSize: docSize, History: History,
         RATIOS: RATIOS, cropBox: cropBox, pictureMatrix: pictureMatrix, fitRatio: fitRatio, resizeCrop: resizeCrop,
         moveCrop: moveCrop, mapLayer: mapLayer, reorient: reorient, turnDocument: turnDocument, flipDocument: flipDocument,
         outputSize: outputSize, ADJUST: ADJUST, FILTERS: FILTERS, FILTER_NAMES: FILTER_NAMES, colorValues: colorValues,

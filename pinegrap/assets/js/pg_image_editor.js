@@ -252,6 +252,8 @@
         this.doc = M.newDocument(opts);
         this.history = new M.History(100);
         this.dirty = false;
+        // The document as it opened: dirty is any difference from it.
+        this.opening = null;
         this.ready = false;
         this.view = { k: 1, x: 0, y: 0 };
         this.fitMode = true;
@@ -489,6 +491,10 @@
     };
 
     Editor.prototype.setReady = function () {
+        if (!this.opening) {
+            this.opening = M.clone(this.doc);
+        }
+
         this.ready = true;
         this.notice.textContent = '';
         this.renderMeta();
@@ -550,11 +556,24 @@
         }
 
         var vr = this.viewRect(), st = this.stageSize();
-        var k = Math.min(1, M.fitZoom(vr.w, vr.h, st.w, st.h, (st.w < 600) ? 12 : PAD));
 
+        this.cover = this.panelCover();
         this.fitMode = true;
-        this.view = M.centred(vr.w, vr.h, st.w, st.h, k);
+        this.view = M.fitView(vr.w, vr.h, st.w, st.h, this.cover, (st.w < 600) ? 12 : PAD);
         this.renderView();
+    };
+
+    // How much of the stage's right side an open panel sheet covers
+    // (pg_image_editor.src.css: an absolute panel on a small or short
+    // screen); 0 where the panel sits beside or below the stage.
+    Editor.prototype.panelCover = function () {
+        if (!this.panel || !this.sheetOpen || (window.getComputedStyle(this.panel).position !== 'absolute')) {
+            return 0;
+        }
+
+        var s = this.stage.getBoundingClientRect(), p = this.panel.getBoundingClientRect();
+
+        return (p.width > 0) ? Math.max(0, Math.round(s.right - p.left)) : 0;
     };
 
     Editor.prototype.zoomBy = function (factor, px, py) {
@@ -1365,7 +1384,7 @@
     // Entering the crop tool remembers the document, so Cancel can bring it
     // back and drop the steps taken since.
     Editor.prototype.enterCrop = function () {
-        this.cropEntry = { doc: M.clone(this.doc), depth: this.history.past.length, dirty: this.dirty };
+        this.cropEntry = { doc: M.clone(this.doc), depth: this.history.past.length };
         this.cropRatio = 0;
     };
 
@@ -1378,6 +1397,7 @@
             g.crop = null;
         }
 
+        this.settleDirty();
         this.cropEntry = null;
         this.tool = next || 'select';
         this.sheetOpen = (this.tool !== 'select');
@@ -1401,7 +1421,7 @@
 
         this.history.future = [];
         this.history.key = null;
-        this.dirty = entry.dirty;
+        this.settleDirty();
         this.cropEntry = null;
         this.tool = 'select';
         this.sheetOpen = false;
@@ -1459,7 +1479,6 @@
         var o = (axis === 'w') ? { w: value, h: Math.max(1, Math.round(value * c.h / c.w)) } : { w: Math.max(1, Math.round(value * c.w / c.h)), h: value };
 
         this.change(function (d) { d.geometry.output = o; });
-        this.renderMeta();
     };
 
     Editor.prototype.resetGeometry = function () {
@@ -1783,6 +1802,11 @@
         });
 
         this.root.classList.toggle('pgie-sheet-closed', !this.sheetOpen);
+
+        // An opened or closed panel sheet changes the room a fitted picture has.
+        if (this.fitMode && this.ready && (this.panelCover() !== (this.cover || 0))) {
+            this.fit();
+        }
         this.hint.textContent = (this.tool === 'adjust') ? t('hintAdjust') : ((this.tool === 'select') ? t('hintSelect') : t('hintView'));
         this.undoBtn.disabled = !this.history.canUndo();
         this.redoBtn.disabled = !this.history.canRedo();
@@ -1808,6 +1832,8 @@
         mutate(this.doc);
         this.dirty = true;
         this.layersDirty = true;
+        // A ratio, a shape or a box drag can change the saved size.
+        this.renderMeta();
 
         if (viewOnly) {
             this.undoBtn.disabled = !this.history.canUndo();
@@ -1823,11 +1849,17 @@
     Editor.prototype.replaceDoc = function (next, key) {
         this.history.push(M.clone(this.doc), key);
         this.doc = next;
-        this.dirty = true;
+        this.settleDirty();
         this.layersDirty = true;
         this.renderMeta();
         this.fit();
         this.render();
+    };
+
+    // Changed is different from the opening document: Cancel, undo or four
+    // quarter turns that bring it back leave nothing to save.
+    Editor.prototype.settleDirty = function () {
+        this.dirty = !M.sameDocument(this.doc, this.opening);
     };
 
     Editor.prototype.restore = function (snapshot) {
@@ -1836,7 +1868,7 @@
         }
 
         this.doc = snapshot;
-        this.dirty = true;
+        this.settleDirty();
         this.layersDirty = true;
         this.keepSelection();
         this.setReady();

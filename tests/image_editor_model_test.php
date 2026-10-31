@@ -434,3 +434,59 @@ function test_image_editor_model_owns_key()
 		pg_assert_false($r[$k], $k . ': the key stays the editor\'s shortcut');
 	}
 }
+
+// A document is unchanged when it holds the same data, whatever order its
+// keys were written in; a crop, a turn or a layer changes it.
+function test_image_editor_model_same_document()
+{
+	$r = image_editor_model_node(
+		'var a = M.newDocument({ fileId: 7 }); a.source.width = 400; a.source.height = 300;' . "\n"
+		. 'var b = M.clone(a);' . "\n"
+		. 'var reordered = JSON.parse(JSON.stringify(a)); var g = reordered.geometry; delete reordered.geometry; reordered.geometry = g;' . "\n"
+		. 'var cropped = M.clone(a); cropped.geometry.crop = { x: 0, y: 0, w: 300, h: 300 };' . "\n"
+		. 'var turned = M.turnDocument(a, 1), back = M.turnDocument(M.turnDocument(M.turnDocument(turned, 1), 1), 1);' . "\n"
+		. 'var layered = M.clone(a); layered.layers.push({ id: "l1", type: "rect" });' . "\n"
+		. 'console.log(JSON.stringify({ same: M.sameDocument(a, b), reordered: M.sameDocument(a, reordered),'
+		. ' cropped: M.sameDocument(a, cropped), turned: M.sameDocument(a, turned), back: M.sameDocument(a, back),'
+		. ' layered: M.sameDocument(a, layered), none: M.sameDocument(a, null) }));'
+	);
+
+	if ($r === null) {
+		return;
+	}
+
+	pg_assert_false(isset($r['error']), isset($r['error']) ? $r['error'] : 'ran');
+	pg_assert_true($r['same'], 'a copy is the same document');
+	pg_assert_true($r['reordered'], 'the order of the keys does not matter');
+	pg_assert_true($r['back'], 'four quarter turns come back to the opening document');
+	pg_assert_false($r['cropped'], 'a crop changes the document');
+	pg_assert_false($r['turned'], 'a turn changes the document');
+	pg_assert_false($r['layered'], 'a layer changes the document');
+	pg_assert_false($r['none'], 'no document is not the same document');
+}
+
+// Fitting a picture leaves out the part of the stage an open panel sheet
+// covers on the right, so every edge and handle can be reached.
+function test_image_editor_model_fit_view_beside_panel()
+{
+	$r = image_editor_model_node(
+		'console.log(JSON.stringify({ open: M.fitView(1200, 900, 684, 316, 304, 12),'
+		. ' none: M.fitView(1200, 900, 684, 316, 0, 12), small: M.fitView(100, 50, 1000, 800, 300, 32),'
+		. ' covered: M.fitView(400, 300, 300, 300, 400, 12) }));'
+	);
+
+	if ($r === null) {
+		return;
+	}
+
+	pg_assert_false(isset($r['error']), isset($r['error']) ? $r['error'] : 'ran');
+
+	$open = $r['open'];
+	pg_assert_true(abs($open['k'] - 356 / 1200) < 1e-6, 'the picture fits the width left beside the panel');
+	pg_assert_true($open['x'] + 1200 * $open['k'] <= 684 - 304 + 1e-6, 'the right edge stays left of the panel');
+	pg_assert_true($open['x'] >= 0, 'the left edge stays on the stage');
+	pg_assert_true(abs($open['x'] - (380 - 1200 * $open['k']) / 2) < 1e-6, 'the picture is centred in the uncovered part');
+	pg_assert_true(abs($r['none']['x'] - (684 - 1200 * $r['none']['k']) / 2) < 1e-6, 'without a panel the whole stage is used');
+	pg_assert_same(1, $r['small']['k'], 'a small picture is never zoomed past its size');
+	pg_assert_true($r['covered']['k'] > 0 && $r['covered']['x'] >= 0, 'a panel wider than the stage still leaves a picture on it');
+}
