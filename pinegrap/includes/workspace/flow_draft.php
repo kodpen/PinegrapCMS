@@ -484,8 +484,9 @@ function ws_flow_card_outbound_kinds()
 }
 
 /**
- * A draft's graph as its card draws it (pure but for the kinds' words): each
- * box with its kind, name and place moved so the leftmost and topmost box
+ * A draft's graph as its card draws it (pure but for the kinds' words and a
+ * row start box's columns): each box with its kind, its name as the canvas
+ * gives it (ws_flow_box_names()) and place moved so the leftmost and topmost box
  * sit at the margin, whether it sends or writes outside, how a patch marks
  * it (ws_flow_patch_marks()) and whether it can be tried (every kind but the
  * value boxes, which only hold values); the threads; the names of the boxes
@@ -532,6 +533,9 @@ function ws_flow_card_graph($graph, $patch = null)
     $there = array();
     $width = 0;
     $height = 0;
+    // A box is named as the canvas names it: an untitled one by its kind,
+    // never by its internal id ("start", "post_1").
+    $names = ws_flow_box_names($graph['nodes'], $kinds);
 
     foreach ($graph['nodes'] as $node) {
         $kind = (string) $node['kind'];
@@ -546,7 +550,7 @@ function ws_flow_card_graph($graph, $patch = null)
             'id'       => (string) $node['id'],
             'kind'     => $kind,
             'label'    => (string) ($kinds[$kind]['label'] ?? $kind),
-            'name'     => ws_flow_box_name($node),
+            'name'     => (string) ($names[(string) $node['id']] ?? ws_flow_box_name($node)),
             'x'        => $x,
             'y'        => $y,
             'outbound' => isset($outbound[$kind]),

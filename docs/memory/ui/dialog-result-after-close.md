@@ -14,6 +14,9 @@ description: A Bootstrap 6 dialog or drawer hands its result to the page only on
 ## What was the symptom?
 - Owner, 2026-10-31: the writing box's + menu put neither a table nor a calculation into the message; the window closed and the box stayed empty. Checklist, code block, pulled blocks and saved replies did the same. It came with the panel's switch to Bootstrap 6 (`866af2d9f`), when the windows became `<dialog>`s.
 
+## Why does the emoji picker hand over before it closes?
+- The same trap from the other side: `closeCtx()` gives the focus back to the writing box, and a box focused that way had its caret at its start, so the emoji went in before the words (`emojiPicker()` in workspace.js; channel box and the drawers' boxes alike). `pick()` calls `onPick()` first, then closes.
+
 ## Where is the caret after a card?
 - On the line after it: Chrome leaves the caret before what insertHTML brought in when it ends in a non-editable card, so the next words or card went above it (a calculation over the table it follows). `insertBlock()` marks the new card (`data-ws-new`), puts the caret after its line break and adds a second break when that one is the last (a last break draws no line).
 - Tests: `tests/workspace_editor_windows_test.php`.

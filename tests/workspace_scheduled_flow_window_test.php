@@ -126,8 +126,10 @@ function test_workspace_scheduled_flow_window_rights()
 function test_workspace_scheduled_flow_window_sketch_shape()
 {
 	$card = ws_flow_card_graph(ws_scheduled_flow_graph(3, '2026-10-31'));
+	$kinds = ws_flow_kinds();
 
 	pg_assert_same(array('start', 'post'), array_column($card['nodes'], 'id'));
+	pg_assert_same(array($kinds['schedule']['label'], $kinds['post']['label']), array_column($card['nodes'], 'name'), 'untitled boxes are named by their kind, as the canvas names them, not by their ids');
 	pg_assert_same(array(array('from' => 'start', 'to' => 'post', 'on' => 'next')), $card['edges']);
 	pg_assert_false($card['nodes'][1]['outbound'], 'a post in the channel is not outbound');
 	pg_assert_true($card['width'] > $card['height']);
