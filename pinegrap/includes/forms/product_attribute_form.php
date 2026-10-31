@@ -149,3 +149,64 @@ function pg_product_attribute_form_check($liveform, $id)
 
     return $options;
 }
+
+/**
+ * How many products and product groups use an attribute; a delete removes
+ * the attribute and its options from all of them.
+ *
+ * @param int $attribute_id
+ * @return array list of (products, product groups)
+ */
+function pg_product_attribute_form_delete_counts($attribute_id)
+{
+    $first = function ($result) {
+        $row = $result ? mysqli_fetch_row($result) : null;
+
+        return $row ? (int) $row[0] : 0;
+    };
+    $attribute_id = (int) $attribute_id;
+
+    return array(
+        $first(db_q("SELECT COUNT(DISTINCT product_id) FROM products_attributes_xref WHERE attribute_id = ?", array($attribute_id))),
+        $first(db_q("SELECT COUNT(DISTINCT product_group_id) FROM product_groups_attributes_xref WHERE attribute_id = ?", array($attribute_id))),
+    );
+}
+
+/**
+ * The Delete confirmation of Edit Product Attribute as lang() arguments.
+ *
+ * @param int $products
+ * @param int $groups
+ * @return array list of lang() arguments, one per sentence
+ */
+function pg_product_attribute_form_delete_confirm($products, $groups)
+{
+    $products = (int) $products;
+    $groups = (int) $groups;
+
+    if ($products > 0 && $groups > 0) {
+        return array(array(
+            'string' => 'WARNING: This product attribute and its options will be permanently deleted and removed from {var:1} product{suffix:1} and {var:2} product group{suffix:2}.',
+            'vars' => array($products, $groups),
+            'suffix' => array($products == 1 ? '' : 's', $groups == 1 ? '' : 's'),
+        ));
+    }
+
+    if ($products > 0) {
+        return array(array(
+            'string' => 'WARNING: This product attribute and its options will be permanently deleted and removed from {var:1} product{suffix:1}.',
+            'vars' => array($products),
+            'suffix' => array($products == 1 ? '' : 's'),
+        ));
+    }
+
+    if ($groups > 0) {
+        return array(array(
+            'string' => 'WARNING: This product attribute and its options will be permanently deleted and removed from {var:1} product group{suffix:1}.',
+            'vars' => array($groups),
+            'suffix' => array($groups == 1 ? '' : 's'),
+        ));
+    }
+
+    return array(array('string' => 'WARNING: This {var:1} will be permanently deleted.', 'vars' => array(lang('product attribute'))));
+}
