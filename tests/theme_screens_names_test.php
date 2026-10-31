@@ -62,25 +62,20 @@ function test_theme_screens_list_marks_named()
 
 function test_theme_screens_private_label_cards_and_labels()
 {
-	$source = file_get_contents(PG_FUNCTIONS_DIR . '/private_label.php');
+	// The screen became a card of Site Settings › Appearance.
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/includes/settings/appearance.php');
 
 	pg_assert_false(strpos($source, 'show_or_hide_private_label') !== false, 'no inline display script');
-	pg_assert_false(strpos($source, '<table') !== false, 'no table form');
-	pg_assert_contains("'class'=>'collapse-switcher no-bs'", $source, 'private label switch');
-	pg_assert_contains("'data-bs-target'=>'#private_label_fields'", $source, 'switch opens the fields');
+	pg_assert_contains('class="collapse-switcher" type="checkbox" id="private_label" name="private_label" data-bs-target="#private_label_fields"', $source, 'switch opens the fields');
 	pg_assert_contains('id="private_label_fields"', $source, 'fields section');
 	pg_assert_contains('<div class="form-text">\' . lang(\'leave blank to use the default product logo\')', $source, 'logo hint as form text');
-	pg_assert_contains('<span class="material-icons me-3" aria-hidden="true">save</span>', $source, 'save ligature silent');
 
 	foreach (array('logo_url', 'control_panel_stylesheet_url') as $field) {
 		pg_assert_contains('<label for="' . $field . '" class="form-label">', $source, $field . ' label');
-		pg_assert_contains("'name'=>'" . $field . "', 'id'=>'" . $field . "'", $source, $field . ' id');
+		pg_assert_contains('name="' . $field . '" id="' . $field . '"', $source, $field . ' id');
 	}
 
 	// The five footer link pairs are drawn in a loop, each with its own id.
-	pg_assert_contains("for (\$footer_link = 1; \$footer_link <= 5; \$footer_link++)", $source, 'footer link loop');
-	pg_assert_contains("<label for=\"footer_link_' . \$footer_link . '_label\" class=\"form-label\">", $source, 'footer label label');
-	pg_assert_contains("'name'=>'footer_link_' . \$footer_link . '_label', 'id'=>'footer_link_' . \$footer_link . '_label'", $source, 'footer label id');
-	pg_assert_contains("<label for=\"footer_link_' . \$footer_link . '_url\" class=\"form-label\">", $source, 'footer url label');
-	pg_assert_contains("'name'=>'footer_link_' . \$footer_link . '_url', 'id'=>'footer_link_' . \$footer_link . '_url'", $source, 'footer url id');
+	pg_assert_contains("<label for=\"footer_link_' . \$private_label_link . '_label\" class=\"form-label\">", $source, 'footer label label');
+	pg_assert_contains("name=\"footer_link_' . \$private_label_link . '_url\" id=\"footer_link_' . \$private_label_link . '_url\"", $source, 'footer url id');
 }

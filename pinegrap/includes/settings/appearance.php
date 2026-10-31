@@ -2,8 +2,8 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Site Settings - the Appearance cards: the panel theme, the dashboard and the
- * rich-text editor.
+ * Site Settings - the Appearance cards: the panel theme, the dashboard, the
+ * rich-text editor and, for an administrator, the private label branding.
  *
  * Fills $pg_settings_cards, one grid column per card, in reading order. Which
  * cards belong here is said once, in includes/settings/registry.php; this file
@@ -231,3 +231,79 @@ $pg_settings_cards[] = '
                                 </div>
                             </div>
                         </div>';
+
+// ── Private Label Branding ──
+// The panel's own logo, stylesheet and footer links, kept in data/config.php
+// (pg_private_label_config_keys()) behind the private_label switch of the
+// config row. The administrator's alone, as private_label.php was: for
+// anyone else the card is not drawn and appearance.save.php writes none of
+// it. A logo or stylesheet that is init.php's default shows an empty box.
+if ((int) $user['role'] === 0) {
+
+    $private_label_values = array();
+
+    foreach (pg_private_label_config_keys() as $private_label_field => $private_label_constant) {
+        $private_label_values[$private_label_field] = defined($private_label_constant) ? (string) constant($private_label_constant) : '';
+    }
+
+    if ($private_label_values['logo_url'] === PATH . SOFTWARE_DIRECTORY . '/assets/images/logo.png?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/images/logo.png')) {
+        $private_label_values['logo_url'] = '';
+    }
+
+    if ($private_label_values['control_panel_stylesheet_url'] === pg_default_control_panel_stylesheet_url()) {
+        $private_label_values['control_panel_stylesheet_url'] = '';
+    }
+
+    $private_label_on = (defined('PRIVATE_LABEL') && PRIVATE_LABEL);
+
+    $output_private_label_links = '';
+
+    for ($private_label_link = 1; $private_label_link <= 5; $private_label_link++) {
+        $output_private_label_links .= '
+                                            <div class="col-12 md:col-6">
+                                                <label for="footer_link_' . $private_label_link . '_label" class="form-label">' . lang(array('string' => 'Footer Link {var:1} Label', 'vars' => array((string) $private_label_link))) . '</label>
+                                                <input type="text" name="footer_link_' . $private_label_link . '_label" id="footer_link_' . $private_label_link . '_label" class="form-control" value="' . h($private_label_values['footer_link_' . $private_label_link . '_label']) . '" />
+                                            </div>
+                                            <div class="col-12 md:col-6">
+                                                <label for="footer_link_' . $private_label_link . '_url" class="form-label">' . lang(array('string' => 'Footer Link {var:1} URL', 'vars' => array((string) $private_label_link))) . '</label>
+                                                <input type="text" inputmode="url" spellcheck="false" autocapitalize="off" name="footer_link_' . $private_label_link . '_url" id="footer_link_' . $private_label_link . '_url" class="form-control" value="' . h($private_label_values['footer_link_' . $private_label_link . '_url']) . '" />
+                                            </div>';
+    }
+
+    $pg_settings_cards[] = '
+                        <div id="pgset-private-label" class="pg-set-card">
+                            <div class="card">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                    ' . lang('Private Label Branding') . '
+                                </div>
+                                <div class="card-body">
+                                    <input type="hidden" name="private_label_card" value="1" />
+                                    <div class="row gy-5">
+                                        <div class="col-12">
+                                            <div class="form-field">
+                                                <div class="switch"><input value="1"' . ($private_label_on ? ' checked="checked"' : '') . ' class="collapse-switcher" type="checkbox" id="private_label" name="private_label" data-bs-target="#private_label_fields"/></div>
+                                                <label class="" for="private_label">' . lang('Enable Private Label') . '</label>
+                                            </div>
+                                            <div class="form-text">' . lang('Update the branding for the control panel.') . '</div>
+                                        </div>
+                                        <div class="col-12 collapse' . ($private_label_on ? ' show' : '') . '" id="private_label_fields">
+                                            <div class="row gy-5">
+                                                <div class="col-12 md:col-6">
+                                                    <label for="logo_url" class="form-label">' . lang('Logo URL') . '</label>
+                                                    <input type="text" inputmode="url" spellcheck="false" autocapitalize="off" name="logo_url" id="logo_url" class="form-control" value="' . h($private_label_values['logo_url']) . '" />
+                                                    <div class="form-text">' . lang('leave blank to use the default product logo') . '</div>
+                                                </div>
+                                                <div class="col-12 md:col-6">
+                                                    <label for="control_panel_stylesheet_url" class="form-label">' . lang('Control Panel Stylesheet URL') . '</label>
+                                                    <input type="text" inputmode="url" spellcheck="false" autocapitalize="off" name="control_panel_stylesheet_url" id="control_panel_stylesheet_url" class="form-control" value="' . h($private_label_values['control_panel_stylesheet_url']) . '" />
+                                                </div>
+                                                <div class="col-12">
+                                                    <h3 class="h6 fw-bold mb-0">' . lang('Footer Links') . '</h3>
+                                                </div>' . $output_private_label_links . '
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>';
+}

@@ -15,7 +15,7 @@ description: Edit Theme, the themes list and Private Label Branding on cards: la
 - `view_themes.php`: the active desktop and mobile `task_alt` marks are `role="img"` with `aria-label` Yes; the `folder` ligature before a folder name is `aria-hidden` (`list-and-table-screens.md`).
 
 ## How is Private Label Branding drawn?
-- `private_label.php`: one Branding card. The Enable Private Label switch is a `collapse-switcher` for `#private_label_fields` (opened with `show` when the setting is on), replacing an inline `style.display` script.
+- The Private Label Branding card of Site Settings › Appearance (`includes/settings/appearance.php`, administrator only, #4095; `private_label.php` redirects there). The Enable Private Label switch is a `collapse-switcher` for `#private_label_fields` (opened with `show` when the setting is on), replacing an inline `style.display` script.
 - Logo URL and Control Panel Stylesheet URL, then the five footer link label/URL pairs (drawn in a loop), each with a label and id equal to its posted name. The logo hint is `form-text` under the field.
 
 ## Which test covers it?
