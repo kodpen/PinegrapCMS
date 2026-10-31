@@ -18,7 +18,7 @@ description: Steps E1-E10 of plans/image-editor.md: core modal, crop, server sav
   - Crop box and handles, ratios (free, original, 1:1, 4:3, 3:2, 16:9, 4:5, 9:16), quarter turns, flips, straighten ±45° with cover scale, output size with presets, crop shape (rounded, circle).
   - Layers follow turns and flips; cancel restores them.
 
-- E3 (M) Server save.
+- E3 (M) Server save. Done in #4258 (`platform/image-editor-save.md`).
   - `image_editor_api.php` open and save, `pg_image_edit_validate()`, `pg_image_edit_apply()` steps 1, 2, 5 and 6 for Imagick and GD, replace, copy and new, the refusals; PHP tests for the validator and the geometry.
 
 - E4 (M) Adjust and filters. Screen 03.
