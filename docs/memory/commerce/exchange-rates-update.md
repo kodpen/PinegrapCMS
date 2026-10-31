@@ -13,11 +13,11 @@ module: currency_rates
 
 - One line per run, before the redirect, so the job logs too: `pg_exchange_rates_log_line($updated, $requested)` (`includes/fn/currency_rates.php`) gives the `pg_log_lang()` properties — "{var:1} of {var:2} exchange rates were updated", or "Exchange rates were not updated: no rate could be fetched ({var:1} requested)". Null (no line) when no currency besides the base was asked for.
 - `log_activity()` names the signed-in user; the job logs with no user.
-- Before #PR the bulk change left no trace, while a single edit in `edit_currency.php` logs "Currency (…) was modified" (issue #4172).
+- Before #4273 the bulk change left no trace, while a single edit in `edit_currency.php` logs "Currency (…) was modified" (issue #4172).
 
 ## What does the screen show?
 
-- The success notice "{var:1} exchange rates were updated" only when `$updated > 0`; otherwise only the errors: one when neither feed answered, and one per currency not fetched (commit 2c5da11c).
+- The success notice "{var:1} exchange rates were updated" only when `$updated > 0`; otherwise only the errors: one when neither feed answered, and one per currency not fetched (commit 2c5da11c). Log line: PR #4273.
 
 ## Tests
 
