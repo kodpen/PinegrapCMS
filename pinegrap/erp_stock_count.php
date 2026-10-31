@@ -163,6 +163,9 @@ pg_page_shell([
     ),
 ]) . '
 <main id="content" class="container-fluid">
+    ' . ($open ? pg_screen_toolbar(array(
+        'secondary' => $form_action('cancel', lang('Cancel the count'), 'btn-text theme-secondary', 'bi-x-circle', lang('Cancel this count? No stock is changed.')),
+    )) : '') . '
     <div class="row">
         <div class="col-12 2xl:col-9">
             ' . $liveform->output_errors() . '
@@ -224,9 +227,6 @@ pg_page_shell([
                 </nav>' : '') . '
             </form>
 
-            ' . ($open ? '<div class="d-flex flex-wrap gap-3 justify-content-end mb-7">
-                ' . $form_action('cancel', lang('Cancel the count'), 'btn-outline theme-secondary', 'bi-x-circle', lang('Cancel this count? No stock is changed.')) . '
-            </div>' : '') . '
         </div>
     </div>
 </main>' .

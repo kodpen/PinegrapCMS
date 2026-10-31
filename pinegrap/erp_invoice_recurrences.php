@@ -33,8 +33,9 @@ if (!$ready) {
 $periods = erp_expense_recurring_periods();
 $modes = erp_invoice_recurring_modes();
 $output_rows = '';
+$recurrences = erp_invoice_recurrences(!$show_stopped);
 
-foreach (erp_invoice_recurrences(!$show_stopped) as $row) {
+foreach ($recurrences as $row) {
     $active = ((string) $row['status'] === 'active');
 
     $output_rows .= '
@@ -72,16 +73,15 @@ pg_page_shell([
     ),
 ]) . '
 <main id="content" class="container-fluid">
+    ' . pg_screen_toolbar(array(
+        'grow'   => '<span class="small fg-secondary">' . h(lang(array('string' => '{var:1} repeating invoice(s)', 'vars' => array(count($recurrences))))) . '</span>',
+        'search' => pg_filter_select('all', array('' => lang('Running'), '1' => lang('All')), $show_stopped ? '1' : '', array('label' => lang('Show'), 'icon' => 'funnel', 'action' => 'erp_invoice_recurrences.php')),
+    )) . '
     <div class="row">
         <div class="col-12">
             ' . $liveform->output_errors() . '
             ' . $liveform->get_warnings() . '
             ' . $liveform->output_notices() . '
-
-            <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . lang('Button Bar') . '">
-                <div class="pg-toolbar-grow"></div>
-                ' . pg_filter_select('all', array('' => lang('Running'), '1' => lang('All')), $show_stopped ? '1' : '', array('label' => lang('Show'), 'icon' => 'funnel', 'action' => 'erp_invoice_recurrences.php')) . '
-            </nav>
 
             <div class="card my-7">
                 <div class="card-body p-0 table-responsive">

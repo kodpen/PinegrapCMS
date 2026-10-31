@@ -133,7 +133,7 @@ function test_calendar_event_form_start_calendars_tick_nothing_without_a_clear_c
 function test_calendar_event_form_create_link_carries_the_viewed_calendar()
 {
 	$calendars = file_get_contents(PG_FUNCTIONS_DIR . '/calendars.php');
-	pg_assert_true(strpos($calendars, "add_calendar_event.php?calendar_id=' . h(urlencode(") !== false, 'calendars.php does not pass the viewed calendar to the create screen');
+	pg_assert_true(strpos($calendars, "add_calendar_event.php?calendar_id=' . urlencode(") !== false, 'calendars.php does not pass the viewed calendar to the create screen');
 
 	$add = file_get_contents(PG_FUNCTIONS_DIR . '/add_calendar_event.php');
 	pg_assert_true(strpos($add, 'pg_calendar_event_form_start_calendars(') !== false, 'add_calendar_event.php does not tick the start calendar');

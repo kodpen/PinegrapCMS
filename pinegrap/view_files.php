@@ -508,26 +508,29 @@ echo
         )
     ) . '
 <main id="content" class="container-fluid">
+    ' . pg_screen_toolbar(array(
+        'primary'   => array(
+            array('label' => lang('Upload File'), 'url' => 'add_file.php?send_to=' . urlencode(REQUEST_URL), 'icon' => 'bi-upload'),
+            array('label' => lang('Create'), 'url' => 'create_file.php', 'icon' => 'bi-plus-circle'),
+        ),
+        'secondary' => array('label' => lang('File Manager'), 'url' => 'view_folders.php', 'icon' => 'bi-folder2-open'),
+        'grow'      => '<span class="small fg-secondary">' . lang('Disk Usage') . ': ' . h(convert_bytes_to_string(db("SELECT SUM(size) FROM files"), 2)) . '</span>',
+        'view'      => array(
+            pg_list_sort_menu('view_files.php', $sort_columns, $sort_levels, $sort_default, array('filter' => $filter)),
+            '<form id="search_form" action="view_files.php" method="get" class="search_form">
+                <input type="hidden" name="filter" value="' . h($filter) . '">
+                <div class="input-group input-group-sm">
+                    <label class="input-group-text material-icons" title="' . lang('Content that viewed') . '" for="filter_select">visibility</label>
+                    <select id="filter_select" aria-label="' . h(lang('Content that viewed')) . '" name="filter" class="form-control" title="' . lang('Content that viewed') . '" onchange="submit_form(\'search_form\')">' . get_filter_options($filters_in_array, $filter) . '</select>
+                </div>
+            </form>',
+        ),
+    )) . '
             <div class="row">
             <div class="col-12">
                 ' . $liveform->output_errors() . '
                 ' . $liveform->get_warnings() . '
                 ' . $liveform->output_notices() . '
-                <p>' . lang('Disk Usage') . ': ' . h(convert_bytes_to_string(db("SELECT SUM(size) FROM files"), 2)) . '</p>
-                <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . h(lang('Button Bar')) . '">
-                            <a class="btn btn-sm btn-solid theme-primary m-1 " href="add_file.php?send_to=' . h(urlencode(REQUEST_URL)) . '"><span class="material-icons me-3">file_upload</span>' . lang(array('string'=>'Upload File') ) . '</a>
-                            <a class="btn btn-sm btn-solid theme-primary m-1 " href="create_file.php"><span class="bi bi-plus-circle me-3"></span>' . lang(array('string'=>'Create') ) . '</a>
-                            <a class="btn btn-sm btn-outline theme-primary m-1 " href="view_folders.php"><span class="bi bi-folder2-open me-3"></span>' . lang(array('string'=>'File Manager') ) . '</a>
-                            <div class="pg-toolbar-grow"></div>
-                            ' . pg_list_sort_menu('view_files.php', $sort_columns, $sort_levels, $sort_default, array('filter' => $filter)) . '
-                            <form id="search_form" action="view_files.php" method="get" class="search_form">
-                                <input type="hidden" name="filter" value="' . h($filter) . '">
-                                <div class="input-group input-group-sm">
-                                    <label class="input-group-text material-icons" title="' . lang('Content that viewed') . '" for="filter_select">visibility</label>
-                                    <select id="filter_select" aria-label="' . h(lang('Content that viewed')) . '" name="filter" class="form-control" title="' . lang('Content that viewed') . '" onchange="submit_form(\'search_form\')">' . get_filter_options($filters_in_array, $filter) . '</select>
-                                </div>
-                            </form>
-                </nav>
                 <div class="card my-7">
                     <div class="card-body p-0 position-relative">
                         <form name="form"  action="edit_files.php" method="post"> 

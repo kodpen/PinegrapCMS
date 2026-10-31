@@ -1226,6 +1226,7 @@
     "{var:1} repaired in {var:2} s. The server said: {var:3}": "{var:1} {var:2} sn'de onarıldı. Sunucunun yanıtı: {var:3}",
     "{var:1} repeating document(s) in another currency are left out: no exchange rate is recorded for today.": "Başka para birimindeki {var:1} tekrarlayan belge dışarıda kaldı: bugün için kayıtlı kur yok.",
     "{var:1} repeating expense(s) were written.": "{var:1} tekrarlayan gider yazıldı.",
+    "{var:1} repeating invoice(s)": "{var:1} tekrarlayan fatura",
     "{var:1} repeating invoice(s) were written.": "{var:1} tekrarlayan fatura yazıldı.",
     "{var:1} report": "{var:1} raporu",
     "{var:1} reports {var:2} for payment {var:3}": "{var:1}, {var:3} ödemesi için {var:2} durumunu bildiriyor",
