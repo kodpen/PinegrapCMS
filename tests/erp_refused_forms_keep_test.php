@@ -65,8 +65,8 @@ function test_erp_expense_pay_and_repeat_refusals_keep_choices()
 
 	// Each form reads back only its own post, so a refused Pay leaves Repeat alone.
 	pg_assert_contains('(string) $liveform->get_field_value(\'erp_action\') === $form', $source, 'kept values follow the form that was sent');
-	pg_assert_contains('$till_options($kept(\'pay\') ? (int) $liveform->get_field_value(\'cash_account_id\') : 0)', $source, 'Paid from keeps the chosen till');
-	pg_assert_contains('$method_options($kept(\'pay\') ? (string) $liveform->get_field_value(\'payment_method\') : \'cash\')', $source, 'Payment Method keeps the chosen method');
+	pg_assert_contains('$till_options($sent_form(\'pay\') ? (int) $liveform->get_field_value(\'cash_account_id\') : 0)', $source, 'Paid from keeps the chosen till');
+	pg_assert_contains('$method_options($sent_form(\'pay\') ? (string) $liveform->get_field_value(\'payment_method\') : \'cash\')', $source, 'Payment Method keeps the chosen method');
 	pg_assert_contains('$repeat_every = (int) $liveform->get_field_value(\'repeat_every\');', $source, 'How often keeps the chosen period');
 	pg_assert_contains('$liveform->get_field_value(\'repeat_due_days\')', $source, 'Due after keeps the typed days');
 	pg_assert_contains('$liveform->get_field_value(\'repeat_pay\')', $source, 'Write the next ones as paid keeps its switch');

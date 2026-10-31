@@ -59,3 +59,17 @@ function test_passkey_sessions_schema_step()
 	pg_assert_false(stripos($step, 'ALTER TABLE') !== false, 'no ALTER of its own');
 	pg_assert_contains('install_note(', $step, 'a note for the operator');
 }
+
+// Removing all the account's passkeys (turning two-step verification off)
+// ends this browser's session too when it signed in with one of them and is
+// not pinned: the screen says so before the confirm.
+function test_passkey_sessions_forget_ends_row()
+{
+	pg_assert_false(pg_passkeys_forget_ends_session(null), 'no row');
+	pg_assert_false(pg_passkeys_forget_ends_session(array()), 'empty row');
+	pg_assert_false(pg_passkeys_forget_ends_session(array('passkey_id' => '0')), 'password sign-in');
+	pg_assert_true(pg_passkeys_forget_ends_session(array('passkey_id' => '42')), 'passkey sign-in');
+	pg_assert_true(pg_passkeys_forget_ends_session(array('passkey_id' => '42', 'pinned' => '0')), 'not pinned');
+	pg_assert_false(pg_passkeys_forget_ends_session(array('passkey_id' => '42', 'pinned' => '1')), 'pinned stays');
+	pg_assert_false(pg_passkeys_forget_ends_session('broken'), 'not a row');
+}

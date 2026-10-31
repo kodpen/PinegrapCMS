@@ -73,6 +73,7 @@
     "Unknown bots are being blocked.": "Bilinmeyen botlar engelleniyor.",
     "Unknown bots are not being blocked, because the firewall is disabled.": "Güvenlik duvarı kapalı olduğu için bilinmeyen botlar engellenmiyor.",
     "Unknown bots are not being blocked.": "Bilinmeyen botlar engellenmiyor.",
+    "Unknown bots are only being recorded, not blocked, because the firewall is in monitor mode.": "Güvenlik duvarı izleme modunda olduğu için bilinmeyen botlar engellenmiyor, yalnızca kaydediliyor.",
     "Unknown component type": "Bilinmeyen bileşen türü",
     "Unknown country code.": "Bilinmeyen ülke kodu.",
     "Unknown device": "Bilinmeyen cihaz",
