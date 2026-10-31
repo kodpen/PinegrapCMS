@@ -32,10 +32,11 @@ function _dpt_check($tree)
 // Cross-sell part beside a heading pass the page save.
 function test_designer_part_tree_list_part_saves()
 {
-	$crumbs = pg_sw_part_catalog_breadcrumb_item();
+	// The builders give the part's nodes; the palette wraps several in one div.
+	$crumbs = array('type' => 'semantic', 'props' => array('tag' => 'div'), 'children' => pg_sw_part_catalog_breadcrumb_item());
 	pg_assert_true(is_array($crumbs) && strpos(json_encode($crumbs), '"loop_area"') !== false, 'the breadcrumb part holds a list');
 	$crumbs['props']['partOf'] = 12;
-	$cross = pg_sw_part_catalog_cross_sell();
+	$cross = array('type' => 'semantic', 'props' => array('tag' => 'div'), 'children' => pg_sw_part_catalog_cross_sell());
 	pg_assert_true(is_array($cross) && strpos(json_encode($cross), '"loop_area"') !== false, 'the cross-sell part holds a list');
 	$cross['props']['partOf'] = '12';
 	$heading = array('type' => 'semantic', 'props' => array('tag' => 'h1', 'text' => 'Shop'), 'children' => array());
