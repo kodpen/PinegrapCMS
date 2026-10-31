@@ -25,7 +25,11 @@ description: Steps R1-R9 of plans/settings-recategorization.md: what each moves,
 
 - R6 (S) SEO and sharing — done (#3908). The Site icon, Social sharing and Structured data blocks (now drawn in `prep.php`) become cards. Product Feeds moves to Ecommerce. AI Crawlers becomes the one place for AI bots, and the Firewall card shows its state and a link there. If #3557 is open, fix it here: Structured Data and Merchant Center post the same `merchant_country` field.
 
-- R7 (S) Updates and maintenance, and Integrations. Update Channel, Cron Jobs, Backups, Alerts and Maintenance Mode leave General. API becomes Integrations, takes Google Reviews from Communication, and gets the links listed in the plan. The panel's look gets one place: Private label comes in under Appearance, from `private_label.php`.
+- R7, cut in four (size).
+  - R7a (M) New `maintenance` category "Updates and maintenance", last: Update Channel, Cron Jobs, Alerts, Maintenance Mode leave General; their anchors land on it; links in `software_update.php`, `system_status.php`, `ops_alerts.php`; menu case, help row.
+  - R7b (M) Backups joins it (card, save, remote test, `?backup_connect=`), anchor `pgset-backup`.
+  - R7c (S) API becomes Integrations, takes Google Reviews from Communication, gets the plan's links.
+  - R7d (M) Private label under Appearance, from `private_label.php`.
 
 - R8 (M) Search. A search box in the dialog covers every category's cards and field labels, from the registry plus the drawn labels. Palette keywords: false hits ("logo" on E-Invoice) and misses (favicon, kvkk, workspace, prefetch, encryption). Headings over the list as decided #3879 (Site, Security, Selling, Running the site; `.pg-sm-group`, a `group` key per category).
 
