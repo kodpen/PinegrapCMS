@@ -10988,10 +10988,12 @@ function process_order_cancellation($order_id, $reason = '', $is_admin = false, 
 
     // Minimal selection — enough for cancel gating + email + refund.
     // refunded_amount: what the order screen or a return gave back already,
-    // which the cancellation must not return a second time.
+    // which the cancellation must not return a second time. paid_at tells a
+    // bank transfer or pending payment that arrived from one that did not.
     $order = db_item(
         "SELECT id, status, user_id, payment_method, transaction_id, total,
                 " . (pg_schema_has('orders', 'refunded_amount') ? 'refunded_amount' : '0 AS refunded_amount') . ",
+                " . (pg_schema_has('orders', 'paid_at') ? 'paid_at' : 'NULL AS paid_at') . ",
                 billing_first_name, billing_last_name, billing_email_address,
                 order_number, order_date,
                 " . (pg_schema_has('orders', 'type') ? 'type' : "'' AS type") . "
@@ -11136,7 +11138,8 @@ function process_order_cancellation($order_id, $reason = '', $is_admin = false, 
         $order['payment_method'],
         !empty($order['transaction_id']),
         $cancel_driver,
-        $auto_refund
+        $auto_refund,
+        ($order['paid_at'] === null) ? null : (int) $order['paid_at']
     );
 
     if ($payment_plan['action'] === 'void') {
@@ -11151,7 +11154,7 @@ function process_order_cancellation($order_id, $reason = '', $is_admin = false, 
         // pg_payment_call() never throws: an exception inside the driver comes
         // back as a failure, which the outcome logs as an EXCEPTION line.
         $cancel_outcome = pg_payment_cancel_outcome(
-            $order_id,
+            $order_log_number,
             (string) $order['transaction_id'],
             pg_payment_call($cancel_driver, 'cancel', array($cancelled_order, (string) $order['transaction_id'])),
             pg_payment_log_name($cancel_driver)
@@ -11166,8 +11169,12 @@ function process_order_cancellation($order_id, $reason = '', $is_admin = false, 
     } elseif ($payment_plan['action'] === 'manual') {
         // No auto-refund — but money did change hands, so flag for the operator.
         $refund_status_outcome = 'manual_required';
+        // A bank transfer has no gateway to refund in: the money goes back
+        // by another transfer.
         log_activity(pg_log_lang(array(
-            'string' => 'REFUND ACTION REQUIRED — order #{var:1} was cancelled. Payment method: {var:2}. Amount: {var:3}. Process refund in the gateway dashboard.',
+            'string' => ((string) $order['payment_method'] === 'Offline Payment')
+                ? 'REFUND ACTION REQUIRED — order #{var:1} was cancelled. Payment method: {var:2}. Amount: {var:3}. Send the amount back to the customer by bank transfer.'
+                : 'REFUND ACTION REQUIRED — order #{var:1} was cancelled. Payment method: {var:2}. Amount: {var:3}. Process refund in the gateway dashboard.',
             'vars'   => array($order_log_number, (string) $order['payment_method'], pg_order_log_money($payment_plan['remaining'])))));
         if ($payment_plan['refunded'] > 0) {
             log_activity(pg_log_lang(array(
@@ -11288,6 +11295,16 @@ function pg_order_log_number(array $order)
     return (($number !== '') && ($number !== '0')) ? $number : (string) (int) ($order['id'] ?? 0);
 }
 
+// What the panel tells the operator to do with payment money a cancellation
+// did not return: a bank transfer goes back by another transfer, any other
+// payment is refunded in its provider's dashboard.
+function pg_order_refund_instruction($payment_method)
+{
+    return ((string) $payment_method === 'Offline Payment')
+        ? lang('The payment was NOT refunded automatically. Send the amount back to the customer by bank transfer.')
+        : lang('The payment was NOT refunded automatically. Process the refund in your payment provider dashboard.');
+}
+
 // The base currency symbol as plain text: the currencies table keeps it as an
 // HTML entity (&#8378;), which the Site Log escapes and shows as it is.
 function pg_order_log_currency_symbol()
@@ -11326,25 +11343,31 @@ function pg_order_log_status($status)
 //  'void'   the payment driver cancels the payment: the auto refund is on, a
 //           driver can cancel ($cancel_driver, pg_payment_cancel_driver()),
 //           the order has a transaction and nothing was refunded yet;
-//  'manual' money is left and a payment method took it, but it is not voided:
+//  'manual' money is left and the payment arrived, but it is not voided:
 //           the operator returns it (REFUND ACTION REQUIRED, manual_required);
-//  'none'   nothing is left (refunded in full, a free order), or no method
-//           took the money (Offline Payment, none).
+//  'none'   nothing is left (refunded in full, a free order), no method took
+//           the money, or it never arrived: a bank transfer (Offline Payment)
+//           or a pending payment method with $paid_at 0.
+// $paid_at is orders.paid_at, null when the schema has not got it; then the
+// payment counts as arrived, as pg_order_cancel_refund_owed() reads it, so
+// the flag and the owed amount follow one rule.
 // A void takes no amount and reverses the whole payment, so a payment partly
 // refunded already (the order screen's or a return's refund) is not voided:
 // what is left goes to the operator. Amounts are minor units.
-function pg_order_cancel_payment_plan($total_cents, $refunded_cents, $payment_method, $has_transaction, $cancel_driver, $auto_refund)
+function pg_order_cancel_payment_plan($total_cents, $refunded_cents, $payment_method, $has_transaction, $cancel_driver, $auto_refund, $paid_at = null)
 {
     $total_cents    = (int) $total_cents;
     $refunded_cents = max(0, (int) $refunded_cents);
     $remaining      = max(0, $total_cents - $refunded_cents);
     $payment_method = (string) $payment_method;
+    $unpaid         = ($paid_at !== null) && ((int) $paid_at === 0)
+        && (($payment_method === 'Offline Payment') || in_array($payment_method, pg_order_pending_payment_methods(), true));
 
     if ($remaining <= 0) {
         $action = 'none';
     } elseif ($auto_refund && $has_transaction && (string) $cancel_driver !== '' && $refunded_cents === 0) {
         $action = 'void';
-    } elseif ($payment_method !== '' && $payment_method !== 'Offline Payment') {
+    } elseif ($payment_method !== '' && !$unpaid) {
         $action = 'manual';
     } else {
         $action = 'none';

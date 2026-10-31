@@ -355,3 +355,14 @@ function test_payment_refunds_cancel_outcome_of_any_driver()
 	pg_assert_same('', $unreadable['refund_reference']);
 	pg_assert_same(array('Auto-refund FAILED via ExamplePay — order #9. MANUAL REFUND REQUIRED. Gateway message: (no message)'), $unreadable['log']);
 }
+
+function test_payment_refunds_cancel_outcome_names_the_order_number()
+{
+	// The caller passes pg_order_log_number(): the order number the panel and
+	// the customer's e-mails show, kept as it is.
+	$refunded = pg_payment_cancel_outcome('PG-1188', 'tx-9', pg_payment_answer('cancel', array('success' => true, 'status' => 'cancelled', 'refund_reference' => 'void-1')), 'ExamplePay');
+	pg_assert_same(array('Auto-refund SUCCESS via ExamplePay — order #PG-1188 (payment void-1).'), $refunded['log']);
+
+	$failed = pg_payment_cancel_outcome('PG-1188', 'tx-9', pg_payment_answer('cancel', array('success' => false, 'raw' => array('message' => 'refused'))), 'ExamplePay');
+	pg_assert_same(array('Auto-refund FAILED via ExamplePay — order #PG-1188. MANUAL REFUND REQUIRED. Gateway message: refused'), $failed['log']);
+}
