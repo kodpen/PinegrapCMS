@@ -1419,6 +1419,21 @@ function mp_products_listings_view($account, $counts, $category_count, $view, $s
 
 }
 
+/**
+ * Whether a list page came back empty past the end of a list that still has
+ * rows: a bulk accept reloads with ?page=N after the accepted rows left the
+ * view. The caller reads the list again on its last page.
+ *
+ * @param array $list array('rows' => list, 'total' => int)
+ * @param int   $page the page that was read
+ * @return bool
+ */
+function mp_products_page_past_end($list, $page) {
+
+	return empty($list['rows']) && ((int) ($list['total'] ?? 0) > 0) && ($page > 1);
+
+}
+
 /* ---------------------------------------------------------------------------
    Reads
    --------------------------------------------------------------------------- */
@@ -1480,6 +1495,14 @@ if ($account && ($mode === 'shop')) {
 
 	$list = mp_matches_page($account_id, $view, $search, $page, $per_page);
 
+	if (mp_products_page_past_end($list, $page)) {
+
+		$page = pg_list_page_clamp($page, $list['total'], $per_page);
+
+		$list = mp_matches_page($account_id, $view, $search, $page, $per_page);
+
+	}
+
 }
 
 $category_count = 0;
@@ -1502,6 +1525,14 @@ if ($account && ($mode === 'listings')) {
 	}
 
 	$list = mp_articles_page($articles, $view, $search, $page, $per_page);
+
+	if (mp_products_page_past_end($list, $page)) {
+
+		$page = pg_list_page_clamp($page, $list['total'], $per_page);
+
+		$list = mp_articles_page($articles, $view, $search, $page, $per_page);
+
+	}
 
 }
 
@@ -1531,6 +1562,14 @@ if ($account && ($mode === 'remote') && $ready) {
 	}
 
 	$list = mp_remote_products_page($account_id, $view, $search, $page, $per_page);
+
+	if (mp_products_page_past_end($list, $page)) {
+
+		$page = pg_list_page_clamp($page, $list['total'], $per_page);
+
+		$list = mp_remote_products_page($account_id, $view, $search, $page, $per_page);
+
+	}
 
 }
 
