@@ -357,7 +357,7 @@ function test_audit_file_manager_and_catalog_copies_write_lines()
 	$bulk = audit_log_test_between('includes/explorer/handle_bulk_edit.php', 'function pg_explorer_handle_pages_bulk_edit(', 'function pg_explorer_handle_bulk_file_options(');
 	$before = strpos($bulk, "pg_audit_fetch_many('page', \$allowed)");
 
-	pg_assert_true(($before !== false) && ($before < strpos($bulk, '"UPDATE page')), 'bulk page edit reads the pages first');
+	pg_assert_true(($before !== false) && ($before < strpos($bulk, 'pg_page_bulk_apply(')), 'bulk page edit reads the pages first');
 	pg_assert_contains("pg_audit_record_many('update', 'page', \$audit_before);", $bulk, 'bulk page edit records them');
 
 	$zip = audit_log_test_between('includes/explorer/handle_zip.php', 'function pg_explorer_handle_zip_create(', 'function pg_explorer_handle_zip_extract(');

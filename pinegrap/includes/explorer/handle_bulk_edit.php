@@ -17,6 +17,8 @@ if (!defined('PG_FUNCTIONS_DIR')) {
     exit;
 }
 
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/page_bulk.php');
+
 // A text that ends like a sentence: a full stop is added when it has none.
 function pg_explorer_sentence_end($text)
 {
@@ -59,10 +61,11 @@ function pg_explorer_handle_bulk_page_options($type, $request, $user)
 }
 
 // Every field is optional; only what the panel actually set gets
-// written. Style fields follow the edit screens' role rule, the
-// noindex/nofollow pair follows its schema probe, and each page is
-// let through only with edit access to its folder. Whatever changed
-// marks the SEO analysis stale, the same write the edit screens do.
+// written. Each page is let through only with edit access to its folder,
+// and pg_page_bulk_decide() applies the page screen's rules to it: the
+// style for staff only and never on a page the visual editor opens, the
+// sitemap switch by page type and noindex, the SEO stale mark and the
+// site-search keyword cloud.
 function pg_explorer_handle_pages_bulk_edit($type, $request, $user)
 {
     $items = isset($request['items']) ? $request['items'] : array();
@@ -72,41 +75,36 @@ function pg_explorer_handle_pages_bulk_edit($type, $request, $user)
         respond(array('status' => 'error', 'message' => lang('Invalid request.')));
     }
 
-    $assignments = array();
-
-    foreach (array('sitemap' => 'sitemap', 'search' => 'page_search', 'comments' => 'comments') as $field => $column) {
-        if (isset($set[$field]) && in_array((string) $set[$field], array('0', '1'), true)) {
-            $assignments[] = $column . " = '" . e($set[$field]) . "'";
-        }
-    }
+    $fields = array('sitemap', 'search', 'comments');
 
     if (pg_page_noindex_ready()) {
-        foreach (array('noindex', 'nofollow') as $field) {
-            if (isset($set[$field]) && in_array((string) $set[$field], array('0', '1'), true)) {
-                $assignments[] = $field . " = '" . e($set[$field]) . "'";
-            }
-        }
+        $fields[] = 'noindex';
+        $fields[] = 'nofollow';
     }
 
-    // The two style columns are held apart from the rest, because they
-    // are not written to every page in the selection -- see below.
-    $style_assignments = array();
+    $decide_set = array();
+
+    foreach ($fields as $field) {
+        if (isset($set[$field]) && in_array((string) $set[$field], array('0', '1'), true)) {
+            $decide_set[$field] = (string) $set[$field];
+        }
+    }
 
     if ($user['role'] < 3) {
-        if (isset($set['style']) && ($set['style'] !== '')) {
-            $style_assignments[] = "page_style = '" . e((int) $set['style']) . "'";
+        if (isset($set['style']) && ((string) $set['style'] !== '')) {
+            $decide_set['style'] = (string) (int) $set['style'];
         }
 
-        if (isset($set['mobile_style_id']) && ($set['mobile_style_id'] !== '')) {
-            $style_assignments[] = "mobile_style_id = '" . e((int) $set['mobile_style_id']) . "'";
+        if (isset($set['mobile_style_id']) && ((string) $set['mobile_style_id'] !== '')) {
+            $decide_set['mobile_style'] = (string) (int) $set['mobile_style_id'];
         }
     }
 
-    if ((count($assignments) == 0) && (count($style_assignments) == 0)) {
+    if (count($decide_set) == 0) {
         respond(array('status' => 'error', 'message' => lang('Invalid request.')));
     }
 
-    $allowed = array();
+    $pages = array();
     $errors = array();
 
     foreach ($items as $item) {
@@ -117,7 +115,7 @@ function pg_explorer_handle_pages_bulk_edit($type, $request, $user)
             continue;
         }
 
-        $page = db_item("SELECT page_id, page_name, page_folder FROM page WHERE page_id = '" . e($item_id) . "'");
+        $page = pg_page_bulk_fetch($item_id);
 
         if (!$page) {
             continue;
@@ -128,66 +126,25 @@ function pg_explorer_handle_pages_bulk_edit($type, $request, $user)
             continue;
         }
 
-        $allowed[] = (int) $page['page_id'];
+        $pages[(int) $page['page_id']] = $page;
     }
 
-    // A page the visual editor opens keeps its style out of this.
-    //
-    // Since the multi-page design swap, the style is not a skin that
-    // can be exchanged underneath such a page: the page carries its own
-    // layout tree and the style it points at owns the assets that tree
-    // was built against. Pointing a batch of them at another style
-    // leaves each one rendering a tree whose blocks, fonts and custom
-    // CSS live somewhere else -- which is not "restyled", it is broken,
-    // and nothing in a bulk panel can put it back.
-    //
-    // Two shapes count as such a page: one that carries a tree of its
-    // own, and one whose style was made by the editor. The rest -- the
-    // classic pages the style picker was written for -- are updated as
-    // before.
-    $style_targets = $allowed;
+    $allowed = array_keys($pages);
     $style_skipped = 0;
-
-    if ((count($style_assignments) > 0) && (count($allowed) > 0)) {
-
-        $own_tree = pg_multi_page_design_ready()
-            ? " OR ((page.page_tree_json IS NOT NULL) AND (page.page_tree_json <> ''))"
-            : '';
-
-        $visual_ids = (array) db_values(
-            "SELECT page.page_id
-            FROM page
-            LEFT JOIN style ON page.page_style = style.style_id
-            WHERE (page.page_id IN (" . implode(',', $allowed) . "))
-                AND ((style.style_layout = 'visual_designer')" . $own_tree . ")");
-
-        $visual_ids = array_map('intval', $visual_ids);
-        $style_targets = array_values(array_diff($allowed, $visual_ids));
-        $style_skipped = count($allowed) - count($style_targets);
-    }
 
     $audit_before = (count($allowed) > 0) ? pg_audit_fetch_many('page', $allowed) : array();
 
-    if ((count($assignments) > 0) && (count($allowed) > 0)) {
-        db(
-            "UPDATE page
-            SET
-                " . implode(",\n                        ", $assignments) . ",
-                seo_analysis_current = '0',
-                page_timestamp = UNIX_TIMESTAMP(),
-                page_user = '" . USER_ID . "'
-            WHERE page_id IN (" . implode(',', $allowed) . ")");
-    }
+    // A page the visual editor opens keeps its style out of this: it
+    // carries its own layout tree, and the style it points at owns the
+    // assets that tree was built against, so pointing it at another style
+    // breaks it rather than restyling it.
+    foreach ($pages as $page) {
+        $decision = pg_page_bulk_decide($page, $decide_set, $user['role']);
+        pg_page_bulk_apply($page, $decision, USER_ID);
 
-    if ((count($style_assignments) > 0) && (count($style_targets) > 0)) {
-        db(
-            "UPDATE page
-            SET
-                " . implode(",\n                        ", $style_assignments) . ",
-                seo_analysis_current = '0',
-                page_timestamp = UNIX_TIMESTAMP(),
-                page_user = '" . USER_ID . "'
-            WHERE page_id IN (" . implode(',', $style_targets) . ")");
+        if ($decision['style_skipped']) {
+            $style_skipped++;
+        }
     }
 
     pg_audit_record_many('update', 'page', $audit_before);
