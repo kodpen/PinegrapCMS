@@ -1044,6 +1044,18 @@ function pg_csv_formula_guard($value)
     return $value;
 }
 
+// The inverse of pg_csv_formula_guard() for a cell read back from a CSV:
+// drops the apostrophe only when a formula trigger follows it, so importing
+// an unchanged export keeps '+90 532…' or '@name' as they were entered.
+function pg_csv_formula_unguard($value)
+{
+    $value = (string) $value;
+    if ((strlen($value) > 1) && ($value[0] === "'") && (strpos("=+-@\t\r", $value[1]) !== false)) {
+        $value = substr($value, 1);
+    }
+    return $value;
+}
+
 // Prepares an untrusted value for a double-quoted CSV cell: the formula guard
 // plus doubled embedded quotes. Returns the cell body only; the caller adds
 // the surrounding quotes.

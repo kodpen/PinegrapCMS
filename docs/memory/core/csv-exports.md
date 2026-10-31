@@ -21,14 +21,10 @@ description: Panel CSV exports start with pg_csv_download_start() (UTF-8 charset
 - `import_key_codes.php` reads its header line for the separator and seeks back to where that line started (`ftell()`), not to 0, which would land on the mark again.
 
 ## What was left as it is?
-- The comma separator, money decimals and no formula guard on the older exports: separate decisions. Orders keep their snake_case headings and point-decimal money; products keep the headings `import_products.php` reads.
+- The comma separator, money decimals and no formula guard on the older exports: separate decisions. The formula guard and its import side: `csv-formula-guard.md`. Orders keep their snake_case headings and point-decimal money; products keep the headings `import_products.php` reads.
 
 ## Which separator does the ERP audit trail CSV use?
 - `erp_audit_csv()` (`includes/erp/audit.php`) uses `erp_csv_delimiter()` like the other ERP CSVs: `;` where the store uses a decimal comma, `,` elsewhere. It used a fixed `;`, so on a point-decimal store Excel put each line in column A. Dates stay `Y-m-d H:i:s`, amounts point-decimal (as in the ERP export profiles).
-
-## Which cells get the formula guard?
-- `pg_csv_formula_guard()` (`includes/fn/core.php`) puts `'` before a leading `= + - @` tab or CR; `csv_cell()` and `pg_audit_view_csv_line()` use it. The ERP audit trail (user, action, number or name, details) and aging (account title) CSVs use it since PR #3682: a web order's billing name `=1+1` ran in Excel. Never on amounts (`-12.50`), dates, ids, or in `erp_export_write_csv()`.
-- Tests: `tests/csv_export_test.php`, `tests/csv_line_endings_test.php`.
 
 ## Do the orders CSV figures add up to the order?
 - Item `tax` = `pg_order_item_line_tax()` (`includes/fn/order_list.php`): `tax_total`, else unit `tax` x quantity (marketplace lines). Before, the zip printed the unit `tax` (0.00 for web lines since 2026.4.4), the single file `tax_total` (0.00 for marketplace lines).
