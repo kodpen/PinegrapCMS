@@ -284,6 +284,12 @@
   outline: none;
 }
 
+/* The stage takes the focus on opening only so the keys work at once; no
+   ring is drawn around the picture. */
+.pgie .pgie-stage:focus-visible {
+  outline: none;
+}
+
 .pgie-stage.pgie-panning {
   cursor: grab;
 }
