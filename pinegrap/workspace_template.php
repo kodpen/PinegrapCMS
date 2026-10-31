@@ -218,7 +218,11 @@ pg_page_shell([
         'icon' => 'workspace',
         'heading' => $is_new ? lang('New channel template') : lang('Channel template'),
         'heading_description' => lang('The tasks, notes and texts a channel is set up with.'),
-        'cancel' => false,
+        'cancel' => array('enable' => 'true', 'url' => $settings_url),
+        'breadcrumb' => array(
+            array('label' => lang('Channel templates'), 'url' => $settings_url),
+            array('label' => $is_new ? lang('New channel template') : lang('Channel template')),
+        ),
     ]) . '
 <main id="content" class="container-fluid p-0">
 <div class="ws-shell">
@@ -226,9 +230,6 @@ pg_page_shell([
     ' . $liveform->output_errors() . '
     ' . $liveform->output_notices() . '
     ' . (($draft_from !== '') ? '<div class="alert theme-info small">' . h(lang(array('string' => 'A draft made from #{var:1}: its open tasks, the notes shared in it, its summary and its pinned message. Nothing is kept until it is saved.', 'vars' => $draft_from))) . '</div>' : '') . '
-    <nav id="button_bar" class="pg-toolbar navigation mb-5" aria-label="' . h(lang('Button Bar')) . '">
-        <a class="btn btn-sm btn-text theme-secondary" href="' . h($settings_url) . '"><i class="bi bi-arrow-left me-1" aria-hidden="true"></i>' . h(lang('Channel templates')) . '</a>
-    </nav>
     <form method="post" action="' . h($self_url) . '" id="ws-template-form" class="row g-7">
         ' . get_token_field() . '
         <input type="hidden" name="id" value="' . (int) $template['id'] . '">

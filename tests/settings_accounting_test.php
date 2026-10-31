@@ -157,6 +157,23 @@ function test_settings_accounting_links_name_the_new_place()
 	pg_assert_same(false, strpos($erp_settings, "lang('Commerce')"), 'nor its place');
 }
 
+// The ERP row's settings entry: the dialog on Accounting below role 3, the
+// ERP Settings screen for a role 3 user with the ERP settings right.
+function test_settings_accounting_erp_menu_row_targets_by_role()
+{
+	$source = pg_test_function_source('output_menu');
+	$start = strpos($source, "lang('ERP Settings')");
+	pg_assert_true($start !== false, 'the ERP row has a settings entry');
+
+	$from = strrpos(substr($source, 0, $start), 'if (USER_MANAGE_ERP_SETTINGS');
+	$block = substr($source, $from, strpos($source, "\n        }\n", strrpos($source, "lang('ERP Settings')")) - $from);
+
+	pg_assert_contains("if (\$user['role'] < 3)", $block, 'split by role');
+	pg_assert_contains("pg_settings_link('accounting')", $block, 'below role 3: the Accounting category');
+	pg_assert_contains("'/erp_settings.php'", $block, 'role 3: the ERP Settings screen');
+	pg_assert_same(false, strpos($block, 'data-pg-settings-page'), 'the dialog answers the link');
+}
+
 // ── The ERP Settings screen's cards in the pane ──
 
 if (!defined('PG_ERP_ENTRY')) {

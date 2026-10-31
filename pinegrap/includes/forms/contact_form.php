@@ -622,6 +622,106 @@ function pg_contact_form_sync_opt_in($contact_id, $email_address, $opt_in)
 }
 
 /**
+ * The ticked contacts the Contacts list writes, in order: a contact whose
+ * address an earlier one already has is left out, because the address-wide
+ * sync of the earlier one covers it. Contacts without an address stay.
+ *
+ * @param array $contacts Rows of id, email_address
+ * @return array
+ */
+function pg_contact_bulk_opt_in_targets(array $contacts)
+{
+    $targets = array();
+    $addresses = array();
+
+    foreach ($contacts as $contact) {
+        $address = mb_strtolower(trim((string) $contact['email_address']), 'UTF-8');
+
+        if ($address !== '') {
+            if (isset($addresses[$address])) {
+                continue;
+            }
+
+            $addresses[$address] = true;
+        }
+
+        $targets[] = $contact;
+    }
+
+    return $targets;
+}
+
+/**
+ * How many contacts the bulk write changes: those whose status before differs
+ * from the new one.
+ *
+ * @param array $before Contact id => opt_in before the write
+ * @param string $opt_in '1' or '0'
+ * @return int
+ */
+function pg_contact_bulk_opt_in_changed(array $before, $opt_in)
+{
+    $changed = 0;
+
+    foreach ($before as $status) {
+        if ((int) $status !== (int) $opt_in) {
+            $changed++;
+        }
+    }
+
+    return $changed;
+}
+
+/**
+ * Opt-In Selected and Opt-Out Selected of the Contacts list: each ticked
+ * contact the user may access gets the status, and every contact with the
+ * same address follows as on the single save, with their audit lines.
+ *
+ * @param array $user
+ * @param array $contact_ids Posted contact ids
+ * @param string $opt_in '1' or '0'
+ * @return int Contacts whose status changed
+ */
+function pg_contact_bulk_set_opt_in($user, $contact_ids, $opt_in)
+{
+    $contacts = array();
+
+    foreach ((array) $contact_ids as $contact_id) {
+        if (!is_scalar($contact_id) || validate_contact_access($user, $contact_id) == false) {
+            continue;
+        }
+
+        $result = db_q("SELECT id, email_address FROM contacts WHERE id = ?", array((string) $contact_id)) or output_error('Query failed.');
+
+        if ($row = mysqli_fetch_assoc($result)) {
+            $contacts[] = array('id' => (int) $row['id'], 'email_address' => (string) $row['email_address']);
+        }
+    }
+
+    $before = array();
+
+    foreach (pg_contact_bulk_opt_in_targets($contacts) as $contact) {
+        $result = db_q(
+            "SELECT id, opt_in FROM contacts WHERE (id = ?) OR ((email_address = ?) AND (email_address != ''))",
+            array((string) $contact['id'], $contact['email_address'])) or output_error('Query failed.');
+
+        while ($row = mysqli_fetch_assoc($result)) {
+            $before[(int) $row['id']] = $row['opt_in'];
+        }
+
+        $audit_before = pg_audit_fetch_many('contacts', array($contact['id']));
+
+        db_q("UPDATE contacts SET opt_in = ? WHERE id = ?", array((string) $opt_in, (string) $contact['id'])) or output_error('Query failed.');
+
+        pg_audit_record_many('update', 'contacts', $audit_before);
+
+        pg_contact_form_sync_opt_in((int) $contact['id'], $contact['email_address'], $opt_in);
+    }
+
+    return pg_contact_bulk_opt_in_changed($before, $opt_in);
+}
+
+/**
  * Every contact group, unordered, for the save.
  *
  * @return array  Rows of id, name, email_subscription

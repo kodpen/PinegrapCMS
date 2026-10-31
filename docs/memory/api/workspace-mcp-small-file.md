@@ -19,4 +19,4 @@ description: Posting a file into a channel over MCP (workspace_files_create, PR 
 ## Where is it tested?
 - `tests/workspace_api_test.php`: `test_ws_api_files_create_small_file_tool` (tool schema, the cap, base64 sizes, the check in `ws_api_upload_input()`), `test_ws_api_files_routes`.
 
-Related: `api-mcp-server.md`, `api-file-endpoints.md`, `api-mcp-no-tool-routes.md`, `plans/workspace-mcp-capabilities.md`
+Related: `api-mcp-server.md`, `api-file-endpoints.md`, `api-mcp-no-tool-routes.md`, `mcp-resources-prompts.md`

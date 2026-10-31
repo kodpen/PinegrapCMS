@@ -4,8 +4,8 @@ description: Contacts in audit_log (#2170, #2246, #2620, #2643, #2768): which pa
 ---
 
 ## Which paths write a contact line?
-- Type `contact`, table `contacts` in `pg_audit_tables()` (`user` column left out), PR #2170. Before #2170 no contact change was traced.
-- Panel: `add_contact.php` (create), `edit_contact.php` (save; delete), `edit_contacts.php` opt-in, opt-out, delete (a line per contact; none if already in that state).
+- Type `contact`, table `contacts` in `pg_audit_tables()` (`user` column left out), PR #2170.
+- Panel: `add_contact.php` (create), `edit_contact.php` (save; delete), `edit_contacts.php` opt-in/out (+ same address, `pg_contact_bulk_set_opt_in()`), delete (a line per contact; none if unchanged).
 - Same-address opt-in sync of `add_contact.php` and `edit_contact.php` (`UPDATE … WHERE email_address`): `pg_audit_fetch_by('contacts', 'email_address', …)` before, the edited or new contact taken out (its own line covers it), `pg_audit_record_many()` after; none for a contact already in that state (#2246).
 - `import_contacts.php`: one `create` line per contact made, after the import's own opt-out of a new contact whose address is opted out elsewhere (one line, the final row); batched by 200 through `pg_audit_created_rows()` + `pg_audit_record_many()` (PR #2246).
 - İYS sync (`includes/iys/client.php`): `pg_iys_push()` (`iys_email_status` after an accepted push) and `pg_iys_apply_change()` (refusal opt-out and status, one line per contact with both) by address as above. `pg_iys_run()` runs under `pg_audit_as_job(true)`, so the source is `job` also when a manager starts `iys_job.php` from the panel (PR #2246).

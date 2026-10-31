@@ -14,7 +14,7 @@ description: Plan (2026-10-21, step 1 done, answers open): each askable agent ge
 ## What is proposed? (not approved yet)
 - `ws_assistants()` (delegation.php, today for handing tasks over) grows into the one registry of askable agents: kind (`claude`, `ai`, `mcp`, `app`, `model`), handle, name, avatar, application id, ready, per-channel permission, where it answers (site or webhook). The picker, tags, `ws_message_ask_assistants()`, the discussion follow (plans/workspace-agent-discussion-follow.md) and the settings read it.
 - Being asked is the invitation for every kind (PR #1085). A private channel only where its manager allowed that agent; the question names the provider ("…will be sent to OpenAI").
-- Prompts, briefing: plans/ai-agent-prompts.md.
+- Prompts, briefing: core/ai-prompt-rules.md, workspace/workspace-claude-bootstrap.md.
 
 ## Slices
 1. No schema: an application's tag reads with a handle from its own name; the picker lists applications a mention reaches. Reach stays the owner's until 2.

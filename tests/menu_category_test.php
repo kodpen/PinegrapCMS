@@ -185,3 +185,9 @@ function test_menu_explorer_views_refresh_the_menu_mark()
 	pg_assert_same(1, substr_count($source, 'history.replaceState('), 'no other address write');
 	pg_assert_true(substr_count($source, "setAddress('view_") >= 6, 'every view switch uses it');
 }
+
+function test_menu_system_category_holds_the_system_tools_row()
+{
+	$categories = pg_menu_categories();
+	pg_assert_same(array(8, 20, 25), $categories['system']['slots'], 'Users, Site Settings, System tools');
+}

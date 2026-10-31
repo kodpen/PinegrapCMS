@@ -143,7 +143,11 @@ if (($_GET['view'] ?? '') === 'forecast') {
             'icon' => 'erp',
             'heading' => lang('Cash forecast'),
             'heading_description' => lang('What the books say will come in and go out over the coming days: open invoices, unpaid expenses, repeating documents and cheques on their due dates, and where the tills would stand.'),
-            'cancel' => false,
+            'cancel' => array('enable' => 'true', 'url' => 'erp_cash.php'),
+            'breadcrumb' => array(
+                array('label' => lang('Cash and Bank'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_cash.php'),
+                array('label' => lang('Cash forecast')),
+            ),
         )) . '
 <main id="content" class="container-fluid">
     <div class="row">
@@ -156,8 +160,6 @@ if (($_GET['view'] ?? '') === 'forecast') {
                 ' . $output_view_pills('forecast') . '
                 ' . pg_filter_select('horizon', erp_cash_forecast_horizons(), (string) $forecast['horizon'],
                     array('label' => lang('Period'), 'icon' => 'calendar3', 'action' => 'erp_cashflow.php', 'keep' => array('view'))) . '
-                <div class="pg-toolbar-grow"></div>
-                <a class="btn btn-sm btn-outline theme-secondary" href="erp_cash.php"><i class="bi bi-cash-stack me-1"></i>' . lang('Cash and Bank') . '</a>
             </nav>
 
             <div class="card my-7">
@@ -418,7 +420,11 @@ pg_page_shell(array(
         'icon' => 'erp',
         'heading' => lang('Cash flow'),
         'heading_description' => lang('What came into the tills and what went out over a period, in the base currency, and where the position stood.'),
-        'cancel' => false,
+        'cancel' => array('enable' => 'true', 'url' => 'erp_cash.php'),
+        'breadcrumb' => array(
+            array('label' => lang('Cash and Bank'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_cash.php'),
+            array('label' => lang('Cash flow')),
+        ),
     )) . '
 <main id="content" class="container-fluid">
     <div class="row">
@@ -446,7 +452,6 @@ pg_page_shell(array(
                 </form>
                 <div class="pg-toolbar-grow"></div>
                 <a class="btn btn-sm btn-text theme-secondary" href="erp_cashflow.php?' . h($query) . '&amp;csv=1"><i class="bi bi-filetype-csv me-1"></i>' . lang('Download CSV') . '</a>
-                <a class="btn btn-sm btn-outline theme-secondary" href="erp_cash.php"><i class="bi bi-cash-stack me-1"></i>' . lang('Cash and Bank') . '</a>
             </nav>
 
             <div class="card my-7">

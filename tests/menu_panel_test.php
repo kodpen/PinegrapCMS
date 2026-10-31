@@ -4,8 +4,9 @@
  *
  * Tests for the panels of the main menu (includes/fn/output.php): which rows
  * open their entries inside the menu (pg_menu_row_opens_panel()), the panel
- * they open (pg_menu_panel()), the Site Settings row's two levels
- * (pg_menu_settings_markup()) and the screens it lists under a category
+ * they open (pg_menu_panel()), the two levels of the Site Settings row
+ * (pg_menu_settings_markup()), the System tools row (pg_menu_tools_markup())
+ * and the screens listed under a category
  * (pg_settings_category_screens(), includes/settings/registry.php).
  *
  * @author      Erdal Güral (Kodpen)
@@ -80,11 +81,34 @@ function test_menu_panel_carries_its_entries_as_they_are()
 	pg_assert_contains('no-popover', $html, 'the way back keeps a plain title hint');
 }
 
-function test_menu_settings_markup_opens_categories_and_groups()
+function test_menu_settings_markup_opens_categories()
 {
 	$categories = array(
 		'general' => array('label' => 'General', 'icon' => 'bi-sliders', 'url' => 'settings_general.php', 'sections' => array('pgset-server' => 'Server & Domain', 'pgset-cron' => 'Cron Jobs')),
 		'appearance' => array('label' => 'Appearance', 'icon' => 'bi-palette', 'url' => 'settings_appearance.php', 'sections' => array('pgset-theme' => 'Theme')));
+
+	$menu = pg_menu_settings_markup($categories, '/pinegrap/', '');
+
+	pg_assert_same('settings_general.php', $menu['href'], 'the row leads to the first category');
+
+	// First level: only the categories, each opening its own panel.
+	pg_assert_contains('id=\'menu_entry_20_general\' href=\'/pinegrap/settings_general.php\'', $menu['entries'], 'a category entry');
+	pg_assert_contains('data-pg-menu-panel=\'menu_panel_20_appearance\'', $menu['entries'], 'opens its panel');
+	pg_assert_false(strpos($menu['entries'] . $menu['panels'], 'menu_entry_20_tools_') !== false, 'the tool groups have their own row');
+	pg_assert_false(strpos($menu['entries'], '<hr') !== false, 'no divider on the first level');
+
+	// Second level.
+	pg_assert_contains('id="menu_panel_20_general"', $menu['panels'], 'the category panel');
+	pg_assert_contains('data-pg-menu-row="menu_entry_20_general"', $menu['panels'], 'belongs to its entry');
+	pg_assert_contains('href=\'/pinegrap/settings_general.php#pgset-cron\'', $menu['panels'], 'a section link');
+	pg_assert_contains('Server &amp; Domain', $menu['panels'], 'section names are escaped');
+
+	// Every link to a settings page skips the modal.
+	pg_assert_same(2 + 3 + 2, substr_count($menu['entries'] . $menu['panels'], 'data-pg-settings-page'), 'category entries, category pages and sections');
+}
+
+function test_menu_tools_markup_opens_its_groups()
+{
 	$groups = array(
 		array('label' => 'Monitoring', 'icon' => 'bi-activity', 'items' => array(
 			array('label' => 'Site Log', 'icon' => 'bi-journal-text', 'url' => 'view_log.php'),
@@ -93,43 +117,37 @@ function test_menu_settings_markup_opens_categories_and_groups()
 		array('label' => 'Jobs', 'icon' => 'bi-tools', 'items' => array(
 			array('label' => 'Purge Cache', 'icon' => 'bi-trash3', 'url' => 'purge_cache.php?token=a&b', 'confirm' => 'Sure?'))));
 
-	$menu = pg_menu_settings_markup($categories, $groups, '/pinegrap/', '');
+	$menu = pg_menu_tools_markup($groups, '/pinegrap/', '');
 
-	pg_assert_same('settings_general.php', $menu['href'], 'the row leads to the first category');
-
-	// First level: every category and every group with screens, each opening its own panel.
-	pg_assert_contains('id=\'menu_entry_20_general\' href=\'/pinegrap/settings_general.php\'', $menu['entries'], 'a category entry');
-	pg_assert_contains('data-pg-menu-panel=\'menu_panel_20_appearance\'', $menu['entries'], 'opens its panel');
-	pg_assert_contains('data-pg-menu-panel=\'menu_panel_20_tools_0\'', $menu['entries'], 'a group opens its panel');
-	pg_assert_contains('data-pg-menu-panel=\'menu_panel_20_tools_2\'', $menu['entries'], 'groups keep their numbers');
+	// First level: the screen itself, then every group with screens.
+	pg_assert_true(strpos($menu['entries'], 'href=\'/pinegrap/system_tools.php\'') < strpos($menu['entries'], 'menu_entry_25_tools_0'), 'the screen comes first');
+	pg_assert_contains('id=\'menu_entry_25_tools_0\'', $menu['entries'], 'a group entry');
+	pg_assert_contains('data-pg-menu-panel=\'menu_panel_25_tools_0\'', $menu['entries'], 'a group opens its panel');
+	pg_assert_contains('data-pg-menu-panel=\'menu_panel_25_tools_2\'', $menu['entries'], 'groups keep their numbers');
 	pg_assert_false(strpos($menu['entries'] . $menu['panels'], 'Empty') !== false, 'a group without screens is left out');
-	pg_assert_same(1, substr_count($menu['entries'], '<hr'), 'one divider between categories and groups');
 	pg_assert_contains('href=\'/pinegrap/view_log.php\'', $menu['entries'], 'a group entry leads to its first screen');
+	pg_assert_false(strpos($menu['entries'] . $menu['panels'], 'data-pg-settings-page') !== false, 'no settings page here');
 
 	// Second level.
-	pg_assert_contains('id="menu_panel_20_general"', $menu['panels'], 'the category panel');
-	pg_assert_contains('data-pg-menu-row="menu_entry_20_general"', $menu['panels'], 'belongs to its entry');
-	pg_assert_contains('href=\'/pinegrap/settings_general.php#pgset-cron\'', $menu['panels'], 'a section link');
-	pg_assert_contains('Server &amp; Domain', $menu['panels'], 'section names are escaped');
+	pg_assert_contains('id="menu_panel_25_tools_0"', $menu['panels'], 'the group panel');
+	pg_assert_contains('data-pg-menu-row="menu_entry_25_tools_0"', $menu['panels'], 'belongs to its entry');
 	pg_assert_contains('target=\'_blank\' rel=\'noopener\'', $menu['panels'], 'a screen that opens apart keeps its target');
 	pg_assert_contains('data-confirm-content=\'Sure?\'', $menu['panels'], 'a job keeps its question');
 	pg_assert_contains('purge_cache.php?token=a&amp;b', $menu['panels'], 'addresses are escaped');
 
-	// Every link to a settings page skips the modal; the neighbouring screens do not need to.
-	pg_assert_same(2 + 3 + 2, substr_count($menu['entries'] . $menu['panels'], 'data-pg-settings-page'), 'category entries, category pages and sections');
+	pg_assert_same(array('entries' => '', 'panels' => ''), pg_menu_tools_markup(array(), '/pinegrap/', ''), 'no group, nothing');
 }
 
-function test_menu_settings_markup_in_the_toolbar()
+function test_menu_tools_markup_in_the_toolbar()
 {
-	$categories = array('general' => array('label' => 'General', 'icon' => 'bi-sliders', 'url' => 'settings_general.php', 'sections' => array('pgset-server' => 'Server')));
 	$groups = array(array('label' => 'Monitoring', 'icon' => 'bi-activity', 'items' => array(
 		array('label' => 'Site Log', 'icon' => 'bi-journal-text', 'url' => 'view_log.php'),
 		array('label' => 'System Informations', 'icon' => 'bi-info-circle', 'url' => 'si.php', 'target' => '_blank'))));
 
-	$menu = pg_menu_settings_markup($categories, $groups, '/pinegrap/', ' target=\'_parent\'');
+	$menu = pg_menu_tools_markup($groups, '/pinegrap/', ' target=\'_parent\'');
 	$all = $menu['entries'] . $menu['panels'];
 
-	pg_assert_same(5, substr_count($all, 'target=\'_parent\''), 'every link but the one with its own target leaves the toolbar frame');
+	pg_assert_same(3, substr_count($all, 'target=\'_parent\''), 'every link but the one with its own target leaves the toolbar frame');
 	pg_assert_same(1, substr_count($all, 'target=\'_blank\''), 'its own target wins');
 }
 
@@ -140,7 +158,7 @@ function test_menu_settings_markup_lists_a_category_s_screens_under_its_sections
 			'screens' => array(array('label' => 'Translations', 'icon' => 'bi-translate', 'url' => 'translations.php'))),
 		'general' => array('label' => 'General', 'icon' => 'bi-sliders', 'url' => 'settings_general.php', 'sections' => array('pgset-server' => 'Server')));
 
-	$menu = pg_menu_settings_markup($categories, array(), '/pinegrap/', '');
+	$menu = pg_menu_settings_markup($categories, '/pinegrap/', '');
 	$languages = substr($menu['panels'], strpos($menu['panels'], 'id="menu_panel_20_languages"'));
 	$languages = substr($languages, 0, strpos($languages, 'id="menu_panel_20_general"'));
 
@@ -149,7 +167,6 @@ function test_menu_settings_markup_lists_a_category_s_screens_under_its_sections
 	pg_assert_same(1, substr_count($languages, '<hr'), 'after a divider');
 	pg_assert_false(strpos($languages, 'translations.php\' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-translate bi-me-2\' data-pg-settings-page') !== false, 'not a settings page, so the modal may answer nothing');
 	pg_assert_false(strpos($menu['panels'], '<hr') !== strrpos($menu['panels'], '<hr'), 'a category with no screens gets no divider');
-	pg_assert_false(strpos($menu['entries'], '<hr') !== false, 'no groups, no divider on the first level');
 }
 
 function test_settings_category_screens_follow_the_gate_of_each_screen()

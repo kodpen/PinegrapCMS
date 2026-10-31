@@ -98,3 +98,17 @@ function test_help_url_new_workspace_rows()
 	pg_assert_same('https://pinegrap.com/workspace-cont#flows', get_help_url(array('screen' => 'workspace_flows')));
 	pg_assert_same('https://pinegrap.com/tr/workspace-cont#workflow-tables', get_help_url(array('screen' => 'workspace_wtables', 'languageinfo' => 'tr')));
 }
+
+function test_help_url_settings_category_and_system_tools_rows()
+{
+	$rows = array(
+		'settings_accounting' => 'site-settings#accounting',
+		'settings_privacy'    => 'site-settings#visitors-and-privacy',
+		'system_tools'        => 'site-settings#system-tools',
+	);
+
+	foreach ($rows as $screen => $topic) {
+		pg_assert_same('https://pinegrap.com/' . $topic, get_help_url(array('screen' => $screen)), $screen);
+		pg_assert_same('https://pinegrap.com/tr/' . $topic, get_help_url(array('screen' => $screen, 'languageinfo' => 'tr')), $screen . ' in Turkish');
+	}
+}

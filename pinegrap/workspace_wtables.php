@@ -35,6 +35,10 @@ $liveform = new liveform('workspace_wtables');
 
 $self_url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/workspace_wtables.php';
 
+// The list of tables has no parent; a table goes back to that list.
+$cancel = false;
+$breadcrumb = array();
+
 /* ---------------------------------------------------------------------------
    Writes
    --------------------------------------------------------------------------- */
@@ -1308,7 +1312,6 @@ if (!$table) {
 
     $toolbar = '
     <nav id="button_bar" class="pg-toolbar navigation mb-5" aria-label="' . lang('Button Bar') . '">
-        <a class="btn btn-sm btn-text theme-secondary" href="' . h($self_url) . '"><i class="bi bi-arrow-left me-1" aria-hidden="true"></i>' . h(lang('All tables')) . '</a>
         ' . $flow_button . '
         ' . (($row_form !== '') ? '<a class="btn btn-sm btn-text theme-primary" href="' . h($table_url) . '#ws-wt-row-form"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i>' . h(lang('New row')) . '</a>' : '') . '
         ' . ($can_manage ? '<button type="button" class="btn btn-sm btn-text theme-danger ws-wt-action ms-auto" data-action="table_delete" data-confirm="'
@@ -1316,6 +1319,11 @@ if (!$table) {
     </nav>' . $flow_window;
 
     $title = (string) $table['name'];
+    $cancel = array('enable' => 'true', 'url' => $self_url);
+    $breadcrumb = array(
+        array('label' => lang('Tables'), 'url' => $self_url),
+        array('label' => $title),
+    );
     $description = lang('A workflow table of the Workspace.');
 }
 
@@ -1335,7 +1343,8 @@ pg_page_shell(array(
     'icon'                => 'workspace',
     'heading'             => h($title),
     'heading_description' => $description,
-    'cancel'              => false,
+    'cancel'              => $cancel,
+    'breadcrumb'          => $breadcrumb,
 )) . '
 <main id="content" class="container-fluid p-0">
 <div class="ws-shell">

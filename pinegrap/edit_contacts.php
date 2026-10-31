@@ -23,6 +23,7 @@ validate_contacts_access($user);
 validate_token_field();
 
 include_once('liveform.class.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/forms/contact_form.php');
 
 // if at least one contact was selected
 if ($_POST['contacts']) {
@@ -51,6 +52,11 @@ if ($_POST['contacts']) {
                 if (validate_contact_access($user, $contact_id) == true) {
                     // loop through all contact groups that contact should be added to
                     foreach ($add_to_contact_groups as $contact_group_id) {
+                        // only a group the user may manage, as on the single save
+                        if (validate_contact_group_access($user, $contact_group_id) == false) {
+                            continue;
+                        }
+
                         // check to see if contact is already in contact group
                         $query =
                             "SELECT contact_id
@@ -77,6 +83,11 @@ if ($_POST['contacts']) {
                     
                     // loop through all contact groups that contact should be removed from
                     foreach ($remove_from_contact_groups as $contact_group_id) {
+                        // only a group the user may manage, as on the single save
+                        if (validate_contact_group_access($user, $contact_group_id) == false) {
+                            continue;
+                        }
+
                         // remove contact from contact group
                         $query =
                             "DELETE FROM contacts_contact_groups_xref
@@ -112,23 +123,8 @@ if ($_POST['contacts']) {
 
         // if contacts are being opted-in
         case 'optin':
-            $audit_before = array();
-
-            foreach ($_POST['contacts'] as $contact_id) {
-                // if user has access to contact, then continue
-                if (validate_contact_access($user, $contact_id) == true) {
-                    $audit_before += pg_audit_fetch_many('contacts', array($contact_id));
-
-                    $query =    "UPDATE contacts ".
-                                "SET opt_in = 1 ".
-                                "WHERE id = ?";
-                    $result = db_q($query, array((string) $contact_id)) or output_error('Query failed.');
-
-                    $number_of_contacts++;
-                }
-            }
-
-            pg_audit_record_many('update', 'contacts', $audit_before);
+            // every contact with a ticked address follows; only real changes count
+            $number_of_contacts = pg_contact_bulk_set_opt_in($user, $_POST['contacts'], '1');
             
             // if at least one contact was opted-in, log activity
             if ($number_of_contacts > 0) {
@@ -142,23 +138,8 @@ if ($_POST['contacts']) {
 
         // if contacts are being opted-out
         case 'optout':
-            $audit_before = array();
-
-            foreach ($_POST['contacts'] as $contact_id) {
-                // if user has access to contact, then continue
-                if (validate_contact_access($user, $contact_id) == true) {
-                    $audit_before += pg_audit_fetch_many('contacts', array($contact_id));
-
-                    $query =    "UPDATE contacts ".
-                                "SET opt_in = 0 ".
-                                "WHERE id = ?";
-                    $result = db_q($query, array((string) $contact_id)) or output_error('Query failed.');
-
-                    $number_of_contacts++;
-                }
-            }
-
-            pg_audit_record_many('update', 'contacts', $audit_before);
+            // every contact with a ticked address follows; only real changes count
+            $number_of_contacts = pg_contact_bulk_set_opt_in($user, $_POST['contacts'], '0');
             
             // if more than 0 contacts were opted-out, then log activity
             if ($number_of_contacts > 0) {
