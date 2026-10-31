@@ -18,7 +18,7 @@ description: Browser harness of the Flows canvas (tests/js/flows_canvas.js, #316
 - 30 scenarios (`flows_canvas_scenarios.js`): boxes at their places and sizes, arrows port to port, zoom, fit, pinch, pan (drag, wheel, Space, middle button), select, Tab order, arrow keys, drag on the grid, Esc, connect by port, C and the side panel, outcomes, Delete, undo, data threads (drag to bind, toggle kept), outline, phone, autosave after 1.5 s, 409, keepalive on hide and leave, the 60 000-byte limit, Ctrl+S, blur, Retry, back to the list for another flow; palette and drop, problems, Publish, read-only, ⋯ Share and Delete, no flow, New flow, Run and its token, runs list, polling.
 
 ## What did it give on 2026-10-31?
-- Before #3983 only 4 of 30 passed: the harness still waited for the first flow to open by itself.
+- Before #3983 only 4 of 30 passed: the harness still waited for the first flow to open by itself (adapted in #4316).
 - Now 28 of 30, from sources and with `--min` (Chromium 153, Linux). Fails: C, then "Add the arrow": the focus ends on the page (the box is redrawn while the dialog keeps the page inert; the dialog's close gives the focus back to the removed box; Cancel keeps it). And leaving the page sends the keepalive save twice on the same `draft_rev` (beforeunload, then pagehide): most likely the first request's promise is cut off by the unload, which brings `dirty` back.
 - `--motion`: 26 of 30; Publish (status) and deleting a flow (the list's search) lose the focus too when the answer comes before the fade ends.
 - Seen: after Fit the first boxes sit under the palette (`fit()` ignores it); the no-flow screen shows an empty palette frame.
