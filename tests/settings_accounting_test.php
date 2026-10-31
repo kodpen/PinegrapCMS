@@ -253,6 +253,59 @@ function test_settings_accounting_screen_draws_the_same_functions()
 	pg_assert_same(false, strpos($screen, '#settings/accounting'), 'no redirect while the template editor is only here');
 }
 
+function test_settings_accounting_screen_is_the_template_editor_below_role_3()
+{
+	$screen = settings_accounting_test_source('erp_settings.php');
+
+	$gate = strpos($screen, '$can_site_settings = ((int) $user[\'role\'] < 3);');
+	$loop = strpos($screen, 'foreach ($card_forms as $card => $card_form)');
+	pg_assert_true($gate !== false && $loop !== false && $gate < $loop, 'the role is read before any card post is handled');
+
+	// A card post from role < 3 is answered before the save and never reaches
+	// the template form, which would read its missing template as a reset.
+	$refuse = strpos($screen, 'if ($can_site_settings) {', $loop);
+	$save = strpos($screen, 'erp_settings_cards_save($_POST, array($card))');
+	$back = strpos($screen, 'go($self_url);', $loop);
+	pg_assert_true($refuse !== false && $back !== false && $refuse < $back && $back < $save, 'role < 3 card posts are not saved here');
+	pg_assert_contains("lang('These settings are kept in the accounting settings now; nothing was saved here.')", $screen, 'the post is told where the setting is');
+
+	foreach (array('if (!$can_site_settings && erp_late_fee_ready())', 'if (!$can_site_settings && erp_settings_efatura_threshold_shown())') as $guard) {
+		pg_assert_contains($guard, $screen, $guard);
+	}
+
+	// The seller card and the rules form sit in the role 3 branch only.
+	$branch = strpos($screen, 'if ($can_site_settings) {' . "\n\n" . '    // One line instead of the cards');
+	$else = strpos($screen, '} else {', (int) $branch);
+	$end = strpos($screen, '$output_document_pills = \'\';', (int) $else);
+	pg_assert_true($branch !== false && $else !== false && $end !== false, 'one branch per role');
+	$role3 = substr($screen, $else, $end - $else);
+
+	foreach (array("lang('Seller Information')", 'id="erp_rules"', 'erp_settings_rules_fields()') as $card) {
+		pg_assert_contains($card, $role3, $card . ' drawn for role 3');
+		pg_assert_same(1, substr_count($screen, $card), $card . ' drawn only there');
+	}
+
+	pg_assert_contains("pg_settings_link('accounting')", substr($screen, $branch, $else - $branch), 'role < 3 is pointed at the pane');
+	pg_assert_contains('$can_site_settings ? lang(\'Document Templates\') : lang(\'ERP Settings\')', $screen, 'the heading names the editor');
+}
+
+function test_settings_accounting_deep_links_target_the_pane()
+{
+	$pane = settings_accounting_test_source('includes/settings/accounting.php');
+
+	foreach (array('id="pgset-erp-rules"', 'id="pgset-late-fee"', 'id="pgset-efatura-threshold"') as $anchor) {
+		pg_assert_contains($anchor, $pane, $anchor . ' in the pane');
+	}
+
+	foreach (array('erp_settings_rules_fields()', 'erp_settings_late_fee_fields()', 'erp_settings_efatura_threshold_fields()') as $call) {
+		pg_assert_contains($call, $pane, $call . ' drawn in the pane');
+	}
+
+	$status = settings_accounting_test_source('includes/fn/system_status.php');
+	pg_assert_contains("pg_settings_link('accounting', 'pgset-efatura-threshold')", $status, 'System Status opens the pane card');
+	pg_assert_contains("((defined('USER_ROLE') && ((int) USER_ROLE >= 3))\n                    ? 'erp_settings.php#erp_efatura_threshold'", $status, 'only role 3 lands on the screen');
+}
+
 function test_settings_accounting_card_refusals()
 {
 	pg_assert_same(array(), erp_settings_cards_refusals(array('vat_exemption_code' => '351', 'late_fee_rate' => '1,5', 'late_fee_tax_rate' => '', 'erp_efatura_web_threshold' => '500000', 'erp_efatura_general_threshold' => ''), array('rules', 'late_fee', 'efatura_threshold')), 'good values pass');

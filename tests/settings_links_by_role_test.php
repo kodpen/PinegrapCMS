@@ -34,10 +34,15 @@ function test_settings_links_by_role_erp_settings_links_only_for_managers()
 {
 	$source = settings_links_by_role_source('erp_settings.php');
 	pg_assert_contains("\$can_site_settings = ((int) \$user['role'] < 3);", $source, 'the settings links follow the dialog gate');
+
+	// Role < 3 gets one link to the Accounting pane; the Seller Information
+	// card is drawn only for role 3, who has no Site Settings: plain text.
+	pg_assert_contains("<a href=\"' . h(pg_settings_link('accounting')) . '\">", $source, 'role < 3 is linked to the pane');
 	foreach (array('organization', 'settings', 'edoc') as $name) {
-		pg_assert_contains("(\$can_site_settings ? '<a href=\"' . h(\$" . $name . "_url) . '\">' . \$" . $name . "_place . '</a>' : \$" . $name . "_place)", $source, $name . ' link goes through the role check');
-}
+		pg_assert_contains("' . \$" . $name . "_place . '", $source, $name . ' place named as text');
+		pg_assert_same(false, strpos($source, '$' . $name . '_url'), $name . ' is not linked from the role 3 card');
 	}
+}
 
 
 function test_settings_links_by_role_dynamic_regions_create_for_administrators()

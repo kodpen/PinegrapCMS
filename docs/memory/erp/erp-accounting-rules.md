@@ -5,7 +5,7 @@ description: ERP accounting rules (4.103): withholding in the VAT difference, th
 
 ## Where are the accounting rules kept? (`includes/erp/rules.php`, 2026.4.4 step 4.103)
 - Choices the store's accountant makes, not the software: `config.erp_vat_net_withholding` and `config.erp_vat_exemption_code` (TEXT), read once per request by `erp_rules()`.
-- Edited on the "Accounting rules" card of ERP Settings (`erp_settings.php`, its own form posting `rules=1`, saved by `erp_rules_save()`, logged when changed). The two Turkish rules show only while `erp_turkish_features()` is true; the card always links to the expense categories.
+- Edited on the "Accounting rules" card: Site Settings › Accounting (`#pgset-erp-rules`) for role < 3, `erp_settings.php` (its own form posting `rules=1`) only for role 3 with `manage_erp_settings` (`erp-settings-cards.md`); saved by `erp_rules_save()`, logged when changed. The two Turkish rules show only while `erp_turkish_features()` is true; the card always links to the expense categories.
 - Open questions for the accountant: `docs/erp_malimusavir_sorulacaklar.md`. A new question a setting can answer goes into that file and onto the card together.
 
 ## How does a zero-rated line get its exemption code?

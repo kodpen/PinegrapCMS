@@ -3616,7 +3616,11 @@ function get_system_status_checks()
 
             if (in_array($efatura['worst'], array('near', 'reached'), true)) {
 
-                $efatura_href = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_settings.php#erp_efatura_threshold';
+                // The card is in Site Settings > Accounting for role < 3; only a
+                // role 3 user with the ERP settings right edits it on the screen.
+                $efatura_href = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/' . ((defined('USER_ROLE') && ((int) USER_ROLE >= 3))
+                    ? 'erp_settings.php#erp_efatura_threshold'
+                    : pg_settings_link('accounting', 'pgset-efatura-threshold'));
                 $efatura_detail = array();
                 $efatura_deadline = '';
 

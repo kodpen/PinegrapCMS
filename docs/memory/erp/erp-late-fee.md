@@ -4,7 +4,7 @@ description: ERP late payment fee (10.61): the rate setting, the pure day-by-day
 ---
 
 ## How is the fee set and worked out? (`includes/erp/late_fee.php`, 2026.4.10 step 10.61)
-- Terms from config, not constants: `erp_late_fee_settings()` reads `erp_late_fee_rate` (percent a month, 0 = off, at most `ERP_LATE_FEE_MAX_RATE` 50, which catches a yearly rate typed in) and `erp_late_fee_tax_rate` (the fee line's tax rate; null = the account's own zone rate). Set on the ERP Settings card (`erp_settings.php`).
+- Terms from config, not constants: `erp_late_fee_settings()` reads `erp_late_fee_rate` (percent a month, 0 = off, at most `ERP_LATE_FEE_MAX_RATE` 50, which catches a yearly rate typed in) and `erp_late_fee_tax_rate` (the fee line's tax rate; null = the account's own zone rate). Set on the "Late payment fee" card: Site Settings › Accounting (`#pgset-late-fee`) for role < 3, `erp_settings.php` only for role 3 (`erp-settings-cards.md`).
 - `erp_late_fee_for_invoice($total, $due_date, $reductions, $after, $as_of, $rate)` is pure: day by day from the day after the due date (or after the last day already charged) on what is still owed; each payment or return comes off on its own date; a month is 30 days; rounded once at the end. Base-currency figures, as the ledger holds them.
 - `erp_late_fee_account()` collects the account's issued sales invoices due before the as-of date with their reductions: settlements (`erp_settlements`) and returns. A new source that lowers what is owed must be added to those reductions.
 
