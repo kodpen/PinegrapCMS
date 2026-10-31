@@ -29,7 +29,7 @@ description: Plan (owner 2026-10-30): Site Settings regrouped, one place per set
 
 ## What is still open?
 - Headings over the list, for example Site, Selling, Security, Running the site? Ask before R8.
-- R2b: `erp_settings.php` admits role 3 with the ERP settings right (`validate_erp_access`), the dialog only role < 3. Keep the screen for them, or open the Accounting pane to that right? Ask before R2b.
+- R2b: decided #3828 (`workflow/decisions-made-product-12.md`): both places from one code path; the dialog's gate stays.
 - Two "Support E-mail Address" fields (`general.php` 40, `commerce.php` 1281): one field, or two names? Ask before R4.
 
 ## Where to start?

@@ -13,7 +13,7 @@ description: Steps R1-R9 of plans/settings-recategorization.md: what each moves,
 
 - R2 (M) Accounting category, cut in two (size).
   - R2a, done in #3819: a new `accounting` key, `accounting.php` and `accounting.save.php`; the ERP and E-Invoice blocks and their columns leave `commerce.php`/`commerce.save.php` unchanged; anchors `pgset-erp`, `pgset-invoice`, `pgsub-invoice` land on them; return links name `accounting`.
-  - R2b: the `erp_settings.php` cards (rules, late fee, e-Fatura threshold, templates) move in and that screen opens `#settings/accounting`; `system_status.php` 3589 still lands on the threshold card. Ask first (plan, open questions).
+  - R2b: the `erp_settings.php` cards (rules, late fee, e-Fatura threshold, templates) move in and that screen opens `#settings/accounting`; `system_status.php` 3589 still lands on the threshold card. Shape: #3828 (plan).
   - After #3141 (holds `output.php`, `get_help_url.php`), with R1b: the menu's ERP Settings row links `#settings/accounting`; `case 'settings_accounting.php'` in `output_menu()`; a `settings_accounting` help row.
 
 - R3 (M) Renames and the security moves. Labels become Accounts and sign-in, Firewall and HTTPS; the keys `security` and `firewall` stay. The encryption key block moves from Payment Methods to its own card, and the MFA hint (`security.php` 200) points there. Trusted Proxies moves out from under Enable Firewall. Blocked Email Addresses moves from IP Lists to Spam Protection.
