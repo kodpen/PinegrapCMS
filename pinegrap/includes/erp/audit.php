@@ -165,6 +165,8 @@ function erp_audit_event($event, $payload)
         $amount = (int) ($payload['amount'] ?? 0);
     } elseif (($type === 'account') || ($type === 'stock_count')) {
         $label = (string) ($payload['title'] ?? '');
+    } elseif ($type === 'quote_template') {
+        $label = (string) ($payload['name'] ?? '');
     } elseif ($type === 'expense') {
         $label = trim((string) ($payload['supplier'] ?? '') . ((trim((string) ($payload['document_no'] ?? '')) !== '') ? ' · ' . $payload['document_no'] : ''));
         $amount = (int) ($payload['total_amount'] ?? 0);
@@ -281,6 +283,8 @@ function erp_audit_event_text($row)
         'erp.purchase_order.cancelled' => lang('Purchase order cancelled'),
         'erp.purchase_order.reopened' => lang('Purchase order opened again'),
         'erp.stock_count.applied' => lang('Stock count applied'),
+        'erp.quote_template.saved' => lang('Sales quote template saved'),
+        'erp.quote_template.deleted' => lang('Sales quote template deleted'),
     );
 
     return $texts[$event] ?? $event;

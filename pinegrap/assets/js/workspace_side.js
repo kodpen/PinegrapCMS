@@ -398,10 +398,12 @@
         var nav = state.data.nav || {};
         var titles = state.data.titles || {};
 
-        // ── Head: one search field for the whole workspace, a new channel,
-        // the settings and the tour ──
+        // ── Head: one search field for the whole workspace, the row to
+        // itself; a new channel, the settings and the tour beside the
+        // panel's name over it ──
 
         var head = el('div', 'ws-side-head');
+        var tools = el('span', 'ws-side-head-tools');
         var find;
 
         // The workspace search (workspace_palette.js) finds channels,
@@ -429,6 +431,12 @@
         find.setAttribute('data-ws-side-key', 'palette');
         find.appendChild(icon('bi-search'));
         find.appendChild(el('span', 'ws-side-find-text', t('pal_open')));
+
+        // Its key where Ctrl+K opens it; a touch screen has none to show.
+        if (typeof hooks.palette === 'function') {
+            find.appendChild(el('kbd', 'ws-side-find-key', /Mac|iPhone|iPad/.test(navigator.platform || '') ? '\u2318K' : 'Ctrl K'));
+        }
+
         head.appendChild(find);
 
         var add;
@@ -451,7 +459,7 @@
         }
 
         add.setAttribute('data-ws-side-key', 'new');
-        head.appendChild(add);
+        tools.appendChild(add);
 
         // Workspace Settings, for whoever holds the right (ws_nav_groups()).
         (nav.head || []).forEach(function (item) {
@@ -468,7 +476,7 @@
             }
 
             inPlace(gear, navHooks[item.key]);
-            head.appendChild(gear);
+            tools.insertBefore(gear, add);
         });
 
         // The workspace's own tour (includes/workspace/tour.php), played
@@ -479,7 +487,32 @@
             tour.setAttribute('data-ws-tour', '1');
             tour.setAttribute('data-ws-side-key', 'tour');
             tour.addEventListener('click', function () { hooks.tour(); });
-            head.appendChild(tour);
+            tools.insertBefore(tour, add);
+        }
+
+        // In the panel's head when there is one, the tool that had the
+        // focus keeping it; else at the end of the search row.
+        var panelHead = panel ? panel.querySelector('.pg-menu-panel-head') : null;
+
+        if (panelHead) {
+            var oldTools = panelHead.querySelector('.ws-side-head-tools');
+            var focusedTool = (oldTools && oldTools.contains(document.activeElement)) ? document.activeElement.getAttribute('data-ws-side-key') : '';
+
+            if (oldTools) {
+                oldTools.parentNode.removeChild(oldTools);
+            }
+
+            panelHead.appendChild(tools);
+
+            if (focusedTool) {
+                var again = tools.querySelector('[data-ws-side-key="' + focusedTool + '"]');
+
+                if (again) {
+                    again.focus({ preventScroll: true });
+                }
+            }
+        } else {
+            head.appendChild(tools);
         }
 
         fragment.appendChild(head);

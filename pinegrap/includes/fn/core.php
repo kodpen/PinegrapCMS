@@ -4313,7 +4313,8 @@ function create_notification($properties)
         pg_push_enqueue_notification(array(
             'id'         => $notification_id,
             'action'     => $action,
-            'comment_id' => $comment_id
+            'comment_id' => $comment_id,
+            'form_id'    => $form_id
         ));
     }
 

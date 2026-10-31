@@ -2331,7 +2331,7 @@ body:not(.toolbar) .software-content {
 /* The Workspace list (#ws-menu-side) and the explorer's tree
    (.pg-explorer-side) size their own icons, as on their screens; :where()
    keeps this rule at the weight the panel rules below are written against. */
-#menu .menu-body .bi:not(:where(#ws-menu-side *, .pg-explorer-side *)) {
+#menu .menu-body .bi:not(:where(#ws-menu-side *, .ws-side-head-tools *, .pg-explorer-side *)) {
   font-size: 1.3rem;
 }
 /* The rail is 50px wide and the sidebar carries a hairline on its right, so an
@@ -17525,7 +17525,7 @@ html[data-bs-theme="dark"] .ws-fd-tone-text-2 { --ws-fd-tone: #f0c060; }
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-#ws-menu-side .ws-side-tool {
+:is(#ws-menu-side, .ws-side-head-tools) .ws-side-tool {
   flex: 0 0 auto;
   width: 1.9rem;
   height: 1.9rem;
@@ -17534,8 +17534,39 @@ html[data-bs-theme="dark"] .ws-fd-tone-text-2 { --ws-fd-tone: #f0c060; }
   align-items: center;
   justify-content: center;
 }
-#ws-menu-side .ws-side-tool.active {
+:is(#ws-menu-side, .ws-side-head-tools) .ws-side-tool.active {
   color: var(--ws-accent);
+}
+/* The new channel, the settings and the tour stand beside the panel's name
+   (workspace_side.js), which then starts at the left. */
+#menu .pg-menu-panel-head .ws-side-head-tools {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: .1rem;
+  margin-left: auto;
+}
+#menu .pg-menu-panel-head:has(.ws-side-head-tools) .pg-menu-panel-title {
+  padding-right: 0;
+  text-align: start;
+}
+/* The search keeps its row: its key where Ctrl+K opens it. */
+#ws-menu-side .ws-side-find-key {
+  flex: 0 0 auto;
+  margin-left: auto;
+  padding: 0 .3rem;
+  border: 1px solid var(--pg-border-color);
+  border-radius: var(--pg-radius-sm);
+  background: transparent;
+  color: var(--pg-fg-2);
+  font-family: inherit;
+  font-size: .68rem;
+  line-height: 1.4;
+}
+@media (pointer: coarse) {
+  #ws-menu-side .ws-side-find-key {
+    display: none;
+  }
 }
 /* The parts of the Channels section follow each other without headings:
    pinned, the groups, the person's other channels, those not joined. */

@@ -26,6 +26,8 @@ $liveform = new liveform('add_calendar_event');
 
 // if the form was not just submitted
 if (!$_POST) {
+    $choices = pg_calendar_event_form_choices();
+
     // if the form has not been submitted yet, then set default values
     if ($liveform->field_in_session('name') == FALSE) {
         $liveform->assign_field_value('show_start_time', '1');
@@ -45,9 +47,23 @@ if (!$_POST) {
         $liveform->assign_field_value('number_of_initial_spots', '1');
         $liveform->assign_field_value('no_remaining_spots_message', '<p>' . lang('Sorry, we are not accepting any more reservations at this time.') . '</p>');
         $liveform->assign_field_value('reserve_button_label', lang('Reserve') );
-    }
 
-    $choices = pg_calendar_event_form_choices();
+        // Start on the calendar the user came from, or on the only calendar
+        // the user may post to, so the first save has a calendar.
+        $offered_calendar_ids = array();
+
+        foreach ($choices['calendars'] as $calendar) {
+            if (validate_calendar_access($calendar['id']) == true) {
+                $offered_calendar_ids[] = $calendar['id'];
+            }
+        }
+
+        $requested_calendar_id = (isset($_GET['calendar_id']) && is_string($_GET['calendar_id'])) ? $_GET['calendar_id'] : null;
+
+        foreach (pg_calendar_event_form_start_calendars($offered_calendar_ids, $requested_calendar_id) as $calendar_id) {
+            $liveform->assign_field_value('calendar_' . $calendar_id, 1);
+        }
+    }
 
     print
     pg_page_shell(

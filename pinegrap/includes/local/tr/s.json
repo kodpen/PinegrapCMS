@@ -97,6 +97,8 @@
     "Sales over the internet ({var:1})": "İnternet üzerinden satışlar ({var:1})",
     "Sales over the internet: {var:1} of {var:2}": "İnternet üzerinden satışlar: {var:1} / {var:2}",
     "Sales quote": "Satış teklifi",
+    "Sales quote template deleted": "Satış teklifi şablonu silindi",
+    "Sales quote template saved": "Satış teklifi şablonu kaydedildi",
     "Sales quote {var:1} runs out": "Satış teklifi {var:1} sona eriyor",
     "Sales quote {var:1} was added in the Workspace, on Claude's proposal.": "Satış teklifi {var:1} Çalışma Alanı'nda Claude'un önerisiyle eklendi.",
     "Sales quote {var:1} was turned into an invoice draft in the Workspace, on Claude's proposal.": "Satış teklifi {var:1} Çalışma Alanı'nda Claude'un önerisiyle fatura taslağına dönüştürüldü.",
