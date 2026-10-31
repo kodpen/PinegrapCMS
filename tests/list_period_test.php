@@ -263,3 +263,20 @@ function test_site_log_presets_count_calendar_days()
 	pg_assert_same('2027-03-24', date('Y-m-d', strtotime('-6 days', $today)), 'seven days back across the change');
 	date_default_timezone_set($zone);
 }
+
+function test_list_period_range_from_dates()
+{
+	pg_assert_same(list_period_test_range('2026-10-31', '2026-11-13'), pg_list_period_range_from_dates('2026-10-31', '2026-11-13'), 'the six values of two Y-m-d dates');
+	pg_assert_same('31 October 2026 – 13 November 2026', pg_list_period_heading(pg_list_period_range_from_dates('2026-10-31', '2026-11-13'), 'day_month'), 'the shipping report\'s two weeks');
+}
+
+function test_list_period_shipping_report_heading()
+{
+	// It printed date('j F, Y'): English month names and a comma after the
+	// month, and the text could not wrap at 375 px.
+	$source = file_get_contents(dirname(__DIR__) . '/pinegrap/view_shipping_report.php');
+
+	pg_assert_contains('pg_list_period_heading(pg_list_period_range_from_dates(', $source, 'the period in the panel language and the date order');
+	pg_assert_false(strpos($source, '$month_and_day_format') !== false, 'no English date() of its own');
+	pg_assert_false(strpos($source, 'text-nowrap">\' . $output_date_range') !== false, 'the period text can wrap');
+}

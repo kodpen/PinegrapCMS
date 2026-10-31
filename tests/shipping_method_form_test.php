@@ -66,8 +66,15 @@ function test_shipping_method_form_new_values()
 
 	// Month-first text read day-first was day 10 of month 27, or a swapped
 	// date on days 1-12.
+	$values = pg_shipping_method_form_new_values('twelve_hours');
 	pg_assert_same($today . ' 12:00 AM', $values['start_time'], 'opens today, in the site\'s date order');
 	pg_assert_contains('2099 11:59 PM', $values['end_time'], 'closes at the end of 2099');
+
+	// The 24-hour clock read the fixed '12:00 AM' / '11:59 PM' as well.
+	$values = pg_shipping_method_form_new_values('twenty_four_hours');
+	pg_assert_same($today . ' 00:00', $values['start_time'], 'opens at midnight on the 24-hour clock');
+	pg_assert_contains('2099 23:59', $values['end_time'], 'closes at 23:59 on the 24-hour clock');
+	pg_assert_same(pg_shipping_method_form_date_time_column($values['start_time']), pg_shipping_method_form_date_time_column(pg_shipping_method_form_new_values('twelve_hours')['start_time']), 'both clocks save the same start');
 	pg_assert_same('2026-01-01 00:00', pg_shipping_method_form_date_time_column(shipping_method_form_test_date(1, 1, 2026) . ' 12:00 AM'), 'the default is read back in the same order');
 	pg_assert_same('2099-12-31 23:59', pg_shipping_method_form_date_time_column($values['end_time']), 'the end default is read back');
 }
