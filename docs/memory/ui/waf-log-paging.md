@@ -10,8 +10,12 @@ module: waf_log_list
 
 ## What stays as it was?
 - The period selector (24 hours, 7, 30 days; default 7), the category select and the search field (address, URL, rule, reference, user agent) stay in the address (`pg_waf_ban_log_url()` and the ban notice mail link to `?range=…&search=…`). The screen sends them nested as `{"filters": {...}}` (DataTables posts its own `search`); the action checks them again with `pg_waf_log_list_filters()`.
-- The summary still counts requests with `SUM(hit_count)`; DataTables' counts are rows. Possible False Positives, Active Automatic Bans, the policy reports and the Clear/Release/Allow posts are untouched. An empty period still shows "No firewall events were recorded in this period." instead of a table.
+- The summary still counts requests with `SUM(hit_count)`; DataTables' counts are rows. Possible False Positives, Active Automatic Bans and the policy reports are untouched. An empty period still shows "No firewall events were recorded in this period." instead of a table.
 
 ## How is it sorted and searched?
 - Heading links (`pg_list_state('view_waf_log')`): time (the last hit, newest first by default), hits, action, IP, rule, score; ties by `id` in the first level's direction. The sort menu sits in the card, outside every form.
 - The search box: every word in the address, method, URL, user agent, rule, reference, target or matched text, or the shown action name.
+
+## Where do Release, Allow, Clear Log and Clear Reports land?
+- On the view they were sent from. `pg_waf_log_list_url($filters)` gives `view_waf_log.php` plus only the non-default filters (period other than 7, a category, a search); the four forms post to it and each handler redirects to it, so the filters come back through `$_GET`. The filters are read above the handlers for this.
+- Symptom fixed: opening the log for one address (ban mail, Active Automatic Bans link) and pressing Release or Allow landed on the default 7-day, unsearched view. Pinned by `test_waf_log_list_url`.

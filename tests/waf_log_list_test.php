@@ -34,6 +34,17 @@ function test_waf_log_list_filters()
 	pg_assert_same(200, strlen(pg_waf_log_list_filters(array('search' => str_repeat('a', 300)))['search']), 'the search is cut to 200 characters');
 }
 
+// The screen's own address with the filters that differ from the defaults, so
+// a Release, Allow or Clear post lands back on the view it was sent from.
+function test_waf_log_list_url()
+{
+	pg_assert_same('view_waf_log.php', pg_waf_log_list_url(pg_waf_log_list_filters(array())), 'the default view has no query');
+	pg_assert_same('view_waf_log.php?range=30', pg_waf_log_list_url(pg_waf_log_list_filters(array('range' => '30'))));
+	pg_assert_same('view_waf_log.php?category=sqli', pg_waf_log_list_url(pg_waf_log_list_filters(array('range' => '7', 'category' => 'sqli'))), 'the default period is left out');
+	pg_assert_same('view_waf_log.php?range=1&category=ban&search=1.2.3.4', pg_waf_log_list_url(pg_waf_log_list_filters(array('range' => '1', 'category' => 'ban', 'search' => ' 1.2.3.4 '))));
+	pg_assert_same('view_waf_log.php?search=a%20b%26c%3Dd', pg_waf_log_list_url(array('search' => 'a b&c=d')), 'the search is encoded, missing keys count as defaults');
+}
+
 function test_waf_log_list_condition()
 {
 	pg_assert_same(array('sql' => 'log_timestamp >= ?', 'params' => array(1000000 - 7 * 86400)), pg_waf_log_list_condition(pg_waf_log_list_filters(array()), 1000000));

@@ -108,6 +108,34 @@ function pg_waf_log_list_filters(array $input)
 }
 
 /**
+ * The screen's address with the filters that differ from the defaults
+ * (period 7 days, every category, no search), relative to the software
+ * directory. The Release, Allow and Clear forms post to it and their handlers
+ * redirect to it, so the admin lands back on the view the post came from.
+ *
+ * @param array $filters pg_waf_log_list_filters()'s answer
+ * @return string
+ */
+function pg_waf_log_list_url(array $filters)
+{
+    $query = array();
+
+    if (isset($filters['range']) && (string) $filters['range'] !== '' && (string) $filters['range'] !== '7') {
+        $query['range'] = (string) $filters['range'];
+    }
+
+    if (isset($filters['category']) && (string) $filters['category'] !== '') {
+        $query['category'] = (string) $filters['category'];
+    }
+
+    if (isset($filters['search']) && (string) $filters['search'] !== '') {
+        $query['search'] = (string) $filters['search'];
+    }
+
+    return 'view_waf_log.php' . ($query ? '?' . http_build_query($query, '', '&', PHP_QUERY_RFC3986) : '');
+}
+
+/**
  * The condition of the filters with its values as ? placeholders: the
  * period back from $now, the category, and the search text anywhere in the
  * address, the URL, the rule, the reference or the user agent.
