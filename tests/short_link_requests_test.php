@@ -308,8 +308,7 @@ function test_short_link_router_cuts_the_request_by_bytes_until_the_name_is_utf8
 	pg_assert_same(false, strpos($file_redirect, "mb_strpos(\$name, '?')"), 'the language file redirect cuts the query string by bytes');
 	pg_assert_true(strpos($file_redirect, 'router_utf8_name(rawurldecode($name))') !== false, 'and reads the name as UTF-8');
 
-	// The step the router takes: the byte IIS sends for ç is no "?".
-	$cp1254 = "pg-test-k\xFDsa-\xE7ay";
-	pg_assert_same(false, strpos($cp1254, '?'), 'a byte search finds no query string');
-	pg_assert_true(strpos(mb_substr($cp1254, 0), '?') !== false, 'mb_substr() turns it into one');
+	// The byte IIS sends for ç is no "?" to a byte search (PHP 8's
+	// mb_substr() turns it into one; 7.x keeps it).
+	pg_assert_same(false, strpos("pg-test-k\xFDsa-\xE7ay", '?'), 'a byte search finds no query string');
 }
