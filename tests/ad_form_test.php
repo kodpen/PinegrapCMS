@@ -69,3 +69,36 @@ function test_ad_form_screens_use_shared_form()
 	pg_assert_contains('pg_ad_form_validate($liveform, $user, null)', (string) file_get_contents(PG_FUNCTIONS_DIR . '/add_ad.php'), 'create checks the name against every ad');
 	pg_assert_contains("pg_ad_form_validate(\$liveform, \$user, (string) \$liveform->get_field_value('id'))", (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_ad.php'), 'edit leaves its own ad out of the name check');
 }
+
+function test_ad_form_region_hint_is_empty_when_a_region_exists()
+{
+	pg_assert_same('', pg_ad_form_region_hint(array('' => '', 'Sidebar' => '3'), 1), 'a designer with a region sees no hint');
+	pg_assert_same('', pg_ad_form_region_hint(array('' => '', 'Sidebar' => '3'), 2), 'a manager with a region sees no hint');
+}
+
+function test_ad_form_region_hint_links_designers_to_create_ad_region()
+{
+	foreach (array(0, 1) as $role) {
+		$hint = pg_ad_form_region_hint(array('' => ''), $role);
+
+		pg_assert_contains(lang('No ad region exists yet.'), $hint, 'role ' . $role . ' is told no ad region exists');
+		pg_assert_contains('<a href="add_ad_region.php"', $hint, 'role ' . $role . ' gets a link to Create Ad Region');
+		pg_assert_contains(lang('Create Ad Region'), $hint, 'role ' . $role . ' link says Create Ad Region');
+	}
+}
+
+function test_ad_form_region_hint_tells_managers_a_designer_creates_regions()
+{
+	$hint = pg_ad_form_region_hint(array('' => ''), 2);
+
+	pg_assert_contains(lang('No ad region exists yet.'), $hint, 'a manager is told no ad region exists');
+	pg_assert_contains(lang('A designer creates ad regions.'), $hint, 'a manager is told who creates ad regions');
+	pg_assert_false(strpos($hint, 'add_ad_region.php') !== false, 'a manager gets no link to a screen it cannot open');
+}
+
+function test_ad_form_cards_print_the_region_hint_under_the_select()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/forms/ad_form.php');
+
+	pg_assert_contains('pg_ad_form_region_hint($region_options, $user[\'role\'])', $source, 'the cards print the hint for the signed-in role');
+}

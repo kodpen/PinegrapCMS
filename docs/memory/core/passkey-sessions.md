@@ -15,6 +15,7 @@ description: Sessions opened with a passkey (PR #2250): auth_tokens.passkey_id (
 ## What ends with a passkey?
 - `pg_passkey_remove()` → `pg_passkey_sessions_end()`: its tokens go, so the sessions bound to them end (this browser too when it signed in with it). A synced passkey is one credential on all devices of its cloud account: they all go. Locked (pinned) sessions stay, as with "sign out of all devices".
 - `pg_passkeys_forget()` (two-step reset, account deletion) ends the sessions of all the account's passkeys.
+- So turning off one's own two-step verification on Edit User ends this browser's session too when it signed in with a passkey and is not pinned; the note and the confirm there say so (`pg_passkeys_forget_ends_session()` on this browser's row). Before, they promised only the other devices and the administrator landed on the sign-in screen.
 
 ## What was not verified?
 - Unit tests only; the step ran in CI's install and upgrade job, not twice by hand (no database in the session).

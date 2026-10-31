@@ -19,4 +19,8 @@ description: waf_enabled=0 stops everything (absolute kill switch), monitor mode
 ## How is monitor mode guaranteed?
 - The first line of the `waf_deny()` body is the `waf_mode() !== 'block'` check. Callers all look at `$blocking` already, but "all" breaks exactly when a new branch is added. The monitor-mode promise is kept in one place.
 
+## What do the panel texts say about the bot filter?
+- Settings › Firewall › Bot Filtering says it works only while the firewall is enabled and refuses only in Block mode (Monitor mode records). It used to say "works on its own, whether or not the firewall is enabled", left over from the stand-alone version above.
+- System Status, Unknown Bot Filtering: off = danger, full deduction; Monitor mode with Block Unknown Bots on = warning "only being recorded, not blocked", half deduction (it used to show a green "being blocked"); Block mode on = success; option off = warning, half deduction. Pinned by `tests/firewall_bot_filter_texts_test.php`.
+
 Related: docs/memory/waf/waf-ban-shield-mirror.md
