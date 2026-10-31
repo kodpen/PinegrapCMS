@@ -9,7 +9,7 @@
  * raw queries left are those without values and those completed by a
  * clause built elsewhere with escaped values, which may hold a '?': the
  * role, right and page type pieces of the user UPDATE and INSERT
- * ($sql_role, $sql_set_page_types, $sql_ws_values, $sql_password, ...), the
+ * ($sql_role, $sql_module_rights, $sql_set_page_types, $sql_ws_values, $sql_password, ...), the
  * page UPDATE of edit_page.php ($sql_page_type, $sql_style_fields, ...) and
  * the page type table deletes named by $page_type_table_name.
  *
@@ -121,7 +121,7 @@ function db_q_user_page_screens_test_calls($path)
 // Clause variables a raw query may still be completed by.
 function db_q_user_page_screens_test_built($text)
 {
-	return (bool) preg_match('/\$(sql_(role|offline_payment|set_page_types|ws_rights|erp_readonly|password|erp_readonly_column|erp_readonly_value|ws_columns|ws_values|set_page_type_columns|set_page_type_values|page_type|home_page|style_fields|noindex|seo_extras|ai_fields|seo_analysis_current)|page_type_table_name)\b/', $text);
+	return (bool) preg_match('/\$(sql_(role|module_rights|set_page_types|ws_rights|erp_readonly|password|erp_readonly_column|erp_readonly_value|ws_columns|ws_values|set_page_type_columns|set_page_type_values|page_type|home_page|style_fields|noindex|seo_extras|ai_fields|seo_analysis_current)|page_type_table_name)\b/', $text);
 }
 
 function test_db_q_user_page_screens_value_queries_use_db_q()

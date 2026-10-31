@@ -1562,13 +1562,25 @@ if (!$_POST) {
             $saved_role = (int) $role;
         }
         
-        $sql_offline_payment = '';
-        
-        // if offline payment is enabled, then prepare to update set offline payment
-        if (ECOMMERCE_OFFLINE_PAYMENT == TRUE) {
-            $sql_offline_payment = "user_set_offline_payment = '" . escape($_POST['set_offline_payment'] ?? '') . "',";
+        // The optional modules' rights and the password hint, written only
+        // when their rows were drawn (the same checks as the screen): a row
+        // that was not drawn posts nothing, and writing its column would take
+        // the right away while the module or hints are switched off.
+        $sql_module_rights = '';
+
+        $module_columns = pg_user_form_module_columns(array(
+            'password_hint'   => (PASSWORD_HINT == true),
+            'forms'           => (FORMS == true),
+            'calendars'       => (CALENDARS == true),
+            'ecommerce'       => (ECOMMERCE == true),
+            'offline_payment' => (ECOMMERCE_OFFLINE_PAYMENT == true),
+            'erp'             => (defined('ERP_ENABLED') && ERP_ENABLED),
+        ));
+
+        foreach ($module_columns as $column => $field) {
+            $sql_module_rights .= " " . $column . " = '" . escape($_POST[$field] ?? '') . "',";
         }
-        
+
         $sql_set_page_types = '';
         
         // if forms are enabled, then set the sql to update the set page type columns that are associated with this feature
@@ -1603,11 +1615,12 @@ if (!$_POST) {
                 user_set_page_type_order_receipt = '" . escape($_POST['set_page_type_order_receipt'] ?? '') . "',";
         }
         
-        // The workspace rights, when their columns exist.
-        $sql_ws_rights = pg_user_permission_ws_sql('set');
+        // The workspace rights, when their row was drawn.
+        $sql_ws_rights = (pg_user_permission_ws_available() ? pg_user_permission_ws_sql('set') : '');
 
-        // The ERP's read-only right, when its column exists.
-        $sql_erp_readonly = pg_user_erp_readonly_sql('set');
+        // The ERP's read-only right, when the ERP row was drawn and the
+        // column exists.
+        $sql_erp_readonly = ((defined('ERP_ENABLED') && ERP_ENABLED) ? pg_user_erp_readonly_sql('set') : '');
 
         // The only write to the user row in this save; the rest go to the
         // access lists.
@@ -1621,7 +1634,6 @@ if (!$_POST) {
                 user_email = '" . escape($_POST['email'] ?? '') . "',
                 $sql_role
                 user_home = '" . escape($_POST['home_page'] ?? '') . "',
-                user_password_hint = '" . escape($_POST['password_hint'] ?? '') . "',
                 user_badge = '" . escape($_POST['badge'] ?? '') . "',
                 user_badge_label = '" . escape($_POST['badge_label'] ?? '') . "',
                 user_reward_points = '" . escape($_POST['reward_points'] ?? '') . "',
@@ -1629,19 +1641,10 @@ if (!$_POST) {
                 user_manage_visitors = '" . escape($_POST['manage_visitors'] ?? '') . "',
                 user_create_pages = '" . escape($_POST['create_pages'] ?? '') . "',
                 user_delete_pages = '" . escape($_POST['delete_pages'] ?? '') . "',
-                user_manage_forms = '" . escape($_POST['manage_forms'] ?? '') . "',
-                user_manage_calendars = '" . escape($_POST['manage_calendars'] ?? '') . "',
                 user_manage_emails = '" . escape($_POST['manage_emails'] ?? '') . "',
-                user_manage_ecommerce = '" . escape($_POST['manage_ecommerce'] ?? '') . "',
-                user_view_card_data = '" . escape($_POST['view_card_data'] ?? '') . "',
-                manage_ecommerce_reports = '" . e($_POST['manage_ecommerce_reports'] ?? '') . "',
-                manage_erp = '" . e($_POST['manage_erp'] ?? '') . "',
-                manage_erp_cash = '" . e($_POST['manage_erp_cash'] ?? '') . "',
-                manage_erp_settings = '" . e($_POST['manage_erp_settings'] ?? '') . "',
+                $sql_module_rights
                 $sql_erp_readonly
                 $sql_ws_rights
-                $sql_offline_payment
-                user_publish_calendar_events = '" . escape($_POST['publish_calendar_events'] ?? '') . "',
                 user_set_page_type_email_a_friend = '" . escape($_POST['set_page_type_email_a_friend'] ?? '') . "',
                 user_set_page_type_folder_view = '" . escape($_POST['set_page_type_folder_view'] ?? '') . "',
                 user_set_page_type_photo_gallery = '" . escape($_POST['set_page_type_photo_gallery'] ?? '') . "',

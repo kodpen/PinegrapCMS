@@ -129,6 +129,55 @@ function pg_user_form_folder_rights($post, $folder_id)
     return array('rights' => $rights, 'expiration_date' => $expiration);
 }
 
+
+/**
+ * The user columns of the optional modules that the edit save writes, as
+ * column => posted field, for the rows the edit screen drew. A row that was
+ * not drawn posts nothing; writing its column anyway would store '' or 0 and
+ * take the right away while the module is off. $drawn keys: password_hint,
+ * forms, calendars, ecommerce, offline_payment, erp (true when drawn). The
+ * offline payment switch sits in the Commerce panel, so it needs both.
+ */
+function pg_user_form_module_columns($drawn)
+{
+    $on = function ($key) use ($drawn) {
+        return !empty($drawn[$key]);
+    };
+
+    $columns = array();
+
+    if ($on('password_hint')) {
+        $columns['user_password_hint'] = 'password_hint';
+    }
+
+    if ($on('forms')) {
+        $columns['user_manage_forms'] = 'manage_forms';
+    }
+
+    if ($on('calendars')) {
+        $columns['user_manage_calendars'] = 'manage_calendars';
+        $columns['user_publish_calendar_events'] = 'publish_calendar_events';
+    }
+
+    if ($on('ecommerce')) {
+        $columns['user_manage_ecommerce'] = 'manage_ecommerce';
+        $columns['user_view_card_data'] = 'view_card_data';
+        $columns['manage_ecommerce_reports'] = 'manage_ecommerce_reports';
+
+        if ($on('offline_payment')) {
+            $columns['user_set_offline_payment'] = 'set_offline_payment';
+        }
+    }
+
+    if ($on('erp')) {
+        $columns['manage_erp'] = 'manage_erp';
+        $columns['manage_erp_cash'] = 'manage_erp_cash';
+        $columns['manage_erp_settings'] = 'manage_erp_settings';
+    }
+
+    return $columns;
+}
+
 /**
  * Inserts the items of one table the posted form selected for a user, from
  * the "<prefix><id>" boxes of its permission panel.
@@ -229,13 +278,17 @@ function pg_user_form_save_access($user_id, $role, $post, $replace)
         pg_user_form_save_xref("SELECT id FROM contact_groups", 'contact_group_', 'users_contact_groups_xref', 'contact_group_id', $user_id, $post);
     }
 
-    if ($replace) {
-        db_q("DELETE FROM users_calendars_xref WHERE user_id = ?", array((string) $user_id)) or output_error('Query failed.');
-    }
+    // The calendar list is drawn only while Calendars is on; while it is
+    // off the stored grants stay for when it is switched back on.
+    if (CALENDARS == true) {
+        if ($replace) {
+            db_q("DELETE FROM users_calendars_xref WHERE user_id = ?", array((string) $user_id)) or output_error('Query failed.');
+        }
 
-    // if manage calendars was checked, check to see which calendars the user needs to be given access to
-    if (($post['manage_calendars'] ?? '') == 'yes') {
-        pg_user_form_save_xref("SELECT id FROM calendars", 'calendar_', 'users_calendars_xref', 'calendar_id', $user_id, $post);
+        // if manage calendars was checked, check to see which calendars the user needs to be given access to
+        if (($post['manage_calendars'] ?? '') == 'yes') {
+            pg_user_form_save_xref("SELECT id FROM calendars", 'calendar_', 'users_calendars_xref', 'calendar_id', $user_id, $post);
+        }
     }
 
     // If ads are enabled, then store access.
