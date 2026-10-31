@@ -1369,7 +1369,7 @@ function pg_signin_finish($params)
     // back without the session the sign-in began in, or with an answer that
     // was already used.
     if (!is_array($pending)) {
-        log_activity(lang('sign-in refused: no sign-in started in this browser session was waiting for the answer'), '');
+        log_activity(pg_log_lang(array('string' => 'sign-in refused: no sign-in started in this browser session was waiting for the answer')), '');
 
         return $fail(lang('This sign-in could not be verified, because this browser did not come back with the session the sign-in started in. This happens when the browser blocks or clears this site\'s cookies, when the sign-in finished in another browser or app, or when the return address was opened again (from the history, a bookmark or a copied link: each one works once). Please start the sign-in again from this site.'));
     }
@@ -1437,7 +1437,7 @@ function pg_signin_finish($params)
             $app['client_id'], $app['options']['team_id'], $app['options']['key_id'], $app['client_secret'], time());
 
         if ($token_app['client_secret'] === '') {
-            log_activity(lang(array('string' => '{var:1} sign-in failed: the private key could not sign', 'vars' => $provider['label'])), '');
+            log_activity(pg_log_lang(array('string' => '{var:1} sign-in failed: the private key could not sign', 'vars' => $provider['label'])), '');
 
             return $fail(lang(array('string' => 'Sorry, we could not reach {var:1} to complete sign-in. Please try again in a moment.', 'vars' => $provider['label'])));
         }
@@ -1458,7 +1458,7 @@ function pg_signin_finish($params)
     if (!$response['ok']) {
         // The operator needs the provider's reason (invalid_client,
         // redirect_uri_mismatch); the visitor gets the general one.
-        log_activity(lang(array(
+        log_activity(pg_log_lang(array(
             'string' => '{var:1} sign-in token exchange failed ({var:2})',
             'vars'   => array($provider['label'], $response['error']))), '');
 
@@ -1475,7 +1475,7 @@ function pg_signin_finish($params)
     $problem = pg_connect_claims_problem($provider, $claims, $app['client_id'], $pending['nonce'], time());
 
     if ($problem !== '') {
-        log_activity(lang(array('string' => '{var:1} sign-in refused: {var:2}', 'vars' => array($provider['label'], $problem))), '');
+        log_activity(pg_log_lang(array('string' => '{var:1} sign-in refused: {var:2}', 'vars' => array($provider['label'], $problem))), '');
 
         return $fail(lang(array('string' => 'Sorry, the {var:1} sign-in response did not check out. Please try again.', 'vars' => $provider['label'])));
     }
@@ -1551,7 +1551,7 @@ function pg_signin_match_user($identity)
         LIMIT 20"), $identity['email']);
 
     if ($match_id && pg_signin_identity_add($match_id, $identity['provider'], $identity['subject'], $identity['email'])) {
-        log_activity(lang(array(
+        log_activity(pg_log_lang(array(
             'string' => '{var:1} sign-in was tied to the account with the same verified e-mail address ({var:2})',
             'vars'   => array($identity['label'], $identity['email']))), '');
 
@@ -1873,7 +1873,7 @@ function pg_signin_connect_finish($identity)
     $username = (string) db_value("SELECT user_username FROM user WHERE user_id = '" . $user_id . "'");
 
     if ($outcome === 'other_account') {
-        log_activity(lang(array(
+        log_activity(pg_log_lang(array(
             'string' => '{var:1} connection refused: the {var:1} account ({var:2}) is connected to another account',
             'vars'   => array($label, $reported))), $username);
         pg_signin_fail(lang(array(
@@ -1886,7 +1886,7 @@ function pg_signin_connect_finish($identity)
     }
 
     if ($outcome === 'connected') {
-        log_activity(lang(array('string' => 'user connected {var:1} ({var:2})', 'vars' => array($label, $reported))), $username);
+        log_activity(pg_log_lang(array('string' => 'user connected {var:1} ({var:2})', 'vars' => array($label, $reported))), $username);
         $notice = lang(array('string' => '{var:1} is connected. From now on you can sign in with {var:1} too.', 'vars' => $label));
     } else {
         pg_signin_identity_touch($provider_key, $identity['subject'], $identity['email_verified'] ? $email : '');

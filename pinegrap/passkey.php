@@ -167,8 +167,8 @@ switch ($action) {
             }
 
             log_activity(($purpose === 'recovery')
-                ? lang('user asked for an e-mailed code for new recovery codes')
-                : lang('user asked for an e-mailed code to add a passkey'), USER_USERNAME);
+                ? pg_log_lang(array('string' => 'user asked for an e-mailed code for new recovery codes'))
+                : pg_log_lang(array('string' => 'user asked for an e-mailed code to add a passkey')), USER_USERNAME);
 
             passkey_answer(array('ok' => true, 'message' => lang('We sent a code to your e-mail address. It works for 10 minutes.')));
         }
@@ -191,7 +191,7 @@ switch ($action) {
             }
 
             if ($refusal !== '') {
-                log_activity(lang(array('string' => 'passkey not added ({var:1})', 'vars' => $refusal)), USER_USERNAME);
+                log_activity(pg_log_lang(array('string' => 'passkey not added ({var:1})', 'vars' => $refusal)), USER_USERNAME);
 
                 if (($refusal === 'locked') && !headers_sent()) {
                     header('Retry-After: ' . (int) pg_login_throttle_limits()['lockout']);
@@ -214,11 +214,11 @@ switch ($action) {
         $result = pg_passkey_register($account, (string) ($_POST['credential'] ?? ''), (string) ($_POST['name'] ?? ''));
 
         if (!$result['ok']) {
-            log_activity(lang(array('string' => 'passkey not added ({var:1})', 'vars' => $result['error'])), USER_USERNAME);
+            log_activity(pg_log_lang(array('string' => 'passkey not added ({var:1})', 'vars' => $result['error'])), USER_USERNAME);
             passkey_refuse($result['error'], 'register');
         }
 
-        log_activity(lang(array('string' => 'user added a passkey ({var:1})', 'vars' => $result['passkey']['name'])), USER_USERNAME);
+        log_activity(pg_log_lang(array('string' => 'user added a passkey ({var:1})', 'vars' => $result['passkey']['name'])), USER_USERNAME);
 
         passkey_answer(array('ok' => true, 'passkey' => $result['passkey'], 'recovery_codes' => pg_passkey_registered($account['id'])));
 

@@ -56,7 +56,7 @@ if ((($_SERVER['REQUEST_METHOD'] ?? '') === 'GET') && (($_GET['action'] ?? '') =
 
     if ($refusal) {
         if (!$owner) {
-            log_activity(lang(array('string' => 'A return label download was refused for order {var:1}: the visitor does not own it.', 'vars' => array($order_id))));
+            log_activity(pg_log_lang(array('string' => 'A return label download was refused for order {var:1}: the visitor does not own it.', 'vars' => array($order_id))));
         }
 
         output_error(h($refusal['message']), $refusal['status']);
@@ -68,7 +68,7 @@ if ((($_SERVER['REQUEST_METHOD'] ?? '') === 'GET') && (($_GET['action'] ?? '') =
     // The service's answer is written for staff: the log keeps it, the
     // customer is told what to do.
     if (!$document['ok']) {
-        log_activity(lang(array('string' => 'Return label {var:1} could not be handed to the customer: {var:2}', 'vars' => array((int) $label['id'], $document['error']))));
+        log_activity(pg_log_lang(array('string' => 'Return label {var:1} could not be handed to the customer: {var:2}', 'vars' => array((int) $label['id'], $document['error']))));
         output_error(h(lang('Your return label cannot be downloaded right now. Please contact us and we will send you a new one.')), 502);
     }
 
@@ -80,7 +80,7 @@ if ((($_SERVER['REQUEST_METHOD'] ?? '') === 'GET') && (($_GET['action'] ?? '') =
 
     header('Content-Length: ' . strlen($document['document']));
 
-    log_activity(lang(array('string' => 'Return label {var:1} of order {var:2} was downloaded by the customer.', 'vars' => array((int) $label['id'], ((string) $order['order_number'] !== '') ? (string) $order['order_number'] : (string) $order_id))));
+    log_activity(pg_log_lang(array('string' => 'Return label {var:1} of order {var:2} was downloaded by the customer.', 'vars' => array((int) $label['id'], ((string) $order['order_number'] !== '') ? (string) $order['order_number'] : (string) $order_id))));
 
     echo $document['document'];
     exit;
@@ -107,7 +107,7 @@ $order = ($order_id > 0) ? db_item("SELECT id, order_number, user_id FROM orders
 // Order ids are sequential: anybody but the signed-in owner hears the same
 // answer, whether or not the order exists.
 if (($user_id <= 0) || !$order || ((int) $order['user_id'] !== $user_id)) {
-    log_activity(lang(array('string' => 'A return was refused for order {var:1}: the visitor does not own it.', 'vars' => array($order_id))));
+    log_activity(pg_log_lang(array('string' => 'A return was refused for order {var:1}: the visitor does not own it.', 'vars' => array($order_id))));
     output_error(lang('You are not allowed to return items from this order.'));
 }
 
@@ -155,7 +155,7 @@ switch ($action) {
         pg_return_send_request_mail($created['id']);
         pg_return_notify_staff($created['id'], 'requested');
 
-        log_activity(lang(array('string' => 'Return request {var:1} was made for order {var:2}.', 'vars' => array($created['id'], $order_number))));
+        log_activity(pg_log_lang(array('string' => 'Return request {var:1} was made for order {var:2}.', 'vars' => array($created['id'], $order_number))));
 
         $messages->add_notice(h(lang('Your return request was received. We will let you know what happens next.')));
         break;
@@ -195,10 +195,10 @@ switch ($action) {
 
         if ($action === 'shipped') {
             pg_return_notify_staff($return_id, 'shipped');
-            log_activity(lang(array('string' => 'Return request {var:1} of order {var:2} was sent back by the customer.', 'vars' => array($return_id, $order_number))));
+            log_activity(pg_log_lang(array('string' => 'Return request {var:1} of order {var:2} was sent back by the customer.', 'vars' => array($return_id, $order_number))));
             $messages->add_notice(h(lang('Thank you. We will let you know when the goods arrive.')));
         } else {
-            log_activity(lang(array('string' => 'Return request {var:1} of order {var:2} was withdrawn by the customer.', 'vars' => array($return_id, $order_number))));
+            log_activity(pg_log_lang(array('string' => 'Return request {var:1} of order {var:2} was withdrawn by the customer.', 'vars' => array($return_id, $order_number))));
             $messages->add_notice(h(lang('Your return request was withdrawn.')));
         }
         break;

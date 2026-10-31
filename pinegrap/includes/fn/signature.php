@@ -1251,7 +1251,7 @@ function pg_signature_request_stamp($digest, $settings = null, &$reason = null)
 // authority has been unreachable for a month.
 function pg_signature_stamp_failed($url, $reason)
 {
-    log_activity(lang(array(
+    log_activity(pg_log_lang(array(
         'string' => 'Time stamp could not be obtained from {var:1}: {var:2}',
         'vars' => array($url, $reason),
     )), 'SYSTEM');

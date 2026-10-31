@@ -1524,7 +1524,7 @@ function pg_device_limit_gate($user_id, $username, $send_to, $remember = false, 
     // sign out properly on a device that is already in, or to ask the site
     // owner, who can free a slot from the sessions screen.
     if (pg_device_limit_strict()) {
-        log_activity(lang(array(
+        log_activity(pg_log_lang(array(
             'string' => 'sign-in refused because the account is at its device limit ({var:1})',
             'vars'   => array((string) $username))), (string) $username);
 
@@ -2218,7 +2218,7 @@ function validate_login($username, $password)
     // holds the list, and there is no way back in from there. Staff accounts
     // are stopped by deleting or demoting them, which already exists.
     if ((((int) $row['user_role']) === 3) && pg_email_blocked($row['user_email'])) {
-        log_activity(lang(array(
+        log_activity(pg_log_lang(array(
             'string' => 'sign-in refused because the email address is blocked ({var:1})',
             'vars'   => array($row['user_email']))), '');
         pg_password_dummy_verify($password);
@@ -4077,7 +4077,7 @@ function initialize_user()
 
             // Leave a trace: without it a session that ends here looks to the
             // operator like a random logout with no cause anywhere.
-            log_activity(lang(array(
+            log_activity(pg_log_lang(array(
                 'string' => 'session ended on this device ({var:1})',
                 'vars'   => array($auth_bind_reason))), $auth_bind_username);
 
@@ -4151,7 +4151,7 @@ function initialize_user()
             if (is_array($user) && isset($user['id'])) {
                 pg_session_sign_in($user['id'], $user['username']);
                 pg_session_bind_token((string) strtok((string) $_COOKIE['software']['auth'], ':'), $user['id']);
-                log_activity(lang('user logged in'), $user['username']);
+                log_activity(pg_log_lang(array('string' => 'user logged in')), $user['username']);
             } else {
                 $user = null;
             }
@@ -5580,7 +5580,7 @@ function check_banned_ip_addresses($action)
     }
 
     log_activity(
-        lang(array(
+        pg_log_lang(array(
             'string' => 'visitor was not allowed to {var:1} because the visitor\'s IP address ({var:2}) was banned',
             'vars'   => array($action, h($ip_address)),
         )),

@@ -1454,7 +1454,7 @@ function pg_chat_close($conversation_id)
             last_message_preview = '" . e(lang('Conversation closed.')) . "'
         WHERE id = '" . e((int) $conversation['id']) . "'");
 
-    log_activity(lang('chat conversation closed') . ' (#' . (int) $conversation['id'] . ')', $_SESSION['sessionusername']);
+    log_activity(pg_log_lang(array('string' => 'chat conversation closed')) . ' (#' . (int) $conversation['id'] . ')', $_SESSION['sessionusername']);
 
     return array('status' => 'success', 'data' => array('closed' => true));
 }

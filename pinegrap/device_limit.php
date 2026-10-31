@@ -118,7 +118,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     require_once(dirname(__FILE__) . '/connect_user_to_order.php');
     connect_user_to_order();
 
-    log_activity(lang('user signed in after clearing older devices'), $username);
+    log_activity(pg_log_lang(array('string' => 'user signed in after clearing older devices')), $username);
 
     // send_user_to_login_home() reads the session we just set and $_REQUEST for
     // send_to; the confirm form carries send_to as a hidden field.

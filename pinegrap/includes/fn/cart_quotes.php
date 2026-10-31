@@ -655,7 +655,7 @@ function pg_cart_quote_apply($token)
     // does not), and only a cart that took a line is announced.
     $remembered = (mysqli_affected_rows(db::$con) > 0);
 
-    log_activity(lang(array('string' => 'cart quote {var:1} was added to a cart ({var:2} products)', 'vars' => array('#' . (int) $quote['id'], $added))));
+    log_activity(pg_log_lang(array('string' => 'cart quote {var:1} was added to a cart ({var:2} products)', 'vars' => array('#' . (int) $quote['id'], $added))));
 
     if ($remembered && ($added > 0)) {
         pg_cart_quote_announce('cart_quote.applied', (int) $quote['id'], array('added' => $added));
