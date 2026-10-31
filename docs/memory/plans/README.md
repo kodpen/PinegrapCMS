@@ -37,8 +37,6 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - erp-parasut-open-work.md: Paraşüt work left after the rounds of 2026-10-23 to 26 (#1405-#1682): one live round when a new demo key comes, three decisions (#2440-#2442), small fixes; where to start
 - feature-roadmap-2026-10.md: Feature roadmap decided 2026-10-19 from the gap analysis: 24 approved plans in four groups, wave order, the legacy rule, one task per session; index of the plan files
 - graph-canvas-core.md: Plan (2026-10-24, answers #2445, slice 1 done #3162): a reusable box-and-arrow canvas core split from workspace_flow.js behind an adapter; first Flows, then designer prototype links
-- incoming-email-design.md: Design of the not-started incoming e-mail feature: ingest flow, ws_mail_* tables, channel card, routing, threading, reply headers, security, API endpoints
-- incoming-email-plan.md: Incoming e-mail into Workspace channels (G1-G8 done, owner 2026-10-27): IMAP transport over Cloudflare push and a Kodpen broker, slices G1–G9, the owner's eleven answers
 - kodpen-vendor-api-client-design-update.md: Update contract of plans/kodpen-vendor-api-client.md: release check, pin, checks before extraction, download failures and security events, beta builds, keys, P2's workflow
 - kodpen-vendor-api-client-design.md: Client contract of plans/kodpen-vendor-api-client.md: calls and headers, the licence check, card and key field, what is stored where, the switch line; updates in -design-update
 - kodpen-vendor-api-client-steps.md: Steps P1-P8 of plans/kodpen-vendor-api-client.md: changes, files, tests, memory, size, order; claim as [plan:kodpen-vendor-api-client] P<n>
