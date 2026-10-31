@@ -11,7 +11,7 @@ module: subscriptions_operator
 
 ## What does the row page show?
 - `?id=`: the facts (customer, product, amount, period, status with failed attempts, next charge or "Runs until" for a cancelled row in a paid period, a dash for a row cancelled while past due (never charged, ended on the next run; `pg_subscription_operator_next_charge()`), card, driver, first order link, dates), renewal orders (orders named by its events other than the first order, linked to `view_order.php`, status words via `pg_subscription_operator_order_status_label()`) and the history (every event, newest first, with order, amount and detail). Plain tables: their order is the meaning.
-- Order cells show `orders.order_number` (`pg_subscription_operator_order_cell()`, `#<id>` only without one), linked while the order exists, plain text once gone (history LEFT JOINs `orders`). The history showed `#<orders.id>` before, matching nothing elsewhere.
+- Order cells show `orders.order_number` (`pg_subscription_operator_order_cell()`, `#<id>` only without one), linked while the order exists, plain text once gone (history LEFT JOINs `orders`). Before, the history showed `#<orders.id>`.
 
 ## Which moves may staff make?
 - Pause (active), resume (paused), cancel at period end (active, past_due, paused): `pg_subscription_operator_actions()` = the customer's actions without `update_card` (only the customer opens the PSP's card page). Never "cancel now", end, refund, price or period edits; refunds stay on the renewal order's screen (#3343).
@@ -20,6 +20,6 @@ module: subscriptions_operator
 - The event's `detail` names the operator: `operator: <username or e-mail> (#<user id>)`, cut to 255 (`pg_subscription_operator_detail()`); the customer's own moves write `customer`.
 
 ## Tested?
-- `tests/subscriptions_operator_test.php`: actions by status, every refused move with a reason and nothing written, each allowed move's event with the operator, the shared card, no end/cancel-now path, the gate and token in the screen, the menu entry, filters and WHERE, the list order, the row page's next charge, the order cell and the renewal status words. Not run on a database or in a browser.
+- `tests/subscriptions_operator_test.php`: actions by status, every refused move with a reason and nothing written, each allowed move's event with the operator, the shared card, no end/cancel-now path, the gate and token in the screen, the menu entry, filters and WHERE, the list order, the row page's next charge, order cell and renewal status words. Not run on a database or in a browser.
 
 Related: commerce/subscriptions-account.md, commerce/subscriptions.md, commerce/subscriptions-mails.md, plans/subscriptions-iyzico-stripe.md
