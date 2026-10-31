@@ -285,39 +285,80 @@
         return fileLink;
     }
 
+    // Year, month (1-12), day, hour (0-23) and minute of a moment in the
+    // panel's zone; the browser's own zone when the name is unknown to it.
+    function zoneParts(date, zone) {
+        if (zone && typeof Intl !== 'undefined' && Intl.DateTimeFormat) {
+            try {
+                var parts = {};
+                new Intl.DateTimeFormat('en-US', {
+                    timeZone: zone,
+                    hourCycle: 'h23',
+                    year: 'numeric',
+                    month: 'numeric',
+                    day: 'numeric',
+                    hour: 'numeric',
+                    minute: 'numeric'
+                }).formatToParts(date).forEach(function (part) {
+                    parts[part.type] = parseInt(part.value, 10);
+                });
+                if (!isNaN(parts.year) && !isNaN(parts.minute)) {
+                    return {
+                        year: parts.year,
+                        month: parts.month,
+                        day: parts.day,
+                        hour: parts.hour % 24,
+                        minute: parts.minute
+                    };
+                }
+            } catch (e) {
+                // Unknown zone name: fall through to the browser's zone.
+            }
+        }
+
+        return {
+            year: date.getFullYear(),
+            month: date.getMonth() + 1,
+            day: date.getDate(),
+            hour: date.getHours(),
+            minute: date.getMinutes()
+        };
+    }
+
     function formatTime(timestamp) {
         if (!timestamp) {
             return '';
         }
 
-        var date = new Date(timestamp * 1000);
-        var now = new Date();
-        var sameDay = date.getFullYear() === now.getFullYear()
-            && date.getMonth() === now.getMonth()
-            && date.getDate() === now.getDate();
+        // The site's clock, date order and the panel's time zone.
+        var clock = config.clock || {};
+        var date = zoneParts(new Date(timestamp * 1000), clock.zone);
+        var now = zoneParts(new Date(), clock.zone);
+        var sameDay = date.year === now.year
+            && date.month === now.month
+            && date.day === now.day;
 
         function pad(value) {
             return (value < 10 ? '0' : '') + value;
         }
 
-        // The site's clock: 12-hour "2:05 PM" or 24-hour "14:05".
-        var clock = config.clock || {};
+        // 12-hour "2:05 PM" or 24-hour "14:05".
         var time;
         if (clock.twelve_hours) {
-            var hours = date.getHours() % 12 || 12;
-            time = hours + ':' + pad(date.getMinutes()) + ' ' + (date.getHours() < 12 ? 'AM' : 'PM');
+            var hours = date.hour % 12 || 12;
+            time = hours + ':' + pad(date.minute) + ' ' + (date.hour < 12 ? 'AM' : 'PM');
         } else {
-            time = pad(date.getHours()) + ':' + pad(date.getMinutes());
+            time = pad(date.hour) + ':' + pad(date.minute);
         }
 
         if (sameDay) {
             return time;
         }
 
-        // The site's date order: month/day or day.month.
+        // Month/day or day.month.
         var day = clock.date_order === 'month_day'
-            ? pad(date.getMonth() + 1) + '/' + pad(date.getDate())
-            : pad(date.getDate()) + '.' + pad(date.getMonth() + 1);
+            ? pad(date.month) + '/' + pad(date.day)
+            : pad(date.day) + '.' + pad(date.month);
 
         return day + ' ' + time;
     }

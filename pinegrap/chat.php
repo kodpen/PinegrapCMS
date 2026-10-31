@@ -1766,7 +1766,10 @@ function pg_chat_render_backend_launcher()
         // The site's date order and clock for the times the window draws.
         'clock' => array(
             'date_order' => (DATE_FORMAT == 'month_day') ? 'month_day' : 'day_month',
-            'twelve_hours' => (TIME_FORMAT == 'twelve_hours')
+            'twelve_hours' => (TIME_FORMAT == 'twelve_hours'),
+            // The person's own zone when they have one, otherwise the site's,
+            // like every other time in the panel (get_absolute_time()).
+            'zone' => (pg_time_uses_user_zone(array()) ? pg_timezone_canonical(USER_TIMEZONE) : date_default_timezone_get())
         ),
         // "Convert to text" under a voice message (pg_voice_text.js).
         'strings' => pg_chat_panel_strings() + pg_voice_text_strings()
