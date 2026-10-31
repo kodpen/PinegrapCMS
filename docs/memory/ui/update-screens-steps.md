@@ -8,6 +8,10 @@ description: Software Updater, Repair Software and Backup Manager: the step loop
 - Before #2987 the updater nested four requests and only the backup step had an `error` callback: a 500, a proxy 504 on the download or a dropped connection left the link spinning on "Updating..." with no message, and the panel has no global `ajaxError` handler.
 - The Update control is a `<button type="button">`, `disabled` while the steps run (and when a folder refuses writes); labels never change ("Updating...", "Retry Update", "Repairing...", the permissions button's "Fixing" were removed, `button-busy-state.md`).
 
+## Why do the completion addresses carry the form token?
+- After the last step the screens go to `software_update.php?mode=autoupgrade` / `software_repair.php?mode=done` with `&token=` + `encodeURIComponent(software_token)`; both GET branches call `validate_token_field()` first, before the Site Log line, `software_update_available = 0`, the repair session unset and the cache deletes. Before, a forged link hid a pending update notice and planted a false Site Log line.
+- An update from an older release whose JS sends no token still works: `pg_require_current_schema()` sends it to the installer first.
+
 ## Where does the step text go?
 - Below the bar, in `<div class="logbox form-text" role="status">`. Inside `.progress-bar` Bootstrap 6 clips it (1rem high, `overflow: hidden`, `white-space: nowrap`) to the bar's current width and one line. `aria-valuenow` follows each width (`set_width()`; `software_backup_updateProgress()` in `backend.src.js` for the backup screen).
 
@@ -22,4 +26,4 @@ description: Software Updater, Repair Software and Backup Manager: the step loop
 - Row buttons are named `Download {var:1}` / `Delete {var:1}` by the backup; the unfinished-restore time and the rollback archive times use `get_absolute_time(..., 'format' => 'plain_text')` (the person's zone, `panel-times-user-time-zone.md`).
 - The heading, version arrow and Update ligatures are `aria-hidden` (`icon-ligature-button-names.md`).
 
-Tests: `tests/update_screen_names_test.php`, `tests/backup_copy_folder_test.php`.
+Tests: `tests/update_screen_names_test.php`, `tests/backup_copy_folder_test.php`, `tests/software_update_redirect_token_test.php`.

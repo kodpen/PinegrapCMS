@@ -56,6 +56,10 @@ $software_upgrade_url = PATH . SOFTWARE_DIRECTORY . '/install/index.php?automate
 // of the code now running is the package's own.
 if (isset($_GET['mode']) && ($_GET['mode'] === 'done')) {
 
+    // The address logs, changes config and deletes caches, so it needs the
+    // form token the redirect below appends.
+    validate_token_field();
+
     $repair_version = (isset($_SESSION['software']['repair']['version']) && is_string($_SESSION['software']['repair']['version']))
         ? $_SESSION['software']['repair']['version']
         : VERSION;
@@ -350,7 +354,7 @@ echo '
                         run(index + 1);
                     } else {
                         window.setTimeout(function(){
-                            window.location.replace("software_repair.php?mode=done");
+                            window.location.replace("software_repair.php?mode=done&token=" + encodeURIComponent(software_token));
                         }, 1500);
                     }
                 },

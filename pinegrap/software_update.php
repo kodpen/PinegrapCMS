@@ -107,6 +107,10 @@ if (defined('VERSION') && VERSION === '2026') {
 $mode = isset($_GET['mode']) ? ($_GET['mode'] ?? '') : null;
 // User redirect automatically after software update success
 if ($mode === 'autoupgrade') {
+    // The address writes the Site Log and config, so it needs the form token
+    // the redirect below appends.
+    validate_token_field();
+
     $liveform_welcome = new liveform('welcome');
 
     log_activity(lang('Software Updated Successfull'), $_SESSION['sessionusername']);
@@ -276,7 +280,7 @@ pg_page_shell([
                         run(index + 1);
                     } else {
                         window.setTimeout(function(){
-                            window.location.replace("?mode=autoupgrade");
+                            window.location.replace("?mode=autoupgrade&token=" + encodeURIComponent(software_token));
                         }, 3000);
                     }
                 },
