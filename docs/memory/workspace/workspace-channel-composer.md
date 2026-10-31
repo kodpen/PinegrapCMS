@@ -1,6 +1,6 @@
 ---
 name: workspace-channel-composer
-description: The channel's writing box in one row (C5, plans/workspace-channel-layout.md): no hint line, marks behind Aa; a phone's one row with the tools switch, the keyboard rules
+description: The channel's writing box in one row (C5 of workspace-channel-screen.md): no hint line, marks behind Aa; a phone's one row with the tools switch, the keyboard rules
 ---
 
 ## What is the row on a wide screen?

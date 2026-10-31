@@ -7487,7 +7487,21 @@
 
             words.appendChild(el('p', 'ws-home-date', data.date));
             words.appendChild(el('h1', 'ws-home-greeting', t('home_greeting', data.greeting || '', data.name)));
-            words.appendChild(el('p', 'ws-home-lead', data.lead || ''));
+            // The counts as parts that wrap whole, each dot at a line's end.
+            var lead = el('p', 'ws-home-lead');
+            var parts = data.lead || [];
+
+            parts.forEach(function (part, index) {
+                var last = (index === parts.length - 1);
+
+                lead.appendChild(el('span', 'ws-home-lead-part', last ? part : part + ' ·'));
+
+                if (!last) {
+                    lead.appendChild(document.createTextNode(' '));
+                }
+            });
+
+            words.appendChild(lead);
             hello.appendChild(words);
 
             // A way to start, always in sight.

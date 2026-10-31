@@ -17977,6 +17977,10 @@ html[data-bs-theme="dark"] #ws-menu-side .ws-count.ws-count-mention {
   font-size: .92rem;
   color: var(--pg-fg-2);
 }
+.ws-home-lead-part {
+  display: inline-block;
+  max-width: 100%;
+}
 .ws-home-grid {
   display: grid;
   gap: 1rem;

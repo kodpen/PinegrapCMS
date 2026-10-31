@@ -46,12 +46,12 @@ function test_workspace_overview_greets_by_the_hour()
 
 function test_workspace_overview_lead_says_the_counts_or_that_all_is_read()
 {
-	pg_assert_same('Everything is read and nothing is due today.', ws_home_lead(array()), 'nothing new, nothing due');
+	pg_assert_same(array('Everything is read and nothing is due today.'), ws_home_lead(array()), 'nothing new, nothing due');
 	pg_assert_same(
-		'12 new messages · 1 mention · 2 approval requests · 1 read receipt asked of you · 3 tasks due today or overdue',
+		array('12 new messages', '1 mention', '2 approval requests', '1 read receipt asked of you', '3 tasks due today or overdue'),
 		ws_home_lead(array('messages' => 12, 'mentions' => 1, 'approvals' => 2, 'acks' => 1, 'due' => 3))
 	);
-	pg_assert_same('1 new message · 1 task due today or overdue', ws_home_lead(array('messages' => 1, 'mentions' => -2, 'due' => 1)), 'a count below one says nothing');
+	pg_assert_same(array('1 new message', '1 task due today or overdue'), ws_home_lead(array('messages' => 1, 'mentions' => -2, 'due' => 1)), 'a count below one says nothing');
 }
 
 function test_workspace_overview_calendar_rows_by_the_hour()

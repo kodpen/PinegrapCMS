@@ -148,12 +148,12 @@ function ws_home_greeting($hour)
 }
 
 /**
- * The line under the greeting: what is new and what waits, the counts joined
- * by dots ("3 new messages · 1 mention · 1 approval request"), or that
- * nothing does.
+ * The line under the greeting: what is new and what waits, each count a part
+ * the page joins with dots ("3 new messages · 1 mention · 1 approval
+ * request"), or the one sentence that nothing does.
  *
  * @param array $counts messages, mentions, approvals, acks, due
- * @return string
+ * @return string[]
  */
 function ws_home_lead($counts)
 {
@@ -187,7 +187,7 @@ function ws_home_lead($counts)
         $parts[] = lang(array('string' => '{var:1} task{suffix:1} due today or overdue', 'vars' => $due, 'suffix' => array(($due === 1) ? '' : 's')));
     }
 
-    return $parts ? implode(' · ', $parts) : lang('Everything is read and nothing is due today.');
+    return $parts ? $parts : array(lang('Everything is read and nothing is due today.'));
 }
 
 /**
@@ -537,7 +537,8 @@ function ws_home_joinable($viewer, $limit = 5)
 function ws_home_js_strings()
 {
     return array(
-        'home'                => lang('Overview'),
+        // The page is called Today; its address stays ?view=home.
+        'home'                => lang('Today'),
         'home_greeting'       => ws_js_template('{var:1}, {var:2}', 2),
         'home_waiting'        => lang('Waiting for you'),
         'home_waiting_empty'  => lang('Nothing waits for you. Approvals, read receipts, replies to your messages and mentions of you show here.'),

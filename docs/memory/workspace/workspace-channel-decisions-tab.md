@@ -8,4 +8,4 @@ description: The channel's Decisions tab draws each decision as a card of its ow
 - In the conversation the same messages keep the rhythm of the ones around them.
 
 ## Why?
-- Owner (2026-10-31): the decisions stood stuck one under the other; "belli bir standartta düzen olsun", as in the drawn design (`plans/workspace-channel-layout.md`).
+- Owner (2026-10-31): the decisions stood stuck one under the other; "belli bir standartta düzen olsun", as in the drawn design (`workspace-channel-screen.md`).

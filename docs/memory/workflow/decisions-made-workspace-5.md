@@ -8,7 +8,7 @@ description: Decisions list, workspace part 5 (from 2026-10-30 evening): Workspa
 - Owner decision (2026-10-30, "Menü çok karışık"; on the drawn proposal "Menü yapısı ve kanal görünümü uygun"): the list was hard to find one's way in.
 
 ## Does the channel screen change too?
-- Yes: it is made again in the drawn design (`plans/workspace-channel-layout.md`). Every feature stays; a rarely needed item may move behind a menu or show on hover. On a phone the writing box rides on the keyboard and the message list keeps most of the height.
+- Yes: it is made again in the drawn design (`workspace/workspace-channel-screen.md`). Every feature stays; a rarely needed item may move behind a menu or show on hover. On a phone the writing box rides on the keyboard and the message list keeps most of the height.
 - Owner decision (2026-10-31): first "Sadece menüyü işleyelim kanallardaki değişiklikler olmasın" (2026-10-30), because on the drawn phone screen the box stayed under the keyboard and the list had a third of the screen; then "pc den bakınca workspace bayıldım", "burayı baştan yaratıyor ve modernleştiriyoruz … özellik gelsin eskisi gitmesin … gizlenmesi makul bilgi ve düğmeler gizlenebilir", "geliştirme sende".
 
 ## Who builds the Workspace design?
@@ -30,5 +30,5 @@ Related: docs/memory/workflow/decisions-made-workspace-4.md, docs/memory/workflo
 - Owner decision (2026-10-31, issue #4058, "kutu silindiği hâlde ipleri ve taşıdığı değerler yerinde kalmamalı"): the left values were problems that blocked publishing until removed field by field.
 
 ## What is the Workspace's first page called?
-- "Today" ("Bugün"), renamed from Overview (`plans/workspace-channel-layout.md` C8); the address `?view=home` and the links stay. The architect had kept "Overview" from the menu plan (#4192); the owner overrode it.
+- "Today" ("Bugün"), renamed from Overview (C8, `workspace/workspace-today-page.md`); the address `?view=home` and the links stay. The architect had kept "Overview" from the menu plan (#4192); the owner overrode it.
 - Owner decision (2026-10-31, #4192, "bugün olsun"): the page leads with today's greeting, tasks and calendar.
