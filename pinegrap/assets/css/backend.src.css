@@ -11496,51 +11496,43 @@ body.workspace:is(.workspace_settings, .workspace_mcp, .workspace_template, .wor
 .ws-thread-wrap {
   margin-top: .35rem;
 }
+/* The discussion line: faces, "3 replies · last reply 15:20" in the
+   accent, a frame only on hover. */
 .ws-thread-bar {
   display: inline-flex;
-  flex-wrap: wrap;
   align-items: center;
-  gap: .45rem;
+  gap: .5rem;
   max-width: 100%;
-  padding: .3rem .6rem;
-  border: 1px solid rgba(var(--ws-accent-rgb), .35);
-  border-radius: var(--ws-radius-sm);
-  background: var(--ws-soft);
-  color: var(--pg-fg-body);
+  min-height: 1.9rem;
+  padding: 0 .6rem 0 .25rem;
+  border: 1px solid transparent;
+  border-radius: .625rem;
+  background: transparent;
+  color: var(--ws-accent);
   font-size: .8rem;
+  font-weight: 600;
   text-align: left;
 }
-button.ws-thread-bar:hover {
-  border-color: var(--ws-accent);
-}
-.ws-thread-bar.ws-thread-bar-news {
-  border-color: var(--ws-accent);
+button.ws-thread-bar:hover,
+button.ws-thread-bar:focus-visible {
+  border-color: var(--pg-border-color-translucent);
+  background: var(--pg-bg-1);
 }
 .ws-thread-bar.ws-thread-bar-closed {
-  border-style: dashed;
-  background: transparent;
+  color: var(--pg-fg-2);
 }
 .ws-thread-bar-text {
-  display: flex;
-  flex-direction: column;
   min-width: 0;
-}
-.ws-thread-bar-text b {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.ws-thread-bar-facts {
-  font-size: .72rem;
-  color: var(--pg-fg-2);
-}
 .ws-thread-bar-go {
-  color: var(--ws-accent);
-  font-weight: 600;
+  color: var(--pg-fg-body);
   white-space: nowrap;
 }
 .ws-thread-faces .avatar {
-  --bs-avatar-size: 1.35rem;
+  --bs-avatar-size: 1.25rem;
 }
 .ws-thread-ai {
   margin-top: .2rem;
@@ -12571,10 +12563,28 @@ html[data-bs-theme="dark"] .ws-head[data-ws-colored] .ws-head-icon {
 .ws-msg.ws-msg-follow {
   padding-top: 0;
 }
+/* A later line of one author's group: no face, its time in the face's
+   column while the pointer or the focus is on it (a tap on a phone). */
 .ws-msg.ws-msg-follow .ws-msg-avatar {
-  visibility: hidden;
-  height: 0;
-  overflow: hidden;
+  display: flex;
+  justify-content: flex-end;
+}
+.ws-msg.ws-msg-follow .ws-msg-avatar > :not(.ws-msg-clock) {
+  display: none;
+}
+.ws-msg-clock {
+  padding-top: .2rem;
+  font-size: .68rem;
+  line-height: 1.2;
+  color: var(--pg-fg-2);
+  white-space: nowrap;
+  opacity: 0;
+}
+.ws-msg:hover .ws-msg-clock,
+.ws-msg:focus .ws-msg-clock,
+.ws-msg:focus-within .ws-msg-clock,
+.ws-msg.ws-msg-active .ws-msg-clock {
+  opacity: 1;
 }
 .ws-msg.ws-msg-follow .ws-msg-meta {
   display: none;
@@ -12641,16 +12651,22 @@ html[data-bs-theme="dark"] .ws-head[data-ws-colored] .ws-head-icon {
   padding: .6rem 0;
   border-bottom: 1px solid var(--pg-border-color);
 }
+/* A decision's or a note's tag in its head line; in the conversation the
+   tag alone marks it, on the Decisions tab its card also has the colour at
+   its edge. */
 .ws-msg-flag {
   display: inline-flex;
   align-items: center;
+  align-self: center;
   gap: .25rem;
-  font-size: .72rem;
+  height: 1.25rem;
+  padding: 0 .45rem;
+  border-radius: .375rem;
+  font-size: .68rem;
   font-weight: 700;
+  line-height: 1;
   text-transform: uppercase;
-  letter-spacing: .03em;
-  padding: 0 .4rem;
-  border-radius: var(--ws-radius-xs);
+  letter-spacing: .04em;
 }
 .ws-msg-flag.ws-flag-decision {
   background: color-mix(in srgb, var(--pg-success) 15%, transparent);
@@ -12660,11 +12676,11 @@ html[data-bs-theme="dark"] .ws-head[data-ws-colored] .ws-head-icon {
   background: color-mix(in srgb, var(--pg-info) 15%, transparent);
   color: var(--pg-info-fg-emphasis);
 }
-.ws-msg-decision,
-.ws-msg-note {
+.ws-pane-decisions > .ws-msg-decision,
+.ws-pane-decisions > .ws-msg-note {
   border-left: 3px solid var(--pg-success);
 }
-.ws-msg-note {
+.ws-pane-decisions > .ws-msg-note {
   border-left-color: var(--pg-info);
 }
 /* On the Decisions tab each one is a card of its own, apart from the next:
@@ -12844,36 +12860,36 @@ html[data-bs-theme="dark"] .ws-head[data-ws-colored] .ws-head-icon {
 }
 .ws-msg-tools {
   position: absolute;
-  top: -.6rem;
-  right: .5rem;
+  top: -1rem;
+  right: 1rem;
+  z-index: 2;
   display: none;
-  gap: .1rem;
+  gap: .125rem;
+  padding: .2rem;
+  border: 1px solid var(--pg-border-color-translucent);
+  border-radius: .75rem;
   background: var(--pg-bg-body);
-  border: 1px solid var(--pg-border-color);
-  border-radius: var(--ws-radius-sm);
-  padding: .1rem;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, .08);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, .1);
 }
 .ws-msg:hover .ws-msg-tools,
 .ws-msg:focus-within .ws-msg-tools {
   display: flex;
 }
 .ws-msg-tools button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.9rem;
+  height: 1.9rem;
+  padding: 0;
   border: 0;
+  border-radius: .5rem;
   background: transparent;
-  width: 1.8rem;
-  height: 1.7rem;
-  border-radius: var(--ws-radius-xs);
   color: var(--pg-fg-2);
 }
 .ws-msg-tools button:hover {
   background: var(--pg-bg-2);
   color: var(--pg-fg-body);
-}
-.ws-msg-tools .ws-tool-emoji {
-  font-size: .95rem;
-  line-height: 1;
-  padding: 0;
 }
 /* A message's text to select and copy by hand. 16px keeps iOS from zooming
    in on the field. */
@@ -15512,7 +15528,9 @@ a.ws-chip:hover {
   background: var(--pg-border-color);
   cursor: pointer;
 }
-.ws-voice-bar > span {
+/* The played part; a recording's waveform draws its strokes instead
+   (waveform() in workspace_voice.js), so the rule names the fill alone. */
+.ws-voice-fill {
   position: absolute;
   top: 0;
   bottom: 0;
@@ -15539,6 +15557,14 @@ a.ws-chip:hover {
   font-size: .75rem;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
+}
+/* Convert to text (pg_voice_text.js): a small "Aa" in the player's row. */
+.ws-voice .pg-voice-text-button {
+  width: 1.9rem;
+  height: 1.9rem;
+  padding: 0;
+  font-size: .75rem;
+  font-weight: 700;
 }
 .ws-voice-error .ws-voice-bar {
   opacity: .4;

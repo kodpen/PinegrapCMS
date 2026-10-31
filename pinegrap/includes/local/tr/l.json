@@ -748,6 +748,7 @@
     "last changed by {var:1}": "son değiştiren {var:1}",
     "last day": "son gun",
     "last full check {var:1}": "son tam denetim {var:1}",
+    "last reply {var:1}": "son yanıt {var:1}",
     "last seen on a previous request": "önceki bir istekte görüldü",
     "last {var:1}": "son: {var:1}",
     "last {var:1} days": "son {var:1} gün",

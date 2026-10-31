@@ -627,7 +627,7 @@
         var main = el('div', 'ws-voice-main');
         var name = el('div', 'ws-voice-name', isVoice(file.name) ? t('voice_message') : file.name);
         var bar = el('div', 'ws-voice-bar');
-        var fill = el('span');
+        var fill = el('span', 'ws-voice-fill');
         var time = el('div', 'ws-voice-time', '0:00');
         var speed = el('button', 'btn btn-sm btn-text theme-secondary ws-voice-speed');
         var save = el('a', 'btn btn-sm btn-text theme-secondary');
@@ -846,11 +846,12 @@
         draw();
 
         // The server's transcript, or one on its way; else "Convert to
-        // text" where the browser's own model hears audio (pg_voice_text.js).
+        // text" where the browser's own model hears audio (pg_voice_text.js):
+        // a small "Aa" before the download link, the words under the player.
         var under = voice ? transcript(voice, h) : null;
 
         if (!under && window.PGVoiceText) {
-            under = window.PGVoiceText.control(file.url, t, locale);
+            under = window.PGVoiceText.control(file.url, t, locale, { into: box, before: save });
         }
 
         if (!under) {

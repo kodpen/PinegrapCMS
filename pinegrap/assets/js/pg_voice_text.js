@@ -175,8 +175,10 @@
     // The control under a player: hidden until the browser says it can, a
     // button, then the progress and the text. texts(key) gives the screen's
     // words: voice_text_convert, voice_text_working, voice_text_download,
-    // voice_text_by, voice_text_failed.
-    function control(url, texts, locale) {
+    // voice_text_by, voice_text_failed. With place ({ into, before }) the
+    // button is a small "Aa" in the player's own row, named by its label,
+    // and the box under the player shows from the first click on.
+    function control(url, texts, locale, place) {
         var box = document.createElement('div');
         var button = document.createElement('button');
         var status = document.createElement('div');
@@ -192,8 +194,21 @@
         box.style.maxWidth = '22rem';
 
         button.type = 'button';
-        button.className = 'btn btn-sm btn-text theme-secondary px-1';
-        button.textContent = texts('voice_text_convert');
+
+        if (place) {
+            var glyph = document.createElement('span');
+
+            glyph.textContent = 'Aa';
+            glyph.setAttribute('aria-hidden', 'true');
+            button.className = 'btn btn-sm btn-text theme-secondary pg-voice-text-button';
+            button.title = texts('voice_text_convert');
+            button.setAttribute('aria-label', button.title);
+            button.appendChild(glyph);
+            button.hidden = true;
+        } else {
+            button.className = 'btn btn-sm btn-text theme-secondary px-1';
+            button.textContent = texts('voice_text_convert');
+        }
 
         status.className = 'fg-secondary fst-italic';
         status.hidden = true;
@@ -217,7 +232,12 @@
         by.hidden = true;
         by.textContent = texts('voice_text_by');
 
-        box.appendChild(button);
+        if (place) {
+            place.into.insertBefore(button, place.before || null);
+        } else {
+            box.appendChild(button);
+        }
+
         box.appendChild(status);
         box.appendChild(meter);
         box.appendChild(result);
@@ -225,7 +245,12 @@
 
         ready(locale).then(function (found) {
             chosen = found;
-            box.hidden = !found;
+
+            if (place) {
+                button.hidden = !found;
+            } else {
+                box.hidden = !found;
+            }
         });
 
         function say(text) {
@@ -292,6 +317,7 @@
 
             var focused = (document.activeElement === button);
 
+            box.hidden = false;
             result.textContent = '';
             result.hidden = true;
             by.hidden = true;

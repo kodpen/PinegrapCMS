@@ -24,7 +24,7 @@ description: Plan (owner decision 2026-10-31) for the redrawn Workspace channel 
 
 - C3 Pinned and system lines: done #3873 (the pinned message in one line; with the catch-up line one row on a phone; system notices already one line).
 
-- C4 Messages: one author's consecutive messages grouped, actions on hover, the decision tag, Convert to text as a small button, a discussion's link "3 replies · last …".
+- C4 Messages: done #4125 (`workspace/workspace-channel-messages.md`; a grouped line's time on hover, a bar of reaction, Reply, discussion, task and More, the tag alone for a decision, the discussion as one line, Convert to text an "Aa" in the player).
 
 - C5 Composer: done #3898 (`workspace/workspace-channel-composer.md`; the hint line gone, marks behind Aa, a phone's one row with a tools switch, the strip and tabs hide while the keyboard is up; the / list keeps its look).
 
@@ -36,4 +36,4 @@ description: Plan (owner decision 2026-10-31) for the redrawn Workspace channel 
 1. Whether C7 renames Overview to Today; asked when C7 starts.
 
 ## Where to start?
-- C4, then C6 and C7. The local sandbox (`tools/setup_sandbox.sh`) draws the channel screen at desktop and phone width; try each step at 390 px with the keyboard open before anything else.
+- C6, then C7. The local sandbox (`tools/setup_sandbox.sh`) draws the channel screen at desktop and phone width; try each step at 390 px with the keyboard open before anything else.
