@@ -147,7 +147,11 @@ if ((isset($_POST['product_group_id'])) && ($_POST['product_group_id'] != '')) {
         WHERE id = '" . e($_POST['product_group_id'] ?? '') . "'
         LIMIT 1");
 
-    $product_group = $product_group ? $product_group[0] : array('name' => '', 'short_description' => '', 'form_name' => '');
+    // The variant set was deleted after this screen was opened, or the link is stale.
+    if (!$product_group) {
+        output_error(lang('Record not found.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.', 404);
+    }
+    $product_group = $product_group[0];
 
     $product_name      = $product_group['name'];
     $short_description = $product_group['short_description'];
@@ -177,6 +181,11 @@ if ((isset($_POST['product_group_id'])) && ($_POST['product_group_id'] != '')) {
              WHERE id = ?";
     $result = db_q($query, array((string) ($_POST['product_id'] ?? ''))) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
+
+    // The product was deleted after this screen was opened, or the link is stale.
+    if (!$row) {
+        output_error(lang('Record not found.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.', 404);
+    }
     
     $product_name = $row['name'];
     $short_description = $row['short_description'];

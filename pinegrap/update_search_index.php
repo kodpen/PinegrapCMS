@@ -971,6 +971,8 @@ foreach ($pages as $page) {
 $designer_record_urls = array();
 $designer_detail_pages = array();
 $designer_failures = 0;
+// The first few failures, named for the run's Site Log line.
+$designer_failure_notes = array();
 $recycle_bin_folder_ids = pg_recycle_bin_folder_ids();
 
 foreach ($designer_hosts as $designer_host) {
@@ -1055,6 +1057,10 @@ foreach ($designer_hosts as $designer_host) {
         } catch (Throwable $throwable) {
             $records = array();
             $designer_failures++;
+
+            if (count($designer_failure_notes) < 5) {
+                $designer_failure_notes[] = pg_search_index_failure_note($host_page['page_name'], '', $throwable->getMessage());
+            }
         } finally {
             pg_error_throws($saved_error_throws);
         }
@@ -1157,6 +1163,11 @@ foreach ($designer_hosts as $designer_host) {
                 $designer_record_urls[$url] = $folder_id;
             } catch (Throwable $throwable) {
                 $designer_failures++;
+
+                if (count($designer_failure_notes) < 5) {
+                    $designer_failure_notes[] = pg_search_index_failure_note($detail_page['page_name'], $record['reference_code'], $throwable->getMessage());
+                }
+
                 continue;
             } finally {
                 // A render that throws skips the ob_get_clean() of a PHP
@@ -1190,8 +1201,13 @@ foreach ($designer_hosts as $designer_host) {
     }
 }
 
+// One Site Log line per run names what was left out, so a site owner sees
+// it without reading the PHP error log.
 if ($designer_failures > 0) {
-    error_log('Pinegrap: the search index left out ' . $designer_failures . ' record list(s) or record page(s) that failed to load.');
+    log_activity(lang(array(
+        'string' => 'The search index left out {var:1} record list(s) or record(s) that failed to load: {var:2}',
+        'vars' => array($designer_failures, implode('; ', $designer_failure_notes) . (($designer_failures > count($designer_failure_notes)) ? '; ...' : '')))),
+        isset($username) ? $username : '');
 }
 
 // Get files that should be included in search index.
@@ -1361,13 +1377,23 @@ if ($timestamp >= (LAST_SITEMAP_CHECK_TIMESTAMP + 43200)) {
 // Scheduled-task health: record that this job finished. See pg_cron_ran().
 pg_cron_ran('update_search_index');
 
+if ($designer_failures > 0) {
+    $finish_icon = 'bi-exclamation-triangle-fill fg-warning';
+    $finish_message = lang(array(
+        'string' => 'The Search Index has been updated, but {var:1} record list(s) or record(s) failed to load and were left out. The Site Log names them.',
+        'vars' => array($designer_failures)));
+} else {
+    $finish_icon = 'bi-check-circle-fill fg-success';
+    $finish_message = lang('The Search Index has been updated successfully!');
+}
+
 echo '
     </ul>
 
     <div id="finish" class="text-center py-7" style="display:none">
-        <i class="bi bi-check-circle-fill fg-success d-block mb-3" style="font-size:2.5rem"></i>
-        
-        <div id="finish_message" class="fw-semibold mb-5">' . lang('The Search Index has been updated successfully!') . '</div>
+        <i class="bi ' . $finish_icon . ' d-block mb-3" style="font-size:2.5rem" aria-hidden="true"></i>
+
+        <div id="finish_message" class="fw-semibold mb-5">' . h($finish_message) . '</div>
         <button type="button" class="btn btn-sm btn-outline theme-secondary" onclick="window.close()">
             <i class="bi bi-x-lg me-1"></i>' . lang('Close') . '
         </button>
