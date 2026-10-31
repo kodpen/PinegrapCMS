@@ -1382,6 +1382,7 @@
         state.flow = null;
         state.graph = graphOf(null);
         K.clear(ui.bar);
+        K.viewBack(null);
         newFlowButton();
 
         // The address no longer names a flow, so a reload does not ask for
@@ -1450,7 +1451,7 @@
             state.refocus = '';
             showNone();
             listing(false);
-            flowsButton();
+            backToList();
             state.refocus = focus;
             state.section = 'templates';
             state.galleryInto = into;
@@ -1460,13 +1461,10 @@
             ui.gallery.classList.remove('d-none');
 
             if (into) {
-                var back = K.button('btn btn-sm btn-text theme-secondary', t('fl_tpl_back'), 'bi-arrow-left');
-
-                back.setAttribute('data-refocus', 'tpl-back');
-                back.addEventListener('click', function () {
+                // Opened from a flow: the arrow goes back to that flow.
+                K.viewBack(t('fl_tpl_back'), function () {
                     open(into);
-                });
-                ui.bar.insertBefore(back, ui.bar.firstChild);
+                }, 'tpl-back');
             } else {
                 ui.gallery.appendChild(el('h2', 'h5 mb-5', t('fl_tpl_start')));
 
@@ -2256,13 +2254,10 @@
         ui.stage.classList.add('d-none');
         ui.scheduled.classList.remove('d-none');
 
-        var back = K.button('btn btn-sm btn-text theme-secondary', t('sa_canvas_back'), 'bi-arrow-left');
-        back.setAttribute('data-refocus', 'sa-back');
-        back.addEventListener('click', function () {
+        K.viewBack(t('sa_canvas_back'), function () {
             state.refocus = 'sched-refused flows-search';
             showNone();
-        });
-        ui.bar.appendChild(back);
+        }, 'sa-back');
         ui.bar.appendChild(el('span', 'fw-semibold wsf-name-text', item.name));
         ui.bar.appendChild(el('span', 'ws-sa-state ws-sa-state-' + item.status, item.status_label));
         ui.bar.appendChild(el('span', 'pg-toolbar-grow'));
@@ -2519,15 +2514,9 @@
         ui.bar.appendChild(create);
     }
 
-    // "Flows ›": back to the flow list.
-    function flowsButton() {
-        var back = K.button('btn btn-sm btn-text theme-secondary wsf-back', t('fl_nav'));
-
-        back.appendChild(el('span', 'ms-1', '›')).setAttribute('aria-hidden', 'true');
-        back.setAttribute('aria-label', t('fl_list_back'));
-        back.setAttribute('data-refocus', 'flows');
-        back.addEventListener('click', showList);
-        ui.bar.appendChild(back);
+    // The page's back arrow goes back to the flow list.
+    function backToList() {
+        K.viewBack(t('fl_list_back'), showList, 'flows');
     }
 
     // A flow that may be run now: live, published, and the person's to edit
@@ -2603,7 +2592,7 @@
             runButton(true);
         }
 
-        flowsButton();
+        backToList();
 
         if (state.edit) {
             ui.name = el('input', 'form-control form-control-sm wsf-name');
@@ -5149,7 +5138,9 @@
         state.refocus = '';
 
         for (var i = 0; i < keys.length; i++) {
-            var target = keys[i] ? ui.root.querySelector('[data-refocus="' + keys[i] + '"]') : null;
+            var key = '[data-refocus="' + keys[i] + '"]';
+            // The page's back arrow sits outside the root, in the breadcrumb strip.
+            var target = keys[i] ? (ui.root.querySelector(key) || document.querySelector('#ws-view-back' + key)) : null;
 
             if (target && !target.disabled && target.getClientRects().length) {
                 target.focus();
