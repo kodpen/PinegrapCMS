@@ -17,12 +17,13 @@ module: sms_campaigns
 ## What do the screens do?
 - `view_sms_campaigns.php` (My SMS Campaigns): all campaigns (role 3: their own), status, send time, result counts, Delete Selected (posts back; queued messages stay in the queue). A warning while SMS is not set up or the identity is empty. Linked from My Campaigns' toolbar only while SMS is set up (`pg_sms_ready()`) and the table exists, so running sites see nothing new.
 - `edit_sms_campaign.php` creates and edits: name, text, the e-mail screen's Ignore/Include/Exclude group table, When (keep as draft, send now, at a date and time). Cards from `pg_email_campaign_card()` (`ui/email-campaign-shared-form.md`). `pg_sms_campaign_decide()` (pure) refuses a sent campaign without text or group and a past or unreadable time; a draft may lack both. Queued and cancelled campaigns are read-only; a scheduled one has Cancel Campaign.
+- Text limit, labels, group delete: `sms-campaign-limit-and-labels.md`.
 
 ## What is not done?
 - No Flows action, no API route (later). Not sent through a live provider; the step was not run on a database in its PR (no server in the session).
 - `pg_sms_marketing_permission()` scans contacts and orders per number, so a campaign of many thousand numbers queues slowly; the contact id could be passed in.
 
 ## Tests?
-- `tests/sms_campaign_test.php`: the decision, the audience pick, due, queueing only `marketing` through the layer with refusals counted, no direct insert or send, the job's order.
+- `tests/sms_campaign_test.php`: the decision, the text limit against `pg_sms_check()`, the status labels, the group delete pins, the audience pick, due, queueing only `marketing` through the layer with refusals counted, no direct insert or send, the job's order.
 
-Related: docs/memory/platform/sms-marketing-kind.md, docs/memory/platform/sms-outbox-queue.md, docs/memory/platform/sms-and-iys-rules.md
+Related: docs/memory/platform/sms-campaign-limit-and-labels.md, docs/memory/platform/sms-marketing-kind.md, docs/memory/platform/sms-outbox-queue.md, docs/memory/platform/sms-and-iys-rules.md

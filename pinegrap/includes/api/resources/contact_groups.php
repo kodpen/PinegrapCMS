@@ -469,6 +469,13 @@ function api_contact_groups_delete($params) {
 
 	api_exec("DELETE FROM contact_groups_email_campaigns_xref WHERE contact_group_id = '" . $id . "'");
 
+	// Its SMS campaign rows, once the upgrade has created the table.
+	if (pg_schema_has('contact_groups_sms_campaigns_xref')) {
+
+		api_exec("DELETE FROM contact_groups_sms_campaigns_xref WHERE contact_group_id = '" . $id . "'");
+
+	}
+
 	log_activity(lang(array(
 		'string' => 'Contact group ({var:1}) was deleted through the API by the application {var:2} (key {var:3}).',
 		'vars'   => array($row['name'], $app['name'], $app['api_key'])

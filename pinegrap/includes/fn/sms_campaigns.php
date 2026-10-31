@@ -53,7 +53,7 @@ function pg_sms_campaign_statuses()
     return array(
         'draft'     => lang('Draft'),
         'ready'     => lang('Scheduled'),
-        'queued'    => lang('Queued'),
+        'queued'    => lang('Queued for sending'),
         'cancelled' => lang('Cancelled'),
     );
 }
@@ -72,22 +72,38 @@ function pg_sms_campaign_reference($campaign_id, $contact_id)
 }
 
 /**
+ * The longest campaign text, in characters: the layer's limit
+ * (pg_sms_max_length()) less the line break, sender identity and type label
+ * pg_sms_check() appends before it applies that limit.
+ *
+ * @param array $marketing pg_sms_marketing_normalize()
+ * @return int
+ */
+function pg_sms_campaign_body_limit($marketing)
+{
+    return max(0, pg_sms_max_length() - mb_strlen("\n" . pg_sms_marketing_footer($marketing), 'UTF-8'));
+}
+
+/**
  * What the create and edit screen saves; no database.
  *
  * send is 'draft' (kept, never sent), 'now' (ready from now) or 'at'
  * (ready from $start_at, which must lie ahead). A draft may lack a text or a
- * group; a campaign that will be sent needs both. A group the user may not
- * pick is dropped, as the e-mail campaign screen drops it.
+ * group; a campaign that will be sent needs both. A text longer than
+ * $limit (pg_sms_campaign_body_limit()) is refused, a draft's too: the layer
+ * would refuse every message of it. A group the user may not pick is
+ * dropped, as the e-mail campaign screen drops it.
  *
  * @param array    $post      name, body, send, contact_group_<id>
  * @param array    $groups    ids of the groups the user may pick
  * @param int      $now
  * @param int|null $start_at  the posted time as a timestamp, null when it
  *                            could not be read
+ * @param int|null $limit     the longest text, null for no check
  * @return array errors (list of messages), values (name, body, status,
  *               start_at, included, excluded)
  */
-function pg_sms_campaign_decide($post, $groups, $now, $start_at)
+function pg_sms_campaign_decide($post, $groups, $now, $start_at, $limit = null)
 {
     $errors = array();
 
@@ -114,6 +130,11 @@ function pg_sms_campaign_decide($post, $groups, $now, $start_at)
 
     $status = 'draft';
     $start = 0;
+
+    // Counted as the layer counts it when the message is checked.
+    if (($limit !== null) && (mb_strlen(pg_sms_text($body), 'UTF-8') > (int) $limit)) {
+        $errors[] = lang(array('string' => 'The text is longer than {var:1} characters, the room left beside the sender identity and the type label.', 'vars' => array((int) $limit)));
+    }
 
     if ($send === 'now' || $send === 'at') {
         $status = 'ready';
