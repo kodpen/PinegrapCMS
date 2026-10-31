@@ -4867,6 +4867,168 @@ function pg_license_check_due($force, $status, $last_check, $now)
     return $elapsed > 43200;
 }
 
+// A licence key in its one form: dashes and blanks out, upper case. The key
+// field takes it with or without dashes, in any case.
+function pg_license_key_normalize($key)
+{
+    $key = is_string($key) ? $key : '';
+
+    // strtoupper() follows the locale before PHP 8.2.
+    return strtr((string) preg_replace('/[\s-]+/', '', $key), 'abcdefghijklmnopqrstuvwxyz', 'ABCDEFGHIJKLMNOPQRSTUVWXYZ');
+}
+
+// Whether a normalised key can be a licence key: 16 of 0-9 and A-Z without
+// I, L, O and U (the old 16-digit keys among them). Any other key is not
+// sent to the licence server.
+function pg_license_key_valid($key)
+{
+    return is_string($key) && (preg_match('/\A[0-9A-HJKMNP-TV-Z]{16}\z/', $key) === 1);
+}
+
+// The pg_vendor_api_request() options of POST /licenses/verify for a
+// normalised key: the key as the bearer, the version (only a release number)
+// and the update channel as the body. site_required: the licence binds to
+// the site name, so without one nothing is sent.
+function pg_license_v1_options($key, $version, $channel)
+{
+    $body = array();
+
+    if ((string) $version !== '') {
+        $body['version'] = (string) $version;
+    }
+
+    $body['channel'] = (string) $channel;
+
+    return array(
+        'headers'       => array('Authorization: Bearer ' . $key),
+        'body'          => json_encode($body),
+        'site_required' => true,
+    );
+}
+
+// What one answer of POST /licenses/verify tells the licence check
+// (tests/fixtures/vendor_api/licence_mapping.json): status, error_code and
+// P_end_d in the shape license_check() stored from the old server, plus the
+// card's type and site rights. Only a schema-valid 200, a 401 problem with
+// code invalid_license and a 403 problem with code seats_full or
+// access_blocked are an answer; anything else is unusable (status '', asked
+// again after 15 minutes). Type and site rights come only from a 200.
+function pg_license_map_v1($answer)
+{
+    $out = array('status' => '', 'error_code' => '', 'P_end_d' => '', 'type' => '', 'sites_used' => null, 'sites_total' => null);
+    $answer = is_array($answer) ? $answer : array();
+
+    if (!empty($answer['errno'])) {
+        return $out;
+    }
+
+    $status = isset($answer['status']) ? (int) $answer['status'] : 0;
+
+    if ($status !== 200) {
+        $problem = pg_vendor_api_problem($answer);
+        $codes = array(401 => array('invalid_license' => 'no_match'), 403 => array('seats_full' => 'seats_full', 'access_blocked' => 'access_blocked'));
+
+        if ($problem && isset($codes[$problem['status']][$problem['code']])) {
+            $out['status'] = 'error';
+            $out['error_code'] = $codes[$problem['status']][$problem['code']];
+        }
+
+        return $out;
+    }
+
+    if (pg_vendor_api_media_type(isset($answer['content_type']) ? $answer['content_type'] : '') !== 'application/json') {
+        return $out;
+    }
+
+    $data = json_decode(isset($answer['body']) ? (string) $answer['body'] : '');
+    $license = (($data instanceof stdClass) && isset($data->license)) ? $data->license : null;
+
+    if (!($license instanceof stdClass)
+        || !isset($license->status) || !in_array($license->status, array('active', 'expired', 'suspended'), true)
+        || !isset($license->valid_until) || !is_string($license->valid_until)
+        || (preg_match('/\A(\d{4})-(\d{2})-(\d{2})\z/', $license->valid_until, $date) !== 1)
+        || !checkdate((int) $date[2], (int) $date[3], (int) $date[1])
+        || !isset($license->type) || !is_string($license->type)
+        || !isset($license->sites) || !($license->sites instanceof stdClass)
+        || !isset($license->sites->used, $license->sites->total)
+        || !is_int($license->sites->used) || ($license->sites->used < 0)
+        || !is_int($license->sites->total) || ($license->sites->total < 1)) {
+        return $out;
+    }
+
+    if ($license->status === 'suspended') {
+        $out['status'] = 'error';
+        $out['error_code'] = 'suspended';
+    } else {
+        // An expired licence is told by its past date, as before.
+        $out['status'] = 'success';
+        $out['P_end_d'] = $license->valid_until;
+    }
+
+    $out['type'] = $license->type;
+    $out['sites_used'] = $license->sites->used;
+    $out['sites_total'] = $license->sites->total;
+
+    return $out;
+}
+
+// The licence card's type and site rights: Kodpen's own name of a known type,
+// any other type by its code; "3 / 5" when both counts are known.
+function pg_license_card_details($type, $sites_used, $sites_total)
+{
+    $names = array('demo' => lang('Demo'), 'premium' => lang('Premium'), 'enterprise' => lang('Enterprise'));
+    $type = is_string($type) ? $type : '';
+    $lines = '';
+
+    if ($type !== '') {
+        $lines .= '<div class="pg-lic-type fw-bold small">' . (isset($names[$type]) ? $names[$type] : h($type)) . '</div>';
+    }
+
+    if (is_int($sites_used) && is_int($sites_total)) {
+        $lines .= '<div class="pg-lic-sites fg-secondary small">' . lang(array('string' => 'Site rights: {var:1} / {var:2}', 'vars' => array($sites_used, $sites_total))) . '</div>';
+    }
+
+    return ($lines === '') ? '' : '<div class="px-5 pt-3 text-center">' . $lines . '</div>';
+}
+
+// The licence card's sentence for a definitive refusal; '' for a technical
+// failure, which keeps its own text.
+function pg_license_error_notice($error_code)
+{
+    switch ((string) $error_code) {
+        case 'no_match':
+        case 'no_key':
+            return lang('Your license is not valid. You cannot benefit from some features.');
+        case 'suspended':
+            return lang('Your license is suspended. You cannot benefit from some features.');
+        case 'seats_full':
+            return lang('Every site right of this license is in use; to use it on a new site, first have one of its sites released.');
+        case 'access_blocked':
+            return lang('Service access is closed for this site.');
+    }
+
+    return '';
+}
+
+// What the key field warns about the site name ($hostname, HOSTNAME_SETTING):
+// 'local' when only this machine or its network knows it (it still spends a
+// site right), 'none' when it is no site name at all (every check fails),
+// '' otherwise, a non-ASCII name without intl included.
+function pg_license_site_warning($hostname, $idn = null)
+{
+    $canonical = pg_vendor_api_canonical_site($hostname, $idn);
+
+    if ($canonical === false) {
+        return '';
+    }
+
+    if ($canonical === null) {
+        return 'none';
+    }
+
+    return pg_vendor_api_site_local($canonical) ? 'local' : '';
+}
+
 // license_check()
 // PHP 7.0 - 8.5 compatible helper to validate and display subscription/license status.
 // Improvements:
