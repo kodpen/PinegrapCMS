@@ -741,6 +741,7 @@
     "The Pinegrap AI settings were saved.": "Pinegrap AI ayarları kaydedildi.",
     "The Pinegrap Premium licence of this site has expired. Renew it and enter the new key under Settings › General.": "Bu sitenin Pinegrap Premium lisansının süresi doldu. Lisansı yenileyin ve yeni anahtarı Ayarlar › Genel altına girin.",
     "The Pinegrap Premium licence of this site has expired. Renew it and enter the new key under Site Settings › General › Software.": "Bu sitenin Pinegrap Premium lisansının süresi doldu. Lisansı yenileyin ve yeni anahtarı Site Ayarları › Genel › Yazılım altına girin.",
+    "The Places API key and the Place ID are set in Site Settings › Integrations › Google Reviews. Without them the widget shows nothing on the site.": "Places API anahtarı ve Yer Kimliği Site Ayarları › Entegrasyonlar › Google Yorumları altında girilir. Bunlar olmadan bileşen sitede hiçbir şey göstermez.",
     "The Places API key and the Place ID are set in Site Settings, Communication, Google Reviews. Without them the widget shows nothing on the site.": "Places API anahtarı ve Yer Kimliği Site Ayarları, İletişim, Google Yorumları'nda girilir. Bunlar olmadan bileşen sitede hiçbir şey göstermez.",
     "The Platform of Choice": "Tercih Edilen Platform",
     "The Preview shows what a visitor who is not signed in sees.": "Önizleme, oturum açmamış bir ziyaretçinin gördüğünü gösterir.",
@@ -1021,6 +1022,7 @@
     "The backup already has the user {var:1} ({var:2}), so no administrator was added: that user is an administrator and signs in with the password you entered.": "Yedekte {var:1} ({var:2}) kullanıcısı zaten var, bu yüzden yeni yönetici eklenmedi: bu kullanıcı yöneticidir ve girdiğiniz parolayla giriş yapar.",
     "The backup before the software update could not be written: {var:1}": "Yazılım güncellemesinden önceki yedek yazılamadı: {var:1}",
     "The backup before the update could not be written. Nothing was changed.": "Güncellemeden önceki yedek yazılamadı. Hiçbir şey değiştirilmedi.",
+    "The backup before the update could not be written: {var:1} Nothing was changed. Free some disk space and try again, or switch off \"Back up before updating\" under Site Settings › Updates and maintenance › Update Channel to update without it.": "Güncellemeden önceki yedek yazılamadı: {var:1} Hiçbir şey değiştirilmedi. Disk alanı açıp yeniden deneyin ya da yedeksiz güncellemek için Site Ayarları › Güncellemeler ve Bakım › Güncelleme Kanalı altında \"Güncellemeden önce yedekle\" seçeneğini kapatın.",
     "The backup before the update could not be written: {var:1} Nothing was changed. Free some disk space and try again, or switch off \"Back up before updating\" under Site Settings, General, Update Channel to update without it.": "Güncellemeden önceki yedek yazılamadı: {var:1} Hiçbir şey değiştirilmedi. Disk alanı açıp yeniden deneyin ya da yedeksiz güncellemek için Site Ayarları, Genel, Güncelleme Kanalı altında \"Güncellemeden önce yedekle\" seçeneğini kapatın.",
     "The backup could not be found in the backups folder.": "Yedek, yedekler klasöründe bulunamadı.",
     "The backup could not be written completely. The activity log has the details.": "Yedek tam olarak yazılamadı. Ayrıntılar etkinlik günlüğünde.",
@@ -3367,6 +3369,7 @@
     "The sales invoice the order screen created at Paraşüt for this order (ID: {var:1}) is no longer there: its id was removed from the order.": "Sipariş ekranının bu sipariş için Paraşüt'te oluşturduğu satış faturası (ID: {var:1}) artık orada yok: numara siparişten kaldırıldı.",
     "The same": "Aynı",
     "The same account, lines and prices, dated on the day. Issued straight away, each takes the next number, and the e-document and e-mail settings apply to it.": "Aynı cari, satırlar ve fiyatlar, günün tarihiyle. Hemen kesilirse her biri sıradaki numarayı alır; e-Belge ve e-posta ayarları ona da uygulanır.",
+    "The same alert is sent at most once a day while the problem lasts. Alerts are set under Site Settings › Updates and maintenance › Alerts.": "Aynı uyarı, sorun sürdüğü sürece günde en fazla bir kez gönderilir. Uyarılar Site Ayarları › Güncellemeler ve Bakım › Uyarılar altından ayarlanır.",
     "The same alert is sent at most once a day while the problem lasts. Alerts are set under Site Settings, General, Alerts.": "Aynı uyarı, sorun sürdüğü sürece günde en fazla bir kez gönderilir. Uyarılar Site Ayarları, Genel, Uyarılar altından ayarlanır.",
     "The same destination is linked with very different wording": "Aynı hedefe çok farklı metinlerle bağlantı veriliyor",
     "The same e-mail address is written twice.": "Aynı e-posta adresi iki kez yazılmış.",
@@ -6033,7 +6036,7 @@
     "travel, living abroad": "seyahat, yurt dışında yaşam",
     "trees, city council": "ağaçlar, belediye meclisi",
     "two-step verification turned off for user ({var:1})": "kullanıcının iki adımlı doğrulaması kapatıldı ({var:1})",
-    "two-step, two factor, 2fa, totp, authenticator, mfa, verification code": "iki adımlı, iki faktörlü, 2fa, totp, doğrulama uygulaması, mfa, doğrulama kodu",
+    "two-step, two factor, 2fa, totp, authenticator, mfa, verification code": "iki adımlı, iki faktörlü, 2fa, totp, doğrulama uygulaması, mfa, doğrulama kodu, two-step, two factor, authenticator, verification code",
     "type": "tür",
     "type is one of {var:1}.": "type şunlardan biri olmalı: {var:1}."
 }

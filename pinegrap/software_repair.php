@@ -209,7 +209,7 @@ $rollback_backups = pg_update_backup_list();
 if (!$rollback_backups) {
 
     $rollback_body = '
-                    <p class="small fg-secondary mb-0">' . h(lang('No backup taken before an update is in the backup folder yet. The next update writes one, unless it is switched off under Site Settings, General, Update Channel.')) . '</p>';
+                    <p class="small fg-secondary mb-0">' . h(lang('No backup taken before an update is in the backup folder yet. The next update writes one, unless it is switched off under Site Settings › Updates and maintenance › Update Channel.')) . '</p>';
 
 } else {
 

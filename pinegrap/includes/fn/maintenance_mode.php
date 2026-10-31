@@ -10,8 +10,8 @@
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
-// A module of functions.php: maintenance mode (Site Settings, General,
-// Maintenance Mode) and health.php's answer.
+// A module of functions.php: maintenance mode (Site Settings › Updates and
+// maintenance › Maintenance Mode) and health.php's answer.
 //
 // While maintenance mode is on, a visitor who asks for a page of the site gets
 // a 503 with Retry-After, drawn by the designed error page (the error_page

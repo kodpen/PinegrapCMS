@@ -558,7 +558,7 @@ if (($visitor_settings === false) || ($visitor_catalog === null)) {
         ));
 
         if ($visitor_settings['days'] <= 0) {
-            $visitor_advice = lang('Visitor records are kept without a limit. Set a period under Settings › SEO › Visitor Tracking and the general job removes the older ones a little at a time.');
+            $visitor_advice = lang('Visitor records are kept without a limit. Set a period under Site Settings › Visitors and privacy › Visitor Tracking and the general job removes the older ones a little at a time.');
         } elseif ($visitor_preview['rows'] > 0) {
             $visitor_advice = lang(array(
                 'string' => '{var:1} of them are older than {var:2} days. The general job removes them a little at a time; "Clean up visitor records now" starts on them at once.',

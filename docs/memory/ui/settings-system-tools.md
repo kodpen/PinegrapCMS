@@ -18,7 +18,7 @@ description: The System tools screen (system_tools.php): the screens beside Site
 - `pg_settings_tools_link($groups)` prints one `.pg-sm-link.pg-sm-away` row, "System tools ›", at the end of the list, or nothing when the user has no tool. There is no `.pg-sm-group` heading in the list any more.
 
 ## What does the search palette list?
-- `pg_panel_search_tool_actions()` (`includes/panel/search.php`) adds the System tools screen and every tool from the same groups, inside the palette's manager block. Search words per script are in `pg_panel_search_tool_keys()`, Turkish and English; the label is always a key too.
+- `pg_panel_search_tool_actions()` (`includes/panel/search.php`) adds the System tools screen and every tool from the same groups, inside the palette's manager block. Search words per script are in `pg_settings_tool_keys()` (`includes/settings/registry.php`), Turkish and English; the label is always a key too. The Site Settings search finds the same tools (`settings-modal-search.md`, #4303).
 - A tool with a `confirm` opens `system_tools.php`, where the question is asked: the palette follows a row without asking. A screen the palette already lists (Currencies) is not repeated. No tool, no rows.
 
 ## Where is it in the main menu?
