@@ -8149,7 +8149,12 @@
             var channel = self.channel;
             var center = clear(self.center);
 
-            // Header: name, topic, the customer, the people, the tools.
+            // Header, one line: the channel's sign and name, how its work
+            // stands, its department and its customer; then its people,
+            // search, its info, a new task and its menu. The purpose is in
+            // the info (showMembers()) and on the name's tooltip. On a phone
+            // the line keeps the way back, the name and the menu, which then
+            // holds the rest.
             var head = el('div', 'ws-head');
             head.appendChild(channelsToggle());
 
@@ -8165,66 +8170,61 @@
             tile.setAttribute('aria-hidden', 'true');
             tile.appendChild(channelIcon(channel));
             h.appendChild(tile);
-            h.appendChild(document.createTextNode(channel.name));
+            h.appendChild(el('span', 'ws-head-name', channel.name));
+
+            if (channel.topic) {
+                h.title = channel.topic;
+            }
+
             title.appendChild(h);
 
-            var topic = el('div', 'ws-topic');
-
-            // The customer, and beside it the records tied to it.
-            if (channel.customer) {
-                var who = el('span', 'ws-customer');
-
-                setHtml(who, channel.customer.customer.html);
-
-                channel.customer.links.forEach(function (link) {
-                    var tie = el('span', 'ws-customer-tie');
-
-                    setHtml(tie, link.html);
-                    tie.title = link.kind;
-                    who.appendChild(tie);
-                });
-
-                topic.appendChild(who);
-                topic.appendChild(document.createTextNode(' '));
-            } else if (channel.contact) {
-                setHtml(topic, channel.contact.html);
-                topic.appendChild(document.createTextNode(' '));
-            }
+            var tags = el('div', 'ws-head-tags');
 
             // How the work stands, from the latest status update
             // (workspace_status.js).
             var statusPill = window.PGWsStatus ? window.PGWsStatus.pill(channel, self, featureHelpers()) : null;
 
             if (statusPill) {
-                topic.appendChild(statusPill);
+                tags.appendChild(statusPill);
             }
 
             if (channel.department) {
-                var departmentBadge = topic.appendChild(el('span', 'badge me-1', channel.department.name));
+                var departmentBadge = tags.appendChild(el('span', 'badge ws-head-tag', channel.department.name));
                 departmentBadge.style.background = channel.department.color;
                 departmentBadge.style.color = readableInk(channel.department.color);
             }
 
-            topic.appendChild(document.createTextNode(channel.topic || ''));
-            title.appendChild(topic);
+            // The customer, and beside it the records tied to it.
+            var customer = self.customerNode(channel);
+
+            if (customer) {
+                customer.classList.add('ws-head-tag');
+                tags.appendChild(customer);
+            }
+
+            if (tags.firstChild) {
+                title.appendChild(tags);
+            }
+
             head.appendChild(title);
 
             var actions = el('div', 'ws-head-actions');
-            var faces = button('btn btn-sm btn-text theme-secondary d-inline-flex align-items-center gap-1', '', '', t('members'));
+            var faces = button('btn btn-sm btn-text theme-secondary ws-head-faces ws-head-wide', '', '', t('members'));
             faces.appendChild(avatarStack('', channel.members, 4));
             faces.appendChild(el('span', 'small', channel.members.length));
             faces.addEventListener('click', function () { self.showMembers(); });
             actions.appendChild(faces);
 
-            var addTask = button('btn btn-sm btn-text theme-secondary', '', 'bi-check2-square', t('new_task'));
-            addTask.addEventListener('click', function () {
-                var about = channel.customer ? channel.customer.customer : null;
-                var refs = about
-                    ? [{ type: about.type, id: about.id, label: about.label, icon: about.icon, token: '<#' + about.type + ':' + about.id + '>' }]
-                    : (channel.contact ? [{ type: 'contact', id: channel.contact.id, label: channel.contact.label, icon: 'bi-person-vcard', token: '<#contact:' + channel.contact.id + '>' }] : []);
+            var find = button('btn btn-sm btn-text theme-secondary ws-head-wide', '', 'bi-search', t('channel_search'));
+            find.addEventListener('click', function () { self.searchChannel(); });
+            actions.appendChild(find);
 
-                taskDrawer.open(0, { channel_id: channel.id, department_id: channel.department ? channel.department.id : 0, refs: refs }, function () { self.sync(); });
-            });
+            var info = button('btn btn-sm btn-text theme-secondary ws-head-wide', '', 'bi-info-circle', t('channel_info'));
+            info.addEventListener('click', function () { self.showMembers(); });
+            actions.appendChild(info);
+
+            var addTask = button('btn btn-sm btn-text theme-secondary ws-head-wide', '', 'bi-check2-square', t('new_task'));
+            addTask.addEventListener('click', function () { self.newChannelTask(); });
             actions.appendChild(addTask);
 
             actions.appendChild(self.channelMenu());
@@ -8407,6 +8407,55 @@
             });
         },
 
+        // The customer of the channel with the records tied to it, or its
+        // contact: a chip in the header and a line of its info.
+        customerNode: function (channel) {
+            if (channel.customer) {
+                var who = el('span', 'ws-customer');
+
+                setHtml(who, channel.customer.customer.html);
+
+                channel.customer.links.forEach(function (link) {
+                    var tie = el('span', 'ws-customer-tie');
+
+                    setHtml(tie, link.html);
+                    tie.title = link.kind;
+                    who.appendChild(tie);
+                });
+
+                return who;
+            }
+
+            if (channel.contact) {
+                var contact = el('span', 'ws-customer');
+
+                setHtml(contact, channel.contact.html);
+
+                return contact;
+            }
+
+            return null;
+        },
+
+        // A task of this channel, about its customer or contact.
+        newChannelTask: function () {
+            var self = this;
+            var channel = self.channel;
+            var about = channel.customer ? channel.customer.customer : null;
+            var refs = about
+                ? [{ type: about.type, id: about.id, label: about.label, icon: about.icon, token: '<#' + about.type + ':' + about.id + '>' }]
+                : (channel.contact ? [{ type: 'contact', id: channel.contact.id, label: channel.contact.label, icon: 'bi-person-vcard', token: '<#contact:' + channel.contact.id + '>' }] : []);
+
+            taskDrawer.open(0, { channel_id: channel.id, department_id: channel.department ? channel.department.id : 0, refs: refs }, function () { self.sync(); });
+        },
+
+        // The workspace search, on this channel (workspace_palette.js).
+        searchChannel: function () {
+            if (window.PGWsPalette) {
+                window.PGWsPalette.open({ scope: 'here' });
+            }
+        },
+
         channelMenu: function () {
             var self = this;
             var channel = self.channel;
@@ -8418,19 +8467,27 @@
 
             var menu = el('ul', 'menu pg-menu-end');
 
-            function item(label, iconName, handler) {
-                var li = el('li');
+            function item(label, iconName, handler, className) {
+                var li = el('li', className || '');
                 var link = button('menu-item pg-link-body-emphasis', label, iconName);
                 link.addEventListener('click', handler);
                 li.appendChild(link);
                 menu.appendChild(li);
             }
 
-            function divider() {
-                var li = el('li');
+            function divider(className) {
+                var li = el('li', className || '');
                 li.appendChild(el('hr', 'menu-divider'));
                 menu.appendChild(li);
             }
+
+            // On a phone the header keeps only the name: the channel's info,
+            // people and search beside it on a wider screen come first here
+            // (a new task is the Tasks tab's button and the / command).
+            item(t('channel_info'), 'bi-info-circle', function () { self.showMembers(); }, 'ws-head-narrow');
+            item(t('members') + ' (' + channel.members.length + ')', 'bi-people', function () { self.showMembers(); }, 'ws-head-narrow');
+            item(t('channel_search'), 'bi-search', function () { self.searchChannel(); }, 'ws-head-narrow');
+            divider('ws-head-narrow');
 
             if (channel.can_manage) {
                 item(t('edit_channel'), 'bi-pencil', function () {
@@ -8600,14 +8657,41 @@
             return wrap;
         },
 
+        // The channel's info: what it is for, its customer and department,
+        // then its people.
         showMembers: function () {
             var self = this;
             var channel = self.channel;
-            var node = offcanvas('ws-members', t('members'));
+            var node = offcanvas('ws-members', t('channel_info'));
             var body = clear(node.querySelector('.drawer-body'));
             var footer = clear(node.querySelector('.drawer-footer'));
 
             footer.classList.add('d-none');
+
+            var about = el('div', 'ws-info-about');
+
+            if (channel.topic) {
+                about.appendChild(el('div', 'ws-info-label', t('purpose')));
+                about.appendChild(el('p', 'ws-info-purpose', channel.topic));
+            }
+
+            var customer = self.customerNode(channel);
+
+            if (customer) {
+                about.appendChild(customer);
+            }
+
+            if (channel.department) {
+                var department = about.appendChild(el('span', 'badge ms-1', channel.department.name));
+                department.style.background = channel.department.color;
+                department.style.color = readableInk(channel.department.color);
+            }
+
+            if (about.firstChild) {
+                body.appendChild(about);
+            }
+
+            body.appendChild(el('div', 'ws-info-label', t('members') + ' (' + channel.members.length + ')'));
 
             // Claude, where it can be asked: listed, but no person to open.
             if (BOOT.claude && channel.claude && channel.claude.available) {
@@ -8641,7 +8725,7 @@
                 row.appendChild(personLink(memberFace, member));
                 var text = el('div', 'flex-grow-1');
                 text.appendChild(personLink(el('div', 'fw-semibold', member.name), member));
-                text.appendChild(el('small', 'fg-secondary', (member.id === channel.owner_id ? t('owner') + ' · ' : '') + (member.title || '')));
+                text.appendChild(el('small', 'fg-secondary', [(member.id === channel.owner_id) ? t('owner') : '', member.title || ''].filter(Boolean).join(' · ')));
                 row.appendChild(text);
                 row.appendChild(el('span', 'badge rounded-pill ' + (member.presence === 'online' ? 'theme-success' : 'theme-secondary'), t('presence_' + member.presence)));
 

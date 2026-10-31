@@ -12127,9 +12127,92 @@ html[data-bs-theme="dark"] .ws-group-icon {
   border-bottom: 1px solid var(--pg-border-color);
   min-height: var(--ws-head-h, 3.4rem);
 }
+/* One line: the sign and the name, then how the work stands, the
+   department and the customer, cut before they push the tools away. */
 .ws-head-title {
+  display: flex;
   flex: 1 1 auto;
+  align-items: center;
+  gap: .5rem;
   min-width: 0;
+}
+.ws-head-title h2 {
+  display: flex;
+  flex: 0 1 auto;
+  align-items: center;
+  min-width: 0;
+}
+.ws-head-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ws-head-tags {
+  display: flex;
+  flex: 0 1 auto;
+  align-items: center;
+  gap: .375rem;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.ws-head-tags > * {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 16rem;
+}
+.ws-head-tags .ws-customer {
+  flex-wrap: nowrap;
+  overflow: hidden;
+}
+.ws-head-tags .ws-status-pill {
+  margin-right: 0;
+}
+.ws-head-tags .ws-head-tag.badge {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ws-head-faces {
+  align-items: center;
+  gap: .25rem;
+}
+/* The channel's info (showMembers()): what it is for, its customer and
+   department, then its people. */
+.ws-info-about {
+  margin-bottom: .75rem;
+  padding-bottom: .75rem;
+  border-bottom: 1px solid var(--pg-border-color-translucent);
+}
+.ws-info-label {
+  margin: .25rem 0;
+  color: var(--pg-fg-2);
+  font-size: .72rem;
+  font-weight: 600;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+.ws-info-purpose {
+  margin: 0 0 .5rem;
+  white-space: pre-wrap;
+}
+/* The header's tools a phone finds in the channel's menu, and the other way
+   round. */
+@media (min-width: 768px) {
+  .menu .ws-head-narrow {
+    display: none;
+  }
+}
+@media (max-width: 767.98px) {
+  .ws-head .ws-head-wide {
+    display: none;
+  }
+  .ws-head-tags > :not(.ws-status-pill) {
+    display: none;
+  }
+  .ws-head .ws-status-pill .ws-status-text {
+    display: none;
+  }
 }
 /* The way to the channel list where the menu's Workspace list is out of
    sight: below lg, where the menu is a drawer, and on the mini rail (the
@@ -12169,8 +12252,6 @@ html[data-bs-theme="dark"] .ws-group-icon {
   letter-spacing: -.01em;
   font-weight: 700;
   margin: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
 }
 /* The channel's sign: its icon on a soft tile in its colour, and a thin
