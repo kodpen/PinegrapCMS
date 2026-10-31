@@ -25,10 +25,12 @@ description: Data threads on the Flows canvas (T1, V6): read from the fields, th
 ## How is a thread drawn into a field? (T2)
 - `workspace-flows-thread-binding.md`.
 
-## How is a value of a deleted box drawn? (T5, PR #3711)
-- `dataThreads()` marks `gone: true` a reference to a box id not in the graph (still `from: ''`, red chip); a box that is there but not before this one keeps a red chip, no thread.
-- `goneThread()` draws it red and dashed (`.wsf-thread-gone`, `--pg-danger`, `data-ends` the reading box, so dimming and the toggle apply): from the place the box had when `removeSelected()` removed it in this session (`state.gone`, per flow; an undo that brings it back forgets it), else a short loose end hanging from the chip.
-- Outline and run view say `fl_values_gone`, not `fl_values_missing`.
+## How is a value of a box not in the flow drawn? (T5, #3711; #4127)
+- `dataThreads()` marks `gone: true` a reference to a box id not in the graph (`from: ''`, red chip); a box there but not before this one keeps a red chip, no thread.
+- `goneThread()`: a short red dashed loose end under the chip (`.wsf-thread-gone`, `data-ends` the reading box). Deleting a box takes its values out of the fields (`workspace-flows-thread-removing.md`), so only the API, an AI draft or an old draft leave one. Outline and run view say `fl_values_gone`.
+
+## How is a thread selected or removed?
+- `workspace-flows-thread-removing.md`.
 
 ## What else?
 - The derived value box's own fields take threads like any box's (workspace-flows-derived-box.md). Threads in the run view: workspace-flows-run-view.md.

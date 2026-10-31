@@ -3309,6 +3309,113 @@
         return true;
     }
 
+    // A text without the places it reads a (bare) token, with or without a
+    // fallback; the rest stays. The one space that set the value apart
+    // goes with it: the one before it when nothing but a space, a line
+    // break, a punctuation mark or the end follows, else the one after it
+    // at the start of a line.
+    function withoutToken(text, token) {
+        var out = '';
+        var last = 0;
+        var match;
+
+        text = String(text);
+        VALUE_TOKEN.lastIndex = 0;
+
+        while ((match = VALUE_TOKEN.exec(text)) !== null) {
+            if (tokenBare(match[0]) !== token) {
+                continue;
+            }
+
+            var before = text.slice(last, match.index);
+            var end = match.index + match[0].length;
+            var after = text.charAt(end);
+
+            if (/ $/.test(before) && /^($|[\s.,;:!?)\]])/.test(after)) {
+                before = before.slice(0, -1);
+            } else if (((out + before) === '' || /\n$/.test(out + before)) && (after === ' ')) {
+                end++;
+            }
+
+            out += before;
+            last = end;
+        }
+
+        return out + text.slice(last);
+    }
+
+    // A thread taken out of the field it goes into: the field no longer
+    // reads the value (a condition compares none). False when it did not.
+    function unbindThread(to, key, token) {
+        var node = nodeById(to);
+        var config = node ? (node.config || {}) : {};
+
+        if (key === 'rule') {
+            if (!config.rule || (typeof config.rule.ref !== 'string') || (tokenBare(config.rule.ref) !== token)) {
+                return false;
+            }
+
+            config.rule.ref = '';
+
+            return true;
+        }
+
+        if ((typeof config[key] !== 'string') || !holdsToken(config[key], token)) {
+            return false;
+        }
+
+        config[key] = withoutToken(config[key], token);
+
+        return true;
+    }
+
+    // A box deleted takes the values read from it out of every field of
+    // the other boxes; how many fields lost one.
+    function dropValuesOf(id) {
+        var count = 0;
+
+        state.graph.nodes.forEach(function (node) {
+            if (node.id === id) {
+                return;
+            }
+
+            fieldTexts(node).forEach(function (item) {
+                var tokens = [];
+                var match;
+
+                VALUE_TOKEN.lastIndex = 0;
+
+                while ((match = VALUE_TOKEN.exec(item.text)) !== null) {
+                    if ((match[1] === id) && (tokens.indexOf(tokenBare(match[0])) === -1)) {
+                        tokens.push(tokenBare(match[0]));
+                    }
+                }
+
+                if (tokens.filter(function (token) { return unbindThread(node.id, item.key, token); }).length) {
+                    count++;
+                }
+            });
+        });
+
+        return count;
+    }
+
+    // What names a thread for its selection, its hit path and its menus:
+    // the box and field it goes into and the value it reads.
+    function threadKey(thread) {
+        return thread.to + ' ' + thread.field + ' ' + thread.token;
+    }
+
+    function threadByKey(key) {
+        return dataThreads().filter(function (thread) { return threadKey(thread) === key; })[0] || null;
+    }
+
+    // One thread per value: a removed one is announced by the value it read
+    // and the field it went into.
+    function threadName(thread) {
+        return thread.label + ' → ' + nameOf(nodeById(thread.to)) + ' › ' + thread.fieldLabel;
+    }
+
     // One thread for each value a field of a box holds, read from the
     // references kept in the fields: nothing else stores them, so a removed
     // chip takes its thread with it. A value no box before gives has no
@@ -3509,6 +3616,15 @@
                     chip.setAttribute('data-bind', id + ' ' + key);
                 }
 
+                // Its menu removes the threads going into it.
+                if (state.edit && !state.run && K.onContext) {
+                    K.onContext(chip, function () {
+                        return threadRemovals(threads.filter(function (thread) { return (thread.to === id) && (thread.field === key); }), function (thread) {
+                            return thread.label;
+                        });
+                    });
+                }
+
                 box.appendChild(chip);
             });
 
@@ -3526,7 +3642,7 @@
                 dot.setAttribute('aria-hidden', 'true');
 
                 if (state.edit && !state.run) {
-                    liveDot(dot, node, token);
+                    liveDot(dot, node, token, threads);
                 }
 
                 box.appendChild(dot);
@@ -3582,6 +3698,7 @@
             path.setAttribute('data-field', thread.field);
             path.setAttribute('data-ends', from.id + ' ' + to.id);
             ui.svg.appendChild(path);
+            threadHit(path, thread);
         });
 
         markThreads();
@@ -3589,37 +3706,67 @@
         return targets.length;
     }
 
-    // The thread of a value whose box was deleted: red and dashed, from the
-    // place the box had when it was removed here, else a short loose end
-    // hanging from the chip.
+    // The thread of a value whose box is not in the flow (written by the
+    // API, an AI draft or an old draft; deleting a box takes its values
+    // out of the fields): red and dashed, a short loose end hanging from
+    // the chip.
     function goneThread(thread, to, field) {
-        var id = /^\{\{node\.([a-z0-9_]+)\./.exec(thread.token)[1];
-        var was = state.gone && state.flow && (state.gone.flow === state.flow.id) ? state.gone.at[id] : null;
         var x2 = to.x + field.left + field.width / 2;
         var y2 = to.y + BOX_H + DATA_ROW.half;
         var path = svgEl('path', 'wsf-thread wsf-thread-gone');
-        var d;
 
-        if (was) {
-            var x1 = was.x + DATA_ROW.left + DATA_ROW.half;
-            var others = state.graph.nodes.filter(function (node) { return node !== to; });
-
-            d = threadPath(x1, was.y + BOX_H + DATA_ROW.half, x2, y2, 10 + 0.06 * Math.abs(x2 - x1), others).d;
-        } else {
-            d = 'M ' + (x2 - 16) + ' ' + (y2 + 22) + ' Q ' + x2 + ' ' + (y2 + 18) + ' ' + x2 + ' ' + y2;
-        }
-
-        path.setAttribute('d', d);
+        path.setAttribute('d', 'M ' + (x2 - 16) + ' ' + (y2 + 22) + ' Q ' + x2 + ' ' + (y2 + 18) + ' ' + x2 + ' ' + y2);
         path.setAttribute('data-to', to.id);
         path.setAttribute('data-field', thread.field);
         path.setAttribute('data-ends', to.id);
         ui.svg.appendChild(path);
+        threadHit(path, thread);
+    }
+
+    // A thread takes the pointer through a wider path on the same route,
+    // invisible: hovered the thread is drawn thicker, clicked it is selected
+    // (canvas pointerDown()) to be removed. The stylesheet keeps .wsf-thread
+    // out of the pointer's way, so the hit path takes it inline.
+    function threadHit(line, thread) {
+        if (!state.edit || state.run) {
+            return;
+        }
+
+        var hit = svgEl('path', 'wsf-thread wsf-thread-hit');
+        var key = threadKey(thread);
+        var selected = !!(state.selected && (state.selected.type === 'thread') && (state.selected.id === key));
+        var lit = function (on) {
+            line.style.strokeWidth = (on || selected) ? '2.5px' : '';
+        };
+
+        if (selected) {
+            line.style.stroke = 'var(--ws-accent)';
+            lit(true);
+        }
+
+        hit.setAttribute('d', line.getAttribute('d'));
+        hit.setAttribute('data-thread', key);
+        hit.setAttribute('data-ends', line.getAttribute('data-ends'));
+        hit.style.fill = 'none';
+        hit.style.stroke = 'transparent';
+        hit.style.strokeWidth = '10px';
+        hit.style.strokeDasharray = 'none';
+        hit.style.pointerEvents = 'stroke';
+        hit.style.cursor = 'pointer';
+        hit.addEventListener('pointerenter', function () { lit(true); });
+        hit.addEventListener('pointerleave', function () { lit(false); });
+
+        var title = svgEl('title', '');
+
+        title.textContent = threadName(thread);
+        hit.appendChild(title);
+        ui.svg.appendChild(hit);
     }
 
     // A dot a thread may be drawn from: dragged to a field chip, tapped twice
     // (or its menu's Fork, a long press on a touch screen) to choose the
     // field with the next tap; the menu's "Pass to a field…" asks for it.
-    function liveDot(dot, node, token) {
+    function liveDot(dot, node, token, threads) {
         dot.classList.add('wsf-data-live');
         dot.setAttribute('data-node', node.id);
         dot.setAttribute('data-token', token);
@@ -3631,10 +3778,14 @@
 
         if (K.onContext) {
             K.onContext(dot, function () {
+                var leaving = threads.filter(function (thread) { return (thread.from === node.id) && (thread.token === token); });
+
                 return [
                     { label: t('fl_thread_fork'), icon: 'bi-bezier2', action: function () { startBinding(node.id, token); } },
                     { label: t('fl_thread_pass'), icon: 'bi-keyboard', action: function () { askBind(node, token); } }
-                ];
+                ].concat(leaving.length ? ['-'] : [], threadRemovals(leaving, function (thread) {
+                    return nameOf(nodeById(thread.to)) + ' › ' + thread.fieldLabel;
+                }));
             });
         }
     }
@@ -3752,6 +3903,10 @@
             button.setAttribute('aria-pressed', state.threads ? 'true' : 'false');
             ui.stage.classList.toggle('wsf-threads-off', !state.threads);
 
+            if (!state.threads && state.selected && (state.selected.type === 'thread')) {
+                select(null);
+            }
+
             try {
                 window.localStorage.setItem('pg_wsf_threads', state.threads ? 'on' : 'off');
             } catch (error) {
@@ -3800,6 +3955,21 @@
 
                 line.appendChild(K.icon(thread.from ? 'bi-arrow-return-right' : 'bi-exclamation-triangle', 'wsf-outline-read-icon'));
                 line.appendChild(el('span', '', text));
+
+                // The keyboard's and the screen reader's way to remove a
+                // thread; the focus goes to the box's title after it.
+                if (state.edit && !state.run) {
+                    var remove = K.button('btn btn-sm btn-text theme-secondary py-0', t('fl_thread_remove_short'), 'bi-x-lg');
+
+                    remove.setAttribute('aria-label', t('fl_thread_remove_of', thread.label));
+                    remove.title = remove.getAttribute('aria-label');
+                    remove.addEventListener('click', function () {
+                        state.refocus = 'title-' + id;
+                        removeSelected({ type: 'thread', id: threadKey(thread) });
+                    });
+                    line.appendChild(remove);
+                }
+
                 list.appendChild(line);
             });
 
@@ -4760,6 +4930,19 @@
         chip.setAttribute('data-token', token);
         chip.title = (name && state.edit && !bare) ? title + ' ' + t('fl_values_empty_tap') : title;
 
+        // In a draft a × removes it, its thread with it; valuesText() reads
+        // the chip's token, never this. The keyboard has the caret beside
+        // the chip and the outline's Remove.
+        if (state.edit) {
+            var remove = el('span', 'wsf-chip-remove', '×');
+
+            remove.title = t('fl_thread_remove');
+            remove.setAttribute('aria-hidden', 'true');
+            remove.style.marginLeft = '4px';
+            remove.style.cursor = 'pointer';
+            chip.appendChild(remove);
+        }
+
         return chip;
     }
 
@@ -4977,7 +5160,13 @@
         input.addEventListener('click', function (event) {
             var chip = (event.target.nodeType === 1) ? event.target.closest('.wsf-chip') : null;
 
-            if (state.edit && chip && input.contains(chip) && !bare && names[tokenBare(chip.getAttribute('data-token'))]) {
+            if (state.edit && chip && input.contains(chip) && event.target.closest('.wsf-chip-remove')) {
+                var token = tokenBare(chip.getAttribute('data-token'));
+
+                chip.parentNode.removeChild(chip);
+                changed();
+                announce(t('fl_removed', names[token] ? names[token].label : token.slice(2, -2)));
+            } else if (state.edit && chip && input.contains(chip) && !bare && names[tokenBare(chip.getAttribute('data-token'))]) {
                 askFallback(chip, names, changed);
             }
         });
@@ -5124,6 +5313,9 @@
         } else if (selected && (selected.type === 'edge') && state.graph.edges[selected.id] && !state.outline) {
             ui.side.appendChild(el('div', 'wsf-side-title', t('fl_arrow')));
             ui.side.appendChild(edgeForm(selected.id));
+        } else if (selected && (selected.type === 'thread') && threadByKey(selected.id) && !state.outline) {
+            ui.side.appendChild(el('div', 'wsf-side-title', t('fl_thread_one')));
+            ui.side.appendChild(threadForm(threadByKey(selected.id)));
         } else {
             ui.side.appendChild(el('div', 'wsf-side-title', t('fl_flow_settings')));
             ui.side.appendChild(flowForm());
@@ -7779,6 +7971,35 @@
         return box;
     }
 
+    // A thread selected: what it brings where, and the way to remove it.
+    function threadForm(thread) {
+        var box = el('div', 'wsf-form');
+        var text = t('fl_thread_line', nameOf(nodeById(thread.to)) + ' › ' + thread.fieldLabel, thread.label);
+
+        box.appendChild(el('p', 'small mb-3', thread.from ? text : text + ' ' + t(thread.gone ? 'fl_values_gone' : 'fl_values_missing')));
+
+        if (state.edit && !state.run) {
+            var remove = K.button('btn btn-sm btn-outline theme-warning', t('fl_thread_remove'), 'bi-trash');
+
+            remove.addEventListener('click', function () { removeSelected({ type: 'thread', id: threadKey(thread) }); });
+            box.appendChild(remove);
+        }
+
+        return box;
+    }
+
+    // The menu items that remove threads: one names none, several each
+    // name theirs (`name`).
+    function threadRemovals(threads, name) {
+        return threads.map(function (thread) {
+            return {
+                label: (threads.length > 1) ? t('fl_thread_remove_of', name(thread)) : t('fl_thread_remove'),
+                icon: 'bi-x-lg',
+                action: function () { removeSelected({ type: 'thread', id: threadKey(thread) }); }
+            };
+        });
+    }
+
     // ── The outline ────────────────────────────────────────────────────
 
     // The heading after the kind: the box's title, if it has one.
@@ -8013,13 +8234,6 @@
         state.binding = null;
         state.selected = (selected && (selected.type === 'node') && nodeById(selected.id)) ? selected : null;
 
-        // A box back from the bin of this session forgets its old place.
-        if (state.gone) {
-            graph.nodes.forEach(function (node) {
-                delete state.gone.at[node.id];
-            });
-        }
-
         changed(true);
 
         // The button that went grey gives the focus to the other one.
@@ -8249,19 +8463,25 @@
                 state.refocus = (near ? 'title-' + near.id + ' ' : '') + 'outline-add-task';
             }
 
-            // Where it stood: the values it gave still have threads, red, from
-            // there (goneThread()).
-            if (!state.gone || !state.flow || (state.gone.flow !== state.flow.id)) {
-                state.gone = { flow: state.flow ? state.flow.id : null, at: {} };
-            }
+            // Its arrows go with it, and so do its threads: the fields of
+            // the other boxes no longer read its values. One undo brings
+            // them back together.
+            var fields = dropValuesOf(node.id);
 
-            state.gone.at[node.id] = { x: node.x, y: node.y };
             state.graph.nodes = state.graph.nodes.filter(function (item) { return item !== node; });
             state.graph.edges = state.graph.edges.filter(function (edge) { return edge.from !== node.id && edge.to !== node.id; });
-            announce(t('fl_removed', nameOf(node)));
+            announce(fields ? t((fields === 1) ? 'fl_removed_values_one' : 'fl_removed_values', nameOf(node), fields) : t('fl_removed', nameOf(node)));
         } else if (selected.type === 'edge') {
             state.graph.edges.splice(selected.id, 1);
             announce(t('fl_removed', t('fl_arrow')));
+        } else if (selected.type === 'thread') {
+            var thread = threadByKey(selected.id);
+
+            if (!thread || !unbindThread(thread.to, thread.field, thread.token)) {
+                return;
+            }
+
+            announce(t('fl_removed', threadName(thread)));
         }
 
         // The problems named the old places of the arrows; the next save
@@ -10387,7 +10607,7 @@
     function focusSelected() {
         var selected = state.selected;
 
-        if (!selected || state.outline || (selected.type === 'edge')) {
+        if (!selected || state.outline || (selected.type !== 'node')) {
             return;
         }
 
@@ -10580,6 +10800,7 @@
         var target = event.target;
         var box = target.closest('.wsf-node[data-node]');
         var edge = target.closest('.wsf-edge');
+        var wire = target.closest('[data-thread]');
         var dot = target.closest('.wsf-data-live');
         var bind = target.closest('[data-bind]');
         var ring = dot ? dot.querySelector('.wsf-data-ring').getBoundingClientRect() : null;
@@ -10630,6 +10851,10 @@
             state.drag = drag;
             select({ type: 'node', id: drag.item.id });
             box.focus({ preventScroll: true });
+        } else if (wire) {
+            drag.kind = 'none';
+            select({ type: 'thread', id: wire.getAttribute('data-thread') });
+            viewport.focus({ preventScroll: true });
         } else if (edge) {
             drag.kind = 'none';
             select({ type: 'edge', id: parseInt(edge.getAttribute('data-edge'), 10) });
@@ -10875,7 +11100,7 @@
         var handled = true;
 
         if ((key === 'ArrowLeft') || (key === 'ArrowRight') || (key === 'ArrowUp') || (key === 'ArrowDown')) {
-            if (selected && (selected.type !== 'edge') && state.edit && !event.ctrlKey && !event.metaKey) {
+            if (selected && (selected.type === 'node') && state.edit && !event.ctrlKey && !event.metaKey) {
                 moveSelected((key === 'ArrowLeft') ? -step : (key === 'ArrowRight') ? step : 0, (key === 'ArrowUp') ? -step : (key === 'ArrowDown') ? step : 0);
             } else {
                 state.view.x -= (key === 'ArrowLeft') ? -step * 2 : (key === 'ArrowRight') ? step * 2 : 0;

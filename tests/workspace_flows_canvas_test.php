@@ -2121,6 +2121,7 @@ function boxValues() { return ['t1', 't2', 't3', 't4', 't5', 't6'].map(function 
 function bindTargets() { return []; }
 function markThreads() {}
 function liveDot() {}
+function threadHit() {}
 function svgEl(tag, className) { return new FakeNode(tag, className); }
 FakeNode.prototype.style = null;
 ui.layer = new FakeNode('div');
@@ -2730,6 +2731,7 @@ function test_workspace_flows_canvas_loop_fields_take_no_fallback()
 		array('fieldFallback', 'valueChip'),
 		<<<'JS'
 state = { edit: true };
+FakeNode.prototype.style = {};
 var names = { '{{node.c.l}}': { label: 'Constants › l', skipped: false } };
 console.log(JSON.stringify({
     takes: [fieldFallback({ kind: 'for_each' }, 'list'), fieldFallback({ kind: 'for_each_end' }, 'collect'), fieldFallback({ kind: 'post' }, 'body'), fieldFallback({ kind: 'for_each' }, 'path')],
@@ -2766,9 +2768,6 @@ function test_workspace_flows_canvas_thread_is_removed_from_its_field()
 		array('nodeById', 'withoutToken', 'unbindThread'),
 		$found[0] . <<<'JS'
 var a = '{{node.web_check_1.outcome}}';
-var refreshed = [];
-function refreshNode(node) { refreshed.push(node.id); }
-function drawSettings() {}
 state = { graph: { nodes: [
     { id: 'post_1', kind: 'post', config: { body: 'Result: {{node.web_check_1.outcome}} and {{node.web_check_1.outcome|none}}, code {{node.web_check_1.status_code}}' } },
     { id: 'condition_1', kind: 'condition', config: { rule: { type: 'value', ref: '{{node.web_check_1.outcome}}', op: 'eq', value: 'up' } } }
@@ -2786,8 +2785,7 @@ console.log(JSON.stringify({
     body: unbindThread('post_1', 'body', a),
     rule: unbindThread('condition_1', 'rule', a),
     again: unbindThread('post_1', 'body', a),
-    config: [nodeById('post_1').config.body, nodeById('condition_1').config.rule],
-    refreshed: refreshed
+    config: [nodeById('post_1').config.body, nodeById('condition_1').config.rule]
 }));
 JS
 	);
@@ -2807,7 +2805,6 @@ JS
 	), $result['texts'], 'the token goes, the text stays');
 	pg_assert_same(array(true, true, false), array($result['body'], $result['rule'], $result['again']), 'removed once');
 	pg_assert_same(array('Result: and, code {{node.web_check_1.status_code}}', array('type' => 'value', 'ref' => '', 'op' => 'eq', 'value' => 'up')), $result['config'], 'every place the field reads it, with or without a fallback');
-	pg_assert_same(array('post_1', 'condition_1'), $result['refreshed'], 'each changed box is redrawn');
 }
 
 // Deleting a box takes the values read from it out of every field that
@@ -2828,8 +2825,6 @@ function test_workspace_flows_canvas_deleting_a_box_removes_its_values()
 	$result = ws_flows_canvas_test_node(
 		array('nodeById', 'fieldTexts', 'withoutToken', 'unbindThread', 'dropValuesOf'),
 		$constants . <<<'JS'
-function refreshNode() {}
-function drawSettings() {}
 state = { graph: { nodes: [
     { id: 'web_check_1', kind: 'web_check', config: {} },
     { id: 'post_1', kind: 'post', config: { body: 'Site {{node.web_check_1.outcome}} ({{node.web_check_1.status_code}}) {{node.web_check_2.outcome}}' } },
@@ -2861,6 +2856,6 @@ JS
 	$remove = ws_flows_canvas_test_script_function($source, 'removeSelected');
 	pg_assert_contains('dropValuesOf(node.id)', $remove, 'deleting a box removes its values');
 	pg_assert_contains("selected.type === 'thread'", $remove, 'Delete removes a selected thread');
-	pg_assert_contains("'pointer-events', 'stroke'", ws_flows_canvas_test_script_function($source, 'threadHit'), 'the hit path takes the pointer from the script');
+	pg_assert_contains("pointerEvents = 'stroke'", ws_flows_canvas_test_script_function($source, 'threadHit'), 'the hit path takes the pointer from the script');
 	pg_assert_true(strpos($source, 'state.gone') === false, 'no red thread from the place of a box deleted in this session');
 }
