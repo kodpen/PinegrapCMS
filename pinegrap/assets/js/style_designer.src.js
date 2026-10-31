@@ -13507,7 +13507,9 @@ const StyleDesigner = (function () {
                     google_signin:        _sdT('Sign-in buttons: Google, Microsoft and Apple (filled by the backend, only the ones turned on in the settings)'),
                     forgot_password_link: _sdT('Forgot password link (filled by the backend — depends on the site setting)'),
                     register_link:        _sdT('Sign-up link (filled by the backend — depends on the registration page setting)'),
-                    password_hint:        _sdT('Password hint (filled by the backend — only on the hint screen)'),
+                    // Left in trees saved before the hint left the forgot
+                    // password form; the site drops it.
+                    password_hint:        _sdT('Password hint (no longer shown on this form; this block can be deleted)'),
                     password_rules:       _sdT('Strong password rules (filled by the backend — depends on the site setting)'),
                     google_signup:        _sdT('Sign-up buttons: Google, Microsoft and Apple (filled by the backend, only the ones turned on in the settings)'),
                     login_link:           _sdT('Sign-in link (filled by the backend)'),
@@ -40090,7 +40092,6 @@ const StyleDesigner = (function () {
             ['__site_name',     _sdT('Site name')]
         ]},
         { label: _sdT('Screen'), tokens: [
-            ['__password_hint', _sdT('Password hint (filled only on the hint screen)')],
             ['__back_url',      _sdT('Sign-in page address (href)')]
         ]}
     ];
@@ -41390,8 +41391,6 @@ const StyleDesigner = (function () {
             out.push(['google_signin',        _sdT('Sign-in buttons: Google, Microsoft and Apple (only the ones turned on)')]);
             out.push(['forgot_password_link', _sdT('Forgot password link (hidden when the site setting is off)')]);
             out.push(['register_link',        _sdT('Sign-up link (hidden when no registration page is chosen)')]);
-        } else if (type === 'forgot_password') {
-            out.push(['password_hint',        _sdT('Password hint box (drawn only on the hint screen)')]);
         } else if (type === 'registration') {
             out.push(['captcha',              _sdT('CAPTCHA (depends on the site setting; hidden for a signed-in visitor)')]);
             out.push(['password_rules',       _sdT('Strong password rules (hidden when the site setting is off)')]);
@@ -61382,8 +61381,6 @@ const StyleDesigner = (function () {
                                         createNode('content', { contentType: 'paragraph',
                                             text: _sdT('Enter your email address and we will send you a password reset link.'),
                                             cssClass: 'text-muted text-center small mb-4' }),
-                                        createNode('semantic', { tag: 'div', cssClass: '', customName: _sdT('Password Hint'),
-                                            _bindings: { section: 'password_hint' } }),
                                         createNode('semantic', { tag: 'div', cssClass: 'mb-3', customName: _sdT('Email') }, [
                                             createNode('semantic', { tag: 'label', cssClass: 'form-label', text: _sdT('Email'), customName: _sdT('Label'),
                                                 _attrs: [{ name: 'for', value: fpId + '_email' }] }),

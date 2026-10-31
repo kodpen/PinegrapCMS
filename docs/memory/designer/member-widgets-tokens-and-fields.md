@@ -6,7 +6,7 @@ description: Membership widget tokens/sections, Google rules, core vs contacts-c
 ## Which tokens and sections does each widget have?
 Token = address/name; section = server-produced block.
 - Login: sections `google_signin`, `forgot_password_link`, `register_link`; tokens `__site_name`, `__redirect_url`, `__forgot_password_url`, `__register_url`, `__google_signin_url`.
-- Reset: section `password_hint`; tokens `__site_name`, `__password_hint`, `__back_url`.
+- Reset: tokens `__site_name`, `__back_url`. No section: the old `password_hint` section (and token) of a saved tree is emptied, its container drops (#4044).
 - Register: sections `captcha`, `password_rules`, `google_signup`, `login_link`; tokens `__site_name`, `__login_url`, `__google_signup_url`, `__password_rules` (HTML), `__opt_in_label`.
 - Membership: same as register minus `captcha`, plus `__member_id_label`. Google is not drawn in `'membership'` mode nor on the Google return (`google_membership_pending`); on that return the password is not `required`.
 - A designer wanting their own look binds `href` to the token instead of using the section.
@@ -21,7 +21,7 @@ Token = address/name; section = server-produced block.
 - `welcome_email_page_id` (register, membership) and `reset_email_page_id` (reset; the reset form also posts `pg_widget_id`) pick an Account E-mail page: docs/memory/designer/account-email-pages.md.
 
 ## What is the `screen` state in the reset widget?
-- `screen` is the reset state machine: `''` = form; `password_hint` = hint + same form (hidden `screen=password_hint` still submits); `confirm` = controls drop, notice stays, form not wrapped.
+- `screen` has two states: `''` = form; `confirm` = controls drop, notice stays, form not wrapped. The `password_hint` screen is gone (#4044): the form never shows an account's hint, since a hint for a known address and the confirmation for an unknown one told anyone which addresses hold an account (`workflow/decisions-made-product-13.md`). `forgot_password.php`, `get_forgot_password.php` and the widget never read `user_password_hint`; `tests/forgot_password_no_hint_test.php`.
 - The confirmation notice is identical for known and unknown address (owner decision, 2026-08-31): never produce "address not found" on the widget side.
 
 ## Why must the page-name box not be overwritten while open?
