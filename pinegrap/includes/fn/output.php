@@ -1723,6 +1723,7 @@ function pg_css_bundles()
 {
     return array(
         'assets/css/backend.min.css' => 'assets/css/backend.src.css',
+        'assets/css/pg_image_editor.min.css' => 'assets/css/pg_image_editor.src.css',
     );
 }
 
@@ -6669,6 +6670,9 @@ function pg_js_bundles()
         // team: small, and apart from the workspace's own set.
         'assets/js/workspace_side.min.js'          => array('assets/js/workspace_side.js'),
         'assets/js/payment_hosted.min.js'          => array('assets/js/payment_hosted.js'),
+        // The image editor (includes/fn/image_editor.php loads it on the
+        // first open): the pure model first, then the modal.
+        'assets/js/pg_image_editor.min.js'         => array('assets/js/pg_image_editor_model.js', 'assets/js/pg_image_editor.js'),
         'assets/js/pg_fx.min.js'                   => array('assets/js/pg_fx.src.js'),
         // "Convert to text" under a voice message, loaded before
         // workspace.min.js and beside the chat window's script.
