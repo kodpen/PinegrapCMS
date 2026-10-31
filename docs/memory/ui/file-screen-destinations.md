@@ -7,6 +7,7 @@ description: Where Edit File, Upload File and Upload Design Files go after Save 
 - To `send_to` (`pg_send_to_url('')` through `pg_safe_redirect_path()`), else `view_files.php`; the `view_files` notice is still added.
 - All Files opens Edit File with `send_to` = its own address (the `?filter=` it shows); the dashboard's Largest Files card with `welcome.php`.
 - Symptom fixed: both went to bare `view_files.php`, the default filter, never back to the dashboard.
+- The row Edit File and Image Editor buttons of All Files and Design Files, and the Image Editor link of Edit File and Edit Design File, `urlencode()` `send_to` and `file_name`. A view change gives `?filter=default&filter=my_photos`; unencoded, PHP read `send_to` up to the first `&` and Back landed on the old view, and a legacy name with `&`, `+` or `#` opened the wrong file. Pinned by `tests/file_list_links_encoding_test.php`.
 
 ## Which reloads of Edit File keep send_to?
 - Save, rotate (refused and done), SVG convert (copy and overwrite) and Duplicate append `&send_to=` from `pg_send_to_url('')`, so the back arrow still knows where the file was opened from.

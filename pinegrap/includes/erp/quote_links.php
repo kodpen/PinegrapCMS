@@ -308,7 +308,7 @@ function erp_quote_link_accept($token, $png, $signer_name)
     erp_quote_set_status((int) $quote['id'], 'accepted', 0);
     erp_event_quote((int) $quote['id'], 'erp.quote.signed');
 
-    log_activity(lang(array(
+    log_activity(pg_log_lang(array(
         'string' => 'erp quote ({var:1}) was signed by {var:2} through its guest link',
         'vars' => array((string) $quote['full_number'], (string) $stored['record']['signer_name']),
     )), 'ERP');

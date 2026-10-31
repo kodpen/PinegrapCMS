@@ -353,7 +353,7 @@ if (!$_POST) {
             
             // if there is a send to, then add send to to query string
             if ($liveform->get_field_value('send_to') != '') {
-                $query_string_send_to = '&send_to=' . $liveform->get_field_value('send_to');
+                $query_string_send_to = '&send_to=' . urlencode($liveform->get_field_value('send_to'));
             }
             
             header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/edit_calendar_event.php?id=' . $liveform->get_field_value('id') . $query_string_recurrence_number . $query_string_send_to);

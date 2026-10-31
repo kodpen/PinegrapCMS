@@ -387,6 +387,8 @@ function ws_message_payload($viewer, $row, $refs, $people, $tasks, $assignees, $
         // Its status and holder, for the same reader (mail_status.php), null for none.
         'mail_state'  => ($mail && !$deleted && function_exists('ws_mail_state_offer'))
             ? ws_mail_state_offer($extra['mail'][(int) $row['sender_id']] ?? null, ws_mail_reply_offer($row, $extra['mail'][(int) $row['sender_id']] ?? null, $can_post), (int) $viewer['id']) : null,
+        // Pinegrap AI's reply draft under a conversation's card (mail_triage.php), null for none.
+        'mail_draft'  => (!$deleted && function_exists('ws_mail_triage_draft_offer')) ? ws_mail_triage_draft_offer($row, $can_post) : null,
         // The same test as ws_ack_can_request(), from what is known already.
         'ack_can_request' => $can_post && !$deleted && function_exists('ws_acks_ready') && ws_acks_ready()
             && in_array($row['kind'], array('message', 'note', 'decision'), true) && in_array($row['sender_kind'], array('user', 'app'), true)

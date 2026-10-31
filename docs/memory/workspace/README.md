@@ -39,6 +39,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - mail-sent-and-bounces.md: After a Workspace e-mail answer leaves (G3c): the copy APPENDed to the box's sent folder, email()'s keep_mime, and a delivery failure (DSN) drawn as a "Not delivered" line under the conversation
 - mail-status.md: State of a Workspace e-mail conversation (G5a, G5b, mail_status.php): open/waiting/closed, the holder, the first-response target, the card's controls, the automatic answer
 - mail-tables.md: Incoming e-mail tables (G1b, step 11.0.82): ws_mail_boxes, ws_mail_conversations, ws_mail_items, sender kind 'mail'; what each column holds and why
+- mail-triage.md: Pinegrap AI's one suggestion on a new e-mail conversation (G8, PR #3787, decision #3744 a): the per-box switch, when it runs, the prompt, the message and its draft, what it never does
 - voice-browser-to-text.md: "Convert to text" under a voice message by the browser's own model (pg_voice_text.js, owner request 2026-10-29): where it shows, Prompt API with audio input, pieces of 30 s, nothing sent or kept
 - workflow-table-board.md: Board view of a workflow table (T2, #2994): rows as cards by a status column via the channel board's mountSource(); a move writes the status cell with ws_wtable_row_update()
 - workflow-table-import-notes.md: A note's table block into a workflow table (T6b, #3044): notes and tables offered, cells read (tags, marks, formulas), then the file import's confirmation and writes; the note never changes
@@ -121,7 +122,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-flows-api-templates.md: Flow templates over the external API (A6, #2298): GET /workspace/flow-templates, POST /workspace/flows with template and answers, what is checked, what never happens (publish)
 - workspace-flows-approval-box.md: The approval box of a flow (F5c, PR #2142): asks, waits on approval:<id>, leaves on approved, rejected, expired, withdrawn or failed; deadline in hours, woken by approval.decided or the hourly look
 - workspace-flows-arrows-always.md: Arrows on always in a flow (PR #2249): taken however the box ended, as a scheduled follow-up on always; which boxes have it, routing a failure, the timeout check, canvas
-- workspace-flows-box-look.md: How a flow box looks (V1, V2 of plans/workspace-flows-look.md, PRs #3118, #3158): its group and colour per theme, its line icon, the 1.5 px border, the selection ring, control arrows
+- workspace-flows-box-look.md: How a flow box looks (V1, V2 of plans/workspace-flows-look.md, PRs #3118, #3158): group colour per theme, line icon, 1.5 px border, selection ring, arrows, palette wrapping
 - workspace-flows-box-try.md: Trying one box of a flow's draft without running it (F4e, PR #2024, ws_flow_box_try()): answers per kind, run values, rights, panel action, read-only API route, canvas button
 - workspace-flows-canvas-harness.md: Browser harness of the Flows canvas (tests/js/flows_canvas.js, #3162, run by hand, not in CI): what is real and what stands in, how to run it, the scenarios, the result of 2026-10-29
 - workspace-flows-canvas.md: The flow canvas (workspace_flows.php, workspace_flow.js): who sees it, panel actions, editor, autosave, 409, focus, keys, outline, read-only, what is left; the run view has its own file
@@ -192,7 +193,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-mcp-agent-identity.md: One avatar and icon per MCP server asked by its alias ('mcp:<id>'), drawn the same by every server-side place (ws_mcp_agent_identity()); the catalogue entry found by URL; the name kept '@alias'
 - workspace-mcp-servers-api.md: The site's MCP servers in the Workspace API (api_mcp.php, PR #1800): list with state, add, probe, refresh, tool rules; administrators only, no MCP tool; checks and writes shared with the settings card
 - workspace-mcp-servers-card.md: Workspace "MCP servers" card (mcp.php, mcp_catalogue.php): ready-made connectors, adding by address, read-only tools on at first read, the form kept after an error, Pinegrap AI failing
-- workspace-menu-list.md: The Workspace list in the main menu (#2545): workspace_side.js draws ws_side_payload() on every panel page; who sees what, inline data vs ws_side, the channel screen's hooks, pill, tour
+- workspace-menu-list.md: The Workspace list in the main menu (#2545, layout #3794): workspace_side.js draws ws_side_payload() on every panel page; its order, who sees what, inline data vs ws_side, hooks, pill, tour
 - workspace-message-meter.md: The Workspace composer's length meter near WS_MESSAGE_MAX: what is counted, the limit's source, 90 % and over, the send refused early, commands, screen readers, boxes
 - workspace-module-decisions.md: Binding decisions of the Workspace module (channels, tasks, plan board): rights not roles, private channel audit, chat bubble kept apart, multiple assignees, customer context, API scope ceiling
 - workspace-nested-controls.md: Why the channel list's pin and the search palette's account link are aria-hidden mouse shortcuts inside their link/option, and the keyboard routes to the same actions (Shift+F10 menu, Shift+Enter)
@@ -246,7 +247,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-unsent-draft.md: The Workspace composer's unsent text kept on the browser (localStorage) per site, viewer, channel and discussion: key, when saved, restored, cleared, limits, what is never kept
 - workspace-upload-refusals.md: What a Workspace channel refuses to take (ws_upload_refused()): the file manager's list, page and script types, Office files with macros (PR #1322); why, every door it covers, the message
 - workspace-variant-set-change.md: A variant set added from a change card (variant_set, PR #1943): fields, variants and price_rules values, checks, writer, events, matrix card, proposers
-- workspace-visit-contact.md: A customer visit on the Work Calendar names its contact (ws_events.contact_id, 11.0.118, CRM seams 10.1, #3517): the pick check, the card section, the history entry, holder and erasure
+- workspace-visit-contact.md: A customer visit on the Work Calendar names its contact (ws_events.contact_id, 11.0.118, #3517): pick check, card, history, holder, erasure, API field (#3796)
 - workspace-voice-asks.md: A voice message that asks Claude, Pinegrap AI or an MCP server (V4c): tags beside the mic, a voice answer, asked once transcribed (ws_voice_posted(), ws_voice_ask())
 - workspace-voice-assistants.md: Voice transcripts the assistants, recaps, bells, banners and search read (V4a #2798, V4b): ws_voice_transcripts(), ws_voice_with_transcript(), ws_voice_excerpt(), ws_voice_search_or()
 - workspace-voice-read-aloud.md: Assistants' answers read aloud (V5): the per-person browser switch in the channel menu, off by default, no schema; which answers are read, what is left out, when it stops

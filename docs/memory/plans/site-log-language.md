@@ -18,9 +18,11 @@ description: Plan: the Site Log writers still passing bare English to log_activi
 
 ## What is left?
 - `includes/fn/layouts.php` (136): bare literal. Held by draft #3141; start after it lands.
-- `email_a_friend.php` 158: bare English on purpose: the spam limit at 84 counts rows `LIKE '%e-mailed a link%'`. A count that does not read the log text needs a marker column or table (a schema change, owner's decision); left as it is.
+- `email_a_friend.php`: done #3818 (#3802): the daily limit is the WAF rate scope `eaf` (`waf/form-submission-limits.md`); the line goes through `pg_log_lang()`; listed in the test.
 - `includes/settings/commerce.save.php` 693 logs `parasut_connect_report()`'s line: part of the owner's ERP work, not checked.
-- Not checked, held by other work: `custom_form.php`, `includes/fn/custom_form.php`, `includes/fn/forms.php`, `includes/migrations/*`, `includes/erp/*`, `parasut_connect.php`, `add_erp_quote.php`, `add_erp_receipt.php`, and the files of draft #3298 (`includes/api/*`, `includes/fn/cart_quotes.php`, `add_cart_quote.php`, `view_cart_quotes.php`).
+- Part 5 done #3800: `custom_form.php` (access denied, auto-login, key code), `logout()` in `includes/fn/forms.php` and the quote guest signature (`includes/erp/quote_links.php`) go through `pg_log_lang()`; the panel-only files it checked keep `lang()` (listed in the test).
+- Part 6: the checkout auto-invoice path (`includes/erp/order_flow.php`, `includes/erp/mail.php` 'auto' mode, `includes/erp/order_bridge.php`). All in one PR, so a checkout does not log in two languages.
+- Not checked, held by other work: `includes/migrations/*`, `parasut_connect.php`, and the files of draft #3298 (`includes/api/*`, `includes/fn/cart_quotes.php`, `add_cart_quote.php`, `view_cart_quotes.php`).
 
 ## What was left as it is?
 - `assets/lib/tiny_mce_3_5_10/plugins/advlink/add_file.php` and `.../advimage/add_file.php`: `tools/check_lang.php` skips `assets/lib`, so a `lang()` key there would never be checked against the shards; they stay bare English.
