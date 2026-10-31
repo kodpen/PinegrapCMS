@@ -1,6 +1,6 @@
 ---
 name: workspace-flows-thread-removing
-description: Removing a data thread on the Flows canvas (#4057, PR #4127, PR #4275): the hit path, selection, Delete, the menus, the chip's × and its space, the outline's Remove and its focus; deleting a box removes its threads and values (#4058)
+description: Removing a data thread on the Flows canvas (#4057, #4127, #4275): hit path, selection, Delete, menus, the chip's × and its space, the outline's Remove; deleting a box removes its values (#4058)
 ---
 
 ## What does removing a thread do?
