@@ -11905,38 +11905,50 @@ html[data-bs-theme="dark"] .ws-group-icon {
 .ws-sa-follow-line.ws-sa-on-skipped b {
   color: var(--pg-fg-2);
 }
-/* The pinned message, under the channel's greeting. */
+/* The catch-up line and the pinned message over the conversation
+   (drawCenter()): one above the other, on a phone one thin row. */
+.ws-strip {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+.ws-strip:not(:has(.ws-catchup, .ws-pin-bar)) {
+  display: none;
+}
+/* The pinned message: one line, a click opens it in the conversation. */
 .ws-pin-bar {
   display: flex;
   align-items: center;
   gap: .5rem;
-  margin: .5rem .75rem 0;
-  padding: .35rem .5rem .35rem .65rem;
-  border: 1px solid var(--pg-border-color);
+  margin: .5rem 1rem 0;
+  padding: .3rem .4rem .3rem .65rem;
+  border: 1px solid var(--pg-border-color-translucent);
   border-left: 3px solid var(--ws-accent);
   border-radius: var(--ws-radius-sm);
   background: var(--pg-bg-1);
   font-size: .85rem;
 }
 .ws-pin-icon {
+  flex: 0 0 auto;
   color: var(--ws-accent);
 }
 .ws-pin-text {
+  display: flex;
   flex: 1 1 auto;
+  align-items: center;
+  gap: .45rem;
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  padding: 0;
   border: 0;
   background: transparent;
   color: inherit;
   text-align: left;
-  padding: 0;
 }
-.ws-pin-by {
-  flex-shrink: 0;
-  font-size: .72rem;
-  color: var(--pg-fg-2);
+.ws-pin-words {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .ws-msg-pinned {
   color: var(--ws-accent);
@@ -12451,9 +12463,9 @@ html[data-bs-theme="dark"] .ws-head[data-ws-colored] .ws-head-icon {
 .ws-center > .alert {
   flex-shrink: 0;
 }
-.ws-center > .ws-brief {
+.ws-strip > .ws-catchup {
   flex-shrink: 0;
-  max-height: 40%;
+  max-height: 40vh;
   overflow-y: auto;
 }
 .ws-tabs {
@@ -15962,89 +15974,68 @@ a.ws-chip:hover {
   max-width: 22rem;
 }
 
-/* The channel's greeting. */
-.ws-brief {
-  position: relative;
-  display: flex;
-  gap: .8rem;
-  align-items: flex-start;
-  margin: .6rem 1rem 0;
-  padding: .7rem 2.4rem .7rem .8rem;
-  border: 1px solid rgba(var(--ws-accent-rgb), .22);
+/* The channel's catch-up line (catchupNode()): what came while the reader
+   was away, the way to it, the late tasks, Pinegrap AI's summary. */
+.ws-catchup {
+  margin: .5rem 1rem 0;
+  border: 1px solid color-mix(in srgb, var(--ws-accent) 24%, transparent);
   border-radius: var(--ws-radius);
-  background: linear-gradient(120deg, rgba(var(--ws-accent-rgb), .12), rgba(var(--ws-accent-rgb), .03) 60%, transparent);
+  background: color-mix(in srgb, var(--ws-accent) 7%, var(--pg-bg-body));
 }
-.ws-brief-icon {
-  flex: 0 0 auto;
-  width: 2.3rem;
-  height: 2.3rem;
-  border-radius: 50%;
+.ws-catchup-row {
   display: flex;
   align-items: center;
-  justify-content: center;
-  font-size: 1.15rem;
-  color: #fff;
-  background: linear-gradient(135deg, var(--ws-accent), rgba(var(--ws-accent-rgb), .65));
-  box-shadow: 0 4px 12px -4px rgba(var(--ws-accent-rgb), .7);
+  gap: .5rem;
+  min-height: 2.5rem;
+  padding: .3rem .4rem .3rem .75rem;
 }
-.ws-brief-greeting {
-  font-weight: 700;
-  color: var(--pg-fg-emphasis);
+.ws-catchup-icon {
+  flex: 0 0 auto;
+  color: var(--ws-accent);
 }
-.ws-brief-line {
-  font-size: .88rem;
-  color: var(--pg-fg-body);
-  line-height: 1.45;
-}
-.ws-brief-hint {
-  font-size: .8rem;
+.ws-catchup-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
   color: var(--pg-fg-2);
-  margin-top: .2rem;
+  font-size: .85rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-.ws-brief-action {
-  margin-top: .45rem;
-  border-radius: 999px;
-  padding: .15rem .7rem;
-  font-size: .8rem;
-  color: var(--ws-accent);
-  border: 1px solid rgba(var(--ws-accent-rgb), .45);
-  background: var(--pg-bg-body);
+.ws-catchup-text strong {
+  color: var(--pg-fg-emphasis);
+  font-weight: 600;
 }
-.ws-brief-action:hover {
-  background: rgba(var(--ws-accent-rgb), .12);
-  color: var(--ws-accent);
+.ws-catchup-action {
+  flex: 0 0 auto;
+  gap: .3rem;
+  font-size: .78rem;
+  white-space: nowrap;
 }
-.ws-brief-close {
-  position: absolute;
-  top: .55rem;
-  right: .6rem;
-  font-size: .65rem;
+.ws-catchup-close {
+  flex: 0 0 auto;
+  margin-left: .1rem;
+  font-size: .6rem;
 }
-.ws-brief-buttons {
-  display: flex;
-  flex-wrap: wrap;
-  column-gap: .4rem;
+/* Pinegrap AI's summary of what was missed, under the line. */
+.ws-catchup-recap {
+  margin: 0 .75rem .6rem 2.1rem;
+  padding-left: .65rem;
+  border-left: 2px solid color-mix(in srgb, var(--ws-accent) 45%, transparent);
 }
-.ws-brief-buttons:empty,
-.ws-brief-recap:empty {
+.ws-catchup-recap:empty {
   display: none;
 }
-/* Pinegrap AI's summary of what was missed. */
-.ws-brief-recap {
-  margin-top: .45rem;
-  padding-left: .65rem;
-  border-left: 2px solid rgba(var(--ws-accent-rgb), .45);
-}
-.ws-brief-recap-text {
+.ws-catchup-recap-text {
+  color: var(--pg-fg-body);
   font-size: .88rem;
   line-height: 1.5;
   white-space: pre-line;
-  color: var(--pg-fg-body);
 }
-.ws-brief-recap-by {
-  font-size: .72rem;
-  color: var(--pg-fg-2);
+.ws-catchup-recap-by {
   margin-top: .15rem;
+  color: var(--pg-fg-2);
+  font-size: .72rem;
 }
 
 /* Context menus: the panel's own look, placed at the pointer. Built
@@ -16693,9 +16684,6 @@ body.ws-drawer-open #pg-chat-root .pg-chat-launcher {
   .ws-voice {
     gap: var(--ws-space-1);
   }
-  body.ws-keyboard .ws-center > .ws-brief {
-    display: none;
-  }
   body.workspace_channels #pg-chat-root .pg-chat-launcher {
     right: 12px;
     bottom: calc(var(--ws-composer-h, 6rem) + 12px);
@@ -16778,28 +16766,51 @@ body.ws-drawer-open #pg-chat-root .pg-chat-launcher {
   .ws-cal-task .ws-avatars {
     display: none;
   }
-  .ws-brief {
-    gap: .55rem;
-    margin: .4rem .5rem 0;
-    padding: .5rem 2rem .5rem .65rem;
+  /* One thin line on a phone: the buttons keep their icons. */
+  .ws-catchup {
+    margin: .35rem .5rem 0;
   }
-  .ws-brief-icon {
+  .ws-catchup-row {
+    gap: .35rem;
+    min-height: 2.25rem;
+    padding: .2rem .3rem .2rem .6rem;
+  }
+  .ws-catchup-label {
     display: none;
   }
-  .ws-brief-greeting {
-    font-size: .9rem;
+  .ws-catchup-action {
+    padding: .2rem .45rem;
   }
-  .ws-brief-line {
-    font-size: .8rem;
+  .ws-catchup-text strong {
+    display: none;
   }
-  .ws-brief-action {
-    margin-top: .3rem;
+  .ws-pin-bar {
+    margin: .35rem .5rem 0;
   }
-}
-@media (max-width: 767.98px) and (max-height: 620px) {
-  /* A short screen (a phone on its side) keeps the greeting to one line. */
-  .ws-brief-line ~ .ws-brief-line,
-  .ws-brief-action {
+  /* Both there: one row, the catch-up line first and the pin a button
+     beside it. */
+  .ws-strip:has(.ws-catchup):has(.ws-pin-bar) {
+    flex-direction: row;
+    gap: .35rem;
+    margin: .35rem .5rem 0;
+  }
+  .ws-strip:has(.ws-catchup):has(.ws-pin-bar) > .ws-catchup {
+    flex: 1 1 auto;
+    min-width: 0;
+    margin: 0;
+  }
+  .ws-strip:has(.ws-catchup) > .ws-pin-holder {
+    display: flex;
+  }
+  .ws-strip:has(.ws-catchup) .ws-pin-bar {
+    margin: 0;
+    padding: 0 .55rem;
+  }
+  .ws-strip:has(.ws-catchup) .ws-pin-words,
+  .ws-strip:has(.ws-catchup) .ws-pin-bar > :not(.ws-pin-text) {
+    display: none;
+  }
+  body.ws-keyboard .ws-center > .ws-strip {
     display: none;
   }
 }

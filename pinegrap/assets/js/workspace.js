@@ -6180,20 +6180,21 @@
                 return;
             }
 
+            // One line: the pin, who wrote it and its text; a click opens it
+            // in the conversation. Who pinned it is the line's tooltip.
             var bar = el('div', 'ws-pin-bar');
             var text = el('button', 'ws-pin-text');
+            var words = el('span', 'ws-pin-words');
 
             text.type = 'button';
-            text.title = t('pin_go');
-            bar.appendChild(icon('bi-pin-angle-fill', 'ws-pin-icon'));
-            text.appendChild(el('b', 'me-1', (pin.sender ? pin.sender.name : '') + ':'));
-            text.appendChild(document.createTextNode(pin.text));
+            text.title = t('pin_go') + (pin.pinned_by ? ' · ' + t('pin_by', pin.pinned_by) : '');
+            text.setAttribute('aria-label', text.title);
+            text.appendChild(icon('bi-pin-angle-fill', 'ws-pin-icon'));
+            words.appendChild(el('b', 'me-1', (pin.sender ? pin.sender.name : '') + ':'));
+            words.appendChild(document.createTextNode(pin.text));
+            text.appendChild(words);
             text.addEventListener('click', function () { self.jumpTo(pin.id, true); });
             bar.appendChild(text);
-
-            if (pin.pinned_by) {
-                bar.appendChild(el('span', 'ws-pin-by', t('pin_by', pin.pinned_by)));
-            }
 
             // Its read receipt, or a way to ask for one (workspace_acks.js).
             var pinAck = window.PGWsAcks ? window.PGWsAcks.pinNode(pin, self, featureHelpers()) : null;
@@ -6202,7 +6203,7 @@
                 bar.appendChild(pinAck);
             }
 
-            var close = button('btn btn-sm btn-text theme-secondary py-0', '', 'bi-x-lg', t('pin_close'));
+            var close = button('btn btn-sm btn-text theme-secondary py-0 ws-pin-close', '', 'bi-x-lg', t('pin_close'));
             close.addEventListener('click', function () {
                 if (self.channel.joined) {
                     api('ws_pin_hide', { channel_id: self.channel.id }).catch(function () {});
@@ -8309,16 +8310,19 @@
                 }
             });
 
+            // The catch-up line and the pinned message, one above the other;
+            // on a phone they share one thin row.
             if (self.tab === 'messages') {
-                var brief = self.briefingNode();
+                var strip = el('div', 'ws-strip');
+                var brief = self.catchupNode();
 
                 if (brief) {
-                    center.appendChild(brief);
+                    strip.appendChild(brief);
                 }
 
-                // The pinned message, under the greeting.
                 self.pinHolder = el('div', 'ws-pin-holder');
-                center.appendChild(self.pinHolder);
+                strip.appendChild(self.pinHolder);
+                center.appendChild(strip);
                 self.drawPinBar();
             }
 
@@ -9523,15 +9527,18 @@
             return tools;
         },
 
-        // The channel's greeting: what happened since the last visit, what is
-        // waiting, and the one thing worth doing. Closed, it stays closed for
-        // the rest of the day in this channel.
-        briefingNode: function () {
+        // While the reader was away (ws_channel_catchup()): one line with what
+        // came, the way to it and to the tasks past their date, and Pinegrap
+        // AI's summary of it on request. Shown only when there is something;
+        // closed, it stays closed for the rest of the day in this channel.
+        // The greeting itself lives on the overview and in the morning mail.
+        catchupNode: function () {
             var self = this;
             var brief = self.briefing;
+            var line = brief ? brief.catchup : null;
             var storeKey = 'ws-brief-closed';
 
-            if (!brief) {
+            if (!line) {
                 return null;
             }
 
@@ -9540,45 +9547,61 @@
                     return null;
                 }
             } catch (error) {
-                // No storage: the greeting simply shows.
+                // No storage: the line simply shows.
             }
 
-            var box = el('div', 'ws-brief');
-            var badge = el('div', 'ws-brief-icon');
-            badge.appendChild(icon(brief.icon || 'bi-stars'));
-            box.appendChild(badge);
+            var box = el('div', 'ws-catchup');
+            var row = el('div', 'ws-catchup-row');
+            var text = el('span', 'ws-catchup-text');
 
-            var text = el('div', 'ws-grow');
-            text.appendChild(el('div', 'ws-brief-greeting', brief.greeting));
+            box.setAttribute('role', 'status');
+            row.appendChild(icon('bi-clock-history', 'ws-catchup-icon'));
+            text.appendChild(el('strong', '', line.lead));
+            text.appendChild(document.createTextNode(' ' + line.parts.join(' · ')));
+            row.appendChild(text);
 
-            (brief.lines || []).forEach(function (line) {
-                text.appendChild(el('div', 'ws-brief-line', line));
-            });
+            // A labelled button that keeps only its icon on a phone.
+            function action(label, iconName, handler) {
+                var node = button('btn btn-sm btn-outline theme-secondary rounded-pill ws-catchup-action', '', iconName, label);
 
-            // Pinegrap AI's summary of what was missed, written once asked
-            // for and kept on the greeting while the channel stays open.
-            var buttons = el('div', 'ws-brief-buttons');
+                node.appendChild(el('span', 'ws-catchup-label', label));
+                node.addEventListener('click', handler);
+                row.appendChild(node);
 
+                return node;
+            }
+
+            if (line.go) {
+                action(t(line.mention ? 'catchup_mention' : 'catchup_go'), line.mention ? 'bi-at' : 'bi-arrow-down-circle', function () {
+                    self.jumpTo(line.go, true);
+                });
+            }
+
+            if (line.tasks) {
+                action(t('catchup_tasks'), 'bi-alarm', function () {
+                    self.tab = 'tasks';
+                    self.drawCenter();
+                    self.syncAddress();
+                });
+            }
+
+            // Pinegrap AI's summary of the missed messages, written once asked
+            // for and kept under the line while the channel stays open.
             if (brief.recap) {
-                var recapBox = el('div', 'ws-brief-recap');
+                var recapBox = el('div', 'ws-catchup-recap');
                 var showRecap = function () {
                     clear(recapBox);
-                    recapBox.appendChild(el('div', 'ws-brief-recap-text', brief.recap.text));
-                    recapBox.appendChild(el('div', 'ws-brief-recap-by', t('brief_recap_by')));
+                    recapBox.appendChild(el('div', 'ws-catchup-recap-text', brief.recap.text));
+                    recapBox.appendChild(el('div', 'ws-catchup-recap-by', t('brief_recap_by')));
                 };
-
-                text.appendChild(recapBox);
 
                 if (brief.recap.text) {
                     showRecap();
                 } else {
                     var channelId = self.channel.id;
-                    var ask = button('btn btn-sm ws-brief-action', t('brief_recap'), 'bi-stars');
-                    ask.addEventListener('click', function () {
+                    var ask = action(t('brief_recap'), 'bi-stars', function () {
                         ask.disabled = true;
-                        clear(ask);
-                        ask.appendChild(el('span', 'spinner-border spinner-border-sm me-1'));
-                        ask.appendChild(document.createTextNode(t('brief_recap_wait')));
+                        recapBox.appendChild(el('div', 'ws-catchup-recap-by', t('brief_recap_wait')));
 
                         api('ws_brief_recap', { channel_id: channelId, since_id: brief.recap.since_id }).then(function (data) {
                             brief.recap.text = data.text || '';
@@ -9586,43 +9609,19 @@
                             showRecap();
                         }).catch(function (error) {
                             ask.disabled = false;
-                            clear(ask);
-                            ask.appendChild(icon('bi-stars', 'me-1'));
-                            ask.appendChild(document.createTextNode(t('brief_recap')));
+                            clear(recapBox);
                             fail(error);
                         });
                     });
-                    buttons.appendChild(ask);
                 }
+
+                box.appendChild(row);
+                box.appendChild(recapBox);
+            } else {
+                box.appendChild(row);
             }
 
-            text.appendChild(buttons);
-
-            if (brief.advice && brief.advice.action !== 'none') {
-                var go = button('btn btn-sm ws-brief-action', brief.advice.label, brief.advice.icon);
-                go.addEventListener('click', function () {
-                    if (brief.advice.action === 'tab') {
-                        self.tab = brief.advice.target;
-                        self.drawCenter();
-                    } else if (brief.advice.action === 'message') {
-                        var target = self.center.querySelector('[data-ws-message="' + brief.advice.target + '"]');
-
-                        if (target) {
-                            target.classList.add('ws-msg-highlight');
-                            target.scrollIntoView({ block: 'center', behavior: 'smooth' });
-                        } else {
-                            self.open(self.channel.id, brief.advice.target);
-                        }
-                    }
-                });
-                buttons.appendChild(go);
-            } else if (brief.advice) {
-                text.appendChild(el('div', 'ws-brief-hint', brief.advice.label));
-            }
-
-            box.appendChild(text);
-
-            var close = button('btn-close ws-brief-close', '', '', t('close'));
+            var close = button('btn-close ws-catchup-close', '', '', t('close'));
             close.addEventListener('click', function () {
                 try {
                     window.localStorage.setItem(storeKey + ':' + brief.key, '1');
@@ -9632,7 +9631,7 @@
 
                 box.remove();
             });
-            box.appendChild(close);
+            row.appendChild(close);
 
             return box;
         },
