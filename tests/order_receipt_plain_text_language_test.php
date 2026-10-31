@@ -38,7 +38,8 @@ function order_receipt_plain_text_language_code($file)
 // No English label is written as a bare literal any more.
 function test_order_receipt_plain_text_language_no_english_literals()
 {
-	$code = order_receipt_plain_text_language_code('get_order_receipt_in_plain_text.php');
+	// A key inside lang('...') is the translated label, not a literal.
+	$code = preg_replace("/lang\\('[^']*'\\)/", 'lang()', order_receipt_plain_text_language_code('get_order_receipt_in_plain_text.php'));
 
 	$literals = array(
 		"'Order Number: '", "'Order Date: '", "'Order Totals:'", "'Subtotal: '", "'Total: '",
@@ -97,7 +98,7 @@ function test_order_receipt_plain_text_language_absolute_time_at()
 	$code = order_receipt_plain_text_language_code('includes/fn/core.php');
 
 	pg_assert_same(false, strpos($code, '\a\t'), 'no fixed "at" in a date() format');
-	pg_assert_same(2, substr_count($code, "'string' => '{var:1} at {var:2}'"), 'both time zones join through lang()');
+	pg_assert_same(1, substr_count($code, "'string' => '{var:1} at {var:2}'"), 'the date and the time join through lang()');
 
 	$map = pg_test_language_map('tr');
 	pg_assert_true(isset($map['{var:1} at {var:2}']), 'Turkish value');

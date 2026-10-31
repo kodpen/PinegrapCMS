@@ -1221,6 +1221,13 @@ function pg_order_complete_receipt($order_id, $order_number, array $receipt, $cu
     $footer = (string) ($receipt['footer'] ?? '');
     $subject = (string) ($receipt['subject'] ?? '');
 
+    // The plain-text receipt's header and footer read in the order's
+    // language, like the subject and the HTML receipt.
+    if (($format == 'plain_text') && function_exists('pg_tr_text')) {
+        $header = pg_tr_text($header);
+        $footer = pg_tr_text($footer);
+    }
+
     $product_addresses = array();
     $result = db_q(
         "SELECT products.order_receipt_bcc_email_address

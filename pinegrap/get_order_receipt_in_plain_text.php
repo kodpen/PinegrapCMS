@@ -151,11 +151,14 @@ function get_order_receipt_in_plain_text($order_id)
             $ship_to_offer_id = $row['offer_id'];
             
             // get country name
+            $country_code = (string) $country;
             $query = "SELECT name FROM countries WHERE code = ?";
-            $result = db_q($query, array((string) $country)) or output_error('Query failed.');
+            $result = db_q($query, array($country_code)) or output_error('Query failed.');
             $row = mysqli_fetch_assoc($result);
             // No row for ship to 0 or for a code the countries table does not have.
             $country = $row['name'] ?? '';
+            // Named in the order's language, as the HTML receipt names it.
+            $country = pg_geo_country_label($country, $country_code);
             
             // if this shipping address is verified, then convert salutation and country to all uppercase
             if ($address_verified == 1) {
@@ -275,7 +278,7 @@ function get_order_receipt_in_plain_text($order_id)
 
                     // if the number of payments is not 0, then show the number of payments
                     if ($recurring_number_of_payments != 0) {
-                        $output_recurring_number_of_payments = ', Payments: ' . pg_format_number($recurring_number_of_payments, 0);
+                        $output_recurring_number_of_payments = ', ' . lang('Number of Payments') . ': ' . pg_format_number($recurring_number_of_payments, 0);
                     }
                     
                     // determine if start should be outputted
@@ -283,11 +286,11 @@ function get_order_receipt_in_plain_text($order_id)
                     
                     // if credit/debit card payment method is not enabled or the payment gateway is not ClearCommerce, then output start date
                     if ((ECOMMERCE_CREDIT_DEBIT_CARD == false) || (ECOMMERCE_PAYMENT_GATEWAY != 'ClearCommerce')) {
-                        $output_start_date = ', Start: ' . get_absolute_time(array('timestamp' => strtotime($recurring_start_date), 'type' => 'date', 'size' => 'long', 'format' => 'plain_text'));
+                        $output_start_date = ', ' . lang('Start Date') . ': ' . get_absolute_time(array('timestamp' => strtotime($recurring_start_date), 'type' => 'date', 'size' => 'long', 'format' => 'plain_text'));
                     }
                     
                     $output_recurring_schedule =
-                        'Payment Schedule: ' . $recurring_payment_period . $output_recurring_number_of_payments . $output_start_date . "\n" .
+                        lang('Payment Schedule') . ': ' . lang($recurring_payment_period) . $output_recurring_number_of_payments . $output_start_date . "\n" .
                         "\n";
                 }
 
@@ -311,7 +314,7 @@ function get_order_receipt_in_plain_text($order_id)
                         
                         // If number of gift cards is greater than 1, then output quantity number.
                         if ($number_of_gift_cards > 1) {
-                            $output_quantity_number .= ' (' . $quantity_number . ' of ' . $number_of_gift_cards . ')';
+                            $output_quantity_number .= ' (' . lang(array('string' => '{var:1} of {var:2}', 'vars' => array($quantity_number, $number_of_gift_cards))) . ')';
                         }
 
                         // Get gift card data from database.
@@ -330,20 +333,20 @@ function get_order_receipt_in_plain_text($order_id)
                         $output_delivery_date = '';
 
                         if ($order_item_gift_card['delivery_date'] == '0000-00-00') {
-                            $output_delivery_date = 'Immediate';
+                            $output_delivery_date = lang('Immediate');
 
                         } else {
                             $output_delivery_date = get_absolute_time(array('timestamp' => strtotime($order_item_gift_card['delivery_date']), 'type' => 'date', 'size' => 'long', 'format' => 'plain_text'));
                         }
                         
                         $output_gift_cards .=
-                            'Gift Card' . $output_quantity_number . ':' . "\n" .
-                            'Amount: ' . prepare_price_for_output($product_price * 100, false, $discounted_price = '', 'plain_text', $show_code = true, $show_html_entity_symbol = false) . "\n" .
-                            'Recipient Email: ' . $order_item_gift_card['recipient_email_address'] . "\n" .
-                            'Your Name: ' . $order_item_gift_card['from_name'] . "\n" .
-                            'Message:' . "\n" .
+                            lang('Gift Card') . $output_quantity_number . ':' . "\n" .
+                            lang('Amount') . ': ' . prepare_price_for_output($product_price * 100, false, $discounted_price = '', 'plain_text', $show_code = true, $show_html_entity_symbol = false) . "\n" .
+                            lang('Recipient Email') . ': ' . $order_item_gift_card['recipient_email_address'] . "\n" .
+                            lang('Your Name') . ': ' . $order_item_gift_card['from_name'] . "\n" .
+                            lang('Message') . ':' . "\n" .
                             $order_item_gift_card['message'] . "\n" .
-                            'Delivery Date: ' . $output_delivery_date . "\n" .
+                            lang('Delivery Date') . ': ' . $output_delivery_date . "\n" .
                             "\n";
                     }
                 }                
@@ -380,7 +383,7 @@ function get_order_receipt_in_plain_text($order_id)
                         
                         // if number of forms is greater than 1, then add quantity number to header
                         if ($number_of_forms > 1) {
-                            $output_form_header .= ' (' . $quantity_number . ' of ' . $number_of_forms . ')';
+                            $output_form_header .= ' (' . lang(array('string' => '{var:1} of {var:2}', 'vars' => array($quantity_number, $number_of_forms))) . ')';
                         }
                         
                         // if there is a header, then add colon and new line
@@ -553,7 +556,7 @@ function get_order_receipt_in_plain_text($order_id)
                     }
 
                     $output_ship_tos .=
-                        'Ship to' . $output_ship_to_name . ':' . "\n" .
+                        lang('Ship to') . $output_ship_to_name . ':' . "\n" .
                         '-------------------------' . "\n" .
                         $address . "\n" .
                         $output_shipping_form .
@@ -578,7 +581,7 @@ function get_order_receipt_in_plain_text($order_id)
                     if (mysqli_num_rows($result) > 0) {
                         $row = mysqli_fetch_assoc($result);
                         
-                        $shipping_description .= '; Requested Arrival Date: ';
+                        $shipping_description .= '; ' . lang('Requested Arrival Date') . ': ';
                         
                         // if selected arrival date had a custom field, use actual date in description
                         if ($row['custom'] == 1) {
@@ -611,7 +614,7 @@ function get_order_receipt_in_plain_text($order_id)
                     }
 
                     $output_shipping =
-                        'Shipping: ' . $shipping_description . ', ' . prepare_price_for_output($original_price, $discounted, $discounted_price, 'plain_text', $show_code = TRUE, $show_html_entity_symbol = FALSE) . "\n" .
+                        lang('Shipping') . ': ' . $shipping_description . ', ' . prepare_price_for_output($original_price, $discounted, $discounted_price, 'plain_text', $show_code = TRUE, $show_html_entity_symbol = FALSE) . "\n" .
                         "\n";
                 }
 
@@ -719,7 +722,7 @@ function get_order_receipt_in_plain_text($order_id)
                     }
 
                     $output_recurring_ship_tos .=
-                        'Ship to' . $output_ship_to_name . ':' . "\n" .
+                        lang('Ship to') . $output_ship_to_name . ':' . "\n" .
                         '-------------------------' . "\n" .
                         $address . "\n" .
                         $output_shipping_form .
@@ -778,7 +781,7 @@ function get_order_receipt_in_plain_text($order_id)
         }
         
         $output_discount =
-            'Discount: -' . prepare_price_for_output($order_discount * 100, FALSE, $discounted_price = '', 'plain_text', $show_code = TRUE, $show_html_entity_symbol = FALSE) . "\n";
+            lang('Discount') . ': -' . prepare_price_for_output($order_discount * 100, FALSE, $discounted_price = '', 'plain_text', $show_code = TRUE, $show_html_entity_symbol = FALSE) . "\n";
     }
 
     // if tax is on or the order was charged tax, update grand total and prepare tax row
@@ -804,7 +807,7 @@ function get_order_receipt_in_plain_text($order_id)
         $grand_total = $grand_total + $grand_tax;
 
         $output_grand_tax =
-            'Tax: ' . prepare_price_for_output($grand_tax * 100, FALSE, $discounted_price = '', 'plain_text', $show_code = TRUE, $show_html_entity_symbol = FALSE) . "\n";
+            lang('Tax') . ': ' . prepare_price_for_output($grand_tax * 100, FALSE, $discounted_price = '', 'plain_text', $show_code = TRUE, $show_html_entity_symbol = FALSE) . "\n";
     }
 
     // if there was at least one shipping recipient for this order, output grand shipping total
@@ -813,7 +816,7 @@ function get_order_receipt_in_plain_text($order_id)
         $grand_total = $grand_total + $grand_shipping;
 
         $output_grand_shipping =
-            'Shipping: ' . prepare_price_for_output($grand_shipping * 100, FALSE, $discounted_price = '', 'plain_text', $show_code = TRUE, $show_html_entity_symbol = FALSE) . "\n";
+            lang('Shipping') . ': ' . prepare_price_for_output($grand_shipping * 100, FALSE, $discounted_price = '', 'plain_text', $show_code = TRUE, $show_html_entity_symbol = FALSE) . "\n";
     }
     
     $output_gift_card_discount = '';
@@ -838,12 +841,7 @@ function get_order_receipt_in_plain_text($order_id)
             $applied_gift_cards[] = $row;
         }
         
-        $output_gift_card_label_plural_suffix = '';
-        
-        // if there is more than 1 applied gift card, then prepare to output gift card label plural suffix
-        if (count($applied_gift_cards) > 1) {
-            $output_gift_card_label_plural_suffix = 's';
-        }
+        $output_gift_card_label = (count($applied_gift_cards) > 1) ? lang('Gift Cards') : lang('Gift Card');
         
         // update the grand total
         $grand_total = $grand_total - $gift_card_discount;
@@ -856,7 +854,7 @@ function get_order_receipt_in_plain_text($order_id)
         }
 
         $output_gift_card_discount =
-            'Gift Card' . $output_gift_card_label_plural_suffix . ': -' . prepare_price_for_output($gift_card_discount * 100, FALSE, $discounted_price = '', 'plain_text', $show_code = TRUE, $show_html_entity_symbol = FALSE) . "\n" .
+            $output_gift_card_label . ': -' . prepare_price_for_output($gift_card_discount * 100, FALSE, $discounted_price = '', 'plain_text', $show_code = TRUE, $show_html_entity_symbol = FALSE) . "\n" .
             "\n";
     }
 
@@ -867,7 +865,7 @@ function get_order_receipt_in_plain_text($order_id)
         $grand_total = $grand_total + $surcharge;
 
         $output_surcharge =
-            'Surcharge: ' . prepare_price_for_output($surcharge * 100, FALSE, $discounted_price = '', 'plain_text', $show_code = TRUE, $show_html_entity_symbol = FALSE) . "\n" .
+            lang('Surcharge') . ': ' . prepare_price_for_output($surcharge * 100, FALSE, $discounted_price = '', 'plain_text', $show_code = TRUE, $show_html_entity_symbol = FALSE) . "\n" .
             "\n";
     }
 
@@ -899,7 +897,7 @@ function get_order_receipt_in_plain_text($order_id)
         foreach ($payment_periods as $payment_period_name => $payment_period) {
             // if there is a recurring product in the order for this payment period
             if ($payment_period['exists'] == true) {
-                $output_payment_periods .= $payment_period_name . ' Subtotal: ' . prepare_price_for_output($payment_period['subtotal'] * 100, FALSE, $discounted_price = '', 'plain_text', $show_code = TRUE, $show_html_entity_symbol = FALSE) . "\n";
+                $output_payment_periods .= lang(array('string' => '{var:1} Subtotal', 'vars' => lang($payment_period_name))) . ': ' . prepare_price_for_output($payment_period['subtotal'] * 100, FALSE, $discounted_price = '', 'plain_text', $show_code = TRUE, $show_html_entity_symbol = FALSE) . "\n";
                 
                 // if tax is on, prepare tax row
                 if (ECOMMERCE_TAX == true) {
@@ -913,7 +911,7 @@ function get_order_receipt_in_plain_text($order_id)
                     
                     $payment_period_total = $payment_period['subtotal'] + $payment_period['tax'];
 
-                    $output_payment_periods .= $payment_period_name . ' Tax: ' . prepare_price_for_output($payment_period['tax'] * 100, FALSE, $discounted_price = '', 'plain_text', $show_code = TRUE, $show_html_entity_symbol = FALSE) . "\n";
+                    $output_payment_periods .= lang(array('string' => '{var:1} Tax', 'vars' => lang($payment_period_name))) . ': ' . prepare_price_for_output($payment_period['tax'] * 100, FALSE, $discounted_price = '', 'plain_text', $show_code = TRUE, $show_html_entity_symbol = FALSE) . "\n";
                     
                 // else tax is off, so just update total
                 } else {
@@ -921,13 +919,13 @@ function get_order_receipt_in_plain_text($order_id)
                 }
 
                 $output_payment_periods .=
-                    $payment_period_name . ' Total: ' . prepare_price_for_output($payment_period_total * 100, FALSE, $discounted_price = '', 'plain_text', $show_code = TRUE, $show_html_entity_symbol = FALSE) . "\n" .
+                    lang(array('string' => '{var:1} Total', 'vars' => lang($payment_period_name))) . ': ' . prepare_price_for_output($payment_period_total * 100, FALSE, $discounted_price = '', 'plain_text', $show_code = TRUE, $show_html_entity_symbol = FALSE) . "\n" .
                     "\n";
             }
         }
         
         $output_recurring_charges =
-            'Recurring Charges:' . "\n" .
+            lang('Recurring Charges') . ':' . "\n" .
             '-------------------------' . "\n" .
             $output_recurring_ship_tos .
             $output_payment_periods;
@@ -1001,11 +999,14 @@ function get_order_receipt_in_plain_text($order_id)
     }
     
     // get country name
+    $billing_country_code = (string) $billing_country;
     $query = "SELECT name FROM countries WHERE code = ?";
-    $result = db_q($query, array((string) $billing_country)) or output_error('Query failed.');
+    $result = db_q($query, array($billing_country_code)) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
     // No row for a code the countries table does not have.
     $billing_country = $row['name'] ?? '';
+    // Named in the order's language, as the HTML receipt names it.
+    $billing_country = pg_geo_country_label($billing_country, $billing_country_code);
     
     // if the credit card number is not already protected, then protect it
     if (mb_substr($card_number, 0, 1) != '*') {
@@ -1088,22 +1089,22 @@ function get_order_receipt_in_plain_text($order_id)
     $output_billing_information .=
         $billing_city . ', ' . $billing_state . ' ' . $billing_zip_code . "\n" .
         $billing_country . "\n" .
-        'Phone: ' . $billing_phone_number . "\n";
+        lang('Phone') . ': ' . $billing_phone_number . "\n";
 
     if ($billing_fax_number) {
-        $output_billing_information .= 'Fax: ' . $billing_fax_number . "\n";
+        $output_billing_information .= lang('Fax') . ': ' . $billing_fax_number . "\n";
     }
 
     $output_billing_information .= $billing_email_address . "\n";
     
     if ($po_number) {
-        $output_billing_information .= 'PO Number: ' . $po_number . "\n";
+        $output_billing_information .= lang('PO Number') . ': ' . $po_number . "\n";
     }
     
     if (ECOMMERCE_TAX_EXEMPT == true) {
         // if tax-exempt was checked
         if ($tax_exempt) {
-            $output_billing_information .= 'Tax-Exempt' . "\n";
+            $output_billing_information .= lang('Tax-Exempt') . "\n";
         }
     }
     
@@ -1141,7 +1142,7 @@ function get_order_receipt_in_plain_text($order_id)
     // this double check is not redundant, because there can be a situation where there is a discount with no gift cards if there was an error when the gift card transaction was submitted
     if (($gift_card_discount > 0)  && (count($applied_gift_cards) > 0)) {
         $output_applied_gift_cards .=
-            'Applied Gift Cards:' . "\n" .
+            ((count($applied_gift_cards) > 1) ? lang('Applied Gift Cards') : lang('Applied Gift Card')) . ':' . "\n" .
             '-------------------------' . "\n";
         
         // loop through applied gift cards in order to prepare to output them
@@ -1152,7 +1153,7 @@ function get_order_receipt_in_plain_text($order_id)
                 $protected_gift_card_code = protect_givex_gift_card_code($applied_gift_card['code']);
             }
             
-            $output_applied_gift_cards .= '- ' . $protected_gift_card_code . ' (Remaining Balance: ' . prepare_price_for_output($applied_gift_card['new_balance'], FALSE, $discounted_price = '', 'plain_text', $show_code = TRUE, $show_html_entity_symbol = FALSE) . ')' . "\n";
+            $output_applied_gift_cards .= '- ' . $protected_gift_card_code . ' (' . lang('Remaining Balance') . ': ' . prepare_price_for_output($applied_gift_card['new_balance'], FALSE, $discounted_price = '', 'plain_text', $show_code = TRUE, $show_html_entity_symbol = FALSE) . ')' . "\n";
         }
 
         $output_applied_gift_cards .= "\n";
@@ -1178,14 +1179,14 @@ function get_order_receipt_in_plain_text($order_id)
         if ($payment_method == 'Credit/Debit Card') {
             $output_credit_debit_card_information =
                 "\n" .
-                'Card Type: ' . $card_type . "\n" .
-                'Card Number: ' . $card_number;
+                lang('Card Type') . ': ' . $card_type . "\n" .
+                lang('Card Number') . ': ' . $card_number;
         }
 
         $output_payment_information .=
-            'Payment Information:' . "\n" .
+            lang('Payment Information') . ':' . "\n" .
             '-------------------------' . "\n" .
-            'Payment Method: ' . $output_payment_method .
+            lang('Payment Method') . ': ' . $output_payment_method .
             $output_credit_debit_card_information;
     }
 
@@ -1199,25 +1200,25 @@ function get_order_receipt_in_plain_text($order_id)
     
     return
         $output_order_receipt_messages .
-        'Order Number: ' . $order_number . "\n" .
-        'Order Date: ' . get_absolute_time(array('timestamp' => $order_date, 'size' => 'long', 'format' => 'plain_text')) . "\n" .
+        lang('Order Number') . ': ' . $order_number . "\n" .
+        lang('Order Date') . ': ' . get_absolute_time(array('timestamp' => $order_date, 'size' => 'long', 'format' => 'plain_text')) . "\n" .
         "\n" .
         $output_ship_tos .
-        'Order Totals:' . "\n" .
+        lang('Order Totals') . ':' . "\n" .
         '-------------------------' . "\n" .
-        'Subtotal: ' . prepare_price_for_output($subtotal * 100, FALSE, $discounted_price = '', 'plain_text', $show_code = TRUE, $show_html_entity_symbol = FALSE) . "\n" .
+        lang('Subtotal') . ': ' . prepare_price_for_output($subtotal * 100, FALSE, $discounted_price = '', 'plain_text', $show_code = TRUE, $show_html_entity_symbol = FALSE) . "\n" .
         $output_discount .
         $output_grand_tax .
         $output_grand_shipping .
         $output_gift_card_discount .
         $output_surcharge .
         $output_installment .
-        'Total: ' . prepare_price_for_output($grand_total * 100, FALSE, $discounted_price = '', 'plain_text', $show_code = TRUE, $show_html_entity_symbol = FALSE) . $output_unconverted_total . "\n" .
+        lang('Total') . ': ' . prepare_price_for_output($grand_total * 100, FALSE, $discounted_price = '', 'plain_text', $show_code = TRUE, $show_html_entity_symbol = FALSE) . $output_unconverted_total . "\n" .
         "\n" .
         $output_multicurrency_disclaimer .
         $output_recurring_charges .
         $output_applied_offers .
-        'Billing Information:' . "\n" .
+        lang('Billing Information') . ':' . "\n" .
         '-------------------------' . "\n" .
         $output_billing_information .
         $output_billing_form .
