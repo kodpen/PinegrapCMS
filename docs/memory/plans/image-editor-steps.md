@@ -41,4 +41,4 @@ description: Steps E1-E10 of plans/image-editor.md: core modal, crop, server sav
   - Delete `assets/lib/image_editor/`, `image_editor_modal.js`, `image_editor_save.php` and the old loader; `clean_up.php` lists the removed names; memory topic files follow; the PR body names the `[NEW]` changelog line.
 
 - E10 (M) Redaction. Screen 06.
-  - Pixelate, blur, solid box and brush-shaped areas; browser preview, burned in by server step 4; metadata stripped; versions per open question 1.
+  - Pixelate, blur, solid box and brush-shaped areas; browser preview, burned in by server step 4; metadata stripped; the versions stay and the served file loses its metadata (#4203).

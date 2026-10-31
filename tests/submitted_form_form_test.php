@@ -118,7 +118,8 @@ function test_submitted_form_screens_use_shared_fields()
 function test_submitted_form_file_field_without_a_row()
 {
 	$shared = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/forms/submitted_form_form.php');
-	pg_assert_contains("if (\$file && \$file['name'] != '')", $shared);
+	pg_assert_contains("if ((\$attachment['state'] == 'ok') || (\$attachment['state'] == 'binned'))", $shared);
+	pg_assert_contains('pg_submitted_form_attachment_state($file, ', $shared);
 	pg_assert_false(strpos($shared, "if (\$file['name'] != '')") !== false);
 
 	$edit = (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_submitted_form.php');

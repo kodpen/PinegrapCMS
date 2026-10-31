@@ -25,6 +25,41 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 const PG_SUBMITTED_FORM_CHOOSE_AGAIN = '__choose_file_again';
 
 /**
+ * The state of a file upload field's attachment, from its form_data row
+ * joined to files: 'none' (no file), 'deleted' (form_data still names a
+ * file whose files row is gone), 'binned' (the file sits in the Recycle Bin:
+ * its name parked as pgbin_<id>_<name>, or its folder inside the bin) or
+ * 'ok'. 'name' is the name to show: a parked name without its prefix. Pure.
+ *
+ * @param array|null $row  file_id, found_id (files.id), name, folder
+ * @param array $bin_folder_ids  The Recycle Bin folder and its subfolders
+ * @return array  array('state' => string, 'name' => string)
+ */
+function pg_submitted_form_attachment_state($row, $bin_folder_ids)
+{
+    if (!is_array($row) || ((int) $row['file_id'] <= 0)) {
+        return array('state' => 'none', 'name' => '');
+    }
+
+    if ((int) $row['found_id'] <= 0) {
+        return array('state' => 'deleted', 'name' => '');
+    }
+
+    $name = (string) $row['name'];
+    $prefix = (defined('PG_RECYCLE_PARK_PREFIX') ? PG_RECYCLE_PARK_PREFIX : 'pgbin_') . (int) $row['found_id'] . '_';
+
+    if ((strlen($name) > strlen($prefix)) && (strpos($name, $prefix) === 0)) {
+        return array('state' => 'binned', 'name' => substr($name, strlen($prefix)));
+    }
+
+    if (in_array((int) $row['folder'], array_map('intval', (array) $bin_folder_ids), true)) {
+        return array('state' => 'binned', 'name' => $name);
+    }
+
+    return array('state' => 'ok', 'name' => $name);
+}
+
+/**
  * The value a field starts with on a new submitted form: the folder name when
  * the field is set to use it and the name is known, else its default value,
  * as the site's form does (pg_cf_field_initial_value()).
@@ -389,22 +424,37 @@ function pg_submitted_form_fields_markup($liveform, $user, $page_id, $office_use
                 $output_file_info = '';
                 $output_upload_label = '';
                 $output_delete_option = '';
+                $output_file_note = '';
 
                 if ($existing) {
-                    // Get file name and size for file if a file exists.
+                    // The field's file, read by id: files.id comes back null when
+                    // the file was deleted for good while form_data still names it.
                     $file = db_item(
                         "SELECT
+                            form_data.file_id,
+                            files.id AS found_id,
                             files.name,
-                            files.size
+                            files.size,
+                            files.folder
                         FROM form_data
                         LEFT JOIN files on form_data.file_id = files.id
                         WHERE
                             (form_data.form_id = '" . escape($form_id) . "')
                             AND (form_data.form_field_id = '" . $field['id'] . "')");
 
+                    $attachment = pg_submitted_form_attachment_state($file, ($file && ((int) $file['found_id'] > 0)) ? pg_recycle_bin_folder_ids() : array());
+
+                    // A file in the Recycle Bin still opens, but goes when the bin
+                    // is emptied; a deleted one is only a note.
+                    if ($attachment['state'] == 'binned') {
+                        $output_file_note = '<div class="col-12 form-text fg-warning mb-2">' . lang('This file is in the Recycle Bin. Restore it in the File Manager or it will be lost when the bin is emptied.') . '</div>';
+                    } elseif ($attachment['state'] == 'deleted') {
+                        $output_file_note = '<div class="col-12 form-text fg-warning mb-2">' . lang('The attached file was deleted from the File Manager.') . '</div>';
+                    }
+
                     // If there is an existing file for this field, then output info for
                     // that. A submission without a row for the field gives null here.
-                    if ($file && $file['name'] != '') {
+                    if (($attachment['state'] == 'ok') || ($attachment['state'] == 'binned')) {
                         // An image field shows its picture above the file's link.
                         $output_file_info = (($coll_kind['kind'] == 'image') && pg_coll_image_name_ok($file['name']))
                             ? '<div class="col-12 mb-2"><img class="img-thumbnail" src="' . OUTPUT_PATH . h(encode_url_path($file['name'])) . '" alt="" width="240" loading="lazy"></div>'
@@ -412,7 +462,7 @@ function pg_submitted_form_fields_markup($liveform, $user, $page_id, $office_use
                         $output_file_info .= '
                         <a class=" btn btn-subtle theme-secondary border" href="' . OUTPUT_PATH . h(encode_url_path($file['name'])) . '" target="_blank">
                             <span class="material-icons">attach_file</span>
-                            ' . h($file['name']) . ' (' . convert_bytes_to_string($file['size']) . ')
+                            ' . h($attachment['name']) . ' (' . convert_bytes_to_string($file['size']) . ')
                         </a>';
                         $output_upload_label = '<div class="input-group-text">' . lang('Replace File') . ':</div>';
 
@@ -446,7 +496,7 @@ function pg_submitted_form_fields_markup($liveform, $user, $page_id, $office_use
                 '<div class="col-12 border py-3 my-3 ' . $row_class . '">
                     <label class="form-label" for="' . h($field['id']) . '">' . h($field['label']) . '</label>
                     <div class="input-group d-flex flex-row flex-wrap">
-                        ' . $output_file_info . '
+                        ' . $output_file_note . $output_file_info . '
                         ' . $output_upload_label . $liveform->output_field($file_attributes) . $output_delete_option . '
                     </div>
                     ' . $output_choose_again . '

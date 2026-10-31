@@ -3,8 +3,9 @@
  * Pinegrap - Enterprise Website Platform
  *
  * The file manager's "Where used" sub-action: the places content lives that
- * name a file, the settings that hold it and the Workspace messages and tasks
- * that carry it. The handler answers through respond(), which ends the
+ * name a file, the settings that hold it, the Workspace messages and tasks
+ * that carry it, and the submitted forms, comments and contacts bound to it
+ * by id. The handler answers through respond(), which ends the
  * request.
  * Called by pg_explorer_handle() and loaded by view_folder_and_files_f.php.
  *
@@ -97,6 +98,80 @@ function pg_explorer_file_usage_gallery_item($row, $source, $can_open)
         'name' => (string) $row['name'],
         'note' => '',
         'url' => $can_open ? ($source['url'] . (int) $row['id']) : '');
+}
+
+// One group of records bound to the file by id. Rows the viewer may not
+// open ($can_open) are dropped before anything is counted, so a person
+// without the right sees neither the rows nor a number that gives them
+// away; the cap applies to what is left. 'group' is null when nothing is
+// left.
+function pg_explorer_file_usage_bound_group($label, $rows, $item, $can_open, $cap)
+{
+    $items = array();
+    $truncated = false;
+
+    foreach ((is_array($rows) ? $rows : array()) as $row) {
+        if (!$can_open($row)) {
+            continue;
+        }
+
+        if (count($items) >= $cap) {
+            $truncated = true;
+            break;
+        }
+
+        $items[] = $item($row);
+    }
+
+    return array(
+        'group' => $items ? array('label' => $label, 'items' => $items) : null,
+        'truncated' => $truncated);
+}
+
+// Edit Submitted Form admits a Manager and above, or a user with the forms
+// right who edits the folder of the form's page (edit_submitted_form.php).
+function pg_explorer_file_usage_form_open($role, $manage_forms, $folder_editable)
+{
+    return ((int) $role <= 2) || ($manage_forms && $folder_editable);
+}
+
+// A submitted form: its form's name, its reference code as the note.
+function pg_explorer_file_usage_form_item($row)
+{
+    $name = (string) $row['form_name'];
+
+    return array(
+        'name' => ($name !== '') ? $name : ('#' . (int) $row['id']),
+        'note' => (string) $row['reference_code'],
+        'url' => 'edit_submitted_form.php?id=' . (int) $row['id']);
+}
+
+// A comment: who wrote it, and the page it sits on.
+function pg_explorer_file_usage_comment_item($row)
+{
+    $name = trim((string) $row['name']);
+
+    return array(
+        'name' => ($name !== '') ? $name : ('#' . (int) $row['id']),
+        'note' => pg_comment_page_label($row['page_name'], $row['page_id']),
+        'url' => 'edit_comment.php?id=' . (int) $row['id']);
+}
+
+// A contact: the name, or the e-mail address when there is no name.
+function pg_explorer_file_usage_contact_item($row)
+{
+    $email = (string) $row['email_address'];
+    $name = trim(trim((string) $row['first_name']) . ' ' . trim((string) $row['last_name']));
+
+    if ($name === '') {
+        $name = ($email !== '') ? $email : ('#' . (int) $row['id']);
+        $email = ($name === $email) ? '' : $email;
+    }
+
+    return array(
+        'name' => $name,
+        'note' => $email,
+        'url' => 'edit_contact.php?id=' . (int) $row['id']);
 }
 
 // "Can I delete this?" is the question the file manager could not
@@ -379,6 +454,91 @@ function pg_explorer_handle_file_usage($type, $request, $user, $folders_that_use
             function ($row) use ($usage_open, $usage_ad_regions) {
                 return array('name' => (string) $row['name'], 'note' => '', 'url' => $usage_open('ad', in_array((int) $row['ad_region_id'], $usage_ad_regions, true)) ? ('edit_ad.php?id=' . (int) $row['id']) : '');
             });
+    }
+
+    // Records that hold the file by id rather than by name: submitted form
+    // attachments, comment attachments and contact pictures. Deleting the
+    // file takes it away from them, so they count. Each group keeps only
+    // the records whose edit screen admits the viewer (the same checks
+    // those screens make); a wider window than the cap is read so rows
+    // the viewer may not open do not crowd out the ones they may.
+    $usage_file_id = (int) $usage_file['id'];
+    $usage_window = 200;
+    $usage_bound = array();
+
+    if (count($usage_columns('form_data', array('file_id', 'form_id'))) == 2) {
+        $usage_manage_forms = !empty($user['manage_forms']);
+
+        $usage_bound[] = array(
+            lang('Submitted Forms'),
+            db_q(
+                "SELECT DISTINCT forms.id, forms.reference_code, custom_form_pages.form_name, page.page_folder
+                FROM form_data
+                INNER JOIN forms ON forms.id = form_data.form_id
+                LEFT JOIN custom_form_pages ON custom_form_pages.page_id = forms.page_id
+                LEFT JOIN page ON page.page_id = forms.page_id
+                WHERE form_data.file_id = ?
+                ORDER BY forms.id DESC
+                LIMIT " . $usage_window,
+                array($usage_file_id)),
+            'pg_explorer_file_usage_form_item',
+            function ($row) use ($usage_role, $usage_manage_forms, $usage_page_folder_editable) {
+                return pg_explorer_file_usage_form_open($usage_role, $usage_manage_forms, ($usage_role > 2) && $usage_manage_forms && $usage_page_folder_editable($row['page_folder']));
+            });
+    }
+
+    if (count($usage_columns('comments', array('file_id'))) == 1) {
+        $usage_bound[] = array(
+            lang('Comments'),
+            db_q(
+                "SELECT comments.id, comments.name, comments.page_id, page.page_name, page.page_folder
+                FROM comments
+                LEFT JOIN page ON page.page_id = comments.page_id
+                WHERE comments.file_id = ?
+                ORDER BY comments.id DESC
+                LIMIT " . $usage_window,
+                array($usage_file_id)),
+            'pg_explorer_file_usage_comment_item',
+            function ($row) use ($usage_page_folder_editable) {
+                return $usage_page_folder_editable($row['page_folder']);
+            });
+    }
+
+    if ((count($usage_columns('contacts', array('file_id'))) == 1) && validate_contacts_access($user, true)) {
+        $usage_bound[] = array(
+            lang('Contacts'),
+            db_q(
+                "SELECT id, first_name, last_name, email_address
+                FROM contacts
+                WHERE contacts.file_id = ?
+                ORDER BY id DESC
+                LIMIT " . $usage_window,
+                array($usage_file_id)),
+            'pg_explorer_file_usage_contact_item',
+            function ($row) use ($user) {
+                return validate_contact_access($user, (int) $row['id']);
+            });
+    }
+
+    foreach ($usage_bound as $usage_source) {
+        $usage_rows = array();
+
+        if ($usage_source[1]) {
+            while ($usage_row = mysqli_fetch_assoc($usage_source[1])) {
+                $usage_rows[] = $usage_row;
+            }
+        }
+
+        $usage_bound_group = pg_explorer_file_usage_bound_group($usage_source[0], $usage_rows, $usage_source[2], $usage_source[3], $usage_cap);
+
+        if ($usage_bound_group['group']) {
+            $usage_total += count($usage_bound_group['group']['items']);
+            $usage_groups[] = $usage_bound_group['group'];
+        }
+
+        if ($usage_bound_group['truncated']) {
+            $usage_truncated = true;
+        }
     }
 
     // Settings that name a file outright. Matched whole rather than by
