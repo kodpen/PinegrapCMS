@@ -3,26 +3,19 @@ name: site-log-language
 description: Plan: the Site Log writers still passing bare English to log_activity() (issue #3332, after part 4)
 ---
 
-## Where do parts 1 to 3 leave it?
-- #3642: `pg_log_actor()`, `pg_log_lang()`, 39 files. #3661: `get_file.php`, the `lang()` loader (`core/lang-loader.md`) and the first `lang('UNKNOWN')` users.
-- #3716 (3a, 3b, part of 3c): no writer passes `lang('UNKNOWN')` any more (the test scans every file; `view_waf_log.php` only reads it). `submit_order.php` (recurring profile and PayPal Express lines), `includes/payments/callback.php` (`pg_payment_notify_line()` builds each line from the service's line, the order and the result), `includes/fn/order_completion.php` (refusal reasons), the Stripe, PayPal and PayTR driver lines, the auto-refund lines (`includes/fn/payments.php`), `retrieve_order.php`, `shipping_method.php`, `express_order.php`.
+## Where do parts 1 to 4 leave it?
+- #3642: `pg_log_actor()`, `pg_log_lang()`, 39 files. #3661: `get_file.php`, the `lang()` loader (`core/lang-loader.md`).
+- #3716: no writer passes `lang('UNKNOWN')` (the test scans every file; `view_waf_log.php` only reads it); checkout, payment callback, order completion refusals, Stripe, PayPal, PayTR, auto-refund, `retrieve_order.php`, `shipping_method.php`, `express_order.php`.
+- #3738: iyzico lines (the void reason goes to iyzico in English, the log translates it), the checkout's card gateway errors (one log line per error shown), the subscription engine, `includes/fn/mail.php`, `mail_queue.php`: `pg_log_lang()`. Checked, `lang()` in panel, API or job requests: `includes/workspace/*`, `includes/explorer/handle_*`, `includes/settings/*` and others listed in the test.
 - `tests/site_log_language_test.php` lists the files moved over; add each file the next part moves.
 
-## What did part 4 (#3738) do?
-- `includes/payments/iyzico.php`: every technical line (3DS and Pay with iyzico start, return, fraud, amount mismatch, `pg_payment_iyzico_void()`, renewal) through `pg_log_lang()`. The void reason still goes to iyzico in English; the log translates it (each reason is a shard key).
-- `submit_order.php` card gateways: `$payment_gateway_error` holds the parts; the visitor sees `lang()`, the log gets `pg_log_lang()` (test counts one log line per error shown).
-- Subscriptions: the `'log'` callbacks only ever get lines built in `subscriptions_account.php` / `subscription_renewal.php`; those, the run summaries and the mail failure are `pg_log_lang()`. Drivers' renewal `log` lines are not written by the engine.
-- `includes/fn/mail.php` (undelivered e-mail, often in a visitor's request) and `includes/fn/mail_queue.php` (give-up line): `pg_log_lang()`.
-- Checked, already `lang()` in panel, API or job requests (no change, listed in the test): `includes/workspace/changes.php`, `ai.php`, `api_resources.php` (all 52 callers pass `lang()`), `includes/explorer/handle_*`, `includes/panel/shared_component.php`, `includes/fn/designer.php`, `import_key_codes.php`, `delete_users.php`, `delete_styles.php`, `includes/settings/*`, `mail_queue.php`, `includes/fn/privacy.php` (no log lines).
-- `includes/fn/returns.php`: `pg_return_refund()` runs only from `view_return.php` (panel), so `lang()` is right there.
+## What did parts 5 to 7 do?
+- #3818: `email_a_friend.php` (the limit is the WAF rate scope `eaf`). #3800: `custom_form.php`, `logout()`, the quote guest signature. #3826: the checkout auto-invoice path and the order completion lines, so a checkout logs in one language.
+- Part 7 done #3916: `includes/fn/layouts.php` (the last bare literal; panel, so `lang()`); `pg_cart_quote_apply()` (the visitor's `cart_quote.php`; the other cart quote lines are panel or API, `lang()`); `pg_log_lang()` in `mfa.php`, `passkey.php`, `account_security.php`, `device_limit.php`, `signin.php`, `reserve_calendar_event.php`, `order_return.php`, `email_preferences.php`, `add_or_remove_watcher.php`, `erp_accountant_download.php`, `index.php` (page sign-in forms post there), `delete_order.php` (`order_history_delete_order.php`), `pg_chat_close()` (the site widget calls it), `includes/fn/captcha.php`, `includes/fn/mfa.php`, `passkeys.php`, `signin.php`, `signature.php` (a form signature's stamp), and in `auth.php` only `pg_device_limit_gate()`, `validate_login()`, `initialize_user()`, `check_banned_ip_addresses()`.
+- Checked in part 7, no change: `includes/api/**` (API requests, jobs, `marketplace_settings.php`; the test scans the folder), `pg_chat_delete()` and `pg_return_create_label()` (panel only), the `validate_*_access()` gates (panel), the Paraşüt connect line (`includes/settings/accounting.save.php` 394, `parasut_connect.php` 83: `parasut_connect_report()` builds it with `lang()` in a panel request). `includes/migrations/*` has no writer (`2026.11.0.php` 908 is a comment).
 
 ## What is left?
-- `includes/fn/layouts.php` (136): bare literal. Held by draft #3141; start after it lands.
-- `email_a_friend.php`: done #3818 (#3802): the daily limit is the WAF rate scope `eaf` (`waf/form-submission-limits.md`); the line goes through `pg_log_lang()`; listed in the test.
-- `includes/settings/commerce.save.php` 693 logs `parasut_connect_report()`'s line: part of the owner's ERP work, not checked.
-- Part 5 done #3800: `custom_form.php` (access denied, auto-login, key code), `logout()` in `includes/fn/forms.php` and the quote guest signature (`includes/erp/quote_links.php`) go through `pg_log_lang()`; the panel-only files it checked keep `lang()` (listed in the test).
-- Part 6 done #3826: the checkout auto-invoice path (`includes/erp/order_flow.php`, `includes/erp/mail.php` 'auto' mode, `includes/erp/order_bridge.php`) and the order completion lines (`includes/fn/order_completion.php`: order completed, blocked-address auto-registration) go through `pg_log_lang()`, so a checkout does not log in two languages.
-- Not checked, held by other work: `includes/migrations/*`, `parasut_connect.php`, and the files of draft #3298 (`includes/api/*`, `includes/fn/cart_quotes.php`, `add_cart_quote.php`, `view_cart_quotes.php`).
+- `add_comment.php` (after #3901), then the close-out.
 
 ## What was left as it is?
 - `assets/lib/tiny_mce_3_5_10/plugins/advlink/add_file.php` and `.../advimage/add_file.php`: `tools/check_lang.php` skips `assets/lib`, so a `lang()` key there would never be checked against the shards; they stay bare English.

@@ -1179,6 +1179,51 @@ function erp_bank_line_suggestion($line)
 }
 
 /**
+ * The suggestions of a whole statement, worked out once before any line is
+ * recorded: one for each new line outside the locked books that has one. Each
+ * line is asked on its own, so two lines of one amount can both point at the
+ * one open invoice of that amount; the invoice goes to the first of them and
+ * the later ones are left without a suggestion, since recording the first
+ * closes it. A suggestion of an account alone can go to several lines.
+ *
+ * @param array    $lines   erp_bank_statement_lines() rows, in screen order
+ * @param callable $suggest line => erp_bank_line_suggestion() shape
+ * @param callable $locked  date => lock refusal text ('' when open)
+ * @return array line id => account_id, invoice_id, why
+ */
+function erp_bank_statement_suggestions($lines, $suggest = 'erp_bank_line_suggestion', $locked = 'erp_lock_refusal')
+{
+    $suggestions = array();
+    $taken = array();
+
+    foreach ($lines as $line) {
+        if (((string) $line['status'] !== 'new') || (call_user_func($locked, (string) $line['doc_date']) !== '')) {
+            continue;
+        }
+
+        $suggestion = call_user_func($suggest, $line);
+
+        if ((int) $suggestion['account_id'] <= 0) {
+            continue;
+        }
+
+        $invoice_id = (int) $suggestion['invoice_id'];
+
+        if ($invoice_id > 0) {
+            if (isset($taken[$invoice_id])) {
+                continue;
+            }
+
+            $taken[$invoice_id] = true;
+        }
+
+        $suggestions[(int) $line['id']] = $suggestion;
+    }
+
+    return $suggestions;
+}
+
+/**
  * Record a line in the books: a collection or payment on an account, or an
  * expense paid from the bank.
  *

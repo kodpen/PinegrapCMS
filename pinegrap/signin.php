@@ -124,7 +124,7 @@ $signup_mode = $identity['signup'];
 // Block list, checked on the address the provider reported, before
 // anything is matched, tied or opened.
 if (($email !== '') && pg_email_blocked($email)) {
-    log_activity(lang(array(
+    log_activity(pg_log_lang(array(
         'string' => '{var:1} sign-in refused because the email address is blocked ({var:2})',
         'vars'   => array($label, $email))), '');
     pg_signin_fail(lang(array(
@@ -141,7 +141,7 @@ if ($identity['connect_user'] > 0) {
 $user_id = pg_signin_match_user($identity);
 
 if (!$user_id && !$identity['email_verified']) {
-    log_activity(lang(array(
+    log_activity(pg_log_lang(array(
         'string' => '{var:1} sign-in refused for an unknown account without a verified e-mail address ({var:2})',
         'vars'   => array($label, ($email !== '') ? $email : $identity['subject']))), '');
     pg_signin_fail(lang(array(
@@ -157,7 +157,7 @@ if (!$user_id && !$identity['email_verified']) {
 $address_refusal = $user_id ? '' : pg_signin_address_refusal($email, pg_signin_address_accounts($email));
 
 if ($address_refusal === 'connected') {
-    log_activity(lang(array(
+    log_activity(pg_log_lang(array(
         'string' => '{var:1} sign-in refused: the account with the address {var:2} is connected to another {var:1} account',
         'vars'   => array($label, $email))), '');
     pg_signin_fail(lang(array(
@@ -166,7 +166,7 @@ if ($address_refusal === 'connected') {
 }
 
 if ($address_refusal === 'in_use') {
-    log_activity(lang(array(
+    log_activity(pg_log_lang(array(
         'string' => '{var:1} sign-in refused: {var:2} differs from the address of an existing account only in accents or similar letters, so it was not tied to that account',
         'vars'   => array($label, $email))), '');
     pg_signin_fail(lang(array(
@@ -178,7 +178,7 @@ if ($address_refusal === 'in_use') {
 // or a site that publishes no entrance page). The address is named: an
 // account here with another address is the usual reason.
 if (!$user_id && ($signup_mode === 'none')) {
-    log_activity(lang(array(
+    log_activity(pg_log_lang(array(
         'string' => '{var:1} sign-in refused for an unknown account ({var:2})',
         'vars'   => array($label, $email))), '');
     pg_signin_fail(lang(array(
@@ -208,7 +208,7 @@ if (!$user_id) {
     $user_id = pg_signin_create_member($identity);
 
     if ($user_id) {
-        log_activity(lang(array(
+        log_activity(pg_log_lang(array(
             'string' => 'member account opened with {var:1} ({var:2})',
             'vars'   => array($label, $email))), '');
 
@@ -234,7 +234,7 @@ pg_session_sign_in($user_id, $username);
 pg_login_set_device_cookie($user_id, true);
 setcookie('software[remember_me]', 'true', time() + 315360000, '/');
 
-log_activity(lang(array('string' => 'user signed in with {var:1}', 'vars' => $label)), $username);
+log_activity(pg_log_lang(array('string' => 'user signed in with {var:1}', 'vars' => $label)), $username);
 
 require_once(dirname(__FILE__) . '/connect_user_to_order.php');
 connect_user_to_order();

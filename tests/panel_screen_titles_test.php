@@ -188,3 +188,44 @@ function test_panel_screen_titles_menu_reorder_bar_named()
 	pg_assert_false(strpos($source, 'aria-label="reorder buttons"') !== false, 'literal English aria-label');
 	pg_assert_contains('id="reorder_actions" style="bottom:.5rem;display:none" aria-label="\' . h(lang(\'Reorder Buttons\')) . \'"', $source, 'reorder bar named through lang()');
 }
+
+function test_panel_screen_titles_shell_draws_no_action_bar()
+{
+	// The screen's actions belong in its toolbar (pg_screen_toolbar()), so
+	// pg_page_shell() takes no button keys and draws no bar of its own.
+	$removed = array('actions', 'primary_button', 'action_bar_class');
+
+	$root = dirname(__DIR__) . '/pinegrap/';
+	$iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($root, FilesystemIterator::SKIP_DOTS));
+
+	foreach ($iterator as $file) {
+		$path = str_replace('\\', '/', substr($file->getPathname(), strlen($root)));
+		if (substr($path, -4) !== '.php' || strpos($path, 'assets/lib/') === 0 || strpos($path, 'vendor/') !== false) {
+			continue;
+		}
+		$source = (string) file_get_contents($file->getPathname());
+		if (strpos($source, 'pg_page_shell') === false) {
+			continue;
+		}
+
+		foreach (panel_screen_titles_calls($source) as $call) {
+			foreach ($removed as $key) {
+				pg_assert_false(in_array($key, (array) $call['keys'], true), $path . ':' . $call['line'] . ': removed key ' . $key);
+			}
+		}
+	}
+
+	$output = panel_screen_titles_source('includes/fn/output.php');
+	pg_assert_false(strpos($output, 'pg-page-actions') !== false, 'no .pg-page-actions bar in output.php');
+	pg_assert_false(strpos($output, "'primary_button'") !== false, 'no primary_button key in output.php');
+	pg_assert_false(strpos($output, "'action_bar_class'") !== false, 'no action_bar_class key in output.php');
+	pg_assert_false(strpos(panel_screen_titles_source('includes/fn/tour.php'), 'pg_page_shell') !== false, 'no pg_page_shell docblock in tour.php');
+}
+
+function test_panel_screen_titles_calendar_feed_goes_back_by_arrow()
+{
+	$source = panel_screen_titles_source('workspace_calendar_feed.php');
+	pg_assert_contains("'cancel'", $source, 'back arrow');
+	pg_assert_contains("'breadcrumb'", $source, 'breadcrumb');
+	pg_assert_contains("lang('Work Calendar'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/workspace_calendar.php'", $source, 'breadcrumb parent');
+}

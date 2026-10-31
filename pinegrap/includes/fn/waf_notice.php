@@ -402,22 +402,28 @@ function pg_waf_ban_notice_send()
 
     foreach ($plan as $notice) {
 
-        if ($notice['kind'] === 'ban') {
-            $entry = $notice['entry'];
-            $subject = lang(array('string' => '{var:1}: the firewall banned {var:2}', 'vars' => array($site, $entry['subject'])));
-            $body = pg_waf_ban_notice_email_html(
-                $entry,
-                pg_waf_ban_notice_samples($entry['ip'], $entry['when']),
-                pg_waf_ban_notice_absolute_url(pg_waf_ban_log_url($entry['subject']))
-            );
-        } else {
-            $subject = lang(array('string' => '{var:1}: the firewall banned {var:2} addresses by the rule {var:3}', 'vars' => array($site, count($notice['subjects']), $notice['rule'])));
-            $body = pg_waf_ban_notice_burst_html(
-                $notice['rule'],
-                $notice['subjects'],
-                pg_waf_ban_notice_absolute_url('view_waf_log.php?range=1&search=' . rawurlencode($notice['rule']))
-            );
-        }
+        // The operator reads the software language; the request that sends
+        // the notice may be a page drawn in another site language.
+        list($subject, $body) = pg_staff_lang(function () use ($notice, $site) {
+            if ($notice['kind'] === 'ban') {
+                $entry = $notice['entry'];
+                $subject = lang(array('string' => '{var:1}: the firewall banned {var:2}', 'vars' => array($site, $entry['subject'])));
+                $body = pg_waf_ban_notice_email_html(
+                    $entry,
+                    pg_waf_ban_notice_samples($entry['ip'], $entry['when']),
+                    pg_waf_ban_notice_absolute_url(pg_waf_ban_log_url($entry['subject']))
+                );
+            } else {
+                $subject = lang(array('string' => '{var:1}: the firewall banned {var:2} addresses by the rule {var:3}', 'vars' => array($site, count($notice['subjects']), $notice['rule'])));
+                $body = pg_waf_ban_notice_burst_html(
+                    $notice['rule'],
+                    $notice['subjects'],
+                    pg_waf_ban_notice_absolute_url('view_waf_log.php?range=1&search=' . rawurlencode($notice['rule']))
+                );
+            }
+
+            return array($subject, $body);
+        });
 
         try {
             $sent += email(array(

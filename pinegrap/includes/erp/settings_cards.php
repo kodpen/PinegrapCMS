@@ -67,6 +67,67 @@ function erp_settings_documents()
 }
 
 /**
+ * The template Preview: the PDF the document is made from the posted
+ * template, through the same dompdf settings as the one downloaded, e-mailed
+ * and kept (no remote files, DejaVu Sans, the paper size), so a remote logo,
+ * a web font or a layout dompdf does not draw shows as the customer will see
+ * it. Only when no PDF can be made (no library, or the render throws) is the
+ * HTML returned, opened by a note that the PDF may look different.
+ *
+ * @param string   $html
+ * @param callable $render html => PDF bytes, or false without the library
+ * @return array type (pdf | html), body
+ */
+function erp_template_preview_document($html, $render = 'erp_invoice_pdf')
+{
+    try {
+        $pdf = call_user_func($render, $html);
+    } catch (\Throwable $e) {
+        $pdf = false;
+    }
+
+    if (is_string($pdf) && ($pdf !== '')) {
+        return array('type' => 'pdf', 'body' => $pdf);
+    }
+
+    $note = '<div style="font-family:sans-serif;font-size:13px;background:#fff3cd;color:#664d03;padding:8px 12px;margin:0 0 12px;">'
+        . h(lang('The PDF could not be made, so this preview shows the HTML it is made from; the PDF may look different.')) . '</div>';
+
+    if (preg_match('/<body\b[^>]*>/i', $html, $match, PREG_OFFSET_CAPTURE)) {
+        $position = $match[0][1] + strlen($match[0][0]);
+        return array('type' => 'html', 'body' => substr($html, 0, $position) . $note . substr($html, $position));
+    }
+
+    return array('type' => 'html', 'body' => $note . $html);
+}
+
+/**
+ * Send the template Preview and stop. It is never kept: the endpoints call
+ * this before they read or write a kept copy, and the browser is told not to
+ * store it.
+ *
+ * @param string $html
+ */
+function erp_template_preview_send($html)
+{
+    $preview = erp_template_preview_document($html);
+
+    header('Cache-Control: private, no-store');
+    header('X-Robots-Tag: noindex');
+
+    if ($preview['type'] === 'pdf') {
+        header('Content-Type: application/pdf');
+        header('Content-Disposition: inline; filename="preview.pdf"');
+        header('Content-Length: ' . strlen($preview['body']));
+    } else {
+        header('Content-Type: text/html; charset=utf-8');
+    }
+
+    echo $preview['body'];
+    exit();
+}
+
+/**
  * Whether the accounting rules can be edited: the withholding and the
  * exemption code concern Turkish VAT and e-documents, so they are offered
  * where those are in use, once the upgrade added their columns.

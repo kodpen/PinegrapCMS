@@ -21,7 +21,7 @@ description: Writing an external API endpoint: one route row, one presenter, lis
 - A text `max_length` must fit its column: `api-text-field-limits.md`.
 
 ## Which error codes may a handler use?
-- Reuse the generic ones: `validation_failed` (`api_fail_validation()`), `not_found` (`api_fail_not_found()`), `forbidden`, `invalid_cursor`, `service_unavailable`. Every non-409 code must be explained in `api_error_catalogue()` (`includes/api/schema.php`); `tools/check_api_schema.php` fails a build that answers an unexplained one.
+- Reuse the generic ones: `validation_failed` (`api_fail_validation()`), `not_found` (`api_fail_not_found()`), `forbidden`, `invalid_cursor`, `service_unavailable` (a feature that waits for a database update; a lost connection is the bootstrap's `database_unavailable`, `api-database-unavailable.md`). Every non-409 code must be explained in `api_error_catalogue()` (`includes/api/schema.php`); `tools/check_api_schema.php` fails a build that answers an unexplained one.
 - A 409 is named by the endpoint that produces it (`name_taken`, `already_recycled`, `invoice_not_draft`) and described in that route's description, not in the catalogue.
 
 ## Which formats?

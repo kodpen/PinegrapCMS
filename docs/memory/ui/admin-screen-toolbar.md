@@ -1,6 +1,6 @@
 ---
 name: admin-screen-toolbar
-description: Panel screen basics (frame, notices, fields, width, icons, help) and the single-toolbar design principle for every admin screen, with view_folders.php as reference: slot order and classes.
+description: Panel screen basics (frame, notices, fields, width, icons, help), the one-toolbar principle with view_folders.php as reference, slot order, classes and the pg_screen_toolbar() helper.
 ---
 
 ## What are the basic panel UI helpers and conventions?
@@ -27,5 +27,10 @@ description: Panel screen basics (frame, notices, fields, width, icons, help) an
 | 6 | Overflow menu `⋮`: rare, screen-specific things | `btn btn-sm btn-text theme-secondary` with `data-bs-placement="bottom-end"` + `ul.menu.pg-menu-end` |
 - A menu slot is `div.pg-menu-wrap` > toggle (`data-bs-toggle="menu"`, `data-bs-display="static"`) + `ul.menu` of `.menu-item`s.
 - The strip under the heading of older screens (`#button_bar`) is the same component: `page-button-bar.md`.
+
+## How does a screen draw its toolbar?
+- `pg_screen_toolbar($slots, $opts)` (`includes/fn/output.php`) returns `nav#button_bar.pg-toolbar` with slots `primary`, `secondary`, `grow`, `search`, `view`, `overflow`, always in that order; `''` when no slot is filled, so no empty bar. Options: `label` (aria name, default "Button Bar"), `class`.
+- A slot is markup (a menu, `pg_filter_select()`), a button array `label`/`url`/`icon`/`id` (escaped, drawn in the slot's recipe above) or a list of both. A right cluster with no grow gets an empty grow as spacer. Pinned by `tests/screen_toolbar_test.php`.
+- `pg_page_shell()` draws no buttons: its `actions`/`primary_button`/`action_bar_class` keys and the unstyled `.pg-page-actions` row were removed (only Calendar subscription used them; it now goes back by arrow and breadcrumb). `tests/panel_screen_titles_test.php` refuses the keys.
 
 Related: docs/memory/ui/admin-screen-toolbar-rules.md
