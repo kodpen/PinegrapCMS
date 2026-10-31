@@ -664,9 +664,11 @@ if ($ship_to_exists == true) {
                 $address .= $ship_tos[$key]['address_2'] . ', ';
             }
 
-            // The district, when one was typed, before the city.
-            if (!empty($ship_tos[$key]['district'])) {
-                $address .= $ship_tos[$key]['district'] . ', ';
+            // The district, when it differs from the city, before the city.
+            $district = pg_order_view_district(isset($ship_tos[$key]['district']) ? $ship_tos[$key]['district'] : '', $ship_tos[$key]['city']);
+
+            if ($district !== '') {
+                $address .= $district . ', ';
             }
             
             if ($ship_tos[$key]['city']) {
@@ -1600,7 +1602,8 @@ if ($ship_to_exists) {
             $st_addr = '';
             if ($st['address_1']) $st_addr .= h($st['address_1']) . '<br/>';
             if ($st['address_2']) $st_addr .= h($st['address_2']) . '<br/>';
-            if (!empty($st['district'])) $st_addr .= h($st['district']) . '<br/>';
+            $st_district = pg_order_view_district(isset($st['district']) ? $st['district'] : '', $st['city']);
+            if ($st_district !== '') $st_addr .= h($st_district) . '<br/>';
             $_st_cs = trim(h($st['city']) . ($st['state'] ? ', ' . h($st['state']) : '') . ' ' . h($st['zip_code']));
             if ($_st_cs) $st_addr .= $_st_cs . '<br/>';
             if ($st['country']) $st_addr .= h(pg_order_view_country($st['country']));
