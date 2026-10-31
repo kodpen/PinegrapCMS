@@ -55,7 +55,7 @@ Code rules, file layout, translation, JavaScript twins and bundles, roles and ac
 - css-bundles.md: The panel stylesheet served minified (pg_css_bundles(), tools/build_css.php, tools/css_minify.php): what the minifier removes and keeps, src mode, the CI and pre-push check, how it was proved equal
 - csv-escape-argument.md: Every fgetcsv(), fputcsv() and str_getcsv() call passes enclosure '"' and escape '\\': PHP 8.4 deprecates leaving the escape out; why '\\' and not '', and the test that holds it
 - csv-exports.md: Panel CSV exports start with pg_csv_download_start() (UTF-8 charset and byte order mark) and stamp times with pg_csv_export_time() (site clock); pg_csv_open() steps over the mark on import
-- csv-formula-guard.md: pg_csv_formula_guard() puts an apostrophe before a leading = + - @ tab or CR in exported text cells (orders exports included); pg_csv_formula_unguard() takes it off on import
+- csv-formula-guard.md: pg_csv_formula_guard() puts an apostrophe before a leading = + - @ tab or CR in exported text cells (orders, gift cards, visitor report); pg_csv_formula_unguard() undoes it on import
 - csv-import-feedback.md: Contacts, Users, Products, Submitted Forms and Campaign Profiles CSV import: separator from the header line, unknown headings and unused rows named 'Line n: reason'
 - csv-import-headings.md: How Import Products and Import Campaign Profiles match headings (pg_import_heading: case, spaces, dashes), the products name-column refusal, and blank submitted-form rows passed over
 - csv-line-endings.md: The CSV importers open the upload with pg_csv_open(), which turns a classic Mac (CR-only) file into LF lines instead of the auto_detect_line_endings setting deprecated in PHP 8.1 (PR #1757)

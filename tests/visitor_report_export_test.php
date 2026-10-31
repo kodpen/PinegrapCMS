@@ -98,3 +98,13 @@ function test_visitor_report_pay_per_click_organic_translated()
 	pg_assert_contains('THEN "Pay Per Click"', $source);
 	pg_assert_contains('THEN "Organic"', $source);
 }
+
+// A grouping cell (referrer, search terms, tracking and affiliate codes,
+// utm_* values) is set by the visitor, so it gets the formula guard; the
+// visitor number, date, counts, flags and Order Total do not.
+function test_visitor_report_export_guards_grouping_cells()
+{
+	$block = visitor_report_export_block();
+	pg_assert_contains('$line[] = pg_csv_formula_guard($cell);', $block);
+	pg_assert_same(1, substr_count($block, 'pg_csv_formula_guard('), 'only the grouping cells are guarded');
+}
