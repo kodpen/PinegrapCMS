@@ -134,3 +134,40 @@ function test_panel_shared_keys_revision_sources_are_nouns()
 	pg_assert_false(strpos($body, "lang('Edit')") !== false, 'no Edit button key');
 	pg_assert_false(strpos($body, "lang('Restore')") !== false, 'no Restore button key');
 }
+
+// The audit trail's type and action names have their own keys: "Return" is
+// the ERP return invoice, and Cancelled, Refunded, Exported and Merged are
+// states or column headers elsewhere.
+function test_panel_shared_keys_audit_names_have_their_own_keys()
+{
+	$map = pg_test_language_map();
+
+	pg_assert_same('İade talebi', $map['Return request'] ?? null, 'Return request');
+	pg_assert_same('İptal edildi', $map['Record cancelled'] ?? null, 'Record cancelled');
+	pg_assert_same('İade edildi', $map['Record refunded'] ?? null, 'Record refunded');
+	pg_assert_same('Dışa aktarıldı', $map['Record exported'] ?? null, 'Record exported');
+	pg_assert_same('Birleştirildi', $map['Records merged'] ?? null, 'Records merged');
+	pg_assert_same('İade Faturası', $map['Return'] ?? null, 'Return keeps the ERP sense');
+
+	$labels = pg_audit_view_labels('type') + pg_audit_view_labels('action');
+
+	pg_assert_same(lang('Return request'), $labels['order_return'], 'order_return type');
+	pg_assert_same(lang('Record cancelled'), pg_audit_view_labels('action')['cancel'], 'cancel action');
+	pg_assert_same(lang('Record refunded'), pg_audit_view_labels('action')['refund'], 'refund action');
+	pg_assert_same(lang('Record exported'), pg_audit_view_labels('action')['export'], 'export action');
+	pg_assert_same(lang('Records merged'), pg_audit_view_labels('action')['merge'], 'merge action');
+}
+
+// The UTM field reads "Mecra" under its own key; "Medium" stays "Orta", a
+// size and a font weight.
+function test_panel_shared_keys_utm_medium_has_its_own_key()
+{
+	$map = pg_test_language_map();
+
+	pg_assert_same('Mecra', $map['UTM medium'] ?? null, 'UTM medium');
+	pg_assert_same('Orta', $map['Medium'] ?? null, 'Medium');
+
+	foreach (array('view_visitor_report.php', 'view_order_report.php', 'view_visitor.php') as $path) {
+		pg_assert_false(strpos(panel_shared_keys_source($path), "lang('Medium')") !== false, $path . ' has no lang(\'Medium\')');
+	}
+}

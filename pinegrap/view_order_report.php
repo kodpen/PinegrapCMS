@@ -169,7 +169,7 @@ if (!$_POST) {
 
     $summarize_by_options[lang('UTM')] = '<optgroup>';
     $summarize_by_options[lang('Source')] = 'utm_source';
-    $summarize_by_options[lang('Medium')] = 'utm_medium';
+    $summarize_by_options[lang('UTM medium')] = 'utm_medium';
     $summarize_by_options[lang('Campaign')] = 'utm_campaign';
     $summarize_by_options[lang('Term')] = 'utm_term';
     $summarize_by_options[lang('Content')] = 'utm_content';
@@ -351,7 +351,7 @@ if (!$_POST) {
 
     $field_options[] = array('name' => lang('UTM'), 'value' => '<optgroup>');
     $field_options[] = array('name' => lang('Source'), 'value' => 'utm_source');
-    $field_options[] = array('name' => lang('Medium'), 'value' => 'utm_medium');
+    $field_options[] = array('name' => lang('UTM medium'), 'value' => 'utm_medium');
     $field_options[] = array('name' => lang('Campaign'), 'value' => 'utm_campaign');
     $field_options[] = array('name' => lang('Term'), 'value' => 'utm_term');
     $field_options[] = array('name' => lang('Content'), 'value' => 'utm_content');
