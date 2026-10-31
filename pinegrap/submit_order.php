@@ -1494,7 +1494,7 @@ function submit_order($type) {
         } else {
             $old_total = $liveform->get('total_with_surcharge');
         }
-        log_activity(lang(array(
+        log_activity(pg_log_lang(array(
             'string' => 'Order (id: {var:1}, reference code: {var:2}) was not accepted because the new total ({var:3}) was greater than the old total ({var:4}) that the customer saw. The customer was asked to review the new total and submit the order again. This might be normal, if, for example, the customer stayed on the page for a long time before submitting the order, because a cost might have changed during that time period. Or, it might be normal if you are using an express order page with tax enabled, because the customer\'s tax is not known until an address is supplied. However, if this issue happens often, then it might indicate an issue that needs to be addressed.',
             'vars' => array(($_SESSION['ecommerce']['order_id'] ?? ''), $reference_code, prepare_amount($total / 100), prepare_amount($old_total))
         )));
@@ -3495,7 +3495,7 @@ function submit_order($type) {
     if ($order_number === null) {
         $completed_order_id = (int) ($_SESSION['ecommerce']['order_id'] ?? 0);
 
-        log_activity(lang('A second checkout of an order that was already completed changed nothing.') . ' (' . $completed_order_id . ')');
+        log_activity(pg_log_lang(array('string' => 'A second checkout of an order that was already completed changed nothing.')) . ' (' . $completed_order_id . ')');
 
         $_SESSION['ecommerce']['completed_order_id'] = $completed_order_id;
         unset($_SESSION['ecommerce']['order_id']);
@@ -3513,7 +3513,7 @@ function submit_order($type) {
     if (($payment_driver !== '') && ($recurring_transaction == TRUE)) {
         foreach (pg_subscription_checkout_create((int) ($_SESSION['ecommerce']['order_id'] ?? 0), $payment_driver, $payment_answer, $products) as $subscription_item_id => $subscription_id) {
             if ($subscription_id === 0) {
-                log_activity(lang('A subscription could not be created for an order line.') . ' (' . $order_number . ', ' . $subscription_item_id . ')');
+                log_activity(pg_log_lang(array('string' => 'A subscription could not be created for an order line.')) . ' (' . $order_number . ', ' . $subscription_item_id . ')');
             }
         }
     }
