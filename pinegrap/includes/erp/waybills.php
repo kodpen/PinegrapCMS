@@ -235,6 +235,27 @@ function erp_waybill_invoice_state($waybill)
 }
 
 /**
+ * Where a delivery note's invoice opens, by the same state the list and the
+ * full page read: nothing for a cancelled or missing invoice, the draft
+ * editor for a draft, the invoice page for an issued one.
+ *
+ * @param array $waybill  Row from erp_waybill()
+ * @return string  Relative URL, or '' when there is no live invoice
+ */
+function erp_waybill_invoice_url($waybill)
+{
+    $state = erp_waybill_invoice_state($waybill);
+
+    if ($state === 'none') {
+        return '';
+    }
+
+    $id = (int) $waybill['invoice_id'];
+
+    return (($state === 'draft') ? 'edit_erp_invoice_draft.php?id=' : 'edit_erp_invoice.php?id=') . $id;
+}
+
+/**
  * The unit codes offered on a line: the invoice editor's list, so a line
  * carried over to the invoice keeps its unit.
  *
