@@ -26,6 +26,41 @@ if (pg_post_body_discarded()) {
     exit();
 }
 
+// The settings card posts format=json and prints the answer under its
+// button. validate_user() would redirect it to the sign-in page (fetch follows
+// that as a 200) and validate_token_field() prints an HTML error page, so the
+// card read "Unexpected token '<'". An ended session or a stale token is
+// answered here in the card's own shape instead.
+pg_request_single_values(array('format'));
+
+if (isset($_POST['format']) && is_string($_POST['format']) && ($_POST['format'] === 'json')) {
+
+    $parasut_connect_refuse = function ($message, $status) {
+        http_response_code($status);
+        header('Content-Type: application/json; charset=utf-8');
+        header('X-Robots-Tag: noindex');
+        header('Cache-Control: private, no-store');
+        echo json_encode(array(
+            'tone' => 'danger',
+            'icon' => 'bi-x-circle',
+            'lines' => array($message),
+            'note' => '',
+        ), JSON_UNESCAPED_UNICODE);
+        exit();
+    };
+
+    if (!defined('USER_LOGGED_IN') || !USER_LOGGED_IN) {
+        $parasut_connect_refuse(lang('Your session has expired. Reload the page and sign in again.'), 401);
+    }
+
+    $parasut_connect_session_token = (string) ($_SESSION['software']['token'] ?? '');
+    $parasut_connect_post_token = (isset($_POST['token']) && is_string($_POST['token'])) ? $_POST['token'] : '';
+
+    if (($parasut_connect_session_token === '') || !hash_equals($parasut_connect_session_token, $parasut_connect_post_token)) {
+        $parasut_connect_refuse(lang('Your session expired. Reload the page and try again.'), 403);
+    }
+}
+
 $user = validate_user();
 validate_area_access($user, 'manager');
 
