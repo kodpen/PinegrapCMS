@@ -8502,25 +8502,35 @@
         pick.className = 'form-control';
         pick.setAttribute('aria-label', t('fl_connect_title', nameOf(node)));
 
-        K.ask(t('fl_connect_title', nameOf(node)), t('fl_connect_add'), false, pick).then(function (yes) {
+        var answer = K.ask(t('fl_connect_title', nameOf(node)), t('fl_connect_add'), false, pick).then(function (yes) {
             if (yes) {
                 connect(node, nodeById(pick.value));
             }
-
-            state.selected = { type: 'node', id: node.id };
-            markSelected();
-            focusSelected();
         });
 
         // The dialog takes the focus once it is shown; the list then takes it
         // from the dialog, so the arrow keys choose at once.
         var dialog = document.getElementById('ws-ask');
+        var closed = Promise.resolve();
 
         if (dialog) {
             pgUI.dialog.on(dialog, 'shown', function () {
                 pick.focus();
             }, { once: true });
+
+            closed = new Promise(function (resolve) {
+                pgUI.dialog.on(dialog, 'hidden', resolve, { once: true });
+            });
         }
+
+        // The arrow redraws the box while the dialog holds the page inert,
+        // and the dialog's close returns the focus to the box it replaced:
+        // the redrawn box takes it once the dialog is gone.
+        Promise.all([answer, closed]).then(function () {
+            state.selected = { type: 'node', id: node.id };
+            markSelected();
+            focusSelected();
+        });
     }
 
     function removeSelected(target) {
@@ -11199,6 +11209,10 @@
         var step = event.shiftKey ? GRID * 4 : GRID;
         var selected = state.selected;
         var handled = true;
+
+        // A key between two taps on a box (C and its dialog) makes them two
+        // clicks, not the double tap that opens the box's settings.
+        state.tap = null;
 
         if ((key === 'ArrowLeft') || (key === 'ArrowRight') || (key === 'ArrowUp') || (key === 'ArrowDown')) {
             if (selected && (selected.type === 'node') && state.edit && !event.ctrlKey && !event.metaKey) {
