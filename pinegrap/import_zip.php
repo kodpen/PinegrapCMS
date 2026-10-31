@@ -550,7 +550,7 @@ if (!$_POST) {
 
 
 
-                    log_activity( lang(array('string'=>'file was renamed during import my site ({var:1} -> {var:2})','vars'=>array($name,$backup_name))) );
+                    log_activity( lang(array('string'=>'file was renamed during the ZIP file import ({var:1} -> {var:2})','vars'=>array($name,$backup_name))) );
 
                     $old_file_backed_up = true;
 

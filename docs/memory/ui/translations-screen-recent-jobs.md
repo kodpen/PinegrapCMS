@@ -14,3 +14,6 @@ As visible text in a line under the job's row (`fg-danger small`, the icon besid
 
 ## What survives the reload after a job or a bulk action?
 Each of them toasts and reloads the screen 0.8–1.2 s later. `afterReload(message, kind)` in `translations.js` stores the message in `sessionStorage` (`pg-tr-toast`) first, and the next load shows it once with `toast()`. `finish(done, failed, error)` stores the job's error, else the "Finished: …" counts, as an error when a text failed and as success otherwise. Nothing pending, pending by hand, Review All, Clear and Accept source store their own message. The cancel paths and the engine switch reload with no message. Before PR #3087 these messages were gone before they could be read (`tests/translations_reload_message_test.php`).
+
+## What does Update log and say for a language translated by hand?
+Nothing is sent, so `translations_action.php` writes `'translations were updated ({var:1}, {var:2} text(s) sent)'` only when `pg_tr_update()` created a job (`job_id` > 0); otherwise `'the texts of {var:1} were scanned ({var:2} text(s) pending)'`. The Update button's tooltip for the `manual` engine is scan-only ("Scan … and list the pending texts here"). Before, the Site Log said texts were sent and the tooltip said "send … to the engine" though nothing left the site (`tests/translations_zip_variant_wording_test.php`).

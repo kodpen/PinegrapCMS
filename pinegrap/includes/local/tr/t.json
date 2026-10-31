@@ -5949,6 +5949,7 @@
     "the submitted value": "gönderilen değer",
     "the subscribed product": "abone olunan ürün",
     "the template could not be applied: {var:1}": "şablon uygulanamadı: {var:1}",
+    "the texts of {var:1} were scanned ({var:2} text(s) pending)": "{var:1} metinleri tarandı ({var:2} metin bekliyor)",
     "the time it runs": "çalıştığı saat",
     "the tools of the MCP server @{var:1} that read only were turned on": "@{var:1} MCP sunucusunun yalnızca okuyan araçları açıldı",
     "the tools of the MCP server @{var:1} were changed": "@{var:1} MCP sunucusunun araçları değiştirildi",

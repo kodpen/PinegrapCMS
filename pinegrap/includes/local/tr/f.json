@@ -863,6 +863,7 @@
     "file attachment ({var:1}) was deleted because a comment on page ({var:2}) was deleted": "({var:2}) sayfasındaki bir yorum silindiği için dosya eki ({var:1}) silindi",
     "file name not allowed": "dosya adına izin verilmiyor",
     "file was renamed during import my site ({var:1} -> {var:2})": "dosya siteye içe aktarırken yeniden adlandırıldı ({var:1} -> {var:2})",
+    "file was renamed during the ZIP file import ({var:1} -> {var:2})": "dosya ZIP dosyası içe aktarılırken yeniden adlandırıldı ({var:1} -> {var:2})",
     "file(s)": "dosya",
     "file, {var:1}, was uploaded": "{var:1} dosyası yüklendi",
     "files": "dosyalar",

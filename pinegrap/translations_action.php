@@ -165,7 +165,13 @@ if (!$translations_is_import && !$translations_is_export) {
                 translations_respond(array('status' => 'success') + $result);
             }
 
-            log_activity(lang(array('string' => 'translations were updated ({var:1}, {var:2} text(s) sent)', 'vars' => array($language, $result['pending']))), $_SESSION['sessionusername']);
+            // Texts are sent only when a job was created; a language
+            // translated by hand, or nothing pending, is a scan only.
+            if (!empty($result['job_id'])) {
+                log_activity(lang(array('string' => 'translations were updated ({var:1}, {var:2} text(s) sent)', 'vars' => array($language, $result['pending']))), $_SESSION['sessionusername']);
+            } else {
+                log_activity(lang(array('string' => 'the texts of {var:1} were scanned ({var:2} text(s) pending)', 'vars' => array($language, $result['pending']))), $_SESSION['sessionusername']);
+            }
 
             translations_respond(array('status' => 'success') + $result);
             break;
