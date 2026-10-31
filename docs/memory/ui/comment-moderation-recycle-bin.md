@@ -26,3 +26,6 @@ module: comments
 - `pg_dashboard_activity_kinds()` builds the fragment once; `pg_activity_daily()` gets `comments LEFT JOIN page ON …` as its table and the fragment as `$extra`, and the list query appends it after `WHERE 1 = 1`. Before, it counted and listed them as 'Awaiting approval' (#3734).
 
 Test: `tests/comment_recycle_bin_test.php`.
+
+## When does Edit Comment write the stars?
+- Only while the comment's page has `comments_rating` on (the radios are drawn only then). With it off the UPDATE leaves `rating` out: `add_comment.php` stores 1-5 stars whatever the page setting and a page can switch stars off later, so the missing radios used to store 0 and drop the review from `products.rating_avg` / `rating_count`. `pg_review_comment_changed()` still runs. Pinned in `tests/hidden_field_kept_test.php`.
