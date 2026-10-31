@@ -155,7 +155,8 @@ function test_panel_text_size_calendar_card_bell_and_sales_map_in_rem()
 	$description = panel_text_size_test_rule($css, '#notifications .list-group-item .notification-description');
 	pg_assert_contains('line-height: 0.9375rem;', $description);
 	pg_assert_contains('font-size: 0.8125rem;', $description);
-	pg_assert_contains('width: 21.875rem;', panel_text_size_test_rule($css, '#notifications'));
+	// The one inbox is wider than the old 350px, still in rem.
+	pg_assert_contains('width: 26rem;', panel_text_size_test_rule($css, '#notifications'));
 }
 
 function test_panel_text_size_dashboard_skeleton_in_rem()

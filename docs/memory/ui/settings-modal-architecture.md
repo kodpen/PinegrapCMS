@@ -4,7 +4,7 @@ description: Site Settings modal architecture: file map, the categories and thei
 ---
 
 ## Why is Site Settings a modal and not a screen?
-- A setting is almost always needed in the middle of another job; going to a page means abandoning it. The old single screen (5219 lines, one `<form>` writing 247 columns per save) was split into eight categories, which then moved into a modal.
+- A setting is almost always needed in the middle of another job; going to a page means abandoning it. The old single screen (5219 lines, one `<form>` writing 247 columns per save) was split into categories, which then moved into a modal.
 
 ## Which files make it up?
 ```
@@ -26,17 +26,10 @@ Shared
   includes/settings/<cat>.save.php what that category writes
 ```
 
-## Which categories and cards exist (27 sections)?
-| Pane | Cards |
-|---|---|
-| `general` | server, software, channel, datetime, cron |
-| `appearance` | theme, dashboard (role < 2 only, `settings-dashboard-card.md`), editor |
-| `features` | features, images |
-| `seo` | seo, analytics |
-| `contact` | campaigns, chat, mailchimp, sms, sms-messages, iys |
-| `security` | session, device, signin, membership |
-| `firewall` | waf, bots, iplists |
-| `commerce` | store, shipping, giftcards, invoice, payments, affiliate |
+## Which categories and cards exist?
+- `registry.php` is the list; read it for the cards. Order: `general`, `appearance`, `features`, `seo`, `languages`, `contact` (Communication), `security`, `firewall`, `commerce` (Ecommerce), `accounting`, `api`.
+- `accounting` (Accounting, as in the main menu): the ERP and E-Invoice cards, out of Ecommerce since #3819 with the same fields, columns and save (`accounting.save.php`, Paraşüt and e-document provider code included). E-Invoice is hidden outside Turkey as before (`pg_edoc_settings_shown()`). `erp_settings.php` keeps its own cards for now (plans/settings-recategorization-steps.md R2b).
+- Dashboard (Appearance) is listed for role < 2 only (`settings-dashboard-card.md`).
 
 ## How do you move a card?
 - Two edits: the `sections` entry in `registry.php`, and moving the card block between `includes/settings/<key>.php` files.

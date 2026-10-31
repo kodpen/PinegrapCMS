@@ -65,7 +65,7 @@ function test_settings_input_keyboards_web_addresses_and_hosts()
 		array('includes/settings/general.php', 'proxy_address'),
 		array('includes/settings/general.php', 'backup_ftp_host'),
 		array('includes/settings/general.php', 'backup_s3_endpoint'),
-		array('includes/settings/commerce.php', 'erp_web_address'),
+		array('includes/settings/accounting.php', 'erp_web_address'),
 		array('includes/settings/features.php', 'signature_tsa_url'),
 		array('includes/workspace/mail_settings.php', 'auth_server'),
 		array('includes/workspace/mail_settings.php', 'host'),
@@ -97,7 +97,7 @@ function test_settings_input_keyboards_names_kept_as_typed()
 
 function test_settings_input_keyboards_address_lists()
 {
-	settings_input_keyboards_test_box('includes/settings/commerce.php', 'erp_overdue_notify_recipients', 'email', true);
+	settings_input_keyboards_test_box('includes/settings/accounting.php', 'erp_overdue_notify_recipients', 'email', true);
 	settings_input_keyboards_test_box('includes/workspace/mail_route.php', 'route_match[]', 'email', true);
 }
 

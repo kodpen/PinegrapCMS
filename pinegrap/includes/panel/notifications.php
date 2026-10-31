@@ -134,12 +134,21 @@ function pg_panel_get_notifications($request, $action)
             'readed' => (pg_notification_is_read($notification, $user['id']) ? 1 : 0),
             'url' => $display['url'],
             'action' => $display['action'],
-            'time' => get_relative_time(array('timestamp' => $notification['timestamp']))
+            'time' => get_relative_time(array('timestamp' => $notification['timestamp'])),
+            // The bell's filters: what the workspace told this person, and
+            // the rest of the site.
+            'group' => ((($notification['action'] ?? '') === 'workspace') ? 'workspace' : 'site'),
+            'glyph' => $display['glyph'],
+            'join' => $display['join'],
+            'fold' => $display['fold']
         );
 
         array_push($array, $item);
         $mark_read[] = $notification['id'];
     }
+
+    // The runs of one flow are one line, opened on a click.
+    $array = pg_notification_fold($array);
 
     // One write for the whole list. Marking each row as it was drawn cost a
     // query per notification, and on a site with more than one operator it

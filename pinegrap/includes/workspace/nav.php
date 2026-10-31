@@ -29,7 +29,8 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  *                           calendar_feed, actions, messages, flows, mcp, base);
  *                           null asks them
  * @return array[] head (the settings gear beside the search), top (the
- *                 places), work, records => items (key, label, icon, url)
+ *                 places), tools (the tiles), more (behind the More tile)
+ *                 => items (key, label, icon, url; a tile's short name)
  */
 function ws_nav_groups($viewer, $flags = null)
 {
@@ -64,51 +65,54 @@ function ws_nav_groups($viewer, $flags = null)
             array('key' => 'inbox', 'label' => lang('Inbox'), 'icon' => 'bi-inbox', 'url' => $base . 'workspace.php?view=home&inbox=1', 'inbox' => true),
             array('key' => 'tasks', 'label' => lang('My Tasks'), 'icon' => 'bi-check2-square', 'url' => $base . 'workspace_tasks.php'),
         ),
-        'work' => array(),
-        'records' => array(
-            array('key' => 'timeline', 'label' => lang('Decision Timeline'), 'icon' => 'bi-clock-history', 'url' => $base . 'workspace_timeline.php'),
-            array('key' => 'archived', 'label' => lang('Archived channels'), 'icon' => 'bi-archive', 'url' => $base . 'workspace.php?view=home&panel=archived'),
-        ),
+        'tools' => array(),
+        'more' => array(),
     );
 
-    if (!empty($flags['mail'])) {
-        $groups['work'][] = array('key' => 'mail', 'label' => lang('E-mails'), 'icon' => 'bi-envelope', 'url' => $base . 'workspace_mail.php');
-    }
-
+    // The tiles: the screens of a working day, in the order they are drawn.
+    // A tile shows a short name; the full one is its title.
     if (!empty($flags['notes'])) {
-        $groups['work'][] = array('key' => 'notes', 'label' => lang('My Notes'), 'icon' => 'bi-journal-text', 'url' => $base . 'workspace_notes.php');
+        $groups['tools'][] = array('key' => 'notes', 'label' => lang('My Notes'), 'icon' => 'bi-journal-text', 'url' => $base . 'workspace_notes.php');
     }
 
     if (!empty($flags['wtables'])) {
-        $groups['work'][] = array('key' => 'wtables', 'label' => lang('Tables'), 'icon' => 'bi-table', 'url' => $base . 'workspace_wtables.php');
-    }
-
-    $groups['work'][] = array('key' => 'board', 'label' => lang('Planning Board'), 'icon' => 'bi-calendar-week', 'url' => $base . 'workspace_board.php');
-    $groups['work'][] = array('key' => 'calendar', 'label' => lang('Work Calendar'), 'icon' => 'bi-calendar3', 'url' => $base . 'workspace_calendar.php');
-
-    if (!empty($flags['calendar_feed'])) {
-        $groups['work'][] = array('key' => 'calendar_feed', 'label' => lang('Calendar subscription'), 'icon' => 'bi-calendar-plus', 'url' => $base . 'workspace_calendar_feed.php');
+        $groups['tools'][] = array('key' => 'wtables', 'label' => lang('Tables'), 'icon' => 'bi-table', 'url' => $base . 'workspace_wtables.php');
     }
 
     if (!empty($flags['flows'])) {
-        $groups['work'][] = array('key' => 'flows', 'label' => lang('Flows'), 'icon' => 'bi-diagram-3', 'url' => $base . 'workspace_flows.php');
+        $groups['tools'][] = array('key' => 'flows', 'label' => lang('Flows'), 'icon' => 'bi-diagram-3', 'url' => $base . 'workspace_flows.php');
     }
 
-    // Scheduled actions are staff's (scheduled.php); everybody else finds
-    // their own scheduled messages on the same screen.
+    $groups['tools'][] = array('key' => 'calendar', 'label' => lang('Work Calendar'), 'short' => lang('Calendar'), 'icon' => 'bi-calendar3', 'url' => $base . 'workspace_calendar.php');
+    $groups['tools'][] = array('key' => 'board', 'label' => lang('Planning Board'), 'short' => lang('Board'), 'icon' => 'bi-calendar-week', 'url' => $base . 'workspace_board.php');
+    $groups['tools'][] = array('key' => 'timeline', 'label' => lang('Decision Timeline'), 'short' => lang('Decisions'), 'icon' => 'bi-clock-history', 'url' => $base . 'workspace_timeline.php');
+
+    if (!empty($flags['mail'])) {
+        $groups['tools'][] = array('key' => 'mail', 'label' => lang('E-mails'), 'icon' => 'bi-envelope', 'url' => $base . 'workspace_mail.php');
+    }
+
+    // Behind More: the screens visited now and then. Scheduled actions are
+    // staff's (scheduled.php); everybody else finds their own scheduled
+    // messages on the same screen.
     if (!empty($flags['actions'])) {
-        $groups['work'][] = array('key' => 'scheduled', 'label' => lang('Scheduled actions'), 'icon' => 'bi-alarm', 'url' => $base . 'workspace.php?view=scheduled');
+        $groups['more'][] = array('key' => 'scheduled', 'label' => lang('Scheduled actions'), 'icon' => 'bi-alarm', 'url' => $base . 'workspace.php?view=scheduled');
     } elseif (!empty($flags['messages'])) {
-        $groups['work'][] = array('key' => 'scheduled', 'label' => lang('Scheduled messages'), 'icon' => 'bi-alarm', 'url' => $base . 'workspace.php?view=scheduled');
+        $groups['more'][] = array('key' => 'scheduled', 'label' => lang('Scheduled messages'), 'icon' => 'bi-alarm', 'url' => $base . 'workspace.php?view=scheduled');
     }
 
     if (!empty($flags['mcp'])) {
-        $groups['work'][] = array('key' => 'mcp', 'label' => lang('My MCP connections'), 'icon' => 'bi-plug', 'url' => $base . 'workspace_mcp.php');
+        $groups['more'][] = array('key' => 'mcp', 'label' => lang('My MCP connections'), 'icon' => 'bi-plug', 'url' => $base . 'workspace_mcp.php');
     }
+
+    if (!empty($flags['calendar_feed'])) {
+        $groups['more'][] = array('key' => 'calendar_feed', 'label' => lang('Calendar subscription'), 'icon' => 'bi-calendar-plus', 'url' => $base . 'workspace_calendar_feed.php');
+    }
+
+    $groups['more'][] = array('key' => 'archived', 'label' => lang('Archived channels'), 'icon' => 'bi-archive', 'url' => $base . 'workspace.php?view=home&panel=archived');
 
     // The private channels' audit is staff's (ws_viewer(): role below 3).
     if ((int) $viewer['role'] < 3) {
-        $groups['records'][] = array('key' => 'audit', 'label' => lang('Private channels'), 'icon' => 'bi-shield-lock', 'url' => $base . 'workspace.php?view=home&panel=audit');
+        $groups['more'][] = array('key' => 'audit', 'label' => lang('Private channels'), 'icon' => 'bi-shield-lock', 'url' => $base . 'workspace.php?view=home&panel=audit');
     }
 
     if (!empty($viewer['settings'])) {
@@ -126,8 +130,8 @@ function ws_nav_groups($viewer, $flags = null)
 function ws_nav_group_titles()
 {
     return array(
-        'work'    => lang('Work and planning'),
-        'records' => lang('Decisions and archive'),
+        'tools' => lang('Tools'),
+        'more'  => lang('More'),
     );
 }
 
@@ -168,19 +172,20 @@ function ws_side_screen($script)
  * with only what the browser needs.
  *
  * @param array $groups ws_nav_groups()
- * @return array head, top, work, records => [key, label, icon, url, inbox]
+ * @return array head, top, tools, more => [key, label, short, icon, url, inbox]
  */
 function ws_side_nav($groups)
 {
     $out = array();
 
-    foreach (array('head', 'top', 'work', 'records') as $group) {
+    foreach (array('head', 'top', 'tools', 'more') as $group) {
         $out[$group] = array();
 
         foreach ((array) ($groups[$group] ?? array()) as $item) {
             $out[$group][] = array(
                 'key'   => (string) $item['key'],
                 'label' => (string) $item['label'],
+                'short' => (string) ($item['short'] ?? $item['label']),
                 'icon'  => (string) $item['icon'],
                 'url'   => (string) $item['url'],
                 'inbox' => !empty($item['inbox']),

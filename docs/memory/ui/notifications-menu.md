@@ -20,7 +20,7 @@ description: Header notifications panel (#notifications, bell #notification_togg
 - The poll calls `get_notifications(false, true)`: the old list stays until the new one arrives, then the scroll position and the focus on the same `li[notification-id]` row come back. `tests/panel_timers_test.php` pins it.
 
 ## Why does a bell title wrap instead of ending in "…"?
-- The panel is 350px wide and `.notification-title` carries `nowrap` + `ellipsis` in `backend.src.css`; titles of 44–50 characters ("Congratulations! There is a new successful order.") were cut even on desktop, the full text only in a hover `title`.
+- At the old 350px (26rem since #3817, `notifications-one-inbox.md`) `.notification-title` carried `nowrap` + `ellipsis` in `backend.src.css`; titles of 44–50 characters ("Congratulations! There is a new successful order.") were cut even on desktop, the full text only in a hover `title`.
 - The non-custom title is now `<small class="notification-title text-wrap text-break w-100">` with no `title`, like the custom branch (`text-wrap w-100`). Bootstrap 6 utilities sit in a later `@layer` than `custom`, so `text-wrap` beats the panel rule's `white-space: nowrap` and the ellipsis never shows. The server sends titles already escaped (`pg_notification_display()`: `h()` on stored text, `lang()` literals), so the script inserts them as they come.
 - Mail queue (`mail_queue.php`): the e-mail and SMS "Last error" cells and the SMS body print the whole text (an error is stored up to 500 characters) in a `text-wrap text-break` cell of at most 28rem, no 80-character `truncate()` and no hover `title`. `tests/mail_queue_full_text_test.php` pins both.
 

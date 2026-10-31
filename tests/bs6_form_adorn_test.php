@@ -244,7 +244,7 @@ function test_bs6_form_adorn_settings_cards_keep_no_single_add_on_group()
 	// The groups left are the ones form-adorn cannot hold: two add-ons
 	// (language address prefix), a hint on the add-on (membership warning) and
 	// buttons (SEO, the Paraşüt connect code).
-	$left = array('commerce.php' => 1, 'languages.php' => 1, 'security.php' => 1, 'seo.php' => 2);
+	$left = array('accounting.php' => 1, 'languages.php' => 1, 'security.php' => 1, 'seo.php' => 2);
 
 	foreach (array('api.php', 'appearance.php', 'commerce.php', 'contact.php', 'features.php', 'firewall.php', 'languages.php', 'prep.php', 'screen.php', 'security.php', 'seo.php') as $file) {
 		$source = (string) file_get_contents($root . $file);

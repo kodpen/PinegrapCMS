@@ -144,7 +144,7 @@ function ws_tour_steps($viewer)
         'target'    => array('#ws-menu-side [data-ws-nav="inbox"]'),
         'placement' => 'right',
         'title'     => lang('Inbox'),
-        'text'      => lang('Mentions, tasks given to you, notes shared with you and the answers to your questions wait here until you have read them.'),
+        'text'      => lang('Mentions, tasks given to you, notes shared with you and the answers to your questions wait in your notifications, under Workspace, until you have read them. This opens them there.'),
     );
 
     // Staff only, and only where the list shows them: the Flows entry once

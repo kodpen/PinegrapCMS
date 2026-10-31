@@ -146,7 +146,7 @@ if (!$installed) {
         . (($active === '')
             ? lang('Incoming e-invoices are read from the e-document provider, and no provider is selected.')
             : lang(array('string' => '{var:1} does not hand over incoming invoices through this screen yet.', 'vars' => erp_edoc_info($active)['label'])))
-        . ' <a href="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/' . pg_settings_return_url('commerce', 'pgset-invoice')) . '">' . lang('E-Invoice settings') . '</a>'
+        . ' <a href="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/' . pg_settings_return_url('accounting', 'pgset-invoice')) . '">' . lang('E-Invoice settings') . '</a>'
         . '</div>';
 }
 

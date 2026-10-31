@@ -1170,7 +1170,8 @@ function ws_bell_user($session, $app)
  *
  * @param int $inbox_id
  * @param int $user_id
- * @return array|null title, body, url
+ * @return array|null title, body, url; kind, icon (a bi- class), join (the
+ *                    call of a meeting about to start), fold (ws_bell_fold_key())
  */
 function ws_bell_describe($inbox_id, $user_id)
 {
@@ -1188,8 +1189,36 @@ function ws_bell_describe($inbox_id, $user_id)
     }
 
     $described = ws_inbox_describe($viewer, $row);
+    $kind = (string) ($row['kind'] ?? '');
 
-    return array('title' => $described['title'], 'body' => $described['body'], 'url' => $described['url']);
+    return array(
+        'title' => $described['title'],
+        'body'  => $described['body'],
+        'url'   => $described['url'],
+        'kind'  => $kind,
+        'icon'  => (string) ($described['icon'] ?? ''),
+        'join'  => (string) ($described['join'] ?? ''),
+        'fold'  => ws_bell_fold_key($kind, ($kind === 'flow_finished') ? ws_inbox_flow_run((int) $row['id']) : null),
+    );
+}
+
+/**
+ * Which bell rows fold into one line: the runs of one flow that ended the
+ * same way, so a flow that runs every few minutes is one line, not a page of
+ * them. A failed run folds only with the failed ones and still stands out; a
+ * run no longer known, and every other kind, stays a line of its own ('').
+ *
+ * @param string     $kind the inbox row's kind
+ * @param array|null $run  ws_inbox_flow_run(): id, flow_id, status
+ * @return string
+ */
+function ws_bell_fold_key($kind, $run)
+{
+    if (((string) $kind !== 'flow_finished') || !is_array($run) || ((int) ($run['flow_id'] ?? 0) <= 0)) {
+        return '';
+    }
+
+    return 'flow:' . (int) $run['flow_id'] . ':' . (((string) ($run['status'] ?? '') === 'failed') ? 'failed' : 'ended');
 }
 
 /**
