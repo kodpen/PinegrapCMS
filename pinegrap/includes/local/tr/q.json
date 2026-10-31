@@ -61,6 +61,7 @@
     "Queue inactive": "Kuyruk devre dışı",
     "Queue {var:1} article(s) for listing?": "{var:1} ürün grubu ilan için sıraya alınsın mı?",
     "Queued": "Sırada",
+    "Queued for sending": "Kuyruğa alındı",
     "Quick Actions": "Hızlı İşlemler",
     "Quick Add": "Hızlı Ekle",
     "Quick Add Box (its own form)": "Hızlı Ekle Kutusu (kendi formu)",

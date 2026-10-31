@@ -305,7 +305,7 @@
     "Schedule: {var:1} {var:2} {var:3}": "Zamanlama: {var:3} {var:1} {var:2}",
     "Schedule: {var:1} {var:2} {var:3}, at {var:4}": "Zamanlama: {var:3} {var:1} {var:2}, saat {var:4}",
     "Schedule: {var:1}{var:2}{var:3}": "Zamanlama: {var:3}{var:1}{var:2}",
-    "Scheduled": "Kuyrukta",
+    "Scheduled": "Zamanlandı",
     "Scheduled Tasks": "Zamanlanmış Görevler",
     "Scheduled Time": "Zamanlanmış Saat",
     "Scheduled action": "Programlanmış işlem",

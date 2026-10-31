@@ -492,6 +492,24 @@ function pg_sms_marketing_identity_missing()
 }
 
 /**
+ * What a marketing message carries below its text: a line with the trade
+ * name and the MERSİS number, then the type label.
+ *
+ * @param array $marketing pg_sms_marketing_normalize()
+ * @return string
+ */
+function pg_sms_marketing_footer($marketing)
+{
+    $identity = $marketing['trade_name'];
+
+    if ($marketing['mersis'] !== '') {
+        $identity = trim($identity . ' ' . lang(array('string' => 'MERSİS No: {var:1}', 'vars' => array($marketing['mersis']))));
+    }
+
+    return $identity . "\n" . (($marketing['label'] !== '') ? $marketing['label'] : pg_sms_marketing_label_default());
+}
+
+/**
  * A marketing message as it is sent: its text, then a line with the trade
  * name and the MERSİS number, then the type label. A text that already ends
  * with them (a queued message checked again when it is sent) is returned as
@@ -503,13 +521,7 @@ function pg_sms_marketing_identity_missing()
  */
 function pg_sms_marketing_text($text, $marketing)
 {
-    $identity = $marketing['trade_name'];
-
-    if ($marketing['mersis'] !== '') {
-        $identity = trim($identity . ' ' . lang(array('string' => 'MERSİS No: {var:1}', 'vars' => array($marketing['mersis']))));
-    }
-
-    $footer = $identity . "\n" . (($marketing['label'] !== '') ? $marketing['label'] : pg_sms_marketing_label_default());
+    $footer = pg_sms_marketing_footer($marketing);
     $text = (string) $text;
 
     if (($text === $footer) || (substr($text, -strlen("\n" . $footer)) === "\n" . $footer)) {

@@ -166,3 +166,70 @@ function test_sms_campaign_job_runs_before_the_queue()
 	pg_assert_true($campaigns !== false, 'job.php runs the campaigns');
 	pg_assert_true($campaigns < $queue, 'before the queue');
 }
+
+function sms_campaign_test_marketing()
+{
+	return array('trade_name' => 'Örnek Ticaret A.Ş.', 'mersis' => '0123456789012345', 'label' => '');
+}
+
+// The text limit leaves room for the sender identity and the type label the
+// layer appends: a text of exactly the limit passes pg_sms_check() with them,
+// one character more is refused there, so the screen refuses it on save.
+function test_sms_campaign_body_limit_counts_the_footer()
+{
+	$marketing = sms_campaign_test_marketing();
+	$footer = pg_sms_marketing_footer($marketing);
+	$limit = pg_sms_campaign_body_limit($marketing);
+
+	pg_assert_same('x' . "\n" . $footer, pg_sms_marketing_text('x', $marketing));
+	pg_assert_same(pg_sms_max_length() - mb_strlen("\n" . $footer, 'UTF-8'), $limit);
+
+	$fits = str_repeat('ş', $limit);
+	$over = $fits . 'ş';
+
+	pg_assert_true(pg_sms_check('05321234567', $fits, 'marketing', $marketing)['ok'], 'a text of the limit is sent');
+	pg_assert_false(pg_sms_check('05321234567', $over, 'marketing', $marketing)['ok'], 'one more character is refused by the layer');
+
+	pg_assert_same(array(), pg_sms_campaign_decide(sms_campaign_test_post(array('body' => $fits)), array(3, 4), 1000, null, $limit)['errors']);
+	pg_assert_true(count(pg_sms_campaign_decide(sms_campaign_test_post(array('body' => $over)), array(3, 4), 1000, null, $limit)['errors']) === 1, 'too long to send');
+	pg_assert_true(count(pg_sms_campaign_decide(sms_campaign_test_post(array('body' => $over, 'send' => 'draft')), array(3, 4), 1000, null, $limit)['errors']) === 1, 'a draft that could never be sent');
+}
+
+// The screen gives the limit to the box, the counter and the save check.
+function test_sms_campaign_screen_uses_the_body_limit()
+{
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/edit_sms_campaign.php');
+
+	pg_assert_contains('pg_sms_campaign_body_limit(', $source);
+	pg_assert_contains('$body_limit)', $source, 'the save check gets the limit');
+	pg_assert_contains('data-pg-sms-limit', $source, 'the counter');
+	pg_assert_true(strpos($source, 'maxlength="\' . (int) pg_sms_max_length()') === false, 'the box is not given the whole layer limit');
+}
+
+// A scheduled campaign and a queued one read as two states in Turkish.
+function test_sms_campaign_statuses_read_apart()
+{
+	$tr = array();
+
+	foreach (array('s', 'q') as $shard) {
+		$tr += json_decode(file_get_contents(PG_FUNCTIONS_DIR . '/includes/local/tr/' . $shard . '.json'), true);
+	}
+
+	pg_assert_same('Zamanlandı', $tr['Scheduled'] ?? null);
+	pg_assert_same('Kuyruğa alındı', $tr['Queued for sending'] ?? null);
+
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/sms_campaigns.php');
+	pg_assert_contains("'queued'    => lang('Queued for sending')", $source);
+}
+
+// A deleted contact group takes its SMS campaign rows with it, on the
+// screen and through the API, as its e-mail campaign rows.
+function test_sms_campaign_group_rows_go_with_the_group()
+{
+	foreach (array('/edit_contact_group.php', '/includes/api/resources/contact_groups.php') as $file) {
+		$source = file_get_contents(PG_FUNCTIONS_DIR . $file);
+
+		pg_assert_contains("pg_schema_has('contact_groups_sms_campaigns_xref')", $source, $file);
+		pg_assert_contains('DELETE FROM contact_groups_sms_campaigns_xref WHERE contact_group_id', $source, $file);
+	}
+}

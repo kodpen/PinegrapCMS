@@ -56,6 +56,10 @@ if ($id) {
 }
 
 $readonly = !in_array($campaign['status'], array('draft', 'ready'), true);
+
+// The room the text has: the SMS layer appends the sender identity and the
+// type label before it applies its length limit.
+$body_limit = pg_sms_campaign_body_limit(pg_sms_marketing_settings());
 $groups = pg_sms_campaign_groups($user);
 $errors = array();
 $send = ($campaign['status'] === 'ready') ? 'at' : 'draft';
@@ -79,7 +83,7 @@ if ($_POST && !$readonly) {
     $start_at = preg_match('/^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2})$/', $parsed, $m) && checkdate((int) $m[2], (int) $m[3], (int) $m[1])
         && ((int) $m[4] < 24) && ((int) $m[5] < 60) ? strtotime($parsed . ':00') : null;
 
-    $decision = pg_sms_campaign_decide($_POST, array_keys($groups), time(), ($start_at === false) ? null : $start_at);
+    $decision = pg_sms_campaign_decide($_POST, array_keys($groups), time(), ($start_at === false) ? null : $start_at, $body_limit);
     $errors = $decision['errors'];
 
     if (!$errors) {
@@ -127,9 +131,27 @@ if ($readonly) {
         </div>
         <div class="col-12 my-3">
             <label class="form-label" for="body">' . lang('Text') . '</label>
-            <textarea class="form-control" id="body" name="body" rows="5" maxlength="' . (int) pg_sms_max_length() . '" aria-describedby="body_help">' . h($campaign['body']) . '</textarea>
+            <textarea class="form-control" id="body" name="body" rows="5" maxlength="' . (int) $body_limit . '" data-pg-sms-limit="' . (int) $body_limit . '" aria-describedby="body_help body_count">' . h($campaign['body']) . '</textarea>
             <div class="form-text" id="body_help">' . lang('The sender identity and the type label from Settings, Communication, SMS Messages are added below the text of every message.') . '</div>
-        </div>';
+            <div class="form-text" id="body_count" aria-live="polite" data-pg-sms-template="' . h(lang('{var:1} characters left')) . '"></div>
+        </div>
+        <script>
+            (function () {
+                var box = document.getElementById(\'body\');
+                var count = document.getElementById(\'body_count\');
+                var limit = parseInt(box.getAttribute(\'data-pg-sms-limit\'), 10);
+
+                // Characters as the server counts them: a line break is one.
+                function update() {
+                    var used = Array.from(box.value.replace(/\r\n?/g, \'\n\').trim()).length;
+                    count.textContent = count.getAttribute(\'data-pg-sms-template\').replace(\'{var:1}\', String(limit - used));
+                    count.classList.toggle(\'text-danger\', used > limit);
+                }
+
+                box.addEventListener(\'input\', update);
+                update();
+            })();
+        </script>';
 }
 
 // The contact group card: the e-mail campaign's Ignore, Include and Exclude

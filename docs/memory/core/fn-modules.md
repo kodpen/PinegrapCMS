@@ -84,7 +84,7 @@ description: Generated from the module field of the memory files: each includes/
 - `site_log_list`: [[site-log-paging]]
 - `site_search`: [[site-search-query-and-freshness]]
 - `site_time_sql`: [[visitor-report-site-time]]
-- `sms_campaigns`: [[sms-campaigns]]
+- `sms_campaigns`: [[sms-campaign-limit-and-labels]], [[sms-campaigns]]
 - `sms_codes`: [[sms-codes]]
 - `speculation`: [[speculation-prefetch]]
 - `stock_notify`: [[back-in-stock-notices]]

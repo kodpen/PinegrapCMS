@@ -151,6 +151,11 @@ if (!$_POST) {
             $query = "DELETE FROM contact_groups_email_campaigns_xref WHERE contact_group_id = ?";
             $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
 
+            // Its SMS campaign rows, once the upgrade has created the table.
+            if (pg_schema_has('contact_groups_sms_campaigns_xref')) {
+                db_q("DELETE FROM contact_groups_sms_campaigns_xref WHERE contact_group_id = ?", array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
+            }
+
             log_activity(lang(array('string'=>'contact group ({var:1}) was deleted','vars'=>$contact_group_name)), $_SESSION['sessionusername']);
             $liveform->remove_form();
             $liveform_view_contact_groups = new liveform('view_contact_groups');
