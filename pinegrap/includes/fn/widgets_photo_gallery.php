@@ -36,6 +36,56 @@ function pg_gal_image_types()
 }
 
 /**
+ * pg_gal_image_types() as a quoted SQL list for `type IN (...)`.
+ *
+ * @return string
+ */
+function pg_gal_image_types_sql()
+{
+    return "'" . implode("', '", pg_gal_image_types()) . "'";
+}
+
+/**
+ * The alt text of a gallery thumbnail: the file's description, or when it
+ * has none a readable text made from the file name (the stem, with dashes,
+ * underscores and runs of spaces turned into single spaces).
+ *
+ * @param string|null $description
+ * @param string      $name
+ * @return string
+ */
+function pg_gal_photo_alt($description, $name)
+{
+    $description = trim((string)$description);
+    if ($description !== '') {
+        return $description;
+    }
+    $stem = pg_file_name_stem((string)$name);
+    $text = trim((string)preg_replace('/[\s_\-]+/u', ' ', $stem));
+    return ($text !== '') ? $text : $stem;
+}
+
+/**
+ * The folder a file lies in and every folder above it, the folders whose
+ * photo gallery page shows the file (a gallery shows its own folder and
+ * opens the albums below it). A loop in the parents ends the walk.
+ *
+ * @param int      $folder_id
+ * @param callable $parent_of folder id => parent folder id (0 at the top)
+ * @return int[]
+ */
+function pg_gal_folders_showing($folder_id, $parent_of)
+{
+    $chain = array();
+    $folder_id = (int)$folder_id;
+    while ($folder_id > 0 && !in_array($folder_id, $chain, true)) {
+        $chain[] = $folder_id;
+        $folder_id = (int)$parent_of($folder_id);
+    }
+    return $chain;
+}
+
+/**
  * The folder a gallery shows: the album asked for when it lies below the
  * page's folder, else the page's folder.
  *
@@ -129,7 +179,7 @@ function pg_gal_flags($rows, $in_album)
 function _pg_gal_read($folder_id)
 {
     $folder_id = (int)$folder_id;
-    $types = "'" . implode("', '", pg_gal_image_types()) . "'";
+    $types = pg_gal_image_types_sql();
     $albums = array();
     foreach ((array)db_items("SELECT folder_id AS id, folder_name AS name FROM folder WHERE folder_parent = '" . $folder_id . "' ORDER BY folder_order, folder_name") as $f) {
         if (!check_view_access($f['id'])) continue;
