@@ -1,0 +1,521 @@
+/**
+ * Pinegrap - Enterprise Website Platform
+ *
+ * The image editor's stylesheet (assets/js/pg_image_editor.js), loaded with
+ * the editor on its first open; built to pg_image_editor.min.css by
+ * tools/build_css.php. Every rule sits under .pgie-dialog or .pgie and no
+ * Bootstrap class is used, so the editor looks the same on panel pages, on
+ * site pages and in the visual designer. The light colours follow the
+ * panel's --pg-* tokens where a page has them.
+ *
+ * @author      Erdal Güral (Kodpen)
+ * @link        https://kodpen.com
+ * @copyright   2017–2026 Kodpen
+ * @license     https://opensource.org/licenses/mit-license.html MIT License
+ */
+
+.pgie-dialog {
+  position: fixed;
+  inset: 0;
+  width: 84vw;
+  height: 86vh;
+  max-width: none;
+  max-height: none;
+  margin: auto;
+  padding: 0;
+  border: 0;
+  border-radius: 14px;
+  overflow: hidden;
+  color: inherit;
+  background: transparent;
+  box-shadow: 0 28px 90px rgba(0, 0, 0, 0.45);
+}
+
+.pgie-dialog::backdrop {
+  background: rgba(14, 18, 24, 0.55);
+}
+
+.pgie-dialog.pgie-dialog--full {
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  border-radius: 0;
+}
+
+.pgie {
+  --pgie-bg: #f4f6f8;
+  --pgie-surface: #ffffff;
+  --pgie-line: #e2e6ea;
+  --pgie-tx: #1a1c1e;
+  --pgie-muted: #5f6b76;
+  --pgie-hover: #eef1f4;
+  --pgie-stage: #e3e7eb;
+  --pgie-primary: var(--pg-primary, #64b5f6);
+  --pgie-primary-h: var(--pg-primary-hover, #42a5f5);
+  --pgie-on-primary: var(--pg-on-accent, #13202c);
+  --pgie-pw: var(--pg-primary-subtle, #e3f2fd);
+  --pgie-ink: var(--pg-primary-ink, #1565c0);
+  --pgie-sel: #1e88e5;
+  --pgie-danger: #c62828;
+  --pgie-shadow: 0 10px 30px rgba(16, 24, 40, 0.16);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  font: 14px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+  color: var(--pgie-tx);
+  background: var(--pgie-bg);
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.pgie.pgie-dark {
+  --pgie-bg: #0f1013;
+  --pgie-surface: #16181c;
+  --pgie-line: #2a2e35;
+  --pgie-tx: #e6e8eb;
+  --pgie-muted: #9ba5af;
+  --pgie-hover: #23272e;
+  --pgie-stage: #0a0b0d;
+  --pgie-primary: #64b5f6;
+  --pgie-primary-h: #90caf9;
+  --pgie-on-primary: #0d1620;
+  --pgie-pw: rgba(100, 181, 246, 0.15);
+  --pgie-ink: #90caf9;
+  --pgie-sel: #64b5f6;
+  --pgie-danger: #ef5350;
+  --pgie-shadow: 0 12px 36px rgba(0, 0, 0, 0.55);
+}
+
+.pgie *,
+.pgie *::before,
+.pgie *::after {
+  box-sizing: border-box;
+}
+
+.pgie button {
+  font: inherit;
+  color: inherit;
+}
+
+.pgie :focus-visible {
+  outline: 2px solid var(--pgie-sel);
+  outline-offset: 2px;
+}
+
+.pgie-ic {
+  width: 20px;
+  height: 20px;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.pgie-grow {
+  flex: 1;
+}
+
+.pgie-sepv {
+  width: 1px;
+  height: 24px;
+  flex: none;
+  margin: 0 6px;
+  background: var(--pgie-line);
+}
+
+/* Top bar */
+
+.pgie-top {
+  height: 56px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 12px;
+  background: var(--pgie-surface);
+  border-bottom: 1px solid var(--pgie-line);
+}
+
+.pgie-file {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  margin: 0 6px;
+}
+
+.pgie-fname {
+  max-width: 40vw;
+  overflow: hidden;
+  font-weight: 650;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.pgie-fmeta {
+  font-size: 12px;
+  color: var(--pgie-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.pgie-ibtn {
+  width: 36px;
+  height: 36px;
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.pgie-ibtn:hover {
+  background: var(--pgie-hover);
+}
+
+.pgie-ibtn:disabled {
+  opacity: 0.38;
+  background: transparent;
+  cursor: default;
+}
+
+.pgie-ibtn.sm {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+}
+
+.pgie-btn {
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 14px;
+  border: 1px solid var(--pgie-line);
+  border-radius: 10px;
+  background: var(--pgie-surface);
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.pgie-btn:hover {
+  background: var(--pgie-hover);
+}
+
+.pgie-btn.pgie-primary {
+  border-color: var(--pgie-primary);
+  background: var(--pgie-primary);
+  color: var(--pgie-on-primary);
+}
+
+.pgie-btn.pgie-primary:hover {
+  background: var(--pgie-primary-h);
+}
+
+.pgie-btn.pgie-danger {
+  border-color: var(--pgie-danger);
+  background: var(--pgie-danger);
+  color: #ffffff;
+}
+
+/* Rail, stage, panel */
+
+.pgie-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+
+.pgie-rail {
+  width: 76px;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 6px;
+  overflow-y: auto;
+  background: var(--pgie-surface);
+  border-right: 1px solid var(--pgie-line);
+}
+
+.pgie-tool {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 8px 2px 7px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  font-size: 11.5px;
+  font-weight: 550;
+  cursor: pointer;
+}
+
+.pgie .pgie-tool {
+  color: var(--pgie-muted);
+}
+
+.pgie .pgie-tool:hover {
+  background: var(--pgie-hover);
+  color: var(--pgie-tx);
+}
+
+.pgie .pgie-tool.on {
+  background: var(--pgie-pw);
+  color: var(--pgie-ink);
+}
+
+.pgie-stage {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  background: var(--pgie-stage);
+  touch-action: none;
+  outline: none;
+}
+
+.pgie-stage.pgie-panning {
+  cursor: grab;
+}
+
+.pgie-frame {
+  position: absolute;
+  left: 0;
+  top: 0;
+  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.18);
+}
+
+.pgie-img,
+.pgie-layers {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.pgie-img {
+  display: block;
+  -webkit-user-drag: none;
+}
+
+.pgie-layers {
+  overflow: visible;
+}
+
+.pgie-checker {
+  background: conic-gradient(#d5dbe1 25%, #ffffff 0 50%, #d5dbe1 0 75%, #ffffff 0) 0 0 / 20px 20px;
+}
+
+.pgie-notice {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  color: var(--pgie-muted);
+}
+
+.pgie-notice:empty {
+  display: none;
+}
+
+.pgie-notice.pgie-error {
+  color: var(--pgie-danger);
+  font-weight: 600;
+}
+
+.pgie-panel {
+  width: 304px;
+  flex: none;
+  overflow-y: auto;
+  background: var(--pgie-surface);
+  border-left: 1px solid var(--pgie-line);
+}
+
+.pgie-ph {
+  height: 52px;
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+}
+
+.pgie-ph h2 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.pgie-pb {
+  padding: 0 16px 16px;
+}
+
+.pgie-note {
+  margin: 0;
+  font-size: 13px;
+  color: var(--pgie-muted);
+}
+
+/* Status line */
+
+.pgie-foot {
+  height: 36px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 12px;
+  background: var(--pgie-surface);
+  border-top: 1px solid var(--pgie-line);
+  font-size: 12.5px;
+  color: var(--pgie-muted);
+}
+
+.pgie-hint {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.pgie-size {
+  margin-right: 10px;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.pgie-zoomval {
+  min-width: 56px;
+  height: 28px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+.pgie-zoomval:hover {
+  background: var(--pgie-hover);
+}
+
+/* Mini bar: a caller's subset of tools floats over the stage */
+
+.pgie-mini {
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  z-index: 2;
+  max-width: calc(100% - 24px);
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 6px;
+  overflow-x: auto;
+  transform: translateX(-50%);
+  border-radius: 16px;
+  background: var(--pgie-surface);
+  box-shadow: var(--pgie-shadow), 0 0 0 1px var(--pgie-line);
+}
+
+.pgie-mtool {
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 11px;
+  background: transparent;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.pgie .pgie-mtool {
+  color: var(--pgie-muted);
+}
+
+.pgie .pgie-mtool:hover {
+  background: var(--pgie-hover);
+  color: var(--pgie-tx);
+}
+
+.pgie .pgie-mtool.on {
+  background: var(--pgie-pw);
+  color: var(--pgie-ink);
+}
+
+/* Unsaved changes */
+
+.pgie-confirm {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  background: rgba(10, 12, 16, 0.45);
+}
+
+.pgie-confirm-box {
+  width: min(420px, calc(100% - 32px));
+  padding: 20px;
+  border-radius: 14px;
+  background: var(--pgie-surface);
+  box-shadow: var(--pgie-shadow);
+}
+
+.pgie-confirm-box h2 {
+  margin: 0 0 8px;
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.pgie-confirm-box p {
+  margin: 0 0 18px;
+  color: var(--pgie-muted);
+}
+
+.pgie-confirm-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* Under 768 px the editor fills the screen; the tool panel waits for the
+   phone layout. */
+
+@media (max-width: 767.98px) {
+  .pgie-dialog {
+    width: 100vw;
+    height: 100vh;
+    height: 100dvh;
+    border-radius: 0;
+  }
+
+  .pgie-fullbtn,
+  .pgie-panel,
+  .pgie-hint {
+    display: none;
+  }
+
+  .pgie-rail {
+    width: 64px;
+  }
+
+  .pgie-fname {
+    max-width: 30vw;
+  }
+}
