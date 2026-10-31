@@ -298,3 +298,48 @@ function test_designer_search_index_caches_per_record()
 	$body = _designer_search_index_function_body(_designer_search_index_source('includes/fn/widgets.php'), 'pg_sw_record_comment_context');
 	pg_assert_contains("if (\$form_id <= 0) \$key .= ':' . ((isset(\$_GET['r'])", $body);
 }
+
+// -- records left out of a run -------------------------------------------------
+
+// A failed record names its page and reference code; a failed list its page.
+function test_designer_search_index_failure_note_labels()
+{
+	pg_assert_same('blog-post (A1B2C3): Query failed.', pg_search_index_failure_note('blog-post', 'A1B2C3', 'Query failed.'));
+	pg_assert_same('blog: Query failed.', pg_search_index_failure_note('blog', '', 'Query failed.'));
+	pg_assert_same('blog: Unknown column x in line 4', pg_search_index_failure_note('blog', '', "  Unknown column x\n  in line 4 "));
+}
+
+// A long message is cut, by characters, not bytes.
+function test_designer_search_index_failure_note_truncates()
+{
+	$note = pg_search_index_failure_note('p', '', str_repeat('ş', 300));
+	pg_assert_same('p: ' . str_repeat('ş', 200) . '...', $note);
+	pg_assert_same('p: abc...', pg_search_index_failure_note('p', '', 'abcdef', 3));
+	pg_assert_same('p: abc', pg_search_index_failure_note('p', '', 'abc', 3));
+	pg_assert_same('p: ' . str_repeat("\xff", 3) . '...', pg_search_index_failure_note('p', '', str_repeat("\xff", 10), 3));
+}
+
+// Both catch blocks keep a note (at most five), the run writes one Site Log
+// line, and the finish window says records were left out instead of
+// "updated successfully".
+function test_designer_search_index_failures_reported()
+{
+	$source = _designer_search_index_source('update_search_index.php');
+	$start  = strpos($source, '$designer_record_urls = array();');
+	$files  = strpos($source, '// Get files that should be included in search index.');
+	$branch = substr($source, $start, $files - $start);
+
+	pg_assert_same(2, substr_count($branch, '$designer_failures++;'));
+	pg_assert_same(2, substr_count($branch, 'pg_search_index_failure_note('));
+	pg_assert_same(2, substr_count($branch, 'count($designer_failure_notes) < 5'));
+	pg_assert_contains("\$host_page['page_name'], '', \$throwable->getMessage()", $branch);
+	pg_assert_contains("\$detail_page['page_name'], \$record['reference_code'], \$throwable->getMessage()", $branch);
+	pg_assert_contains('log_activity(lang(array(', $branch);
+	pg_assert_contains('{var:1}', $branch);
+	pg_assert_false(strpos($branch, "error_log('Pinegrap: the search index left out") !== false);
+
+	$finish = substr($source, strpos($source, '<div id="finish"'));
+	pg_assert_contains('id="finish_message"', $finish);
+	pg_assert_contains('$designer_failures > 0', substr($source, strpos($source, "pg_cron_ran('update_search_index');")));
+	pg_assert_contains('bi-exclamation-triangle-fill', $source);
+}
