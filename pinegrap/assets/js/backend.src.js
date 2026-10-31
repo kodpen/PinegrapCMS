@@ -12148,6 +12148,19 @@ window.pgCodeEditorReady = function (markup, done) {
                 return;
             }
 
+            // The panel language changed: the page behind the dialog and the
+            // dialog's own frame were drawn in the old one. The page is loaded
+            // again at this pane, which opens the dialog from the hash and is
+            // handed the confirmation there. replaceState rather than a hash
+            // assignment, whose hashchange would load the pane before the
+            // reload.
+            if (response.relocalize) {
+                dirty = false;
+                history.replaceState(history.state, '', '#settings/' + pane);
+                window.location.reload();
+                return;
+            }
+
             var said = (response.notices && response.notices.length)
                 ? response.notices.join(' ')
                 : '';
