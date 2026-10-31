@@ -72,7 +72,7 @@ function pg_panel_get_styles($request, $action)
 {
     $sql_code = "";
 
-    if ($request['code'] == true) {
+    if (!empty($request['code'])) {
         $sql_code = "style_code AS code,";
     }
 

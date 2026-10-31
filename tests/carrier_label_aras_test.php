@@ -72,6 +72,8 @@ function carrier_label_aras_test_shipment($changes = array())
 // out after it was sent.
 function carrier_label_aras_test_stub($answers)
 {
+	// A test run on its own (a filter) has not loaded the driver yet.
+	pg_label_load('aras');
 	$GLOBALS['carrier_label_aras_test_sent'] = array();
 
 	pg_label_aras_transport(function ($method, $url, $headers, $body) use (&$answers) {

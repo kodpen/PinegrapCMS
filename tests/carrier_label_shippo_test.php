@@ -48,6 +48,8 @@ function carrier_label_shippo_test_account($changes = array())
 // answer. A request with nothing queued times out after it was sent.
 function carrier_label_shippo_test_stub($answers)
 {
+	// A test run on its own (a filter) has not loaded the driver yet.
+	pg_label_load('shippo');
 	$GLOBALS['carrier_label_shippo_test_sent'] = array();
 
 	pg_label_shippo_transport(function ($method, $url, $headers, $body) use (&$answers) {

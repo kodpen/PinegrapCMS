@@ -39,6 +39,8 @@ function carrier_label_basitkargo_test_account($changes = array())
 // times out after it was sent.
 function carrier_label_basitkargo_test_stub($answers)
 {
+	// A test run on its own (a filter) has not loaded the driver yet.
+	pg_label_load('basitkargo');
 	$GLOBALS['carrier_label_basitkargo_test_sent'] = array();
 
 	pg_label_basitkargo_transport(function ($method, $url, $headers, $body) use (&$answers) {
