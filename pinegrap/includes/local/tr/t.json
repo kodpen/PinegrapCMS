@@ -1810,6 +1810,7 @@
     "The event is shown": "Etkinlik gösteriliyor",
     "The events, before the seats are gone": "Etkinlikler, yerler dolmadan",
     "The exchange rate of the protected currency is missing.": "Korumalı para biriminin döviz kuru eksik.",
+    "The exchange rate services could not be reached, so the exchange rates were not changed.": "Döviz kuru hizmetlerine ulaşılamadı; bu yüzden döviz kurları değiştirilmedi.",
     "The exchange rates have been updated.": "Döviz kurları güncellendi.",
     "The exchange rates job is an optional feature which only needs to be enabled if you are using the multi-currency e-commerce feature and want exchange rates for currencies to be updated automatically. Exchange rates can be manually updated via the Admin Panel.": "Döviz kuru görevi, çok para birimli e-ticaret özelliğini kullanıyorsanız ve döviz kurlarının otomatik olarak güncellenmesini istiyorsanız etkinleştirilmesi gereken isteğe bağlı bir özelliktir. Döviz kurları Yönetim Paneli üzerinden manuel olarak da güncellenebilir.",
     "The exemption code is three digits, as the tax authority lists it (for example 351).": "İstisna kodu, GİB'in listesindeki gibi üç hanedir (ör. 351).",

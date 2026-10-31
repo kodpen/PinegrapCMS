@@ -1,6 +1,6 @@
 ---
 name: currency-exchange-rate-box
-description: Exchange rate box on add/edit currency: five decimals like currencies.exchange_rate and the rate updater, filled and stored with five; 0,0285 no longer saved as 0,03 (#1335, PR #1341)
+description: Exchange rate box on add/edit currency: five decimals like currencies.exchange_rate and the rate updater (#1341); Update Exchange Rates announces only the rates it wrote
 ---
 
 ## How many decimals does the exchange rate box take?
@@ -19,3 +19,7 @@ description: Exchange rate box on add/edit currency: five decimals like currenci
 ## What was checked?
 - `tests/money_mask_test.php`: five digits in the mask attributes and tag form, two stay the default, the five-decimal fill, and `0,02853`, `16.000,00000`, `16,000.12345` read back.
 - Not checked in a browser: Inputmask 5.0.7 with `digits` 5 on a Turkish panel (typing `1.234,5` should pad to `1.234,50000`). Live installs upgraded from old versions were not checked for a different column scale; MySQL would round to that scale silently, as before.
+
+## What does Update Exchange Rates report?
+- `update_exchange_rates.php` counts the currencies it wrote and adds the notice `{var:1} exchange rates were updated` only when that count is above 0; each currency with no feed answer keeps its own `Failed to update exchange rate for currency …` mark.
+- When currencies were wanted and neither feed answered, one error says the rate services could not be reached and the rates were not changed. Before, `The exchange rates have been updated.` was always added, so a run with both feeds down showed the red failures beside a green success. Pinned by `tests/exchange_rates_indexnow_result_test.php`.
