@@ -537,7 +537,7 @@ function erp_export_rows_csv_invoices($invoices, $profile)
 function erp_export_rows_csv_receipts($receipts, $profile)
 {
     $rows = array();
-    $direction_words = array('collection' => lang('Collection'), 'payment' => lang('Payment'));
+    $direction_words = array('collection' => lang('Receipt'), 'payment' => lang('Payment'));
 
     foreach ($receipts as $r) {
         $rows[] = array(
