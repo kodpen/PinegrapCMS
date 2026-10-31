@@ -678,7 +678,7 @@ function pg_contact_list_rows($user, $filter, $groups, $shows_groups, $contacts)
             }
         }
 
-        $rows[] = pg_contact_list_row($contact, $user, $filter, implode(',<br />', $group_names), $files[(int) $contact['file_id']] ?? '');
+        $rows[] = pg_contact_list_row($contact, $user, $filter, implode(',<br />', $group_names), pg_contact_picture_name($contact['file_id'], $files));
     }
 
     return $rows;
@@ -749,9 +749,11 @@ function pg_contact_list_row($contact, $user, $filter, $group_names, $file_name)
     $edit_url = 'edit_contact.php?id=' . $id . '&send_to=' . h(escape_javascript(urlencode(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_contacts.php?filter=' . $filter)));
     $lazy = '<img style="width: 50px;height:50px;" class="img-fluid img-thumbnail lazy" alt="" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="';
 
-    if ((int) $contact['file_id'] != 0) {
+    // A picture file deleted in the File Manager leaves file_id behind with
+    // no name; that row gets the letters, not PATH alone.
+    if (((int) $contact['file_id'] != 0) && ((string) $file_name !== '')) {
         $picture = $lazy . PATH . h($file_name) . '" />';
-    } elseif ($contact['image']) {
+    } elseif (((int) $contact['file_id'] == 0) && $contact['image']) {
         $picture = $lazy . h($contact['image']) . '" />';
     } else {
         // No picture: the letters of the name (includes/fn/contacts.php).

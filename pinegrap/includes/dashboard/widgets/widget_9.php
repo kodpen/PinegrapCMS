@@ -434,8 +434,10 @@ function pg_dashboard_ops_stock()
         }
     }
 
+    // A picture deleted in the File Manager leaves image_name behind; the
+    // badge then keeps its icon instead of an empty <img>.
     $thumb = function ($row, $icon) {
-        return (!empty($row['image_name']))
+        return (!empty($row['image_name']) && is_file(FILE_DIRECTORY_PATH . '/' . basename($row['image_name'])))
             ? '<img src="' . PATH . h($row['image_name']) . '" alt="">'
             : '<i class="bi ' . $icon . '"></i>';
     };

@@ -83,3 +83,46 @@ function test_product_group_copy_keeps_default_option()
 	pg_assert_contains('(product_group_id, attribute_id, sort_order, default_option_id)', $code, 'default option written');
 	pg_assert_contains("e((int) \$attribute['default_option_id'])", $code, 'default option as a whole number');
 }
+
+// The parent walk behind the copy refusal: the target is the group itself or
+// sits somewhere under it, and a parent_id ring ends the walk instead of
+// hanging it.
+function test_product_group_copy_target_within_group()
+{
+	require_once(PG_FUNCTIONS_DIR . '/view_folder_and_files_f.php');
+
+	$map = array(
+		1 => array('parent_id' => 0),
+		2 => array('parent_id' => 1),
+		3 => array('parent_id' => 2),
+		4 => array('parent_id' => 1),
+		5 => array('parent_id' => 6),
+		6 => array('parent_id' => 5),
+	);
+
+	pg_assert_true(pg_catalog_group_is_within($map, 2, 2), 'into itself');
+	pg_assert_true(pg_catalog_group_is_within($map, 3, 2), 'into its child');
+	pg_assert_true(pg_catalog_group_is_within($map, 3, 1), 'into a grandchild');
+	pg_assert_false(pg_catalog_group_is_within($map, 4, 2), 'into a sibling');
+	pg_assert_false(pg_catalog_group_is_within($map, 1, 2), 'into its parent');
+	pg_assert_false(pg_catalog_group_is_within($map, 99, 2), 'unknown target');
+	pg_assert_false(pg_catalog_group_is_within($map, 5, 2), 'parent_id ring ends');
+}
+
+// The paste refuses a copy into the group itself or its subtree before any
+// group is copied, and the copy reads its children before it inserts itself.
+function test_product_group_copy_refuses_copy_into_itself()
+{
+	$code = product_group_copy_code('includes/explorer/handle_catalog.php');
+	$refusal = strpos($code, "lang('A product group cannot be copied into itself.')");
+	pg_assert_true($refusal !== false, 'copy refusal');
+	pg_assert_contains('pg_catalog_group_is_within($map, $target_id, ', $code, 'parent walk used');
+	$copy = strpos($code, 'pg_catalog_copy_group($item_id, $target_id,');
+	pg_assert_true($copy !== false && $refusal < $copy, 'refused before anything is copied');
+
+	$code = product_group_copy_code('includes/explorer/catalog_pages.php');
+	$children = strpos($code, "WHERE parent_id = '\" . e((int) \$group_id) . \"'");
+	$insert = strpos($code, 'INSERT INTO product_groups (');
+	pg_assert_true($children !== false && $insert !== false && $children < $insert, 'children read before the insert');
+	pg_assert_contains('if ($depth > 30) {', $code, 'depth cap kept');
+}

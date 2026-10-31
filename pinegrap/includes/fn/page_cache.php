@@ -1410,6 +1410,12 @@ function pg_page_cache_panel_dirties($action, $entry, array $request = array())
         $key = $sub_actions[$action]['key'];
         $sub = (isset($request[$key]) && is_string($request[$key])) ? $request[$key] : '';
 
+        // Bulk Rename asks how its names would be stored while the operator
+        // types; that answer writes nothing.
+        if (($action === 'file_explorer') && ($sub === 'explorer_rename') && !empty($request['preview'])) {
+            return false;
+        }
+
         return in_array($sub, $sub_actions[$action]['dirty'], true);
     }
 

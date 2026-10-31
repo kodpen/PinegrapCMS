@@ -111,6 +111,11 @@ if (!isset($_POST['name'])) {
     $optimized = $row['optimized'];
     $folder_archived = $row['folder_archived'];
 
+    // A row whose file is gone from the disk (a site restored without
+    // data/files, a file removed by hand) gets a note in place of the
+    // preview, and no tool or link that needs the file.
+    $on_disk = is_file(FILE_DIRECTORY_PATH . '/' . $file_name);
+
     // The signing key is listed without its content: it never leaves the
     // server (pg_file_withheld()).
     if (pg_file_withheld($file_name)) {
@@ -121,7 +126,7 @@ if (!isset($_POST['name'])) {
     // page that never shows it is work nobody sees.
     $code = '';
 
-    if (in_array(mb_strtolower(pathinfo($file_name, PATHINFO_EXTENSION)), $viewable_formats)) {
+    if ($on_disk && in_array(mb_strtolower(pathinfo($file_name, PATHINFO_EXTENSION)), $viewable_formats)) {
         $code = file_get_contents(FILE_DIRECTORY_PATH . '/' . $file_name);
     }
 
@@ -145,7 +150,10 @@ if (!isset($_POST['name'])) {
     // Get file path
     $file_path = FILE_DIRECTORY_PATH . '/' . $file_name;
 
-    if (mb_strtolower($row['type']) == 'pdf') {
+    if (!$on_disk) {
+        $output_thumbnail = '<div class="alert theme-warning">' . lang('The file is recorded here but is not on the disk.') . '</div>';
+
+    } elseif (mb_strtolower($row['type']) == 'pdf') {
         // PDF preview
         $output_thumbnail = '
             <div class="col-12">
@@ -208,7 +216,7 @@ if (!isset($_POST['name'])) {
     }
 
     // If file type is an image.
-    if (
+    if ($on_disk && (
             (mb_strtolower($row['type']) == 'bmp') ||
             (mb_strtolower($row['type']) == 'gif') ||
             (mb_strtolower($row['type']) == 'jpg') ||
@@ -217,7 +225,7 @@ if (!isset($_POST['name'])) {
             (mb_strtolower($row['type']) == 'jpeg') ||
             (mb_strtolower($row['type']) == 'png') ||
             (mb_strtolower($row['type']) == 'tif')
-    ) {
+    )) {
 
         $output_content_based_classes = 'md:col';
         
@@ -357,7 +365,7 @@ if (!isset($_POST['name'])) {
 
 
     // SVG → raster conversion UI
-    if ($file['type'] === 'svg') {
+    if ($on_disk && $file['type'] === 'svg') {
         
         $output_content_based_classes = 'md:col-4';
         $svg_w = (is_numeric($image_width)  && $image_width  > 0) ? (int)$image_width  : 0;
@@ -412,14 +420,15 @@ if (!isset($_POST['name'])) {
     if (!isset($image_height)) { $image_height = 0; }
 
     $output_rotate_image_button ='';
-    if (    ($file['type'] == 'jpg')
+    if ($on_disk && (
+            ($file['type'] == 'jpg')
             or ($file['type'] == 'jpeg')
             or ($file['type'] == 'png')
             or ($file['type'] == 'gif')
             or ($file['type'] == 'bmp')
             or ($file['type'] == 'tiff')
             or ($file['type'] == 'webp')
-        ){
+        )){
             $image_library_available = (extension_loaded('imagick') || extension_loaded('gd'));
 
              if (!$optimized && $image_library_available) {
@@ -498,6 +507,14 @@ if (!isset($_POST['name'])) {
 
     }
 
+    // Both links would lead to the site's 404 page without the file.
+    $output_file_links = '';
+
+    if ($on_disk) {
+        $output_file_links = '<a class="btn btn-link pg-link-secondary py-0 mb-3"  href="' . OUTPUT_PATH . h($file_name) . '" target="_blank"><span class="material-icons me-1">open_in_browser</span>' . lang('Open in New Tab') . '</a>
+            <a class="btn btn-link pg-link-secondary py-0 mb-3" download="' . h($file_name) . '" href="' . OUTPUT_PATH . h($file_name) . '" ><span class="bi bi-file-earmark-arrow-down bi-me-2"></span>' . lang('Download') . '</a>';
+    }
+
     $output =
     pg_page_shell(
         array(
@@ -540,8 +557,7 @@ if (!isset($_POST['name'])) {
                             <nav id="button_bar" class="navigation " aria-label="' . h(lang('Button Bar')) . '">
                                 <div class=" btn-group btn-group-sm flex-wrap">
                                     ' . $image_buttons . '
-                                    <a class="btn btn-link pg-link-secondary py-0 mb-3"  href="' . OUTPUT_PATH . h($file_name) . '" target="_blank"><span class="material-icons me-1">open_in_browser</span>' . lang('Open in New Tab') . '</a>
-                                    <a class="btn btn-link pg-link-secondary py-0 mb-3" download="' . h($file_name) . '" href="' . OUTPUT_PATH . h($file_name) . '" ><span class="bi bi-file-earmark-arrow-down bi-me-2"></span>' . lang('Download') . '</a>
+                                    ' . $output_file_links . '
                                 </div>
                             </nav>
                             <div class="row mb-3">
