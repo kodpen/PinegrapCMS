@@ -76,16 +76,13 @@ if (!$_POST) {
             'breadcrumb' => array(array('label' => lang('All Login Regions'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_regions.php?filter=all_login_regions'), array('label' => lang(array('string'=>'Edit {var:1}','vars'=>lang('Login Region'))))),
         ]) . '
 <main id="content" class="container-fluid">
+    ' . pg_screen_toolbar(array(
+        'grow' => '<span class="small fg-secondary">' . lang('Page Style Body Tag') . ': <code>' . h('<login>' . $row['name'] . '</login>') . '</code></span>',
+    )) . '
             <div class="row">
             <div class="col-12">
                 ' . $liveform->output_errors() . '
                 ' . $liveform->output_notices() . '
-                <div class="row mb-3  flex-wrap">
-                    <div class="col-12 sm:col-12 text-center md:text-start">
-
-                        <p>' . lang('Page Style Body Tag') . ': <strong>' . h('<login>' . $row['name'] . '</login>') . '</strong></p>
-                    </div>
-                </div>
                 <form name="form" action="edit_login_region.php" method="post">
                     ' . get_token_field() . '
                     <input type="hidden" name="id" value="' . h($_GET['id']) . '" />

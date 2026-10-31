@@ -24,19 +24,12 @@ description: Steps H1-H6 of plans/screen-header-actions.md: which screens each f
   - `view_pages`' eight buttons go to slot 1 plus one menu.
   - Split the screens into two PRs if needed.
 
-- H4 (M) Lone controls and fact lines.
-  - H4a done (#3966): right-only bars, report headers, lone buttons and Disk Usage draw one `pg_screen_toolbar()` bar directly in `<main>`; fact lines (counts, Disk Usage, the 404 and firewall summaries) sit in its grow slot. Left for H4b: Duplicate rows, `[name]` headings, Page Style Body Tag rows.
-  - Bars whose only control sits at the right: `erp_invoice_recurrences`, `view_audit_log`, `view_waf_log`, `view_not_found_log`.
-  - Report headers: `view_order_report`, `view_visitor_report`, `view_performance_log`.
-  - Lone buttons: `erp_bank_statement`, `erp_stock_count`, `calendars.php`.
-  - The "Duplicate" rows of the edit screens join their bar.
-  - "Disk Usage" lines (`view_files`, `view_design_files`, `backups`) go into the bar.
-  - Remove the `[name]` second headings and the "Page Style Body Tag" fact rows (these move into the record's card).
+- H4 (M) Lone controls and fact lines. Done (#3966, #4048).
+  - Right-only bars, report headers, lone buttons, Duplicate rows: one `pg_screen_toolbar()` bar directly in `<main>`, Duplicate as slot 2.
+  - Facts (counts, Disk Usage, log summaries, `[name]`, Page Style Body Tag) are text in the grow slot, beside the actions; a description in that row became `heading_description`.
 
-- H5 (S) Screen-wide actions and recipes.
-  - H5 done (#4008): Clear Log and Clear Reports in `view_waf_log`'s overflow menu, New department as `workspace_settings`' toolbar primary, `api_settings` drawn by the helper (primary first), `view_shipping_report`'s link in slot 2 and its filter at the bar's right end (so H3 skips that screen).
-  - "Clear Log" and the CSP clear (`view_waf_log`), "New department" (`workspace_settings`), the primary placed last (`api_settings`), and the related link drawn as primary (`view_shipping_report`).
-  - Align `admin-screen-toolbar-rules.md` with slot 2's `btn-text`.
+- H5 (S) Screen-wide actions and recipes. Done (#4008).
+  - `view_waf_log` clears in the overflow menu; New department is `workspace_settings`' primary; `api_settings` primary first; `view_shipping_report`'s link in slot 2 and its filter at the right end (H3 skips that screen); `admin-screen-toolbar-rules.md` uses the slot recipes.
 
 - H6 (S) Workspace screens.
   - `workspace_mail` filters: pill rows become `pg_filter_select()`.

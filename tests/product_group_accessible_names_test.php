@@ -106,7 +106,8 @@ function test_product_group_accessible_names_group_screen_buttons_and_landmarks(
 	pg_assert_contains('aria-label="\' . h(lang(\'Modify Selected Products\')) . \'"', $edit);
 	pg_assert_contains('<span class="material-icons" aria-hidden="true">living</span></button>', $edit);
 	pg_assert_false(strpos($edit, 'material-icons" onclick="convert_product_group_to_product_form') !== false, 'Modify Selected named by its ligature');
-	pg_assert_contains('aria-label="\' . h(lang(\'Button Bar\')) . \'"', $edit);
+	// The bar is drawn by pg_screen_toolbar(), which names it Button Bar.
+	pg_assert_contains('pg_screen_toolbar(', $edit);
 	pg_assert_contains('aria-label="\' . h(lang(\'data edit buttons\')) . \'"', $edit);
 	pg_assert_false(strpos($edit, 'aria-label="data edit buttons ') !== false, 'literal English landmark');
 

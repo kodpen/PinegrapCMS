@@ -222,6 +222,7 @@ if (!$_POST) {
                 'extra classes'=>'form',
                 'icon'=>'form',
                 'heading'=>lang('Add Submitted Form'),
+                'heading_description' => lang('Manually create a submitted form for this custom form. Office use only fields are also visible.'),
                 'cancel'=>array('enable'=>'true','url'=>'view_submitted_forms.php'),
                 'breadcrumb' => array(
                     array('label' => lang('Forms'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_submitted_forms.php'),
@@ -230,6 +231,10 @@ if (!$_POST) {
             )
         ) . '
 <main id="content" class="container-fluid">
+    ' . pg_screen_toolbar(array(
+        'secondary' => array('label' => lang('Select a different custom form'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_submitted_form.php', 'icon' => 'bi-arrow-left-right'),
+        'grow'      => '<span class="fw-semibold text-break">' . h($form_name) . '</span>',
+    )) . '
                 ' . $form_markup['wysiwyg_javascript'] . '
             <div class="row">
                 <div class="col-12">
@@ -237,15 +242,6 @@ if (!$_POST) {
                     ' . $liveform->get_warnings() . '
                     ' . $liveform->output_notices() . '
                     <div class="row mb-3  flex-wrap">
-                        <div class="col-12 sm:col-12 text-center md:text-start">
-                            <div class="row mb-3">
-                                <div class="col-12 md:col">
-                                    <h2 class="d-inline-block text-break">[' . h($form_name) . ']</h2>
-                                    <p class="form-text mt-0">' . lang('Manually create a submitted form for this custom form. Office use only fields are also visible.') . '</p>
-                                    <p class="p-0 m-0"><a class="pg-link-secondary" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_submitted_form.php">' . lang('Select a different custom form') . '</a></p>
-                                </div>
-                            </div>
-                        </div>
                         <form' . $form_markup['enctype'] . ' name="form" action="add_submitted_form.php?page_id=' . h(urlencode($page_id)) . '" method="post">
                             ' . get_token_field() . '
                             <input type="hidden" name="page_id" value="' . h($page_id) . '" />

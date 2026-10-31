@@ -85,11 +85,9 @@ if (empty($_POST['name'])) {
         $send_to = '&send_to=' . h(escape_javascript(urlencode($_REQUEST['send_to'])));
     }
 
-    $duplicate = '<nav id="button_bar" class="navigation " aria-label="' . h(lang('Button Bar')) . '">
-                            <div class=" btn-group btn-group-sm flex-wrap">
-                                <a class="btn btn-link pg-link-secondary py-0 mb-3 " href="duplicate_folder.php?id=' . h($_GET['id']) . '' . $send_to . '"><span class="material-icons me-1">control_point_duplicate</span>' . lang('Duplicate') . '</a>
-                            </div>
-                        </nav>';
+    $duplicate = pg_screen_toolbar(array(
+        'secondary' => '<a class="btn btn-sm btn-text theme-secondary" href="duplicate_folder.php?id=' . h($_GET['id']) . $send_to . '"><i class="bi bi-copy me-1" aria-hidden="true"></i>' . lang('Duplicate') . '</a>',
+    ));
     }
     
     // A user cannot pick styles, so the form names the stored or inherited
@@ -219,15 +217,10 @@ if (empty($_POST['name'])) {
             )
         ) . '
 <main id="content" class="container-fluid">
+    ' . $duplicate . '
                     <div class="row">
                 <div class="col-12">
                     ' . $form->get_messages() . '
-                    <div class="row mb-3  flex-wrap">
-                        <div class="col-12 sm:col-12 text-center md:text-start">
-
-                            ' . $duplicate . '
-                        </div>
-                    </div>
                     <form name="form" action="edit_folder.php" method="post">
                         ' . pg_folder_form(array(
                             'edit' => true,

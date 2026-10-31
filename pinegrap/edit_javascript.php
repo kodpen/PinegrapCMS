@@ -74,15 +74,11 @@ if (!$_POST) {
         ),
     ) ) . '
 <main id="content" class="container-fluid">
+    ' . pg_screen_toolbar(array('grow' => '<span class="fw-semibold text-break">' . h($file_name) . '</span>')) . '
             <div class="row">
             <div class="col-12">
                 ' . $liveform->output_errors() . '
                 ' . $liveform->output_notices() . $output_file_missing . '
-                <div class="row mb-3  flex-wrap">
-                    <div class="col-12 sm:col-12 text-center md:text-start">
-<h2 class="d-inline-block text-break">[' . h($file_name) . ']</h2>
-                    </div>
-                </div>
                 <form name="form" action="edit_javascript.php" method="post">
                     ' . get_token_field() . '
                     <input type="hidden" name="id" value="' . h($_REQUEST['id']) . '">

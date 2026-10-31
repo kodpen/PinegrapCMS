@@ -56,7 +56,7 @@ $number_of_results = 0;
 $output_subheading = '';
 
 if ($user['role'] < 2) {
-    $output_subheading = '<p>' . lang('Page Style Body Tag') . ': <strong>' . h('<menu>' . $menu_name . '</menu>') . '</strong></p>';
+    $output_subheading = '<span class="small fg-secondary">' . lang('Page Style Body Tag') . ': <code>' . h('<menu>' . $menu_name . '</menu>') . '</code></span>';
 }
 
 $back_button_url = escape_url(($_GET['send_to'] ?? ''));
@@ -239,16 +239,13 @@ $reorder_button = '';
 
 // If this user is an admin or designer, then show edit and duplicate buttons
 if ($user['role'] < 2) {
-    $edit_button = '<a class="btn btn-sm btn-solid theme-primary m-1 " href="edit_menu.php?id=' . h(urlencode($_GET['id'])) . '&from=' . h(urlencode(($_GET['from'] ?? ''))) . '&send_to=' . h(urlencode(($_GET['send_to'] ?? ''))) . '"><span class="material-icons me-3">edit</span>' . lang(array('string'=>'Edit Menu Properties') ) . '</a>';
-    $duplicate_button =
-    '<div class=" btn-group btn-group-sm flex-wrap">
-        <a class="btn btn-link pg-link-secondary py-0 m-1" href="duplicate_menu.php?id=' . h(urlencode($_GET['id'])) . '&from=' . h(urlencode(($_GET['from'] ?? ''))) . '&send_to=' . h(urlencode(($_GET['send_to'] ?? ''))) . get_token_query_string_field() . '" ><span class="material-icons me-1">control_point_duplicate</span>' . lang('Duplicate') . '</a>
-    </div>';
+    $edit_button = '<a class="btn btn-sm btn-text theme-secondary" href="edit_menu.php?id=' . h(urlencode($_GET['id'])) . '&from=' . h(urlencode(($_GET['from'] ?? ''))) . '&send_to=' . h(urlencode(($_GET['send_to'] ?? ''))) . '"><i class="bi bi-pencil me-1" aria-hidden="true"></i>' . lang(array('string'=>'Edit Menu Properties') ) . '</a>';
+    $duplicate_button = '<a class="btn btn-sm btn-text theme-secondary" href="duplicate_menu.php?id=' . h(urlencode($_GET['id'])) . '&from=' . h(urlencode(($_GET['from'] ?? ''))) . '&send_to=' . h(urlencode(($_GET['send_to'] ?? ''))) . get_token_query_string_field() . '"><i class="bi bi-copy me-1" aria-hidden="true"></i>' . lang('Duplicate') . '</a>';
 }
 
 // Show reorder button if user has access to edit this menu and there are items
 if ($sortable_html && (($user['role'] < 3) || in_array($_GET['id'], $user_editable_menus))) {
-    $reorder_button = '<button type="button" id="toggle_reorder" class="btn btn-sm btn-outline theme-secondary m-1"><i class="bi bi-arrow-down-up me-3"></i>' . lang('Sort Items') . '</button>';
+    $reorder_button = '<button type="button" id="toggle_reorder" class="btn btn-sm btn-text theme-secondary"><i class="bi bi-arrow-down-up me-1" aria-hidden="true"></i>' . lang('Sort Items') . '</button>';
 }
 
 echo
@@ -258,23 +255,16 @@ pg_page_shell( array(
     'heading' => lang('Edit Menu'),
     'cancel'=>array('enable'=>true,'title'=>$output_back_button_label, 'onclick'=>'window.location.href=\'' . h($back_button_url) . '\'') ) ) . '
 <main id="content" class="container-fluid">
+    ' . pg_screen_toolbar(array(
+        'primary'   => array('label' => lang('Create'), 'url' => 'add_menu_item.php?menu_id=' . urlencode($_GET['id']) . '&from=' . urlencode(($_GET['from'] ?? '')) . '&send_to=' . urlencode(($_GET['send_to'] ?? '')), 'icon' => 'bi-plus-circle'),
+        'secondary' => array($edit_button, $duplicate_button, $reorder_button),
+        'grow'      => '<span class="fw-semibold text-break me-3">' . h($menu_name) . '</span>' . $output_subheading,
+    )) . '
     <div class="row">
         <div class="col-12">
             ' . $liveform->output_errors() . '
             ' . $liveform->get_warnings() . '
             ' . $liveform->output_notices() . '
-            <div class="row mb-3  flex-wrap">
-                <div class="col-12 text-center md:text-start">
-                    <h2 class="d-inline-block ">[' . h($menu_name) . ']</h2>
-                    ' . $output_subheading . '
-                    <nav id="button_bar" class="navigation " aria-label="' . h(lang('Button Bar')) . '">
-                        <a class="btn btn-sm btn-solid theme-primary m-1 " href="add_menu_item.php?menu_id=' . h(urlencode($_GET['id'])) . '&from=' . h(urlencode(($_GET['from'] ?? ''))) . '&send_to=' . h(urlencode(($_GET['send_to'] ?? ''))) . '"><span class="bi bi-plus-circle me-3"></span>' . lang(array('string'=>'Create') ) . '</a>
-                        ' . $edit_button . '
-                        ' . $duplicate_button . '
-                        ' . $reorder_button . '
-                    </nav>
-                </div>
-            </div>
             <div id="menu_items_table_card" class="card my-7">
                 <input type="hidden" name="menu_id" value="' . h($_GET['id']) . '" />
                 <div class="card-body p-0 position-relative">
