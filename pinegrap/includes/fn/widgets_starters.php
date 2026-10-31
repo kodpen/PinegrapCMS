@@ -342,7 +342,7 @@ function _pg_st_comments_recent()
 
     return array(
         array('key' => 'cards', 'label' => lang('Cards side by side'), 'loop' => array($card), 'wrap' => array('cssClass' => 'row g-3')),
-        array('key' => 'quotes', 'label' => lang('Quotes'), 'loop' => array($quote), 'wrap' => array('cssClass' => 'd-flex flex-column gap-4')),
+        array('key' => 'quotes', 'label' => lang('Quotations'), 'loop' => array($quote), 'wrap' => array('cssClass' => 'd-flex flex-column gap-4')),
     );
 }
 
@@ -372,7 +372,7 @@ function _pg_st_product_head($title_class)
             _pg_st_el('i', 'bi bi-star-fill text-warning', lang('Icon'), array(), array('_attrs' => array(array('name' => 'aria-hidden', 'value' => 'true')))),
             _pg_st_text('span', 'fw-semibold', lang('Average Rating'), '4.5', array('text' => '__rating_avg')),
             _pg_st_text('span', 'text-body-secondary', lang('Number of Reviews'), '12', array('text' => '__rating_count')),
-            _pg_st_text('span', 'text-body-secondary', lang('Label'), lang('reviews')),
+            _pg_st_text('span', 'text-body-secondary', lang('Label'), lang('review(s)')),
         ), array('_bindings' => array('eo_visible_if' => 'has_rating'))),
     );
 }
