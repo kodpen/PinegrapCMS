@@ -66,8 +66,9 @@ function get_help_url($properties = array())
         'index'   => 'introduction#welcome',
         'welcome' => 'introduction#welcome',
 
-        // Site Settings: the eight categories of the settings dialog, opened
-        // as screens of their own, and the tools that live beside them.
+        // Site Settings: the categories of the settings dialog, opened as
+        // screens of their own, and the System tools screen with the tools
+        // that live beside them.
         'settings_general'    => 'site-settings#general',
         'settings_appearance' => 'site-settings#appearance',
         'settings_features'   => 'site-settings#features',
@@ -77,7 +78,10 @@ function get_help_url($properties = array())
         'settings_security'   => 'site-settings#security',
         'settings_firewall'   => 'site-settings#firewall',
         'settings_commerce'   => 'site-settings#commerce',
+        'settings_accounting' => 'site-settings#accounting',
+        'settings_privacy'    => 'site-settings#visitors-and-privacy',
         'settings_api'        => 'site-settings#api',
+        'system_tools'        => 'site-settings#system-tools',
         'smtp_settings'       => 'site-settings#smtp-settings',
         'mail_queue'          => 'site-settings#mail-queue',
         'software_repair'     => 'site-settings#repair-software',

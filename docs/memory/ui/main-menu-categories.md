@@ -4,7 +4,7 @@ description: Main menu rows in categories (pg_menu_categories(), pg_menu_layout(
 ---
 
 ## Which categories are there?
-- `pg_menu_categories()` (`includes/fn/output.php`, #2811), drawn in this order: untitled (Dashboard 0, Workspace 23, pinned My Notes 24); Content (Pages 2, File Manager 1, Calendars 4, Forms 5); Design (Visual Page Editor 21, Page Styles 17); Ecommerce (Orders 10, Products 11, Catalog Manager 12, Offers 14, Shipping 15); Accounting (ERP 22: its own switch and rights, it runs without the store); Marketing (Visitors 6, Contacts 7, My Campaigns 9, Ads 16); System (Users 8, Site Settings 20, last). Owner's choice of the headings layout over one row per category: no store screen costs an extra click.
+- `pg_menu_categories()` (`includes/fn/output.php`, #2811), drawn in this order: untitled (Dashboard 0, Workspace 23, pinned My Notes 24); Content (Pages 2, File Manager 1, Calendars 4, Forms 5); Design (Visual Page Editor 21, Page Styles 17); Ecommerce (Orders 10, Products 11, Catalog Manager 12, Offers 14, Shipping 15); Accounting (ERP 22: its own switch and rights, it runs without the store); Marketing (Visitors 6, Contacts 7, My Campaigns 9, Ads 16); System (Users 8, Site Settings 20, System tools 25, last). Owner's choice of the headings layout over one row per category: no store screen costs an extra click.
 - The table sets the order; the rows are still built in id order, each under its gate. The old reorder loop ("moved rows") is gone. A new row needs a place in the table, or it is drawn last without a heading. `tests/menu_category_test.php` reads the built slots from `output_menu()` and wants each listed once.
 
 ## When is a heading drawn?
@@ -12,7 +12,7 @@ description: Main menu rows in categories (pg_menu_categories(), pg_menu_layout(
 - Also over a single row (owner): order reports only gives Ecommerce over Order Reports; a workspace-only member gets no heading at all.
 
 ## Where did the files go?
-- The File Manager row (slot 1, `view_folders.php`) is the destination; its panel: File Manager, Create Folder, Upload Files or Folders, Create File, then the explorer's tree with its views (Files, Pictures, Pages, ...) and folders (`explorer-menu-tree.md`). The Files row (slot 3) is retired, like 13, 18 and 19; never reuse it. Every `view_folders.php` view, the folder screens and the old file screens mark row 1; the tree marks the open view.
+- The File Manager row (slot 1, `view_folders.php`) is the destination; its panel: File Manager, Create Folder, Upload Files or Folders, Create File, then the explorer's tree with its views (Files, Pictures, Pages, ...) and folders (`explorer-menu-tree.md`). The Files row (slot 3) is retired, like 13, 18 and 19; never reuse it. Slot 25 (System tools, #3929) took the next free number for the same reason: operators pin rows by slot. Every `view_folders.php` view, the folder screens and the old file screens mark row 1; the tree marks the open view.
 - The explorer switches views without a page load; it writes the address only through `setAddress()` (`view_folders.php`), which calls `pgMenu.refreshCurrent()`.
 - The `files` drawing of `pg_menu_icon()` went with it.
 

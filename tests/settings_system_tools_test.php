@@ -176,4 +176,49 @@ function test_settings_system_tools_page_source()
 	pg_assert_contains('pg_settings_tool_count($system_tools_groups) === 0', $source, 'a user with no tool is refused');
 	pg_assert_contains('pg_settings_tool_cards(', $source, 'cards drawn by the tested helper');
 	pg_assert_contains("'breadcrumb'", $source, 'breadcrumb back to Site Settings');
+	pg_assert_same(false, strpos($source, "'help'"), 'its help topic is a row of get_help_url.php');
+}
+
+// The main menu's System tools row: slot 25, under the screen's own gate.
+function settings_system_tools_menu_case_slot($source, $script)
+{
+	$start = strpos($source, "case '" . $script . "':");
+
+	if ($start === false) {
+		return null;
+	}
+
+	preg_match('/\$active_menu = ([^;]+);/', $source, $match, 0, $start);
+
+	return isset($match[1]) ? $match[1] : null;
+}
+
+function test_settings_system_tools_menu_row()
+{
+	$source = pg_test_function_source('output_menu');
+	$start = strpos($source, "\$menu_items[25]['id'] = 25;");
+	pg_assert_true($start !== false, 'slot 25 is built');
+
+	$gate = strrpos(substr($source, 0, $start), 'if (');
+	pg_assert_contains("if (\$user['role'] <= 2 && pg_settings_tool_count(\$menu_tools_groups) > 0)", substr($source, $gate, $start - $gate), 'under system_tools.php\'s own gate');
+	pg_assert_contains("\$menu_tools_groups = (\$user['role'] <= 2) ? pg_settings_tool_groups(\$user) : array();", $source, 'from the gated groups');
+	pg_assert_contains("\$menu_items[25]['href'] = 'system_tools.php';", $source, 'the row leads to the screen');
+	pg_assert_contains("\$menu_items[25]['title'] = 'System tools';", $source, 'titled as the screen');
+	pg_assert_contains('$menu_panels_nested .= $menu_tools[\'panels\'];', $source, 'its group panels join the nested ones');
+
+	$tools = array('system_tools.php', 'view_log.php', 'view_audit_log.php', 'smtp_settings.php', 'api_settings.php', 'connections.php', 'marketplace_settings.php', 'software_update.php', 'software_repair.php', 'view_performance_log.php', 'clean_up.php', 'database_engine.php', 'mail_queue.php', 'backups.php', 'cloudflare.php');
+
+	foreach ($tools as $script) {
+		pg_assert_same('25', settings_system_tools_menu_case_slot($source, $script), $script . ' marks the System tools row');
+	}
+
+	foreach (array('settings_general.php', 'settings_accounting.php', 'settings_privacy.php', 'translations.php', 'private_label.php') as $script) {
+		pg_assert_same('20', settings_system_tools_menu_case_slot($source, $script), $script . ' marks the Site Settings row');
+	}
+
+	foreach (array('view_referral_sources.php', 'add_currency.php', 'edit_currency.php') as $script) {
+		pg_assert_same("(\$user['role'] <= 2) ? 25 : 15", settings_system_tools_menu_case_slot($source, $script), $script . ' marks System tools, or shipping for role 3');
+	}
+
+	pg_assert_same(null, settings_system_tools_menu_case_slot($source, 'view_sessions.php'), 'view_sessions.php stays unmarked');
 }
