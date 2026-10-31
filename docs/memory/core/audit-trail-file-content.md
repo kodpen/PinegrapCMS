@@ -16,6 +16,6 @@ module: audit
 - Uploads, copies and creates keep their own `create` lines without a digest.
 
 ## Tests?
-- `tests/audit_file_content_test.php`, `tests/audit_design_file_writers_test.php` (read before the write, record after the UPDATE). PR #4260; Edit File in PR #4316.
+- `tests/audit_file_content_test.php`, `tests/audit_design_file_writers_test.php` (read before the write, record after the UPDATE). PR #4260; Edit File in PR #4317.
 
 Related: docs/memory/core/audit-trail-writers.md, docs/memory/core/audit-trail-stored-values.md
