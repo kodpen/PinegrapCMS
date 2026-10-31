@@ -157,6 +157,43 @@ function pg_explorer_bulk_product_new_quantity($current_quantity, $mode, $value)
     return $new_quantity;
 }
 
+// The out_of_stock assignment(s) of one product's bulk stock edit, by the
+// rule every other stock writer follows (pg_product_out_of_stock_sql()):
+// tracked with nothing left is marked, stamped only on the way in; anything
+// else is not marked. $stored is the row before the write (inventory,
+// inventory_quantity, out_of_stock), $inventory the tracking choice ('' for
+// unchanged, '0' or '1') and $new_quantity the new count or null. An edit
+// that moves neither tracking nor the count returns '' and leaves the mark.
+function pg_products_bulk_out_of_stock_sql($stored, $inventory, $new_quantity)
+{
+    $inventory = (string) $inventory;
+
+    if (($inventory === '') && ($new_quantity === null)) {
+        return '';
+    }
+
+    $tracked = ($inventory !== '')
+        ? ($inventory === '1')
+        : ((string) ($stored['inventory'] ?? '') === '1');
+
+    $quantity = ($new_quantity !== null) ? (int) $new_quantity : (int) ($stored['inventory_quantity'] ?? 0);
+
+    return pg_product_out_of_stock_sql($tracked, $quantity, (string) ($stored['out_of_stock'] ?? ''));
+}
+
+// Whether the product list's Change Selected was asked for anything beside a
+// price change. When it was not, a product whose price change is refused has
+// nothing to write and is not counted as updated.
+function pg_products_mass_change_besides_price($post, $quantity_value)
+{
+    return ((string) ($post['edit_enabled'] ?? '') !== '')
+        || ((string) ($post['edit_inventory'] ?? '') !== '')
+        || ($quantity_value !== null)
+        || !empty($post['edit_allowed_zones'])
+        || !empty($post['edit_disallowed_zones'])
+        || ((string) ($post['edit_tax_rate_method'] ?? '') !== '');
+}
+
 // ── Bulk product edit: the choices the panel can offer ──────────
 //
 // Which fields the panel draws depends on what this installation
@@ -388,10 +425,15 @@ function pg_explorer_handle_products_bulk_edit($type, $request, $user)
         }
 
         $new_quantity = null;
+        $stock_stored = null;
+
+        if (($bulk_quantity_mode !== '') || ($bulk_inventory !== '')) {
+            $stock_stored = db_item("SELECT inventory, inventory_quantity, out_of_stock FROM products WHERE id = '" . e($product_id) . "'");
+        }
 
         if ($bulk_quantity_mode !== '') {
 
-            $current_quantity = (int) db_value("SELECT inventory_quantity FROM products WHERE id = '" . e($product_id) . "'");
+            $current_quantity = (int) ($stock_stored['inventory_quantity'] ?? 0);
 
             $new_quantity = pg_explorer_bulk_product_new_quantity($current_quantity, $bulk_quantity_mode, $bulk_quantity_value);
 
@@ -402,11 +444,16 @@ function pg_explorer_handle_products_bulk_edit($type, $request, $user)
             $sql_parts[] = "inventory = '" . e($bulk_inventory) . "'";
         }
 
-        // Out of stock is a consequence, not a field the panel offers:
-        // stock tracking switched off means nothing can be out of it,
-        // and a quantity above zero means this one no longer is.
-        if (($bulk_inventory === '0') || (($new_quantity !== null) && ($new_quantity > 0))) {
-            $sql_parts[] = "out_of_stock = '0'";
+        // Out of stock is a consequence, not a field the panel offers: a
+        // tracked product left with nothing is marked (it shows in the Out
+        // of Stock view), tracking switched off or stock back on the shelf
+        // takes the mark off.
+        if ($stock_stored) {
+            $out_of_stock_sql = pg_products_bulk_out_of_stock_sql($stock_stored, $bulk_inventory, $new_quantity);
+
+            if ($out_of_stock_sql !== '') {
+                $sql_parts[] = $out_of_stock_sql;
+            }
         }
 
         foreach ($bulk_allow_zones as $zone_id) {

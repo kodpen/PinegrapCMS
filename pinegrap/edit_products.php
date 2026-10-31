@@ -138,10 +138,22 @@ if (!$_POST) {
                         $disallowed_zones = array();
                     }
 
-					$number_of_unchanged_price_products =0;
-					
+                    $number_of_unchanged_price_products = 0;
+                    $number_of_price_changed_products = 0;
+                    $number_of_binned_products = 0;
+                    $change_besides_price = pg_products_mass_change_besides_price($_POST, $quantity_value);
+
                     // Loop through selected products in order to edit them.
                     foreach ($_POST['products'] as $product_id) {
+                        // A product in the Recycle Bin is not changed, as on
+                        // Edit Product and in the Catalog Manager: the list
+                        // does not show one, but a selection made before it
+                        // was binned in another tab still posts it.
+                        if (pg_catalog_product_binned($product_id)) {
+                            $number_of_binned_products++;
+                            continue;
+                        }
+
                         $sql_enabled = '';
 
                         $audit_before = pg_audit_fetch('products', $product_id);
@@ -213,18 +225,29 @@ if (!$_POST) {
 							if($change['refused']){
 								$number_of_unchanged_price_products++;
 								$liveform->mark_error('Update Error', lang(array( 'string'=>'{var:1} product(s) were not changed because their price would fall to zero or below.','vars'=>array($number_of_unchanged_price_products) )) );
+
+								// Nothing else was asked for this product: it
+								// is neither written nor counted as updated.
+								if (!$change_besides_price) {
+									continue;
+								}
+							} else {
+								$sql_new_prices = "price = '" . e($price) . "',";
+								$number_of_price_changed_products++;
 							}
-							$sql_new_prices = "price = '" . e($price) . "',";
 						}
                     
                         $sql_inventory_quantity = '';
-                        $new_inventory_quantity = '';
+                        $new_inventory_quantity = null;
+                        // The stock as stored, read once when this edit may
+                        // move the count or the tracking.
+                        $stock_stored = (($quantity_value !== null) || (($_POST['edit_inventory'] ?? '') !== ''))
+                            ? db_item("SELECT inventory, inventory_quantity, out_of_stock FROM products WHERE id = '" . e($product_id) . "'")
+                            : null;
                         // The new count, worked out from the stored one by the
                         // Catalog Manager's rule: never below zero.
                         if ($quantity_value !== null) {
-                            $result = db_q("SELECT inventory_quantity FROM products WHERE id = ?", array((string) $product_id)) or output_error('Query failed.');
-                            $row = mysqli_fetch_assoc($result);
-                            $inventory_quantity = (int) $row['inventory_quantity'];
+                            $inventory_quantity = (int) ($stock_stored['inventory_quantity'] ?? 0);
                             $new_inventory_quantity = (int) pg_explorer_bulk_product_new_quantity($inventory_quantity, $quantity_process, $quantity_value);
                             $sql_inventory_quantity = "inventory_quantity = '" . $new_inventory_quantity . "',";
                         }
@@ -256,15 +279,21 @@ if (!$_POST) {
                             }
                         }
 
-                        // Tracking switched off, or a new quantity above zero, takes the out-of-stock mark off.
+                        // The out-of-stock mark by the shared rule: a tracked
+                        // product left with nothing is marked (stamped the day
+                        // it ran out), tracking off or stock above zero clears
+                        // it. An untouched tracking choice stays '' (strict
+                        // test: on PHP 7 '' == 0 read as "tracking off").
                         $sql_out_of_stock = '';
-                        // The first test is deliberately strict about emptiness: on PHP 7
-                        // '' == 0 is true, so an untouched inventory field used to read as
-                        // "tracking switched off" and cleared out_of_stock on every product
-                        // in the selection.
-                        if ((($_POST['edit_inventory'] ?? '') !== '' && (int)$_POST['edit_inventory'] === 0)
-                            || ($new_inventory_quantity !== '' && $new_inventory_quantity > 0) ) {
-                            $sql_out_of_stock = "out_of_stock = '0',";
+                        if ($stock_stored) {
+                            $tracking_choice = (string) ($_POST['edit_inventory'] ?? '');
+                            if ($tracking_choice !== '') {
+                                $tracking_choice = ($tracking_choice === '1') ? '1' : '0';
+                            }
+                            $sql_out_of_stock = pg_products_bulk_out_of_stock_sql($stock_stored, $tracking_choice, $new_inventory_quantity);
+                            if ($sql_out_of_stock !== '') {
+                                $sql_out_of_stock .= ',';
+                            }
                         }
 
                         // Loop through all checked allowed zones, in order to allow product for them.
@@ -328,7 +357,7 @@ if (!$_POST) {
                         // there is put back (includes/fn/bundles.php).
                         pg_bundle_refresh((int) $product_id);
 
-                        if ($edit_change_price_method != '') {
+                        if ($sql_new_prices !== '') {
                             pg_price_history_queue($product_id, 'panel');
                         }
 
@@ -361,6 +390,10 @@ if (!$_POST) {
                     // to zero or below keeps its price).
                     pg_price_history_flush();
 
+                    if ($number_of_binned_products > 0) {
+                        $liveform->add_error(lang(array('string' => '{var:1} product(s) were not changed because they are in the Recycle Bin.', 'vars' => array($number_of_binned_products))));
+                    }
+
                     // If at least one product was modified, then log activity.
                     if ($number_of_products > 0) {
                         // Each change is a verb-free phrase; the count and
@@ -387,7 +420,9 @@ if (!$_POST) {
                             $changes[] = lang('shipping zones changed');
                         }
 
-                        if ($edit_change_price_method != '') {
+                        // Only when a price really moved: a refused cut
+                        // keeps the old price and has its own error.
+                        if ($number_of_price_changed_products > 0) {
                             $changes[] = lang('price changed');
                         }
 
