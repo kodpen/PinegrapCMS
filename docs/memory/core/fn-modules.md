@@ -86,7 +86,7 @@ description: Generated from the module field of the memory files: each includes/
 - `site_datetime`: [[site-datetime-loader]]
 - `site_icon`: [[site-icon]]
 - `site_log_list`: [[site-log-paging]]
-- `site_search`: [[site-search-index-text]], [[site-search-query-and-freshness]]
+- `site_search`: [[site-search-index-text]], [[site-search-query-and-freshness]], [[site-search-turkish-i]]
 - `site_time_sql`: [[visitor-report-site-time]]
 - `sms_campaigns`: [[sms-campaign-limit-and-labels]], [[sms-campaigns]]
 - `sms_codes`: [[sms-codes]]

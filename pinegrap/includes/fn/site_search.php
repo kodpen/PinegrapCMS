@@ -30,6 +30,10 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  *   double quotes (a wildcard is dropped there).
  * - A single plain word is quoted too, as the search always did, so it is a
  *   boolean exact-phrase search.
+ * - A word or phrase with i, I, ı or İ is searched in each of its readings
+ *   (pg_search_i_variants()): the index's utf8mb4_unicode_ci folds I and İ
+ *   to i but keeps ı apart, so "KAHVALTI" and "kahvalti" found no
+ *   "kahvaltı". With an operator the readings are grouped: "+(a b)".
  * - Anything without a letter or a digit is dropped; '' when nothing is left.
  *
  * @param string $query
@@ -41,6 +45,7 @@ function pg_search_boolean_terms($query)
     if (preg_match_all('/([+\-]?)"([^"]*)"|(\S+)/u', $query, $matches, PREG_SET_ORDER) === false) {
         return '';
     }
+    // Each term: array(prefix, text, wildcard, phrase).
     $terms = array();
     foreach ($matches as $m) {
         if (isset($m[3]) && $m[3] !== '') {
@@ -59,20 +64,74 @@ function pg_search_boolean_terms($query)
             $core = _pg_search_phrase_text($chunk);
             if ($core === '') continue;
             if (preg_match('/^[\p{L}\p{N}_]+$/u', $core)) {
-                $terms[] = $prefix . $core . $wild;
+                $terms[] = array($prefix, $core, $wild, false);
             } else {
-                $terms[] = $prefix . '"' . $core . '"';
+                $terms[] = array($prefix, $core, '', true);
             }
         } else {
             $core = _pg_search_phrase_text($m[2]);
             if ($core === '') continue;
-            $terms[] = $m[1] . '"' . $core . '"';
+            $terms[] = array($m[1], $core, '', true);
         }
     }
-    if (count($terms) === 1 && preg_match('/^[\p{L}\p{N}_]+$/u', $terms[0])) {
-        return '"' . $terms[0] . '"';
+    if (count($terms) === 1 && $terms[0][0] === '' && $terms[0][2] === '') {
+        $terms[0][3] = true;
     }
-    return implode(' ', $terms);
+    $out = array();
+    foreach ($terms as $term) {
+        list($prefix, $core, $wild, $phrase) = $term;
+        $readings = array();
+        foreach (pg_search_i_variants($core) as $variant) {
+            $readings[] = $phrase ? '"' . $variant . '"' : $variant . $wild;
+        }
+        if (count($readings) > 1 && $prefix !== '') {
+            $out[] = $prefix . '(' . implode(' ', $readings) . ')';
+        } else {
+            $out[] = $prefix . implode(' ', $readings);
+        }
+    }
+    return implode(' ', $out);
+}
+
+/**
+ * Every reading of a search word's i letters, the word as typed first:
+ * i, I, ı and İ are one letter to a Turkish reader, typed without a Turkish
+ * keyboard or in capitals. A word with such a letter is lower cased, I read
+ * as ı and İ as i; with up to two of them each mix of i and ı is given,
+ * past that the typed reading, all i and all ı. A word without one comes
+ * back alone and unchanged. Pure.
+ *
+ * @param string $word
+ * @return string[]
+ */
+function pg_search_i_variants($word)
+{
+    $word = (string) $word;
+    if (!preg_match('/[iIıİ]/u', $word)) return array($word);
+    // A dot written as U+0307 belongs to the letter before it.
+    $word = str_replace(array("I\u{307}", "i\u{307}"), array('İ', 'i'), $word);
+    $word = mb_strtolower(str_replace(array('İ', 'I'), array('i', 'ı'), $word), 'UTF-8');
+    $letters = preg_split('//u', $word, -1, PREG_SPLIT_NO_EMPTY);
+    if (!is_array($letters)) return array($word);
+    $at = array();
+    foreach ($letters as $n => $letter) {
+        if ($letter === 'i' || $letter === 'ı') $at[] = $n;
+    }
+    $variants = array();
+    if (count($at) <= 2) {
+        for ($mask = 0; $mask < (1 << count($at)); $mask++) {
+            $copy = $letters;
+            foreach ($at as $bit => $n) {
+                if ($mask & (1 << $bit)) $copy[$n] = ($copy[$n] === 'i') ? 'ı' : 'i';
+            }
+            $variants[] = implode('', $copy);
+        }
+    } else {
+        $variants[] = $word;
+        $variants[] = str_replace('ı', 'i', $word);
+        $variants[] = str_replace('i', 'ı', $word);
+    }
+    return array_values(array_unique($variants));
 }
 
 /**
@@ -114,7 +173,7 @@ function pg_search_needs_boolean_mode($terms)
  */
 function pg_search_score_terms($terms)
 {
-    $text = str_replace(array('"', '*'), '', (string) $terms);
+    $text = str_replace(array('"', '*', '(', ')'), '', (string) $terms);
     return trim((string) preg_replace('/(^|\s)[+\-]/u', '$1', $text));
 }
 
