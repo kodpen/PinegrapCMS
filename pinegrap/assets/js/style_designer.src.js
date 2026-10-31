@@ -13532,14 +13532,14 @@ const StyleDesigner = (function () {
                     eo_billing:                _sdT('Billing Block — the whole form (filled by the backend)'),
                     eo_billing_country_select: _sdT('Country List — <select> (filled by the backend — 240 countries)'),
                     eo_payment:                _sdT('Payment Block — the whole block (filled by the backend)'),
-                    eo_payment_methods:        _sdT('Payment Methods (radios — site Settings → E-Commerce)'),
+                    eo_payment_methods:        _sdT('Payment Methods (option buttons — site Settings → E-Commerce)'),
                     eo_installment:            _sdT('Instalment Picker (Iyzipay BIN lookup — filled once the card number is entered)'),
-                    eo_terms:                  _sdT('Terms Acceptance (LEGACY — the new tree uses a real checkbox + a Bootstrap modal)'),
+                    eo_terms:                  _sdT('Terms Acceptance (old — the new tree uses a real check box and a Bootstrap window)'),
                     eo_saved_cart_link:        _sdT('Saved Cart Link (the visitor can return to the cart with the order #)'),
                     eo_address_book:           _sdT('Saved Addresses for billing (address book and past orders — hidden when empty)'),
                     eo_address_book_shipping:  _sdT('Saved Addresses for shipping (the member\'s address book — hidden when empty)'),
-                    eo_upsell_offers:          _sdT('Upsell Offers (view_offers.php — alert strip, "only $100 to go")'),
-                    eo_applied_offers:         _sdT('Applied Offers (derived from orders.discount_offer_id + order_items.offer_id)'),
+                    eo_upsell_offers:          _sdT('Upsell Offers (notice strip, "only $100 to go")'),
+                    eo_applied_offers:         _sdT('Applied Offers (from the offers of the order and its lines)'),
                     eo_totals:                 _sdT('Order Totals (calculated by the backend — VAT, surcharge, total)'),
                     eo_submit_button:          _sdT('Complete the Order Button'),
                     eo_update_button:          _sdT('Update Button (for the cart quantities)')
@@ -35601,13 +35601,13 @@ const StyleDesigner = (function () {
                     eo_billing:                _sdT('Billing Block (old monolithic)'),
                     eo_billing_country_select: _sdT('Country List (240 countries)'),
                     eo_payment:                _sdT('Payment Block (old monolithic)'),
-                    eo_payment_methods:        _sdT('Payment Methods (radios)'),
+                    eo_payment_methods:        _sdT('Payment Methods (option buttons)'),
                     eo_installment:            _sdT('Instalment Picker (Iyzipay)'),
-                    eo_terms:                  _sdT('Terms Acceptance (LEGACY)'),
+                    eo_terms:                  _sdT('Terms Acceptance (old)'),
                     eo_saved_cart_link:        _sdT('Saved Cart Link (return with the order #)'),
                     eo_address_book:           _sdT('Saved Addresses (billing)'),
                     eo_address_book_shipping:  _sdT('Saved Addresses (shipping)'),
-                    eo_upsell_offers:          _sdT('Upsell Offers (alert strip)'),
+                    eo_upsell_offers:          _sdT('Upsell Offers (notice strip)'),
                     eo_applied_offers:         _sdT('Applied Offers (promotions active in the cart)'),
                     eo_totals:                 _sdT('Order Totals'),
                     eo_submit_button:          _sdT('Complete the Order button'),
@@ -38764,17 +38764,8 @@ const StyleDesigner = (function () {
         return _swNameKind(cfg);
     }
 
-    // The Format row under a node's bound text: a date format for a date
-    // value, a text filter for any other. '' outside a widget, in a kind
-    // whose fill does not read a format, and for a date in the form views
-    // and my_account, whose binding rows carry the date format already.
-    // A part placed outside its widget gets the row of its widget, which
-    // draws it and reads the format (_sdInWidgetScope()).
-    function _sdFormatRows(node) {
-        if (!node || !node.props) return '';
-        return _sdInWidgetScope(node, function () { return _sdFormatRowsIn(node); });
-    }
-
+    // The Format row of a node whose widget the value lookups read
+    // (_sdFormatRows() below).
     function _sdFormatRowsIn(node) {
         var kind = _sdFillKindOf(node);
         if (!_SD_FILTER_KINDS[kind]) return '';
@@ -38814,6 +38805,17 @@ const StyleDesigner = (function () {
                        : ' style="display:none"') + '>';
         return row(esc(_sdT('Format')),
             '<select class="form-control form-control-sm sd-sw-bindfilter">' + opts + '</select>' + arg + hint);
+    }
+
+    // The Format row under a node's bound text: a date format for a date
+    // value, a text filter for any other. '' outside a widget, in a kind
+    // whose fill does not read a format, and for a date in the form views
+    // and my_account, whose binding rows carry the date format already.
+    // A part placed outside its widget gets the row of its widget, which
+    // draws it and reads the format (_sdInWidgetScope()).
+    function _sdFormatRows(node) {
+        if (!node || !node.props) return '';
+        return _sdInWidgetScope(node, function () { return _sdFormatRowsIn(node); });
     }
 
     // The operators of the "Show only when a value…" row, in the server's
@@ -68000,7 +68002,7 @@ const StyleDesigner = (function () {
                 eo_cart_items: _sdT('Cart Items'), eo_shipping: _sdT('Shipping Address'),
                 eo_billing: _sdT('Billing Block'), eo_billing_country_select: _sdT('Country List'),
                 eo_payment: _sdT('Payment Block'), eo_payment_methods: _sdT('Payment Methods'),
-                eo_installment: _sdT('Instalment Picker'), eo_terms: _sdT('Terms Acceptance (LEGACY)'),
+                eo_installment: _sdT('Instalment Picker'), eo_terms: _sdT('Terms Acceptance (old)'),
                 eo_saved_cart_link: _sdT('Saved Cart Link'), eo_address_book: _sdT('Address Book'),
                 eo_upsell_offers: _sdT('Upsell Offers'), eo_applied_offers: _sdT('Applied Offers'),
                 eo_totals: _sdT('Order Totals'), eo_submit_button: _sdT('Complete the Order button'),

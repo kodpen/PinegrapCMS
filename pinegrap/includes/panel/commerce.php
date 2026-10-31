@@ -395,7 +395,7 @@ function pg_panel_eo_required_sections($request, $action)
         'eo_installment'            => lang('Installment picker (Iyzipay BIN lookup)'),
         'eo_terms'                  => lang('Terms consent (legacy; the new tree uses a real checkbox + modal)'),
         'eo_saved_cart_link'        => lang('Saved cart link (the visitor can return to the cart with the order #)'),
-        'eo_upsell_offers'          => lang('Upsell offers (view_offers.php alert strip)'),
+        'eo_upsell_offers'          => lang('Upsell offers (notice strip)'),
         'eo_applied_offers'         => lang('Applied offers (promotions applied to the cart)'),
         'eo_totals'                 => lang('Order totals (computed by backend: VAT, card surcharge, total)'),
         'eo_submit_button'          => lang('Complete Order button'),

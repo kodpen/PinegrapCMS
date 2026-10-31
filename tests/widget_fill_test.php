@@ -510,6 +510,8 @@ function _widget_fill_run_js($script)
 		. "function row(label, ctrl) { return '<row label=\"' + label + '\">' + ctrl + '</row>'; }\n"
 		. "var _sharedCache = {}, _sharedDirty = {};\n"
 		. "function _isInsideSystemWidget(node) { return (node && node.sid) ? node.sid : 0; }\n"
+		. "function _sdValueSidOf(node) { return _isInsideSystemWidget(node); }\n"
+		. "function _sdInWidgetScope(node, fn) { return _isInsideSystemWidget(node) ? fn() : ''; }\n"
 		. "function _sdFormFieldIsDate() { return false; }\n"
 		. "var SW_STANDARD_FIELD_OPTIONS = [['submitted_date_and_time', 'Submitted', 'date'], ['reference_code', 'Reference', 'text']];\n";
 

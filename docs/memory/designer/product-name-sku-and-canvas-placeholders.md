@@ -17,3 +17,6 @@ description: Which product token is the SKU and which the store name, their Bind
 
 ## Which Turkish words do the "filled by the backend" texts use?
 - "sunucu doldurur" for backend, "sayfa çizilirken" / "çizilir" for render, "slayt" for slide, "tuval", "tekrar alanı" as in [[loop-band-canvas]]; set with `tools/tr_add.php --replace` (#4200).
+
+## Which words do the Quick Order and cart section names avoid? (#4289)
+- No file, table or column names (`view_offers.php`, `orders.discount_offer_id`) and no English left in the Turkish ("Attribute", "alert", "visitor", "Upsell", "LEGACY", "tree", "checkbox"): "Varyant Özelliği", "uyarı kutusu/şeridi", "ziyaretçi", "Ek satış teklifleri", "eski", "ağaç", "onay kutusu", "seçenek düğmeleri" for radios. A changed English source got a new key through `tools/tr_add.php`; Turkish-only fixes used `--replace`.
