@@ -104,6 +104,7 @@ $editor = array(
         'requireCodeOn'          => lang('applies to customers who enter this code at checkout'),
         'requireCodeOff'         => lang('off: the offer applies by itself once the conditions are met'),
         'keyCodes'               => lang('{var:1} key code(s) linked to this code'),
+        'keyCodesFollow'         => lang('The {var:1} key code(s) of the saved code will follow the new code when you save.'),
         'orderCount'             => lang('{var:1} order(s) placed with this code'),
         'groupsText'             => lang('cart has at least {var:1} from {var:2}'),
         'cartQuantityText'       => lang('cart holds at least {var:1} item(s)'),

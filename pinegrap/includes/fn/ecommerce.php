@@ -10209,6 +10209,10 @@ function pg_key_code_list_cells($key_code, $today)
             $reason = lang('Disabled');
         } elseif (($expires !== '0000-00-00') && ($expires < $today)) {
             $reason = lang('Expired');
+        } elseif (($key_code['offer_status'] ?? null) === null) {
+            // The list reads the offer through a LEFT JOIN: null means no
+            // offer has this key code's offer code, so checkout refuses it.
+            $reason = lang('No offer has this code');
         } else {
             $reason = lang('Offer not running');
         }

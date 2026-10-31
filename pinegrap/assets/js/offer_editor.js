@@ -585,8 +585,19 @@
         if (C.same_code_count > 0 && S.offer.only_apply_best_offer) { os.push(L.bestOffer); }
         $('#pg-if-options-summary').textContent = os.join(' · ');
     }
+    // Key codes hang off the offer by its code: while the saved code is being
+    // changed, say that they will move with it (the save moves them). While
+    // another offer shares the saved code they stay with that one, so no word.
+    function renderCodeFollow() {
+        var el = $('#pg-if-code-follow');
+        if (!el) { return; }
+        var on = !isNew && S.offer.code !== C.savedCode && C.key_code_count > 0 && !(C.same_code_count > 0);
+        el.textContent = on ? fmt(L.keyCodesFollow, [C.key_code_count]) : '';
+        show(el, on);
+    }
     function renderHeader() {
         $('#pg-if-code').value = S.offer.code;
+        renderCodeFollow();
         $('#pg-if-description').value = S.offer.description;
         $('#pg-if-enabled').checked = !!S.offer.enabled;
         $('#pg-if-require-code').checked = !!S.offer.require_code;
@@ -926,6 +937,7 @@
                 S.offer.code = el.value; touch();
                 delete serverErrors['offer.code'];
                 show($('#pg-if-code-error'), false);
+                renderCodeFollow();
                 renderSummary(); break;
             case 'description':
                 S.offer.description = el.value; touch(); break;

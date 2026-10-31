@@ -111,6 +111,7 @@ if (!defined('PG_INIT_LOADED')) {
                                 <label for="pg-if-code" class="form-label"><?=lang('Offer Code')?> <span class="fg-secondary small">· <?=lang('the name shown in reports and at checkout')?></span></label>
                                 <input type="text" class="form-control" id="pg-if-code" maxlength="50" data-on="code">
                                 <div class="small fg-emphasis-danger mt-1 d-none" id="pg-if-code-error"></div>
+                                <div class="small fg-secondary mt-1 d-none" id="pg-if-code-follow" aria-live="polite"></div>
                             </div>
                             <div class="col-12 lg:col-7 2xl:col-8">
                                 <label for="pg-if-description" class="form-label"><?=lang('Message')?> <span class="fg-secondary small">· <?=lang('shown in the cart and on the receipt')?></span></label>
