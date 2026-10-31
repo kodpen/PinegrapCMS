@@ -1205,7 +1205,8 @@ function pg_panel_save_product_barcode($request, $action)
             VALUES ('" . e($product_id) . "', '" . e($barcode) . "', '" . e($barcode_type) . "', '" . e($now) . "', '" . e($now) . "')");
 
     $new_id = db_value("SELECT LAST_INSERT_ID()");
-    log_activity(lang(array('string' => 'Saved barcode {var:1} for product #{var:2}.', 'vars' => array($barcode, $product_id))));
+    $product_name = db_value("SELECT name FROM products WHERE id = '" . e($product_id) . "'");
+    log_activity(lang(array('string' => 'Saved barcode {var:1} for product {var:2}.', 'vars' => array($barcode, $product_name))));
     respond(array('status' => 'success', 'message' => lang('Barcode saved.'), 'id' => (int) $new_id, 'barcode' => $barcode, 'barcode_type' => $barcode_type));
 }
 
@@ -1238,8 +1239,21 @@ function pg_panel_delete_product_barcode($request, $action)
     if (!$id || !$product_id)
         respond(array('status' => 'error', 'message' => lang('Product not found.')));
 
+    // The value and the product name are read first: the log line names
+    // them, and the row id is gone once the row is.
+    $barcode = db_item(
+        "SELECT product_barcodes.barcode, products.name AS product_name
+            FROM product_barcodes
+            LEFT JOIN products ON products.id = product_barcodes.product_id
+            WHERE product_barcodes.id = '" . e($id) . "' AND product_barcodes.product_id = '" . e($product_id) . "'");
+
     db("DELETE FROM product_barcodes WHERE id = '" . e($id) . "' AND product_id = '" . e($product_id) . "'");
-    log_activity(lang(array('string' => 'Deleted barcode #{var:1} for product #{var:2}.', 'vars' => array($id, $product_id))));
+
+    if (!is_array($barcode) || (mysqli_affected_rows(db::$con) < 1)) {
+        respond(array('status' => 'error', 'message' => lang('Barcode not found.')));
+    }
+
+    log_activity(lang(array('string' => 'Deleted barcode {var:1} from product {var:2}.', 'vars' => array($barcode['barcode'], $barcode['product_name']))));
     respond(array('status' => 'success', 'message' => lang('Barcode deleted.')));
 }
 

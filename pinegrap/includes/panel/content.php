@@ -309,12 +309,15 @@ function pg_panel_sort_menu_items($request, $action)
         respond(array('status' => 'error', 'message' => lang('Invalid request.')));
     }
 
-    if (!db_value("SELECT 1 FROM menus WHERE id = '" . e($menu_id) . "'")) {
+    // The name is what the log lines show; the id means nothing there.
+    $menu_name = db_value("SELECT name FROM menus WHERE id = '" . e($menu_id) . "'");
+
+    if ($menu_name === null) {
         respond(array('status' => 'error', 'message' => lang('Access denied.')));
     }
 
     if (($user['role'] == 3) && (in_array($menu_id, get_items_user_can_edit('menus', $user['id'])) == false)) {
-        log_activity(lang(array('string' => 'access denied because user does not have access to edit menu ({var:1})', 'vars' => $menu_id)), $_SESSION['sessionusername']);
+        log_activity(lang(array('string' => 'access denied because user does not have access to edit menu ({var:1})', 'vars' => $menu_name)), $_SESSION['sessionusername']);
         respond(array('status' => 'error', 'message' => lang('Access denied.')));
     }
 
@@ -336,7 +339,7 @@ function pg_panel_sort_menu_items($request, $action)
 
     db("UPDATE menus SET last_modified_user_id = '" . $user['id'] . "', last_modified_timestamp = UNIX_TIMESTAMP() WHERE id = '$menu_id'");
 
-    log_activity(lang(array('string' => 'menu ({var:1}) items were reordered', 'vars' => $menu_id)), $_SESSION['sessionusername']);
+    log_activity(lang(array('string' => 'menu ({var:1}) items were reordered', 'vars' => $menu_name)), $_SESSION['sessionusername']);
 
     respond(array('status' => 'success'));
 }

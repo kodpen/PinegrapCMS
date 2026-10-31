@@ -97,10 +97,9 @@ if (($_GET['submit_data'] ?? '') == 'Export Products') {
 
     // if at least 1 product was exported, then log activity
     if (count($export_table['rows']) > 0) {
-        $plural_suffix = (count($export_table['rows']) == 1) ? '' : 's';
-        $was_or_were = (count($export_table['rows']) == 1) ? 'was' : 'were';
-
-        log_activity(count($export_table['rows']) . ' product' . $plural_suffix . ' ' . $was_or_were . ' exported', $_SESSION['sessionusername']);
+        log_activity(
+            lang(array('string' => '{var:1} product(s) were exported', 'vars' => count($export_table['rows']))),
+            $_SESSION['sessionusername']);
     }
 
 // else the user did not select to export products, so just list products
