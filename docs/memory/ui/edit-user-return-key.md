@@ -14,11 +14,11 @@ description: Return in an Edit User field saves through a hidden nameless first 
 
 ## What does Create Contact do?
 - It is handled inside the save branch, after the user UPDATE, the access save and the log line: the form is saved with every check of that branch, then a contact is inserted with the saved e-mail address, linked, and Edit Contact opens (`send_to` = the Edit User address). A user that already has a contact (a second press) gets that contact opened, not a new one.
-- Before #4065's fix it was its own early branch that read only `id`: every unsaved edit (role, rights, badge, e-mail) was dropped without a word.
+- Before PR #4113 (#4065) it was its own early branch that read only `id`: every unsaved edit (role, rights, badge, e-mail) was dropped without a word.
 - Edit Contact's title names the contact by `pg_contact_heading_name()` (`includes/fn/contacts.php`): full name, else company, else e-mail, so a contact made from a user is not "Edit Contact : ". The contacts list's row name uses the same function.
 
 ## What does the Recent Activity button count?
-- The drawer lists the user's last 100 log entries; the button counts them all (`COUNT(*)`) and reads "All (n)" or, beyond 100, "Last 100 of n".
+- The drawer lists the user's last 100 log entries; the button counts them all (`COUNT(*)`) and reads "All (n)" or, beyond 100, "Last 100 of n" (PR #4113).
 
 ## Which test pins it?
 - `tests/edit_user_return_key_test.php`: `test_edit_user_return_key_form_starts_with_a_nameless_submit` and `test_edit_user_return_key_save_branch_reads_no_button_name`.
