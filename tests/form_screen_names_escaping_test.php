@@ -38,7 +38,9 @@ function test_form_screen_custom_form_select_names_escaped()
 		$source = pg_test_form_screen_source($file);
 
 		pg_assert_same(0, preg_match('/\$custom_form_options\[\$name\]/', $source), $file . ': form name used raw as option label');
-		pg_assert_same(1, preg_match('/\$custom_form_options\[h\(\$name\)\]/', $source), $file . ': form name through h()');
+		// The labels come escaped from pg_submitted_form_list_options()
+		// (tests/submitted_form_list_test.php).
+		pg_assert_same(1, preg_match('/pg_submitted_form_list_options\(pg_submitted_form_list_custom_forms\(\)\)/', $source), $file . ': options from the shared, escaping helper');
 	}
 }
 
