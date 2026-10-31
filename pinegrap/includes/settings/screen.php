@@ -283,13 +283,19 @@ if (!$_POST) {
         include(PG_FUNCTIONS_DIR . '/includes/settings/' . $pg_settings_key . '.save.php');
     }
 
+    // The Site Log line names the category in the panel language; the key
+    // stands in for one the registry does not know.
+    $pg_settings_log_category = pg_settings_category($pg_settings_key);
+    $pg_settings_log_name = (($pg_settings_log_category !== null) && ((string) ($pg_settings_log_category['label'] ?? '') !== '')) ? (string) $pg_settings_log_category['label'] : (string) $pg_settings_key;
+    $pg_settings_log_line = lang(array('string' => 'the {var:1} settings were modified', 'vars' => $pg_settings_log_name));
+
     // A module that marked an error wrote nothing and returned early; neither
     // the log nor the confirmation may say otherwise. The errors stay in the
     // form and are printed by output_errors() on the screen the redirect
     // below lands on.
     if (!$liveform->check_form_errors()) {
 
-        log_activity(lang('settings were modified'), $_SESSION['sessionusername']);
+        log_activity($pg_settings_log_line, $_SESSION['sessionusername']);
 
         if (isset($pg_settings_audit_before)) {
             pg_audit_record('update', 'config', 0, $pg_settings_audit_before, $pg_settings_key);

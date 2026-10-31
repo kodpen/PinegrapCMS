@@ -141,6 +141,13 @@ function pg_explorer_handle_file_save($type, $request, $user)
     $new_path = FILE_DIRECTORY_PATH . '/' . $name;
     $size_sql = '';
 
+    // A save that may write the content compares the content's digest as
+    // well, read before anything is written: a change of the same size
+    // leaves the row as it was. A save of the name or folder alone does not
+    // read the file.
+    $audit_content = isset($request['content']) || isset($request['cells']) || isset($request['paragraphs']);
+    $audit_before = $audit_content ? pg_audit_fetch_file($file_id, $old_path) : pg_audit_fetch('files', $file_id);
+
     // Cell values changed in a workbook's preview, or paragraph texts
     // in a document's (includes/fn/office_edit.php). They go into the
     // file before anything else moves, so a refused edit -- the file
@@ -195,7 +202,6 @@ function pg_explorer_handle_file_save($type, $request, $user)
         $size_sql = "size = '" . e((int) filesize($new_path)) . "',";
     }
 
-    $audit_before = pg_audit_fetch('files', $file_id);
     db(
         "UPDATE files SET
             name = '" . e($name) . "',
@@ -207,7 +213,11 @@ function pg_explorer_handle_file_save($type, $request, $user)
             timestamp = UNIX_TIMESTAMP(),
             user = '" . e($user['id']) . "'
         WHERE id = '" . e($file_id) . "'");
-    pg_audit_record('update', 'files', $file_id, $audit_before);
+    if ($audit_content) {
+        pg_audit_record_file($file_id, $audit_before, $new_path);
+    } else {
+        pg_audit_record('update', 'files', $file_id, $audit_before);
+    }
 
     log_activity(lang(array('string' => 'file ({var:1}) was modified', 'vars' => $name)), $_SESSION['sessionusername']);
 

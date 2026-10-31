@@ -899,6 +899,90 @@ function pg_audit_record($action, $table, $id, array $before = array(), $label =
 }
 
 /**
+ * The SHA-1 of a file's content, or '' when it cannot be read.
+ *
+ * @param string $path
+ * @return string
+ */
+function pg_audit_file_sha1($path)
+{
+    $path = (string) $path;
+
+    if (($path === '') || !is_file($path) || !is_readable($path)) {
+        return '';
+    }
+
+    $sha1 = @sha1_file($path);
+
+    return is_string($sha1) ? $sha1 : '';
+}
+
+/**
+ * A files row with the digest of its content on disk as the field
+ * content_sha1. The content is not a column, so a save that changes it but
+ * keeps its size leaves the row as it was apart from the volatile columns;
+ * the digest is what makes the two sides differ. No row stays no row, and an
+ * empty digest (an unreadable file) adds nothing.
+ *
+ * @param array  $row
+ * @param string $content_sha1
+ * @return array
+ */
+function pg_audit_with_content(array $row, $content_sha1)
+{
+    if ($row && ((string) $content_sha1 !== '')) {
+        $row['content_sha1'] = (string) $content_sha1;
+    }
+
+    return $row;
+}
+
+/**
+ * The files row before a save that writes the file's content, with the
+ * digest of the content still on disk. Read before the file is written.
+ *
+ * @param int    $id
+ * @param string $path  the file on disk
+ * @return array
+ */
+function pg_audit_fetch_file($id, $path)
+{
+    if (!pg_audit_ready()) {
+        return array();
+    }
+
+    return pg_audit_with_content(pg_audit_fetch('files', $id), pg_audit_file_sha1($path));
+}
+
+/**
+ * Record a save that wrote a file's content: the row after carries the
+ * digest of the new content, so a change of the same size writes a line.
+ *
+ *   $before = pg_audit_fetch_file($id, $path);
+ *   // … write the file, UPDATE files …
+ *   pg_audit_record_file($id, $before, $path);
+ *
+ * @param int    $id
+ * @param array  $before  from pg_audit_fetch_file()
+ * @param string $path    the file on disk after the save (a rename moves it)
+ * @return bool  whether a line was written
+ */
+function pg_audit_record_file($id, array $before, $path)
+{
+    if (!pg_audit_ready()) {
+        return false;
+    }
+
+    $after = pg_audit_with_content(pg_audit_fetch('files', $id), pg_audit_file_sha1($path));
+
+    if (!$before && !$after) {
+        return false;
+    }
+
+    return pg_audit('update', 'file', $id, $before, $after, pg_audit_label_of('files', $after ? $after : $before));
+}
+
+/**
  * Record a change that one statement made to several rows (WHERE id IN …):
  * one line per row, each compared with its own row before. The caller reads
  * the rows before with pg_audit_fetch_many().

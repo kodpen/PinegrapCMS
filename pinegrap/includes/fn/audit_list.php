@@ -220,7 +220,7 @@ function pg_audit_list_row(array $line, array $live, array $query, $role = null)
     }
 
     // What: the record's name links to its whole history; the icon opens it.
-    $name = ((string) $line['label'] !== '') ? (string) $line['label'] : (($id > 0) ? '#' . $id : pg_audit_view_label('type', $type));
+    $name = ((string) $line['label'] !== '') ? pg_audit_view_record_name($type, $line['label']) : (($id > 0) ? '#' . $id : pg_audit_view_label('type', $type));
     $record = '<div class="small fg-secondary">' . h(pg_audit_view_label('type', $type)) . (($id > 0) ? ' #' . $id : '') . '</div>';
     $record .= '<a class="text-break" href="' . h(pg_audit_list_link($query, array('type' => $type, 'id' => $id, 'q' => ''))) . '" title="' . h(lang('Show the history of this record')) . '">' . h($name) . '</a>';
 

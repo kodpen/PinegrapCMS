@@ -276,6 +276,10 @@ if (!$_POST) {
         // posted name: a posted name is under the caller's control and could
         // point anywhere on the file system.
 
+        // The row and the content's digest before the file is written: a
+        // change of the same size differs only in the digest.
+        $audit_before = pg_audit_fetch_file((int) $id, FILE_DIRECTORY_PATH . '/' . $file_name);
+
         // update the content in the file; the stored file is replaced only
         // once the whole content is written
         if (!pg_file_write_whole(FILE_DIRECTORY_PATH . '/' . $file_name, $_POST['code'])) {
@@ -283,7 +287,6 @@ if (!$_POST) {
         }
         
         // update file in database
-        $audit_before = pg_audit_fetch('files', (int) $id);
         $query =
             "UPDATE files 
             SET 
@@ -296,7 +299,7 @@ if (!$_POST) {
             (string) $user['id'],
             (string) $id,
         )) or output_error('Query failed.');
-        pg_audit_record('update', 'files', (int) $id, $audit_before);
+        pg_audit_record_file((int) $id, $audit_before, FILE_DIRECTORY_PATH . '/' . $file_name);
         
         // log the change and add a notice that the file was modified
         log_activity(lang(array('string'=>'the css for theme file ({var:1}) was modified','vars'=>$file_name)), $_SESSION['sessionusername']);

@@ -43,9 +43,23 @@ function test_audit_file_content_leaves_missing_alone()
 // A settings line is shown under its category's name; other names stay.
 function test_audit_view_record_name_settings_category()
 {
-	pg_assert_same(lang('Integrations'), pg_audit_view_record_name('settings', 'api'), 'api category');
-	pg_assert_same(lang('Updates and maintenance'), pg_audit_view_record_name('settings', 'maintenance'), 'maintenance category');
-	pg_assert_same('SMTP', pg_audit_view_record_name('settings', 'SMTP'), 'not a category key');
-	pg_assert_same('api', pg_audit_view_record_name('file', 'api'), 'other types keep the label');
-	pg_assert_same('', pg_audit_view_record_name('settings', ''), 'empty label');
+	$names = array('api' => 'Integrations', 'maintenance' => 'Updates and maintenance', 'seo' => 'SEO');
+
+	pg_assert_same('Integrations', pg_audit_view_record_name('settings', 'api', $names), 'api category');
+	pg_assert_same('Updates and maintenance', pg_audit_view_record_name('settings', 'maintenance', $names), 'maintenance category');
+	pg_assert_same('SMTP', pg_audit_view_record_name('settings', 'SMTP', $names), 'not a category key');
+	pg_assert_same('commerce', pg_audit_view_record_name('settings', 'commerce', $names), 'a key the registry no longer has');
+	pg_assert_same('api', pg_audit_view_record_name('file', 'api', $names), 'other types keep the label');
+	pg_assert_same('', pg_audit_view_record_name('settings', '', $names), 'empty label');
+}
+
+// The registry names every category key a settings save stores.
+function test_audit_view_settings_names_cover_the_save_modules()
+{
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/includes/settings/registry.php');
+
+	foreach (glob(PG_FUNCTIONS_DIR . '/includes/settings/*.save.php') as $module) {
+		$key = basename($module, '.save.php');
+		pg_assert_true(preg_match("/\n        '" . preg_quote($key, '/') . "' => array\(\n            'label' => /", $source) === 1, $key . ' has a label in the registry');
+	}
 }
