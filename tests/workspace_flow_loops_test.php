@@ -477,3 +477,58 @@ function test_workspace_flow_loops_api()
 	pg_assert_same(4, ws_api_flow_run_step_present($body, $graph, true)['pass']);
 	pg_assert_same('integer', ws_api_flow_run_step_schema()['pass']);
 }
+
+// A list or a gathered value is read as it is: one with a "When empty,
+// write" text gets a problem that says so, not the "one value only" text,
+// which named no reason when the chip still showed one value.
+function test_workspace_flow_loops_fallback_is_named()
+{
+	$texts = array_column(ws_flow_graph_check(ws_flow_loops_test_graph(array(), array(), array(), array('list' => '{{node.webhook_1.body|[]}}'))), 'text');
+	pg_assert_true(in_array('The list of for_each_1 cannot have a “When empty, write” text: remove it, the list is read as it is.', $texts, true), implode(' | ', $texts));
+
+	$texts = array_column(ws_flow_graph_check(ws_flow_loops_test_graph(array(), array(), array('collect' => '{{node.notify_1.told|none}}'))), 'text');
+	pg_assert_true(in_array('The value for_each_end_1 gathers cannot have a “When empty, write” text: remove it, the value is gathered as it is.', $texts, true), implode(' | ', $texts));
+
+	pg_assert_true(ws_step_value_has_fallback('{{node.a.b|x}}'));
+	pg_assert_false(ws_step_value_has_fallback('{{node.a.b}}'));
+	pg_assert_false(ws_step_value_has_fallback('x {{node.a.b|x}}'));
+}
+
+// "Try this box" on a For each box reads its list from the values given (a
+// chosen run's, the constants' always) and tells how many items it holds,
+// or why it cannot be read; on an End box it tells what it gathers. Never
+// "it would fail" (a refusal) or "cannot run yet".
+function test_workspace_flow_loops_box_try()
+{
+	$graph = ws_flow_loops_test_graph();
+	$nodes = array_column($graph['nodes'], null, 'id');
+	$each = $nodes['for_each_1'];
+
+	$tried = ws_flow_loop_try($graph, $each, array('webhook_1' => array('body' => '[{"name":"A"},{"name":"B"},{"name":"C"}]')), true);
+	pg_assert_same(array('said' => 'The list holds 3 items.', 'outcome' => 'each'), $tried);
+
+	$tried = ws_flow_loop_try($graph, $each, array('webhook_1' => array('body' => '{"a":1}')), true);
+	pg_assert_same(array('said' => 'The list cannot be read: The value the box reads is not a list.', 'outcome' => 'failed'), $tried);
+
+	pg_assert_same('The run chosen gave no value for the list.', ws_flow_loop_try($graph, $each, array(), true)['said']);
+	pg_assert_same('Choose a run to read the list with the values it gave.', ws_flow_loop_try($graph, $each, array(), false)['said']);
+
+	$each['config']['list'] = '{{node.webhook_1.body|[]}}';
+	pg_assert_same('The list of for_each_1 cannot have a “When empty, write” text: remove it, the list is read as it is.', ws_flow_loop_try($graph, $each, array(), true)['said']);
+
+	$tried = ws_flow_loop_try($graph, $nodes['for_each_end_1'], array(), false);
+	pg_assert_same('For each item of the loop of for_each_1, gathers Let people know › People told into its list and counts the items done and failed.', $tried['said']);
+	pg_assert_same('done', $tried['outcome']);
+
+	$end = $nodes['for_each_end_1'];
+	$end['config']['collect'] = '';
+	pg_assert_same('Counts the items of the loop of for_each_1 done and failed; it gathers no value.', ws_flow_loop_try($graph, $end, array(), false)['said']);
+	$end['config']['for_each'] = 'nothing';
+	pg_assert_same('The box for_each_end_1 ends no loop: choose the loop it ends.', ws_flow_loop_try($graph, $end, array(), false)['said']);
+
+	pg_assert_same(null, ws_flow_loop_try($graph, $nodes['notify_1'], array(), false), 'other kinds are not answered here');
+
+	foreach (array($each, $end) as $node) {
+		pg_assert_false(array_key_exists('refusal', ws_flow_loop_try($graph, $node, array(), true)), 'never a refusal');
+	}
+}

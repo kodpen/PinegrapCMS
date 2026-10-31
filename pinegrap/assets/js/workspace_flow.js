@@ -4731,6 +4731,12 @@
         return true;
     }
 
+    // Does a field take a "When empty, write" text? A loop's list and the
+    // value its End box gathers are read as they are (ws_step_value_single()).
+    function fieldFallback(node, key) {
+        return !(((node.kind === 'for_each') && (key === 'list')) || ((node.kind === 'for_each_end') && (key === 'collect')));
+    }
+
     // An address with a value put at its end: after its path's "/" when it
     // has only a host, so the value never lands in the host.
     function urlWithValue(url, token) {
@@ -4742,8 +4748,8 @@
     // A value as the builder reads it, with what it writes when empty; one
     // no box before gives keeps its token, marked (the reference check
     // names it a problem). A skipped box's value is dashed until it has a
-    // fallback.
-    function valueChip(token, names) {
+    // fallback. `bare`: the field takes no fallback, so none is offered.
+    function valueChip(token, names, bare) {
         var name = names[tokenBare(token)];
         var fallback = tokenFallback(token);
         var label = name ? name.label : tokenBare(token).slice(2, -2);
@@ -4752,7 +4758,7 @@
 
         chip.contentEditable = 'false';
         chip.setAttribute('data-token', token);
-        chip.title = (name && state.edit) ? title + ' ' + t('fl_values_empty_tap') : title;
+        chip.title = (name && state.edit && !bare) ? title + ' ' + t('fl_values_empty_tap') : title;
 
         return chip;
     }
@@ -4777,7 +4783,7 @@
         });
     }
 
-    function drawValues(input, text, names) {
+    function drawValues(input, text, names, bare) {
         var at = 0;
         var match;
         var lines = function (part) {
@@ -4797,7 +4803,7 @@
 
         while ((match = VALUE_TOKEN.exec(text)) !== null) {
             lines(text.slice(at, match.index));
-            input.appendChild(valueChip(match[0], names));
+            input.appendChild(valueChip(match[0], names, bare));
             at = match.index + match[0].length;
         }
 
@@ -4843,8 +4849,9 @@
     }
 
     // A text a box writes in, with its values as chips: the builder never
-    // types an id. Pasted or saved tokens become chips too.
-    function valueInput(node, value, max, onInput, multi) {
+    // types an id. Pasted or saved tokens become chips too. `bare`: the
+    // field takes no "When empty, write" text (fieldFallback()).
+    function valueInput(node, value, max, onInput, multi, bare) {
         var input = el('div', 'form-control form-control-sm wsf-values' + (multi ? ' wsf-values-multi' : ''));
         var names = valueNames(node);
         var last = value || '';
@@ -4907,7 +4914,7 @@
             return (near && (near.nodeType === 1) && near.hasAttribute('data-token')) ? near : null;
         };
         var redraw = function (text) {
-            drawValues(input, text, names);
+            drawValues(input, text, names, bare);
             caret(atEnd());
         };
         var changed = function () {
@@ -4930,7 +4937,7 @@
             input.setAttribute('aria-readonly', 'true');
         }
 
-        drawValues(input, last, names);
+        drawValues(input, last, names, bare);
 
         input.addEventListener('keydown', function (event) {
             var chip = ((event.key === 'Backspace') || (event.key === 'Delete')) ? chipBeside(event.key === 'Backspace') : null;
@@ -4970,7 +4977,7 @@
         input.addEventListener('click', function (event) {
             var chip = (event.target.nodeType === 1) ? event.target.closest('.wsf-chip') : null;
 
-            if (state.edit && chip && input.contains(chip) && names[tokenBare(chip.getAttribute('data-token'))]) {
+            if (state.edit && chip && input.contains(chip) && !bare && names[tokenBare(chip.getAttribute('data-token'))]) {
                 askFallback(chip, names, changed);
             }
         });
@@ -4982,7 +4989,7 @@
         // Puts a value where the caret was, else at the end.
         input.wsfInsert = function (token) {
             var place = (range && input.contains(range.startContainer)) ? range : atEnd();
-            var chip = valueChip(token, names);
+            var chip = valueChip(token, names, bare);
             var after = document.createTextNode('');
 
             place.deleteContents();
@@ -5000,9 +5007,10 @@
 
     // A field of a box's text with "Add value": the list of what started the
     // run and the boxes before it, each value a chip put in the text; with
-    // `takes`, only the values it accepts ({ node, value }).
-    function valueField(node, label, value, max, onInput, multi, help, takes) {
-        var input = valueInput(node, value, max, onInput, multi);
+    // `takes`, only the values it accepts ({ node, value }); `bare`: it takes
+    // no "When empty, write" text.
+    function valueField(node, label, value, max, onInput, multi, help, takes, bare) {
+        var input = valueInput(node, value, max, onInput, multi, bare);
         var wrap = field(label, input, help ? help + ' ' + t('fl_values_hint') : t('fl_values_hint'));
         var caption = wrap.querySelector('label');
 
@@ -6136,7 +6144,7 @@
             refreshNode(node);
         }, false, t('fl_loop_list_help'), function (source) {
             return fieldTakes(node, 'list', source);
-        }));
+        }, !fieldFallback(node, 'list')));
         box.appendChild(field(t('fl_loop_path'), path, t('fl_loop_path_help')));
         box.appendChild(field(t('fl_loop_fields'), fields, t('fl_loop_fields_help')));
     }
@@ -6163,7 +6171,7 @@
             refreshNode(node);
         }, false, t('fl_loop_collect_help'), function (source) {
             return fieldTakes(node, 'collect', source);
-        }));
+        }, !fieldFallback(node, 'collect')));
     }
 
     function startFields(box, node) {
@@ -8920,6 +8928,15 @@
         return state.run ? ((state.run.steps || []).filter(function (step) { return step.node_id === id; }).pop() || null) : null;
     }
 
+    // The row of box `id` a reader shown at `reader`'s row reads: inside a
+    // loop the row of the same pass, else the box's last one.
+    function runStepOf(id, reader) {
+        var pass = reader ? (reader.pass || 0) : 0;
+        var same = pass ? (state.run.steps || []).filter(function (step) { return (step.node_id === id) && (step.pass === pass); }).pop() : null;
+
+        return same || stepOf(id);
+    }
+
     function runWord(status) {
         return RUN_STATES[status] ? t(RUN_STATES[status][0]) : String(status || '');
     }
@@ -9772,7 +9789,14 @@
             return { text: '', note: t('fl_run_value_derived'), unknown: true };
         }
 
-        var step = stepOf(match[1]);
+        var reader = thread.to ? stepOf(thread.to) : null;
+
+        // A For each box's place, item and fields at the pass shown.
+        if (node && (node.kind === 'for_each') && (key !== 'count') && (key !== 'items')) {
+            return loopValueOf(stepOf(match[1]), reader, key);
+        }
+
+        var step = runStepOf(match[1], reader);
 
         if (!step) {
             return { text: '', note: t('fl_run_value_unreached') };
@@ -9789,6 +9813,43 @@
         }
 
         return { text: String(value) };
+    }
+
+    // A value a For each box gives the boxes of its loop at the pass the
+    // reader is shown by, as ws_flow_loop_item_values() works it out from
+    // the items the box kept. Items held back from this reader or cut short
+    // cannot be read: named so, never empty, so no fallback is put in.
+    function loopValueOf(step, reader, key) {
+        var pass = reader ? (reader.pass || 0) : 0;
+        var unknown = { text: '', note: t('fl_run_value_item'), unknown: true };
+        var items = null;
+
+        if (!step || !pass) {
+            return step ? unknown : { text: '', note: t('fl_run_value_unreached') };
+        }
+
+        if (key === 'index') {
+            return { text: String(pass) };
+        }
+
+        try {
+            items = JSON.parse((step.outputs || {}).items);
+        } catch (error) {
+            items = null;
+        }
+
+        if (!Array.isArray(items) || (items.length < pass)) {
+            return unknown;
+        }
+
+        var item = items[pass - 1];
+        var value = (key === 'item') ? item : ((item && (typeof item === 'object') && !Array.isArray(item)) ? item[key] : null);
+
+        if (typeof value === 'boolean') {
+            return { text: value ? '1' : '0' };
+        }
+
+        return { text: ((value === null) || (value === undefined)) ? '' : ((typeof value === 'object') ? JSON.stringify(value) : String(value)) };
     }
 
     // A field as the run filled it: each value in place of its reference,

@@ -1088,6 +1088,20 @@ function ws_step_value_single($text)
 }
 
 /**
+ * Is a text one reference alone that carries a "When empty, write" text?
+ * A field that reads a value as it is names that as its problem. Pure.
+ *
+ * @param string $text
+ * @return bool
+ */
+function ws_step_value_has_fallback($text)
+{
+    $text = trim((string) $text);
+
+    return (preg_match(WS_STEP_VALUE_PATTERN, $text, $match) === 1) && ($match[0] === $text) && (ws_step_value_fallback($match) !== '');
+}
+
+/**
  * Where the values of a match of WS_STEP_VALUE_PATTERN sit among a run's
  * values: the box's id, WS_STEP_TRIGGER for {{trigger.<field>}}. Pure.
  *
@@ -2030,6 +2044,17 @@ function ws_flow_box_try($viewer, $flow, $data)
             'said'    => ws_scheduled_rule_text($owner, $check['rule']),
             'next'    => array_map('ws_scheduled_moment', ws_flow_anchor_next_times($check['rule'], time(), 3)),
         ) + $answer;
+    }
+
+    // Value and loop boxes run nothing: what they give or read is told.
+    $told = ws_flow_value_try($node, $values);
+
+    if ($told === null) {
+        $told = ws_flow_loop_try($graph, $node, $values, $run_id > 0);
+    }
+
+    if ($told !== null) {
+        return $told + $answer;
     }
 
     switch ($kind) {

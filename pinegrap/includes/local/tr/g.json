@@ -165,6 +165,7 @@
     "Given to the AI engines with every text: the tone, the form of address, the terms to keep. Google and the browser do not read it.": "Yapay zekâ motorlarına her metinle birlikte verilir: üslup, hitap biçimi, korunacak terimler. Google ve tarayıcı bunu okumaz.",
     "Gives Google the address of the product feed to fetch every day and shows the product problems Merchant Center reports.": "Ürün akışının adresini Google'a verir; Google akışı her gün alır. Merchant Center'ın bildirdiği ürün sorunlarını gösterir.",
     "Gives nothing now": "Şu an bir erişim vermiyor",
+    "Gives the same values in every run.": "Her çalıştırmada aynı değerleri verir.",
     "Givex Auth": "Givex Yetkilendirmesi",
     "Givex error:": "Givex hatası:",
     "Glad to have you with us.": "Aramızda olmanıza sevindik.",

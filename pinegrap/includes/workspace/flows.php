@@ -3137,6 +3137,7 @@ function ws_flow_js_strings()
         'fl_run_value_pending' => lang('Not given yet'),
         'fl_run_value_skipped' => lang('Empty: the box was skipped'),
         'fl_run_value_unreached' => lang('Empty: the box was not reached'),
+        'fl_run_value_item'   => lang('cannot be shown for this item'),
         'fl_run_value_trigger' => lang('Not shown here: it comes with what started the run'),
         'fl_run_pick'         => lang('Select a box to see how it went in this run.'),
         'fl_run_boxes'        => lang('The boxes of this run'),

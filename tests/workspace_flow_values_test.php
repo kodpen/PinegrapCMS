@@ -308,3 +308,37 @@ function test_workspace_flow_derived_value_length_limit()
 	pg_assert_true(mb_check_encoding($filled, 'UTF-8'), 'the filled input is valid UTF-8');
 	pg_assert_same('Hi Ada.', ws_flow_derived_fill('Hi {{trigger.name}}.', array(WS_STEP_TRIGGER => array('name' => 'Ada'))), 'a short input is filled whole');
 }
+
+// "Try this box" on a constants box gives its values; on a derived box the
+// value it works out from the values given (a chosen run's), or says it is
+// empty. Before, both answered that the box could not run yet.
+function test_workspace_flow_value_try()
+{
+	$constants = ws_flow_values_test_node('constants_1', 'constants', array('rows' => array(
+		array('key' => 'rate', 'type' => 'number', 'value' => '18'),
+		array('key' => 'name', 'type' => 'text', 'value' => 'Ada'),
+	)));
+	$values = array('constants_1' => array('rate' => '18', 'name' => 'Ada'), 'value_1' => array('value' => '18.06'), 'value_2' => array('value' => ''));
+	$tried = ws_flow_value_try($constants, $values);
+
+	pg_assert_same('Gives the same values in every run.', $tried['said']);
+	pg_assert_same(array(array('key' => 'rate', 'text' => 'rate: 18'), array('key' => 'name', 'text' => 'name: Ada')), $tried['texts']);
+	pg_assert_same('The box gives no value yet.', ws_flow_value_try(ws_flow_values_test_node('constants_2', 'constants', array('rows' => array())), array())['said']);
+
+	pg_assert_same('Works out “18.06”.', ws_flow_value_try(ws_flow_values_test_node('value_1', 'value', array('rule' => 'add')), $values)['said']);
+	pg_assert_same('Works out an empty value: an input has no value or is not what the rule reads.', ws_flow_value_try(ws_flow_values_test_node('value_2', 'value', array('rule' => 'add')), $values)['said']);
+	pg_assert_same(null, ws_flow_value_try(ws_flow_values_test_node('post_1', 'post'), $values), 'other kinds are not answered here');
+
+	$try = ws_flow_loops_values_test_source('ws_flow_box_try');
+	pg_assert_contains('ws_flow_value_try(', $try);
+	pg_assert_contains('ws_flow_loop_try(', $try);
+}
+
+// The source of a function.
+function ws_flow_loops_values_test_source($name)
+{
+	$function = new ReflectionFunction($name);
+	$lines = file($function->getFileName());
+
+	return implode('', array_slice($lines, $function->getStartLine() - 1, $function->getEndLine() - $function->getStartLine() + 1));
+}

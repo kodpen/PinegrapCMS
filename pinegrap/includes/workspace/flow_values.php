@@ -647,3 +647,46 @@ function ws_flow_pure_values($graph, $values = array())
 
     return $out;
 }
+
+/**
+ * "Try this box" for a constants box or a derived value box, which run
+ * nothing: the constants' values, or the value the derived box works out
+ * from the values given (ws_flow_pure_values() with a chosen run's). Null
+ * for another kind. Pure.
+ *
+ * @param array $node   the box
+ * @param array $values box id => key => text, the value boxes' included
+ * @return array|null said, outcome, texts
+ */
+function ws_flow_value_try($node, $values)
+{
+    $kind = (string) ($node['kind'] ?? '');
+    $own = (array) ($values[(string) ($node['id'] ?? '')] ?? array());
+
+    if ($kind === 'constants') {
+        $texts = array();
+
+        foreach ($own as $key => $value) {
+            $texts[] = array('key' => (string) $key, 'text' => $key . ': ' . $value);
+        }
+
+        return array(
+            'said'    => empty($texts) ? lang('The box gives no value yet.') : lang('Gives the same values in every run.'),
+            'outcome' => '',
+            'texts'   => $texts,
+        );
+    }
+
+    if ($kind !== 'value') {
+        return null;
+    }
+
+    $value = (string) ($own['value'] ?? '');
+
+    return array(
+        'said'    => ($value === '')
+            ? lang('Works out an empty value: an input has no value or is not what the rule reads.')
+            : lang(array('string' => 'Works out “{var:1}”.', 'vars' => $value)),
+        'outcome' => '',
+    );
+}

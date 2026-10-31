@@ -14,4 +14,8 @@ description: The For each loop on the Flows canvas (D9 canvas, #3422): kinds, ar
 
 ## Which values are offered where?
 - `valueGroups()` hides body boxes and index/item/fields from boxes outside the loop (the End box reads the body). Problems come from the server check as on any box.
-- Test `test_workspace_flows_canvas_for_each_loop` (tests/workspace_flows_canvas_test.php). The run view shows a box inside the loop by the last of its rows the run lists (`stepOf()`); a per-item view is not built.
+- Test `test_workspace_flows_canvas_for_each_loop` (tests/workspace_flows_canvas_test.php). The run view shows a box inside the loop by the last of its rows the run lists (`stepOf()`); a per-item picker is not built.
+
+## Which values does the run view show for a box inside a loop?
+- Those of the pass it is shown by (#4103, issue #3980), worked out on the client: `loopValueOf()` reads the For each row's `items` output (index = pass, item and fields = items[pass-1], texts as `ws_flow_loop_item_values()`); `runStepOf()` reads another body box at the same pass. Why the client: the run answer already holds `items`; no server or API change.
+- Items held back from a reader who may not change the flow (`ws_step_outputs_held()`) or cut short by `WS_API_FLOW_RESULT_CHARS`: "cannot be shown for this item" (`fl_run_value_item`, `unknown`), so no fallback is put in. Before, these values read the For each row's outputs (count and items only) and showed "Empty" or the fallback.
