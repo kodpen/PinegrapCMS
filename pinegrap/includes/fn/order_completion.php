@@ -3433,7 +3433,9 @@ function pg_order_complete_announce($order_id, $order_number, $total, array $bil
 {
     $customer = $billing['first_name'] . ' ' . $billing['last_name'] . ', ' . $billing['email_address'];
 
-    log_activity(pg_log_lang(array('string' => 'Order was completed')) . ' (' . $order_number . ', ' . prepare_amount($total / 100) . ', ' . $customer . ').');
+    // Plain money text: prepare_amount() carries the symbol as an HTML entity,
+    // which the Site Log escapes and shows as it is.
+    log_activity(pg_log_lang(array('string' => 'Order was completed')) . ' (' . $order_number . ', ' . pg_order_log_money($total) . ', ' . $customer . ').');
 
     create_notification(array(
         'action' => 'new_order',

@@ -3715,6 +3715,88 @@ function pg_order_charged_tax($lines, $discount)
 }
 
 /**
+ * pg_order_charged_tax() line by line: the tax each line carries once the
+ * order discount is off, for exports whose lines must add up to the order.
+ *
+ * The same rule: the discount is shared over the lines by their amounts
+ * (pg_tax_spread()) and the tax taken again per rate on what is left
+ * (pg_tax_by_rate()); lines without a kept rate share the lowered tax out by
+ * their own tax. A line marked 'alone' (a recurring line not charged with the
+ * order) keeps its own tax and takes no share. Without a discount the lines
+ * keep their tax. When $order_tax is given and the lines end a rounding step
+ * away from it (a minor unit per taxed line, as the ERP's order bridge
+ * allows), the difference goes to the lines holding tax; a wider gap is left
+ * as it is, as the order's own figures then disagree.
+ *
+ * @param array    $lines      key => ['amount' => int, 'rate' => float|string|null, 'tax' => int, 'alone' => bool]
+ * @param int      $discount   the order discount, minor units
+ * @param int|null $order_tax  orders.tax, minor units
+ * @return array  key => int, in the order given
+ */
+function pg_order_line_charged_taxes($lines, $discount, $order_tax = null)
+{
+    $taxes = array();
+    $charged = array();
+
+    foreach ((array) $lines as $key => $line) {
+        $taxes[$key] = (int) ($line['tax'] ?? 0);
+        if (empty($line['alone'])) {
+            $charged[$key] = $line;
+        }
+    }
+
+    $amounts = array();
+    $own = array();
+    $subtotal = 0;
+    $rated = true;
+
+    foreach ($charged as $key => $line) {
+        $amounts[$key] = (int) ($line['amount'] ?? 0);
+        $own[$key] = max(0, (int) ($line['tax'] ?? 0));
+        $subtotal += $amounts[$key];
+        if (!isset($line['rate']) || ($line['rate'] === '')) {
+            $rated = false;
+        }
+    }
+
+    $discount = min((int) $discount, $subtotal);
+
+    if ($charged && ($discount > 0) && ($subtotal > 0)) {
+        if ($rated) {
+            $shares = pg_tax_spread($discount, $amounts);
+            $taxed = array();
+            foreach ($charged as $key => $line) {
+                $taxed[$key] = array('amount' => $amounts[$key] - $shares[$key], 'rate' => (float) $line['rate']);
+            }
+            foreach (pg_tax_by_rate($taxed) as $key => $tax) {
+                $taxes[$key] = $tax;
+            }
+        } else {
+            foreach (pg_tax_spread(pg_order_charged_tax($charged, $discount), $own) as $key => $tax) {
+                $taxes[$key] = $tax;
+            }
+        }
+    }
+
+    if ($order_tax !== null) {
+        $holding = array();
+        foreach ($charged as $key => $line) {
+            if ($taxes[$key] > 0) {
+                $holding[$key] = $taxes[$key];
+            }
+        }
+        $residual = (int) $order_tax - array_sum($taxes);
+        if (($residual !== 0) && $holding && (abs($residual) <= count($holding) + 1)) {
+            foreach (pg_tax_spread($residual, $holding) as $key => $share) {
+                $taxes[$key] += $share;
+            }
+        }
+    }
+
+    return $taxes;
+}
+
+/**
  * pg_order_charged_tax() for order lines given by id, read from the order:
  * for the pages that show an order's totals while drawing its lines.
  *
@@ -10943,9 +11025,13 @@ function process_order_cancellation($order_id, $reason = '', $is_admin = false, 
         );
     }
 
+    // Lines name the order by its number, as the panel and the customer's
+    // e-mails do (pg_order_log_number()).
+    $order_log_number = pg_order_log_number($order);
+
     $cancel_line = $is_admin
-        ? pg_log_lang(array('string' => 'Order #{var:1} cancelled by admin (user ID {var:2}).', 'vars' => array($order_id, (int) $user_id)))
-        : pg_log_lang(array('string' => 'Order #{var:1} cancelled by customer (user ID {var:2}).', 'vars' => array($order_id, (int) $user_id)));
+        ? pg_log_lang(array('string' => 'Order #{var:1} cancelled by admin (user ID {var:2}).', 'vars' => array($order_log_number, (int) $user_id)))
+        : pg_log_lang(array('string' => 'Order #{var:1} cancelled by customer (user ID {var:2}).', 'vars' => array($order_log_number, (int) $user_id)));
 
     if ($reason_clean !== '') {
         $cancel_line = pg_log_lang(array('string' => '{var:1} Reason: {var:2}', 'vars' => array($cancel_line, $reason_clean)));
@@ -11013,13 +11099,13 @@ function process_order_cancellation($order_id, $reason = '', $is_admin = false, 
     } elseif ($payment_plan['action'] === 'manual') {
         // No auto-refund — but money did change hands, so flag for the operator.
         $refund_status_outcome = 'manual_required';
-        log_activity(lang(array(
+        log_activity(pg_log_lang(array(
             'string' => 'REFUND ACTION REQUIRED — order #{var:1} was cancelled. Payment method: {var:2}. Amount: {var:3}. Process refund in the gateway dashboard.',
-            'vars'   => array((int) $order_id, (string) $order['payment_method'], number_format($payment_plan['remaining'] / 100, 2, '.', ',')))));
+            'vars'   => array($order_log_number, (string) $order['payment_method'], pg_order_log_money($payment_plan['remaining'])))));
         if ($payment_plan['refunded'] > 0) {
-            log_activity(lang(array(
+            log_activity(pg_log_lang(array(
                 'string' => 'Order #{var:1}: {var:2} of the payment was refunded before the cancellation, so the payment was not voided; only the amount above is still to return.',
-                'vars'   => array((int) $order_id, number_format($payment_plan['refunded'] / 100, 2, '.', ',')))));
+                'vars'   => array($order_log_number, pg_order_log_money($payment_plan['refunded'])))));
         }
     }
 
@@ -11030,7 +11116,7 @@ function process_order_cancellation($order_id, $reason = '', $is_admin = false, 
     // successful void keeps 'refunded', so the customer email, the webhook
     // and the restore keep the record of it); only an order the payment step
     // left without an outcome is flagged here.
-    $gift_card_refund_line = pg_order_gift_card_refund_line($order_id, (array) db_items(
+    $gift_card_refund_line = pg_order_gift_card_refund_line($order_log_number, (array) db_items(
         "SELECT code, gift_card_id, amount, givex FROM applied_gift_cards WHERE order_id = '" . e($order_id) . "'"));
     if ($gift_card_refund_line !== '') {
         log_activity($gift_card_refund_line);
@@ -11059,9 +11145,9 @@ function process_order_cancellation($order_id, $reason = '', $is_admin = false, 
         try {
             _send_order_cancellation_email($order, $reason_clean, $refund_status_outcome);
         } catch (\Throwable $e) {
-            log_activity(pg_log_lang(array('string' => 'Cancellation email failed for order #{var:1}: {var:2}', 'vars' => array($order_id, $e->getMessage()))));
+            log_activity(pg_log_lang(array('string' => 'Cancellation email failed for order #{var:1}: {var:2}', 'vars' => array($order_log_number, $e->getMessage()))));
         } catch (\Exception $e) {
-            log_activity(pg_log_lang(array('string' => 'Cancellation email failed for order #{var:1}: {var:2}', 'vars' => array($order_id, $e->getMessage()))));
+            log_activity(pg_log_lang(array('string' => 'Cancellation email failed for order #{var:1}: {var:2}', 'vars' => array($order_log_number, $e->getMessage()))));
         }
     }
 
@@ -11082,6 +11168,87 @@ function process_order_cancellation($order_id, $reason = '', $is_admin = false, 
         'refund_status' => $refund_status_outcome,
         'order_id'      => $order_id,
     );
+}
+
+// The money a cancelled order still owes its customer, in minor units:
+// 'payment' what its payment took and has not given back (total less
+// refunded_amount, never below 0), 'gift_card' what gift cards paid of it
+// (orders.total has that part taken off already, and it does not go back to
+// the cards by itself), 'total' both. An order cancelled before its payment
+// arrived (Offline Payment or a method whose service left the payment pending,
+// paid_at still 0) owes no payment money: nothing was taken. A row without
+// paid_at (a schema before the column) cannot tell, so its payment counts as
+// arrived. The order screen, the orders list card, the dashboard lane and the
+// cancel notices all read it, so they show one figure.
+function pg_order_cancel_refund_owed(array $order)
+{
+    $method = (string) ($order['payment_method'] ?? '');
+    $unpaid = array_key_exists('paid_at', $order)
+        && ((int) $order['paid_at'] === 0)
+        && (($method === 'Offline Payment') || in_array($method, pg_order_pending_payment_methods(), true));
+
+    $payment = $unpaid ? 0 : max(0, (int) round((float) ($order['total'] ?? 0)) - (int) round((float) ($order['refunded_amount'] ?? 0)));
+    $gift_card = max(0, (int) round((float) ($order['gift_card_discount'] ?? 0)));
+
+    return array('payment' => $payment, 'gift_card' => $gift_card, 'total' => $payment + $gift_card);
+}
+
+// pg_order_cancel_refund_owed()'s 'total' as a SQL expression over the orders
+// row, for a SUM. paid_at (2026.4.4) and refunded_amount are left out when the
+// schema has not got them, as the PHP side reads them.
+function pg_order_cancel_refund_owed_sql($has_paid_at, $has_refunded_amount)
+{
+    $payment = $has_refunded_amount ? 'GREATEST(0, CAST(orders.total AS SIGNED) - CAST(COALESCE(orders.refunded_amount, 0) AS SIGNED))' : 'orders.total';
+
+    if ($has_paid_at) {
+        $methods = array();
+        foreach (array_merge(array('Offline Payment'), pg_order_pending_payment_methods()) as $method) {
+            $methods[] = "'" . addslashes($method) . "'";
+        }
+        $payment = "(CASE WHEN orders.payment_method IN (" . implode(', ', $methods) . ") AND orders.paid_at = 0 THEN 0 ELSE " . $payment . " END)";
+    }
+
+    return '(' . $payment . ' + COALESCE(orders.gift_card_discount, 0))';
+}
+
+// How an order is named in a site log line: its order number, the one the
+// panel and the customer's e-mails show; the row id only for a cart that has
+// no number.
+function pg_order_log_number(array $order)
+{
+    $number = trim((string) ($order['order_number'] ?? ''));
+
+    return (($number !== '') && ($number !== '0')) ? $number : (string) (int) ($order['id'] ?? 0);
+}
+
+// The base currency symbol as plain text: the currencies table keeps it as an
+// HTML entity (&#8378;), which the Site Log escapes and shows as it is.
+function pg_order_log_currency_symbol()
+{
+    return defined('BASE_CURRENCY_SYMBOL') ? html_entity_decode((string) BASE_CURRENCY_SYMBOL, ENT_QUOTES | ENT_HTML5, 'UTF-8') : '';
+}
+
+// An amount in minor units as plain money text for a site log line.
+function pg_order_log_money($cents)
+{
+    return pg_format_money(((int) round((float) $cents)) / 100, pg_order_log_currency_symbol());
+}
+
+// An order status as a log line names it, in the panel language.
+function pg_order_log_status($status)
+{
+    switch ((string) $status) {
+        case 'complete':
+            return lang('Complete');
+        case 'exported':
+            return lang('Exported');
+        case 'cancelled':
+            return lang('Cancelled');
+        case 'incomplete':
+            return lang('Incomplete');
+    }
+
+    return (string) $status;
 }
 
 // What cancelling an order does to the money its payment took. The order
@@ -11121,9 +11288,11 @@ function pg_order_cancel_payment_plan($total_cents, $refunded_cents, $payment_me
 
 // The site log line that tells the operator what a cancelled order took off
 // gift cards: each card with its masked code (the shop's own card also with
-// its id, a Givex card marked) and the amount, '' when no card paid anything.
-// $applied_gift_cards are the order's applied_gift_cards rows.
-function pg_order_gift_card_refund_line($order_id, $applied_gift_cards)
+// its id, a Givex card marked) and the amount as money text, '' when no card
+// paid anything. $order_number names the order (pg_order_log_number());
+// $applied_gift_cards are the order's applied_gift_cards rows. A customer's
+// own cancellation writes it, so it takes the software language.
+function pg_order_gift_card_refund_line($order_number, $applied_gift_cards)
 {
     $parts = array();
     $total = 0;
@@ -11138,14 +11307,14 @@ function pg_order_gift_card_refund_line($order_id, $applied_gift_cards)
         } else {
             $name = protect_gift_card_code((string) $card['code']) . (!empty($card['gift_card_id']) ? ' (#' . (int) $card['gift_card_id'] . ')' : '');
         }
-        $parts[] = $name . ' ' . number_format($amount / 100, 2, '.', ',');
+        $parts[] = $name . ' ' . pg_order_log_money($amount);
     }
     if (!$parts) {
         return '';
     }
-    return lang(array(
+    return pg_log_lang(array(
         'string' => 'REFUND ACTION REQUIRED — order #{var:1} was cancelled. Gift cards paid {var:2} of it: {var:3}. Return the amounts to the cards.',
-        'vars'   => array((int) $order_id, number_format($total / 100, 2, '.', ','), implode(', ', $parts))));
+        'vars'   => array((string) $order_number, pg_order_log_money($total), implode(', ', $parts))));
 }
 
 // Taking a cancelled order back to $status ('complete' or 'exported'): the
@@ -11167,7 +11336,7 @@ function pg_order_restore_cancelled($order_id, $status = 'complete')
     // order number and the time of the cancellation.
     $has_cancel_columns = pg_schema_has('orders', 'cancelled_at');
     $cancelled_order = db_item(
-        "SELECT order_number" . ($has_cancel_columns ? ', cancelled_at' : '') . "
+        "SELECT id, order_number" . ($has_cancel_columns ? ', cancelled_at' : '') . "
          FROM orders
          WHERE id = '" . $order_id . "' AND status = 'cancelled'
          LIMIT 1");
@@ -11193,7 +11362,7 @@ function pg_order_restore_cancelled($order_id, $status = 'complete')
 
     pg_order_restore_gift_cards($order_id, (string) $cancelled_order['order_number'], $cancelled_order['cancelled_at'] ?? 0);
 
-    log_activity(pg_log_lang(array('string' => 'Restored cancelled order #{var:1} to {var:2}.', 'vars' => array($order_id, $status))));
+    log_activity(pg_log_lang(array('string' => 'Restored cancelled order #{var:1} to {var:2}.', 'vars' => array(pg_order_log_number($cancelled_order), pg_order_log_status($status)))));
 
     return true;
 }

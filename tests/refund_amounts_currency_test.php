@@ -72,7 +72,7 @@ function test_refund_amounts_order_screen_in_base_currency()
 {
 	$code = pg_test_refund_currency_code('view_order.php');
 
-	$refund = pg_test_refund_currency_slice($code, '$refund_payment_left_cents = ', 'if (in_array($refund_state');
+	$refund = pg_test_refund_currency_slice($code, '$refund_amount_text   = ', 'if (in_array($refund_state');
 	pg_assert_true(strpos($refund, 'currency_code') === false, 'the refund texts do not use the visitor\'s currency');
 	pg_assert_same(2, substr_count($refund, 'BASE_CURRENCY_SYMBOL)'), 'the refund amount and the gift card part print the store\'s symbol');
 

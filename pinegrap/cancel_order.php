@@ -114,13 +114,25 @@ if (isset($_POST['admin_context']) && $_POST['admin_context'] === 'view_orders')
 
     switch ($result['status']) {
         case 'success':
+            // The order screen's notices: the provider sentence only for
+            // payment money still owed (none for a transfer that never
+            // arrived), the gift card part told apart.
+            $cancelled_order = (array) db_item("SELECT * FROM orders WHERE id = '" . e($order_id) . "'");
+            $cancelled_owed  = pg_order_cancel_refund_owed($cancelled_order);
+
             $liveform_view_orders->add_notice(
-                lang(array('string' => 'Order #{var:1} has been cancelled.', 'vars' => $order_id))
+                lang(array('string' => 'Order #{var:1} has been cancelled.', 'vars' => pg_order_log_number($cancelled_order + array('id' => $order_id))))
             );
             if ($result['refund_status'] === 'refunded') {
                 $liveform_view_orders->add_notice(lang('The payment has been refunded.'));
-            } elseif ($result['refund_status'] === 'manual_required' || $result['refund_status'] === 'failed') {
+            } elseif (($result['refund_status'] === 'manual_required' || $result['refund_status'] === 'failed')
+                && ($cancelled_owed['payment'] > 0 || $cancelled_owed['gift_card'] <= 0)) {
                 $liveform_view_orders->add_notice(lang('The payment was NOT refunded automatically. Process the refund in your payment provider dashboard.'));
+            }
+            if ($cancelled_owed['gift_card'] > 0) {
+                $liveform_view_orders->add_notice(lang(array(
+                    'string' => 'Gift cards paid {var:1} of this order. Return the amounts to the cards; the site log names them.',
+                    'vars'   => array(pg_format_money($cancelled_owed['gift_card'] / 100, BASE_CURRENCY_SYMBOL)))));
             }
             break;
 

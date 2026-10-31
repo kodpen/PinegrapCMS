@@ -180,6 +180,9 @@ if (!$_POST) {
     $total_cents = (int)$row['total'];
     $gift_card_discount_cents = (int) round((float) $row['gift_card_discount']);
     $refunded_amount_cents = (int)($row['refunded_amount'] ?? 0);
+    // What a cancelled order still owes (payment money only when a payment
+    // arrived, the gift card part always), read before $row is reused below.
+    $refund_owed = pg_order_cancel_refund_owed($row);
 
     // Captured here with the rest of the order fields, and deliberately NOT
     // read from $row where the refund banner is built further down: $row is
@@ -2437,18 +2440,17 @@ if (!$_POST) {
     // From the copy taken next to the main order query; see the note there.
     $refund_state = $order_refund_status;
 
-    // orders.total has the gift card part taken off, and that part does not
-    // go back to the cards by itself either, so the money still to return is
-    // both. What the order screen or a return refunded already is not owed
-    // again. Each part gets its own instruction: the provider sentence only
-    // when payment money is left, the gift card one only when cards paid.
-    $refund_payment_left_cents = max(0, $total_cents - $refunded_amount_cents);
+    // The money still to return is the payment money left and the gift card
+    // part (pg_order_cancel_refund_owed()): an order cancelled before its
+    // transfer or pending payment arrived owes only the gift card part. Each
+    // part gets its own instruction: the provider sentence only when payment
+    // money is left, the gift card one only when cards paid.
     // The amounts are in the store's base currency, the unit they were
     // charged in; orders.currency_code is only what the visitor was shown.
-    $refund_amount_text   = pg_format_money(($refund_payment_left_cents + $gift_card_discount_cents) / 100, BASE_CURRENCY_SYMBOL);
+    $refund_amount_text   = pg_format_money($refund_owed['total'] / 100, BASE_CURRENCY_SYMBOL);
 
     $refund_instructions = '';
-    if ($refund_payment_left_cents > 0 || $gift_card_discount_cents <= 0) {
+    if ($refund_owed['payment'] > 0 || $refund_owed['gift_card'] <= 0) {
         $refund_instructions .= '<div class="small">' . lang('The payment was NOT refunded automatically. Process the refund in your payment provider dashboard.') . '</div>';
     }
     if ($gift_card_discount_cents > 0) {
@@ -3097,9 +3099,9 @@ if (!$_POST) {
         // provider wording applies only to payment money not refunded before
         // the cancellation; what gift cards paid is told apart, as it never
         // goes back by itself.
-        $cancelled_amounts = db_item("SELECT * FROM orders WHERE id = '" . e($order_id) . "'");
-        $cancelled_total_cents     = max(0, (int) ($cancelled_amounts['total'] ?? 0) - (int) ($cancelled_amounts['refunded_amount'] ?? 0));
-        $cancelled_gift_card_cents = (int) round((float) ($cancelled_amounts['gift_card_discount'] ?? 0));
+        $cancelled_owed = pg_order_cancel_refund_owed((array) db_item("SELECT * FROM orders WHERE id = '" . e($order_id) . "'"));
+        $cancelled_total_cents     = $cancelled_owed['payment'];
+        $cancelled_gift_card_cents = $cancelled_owed['gift_card'];
 
         if ($response['refund_status'] == 'refunded') {
             $liveform->add_notice(lang('The payment has been refunded.'));
@@ -3222,7 +3224,7 @@ if (!$_POST) {
 
         db_value("SELECT RELEASE_LOCK('" . e($refund_lock) . "')");
 
-        log_activity(lang(array('string' => 'Refunded {var:1} {var:2} for order #{var:3}.', 'vars' => array($refund_amount, BASE_CURRENCY_CODE, $order_id))));
+        log_activity(lang(array('string' => 'Refunded {var:1} {var:2} for order #{var:3}.', 'vars' => array(pg_format_number($refund_cents / 100, 2), BASE_CURRENCY_CODE, pg_order_log_number($order_row)))));
 
         // The full amount back cancels the order through the store's one
         // cancellation: the canceller, date and reason are recorded, a waiting
@@ -3302,7 +3304,7 @@ if (!$_POST) {
             output_error(lang('The refund columns do not exist yet. Please run the software upgrade to create them.'));
         }
 
-        $refund_row = db_item("SELECT refund_status FROM orders WHERE id = '" . e($order_id) . "'");
+        $refund_row = db_item("SELECT id, order_number, refund_status FROM orders WHERE id = '" . e($order_id) . "'");
 
         if (!$refund_row) {
             output_error(lang('Order not found.'));
@@ -3331,8 +3333,8 @@ if (!$_POST) {
         // not claim the software saw money move. log_activity() attaches the
         // signed-in username on its own.
         log_activity(($refund_reference !== '')
-            ? lang(array('string' => 'Refund marked as processed by operator for order #{var:1}. Reference: {var:2}', 'vars' => array($order_id, $refund_reference)))
-            : lang(array('string' => 'Refund marked as processed by operator for order #{var:1}', 'vars' => array($order_id))));
+            ? lang(array('string' => 'Refund marked as processed by operator for order #{var:1}. Reference: {var:2}', 'vars' => array(pg_order_log_number($refund_row), $refund_reference)))
+            : lang(array('string' => 'Refund marked as processed by operator for order #{var:1}', 'vars' => array(pg_order_log_number($refund_row)))));
 
         pg_audit_record('update', 'orders', $order_id, $audit_before);
 
