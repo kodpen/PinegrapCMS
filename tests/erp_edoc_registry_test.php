@@ -90,3 +90,34 @@ function test_erp_edoc_ubl_capability()
 	pg_assert_same('Paraşüt hands back the PDF of an e-document, not its UBL.', erp_edoc_parasut_fetch_document(array('id' => 1), 'xml')['error']);
 	pg_assert_true(isset(erp_edoc_capability_labels()['ubl']), 'a badge on the settings card');
 }
+
+// A password box is drawn empty, so a blank one keeps the stored secret and
+// only its "remove" tick clears it; a text box still stores what it holds.
+function test_erp_edoc_credentials_merge_keeps_blank_secrets()
+{
+	$fields = array(
+		array('name' => 'api_key', 'type' => 'password'),
+		array('name' => 'username', 'type' => 'text'),
+		array('name' => 'password', 'type' => 'password'),
+		array('name' => 'tenant_id', 'type' => 'text'),
+	);
+	$current = array('api_key' => 'K-stored', 'username' => 'shop', 'password' => 'P-stored', 'tenant_id' => '7');
+
+	$merged = erp_edoc_credentials_merge($fields, $current, array('api_key' => '', 'username' => 'shop2', 'password' => '  ', 'tenant_id' => ''), array());
+	pg_assert_same('K-stored', $merged['api_key'], 'a blank key box keeps the key');
+	pg_assert_same('P-stored', $merged['password'], 'a blank password box keeps the password');
+	pg_assert_same('shop2', $merged['username'], 'a text box is stored as typed');
+	pg_assert_same('', $merged['tenant_id'], 'an emptied text box clears it');
+
+	$merged = erp_edoc_credentials_merge($fields, $current, array('api_key' => ' K-new ', 'password' => ''), array('password'));
+	pg_assert_same('K-new', $merged['api_key'], 'a typed key replaces the stored one');
+	pg_assert_same('', $merged['password'], 'the remove tick clears the password');
+	pg_assert_same('shop', $merged['username'], 'a box not posted is kept');
+
+	$merged = erp_edoc_credentials_merge($fields, $current, array(), array('api_key', 'username'));
+	pg_assert_same('', $merged['api_key'], 'the remove tick works without the box');
+	pg_assert_same('shop', $merged['username'], 'a tick on a text box is ignored');
+
+	$merged = erp_edoc_credentials_merge($fields, $current, array('api_key' => 'K-new'), array('api_key'));
+	pg_assert_same('', $merged['api_key'], 'the remove tick wins over a typed value');
+}
