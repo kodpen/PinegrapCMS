@@ -17,6 +17,7 @@ if (!defined('PG_TEST_RUNNER')) {
 }
 
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/audit_list.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/auth.php');
 
 foreach (array('PATH' => '/', 'OUTPUT_PATH' => '/', 'OUTPUT_SOFTWARE_DIRECTORY' => 'pinegrap', 'DATE_FORMAT' => 'day_month', 'TIME_FORMAT' => 'twenty_four_hours') as $audit_list_test_name => $audit_list_test_value) {
 	if (!defined($audit_list_test_name)) {
@@ -92,6 +93,33 @@ function test_audit_list_row()
 	$line['before_json'] = null;
 	$line['after_json'] = null;
 	pg_assert_false(strpos(pg_list_row_html(pg_audit_list_row($line, array(), array())), 'data-pg-audit-line') !== false, 'no fold without a change');
+}
+
+// The Open icon is drawn only when the record's edit screen admits the
+// viewer; the history link stays for every viewer.
+function test_audit_list_row_open_follows_viewer_role()
+{
+	$line = array(
+		'id' => '10', 'created_at' => (string) mktime(10, 0, 0, 10, 1, 2026), 'request_id' => '', 'source' => 'panel',
+		'user_id' => '3', 'username' => 'ann', 'ip' => '10.0.0.1', 'action' => 'update', 'entity_type' => 'user',
+		'entity_id' => '4', 'label' => 'boss', 'before_json' => null, 'after_json' => null,
+	);
+	$admin = array('user' => array(4 => array('user_role' => '0')));
+
+	$html = pg_list_row_html(pg_audit_list_row($line, $admin, array(), 2));
+	pg_assert_false(strpos($html, 'edit_user.php') !== false, 'a manager gets no Open icon on an administrator');
+	pg_assert_contains('href="view_audit_log.php?type=user&amp;id=4"', $html, 'the history link stays');
+	pg_assert_contains('edit_user.php?id=4', pg_list_row_html(pg_audit_list_row($line, $admin, array(), 0)), 'an administrator opens it');
+	pg_assert_contains('edit_user.php?id=4', pg_list_row_html(pg_audit_list_row($line, array('user' => array(4 => array('user_role' => '3'))), array(), 2)), 'a manager opens a lower role');
+
+	$line['entity_type'] = 'file';
+	$design = array('file' => array(4 => array('design' => '1')));
+	pg_assert_false(strpos(pg_list_row_html(pg_audit_list_row($line, $design, array(), 2)), 'edit_file.php') !== false, 'a manager gets no Open icon on a design file');
+	pg_assert_contains('edit_file.php?id=4', pg_list_row_html(pg_audit_list_row($line, $design, array(), 1)), 'a designer opens it');
+	pg_assert_contains('edit_file.php?id=4', pg_list_row_html(pg_audit_list_row($line, array('file' => array(4 => array('design' => '0'))), array(), 2)), 'a manager opens a plain file');
+
+	$line['entity_type'] = 'api_key';
+	pg_assert_contains('api_settings.php', pg_list_row_html(pg_audit_list_row($line, array(), array(), 2)), 'API types keep their link');
 }
 
 function test_audit_list_changes_html()
