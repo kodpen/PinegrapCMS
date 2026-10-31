@@ -136,11 +136,13 @@ if (!$_POST) {
     }
 
     $till_options = array();
+    $till_count = 0;
     $till_options[lang('Choose a till or bank account')] = '';
 
     foreach ((array) db_items("SELECT id, name, currency FROM erp_cash_accounts WHERE is_active = 1 ORDER BY sort_order ASC, name ASC") as $till) {
         // The till's currency on the label, since the money has to match it.
         $till_options[h($till['name'] . ($fx_on ? (' (' . strtoupper(trim((string) $till['currency'])) . ')') : ''))] = (string) (int) $till['id'];
+        $till_count++;
     }
 
     $method_options = array();
@@ -254,7 +256,8 @@ if (!$_POST) {
                                 <label for="cash_account_id" class="form-label">' . lang('Till or Bank Account') . '</label>
                                 ' . $liveform->output_field(array(
                                     'type' => 'select', 'id' => 'cash_account_id', 'name' => 'cash_account_id',
-                                    'class' => 'form-control', 'options' => $till_options)) . '
+                                    'class' => 'form-control', 'options' => $till_options))
+                                . erp_no_till_hint($till_count) . '
                             </div>
                             <div class="col-12 sm:col-6 lg:col-3 my-3">
                                 <label for="amount" class="form-label">' . lang('Amount') . '</label>
