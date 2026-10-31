@@ -4,7 +4,7 @@ description: Workspace follow-ups (followups.php, #1790): ws_followup_task_open(
 ---
 
 ## What is a follow-up?
-- CRM seams slice 5 (plans/workspace-crm-seams.md): an ordinary task tagged with the record it is about (`ws_refs`), on a channel or for a person, due on a day and reminded by the task reminder (reminders.php: inbox and e-mail, told once more when overdue). No schema, no table of its own; the customer history lists it with the customer's tasks.
+- CRM seams slice 5 (PR #1790): an ordinary task tagged with the record it is about (`ws_refs`), on a channel or for a person, due on a day and reminded by the task reminder (reminders.php: inbox and e-mail, told once more when overdue). No schema, no table of its own; the customer history lists it with the customer's tasks.
 - Code: includes/workspace/followups.php; tests: tests/workspace_followup_test.php.
 
 ## How does a caller open one?

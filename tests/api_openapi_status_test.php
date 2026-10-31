@@ -281,7 +281,7 @@ function test_api_openapi_status_other_fields_may_be_null()
 	// when none of the three is filled in.
 	$customer = api_customer_schema();
 
-	foreach (array('first_name', 'last_name', 'email', 'company', 'phone') as $field) {
+	foreach (array('first_name', 'last_name', 'email', 'company', 'phone', 'lead_source') as $field) {
 		$nullable($customer[$field], 'Customer.' . $field);
 	}
 
@@ -293,7 +293,7 @@ function test_api_openapi_status_other_fields_may_be_null()
 
 	$present = api_customer_present(array('id' => '3', 'member_id' => null, 'first_name' => null, 'last_name' => null,
 		'email_address' => 'a@example.com', 'company' => null, 'business_address_1' => null, 'business_city' => null,
-		'business_state' => null, 'business_zip_code' => null, 'business_country' => null));
+		'business_state' => null, 'business_zip_code' => null, 'business_country' => null, 'lead_source' => null));
 
 	pg_assert_same(null, $present['first_name']);
 	pg_assert_same(null, $present['phone']);

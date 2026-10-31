@@ -31,4 +31,4 @@ description: Plan (2026-10-23; every slice built, closes in a memory-only PR): S
 
 ## Where to start?
 - Nothing approved remains: slices 1-7 are built (5a-5e and 7 in commerce/cart-quotes.md, erp/erp-quote-guest-link.md; 4 in erp/erp-quote-templates.md).
-- The plan closes in a memory-only PR after the CRM10.3 PR, which edits plans/workspace-growth-2026-10.md and plans/workspace-crm-seams.md that link here; move lasting decisions to their topic files then.
+- The plan closes in a memory-only PR (the CRM seams plan closed first); move lasting decisions to their topic files then.

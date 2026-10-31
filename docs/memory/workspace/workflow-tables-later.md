@@ -7,7 +7,7 @@ description: What workflow tables leave for later (T1-T6 done): API/MCP import r
 - An import route in the API and MCP for a file or note table (T6a/T6b are panel only); it would follow the write-route rules: `dry_run` through a `*_check()`, `ws_wtable_import_rows()` quiet as on the panel.
 - xlsx export of a table (`includes/fn/office.php`); a "my tables" strip on /workspace/my-day.
 - A table bin or versions (a delete is final, `workflow-tables.md`); `ws_inbox` has no table column, so a share's bell line names no table (kind-only line, `workflow-tables-screen.md`).
-- The CRM pipeline: a shared table with a status and contact-link columns plus flows (`plans/workspace-crm-seams.md`). A row's record links are in `ws_refs` since #3135 (`workspace-ref-sources.md`), so the contact's screen and history find it.
+- The CRM pipeline: a shared table with a status and contact-link columns plus flows (`workflow/decisions-made-product-11.md`, #3797). A row's record links are in `ws_refs` since #3135 (`workspace-ref-sources.md`), so the contact's screen and history find it.
 
 ## Where did the rest go?
 - Canvas, table automations and workflow mode: `plans/workspace-flows.md`. Scheduled-actions API: `workspace-scheduled-actions-api.md`, `workspace-scheduled-draft-proposals.md`.

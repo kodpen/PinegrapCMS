@@ -28,4 +28,4 @@ module: contacts
 ## Which audit lines?
 - `core/audit-trail-contacts.md`: a delete line per merged contact, one `merge` line (#2620).
 
-Related: docs/memory/core/audit-trail-contacts.md, docs/memory/core/personal-data-erasure.md, docs/memory/plans/workspace-crm-seams.md
+Related: docs/memory/core/audit-trail-contacts.md, docs/memory/core/personal-data-erasure.md, docs/memory/workflow/decisions-made-product-11.md

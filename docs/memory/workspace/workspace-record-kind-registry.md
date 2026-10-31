@@ -6,7 +6,7 @@ description: ws_record_kinds() (refs.php): one entry per Workspace record kind (
 ## What is it?
 - `ws_record_kinds()` in includes/workspace/refs.php: one entry per kind of `ws_record_type_keys()`, in its order. Pure: no database, no reader's rights (those are `ws_ref_types()` and the row rules below).
 - Per kind: `prefixes` (words typed after #), `right` (the `ws_viewer()` right of its tag and of its change, '' when none is asked), `scope` (what `ws_ai_type_scope()` asks; workspace:read when no API scope reads the kind), `change` (its `ws_change_types()` kind, '' for a tag-only kind: the ERP documents, cart_quote), `audit` (the `pg_audit_tables()` table its Workspace write is recorded on, '' for none), `quick_edit` (drawer), `customer` (a customer channel can be about it).
-- A reader that needs a kind's scope, right or change (CRM summary and history rows, plans/workspace-crm-seams.md) reads it here, then applies the kind's row rule.
+- A reader that needs a kind's scope, right or change (CRM summary and history rows, workspace-customer-history.md) reads it here, then applies the kind's row rule.
 
 ## Which row rules come on top of right and scope?
 - `right` and `scope` only open a kind. For role 3 each row still passes its kind's rule, as on the panel screen and in the API (api/api-user-role-rows.md); a summary or history row too.
