@@ -23,6 +23,8 @@
     "CA_BUNDLE_SOURCE_URL is not an https address": "CA_BUNDLE_SOURCE_URL bir https adresi değil",
     "CLOUDFLARE_ACCOUNT_ID could not be determined. Define it in your config or ensure token has Zone:Read permission.": "CLOUDFLARE_ACCOUNT_ID belirlenemedi. Yapılandırmanızda tanımlayın ya da token'ın Zone:Read iznine sahip olduğundan emin olun.",
     "CONFIRM": "ONAYLA",
+    "CORS": "CORS",
+    "CORS Preflight": "CORS ön isteği",
     "CPU": "CPU",
     "CSC": "CSC",
     "CSS Code": "CSS Kodu",

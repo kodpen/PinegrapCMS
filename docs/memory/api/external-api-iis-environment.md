@@ -14,6 +14,7 @@ description: What IIS and the WAF impose on the external API: path-based API det
 
 ## Which HTTP methods fail on IIS?
 - PATCH and DELETE are not delivered: WebDAV answers both with 405 before PHP, and removing WebDAV from `web.config` takes the site down with a 500. PATCH has a lasting side effect: IIS then treats that address as a no-longer-existing file, the next POST falls into site routing and the store's 404 page comes back.
+- OPTIONS never reaches PHP: IIS's PHP handler mapping takes GET, HEAD and POST, so IIS answers a browser's CORS preflight to `mcp.php`, `oauth.php` and `integration.php` itself (200, no `Access-Control-*`) and browser-based MCP/OAuth clients stop; server-side connectors send none. Pinegrap ships no `<handlers>` entry (the host's PHP `scriptProcessor` differs; a wrong one is a 500 everywhere). System Status probes it instead (`pg_cors_preflight_probe()`, verdict cached a day in `data/temp/cors_preflight_cache.json`, dropped by a cache purge) and shows the unscored "CORS Preflight" nudge only for a 2xx without `Access-Control-Allow-Origin`; no answer or an error status shows nothing (#4045).
 
 ## How are routes written for it?
 - An update: `'method' => 'POST', 'also_accepts' => array('PATCH')` (other servers may still send PATCH).
