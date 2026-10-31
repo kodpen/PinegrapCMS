@@ -1582,10 +1582,12 @@ function pg_shipment_label_print_selection($rows, $order_ids)
 
 /**
  * Open labels for the addresses of the selected orders that have no active
- * one, at most $limit a run (each is a call to the service). A package whose
- * marketplace makes its label now gets that one, for one box, read once
- * without waiting (mp_label_create_for_ship_to()); a carrier label
- * service's would be a second shipment of the parcel.
+ * one, at most $limit service calls a run. A package whose marketplace
+ * makes its label now gets that one, for one box, read once without
+ * waiting (mp_label_create_for_ship_to()); a carrier label service's would
+ * be a second shipment of the parcel. An order not completed is not
+ * selected; an address pg_shipment_label_create_check() refuses is
+ * reported and passed over (pg_shipment_label_bulk_run()).
  *
  * @param array $order_ids
  * @param int   $user_id
@@ -1604,8 +1606,10 @@ function pg_shipment_label_bulk_create($order_ids, $user_id, $limit = 20)
     $addresses = db_values(
         "SELECT DISTINCT order_items.ship_to_id
         FROM order_items
+        INNER JOIN orders ON orders.id = order_items.order_id
         WHERE
             (order_items.order_id IN ('" . implode("','", $order_ids) . "'))
+            AND (orders.status NOT IN ('incomplete', 'cancelled'))
             AND (order_items.ship_to_id > 0)" . pg_order_item_active_sql() . "
             AND NOT EXISTS (
                 SELECT 1 FROM shipment_labels
@@ -1616,22 +1620,69 @@ function pg_shipment_label_bulk_create($order_ids, $user_id, $limit = 20)
         @set_time_limit(300);
     }
 
-    foreach ($addresses as $index => $ship_to_id) {
-        if ($index >= $limit) {
-            $out['left'] = count($addresses) - $limit;
-            break;
+    $marketplaces = array();
+
+    // A marketplace's own label goes to the marketplace; anything else is
+    // checked here without a call, so a refusal does not use the cap.
+    $check = function ($ship_to_id) use (&$marketplaces) {
+        $marketplace = pg_shipment_label_marketplace((int) $ship_to_id);
+        $marketplaces[$ship_to_id] = ($marketplace && ($marketplace['offer'] === 'create'));
+
+        if ($marketplaces[$ship_to_id]) {
+            return '';
         }
 
-        $marketplace = pg_shipment_label_marketplace((int) $ship_to_id);
+        $check = pg_shipment_label_create_check((int) $ship_to_id);
 
-        $result = ($marketplace && ($marketplace['offer'] === 'create'))
+        return $check['ok'] ? '' : (string) $check['error'];
+    };
+
+    $create = function ($ship_to_id) use (&$marketplaces, $user_id) {
+        return !empty($marketplaces[$ship_to_id])
             ? mp_label_create_for_ship_to((int) $ship_to_id, 1, $user_id, false)
             : pg_shipment_label_create((int) $ship_to_id, $user_id);
+    };
 
-        if ($result['ok']) {
+    return pg_shipment_label_bulk_run($addresses, $limit, $check, $create);
+}
+
+/**
+ * The loop of a bulk label run. $check answers '' for an address that may
+ * go to a service, else the refusal; a refusal is reported on every run but
+ * uses no place of the $limit calls and is not left, as a rerun would only
+ * refuse it again. Past the cap, the addresses that pass the check are left.
+ *
+ * @param array    $addresses ship_to ids
+ * @param int      $limit     service calls a run
+ * @param callable $check     function ($ship_to_id): string
+ * @param callable $create    function ($ship_to_id): array ok, error
+ * @return array created, failed (list of sentences), left
+ */
+function pg_shipment_label_bulk_run($addresses, $limit, $check, $create)
+{
+    $out = array('created' => 0, 'failed' => array(), 'left' => 0);
+    $calls = 0;
+
+    foreach ($addresses as $ship_to_id) {
+        $refusal = (string) $check($ship_to_id);
+
+        if ($refusal !== '') {
+            $out['failed'][] = $refusal;
+            continue;
+        }
+
+        if ($calls >= (int) $limit) {
+            $out['left']++;
+            continue;
+        }
+
+        $calls++;
+        $result = $create($ship_to_id);
+
+        if (!empty($result['ok'])) {
             $out['created']++;
         } else {
-            $out['failed'][] = $result['error'];
+            $out['failed'][] = (string) $result['error'];
         }
     }
 
@@ -2102,11 +2153,11 @@ function pg_shipment_label_pickup_dialog($id, $form, $request, $note = '')
                         <input type="date" data-pg-date class="form-control" id="' . h($id) . '_date" name="pickup_date" value="' . h($tomorrow) . '" min="' . h(date('Y-m-d')) . '"' . $owner . '>
                     </div>
                     <div class="col-6 sm:col-4">
-                        <label class="form-label" for="' . h($id) . '_from">' . lang('From') . '</label>
+                        <label class="form-label" for="' . h($id) . '_from">' . lang('Earliest time') . '</label>
                         <input type="time" class="form-control" id="' . h($id) . '_from" name="pickup_from" value="09:00"' . $owner . '>
                     </div>
                     <div class="col-6 sm:col-4">
-                        <label class="form-label" for="' . h($id) . '_to">' . lang('To') . '</label>
+                        <label class="form-label" for="' . h($id) . '_to">' . lang('Latest time') . '</label>
                         <input type="time" class="form-control" id="' . h($id) . '_to" name="pickup_to" value="17:00"' . $owner . '>
                     </div>
                     <div class="col-12">
