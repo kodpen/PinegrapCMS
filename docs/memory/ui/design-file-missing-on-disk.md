@@ -9,6 +9,12 @@ description: What the theme, design file and CSS/JS/text editor screens do when 
 - `edit_theme_file.php` shows the same note on the screen, renames only when the name changed and the file is there, still saves the record (name, folder, description, activation) and adds the same text as a warning in the themes list after Save (PR #474). Before, every Save wrote a `rename(): No such file or directory` warning.
 - The note is one existing `tr.json` string; no new keys.
 
+## What happens when Save, Duplicate or Create File cannot write the file?
+- `edit_theme_css.php`, `edit_javascript.php`, `editor_edit_file.php` (Save and Duplicate) and `create_file.php` write through `pg_file_write_whole()` (`includes/fn/files.php`): a temporary file in the same folder, every byte checked, then a rename over the stored file (unlink + rename again if that fails). On failure the temporary file is deleted, the old file stays as it was and it returns false.
+- On false no `files` row is written or updated and no success notice is shown. The editors open again with "{var:1} could not be written to disk." and the typed code (kept in the liveform field `code`, read before `file_get_contents()`); Create File answers with `output_error()` and Go back.
+- Before, the editors unlinked the file and wrote unchecked: PHP 7 said "edited successfully" and lost the changes, PHP 8 died on `fwrite(false)`, a full disk left a cut-off stylesheet; Create File recorded a missing file.
+- Not yet covered: `add_theme_file.php` (rows inserted before the write), `import_design.php` and `update_imported_items.php` (bulk import, would need a summary of failed items), `edit_file.php` / `edit_design_file.php`.
+
 ## Why can saving Edit Theme change a theme's name by itself?
 - `prepare_file_name()` collapses doubled underscores, so a record named `theme__noise.css` is stored as `theme_noise.css` on the first Save even with the name field untouched. With the file on the disk, the file is renamed with it; that is existing behaviour, left as is.
 

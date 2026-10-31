@@ -37,8 +37,6 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - erp-parasut-open-work.md: Paraşüt work left after the rounds of 2026-10-23 to 26 (#1405-#1682): one live round when a new demo key comes, three decisions (#2440-#2442), small fixes; where to start
 - feature-roadmap-2026-10.md: Feature roadmap decided 2026-10-19 from the gap analysis: 24 approved plans in four groups, wave order, the legacy rule, one task per session; index of the plan files
 - graph-canvas-core.md: Plan (2026-10-24, answers #2445, slice 1 done #3162): a reusable box-and-arrow canvas core split from workspace_flow.js behind an adapter; first Flows, then designer prototype links
-- incoming-email-design.md: Design of the not-started incoming e-mail feature: ingest flow, ws_mail_* tables, channel card, routing, threading, reply headers, security, API endpoints
-- incoming-email-plan.md: Incoming e-mail into Workspace channels (G1-G8 done, owner 2026-10-27): IMAP transport over Cloudflare push and a Kodpen broker, slices G1–G9, the owner's eleven answers
 - kodpen-vendor-api-client-design-update.md: Update contract of plans/kodpen-vendor-api-client.md: release check, pin, checks before extraction, download failures and security events, beta builds, keys, P2's workflow
 - kodpen-vendor-api-client-design.md: Client contract of plans/kodpen-vendor-api-client.md: calls and headers, the licence check, card and key field, what is stored where, the switch line; updates in -design-update
 - kodpen-vendor-api-client-steps.md: Steps P1-P8 of plans/kodpen-vendor-api-client.md: changes, files, tests, memory, size, order; claim as [plan:kodpen-vendor-api-client] P<n>
@@ -63,7 +61,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - shipping-management.md: Shipping plan (2026-10-08; phases 1-7 and the phase 8 postcode check done): single write path, panel, customer e-mail and guest tracking, bulk CSV, API fields, more carriers
 - shipping-tr-district.md: Shipping plan step 8 (decision #3569): ship_tos.district and states.plate_code in three PRs; D1 schema and model, D2 checkout and order screens, D3 drivers, imports and the API field
 - site-log-language.md: Plan: the Site Log writers still passing bare English to log_activity() (issue #3332, after part 4)
-- sms-and-iys.md: Plan (approved 2026-10-19): SMS layer, order messages, consent writers, İYS client and card, consents API, SMS consent box (7), İYS MESAJ channel (8) done; left: first İYS live run, steps 9-10
+- sms-and-iys.md: Plan (approved 2026-10-19): SMS layer, order messages, consent writers, İYS client and card, consents API, marketing SMS steps 7-9 done; left: first İYS live run, step 10 (SMS campaign)
 - storefront-api-acp-ucp.md: Storefront API design note: OpenAI ACP checkout_sessions mapped onto the storefront routes, the UCP manifest after checkout exists, MCP tools under the customer's consent, WAF agent verification
 - storefront-api-agentic-commerce.md: Plan (approved 2026-10-19; design note first, code after 2026.11.0 ships, #3798): public storefront API (cart, checkout, customer auth), base for OpenAI ACP and Google UCP bindings
 - storefront-api-callers.md: Storefront API design note: who calls it (application key + optional cart or customer token), the storefront:* scopes, rate buckets, Idempotency-Key and dry-run rules shared by every route

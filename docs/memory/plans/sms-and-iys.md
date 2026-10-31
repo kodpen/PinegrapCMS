@@ -1,6 +1,6 @@
 ---
 name: sms-and-iys
-description: Plan (approved 2026-10-19): SMS layer, order messages, consent writers, İYS client and card, consents API, SMS consent box (7), İYS MESAJ channel (8) done; left: first İYS live run, steps 9-10
+description: Plan (approved 2026-10-19): SMS layer, order messages, consent writers, İYS client and card, consents API, marketing SMS steps 7-9 done; left: first İYS live run, step 10 (SMS campaign)
 ---
 
 ## Why?
@@ -21,9 +21,8 @@ description: Plan (approved 2026-10-19): SMS layer, order messages, consent writ
 5b. ~~İYS settings card~~ (done, PR #1940; `platform/iys-settings-card.md`). Left: the first live run against the sandbox with the owner's İYS test credentials.
 6. ~~API: consents read, webhook `customer.consent_changed`~~ (done, PR #1940; `api/api-customer-consents.md`).
 - Drivers done: İleti Merkezi (PR #3623), Twilio (PR #3647); `platform/sms-iletimerkezi-driver.md`, `sms-twilio-driver.md`.
-7-10. Marketing SMS, decided #3570 (`workflow/decisions-made-schema-6.md`, `-product-8.md`), one PR each in order: 7 the SMS consent box beside the e-mail box (as #2431) and `consent_log` channel `sms`; 8 `contacts.iys_sms_status` and the İYS `MESAJ` channel; 9 the sender name and type label settings, the `marketing` kind opened; 10 an SMS campaign beside the e-mail campaigns.
-- ~~8 `contacts.iys_sms_status` and the MESAJ channel~~ (PR #3806, `platform/iys-sms-channel.md`).
-- 7 done in parts: PR #3660, #3694, #3715 (`core/sms-consent-box.md`).
+7-10. Marketing SMS, decided #3570 (`workflow/decisions-made-schema-6.md`, `-product-8.md`), one PR each in order: 7 the SMS consent box beside the e-mail box (as #2431) and `consent_log` channel `sms`; 8 `contacts.iys_sms_status` and the İYS `MESAJ` channel; 9 the sender name and type label settings, the `marketing` kind opened; 10 an SMS campaign beside the e-mail campaigns (tables: #3847).
+- Done: 7 (PR #3660, #3694, #3715, `core/sms-consent-box.md`), 8 (PR #3806, `platform/iys-sms-channel.md`), 9 (PR #3820, `platform/sms-marketing-kind.md`).
 
 ## Open questions?
 - İYS test credentials: owner provides; until then the client runs dry (logs only). Answered 2026-10-26: the contact status column is approved (`contacts.iys_email_status`, 11.0.39).
@@ -33,4 +32,4 @@ description: Plan (approved 2026-10-19): SMS layer, order messages, consent writ
 - DEFAULT-1 contacts (forms, imports, API, profile) have no consent row and are never pushed.
 
 ## Where to start?
-- Steps 9-10 (#3570) in order, 9 next. First İYS live run: once credentials exist, fill the card in test environment and live mode (`platform/iys-settings-card.md`), run `iys_job.php`.
+- Step 10 (#3570) next: the SMS campaign queues `marketing` messages (`platform/sms-marketing-kind.md`). First İYS live run: once credentials exist, fill the card in test environment and live mode (`platform/iys-settings-card.md`), run `iys_job.php`.

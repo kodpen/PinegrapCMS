@@ -177,11 +177,7 @@ function erp_efatura_threshold_save($web, $general)
  */
 function erp_efatura_threshold_forget_status()
 {
-    $file = PG_FUNCTIONS_DIR . '/data/temp/system_status_cache.json';
-
-    if (is_file($file)) {
-        @unlink($file);
-    }
+    pg_system_status_forget();
 }
 
 /**

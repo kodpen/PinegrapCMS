@@ -19,9 +19,11 @@
  *
  * Every message has a kind. Transactional kinds (an order, a shipment, a
  * sign-in code, a reminder, the one back-in-stock notice a customer asked
- * for) go out as informational messages; a commercial
- * one needs the recipient's consent recorded in İYS, and until the consent
- * records exist pg_sms_send() refuses it.
+ * for) go out as informational messages and carry no promotion text. A
+ * marketing message goes only to a number whose owner said yes to marketing
+ * SMS here (consent_log channel sms) and neither here nor in İYS said no,
+ * and only once the sender identity (trade name or MERSİS number) is set:
+ * the identity and the type label are appended to its text.
  *
  * pg_sms_send() makes the network call itself and waits for the answer, so it
  * belongs in a background job or behind an operator's button (the settings'
@@ -364,17 +366,21 @@ function pg_sms_failure($error, $retry = false)
 }
 
 /**
- * What every message is checked for before any account is read: a known kind
- * that is not commercial (until İYS consent records exist), a number an SMS
- * can be sent to, a text that is not empty and not longer than
- * pg_sms_max_length().
+ * What every message is checked for before any account is read: a known kind,
+ * the sender identity for a marketing message, a number an SMS can be sent
+ * to, a text that is not empty and, with a marketing message's identity and
+ * type label appended (pg_sms_marketing_text()), not longer than
+ * pg_sms_max_length(). The recipient's consent is asked separately
+ * (pg_sms_marketing_permission()): it needs the database.
  *
- * @param mixed $to
- * @param mixed $text
- * @param mixed $kind
+ * @param mixed      $to
+ * @param mixed      $text
+ * @param mixed      $kind
+ * @param array|null $marketing pg_sms_marketing_normalize() shape; read from
+ *                              the settings when null
  * @return array ok, number (E.164 digits), text (as it is sent), error
  */
-function pg_sms_check($to, $text, $kind)
+function pg_sms_check($to, $text, $kind, $marketing = null)
 {
     $kinds = pg_sms_kinds();
     $refused = array('ok' => false, 'number' => '', 'text' => '', 'error' => '');
@@ -385,8 +391,12 @@ function pg_sms_check($to, $text, $kind)
     }
 
     if ($kinds[$kind]) {
-        $refused['error'] = lang('Marketing messages are not sent by SMS: they need the recipient\'s consent recorded in İYS.');
-        return $refused;
+        $marketing = is_array($marketing) ? pg_sms_marketing_normalize($marketing) : pg_sms_marketing_settings();
+
+        if (!pg_sms_marketing_identity_filled($marketing)) {
+            $refused['error'] = pg_sms_marketing_identity_missing();
+            return $refused;
+        }
     }
 
     $number = pg_sms_number($to);
@@ -403,12 +413,320 @@ function pg_sms_check($to, $text, $kind)
         return $refused;
     }
 
+    if ($kinds[$kind]) {
+        $text = pg_sms_marketing_text($text, $marketing);
+    }
+
     if (mb_strlen($text, 'UTF-8') > pg_sms_max_length()) {
         $refused['error'] = lang(array('string' => 'The message is longer than {var:1} characters.', 'vars' => array(pg_sms_max_length())));
         return $refused;
     }
 
     return array('ok' => true, 'number' => $number, 'text' => $text, 'error' => '');
+}
+
+/**
+ * The marketing messages' sender identity and type label in a stored or
+ * posted shape, every key present. Kept in connect_apps 'sms_templates'
+ * under options.marketing, beside the order messages' templates.
+ *
+ * @param array|null $marketing
+ * @return array trade_name, mersis (16 digits or ''), label ('' for the
+ *               built-in one)
+ */
+function pg_sms_marketing_normalize($marketing)
+{
+    $marketing = is_array($marketing) ? $marketing : array();
+    $normal = array();
+
+    foreach (array('trade_name', 'mersis', 'label') as $key) {
+        $normal[$key] = (isset($marketing[$key]) && is_scalar($marketing[$key])) ? pg_sms_text(str_replace("\n", ' ', (string) $marketing[$key])) : '';
+    }
+
+    return $normal;
+}
+
+/**
+ * The site's sender identity and type label.
+ *
+ * @return array pg_sms_marketing_normalize()
+ */
+function pg_sms_marketing_settings()
+{
+    $app = (function_exists('pg_connect_schema_ready') && pg_connect_schema_ready()) ? pg_connect_app('sms_templates') : null;
+
+    return pg_sms_marketing_normalize((is_array($app) && isset($app['options']['marketing'])) ? $app['options']['marketing'] : null);
+}
+
+/**
+ * The type label a marketing message carries while the setting is empty, in
+ * the site's language when the message is checked.
+ *
+ * @return string
+ */
+function pg_sms_marketing_label_default()
+{
+    return lang('This is a promotion, campaign and information message.');
+}
+
+/**
+ * Whether a marketing message can name its sender: a trade name or a MERSİS
+ * number is set.
+ *
+ * @param array $marketing pg_sms_marketing_normalize()
+ * @return bool
+ */
+function pg_sms_marketing_identity_filled($marketing)
+{
+    return ($marketing['trade_name'] !== '') || ($marketing['mersis'] !== '');
+}
+
+/**
+ * The reason a marketing message is refused while the identity is empty.
+ *
+ * @return string
+ */
+function pg_sms_marketing_identity_missing()
+{
+    return lang('A marketing SMS needs the sender identity: fill in the trade name or the MERSİS number in Settings › Communication › SMS Messages.');
+}
+
+/**
+ * A marketing message as it is sent: its text, then a line with the trade
+ * name and the MERSİS number, then the type label. A text that already ends
+ * with them (a queued message checked again when it is sent) is returned as
+ * it is, so they are never appended twice.
+ *
+ * @param string $text      pg_sms_text()
+ * @param array  $marketing pg_sms_marketing_normalize()
+ * @return string
+ */
+function pg_sms_marketing_text($text, $marketing)
+{
+    $identity = $marketing['trade_name'];
+
+    if ($marketing['mersis'] !== '') {
+        $identity = trim($identity . ' ' . lang(array('string' => 'MERSİS No: {var:1}', 'vars' => array($marketing['mersis']))));
+    }
+
+    $footer = $identity . "\n" . (($marketing['label'] !== '') ? $marketing['label'] : pg_sms_marketing_label_default());
+    $text = (string) $text;
+
+    if (($text === $footer) || (substr($text, -strlen("\n" . $footer)) === "\n" . $footer)) {
+        return $text;
+    }
+
+    return ($text === '') ? $footer : $text . "\n" . $footer;
+}
+
+/**
+ * The latest SMS marketing answer of each contact. Pure.
+ *
+ * @param array[] $rows consent_log rows of channel sms, purpose marketing:
+ *                      id, created_at, contact_id, channel, purpose, status
+ * @return array contact_id => status
+ */
+function pg_sms_marketing_answers($rows)
+{
+    $per_contact = array();
+
+    foreach ((array) $rows as $row) {
+        if (is_array($row) && isset($row['contact_id'])) {
+            $per_contact[(int) $row['contact_id']][] = $row;
+        }
+    }
+
+    $answers = array();
+
+    foreach ($per_contact as $contact_id => $contact_rows) {
+        $current = pg_consent_log_current($contact_rows);
+
+        if (isset($current['sms:marketing']['status'])) {
+            $answers[$contact_id] = (string) $current['sms:marketing']['status'];
+        }
+    }
+
+    ksort($answers);
+
+    return $answers;
+}
+
+/**
+ * Why a marketing message may not go to a number, '' when it may: a yes
+ * given here by one of the contacts with the number, no contact's last answer
+ * a no, and no refusal İYS holds for one of them. İYS's own approval is no
+ * consent here and its silence stops nothing: İYS never narrows sending
+ * further than the answers given on the site. Pure.
+ *
+ * @param array $answers contact_id => latest status (pg_sms_marketing_answers())
+ * @param array $iys     contact_id => contacts.iys_sms_status
+ * @return string
+ */
+function pg_sms_marketing_refusal($answers, $iys)
+{
+    if (in_array('refused', (array) $answers, true)) {
+        return lang('The recipient refused marketing messages by SMS.');
+    }
+
+    if (in_array('refused', (array) $iys, true)) {
+        return lang('İYS records that the recipient refused marketing messages by SMS.');
+    }
+
+    if (!in_array('granted', (array) $answers, true)) {
+        return lang('The recipient has not consented to marketing messages by SMS.');
+    }
+
+    return '';
+}
+
+/**
+ * The forms a stored phone number can take once spaces, dashes, brackets,
+ * dots and slashes are dropped, all read back by pg_sms_number() as the same
+ * number: the national forms of a Turkish mobile, the plus and 00 forms of
+ * any number.
+ *
+ * @param string $digits pg_sms_number()
+ * @return string[]
+ */
+function pg_sms_number_variants($digits)
+{
+    $digits = (string) $digits;
+
+    if (preg_match('/^905\d{9}$/', $digits)) {
+        $national = substr($digits, 2);
+
+        return array($national, '0' . $national, $digits, '+' . $digits, '00' . $digits, '+900' . $national);
+    }
+
+    return preg_match('/^[1-9]\d{7,14}$/', $digits) ? array('+' . $digits, '00' . $digits) : array();
+}
+
+/**
+ * A phone column in SQL without the separators pg_sms_number_variants()
+ * drops, to compare with those variants.
+ *
+ * @param string $column a trusted column name
+ * @return string
+ */
+function pg_sms_number_sql($column)
+{
+    $stripped = $column;
+
+    foreach (array(' ', '-', '(', ')', '.', '/') as $separator) {
+        $stripped = "REPLACE(" . $stripped . ", '" . $separator . "', '')";
+    }
+
+    return $stripped;
+}
+
+/**
+ * Why a marketing message may not go to a number, read from the database:
+ * the contacts whose mobile number it is, and the contacts whose answer at a
+ * checkout was about it (the billing phone of their latest order, as
+ * pg_iys_push_number() pushes it), with their consent rows and İYS status.
+ *
+ * @param string $number E.164 digits (pg_sms_check())
+ * @return string '' when it may go
+ */
+function pg_sms_marketing_permission($number)
+{
+    $variants = pg_sms_number_variants($number);
+
+    if (!$variants || !function_exists('pg_consent_log_ready') || !pg_consent_log_ready()) {
+        return pg_sms_marketing_refusal(array(), array());
+    }
+
+    $in = "('" . implode("', '", array_map('e', $variants)) . "')";
+    $iys_column = pg_schema_has('contacts', 'iys_sms_status') ? 'contacts.iys_sms_status' : "''";
+
+    $found = (array) db_items(
+        "SELECT contacts.id, contacts.mobile_phone AS phone, " . $iys_column . " AS iys
+        FROM contacts
+        WHERE
+            (contacts.mobile_phone <> '')
+            AND (" . pg_sms_number_sql('contacts.mobile_phone') . " IN " . $in . ")");
+
+    $found = array_merge($found, (array) db_items(
+        "SELECT contacts.id, orders.billing_phone_number AS phone, " . $iys_column . " AS iys
+        FROM orders
+        JOIN contacts ON contacts.id = orders.contact_id
+        WHERE
+            (orders.contact_id > 0)
+            AND (" . pg_sms_number_sql('orders.billing_phone_number') . " IN " . $in . ")
+            AND (orders.id = (SELECT MAX(latest.id) FROM orders AS latest WHERE latest.contact_id = orders.contact_id))
+            AND EXISTS (
+                SELECT 1 FROM consent_log
+                WHERE
+                    (consent_log.contact_id = orders.contact_id)
+                    AND (consent_log.channel = 'sms')
+                    AND (consent_log.source = 'checkout'))"));
+
+    $iys = array();
+
+    foreach ($found as $contact) {
+        if (pg_sms_number((string) $contact['phone']) === $number) {
+            $iys[(int) $contact['id']] = (string) $contact['iys'];
+        }
+    }
+
+    if (!$iys) {
+        return pg_sms_marketing_refusal(array(), array());
+    }
+
+    $rows = db_items(
+        "SELECT id, created_at, contact_id, channel, purpose, status
+        FROM consent_log
+        WHERE
+            (channel = 'sms')
+            AND (purpose = 'marketing')
+            AND (contact_id IN ('" . implode("', '", array_keys($iys)) . "'))");
+
+    return pg_sms_marketing_refusal(pg_sms_marketing_answers(is_array($rows) ? $rows : array()), $iys);
+}
+
+/**
+ * The marketing settings of a post of the SMS Messages card; no database.
+ *
+ * @param array $post
+ * @param array $before pg_sms_marketing_settings()
+ * @return array|null marketing (pg_sms_marketing_normalize()), changed, marks
+ *                    (field => sentence); null when the post has no such card
+ */
+function pg_sms_marketing_settings_decide($post, $before)
+{
+    if (empty($post['sms_msg_card'])) {
+        return null;
+    }
+
+    $marketing = pg_sms_marketing_normalize(array(
+        'trade_name' => pg_sms_post($post, 'sms_mkt_trade_name'),
+        'mersis'     => preg_replace('/[\s.-]+/', '', pg_sms_post($post, 'sms_mkt_mersis')),
+        'label'      => pg_sms_post($post, 'sms_mkt_label'),
+    ));
+
+    // The built-in label sent back unchanged stays the built-in one, so it
+    // follows the site's language.
+    if ($marketing['label'] === pg_sms_marketing_label_default()) {
+        $marketing['label'] = '';
+    }
+
+    $marks = array();
+
+    if (($marketing['mersis'] !== '') && !preg_match('/^\d{16}$/', $marketing['mersis'])) {
+        $marks['sms_mkt_mersis'] = lang('A MERSİS number has 16 digits.');
+    }
+
+    foreach (array('trade_name' => 120, 'label' => 120) as $key => $max) {
+        if (mb_strlen($marketing[$key], 'UTF-8') > $max) {
+            $marks['sms_mkt_' . $key] = lang(array('string' => 'At most {var:1} characters.', 'vars' => array($max)));
+        }
+    }
+
+    return array(
+        'marketing' => $marketing,
+        'changed'   => ($marketing != pg_sms_marketing_normalize($before)),
+        'marks'     => $marks,
+    );
 }
 
 /**
@@ -485,6 +803,17 @@ function pg_sms_send($to, $text, $kind)
 
     $number = $check['number'];
     $text = $check['text'];
+    $kinds = pg_sms_kinds();
+
+    // Asked again when a queued message is sent: a refusal given since it
+    // was queued stops it.
+    if ($kinds[$kind]) {
+        $refusal = pg_sms_marketing_permission($number);
+
+        if ($refusal !== '') {
+            return pg_sms_failure($refusal);
+        }
+    }
 
     // Anyone can sign in to a demonstration site, so it sends nothing, as it
     // sends no e-mail (email() in includes/fn/mail.php).
@@ -504,7 +833,7 @@ function pg_sms_send($to, $text, $kind)
 
     $send = 'pg_sms_' . $provider . '_send';
 
-    return $send(pg_sms_app($provider), $number, $text, false);
+    return $send(pg_sms_app($provider), $number, $text, $kinds[$kind]);
 }
 
 /**
@@ -790,6 +1119,17 @@ function pg_sms_enqueue($to, $text, $kind, $options = array())
     if (!$check['ok']) {
         $refused['error'] = $check['error'];
         return $refused;
+    }
+
+    $kinds = pg_sms_kinds();
+
+    if ($kinds[$kind]) {
+        $refusal = pg_sms_marketing_permission($check['number']);
+
+        if ($refusal !== '') {
+            $refused['error'] = $refusal;
+            return $refused;
+        }
     }
 
     if (function_exists('pg_demo') && pg_demo()) {
@@ -1235,7 +1575,7 @@ function pg_sms_settings_fields()
                                         <div class="col-12">
                                             <div class="form-field">
                                                 <div class="switch"><input type="checkbox" name="sms_enabled" id="sms_enabled" value="1"' . ($enabled ? ' checked="checked"' : '') . ' class="collapse-switcher" data-bs-target="#sms_row"/></div>
-                                                <label class="" for="sms_enabled">' . lang('Send SMS') . '<br/><span class="form-text">' . lang('Text messages through an SMS provider account of the site. Only transactional messages are sent and they carry no promotion: a marketing message needs the recipient\'s consent recorded in İYS.') . '</span></label>
+                                                <label class="" for="sms_enabled">' . lang('Send SMS') . '<br/><span class="form-text">' . lang('Text messages through an SMS provider account of the site. Transactional messages carry no promotion; a marketing message goes only to a number whose owner consented to it, with the sender identity and type label set on the SMS Messages card.') . '</span></label>
                                             </div>
                                             <div class="collapse popover fade bs-popover-bottom p-0" id="sms_row">
                                                 <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>

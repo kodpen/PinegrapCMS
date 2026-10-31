@@ -156,3 +156,94 @@ function test_settings_accounting_links_name_the_new_place()
 	pg_assert_same(false, strpos($erp_settings, 'commerce settings'), 'the pointer card no longer names the commerce settings');
 	pg_assert_same(false, strpos($erp_settings, "lang('Commerce')"), 'nor its place');
 }
+
+// ── The ERP Settings screen's cards in the pane ──
+
+if (!defined('PG_ERP_ENTRY')) {
+	define('PG_ERP_ENTRY', true);
+}
+
+require_once(PG_FUNCTIONS_DIR . '/includes/erp/fx.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/erp/rules.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/erp/late_fee.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/erp/settings_cards.php');
+
+function test_settings_accounting_lists_the_erp_settings_cards()
+{
+	$accounting = settings_accounting_test_category('accounting');
+	$order = array();
+
+	foreach (array('pgset-erp', 'pgset-invoice', 'pgset-erp-rules', 'pgset-late-fee', 'pgset-efatura-threshold', 'pgset-erp-templates') as $section) {
+		$at = strpos($accounting, "'" . $section . "'");
+		pg_assert_true($at !== false, $section . ' listed');
+		$order[] = $at;
+	}
+
+	$sorted = $order;
+	sort($sorted);
+	pg_assert_same($sorted, $order, 'in reading order');
+	pg_assert_contains("unset(\$categories['accounting']['sections']['pgset-efatura-threshold']", settings_accounting_test_source('includes/settings/registry.php'), 'the threshold left out of the list where the E-Invoice card is');
+}
+
+function test_settings_accounting_pane_draws_the_module_cards()
+{
+	$pane = settings_accounting_test_source('includes/settings/accounting.php');
+
+	pg_assert_contains("require_once(PG_FUNCTIONS_DIR . '/includes/erp/bootstrap.php');", $pane, 'the ERP module loaded');
+
+	foreach (array('pgset-erp-rules' => 'erp_settings_rules_fields()', 'pgset-late-fee' => 'erp_settings_late_fee_fields()', 'pgset-efatura-threshold' => 'erp_settings_efatura_threshold_fields()', 'pgset-erp-templates' => 'erp_settings_templates_status(') as $id => $call) {
+		pg_assert_contains('id="' . $id . '"', $pane, $id . ' drawn');
+		pg_assert_contains($call, $pane, $id . ' from the module');
+	}
+
+	pg_assert_contains("' . (erp_settings_efatura_threshold_shown() ? '' : ' d-none') . '", $pane, 'the threshold drawn hidden outside Turkey');
+	pg_assert_same(false, strpos($pane, 'name="template"'), 'the template editor stays on the screen');
+}
+
+function test_settings_accounting_pane_saves_through_the_module_after_its_checks()
+{
+	$save = settings_accounting_test_source('includes/settings/accounting.save.php');
+	$refusals = strpos($save, 'erp_settings_cards_refusals($_POST, $erp_settings_cards)');
+	$stop = strpos($save, 'if ($liveform->check_form_errors()) {');
+	$update = strpos($save, 'db("UPDATE config');
+	$cards = strpos($save, 'erp_settings_cards_save($_POST, $erp_settings_cards)');
+
+	pg_assert_true(($refusals !== false) && ($refusals < $stop) && ($stop < $update), 'a refused value stops the save before any write');
+	pg_assert_true(($cards !== false) && ($cards > $update), 'the cards saved with the pane');
+	pg_assert_contains("isset(\$_POST['late_fee_rate'], \$_POST['late_fee_tax_rate'])", $save, 'a card whose fields did not come is left alone');
+}
+
+function test_settings_accounting_screen_draws_the_same_functions()
+{
+	$screen = settings_accounting_test_source('erp_settings.php');
+
+	pg_assert_contains("validate_erp_access(\$user, 'settings')", $screen, 'the right stays');
+	pg_assert_contains('$documents = erp_settings_documents();', $screen, 'one list of documents');
+	pg_assert_contains('erp_settings_cards_save($_POST, array($card))', $screen, 'saved like the pane');
+
+	foreach (array('erp_settings_rules_fields()', 'erp_settings_late_fee_fields()', 'erp_settings_efatura_threshold_fields()') as $call) {
+		pg_assert_contains($call, $screen, $call);
+	}
+
+	foreach (array('erp_rules_save(', 'erp_late_fee_settings_save(', 'erp_efatura_threshold_save(', 'name="late_fee_rate"', 'name="vat_exemption_code"', 'name="erp_efatura_web_threshold"') as $gone) {
+		pg_assert_same(false, strpos($screen, $gone), $gone . ' not written twice');
+	}
+
+	foreach (array('id="erp_rules"', 'id="erp_late_fee"', 'id="erp_efatura_threshold"') as $anchor) {
+		pg_assert_contains($anchor, $screen, $anchor . ' kept for the links that land on it');
+	}
+
+	pg_assert_same(false, strpos($screen, '#settings/accounting'), 'no redirect while the template editor is only here');
+}
+
+function test_settings_accounting_card_refusals()
+{
+	pg_assert_same(array(), erp_settings_cards_refusals(array('vat_exemption_code' => '351', 'late_fee_rate' => '1,5', 'late_fee_tax_rate' => '', 'erp_efatura_web_threshold' => '500000', 'erp_efatura_general_threshold' => ''), array('rules', 'late_fee', 'efatura_threshold')), 'good values pass');
+	pg_assert_same(array(), erp_settings_cards_refusals(array('vat_exemption_code' => 'x', 'late_fee_rate' => '999'), array()), 'a card not posted is not checked');
+
+	$refused = erp_settings_cards_refusals(array('vat_exemption_code' => '35', 'late_fee_rate' => (string) (ERP_LATE_FEE_MAX_RATE + 1), 'late_fee_tax_rate' => '101', 'erp_efatura_web_threshold' => '500.000', 'erp_efatura_general_threshold' => '1000000001'), array('rules', 'late_fee', 'efatura_threshold'));
+
+	pg_assert_same(array('vat_exemption_code', 'late_fee_rate', 'late_fee_tax_rate', 'erp_efatura_web_threshold', 'erp_efatura_general_threshold'), array_keys($refused), 'each bad value marked');
+	pg_assert_same(lang('The exemption code is three digits, as the tax authority lists it (for example 351).'), $refused['vat_exemption_code'], 'the save\'s own sentence');
+	pg_assert_same(array(), erp_settings_cards_refusals(array('late_fee_rate' => array('999'), 'late_fee_tax_rate' => ''), array('late_fee')), 'a list is read as empty, as the save reads it');
+}

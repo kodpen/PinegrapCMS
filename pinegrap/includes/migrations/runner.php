@@ -1775,7 +1775,16 @@ function install_heavy_tables() {
 
 }
 
+// A database or disk size in the panel's decimal mark (2,5 GB in Turkish).
+// pg_innodb_size_label() and pg_format_number() come from functions.php; the
+// fallbacks keep the pre-flight card working where they are not loaded.
 function install_size_label($bytes) {
+
+	if (function_exists('pg_innodb_size_label')) {
+
+		return pg_innodb_size_label($bytes);
+
+	}
 
 	$bytes = (float) $bytes;
 
@@ -1795,23 +1804,17 @@ function install_size_label($bytes) {
 
 }
 
+// A row count written in full with the panel's thousands separator
+// (1.500.000 in Turkish): an abbreviated 1.5M or 3,456 reads as a decimal there.
 function install_count_label($count) {
 
-	$count = (float) $count;
+	if (function_exists('pg_format_number')) {
 
-	if ($count >= 1000000) {
-
-		return number_format($count / 1000000, 1) . 'M';
+		return pg_format_number($count, 0);
 
 	}
 
-	if ($count >= 1000) {
-
-		return number_format($count / 1000, 0) . 'k';
-
-	}
-
-	return number_format($count);
+	return number_format((float) $count, 0);
 
 }
 

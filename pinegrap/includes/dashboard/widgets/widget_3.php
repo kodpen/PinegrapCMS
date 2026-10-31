@@ -215,10 +215,14 @@ function pg_dashboard_widget_3($request, $user)
 
         $output_best = '';
 
+        // edit_product.php asks for commerce, not for commerce reports: a
+        // user who may only read the card gets the rows without links.
+        $ec_can_open = (defined('USER_MANAGE_ECOMMERCE') && USER_MANAGE_ECOMMERCE);
+
         foreach ($best_sellers as $rank => $best) {
             $output_best .= pg_widget_row(array(
                 'small' => true,
-                'href'  => 'edit_product.php?id=' . (int) $best['id'],
+                'href'  => $ec_can_open ? 'edit_product.php?id=' . (int) $best['id'] : '',
                 'badge' => ($best['image_name'] != '')
                     ? '<img src="' . PATH . h($best['image_name']) . '" alt="">'
                     : '<span class="pg-rank">' . ($rank + 1) . '</span>',

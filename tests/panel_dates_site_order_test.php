@@ -49,11 +49,15 @@ function test_panel_dates_site_order_chat_window_reads_site_clock()
 	pg_assert_contains("'clock' => array(", $chat);
 	pg_assert_contains("DATE_FORMAT == 'month_day'", $chat);
 	pg_assert_contains("TIME_FORMAT == 'twelve_hours'", $chat);
+	pg_assert_contains("'zone' => (pg_time_uses_user_zone(array()) ? pg_timezone_canonical(USER_TIMEZONE) : date_default_timezone_get())", $chat);
 
 	foreach (array('chat_backend.src.js', 'chat_backend.min.js') as $file) {
 		$source = panel_dates_site_order_source('assets/js/' . $file);
 		pg_assert_contains('month_day', $source, $file);
 		pg_assert_contains('twelve_hours', $source, $file);
+		// Message times follow the panel's zone, not the browser's.
+		pg_assert_contains('timeZone', $source, $file);
+		pg_assert_contains('formatToParts', $source, $file);
 	}
 
 	$source = panel_dates_site_order_source('assets/js/chat_backend.src.js');

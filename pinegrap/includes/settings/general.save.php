@@ -373,9 +373,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     if ($maintenance_switched !== null) {
         log_activity($maintenance_switched ? lang('Maintenance mode was switched on.') : lang('Maintenance mode was switched off.'), $_SESSION['sessionusername']);
 
-        if (file_exists(PG_FUNCTIONS_DIR . '/data/temp/system_status_cache.json')) {
-            @unlink(PG_FUNCTIONS_DIR . '/data/temp/system_status_cache.json');
-        }
+        pg_system_status_forget();
     }
 
     // An address every visitor shares on the list (the server behind a

@@ -173,7 +173,8 @@ function pg_dashboard_activity_kinds($user, $limit)
     // Forms and contacts: the tile's count and bars and the list read the
     // same condition, so a contributor's tile counts only the rows they are
     // shown. A null condition means nothing is granted: no rows, zero bars.
-    if (($user['role'] < 3) || ($user['manage_forms'] == true)) {
+    // Switched off in Site Settings, Forms is left out as the menu leaves it out.
+    if ((FORMS === true) && ((($user['role'] < 3) || ($user['manage_forms'] == true)))) {
         $form_where = pg_dashboard_activity_forms_where($user);
 
         $kinds['form'] = $kind(lang('Forms'), 'bi-file-earmark-text', '#0ea5e9',

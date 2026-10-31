@@ -1646,6 +1646,7 @@
     "İYS is switched on but the account is not complete, so nothing is sent to İYS.": "İYS açık ama hesap eksik, bu yüzden İYS'ye hiçbir şey gönderilmiyor.",
     "İYS lists no brand under this İYS code.": "İYS bu İYS numarası altında hiçbir marka listelemiyor.",
     "İYS lists several brands under this İYS code. Pick the brand and save again.": "İYS bu İYS numarası altında birden çok marka listeliyor. Markayı seçip yeniden kaydedin.",
+    "İYS records that the recipient refused marketing messages by SMS.": "İYS'de alıcının SMS ile pazarlama mesajlarını reddettiği kayıtlı.",
     "İYS: {var:1} consent(s) pushed, {var:2} refused by İYS, {var:3} refusal(s) pulled. {var:4}": "İYS: {var:1} izin gönderildi, {var:2} izni İYS reddetti, {var:3} ret alındı. {var:4}",
     "İleti Merkezi accepted the request but returned no order id.": "İleti Merkezi isteği kabul etti ancak sipariş numarası döndürmedi.",
     "İleti Merkezi answered with code {var:1}. {var:2}": "İleti Merkezi {var:1} koduyla yanıt verdi. {var:2}",

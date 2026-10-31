@@ -35,6 +35,7 @@ Project overview, owner rules, decisions already made, git and branches, sandbox
 - decisions-made-panel.md: Decisions list, panel part: Bootstrap 6 breakpoints kept on purpose; the one date-and-time picker; the main menu in category headings; navigator screens; the front-end editing button box
 - decisions-made-product-10.md: Decisions list, product part 10 (2026-10-30 evening on): Turkish i-fold in panel lists, public invoice PDF address, e-mail triage suggestion, Workspace uploads, no collection schedule columns
 - decisions-made-product-11.md: Decisions list, product part 11 (2026-10-30 night on): CRM shape, storefront API timing, the two support e-mail fields, slash commands over the API, e-mail-a-friend limit off the log
+- decisions-made-product-12.md: Decisions list, product part 12 (2026-10-31 on): ERP settings cards for role 3, Trendyol address order, old n11 rows data step, phone toolbar, Trendyol Luxe, shipment rules confirmed
 - decisions-made-product-2.md: Decisions list, product part 2 (2026-10-29 on): guest account and receipt of a webhook-completed order; PayTR instalments; layout editor of a page not on a visual design; carrier drivers
 - decisions-made-product-3.md: Decisions list, product part 3 (2026-10-29 on): SVG and ZPL labels, the first international label driver, get_catalog.php's dead top-item block, the PHP 5 remnants, converted common regions' rows
 - decisions-made-product-4.md: Decisions list, product part 4 (2026-10-29 evening on): the carrier return label on the returns screen, the W20b starter library, Speculation Rules prefetch
@@ -49,6 +50,7 @@ Project overview, owner rules, decisions already made, git and branches, sandbox
 - decisions-made-schema-4.md: Decisions list, schema part 4 (2026-10-29 afternoon on): ws_flow_templates, ws_refs.source_type to VARCHAR, shipment_labels.order_return_id, config.speculation_prefetch; rules in part 1
 - decisions-made-schema-5.md: Decisions list, schema part 5 (2026-10-29 evening on): subscriptions tables and ENUMs, products customs columns, shipment_labels pickup, ws_events.contact_id; rules in part 1
 - decisions-made-schema-6.md: Decisions list, schema part 6 (2026-10-30 midday on): district and plate_code, iys_sms_status, form_fields.rules, the marketplace auto-invoice switch, erp_quote_links, erp_quote_templates
+- decisions-made-schema-7.md: Decisions list, schema part 7 (2026-10-31 on): SMS campaign tables sms_campaigns and contact_groups_sms_campaigns_xref
 - decisions-made-schema.md: Decisions list, schema part: steps approved in advance (ENUM appends in the 4.48 shape), the tables and columns approved on 2026-10-27 and 2026-10-28, who decides schema
 - decisions-made-seo.md: Decisions list, SEO part (2026-10-27/28): large image preview, site icon, main-host redirect, per-form structured-data type, author source and share-image field; defaults keep running sites
 - decisions-made-waf.md: Decisions list, firewall part: thresholds stay, a concurrent refusal is no offence, rate bans off the ladder, global limit before the session, no lock release, nothing served to a ban.

@@ -21,3 +21,6 @@ description: Pinegrap AI's one suggestion on a new e-mail conversation (G8, PR #
 
 ## What does it never do?
 - Send mail, change the status or holder, notify, or write records (#2444: drafts only). tests/workspace_mail_triage_test.php guards this, together with the switch, the trigger, the prompt and the draft.
+
+## What stays unverified?
+- A live run on a site with an AI key: the model's real answer, its parse and the posted suggestion were checked only by tests/workspace_mail_triage_test.php in the cloud session.

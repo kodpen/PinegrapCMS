@@ -524,6 +524,8 @@ if (!$_POST) {
         $output_delete_button = '<button type="submit" name="submit_button" value="Delete" formnovalidate class="btn my-1  btn-solid theme-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('visitor report')))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>';
     }
     
+    $output_date_changer = '';
+
     // if there are no date filters, then prepare to output date changer
     if ($date_filter_exists == false) {
         // if the date has not been set in the session yet (or an older session

@@ -5,7 +5,8 @@
  * Tests for the short link form shared by the create and the edit screens
  * (includes/forms/short_link_form.php): which option rows a destination
  * opens with, the column a destination is saved in, and that both screens
- * use the shared form and the token.
+ * use the shared form and the token, and the rule a URL destination is
+ * checked with.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -68,4 +69,67 @@ function test_short_link_form_screens_use_the_shared_form()
 	// A one-time link has no name to check; an edited link may keep its own.
 	pg_assert_contains("if (\$link_mode !== 'once') {\n        \$name = pg_short_link_form_validate_name(\$liveform, null);", (string) file_get_contents(PG_FUNCTIONS_DIR . '/add_short_link.php'), 'create');
 	pg_assert_contains("pg_short_link_form_validate_name(\$liveform, \$liveform->get_field_value('id'))", (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_short_link.php'), 'edit');
+}
+
+/**
+ * A stand-in for the live form: the destination check reads values and
+ * marks errors only.
+ */
+class short_link_form_test_form
+{
+	public $values;
+	public $errors = array();
+
+	public function __construct($values)
+	{
+		$this->values = $values;
+	}
+
+	public function get_field_value($field)
+	{
+		return isset($this->values[$field]) ? $this->values[$field] : '';
+	}
+
+	public function check_field_error($field)
+	{
+		return isset($this->errors[$field]);
+	}
+
+	public function mark_error($field, $message = '')
+	{
+		$this->errors[$field] = $message;
+	}
+
+	public function validate_required_field($field, $message = '')
+	{
+		if (trim((string) $this->get_field_value($field)) === '') {
+			$this->mark_error($field, $message);
+		}
+	}
+}
+
+function short_link_form_test_url_error($url)
+{
+	$form = new short_link_form_test_form(array('destination_type' => 'url', 'url' => $url));
+
+	pg_short_link_form_validate_destination($form, null);
+
+	return isset($form->errors['url']) ? $form->errors['url'] : '';
+}
+
+function test_short_link_form_url_destination_uses_the_shared_rule()
+{
+	pg_assert_same('', short_link_form_test_url_error('https://example.com/a?b=1'), 'web address');
+	pg_assert_same('', short_link_form_test_url_error('/yeni/sayfa'), 'path on this site');
+
+	foreach (array('mailto:info@example.com', 'tel:+905551112233', 'ftp://example.com/x', 'javascript:alert(1)', 'data:text/html,x', '//cdn.example.com/x', '/\\other.com') as $url) {
+		pg_assert_same(pg_short_link_url_problem($url), short_link_form_test_url_error($url), $url);
+		pg_assert_true(short_link_form_test_url_error($url) !== '', $url . ' refused');
+	}
+
+	pg_assert_true(short_link_form_test_url_error('') !== '', 'empty');
+	pg_assert_true(short_link_form_test_url_error('/a b') !== '', 'a space inside');
+	pg_assert_true(short_link_form_test_url_error(' /a') !== '', 'a leading space is never stored');
+	pg_assert_true(short_link_form_test_url_error("/a\t") !== '', 'a trailing tab is never stored');
+	pg_assert_true(short_link_form_test_url_error('/' . str_repeat('a', pg_short_link_url_max())) !== '', 'longer than the column');
 }

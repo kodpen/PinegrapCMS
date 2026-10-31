@@ -88,6 +88,9 @@ function test_waf_log_list_row()
 	pg_assert_contains('/?q=&lt;script&gt;', $html, 'the request is escaped');
 	pg_assert_contains('&#039; OR 1=1', $html, 'the match is escaped');
 	pg_assert_contains('AB12', $html, 'the reference');
+	pg_assert_same(0, preg_match('/>\\d{4}-\\d{2}-\\d{2} /', $html), 'no fixed Y-m-d date');
+	pg_assert_contains(h(get_absolute_time(array('timestamp' => $now - 600, 'format' => 'plain_text'))), $html, 'first hit in the site order');
+	pg_assert_contains('&rarr; ' . h(get_absolute_time(array('timestamp' => $now - 60, 'type' => 'time', 'format' => 'plain_text'))), $html, 'last hit as a clock time');
 
 	$event['last_seen'] = $event['log_timestamp'];
 	$event['hit_count'] = '1';

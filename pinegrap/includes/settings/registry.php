@@ -289,14 +289,22 @@ function pg_settings_categories()
         'accounting' => array(
             'label' => lang('Accounting'),
             'icon'  => 'bi-calculator',
-            'description' => lang('The ERP and the e-document provider.'),
+            'description' => lang('The ERP, the e-document provider, the accounting rules and the document templates.'),
             'sections' => array(
                 'pgset-erp'       => lang('ERP'),
                 'pgset-invoice'   => lang('E-Invoice'),
+                'pgset-erp-rules' => lang('Accounting rules'),
+                'pgset-late-fee'  => lang('Late payment fee'),
+                'pgset-efatura-threshold' => lang('e-Fatura threshold'),
+                'pgset-erp-templates' => lang('Document Templates'),
             ),
             'keywords' => array(
                 'pgset-erp'       => pg_settings_keywords(lang('erp, account, cash, bank, bookkeeping, waybill, collection, overdue, reminder, automatic invoice')),
                 'pgset-invoice'   => pg_settings_keywords(lang('invoice, e-invoice, e-archive, e-document, provider, parasut, isbasi, logo, accounting')),
+                'pgset-erp-rules' => pg_settings_keywords(lang('accounting rules, vat, withholding, exemption code, zero-rated, expense category')),
+                'pgset-late-fee'  => pg_settings_keywords(lang('late payment fee, late fee, interest, overdue, default interest')),
+                'pgset-efatura-threshold' => pg_settings_keywords(lang('e-fatura, threshold, limit, gross sales, system status')),
+                'pgset-erp-templates' => pg_settings_keywords(lang('template, invoice template, delivery note, reconciliation letter, pdf, print, html')),
             ),
             'lists' => array(
                 'erp_fx_currencies' => 1,
@@ -319,12 +327,14 @@ function pg_settings_categories()
 
     );
 
-    // The e-invoice card carries Turkish e-document providers only; outside
-    // Turkey, with none in use, it is left out of the list (the card is still
-    // drawn, hidden, so a save never finds its fields missing).
+    // The e-invoice card carries Turkish e-document providers only, and the
+    // e-Fatura threshold is a Turkish rule; outside Turkey, with no provider
+    // in use, both are left out of the list (the cards are still drawn,
+    // hidden, so a save never finds their fields missing).
     if (function_exists('pg_edoc_settings_shown') && !pg_edoc_settings_shown()) {
         unset($categories['accounting']['sections']['pgset-invoice'], $categories['accounting']['keywords']['pgset-invoice']);
-        $categories['accounting']['description'] = lang('The ERP: accounts, documents, payment terms and reminders.');
+        unset($categories['accounting']['sections']['pgset-efatura-threshold'], $categories['accounting']['keywords']['pgset-efatura-threshold']);
+        $categories['accounting']['description'] = lang('The ERP, the accounting rules and the document templates.');
     }
 
     // The Dashboard card is drawn for designers and administrators only

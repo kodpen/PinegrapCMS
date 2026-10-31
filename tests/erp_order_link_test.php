@@ -4,7 +4,8 @@
  *
  * Tests for the order cell of the ERP invoice and delivery note screens
  * (erp_order_link_html(), includes/erp/waybills.php): an order that is still
- * there links to view_order.php, a deleted one prints "#N (deleted)" with no
+ * there links to view_order.php for a viewer with commerce rights and prints
+ * as plain text for one without, a deleted one prints "#N (deleted)" with no
  * link, and the six places that show a document's order use the helper.
  *
  * @author      Erdal Güral (Kodpen)
@@ -21,15 +22,34 @@ require_once(PG_FUNCTIONS_DIR . '/includes/erp/waybills.php');
 
 function test_erp_order_link_links_an_order_that_is_still_there()
 {
-	$html = erp_order_link_html(42, 'PG-1001', true);
+	$html = erp_order_link_html(42, 'PG-1001', true, '', true);
 	pg_assert_contains('<a href="view_order.php?id=42">', $html, 'the order is linked');
 	pg_assert_contains('PG-1001</a>', $html, 'by its number');
 
-	$html = erp_order_link_html(42, '', true, 'pg-link-body-emphasis');
+	$html = erp_order_link_html(42, '', true, 'pg-link-body-emphasis', true);
 	pg_assert_contains('<a href="view_order.php?id=42" class="pg-link-body-emphasis">#42</a>', $html, 'an order without a number shows its id, with the given class');
 
-	$html = erp_order_link_html(42, '<b>', true);
+	$html = erp_order_link_html(42, '<b>', true, '', true);
 	pg_assert_contains('&lt;b&gt;', $html, 'the number is escaped');
+}
+
+function test_erp_order_link_is_plain_text_for_a_clerk_without_commerce_rights()
+{
+	$html = erp_order_link_html(42, 'PG-1001', true, 'pg-link-body-emphasis', false);
+	pg_assert_true($html === 'PG-1001', 'the number without a link to "Access denied"');
+
+	$html = erp_order_link_html(42, '<b>', true, '', false);
+	pg_assert_true($html === '&lt;b&gt;', 'the plain number is escaped');
+
+	$html = erp_order_link_html(42, '', true, '', false);
+	pg_assert_true($html === '#42', 'an order without a number shows its id');
+}
+
+function test_erp_order_link_reads_the_viewer_right_when_not_given()
+{
+	$html = erp_order_link_html(42, 'PG-1001', true);
+	$linked = defined('USER_MANAGE_ECOMMERCE') && USER_MANAGE_ECOMMERCE;
+	pg_assert_true((strpos($html, '<a href="view_order.php?id=42">') !== false) === $linked, 'the default follows USER_MANAGE_ECOMMERCE, no link when it is not set');
 }
 
 function test_erp_order_link_marks_a_deleted_order_without_a_link()

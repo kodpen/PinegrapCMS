@@ -456,7 +456,7 @@ if (!$_POST) {
     pg_user_form_save_access($user_id, $_POST['role'], $_POST, false);
 
     // If the user checked to notify the user, then send email to user.
-    if ($_POST['notify_user'] == 1) {
+    if (($_POST['notify_user'] ?? '') == 1) {
         $login = '';
         
         // if user's role is administrator, designer, or manager
@@ -466,13 +466,13 @@ if (!$_POST) {
         if (
             ($_POST['role'] < 3)
             || (no_acl_check($user_id) == true)
-            || ($_POST['manage_calendars'] == 'yes')
-            || ($_POST['manage_forms'] == 'yes')
-            || ($_POST['manage_visitors'] == 'yes')
-            || ($_POST['manage_contacts'] == 'yes')
-            || ($_POST['manage_emails'] == 'yes')
-            || ($_POST['manage_ecommerce'] == 'yes')
-            || $_POST['manage_ecommerce_reports']
+            || (($_POST['manage_calendars'] ?? '') == 'yes')
+            || (($_POST['manage_forms'] ?? '') == 'yes')
+            || (($_POST['manage_visitors'] ?? '') == 'yes')
+            || (($_POST['manage_contacts'] ?? '') == 'yes')
+            || (($_POST['manage_emails'] ?? '') == 'yes')
+            || (($_POST['manage_ecommerce'] ?? '') == 'yes')
+            || ($_POST['manage_ecommerce_reports'] ?? '')
             || ($_POST['manage_erp'] ?? '')
             || ($_POST['manage_workspace'] ?? '')
             || (count(get_items_user_can_edit('ad_regions', $user_id)) > 0)
@@ -512,7 +512,7 @@ if (!$_POST) {
     pg_audit_record('create', 'user', (int) $user_id);
 
     // If the user was notified, then prepare password message related to that.
-    if ($_POST['notify_user'] == 1) {
+    if (($_POST['notify_user'] ?? '') == 1) {
         $password_message = ($set_password_url !== '')
             ? lang('A link to set a password has been emailed to the user.')
             : lang('The user has been emailed and can set a password with "Forgot password" on the sign-in page.');

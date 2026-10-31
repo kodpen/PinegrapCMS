@@ -35,15 +35,15 @@ function test_report_tables_have_no_click_only_rows()
 	}
 
 	$source = report_tables_links_source('view_order_report.php');
-	pg_assert_contains("<a href=\"' . h(\$output_link_url) . '\">' . h(\$order['order_number']) . '</a>", $source, 'order number is a link');
-	pg_assert_contains("'view_order.php?id=' . (int) \$order['id'] . '&send_to=' . urlencode(", $source, 'order link url');
+	pg_assert_contains("return '<a href=\"' . h(\$url) . '\">' . h(\$order['order_number']) . '</a>';", $source, 'order number is a link');
+	pg_assert_contains("\$url = 'view_order.php?id=' . (int) \$order['id'] . '&send_to=' . urlencode(", $source, 'order link url');
 
 	$source = report_tables_links_source('view_visitor_report.php');
 	pg_assert_contains("<a href=\"' . h(\$output_link_url) . '\">' . h(\$visitor['id']) . '</a>", $source, 'visitor id is a link');
 	pg_assert_contains("'view_visitor.php?id=' . (int) \$visitor['id'] . \$query_string_visitor_report_id;", $source, 'visitor link url');
 
 	$source = report_tables_links_source('view_shipping_report.php');
-	pg_assert_contains("<a href=\"' . h('edit_product.php?id=' . (int) \$product['id']) . '\">", $source, 'product name is a link');
+	pg_assert_contains("'<a href=\"' . h('edit_product.php?id=' . (int) \$product['id']) . '\">'", $source, 'product name is a link');
 }
 
 // The '{var:1}%' template puts the sign where the panel language wants it.
@@ -91,6 +91,6 @@ function test_report_tables_name_their_rows()
 	}
 
 	$source = report_tables_links_source('view_shipping_report.php');
-	pg_assert_contains("<th scope=\"row\" class=\"chart_label fw-normal\"><a href=\"' . h('edit_product.php?id=", $source, 'shipping product row header');
+	pg_assert_contains("<th scope=\"row\" class=\"chart_label fw-normal\">' . (\$can_open_commerce ? '<a href=\"' . h('edit_product.php?id=", $source, 'shipping product row header');
 	pg_assert_contains("<th scope=\"row\">' . lang('Grand Total') . '</th>", $source, 'shipping Grand Total row header');
 }

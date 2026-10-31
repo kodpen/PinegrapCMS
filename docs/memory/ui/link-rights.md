@@ -1,6 +1,6 @@
 ---
 name: link-rights
-description: A user or contact name links to its edit screen only when that screen admits the viewer (pg_can_open_user(), pg_can_open_contact()); Sessions rows drop the actions the POST rule refuses
+description: Names, orders and products link to their edit screen only when it admits the viewer (pg_can_open_user(), pg_can_open_contact(), USER_MANAGE_ECOMMERCE); Sessions rows drop refused actions
 module: auth
 ---
 
@@ -16,10 +16,13 @@ module: auth
 - `view_order.php` and `print_order.php` (User, Contact, affiliate; both read `user_role AS username_role` in the order query), `edit_gift_card.php` (From: user link, else contact link, else plain), `erp_accounts.php` (the contact icon shows unlinked with a hidden "Contact" label), ERP account drawer contact name, ERP order flow "Edit Contact" step link (left out), `view_sessions.php` (names, Manage button).
 - Older guards of the same kind: `includes/fn/contact_list.php`, `includes/dashboard/widgets/widget_4.php`, `chat.php`.
 
+## Which order and product links need the commerce right?
+- `view_order.php`, `view_orders.php` and `edit_product.php` call `validate_ecommerce_access()`; a role-3 user with only `manage_ecommerce_reports` opens the reports and the Ecommerce Summary card. Without `USER_MANAGE_ECOMMERCE` these print the label as plain text (`h()`): Order Report detail order numbers (`$output_order_number`), Shipping Report day badge (a `span` with the badge look), Before/After/Total headings (`$output_orders_heading`) and product row headers, the card's Best Sellers rows (`'href' => ''`), and View Campaign's order reference (also escaped now). Pinned by `tests/report_commerce_link_rights_test.php`.
+
 ## What changed on Sessions besides the links?
 - Rows the POST rule refuses (not own account, not administrator, role >= target role) are drawn without Lock/Unlock, Sign out, Test and Stop. Own sessions keep their actions though the name is not linked: the POST rule admits self, `edit_user.php` does not.
 
 ## How is it tested?
 - `tests/panel_link_rights_test.php`: the role matrix of `pg_can_open_user()` and the paths of `pg_can_open_contact()` that need no database, and a source pin that every `edit_user.php` / `edit_contact.php` link in `view_order.php` sits next to its helper.
 
-Related: docs/memory/core/permission-columns.md, docs/memory/ui/main-menu-entry-gates.md
+Related: docs/memory/core/permission-columns.md, docs/memory/ui/main-menu-entry-gates.md, docs/memory/ui/erp-link-rights.md
