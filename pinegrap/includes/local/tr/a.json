@@ -2690,6 +2690,7 @@
     "Are you sure you want to leave? Changes that are not published will be lost.": "Çıkmak istediğinize emin misiniz? Yayınlanmamış değişiklikler kaybolacak.",
     "Are you sure you want to leave? Unsaved changes will be lost.": "Çıkmak istediğinize emin misiniz? Kaydedilmemiş değişiklikler kaybolacak.",
     "Are you sure you want to reset the user's password and email a new password to the user?": "Kullanıcının parolasını sıfırlamak ve kullanıcıya yeni parolayı e-postayla göndermek istediğinizden emin misiniz?",
+    "Are you sure you want to reset the user's password and email the user a link to set a new password?": "Kullanıcının parolasını sıfırlamak ve kullanıcıya yeni parola belirleme bağlantısını e-postayla göndermek istediğinizden emin misiniz?",
     "Are you sure you want to restore this order to complete?": "Bu siparişi tamamlandı olarak geri almak istediğinizden emin misiniz?",
     "Area": "Bölge",
     "Arguments": "Argümanlar",

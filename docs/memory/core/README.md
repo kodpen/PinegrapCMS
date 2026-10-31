@@ -20,7 +20,7 @@ Code rules, file layout, translation, JavaScript twins and bundles, roles and ac
 ## Files
 
 - access-control-and-roles.md: validate_area_access() gates, real role numbering (Designer above Manager), role table, job-script gating, and the ecommerce role rule (panel and external API owner).
-- admin-new-account-email-link.md: The "New Account" e-mail an administrator sends from add user or import users carries a single-use set password link, never the random password (PR #1217)
+- admin-new-account-email-link.md: E-mails an administrator triggers for an account (add user, import users, reset password) carry a single-use set password link, never a password (PR #1217, #4093)
 - ai-prompt-data-blocks.md: Untrusted text set apart in AI prompts, tool answers and the designer's page brief (pg_ai_data_block(), PR #1854, #1953): the marks, forged marks, what is framed
 - ai-prompt-rules.md: The rules block every language-model prompt ends with (pg_ai_prompt_rules(), PR #1124) writer and assistant profiles, the builders, the test that fails for a prompt without it
 - ai-prompt-version.md: pg_ai_prompt_version() (r + 8 hex of the rules' SHA-1), ws_ai_requests.prompt_version (11.0.112, #2829), the insert helper and its scan test, where the version is shown
