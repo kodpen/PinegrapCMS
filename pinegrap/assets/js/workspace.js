@@ -7778,7 +7778,7 @@
                 }
 
                 // A call link is followed only when it is a web address.
-                if (item.meeting_url && /^https?:\/\//i.test(item.meeting_url) && !item.past) {
+                if (item.meeting_url && /^https?:/i.test(item.meeting_url) && !item.past) {
                     var call = el('a', 'btn btn-sm btn-outline theme-secondary rounded-pill', t('join'));
                     call.href = item.meeting_url;
                     call.target = '_blank';
