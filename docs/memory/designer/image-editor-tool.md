@@ -17,6 +17,7 @@ description: Bindable image editor (Pintura): save endpoint contract, write rule
 - `files.image_width/height` are written on BOTH paths (columns probed with `SHOW COLUMNS`), `optimized = 0`.
 - A design file (`design = 1`) is rejected for EVERY role: `image_editor_edit.php` rejects it too; two entry points must not answer differently for one file.
 - An animated GIF, APNG or animated WebP is never overwritten; only a new file. The check reads the file's bytes (`pg_image_is_animated()`), so the name does not matter (PR #1340).
+- A file deleted after the editor opened is refused by both: `image_editor_save.php` with 'Sorry, we could not find the file.', `image_editor_edit.php`'s Save (POST) with its open screen's 'The image cannot be updated because it no longer exists' before any unlink, UPDATE or Keep and Save INSERT (it used to throw a blank 500 on PHP 8 or write a stray '.jpg' row).
 
 ## What is the designer-side contract?
 - The contract is the FIELD, not the node. The button uses the same contract as `sdOpenImagePicker` ("which input am I filling"). Every field carrying an image address gets the button; the tool knows no node. That is why an image node's `src` and a background image worked with one line each.
