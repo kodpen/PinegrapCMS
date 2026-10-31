@@ -284,11 +284,231 @@
         return this.future.length > 0;
     };
 
+    // ---- crop, turns and flips ----
+
+    // Crop ratios (width / height): 0 is free, -1 the picture's own.
+    var RATIOS = [['free', 0], ['original', -1], ['1:1', 1], ['4:3', 4 / 3], ['3:2', 3 / 2], ['16:9', 16 / 9], ['4:5', 4 / 5], ['9:16', 9 / 16]];
+
+    // Layers that keep their size and stay upright when the picture turns
+    // or flips: only their centre moves.
+    var UPRIGHT = ['text', 'sticker'];
+
+    function sourceTurns(doc) {
+        var g = doc.geometry, src = doc.source || { width: 0, height: 0 };
+
+        return flipRot(src.width, src.height, g.rot, g.flipX, g.flipY);
+    }
+
+    // The crop box in the rotated space; the whole picture without a crop.
+    function cropBox(doc) {
+        var c = doc.geometry.crop, fr = sourceTurns(doc);
+
+        return c ? { x: c.x, y: c.y, w: c.w, h: c.h } : { x: 0, y: 0, w: fr.rw, h: fr.rh };
+    }
+
+    // From the picture's pixels to the rotated space: the quarter turn and
+    // flips, then the straightening around the centre, scaled so that crop
+    // (the document's own box by default) stays covered.
+    function pictureMatrix(doc, crop) {
+        var fr = sourceTurns(doc), deg = doc.geometry.straighten || 0;
+        var s = coverScale(crop || cropBox(doc), fr.rw, fr.rh, deg);
+        var around = mul(translate(fr.rw / 2, fr.rh / 2), mul(rotate(deg), mul(scale(s), translate(-fr.rw / 2, -fr.rh / 2))));
+
+        return mul(around, fr.fr);
+    }
+
+    // The largest box of ratio inside rw x rh, centred where box was and
+    // kept inside. ratio 0 leaves the box as it is.
+    function fitRatio(box, ratio, rw, rh) {
+        if (!ratio) {
+            return { x: box.x, y: box.y, w: box.w, h: box.h };
+        }
+
+        var w = rw, h = rw / ratio;
+
+        if (h > rh) {
+            h = rh;
+            w = rh * ratio;
+        }
+
+        return {
+            x: clamp(box.x + box.w / 2 - w / 2, 0, rw - w),
+            y: clamp(box.y + box.h / 2 - h / 2, 0, rh - h),
+            w: w,
+            h: h
+        };
+    }
+
+    // The box after dragging handle (n, s, e, w or a corner) to the point
+    // (px, py), inside rw x rh. With a ratio the opposite corner stays (an
+    // edge handle keeps the other axis centred) and the box shrinks rather
+    // than leave the picture.
+    function resizeCrop(box, handle, px, py, ratio, rw, rh, min) {
+        min = min || 16;
+        px = clamp(px, 0, rw);
+        py = clamp(py, 0, rh);
+
+        var x0 = box.x, y0 = box.y, x1 = box.x + box.w, y1 = box.y + box.h;
+        var west = handle.indexOf('w') >= 0, north = handle.indexOf('n') >= 0;
+
+        if (west) {
+            x0 = Math.min(px, x1 - min);
+        }
+
+        if (handle.indexOf('e') >= 0) {
+            x1 = Math.max(px, x0 + min);
+        }
+
+        if (north) {
+            y0 = Math.min(py, y1 - min);
+        }
+
+        if (handle.indexOf('s') >= 0) {
+            y1 = Math.max(py, y0 + min);
+        }
+
+        if (!ratio) {
+            return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
+        }
+
+        var vertical = (handle === 'n' || handle === 's'), horizontal = (handle === 'e' || handle === 'w');
+        var w = x1 - x0, h = y1 - y0;
+        var ax = west ? box.x + box.w : box.x, ay = north ? box.y + box.h : box.y;
+        var cx = box.x + box.w / 2, cy = box.y + box.h / 2;
+
+        if (vertical) {
+            w = h * ratio;
+        } else if (horizontal) {
+            h = w / ratio;
+        } else if (w / h > ratio) {
+            h = w / ratio;
+        } else {
+            w = h * ratio;
+        }
+
+        var roomW = vertical ? 2 * Math.min(cx, rw - cx) : (west ? ax : rw - ax);
+        var roomH = horizontal ? 2 * Math.min(cy, rh - cy) : (north ? ay : rh - ay);
+        var f = Math.min(1, roomW / w, roomH / h);
+
+        w *= f;
+        h *= f;
+
+        return {
+            x: vertical ? cx - w / 2 : (west ? ax - w : ax),
+            y: horizontal ? cy - h / 2 : (north ? ay - h : ay),
+            w: w,
+            h: h
+        };
+    }
+
+    function moveCrop(box, dx, dy, rw, rh) {
+        return { x: clamp(box.x + dx, 0, rw - box.w), y: clamp(box.y + dy, 0, rh - box.h), w: box.w, h: box.h };
+    }
+
+    // A layer's geometry through fn(x, y) -> [x, y]: line ends, point lists,
+    // path nodes and boxes; an upright layer keeps its size.
+    function mapLayer(layer, fn) {
+        var l = clone(layer), p, q;
+
+        if (typeof l.x1 === 'number') {
+            p = fn(l.x1, l.y1);
+            q = fn(l.x2, l.y2);
+            l.x1 = p[0];
+            l.y1 = p[1];
+            l.x2 = q[0];
+            l.y2 = q[1];
+        }
+
+        if (Object.prototype.toString.call(l.pts) === '[object Array]') {
+            l.pts = l.pts.map(function (pt) { return fn(pt[0], pt[1]); });
+        }
+
+        if (Object.prototype.toString.call(l.nodes) === '[object Array]') {
+            l.nodes.forEach(function (n) {
+                var a = fn(n.x, n.y), i = fn(n.ix, n.iy), o = fn(n.ox, n.oy);
+
+                n.x = a[0];
+                n.y = a[1];
+                n.ix = i[0];
+                n.iy = i[1];
+                n.ox = o[0];
+                n.oy = o[1];
+            });
+        }
+
+        if ((typeof l.x === 'number') && (typeof l.w === 'number')) {
+            if (UPRIGHT.indexOf(l.type) >= 0) {
+                p = fn(l.x + l.w / 2, l.y + l.h / 2);
+                l.x = p[0] - l.w / 2;
+                l.y = p[1] - l.h / 2;
+            } else {
+                p = fn(l.x, l.y);
+                q = fn(l.x + l.w, l.y + l.h);
+                l.x = Math.min(p[0], q[0]);
+                l.y = Math.min(p[1], q[1]);
+                l.w = Math.abs(q[0] - p[0]);
+                l.h = Math.abs(q[1] - p[1]);
+            }
+        }
+
+        return l;
+    }
+
+    // A copy of doc in a new orientation (geometry patch: rot, flipX, flipY):
+    // the crop box and the layers move with the picture.
+    function reorient(doc, patch) {
+        var d = clone(doc), before = sourceTurns(doc);
+
+        Object.keys(patch).forEach(function (k) { d.geometry[k] = patch[k]; });
+
+        var after = sourceTurns(d), map = mul(after.fr, inv(before.fr));
+        var fn = function (x, y) { return apply(map, x, y); };
+
+        if (d.geometry.crop) {
+            var c = d.geometry.crop, p = fn(c.x, c.y), q = fn(c.x + c.w, c.y + c.h);
+
+            d.geometry.crop = { x: Math.min(p[0], q[0]), y: Math.min(p[1], q[1]), w: Math.abs(q[0] - p[0]), h: Math.abs(q[1] - p[1]) };
+        }
+
+        if (d.geometry.output && ((before.rot % 180) !== (after.rot % 180))) {
+            d.geometry.output = { w: d.geometry.output.h, h: d.geometry.output.w };
+        }
+
+        d.layers = d.layers.map(function (l) { return mapLayer(l, fn); });
+
+        return d;
+    }
+
+    // A quarter turn of what is on screen, clockwise for dir 1: under one
+    // flip the picture's own turn goes the other way.
+    function turnDocument(doc, dir) {
+        var g = doc.geometry, sign = (g.flipX !== g.flipY) ? -1 : 1;
+
+        return reorient(doc, { rot: ((g.rot + 90 * dir * sign) % 360 + 360) % 360 });
+    }
+
+    // A mirror of what is on screen: axis 'x' left to right, 'y' top to bottom.
+    function flipDocument(doc, axis) {
+        var g = doc.geometry;
+
+        return reorient(doc, (axis === 'y') ? { flipY: !g.flipY } : { flipX: !g.flipX });
+    }
+
+    // The size the picture is saved at: the output size, else the crop box.
+    function outputSize(doc) {
+        var o = doc.geometry.output, c = cropBox(doc);
+
+        return o ? { w: o.w, h: o.h } : { w: Math.round(c.w), h: Math.round(c.h) };
+    }
+
     var api = {
         mul: mul, inv: inv, apply: apply, translate: translate, scale: scale, rotate: rotate, clamp: clamp,
         flipRot: flipRot, coverScale: coverScale, fitZoom: fitZoom, centred: centred, zoomAt: zoomAt,
         PROFILES: PROFILES, TOOLS: TOOLS, resolveTools: resolveTools,
-        clone: clone, newDocument: newDocument, docSize: docSize, History: History
+        clone: clone, newDocument: newDocument, docSize: docSize, History: History,
+        RATIOS: RATIOS, cropBox: cropBox, pictureMatrix: pictureMatrix, fitRatio: fitRatio, resizeCrop: resizeCrop,
+        moveCrop: moveCrop, mapLayer: mapLayer, reorient: reorient, turnDocument: turnDocument, flipDocument: flipDocument,
+        outputSize: outputSize
     };
 
     if ((typeof module === 'object') && module.exports) {
