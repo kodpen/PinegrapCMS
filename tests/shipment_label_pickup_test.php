@@ -148,5 +148,7 @@ function test_shipment_label_pickup_dialog()
 	pg_assert_same(5, substr_count($html, 'form="shipment-label-form"'));
 	pg_assert_contains('name="pickup_again"', $html);
 	pg_assert_contains('&lt;b&gt;booked', $html);
+	pg_assert_contains('_from">Earliest time</label>', $html, 'the window has its own words, not the e-mail From');
+	pg_assert_contains('_to">Latest time</label>', $html);
 	pg_assert_false(strpos($html, 'form="') !== false && strpos(pg_shipment_label_pickup_dialog('d', '', 'bulk_pickup'), 'form="') !== false, 'the list dialog uses its own form');
 }

@@ -195,6 +195,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - refund-amounts-base-currency.md: Refund and cancel amounts on the dashboard 'To refund' lane and the order screen are printed with BASE_CURRENCY_SYMBOL, never orders.currency_code
 - shipment-api-fields.md: The address (district) and parcels blocks of GET /orders/{id} shipments, the order.shipped / order.delivered parcels (pg_shipment_api_parcel), and the carrier POST /orders/{id}/shipment keeps
 - shipment-label-api.md: Carrier labels in the external API (2026.11.0, PR #3220): POST /orders/{id}/shipments/label with a dry run, labels per shipment in GET /orders/{id}, the document route, the create check split
+- shipment-label-bulk-create.md: Create Labels on the orders list: which addresses a run takes, the 20-call cap, refusals before the service, the notices (2026.11.0, #3972)
 - shipment-label-bulk.md: Bulk carrier labels from the orders list (create, one merged PDF, one .zpl), Cancel Label and return labels on the order, and the PDF merger they use (2026.11.0, PR #3137)
 - shipment-label-pickup-drivers.md: The label drivers' pickup operation (#3415): Shippo POST /pickups/ (#3475), Sendcloud Pickups API v3 (#3496), Geliver, Aras, Basit Kargo, Kargonomi without one, unverified points
 - shipment-label-pickup.md: Carrier pickup requests (2026.11.0, 11.0.131, #3415): pickup_ref/pickup_at, the driver pickup answer, list and label card dialog, groups, window, double-booking warning

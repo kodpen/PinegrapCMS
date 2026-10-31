@@ -54,8 +54,12 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     if ($request === 'bulk_print') {
         $bulk = pg_shipment_label_bulk_pdf($orders);
 
+        // Nothing to send: the answer goes on the orders list, never on
+        // the site's not-found page.
         if (!$bulk['ok']) {
-            output_error(h($bulk['error']), 404);
+            $liveform = new liveform('view_orders');
+            $liveform->mark_error('_error', h($bulk['error']));
+            go(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_orders.php');
         }
 
         header('Cache-Control: private, no-store');
@@ -71,8 +75,12 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     if ($request === 'bulk_zpl') {
         $bulk = pg_shipment_label_bulk_zpl($orders);
 
+        // Nothing to send: the answer goes on the orders list, never on
+        // the site's not-found page.
         if (!$bulk['ok']) {
-            output_error(h($bulk['error']), 404);
+            $liveform = new liveform('view_orders');
+            $liveform->mark_error('_error', h($bulk['error']));
+            go(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_orders.php');
         }
 
         foreach (pg_shipment_label_headers('zpl', 'labels', true) as $line) {

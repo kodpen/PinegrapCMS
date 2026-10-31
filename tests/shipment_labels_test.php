@@ -559,3 +559,49 @@ function test_shipment_label_bulk_note()
 	pg_assert_true(strpos($only_zpl, 'Labels not in this PDF') === false, 'no list heading without a left-out label');
 	pg_assert_same('', pg_shipment_label_bulk_note(array(), 0), 'nothing to say, no page');
 }
+
+// A bulk run spends its cap only on addresses that reach a service: a
+// refusal before the call is reported on every run but neither uses the cap
+// nor counts as left, so the addresses behind it are reached.
+function test_shipment_label_bulk_run_cap()
+{
+	$refused = array(1 => 'not completed', 2 => 'no service', 3 => 'no service');
+	$called = array();
+	$check = function ($id) use ($refused) {
+		return isset($refused[$id]) ? $refused[$id] : '';
+	};
+	$create = function ($id) use (&$called) {
+		$called[] = $id;
+		return ($id === 6) ? array('ok' => false, 'error' => 'service said no') : array('ok' => true, 'error' => '');
+	};
+
+	$run = pg_shipment_label_bulk_run(array(1, 2, 3, 4, 5, 6, 7, 8), 3, $check, $create);
+
+	pg_assert_same(array(4, 5, 6), $called, 'the cap is spent on calls only');
+	pg_assert_same(2, $run['created']);
+	pg_assert_same(2, $run['left'], 'only addresses a rerun can reach are left');
+	pg_assert_same(array('not completed', 'no service', 'no service', 'service said no'), $run['failed'], 'refusals are still reported');
+
+	$called = array();
+	$run = pg_shipment_label_bulk_run(array(1, 2, 3), 2, $check, $create);
+	pg_assert_same(array(), $called);
+	pg_assert_same(0, $run['left'], 'refusals alone leave nothing to rerun');
+	pg_assert_same(3, count($run['failed']));
+}
+
+// Print Labels and Download ZPL Labels with no label answer on the orders
+// list, never with the site's 404 page.
+function test_shipment_label_bulk_print_answers_on_the_list()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/shipment_label.php');
+	$start = strpos($source, "\$request === 'bulk_print'");
+	$end = strpos($source, "\$request === 'bulk_create'");
+
+	pg_assert_true(($start !== false) && ($end !== false), 'the bulk branches are found');
+
+	$branches = substr($source, $start, $end - $start);
+
+	pg_assert_false(strpos($branches, '404') !== false, 'no 404 page');
+	pg_assert_same(2, substr_count($branches, "new liveform('view_orders')"));
+	pg_assert_same(2, substr_count($branches, "/view_orders.php');"));
+}
