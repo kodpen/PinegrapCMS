@@ -51,6 +51,8 @@ if (!$_POST) {
         $liveform->assign_field_value('code', $key_code['code']);
         $liveform->assign_field_value('offer_code', $key_code['offer_code']);
         $liveform->assign_field_value('enabled', $key_code['enabled']);
+        // Kept so a save writes Enabled only when the box was changed here.
+        $liveform->assign_field_value('enabled_was', ((string) $key_code['enabled'] === '1') ? '1' : '0');
         
         if ($key_code['expiration_date'] != '0000-00-00') {
             $liveform->assign_field_value('expiration_date', prepare_form_data_for_output($key_code['expiration_date'], 'date'));
@@ -117,7 +119,7 @@ if (!$_POST) {
                 user = ?,
                 timestamp = UNIX_TIMESTAMP()
             WHERE id = ?",
-            array_merge(pg_key_code_form_values($liveform, $liveform->get_field_value('code')), array((string) USER_ID, (string) $id))) or output_error('Query failed.');
+            array_merge(pg_key_code_form_values($liveform, $liveform->get_field_value('code'), $key_code['enabled']), array((string) USER_ID, (string) $id))) or output_error('Query failed.');
 
         log_activity(lang(array('string'=>'key code ({var:1}) was modified','vars'=>$liveform->get_field_value('code'))), $_SESSION['sessionusername']);
         $liveform->remove_form();

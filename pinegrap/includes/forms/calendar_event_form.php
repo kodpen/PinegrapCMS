@@ -459,6 +459,61 @@ function pg_calendar_event_form_choices()
 }
 
 /**
+ * What the edit screen does with an instance's Remaining Spots on save.
+ * A reservation takes spots off relatively while the screen is open, so the
+ * field is written only when the operator changed it, and only over the
+ * value the screen opened with.
+ *
+ * @param mixed $posted  the posted number_of_remaining_spots
+ * @param mixed $was     number_of_remaining_spots_was (value on opening)
+ * @param mixed $stored  the instance's spots now (row, or initial spots)
+ * @return string 'keep' (leave the row alone), 'write', or 'stale' (refuse)
+ */
+function pg_calendar_event_spots_decision($posted, $was, $stored)
+{
+    $was = trim((string) $was);
+
+    // A form opened before the field existed writes as before.
+    if (!is_numeric($was)) {
+        return 'write';
+    }
+
+    $posted = trim((string) $posted);
+
+    if (($posted === $was) || (is_numeric($posted) && ((int) $posted === (int) $was))) {
+        return 'keep';
+    }
+
+    return ((int) $stored === (int) $was) ? 'write' : 'stale';
+}
+
+/**
+ * An instance's remaining spots as stored now: its remaining_reservation_spots
+ * row, or the event's stored initial spots when it has no row yet (the
+ * first reservation creates it from them).
+ *
+ * @param int $calendar_event_id
+ * @param int $recurrence_number
+ * @return int
+ */
+function pg_calendar_event_stored_spots($calendar_event_id, $recurrence_number)
+{
+    $result = db_q(
+        "SELECT number_of_remaining_spots
+        FROM remaining_reservation_spots
+        WHERE
+            (calendar_event_id = ?)
+            AND (recurrence_number = ?)",
+        array((string) (int) $calendar_event_id, (string) (int) $recurrence_number)) or output_error('Query failed.');
+
+    if ($row = mysqli_fetch_assoc($result)) {
+        return (int) $row['number_of_remaining_spots'];
+    }
+
+    return (int) db_value("SELECT number_of_initial_spots FROM calendar_events WHERE id = '" . (int) $calendar_event_id . "'");
+}
+
+/**
  * The form's five cards (main information, schedule, locations, calendars,
  * reservations), from the opening row to the script that sets the repeat
  * rows. The screens print the form tag, their hidden fields and buttons

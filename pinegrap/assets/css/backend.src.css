@@ -11461,6 +11461,175 @@ body.workspace:is(.workspace_settings, .workspace_mcp, .workspace_template, .wor
 .ws-thread-panel > .ws-composer-wrap {
   flex-shrink: 0;
 }
+/* An assistant following the discussion: a soft line under the head with
+   its sign, what it does and Stop; Follow again alone when it stopped. */
+.ws-thread-follow {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: .5rem;
+  margin: .6rem var(--ws-space-3);
+  padding: .3rem .35rem .3rem .75rem;
+  border-radius: .75rem;
+  background: var(--ws-soft);
+  font-size: .82rem;
+}
+.ws-thread-follow.ws-thread-follow-off {
+  padding-top: 0;
+  padding-bottom: 0;
+  background: transparent;
+}
+.ws-thread-follow-text {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.ws-thread-follow-icon {
+  margin-right: .4rem;
+  color: var(--ws-accent);
+}
+/* The channel's info beside the conversation (showMembers()), in the
+   discussion's place: one of the two at a time; on a phone it covers the
+   channel until it is closed. */
+.ws-info-panel {
+  display: none;
+}
+.ws-app.ws-info-open {
+  grid-template-columns: minmax(0, 1fr) minmax(18rem, 22.5rem);
+}
+.ws-app.ws-info-open .ws-info-panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  border-left: 1px solid var(--pg-border-color);
+  background: var(--pg-bg-body);
+}
+.ws-panel-head {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: var(--ws-space-2);
+  min-height: var(--ws-head-h);
+  padding: var(--ws-head-y) var(--ws-space-2) var(--ws-head-y) var(--ws-space-4);
+  border-bottom: 1px solid var(--pg-border-color-translucent);
+}
+.ws-panel-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+}
+.ws-panel-title:focus {
+  outline: none;
+}
+.ws-panel-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: 0 var(--ws-space-4) var(--ws-space-4);
+}
+.ws-panel-kicker {
+  margin: 1.15rem 0 .5rem;
+  font-size: .7rem;
+  font-weight: 700;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  color: var(--pg-fg-2);
+}
+.ws-info-purpose {
+  margin: 0;
+  font-size: .9rem;
+  overflow-wrap: anywhere;
+}
+.ws-info-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .35rem;
+  margin-top: .5rem;
+}
+.ws-info-person {
+  display: flex;
+  align-items: center;
+  gap: .65rem;
+  padding: .3rem 0;
+}
+.ws-info-person > .avatar {
+  flex: none;
+  --bs-avatar-size: 1.75rem;
+}
+.ws-info-person-text {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.ws-info-person-text a.ws-person-link {
+  color: inherit;
+  text-decoration: none;
+}
+.ws-info-person-text a.ws-person-link:hover {
+  text-decoration: underline;
+}
+.ws-info-person-name {
+  overflow: hidden;
+  font-size: .88rem;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ws-info-person-role {
+  overflow: hidden;
+  font-size: .75rem;
+  color: var(--pg-fg-2);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ws-info-add {
+  margin-top: .5rem;
+}
+/* The reader's notifications: three choices side by side. */
+.ws-seg {
+  display: inline-flex;
+  max-width: 100%;
+  border: 1px solid var(--pg-border-color);
+  border-radius: .625rem;
+  overflow: hidden;
+}
+.ws-seg-item {
+  min-width: 0;
+  height: 2rem;
+  padding: 0 .7rem;
+  border: 0;
+  border-right: 1px solid var(--pg-border-color-translucent);
+  background: transparent;
+  color: var(--pg-fg-2);
+  font-size: .8rem;
+  white-space: nowrap;
+}
+.ws-seg-item:last-child {
+  border-right: 0;
+}
+.ws-seg-item:hover {
+  background: var(--pg-bg-1);
+  color: var(--pg-fg-body);
+}
+.ws-seg-item[aria-pressed="true"] {
+  background: var(--ws-soft);
+  color: var(--ws-accent);
+  font-weight: 600;
+}
+.ws-info-check {
+  margin-top: .85rem;
+  font-size: .85rem;
+}
+.ws-info-time-line {
+  margin: 0;
+  font-size: .88rem;
+}
+.ws-info-settings {
+  margin-top: 1.4rem;
+}
 .ws-thread-head .ws-head-title h2 {
   font-size: 1rem;
 }
@@ -16841,11 +17010,14 @@ body.ws-drawer-open #pg-chat-root .pg-chat-launcher {
   .ws-board-person small {
     display: none;
   }
-  /* A discussion covers the channel until it is closed. */
-  .ws-app.ws-thread-open {
+  /* A discussion or the channel's info covers the channel until it is
+     closed. */
+  .ws-app.ws-thread-open,
+  .ws-app.ws-info-open {
     grid-template-columns: minmax(0, 1fr);
   }
-  .ws-app.ws-thread-open .ws-thread-panel {
+  .ws-app.ws-thread-open .ws-thread-panel,
+  .ws-app.ws-info-open .ws-info-panel {
     position: absolute;
     inset: 0;
     z-index: 6;

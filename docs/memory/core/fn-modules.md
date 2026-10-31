@@ -36,7 +36,7 @@ description: Generated from the module field of the memory files: each includes/
 - `errors`: [[fn-module-errors-mail-backup-consent]]
 - `events`: [[workspace-flows-event-depth]]
 - `explorer_side`: [[explorer-menu-tree]]
-- `files`: [[name-length-refusal]]
+- `files`: [[name-length-refusal]], [[settings-public-image-pickers]]
 - `forms`: [[csv-import-headings]], [[form-data-output-escape-flag]], [[report-dynamic-date-filter]]
 - `geo`: [[country-names-in-addresses]], [[panel-script-number-format]]
 - `google_analytics`: [[google-analytics-card]]

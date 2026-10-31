@@ -84,9 +84,20 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         : mb_substr($erp_seller_vkn_value, 0, $erp_seller_vkn_width);
 
     // The Organization card's logo, where the SEO save wrote it before: only
-    // once the structured data columns exist.
-    $sql_organization_logo = waf_table_has_column('config', 'og_default_image')
-        ? "organization_logo = '" . escape(trim(post_value('organization_logo'))) . "',"
+    // once the structured data columns exist. It is shown to everyone, so no
+    // attachment or ERP document (pg_public_image_choice_ok()).
+    $organization_logo_ready = waf_table_has_column('config', 'og_default_image');
+    $organization_logo_input = $organization_logo_ready ? trim((string) post_value('organization_logo')) : '';
+
+    if ($organization_logo_ready
+        && !pg_public_image_choice_ok($organization_logo_input, (string) db_value("SELECT organization_logo FROM config"), pg_public_image_file_types())
+    ) {
+        $liveform->mark_error('organization_logo', lang('Choose a picture from the Files screen that everyone may see.'));
+        return;
+    }
+
+    $sql_organization_logo = $organization_logo_ready
+        ? "organization_logo = '" . escape($organization_logo_input) . "',"
         : '';
 
     // Only what the cards on this screen edit.

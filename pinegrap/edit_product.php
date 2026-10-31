@@ -157,17 +157,31 @@ if ($_POST) {
 
     $notice = lang(array('string' => 'product ({var:1}) was updated', 'vars' => array(h($result['name']))));
 
+    // Checkout moved the stock while the screen was open: everything else was
+    // saved, the typed count was not (pg_pb_update_product()).
+    $stock_warning = ($result['stock_kept'] !== NULL)
+        ? lang(array('string' => 'The stock of this product changed while the screen was open: it is now {var:1}; the count you typed was not saved.', 'vars' => array((int) $result['stock_kept'])))
+        : '';
+
     // Back to the list, the same place the create screen ends, unless the
     // operator asked to stay — editing a photo and a price in one sitting is
     // two visits otherwise. The notice goes with the operator either way.
-    if (!empty($_POST['submit_save_and_stay'])) {
+    // A kept stock count stays on the screen too when the save would land
+    // where no panel notice is drawn: the operator has to see it.
+    if (!empty($_POST['submit_save_and_stay']) || (($stock_warning !== '') && !$send_to_list)) {
         $liveform->add_notice($notice);
+        if ($stock_warning !== '') {
+            $liveform->add_warning($stock_warning);
+        }
         go(PATH . SOFTWARE_DIRECTORY . '/edit_product.php?id=' . $product_id . '&send_to=' . urlencode($send_to));
     }
 
     if ($send_to_list) {
         $liveform_target = new liveform('view_products');
         $liveform_target->add_notice($notice);
+        if ($stock_warning !== '') {
+            $liveform_target->add_warning($stock_warning);
+        }
     }
 
     go($send_to);

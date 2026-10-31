@@ -134,7 +134,7 @@ function test_settings_organization_general_save_writes_the_same_columns()
 		pg_assert_contains($column . " = '\" . escape(post_value('" . $column . "')) . \"',", $save, $column . ' written as Campaigns wrote it');
 	}
 
-	pg_assert_contains("organization_logo = '\" . escape(trim(post_value('organization_logo'))) . \"',", $save, 'the logo written as SEO wrote it');
+	pg_assert_contains("organization_logo = '\" . escape(\$organization_logo_input) . \"',", $save, 'the logo written as SEO wrote it, after the public image check');
 	pg_assert_contains("waf_table_has_column('config', 'og_default_image')", $save, 'only where the SEO save wrote it');
 
 	// The seller's tax number keeps its rule: digits in Turkey, the column's width elsewhere.

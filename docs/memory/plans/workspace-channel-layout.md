@@ -28,7 +28,7 @@ description: Plan (owner decision 2026-10-31) for the redrawn Workspace channel 
 
 - C5 Composer: done #3898 (`workspace/workspace-channel-composer.md`; the hint line gone, marks behind Aa, a phone's one row with a tools switch, the strip and tabs hide while the keyboard is up; the / list keeps its look).
 
-- C6 Side panels: the discussion (title, channel, Claude's follow line with Stop) and the channel info (purpose, status, members, notifications, read answers aloud, time spent, channel settings).
+- C6 Side panels: done #4143 (`workspace/workspace-channel-panels.md`; the channel info beside the conversation in the discussion's place with purpose, status, members, notifications, read aloud, time spent and settings; the discussion's head and follow line as drawn).
 
 - C7 Overview: the greeting only here, then Waiting for you, Today and overdue, Calendar today, What happened in the channels, Recent decisions.
 
@@ -36,4 +36,4 @@ description: Plan (owner decision 2026-10-31) for the redrawn Workspace channel 
 1. Whether C7 renames Overview to Today; asked when C7 starts.
 
 ## Where to start?
-- C6, then C7. The local sandbox (`tools/setup_sandbox.sh`) draws the channel screen at desktop and phone width; try each step at 390 px with the keyboard open before anything else.
+- C7. The local sandbox (`tools/setup_sandbox.sh`) draws the channel screen at desktop and phone width; try each step at 390 px with the keyboard open before anything else.

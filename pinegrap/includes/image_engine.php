@@ -576,6 +576,27 @@ function pg_image_scaled_dimensions($width, $height, $max)
 
 
 /**
+ * Whether pg_process_image_file() leaves the file as it was because the
+ * result is not lighter: never for a format conversion, a rotation or a
+ * resize the caller needs at its size ('exact_size').
+ *
+ * @param int  $bytes_after
+ * @param int  $bytes_before
+ * @param bool $format_conversion
+ * @param int  $rotate
+ * @param bool $exact_resize  'exact_size' asked and the picture is resized
+ * @return bool
+ */
+function pg_image_engine_no_gain($bytes_after, $bytes_before, $format_conversion, $rotate, $exact_resize)
+{
+    if ($format_conversion || ((int) $rotate !== 0) || $exact_resize) {
+        return false;
+    }
+
+    return ((int) $bytes_after >= (int) $bytes_before);
+}
+
+/**
  * Recompress an image, optionally scaling it down first.
  *
  * The one place that touches image pixels. Callers describe what they want and
@@ -639,6 +660,11 @@ function pg_process_image_file($file_path, $options = array())
     $min_dimension  = isset($options['min_dimension'])  ? (int) $options['min_dimension']  : 0;
     $quality        = isset($options['quality'])        ? (int) $options['quality']        : 0;
     $write          = isset($options['write'])          ? (bool) $options['write']         : true;
+
+    // 'exact_size' writes a resize even when the smaller picture is the
+    // heavier file: a caller that needs the picture at that size (the site
+    // icon's 180/192/512 px PNGs) asked for the size, not for fewer bytes.
+    $exact_size     = !empty($options['exact_size']);
 
     // 'format' re-encodes into another format instead of the source's own:
     // webp or avif. Anything else is ignored rather than guessed at.
@@ -851,9 +877,11 @@ function pg_process_image_file($file_path, $options = array())
     // A rotation is exempt for the same reason: the operator asked for the
     // picture the other way up, and a rotated file is nearly always a little
     // heavier than the one it replaces.
+    //
+    // A resize with 'exact_size' is exempt too: see the option above.
     $format_conversion = (($format !== '') && ($format !== image_type_to_extension($type, false)));
 
-    if ((strlen($data) >= $report['bytes_before']) && ($format_conversion == false) && ($rotate == 0)) {
+    if (pg_image_engine_no_gain(strlen($data), $report['bytes_before'], $format_conversion, $rotate, $exact_size && $resize)) {
         $report['reason']  = 'no_gain';
         $report['resized'] = false;
 

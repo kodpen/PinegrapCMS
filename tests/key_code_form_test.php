@@ -142,6 +142,47 @@ function test_key_code_form_values_keep_the_insert_and_update_order()
 	}
 }
 
+// Enabled is written only when the box was changed on the screen: a
+// completed order disables a used single-use code while the screen is open.
+function test_key_code_form_enabled_kept_unless_changed()
+{
+	$saved = isset($_SESSION) ? $_SESSION : null;
+
+	$cases = array(
+		// posted box, opened value, stored now, expected write
+		array('1', '1', '0', '0', 'untouched box keeps a code disabled by an order'),
+		array('1', '1', '1', '1', 'untouched box keeps the stored value'),
+		array('', '0', '1', '1', 'untouched cleared box keeps the stored value'),
+		array('', '1', '0', '', 'cleared box is written'),
+		array('1', '0', '0', '1', 'ticked box is written'),
+		array('1', null, '0', '1', 'a form without the opened value writes as before'),
+	);
+
+	foreach ($cases as $case) {
+		$_SESSION = array();
+		$liveform = new liveform('key_code_form_test');
+		$liveform->set('enabled', $case[0]);
+
+		if ($case[1] !== null) {
+			$liveform->set('enabled_was', $case[1]);
+		}
+
+		$values = pg_key_code_form_values($liveform, 'ABC123', $case[2]);
+		pg_assert_same($case[3], $values[2], $case[4]);
+	}
+
+	if ($saved === null) {
+		unset($_SESSION);
+	} else {
+		$_SESSION = $saved;
+	}
+
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/edit_key_code.php');
+	pg_assert_contains("assign_field_value('enabled_was'", $source, 'edit screen keeps the opened Enabled value');
+	pg_assert_contains("pg_key_code_form_values(\$liveform, \$liveform->get_field_value('code'), \$key_code['enabled'])", $source, 'edit screen passes the stored Enabled value');
+	pg_assert_contains("'name' => 'enabled_was'", file_get_contents(PG_FUNCTIONS_DIR . '/includes/templates/edit_key_code.php'), 'template prints the opened Enabled value');
+}
+
 function test_key_code_form_generate_skips_codes_in_use()
 {
 	$seen = array();
