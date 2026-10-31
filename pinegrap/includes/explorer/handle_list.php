@@ -44,18 +44,38 @@ function pg_explorer_list_filter($request)
 }
 
 // The restore details of one recycle_bin row: when it was deleted, the days
-// it has left before the daily purge removes it, and the name of the folder
-// it came from ('' when that folder is gone). $map is
-// pg_explorer_folder_map().
-function pg_explorer_bin_entry($row, $retention_days, $map, $now)
+// it has left before the daily purge removes it, and the folder a restore
+// puts it in. That is the folder it came from, or the root, named with the
+// reason, when that folder is gone or is in the bin itself (a binned folder is
+// named as it was before the bin parked its name). Only folders, pages and
+// files go back into a folder; other rows name none. $map is
+// pg_explorer_folder_map(); $bin_id is 0 when there is no bin.
+function pg_explorer_bin_entry($row, $retention_days, $map, $now, $bin_id = 0, $root_id = 0)
 {
     $age_days = (int) floor(($now - (int) $row['deleted_at']) / 86400);
     $origin_id = (int) $row['original_parent_id'];
+    $origin_name = '';
+
+    if (in_array(isset($row['item_type']) ? $row['item_type'] : 'folder', array('folder', 'page', 'file'), true)) {
+
+        $target = pg_explorer_restore_target($origin_id, $map, $bin_id, $root_id);
+        $target_name = isset($map[$target['id']]) ? (string) $map[$target['id']]['folder_name'] : '';
+
+        if ($target['reason'] === 'gone') {
+            $origin_name = lang(array('string' => '{var:1} (its folder is gone)', 'vars' => array($target_name)));
+        } elseif ($target['reason'] === 'binned') {
+            $parked = (string) $map[$origin_id]['folder_name'];
+            $unparked = pg_recycle_parked_original($parked, $origin_id);
+            $origin_name = lang(array('string' => '{var:1} (its folder {var:2} is in the recycle bin)', 'vars' => array($target_name, ($unparked !== '') ? $unparked : $parked)));
+        } else {
+            $origin_name = $target_name;
+        }
+    }
 
     return array(
         'deleted_at' => (int) $row['deleted_at'],
         'days_left' => max(0, $retention_days - $age_days),
-        'origin_name' => isset($map[$origin_id]) ? $map[$origin_id]['folder_name'] : '');
+        'origin_name' => $origin_name);
 }
 
 // The flat all-files view: every file in every visible, unarchived folder
@@ -410,7 +430,7 @@ function pg_explorer_handle_list($type, $request, $user, $folders_that_user_has_
 
         if ($rows) {
             foreach ($rows as $row) {
-                $bin_entries[$row['item_type'] . ':' . $row['item_id']] = pg_explorer_bin_entry($row, $recycle['retention_days'], $map_for_names, time());
+                $bin_entries[$row['item_type'] . ':' . $row['item_id']] = pg_explorer_bin_entry($row, $recycle['retention_days'], $map_for_names, time(), $recycle['folder_id'], pg_explorer_root_folder_id());
             }
         }
 

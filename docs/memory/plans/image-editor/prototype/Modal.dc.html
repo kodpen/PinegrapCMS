@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<title>Modal ve tam ekran</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+.fm{position:relative;width:1440px;height:900px;overflow:hidden;font-family:system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif;background:#f4f6f8;color:#1a1c1e}
+.fm-top{height:56px;display:flex;align-items:center;gap:12px;padding:0 20px;background:#ffffff;border-bottom:1px solid #e3e7eb}
+.fm-logo{width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#2e7d32,#66bb6a)}
+.fm-top b{font-size:15px}
+.fm-side{position:absolute;left:0;top:56px;bottom:0;width:232px;background:#ffffff;border-right:1px solid #e3e7eb;padding:16px 12px}
+.fm-side div{height:36px;border-radius:9px;display:flex;align-items:center;padding:0 12px;font-size:13.5px;color:#4a5560}
+.fm-side .on{background:#e8f1fb;color:#0b57d0;font-weight:650}
+.fm-main{position:absolute;left:232px;right:0;top:56px;bottom:0;padding:24px 28px}
+.fm-h{display:flex;align-items:center;gap:10px;margin-bottom:20px}
+.fm-h h1{font-size:21px;margin:0;font-weight:700}
+.fm-crumb{font-size:12.5px;color:#5f6b76;margin-bottom:4px}
+.fm-btn{height:36px;padding:0 14px;border-radius:10px;border:1px solid #d5dbe1;background:#ffffff;display:inline-flex;align-items:center;font-size:13px;font-weight:600}
+.fm-btn.p{background:#0b57d0;border-color:#0b57d0;color:#ffffff}
+.fm-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:16px}
+.fm-card{background:#ffffff;border:1px solid #e3e7eb;border-radius:12px;overflow:hidden}
+.fm-card.on{outline:2px solid #0b57d0}
+.fm-th{height:118px;background-size:cover;background-position:center}
+.fm-cap{padding:8px 10px;font-size:12.5px;color:#4a5560;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fm-back{position:absolute;inset:0;background:rgba(14,18,24,.55)}
+.fm-ed{position:absolute;inset:0}
+</style>
+</helmet>
+<div class="fm">
+<div class="fm-top"><span class="fm-logo"></span><b>Pinegrap</b></div>
+<div class="fm-side"><div>Gösterge paneli</div><div>Sayfalar</div><div class="on">Dosya Yöneticisi</div><div>Görsel tasarımcı</div><div>Çalışma alanı</div><div>Siparişler</div><div>Ayarlar</div></div>
+<div class="fm-main">
+<div class="fm-crumb">Dosyalar › Kampanyalar</div>
+<div class="fm-h"><h1>Kampanyalar</h1><span style="flex:1"></span><span class="fm-btn">Yükle</span><span class="fm-btn p">Yeni görsel</span></div>
+<div class="fm-grid">
+<div class="fm-card on"><div class="fm-th" style="background-image:url(/_blob/3b51b348bf57b0cfe25c74f5a3f281eb)"></div><div class="fm-cap">kapak-fotografi.jpg</div></div>
+<div class="fm-card"><div class="fm-th" style="background-image:url(/_blob/387270b4b2c6e91fd35637c17aef86ab)"></div><div class="fm-cap">siparis-1182.png</div></div>
+<div class="fm-card"><div class="fm-th" style="background:linear-gradient(135deg,#ffcc80,#ef6c00)"></div><div class="fm-cap">indirim-afisi.webp</div></div>
+<div class="fm-card"><div class="fm-th" style="background:linear-gradient(135deg,#b3e5fc,#0277bd)"></div><div class="fm-cap">logo.svg</div></div>
+<div class="fm-card"><div class="fm-th" style="background:linear-gradient(135deg,#e1bee7,#6a1b9a)"></div><div class="fm-cap">hikaye-ekim.png</div></div>
+<div class="fm-card"><div class="fm-th" style="background:linear-gradient(135deg,#c8e6c9,#2e7d32)"></div><div class="fm-cap">urun-42.jpg</div></div>
+<div class="fm-card"><div class="fm-th" style="background:linear-gradient(135deg,#ffe0b2,#bf360c)"></div><div class="fm-cap">urun-43.jpg</div></div>
+<div class="fm-card"><div class="fm-th" style="background:linear-gradient(135deg,#cfd8dc,#37474f)"></div><div class="fm-cap">ekip.jpg</div></div>
+<div class="fm-card"><div class="fm-th" style="background:linear-gradient(135deg,#fff9c4,#f9a825)"></div><div class="fm-cap">banner-yaz.jpg</div></div>
+<div class="fm-card"><div class="fm-th" style="background:linear-gradient(135deg,#f8bbd0,#ad1457)"></div><div class="fm-cap">kampanya-og.png</div></div>
+</div>
+</div>
+<div class="fm-back"></div>
+<div class="fm-ed"><dc-import name="Main" profile="full" modal="1" width="1440" height="900" theme="{{theme}}" lang="{{lang}}" hint-size="1440px,900px"></dc-import></div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"lang":{"editor":"enum","options":["tr","en"],"default":"tr"},"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return { theme: this.props.theme ?? 'dark', lang: this.props.lang ?? 'tr' };
+  }
+}
+</script>
+</body>
+</html>

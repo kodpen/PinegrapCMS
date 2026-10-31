@@ -63,7 +63,8 @@ function api_customer_present($row) {
 			'state'   => $row['business_state'],
 			'zip'     => $row['business_zip_code'],
 			'country' => $row['business_country']
-		)
+		),
+		'lead_source' => $row['lead_source']
 	);
 
 }
@@ -187,7 +188,8 @@ function api_customer_select() {
 			contacts.email_address, contacts.company,
 			contacts.mobile_phone, contacts.business_phone, contacts.home_phone,
 			contacts.business_address_1, contacts.business_city,
-			contacts.business_state, contacts.business_zip_code, contacts.business_country
+			contacts.business_state, contacts.business_zip_code, contacts.business_country,
+			contacts.lead_source
 		FROM contacts";
 
 }
@@ -547,7 +549,8 @@ function api_customer_schema() {
 			'state'   => 'string?',
 			'zip'     => 'string?',
 			'country' => 'string?'
-		)
+		),
+		'lead_source' => 'string?'
 	);
 
 }
@@ -577,8 +580,26 @@ function api_customer_writable() {
 
 }
 
-// The SET list both writes are built from, plus the e-mail check.
-function api_customer_set_clauses($params) {
+// The lead source a write would store, checked against the store's referral
+// sources: null when lead_source was not sent, otherwise the check's answer
+// (pg_contact_lead_source_check()). $current is the record's stored value, ''
+// for a new one, so an old free text the record holds is kept as it is.
+function api_customer_lead_source($params, array $sources, $current) {
+
+	if (!array_key_exists('lead_source', $params)) {
+
+		return null;
+
+	}
+
+	return pg_contact_lead_source_check($params['lead_source'], $sources, $current);
+
+}
+
+// The SET list both writes are built from, plus the e-mail and lead source
+// checks. $lead_source_current is the record's stored lead source ('' on
+// create).
+function api_customer_set_clauses($params, $lead_source_current = '') {
 
 	$set = array();
 
@@ -599,6 +620,23 @@ function api_customer_set_clauses($params) {
 		}
 
 		$set[] = $column . " = '" . escape($value) . "'";
+
+	}
+
+	// The referral sources are read only when a lead source was sent.
+	$lead_source = array_key_exists('lead_source', $params)
+		? api_customer_lead_source($params, pg_referral_sources(), $lead_source_current)
+		: null;
+
+	if ($lead_source !== null) {
+
+		if ($lead_source['error'] !== '') {
+
+			api_fail_validation($lead_source['error'], 'lead_source');
+
+		}
+
+		$set[] = "lead_source = '" . escape($lead_source['value']) . "'";
 
 	}
 
@@ -747,11 +785,11 @@ function api_customers_update($params) {
 
 	$id = (int)$params['id'];
 
-	api_customer_reachable_or_fail($id, 'contacts.id');
+	$existing = api_customer_reachable_or_fail($id, 'contacts.id, contacts.lead_source');
 
 	$app = api_current_app();
 
-	$set = api_customer_set_clauses($params);
+	$set = api_customer_set_clauses($params, (string)$existing['lead_source']);
 
 	if (empty($set)) {
 

@@ -4,7 +4,7 @@ description: A channel's customer history (CRM seams slice 4, #1681): union read
 ---
 
 ## What is it?
-- CRM seams slice 4 (plans/workspace-crm-seams.md, answer 3 a: union read, no activity table): one list, newest first, of what happened with a channel's customer. Code: includes/workspace/customer_history.php; tests: tests/workspace_customer_history_test.php.
+- CRM seams slice 4 (PR #1681, owner's answer 2026-10-26: union read, no activity table): one list, newest first, of what happened with a channel's customer. Code: includes/workspace/customer_history.php; tests: tests/workspace_customer_history_test.php.
 - Sources: orders (`ws_customer_order_where()`, as the summary counts them), the contact's cart quotes in every state (kind `cart_quote`, #3564; state by `pg_cart_quote_state()`, no amount: priced at fill time; none before `pg_cart_quotes_ready()`), the invoices of the tied current accounts (sales and purchase, drafts and cancelled too), their sales quotes in every state (`erp_quote_state()`: open past its date is expired), forms the contact submitted, messages in other channels and tasks that tag the customer or a tie, and notes and workflow table rows that tag or link to them (`ws_refs`, #3135), and customer visits naming the contact (`ws_events.contact_id`, kind `visit`, at its start; workspace-visit-contact.md).
 
 ## Who sees which source?
