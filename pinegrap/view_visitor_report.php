@@ -690,6 +690,21 @@ if (!$_POST) {
 
     }
     
+    // The window the days are read in the site's own time for
+    // (includes/fn/site_time_sql.php): the date changer's range, or with a
+    // date filter every visit kept, from the oldest one through now.
+    if ($date_filter_exists == false) {
+        $site_time_from = $start_timestamp;
+        $site_time_to = $stop_timestamp;
+    } else {
+        $site_time_to = time();
+        $site_time_from = (int) db_value("SELECT MIN(start_timestamp) FROM visitors");
+
+        if ($site_time_from <= 0) {
+            $site_time_from = $site_time_to;
+        }
+    }
+
     // start where
     $where = '';
     
@@ -700,7 +715,7 @@ if (!$_POST) {
         $field_type = '';
         
         switch ($filter['field']) {
-            case 'date': $operand_1 = 'FROM_UNIXTIME(visitors.start_timestamp, \'%Y-%m-%d\')'; $field_type = 'date'; break;
+            case 'date': $operand_1 = pg_site_time_sql('visitors.start_timestamp', '%Y-%m-%d', $site_time_from, $site_time_to); $field_type = 'date'; break;
             case 'site_search_terms': $operand_1 = 'visitors.site_search_terms'; break;
             case 'currency_code': $operand_1 = 'visitors.currency_code'; break;
             case 'http_referer': $operand_1 = pg_visitor_text_sql('http_referer'); break;
@@ -824,15 +839,15 @@ if (!$_POST) {
     }
 
     if ($liveform->get_field_value('summarize_by_1') != '') {
-        $sql_summarize_by_1 = get_summarize_by_column($liveform->get_field_value('summarize_by_1')) . ',';
+        $sql_summarize_by_1 = get_summarize_by_column($liveform->get_field_value('summarize_by_1'), $site_time_from, $site_time_to) . ',';
         $number_of_summarize_bys = 1;
         
         if ($liveform->get_field_value('summarize_by_2') != '') {
-            $sql_summarize_by_2 = get_summarize_by_column($liveform->get_field_value('summarize_by_2')) . ',';
+            $sql_summarize_by_2 = get_summarize_by_column($liveform->get_field_value('summarize_by_2'), $site_time_from, $site_time_to) . ',';
             $number_of_summarize_bys = 2;
             
             if ($liveform->get_field_value('summarize_by_3') != '') {
-                $sql_summarize_by_3 = get_summarize_by_column($liveform->get_field_value('summarize_by_3')) . ',';
+                $sql_summarize_by_3 = get_summarize_by_column($liveform->get_field_value('summarize_by_3'), $site_time_from, $site_time_to) . ',';
                 $number_of_summarize_bys = 3;
             }
         }
@@ -2017,12 +2032,17 @@ if (!$_POST) {
     }
 }
 
-function get_summarize_by_column($summarize_by)
+// $from and $to bound the visits the query reads: the year, month and day
+// are taken in the site's own time over that window (pg_site_time_sql()).
+// They are optional only because static analysis checks view_order_report.php's
+// function of the same name against this signature; without them the
+// session's offset is used.
+function get_summarize_by_column($summarize_by, $from = null, $to = null)
 {
     switch ($summarize_by) {
-        case 'year': return 'FROM_UNIXTIME(visitors.start_timestamp, \'%Y\')';
-        case 'month': return 'FROM_UNIXTIME(visitors.start_timestamp, \'%m\')';
-        case 'day': return 'FROM_UNIXTIME(visitors.start_timestamp, \'%d\')';
+        case 'year': return pg_site_time_sql('visitors.start_timestamp', '%Y', $from, $to);
+        case 'month': return pg_site_time_sql('visitors.start_timestamp', '%m', $from, $to);
+        case 'day': return pg_site_time_sql('visitors.start_timestamp', '%d', $from, $to);
         case 'site_search_terms': return 'visitors.site_search_terms';
         case 'currency_code': return 'visitors.currency_code';
         case 'device': return pg_schema_has('visitors', 'user_agent') ? pg_visitor_device_sql(pg_visitor_text_sql('user_agent')) : "''";
