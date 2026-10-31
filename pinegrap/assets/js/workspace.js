@@ -6180,20 +6180,21 @@
                 return;
             }
 
+            // One line: the pin, who wrote it and its text; a click opens it
+            // in the conversation. Who pinned it is the line's tooltip.
             var bar = el('div', 'ws-pin-bar');
             var text = el('button', 'ws-pin-text');
+            var words = el('span', 'ws-pin-words');
 
             text.type = 'button';
-            text.title = t('pin_go');
-            bar.appendChild(icon('bi-pin-angle-fill', 'ws-pin-icon'));
-            text.appendChild(el('b', 'me-1', (pin.sender ? pin.sender.name : '') + ':'));
-            text.appendChild(document.createTextNode(pin.text));
+            text.title = t('pin_go') + (pin.pinned_by ? ' · ' + t('pin_by', pin.pinned_by) : '');
+            text.setAttribute('aria-label', text.title);
+            text.appendChild(icon('bi-pin-angle-fill', 'ws-pin-icon'));
+            words.appendChild(el('b', 'me-1', (pin.sender ? pin.sender.name : '') + ':'));
+            words.appendChild(document.createTextNode(pin.text));
+            text.appendChild(words);
             text.addEventListener('click', function () { self.jumpTo(pin.id, true); });
             bar.appendChild(text);
-
-            if (pin.pinned_by) {
-                bar.appendChild(el('span', 'ws-pin-by', t('pin_by', pin.pinned_by)));
-            }
 
             // Its read receipt, or a way to ask for one (workspace_acks.js).
             var pinAck = window.PGWsAcks ? window.PGWsAcks.pinNode(pin, self, featureHelpers()) : null;
@@ -6202,7 +6203,7 @@
                 bar.appendChild(pinAck);
             }
 
-            var close = button('btn btn-sm btn-text theme-secondary py-0', '', 'bi-x-lg', t('pin_close'));
+            var close = button('btn btn-sm btn-text theme-secondary py-0 ws-pin-close', '', 'bi-x-lg', t('pin_close'));
             close.addEventListener('click', function () {
                 if (self.channel.joined) {
                     api('ws_pin_hide', { channel_id: self.channel.id }).catch(function () {});
@@ -8309,16 +8310,19 @@
                 }
             });
 
+            // The catch-up line and the pinned message, one above the other;
+            // on a phone they share one thin row.
             if (self.tab === 'messages') {
+                var strip = el('div', 'ws-strip');
                 var brief = self.catchupNode();
 
                 if (brief) {
-                    center.appendChild(brief);
+                    strip.appendChild(brief);
                 }
 
-                // The pinned message, under the catch-up line.
                 self.pinHolder = el('div', 'ws-pin-holder');
-                center.appendChild(self.pinHolder);
+                strip.appendChild(self.pinHolder);
+                center.appendChild(strip);
                 self.drawPinBar();
             }
 

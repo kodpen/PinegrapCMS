@@ -11905,38 +11905,50 @@ html[data-bs-theme="dark"] .ws-group-icon {
 .ws-sa-follow-line.ws-sa-on-skipped b {
   color: var(--pg-fg-2);
 }
-/* The pinned message, under the channel's greeting. */
+/* The catch-up line and the pinned message over the conversation
+   (drawCenter()): one above the other, on a phone one thin row. */
+.ws-strip {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+.ws-strip:not(:has(.ws-catchup, .ws-pin-bar)) {
+  display: none;
+}
+/* The pinned message: one line, a click opens it in the conversation. */
 .ws-pin-bar {
   display: flex;
   align-items: center;
   gap: .5rem;
-  margin: .5rem .75rem 0;
-  padding: .35rem .5rem .35rem .65rem;
-  border: 1px solid var(--pg-border-color);
+  margin: .5rem 1rem 0;
+  padding: .3rem .4rem .3rem .65rem;
+  border: 1px solid var(--pg-border-color-translucent);
   border-left: 3px solid var(--ws-accent);
   border-radius: var(--ws-radius-sm);
   background: var(--pg-bg-1);
   font-size: .85rem;
 }
 .ws-pin-icon {
+  flex: 0 0 auto;
   color: var(--ws-accent);
 }
 .ws-pin-text {
+  display: flex;
   flex: 1 1 auto;
+  align-items: center;
+  gap: .45rem;
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  padding: 0;
   border: 0;
   background: transparent;
   color: inherit;
   text-align: left;
-  padding: 0;
 }
-.ws-pin-by {
-  flex-shrink: 0;
-  font-size: .72rem;
-  color: var(--pg-fg-2);
+.ws-pin-words {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .ws-msg-pinned {
   color: var(--ws-accent);
@@ -12451,9 +12463,9 @@ html[data-bs-theme="dark"] .ws-head[data-ws-colored] .ws-head-icon {
 .ws-center > .alert {
   flex-shrink: 0;
 }
-.ws-center > .ws-catchup {
+.ws-strip > .ws-catchup {
   flex-shrink: 0;
-  max-height: 40%;
+  max-height: 40vh;
   overflow-y: auto;
 }
 .ws-tabs {
@@ -16670,9 +16682,6 @@ body.ws-drawer-open #pg-chat-root .pg-chat-launcher {
   .ws-voice {
     gap: var(--ws-space-1);
   }
-  body.ws-keyboard .ws-center > .ws-catchup {
-    display: none;
-  }
   body.workspace_channels #pg-chat-root .pg-chat-launcher {
     right: 12px;
     bottom: calc(var(--ws-composer-h, 6rem) + 12px);
@@ -16769,6 +16778,38 @@ body.ws-drawer-open #pg-chat-root .pg-chat-launcher {
   }
   .ws-catchup-action {
     padding: .2rem .45rem;
+  }
+  .ws-catchup-text strong {
+    display: none;
+  }
+  .ws-pin-bar {
+    margin: .35rem .5rem 0;
+  }
+  /* Both there: one row, the catch-up line first and the pin a button
+     beside it. */
+  .ws-strip:has(.ws-catchup):has(.ws-pin-bar) {
+    flex-direction: row;
+    gap: .35rem;
+    margin: .35rem .5rem 0;
+  }
+  .ws-strip:has(.ws-catchup):has(.ws-pin-bar) > .ws-catchup {
+    flex: 1 1 auto;
+    min-width: 0;
+    margin: 0;
+  }
+  .ws-strip:has(.ws-catchup) > .ws-pin-holder {
+    display: flex;
+  }
+  .ws-strip:has(.ws-catchup) .ws-pin-bar {
+    margin: 0;
+    padding: 0 .55rem;
+  }
+  .ws-strip:has(.ws-catchup) .ws-pin-words,
+  .ws-strip:has(.ws-catchup) .ws-pin-bar > :not(.ws-pin-text) {
+    display: none;
+  }
+  body.ws-keyboard .ws-center > .ws-strip {
+    display: none;
   }
 }
 @media (max-width: 575.98px) {
