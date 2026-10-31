@@ -9,20 +9,20 @@ description: The back arrow of a panel screen (pg_page_shell 'cancel') goes wher
 - A Site Settings screen (registered in `includes/settings/registry.php`) prints no arrow (`settings-modal-navigation.md`).
 
 ## Which screens were wrong, and what did they show?
-- Create/Edit Menu Item sent the arrow to `view_menu_items.php` with no id: "Sorry, the page could not be found." (404). Now `?id=<menu>&from=&send_to=`.
-- Create/Edit Ad, Login, Dynamic and Designer Region went to bare `view_regions.php`, drawn as All Common Regions. Now `filter=all_<kind>_regions`; Edit Ad and Edit Designer Region take `send_to` first.
-- Edit Form List View / Item View went to the submitted-forms list, whose `validate_forms_access()` can refuse a page editor. Now `send_to` or `edit_page.php?id=<page>`.
-- Create/Edit Event went to `view_calendars.php` (the list of calendars) instead of the calendar view `calendars.php` (edit: `send_to` first).
+- Create/Edit Menu Item went to `view_menu_items.php` with no id (404). Now `?id=<menu>&from=&send_to=`.
+- Create/Edit Ad, Login, Dynamic, Designer Region went to bare `view_regions.php` (All Common Regions). Now `filter=all_<kind>_regions`; Edit Ad/Designer Region take `send_to` first.
+- Edit Form List/Item View went to the submitted-forms list, which can refuse a page editor. Now `send_to` or `edit_page.php?id=<page>`.
+- Create/Edit Event: `calendars.php`, not the calendar list (edit: `send_to` first).
 - All Referral Sources (Site Settings › Store Lists) went to the Dashboard; it now prints no arrow.
-- Create/Edit Field (both Edit branches) dropped `form_type` and `send_to`: on an Express Order shipping form the arrow opened the billing fields, and the fields list's own arrow then went to All My Pages. Now built like Save: `pg_field_form_express_query()` and `send_to`.
-- Visit Details went to All Visitor Reports; now to its breadcrumb parent `view_visitor_report.php?id=<visitor_report_id>` (an int, not the `h()`-escaped crumb url).
+- Create/Edit Field dropped `form_type` and `send_to` (an Express Order shipping form went back to its billing fields). Now like Save: `pg_field_form_express_query()` and `send_to`.
+- Visit Details: its report `view_visitor_report.php?id=<int>`, not All Visitor Reports.
 - Edit Calendar Properties went to `view_calendars.php`; now `calendars.php?calendar_id=<id>` like its Save.
 - Pinned by `tests/back_arrow_targets_test.php`.
 
 ## Where does the back arrow go when the screen got send_to?
 - To `send_to` (`pg_send_to_url(<list>)`), like Edit User and Edit Page: Edit/Create/Import Contact, Create/Import User, Edit Ad (#3358) and Edit Comment.
-- Symptom fixed: a contact opened from All Subscribers went back to All My Contacts (`view_contacts.php` and `view_users.php` read their view only from the address); a contact opened from Edit User, or an ad or comment from a site page's Edit chip (a comment also from the dashboard card), went back to the panel list.
-- The Contacts/Users breadcrumb uses `pg_send_to_list_url(<list>)` (`includes/fn/core.php`): `send_to` only when its path is that same list, else the bare list (Edit Contact is also opened from Edit User and Edit Gift Card). Labelled `Contacts` / `Users`.
+- Symptom fixed: a contact opened from All Subscribers, Edit User, or an ad/comment from a site page's Edit chip went back to the bare panel list.
+- The Contacts/Users breadcrumb uses `pg_send_to_list_url(<list>)` (`includes/fn/core.php`): `send_to` only when its path is that same list, else the bare list (Edit Contact is also opened from Edit User, Edit Gift Card).
 - The Edit Ad and Edit Comment breadcrumbs stay on their list, so no list link opens a site page.
 - A refused Edit Comment save redirects with `send_to` in the address, so the arrow keeps it.
 - Pinned by `tests/back_arrow_send_to_test.php`.
@@ -33,3 +33,7 @@ description: The back arrow of a panel screen (pg_page_shell 'cancel') goes wher
 - The common-region screens: bare `view_regions.php` is All Common Regions.
 - `history.go(-1)` (`'cancel' => true`) works as the browser's Back: `backups.php`, `cloudflare.php`, `mail_queue.php`, `view_audit_log.php`, `privacy_erase.php`, `privacy_export.php`, `generate_layout.php`, `barcode_increase_inventory.php`, `barcode_decrease_inventory.php`, `import_design.php`.
 - No copy of the way back in a toolbar, card or content: `back-arrow-no-copies.md`.
+
+## How does the arrow step back inside a Workspace view?
+- Workspace screens print no arrow. `viewBack(label, onBack, refocusKey)` (`workspace.js`, kit `PGWsKit.viewBack`) draws `button#ws-view-back.pg-backbtn` at the head of `.pg-breadcrumb` (made before `main#content` if missing) while a view is open; `viewBack(null)` removes it.
+- Used by `workspace_flow.js`: a flow and the gallery (to the flow list), the gallery opened from a flow (to that flow), a scheduled action (to the list) (#3971). Kept: OneNote back inside the modal Import dialog, and the phone-only notes list switch.
