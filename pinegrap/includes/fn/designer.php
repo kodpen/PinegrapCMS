@@ -7803,7 +7803,7 @@ function _pg_tpl_catalog($tpl, $user_id, $root_group_id)
                     'user' => (int)$user_id, 'full_description' => ($text !== '') ? '<p>' . h($text) . '</p>' : '', 'meta_keywords' => '',
                     'notes' => '', 'details' => $details, 'seo_analysis' => '', 'code' => '', 'out_of_stock_message' => '',
                     'order_receipt_message' => '', 'add_comment_message' => '', 'gift_card_email_body' => '',
-                    'google_product_category' => '', 'tax_rate' => null,
+                    'google_product_category' => '', 'tax_rate' => null, 'default_quantity' => 1,
                 );
                 $img = isset($p['image']) ? _pg_tpl_catalog_file($tpl['id'], $p['image'], $folder_id, $user_id) : '';
                 $pid = (int)pg_pb_create_product($product, array('images' => ($img !== '') ? array($img) : array(), 'group_ids' => array(), 'zone_ids' => $zone_ids, 'attributes' => array(), 'submit_form' => array()));

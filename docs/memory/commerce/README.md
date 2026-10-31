@@ -44,6 +44,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - carrier-webhook-basitkargo.md: Basit Kargo's side of the carrier webhook (#3645): added by hand in its panel, two unsigned messages (status change, movement), latest trace by time
 - carrier-webhook-drivers.md: The carrier webhook's Shippo (#3407), Sendcloud (#3431) and Kargonomi (#3633) sides: what each reader takes, the signature checks, how each registers and removes its webhook
 - carrier-webhook.md: carrier_webhook.php (2026.11.0, #3245): a label service's parcel status messages written through the tracking write-back, key in the URL, optional signature check, registration, answers, firewall
+- cart-default-quantity.md: A product added without a quantity box enters the cart with pg_product_default_quantity(), at least 1; new products store default_quantity 1.
 - cart-express-order-warnings.md: Why the cart and express order pages (built-in and custom layouts) and the plain-text receipt e-mail write no PHP warnings, and how a gift card deleted after it was applied is dropped at checkout.
 - cart-line-removal.md: How a line leaves the cart (quantity 0 on the designer or classic cart, the remove link): remove_order_item(), pg_cart_remove_line(), gift refusals, the emptied recipient, shipping, required products
 - cart-order-creation.md: When the visitor's order row is created (first real cart write, never a page view), and why the designer cart and express order widgets create none on view.
