@@ -839,6 +839,8 @@
     "The account's own price (list price {var:1})": "Cari fiyatı (liste fiyatı {var:1})",
     "The account's prices were saved.": "Cari fiyatları kaydedildi.",
     "The accountant pack comes with the software update; run the update to use it.": "Muhasebeci paketi yazılım güncellemesiyle gelir; kullanmak için güncellemeyi çalıştırın.",
+    "The accountant pack for {var:1} - {var:2} could not be built: {var:3}": "{var:1} - {var:2} dönemi muhasebeci paketi hazırlanamadı: {var:3}",
+    "The accountant pack for {var:1} - {var:2} was built but not sent: {var:3}": "{var:1} - {var:2} dönemi muhasebeci paketi hazırlandı ancak gönderilemedi: {var:3}",
     "The accountant's settings were saved.": "Muhasebeci ayarları kaydedildi.",
     "The accounting records of {var:1} for {var:2} are ready.": "{var:1} işletmesinin {var:2} dönemine ait muhasebe kayıtları hazır.",
     "The accounting rules come with the software update; run the update to set them.": "Muhasebe kuralları yazılım güncellemesiyle gelir; ayarlamak için güncellemeyi çalıştırın.",
