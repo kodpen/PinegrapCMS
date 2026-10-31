@@ -1,6 +1,6 @@
 ---
 name: product-builder-parent-group
-description: The Product Builder's parent group list for a new variant group: no empty choice, opens on the top group; what a posted 0 still does
+description: The Product Builder's parent group list for a new variant group (PR #4309): no empty choice, opens on the top group; what a posted 0 still does
 ---
 
 ## What does the parent group list offer?
@@ -14,4 +14,4 @@ description: The Product Builder's parent group list for a new variant group: no
 - A `-None-` choice read as "no parent" (a second root the Catalog Manager, storefront and feeds never reach) while it saved under the top group.
 
 ## Which test covers it?
-- `tests/product_builder_parent_group_test.php` (source: no `value="0"` option, the top selected); `tests/catalog_bin_test.php` pins the same call.
+- `tests/product_builder_parent_group_test.php` (PR #4309; source: no `value="0"` option, the top selected); `tests/catalog_bin_test.php` pins the same call.
