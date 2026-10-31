@@ -11315,27 +11315,27 @@ body.workspace .card .table {
    no padding). The channel screen is one panel and fills it; the others keep
    their toolbar across the whole width and give what is under it the
    toolbar's own side padding, so the rounded cards do not meet the edge and
-   line up with the first button above them. The settings, MCP connections
-   and channel template screens put their columns straight into
+   line up with the first button above them. The settings, MCP connections,
+   channel template and calendar subscription screens put their columns straight into
    .ws-shell-main, with no #ws-root around them: they give the main area
    that padding themselves, so their columns keep their gutter. */
-body.workspace:not(.workspace_settings, .workspace_mcp, .workspace_template) #content.p-0 > .row,
-body.workspace:not(.workspace_settings, .workspace_mcp, .workspace_template) .ws-shell-main > .row {
+body.workspace:not(.workspace_settings, .workspace_mcp, .workspace_template, .workspace_calendar_feed) #content.p-0 > .row,
+body.workspace:not(.workspace_settings, .workspace_mcp, .workspace_template, .workspace_calendar_feed) .ws-shell-main > .row {
   --bs-gutter-x: 0;
 }
 body.workspace:not(.workspace_channels) #ws-root {
   padding: 0 .75rem .75rem;
 }
-body.workspace:is(.workspace_settings, .workspace_mcp, .workspace_template) .ws-shell-main {
+body.workspace:is(.workspace_settings, .workspace_mcp, .workspace_template, .workspace_calendar_feed) .ws-shell-main {
   padding: 0 .75rem .75rem;
 }
 body.workspace:not(.workspace_channels) #ws-root > .pg-toolbar,
-body.workspace:is(.workspace_settings, .workspace_mcp, .workspace_template) .ws-shell-main > #button_bar {
+body.workspace:is(.workspace_settings, .workspace_mcp, .workspace_template, .workspace_calendar_feed) .ws-shell-main > #button_bar {
   max-width: none;
   margin-left: -.75rem;
   margin-right: -.75rem;
 }
-body.workspace:is(.workspace_settings, .workspace_mcp, .workspace_template) .ws-shell-main > #button_bar {
+body.workspace:is(.workspace_settings, .workspace_mcp, .workspace_template, .workspace_calendar_feed) .ws-shell-main > #button_bar {
   padding: .5rem .75rem;
   border-bottom: 1px solid var(--pg-border-color-translucent);
 }

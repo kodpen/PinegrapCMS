@@ -12,9 +12,9 @@ description: Panel screen basics (frame, notices, fields, width, icons, help), t
 - Reference screens: `view_folders.php` (toolbar), `product_builder.php` (edit screen layout, `edit-screen-wide-layout.md`). Help link: `panel-help-links.md`.
 
 ## What is the admin screen design principle?
-- Every new or reworked admin screen follows `view_folders.php` (File Manager): everything the screen can do sits in ONE toolbar directly under the title; a plain content area is below it.
-- The preview/tree panel of that screen is file-manager specific, not part of the principle.
-- Site Settings was moved to this principle (split into categories, then into a modal): see docs/memory/ui/settings-modal-architecture.md.
+- As `view_folders.php` (its tree panel aside): everything a screen does is in ONE toolbar straight under the title (never in a `.row`/`.col`), content below. Owner decision 2026-10-30 (`workflow/decisions-made-product-14.md`).
+- Nothing alone under the title: a lone action joins the bar, a fact goes into the grow slot, no second heading repeating the title. Back only by arrow + breadcrumb (`back-arrow-no-copies.md`). Filters, sort, view at the right end, never a second column. No sticky bar (#3837).
+- Left: `mass_edit.php` still wraps its bar in a column; move it when next touched (`page-button-bar.md`).
 
 ## What is the toolbar slot order?
 | Slot | What | Class |

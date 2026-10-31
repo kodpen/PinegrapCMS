@@ -289,6 +289,7 @@ $liveform->remove_form();
 
 echo pg_page_shell(array(
     'title'               => lang('Calendar subscription'),
+    'extra classes'       => 'workspace workspace_calendar_feed',
     'icon'                => 'workspace',
     'heading'             => lang('Calendar subscription'),
     'heading_description' => lang('Your tasks, plan items, days off and approval deadlines in the calendar on your phone or computer.'),
@@ -299,10 +300,10 @@ echo pg_page_shell(array(
     ),
 )) . '
 
-<main id="content" class="container-fluid">
-    <div class="row"><div class="col-12">
-        ' . $liveform_messages . '
-    </div></div>
+<main id="content" class="container-fluid p-0">
+<div class="ws-shell">
+<div class="ws-shell-main">
+    ' . $liveform_messages . '
     <div class="row g-5">
         <div class="col-12 xl:col-7">
             ' . $address_card . '
@@ -318,6 +319,8 @@ echo pg_page_shell(array(
         ' . get_token_field() . '
         <input type="hidden" name="feed_action" value="" id="ws_ical_action">
     </form>
+</div>
+</div>
 </main>
 
 <script>

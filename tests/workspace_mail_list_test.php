@@ -59,12 +59,26 @@ function test_workspace_mail_list_html()
 
 function test_workspace_mail_list_filter_links()
 {
+	$saved = $_GET;
+	$_GET = array('status' => 'waiting', 'holder' => 'me');
 	$html = ws_mail_list_filters_html(array('status' => 'waiting', 'holder' => 'me', 'overdue' => false));
 
-	pg_assert_contains('href="workspace_mail.php?status=closed&amp;holder=me"', $html, 'a status keeps the holder');
-	pg_assert_contains('href="workspace_mail.php?status=waiting&amp;holder=me&amp;overdue=1"', $html, 'overdue switched on');
-	pg_assert_contains('aria-current="true" href="workspace_mail.php?status=waiting&amp;holder=me"', $html, 'the chosen one');
-	pg_assert_contains('href="workspace_mail.php?status=waiting&amp;holder=me"', ws_mail_list_filters_html(array('status' => 'waiting', 'holder' => 'me', 'overdue' => true)), 'overdue switched off');
+	// One toolbar: Status and Held by are selects, each keeping the other.
+	pg_assert_contains('<nav id="button_bar" class="pg-toolbar"', $html, 'the screen toolbar');
+	pg_assert_same(false, strpos($html, 'rounded-pill"'), 'no pill rows');
+	pg_assert_true((bool) preg_match('/<select id="pg_filter_status" name="status"[^>]*>/', $html), 'status select');
+	pg_assert_contains('<option value="waiting" selected>', $html, 'the chosen status');
+	pg_assert_contains('<option value="me" selected>', $html, 'the chosen holder');
+	pg_assert_contains('<input type="hidden" name="holder" value="me">', $html, 'a status keeps the holder');
+	pg_assert_contains('<input type="hidden" name="status" value="waiting">', $html, 'a holder keeps the status');
+
+	pg_assert_contains('aria-pressed="false" href="workspace_mail.php?status=waiting&amp;holder=me&amp;overdue=1"', $html, 'overdue switched on');
+
+	$_GET = array('status' => 'waiting', 'holder' => 'me', 'overdue' => '1');
+	$html = ws_mail_list_filters_html(array('status' => 'waiting', 'holder' => 'me', 'overdue' => true));
+	pg_assert_contains('aria-pressed="true" href="workspace_mail.php?status=waiting&amp;holder=me"', $html, 'overdue switched off');
+	pg_assert_contains('<input type="hidden" name="overdue" value="1">', $html, 'a select keeps overdue');
+	$_GET = $saved;
 }
 
 function test_workspace_mail_list_wiring()
