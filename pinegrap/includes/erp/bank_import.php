@@ -1118,6 +1118,38 @@ function erp_bank_open_invoice_query($direction, $currency, $fx_on, $amount)
 }
 
 /**
+ * Text folded for comparing a bank line's words with an account's name:
+ * Turkish İ, I, ı and i are one letter (pg_list_search_fold()), and ş, ç, ğ,
+ * ö and ü become their ASCII letter, because banks write names in capitals
+ * and often without Turkish letters ("MUSTERI"). Runs of space are one space.
+ * Never used for a line's stored key (erp_bank_line_key()).
+ *
+ * @param string $text
+ * @return string
+ */
+function erp_bank_name_fold($text)
+{
+    $text = pg_list_search_fold(preg_replace('/\s+/u', ' ', trim((string) $text)));
+
+    return strtr($text, array('ş' => 's', 'ç' => 'c', 'ğ' => 'g', 'ö' => 'o', 'ü' => 'u'));
+}
+
+/**
+ * Whether a bank line's words name an account: its name, at least six
+ * letters long, folded alike with erp_bank_name_fold(), appears in them.
+ *
+ * @param string $description
+ * @param string $title
+ * @return bool
+ */
+function erp_bank_line_names($description, $title)
+{
+    $title = erp_bank_name_fold($title);
+
+    return (mb_strlen($title) >= 6) && (mb_strpos(erp_bank_name_fold($description), $title) !== false);
+}
+
+/**
  * Who an unmatched line is likely from: an account whose tax number, or
  * whose name, the bank wrote in the line; failing that, the one open invoice
  * the amount closes exactly (erp_bank_open_invoice_query()).
@@ -1134,7 +1166,7 @@ function erp_bank_line_suggestion($line)
         $accounts = (array) db_items("SELECT id, title, tax_number FROM erp_accounts WHERE status = 'active'");
     }
 
-    $words = mb_strtolower((string) $line['description']);
+    $words = (string) $line['description'];
     $none = array('account_id' => 0, 'invoice_id' => 0, 'why' => '');
 
     if ($words !== '') {
@@ -1146,8 +1178,7 @@ function erp_bank_line_suggestion($line)
         }
 
         foreach ($accounts as $account) {
-            $title = mb_strtolower(trim((string) $account['title']));
-            if ((mb_strlen($title) >= 6) && (mb_strpos($words, $title) !== false)) {
+            if (erp_bank_line_names($words, (string) $account['title'])) {
                 return array('account_id' => (int) $account['id'], 'invoice_id' => 0, 'why' => lang('name in the line'));
             }
         }

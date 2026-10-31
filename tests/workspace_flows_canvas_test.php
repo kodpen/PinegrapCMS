@@ -2071,6 +2071,97 @@ JS
 	pg_assert_same(array(array('left' => 8, 'width' => 84), array('left' => 96, 'width' => 84)), $result['two']['out'], 'two values keep their full width');
 }
 
+// Short of room, the values no thread takes yet (drawn while their box is
+// selected, last in the row) shrink to their ring so the chips and the
+// dots in use keep their labels: "Post a message" selected with a field
+// read and four values open cut every label to a letter before (#4060).
+function test_workspace_flows_canvas_data_row_open_dots_shrink_first()
+{
+	$result = ws_flows_canvas_test_node(array('dataRowSlots'), ws_flows_canvas_test_sizes() . <<<'JS'
+console.log(JSON.stringify({
+    box: BOX_W,
+    ring: DATA_ROW.ring,
+    field: DATA_ROW.field,
+    out: DATA_ROW.out,
+    open: dataRowSlots(1, 4, 4),
+    some: dataRowSlots(1, 4, 2),
+    fits: dataRowSlots(0, 2, 2),
+    many: dataRowSlots(2, 6, 1)
+}));
+JS
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same(14, $result['ring'], 'a value ring is 14 px');
+	pg_assert_same(array(array('left' => 8, 'width' => 76)), $result['open']['field'], 'the field chip keeps its whole width');
+	pg_assert_same(array(14, 14, 14, 14), array_column($result['open']['out'], 'width'), 'the open values shrink to their ring');
+
+	$some = array_column($result['some']['out'], 'width');
+	pg_assert_same(array(14, 14), array_slice($some, 2), 'the open values shrink to their ring');
+	pg_assert_true(($some[0] >= 44) && ($some[1] >= 44), 'values in use keep room for their label: ' . implode(', ', $some));
+	pg_assert_same(array($result['out'], $result['out']), array_column($result['fits']['out'], 'width'), 'a row that fits keeps every label');
+
+	foreach (array('open', 'some', 'many') as $name) {
+		$all = array_merge($result[$name]['field'], $result[$name]['out']);
+
+		foreach ($all as $index => $slot) {
+			pg_assert_true($slot['left'] + $slot['width'] <= $result['box'] - 8 + 1, $name . ': item ' . $index . ' within the box');
+			pg_assert_true($slot['width'] >= $result['ring'], $name . ': item ' . $index . ' at least a ring wide');
+		}
+	}
+}
+
+// Ports and value dots are drawn small and taken by a target of at least
+// 24 x 24 px (#4060): a 10 px arrow port, 12 px on hover; a 14 px ring with
+// an 8 px icon, the row 14 px high.
+function test_workspace_flows_canvas_dots_are_small_with_a_large_target()
+{
+	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/backend.src.css');
+	$rule = function ($selector) use ($css) {
+		pg_assert_true((bool) preg_match('/\n' . preg_quote($selector, '/') . ' \{([^}]*)\}/', $css, $found), $selector . ' is styled');
+
+		return $found[1] ?? '';
+	};
+	$px = function ($body, $property) {
+		return preg_match('/\n  ' . preg_quote($property, '/') . ': (-?[0-9.]+)px;/', $body, $found) ? (float) $found[1] : null;
+	};
+
+	$port = $rule('.wsf-port');
+	pg_assert_same(10.0, $px($port, 'width'), 'an arrow port is 10 px wide');
+	pg_assert_same(10.0, $px($port, 'height'), 'and 10 px high');
+	pg_assert_contains('transform: scale(1.2);', $rule('.wsf-port-out:hover'), '12 px on hover');
+	$inset = -$px($rule('.wsf-port::before'), 'inset');
+	pg_assert_true(10 + 2 * $inset >= 24, 'the port is taken by a 24 px target');
+
+	$ring = $rule('.wsf-data-ring');
+	pg_assert_same(14.0, $px($ring, 'width'), 'a value ring is 14 px');
+	pg_assert_same(8.0, $px($ring, 'font-size'), 'with an 8 px icon');
+	pg_assert_contains('position: relative;', $ring, 'the ring holds its target');
+	$inset = -$px($rule('.wsf-data-ring::before'), 'inset');
+	pg_assert_true(14 + 2 * $inset >= 24, 'the ring is taken by a 24 px target');
+	pg_assert_same(14.0, $px($rule('.wsf-data'), 'height'), 'the row is as high as the ring');
+}
+
+// The Next row of the side panel stays inside it (#4059): the target's name
+// is cut with an ellipsis, the outcome select goes under it and may shrink,
+// and the panel never scrolls sideways.
+function test_workspace_flows_canvas_next_row_fits_the_panel()
+{
+	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/backend.src.css');
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js');
+
+	pg_assert_true((bool) preg_match('/\n\.wsf-palette,\n\.wsf-side \{[^}]*overflow-x: hidden;/', $css), 'the side panel does not scroll sideways');
+	pg_assert_true((bool) preg_match('/\n\.wsf-link \{[^}]*flex-wrap: wrap;[^}]*min-width: 0;/', $css), 'a Next row wraps');
+	pg_assert_true((bool) preg_match('/\n\.wsf-link-name \{[^}]*min-width: 0;/', $css), 'the name may shrink');
+	pg_assert_true((bool) preg_match('/\n\.wsf-link-on \{[^}]*flex: 1 1 100%;[^}]*min-width: 0;/', $css), 'the outcome goes on its own line and may shrink');
+	pg_assert_contains("nameText(nodeById(edge.to), 'wsf-link-name text-truncate')", $source, 'the name is cut with an ellipsis');
+	pg_assert_contains("pick.className = 'form-control form-control-sm wsf-link-on';", $source, 'the outcome select is no longer as wide as its longest choice');
+	pg_assert_false(strpos($source, "form-control-sm w-auto';") !== false, 'no w-auto outcome select');
+}
+
 // A thread that would pass under another box hangs deeper until it passes
 // below it; one that passes clear keeps its sag, and so does one whose box
 // lies too far down to hang below.

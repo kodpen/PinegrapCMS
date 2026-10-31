@@ -362,6 +362,28 @@ function erp_cheque_step_from()
 }
 
 /**
+ * The note shown once a step is taken, saying what it did: handing a cheque
+ * to the bank moves no money, collecting it or the bank paying a given one is
+ * a transfer between the business's own tills, and passing it on or a bounce
+ * is a movement on the till and the account.
+ *
+ * @param string $step deposit | collect | endorse | bounce | pay
+ * @return string
+ */
+function erp_cheque_step_note($step)
+{
+    switch ((string) $step) {
+        case 'deposit':
+            return lang('Handed to the bank for collection. The money moves when the bank collects it.');
+        case 'collect':
+        case 'pay':
+            return lang('Done. The amount moved between your tills as a transfer.');
+        default:
+            return lang('Done. The movement is in the till and on the account.');
+    }
+}
+
+/**
  * The next step of a cheque or note.
  *
  * @param int    $id

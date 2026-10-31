@@ -10,7 +10,7 @@ description: Steps E1-E10 of plans/image-editor.md: core modal, crop, server sav
   - Bundle, stylesheet, loader, `pg_image_editor_strings()`, the `<dialog>` with full screen, top bar, rail, panel, zoom and pan (wheel, pinch, keys), document model, undo and redo, profiles and `tools`.
   - Opens `{src}` and `{blank}`; no caller switched yet. The JS maths (matrices, rotated space) gets `node --test` tests.
 
-- E1b (S) Phone layout. Screens 20-25.
+- E1b (S) Phone layout. Screens 20-25. Done in #4186 (`ui/image-editor-modal.md`).
   - Narrower than 600 px: the rail becomes a scrolling bottom bar, the tool's panel a sheet above it (handle, at most 42 % of the height; closed for Select until something is chosen), the top bar keeps close, name, undo, redo and save; the mini bar sits at the bottom; handles get 44 px touch targets; safe-area insets.
   - Lower than 500 px (a phone held sideways): an icon rail on the left and the panel as a sheet over the right of the stage. Replaces E1's rule that hides the panel under 768 px.
 
@@ -41,4 +41,4 @@ description: Steps E1-E10 of plans/image-editor.md: core modal, crop, server sav
   - Delete `assets/lib/image_editor/`, `image_editor_modal.js`, `image_editor_save.php` and the old loader; `clean_up.php` lists the removed names; memory topic files follow; the PR body names the `[NEW]` changelog line.
 
 - E10 (M) Redaction. Screen 06.
-  - Pixelate, blur, solid box and brush-shaped areas; browser preview, burned in by server step 4; metadata stripped; versions per open question 1.
+  - Pixelate, blur, solid box and brush-shaped areas; browser preview, burned in by server step 4; metadata stripped; the versions stay and the served file loses its metadata (#4203).

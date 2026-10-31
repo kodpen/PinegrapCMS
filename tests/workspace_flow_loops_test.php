@@ -156,12 +156,12 @@ function test_workspace_flow_loops_graph_check_refuses()
 		return ($edge['to'] !== 'for_each_end_1') && ($edge['from'] !== 'for_each_end_1');
 	}));
 	$problems = ws_flow_graph_check($graph);
-	pg_assert_true(in_array('The loop of for_each_1 has no End box: add one after the boxes it repeats.', array_column($problems, 'text'), true));
+	pg_assert_true(in_array('The loop of For each has no End box: add one after the boxes it repeats.', array_column($problems, 'text'), true));
 
 	// A body that never reaches its End box: the arrow leaves the loop.
 	$graph = ws_flow_loops_test_graph(array(), array(array('notify_1', 'notify_2', 'done')));
 	$texts = array_column(ws_flow_graph_check($graph), 'text');
-	pg_assert_true(in_array('An arrow leaves the loop of for_each_1 from notify_1 to notify_2; a loop is left through its End box only.', $texts, true), implode(' | ', $texts));
+	pg_assert_true(in_array('An arrow leaves the loop of For each from Let people know (1) to Let people know (2); a loop is left through its End box only.', $texts, true), implode(' | ', $texts));
 
 	// An arrow from outside into the body.
 	$codes = ws_flow_loops_test_codes(ws_flow_loops_test_graph(array(), array(array('webhook_1', 'notify_1', 'done'))));
@@ -187,7 +187,7 @@ function test_workspace_flow_loops_graph_check_refuses()
 		array('for_each_end_2', 'for_each_end_1', 'done'),
 	));
 	$texts = array_column(ws_flow_graph_check($graph), 'text');
-	pg_assert_true(in_array('The box for_each_2 is in the loop of for_each_1 and starts, ends or is in another loop too; a loop inside or across another is not supported yet.', $texts, true), implode(' | ', $texts));
+	pg_assert_true(in_array('The box For each (2) is in the loop of For each (1) and starts, ends or is in another loop too; a loop inside or across another is not supported yet.', $texts, true), implode(' | ', $texts));
 
 	// No list, or more than one value for it.
 	$codes = ws_flow_loops_test_codes(ws_flow_loops_test_graph(array(), array(), array(), array('list' => '')));
@@ -251,7 +251,7 @@ function test_workspace_flow_loops_size_warning()
 	pg_assert_same(1, count($found));
 	pg_assert_same('for_each_1', $found[0]['node']);
 	pg_assert_true(!empty($found[0]['warning']));
-	pg_assert_same('The loop of for_each_1 can run 200 boxes (50 items × 4 boxes in it); with the rest of the flow a run can pass its limit of 200 boxes, and a long list then fails on its last items.', $found[0]['text']);
+	pg_assert_same('The loop of For each can run 200 boxes (50 items × 4 boxes in it); with the rest of the flow a run can pass its limit of 200 boxes, and a long list then fails on its last items.', $found[0]['text']);
 
 	// A value box in the body never runs and is not counted.
 	$graph = $body(3);
@@ -484,10 +484,10 @@ function test_workspace_flow_loops_api()
 function test_workspace_flow_loops_fallback_is_named()
 {
 	$texts = array_column(ws_flow_graph_check(ws_flow_loops_test_graph(array(), array(), array(), array('list' => '{{node.webhook_1.body|[]}}'))), 'text');
-	pg_assert_true(in_array('The list of for_each_1 cannot have a “When empty, write” text: remove it, the list is read as it is.', $texts, true), implode(' | ', $texts));
+	pg_assert_true(in_array('The list of For each cannot have a “When empty, write” text: remove it, the list is read as it is.', $texts, true), implode(' | ', $texts));
 
 	$texts = array_column(ws_flow_graph_check(ws_flow_loops_test_graph(array(), array(), array('collect' => '{{node.notify_1.told|none}}'))), 'text');
-	pg_assert_true(in_array('The value for_each_end_1 gathers cannot have a “When empty, write” text: remove it, the value is gathered as it is.', $texts, true), implode(' | ', $texts));
+	pg_assert_true(in_array('The value End for each gathers cannot have a “When empty, write” text: remove it, the value is gathered as it is.', $texts, true), implode(' | ', $texts));
 
 	pg_assert_true(ws_step_value_has_fallback('{{node.a.b|x}}'));
 	pg_assert_false(ws_step_value_has_fallback('{{node.a.b}}'));

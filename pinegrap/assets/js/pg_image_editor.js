@@ -145,6 +145,11 @@
         this.resolve = resolve;
         this.tools = M.resolveTools(opts.blank ? (opts.profile || 'canvas') : opts.profile, opts.tools);
         this.tool = this.tools.list[0];
+        // On a small screen the panel is a sheet (pg_image_editor.src.css):
+        // open for a tool, closed for Select until it is asked for.
+        this.sheetOpen = (this.tool !== 'select');
+        this.tap = null;
+        this.lastTouch = 0;
         this.doc = M.newDocument(opts);
         this.history = new M.History(100);
         this.dirty = false;
@@ -237,6 +242,13 @@
         this.stage.addEventListener('pointermove', function (e) { self.onMove(e); });
         this.stage.addEventListener('pointerup', function (e) { self.onUp(e); });
         this.stage.addEventListener('pointercancel', function (e) { self.onUp(e); });
+        // Touch has its own double tap (onTap); a dblclick the browser makes
+        // from those taps is left out.
+        this.stage.addEventListener('dblclick', function (e) {
+            if (Date.now() - self.lastTouch > 700) {
+                self.onDouble(e);
+            }
+        });
 
         this.onFullscreenChange = function () {
             if (!document.fullscreenElement && self.full) {
@@ -317,7 +329,7 @@
         }
 
         var size = M.docSize(this.doc), st = this.stageSize();
-        var k = Math.min(1, M.fitZoom(size.w, size.h, st.w, st.h, PAD));
+        var k = Math.min(1, M.fitZoom(size.w, size.h, st.w, st.h, (st.w < 600) ? 12 : PAD));
 
         this.fitMode = true;
         this.view = M.centred(size.w, size.h, st.w, st.h, k);
@@ -453,6 +465,7 @@
         delete this.pointers[e.pointerId];
 
         if (!this.pan) {
+            this.onTap(e);
             return;
         }
 
@@ -465,6 +478,39 @@
 
         if (!this.space) {
             this.stage.classList.remove('pgie-panning');
+        }
+    };
+
+    // A double click, or two taps of a finger close together, on the stage:
+    // the actual size at that point from the fitted view, else the fitted
+    // view again. Not on the mini bar's buttons.
+    Editor.prototype.onDouble = function (e) {
+        if (!this.ready || (e.target && e.target.closest && e.target.closest('.pgie-mini'))) {
+            return;
+        }
+
+        if (this.fitMode) {
+            var r = this.stage.getBoundingClientRect();
+
+            this.zoomBy(1 / this.view.k, e.clientX - r.left, e.clientY - r.top);
+        } else {
+            this.fit();
+        }
+    };
+
+    Editor.prototype.onTap = function (e) {
+        if (e.pointerType !== 'touch') {
+            return;
+        }
+
+        var now = Date.now(), last = this.tap;
+
+        this.lastTouch = now;
+        this.tap = { t: now, x: e.clientX, y: e.clientY };
+
+        if (last && (now - last.t < 320) && (Math.hypot(e.clientX - last.x, e.clientY - last.y) < 30)) {
+            this.tap = null;
+            this.onDouble(e);
         }
     };
 
@@ -497,6 +543,9 @@
             return;
         }
 
+        // A tool opens the sheet; pressing the active tool again closes or
+        // opens it; Select opens it only on that second press.
+        this.sheetOpen = (id === this.tool) ? !this.sheetOpen : (id !== 'select');
         this.tool = id;
         this.render();
     };
@@ -515,7 +564,16 @@
 
         this.panel.textContent = '';
         this.panel.setAttribute('aria-label', title);
-        this.panel.appendChild(el('div', { class: 'pgie-ph' }, [el('h2', { text: title })]));
+        var self = this;
+
+        this.panel.appendChild(el('div', { class: 'pgie-ph' }, [
+            el('h2', { text: title }),
+            el('div', { class: 'pgie-grow' }),
+            button('pgie-ibtn sm pgie-sheet-close', t('closePanel'), 'close', function () {
+                self.sheetOpen = false;
+                self.render();
+            })
+        ]));
         this.panel.appendChild(body);
     };
 
@@ -529,6 +587,7 @@
             self.toolButtons[id].setAttribute('aria-pressed', on ? 'true' : 'false');
         });
 
+        this.root.classList.toggle('pgie-sheet-closed', !this.sheetOpen);
         this.undoBtn.disabled = !this.history.canUndo();
         this.redoBtn.disabled = !this.history.canRedo();
         this.renderPanel();

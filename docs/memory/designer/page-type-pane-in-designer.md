@@ -15,7 +15,7 @@ description: Designer settings Page Type pane: a classic page's type fields, Lay
 - Saved at once with the pane's own button, not with the design's Save or Publish, so `_pgPageUnchanged()` does not need it.
 
 ## Which rights apply?
-- Those of `edit_page.php`, in shared functions: `check_edit_access()` on the folder, `pg_page_type_user_may_set()` (role < 3 any type; a basic user the type's `set_page_type_*` right, calendar types also `manage_calendars`), and `pg_page_type_properties_for_save()`, the per-type part of the handler moved out of it (#1851): a basic user keeps the stored contact group, private folder or custom form beyond their reach, the offer stays without the commerce right.
+- Those of `edit_page.php`, in shared functions: `check_edit_access()` on the folder, `pg_page_type_user_may_set()` (role < 3 any type; a basic user the type's `set_page_type_*` right, calendar types also `manage_calendars`), and `pg_page_type_properties_for_save()`, the per-type part of the handler moved out of it (#1851): a basic user keeps the stored contact group, private folder or custom form beyond their reach, the four Grant Offer columns are written only with `USER_MANAGE_ECOMMERCE` (`pg_page_type_offer_properties()`), else left out so the stored offer stays (#4180; it used to reset them).
 - Layout Type: `pg_page_type_pane_layout_type()`: administrators and designers pick either, others only back to `system`; a type without a layout keeps its value.
 
 ## Which types does it handle?

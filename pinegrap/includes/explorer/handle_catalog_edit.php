@@ -245,6 +245,40 @@ function pg_explorer_handle_catalog_quick_edit($type, $request, $user)
         'message' => $quick_message));
 }
 
+/**
+ * Whether offline payment is switched on: the Commerce access drawer draws
+ * its Offline Payment switch, and its save writes that right, only then.
+ *
+ * @return bool
+ */
+function pg_explorer_catalog_offline_payment_on()
+{
+    return (defined('ECOMMERCE_OFFLINE_PAYMENT') && (ECOMMERCE_OFFLINE_PAYMENT == true));
+}
+
+/**
+ * The user columns one Commerce access row writes. The Offline Payment
+ * right is left out while offline payment is off: the drawer drew no switch
+ * for it, the browser still sends false, and writing that would take the
+ * stored right away from every listed user.
+ *
+ * @param array $item    One row of the request (manage, reports, offline_payment).
+ * @param bool  $offline Whether offline payment is switched on.
+ * @return array Column => value.
+ */
+function pg_explorer_catalog_access_columns($item, $offline)
+{
+    $columns = array(
+        'user_manage_ecommerce' => ((isset($item['manage'])) && ($item['manage'])) ? 'yes' : 'no',
+        'manage_ecommerce_reports' => ((isset($item['reports'])) && ($item['reports'])) ? '1' : '0');
+
+    if ($offline) {
+        $columns['user_set_offline_payment'] = ((isset($item['offline_payment'])) && ($item['offline_payment'])) ? '1' : '0';
+    }
+
+    return $columns;
+}
+
 // The store's counterpart to the folder access panel, with one real
 // difference: a folder's rights belong to that folder, while commerce
 // rights belong to the user and cover the whole store. There is no
@@ -266,7 +300,7 @@ function pg_explorer_handle_catalog_access_get($type, $request, $user)
         'status' => 'success',
         'request' => $type,
         'can_manage_users' => ($user['role'] <= 2),
-        'offline_payment' => (defined('ECOMMERCE_OFFLINE_PAYMENT') && (ECOMMERCE_OFFLINE_PAYMENT == true)),
+        'offline_payment' => pg_explorer_catalog_offline_payment_on(),
         'users' => array());
 
     if ($user['role'] <= 2) {
@@ -327,16 +361,13 @@ function pg_explorer_handle_catalog_access_set($type, $request, $user)
             continue;
         }
 
-        $manage = ((isset($item['manage'])) && ($item['manage'])) ? 'yes' : 'no';
-        $reports = ((isset($item['reports'])) && ($item['reports'])) ? '1' : '0';
-        $offline = ((isset($item['offline_payment'])) && ($item['offline_payment'])) ? '1' : '0';
+        $set = array();
 
-        db(
-            "UPDATE user SET
-                user_manage_ecommerce = '" . e($manage) . "',
-                manage_ecommerce_reports = '" . e($reports) . "',
-                user_set_offline_payment = '" . e($offline) . "'
-            WHERE user_id = '" . e($row_user_id) . "'");
+        foreach (pg_explorer_catalog_access_columns($item, pg_explorer_catalog_offline_payment_on()) as $column => $value) {
+            $set[] = $column . " = '" . e($value) . "'";
+        }
+
+        db("UPDATE user SET " . implode(', ', $set) . " WHERE user_id = '" . e($row_user_id) . "'");
 
         $saved++;
     }

@@ -574,6 +574,28 @@ function _render_system_widget_change_password($tree_json, $widget_id, $cfg = ar
 // set_password
 // ============================================================================
 
+/**
+ * The set-password screen's message when its link cannot be used: the token
+ * is missing from the address, matches no account, or is older than a day.
+ * Each one links to the forgot-password page, where a new e-mail is asked
+ * for. HTML: the address is escaped here.
+ *
+ * @param string $reason     missing, invalid or expired
+ * @param string $forgot_url the forgot-password page
+ * @return string
+ */
+function pg_set_password_token_message($reason, $forgot_url)
+{
+    $vars = array(h((string)$forgot_url));
+    if ($reason === 'missing') {
+        return lang(array('string' => 'Sorry, the token is missing from the address, so we can\'t allow you to set a password. Please <a href="{var:1}">request a new email</a>.', 'vars' => $vars));
+    }
+    if ($reason === 'expired') {
+        return lang(array('string' => 'Sorry, the token has expired. Please <a href="{var:1}">request a new email</a>.', 'vars' => $vars));
+    }
+    return lang(array('string' => 'Sorry, the token is not valid, so we can\'t allow you to set a password. Please check if your email client possibly broke the link. If so, then you might try fixing the link. Otherwise, the token might be old, so please <a href="{var:1}">request a new email</a>.', 'vars' => $vars));
+}
+
 // Render a 'set_password' system widget - the page a password reset e-mail
 // links to (?k=<token>). forgot_password.php finds it through
 // get_page_type_url('set password') when the site has no legacy page of that
@@ -616,16 +638,16 @@ function _render_system_widget_set_password($tree_json, $widget_id, $cfg = array
              WHERE token = '" . e(hash('sha256', $token)) . "' LIMIT 1");
         if (!is_array($user) || empty($user['email'])) {
             $state = 'invalid';
-            $error = lang(array('string' => 'Sorry, the token is not valid, so we can\'t allow you to set a password. Please check if your email client possibly broke the link. If so, then you might try fixing the link. Otherwise, the token might be old, so please <a href="{var:1}">request a new email</a>.', 'vars' => array(h($forgot_url))));
+            $error = pg_set_password_token_message('invalid', $forgot_url);
         } elseif (((int)$user['token_timestamp'] + 86400) < time()) {
             $state = 'invalid';
-            $error = lang(array('string' => 'Sorry, the token has expired. Please <a href="{var:1}">request a new email</a>.', 'vars' => array(h($forgot_url))));
+            $error = pg_set_password_token_message('expired', $forgot_url);
         } else {
             $email = (string)$user['email'];
         }
     } elseif ($mode !== 'edit') {
         $state = 'invalid';
-        $error = h(lang('Sorry, the token is missing from the address, so we can\'t allow you to set a password.'));
+        $error = pg_set_password_token_message('missing', $forgot_url);
     }
 
     $send_to = _pg_member_query_path('send_to');

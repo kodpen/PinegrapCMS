@@ -5,7 +5,7 @@ description: The site as an OAuth 2.1 server (oauth.php, includes/oauth/, 2026.4
 
 ## What is an OAuth connection?
 - The third caller: an outside application (an MCP client) a person connected on the consent screen. Its tokens ARE `api_devices` rows with `oauth_client_id > 0`. Never open a token table of its own: the revocation hooks (password, sign out everywhere, account deletion: `pg_auth_token_revoke_user()` → `api_devices_revoke_user()`) work on that table.
-- The operator's switch and ceiling is an `api_apps` row of `kind = 'oauth'`; `pg_oauth_app()` takes the oldest active one. Without it every OAuth endpoint and `.well-known` document answers 404 (`pg_oauth_gate()`), as on a site with no server.
+- The operator's switch and ceiling is an `api_apps` row of `kind = 'oauth'`; `pg_oauth_app()` takes the oldest active one (and none if that one expired). Application Access refuses a second active OAuth app and marks an existing extra one "Not in use" (`application-access-keys.md`, PR #4188). Without it every OAuth endpoint and `.well-known` document answers 404 (`pg_oauth_gate()`), as on a site with no server.
 
 ## Which scopes does a connection hold?
 - What the person agreed to ∩ the ceiling ∩ the person's own rights, on every request (`pg_oauth_effective_scopes()`), so a demotion takes effect at once. `webhooks:manage` is never handed out this way (`pg_oauth_ceiling()`); `account:*` is not added by itself.

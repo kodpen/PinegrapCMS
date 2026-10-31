@@ -31,6 +31,7 @@ validate_area_access($user, 'manager');
 define('PG_API_PANEL', true);
 
 require_once(dirname(__FILE__) . '/includes/api/keys.php');
+require_once(dirname(__FILE__) . '/includes/api/app_access.php');
 require_once(dirname(__FILE__) . '/includes/api/scopes.php');
 require_once(dirname(__FILE__) . '/includes/api/schema.php');
 require_once(dirname(__FILE__) . '/includes/api/outbound/webhooks.php');
@@ -140,6 +141,31 @@ if ($_POST) {
 			// application (includes/oauth/) is the same kind of switch for
 			// outside applications a person connects, and has none either.
 			$kind = api_app_kind(isset($_POST['kind']) ? $_POST['kind'] : '');
+
+			// The site serves one OAuth application, the oldest active one
+			// (pg_oauth_app()). A second would be listed with scopes no
+			// connection ever gets, so it is refused and the existing one
+			// named instead.
+			$oauth_refusal = '';
+
+			if ($kind === 'oauth') {
+
+				$oauth_refusal = api_app_oauth_create_refusal($kind, (string)db_value("SELECT name FROM api_apps
+					WHERE kind = 'oauth' AND status = 'active'
+					ORDER BY id ASC
+					LIMIT 1"));
+
+			}
+
+			if ($oauth_refusal !== '') {
+
+				$liveform->add_error($oauth_refusal);
+
+				header('Location: ' . $screen_url);
+
+				exit();
+
+			}
 
 			$made = api_app_create(
 				$liveform->get_field_value('name'),
@@ -581,40 +607,29 @@ if (is_array($rows)) {
 
 }
 
-// The most recent calls, for the drawer's log tab. One query for the whole
-// screen, grouped in PHP afterwards: a query per application would turn this
-// page into as many round trips as there are integrations, and the tab is only
-// ever looked at for one of them at a time.
+// The most recent calls and errors of each application, for the drawer's log
+// tab: one round trip, a bounded subquery per application on the
+// (app_id, timestamp) index (api_app_log_sql()), so one busy application does
+// not empty the others' lists.
 $log_rows = array();
 
-$recent = db_items("SELECT app_id, method, path, status_code, error_code, duration_ms, timestamp
-	FROM api_request_log
-	WHERE app_id > 0
-	ORDER BY id DESC
-	LIMIT 300");
+$log_sql = api_app_log_sql(array_map(function ($app) { return $app['id']; }, $apps), 15);
 
-if (is_array($recent)) {
+if ($log_sql !== '') {
 
-	foreach ($recent as $row) {
+	$recent = db_items($log_sql);
 
-		$key = (int)$row['app_id'];
+	if (is_array($recent)) {
 
-		if (!isset($log_rows[$key])) { $log_rows[$key] = array(); }
-
-		if (count($log_rows[$key]) >= 15) { continue; }
-
-		$log_rows[$key][] = array(
-			'method'   => $row['method'],
-			'path'     => $row['path'],
-			'status'   => (int)$row['status_code'],
-			'error'    => $row['error_code'],
-			'duration' => (int)$row['duration_ms'],
-			'time'     => date('H:i', (int)$row['timestamp'])
-		);
+		$log_rows = api_app_log_group($recent, 'api_app_log_time_label');
 
 	}
 
 }
+
+// The OAuth application the site serves (pg_oauth_app()); any other active
+// OAuth row is shown as not in use.
+$oauth_served_id = api_app_oauth_served_id($apps, time());
 
 /* ---------------------------------------------------------------------------
    Presentation helpers
@@ -977,6 +992,16 @@ foreach ($apps as $app) {
 
 	$is_device = (isset($app['kind']) && ($app['kind'] === 'device'));
 
+	$oauth_unused = api_app_oauth_unused($app, $oauth_served_id);
+
+	if ($oauth_unused && ($status_class !== 'warn')) {
+
+		$status_class = 'warn';
+
+		$status_label = lang('Not in use');
+
+	}
+
 	$signed_in_number = isset($device_rows[(int)$app['id']]) ? count($device_rows[(int)$app['id']]) : 0;
 
 	$app_rows .= '
@@ -986,7 +1011,9 @@ foreach ($apps as $app) {
 			<div>
 				<b>' . h($app['name']) . '</b>
 				' . ($is_oauth
-					? '<code>' . lang('Connected apps (OAuth)') . ' &middot; ' . lang(array('string' => '{var:1} connection{suffix:1}', 'vars' => pg_format_number($signed_in_number, 0), 'suffix' => ($signed_in_number == 1) ? '' : 's')) . '</code>'
+					? '<code>' . lang('Connected apps (OAuth)') . ' &middot; ' . ($oauth_unused
+						? lang('Not in use: the oldest OAuth app applies')
+						: lang(array('string' => '{var:1} connection{suffix:1}', 'vars' => pg_format_number($signed_in_number, 0), 'suffix' => ($signed_in_number == 1) ? '' : 's'))) . '</code>'
 					: ($is_device
 					? '<code>' . lang('Team devices') . ' &middot; ' . lang(array('string' => '{var:1} device{suffix:1}', 'vars' => pg_format_number($signed_in_number, 0), 'suffix' => ($signed_in_number == 1) ? '' : 's')) . '</code>'
 					: '<code>' . h(substr($app['api_key'], 0, 16)) . '&hellip;</code>')) . '
@@ -1029,7 +1056,9 @@ foreach ($apps as $app) {
 		'kind'        => $is_oauth ? 'oauth' : ($is_device ? 'device' : 'server'),
 		'locked'      => api_app_row_locked($app['owner_role'], $user['role']),
 		'devices'     => isset($device_rows[(int)$app['id']]) ? $device_rows[(int)$app['id']] : array(),
-		'log'         => isset($log_rows[(int)$app['id']]) ? $log_rows[(int)$app['id']] : array(),
+		'unused'      => $oauth_unused,
+		'log'         => isset($log_rows[(int)$app['id']]) ? $log_rows[(int)$app['id']]['all'] : array(),
+		'log_errors'  => isset($log_rows[(int)$app['id']]) ? $log_rows[(int)$app['id']]['errors'] : array(),
 		'webhooks'    => isset($webhook_rows[(int)$app['id']]) ? $webhook_rows[(int)$app['id']] : array()
 	);
 
@@ -1822,6 +1851,9 @@ body.api-drawer-open .pg-chat-launcher { display: none !important; }
 				<div class="alert theme-warning py-3 px-5 small mb-5 d-none" id="d_locked_note">
 					<i class="bi bi-lock me-1"></i>' . h(lang('This application belongs to an account above yours, so only that account or one above it can change it.')) . '
 				</div>
+				<div class="alert theme-warning py-3 px-5 small mb-5 d-none" id="d_unused_note">
+					<i class="bi bi-exclamation-triangle me-1"></i>' . h(lang('Not in use: the oldest OAuth app applies. The site serves one OAuth app, so the scopes chosen here reach no connection; change them on the app in use, or delete this one.')) . '
+				</div>
 				<div class="mb-5" id="d_device_block">
 					<label class="form-label small" id="d_login_label">' . lang('Signing in') . '</label>
 					<div class="api-secret-box"><code id="d_login">POST ' . h($api_base_url) . '/auth/login</code>
@@ -2291,6 +2323,7 @@ echo '
 		document.getElementById("d_nosecret_block").classList.toggle("d-none", !noSecret);
 		document.getElementById("d_device_block").classList.toggle("d-none", !device);
 		document.getElementById("d_oauth_block").classList.toggle("d-none", !oauth);
+		document.getElementById("d_unused_note").classList.toggle("d-none", !app.unused);
 		document.getElementById("d_devices_tab").classList.toggle("d-none", !keyless);
 		document.getElementById("d_hooks_tab").classList.toggle("d-none", keyless);
 		// The arrow keys of the tab row skip only disabled tabs, so a hidden
@@ -2338,7 +2371,7 @@ echo '
 	});
 
 	document.getElementById("d_log_errors").addEventListener("change", function () {
-		if (current) { renderLog(current.log, this.checked); }
+		if (current) { renderLog(this.checked ? current.log_errors : current.log, this.checked); }
 	});
 
 	// Each step of the delete confirm focuses the button that replaces the

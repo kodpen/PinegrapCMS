@@ -4405,20 +4405,99 @@ function _pg_member_drop_all_controls(&$tree)
 // Drop links whose href is bound to a token that resolved to '': a feature
 // that is off must not leave an <a href=""> behind. Covers semantic <a>,
 // content links and button components. $tokens is token => resolved value.
+// A kept link bound to an action address (pg_sw_action_link_tokens()) gets
+// rel="nofollow" on the way, so every member widget passing its links here
+// is stamped by the server whatever its design or template left out.
 function _pg_member_drop_empty_links(&$tree, $tokens)
 {
     if (!is_array($tree) || empty($tree['children']) || !is_array($tree['children'])) return;
+    $actions = pg_sw_action_link_tokens();
     $kept = array();
     foreach ($tree['children'] as $child) {
         if (is_array($child) && isset($child['props']['_bindings']['href'])) {
             $tok = (string)$child['props']['_bindings']['href'];
             if (array_key_exists($tok, $tokens) && (string)$tokens[$tok] === '') continue;
+            if (in_array($tok, $actions, true)) _pg_sw_rel_stamp_nofollow($child);
         }
         $kept[] = $child;
     }
     $tree['children'] = $kept;
     foreach ($tree['children'] as &$c) _pg_member_drop_empty_links($c, $tokens);
     unset($c);
+}
+
+/**
+ * The bound addresses that are actions, not pages: signing in, signing up,
+ * resetting a password, signing out, an identity provider's sign-in. The
+ * sign-in, sign-up and reset links carry ?send_to= the page they sit on, so
+ * every page links to another address, and a crawler that follows them all
+ * spends the site's crawl budget on the sign-in page.
+ *
+ * @return string[]
+ */
+function pg_sw_action_link_tokens()
+{
+    return array(
+        '__login_url',
+        '__register_url',
+        '__forgot_password_url',
+        '__logout_url',
+        '__google_signin_url',
+        '__google_signup_url',
+    );
+}
+
+/**
+ * Stamp rel="nofollow" on every node under $node whose href is bound to one
+ * of $tokens. The rel prop is what a content link, a semantic <a> and a
+ * button drawn as <a> print, and a set prop hides an Attributes panel rel,
+ * so the words of both are kept and nofollow is added once.
+ *
+ * @param array    $node
+ * @param string[] $tokens bound addresses, e.g. pg_sw_action_link_tokens()
+ * @return void
+ */
+function pg_sw_stamp_nofollow(&$node, $tokens)
+{
+    if (!is_array($node)) return;
+    if (isset($node['props']['_bindings']['href'])
+        && in_array((string)$node['props']['_bindings']['href'], (array)$tokens, true)) {
+        _pg_sw_rel_stamp_nofollow($node);
+    }
+    if (!empty($node['children']) && is_array($node['children'])) {
+        foreach ($node['children'] as &$child) pg_sw_stamp_nofollow($child, $tokens);
+        unset($child);
+    }
+}
+
+// Set one node's rel prop to its own words, those of an Attributes panel
+// rel, and nofollow, each once.
+function _pg_sw_rel_stamp_nofollow(&$node)
+{
+    $rel = isset($node['props']['rel']) && is_string($node['props']['rel']) ? $node['props']['rel'] : '';
+    $attrs = (isset($node['props']['_attrs']) && is_array($node['props']['_attrs'])) ? $node['props']['_attrs'] : array();
+    foreach ($attrs as $a) {
+        if (is_array($a) && isset($a['name']) && strtolower((string)$a['name']) === 'rel' && isset($a['value'])) {
+            $rel .= ' ' . (string)$a['value'];
+        }
+    }
+    $node['props']['rel'] = pg_sw_rel_with_nofollow($rel);
+}
+
+/**
+ * A rel value with nofollow among its words; every word once, in order.
+ *
+ * @param mixed $rel
+ * @return string
+ */
+function pg_sw_rel_with_nofollow($rel)
+{
+    $words = array();
+    foreach (preg_split('/\s+/', trim((is_string($rel) ? $rel : '') . ' nofollow'), -1, PREG_SPLIT_NO_EMPTY) as $word) {
+        $key = strtolower($word);
+        if (!isset($words[$key])) $words[$key] = $word;
+    }
+    return implode(' ', $words);
 }
 
 // Site name for the ^^__site_name^^ token: the organization name from the
@@ -4746,7 +4825,7 @@ function _render_system_widget_login_form($tree_json, $widget_id, $cfg = array()
         'forgot_password_link' => ($forgot_url !== '')
             ? '<a href="' . h($forgot_url) . '" class="pg-member-link pg-forgot-password-link" rel="nofollow">' . h(lang('Forgot password?')) . '</a>' : '',
         'register_link'        => ($register_url !== '')
-            ? '<a href="' . h($register_url) . '" class="pg-member-link pg-register-link">' . h(lang('Sign Up')) . '</a>' : '',
+            ? '<a href="' . h($register_url) . '" class="pg-member-link pg-register-link" rel="nofollow">' . h(lang('Sign Up')) . '</a>' : '',
     );
     pg_cf_apply_section_bindings($tree, $sections);
     _pg_member_drop_empty_links($tree, array(

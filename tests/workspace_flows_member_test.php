@@ -108,7 +108,7 @@ function test_workspace_flows_member_graph_refusal_names_the_box()
 	pg_assert_same('', ws_flow_member_graph_refusal(ws_flows_member_test_graph('post')));
 
 	$said = ws_flow_member_graph_refusal(ws_flows_member_test_graph('webhook'));
-	pg_assert_contains('box_1', $said);
+	pg_assert_contains('The box Call a webhook:', $said);
 	pg_assert_contains('not open to your own flows', $said);
 }
 

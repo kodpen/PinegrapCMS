@@ -267,7 +267,7 @@ function erp_accountant_words()
         'till' => array('cash' => lang('Cash'), 'bank' => lang('Bank'), 'pos' => lang('Card terminal'), 'credit_card' => lang('Credit card')),
         'method' => array('cash' => lang('Cash'), 'transfer' => lang('Bank transfer'), 'card' => lang('Card'), 'cheque' => lang('Cheque'), 'other' => lang('Other')),
         'cash_type' => array(
-            'collection' => lang('Collection'),
+            'collection' => lang('Receipt'),
             'payment' => lang('Payment'),
             'transfer' => lang('Transfer between tills'),
             'cancel' => lang('Cancellation'),
@@ -671,7 +671,7 @@ function erp_accountant_collect($from, $to, $options = array())
             array('label' => lang('Date'), 'type' => 'date', 'width' => 11),
             array('label' => lang('Type'), 'type' => 'text', 'width' => 20),
             array('label' => lang('Till or Bank Account'), 'type' => 'text', 'width' => 22),
-            array('label' => lang('Method'), 'type' => 'text', 'width' => 14),
+            array('label' => lang('Payment method'), 'type' => 'text', 'width' => 14),
             array('label' => lang('Account'), 'type' => 'text', 'width' => 30),
             array('label' => erp_tax_id_label(), 'type' => 'text', 'width' => 14),
             array('label' => lang('Description'), 'type' => 'text', 'width' => 36),

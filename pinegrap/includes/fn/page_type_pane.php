@@ -175,10 +175,34 @@ function pg_page_type_pane_layout_type($page_type, $posted, $current, $role)
 }
 
 /**
+ * The custom form Grant Offer properties a save writes: the four posted
+ * fields for a user with the commerce right, nothing for anyone else, so an
+ * update keeps the stored offer and a crafted post changes nothing.
+ *
+ * @param array $post
+ * @param bool  $may_manage_commerce  USER_MANAGE_ECOMMERCE
+ * @return array
+ */
+function pg_page_type_offer_properties($post, $may_manage_commerce)
+{
+    if (!$may_manage_commerce) {
+        return array();
+    }
+
+    return array(
+        'offer' => $post['custom_form_offer'] ?? 0,
+        'offer_id' => $post['custom_form_offer_id'] ?? '',
+        'offer_days' => $post['custom_form_offer_days'] ?? '',
+        'offer_eligibility' => $post['custom_form_offer_eligibility'] ?? '',
+    );
+}
+
+/**
  * The properties a save writes for a page type, read from $_POST and held to
  * the access rules of edit_page.php: a basic user keeps the stored contact
  * group, private folder or custom form when the posted one is out of their
- * reach, and the offer fields stay as stored without the commerce right.
+ * reach, and the offer fields are left out of the row without the commerce
+ * right (pg_page_type_offer_properties()), so the stored offer is kept.
  * edit_page.php and the designer pane both save through it.
  *
  * @param string $page_type
@@ -250,41 +274,11 @@ function pg_page_type_properties_for_save($page_type, $page_id, $user)
 
             $properties['private_folder_id'] = $new_private_folder_id;
 
-            // If commerce is enabled then save offer properties.
+            // The Grant Offer fields are drawn only for a user with the commerce
+            // right; for anyone else they stay out of the row, so the stored
+            // offer is kept (an insert takes the column defaults).
             if (ECOMMERCE) {
-                // If user does not have access to commerce, then get old values,
-                // because we might need to save them.
-                if (!USER_MANAGE_ECOMMERCE) {
-                    $offer_before = db_item(
-                        "SELECT
-                            offer,
-                            offer_id
-                        FROM custom_form_pages
-                        WHERE page_id = '" . e($page_id) . "'");
-                }
-
-                // If the user has access to commerce or the user just disabled grant offer,
-                // then save grant offer status.
-                if (USER_MANAGE_ECOMMERCE || !($_POST['custom_form_offer'] ?? '')) {
-                    $properties['offer'] = $_POST['custom_form_offer'] ?? 0;
-
-                // Otherwise the user does not have access to commerce, so save old value.
-                } else {
-                    $properties['offer'] = ($offer_before['offer'] ?? '');
-                }
-
-                // If the user has access to commerce or the user just selected the blank offer,
-                // then save the offer id from the user.
-                if (USER_MANAGE_ECOMMERCE || !($_POST['custom_form_offer_id'] ?? '')) {
-                    $properties['offer_id'] = $_POST['custom_form_offer_id'] ?? '';
-
-                // Otherwise the user does not have access to commerce, so save old value.
-                } else {
-                    $properties['offer_id'] = ($offer_before['offer_id'] ?? '');
-                }
-
-                $properties['offer_days'] = $_POST['custom_form_offer_days'] ?? '';
-                $properties['offer_eligibility'] = $_POST['custom_form_offer_eligibility'] ?? '';
+                $properties = array_merge($properties, pg_page_type_offer_properties($_POST, USER_MANAGE_ECOMMERCE));
             }
             
             break;
