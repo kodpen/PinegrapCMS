@@ -1154,7 +1154,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
             '"' . $row['quantity'] . '",' .
             '"' . $shipped_quantity . '",' .
             '"' . sprintf("%01.2lf", $row['price'] / 100) . '",' .
-            '"' . sprintf("%01.2lf", pg_order_item_line_tax($row['tax_total'], $row['tax'], $row['quantity']) / 100) . '",' .
+            '"' . sprintf("%01.2lf", pg_order_export_line_tax($row['order_id'], $row['id']) / 100) . '",' .
             '"' . $recurring_payment_period . '",' .
             '"' . $recurring_number_of_payments . '",' .
             '"' . $recurring_start_date . '",' .
@@ -1893,7 +1893,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                 '"' . $order_item['quantity'] . '",' .
                 '"' . $shipped_quantity . '",' .
                 '"' . sprintf("%01.2lf", $order_item['price'] / 100) . '",' .
-                '"' . sprintf("%01.2lf", pg_order_item_line_tax($order_item['tax_total'], $order_item['tax'], $order_item['quantity']) / 100) . '",' .
+                '"' . sprintf("%01.2lf", pg_order_export_line_tax($order_item['order_id'], $order_item['id']) / 100) . '",' .
                 '"' . $recurring_payment_period . '",' .
                 '"' . $recurring_number_of_payments . '",' .
                 '"' . $recurring_start_date . '",' .
@@ -2130,7 +2130,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                     '"' . $order_item['quantity'] . '",' .
                     '"' . $shipped_quantity . '",' .
                     '"' . sprintf("%01.2lf", $order_item['price'] / 100) . '",' .
-                    '"' . sprintf("%01.2lf", pg_order_item_line_tax($order_item['tax_total'], $order_item['tax'], $order_item['quantity']) / 100) . '",' .
+                    '"' . sprintf("%01.2lf", pg_order_export_line_tax($order_item['order_id'], $order_item['id']) / 100) . '",' .
                     '"' . $recurring_payment_period . '",' .
                     '"' . $recurring_number_of_payments . '",' .
                     '"' . $recurring_start_date . '",' .
@@ -3028,9 +3028,11 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
     // figure vanish exactly when someone is browsing history, which is when
     // an unnoticed refund is most likely to be sitting there.
     //
-    // Summed on the same basis as the other two cards (one SUM over
-    // orders.total through prepare_amount), so all three read alike; on a
-    // multi-currency shop all three are equally approximate.
+    // Each order counts what it still owes (pg_order_cancel_refund_owed()):
+    // the payment money only when a payment arrived, plus the gift card part,
+    // the figure the order screen shows. Shown through prepare_amount like
+    // the other two cards; on a multi-currency shop all three are equally
+    // approximate.
     //
     // The column arrives with 2026.1.27. Without it the card shows zero
     // rather than disappearing — an install that cannot answer the question
@@ -3039,7 +3041,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
 
     if ($refund_columns_exist) {
         $refund_pending_total = ((float) db_value(
-            "SELECT COALESCE(SUM(total), 0)
+            "SELECT COALESCE(SUM(" . pg_order_cancel_refund_owed_sql(pg_schema_has('orders', 'paid_at'), pg_schema_has('orders', 'refunded_amount')) . "), 0)
              FROM orders
              WHERE refund_status IN ('manual_required', 'failed', 'pending')")) / 100;
     }

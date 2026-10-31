@@ -300,11 +300,16 @@ function pg_dashboard_ops_refunds()
     // off idx_refund_status for nothing.
     $states = "('manual_required', 'failed', 'pending')";
 
-    // One sum: orders.total is kept in the store's base currency, the unit
-    // every payment driver charges. orders.currency_code is only the currency
-    // the visitor was shown prices in, so it does not split the money.
+    // One sum of what each order still owes (pg_order_cancel_refund_owed():
+    // the payment money only when a payment arrived, plus the gift card
+    // part), in the store's base currency, the unit every payment driver
+    // charges. orders.currency_code is only the currency the visitor was
+    // shown prices in, so it does not split the money.
+    $has_paid_at = pg_schema_has('orders', 'paid_at');
+    $has_refunded_amount = pg_schema_has('orders', 'refunded_amount');
+
     $summary = db_item(
-        "SELECT COUNT(*) AS orders_count, SUM(total) AS orders_total, MIN(order_date) AS oldest
+        "SELECT COUNT(*) AS orders_count, SUM(" . pg_order_cancel_refund_owed_sql($has_paid_at, $has_refunded_amount) . ") AS orders_total, MIN(order_date) AS oldest
          FROM orders
          WHERE refund_status IN " . $states);
 
@@ -320,6 +325,10 @@ function pg_dashboard_ops_refunds()
             orders.billing_first_name,
             orders.billing_last_name,
             orders.total,
+            orders.payment_method,
+            orders.gift_card_discount,
+            " . ($has_paid_at ? 'orders.paid_at,' : '') . "
+            " . ($has_refunded_amount ? 'orders.refunded_amount,' : '') . "
             orders.cancelled_at,
             orders.refund_status
          FROM orders
@@ -347,7 +356,7 @@ function pg_dashboard_ops_refunds()
             'aside' => '<span class="' . ($late ? 'fg-danger' : 'fg-emphasis-warning') . '">'
                 . get_relative_time(array('timestamp' => (int) $row['cancelled_at'])) . '</span>',
             'meta'  => '#' . h($number) . ' &middot; '
-                . pg_format_money(((float) $row['total']) / 100, BASE_CURRENCY_SYMBOL),
+                . pg_format_money(pg_order_cancel_refund_owed($row)['total'] / 100, BASE_CURRENCY_SYMBOL),
         ));
     }
 

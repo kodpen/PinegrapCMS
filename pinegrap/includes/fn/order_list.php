@@ -132,3 +132,57 @@ function pg_order_item_line_tax($tax_total, $unit_tax, $quantity)
 
     return (int) round((float) $unit_tax * (float) $quantity);
 }
+
+/**
+ * The tax of one order line for the orders CSV exports, in minor units: its
+ * own tax (pg_order_item_line_tax()) less its share of the order discount,
+ * so the lines of an order add up to orders.tax (pg_order_line_charged_taxes()).
+ *
+ * The order's lines are read whole on the first call for it, not from the
+ * export's own rows: a product filter can leave some of them out of the
+ * export, and the discount is shared over all of them. Only the last order
+ * read is kept, as the exports go through the lines order by order. A
+ * recurring line not charged with the order (pg_order_line_charged_today())
+ * keeps its own tax.
+ *
+ * @param int|string $order_id
+ * @param int|string $item_id
+ * @return int
+ */
+function pg_order_export_line_tax($order_id, $item_id)
+{
+    static $cache = array('order_id' => 0, 'taxes' => array());
+
+    $order_id = (int) $order_id;
+    $item_id = (int) $item_id;
+
+    if ($cache['order_id'] !== $order_id) {
+        $cache = array('order_id' => $order_id, 'taxes' => array());
+
+        $order = db_item("SELECT discount, tax, order_date FROM orders WHERE id = '" . $order_id . "'");
+        $with_rate = pg_schema_has('order_items', 'tax_rate');
+        $order_day = date('Y-m-d', (int) ($order['order_date'] ?? 0));
+        $clearcommerce = defined('ECOMMERCE_CREDIT_DEBIT_CARD') && (ECOMMERCE_CREDIT_DEBIT_CARD == true)
+            && defined('ECOMMERCE_PAYMENT_GATEWAY') && (ECOMMERCE_PAYMENT_GATEWAY == 'ClearCommerce');
+        $lines = array();
+
+        foreach ((array) db_items(
+            "SELECT id, price, quantity, tax, tax_total, recurring_payment_period, recurring_start_date" . ($with_rate ? ", tax_rate" : "") . "
+             FROM order_items
+             WHERE order_id = '" . $order_id . "'" . pg_order_item_active_sql() . "
+             ORDER BY id") as $item) {
+            $lines[(int) $item['id']] = array(
+                'amount' => (int) $item['price'] * max(1, (int) $item['quantity']),
+                'rate' => $with_rate ? $item['tax_rate'] : null,
+                'tax' => pg_order_item_line_tax($item['tax_total'], $item['tax'], $item['quantity']),
+                'alone' => !pg_order_line_charged_today((string) $item['recurring_payment_period'] !== '', $item['recurring_start_date'], 0, $order_day, $clearcommerce),
+            );
+        }
+
+        $cache['taxes'] = is_array($order)
+            ? pg_order_line_charged_taxes($lines, (int) $order['discount'], (int) $order['tax'])
+            : array_map(function ($line) { return $line['tax']; }, $lines);
+    }
+
+    return (int) ($cache['taxes'][$item_id] ?? 0);
+}

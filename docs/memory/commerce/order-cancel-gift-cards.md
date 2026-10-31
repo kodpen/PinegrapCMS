@@ -1,6 +1,6 @@
 ---
 name: order-cancel-gift-cards
-description: Gift cards on cancel and restore: issued cards keep their old date in the note and restore reads it from that line only; cards that paid the order raise REFUND ACTION REQUIRED, a gateway refund stays
+description: Gift cards on cancel and restore, REFUND ACTION REQUIRED for cards that paid; what a cancelled order still owes (0 payment when paid_at = 0); log lines name the order number
 ---
 
 ## What happens to the gift cards an order issued when it is cancelled?
@@ -14,9 +14,14 @@ description: Gift cards on cancel and restore: issued cards keep their old date 
 - Symptom it fixed (#733, #962): restore set every card of the order with a past date to "no expiration", so cards that had expired before the cancel, and dated cards, became spendable for good.
 
 ## What about gift cards that paid the order?
-- Their amount does not go back to the card by itself. `pg_order_gift_card_refund_line()` writes a translated "REFUND ACTION REQUIRED" site log line (masked codes, the shop card's id, Givex marked, amounts).
-- `refund_status` keeps what the payment step reported: a successful card void stays `refunded` (customer email, `order.cancelled`, `refunded_at` and the restore keep it) and the gift card part is then reported only by the log line and the cancel notice. `manual_required` is set by the gift cards only when the payment step left no outcome (gift-card-only order, or no auto refund and nothing else flagged).
-- view_order.php: the Refund Pending banner shows the payment money left (`total - refunded_amount`) plus the gift card part; the provider sentence only when that money is left, the gift card sentence when `gift_card_discount > 0`. The cancel notice follows the same rule.
-- `orders.total` has the gift card part taken off already, so an order paid by gift card alone raised no flag before (#733). Crediting the card automatically would need restore to take it again from a balance that may be spent; not done.
+- Their amount does not go back to the card by itself. `pg_order_gift_card_refund_line($order_number, $rows)` writes a "REFUND ACTION REQUIRED" log line (`pg_log_lang()`; masked codes, shop card id, Givex marked).
+- `refund_status` keeps what the payment step reported (a successful void stays `refunded`); the gift cards set `manual_required` only when the payment step left no outcome. `orders.total` has the gift card part taken off already (#733). Crediting the card automatically would need restore to take it again from a balance that may be spent; not done.
+
+## How much does a cancelled order still owe?
+- `pg_order_cancel_refund_owed($row)`: `payment` = `total - refunded_amount` (min 0), but 0 when cancelled before the payment arrived (`Offline Payment` or a pending-payment method with `paid_at = 0`; no `paid_at` column counts as paid); `gift_card` = `gift_card_discount`; `total` both. `pg_order_cancel_refund_owed_sql()` is the SUM form.
+- Read by the view_order.php banner, dialog, provider sentence (only when `payment > 0` or no gift card part) and cancel notice, cancel_order.php, the orders list Refund Pending card and the dashboard lane. The cancel payment plan is unchanged. Fixed #4161 (PR #4221): an unpaid transfer showed total + gift card and the provider sentence; list and dashboard summed `total`.
+
+## How do order log lines name the order?
+- `pg_order_log_number()` (order number, the id only for a cart without one), `pg_order_log_status()` (panel language), `pg_order_log_money()` (plain symbol), never `prepare_amount()` (HTML entity) or `number_format()` (#4167, PR #4221).
 
 Related: docs/memory/commerce/order-cancellation-flow.md, docs/memory/commerce/givex-gift-card.md
