@@ -105,6 +105,17 @@ if (!$_POST) {
         $liveform->set('purpose', $email_campaign_profile['purpose']);
     }
 
+    // A stored trigger item whose row is gone gets a notice above its picker.
+    $action_item_gone = pg_email_campaign_profile_action_item_gone(
+        $email_campaign_profile['action'],
+        $email_campaign_profile['action_item_id'],
+        pg_email_campaign_profile_action_item_row($email_campaign_profile['action'], $email_campaign_profile['action_item_id'])
+    );
+
+    $delete_confirmation = pg_email_campaign_profile_delete_confirmation(
+        pg_email_campaign_profile_follower_count($id, pg_email_campaign_profile_follow_map())
+    );
+
     echo
     pg_page_shell(
         array(
@@ -141,12 +152,13 @@ if (!$_POST) {
                         'custom_form_page_id' => ($email_campaign_profile['action'] == 'custom_form_submitted') ? (int) $email_campaign_profile['action_item_id'] : 0,
                         'page_id' => (int) $email_campaign_profile['page_id'],
                         'email_campaign_profile_id' => ($email_campaign_profile['action'] == 'email_campaign_sent') ? (int) $email_campaign_profile['action_item_id'] : 0,
+                        'action_item_gone' => $action_item_gone ? $email_campaign_profile['action'] : '',
                     ), $id) . '
                     <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
                                 <button type="submit" id="create_button" name="submit_save" value="Save" class="btn my-1  btn-solid theme-success "><span class="material-icons me-3" aria-hidden="true">save</span><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>
-                                <button type="submit" name="submit_delete" value="Delete" formnovalidate class="btn my-1  btn-solid theme-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('campaign profile')))) . '"><span class="material-icons me-3" aria-hidden="true">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>
+                                <button type="submit" name="submit_delete" value="Delete" formnovalidate class="btn my-1  btn-solid theme-danger " data-confirm-content="' . h($delete_confirmation) . '"><span class="material-icons me-3" aria-hidden="true">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>
                             </div>
                         </div>
                     </nav>

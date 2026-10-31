@@ -18,6 +18,7 @@
 
 include('init.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/email_campaign_schedule.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/forms/email_campaign_profile_form.php');
 $user = validate_user();
 validate_email_access($user);
 
@@ -162,43 +163,12 @@ if (isset($_GET['export'])) {
 
     // Loop through the campaign profiles in order to output CSV data.
     foreach ($email_campaign_profiles as $email_campaign_profile) {
-        $action_item = '';
-
-        switch ($email_campaign_profile['action']) {
-            case 'calendar_event_reserved':
-                $action_item = db_value("SELECT name FROM calendar_events WHERE id = '" . $email_campaign_profile['action_item_id'] . "'");
-                break;
-
-            case 'custom_form_submitted':
-                $action_item = db_value("SELECT page_name FROM page WHERE page_id = '" . $email_campaign_profile['action_item_id'] . "'");
-                break;
-
-            case 'email_campaign_sent':
-                $action_item = db_value("SELECT name FROM email_campaign_profiles WHERE id = '" . $email_campaign_profile['action_item_id'] . "'");
-                break;
-
-            case 'product_ordered':
-                $product = db_item(
-                    "SELECT
-                        name,
-                        short_description
-                    FROM products
-                    WHERE id = '" . $email_campaign_profile['action_item_id'] . "'");
-
-                if ($product['name'] != '') {
-                    $action_item .= $product['name'];
-                }
-
-                if (($product['short_description'] != '') && ($product['short_description'] != $product['name'])) {
-                    if ($action_item != '') {
-                        $action_item .= ' - ';
-                    }
-
-                    $action_item .= $product['short_description'];
-                }
-
-                break;
-        }
+        // The label of the trigger item, "(deleted)" when its row is gone.
+        $action_item = pg_email_campaign_profile_action_item_label(
+            $email_campaign_profile['action'],
+            $email_campaign_profile['action_item_id'],
+            pg_email_campaign_profile_action_item_row($email_campaign_profile['action'], $email_campaign_profile['action_item_id'])
+        );
 
         $page_name = '';
 
@@ -305,47 +275,12 @@ if (isset($_GET['export'])) {
 
             $output_action = isset($action_names[$email_campaign_profile['action']]) ? $action_names[$email_campaign_profile['action']] : '';
 
-            switch ($email_campaign_profile['action']) {
-                case 'calendar_event_reserved':
-                    $output_action_item = h(db_value("SELECT name FROM calendar_events WHERE id = '" . $email_campaign_profile['action_item_id'] . "'"));
-                    break;
-
-                case 'custom_form_submitted':
-                    $output_action_item = h(db_value("SELECT page_name FROM page WHERE page_id = '" . $email_campaign_profile['action_item_id'] . "'"));
-                    break;
-
-                case 'email_campaign_sent':
-                    $output_action_item = h(db_value("SELECT name FROM email_campaign_profiles WHERE id = '" . $email_campaign_profile['action_item_id'] . "'"));
-                    break;
-
-                case 'product_ordered':
-                    $product = db_item(
-                        "SELECT
-                            name,
-                            short_description
-                        FROM products
-                        WHERE id = '" . $email_campaign_profile['action_item_id'] . "'");
-
-                    $output_action_item = '';
-
-                    if ($product['name'] != '') {
-                        $output_action_item .= h($product['name']);
-                    }
-
-                    if (($product['short_description'] != '') && ($product['short_description'] != $product['name'])) {
-                        if ($output_action_item != '') {
-                            $output_action_item .= ' - ';
-                        }
-
-                        $output_action_item .= h($product['short_description']);
-                    }
-
-                    break;
-
-                default:
-                    $output_action_item = '';
-                    break;
-            }
+            // The label of the trigger item, "(deleted)" when its row is gone.
+            $output_action_item = h(pg_email_campaign_profile_action_item_label(
+                $email_campaign_profile['action'],
+                $email_campaign_profile['action_item_id'],
+                pg_email_campaign_profile_action_item_row($email_campaign_profile['action'], $email_campaign_profile['action_item_id'])
+            ));
 
             $output_page_name = '';
 
