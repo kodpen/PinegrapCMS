@@ -481,6 +481,14 @@ if (!$_POST) {
 
         $sql_upload_folder_id = "";
 
+        // Quiz Question and Correct Answer are drawn only for a custom form
+        // whose quiz is on; otherwise the stored values stay.
+        $sql_quiz = "";
+        if (($form_type == 'custom') && ($quiz == 1)) {
+            $sql_quiz = "quiz_question = '" . escape($_POST['quiz_question'] ?? '') . "',
+                    quiz_answer = '" . escape(prepare_form_data_for_input($_POST['quiz_answer'] ?? '', $_POST['type'])) . "',";
+        }
+
         // Only a custom form's text box or text area can be left out of
         // translation; other forms keep the column as it is.
         $sql_translate_values = "";
@@ -538,8 +546,7 @@ if (!$_POST) {
                     office_use_only = '" . escape($_POST['office_use_only'] ?? '') . "',
                     $sql_upload_folder_id
                     $sql_translate_values
-                    quiz_question = '" . escape($_POST['quiz_question'] ?? '') . "',
-                    quiz_answer = '" . escape(prepare_form_data_for_input($_POST['quiz_answer'], $_POST['type'])) . "',
+                    $sql_quiz
                     user = '" . $user['id'] . "',
                     timestamp = UNIX_TIMESTAMP()
                 WHERE id = '" . escape($_POST['id'] ?? '') . "'";
