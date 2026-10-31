@@ -5217,6 +5217,64 @@ function get_offer_code_for_special_offer_code($special_offer_code)
     }
     return $offer_code;
 }
+/**
+ * Whether an offer runs on the given day: enabled and inside its start and
+ * end dates. The one rule the cart, express order and the affiliate link ask.
+ *
+ * @param array  $offer an offers row with status, start_date and end_date
+ *                      (null columns when no offer was found)
+ * @param string $today Y-m-d
+ * @return bool
+ */
+function pg_offer_is_running($offer, $today)
+{
+    return ((string) ($offer['status'] ?? '') === 'enabled')
+        && ((string) ($offer['start_date'] ?? '') !== '')
+        && ((string) $offer['start_date'] <= (string) $today)
+        && ((string) $today <= (string) ($offer['end_date'] ?? ''));
+}
+
+/**
+ * Whether at least one of the offers that share a code runs on the given day.
+ *
+ * @param array  $offers offers rows as pg_offer_is_running() reads them
+ * @param string $today  Y-m-d
+ * @return bool
+ */
+function pg_offers_any_running($offers, $today)
+{
+    foreach ((array) $offers as $offer) {
+        if (pg_offer_is_running($offer, $today)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/**
+ * Whether a typed special offer code (an offer code or a key code) leads to
+ * an offer that runs today. A key code of a disabled or out-of-date offer
+ * resolves through get_offer_code_for_special_offer_code() but is refused by
+ * the cart, so it must not be put into the session for the visitor.
+ *
+ * @param string $special_offer_code
+ * @return bool
+ */
+function pg_special_offer_code_running($special_offer_code)
+{
+    $offer_code = (string) get_offer_code_for_special_offer_code($special_offer_code);
+    if ($offer_code === '') {
+        return false;
+    }
+
+    $result = db_q("SELECT status, start_date, end_date FROM offers WHERE code = ?", array($offer_code));
+    if ($result === false) {
+        return false;
+    }
+
+    return pg_offers_any_running(mysqli_fetch_all($result, MYSQLI_ASSOC), date('Y-m-d'));
+}
 // Create function that is responsible for updating and applying offers to an order.
 function apply_offers_to_cart()
 {

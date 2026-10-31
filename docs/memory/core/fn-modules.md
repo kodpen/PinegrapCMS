@@ -31,7 +31,7 @@ description: Generated from the module field of the memory files: each includes/
 - `custom_form`: [[collection-template-refs]], [[custom-form-field-rules]], [[sms-consent-custom-form]]
 - `designer_fx`: [[designer-interactions]]
 - `designer_vocab`: [[designer-bootstrap-vocabulary]]
-- `ecommerce`: [[card-data-manual-processing]], [[cart-default-quantity]], [[csv-import-headings]], [[express-order-tax-address]], [[import-decimal-cells]], [[panel-image-alt]]
+- `ecommerce`: [[affiliate-link-offer-code]], [[card-data-manual-processing]], [[cart-default-quantity]], [[csv-import-headings]], [[express-order-tax-address]], [[import-decimal-cells]], [[panel-image-alt]]
 - `editor`: [[rich-text-profiles]]
 - `email_campaign_schedule`: [[email-campaign-schedule-label]]
 - `errors`: [[fn-module-errors-mail-backup-consent]]

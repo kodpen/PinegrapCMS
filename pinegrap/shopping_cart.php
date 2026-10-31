@@ -772,24 +772,10 @@ if (isset($_POST['special_offer_code'])) {
         if (mysqli_num_rows($result) > 0) {
             $offers = mysqli_fetch_items($result);
             
-            // assume that an active offer does not exist until we find out otherwise
-            $active_offer_exists = FALSE;
-            
+            // an active offer exists when at least one offer of the code runs today
             $current_date = date('Y-m-d');
-            
-            // loop through the offers, in order to determine if there is an active offer
-            foreach ($offers as $offer) {
-                // if this offer is active, then an active offer exists, so remember that and then break out of loop
-                if (
-                    ($offer['status'] == 'enabled')
-                    && ($offer['start_date'] <= $current_date)
-                    && ($current_date <= $offer['end_date'])
-                ) {
-                    $active_offer_exists = TRUE;
-                    break;
-                }
-            }
-            
+            $active_offer_exists = pg_offers_any_running($offers, $current_date);
+
             // if an active offer exists, then determine if we should check if a valid offer exists
             if ($active_offer_exists == TRUE) {
                 // if a notice has not already been displayed to the user for this offer code, then continue to check if a valid offer exists
@@ -853,9 +839,7 @@ if (isset($_POST['special_offer_code'])) {
                         foreach ($offers as $offer) {
                             // if this offer is active and this description has not already been added, then add it
                             if (
-                                ($offer['status'] == 'enabled')
-                                && ($offer['start_date'] <= $current_date)
-                                && ($current_date <= $offer['end_date'])
+                                pg_offer_is_running($offer, $current_date)
                                 && (in_array(trim(mb_strtolower($offer['description'])), $descriptions) == FALSE)
                             ) {
                                 // if a description has already been added, then add a comma and space for separation
