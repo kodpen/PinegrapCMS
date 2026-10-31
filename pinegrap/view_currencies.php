@@ -145,7 +145,7 @@ pg_page_shell(
             ' . $liveform->output_notices() . '
             ' . pg_screen_toolbar(array(
                 'primary'   => array('label' => lang('Create'), 'url' => 'add_currency.php', 'icon' => 'bi-plus-circle'),
-                'secondary' => array('label' => lang('Update Exchange Rates'), 'url' => 'update_exchange_rates.php?send_to=' . get_request_uri(), 'icon' => 'bi-currency-exchange'),
+                'secondary' => array('label' => lang('Update Exchange Rates'), 'url' => 'update_exchange_rates.php?send_to=' . urlencode(get_request_uri()) . '&token=' . ($_SESSION['software']['token'] ?? ''), 'icon' => 'bi-currency-exchange'),
                 'search'    => pg_list_sort_menu('view_currencies.php', $sort_columns, $sort_levels, $sort_default),
             )) . '
             <div class="card my-7">

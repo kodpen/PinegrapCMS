@@ -32,6 +32,9 @@ if (pg_cron_is_background_run()) {
 } else {
     $user = validate_user();
     validate_ecommerce_access($user);
+    // The button's link carries the session token; a forged link opened by a
+    // signed-in user would otherwise overwrite hand-entered rates.
+    validate_token_field();
     $user_id = $user['id'];
 }
 
