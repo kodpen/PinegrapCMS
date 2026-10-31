@@ -1,6 +1,6 @@
 ---
 name: decisions-made-product-14
-description: Decisions list, product part 14 (2026-10-31 on): own image editor, nothing alone under a screen's title, no PDF of ours for a purchase invoice
+description: Decisions list, product part 14 (2026-10-31 on): own image editor, nothing alone under a screen's title, no PDF of ours for a purchase invoice, Site Settings regrouped
 ---
 
 ## Where are the rules and the earlier parts?
@@ -17,3 +17,8 @@ description: Decisions list, product part 14 (2026-10-31 on): own image editor, 
 
 ## What is a purchase invoice's PDF, and what goes into the accountant pack for it? (#4104)
 - Decided (architect, 2026-10-31, bug #3997): nothing of ours. The archive keeps a rendering only for `direction = 'sales'` (`erp_event_invoice()` defers it, `erp_archive_invoice()` refuses a purchase); the pack's `belgeler/Alis_faturalari/` holds only the provider's `edoc` copy of a purchase, never the `invoice` copy or a render; `edit_erp_invoice.php` draws no PDF / Download for a purchase invoice (its e-document block already leads to the supplier's inbox document); `get_erp_invoice_pdf.php` answers a purchase invoice with a notice page for PDF, download and `?html=1`. Kept purchase PDFs on running sites stay in `files`, unused. No schema or data step. Refused: printing it as a "Purchase invoice" with the supplier as issuer: a second document beside the supplier's, which is the one that counts, and every custom template would need the branch. Re-ask if accountants want a per-purchase record printout.
+
+## How is Site Settings grouped? (owner, 2026-10-30; built #3795-#4135)
+- Decided (owner, 2026-10-30): one place per setting. The tools that leave the dialog live on the System tools screen (one row at the list's end); Accounting is a category; Security is Accounts and sign-in, Firewall is Firewall and HTTPS; API is Integrations; Visitors and privacy, Updates and maintenance are categories; the encryption key sits in Accounts and sign-in; Private Label is an Appearance card.
+- Kept: one dialog, one Save per pane; `#settings/<cat>/<card>` and `settings_<cat>.php` links, old card ids mapped by `pg_settings_legacy_anchors()`; every field's column and save rule. Category keys stay when a label changes.
+- Headings over the list (#3879): Site, Security, Selling, Running the site. Map: `ui/settings-modal-architecture.md`.

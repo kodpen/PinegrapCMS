@@ -189,10 +189,11 @@ function pg_maintenance_time_text($time)
 
 /**
  * The end time typed into the card (datetime-local, Y-m-d\TH:i), read in the
- * time zone the same save gives the site. Settings › General saves the time
- * zone and the end time in one UPDATE, and the request still runs in the old
- * zone: read in that one, the end time moved by the difference between the two
- * (15:00 typed for Istanbul stored as 15:00 UTC, shown as 18:00 next time).
+ * site's saved time zone (General › Date & Time), not the zone the request
+ * runs in: read in the request's, the end time moved by the difference between
+ * the two (15:00 typed for Istanbul stored as 15:00 UTC, shown as 18:00 next
+ * time). The Maintenance Mode card is saved by the Updates and maintenance
+ * category, which passes the stored zone in.
  *
  * @param string $posted    the input's value; seconds, if a browser sends them, are dropped
  * @param string $timezone  the zone the site will have; an unknown one falls back to the request's

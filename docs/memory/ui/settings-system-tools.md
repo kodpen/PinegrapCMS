@@ -5,7 +5,7 @@ description: The System tools screen (system_tools.php): the screens beside Site
 
 ## What is the System tools screen?
 - `system_tools.php` draws `pg_settings_tool_groups($user)` (`includes/settings/registry.php`: Monitoring, Connections, Store Lists, Jobs, Infrastructure) as one card per group, with `pg_settings_tool_cards()`. A group with no link is not drawn.
-- Owner, 2026-10-30 (plan settings-recategorization, R1, PR #3795): people got lost in Site Settings, whose list mixed the categories with 18 links that left the dialog. The links moved here; the dialog's list keeps only categories.
+- Owner, 2026-10-30 (Site Settings regrouping, `workflow/decisions-made-product-14.md`; PR #3795): people got lost in Site Settings, whose list mixed the categories with 18 links that left the dialog. The links moved here; the dialog's list keeps only categories.
 
 ## Who may open it?
 - `validate_area_access($user, 'manager')`, the dialog's own gate (role <= 2). A user for whom `pg_settings_tool_count()` is 0 gets the usual "Access denied".

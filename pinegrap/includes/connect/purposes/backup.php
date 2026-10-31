@@ -3,7 +3,7 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Sending the automatic backup to the site's own cloud storage: Google Drive,
- * OneDrive or Dropbox (Site Settings › General › Backups;
+ * OneDrive or Dropbox (Site Settings › Updates and maintenance › Backups;
  * includes/fn/backup_cloud.php).
  *
  * Each scope reaches only what the site itself writes there: Drive's

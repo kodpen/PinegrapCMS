@@ -260,8 +260,8 @@ function ws_ai_license_shape_ok($key)
 function ws_ai_license_sentence($state)
 {
     return ($state === 'expired')
-        ? lang('The Pinegrap Premium licence of this site has expired. Renew it and enter the new key under Settings › General.')
-        : lang('Pinegrap AI refused the subscription key under Settings › General: it does not match this site or it is not valid.');
+        ? lang('The Pinegrap Premium licence of this site has expired. Renew it and enter the new key under Site Settings › General › Software.')
+        : lang('Pinegrap AI refused the subscription key under Site Settings › General › Software: it does not match this site or it is not valid.');
 }
 
 /**
@@ -289,7 +289,7 @@ function ws_ai_license_problem()
     $config = ws_ai_config();
 
     if (!$config['license_set']) {
-        return lang('The subscription key under Settings › General is not entered.');
+        return lang('The subscription key under Site Settings › General › Software is not entered.');
     }
 
     if (($config['license_state'] === 'expired') || (($config['license_expires'] > 0) && ($config['license_expires'] < time()))) {
@@ -4556,7 +4556,7 @@ function ws_ai_key_post($liveform, $user, $username)
 function ws_ai_settings_test($liveform)
 {
     if (!ws_ai_config(true)['license_set']) {
-        $liveform->add_error(lang('The subscription key under Settings › General is not entered.'));
+        $liveform->add_error(lang('The subscription key under Site Settings › General › Software is not entered.'));
         return;
     }
 
@@ -4724,8 +4724,8 @@ function ws_ai_settings_card($self_url, $viewer)
         ),
         array(
             lang('The licence key'),
-            lang('Enter the subscription key of your Pinegrap Premium licence under Settings › General. It is checked against the site\'s address: a key that does not match or has expired does not work.'),
-            '<a class="btn btn-sm btn-outline theme-secondary" href="' . h($base . pg_settings_link('general', 'pgset-software')) . '"><i class="bi bi-gear me-1" aria-hidden="true"></i>' . h(lang('Settings › General')) . '</a>',
+            lang('Enter the subscription key of your Pinegrap Premium licence under Site Settings › General › Software. It is checked against the site\'s address: a key that does not match or has expired does not work.'),
+            '<a class="btn btn-sm btn-outline theme-secondary" href="' . h($base . pg_settings_link('general', 'pgset-software')) . '"><i class="bi bi-gear me-1" aria-hidden="true"></i>' . h(lang('Site Settings › General › Software')) . '</a>',
         ),
         array(
             lang('Try it'),
@@ -4807,7 +4807,7 @@ function ws_ai_settings_card($self_url, $viewer)
                             </details>
                             <div class="mb-5">
                                 <div class="form-label mb-1">' . h(lang('Licence')) . '</div>
-                                <div class="form-text mt-0">' . h(lang('Pinegrap AI is part of Pinegrap Premium and works with the subscription key of the site; it has no key of its own.')) . ' <a href="' . h($base . pg_settings_link('general', 'pgset-software')) . '">' . h(lang('Settings › General')) . '</a></div>
+                                <div class="form-text mt-0">' . h(lang('Pinegrap AI is part of Pinegrap Premium and works with the subscription key of the site; it has no key of its own.')) . ' <a href="' . h($base . pg_settings_link('general', 'pgset-software')) . '">' . h(lang('Site Settings › General › Software')) . '</a></div>
                             </div>
                             ' . ($admin ? '<button type="submit" class="btn btn-sm btn-solid theme-primary rounded-pill px-5"><i class="bi bi-check2 me-1" aria-hidden="true"></i>' . h(lang('Save')) . '</button>' : '<div class="form-text">' . h(lang('Only an administrator can connect Pinegrap AI.')) . '</div>') . '
                         </form>
