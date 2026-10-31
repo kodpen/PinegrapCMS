@@ -704,6 +704,7 @@
     "Replace every software file with the release package now? Files you changed by hand will be lost. Take a backup first.": "Her yazılım dosyası şimdi sürüm paketiyle değiştirilsin mi? Elle değiştirdiğiniz dosyalar kaybolur. Önce yedek alın.",
     "Replace the file": "Dosyayı değiştir",
     "Replace the layout in the editor with a newly generated one? Nothing is saved until you save the file.": "Düzenleyicideki düzen yeni oluşturulan düzenle değiştirilsin mi? Dosyayı kaydedene kadar hiçbir şey kaydedilmez.",
+    "Replace the lines typed below with the lines of this template?": "Aşağıya yazılan satırlar bu şablonun satırlarıyla değiştirilsin mi?",
     "Replace this picture with your own photo and caption.": "Bu resmi kendi fotoğrafınız ve açıklamanızla değiştirin.",
     "Replace with": "Değiştir",
     "Replace with the text below": "Aşağıdaki metinle değiştir",

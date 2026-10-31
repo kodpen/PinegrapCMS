@@ -579,7 +579,7 @@ function erp_quote_templates_box($liveform, $user_id)
                         ' . $liveform->output_field(array(
                             'type' => 'select', 'id' => 'template_id', 'name' => 'template_id',
                             'class' => 'form-control w-auto flex-grow-1', 'options' => $options)) . '
-                        <button type="submit" name="template_action" value="apply" class="btn btn-outline theme-primary" formnovalidate><i class="bi bi-box-arrow-in-down me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Fill the lines') . '</span></button>
+                        <button type="submit" name="template_action" value="apply" class="btn btn-outline theme-primary" formnovalidate data-confirm-content="' . h(lang('Replace the lines typed below with the lines of this template?')) . '"><i class="bi bi-box-arrow-in-down me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Fill the lines') . '</span></button>
                         <button type="submit" name="template_action" value="delete" class="btn btn-text theme-danger" formnovalidate data-confirm-content="' . h(lang('Delete this template?')) . '"><i class="bi bi-trash me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Delete') . '</span></button>
                     </div>
                     <div class="form-text">' . lang('Replaces the lines below; the account, dates and currency stay as they are.') . '</div>';

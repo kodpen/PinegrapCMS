@@ -200,3 +200,22 @@ function test_erp_quote_template_save_check_reports_stored_name()
 	pg_assert_contains("'name' => \$check['name']", $save, 'event and answer carry the checked name');
 	pg_assert_false(strpos($save, 'SET name') !== false, 'an overwrite keeps the stored name');
 }
+
+// Enter in a field outside the lines of a new quote pressed the form's first
+// submit button, the template card's "Fill the lines", and replaced the
+// typed lines. The editor stops Enter there (the template name box saves a
+// template) and the fill button asks before it replaces anything.
+function test_erp_quote_enter_never_fills_the_lines()
+{
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/erp_invoice_editor.js');
+	$start = strpos($js, "var editorForm = root.closest('form');");
+	pg_assert_true($start !== false, 'a form-wide Enter guard');
+	$guard = substr($js, $start, 1200);
+	pg_assert_contains("editorForm.querySelector('[name=\"template_action\"]')", $guard, 'only on a form with the template card');
+	pg_assert_contains('tbody.contains(target)', $guard, 'the lines keep their own Enter');
+	pg_assert_contains('event.preventDefault();', $guard);
+	pg_assert_contains("button[name=\"template_action\"][value=\"save\"]", $guard, 'Enter in the name box saves a template');
+
+	$card = pg_test_function_source('erp_quote_templates_box');
+	pg_assert_contains("value=\"apply\" class=\"btn btn-outline theme-primary\" formnovalidate data-confirm-content=", $card, 'the fill asks first');
+}

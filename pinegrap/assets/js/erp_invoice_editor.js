@@ -1373,6 +1373,31 @@
         }
     });
 
+    // Enter in a field outside the lines never submits a quote's form: the
+    // browser presses the form's first submit button, which is the template
+    // card's "Fill the lines", and the typed lines were replaced by the
+    // template's. Enter in the template name box saves the lines as a
+    // template, as the button beside it does.
+    var editorForm = root.closest('form');
+    if (editorForm && editorForm.querySelector('[name="template_action"]')) {
+        editorForm.addEventListener('keydown', function (event) {
+            var target = event.target;
+            if (event.key !== 'Enter' || event.defaultPrevented || target.tagName !== 'INPUT' || tbody.contains(target)) {
+                return;
+            }
+            if (['submit', 'button', 'reset', 'image'].indexOf(String(target.type).toLowerCase()) !== -1) {
+                return;
+            }
+            event.preventDefault();
+            if (target.name === 'template_name') {
+                var save = editorForm.querySelector('button[name="template_action"][value="save"]');
+                if (save) {
+                    save.click();
+                }
+            }
+        });
+    }
+
     document.addEventListener('click', function (event) {
         if (!event.target.closest('[data-erp-product-results], .erp-product-search')) {
             closeResults();

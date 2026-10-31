@@ -3127,6 +3127,7 @@
     "The quote is now: {var:1}.": "Teklifin durumu: {var:1}.",
     "The quote is unchanged since it was signed.": "Teklif imzalandığından beri değişmedi.",
     "The quote was changed after it was signed; the signature is no longer printed on it.": "Teklif imzalandıktan sonra değiştirildi; imza artık teklife basılmıyor.",
+    "The quote was e-mailed with a new guest link. The earlier guest link no longer works.": "Teklif yeni bir misafir bağlantısıyla e-postayla gönderildi. Önceki misafir bağlantısı artık çalışmıyor.",
     "The quote was e-mailed.": "Teklif e-postayla gönderildi.",
     "The quote was signed and is accepted.": "Teklif imzalandı ve kabul edildi.",
     "The quote's lines could not be read.": "Teklifin satırları okunamadı.",

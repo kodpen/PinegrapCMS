@@ -176,11 +176,14 @@ if ($_POST) {
     }
 
     if ($action === 'mail') {
-        // The e-mail may carry a new guest link; it replaces the live one.
+        // The e-mail may carry a new guest link. It replaces the live one
+        // only once the e-mail has gone: a refused address or a failed send
+        // drops the new link and leaves the customer's earlier link working.
         $link_url = '';
+        $link_id = 0;
 
         if (!empty($_POST['mail_guest_link'])) {
-            $issued = erp_quote_link_issue($quote_id, (int) $user['id']);
+            $issued = erp_quote_link_issue($quote_id, (int) $user['id'], false);
 
             if (!$issued['success']) {
                 $liveform->mark_error('_error', h($issued['error']));
@@ -188,17 +191,28 @@ if ($_POST) {
             }
 
             $link_url = erp_quote_link_url($issued['token']);
+            $link_id = (int) $issued['id'];
         }
 
         $sent = erp_quote_mail_send($quote_id, (string) ($_POST['mail_to'] ?? ''), (string) ($_POST['mail_subject'] ?? ''), (string) ($_POST['mail_message'] ?? ''), (int) $user['id'], $link_url);
 
         if (!$sent['success']) {
+            if ($link_id > 0) {
+                erp_quote_link_drop($quote_id, $link_id);
+            }
             $_SESSION['software']['erp_quote_mail_draft'][$quote_id] = array(
                 'to' => mb_substr((string) ($_POST['mail_to'] ?? ''), 0, 500),
                 'subject' => mb_substr((string) ($_POST['mail_subject'] ?? ''), 0, 255),
                 'message' => mb_substr((string) ($_POST['mail_message'] ?? ''), 0, 5000),
             );
-            $liveform->mark_error('_error', h($sent['error']));
+            $liveform->mark_error('_error', h($sent['error']) . (($link_id > 0) ? ' ' . h(lang('No new guest link was made; the earlier guest link, if any, still works.')) : ''));
+            go($self_url . '#erp-mail');
+        }
+
+        if ($link_id > 0) {
+            erp_quote_link_revoke($quote_id, $link_id);
+            erp_quote_link_log_issued((string) $quote['full_number']);
+            $liveform->add_notice(h(lang('The quote was e-mailed with a new guest link. The earlier guest link no longer works.')));
             go($self_url . '#erp-mail');
         }
 

@@ -187,33 +187,71 @@ function erp_quote_link_live($quote_id)
 }
 
 /**
- * Takes back every live link of a quote. The rows stay.
+ * Takes back every live link of a quote but the one kept. The rows stay.
  *
  * @param int $quote_id
+ * @param int $keep_id  a link left live (the one an e-mail has just carried), 0 for none
  * @return bool
  */
-function erp_quote_link_revoke($quote_id)
+function erp_quote_link_revoke($quote_id, $keep_id = 0)
 {
     if (!erp_quote_links_ready()) {
         return false;
     }
 
     return db("UPDATE erp_quote_links SET revoked_at = UNIX_TIMESTAMP()
-        WHERE quote_id = '" . (int) $quote_id . "' AND revoked_at = 0 AND used_at = 0") !== false;
+        WHERE quote_id = '" . (int) $quote_id . "' AND revoked_at = 0 AND used_at = 0"
+        . (((int) $keep_id > 0) ? " AND id <> '" . (int) $keep_id . "'" : '')) !== false;
+}
+
+/**
+ * Takes back one link of a quote, the one an e-mail that was not sent
+ * would have carried. The row stays.
+ *
+ * @param int $quote_id
+ * @param int $link_id
+ * @return bool
+ */
+function erp_quote_link_drop($quote_id, $link_id)
+{
+    if (!erp_quote_links_ready() || ((int) $link_id <= 0)) {
+        return false;
+    }
+
+    return db("UPDATE erp_quote_links SET revoked_at = UNIX_TIMESTAMP()
+        WHERE id = '" . (int) $link_id . "' AND quote_id = '" . (int) $quote_id . "' AND revoked_at = 0") !== false;
+}
+
+/**
+ * The Site Log line of a new guest link.
+ *
+ * @param string $full_number
+ * @return void
+ */
+function erp_quote_link_log_issued($full_number)
+{
+    log_activity(lang(array('string' => 'erp quote ({var:1}) got a new guest link', 'vars' => (string) $full_number)), (string) ($_SESSION['sessionusername'] ?? 'ERP'));
 }
 
 /**
  * Issues a new link for an open quote; the earlier live links are revoked
  * first. The token is returned once and never kept.
  *
- * @param int $quote_id
- * @param int $user_id
- * @return array ['success' => bool, 'error' => string, 'token' => string]
+ * With $replace false the earlier links stay live: the caller revokes them
+ * once the new link has reached the customer (erp_quote_link_revoke() with
+ * the new id kept), or drops the new one when it has not
+ * (erp_quote_link_drop()), so a failed e-mail never kills the link the
+ * customer holds.
+ *
+ * @param int  $quote_id
+ * @param int  $user_id
+ * @param bool $replace
+ * @return array ['success' => bool, 'error' => string, 'token' => string, 'id' => int]
  */
-function erp_quote_link_issue($quote_id, $user_id)
+function erp_quote_link_issue($quote_id, $user_id, $replace = true)
 {
     $fail = function ($message) {
-        return array('success' => false, 'error' => $message, 'token' => '');
+        return array('success' => false, 'error' => $message, 'token' => '', 'id' => 0);
     };
 
     if (!erp_quote_links_ready()) {
@@ -233,7 +271,9 @@ function erp_quote_link_issue($quote_id, $user_id)
     $token = pg_short_link_new_token();
     $parts = erp_quote_link_token_parts($token);
 
-    erp_quote_link_revoke((int) $quote['id']);
+    if ($replace) {
+        erp_quote_link_revoke((int) $quote['id']);
+    }
 
     $written = db("INSERT INTO erp_quote_links SET
             quote_id = '" . (int) $quote['id'] . "',
@@ -247,9 +287,14 @@ function erp_quote_link_issue($quote_id, $user_id)
         return $fail(lang('The guest link could not be made.'));
     }
 
-    log_activity(lang(array('string' => 'erp quote ({var:1}) got a new guest link', 'vars' => (string) $quote['full_number'])), (string) ($_SESSION['sessionusername'] ?? 'ERP'));
+    $link_id = (int) mysqli_insert_id(db::$con);
 
-    return array('success' => true, 'error' => '', 'token' => $token);
+    // A link that waits for its e-mail is logged by the caller once it has gone.
+    if ($replace) {
+        erp_quote_link_log_issued((string) $quote['full_number']);
+    }
+
+    return array('success' => true, 'error' => '', 'token' => $token, 'id' => $link_id);
 }
 
 /**

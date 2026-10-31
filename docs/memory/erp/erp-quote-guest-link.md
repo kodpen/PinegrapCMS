@@ -12,25 +12,27 @@ description: Sales quote guest link (#3761, 2026.11.0 step 11.0.64): erp_quote_l
 - Token from `pg_short_link_new_token()`, shown once (screen notice or the e-mail), never stored.
 
 ## Which rules hold?
-- One live link: `erp_quote_link_issue()` calls `erp_quote_link_revoke()` (sets `revoked_at` on live rows) before the new row. Only an open quote gets a link.
+- One live link: `erp_quote_link_issue()` calls `erp_quote_link_revoke()` (sets `revoked_at` on live rows) before the new row. Only an open quote gets a link. It answers the new row's `id` with the token.
+- `erp_quote_link_issue(…, false)` leaves the earlier links live; the caller then keeps one with `erp_quote_link_revoke($quote_id, $keep_id)` or takes the new one back with `erp_quote_link_drop($quote_id, $link_id)`.
 - `expires_at` = end of the quote's `valid_until` day at issue (`erp_quote_link_expires_at()`).
 - `erp_quote_link_state()` (pure but for today): revoked, used, expired, accepted (quote accepted another way), closed (`erp_quote_state()` not open or `erp_quote_status_refusal($quote, 'accepted')` refuses: expired, invoiced, cancelled, rejected), open. Asked on every open of the page.
-- Lookup `erp_quote_link_for_token()`: shape check, then by hash with `hash_equals`. Unknown, wrong and revoked tokens get the same neutral 404 page.
+- Lookup `erp_quote_link_for_token()`: shape check, then by hash with `hash_equals`. Unknown, wrong and revoked tokens get one neutral 404.
 
 ## How is a quote accepted?
 - `erp_quote_link_accept()`: state must be open, the refusal function asked, the link claimed (`used_at`, `WHERE used_at = 0 AND revoked_at = 0`, one affected row) so a double submit does nothing; `erp_signature_store('quote', …, user_id 0)` with `erp_signature_document_hash_quote()`; a refused store releases the claim. Then `erp_quote_set_status(…, 'accepted', 0)` (panel writer, `erp.quote.accepted`) and `erp.quote.signed`. Never a bare status write.
 - The panel's signature card says "through the guest link" for a signature with `user_id` 0.
 
-## What does the page show on each line? (#3942, PR #3985)
+## What does the page show on each line?
 - Description, quantity, unit price, discount, VAT % and the line total after the discount with VAT, from `erp_quote_line_amounts()` (`includes/erp/quotes.php`), which the panel's read-only quote uses too; a note under the table says so. The line totals add up to subtotal − discount + VAT printed below.
-- The signing note reads "adi elektronik imza" in Turkish, as on the panel's signature card and the signature page.
+- The signing note reads "adi elektronik imza" (as the panel's signature card).
 
 ## What protects the page?
-- `waf_sensitive_scripts()` lists `erp_quote.php` beside `cart_quote.php` (30/min allowance, token guessing). `noindex`, `no-store`, `no-referrer`, `DENY` framing; GET changes nothing (mail scanners); POST needs the form token (`validate_token_field()`). Styled by `assets/css/cart_quote.css`.
+- `waf_sensitive_scripts()` lists `erp_quote.php` beside `cart_quote.php` (30/min allowance, token guessing). `noindex`, `no-store`, `no-referrer`, `DENY` framing; GET changes nothing (mail scanners); POST needs `validate_token_field()`. CSS: `cart_quote.css`.
 
 ## How does the link reach the customer?
 - Edit Sales Quote card "Guest link": Create guest link (URL shown once with Copy, then the hint and end date), Revoke.
-- The e-mail form's optional switch "Add a guest link…" issues a new link and puts it in the quote e-mail (`erp_quote_mail_send(…, $link_url)`); the address is the quote account's invoice/account e-mail as before.
+- The e-mail form's optional switch "Add a guest link…" issues a new link with `$replace` false and puts it in the quote e-mail (`erp_quote_mail_send(…, $link_url)`); the address is the quote account's invoice/account e-mail as before.
+- The new link replaces the old one only after the send succeeded (revoke keeping the new id, then the Site Log line; the notice says so). A refused address or failed send drops the new link; the error says the earlier one still works (#3939, PR #4068).
 
 ## Not built
 - No API route for links; no list of past links on the screen (the rows are there).
