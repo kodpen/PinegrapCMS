@@ -563,6 +563,20 @@ function pg_explorer_handle_catalog_paste($type, $request, $user)
         respond(array('status' => 'error', 'message' => lang('Invalid request.')));
     }
 
+    // A group copied into itself or into one of its subgroups would find its
+    // own fresh copy among the children it copies and nest until the depth
+    // cap, so every group is checked before anything is copied.
+    if ($mode == 'copy') {
+
+        foreach ($items as $item) {
+
+            if ((isset($item['kind'])) && ($item['kind'] == 'group')
+                && (pg_catalog_group_is_within($map, $target_id, (int) (isset($item['id']) ? $item['id'] : 0)))) {
+                respond(array('status' => 'error', 'message' => lang('A product group cannot be copied into itself.')));
+            }
+        }
+    }
+
     $moved = 0;
 
     // What it would take to put this back, built as we go and handed to

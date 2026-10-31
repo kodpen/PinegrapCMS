@@ -262,6 +262,15 @@ function pg_catalog_copy_group($group_id, $target_id, $user, $depth = 0, &$creat
     // copied folder's contents keep their names.
     $name = ($depth == 0) ? ($row['name'] . ' [' . $suffix . ']') : $row['name'];
 
+    // The children are read before the copy is inserted, so a copy that
+    // lands inside the group it copies is never among them; those in the
+    // Recycle Bin stay behind.
+    $children = db_items(
+        "SELECT id
+        FROM product_groups
+        WHERE parent_id = '" . e((int) $group_id) . "'" . pg_catalog_bin_live_sql('product_groups') . "
+        ORDER BY sort_order, name");
+
     db(
         "INSERT INTO product_groups (
             name, enabled, parent_id, sort_order, display_type, address_name,
@@ -342,14 +351,7 @@ function pg_catalog_copy_group($group_id, $target_id, $user, $depth = 0, &$creat
             VALUES ('" . e($new_id) . "', '" . e((int) $attribute['attribute_id']) . "', '" . e((int) $attribute['sort_order']) . "', '" . e((int) $attribute['default_option_id']) . "')");
     }
 
-    // The children, under the copy rather than the original; those in the
-    // Recycle Bin stay behind.
-    $children = db_items(
-        "SELECT id
-        FROM product_groups
-        WHERE parent_id = '" . e((int) $group_id) . "'" . pg_catalog_bin_live_sql('product_groups') . "
-        ORDER BY sort_order, name");
-
+    // Copied under the copy rather than the original.
     foreach ((array) $children as $child) {
         $copied += pg_catalog_copy_group((int) $child['id'], $new_id, $user, $depth + 1, $created);
     }
