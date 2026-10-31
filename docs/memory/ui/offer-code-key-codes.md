@@ -9,7 +9,7 @@ description: A saved offer's code change moves its key codes to the new code (un
 - `orders.special_offer_code` is never touched: past orders keep the code they used.
 
 ## Why?
-- A changed code used to orphan every generated, imported or affiliate key code (affiliate codes carry the group offer's code). Checkout's `LEFT JOIN offers ON key_codes.offer_code = offers.code` found no offer and refused them, the editor counted 0 key codes, and Edit Key Code refused to save one until its offer code was retyped.
+- A changed code used to orphan every generated, imported or affiliate key code (affiliate codes carry the group offer's code). Checkout's `LEFT JOIN offers ON key_codes.offer_code = offers.code` found no offer and refused them, the editor counted 0 key codes, and Edit Key Code refused to save one until its offer code was retyped (#4069).
 
 ## What does the editor show?
 - Under the code field, `#pg-if-code-follow` (`renderCodeFollow()` in `offer_editor.js`, text `L.keyCodesFollow`): shown while the typed code differs from `C.savedCode`, `C.key_code_count > 0` and `C.same_code_count` is 0.
