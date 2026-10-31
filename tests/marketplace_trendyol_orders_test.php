@@ -192,8 +192,8 @@ function test_marketplace_trendyol_orders_package_addresses()
 	pg_assert_same('Ayşe Yılmaz', $shipping['name']);
 	pg_assert_same('Moda Cad. No: 12 D: 4', $shipping['address_1']);
 	pg_assert_same('Caferağa Mahallesi', $shipping['address_2'], 'a copy of the first line is replaced by the neighbourhood');
-	pg_assert_same('İstanbul', $shipping['city']);
-	pg_assert_same('Kadıköy', $shipping['state'], 'the district');
+	pg_assert_same('Kadıköy', $shipping['city'], 'the district, as checkout keeps a Turkish address');
+	pg_assert_same('İstanbul', $shipping['state'], 'the province');
 	pg_assert_same('Kadıköy', $shipping['district'], 'the district for ship_tos.district');
 	pg_assert_same('34710', $shipping['zip']);
 	pg_assert_same('TR', $shipping['country']);
@@ -203,7 +203,8 @@ function test_marketplace_trendyol_orders_package_addresses()
 
 	pg_assert_same('Bağdat Cad. No: 200', $billing['address_1']);
 	pg_assert_same('', $billing['address_2'], 'no second line and no neighbourhood');
-	pg_assert_same('Maltepe', $billing['state']);
+	pg_assert_same('Maltepe', $billing['city']);
+	pg_assert_same('İstanbul', $billing['state']);
 	pg_assert_same('34840', $billing['zip']);
 
 	// Without a first line, the full address stands in; without a full name,

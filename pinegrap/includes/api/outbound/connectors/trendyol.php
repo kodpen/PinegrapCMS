@@ -2409,6 +2409,11 @@ function mp_trendyol_seller_discount($line, $quantity) {
 //
 // address2 is often a copy of address1, and is then replaced by the
 // neighbourhood, which their address1 does not always name.
+//
+// Their city is the province and their district the town within it; the
+// store keeps the town as the city and the province as the state, the way a
+// Turkish address is entered at checkout (as mp_n11_address() does); the
+// town also goes to ship_tos.district.
 function mp_trendyol_address($entry, $key) {
 
 	$address = (isset($entry[$key]) && is_array($entry[$key])) ? $entry[$key] : array();
@@ -2442,8 +2447,8 @@ function mp_trendyol_address($entry, $key) {
 		'company'   => mp_trendyol_text($address, array('company')),
 		'address_1' => $line_1,
 		'address_2' => $line_2,
-		'city'      => mp_trendyol_text($address, array('city')),
-		'state'     => mp_trendyol_text($address, array('district')),
+		'city'      => mp_trendyol_text($address, array('district')),
+		'state'     => mp_trendyol_text($address, array('city')),
 		'district'  => mp_trendyol_text($address, array('district')),
 		'zip'       => mp_trendyol_text($address, array('postalCode')),
 		'country'   => mp_trendyol_text($address, array('countryCode')),

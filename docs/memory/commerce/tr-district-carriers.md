@@ -16,7 +16,7 @@ module: shipping
 ## What do the marketplace imports write?
 - `mp_n11_address()` answers `district` from n11's `district` / `districtName` / `town` (the same field it puts in `city`); `mp_trendyol_address()` from Trendyol's `district` (fixture `tests/fixtures/trendyol/v2-orders-page0.json`).
 - `mp_order_ship_to()` appends `mp_order_ship_to_district_sql()`: `pg_ship_to_district_set_sql()`, cleaned by `pg_ship_to_district_clean()`, nothing while the column is missing.
-- Trendyol kept the province in `city` and the district in `state` until #3835 decided the swap to the checkout's order (city = district, state = province); n11 was swapped in #2004, and its older rows are swapped by a 2026.11.0 data step (#3836).
+- Both imports keep a Turkish address in the checkout's order: `city` = district (town), `state` = province. n11 since #2004 (older rows swapped by a 2026.11.0 data step, #3836); Trendyol since #3861 (decided in #3835; before it kept the province in `city` and the town in `state`; no data step, as Trendyol import was unreleased).
 
 ## Where is it tested?
 - Each `tests/carrier_label_<driver>_test.php` (district first, city fallback; the hook for Aras and Kargonomi), `tests/shipment_labels_test.php`, `tests/tr_district_box_test.php` (the drivers that ask), `tests/marketplace_n11_test.php` and `tests/marketplace_trendyol_orders_test.php` (the address `district`, the INSERT part).
