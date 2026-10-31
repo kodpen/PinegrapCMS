@@ -346,6 +346,61 @@ function test_image_editor_model_picture_matrix_and_output()
 	pg_assert_same(array('w' => 200, 'h' => 101), $r['out'], 'the output is the crop box in whole pixels');
 }
 
+// Layers: the turned box's corners and bounds, hits on the topmost free
+// layer, resizing from a handle in the layer's own frame (keeping the ratio
+// from a corner), the angle towards the pointer, align, distribute, snap,
+// order, new ids; a flip mirrors a turned box, a picture keeps its shape.
+function test_image_editor_model_layers()
+{
+	$r = image_editor_model_node(
+		'var box = { id: "a", type: "rect", x: 100, y: 100, w: 200, h: 100, rot: 0 };' . "\n"
+		. 'var turned = { id: "b", type: "rect", x: 100, y: 100, w: 200, h: 100, rot: 90 };' . "\n"
+		. 'var doc = { layers: [box, turned, { id: "c", type: "image", x: 0, y: 0, w: 10, h: 10, locked: true }] };' . "\n"
+		. 'var round = function (v) { return Math.round(v * 1000) / 1000; };' . "\n"
+		. 'var d = M.newDocument({}); d.source.width = 400; d.source.height = 300;' . "\n"
+		. 'd.layers = [{ id: "r", type: "rect", x: 10, y: 10, w: 50, h: 20, rot: 30 }, { id: "p", type: "image", x: 10, y: 10, w: 50, h: 20, rot: 30 }];' . "\n"
+		. 'var f = M.flipDocument(d, "x"), t = M.turnDocument(d, 1);' . "\n"
+		. 'console.log(JSON.stringify({'
+		. ' bounds: M.bounds([turned]), both: M.bounds([box, turned]),'
+		. ' hitTop: M.hitLayer(doc, 200, 140, 0).id, hitTurned: M.hitLayer(doc, 200, 240, 0).id, miss: M.hitLayer(doc, 5, 5, 0),'
+		. ' se: M.resizeBox(box, "se", 400, 300, false, 4), keep: M.resizeBox(box, "se", 400, 150, true, 4), west: M.resizeBox(box, "w", 50, 0, false, 4),'
+		. ' small: M.resizeBox(box, "e", 0, 0, false, 4), turnedEast: M.resizeBox(turned, "e", 200, 400, false, 4),'
+		. ' up: M.angleTo(box, 200, 0, false), right: M.angleTo(box, 400, 150, false), snapped: M.angleTo(box, 400, 140, true),'
+		. ' right2: M.align([{ x: 0, y: 0, w: 10, h: 10 }, { x: 50, y: 20, w: 20, h: 5 }], "right", { x: 0, y: 0, w: 100, h: 100 }),'
+		. ' spread: M.distribute([{ x: 0, y: 0, w: 10, h: 10 }, { x: 30, y: 0, w: 10, h: 10 }, { x: 90, y: 0, w: 10, h: 10 }], "x"),'
+		. ' snap: M.snapBox({ x: 47, y: 10, w: 10, h: 10 }, [0, 50, 100], [0, 50, 100], 4),'
+		. ' order: ["up", "down", "top", "bottom"].map(function (h) { return M.reorder([{ id: "a" }, { id: "b" }, { id: "c" }, { id: "d" }], ["b"], h).map(function (l) { return l.id; }).join(""); }),'
+		. ' id: M.newId({ layers: [{ id: "l1" }, { id: "l0" }] }),'
+		. ' flippedRect: f.layers[0].rot, flippedPicture: f.layers[1].rot, turnedPicture: [round(t.layers[1].x), round(t.layers[1].y), t.layers[1].w, t.layers[1].h, t.layers[1].rot]'
+		. '}));'
+	);
+
+	if ($r === null) {
+		return;
+	}
+
+	pg_assert_false(isset($r['error']), isset($r['error']) ? $r['error'] : 'ran');
+	pg_assert_same(array('x' => 150, 'y' => 50, 'w' => 100, 'h' => 200), $r['bounds'], 'a box turned a quarter stands up');
+	pg_assert_same(array('x' => 100, 'y' => 50, 'w' => 200, 'h' => 200), $r['both'], 'the box around two');
+	pg_assert_same('b', $r['hitTop'], 'the topmost layer is hit');
+	pg_assert_same('b', $r['hitTurned'], 'a turned box is hit where it is drawn');
+	pg_assert_same(null, $r['miss'], 'a locked layer is not hit');
+	pg_assert_same(array('x' => 100, 'y' => 100, 'w' => 300, 'h' => 200), $r['se'], 'the opposite corner stays');
+	pg_assert_same(array('x' => 100, 'y' => 100, 'w' => 300, 'h' => 150), $r['keep'], 'from a corner the ratio can be kept');
+	pg_assert_same(array('x' => 50, 'y' => 100, 'w' => 250, 'h' => 100), $r['west'], 'the west edge moves alone');
+	pg_assert_same(4, $r['small']['w'], 'no side under the minimum');
+	pg_assert_same(array('x' => 25, 'y' => 175, 'w' => 350, 'h' => 100), $r['turnedEast'], 'a turned box grows along its own axis');
+	pg_assert_same(array(0, 90, 90), array($r['up'], $r['right'], $r['snapped']), 'the angle to the pointer, in steps of 15 with snap');
+	pg_assert_same(array(array(90, 0), array(30, 0)), $r['right2'], 'boxes line up on the right');
+	pg_assert_same(array(array(0, 0), array(15, 0), array(0, 0)), $r['spread'], 'the middle box moves to even gaps');
+	pg_assert_same(array('dx' => -2, 'dy' => 0, 'gx' => array(50), 'gy' => array()), $r['snap'], 'the nearest line within reach wins and shows');
+	pg_assert_same(array('acbd', 'bacd', 'acdb', 'bacd'), $r['order'], 'up, down, to the top, to the bottom');
+	pg_assert_same('l2', $r['id'], 'a new id is not taken');
+	pg_assert_same(-30, $r['flippedRect'], 'a mirror turns a box\'s angle the other way');
+	pg_assert_same(30, $r['flippedPicture'], 'a picture keeps its angle');
+	pg_assert_same(array(255, 25, 50, 20, 30), $r['turnedPicture'], 'a picture follows a turn with its middle, its shape kept');
+}
+
 // Enter and Space go to the focused control that uses them (a button, a
 // link, a checkbox's Space, a text field); on the stage, a slider or the
 // dialog itself they stay the editor's shortcuts (apply the crop, pan).

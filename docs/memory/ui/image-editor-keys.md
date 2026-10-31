@@ -9,7 +9,7 @@ module: image_editor
 - The full-screen button sets a full-window class and asks the browser for full screen; leaving the browser's full screen drops back to the window. Double click (two taps on touch) on the stage: actual size there from the fitted view, else fit again.
 
 ## What does Escape do, and why on keydown?
-- Escape closes the unsaved-changes question or the save menu, else cancels the crop, else leaves full screen, else closes (asking first when the document changed).
+- Escape closes the unsaved-changes question or the save menu, else cancels the crop, else clears the layer selection, else leaves full screen, else closes (asking first when the document changed). The layer keys (arrows, Delete, Ctrl+D, Ctrl+C, Ctrl+A): `image-editor-layers.md`.
 - It is handled on `keydown` with `preventDefault()` (PR #4324). Chromium cannot hold a second dialog `cancel` without a click between, so a `cancel`-only handler let the second Escape close the window unasked and the editor hung until a reload (#4212). The `cancel` listener stays for other close requests (a back gesture).
 - A `close` the editor did not make (`finish()` sets `finished`) reopens the dialog with its state, the question too; where that fails it ends as unsaved, so the promise settles and `open()` works again.
 

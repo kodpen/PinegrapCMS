@@ -24,8 +24,8 @@ description: Steps E1-E10 of plans/image-editor.md: core modal, crop, server sav
 - E4 (M) Adjust and filters. Screen 03. Done in #4302 (`ui/image-editor-adjust.md`).
   - Eight adjustments, nine filters as fixed values of them; SVG filter preview, server step 3; GD's colour layer.
 
-- E5 (M) Layers and selection. Screen 01.
-  - Select, move, resize, rotate, multi-select, align and distribute, order, lock, hide, duplicate, delete, copy and paste (also a pasted picture), snapping guides, the layers list, keyboard nudges.
+- E5 (M) Layers and selection. Screen 01. Done in #4327 (`ui/image-editor-layers.md`).
+  - Select, move, resize, rotate, align, distribute, order, lock, hide, duplicate, delete, copy and paste, snapping, the list.
 
 - E6 (M) Drawing and ready-made shapes. Screen 04.
   - Pen with smoothing and eraser, line, arrow (head styles), box with a corner-radius handle and value, ellipse, triangle, polygon (3-12 sides), star (4-12 points, inner ratio), speech bubble; stroke, fill, opacity, dash.

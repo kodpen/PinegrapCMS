@@ -75,13 +75,42 @@
         rotr: 'M20.5 12a8.5 8.5 0 1 1-2.5-6l2.5 2.5M20.5 3.5v5h-5',
         fliph: 'M12 3v18M8.5 7L4 12l4.5 5zM15.5 7l4.5 5-4.5 5z',
         flipv: 'M3 12h18M7 8.5L12 4l5 4.5zM7 15.5l5 4.5 5-4.5z',
-        chev: 'M6.5 9.5l5.5 5.5 5.5-5.5'
+        chev: 'M6.5 9.5l5.5 5.5 5.5-5.5',
+        eye: 'M2.5 12s3.5-6.5 9.5-6.5 9.5 6.5 9.5 6.5-3.5 6.5-9.5 6.5S2.5 12 2.5 12zM12 9.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z',
+        eyeoff: 'M3.5 3.5l17 17M10.4 5.7A9 9 0 0 1 12 5.5c6 0 9.5 6.5 9.5 6.5a16 16 0 0 1-2.9 3.7M6.6 6.6C4 8.3 2.5 12 2.5 12s3.5 6.5 9.5 6.5a8.8 8.8 0 0 0 4.1-1',
+        lock: 'M6.5 11h11v9h-11zM8.5 11V8a3.5 3.5 0 0 1 7 0v3',
+        unlock: 'M6.5 11h11v9h-11zM8.5 11V8a3.5 3.5 0 0 1 6.8-1.2',
+        front: 'M12 20V9M7 14l5-5 5 5M5 4.5h14',
+        forward: 'M12 19V5M7 10l5-5 5 5',
+        backward: 'M12 5v14M7 14l5 5 5-5',
+        back: 'M12 4v11M7 10l5 5 5-5M5 19.5h14',
+        alignleft: 'M4 3v18M8 7h10v4H8zM8 14h6v4H8z',
+        aligncenter: 'M12 3v18M6 7h12v4H6zM8 14h8v4H8z',
+        alignright: 'M20 3v18M6 7h10v4H6zM10 14h6v4h-6z',
+        aligntop: 'M3 4h18M7 8h4v10H7zM14 8h4v6h-4z',
+        alignmiddle: 'M3 12h18M7 6h4v12H7zM14 8h4v8h-4z',
+        alignbottom: 'M3 20h18M7 6h4v10H7zM14 10h4v6h-4z',
+        distx: 'M4 3v18M20 3v18M9.5 8h5v8h-5z',
+        disty: 'M3 4h18M3 20h18M8 9.5h8v5H8z',
+        duplicate: 'M8.5 8.5h11v11h-11zM4.5 15.5v-11h11',
+        trash: 'M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3'
     };
 
     var current = null, serial = 0;
 
     function config() {
         return window.pgImageEditorConfig || {};
+    }
+
+    // A layer of doc by id.
+    function find(doc, id) {
+        for (var i = 0; i < doc.layers.length; i++) {
+            if (doc.layers[i].id === id) {
+                return doc.layers[i];
+            }
+        }
+
+        return null;
     }
 
     function t(key) {
@@ -205,6 +234,14 @@
         this.adjustTab = 'adjust';
         this.adjustMore = false;
         this.fxId = 'pgie-fx-' + (++serial);
+        // Layers: the selected ids, a drag on the stage, copied layers,
+        // loaded pictures by address, and whether the SVG is out of date.
+        this.sel = [];
+        this.drag = null;
+        this.clip = null;
+        this.guides = null;
+        this.pictures = {};
+        this.layersDirty = true;
         this.tools = M.resolveTools(opts.blank ? (opts.profile || 'canvas') : opts.profile, opts.tools);
         this.tool = this.tools.list[0];
         // On a small screen the panel is a sheet (pg_image_editor.src.css):
@@ -281,7 +318,8 @@
         this.cropEl.addEventListener('pointermove', function (e) { self.moveCropDrag(e); });
         this.cropEl.addEventListener('pointerup', function (e) { self.endCropDrag(e); });
         this.cropEl.addEventListener('pointercancel', function (e) { self.endCropDrag(e); });
-        this.stage = el('main', { class: 'pgie-stage', tabindex: '-1' }, [this.frame, this.cropEl, this.notice]);
+        this.selEl = el('div', { class: 'pgie-sel' });
+        this.stage = el('main', { class: 'pgie-stage', tabindex: '-1' }, [this.frame, this.selEl, this.cropEl, this.notice]);
 
         var body = el('div', { class: 'pgie-body' });
 
@@ -326,6 +364,7 @@
         });
         this.dialog.addEventListener('close', function () { self.onDialogClosed(); });
         this.dialog.addEventListener('keydown', function (e) { self.onKey(e); });
+        this.dialog.addEventListener('paste', function (e) { self.onPaste(e); });
         // A press outside the save menu closes it.
         this.dialog.addEventListener('pointerdown', function (e) {
             if (self.saveMenu && !self.saveBox.contains(e.target)) {
@@ -561,6 +600,8 @@
 
         this.zoomLabel.textContent = Math.round(k * 100) + ' %';
         this.renderColor();
+        this.renderLayers();
+        this.renderSelection();
         this.renderCrop();
     };
 
@@ -738,6 +779,509 @@
         } catch (err) {
             return null;
         }
+    };
+
+    // ---- layers ----
+
+    Editor.prototype.layer = function (id) {
+        return find(this.doc, id);
+    };
+
+    Editor.prototype.selected = function () {
+        var self = this;
+
+        return this.doc.layers.filter(function (l) { return self.sel.indexOf(l.id) >= 0; });
+    };
+
+    Editor.prototype.select = function (ids) {
+        this.sel = ids;
+        this.render();
+    };
+
+    // After an undo, only ids still in the document stay selected.
+    Editor.prototype.keepSelection = function () {
+        var self = this;
+
+        this.sel = this.sel.filter(function (id) { return !!self.layer(id); });
+    };
+
+    // A picture by address, loaded once, for the overlay and the artboard.
+    Editor.prototype.picture = function (src) {
+        var self = this;
+
+        if (!this.pictures[src]) {
+            this.pictures[src] = new Promise(function (resolve, reject) {
+                var img = new Image();
+
+                img.onload = function () {
+                    self.pictures[src] = img;
+                    resolve(img);
+                };
+                img.onerror = reject;
+                img.src = src;
+            });
+        }
+
+        return Promise.resolve(this.pictures[src]);
+    };
+
+    Editor.prototype.renderLayers = function () {
+        var self = this, svg = this.layersSvg;
+
+        if (!this.layersDirty) {
+            return;
+        }
+
+        this.layersDirty = false;
+
+        while (svg.firstChild) {
+            svg.removeChild(svg.firstChild);
+        }
+
+        this.doc.layers.forEach(function (l) {
+            var n = l.hidden ? null : self.layerNode(l);
+
+            if (n) {
+                svg.appendChild(n);
+            }
+        });
+    };
+
+    // One layer as SVG in the rotated space: a picture for now; shapes,
+    // text and stickers come with their tools.
+    Editor.prototype.layerNode = function (l) {
+        if (l.type !== 'image') {
+            return null;
+        }
+
+        var n = document.createElementNS(SVGNS, 'image');
+
+        n.setAttribute('href', l.src);
+        n.setAttribute('x', l.x);
+        n.setAttribute('y', l.y);
+        n.setAttribute('width', l.w);
+        n.setAttribute('height', l.h);
+        n.setAttribute('preserveAspectRatio', 'none');
+
+        if (l.rot) {
+            n.setAttribute('transform', 'rotate(' + l.rot + ' ' + (l.x + l.w / 2) + ' ' + (l.y + l.h / 2) + ')');
+        }
+
+        if ((l.opacity !== undefined) && (l.opacity < 1)) {
+            n.setAttribute('opacity', l.opacity);
+        }
+
+        return n;
+    };
+
+    // The outlines of the selected layers on the stage; one unlocked layer
+    // gets eight handles and the turning handle; guides while a move snaps.
+    Editor.prototype.renderSelection = function () {
+        var self = this, box = this.selEl, v = this.view, vr = this.viewRect(), k = v.k, picked = this.selected();
+
+        box.textContent = '';
+
+        if (!this.ready || this.cropping() || (this.tool !== 'select')) {
+            return;
+        }
+
+        picked.forEach(function (l) {
+            var d = el('div', { class: 'pgie-selbox' + (l.locked ? ' pgie-locked' : '') });
+
+            d.style.left = (v.x + (l.x - vr.x) * k) + 'px';
+            d.style.top = (v.y + (l.y - vr.y) * k) + 'px';
+            d.style.width = (l.w * k) + 'px';
+            d.style.height = (l.h * k) + 'px';
+            d.style.transform = l.rot ? 'rotate(' + l.rot + 'deg)' : '';
+
+            if ((picked.length === 1) && !l.locked) {
+                ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w', 'rot'].forEach(function (h) {
+                    d.appendChild(el('span', { class: 'pgie-sh', 'data-h': h, title: (h === 'rot') ? t('rotate') : null }));
+                });
+            }
+
+            box.appendChild(d);
+        });
+
+        (this.guides ? this.guides.gx : []).forEach(function (x) {
+            box.appendChild(el('div', { class: 'pgie-guide pgie-gx', style: 'left: ' + (v.x + (x - vr.x) * k) + 'px' }));
+        });
+
+        (this.guides ? this.guides.gy : []).forEach(function (y) {
+            box.appendChild(el('div', { class: 'pgie-guide pgie-gy', style: 'top: ' + (v.y + (y - vr.y) * k) + 'px' }));
+        });
+    };
+
+    // A press with the Select tool: a handle of the one selected layer
+    // resizes or turns it; a layer is selected (Shift adds or removes it)
+    // and moved with the rest of the selection; the empty stage clears it.
+    Editor.prototype.startDrag = function (e) {
+        var p = this.toDoc(e.clientX, e.clientY), h = e.target.getAttribute && e.target.getAttribute('data-h');
+        var one = (this.sel.length === 1) ? this.layer(this.sel[0]) : null, hit;
+
+        if (h && one) {
+            this.drag = { kind: (h === 'rot') ? 'rotate' : 'resize', h: h, start: M.clone(one) };
+        } else {
+            hit = M.hitLayer(this.doc, p[0], p[1], 4 / this.view.k);
+
+            if (!hit) {
+                if (this.sel.length && !e.shiftKey) {
+                    this.select([]);
+                }
+
+                return;
+            }
+
+            if (e.shiftKey) {
+                this.select((this.sel.indexOf(hit.id) >= 0) ? this.sel.filter(function (id) { return id !== hit.id; }) : this.sel.concat([hit.id]));
+                return;
+            }
+
+            if (this.sel.indexOf(hit.id) < 0) {
+                this.select([hit.id]);
+            }
+
+            this.drag = { kind: 'move', at: p, start: this.selected().filter(function (l) { return !l.locked; }).map(M.clone) };
+        }
+
+        e.preventDefault();
+
+        try {
+            this.stage.setPointerCapture(e.pointerId);
+        } catch (err) {
+            // The pointer is already gone.
+        }
+    };
+
+    Editor.prototype.moveDrag = function (e) {
+        var d = this.drag, p = this.toDoc(e.clientX, e.clientY), k = this.view.k;
+
+        if (d.kind === 'move') {
+            var dx = p[0] - d.at[0], dy = p[1] - d.at[1], moved = M.bounds(d.start);
+
+            this.guides = null;
+
+            // Alt moves freely; else an edge or the middle snaps to the
+            // canvas and the other layers.
+            if (moved && !e.altKey) {
+                var lines = this.snapLines(), s = M.snapBox({ x: moved.x + dx, y: moved.y + dy, w: moved.w, h: moved.h }, lines.x, lines.y, 6 / k);
+
+                dx += s.dx;
+                dy += s.dy;
+                this.guides = (s.gx.length || s.gy.length) ? s : null;
+            }
+
+            this.change(function (doc) {
+                d.start.forEach(function (o) {
+                    var l = find(doc, o.id);
+
+                    l.x = o.x + dx;
+                    l.y = o.y + dy;
+                });
+            }, 'drag', true);
+        } else if (d.kind === 'resize') {
+            // A picture keeps its shape from a corner; Shift does the other.
+            var b = M.resizeBox(d.start, d.h, p[0], p[1], e.shiftKey !== (d.start.type === 'image'), 4 / k);
+
+            this.change(function (doc) {
+                var l = find(doc, d.start.id);
+
+                l.x = b.x;
+                l.y = b.y;
+                l.w = b.w;
+                l.h = b.h;
+            }, 'drag', true);
+        } else {
+            var a = M.angleTo(d.start, p[0], p[1], e.shiftKey);
+
+            this.change(function (doc) { find(doc, d.start.id).rot = a; }, 'drag', true);
+        }
+    };
+
+    Editor.prototype.endDrag = function () {
+        if (!this.drag) {
+            return;
+        }
+
+        this.drag = null;
+        this.guides = null;
+        this.history.key = null;
+        this.render();
+    };
+
+    // What a moved layer snaps to: the canvas's edges and middle, and the
+    // edges and middles of the other visible layers.
+    Editor.prototype.snapLines = function () {
+        var self = this, vr = this.viewRect(), xs = [vr.x, vr.x + vr.w / 2, vr.x + vr.w], ys = [vr.y, vr.y + vr.h / 2, vr.y + vr.h];
+
+        this.doc.layers.forEach(function (l) {
+            if (!l.hidden && (self.sel.indexOf(l.id) < 0)) {
+                var b = M.bounds([l]);
+
+                xs.push(b.x, b.x + b.w / 2, b.x + b.w);
+                ys.push(b.y, b.y + b.h / 2, b.y + b.h);
+            }
+        });
+
+        return { x: xs, y: ys };
+    };
+
+    // The keys of the selection: arrows nudge (Shift: 10), Delete removes,
+    // Ctrl+D duplicates, Ctrl+C copies, Ctrl+A selects all. True when used.
+    Editor.prototype.layerKey = function (e, mod, k) {
+        var ids = this.sel, step = e.shiftKey ? 10 : 1, free = this.selected().filter(function (l) { return !l.locked; });
+
+        if (this.tool !== 'select') {
+            return false;
+        }
+
+        if (mod && (k === 'a' || k === 'A')) {
+            this.select(this.doc.layers.map(function (l) { return l.id; }));
+            return true;
+        }
+
+        if (!ids.length) {
+            return false;
+        }
+
+        if (mod && (k === 'c' || k === 'C')) {
+            this.clip = this.selected().map(M.clone);
+            return true;
+        }
+
+        if (mod && (k === 'd' || k === 'D')) {
+            this.addLayers(this.selected(), 10);
+            return true;
+        }
+
+        if (!mod && (k === 'Delete' || k === 'Backspace') && free.length) {
+            this.removeLayers();
+            return true;
+        }
+
+        var dir = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[k];
+
+        if (!mod && dir && free.length) {
+            this.change(function (doc) {
+                free.forEach(function (o) {
+                    var l = find(doc, o.id);
+
+                    l.x += dir[0] * step;
+                    l.y += dir[1] * step;
+                });
+            }, 'nudge');
+            return true;
+        }
+
+        return false;
+    };
+
+    // Copies of layers with new ids, moved by offset, on top and selected.
+    Editor.prototype.addLayers = function (list, offset) {
+        var added = [];
+
+        this.change(function (doc) {
+            list.forEach(function (o) {
+                var l = M.clone(o);
+
+                l.id = M.newId(doc);
+                l.x += offset;
+                l.y += offset;
+                doc.layers.push(l);
+                added.push(l.id);
+            });
+        });
+        this.select(added);
+    };
+
+    Editor.prototype.removeLayers = function () {
+        var ids = this.selected().filter(function (l) { return !l.locked; }).map(function (l) { return l.id; });
+
+        this.change(function (doc) {
+            doc.layers = doc.layers.filter(function (l) { return ids.indexOf(l.id) < 0; });
+        });
+        this.select(this.sel.filter(function (id) { return ids.indexOf(id) < 0; }));
+    };
+
+    // A picture pasted from the clipboard becomes a layer; else layers
+    // copied with Ctrl+C come back. Not into a text field.
+    Editor.prototype.onPaste = function (e) {
+        var items = (e.clipboardData && e.clipboardData.items) || [], file = null, i;
+
+        if (!this.ready || this.saving || this.confirmBox || /^(INPUT|TEXTAREA)$/.test(e.target.tagName || '')) {
+            return;
+        }
+
+        for (i = 0; i < items.length; i++) {
+            if ((items[i].kind === 'file') && /^image\//.test(items[i].type)) {
+                file = items[i].getAsFile();
+            }
+        }
+
+        if (file) {
+            e.preventDefault();
+            this.addPicture(file);
+        } else if (this.clip && this.clip.length) {
+            e.preventDefault();
+            this.toSelect();
+            this.addLayers(this.clip, 10);
+        }
+    };
+
+    // The Select tool, keeping a crop being drawn.
+    Editor.prototype.toSelect = function () {
+        if (this.cropping()) {
+            this.applyCrop('select');
+        } else {
+            this.tool = 'select';
+        }
+    };
+
+    // A picture file as a layer in the middle of the canvas, at most 60 % of
+    // it; one larger than 2000 px is kept at that size.
+    Editor.prototype.addPicture = function (file) {
+        var self = this, reader = new FileReader();
+
+        reader.onload = function () {
+            var img = new Image();
+
+            img.onload = function () {
+                var src = String(reader.result), w = img.naturalWidth, h = img.naturalHeight, k = Math.min(1, 2000 / Math.max(w, h));
+
+                if (k < 1) {
+                    var canvas = document.createElement('canvas');
+
+                    canvas.width = Math.round(w * k);
+                    canvas.height = Math.round(h * k);
+                    canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+                    src = canvas.toDataURL('image/png');
+                }
+
+                self.picture(src).then(function () {
+                    var vr = self.viewRect(), fit = Math.min(1, 0.6 * vr.w / w, 0.6 * vr.h / h), lw = w * fit, lh = h * fit;
+
+                    self.toSelect();
+                    self.addLayers([{ type: 'image', src: src, x: vr.x + (vr.w - lw) / 2, y: vr.y + (vr.h - lh) / 2, w: lw, h: lh, rot: 0, opacity: 1 }], 0);
+                });
+            };
+            img.src = String(reader.result);
+        };
+        reader.readAsDataURL(file);
+    };
+
+    Editor.prototype.layerName = function (l) {
+        var same = this.doc.layers.filter(function (o) { return o.type === l.type; });
+
+        return t('layer_' + l.type) + ((same.length > 1) ? ' ' + (same.indexOf(l) + 1) : '');
+    };
+
+    // The Select tool's panel: the selection's arrange, align, opacity,
+    // duplicate and delete; then every layer, the top one first.
+    Editor.prototype.layersPanel = function (body) {
+        var self = this, picked = this.selected(), free = picked.filter(function (l) { return !l.locked; });
+        var row = function (items) { return el('div', { class: 'pgie-btnrow' }, items); };
+        var act = function (name, label, fn, off) {
+            var b = button('pgie-ibtn', label, name, fn);
+
+            b.disabled = !!off;
+
+            return b;
+        };
+
+        if (!this.doc.layers.length) {
+            body.appendChild(el('p', { class: 'pgie-note', text: t('noLayers') }));
+            return;
+        }
+
+        if (picked.length) {
+            var arrange = function (how) {
+                self.change(function (doc) { doc.layers = M.reorder(doc.layers, self.sel, how); });
+            };
+            var align = function (how) {
+                var target = (picked.length > 1) ? M.bounds(free) : self.viewRect(), moves = M.align(free.map(function (l) { return M.bounds([l]); }), how, target);
+
+                self.change(function (doc) {
+                    free.forEach(function (o, i) {
+                        var l = find(doc, o.id);
+
+                        l.x += moves[i][0];
+                        l.y += moves[i][1];
+                    });
+                });
+            };
+            var spread = function (axis) {
+                var moves = M.distribute(free.map(function (l) { return M.bounds([l]); }), axis);
+
+                self.change(function (doc) {
+                    free.forEach(function (o, i) {
+                        var l = find(doc, o.id);
+
+                        l.x += moves[i][0];
+                        l.y += moves[i][1];
+                    });
+                });
+            };
+            var opacity = Math.round(100 * ((picked[0].opacity === undefined) ? 1 : picked[0].opacity));
+            var value = el('span', { class: 'pgie-val', text: opacity + ' %' });
+            var slider = el('input', { type: 'range', class: 'pgie-range', min: '0', max: '100', step: '1', value: String(opacity), 'aria-label': t('opacity') });
+
+            slider.addEventListener('input', function () {
+                var n = Number(slider.value);
+
+                value.textContent = n + ' %';
+                self.change(function (doc) {
+                    picked.forEach(function (o) { find(doc, o.id).opacity = n / 100; });
+                }, 'opacity', true);
+            });
+            slider.addEventListener('change', function () { self.history.key = null; });
+
+            body.appendChild(section(t('arrange'), row([
+                act('front', t('bringFront'), function () { arrange('top'); }),
+                act('forward', t('bringForward'), function () { arrange('up'); }),
+                act('backward', t('sendBackward'), function () { arrange('down'); }),
+                act('back', t('sendBack'), function () { arrange('bottom'); })
+            ])));
+            body.appendChild(section(t('align'), row([
+                act('alignleft', t('alignLeft'), function () { align('left'); }, !free.length),
+                act('aligncenter', t('alignCenter'), function () { align('center'); }, !free.length),
+                act('alignright', t('alignRight'), function () { align('right'); }, !free.length),
+                act('aligntop', t('alignTop'), function () { align('top'); }, !free.length),
+                act('alignmiddle', t('alignMiddle'), function () { align('middle'); }, !free.length),
+                act('alignbottom', t('alignBottom'), function () { align('bottom'); }, !free.length),
+                act('distx', t('distributeX'), function () { spread('x'); }, free.length < 3),
+                act('disty', t('distributeY'), function () { spread('y'); }, free.length < 3)
+            ])));
+            body.appendChild(section(t('opacity'), slider, value));
+            body.appendChild(row([
+                act('duplicate', t('duplicate'), function () { self.addLayers(self.selected(), 10); }),
+                act('trash', t('delete'), function () { self.removeLayers(); }, !free.length)
+            ]));
+        }
+
+        var list = el('ul', { class: 'pgie-layerlist', 'aria-label': t('layers') });
+
+        this.doc.layers.slice().reverse().forEach(function (l) {
+            var on = (self.sel.indexOf(l.id) >= 0);
+            var flag = function (key, label, iconName) {
+                return button('pgie-ibtn sm', label, iconName, function () {
+                    self.change(function (doc) {
+                        var x = find(doc, l.id);
+
+                        x[key] = !x[key];
+                    });
+                });
+            };
+
+            list.appendChild(el('li', { class: 'pgie-lrow' + (on ? ' on' : '') + (l.hidden ? ' off' : '') }, [
+                el('button', { type: 'button', class: 'pgie-lname', 'aria-pressed': on ? 'true' : 'false', text: self.layerName(l), onclick: function (e) {
+                    self.select(e.shiftKey ? ((on ? self.sel.filter(function (id) { return id !== l.id; }) : self.sel.concat([l.id]))) : [l.id]);
+                } }),
+                flag('hidden', l.hidden ? t('show') : t('hide'), l.hidden ? 'eyeoff' : 'eye'),
+                flag('locked', l.locked ? t('unlock') : t('lock'), l.locked ? 'lock' : 'unlock')
+            ]));
+        });
+
+        body.appendChild(list);
     };
 
     // ---- crop ----
@@ -1008,6 +1552,8 @@
         var ids = Object.keys(this.pointers);
 
         if ((e.button === 1) || this.space || (ids.length === 2)) {
+            // A second finger ends a layer drag where it is.
+            this.endDrag();
             e.preventDefault();
             this.startPan();
 
@@ -1016,6 +1562,8 @@
             } catch (err) {
                 // The pointer is already gone.
             }
+        } else if ((e.button === 0) && (ids.length === 1) && this.ready && (this.tool === 'select')) {
+            this.startDrag(e);
         }
     };
 
@@ -1052,6 +1600,11 @@
 
         this.pointers[e.pointerId] = { x: e.clientX, y: e.clientY };
 
+        if (this.drag) {
+            this.moveDrag(e);
+            return;
+        }
+
         if (!this.pan) {
             return;
         }
@@ -1076,6 +1629,10 @@
 
     Editor.prototype.onUp = function (e) {
         delete this.pointers[e.pointerId];
+
+        if (this.drag) {
+            this.endDrag();
+        }
 
         if (!this.pan) {
             this.onTap(e);
@@ -1186,7 +1743,7 @@
         var body = el('div', { class: 'pgie-pb' });
 
         if (this.tool === 'select') {
-            body.appendChild(this.doc.layers.length ? el('ul', { class: 'pgie-layerlist' }) : el('p', { class: 'pgie-note', text: t('noLayers') }));
+            this.layersPanel(body);
         } else if (this.cropping()) {
             this.cropPanel(body);
         } else if ((this.tool === 'adjust') && this.doc.source) {
@@ -1226,7 +1783,7 @@
         });
 
         this.root.classList.toggle('pgie-sheet-closed', !this.sheetOpen);
-        this.hint.textContent = (this.tool === 'adjust') ? t('hintAdjust') : t('hintView');
+        this.hint.textContent = (this.tool === 'adjust') ? t('hintAdjust') : ((this.tool === 'select') ? t('hintSelect') : t('hintView'));
         this.undoBtn.disabled = !this.history.canUndo();
         this.redoBtn.disabled = !this.history.canRedo();
         this.renderPanel();
@@ -1250,6 +1807,7 @@
         this.history.push(M.clone(this.doc), key);
         mutate(this.doc);
         this.dirty = true;
+        this.layersDirty = true;
 
         if (viewOnly) {
             this.undoBtn.disabled = !this.history.canUndo();
@@ -1266,6 +1824,7 @@
         this.history.push(M.clone(this.doc), key);
         this.doc = next;
         this.dirty = true;
+        this.layersDirty = true;
         this.renderMeta();
         this.fit();
         this.render();
@@ -1278,6 +1837,8 @@
 
         this.doc = snapshot;
         this.dirty = true;
+        this.layersDirty = true;
+        this.keepSelection();
         this.setReady();
         this.render();
     };
@@ -1341,6 +1902,11 @@
             return;
         }
 
+        if (this.layerKey(e, mod, k)) {
+            e.preventDefault();
+            return;
+        }
+
         if (this.cropping() && (k === 'Enter') && !owns) {
             e.preventDefault();
             this.applyCrop();
@@ -1395,6 +1961,8 @@
             this.closeConfirm();
         } else if (this.cropping()) {
             this.cancelCrop();
+        } else if (this.sel.length) {
+            this.select([]);
         } else if (this.full) {
             this.setFull(false);
         } else {
@@ -1500,7 +2068,7 @@
         });
     };
 
-    // An empty artboard as the PNG a new file starts from.
+    // An artboard as the PNG a new file starts from: its fill and layers.
     Editor.prototype.drawArtboard = function () {
         var a = this.doc.artboard, canvas = document.createElement('canvas'), g;
 
@@ -1513,7 +2081,56 @@
             g.fillRect(0, 0, a.width, a.height);
         }
 
+        this.paintLayers(g, { x: 0, y: 0, w: a.width, h: a.height }, a.width, a.height);
+
         return canvas.toDataURL('image/png');
+    };
+
+    // The layers over a picture, drawn at its output size into a clear PNG
+    // the server lays over the pixels it makes; null without layers.
+    Editor.prototype.drawOverlay = function () {
+        if (!this.doc.layers.some(function (l) { return !l.hidden; })) {
+            return null;
+        }
+
+        var out = M.outputSize(this.doc), canvas = document.createElement('canvas');
+
+        canvas.width = out.w;
+        canvas.height = out.h;
+        this.paintLayers(canvas.getContext('2d'), M.cropBox(this.doc), out.w, out.h);
+
+        return canvas.toDataURL('image/png');
+    };
+
+    // Each visible layer onto g, the box of the rotated space drawn at w x h.
+    Editor.prototype.paintLayers = function (g, box, w, h) {
+        var self = this, sx = w / box.w, sy = h / box.h;
+
+        this.doc.layers.forEach(function (l) {
+            var img = self.pictures[l.src];
+
+            if (l.hidden || (l.type !== 'image') || !img || !img.complete) {
+                return;
+            }
+
+            g.setTransform(sx, 0, 0, sy, -box.x * sx, -box.y * sy);
+            g.translate(l.x + l.w / 2, l.y + l.h / 2);
+            g.rotate((l.rot || 0) * Math.PI / 180);
+            g.globalAlpha = (l.opacity === undefined) ? 1 : l.opacity;
+            g.drawImage(img, -l.w / 2, -l.h / 2, l.w, l.h);
+        });
+
+        g.setTransform(1, 0, 0, 1, 0, 0);
+        g.globalAlpha = 1;
+    };
+
+    // Every layer picture loaded, for drawing.
+    Editor.prototype.picturesReady = function () {
+        var self = this;
+
+        return Promise.all(this.doc.layers.filter(function (l) { return l.type === 'image'; }).map(function (l) {
+            return self.picture(l.src);
+        }));
     };
 
     Editor.prototype.setSaving = function (on) {
@@ -1587,13 +2204,25 @@
             return;
         }
 
-        body = { action: 'save', mode: mode, doc: this.doc };
+        this.hideMessage();
+        this.setSaving(true);
+        this.picturesReady().then(function () {
+            self.send(mode);
+        }, function () {
+            self.setSaving(false);
+            self.showMessage(t('saveError'), true);
+        });
+    };
+
+    Editor.prototype.send = function (mode) {
+        var self = this, body = { action: 'save', mode: mode, doc: this.doc };
 
         // Without Imagick the server takes the colour step from here.
         if ((mode !== 'new') && !config().serverColor && M.colorMatrix(M.colorValues(this.doc))) {
             body.colour = this.drawColour();
 
             if (!body.colour) {
+                this.setSaving(false);
                 this.showMessage(t('saveError'), true);
                 return;
             }
@@ -1605,10 +2234,8 @@
             body.picture = this.drawArtboard();
         } else {
             body.file_id = this.opts.fileId;
+            body.overlay = this.drawOverlay();
         }
-
-        this.hideMessage();
-        this.setSaving(true);
 
         this.request(body).then(function (r) {
             if (!r || (r.status !== 'success')) {

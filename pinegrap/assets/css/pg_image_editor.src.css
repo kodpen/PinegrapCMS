@@ -406,6 +406,119 @@
   overflow: visible;
 }
 
+/* Layers: the selection over the stage, its handles, snapping guides */
+
+.pgie-sel {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.pgie-selbox {
+  position: absolute;
+  outline: 1.5px solid var(--pgie-sel);
+}
+
+.pgie-selbox.pgie-locked {
+  outline-style: dashed;
+}
+
+.pgie-sh {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  margin: -5px 0 0 -5px;
+  border: 1.5px solid var(--pgie-sel);
+  border-radius: 2px;
+  background: #ffffff;
+  pointer-events: auto;
+  touch-action: none;
+}
+
+.pgie-sh[data-h="nw"] { left: 0; top: 0; cursor: nwse-resize; }
+.pgie-sh[data-h="n"] { left: 50%; top: 0; cursor: ns-resize; }
+.pgie-sh[data-h="ne"] { left: 100%; top: 0; cursor: nesw-resize; }
+.pgie-sh[data-h="e"] { left: 100%; top: 50%; cursor: ew-resize; }
+.pgie-sh[data-h="se"] { left: 100%; top: 100%; cursor: nwse-resize; }
+.pgie-sh[data-h="s"] { left: 50%; top: 100%; cursor: ns-resize; }
+.pgie-sh[data-h="sw"] { left: 0; top: 100%; cursor: nesw-resize; }
+.pgie-sh[data-h="w"] { left: 0; top: 50%; cursor: ew-resize; }
+
+.pgie-sh[data-h="rot"] {
+  left: 50%;
+  top: -26px;
+  border-radius: 50%;
+  cursor: grab;
+}
+
+.pgie-guide {
+  position: absolute;
+  background: #e5389b;
+}
+
+.pgie-gx {
+  top: 0;
+  bottom: 0;
+  width: 1px;
+}
+
+.pgie-gy {
+  left: 0;
+  right: 0;
+  height: 1px;
+}
+
+.pgie-btnrow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+.pgie-btnrow .pgie-ibtn:disabled {
+  opacity: 0.38;
+}
+
+.pgie-layerlist {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pgie-lrow {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 4px;
+  border-radius: 8px;
+}
+
+.pgie-lrow.on {
+  background: var(--pgie-pw);
+}
+
+.pgie-lrow.off .pgie-lname {
+  opacity: 0.5;
+}
+
+.pgie-lname {
+  flex: 1;
+  min-width: 0;
+  height: 34px;
+  overflow: hidden;
+  padding: 0 6px;
+  border: 0;
+  background: transparent;
+  text-align: start;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
 /* Adjust: the preview's filter, the vignette over the picture */
 
 .pgie-fx {
@@ -1060,6 +1173,16 @@
 /* Touch: a handle keeps its drawn size and gets a 44 px target. */
 
 @media (pointer: coarse) {
+  .pgie-sh::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 44px;
+    height: 44px;
+    transform: translate(-50%, -50%);
+  }
+
   .pgie-h::after {
     content: "";
     position: absolute;
