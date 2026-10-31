@@ -80,3 +80,65 @@ function test_explorer_bin_status()
 	pg_assert_same('partial', pg_explorer_bin_status(2, array('Access denied for a.')), 'some refused');
 	pg_assert_same('error', pg_explorer_bin_status(0, array('Access denied for a.')), 'all refused');
 }
+
+// A restore goes to the folder it came from; to the root when that folder is
+// gone or sits anywhere inside the bin, with the reason.
+function test_explorer_restore_target()
+{
+	$map = array(
+		1 => array('folder_id' => 1, 'folder_parent' => 0, 'folder_name' => 'Website'),
+		7 => array('folder_id' => 7, 'folder_parent' => 1, 'folder_name' => 'Photos'),
+		50 => array('folder_id' => 50, 'folder_parent' => 1, 'folder_name' => 'Recycle Bin'),
+		8 => array('folder_id' => 8, 'folder_parent' => 50, 'folder_name' => 'pgbin_8_Docs'),
+		9 => array('folder_id' => 9, 'folder_parent' => 8, 'folder_name' => 'Inner'));
+
+	pg_assert_same(array('id' => 7, 'reason' => ''), pg_explorer_restore_target('7', $map, 50, 1), 'its own folder');
+	pg_assert_same(array('id' => 1, 'reason' => 'gone'), pg_explorer_restore_target(99, $map, 50, 1), 'folder gone');
+	pg_assert_same(array('id' => 1, 'reason' => 'gone'), pg_explorer_restore_target(0, $map, 50, 1), 'no folder recorded');
+	pg_assert_same(array('id' => 1, 'reason' => 'binned'), pg_explorer_restore_target(8, $map, 50, 1), 'folder in the bin');
+	pg_assert_same(array('id' => 1, 'reason' => 'binned'), pg_explorer_restore_target(9, $map, 50, 1), 'below a binned folder');
+	pg_assert_same(array('id' => 7, 'reason' => ''), pg_explorer_restore_target(7, $map, 0, 1), 'no bin');
+}
+
+// A renamed item and one put in the root are each said; one that came back
+// as it went says nothing.
+function test_explorer_restore_notes()
+{
+	pg_assert_same(array(), pg_explorer_restore_notes('about', '', 'about'), 'unchanged');
+	pg_assert_same(array(), pg_explorer_restore_notes('about', ''), 'not parked, own folder');
+	pg_assert_same(array('about came back as about[1] because its name was taken.'), pg_explorer_restore_notes('about', '', 'about[1]'), 'renamed');
+	pg_assert_same(array('logo.png went to the root folder because its folder is gone.'), pg_explorer_restore_notes('logo.png', 'gone'), 'gone');
+	pg_assert_same(array('Docs went to the root folder because its folder is in the recycle bin.'), pg_explorer_restore_notes('Docs', 'binned', 'Docs'), 'binned');
+	pg_assert_same(array(
+		'Çay & Kahve came back as Çay & Kahve[1] because its name was taken.',
+		'Çay & Kahve[1] went to the root folder because its folder is gone.'), pg_explorer_restore_notes('Çay & Kahve', 'gone', 'Çay & Kahve[1]'), 'both, plain text');
+}
+
+// The notes follow the count, or the refusals in a partial answer.
+function test_explorer_restore_message()
+{
+	pg_assert_same('2 item(s) were restored from the recycle bin', pg_explorer_restore_message(2, array(), array()), 'no notes');
+	pg_assert_same('2 item(s) were restored from the recycle bin. a went to the root folder because its folder is gone.',
+		pg_explorer_restore_message(2, array(), array('a went to the root folder because its folder is gone.')), 'with a note');
+	pg_assert_same('Access denied. a came back as a[1] because its name was taken.',
+		pg_explorer_restore_message(1, array('Access denied'), array('a came back as a[1] because its name was taken.')), 'partial with a note');
+}
+
+// The handler collects a note per item that went to the root, was renamed,
+// or is a page a manager restored while its style stays in the bin; the
+// renamers say what they wrote.
+function test_explorer_restore_reports_changes()
+{
+	$handler = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/explorer/handle_recycle.php');
+	$names = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/explorer/recycle_names.php');
+	$styles = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/explorer/recycle_pages_styles.php');
+
+	pg_assert_contains("'message' => pg_explorer_restore_message(\$restored, \$errors, \$notes)", $handler, 'answer carries the notes');
+	pg_assert_contains('$released = pg_recycle_release_name($item_kind, $item_id, $user);', $handler, 'release name result used');
+	pg_assert_contains('$target[\'reason\']', $handler, 'root reason reported');
+	pg_assert_contains('pg_explorer_restore_notes($restore_short_link[\'name\'], \'\', $restore_short_link_name)', $handler, 'short link rename');
+	pg_assert_contains('pg_explorer_restore_notes($restored_style[\'original_name\'], \'\', $restored_style[\'name\'])', $handler, 'style rename');
+	pg_assert_contains("which stays in the recycle bin until a designer restores it.", $handler, 'page without its style');
+	pg_assert_same(3, substr_count($names, "return array('from' => \$original, 'to' => \$name);"), 'release name returns what it wrote');
+	pg_assert_contains("\$out['original_name'] = \$name;", $styles, 'style restore returns its names');
+}

@@ -63,19 +63,41 @@ function test_explorer_list_filter()
 }
 
 // Days left count whole days since the delete and never go below zero; the
-// origin is named only while its folder exists.
+// origin is the folder the restore puts the item in: its own folder, else the
+// root named with the reason, the binned folder under its unparked name.
 function test_explorer_bin_entry()
 {
-	$map = array(7 => array('folder_id' => 7, 'folder_name' => 'Photos'));
+	$map = array(
+		1 => array('folder_id' => 1, 'folder_parent' => 0, 'folder_name' => 'Website'),
+		7 => array('folder_id' => 7, 'folder_parent' => 1, 'folder_name' => 'Photos'),
+		50 => array('folder_id' => 50, 'folder_parent' => 1, 'folder_name' => 'Recycle Bin'),
+		8 => array('folder_id' => 8, 'folder_parent' => 50, 'folder_name' => 'pgbin_8_Docs'),
+		9 => array('folder_id' => 9, 'folder_parent' => 8, 'folder_name' => 'Inner'));
 	$now = 1700000000;
 
 	pg_assert_same(
 		array('deleted_at' => $now - 86400 * 3 - 5, 'days_left' => 27, 'origin_name' => 'Photos'),
-		pg_explorer_bin_entry(array('deleted_at' => (string) ($now - 86400 * 3 - 5), 'original_parent_id' => '7'), 30, $map, $now),
+		pg_explorer_bin_entry(array('item_type' => 'page', 'deleted_at' => (string) ($now - 86400 * 3 - 5), 'original_parent_id' => '7'), 30, $map, $now, 50, 1),
 		'three days in');
 
 	pg_assert_same(
-		array('deleted_at' => $now - 86400 * 40, 'days_left' => 0, 'origin_name' => ''),
-		pg_explorer_bin_entry(array('deleted_at' => $now - 86400 * 40, 'original_parent_id' => 9), 30, $map, $now),
+		array('deleted_at' => $now - 86400 * 40, 'days_left' => 0, 'origin_name' => 'Website (its folder is gone)'),
+		pg_explorer_bin_entry(array('item_type' => 'file', 'deleted_at' => $now - 86400 * 40, 'original_parent_id' => 99), 30, $map, $now, 50, 1),
 		'past retention, folder gone');
+
+	pg_assert_same('Website (its folder Docs is in the recycle bin)',
+		pg_explorer_bin_entry(array('item_type' => 'folder', 'deleted_at' => $now, 'original_parent_id' => 8), 30, $map, $now, 50, 1)['origin_name'],
+		'folder in the bin, unparked');
+
+	pg_assert_same('Website (its folder Inner is in the recycle bin)',
+		pg_explorer_bin_entry(array('item_type' => 'page', 'deleted_at' => $now, 'original_parent_id' => 9), 30, $map, $now, 50, 1)['origin_name'],
+		'folder below a binned folder');
+
+	pg_assert_same('',
+		pg_explorer_bin_entry(array('item_type' => 'short_link', 'deleted_at' => $now, 'original_parent_id' => 0), 30, $map, $now, 50, 1)['origin_name'],
+		'a short link goes back into no folder');
+
+	pg_assert_same('',
+		pg_explorer_bin_entry(array('item_type' => 'style', 'deleted_at' => $now, 'original_parent_id' => 0), 30, $map, $now, 50, 1)['origin_name'],
+		'nor does a style');
 }

@@ -68,6 +68,7 @@ Code rules, file layout, translation, JavaScript twins and bundles, roles and ac
 - error-path-missing-methods.md: liveform has add_error() for form-level messages vs mark_error() per field; never call a method that does not exist on error branches (PHP 8 gives a blank HTTP 500).
 - error-screen-language-and-status.md: The error screen output_error() draws leaves through pg_tr_finalize() like a page, so <html lang> is the site's or the address's language; which "not found" screens answer 404; what is still left
 - explorer-handler-files.md: pg_explorer_handle() after the split: the prelude and the dispatch, one handler per sub-action in includes/explorer/handle_*.php, where a new one goes, the tests
+- explorer-restore-notes.md: What a File Manager restore says about items that came back changed (root folder, new name, page without its style) and what the bin badge names as the origin
 - explorer-subaction-registration.md: Adding an explorer_* sub-action: it must be registered in the file_explorer allowlist as well as pg_explorer_handle(); symptoms and the catalog gate.
 - export-import-columns.md: The Contacts and Products exports write every column their importer reads, pinned by tests/export_import_columns_test.php; new columns go at the end
 - file-header-and-embedded-libraries.md: The Pinegrap file header every new PHP/JS file must carry, which files it applies to, the PHP 7.1 base rule when embedding a third-party library, and the libraries with a local change.
