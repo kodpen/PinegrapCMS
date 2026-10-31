@@ -152,7 +152,7 @@ if ($files) {
         }
 
         // Convert file size to a user friendly output.
-        $file['size'] = convert_bytes_to_string($file['size']);
+        $file['size'] = convert_bytes_to_string($file['size'], 'auto');
 
         
         // If the file is an image.

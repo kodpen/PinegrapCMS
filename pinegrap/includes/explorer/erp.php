@@ -180,7 +180,7 @@ function pg_explorer_erp_file_item($entry, $folder_key, $folder_label, $index, $
     $item['is_image'] = false;
     $item['size'] = ($size === null) ? 0 : $size;
     $item['size_known'] = ($size !== null);
-    $item['size_label'] = ($size === null) ? '' : convert_bytes_to_string($size);
+    $item['size_label'] = ($size === null) ? '' : convert_bytes_to_string($size, 'auto');
     $item['design'] = false;
     $item['optimized'] = false;
     $item['image_width'] = 0;

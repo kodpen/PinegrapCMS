@@ -1068,8 +1068,8 @@ function pg_file_store_upload($source_path, $file_name, $file_size, $options)
                     'string' => 'image ({var:1}) was optimized on upload ({var:2} -> {var:3})',
                     'vars'   => array(
                         $file_name,
-                        convert_bytes_to_string($image_report['bytes_before']),
-                        convert_bytes_to_string($image_report['bytes_after'])))));
+                        convert_bytes_to_string($image_report['bytes_before'], 'auto'),
+                        convert_bytes_to_string($image_report['bytes_after'], 'auto')))));
             }
         }
     }
