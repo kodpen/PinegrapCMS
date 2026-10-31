@@ -25,4 +25,4 @@ module: auth
 ## How is it tested?
 - `tests/panel_link_rights_test.php`: the role matrix of `pg_can_open_user()` and the paths of `pg_can_open_contact()` that need no database, and a source pin that every `edit_user.php` / `edit_contact.php` link in `view_order.php` sits next to its helper.
 
-Related: docs/memory/core/permission-columns.md, docs/memory/ui/main-menu-entry-gates.md
+Related: docs/memory/core/permission-columns.md, docs/memory/ui/main-menu-entry-gates.md, docs/memory/ui/erp-link-rights.md

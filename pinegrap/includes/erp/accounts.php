@@ -895,7 +895,7 @@ function erp_contact_summary($contact_id)
     $place = erp_address_from_checkout((string) $contact['business_city'], (string) $contact['business_state'], (string) $contact['business_country']);
 
     // The panel user this contact signs in as, when there is one.
-    $user = db_item("SELECT user_id, user_username FROM user WHERE user_contact = '" . $contact_id . "' LIMIT 1");
+    $user = db_item("SELECT user_id, user_username, user_role FROM user WHERE user_contact = '" . $contact_id . "' LIMIT 1");
 
     // The link is read from the account side, which is the side the ledger
     // trusts; contacts.erp_account_id is a mirror kept for the contact screen.
@@ -913,6 +913,7 @@ function erp_contact_summary($contact_id)
         'state' => $place['state'],
         'user_id' => is_array($user) ? (int) $user['user_id'] : 0,
         'username' => is_array($user) ? (string) $user['user_username'] : '',
+        'user_role' => is_array($user) ? (int) $user['user_role'] : 3,
         'orders' => (int) db_value("SELECT COUNT(*) FROM orders WHERE contact_id = '" . $contact_id . "' AND status <> 'incomplete'"),
         'account_id' => $account_id,
         'image' => trim((string) ($contact['image'] ?? '')),
