@@ -656,6 +656,24 @@ function pg_passkeys_forget($user_id)
 }
 
 /**
+ * Whether pg_passkeys_forget() ends the session of one auth_tokens row: it
+ * was opened with a passkey and is not pinned (pinned sessions stay, as with
+ * "sign out of all devices").
+ *
+ * @param mixed $row auth_tokens row with passkey_id and, when the column
+ *                   exists, pinned; null when there is none
+ * @return bool
+ */
+function pg_passkeys_forget_ends_session($row)
+{
+    if (!is_array($row) || ((int) ($row['passkey_id'] ?? 0) <= 0)) {
+        return false;
+    }
+
+    return (int) ($row['pinned'] ?? 0) === 0;
+}
+
+/**
  * The name of one passkey of an account, or null when the account has no
  * passkey by that id (another account's included).
  *
