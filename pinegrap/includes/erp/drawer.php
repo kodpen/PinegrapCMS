@@ -194,7 +194,7 @@ function erp_drawer_account($account_id)
         $description = h((string) $row['description']);
 
         if (in_array((string) $row['doc_type'], array('collection', 'payment'), true) && ((int) $row['doc_id'] > 0)) {
-            $description = '<a href="erp_receipt.php?id=' . (int) $row['doc_id'] . '" class="pg-link-body-emphasis">' . (($description !== '') ? $description : ('#' . (int) $row['doc_id'])) . '</a>';
+            $description = erp_receipt_link_html((int) $row['doc_id'], (string) $row['description'], 'pg-link-body-emphasis');
         } elseif (in_array((string) $row['doc_type'], array('invoice', 'return'), true) && ((int) $row['doc_id'] > 0)) {
             $description = '<a href="edit_erp_invoice.php?id=' . (int) $row['doc_id'] . '" class="pg-link-body-emphasis">' . (($description !== '') ? $description : ('#' . (int) $row['doc_id'])) . '</a>';
         }
@@ -243,9 +243,12 @@ function erp_drawer_account($account_id)
             . '<a href="erp_invoices.php?filter=open&amp;account_id=' . $account_id . '" class="small pg-link-body-emphasis">' . lang('Open documents of this account') . '</a>'
         : '<p class="small fg-secondary mb-0">' . lang('There are no documents on this account yet.') . '</p>';
 
+    // add_erp_receipt.php is cash-gated and refuses the read-only accountant.
+    $can_record_receipt = defined('USER_MANAGE_ERP_CASH') && USER_MANAGE_ERP_CASH && !(defined('USER_ERP_READONLY') && USER_ERP_READONLY);
+
     $output_actions = '
     <div class="d-flex flex-wrap gap-3 mb-7">
-        <a class="btn btn-sm btn-outline theme-secondary" href="add_erp_receipt.php?direction=collection&amp;account_id=' . $account_id . '"><i class="bi bi-box-arrow-in-down me-1" aria-hidden="true"></i>' . lang('Record a Receipt') . '</a>
+        ' . ($can_record_receipt ? '<a class="btn btn-sm btn-outline theme-secondary" href="add_erp_receipt.php?direction=collection&amp;account_id=' . $account_id . '"><i class="bi bi-box-arrow-in-down me-1" aria-hidden="true"></i>' . lang('Record a Receipt') . '</a>' : '') . '
         <a class="btn btn-sm btn-outline theme-secondary" href="erp_reconciliation.php?id=' . $account_id . '"><i class="bi bi-envelope-paper me-1" aria-hidden="true"></i>' . lang('Reconciliation Letter') . '</a>
     </div>';
 
@@ -343,10 +346,13 @@ function erp_drawer_invoice($invoice_id)
         )));
     }
 
+    // add_erp_receipt.php is cash-gated and refuses the read-only accountant.
+    $can_record_receipt = defined('USER_MANAGE_ERP_CASH') && USER_MANAGE_ERP_CASH && !(defined('USER_ERP_READONLY') && USER_ERP_READONLY);
+
     $output_actions = '
     <div class="d-flex flex-wrap gap-3 mb-7">
         ' . (!$is_draft ? '<a class="btn btn-sm btn-outline theme-secondary" href="get_erp_invoice_pdf.php?id=' . $invoice_id . '" target="_blank" rel="noopener"><i class="bi bi-file-earmark-pdf me-1" aria-hidden="true"></i>' . lang('PDF') . '</a>' : '') . '
-        ' . ((!$is_draft && ($open > 0) && ((int) $invoice['account_id'] > 0))
+        ' . ($can_record_receipt && !$is_draft && ($open > 0) && ((int) $invoice['account_id'] > 0)
             ? '<a class="btn btn-sm btn-outline theme-secondary" href="add_erp_receipt.php?direction=' . (((string) $invoice['direction'] === 'purchase') ? 'payment' : 'collection') . '&amp;invoice_id=' . $invoice_id . '"><i class="bi bi-cash-coin me-1" aria-hidden="true"></i>' . ((((string) $invoice['direction'] === 'purchase') ? lang('Record a Payment') : lang('Record a Receipt'))) . '</a>'
             : '') . '
     </div>';

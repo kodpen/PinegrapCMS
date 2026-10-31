@@ -92,9 +92,14 @@ foreach ($page['entries'] as $entry) {
 
         $type = (string) $row['object_type'];
         $label = ((string) $row['label'] !== '') ? (string) $row['label'] : ('#' . (int) $row['object_id']);
-        $link = (isset($types[$type]) && ((int) $row['object_id'] > 0))
-            ? '<a class="pg-link-body-emphasis" href="' . h($types[$type][1] . (int) $row['object_id']) . '">' . h($label) . '</a>'
-            : h($label);
+        // Receipts open on a cash-gated screen the trail's readers may lack.
+        if (($type === 'receipt') && ((int) $row['object_id'] > 0)) {
+            $link = erp_receipt_link_html((int) $row['object_id'], $label, 'pg-link-body-emphasis');
+        } else {
+            $link = (isset($types[$type]) && ((int) $row['object_id'] > 0))
+                ? '<a class="pg-link-body-emphasis" href="' . h($types[$type][1] . (int) $row['object_id']) . '">' . h($label) . '</a>'
+                : h($label);
+        }
 
         $records .= '<div class="small d-flex flex-wrap gap-3 align-items-baseline">'
             . '<span class="badge badge-subtle theme-secondary border">' . h(erp_audit_event_text($row)) . '</span>'
