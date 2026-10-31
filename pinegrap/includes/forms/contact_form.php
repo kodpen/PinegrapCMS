@@ -93,8 +93,24 @@ function pg_contact_form_affiliate_columns($post, $affiliate_code)
         'affiliate_approved' => pg_contact_form_posted($post, 'affiliate_approved'),
         'affiliate_name' => pg_contact_form_posted($post, 'affiliate_name'),
         'affiliate_code' => (string) $affiliate_code,
-        'affiliate_commission_rate' => pg_contact_form_posted($post, 'affiliate_commission_rate'),
+        'affiliate_commission_rate' => pg_contact_form_commission_rate_posted($post),
     );
+}
+
+/**
+ * The posted commission rate as the decimal(5,2) column stores it: "8,25"
+ * and "8.25" are both 8.25 (pg_parse_commission_rate(), as the importer and
+ * Site Settings read it), so a comma is not dropped into 825 or cut to 8.
+ * A blank box stays blank: the contact uses the default rate.
+ *
+ * @param array $post
+ * @return string
+ */
+function pg_contact_form_commission_rate_posted($post)
+{
+    $raw = trim(pg_contact_form_posted($post, 'affiliate_commission_rate'));
+
+    return ($raw === '') ? '' : pg_parse_commission_rate($raw);
 }
 
 /**
