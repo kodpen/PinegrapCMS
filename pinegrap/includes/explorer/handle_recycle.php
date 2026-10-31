@@ -203,6 +203,8 @@ function pg_explorer_handle_recycle_delete($type, $request, $user)
 
         // Files and pages are recorded in the audit trail once the
         // row has its bin folder and its parked name.
+        $page_style_left_name = '';
+
         $audit_table = ($item_kind === 'file') ? 'files' : (($item_kind === 'page') ? 'page' : '');
         $audit_before = ($audit_table !== '') ? pg_audit_fetch($audit_table, $item_id) : array();
 
@@ -375,6 +377,74 @@ function pg_explorer_handle_recycle_delete($type, $request, $user)
             : lang(array('string' => '{var:1} item(s) were moved to the recycle bin', 'vars' => $binned))));
 }
 
+// Where a restored folder, page or file goes: the folder it came from, or
+// the root when that folder is gone or is itself in the bin by now. The
+// reason is '' for the folder it came from, 'gone' or 'binned' for the root.
+// $map is pg_explorer_folder_map(); $bin_id is 0 when there is no bin.
+function pg_explorer_restore_target($original_parent_id, $map, $bin_id, $root_id)
+{
+    $target_id = (int) $original_parent_id;
+
+    if (($target_id <= 0) || (isset($map[$target_id]) == false)) {
+        return array('id' => (int) $root_id, 'reason' => 'gone');
+    }
+
+    $bin_id = (int) $bin_id;
+    $current = $target_id;
+    $guard = array();
+
+    while (($bin_id > 0) && ($current > 0) && isset($map[$current]) && (isset($guard[$current]) == false)) {
+        $guard[$current] = true;
+
+        if ($current == $bin_id) {
+            return array('id' => (int) $root_id, 'reason' => 'binned');
+        }
+
+        $current = (int) $map[$current]['folder_parent'];
+    }
+
+    return array('id' => $target_id, 'reason' => '');
+}
+
+// The sentence that tells the operator an item did not come back as it
+// went: put in the root folder (reason 'gone' or 'binned' from
+// pg_explorer_restore_target()), or given a new name because its own was
+// taken meanwhile. Plain text: the toast sets it with textContent.
+function pg_explorer_restore_notes($name, $reason, $new_name = '')
+{
+    $notes = array();
+    $name = (string) $name;
+    $new_name = (string) $new_name;
+
+    if (($new_name !== '') && ($new_name !== $name)) {
+        $notes[] = lang(array('string' => '{var:1} came back as {var:2} because its name was taken.', 'vars' => array($name, $new_name)));
+        $name = $new_name;
+    }
+
+    if ($reason === 'gone') {
+        $notes[] = lang(array('string' => '{var:1} went to the root folder because its folder is gone.', 'vars' => array($name)));
+    } elseif ($reason === 'binned') {
+        $notes[] = lang(array('string' => '{var:1} went to the root folder because its folder is in the recycle bin.', 'vars' => array($name)));
+    }
+
+    return $notes;
+}
+
+// The restore's answer: the count, or the refusals when there are any, with
+// the notes of what came back changed after either.
+function pg_explorer_restore_message($restored, $errors, $notes)
+{
+    $message = (count($errors) > 0)
+        ? implode(' ', $errors)
+        : lang(array('string' => '{var:1} item(s) were restored from the recycle bin', 'vars' => $restored));
+
+    if (count($notes) > 0) {
+        $message = rtrim($message, '.') . '. ' . implode(' ', $notes);
+    }
+
+    return $message;
+}
+
 // Puts items back from the recycle bin: to the folder they came from, or to
 // the root when that one is gone or is in the bin itself.
 function pg_explorer_handle_recycle_restore($type, $request, $user)
@@ -392,6 +462,10 @@ function pg_explorer_handle_recycle_restore($type, $request, $user)
     $root_id = pg_explorer_root_folder_id();
     $restored = 0;
     $errors = array();
+
+    // What came back changed: put in the root, renamed, or a page whose
+    // style stays in the bin. Each is said in the answer.
+    $notes = array();
 
     // A page style comes back with the pages that went into the bin
     // with it. They are added to this restore right behind it, so they
@@ -434,6 +508,8 @@ function pg_explorer_handle_recycle_restore($type, $request, $user)
                 $errors[] = $restored_style['message'];
                 continue;
             }
+
+            $notes = array_merge($notes, pg_explorer_restore_notes($restored_style['original_name'], '', $restored_style['name']));
 
             $restored++;
             continue;
@@ -504,18 +580,16 @@ function pg_explorer_handle_recycle_restore($type, $request, $user)
 
             log_activity(lang(array('string' => 'The short link, {var:1}, was restored.', 'vars' => $restore_short_link_name)), $_SESSION['sessionusername']);
 
+            $notes = array_merge($notes, pg_explorer_restore_notes($restore_short_link['name'], '', $restore_short_link_name));
+
             $restored++;
             continue;
         }
 
         // Back to where it came from; to the root when that place is
         // gone or is itself in the bin by now.
-        $target_id = (int) $entry['original_parent_id'];
-        $map = pg_explorer_folder_map();
-
-        if (($target_id <= 0) || (isset($map[$target_id]) == false) || pg_recycle_is_inside($target_id)) {
-            $target_id = $root_id;
-        }
+        $target = pg_explorer_restore_target($entry['original_parent_id'], pg_explorer_folder_map(), pg_recycle_folder_id(false), $root_id);
+        $target_id = $target['id'];
 
         if (check_edit_access($target_id) == false) {
             $errors[] = lang('You do not have access to move items to the folder that you selected.');
@@ -549,7 +623,16 @@ function pg_explorer_handle_recycle_restore($type, $request, $user)
                 $page_style_in_bin = pg_recycle_style_of_page($item_id);
 
                 if (($page_style_in_bin > 0) && ((int) $user['role'] <= 1)) {
-                    pg_recycle_restore_style($page_style_in_bin, $user);
+
+                    $page_style = pg_recycle_restore_style($page_style_in_bin, $user);
+
+                    if ($page_style['status'] == 'success') {
+                        $notes = array_merge($notes, pg_explorer_restore_notes($page_style['original_name'], '', $page_style['name']));
+                    }
+
+                } elseif ($page_style_in_bin > 0) {
+                    $page_style_left = pg_recycle_style_record($page_style_in_bin);
+                    $page_style_left_name = (string) ($page_style_left['style']['style_name'] ?? '');
                 }
                 break;
 
@@ -562,7 +645,17 @@ function pg_explorer_handle_recycle_restore($type, $request, $user)
 
         // Its own name back, or the next free "[1]" form of it if
         // something has taken it while it was away.
-        pg_recycle_release_name($item_kind, $item_id, $user);
+        $released = pg_recycle_release_name($item_kind, $item_id, $user);
+        $item_name = pg_recycle_display_name($item_kind, $item_id);
+
+        $notes = array_merge($notes, pg_explorer_restore_notes(
+            ($released['from'] ?? '') !== '' ? $released['from'] : $item_name,
+            $target['reason'],
+            $released['to'] ?? ''));
+
+        if ($page_style_left_name !== '') {
+            $notes[] = lang(array('string' => 'The page {var:1} came back without its style {var:2}, which stays in the recycle bin until a designer restores it.', 'vars' => array($item_name, $page_style_left_name)));
+        }
 
         db("DELETE FROM recycle_bin WHERE id = '" . e($entry['id']) . "'");
 
@@ -582,9 +675,7 @@ function pg_explorer_handle_recycle_restore($type, $request, $user)
         'request' => $type,
         'restored' => $restored,
         'errors' => $errors,
-        'message' => (count($errors) > 0)
-            ? implode(' ', $errors)
-            : lang(array('string' => '{var:1} item(s) were restored from the recycle bin', 'vars' => $restored))));
+        'message' => pg_explorer_restore_message($restored, $errors, $notes)));
 }
 
 // Deletes bin entries for good; all:true empties the bin, and without the

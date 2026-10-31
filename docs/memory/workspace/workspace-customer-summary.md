@@ -4,7 +4,7 @@ description: A channel's customer summary (GET /workspace/channels/{id}/customer
 ---
 
 ## What is it?
-- CRM seams slice 2 (plans/workspace-crm-seams.md): `ws_customer_identity()` and `ws_customer_summary()` in includes/workspace/customer.php, for the panel (slice 3) and the API. Tests: tests/workspace_customer_summary_test.php.
+- CRM seams slice 2 (PR #1622): `ws_customer_identity()` and `ws_customer_summary()` in includes/workspace/customer.php, for the panel (slice 3) and the API. Tests: tests/workspace_customer_summary_test.php.
 
 ## Who is the customer?
 - The record `ws_channel_customer_of()` names, resolved for the reader by `ws_refs_resolve()`, with the ties of `ws_customer_link_tokens()` the reader may see. A record the reader may not see goes by kind and number ("Contact #12"), no detail, no url.

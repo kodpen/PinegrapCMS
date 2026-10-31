@@ -8,7 +8,7 @@ description: Umbrella of the Workspace growth plans of 2026-10-23 (CRM seams, MC
 - Then: richer text tools in notes and the composer; more and clearer `/` commands with Tab suggestions ("I never managed to start a task"); voice messages with a quick voice reply, usable by the assistants; a chosen channel icon; a simpler MCP servers screen with ready-made connectors ("does it work?"); one-click Claude and Pinegrap AI setup that issues a linked application key ("Pinegrap AI was inefficient, setup is tiring").
 
 ## Which plan holds what?
-- plans/workspace-crm-seams.md: record-kind registry, customer identity and summary, merge, history, follow-ups, lead intake.
+- CRM seams: done (#1621 to #4043; workspace/workspace-customer-*.md, decisions-made-product-11.md #3797).
 - The site's MCP server (done): api/api-mcp-server.md, api/api-mcp-no-tool-routes.md, api/mcp-resources-prompts.md, workspace/workspace-change-proposals.md.
 - plans/workspace-quotes.md: sales quote (`erp_quote`) and cart quote (`cart_quote`).
 - Catalogue creates and bulk drafts: done, workspace/workspace-bulk-create.md.
