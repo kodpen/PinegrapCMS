@@ -288,16 +288,16 @@ if ($editable) {
 } else {
     $rows = '';
     foreach (erp_quote_editor_rows($quote) as $line) {
-        $base = (int) $line['line_total'] - (int) $line['discount_amount'];
+        $amounts = erp_quote_line_amounts($line);
         $rows .= '
             <tr>
                 <td>' . (int) $line['line_no'] . '</td>
                 <td>' . h((string) $line['description']) . ((trim((string) ($line['product_name'] ?? '')) !== '' && (trim((string) $line['product_name']) !== trim((string) $line['description']))) ? '<div class="small fg-secondary">' . h((string) $line['product_name']) . '</div>' : '') . '</td>
                 <td class="text-end">' . h(erp_quantity_text($line['quantity'])) . '</td>
                 <td class="text-end">' . $money($line['unit_price']) . '</td>
-                <td class="text-end">' . (((int) $line['discount_amount'] > 0) ? $money($line['discount_amount']) : '') . '</td>
-                <td class="text-end">' . h(erp_percent_text($line['tax_rate'])) . '</td>
-                <td class="text-end">' . $money($base + (int) $line['tax_total']) . '</td>
+                <td class="text-end">' . (($amounts['discount'] > 0) ? $money($amounts['discount']) : '') . '</td>
+                <td class="text-end">' . h(erp_percent_text($amounts['tax_rate'])) . '</td>
+                <td class="text-end">' . $money($amounts['total']) . '</td>
             </tr>';
     }
 

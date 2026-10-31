@@ -21,6 +21,10 @@ description: Sales quote guest link (#3761, 2026.11.0 step 11.0.64): erp_quote_l
 - `erp_quote_link_accept()`: state must be open, the refusal function asked, the link claimed (`used_at`, `WHERE used_at = 0 AND revoked_at = 0`, one affected row) so a double submit does nothing; `erp_signature_store('quote', …, user_id 0)` with `erp_signature_document_hash_quote()`; a refused store releases the claim. Then `erp_quote_set_status(…, 'accepted', 0)` (panel writer, `erp.quote.accepted`) and `erp.quote.signed`. Never a bare status write.
 - The panel's signature card says "through the guest link" for a signature with `user_id` 0.
 
+## What does the page show on each line? (#3942, PR #3985)
+- Description, quantity, unit price, discount, VAT % and the line total after the discount with VAT, from `erp_quote_line_amounts()` (`includes/erp/quotes.php`), which the panel's read-only quote uses too; a note under the table says so. The line totals add up to subtotal − discount + VAT printed below.
+- The signing note reads "adi elektronik imza" in Turkish, as on the panel's signature card and the signature page.
+
 ## What protects the page?
 - `waf_sensitive_scripts()` lists `erp_quote.php` beside `cart_quote.php` (30/min allowance, token guessing). `noindex`, `no-store`, `no-referrer`, `DENY` framing; GET changes nothing (mail scanners); POST needs the form token (`validate_token_field()`). Styled by `assets/css/cart_quote.css`.
 
