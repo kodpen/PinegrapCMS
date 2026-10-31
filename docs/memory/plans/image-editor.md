@@ -5,7 +5,7 @@ description: Plan (owner 2026-10-31): Pinegrap's own image editor, a core modal 
 
 ## What is the status?
 - Held (owner, 2026-10-31): the session the owner handed it to works the steps and claims each with a draft PR `[plan:image-editor] E<n> — <topic>`. Coordinators skip this plan and give no step of it to a worker; a step line that says `free` may be taken by anyone. If the holder stops, the owner names the next one here.
-- Every UI step is tried in a browser (pointer and drawing paths are out of a unit test's reach); its PR says what to try.
+- Every UI step is tried in a browser (pointer and drawing paths are out of a unit test's reach) at desktop size and on a phone (390×844 portrait, 844×390 landscape, touch); its PR says what to try on both.
 
 ## What is it?
 - One editor for the whole software, written here with no outside engine: photo work (crop, rotate, flip, straighten, resize, adjust, filters, frames), marking (arrows, ready-made shapes, pen, text, stickers), redaction, vectors and SVG, a blank canvas with Illustrator-like artboard sizing, and optimisation on save.
