@@ -460,40 +460,37 @@ echo pg_page_shell(array(
 
 echo '<main id="content" class="container-fluid">';
 
+// The toolbar: the stored-rows fact, the filter form and the sort menu at
+// the right end. The sort menu is drawn only when there are events to sort.
+$range_select = '';
+
+foreach ($range_options as $value => $label) {
+    $range_select .= '<option value="' . h($value) . '"' . ($range === (string) $value ? ' selected="selected"' : '') . '>' . h($label) . '</option>';
+}
+
+$category_select = '';
+
+foreach ($category_options as $value => $label) {
+    $category_select .= '<option value="' . h($value) . '"' . ($category === $value ? ' selected="selected"' : '') . '>' . h($label) . '</option>';
+}
+
+echo pg_screen_toolbar(array(
+    'grow'   => '<span class="small fg-secondary">' . lang(array(
+        'string' => 'Identical events within five minutes share one row. {var:1} requests are stored as {var:2} rows.',
+        'vars'   => array(pg_format_number((int) $summary['total'], 0), pg_format_number((int) $summary['rows_stored'], 0)),
+    )) . '</span>',
+    'search' => '<form method="get" action="view_waf_log.php" class="pg-toolbar-filter disable_shortcut d-inline-flex flex-wrap row-gap-2 gap-2 align-items-center">
+        <select name="range" id="range" class="form-control form-control-sm w-auto" aria-label="' . h(lang('Period')) . '">' . $range_select . '</select>
+        <select name="category" id="category" class="form-control form-control-sm w-auto" aria-label="' . h(lang('Category')) . '">' . $category_select . '</select>
+        <input type="text" name="search" id="search" class="form-control form-control-sm w-auto" value="' . h($search) . '" placeholder="' . lang('IP address, URL, rule, reference') . '" aria-label="' . h(lang('Search')) . '"/>
+        <button type="submit" class="btn btn-sm btn-solid theme-primary rounded-pill px-5"><i class="bi bi-funnel me-1" aria-hidden="true"></i>' . lang('Filter') . '</button>
+    </form>',
+    'view'   => ((int) $summary['rows_stored'] === 0) ? '' : pg_list_sort_menu('view_waf_log.php', $list_sort['sort_columns'], $list_sort['sort_levels'], $list_sort['sort_default'], $list_query),
+), array('class' => 'mb-7'));
+
 echo $liveform->output_errors();
 echo $liveform->output_notices();
 echo $mode_banner;
-
-// Filter bar.
-echo '<form method="get" action="view_waf_log.php" class="row g-3 align-items-end mb-7">
-    <div class="col-12 md:col-3">
-        <label for="range" class="form-label">' . lang('Period') . '</label>
-        <select name="range" id="range" class="form-control">';
-
-foreach ($range_options as $value => $label) {
-    echo '<option value="' . h($value) . '"' . ($range === (string) $value ? ' selected="selected"' : '') . '>' . h($label) . '</option>';
-}
-
-echo '</select>
-    </div>
-    <div class="col-12 md:col-3">
-        <label for="category" class="form-label">' . lang('Category') . '</label>
-        <select name="category" id="category" class="form-control">';
-
-foreach ($category_options as $value => $label) {
-    echo '<option value="' . h($value) . '"' . ($category === $value ? ' selected="selected"' : '') . '>' . h($label) . '</option>';
-}
-
-echo '</select>
-    </div>
-    <div class="col-12 md:col-4">
-        <label for="search" class="form-label">' . lang('Search') . '</label>
-        <input type="text" name="search" id="search" class="form-control" value="' . h($search) . '" placeholder="' . lang('IP address, URL, rule, reference') . '"/>
-    </div>
-    <div class="col-12 md:col-2">
-        <button type="submit" class="btn btn-solid theme-primary w-100"><i class="bi bi-funnel me-1"></i>' . lang('Filter') . '</button>
-    </div>
-</form>';
 
 // Summary cards.
 echo '<div class="row g-5 mb-7">
@@ -521,11 +518,7 @@ echo '<div class="row g-5 mb-7">
             <div class="h3 mb-0">' . pg_format_number((int) $summary['addresses'], 0) . '</div>
         </div></div>
     </div>
-</div>
-<p class="fg-secondary small mb-7">' . lang(array(
-    'string' => 'Identical events within five minutes share one row. {var:1} requests are stored as {var:2} rows.',
-    'vars'   => array(pg_format_number((int) $summary['total'], 0), pg_format_number((int) $summary['rows_stored'], 0)),
-)) . '</p>';
+</div>';
 
 // Possible false positives.
 if ($suspects) {
@@ -690,11 +683,7 @@ echo '<div class="card mb-7">
 if ((int) $summary['rows_stored'] === 0) {
     echo '<p class="fg-secondary mb-0">' . lang('No firewall events were recorded in this period.') . '</p>';
 } else {
-    echo '<div class="pg-toolbar mb-3">
-            <div class="pg-toolbar-grow"></div>
-            ' . pg_list_sort_menu('view_waf_log.php', $list_sort['sort_columns'], $list_sort['sort_levels'], $list_sort['sort_default'], $list_query) . '
-        </div>
-        <div class="position-relative">
+    echo '<div class="position-relative">
         <table class="chart table table-sm table-hover align-middle mb-0" style="width:100%;display:none" data-pg-list-action="waf_log_list_rows" data-pg-list-params="' . h(encode_json(array('filters' => array('range' => $range, 'category' => $category, 'search' => $search)))) . '">
         <thead><tr>
             <th>' . $list_heading('time') . '</th>

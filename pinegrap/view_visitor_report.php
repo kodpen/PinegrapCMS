@@ -100,12 +100,10 @@ if (!$_POST) {
     
     // if the visitor report is being viewed
     if (isset($_GET['id']) == true) {
-        $output_edit_button = '
-        <nav id="button_bar" class="navigation " aria-label="' . h(lang('Button Bar')) . '">
-            <div class=" btn-group flex-wrap">
-                <button type="button" class="btn btn-solid theme-primary" id="edit_button" onclick="var edit_form = document.getElementById(\'edit_form\'); edit_form.style.display = \'block\'; document.getElementById(\'button_bar\').style.display = \'none\'; var first_field = edit_form.querySelector(\'input:not([type=hidden]), select, textarea\'); if (first_field) {first_field.focus();}"><span class="material-icons me-1">edit</span>' . lang('Edit') . '</button>
-            </div>
-        </nav>';
+        // nav#button_bar: Edit hides it by id, Cancel Edit shows it again.
+        $output_edit_button = pg_screen_toolbar(array(
+            'primary' => '<button type="button" class="btn btn-sm btn-solid theme-primary rounded-pill px-5" id="edit_button" onclick="var edit_form = document.getElementById(\'edit_form\'); edit_form.style.display = \'block\'; document.getElementById(\'button_bar\').style.display = \'none\'; var first_field = edit_form.querySelector(\'input:not([type=hidden]), select, textarea\'); if (first_field) {first_field.focus();}"><i class="bi bi-pencil me-2" aria-hidden="true"></i>' . lang('Edit') . '</button>',
+        ));
         $output_edit_form_style = '; display: none';
     }
     
@@ -514,7 +512,7 @@ if (!$_POST) {
     
     // else the user is editing a visitor report, so prepare cancel button to hide edit form and show edit button
     } else {
-        $output_cancel_button = '<button type="button" name="cancel" value="Cancel" onclick="document.getElementById(\'button_bar\').style.display = \'block\'; document.getElementById(\'edit_button\').focus(); document.getElementById(\'edit_form\').style.display = \'none\';" class="btn my-1 btn-solid theme-secondary"><span class="material-icons me-3">close</span><span class="pg-btn-label" >' . lang(array('string'=>'Cancel Edit') ) . '</span></button>';
+        $output_cancel_button = '<button type="button" name="cancel" value="Cancel" onclick="document.getElementById(\'button_bar\').style.display = \'\'; document.getElementById(\'edit_button\').focus(); document.getElementById(\'edit_form\').style.display = \'none\';" class="btn my-1 btn-solid theme-secondary"><span class="material-icons me-3">close</span><span class="pg-btn-label" >' . lang(array('string'=>'Cancel Edit') ) . '</span></button>';
     }
     
     $output_delete_button = '';
@@ -1289,21 +1287,12 @@ if (!$_POST) {
         )
     ) . '
 <main id="content" class="container-fluid">
-
-
-
-
+    ' . $output_edit_button . '
             <div class="row">
             <div class="col-12">
                 ' . $liveform->output_errors() . '
                 ' . $liveform->get_warnings() . '
                 ' . $liveform->output_notices() . '
-                <div class="row mb-3  flex-wrap">
-                    <div class="col-12 sm:col-12 text-center md:text-start">
-
-                        ' . $output_edit_button . '
-                    </div>
-                </div>
                 <form name="form" id="edit_form" action="view_visitor_report.php" method="post" style="' . $output_edit_form_style . '">
                     ' . get_token_field() . '
                     ' . $liveform->output_field(array('type'=>'hidden', 'id'=>'last_filter_number', 'name'=>'last_filter_number', 'value'=>'0')) . '
