@@ -81,6 +81,7 @@
     "A calm long-read magazine: a cover story, issues, sections and contributors, stories set for reading, with author submissions that editors review, schedule and publish.": "Sakin bir uzun okuma dergisi: kapak yazısı, sayılar, bölümler ve yazarlar, okumak için düzenlenmiş yazılar; yazarların gönderdiği yazıları editörler inceler, planlar ve yayımlar.",
     "A campaign e-mail to {var:1} was given up after {var:2} attempts: {var:3}": "{var:1} adresine giden kampanya e-postası {var:2} denemeden sonra bırakıldı: {var:3}",
     "A campaign is scheduled to go out {var:1}: “{var:2}”.": "Bir kampanya {var:1} gönderilecek: “{var:2}”.",
+    "A campaign profile cannot follow itself or a profile that follows it.": "Bir kampanya profili kendisini ya da kendisini izleyen bir profili izleyemez.",
     "A cancelled delivery note cannot be invoiced.": "İptal edilmiş bir irsaliye faturalanamaz.",
     "A cancelled document is not sent.": "İptal edilmiş belge gönderilmez.",
     "A cancelled expense does not repeat.": "İptal edilmiş gider tekrarlanmaz.",
