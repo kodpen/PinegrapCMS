@@ -402,13 +402,16 @@ function pg_short_link_form_validate_destination($liveform, $current)
                     $liveform->mark_error('url', lang('Sorry, you may not enter a space in the URL.'));
                 }
 
-                // The column holds this many characters; a longer address
-                // would be cut short in silence.
-                if (
-                    ($liveform->check_field_error('url') == false)
-                    && (mb_strlen($liveform->get_field_value('url'), 'UTF-8') > pg_short_link_url_max())
-                ) {
-                    $liveform->mark_error('url', lang(array('string' => 'The address can be at most {var:1} characters long.', 'vars' => array(pg_short_link_url_max()))));
+                // The rule the external API and the CSV import apply: a web
+                // address or a path on this site, within the column. Another
+                // scheme, a protocol-relative address or a backslash would
+                // send visitors to a broken redirect.
+                if ($liveform->check_field_error('url') == false) {
+                    $problem = pg_short_link_url_problem($liveform->get_field_value('url'));
+
+                    if ($problem !== '') {
+                        $liveform->mark_error('url', $problem);
+                    }
                 }
 
                 break;
