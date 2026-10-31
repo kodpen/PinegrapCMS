@@ -43,7 +43,7 @@ if ($_POST && isset($_POST['template'])) {
     $preview_template = str_replace("\r\n", "\n", (string) $_POST['template']);
 
     if ($invoice_id <= 0) {
-        $invoice_id = (int) db_value("SELECT id FROM erp_invoices ORDER BY id DESC LIMIT 1");
+        $invoice_id = (int) db_value(erp_invoice_template_sample_query());
     }
 }
 

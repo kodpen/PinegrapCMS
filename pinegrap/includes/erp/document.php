@@ -560,6 +560,19 @@ function erp_invoice_default_template()
 }
 
 /**
+ * The invoice a template preview is drawn on when none is named: the newest
+ * issued sales invoice. A purchase invoice, a return, a proforma, a draft
+ * (no number) or a cancelled one would preview the sales template on a
+ * document it is not printed for.
+ */
+function erp_invoice_template_sample_query()
+{
+    return "SELECT id FROM erp_invoices
+        WHERE direction = 'sales' AND doc_type = 'invoice' AND status NOT IN ('draft', 'cancelled')
+        ORDER BY id DESC LIMIT 1";
+}
+
+/**
  * The template the invoices are printed from: the one saved in the panel when
  * there is one, otherwise the built-in file.
  */
