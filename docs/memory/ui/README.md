@@ -323,6 +323,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - translations-screen-text-language.md: Translations screen (translations.php): which elements carry lang and dir="rtl" so screen readers and right-to-left translators get the text's own language
 - unsaved-changes-guard.md: Which panel screens ask before the page is left with unsaved changes (code fields, product screen, offer and layout editors, settings dialog), how each knows, and the submit and Ctrl+S traps
 - update-screens-steps.md: Software Updater, Repair Software and Backup Manager: the step loop with an error path, the status line, Return in Backup Name, labels kept while they work, a failed file copy removes the backup
+- upload-folder-kept.md: Edit Field keeps a deleted or unlisted upload folder selected and marked; Edit Folder's Delete names the upload fields using the folder
 - upload-keyboard.md: Files and Design Files upload screens from the keyboard: the Choose files button beside the Dropzone area, why outside it, the remove link shown on focus
 - uppercase-heading-brand-names.md: English brand and product names inside text-uppercase titles carry lang="en", or the Turkish panel prints WİNDOWS, MAİLCHİMP, MİCROSOFT (#3613)
 - user-permission-rows.md: Permission rows in add_user/edit_user/import_users (includes/user_permissions.php): value rules, gate_field/gate_scope, drawer panels, top layer, multiselect pitfalls.
