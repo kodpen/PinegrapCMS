@@ -25,4 +25,4 @@ description: SMS layer (PR #600): pg_sms_send() rules and kinds, account in conn
 ## How was it verified?
 - `tests/sms_test.php`; a sandbox run of `settings_pane.php` (marks, save / unchanged / disable / forget, test button). No provider was reached.
 
-Related: docs/memory/platform/sms-netgsm-driver.md, docs/memory/platform/sms-outbox-queue.md, docs/memory/plans/sms-and-iys.md
+Related: docs/memory/platform/sms-netgsm-driver.md, docs/memory/platform/sms-and-iys-rules.md

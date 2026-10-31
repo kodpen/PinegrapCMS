@@ -22,4 +22,4 @@ description: İYS client (PR #1895): account in connect_apps iys, dry run, daily
 
 - The SMS (MESAJ) side of the same job: `platform/iys-sms-channel.md`.
 
-Related: docs/memory/platform/iys-sms-channel.md, docs/memory/platform/iys-settings-card.md, docs/memory/plans/sms-and-iys.md, docs/memory/core/consent-log-writers.md, docs/memory/platform/sms-provider-layer.md
+Related: docs/memory/platform/iys-sms-channel.md, docs/memory/platform/iys-settings-card.md, docs/memory/platform/sms-and-iys-rules.md, docs/memory/core/consent-log-writers.md, docs/memory/platform/sms-provider-layer.md

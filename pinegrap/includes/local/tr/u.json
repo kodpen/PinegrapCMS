@@ -324,6 +324,7 @@
     "Used only while a page has no title of its own.": "Yalnız sayfanın kendi başlığı yokken kullanılır.",
     "Used when signing in.": "Oturum açarken kullanılır.",
     "Used while a value from the address, compared with is equal to, finds records. {value} stands for the value, e.g. Articles by {value}. Empty: the value alone.": "Adresten gelen bir değer eşittir ile karşılaştırılıp kayıt bulduğunda kullanılır. {value} değerin yerine geçer, ör. {value} yazıları. Boşsa yalnız değer.",
+    "Used with Send at this Date & Time.": "Bu Tarih ve Saatte Gönder ile kullanılır.",
     "User": "Kullanıcı",
     "User ({var:1}) modified by custom app: {var:2} (API Key: {var:3}, User: {var:4})": "Kullanıcı ({var:1}), özel uygulama tarafından değiştirildi: {var:2} (API Anahtarı: {var:3}, Kullanıcı: {var:4})",
     "User ({var:1}) was given the role {var:2} in the Workspace, on Claude's proposal.": "Kullanıcıya ({var:1}) Çalışma Alanında, Claude'un önerisiyle {var:2} rolü verildi.",

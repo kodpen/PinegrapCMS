@@ -304,6 +304,7 @@
     "In the ERP: {var:1}": "ERP'de: {var:1}",
     "In the Microsoft Entra admin center, open App registrations and choose New registration.": "Microsoft Entra yönetim merkezinde App registrations bölümünü açın ve New registration seçin.",
     "In the Recycle Bin": "Geri Dönüşüm Kutusu'nda",
+    "In the SMS queue: {var:1} sent, {var:2} waiting, {var:3} failed": "SMS kuyruğunda: {var:1} gönderildi, {var:2} bekliyor, {var:3} başarısız",
     "In the app, open Settings and choose Calendar feed.": "Uygulamada Ayarlar'ı açın ve Takvim beslemesi'ni seçin.",
     "In the application's Google Cloud project, enable the Google Search Console API and the Site Verification API.": "Uygulamanın Google Cloud projesinde Google Search Console API'sini ve Site Verification API'sini etkinleştirin.",
     "In the archive": "Arşivde",

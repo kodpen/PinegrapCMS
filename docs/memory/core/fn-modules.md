@@ -82,6 +82,7 @@ description: Generated from the module field of the memory files: each includes/
 - `site_icon`: [[site-icon]]
 - `site_log_list`: [[site-log-paging]]
 - `site_search`: [[site-search-query-and-freshness]]
+- `sms_campaigns`: [[sms-campaigns]]
 - `sms_codes`: [[sms-codes]]
 - `speculation`: [[speculation-prefetch]]
 - `stock_notify`: [[back-in-stock-notices]]

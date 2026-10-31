@@ -30,4 +30,4 @@ module: privacy
 ## Tests?
 - `tests/sms_consent_test.php`: offered rule, start state, answers, changes per channel, member trees, checkout answers and drawn rule, default trees, source checks of each drawn box.
 
-Related: docs/memory/core/sms-consent-custom-form.md, docs/memory/core/consent-log-writers.md, docs/memory/plans/sms-and-iys.md
+Related: docs/memory/core/sms-consent-custom-form.md, docs/memory/core/consent-log-writers.md, docs/memory/platform/sms-and-iys-rules.md
