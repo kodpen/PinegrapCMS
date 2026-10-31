@@ -213,8 +213,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($resp['status'] !== 200 || empty($resp['json']['success'])) {
             $liveform->mark_error('error', lang('Development Mode toggle failed') . ': ' . h(pg_cloudflare_answer_reason($resp)));
         } else {
-            $liveform->add_notice(lang(array('string' => 'Development Mode updated to {var:1}.', 'vars' => $value)));
-            log_activity(lang(array('string' => 'Cloudflare {var:1} updated to {var:2}.', 'vars' => array(lang('Development Mode'), $value))), $_SESSION['sessionusername']);
+            $liveform->add_notice(lang(array('string' => 'Development Mode updated to {var:1}.', 'vars' => pg_cloudflare_setting_value_label($value))));
+            log_activity(lang(array('string' => 'Cloudflare {var:1} updated to {var:2}.', 'vars' => array(lang('Development Mode'), pg_cloudflare_setting_value_label($value)))), $_SESSION['sessionusername']);
         }
     }
     
@@ -225,8 +225,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($resp['status'] !== 200 || empty($resp['json']['success'])) {
             $liveform->mark_error('error', lang('Under Attack Mode toggle failed') . ': ' . h(pg_cloudflare_answer_reason($resp)));
         } else {
-            $liveform->add_notice(lang(array('string' => 'Under Attack Mode updated to {var:1}.', 'vars' => $value)));
-            log_activity(lang(array('string' => 'Cloudflare {var:1} updated to {var:2}.', 'vars' => array(lang('Under Attack Mode'), $value))), $_SESSION['sessionusername']);
+            $liveform->add_notice(lang(array('string' => 'Under Attack Mode updated to {var:1}.', 'vars' => pg_cloudflare_setting_value_label($value))));
+            log_activity(lang(array('string' => 'Cloudflare {var:1} updated to {var:2}.', 'vars' => array(lang('Under Attack Mode'), pg_cloudflare_setting_value_label($value)))), $_SESSION['sessionusername']);
         }
     }
     
@@ -237,8 +237,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($resp['status'] !== 200 || empty($resp['json']['success'])) {
             $liveform->mark_error('error', lang('Always Use HTTPS toggle failed') . ': ' . h(pg_cloudflare_answer_reason($resp)));
         } else {
-            $liveform->add_notice(lang(array('string' => 'Always Use HTTPS updated to {var:1}.', 'vars' => $value)));
-            log_activity(lang(array('string' => 'Cloudflare {var:1} updated to {var:2}.', 'vars' => array(lang('Always Use HTTPS'), $value))), $_SESSION['sessionusername']);
+            $liveform->add_notice(lang(array('string' => 'Always Use HTTPS updated to {var:1}.', 'vars' => pg_cloudflare_setting_value_label($value))));
+            log_activity(lang(array('string' => 'Cloudflare {var:1} updated to {var:2}.', 'vars' => array(lang('Always Use HTTPS'), pg_cloudflare_setting_value_label($value)))), $_SESSION['sessionusername']);
         }
     }
     
@@ -249,8 +249,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($resp['status'] !== 200 || empty($resp['json']['success'])) {
             $liveform->mark_error('error', lang('Brotli toggle failed') . ': ' . h(pg_cloudflare_answer_reason($resp)));
         } else {
-            $liveform->add_notice(lang(array('string' => 'Brotli updated to {var:1}.', 'vars' => $value)));
-            log_activity(lang(array('string' => 'Cloudflare {var:1} updated to {var:2}.', 'vars' => array(lang('Brotli'), $value))), $_SESSION['sessionusername']);
+            $liveform->add_notice(lang(array('string' => 'Brotli updated to {var:1}.', 'vars' => pg_cloudflare_setting_value_label($value))));
+            log_activity(lang(array('string' => 'Cloudflare {var:1} updated to {var:2}.', 'vars' => array(lang('Brotli'), pg_cloudflare_setting_value_label($value)))), $_SESSION['sessionusername']);
         }
     }
     
@@ -265,8 +265,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             $liveform->mark_error('error', $msg);
         } else {
-            $liveform->add_notice(lang(array('string' => 'Rocket Loader updated to {var:1}.', 'vars' => $value)));
-            log_activity(lang(array('string' => 'Cloudflare {var:1} updated to {var:2}.', 'vars' => array(lang('Rocket Loader'), $value))), $_SESSION['sessionusername']);
+            $liveform->add_notice(lang(array('string' => 'Rocket Loader updated to {var:1}.', 'vars' => pg_cloudflare_setting_value_label($value))));
+            log_activity(lang(array('string' => 'Cloudflare {var:1} updated to {var:2}.', 'vars' => array(lang('Rocket Loader'), pg_cloudflare_setting_value_label($value)))), $_SESSION['sessionusername']);
         }
     }
     

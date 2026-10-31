@@ -1995,7 +1995,7 @@
     "Sorry, the {var:1} was not added, because you do not have access to view that submitted form.": "Maalesef, gönderilen formu görüntüleme erişiminiz olmadığı için {var:1} eklenmedi.",
     "Sorry, there are no remaining spots.": "Üzgünüz, kalan yer yok.",
     "Sorry, there does not appear to be any shipping info for that date range.  Shipping info will appear for this report once shippable Products are purchased.": "Üzgünüz, bu tarih aralığı için herhangi bir gönderim bilgisi görünmüyor. Gönderilebilir Ürünler satın alındığında bu rapor için gönderim bilgileri görünecektir.",
-    "Sorry, there is already a ship date adjustment for the zip code prefix and shipping method you selected.": "Seçtiğiniz posta kodu öneki ve gönderim yöntemi için zaten bir gönderim tarihi ayarlaması mevcut.",
+    "Sorry, there is already a ship date adjustment for the zip code prefix and shipping method you selected.": "Seçtiğiniz posta kodu öneki ve nakliye yöntemi için zaten bir gönderim tarihi ayarlaması mevcut.",
     "Sorry, there was a communication error with the source site. Please check to make sure the API URL is correct.": "Üzgünüz, kaynak siteyle ilgili bir iletişim hatası oluştu. API URL'sinin doğru olduğundan emin olmak için lütfen kontrol edin.",
     "Sorry, this item cannot be delivered to the specified shipping address. Please remove it from your order to continue.": "Üzgünüz, bu ürün belirtilen teslimat adresine gönderilemiyor. Devam etmek için lütfen ürünü siparişinizden çıkarın.",
     "Sorry, this item is not currently available.": "Maalesef, bu öğe şu anda mevcut değil.",

@@ -241,6 +241,7 @@
     "Leave blank to post as Anonymous. ^^billing_first_name^^ ^^billing_last_name^^ puts the name on the order here.": "Anonim olarak gönderilmesi için boş bırakın. ^^billing_first_name^^ ^^billing_last_name^^ buraya siparişteki adı yazar.",
     "Leave blank to send as soon as possible.": "En kısa sürede gönderilmesi için boş bırakın.",
     "Leave blank to send immediately.": "Hemen gönderilmesi için boş bırakın.",
+    "Leave blank to use the default Pinegrap logo": "Varsayılan Pinegrap logosu için boş bırakın",
     "Leave blank to use the name on the order.": "Boş bırakılırsa siparişteki ad kullanılır.",
     "Leave empty": "Boş bırak",
     "Leave empty and the tax zone of the delivery address decides, which is {var:1}% for this site.": "Boş bırakırsanız teslimat adresinin vergi bölgesi belirler; bu sitede %{var:1}.",
@@ -803,6 +804,7 @@
     "login-region": "giris-bolgesi",
     "logout": "cikis",
     "lookbook": "lookbook",
+    "low": "düşük",
     "lower": "düşür",
     "lower-case letters": "küçük harfler"
 }
