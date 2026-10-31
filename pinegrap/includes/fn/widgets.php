@@ -5204,6 +5204,47 @@ function pg_sw_feed_reference_label($spec, $code)
     return $cache[$key] = $label;
 }
 
+// The <guid> of a form feed item. A record with its own address
+// ($permalink, the detail page) keeps it as a permalink guid; a list
+// without a detail page links every item to the page, so the guid is the
+// page address $page_url with the record's reference code, marked as not
+// a permalink: readers de-duplicate by guid, and a shared one would fold
+// every item into one.
+function pg_sw_feed_guid_xml($permalink, $page_url, $reference_code)
+{
+    $permalink = (string)$permalink;
+    if ($permalink !== '') {
+        return '<guid>' . h($permalink) . '</guid>';
+    }
+    return '<guid isPermaLink="false">' . h((string)$page_url . '#' . rawurlencode((string)$reference_code)) . '</guid>';
+}
+
+// The <enclosure> of an address typed into a media field (not an upload):
+// its size is not known here, so length is 0 as RSS allows, and its type
+// comes from the extension of the address's path. A site path is made
+// absolute with $site (scheme and host). '' when the type cannot be known
+// or the text is not a web address or site path, rather than a made-up type.
+function pg_sw_feed_url_enclosure_xml($url, $site = '')
+{
+    $url = trim((string)$url);
+    if (preg_match('~^/(?!/)~', $url)) {
+        $url = (string)$site . $url;
+    }
+    if (!preg_match('~^https?://~i', $url)) {
+        return '';
+    }
+    $path = (string)parse_url($url, PHP_URL_PATH);
+    $ext  = strtolower((string)pathinfo($path, PATHINFO_EXTENSION));
+    if ($ext === '') {
+        return '';
+    }
+    $type = get_mime_type($ext);
+    if ($type === '' || $type === 'application/octet-stream') {
+        return '';
+    }
+    return '<enclosure url="' . h($url) . '" length="0" type="' . h($type) . '"/>';
+}
+
 // The <category> elements of a record's category field $field_id of form
 // page $form_page_id, its stored rows $values: a reference prints its
 // label (pg_sw_feed_categories()). '' when it holds nothing.
@@ -5286,9 +5327,11 @@ function pg_sw_form_feed_parts($page_id, $page_name, $page_title, $page_meta_des
     foreach ((array)$records as $record) {
         $form_id = (int)$record['id'];
         $text    = pg_sw_submitted_form_rss_text($form_id);
-        $link    = ($detail_page_name !== '')
+        $permalink = ($detail_page_name !== '')
             ? $site . pg_sw_record_url($detail_page_name, $record['reference_code'], $record['address_name'], $detail_pretty, $base_path)
-            : $site . $base_path . encode_url_path($page_name);
+            : '';
+        $link    = ($permalink !== '') ? $permalink : $site . $base_path . encode_url_path($page_name);
+        $guid    = pg_sw_feed_guid_xml($permalink, $link, $record['reference_code']);
 
         $categories = '';
         if ($category_field_id > 0) {
@@ -5307,8 +5350,8 @@ function pg_sw_form_feed_parts($page_id, $page_name, $page_title, $page_meta_des
                     $enclosure = '<enclosure url="' . $site . PATH . h(rawurlencode($file['name'])) . '" length="' . (int)$file['size'] . '" type="' . h(get_mime_type($file['type'])) . '"/>';
                 }
             } elseif (is_array($media) && trim((string)$media['data']) !== '') {
-                // A URL typed into the field: its size and type are not known here.
-                $enclosure = '<enclosure url="' . h(trim((string)$media['data'])) . '" length="50000" type="image/jpeg"/>';
+                // An address typed into the field: size unknown, type from its extension.
+                $enclosure = pg_sw_feed_url_enclosure_xml($media['data'], $site);
             }
         }
 
@@ -5316,7 +5359,7 @@ function pg_sw_form_feed_parts($page_id, $page_name, $page_title, $page_meta_des
         <item>
             <title>' . h($text['title'] !== '' ? $text['title'] : lang('There is not an RSS title specified in the form.')) . '</title>
             <link>' . h($link) . '</link>
-            <guid>' . h($link) . '</guid>
+            ' . $guid . '
             <description>' . h($text['description'] !== '' ? $text['description'] : lang('There is not an RSS description specified in the form.')) . '</description>
             <pubDate>' . date('r', (int)$record['submitted_timestamp']) . '</pubDate>
             ' . $categories . $enclosure . '

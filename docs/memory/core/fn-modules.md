@@ -103,7 +103,7 @@ description: Generated from the module field of the memory files: each includes/
 - `waf_log_list`: [[waf-log-paging]]
 - `waf_notice`: [[waf-ban-notice]]
 - `waf_rescue`: [[waf-self-rescue]]
-- `widgets`: [[order-view-not-found]], [[search-results-catalog-detail-page]]
+- `widgets`: [[form-feed-item-guid-enclosure]], [[order-view-not-found]], [[search-results-catalog-detail-page]]
 - `widgets_affiliate_sign_up`: [[affiliate-sign-up-widget]]
 - `widgets_attrs`: [[widget-attr-bindings]]
 - `widgets_billing_information`: [[billing-information-widget]]
