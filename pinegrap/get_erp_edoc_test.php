@@ -18,6 +18,41 @@
  */
 
 include('init.php');
+// The settings card posts format=json and prints the answer under its
+// button. validate_user() would redirect it to the sign-in page (fetch follows
+// that as a 200) and validate_token_field() prints an HTML error page, so the
+// card read "Unexpected token '<'". An ended session or a stale token is
+// answered here in the card's own shape instead.
+pg_request_single_values(array('format'));
+
+if (isset($_POST['format']) && is_string($_POST['format']) && ($_POST['format'] === 'json')) {
+
+    $edoc_test_refuse = function ($message, $status) {
+        http_response_code($status);
+        header('Content-Type: application/json; charset=utf-8');
+        header('X-Robots-Tag: noindex');
+        header('Cache-Control: private, no-store');
+        echo json_encode(array(
+            'tone' => 'danger',
+            'icon' => 'bi-x-circle',
+            'lines' => array($message),
+            'note' => '',
+        ), JSON_UNESCAPED_UNICODE);
+        exit();
+    };
+
+    if (!defined('USER_LOGGED_IN') || !USER_LOGGED_IN) {
+        $edoc_test_refuse(lang('Your session has expired. Reload the page and sign in again.'), 401);
+    }
+
+    $edoc_test_session_token = (string) ($_SESSION['software']['token'] ?? '');
+    $edoc_test_post_token = (isset($_POST['token']) && is_string($_POST['token'])) ? $_POST['token'] : '';
+
+    if (($edoc_test_session_token === '') || !hash_equals($edoc_test_session_token, $edoc_test_post_token)) {
+        $edoc_test_refuse(lang('Your session expired. Reload the page and try again.'), 403);
+    }
+}
+
 $user = validate_user();
 if (!validate_erp_access($user, 'settings')) {
     exit();

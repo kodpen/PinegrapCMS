@@ -15,6 +15,10 @@ description: Where the e-document provider settings card lives (pgset-invoice), 
 - `get_erp_edoc_test.php` (POST, same form via `formaction`, new tab; `validate_erp_access(..., 'settings')` + token).
 - What is typed in the boxes overlays the stored credentials and is NOT saved. If the boxes were untouched, `erp_edoc_test()` runs; the "Son kontrol" line records only a test done with the stored credentials.
 
+## What does the card show when the test or Connect is refused?
+- `get_erp_edoc_test.php` and `parasut_connect.php` answer a `format=json` post before `validate_user()`: no session → 401 "Your session has expired. Reload the page and sign in again.", a token failing `hash_equals()` → 403 "Your session expired. Reload the page and try again.", both as `{tone:'danger', icon:'bi-x-circle', lines:[…]}`. The HTML path (direct post) and `pg_post_body_discarded()` are unchanged.
+- The `button.pg-edoc-test` handler (`backend.src.js`) reads the JSON body whatever the status; a redirect or a body without `lines` prints `lang('An error occurred.')`. Before, it printed "HTTP Unexpected token '<'…" (`tests/bell_and_edoc_refusal_test.php`).
+
 ## Owner decision: where must the card stay?
 - There is NO card in `erp_settings.php`; the Satıcı Bilgileri card has only a note with a `pg_settings_return_url('commerce','pgset-invoice')` link.
 - Do not put the card back into `erp_settings.php`: keeping ERP-owned settings on the commerce dashboard is an owner decision.
