@@ -627,7 +627,7 @@
         var main = el('div', 'ws-voice-main');
         var name = el('div', 'ws-voice-name', isVoice(file.name) ? t('voice_message') : file.name);
         var bar = el('div', 'ws-voice-bar');
-        var fill = el('span');
+        var fill = el('span', 'ws-voice-fill');
         var time = el('div', 'ws-voice-time', '0:00');
         var speed = el('button', 'btn btn-sm btn-text theme-secondary ws-voice-speed');
         var save = el('a', 'btn btn-sm btn-text theme-secondary');

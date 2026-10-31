@@ -15484,7 +15484,9 @@ a.ws-chip:hover {
   background: var(--pg-border-color);
   cursor: pointer;
 }
-.ws-voice-bar > span {
+/* The played part; a recording's waveform draws its strokes instead
+   (waveform() in workspace_voice.js), so the rule names the fill alone. */
+.ws-voice-fill {
   position: absolute;
   top: 0;
   bottom: 0;

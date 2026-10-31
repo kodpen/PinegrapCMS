@@ -176,6 +176,33 @@ function test_voice_text_keyboard_focus_and_meter_name()
 	pg_assert_same('voice_text_download', $result['meter']);
 }
 
+// Placed in the player's own row: a small "Aa" named by its label goes before
+// the given node, hidden until the model answers; the box under the player
+// shows from the first click on. The Workspace player places it so.
+function test_voice_text_sits_in_the_players_row_when_placed()
+{
+	$stub = 'Node.prototype.insertBefore = function (c, ref) { var i = this.children.indexOf(ref); if (i === -1) { this.children.push(c); } else { this.children.splice(i, 0, c); } return c; };';
+	$probe = 'var row = new Node("div"); var save = row.appendChild(new Node("a"));' . "\n"
+		. 'var box = PGVoiceText.control("/f.weba", function (k) { return "[" + k + "]"; }, "en", { into: row, before: save });' . "\n"
+		. 'var button = row.children[0]; var early = button.hidden;' . "\n"
+		. 'settle().then(function () { var shown = { button: !button.hidden, box: !box.hidden }; button.on.click(); return settle().then(function () {' . "\n"
+		. ' console.log(JSON.stringify({ order: row.children.map(function (c) { return c.tag; }), early: early, shown: shown, label: button.attrs["aria-label"], title: button.title, glyph: button.children[0].textContent, inBox: box.children.indexOf(button), open: !box.hidden })); }); });';
+	$result = voice_text_test_run(voice_text_test_model('{ en: "available" }') . "\n" . $stub, $probe);
+
+	if ($result !== null) {
+		pg_assert_same(array('button', 'a'), $result['order'], 'the button before the given node');
+		pg_assert_true($result['early'], 'hidden until the model answers');
+		pg_assert_same(array('button' => true, 'box' => false), $result['shown'], 'the button shows, the box waits');
+		pg_assert_same('[voice_text_convert]', $result['label'], 'named by its label');
+		pg_assert_same('[voice_text_convert]', $result['title']);
+		pg_assert_same('Aa', $result['glyph']);
+		pg_assert_same(-1, $result['inBox'], 'not inside the box');
+		pg_assert_true($result['open'], 'the box shows from the click on');
+	}
+
+	pg_assert_contains('window.PGVoiceText.control(file.url, t, locale, { into: box, before: save })', voice_text_test_source('assets/js/workspace_voice.js'), 'the Workspace player places it before its download link');
+}
+
 // The Workspace player offers it only without a server transcript; the
 // chat window draws it under its audio; both carry the texts and the file.
 function test_voice_text_wiring()

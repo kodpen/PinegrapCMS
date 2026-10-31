@@ -21,6 +21,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - Give a new or moved change kind or field, catalogue event, task/order/approval status, `ws_event()` emitter, `ws_scheduled_run()`/`_due()`/`_execute()` call or `ws_scheduled_*` route its line in `workspace_flows_parity_table()`, or tests/workspace_flows_parity_test.php fails (`workspace-flows-parity-test.md`).
 - Put a new place of the workspace in `ws_nav_groups()` under the gate of its screen: the main menu's Workspace list draws only what the server sends and hides nothing itself (`workspace-menu-list.md`).
 - Put in the channel menu (`channelMenu()` in workspace.js) only the channel's own settings and actions (channel settings, notifications, voice, make private, move to group, templates, share link, clear, archive, leave; a customer channel's New sales quote; on a phone the header's channel info, members and search): creating or changing other records is a / command or the record's own screen, never a channel-menu item; a new entry point whose place is not obvious is a product-behaviour question for the architect (`workflow/decisions-made-workspace-2.md`, `workspace-create-commands.md`).
+- Put on a message's hover bar (`messageTools()`, a number in `tool` of `messageActions()`) only the reaction, Reply, the discussion and Make a task of it; every other action goes to More and the context menu (`workspace-channel-messages.md`, `tests/workspace_message_bar_test.php`).
 <!-- key-rules:end -->
 
 ## Files
@@ -42,7 +43,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - mail-tables.md: Incoming e-mail tables (G1b, step 11.0.82): ws_mail_boxes, ws_mail_conversations, ws_mail_items, sender kind 'mail'; what each column holds and why
 - mail-triage.md: Pinegrap AI's one suggestion on a new e-mail conversation (G8, PR #3787, decision #3744 a): the per-box switch, when it runs, the prompt, the message and its draft, what it never does
 - plan-board-grid.md: Plan board (workspace_board.php) grid columns and why .ws-board's min-width equals the grid minimum (#3815)
-- voice-browser-to-text.md: "Convert to text" under a voice message by the browser's own model (pg_voice_text.js, owner request 2026-10-29): where it shows, Prompt API with audio input, pieces of 30 s, nothing sent or kept
+- voice-browser-to-text.md: "Convert to text" for a voice message by the browser's own model (pg_voice_text.js, owner request 2026-10-29): where it shows, Prompt API with audio input, pieces of 30 s, nothing sent or kept
 - workflow-table-board.md: Board view of a workflow table (T2, #2994): rows as cards by a status column via the channel board's mountSource(); a move writes the status cell with ws_wtable_row_update()
 - workflow-table-import-notes.md: A note's table block into a workflow table (T6b, #3044): notes and tables offered, cells read (tags, marks, formulas), then the file import's confirmation and writes; the note never changes
 - workflow-table-import.md: A CSV/xlsx/xls/ods file into a workflow table (T6a, #3022): a new table with guessed column types or rows added by column name, confirmed first, every row through ws_wtable_row_create(), no webhooks
@@ -88,6 +89,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-channel-icon-templates.md: A channel template's colour and icon onto a channel made from it (ws_template_channel_look()), only where the creator chose none; the form's free bi- class vs the curated list
 - workspace-channel-icon.md: A Workspace channel's own icon (ws_channels.icon, 11.0.81): the curated Bootstrap Icons list, chosen vs kind icon, the corner badge, who may choose, where it is drawn, colour and icon in the API
 - workspace-channel-identity-motion.md: Workspace header in the channel colour (icon tile, top stripe), group colour chips, and the send pop, reaction bounce and new-message slide-in (U3, U5, PR #2094)
+- workspace-channel-messages.md: The channel's messages as drawn (C4, plans/workspace-channel-layout.md): grouped lines with their time on hover, the short hover bar, the decision tag, the discussion line, Convert to text
 - workspace-checklist-to-task.md: A checklist item of a Workspace message made into a task (ws_checklist_item_task(), step 9b): read as /task reads it, item tied by message + words, button, tag, edits, rights, API
 - workspace-claude-bootstrap.md: Claude's routine reads its instructions and each request's briefing (ws_ai_briefing()) from the site; the short versioned bootstrap pasted on claude.ai and the card's warning
 - workspace-claude-key-reads.md: Workspace reads with Claude's application key keep to the channels Claude may be asked in (ws_claude_channel_allowed()): which reads, record refs narrowed, the leak it fixed
