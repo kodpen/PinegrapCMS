@@ -53,13 +53,26 @@ function pg_user_list_role_labels()
 }
 
 /**
- * The filters the screen's filter menu offers to a user of this role.
+ * The filters the screen's filter menu offers to a user of this role. A module
+ * switched off in Site Settings loses its filter, as the main menu loses its
+ * row; pg_user_list_filter() still accepts the name from the address.
  *
  * @param int $role the viewer's role
+ * @param array|null $modules 'calendars', 'forms', 'ecommerce' => bool; null
+ *                            reads CALENDARS, FORMS and ECOMMERCE (a constant
+ *                            that is not defined counts as on)
  * @return array filter => label
  */
-function pg_user_list_filters($role)
+function pg_user_list_filters($role, $modules = null)
 {
+    if ($modules === null) {
+        $modules = array(
+            'calendars' => !defined('CALENDARS') || (constant('CALENDARS') === true),
+            'forms' => !defined('FORMS') || (constant('FORMS') === true),
+            'ecommerce' => !defined('ECOMMERCE') || (constant('ECOMMERCE') === true),
+        );
+    }
+
     $filters = array(
         'all_my_users' => lang('All My Users'),
         'my_registered_users' => lang('My Registered Users'),
@@ -73,6 +86,18 @@ function pg_user_list_filters($role)
         'my_campaign_managers' => lang('My Campaign Managers'),
         'my_commerce_managers' => lang('My Commerce Managers'),
     );
+
+    $module_filters = array(
+        'calendars' => 'my_calendar_managers',
+        'forms' => 'my_submitted_forms_managers',
+        'ecommerce' => 'my_commerce_managers',
+    );
+
+    foreach ($module_filters as $module => $filter) {
+        if (empty($modules[$module])) {
+            unset($filters[$filter]);
+        }
+    }
 
     if ($role < 1) {
         $filters['all_site_designers'] = lang('All Site Designers');
@@ -181,7 +206,10 @@ function pg_user_list_view($user, $filter)
         $columns['private_folder'] = $center . lang('Private User') . '</th>';
         $columns['member_user'] = $center . $heading_link(lang('Member User'), 'member_user') . '</th>';
         $columns['manage_content'] = $center . lang('Content Manager') . '</th>';
-        $columns['manage_calendars'] = $center . lang('Calendar Manager') . '</th>';
+
+        if (CALENDARS === true) {
+            $columns['manage_calendars'] = $center . lang('Calendar Manager') . '</th>';
+        }
 
         if (FORMS === true) {
             $columns['manage_forms'] = $center . lang('Forms Manager') . '</th>';
