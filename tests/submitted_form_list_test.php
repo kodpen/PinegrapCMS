@@ -190,3 +190,15 @@ function test_submitted_form_list_labels_tell_forms_apart()
 	pg_assert_same('Old [' . lang('IN RECYCLE BIN') . ']', $labels[4]['name'], 'a binned form with a single name');
 	pg_assert_same(true, $labels[3]['binned'], 'the binned flag is kept');
 }
+
+function test_submitted_form_list_options_keep_every_form()
+{
+	$options = pg_submitted_form_list_options(array(
+		array('id' => '1609', 'name' => 'Blog — blog', 'binned' => false),
+		array('id' => '1654', 'name' => 'Blog — blog', 'binned' => false),
+		array('id' => '1584', 'name' => 'Contact & Co', 'binned' => false),
+	));
+
+	pg_assert_same(array('1609', '1654', '1584'), array_values($options), 'each form is its own option');
+	pg_assert_same(array('Blog — blog', 'Blog — blog (#1654)', 'Contact &amp; Co'), array_keys($options), 'a label still equal gets the form id; labels are escaped');
+}
