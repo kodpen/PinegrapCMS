@@ -74,3 +74,14 @@ function test_offers_list_toggle_hands_focus_on()
 	pg_assert_contains("if (focused && !\$.contains(document.documentElement, btn[0])) {", $src, 'a toggle filtered out of the list hands focus on');
 	pg_assert_contains("(next.length ? next : \$('#pg-offers-toolbar [data-filter].active')).first().trigger('focus');", $src, 'the next row toggle, else the active chip');
 }
+
+function test_offers_list_toggle_off_last_page_moves_to_new_last_page()
+{
+	$src = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/templates/view_offers.php');
+
+	// draw(false) keeps the start, so the only row of a chip's last page left
+	// a blank table with the pager hidden; the list moves to the new last page.
+	pg_assert_contains("var info = dt.page.info();", $src, 'the toggle reads the page info after its redraw');
+	pg_assert_contains("if (info.recordsDisplay > 0 && info.start >= info.recordsDisplay) { dt.page('last').draw('page'); }", $src, 'a start past the filtered set moves to the last page');
+	pg_assert_contains("if (!next.length) { next = body.children('tr[data-status]').last().find('.pg-offer-toggle'); }", $src, 'focus falls back to the last row on the drawn page');
+}

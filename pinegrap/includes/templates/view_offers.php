@@ -235,14 +235,24 @@ if (!defined('PG_INIT_LOADED')) {
                 relabel(btn, res.enabled ? labels.disable : labels.enable);
                 // A narrowing chip can filter the row out on the redraw, and
                 // focus would go with it: it moves to the toggle of the row now
-                // at that place, else to the active chip.
+                // at that place, else the last row on the drawn page, else the
+                // active chip.
                 var body = tr.closest('tbody'), at = body.children('tr[data-status]').index(tr);
                 var focused = document.activeElement === btn[0] || !document.activeElement || document.activeElement === document.body;
                 var dt = table();
-                if (dt) { dt.draw(false); }
+                if (dt) {
+                    dt.draw(false);
+                    // draw(false) keeps the start even when the filtered set
+                    // shrank below it, so the only row of the last page left a
+                    // blank table (and the pager hides at one page): go to the
+                    // new last page instead.
+                    var info = dt.page.info();
+                    if (info.recordsDisplay > 0 && info.start >= info.recordsDisplay) { dt.page('last').draw('page'); }
+                }
                 recount();
                 if (focused && !$.contains(document.documentElement, btn[0])) {
                     var next = body.children('tr[data-status]').eq(at).find('.pg-offer-toggle');
+                    if (!next.length) { next = body.children('tr[data-status]').last().find('.pg-offer-toggle'); }
                     (next.length ? next : $('#pg-offers-toolbar [data-filter].active')).first().trigger('focus');
                 }
             }).catch(function () { btn.prop('disabled', false); toast(labels.request_failed, 'danger'); });

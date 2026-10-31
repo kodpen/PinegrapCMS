@@ -21,6 +21,7 @@ description: Offer editor (edit_offer.php, offer_editor.js) rules: single JSON s
 
 ## How does focus survive a redraw?
 - Typing goes through `soft()`, which rebuilds nothing. Every structural change calls `render(keys)`: it rebuilds the rows and both Add menus, then focuses the first of `keys` found (`data-on` + `data-index` + `data-tier`/`data-id`/`data-unit`/`data-target`/`data-mode`/`data-type`; a combobox select through its toggle). Without `keys` it keys on the focused control and moves focus only if the redraw took it.
-- Removed row: the row now in its place, the one before, the Add button. Removed tag: the next tag's x, the row's picker. Added row, tier or template: its first field. Key codes deleted: Generate. On `view_offers.php` a toggle filtered out by a chip hands focus to the next row's toggle, else the active chip.
+- Removed row: the row now in its place, the one before, the Add button. Removed tag: the next tag's x, the row's picker. Added row, tier or template: its first field. Key codes deleted: Generate. On `view_offers.php` a toggle filtered out by a chip hands focus to the next row's toggle, else the last row's toggle on the drawn page, else the active chip.
+- After the toggle's `dt.draw(false)`, when `page.info().start >= recordsDisplay` (the row was the only one on the chip's last page) the list goes to `dt.page('last').draw('page')`: DataTables 2.3.7 does not clamp the start on `draw(false)`, so the table stayed blank ("Showing 11 to 10 of 10") and the pager hid at one page.
 
 Related: docs/memory/ui/step-rail.md
