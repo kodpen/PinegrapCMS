@@ -20858,7 +20858,11 @@ html[data-bs-theme="dark"] .wsf-tone-text-2 { --wsf-tone: #f0c060; }
 }
 /* A text a box writes in, its values as chips (valueInput()); the list
    "Add value" opens under it (valueField()). */
+/* A text box like any other, text and chips on one line until it wraps:
+   Bootstrap 6 lays .form-control out as a flex row, which put every text
+   piece and chip in a column of its own. */
 .wsf-values {
+  display: block;
   min-height: calc(1.5em + .5rem + 2px);
   white-space: pre-wrap;
   overflow-wrap: anywhere;
