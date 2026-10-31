@@ -119,6 +119,57 @@ function erp_order_link_html($order_id, $order_number, $exists, $class = '', $ca
 }
 
 /**
+ * Whether the viewer may open a receipt (erp_receipt.php): the screen is
+ * cash-gated, so a role-3 clerk needs USER_MANAGE_ERP_CASH.
+ *
+ * @param bool|null $can_open Given answer; null reads USER_MANAGE_ERP_CASH
+ *                            (false when it is not set).
+ * @return bool
+ */
+function erp_can_open_receipt($can_open = null)
+{
+    if ($can_open === null) {
+        return defined('USER_MANAGE_ERP_CASH') && USER_MANAGE_ERP_CASH;
+    }
+
+    return (bool) $can_open;
+}
+
+/**
+ * Whether the viewer may record a receipt or payment (add_erp_receipt.php):
+ * the screen is cash-gated and saving refuses the read-only accountant, so a
+ * Record button for anyone else would end on a refusal.
+ *
+ * @param bool|null $can_cash  Given cash right; null reads USER_MANAGE_ERP_CASH.
+ * @param bool|null $read_only Given read-only right; null reads USER_ERP_READONLY.
+ * @return bool
+ */
+function erp_can_record_receipt($can_cash = null, $read_only = null)
+{
+    if ($can_cash === null) {
+        $can_cash = defined('USER_MANAGE_ERP_CASH') && USER_MANAGE_ERP_CASH;
+    }
+
+    if ($read_only === null) {
+        $read_only = defined('USER_ERP_READONLY') && USER_ERP_READONLY;
+    }
+
+    return $can_cash && !$read_only;
+}
+
+/**
+ * The Record button's words for an invoice: a purchase invoice is paid, a
+ * sales invoice is collected.
+ *
+ * @param string $direction 'sales' or 'purchase'.
+ * @return string
+ */
+function erp_record_receipt_label($direction)
+{
+    return ((string) $direction === 'purchase') ? lang('Record a Payment') : lang('Record a Receipt');
+}
+
+/**
  * A receipt or payment for an ERP list, statement or trail line: a link to
  * erp_receipt.php when the viewer may open it, otherwise the label as plain
  * text. The receipt screens are cash-gated, so a clerk without the cash right
@@ -136,11 +187,7 @@ function erp_receipt_link_html($receipt_id, $label, $class = '', $can_open = nul
     $receipt_id = (int) $receipt_id;
     $label = ((string) $label !== '') ? (string) $label : ('#' . $receipt_id);
 
-    if ($can_open === null) {
-        $can_open = defined('USER_MANAGE_ERP_CASH') && USER_MANAGE_ERP_CASH;
-    }
-
-    if (!$can_open || ($receipt_id <= 0)) {
+    if (!erp_can_open_receipt($can_open) || ($receipt_id <= 0)) {
         return h($label);
     }
 

@@ -275,13 +275,7 @@ $now = time();
 $edoc_column = erp_edoc_installed() && erp_edoc_in_use();
 $edoc_labels = $edoc_column ? erp_edoc_status_labels() : array();
 
-$status_labels = array(
-    'draft' => lang('Draft'),
-    'issued' => lang('Issued'),
-    'partially_paid' => lang('Partly paid'),
-    'paid' => lang('Paid'),
-    'cancelled' => lang('Cancelled'),
-);
+$status_labels = erp_invoice_status_labels();
 
 $status_classes = array(
     'draft' => 'fg-secondary',
