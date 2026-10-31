@@ -41,6 +41,23 @@ function pg_software_language_pick($enforcement, $stored, $default)
     return '';
 }
 
+// The software language a settings save has just switched the panel to, ''
+// when it keeps speaking $current (lang(array('info' => true))). $stored is
+// config.software_language after the save; with nothing set anywhere lang()
+// speaks English, so that is the language then. The page behind the Site
+// Settings dialog was drawn in $current, and the dialog reloads it when this
+// names another one.
+function pg_software_language_changed($current, $enforcement, $stored, $default)
+{
+    $next = pg_software_language_pick($enforcement, $stored, $default);
+
+    if ($next === '') {
+        $next = 'en';
+    }
+
+    return ($next === (string) $current) ? '' : $next;
+}
+
 // Defines SOFTWARE_LANGUAGE for a request that does not pass through
 // init.php, from config.php's constants and $stored, the config row's
 // software_language. Nothing changes when the constant is already defined.

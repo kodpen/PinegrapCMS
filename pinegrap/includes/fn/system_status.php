@@ -1519,6 +1519,26 @@ function pg_php_build_time()
 }
 
 /**
+ * Drops the cached System Status result, so the next draw runs the checks
+ * again. Called by a screen that has just changed what a tile reports (a
+ * Site Settings save, a webhook switch or Retry, the Maintenance Mode switch),
+ * otherwise the tile keeps the old state for up to ten minutes. A missing
+ * file is not an error.
+ *
+ * Compatibility: PHP 7.0 - 8.5
+ * Returns: void
+ */
+
+function pg_system_status_forget()
+{
+    $file = PG_FUNCTIONS_DIR . '/data/temp/system_status_cache.json';
+
+    if (is_file($file)) {
+        @unlink($file);
+    }
+}
+
+/**
  * Function: get_system_status_checks
  * ------------------------------------------
  * This function evaluates the overall health and security status of the system.

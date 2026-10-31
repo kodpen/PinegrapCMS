@@ -27,7 +27,7 @@ description: Answering a Workspace e-mail conversation by e-mail (mail_reply.php
 - Every mail carries `X-Pinegrap-Mail: <pg_mail_site_mark()>`, 16 hex of an HMAC with the site's key. The loop gate (`ws_mail_loop_reason()`) refuses only this site's mark, so another Pinegrap site's mail (a shop to its supplier's support box) comes in.
 
 ## Which PRs, which fixed rules?
-- G3a #2846 (sending core), G3b #2872 (box form, drawer), G3c #2885 (`mail-sent-and-bounces.md`). Assistants never send mail, only drafts (owner answer 6, #2444).
+- G3a #2846 (sending core), G3b #2872 (box form, drawer), G3c #2885 (`mail-sent-and-bounces.md`). Assistants never send mail, only drafts (owner answer 7, #2444).
 
 ## What happens after it leaves?
 - The copy in the box's sent folder and a bounce's "Not delivered" line: `mail-sent-and-bounces.md`.

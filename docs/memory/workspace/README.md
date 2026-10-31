@@ -20,13 +20,14 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - Put a new record kind in every list `tests/workspace_record_kinds_test.php` lays it against, or in that list's exceptions with the reason (`workspace-record-kinds.md`).
 - Give a new or moved change kind or field, catalogue event, task/order/approval status, `ws_event()` emitter, `ws_scheduled_run()`/`_due()`/`_execute()` call or `ws_scheduled_*` route its line in `workspace_flows_parity_table()`, or tests/workspace_flows_parity_test.php fails (`workspace-flows-parity-test.md`).
 - Put a new place of the workspace in `ws_nav_groups()` under the gate of its screen: the main menu's Workspace list draws only what the server sends and hides nothing itself (`workspace-menu-list.md`).
-- Put in the channel menu (`channelMenu()` in workspace.js) only the channel's own settings and actions (channel settings, notifications, voice, make private, move to group, templates, share link, clear, archive, leave; a customer channel's New sales quote): creating or changing other records is a / command or the record's own screen, never a channel-menu item; a new entry point whose place is not obvious is a product-behaviour question for the architect (`workflow/decisions-made-workspace-2.md`, `workspace-create-commands.md`).
+- Put in the channel menu (`channelMenu()` in workspace.js) only the channel's own settings and actions (channel settings, notifications, voice, make private, move to group, templates, share link, clear, archive, leave; a customer channel's New sales quote; on a phone the header's channel info, members and search): creating or changing other records is a / command or the record's own screen, never a channel-menu item; a new entry point whose place is not obvious is a product-behaviour question for the architect (`workflow/decisions-made-workspace-2.md`, `workspace-create-commands.md`).
 <!-- key-rules:end -->
 
 ## Files
 
 - mail-api.md: Workspace e-mail conversations in the external API and MCP (api_mail.php, G7): routes, which are tools, who may answer, errors, the workspace.mail.received webhook, a mail message's mail object
 - mail-card.md: How a mail is drawn in a Workspace channel (ws_mail_card_html(), sender like a guest) and the Mailboxes card of Workspace settings with the .eml upload (mail_settings.php)
+- mail-decisions.md: Incoming e-mail decisions: the name rule, IMAP chosen (#2444) and when a push endpoint (G9) would come, the eleven answers and their files, defaults, scope, PRs, what stays unverified
 - mail-fetch.md: Reading Workspace mailboxes over IMAP (ws_mail_fetch(), inline in job.php): what is searched, the UID position, held mail, limits, after-fetch, what the box records, the System status tile
 - mail-imap-client.md: The socket IMAP client pg_imap_*() (includes/fn/imap_client.php, G2a of incoming e-mail): why no imap extension, TLS and address check, sign-in, commands, error codes, limits, tests
 - mail-ingest.md: ws_mail_ingest() (includes/workspace/mail.php): de-duplication, loop gate, DMARC from the box's server, threading, card and answers, attachments, .eml for 30 days
@@ -80,6 +81,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-change-proposals.md: Record changes an application proposes as cards (proposals.php, api_proposals.php): routes, agents oauth:/app:, checks, role-3 contacts, the hourly limit and its lock, who applies, what is written
 - workspace-change-text-limits.md: Workspace change catalogue text limits must fit their columns (non-strict cuts in silence): the six once over, the channel summary kept, longer values, line breaks in one-line drawer fields, the test
 - workspace-channel-group-events.md: Webhook events about Workspace channel groups themselves (workspace.channel_group.created/updated/access_changed/deleted): payload, who hears them, what stays quiet
+- workspace-channel-head.md: The channel header in one line (C1, plans/workspace-channel-layout.md): name and tags, people, search, info, task, menu; a phone keeps back, name, ⋯; the purpose in the info drawer
 - workspace-channel-icon-templates.md: A channel template's colour and icon onto a channel made from it (ws_template_channel_look()), only where the creator chose none; the form's free bi- class vs the curated list
 - workspace-channel-icon.md: A Workspace channel's own icon (ws_channels.icon, 11.0.81): the curated Bootstrap Icons list, chosen vs kind icon, the corner badge, who may choose, where it is drawn, colour and icon in the API
 - workspace-channel-identity-motion.md: Workspace header in the channel colour (icon tile, top stripe), group colour chips, and the send pop, reaction bounce and new-message slide-in (U3, U5, PR #2094)

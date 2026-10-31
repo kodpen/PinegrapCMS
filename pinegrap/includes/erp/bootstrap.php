@@ -84,3 +84,4 @@ require_once(PG_FUNCTIONS_DIR . '/includes/erp/edoc/service.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/edoc/ubl.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/edoc/inbox.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/edoc/account_sync.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/erp/settings_cards.php');

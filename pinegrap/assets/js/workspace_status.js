@@ -45,7 +45,7 @@
 
         var node = h.button('ws-status-pill ws-status-' + state.health, '', ICONS[state.health]);
 
-        node.appendChild(document.createTextNode(state.label + (state.time ? ' · ' + state.time : '')));
+        node.appendChild(h.el('span', 'ws-status-text', state.label + (state.time ? ' · ' + state.time : '')));
         node.title = h.t('st_pill_title');
         node.addEventListener('click', function () { view.jumpTo(state.message_id, true); });
 

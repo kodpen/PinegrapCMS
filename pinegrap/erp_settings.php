@@ -26,42 +26,7 @@ $liveform = new liveform('erp_settings');
 
 $self_url = PATH . SOFTWARE_DIRECTORY . '/erp_settings.php';
 
-// The three printed documents and where each one's template lives. The
-// invoice has had a saved template since 4.43; the delivery note and the
-// reconciliation letter got theirs in 4.60, so they are offered only once
-// that upgrade has run - until then they print from the built-in files.
-$documents = array(
-    'invoice' => array(
-        'label' => lang('Invoice Template'),
-        'column' => 'erp_invoice_template',
-        'default' => erp_invoice_default_template(),
-        'current' => erp_invoice_template(),
-        'preview' => 'get_erp_invoice_pdf.php',
-        'log' => 'erp invoice template',
-    ),
-);
-
-if (waf_table_has_column('config', 'erp_waybill_template')) {
-    $documents['waybill'] = array(
-        'label' => lang('Delivery Note Template'),
-        'column' => 'erp_waybill_template',
-        'default' => erp_waybill_default_template(),
-        'current' => erp_waybill_template(),
-        'preview' => 'get_erp_waybill_pdf.php',
-        'log' => 'erp delivery note template',
-    );
-}
-
-if (waf_table_has_column('config', 'erp_reconciliation_template')) {
-    $documents['reconciliation'] = array(
-        'label' => lang('Reconciliation Letter Template'),
-        'column' => 'erp_reconciliation_template',
-        'default' => erp_reconciliation_default_template(),
-        'current' => erp_reconciliation_template(),
-        'preview' => 'get_erp_reconciliation_pdf.php',
-        'log' => 'erp reconciliation letter template',
-    );
-}
+$documents = erp_settings_documents();
 
 // A document sent as an array (?doc[]=x) counts as not given: it ended in an
 // error page.
@@ -74,68 +39,33 @@ $doc_url = $self_url . (($doc === 'invoice') ? '' : '?doc=' . $doc);
 // as not given: (string) read it as "Array" and saved that as the template.
 pg_request_single_values(array('rules', 'vat_net_withholding', 'vat_exemption_code', 'late_fee', 'late_fee_rate', 'late_fee_tax_rate', 'efatura_threshold', 'erp_efatura_web_threshold', 'erp_efatura_general_threshold', 'reset', 'template'));
 
-// The accounting rules have a form of their own on this screen.
-if ($_POST && ((string) ($_POST['rules'] ?? '') === '1')) {
+// The accounting rules, the late payment fee and the e-Fatura thresholds
+// have a form each on this screen, saved the way the Accounting pane of Site
+// Settings saves them (includes/erp/settings_cards.php).
+$card_forms = array(
+    'rules' => array('#erp_rules', lang('The accounting rules were saved.')),
+    'late_fee' => array('#erp_late_fee', lang('The late payment fee terms were saved.')),
+    'efatura_threshold' => array('#erp_efatura_threshold', lang('The e-Fatura thresholds were saved.')),
+);
 
-    validate_token_field();
+foreach ($card_forms as $card => $card_form) {
 
-    $rules_input = array();
+    // Answered here whatever happens, so the post never reaches the template
+    // form below, which would read its missing template as "reset".
+    if ($_POST && ((string) ($_POST[$card] ?? '') === '1')) {
 
-    if (isset($_POST['vat_net_withholding'])) {
-        $rules_input['vat_net_withholding'] = ((string) $_POST['vat_net_withholding'] === '1');
+        validate_token_field();
+
+        $saved = erp_settings_cards_save($_POST, array($card));
+
+        if (!$saved['success']) {
+            $liveform->mark_error($saved['field'], h($saved['error']));
+        } else {
+            $liveform->add_notice($card_form[1]);
+        }
+
+        go($self_url . $card_form[0]);
     }
-
-    if (isset($_POST['vat_exemption_code'])) {
-        $rules_input['vat_exemption_code'] = (string) $_POST['vat_exemption_code'];
-    }
-
-    $saved = erp_rules_save($rules_input);
-
-    if (!$saved['success']) {
-        $liveform->mark_error($saved['field'], h($saved['error']));
-    } else {
-        $liveform->add_notice(lang('The accounting rules were saved.'));
-    }
-
-    go($self_url . '#erp_rules');
-}
-
-// The late payment fee terms have a form of their own too.
-if ($_POST && ((string) ($_POST['late_fee'] ?? '') === '1')) {
-
-    validate_token_field();
-
-    $saved = erp_late_fee_settings_save((string) ($_POST['late_fee_rate'] ?? ''), (string) ($_POST['late_fee_tax_rate'] ?? ''));
-
-    if (!$saved['success']) {
-        $liveform->mark_error($saved['field'], h($saved['error']));
-    } else {
-        $liveform->add_notice(lang('The late payment fee terms were saved.'));
-        log_activity(lang('erp late payment fee terms were changed'), $_SESSION['sessionusername']);
-    }
-
-    go($self_url . '#erp_late_fee');
-}
-
-// The e-Fatura thresholds System Status weighs the year's sales against.
-// Answered here whatever happens, so the post never reaches the template
-// form below, which would read its missing template as "reset".
-if ($_POST && ((string) ($_POST['efatura_threshold'] ?? '') === '1')) {
-
-    validate_token_field();
-
-    $saved = !erp_efatura_threshold_ready()
-        ? array('success' => false, 'field' => 'erp_efatura_web_threshold', 'error' => lang('The settings could not be saved.'))
-        : erp_efatura_threshold_save((string) ($_POST['erp_efatura_web_threshold'] ?? ''), (string) ($_POST['erp_efatura_general_threshold'] ?? ''));
-
-    if (!$saved['success']) {
-        $liveform->mark_error($saved['field'], h($saved['error']));
-    } else {
-        $liveform->add_notice(lang('The e-Fatura thresholds were saved.'));
-        log_activity(lang('erp e-fatura thresholds were changed'), $_SESSION['sessionusername']);
-    }
-
-    go($self_url . '#erp_efatura_threshold');
 }
 
 if ($_POST) {
@@ -367,48 +297,10 @@ foreach ($placeholders as $group => $names) {
                                 </div>';
 }
 
-// The accounting rules: the withholding and the exemption code concern
-// Turkish VAT and e-documents, so they are offered where those are in use.
-$rules = erp_rules();
-$rules_turkish = erp_turkish_features();
-$output_rules = '';
-
-if (erp_rules_ready() && $rules_turkish) {
-    $output_rules .= '
-                        <fieldset class="mb-7">
-                            <legend class="form-label fs-md">' . lang('VAT withheld on sales, in the VAT report and the accountant\'s pack') . '</legend>
-                            <div class="form-field">
-                                <input class="radio" type="radio" name="vat_net_withholding" id="vat_net_withholding_0" value="0"' . ($rules['vat_net_withholding'] ? '' : ' checked') . ' />
-                                <label class="" for="vat_net_withholding_0">' . lang('Shown beside the calculated VAT, which stays in full') . '</label>
-                            </div>
-                            <div class="form-field">
-                                <input class="radio" type="radio" name="vat_net_withholding" id="vat_net_withholding_1" value="1"' . ($rules['vat_net_withholding'] ? ' checked' : '') . ' />
-                                <label class="" for="vat_net_withholding_1">' . lang('Taken off the calculated VAT, since the buyer declares that part') . '</label>
-                            </div>
-                            <div class="form-text">' . lang('The invoices do not change: they carry the whole VAT and the withheld part either way. Only the difference the report works out does.') . '</div>
-                        </fieldset>
-                        <div class="mb-7" style="max-width:36rem">
-                            <label class="form-label" for="vat_exemption_code">' . lang('Exemption code for zero-rated lines') . '</label>
-                            <input type="text" class="form-control font-monospace" style="max-width:8rem" id="vat_exemption_code" name="vat_exemption_code" value="' . h($rules['vat_exemption_code']) . '" maxlength="3" inputmode="numeric" pattern="[0-9]{3}" placeholder="351" autocomplete="off" />
-                            <div class="form-text">' . lang('A 0% line on an e-document has to say why it carries no VAT. A line takes its product\'s code when the product has one, otherwise this one; empty leaves the line without a code. Which code fits your sales is for your accountant to say.') . '</div>
-                        </div>';
-}
-
-$output_rules .= '
-                        <p class="mb-0">' . lang('Whether an expense category takes its VAT back is set with the categories.') . '
-                            <a href="erp_expense_categories.php">' . lang('Expense categories') . '</a></p>';
-
-// The late payment fee: a monthly rate on what is owed past the due date,
-// and the tax rate of the fee's invoice line (includes/erp/late_fee.php).
+$output_rules = erp_settings_rules_fields();
 $output_late_fee = '';
 
 if (erp_late_fee_ready()) {
-    $late_fee = erp_late_fee_settings();
-    $rate_mark = erp_decimal_comma() ? ',' : '.';
-    $rate_out = function ($rate) use ($rate_mark) {
-        return rtrim(rtrim(number_format((float) $rate, 3, $rate_mark, ''), '0'), $rate_mark);
-    };
-
     $output_late_fee = '
             <form action="erp_settings.php" method="post" id="erp_late_fee">
                 ' . get_token_field() . '
@@ -416,33 +308,16 @@ if (erp_late_fee_ready()) {
                 <div class="card my-7">
                     <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Late payment fee') . '</div>
                     <div class="card-body">
-                        <p class="fg-secondary">' . lang('A monthly rate on what a customer owes past the due date, counted day by day until it is paid. The account screen and the reconciliation letter screen show what an account has run up and write it on a sales invoice draft for you to check and issue; nothing is charged by itself.') . '</p>
-                        <div class="row g-5" style="max-width:36rem">
-                            <div class="col-12 sm:col-6">
-                                <label class="form-label" for="late_fee_rate">' . lang('Monthly rate (%)') . '</label>
-                                <input type="text" class="form-control text-end" id="late_fee_rate" name="late_fee_rate" value="' . (($late_fee['rate'] > 0) ? h($rate_out($late_fee['rate'])) : '') . '" inputmode="decimal" placeholder="0" autocomplete="off" />
-                                <div class="form-text">' . lang('Empty or 0 turns the fee off.') . '</div>
-                            </div>
-                            <div class="col-12 sm:col-6">
-                                <label class="form-label" for="late_fee_tax_rate">' . h(lang(array('string' => '{var:1} rate of the fee (%)', 'vars' => erp_tax_label('tax')))) . '</label>
-                                <input type="text" class="form-control text-end" id="late_fee_tax_rate" name="late_fee_tax_rate" value="' . (($late_fee['tax_rate'] !== null) ? h($rate_out($late_fee['tax_rate'])) : '') . '" inputmode="decimal" placeholder="—" autocomplete="off" />
-                                <div class="form-text">' . lang('Empty: the rate the account is sold at when a product names none.') . '</div>
-                            </div>
-                        </div>
+                        ' . erp_settings_late_fee_fields() . '
                         <div class="mt-5"><button type="submit" class="btn btn-sm btn-solid theme-primary"><i class="bi bi-check2 me-3" aria-hidden="true"></i>' . lang('Save') . '</button></div>
                     </div>
                 </div>
             </form>';
 }
 
-// The e-Fatura thresholds: a Turkish rule, so offered where the Turkish
-// features are, and only once the upgrade added the columns (11.0.61).
 $output_efatura_threshold = '';
 
-if ($rules_turkish && erp_efatura_threshold_ready()) {
-    $efatura_limits = erp_efatura_threshold_limits();
-    $efatura_currency = html_entity_decode(BASE_CURRENCY_SYMBOL, ENT_QUOTES | ENT_HTML5, 'UTF-8');
-
+if (erp_settings_efatura_threshold_shown()) {
     $output_efatura_threshold = '
             <form action="erp_settings.php" method="post" id="erp_efatura_threshold">
                 ' . get_token_field() . '
@@ -450,19 +325,7 @@ if ($rules_turkish && erp_efatura_threshold_ready()) {
                 <div class="card my-7">
                     <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('e-Fatura threshold') . '</div>
                     <div class="card-body">
-                        <p class="fg-secondary">' . lang('A seller outside e-Fatura must join it from the seventh month of the year after its gross sales reached one of these amounts. System Status weighs this year\'s completed orders against them and warns from four fifths on. The tax authority changes the amounts; enter the ones in force. 0 switches a warning off.') . '</p>
-                        <div class="row g-5" style="max-width:36rem">
-                            <div class="col-12 sm:col-6">
-                                <label class="form-label" for="erp_efatura_web_threshold">' . h(lang(array('string' => 'Sales over the internet ({var:1})', 'vars' => $efatura_currency))) . '</label>
-                                <input type="text" class="form-control text-end" id="erp_efatura_web_threshold" name="erp_efatura_web_threshold" value="' . (int) floor($efatura_limits['web'] / 100) . '" inputmode="numeric" pattern="[0-9]*" autocomplete="off" />
-                                <div class="form-text">' . lang('Web and marketplace orders; counter sales are left out.') . '</div>
-                            </div>
-                            <div class="col-12 sm:col-6">
-                                <label class="form-label" for="erp_efatura_general_threshold">' . h(lang(array('string' => 'All sales ({var:1})', 'vars' => $efatura_currency))) . '</label>
-                                <input type="text" class="form-control text-end" id="erp_efatura_general_threshold" name="erp_efatura_general_threshold" value="' . (int) floor($efatura_limits['general'] / 100) . '" inputmode="numeric" pattern="[0-9]*" autocomplete="off" />
-                                <div class="form-text">' . lang('Every completed order, counter sales included. Invoices written in the ERP without an order are not counted.') . '</div>
-                            </div>
-                        </div>
+                        ' . erp_settings_efatura_threshold_fields() . '
                         <div class="mt-5"><button type="submit" class="btn btn-sm btn-solid theme-primary"><i class="bi bi-check2 me-3" aria-hidden="true"></i>' . lang('Save') . '</button></div>
                     </div>
                 </div>
@@ -512,7 +375,7 @@ echo pg_page_shell(array(
                     <div class="card-body">
                         <p class="fg-secondary">' . lang('Choices your accountant settles for the store; until then the ERP works as it always has.') . '</p>
                         ' . $output_rules . '
-                        ' . ((erp_rules_ready() && $rules_turkish) ? '<div class="mt-5"><button type="submit" class="btn btn-sm btn-solid theme-primary"><i class="bi bi-check2 me-3" aria-hidden="true"></i>' . lang('Save') . '</button></div>' : '') . '
+                        ' . (erp_settings_rules_editable() ? '<div class="mt-5"><button type="submit" class="btn btn-sm btn-solid theme-primary"><i class="bi bi-check2 me-3" aria-hidden="true"></i>' . lang('Save') . '</button></div>' : '') . '
                     </div>
                 </div>
             </form>

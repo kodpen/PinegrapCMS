@@ -556,8 +556,8 @@ function pg_dashboard_brief($user, $changelog_sections)
     // Form submissions, today and over the week, in one pass. Roles above User
     // only: for a User with the forms permission the submitted forms screen
     // narrows the list to the folders they may edit, and a site-wide count would
-    // promise rows the link does not show.
-    if ($user['role'] < 3) {
+    // promise rows the link does not show. Nothing while Forms is switched off.
+    if ((FORMS === true) && ($user['role'] < 3)) {
 
         $greeting_forms = db_item(
             "SELECT
@@ -1190,32 +1190,48 @@ function pg_dashboard_brief($user, $changelog_sections)
         return ' ' . $greeting_link($href, $text);
     };
 
+    // Each line is offered only to a reader its screen admits, under the gate the
+    // screen itself uses. The line with no link has no gate, so the pool is never
+    // empty.
     $greeting_features = array(
-        h(lang('By the way, you can build a variant product in one go now.'))
-            . $greeting_ask('add_product.php', lang('Want to add one and see?')),
-
-        h(lang('The file manager was rebuilt, by the way. Folders, uploads and previews all on one screen.'))
-            . $greeting_ask('view_folders.php', lang('Shall we take a look?')),
-
-        h(lang('You can put an offer together in one place these days, rule and outcome on the same screen.'))
-            . $greeting_ask('add_offer.php', lang('Feel like making one now?')),
-
-        h(lang('You can cap how many devices one account stays signed in from, did you know?'))
-            . $greeting_ask('settings_security.php#pgset-device', lang('Want to turn it on?')),
-
-        h(lang('Product groups have a management screen of their own these days.'))
-            . $greeting_ask('view_product_groups.php', lang('Care to have a look?')),
-
-        h(lang('Your pages and products carry an SEO score now, out of 100.'))
-            . $greeting_ask('view_pages.php', lang('Want to see how yours are doing?')),
-
         // No offer on this one: the widget it is about is further down this very
         // screen, and pointing somebody somewhere they already are is not help.
         h(lang('You can start a deep database check from the system status widget whenever you like.')),
-
-        h(lang('The comments waiting for approval turn up on the dashboard now, newest first.'))
-            . $greeting_ask('view_comments.php', lang('Want to go through them?')),
     );
+
+    // validate_ecommerce_access(), as add_product.php, add_offer.php and
+    // view_product_groups.php ask, and nothing while Ecommerce is switched off.
+    if ((ECOMMERCE === true) && (($user['role'] < 3) || ($user['manage_ecommerce'] == true))) {
+
+        $greeting_features[] =
+            h(lang('By the way, you can build a variant product in one go now.'))
+            . $greeting_ask('add_product.php', lang('Want to add one and see?'));
+
+        $greeting_features[] =
+            h(lang('You can put an offer together in one place these days, rule and outcome on the same screen.'))
+            . $greeting_ask('add_offer.php', lang('Feel like making one now?'));
+
+        $greeting_features[] =
+            h(lang('Product groups have a management screen of their own these days.'))
+            . $greeting_ask('view_product_groups.php', lang('Care to have a look?'));
+    }
+
+    // validate_area_access($user, 'user'), as view_folders.php, view_pages.php and
+    // view_comments.php ask: a User needs a folder right.
+    if (($user['role'] < 3) || no_acl_check($user['id'])) {
+
+        $greeting_features[] =
+            h(lang('The file manager was rebuilt, by the way. Folders, uploads and previews all on one screen.'))
+            . $greeting_ask('view_folders.php', lang('Shall we take a look?'));
+
+        $greeting_features[] =
+            h(lang('Your pages and products carry an SEO score now, out of 100.'))
+            . $greeting_ask('view_pages.php', lang('Want to see how yours are doing?'));
+
+        $greeting_features[] =
+            h(lang('The comments waiting for approval turn up on the dashboard now, newest first.'))
+            . $greeting_ask('view_comments.php', lang('Want to go through them?'));
+    }
 
     // Manager and above, which is what settings_pane.php asks for
     // (validate_area_access($user, 'manager'), so role <= 2). Pointing a
@@ -1225,6 +1241,10 @@ function pg_dashboard_brief($user, $changelog_sections)
     // category screens are what it knows about, and the dialog recognises its own
     // addresses and opens over whatever screen the reader is on.
     if ($user['role'] <= 2) {
+
+        $greeting_features[] =
+            h(lang('You can cap how many devices one account stays signed in from, did you know?'))
+            . $greeting_ask('settings_security.php#pgset-device', lang('Want to turn it on?'));
 
         $greeting_features[] =
             h(lang('Settings are split into sections these days, and they open over whatever screen you are on.'))

@@ -12,6 +12,10 @@ module: innodb, geo
 - `pg_format_number($n, $decimals)`; a count is `pg_format_number($n, 0)`, never `number_format($n)` ("3,456,789" reads as a decimal in Turkish). The location database row count (`pg_geo_settings_note()`) follows this.
 - `pg_innodb_size_label($bytes, $separators = null)` writes database sizes (`2,5 GB` in Turkish) for the Database Engine screen, System Status, visitor retention and table maintenance. It falls back to `.`/`,` when `pg_number_separators()` is not loaded; the test runner's `lang()` returns the key, so the default shape stays English there.
 
+## Which other screens follow it?
+- The SEO panel over a site page writes each group weight with `'{var:1}%'` (`%40` in Turkish, `40%` in English) and the speed check labels (`pg_seo_check_label()`, shared with the panel SEO checklist) pass ms, request counts, percent and MB through `pg_format_number()` (0 or 1 decimal).
+- The upgrade pre-flight card: `install_size_label()` (runner.php) returns `pg_innodb_size_label()` and `install_count_label()` writes the full row count with `pg_format_number($n, 0)` (no `1.5M`/`3k`); both keep a `function_exists()` fallback. Pinned by `tests/seo_speed_figures_test.php`.
+
 ## What was the symptom?
 - A Turkish panel showed `1.5 MB`, `2.5 GB`, `3,456,789` and, with an English browser, `1,234.50` prices beside server figures in `1.234,50`; the visitor KPI switched shape after a period click. Pinned by `tests/panel_number_format_test.php`.
 

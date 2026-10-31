@@ -246,6 +246,13 @@ if (!$_POST) {
         
         $liveform->validate_required_field('name', lang('Name is required.'));
         
+        // An address a browser would run, or one the external API refuses, is
+        // refused here too; a chosen page blanks the URL, so it is not checked.
+        $url_problem = empty($_POST['link_page_id']) ? pg_menu_item_url_problem($_POST['link_url'] ?? '') : '';
+        if ($url_problem !== '') {
+            $liveform->mark_error('link_url', $url_problem);
+        }
+
         // if there is an error, forward user back to edit menu screen
         if ($liveform->check_form_errors() == true) {
             header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/edit_menu_item.php?id=' . $_POST['id'] . '&from=' . urlencode($_POST['from']) . '&send_to=' . urlencode($_POST['send_to']));
