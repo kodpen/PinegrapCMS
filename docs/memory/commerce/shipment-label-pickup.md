@@ -14,7 +14,7 @@ module: shipment_labels
 ## Where is it asked?
 - Orders list: "Request Pickup" in the selected-orders bar (only while a pickup driver is on) opens `<dialog id="shipment_pickup_dialog">` inside the list form; it posts `label_request=bulk_pickup` with `orders[]`.
 - Order screen label card: "Request Pickup" per address with an active outbound label of a pickup driver; its dialog's fields belong to `shipment-label-form` (`form=` attribute) and post `pickup-<ship_to_id>`. Each label shows "Pickup booked: ref, date time".
-- Both dialogs come from `pg_shipment_label_pickup_dialog()`: date (tomorrow), From/To (09:00-17:00), "Book another pickup", the warning when a label of the address is booked.
+- Both dialogs come from `pg_shipment_label_pickup_dialog()`: date (tomorrow), "Earliest time"/"Latest time" (09:00-17:00; own keys, as the shared From/To read "Kimden"/"Kime" in Turkish, #3972), "Book another pickup", the warning when a label of the address is booked.
 
 ## How is a request run?
 - `shipment_label.php` → `pg_shipment_label_pickup_rows()` (active outbound labels, the parcel's `carrier` joined by (ship_to_id, number)) → `pg_shipment_label_pickup_request()`: `pg_shipment_label_pickup_groups()` (one request per driver + carrier, cancelled, returns and other drivers left out), `pg_shipment_label_pickup_window()` (site time zone; bad date/time, end before start, a window gone by refused).
