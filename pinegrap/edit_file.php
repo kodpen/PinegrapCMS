@@ -693,6 +693,15 @@ $liveform->remove_form('edit_file');
     // changes it.
     $audit_before = pg_audit_fetch('files', $file_id);
 
+    // A save that writes the posted code to disk also compares the content
+    // digest, so an edit that keeps the size still writes a line. Read from
+    // the stored name, before the rename and the write below.
+    $audit_before_content = null;
+
+    if (empty($_POST['delete']) && in_array($file_extension, $editable_formats) && isset($_POST['code'])) {
+        $audit_before_content = pg_audit_fetch_file((int) $file_id, $stored_file_path);
+    }
+
     // DELETE
     if (!empty($_POST['delete'])) {
         db_q("DELETE FROM files WHERE id = ?", array((string) ($_POST['id'] ?? ''))) or output_error('Query failed');
@@ -1110,7 +1119,13 @@ $liveform->remove_form('edit_file');
             user = '" . $user['id'] . "'
             WHERE id = '" . $file_id . "'";
         mysqli_query(db::$con, $query) or output_error('Query failed');
-        pg_audit_record('update', 'files', (int) $file_id, $audit_before);
+
+        if (is_array($audit_before_content)) {
+            pg_audit_record_file((int) $file_id, $audit_before_content, $file_path);
+        } else {
+            pg_audit_record('update', 'files', (int) $file_id, $audit_before);
+        }
+
             log_activity(lang(array('string'=>'file ({var:1}) was modified','vars'=>$name)), $_SESSION['sessionusername']);
         include_once('liveform.class.php');
 

@@ -230,11 +230,11 @@ function test_audit_view_condition()
 {
 	pg_assert_same(array('sql' => '1', 'params' => array()), pg_audit_view_condition(pg_audit_view_filters(array())), 'nothing filtered');
 
-	$condition = pg_audit_view_condition(pg_audit_view_filters(array('action' => 'update', 'user' => 'who?', 'q' => 'a_b')));
+	$condition = pg_audit_view_condition(pg_audit_view_filters(array('action' => 'update', 'user' => 'who?', 'q' => 'a_b')), array());
 
 	pg_assert_same('(action = ?) AND (username LIKE ?) AND (label LIKE ?)', $condition['sql']);
 	pg_assert_same(array('update', '%who?%', '%a\\_b%'), $condition['params']);
-	pg_assert_same("(action = 'update') AND (username LIKE '%who?%') AND (label LIKE '%a\\\\_b%')", pg_audit_view_where(pg_audit_view_filters(array('action' => 'update', 'user' => 'who?', 'q' => 'a_b')), 'addslashes'));
+	pg_assert_same("(action = 'update') AND (username LIKE '%who?%') AND (label LIKE '%a\\\\_b%')", pg_audit_view_where(pg_audit_view_filters(array('action' => 'update', 'user' => 'who?', 'q' => 'a_b')), 'addslashes', array()));
 }
 
 function test_audit_view_labels()

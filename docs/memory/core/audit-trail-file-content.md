@@ -12,10 +12,10 @@ module: audit
 - `content_sha1` is not masked; a name ending in `_hash` would be (`pg_audit_secret_key()`).
 
 ## Which saves use it?
-- `editor_edit_file.php`, `edit_javascript.php`, `edit_theme_css.php` (the read moved above `pg_file_write_whole()`), and the file manager's window save (`includes/explorer/handle_file_window.php`) when it posts content, cells or paragraphs; after a rename the new path is hashed. A name, folder or description save alone does not read the file.
+- `editor_edit_file.php`, `edit_javascript.php`, `edit_theme_css.php` (the read moved above `pg_file_write_whole()`), Edit File (`edit_file.php`) when it writes posted `code` to an editable format (digest read from the stored name before the rename, recorded with the new name; #4285), and the file manager's window save (`includes/explorer/handle_file_window.php`) when it posts content, cells or paragraphs; after a rename the new path is hashed. A name, folder or description save alone does not read the file.
 - Uploads, copies and creates keep their own `create` lines without a digest.
 
 ## Tests?
-- `tests/audit_file_content_test.php`, `tests/audit_design_file_writers_test.php` (read before the write, record after the UPDATE). PR #4260.
+- `tests/audit_file_content_test.php`, `tests/audit_design_file_writers_test.php` (read before the write, record after the UPDATE). PR #4260; Edit File in PR #4316.
 
 Related: docs/memory/core/audit-trail-writers.md, docs/memory/core/audit-trail-stored-values.md
