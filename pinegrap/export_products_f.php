@@ -144,6 +144,12 @@ function pg_products_export_columns()
         $columns[] = array('heading' => 'origin_country', 'column' => 'origin_country', 'kind' => 'text');
     }
 
+    // The order quantity limits import_products.php reads, after the others
+    // for the same reason. Without them a product imported as new got 0 and 0,
+    // and the cart took any quantity.
+    $columns[] = array('heading' => 'minimum_quantity', 'column' => 'minimum_quantity', 'kind' => 'raw');
+    $columns[] = array('heading' => 'maximum_quantity', 'column' => 'maximum_quantity', 'kind' => 'raw');
+
     $labels = array(
         1 => ECOMMERCE_CUSTOM_PRODUCT_FIELD_1_LABEL,
         2 => ECOMMERCE_CUSTOM_PRODUCT_FIELD_2_LABEL,

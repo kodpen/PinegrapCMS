@@ -69,6 +69,7 @@ Code rules, file layout, translation, JavaScript twins and bundles, roles and ac
 - error-screen-language-and-status.md: The error screen output_error() draws leaves through pg_tr_finalize() like a page, so <html lang> is the site's or the address's language; which "not found" screens answer 404; what is still left
 - explorer-handler-files.md: pg_explorer_handle() after the split: the prelude and the dispatch, one handler per sub-action in includes/explorer/handle_*.php, where a new one goes, the tests
 - explorer-subaction-registration.md: Adding an explorer_* sub-action: it must be registered in the file_explorer allowlist as well as pg_explorer_handle(); symptoms and the catalog gate.
+- export-import-columns.md: The Contacts and Products exports write every column their importer reads, pinned by tests/export_import_columns_test.php; new columns go at the end
 - file-header-and-embedded-libraries.md: The Pinegrap file header every new PHP/JS file must carry, which files it applies to, the PHP 7.1 base rule when embedding a third-party library, and the libraries with a local change.
 - file-integrity-check.md: The hourly file-integrity check: which reference counts (dev machine's own or the GitHub tag), scope and ignored names, line-ending-proof digests, state file, what cleanup keeps, result codes.
 - file-integrity-github-reference.md: Integrity reference from 2026.4.5: the release tag's tree on GitHub (git blob SHA-1), cache, release rules, what 2026.4.4 sites use, cacert.pem refresh, headers read without $http_response_header.

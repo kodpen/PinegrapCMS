@@ -220,7 +220,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
         $output_affiliate_headings = ',affiliate_approved,affiliate_name,affiliate_code,affiliate_commission_rate';
     }
 
-    print 'first_name,last_name,nickname,company,title,department,office_location,business_address_1,business_address_2,business_city,business_state,business_country,business_zip_code,business_phone,business_fax,home_address_1,home_address_2,home_city,home_state,home_country,home_zip_code,home_phone,home_fax,mobile_phone,email_address,website,lead_source,opt_in,description,member_id,expiration_date' . $output_affiliate_headings . "\n";
+    print 'first_name,last_name,nickname,company,title,department,office_location,business_address_1,business_address_2,business_city,business_state,business_country,business_zip_code,business_phone,business_fax,home_address_1,home_address_2,home_city,home_state,home_country,home_zip_code,home_phone,home_fax,mobile_phone,email_address,website,lead_source,opt_in,description,member_id,expiration_date' . $output_affiliate_headings . ',salutation,suffix' . "\n";
 
     $number_of_contacts = 0;
 
@@ -230,7 +230,8 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
                 contacts.first_name,
                 contacts.last_name,
                 contacts.nickname,
-                contacts.company,title,
+                contacts.company,
+                contacts.title,
                 contacts.department,
                 contacts.office_location,
                 contacts.business_address_1,
@@ -260,7 +261,9 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
                 contacts.affiliate_approved,
                 contacts.affiliate_name,
                 contacts.affiliate_code,
-                contacts.affiliate_commission_rate
+                contacts.affiliate_commission_rate,
+                contacts.salutation,
+                contacts.suffix
              " . $list_filter['from'] . "
              " . $list_filter['where'] . "
              GROUP BY contacts.id
@@ -282,7 +285,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
             $output_affiliate_values = ',' . $row['affiliate_approved'] . ',' . $row['affiliate_name'] . ',' . $row['affiliate_code'] . ',' . $row['affiliate_commission_rate'];
         }
 
-        print $row['first_name'] . ',' . $row['last_name'] . ',' . $row['nickname'] . ',' . $row['company'] . ',' . $row['title'] . ',' . $row['department'] . ',' . $row['office_location'] . ',' . $row['business_address_1'] . ',' . $row['business_address_2'] . ',' . $row['business_city'] . ',' . $row['business_state'] . ',' . $row['business_country'] . ',' . $row['business_zip_code'] . ',' . $row['business_phone'] . ',' . $row['business_fax'] . ',' . $row['home_address_1'] . ',' . $row['home_address_2'] . ',' . $row['home_city'] . ',' . $row['home_state'] . ',' . $row['home_country'] . ',' . $row['home_zip_code'] . ',' . $row['home_phone'] . ',' . $row['home_fax'] . ',' . $row['mobile_phone'] . ',' . $row['email_address'] . ',' . $row['website'] . ',' . $row['lead_source'] . ',' . $row['opt_in'] . ',' . $row['description'] . ',' . $row['member_id'] . ',' . $row['expiration_date'] . $output_affiliate_values . "\n";
+        print $row['first_name'] . ',' . $row['last_name'] . ',' . $row['nickname'] . ',' . $row['company'] . ',' . $row['title'] . ',' . $row['department'] . ',' . $row['office_location'] . ',' . $row['business_address_1'] . ',' . $row['business_address_2'] . ',' . $row['business_city'] . ',' . $row['business_state'] . ',' . $row['business_country'] . ',' . $row['business_zip_code'] . ',' . $row['business_phone'] . ',' . $row['business_fax'] . ',' . $row['home_address_1'] . ',' . $row['home_address_2'] . ',' . $row['home_city'] . ',' . $row['home_state'] . ',' . $row['home_country'] . ',' . $row['home_zip_code'] . ',' . $row['home_phone'] . ',' . $row['home_fax'] . ',' . $row['mobile_phone'] . ',' . $row['email_address'] . ',' . $row['website'] . ',' . $row['lead_source'] . ',' . $row['opt_in'] . ',' . $row['description'] . ',' . $row['member_id'] . ',' . $row['expiration_date'] . $output_affiliate_values . ',' . $row['salutation'] . ',' . $row['suffix'] . "\n";
 
         $number_of_contacts++;
     }
