@@ -122,7 +122,7 @@ function pg_panel_get_notifications($request, $action)
             continue;
         }
 
-        $display = pg_notification_display($notification);
+        $display = pg_notification_display($notification, $user['role']);
 
         $item = array(
             'id' => $notification['id'],
@@ -380,7 +380,7 @@ function pg_panel_push_pending($request, $action)
             continue;
         }
 
-        $display = pg_notification_display($notification);
+        $display = pg_notification_display($notification, $user['role']);
 
         $array[] = array(
             'id'        => $notification['id'],

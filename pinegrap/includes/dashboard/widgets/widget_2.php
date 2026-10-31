@@ -412,6 +412,16 @@ function pg_dashboard_widget_2($request, $user)
                 // data API cancels every click on one, so a link chip
                 // would never be followed. no-popover keeps the
                 // generic title popover off the chip.
+                //
+                // The checks are cached for every reader, so the
+                // Repair Software link is dropped here for whoever
+                // that screen would refuse: anyone but an
+                // administrator, and everyone on a hosted site.
+                if (($health_check['href'] === 'software_repair.php')
+                    && !pg_software_repair_open_to($user['role'], pg_hosted())) {
+                    $health_check['href'] = '';
+                }
+
                 $check_open = ($health_check['href'] !== '')
                     ? '<a href="' . h($health_check['href']) . '"'
                     : '<button type="button"';
