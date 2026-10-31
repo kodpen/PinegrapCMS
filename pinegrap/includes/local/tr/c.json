@@ -1393,6 +1393,7 @@
     "Compress and download": "Sıkıştır ve indir",
     "Compress into a zip ({var:1})": "Zip olarak sıkıştır ({var:1})",
     "Compress only, keep the original size": "Yalnızca sıkıştır, orijinal boyutu koru",
+    "Compress, and shrink any image whose longest edge is over {var:1} pixels": "Sıkıştır ve uzun kenarı {var:1} pikselden büyük olan görselleri küçült",
     "Compress, and shrink anything wider than {var:1} pixels": "Sıkıştır ve {var:1} pikselden geniş olanları küçült",
     "Compressing": "Sıkıştırılıyor",
     "Compression for static files": "Statik dosyalar için sıkıştırma",
