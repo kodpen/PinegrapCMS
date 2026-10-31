@@ -292,6 +292,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - settings-input-keyboards.md: Phone keyboard and auto-capitalisation of the Site Settings and Workspace mailbox boxes for web addresses, hosts, user names, address lists and Merchant numbers.
 - settings-invalid-fields.md: A refused Site Settings save names its marked fields (pg_settings_marked_fields()); the dialog marks them with pgFieldInvalid(), shows the notice and focuses the first (#3026)
 - settings-invalid-vs-error.md: Settings save outcomes: rejected input returns status invalid (no re-read, nothing written, no log); pane sentences are plain text.
+- settings-list-headings.md: Site Settings dialog list: the four group headings (decided #3879, built #4118), the group key per category, how a new category joins one.
 - settings-modal-architecture.md: Site Settings modal architecture: file map, the categories and their cards, moving a card, adding a new category.
 - settings-modal-autofill-lock.md: Settings dialog autofill prevention: readonly latch/unlatch of text fields, stamped autocomplete attributes, no fake password field in the dialog.
 - settings-modal-autofill-restore.md: Settings dialog defence against password-manager fills: hold()/review() restore, gesture-clock ownership, patrol() polling, three-restore limit.

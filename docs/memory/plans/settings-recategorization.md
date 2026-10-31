@@ -28,7 +28,7 @@ description: Plan (owner 2026-10-30): Site Settings regrouped, one place per set
 - **Updates and maintenance:** Update channel, Cron jobs, Backups, Alerts, Maintenance mode.
 
 ## What is still open?
-- Headings over the list: decided #3879 (`workflow/decisions-made-product-13.md`): Site, Security, Selling, Running the site, drawn like the main menu's, in today's order.
+- Nothing; headings (decided #3879) built in #4118.
 
 ## Where to start?
 - Code: `registry.php`, `modal.php`, `screen.php`, `settings_pane.php`, the category files and their `.save.php`.

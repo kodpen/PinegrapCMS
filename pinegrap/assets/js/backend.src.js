@@ -11202,6 +11202,239 @@ var pgSettingsModal = (function () {
                 save();
             }
         });
+
+        wireSearch();
+    }
+
+
+    /* ── the search box ──────────────────────────────────────────────────── */
+
+    // The index arrives once per page (settings_pane.php?search=1): every
+    // card the reader may open, with its keywords and the labels it draws.
+    var index = null;           // the rows, once in
+    var indexing = null;        // the request on its way
+
+    // Case and Turkish letters folded, so "ŞİFRE", "sifre" and "şifre" meet.
+    function fold(text) {
+
+        text = String(text || '').replace(/İ/g, 'i').replace(/I/g, 'i').replace(/ı/g, 'i').toLowerCase();
+
+        return text.normalize ? text.normalize('NFD').replace(/[̀-ͯ]/g, '') : text;
+    }
+
+    // Does any word of the text start with the query?
+    function wordStarts(text, q) {
+
+        text = fold(text);
+
+        return (text.indexOf(q) === 0) || (text.indexOf(' ' + q) !== -1) || (text.indexOf('-' + q) !== -1);
+    }
+
+    /**
+     * How well one row answers the query: 0 its name, 1 a keyword (the
+     * palette's rule: a term that starts with the query, or a query that
+     * starts with the term), 2 a field label, 3 every word somewhere; -1 not
+     * at all. Also says which field label matched, to show under the name.
+     */
+    function score(row, q) {
+
+        var i;
+
+        if (wordStarts(row.title, q)) {
+            return { rank: 0, field: '' };
+        }
+
+        for (i = 0; i < row.keys.length; i++) {
+            var key = fold(row.keys[i]);
+
+            if ((key.indexOf(q) === 0) || ((key.length > 2) && (q.indexOf(key) === 0))) {
+                return { rank: 1, field: '' };
+            }
+        }
+
+        for (i = 0; i < row.fields.length; i++) {
+            if (wordStarts(row.fields[i], q) || ((q.length > 3) && (fold(row.fields[i]).indexOf(q) !== -1))) {
+                return { rank: 2, field: row.fields[i] };
+            }
+        }
+
+        var words = q.split(' ');
+
+        if (words.length > 1) {
+
+            var all = fold([row.title, row.place].concat(row.keys, row.fields).join(' '));
+
+            for (i = 0; i < words.length; i++) {
+                if (words[i] && (all.indexOf(words[i]) === -1)) {
+                    return { rank: -1, field: '' };
+                }
+            }
+
+            return { rank: 3, field: '' };
+        }
+
+        return { rank: -1, field: '' };
+    }
+
+    function escapeText(text) {
+
+        return String(text).replace(/[&<>"']/g, function (c) {
+            return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+        });
+    }
+
+    // The list of hits in place of the category list; an empty query brings
+    // the list back.
+    function showHits(query) {
+
+        var hits = byId('pg_settings_modal_hits');
+        var nav = byId('pg_settings_modal_nav');
+        var q = fold(query).replace(/\s+/g, ' ').trim();
+
+        if (!hits || !nav) {
+            return;
+        }
+
+        if (q.length < 2) {
+            hits.hidden = true;
+            hits.innerHTML = '';
+            nav.hidden = false;
+            return;
+        }
+
+        nav.hidden = true;
+        hits.hidden = false;
+
+        if (!index) {
+            hits.innerHTML = '<p class="pg-sm-hits-empty">' + escapeText(say('searching')) + '</p>';
+            return;
+        }
+
+        var found = [];
+
+        index.forEach(function (row, order) {
+            var s = score(row, q);
+
+            if (s.rank >= 0) {
+                found.push({ row: row, rank: s.rank, field: s.field, order: order });
+            }
+        });
+
+        found.sort(function (a, b) { return (a.rank - b.rank) || (a.order - b.order); });
+
+        if (!found.length) {
+            hits.innerHTML = '<p class="pg-sm-hits-empty">' + escapeText(say('nohits')) + '</p>';
+            return;
+        }
+
+        hits.innerHTML = found.slice(0, 30).map(function (hit) {
+
+            var where = [hit.row.place, hit.field].filter(Boolean).join(' › ');
+
+            return '<button type="button" class="pg-sm-link pg-sm-hit"'
+                + ' data-hit-pane="' + escapeText(hit.row.pane) + '" data-hit-card="' + escapeText(hit.row.card) + '">'
+                + '<i class="bi ' + (hit.row.card ? 'bi-card-heading' : 'bi-folder2') + '" aria-hidden="true"></i>'
+                + '<span class="pg-sm-hit-text"><span>' + escapeText(hit.row.title) + '</span>'
+                + (where ? '<small>' + escapeText(where) + '</small>' : '') + '</span></button>';
+        }).join('');
+    }
+
+    // Asked for on the box's first use, so a dialog nobody searches in costs
+    // nothing. A failed request is asked again on the next keystroke.
+    function loadIndex() {
+
+        if (index || indexing) {
+            return;
+        }
+
+        indexing = $.ajax({ url: endpoint, data: { search: 1 }, dataType: 'json' })
+            .done(function (response) {
+                if (response && $.isArray(response.index)) {
+                    index = response.index;
+                }
+            })
+            .always(function () {
+                indexing = null;
+                var box = byId('pg_settings_modal_search');
+
+                if (box && index) {
+                    showHits(box.value);
+                } else if (!index) {
+                    var hits = byId('pg_settings_modal_hits');
+
+                    if (hits && !hits.hidden) {
+                        hits.innerHTML = '<p class="pg-sm-hits-empty">' + escapeText(say('failed')) + '</p>';
+                    }
+                }
+            });
+    }
+
+    function wireSearch() {
+
+        var box = byId('pg_settings_modal_search');
+
+        if (!box) {
+            return;
+        }
+
+        box.addEventListener('focus', loadIndex);
+
+        box.addEventListener('input', function () {
+            loadIndex();
+            showHits(box.value);
+        });
+
+        box.addEventListener('keydown', function (event) {
+
+            // Escape empties the box first; the next one closes as before.
+            if ((event.key === 'Escape') && (box.value !== '')) {
+                event.preventDefault();
+                event.stopPropagation();
+                box.value = '';
+                showHits('');
+                return;
+            }
+
+            // Down or Return goes to the first hit.
+            if ((event.key === 'ArrowDown') || (event.key === 'Enter')) {
+                var first = el.querySelector('#pg_settings_modal_hits .pg-sm-hit');
+
+                if (first) {
+                    event.preventDefault();
+
+                    if (event.key === 'Enter') {
+                        first.click();
+                    } else {
+                        first.focus();
+                    }
+                }
+            }
+        });
+
+        // Up and down move between the hits, as in a menu.
+        $(el).on('keydown', '.pg-sm-hit', function (event) {
+
+            var next = null;
+
+            if (event.key === 'ArrowDown') {
+                next = this.nextElementSibling;
+            } else if (event.key === 'ArrowUp') {
+                next = this.previousElementSibling || box;
+            }
+
+            if (next) {
+                event.preventDefault();
+                next.focus();
+            }
+        });
+
+        // A hit opens its category and scrolls to its card, as a
+        // #settings/<category>/<card> link does; the hits stay up, so the
+        // next one is a click away.
+        $(el).on('click', '.pg-sm-hit', function () {
+            drawer(false);
+            open(this.getAttribute('data-hit-pane'), this.getAttribute('data-hit-card') || '');
+        });
     }
 
 
