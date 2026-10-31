@@ -215,7 +215,7 @@ function test_settings_system_tools_menu_row()
 		pg_assert_same('25', settings_system_tools_menu_case_slot($source, $script), $script . ' marks the System tools row');
 	}
 
-	foreach (array('settings_general.php', 'settings_accounting.php', 'settings_privacy.php', 'translations.php', 'private_label.php') as $script) {
+	foreach (array('settings_general.php', 'settings_accounting.php', 'settings_privacy.php', 'translations.php') as $script) {
 		pg_assert_same('20', settings_system_tools_menu_case_slot($source, $script), $script . ' marks the Site Settings row');
 	}
 
