@@ -293,14 +293,16 @@ function _pg_offer_group_label($group_id, $full = false)
 
 function _pg_offer_shipping_methods()
 {
-    $rows = db_items("SELECT id, name, code FROM shipping_methods ORDER BY name");
+    $rows = db_items("SELECT id, name, code, status FROM shipping_methods ORDER BY name");
     $methods = array();
     if ($rows) {
         foreach ($rows as $row) {
             $methods[] = array(
                 'id'   => (int) $row['id'],
                 'name' => (string) $row['name'],
-                'code' => (string) $row['code']);
+                'code' => (string) $row['code'],
+                // Checkout offers only enabled methods; the editor marks the rest.
+                'enabled' => ((string) $row['status'] === 'enabled'));
         }
     }
     return $methods;
