@@ -3757,6 +3757,7 @@
     "The text has markup around several pieces of words. A bound value takes the place of the whole text, and the markup is lost. Put the words that should show the value in an element of their own and bind that.": "Metinde birden çok kelime grubunun etrafında biçimlendirme var. Bağlanan değer metnin tamamının yerini alır ve biçimlendirme kaybolur. Değeri gösterecek kelimeleri ayrı bir öğeye koyup onu bağlayın.",
     "The text in cell {var:1} could not be read.": "{var:1} hücresindeki metin okunamadı.",
     "The text in cell {var:1} is longer than a spreadsheet cell can hold.": "{var:1} hücresindeki metin bir tablo hücresinin alabileceğinden uzun.",
+    "The text is not a / command; write it as a message instead.": "Metin bir / komutu değil; bunun yerine mesaj olarak yazın.",
     "The text of a paragraph could not be read.": "Bir paragrafın metni okunamadı.",
     "The text of the guide appears here.": "Rehberin metni burada görünür.",
     "The text of the topic appears here.": "Konunun metni burada görünür.",
