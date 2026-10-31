@@ -4,10 +4,10 @@ description: Steps E11-E20 of plans/image-editor.md: versions, canvas and artboa
 ---
 
 ## Which steps are there?
-- Sizes and screens as in `image-editor-steps.md`. E11 waits for the architect's answer on the columns; E12 needs E11 for editable texts; E19 comes last, only if open question 5 says so.
+- Sizes and screens as in `image-editor-steps.md`. E11's table is settled (#4202, `image-editor-server.md`); E12 needs E11 for editable texts; E19 comes last (#4203).
 
 - E11 (M) Versions. Screen 10.
-  - A sub-step in the open version's migration with `install_create_table()`, rerun twice on a dev DB; a save writes a version and its doc; opening loads the original plus the doc; the versions drawer (preview, restore, delete); retention per open question 2.
+  - A sub-step in the open version's migration with `install_create_table()`, rerun twice on a dev DB; a save writes a version and its doc; opening loads the original plus the doc; the versions drawer (preview, restore, delete); retention: the original plus the last 10 saves (#4203).
 
 - E12 (M) Canvas and artboard. Screens 14-17.
   - New image dialog (square 1080, portrait 1080×1350, story 1080×1920, share 1200×630, banner 1920×600, custom; white, transparent, black, light blue); pictures as layers (Files, upload, paste).
