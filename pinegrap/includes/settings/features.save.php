@@ -57,15 +57,15 @@ if (!defined('PG_SETTINGS_ENTRY')) {
 
     if (pg_image_settings_ready()) {
 
-        $image_product_max = max(200, min(20000, (int) post_value('image_product_max_dimension')));
-        $image_product_min = max(0,   min($image_product_max, (int) post_value('image_product_min_dimension')));
-        $image_file_max    = max(200, min(20000, (int) post_value('image_file_max_dimension')));
+        $image_product_max = max(200, min(20000, pg_parse_whole_number(post_value('image_product_max_dimension'), 20000)));
+        $image_product_min = max(0,   min($image_product_max, pg_parse_whole_number(post_value('image_product_min_dimension'), 20000)));
+        $image_file_max    = max(200, min(20000, pg_parse_whole_number(post_value('image_file_max_dimension'), 20000)));
 
         // The trigger cannot sit below the target: the button it controls
         // would then be offered for images the resize would not change.
-        $image_file_trigger = max($image_file_max, min(20000, (int) post_value('image_file_resize_trigger')));
+        $image_file_trigger = max($image_file_max, min(20000, pg_parse_whole_number(post_value('image_file_resize_trigger'), 20000)));
 
-        $image_quality = max(40, min(100, (int) post_value('image_resize_quality')));
+        $image_quality = max(40, min(100, pg_parse_whole_number(post_value('image_resize_quality'), 100)));
 
         $sql_image_settings =
             "image_product_optimize = '" . escape(post_value('image_product_optimize') ? 1 : 0) . "',

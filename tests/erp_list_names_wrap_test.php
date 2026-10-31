@@ -70,7 +70,7 @@ function erp_list_names_wrap_pins()
 			'<td style="max-width:320px" class="align-middle text-wrap text-break">\' . h($account[\'title\']) . \'</td>',
 		),
 		'erp_expenses.php' => array(
-			'<a class="pg-link-body-emphasis text-decoration-none text-break" href="edit_erp_expense.php?id=\' . (int) $recurrence[\'source_expense_id\'] . \'">\' . h($label) . \'</a>',
+			'<a class="pg-link-body-emphasis text-decoration-none text-break" href="edit_erp_expense.php?id=\' . (int) $recurrence[\'source_expense_id\'] . $output_send_to . \'">\' . h($label) . \'</a>',
 			'<span class="text-break">\' . h(($periods[(int) $recurrence[\'every_months\']] ?? \'\')',
 		),
 	);

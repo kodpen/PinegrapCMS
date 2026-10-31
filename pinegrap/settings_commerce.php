@@ -2,7 +2,7 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Site Settings - the store, shipping, gift cards, invoicing, payment and affiliates.
+ * Site Settings - the store, shipping, gift cards, payment and affiliates.
  *
  * One of the nine category screens the settings were split into on
  * 2026-09-12. Everything the screen does lives in the shared flow and in the

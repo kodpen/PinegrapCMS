@@ -57,14 +57,15 @@ function _eo_tree_has_messages_node($tree)
     return false;
 }
 
-// True when the tree carries the e-mail marketing box: a form control the
+// True when the tree carries the e-mail marketing box (or the SMS one for
+// $field 'opt_in_sms'): a form control the
 // visitor answers whose name is `opt_in`, by its eo_field binding (which
 // sets the name at render) or, without one, by its own name attribute.
 // Hidden inputs and buttons ask nothing. Run on the tree after the
 // visibility and section bindings, so a box in a dropped container or in a
 // section replaced by server HTML does not count. The renderer posts
 // opt_in_displayed=true only then, so an answer is known to be the visitor's.
-function _eo_tree_asks_opt_in($tree)
+function _eo_tree_asks_opt_in($tree, $field = 'opt_in')
 {
     if (!is_array($tree)) return false;
     if (isset($tree['type']) && $tree['type'] === 'semantic'
@@ -80,14 +81,14 @@ function _eo_tree_asks_opt_in($tree)
                 if ($a['name'] === 'type') $type = strtolower((string)$a['value']);
             }
         }
-        if ($name === 'opt_in'
+        if ($name === $field
             && !in_array($type, array('hidden', 'submit', 'reset', 'button', 'image'), true)) {
             return true;
         }
     }
     if (!empty($tree['children']) && is_array($tree['children'])) {
         foreach ($tree['children'] as $child) {
-            if (_eo_tree_asks_opt_in($child)) return true;
+            if (_eo_tree_asks_opt_in($child, $field)) return true;
         }
     }
     return false;
@@ -654,6 +655,37 @@ function _eo_apply_visibility_bindings(&$tree, $context, $row = array())
     $tree['children'] = $kept;
 }
 
+// The optional district box of a recipient (ship_tos.district): dropped
+// while the column is missing; once it exists, a tree designed before the
+// box gets one right after City, and the box is marked for the script that
+// shows it only for Turkey or a carrier that asks (pg_ship_to_district_*).
+// Runs before _eo_apply_field_bindings(), which names the controls.
+function _eo_fit_district_field(&$tree, $ship_rid = 0)
+{
+    if (!is_array($tree)) return;
+    $ready = pg_ship_to_district_ready();
+    $bound = function ($field) {
+        return function ($node) use ($field) {
+            return isset($node['props']['_bindings']['eo_field']) && (string)$node['props']['_bindings']['eo_field'] === $field;
+        };
+    };
+    $node = _eo_sem('div', 'col-12 col-md-6 mb-3', array(
+        _eo_sem('label', 'form-label small fw-semibold', lang('District'),
+            array('attrs' => array(array('name' => 'for', 'value' => 'shipping_district')))),
+        _eo_sem('input', 'form-control', null, array(
+            'attrs'    => array(array('name' => 'type', 'value' => 'text'), array('name' => 'value', 'value' => '')),
+            'bindings' => array('eo_field' => 'shipping_district'),
+        )),
+    ));
+    pg_ship_to_district_tree_fit($tree, $bound('shipping_city'), $bound('shipping_district'), $node, $ready);
+    if (!$ready) return;
+    $asks = ($ship_rid > 0)
+        ? pg_ship_to_district_method_asks((int)db_value("SELECT shipping_method_id FROM ship_tos WHERE id = '" . (int)$ship_rid . "'"))
+        : false;
+    $country = ($ship_rid > 0) ? 'shipping_' . (int)$ship_rid . '_country' : 'shipping_country';
+    pg_ship_to_district_tree_mark($tree, $bound('shipping_district'), $country, pg_ship_to_district_tr_codes(), $asks);
+}
+
 // ── Designer bindings: `_bindings.eo_field='X'` on input/select/textarea
 // ─────────────────────────────────────────────────────────────────────────
 // THE primary binding for express order form fields. Designer drops any
@@ -735,8 +767,6 @@ function _eo_apply_field_bindings(&$tree, $lf, $ship_rid = 0)
                 if ($current === '') {
                     $current = (string)db_value("SELECT code FROM countries WHERE default_selected = 1 ORDER BY id ASC LIMIT 1");
                 }
-                $rows = db_items("SELECT code, name FROM countries ORDER BY name ASC");
-                if (!is_array($rows)) $rows = array();
                 // Build child nodes: first an empty "Select…" option, then one per country.
                 $opts = array(array(
                     'type'  => 'semantic',
@@ -744,12 +774,12 @@ function _eo_apply_field_bindings(&$tree, $lf, $ship_rid = 0)
                                      '_attrs' => array(array('name' => 'value', 'value' => ''))),
                     'children' => array(),
                 ));
-                foreach ($rows as $r) {
-                    $attrs = array(array('name' => 'value', 'value' => (string)$r['code']));
-                    if ((string)$r['code'] === $current) $attrs[] = array('name' => 'selected', 'value' => '');
+                foreach (_eo_country_rows() as $r) {
+                    $attrs = array(array('name' => 'value', 'value' => $r['code']));
+                    if ($r['code'] === $current) $attrs[] = array('name' => 'selected', 'value' => '');
                     $opts[] = array(
                         'type'  => 'semantic',
-                        'props' => array('tag' => 'option', 'text' => (string)$r['name'], '_attrs' => $attrs),
+                        'props' => array('tag' => 'option', 'text' => $r['label'], '_attrs' => $attrs),
                         'children' => array(),
                     );
                 }
@@ -822,7 +852,7 @@ function _eo_known_input_names()
         'billing_zip_code','billing_phone_number','billing_email_address',
         'billing_fax_number','custom_field_1','custom_field_2','po_number',
         'special_offer_code','gift_card_code','referral_source','identitynumber',
-        'notes','tax_exempt','opt_in','agree_terms','update_contact',
+        'notes','tax_exempt','opt_in','opt_in_sms','agree_terms','update_contact',
         'tax_number','tax_office','billing_same_as_shipping',
         'card_number','expiration','card_verification_number',
         // The checkout documents' acceptance boxes (pg_legal_documents_inject()
@@ -846,7 +876,7 @@ function _eo_is_known_input_name($name)
     if (preg_match('/^shipping_\d+_([a-z_0-9]+)$/', $name, $m)) {
         $valid_suffixes = array(
             'salutation','first_name','last_name','company',
-            'address_1','address_2','city','state','zip_code','country',
+            'address_1','address_2','city','district','state','zip_code','country',
             'phone_number','email_address','address_type','arrival_date','shipping_method',
         );
         return in_array($m[1], $valid_suffixes, true);
@@ -1409,6 +1439,8 @@ function _eo_default_designer_tree()
                                     $field('col-12 col-md-6 mb-3', lang('Address 1'),   'shipping_address_1',   'text', '', true),
                                     $field('col-12 col-md-6 mb-3', lang('Address 2'),   'shipping_address_2',   'text'),
                                     $field('col-12 col-md-6 mb-3', lang('City'),        'shipping_city',        'text', '', true),
+                                    // Optional; drawn for a Turkish address (_eo_fit_district_field()).
+                                    $field('col-12 col-md-6 mb-3', lang('District'),    'shipping_district',    'text'),
                                     $sem('div', 'col-12 col-md-6 mb-3', array(
                                         $label('shipping_country', lang('Country'), true),
                                         $sem('select', 'form-select', null, array(
@@ -1520,7 +1552,6 @@ function _eo_default_designer_tree()
                         $sem('div', 'card-body', array(
                             $bind('payment_methods', 'mb-3'),
                             $sem('div', 'pg-eo-cc-fields', array(
-                                $sem('p', 'small text-muted mb-2', lang('The card fields appear when Credit/Debit Card is selected.')),
                                 $sem('div', 'row', array(
                                     $field('col-12 mb-3', lang('Card Number'), 'card_number', 'text', '•••• •••• •••• ••••', false, true),
                                     $field('col-6 mb-3',  lang('Expiry date'),  'expiration',  'text', lang('MM / YY'), false, true),
@@ -1654,6 +1685,8 @@ function _eo_default_designer_tree()
                                 // Plain checkbox (no required) — purely
                                 // permission-based, default off.
                                 $check_row('opt_in', lang('I want to subscribe to the campaign and offer newsletter'), 'pg-eo-opt-in mb-3'),
+                                // The SMS box beside it, only while it is offered.
+                                $check_row('opt_in_sms', lang('I want to receive campaign and offer messages by SMS.'), 'pg-eo-opt-in-sms mb-3', 'shows_opt_in_sms'),
 
                                 // Real <button> elements. eo_action binding
                                 // forces type/name/value attrs at render.
@@ -2048,11 +2081,12 @@ function _eo_render_billing_address($lf, $totals, $cfg)
     // country code (e.g. 'TR'), and tax rate / shipping validation look it
     // up against `countries.code = '…'`. See _eo_country_options() comment.
     $country_options = _eo_country_options($get('billing_country'));
-    // Salutation options come from get_salutation_options() → key/value array
+    // Salutation options come from get_salutation_options() as label => value:
+    // the label is translated, the posted value is the stored abbreviation.
     $sal_options = function_exists('get_salutation_options') ? get_salutation_options() : array('' => '');
     $sal_html = '';
     $sel_sal = $get('billing_salutation');
-    foreach ($sal_options as $val => $label) {
+    foreach ($sal_options as $label => $val) {
         $sal_html .= '<option value="' . h($val) . '"' . ($val === $sel_sal ? ' selected' : '') . '>' . h($label) . '</option>';
     }
 
@@ -2280,17 +2314,9 @@ function _eo_render_billing_country_select($lf)
     if ($current === '') {
         $current = (string)db_value("SELECT code FROM countries WHERE default_selected = 1 ORDER BY id ASC LIMIT 1");
     }
-    // countries table has no `status` column — all rows are considered active.
-    // Named and ordered in the site's language (pg_geo_country_label()).
-    $rows = db_items("SELECT code, name FROM countries");
-    if (!is_array($rows)) $rows = array();
-    $options = array();
-    foreach ($rows as $r) {
-        $options[] = array('code' => (string)$r['code'], 'label' => pg_geo_country_label($r['name'], $r['code']));
-    }
     $html = '<select class="form-select" id="billing_country" name="billing_country" required>'
           . '<option value="">' . h(lang('Select...')) . '</option>';
-    foreach (pg_geo_sort_by_label($options) as $r) {
+    foreach (_eo_country_rows() as $r) {
         $sel = ((string)$r['code'] === $current) ? ' selected' : '';
         $html .= '<option value="' . h($r['code']) . '"' . $sel . '>' . h($r['label']) . '</option>';
     }
@@ -3225,6 +3251,19 @@ function _eo_render_order_totals($sub, $disc, $tax, $ship, $gc_disc, $total, $su
 // touched a field this request, we don't clobber their value. Without this
 // gate the prefill would constantly overwrite edits with stale order/contact
 // data on every render.
+// Whether the widget offers the SMS marketing box (opt_in_sms): while SMS is
+// on and the buyer has not said yes already (pg_consent_sms_checkout_shown()).
+// Only a signed-in buyer who is not being ghosted has rows to read.
+function _eo_sms_box_shown($ghost)
+{
+    if (!function_exists('pg_consent_sms_checkout_shown')) return false;
+    $contact = array();
+    if (defined('USER_LOGGED_IN') && USER_LOGGED_IN && !$ghost && defined('USER_CONTACT_ID') && USER_CONTACT_ID > 0) {
+        $contact = db_item("SELECT id, email_address FROM contacts WHERE id = '" . (int)USER_CONTACT_ID . "' LIMIT 1");
+    }
+    return pg_consent_sms_checkout_shown($contact);
+}
+
 function _eo_prefill_billing_fields($lf, $order_id, $ghost)
 {
     if (!$lf || $order_id <= 0) return;
@@ -3314,6 +3353,10 @@ function _eo_prefill_billing_fields($lf, $order_id, $ghost)
     if (!$lf->field_in_session('opt_in')) {
         $lf->assign_field_value('opt_in', !empty($order['opt_in']) ? '1' : '');
     }
+    // The SMS box starts ticked, as the e-mail box of a new order does.
+    if (!$lf->field_in_session('opt_in_sms')) {
+        $lf->assign_field_value('opt_in_sms', '1');
+    }
     if (!$lf->field_in_session('tax_exempt')) {
         $lf->assign_field_value('tax_exempt', !empty($order['tax_exempt']) ? '1' : '');
     }
@@ -3384,6 +3427,12 @@ function _eo_prefill_shipping_fields($lf, $recipient, $ghost)
         if ($val !== '') $lf->assign_field_value($key, $val);
     }
 
+    // The district is kept on the recipient only: the address book has none.
+    if (!$lf->field_in_session($prefix . 'district') && pg_ship_to_district_ready()) {
+        $district = (string)db_value("SELECT district FROM ship_tos WHERE id = '" . $rid . "'");
+        if ($district !== '') $lf->assign_field_value($prefix . 'district', $district);
+    }
+
     // country fallback to site default
     if (!$lf->field_in_session($prefix . 'country')) {
         $cur = $lf->get_field_value($prefix . 'country');
@@ -3417,6 +3466,28 @@ function _eo_prefill_shipping_fields($lf, $recipient, $ghost)
     }
 }
 
+// ── Helper: countries as the express order lists them ──────────────────────
+// Every country select of the widget (the design-tree select, the billing
+// select and _eo_country_options()) reads this one list, so they cannot
+// drift apart: rows of code and label (pg_geo_country_label(), the stored
+// name in the site's language), ordered by the label
+// (pg_geo_sort_by_label()). The countries table has no `status` column, so
+// all rows are active. Cached per request so a multi-recipient form does
+// not re-query countries once per recipient.
+function _eo_country_rows()
+{
+    static $rows = null;
+    if ($rows === null) {
+        $found = db_items("SELECT code, name FROM countries");
+        $rows = array();
+        foreach (is_array($found) ? $found : array() as $c) {
+            $rows[] = array('code' => (string)$c['code'], 'label' => pg_geo_country_label($c['name'], $c['code']));
+        }
+        $rows = pg_geo_sort_by_label($rows);
+    }
+    return $rows;
+}
+
 // ── Helper: country <option> list keyed by countries.code (NOT id) ──────────
 // CRITICAL: every shipping / billing path downstream — `validate_product_for_destination`,
 // `get_shipping_methods`, `get_tax_rate_for_address`, `ship_tos.country` storage,
@@ -3424,34 +3495,25 @@ function _eo_prefill_shipping_fields($lf, $recipient, $ghost)
 // NOT `countries.id`. The default `select_country()` helper uses ID for value
 // which silently breaks every shipping API call (cart says "this product can't
 // be shipped to your address" because the validator looks up code='233' instead
-// of code='TR'). This helper produces the correct value=CODE markup. Cached
-// statically per request so a multi-recipient form doesn't re-query countries
-// once per recipient.
+// of code='TR'). This helper produces the correct value=CODE markup.
 function _eo_country_options($selected_code = '')
 {
-    static $cache = null;
-    if ($cache === null) {
-        $cache = db_items(
-            "SELECT id, name, code, default_selected
-             FROM countries
-             ORDER BY name"
+    static $default_code = null;
+    if ($default_code === null) {
+        // When no explicit selection, fall back to the country flagged
+        // default_selected — same fallback `select_country()` uses, so the
+        // picker is pre-populated with the site's default country. With more
+        // than one flagged row the first by stored name wins.
+        $default_code = (string)db_value(
+            "SELECT code FROM countries WHERE default_selected = 1 ORDER BY name LIMIT 1"
         );
-        if (!is_array($cache)) $cache = array();
     }
     $sel_code = (string)$selected_code;
-    // When no explicit selection, fall back to the country flagged
-    // default_selected — same fallback `select_country()` uses, so the picker
-    // is pre-populated with the site's default country.
-    $default_code = '';
-    foreach ($cache as $c) {
-        if (!empty($c['default_selected'])) { $default_code = (string)$c['code']; break; }
-    }
     if ($sel_code === '') $sel_code = $default_code;
     $out = '';
-    foreach ($cache as $c) {
-        $code = (string)$c['code'];
-        $out .= '<option value="' . h($code) . '"' . ($code === $sel_code ? ' selected' : '') . '>'
-              . h((string)$c['name'])
+    foreach (_eo_country_rows() as $c) {
+        $out .= '<option value="' . h($c['code']) . '"' . ($c['code'] === $sel_code ? ' selected' : '') . '>'
+              . h($c['label'])
               . '</option>';
     }
     return $out;
@@ -3616,7 +3678,7 @@ function _eo_render_shipping_section($recipients, $lf, $form_id, $widget_id, $in
         // Address block
         $sal_html = '';
         $sel_sal = $get('salutation');
-        foreach ($sal_options as $val => $label) {
+        foreach ($sal_options as $label => $val) {
             $sal_html .= '<option value="' . h($val) . '"' . ($val === $sel_sal ? ' selected' : '') . '>' . h($label) . '</option>';
         }
         // Country options use CODE as value (matches ship_tos.country storage
@@ -3660,6 +3722,19 @@ function _eo_render_shipping_section($recipients, $lf, $form_id, $widget_id, $in
             $out .= $row(lang('Address 1'),  'address_1',  'text', true);
             $out .= $row(lang('Address 2'),  'address_2',  'text', false);
             $out .= $row(lang('City'),       'city',       'text', true);
+
+            // District: optional, shown by pg_ship_to_district_script() while
+            // the country is Turkey or the carrier asks for it.
+            if (pg_ship_to_district_ready()) {
+                $district_name = 'shipping_' . $rid . '_district';
+                $asks = pg_ship_to_district_method_asks(isset($r['shipping_method_id']) ? (int)$r['shipping_method_id'] : 0);
+                $out .= '<div class="col-12 col-md-6 mb-3" data-pg-district-wrap>'
+                      . '<label class="form-label small fw-semibold" for="' . h($district_name) . '">' . h(lang('District')) . '</label>'
+                      . '<input type="text" class="form-control" id="' . h($district_name) . '" name="' . h($district_name) . '" value="' . h($get('district')) . '" maxlength="50"'
+                      . ' data-pg-district="shipping_' . $rid . '_country" data-pg-district-codes="' . h(implode(',', pg_ship_to_district_tr_codes())) . '"'
+                      . ($asks ? ' data-pg-district-asks="1"' : '') . '>'
+                      . '</div>';
+            }
 
             // Country select
             $out .= '<div class="col-12 col-md-6 mb-3">'
@@ -3908,10 +3983,15 @@ function _eo_render_widget_js($widget_id, $form_id, $needs_shipping, $recipients
     $_eo_ship_drawn   = (int)($totals['shipping_drawn'] ?? 0);
     $_eo_ship_charged = (int)($totals['shipping'] ?? $_eo_ship_drawn);
     $_eo_total_shown  = (int)($totals['total'] ?? 0);
+    // The card surcharge percentage in thousandths of a percent, the units
+    // pg_percent_of() multiplies by.
+    $_eo_surcharge_units = (defined('ECOMMERCE_SURCHARGE_PERCENTAGE') && (float)ECOMMERCE_SURCHARGE_PERCENTAGE > 0)
+        ? (int)pg_decimal_units(ECOMMERCE_SURCHARGE_PERCENTAGE, 3)
+        : 0;
 
     // Inline script. Idempotent — multiple express_order widgets on the
     // same page register only one global init via window.__pgEoInit.
-    return <<<HTML
+    return pg_ship_to_district_script() . <<<HTML
 <script>
 (function(){
     var FORM_ID     = {$form_id_json};
@@ -3921,8 +4001,16 @@ function _eo_render_widget_js($widget_id, $form_id, $needs_shipping, $recipients
     var SHIP_DRAWN   = {$_eo_ship_drawn};
     var SHIP_CHARGED = {$_eo_ship_charged};
     var TOTAL_SHOWN  = {$_eo_total_shown};
+    var SURCHARGE_UNITS = {$_eo_surcharge_units};
     var form = document.getElementById(FORM_ID);
     if (!form) return;
+    // The posted total without the card surcharge, as drawn: read before
+    // any pick rewrites the hidden field.
+    var POSTED_TOTAL = (function () {
+        var h = form.querySelector('input[name="total"]');
+        var c = h ? Math.round(parseFloat(h.value) * 100) : NaN;
+        return isNaN(c) ? TOTAL_SHOWN : c;
+    })();
 
     // Convert HTML5 <input type="date"> ISO value (YYYY-MM-DD) into the
     // format `validate_date()` accepts (DD/MM/YYYY for day_month sites,
@@ -4309,8 +4397,9 @@ function _eo_render_widget_js($widget_id, $form_id, $needs_shipping, $recipients
         // pg-eo-total-formatted; _eo_default_designer_tree's \$tot_row
         // calls). Express Order templates saved before they existed would
         // otherwise get a new total beside a shipping row nothing updates;
-        // they keep the server-rendered total, and a full "Güncelle"
-        // recalculates it.
+        // they keep the server-rendered total, and a full "Update"
+        // recalculates it. Their posted total does not move either, so
+        // submit_order() still asks them to confirm a higher total.
         if (!document.querySelector('.pg-eo-subtotal-formatted')) return;
         if (!document.querySelector('.pg-eo-shipping-formatted')) return;
         var totalSpan = document.querySelector('.pg-eo-total-formatted');
@@ -4319,9 +4408,32 @@ function _eo_render_widget_js($widget_id, $form_id, $needs_shipping, $recipients
         // the shipping picked now and the shipping it was drawn with: the
         // discount, the tax and the gift cards stay as the server worked
         // them out. Adding the displayed subtotal, tax and shipping left the
-        // order discount out.
-        var cents = Math.max(0, TOTAL_SHOWN + shipCents - SHIP_CHARGED);
+        // order discount out. The card surcharge is taken again on the new
+        // total as submit_order() takes it (pg_percent_of()); while the
+        // shipping is the one drawn, the drawn figures stay as they are.
+        var base = POSTED_TOTAL, cents = TOTAL_SHOWN;
+        if (shipCents !== SHIP_CHARGED) {
+            base = Math.max(0, POSTED_TOTAL + shipCents - SHIP_CHARGED);
+            cents = base;
+            if (SURCHARGE_UNITS > 0 && TOTAL_SHOWN > POSTED_TOTAL) {
+                cents += Math.round(base * SURCHARGE_UNITS / 100000);
+            }
+        }
         totalSpan.textContent = formatCost(cents / 100 * moneyRate());
+        totalSpan.setAttribute('data-pg-eo-total-cents', base);
+        if (totalSpan.hasAttribute('data-pg-eo-total-with-surcharge-cents')) {
+            totalSpan.setAttribute('data-pg-eo-total-with-surcharge-cents', cents);
+        }
+        var surSpan = document.querySelector('.pg-eo-surcharge-formatted');
+        if (surSpan && cents > base) surSpan.textContent = formatCost((cents - base) / 100 * moneyRate());
+        // The posted totals follow the shown one: submit_order() refuses an
+        // order whose total is above the one posted, and the picked method's
+        // cost reaches ship_tos only with this POST, so a total left as drawn
+        // refused the first submit of every paid method.
+        var hTotal = form.querySelector('input[name="total"]');
+        var hTws = form.querySelector('input[name="total_with_surcharge"]');
+        if (hTotal) hTotal.value = (base / 100).toFixed(2);
+        if (hTws) hTws.value = (cents / 100).toFixed(2);
     }
     // software_money_format / software_format_money come from frontend.js
     // and write money the way the server does; the fallback below only
@@ -4591,6 +4703,7 @@ function _eo_render_recipient_loop($template_children, $recipients, $lf)
         // Walker expects a tree node; wrap children in a synthetic root.
         $wrap = array('type' => 'root', 'props' => array(), 'children' => $clone);
         if ($lf) {
+            _eo_fit_district_field($wrap, $rid);
             _eo_apply_field_bindings($wrap, $lf, $rid);
             _eo_prefill_input_values_in_tree($wrap, $lf);
         }

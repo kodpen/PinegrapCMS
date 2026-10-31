@@ -48,7 +48,7 @@ if (function_exists('pg_cron_ran')) {
 // job's dispatcher printed text goes to the site log (pg_cron_dispatch_output()).
 if ((php_sapi_name() === 'cli') && !defined('PG_CRON_DISPATCH')) {
     print 'overdue reminders: ' . ($result['ran']
-        ? ('sent, ' . count($result['new']) . ' new, ' . count($result['second'] ?? array()) . ' second, ' . (int) ($result['customers']['sent'] ?? 0) . ' customer(s) e-mailed')
+        ? ('sent, ' . count($result['new']) . ' new, ' . count($result['second'] ?? array()) . ' second, ' . (int) ($result['customers']['sent'] ?? 0) . ' customer(s) e-mailed, ' . (int) ($result['customers']['texted'] ?? 0) . ' texted')
         : ('skipped (' . $result['reason'] . ')')) . "\n";
     print 'collection follow-ups: ' . ((defined('ERP_OVERDUE_FOLLOWUP') && ERP_OVERDUE_FOLLOWUP) ? ((int) ($result['followups'] ?? 0) . ' opened') : 'off') . "\n";
 } elseif (!pg_cron_is_background_run()) {

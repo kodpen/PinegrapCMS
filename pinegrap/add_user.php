@@ -147,9 +147,9 @@ if (!$_POST) {
             'icon'=>'account',
             'heading'=>lang('Create User'),
             'heading_description' => lang('Create a new user account, assign privileges, and choose to email login info to User.'),
-            'cancel'=>array('enable'=>'true','url'=>'view_users.php'),
+            'cancel' => array('enable' => 'true', 'url' => pg_send_to_url(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_users.php')),
             'breadcrumb' => array(
-                array('label' => lang('All My Users'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_users.php'),
+                array('label' => lang('Users'), 'url' => pg_send_to_list_url(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_users.php')),
                 array('label' => lang('Create User')),
             ),
         )
@@ -202,7 +202,7 @@ if (!$_POST) {
                             <div class="row g-5">
                                 <div class="col-12 sm:col-6 lg:col-4">
                                     <label class="form-label" for="reward_points">' . lang('Reward Program, Reward Points') . '</label>
-                                    <input type="number" class="form-control" id="reward_points" name="reward_points" maxlength="9"/>
+                                    <input type="number" min="0" max="4294967295" step="1" class="form-control" id="reward_points" name="reward_points"/>
                                 </div>
                                 <div class="col-12">
                                     <div class="form-field">
@@ -456,7 +456,7 @@ if (!$_POST) {
     pg_user_form_save_access($user_id, $_POST['role'], $_POST, false);
 
     // If the user checked to notify the user, then send email to user.
-    if ($_POST['notify_user'] == 1) {
+    if (($_POST['notify_user'] ?? '') == 1) {
         $login = '';
         
         // if user's role is administrator, designer, or manager
@@ -466,13 +466,13 @@ if (!$_POST) {
         if (
             ($_POST['role'] < 3)
             || (no_acl_check($user_id) == true)
-            || ($_POST['manage_calendars'] == 'yes')
-            || ($_POST['manage_forms'] == 'yes')
-            || ($_POST['manage_visitors'] == 'yes')
-            || ($_POST['manage_contacts'] == 'yes')
-            || ($_POST['manage_emails'] == 'yes')
-            || ($_POST['manage_ecommerce'] == 'yes')
-            || $_POST['manage_ecommerce_reports']
+            || (($_POST['manage_calendars'] ?? '') == 'yes')
+            || (($_POST['manage_forms'] ?? '') == 'yes')
+            || (($_POST['manage_visitors'] ?? '') == 'yes')
+            || (($_POST['manage_contacts'] ?? '') == 'yes')
+            || (($_POST['manage_emails'] ?? '') == 'yes')
+            || (($_POST['manage_ecommerce'] ?? '') == 'yes')
+            || ($_POST['manage_ecommerce_reports'] ?? '')
             || ($_POST['manage_erp'] ?? '')
             || ($_POST['manage_workspace'] ?? '')
             || (count(get_items_user_can_edit('ad_regions', $user_id)) > 0)
@@ -512,7 +512,7 @@ if (!$_POST) {
     pg_audit_record('create', 'user', (int) $user_id);
 
     // If the user was notified, then prepare password message related to that.
-    if ($_POST['notify_user'] == 1) {
+    if (($_POST['notify_user'] ?? '') == 1) {
         $password_message = ($set_password_url !== '')
             ? lang('A link to set a password has been emailed to the user.')
             : lang('The user has been emailed and can set a password with "Forgot password" on the sign-in page.');

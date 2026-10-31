@@ -56,7 +56,7 @@ if (!$_POST) {
                 
                 <form name="form" action="add_folder.php" method="post">
                     ' . pg_folder_form(array(
-                        'name_field' => $liveform_add_folder->output_field(array('type'=>'text','id'=>'name','name'=>'name', 'class'=>'form-control ', 'required'=>'required')),
+                        'name_field' => $liveform_add_folder->output_field(array('type'=>'text','id'=>'name','name'=>'name', 'class'=>'form-control ', 'maxlength'=>'100', 'required'=>'required')),
                         'parent' => $folder_id,
                         'role' => $user['role'],
                     )) . '
@@ -104,8 +104,12 @@ if (!$_POST) {
     if ($name == '') {
         // Create notice.
 		$liveform_add_folder->mark_error('name', lang('The folder must have a name. Please type in a name for the folder.') );
-        
-        
+    } elseif (pg_name_too_long($name)) {
+        // folder_name is varchar(100).
+        $liveform_add_folder->mark_error('name', lang(array('string' => 'The name can be at most {var:1} characters long.', 'vars' => array(pg_name_max_length()))));
+    }
+
+    if ($liveform_add_folder->check_form_errors() == true) {
         if ((isset($_REQUEST['send_to']) == TRUE) && ($_REQUEST['send_to'] != '')) {
             header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/add_folder.php?send_to=' . urlencode($_REQUEST['send_to']));
         } else {

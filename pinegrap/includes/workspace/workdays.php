@@ -590,7 +590,11 @@ function ws_holiday_feeds_tick()
 /**
  * The VEVENT blocks of an iCalendar text, each as property name => value,
  * params (the later one when a name repeats); every EXDATE is also listed
- * under 'EXDATE*'. Folded lines are unfolded first.
+ * under 'EXDATE*'. Folded lines are unfolded first. A block nested in an
+ * event (VALARM, or any other BEGIN:) is skipped whole: a reminder's
+ * SUMMARY, DESCRIPTION and UID are not the event's. A line is split at the
+ * first ':' and ';' outside double quotes, since a quoted parameter value
+ * may hold both (RFC 5545 3.2).
  *
  * @param string $text
  * @return array[]
@@ -602,30 +606,71 @@ function ws_ical_vevents($text)
     $text = preg_replace("/\r\n[ \t]|\n[ \t]|\r[ \t]/", '', str_replace("\r\n", "\n", (string) $text));
     $events = array();
     $current = null;
+    $depth = 0;
 
     foreach (preg_split("/\r\n|\n|\r/", $text) as $line) {
-        if ($line === 'BEGIN:VEVENT') {
-            $current = array();
-            continue;
-        }
+        $upper = strtoupper(rtrim($line));
 
-        if ($line === 'END:VEVENT') {
-            if (is_array($current)) {
-                $events[] = $current;
+        if (!is_array($current)) {
+            if ($upper === 'BEGIN:VEVENT') {
+                $current = array();
+                $depth = 0;
             }
 
-            $current = null;
             continue;
         }
 
-        if (!is_array($current) || (strpos($line, ':') === false)) {
+        if (strpos($upper, 'BEGIN:') === 0) {
+            $depth++;
             continue;
         }
 
-        list($head, $value) = explode(':', $line, 2);
-        $parts = explode(';', $head);
-        $name = strtoupper($parts[0]);
-        $current[$name] = array('value' => $value, 'params' => implode(';', array_slice($parts, 1)));
+        if (strpos($upper, 'END:') === 0) {
+            if ($depth > 0) {
+                $depth--;
+                continue;
+            }
+
+            if ($upper === 'END:VEVENT') {
+                $events[] = $current;
+                $current = null;
+            }
+
+            continue;
+        }
+
+        if ($depth > 0) {
+            continue;
+        }
+
+        // The name and the parameters end at the first ':' outside quotes;
+        // the name ends at the first ';' before it.
+        $colon = -1;
+        $semicolon = -1;
+        $quoted = false;
+
+        for ($i = 0, $length = strlen($line); $i < $length; $i++) {
+            $char = $line[$i];
+
+            if ($char === '"') {
+                $quoted = !$quoted;
+            } elseif (!$quoted && ($char === ';') && ($semicolon < 0)) {
+                $semicolon = $i;
+            } elseif (!$quoted && ($char === ':')) {
+                $colon = $i;
+                break;
+            }
+        }
+
+        if ($colon < 0) {
+            continue;
+        }
+
+        $head = substr($line, 0, $colon);
+        $value = (string) substr($line, $colon + 1);
+        $name = strtoupper(($semicolon >= 0) ? substr($head, 0, $semicolon) : $head);
+        $params = ($semicolon >= 0) ? (string) substr($head, $semicolon + 1) : '';
+        $current[$name] = array('value' => $value, 'params' => $params);
 
         if ($name === 'EXDATE') {
             $current['EXDATE*'][] = $current[$name];
@@ -633,6 +678,25 @@ function ws_ical_vevents($text)
     }
 
     return $events;
+}
+
+/**
+ * An iCalendar DURATION (RFC 5545 3.3.6: PnW, or PnDTnHnMnS and its parts) in
+ * seconds; 0 for a negative, empty or unreadable one.
+ *
+ * @param string $value
+ * @return int
+ */
+function ws_ical_duration($value)
+{
+    $value = strtoupper(trim((string) $value));
+
+    if (!preg_match('/^\+?P(?:(\d+)W|(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?)$/', $value, $match)) {
+        return 0;
+    }
+
+    return (int) ($match[1] ?? 0) * 604800 + (int) ($match[2] ?? 0) * 86400
+        + (int) ($match[3] ?? 0) * 3600 + (int) ($match[4] ?? 0) * 60 + (int) ($match[5] ?? 0);
 }
 
 /**

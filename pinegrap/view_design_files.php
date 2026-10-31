@@ -137,12 +137,12 @@ if ($files) {
                         : '';
                     $output_optimize_button = '<button type="button" class="m-1 btn-data-control btn btn-outline theme-success border-2 " title="' . lang('Optimize this image') . '" onclick="window.location.href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/optimize.php?id=' . h($file['id']) . get_token_query_string_field() . '\'"><i class="bi bi-fast-forward-circle" aria-hidden="true"></i><span class="visually-hidden">' . h(lang('Optimize this image')) . '</span>' . $optimize_percent_html . '</button>';
                 }
-                $output_edit_image_button = '<button type="button" class="m-1 btn-data-control btn btn-outline theme-secondary border-2 " title="' . lang(array('string'=>'Edit this image with {var:1}','vars'=>array(lang('Image Editor')) )) . '" onclick="window.location.href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/image_editor_edit.php?file_name=' . h($file['name']) . '&send_to=' . h(escape_javascript(REQUEST_URL)) . '\'"><i class="bi bi-brush"></i></button>';
+                $output_edit_image_button = '<button type="button" class="m-1 btn-data-control btn btn-outline theme-secondary border-2 " title="' . lang(array('string'=>'Edit this image with {var:1}','vars'=>array(lang('Image Editor')) )) . '" onclick="window.location.href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/image_editor_edit.php?file_name=' . h(urlencode($file['name'])) . '&send_to=' . h(escape_javascript(urlencode(REQUEST_URL))) . '\'"><i class="bi bi-brush"></i></button>';
         }
 
 
         $output_edit_buttons = '
-        <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2 " title="' . lang('Edit File') . '" onclick="window.location.href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_design_file.php?id=' . $file['id'] . '&send_to=' . h(escape_javascript(REQUEST_URL)) . '\'"><i class="bi bi-pencil"></i></button>' . $output_optimize_button . $output_edit_image_button;
+        <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2 " title="' . lang('Edit File') . '" onclick="window.location.href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_design_file.php?id=' . $file['id'] . '&send_to=' . h(escape_javascript(urlencode(REQUEST_URL))) . '\'"><i class="bi bi-pencil"></i></button>' . $output_optimize_button . $output_edit_image_button;
 
         $archived_row_style = '';
         
@@ -152,7 +152,7 @@ if ($files) {
         }
 
         // Convert file size to a user friendly output.
-        $file['size'] = convert_bytes_to_string($file['size']);
+        $file['size'] = convert_bytes_to_string($file['size'], 'auto');
 
         
         // If the file is an image.
@@ -211,10 +211,10 @@ if ($files) {
 print
 pg_page_shell(
     array(
-        'title'=> lang('Design Files'),
+        'title'=> lang('All Design Files'),
         'extra classes'=>'designer',
         'icon'=>'design', 
-        'heading'=> lang('Design Files'),
+        'heading'=> lang('All Design Files'),
         'heading_description' => lang('All design files that can be referenced by any theme, page style, or region, and managed only by site designers.'),
         'cancel'=> false
     )

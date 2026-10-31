@@ -135,7 +135,7 @@ switch (($_SESSION['software']['editor_select_page_or_file']['type'] ?? '')) {
 
         // If there is a search query and it is not blank, then prepare filter.
         if ((isset($_SESSION['software']['editor_select_page_or_file']['query']) == true) && (($_SESSION['software']['editor_select_page_or_file']['query'] ?? '') != '')) {
-            $where .= "AND (LOWER(CONCAT_WS(',', page.page_name, page.page_type, folder.folder_name, user.user_username)) LIKE '%" . escape(escape_like(mb_strtolower(($_SESSION['software']['editor_select_page_or_file']['query'] ?? '')))) . "%')";
+            $where .= "AND (LOWER(CONCAT_WS(',', page.page_name, page.page_type, folder.folder_name, user.user_username)) LIKE '%" . escape(escape_like(pg_search_lower($_SESSION['software']['editor_select_page_or_file']['query'] ?? ''))) . "%')";
         }
 
         // Pages in the Recycle Bin are not offered: a link to one stops working.
@@ -254,7 +254,7 @@ switch (($_SESSION['software']['editor_select_page_or_file']['type'] ?? '')) {
 
         // If there is a search query and it is not blank, then prepare filter.
         if ((isset($_SESSION['software']['editor_select_page_or_file']['query']) == true) && (($_SESSION['software']['editor_select_page_or_file']['query'] ?? '') != '')) {
-            $where .= "AND (LOWER(CONCAT_WS(',', files.name, folder.folder_name, user.user_username)) LIKE '%" . escape(escape_like(mb_strtolower(($_SESSION['software']['editor_select_page_or_file']['query'] ?? '')))) . "%')";
+            $where .= "AND (LOWER(CONCAT_WS(',', files.name, folder.folder_name, user.user_username)) LIKE '%" . escape(escape_like(pg_search_lower($_SESSION['software']['editor_select_page_or_file']['query'] ?? ''))) . "%')";
         }
 
         // Get all files.
@@ -371,7 +371,7 @@ switch (($_SESSION['software']['editor_select_page_or_file']['type'] ?? '')) {
 
         // If there is a search query and it is not blank, then prepare filter.
         if ((isset($_SESSION['software']['editor_select_page_or_file']['query']) == true) && (($_SESSION['software']['editor_select_page_or_file']['query'] ?? '') != '')) {
-            $where .= "WHERE (LOWER(CONCAT_WS(',', short_links.name, short_links.destination_type, page.page_name, product_groups.name, products.name, short_links.url, short_links.tracking_code, last_modified_user.user_username)) LIKE '%" . escape(escape_like(mb_strtolower(($_SESSION['software']['editor_select_page_or_file']['query'] ?? '')))) . "%')";
+            $where .= "WHERE (LOWER(CONCAT_WS(',', short_links.name, short_links.destination_type, page.page_name, product_groups.name, products.name, short_links.url, short_links.tracking_code, last_modified_user.user_username)) LIKE '%" . escape(escape_like(pg_search_lower($_SESSION['software']['editor_select_page_or_file']['query'] ?? ''))) . "%')";
         }
 
         // A link with a token for its address has no name to link to, a
@@ -509,19 +509,10 @@ $output_rows = '';
 
 // if there is at least one result to display
 if ($items) {
-    // Sorted by each level in turn. Items that tie on every level are
-    // ordered by their other values, as array_multisort() compares them.
-    $sort_arguments = array();
-    $sort_values = array();
-
-    foreach ($sort_levels as $index => $level) {
-        $sort_values[$index] = array_column($items, $sort_keys[$level['sort']]);
-        $sort_arguments[] = &$sort_values[$index];
-        $sort_arguments[] = ($level['order'] === 'desc') ? SORT_DESC : SORT_ASC;
-    }
-
-    $sort_arguments[] = &$items;
-    call_user_func_array('array_multisort', $sort_arguments);
+    // Sorted by each level in turn, the way the database lists sort: a size
+    // or a time as a number, a page type by the name it is shown under, text
+    // in the panel language's order.
+    $items = pg_list_sort_items($items, $sort_levels, $sort_keys, array('size', 'last_modified_timestamp'), array('page_type' => get_page_type_names()));
 
     foreach ($items as $item) {
         $output_last_modified_username = '';
@@ -596,7 +587,7 @@ if ($items) {
                         <td class="align-middle text-center" style="min-width:50px;height:50px;">' . $output_thumbnail . '</td>
                         <td class="align-middle chart_label"><button type="button" class="btn btn-link p-0 text-start" onclick="event.stopPropagation(); window.opener.CKEDITOR.tools.callFunction(\'' . h(escape_javascript(($_GET['CKEditorFuncNum'] ?? ''))) . '\', \'' . h(escape_javascript($item['href'])) . '\'); window.close();">' . h($item['url']) . '</button></td>
                         <td class="align-middle">' . h($item['folder_name']) . '</td>
-                        <td class="align-middle">' . h(convert_bytes_to_string($item['size'])) . '</td>
+                        <td class="align-middle">' . h(convert_bytes_to_string($item['size'], 'auto')) . '</td>
                         <td class="align-middle">' . get_relative_time(array('timestamp' => $item['last_modified_timestamp'])) . $output_last_modified_username . '</td>
                         <td></td>
                     </tr>';
@@ -634,12 +625,7 @@ echo
 output_header_secure(array('title'=>lang('Browse Items'),'icon'=>'folder')) . '
 <nav id="header" class="navbar sticky-top rounded-0 navbar-expand border-bottom shadow-sm bg-body">
     <div class="container-fluid">
-        <span 
-            class="navbar-text me-auto" 
-            data-bs-content="' . lang('Select the Page, File, or Short Link that you want to link to.') . '" 
-            title="' . lang('Browse Items') . '">
-            ' . lang('Browse Items') . '
-        </span>
+        <span class="navbar-text me-auto">' . lang('Browse Items') . '</span>
         <ul class="navbar-nav ms-auto">
             <li class="nav-item pg-menu-wrap no-popover"  title="' . lang('Software Theme') . '">
                 <button class="nav-link nav-link-sm position-relative pg-menu-caret d-none" data-bs-toggle="menu" data-bs-placement="bottom-end" id="bd-theme" type="button"><span class="bi bi-circle-half"></span></button>
@@ -658,6 +644,7 @@ output_header_secure(array('title'=>lang('Browse Items'),'icon'=>'folder')) . '
     </div>
 </nav>
 <main class="container">
+    <p class="form-text mt-5 mb-0 text-center md:text-start">' . lang('Select the Page, File, or Short Link that you want to link to.') . '</p>
     <div class="row mb-3 flex-wrap">
         <div class="col-12 sm:col-12 md:col-6 xl:col-9 text-center md:text-start">
             <nav id="button_bar" class="navigation " aria-label="' . h(lang('Button Bar')) . '">

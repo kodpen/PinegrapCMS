@@ -860,9 +860,10 @@ if (!$_POST) {
                                                 <div class="col-12 md:col-8 lg:col-6 my-3">
                                                     <label for="name" class="form-label">' . lang('Page Name') . '</label>
                                                     <div class="input-group ">
-                                                        <span class="input-group-text material-icons" title="' . lang('This option determines the url address of the page.') . '" data-bs-content="' . URL_SCHEME . HOSTNAME . OUTPUT_PATH . '{' . lang('Page Name') . '}">public</span>
-                                                        <input name="name" id="name" type="text" value="' . h($form_values['name']) . '" placeholder="' . lang('Page Name') . '" maxlength="100" class="form-control" required="required" />
+                                                        <span class="input-group-text material-icons" aria-hidden="true">public</span>
+                                                        <input name="name" id="name" aria-describedby="name_hint" type="text" value="' . h($form_values['name']) . '" placeholder="' . lang('Page Name') . '" maxlength="100" class="form-control" required="required" />
                                                     </div>
+                                                    <div class="form-text" id="name_hint">' . lang('This option determines the url address of the page.') . ' <code>' . h(URL_SCHEME . HOSTNAME . OUTPUT_PATH . '{' . lang('Page Name') . '}') . '</code></div>
                                                 </div>
                                                 ' . $output_name_redirect_row . '
                                                 ' . $output_home_page_rows . '
@@ -1500,6 +1501,12 @@ if (!$_POST) {
         // of them, and keeps the stored ones.
         if ($_POST['type'] == 'custom form') {
             pg_page_form_refuse($liveform, pg_page_type_custom_form_errors((int) $_POST['id'], $may_save_page_type), $form_url);
+        }
+
+        // The comments moderator is one address, checked while comments are
+        // on (the box is hidden otherwise).
+        if (($_POST['comments'] ?? '') == '1') {
+            pg_page_form_refuse($liveform, pg_email_field_errors(array('comments_administrator_email_to_email_address' => $_POST['comments_administrator_email_to_email_address'] ?? '')), $form_url);
         }
         
         // if user is above a user role, then deal with home page checkbox

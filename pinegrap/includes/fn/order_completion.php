@@ -380,7 +380,7 @@ function pg_order_auto_register($email_address, $contact_id)
     }
 
     if ($action === 'blocked') {
-        log_activity(lang(array(
+        log_activity(pg_log_lang(array(
             'string' => 'no account created for a blocked email address ({var:1})',
             'vars'   => array($email_address))), '');
     }
@@ -473,7 +473,7 @@ function pg_order_complete_from_payment($order_id, $status, array $paid = array(
     }
 
     if ((string) $order['payment_method'] === '') {
-        return array('status' => 'refused', 'reason' => 'the order keeps no checkout values (the visitor was sent to pay before they were kept)');
+        return array('status' => 'refused', 'reason' => pg_log_lang(array('string' => 'the order keeps no checkout values (the visitor was sent to pay before they were kept)')));
     }
 
     // The payment's amount against the total the order holds now.
@@ -483,7 +483,7 @@ function pg_order_complete_from_payment($order_id, $status, array $paid = array(
         $paid_totals = pg_payment_paid_totals($paid['amount'] ?? null, $paid['installments'] ?? 0, $order['total']);
 
         if ($paid_totals === null) {
-            return array('status' => 'refused', 'reason' => 'the amount paid is not the order\'s total');
+            return array('status' => 'refused', 'reason' => pg_log_lang(array('string' => 'the amount paid is not the order\'s total')));
         }
     }
 
@@ -497,7 +497,7 @@ function pg_order_complete_from_payment($order_id, $status, array $paid = array(
     $charged = pg_order_lines_charged($lines, date('Y-m-d'), (ECOMMERCE_CREDIT_DEBIT_CARD == true) && (ECOMMERCE_PAYMENT_GATEWAY == 'ClearCommerce'));
 
     if (($lines === array()) || ($charged['subtotal'] !== (int) $order['subtotal'])) {
-        return array('status' => 'refused', 'reason' => 'the order\'s items changed after the visitor was sent to pay');
+        return array('status' => 'refused', 'reason' => pg_log_lang(array('string' => 'the order\'s items changed after the visitor was sent to pay')));
     }
 
     $settings = pg_order_payment_page_settings(pg_order_checkout_page_row($page_column ? $order['checkout_page_id'] : 0));
@@ -1935,7 +1935,7 @@ function pg_order_complete_line_gift_cards(array $line, $order_id, $created_user
                 '" . $created_user_id . "',
                 UNIX_TIMESTAMP())");
 
-        log_activity('gift card (' . output_gift_card_code($code) . ') was created because gift card product was ordered', $actor);
+        log_activity(pg_log_lang(array('string' => 'gift card ({var:1}) was created because gift card product was ordered', 'vars' => array(output_gift_card_code($code)))), $actor);
 
         // Create an array that will store the fields for variables that need to be replaced.
         $fields = array();
@@ -2088,7 +2088,7 @@ function pg_order_complete_line_gift_cards(array $line, $order_id, $created_user
                 'automatic',
                 '" . escape($order_item_gift_card['recipient_email_address']) . "')");
         
-        log_activity('auto campaign was created because gift card was ordered (' . output_gift_card_code($code) . ')', $actor);
+        log_activity(pg_log_lang(array('string' => 'auto campaign was created because gift card was ordered ({var:1})', 'vars' => array(output_gift_card_code($code)))), $actor);
     }
 }
 
@@ -3433,7 +3433,7 @@ function pg_order_complete_announce($order_id, $order_number, $total, array $bil
 {
     $customer = $billing['first_name'] . ' ' . $billing['last_name'] . ', ' . $billing['email_address'];
 
-    log_activity(lang('Order was completed') . ' (' . $order_number . ', ' . prepare_amount($total / 100) . ', ' . $customer . ').');
+    log_activity(pg_log_lang(array('string' => 'Order was completed')) . ' (' . $order_number . ', ' . prepare_amount($total / 100) . ', ' . $customer . ').');
 
     create_notification(array(
         'action' => 'new_order',

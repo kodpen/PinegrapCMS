@@ -19,7 +19,7 @@ lang(['string' => '{var:1} match{suffix:1} found in {var:2} item{suffix:2}.', 'v
 
 ## What do the case modifiers do?
 - `{var:1|c}` Title Case, `{var:1|u}` UPPER, `{var:1|l}` lower; single-variable shortcuts `{var|c}`, `{var|u}`, `{var|l}`.
-- Why: in Turkish a word may be lowercase mid-sentence and capitalised at sentence start; one variable used in both places takes `|c` where it starts the sentence.
+- A modifier cases every occurrence of its variable, not one place: a Turkish value needing it capitalised at the start and lowercase later uses it once, with `|c`, and rewords the rest (#3573).
 - They run `mb_convert_case()` (`$safe_case` in `lang()`): UTF-8 safe (`ş` -> `Ş`, `ı` -> `I`), where byte-wise `strtoupper()` or an ASCII `toUpperCase()` leaves or breaks Turkish letters. It is not Turkish-locale aware: `i` becomes `I`, not `İ` (`istanbul` -> `ISTANBUL`, `Istanbul`), and `İ` lowercases to `i` + U+0307.
 
 ## Plural suffix?
@@ -28,7 +28,7 @@ lang(['string' => '{var:1} record{suffix:1}', 'vars' => $count, 'suffix' => ($co
 // 1 -> "1 record" / 5 -> "5 records"
 ```
 - Several suffixes: `'suffix' => [$a, $b]` fills `{suffix:1}`, `{suffix:2}`; a bare `{suffix}` takes the first.
-- A count needs its singular in English: `'{var:1} minute{suffix:1} ago'`, never a plural-only `'{var:1} minutes ago'` ("1 minutes ago"). A verb that agrees with the count goes into two literal keys chosen by the count (`'{var:1} product was deleted.'` / `'{var:1} products were deleted.'`), never `lang($verb . ' deleted')` or a `'was'`/`'were'` `{var:N}`: check_lang cannot see a built key and the Turkish sentence keeps the English verb. A list of changes is verb-free phrases joined with `', '` inside one key (`edit_products.php`, `tests/panel_sentence_keys_test.php`).
+- A count needs its singular in English: `'{var:1} minute{suffix:1} ago'`, never a plural-only `'{var:1} minutes ago'` ("1 minutes ago"). A verb that agrees with the count goes into two literal keys chosen by the count (`'{var:1} product was deleted.'` / `'{var:1} products were deleted.'`), never `lang($verb . ' deleted')` or a `'was'`/`'were'` `{var:N}`: check_lang cannot see a built key and the Turkish sentence keeps the English verb. A list of changes is verb-free phrases joined with `', '` inside one key, never with `lang('and')` or a count glued outside `lang()` (`edit_products.php`; Modify Selected on pages and files in `edit_pages.php`, `edit_files.php`, PR #3396; `tests/panel_sentence_keys_test.php`).
 - The Turkish translation leaves `{suffix:N}` out, since Turkish has no English plural ending (kept, the ending is glued onto the Turkish word): `"{var:1} minute{suffix:1} {var:2}": "{var:1} dakika {var:2}"`. Every `{var:N}` stays; their order may change. (The tr.json value is looked up first, then placeholders are filled.)
 
 ## May I add text around a lang() call?

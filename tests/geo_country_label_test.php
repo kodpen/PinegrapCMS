@@ -79,6 +79,7 @@ function test_geo_country_label_used_by_the_country_lists()
 		'includes/fn/widgets_account.php',
 		'includes/fn/widgets_express_order.php',
 		'get_billing_information.php',
+		'get_express_order.php',
 		'includes/forms/zone_form.php',
 		'includes/forms/tax_zone_form.php',
 	) as $file) {
@@ -89,4 +90,23 @@ function test_geo_country_label_used_by_the_country_lists()
 
 	$list = (string) file_get_contents(PG_FUNCTIONS_DIR . '/view_countries.php');
 	pg_assert_true(strpos($list, "pg_geo_country_label(\$row['name'], \$row['code'])") !== false, 'the countries list names the country');
+}
+
+// The express order's other country selects (the design-tree select, the
+// fallback billing form and the recipient shipping select) and the classic
+// express order page no longer print or sort the stored name (#3327).
+function test_geo_country_label_used_by_the_express_order()
+{
+	$widget = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/widgets_express_order.php');
+
+	foreach (array(
+		'SELECT code, name FROM countries ORDER BY name ASC',
+		"'text' => (string)\$r['name']",
+		"h((string)\$c['name'])",
+	) as $raw) {
+		pg_assert_true(strpos($widget, $raw) === false, 'the express order widget has no ' . $raw);
+	}
+
+	$page = (string) file_get_contents(PG_FUNCTIONS_DIR . '/get_express_order.php');
+	pg_assert_true(strpos($page, "\$country_options[\$country['name']]") === false, 'the classic page keys no option by the stored name');
 }

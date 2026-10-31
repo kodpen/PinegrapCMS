@@ -12,11 +12,11 @@ description: Step boxes of a flow (steps.php, F4a #1835, F4b #1857, F4b2 #1923, 
 - `ws_step_action()` turns config into the step array, so `ws_scheduled_action_input()` and `ws_scheduled_do()` run unchanged.
 
 - Event and newcomer values, post in the channel joined: `workspace-flows-trigger-values.md`.
-- Form lists: `ws_flow_js_config()` `steps` (metrics, `digest_only`, `targets`).
+- Form lists: `ws_flow_js_config()` `steps`.
 
 ## Whose rights?
 - Publish: `ws_flow_publish_check()` runs `ws_step_check()` on every step box with the publisher (the owner).
-- Run: `ws_flow_step_run()` needs the owner (`actor_id`) still on the staff, then `ws_step_run()` checks again with their rights now; a refusal settles like a failure.
+- Run: `ws_flow_step_run()` needs the owner (`actor_id`) a builder (`ws_flow_builder()`, role 3: `workspace-flows-member.md`), then `ws_step_run()` checks again with their rights now; a refusal fails the box.
 
 ## How does it end?
 - `ws_step_settlement()`: ok → done/done; failed → done/failed when an arrow leaves on failed, else failed (the run fails).

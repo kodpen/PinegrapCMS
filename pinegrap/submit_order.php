@@ -420,7 +420,7 @@ function submit_order($type) {
         // The billing and payment fields post one value each (express_order.php has done this
         // for an express order already), and the totals the visitor saw are compared below as
         // numbers, so an array there counts as a total not posted.
-        pg_liveform_single_values($liveform, array('billing_salutation', 'billing_first_name', 'billing_last_name', 'billing_company', 'billing_address_1', 'billing_address_2', 'billing_city', 'billing_state', 'billing_zip_code', 'billing_country', 'billing_phone_number', 'billing_fax_number', 'billing_email_address', 'custom_field_1', 'custom_field_2', 'opt_in', 'opt_in_displayed', 'tax_exempt', 'tax_number', 'tax_office', 'po_number', 'referral_source', 'update_contact', 'gift_card_code', 'payment_method', 'card_number', 'cardholder', 'expiration', 'expiration_month', 'expiration_year', 'card_verification_number', 'installment', 'notes', 'terms', 'legal_preinfo', 'legal_contract', 'legal_kvkk'));
+        pg_liveform_single_values($liveform, array('billing_salutation', 'billing_first_name', 'billing_last_name', 'billing_company', 'billing_address_1', 'billing_address_2', 'billing_city', 'billing_state', 'billing_zip_code', 'billing_country', 'billing_phone_number', 'billing_fax_number', 'billing_email_address', 'custom_field_1', 'custom_field_2', 'opt_in', 'opt_in_displayed', 'opt_in_sms', 'opt_in_sms_shown', 'tax_exempt', 'tax_number', 'tax_office', 'po_number', 'referral_source', 'update_contact', 'gift_card_code', 'payment_method', 'card_number', 'cardholder', 'expiration', 'expiration_month', 'expiration_year', 'card_verification_number', 'installment', 'notes', 'terms', 'legal_preinfo', 'legal_contract', 'legal_kvkk'));
         pg_liveform_single_values($liveform, array('total', 'total_with_surcharge'), null);
 
         // Clear stale field errors from a PREVIOUS submit before re-validating.
@@ -673,7 +673,8 @@ function submit_order($type) {
                 // for a submit whose billing or payment is refused, or that a
                 // payment page never brings back, and the contact keeps the
                 // answer then too. A gateway return skips this block.
-                pg_consent_log_checkout($liveform->get_field_value('billing_email_address'), $user_id, $contact_id, $liveform->get_field_value('opt_in_displayed'), $ghost, $opt_in);
+                pg_consent_log_checkout($liveform->get_field_value('billing_email_address'), $user_id, $contact_id, $liveform->get_field_value('opt_in_displayed'), $ghost, $opt_in,
+                    pg_consent_checkout_sms_answers($liveform->get_field_value('opt_in_sms_shown'), $ghost, $liveform->get_field_value('billing_phone_number'), $liveform->get_field_value('opt_in_sms')));
             } elseif ($liveform->field_in_session('tax_number')) {
                 // The card is not updated from the billing block, but a card with no
                 // tax number still takes the one typed here: the order keeps none of
@@ -1049,6 +1050,20 @@ function submit_order($type) {
 
                 } elseif (in_array($liveform->get_field_value('payment_method'), $allowed_payment_methods, TRUE) == FALSE) {
                     $liveform->mark_error('payment_method', lang('The selected payment method is not available.'));
+                }
+            }
+
+            // A driver that runs subscriptions itself stores the card only
+            // with a payment: an order that charges nothing today and whose
+            // recurring lines all start later would leave them no card.
+            if ($liveform->check_field_error('payment_method') == FALSE) {
+                $later_start_driver = pg_payment_order_driver((string) $liveform->get_field_value('payment_method'), (string) ECOMMERCE_PAYMENT_GATEWAY);
+
+                if (
+                    ($later_start_driver !== '')
+                    && pg_subscription_checkout_starts_later_only($products, pg_payment_recurring_mode($later_start_driver), ($nonrecurring_transaction == TRUE), date('Y-m-d'))
+                ) {
+                    $liveform->mark_error('payment_method', lang('Nothing is charged today, so your card cannot be saved for the subscription. Please choose today as the start date.'));
                 }
             }
             
@@ -2084,18 +2099,20 @@ function submit_order($type) {
                         if ((count($response) == 1) || (trim($response[1]) !== '1')) {
                             // if there was a response from the payment gateway, then use response text in error
                             if ($response[4]) {
-                                $payment_gateway_error_message = lang('Error message from payment gateway: ') . $response[4];
+                                $payment_gateway_error = array('string' => 'Error message from payment gateway: {var:1}', 'vars' => array($response[4]));
                             // else there was no response, so there was a communication problem
                             } else {
-                                $payment_gateway_error_message = lang('An error occurred while trying to communicate with the payment gateway.');
+                                $payment_gateway_error = array('string' => 'An error occurred while trying to communicate with the payment gateway.');
                                 
                                 // if there was a cURL error, add error number and error message to payment gateway error message
                                 if ($curl_errno) {
-                                    $payment_gateway_error_message .= ' ' . lang('cURL Error Number:') . ' ' . $curl_errno . '. ' . lang('cURL Error Message:') . ' ' . $curl_error . '.';
+                                    $payment_gateway_error = array('string' => 'An error occurred while trying to communicate with the payment gateway. cURL Error Number: {var:1}. cURL Error Message: {var:2}.', 'vars' => array($curl_errno, $curl_error));
                                 }
                             }
 
-                            log_activity($payment_gateway_error_message);
+                            $payment_gateway_error_message = lang($payment_gateway_error);
+
+                            log_activity(pg_log_lang($payment_gateway_error));
                             
                             $liveform->mark_error('payment_gateway', h($payment_gateway_error_message));
 
@@ -2210,23 +2227,25 @@ function submit_order($type) {
                         if ($clearcommerce_CcErrCode != '1') {
                             // if there was a cErrCode value, then use CcReturnMsg for error message
                             if ($clearcommerce_CcErrCode != '') {
-                                $payment_gateway_error_message = lang('Error message from payment gateway: ') . $clearcommerce_CcReturnMsg;
+                                $payment_gateway_error = array('string' => 'Error message from payment gateway: {var:1}', 'vars' => array($clearcommerce_CcReturnMsg));
                                 
                             // else if there was a Text value, then use value for error message
                             } elseif ($clearcommerce_Text != '') {
-                                $payment_gateway_error_message = lang('Error message from payment gateway: ') . $clearcommerce_Text;
+                                $payment_gateway_error = array('string' => 'Error message from payment gateway: {var:1}', 'vars' => array($clearcommerce_Text));
                                 
                             // else there was no response, so there was a communication problem
                             } else {
-                                $payment_gateway_error_message = lang('An error occurred while trying to communicate with the payment gateway.');
+                                $payment_gateway_error = array('string' => 'An error occurred while trying to communicate with the payment gateway.');
                                 
                                 // if there was a cURL error, add error number and error message to payment gateway error message
                                 if ($curl_errno) {
-                                    $payment_gateway_error_message .= ' ' . lang('cURL Error Number:') . ' ' . $curl_errno . '. ' . lang('cURL Error Message:') . ' ' . $curl_error . '.';
+                                    $payment_gateway_error = array('string' => 'An error occurred while trying to communicate with the payment gateway. cURL Error Number: {var:1}. cURL Error Message: {var:2}.', 'vars' => array($curl_errno, $curl_error));
                                 }
                             }
 
-                            log_activity($payment_gateway_error_message);
+                            $payment_gateway_error_message = lang($payment_gateway_error);
+
+                            log_activity(pg_log_lang($payment_gateway_error));
                             
                             $liveform->mark_error('payment_gateway', h($payment_gateway_error_message));
 
@@ -2337,23 +2356,26 @@ function submit_order($type) {
                         if ($first_data_global_gateway_approved != 'APPROVED') {
                             // if there was a cErrCode value, then use CcReturnMsg for error message
                             if ($first_data_global_gateway_error != '') {
-                                $payment_gateway_error_message = lang('Error message from payment gateway: ') . $first_data_global_gateway_error;
+                                $payment_gateway_error = array('string' => 'Error message from payment gateway: {var:1}', 'vars' => array($first_data_global_gateway_error));
                             
                             // else if there was a Text value, then use value for error message
                             } elseif ($first_data_global_gateway_message != '') {
-                                $payment_gateway_error_message = lang('Error message from payment gateway: ') . $first_data_global_gateway_message;
+                                $payment_gateway_error = array('string' => 'Error message from payment gateway: {var:1}', 'vars' => array($first_data_global_gateway_message));
                             
                             // else there was no response, so there was a communication problem
                             } else {
-                                $payment_gateway_error_message = lang('An error occurred while trying to communicate with the payment gateway.');
+                                $payment_gateway_error = array('string' => 'An error occurred while trying to communicate with the payment gateway.');
                             
                                 // if there was a cURL error, add error number and error message to payment gateway error message
                                 if ($curl_errno) {
-                                    $payment_gateway_error_message .= ' ' . lang('cURL Error Number:') . ' ' . $curl_errno . '. ' . lang('cURL Error Message:') . ' ' . $curl_error . '.';
+                                    $payment_gateway_error = array('string' => 'An error occurred while trying to communicate with the payment gateway. cURL Error Number: {var:1}. cURL Error Message: {var:2}.', 'vars' => array($curl_errno, $curl_error));
                                 }
                             }
                         
-                            log_activity($payment_gateway_error_message);
+                            $payment_gateway_error_message = lang($payment_gateway_error);
+
+                        
+                            log_activity(pg_log_lang($payment_gateway_error));
                         
                             $liveform->mark_error('payment_gateway', h($payment_gateway_error_message));
                         
@@ -2496,29 +2518,32 @@ function submit_order($type) {
                             if ($response) {
                                 switch ($response['RESULT']) {
                                     case 112:
-                                        $payment_gateway_error_message = lang('Error message from payment gateway: ') . lang('The billing address that you entered does not match the billing address for this bank card. Please correct the billing address and try again. If you continue to receive this message, please try another bank card, or contact us for help.');
+                                        $payment_gateway_error = array('string' => 'Error message from payment gateway: The billing address that you entered does not match the billing address for this bank card. Please correct the billing address and try again. If you continue to receive this message, please try another bank card, or contact us for help.');
                                         break;
                                     
                                     case 114:
-                                        $payment_gateway_error_message = lang('Error message from payment gateway: ') . lang('The verification number that you entered does not match the verification number for this bank card. Please correct the verification number and try again. If you continue to receive this message, please try another bank card, or contact us for help.');
+                                        $payment_gateway_error = array('string' => 'Error message from payment gateway: The verification number that you entered does not match the verification number for this bank card. Please correct the verification number and try again. If you continue to receive this message, please try another bank card, or contact us for help.');
                                         break;
                                     
                                     default:
-                                        $payment_gateway_error_message = lang('Error message from payment gateway: ') . $response['RESPMSG'];
+                                        $payment_gateway_error = array('string' => 'Error message from payment gateway: {var:1}', 'vars' => array($response['RESPMSG']));
                                         break;
                                 }
                             
                             // else there was no response, so there was a communication problem
                             } else {
-                                $payment_gateway_error_message = lang('An error occurred while trying to communicate with the payment gateway.');
+                                $payment_gateway_error = array('string' => 'An error occurred while trying to communicate with the payment gateway.');
                             
                                 // if there was a cURL error, add error number and error message to payment gateway error message
                                 if ($curl_errno) {
-                                    $payment_gateway_error_message .= ' ' . lang('cURL Error Number:') . ' ' . $curl_errno . '. ' . lang('cURL Error Message:') . ' ' . $curl_error . '.';
+                                    $payment_gateway_error = array('string' => 'An error occurred while trying to communicate with the payment gateway. cURL Error Number: {var:1}. cURL Error Message: {var:2}.', 'vars' => array($curl_errno, $curl_error));
                                 }
                             }
                         
-                            log_activity($payment_gateway_error_message);
+                            $payment_gateway_error_message = lang($payment_gateway_error);
+
+                        
+                            log_activity(pg_log_lang($payment_gateway_error));
                         
                             $liveform->mark_error('payment_gateway', h($payment_gateway_error_message));
                         
@@ -2698,19 +2723,22 @@ function submit_order($type) {
                         if (!$response || (isset($response['L_ERRORCODE0']) == true)) {
                             // if there was a response from the payment gateway
                             if ($response) {
-                                $payment_gateway_error_message = lang('Error message from payment gateway: ') . $response['L_LONGMESSAGE0'];
+                                $payment_gateway_error = array('string' => 'Error message from payment gateway: {var:1}', 'vars' => array($response['L_LONGMESSAGE0']));
                             
                             // else there was no response, so there was a communication problem
                             } else {
-                                $payment_gateway_error_message = lang('An error occurred while trying to communicate with the payment gateway.');
+                                $payment_gateway_error = array('string' => 'An error occurred while trying to communicate with the payment gateway.');
                             
                                 // if there was a cURL error, add error number and error message to payment gateway error message
                                 if ($curl_errno) {
-                                    $payment_gateway_error_message .= ' ' . lang('cURL Error Number:') . ' ' . $curl_errno . '. ' . lang('cURL Error Message:') . ' ' . $curl_error . '.';
+                                    $payment_gateway_error = array('string' => 'An error occurred while trying to communicate with the payment gateway. cURL Error Number: {var:1}. cURL Error Message: {var:2}.', 'vars' => array($curl_errno, $curl_error));
                                 }
                             }
                         
-                            log_activity($payment_gateway_error_message);
+                            $payment_gateway_error_message = lang($payment_gateway_error);
+
+                        
+                            log_activity(pg_log_lang($payment_gateway_error));
                         
                             $liveform->mark_error('payment_gateway', h($payment_gateway_error_message));
                         
@@ -2849,14 +2877,17 @@ function submit_order($type) {
                         
                         // if there was not a response, then there was a communication problem, so prepare error and send user back to previous screen
                         if ($response_data === FALSE) {
-                            $payment_gateway_error_message = lang('An error occurred while trying to communicate with the payment gateway.');
+                            $payment_gateway_error = array('string' => 'An error occurred while trying to communicate with the payment gateway.');
                         
                             // if there was a cURL error, add error number and error message to payment gateway error message
                             if ($curl_errno) {
-                                $payment_gateway_error_message .= ' ' . lang('cURL Error Number:') . ' ' . $curl_errno . '. ' . lang('cURL Error Message:') . ' ' . $curl_error . '.';
+                                $payment_gateway_error = array('string' => 'An error occurred while trying to communicate with the payment gateway. cURL Error Number: {var:1}. cURL Error Message: {var:2}.', 'vars' => array($curl_errno, $curl_error));
                             }
                         
-                            log_activity($payment_gateway_error_message);
+                            $payment_gateway_error_message = lang($payment_gateway_error);
+
+                        
+                            log_activity(pg_log_lang($payment_gateway_error));
                         
                             $liveform->mark_error('payment_gateway', h($payment_gateway_error_message));
                         
@@ -2873,9 +2904,12 @@ function submit_order($type) {
                             $sage_code = trim(mb_substr($response_data, 2, 6));
                             $sage_message = trim(mb_substr($response_data, 8, 32));
                         
-                            $payment_gateway_error_message = lang('Error message from payment gateway: ') . $sage_message . ' (' . $sage_code . ')';
+                            $payment_gateway_error = array('string' => 'Error message from payment gateway: {var:1}', 'vars' => array($sage_message . ' (' . $sage_code . ')'));
                         
-                            log_activity($payment_gateway_error_message);
+                            $payment_gateway_error_message = lang($payment_gateway_error);
+
+                        
+                            log_activity(pg_log_lang($payment_gateway_error));
                         
                             $liveform->mark_error('payment_gateway', h($payment_gateway_error_message));
                         
@@ -2931,9 +2965,11 @@ function submit_order($type) {
                             $authorization_code = '';
 
                         } catch (Exception $e) {
-                            $payment_gateway_error_message = lang('Error message from payment gateway: ') . $e->getMessage();
+                            $payment_gateway_error = array('string' => 'Error message from payment gateway: {var:1}', 'vars' => array($e->getMessage()));
 
-                            log_activity($payment_gateway_error_message, $_SESSION['sessionusername'] ?? '');
+                            $payment_gateway_error_message = lang($payment_gateway_error);
+
+                            log_activity(pg_log_lang($payment_gateway_error), $_SESSION['sessionusername'] ?? '');
 
                             $liveform->mark_error('payment_gateway', h($payment_gateway_error_message));
 
@@ -3174,19 +3210,20 @@ function submit_order($type) {
                 if (!$response || (isset($response['L_ERRORCODE0']) == true)) {
                     // if there was a response from PayPal
                     if ($response) {
-                        $paypal_express_checkout_error_message = 'Error message from PayPal: ' . $response['L_LONGMESSAGE0'];
-                        
+                        $paypal_express_checkout_error = array('string' => 'Error message from PayPal: {var:1}', 'vars' => array($response['L_LONGMESSAGE0']));
+
                     // else there was no response, so there was a communication problem
+                    } elseif ($curl_errno) {
+                        // A cURL error adds its number and message.
+                        $paypal_express_checkout_error = array('string' => 'An error occurred while trying to communicate with PayPal. cURL Error Number: {var:1}. cURL Error Message: {var:2}.', 'vars' => array($curl_errno, $curl_error));
                     } else {
-                        $paypal_express_checkout_error_message = 'An error occurred while trying to communicate with PayPal.';
-                        
-                        // if there was a cURL error, add error number and error message to PayPal error message
-                        if ($curl_errno) {
-                            $paypal_express_checkout_error_message .= ' cURL Error Number: ' . $curl_errno . '. cURL Error Message: ' . $curl_error . '.';
-                        }
+                        $paypal_express_checkout_error = array('string' => 'An error occurred while trying to communicate with PayPal.');
                     }
 
-                    log_activity($paypal_express_checkout_error_message);
+                    // The visitor reads it in the page's language, the site log in the software language.
+                    $paypal_express_checkout_error_message = lang($paypal_express_checkout_error);
+
+                    log_activity(pg_log_lang($paypal_express_checkout_error));
                     
                     $liveform->mark_error('paypal_express_checkout', h($paypal_express_checkout_error_message));
 
@@ -3284,7 +3321,7 @@ function submit_order($type) {
                 pg_login_set_device_cookie((int) $_SESSION['sessionuserid'], false);
 
                 log_activity(
-                    'user was auto-logged in by order auto-registration',
+                    pg_log_lang(array('string' => 'user was auto-logged in by order auto-registration')),
                     $_SESSION['sessionusername'] ?? '');
             }
         }
@@ -4359,11 +4396,11 @@ function submit_order($type) {
                     
                     // if there was an error then prepare error message
                     if (($response_data === FALSE) || (mb_strpos($response_data, '<CUSTOMER_ID>') === FALSE)) {
-                        $payment_gateway_error_message = 'A recurring profile could not be created for order number ' . $order_number . ' due to a communication problem with the payment gateway. The CREATE_RECURRING_CUSTOMER transaction failed. The recurring profile will need to be setup manually in your payment gateway\'s control panel. The order was still accepted.';
+                        $payment_gateway_error_message = pg_log_lang(array('string' => 'A recurring profile could not be created for order number {var:1} due to a communication problem with the payment gateway. The {var:2} transaction failed. The recurring profile will need to be setup manually in your payment gateway\'s control panel. The order was still accepted.', 'vars' => array($order_number, 'CREATE_RECURRING_CUSTOMER')));
                         
                         // if there was a cURL error, add error number and error message to payment gateway error message
                         if ($curl_errno) {
-                            $payment_gateway_error_message .= ' cURL Error Number: ' . $curl_errno . '. cURL Error Message: ' . $curl_error . '.';
+                            $payment_gateway_error_message .= ' ' . pg_log_lang(array('string' => 'cURL Error Number: {var:1}. cURL Error Message: {var:2}.', 'vars' => array($curl_errno, $curl_error)));
                         }
                         
                         // if the response was not empty, then add response to the end of the error message
@@ -4426,11 +4463,11 @@ function submit_order($type) {
                             
                             // if there was an error then prepare error message
                             if (($response_data === FALSE) || (mb_strpos($response_data, '<GROUP_ID>') === FALSE)) {
-                                $payment_gateway_error_message = 'A recurring profile could not be created for order number ' . $order_number . ' due to a communication problem with the payment gateway. The CREATE_RECURRING_GROUP transaction failed. The recurring profile will need to be setup manually in your payment gateway\'s control panel. The order was still accepted.';
+                                $payment_gateway_error_message = pg_log_lang(array('string' => 'A recurring profile could not be created for order number {var:1} due to a communication problem with the payment gateway. The {var:2} transaction failed. The recurring profile will need to be setup manually in your payment gateway\'s control panel. The order was still accepted.', 'vars' => array($order_number, 'CREATE_RECURRING_GROUP')));
                                 
                                 // if there was a cURL error, add error number and error message to payment gateway error message
                                 if ($curl_errno) {
-                                    $payment_gateway_error_message .= ' cURL Error Number: ' . $curl_errno . '. cURL Error Message: ' . $curl_error . '.';
+                                    $payment_gateway_error_message .= ' ' . pg_log_lang(array('string' => 'cURL Error Number: {var:1}. cURL Error Message: {var:2}.', 'vars' => array($curl_errno, $curl_error)));
                                 }
                                 
                                 // if the response was not empty, then add response to the end of the error message
@@ -4528,11 +4565,11 @@ function submit_order($type) {
                                     
                                     // if there was an error then prepare error message
                                     if (($response_data === FALSE) || (mb_strpos($response_data, '<SCHEDULE_ID>') === FALSE)) {
-                                        $payment_gateway_error_message = 'A recurring profile could not be created for order number ' . $order_number . ' due to a communication problem with the payment gateway. The CREATE_RECURRING_MONTHLY_SCHEDULE transaction failed. The recurring profile will need to be setup manually in your payment gateway\'s control panel. The order was still accepted.';
+                                        $payment_gateway_error_message = pg_log_lang(array('string' => 'A recurring profile could not be created for order number {var:1} due to a communication problem with the payment gateway. The {var:2} transaction failed. The recurring profile will need to be setup manually in your payment gateway\'s control panel. The order was still accepted.', 'vars' => array($order_number, 'CREATE_RECURRING_MONTHLY_SCHEDULE')));
                                         
                                         // if there was a cURL error, add error number and error message to payment gateway error message
                                         if ($curl_errno) {
-                                            $payment_gateway_error_message .= ' cURL Error Number: ' . $curl_errno . '. cURL Error Message: ' . $curl_error . '.';
+                                            $payment_gateway_error_message .= ' ' . pg_log_lang(array('string' => 'cURL Error Number: {var:1}. cURL Error Message: {var:2}.', 'vars' => array($curl_errno, $curl_error)));
                                         }
                                         
                                         // if the response was not empty, then add response to the end of the error message
@@ -4621,11 +4658,11 @@ function submit_order($type) {
                                     
                                     // if there was an error then prepare error message
                                     if (($response_data === FALSE) || (mb_strpos($response_data, '<SCHEDULE_ID>') === FALSE)) {
-                                        $payment_gateway_error_message = 'A recurring profile could not be created for order number ' . $order_number . ' due to a communication problem with the payment gateway. The CREATE_RECURRING_DAILY_SCHEDULE transaction failed. The recurring profile will need to be setup manually in your payment gateway\'s control panel. The order was still accepted.';
+                                        $payment_gateway_error_message = pg_log_lang(array('string' => 'A recurring profile could not be created for order number {var:1} due to a communication problem with the payment gateway. The {var:2} transaction failed. The recurring profile will need to be setup manually in your payment gateway\'s control panel. The order was still accepted.', 'vars' => array($order_number, 'CREATE_RECURRING_DAILY_SCHEDULE')));
                                         
                                         // if there was a cURL error, add error number and error message to payment gateway error message
                                         if ($curl_errno) {
-                                            $payment_gateway_error_message .= ' cURL Error Number: ' . $curl_errno . '. cURL Error Message: ' . $curl_error . '.';
+                                            $payment_gateway_error_message .= ' ' . pg_log_lang(array('string' => 'cURL Error Number: {var:1}. cURL Error Message: {var:2}.', 'vars' => array($curl_errno, $curl_error)));
                                         }
                                         
                                         // if the response was not empty, then add response to the end of the error message
@@ -4726,11 +4763,11 @@ function submit_order($type) {
                                 
                                 // if there was an error then prepare error message
                                 if (($response_data === FALSE) || (mb_strpos($response_data, '<RECURRING_ID>') === FALSE)) {
-                                    $payment_gateway_error_message = 'A recurring profile could not be created for order number ' . $order_number . ' due to a communication problem with the payment gateway. The CREATE_RECURRING_BANKCARD_PAYER_AND_TRANSACTION transaction failed. The recurring profile will need to be setup manually in your payment gateway\'s control panel. The order was still accepted.';
+                                    $payment_gateway_error_message = pg_log_lang(array('string' => 'A recurring profile could not be created for order number {var:1} due to a communication problem with the payment gateway. The {var:2} transaction failed. The recurring profile will need to be setup manually in your payment gateway\'s control panel. The order was still accepted.', 'vars' => array($order_number, 'CREATE_RECURRING_BANKCARD_PAYER_AND_TRANSACTION')));
                                     
                                     // if there was a cURL error, add error number and error message to payment gateway error message
                                     if ($curl_errno) {
-                                        $payment_gateway_error_message .= ' cURL Error Number: ' . $curl_errno . '. cURL Error Message: ' . $curl_error . '.';
+                                        $payment_gateway_error_message .= ' ' . pg_log_lang(array('string' => 'cURL Error Number: {var:1}. cURL Error Message: {var:2}.', 'vars' => array($curl_errno, $curl_error)));
                                     }
                                     
                                     // if the response was not empty, then add response to the end of the error message

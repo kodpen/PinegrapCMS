@@ -295,6 +295,9 @@ if (!$_POST) {
             pg_audit_record('update', 'config', 0, $pg_settings_audit_before, $pg_settings_key);
         }
 
+        // System Status tiles link here; the next draw shows the saved state.
+        pg_system_status_forget();
+
         $liveform->add_notice(lang('The Site Settings have been saved.'));
     }
 

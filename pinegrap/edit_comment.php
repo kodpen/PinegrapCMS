@@ -136,6 +136,13 @@ if($item_type === 'submitted_form'){
     $output_reference_button = '<a class="btn btn-link pg-link-secondary py-0 mb-3 " href="' . h(OUTPUT_PATH . get_page_name($page_id) . pg_comment_view_query('', $comment_id) . '#c-' . $comment_id) . '"><i class="bi bi-link bi-me-2"></i>' . lang('Go To Comment') . '</a>';
 }
 
+// A page in the Recycle Bin is not on the site, so its comment gets no link.
+$binned = in_array((int) $folder_id, array_map('intval', (array) pg_recycle_bin_folder_ids()), true);
+
+if ($binned) {
+    $output_reference_button = '';
+}
+
 //if there is a command button to output
 // prepare button bar
 if($output_reference_button != ''){
@@ -222,8 +229,12 @@ if (!$_POST) {
     // if there is a file attachment, then output it
     if ($file_name != '') {
         // we are using a separate link for the image and the file name because we don't want an underline on the image and we don't want to have to update all themes with new CSS
+        // The row can outlive its file (a site restored without data/files):
+        // then the name is shown with a note, with no thumbnail or link.
+        $file_on_disk = is_file(FILE_DIRECTORY_PATH . '/' . $file_name);
+
         // An image (a review photo) shows as a thumbnail above its link.
-        $output_file_thumbnail = pg_comment_file_is_image($file_name)
+        $output_file_thumbnail = ($file_on_disk && pg_comment_file_is_image($file_name))
             ? '<a href="' . h(OUTPUT_PATH . encode_url_path($file_name)) . '" target="_blank" rel="noopener" class="d-inline-block mb-2"><img src="' . h(OUTPUT_PATH . encode_url_path($file_name)) . '" alt="' . h(lang('Photo')) . '" class="img-thumbnail" style="max-width: 240px; max-height: 240px"></a>'
             : '';
         $output_file_attachment =
@@ -231,10 +242,12 @@ if (!$_POST) {
                 <label class="form-label">' . lang('Attachment') . '</label>
                 ' . $output_file_thumbnail . '
                 <div class="input-group">
-                    <a class=" btn btn-subtle theme-secondary border" href="' . OUTPUT_PATH . h(encode_url_path($file_name)) . '" target="_blank">
+                    ' . ($file_on_disk
+                        ? '<a class=" btn btn-subtle theme-secondary border" href="' . OUTPUT_PATH . h(encode_url_path($file_name)) . '" target="_blank">
                         <span class="material-icons">attach_file</span>
                         ' . h($file_name) . ' (' . convert_bytes_to_string($file_size) . ') 
-                    </a>
+                    </a>'
+                        : '<span class="input-group-text"><span class="material-icons me-1" aria-hidden="true">attach_file</span>' . h($file_name) . ' <span class="fg-secondary ms-1">(' . lang('not on the disk') . ')</span></span>') . '
                     <div class="input-group-text">
                         <div class="col-12">
                             <div class="form-field">
@@ -254,11 +267,20 @@ if (!$_POST) {
 
     if ($review) {
         if ($verified_order_id > 0) {
-            $order_number = (string) db_value("SELECT order_number FROM orders WHERE id = '" . $verified_order_id . "'");
-            $output_order = h(($order_number !== '') ? $order_number : (string) $verified_order_id);
+            $order = db_item("SELECT id, order_number FROM orders WHERE id = '" . $verified_order_id . "'");
 
-            if (defined('USER_MANAGE_ECOMMERCE') && USER_MANAGE_ECOMMERCE) {
-                $output_order = '<a href="view_order.php?id=' . $verified_order_id . '">' . $output_order . '</a>';
+            if ($order) {
+                $order_number = (string) $order['order_number'];
+                $output_order = h(($order_number !== '') ? $order_number : (string) $verified_order_id);
+
+                if (defined('USER_MANAGE_ECOMMERCE') && USER_MANAGE_ECOMMERCE) {
+                    $output_order = '<a href="view_order.php?id=' . $verified_order_id . '">' . $output_order . '</a>';
+                }
+
+            // The order was deleted after the review was written: the review
+            // stays verified, but there is nothing left to link to.
+            } else {
+                $output_order = '#' . $verified_order_id . ' ' . h(lang('(deleted)'));
             }
 
             $output_review_line = '<p class="p-0 m-0">' . lang(array('string' => 'Verified purchase: order {var:1}', 'vars' => array($output_order))) . '</p>';
@@ -286,25 +308,46 @@ if (!$_POST) {
     if($comments_rating != false){
         $output_rating_field = '
         <style>@layer custom {
-            .rating .btn-check:checked+label~label{
-                background-image: url("data:image/svg+xml,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'16\' height=\'16\' fill=\'currentColor\' class=\'bi bi-star\' viewBox=\'0 0 16 16\'><path d=\'M2.866 14.85c-.078.444.36.791.746.593l4.39-2.256 4.389 2.256c.386.198.824-.149.746-.592l-.83-4.73 3.522-3.356c.33-.314.16-.888-.282-.95l-4.898-.696L8.465.792a.513.513 0 0 0-.927 0L5.354 5.12l-4.898.696c-.441.062-.612.636-.283.95l3.523 3.356-.83 4.73zm4.905-2.767-3.686 1.894.694-3.957a.565.565 0 0 0-.163-.505L1.71 6.745l4.052-.576a.525.525 0 0 0 .393-.288L8 2.223l1.847 3.658a.525.525 0 0 0 .393.288l4.052.575-2.906 2.77a.565.565 0 0 0-.163.506l.694 3.957-3.686-1.894a.503.503 0 0 0-.461 0z\'/></svg>") !important;
+            /* The star is a mask painted with the text colour, so it follows
+               the theme; it sits on ::before because a mask on the label would
+               also clip the focus outline of the label. */
+            .rating label::before{
+                content: "";
+                display: block;
+                width: 16px;
+                height: 16px;
+                background-color: currentColor;
+                -webkit-mask-image: url("data:image/svg+xml,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'16\' height=\'16\' viewBox=\'0 0 16 16\'><path d=\'M3.612 15.443c-.386.198-.824-.149-.746-.592l.83-4.73L.173 6.765c-.329-.314-.158-.888.283-.95l4.898-.696L7.538.792c.197-.39.73-.39.927 0l2.184 4.327 4.898.696c.441.062.612.636.282.95l-3.522 3.356.83 4.73c.078.443-.36.79-.746.592L8 13.187l-4.389 2.256z\'/></svg>");
+                mask-image: url("data:image/svg+xml,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'16\' height=\'16\' viewBox=\'0 0 16 16\'><path d=\'M3.612 15.443c-.386.198-.824-.149-.746-.592l.83-4.73L.173 6.765c-.329-.314-.158-.888.283-.95l4.898-.696L7.538.792c.197-.39.73-.39.927 0l2.184 4.327 4.898.696c.441.062.612.636.282.95l-3.522 3.356.83 4.73c.078.443-.36.79-.746.592L8 13.187l-4.389 2.256z\'/></svg>");
+                -webkit-mask-repeat: no-repeat;
+                mask-repeat: no-repeat;
+                -webkit-mask-position: center;
+                mask-position: center;
             }
-            html[data-bs-theme="dark"] .rating label{filter: invert(100%);}
+            .rating .btn-check:checked+label~label::before{
+                -webkit-mask-image: url("data:image/svg+xml,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'16\' height=\'16\' viewBox=\'0 0 16 16\'><path d=\'M2.866 14.85c-.078.444.36.791.746.593l4.39-2.256 4.389 2.256c.386.198.824-.149.746-.592l-.83-4.73 3.522-3.356c.33-.314.16-.888-.282-.95l-4.898-.696L8.465.792a.513.513 0 0 0-.927 0L5.354 5.12l-4.898.696c-.441.062-.612.636-.283.95l3.523 3.356-.83 4.73zm4.905-2.767-3.686 1.894.694-3.957a.565.565 0 0 0-.163-.505L1.71 6.745l4.052-.576a.525.525 0 0 0 .393-.288L8 2.223l1.847 3.658a.525.525 0 0 0 .393.288l4.052.575-2.906 2.77a.565.565 0 0 0-.163.506l.694 3.957-3.686-1.894a.503.503 0 0 0-.461 0z\'/></svg>");
+                mask-image: url("data:image/svg+xml,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'16\' height=\'16\' viewBox=\'0 0 16 16\'><path d=\'M2.866 14.85c-.078.444.36.791.746.593l4.39-2.256 4.389 2.256c.386.198.824-.149.746-.592l-.83-4.73 3.522-3.356c.33-.314.16-.888-.282-.95l-4.898-.696L8.465.792a.513.513 0 0 0-.927 0L5.354 5.12l-4.898.696c-.441.062-.612.636-.283.95l3.523 3.356-.83 4.73zm4.905-2.767-3.686 1.894.694-3.957a.565.565 0 0 0-.163-.505L1.71 6.745l4.052-.576a.525.525 0 0 0 .393-.288L8 2.223l1.847 3.658a.525.525 0 0 0 .393.288l4.052.575-2.906 2.77a.565.565 0 0 0-.163.506l.694 3.957-3.686-1.894a.503.503 0 0 0-.461 0z\'/></svg>");
+            }
             .rating .btn-check:focus-visible+label{outline: 2px solid var(--pg-primary-ink); outline-offset: 2px;}
+            /* Forced colours paint a background Canvas, which hides the
+               masked star; CanvasText keeps both star shapes visible. */
+            @media (forced-colors: active) {
+                .rating label::before{background-color: CanvasText;}
+            }
         }</style>
 
         <label id="comment_rating_label" class="form-label">' . lang('Rating') . ':</label>
         <div class="rating btn-group" role="radiogroup" aria-labelledby="comment_rating_label">
             ' . $liveform->output_field(array('type'=>'radio', 'name'=>'rating', 'id'=>'comment_rating_1', 'value'=>'1', 'class'=>'btn-check radio', 'aria-label'=>lang(array('string'=>'Rated {var:1} out of 5', 'vars'=>array('1'))))) . '
-            <label for="comment_rating_1" style="cursor:pointer;min-width: 16px;min-height: 16px;background-image: url(&quot;data: image/svg+xml,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'16\' height=\'16\' fill=\'currentColor\' class=\'bi bi-star-fill\' viewBox=\'0 0 16 16\'><path d=\'M3.612 15.443c-.386.198-.824-.149-.746-.592l.83-4.73L.173 6.765c-.329-.314-.158-.888.283-.95l4.898-.696L7.538.792c.197-.39.73-.39.927 0l2.184 4.327 4.898.696c.441.062.612.636.282.95l-3.522 3.356.83 4.73c.078.443-.36.79-.746.592L8 13.187l-4.389 2.256z\'/></svg>&quot;);background-repeat: no-repeat;background-position: center;"></label>
+            <label for="comment_rating_1" style="cursor:pointer;min-width: 16px;min-height: 16px;"></label>
             ' . $liveform->output_field(array('type'=>'radio', 'name'=>'rating', 'id'=>'comment_rating_2', 'value'=>'2', 'class'=>'btn-check radio', 'aria-label'=>lang(array('string'=>'Rated {var:1} out of 5', 'vars'=>array('2'))))) . '
-            <label for="comment_rating_2" style="cursor:pointer;min-width: 16px;min-height: 16px;background-image: url(&quot;data: image/svg+xml,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'16\' height=\'16\' fill=\'currentColor\' class=\'bi bi-star-fill\' viewBox=\'0 0 16 16\'><path d=\'M3.612 15.443c-.386.198-.824-.149-.746-.592l.83-4.73L.173 6.765c-.329-.314-.158-.888.283-.95l4.898-.696L7.538.792c.197-.39.73-.39.927 0l2.184 4.327 4.898.696c.441.062.612.636.282.95l-3.522 3.356.83 4.73c.078.443-.36.79-.746.592L8 13.187l-4.389 2.256z\'/></svg>&quot;);background-repeat: no-repeat;background-position: center;"></label>
+            <label for="comment_rating_2" style="cursor:pointer;min-width: 16px;min-height: 16px;"></label>
             ' . $liveform->output_field(array('type'=>'radio', 'name'=>'rating', 'id'=>'comment_rating_3', 'value'=>'3', 'class'=>'btn-check radio', 'aria-label'=>lang(array('string'=>'Rated {var:1} out of 5', 'vars'=>array('3'))))) . '
-            <label for="comment_rating_3" style="cursor:pointer;min-width: 16px;min-height: 16px;background-image: url(&quot;data: image/svg+xml,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'16\' height=\'16\' fill=\'currentColor\' class=\'bi bi-star-fill\' viewBox=\'0 0 16 16\'><path d=\'M3.612 15.443c-.386.198-.824-.149-.746-.592l.83-4.73L.173 6.765c-.329-.314-.158-.888.283-.95l4.898-.696L7.538.792c.197-.39.73-.39.927 0l2.184 4.327 4.898.696c.441.062.612.636.282.95l-3.522 3.356.83 4.73c.078.443-.36.79-.746.592L8 13.187l-4.389 2.256z\'/></svg>&quot;);background-repeat: no-repeat;background-position: center;"></label>
+            <label for="comment_rating_3" style="cursor:pointer;min-width: 16px;min-height: 16px;"></label>
             ' . $liveform->output_field(array('type'=>'radio', 'name'=>'rating', 'id'=>'comment_rating_4', 'value'=>'4', 'class'=>'btn-check radio', 'aria-label'=>lang(array('string'=>'Rated {var:1} out of 5', 'vars'=>array('4'))))) . '
-            <label for="comment_rating_4" style="cursor:pointer;min-width: 16px;min-height: 16px;background-image: url(&quot;data: image/svg+xml,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'16\' height=\'16\' fill=\'currentColor\' class=\'bi bi-star-fill\' viewBox=\'0 0 16 16\'><path d=\'M3.612 15.443c-.386.198-.824-.149-.746-.592l.83-4.73L.173 6.765c-.329-.314-.158-.888.283-.95l4.898-.696L7.538.792c.197-.39.73-.39.927 0l2.184 4.327 4.898.696c.441.062.612.636.282.95l-3.522 3.356.83 4.73c.078.443-.36.79-.746.592L8 13.187l-4.389 2.256z\'/></svg>&quot;);background-repeat: no-repeat;background-position: center;"></label>
+            <label for="comment_rating_4" style="cursor:pointer;min-width: 16px;min-height: 16px;"></label>
             ' . $liveform->output_field(array('type'=>'radio', 'name'=>'rating', 'id'=>'comment_rating_5', 'value'=>'5', 'checked'=>'checked', 'class'=>'btn-check radio', 'aria-label'=>lang(array('string'=>'Rated {var:1} out of 5', 'vars'=>array('5'))))) . '
-            <label for="comment_rating_5" style="cursor:pointer;min-width: 16px;min-height: 16px;background-image: url(&quot;data: image/svg+xml,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'16\' height=\'16\' fill=\'currentColor\' class=\'bi bi-star-fill\' viewBox=\'0 0 16 16\'><path d=\'M3.612 15.443c-.386.198-.824-.149-.746-.592l.83-4.73L.173 6.765c-.329-.314-.158-.888.283-.95l4.898-.696L7.538.792c.197-.39.73-.39.927 0l2.184 4.327 4.898.696c.441.062.612.636.282.95l-3.522 3.356.83 4.73c.078.443-.36.79-.746.592L8 13.187l-4.389 2.256z\'/></svg>&quot;);background-repeat: no-repeat;background-position: center;"></label>
+            <label for="comment_rating_5" style="cursor:pointer;min-width: 16px;min-height: 16px;"></label>
         </div>';
     }
 
@@ -317,7 +360,7 @@ if (!$_POST) {
             'icon'=>'page', 
             'heading'=> lang(array('string'=>'Edit {var:1}','vars'=>lang('Comment'))),
             'heading_description' => lang('Edit and publish this comment.'),
-            'cancel'=>array('enable'=>'true','url'=>'view_comments.php')
+            'cancel' => array('enable' => 'true', 'url' => pg_send_to_url(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_comments.php'))
 
         ,
             'breadcrumb' => array(array('label' => lang('Comments'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_comments.php'), array('label' => lang('Edit Comment'))),
@@ -335,7 +378,7 @@ if (!$_POST) {
                             <div class="col-12 md:col">
                                 
                                 <p class="p-0 m-0">' . lang('Added') . ': ' . get_relative_time(array('timestamp' => $created_timestamp)) . ' ' . $created_username . '</p>
-                                <p class="p-0 m-0">' . lang('Page') . ': ' . h(get_page_name($page_id)) . '</p>
+                                <p class="p-0 m-0">' . lang('Page') . ': ' . h(pg_comment_page_label(get_page_name($page_id), $page_id)) . ($binned ? ' (' . h(lang('In the Recycle Bin')) . ')' : '') . '</p>
                                 ' . $output_reference_line . '
                                 ' . $output_review_line . '
                             </div>
@@ -502,7 +545,7 @@ if (!$_POST) {
         
         // if there is an error, forward user back to edit comment screen
         if ($liveform->check_form_errors() == true) {
-            header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_comment.php?id=' . $liveform->get_field_value('id'));
+            header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_comment.php?id=' . $liveform->get_field_value('id') . '&send_to=' . urlencode($liveform->get_field_value('send_to')));
             exit();
         }
         

@@ -95,6 +95,9 @@ if (!$_POST) {
     $output_control_buttons = '';
     if ((MASS_DELETION == true) || (defined('USER_ROLE') && (USER_ROLE < 1))) {
         $checked = (!empty($_SESSION['software']['settings']['view_log']['error_log'])) ? 'checked' : '';
+        // The switch posts its form on change; the redirect after that post
+        // asks for focus back on it, so the keyboard keeps its place.
+        $error_log_autofocus = (isset($_GET['focus']) && $_GET['focus'] === 'error_log_toggle') ? ' autofocus' : '';
     
         $delete_logs_button = '';
         if (MASS_DELETION == true && $all_logs > 0) {
@@ -140,7 +143,7 @@ if (!$_POST) {
         
             $error_log_controls = '
                 <div class="form-field me-5 align-middle">
-                    <div class="switch"><input class="" type="checkbox" name="error_log_toggle" id="error_log_toggle" ' . $checked . '></div>
+                    <div class="switch"><input class="" type="checkbox" name="error_log_toggle" id="error_log_toggle" ' . $checked . $error_log_autofocus . '></div>
                     <label class="" for="error_log_toggle">' . lang('Show Error Logs') . '</label>
                 </div>
                 <script>
@@ -188,6 +191,8 @@ if (!$_POST) {
                 }
             }
         }
+
+        $date_range = pg_list_period_ordered($date_range);
 
         $start_month = $date_range['start_month'];
         $start_day = $date_range['start_day'];
@@ -250,9 +255,6 @@ if (!$_POST) {
         $query .= "ORDER BY $order_by ";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed');
         while ($row = mysqli_fetch_assoc($result)) {
-            if ($row['log_user'] == '') {
-                $row['log_user'] = 'UNKNOWN';
-            }
             $row['log_type'] = 'Site Log';
             $row['log_location'] = h(lang('Database'));
             
@@ -398,8 +400,8 @@ if (!$_POST) {
         $all_entries = array_merge($db_logs, $error_logs);
 
         // The error_log entries have no rows in the database, so the merged
-        // list is sorted here, by the same levels. Text is compared without
-        // regard to case, as the database does.
+        // list is sorted here, by the same levels. Text is compared in the
+        // panel language's order without regard to case, as the database does.
         usort($all_entries, function ($a, $b) use ($sort_levels, $sort_keys, $tie_direction) {
             foreach ($sort_levels as $level) {
                 $key = $sort_keys[$level['sort']];
@@ -409,7 +411,7 @@ if (!$_POST) {
                 if ($key === 'log_timestamp') {
                     $result = ((int) $a_value) <=> ((int) $b_value);
                 } else {
-                    $result = strcasecmp((string) $a_value, (string) $b_value);
+                    $result = pg_geo_label_compare((string) $a_value, (string) $b_value);
                 }
 
                 if ($result !== 0) {
@@ -435,8 +437,8 @@ if (!$_POST) {
     $today_timestamp = mktime(0, 0, 0, date('m'), date('d'), date('Y'));
     $quick_ranges = array(
         array('label' => lang('Today'),        'from' => $today_timestamp),
-        array('label' => lang('Last 7 Days'),  'from' => $today_timestamp - (6 * 86400)),
-        array('label' => lang('Last 30 Days'), 'from' => $today_timestamp - (29 * 86400)),
+        array('label' => lang('Last 7 Days'),  'from' => strtotime('-6 days', $today_timestamp)),
+        array('label' => lang('Last 30 Days'), 'from' => strtotime('-29 days', $today_timestamp)),
     );
     $output_quick_ranges = '';
     foreach ($quick_ranges as $quick_range) {
@@ -558,13 +560,16 @@ if (!$_POST) {
                 </div>
         
                 <script>
-                    // Set initial values for date selectors using escaped JS-safe values
-                    document.form.start_month.value = "' . escape_javascript($start_month) . '";
-                    document.form.start_day.value = "' . escape_javascript($start_day) . '";
-                    document.form.start_year.value = "' . escape_javascript($start_year) . '";
-                    document.form.stop_month.value = "' . escape_javascript($stop_month) . '";
-                    document.form.stop_day.value = "' . escape_javascript($stop_day) . '";
-                    document.form.stop_year.value = "' . escape_javascript($stop_year) . '";
+                    // Set initial values for date selectors using escaped JS-safe values. The form is
+                    // found by its id: the toolbar form before it carries the same name.
+                    (function (form) {
+                        form.start_month.value = "' . escape_javascript($start_month) . '";
+                        form.start_day.value = "' . escape_javascript($start_day) . '";
+                        form.start_year.value = "' . escape_javascript($start_year) . '";
+                        form.stop_month.value = "' . escape_javascript($stop_month) . '";
+                        form.stop_day.value = "' . escape_javascript($stop_day) . '";
+                        form.stop_year.value = "' . escape_javascript($stop_year) . '";
+                    })(document.getElementById("search_advanced"));
                 </script>
                 ' . get_date_picker_format() . pg_fields_script() . '
             </form>
@@ -583,7 +588,6 @@ if (!$_POST) {
             'icon'=>'setting',
             'heading'=> lang('Site Log'),
             'heading_description' => lang('Audit all website events and changes by any site visitor or user.'),
-            'pre_main_html' => $output_advanced_filters,
         )
     ) . '
 <main id="content" class="container-fluid">
@@ -618,6 +622,7 @@ if (!$_POST) {
                         </div>
                     </div>
                 </div>
+                ' . $output_advanced_filters . '
                 ' . $output_toolbar . '
                 <div class="card my-7">
                     <div class="card-body p-0 position-relative">
@@ -686,32 +691,44 @@ if (!$_POST) {
                 return;
             }
 
-            // Copy the full message text to the clipboard.
+            // Copy the full message text to the clipboard. The button keeps
+            // its label; only the icon changes and the status beside it says
+            // whether the copy happened.
             var copy = target.closest(".pg-log-copy");
             if (copy) {
                 event.preventDefault();
                 var source = document.getElementById(copy.getAttribute("data-target"));
-                if (!source || !navigator.clipboard) {
+                var copy_status = copy.parentNode.querySelector("[role=status]");
+                if (!source || !copy_status) {
                     return;
                 }
-                navigator.clipboard.writeText(source.innerText).then(function () {
-                    var copy_label = copy.querySelector(".pg-log-copy-label");
-                    var copy_icon = copy.querySelector("i");
-                    if (copy_label) {
-                        copy_label.textContent = copy.getAttribute("data-copied");
-                    }
-                    if (copy_icon) {
-                        copy_icon.className = "bi bi-check2 me-1";
-                    }
+                var copy_icon = copy.querySelector("i");
+                var done = function () {
+                    copy_icon.className = "bi bi-check2 me-1";
+                    copy_status.textContent = copy_status.getAttribute("data-copied");
                     setTimeout(function () {
-                        if (copy_label) {
-                            copy_label.textContent = copy.getAttribute("data-copy");
-                        }
-                        if (copy_icon) {
-                            copy_icon.className = "bi bi-clipboard me-1";
-                        }
+                        copy_icon.className = "bi bi-clipboard me-1";
+                        copy_status.textContent = "";
                     }, 1500);
-                });
+                };
+                // Plain http has no clipboard API and a write can be refused:
+                // select the message and copy it the old way; when that fails
+                // too, leave it selected and say so.
+                var fallback = function () {
+                    var copied = false;
+                    window.getSelection().selectAllChildren(source);
+                    try { copied = document.execCommand("copy"); } catch (e) {}
+                    if (copied) {
+                        done();
+                    } else {
+                        copy_status.textContent = copy_status.getAttribute("data-refused");
+                    }
+                };
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText(source.innerText).then(done, fallback);
+                } else {
+                    fallback();
+                }
                 return;
             }
 
@@ -836,6 +853,13 @@ if (!$_POST) {
         }
     }
     
-    header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/view_log.php');
+    // A post without a Delete button came from the Show Error Logs switch:
+    // focus goes back to it after the redirect.
+    $redirect_query = '';
+    if (!isset($_POST['delete_all_site_logs']) && !isset($_POST['delete_all_error_logs'])) {
+        $redirect_query = '?focus=error_log_toggle';
+    }
+
+    header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/view_log.php' . $redirect_query);
     exit;
 }

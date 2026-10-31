@@ -8,4 +8,6 @@ description: add_referral_source.php and edit_referral_source.php draw the refer
 - A screen keeps its gates (`validate_user()`, `validate_ecommerce_access()`), the edit screen's not-found guard and record load, the form tag, the hidden `send_to` (both), `submitted_button_field` (create) and `id` (edit), buttons (edit adds Delete), the INSERT / UPDATE / DELETE, the log line and the redirect.
 
 ## What changed for a posted value?
-- `pg_referral_source_form_values()` (pure, tests in `tests/referral_source_form_test.php`): a missing or non-scalar value is empty; before, an array was saved as "Array" with a notice.
+- `pg_referral_source_form_values()` (pure, tests in `tests/referral_source_form_test.php`): values are trimmed; a missing or non-scalar value is empty; before, an array was saved as "Array" with a notice.
+- `pg_referral_source_form_error($values)` returns '{var:1} is required.' for a blank name, then a blank code, else ''. Create and the edit save branch (never Delete) print it with `output_error()` and Go back before the INSERT / UPDATE. Before, a name or code of only spaces passed the browser's `required` and was stored, empty cells in the list and in checkout's 'How did you hear about us?' select.
+- Edit's Delete submit carries `formnovalidate`, so a cleared required box does not block it.

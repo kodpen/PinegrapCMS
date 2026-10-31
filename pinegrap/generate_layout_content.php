@@ -195,11 +195,19 @@ function generate_form_layout_content($properties) {
 
     foreach ($fields as $field) {
 
+        // The SMS question is left out of $field when the visitor cannot be
+        // asked it (pg_cf_drop_sms_question()), so the layout checks for it.
+        $sms_question = ($page_type == 'custom form') && ($field['contact_field'] != '') && !pg_cf_contact_column($field['contact_field']);
+
         if ($field['office_use_only']) {
             $content .= $indent . '<?php if ($office_use_only): ?>' . "\n";
 
             // Prepare to indent this field more than normal so it is indented inside
             // office use only check.
+            $indent .= '    ';
+
+        } else if ($sms_question) {
+            $content .= $indent . '<?php if (isset(' . $array_name . '[\'' . $field['id'] . '\'])): ?>' . "\n";
             $indent .= '    ';
         }
 
@@ -362,7 +370,7 @@ function generate_form_layout_content($properties) {
         // Now that we are done with outputting the field, change indent back to base.
         $indent = $base_indent;
 
-        if ($field['office_use_only']) {
+        if ($field['office_use_only'] || $sms_question) {
             $content .= $indent . '<?php endif ?>' . "\n";
         }
 

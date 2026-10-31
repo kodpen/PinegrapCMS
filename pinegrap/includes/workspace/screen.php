@@ -140,6 +140,11 @@ function ws_js_strings()
         'estimate'               => lang('Estimate'),
         'estimate_help'          => ws_js_template('Left empty, {var:1} is counted.', 1),
         'estimate_hours'         => lang('Estimate (hours)'),
+        'event_customer'         => lang('Customer (optional)'),
+        'event_customer_clear'   => lang('Remove the customer'),
+        'event_customer_help'    => lang('The contact the visit is with. The visit shows on that customer\'s card and history.'),
+        'event_customer_hidden'  => lang('A customer you cannot open. It stays as it is.'),
+        'event_customer_none'    => lang('No contact found.'),
         'event_title_help'       => lang('Left empty, the kind is used as the title.'),
         'file_too_large'         => ws_js_template('The file is larger than {var:1} MB.', 1),
         'go_to_message'          => lang('Go to the message'),
@@ -188,6 +193,9 @@ function ws_js_strings()
         'marked_decision'        => lang('Kept as a decision.'),
         'marked_note'            => lang('Kept as a note.'),
         'members'                => lang('Members'),
+        'channel_info'           => lang('Channel info'),
+        'channel_search'         => lang('Search in this channel'),
+        'purpose'                => lang('Purpose'),
         'mention'                => lang('Mention someone'),
         'message_deleted'        => lang('This message was deleted.'),
         'minutes_short'          => ws_js_template('{var:1} min', 1),
@@ -239,7 +247,7 @@ function ws_js_strings()
         'people_help'            => lang('Everyone chosen is responsible for the task.'),
         'percent'                => ws_js_template('{var:1}%', 1),
         'person'                 => lang('Team member'),
-        'pick_channel'           => lang('Choose a channel on the left, or create one.'),
+        'pick_channel'           => lang('Choose a channel from the channel list, or create one.'),
         'plan_saved'             => lang('The plan was saved.'),
         'planning_board'         => lang('Planning Board'),
         'poll_add_option'        => lang('Add an option'),
@@ -345,6 +353,13 @@ function ws_js_strings()
         'unmark'                 => lang('Make it a plain message'),
         'unmarked'               => lang('It is a plain message again.'),
         'uploading'              => lang('Uploading…'),
+        // An attachment on its way (uploadCard() in workspace.js).
+        'upload_cancel'          => lang('Cancel upload'),
+        'upload_cancelled'       => lang('Upload cancelled.'),
+        'upload_sent'            => ws_js_template('{var:1} of {var:2}', 2),
+        'upload_failed'          => lang('The request failed. Please try again.'),
+        'upload_too_large_server' => lang('The upload is larger than this server accepts in one request.'),
+        'upload_leave'           => lang('A job is still running on this screen. If you leave now it stops where it is.'),
         'who'                    => lang('Who'),
         'workspace'              => lang('Workspace'),
         'workspace_settings'     => lang('Workspace Settings'),
@@ -451,6 +466,9 @@ function ws_js_strings()
         'who_carries'            => lang('Who carries the work'),
         'work_calendar'          => lang('Work Calendar'),
         'brief_recap'            => lang('Sum up what I missed'),
+        'catchup_go'             => lang('Go to new messages'),
+        'catchup_mention'        => lang('Go to where you were mentioned'),
+        'catchup_tasks'          => lang('Overdue tasks'),
         'brief_recap_wait'       => lang('Pinegrap AI is reading…'),
         'brief_recap_by'         => lang('Summed up by Pinegrap AI'),
         'replies_title'          => lang('Saved replies'),
@@ -793,6 +811,8 @@ function ws_screen_config($viewer, $mode, $extra = array())
         'board_from'   => ws_screen_board_from(),
         'event_kinds'  => ws_event_kinds(),
         'meetings'     => ws_meetings_ready(),
+        // A visit can name its customer (ws_events.contact_id).
+        'event_contacts' => ws_event_contacts_ready(),
         'poll'         => array('active' => 4),
         'open_channel' => 0,
         // The longest message body the server takes (the composer's meter).
@@ -813,6 +833,8 @@ function ws_screen_config($viewer, $mode, $extra = array())
             'notes_import' => $base . 'workspace_notes_import.php',
             'file_save' => $base . 'workspace_file_save.php',
             'settings'  => $base . 'workspace_settings.php',
+            // Where a From OneNote Connect button posts (connect.php).
+            'connect'   => $base . 'connect.php',
             'edit_user' => $base . 'edit_user.php',
             // The quote editor's copy (?copy=<id>), for whoever may write
             // ERP documents: the accountant's read-only right saves none.
@@ -831,6 +853,9 @@ function ws_screen_config($viewer, $mode, $extra = array())
         // A From Notion part in the import window: the site has a Notion
         // MCP server (notes_notion.php).
         'notes_notion' => function_exists('ws_note_notion_server') && (ws_note_notion_server() !== null),
+        // A From OneNote part: the site's Microsoft application is set up
+        // (notes_onenote.php); the person connects their own account there.
+        'notes_onenote' => function_exists('ws_note_onenote_offered') && ws_note_onenote_offered(),
         // The paperclip also picks from the file manager (library.php).
         'library'      => function_exists('ws_library_browse'),
         // Word and Excel files of a conversation, drawn by a script fetched

@@ -617,7 +617,7 @@ function pg_geo_settings_note()
     $database = is_array($status['database'])
         ? lang(array(
             'string' => 'Location database: {var:1}, {var:2} address ranges, built on {var:3}.',
-            'vars'   => array((string) $status['database']['version'], pg_format_number((int) $status['database']['rows4'] + (int) $status['database']['rows6'], 0), get_absolute_time(array('timestamp' => (int) $status['database']['built_at'], 'type' => 'date')))))
+            'vars'   => array((string) $status['database']['version'], pg_format_number((int) $status['database']['rows4'] + (int) $status['database']['rows6'], 0), get_absolute_time(array('timestamp' => (int) $status['database']['built_at'], 'type' => 'date', 'format' => 'plain_text')))))
         : lang('There is no location database yet. It is downloaded when a setting needs the visitor\'s location: on saving, and then once a month by the general job.');
 
     return '
@@ -718,10 +718,96 @@ function pg_geo_country_label($name, $code = '')
 }
 
 /**
+ * A country stored on an order or an address, named in the current language.
+ * Checkout stores the two-letter code; older rows and imports may hold the
+ * name. A code in $names_by_code is named from its row, an unknown code from
+ * intl, falling back to the code; any other text is named as a stored name,
+ * falling back to itself.
+ *
+ * @param  mixed $stored        the stored value (code or name)
+ * @param  array $names_by_code countries.code => countries.name
+ * @return string Plain text; '' for an empty value.
+ */
+function pg_geo_country_label_stored($stored, array $names_by_code)
+{
+    $stored = trim((string) $stored);
+
+    if ($stored === '') {
+        return '';
+    }
+
+    if (preg_match('/^[A-Za-z]{2}$/', $stored)) {
+        $code = strtoupper($stored);
+        $label = isset($names_by_code[$code])
+            ? pg_geo_country_label((string) $names_by_code[$code], $code)
+            : pg_geo_country_label('', $code);
+
+        return ($label !== '') ? $label : $stored;
+    }
+
+    $label = pg_geo_country_label($stored);
+
+    return ($label !== '') ? $label : $stored;
+}
+
+/**
+ * pg_geo_country_label_stored() against the site's countries table, read
+ * once per request.
+ *
+ * @param  mixed $stored the stored value (code or name)
+ * @return string Plain text.
+ */
+function pg_geo_country_label_site($stored)
+{
+    static $names_by_code = null;
+
+    if ($names_by_code === null) {
+        $names_by_code = array();
+        $rows = function_exists('db_items') ? db_items("SELECT code, name FROM countries") : array();
+        foreach ((is_array($rows) ? $rows : array()) as $row) {
+            $code = strtoupper(trim((string) $row['code']));
+            if ($code !== '' && !isset($names_by_code[$code])) {
+                $names_by_code[$code] = (string) $row['name'];
+            }
+        }
+    }
+
+    return pg_geo_country_label_stored($stored, $names_by_code);
+}
+
+/**
+ * Two labels compared the way the current language orders them: the intl
+ * Collator of the panel language when PHP has it ("Çin" after "Brezilya",
+ * not after "Zimbabve"), else a case-insensitive byte order. Answers below,
+ * at or above 0, like strcmp().
+ *
+ * @param string $x
+ * @param string $y
+ * @return int
+ */
+function pg_geo_label_compare($x, $y)
+{
+    static $collators = array();
+
+    $locale = function_exists('lang') ? (string) lang(array('info' => '')) : 'en';
+
+    if (!array_key_exists($locale, $collators)) {
+        $collators[$locale] = (class_exists('Collator') && ($locale !== '')) ? new Collator($locale) : null;
+    }
+
+    if ($collators[$locale] !== null) {
+        $result = $collators[$locale]->compare((string) $x, (string) $y);
+
+        return ($result === false) ? 0 : (int) $result;
+    }
+
+    return strcasecmp((string) $x, (string) $y);
+}
+
+/**
  * The rows of a country list in the order of their labels in the current
- * language: the intl Collator of the panel language when PHP has it ("Çin"
- * after "Brezilya", not after "Zimbabve"), else a case-insensitive byte
- * order. $rows is a list of arrays that carry $label_key.
+ * language (pg_geo_label_compare()). $rows is a list of arrays that carry
+ * $label_key.
  *
  * @param array  $rows
  * @param string $label_key
@@ -729,20 +815,11 @@ function pg_geo_country_label($name, $code = '')
  */
 function pg_geo_sort_by_label(array $rows, $label_key = 'label')
 {
-    $locale = function_exists('lang') ? (string) lang(array('info' => '')) : 'en';
-    $collator = (class_exists('Collator') && ($locale !== '')) ? new Collator($locale) : null;
-
-    usort($rows, function ($a, $b) use ($collator, $label_key) {
+    usort($rows, function ($a, $b) use ($label_key) {
         $x = isset($a[$label_key]) ? (string) $a[$label_key] : '';
         $y = isset($b[$label_key]) ? (string) $b[$label_key] : '';
 
-        if ($collator !== null) {
-            $result = $collator->compare($x, $y);
-
-            return ($result === false) ? 0 : (int) $result;
-        }
-
-        return strcasecmp($x, $y);
+        return pg_geo_label_compare($x, $y);
     });
 
     return $rows;

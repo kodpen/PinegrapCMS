@@ -273,7 +273,7 @@ function erp_order_flow_state($order_id)
                 $step['links'][] = array('label' => lang('Edit the account'), 'url' => $account_url);
             }
 
-            if (!empty($difference['own'])) {
+            if (!empty($difference['own']) && pg_can_open_contact(null, (int) $difference['contact_id'])) {
                 $step['links'][] = array('label' => lang('Edit Contact'), 'url' => 'edit_contact.php?id=' . (int) $difference['contact_id']);
             }
         }
@@ -826,7 +826,7 @@ function erp_order_flow_run($order_id, $action, $user_id = 0)
             if (!$result['success']) {
                 return array('success' => false, 'messages' => array(), 'error' => $result['error']);
             }
-            log_activity(lang(array('string' => 'erp invoice ({var:1}) was created', 'vars' => $result['full_number'])));
+            log_activity(pg_log_lang(array('string' => 'erp invoice ({var:1}) was created', 'vars' => $result['full_number'])));
             $messages = array(lang(array('string' => 'Invoice {var:1} created.', 'vars' => $result['full_number'])));
 
             // A delivery note written before the invoice is tied to it now,
@@ -867,7 +867,7 @@ function erp_order_flow_run($order_id, $action, $user_id = 0)
             if (!$result['success']) {
                 return array('success' => false, 'messages' => array(), 'error' => $result['error']);
             }
-            log_activity(lang(array('string' => 'erp delivery note ({var:1}) was created', 'vars' => $result['full_number'])));
+            log_activity(pg_log_lang(array('string' => 'erp delivery note ({var:1}) was created', 'vars' => $result['full_number'])));
             $messages = array(lang(array('string' => 'Delivery note {var:1} created.', 'vars' => $result['full_number'])));
             $written_back = (array) ($result['written_back'] ?? array());
             if (isset($written_back['invoice_shipment_date']) || isset($written_back['invoice_carrier'])) {
@@ -924,7 +924,7 @@ function erp_order_flow_run($order_id, $action, $user_id = 0)
             if (!$result['success']) {
                 return array('success' => false, 'messages' => array(), 'error' => (string) $result['error']);
             }
-            log_activity(lang(array('string' => 'erp invoice for cancelled order ({var:1}) was cancelled', 'vars' => (string) $state['order']['order_number'])));
+            log_activity(pg_log_lang(array('string' => 'erp invoice for cancelled order ({var:1}) was cancelled', 'vars' => (string) $state['order']['order_number'])));
             return array('success' => true, 'error' => '', 'messages' => array_values(array_filter(array((string) $provider_cancel['message'], lang('The invoice has been cancelled.')))));
 
         default:
@@ -1013,10 +1013,20 @@ function erp_order_flow_card($order_id, $state = null)
             $disabled = '<div class="text-nowrap"><span class="d-inline-block" tabindex="0" title="' . h($step['reason']) . '"><button type="button" class="btn btn-sm btn-outline theme-secondary" disabled><i class="bi ' . $words[1] . ' me-1" aria-hidden="true"></i>' . h($words[0]) . '</button></span></div>';
         }
 
+        // A Bootstrap 6 .btn never wraps its label: the row wraps and the
+        // buttons share one box, so on a phone they drop under the text
+        // instead of squeezing it to nothing.
+        $output_step_buttons = ''
+            . (!empty($step['print']) ? '<div class="text-nowrap"><a class="btn btn-sm btn-outline theme-primary" href="' . h($step['print']['url']) . '" target="_blank" rel="noopener"><i class="bi bi-printer me-1" aria-hidden="true"></i>' . h($step['print']['label']) . '</a></div>' : '')
+            . ((($step['action'] !== '') && !$is_next) ? '<div class="text-nowrap">' . $button($step['action'], false, (string) ($step['action_label'] ?? '')) . '</div>' : '')
+            . (($is_next && ($step['action'] !== '')) ? '<div class="text-nowrap">' . $button($step['action'], true, (string) ($step['action_label'] ?? '')) . '</div>' : '')
+            . (!empty($step['goto']) ? '<div class="text-nowrap"><a href="' . h($step['goto']['url']) . '" class="btn btn-sm ' . ($is_next ? 'btn-solid theme-primary rounded-pill px-5' : 'btn-outline theme-secondary') . '"><i class="bi ' . h($step['goto']['icon']) . ' me-1" aria-hidden="true"></i>' . h($step['goto']['label']) . '</a></div>' : '')
+            . $disabled;
+
         $output_steps .= '
-                <li class="list-group-item d-flex gap-5 align-items-start' . ($is_next ? ' bg-1' : '') . '">
+                <li class="list-group-item d-flex flex-wrap gap-5 align-items-start' . ($is_next ? ' bg-1' : '') . '">
                     <i class="bi ' . $tone[0] . ' ' . $tone[1] . ' fs-lg mt-1" aria-hidden="true"></i>
-                    <div class="flex-grow-1 min-w-0">
+                    <div class="flex-grow-1 min-w-0" style="flex-basis: 10rem">
                         <div class="d-flex flex-wrap align-items-baseline gap-3">
                             <span class="fw-semibold">' . $number . '. ' . h($step['label']) . '</span>
                             ' . (($step['title'] !== '') ? '<span class="text-nowrap">' . h($step['title']) . '</span>' : '') . $facts . '
@@ -1024,11 +1034,7 @@ function erp_order_flow_card($order_id, $state = null)
                         ' . (($step['reason'] !== '') ? '<div class="small ' . ((($step['state'] === 'blocked') || $warn) ? 'fg-emphasis-warning' : 'fg-secondary') . '">' . h($step['reason']) . '</div>' : '') . '
                         ' . (($links !== '') ? '<div class="d-flex flex-wrap gap-3 mt-3">' . $links . '</div>' : '') . '
                     </div>
-                    ' . (!empty($step['print']) ? '<div class="text-nowrap"><a class="btn btn-sm btn-outline theme-primary" href="' . h($step['print']['url']) . '" target="_blank" rel="noopener"><i class="bi bi-printer me-1" aria-hidden="true"></i>' . h($step['print']['label']) . '</a></div>' : '') . '
-                    ' . ((($step['action'] !== '') && !$is_next) ? '<div class="text-nowrap">' . $button($step['action'], false, (string) ($step['action_label'] ?? '')) . '</div>' : '') . '
-                    ' . (($is_next && ($step['action'] !== '')) ? '<div class="text-nowrap">' . $button($step['action'], true, (string) ($step['action_label'] ?? '')) . '</div>' : '') . '
-                    ' . (!empty($step['goto']) ? '<div class="text-nowrap"><a href="' . h($step['goto']['url']) . '" class="btn btn-sm ' . ($is_next ? 'btn-solid theme-primary rounded-pill px-5' : 'btn-outline theme-secondary') . '"><i class="bi ' . h($step['goto']['icon']) . ' me-1" aria-hidden="true"></i>' . h($step['goto']['label']) . '</a></div>' : '') . '
-                    ' . $disabled . '
+                    ' . (($output_step_buttons !== '') ? '<div class="d-flex flex-wrap gap-3">' . $output_step_buttons . '</div>' : '') . '
                 </li>';
     }
 

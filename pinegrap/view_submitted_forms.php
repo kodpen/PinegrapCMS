@@ -580,7 +580,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
                         </div>
                         <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label for="http_referer" class="form-label">' . lang('Referring URL') . '</label>
-                            <input type="text" id="http_referer" name="http_referer" class="form-control" value="' . h(($_SESSION['software']['forms']['view_submitted_forms']['http_referer'] ?? '')) . '"/>
+                            <input type="text" id="http_referer" name="http_referer" class="form-control" inputmode="url" spellcheck="false" autocapitalize="off" value="' . h(($_SESSION['software']['forms']['view_submitted_forms']['http_referer'] ?? '')) . '"/>
                         </div>
                         <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label for="contact_name" class="form-label">' . lang('Contact Name') . '</label>
@@ -703,8 +703,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
 
         )
     ) . '
-<main id="content" class="container-fluid">  
-    ' . $output_advanced_filters . '
+<main id="content" class="container-fluid">
     <script>
         function export_forms() {
             if (document.getElementById("custom_form")) {
@@ -769,6 +768,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
                                 'year'  => array($decrease_year, $current_year, $increase_year),
                             ), $output_date_range_time) . '
                 </nav>
+                ' . $output_advanced_filters . '
                 <div class="card my-7">
                     <div class="card-body p-0 position-relative">
                         <form name="form" action="delete_submitted_forms.php" method="post" class="disable_shortcut"> 

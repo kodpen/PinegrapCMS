@@ -17,6 +17,10 @@
  */
  
 include('init.php');
+
+// A file over post_max_size empties the whole request; say so instead of
+// drawing the form again as if nothing had been sent.
+pg_upload_refuse_discarded_body();
 $user = validate_user();
 validate_forms_access($user);
 
@@ -54,7 +58,7 @@ if (!$_POST) {
                 $name = $page_name;
             }
             
-            $custom_form_options[$name] = $page_id;
+            $custom_form_options[h($name)] = $page_id;
         }
     }
     
@@ -68,7 +72,7 @@ if (!$_POST) {
             'heading_description' => lang('Upload submitted form data for any existing custom form.'),
             'cancel'=>array('enable'=>'true','url'=>'view_submitted_forms.php'),
         
-            'breadcrumb' => array(array('label' => lang('My Submitted Forms'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_submitted_forms.php'), array('label' => lang('Import Submitted Forms'))),
+            'breadcrumb' => array(array('label' => lang('Forms'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_submitted_forms.php'), array('label' => lang('Import Submitted Forms'))),
         )
     ) . '
 <main id="content" class="container-fluid">
@@ -91,6 +95,7 @@ if (!$_POST) {
                                         <div class="col-12 md:col-6 lg:col-4 my-3">
                                             <label for="file" class="form-label">' . lang('Select Formatted Text File to Upload') . '</label>
                                             ' . $liveform->output_field(array('type'=>'file', 'id'=>'file', 'name'=>'file', 'size'=>'60', 'class'=>'form-control w-auto', 'required'=>'required')) . '
+                                            ' . pg_upload_limit_hint() . '
                                         </div>
                                         <div class="col-12 md:col-6 lg:col-4 my-3">
                                             <label class="form-label" for="custom_form_page_id">' . lang('Select the Custom Form') . '</label>
@@ -128,6 +133,13 @@ if (!$_POST) {
     // if no CSV file was uploaded, prepare error
     if (!$_FILES['file']['name']) {
         $liveform->mark_error('file', lang('Please select a file.'));
+    } else {
+        $upload_limits = pg_upload_limits();
+        $upload_refusal = pg_upload_file_refusal($_FILES['file'], $upload_limits['file_max']);
+
+        if ($upload_refusal !== '') {
+            $liveform->mark_error('file', h($upload_refusal));
+        }
     }
     
     $custom_form_page_id = $liveform->get_field_value('custom_form_page_id');
@@ -152,11 +164,17 @@ if (!$_POST) {
     if ($liveform->check_form_errors() == false) {
         // get file handle for uploaded CSV file
         $handle = pg_csv_open($_FILES['file']['tmp_name']);
-        
+
+        // The header line says which separator the file uses (Excel in
+        // Turkish writes ';').
+        $separator = pg_csv_read_separator($handle);
+
         // get column names from first row of CSV file
-        $columns = fgetcsv($handle, 100000, ",", '"', '\\');
+        $columns = fgetcsv($handle, 100000, $separator, '"', '\\') ?: array();
 
         $fields = array();
+        // Headings that name no field of the form, named in the result.
+        $unknown_headings = array();
         
         // loop through all column field names in order to determine which columns have valid field names
         foreach ($columns as $key => $field_name) {
@@ -189,17 +207,32 @@ if (!$_POST) {
                         'multiple' => $row['multiple'],
                         'key' => $key
                     );
+            } else {
+                $unknown_headings[] = $field_name;
             }
         }
         
         $imported_submitted_forms = 0;
+        // File-upload cells that resolve to no file the user may attach, as
+        // array(line, reason); a row is named by the file line it starts on.
+        $file_problems = array();
+        $next_line = 1 + pg_csv_row_lines($columns);
         
         // if at least one valid field was found in CSV file
         if ($fields) {
             $pretty_urls = check_if_pretty_urls_are_enabled($custom_form_page_id);
 
             // loop through all rows of data in CSV file
-            while ($row = fgetcsv($handle, 100000, ",", '"', '\\')) {
+            while ($row = fgetcsv($handle, 100000, $separator, '"', '\\')) {
+                $line = $next_line;
+                $next_line += pg_csv_row_lines($row);
+
+                // A blank line or a row of commas is not a submitted form:
+                // pass over it, uncounted.
+                if (pg_import_row_is_blank($row)) {
+                    continue;
+                }
+
                 // insert submitted form
                 $query =
                     "INSERT INTO forms (
@@ -245,7 +278,8 @@ if (!$_POST) {
                                 (name = ?)
                                 AND (design = '0')
                                 AND (attachment = '0')";
-                        $result = db_q($query, array((string) trim($row[$key]))) or output_error('Query failed.');
+                        $file_name = isset($row[$key]) ? trim((string) $row[$key]) : '';
+                        $result = db_q($query, array($file_name)) or output_error('Query failed.');
                         
                         // if a file exists with the same name then continue to check if user has edit access to file
                         if (mysqli_num_rows($result) > 0) {
@@ -260,13 +294,19 @@ if (!$_POST) {
                                 // mark file as an attachment
                                 $query = "UPDATE files SET attachment = '1' WHERE id = ?";
                                 $result = db_q($query, array((string) $file_id)) or output_error('Query failed.');
+                            } else {
+                                $file_problems[] = array($line, lang(array('string' => 'The file "{var:1}" is in a folder you cannot edit, so it was not attached to the {var:2} field.', 'vars' => array($file_name, $field['name']))));
                             }
+
+                        // An empty cell attaches nothing and needs no mention.
+                        } elseif ($file_name !== '') {
+                            $file_problems[] = array($line, lang(array('string' => 'No file named "{var:1}" was found, so nothing was attached to the {var:2} field.', 'vars' => array($file_name, $field['name']))));
                         }
-                        
+
                     // else this is not a file upload field, so add data
                     } else {
                         $add_data = TRUE;
-                        $data = $row[$key];
+                        $data = isset($row[$key]) ? (string) $row[$key] : '';
                     }
                     
                     // if data should be added for this field, then add it
@@ -381,6 +421,14 @@ if (!$_POST) {
         log_activity(lang(array('string'=>'{var:1} submitted form(s) were imported','vars'=>$imported_submitted_forms)), $_SESSION['sessionusername']);
 
         $liveform->add_notice(lang(array('string'=>'{var:1} submitted form(s) have been imported.','vars'=>$imported_submitted_forms)) );
+
+        if (pg_csv_headings_text($unknown_headings) !== '') {
+            $liveform->add_warning(h(lang(array('string' => 'These columns name no field of the form and were left out: {var:1}', 'vars' => array(pg_csv_headings_text($unknown_headings))))));
+        }
+
+        if ($file_problems) {
+            $liveform->add_warning(implode('<br>', array_map('h', pg_csv_problem_list($file_problems))));
+        }
     }
     
     // send user back to import submitted forms screen

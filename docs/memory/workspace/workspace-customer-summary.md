@@ -1,6 +1,6 @@
 ---
 name: workspace-customer-summary
-description: A channel's customer summary (GET /workspace/channels/{id}/customer): identity, orders, ERP balance, sales quotes, forms; rights and key scopes per section, money, the cart quote section
+description: A channel's customer summary (GET /workspace/channels/{id}/customer): identity, orders, ERP balance, sales quotes, cart quotes, forms; rights and key scopes per section, money
 ---
 
 ## What is it?
@@ -8,9 +8,9 @@ description: A channel's customer summary (GET /workspace/channels/{id}/customer
 
 ## Who is the customer?
 - The record `ws_channel_customer_of()` names, resolved for the reader by `ws_refs_resolve()`, with the ties of `ws_customer_link_tokens()` the reader may see. A record the reader may not see goes by kind and number ("Contact #12"), no detail, no url.
-- Role 3: a contact outside the reader's contact groups too (`ws_viewer_contacts_open()`, the rule of `validate_contact_access()`, in `ws_refs_resolve()` (tags, channel card), #1657; `ws_customer_refs_narrow()`).
-- A deleted customer (or an erp_account, ERP off) is null: `ws_refs_resolve()` marks a gone record `gone`, apart from known false. `ws_customer_present()` still draws "Deleted record".
-- `contact_id`, `user_ids`, `erp_account_ids` (every tie, seen or not) are what the sections read by; never shown. Nothing is written.
+- Role 3: a contact outside the reader's contact groups too (`ws_viewer_contacts_open()`, rule of `validate_contact_access()`, #1657; `ws_customer_refs_narrow()`).
+- A deleted customer (or an erp_account, ERP off) is null: `ws_refs_resolve()` marks it `gone`. `ws_customer_present()` still draws "Deleted record".
+- `contact_id`, `user_ids`, `erp_account_ids` (every tie, seen or not) are what the sections read by; never shown.
 
 ## What do the sections read, and who sees them?
 - `ws_customer_summary_rights()`: orders and cart quotes the ecommerce right; `erp_accounts` (balance) and `sales_quotes` the ERP right, read-only included; forms the forms right, each form only in a folder the reader may edit (`ws_viewer_folder_open()`, as the form tag).
@@ -19,13 +19,14 @@ description: A channel's customer summary (GET /workspace/channels/{id}/customer
 - Balance: `erp_accounts.balance` (ledger cache, base currency, positive when the account owes), active accounts first.
 - Sales quotes: `erp_quote_rows()` (state open) and `erp_quote_open_count()` per tied account, newest 5.
 - Forms: `forms.contact_id`, latest 5 the reader may open (15 read).
-- No `contact_id` index on orders or forms: both order reads scan orders, carts too (a UNION per tie gains nothing); forms stop early only for recent ones. An index is a schema step: ask first.
+- No `contact_id` index on orders or forms: the order reads scan orders, carts too; forms stop early only for recent ones. An index is a schema step: ask first.
 
 ## How is money written?
-- Integer minor units throughout (`ws_customer_minor()` rounds, never cuts). Text by `ws_customer_money_text()`: the site's currency as the order screens write it (`prepare_amount()`, no visitor conversion, symbol decoded), a sales quote's own currency by `erp_money_out_currency()`.
+- Integer minor units throughout (`ws_customer_minor()` rounds, never cuts). Text by `ws_customer_money_text()`: the site's currency as the order screens write it (`prepare_amount()`, no visitor conversion), a sales quote's own currency by `erp_money_out_currency()`.
 
 ## Where are cart quotes?
-- Their own section under the ecommerce right, never among sales quotes: `ws_customer_cart_quote_rows()` (commerce/cart-quotes.md). Not in the API yet.
+- Their own section under the ecommerce right, never among sales quotes: `ws_customer_cart_quote_rows()` (commerce/cart-quotes.md): open, unexpired, count plus latest 5 (id, state, lines, valid_until, created_at), no amount.
+- API `cart_quotes` (#3564): url `view_cart_quotes.php?id=`; a key needs `orders:read`. Never the token or hint: the build names its fields.
 
 ## How does the API answer?
 - GET /workspace/channels/{id}/customer (`workspace.channels.customer`, row in includes/workspace/api.php, code api_customer.php): `workspace:read`, an MCP tool and resource like the context (#1970, api/mcp-resources-prompts.md).

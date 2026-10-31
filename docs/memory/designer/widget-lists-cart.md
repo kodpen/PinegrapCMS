@@ -19,5 +19,8 @@ module: widgets_lists_cart
 ## What does the editor give?
 - Palette "Lists in a record": Products in the cart; `_sdOrderListStarter('cart.items')` lands a flush list group: a 48px picture, the display name linked, quantity × price, a × remove link with an aria-label. Never in the cart widget's item loop (amber band there).
 
+## What does an empty cart show?
+- A cart tree without the `has_items` flag (the editor's starter) shows `pg_cart_empty_state_html()`: the message as a neutral paragraph and a Continue Shopping button to `pg_wishlist_widget_shop_url(0)` (no button without a shop page), then the quick add box. The message is not a liveform notice any more, so the Messages area shows only what the last action left. It showed a green success alert and no way back to the shop (#3331 item 3, PR #3575). Trees with `has_items` are unchanged.
+
 ## What is not done yet?
 - The express order offers `cart.items` too, beside its own lists ([[widget-lists-checkout]]). Totals per recipient and an update without a page load (the mini cart is drawn per request) are not done. A browser round is owed.

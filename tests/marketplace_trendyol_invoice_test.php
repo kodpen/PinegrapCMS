@@ -95,7 +95,7 @@ function test_marketplace_trendyol_invoice_link_body_is_the_link_and_a_numeric_p
 function test_marketplace_trendyol_invoice_connector_names_the_call()
 {
 	pg_assert_true(mp_can('trendyol', 'send_invoice_link'));
-	pg_assert_false(mp_can('n11', 'send_invoice_link'));
+	pg_assert_true(mp_can('n11', 'send_invoice_link'), 'n11 too, through its SOAP invoice service');
 }
 
 function test_marketplace_trendyol_invoice_posts_the_link()

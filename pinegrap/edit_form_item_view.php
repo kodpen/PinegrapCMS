@@ -62,7 +62,7 @@ $custom_form_folder_id = $row['page_folder'];
 $custom_form_name = $row['form_name'];
 
 if ((isset($custom_form_name) == true) && ($custom_form_name != '')) {
-    $output_custom_form_information = lang('Displays submitted forms from') . ': ' . $custom_form_name;
+    $output_custom_form_information = lang('Displays submitted forms from') . ': ' . h($custom_form_name);
 } else {
     $output_custom_form_information = lang('Displays submitted forms from') . ': ' . lang('None');
 }
@@ -207,7 +207,7 @@ if (!$_POST) {
         'icon'=>'design',
         'heading'=>lang('Edit Form Item View'),
         'heading_description' => lang('Update this page\'s display of a single submitted form, linked to by a reference code.'),
-        'cancel'=>array('enable'=>'true','url'=>'view_submitted_forms.php')
+        'cancel'=>array('enable'=>'true','url'=>pg_send_to_url('edit_page.php?id=' . (int)$page['id']))
     ,
             'breadcrumb' => array(array('label' => lang('All My Pages'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_pages.php'), array('label' => lang('Edit Form Item View'))),
         ]) . '<main id="content" class="container-fluid">' );
@@ -267,7 +267,7 @@ if (!$_POST) {
                                                     ' . pg_code_editor_attach(array('id' => 'layout', 'code_type' => 'mixed')) . '
                                                 </div>
                                                 <div class="col-12 lg:col-4 2xl:col-3 order-2 my-3" id="pg_fiv_variables">
-                                                    <div class="d-flex align-items-center justify-content-between gap-3">
+                                                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 row-gap-1">
                                                         <button type="button" class="btn btn-sm btn-text theme-secondary px-1 fw-bold fg-primary" data-bs-toggle="collapse" data-bs-target="#pg_fiv_variables_list" aria-expanded="true" aria-controls="pg_fiv_variables_list"><i class="bi bi-chevron-down me-1" aria-hidden="true"></i>' . lang('Available variables') . '</button>
                                                         <button type="button" class="btn btn-sm btn-text theme-secondary" data-bs-toggle="dialog" data-bs-target="#hints"><i class="bi bi-info-circle me-1" aria-hidden="true"></i>' . lang('Hints') . '</button>
                                                     </div>

@@ -154,7 +154,7 @@ function db_q_small_functions_test_files()
 		'get_robots.txt.php' => 0,
 		'includes/record_files.php' => 0,
 		'includes/install_design_template.php' => 1,
-		'includes/settings/security.save.php' => 1,
+		'includes/settings/security.save.php' => 3,
 		'includes/settings/registry.php' => 0,
 		'includes/fn/waf_rescue.php' => 1,
 		'includes/fn/visitor_ip.php' => 0,

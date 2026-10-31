@@ -6,7 +6,7 @@ description: The login region create and edit screens share includes/forms/login
 ## Where is the login region form?
 - `includes/forms/login_region_form.php` (gate `PG_FUNCTIONS_DIR`). `add_login_region.php` and `edit_login_region.php` stay at the root as thin wrappers and `require_once` it; both are designer-only (`validate_area_access($user, 'designer')`).
 - `pg_login_region_form_card($liveform, $defaults = false)` prints the Options card: the name between `<login>` tags, the Not Logged In header, Show Login Form switch and footer, the Logged In header and footer (code editors).
-- `$defaults` (create) checks Show Login Form.
+- `$defaults` checks Show Login Form. Create passes `$liveform->prefill()`, so only a first draw shows the default; with `true` a create refused for its name turned the switch back on and the next Create saved `login_form = 1`.
 
 ## What does a save share?
 - `pg_login_region_form_validate_name($liveform, $id)` (`null` on create, the posted id on edit): required, then, only when a name was given, not used by another login region. The screen sends the user back once if either check fails (before, each check had its own redirect to the same screen).

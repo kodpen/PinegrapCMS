@@ -15,10 +15,14 @@ description: The page create and edit screens share includes/forms/page_form.php
 - `pg_page_form_index_flags($sitemap, $_POST)`: noindex drops the page from the site map, nofollow only with noindex. `pg_page_form_noindex_sql($flags, pg_page_noindex_ready())` gives the INSERT `columns`/`values` and the UPDATE `set`, ints inline (`visitors/page-noindex-switch.md`).
 - `pg_page_form_designer_redirect($type, $_POST, $current)`: `false`, or the `form_type` query for `view_fields.php`. Create passes no `$current` and goes on for every form that is on (a custom form page, the shipping/billing form, an express order form, shipping first). Edit passes the stored type and form flags and goes on only for a form this save switched on.
 
+## Which calendar and form list view links does a save change?
+- Only those the screen offered. `pg_page_form_save_type_links()` reads the stored ids and `pg_page_form_link_changes($stored, $offered, $ticked)` removes an offered, unticked one, adds or updates a ticked one, and leaves the rest: a calendar outside a basic user's `users_calendars_xref`, a form list view in an archived folder (the site directory still shows it) or outside a basic user's folders. Before this every save deleted all the page's links first and dropped those.
+- Offered: calendars passing `validate_calendar_access()`; form list views from `pg_page_form_offered_form_list_views($user)` (not archived, folder access, form has fields), read by the drawing and the save alike. Runs from add_page.php, edit_page.php and the designer's Page Type pane. Test: `tests/page_type_links_test.php`.
+
 ## What does a refused save bring back?
 - What was typed, through the stored post (`page-form-refused-save.md`).
 
 ## What stays in the screens?
 - Create: the folder access check, the blank-name and name-taken errors, the layout type, the INSERT, the per-type access trims and new form list view defaults, the regions, the redirect URL with `?from=control_panel`.
 - Edit: the row load, the folder move check, the unknown-type fallback, the submitted-forms block on a type change, the site map type list, the UPDATE, the rename redirects, `send_to`.
-- Every query of the screens stays in them; `db_q_pages_regions_test.php` (add_page 3) and `db_q_user_page_screens_test.php` (edit_page 29) count them. Tests: `tests/page_form_save_test.php`, `tests/page_type_pane_test.php` (two `pg_page_type_user_may_set(` in edit_page).
+- Every query of the screens stays in them; `db_q_pages_regions_test.php` (add_page 3) and `db_q_user_page_screens_test.php` (edit_page 29) count them. Tests: `tests/page_form_save_test.php`, `tests/page_type_links_test.php`, `tests/page_type_pane_test.php` (two `pg_page_type_user_may_set(` in edit_page).

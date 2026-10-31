@@ -1,0 +1,15 @@
+{
+  "object_id": "a7e5b9c39c3b4b9a8e0a4b5b7c5d6e1f",
+  "object_created": "2026-10-29T09:12:05.000Z",
+  "object_owner": "shop@example.com",
+  "shipment": "5e40ead7cffe4cc1ad45108696162e42",
+  "attributes": ["CHEAPEST"],
+  "amount": "6.20",
+  "currency": "EUR",
+  "amount_local": "6.20",
+  "currency_local": "EUR",
+  "provider": "DPD DE",
+  "servicelevel": {"name": "Classic", "token": "dpd_de_classic"},
+  "carrier_account": "1a2b3c4d5e6f40718293a4b5c6d7e8f9",
+  "test": true
+}

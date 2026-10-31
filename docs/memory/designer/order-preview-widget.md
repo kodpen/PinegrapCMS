@@ -5,7 +5,7 @@ module: widgets_order_preview
 ---
 
 ## What is it?
-- Kind `order_preview` (`includes/fn/widgets_order_preview.php`), the last classic checkout widget ([[system-widget-missing-types]]). Posts to `order_preview.php` (gift card apply, else `submit_order('order preview')`) with the classic names; checks, charge, receipt, redirects unchanged.
+- Kind `order_preview` (`includes/fn/widgets_order_preview.php`), the last classic checkout widget ([[system-widget-page-types]]). Posts to `order_preview.php` (gift card apply, else `submit_order('order preview')`) with the classic names; checks, charge, receipt, redirects unchanged.
 
 ## Where do the totals come from?
 - From `get_order_preview()`: with `layout_data_only` its custom-layout branch returns the array it would hand `render_layout()` (form included). So every figure, payment method, default method, surcharge and installment table is the classic computation (owner decision 2026-10-19, `workflow/decisions-made-product.md`).

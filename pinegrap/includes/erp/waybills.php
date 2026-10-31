@@ -65,7 +65,7 @@ function erp_waybill($waybill_id)
         return null;
     }
 
-    $row = db_item("SELECT w.*, a.title AS account_title, o.order_number,
+    $row = db_item("SELECT w.*, a.title AS account_title, o.order_number, o.id AS order_exists,
             i.full_number AS invoice_number, i.status AS invoice_status
         FROM erp_waybills w
         LEFT JOIN erp_accounts a ON a.id = w.account_id
@@ -74,6 +74,48 @@ function erp_waybill($waybill_id)
         WHERE w.id = '" . $waybill_id . "' LIMIT 1");
 
     return is_array($row) ? $row : null;
+}
+
+/**
+ * The order cell of an invoice or delivery note: the order's number linked
+ * to view_order.php while the order is still there, "#N (deleted)" as plain
+ * text once it is gone (deleting an order leaves order_id on the document),
+ * and '' when the document has no order. view_order.php asks for commerce
+ * rights at its own door, so an ERP clerk without them reads the number as
+ * plain text instead of a link that ends in "Access denied".
+ *
+ * @param int $order_id
+ * @param string|null $order_number  orders.order_number from the join
+ * @param bool $exists  whether the joined order row is still there
+ * @param string $class  CSS class of the link
+ * @param bool|null $can_open  whether the viewer may open view_order.php;
+ *                             null reads the signed-in viewer's commerce right
+ * @return string  HTML
+ */
+function erp_order_link_html($order_id, $order_number, $exists, $class = '', $can_open = null)
+{
+    $order_id = (int) $order_id;
+
+    if ($order_id <= 0) {
+        return '';
+    }
+
+    if (!$exists) {
+        return '<span class="fg-secondary">' . h('#' . $order_id . ' ' . lang('(deleted)')) . '</span>';
+    }
+
+    $label = ((string) $order_number !== '') ? (string) $order_number : ('#' . $order_id);
+
+    if ($can_open === null) {
+        // USER_MANAGE_ECOMMERCE is true for every role below 3 as well.
+        $can_open = defined('USER_MANAGE_ECOMMERCE') && USER_MANAGE_ECOMMERCE;
+    }
+
+    if (!$can_open) {
+        return h($label);
+    }
+
+    return '<a href="view_order.php?id=' . $order_id . '"' . (($class !== '') ? ' class="' . h($class) . '"' : '') . '>' . h($label) . '</a>';
 }
 
 /**

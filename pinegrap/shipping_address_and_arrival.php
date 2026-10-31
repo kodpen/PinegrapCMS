@@ -88,7 +88,7 @@ $liveform->add_fields_to_session();
 
 // The address and arrival fields post one value each (the custom shipping form's fields
 // are checked by submit_custom_form()).
-pg_liveform_single_values($liveform, array('salutation', 'first_name', 'last_name', 'company', 'address_1', 'address_2', 'city', 'state', 'zip_code', 'country', 'address_type', 'phone_number', 'arrival_date', 'shipping_same_as_billing'));
+pg_liveform_single_values($liveform, array('salutation', 'first_name', 'last_name', 'company', 'address_1', 'address_2', 'city', 'district', 'state', 'zip_code', 'country', 'address_type', 'phone_number', 'arrival_date', 'shipping_same_as_billing'));
 pg_liveform_single_values($liveform, array('custom_arrival_date_' . $liveform->get_field_value('arrival_date')));
 
 $liveform->validate_required_field('first_name', 'First Name is required.');
@@ -462,6 +462,10 @@ $query = "UPDATE ship_tos SET
             complete = '0'
          WHERE id = ?";
 $result = db_q($query, array((string) ($liveform->get_field_value('salutation')), (string) ($liveform->get_field_value('first_name')), (string) ($liveform->get_field_value('last_name')), (string) ($liveform->get_field_value('company')), (string) ($liveform->get_field_value('address_1')), (string) ($liveform->get_field_value('address_2')), (string) ($liveform->get_field_value('city')), (string) ($liveform->get_field_value('state')), (string) ($liveform->get_field_value('zip_code')), (string) ($liveform->get_field_value('country')), (string) ($liveform->get_field_value('address_type')), (string) $address_verified, (string) ($liveform->get_field_value('phone_number')), (string) ($liveform->get_field_value('arrival_date')), (string) $arrival_date_code, (string) $arrival_date, (string) ($_POST['ship_to_id'] ?? ''))) or output_error('Query failed.');
+
+// The optional district, written apart: the value is free text and the
+// query above binds its values by placeholder.
+pg_ship_to_district_save((int) ($_POST['ship_to_id'] ?? 0), $liveform->get_field_value('district'), $liveform->get_field_value('country'));
 
 // If the user is logged in and not ghosting, then update address book.
 if (USER_LOGGED_IN and !$ghost) {

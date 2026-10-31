@@ -17,7 +17,7 @@ description: data-pg-date, data-pg-datetime, data-pg-time on the pg_datetime.js 
 
 ## Dialogs and drawers?
 - The popup hangs off `<body>`, under an open `<dialog>`; on show and resize it moves into `pgUI.overlayHost(field)`, placed under the field.
-- In a `.drawer` (ACL expiry rows) the calendar is drawn open on a `<div>` in a `.pg-date-inline` wrapper after the field (it takes over its element's classes).
+- In a `.drawer` the calendar sits in a `.pg-date-inline` wrapper after the field, hidden until the field asks for it (`pg-datepicker-drawer.md`).
 - The library's `destroy()` puts a copy of the input, as it was at creation, in its place; the control puts the real element back at the same index, or the field loses its listeners, `pgField*` state and value (`switchKind()` on the calendar all-day box).
 
 ## When is a date field drawn?

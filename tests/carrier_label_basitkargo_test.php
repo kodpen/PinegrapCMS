@@ -329,6 +329,30 @@ function test_carrier_label_basitkargo_label_and_track()
 	}
 }
 
+function test_carrier_label_basitkargo_track_takes_the_latest_trace()
+{
+	$order = json_decode(carrier_label_basitkargo_test_fixture('order_shipped.json'), true);
+	$order['traces'] = array_reverse($order['traces']);
+
+	carrier_label_basitkargo_test_stub(array(
+		'GET /v2/order/888-6AR-OUP' => array(array(200, json_encode($order))),
+	));
+
+	$track = pg_label_call('basitkargo', 'track', array('888-6AR-OUP', carrier_label_basitkargo_test_account()));
+	carrier_label_basitkargo_test_done();
+
+	pg_assert_true($track['success'], $track['error']);
+	pg_assert_same(strtotime('2026-10-31T08:40:10'), $track['status_at'], 'newest first, as the reference lists them');
+	pg_assert_same(array('Basit Kargo: Konak Şube.'), $track['log']);
+
+	$trace = pg_label_basitkargo_latest_trace(array('traces' => array(
+		array('time' => 'not a time', 'location' => 'A'),
+		array('time' => '2026-10-30T09:12:00', 'location' => 'B'),
+	)));
+	pg_assert_same('B', $trace['location'], 'a trace without a readable time never wins');
+	pg_assert_same(array(), pg_label_basitkargo_latest_trace(array()));
+}
+
 function test_carrier_label_basitkargo_cancel_takes_the_barcode_back()
 {
 	carrier_label_basitkargo_test_stub(array(
@@ -371,4 +395,32 @@ function test_carrier_label_basitkargo_cancel_takes_the_barcode_back()
 
 	pg_assert_true($answer['success'], $answer['error']);
 	pg_assert_same(array('GET /v2/order/888-6AR-OUP', 'DELETE /order/888-6AR-OUP'), $sent);
+}
+
+// A long plain Turkish refusal is cut on a character, not a byte: a broken
+// last letter would make htmlspecialchars() print the whole notice empty.
+function test_carrier_label_basitkargo_long_refusal_is_cut_on_a_character()
+{
+	carrier_label_basitkargo_test_stub(array('POST /v2/order/barcode' => array(array(400, 'A' . str_repeat('ş', 150)))));
+
+	$answer = pg_label_call('basitkargo', 'create', array(carrier_label_basitkargo_test_shipment(), carrier_label_basitkargo_test_account()));
+	carrier_label_basitkargo_test_done();
+
+	pg_assert_false($answer['success']);
+	pg_assert_true(mb_check_encoding($answer['error'], 'UTF-8'), 'the error is valid UTF-8');
+	pg_assert_contains('A' . str_repeat('ş', 99), htmlspecialchars($answer['error'], ENT_QUOTES, 'UTF-8'));
+}
+
+// The client's town is the recipient's district when one was entered, else the city.
+function test_carrier_label_basitkargo_town_is_the_district_else_the_city()
+{
+	pg_label_load('basitkargo');
+	$shipment = carrier_label_basitkargo_test_shipment();
+	$body = pg_label_basitkargo_order_body($shipment, carrier_label_basitkargo_test_account(), 'ECONOMIC');
+	pg_assert_same('Konak', $body['client']['town'], 'no district key');
+
+	$shipment['recipient']['district'] = 'Karşıyaka';
+	$body = pg_label_basitkargo_order_body($shipment, carrier_label_basitkargo_test_account(), 'ECONOMIC');
+	pg_assert_same('Karşıyaka', $body['client']['town']);
+	pg_assert_same('İzmir', $body['client']['city']);
 }

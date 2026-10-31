@@ -73,10 +73,14 @@ function pg_tr_render_body_flags($set = null)
  * @param string $text
  * @param string $format
  * @param string $kind
+ * @param string|null $state set to how the text was drawn: translated,
+ *                           missing (a text to translate, drawn as written)
+ *                           or skipped (not a text to translate)
  * @return string
  */
-function pg_tr_render_text($text, $format = 'text', $kind = 'content')
+function pg_tr_render_text($text, $format = 'text', $kind = 'content', &$state = null)
 {
+    $state = 'skipped';
     $normalized = pg_tr_normalize($text, $format);
 
     if (($normalized === '') || !pg_tr_translatable($normalized)) {
@@ -88,8 +92,11 @@ function pg_tr_render_text($text, $format = 'text', $kind = 'content')
     pg_tr_render_counter('total');
 
     if ($found === null) {
+        $state = 'missing';
         return $text;
     }
+
+    $state = 'translated';
 
     pg_tr_render_counter('hits');
 
@@ -125,14 +132,66 @@ function pg_tr_render_props($props, $type)
     // lookup is an array read.
     pg_tr_map_load(pg_tr_language());
 
+    $states = array();
+
     foreach ($fields as $spec) {
         list($field, $format) = $spec;
         $raw = pg_tr_field_get($props, $field);
-        $translated = pg_tr_render_text($raw, $format);
+        $state = null;
+        $translated = pg_tr_render_text($raw, $format, 'content', $state);
+        $states[$field] = $state;
 
         if ($translated !== $raw) {
             pg_tr_field_set($props, $field, $translated);
         }
+    }
+
+    return pg_tr_render_lang_mark($props, $states, pg_tr_language(), pg_tr_source_language());
+}
+
+/**
+ * Marks a node whose own words are drawn in the source language on a page in
+ * another language: the renderer writes lang="<source>" on its element
+ * (pg_tr_lang_attr_props()), so the browser reads them by the source
+ * language's rules (an uppercase "i" in Turkish is "İ").
+ *
+ * Only the node's content texts count (text, title, ...): an attribute text
+ * (alt, "_attrs:…"), a value condition and a link caption have no words of
+ * their own on the element. One translated content text keeps the mark off,
+ * as the element then holds the page's language.
+ *
+ * @param array  $props
+ * @param array  $states   field => translated | missing | skipped (pg_tr_render_text())
+ * @param string $language the page's language
+ * @param string $source   the source language
+ * @return array
+ */
+function pg_tr_render_lang_mark($props, $states, $language, $source)
+{
+    if (($language === '') || ($source === '') || ($language === $source)) {
+        return $props;
+    }
+
+    $missing = false;
+
+    foreach ($states as $field => $state) {
+        $field = (string) $field;
+
+        if (($field === '') || ($field[0] === '_') || ($field === 'alt')) {
+            continue;
+        }
+
+        if ($state === 'translated') {
+            return $props;
+        }
+
+        if ($state === 'missing') {
+            $missing = true;
+        }
+    }
+
+    if ($missing) {
+        $props['_tr_lang'] = $source;
     }
 
     return $props;
@@ -149,7 +208,7 @@ function pg_tr_render_props($props, $type)
  */
 function pg_tr_render_rules()
 {
-    return '2026.11.0';
+    return '2026.11.0-2';
 }
 
 /**
@@ -342,7 +401,25 @@ function pg_tr_path_is_file($rest)
  */
 function pg_tr_prefix_path($path, $prefix)
 {
-    $base = (string) PATH;
+    return pg_tr_prefix_path_rule($path, $prefix, (string) PATH, pg_tr_prefix_map(), pg_tr_page_names(), 'pg_tr_path_is_file');
+}
+
+/**
+ * The rule of pg_tr_prefix_path() with what it looks up handed in: the
+ * site's path, the language prefixes (prefix => code), the page names
+ * (lower-cased name => page id) and the file check (pg_tr_path_is_file()).
+ *
+ * @param string   $path     decoded path, starting with /
+ * @param string   $prefix   the language prefix
+ * @param string   $base     the site's path (PATH)
+ * @param array    $prefixes prefix => code of the enabled languages
+ * @param array    $names    lower-cased page name => page id
+ * @param callable $is_file  path below $base => whether it is a file
+ * @return string
+ */
+function pg_tr_prefix_path_rule($path, $prefix, $base, array $prefixes, array $names, $is_file)
+{
+    $base = (string) $base;
 
     if (strpos($path, $base) !== 0) {
         return $path;
@@ -361,15 +438,13 @@ function pg_tr_prefix_path($path, $prefix)
     }
 
     // Another language's directory, or this one's: leave it.
-    if (isset(pg_tr_prefix_map()[$first])) {
+    if (isset($prefixes[$first])) {
         return $path;
     }
 
-    if (pg_tr_path_is_file($rest)) {
+    if (call_user_func($is_file, $rest)) {
         return $path;
     }
-
-    $names = pg_tr_page_names();
 
     if (!isset($names[mb_strtolower($first, 'UTF-8')])) {
         return $path;

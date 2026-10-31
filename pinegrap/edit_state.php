@@ -29,11 +29,32 @@ if (($id < 1) || ((int) db_value("SELECT COUNT(*) FROM states WHERE id = '" . $i
     output_error(lang('Record not found.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.', 404);
 }
 
-if (!$_POST) {
-    // get state data
-    $query = "SELECT * FROM states WHERE id = ?";
-    $result = db_q($query, array((int) $id)) or output_error('Query failed.');
-    $row = mysqli_fetch_assoc($result);
+// get state data
+$query = "SELECT * FROM states WHERE id = ?";
+$result = db_q($query, array((int) $id)) or output_error('Query failed.');
+$row = mysqli_fetch_assoc($result);
+
+// A save whose code another state of the same country has draws the form
+// again with what was typed and the message under the code field; nothing
+// is written. Delete is never held back by the code.
+$values = array('name' => $row['name'], 'code' => $row['code'], 'country_id' => $row['country_id']);
+$errors = array();
+
+if ($_POST) {
+    validate_token_field();
+
+    $values = pg_state_form_values($_POST);
+
+    if (($_POST['submit_delete'] ?? '') != 'Delete') {
+        $code_error = pg_state_form_code_error($values, $row, $id);
+
+        if ($code_error !== '') {
+            $errors['code'] = $code_error;
+        }
+    }
+}
+
+if (!$_POST || $errors) {
 
     $output =
     pg_page_shell([
@@ -52,7 +73,7 @@ if (!$_POST) {
                 
                 <form name="form" action="edit_state.php" method="post">
                     ' . get_token_field() . '
-                    ' . pg_state_form_card(array('name' => $row['name'], 'code' => $row['code'], 'country_id' => $row['country_id'])) . '
+                    ' . pg_state_form_card($values, $errors) . '
                     <input type="hidden" name="id" value="' . $id . '">
                     <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                         <div class="container">
@@ -72,8 +93,6 @@ if (!$_POST) {
     print $output;
 
 } else {
-    validate_token_field();
-    
     // if state was selected for delete
     if (($_POST['submit_delete'] ?? '') == 'Delete') {
         // delete state
@@ -103,7 +122,6 @@ if (!$_POST) {
                     user = ?,
                     timestamp = UNIX_TIMESTAMP()
                 WHERE id = ?";
-        $values = pg_state_form_values($_POST);
         $result = db_q($query, array($values['name'], $values['code'], $values['country_id'], (string) $user['id'], (string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
         log_activity(lang(array('string'=>'{var:1} ({var:2}) was modified','vars'=>array(lang('state'), $_POST['name']) )), $_SESSION['sessionusername']);
 

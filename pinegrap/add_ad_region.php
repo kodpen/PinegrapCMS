@@ -33,7 +33,7 @@ if (!$_POST) {
         'icon'=>'design',
         'heading'=>lang(array('string'=>'Create {var:1}','vars'=>lang('Ad Region'))),
         'heading_description' => lang('Create an ad region to display rotating ad content.'),
-        'cancel'=>array('enable'=>'true','url'=>'view_regions.php')
+        'cancel'=>array('enable'=>'true','url'=>'view_regions.php?filter=all_ad_regions')
     ,
             'breadcrumb' => array(array('label' => lang('All Ad Regions'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_regions.php?filter=all_ad_regions'), array('label' => lang(array('string'=>'Create {var:1}','vars'=>lang('Ad Region'))))),
         ]) . '
@@ -45,7 +45,7 @@ if (!$_POST) {
                 
                 <form name="form" action="add_ad_region.php" method="post">
                     ' . get_token_field() . '
-                    ' . pg_ad_region_form_card($liveform, '<input name="name" id="name" type="text" class="form-control" maxlength="100" />', true) . '
+                    ' . pg_ad_region_form_card($liveform, $liveform->output_field(array('type'=>'text', 'name'=>'name', 'id'=>'name', 'class'=>'form-control', 'maxlength'=>'100', 'required'=>'required')), $liveform->prefill()) . '
 
                     <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                         <div class="container">

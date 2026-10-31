@@ -104,11 +104,7 @@ if ($action and !$command_line) {
     $url = (string) $liveform->get_field_value('url');
     $import_name = $liveform->get_field_value('import_name');
 
-    // If the URL does not start with "http://" or "https://" then add
-    // http:// to the front of it, in order to avoid an error.
-    if ((mb_substr($url, 0, 7) != 'http://') && (mb_substr($url, 0, 8) != 'https://')) {
-        $url = 'http://' . $url;
-    }
+    $url = import_design_start_url($url);
 
     // If the action is scan and there is not already an error for the URL field,
     // then check if that URL is online.
@@ -160,7 +156,7 @@ if ($action != 'import') {
                                 <div class="row">
                                     <div class="col-12 my-3">
                                         <label for="url" class="form-label">' . lang('Website URL') . '</label>
-                                        ' . $liveform->output_field(array('type'=>'text','name'=>'url','id'=>'url','class'=>'form-control','required'=>'required','inputmode'=>'url','placeholder'=>'https://www.example.com')) . '
+                                        ' . $liveform->output_field(array('type'=>'text','name'=>'url','id'=>'url','class'=>'form-control','required'=>'required','inputmode'=>'url','spellcheck'=>'false','autocapitalize'=>'off','placeholder'=>'https://www.example.com')) . '
                                         <div class="form-text fg-secondary">' . lang('Enter the full address of the website to import pages and files from.') . '</div>
                                     </div>
                                     <div class="col-12 md:col-6 my-3">
@@ -220,7 +216,7 @@ if ($action != 'import') {
                 <div class="col-12">
                     ' . $liveform->output_errors() . '
                     ' . $liveform->output_notices() . '
-            <form action="' . h($_SERVER['PHP_SELF']) . '" method="' . $output_method .'">
+            <form id="import_design_form" action="' . h($_SERVER['PHP_SELF']) . '" method="' . $output_method .'">
                 ' . $output_fields;
 
     if ($action == 'scan') {
@@ -311,14 +307,50 @@ if ($action != 'import') {
                         <div class=" btn-group flex-wrap justify-content-center">
                             ' . $output_buttons . '
                         </div>
+                        ' . ($action == 'scan' ? '<p class="small fg-secondary mt-2 mb-0" id="import_design_status" role="status" aria-live="polite"></p>' : '') . '
                     </div>
                 </nav>
             </form>
                 </div>
             </div>
         
-</main>' .
-        output_footer();
+</main>';
+
+    if ($action == 'scan') {
+        echo '
+<script>
+(function () {
+    // The scan-result form is sent once: the first submit goes, any later
+    // one is cancelled until the page leaves. Import fetches every scanned
+    // address and writes the pages with nothing sent to the browser, far
+    // longer than the window guard\'s 3 seconds; a second press would wait
+    // for the first run, find the scanned list already taken and never show
+    // the result. The button is never disabled, so its value travels.
+    var import_design_sent = false;
+    var form = document.getElementById("import_design_form");
+    var status = document.getElementById("import_design_status");
+    if (!form) { return; }
+    window.addEventListener("submit", function (event) {
+        if (event.target !== form) { return; }
+        if (import_design_sent) { event.preventDefault(); return; }
+        if (event.defaultPrevented) { return; }
+        import_design_sent = true;
+        if (event.submitter && event.submitter.value === "Import") {
+            form.setAttribute("aria-busy", "true");
+            if (status) { status.textContent = "' . escape_javascript(lang('Importing…')) . '"; }
+        }
+    });
+    window.addEventListener("pageshow", function (event) {
+        if (!event.persisted) { return; }
+        import_design_sent = false;
+        form.removeAttribute("aria-busy");
+        if (status) { status.textContent = ""; }
+    });
+})();
+</script>';
+    }
+
+    echo output_footer();
 
     $liveform->unmark_errors();
     $liveform->clear_notices();
@@ -673,7 +705,7 @@ if ($action != 'import') {
                     // Update old file to have backup name on file system.
                     @rename(FILE_DIRECTORY_PATH . '/' . $name, FILE_DIRECTORY_PATH . '/' . $backup_name);
 
-                    log_activity('file was renamed during import my site (' . $name . ' -> ' . $backup_name . ')');
+                    log_activity(lang(array('string' => 'file was renamed during import my site ({var:1} -> {var:2})', 'vars' => array($name, $backup_name))));
 
                     $old_file_backed_up = true;
 
@@ -812,10 +844,9 @@ function scan($properties) {
         return false;
     }
 
-    // If the URL does not start with "http://" or "https://" then return false.
-    // We do this for security reasons, because we call file_get_contents()
-    // below and we don't want someone to be able to crawl a local file.
-    if ((mb_substr($url, 0, 7) != 'http://') && (mb_substr($url, 0, 8) != 'https://')) {
+    // Only http and https addresses are fetched, so a local file or another
+    // stream wrapper can never be crawled.
+    if (!import_design_url_is_web($url)) {
         return false;
     }
 
@@ -1397,6 +1428,24 @@ function remove_dynamic_code_blocks($content)
     }
 
     return $content;
+}
+
+// The typed start address with its http or https scheme lower-cased (a phone
+// may capitalise the first letter, an address may be pasted in capitals), or
+// with http:// in front when no scheme is typed.
+function import_design_start_url($url)
+{
+    if (preg_match('#^(https?)://#i', $url, $match)) {
+        return mb_strtolower($match[1]) . substr($url, strlen($match[1]));
+    }
+
+    return 'http://' . $url;
+}
+
+// Whether an address has an http or https scheme, in any case.
+function import_design_url_is_web($url)
+{
+    return (bool) preg_match('#^https?://#i', $url);
 }
 
 // Which address the import may fetch. Every fetch here is made by the server,

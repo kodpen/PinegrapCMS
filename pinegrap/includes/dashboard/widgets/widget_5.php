@@ -22,10 +22,10 @@ function pg_dashboard_widget_5($request, $user)
     if (($user['role'] < 3) || ($user['manage_visitors'] == true)) {
         $now = time();
         $today_start = strtotime(date('Y-m-d'));
-        $yesterday_start = $today_start - 86400;
+        $yesterday_start = strtotime('-1 day', $today_start);
         $month_start = mktime(0, 0, 0, (int) date('n'), 1, (int) date('Y'));
-        $week_ago = $now - 7 * 86400;
-        $two_weeks_ago = $now - 14 * 86400;
+        $week_ago = strtotime('-7 days', $now);
+        $two_weeks_ago = strtotime('-14 days', $now);
 
         // Get current hour (0-23) to limit today's data display
         $current_hour = (int) date('G');
@@ -122,9 +122,14 @@ function pg_dashboard_widget_5($request, $user)
         // page template that displayed it. Rows recorded before
         // this change still show the page name, because the item
         // identity was never written down and cannot be recovered.
+        //
+        // Names stay unescaped: the tooltip draws them on a canvas and
+        // the table writes them with textContent, so an entity would
+        // show literally ("Q&amp;A"). json_encode() with JSON_HEX_TAG
+        // and JSON_HEX_AMP keeps them safe inside the script block.
         $vs5_hour_label = function ($row) {
             if (!$row) return null;
-            return array('name' => h($row['name']), 'cnt' => (int) $row['cnt']);
+            return array('name' => (string) $row['name'], 'cnt' => (int) $row['cnt']);
         };
 
         $h_today_pages = array_map($vs5_hour_label, pg_visitor_top_content_by_hour($today_date));
@@ -162,15 +167,17 @@ function pg_dashboard_widget_5($request, $user)
         // on a timestamp, so a range expressed as "the last seven
         // times 86,400 seconds" would pull in part of an eighth
         // day and the headline figure would not match the bars
-        // underneath it.
-        $w_tw_map = $vs5_daily($now - 6 * 86400, $now);
-        $w_lw_map = $vs5_daily($week_ago - 6 * 86400, $week_ago);
+        // underneath it. Days are stepped with strtotime(): across a
+        // clock change a day is 23 or 25 hours, and N * 86,400 seconds
+        // back can skip a date or land on the one before it.
+        $w_tw_map = $vs5_daily(strtotime('-6 days', $now), $now);
+        $w_lw_map = $vs5_daily(strtotime('-6 days', $week_ago), $week_ago);
 
         $w_tw_labels = $w_tw_data = $w_lw_labels = $w_lw_data = '';
         $has_tw = $has_lw = false;
         for ($i = 6; $i >= 0; $i--) {
-            $ts_tw = $now - $i * 86400;
-            $ts_lw = $week_ago - $i * 86400;
+            $ts_tw = strtotime('-' . $i . ' days', $now);
+            $ts_lw = strtotime('-' . $i . ' days', $week_ago);
             $d_tw = date('Y-m-d', $ts_tw);
             $d_lw = date('Y-m-d', $ts_lw);
             $c_tw = isset($w_tw_map[$d_tw]) ? $w_tw_map[$d_tw] : 0;
@@ -188,8 +195,8 @@ function pg_dashboard_widget_5($request, $user)
         $kpi_lw = array_sum($w_lw_map);
 
         // Top content — this week / last week
-        $tp_tw = $vs5_top(date('Y-m-d', $now - 6 * 86400), date('Y-m-d', $now));
-        $tp_lw = $vs5_top(date('Y-m-d', $week_ago - 6 * 86400), date('Y-m-d', $week_ago));
+        $tp_tw = $vs5_top(date('Y-m-d', strtotime('-6 days', $now)), date('Y-m-d', $now));
+        $tp_lw = $vs5_top(date('Y-m-d', strtotime('-6 days', $week_ago)), date('Y-m-d', $week_ago));
 
         // ── PANEL 3 : Monthly peaks — this month (daily) vs prev 12 months ───
         $m_tm_map = $vs5_daily($month_start, $now);
@@ -337,10 +344,10 @@ function pg_dashboard_widget_5($request, $user)
         $vs5_tp = function ($tp, $rgb) use ($vs5_views_label) {
             if (!$tp)
                 return '';
-            return '<div class="d-flex align-items-center gap-1" style="font-size:11px">'
+            return '<div class="d-flex align-items-center gap-1" style="font-size:.6875rem">'
                 . '<i class="bi bi-window fg-secondary flex-shrink-0"></i>'
                 . '<span class="text-truncate flex-grow-1 fg-secondary" title="' . $tp['name'] . '">' . $tp['name'] . '</span>'
-                . '<span class="badge rounded-pill flex-shrink-0" style="background:rgba(' . $rgb . ',.12);color:rgb(' . $rgb . ');font-size:10px" title="' . h($vs5_views_label) . '">' . pg_format_number($tp['cnt'], 0) . ' <span style="opacity:.75;font-weight:400">' . h($vs5_views_label) . '</span></span>'
+                . '<span class="badge rounded-pill flex-shrink-0" style="background:rgba(' . $rgb . ',.12);color:rgb(' . $rgb . ');font-size:.625rem" title="' . h($vs5_views_label) . '">' . pg_format_number($tp['cnt'], 0) . ' <span style="opacity:.75;font-weight:400">' . h($vs5_views_label) . '</span></span>'
                 . '</div>';
         };
 
@@ -354,7 +361,7 @@ function pg_dashboard_widget_5($request, $user)
             $vs5_pct = floor(($vs5_backfill['cursor'] / $vs5_backfill['max_id']) * 100);
             $vs5_progress = '
             <div class="px-5 pt-3">
-              <div class="alert theme-info py-1 px-3 mb-0 d-flex align-items-center gap-3" style="font-size:11px">
+              <div class="alert theme-info py-1 px-3 mb-0 d-flex align-items-center gap-3" style="font-size:.6875rem">
                 <i class="bi bi-hourglass-split flex-shrink-0"></i>
                 <span class="flex-grow-1">' . lang('Historical visitor summaries are still being built. Figures for earlier periods will be incomplete until this finishes.') . '</span>
                 <span class="badge bg-subtle-info fg-emphasis-info flex-shrink-0">' . h(lang(array('string' => '{var:1}%', 'vars' => (int) $vs5_pct))) . '</span>
@@ -368,7 +375,7 @@ function pg_dashboard_widget_5($request, $user)
         // the week's most visited content, with today's busiest one marked.
         // It opens in place of the chart from the strip's last cell, so the
         // card keeps its size and the chart keeps its width.
-        $vs5_week_from = date('Y-m-d', $now - 6 * 86400);
+        $vs5_week_from = date('Y-m-d', strtotime('-6 days', $now));
         $vs5_top_pages = pg_visitor_top_content($vs5_week_from, $today_date, 8);
         $vs5_trend = pg_visitor_top_content($today_date, $today_date, 1);
         $vs5_trend_label = !empty($vs5_trend) ? (string) $vs5_trend[0]['label'] : '';
@@ -535,6 +542,7 @@ function pg_dashboard_widget_5($request, $user)
             thisMonth:' . json_encode(lang('This Month')) . ',
             prevMonth:' . json_encode(lang('Previous Month')) . ',
             total:    ' . json_encode(lang('Total')) . ',
+            top:      ' . json_encode(lang('Most Visited')) . ',
             hour:     ' . json_encode(lang('Hour')) . ',
             day:      ' . json_encode(lang('Day')) . ',
             month:    ' . json_encode(lang('Month')) . '
@@ -559,8 +567,8 @@ function pg_dashboard_widget_5($request, $user)
           // and the legend drops its second key accordingly.
           var P = {
             d: { eyebrow:L.daily,   axis:L.hour,  type:"line", labels:[' . $h_yest_labels_js . '],
-                 now:{ label:L.today,     data:[' . $h_today_full_js . '], views:[' . $h_today_views_full_js . '], pages:' . json_encode(array_values($h_today_pages)) . ' },
-                 prev:{ label:L.yesterday, data:[' . $h_yest_js . '],       views:[' . $h_yest_views_js . '],      pages:' . json_encode(array_values($h_yest_pages)) . ' },
+                 now:{ label:L.today,     data:[' . $h_today_full_js . '], views:[' . $h_today_views_full_js . '], pages:' . json_encode(array_values($h_today_pages), JSON_HEX_TAG | JSON_HEX_AMP) . ' },
+                 prev:{ label:L.yesterday, data:[' . $h_yest_js . '],       views:[' . $h_yest_views_js . '],      pages:' . json_encode(array_values($h_yest_pages), JSON_HEX_TAG | JSON_HEX_AMP) . ' },
                  kpi:' . $kpi_today . ', cmp:' . $kpi_yesterday_same . ', full:' . $kpi_yesterday . ', nowIndex:' . $current_hour . ' },
             w: { eyebrow:L.weekly,  axis:L.day,   type:"line", labels:[' . $w_tw_labels . '],
                  now:{ label:L.thisWeek, data:[' . $w_tw_data . '] },
@@ -711,7 +719,10 @@ function pg_dashboard_widget_5($request, $user)
 
           // The chart figures as a table for screen readers, one row
           // per point of the period on show, rebuilt on every switch.
-          // Built with textContent, so no label needs escaping.
+          // A series that carries page views and the busiest page per
+          // point (the day view) gets a column for each, so nothing
+          // stays in the tooltip alone. Built with textContent, so no
+          // label needs escaping.
           var tableEl = document.getElementById("vs5_table");
           function table() {
             if (!tableEl) return;
@@ -727,7 +738,11 @@ function pg_dashboard_widget_5($request, $user)
             tableEl.createCaption().textContent = p.eyebrow + " · " + L.visitors;
             var hr = tableEl.createTHead().insertRow();
             cell(hr, "th", p.axis, "col");
-            series.forEach(function (s) { cell(hr, "th", s.label, "col"); });
+            series.forEach(function (s) {
+              cell(hr, "th", s.label, "col");
+              if (s.views) { cell(hr, "th", s.label + " · " + L.views, "col"); }
+              if (s.pages) { cell(hr, "th", s.label + " · " + L.top, "col"); }
+            });
             var body = tableEl.createTBody();
             p.labels.forEach(function (label, i) {
               var tr = body.insertRow();
@@ -735,6 +750,14 @@ function pg_dashboard_widget_5($request, $user)
               series.forEach(function (s) {
                 var v = s.data[i];
                 cell(tr, "td", (v === null || v === undefined) ? "–" : fmtN(v));
+                if (s.views) {
+                  var vw = s.views[i];
+                  cell(tr, "td", (vw === null || vw === undefined) ? "–" : fmtN(vw));
+                }
+                if (s.pages) {
+                  var pg = s.pages[i];
+                  cell(tr, "td", pg ? pg.name + " · " + fmtN(pg.cnt) : "–");
+                }
               });
             });
           }

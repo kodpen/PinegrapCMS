@@ -119,16 +119,16 @@ function pg_ship_date_adjustment_form_card($liveform)
                                         <div class="row">
                                             <div class="col-12 md:col-6 lg:col-4 my-3">
                                                 <label for="zip_code_prefix" class="form-label">' . lang('Zip Code Prefix') . ' <span class="fg-secondary small">' . lang('(first 3 numbers)') . '</span></label>
-                                                <input type="text" name="zip_code_prefix" id="zip_code_prefix" maxlength="3" value="' . h($liveform->get_field_value('zip_code_prefix')) . '" class="form-control' . ($liveform->check_field_error('zip_code_prefix') ? ' is-invalid' : '') . '" />
+                                                <input type="text" name="zip_code_prefix" id="zip_code_prefix" maxlength="3" required value="' . h($liveform->get_field_value('zip_code_prefix')) . '" class="form-control' . ($liveform->check_field_error('zip_code_prefix') ? ' is-invalid' : '') . '" />
                                             </div>
                                             <div class="col-12 md:col-6 lg:col-8 my-3">
                                                 <label for="shipping_method_id" class="form-label">' . lang('Shipping Method') . '</label>
-                                                <select name="shipping_method_id" id="shipping_method_id" class="form-control' . ($liveform->check_field_error('shipping_method_id') ? ' is-invalid' : '') . '">' . $output_shipping_method_options . '</select>
+                                                <select name="shipping_method_id" id="shipping_method_id" required class="form-control' . ($liveform->check_field_error('shipping_method_id') ? ' is-invalid' : '') . '">' . $output_shipping_method_options . '</select>
                                             </div>
                                             <div class="col-12 md:col-auto my-3">
                                                 <div class="form-label" id="adjustment_label">' . lang('Adjustment') . '</div>
                                                 <div class="input-group w-auto" role="group" aria-labelledby="adjustment_label">
-                                                    <input style="width:100px;max-width:100%;" type="text" name="adjustment_days" id="adjustment_days" aria-labelledby="adjustment_label adjustment_days_unit" maxlength="3" value="' . h($liveform->get_field_value('adjustment_days')) . '" class="form-control' . ($liveform->check_field_error('adjustment_days') ? ' is-invalid' : '') . '"/>
+                                                    <input style="width:100px;max-width:100%;" type="text" name="adjustment_days" id="adjustment_days" required aria-labelledby="adjustment_label adjustment_days_unit" maxlength="3" value="' . h($liveform->get_field_value('adjustment_days')) . '" class="form-control' . ($liveform->check_field_error('adjustment_days') ? ' is-invalid' : '') . '"/>
                                                     <span class="input-group-text" id="adjustment_days_unit">' . lang('days') . '</span>
                                                     <span class="visually-hidden" id="adjustment_type_label">' . lang('Direction') . '</span>
                                                     <select style="width:100px;max-width:100%;" name="adjustment_type" id="adjustment_type" aria-labelledby="adjustment_label adjustment_type_label" class="form-control' . ($liveform->check_field_error('adjustment_type') ? ' is-invalid' : '') . '">' . $output_adjustment_type_options . '</select>

@@ -24,6 +24,16 @@
  * which Shippo makes for USPS, UPS and FedEx only. $reference is Shippo's
  * transaction id.
  *
+ * A parcel that leaves the customs area carries a customs declaration
+ * created with the shipment, its lines from the shipment's goods (name,
+ * quantity, price in minor units, weight in kg a unit, hs_code,
+ * origin_country) and the shop-defaults block of the account
+ * (pg_label_customs_fields(), pg_label_customs_lines()).
+ *
+ * A pickup (POST /pickups/) asks the carrier account the labels were bought
+ * from to collect them at the sender address in a time window; its
+ * confirmation code is the answer's reference.
+ *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
  * @copyright   2017–2026 Kodpen
@@ -92,7 +102,26 @@ function pg_label_shippo_fields()
         );
     }
 
-    return $fields;
+    // Where the courier collects a pickup (Shippo's building_location_type).
+    $fields[] = array(
+        'name'    => 'pickup_location',
+        'type'    => 'select',
+        'label'   => lang('Pickup Location'),
+        'help'    => lang('Where at the sender address the courier collects the parcels of a pickup request.'),
+        'options' => array(
+            'Front Door'    => lang('Front Door'),
+            'Back Door'     => lang('Back Door'),
+            'Side Door'     => lang('Side Door'),
+            'Reception'     => lang('Reception'),
+            'Office'        => lang('Office'),
+            'Mail Room'     => lang('Mail Room'),
+            'Shipping Dock' => lang('Shipping Dock'),
+            'Other'         => lang('Other'),
+        ),
+        'default' => 'Front Door',
+    );
+
+    return array_merge($fields, pg_label_customs_fields());
 }
 
 /**
@@ -288,7 +317,7 @@ function pg_label_shippo_api($method, $path, $account, $payload = null)
         $read['message'] = $call['error'];
     } elseif (!$read['ok']) {
         $words = pg_label_shippo_error_texts($decoded);
-        $read['message'] = $words ? substr(implode(' ', $words), 0, 300) : 'HTTP ' . $call['status'];
+        $read['message'] = $words ? mb_substr(implode(' ', $words), 0, 300, 'UTF-8') : 'HTTP ' . $call['status'];
     }
 
     return $read;
@@ -404,6 +433,79 @@ function pg_label_shippo_shipment_body($shipment, $account)
     }
 
     return $body;
+}
+
+/**
+ * The customs declaration of a shipment, created with it: null when the
+ * route needs none (pg_label_customs_needed()) or the shop declares no
+ * customs yet (pg_label_customs_in_use()), so such a shipment goes as it
+ * did before the block existed. Shippo takes the total value and net weight
+ * of each line, not a unit's. A return is declared as returned goods.
+ * Pure.
+ *
+ * @param array $shipment see the header of this file; goods for the lines
+ * @param array $account
+ * @return array declaration (array or null), error ('' or the translated
+ *               reason no label can be made)
+ */
+function pg_label_shippo_customs($shipment, $account)
+{
+    $shipment = is_array($shipment) ? $shipment : array();
+    $text = 'pg_label_shippo_text';
+    $recipient = isset($shipment['recipient']) ? $shipment['recipient'] : array();
+    $goods = isset($shipment['goods']) ? $shipment['goods'] : array();
+    $none = array('declaration' => null, 'error' => '');
+
+    if (!pg_label_customs_needed($text($account, 'sender_country'), $text($recipient, 'country')) || !pg_label_customs_in_use($goods, $account)) {
+        return $none;
+    }
+
+    $parcel = isset($shipment['parcel']) ? $shipment['parcel'] : array();
+    $built = pg_label_customs_lines($goods, array(
+        'hs_code'        => $text($account, 'customs_hs_code'),
+        'origin_country' => $text($account, 'customs_origin_country'),
+    ), (float) $text($parcel, 'weight'));
+
+    if (!$built['ok']) {
+        return array('declaration' => null, 'error' => $built['error']);
+    }
+
+    $currency = strtoupper($text($shipment, 'currency'));
+
+    if (preg_match('/^[A-Z]{3}$/', $currency) !== 1) {
+        return array('declaration' => null, 'error' => lang('The order has no currency to declare its goods in.'));
+    }
+
+    $items = array();
+
+    foreach ($built['lines'] as $line) {
+        $items[] = array(
+            'description'    => $line['name'],
+            'quantity'       => $line['quantity'],
+            'net_weight'     => pg_label_shippo_number($line['unit_weight'] * $line['quantity'], 3),
+            'mass_unit'      => 'kg',
+            // Prices are kept in hundredths of the currency.
+            'value_amount'   => number_format(($line['unit_price'] * $line['quantity']) / 100, 2, '.', ''),
+            'value_currency' => $currency,
+            'origin_country' => $line['origin_country'],
+            'tariff_number'  => $line['hs_code'],
+        );
+    }
+
+    $contents = array('merchandise' => 'MERCHANDISE', 'gift' => 'GIFT', 'sample' => 'SAMPLE', 'documents' => 'DOCUMENTS', 'return' => 'RETURN_MERCHANDISE');
+    $contents_type = $text($account, 'customs_contents');
+    $contents_type = !empty($shipment['return']) ? 'RETURN_MERCHANDISE' : (isset($contents[$contents_type]) ? $contents[$contents_type] : 'MERCHANDISE');
+    $incoterm = strtoupper($text($account, 'customs_incoterm'));
+    $signer = ($text($account, 'customs_signer') !== '') ? $text($account, 'customs_signer') : $text($account, 'sender_name');
+
+    return array('declaration' => array(
+        'contents_type'       => $contents_type,
+        'non_delivery_option' => ($text($account, 'customs_non_delivery') === 'abandon') ? 'ABANDON' : 'RETURN',
+        'incoterm'            => in_array($incoterm, array('DDU', 'DAP', 'DDP'), true) ? $incoterm : 'DDU',
+        'certify'             => true,
+        'certify_signer'      => function_exists('mb_substr') ? mb_substr($signer, 0, 100, 'UTF-8') : substr($signer, 0, 100),
+        'items'               => $items,
+    ), 'error' => '');
 }
 
 /**
@@ -616,6 +718,18 @@ function pg_label_shippo_create($shipment, $account)
         return array('success' => false, 'error' => lang('Shippo needs the country of the shipping address.'));
     }
 
+    // A parcel that leaves the customs area carries its declaration, made
+    // with the shipment; a line that cannot be declared stops it here.
+    $customs = pg_label_shippo_customs($shipment, $account);
+
+    if ($customs['error'] !== '') {
+        return array('success' => false, 'error' => $customs['error'], 'log' => array('Shippo shipment not opened: the customs declaration is incomplete.'));
+    }
+
+    if ($customs['declaration'] !== null) {
+        $body['customs_declaration'] = $customs['declaration'];
+    }
+
     // A shipment and its rates cost nothing: a failure here buys nothing.
     $read = pg_label_shippo_api('POST', '/shipments/', $account, $body);
     $id = $read['ok'] ? pg_label_shippo_id(pg_label_shippo_text($read['data'], 'object_id')) : '';
@@ -636,7 +750,7 @@ function pg_label_shippo_create($shipment, $account)
 
         return array(
             'success' => false,
-            'error'   => lang('Shippo found no rate for this shipment.') . ($words ? ' (' . substr(implode(' ', $words), 0, 300) . ')' : ''),
+            'error'   => lang('Shippo found no rate for this shipment.') . ($words ? ' (' . mb_substr(implode(' ', $words), 0, 300, 'UTF-8') . ')' : ''),
             'log'     => array('Shippo shipment ' . $id . ' has no rate.'),
             'raw'     => $read['raw'],
         );
@@ -672,7 +786,7 @@ function pg_label_shippo_create($shipment, $account)
 
         return array(
             'success' => false,
-            'error'   => lang('Shippo could not make the label.') . ($words ? ' (' . substr(implode(' ', $words), 0, 300) . ')' : ''),
+            'error'   => lang('Shippo could not make the label.') . ($words ? ' (' . mb_substr(implode(' ', $words), 0, 300, 'UTF-8') . ')' : ''),
             'log'     => array('Shippo transaction ' . $reference . ' failed with ' . $provider . '.'),
             'raw'     => $read['raw'],
         );
@@ -786,15 +900,31 @@ function pg_label_shippo_track($reference, $account)
         return pg_label_shippo_failure($read, false);
     }
 
-    $data = $read['data'];
+    return pg_label_shippo_track_answer($read['data'], $read['raw']);
+}
+
+/**
+ * A track() answer from a transaction or a tracking object: both carry
+ * tracking_status (a high level code on a transaction, an object on a
+ * tracking object) and tracking_number. A tracking object names its
+ * transaction in "transaction"; a transaction is its own object_id. Pure.
+ *
+ * @param array $data
+ * @param array $raw  what to keep of Shippo's answer
+ * @return array
+ */
+function pg_label_shippo_track_answer($data, $raw)
+{
     $tracking = isset($data['tracking_status']) ? $data['tracking_status'] : '';
     $status = pg_label_shippo_status($tracking);
 
     if ($status === '') {
-        return array('success' => false, 'error' => lang('Shippo gives no status for this shipment yet.'), 'raw' => $read['raw']);
+        return array('success' => false, 'error' => lang('Shippo gives no status for this shipment yet.'), 'raw' => $raw);
     }
 
     $time = is_array($tracking) ? strtotime(pg_label_shippo_text($tracking, 'status_date')) : false;
+    $details = is_array($tracking) ? pg_label_shippo_text($tracking, 'status_details') : '';
+    $id = pg_label_shippo_id(array_key_exists('transaction', $data) ? $data['transaction'] : (isset($data['object_id']) ? $data['object_id'] : ''));
 
     return array(
         'success'         => true,
@@ -803,5 +933,259 @@ function pg_label_shippo_track($reference, $account)
         'status_at'       => ($time === false) ? 0 : max(0, $time),
         'tracking_number' => pg_label_shippo_text($data, 'tracking_number'),
         'tracking_url'    => pg_label_shippo_text($data, 'tracking_url_provider'),
+        'log'             => ($details !== '') ? array('Shippo: ' . rtrim($details, '.') . '.') : array(),
     );
+}
+
+/**
+ * The parcel news in a message Shippo posted to the store's webhook address
+ * (carrier_webhook.php). With the pinned API version the message is
+ * {event, test, data: <a tracking object>} whose "transaction" is the
+ * label's reference; an account on version 2017-03-29 or older posts the
+ * transaction itself (object_id, tracking_status). Shippo signs nothing
+ * without a sales agreement: the key in the registered address is the
+ * credential (includes/fn/carrier_webhook.php). Only track_updated is read;
+ * another event carries nothing. Pure.
+ *
+ * @param string $body
+ * @return array|false list of reference (the transaction's object_id),
+ *                     is_return (false: the label row decides), answer (a
+ *                     track() answer); false when the body is not a message
+ */
+function pg_label_shippo_webhook_read($body)
+{
+    $message = json_decode((string) $body, true);
+
+    if (!is_array($message) || !isset($message['event']) || !is_string($message['event'])) {
+        return false;
+    }
+
+    $data = (isset($message['data']) && is_array($message['data'])) ? $message['data'] : array();
+
+    if (strtolower(trim($message['event'])) !== 'track_updated') {
+        return array();
+    }
+
+    // The 2018-02-08 tracking object names its transaction; the older
+    // transaction message is the transaction.
+    $id = pg_label_shippo_id(array_key_exists('transaction', $data) ? $data['transaction'] : (isset($data['object_id']) ? $data['object_id'] : ''));
+
+    if ($id === '') {
+        return array();
+    }
+
+    $data['transaction'] = $id;
+
+    return array(array(
+        'reference' => $id,
+        'is_return' => false,
+        'answer'    => pg_label_shippo_track_answer($data, array('event' => 'track_updated', 'transaction' => $id)),
+    ));
+}
+
+/**
+ * Registers the store's webhook address at Shippo for track_updated
+ * (POST /webhooks). Shippo takes an address shorter than 200 characters; a
+ * longer one is refused here so the Shipping card shows it to add by hand.
+ *
+ * @param string $url
+ * @param array  $account
+ * @return array success, id (Shippo's webhook object_id), error
+ */
+function pg_label_shippo_webhook_register($url, $account)
+{
+    $url = (string) $url;
+
+    if (strlen($url) >= 200) {
+        return array('success' => false, 'id' => '', 'error' => lang('Shippo refused the request.') . ' (url: 200+)');
+    }
+
+    $read = pg_label_shippo_api('POST', '/webhooks', $account, array(
+        'event'   => 'track_updated',
+        'url'     => $url,
+        'active'  => true,
+        // A test token's labels only send test events to a test webhook.
+        'is_test' => strncmp((string) $account['api_token'], 'shippo_test_', 12) === 0,
+    ));
+    $id = $read['ok'] ? pg_label_shippo_id(isset($read['data']['object_id']) ? $read['data']['object_id'] : '') : '';
+
+    if ($id === '') {
+        return array('success' => false, 'id' => '', 'error' => $read['ok'] ? lang('Shippo refused the request.') : pg_label_shippo_failure($read, false)['error']);
+    }
+
+    return array('success' => true, 'id' => $id, 'error' => '');
+}
+
+/**
+ * Removes a webhook at Shippo (DELETE /webhooks/{id}), answered with an
+ * empty 2xx. One Shippo no longer has (404) counts as removed.
+ *
+ * @param string $id
+ * @param array  $account
+ * @return array success, error
+ */
+function pg_label_shippo_webhook_remove($id, $account)
+{
+    $id = pg_label_shippo_id($id);
+
+    if ($id === '') {
+        return array('success' => false, 'error' => lang('Shippo refused the request.'));
+    }
+
+    $read = pg_label_shippo_api('DELETE', '/webhooks/' . $id, $account);
+
+    if (!$read['ok'] && ($read['status'] !== 404)) {
+        return array('success' => false, 'error' => pg_label_shippo_failure($read, false)['error']);
+    }
+
+    return array('success' => true, 'error' => '');
+}
+
+/**
+ * The POST /pickups/ body: the carrier account, the sender address as the
+ * pickup location, the transactions and the requested window in UTC. Pure.
+ *
+ * @param string   $carrier_account Shippo's carrier account id
+ * @param string[] $ids             transaction ids
+ * @param int      $start           unix time
+ * @param int      $end             unix time
+ * @param array    $account
+ * @return array
+ */
+function pg_label_shippo_pickup_body($carrier_account, $ids, $start, $end, $account)
+{
+    $address = array();
+
+    foreach (array('name', 'company', 'street1', 'street2', 'city', 'state', 'zip', 'country', 'phone', 'email') as $name) {
+        $address[$name] = pg_label_shippo_text($account, 'sender_' . $name);
+    }
+
+    $address['country'] = strtoupper($address['country']);
+    $location = pg_label_shippo_text($account, 'pickup_location');
+
+    return array(
+        'carrier_account'      => (string) $carrier_account,
+        'location'             => array(
+            'building_location_type' => ($location !== '') ? $location : 'Front Door',
+            'address'                => array_filter($address, 'strlen'),
+        ),
+        'transactions'         => array_values($ids),
+        'requested_start_time' => gmdate('Y-m-d\TH:i:s\Z', (int) $start),
+        'requested_end_time'   => gmdate('Y-m-d\TH:i:s\Z', (int) $end),
+    );
+}
+
+/**
+ * A pickup answer read: CONFIRMED and PENDING are booked, the reference is
+ * the carrier's confirmation code (Shippo's pickup id while none is given).
+ * Pure.
+ *
+ * @param array $data
+ * @param array $raw
+ * @return array
+ */
+function pg_label_shippo_pickup_answer($data, $raw)
+{
+    $status = strtoupper(pg_label_shippo_text($data, 'status'));
+    $id = pg_label_shippo_text($data, 'object_id');
+    $code = pg_label_shippo_text($data, 'confirmation_code');
+    $reference = (($code !== '') && (strlen($code) <= 64)) ? $code : $id;
+
+    if ($status === '') {
+        $reference = '';
+    } elseif (!in_array($status, array('CONFIRMED', 'PENDING'), true)) {
+        $words = pg_label_shippo_message_texts(isset($data['messages']) ? $data['messages'] : array());
+
+        return array(
+            'success' => false,
+            'error'   => lang('The carrier refused the pickup request.') . ($words ? ' (' . mb_substr(implode(' ', $words), 0, 300, 'UTF-8') . ')' : ''),
+            'raw'     => $raw,
+        );
+    }
+
+    if (($reference === '') || (strlen($reference) > 64)) {
+        return array('success' => false, 'unclear' => true, 'error' => lang('The carrier label service gave an answer that cannot be read. Check the shipment on the service\'s own screen before trying again.'), 'raw' => $raw);
+    }
+
+    $window = pg_label_shippo_text($data, 'confirmed_start_time') . ' - ' . pg_label_shippo_text($data, 'confirmed_end_time');
+
+    return array(
+        'success'   => true,
+        'reference' => $reference,
+        'log'       => array('Shippo pickup ' . $id . ' is ' . $status . ' (' . trim($window, ' -') . ').'),
+        'raw'       => $raw,
+    );
+}
+
+/**
+ * Asks the carrier to collect labels: every transaction must be a bought
+ * label of one carrier account (read from its rate), since Shippo books a
+ * pickup at one carrier account.
+ *
+ * @param array $request references (transaction ids), start, end (unix time)
+ * @param array $account
+ * @return array
+ */
+function pg_label_shippo_pickup($request, $account)
+{
+    $ids = array();
+
+    foreach ((isset($request['references']) && is_array($request['references'])) ? $request['references'] : array() as $reference) {
+        $id = pg_label_shippo_id($reference);
+
+        if ($id !== '') {
+            $ids[$id] = $id;
+        }
+    }
+
+    $start = isset($request['start']) ? (int) $request['start'] : 0;
+    $end = isset($request['end']) ? (int) $request['end'] : 0;
+
+    if (!$ids || ($start <= 0) || ($end <= $start)) {
+        return array('success' => false, 'error' => lang('Choose the labels, the date and the time window of the pickup.'));
+    }
+
+    // The carrier account of each label is the one its rate was bought at.
+    $rates = array();
+
+    foreach ($ids as $id) {
+        $read = pg_label_shippo_api('GET', '/transactions/' . $id, $account);
+
+        if (!$read['ok']) {
+            return pg_label_shippo_failure($read, false);
+        }
+
+        if (strtoupper(pg_label_shippo_text($read['data'], 'status')) !== 'SUCCESS') {
+            return array('success' => false, 'error' => lang('A label of this pickup is not a valid label at Shippo (refunded or not bought).'), 'raw' => $read['raw']);
+        }
+
+        $rates[pg_label_shippo_id(pg_label_shippo_text($read['data'], 'rate'))] = true;
+    }
+
+    $carrier_accounts = array();
+
+    foreach (array_keys($rates) as $rate) {
+        $read = ($rate !== '') ? pg_label_shippo_api('GET', '/rates/' . $rate, $account) : null;
+
+        if (($read === null) || !$read['ok']) {
+            return ($read === null)
+                ? array('success' => false, 'error' => lang('Shippo does not say which carrier account a label was bought at.'))
+                : pg_label_shippo_failure($read, false);
+        }
+
+        $carrier_accounts[pg_label_shippo_text($read['data'], 'carrier_account')] = true;
+    }
+
+    if (count($carrier_accounts) !== 1 || isset($carrier_accounts[''])) {
+        return array('success' => false, 'error' => lang('These labels were bought at more than one carrier account: request a pickup for each carrier separately.'));
+    }
+
+    // A booked pickup may cost money: no clear answer is unclear.
+    $read = pg_label_shippo_api('POST', '/pickups/', $account, pg_label_shippo_pickup_body(key($carrier_accounts), $ids, $start, $end, $account));
+
+    if (!$read['ok']) {
+        return pg_label_shippo_failure($read, true);
+    }
+
+    return pg_label_shippo_pickup_answer($read['data'], $read['raw']);
 }

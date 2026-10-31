@@ -156,6 +156,7 @@ function pg_label_builtin_drivers()
         'shippo'     => array('label' => 'Shippo', 'file' => 'shippo.php', 'portal' => 'https://portal.goshippo.com/api-config/api'),
         'sendcloud'  => array('label' => 'Sendcloud', 'file' => 'sendcloud.php', 'portal' => 'https://app.sendcloud.com/v2/settings/integrations/manage'),
         'aras'       => array('label' => 'Aras Kargo', 'file' => 'aras.php', 'portal' => 'https://esasweb.araskargo.com.tr'),
+        'kargonomi'  => array('label' => 'Kargonomi', 'file' => 'kargonomi.php', 'portal' => 'https://app.kargonomi.com.tr'),
     );
 }
 
@@ -366,6 +367,26 @@ function pg_label_can($key, $operation)
     return array_key_exists((string) $operation, pg_label_operations())
         && pg_label_load($key)
         && function_exists(pg_label_function_name($key, (string) $operation));
+}
+
+
+/**
+ * The recipient's district (ilçe) for a carrier that asks for one: the
+ * district entered at checkout (ship_tos.district), else the city, which
+ * held the district before that column existed. Pure.
+ *
+ * @param array $recipient the shipment's recipient
+ * @return string
+ */
+function pg_label_recipient_district($recipient)
+{
+    foreach (array('district', 'city') as $name) {
+        if (is_array($recipient) && isset($recipient[$name]) && is_scalar($recipient[$name]) && (trim((string) $recipient[$name]) !== '')) {
+            return trim((string) $recipient[$name]);
+        }
+    }
+
+    return '';
 }
 
 
@@ -905,6 +926,12 @@ function pg_label_settings_decide($key, $fields, $post, $stored)
 
             $values[$name] = $value;
         }
+    }
+
+    // The customs block's codes are read with the product screen's rules
+    // (pg_label_customs_fields()).
+    foreach (pg_label_customs_settings_problems($values) as $name => $sentence) {
+        $marks[pg_label_input_name($key, $name)] = $sentence;
     }
 
     if (!empty($stored['exists'])) {

@@ -69,6 +69,10 @@ if (empty($_POST['name'])) {
     $optimized = $row['optimized'];
     $theme = $row['theme'];
     $folder_archived = $row['folder_archived'];
+
+    // A row whose file is gone from the disk gets a note in place of the
+    // thumbnail, and no tool or link that needs the file.
+    $on_disk = is_file(FILE_DIRECTORY_PATH . '/' . $file_name);
     
     $output_file_name = '';
     
@@ -85,21 +89,20 @@ if (empty($_POST['name'])) {
     $output_thumbnail = '';
     $output_image_info = '';
 
-    if ((mb_strtolower($file_type) == 'bmp') || (mb_strtolower($file_type) == 'gif') || (mb_strtolower($file_type) == 'jpg') || (mb_strtolower($file_type) == 'jpeg') || (mb_strtolower($file_type) == 'png') || (mb_strtolower($file_type) == 'tif') || (mb_strtolower($file_type) == 'tiff')) {
+    if (!$on_disk) {
+        $output_thumbnail = '<div class="col-12"><div class="alert theme-warning">' . lang('The file is recorded here but is not on the disk.') . '</div></div>';
+
+    } elseif ((mb_strtolower($file_type) == 'bmp') || (mb_strtolower($file_type) == 'gif') || (mb_strtolower($file_type) == 'jpg') || (mb_strtolower($file_type) == 'jpeg') || (mb_strtolower($file_type) == 'png') || (mb_strtolower($file_type) == 'tif') || (mb_strtolower($file_type) == 'tiff')) {
         // Get the dimensions of the image.
         $image_size = @getimagesize(FILE_DIRECTORY_PATH . '/' . $file_name);
-        $image_width = $image_size[0];
-        $image_height = $image_size[1];
-        
-        // Set the maximum dimension size for the image.
-        $max_dimension = 75;
-        
-        // Call function to resize image.
-        $thumbnail_dimensions = get_thumbnail_dimensions($image_width, $image_height, $max_dimension);
-        
+
         // Output thumnail.
         $output_thumbnail = '<div class="col-12 md:col-auto"><a href="' . OUTPUT_PATH . h($file_name) . '" target="_blank" tabindex="-1" aria-hidden="true"><img style="width: 100px;height:100px;" class="img-fluid img-thumbnail lazy" alt="" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="' . OUTPUT_PATH . h($file_name) . '" /></a></div>';
-        $output_image_info = ' | ' . $image_width . 'px - ' .  $image_height . 'px';
+
+        // A file that is not a readable image has no size to show.
+        if ($image_size !== false) {
+            $output_image_info = ' | ' . $image_size[0] . 'px - ' .  $image_size[1] . 'px';
+        }
 
     }
 
@@ -108,22 +111,31 @@ if (empty($_POST['name'])) {
 
     $optimize_button = '';
     $image_buttons = '';
-    $output_image_edit_link = '' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/image_editor_edit.php?file_name=' . h(urlencode($file_name)) . '&send_to=' . h(escape_javascript(REQUEST_URL)) . '';
+    $output_image_edit_link = '' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/image_editor_edit.php?file_name=' . h(urlencode($file_name)) . '&send_to=' . h(urlencode(REQUEST_URL)) . '';
 
     $file['type'] = mb_strtolower($row['type']);
-    if (    ($file['type'] == 'jpg')
+    if ($on_disk && (
+            ($file['type'] == 'jpg')
             or ($file['type'] == 'jpeg')
             or ($file['type'] == 'png')
             or ($file['type'] == 'gif')
             or ($file['type'] == 'bmp')
             or ($file['type'] == 'tiff')
             or ($file['type'] == 'webp')
-        ){
+        )){
              if (!$optimized &&(extension_loaded('imagick') || extension_loaded('gd'))) {
                 $optimize_button =
                     '<a class="btn btn-link pg-link-secondary py-0 mb-3" href="optimize.php?id=' . h($_GET['id']) . get_token_query_string_field() . '"><i class="bi bi-rocket bi-me-2"></i>' . lang('Optimize this image') . '</a>';
             }
             $image_buttons = $optimize_button . ' <a class="btn btn-link pg-link-secondary py-0 mb-3" href="' . $output_image_edit_link . '"><i class="bi bi-flower2 bi-me-2"></i>' . lang(array('string'=>'Edit this image with {var:1}','vars'=>array(lang('Image Editor')) )) . '</a>';
+    }
+
+    // Both links would lead to the site's 404 page without the file.
+    $output_file_links = '';
+
+    if ($on_disk) {
+        $output_file_links = '<a class="btn btn-link pg-link-secondary py-0 mb-3"  href="' . OUTPUT_PATH . h($file_name) . '" target="_blank"><span class="material-icons me-1">open_in_browser</span>' . lang('Open in New Tab') . '</a>
+            <a class="btn btn-link pg-link-secondary py-0 mb-3" download="' . h($file_name) . '" href="' . OUTPUT_PATH . h($file_name) . '" ><span class="bi bi-file-earmark-arrow-down bi-me-2"></span>' . lang('Download') . '</a>';
     }
 
     // Convert file size to a user friendly output.
@@ -223,8 +235,7 @@ if (empty($_POST['name'])) {
                         <nav id="button_bar" class="navigation " aria-label="' . h(lang('Button Bar')) . '">
                             <div class=" btn-group btn-group-sm flex-wrap">
                                 ' . $image_buttons . '
-                                <a class="btn btn-link pg-link-secondary py-0 mb-3"  href="' . OUTPUT_PATH . h($file_name) . '" target="_blank"><span class="material-icons me-1">open_in_browser</span>' . lang('Open in New Tab') . '</a>
-                                <a class="btn btn-link pg-link-secondary py-0 mb-3" download="' . h($file_name) . '" href="' . OUTPUT_PATH . h($file_name) . '" ><span class="bi bi-file-earmark-arrow-down bi-me-2"></span>' . lang('Download') . '</a>
+                                ' . $output_file_links . '
                             </div>
                         </nav>
                     </div>
@@ -310,6 +321,12 @@ if (empty($_POST['name'])) {
     }
     else
     {
+        // A blank name would become 'file' in prepare_file_name() and break
+        // every link to the stored file.
+        if (trim((string) ($_POST['name'] ?? '')) === '') {
+            output_error(lang('Please enter a name.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+        }
+
         // if file name is invalid, output error
         if ($name == '.htaccess') {
             output_error(lang('File name is invalid') . '. <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');

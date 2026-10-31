@@ -1057,9 +1057,12 @@ function ws_task_card_html($viewer, $task, $assignees)
 
     if ($brief['progress'] !== null) {
         $share = $brief['progress'];
+        $share_label = lang(array('string' => '{var:1} of {var:2} items done', 'vars' => array($share['done'], $share['total'])));
 
-        $progress = '<div class="ws-task-progress' . ($share['complete'] ? ' ws-task-progress-full' : '') . '" title="' . h(lang(array('string' => '{var:1} of {var:2} items done', 'vars' => array($share['done'], $share['total'])))) . '">'
-            . '<div class="progress" role="progressbar" aria-valuenow="' . (int) $share['percent'] . '" aria-valuemin="0" aria-valuemax="100"><div class="progress-bar" style="width: ' . (int) $share['percent'] . '%"></div></div>'
+        // The bar is named with the sentence; the wrapper's title only
+        // serves the mouse.
+        $progress = '<div class="ws-task-progress' . ($share['complete'] ? ' ws-task-progress-full' : '') . '" title="' . h($share_label) . '">'
+            . '<div class="progress" role="progressbar" aria-label="' . h($share_label) . '" aria-valuenow="' . (int) $share['percent'] . '" aria-valuemin="0" aria-valuemax="100"><div class="progress-bar" style="width: ' . (int) $share['percent'] . '%"></div></div>'
             . '<span>' . h($share['done'] . '/' . $share['total'] . ' · ' . lang(array('string' => '{var:1}%', 'vars' => $share['percent']))) . '</span>'
             . '</div>';
 

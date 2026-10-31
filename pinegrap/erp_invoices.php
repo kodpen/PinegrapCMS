@@ -221,21 +221,44 @@ if ($edoc_filter !== '') {
 
 $where = !empty($conditions) ? (' WHERE ' . implode(' AND ', $conditions)) : '';
 
-$invoices = (array) db_items("SELECT i.*, a.title AS live_account_title, o.order_number,
+// The register reads at most $invoice_limit rows, newest first. A list that
+// came back full is counted over the same conditions, so the note and the
+// line under the table name how many invoices the view holds; the badges and
+// the dashboard links that open it count the whole register.
+$invoice_limit = 500;
+
+$invoices = (array) db_items("SELECT i.*, a.title AS live_account_title, o.order_number, o.id AS order_exists,
         " . erp_aging_due_sql('i') . " AS effective_due
     FROM erp_invoices i
     LEFT JOIN erp_accounts a ON i.account_id = a.id
     LEFT JOIN orders o ON i.order_id = o.id
     " . $where . "
     ORDER BY i.issue_date DESC, i.id DESC
-    LIMIT 500");
+    LIMIT " . $invoice_limit);
+
+$invoice_total = count($invoices);
+
+if (count($invoices) >= $invoice_limit) {
+    $invoice_total = (int) db_value("SELECT COUNT(*) FROM erp_invoices i" . $where);
+}
+
+$output_invoice_count = ($invoice_total > count($invoices))
+    ? lang(array('string' => '{var:1} of {var:2}', 'vars' => array(pg_format_number(count($invoices), 0), pg_format_number($invoice_total, 0))))
+    : pg_format_number(count($invoices), 0);
+
+$output_cap_note = '';
+
+if ($invoice_total > count($invoices)) {
+    $output_cap_note = '
+                <div class="form-text px-5 pb-5">' . h(lang(array('string' => 'Only the latest {var:1} of the {var:2} matching invoices are shown; pick a due-date or e-document view to narrow the list.', 'vars' => array(pg_format_number(count($invoices), 0), pg_format_number($invoice_total, 0))))) . '</div>';
+}
 
 if (!empty($parts)) {
     $output_filter_note = '
             <div class="alert theme-secondary d-flex align-items-center gap-3 py-3 mb-5" role="status">
                 <i class="bi bi-funnel"></i>
                 <span>' . h(lang(array('string' => 'Showing: {var:1}', 'vars' => implode(' · ', $parts)))) . '</span>
-                <span class="fg-secondary">(' . count($invoices) . ')</span>
+                <span class="fg-secondary">(' . h($output_invoice_count) . ')</span>
                 <a href="erp_invoices.php" class="ms-auto pg-link-body-emphasis">' . lang('Clear the filter') . '</a>
             </div>';
 }
@@ -288,14 +311,12 @@ foreach ($invoices as $invoice) {
     // The title as it was when the document was issued; the live card for
     // documents written before the copy existed.
     $account_title = (trim((string) $invoice['account_title']) !== '') ? (string) $invoice['account_title'] : (string) $invoice['live_account_title'];
-    $output_link_url = ($is_draft ? 'edit_erp_invoice_draft.php?id=' : 'edit_erp_invoice.php?id=') . $id;
+    $output_link_url = h(($is_draft ? 'edit_erp_invoice_draft.php?id=' : 'edit_erp_invoice.php?id=') . $id . '&send_to=' . urlencode(REQUEST_URL));
     $output_number = $is_draft
         ? '<span class="fg-secondary fst-italic">' . lang('Draft') . '</span>'
         : h($invoice['full_number']);
 
-    $order_cell = ((int) $invoice['order_id'] > 0)
-        ? '<a href="view_order.php?id=' . (int) $invoice['order_id'] . '">' . h($invoice['order_number'] ?: ('#' . (int) $invoice['order_id'])) . '</a>'
-        : '';
+    $order_cell = erp_order_link_html($invoice['order_id'], $invoice['order_number'], $invoice['order_exists'] !== null);
 
     // Figures in the document's own currency; a foreign document also shows
     // what its total came to in the base currency.
@@ -321,11 +342,11 @@ foreach ($invoices as $invoice) {
                 $output_snoozed = ($snoozed_text !== '')
                     ? ' <i class="bi bi-bell-slash fg-secondary" aria-hidden="true" title="' . h($snoozed_text) . '"></i><span class="visually-hidden">' . h($snoozed_text) . '</span>'
                     : '';
-                $output_due .= '<div><span class="badge theme-danger">' . h(lang(array('string' => '{var:1} days overdue', 'vars' => $days))) . '</span>' . $output_snoozed . '</div>';
+                $output_due .= '<div><span class="badge theme-danger">' . h(lang(array('string' => '{var:1} day{suffix:1} overdue', 'vars' => $days, 'suffix' => ($days == 1) ? '' : 's'))) . '</span>' . $output_snoozed . '</div>';
             } elseif ($days === 0) {
                 $output_due .= '<div><span class="badge theme-warning">' . lang('Due today') . '</span></div>';
             } elseif (-$days <= 7) {
-                $output_due .= '<div><span class="badge theme-warning">' . h(lang(array('string' => 'due in {var:1} days', 'vars' => -$days))) . '</span></div>';
+                $output_due .= '<div><span class="badge theme-warning">' . h(lang(array('string' => 'due in {var:1} day{suffix:1}', 'vars' => -$days, 'suffix' => ($days == -1) ? '' : 's'))) . '</span></div>';
             }
         }
     }
@@ -416,9 +437,9 @@ $output_bulk_buttons = '';
 if ($edoc_bulk) {
     $output_bulk_buttons = '
                 <span class="enable-on-selected d-inline-flex flex-wrap gap-1">
-                    <button type="submit" form="erp_edoc_bulk" name="erp_action" value="edoc_bulk_send" class="btn btn-sm btn-outline theme-secondary disabled" data-confirm-content="' . h(lang('Send the ticked invoices to the e-document provider? Invoices that were already sent are skipped.')) . '"><i class="bi bi-send me-1" aria-hidden="true"></i>' . lang('Send selected') . '</button>
-                    <button type="submit" form="erp_edoc_bulk" name="erp_action" value="edoc_bulk_submit" class="btn btn-sm btn-outline theme-secondary disabled" data-confirm-content="' . h(lang('Hand the ticked drafts to GİB? Only documents waiting as a draft at the provider are handed over.')) . '"><i class="bi bi-bank me-1" aria-hidden="true"></i>' . lang('Hand to GİB') . '</button>
-                    <button type="submit" form="erp_edoc_bulk" name="erp_action" value="edoc_bulk_poll" class="btn btn-sm btn-outline theme-secondary disabled"><i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . lang('Ask status') . '</button>
+                    <button type="submit" form="erp_edoc_bulk" name="erp_action" value="edoc_bulk_send" class="btn btn-sm btn-outline theme-secondary disabled" disabled data-confirm-content="' . h(lang('Send the ticked invoices to the e-document provider? Invoices that were already sent are skipped.')) . '"><i class="bi bi-send me-1" aria-hidden="true"></i>' . lang('Send selected') . '</button>
+                    <button type="submit" form="erp_edoc_bulk" name="erp_action" value="edoc_bulk_submit" class="btn btn-sm btn-outline theme-secondary disabled" disabled data-confirm-content="' . h(lang('Hand the ticked drafts to GİB? Only documents waiting as a draft at the provider are handed over.')) . '"><i class="bi bi-bank me-1" aria-hidden="true"></i>' . lang('Hand to GİB') . '</button>
+                    <button type="submit" form="erp_edoc_bulk" name="erp_action" value="edoc_bulk_poll" class="btn btn-sm btn-outline theme-secondary disabled" disabled><i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . lang('Ask status') . '</button>
                 </span>';
 }
 
@@ -447,7 +468,7 @@ pg_page_shell([
                 ' . $output_bulk_buttons . '
                 <div class="pg-toolbar-grow"></div>
                 ' . $output_edoc_menu . '
-                ' . pg_filter_select('filter', array('' => lang('All')) + $filter_names, $filter, array('label' => lang('Due date'), 'icon' => 'calendar-week', 'action' => 'erp_invoices.php')) . '
+                ' . pg_filter_select('filter', array('' => lang('All')) + $filter_names, $filter, array('label' => lang('Due date'), 'icon' => 'calendar-week', 'action' => 'erp_invoices.php', 'keep' => array('edoc'))) . '
             </nav>
             ' . $output_filter_note . '
             ' . ($edoc_bulk ? '<form id="erp_edoc_bulk" method="post" action="' . h($self_url) . '">' . get_token_field() : '') . '
@@ -473,7 +494,7 @@ pg_page_shell([
                         </thead>
                         <tbody>' . $output_rows . '</tbody>
                     </table>
-                </div>
+                </div>' . $output_cap_note . '
             </div>
             ' . ($edoc_bulk ? '</form>' : '') . '
         </div>

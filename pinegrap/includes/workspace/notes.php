@@ -1900,31 +1900,10 @@ function ws_note_channel_sync($channel_id)
 }
 
 /**
- * Keeps a file for a note in the note's folder, base64 as the panel sends
- * files (see ws_note_file_store_bytes()).
- *
- * @param array  $viewer
- * @param array  $note one the person may change
- * @param string $original_name
- * @param string $data
- * @return array ok, error, id, name, url, image
- */
-function ws_note_file_store($viewer, $note, $original_name, $data)
-{
-    $parts = explode('base64,', (string) $data, 2);
-    $binary = base64_decode(str_replace(' ', '+', end($parts)), true);
-
-    if (($binary === false) || ($binary === '')) {
-        return array('ok' => false, 'error' => lang('The file could not be read.'), 'id' => 0, 'name' => '', 'url' => '', 'image' => false);
-    }
-
-    return ws_note_file_store_bytes($viewer, $note, $original_name, $binary);
-}
-
-/**
  * Keeps a file for a note in the note's folder, from its bytes: what the
- * screen sends (ws_note_file_store()) and what a note brought in from another
- * app carries with it (includes/workspace/notes_import.php). What a channel
+ * screen sends (ws_note_file, read by ws_upload_request_file()) and what a
+ * note brought in from another app carries with it
+ * (includes/workspace/notes_import.php). What a channel
  * refuses is refused here too.
  *
  * @param array  $viewer
@@ -2435,6 +2414,15 @@ function ws_notes_js_strings()
         'notes_notion_go'       => ws_js_template('Fetch {var:1} page(s)', 1),
         'notes_notion_max'      => ws_js_template('Pick at most {var:1} pages at a time.', 1),
         'notes_notion_settings' => lang('Open Workspace settings'),
+        // The From OneNote part of the import window (notes_onenote.php).
+        'notes_onenote_tab'     => lang('From OneNote'),
+        'notes_onenote_intro'   => lang('Open a section of your OneNote notebooks, pick the pages to bring in, and each becomes a note of yours. Pages already imported are brought up to date.'),
+        'notes_onenote_connect' => lang('Connect Microsoft account'),
+        'notes_onenote_back'    => lang('All sections'),
+        'notes_onenote_none'    => lang('This section has no pages.'),
+        'notes_onenote_empty'   => lang('No OneNote notebook was found in your account.'),
+        'notes_onenote_more'    => lang('Only the most recently changed pages are listed.'),
+        'notes_onenote_fetching' => lang('Fetching the pages from OneNote…'),
         'notes_mine'            => lang('My notes'),
         'notes_shared'          => lang('Shared with me'),
         'notes_new'             => lang('New note'),
@@ -2447,7 +2435,7 @@ function ws_notes_js_strings()
         'notes_empty_search'    => lang('No note matches.'),
         'notes_none'            => lang('A clean page - your first note is one click away.'),
         'notes_intro'           => lang('Your notes are yours alone - nobody else sees them, administrators included - until you share them. Keep any message here from its menu with "Save to my notes", or write your own.'),
-        'notes_pick'            => lang('Pick a note on the left, or start a new one.'),
+        'notes_pick'            => lang('Pick a note from the note list, or start a new one.'),
         'notes_title'           => lang('Title'),
         'notes_text'            => lang('Write here. # tags a person or a record, @Claude asks Claude; a line that ends with = is worked out.'),
         'notes_saving'          => lang('Saving…'),

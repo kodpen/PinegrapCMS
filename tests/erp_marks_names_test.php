@@ -79,6 +79,6 @@ function test_erp_marks_names_accountant_copy()
 	$source = erp_marks_names_source('erp_accountant.php');
 
 	pg_assert_true(strpos($source, 'button.innerHTML = "<i class=\\"bi bi-check-lg\\"') === false, 'the copy button keeps its label');
-	pg_assert_contains('<span class="visually-hidden" role="status" aria-live="polite" id="erp_accountant_link_status" data-copied="\' . h(lang(\'Copied\')) . \'"></span>', $source);
+	pg_assert_contains('<span class="visually-hidden" role="status" aria-live="polite" id="erp_accountant_link_status" data-copied="\' . h(lang(\'Copied\')) . \'" data-refused="\' . h(lang(\'The browser did not let the text be copied. Select it and copy it from here.\')) . \'"></span>', $source);
 	pg_assert_contains('status.textContent = status.getAttribute("data-copied");', $source);
 }

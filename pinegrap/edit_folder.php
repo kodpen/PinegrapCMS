@@ -291,6 +291,18 @@ if (empty($_POST['name'])) {
         $notice = lang('The folder was deleted successfully.');
         
     } else {
+
+        // A name of only spaces passes the browser's required check and
+        // would be stored blank; refused before the move below, so a
+        // refused save changes nothing.
+        if (trim((string) $_POST['name']) === '') {
+            output_error(lang('The folder must have a name. Please type in a name for the folder.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+        }
+
+        // folder_name is varchar(100).
+        if (pg_name_too_long(trim((string) $_POST['name']))) {
+            output_error(lang(array('string'=>'The name can be at most {var:1} characters long.','vars'=>array(pg_name_max_length()))) . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+        }
         
         // get parent
         $result=db_q("SELECT folder_parent FROM folder WHERE folder_id = ?", array((string) ($_POST['id'] ?? ''))) or output_error('Query failed');

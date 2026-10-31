@@ -1491,9 +1491,11 @@
         jQuery(document).scannerDetection({
             timeBeforeScanTest: 200,
             avgTimeByChar: 100,
-            ignoreIfFocusOn: 'input, textarea, select, [contenteditable="true"]',
+            ignoreIfFocusOn: 'input, textarea, select, [contenteditable="true"], [contenteditable=""]',
             onComplete: function (code) {
-                if (pgUI.anyOpen('dialog')) {
+                // A code made only of blanks (Space or Enter pressed twice on
+                // a focused button) is not a scan.
+                if (pgUI.anyOpen('dialog') || String(code).trim() === '') {
                     return;
                 }
                 var dot = el.foot.querySelector('.pg-sale-dot');

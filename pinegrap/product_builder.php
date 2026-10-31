@@ -680,6 +680,14 @@ function pg_pb_common_from_post()
         'form_quantity_type'      => $post('form_quantity_type'),
     );
 
+    // Customs data (products.hs_code, products.origin_country), a property
+    // of the goods like the weight, so every variant of a set takes it. Only
+    // where the upgrade has added the columns; pg_pb_validate_product_post()
+    // refused a value that cannot be stored before this runs.
+    if (pg_product_customs_ready()) {
+        $common = array_merge($common, pg_product_customs_from_post($_POST));
+    }
+
     /* ---------------------------------------------------- checkout */
 
     $common['required_product'] = $post('required_product');
@@ -1797,23 +1805,39 @@ function pg_pb_google_taxonomy_search($query, $limit = 30)
         return array();
     }
 
+    // Folded on both sides so 'interkom' finds 'İnterkomlar', 'ışık' finds
+    // 'Işık' and 'bahce' finds 'Bahçe', as a utf8mb4_unicode_ci LIKE would.
+    // The folded paths are kept for the rest of the request.
+    static $folded_paths = NULL;
+
+    if ($folded_paths === NULL) {
+        $folded_paths = array();
+
+        foreach (pg_pb_google_taxonomy_map() as $id => $path) {
+            $folded_paths[$id] = fold_keyword_for_matching($path);
+        }
+    }
+
+    $query = fold_keyword_for_matching($query);
+
     $leaf_matches = array();
     $path_matches = array();
 
     foreach (pg_pb_google_taxonomy_map() as $id => $path) {
 
-        $path = (string) $path;
+        $path   = (string) $path;
+        $folded = $folded_paths[$id];
 
-        if (mb_stripos($path, $query) === FALSE) {
+        if (mb_strpos($folded, $query) === FALSE) {
             continue;
         }
 
-        $segments = explode('>', $path);
+        $segments = explode('>', $folded);
         $leaf     = trim(end($segments));
 
         $entry = array('id' => (string) $id, 'path' => $path);
 
-        if (mb_stripos($leaf, $query) !== FALSE) {
+        if (mb_strpos($leaf, $query) !== FALSE) {
             $leaf_matches[] = $entry;
         } else {
             $path_matches[] = $entry;
@@ -2402,7 +2426,7 @@ function pg_pb_render_attribute_card($attribute, $selected_option_ids = array(),
                     <span class="pg-pb-option-add d-inline-flex align-items-center gap-1">
                         <button type="button" class="btn btn-sm btn-outline theme-secondary rounded-pill pg-pb-option-add-open" title="' . lang('Add Option') . '"><i class="bi bi-plus-lg"></i></button>
                         <span class="pg-pb-option-add-form d-none input-group input-group-sm" style="width:16rem;">
-                            <input type="text" class="form-control pg-pb-option-add-input" maxlength="255" placeholder="' . lang('Label') . '" />
+                            <input type="text" class="form-control pg-pb-option-add-input" maxlength="255" placeholder="' . lang('Label') . '" aria-label="' . h(lang(array('string' => 'New option for {var:1}', 'vars' => array($attribute['name'])))) . '" />
                             <button type="button" class="btn btn-solid theme-primary pg-pb-option-add-save" title="' . lang('Save') . '"><i class="bi bi-check-lg"></i></button>
                             <button type="button" class="btn btn-outline theme-secondary pg-pb-option-add-cancel" title="' . lang('Cancel') . '"><i class="bi bi-x-lg"></i></button>
                         </span>
@@ -2465,8 +2489,8 @@ function pg_pb_render_attribute_modal()
                                 <input type="text" id="pg_pb_attr_label" class="form-control" maxlength="255" placeholder="' . lang('Attribute Label') . '" />
                             </div>
                             <div class="col-12">
-                                <label class="form-label">' . lang('Attribute Options') . '</label>
-                                <div id="pg_pb_attr_options"></div>
+                                <label class="form-label" id="pg_pb_attr_options_label">' . lang('Attribute Options') . '</label>
+                                <div id="pg_pb_attr_options" role="group" aria-labelledby="pg_pb_attr_options_label"></div>
                                 <button type="button" class="btn btn-sm btn-outline theme-primary mt-3" id="pg_pb_attr_add_option"><i class="bi bi-plus-circle me-3"></i>' . lang('Add Option') . '</button>
                             </div>
                         </div>
@@ -2791,6 +2815,29 @@ function pg_pb_render_image_picker($images = array(), $extra_action = '')
         </div>';
 }
 
+
+/**
+ * The options of a select with the stored choice kept: when the list left
+ * the stored id out (a private-access folder whose access changed, or one
+ * moved to the Recycle Bin), it is added selected with its name and a mark,
+ * so a plain Save posts it again instead of the first option.
+ *
+ * @param string     $options_html the <option> tags the list gave
+ * @param int|string $value        the stored id, 0 or '' for none
+ * @param string     $label        the stored item's name
+ * @param string     $mark         translated words after the name
+ * @return string
+ */
+function pg_pb_kept_option($options_html, $value, $label, $mark)
+{
+    $id = (int) $value;
+
+    if (($id <= 0) || (strpos($options_html, '<option value="' . $id . '"') !== FALSE)) {
+        return $options_html;
+    }
+
+    return $options_html . '<option value="' . $id . '" selected>' . h(trim($label . ' ' . $mark)) . '</option>';
+}
 
 /**
  * A full-width row holding one or more switches.
@@ -3524,8 +3571,8 @@ function pg_pb_variant_sets_screen()
                 <nav class="buttons navigation text-center position-sticky" style="bottom:.5rem;" aria-label="' . lang('Action') . '">
                     <div class="container">
                         <div class="btn-group btn-group-sm flex-wrap justify-content-center mb-0 enable-on-selected">
-                            <button type="button" value="Enable Selected" class="btn mb-1 mt-1 btn-solid theme-secondary disabled pg-vs-status" data-pg-vs-status="enabled"><i class="bi bi-toggle-on me-3"></i>' . lang('Enable This') . '</button>
-                            <button type="button" value="Disable Selected" class="btn mb-1 mt-1 btn-solid theme-secondary disabled pg-vs-status" data-pg-vs-status="disabled"><i class="bi bi-toggle-off me-3"></i>' . lang('Disable This') . '</button>
+                            <button type="button" value="Enable Selected" class="btn mb-1 mt-1 btn-solid theme-secondary disabled pg-vs-status" data-pg-vs-status="enabled"><i class="bi bi-toggle-on me-3"></i>' . lang('Enable Selected') . '</button>
+                            <button type="button" value="Disable Selected" class="btn mb-1 mt-1 btn-solid theme-secondary disabled pg-vs-status" data-pg-vs-status="disabled"><i class="bi bi-toggle-off me-3"></i>' . lang('Disable Selected') . '</button>
                             <button type="button" value="Delete Selected" class="btn mb-1 mt-1 btn-solid theme-danger disabled" data-confirm-content="' . h(pg_catalog_bin_ready() ? lang('Move the selected variant sets and all of their products to the Recycle Bin? They can be restored from the Recycle Bin in the Catalog Manager.') : lang('Delete the selected variant sets and all of their products? This cannot be undone.')) . '"><i class="bi bi-trash me-3"></i>' . lang('Delete') . '</button>
                         </div>
                     </div>
@@ -4352,6 +4399,24 @@ function pg_pb_render_product_screen($values = array(), $context = array())
             '</div>';
     }
 
+    // Customs data for parcels sent abroad, on a site that has the columns.
+    // Empty is the shop default of the label driver's settings, which the
+    // hint says, so an empty field is not read as "no customs data".
+    $output_customs_fields = '';
+
+    if (pg_product_customs_ready()) {
+        $output_customs_fields =
+            '<div class="col-6 lg:col-3 my-1">
+                <label for="hs_code" class="form-label">' . lang('HS Code') . '</label>
+                <input value="' . h($v('hs_code', '')) . '" type="text" name="hs_code" id="hs_code" class="form-control" maxlength="' . PG_PRODUCT_HS_CODE_MAX . '" inputmode="decimal" pattern="[0-9]+(\\.[0-9]+)*" aria-describedby="pg_pb_customs_help" />
+            </div>
+            <div class="col-6 lg:col-3 my-1">
+                <label for="origin_country" class="form-label">' . lang('Country of Origin') . '</label>
+                <select name="origin_country" id="origin_country" class="form-control" aria-describedby="pg_pb_customs_help">' . pg_product_origin_country_options($v('origin_country', '')) . '</select>
+            </div>
+            <div class="col-12 form-text mt-0" id="pg_pb_customs_help">' . lang('Declared on labels of parcels sent abroad. Empty uses the shop default of the label service.') . '</div>';
+    }
+
     // Shipping is a store-wide feature: with it off, the switch and every dimension
     // behind it are noise.
     $output_shippable = '';
@@ -4410,11 +4475,11 @@ function pg_pb_render_product_screen($values = array(), $context = array())
 
                                                     <div class="col-6 lg:col-3 my-1">
                                                         <label for="primary_weight_points" class="form-label">' . lang('Primary Weight Points') . '</label>
-                                                        <input value="' . h($v('primary_weight_points', '0')) . '" type="number" step="0.01" min="0" name="primary_weight_points" id="primary_weight_points" class="form-control" />
+                                                        <input value="' . h($v('primary_weight_points', '0')) . '" type="number" step="1" min="0" inputmode="numeric" name="primary_weight_points" id="primary_weight_points" class="form-control" />
                                                     </div>
                                                     <div class="col-6 lg:col-3 my-1">
                                                         <label for="secondary_weight_points" class="form-label">' . lang('Secondary Weight Points') . '</label>
-                                                        <input value="' . h($v('secondary_weight_points', '0')) . '" type="number" step="0.01" min="0" name="secondary_weight_points" id="secondary_weight_points" class="form-control" />
+                                                        <input value="' . h($v('secondary_weight_points', '0')) . '" type="number" step="1" min="0" inputmode="numeric" name="secondary_weight_points" id="secondary_weight_points" class="form-control" />
                                                     </div>
                                                     <div class="col-6 lg:col-3 my-1">
                                                         <label for="preparation_time" class="form-label">' . lang('Preparation Time') . '</label>
@@ -4428,7 +4493,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                                         </label>
                                                     </div>
 
-                                                    ' . $output_zones_field .
+                                                    ' . $output_customs_fields . $output_zones_field .
 
                                                     pg_pb_render_switch_row(
                                                         pg_pb_render_switch(array(
@@ -4503,7 +4568,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                             'panel' =>
                                 '<div class="col-12 lg:col-6">
                                     <label class="form-label" for="recurring_profile_disabled_email_subject">' . lang('Subject') . '</label>
-                                    <input type="text" id="recurring_profile_disabled_email_subject" name="recurring_profile_disabled_email_subject" class="form-control" maxlength="100" value="' . h($v('recurring_profile_disabled_email_subject')) . '" />
+                                    <input type="text" id="recurring_profile_disabled_email_subject" name="recurring_profile_disabled_email_subject" class="form-control" maxlength="255" value="' . h($v('recurring_profile_disabled_email_subject')) . '" />
                                 </div>
                                 <div class="col-12 lg:col-6">
                                     <label class="form-label" for="recurring_profile_disabled_email_page_id">' . lang('Page') . '</label>
@@ -4552,6 +4617,23 @@ function pg_pb_render_product_screen($values = array(), $context = array())
 
     foreach ($membership_effects as $membership_effect) {
         $output_membership_effects .= '<li>' . $membership_effect . '</li>';
+    }
+
+    // The private-access folder opens on the stored one. select_folder()
+    // leaves it out once its access is no longer Private or it is in the
+    // Recycle Bin, so it is added back marked: otherwise every Save wrote
+    // folder 0 and the buyers got access to nothing.
+    $private_folder_id = (int) $v('private_folder');
+    $private_folder_options = select_folder($private_folder_id, 0, 0, 0, array(), array(), 'private');
+
+    if ($private_folder_id > 0) {
+        $private_folder_name = (string) db_value("SELECT folder_name FROM folder WHERE folder_id = '" . $private_folder_id . "'");
+
+        if ($private_folder_name === '') {
+            $private_folder_name = lang('Folder') . ' #' . $private_folder_id;
+        }
+
+        $private_folder_options = pg_pb_kept_option($private_folder_options, $private_folder_id, $private_folder_name, lang('(no longer offered)'));
     }
 
     // The category list is a file shipped with the software. Saying how many
@@ -4642,6 +4724,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
         'Clear'              => lang('Clear'),
         'Combinations'       => lang('Combinations'),
         'Label'              => lang('Label'),
+        'option_n'           => lang(array('string' => 'Option {var:1}', 'vars' => array('{n}'))),
         "'No Thanks' Option" => lang('\'No Thanks\' Option'),
         'required_sku'       => lang(array('string' => '{var:1} is required', 'vars' => array(lang('Product ID / SKU')))),
         'request_failed'     => lang('Sorry, we could not accept your request.'),
@@ -4872,14 +4955,14 @@ function pg_pb_render_product_screen($values = array(), $context = array())
 
                                     <div class="col-12 lg:col-4 my-3">
                                         <label for="name" class="form-label">' . lang('Product ID / SKU') . '</label>
-                                        <input type="text" name="name" id="name" class="form-control" required value="' . h($v('name')) . '" data-pg-name-except="' . (($pg_mode === 'edit') ? $pg_product_id : 0) . '" />
+                                        <input type="text" name="name" id="name" class="form-control" maxlength="100" required value="' . h($v('name')) . '" data-pg-name-except="' . (($pg_mode === 'edit') ? $pg_product_id : 0) . '" />
                                         <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                         <div class="form-text pg-pb-group-only d-none">' . lang('Used as the prefix of every variant SKU.') . '</div>
                                     </div>
 
                                     <div class="col-12 lg:col-5 my-3">
                                         ' . pg_ai_write_label_row('<label for="short_description" class="form-label">' . lang('Short Description') . '</label>', $ai_button('product_short', 'short_description'), $ai_marker('short_description', 'short_description')) . '
-                                        <input type="text" name="short_description" id="short_description" class="form-control" maxlength="255" value="' . h($v('short_description')) . '" />
+                                        <input type="text" name="short_description" id="short_description" class="form-control" maxlength="100" value="' . h($v('short_description')) . '" />
                                         <div class="form-text pg-pb-group-only d-none">' . lang('Becomes the product group name shown in the catalog.') . '</div>
                                     </div>
 
@@ -5319,7 +5402,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                                     '<div class="col-12 md:col-6 lg:col-4">
                                                         <label class="form-label" for="private_folder">' . lang('Set "View" Access to Folder') . '</label>
                                                         <select class="form-control" id="private_folder" name="private_folder">
-                                                            <option value="">-' . lang(array('string' => 'Select {var:1}', 'vars' => array(lang('Folder')))) . '-</option>' . select_folder(0, 0, 0, 0, array(), array(), 'private') . '
+                                                            <option value="">-' . lang(array('string' => 'Select {var:1}', 'vars' => array(lang('Folder')))) . '-</option>' . $private_folder_options . '
                                                         </select>
                                                     </div>
                                                     <div class="col-12 md:col-6 lg:col-4">
@@ -5362,7 +5445,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                                     'panel' =>
                                                         '<div class="col-12 lg:col-8">
                                                             <label class="form-label" for="gift_card_email_subject">' . lang('Subject') . '</label>
-                                                            <input type="text" id="gift_card_email_subject" name="gift_card_email_subject" class="form-control" maxlength="100" value="' . h($v('gift_card_email_subject')) . '" />
+                                                            <input type="text" id="gift_card_email_subject" name="gift_card_email_subject" class="form-control" maxlength="255" value="' . h($v('gift_card_email_subject')) . '" />
                                                             <div class="d-flex flex-wrap gap-1 mt-1" data-pg-pb-giftvar-target="gift_card_email_subject">' . $output_gift_card_variables . '</div>
                                                         </div>
     
@@ -5525,7 +5608,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                                     <div class="col-12 lg:col-4">
                                                         <label class="form-label" for="add_comment_name">' . lang('Name') . '</label>
                                                         <input type="text" class="form-control" id="add_comment_name" name="add_comment_name" maxlength="100" value="' . h($v('add_comment_name')) . '" />
-                                                        <div class="form-text">' . lang('Leave blank to use the name on the order.') . '</div>
+                                                        <div class="form-text">' . lang('Leave blank to post as Anonymous. ^^billing_first_name^^ ^^billing_last_name^^ puts the name on the order here.') . '</div>
                                                     </div>
                                                     <div class="col-12 my-3">
                                                         <label class="form-label" for="add_comment_message">' . lang('Message') . '</label>
@@ -5641,7 +5724,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                 <span class="bi ' . (($pg_mode === 'edit') ? 'bi-check-circle' : 'bi-plus-circle') . ' me-3"></span><span class="pg-btn-label">' . (($pg_mode === 'edit') ? lang(array('string' => 'Save')) : lang(array('string' => 'Create'))) . '</span>
                             </button>
                             ' . (($pg_mode === 'edit')
-                                ? '<button type="submit" name="submit_delete" value="Delete" class="btn my-1 btn-solid theme-danger" data-confirm-content="' . h(pg_catalog_bin_ready() ? lang(array('string' => 'This {var:1} will be moved to the Recycle Bin. It can be restored from the Recycle Bin in the Catalog Manager.', 'vars' => array(lang('product')))) : lang(array('string' => 'WARNING: This {var:1} will be permanently deleted.', 'vars' => array(lang('product'))))) . '"><span class="bi bi-trash me-3"></span><span class="pg-btn-label">' . lang(array('string' => 'Delete')) . '</span></button>'
+                                ? '<button type="submit" name="submit_delete" value="Delete" class="btn my-1 btn-solid theme-danger" formnovalidate data-confirm-content="' . h(pg_catalog_bin_ready() ? lang(array('string' => 'This {var:1} will be moved to the Recycle Bin. It can be restored from the Recycle Bin in the Catalog Manager.', 'vars' => array(lang('product')))) : lang(array('string' => 'WARNING: This {var:1} will be permanently deleted.', 'vars' => array(lang('product'))))) . '"><span class="bi bi-trash me-3"></span><span class="pg-btn-label">' . lang(array('string' => 'Delete')) . '</span></button>'
                                 : '')) . '
                         </div>
                     </div>
@@ -5667,6 +5750,15 @@ function pg_pb_render_product_screen($values = array(), $context = array())
             token: ' . str_replace('</', '<\/', encode_json($_SESSION['software']['token'])) . ',
             // Host only, the way a search result prints it — no scheme.
             siteUrl: ' . str_replace('</', '<\/', encode_json(HOSTNAME . PATH)) . ',
+            // The accent table the save transliterates an address with, so the
+            // search result preview shows the address the save will write.
+            asciiTable: ' . str_replace('</', '<\/', encode_json(pg_transliterate_ascii_table())) . ',
+            // On Edit, a blank Catalog Name box keeps the stored address
+            // (the save rebuilds it only when the box changed), so the preview
+            // shows that address instead of one made from the description.
+            storedAddress: ' . (($pg_mode === 'edit')
+                ? str_replace('</', '<\/', encode_json((string) db_value("SELECT address_name FROM products WHERE id = '" . e((int) (isset($context['product_id']) ? $context['product_id'] : $v('id', 0))) . "'")))
+                : 'null') . ',
             // One option per attribute while editing: a product is one variant, and
         // a screen that lets it hold two options of the same attribute is a
         // screen that quietly turns it into a set.
@@ -5714,6 +5806,30 @@ function pg_pb_render_product_screen($values = array(), $context = array())
  * ------------------------------------------------------------------ */
 
 /**
+ * The product row with the stored 0 of each "leave blank for no limit" box
+ * (payments, access days, quantity limits, commission rate limit) turned
+ * into '', as a new product shows them. The save stores a blank as 0 and the
+ * readers take 0 as unlimited; printed back as 0 or 0.00 under a hint that
+ * says blank means no limit, the box read as "none allowed". A column the
+ * row lacks is not added.
+ *
+ * @param array $row
+ * @return array
+ */
+function pg_pb_blank_unlimited_zeros($row)
+{
+    $columns = array('number_of_payments', 'private_days', 'minimum_quantity', 'maximum_quantity', 'commission_rate_limit');
+
+    foreach ($columns as $column) {
+        if (array_key_exists($column, $row) and ((float) $row[$column] == 0)) {
+            $row[$column] = '';
+        }
+    }
+
+    return $row;
+}
+
+/**
  * Everything the product screen needs to draw an existing product.
  *
  * Returns the same shape the screen writes, so a field that round-trips
@@ -5752,6 +5868,8 @@ function pg_pb_load_product($product_id)
 
     $row['compare_at_price_enabled'] = is_int($compare_at);
     $row['compare_at_price']         = is_int($compare_at) ? pg_format_input_amount($compare_at / 100) : '';
+
+    $row = pg_pb_blank_unlimited_zeros($row);
 
     // The cover is products.image_name and the rest live in the xref, in the
     // order they were added. The screen treats them as one list whose first
@@ -6187,6 +6305,84 @@ function pg_pb_posted_product_names($post, $product_id = 0)
 
 
 /**
+ * The barcodes a Create Product post types, read the way the save applies
+ * them: the Barcode field for a single product, each row's own code for a
+ * variant set. Blank codes are left out (they mean "generate one", or none).
+ * The edit screen has its own barcode card, so an edit post types none here.
+ *
+ * @param array $post
+ * @param int   $product_id the product being edited, 0 on create
+ * @return array
+ */
+function pg_pb_posted_barcodes($post, $product_id = 0)
+{
+    if ($product_id) {
+        return array();
+    }
+
+    $variants = pg_pb_decode_variants(isset($post['variants_json']) ? $post['variants_json'] : '');
+
+    $barcodes = array();
+
+    if (pg_pb_mode($variants) === 'group') {
+        foreach ($variants as $variant) {
+            $barcodes[] = isset($variant['barcode']) ? trim((string) $variant['barcode']) : '';
+        }
+    } else {
+        $barcodes[] = isset($post['pg_pb_barcode']) ? trim((string) $post['pg_pb_barcode']) : '';
+    }
+
+    return array_values(array_filter($barcodes, function ($barcode) {
+        return $barcode !== '';
+    }));
+}
+
+
+/**
+ * Why typed barcodes cannot be stored, as page HTML; '' when they can.
+ *
+ * pg_assign_product_barcode() refuses such a code by writing nothing, after
+ * the product row exists, so the screen checks first and says why.
+ *
+ * @param array         $barcodes from pg_pb_posted_barcodes()
+ * @param string        $type     the barcode type they are stored as
+ * @param callable|null $is_taken barcode => bool; absent: product_barcodes
+ * @return string
+ */
+function pg_pb_barcodes_problem($barcodes, $type, $is_taken = NULL)
+{
+    if ($is_taken === NULL) {
+        $is_taken = function ($barcode) {
+            $result = db_q("SELECT id FROM product_barcodes WHERE barcode = ? LIMIT 1", array($barcode));
+
+            return $result && (mysqli_num_rows($result) > 0);
+        };
+    }
+
+    foreach ($barcodes as $barcode) {
+        if (!pg_barcode_matches_format($barcode, $type)) {
+            return h($barcode) . ': ' . lang(array('string' => 'The barcode does not match the site\'s barcode format ({var:1}).', 'vars' => array(h($type))));
+        }
+    }
+
+    // Compared case aside, as the column compares them.
+    $repeated = pg_product_names_repeated($barcodes);
+
+    if ($repeated !== '') {
+        return lang(array('string' => 'Two variants have the barcode {var:1}.', 'vars' => array(h($repeated))));
+    }
+
+    foreach ($barcodes as $barcode) {
+        if ($is_taken($barcode)) {
+            return h($barcode) . ': ' . lang('Another product already carries this barcode.');
+        }
+    }
+
+    return '';
+}
+
+
+/**
  * The checks add_product.php and edit_product.php run before they write
  * anything.
  *
@@ -6226,12 +6422,35 @@ function pg_pb_validate_product_post($user, $product_id = 0)
         output_error(lang(array('string' => '{var:1} is too large.', 'vars' => array(lang('Compare-at Price')))) . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
     }
 
+    // An HS code or a country of origin that cannot be stored is refused
+    // before anything is written, rather than saved empty, which would fall
+    // back to the shop default the operator did not choose.
+    if (pg_product_customs_ready()) {
+
+        $customs_problem = pg_product_customs_problem(
+            isset($_POST['hs_code']) ? $_POST['hs_code'] : '',
+            isset($_POST['origin_country']) ? $_POST['origin_country'] : '');
+
+        if ($customs_problem !== '') {
+            output_error(lang($customs_problem) . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
+        }
+    }
+
     // A product code is one product's, as the external API holds it: two
     // products of one code cannot be told apart by an import, a marketplace
     // or a barcode scan. Refused rather than renamed to "CODE[1]", which the
     // operator would only notice later. On edit only a changed code is
     // looked up, so a catalogue that already holds a duplicate still saves.
     $names = pg_pb_posted_product_names($_POST, $product_id);
+
+    // products.name is varchar(100): a longer code would be cut on write, and
+    // two codes sharing their first 100 characters would both pass the
+    // uniqueness check below and be stored as the same code.
+    foreach ($names as $name) {
+        if (mb_strlen($name, 'UTF-8') > 100) {
+            output_error(lang(array('string' => '{var:1} can be at most {var:2} characters long.', 'vars' => array(lang('Product ID / SKU'), 100))) . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
+        }
+    }
 
     // A bundle's contents are checked before anything is written: a refused
     // component would otherwise leave the bundle switched on and empty.
@@ -6241,6 +6460,21 @@ function pg_pb_validate_product_post($user, $product_id = 0)
 
         if ($problem !== '') {
             output_error(lang($problem) . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
+        }
+    }
+
+    // A typed barcode the save would drop (wrong format, another product's,
+    // or two rows of one code) is refused here: the product would otherwise
+    // be created without it, and the automatic switch does not replace a
+    // typed code.
+    if (defined('BARCODE_ENABLED') && BARCODE_ENABLED) {
+
+        $barcode_problem = pg_pb_barcodes_problem(
+            pg_pb_posted_barcodes($_POST, $product_id),
+            defined('BARCODE_DEFAULT_TYPE') ? BARCODE_DEFAULT_TYPE : 'CODE128');
+
+        if ($barcode_problem !== '') {
+            output_error($barcode_problem . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
         }
     }
 

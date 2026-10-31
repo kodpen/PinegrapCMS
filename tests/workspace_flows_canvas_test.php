@@ -39,6 +39,7 @@ if (!defined('PG_API_PANEL')) {
 require_once(PG_FUNCTIONS_DIR . '/includes/panel/actions.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/templates.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flows.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_member.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_runs.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_shares.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_flows.php');
@@ -345,7 +346,7 @@ JS
 	}
 
 	pg_assert_same(array('start', 'values', 'logic', 'people', 'message', 'system'), $result['order'], 'groups in the plan\'s order');
-	pg_assert_same(array('start:manual,schedule,event,join,row', 'values:constants,value'), $result['firstItems'], 'each group keeps the palette\'s order');
+	pg_assert_same(array('start:manual,schedule,event,join,row,no_order', 'values:constants,value'), $result['firstItems'], 'each group keeps the palette\'s order');
 	pg_assert_same(array('start:schedule'), $result['search'], 'a search keeps the boxes whose name holds it, any case');
 	pg_assert_same(array('start:manual'), $result['words'], 'every word searched for');
 	pg_assert_same(0, $result['none'], 'nothing found: no group');
@@ -801,6 +802,9 @@ function ws_flows_canvas_test_node(array $names, $script)
 	preg_match_all('/^ *var POLL_[A-Z_]+ = [0-9.]+;$/m', $source, $timings);
 	$body .= implode("\n", $timings[0]) . "\n";
 
+	// The token helpers every reader of a value token calls.
+	$names = array_unique(array_merge($names, array('tokenBare', 'tokenFallback', 'tokenWith', 'holdsToken'), in_array('runValue', $names, true) ? array('runValueOf') : array()));
+
 	foreach ($names as $name) {
 		$function = ws_flows_canvas_test_script_function($source, $name);
 
@@ -976,7 +980,7 @@ JS
 function test_workspace_flows_canvas_condition_values_are_kept_as_the_field_holds_them()
 {
 	$result = ws_flows_canvas_test_node(
-		array('field', 'textInput', 'stepLists', 'changeInput', 'channelPick', 'conditionValue', 'conditionCompare', 'conditionMetric'),
+		array('field', 'textInput', 'stepLists', 'changeInput', 'channelPick', 'siteDecimal', 'siteNumber', 'siteShown', 'conditionValue', 'conditionCompare', 'conditionMetric'),
 		<<<'JS'
 var uid = 0;
 var FL = {};
@@ -1026,6 +1030,12 @@ var out = {
     days: compare('date', 'within', '7', '10'),
     overdue: compare('date', 'overdue', '', '')
 };
+// A Turkish site: a comma marks the decimals, a dot groups thousands.
+FL.decimal = ',';
+out.turkish = ['1,500', '1.500', '1.250,5', '18,5', '1.5', '-0,25', '1.000.50', 'abc'].map(function (typed) { return compare('decimal', 'gte', '', typed).kept; });
+out.turkishShown = compare('decimal', 'gte', '1.234', '1,234').shown;
+FL.decimal = '.';
+out.english = ['1,500', '1.5', '1,250.5'].map(function (typed) { return compare('decimal', 'gte', '', typed).kept; });
 FL.steps = {
     metrics: [{ key: 'tasks_open', label: 'Open tasks', scope: 'channel' }, { key: 'stock_low', label: 'Products low in stock', scope: 'threshold' }],
     counts: ['gt'],
@@ -1069,6 +1079,9 @@ JS
 	pg_assert_same(array('datetime-local', '2026-10-26T14:30'), array($result['moment']['type'], $result['moment']['shown']), 'a moment picked as one');
 	pg_assert_same('2026-11-01 09:15:00', $result['moment']['kept'], 'kept as the record keeps it');
 	pg_assert_same('18.5', $result['decimal']['kept'], 'a decimal comma kept as a dot');
+	pg_assert_same(array('1.5', '1500', '1250.5', '18.5', '1.5', '-0.25', '1.000.50', 'abc'), $result['turkish'], 'a Turkish number kept as the machine number it means; no number kept as typed');
+	pg_assert_same('1,234', $result['turkishShown'], 'a kept decimal shown the Turkish way, so it reads back the same');
+	pg_assert_same(array('1500', '1.5', '1250.5'), $result['english'], 'an English comma groups thousands');
 	pg_assert_same(array('text', 'Ankara'), array($result['text']['type'], $result['text']['kept']), 'a text as typed');
 	pg_assert_same(array('text', '10'), array($result['days']['type'], $result['days']['kept']), '"falls within the next days" takes a number of days');
 	pg_assert_same('', $result['overdue']['tag'], '"has gone by" takes no value');
@@ -1091,7 +1104,7 @@ JS
 function test_workspace_flows_canvas_value_picker_offers_the_boxes_before()
 {
 	$result = ws_flows_canvas_test_node(
-		array('nodeById', 'kindOf', 'titleOf', 'nameOf', 'orderedNodes', 'stepLists', 'arrowMaps', 'boxesBefore', 'sureBefore', 'boxValues', 'valueGroups'),
+		array('nodeById', 'kindOf', 'rawTitle', 'titleOf', 'namedTitle', 'nameOf', 'orderedNodes', 'stepLists', 'arrowMaps', 'boxesBefore', 'sureBefore', 'boxValues', 'flowLoops', 'loopOf', 'valueGroups'),
 		<<<'JS'
 var KINDS = {
     event: { into: false, out: ['next'] },
@@ -1158,8 +1171,8 @@ JS
 function test_workspace_flows_canvas_condition_value_rule()
 {
 	$result = ws_flows_canvas_test_node(
-		array('nodeById', 'kindOf', 'titleOf', 'nameOf', 'orderedNodes', 'stepLists', 'arrowMaps', 'boxesBefore', 'sureBefore', 'boxValues', 'valueGroups', 'valueSources', 'valueNames',
-			'field', 'textInput', 'changeInput', 'conditionValue', 'conditionCompare', 'conditionValueRule', 'conditionMeta'),
+		array('nodeById', 'kindOf', 'rawTitle', 'titleOf', 'namedTitle', 'nameOf', 'orderedNodes', 'stepLists', 'arrowMaps', 'boxesBefore', 'sureBefore', 'boxValues', 'flowLoops', 'loopOf', 'valueGroups', 'valueSources', 'valueNames',
+			'field', 'textInput', 'changeInput', 'siteDecimal', 'siteNumber', 'siteShown', 'conditionValue', 'conditionCompare', 'conditionValueRule', 'conditionMeta'),
 		<<<'JS'
 var uid = 0;
 var DAYS = {};
@@ -1203,6 +1216,13 @@ node.config.rule = rule;
 var form = new FakeNode('div');
 conditionValueRule(form, node, rule);
 var out = { values: options(controls(form)[0]), ops: options(controls(form)[1]).map(function (item) { return item.split('=')[0]; }), meta: conditionMeta(rule, node) };
+// A number typed on a Turkish site stays as typed: the server reads it the
+// site's way (ws_flow_typed_number()).
+FL.decimal = ',';
+var typed = controls(form)[2];
+typed.value = '1,500';
+typed.listeners.input.forEach(function (fn) { fn(); });
+out.typed = rule.value;
 var pick = controls(form)[0];
 pick.value = '{{node.web_check_1.text}}';
 pick.listeners.change.forEach(function (fn) { fn(); });
@@ -1234,6 +1254,7 @@ JS
 	), $result['values'], 'the boxes before, a branch marked');
 	pg_assert_same(array('eq', 'neq', 'gt', 'gte', 'lt', 'lte', 'empty', 'not_empty'), $result['ops'], 'a number\'s comparisons');
 	pg_assert_same('Check a web address › Status code', $result['meta'], 'the box reads the value\'s name');
+	pg_assert_same('1,500', $result['typed'], 'a typed number kept as typed, not with its comma made a dot');
 	pg_assert_same(array('ref' => '{{node.web_check_1.text}}', 'op' => 'eq', 'redrawn' => 1), $result['after'], 'a text after "is more than" goes back to "is"');
 	pg_assert_same(array('eq', 'neq', 'contains', 'empty', 'not_empty'), $result['textOps'], 'a text\'s comparisons');
 	pg_assert_same(1, $result['alone'], 'a box with nothing before offers no value');
@@ -1256,7 +1277,7 @@ function test_workspace_flows_canvas_data_threads_come_from_the_fields()
 	}
 
 	$result = ws_flows_canvas_test_node(
-		array('nodeById', 'kindOf', 'titleOf', 'nameOf', 'orderedNodes', 'stepLists', 'arrowMaps', 'boxesBefore', 'sureBefore', 'boxValues', 'valueGroups', 'valueSources',
+		array('nodeById', 'kindOf', 'rawTitle', 'titleOf', 'namedTitle', 'nameOf', 'orderedNodes', 'stepLists', 'arrowMaps', 'boxesBefore', 'sureBefore', 'boxValues', 'flowLoops', 'loopOf', 'valueGroups', 'valueSources',
 			'fieldTexts', 'dataThreads'),
 		$constants . <<<'JS'
 var KINDS = {
@@ -1276,7 +1297,7 @@ state = { graph: { nodes: [
     box('event_1', 'event', { event: 'order.created' }, 0),
     box('web_check_1', 'web_check', { mode: 'status' }, 1),
     box('condition_1', 'condition', { rule: { type: 'value', ref: '{{node.web_check_1.status_code}}' } }, 2),
-    box('post_1', 'post', { body: 'Code {{node.web_check_1.status_code}} {{node.web_check_1.status_code}}, {{node.web_check_1.text}}, {{node.gone_1.text}}' }, 3),
+    box('post_1', 'post', { body: 'Code {{node.web_check_1.status_code}} {{node.web_check_1.status_code}}, {{node.web_check_1.text}}, {{node.gone_1.text}} {{node.email_1.text}}' }, 3),
     box('email_1', 'email', { subject: 'Order {{trigger.order_number}}', body: '{{node.post_1.message_id}} {{node.web_check_1.status_code}}' }, 4)
 ], edges: [
     { from: 'event_1', to: 'web_check_1', on: 'next' },
@@ -1286,7 +1307,7 @@ state = { graph: { nodes: [
     { from: 'post_1', to: 'email_1', on: 'done' }
 ] } };
 console.log(JSON.stringify(dataThreads().map(function (thread) {
-    return [thread.from, thread.to, thread.field, thread.fieldLabel, thread.label, thread.type + '-' + thread.tone, thread.skipped ? 'skipped' : ''].join(' | ');
+    return [thread.from, thread.to, thread.field, thread.fieldLabel, thread.label, thread.type + '-' + thread.tone, thread.skipped ? 'skipped' : '', thread.gone ? 'gone' : ''].join(' | ');
 })));
 JS
 	);
@@ -1295,15 +1316,23 @@ JS
 		return;
 	}
 
+	// A box that is gone gives a thread with no source, marked gone; a box
+	// that is there but comes later gives none.
 	pg_assert_same(array(
-		'web_check_1 | condition_1 | rule | fl_cond_value_ref | Check a web address › Status code | number-0 | ',
-		'web_check_1 | post_1 | body | fl_post_body | Check a web address › Status code | number-1 | ',
-		'web_check_1 | post_1 | body | fl_post_body | Check a web address › fl_values_text | text-0 | ',
-		' | post_1 | body | fl_post_body | node.gone_1.text | text-1 | ',
-		'event_1 | email_1 | subject | fl_email_subject | Event › Order number | text-2 | ',
-		'post_1 | email_1 | body | fl_email_body | Post › Message | number-2 | skipped',
-		'web_check_1 | email_1 | body | fl_email_body | Check a web address › Status code | number-0 | ',
+		'web_check_1 | condition_1 | rule | fl_cond_value_ref | Check a web address › Status code | number-0 |  | ',
+		'web_check_1 | post_1 | body | fl_post_body | Check a web address › Status code | number-1 |  | ',
+		'web_check_1 | post_1 | body | fl_post_body | Check a web address › fl_values_text | text-0 |  | ',
+		' | post_1 | body | fl_post_body | node.gone_1.text | text-1 |  | gone',
+		' | post_1 | body | fl_post_body | node.email_1.text | text-2 |  | ',
+		'event_1 | email_1 | subject | fl_email_subject | Event › Order number | text-0 |  | ',
+		'post_1 | email_1 | body | fl_email_body | Post › Message | number-2 | skipped | ',
+		'web_check_1 | email_1 | body | fl_email_body | Check a web address › Status code | number-0 |  | ',
 	), $result, 'one thread per value and field, from the box that gives it');
+
+	// Drawn red and dashed (goneThread()).
+	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/backend.src.css');
+	pg_assert_true((bool) preg_match('/\n\.wsf-thread-gone \{[^}]*stroke: var\(--pg-danger\);[^}]*stroke-dasharray:/', $css), 'a gone thread is red and dashed');
+	pg_assert_true(strpos($source, "'wsf-thread wsf-thread-gone'") !== false, 'the gone thread is drawn with its class');
 }
 
 // A thread drawn from a value (Flows T2) may go into the fields of the boxes
@@ -1324,8 +1353,8 @@ function test_workspace_flows_canvas_thread_binds_into_the_fields_after()
 	}
 
 	$result = ws_flows_canvas_test_node(
-		array('nodeById', 'kindOf', 'titleOf', 'nameOf', 'orderedNodes', 'stepLists', 'arrowMaps', 'boxesBefore', 'sureBefore', 'boxValues', 'valueGroups', 'valueSources',
-			'openFields', 'bindTargets', 'bindValue'),
+		array('nodeById', 'kindOf', 'rawTitle', 'titleOf', 'namedTitle', 'nameOf', 'orderedNodes', 'stepLists', 'arrowMaps', 'boxesBefore', 'sureBefore', 'boxValues', 'flowLoops', 'loopOf', 'valueGroups', 'valueSources',
+			'openFields', 'listValue', 'fieldTakes', 'bindTargets', 'bindValue'),
 		$constants . <<<'JS'
 var KINDS = {
     event: { name: 'Event', into: false, out: ['next'] },
@@ -1400,7 +1429,7 @@ JS
 function test_workspace_flows_canvas_constants_are_offered_to_every_box()
 {
 	$result = ws_flows_canvas_test_node(
-		array('nodeById', 'kindOf', 'titleOf', 'nameOf', 'orderedNodes', 'stepLists', 'arrowMaps', 'boxesBefore', 'sureBefore', 'boxValues', 'valueGroups'),
+		array('nodeById', 'kindOf', 'rawTitle', 'titleOf', 'namedTitle', 'nameOf', 'orderedNodes', 'stepLists', 'arrowMaps', 'boxesBefore', 'sureBefore', 'boxValues', 'flowLoops', 'loopOf', 'valueGroups'),
 		<<<'JS'
 var KINDS = {
     manual: { name: 'Manual', into: false, out: ['next'] },
@@ -1442,7 +1471,7 @@ JS
 function test_workspace_flows_canvas_derived_box_reads_any_box()
 {
 	$result = ws_flows_canvas_test_node(
-		array('nodeById', 'kindOf', 'titleOf', 'nameOf', 'orderedNodes', 'stepLists', 'arrowMaps', 'boxesBefore', 'sureBefore', 'boxValues', 'valueGroups', 'derivedRule', 'openFields'),
+		array('nodeById', 'kindOf', 'rawTitle', 'titleOf', 'namedTitle', 'nameOf', 'orderedNodes', 'stepLists', 'arrowMaps', 'boxesBefore', 'sureBefore', 'boxValues', 'flowLoops', 'loopOf', 'valueGroups', 'derivedRule', 'openFields'),
 		"var VALUE_FIELDS = { post: [['body', 'fl_post_body', 4000]], value: [['a', 'fl_derived_a', 500], ['b', 'fl_derived_b', 500]] };\n" . <<<'JS'
 var KINDS = {
     manual: { name: 'Manual', into: false, out: ['next'] },
@@ -1507,7 +1536,7 @@ function test_workspace_flows_canvas_run_lists_the_values_received()
 	}
 
 	$result = ws_flows_canvas_test_node(
-		array('nodeById', 'kindOf', 'titleOf', 'nameOf', 'orderedNodes', 'stepLists', 'arrowMaps', 'boxesBefore', 'sureBefore', 'boxValues', 'valueGroups', 'valueSources',
+		array('nodeById', 'kindOf', 'rawTitle', 'titleOf', 'namedTitle', 'nameOf', 'orderedNodes', 'stepLists', 'arrowMaps', 'boxesBefore', 'sureBefore', 'boxValues', 'flowLoops', 'loopOf', 'valueGroups', 'valueSources',
 			'fieldTexts', 'dataThreads', 'toneClass', 'stepOf', 'runValue', 'runFilled', 'runReads'),
 		$constants . <<<'JS'
 var KINDS = {
@@ -1618,9 +1647,10 @@ JS
 }
 
 // The MCP box: the palette offers it only while a server is listed for the
-// person; its form tells a tool that asks first, one no longer on, a server
-// out of reach and arguments that are no JSON object (each value read as
-// empty, a value outside quotes leaves none), as the server's check does.
+// person; its form takes a tool that asks first once it has the channel its
+// owner is asked in, and tells one no longer on, a server out of reach and
+// arguments that are no JSON object (each value read as empty, a value
+// outside quotes leaves none), as the server's check does.
 function test_workspace_flows_canvas_mcp_box()
 {
 	$source = str_replace("\r\n", "\n", (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js'));
@@ -1632,7 +1662,7 @@ function test_workspace_flows_canvas_mcp_box()
 	}
 
 	$result = ws_flows_canvas_test_node(
-		array('stepLists', 'paletteItems', 'mcpServer', 'mcpToolProblem', 'mcpArgumentsProblem'),
+		array('stepLists', 'rowWriteTables', 'memberKind', 'paletteItems', 'mcpServer', 'mcpToolAsks', 'mcpToolProblem', 'mcpArgumentsProblem'),
 		$constants . <<<'JS'
 var FL = { steps: {} };
 var none = paletteItems().map(function (item) { return item[0]; }).indexOf('mcp');
@@ -1644,10 +1674,17 @@ console.log(JSON.stringify({
     tools: [
         mcpToolProblem({ server_id: 7, tool: 'search' }),
         mcpToolProblem({ server_id: 7, tool: 'create_page' }),
+        mcpToolProblem({ server_id: 7, tool: 'create_page', channel_id: 5, closes_in: 24 }),
         mcpToolProblem({ server_id: 7, tool: 'gone' }),
         mcpToolProblem({ server_id: 9, tool: 'search' }),
         mcpToolProblem({ server_id: 0, tool: '' }),
         mcpToolProblem({ server_id: 7, tool: '' })
+    ],
+    asks: [
+        mcpToolAsks({ server_id: 7, tool: 'create_page' }),
+        mcpToolAsks({ server_id: 7, tool: 'search' }),
+        mcpToolAsks({ server_id: 9, tool: 'create_page' }),
+        mcpToolAsks({ server_id: 7, tool: '' })
     ],
     args: [
         mcpArgumentsProblem(''),
@@ -1668,7 +1705,8 @@ JS
 
 	pg_assert_same(-1, $result['none'], 'no server, no MCP box in the palette');
 	pg_assert_true($result['offered'], 'a server listed: the palette offers it');
-	pg_assert_same(array('', 'fl_mcp_tool_asks create_page docs', 'fl_mcp_tool_off gone docs', 'fl_mcp_server_out', '', ''), $result['tools']);
+	pg_assert_same(array('', 'fl_approval_no_channel', '', 'fl_mcp_tool_off gone docs', 'fl_mcp_server_out', '', ''), $result['tools'], 'a tool that asks first runs once it has its channel');
+	pg_assert_same(array(true, false, false, false), $result['asks'], 'only a tool the server lists as asking first asks');
 	pg_assert_same(array('', '', '', 'fl_mcp_arguments_bad', 'fl_mcp_arguments_bad', 'fl_mcp_arguments_bad', 'fl_mcp_arguments_bad'), $result['args']);
 
 	// The lists come with the flows config, built by the steps' helper with
@@ -1679,6 +1717,35 @@ JS
 }
 
 
+// A role-3 member's palette offers only the kinds the server lists
+// (ws_flow_member_kinds(), handed over as FL.member_kinds); staff's, every
+// kind; a box of a refused kind is not added on a member's canvas either.
+function test_workspace_flows_canvas_member_palette()
+{
+	$source = str_replace("\r\n", "\n", (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js'));
+
+	pg_assert_true((bool) preg_match('/^( *)var PALETTE = \[\n.*?\n\1\];\n/ms', $source, $found), 'workspace_flow.js has PALETTE');
+
+	$member = ws_flow_js_member('member');
+	$result = ws_flows_canvas_test_node(
+		array('stepLists', 'rowWriteTables', 'memberKind', 'paletteItems'),
+		$found[0] . 'var FL = { steps: { mcp: [{ id: 1 }] } };
+var kinds = function () { return paletteItems().map(function (item) { return item[0]; }); };
+var staff = kinds();
+FL.member_kinds = ' . json_encode($member['member_kinds']) . ';
+console.log(JSON.stringify({ staff: staff, member: kinds(), add: [memberKind("webhook"), memberKind("post")] }));'
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_true(in_array('webhook', $result['staff'], true) && in_array('mcp', $result['staff'], true), 'staff keep every kind');
+	pg_assert_same(array(), array_values(array_diff($result['member'], ws_flow_member_kinds())), 'a member is offered no refused kind');
+	pg_assert_true(in_array('post', $result['member'], true) && in_array('manual', $result['member'], true), 'a member is offered their kinds');
+	pg_assert_same(array(false, true), $result['add'], 'a refused kind is not added');
+}
+
 // A row box (a workflow table's row starts the flow) is offered only while
 // the person reads a table; it reads what happens and the table, and gives
 // the server's values (table, row, who) and one per column of its table, by
@@ -1687,7 +1754,7 @@ JS
 function test_workspace_flows_canvas_row_box()
 {
 	$result = ws_flows_canvas_test_node(
-		array('nodeById', 'kindOf', 'stepLists', 'paletteItems', 'rowTable', 'rowMeta', 'rowCellValues', 'boxValues'),
+		array('nodeById', 'kindOf', 'stepLists', 'rowWriteTables', 'memberKind', 'paletteItems', 'rowTable', 'rowMeta', 'rowCellValues', 'boxValues'),
 		<<<'JS'
 var KINDS = { row: { into: false, out: ['next'] }, mcp: { into: true, out: ['done', 'failed'] }, post: { into: true, out: ['done', 'failed'] } };
 var PALETTE = [['row', 'fl_kind_row'], ['post', 'fl_add_post'], ['mcp', 'fl_kind_mcp']];
@@ -1725,17 +1792,89 @@ JS
 	pg_assert_same(array('trigger.table_id=Table:text', 'trigger.row_id=Row:text'), $result['goneValues']);
 }
 
+// The boxes that add or change a row: offered while the person may change
+// rows of a table, the tables to pick only those; their cells kept as the
+// JSON object the server reads, one column at a time, money typed as an
+// amount and kept in minor units, a value from a box before kept as a text;
+// cells the form cannot read (null) are left to their JSON field. A value
+// is threaded from the cells but never dropped into them.
+function test_workspace_flows_canvas_table_write_boxes()
+{
+	$result = ws_flows_canvas_test_node(
+		array('kindOf', 'stepLists', 'rowWriteTables', 'rowWriteTable', 'rowWriteColumns', 'memberKind', 'paletteItems', 'rowTable', 'rowCells', 'rowWriteMeta', 'cellPlaces', 'siteDecimal', 'siteNumber', 'siteShown', 'cellShown', 'cellKept', 'setCell', 'fieldTexts', 'openFields'),
+		<<<'JS'
+var KINDS = { row: { into: false, out: ['next'] }, row_add: { into: true, out: ['done', 'failed'] }, row_set: { into: true, out: ['done', 'failed'] } };
+var PALETTE = [['row', 'fl_kind_row'], ['row_add', 'fl_kind_row_add'], ['row_set', 'fl_kind_row_set']];
+var VALUE_FIELDS = { row_set: [['row', 'fl_rows_row', 200]] };
+var FL = { steps: { tables: [
+    { id: 4, name: 'Deals', edit: true, columns: [{ id: 7, name: 'Customer', type: 'text' }, { id: 9, name: 'Amount', type: 'money', options: { decimals: 2 } }, { id: 11, name: 'Total', type: 'formula' }] },
+    { id: 5, name: 'Read only', edit: false, columns: [] }
+] } };
+function valueNames() { return { '{{node.add.row_id}}': { label: 'Add › Row' } }; }
+function refreshNode() {}
+var amount = { id: 9, type: 'money', options: { decimals: 2 } };
+var node = { id: 'set', kind: 'row_set', config: { table_id: 4, row: '{{node.add.row_id}}', cells: '{"7":"Ada","15":"kept"}' } };
+setCell(node, '9', cellKept(amount, '12.5'));
+var afterMoney = node.config.cells;
+setCell(node, '7', cellKept({ id: 7, type: 'text' }, ' '));
+var out = {
+    palette: paletteItems().map(function (item) { return item[0]; }),
+    tables: rowWriteTables().map(function (table) { return table.id; }),
+    columns: rowWriteColumns(rowWriteTable({ table_id: 4 })).map(function (column) { return column.id; }),
+    readOnly: rowWriteTable({ table_id: 5 }),
+    cells: [rowCells(''), rowCells('{"3": {{trigger.x}}}'), rowCells('[1]'), rowCells('{"3":"a"}')],
+    afterMoney: afterMoney,
+    afterEmpty: node.config.cells,
+    kept: [cellKept(amount, '{{trigger.amount}}'), cellKept({ type: 'number' }, '3.5'), cellKept({ type: 'person' }, '12'), cellKept({ type: 'date' }, ' 2026-11-02 '), cellKept({ type: 'text' }, ' a b ')],
+    shown: [cellShown(amount, 1250), cellShown(amount, '{{trigger.amount}}'), cellShown({ type: 'number' }, null)],
+    meta: [rowWriteMeta(node), rowWriteMeta({ kind: 'row_set', config: { table_id: 4, row: '12' } }), rowWriteMeta({ kind: 'row_add', config: { table_id: 8, cells: '' } }), rowWriteMeta({ kind: 'row_add', config: { table_id: 0 } })],
+    texts: fieldTexts(node).map(function (item) { return item.key; }),
+    open: openFields(node).map(function (item) { return item.key; }),
+    openAdd: openFields({ kind: 'row_add', config: { cells: '' } }).length
+};
+FL.decimal = ',';
+out.turkish = [cellKept(amount, '1.250,5'), cellKept(amount, '1.250'), cellKept(amount, '12,5'), cellKept({ type: 'number' }, '1,5'), cellKept({ type: 'number' }, '1.500'), cellShown(amount, 125050), cellShown({ type: 'number' }, 1.234)];
+FL.decimal = '.';
+out.english = [cellKept(amount, '1,250.5'), cellKept({ type: 'number' }, '1,500')];
+FL.steps.tables[0].edit = false;
+out.noEdit = paletteItems().map(function (item) { return item[0]; });
+console.log(JSON.stringify(out));
+JS
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same(array('row', 'row_add', 'row_set'), $result['palette']);
+	pg_assert_same(array('row'), $result['noEdit'], 'no table to change: no box that writes one');
+	pg_assert_same(array(4), $result['tables'], 'only tables the person may change');
+	pg_assert_same(array(7, 9), $result['columns'], 'a formula column is not written');
+	pg_assert_same(null, $result['readOnly']);
+	pg_assert_same(array(array(), null, null, array('3' => 'a')), $result['cells'], 'a value outside quotes or a list is no object');
+	pg_assert_same('{"7":"Ada","9":1250,"15":"kept"}', $result['afterMoney'], 'money in minor units; a column the form does not show is kept');
+	pg_assert_same('{"9":1250,"15":"kept"}', $result['afterEmpty'], 'an empty field leaves its column out');
+	pg_assert_same(array('{{trigger.amount}}', 3.5, 12, '2026-11-02', ' a b '), $result['kept']);
+	pg_assert_same(array('12.50', '{{trigger.amount}}', ''), $result['shown']);
+	pg_assert_same(array(125050, 125000, 1250, 1.5, 1500, '1250,50', '1,234'), $result['turkish'], 'a Turkish figure read the site\'s way, shown the same way');
+	pg_assert_same(array(125050, 1500), $result['english'], 'an English comma groups thousands');
+	pg_assert_same(array('fl_rows_meta Deals Add › Row', 'fl_rows_meta Deals 12', '#8', 'fl_row_none'), $result['meta']);
+	pg_assert_same(array('row', 'cells'), $result['texts'], 'the cells\' values are threaded');
+	pg_assert_same(array('row'), $result['open'], 'a value is never dropped into the JSON');
+	pg_assert_same(0, $result['openAdd']);
+}
+
 // The groups of the flow boxes and their colours (dark theme as the visual
 // spec gives them; workspace-flows-look.md V1), in their listing order.
 function ws_flows_canvas_test_groups()
 {
 	return array(
-		'start' => array('#6fdca6', array('manual', 'schedule', 'event', 'join', 'row')),
+		'start' => array('#6fdca6', array('manual', 'schedule', 'event', 'join', 'row', 'no_order')),
 		'values' => array('#e58fd0', array('constants', 'value')),
-		'logic' => array('#e9b44c', array('condition', 'delay', 'end')),
+		'logic' => array('#e9b44c', array('condition', 'delay', 'end', 'for_each', 'for_each_end')),
 		'people' => array('#b49cff', array('task', 'task_open', 'checkin', 'approval', 'task_digest', 'lead')),
 		'message' => array('#6ea8ff', array('post', 'email', 'notify', 'report')),
-		'system' => array('#45c4d6', array('web_check', 'webhook', 'change', 'start_flow', 'start_action', 'mcp'))
+		'system' => array('#45c4d6', array('web_check', 'webhook', 'change', 'start_flow', 'start_action', 'mcp', 'row_add', 'row_set'))
 	);
 }
 
@@ -1807,6 +1946,42 @@ JS
 
 	pg_assert_same('wsf-node-unknown', $result['unknown'], 'an unknown kind has no group');
 	pg_assert_same(array(), array_values(array_diff($result['palette'], array_keys($expected))), 'every kind the palette adds has a group');
+}
+
+// Each kind of box leaves on the outcomes the server lets an arrow leave
+// it on (ws_flow_kinds()), in its order: the first is a new arrow's. An MCP
+// box with a tool that asks first also leaves on how its request ended.
+function test_workspace_flows_canvas_kinds_leave_on_the_servers_outcomes()
+{
+	$source = str_replace("\r\n", "\n", (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js'));
+
+	pg_assert_true((bool) preg_match('/\n    var KINDS = \{\n.*?\n    \};\n/s', $source, $kinds), 'KINDS is in the script');
+
+	$result = ws_flows_canvas_test_node(
+		array(),
+		$kinds[0] . <<<'JS'
+var out = {};
+Object.keys(KINDS).forEach(function (kind) { out[kind] = KINDS[kind].out; });
+console.log(JSON.stringify(out));
+JS
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	$server = ws_flow_kinds();
+
+	pg_assert_true(isset($server['mcp']), 'the server has the MCP box');
+
+	// A kind the canvas does not build yet (the table boxes) is left out.
+	foreach (array_intersect_key($server, $result) as $kind => $info) {
+		pg_assert_same(array_values((array) $info['outcomes']), $result[$kind], $kind . "'s outcomes");
+	}
+
+	pg_assert_same(array(), array_values(array_diff(array_keys($result), array_keys($server))), 'the canvas has no kind the server lacks');
+
+	pg_assert_same(array('done', 'failed', 'rejected', 'expired', 'withdrawn'), $result['mcp'] ?? null, 'the MCP box leaves on how its request ended');
 }
 
 // Each group's colour is set once per theme: dark the spec's, light a
@@ -2123,4 +2298,371 @@ JS
 	pg_assert_contains("'ws_flow_template_update'", $script, 'the change goes through the panel action');
 	pg_assert_contains("'ws_flow_template_bin'", $script, 'the delete goes through the panel action');
 	pg_assert_contains("'template_save'", (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/flows.php'), 'the config says whether templates may be saved');
+}
+
+// For each / End for each on the canvas (data-passing D9): the canvas finds
+// a loop's body as ws_flow_loops() does; a box outside the loop is offered
+// neither the body's values nor the item; a For each box's list takes only a
+// list (a webhook's answer, an End box's list), the End box's gathered value
+// only a body box's, each field one value; a For each box never leaves on
+// always; the frame goes around the loop's boxes.
+function test_workspace_flows_canvas_for_each_loop()
+{
+	$source = str_replace("\r\n", "\n", (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js'));
+
+	pg_assert_true((bool) preg_match('/\n    var KINDS = \{\n.*?\n    \};\n/s', $source, $kinds), 'KINDS is in the script');
+	pg_assert_true((bool) preg_match('/\n    var VALUE_FIELDS = \{\n.*?\n    \};\n/s', $source, $fields), 'VALUE_FIELDS is in the script');
+	pg_assert_contains("loopFields(box, node);", $source, 'a For each box has its form');
+	pg_assert_contains("loopEndFields(box, node);", $source, 'an End for each box has its form');
+	pg_assert_contains("drawLoops();", $source, 'the loops are drawn with the arrows');
+
+	$graph = array(
+		'nodes' => array(
+			array('id' => 'manual_1', 'kind' => 'manual', 'config' => array()),
+			array('id' => 'webhook_1', 'kind' => 'webhook', 'config' => array()),
+			array('id' => 'for_each_1', 'kind' => 'for_each', 'config' => array('list' => '', 'path' => '', 'fields' => array('sku'))),
+			array('id' => 'post_1', 'kind' => 'post', 'config' => array()),
+			array('id' => 'email_1', 'kind' => 'email', 'config' => array()),
+			array('id' => 'for_each_end_1', 'kind' => 'for_each_end', 'config' => array('for_each' => 'for_each_1', 'collect' => '')),
+			array('id' => 'notify_1', 'kind' => 'notify', 'config' => array()),
+		),
+		'edges' => array(
+			array('from' => 'manual_1', 'to' => 'webhook_1', 'on' => 'next'),
+			array('from' => 'webhook_1', 'to' => 'for_each_1', 'on' => 'done'),
+			array('from' => 'for_each_1', 'to' => 'post_1', 'on' => 'each'),
+			array('from' => 'post_1', 'to' => 'email_1', 'on' => 'done'),
+			array('from' => 'email_1', 'to' => 'for_each_end_1', 'on' => 'done'),
+			array('from' => 'for_each_end_1', 'to' => 'notify_1', 'on' => 'done'),
+			array('from' => 'for_each_1', 'to' => 'notify_1', 'on' => 'failed'),
+		),
+	);
+	$nodes = array();
+
+	foreach ($graph['nodes'] as $index => $node) {
+		$nodes[] = $node + array('label' => '', 'x' => 240 * $index, 'y' => 100);
+	}
+
+	$result = ws_flows_canvas_test_node(
+		array('nodeById', 'kindOf', 'rawTitle', 'titleOf', 'namedTitle', 'nameOf', 'orderedNodes', 'stepLists', 'arrowMaps', 'boxesBefore', 'sureBefore', 'boxValues', 'flowLoops', 'loopOf',
+			'valueGroups', 'valueSources', 'openFields', 'listValue', 'fieldTakes', 'bindTargets', 'arrowOutcomes', 'loopFrame'),
+		$kinds[0] . $fields[0] . 'var BOX_W = 208; var BOX_H = 80; var LOOP_PAD = { side: 16, top: 28, bottom: 32 };' . "\n"
+		. 'var FL = { outputs: ' . json_encode(array_map(function ($kind) { return $kind['outputs']; }, ws_flow_kinds())) . ', trigger_outputs: { kinds: {} }, steps: {} };' . "\n"
+		. 'state = { graph: { nodes: ' . json_encode($nodes) . ', edges: ' . json_encode($graph['edges']) . ' } };' . "\n" . <<<'JS'
+function keys(id) {
+    return valueGroups(nodeById(id)).map(function (group) {
+        return group.node.id + ':' + group.values.map(function (value) { return value.key; }).join(',');
+    });
+}
+function targets(from, token) {
+    return bindTargets(from, token).map(function (item) { return item.node.id + '.' + item.key; });
+}
+var loops = flowLoops();
+var out = {
+    loops: loops,
+    inside: keys('email_1'),
+    end: keys('for_each_end_1'),
+    after: keys('notify_1'),
+    list: targets('webhook_1', '{{node.webhook_1.body}}'),
+    status: targets('webhook_1', '{{node.webhook_1.status}}'),
+    collect: targets('post_1', '{{node.post_1.message_id}}'),
+    outcomes: { start: arrowOutcomes(nodeById('for_each_1')), end: arrowOutcomes(nodeById('for_each_end_1')) },
+    frame: loopFrame(loops.for_each_1, 'for_each_1')
+};
+nodeById('for_each_end_1').config.collect = '{{node.post_1.message_id}}';
+out.full = openFields(nodeById('for_each_end_1')).length;
+console.log(JSON.stringify(out));
+JS
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	$server = ws_flow_loops($graph);
+
+	pg_assert_same(array_keys($server), array_keys($result['loops']), 'the same loops as the server');
+	pg_assert_same($server['for_each_1']['end'], $result['loops']['for_each_1']['end'], 'the same End box');
+	pg_assert_same($server['for_each_1']['each'], $result['loops']['for_each_1']['each'], 'the same each arrows');
+	pg_assert_same($server['for_each_1']['body'], $result['loops']['for_each_1']['body'], 'the same body');
+	pg_assert_same(array('post_1', 'email_1'), $result['loops']['for_each_1']['body'], 'the body: between For each and its End');
+
+	pg_assert_contains('for_each_1:text,outcome,status,count,index,item,sku', implode(' ', $result['inside']), 'inside, the item and its fields');
+	pg_assert_contains('post_1:', implode(' ', $result['inside']), 'inside, the boxes before in the body');
+	pg_assert_contains('for_each_1:text,outcome,status,count', implode(' ', $result['end']), 'the End box: no item');
+	pg_assert_contains('post_1:', implode(' ', $result['end']), 'the End box reads the body');
+	pg_assert_false(strpos(implode(' ', $result['after']), 'post_1:') !== false, 'after the loop, no body box');
+	pg_assert_contains('for_each_end_1:text,outcome,status,count,done,failed,list', implode(' ', $result['after']), 'after the loop, the End box\'s outputs');
+
+	pg_assert_true(in_array('for_each_1.list', $result['list'], true), 'a webhook\'s answer goes into the list');
+	pg_assert_false(in_array('for_each_1.list', $result['status'], true), 'a status is no list');
+	pg_assert_same(array('for_each_end_1.collect'), array_values(array_filter($result['collect'], function ($target) { return strpos($target, 'for_each') === 0; })), 'a body value is gathered');
+	pg_assert_same(0, $result['full'], 'a gathered value is one value');
+
+	pg_assert_same(array('each', 'failed'), $result['outcomes']['start'], 'a For each box never leaves on always');
+	pg_assert_same(array('done', 'always'), $result['outcomes']['end'], 'an End box leaves as any box');
+	pg_assert_same(array('x' => 480 - 16, 'y' => 100 - 28, 'width' => (240 * 5 + 208 + 16) - (240 * 2 - 16), 'height' => 80 + 28 + 32), array('x' => $result['frame']['x'], 'y' => $result['frame']['y'], 'width' => $result['frame']['width'], 'height' => $result['frame']['height']), 'the frame around For each, the body and the End box');
+}
+
+// The body of one function of the flow canvas script, for source checks.
+function ws_flows_canvas_test_function($name)
+{
+	$source = str_replace("\r\n", "\n", (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js'));
+
+	return preg_match('/\n    function ' . preg_quote($name, '/') . '\(.*?\n    \}\n/s', $source, $match) ? $match[0] : '';
+}
+
+// A value box writes no step of its own, so a run shown gives it no state
+// (it used to say "not reached" even after the run ended) and lists it
+// after the steps, under its own heading.
+function test_workspace_flows_canvas_run_skips_value_boxes()
+{
+	$paint = ws_flows_canvas_test_function('paintRun');
+	$badge = ws_flows_canvas_test_function('stepBadge');
+	$list = ws_flows_canvas_test_function('stepList');
+	$order = ws_flows_canvas_test_function('runOrder');
+
+	pg_assert_contains('if (!state.run || kindOf(node).pure) {', $paint, 'a value box on the canvas takes no run badge');
+	pg_assert_contains("if (kindOf(node).pure) {", $badge, 'a value box in words gets a neutral mark');
+	pg_assert_contains("t('fl_group_values')", $badge, 'the neutral mark names the values group');
+	pg_assert_contains('runOrder().forEach', $list, 'the side list puts the steps first');
+	pg_assert_contains("t('fl_group_values')", $list, 'the value boxes come under their own heading');
+	pg_assert_contains('if (!pure) {', $list, 'a value box row carries no state');
+	pg_assert_contains('.concat(nodes.filter(function (node) { return kindOf(node).pure; }))', $order, 'value boxes go after the steps');
+	pg_assert_contains("(state.run ? runOrder() : orderedNodes())", ws_flows_canvas_test_function('drawOutline'), 'the run outline puts the steps first');
+	pg_assert_contains('stepBadge(node, step)', ws_flows_canvas_test_function('outlineRun'), 'the run outline marks a value box neutrally');
+}
+
+// Typing in a big flow: each key updates the box's face and name only;
+// the data threads, the outline's reads and the undo step wait until the
+// typing pauses (settle()), once. Each key used to redraw every thread and
+// write the whole graph as JSON.
+function test_workspace_flows_canvas_typing_settles_once()
+{
+	$refresh = ws_flows_canvas_test_function('refreshNode');
+	$changed = ws_flows_canvas_test_function('changed');
+	$settle = ws_flows_canvas_test_function('settle');
+
+	pg_assert_true($refresh !== '' && $changed !== '' && $settle !== '', 'the functions are in the script');
+	pg_assert_true(strpos($refresh, 'drawData()') === false && strpos($refresh, 'dataThreads()') === false, 'a key draws no thread');
+	pg_assert_contains('state.settleThreads = true;', $refresh, 'the threads wait for the pause');
+	pg_assert_contains('state.settleTimer = window.setTimeout(settle, SETTLE_DELAY);', $changed, 'a folding change waits for the pause');
+	pg_assert_true(substr_count($changed, 'JSON.stringify(state.graph)') === 1, 'only a step of its own is written at once');
+	pg_assert_contains('drawData();', $settle, 'the threads are drawn at the pause');
+	pg_assert_contains('drawReads(dataThreads());', $settle, 'the reads are drawn at the pause');
+	pg_assert_contains('historyRecord(state.history, JSON.stringify(state.graph), true, Date.now());', $settle, 'one undo step per pause');
+	pg_assert_true((bool) preg_match('/var SETTLE_DELAY = (\d+);/', (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js'), $delay) && $delay[1] >= 150 && $delay[1] <= 300, 'the pause is 150-300 ms');
+
+	foreach (array('undo', 'show', 'showRun') as $name) {
+		pg_assert_contains('settle();', ws_flows_canvas_test_function($name), $name . '() settles what waits first');
+	}
+
+	pg_assert_contains('state.settleHistory', ws_flows_canvas_test_function('undoable'), 'a waiting change can be undone');
+}
+
+// The outline draws the form of the open (selected) box only: a flow of 97
+// boxes drew 686 controls at once.
+function test_workspace_flows_canvas_outline_draws_the_open_form_only()
+{
+	$outline = ws_flows_canvas_test_function('drawOutline');
+	$select = ws_flows_canvas_test_function('select');
+
+	pg_assert_contains('} else if (node.id === open) {', $outline, 'only the open box gets its form');
+	pg_assert_true(substr_count($outline, 'nodeForm(node)') === 1, 'no other form is drawn');
+	pg_assert_contains("label.setAttribute('aria-expanded'", $outline, 'the heading says whether the box is open');
+	pg_assert_contains('drawOutline();', $select, 'selecting another box opens its form');
+}
+
+// The run notice's address (workspace_flows.php?flow=…&run=…) opens the
+// flow with that run shown.
+function test_workspace_flows_canvas_address_opens_a_run()
+{
+	$start = ws_flows_canvas_test_script_function(str_replace("\r\n", "\n", (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js')), 'start');
+
+	pg_assert_contains('[?&]run=([0-9]+)', $start);
+	pg_assert_contains('openLastRun({ id: askedRun, flow_id: asked })', $start);
+}
+
+// A live flow's side panel says changes stay in the draft; the cancel
+// dialog's way out reads Keep running, not a second Cancel.
+function test_workspace_flows_canvas_live_hint_and_cancel_dialog()
+{
+	pg_assert_contains("state.edit ? flowHelp() : t('fl_read_only')", ws_flows_canvas_test_function('flowForm'));
+	pg_assert_contains("(flow.status === 'live') && (flow.version > 0)) ? t('fl_flow_help_live')", ws_flows_canvas_test_function('flowHelp'));
+	pg_assert_contains("t('fl_run_keep')", ws_flows_canvas_test_function('askCancel'));
+	pg_assert_contains('askCancel()', ws_flows_canvas_test_function('cancelRun'));
+	pg_assert_contains('askCancel()', ws_flows_canvas_test_function('stopLastRun'));
+	pg_assert_contains("'fl_flow_help_live'", ws_flows_canvas_test_strings_source());
+	pg_assert_contains("'fl_run_keep'", ws_flows_canvas_test_strings_source());
+}
+
+// A title with values reads as the value picker names them; a value no box
+// gives leaves the box's kind name; the settings keep the title as written.
+function test_workspace_flows_canvas_titles_name_their_values()
+{
+	pg_assert_contains('textInput(rawTitle(node)', ws_flows_canvas_test_function('nodeForm'));
+
+	$out = ws_flows_canvas_test_node(array('rawTitle', 'titleOf', 'namedTitle'), <<<'JS'
+var VALUE_TOKEN = /\{\{(?:node\.([a-z][a-z0-9_]{0,31})\.([a-z_][a-z0-9_]{0,31})|trigger\.([a-z_][a-z0-9_]{0,31}))\}\}/g;
+var KINDS = { manual: { name: 'Started by hand', into: false }, task: { name: 'Task', into: true }, approval: { name: 'Approval', into: true }, constants: { name: 'Constants', into: false, pure: true } };
+function kindOf(node) { return KINDS[node.kind]; }
+state.graph = { nodes: [
+    { id: 'start', kind: 'manual', label: '', config: {} },
+    { id: 'd30', kind: 'constants', label: 'Counter', config: {} },
+    { id: 't1', kind: 'task', label: '', config: { title: 'Finish (counter {{node.d30.value}}) for {{trigger.name}}' } },
+    { id: 't2', kind: 'approval', label: '', config: { title: 'Stock {{node.gone.qty}}' } },
+    { id: 't3', kind: 'task', label: '', config: { title: 'After {{node.t1.task_id}}' } },
+    { id: 't4', kind: 'task', label: '', config: { title: 'Plain' } }
+] };
+function nodeById(id) { return state.graph.nodes.filter(function (node) { return node.id === id; })[0] || null; }
+function boxValues(node) {
+    var keys = { start: [['trigger.', 'name', 'Name']], d30: [['node.d30.', 'value', 'value']], t1: [['node.t1.', 'task_id', 'Task']] }[node.id] || [];
+    return keys.map(function (key) { return { token: '{{' + key[0] + key[1] + '}}', key: key[1], label: key[2] }; });
+}
+console.log(JSON.stringify(state.graph.nodes.map(function (node) { return [titleOf(node), rawTitle(node)]; })));
+JS
+	);
+
+	if ($out === null) {
+		return;
+	}
+
+	pg_assert_same(array('Finish (counter [Counter › value]) for [Started by hand › Name]', 'Finish (counter {{node.d30.value}}) for {{trigger.name}}'), $out[2]);
+	pg_assert_same('Approval', $out[3][0], 'a value no box gives: the kind name');
+	pg_assert_same('After [Task › Task]', $out[4][0], 'a box whose title holds values is named by its kind');
+	pg_assert_same('Plain', $out[5][0]);
+}
+
+// A typed number is read by the site's separators (siteNumber()), never by
+// turning the first comma into a dot: Turkish 1,500 (1.5) was kept as 1.500,
+// which the server reads as fifteen hundred, and 1.250,5 as 1.250.5.
+function test_workspace_flows_canvas_typed_numbers_read_the_site_way()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js');
+
+	pg_assert_same(0, preg_match_all("/replace\\(\\s*(',' *, *'\\.'|\\/,\\/)/", $source), 'no comma made a dot');
+
+	foreach (array('conditionValue', 'cellKept') as $name) {
+		pg_assert_true(strpos(ws_flows_canvas_test_script_function($source, $name), 'siteNumber(') !== false, $name . '() reads by siteNumber()');
+	}
+}
+
+// Every start box shows the tell choice; every run is kept as no key, as
+// the server keeps it (ws_flow_tell_normalize()).
+function test_workspace_flows_canvas_start_box_tell_choice()
+{
+	pg_assert_contains("(KINDS[node.kind].group === 'start')) {\n            tellField(box, node);", ws_flows_canvas_test_function('nodeForm'));
+
+	$tell = ws_flows_canvas_test_function('tellField');
+
+	pg_assert_contains("['failures', t('fl_tell_failures')]", $tell);
+	pg_assert_contains("node.config.tell || 'every'", $tell);
+	pg_assert_contains('delete node.config.tell;', $tell);
+	pg_assert_contains("field(t('fl_tell'), tell, t('fl_tell_help'))", $tell);
+
+	foreach (array('fl_tell', 'fl_tell_every', 'fl_tell_failures', 'fl_tell_never', 'fl_tell_help') as $key) {
+		pg_assert_contains("'" . $key . "'", ws_flows_canvas_test_strings_source());
+	}
+}
+
+// The setup panel of a saved template asks the table of its row boxes with
+// a picker of the tables the person reaches: only those whose rows they may
+// change once a box adds or changes rows, every table read for a row start.
+function test_workspace_flows_canvas_template_table_picker()
+{
+	$script = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js');
+	$strings = ws_flow_js_strings();
+
+	pg_assert_true(strpos($script, "table: 'fl_tpl_set_table'") !== false, 'the table setting has its label');
+	pg_assert_true(strpos($script, "type === 'table'") !== false, 'the setup panel draws a table picker');
+	pg_assert_true(isset($strings['fl_tpl_set_table']), 'the label is handed over');
+
+	$result = ws_flows_canvas_test_node(
+		array('stepLists', 'setupTables'),
+		<<<'JS'
+var FL = { steps: { tables: [{ id: 4, name: 'Deals', edit: true, columns: [] }, { id: 5, name: 'Read only', edit: false, columns: [] }] } };
+var graph = { nodes: [{ id: 'start', kind: 'row' }, { id: 'add', kind: 'row_add' }] };
+var out = {
+    start: setupTables({ graph: graph }, { type: 'table', targets: [['start', 'table_id']] }).map(function (table) { return table.id; }),
+    write: setupTables({ graph: graph }, { type: 'table', targets: [['start', 'table_id'], ['add', 'table_id']] }).map(function (table) { return table.id; })
+};
+console.log(JSON.stringify(out));
+JS
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same(array(4, 5), $result['start'], 'a row start reads any table reached');
+	pg_assert_same(array(4), $result['write'], 'a row written: only tables the person may change');
+}
+
+// A value's "When empty, write" fallback is kept in its token: the parser
+// reads it, a thread keeps its from and to, and the token written back is
+// the one the server reads (ws_step_value_token()).
+function test_workspace_flows_canvas_value_token_fallback()
+{
+	$source = str_replace("\r\n", "\n", (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js'));
+	$constants = '';
+
+	foreach (array('VALUE_TOKEN', 'FALLBACK_LENGTH', 'VALUE_FIELDS', 'THREAD_TONES') as $name) {
+		pg_assert_true((bool) preg_match('/^( *)var ' . $name . ' = (?:[^\n]*;\n|\{\n.*?\n\1\};\n)/ms', $source, $found), 'workspace_flow.js has ' . $name);
+		$constants .= $found[0];
+	}
+
+	$result = ws_flows_canvas_test_node(
+		array('nodeById', 'kindOf', 'rawTitle', 'titleOf', 'namedTitle', 'nameOf', 'orderedNodes', 'stepLists', 'arrowMaps', 'boxesBefore', 'sureBefore', 'boxValues', 'flowLoops', 'loopOf', 'valueGroups', 'valueSources',
+			'fieldTexts', 'dataThreads'),
+		$constants . <<<'JS'
+var KINDS = {
+    manual: { name: 'Manual', into: false, out: ['next'] },
+    condition: { name: 'Condition', into: true, out: ['yes', 'no'] },
+    post: { name: 'Post', into: true, out: ['done', 'failed'] }
+};
+var FL = { outputs: { post: [{ key: 'message_id', type: 'number', label: 'Message' }], condition: [] }, trigger_outputs: { kinds: {}, events: {} }, steps: {} };
+function box(id, kind, config, y) { return { id: id, kind: kind, label: '', config: config || {}, x: 0, y: y }; }
+var odd = tokenWith('{{node.post_1.message_id}}', 'a}} | b \\ {c');
+state = { graph: { nodes: [
+    box('start', 'manual', {}, 0),
+    box('condition_1', 'condition', { rule: { type: 'workday' } }, 1),
+    box('post_1', 'post', { body: 'Hi' }, 2),
+    box('post_2', 'post', { body: 'Id ' + odd + ' and {{node.post_1.message_id}}' }, 3)
+], edges: [
+    { from: 'start', to: 'condition_1', on: 'next' },
+    { from: 'condition_1', to: 'post_1', on: 'yes' },
+    { from: 'condition_1', to: 'post_2', on: 'no' },
+    { from: 'post_1', to: 'post_2', on: 'done' }
+] } };
+VALUE_TOKEN.lastIndex = 0;
+var match = VALUE_TOKEN.exec('x ' + odd + ' y');
+console.log(JSON.stringify({
+    odd: odd,
+    whole: match[0] === odd,
+    groups: [match[1], match[2], match[4]],
+    bare: tokenBare(odd),
+    fallback: tokenFallback(odd),
+    none: tokenWith(odd, '  '),
+    line: tokenWith('{{trigger.count}}', 'a\nb'),
+    cut: Array.from(tokenFallback(tokenWith('{{node.a.b}}', new Array(151).join('ş')))).length,
+    holds: [holdsToken('x ' + odd, '{{node.post_1.message_id}}'), holdsToken('{{node.post_1.message_idx}}', '{{node.post_1.message_id}}')],
+    threads: dataThreads().map(function (thread) { return [thread.from, thread.to, thread.token, thread.fallback, thread.skipped ? 'skipped' : ''].join(' | '); })
+}));
+JS
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same('{{node.post_1.message_id|a\\}\\} \\| b \\\\ \\{c}}', $result['odd'], 'escaped as the server writes it');
+	pg_assert_same(ws_step_value_token('post_1', 'message_id', 'a}} | b \\ {c'), $result['odd'], 'the same token as ws_step_value_token()');
+	pg_assert_same(true, $result['whole'], 'the parser reads the whole token');
+	pg_assert_same(array('post_1', 'message_id', 'a\\}\\} \\| b \\\\ \\{c'), $result['groups']);
+	pg_assert_same('{{node.post_1.message_id}}', $result['bare']);
+	pg_assert_same('a}} | b \\ {c', $result['fallback']);
+	pg_assert_same('{{node.post_1.message_id}}', $result['none'], 'an empty fallback is none');
+	pg_assert_same('{{trigger.count|a b}}', $result['line'], 'one line');
+	pg_assert_same(100, $result['cut'], 'cut to its length');
+	pg_assert_same(array(true, false), $result['holds']);
+	pg_assert_same(array('post_1 | post_2 | {{node.post_1.message_id}} | a}} | b \\ {c | skipped'), $result['threads'], 'one thread, from and to kept, the first fallback');
 }

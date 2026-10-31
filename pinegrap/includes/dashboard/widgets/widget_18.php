@@ -246,7 +246,7 @@ function pg_dashboard_widget_18($request, $user)
             && ($fm_item['optimization_percent'] !== '')
             && ((int) $fm_item['optimization_percent'] > 0)
         ) {
-            $fm_percent = '<span class="ps-1" style="font-size:10px">' . h(lang(array('string' => '{var:1}%', 'vars' => (int) $fm_item['optimization_percent']))) . '</span>';
+            $fm_percent = '<span class="ps-1" style="font-size:.625rem">' . h(lang(array('string' => '{var:1}%', 'vars' => (int) $fm_item['optimization_percent']))) . '</span>';
         }
 
         // Whether the row can be made narrower rather than only
@@ -307,14 +307,14 @@ function pg_dashboard_widget_18($request, $user)
 
         if ($fm_too_large) {
             $fm_note = '
-            <div class="fg-warning" style="font-size:10px;line-height:1.3">' . lang('The file is very large, please make it smaller if possible.') . '</div>';
+            <div class="fg-warning" style="font-size:.625rem;line-height:1.3">' . lang('The file is very large, please make it smaller if possible.') . '</div>';
         }
 
         $fm_optimize_rows .= '
         <div class="mb-3">
             <div class="d-flex align-items-center" style="gap:6px">
-                <span class="text-truncate flex-fill" style="font-size:12px" title="' . h($fm_item['name']) . '">' . h($fm_shorten($fm_item['name'])) . '</span>
-                <span class="fg-secondary flex-shrink-0" style="font-size:11px">' . h(convert_bytes_to_string($fm_size, 1)) . '</span>
+                <span class="text-truncate flex-fill" style="font-size:.75rem" title="' . h($fm_item['name']) . '">' . h($fm_shorten($fm_item['name'])) . '</span>
+                <span class="fg-secondary flex-shrink-0" style="font-size:.6875rem">' . h(convert_bytes_to_string($fm_size, 1)) . '</span>
                 ' . $fm_action . '
             </div>
             ' . $fm_note . '
@@ -324,8 +324,8 @@ function pg_dashboard_widget_18($request, $user)
     if ($fm_optimize_rows === '') {
         $fm_optimize_rows = '
         <div class="text-center py-5">
-            <i class="bi bi-check2-circle d-block mb-1 fg-success" style="font-size:22px;opacity:.8"></i>
-            <p class="fg-secondary mb-0" style="font-size:12px">' . lang('Congratulations, there are no files that need optimizing.') . '</p>
+            <i class="bi bi-check2-circle d-block mb-1 fg-success" style="font-size:1.375rem;opacity:.8"></i>
+            <p class="fg-secondary mb-0" style="font-size:.75rem">' . lang('Congratulations, there are no files that need optimizing.') . '</p>
         </div>';
     }
 
@@ -358,10 +358,10 @@ function pg_dashboard_widget_18($request, $user)
         $fm_largest_rows .= '
         <div class="mb-3">
             <div class="d-flex align-items-center justify-content-between" style="gap:6px">
-                <a class="text-truncate text-decoration-none" style="font-size:12px"
+                <a class="text-truncate text-decoration-none" style="font-size:.75rem"
                    title="' . h($fm_item['name']) . '"
                    href="edit_file.php?id=' . h($fm_item['id']) . '&amp;send_to=' . h(PATH . SOFTWARE_DIRECTORY . '/welcome.php') . '">' . h($fm_shorten($fm_item['name'])) . '</a>
-                <span class="fg-secondary flex-shrink-0" style="font-size:11px">' . h(convert_bytes_to_string($fm_size, 1)) . '</span>
+                <span class="fg-secondary flex-shrink-0" style="font-size:.6875rem">' . h(convert_bytes_to_string($fm_size, 1)) . '</span>
             </div>
             <div class="progress mt-1" style="height:4px;background:var(--pg-bg-2)">
                 <div class="progress-bar bg-secondary" style="width:' . $fm_width . '%"></div>
@@ -372,8 +372,8 @@ function pg_dashboard_widget_18($request, $user)
     if ($fm_largest_rows === '') {
         $fm_largest_rows = '
         <div class="text-center py-5">
-            <i class="bi bi-folder2-open d-block mb-1" style="font-size:22px;opacity:.35"></i>
-            <p class="fg-secondary mb-0" style="font-size:12px">' . lang('No files found.') . '</p>
+            <i class="bi bi-folder2-open d-block mb-1" style="font-size:1.375rem;opacity:.35"></i>
+            <p class="fg-secondary mb-0" style="font-size:.75rem">' . lang('No files found.') . '</p>
         </div>';
     }
 
@@ -384,26 +384,26 @@ function pg_dashboard_widget_18($request, $user)
     if ((!$fm_optimizer_available) && $fm_optimize_items) {
         $fm_optimizer_note = '
         <div class="px-5 pb-3">
-            <div class="fg-secondary" style="font-size:10px">' . lang('Image optimization is not available on this server.') . '</div>
+            <div class="fg-secondary" style="font-size:.625rem">' . lang('Image optimization is not available on this server.') . '</div>
         </div>';
     }
 
     $output_data = '
     <div class="card-body p-0 d-flex flex-column" style="overflow-x:hidden;overflow-y:auto">
         <div class="d-flex align-items-center justify-content-between px-5 pt-3 pb-1">
-            <span class="fg-secondary" style="font-size:11px">' . lang('Needs optimizing') . '</span>
-            <span class="fg-secondary" style="font-size:10px">' . pg_format_number($fm_optimize_total, 0) . '</span>
+            <span class="fg-secondary" style="font-size:.6875rem">' . lang('Needs optimizing') . '</span>
+            <span class="fg-secondary" style="font-size:.625rem">' . pg_format_number($fm_optimize_total, 0) . '</span>
         </div>
         <div class="px-5 pb-1">' . $fm_optimize_rows . '</div>
         ' . $fm_optimizer_note . '
         <div class="d-flex align-items-center justify-content-between px-5 pt-3 pb-1 border-top">
-            <span class="fg-secondary" style="font-size:11px">' . lang('Largest files') . '</span>
-            <span class="fg-secondary" style="font-size:10px">' . lang(array('string' => 'Top {var:1}', 'vars' => pg_format_number($fm_largest_limit, 0))) . '</span>
+            <span class="fg-secondary" style="font-size:.6875rem">' . lang('Largest files') . '</span>
+            <span class="fg-secondary" style="font-size:.625rem">' . lang(array('string' => 'Top {var:1}', 'vars' => pg_format_number($fm_largest_limit, 0))) . '</span>
         </div>
         <div class="px-5 pb-3">' . $fm_largest_rows . '</div>
     </div>
     <div class="card-footer border-0 bg-reset py-1 text-center">
-        <a href="view_files.php" class="text-decoration-none" style="font-size:11px">'
+        <a href="view_files.php" class="text-decoration-none" style="font-size:.6875rem">'
         . lang('Files') . ' <i class="bi bi-arrow-right-short"></i></a>
     </div>';
 

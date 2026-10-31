@@ -94,6 +94,51 @@ function test_marketplace_listing_articles_filters_and_page()
 	pg_assert_same(array('BULB-H7', 'CABLE'), array_column($page['rows'], 'name'));
 }
 
+// The Listings search folds İ/I/ı/i and accents on both sides, as the Shop
+// and Remote tabs' SQL LIKE under utf8mb4_unicode_ci does.
+function test_marketplace_listing_articles_search_folds_turkish_letters_and_accents()
+{
+	$articles = array(
+		array('name' => 'SCARF-1', 'title' => 'İpek Eşarp', 'state' => 'none'),
+		array('name' => 'LIGHT-1', 'title' => 'Işık İp', 'state' => 'none'),
+		array('name' => 'GARDEN', 'title' => 'Bahçe hortumu', 'state' => 'none'),
+		array('name' => 'İNTER-2', 'title' => 'Kapı zili', 'state' => 'none'),
+	);
+
+	$names = function ($search) use ($articles) {
+		return array_column(mp_articles_page($articles, 'all', $search, 1, 10)['rows'], 'name');
+	};
+
+	pg_assert_same(array('SCARF-1'), $names('ipek'), 'a lower-case i finds a capital İ');
+	pg_assert_same(array('LIGHT-1'), $names('ışık'), 'a dotless ı finds a capital I');
+	pg_assert_same(array('LIGHT-1'), $names('ISIK'), 'capitals without dots and accents find Işık');
+	pg_assert_same(array('GARDEN'), $names('bahce'), 'a plain c finds ç');
+	pg_assert_same(array('SCARF-1'), $names('EŞARP'), 'an accented query finds the same row');
+	pg_assert_same(array('İNTER-2'), $names('inter'), 'the code is folded too');
+}
+
+// The Google Product Category search (product_builder.php is a screen and
+// cannot be included here) compares folded text, so 'interkom' finds
+// 'İnterkomlar' and 'ışık' finds 'Işık'.
+function test_google_taxonomy_search_folds_turkish_letters_and_accents()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/product_builder.php');
+
+	$start = strpos($source, 'function pg_pb_google_taxonomy_search(');
+
+	pg_assert_true($start !== false, 'pg_pb_google_taxonomy_search() is in product_builder.php');
+
+	$next = strpos($source, "\nfunction ", $start + 1);
+	$body = ($next === false) ? substr($source, $start) : substr($source, $start, $next - $start);
+
+	pg_assert_false(strpos($body, 'mb_stripos(') !== false, 'mb_stripos() folds neither İ/ı nor accents');
+	pg_assert_true(strpos($body, 'fold_keyword_for_matching(') !== false, 'the query and the paths are folded');
+	pg_assert_true(fold_keyword_for_matching('Elektronik > Haberleşme > İnterkomlar') !== ''
+		&& mb_strpos(fold_keyword_for_matching('Elektronik > Haberleşme > İnterkomlar'), fold_keyword_for_matching('interkom')) !== false,
+		'the folded path holds the folded query');
+	pg_assert_true(mb_strpos(fold_keyword_for_matching('Işık Zamanlayıcıları'), fold_keyword_for_matching('ışık')) !== false);
+}
+
 function test_marketplace_listing_articles_category_words_and_label()
 {
 	pg_assert_same(array('Oto', 'Ampul'), mp_articles_category_words('  Oto > Ampul '));

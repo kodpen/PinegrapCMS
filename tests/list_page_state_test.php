@@ -40,7 +40,7 @@ function test_list_page_state_is_kept_on_each_draw()
 	$js = list_page_state_script();
 
 	pg_assert_contains("datatable.on('draw.dt', function () {", $js, 'every draw (page, length, search) records the state');
-	pg_assert_contains('pgListKeep(pgListKey, { start: info.start, length: info.length, search: datatable.search() });', $js, 'start, length and search text are recorded');
+	pg_assert_contains('pgListKeep(pgListKey, { start: info.start, length: info.length, search: String(datatable.search()) });', $js, 'start, length and search text are recorded');
 	pg_assert_contains('history.replaceState(state, \'\', location.href);', $js, 'the state goes into the current history entry');
 	pg_assert_contains('var state = $.extend({}, $.isPlainObject(history.state) ? history.state : null);', $js, 'the existing history state is merged, not replaced');
 }

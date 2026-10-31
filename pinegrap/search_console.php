@@ -457,6 +457,10 @@ if (!$linked) {
 				probe.style.color = "var(--pg-fg-2)";
 				document.body.appendChild(probe);
 				var ink = getComputedStyle(probe).color;
+				// The pastel primary fill reads about 2:1 on the light card, so
+				// the Clicks line takes the primary ink of the theme.
+				probe.style.color = "var(--pg-primary-ink)";
+				var primaryInk = getComputedStyle(probe).color;
 				probe.remove();
 				var grid = "rgba(128,128,128,.2)";
 				new Chart(canvas, {
@@ -464,7 +468,7 @@ if (!$linked) {
 					data: {
 						labels: data.labels,
 						datasets: [
-							{ label: ' . json_encode(lang('Clicks')) . ', data: data.clicks, yAxisID: "clicks", borderColor: color("--bs-primary", "#0d6efd"), backgroundColor: color("--bs-primary", "#0d6efd"), tension: 0.3, pointRadius: 2 },
+							{ label: ' . json_encode(lang('Clicks')) . ', data: data.clicks, yAxisID: "clicks", borderColor: primaryInk, backgroundColor: primaryInk, tension: 0.3, pointRadius: 2 },
 							{ label: ' . json_encode(lang('Impressions')) . ', data: data.impressions, yAxisID: "impressions", borderColor: color("--bs-purple", "#6f42c1"), backgroundColor: color("--bs-purple", "#6f42c1"), tension: 0.3, pointRadius: 3, borderDash: [6, 4], pointStyle: "rectRot" }
 						]
 					},

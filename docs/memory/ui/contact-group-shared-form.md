@@ -9,7 +9,8 @@ description: The contact group create and edit screens share includes/forms/cont
 - `$required` (create) adds `required` to the name input, as the create screen always did; edit has no browser-side required name.
 
 ## What does a save share?
-- `pg_contact_group_form_validate_name($liveform, $id)` (`null` on create, the posted id on edit): required, then not used by another contact group (edit skips its own row with `id != ?`). A required error skips the name lookup, as before.
+- `pg_contact_group_form_validate_name($liveform, $id)` (`null` on create, the posted id on edit): required, at most 100 characters (`mb_strlen`), then not used by another contact group (edit skips its own row with `id != ?`). A required or length error skips the name lookup.
+- Why the length check? `contact_groups.name` is VARCHAR(100) and the session is not strict: the box allowed 255, so a long name was cut on save and two names sharing their first 100 characters passed the duplicate check and became one name. The name box has `maxlength` 100, the description textarea 255 (its column).
 - `pg_contact_group_form_values($liveform)`: name, subscription, subscription type, description, in INSERT/UPDATE order; the screens append the user id (and the edited id).
 
 ## What stays in the screens?

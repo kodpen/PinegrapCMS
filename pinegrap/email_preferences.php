@@ -113,7 +113,7 @@ if (!$_POST) {
     // The address and the opt-in are single values, and so are the id and the
     // signature the form carries; the list check boxes are handled once the
     // lists are known, below.
-    pg_liveform_single_values($liveform, array('email_address', 'opt_in', 'id', 'sig'));
+    pg_liveform_single_values($liveform, array('email_address', 'opt_in', 'opt_in_sms', 'opt_in_sms_shown', 'id', 'sig'));
 
     // The id and signature of the link the visitor came from, for the way back
     // and for a visitor who is not signed in. Only a string can be either.
@@ -538,6 +538,20 @@ if (!$_POST) {
             }
         }
     }
+
+    // The SMS box: drawn by a widget that lists it, or by the legacy screen's
+    // layout, which marks it with opt_in_sms_shown (a custom layout without
+    // the box posts neither, so its silence is no refusal). It is recorded
+    // only while SMS is on and the contact has a mobile number, as the
+    // screen drew it; the consent log is where the answer is kept.
+    $sms_drawn = ($pg_controls === null)
+        ? ($liveform->get_field_value('opt_in_sms_shown') === '1')
+        : pg_sw_posted_control($pg_controls, 'opt_in_sms');
+    $sms_number_known = pg_consent_sms_number_known(pg_consent_sms_contact_number($contact_id));
+    $consent_answers += pg_consent_sms_answers(
+        $sms_drawn && pg_consent_sms_offered($sms_number_known),
+        $sms_number_known,
+        $liveform->get_field_value('opt_in_sms'));
 
     // Only the answers that differ from the person's last recorded ones are
     // written, once per person rather than once per contact. The address is

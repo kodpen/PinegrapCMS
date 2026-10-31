@@ -40,7 +40,7 @@ if (
 
 // If the user is not logged in, then log activity and output error.
 if (USER_LOGGED_IN == false) {
-    log_activity('access denied to upload file in editor because user was not logged in', $_SESSION['sessionusername']);
+    log_activity(lang('access denied to upload file in editor because user was not logged in'), $_SESSION['sessionusername']);
     echo '<script>window.parent.CKEDITOR.tools.callFunction("' . escape_javascript($_GET['CKEditorFuncNum']) . '", "", "' . lang('Sorry, the file could not be uploaded, because you are not logged in.') . '")</script>';
     exit();
 }
@@ -48,9 +48,33 @@ if (USER_LOGGED_IN == false) {
 // If the user has a user role and they do not have edit access to any folders,
 // then log activity and output error.
 if ((USER_ROLE == 3) && (no_acl_check(USER_ID) == false)) {
-    log_activity('access denied to upload file in editor because user did not have edit access to any folders', $_SESSION['sessionusername']);
+    log_activity(lang('access denied to upload file in editor because user did not have edit access to any folders'), $_SESSION['sessionusername']);
     echo '<script>window.parent.CKEDITOR.tools.callFunction("' . escape_javascript($_GET['CKEditorFuncNum']) . '", "", "' . lang('Sorry, the file could not be uploaded, because you do not have edit access to any folders.') . '")</script>';
     exit();
+}
+
+// The rest needs the file. A body over post_max_size arrives empty, yet its
+// token in the query string passes the check above; an oversize file arrives
+// with an error code and no temporary file. Each is told in the dialog
+// instead of being inserted as a picture that was never stored.
+$upload_limits = pg_upload_limits();
+
+if (pg_post_body_discarded()) {
+    editor_add_file_refuse(pg_upload_body_discarded_message($upload_limits['post_max']));
+}
+
+if (
+    !isset($_FILES['upload']['error'])
+    || is_array($_FILES['upload']['error'])
+    || ((int) $_FILES['upload']['error'] === UPLOAD_ERR_NO_FILE)
+) {
+    editor_add_file_refuse(lang('Please select a file.'));
+}
+
+$upload_refusal = pg_upload_file_refusal($_FILES['upload'], $upload_limits['file_max']);
+
+if ($upload_refusal !== '') {
+    editor_add_file_refuse($upload_refusal);
 }
 
 $folder_id = 0;
@@ -112,8 +136,12 @@ $array_file_extension = explode('.', $file_name);
 $size_of_array = count($array_file_extension);
 $file_extension = $array_file_extension[$size_of_array - 1];
 
-// create file
-copy($file_temp_name, FILE_DIRECTORY_PATH . '/' . $file_name);
+// create file; nothing is recorded or inserted for a file that is not on the disk
+if (!@copy($file_temp_name, FILE_DIRECTORY_PATH . '/' . $file_name)) {
+    editor_add_file_refuse(lang(array(
+        'string' => 'The server could not accept {var:1}. Please try again.',
+        'vars'   => array(pg_basename((string) $_FILES['upload']['name'])))));
+}
 
 // insert file data into file table
 $query =    "INSERT INTO files ".
@@ -122,10 +150,19 @@ $query =    "INSERT INTO files ".
 $result = db_q($query, array((string) $file_name, (string) $folder_id, (string) $file_extension, (string) $file_size, (string) USER_ID)) or output_error('Query failed.');
 $file_id = mysqli_insert_id(db::$con);
 
-log_activity("file ($file_name) was created", $_SESSION['sessionusername']);
+log_activity(lang(array('string' => 'file ({var:1}) was created', 'vars' => array($file_name))), $_SESSION['sessionusername']);
 
 echo '<script>window.parent.CKEDITOR.tools.callFunction("' . escape_javascript($_GET['CKEditorFuncNum']) . '", "' . escape_javascript(OUTPUT_PATH . encode_url_path($file_name)) . '", "")</script>';
 exit();
+
+// Logs a refused upload and gives the reason to the editor's dialog, which
+// reads an empty URL with a message as a failure.
+function editor_add_file_refuse($message)
+{
+    log_activity($message, $_SESSION['sessionusername'] ?? '');
+    echo '<script>window.parent.CKEDITOR.tools.callFunction("' . escape_javascript($_GET['CKEditorFuncNum'] ?? '') . '", "", "' . escape_javascript($message) . '")</script>';
+    exit();
+}
 
 // Create a function that will go through the whole folder tree in correct order
 // and find the first folder that the user has edit access to and that matches

@@ -22,21 +22,36 @@ include_once('liveform.class.php');
 $liveform = new liveform('edit_erp_expense');
 
 $list_url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_expenses.php';
+
+// The filtered list the expense was opened from (its period above all): the
+// back arrow, the breadcrumb and every reload and form of this screen keep it.
+$send_to = pg_send_to_url('');
+$send_to_query = ($send_to !== '') ? '&send_to=' . urlencode($send_to) : '';
 $readonly = defined('USER_ERP_READONLY') && USER_ERP_READONLY;
 $can_cash = defined('USER_MANAGE_ERP_CASH') && USER_MANAGE_ERP_CASH;
 
 $id = is_scalar($_REQUEST['id'] ?? null) ? (int) $_REQUEST['id'] : 0;
+
+// The id rides in every form's address as well as its body: a receipt over
+// post_max_size makes PHP throw the body away, and the screen still knows
+// the expense to come back to.
+$self_action = h('edit_erp_expense.php?id=' . $id . $send_to_query);
 $expense = erp_expense($id);
 
 if ($expense === null) {
     $liveform_list = new liveform('erp_expenses');
     $liveform_list->mark_error('_error', lang('The expense could not be found.'));
-    go($list_url);
+    go(pg_send_to_url($list_url));
 }
 
-$self = PATH . SOFTWARE_DIRECTORY . '/edit_erp_expense.php?id=' . $id;
+$self = PATH . SOFTWARE_DIRECTORY . '/edit_erp_expense.php?id=' . $id . $send_to_query;
 
 // ------------------------------------------------------------------ actions
+if (pg_post_body_discarded()) {
+    $liveform->mark_error('_error', h(erp_upload_discarded_message()));
+    go($self);
+}
+
 if ($_POST) {
     validate_token_field();
 
@@ -57,6 +72,7 @@ if ($_POST) {
         $paid_date = trim((string) ($_POST['paid_date'] ?? ''));
 
         if (($paid_date !== '') && (validate_date($paid_date) == false)) {
+            $liveform->add_fields_to_session();
             $liveform->mark_error('paid_date', lang('Please enter a valid date.'));
             go($self);
         }
@@ -68,6 +84,8 @@ if ($_POST) {
         ), (int) $user['id']);
 
         if (!$result['success']) {
+            // Keep the chosen till and method for the next try.
+            $liveform->add_fields_to_session();
             $liveform->mark_error('_error', h($result['error']));
             go($self);
         }
@@ -96,6 +114,7 @@ if ($_POST) {
         $repeat_end = trim((string) ($_POST['repeat_end'] ?? ''));
 
         if (($repeat_end !== '') && (validate_date($repeat_end) == false)) {
+            $liveform->add_fields_to_session();
             $liveform->mark_error('repeat_end', lang('Please enter a valid date.'));
             go($self);
         }
@@ -110,6 +129,8 @@ if ($_POST) {
         ), (int) $user['id']);
 
         if (!$repeat['success']) {
+            // Keep the period, due days and the paid switch for the next try.
+            $liveform->add_fields_to_session();
             $liveform->mark_error('_error', h($repeat['error']));
             go($self);
         }
@@ -229,11 +250,11 @@ $output_details = '
 $output_figures = '
     <table class="table table-sm mb-0">
         <tbody>
-            <tr><td class="fg-secondary">' . lang('Net') . '</td><td class="text-end">' . $money($expense['net_amount']) . '</td></tr>
-            <tr><td class="fg-secondary">' . h(erp_tax_label('tax')) . ' ' . h(erp_percent_text((float) $expense['tax_rate'])) . '</td><td class="text-end">' . $money($expense['tax_amount'])
+            <tr><th scope="row" class="fg-secondary fw-normal">' . lang('Net') . '</th><td class="text-end">' . $money($expense['net_amount']) . '</td></tr>
+            <tr><th scope="row" class="fg-secondary fw-normal">' . h(erp_tax_label('tax')) . ' ' . h(erp_percent_text((float) $expense['tax_rate'])) . '</th><td class="text-end">' . $money($expense['tax_amount'])
                 . '<div class="small fg-secondary">' . (((int) $expense['tax_deductible'] === 1) ? lang('taken back') : lang('not taken back: counts as cost')) . '</div></td></tr>
-            <tr class="fw-bold"><td>' . lang('Total') . '</td><td class="text-end">' . $money($expense['total_amount']) . '</td></tr>
-            ' . ($foreign ? '<tr><td class="fg-secondary">' . h(lang(array('string' => 'In {var:1}', 'vars' => $base))) . '</td><td class="text-end">' . h(erp_money_out((int) $expense['total_base']))
+            <tr class="fw-bold"><th scope="row">' . lang('Total') . '</th><td class="text-end">' . $money($expense['total_amount']) . '</td></tr>
+            ' . ($foreign ? '<tr><th scope="row" class="fg-secondary fw-normal">' . h(lang(array('string' => 'In {var:1}', 'vars' => $base))) . '</th><td class="text-end">' . h(erp_money_out((int) $expense['total_base']))
                 . '<div class="small fg-secondary">' . h(lang(array('string' => 'at {var:1}', 'vars' => erp_fx_rate_text((float) $expense['exchange_rate'])))) . '</div></td></tr>' : '') . '
         </tbody>
     </table>';
@@ -259,6 +280,12 @@ $till_options = function ($selected = 0) use ($currency) {
     return array($options, $count);
 };
 
+// After a refused Pay or Repeat, only the form that was sent reads back
+// what was chosen; the other keeps its defaults.
+$kept = function ($form) use ($liveform) {
+    return !$liveform->prefill() && ((string) $liveform->get_field_value('erp_action') === $form);
+};
+
 $method_options = function ($selected = '') use ($method_words) {
     $options = '';
 
@@ -280,12 +307,12 @@ if ($status === 'paid') {
         </dl>';
 } elseif ($can_pay) {
     // Only the tills kept in the expense's currency can pay it.
-    list($pay_till_options, $till_count) = $till_options();
+    list($pay_till_options, $till_count) = $till_options($kept('pay') ? (int) $liveform->get_field_value('cash_account_id') : 0);
 
     $output_payment = '
         <p class="mb-3">' . (((string) $expense['due_date'] > '0000-00-00') ? h(lang(array('string' => 'To pay by {var:1}.', 'vars' => prepare_form_data_for_output((string) $expense['due_date'], 'date', false)))) : lang('Not paid yet.')) . '</p>
         ' . (($till_count === 0) ? '<div class="alert theme-warning small py-3">' . h(lang(array('string' => 'No active till or bank account is kept in {var:1}, so this expense cannot be paid from one yet.', 'vars' => $currency))) . '</div>' : '') . '
-        <form method="post" action="edit_erp_expense.php" class="row g-3 align-items-end">
+        <form method="post" action="' . $self_action . '" class="row g-3 align-items-end">
             ' . get_token_field() . '
             <input type="hidden" name="id" value="' . $id . '" />
             <input type="hidden" name="erp_action" value="pay" />
@@ -295,7 +322,7 @@ if ($status === 'paid') {
             </div>
             <div class="col-6 md:col-3">
                 <label class="form-label small mb-1" for="payment_method">' . lang('Payment Method') . '</label>
-                <select class="form-control form-control-sm" id="payment_method" name="payment_method">' . $method_options('cash') . '</select>
+                <select class="form-control form-control-sm" id="payment_method" name="payment_method">' . $method_options($kept('pay') ? (string) $liveform->get_field_value('payment_method') : 'cash') . '</select>
             </div>
             <div class="col-6 md:col-2">
                 <label class="form-label small mb-1" for="paid_date">' . lang('Paid on') . '</label>
@@ -357,7 +384,7 @@ if ($kept !== null) {
             $output_receipt .= '
                 <details class="mt-5"' . ($liveform->check_field_error('receipt_file') ? ' open' : '') . '>
                     <summary class="small">' . lang('Replace the file') . '</summary>
-                    <form method="post" action="edit_erp_expense.php" enctype="multipart/form-data" class="mt-3">
+                    <form method="post" action="' . $self_action . '" enctype="multipart/form-data" class="mt-3">
                         ' . get_token_field() . '
                         <input type="hidden" name="id" value="' . $id . '" />
                         <input type="hidden" name="erp_action" value="replace" />
@@ -365,7 +392,7 @@ if ($kept !== null) {
                             <input class="form-control" type="file" id="receipt_file" name="receipt_file" accept="image/jpeg,image/png,image/webp,application/pdf" required />
                             <button type="submit" class="btn btn-outline theme-primary" data-confirm-content="' . h(lang('Take the new file in place of this one? The earlier file stays with the expense.')) . '"><i class="bi bi-arrow-left-right me-1" aria-hidden="true"></i>' . lang('Replace') . '</button>
                         </div>
-                        <div class="form-text">' . lang('For a blurred picture or the wrong page. The earlier file is not deleted; it stays listed with the expense.') . '</div>
+                        <div class="form-text">' . lang('For a blurred picture or the wrong page. The earlier file is not deleted; it stays listed with the expense.') . ' ' . h(lang(array('string' => 'Up to {var:1} MB.', 'vars' => erp_upload_mb_text(erp_upload_max_bytes(ERP_EXPENSE_FILE_MAX_BYTES))))) . '</div>
                     </form>
                 </details>';
         } elseif ($open) {
@@ -374,7 +401,7 @@ if ($kept !== null) {
     }
 } elseif (!$readonly && $open) {
     $output_receipt = '
-        <form method="post" action="edit_erp_expense.php" enctype="multipart/form-data">
+        <form method="post" action="' . $self_action . '" enctype="multipart/form-data">
             ' . get_token_field() . '
             <input type="hidden" name="id" value="' . $id . '" />
             <input type="hidden" name="erp_action" value="attach" />
@@ -383,7 +410,7 @@ if ($kept !== null) {
                 <input class="form-control" type="file" id="receipt_file" name="receipt_file" accept="image/jpeg,image/png,image/webp,application/pdf" required />
                 <button type="submit" class="btn btn-outline theme-primary"><i class="bi bi-upload me-1" aria-hidden="true"></i>' . lang('Keep') . '</button>
             </div>
-            <div class="form-text">' . h(lang(array('string' => 'At most {var:1} MB. On a phone the camera can take it.', 'vars' => (int) (ERP_EXPENSE_FILE_MAX_BYTES / 1048576)))) . '</div>
+            <div class="form-text">' . h(lang(array('string' => 'At most {var:1} MB. On a phone the camera can take it.', 'vars' => erp_upload_mb_text(erp_upload_max_bytes(ERP_EXPENSE_FILE_MAX_BYTES))))) . '</div>
         </form>';
 } else {
     $output_receipt = '<p class="fg-secondary mb-0">' . lang('No receipt was kept with this expense.') . '</p>';
@@ -415,7 +442,7 @@ if (erp_expense_recurring_ready()) {
                 <details class="mb-3"' . ($till_off ? ' open' : '') . '>
                     <summary class="small">' . lang('Change the till') . '</summary>
                     ' . (($till_off && ((string) $recurrence['last_error'] !== $not_active)) ? '<div class="alert theme-warning small py-3 mt-3 mb-0">' . h($not_active) . '</div>' : '') . '
-                    <form method="post" action="edit_erp_expense.php" class="row g-3 align-items-end mt-0">
+                    <form method="post" action="' . $self_action . '" class="row g-3 align-items-end mt-0">
                         ' . get_token_field() . '
                         <input type="hidden" name="id" value="' . $id . '" />
                         <input type="hidden" name="erp_action" value="repeat_till" />
@@ -448,7 +475,7 @@ if (erp_expense_recurring_ready()) {
             ' . (((string) $recurrence['last_error'] !== '') ? '<div class="alert theme-warning small py-3">' . h((string) $recurrence['last_error']) . '</div>' : '') . '
             ' . (!$is_source ? '<p class="small mb-3"><a href="edit_erp_expense.php?id=' . (int) $recurrence['source_expense_id'] . '">' . lang('The expense it started from') . '</a></p>' : '') . '
             ' . $output_repeat_till . '
-            ' . (($active && !$readonly) ? '<form method="post" action="edit_erp_expense.php">
+            ' . (($active && !$readonly) ? '<form method="post" action="' . $self_action . '">
                 ' . get_token_field() . '
                 <input type="hidden" name="id" value="' . $id . '" />
                 <input type="hidden" name="erp_action" value="stop_repeat" />
@@ -460,6 +487,18 @@ if (erp_expense_recurring_ready()) {
         // Started again, the repeat goes on from where it stopped, at the
         // period it had unless another is chosen.
         $repeat_every = is_array($recurrence) ? (int) $recurrence['every_months'] : 1;
+        $repeat_due_days = '';
+        $repeat_pay = false;
+
+        if ($kept('repeat')) {
+            // Only a period the list offers; it also dates the restart note.
+            if (isset($periods[(int) $liveform->get_field_value('repeat_every')])) {
+                $repeat_every = (int) $liveform->get_field_value('repeat_every');
+            }
+
+            $repeat_due_days = (string) $liveform->get_field_value('repeat_due_days');
+            $repeat_pay = ((string) $liveform->get_field_value('repeat_pay') !== '');
+        }
         $repeat_note = lang('The next one is written on the same day of the month, with this amount and tax.');
 
         if (is_array($recurrence)) {
@@ -477,7 +516,7 @@ if (erp_expense_recurring_ready()) {
         }
 
         $output_repeat .= (($output_repeat !== '') ? '<hr />' : '') . '
-            <form method="post" action="edit_erp_expense.php" class="row g-3 align-items-end">
+            <form method="post" action="' . $self_action . '" class="row g-3 align-items-end">
                 ' . get_token_field() . '
                 <input type="hidden" name="id" value="' . $id . '" />
                 <input type="hidden" name="erp_action" value="repeat" />
@@ -487,7 +526,7 @@ if (erp_expense_recurring_ready()) {
                 </div>
                 <div class="col-6 md:col-3">
                     <label class="form-label small mb-1" for="repeat_due_days">' . lang('Due after (days)') . '</label>
-                    <input type="number" class="form-control form-control-sm" id="repeat_due_days" name="repeat_due_days" min="0" max="365" placeholder="0" />
+                    <input type="number" class="form-control form-control-sm" id="repeat_due_days" name="repeat_due_days" value="' . h($repeat_due_days) . '" min="0" max="365" placeholder="0" />
                 </div>
                 <div class="col-6 md:col-3">
                     <label class="form-label small mb-1" for="repeat_end">' . lang('Until (optional)') . '</label>
@@ -498,7 +537,7 @@ if (erp_expense_recurring_ready()) {
                 </div>
                 ' . (($can_cash && ($status === 'paid')) ? '<div class="col-12">
                     <div class="form-field">
-                        <div class="switch"><input class="" type="checkbox" id="repeat_pay" name="repeat_pay" value="1" /></div>
+                        <div class="switch"><input class="" type="checkbox" id="repeat_pay" name="repeat_pay" value="1"' . ($repeat_pay ? ' checked' : '') . ' /></div>
                         <label class="small" for="repeat_pay">' . h(lang(array('string' => 'Write the next ones as paid from {var:1}', 'vars' => (string) $expense['till_name']))) . '</label>
                     </div>
                 </div>' : '') . '
@@ -517,7 +556,7 @@ if ($can_change) {
                 <p class="small fg-secondary">' . (($status === 'paid')
                     ? lang('The expense stays on the list, struck through; its money goes back into the till with a movement dated today.')
                     : lang('The expense stays on the list, struck through, and counts for nothing.')) . '</p>
-                <form method="post" action="edit_erp_expense.php" class="d-flex flex-wrap gap-3">
+                <form method="post" action="' . $self_action . '" class="d-flex flex-wrap gap-3">
                     ' . get_token_field() . '
                     <input type="hidden" name="id" value="' . $id . '" />
                     <input type="hidden" name="erp_action" value="cancel" />
@@ -547,9 +586,9 @@ pg_page_shell([
     'icon' => 'erp',
     'heading' => h($heading),
     'heading_description' => h((string) $expense['category_name']) . ' · ' . h(prepare_form_data_for_output((string) $expense['expense_date'], 'date', false)),
-    'cancel' => array('enable' => 'true', 'url' => 'erp_expenses.php'),
+    'cancel' => array('enable' => 'true', 'url' => pg_send_to_url('erp_expenses.php')),
     'breadcrumb' => array(
-        array('label' => lang('Expenses'), 'url' => $list_url),
+        array('label' => lang('Expenses'), 'url' => pg_send_to_list_url($list_url)),
         array('label' => lang(array('string' => 'Expense #{var:1}', 'vars' => $id))),
     ),
 ]) . '

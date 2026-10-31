@@ -43,6 +43,15 @@ require_once(dirname(__FILE__) . '/includes/api/outbound/listings.php');
 require_once(dirname(__FILE__) . '/includes/api/outbound/product_matches.php');
 require_once(dirname(__FILE__) . '/includes/api/outbound/webhook_receiver.php');
 require_once(dirname(__FILE__) . '/includes/api/outbound/labels.php');
+require_once(dirname(__FILE__) . '/includes/api/outbound/invoice_push.php');
+
+// The public address of an order's invoice (includes/erp/invoice_public_link.php),
+// which the invoice link form offers.
+if (defined('ERP_ENABLED') && ERP_ENABLED) {
+
+	require_once(PG_FUNCTIONS_DIR . '/includes/erp/bootstrap.php');
+
+}
 
 $liveform = new liveform('marketplace_settings');
 
@@ -445,12 +454,13 @@ if ($_POST) {
 
 	}
 
-	// The link of an imported package's invoice, typed by the operator. The
-	// e-document PDF is served only behind the panel login, so no job can hand
-	// the marketplace a link of its own; the operator gives the address the
-	// buyer can open (an e-Archive portal, a shared PDF). A refusal is shown
-	// here and not kept in last_error, which takes the package out of the
-	// own-carrier shipping pass.
+	// The link of an imported package's invoice: the public address of the
+	// order's issued invoice (erp_invoice.php, made anew on each send), or an
+	// address the operator types (an e-Archive portal, a shared PDF). Also the
+	// retry of a link the automatic send could not hand over
+	// (includes/api/outbound/invoice_push.php). A refusal is shown here and not
+	// kept in last_error, which takes the package out of the own-carrier
+	// shipping pass.
 	if ($action === 'invoice_link' && $account) {
 
 		$map_id = isset($_POST['map_id']) ? (int)$_POST['map_id'] : 0;
@@ -485,9 +495,28 @@ if ($_POST) {
 
 		} else {
 
-			$sent = mp_call($account['provider'], 'send_invoice_link', array($account, $package, $invoice_url));
+			$invoice = !empty($_POST['use_public']) ? mp_invoice_push_invoice((int)$package['order_id']) : null;
 
-			if ($sent['ok']) {
+			if ($invoice && function_exists('erp_invoice_public_link_issue')) {
+
+				$sent = mp_invoice_push_link($account, $package, $invoice, false);
+
+			} else {
+
+				$invoice = null;
+
+				$sent = mp_call($account['provider'], 'send_invoice_link', array($account, $package, $invoice_url));
+
+			}
+
+			if ($sent['ok'] && $invoice) {
+
+				$liveform->add_notice(lang(array(
+					'string' => 'The invoice link of order {var:1} was sent to {var:2}.',
+					'vars'   => array(h((string)$package['remote_order_id']), h(mp_provider_name($account['provider'])))
+				)));
+
+			} elseif ($sent['ok']) {
 
 				db("UPDATE marketplace_order_map
 					SET invoice_sent = UNIX_TIMESTAMP(), updated_timestamp = UNIX_TIMESTAMP()
@@ -508,6 +537,109 @@ if ($_POST) {
 				$liveform->add_warning(lang(array(
 					'string' => 'The invoice link of order {var:1} was not sent: {var:2}',
 					'vars'   => array(h((string)$package['remote_order_id']), h($sent['error']))
+				)));
+
+			}
+
+		}
+
+		header('Location: ' . $screen_url . '?account=' . $account_id . '#mp-orders');
+
+		exit();
+
+	}
+
+	// Mark an imported package Invoiced with the number of the invoice the
+	// operator cut. The marketplace wants Picking first, so a package nobody
+	// accepted yet is accepted in the same step, as the label request does.
+	// Success is kept as the package's status, which the next order read
+	// overwrites with theirs; a refusal is shown here and not kept in
+	// last_error, as with the invoice link.
+	if ($action === 'mark_invoiced' && $account) {
+
+		$map_id = isset($_POST['map_id']) ? (int)$_POST['map_id'] : 0;
+
+		$invoice_number = isset($_POST['invoice_number']) ? trim((string)$_POST['invoice_number']) : '';
+
+		$map = $map_id ? db_item("SELECT * FROM marketplace_order_map
+			WHERE (id = '" . e($map_id) . "') AND (account_id = '" . e($account_id) . "')") : null;
+
+		if (!mp_can($account['provider'], 'mark_invoiced')) {
+
+			$liveform->add_warning(lang(array(
+				'string' => '{var:1} cannot do this.',
+				'vars'   => array(h(mp_provider_name($account['provider'])))
+			)));
+
+		} elseif (!$map || !mp_invoiced_offer($map, mp_order_stage($account, $map))) {
+
+			$liveform->add_warning(lang('That order can no longer be marked invoiced.'));
+
+		} else {
+
+			$package = mp_sync_package_from_row($map);
+
+			$order_number = (string)$map['remote_order_id'];
+
+			$name = mp_provider_name($account['provider']);
+
+			$problem = '';
+
+			if (($package['remote_status'] === 'Created') && empty($map['approved']) && mp_can($account['provider'], 'approve_lines')) {
+
+				$line_ids = array();
+
+				foreach ($package['lines'] as $line) {
+
+					if (isset($line['remote_line_id']) && ((string)$line['remote_line_id'] !== '')) {
+
+						$line_ids[] = (string)$line['remote_line_id'];
+
+					}
+
+				}
+
+				$accepted = mp_call($account['provider'], 'approve_lines', array($account, $line_ids, $package));
+
+				if ($accepted['ok']) {
+
+					db("UPDATE marketplace_order_map
+						SET remote_status = 'Picking', approved = 1, updated_timestamp = UNIX_TIMESTAMP()
+						WHERE id = '" . e($map_id) . "'");
+
+				} else {
+
+					$problem = $accepted['error'];
+
+				}
+
+			}
+
+			$invoiced = ($problem === '')
+				? mp_call($account['provider'], 'mark_invoiced', array($account, $package, $invoice_number))
+				: mp_error($problem);
+
+			if ($invoiced['ok']) {
+
+				db("UPDATE marketplace_order_map
+					SET remote_status = 'Invoiced', approved = 1, updated_timestamp = UNIX_TIMESTAMP()
+					WHERE id = '" . e($map_id) . "'");
+
+				log_activity(lang(array(
+					'string' => 'Order {var:1} was marked invoiced on {var:2} with invoice number {var:3}',
+					'vars'   => array($order_number, $name, $invoice_number)
+				)), 'system');
+
+				$liveform->add_notice(lang(array(
+					'string' => 'Order {var:1} was marked invoiced on {var:2}.',
+					'vars'   => array(h($order_number), h($name))
+				)));
+
+			} else {
+
+				$liveform->add_warning(lang(array(
+					'string' => 'Order {var:1} was not marked invoiced: {var:2}',
+					'vars'   => array(h($order_number), h($invoiced['error']))
 				)));
 
 			}
@@ -1336,27 +1468,67 @@ function mp_settings_claim_reject_form($account_id, $claim, $reasons) {
 // The "Send invoice link" form under one imported order, folded until opened.
 // The operator types the address the buyer can open; the screen cannot offer
 // one of its own (see the invoice_link action).
-function mp_settings_invoice_form($account_id, $row) {
+//
+// With the order's issued invoice ($invoice) the form comes filled in: its
+// public address is sent, made at the moment of sending, and the address
+// field is only for sending another one instead.
+function mp_settings_invoice_form($account_id, $row, $invoice = null) {
 
 	$map_id = (int)$row['id'];
 
+	$public = is_array($invoice) && function_exists('erp_invoice_public_link_issue') && erp_invoice_public_link_ready();
+
 	return '
 				<details class="small" style="grid-column:1/-1">
-					<summary class="pg-link-secondary">' . lang('Send invoice link') . '</summary>
+					<summary class="pg-link-secondary">' . lang('Send invoice link') . '</summary>' . ($public ? '
+					<div class="form-text">' . h(lang(array('string' => 'The public address of invoice {var:1} is sent, unless you untick it and type another address.', 'vars' => (string)$invoice['full_number']))) . '</div>' : '') . '
 					<form method="post" action="marketplace_settings.php" class="d-flex gap-3 flex-wrap mt-3"
 						onsubmit="this.querySelector(\'button[type=submit]\').disabled = true;">
 						' . get_token_field() . '
 						<input type="hidden" name="mp_action" value="invoice_link">
 						<input type="hidden" name="account_id" value="' . (int)$account_id . '">
-						<input type="hidden" name="map_id" value="' . $map_id . '">
+						<input type="hidden" name="map_id" value="' . $map_id . '">' . ($public ? '
+						<div class="form-field align-self-center mb-0">
+							<input class="check" type="checkbox" name="use_public" value="1" id="use_public_' . $map_id . '" checked
+								onchange="document.getElementById(\'invoice_url_' . $map_id . '\').required = !this.checked;">
+							<label class="" for="use_public_' . $map_id . '">' . h(lang(array('string' => 'Invoice {var:1}', 'vars' => (string)$invoice['full_number']))) . '</label>
+						</div>' : '') . '
 						<label class="visually-hidden" for="invoice_url_' . $map_id . '">' . lang('Invoice link') . '</label>
 						<input type="url" class="form-control form-control-sm" id="invoice_url_' . $map_id . '"
-							name="invoice_url" maxlength="1000" required style="max-width:520px"
+							name="invoice_url" maxlength="2048"' . ($public ? '' : ' required') . ' style="max-width:520px"
 							placeholder="https://">
 						<button type="submit" class="btn btn-sm btn-outline theme-secondary">' . lang('Send') . '</button>
 					</form>
 					<div class="form-text">'
 						. lang('The address of the e-Archive or e-Invoice PDF that the buyer can open without signing in. The marketplace keeps it with the order and it has to stay reachable for ten years. A link once sent cannot be changed from here.') . '</div>
+				</details>';
+
+}
+
+// The "Mark invoiced" form under one imported order, folded until opened: the
+// number of the invoice cut for it (see the mark_invoiced action).
+// With the order's issued invoice ($invoice) its number is filled in.
+function mp_settings_invoiced_form($account_id, $row, $invoice = null) {
+
+	$map_id = (int)$row['id'];
+
+	return '
+				<details class="small" style="grid-column:1/-1">
+					<summary class="pg-link-secondary">' . lang('Mark invoiced') . '</summary>
+					<form method="post" action="marketplace_settings.php" class="d-flex gap-3 flex-wrap mt-3"
+						onsubmit="this.querySelector(\'button[type=submit]\').disabled = true;">
+						' . get_token_field() . '
+						<input type="hidden" name="mp_action" value="mark_invoiced">
+						<input type="hidden" name="account_id" value="' . (int)$account_id . '">
+						<input type="hidden" name="map_id" value="' . $map_id . '">
+						<label class="visually-hidden" for="invoice_number_' . $map_id . '">' . lang('Invoice number') . '</label>
+						<input type="text" class="form-control form-control-sm" id="invoice_number_' . $map_id . '"
+							name="invoice_number" maxlength="50" required pattern="[A-Za-z0-9][A-Za-z0-9\-]*" style="max-width:260px"
+							autocomplete="off"' . (is_array($invoice) ? ' value="' . h((string)$invoice['full_number']) . '"' : '') . '>
+						<button type="submit" class="btn btn-sm btn-outline theme-secondary">' . lang('Send') . '</button>
+					</form>
+					<div class="form-text">'
+						. lang('The number of the invoice you cut for this order. The marketplace sets the package to Invoiced; an order not accepted yet is accepted first.') . '</div>
 				</details>';
 
 }
@@ -1453,6 +1625,26 @@ function mp_settings_ago($timestamp) {
 
 }
 
+// An imported order's total, as markup. The import keeps the marketplace's
+// currency in orders.currency_code with the totals unconverted, so a total in
+// another currency is written with its code; one in the base currency under
+// the base symbol, as the order screen prints it. Never converted to the
+// currency the operator's browser picked for the shop.
+function mp_settings_order_total($row) {
+
+	$total = ((int) $row['total']) / 100;
+	$code = strtoupper(trim((string) ($row['currency_code'] ?? '')));
+
+	if (($code !== '') && ($code !== strtoupper(trim((string) BASE_CURRENCY_CODE)))) {
+
+		return pg_format_money($total, '', ' ' . h($code));
+
+	}
+
+	return pg_format_money($total, BASE_CURRENCY_SYMBOL);
+
+}
+
 // The credential fields this provider asks for, read out of the form.
 function mp_settings_credentials_from_post($provider) {
 
@@ -1465,6 +1657,9 @@ function mp_settings_credentials_from_post($provider) {
 // $current is the stored value when editing. A text field never shows it back
 // - a blank box keeps it, the placeholder hints at it - while a select shows
 // the stored choice, because it is not a secret and has no blank state.
+// On create, $current is the value of a refused Connect: drawn back into a
+// select or a plain text box, never into a secret one. A text box is
+// required on create only.
 // $disabled keeps the field of a marketplace that is not chosen out of the
 // submitted form.
 function mp_settings_credential_field($prefix, $field, $meta, $current, $editing, $disabled = false) {
@@ -1503,6 +1698,8 @@ function mp_settings_credential_field($prefix, $field, $meta, $current, $editing
 				<input type="' . (!empty($meta['secret']) ? 'password' : 'text') . '" class="form-control"
 					id="' . h($id) . '" name="' . h($field) . '" autocomplete="' . (!empty($meta['secret']) ? 'new-password' : 'off') . '"'
 					. ($editing ? ' placeholder="' . h(mp_credential_hint($current)) . '"' : '')
+					. ((!$editing && empty($meta['secret']) && $current !== '') ? ' value="' . h($current) . '"' : '')
+					. (!$editing ? ' required' : '')
 					. ($disabled ? ' disabled' : '') . '>'
 				. ($editing ? '
 				<div class="form-text">' . lang('Leave empty to keep what is stored.') . '</div>' : '') . '
@@ -1518,7 +1715,33 @@ function mp_settings_credential_field($prefix, $field, $meta, $current, $editing
 
 $accounts = mp_accounts();
 
+// A refused Connect or Save does not redirect: the screen is drawn in this
+// same request, so its form is drawn again from what was posted and opened.
+$mp_refused = '';
+
+if ($_POST && isset($action)) {
+
+	if ($action === 'create') {
+
+		$mp_refused = 'create';
+
+	} elseif (($action === 'update') && $account) {
+
+		$mp_refused = 'update';
+
+	}
+
+}
+
 $selected_id = isset($_GET['account']) ? (int)$_GET['account'] : 0;
+
+// The post goes to the bare screen address, so the refused account comes
+// from the form, not from the address.
+if ($mp_refused === 'update') {
+
+	$selected_id = $account_id;
+
+}
 
 if (!$selected_id && $accounts) {
 
@@ -1563,7 +1786,7 @@ if ($selected) {
 	$failed_orders = (int) db_value("SELECT COUNT(*) FROM marketplace_order_map
 		WHERE (account_id = '" . e($selected_id) . "') AND (status = 'failed') AND (order_id = 0)");
 
-	$orders = (array) db_items("SELECT marketplace_order_map.*, orders.order_number, orders.total,
+	$orders = (array) db_items("SELECT marketplace_order_map.*, orders.order_number, orders.total, orders.currency_code,
 			orders.billing_first_name, orders.billing_last_name, orders.status AS order_status
 		FROM marketplace_order_map
 		LEFT JOIN orders ON orders.id = marketplace_order_map.order_id
@@ -1635,11 +1858,11 @@ echo pg_page_shell(array(
 .mp-scroll { overflow-x: auto; overflow-y: hidden; }
 .mp-head, .mp-row { display: grid; grid-template-columns: 2fr 1.4fr 1fr .9fr .9fr 40px;
 	gap: 12px; align-items: center; min-width: 760px; }
-.mp-head { padding: 0 14px 8px; font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--pg-fg-2); }
+.mp-head { padding: 0 14px 8px; font-size: 0.65625rem; letter-spacing: .06em; text-transform: uppercase; color: var(--pg-fg-2); }
 .mp-row { padding: 11px 14px; border-top: 1px solid var(--pg-border-color); }
-.mp-row b { font-size: 13px; display: block; }
-.mp-row code { font-size: 11px; opacity: .7; }
-.mp-pill { font-size: 10.5px; padding: 3px 9px; border-radius: 20px; font-weight: 600;
+.mp-row b { font-size: 0.8125rem; display: block; }
+.mp-row code { font-size: 0.6875rem; opacity: .7; }
+.mp-pill { font-size: 0.65625rem; padding: 3px 9px; border-radius: 20px; font-weight: 600;
 	border: 1px solid var(--pg-border-color); display: inline-block; white-space: nowrap; }
 .mp-pill.on { color: var(--pg-success-fg-emphasis); border-color: color-mix(in srgb, var(--pg-success) 35%, transparent); }
 .mp-pill.off { color: var(--pg-fg-2); }
@@ -1650,9 +1873,9 @@ echo pg_page_shell(array(
 .mp-tab small { color: var(--pg-fg-2); }
 .mp-count { display: flex; gap: 18px; flex-wrap: wrap; }
 .mp-count div { min-width: 82px; }
-.mp-count b { font-size: 20px; display: block; line-height: 1.1; }
-.mp-count span { font-size: 11px; color: var(--pg-fg-2); }
-.mp-err { font-size: 11.5px; color: var(--pg-danger-fg-emphasis); word-break: break-word; }
+.mp-count b { font-size: 1.25rem; display: block; line-height: 1.1; }
+.mp-count span { font-size: 0.6875rem; color: var(--pg-fg-2); }
+.mp-err { font-size: 0.71875rem; color: var(--pg-danger-fg-emphasis); word-break: break-word; }
 /* Questions and failures are free text, not columns: they sit outside the
    sideways-scrolling block, so they wrap to the width of the card instead. */
 .mp-question { padding: 11px 14px; border-top: 1px solid var(--pg-border-color); }
@@ -1678,7 +1901,7 @@ if (!$accounts) {
 	echo '
 	<div class="card">
 		<div class="card-body text-center py-12">
-			<i class="bi bi-shop" style="font-size:34px;opacity:.35"></i>
+			<i class="bi bi-shop" style="font-size:2.125rem;opacity:.35"></i>
 			<p class="mt-5 mb-1"><b>' . lang('No marketplace is connected yet.') . '</b></p>
 			<p class="small opacity-75 mb-7" style="max-width:520px;margin:0 auto">'
 				. lang('Connect a marketplace account and match your products to the codes it knows them by. Stock and price changes here are then sent over there on a schedule.') . '</p>
@@ -1754,6 +1977,10 @@ if ($selected) {
 	// The invoice link form needs the column its success is written to; a site
 	// whose files are newer than its database draws no form.
 	$can_invoice = $can_orders && mp_can($selected['provider'], 'send_invoice_link') && mp_invoice_sent_ready();
+
+	// The "Mark invoiced" form, for a connector that can set a package's status
+	// to Invoiced (mp_invoiced_offer() picks the rows).
+	$can_mark_invoiced = $can_orders && mp_can($selected['provider'], 'mark_invoiced');
 
 	// The returns card, for a connector that reads returns; its approve
 	// button only where the connector can approve them.
@@ -2005,9 +2232,15 @@ if ($selected) {
 				<span>' . lang('Imported') . '</span><span></span>
 			</div>';
 
+			$order_invoices = mp_invoice_push_invoices(array_column($orders, 'order_id'));
+
+			$push_on = mp_invoice_push_switch_on();
+
 			foreach ($orders as $row) {
 
 				$name = trim((string)$row['billing_first_name'] . ' ' . (string)$row['billing_last_name']);
+
+				$invoice = isset($order_invoices[(int)$row['order_id']]) ? $order_invoices[(int)$row['order_id']] : null;
 
 				echo '
 			<div class="mp-row" style="grid-template-columns:1.4fr 1.4fr 1fr .9fr .9fr 40px">
@@ -2017,7 +2250,7 @@ if ($selected) {
 				</span>
 				<span>' . (($name !== '') ? h($name) : '&mdash;') . '</span>
 				<span>' . (($row['order_id'] && $row['total'] !== null)
-					? prepare_price_for_output((int)$row['total'], false, 0, 'html', false) : '&mdash;') . '</span>
+					? mp_settings_order_total($row) : '&mdash;') . '</span>
 				<span>' . (($row['status'] === 'imported')
 						? '<span class="mp-pill on">' . h((string)$row['remote_status']) . '</span>'
 						: '<span class="mp-pill bad">' . h(lang('Failed')) . '</span>')
@@ -2025,7 +2258,10 @@ if ($selected) {
 						? ' <span class="mp-pill on">' . lang('Accepted') . '</span>' : '')
 					. (!empty($row['invoice_sent'])
 						? ' <span class="mp-pill on" title="' . h(mp_settings_ago((int)$row['invoice_sent'])) . '">'
-							. lang('Invoice sent') . '</span>' : '') . '
+							. lang('Invoice sent') . '</span>' : '')
+					. (mp_invoice_push_pending($push_on, $row, $invoice, $can_invoice)
+						? ' <span class="mp-pill bad" title="' . h(lang('The invoice was issued but its link has not reached the marketplace. The reason is in the activity log; send it again with Send invoice link.')) . '">'
+							. lang('Invoice link not sent') . '</span>' : '') . '
 					' . ($row['last_error'] !== ''
 						? '<div class="mp-err">' . h(mb_substr((string)$row['last_error'], 0, 120)) . '</div>' : '') . '</span>
 				<span class="small opacity-75">' . h(mp_settings_ago((int)$row['imported_timestamp'])) . '</span>
@@ -2035,7 +2271,9 @@ if ($selected) {
 					: '') . '</span>'
 				. (($can_invoice && ($row['status'] === 'imported') && $row['order_id'] && empty($row['invoice_sent'])
 					&& (mp_order_stage($selected, $row) !== 'cancelled'))
-					? mp_settings_invoice_form($selected_id, $row) : '')
+					? mp_settings_invoice_form($selected_id, $row, $invoice) : '')
+				. (($can_mark_invoiced && mp_invoiced_offer($row, mp_order_stage($selected, $row)))
+					? mp_settings_invoiced_form($selected_id, $row, $invoice) : '')
 				. (isset($order_labels[(int)$row['order_id']])
 					? mp_settings_label_line($selected_id, $row, $order_labels[(int)$row['order_id']], mp_provider_name($selected['provider'])) : '') . '
 			</div>';
@@ -2376,31 +2614,46 @@ if ($selected) {
 
 /* ------------------------------------------------------------------ modals */
 
+$new_provider = key($providers);
+
+if (($mp_refused === 'create') && isset($_POST['provider']) && is_string($_POST['provider'])
+	&& isset($providers[trim($_POST['provider'])])) {
+
+	$new_provider = trim($_POST['provider']);
+
+}
+
+$new_name = (($mp_refused === 'create') && isset($_POST['name'])) ? trim((string)$_POST['name']) : '';
+
+$new_push_price = ($mp_refused === 'create') ? !empty($_POST['push_price']) : true;
+
 $provider_options = '';
 
 foreach ($providers as $key => $meta) {
 
-	$provider_options .= '<option value="' . h($key) . '">' . h($meta['name']) . '</option>';
+	$provider_options .= '<option value="' . h($key) . '"' . (($key === $new_provider) ? ' selected' : '') . '>' . h($meta['name']) . '</option>';
 
 }
 
-$first_provider = key($providers);
-
 // Every marketplace's fields are drawn, one block each; the script below shows
 // the chosen one's. The others are disabled as well as hidden so that only the
-// chosen marketplace's credentials are posted.
+// chosen marketplace's credentials are posted, and so that their required
+// boxes do not stop the form.
 $new_fields = '';
 
 foreach ($providers as $key => $meta) {
 
-	$is_first = ($key === $first_provider);
+	$is_chosen = ($key === $new_provider);
 
 	$new_fields .= '
-				<div data-mp-fields="' . h($key) . '"' . ($is_first ? '' : ' class="d-none"') . '>';
+				<div data-mp-fields="' . h($key) . '"' . ($is_chosen ? '' : ' class="d-none"') . '>';
 
 	foreach ((isset($meta['fields']) ? $meta['fields'] : array()) as $field => $field_meta) {
 
-		$new_fields .= mp_settings_credential_field('new_' . $key, $field, $field_meta, '', false, !$is_first);
+		$posted = ($is_chosen && ($mp_refused === 'create') && isset($_POST[$field]) && is_scalar($_POST[$field]))
+			? trim((string)$_POST[$field]) : '';
+
+		$new_fields .= mp_settings_credential_field('new_' . $key, $field, $field_meta, $posted, false, !$is_chosen);
 
 	}
 
@@ -2432,12 +2685,12 @@ echo '
 				</div>
 				<div class="mb-5">
 					<label class="form-label" for="new_name">' . lang('Name') . '</label>
-					<input type="text" class="form-control" id="new_name" name="name"
+					<input type="text" class="form-control" id="new_name" name="name" value="' . h($new_name) . '" required
 						placeholder="' . lang('The name you will recognise this store by') . '">
 				</div>
 				' . $new_fields . '
 				<div class="form-field">
-					<div class="switch"><input class="" type="checkbox" role="switch" id="new_push_price" name="push_price" value="1" checked></div>
+					<div class="switch"><input class="" type="checkbox" role="switch" id="new_push_price" name="push_price" value="1"' . ($new_push_price ? ' checked' : '') . '></div>
 					<label class="" for="new_push_price">' . lang('Send prices as well as stock') . '</label>
 					<div class="form-text">'
 						. lang('Many shops price differently on a marketplace because of its commission. Leave this off to send only quantities.') . '</div>
@@ -2452,11 +2705,40 @@ echo '
 
 if ($selected) {
 
+	// A refused Save draws the drawer's fields as posted. Its text
+	// credentials stay blank, as on any opening: a blank box keeps what is
+	// stored, and a secret is never drawn back.
+	$edit = $selected;
+
+	if ($mp_refused === 'update') {
+
+		foreach (array('push_stock', 'push_price', 'pull_orders', 'auto_approve') as $switch) {
+
+			$edit[$switch] = empty($_POST[$switch]) ? 0 : 1;
+
+		}
+
+		$edit['status'] = (isset($_POST['status']) && $_POST['status'] === 'active') ? 'active' : 'paused';
+
+		$edit['shipment_template'] = isset($_POST['shipment_template']) ? trim((string)$_POST['shipment_template']) : '';
+
+		$edit['preparing_day'] = max(1, min(30, isset($_POST['preparing_day']) ? (int)$_POST['preparing_day'] : 3));
+
+	}
+
+	$edit_name = ($mp_refused === 'update') ? (isset($_POST['name']) ? trim((string)$_POST['name']) : '') : (string)$selected['name'];
+
 	$edit_fields = '';
 
 	foreach ($provider_fields as $field => $meta) {
 
 		$current = isset($selected['credentials'][$field]) ? (string)$selected['credentials'][$field] : '';
+
+		if (($mp_refused === 'update') && mp_provider_field_is_select($meta) && isset($_POST[$field]) && is_scalar($_POST[$field])) {
+
+			$current = (string)$_POST[$field];
+
+		}
 
 		$edit_fields .= mp_settings_credential_field('edit', $field, $meta, $current, true);
 
@@ -2486,35 +2768,35 @@ if ($selected) {
 		<div class="drawer-body">
 			<div class="mb-5">
 				<label class="form-label" for="edit_name">' . lang('Name') . '</label>
-				<input type="text" class="form-control" id="edit_name" name="name" value="' . h($selected['name']) . '">
+				<input type="text" class="form-control" id="edit_name" name="name" value="' . h($edit_name) . '" required>
 			</div>
 			' . $edit_fields . '
 			<div class="form-field mb-3">
 				<div class="switch"><input class="" type="checkbox" role="switch" id="edit_status" name="status" value="active"'
-					. ($selected['status'] === 'active' ? ' checked' : '') . '></div>
+					. ($edit['status'] === 'active' ? ' checked' : '') . '></div>
 				<label class="" for="edit_status">' . lang('Send changes to this marketplace') . '</label>
 			</div>
 			<div class="form-field mb-3">
 				<div class="switch"><input class="" type="checkbox" role="switch" id="edit_push_stock" name="push_stock" value="1"'
-					. (!empty($selected['push_stock']) ? ' checked' : '') . '></div>
+					. (!empty($edit['push_stock']) ? ' checked' : '') . '></div>
 				<label class="" for="edit_push_stock">' . lang('Send stock') . '</label>
 			</div>
 			<div class="form-field mb-7">
 				<div class="switch"><input class="" type="checkbox" role="switch" id="edit_push_price" name="push_price" value="1"'
-					. (!empty($selected['push_price']) ? ' checked' : '') . '></div>
+					. (!empty($edit['push_price']) ? ' checked' : '') . '></div>
 				<label class="" for="edit_push_price">' . lang('Send prices') . '</label>
 			</div>
 			<hr>'
 			. ($can_orders ? '
 			<div class="form-field ' . ($can_approve ? 'mb-3' : 'mb-7') . '">
 				<div class="switch"><input class="" type="checkbox" role="switch" id="edit_pull_orders" name="pull_orders" value="1"'
-					. (!empty($selected['pull_orders']) ? ' checked' : '') . '></div>
+					. (!empty($edit['pull_orders']) ? ' checked' : '') . '></div>
 				<label class="" for="edit_pull_orders">' . lang('Bring orders in from this marketplace') . '</label>
 			</div>'
 			. ($can_approve ? '
 			<div class="form-field mb-7">
 				<div class="switch"><input class="" type="checkbox" role="switch" id="edit_auto_approve" name="auto_approve" value="1"'
-					. (!empty($selected['auto_approve']) ? ' checked' : '') . '></div>
+					. (!empty($edit['auto_approve']) ? ' checked' : '') . '></div>
 				<label class="" for="edit_auto_approve">' . lang('Accept new orders automatically') . '</label>
 				<div class="form-text">'
 					. lang('Accepting an order tells the marketplace you are preparing it, and their dispatch clock starts. Leave this off to accept them yourself.') . '</div>
@@ -2528,14 +2810,14 @@ if ($selected) {
 			<div class="mb-5">
 				<label class="form-label" for="edit_shipment_template">' . lang('Cargo template') . '</label>
 				<input type="text" class="form-control" id="edit_shipment_template" name="shipment_template"
-					value="' . h((string)$selected['shipment_template']) . '">
+					value="' . h((string)$edit['shipment_template']) . '">
 				<div class="form-text">'
 					. lang('The name of the cargo agreement in your marketplace store settings, copied exactly. A new listing is refused without it.') . '</div>
 			</div>' : '') . '
 			<div class="mb-7">
 				<label class="form-label" for="edit_preparing_day">' . lang('Days to prepare') . '</label>
 				<input type="number" class="form-control" id="edit_preparing_day" name="preparing_day" min="1" max="30"
-					value="' . (int)$selected['preparing_day'] . '" style="max-width:110px">
+					value="' . (int)$edit['preparing_day'] . '" style="max-width:110px">
 				<div class="form-text">' . lang('How long you take to hand a parcel over. It is shown to the buyer.') . '</div>
 			</div>
 			<hr>
@@ -2602,6 +2884,34 @@ echo '
 		provider.addEventListener(\'change\', showFields);
 
 		showFields();
+
+	}
+
+	// A refused Connect or Save opens its form again, as it was posted.
+	var refused = ' . json_encode($mp_refused === 'create' ? array('dialog', 'mp_new') : ($mp_refused === 'update' ? array('drawer', 'mp_drawer') : null)) . ';
+
+	if (refused) {
+
+		var kind = refused[0];
+
+		var el = document.getElementById(refused[1]);
+
+		// Waits for Bootstrap too: Bootstrap 6 loads as a deferred module.
+		var open = function () { pgUI.ready(function () { pgUI[kind].show(el); }); };
+
+		if (el) {
+
+			if (document.readyState === \'loading\') {
+
+				document.addEventListener(\'DOMContentLoaded\', open);
+
+			} else {
+
+				open();
+
+			}
+
+		}
 
 	}
 

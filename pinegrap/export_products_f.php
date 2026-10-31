@@ -138,6 +138,12 @@ function pg_products_export_columns()
         $columns[] = array('heading' => 'compare_at_price', 'column' => 'compare_at_price', 'kind' => 'money_optional');
     }
 
+    // Customs data (2026.11.0), after it for the same reason.
+    if (pg_product_customs_ready()) {
+        $columns[] = array('heading' => 'hs_code', 'column' => 'hs_code', 'kind' => 'text');
+        $columns[] = array('heading' => 'origin_country', 'column' => 'origin_country', 'kind' => 'text');
+    }
+
     $labels = array(
         1 => ECOMMERCE_CUSTOM_PRODUCT_FIELD_1_LABEL,
         2 => ECOMMERCE_CUSTOM_PRODUCT_FIELD_2_LABEL,
@@ -320,6 +326,10 @@ function pg_products_export_csv($table, $file_name = 'products.csv')
 {
     header('Content-type: text/csv; charset=utf-8');
     header('Content-Disposition: ' . pg_products_export_disposition($file_name));
+
+    // The UTF-8 byte order mark, so Excel keeps Turkish letters; the importers
+    // step over it (pg_csv_open()).
+    echo "\xEF\xBB\xBF";
 
     $out = array();
 

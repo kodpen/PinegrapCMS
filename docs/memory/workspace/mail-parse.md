@@ -13,7 +13,7 @@ module: mail_parse
 - Inline `text/plain` and `text/html` parts become the bodies (several are joined); a part with a file name or `attachment` disposition is always an attachment, a text one too.
 - `message/rfc822` (a forwarded mail) is an attachment, never walked. `multipart/digest` children default to it.
 - Attachments: `filename` (made safe by `pg_mail_safe_filename()`: no path, no control or `<>:"|?*` characters, no leading dots, 200 bytes; may be `''`), `content_type`, `size`, `disposition`, `content_id`, `inline` (inline disposition, or a cid part without a name), `part` (MIME path `1.2.2`), `content` only with `with_content => true`.
-- HTML is returned as received, never cleaned: the card must not render it (design file); turning it into text is the ingest's job.
+- HTML is returned as received, never cleaned: the card must not render it (`mail-decisions.md`, out of scope); turning it into text is the ingest's job.
 
 ## Which charsets?
 - RFC 2047 words (adjacent words of one charset joined before conversion, so a split character survives), RFC 2231 parameters and continuations, encoded words inside quoted parameters.

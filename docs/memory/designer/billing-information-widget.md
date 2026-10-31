@@ -5,7 +5,7 @@ module: widgets_billing_information
 ---
 
 ## What is it?
-- Kind `billing_information` (`includes/fn/widgets_billing_information.php`), the third of the four classic checkout widgets ([[system-widget-missing-types]]). It posts the classic names (`billing_*`, `custom_field_1/2`, `po_number`, `referral_source`, `tax_number`, `tax_office`, `tax_exempt`, `opt_in`, `update_contact`, hidden `page_id`, `next_page_id`, `opt_in_displayed`, `folder_id`) to `billing_information.php`; its checks, contact update and redirects are unchanged.
+- Kind `billing_information` (`includes/fn/widgets_billing_information.php`), the third of the four classic checkout widgets ([[system-widget-page-types]]). It posts the classic names (`billing_*`, `custom_field_1/2`, `po_number`, `referral_source`, `tax_number`, `tax_office`, `tax_exempt`, `opt_in`, `update_contact`, hidden `page_id`, `next_page_id`, `opt_in_displayed`, `folder_id`) to `billing_information.php`; its checks, contact update and redirects are unchanged.
 
 ## Where are the page's settings?
 - In the page's `billing_information_pages` row. A designed page gets one at render; `pg_order_page_known($id, 'billing information')` takes a page of the classic type or one with a row, as for express order.

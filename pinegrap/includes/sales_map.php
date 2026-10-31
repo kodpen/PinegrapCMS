@@ -534,7 +534,7 @@ function pg_sales_map_periods()
     $midnight = strtotime(date('Y-m-d'));
 
     return array(
-        'd30' => array('label' => lang('Last 30 days'),   'from' => $midnight - (29 * 86400)),
+        'd30' => array('label' => lang('Last 30 days'),   'from' => strtotime('-29 days', $midnight)),
         'm12' => array('label' => lang('Last 12 months'), 'from' => strtotime('-12 months', $midnight)),
         'all' => array('label' => lang('All time'),       'from' => 0));
 }

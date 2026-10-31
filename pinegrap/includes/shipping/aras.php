@@ -41,6 +41,17 @@ function pg_label_aras_info()
     );
 }
 
+/**
+ * SetOrder needs the recipient's district (ReceiverTownName), so checkout
+ * offers the district box for Aras's carriers (pg_ship_to_district_carrier_asks()).
+ *
+ * @return bool
+ */
+function pg_label_aras_needs_district()
+{
+    return true;
+}
+
 function pg_label_aras_fields()
 {
     return array(
@@ -274,7 +285,7 @@ function pg_label_aras_parse($body, $operation)
         // SOAP 1.1 faultstring, or a SOAP 1.2 Reason/Text.
         $words = $xp->query('*[local-name()="faultstring"] | *[local-name()="Reason"]/*[local-name()="Text"]', $fault)->item(0);
         $out['fault'] = $words ? trim($words->textContent) : '';
-        $out['fault'] = ($out['fault'] !== '') ? substr($out['fault'], 0, 300) : 'SOAP fault';
+        $out['fault'] = ($out['fault'] !== '') ? mb_substr($out['fault'], 0, 300, 'UTF-8') : 'SOAP fault';
 
         return $out;
     }
@@ -510,10 +521,14 @@ function pg_label_aras_shipment_error($shipment)
         return lang('Aras Kargo labels are made for addresses in Turkey only.');
     }
 
-    foreach (array('name', 'address_1', 'city', 'state') as $name) {
+    foreach (array('name', 'address_1', 'state') as $name) {
         if (pg_label_aras_field($recipient, $name) === '') {
             return lang('Aras Kargo needs the name, address, district, province and phone number of the shipping address.');
         }
+    }
+
+    if (pg_label_recipient_district($recipient) === '') {
+        return lang('Aras Kargo needs the name, address, district, province and phone number of the shipping address.');
     }
 
     if (strlen(pg_label_aras_phone(pg_label_aras_field($recipient, 'phone'))) < 10) {
@@ -565,7 +580,7 @@ function pg_label_aras_order($shipment, $account, $code)
         'ReceiverAddress'      => mb_substr(trim($field($recipient, 'address_1') . ' ' . $field($recipient, 'address_2')), 0, 250),
         'ReceiverPhone1'       => pg_label_aras_phone($field($recipient, 'phone')),
         'ReceiverCityName'     => $field($recipient, 'state'),
-        'ReceiverTownName'     => $field($recipient, 'city'),
+        'ReceiverTownName'     => pg_label_recipient_district($recipient),
         'VolumetricWeight'     => (string) $desi,
         'Weight'               => (string) $weight,
         'PieceCount'           => '1',
@@ -646,7 +661,7 @@ function pg_label_aras_barcode_read($result, $format)
 
     return array(
         'ok'              => (pg_label_aras_value($result, 'ResultCode') === '0'),
-        'message'         => substr(pg_label_aras_value($result, 'Message'), 0, 300),
+        'message'         => mb_substr(pg_label_aras_value($result, 'Message'), 0, 300, 'UTF-8'),
         'tracking_number' => pg_label_aras_value($model, 'TrackingNumber'),
         'barcode'         => pg_label_aras_value($model, 'Barcode'),
         'label'           => pg_label_aras_document($result, $format),
@@ -931,7 +946,7 @@ function pg_label_aras_create($shipment, $account)
     }
 
     if ($result !== '0') {
-        $words = substr(pg_label_aras_value($info, 'ResultMessage'), 0, 300);
+        $words = mb_substr(pg_label_aras_value($info, 'ResultMessage'), 0, 300, 'UTF-8');
 
         return array(
             'success' => false,
@@ -1050,7 +1065,7 @@ function pg_label_aras_cancel($reference, $account)
     }
 
     $result = pg_label_aras_value($read['result'], 'ResultCode');
-    $words = substr(pg_label_aras_value($read['result'], 'ResultMessage'), 0, 300);
+    $words = mb_substr(pg_label_aras_value($read['result'], 'ResultMessage'), 0, 300, 'UTF-8');
 
     if ($result === '') {
         return array(

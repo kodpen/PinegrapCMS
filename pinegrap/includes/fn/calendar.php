@@ -18,6 +18,41 @@ if (!defined('PG_FUNCTIONS_DIR')) {
     exit;
 }
 
+/**
+ * The seven days of a calendar row in column order, as date('w') counts
+ * them (0 = Sunday), for a week that starts on the given day.
+ *
+ * @param int $first_day the day the week starts on, 0 (Sunday) to 6
+ * @return int[] e.g. array(1, 2, 3, 4, 5, 6, 0) for a Monday start
+ */
+function pg_calendar_day_order($first_day)
+{
+    $order = array();
+
+    for ($i = 0; $i < 7; $i++) {
+        $order[] = ($first_day + $i) % 7;
+    }
+
+    return $order;
+}
+
+/**
+ * The inactive cells a month grid needs before its first day and after its
+ * last day so that every row starts on the week's first day.
+ *
+ * @param int $start_timestamp any moment of the month's first day
+ * @param int $stop_timestamp  any moment of the month's last day
+ * @param int $first_day       the day the week starts on, 0 (Sunday) to 6
+ * @return array array('before' => int, 'after' => int), each 0 to 6
+ */
+function pg_calendar_month_padding($start_timestamp, $stop_timestamp, $first_day)
+{
+    return array(
+        'before' => ((int) date('w', $start_timestamp) - $first_day + 7) % 7,
+        'after'  => 6 - (((int) date('w', $stop_timestamp) - $first_day + 7) % 7),
+    );
+}
+
 function get_calendar($calendar_id, $calendars, $view, $status, $user, $date, $link, $number_of_upcoming_events = '', $return = 'html', $output_minimal_calendar = false)
 {
     $sql_join = '';
@@ -121,25 +156,25 @@ function get_calendar($calendar_id, $calendars, $view, $status, $user, $date, $l
                 } else {
                     $date_timestamp = time();
                 }
-                // if start date is Sunday
-                if (date('l', $date_timestamp) == 'Sunday') {
-                    $week_start_time = strtotime('Sunday', $date_timestamp);
-                } else {
-                    $week_start_time = strtotime('last Sunday', $date_timestamp);
-                }
-                $start_month = date('m', $week_start_time);
-                $start_day = date('d', $week_start_time);
-                $start_year = date('Y', $week_start_time);
-                $start_timestamp = mktime(0, 0, 0, $start_month, $start_day, $start_year);
-                $week_stop_time = strtotime('Saturday', $week_start_time);
-                $stop_month = date('m', $week_stop_time);
-                $stop_day = date('d', $week_stop_time);
-                $stop_year = date('Y', $week_stop_time);
-                $stop_timestamp = mktime(0, 0, 0, $stop_month, $stop_day, $stop_year);
-                $decrease_timestamp = strtotime('last sunday 12:00:00', $start_timestamp);
-                $decrease_date = date('m', $decrease_timestamp) . '-' . date('d', $decrease_timestamp) . '-' . date('Y', $decrease_timestamp);
-                $increase_timestamp = strtotime('2 Sunday', $start_timestamp);
-                $increase_date = date('m', $increase_timestamp) . '-' . date('d', $increase_timestamp) . '-' . date('Y', $increase_timestamp);
+                // The week starts on the panel or site language's first day
+                // (Monday in Turkish), like the date pickers and the list
+                // screens' period navigator.
+                $first_day = pg_list_period_week_first_day();
+                $week = pg_list_period_week($date_timestamp, 0, $first_day);
+                $previous_week = pg_list_period_week($date_timestamp, -1, $first_day);
+                $next_week = pg_list_period_week($date_timestamp, 1, $first_day);
+                $week_start_time = mktime(0, 0, 0, $week['start_month'], $week['start_day'], $week['start_year']);
+                $week_stop_time = mktime(0, 0, 0, $week['stop_month'], $week['stop_day'], $week['stop_year']);
+                $start_month = $week['start_month'];
+                $start_day = $week['start_day'];
+                $start_year = $week['start_year'];
+                $start_timestamp = $week_start_time;
+                $stop_month = $week['stop_month'];
+                $stop_day = $week['stop_day'];
+                $stop_year = $week['stop_year'];
+                $stop_timestamp = $week_stop_time;
+                $decrease_date = $previous_week['start_month'] . '-' . $previous_week['start_day'] . '-' . $previous_week['start_year'];
+                $increase_date = $next_week['start_month'] . '-' . $next_week['start_day'] . '-' . $next_week['start_year'];
                 // If we are in softwares backend, then prepare items that only appear in the backend
                 if ($user) {
                     $output_date_selection = '
@@ -788,21 +823,24 @@ function get_calendar($calendar_id, $calendars, $view, $status, $user, $date, $l
                     $days[$event_start_day][] = $event;
                 }
                 $output_calendar_data = '';
-                $start_day_of_week = date('w', $start_timestamp);
-                $stop_day_of_week = date('w', $stop_timestamp);
+                // Rows start on the language's first day of the week (Monday
+                // in Turkish), like the date pickers.
+                $first_day = pg_list_period_week_first_day();
+                $padding = pg_calendar_month_padding($start_timestamp, $stop_timestamp, $first_day);
                 $output_calendar_data .= '<tr class="data">';
 
                 // loop through all days from month before that appear greyed-out on calendar
-                for ($i = 1; $i <= $start_day_of_week; $i++) {
+                for ($i = 1; $i <= $padding['before']; $i++) {
                     $output_calendar_data .= '<td class="inactive">&nbsp;</td>';
                 }
                 // loop through all days in the month
                 for ($i = 1; $i <= $stop_day; $i++) {
                     $day_timestamp = mktime(0, 0, 0, $start_month, $i, $start_year);
                     $current_day_timestamp = mktime(0, 0, 0, date('m'), date('d'), date('Y'));
-                    $day_of_week = date('l', $day_timestamp);
-                    // if this day is a Sunday and this is not the first day, then start new row
-                    if (($day_of_week == 'Sunday') && ($i != 1)) {
+                    // date('w') is a number whatever the language: 0 = Sunday.
+                    $day_of_week = (int) date('w', $day_timestamp);
+                    // if this day is the week's first day and this is not the first day of the month, then start new row
+                    if (($day_of_week === $first_day) && ($i != 1)) {
                         $output_calendar_data .= '<tr class="data">';
                     }
                     if ($day_timestamp == $current_day_timestamp) {
@@ -926,13 +964,13 @@ function get_calendar($calendar_id, $calendars, $view, $status, $user, $date, $l
                     }
                     // end cell
                     $output_calendar_data .= '</td>';
-                    // if this day is a Saturday and this is not the last day, then close row
-                    if (($day_of_week == 'Saturday') && ($i != $stop_day)) {
+                    // if this day is the week's last day and this is not the last day of the month, then close row
+                    if (($day_of_week === ($first_day + 6) % 7) && ($i != $stop_day)) {
                         $output_calendar_data .= '</tr>';
                     }
                 }
                 // loop through all days from month after that appear greyed-out on calendar
-                for ($i = $stop_day_of_week + 1; $i <= 6; $i++) {
+                for ($i = 1; $i <= $padding['after']; $i++) {
                     $output_calendar_data .= '<td class="inactive">&nbsp;</td>';
                 }
                 $output_calendar_data .= '</tr>';
@@ -958,7 +996,8 @@ function get_calendar($calendar_id, $calendars, $view, $status, $user, $date, $l
                     array(lang('Saturday'), lang('Sat')),
                 );
 
-                foreach ($day_names as $day_name) {
+                foreach (pg_calendar_day_order($first_day) as $day_number) {
+                    $day_name = $day_names[$day_number];
                     $output_day_headings .= ($output_minimal_calendar == true)
                         ? '<th><abbr class="text-decoration-none" title="' . h($day_name[0]) . '">' . h($day_name[1]) . '</abbr></th>'
                         : '<th>' . h($day_name[0]) . '</th>';

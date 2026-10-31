@@ -134,6 +134,26 @@ function erp_stock_count_items($count_id)
 }
 
 /**
+ * The quantity typed beside a barcode read, by the same rule as the counted
+ * list: an empty box is one piece, otherwise up to seven digits and nothing
+ * else. A grouped or decimal figure (1.200, 2,5) or text is refused rather
+ * than cut to a smaller count.
+ *
+ * @param string $text
+ * @return int|null  null when it is not a whole number of pieces
+ */
+function erp_stock_count_scan_quantity($text)
+{
+    $text = trim((string) $text);
+
+    if ($text === '') {
+        return 1;
+    }
+
+    return preg_match('/^\d{1,7}$/', $text) ? (int) $text : null;
+}
+
+/**
  * A barcode read: add to the product's count, or set it.
  *
  * @param int    $count_id

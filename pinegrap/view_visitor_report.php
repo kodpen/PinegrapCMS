@@ -290,7 +290,7 @@ if (!$_POST) {
             $filters[] = array(
                 'field' => $row['field'],
                 'operator' => $row['operator'],
-                'value' => prepare_form_data_for_output($row['value'], $field_type),
+                'value' => prepare_form_data_for_output($row['value'], $field_type, false),
                 'dynamic_value' => $row['dynamic_value'],
                 'dynamic_value_attribute' => $row['dynamic_value_attribute']
             );
@@ -524,6 +524,8 @@ if (!$_POST) {
         $output_delete_button = '<button type="submit" name="submit_button" value="Delete" formnovalidate class="btn my-1  btn-solid theme-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('visitor report')))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>';
     }
     
+    $output_date_changer = '';
+
     // if there are no date filters, then prepare to output date changer
     if ($date_filter_exists == false) {
         // if the date has not been set in the session yet (or an older session
@@ -688,6 +690,21 @@ if (!$_POST) {
 
     }
     
+    // The window the days are read in the site's own time for
+    // (includes/fn/site_time_sql.php): the date changer's range, or with a
+    // date filter every visit kept, from the oldest one through now.
+    if ($date_filter_exists == false) {
+        $site_time_from = $start_timestamp;
+        $site_time_to = $stop_timestamp;
+    } else {
+        $site_time_to = time();
+        $site_time_from = (int) db_value("SELECT MIN(start_timestamp) FROM visitors");
+
+        if ($site_time_from <= 0) {
+            $site_time_from = $site_time_to;
+        }
+    }
+
     // start where
     $where = '';
     
@@ -698,7 +715,7 @@ if (!$_POST) {
         $field_type = '';
         
         switch ($filter['field']) {
-            case 'date': $operand_1 = 'FROM_UNIXTIME(visitors.start_timestamp, \'%Y-%m-%d\')'; $field_type = 'date'; break;
+            case 'date': $operand_1 = pg_site_time_sql('visitors.start_timestamp', '%Y-%m-%d', $site_time_from, $site_time_to); $field_type = 'date'; break;
             case 'site_search_terms': $operand_1 = 'visitors.site_search_terms'; break;
             case 'currency_code': $operand_1 = 'visitors.currency_code'; break;
             case 'http_referer': $operand_1 = pg_visitor_text_sql('http_referer'); break;
@@ -740,7 +757,7 @@ if (!$_POST) {
             
         // else a dynamic value was entered, so use dynamic value
         } else {
-            $operand_2 = get_dynamic_value($filter['dynamic_value'], $filter['dynamic_value_attribute']);
+            $operand_2 = pg_report_dynamic_value($filter['dynamic_value'], $filter['dynamic_value_attribute'], $field_type);
         }
         
         // if where is blank, then add the start of the where clause
@@ -822,15 +839,15 @@ if (!$_POST) {
     }
 
     if ($liveform->get_field_value('summarize_by_1') != '') {
-        $sql_summarize_by_1 = get_summarize_by_column($liveform->get_field_value('summarize_by_1')) . ',';
+        $sql_summarize_by_1 = get_summarize_by_column($liveform->get_field_value('summarize_by_1'), $site_time_from, $site_time_to) . ',';
         $number_of_summarize_bys = 1;
         
         if ($liveform->get_field_value('summarize_by_2') != '') {
-            $sql_summarize_by_2 = get_summarize_by_column($liveform->get_field_value('summarize_by_2')) . ',';
+            $sql_summarize_by_2 = get_summarize_by_column($liveform->get_field_value('summarize_by_2'), $site_time_from, $site_time_to) . ',';
             $number_of_summarize_bys = 2;
             
             if ($liveform->get_field_value('summarize_by_3') != '') {
-                $sql_summarize_by_3 = get_summarize_by_column($liveform->get_field_value('summarize_by_3')) . ',';
+                $sql_summarize_by_3 = get_summarize_by_column($liveform->get_field_value('summarize_by_3'), $site_time_from, $site_time_to) . ',';
                 $number_of_summarize_bys = 3;
             }
         }
@@ -1122,7 +1139,7 @@ if (!$_POST) {
 
             fputcsv($out, array_merge($line, array(
                 $row['id'],
-                get_absolute_time(array('timestamp' => $row['start_timestamp'], 'type' => 'date and time', 'timezone_type' => 'site')),
+                get_absolute_time(array('timestamp' => $row['start_timestamp'], 'type' => 'date and time', 'timezone_type' => 'site', 'format' => 'plain_text')),
                 $row['page_views'],
                 $row['custom_form_submitted'],
                 $row['order_created'],
@@ -1221,6 +1238,24 @@ if (!$_POST) {
         }
     }
     
+    // The corner cell heads the group-name column, so it names the chosen
+    // summarize-by levels; with none chosen there is no such column to head.
+    $summarize_by_labels = array();
+
+    for ($level = 1; $level <= $number_of_summarize_bys; $level++) {
+        $summarize_by_label = array_search($liveform->get_field_value('summarize_by_' . $level), $summarize_by_options, true);
+
+        if ($summarize_by_label !== false) {
+            $summarize_by_labels[] = $summarize_by_label;
+        }
+    }
+
+    if ($number_of_summarize_bys > 0) {
+        $output_summarize_by_heading = '<th colspan="' . $number_of_summarize_bys . '">' . h(implode(' / ', $summarize_by_labels)) . '</th>';
+    } else {
+        $output_summarize_by_heading = '<td></td>';
+    }
+
     $output_report_detail_headers = '';
     $output_report_detail_cells = '';
     
@@ -1385,7 +1420,7 @@ if (!$_POST) {
                         <table class="table table-striped table-hover">
                             <thead>
                                 <tr>
-                                    <th colspan="' . $number_of_summarize_bys . '">&nbsp;</th>
+                                    ' . $output_summarize_by_heading . '
                                     ' . $output_report_detail_headers . '
                                     <th class="text-end text-nowrap">' . lang('Visitors') . '</th>
                                     <th class="text-end text-nowrap">' . lang('Visitors') . ' %</th>
@@ -1433,7 +1468,7 @@ if (!$_POST) {
             
             print
                 '<tr style="font-weight: bold; color: #008000; cursor: default">
-                    <td class="align-middle text-nowrap" colspan="' . $number_of_summarize_bys . '">' . nl2br(h($summarize_by_1_name)) . '</td>
+                    <th scope="row" class="align-middle text-nowrap" colspan="' . $number_of_summarize_bys . '">' . nl2br(h($summarize_by_1_name)) . '</th>
                     ' . $output_report_detail_cells . '
                     <td class="align-middle text-end">' . pg_format_number($summarize_by_1_result['count'], 0) . '</td>
                     <td class="align-middle text-end">' . h(lang(array('string' => '{var:1}%', 'vars' => pg_format_number($count_percentage, 2)))) . '</td>
@@ -1482,7 +1517,7 @@ if (!$_POST) {
                     print
                         '<tr style="font-weight: bold; color: #719700; cursor: default">
                             <td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td>
-                            <td class="align-middle text-nowrap" colspan="' . $colspan . '">' . nl2br(h($summarize_by_2_name)) . '</td>
+                            <th scope="row" class="align-middle text-nowrap" colspan="' . $colspan . '">' . nl2br(h($summarize_by_2_name)) . '</th>
                             ' . $output_report_detail_cells . '
                             <td class="align-middle text-end">' . pg_format_number($summarize_by_2_result['count'], 0) . '</td>
                             <td class="align-middle text-end">' . h(lang(array('string' => '{var:1}%', 'vars' => pg_format_number($count_percentage, 2)))) . '</td>
@@ -1530,7 +1565,7 @@ if (!$_POST) {
                                 '<tr style="font-weight: bold; color: #808080; cursor: default">
                                     <td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td>
                                     <td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td>
-                                    <td class="align-middle text-nowrap">' . nl2br(h($summarize_by_3_name)) . '</td>
+                                    <th scope="row" class="align-middle text-nowrap">' . nl2br(h($summarize_by_3_name)) . '</th>
                                     ' . $output_report_detail_cells . '
                                     <td class="align-middle text-end">' . pg_format_number($summarize_by_3_result['count'], 0) . '</td>
                                     <td class="align-middle text-end">' . h(lang(array('string' => '{var:1}%', 'vars' => pg_format_number($count_percentage, 2)))) . '</td>
@@ -1722,11 +1757,14 @@ if (!$_POST) {
         unset($pager_params['detail_page']);
         $pager_base = 'view_visitor_report.php?' . (empty($pager_params) ? '' : http_build_query($pager_params) . '&') . 'detail_page=';
 
+        // A span carries no aria-label, so a disabled arrow says its name in
+        // visually-hidden text; the glyph is hidden either way.
         $pager_link = function ($page, $label, $name, $disabled) use ($pager_base) {
+            $glyph = '<span aria-hidden="true">' . $label . '</span>';
             if ($disabled) {
-                return '<li class="page-item disabled"><span class="page-link" aria-label="' . h($name) . '">' . $label . '</span></li>';
+                return '<li class="page-item disabled"><span class="page-link">' . $glyph . '<span class="visually-hidden">' . h($name) . '</span></span></li>';
             }
-            return '<li class="page-item"><a class="page-link" href="' . h($pager_base . (int) $page) . '" aria-label="' . h($name) . '">' . $label . '</a></li>';
+            return '<li class="page-item"><a class="page-link" href="' . h($pager_base . (int) $page) . '" aria-label="' . h($name) . '">' . $glyph . '</a></li>';
         };
 
         $csv_params = $_GET;
@@ -1743,7 +1781,7 @@ if (!$_POST) {
                     'suffix' => array('', '', ($detail_total == 1 ? '' : 's')),
                 )))
                 . '</span>
-                <div class="d-flex align-items-center gap-3">
+                <div class="d-flex flex-wrap align-items-center gap-3 row-gap-2">
                     <a class="btn btn-sm btn-outline theme-secondary" href="' . h($csv_url) . '">
                         <i class="bi bi-filetype-csv me-1"></i>' . lang('Export All to CSV') . '
                     </a>
@@ -1769,7 +1807,7 @@ if (!$_POST) {
     
                     print
                         '<tr style="font-weight: bold; color: #c49700;  cursor: default">
-                            <td class="align-middle text-nowrap" colspan="' . $number_of_summarize_bys . '">' . lang('Grand Total') . '</td>
+                            <th scope="row" class="align-middle text-nowrap" colspan="' . $number_of_summarize_bys . '">' . lang('Grand Total') . '</th>
                             ' . $output_report_detail_cells . '
                             <td class="align-middle text-end">' . pg_format_number($grand_count, 0) . '</td>
                             <td class="align-middle text-end">' . h(lang(array('string' => '{var:1}%', 'vars' => pg_format_number(100, 2)))) . '</td>
@@ -1977,7 +2015,7 @@ if (!$_POST) {
         
         // if the user is creating a new visitor report, then log activity, remove form, and add notice in a certain way
         if ($liveform->field_in_session('id') == false) {
-            log_activity('visitor report (' . $liveform->get_field_value('name') . ') was created', $_SESSION['sessionusername']);
+            log_activity(lang(array('string' => 'visitor report ({var:1}) was created', 'vars' => array($liveform->get_field_value('name')))), $_SESSION['sessionusername']);
             $liveform->remove_form();
             $liveform->add_notice(lang('The visitor report has been created, and the results appear below.') . $date_filter_message);
             
@@ -1994,12 +2032,17 @@ if (!$_POST) {
     }
 }
 
-function get_summarize_by_column($summarize_by)
+// $from and $to bound the visits the query reads: the year, month and day
+// are taken in the site's own time over that window (pg_site_time_sql()).
+// They are optional only because static analysis checks view_order_report.php's
+// function of the same name against this signature; without them the
+// session's offset is used.
+function get_summarize_by_column($summarize_by, $from = null, $to = null)
 {
     switch ($summarize_by) {
-        case 'year': return 'FROM_UNIXTIME(visitors.start_timestamp, \'%Y\')';
-        case 'month': return 'FROM_UNIXTIME(visitors.start_timestamp, \'%m\')';
-        case 'day': return 'FROM_UNIXTIME(visitors.start_timestamp, \'%d\')';
+        case 'year': return pg_site_time_sql('visitors.start_timestamp', '%Y', $from, $to);
+        case 'month': return pg_site_time_sql('visitors.start_timestamp', '%m', $from, $to);
+        case 'day': return pg_site_time_sql('visitors.start_timestamp', '%d', $from, $to);
         case 'site_search_terms': return 'visitors.site_search_terms';
         case 'currency_code': return 'visitors.currency_code';
         case 'device': return pg_schema_has('visitors', 'user_agent') ? pg_visitor_device_sql(pg_visitor_text_sql('user_agent')) : "''";

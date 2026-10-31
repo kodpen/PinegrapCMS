@@ -278,12 +278,47 @@ function ws_library_folder_list($folder_ids)
     }
 
     usort($list, function ($a, $b) {
-        return ($a['order'] !== $b['order']) ? ($a['order'] - $b['order']) : strnatcasecmp($a['name'], $b['name']);
+        return ($a['order'] !== $b['order']) ? ($a['order'] - $b['order']) : ws_library_folder_name_compare($a['name'], $b['name']);
     });
 
     return array_map(function ($folder) {
         return array('id' => $folder['id'], 'name' => $folder['name']);
     }, $list);
+}
+
+/**
+ * Two folder names in the panel language's order, numbers by value
+ * ("Klasör 2" before "Klasör 10"), as the file manager sorts them. Without
+ * intl: strnatcasecmp().
+ *
+ * @param string $x
+ * @param string $y
+ * @return int
+ */
+function ws_library_folder_name_compare($x, $y)
+{
+    static $collators = array();
+
+    $locale = function_exists('lang') ? (string) lang(array('info' => '')) : 'en';
+
+    if (!array_key_exists($locale, $collators)) {
+        $collator = null;
+
+        if (class_exists('Collator') && ($locale !== '')) {
+            $collator = new Collator($locale);
+            $collator->setAttribute(Collator::NUMERIC_COLLATION, Collator::ON);
+        }
+
+        $collators[$locale] = $collator;
+    }
+
+    if ($collators[$locale] !== null) {
+        $result = $collators[$locale]->compare((string) $x, (string) $y);
+
+        return ($result === false) ? 0 : (int) $result;
+    }
+
+    return strnatcasecmp((string) $x, (string) $y);
 }
 
 /**

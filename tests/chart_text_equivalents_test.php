@@ -61,6 +61,6 @@ function test_chart_text_equivalents_sales_map_menu()
 	pg_assert_true(strpos($source, 'id="pg_smap_canvas" role="img"') === false, 'the box holding the menu is no picture');
 	pg_assert_contains('layer.setAttribute("role", "img");', $source, 'each map layer is the picture');
 	pg_assert_contains('layer.setAttribute("aria-label", data.label);', $source, 'and carries its name');
-	pg_assert_contains('<div class="pg-smap-tip" id="pg_smap_tip" aria-hidden="true"></div>', $source, 'the mouse tooltip repeats the list');
+	pg_assert_contains('<div class="pg-smap-tip" id="pg_smap_tip" aria-hidden="true"></div>', $source, 'the mouse tooltip is decoration; the table beside the list carries its figures');
 	pg_assert_contains('<i class="bi bi-sliders" aria-hidden="true"></i>', $source, 'the menu icon is decoration');
 }

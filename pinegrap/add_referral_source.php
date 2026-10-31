@@ -27,15 +27,15 @@ if (!$_POST) {
     $output =
         pg_page_shell(
             array(
-                'title'=> lang('Create Refferal Source'),
+                'title'=> lang('Create Referral Source'),
                 'extra classes'=>'setting',
                 'icon'=>'setting',
-                'heading'=>lang('Create Refferal Source'),
+                'heading'=>lang('Create Referral Source'),
                 'heading_description' => lang('Create a new referral source to gather marketing information during checkout. (Delete all will hide feature.)'),
                 'cancel'=>array('enable'=>'true','url'=>'view_referral_sources.php'),
                 'breadcrumb' => array(
                     array('label' => lang('All Referral Sources'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_referral_sources.php'),
-                    array('label' => lang('Create Refferal Source')),
+                    array('label' => lang('Create Referral Source')),
                 ),
             )
         ) . '
@@ -81,6 +81,10 @@ if (!$_POST) {
                 ?,
                 UNIX_TIMESTAMP())";
     $values = pg_referral_source_form_values($_POST);
+    $error = pg_referral_source_form_error($values);
+    if ($error !== '') {
+        output_error($error . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+    }
     $result = db_q($query, array($values['name'], $values['code'], $values['sort_order'], (int) $user['id'])) or output_error('Query failed.');
 
     $referral_source_id = mysqli_insert_id(db::$con);

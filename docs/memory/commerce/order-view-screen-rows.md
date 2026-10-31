@@ -16,6 +16,9 @@ module: order_view
 ## Where does the provider button go?
 - The toolbar's payment button (`view_order.php`) reads "<provider> panel" (`lang('{var:1} panel')` with `ECOMMERCE_PAYMENT_GATEWAY`) and opens the provider's merchant panel in a new tab (`target="_blank" rel="noopener noreferrer"`): the transaction page when the order has a transaction id, else the dashboard. It was labelled "View Orders" (the screen's own name) and opened a 500×500 popup (#2050; the orders list got the same in #2481).
 
+## What do the form, recurring and gift card rows print?
+- The product form heading closes with `</div>` (it was `</legend>` on an order without a shipping recipient: the answers rendered inside the heading and each form card left a div open); an unlimited recurring line reads `lang('No limit')`; the applied gift card rows start from `''` and show "Givex Auth #" only for a Givex card (`givex != 0`) (#3764, test `tests/order_view_form_gift_cards_test.php`).
+
 ## What is left?
 - The "Withdrawal deadline" date on the legal documents card still prints in the US order (#2040 names it with the other date displays).
 

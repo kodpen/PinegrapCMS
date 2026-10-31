@@ -30,10 +30,10 @@ description: Mark on texts written with AI (products.ai_fields, page.ai_fields, 
 - A database that recorded 2026.11.0 before the step: `pg_ai_fields_ready()` (`pg_schema_has()`) says no, the screens draw and write nothing; rerun the version (docs/memory/release/rerun-upgrade-steps.md). An UPDATE naming a missing column fails whole.
 
 ## And a copy?
-- `duplicate_style.php` takes `page.ai_fields` with the texts; the product and page copies write it with `pg_ai_fields_copy()`: the marks of the texts copied unchanged. A text the copy changes (letters replaced, find and replace) loses it (#2123).
+- `duplicate_style.php` takes `page.ai_fields` with the texts; the page and product copies (`duplicate_product()` too: [[product-duplicate]]) write it with `pg_ai_fields_copy()`: the marks of the texts copied unchanged. A changed text (letters replaced, find and replace) loses it (#2123).
 
 ## What does not mark yet?
 - The API, imports, Workspace proposals. Site note: ai-write-note.md.
 
 ## How was it checked?
-- Sandbox (MariaDB 10.11): the step twice; saves over HTTP (marked, kept, hand edit with or without the list, changed elsewhere, emptied, x); Playwright, stand-in Prompt API (typing, editor, submit, x).
+- Sandbox (MariaDB 10.11): the step twice; saves over HTTP (marked, kept, hand edit with or without the list, changed elsewhere, emptied, x); Playwright, stand-in Prompt API.

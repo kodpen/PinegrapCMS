@@ -16,3 +16,7 @@ description: The custom page style create and edit screens share includes/forms/
 - Create: the INSERT, the notice on the style list.
 - Edit: the not-found guard, the record load, heading, last-modified line and Duplicate link, the folder/page use count that turns delete into a refusal, the Recycle Bin or hard delete, the UPDATE, Save / Save & Return and `send_to`.
 - Tests: `tests/custom_style_form_test.php`; `db_q_contacts_forms_test.php` and `db_q_pages_regions_test.php` count the screens' `db_q()` calls.
+
+## Can a custom page style be saved without a name?
+- No. Create (before the INSERT) and the edit save branch (before the UPDATE, never Delete) refuse an empty trimmed `style_name` with 'Name is required.' and Go back. A name of only spaces passes the browser's `required` and was stored blank, an empty option in the folder and page style pickers.
+- Edit's Delete submit carries `formnovalidate`, so a cleared Name box does not block it.

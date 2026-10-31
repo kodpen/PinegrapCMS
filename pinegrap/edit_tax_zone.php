@@ -74,6 +74,17 @@ if (!$_POST) {
 } else {
     validate_token_field();
 
+    // tax_zones.tax_rate is NOT NULL: a blank or unreadable rate is refused
+    // before the zone's countries and states are dropped, and "8,25" is read
+    // as 8.25, not 8.
+    $tax_rate = NULL;
+    if (($_POST['submit_delete'] ?? '') != 'Delete') {
+        $tax_rate = parse_tax_rate($_POST['tax_rate'] ?? '');
+        if ($tax_rate === NULL) {
+            output_error(lang('Enter a tax rate between 0 and 100.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+        }
+    }
+
     // delete all existing country/state associations first (for both save and delete)
     $query = "DELETE FROM tax_zones_countries_xref WHERE tax_zone_id = ?";
     db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
@@ -97,7 +108,7 @@ if (!$_POST) {
                     user = ?,
                     timestamp = UNIX_TIMESTAMP()
                 WHERE id = ?";
-        db_q($query, array((string) ($_POST['name'] ?? ''), (string) ($_POST['tax_rate'] ?? ''), (string) $user['id'], (string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
+        db_q($query, array((string) ($_POST['name'] ?? ''), $tax_rate, (string) $user['id'], (string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
 
         pg_tax_zone_form_save_links($id, $_POST);
 

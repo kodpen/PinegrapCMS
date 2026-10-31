@@ -134,7 +134,7 @@ function db_q_campaign_screens_test_files()
 		'view_email_campaign.php' => 3,
 		'view_email_campaign_profiles.php' => 0,
 		'get_email_a_friend_screen_content.php' => 3,
-		'email_a_friend.php' => 3,
+		'email_a_friend.php' => 2,
 		'get_affiliate_sign_up_form_screen_content.php' => 2,
 		'get_custom_form_screen_content.php' => 2,
 		'edit_form_item_view.php' => 3,

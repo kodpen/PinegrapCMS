@@ -71,7 +71,7 @@ if (($_GET['view'] ?? '') === 'forecast') {
         }
         $output_kind_rows .= '
                             <tr>
-                                <td><i class="bi ' . (($info['direction'] === 'in') ? 'bi-arrow-down-left fg-success' : 'bi-arrow-up-right fg-danger') . ' me-3" aria-hidden="true"></i>' . h($info['label']) . '</td>
+                                <th scope="row" class="fw-normal"><i class="bi ' . (($info['direction'] === 'in') ? 'bi-arrow-down-left fg-success' : 'bi-arrow-up-right fg-danger') . ' me-3" aria-hidden="true"></i>' . h($info['label']) . '</th>
                                 ' . $cells . '
                                 <td class="text-end fw-semibold">' . $plain($forecast['kinds'][$kind]['total']) . '</td>
                             </tr>';
@@ -85,7 +85,7 @@ if (($_GET['view'] ?? '') === 'forecast') {
 
         return '
                             <tr class="' . $class . '">
-                                <td>' . h($label) . '</td>
+                                <th scope="row"' . (($class !== '') ? '' : ' class="fw-normal"') . '>' . h($label) . '</th>
                                 ' . $cells . '
                                 <td class="text-end">' . $format($values['total']) . '</td>
                             </tr>';
@@ -191,7 +191,7 @@ if (($_GET['view'] ?? '') === 'forecast') {
                     <table class="table table-hover align-middle mb-0">
                         <thead>
                             <tr>
-                                <th></th>
+                                <th scope="col">' . lang('Type') . '</th>
                                 ' . $output_heads . '
                                 <th class="text-end">' . lang('Total') . '</th>
                             </tr>

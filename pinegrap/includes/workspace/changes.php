@@ -4321,7 +4321,7 @@ function ws_change_write_product($viewer, $action, $record, $values)
         if (ws_change_binned('product')) {
             pg_catalog_bin_product($id, (int) $viewer['id']);
 
-            ws_change_log(lang(array('string' => 'The product, {var:1}, was moved to the Recycle Bin.', 'vars' => h($record['name']))));
+            ws_change_log(lang(array('string' => 'The product, {var:1}, was moved to the Recycle Bin.', 'vars' => $record['name'])));
 
             return array('ok' => true, 'error' => '', 'id' => $id, 'binned' => true);
         }
@@ -5111,7 +5111,7 @@ function ws_change_write_product_group($viewer, $action, $record, $values)
                 db($statement);
             }
 
-            ws_change_log(lang(array('string' => 'The product group, {var:1}, was moved to the Recycle Bin.', 'vars' => h($record['name']))));
+            ws_change_log(lang(array('string' => 'The product group, {var:1}, was moved to the Recycle Bin.', 'vars' => $record['name'])));
 
             return array('ok' => true, 'error' => '', 'id' => $id, 'binned' => true);
         }

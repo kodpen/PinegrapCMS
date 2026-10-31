@@ -202,7 +202,13 @@ if ((isset($_GET['page_id'])) && ($_GET['page_id'] != '')) {
         array('label' => lang('All My Pages'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_pages.php'),
     );
     $output_form_designer_content_heading = ucwords($form_type_name);
-    $output_form_designer_content_subheading = lang(array('string'=>'Add fields to this {var:1}','vars'=>$form_type_name));
+    if ($form_type == 'shipping') {
+        $output_form_designer_content_subheading = lang('Add fields to this custom shipping form.');
+    } elseif ($form_type == 'billing') {
+        $output_form_designer_content_subheading = lang('Add fields to this custom billing form.');
+    } else {
+        $output_form_designer_content_subheading = lang('Add fields to this custom form.');
+    }
     $delete_data_warning = '';
     
     // If this is a custom form, then output certain content.
@@ -280,7 +286,7 @@ if ((isset($_GET['page_id'])) && ($_GET['page_id'] != '')) {
     <div class=" btn-group btn-group-sm flex-wrap ">
         <button type="button" class="btn btn-link pg-link-secondary py-0 mb-3 " onclick="document.location.href = \'preview_form.php?product_id=\' + document.getElementById(\'product_id\').value"><span class="material-icons me-1">preview</span>' . lang('Preview') . '</button>
     </div>';
-    $output_form_designer_footer = '<button type="submit" value="Delete Selected" class=" btn mb-1 mt-1 btn-solid theme-danger disabled" data-confirm-content="' . lang(array('string'=>'WARNING: Selected {var:1} will be permanently deleted.','vars'=>array(lang('field(s)'),$delete_data_warning))) . '"><span class="material-icons me-3">delete</span>' . lang(array('string'=>'Delete Selected') ) . '</button>';
+    $output_form_designer_footer = '<button type="submit" value="Delete Selected" class=" btn mb-1 mt-1 btn-solid theme-danger disabled" data-confirm-content="' . lang(array('string'=>'WARNING: Selected {var:1} will be permanently deleted.','vars'=>array(lang('field(s)')))) . '"><span class="material-icons me-3">delete</span>' . lang(array('string'=>'Delete Selected') ) . '</button>';
     
     // Send the product id through the browser url.
     $output_product_id_to_url = '&product_id=' . h(escape_javascript(urlencode($_GET['product_id'])));
@@ -391,7 +397,7 @@ while ($row = mysqli_fetch_assoc($result)) {
     // label wraps so it is read in full.
     if ($row['type'] == 'information') {
         $label_or_information = pg_sanitize_rich_text($row['information'], 'staff');
-        $output_label_cell = '<td title="' . h(strip_tags($label_or_information)) . '"><span class="text-truncate overflow-hidden d-block" style="width:200px;max-width:100%;">' . $label_or_information . '</span></td>';
+        $output_label_cell = '<td title="' . h(pg_liveform_message_text($label_or_information)) . '"><span class="text-truncate overflow-hidden d-block" style="width:200px;max-width:100%;">' . $label_or_information . '</span></td>';
     } else {
         $label_or_information = h($row['label']);
         $output_label_cell = '<td class="text-wrap"><div class="text-wrap text-break" style="max-width:20rem;">' . $label_or_information . '</div></td>';
@@ -450,7 +456,7 @@ while ($row = mysqli_fetch_assoc($result)) {
             <td>' . h($type) . '</td>
             <td class="align-middle text-center">' . $required . '</td>
             ' . $office_use_only . '
-            <td class="align-middle">' . get_relative_time(array('timestamp' => $timestamp)) . ' ' . lang(array('string'=>'by {var:1}','vars'=>array( h($username) ) ) ) . '</td>
+            <td class="align-middle">' . pg_list_when($timestamp, $username) . '</td>
         </tr>';
 }
 

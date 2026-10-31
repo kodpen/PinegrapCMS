@@ -130,6 +130,14 @@
         }
         return '';
     }
+    // Chip label: a switched-off method stays listed but is marked, since
+    // checkout never offers it.
+    function methodLabel(id) {
+        for (var i = 0; i < METHODS.length; i++) {
+            if (METHODS[i].id == id) { return METHODS[i].name + (METHODS[i].enabled ? '' : ' [' + L.disabledMethod + ']'); }
+        }
+        return '';
+    }
     // Y-m-d ↔ the site's display format (d/m/yyyy or m/d/yyyy).
     function isoToDisplay(iso) {
         var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || '');
@@ -500,11 +508,11 @@
                     '<div class="col-auto fg-secondary small">' + esc(L.giftHint) + '</div>';
             } else if (a.type === 'discount shipping') {
                 var tags = a.shipping_method_ids.map(function (id) {
-                    return tagHtml(methodName(id) || ('#' + id), 'act-method-remove', i, id, 'secondary');
+                    return tagHtml(methodLabel(id) || ('#' + id), 'act-method-remove', i, id, 'secondary');
                 }).join('');
                 var sel = '<select class="form-control form-control-sm" aria-label="' + esc(L.addMethod) + '" data-on="act-method-add" data-index="' + i + '"><option value="">' + esc(L.addMethod) + '</option>';
                 METHODS.forEach(function (m) {
-                    if (a.shipping_method_ids.indexOf(m.id) < 0) { sel += '<option value="' + m.id + '">' + esc(m.name) + '</option>'; }
+                    if (a.shipping_method_ids.indexOf(m.id) < 0) { sel += '<option value="' + m.id + '">' + esc(m.name) + (m.enabled ? '' : ' [' + esc(L.disabledMethod) + ']') + '</option>'; }
                 });
                 sel += '</select>';
                 cols = valueInput(a, i) +

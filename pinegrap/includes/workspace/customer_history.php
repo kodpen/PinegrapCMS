@@ -2,10 +2,11 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Workspace - the history of a channel's customer: their orders, invoices,
- * sales quotes and submitted forms, and the messages, tasks, notes and
+ * Workspace - the history of a channel's customer: their orders, cart quotes,
+ * invoices, sales quotes and submitted forms, and the messages, tasks, notes and
  * workflow table rows elsewhere in the Workspace that tag them or a record
- * tied to them, as one list, newest first.
+ * tied to them, and the customer visits on the Work Calendar that name them,
+ * as one list, newest first.
  *
  * It is read from the tables those records live in, each time it is asked
  * for; there is no activity table to keep in step, so records from before
@@ -48,11 +49,11 @@ function ws_customer_history_limit($limit)
 }
 
 /**
- * Which sources the reader may see: orders the ecommerce right, invoices and
- * sales quotes the ERP right (the read-only right holds it too: the history
- * only reads), submitted forms the forms right; the messages and tasks that
- * tag the customer any member of the Workspace, each only where they may see
- * it.
+ * Which sources the reader may see: orders and cart quotes the ecommerce
+ * right (the right of the cart quote screens), invoices and sales quotes the
+ * ERP right (the read-only right holds it too: the history only reads),
+ * submitted forms the forms right; the messages and tasks that tag the
+ * customer any member of the Workspace, each only where they may see it.
  *
  * @param array $viewer ws_viewer(), or the API's copy narrowed to the key's
  *                      scopes (ws_api_customer_viewer())
@@ -64,6 +65,7 @@ function ws_customer_history_rights($viewer)
 
     return array(
         'orders'       => !empty($viewer['ecommerce']),
+        'cart_quotes'  => !empty($viewer['ecommerce']),
         'invoices'     => $erp,
         'sales_quotes' => $erp,
         'forms'        => !empty($viewer['forms']),
@@ -94,6 +96,10 @@ function ws_customer_history($viewer, $channel, $identity, $before, $limit)
         $data['orders'] = ws_customer_history_order_rows($identity, $before, $read);
     }
 
+    if ($rights['cart_quotes']) {
+        $data['cart_quotes'] = ws_customer_history_cart_quote_rows($identity, $before, $read);
+    }
+
     if ($rights['invoices']) {
         $data['invoices'] = ws_customer_history_invoice_rows($identity, $before, $read);
     }
@@ -108,6 +114,7 @@ function ws_customer_history($viewer, $channel, $identity, $before, $limit)
 
     if ($rights['workspace']) {
         $data = array_merge($data, ws_customer_history_ref_rows($viewer, $channel, $identity, $before, $read));
+        $data['visits'] = ws_customer_history_visit_rows($identity, $before, $read);
     }
 
     return ws_customer_history_build($rights, $data, 'ws_customer_money_text', OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/', $limit);
@@ -124,12 +131,13 @@ function ws_customer_history($viewer, $channel, $identity, $before, $limit)
  * one second alone keeps it, and the next page starts below that second.
  *
  * @param array    $rights ws_customer_history_rights()
- * @param array    $data   rows per source: orders, invoices, sales_quotes
+ * @param array    $data   rows per source: orders, cart_quotes (each with
+ *                         line_count, state_label), invoices, sales_quotes
  *                         (each with state_label), forms (each with open),
  *                         messages (channel_name, sender_name, excerpt),
  *                         tasks (title, status_label), notes (name, excerpt,
  *                         updated_at), rows (table_id, table, title,
- *                         updated_at)
+ *                         updated_at), visits (title, starts_at)
  * @param callable $money  function ($minor, $currency): string
  * @param string   $base   the panel's address, ending in /
  * @param int      $limit  the entries the page holds
@@ -164,6 +172,16 @@ function ws_customer_history_build($rights, $data, $money, $base, $limit)
 
             $entries[] = $entry('order', $row['id'], $row['order_date'] ?? 0, lang('Order') . ' #' . $row['order_number'], '',
                 $statuses[$row['status']] ?? (string) $row['status'], $total, call_user_func($money, $total, ''), $base . 'view_order.php?id=' . (int) $row['id']);
+        }
+    }
+
+    // A cart quote holds quantities only and is priced when it fills a cart,
+    // so it has no amount.
+    if (!empty($rights['cart_quotes'])) {
+        foreach ((array) ($data['cart_quotes'] ?? array()) as $row) {
+            $entries[] = $entry('cart_quote', $row['id'], $row['created_at'] ?? 0, lang('Cart quote') . ' #' . (int) $row['id'],
+                lang(array('string' => '{var:1} item(s)', 'vars' => array((int) ($row['line_count'] ?? 0)))),
+                (string) ($row['state_label'] ?? ''), null, '', $base . 'view_cart_quotes.php?id=' . (int) $row['id']);
         }
     }
 
@@ -225,6 +243,12 @@ function ws_customer_history_build($rights, $data, $money, $base, $limit)
         foreach ((array) ($data['notes'] ?? array()) as $row) {
             $entries[] = $entry('note', $row['id'], $row['updated_at'] ?? 0, (string) $row['name'], (string) $row['excerpt'], '', null, '',
                 $base . 'workspace_notes.php?note=' . (int) $row['id']);
+        }
+
+        // A customer visit on the Work Calendar, at the time it starts.
+        foreach ((array) ($data['visits'] ?? array()) as $row) {
+            $entries[] = $entry('visit', $row['id'], $row['starts_at'] ?? 0, (string) $row['title'], lang('Customer visit'), '', null, '',
+                $base . 'workspace_calendar.php?month=' . date('Y-m', (int) ($row['starts_at'] ?? 0)) . '&event=' . (int) $row['id']);
         }
 
         foreach ((array) ($data['rows'] ?? array()) as $row) {
@@ -290,6 +314,41 @@ function ws_customer_history_order_rows($identity, $before, $limit)
         WHERE " . $where . (($before > 0) ? " AND order_date < '" . (int) $before . "'" : '') . "
         ORDER BY order_date DESC, id DESC
         LIMIT " . max(1, (int) $limit));
+}
+
+/**
+ * The cart quotes made for the customer's contact below the page's start, in
+ * every state, newest first by when they were made, each with how many lines
+ * it holds and its state as the cart quote list calls it (pg_cart_quote_state():
+ * an open quote past its last day is expired). Nothing before the tables are
+ * there. The link's token and its hint are never read.
+ *
+ * @param array $identity ws_customer_identity()
+ * @param int   $before   0 for none
+ * @param int   $limit
+ * @return array[] id, status, valid_until, created_at, line_count, state_label
+ */
+function ws_customer_history_cart_quote_rows($identity, $before, $limit)
+{
+    $contact_id = (int) ($identity['contact_id'] ?? 0);
+
+    if (($contact_id <= 0) || !pg_cart_quotes_ready()) {
+        return array();
+    }
+
+    $rows = (array) db_items("SELECT q.id, q.status, q.valid_until, q.created_at,
+            (SELECT COUNT(*) FROM cart_quote_items AS i WHERE i.cart_quote_id = q.id) AS line_count
+        FROM cart_quotes AS q
+        WHERE q.contact_id = '" . $contact_id . "'" . (($before > 0) ? " AND q.created_at < '" . (int) $before . "'" : '') . "
+        ORDER BY q.created_at DESC, q.id DESC
+        LIMIT " . max(1, (int) $limit));
+    $now = time();
+
+    foreach ($rows as $index => $row) {
+        $rows[$index]['state_label'] = pg_cart_quote_state_label(pg_cart_quote_state($row, $now));
+    }
+
+    return $rows;
 }
 
 /**
@@ -545,4 +604,29 @@ function ws_customer_history_ref_rows($viewer, $channel, $identity, $before, $li
     }
 
     return $out;
+}
+
+/**
+ * The customer visits on the Work Calendar that name the customer's contact
+ * (ws_events.contact_id, 2026.11.0, 11.0.118) and start below the page's
+ * start, latest first. Every member of the Workspace reads the plan, so
+ * nothing more is asked of the reader; nothing before the column is there.
+ *
+ * @param array $identity ws_customer_identity()
+ * @param int   $before   0 for none
+ * @param int   $limit
+ * @return array[] id, title, starts_at
+ */
+function ws_customer_history_visit_rows($identity, $before, $limit)
+{
+    $contact_id = (int) ($identity['contact_id'] ?? 0);
+
+    if (($contact_id <= 0) || !ws_event_contacts_ready()) {
+        return array();
+    }
+
+    return (array) db_items("SELECT id, title, starts_at FROM ws_events
+        WHERE contact_id = '" . $contact_id . "' AND kind = 'visit'" . (($before > 0) ? " AND starts_at < '" . (int) $before . "'" : '') . "
+        ORDER BY starts_at DESC, id DESC
+        LIMIT " . max(1, (int) $limit));
 }

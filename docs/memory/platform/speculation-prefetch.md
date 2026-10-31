@@ -17,7 +17,10 @@ module: speculation
 - Then one query reads the named pages and the home page: only an existing page whose folder is `public` and whose type `pg_speculation_page_type_kept()` lists (standard, folder view, photo gallery, catalog, catalog detail, calendar view, calendar event view, form list/item view, form view directory, custom form). Sign-in, sign-out, registration, cart, order, checkout, account and password pages, search results and any type added later are left out. The page shown is left out.
 
 ## Who gets no block?
-- `pg_speculation_rules_wanted()`: switch off, a signed-in member or staff (`USER_LOGGED_IN`, unknown counts as signed in), a page drawn in another language (`FRONTEND_LANGUAGE`: the language prefix is added to links only in `pg_tr_finalize()`, so the list would name the wrong address). A page already carrying `speculationrules` (operator code) gets no second one.
+- `pg_speculation_rules_wanted()`: switch off, a signed-in member or staff (`USER_LOGGED_IN`, unknown counts as signed in). A page already carrying `speculationrules` (operator code) gets no second one.
+
+## What does a page in another language list?
+- The same block with its language's addresses (#3296; before it such a page got none, because `pg_tr_finalize()` adds the prefix to links only on the way out and the list named the source addresses). While `pg_tr_active()`, `pg_speculation_path()` takes a link already carrying the page's prefix without it (`/en/about` -> `/about`, so the page is found by name and the exclusions run on the rest), and `pg_speculation_localize()` passes each picked path through `pg_tr_prefix_path()`, the prefix rule of links, switcher and alternates. Its body is `pg_tr_prefix_path_rule()` (`includes/translate/render.php`), with the prefixes, page names and file check handed in so the tests run it without a database.
 
 ## Where is the switch?
 - `config.speculation_prefetch` TINYINT(1) UNSIGNED NOT NULL DEFAULT 1 (`upgrade_2026_11_0_speculation_prefetch()`), `SPECULATION_PREFETCH` in `init.php` (0 while the column is missing). Settings › Features, Feature Options card, "Prefetch Menu Links", drawn and saved only once the column exists. Running sites get it on.

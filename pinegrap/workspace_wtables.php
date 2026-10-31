@@ -19,9 +19,7 @@
 include('init.php');
 include_once('liveform.class.php');
 
-if (pg_post_body_discarded()) {
-    output_error(lang('The request was too large for this server and arrived empty.'), 413);
-}
+pg_upload_refuse_discarded_body();
 
 $user = validate_user();
 
@@ -213,6 +211,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($append && !ws_wtable_may(ws_wtable_access($viewer, $table), 'write')) {
                 $refused(ws_wtable_refusal('not_found', '', 404));
                 $back = $self_url;
+            } elseif (($upload_refusal = pg_upload_file_refusal($file, pg_upload_limits()['file_max'])) !== '') {
+                $liveform->add_error(h($upload_refusal));
+                $back = $append ? $table_url : $self_url;
             } elseif (!is_array($file) || !is_string($file['tmp_name'] ?? null) || ((int) ($file['error'] ?? 1) !== UPLOAD_ERR_OK) || !is_uploaded_file($file['tmp_name'])) {
                 $liveform->add_error(h(lang('Choose a file to import.')));
                 $back = $append ? $table_url : $self_url;
@@ -455,6 +456,7 @@ $import_upload = function ($table_id, $intro) use ($self_url) {
                         <div class="mb-3">
                             <label class="form-label small mb-1" for="ws_wt_import_file">' . h(lang('File')) . '</label>
                             <input type="file" class="form-control form-control-sm" name="file" id="ws_wt_import_file" accept=".csv,.xlsx,.xlsm,.xls,.ods" required>
+                            ' . pg_upload_limit_hint() . '
                         </div>
                         <button type="submit" class="btn btn-sm btn-outline theme-primary rounded-pill px-5">' . h(lang('Read the file')) . '</button>
                     </form>';

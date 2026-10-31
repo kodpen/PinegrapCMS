@@ -82,7 +82,8 @@ if (!$_POST) {
                 }
             });
             $("#get_form").on("click", function(){
-                window.location.href += "?tags=" + $("select#page_options").val();
+                // Built from the path so a #fragment (the skip link) does not swallow the query.
+                window.location.href = window.location.pathname + "?tags=" + encodeURIComponent(String($("select#page_options").val() || ""));
             });
 
         </script>';
@@ -167,17 +168,18 @@ if (!$_POST) {
                                     <div class="col-12">
                                         <label class="form-label" for="page_name_' . $row['page_id'] . '">' . lang('Page Name') . '</label>
                                         <div class="input-group ">
-                                            <label for="page_name_' . $row['page_id'] . '" class="input-group-text material-icons" title="' . lang('This option determines the url address of the page.') . '" data-bs-content="' . URL_SCHEME . HOSTNAME . OUTPUT_PATH . '{' . lang('Page Name') . '}">public</label>
-                                            <input name="page_name_' . $row['page_id'] . '" id="page_name_' . $row['page_id'] . '" type="text" value="' . h($row['page_name']) . '" placeholder="' . lang('Page Name') . '" maxlength="100" class="form-control" required="required" />
+                                            <label for="page_name_' . $row['page_id'] . '" class="input-group-text material-icons" aria-hidden="true">public</label>
+                                            <input name="page_name_' . $row['page_id'] . '" id="page_name_' . $row['page_id'] . '" aria-describedby="page_name_' . $row['page_id'] . '_hint" type="text" value="' . h($row['page_name']) . '" placeholder="' . lang('Page Name') . '" maxlength="100" class="form-control" required="required" />
                                             <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                         </div>
+                                        <div class="form-text" id="page_name_' . $row['page_id'] . '_hint">' . lang('This option determines the url address of the page.') . ' <code>' . h(URL_SCHEME . HOSTNAME . OUTPUT_PATH . '{' . lang('Page Name') . '}') . '</code></div>
                                     </div>';
                 }
                 if($output_page_title != false){
                     $outputs .= '
                                     <div class="col-12">
                                         <label class="form-label" for="page_title_' . $row['page_id'] . '">' . lang('Web Browser Title') . '</label>
-                                        <input class="form-control" type="text" id="page_title_' . $row['page_id'] . '" name="page_title_' . $row['page_id'] . '" value="' . h($row['page_title']) . '" />
+                                        <input class="form-control" type="text" id="page_title_' . $row['page_id'] . '" name="page_title_' . $row['page_id'] . '" value="' . h($row['page_title']) . '" maxlength="255" />
                                     </div>';
                 }
                 if($output_page_meta_description != false){
@@ -234,6 +236,9 @@ if (!$_POST) {
     }
 
     // --- Find & Replace card (always visible, separate form) ---
+    // Title and Description are ticked on a first draw; after a refused
+    // apply the boxes show what was ticked.
+    $fr_defaults = $liveform->prefill() ? array('checked' => 'checked') : array();
     $output_find_replace = '
         <div class="card mb-7">
             <div class="card-header d-flex align-items-center gap-3">
@@ -248,36 +253,29 @@ if (!$_POST) {
                         <div class="col-12 md:col-auto">
                             <label class="form-label fw-semibold mb-3">' . lang('Apply to Fields') . '</label>
                             <div class="form-field">
-                                <input class="check" type="checkbox" name="fr_fields[]"
-                                    value="page_name" id="fr_page_name">
+                                ' . $liveform->output_field(array('type'=>'checkbox', 'name'=>'fr_fields[]', 'id'=>'fr_page_name', 'value'=>'page_name', 'class'=>'check')) . '
                                 <label class="" for="fr_page_name">' . lang('Page Name') . '</label>
                             </div>
                             <div class="form-field">
-                                <input class="check" type="checkbox" name="fr_fields[]"
-                                    value="page_title" id="fr_page_title" checked>
+                                ' . $liveform->output_field($fr_defaults + array('type'=>'checkbox', 'name'=>'fr_fields[]', 'id'=>'fr_page_title', 'value'=>'page_title', 'class'=>'check')) . '
                                 <label class="" for="fr_page_title">' . lang('Web Browser Title') . '</label>
                             </div>
                             <div class="form-field">
-                                <input class="check" type="checkbox" name="fr_fields[]"
-                                    value="page_meta_description" id="fr_meta_desc" checked>
+                                ' . $liveform->output_field($fr_defaults + array('type'=>'checkbox', 'name'=>'fr_fields[]', 'id'=>'fr_meta_desc', 'value'=>'page_meta_description', 'class'=>'check')) . '
                                 <label class="" for="fr_meta_desc">' . lang('Web Browser Description') . '</label>
                             </div>
                         </div>
                         <div class="col-12 sm:col-6 md:col">
                             <label class="form-label" for="find_text">' . lang('Find') . '</label>
-                            <input type="text" name="find_text" id="find_text"
-                                class="form-control font-monospace"
-                                placeholder="' . lang('Text to find...') . '">
+                            ' . $liveform->output_field(array('type'=>'text', 'name'=>'find_text', 'id'=>'find_text', 'class'=>'form-control font-monospace', 'placeholder'=>lang('Text to find...'), 'required'=>'required')) . '
                         </div>
                         <div class="col-12 sm:col-6 md:col">
                             <label class="form-label" for="replace_text">' . lang('Replace with') . '</label>
-                            <input type="text" name="replace_text" id="replace_text"
-                                class="form-control font-monospace"
-                                placeholder="' . lang('Leave empty to delete') . '">
+                            ' . $liveform->output_field(array('type'=>'text', 'name'=>'replace_text', 'id'=>'replace_text', 'class'=>'form-control font-monospace', 'placeholder'=>lang('Leave empty to delete'))) . '
                         </div>
                         <div class="col-12 md:col-auto d-flex flex-column gap-3">
                             <div class="form-field mb-0">
-                                <div class="switch"><input class="" type="checkbox" name="use_regex" id="use_regex" value="1"></div>
+                                <div class="switch">' . $liveform->output_field(array('type'=>'checkbox', 'name'=>'use_regex', 'id'=>'use_regex', 'value'=>'1', 'class'=>'no-bs')) . '</div>
                                 <label class="" for="use_regex">
                                     ' . lang('Regex') . '
                                     <small class="fg-secondary d-block" style="font-size:.75em;">/pattern/flags</small>
@@ -409,6 +407,7 @@ if (!$_POST) {
                 );
                 $count_by_field  = array();
                 $fr_name_skipped = 0;
+                $fr_long_skipped = 0;
                 $q = mysqli_query(db::$con, "SELECT page_id, page_name, page_title, page_meta_description FROM page") or output_error(lang('Query failed.'));
                 while ($row = mysqli_fetch_assoc($q)) {
                     foreach ($fr_fields as $field) {
@@ -424,6 +423,17 @@ if (!$_POST) {
                             if (trim($new_val) === '') continue;
                             $new_val = str_replace(' ', '_', $new_val);
                             $new_val = str_replace('&', '_', $new_val);
+                        }
+
+                        // page_name is varchar(100), the other two
+                        // varchar(255): a longer value would be cut in
+                        // silence, so it is left as it was.
+                        if (pg_name_too_long($new_val, ($field === 'page_name') ? pg_name_max_length() : 255)) {
+                            $fr_long_skipped++;
+                            continue;
+                        }
+
+                        if ($field === 'page_name') {
                             if (!check_name_availability(array('name' => $new_val, 'ignore_item_id' => $row['page_id'], 'ignore_item_type' => 'page'))) {
                                 $fr_name_skipped++;
                                 continue;
@@ -446,7 +456,15 @@ if (!$_POST) {
                 if ($fr_name_skipped > 0) {
                     $liveform->add_notice($fr_name_skipped . ' ' . lang('page name(s) skipped: name already in use.'));
                 }
+                if ($fr_long_skipped > 0) {
+                    $liveform->add_notice($fr_long_skipped . ' ' . lang('value(s) skipped: longer than the field allows.'));
+                }
             }
+        }
+        if ($liveform->check_form_errors() == true) {
+            // A refused apply comes back with what was typed and ticked, kept
+            // untrimmed because spaces count in a pattern.
+            $liveform->add_fields_to_session(array('trim' => false));
         }
         header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/mass_edit.php');
         exit();

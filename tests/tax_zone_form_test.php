@@ -50,11 +50,11 @@ function test_tax_zone_form_cards_name_field()
 {
 	$create = pg_tax_zone_form_cards(null, '', '');
 	pg_assert_contains('maxlength="50" placeholder="Tax Zone Name" class="form-control"', $create, 'create shows a placeholder');
-	pg_assert_contains('id="tax_rate" maxlength="10" class="form-control"', $create, 'create leaves the rate empty');
+	pg_assert_contains('id="tax_rate" required class="form-control"', $create, 'create leaves the rate empty');
 
 	$edit = pg_tax_zone_form_cards(array('name' => 'EU "VAT"', 'tax_rate' => '20'), '<option value="1">A</option>', '');
 	pg_assert_contains('maxlength="50" value="EU &quot;VAT&quot;" class="form-control"', $edit, 'edit shows the stored name, escaped');
-	pg_assert_contains('maxlength="10" value="20" class="form-control"', $edit, 'edit shows the stored rate');
+	pg_assert_contains('id="tax_rate" required value="20" class="form-control"', $edit, 'edit shows the stored rate');
 	pg_assert_contains('multiple="multiple"><option value="1">A</option></select>', $edit, 'the options go into the country list');
 }
 

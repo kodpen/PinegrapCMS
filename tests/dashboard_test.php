@@ -24,14 +24,14 @@ function pg_test_dashboard_widget_ids()
 {
 	$ids = array('clock');
 
-	for ($id = 1; $id <= 31; $id++) {
+	for ($id = 1; $id <= 32; $id++) {
 		$ids[] = (string) $id;
 	}
 
 	return $ids;
 }
 
-// Each of the 32 ids has its file, and loading it defines its function.
+// Each of the 33 ids has its file, and loading it defines its function.
 function test_dashboard_every_widget_has_file_and_function()
 {
 	foreach (pg_test_dashboard_widget_ids() as $id) {
@@ -56,7 +56,7 @@ function test_dashboard_invalid_ids_are_refused()
 	$ids = array(
 		'empty'      => '',
 		'zero'       => '0',
-		'32'         => '32',
+		'33'         => '33',
 		'99'         => '99',
 		'traversal'  => '../x',
 		'nested'     => '1/../2',
@@ -264,10 +264,10 @@ function test_dashboard_workspace_cards_need_the_module()
 // reads as a scheduled job, an unknown visitor with an address as unknown.
 function test_dashboard_log_actor()
 {
-	pg_assert_same('admin', pg_dashboard_log_actor('admin', '10.0.0.1'));
-	pg_assert_same(lang('Scheduled job'), pg_dashboard_log_actor('UNKNOWN', ''));
-	pg_assert_same(lang('Scheduled job'), pg_dashboard_log_actor('', ''));
-	pg_assert_same(lang('Unknown'), pg_dashboard_log_actor('', '203.0.113.5'));
+	pg_assert_same('admin', pg_log_actor('admin', '10.0.0.1'));
+	pg_assert_same(lang('Scheduled job'), pg_log_actor('UNKNOWN', ''));
+	pg_assert_same(lang('Scheduled job'), pg_log_actor('', ''));
+	pg_assert_same(lang('Unknown'), pg_log_actor('', '203.0.113.5'));
 }
 
 // The address label appears only with an address, never as a bare "· IP".
@@ -312,6 +312,7 @@ function test_dashboard_percent_figures_follow_the_language()
 		'includes/dashboard/widgets/widget_5.php'  => array("' %' . abs(", '" %" + Math.abs(', "\$vs5_pct . '%'"),
 		'includes/dashboard/widgets/widget_18.php' => array("optimization_percent'] . '%"),
 		'includes/dashboard/widgets/widget_31.php' => array("0) . '%</span>'"),
+		'includes/dashboard/widgets/widget_32.php' => array("0) . '%</span>'"),
 		'includes/dashboard/widgets/widget_2.php'  => array("\$health_score . '%\"", "pg-health-score\">' . (int) \$health_score . '<span>%</span>'"),
 	);
 
@@ -384,4 +385,45 @@ function test_dashboard_cards_never_draw_blank()
 	// With no activity at all the note is not about a filtered kind.
 	$activity = dashboard_test_source('includes/dashboard/widgets/widget_7.php');
 	pg_assert_contains("lang('No activity recorded yet.')", $activity);
+}
+
+// A day window steps whole calendar days: the day after the spring clock
+// change, "yesterday" starts at Sunday's midnight, not Saturday 23:00, and
+// six days back from a midnight in the week after the change is midnight too.
+function test_dashboard_days_back_steps_calendar_days()
+{
+	$zone = date_default_timezone_get();
+	date_default_timezone_set('Europe/Berlin');
+
+	$monday = mktime(0, 0, 0, 3, 29, 2027);
+	pg_assert_same(mktime(0, 0, 0, 3, 28, 2027), pg_dashboard_days_back($monday, 1), 'yesterday after spring change');
+	pg_assert_same(mktime(0, 0, 0, 3, 23, 2027), pg_dashboard_days_back($monday, 6), 'week start across spring change');
+
+	$autumn = mktime(0, 0, 0, 11, 2, 2027);
+	pg_assert_same(mktime(0, 0, 0, 10, 3, 2027), pg_dashboard_days_back($autumn, 30), 'thirty days across autumn change');
+	pg_assert_same($monday, pg_dashboard_days_back($monday, 0), 'zero days');
+
+	date_default_timezone_set($zone);
+}
+
+// A dashboard link to a list carries the counted period as the start_/stop_
+// parts the list copies into its session, after the list's own filters.
+function test_dashboard_list_url_carries_period()
+{
+	$zone = date_default_timezone_get();
+	date_default_timezone_set('Europe/Berlin');
+
+	$url = pg_dashboard_list_url('view_orders.php', array('reset' => 'true', 'status' => 'refund_pending', 'type' => 'any'),
+		mktime(10, 0, 0, 8, 14, 2026), mktime(9, 0, 0, 10, 30, 2026));
+
+	pg_assert_same('view_orders.php?reset=true&status=refund_pending&type=any'
+		. '&start_month=08&start_day=14&start_year=2026&stop_month=10&stop_day=30&stop_year=2026', $url, 'orders');
+
+	$url = pg_dashboard_list_url('view_submitted_forms.php', array('custom_form' => '[All]', 'query' => ''),
+		mktime(0, 0, 0, 10, 24, 2026), mktime(9, 0, 0, 10, 30, 2026));
+
+	pg_assert_same('view_submitted_forms.php?custom_form=%5BAll%5D&query='
+		. '&start_month=10&start_day=24&start_year=2026&stop_month=10&stop_day=30&stop_year=2026', $url, 'forms');
+
+	date_default_timezone_set($zone);
 }

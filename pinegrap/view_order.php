@@ -40,7 +40,7 @@ if (isset($_POST['parasut_action'])) {
     if ($order_id && defined('ENABLE_PARASUT') && ENABLE_PARASUT && defined('PARASUT_COMPANY_ID') && PARASUT_COMPANY_ID !== '') {
         $parasut_action = $_POST['parasut_action'];
 
-        $redirect = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_order.php?id=' . $order_id;
+        $redirect = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_order.php?id=' . $order_id . '&send_to=' . urlencode(pg_send_to_url(''));
 
         // With the ERP and an e-document provider on, the order's invoice and
         // delivery note are the ERP's; sending the order from here as well
@@ -126,7 +126,7 @@ if (isset($_POST['parasut_action'])) {
         }
     }
 
-    go(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_order.php?id=' . $order_id);
+    go(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_order.php?id=' . $order_id . '&send_to=' . urlencode(pg_send_to_url('')));
 }
 
 // if the form has not just been submitted, then output form
@@ -135,6 +135,7 @@ if (!$_POST) {
                 orders.*,
                 INET_NTOA(ip_address) AS ip_address,
                 user.user_username AS username,
+                user.user_role AS username_role,
                 contacts.id AS contact_id,
                 contacts.first_name AS contact_first_name,
                 contacts.last_name AS contact_last_name,
@@ -254,6 +255,7 @@ if (!$_POST) {
     $http_referer = $row['http_referer'];
     $user_id = $row['user_id'];
     $username = $row['username'];
+    $username_role = $row['username_role'];
     $contact_id = $row['contact_id'];
     $contact_image = $row['contact_image'];
     $contact_file_id = $row['contact_file_id'];
@@ -297,32 +299,25 @@ if (!$_POST) {
     // Only set when a contact image is found below, but read in both branches.
     $accent_color = '';
 
-    if($contact_file_id == 0){
-        if($contact_image){
-            $accent_color = get_dominant_area_color(FILE_DIRECTORY_PATH . '/' . $contact_image);
-            $output_contact_image = '
-            <div class="col-auto overflow-hidden pg-print-none rounded-circle bg-1 border border-2" style="width:50px;height:50px;background-color:' . h($accent_color) . ';">
-                <img class="lazy object-fit-contain w-100 h-100" alt="" src="' . OUTPUT_PATH . SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="' . PATH . h($contact_image) . '" />
-            </div>';
-        }else{
-            $output_contact_image = '
-            <div class="col-auto pg-print-none">' . pg_avatar_markup_for($contact_first_name, $contact_last_name, '', isset($contact_id) ? $contact_id : '', 'pg-avatar-50') . '</div>';
-        }
-       
-    }else{
-        $query = 
-        "SELECT 
-            files.name
-        FROM files 
-        WHERE files.id = ?";
-        $result = db_q($query, array((string) $contact_file_id)) or output_error('Query failed.');
-        $file = mysqli_fetch_array($result);
-        $file_name = $file['name'];
-        $accent_color = get_dominant_area_color(FILE_DIRECTORY_PATH . '/' . $file_name);
+    // A picture file deleted in the File Manager leaves contacts.file_id
+    // behind; without its files row the contact gets the letters.
+    $contact_picture_name = pg_contact_picture_name($contact_file_id);
+
+    if ($contact_picture_name !== '') {
+        $accent_color = get_dominant_area_color(FILE_DIRECTORY_PATH . '/' . $contact_picture_name);
         $output_contact_image = '
         <div class="col-auto overflow-hidden pg-print-none rounded-circle bg-1 border border-2" style="width:50px;height:50px;background-color:' . h($accent_color) . ';">
-            <img class="lazy  object-fit-contain w-100 h-100" alt="" src="' . OUTPUT_PATH . SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="' . PATH . h($file_name) . '" />
+            <img class="lazy object-fit-contain w-100 h-100" alt="" src="' . OUTPUT_PATH . SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="' . PATH . h($contact_picture_name) . '" />
         </div>';
+    } elseif (((int) $contact_file_id == 0) && $contact_image) {
+        $accent_color = get_dominant_area_color(FILE_DIRECTORY_PATH . '/' . $contact_image);
+        $output_contact_image = '
+        <div class="col-auto overflow-hidden pg-print-none rounded-circle bg-1 border border-2" style="width:50px;height:50px;background-color:' . h($accent_color) . ';">
+            <img class="lazy object-fit-contain w-100 h-100" alt="" src="' . OUTPUT_PATH . SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="' . PATH . h($contact_image) . '" />
+        </div>';
+    } else {
+        $output_contact_image = '
+        <div class="col-auto pg-print-none">' . pg_avatar_markup_for($contact_first_name, $contact_last_name, '', isset($contact_id) ? $contact_id : '', 'pg-avatar-50') . '</div>';
     }
 
 
@@ -658,7 +653,7 @@ if (!$_POST) {
         $output_user_row =
             '<div class="row" >
                 <span class="translateable col fg-secondary">' . lang('User') . ':</span>
-                <span class="col text-end"><a class="pg-link-secondary" href="edit_user.php?id=' . $user_id . '">' . h($username) . '</a></span>
+                <span class="col text-end">' . (pg_can_open_user($user, $username_role) ? '<a class="pg-link-secondary" href="edit_user.php?id=' . $user_id . '">' . h($username) . '</a>' : h($username)) . '</span>
             </div>';
     }
 
@@ -673,7 +668,7 @@ if (!$_POST) {
         $output_contact_row =
             '<div class="row" >
                 <span class="translateable col fg-secondary">' . lang('Contact') . ':</span>
-                <span class="col text-end"><a class="pg-link-secondary" href="edit_contact.php?id=' . (int) $contact_id . '">' . $output_contact . '</a></span>
+                <span class="col text-end">' . (pg_can_open_contact($user, $contact_id) ? '<a class="pg-link-secondary" href="edit_contact.php?id=' . (int) $contact_id . '">' . $output_contact . '</a>' : $output_contact) . '</span>
             </div>';
 
     }
@@ -720,7 +715,9 @@ if (!$_POST) {
             $affiliate_name = $row['affiliate_name'];
             
             if ($affiliate_name) {
-                $output_affiliate_name = '<a href="edit_contact.php?id=' . $affiliate_contact_id . '">' . h($affiliate_name) . '</a>';
+                $output_affiliate_name = pg_can_open_contact($user, $affiliate_contact_id)
+                    ? '<a href="edit_contact.php?id=' . $affiliate_contact_id . '">' . h($affiliate_name) . '</a>'
+                    : h($affiliate_name);
             }
         }
         
@@ -773,6 +770,7 @@ if (!$_POST) {
                 address_1,
                 address_2,
                 city,
+                " . (pg_ship_to_district_ready() ? "ship_tos.district," : "") . "
                 state,
                 zip_code,
                 country,
@@ -901,6 +899,11 @@ if (!$_POST) {
                     $address .= $ship_tos[$key]['address_2'] . ', ';
                 }
                 
+                // The district, when one was typed, before the city.
+                if (!empty($ship_tos[$key]['district'])) {
+                    $address .= $ship_tos[$key]['district'] . ', ';
+                }
+
                 if ($ship_tos[$key]['city']) {
                     $address .= $ship_tos[$key]['city'] . ', ';
                 }
@@ -930,13 +933,13 @@ if (!$_POST) {
                 
                 // if the address has been verified, then prepare to output check mark
                 if ($ship_tos[$key]['address_verified'] == 1) {
-                    $output_address_verified_check_mark = '<img src="' . OUTPUT_PATH . SOFTWARE_DIRECTORY . '/assets/images/check_mark.gif" width="7" height="7" alt="' . h(lang('Yes')) . '" />';
+                    $output_address_verified_check_mark = '<i class="bi bi-check-lg fg-success" aria-hidden="true"></i><span class="visually-hidden">' . h(lang('Yes')) . '</span>';
                 }
 
                 $output_arrival_date = '';
 
                 if ($ship_tos[$key]['arrival_date'] != '0000-00-00') {
-                    $output_arrival_date = get_absolute_time(array('timestamp' => strtotime($ship_tos[$key]['arrival_date']), 'type' => 'date'));
+                    $output_arrival_date = get_absolute_time(array('timestamp' => strtotime($ship_tos[$key]['arrival_date']), 'type' => 'date', 'format' => 'plain_text'));
                 }
 
                 // The date, then the arrival date's name as the customer saw
@@ -1017,7 +1020,7 @@ if (!$_POST) {
                         $shipment_status_title = '';
 
                         if (($shipment['status'] === 'delivered') && ((int) $shipment_row['delivered_at'] > 0)) {
-                            $shipment_status_title = ' title="' . h(get_absolute_time(array('timestamp' => (int) $shipment_row['delivered_at'], 'type' => 'date'))) . '"';
+                            $shipment_status_title = ' title="' . h(get_absolute_time(array('timestamp' => (int) $shipment_row['delivered_at'], 'type' => 'date', 'format' => 'plain_text'))) . '"';
                         }
 
                         $output_shipping_tracking_numbers .=
@@ -1051,27 +1054,47 @@ if (!$_POST) {
                     // its driver can cancel (a marketplace's label has none:
                     // includes/api/outbound/labels.php), and "Create Label"
                     // while a label service is on and the address has no
-                    // active label. The buttons post the form outside the
-                    // order form ($output_shipment_label_form).
+                    // active label. A package whose marketplace makes its
+                    // label for its own carrier now asks the marketplace
+                    // instead, with its number of boxes: a carrier label
+                    // service's label would be a second shipment. The buttons
+                    // and the box count post the form outside the order form
+                    // ($output_shipment_label_form). A label service that
+                    // books pickups adds "Request Pickup" and its dialog.
                     if (!isset($shipment_label_drivers)) {
                         $shipment_label_drivers = pg_shipment_labels_ready() ? pg_shipment_label_drivers() : array();
                     }
 
+                    if (!isset($shipment_label_pickup_drivers)) {
+                        $shipment_label_pickup_drivers = pg_shipment_label_pickup_drivers();
+                    }
+
+                    $shipment_label_marketplace = pg_shipment_label_marketplace($ship_to_id);
                     $output_shipment_labels = '';
                     $shipment_label_active = array(0 => false, 1 => false);
+                    $shipment_label_pickup = array();
 
                     foreach (pg_shipment_label_rows($ship_to_id) as $shipment_label) {
-                        $shipment_label_driver = pg_label_driver($shipment_label['driver']);
                         $shipment_label_cancelled = ($shipment_label['state'] === 'cancelled');
                         $shipment_label_return = (int) $shipment_label['is_return'] ? 1 : 0;
                         $shipment_label_active[$shipment_label_return] = $shipment_label_active[$shipment_label_return] || !$shipment_label_cancelled;
 
+                        // A booked pickup is shown on its label; an active
+                        // outbound label of a service that books pickups
+                        // offers "Request Pickup" below.
+                        $shipment_label_pickup_ref = (string) ($shipment_label['pickup_ref'] ?? '');
+
+                        if (!$shipment_label_cancelled && !$shipment_label_return && in_array($shipment_label['driver'], $shipment_label_pickup_drivers, true)) {
+                            $shipment_label_pickup[] = $shipment_label;
+                        }
+
                         $output_shipment_labels .=
                             '<li class="d-flex flex-wrap align-items-center gap-3 py-2 border-bottom">
                                 <span class="fw-medium text-break">' . h($shipment_label['number']) . '</span>
-                                <span class="small fg-secondary">' . h($shipment_label_driver ? $shipment_label_driver['label'] : $shipment_label['driver']) . ' · ' . get_absolute_time(array('timestamp' => (int) $shipment_label['created_at'], 'type' => 'date')) . '</span>
+                                <span class="small fg-secondary">' . h(pg_shipment_label_driver_name($shipment_label['driver'])) . ' · ' . get_absolute_time(array('timestamp' => (int) $shipment_label['created_at'], 'type' => 'date')) . '</span>
                                 ' . ($shipment_label_return ? '<span class="badge theme-info">' . lang('Return Label') . '</span>' : '') . '
                                 ' . ($shipment_label_cancelled ? '<span class="badge theme-secondary">' . lang('Cancelled') . '</span>' : '') . '
+                                ' . (($shipment_label_pickup_ref !== '') ? '<span class="badge theme-success text-wrap">' . h(lang(array('string' => 'Pickup booked: {var:1}, {var:2}', 'vars' => array($shipment_label_pickup_ref, date('Y-m-d H:i', (int) $shipment_label['pickup_at']))))) . '</span>' : '') . '
                                 <span class="ms-auto pg-print-none">
                                     <a class="btn btn-link pg-link-secondary py-0" href="shipment_label.php?id=' . (int) $shipment_label['id'] . '" target="_blank" rel="noopener"><i class="bi bi-printer me-1" aria-hidden="true"></i>' . lang('Print Label') . '</a>
                                     ' . (($shipment_label_cancelled || !pg_label_can($shipment_label['driver'], 'cancel')) ? '' : '<button type="submit" form="shipment-label-form" name="label_request" value="cancel-' . (int) $shipment_label['id'] . '" class="btn btn-link pg-link-danger py-0" data-confirm-content="' . h(lang('The label is cancelled at the carrier label service and its tracking number is removed from this address. Continue?')) . '"><i class="bi bi-x-circle me-1" aria-hidden="true"></i>' . lang('Cancel Label') . '</button>') . '
@@ -1083,10 +1106,18 @@ if (!$_POST) {
                         $output_shipment_labels = '<ul class="list-unstyled mb-3">' . $output_shipment_labels . '</ul>';
                     }
 
-                    if ($shipment_label_drivers && !in_array($status, array('incomplete', 'cancelled'), true)) {
-                        $output_shipment_labels .= '<div class="d-flex flex-wrap gap-2 pg-print-none">'
-                            . ($shipment_label_active[0] ? '' : '<button type="submit" form="shipment-label-form" name="label_request" value="create-' . $ship_to_id . '" class="btn btn-sm btn-outline theme-secondary" data-confirm-content="' . h(lang('A shipment is opened at the carrier label service for this address and its label is bought. Continue?')) . '"><i class="bi bi-upc-scan me-1" aria-hidden="true"></i>' . lang('Create Label') . '</button>')
-                            . ($shipment_label_active[1] ? '' : '<button type="submit" form="shipment-label-form" name="label_request" value="return-' . $ship_to_id . '" class="btn btn-sm btn-outline theme-secondary" data-confirm-content="' . h(lang('A return shipment, collected from this address and delivered to the store, is opened at the carrier label service and its label is bought. Continue?')) . '"><i class="bi bi-arrow-return-left me-1" aria-hidden="true"></i>' . lang('Create Return Label') . '</button>')
+                    $shipment_label_by_marketplace = $shipment_label_marketplace && ($shipment_label_marketplace['offer'] === 'create') && !$shipment_label_active[0];
+
+                    if (($shipment_label_drivers || $shipment_label_by_marketplace) && !in_array($status, array('incomplete', 'cancelled'), true)) {
+                        $output_shipment_labels .= '<div class="d-flex flex-wrap align-items-center gap-2 pg-print-none">'
+                            . ($shipment_label_by_marketplace
+                                ? '<label class="visually-hidden" for="label_boxes_' . $ship_to_id . '">' . lang('Boxes') . '</label>'
+                                    . '<input type="number" form="shipment-label-form" id="label_boxes_' . $ship_to_id . '" name="label_boxes_' . $ship_to_id . '" value="1" min="1" max="' . mp_label_max_boxes() . '" step="1" class="form-control form-control-sm" style="max-width:5rem" onkeydown="if (event.key === \'Enter\') { event.preventDefault(); document.getElementById(\'label_marketplace_' . $ship_to_id . '\').click(); }">'
+                                    . '<button type="submit" form="shipment-label-form" id="label_marketplace_' . $ship_to_id . '" name="label_request" value="marketplace-' . $ship_to_id . '" class="btn btn-sm btn-outline theme-secondary" data-confirm-content="' . h(lang(array('string' => '{var:1} makes the shipping label of this package for its carrier, one per box. A package not accepted yet is accepted first, which starts its dispatch time. Continue?', 'vars' => array($shipment_label_marketplace['name'])))) . '"><i class="bi bi-upc-scan me-1" aria-hidden="true"></i>' . h(lang(array('string' => 'Get {var:1} label', 'vars' => array($shipment_label_marketplace['name'])))) . '</button>'
+                                : (($shipment_label_active[0] || !$shipment_label_drivers) ? '' : '<button type="submit" form="shipment-label-form" name="label_request" value="create-' . $ship_to_id . '" class="btn btn-sm btn-outline theme-secondary" data-confirm-content="' . h(lang('A shipment is opened at the carrier label service for this address and its label is bought. Continue?')) . '"><i class="bi bi-upc-scan me-1" aria-hidden="true"></i>' . lang('Create Label') . '</button>'))
+                            . (($shipment_label_active[1] || !$shipment_label_drivers) ? '' : '<button type="submit" form="shipment-label-form" name="label_request" value="return-' . $ship_to_id . '" class="btn btn-sm btn-outline theme-secondary" data-confirm-content="' . h(lang('A return shipment, collected from this address and delivered to the store, is opened at the carrier label service and its label is bought. Continue?')) . '"><i class="bi bi-arrow-return-left me-1" aria-hidden="true"></i>' . lang('Create Return Label') . '</button>')
+                            . (!$shipment_label_pickup ? '' : '<button type="button" class="btn btn-sm btn-outline theme-secondary" data-bs-toggle="dialog" data-bs-target="#shipment_pickup_' . $ship_to_id . '"><i class="bi bi-truck me-1" aria-hidden="true"></i>' . lang('Request Pickup') . '</button>'
+                                . pg_shipment_label_pickup_dialog('shipment_pickup_' . $ship_to_id, 'shipment-label-form', 'pickup-' . $ship_to_id, pg_shipment_label_pickup_warning(pg_shipment_label_pickup_booked(array($shipment_label_pickup)))))
                             . '</div>';
                     }
 
@@ -1402,9 +1433,9 @@ if (!$_POST) {
                             </div>
                         </div>';
                     
-                    // if the number of payments is set to 0, then change value to [no limit]
+                    // if the number of payments is set to 0, then change value to "No limit"
                     if ($recurring_number_of_payments == 0) {
-                        $output_recurring_number_of_payments = '[no limit]';
+                        $output_recurring_number_of_payments = lang('No limit');
                         
                     // else the number of payments is greater than 0, so show value
                     } else {
@@ -1851,9 +1882,9 @@ if (!$_POST) {
                         </div>
                     </div>';
                 
-                // if the number of payments is set to 0, then change value to [no limit]
+                // if the number of payments is set to 0, then change value to "No limit"
                 if ($recurring_number_of_payments == 0) {
-                    $output_recurring_number_of_payments = '[no limit]';
+                    $output_recurring_number_of_payments = lang('No limit');
                     
                 // else the number of payments is greater than 0, so show value
                 } else {
@@ -2058,7 +2089,7 @@ if (!$_POST) {
                     
                     // if the legend content is not blank, then output a legend
                     if ($output_legend_content != '') {
-                        $output_legend = '<div class="card-header bg-reset border-0 text-uppercase h5 fg-secondary fw-bold">' . $output_legend_content . '</legend>';
+                        $output_legend = '<div class="card-header bg-reset border-0 text-uppercase h5 fg-secondary fw-bold">' . $output_legend_content . '</div>';
                     }
                     
                     $output_forms .=
@@ -2181,6 +2212,8 @@ if (!$_POST) {
     // if there is a gift card discount and there is at least one applied gift card, then prepare to output applied gift cards
     // this double check is not redundant, because there can be a situation where there is a discount with no gift cards if there was an error when the gift card transaction was submitted
     if (($gift_card_discount > 0)  && (count($applied_gift_cards) > 0)) {
+        $output_applied_gift_card_rows = '';
+
         // loop through applied gift cards in order to prepare to output them
         foreach ($applied_gift_cards as $applied_gift_card) {
             if ($applied_gift_card['givex'] == 0) {
@@ -2197,12 +2230,20 @@ if (!$_POST) {
                 <div class="row" >
                     <span class="translateable col fg-secondary">' . lang('Amount') . ':</span>
                     <span class="col text-end">' . pg_format_money($applied_gift_card['amount'] / 100, BASE_CURRENCY_SYMBOL) . '</span>
-                </div>
-                <div class="row" >
-                    <span class="translateable col fg-secondary">' . lang('Givex Auth') . ' #:</span>
-                    <span class="col text-end">' . h($applied_gift_card['authorization_number']) . '</span>
-                </div>
-                <div class="row" >
+                </div>';
+
+            // Only a Givex redemption writes an authorization number; the
+            // shop's own cards have none.
+            if ($applied_gift_card['givex'] != 0) {
+                $output_applied_gift_card_rows .=
+                    '<div class="row" >
+                        <span class="translateable col fg-secondary">' . lang('Givex Auth') . ' #:</span>
+                        <span class="col text-end">' . h($applied_gift_card['authorization_number']) . '</span>
+                    </div>';
+            }
+
+            $output_applied_gift_card_rows .=
+                '<div class="row" >
                     <span class="translateable col fg-secondary">' . lang('Remaining Balance') . ':</span>
                     <span class="col text-end">' . pg_format_money($applied_gift_card['new_balance'] / 100, BASE_CURRENCY_SYMBOL) . '</span>
                 </div>';
@@ -2400,8 +2441,9 @@ if (!$_POST) {
     // again. Each part gets its own instruction: the provider sentence only
     // when payment money is left, the gift card one only when cards paid.
     $refund_payment_left_cents = max(0, $total_cents - $refunded_amount_cents);
-    $refund_currency_text = ($currency_code != '' ? ' ' . h($currency_code) : '');
-    $refund_amount_text   = pg_format_number(($refund_payment_left_cents + $gift_card_discount_cents) / 100, 2) . $refund_currency_text;
+    // The amounts are in the store's base currency, the unit they were
+    // charged in; orders.currency_code is only what the visitor was shown.
+    $refund_amount_text   = pg_format_money(($refund_payment_left_cents + $gift_card_discount_cents) / 100, BASE_CURRENCY_SYMBOL);
 
     $refund_instructions = '';
     if ($refund_payment_left_cents > 0 || $gift_card_discount_cents <= 0) {
@@ -2410,7 +2452,7 @@ if (!$_POST) {
     if ($gift_card_discount_cents > 0) {
         $refund_instructions .= '<div class="small">' . lang(array(
             'string' => 'Gift cards paid {var:1} of this order. Return the amounts to the cards; the site log names them.',
-            'vars'   => array(pg_format_number($gift_card_discount_cents / 100, 2) . $refund_currency_text))) . '</div>';
+            'vars'   => array(pg_format_money($gift_card_discount_cents / 100, BASE_CURRENCY_SYMBOL)))) . '</div>';
     }
 
     if (in_array($refund_state, array('manual_required', 'failed', 'pending'), true)) {
@@ -2482,8 +2524,8 @@ if (!$_POST) {
             $cancel_payment_note = '<p class="fg-warning small">' . lang(array(
                 'string' => '{var:1} of the payment was refunded already. The remaining {var:2} will NOT be refunded automatically. Process the refund in your payment provider dashboard.',
                 'vars'   => array(
-                    pg_format_number($cancel_payment_plan['refunded'] / 100, 2) . ($currency_code != '' ? ' ' . h($currency_code) : ''),
-                    pg_format_number($cancel_payment_plan['remaining'] / 100, 2) . ($currency_code != '' ? ' ' . h($currency_code) : '')))) . '</p>';
+                    pg_format_money($cancel_payment_plan['refunded'] / 100, BASE_CURRENCY_SYMBOL),
+                    pg_format_money($cancel_payment_plan['remaining'] / 100, BASE_CURRENCY_SYMBOL)))) . '</p>';
         } elseif ($cancel_payment_plan['remaining'] > 0) {
             $cancel_payment_note = '<p class="fg-warning small">' . lang('The payment will NOT be refunded automatically. Process the refund in your payment provider dashboard.') . '</p>';
         } elseif ($cancel_payment_plan['refunded'] > 0) {
@@ -2608,6 +2650,7 @@ if (!$_POST) {
         <form method="post" id="parasut-invoice-form" class="d-none">
             ' . get_token_field() . '
             <input type="hidden" name="id" value="' . (int)$_GET['id'] . '" />
+            <input type="hidden" name="send_to" value="' . h(pg_send_to_url('')) . '" />
             <input type="hidden" name="parasut_action" value="invoice" />
         </form>
         ';
@@ -2617,6 +2660,7 @@ if (!$_POST) {
             $output_parasut_forms .= '<form method="post" id="parasut-e-irsaliye-form" class="d-none">
             ' . get_token_field() . '
             <input type="hidden" name="id" value="' . (int)$_GET['id'] . '" />
+            <input type="hidden" name="send_to" value="' . h(pg_send_to_url('')) . '" />
             <input type="hidden" name="parasut_action" value="e_irsaliye" />
         </form>';
         }
@@ -2771,7 +2815,7 @@ if (!$_POST) {
             'icon'=>'store',
             'heading'=>lang('View Order'),
             'heading_description' => lang('View the details of this order and update shipping information.'),
-            'cancel'=>array('enable'=>'true','url'=>'view_orders.php')
+            'cancel'=>array('enable'=>'true','url'=>pg_send_to_url('view_orders.php'))
         ,
             'breadcrumb' => array(array('label' => lang('All Orders'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_orders.php'), array('label' => lang('View Order'))),
         )
@@ -3000,6 +3044,7 @@ if (!$_POST) {
         $output_parasut_forms .
         '<form method="post" action="shipment_label.php" id="shipment-label-form" class="d-none">
             ' . get_token_field() . '
+            <input type="hidden" name="send_to" value="' . h(pg_send_to_url('')) . '" />
         </form>
         </main>' . output_footer();
         $liveform->remove_form();
@@ -3070,8 +3115,7 @@ if (!$_POST) {
         if ($cancelled_gift_card_cents > 0) {
             $liveform->add_notice(lang(array(
                 'string' => 'Gift cards paid {var:1} of this order. Return the amounts to the cards; the site log names them.',
-                'vars'   => array(pg_format_number($cancelled_gift_card_cents / 100, 2)
-                    . ((string) ($cancelled_amounts['currency_code'] ?? '') !== '' ? ' ' . h($cancelled_amounts['currency_code']) : '')))));
+                'vars'   => array(pg_format_money($cancelled_gift_card_cents / 100, BASE_CURRENCY_SYMBOL)))));
         }
 
         go(URL_SCHEME . HOSTNAME . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_order.php?id=' . $order_id . '&send_to=' . urlencode($liveform->get_field_value('send_to')));
@@ -3182,7 +3226,7 @@ if (!$_POST) {
 
         db_value("SELECT RELEASE_LOCK('" . e($refund_lock) . "')");
 
-        log_activity('Refunded ' . $refund_amount . ' ' . BASE_CURRENCY_CODE . ' for order #' . $order_id . '.');
+        log_activity(lang(array('string' => 'Refunded {var:1} {var:2} for order #{var:3}.', 'vars' => array($refund_amount, BASE_CURRENCY_CODE, $order_id))));
 
         // The full amount back cancels the order through the store's one
         // cancellation: the canceller, date and reason are recorded, a waiting
@@ -3290,9 +3334,9 @@ if (!$_POST) {
         // Says "marked", not "refunded": the log is an audit trail and must
         // not claim the software saw money move. log_activity() attaches the
         // signed-in username on its own.
-        log_activity(
-            'Refund marked as processed by operator for order #' . $order_id
-            . ($refund_reference !== '' ? '. Reference: ' . $refund_reference : ''));
+        log_activity(($refund_reference !== '')
+            ? lang(array('string' => 'Refund marked as processed by operator for order #{var:1}. Reference: {var:2}', 'vars' => array($order_id, $refund_reference)))
+            : lang(array('string' => 'Refund marked as processed by operator for order #{var:1}', 'vars' => array($order_id))));
 
         pg_audit_record('update', 'orders', $order_id, $audit_before);
 
@@ -3347,13 +3391,18 @@ if (!$_POST) {
             output_error(h($response['message']));
         }
         
-        // if the user is going to be sent to the view order screen, then prepare notice
-        if (mb_substr($liveform->get_field_value('send_to'), -15) == 'view_orders.php') {
+        // An order opened without send_to (Create Order, the notification
+        // bell, the dashboard, Ctrl+K) goes back to All Orders, never to the
+        // site's front page.
+        $target = pg_safe_redirect_path($liveform->get_field_value('send_to'), PATH . SOFTWARE_DIRECTORY . '/view_orders.php');
+
+        // if the user is going to be sent to the view orders screen, then prepare notice
+        if (basename((string) parse_url($target, PHP_URL_PATH)) === 'view_orders.php') {
             $liveform_view_orders = new liveform('view_orders');
             $liveform_view_orders->add_notice(lang('The order has been deleted.'));
         }
 
-        header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path($liveform->get_field_value('send_to')));
+        header('Location: ' . URL_SCHEME . HOSTNAME . $target);
         
     // else the user selected to save the order
     } else {
@@ -3450,13 +3499,18 @@ if (!$_POST) {
             output_error(h($response['message']));
         }
         
-        // if the user is going to be sent to the view order screen, then prepare notice
-        if (mb_substr($liveform->get_field_value('send_to'), -15) == 'view_orders.php') {
+        // An order opened without send_to (Create Order, the notification
+        // bell, the dashboard, Ctrl+K) goes back to All Orders, never to the
+        // site's front page.
+        $target = pg_safe_redirect_path($liveform->get_field_value('send_to'), PATH . SOFTWARE_DIRECTORY . '/view_orders.php');
+
+        // if the user is going to be sent to the view orders screen, then prepare notice
+        if (basename((string) parse_url($target, PHP_URL_PATH)) === 'view_orders.php') {
             $liveform_view_orders = new liveform('view_orders');
             $liveform_view_orders->add_notice(lang('The order has been saved.'));
         }
         
-        header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path($liveform->get_field_value('send_to')));
+        header('Location: ' . URL_SCHEME . HOSTNAME . $target);
     }
     
     $liveform->remove_form();

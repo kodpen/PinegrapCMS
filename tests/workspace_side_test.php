@@ -77,24 +77,26 @@ function test_workspace_side_nav_keeps_every_place_under_its_gate()
 {
 	$staff = ws_nav_groups(array('role' => 1, 'settings' => true), workspace_side_test_flags());
 
-	pg_assert_same(array('home', 'inbox'), workspace_side_test_keys($staff, 'top'));
-	pg_assert_same(array('tasks', 'mail', 'notes', 'wtables', 'board', 'calendar', 'calendar_feed', 'flows', 'scheduled', 'mcp'), workspace_side_test_keys($staff, 'work'));
-	pg_assert_same(array('timeline', 'archived', 'audit'), workspace_side_test_keys($staff, 'records'));
-	pg_assert_same(array('settings'), workspace_side_test_keys($staff, 'foot'));
+	pg_assert_same(array('home', 'inbox', 'tasks'), workspace_side_test_keys($staff, 'top'), 'the places, My Tasks among them');
+	pg_assert_same(array('notes', 'wtables', 'flows', 'calendar', 'board', 'timeline', 'mail'), workspace_side_test_keys($staff, 'tools'), 'the tiles');
+	pg_assert_same(array('scheduled', 'mcp', 'calendar_feed', 'archived', 'audit'), workspace_side_test_keys($staff, 'more'), 'behind More');
+	pg_assert_same(array('settings'), workspace_side_test_keys($staff, 'head'), 'the settings gear sits in the head');
 	pg_assert_same('/pg/workspace.php?view=home&inbox=1', $staff['top'][1]['url']);
 	pg_assert_true(!empty($staff['top'][1]['inbox']), 'the inbox entry carries the count');
 
 	// A member of the team without staff's role or the settings right.
 	$member = ws_nav_groups(array('role' => 3, 'settings' => false), workspace_side_test_flags());
 
-	pg_assert_same(array('timeline', 'archived'), workspace_side_test_keys($member, 'records'), 'the private channels audit is staff\'s');
-	pg_assert_same(array(), $member['foot'], 'no settings without the right');
+	pg_assert_same(array('scheduled', 'mcp', 'calendar_feed', 'archived'), workspace_side_test_keys($member, 'more'), 'the private channels audit is staff\'s');
+	pg_assert_same(array(), $member['head'], 'no settings without the right');
 
 	$none = ws_nav_groups(array('role' => 3, 'settings' => false), workspace_side_test_flags(array(
 		'notes' => false, 'wtables' => false, 'calendar_feed' => false, 'actions' => false, 'messages' => false, 'flows' => false, 'mcp' => false, 'mail' => false,
 	)));
 
-	pg_assert_same(array('tasks', 'board', 'calendar'), workspace_side_test_keys($none, 'work'), 'only the screens every member has');
+	pg_assert_same(array('home', 'inbox', 'tasks'), workspace_side_test_keys($none, 'top'), 'every member has the places');
+	pg_assert_same(array('calendar', 'board', 'timeline'), workspace_side_test_keys($none, 'tools'), 'only the screens every member has');
+	pg_assert_same(array('archived'), workspace_side_test_keys($none, 'more'));
 }
 
 function test_workspace_side_nav_scheduled_is_one_entry()
@@ -102,7 +104,7 @@ function test_workspace_side_nav_scheduled_is_one_entry()
 	$actions = ws_nav_groups(array('role' => 1, 'settings' => true), workspace_side_test_flags());
 	$labels = array();
 
-	foreach ($actions['work'] as $item) {
+	foreach ($actions['more'] as $item) {
 		if ($item['key'] === 'scheduled') {
 			$labels[] = $item['label'];
 		}
@@ -114,7 +116,7 @@ function test_workspace_side_nav_scheduled_is_one_entry()
 	$messages = ws_nav_groups(array('role' => 1, 'settings' => true), workspace_side_test_flags(array('actions' => false)));
 	$labels = array();
 
-	foreach ($messages['work'] as $item) {
+	foreach ($messages['more'] as $item) {
 		if ($item['key'] === 'scheduled') {
 			$labels[] = $item['label'];
 		}
@@ -127,13 +129,14 @@ function test_workspace_side_nav_keeps_key_label_icon_url()
 {
 	$nav = ws_side_nav(array(
 		'top'  => array(array('key' => 'home', 'label' => 'Overview', 'icon' => 'bi-house', 'url' => '/w.php', 'rail' => false, 'extra' => 1)),
-		'work' => array(array('key' => 'inbox', 'label' => 'Inbox', 'icon' => 'bi-inbox', 'url' => '/i.php', 'inbox' => true)),
+		'tools' => array(array('key' => 'inbox', 'label' => 'Inbox', 'short' => 'In', 'icon' => 'bi-inbox', 'url' => '/i.php', 'inbox' => true)),
 	));
 
-	pg_assert_same(array('top', 'work', 'records', 'foot'), array_keys($nav), 'every group, in the order drawn');
-	pg_assert_same(array('key' => 'home', 'label' => 'Overview', 'icon' => 'bi-house', 'url' => '/w.php', 'inbox' => false), $nav['top'][0]);
-	pg_assert_true($nav['work'][0]['inbox'], 'the inbox flag');
-	pg_assert_same(array(), $nav['foot'], 'an empty group stays a list');
+	pg_assert_same(array('head', 'top', 'tools', 'more'), array_keys($nav), 'every group, in the order drawn');
+	pg_assert_same(array('key' => 'home', 'label' => 'Overview', 'short' => 'Overview', 'icon' => 'bi-house', 'url' => '/w.php', 'inbox' => false), $nav['top'][0], 'a place without a short name shows its name');
+	pg_assert_true($nav['tools'][0]['inbox'], 'the inbox flag');
+	pg_assert_same('In', $nav['tools'][0]['short'], 'a tile\'s short name');
+	pg_assert_same(array(), $nav['head'], 'an empty group stays a list');
 }
 
 function test_workspace_side_markup_is_an_empty_box_with_its_words()
@@ -208,6 +211,36 @@ function test_workspace_side_strings_cover_the_renderer()
 	foreach ($keys as $key) {
 		pg_assert_true(isset($strings[$key]) && ($strings[$key] !== ''), $key . ' has its word in the screen\'s own set');
 	}
+}
+
+function test_workspace_side_keys_follow_the_layout()
+{
+	$keys = ws_side_js_keys();
+
+	foreach (array('channels', 'th_mine', 'pal_open', 'new_channel', 'tour_start') as $key) {
+		pg_assert_true(in_array($key, $keys, true), $key . ' is a word of the list');
+	}
+
+	foreach (array('search_messages', 'my_channels', 'other_channels', 'pinned', 'th_section') as $key) {
+		pg_assert_false(in_array($key, $keys, true), $key . ' is no longer drawn');
+	}
+
+	pg_assert_same(lang('My discussions'), ws_side_js_strings()['th_mine'] ?? '', 'the discussions\' heading');
+}
+
+// One search field opens the workspace search; the message search input
+// and the sticky foot are gone, the tour button stays for the tour's ready().
+function test_workspace_side_head_is_one_search_field()
+{
+	$script = file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_side.js');
+
+	pg_assert_false(strpos($script, "t('search_messages')") !== false, 'no message search input');
+	pg_assert_false(strpos($script, 'ws-side-foot') !== false, 'no sticky foot');
+	pg_assert_false(strpos($script, 'hooks.search') !== false, 'the message search hook is not called');
+	pg_assert_contains('hooks.palette', $script, 'the search field opens the palette on the channel screen');
+	pg_assert_contains("view=home&palette=1", $script, 'and links to it elsewhere');
+	pg_assert_contains("setAttribute('data-ws-tour', '1')", $script, 'the tour button the tour waits for');
+	pg_assert_contains("' ws-notjoined'", $script, 'channels not joined are dimmed');
 }
 
 // The list's data is read only where it is drawn at once: a page that

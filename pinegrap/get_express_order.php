@@ -232,8 +232,17 @@ function get_express_order($properties) {
                 "SELECT name, code, zip_code_required AS zip FROM countries ORDER BY name",
                 'code');
 
+        // Named and ordered in the site's language (pg_geo_country_label()); two
+        // rows that share a label (a duplicate code in the data) keep both options.
+        $country_labels = array();
+
         foreach ($countries as $country) {
-            $country_options[$country['name']] = $country['code'];
+            $country_labels[] = array('code' => $country['code'], 'label' => pg_geo_country_label($country['name'], $country['code']));
+        }
+
+        foreach (pg_geo_sort_by_label($country_labels) as $country) {
+            $label = isset($country_options[$country['label']]) ? $country['label'] . ' (' . $country['code'] . ')' : $country['label'];
+            $country_options[$label] = $country['code'];
         }
 
         $states = db_items(
@@ -2779,6 +2788,9 @@ function get_express_order($properties) {
                     $form->assign_field_value('opt_in', '');
                 }
 
+                // The SMS box starts ticked, as the e-mail box of a new order does.
+                $form->assign_field_value('opt_in_sms', '1');
+
                 // If the visitor is logged in and not ghosting and the visitor has selected
                 // that he/she does not want his/her contact info updated with the billing info
                 // previously in this session, then uncheck the update contact check box.
@@ -2892,6 +2904,10 @@ function get_express_order($properties) {
                 
                 $output_opt_in_displayed_value = 'true';
             }
+
+            // The SMS box beside it, while SMS is on and the buyer has not said yes.
+            $output_opt_in_sms = pg_consent_sms_checkout_shown(array('id' => $contact_id, 'email_address' => $contact['email_address']))
+                ? pg_consent_sms_checkout_row($form) : '';
             
             // if po number is enabled, output po number field
             if ($po_number) {
@@ -3773,6 +3789,7 @@ function get_express_order($properties) {
                                 </td>
                             </tr>
                             ' . $output_opt_in . '
+                            ' . $output_opt_in_sms . '
                             ' . $output_po_number . '
                             ' . $output_referral_source . '
                         </table>
@@ -4263,6 +4280,11 @@ function get_express_order($properties) {
                 if (ECOMMERCE_SHIPPING and $recipient['shipping']) {
 
                     $recipient['ship_to_heading'] = true;
+
+                    // The country in the site's language, not the stored name.
+                    if ($recipient['country']) {
+                        $recipient['country'] = pg_geo_country_label($recipient['country'], $recipient['country_code']);
+                    }
 
                     // If this shipping address is verified,
                     // then convert salutation and country to all uppercase.
@@ -5535,6 +5557,9 @@ function get_express_order($properties) {
                     $form->set('opt_in', '');
                 }
 
+                // The SMS box starts ticked, as the e-mail box of a new order does.
+                $form->set('opt_in_sms', '1');
+
                 // If the visitor is logged in and the visitor has selected
                 // that he/she does not want his/her contact info updated with the billing info
                 // previously in this session, then uncheck the update contact check box.
@@ -5624,6 +5649,9 @@ function get_express_order($properties) {
             }
 
             $system .= '<input type="hidden" name="opt_in_displayed" value="' . $opt_in_displayed_value . '">';
+
+            // The SMS box: the layout draws it with its own opt_in_sms_shown mark.
+            $opt_in_sms = pg_consent_sms_checkout_shown($contact);
 
             settype($po_number, 'bool');
 
@@ -6342,6 +6370,8 @@ function get_express_order($properties) {
             'custom_field_2_required' => $custom_field_2_required,
             'opt_in' => $opt_in,
             'opt_in_label' => $opt_in_label,
+            'opt_in_sms' => $opt_in_sms,
+            'opt_in_sms_label' => lang('I want to receive campaign and offer messages by SMS.'),
             'po_number' => $po_number,
             'referral_source' => $referral_source,
             'update_contact' => $update_contact,

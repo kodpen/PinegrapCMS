@@ -23,6 +23,19 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 }
 
 /**
+ * The order the products offered for the group are paged in, first batch
+ * and Load More alike. Imports and bulk edits stamp many rows with the same
+ * second, and MySQL may return tied rows in a different order when the LIMIT
+ * differs, so the id breaks the tie and batches never overlap or skip a row.
+ *
+ * @return string
+ */
+function pg_product_group_form_unselected_order_sql()
+{
+    return 'ORDER BY timestamp DESC, id DESC';
+}
+
+/**
  * The table rows of products offered for the group (not in it yet): ticked
  * off, no sort order.
  *
@@ -82,10 +95,9 @@ function pg_product_group_form_cards($liveform, $values, $form)
 
     // A new group's name is a liveform field, so a refused save keeps it.
     if ($form['is_new']) {
-        $output_name = $liveform->output_field(array('type'=>'text','id'=>'name','name'=>'name', 'class'=>'form-control ', 'required'=>'required')) . '
-                                            <div class="invalid-feedback">' . lang('Required Area') . '</div>';
+        $output_name = $liveform->output_field(array('type'=>'text','id'=>'name','name'=>'name', 'class'=>'form-control ', 'maxlength'=>'100', 'required'=>'required'));
     } else {
-        $output_name = '<input type="text" name="name" id="name" class="form-control" value="' . h($v['name']) . '"/>';
+        $output_name = '<input type="text" name="name" id="name" class="form-control" maxlength="100" required value="' . h($v['name']) . '"/>';
     }
 
     $enabled_checked = $v['enabled'] ? ' checked="checked"' : '';
@@ -215,13 +227,14 @@ function pg_product_group_form_cards($liveform, $values, $form)
                                         <div class="col-12 mt-1 mb-3">
                                             <label for="address_name" class="form-label">' . lang('Catalog Name') . '</label>
                                             <div class="input-group ">
-                                                <label class="input-group-text material-icons" aria-hidden="true" title="' . lang('This option determines the url address of the product. Automatically assigned if left blank.') . '" data-bs-content="' . URL_SCHEME . HOSTNAME . OUTPUT_PATH . '{' . lang('Catalog Name') . '}">public</label>
-                                                <input type="text" name="address_name" id="address_name" class="form-control" value="' . h($v['address_name']) . '" />
+                                                <label class="input-group-text material-icons" aria-hidden="true">public</label>
+                                                <input type="text" name="address_name" id="address_name" aria-describedby="address_name_hint" class="form-control" value="' . h($v['address_name']) . '" />
                                             </div>
+                                            <div class="form-text" id="address_name_hint">' . lang('This option determines the url address of the product. Automatically assigned if left blank.') . ' <code>' . h(URL_SCHEME . HOSTNAME . OUTPUT_PATH . '{' . lang('Catalog Name') . '}') . '</code></div>
                                         </div>
                                         <div class="col-12 mt-1 mb-3">
                                             <label for="title" class="form-label">' . lang('Web Browser Title') . '</label>
-                                            <input type="text" name="title" id="title" class="form-control" value="' . h($v['title']) . '" />
+                                            <input type="text" name="title" id="title" class="form-control" maxlength="255" value="' . h($v['title']) . '" />
                                         </div>
                                         <div class="col-12 mt-1 mb-3">
                                             <label for="meta_description" class="form-label">' . lang('Web Browser Description') . '</label>
@@ -327,9 +340,17 @@ function pg_product_group_form_products_card($form)
                                             return;
                                         }
 
+                                        var $table = $("#' . $form['table_id'] . '");
                                         var $rows = response.rows ? $(response.rows).filter("tr") : $();
+                                        // A product already in the table is not added again. The tick
+                                        // box is the key: a selected child group row uses its group id
+                                        // as the row id, which can equal a product id.
+                                        $rows = $rows.filter(function() {
+                                            var id = $(this).find("input[name=\"products[]\"]").val();
+                                            return !id || !$table.find("input[name=\"products[]\"][value=\"" + id + "\"]").length;
+                                        });
                                         if ($rows.length) {
-                                            var dt = $("#' . $form['table_id'] . '").DataTable();
+                                            var dt = $table.DataTable();
                                             $rows.each(function() {
                                                 dt.row.add(this);
                                             });
@@ -451,6 +472,30 @@ function pg_product_group_form_search_results_pages($product_group_id, $parent_i
 }
 
 /**
+ * The product ids to link from the posted products[] values: each once, in
+ * the order posted, without values that are no product id.
+ * products_groups_xref has no unique key, so a doubled value would link the
+ * product twice.
+ *
+ * @param array $posted
+ * @return int[]
+ */
+function pg_product_group_form_link_ids($posted)
+{
+    $ids = array();
+    foreach ($posted as $value) {
+        if (!is_scalar($value) || !ctype_digit((string) $value)) {
+            continue;
+        }
+        $id = (int) $value;
+        if ($id > 0 && !in_array($id, $ids, true)) {
+            $ids[] = $id;
+        }
+    }
+    return $ids;
+}
+
+/**
  * Links the ticked products to the group with their sort orders.
  *
  * @param mixed $product_group_id
@@ -464,7 +509,7 @@ function pg_product_group_form_link_products($product_group_id, $post, $kept_pro
         return;
     }
 
-    foreach ($post['products'] as $product_id) {
+    foreach (pg_product_group_form_link_ids($post['products']) as $product_id) {
         // A form opened before the product went to the bin still posts it;
         // its row is the one kept.
         if (in_array((int) $product_id, $kept_product_ids, true)) {

@@ -640,6 +640,16 @@
         }
 
         function wireGrid(table) {
+            // A cell reached with Tab is selected as a click would select it,
+            // so the arrows, Enter and typing work on it at once.
+            table.addEventListener('focusin', function (event) {
+                var td = event.target;
+
+                if (td.tagName === 'TD' && td !== shown.cell && !shown.editor && !td.classList.contains('office-editing')) {
+                    select(td);
+                }
+            });
+
             table.addEventListener('mousedown', function (event) {
                 var td = event.target.closest('td');
 
@@ -735,7 +745,22 @@
 
                 if (offered) {
                     wireGrid(shown.table);
+
+                    // The grid's one Tab stop until a cell is selected.
+                    var first = shown.table.querySelector('tbody td');
+
+                    if (first) {
+                        first.tabIndex = 0;
+                    }
                 }
+            }
+
+            // A sheet only read scrolls from the keyboard through its pane;
+            // an editable grid is entered through its cells.
+            if (offered && shown.table) {
+                pane.removeAttribute('tabindex');
+            } else {
+                pane.tabIndex = 0;
             }
 
             if (sheet.truncated) {
@@ -1016,6 +1041,8 @@
         var nodes = [];
         var shown = { node: null, pressed: null, editor: null, note: '' };
 
+        doc.setAttribute('aria-label', strings.doc || '');
+
         // The server made this markup itself from the file's text, escaped,
         // with its own small set of tags; nothing the file wrote reaches here
         // as markup.
@@ -1035,7 +1062,9 @@
             container.appendChild(el('div', 'office-note', strings.truncated || ''));
         }
 
+        // A document only read scrolls from the keyboard through its own box.
         if (!editable) {
+            doc.tabIndex = 0;
             return null;
         }
 
@@ -1305,7 +1334,20 @@
         if (nodes.length) {
             nodes[0].tabIndex = 0;
             doc.classList.add('office-doc-edit');
+        } else {
+            doc.tabIndex = 0;
         }
+
+        // A paragraph reached with Tab is picked as a click would pick it, so
+        // the arrows, Enter and F2 work on it at once. A link inside one keeps
+        // its own focus.
+        doc.addEventListener('focusin', function (event) {
+            var node = event.target;
+
+            if (node.hasAttribute && node.hasAttribute('data-p') && nodes.indexOf(node) !== -1 && node !== shown.node && !shown.editor) {
+                select(node);
+            }
+        });
 
         doc.addEventListener('mousedown', function (event) {
             if (shown.editor && shown.editor.node.contains(event.target)) {

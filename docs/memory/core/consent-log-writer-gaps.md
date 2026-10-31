@@ -24,4 +24,4 @@ description: What the e-mail consent log writers leave unrecorded or record unas
 - A signed-in buyer whose card is not updated (every member on a designed express order without an `update_contact` control, the default tree included) keeps the old `contacts.opt_in`, so a refusal there is neither stored nor logged: write an asked answer to the contact anyway?
 - DEFAULT-1 contacts have no row: step 5 must not push them to İYS as consent.
 
-Related: docs/memory/core/consent-log-writers.md, docs/memory/plans/sms-and-iys.md
+Related: docs/memory/core/consent-log-writers.md, docs/memory/platform/sms-and-iys-rules.md

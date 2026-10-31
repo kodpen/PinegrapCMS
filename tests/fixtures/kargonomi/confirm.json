@@ -1,0 +1,114 @@
+{
+    "shipping_provider_with_price": [
+        {
+            "id": 3,
+            "name": "Kolay Gelsin",
+            "slug": "kolaygelsin",
+            "price": "22.67 + KDV"
+        },
+        {
+            "id": 4,
+            "name": "Aras Kargo",
+            "slug": "aras",
+            "price": "24.10 + KDV"
+        },
+        {
+            "id": 5,
+            "name": "Sürat Kargo",
+            "slug": "surat",
+            "price": "23.05 + KDV"
+        },
+        {
+            "id": 6,
+            "name": "Hepsijet",
+            "slug": "hepsijet",
+            "price": "Hizmet Dışı Bölge"
+        },
+        {
+            "id": 7,
+            "name": "PTT Kargo",
+            "slug": "ptt",
+            "price": "22.90 + KDV"
+        },
+        {
+            "id": "-1",
+            "name": "Otomatik",
+            "slug": "otomatik",
+            "price": null
+        }
+    ],
+    "shipment": {
+        "id": 8,
+        "type": "shipment",
+        "shipping_webservice_order_id": null,
+        "shipping_webservice_barcode": null,
+        "shipping_webservice_tracking_code": null,
+        "shipping_provider_name": null,
+        "shipping_provider_slug": null,
+        "barcode_of_order_id": null,
+        "status": "draft",
+        "status_label": "Taslak",
+        "shipping_webservice_created_at": null,
+        "ecommerce_provider_order_no": null,
+        "ecommerce_provider": null,
+        "package_count": 1,
+        "estimated_price": null,
+        "real_price": null,
+        "extra_shipping_price": "0.0000",
+        "buyer_name": "Ayşe Yılmaz",
+        "delivery_date_to_shipment_office": null,
+        "shipping_provider_customer_delivery_date": null,
+        "created_at": "2026-10-27T07:10:00.000000Z",
+        "updated_at": "2026-10-27T07:10:05.000000Z",
+        "sender": {
+            "sender_name": "Örnek Mağaza",
+            "sender_email": "magaza@example.com",
+            "sender_phone": "5321112233",
+            "sender_phone2": null,
+            "sender_tax_number": "1234567890",
+            "sender_tax_place": "Kadıköy",
+            "sender_address": "Caferağa Mah. Moda Cad. No:10",
+            "sender_state": "İSTANBUL",
+            "sender_city": "KADIKÖY"
+        },
+        "buyer": {
+            "buyer_name": "Ayşe Yılmaz",
+            "buyer_email": "ayse@example.com",
+            "buyer_phone": "5321234567",
+            "buyer_phone2": null,
+            "buyer_tax_number": null,
+            "buyer_tax_place": null,
+            "buyer_address": "Kızılay Mah. Atatürk Blv. No:5 Daire 3",
+            "buyer_state": "ANKARA",
+            "buyer_city": "ÇANKAYA"
+        },
+        "pricing": {
+            "package_count": 1,
+            "estimated_price": null,
+            "real_price": null,
+            "extra_shipping_price": "0.0000",
+            "price_diff": null
+        },
+        "warehouse": {
+            "id": 12707,
+            "name": "Merkez Depo",
+            "is_main": 1,
+            "contact_name": "Ali Yılmaz",
+            "contact_phone": "5565465465",
+            "state": "İstanbul",
+            "city": "Kadıköy",
+            "address": "Caferağa Mah. Moda Cad. No:10",
+            "phone": null,
+            "tax_number": "98328113892",
+            "tax_place": "Kadıköy"
+        },
+        "shipment_packages": [
+            {
+                "desi": "3",
+                "barcode": "JRJ3PA_1",
+                "content": "2 x Mug, 1 x Plate",
+                "real_desi": null
+            }
+        ]
+    }
+}

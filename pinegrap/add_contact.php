@@ -34,9 +34,9 @@ if (!$_POST) {
             'icon'=>'contact',
             'heading'=>lang('Create Contact'),
             'heading_description' => lang('Create a new contact, subscriber, unregistered member, or unapproved affiliate, and add them to any of my contact groups.'),
-            'cancel'=>array('enable'=>'true','url'=>'view_contacts.php'),
+            'cancel' => array('enable' => 'true', 'url' => pg_send_to_url(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_contacts.php')),
             'breadcrumb' => array(
-                array('label' => lang('All My Contacts'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_contacts.php'),
+                array('label' => lang('Contacts'), 'url' => pg_send_to_list_url(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_contacts.php')),
                 array('label' => lang('Create Contact')),
             ),
         )

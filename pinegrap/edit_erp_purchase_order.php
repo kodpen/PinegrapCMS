@@ -26,6 +26,12 @@ include_once('liveform.class.php');
 $liveform = new liveform('edit_erp_purchase_order');
 
 $list_url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_purchase_orders.php';
+
+// The filtered list the order was opened from: the back arrow, the
+// breadcrumb and every reload and form of this screen keep it.
+$send_to = pg_send_to_url('');
+$send_to_query = ($send_to !== '') ? '&send_to=' . urlencode($send_to) : '';
+$self_action = h('edit_erp_purchase_order.php' . (($send_to !== '') ? '?send_to=' . urlencode($send_to) : ''));
 $order_id = is_scalar($_REQUEST['id'] ?? null) ? (int) $_REQUEST['id'] : 0;
 $order = erp_purchase_order($order_id);
 
@@ -34,7 +40,7 @@ if ($order === null) {
     exit();
 }
 
-$self_url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_erp_purchase_order.php?id=' . $order_id;
+$self_url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_erp_purchase_order.php?id=' . $order_id . $send_to_query;
 $readonly = defined('USER_ERP_READONLY') && USER_ERP_READONLY;
 
 if ($_POST) {
@@ -146,8 +152,8 @@ $money = function ($kurus) use ($order) {
 };
 
 // The actions: each is a small form, so a readonly account never sees one.
-$action_button = function ($action, $label, $icon, $class, $confirm = '') use ($order_id) {
-    return '<form method="post" action="edit_erp_purchase_order.php" class="d-inline">' . get_token_field()
+$action_button = function ($action, $label, $icon, $class, $confirm = '') use ($order_id, $self_action) {
+    return '<form method="post" action="' . $self_action . '" class="d-inline">' . get_token_field()
         . '<input type="hidden" name="id" value="' . $order_id . '" /><input type="hidden" name="erp_action" value="' . h($action) . '" />'
         . '<button type="submit" class="btn btn-sm ' . $class . '"' . (($confirm !== '') ? ' data-confirm-content="' . h($confirm) . '"' : '') . '><i class="bi ' . $icon . ' me-1" aria-hidden="true"></i>' . $label . '</button></form>';
 };
@@ -195,11 +201,11 @@ if ($editable) {
     }
 
     $output_body = '
-            <form name="form" action="edit_erp_purchase_order.php" method="post" autocomplete="off">
+            <form name="form" action="' . $self_action . '" method="post" autocomplete="off">
                 ' . get_token_field() . '
                 <input type="hidden" name="id" value="' . $order_id . '" />
                 <input type="hidden" name="erp_action" value="save" />
-                ' . erp_invoice_form_cards($liveform, array('purchase_order' => true, 'lines' => erp_invoice_form_lines($liveform, erp_purchase_order_editor_rows($order)))) . '
+                ' . erp_invoice_form_cards($liveform, array('purchase_order' => true, 'keep_account_id' => (int) $order['account_id'], 'lines' => erp_invoice_form_lines($liveform, erp_purchase_order_editor_rows($order)))) . '
                 <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                     <div class="container">
                         <button type="submit" class="btn my-1 btn-solid theme-success"><i class="bi bi-check-circle me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang(array('string' => 'Save')) . '</span></button>
@@ -342,13 +348,13 @@ if (function_exists('erp_mail_ready') && erp_mail_ready()) {
     if ($can_mail) {
         $output_mail_button = '<a class="btn btn-sm btn-outline theme-secondary" href="#erp-mail"><i class="bi bi-envelope me-1" aria-hidden="true"></i>' . lang('E-mail') . '</a>';
         $output_mail_form = '
-            <form name="mail_form" action="edit_erp_purchase_order.php" method="post" class="row g-3">
+            <form name="mail_form" action="' . $self_action . '" method="post" class="row g-3" data-erp-send-once>
                 ' . get_token_field() . '
                 <input type="hidden" name="id" value="' . $order_id . '" />
                 <input type="hidden" name="erp_action" value="mail" />
                 <div class="col-12 md:col-6">
                     <label class="form-label" for="mail_to">' . lang('Recipient e-mail') . '</label>
-                    <input type="text" class="form-control" id="mail_to" name="mail_to" value="' . h((string) $defaults['to']) . '" maxlength="500" autocomplete="off" required />
+                    <input type="text" class="form-control" id="mail_to" name="mail_to" value="' . h((string) $defaults['to']) . '" maxlength="500" inputmode="email" spellcheck="false" autocapitalize="off" autocomplete="off" required />
                     <div class="form-text">' . (((string) $defaults['to'] === '') ? lang('The account has no e-mail address. Type one, or add it to the account.') : lang('More than one address: separate them with commas.')) . '</div>
                 </div>
                 <div class="col-12 md:col-6">
@@ -360,8 +366,9 @@ if (function_exists('erp_mail_ready') && erp_mail_ready()) {
                     <textarea class="form-control" id="mail_message" name="mail_message" rows="3" maxlength="5000">' . h((string) $defaults['message']) . '</textarea>
                     <div class="form-text"><i class="bi bi-paperclip" aria-hidden="true"></i> ' . lang('The purchase order PDF is attached. Once it has gone, the order is marked as sent.') . '</div>
                 </div>
-                <div class="col-12">
+                <div class="col-12 d-flex flex-wrap gap-3 align-items-center">
                     <button type="submit" class="btn btn-sm btn-solid theme-primary"><i class="bi bi-envelope me-3" aria-hidden="true"></i>' . lang('Send the e-mail') . '</button>
+                    <span class="small fg-secondary" role="status" aria-live="polite" data-erp-send-once-status></span>
                 </div>
             </form>';
     }
@@ -409,9 +416,9 @@ pg_page_shell([
     'icon' => 'erp',
     'heading' => h(lang(array('string' => 'Purchase order {var:1}', 'vars' => (string) $order['full_number']))) . ' <span class="badge theme-' . h($status[1]) . ' ms-1 align-middle fs-md">' . h($status[0]) . '</span>',
     'heading_description' => implode(' · ', array_filter($heading_parts, 'strlen')),
-    'cancel' => array('enable' => 'true', 'url' => 'erp_purchase_orders.php'),
+    'cancel' => array('enable' => 'true', 'url' => pg_send_to_url('erp_purchase_orders.php')),
     'breadcrumb' => array(
-        array('label' => lang('Purchase orders'), 'url' => $list_url),
+        array('label' => lang('Purchase orders'), 'url' => pg_send_to_list_url($list_url)),
         array('label' => (string) $order['full_number']),
     ),
 ]) . '
@@ -438,7 +445,36 @@ pg_page_shell([
             ' . $output_mail . '
         </div>
     </div>
-</main>' .
+</main>
+<script>
+(function () {
+    // Send the e-mail is sent once: building the PDF and sending the mail run
+    // inside the request and can take longer than the 3 seconds the window
+    // guard covers, and a second press then sent the same e-mail again. The
+    // button is never disabled; a submit a handler cancelled does not count.
+    var sent = [];
+    window.addEventListener("submit", function (event) {
+        var form = event.target;
+        if (!form || !form.hasAttribute || !form.hasAttribute("data-erp-send-once")) { return; }
+        if (sent.indexOf(form) !== -1) { event.preventDefault(); return; }
+        if (event.defaultPrevented) { return; }
+        sent.push(form);
+        form.setAttribute("aria-busy", "true");
+        var status = form.querySelector("[data-erp-send-once-status]");
+        if (status) { status.textContent = "' . escape_javascript(lang('Working on it. Wait for the answer before leaving this page.')) . '"; }
+    });
+    window.addEventListener("pageshow", function (event) {
+        if (!event.persisted) { return; }
+        sent.forEach(function (form) {
+            form.removeAttribute("aria-busy");
+            var status = form.querySelector("[data-erp-send-once-status]");
+            if (status) { status.textContent = ""; }
+        });
+        sent = [];
+    });
+})();
+</script>
+' .
 output_footer();
 
 $liveform->remove_form();

@@ -86,6 +86,7 @@ function ws_flow_run_event_words($channel)
 function ws_flow_run_event_run($run, $n)
 {
     $channel_id = ws_flow_run_channel_id($run);
+    $contact_id = ((string) ($run['subject_type'] ?? '') === 'contact') ? (int) ($run['subject_id'] ?? 0) : 0;
 
     return array(
         'id'          => (int) $run['id'],
@@ -96,6 +97,7 @@ function ws_flow_run_event_run($run, $n)
         'started_by'  => (int) $run['started_by'],
         'actor_id'    => (int) $run['actor_id'],
         'channel_id'  => ($channel_id > 0) ? $channel_id : null,
+        'contact_id'  => ($contact_id > 0) ? $contact_id : null,
         'boxes_run'   => (int) $run['boxes_run'],
         'started_at'  => ws_flow_time($run['started_at']),
         'updated_at'  => ws_flow_time($run['updated_at']),

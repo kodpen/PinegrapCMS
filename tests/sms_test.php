@@ -370,7 +370,7 @@ function test_sms_send_refuses_before_reading_the_account()
 {
 	foreach (array(
 		array('905321234567', 'Hello', 'newsletter', 'Unknown kind of SMS message.'),
-		array('905321234567', 'Hello', 'marketing', 'Marketing messages are not sent by SMS: they need the recipient\'s consent recorded in İYS.'),
+		array('905321234567', 'Hello', 'marketing', 'A marketing SMS needs the sender identity: fill in the trade name or the MERSİS number in Settings › Communication › SMS Messages.'),
 		array('not a number', 'Hello', 'order', 'This is not a mobile number an SMS can be sent to.'),
 		array('905321234567', "  \x07 ", 'order', 'The message is empty.'),
 	) as $case) {
@@ -836,4 +836,130 @@ function test_sms_dial_reads_back_the_stored_number()
 	pg_assert_same('5351234567', pg_sms_number('+53 5123 4567'), 'Cuba kept as Cuba');
 	pg_assert_same('905351234567', pg_sms_number('5351234567'), 'the same digits without the plus are a Turkish mobile');
 	pg_assert_same('', pg_sms_dial(''), 'no number');
+}
+
+// Every driver is offered, Netgsm first, Twilio for numbers abroad last.
+function test_sms_providers_list()
+{
+	pg_assert_same(array('netgsm', 'iletimerkezi', 'twilio'), array_keys(pg_sms_providers()));
+}
+
+// A Twilio sender is a phone number in E.164 or a Messaging Service SID; the
+// others keep the eleven-character sender name.
+function test_sms_sender_valid_per_provider()
+{
+	pg_assert_true(pg_sms_sender_valid('+14155550100', 'twilio'));
+	pg_assert_true(pg_sms_sender_valid('MG0123456789abcdef0123456789abcdef', 'twilio'));
+	pg_assert_false(pg_sms_sender_valid('PINEGRAP', 'twilio'));
+	pg_assert_false(pg_sms_sender_valid('14155550100', 'twilio'));
+	pg_assert_false(pg_sms_sender_valid('MG0123456789abcdef', 'twilio'));
+	pg_assert_false(pg_sms_sender_valid("+14155550100\n", 'twilio'));
+	pg_assert_true(pg_sms_sender_valid('PINEGRAP', 'netgsm'));
+	pg_assert_false(pg_sms_sender_valid('+14155550100123', 'iletimerkezi'));
+
+	pg_assert_same('+14155550100', pg_sms_sender_typed(' +1 (415) 555-0100 ', 'twilio'));
+	pg_assert_same('ŞİRKET AŞ', pg_sms_sender_typed('ŞİRKET AŞ', 'netgsm'));
+
+	$providers = pg_sms_providers();
+	pg_assert_same(34, $providers['twilio']['sender_maxlength']);
+	pg_assert_same(11, $providers['netgsm']['sender_maxlength']);
+	pg_assert_same('password', pg_sms_refused_field('twilio', '20003'));
+	pg_assert_same('user', pg_sms_refused_field('twilio', '20404'));
+}
+
+// The Twilio card asks for the Account SID and Auth Token and takes a
+// 34-character sender, copied with spaces or not.
+function test_sms_settings_twilio_card()
+{
+	$providers = pg_sms_providers();
+	$fields = pg_sms_settings_account_fields('twilio', $providers['twilio'], sms_test_none());
+	pg_assert_contains('>Account SID</label>', $fields);
+	pg_assert_contains('>Auth Token</label>', $fields);
+	pg_assert_contains('name="sms_twilio_sender"', $fields);
+	pg_assert_contains('maxlength="34"', $fields);
+
+	$post = array(
+		'sms_provider'        => 'twilio',
+		'sms_enabled'         => '1',
+		'sms_twilio_user'     => 'ACXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
+		'sms_twilio_password' => 'test_auth_token',
+		'sms_twilio_sender'   => '+1 415 555 0100',
+	);
+	$decision = pg_sms_settings_decide($post, 'twilio', sms_test_none(), '');
+	pg_assert_same('+14155550100', $decision['sender']);
+	pg_assert_same(array(), $decision['marks']);
+	pg_assert_true($decision['ask']);
+
+	$post['sms_twilio_sender'] = 'PINEGRAP';
+	$wrong = pg_sms_settings_decide($post, 'twilio', sms_test_none(), '');
+	pg_assert_contains('Messaging Service SID', $wrong['marks']['sms_twilio_sender']);
+	pg_assert_false($wrong['ask']);
+}
+
+// A refused account check marks the field the provider's code names.
+function test_sms_refused_field_per_provider()
+{
+	pg_assert_same('password', pg_sms_refused_field('netgsm', '30'));
+	pg_assert_same('user', pg_sms_refused_field('netgsm', '70'));
+	pg_assert_same('user', pg_sms_refused_field('netgsm', '401'));
+	pg_assert_same('password', pg_sms_refused_field('iletimerkezi', '401'));
+	pg_assert_same('user', pg_sms_refused_field('iletimerkezi', '30'));
+	pg_assert_same('user', pg_sms_refused_field('nonexistent', '30'));
+}
+
+// Netgsm's user code is the account's number and sends as itself; İleti
+// Merkezi's API key is no sender name.
+function test_sms_sender_approved_per_provider()
+{
+	pg_assert_same('8501234567', pg_sms_sender_approved('netgsm', '8501234567', array('KODPEN'), '8501234567'));
+	pg_assert_same('', pg_sms_sender_approved('iletimerkezi', 'a1b2c3d4e5', array('KODPEN'), 'a1b2c3d4e5'));
+	pg_assert_same('KODPEN', pg_sms_sender_approved('iletimerkezi', 'kodpen', array('KODPEN'), 'a1b2c3d4e5'));
+}
+
+// The account fields carry each provider's own labels and help.
+function test_sms_settings_account_field_labels()
+{
+	$providers = pg_sms_providers();
+
+	$netgsm = pg_sms_settings_account_fields('netgsm', $providers['netgsm'], sms_test_none());
+	pg_assert_contains('>User Code</label>', $netgsm);
+	pg_assert_contains('>Password</label>', $netgsm);
+	pg_assert_contains('name="sms_netgsm_user"', $netgsm);
+	pg_assert_contains('https://www.netgsm.com.tr/', $netgsm);
+
+	$iletimerkezi = pg_sms_settings_account_fields('iletimerkezi', $providers['iletimerkezi'], sms_test_none());
+	pg_assert_contains('>API Key</label>', $iletimerkezi);
+	pg_assert_contains('>API Hash</label>', $iletimerkezi);
+	pg_assert_contains('name="sms_iletimerkezi_password"', $iletimerkezi);
+	pg_assert_contains('https://www.iletimerkezi.com/', $iletimerkezi);
+	pg_assert_false(strpos($iletimerkezi, 'User Code') !== false);
+}
+
+// A required field is named as the provider names it.
+function test_sms_settings_decide_marks_with_provider_labels()
+{
+	$decision = pg_sms_settings_decide(array(
+		'sms_provider'               => 'iletimerkezi',
+		'sms_enabled'                => '1',
+		'sms_iletimerkezi_user'      => '',
+		'sms_iletimerkezi_password'  => '',
+		'sms_iletimerkezi_sender'    => 'PINEGRAP',
+	), 'iletimerkezi', sms_test_app(), '');
+
+	pg_assert_contains('API Key', $decision['marks']['sms_iletimerkezi_user']);
+	pg_assert_false($decision['ask']);
+
+	$netgsm = pg_sms_settings_decide(sms_test_post(array('sms_enabled' => '1', 'sms_netgsm_user' => '')), 'netgsm', sms_test_none(), '');
+	pg_assert_contains('User Code', $netgsm['marks']['sms_netgsm_user']);
+	pg_assert_contains('Password', $netgsm['marks']['sms_netgsm_password']);
+}
+
+// The card's script names no provider: it shows the pane the select names.
+function test_sms_settings_script_is_generic()
+{
+	$script = pg_sms_settings_script();
+
+	pg_assert_contains('data-sms-provider', $script);
+	pg_assert_contains('sms_provider', $script);
+	pg_assert_false(stripos($script, 'netgsm') !== false);
 }

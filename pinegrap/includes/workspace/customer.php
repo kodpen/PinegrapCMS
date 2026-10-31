@@ -540,6 +540,7 @@ function ws_customer_js_strings()
         'cust_cart_quotes' => lang('Open cart quotes'),
         'cust_cart_quote_new' => lang('New cart quote'),
         'cust_forms'      => lang('Form submissions'),
+        'cust_visits'     => lang('Customer visits'),
         'cust_empty'      => lang('Nothing to show for this customer yet.'),
         'cust_history'       => lang('History'),
         'cust_older'         => lang('Show older'),
@@ -925,10 +926,13 @@ function ws_customer_summary_build($rights, $data, $money, $limit = WS_CUSTOMER_
         $latest = array();
 
         foreach ($rows as $row) {
+            // Only what is named here leaves: never the link's token or its hint.
             $latest[] = array(
                 'id'          => (int) $row['id'],
+                'state'       => (string) ($row['status'] ?? 'open'),
                 'valid_until' => (int) ($row['valid_until'] ?? 0),
                 'lines'       => (int) ($row['line_count'] ?? 0),
+                'created_at'  => (int) ($row['created_at'] ?? 0),
             );
         }
 
@@ -978,8 +982,9 @@ function ws_customer_summary_build($rights, $data, $money, $limit = WS_CUSTOMER_
  * @param array $channel a ws_channels row the reader may read
  * @return array|null see ws_customer_card_build(), with cart_quote_url
  *                    (ws_customer_cart_quote_url(), '' before the cart
- *                    quote tables are there); null for a channel about
- *                    nobody, or a customer gone since
+ *                    quote tables are there) and the visits section
+ *                    (ws_customer_card_visits()) when there are any; null
+ *                    for a channel about nobody, or a customer gone since
  */
 function ws_customer_card($viewer, $channel)
 {
@@ -996,7 +1001,41 @@ function ws_customer_card($viewer, $channel)
     // add_cart_quote.php refuses to open before the tables are there.
     $card['cart_quote_url'] = (($url !== '') && pg_cart_quotes_ready()) ? $url : '';
 
+    // The visits on the Work Calendar that name the customer: on the card
+    // only, the API's summary keeps its sections.
+    $visits = ws_customer_card_visits(ws_customer_history_visit_rows($identity, 0, WS_CUSTOMER_SUMMARY_ROWS), $base);
+
+    if (!empty($visits)) {
+        $card['sections']['visits'] = $visits;
+    }
+
     return $card;
+}
+
+/**
+ * The customer visits section of the card: the latest visits that name the
+ * customer, each with its day and the Work Calendar month that opens it.
+ *
+ * @param array[] $rows ws_customer_history_visit_rows(): id, title, starts_at
+ * @param string  $base the panel's address, ending in /
+ * @return array[] id, title, date_text, url
+ */
+function ws_customer_card_visits($rows, $base)
+{
+    $out = array();
+
+    foreach ((array) $rows as $row) {
+        $at = (int) ($row['starts_at'] ?? 0);
+
+        $out[] = array(
+            'id'        => (int) $row['id'],
+            'title'     => (string) ($row['title'] ?? ''),
+            'date_text' => ws_customer_date_text($at),
+            'url'       => $base . 'workspace_calendar.php?month=' . date('Y-m', $at) . '&event=' . (int) $row['id'],
+        );
+    }
+
+    return $out;
 }
 
 /**
@@ -1341,7 +1380,7 @@ function ws_customer_sales_quote_rows($identity, $limit)
  *
  * @param array $identity ws_customer_identity()
  * @param int   $limit
- * @return array count, rows (id, valid_until, line_count)
+ * @return array count, rows (id, status, valid_until, created_at, line_count)
  */
 function ws_customer_cart_quote_rows($identity, $limit)
 {
@@ -1355,7 +1394,7 @@ function ws_customer_cart_quote_rows($identity, $limit)
 
     return array(
         'count' => (int) db_value("SELECT COUNT(*) FROM cart_quotes AS q WHERE " . $where),
-        'rows'  => (array) db_items("SELECT q.id, q.valid_until, (SELECT COUNT(*) FROM cart_quote_items AS i WHERE i.cart_quote_id = q.id) AS line_count
+        'rows'  => (array) db_items("SELECT q.id, q.status, q.valid_until, q.created_at, (SELECT COUNT(*) FROM cart_quote_items AS i WHERE i.cart_quote_id = q.id) AS line_count
             FROM cart_quotes AS q WHERE " . $where . " ORDER BY q.id DESC LIMIT " . max(1, (int) $limit)),
     );
 }

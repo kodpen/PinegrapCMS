@@ -35,13 +35,14 @@ $query = "SELECT
             orders.*,
             INET_NTOA(ip_address) AS ip_address,
             user.user_username AS username,
+            user.user_role AS username_role,
             contacts.id AS contact_id,
             contacts.first_name AS contact_first_name,
             contacts.last_name AS contact_last_name,
             contacts.email_address AS contact_email_address,
             contacts.member_id,
-            contacts.file_id as contact_file_id,
-            contacts.image AS contact_image
+            contacts.tax_number AS contact_tax_number,
+            contacts.tax_office AS contact_tax_office
          FROM orders
          LEFT JOIN user ON orders.user_id = user.user_id
          LEFT JOIN contacts ON orders.contact_id = contacts.id
@@ -79,9 +80,8 @@ $currency_code = $row['currency_code'];
 $http_referer = $row['http_referer'];
 $user_id = $row['user_id'];
 $username = $row['username'];
+$username_role = $row['username_role'];
 $contact_id = $row['contact_id'];
-$contact_image = $row['contact_image'];
-$contact_file_id = $row['contact_file_id'];
 $contact_first_name = $row['contact_first_name'];
 $contact_last_name = $row['contact_last_name'];
 $contact_email_address = $row['contact_email_address'];
@@ -105,11 +105,35 @@ $custom_field_2 = $row['custom_field_2'];
 $po_number = $row['po_number'];
 $payment_method = $row['payment_method'];
 $ip_address = $row['ip_address'];
-$source = '';
-$output_contact_image = '';
+$contact_tax_number = (string) ($row['contact_tax_number'] ?? '');
+$contact_tax_office = (string) ($row['contact_tax_office'] ?? '');
 
-// Only set when a contact image is found below, but read in both branches.
-$accent_color = '';
+// Read before $row is reused by the later queries. An order put on the
+// customer's account is stored as an offline payment, but no transfer is
+// coming. paid_at exists from 2026.4.4 on; without it the unpaid state is off.
+$order_on_account = !empty($row['erp_on_account']);
+$order_awaiting_payment = isset($row['paid_at']) && pg_order_awaiting_payment($row);
+$order_payment_pending = $order_awaiting_payment && pg_order_payment_pending($row);
+$order_cancelled_at = isset($row['cancelled_at']) ? (int) $row['cancelled_at'] : 0;
+$order_cancellation_reason = isset($row['cancellation_reason']) ? trim((string) $row['cancellation_reason']) : '';
+
+// The unpaid state and the cancellation reason beside the status line.
+$output_status_note = '';
+if ($order_awaiting_payment) {
+    if ($order_on_account) {
+        $output_status_note = ' (' . lang('On account') . ')';
+    } elseif ($order_payment_pending) {
+        $output_status_note = ' (' . lang('Payment pending on PayPal') . ')';
+    } else {
+        $output_status_note = ' (' . lang('Awaiting bank transfer') . ')';
+    }
+}
+if (($status == 'cancelled') && (($order_cancellation_reason !== '') || ($order_cancelled_at > 0))) {
+    $output_status_note .=
+        '<div>' . lang('Cancellation reason') . ': ' . (($order_cancellation_reason !== '') ? h($order_cancellation_reason) : '-')
+        . (($order_cancelled_at > 0) ? ' (' . get_absolute_time(array('timestamp' => $order_cancelled_at)) . ')' : '') . '</div>';
+}
+$source = '';
 
 // These cells are only filled in for some order/product types, but they are always printed
 // in the tables further down.
@@ -117,36 +141,6 @@ $output_custom_field_1_cell = '';
 $output_custom_field_2_cell = '';
 $output_custom_field_3_cell = '';
 $output_custom_field_4_cell = '';
-
-if($contact_file_id == 0){
-    if($contact_image){
-        $accent_color = get_dominant_area_color(FILE_DIRECTORY_PATH . '/' . $contact_image);
-        $output_contact_image = '
-        <div class="col-auto overflow-hidden pg-print-none rounded-circle bg-1" style="width:50px;height:50px;background-color:' . h($accent_color) . ';">
-            <img class="lazy object-fit-contain w-100 h-100"  src="' . OUTPUT_PATH . SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="' . PATH . h($row['image']) . '" />
-        </div>';
-    }else{
-        $output_contact_image = '
-        <div class="col-auto overflow-hidden pg-print-none rounded-circle bg-1" style="width:50px;height:50px;background-color:' . h($accent_color) . ';">
-            <img class="lazy object-fit-contain w-100 h-100"  src="' . OUTPUT_PATH . SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="' . h(function_exists('pg_avatar_for') ? pg_avatar_for($contact_first_name, $contact_last_name, '', isset($contact_id) ? $contact_id : '') : 'assets/images/person1.png') . '" />
-        </div>';
-    }
-   
-}else{
-    $query = 
-    "SELECT 
-        files.name
-    FROM files 
-    WHERE files.id = ?";
-    $result = db_q($query, array((string) $contact_file_id)) or output_error('Query failed.');
-    $file = mysqli_fetch_array($result);
-    $file_name = $file['name'];
-    $accent_color = get_dominant_area_color(FILE_DIRECTORY_PATH . '/' . $file_name);
-    $output_contact_image = '
-    <div class="col-aut overflow-hidden pg-print-none rounded-circle bg-1" style="width:50px;height:50px;background-color:' . h($accent_color) . ';">
-        <img class="lazy  object-fit-contain w-100 h-100"  src="' . OUTPUT_PATH . SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="' . PATH . h($file_name) . '" />
-    </div>';
-}
 
 if ($tracking_code or $http_referer or $referral_source_code or $utm_source) {
     $source .=
@@ -348,19 +342,6 @@ if ($surcharge > 0) {
             <span class="col text-end">' . pg_format_money($surcharge, BASE_CURRENCY_SYMBOL) . '</span>
         </div>';
 }
-//if there is installment charge and payment installment((1) is no installment)
-$output_number_of_installment_row = '';
-if(($installment_charges != 0)&&($payment_installment >= 2)){  
-    $output_number_of_installment_row =
-        '<div class="row" >
-            <span class="translateable col fg-secondary">' . lang('Number of Installments') . ':</span>
-            <span class="col">' . $payment_installment . '</span>
-        </div>
-        <div class="row" >
-            <span class="translateable col fg-secondary">' . lang('Installment Charge') . ':</span>
-            <span class="col text-end">' . pg_format_money($installment_charges, BASE_CURRENCY_SYMBOL) . '</span>
-        </div>';
-}
 $output_payment_information = '';
 // if there was a payment method, then prepare to output payment information
 if ($payment_method != '') {
@@ -430,7 +411,7 @@ if ($payment_method != '') {
                         <hr/>
                        <div class="row" >
                            <span class="translateable col fg-secondary">' . lang('Payment Method') . ':</span>
-                           <span class="col translateable text-end">' . lang($payment_method) . '</span>
+                           <span class="col translateable text-end">' . ($order_on_account ? lang('Put on account') : lang($payment_method)) . '</span>
                        </div>
                        ' . $output_credit_debit_card_information . '
                        ' . $transaction_id_row . '
@@ -450,7 +431,7 @@ if ($username != '') {
     $output_user_row =
         '<div class="row" >
             <span class="translateable col fg-secondary">' . lang('User') . ':</span>
-            <span class="col text-end"><a class="pg-link-secondary" href="edit_user.php?id=' . $user_id . '">' . h($username) . '</a></span>
+            <span class="col text-end">' . (pg_can_open_user($user, $username_role) ? '<a class="pg-link-secondary" href="edit_user.php?id=' . $user_id . '">' . h($username) . '</a>' : h($username)) . '</span>
         </div>';
 }
 $output_contact_row = '';
@@ -486,7 +467,7 @@ if ($contact_id != '') {
     $output_contact_row =
         '<div class="row" >
             <span class="translateable col fg-secondary">' . lang('Contact') . ':</span>
-            <span class="col text-end"><a class="pg-link-secondary" href="edit_contact.php?id=' . $contact_id . '">' . $output_contact . '</a></span>
+            <span class="col text-end">' . (pg_can_open_contact($user, $contact_id) ? '<a class="pg-link-secondary" href="edit_contact.php?id=' . $contact_id . '">' . $output_contact . '</a>' : $output_contact) . '</span>
         </div>';
 }
 $output_member_id_row = '';
@@ -524,7 +505,9 @@ if (AFFILIATE_PROGRAM and $affiliate_code) {
         $affiliate_name = $row['affiliate_name'];
         
         if ($affiliate_name) {
-            $output_affiliate_name = '<a href="edit_contact.php?id=' . $affiliate_contact_id . '">' . h($affiliate_name) . '</a>';
+            $output_affiliate_name = pg_can_open_contact($user, $affiliate_contact_id)
+                ? '<a href="edit_contact.php?id=' . $affiliate_contact_id . '">' . h($affiliate_name) . '</a>'
+                : h($affiliate_name);
         }
     }
     
@@ -571,6 +554,7 @@ $query = "SELECT
             address_1,
             address_2,
             city,
+            " . (pg_ship_to_district_ready() ? "ship_tos.district," : "") . "
             state,
             zip_code,
             country,
@@ -649,14 +633,11 @@ if ($ship_to_exists == true) {
         }
     }
     
-    $output_custom_field_headings = '';
-    
-    // loop through the custom field names in order to output headings for them
-    foreach ($custom_field_names as $custom_field_name) {
-        $output_custom_field_headings .= '<span class="col fg-secondary">' . h($custom_field_name) . ':</span>';
-    }
-    
     $output_colspan = 13 + count($custom_field_names);
+
+    // Read once for every recipient's card.
+    $arrival_date_names = pg_order_view_arrival_names(pg_order_view_arrival_codes($ship_tos));
+    $shipping_default_carrier = pg_shipping_default_carrier();
     
     // loop through all ship tos
     foreach ($ship_tos as $key => $recipient) {
@@ -682,6 +663,11 @@ if ($ship_to_exists == true) {
             if ($ship_tos[$key]['address_2']) {
                 $address .= $ship_tos[$key]['address_2'] . ', ';
             }
+
+            // The district, when one was typed, before the city.
+            if (!empty($ship_tos[$key]['district'])) {
+                $address .= $ship_tos[$key]['district'] . ', ';
+            }
             
             if ($ship_tos[$key]['city']) {
                 $address .= $ship_tos[$key]['city'] . ', ';
@@ -695,210 +681,85 @@ if ($ship_to_exists == true) {
                 $address .= $ship_tos[$key]['zip_code'] . ', ';
             }
             
+            // The country's name, not its code, ends the address line.
             if ($ship_tos[$key]['country']) {
-                $address .= $ship_tos[$key]['country'];
+                $address .= pg_order_view_country($ship_tos[$key]['country']);
             }
             
             $output_address_verified_check_mark = '';
-            
+
             // if the address has been verified, then prepare to output check mark
             if ($ship_tos[$key]['address_verified'] == 1) {
                 $output_address_verified_check_mark = '<img src="' . OUTPUT_PATH . SOFTWARE_DIRECTORY . '/assets/images/check_mark.gif" width="7" height="7" alt="' . h(lang('Yes')) . '" />';
             }
+
             $output_arrival_date = '';
+
             if ($ship_tos[$key]['arrival_date'] != '0000-00-00') {
-                $output_arrival_date = get_absolute_time(array('timestamp' => strtotime($ship_tos[$key]['arrival_date']), 'type' => 'date'));
+                $output_arrival_date = get_absolute_time(array('timestamp' => strtotime($ship_tos[$key]['arrival_date']), 'type' => 'date', 'format' => 'plain_text'));
             }
-            $arrival_date_code = '';
-            
-            if ($ship_tos[$key]['arrival_date_code']) {
-                $arrival_date_code = ' (' . $ship_tos[$key]['arrival_date_code'] . ')';
-            }
+
             $output_ship_date = '';
             $output_delivery_date = '';
             $output_shipping_tracking_numbers = '';
-            $output_shipping_tracking_numbers_field = '';
-            
-            // If the order is complete, then output ship date and shipping tracking numbers.
-            if ($status != 'incomplete') {
-                // If the form has not been submitted yet, and the ship date is not blank,
-                // then prefill ship date field.
 
-                $output_ship_date = prepare_form_data_for_output($ship_tos[$key]['ship_date'], 'date');
-                // If the form has not been submitted yet, and the delivery date is not blank,
-                // then prefill delivery date field.
-                if (
-                    !$liveform->field_in_session('id')
-                    and $ship_tos[$key]['delivery_date'] != '0000-00-00'
-                ) {
+            // A complete order prints its ship and delivery dates and every
+            // parcel with its carrier, as the order screen names them.
+            if ($status != 'incomplete') {
+                if (($ship_tos[$key]['ship_date'] != '') && ($ship_tos[$key]['ship_date'] != '0000-00-00')) {
+                    $output_ship_date = prepare_form_data_for_output($ship_tos[$key]['ship_date'], 'date');
+                }
+
+                if (($ship_tos[$key]['delivery_date'] != '') && ($ship_tos[$key]['delivery_date'] != '0000-00-00')) {
                     $output_delivery_date = prepare_form_data_for_output($ship_tos[$key]['delivery_date'], 'date');
                 }
-                
 
-                $query =
-                    "SELECT number
-                    FROM shipping_tracking_numbers
-                    WHERE ship_to_id = ?
-                    ORDER BY id ASC";
-                $result = db_q($query, array((string) $ship_tos[$key]['ship_to_id'])) or output_error('Query failed.');
-                $shipping_tracking_numbers = mysqli_fetch_items($result);
-                
-                // loop through the shipping tracking numbers in order to output them
-                foreach ($shipping_tracking_numbers as $shipping_tracking_number) {
-                    // if this is not the first shipping tracking number then add a comma and space for separation
-                    if ($output_shipping_tracking_numbers != '') {
-                        $output_shipping_tracking_numbers .= '<br />';
-                    }
-                    
-                    $shipping_tracking_url = get_shipping_tracking_url($shipping_tracking_number['number'],$recipient['shipping_method_code']);
-                    
-                    // if a shipping tracking url was found, then output link
-                    if ($shipping_tracking_url != '') {
-                        $output_shipping_tracking_numbers .= '<a class="pg-link-secondary pg-print-none" href="' . h($shipping_tracking_url) . '" target="_blank">' . h($shipping_tracking_number['number']) . '</a>';
-                        
-                    } 
-                }
-                
-              // if the form has not been submitted yet, then prefill tracking number field with tracking numbers
-              if ($liveform->field_in_session('id') == FALSE) {
-                $shipping_tracking_numbers_for_field = '';
-                // array_key_last() needs PHP 7.3, so find the last key once, before the loop.
-                $last_shipping_tracking_number_key = null;
+                $parcels = array();
 
-                if ($shipping_tracking_numbers) {
-                    end($shipping_tracking_numbers);
-                    $last_shipping_tracking_number_key = key($shipping_tracking_numbers);
-                    reset($shipping_tracking_numbers);
+                foreach (pg_shipment_rows($ship_tos[$key]['ship_to_id']) as $shipment_row) {
+                    $parcels[] = pg_shipment_view($shipment_row, $recipient['shipping_method_code'], $shipping_default_carrier);
                 }
 
-                // loop through the shipping tracking numbers in order to prepare value for field
-                foreach ($shipping_tracking_numbers as $shipping_tracking_number => $value) {
-                    // if this is not the first shipping tracking number then add a line break
-                    if ($shipping_tracking_numbers_for_field != '') {
-                        $shipping_tracking_numbers_for_field .= "\n";
-                    }
-                
-                    
-                    if ($shipping_tracking_number === $last_shipping_tracking_number_key) {
-                        $shipping_tracking_numbers_for_field .= $value['number'];
-                    }else{
-                        $shipping_tracking_numbers_for_field .= $value['number'] . ',';
-                    }
-                }
+                $output_shipping_tracking_numbers = pg_print_order_tracking_text($parcels);
             }
-            $output_shipping_tracking_numbers_field = $shipping_tracking_numbers_for_field;  
-                
-            }
-            // If the shipping method still exists, then show name and code and link to it.
-            if ($recipient['shipping_method_id']) {
-                $shipping_method =
-                    '<a class="pg-link-secondary" href="edit_shipping_method.php?id=' . h($recipient['shipping_method_id']) . '">' .
-                        h($recipient['shipping_method_name']) . ' (' . h($recipient['shipping_method_code']) . ')' .
-                    '</a>';
-            // Otherwise the shipping method no longer exists, so just show code.
-            } else {
-                $shipping_method = h($recipient['shipping_method_code']);
-            }
-            $packages = '';
-            if ($ship_tos[$key]['packages']) {
-                $packages =
-                    '<div class="row my-3">
-                        <span class="col fg-secondary">' . lang('Packages') . ':</span>
-                        <span class="col text-end">' . h($ship_tos[$key]['packages']) . '</span>
-                    </div>';
-                }
-            
-            $output_custom_field_cells = '';
-            
-            // loop through the custom field names in order to output cells for values
+
+            $shipping_method = $recipient['shipping_method_name']
+                ? $recipient['shipping_method_name'] . ' (' . $recipient['shipping_method_code'] . ')'
+                : $recipient['shipping_method_code'];
+
+            $shipping_card_rows = array(
+                lang('Ship to Name')      => h($ship_tos[$key]['ship_to_name']),
+                lang('Full Name')         => h(trim($name)),
+                lang('Company')           => h($ship_tos[$key]['company']),
+                lang('Address')           => h(rtrim($address, ', ')),
+                lang('Address Type')      => pg_order_view_address_type($ship_tos[$key]['address_type']),
+                lang('Address Verified')  => $output_address_verified_check_mark,
+                lang('Phone')             => h($ship_tos[$key]['phone_number']),
+                lang('Req. Arrival Date') => pg_order_view_arrival_text($output_arrival_date, $ship_tos[$key]['arrival_date_code'], $arrival_date_names),
+                lang('Ship Date')         => $output_ship_date,
+                lang('Delivery Date')     => $output_delivery_date,
+                lang('Shipping Method')   => h($shipping_method),
+                lang('Tracking Numbers')  => $output_shipping_tracking_numbers,
+                lang('Shipping Cost')     => ($ship_tos[$key]['shipping_cost'] > 0) ? pg_format_money($ship_tos[$key]['shipping_cost'] / 100, BASE_CURRENCY_SYMBOL) : '',
+                lang('Packages')          => h($ship_tos[$key]['packages']),
+            );
+
+            // The custom shipping form fields this recipient answered.
             foreach ($custom_field_names as $custom_field_name) {
-                $data = $ship_tos_for_custom_fields[$ship_tos[$key]['ship_to_id']][$custom_field_name]['data'];
-                $type = $ship_tos_for_custom_fields[$ship_tos[$key]['ship_to_id']][$custom_field_name]['type'];
-                
-                // assume that we need to prepare data for HTML until we find out otherwise
-                $prepare_for_html = TRUE;
-                
-                // if type is html, then don't prepare data for html, because data is already html
-                if ($type == 'html') {
-                    $prepare_for_html = FALSE;
+                if (!isset($ship_tos_for_custom_fields[$ship_tos[$key]['ship_to_id']][$custom_field_name])) {
+                    continue;
                 }
-                
-                $output_custom_field_cells .= '<span class="col text-end order_custom_field">' . prepare_form_data_for_output($data, $type, $prepare_for_html) . '</span>';
+
+                $field = $ship_tos_for_custom_fields[$ship_tos[$key]['ship_to_id']][$custom_field_name];
+
+                // An html field's data is already markup.
+                $shipping_card_rows[$custom_field_name] = prepare_form_data_for_output($field['data'], $field['type'], $field['type'] != 'html');
             }
-            
-            $output_shipping_details =
-                '<div class="col-4">
-                    <div class="card border-0 bg-transparent">
-                        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                            ' . lang('Shipping Information') . '
-                            
-                        </div>
-                        <div class="card-body">
-                            <div class="row">
-                                <div class="col-12">
-                                    <div class="row">
-                                        <span class="translateable col fg-secondary">' . lang('Ship to Name') . ':</span>
-                                        <span class="col text-end">' . h($ship_tos[$key]['ship_to_name']) . '</span>
-                                    </div>
-                                    <div class="row">
-                                        <span class="translateable col fg-secondary">' . lang('Full Name') . ':</span>
-                                        <span class="col text-end">' . h($name) . '</span>
-                                    </div>
-                                    <div class="row">
-                                        <span class="translateable col fg-secondary">' . lang('Company') . ':</span>
-                                        <span class="col text-end">' . h($ship_tos[$key]['company']) . '</span>
-                                    </div>
-                                    <div class="row">
-                                        <span class="translateable col-auto fg-secondary">' . lang('Address') . ':</span>
-                                        <span class="col offset-1 " style="font-size:110%;font-weight:500">' . h($address) . '</span>
-                                    </div>
-                                    <div class="row">
-                                        <span class="translateable col fg-secondary">' . lang('Address Type') . ':</span>
-                                        <span class="col text-end translateable">' . pg_order_view_address_type($ship_tos[$key]['address_type']) . '</span>
-                                    </div>
-                                    <div class="row">
-                                        <span class="translateable col fg-secondary">' . lang('Address Verified') . ':</span>
-                                        <span class="col text-end ">' . $output_address_verified_check_mark . '</span>
-                                    </div>
-                                    <div class="row">
-                                        <span class="translateable col fg-secondary">' . lang('Phone') . ':</span>
-                                        <span class="col text-end ">' . h($ship_tos[$key]['phone_number']) . '</span>
-                                    </div>
-                                </div>
-                                <div class="col-12">
-                                    <div class="row mb-3">
-                                        <span class="translateable col fg-secondary">' . lang('Req. Arrival Date') . ':</span>
-                                        <span class="col text-end ">' . $output_arrival_date . $arrival_date_code . '</span>
-                                    </div>
-                                    <div class="row pt-1 mb-5 justify-content-center">
-                                        
-                                            <span class="col fg-secondary">' . lang('Ship Date') . ' - ' . lang('Delivery Date') . ':</span>
-                                            <span class="col-auto text-end">' . $output_ship_date . ' - ' . $output_delivery_date . '</span>
-                                    </div>
-                                </div>
-                                <div class="col-12 pt-7" id="trackin_number_from_view_orders">
-                                    <div class="row">
-                                        <span class="col fg-secondary">' . lang('Shipping Method') . ':</span>
-                                        <span class="col-auto badge">' . $shipping_method . '</span>
-                                    </div>
-                                    <div class="row">
-                                        <span class="col fg-secondary">' . lang('Tracking Numbers') . ':</span>
-                                        <span class="col-auto text-end">' . $output_shipping_tracking_numbers . $output_shipping_tracking_numbers_field . '</span>
-                                    </div>
-                                    <div class="row my-3">
-                                        <span class="col fg-secondary">' . lang('Shipping Cost') . ':</span>
-                                        <span class="col text-end">' . pg_format_money($ship_tos[$key]['shipping_cost'] / 100, BASE_CURRENCY_SYMBOL) . '</span>
-                                    </div>
-                                    ' . $packages . '
-                                    <div class="row">
-                                        ' . $output_custom_field_headings . '
-                                        ' . $output_custom_field_cells . '
-                                    </div>
-                                </div> 
-                            </div>
-                        </div>
-                    </div>
-                </div>';
+
+            $output_order_details .=
+                '<tr>
+                    <td colspan="' . $output_colspan . '" style="border: 0">' . pg_print_order_shipping_card($shipping_card_rows) . '</td>
+                </tr>';
         }
         
         $product_list_style = ' ';
@@ -1067,7 +928,7 @@ if ($ship_to_exists == true) {
                 
                 // if the number of payments is set to 0, then change value to [no limit]
                 if ($recurring_number_of_payments == 0) {
-                    $output_recurring_number_of_payments = '[no limit]';
+                    $output_recurring_number_of_payments = lang('No limit');
                     
                 // else the number of payments is greater than 0, so show value
                 } else {
@@ -1434,7 +1295,7 @@ if ($ship_to_exists == true) {
             
             // if the number of payments is set to 0, then change value to [no limit]
             if ($recurring_number_of_payments == 0) {
-                $output_recurring_number_of_payments = '[no limit]';
+                $output_recurring_number_of_payments = lang('No limit');
                 
             // else the number of payments is greater than 0, so show value
             } else {
@@ -1588,7 +1449,7 @@ if ($ship_to_exists == true) {
                 
                 // if the legend content is not blank, then output a legend
                 if ($output_legend_content != '') {
-                    $output_legend = '<div class="card-header bg-reset border-0 text-uppercase h5 fg-secondary fw-bold">' . $output_legend_content . '</legend>';
+                    $output_legend = '<div class="card-header bg-reset border-0 text-uppercase h5 fg-secondary fw-bold">' . $output_legend_content . '</div>';
                 }
                 
                 $output_forms .=
@@ -1654,24 +1515,8 @@ if ($ship_to_exists == true) {
                 ' . $output_form_row;
     }
 }
-// if multi currency is enabled, output miscellaneous fieldset with currency information
-if (ECOMMERCE_MULTICURRENCY === true) {
-    $currency_name_and_code = '';
-    
-    // if there is a currency code, then output it
-    if ($currency_code != '') {
-        $currency_name_and_code = get_currency_name_from_code($currency_code) . ' (' . $currency_code . ')';
-    }
-    $output_currency_code_row =
-    '<div class="row" >
-        <span class=" col fg-secondary">' . lang('Currency') . ':</span>
-        <span class="col text-end">' . h($currency_name_and_code) . '</span>
-    </div>';
-    
-} else {
-    $output_currency_code_row = '';
-}
 $output_applied_gift_cards = '';
+$output_applied_gift_card_rows = '';
 // if there is a gift card discount and there is at least one applied gift card, then prepare to output applied gift cards
 // this double check is not redundant, because there can be a situation where there is a discount with no gift cards if there was an error when the gift card transaction was submitted
 if (($gift_card_discount > 0)  && (count($applied_gift_cards) > 0)) {
@@ -1691,10 +1536,11 @@ if (($gift_card_discount > 0)  && (count($applied_gift_cards) > 0)) {
                 <span class="translateable col fg-secondary">' . lang('Amount') . ':</span>
                 <span class="col text-end">' . pg_format_money($applied_gift_card['amount'] / 100, BASE_CURRENCY_SYMBOL) . '</span>
             </div>
-            <div class="row" >
+            ' . (($applied_gift_card['givex'] != 0) ?
+            '<div class="row" >
                 <span class="translateable col fg-secondary">' . lang('Givex Auth') . ' #:</span>
                 <span class="col text-end">' . h($applied_gift_card['authorization_number']) . '</span>
-            </div>
+            </div>' : '') . '
             <div class="row" >
                 <span class="translateable col fg-secondary">' . lang('Remaining Balance') . ':</span>
                 <span class="col text-end">' . pg_format_money($applied_gift_card['new_balance'] / 100, BASE_CURRENCY_SYMBOL) . '</span>
@@ -1704,6 +1550,7 @@ if (($gift_card_discount > 0)  && (count($applied_gift_cards) > 0)) {
     $output_applied_gift_cards =
         '<div class="card mt-5 bg-transparent border-0">
                 <div class="card-body">
+                    <div class="ord-section-title">' . lang('Applied Gift Cards') . '</div>
                     ' . $output_applied_gift_card_rows . '
                 </div>
             </div>';
@@ -1732,9 +1579,17 @@ if ($billing_address_2) $_addr_parts[] = h($billing_address_2);
 $_cs = trim(h($billing_city) . ($billing_state ? ' / ' . h($billing_state) : ''));
 if ($_cs) $_addr_parts[] = $_cs;
 if ($billing_zip_code) $_addr_parts[] = h($billing_zip_code);
-if ($billing_country)  $_addr_parts[] = h($billing_country);
+if ($billing_country)  $_addr_parts[] = h(pg_order_view_country($billing_country));
 $billing_address_inline = implode(', ', $_addr_parts);
 unset($_addr_parts, $_cs);
+
+// The header's payment block: method, offer and reference codes, currency.
+// The codes print for a free order too, where the offer code made it free.
+$output_print_payment =
+    ($payment_method ? '<div><strong>' . ($order_on_account ? lang('Put on account') : lang(h($payment_method))) . '</strong></div>' : '') .
+    ($special_offer_code ? '<div>' . lang('Special Offer Code') . ': ' . h($special_offer_code) . '</div>' : '') .
+    ($reference_code ? '<div>' . lang('Reference Code') . ': ' . h($reference_code) . '</div>' : '') .
+    ((ECOMMERCE_MULTICURRENCY === true) && ($currency_code != '') ? '<div>' . lang('Currency') . ': ' . h(get_currency_name_from_code($currency_code)) . ' (' . h($currency_code) . ')</div>' : '');
 
 // Build print-friendly shipping section
 $output_print_shipping = '';
@@ -1745,9 +1600,10 @@ if ($ship_to_exists) {
             $st_addr = '';
             if ($st['address_1']) $st_addr .= h($st['address_1']) . '<br/>';
             if ($st['address_2']) $st_addr .= h($st['address_2']) . '<br/>';
+            if (!empty($st['district'])) $st_addr .= h($st['district']) . '<br/>';
             $_st_cs = trim(h($st['city']) . ($st['state'] ? ', ' . h($st['state']) : '') . ' ' . h($st['zip_code']));
             if ($_st_cs) $st_addr .= $_st_cs . '<br/>';
-            if ($st['country']) $st_addr .= h($st['country']);
+            if ($st['country']) $st_addr .= h(pg_order_view_country($st['country']));
             $st_method = $st['shipping_method_name'] ? $st['shipping_method_name'] : $st['shipping_method_code'];
             if ($st_name) $output_print_shipping .= '<div><strong>' . $st_name . '</strong></div>';
             if ($st['company']) $output_print_shipping .= '<div>' . h($st['company']) . '</div>';
@@ -1825,7 +1681,7 @@ legend { font-size: .9em; font-weight: bold; }
             <td>
                 <h1>' . lang('Order') . ' #' . h($order_number) . '</h1>
                 <div>' . lang('Date') . ': ' . $order_date . '</div>
-                <div>' . lang('Status') . ': ' . lang(ucwords($status)) . '</div>
+                <div>' . lang('Status') . ': ' . lang(ucwords($status)) . $output_status_note . '</div>
             </td>
             <td style="text-align:right;vertical-align:top">
                 <strong>' . h(ORGANIZATION_NAME) . '</strong><br/>
@@ -1851,6 +1707,8 @@ legend { font-size: .9em; font-weight: bold; }
                 ' . ($po_number ? '<div style="margin-top:3px">' . lang('PO Number') . ': ' . h($po_number) . '</div>' : '') . '
                 ' . ($custom_field_1 ? '<div>' . lang('Custom Field') . ' #1: ' . h($custom_field_1) . '</div>' : '') . '
                 ' . ($custom_field_2 ? '<div>' . lang('Custom Field') . ' #2: ' . h($custom_field_2) . '</div>' : '') . '
+                ' . ($contact_tax_number !== '' ? '<div style="margin-top:3px">VKN / TCKN: ' . h($contact_tax_number) . '</div>' : '') . '
+                ' . ($contact_tax_office !== '' ? '<div>' . lang('Tax Office') . ': ' . h($contact_tax_office) . '</div>' : '') . '
             </td>
             ' . ($ship_to_exists && $output_print_shipping !== '' ?
             '<td style="width:33%;padding-right:1.5em;vertical-align:top">
@@ -1865,13 +1723,10 @@ legend { font-size: .9em; font-weight: bold; }
                 $output_member_id_row .
                 $output_ip_address_row . '
                 </div>' .
-                ($payment_method ? '
+                ($output_print_payment !== '' ? '
                 <div style="margin-top:6px">
-                    <div class="ord-section-title">' . lang('Payment') . '</div>
-                    <div><strong>' . lang(h($payment_method)) . '</strong></div>' .
-                    ($special_offer_code ? '<div>' . lang('Special Offer Code') . ': ' . h($special_offer_code) . '</div>' : '') .
-                    ($reference_code ? '<div>' . lang('Reference Code') . ': ' . h($reference_code) . '</div>' : '') .
-                    ($output_currency_code_row ? '<div>' . lang('Currency') . ': ' . h(get_currency_name_from_code($currency_code)) . ' (' . h($currency_code) . ')</div>' : '') . '
+                    <div class="ord-section-title">' . lang('Payment') . '</div>' .
+                    $output_print_payment . '
                 </div>' : '') . '
             </td>
         </tr>
@@ -1889,7 +1744,7 @@ legend { font-size: .9em; font-weight: bold; }
         ' . ($shipping > 0 ? '<tr><td style="padding:.15em .5em">' . lang('Shipping') . '</td><td style="padding:.15em .5em;text-align:right">' . pg_format_money($shipping, BASE_CURRENCY_SYMBOL) . '</td></tr>' : '') . '
         ' . ($gift_card_discount > 0 ? '<tr><td style="padding:.15em .5em">' . lang('Gift Card') . '</td><td style="padding:.15em .5em;text-align:right">-' . pg_format_money($gift_card_discount, BASE_CURRENCY_SYMBOL) . '</td></tr>' : '') . '
         ' . ($surcharge > 0 ? '<tr><td style="padding:.15em .5em">' . lang('Surcharge') . '</td><td style="padding:.15em .5em;text-align:right">' . pg_format_money($surcharge, BASE_CURRENCY_SYMBOL) . '</td></tr>' : '') . '
-        ' . ($installment_charges > 0 && $payment_installment >= 2 ? '<tr><td style="padding:.15em .5em">' . lang('Installment Charge') . '</td><td style="padding:.15em .5em;text-align:right">' . pg_format_money($installment_charges, BASE_CURRENCY_SYMBOL) . '</td></tr>' : '') . '
+        ' . ($installment_charges > 0 && $payment_installment >= 2 ? '<tr><td style="padding:.15em .5em">' . lang('Number of Installments') . '</td><td style="padding:.15em .5em;text-align:right">' . (int) $payment_installment . '</td></tr><tr><td style="padding:.15em .5em">' . lang('Installment Charge') . '</td><td style="padding:.15em .5em;text-align:right">' . pg_format_money($installment_charges, BASE_CURRENCY_SYMBOL) . '</td></tr>' : '') . '
         <tr style="border-top:2px solid #333"><td style="padding:.2em .5em"><strong>' . lang('Total') . '</strong></td><td style="padding:.2em .5em;text-align:right"><strong>' . prepare_amount($total) . '</strong></td></tr>
         ' . ($refunded_amount_cents > 0 ?
             '<tr><td style="padding:.15em .5em;color:#dc3545">' . lang('Total Refunded') . '</td><td style="padding:.15em .5em;text-align:right;color:#dc3545">-' . pg_format_money($refunded_amount_cents / 100, BASE_CURRENCY_SYMBOL) . '</td></tr>

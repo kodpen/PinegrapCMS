@@ -68,13 +68,21 @@ $raw_request = @file_get_contents('php://input');
 
 $request = json_decode($raw_request, true);
 
+// A file sent as a form part (the Workspace screen's attachments): the body
+// is not in php://input, the fields are the request.
+$request_multipart = (isset($_SERVER['CONTENT_TYPE']) && (stripos($_SERVER['CONTENT_TYPE'], 'multipart/form-data') !== false));
+
+if ($request_multipart && !empty($_POST)) {
+    $request = $_POST;
+}
+
 // PHP throws the whole body away when the request is larger than post_max_size, and the script then
 // runs with nothing in it.  Without this the answer would be "Invalid token", which sends everybody
 // looking in the wrong place; the real reason is the size of the request.  We cannot look at
 // CONTENT_LENGTH here, because PHP sets it to zero when it discards the body, so we go by the fact
-// that a json request without a body never happens on purpose.
+// that a json or form request without a body never happens on purpose.
 if (($request === null) && ($raw_request === '') && ($_SERVER['REQUEST_METHOD'] == 'POST') &&
-    (isset($_SERVER['CONTENT_TYPE'])) && (stripos($_SERVER['CONTENT_TYPE'], 'json') !== false)) {
+    (isset($_SERVER['CONTENT_TYPE'])) && ((stripos($_SERVER['CONTENT_TYPE'], 'json') !== false) || $request_multipart)) {
 
     header('Content-Type: application/json');
 
@@ -173,10 +181,7 @@ if ($panel_gate !== 'exempt') {
 
     // If a user was not found then respond with an error.
     if (!USER_LOGGED_IN) {
-        respond(array(
-            'status' => 'error',
-            'message' => 'Invalid login.'
-        ));
+        respond(panel_login_refusal());
     }
 
     if ($panel_gate === 'role') {
@@ -184,7 +189,7 @@ if ($panel_gate !== 'exempt') {
         if (USER_ROLE > 1) {
             respond(array(
                 'status' => 'error',
-                'message' => 'The User must have a Designer or Administrator role.'
+                'message' => lang('The User must have a Designer or Administrator role.')
             ));
         }
     }
@@ -201,6 +206,27 @@ function respond($response)
 {
     echo encode_json($response);
     exit;
+}
+
+// The answer to a request that reached a session check without a signed-in
+// user. A request that sent a user name and password had a wrong one; any
+// other request comes from a panel tab whose session ended (signed out
+// elsewhere, ended from the Sessions screen, or timed out), so it is told to
+// reload and sign in again. The exempt handlers in includes/panel/ use it too.
+function panel_login_refusal()
+{
+    if (defined('API_USERNAME')) {
+        return array(
+            'status' => 'error',
+            'message' => lang('Invalid login.')
+        );
+    }
+
+    return array(
+        'status' => 'error',
+        'code' => 'session',
+        'message' => lang('Your session has expired. Reload the page and sign in again.')
+    );
 }
 
 // A token is required to be passed in the request for session login requests
@@ -238,9 +264,11 @@ function validate_token()
         || (!is_string($token))
         || (!hash_equals($session_token, $token))
     ) {
+        // Most often a page opened before the current sign-in: its token
+        // belongs to an earlier session.
         respond(array(
             'status' => 'error',
-            'message' => 'Invalid token.'
+            'message' => lang('Your session expired. Reload the page and try again.')
         ));
     }
 }

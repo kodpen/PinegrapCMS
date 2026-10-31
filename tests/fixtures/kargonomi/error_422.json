@@ -1,0 +1,8 @@
+{
+    "message": "Alıcının telefon numarası 10 karakter olmalıdır.",
+    "errors": {
+        "shipment.buyer_phone": [
+            "Alıcının telefon numarası 10 karakter olmalıdır."
+        ]
+    }
+}

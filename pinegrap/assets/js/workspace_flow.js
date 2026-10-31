@@ -65,7 +65,7 @@
     var BOX_W = 208;
     var BOX_H = 80;
     // The label of each kind of template setting (ws_flow_template_setting_types()).
-    var SETTINGS = { channel: 'fl_tpl_set_channel', person: 'fl_tpl_set_person', time: 'fl_tpl_set_time', url: 'fl_tpl_set_url', address: 'fl_tpl_set_address' };
+    var SETTINGS = { channel: 'fl_tpl_set_channel', person: 'fl_tpl_set_person', time: 'fl_tpl_set_time', url: 'fl_tpl_set_url', address: 'fl_tpl_set_address', table: 'fl_tpl_set_table' };
     var ZOOM_MIN = 0.25;
     var ZOOM_MAX = 2;
     var SAVE_DELAY = 1500;
@@ -78,6 +78,10 @@
     // an arrow-key move) folds into that step.
     var HISTORY_MAX = 50;
     var HISTORY_FOLD = 1000;
+    // While a box's settings are typed in, the data threads, the outline's
+    // reads and the undo step wait until no key came for SETTLE_DELAY ms
+    // (settle()): in a big flow each of them takes longer than a keystroke.
+    var SETTLE_DELAY = 200;
 
     // An open run is read again after POLL_FIRST ms, then each look that
     // finds nothing new waits POLL_GROW times longer, up to POLL_MAX; a
@@ -122,6 +126,7 @@
         event: { name: 'fl_kind_event', group: 'start', into: false, out: ['next'] },
         join: { name: 'fl_kind_join', group: 'start', into: false, out: ['next'] },
         row: { name: 'fl_kind_row', group: 'start', into: false, out: ['next'] },
+        no_order: { name: 'fl_kind_no_order', group: 'start', into: false, out: ['next'] },
         task: { name: 'fl_kind_task', group: 'people', into: true, out: ['done', 'cancelled', 'timeout'] },
         post: { name: 'fl_kind_post', group: 'message', into: true, out: ['done', 'failed'] },
         email: { name: 'fl_kind_email', group: 'message', into: true, out: ['done', 'failed'] },
@@ -136,11 +141,17 @@
         start_flow: { name: 'fl_kind_start_flow', group: 'system', into: true, out: ['done', 'failed'] },
         change: { name: 'fl_kind_change', group: 'system', into: true, out: ['done', 'failed'] },
         lead: { name: 'fl_kind_lead', group: 'people', into: true, out: ['done', 'failed'] },
-        mcp: { name: 'fl_kind_mcp', group: 'system', into: true, out: ['done', 'failed'] },
+        mcp: { name: 'fl_kind_mcp', group: 'system', into: true, out: ['done', 'failed', 'rejected', 'expired', 'withdrawn'] },
+        row_add: { name: 'fl_kind_row_add', group: 'system', into: true, out: ['done', 'failed'] },
+        row_set: { name: 'fl_kind_row_set', group: 'system', into: true, out: ['done', 'failed'] },
         approval: { name: 'fl_kind_approval', group: 'people', into: true, out: ['approved', 'rejected', 'expired', 'withdrawn', 'failed'] },
         condition: { name: 'fl_kind_condition', group: 'logic', into: true, out: ['yes', 'no'] },
         delay: { name: 'fl_kind_delay', group: 'logic', into: true, out: ['done'] },
         end: { name: 'fl_kind_end', group: 'logic', into: true, out: [] },
+        // A loop: the boxes the each arrow of a For each box leads into run
+        // once per item, up to its End for each box (`loop` as the server's).
+        for_each: { name: 'fl_kind_for_each', group: 'logic', into: true, out: ['each', 'failed'], loop: 'start' },
+        for_each_end: { name: 'fl_kind_for_each_end', group: 'logic', into: true, out: ['done'], loop: 'end' },
         // A value box: no arrows, its values reach the boxes through threads.
         constants: { name: 'fl_kind_constants', group: 'values', into: false, out: [], pure: true },
         value: { name: 'fl_kind_value', group: 'values', into: false, out: [], pure: true }
@@ -158,6 +169,7 @@
         expired: 'fl_on_expired',
         withdrawn: 'fl_on_withdrawn',
         timeout: 'fl_on_timeout',
+        each: 'fl_on_each',
         always: 'fl_on_always'
     };
 
@@ -175,9 +187,12 @@
         ['event', 'fl_kind_event'],
         ['join', 'fl_kind_join'],
         ['row', 'fl_kind_row'],
+        ['no_order', 'fl_kind_no_order'],
         ['task', 'fl_add_task'],
         ['condition', 'fl_kind_condition'],
         ['delay', 'fl_kind_delay'],
+        ['for_each', 'fl_kind_for_each'],
+        ['for_each_end', 'fl_kind_for_each_end'],
         ['post', 'fl_add_post'],
         ['email', 'fl_add_email'],
         ['notify', 'fl_kind_notify'],
@@ -192,6 +207,8 @@
         ['change', 'fl_kind_change'],
         ['lead', 'fl_kind_lead'],
         ['mcp', 'fl_kind_mcp'],
+        ['row_add', 'fl_kind_row_add'],
+        ['row_set', 'fl_kind_row_set'],
         ['approval', 'fl_kind_approval'],
         ['constants', 'fl_kind_constants'],
         ['value', 'fl_kind_value'],
@@ -248,6 +265,9 @@
         history: null,      // the open flow's steps for undo and redo (historyOf())
         saving: null,
         saveTimer: 0,
+        settleTimer: 0,     // settle() once the typing pauses
+        settleHistory: false,
+        settleThreads: false,
         arriving: 0,        // the timer that opens a placed template's setup panel
         saveError: '',
         conflict: '',
@@ -280,7 +300,10 @@
         // A patch of Pinegrap AI opened onto the flow (ws_flow_ai_marks()):
         // { change, boxes: { id: 'added' | 'changed' }, order: [id] }, null
         // when none or the viewer hid its marks.
-        marks: null
+        marks: null,
+        // A flow Pinegrap AI just drafted from a sentence (sketchCard()):
+        // { flow, notes }, null once hidden or another flow is shown.
+        sketch: null
     };
 
     var ui = {};
@@ -329,8 +352,41 @@
         return (BOOT.people || []).filter(function (member) { return member.id === id; })[0] || null;
     }
 
-    function titleOf(node) {
+    // The title as written: a task's, a wait-for-task's and an approval's
+    // from its settings, which may hold values ({{node.<id>.<field>}}).
+    function rawTitle(node) {
         return ((node.kind === 'task') || (node.kind === 'task_open') || (node.kind === 'approval')) ? (node.config.title || node.label || '') : (node.label || '');
+    }
+
+    // The title as the canvas, the outline, the Connect to lists and a run
+    // name the box: each value as the value picker names it (the box giving
+    // it › the value), else, for a value no box of the flow gives, the
+    // box's kind name in place of the whole title.
+    function titleOf(node) {
+        var title = rawTitle(node);
+
+        return (title.indexOf('{{') === -1) ? title : (namedTitle(title) || t(kindOf(node).name));
+    }
+
+    // A title's values by name, '' when one of them is given by no box. The
+    // box giving a value is named by its own title only when that holds no
+    // value, so two titles naming each other's values read each other once.
+    function namedTitle(title) {
+        var named = true;
+        var out = title.replace(VALUE_TOKEN, function (token, id) {
+            var from = id ? nodeById(id) : state.graph.nodes.filter(function (other) { return !kindOf(other).into && !kindOf(other).pure; })[0];
+            var value = from ? boxValues(from).filter(function (item) { return item.token === tokenBare(token); })[0] : null;
+            var own = from ? rawTitle(from) : '';
+
+            if (!value) {
+                named = false;
+                return token;
+            }
+
+            return '[' + (((own === '') || (own.indexOf('{{') !== -1)) ? t(kindOf(from).name) : own) + ' › ' + value.label + ']';
+        });
+
+        return named ? out : '';
     }
 
     function nameOf(node) {
@@ -540,6 +596,7 @@
             repeats: steps.repeats || {},
             events: steps.events || null,
             tables: steps.tables || [],
+            no_order: !!steps.no_order,
             mcp: steps.mcp || []
         };
     }
@@ -635,6 +692,16 @@
             return delayText(config);
         }
 
+        if (node.kind === 'for_each') {
+            return config.list ? valueLabel(node, config.list) : t('fl_loop_no_list');
+        }
+
+        if (node.kind === 'for_each_end') {
+            var looped = nodeById(config.for_each || '');
+
+            return (looped && (looped.kind === 'for_each')) ? t('fl_loop_end_meta', nameOf(looped)) : t('fl_loop_pick');
+        }
+
         if (node.kind === 'approval') {
             var asked = (BOOT.channels || []).filter(function (item) { return item.id === config.channel_id; })[0];
 
@@ -664,6 +731,14 @@
             return rowMeta(config);
         }
 
+        if (node.kind === 'no_order') {
+            return t('fl_no_order_meta', config.days || 30);
+        }
+
+        if ((node.kind === 'row_add') || (node.kind === 'row_set')) {
+            return rowWriteMeta(node);
+        }
+
         if (node.kind === 'join') {
             var joined = (BOOT.channels || []).filter(function (item) { return item.id === config.channel_id; })[0];
 
@@ -684,7 +759,20 @@
                 return t('fl_mcp_none');
             }
 
-            return (called ? '@' + called.alias : '#' + config.server_id) + (config.tool ? ' · ' + config.tool : '');
+            var where = called ? '@' + called.alias : '#' + config.server_id;
+
+            if (!config.tool) {
+                return where;
+            }
+
+            if (!mcpToolAsks(config)) {
+                return where + ' · ' + config.tool;
+            }
+
+            // A tool that asks first names the channel its owner is asked in.
+            var room = (BOOT.channels || []).filter(function (item) { return item.id === config.channel_id; })[0];
+
+            return where + ' · ' + config.tool + ' · ' + (room ? t('fl_post_meta', room.name) : t('fl_approval_no_channel'));
         }
 
         if ((node.kind === 'webhook') || (node.kind === 'web_check')) {
@@ -767,6 +855,11 @@
         ui.marksBox = el('div', 'wsf-ai-marks d-none');
         ui.marksBox.setAttribute('role', 'region');
         ui.marksBox.setAttribute('aria-label', t('fl_ai_title'));
+        // A flow Pinegrap AI drafted from a sentence: check it before
+        // publishing, and the model's notes.
+        ui.sketchBox = el('div', 'wsf-ai-marks wsf-ai-sketch d-none');
+        ui.sketchBox.setAttribute('role', 'region');
+        ui.sketchBox.setAttribute('aria-label', t('fl_ai_sketch_region'));
         ui.conflictBox = el('div', 'alert theme-warning d-flex flex-wrap align-items-center gap-3 py-3 d-none');
         // While a run is shown: which, and the way back to the flow.
         ui.runBox = el('div', 'wsf-run-bar d-none');
@@ -822,7 +915,7 @@
                 return;
             }
 
-            var control = K.button('btn btn-sm btn-ghost', '', item[0], t(item[1]));
+            var control = K.button('btn btn-sm btn-text theme-secondary', '', item[0], t(item[1]));
             control.addEventListener('click', item[2]);
             ui.zoom.appendChild(control);
         });
@@ -862,6 +955,7 @@
         root.appendChild(ui.runBox);
         root.appendChild(ui.problemBox);
         root.appendChild(ui.marksBox);
+        root.appendChild(ui.sketchBox);
         root.appendChild(ui.flows);
         root.appendChild(ui.app);
         root.appendChild(ui.live);
@@ -1302,6 +1396,7 @@
         ui.scheduled.classList.add('d-none');
         ui.gallery.classList.add('d-none');
         ui.problemBox.classList.add('d-none');
+        ui.sketchBox.classList.add('d-none');
         ui.app.classList.add('wsf-nothing');
         ui.app.classList.add('wsf-no-palette');
         K.clear(ui.side);
@@ -1365,7 +1460,7 @@
             ui.gallery.classList.remove('d-none');
 
             if (into) {
-                var back = K.button('btn btn-sm btn-ghost', t('fl_tpl_back'), 'bi-arrow-left');
+                var back = K.button('btn btn-sm btn-text theme-secondary', t('fl_tpl_back'), 'bi-arrow-left');
 
                 back.setAttribute('data-refocus', 'tpl-back');
                 back.addEventListener('click', function () {
@@ -1385,6 +1480,11 @@
                 empty.appendChild(el('span', 'wsf-start-help', t('fl_tpl_empty_help')));
                 empty.addEventListener('click', createFlow);
                 starts.appendChild(empty);
+
+                if (FL.ai_sketch) {
+                    starts.appendChild(sketchCard());
+                }
+
                 ui.gallery.appendChild(starts);
             }
 
@@ -1408,6 +1508,95 @@
 
             refocus();
         }).catch(K.fail);
+    }
+
+    // "Describe it to AI": one sentence, and Pinegrap AI drafts a new flow
+    // of the person (ws_flow_ai_sketch) that opens on the canvas with what
+    // is left to fix and the model's notes. Never published here: that
+    // stays the person's, on the canvas.
+    function sketchCard() {
+        var card = el('form', 'wsf-start-card wsf-start-ai');
+        var id = 'wsf-f' + (++uid);
+        var label = el('label', 'wsf-start-title', t('fl_ai_sketch'));
+        var help = el('span', 'wsf-start-help', t('fl_ai_sketch_help'));
+        var input = el('input', 'form-control form-control-sm');
+        var go = K.button('btn btn-sm btn-solid theme-primary rounded-pill px-5 align-self-start', t('fl_ai_sketch_go'), 'bi-stars');
+        var status = el('div', 'wsf-start-help');
+
+        card.noValidate = true;
+        card.appendChild(K.icon('bi-stars'));
+        label.htmlFor = id;
+        input.id = id;
+        input.type = 'text';
+        input.maxLength = FL.ai_sketch_max || 600;
+        input.placeholder = t('fl_ai_sketch_example');
+        input.autocomplete = 'off';
+        input.setAttribute('data-refocus', 'tpl-ai');
+        help.id = id + '-help';
+        status.id = id + '-status';
+        status.setAttribute('role', 'status');
+        input.setAttribute('aria-describedby', help.id + ' ' + status.id);
+        go.type = 'submit';
+
+        var say = function (text, wrong) {
+            status.className = 'wsf-start-help' + (wrong ? ' fg-danger' : '');
+            status.textContent = text;
+
+            if (wrong) {
+                input.setAttribute('aria-invalid', 'true');
+            } else {
+                input.removeAttribute('aria-invalid');
+            }
+        };
+
+        card.addEventListener('submit', function (event) {
+            event.preventDefault();
+
+            var sentence = input.value.trim();
+
+            if (go.disabled) {
+                return;
+            }
+
+            if (!sentence) {
+                say(t('fl_ai_sketch_empty'), true);
+                input.focus();
+                return;
+            }
+
+            go.disabled = true;
+            input.readOnly = true;
+            card.setAttribute('aria-busy', 'true');
+            say(t('fl_ai_sketch_working'), false);
+
+            K.api('ws_flow_ai_sketch', { sentence: sentence }).then(function (data) {
+                state.sketch = { flow: data.flow.id, notes: data.notes || [] };
+                state.refocus = 'ai-sketch';
+                show(data.flow);
+
+                // What is left to fix is in sight at once.
+                if (state.problems.length || state.warnings.length) {
+                    ui.problemBox.classList.remove('d-none');
+                    ui.problemButton.setAttribute('aria-expanded', 'true');
+                }
+
+                refocus();
+            }).catch(function (error) {
+                go.disabled = false;
+                input.readOnly = false;
+                card.removeAttribute('aria-busy');
+                say((error && error.message) || t('error_generic'), true);
+                input.focus();
+            });
+        });
+
+        card.appendChild(label);
+        card.appendChild(help);
+        card.appendChild(input);
+        card.appendChild(go);
+        card.appendChild(status);
+
+        return card;
     }
 
     function templateCard(template, into) {
@@ -1460,8 +1649,8 @@
         foot.appendChild(use);
 
         if (template.saved.edit) {
-            var edit = K.button('btn btn-sm btn-ghost', '', 'bi-pencil', t('fl_tpl_edit') + ': ' + template.title);
-            var bin = K.button('btn btn-sm btn-ghost', '', 'bi-trash', t('fl_tpl_delete') + ': ' + template.title);
+            var edit = K.button('btn btn-sm btn-text theme-secondary', '', 'bi-pencil', t('fl_tpl_edit') + ': ' + template.title);
+            var bin = K.button('btn btn-sm btn-text theme-secondary', '', 'bi-trash', t('fl_tpl_delete') + ': ' + template.title);
 
             edit.setAttribute('data-refocus', 'tpl-edit-' + template.key);
             edit.addEventListener('click', function () { templateDialog(template); });
@@ -1505,7 +1694,7 @@
         var cross = el('button', 'btn-close');
         var body = el('div', 'dialog-body');
         var foot = el('div', 'dialog-footer');
-        var cancel = K.button('btn btn-sm btn-ghost', t('fl_tpl_cancel'));
+        var cancel = K.button('btn btn-sm btn-text theme-secondary', t('fl_tpl_cancel'));
         var submit = K.button('btn btn-sm btn-solid theme-primary', '');
         var error = el('div', 'alert theme-danger small py-2 mb-0 d-none');
         var categories = Object.keys(FL.template_categories || {}).filter(function (key) { return key !== 'saved'; });
@@ -1864,7 +2053,21 @@
         return node ? node.config[target[1]] : null;
     }
 
-    function setupControl(setting, answers) {
+    // The tables a template's table setting offers, of those the person
+    // reaches (ws_flow_row_tables()): only those whose rows they may change
+    // once one of its boxes adds or changes rows, as the server refuses any
+    // other (ws_flow_template_table_refusal()).
+    function setupTables(template, setting) {
+        var kinds = {};
+
+        (template.graph.nodes || []).forEach(function (node) { kinds[node.id] = node.kind; });
+
+        var writes = setting.targets.some(function (target) { return (kinds[target[0]] === 'row_add') || (kinds[target[0]] === 'row_set'); });
+
+        return stepLists().tables.filter(function (table) { return !writes || !!table.edit; });
+    }
+
+    function setupControl(setting, answers, template) {
         var type = setting.type;
         var value = settingValue(setting);
         var control;
@@ -1874,6 +2077,15 @@
         if (type === 'channel') {
             control = channelPick({ channel_id: value || 0 }, t('fl_post_pick'));
             control.addEventListener('change', function () { answers.channel = parseInt(control.value, 10) || 0; });
+        } else if (type === 'table') {
+            // The table's own columns and rows are cleared by the server on
+            // a change (ws_flow_template_apply()), as the box form does.
+            var offered = setupTables(template, setting);
+            var known = offered.some(function (table) { return table.id === value; });
+
+            control = K.select([[0, t('fl_row_table_pick')]].concat(offered.map(function (table) { return [table.id, table.name]; })), known ? value : 0);
+            answers.table = known ? value : 0;
+            control.addEventListener('change', function () { answers.table = parseInt(control.value, 10) || 0; });
         } else if (type === 'person') {
             control = el('div', 'wsf-people-list');
             control.setAttribute('role', 'group');
@@ -1917,7 +2129,7 @@
         var actions = el('div', 'wsf-setup-actions');
         var openIt = K.button('btn btn-sm btn-outline theme-secondary rounded-pill px-5', t('fl_tpl_open'), 'bi-bounding-box');
         var publishIt = K.button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('fl_tpl_publish'), 'bi-send');
-        var close = K.button('btn btn-sm btn-ghost wsf-setup-close', '', 'bi-x-lg');
+        var close = K.button('btn btn-sm btn-text theme-secondary wsf-setup-close', '', 'bi-x-lg');
         var title = el('h2', 'wsf-setup-title', t('fl_tpl_setup'));
 
         closeSetup();
@@ -1928,7 +2140,7 @@
         ui.setup.appendChild(title);
         ui.setup.appendChild(el('p', 'wsf-setup-help', t('fl_tpl_setup_help', template.title)));
         template.settings.forEach(function (setting) {
-            ui.setup.appendChild(setupControl(setting, answers));
+            ui.setup.appendChild(setupControl(setting, answers, template));
         });
         error.setAttribute('role', 'alert');
         ui.setup.appendChild(error);
@@ -2044,7 +2256,7 @@
         ui.stage.classList.add('d-none');
         ui.scheduled.classList.remove('d-none');
 
-        var back = K.button('btn btn-sm btn-ghost', t('sa_canvas_back'), 'bi-arrow-left');
+        var back = K.button('btn btn-sm btn-text theme-secondary', t('sa_canvas_back'), 'bi-arrow-left');
         back.setAttribute('data-refocus', 'sa-back');
         back.addEventListener('click', function () {
             state.refocus = 'sched-refused flows-search';
@@ -2205,6 +2417,7 @@
     function show(flow) {
         var same = !!(state.flow && (state.flow.id === flow.id));
 
+        settle();
         window.clearTimeout(state.saveTimer);
         closeSetup();
         endRun();
@@ -2219,6 +2432,11 @@
 
         state.flow = flow;
         state.edit = (flow.access === 'edit');
+
+        // The notes of a drafted flow go with that flow only.
+        if (state.sketch && (state.sketch.flow !== flow.id)) {
+            state.sketch = null;
+        }
 
         // Somebody who only reaches the flow reads its live graph, or the
         // draft, read-only, of a flow never published.
@@ -2290,8 +2508,9 @@
 
         create.setAttribute('data-refocus', 'new');
         create.addEventListener('click', function () {
-            // With templates to offer, the ways to start come first.
-            if ((FL.templates || []).length) {
+            // With templates or Pinegrap AI to offer, the ways to start
+            // come first.
+            if ((FL.templates || []).length || FL.ai_sketch) {
                 showGallery(null);
             } else {
                 createFlow();
@@ -2302,7 +2521,7 @@
 
     // "Flows ›": back to the flow list.
     function flowsButton() {
-        var back = K.button('btn btn-sm btn-ghost wsf-back', t('fl_nav'));
+        var back = K.button('btn btn-sm btn-text theme-secondary wsf-back', t('fl_nav'));
 
         back.appendChild(el('span', 'ms-1', '›')).setAttribute('aria-hidden', 'true');
         back.setAttribute('aria-label', t('fl_list_back'));
@@ -2363,7 +2582,7 @@
         }
 
         var shown = runsShown();
-        var runs = K.button('btn btn-sm btn-ghost' + (shown ? ' active' : ''), t('fl_runs'), 'bi-clock-history');
+        var runs = K.button('btn btn-sm btn-text theme-secondary' + (shown ? ' active' : ''), t('fl_runs'), 'bi-clock-history');
 
         runs.setAttribute('aria-pressed', shown ? 'true' : 'false');
         runs.setAttribute('aria-controls', ui.side.id);
@@ -2423,7 +2642,7 @@
         ui.bar.appendChild(ui.save);
         ui.bar.appendChild(el('span', 'pg-toolbar-grow'));
 
-        var outline = K.button('btn btn-sm btn-ghost' + (state.outline ? ' active' : ''), t('fl_outline'), 'bi-list-nested');
+        var outline = K.button('btn btn-sm btn-text theme-secondary' + (state.outline ? ' active' : ''), t('fl_outline'), 'bi-list-nested');
         outline.setAttribute('aria-pressed', state.outline ? 'true' : 'false');
         outline.setAttribute('data-refocus', 'outline');
         outline.addEventListener('click', function () {
@@ -2458,11 +2677,11 @@
             return;
         }
 
-        ui.undo = K.button('btn btn-sm btn-ghost', '', 'bi-arrow-counterclockwise', t('fl_undo'));
+        ui.undo = K.button('btn btn-sm btn-text theme-secondary', '', 'bi-arrow-counterclockwise', t('fl_undo'));
         ui.undo.setAttribute('data-refocus', 'undo redo');
         ui.undo.addEventListener('click', function () { undo(true); });
         ui.bar.appendChild(ui.undo);
-        ui.redo = K.button('btn btn-sm btn-ghost', '', 'bi-arrow-clockwise', t('fl_redo'));
+        ui.redo = K.button('btn btn-sm btn-text theme-secondary', '', 'bi-arrow-clockwise', t('fl_redo'));
         ui.redo.setAttribute('data-refocus', 'redo undo');
         ui.redo.addEventListener('click', function () { undo(false); });
         ui.bar.appendChild(ui.redo);
@@ -2508,17 +2727,21 @@
     function moreMenu() {
         var flow = state.flow;
         var more = el('div', 'pg-menu-wrap');
-        var moreButton = K.button('btn btn-sm btn-ghost', '', 'bi-three-dots', t('fl_more'));
+        var moreButton = K.button('btn btn-sm btn-text theme-secondary', '', 'bi-three-dots', t('fl_more'));
         var menu = el('ul', 'menu pg-menu-end');
-        var share = K.button('menu-item pg-link-body-emphasis', flow.manage ? t('fl_share') : t('fl_shared_with'), flow.manage ? 'bi-share' : 'bi-people');
 
         moreButton.setAttribute('data-bs-toggle', 'menu');
         moreButton.setAttribute('data-bs-placement', 'bottom-end');
         moreButton.setAttribute('aria-expanded', 'false');
         moreButton.setAttribute('data-refocus', 'more');
-        share.setAttribute('data-wsf-share', '');
-        share.addEventListener('click', openShares);
-        menu.appendChild(el('li')).appendChild(share);
+
+        if (shareOffered()) {
+            var share = K.button('menu-item pg-link-body-emphasis', flow.manage ? t('fl_share') : t('fl_shared_with'), flow.manage ? 'bi-share' : 'bi-people');
+
+            share.setAttribute('data-wsf-share', '');
+            share.addEventListener('click', openShares);
+            menu.appendChild(el('li')).appendChild(share);
+        }
 
         // Keeping the draft as a template of the site: for those who build
         // flows, on a flow they edit (ws_flow_template_save() refuses one
@@ -2537,9 +2760,20 @@
             menu.appendChild(el('li')).appendChild(bin);
         }
 
+        // Nothing in it (a member's own flow they only read): no menu.
+        if (!menu.firstChild) {
+            return;
+        }
+
         more.appendChild(moreButton);
         more.appendChild(menu);
         ui.bar.appendChild(more);
+    }
+
+    // The shares in "⋯": for everybody but a role-3 member on their own
+    // flow, which nobody else reaches.
+    function shareOffered() {
+        return !memberOwn();
     }
 
     // The save state, the problem count and whether Publish may be pressed.
@@ -2582,7 +2816,7 @@
         var warned = state.warnings.length;
 
         K.clear(ui.problemButton);
-        ui.problemButton.className = 'btn btn-sm ' + (count ? 'btn-outline theme-danger' : (warned ? 'btn-outline theme-warning' : 'btn-ghost'));
+        ui.problemButton.className = 'btn btn-sm ' + (count ? 'btn-outline theme-danger' : (warned ? 'btn-outline theme-warning' : 'btn-text theme-secondary'));
         ui.problemButton.appendChild(K.icon(count ? 'bi-exclamation-triangle' : (warned ? 'bi-exclamation-circle' : 'bi-check2-circle'), 'me-1'));
         ui.problemButton.appendChild(document.createTextNode(count ? t('fl_problems', count) : (warned ? t('fl_warnings', warned) : t('fl_no_problems'))));
         ui.problemButton.disabled = !count && !warned;
@@ -2613,6 +2847,7 @@
         drawOutline();
         drawProblems();
         drawMarks();
+        drawSketch();
         drawState();
     }
 
@@ -2710,7 +2945,9 @@
             badge.remove();
         }
 
-        if (!state.run) {
+        // A value box writes no step: its value is worked out when a box
+        // reading it runs, so it is never "not reached".
+        if (!state.run || kindOf(node).pure) {
             return;
         }
 
@@ -2748,10 +2985,73 @@
         return { d: 'M' + x1 + ' ' + y1 + ' C' + (x1 + dx) + ' ' + y1 + ' ' + (x2 - dx) + ' ' + y2 + ' ' + x2 + ' ' + y2, mx: (x1 + x2) / 2, my: (y1 + y2) / 2 };
     }
 
+    // Where a loop's frame goes: around its For each box, its body and its
+    // End box, with room for the label above and the data rows below. Null
+    // for a loop with no box in it.
+    function loopFrame(loop, id) {
+        var ids = loop.body.length ? [id].concat(loop.body, loop.end ? [loop.end] : []) : [];
+        var nodes = ids.map(nodeById).filter(Boolean);
+
+        if (!nodes.length) {
+            return null;
+        }
+
+        var left = Math.min.apply(null, nodes.map(function (node) { return node.x; })) - LOOP_PAD.side;
+        var top = Math.min.apply(null, nodes.map(function (node) { return node.y; })) - LOOP_PAD.top;
+        var right = Math.max.apply(null, nodes.map(function (node) { return node.x + BOX_W; })) + LOOP_PAD.side;
+        var bottom = Math.max.apply(null, nodes.map(function (node) { return node.y + BOX_H; })) + LOOP_PAD.bottom;
+
+        return { x: left, y: top, width: right - left, height: bottom - top };
+    }
+
+    // Each loop's extent as a light frame in the logic group's colour under
+    // the arrows, named "Repeated for each item"; it takes no pointer.
+    function drawLoops() {
+        if (!state.graph) {
+            return;
+        }
+
+        var loops = flowLoops();
+
+        Object.keys(loops).forEach(function (id) {
+            var frame = loopFrame(loops[id], id);
+
+            if (!frame) {
+                return;
+            }
+
+            var group = svgEl('g', 'wsf-loop wsf-group-logic');
+            var rect = svgEl('rect', 'wsf-loop-frame');
+            var label = svgEl('text', 'wsf-loop-label');
+
+            group.setAttribute('data-loop', id);
+            group.style.pointerEvents = 'none';
+            rect.setAttribute('x', String(frame.x));
+            rect.setAttribute('y', String(frame.y));
+            rect.setAttribute('width', String(frame.width));
+            rect.setAttribute('height', String(frame.height));
+            rect.setAttribute('rx', '12');
+            rect.style.fill = 'color-mix(in srgb, var(--wsf-kind) 6%, transparent)';
+            rect.style.stroke = 'color-mix(in srgb, var(--wsf-kind) 60%, transparent)';
+            rect.style.strokeWidth = '1.5';
+            rect.style.strokeDasharray = '6 4';
+            label.setAttribute('x', String(frame.x + 12));
+            label.setAttribute('y', String(frame.y + 16));
+            label.style.fill = 'var(--wsf-kind)';
+            label.style.fontSize = '11px';
+            label.textContent = t('fl_loop_body');
+            group.appendChild(rect);
+            group.appendChild(label);
+            ui.svg.appendChild(group);
+        });
+    }
+
     function drawEdges() {
-        Array.prototype.slice.call(ui.svg.querySelectorAll('.wsf-edge, .wsf-thread')).forEach(function (node) {
+        Array.prototype.slice.call(ui.svg.querySelectorAll('.wsf-edge, .wsf-thread, .wsf-loop')).forEach(function (node) {
             node.remove();
         });
+
+        drawLoops();
 
         (state.graph ? state.graph.edges : []).forEach(function (edge, index) {
             var from = nodeById(edge.from);
@@ -2782,7 +3082,7 @@
 
             // An arrow taken when a task is cancelled, or a step failed, says
             // so on itself.
-            if ((edge.on === 'cancelled') || (edge.on === 'failed') || (edge.on === 'always')) {
+            if ((edge.on === 'cancelled') || (edge.on === 'failed') || (edge.on === 'always') || (edge.on === 'each')) {
                 var label = svgEl('text', 'wsf-edge-label');
 
                 label.setAttribute('x', String(path.mx));
@@ -2812,13 +3112,16 @@
         email: [['subject', 'fl_email_subject', 250], ['body', 'fl_email_body', 20000]],
         notify: [['text', 'fl_notify_text', 500]],
         task_open: [['title', 'fl_title', 200], ['description', 'fl_description', 8000]],
-        webhook: [['text', 'fl_post_body', 4000]],
+        webhook: [['text', 'fl_post_body', 4000], ['url', 'fl_url', 2000]],
         mcp: [['arguments', 'fl_mcp_arguments', 20000]],
+        row_set: [['row', 'fl_rows_row', 200]],
         task_digest: [['subject', 'fl_email_subject', 250], ['intro', 'fl_digest_intro', 2000]],
         report: [['title', 'fl_report_title', 160]],
         checkin: [['question', 'fl_checkin_question', 500]],
         approval: [['title', 'fl_title', 200], ['text', 'fl_description', 4000]],
-        value: [['a', 'fl_derived_a', 500], ['b', 'fl_derived_b', 500]]
+        value: [['a', 'fl_derived_a', 500], ['b', 'fl_derived_b', 500]],
+        for_each: [['list', 'fl_loop_list', 200]],
+        for_each_end: [['collect', 'fl_loop_collect', 200]]
     };
 
     // How many tones a type's threads take turns in (.wsf-tone-<type>-<n>).
@@ -2829,6 +3132,10 @@
     // the ring's size; all 18 px high, half under the box's bottom edge. A
     // thread bends at most `deep` px further down to pass under a box.
     var DATA_ROW = { field: 76, out: 84, gap: 4, left: 8, half: 9, ring: 18, deep: 160 };
+
+    // A loop's frame around its boxes: beside them, above (its label) and
+    // below (their data rows).
+    var LOOP_PAD = { side: 16, top: 28, bottom: 32 };
 
     // Where the chips (fields first) and the dots of a box's row go: at full
     // width while they fit within the box, else all as wide as the box's
@@ -2918,11 +3225,17 @@
             return ((rule.type === 'value') && (typeof rule.ref === 'string') && rule.ref) ? [{ key: 'rule', label: t('fl_cond_value_ref'), text: rule.ref }] : [];
         }
 
+        // A table box's cells read values too; a value goes into one of
+        // them through its column's field, never by a thread dropped on the
+        // box, which would write it outside the JSON (openFields()).
+        var cells = ((node.kind === 'row_add') || (node.kind === 'row_set')) && (typeof config.cells === 'string')
+            ? [{ key: 'cells', label: t('fl_rows_cells'), text: config.cells }] : [];
+
         return (VALUE_FIELDS[node.kind] || []).filter(function (item) {
             return typeof config[item[0]] === 'string';
         }).map(function (item) {
             return { key: item[0], label: t(item[1]), text: config[item[0]] };
-        });
+        }).concat(cells);
     }
 
     // The fields of a box one more value may go into: every one of its
@@ -2936,8 +3249,11 @@
             return ((rule.type === 'value') && !rule.ref) ? [{ key: 'rule', label: t('fl_cond_value_ref'), text: '', max: 0 }] : [];
         }
 
+        // A loop's box reads one value: its field is open while empty.
         return (VALUE_FIELDS[node.kind] || []).filter(function (item) {
             return (node.kind !== 'value') || (item[0] !== 'b') || derivedRule(config.rule).two;
+        }).filter(function (item) {
+            return !kindOf(node).loop || !config[item[0]];
         }).map(function (item) {
             return { key: item[0], label: t(item[1]), text: (typeof config[item[0]] === 'string') ? config[item[0]] : '', max: item[2] };
         });
@@ -2957,7 +3273,7 @@
             }
 
             openFields(node).forEach(function (item) {
-                if (item.text.indexOf(token) === -1) {
+                if (!holdsToken(item.text, token) && fieldTakes(node, item.key, source)) {
                     out.push({ node: node, key: item.key, label: item.label, text: item.text, max: item.max });
                 }
             });
@@ -2986,7 +3302,8 @@
                 node.config.rule.op = 'eq';
             }
         } else {
-            var text = target.text + ((target.text && !/\s$/.test(target.text)) ? ' ' : '') + token;
+            var text = ((node.kind === 'webhook') && (key === 'url')) ? urlWithValue(target.text, token)
+                : target.text + ((target.text && !/\s$/.test(target.text)) ? ' ' : '') + token;
 
             if (text.length > target.max) {
                 K.toast(t('fl_thread_full'), 'secondary');
@@ -3006,7 +3323,8 @@
     // One thread for each value a field of a box holds, read from the
     // references kept in the fields: nothing else stores them, so a removed
     // chip takes its thread with it. A value no box before gives has no
-    // source (from ''). Threads of one type take turns in its tones.
+    // source (from ''); one whose box is no longer in the flow is gone too.
+    // Threads of one type take turns in its tones.
     function dataThreads() {
         var threads = [];
         var tones = {};
@@ -3030,27 +3348,31 @@
                 VALUE_TOKEN.lastIndex = 0;
 
                 while ((match = VALUE_TOKEN.exec(item.text)) !== null) {
-                    if (seen[match[0]]) {
+                    var token = tokenBare(match[0]);
+
+                    if (seen[token]) {
                         continue;
                     }
 
-                    seen[match[0]] = true;
+                    seen[token] = true;
 
-                    var source = sources[match[0]];
+                    var source = sources[token];
                     var type = (source && THREAD_TONES[source.value.type]) ? source.value.type : 'text';
 
                     tones[type] = (tones[type] || 0) + 1;
                     threads.push({
-                        token: match[0],
+                        token: token,
+                        fallback: tokenFallback(match[0]),
                         from: source ? source.node.id : '',
                         to: node.id,
                         field: item.key,
                         fieldLabel: item.label,
-                        label: source ? nameOf(source.node) + ' › ' + source.value.label : match[0].slice(2, -2),
+                        label: source ? nameOf(source.node) + ' › ' + source.value.label : token.slice(2, -2),
                         value: source ? source.value.label : '',
                         type: type,
                         tone: (tones[type] - 1) % THREAD_TONES[type],
-                        skipped: !!(source && source.skipped)
+                        skipped: !!(source && source.skipped),
+                        gone: !source && !!match[1] && !nodeById(match[1])
                     });
                 }
             });
@@ -3248,6 +3570,10 @@
             var from = thread.from ? nodeById(thread.from) : null;
             var to = nodeById(thread.to);
 
+            if (thread.gone && to && rows[to.id]) {
+                goneThread(thread, to, slot(to.id, 'field', thread.field));
+            }
+
             if (!from || !to || !rows[from.id] || !rows[to.id]) {
                 return;
             }
@@ -3272,6 +3598,33 @@
         markThreads();
 
         return targets.length;
+    }
+
+    // The thread of a value whose box was deleted: red and dashed, from the
+    // place the box had when it was removed here, else a short loose end
+    // hanging from the chip.
+    function goneThread(thread, to, field) {
+        var id = /^\{\{node\.([a-z0-9_]+)\./.exec(thread.token)[1];
+        var was = state.gone && state.flow && (state.gone.flow === state.flow.id) ? state.gone.at[id] : null;
+        var x2 = to.x + field.left + field.width / 2;
+        var y2 = to.y + BOX_H + DATA_ROW.half;
+        var path = svgEl('path', 'wsf-thread wsf-thread-gone');
+        var d;
+
+        if (was) {
+            var x1 = was.x + DATA_ROW.left + DATA_ROW.half;
+            var others = state.graph.nodes.filter(function (node) { return node !== to; });
+
+            d = threadPath(x1, was.y + BOX_H + DATA_ROW.half, x2, y2, 10 + 0.06 * Math.abs(x2 - x1), others).d;
+        } else {
+            d = 'M ' + (x2 - 16) + ' ' + (y2 + 22) + ' Q ' + x2 + ' ' + (y2 + 18) + ' ' + x2 + ' ' + y2;
+        }
+
+        path.setAttribute('d', d);
+        path.setAttribute('data-to', to.id);
+        path.setAttribute('data-field', thread.field);
+        path.setAttribute('data-ends', to.id);
+        ui.svg.appendChild(path);
     }
 
     // A dot a thread may be drawn from: dragged to a field chip, tapped twice
@@ -3401,7 +3754,7 @@
     }
 
     function threadsButton() {
-        var button = K.button('btn btn-sm btn-ghost' + (state.threads ? ' active' : ''), t('fl_threads'), 'bi-bezier2');
+        var button = K.button('btn btn-sm btn-text theme-secondary' + (state.threads ? ' active' : ''), t('fl_threads'), 'bi-bezier2');
 
         button.setAttribute('aria-pressed', state.threads ? 'true' : 'false');
         button.addEventListener('click', function () {
@@ -3445,11 +3798,13 @@
 
                 // A run shown: the value the thread brought in it.
                 if (!thread.from) {
-                    text += ' ' + t('fl_values_missing');
+                    text += ' ' + t(thread.gone ? 'fl_values_gone' : 'fl_values_missing');
                 } else if (state.run) {
                     var value = runValue(thread);
 
                     text = t('fl_run_pair', text, value.note || value.text);
+                } else if (thread.fallback) {
+                    text += ' (' + t('fl_values_writes', thread.fallback) + ')';
                 } else if (thread.skipped) {
                     text += ' (' + t('fl_values_skipped') + ')';
                 }
@@ -3465,14 +3820,33 @@
 
     // What the palette offers: an MCP box only while there is a server the
     // person may call with a tool that reads (ws_step_mcp_form_servers()), a
-    // row box only while there is a table they read (ws_flow_row_tables()).
+    // row box only while there is a table they read (ws_flow_row_tables()),
+    // a box that adds or changes a row only while there is one they change,
+    // a box on customers who stopped ordering only to whoever reads orders
+    // and contacts (ws_flow_no_order_refusal()).
     function paletteItems() {
         var mcp = stepLists().mcp.length > 0;
         var tables = stepLists().tables.length > 0;
+        var writable = rowWriteTables().length > 0;
 
         return PALETTE.filter(function (item) {
-            return ((item[0] !== 'mcp') || mcp) && ((item[0] !== 'row') || tables);
+            return memberKind(item[0]) && ((item[0] !== 'mcp') || mcp) && ((item[0] !== 'row') || tables)
+                && ((item[0] !== 'no_order') || stepLists().no_order)
+                && (((item[0] !== 'row_add') && (item[0] !== 'row_set')) || writable);
         });
+    }
+
+    // May the person add a box of this kind? A role-3 member builds their
+    // own flows from the kinds the server lists (ws_flow_member_kinds());
+    // staff from every kind.
+    function memberKind(kind) {
+        return !FL.member_kinds || (FL.member_kinds.indexOf(kind) !== -1);
+    }
+
+    // A role-3 member's own flow: no home channel, no shares (the server
+    // refuses both, flow_member.php).
+    function memberOwn() {
+        return !!(FL.member && state.flow && state.flow.manage);
     }
 
     // The buttons that add a box; in the palette they may also be dragged
@@ -3592,7 +3966,7 @@
             }
 
             group.items.forEach(function (item) {
-                wrap.appendChild(paletteButton(item, 'btn btn-sm btn-ghost wsf-palette-item', true));
+                wrap.appendChild(paletteButton(item, 'btn btn-sm btn-text theme-secondary wsf-palette-item', true));
             });
             ui.paletteGroups.appendChild(wrap);
         });
@@ -3613,7 +3987,7 @@
             return;
         }
 
-        var pick = K.button('btn btn-sm btn-ghost wsf-palette-item wsf-palette-template', t('fl_tpl_from_template'), 'bi-grid-1x2');
+        var pick = K.button('btn btn-sm btn-text theme-secondary wsf-palette-item wsf-palette-template', t('fl_tpl_from_template'), 'bi-grid-1x2');
         var into = state.flow.id;
 
         pick.setAttribute('data-refocus', 'palette-template');
@@ -3717,7 +4091,7 @@
 
         ids.forEach(function (id) {
             var node = nodeById(id);
-            var go = K.button('btn btn-sm btn-ghost wsf-ai-go', '', state.marks.boxes[id] === 'added' ? 'bi-plus-circle' : 'bi-pencil');
+            var go = K.button('btn btn-sm btn-text theme-secondary wsf-ai-go', '', state.marks.boxes[id] === 'added' ? 'bi-plus-circle' : 'bi-pencil');
 
             go.appendChild(nameText(node));
             go.title = t(state.marks.boxes[id] === 'added' ? 'fl_ai_added_long' : 'fl_ai_changed_long');
@@ -3733,6 +4107,45 @@
 
         hide.addEventListener('click', hideMarks);
         ui.marksBox.appendChild(hide);
+    }
+
+    function drawSketch() {
+        K.clear(ui.sketchBox);
+
+        var shown = !!(state.sketch && state.flow && state.edit && (state.sketch.flow === state.flow.id));
+
+        ui.sketchBox.classList.toggle('d-none', !shown);
+
+        if (!shown) {
+            return;
+        }
+
+        var text = el('p', 'wsf-ai-marks-text mb-0');
+        var hide = K.button('btn btn-sm btn-link ms-auto', t('fl_ai_sketch_hide'));
+
+        text.tabIndex = -1;
+        text.setAttribute('data-refocus', 'ai-sketch');
+        text.appendChild(K.icon('bi-stars', 'me-1'));
+        text.appendChild(document.createTextNode(t('fl_ai_sketch_drafted')));
+        ui.sketchBox.appendChild(text);
+        hide.addEventListener('click', function () {
+            state.sketch = null;
+            drawSketch();
+
+            if (ui.name) {
+                ui.name.focus();
+            }
+        });
+        ui.sketchBox.appendChild(hide);
+
+        if (state.sketch.notes.length) {
+            var notes = el('ul', 'wsf-ai-sketch-notes mb-0');
+
+            state.sketch.notes.forEach(function (note) {
+                notes.appendChild(el('li', '', note));
+            });
+            ui.sketchBox.appendChild(notes);
+        }
     }
 
     function markSelected() {
@@ -3883,8 +4296,45 @@
     // ── Values a box writes in ({{node.<id>.<field>}}, {{trigger.<field>}}) ──
 
     // What the server reads as a value (WS_STEP_VALUE_PATTERN, the
-    // reference check): a box's field, or one of what started the run.
-    var VALUE_TOKEN = /\{\{(?:node\.([a-z][a-z0-9_]{0,31})\.([a-z_][a-z0-9_]{0,31})|trigger\.([a-z_][a-z0-9_]{0,31}))\}\}/g;
+    // reference check): a box's field, or one of what started the run; it
+    // may end in "|" and what to write when the value is empty (group 4,
+    // its "\", "{", "}" and "|" escaped with "\").
+    var VALUE_TOKEN = /\{\{(?:node\.([a-z][a-z0-9_]{0,31})\.([a-z_][a-z0-9_]{0,31})|trigger\.([a-z_][a-z0-9_]{0,31}))(?:\|((?:[^\\{}\r\n]|\\[\\{}|]){0,400}))?\}\}/g;
+
+    // The longest fallback, in characters (WS_STEP_FALLBACK_LENGTH).
+    var FALLBACK_LENGTH = 100;
+
+    // A token without its fallback: the value it reads. Ids and fields
+    // hold no "|", so the first one starts the fallback.
+    function tokenBare(token) {
+        var at = token.indexOf('|');
+
+        return (at === -1) ? token : token.slice(0, at) + '}}';
+    }
+
+    // What a token writes when its value is empty, unescaped; '' for none.
+    function tokenFallback(token) {
+        var at = token.indexOf('|');
+
+        return (at === -1) ? '' : token.slice(at + 1, -2).replace(/\\([\\{}|])/g, '$1');
+    }
+
+    // A token with a fallback, as ws_step_value_token() writes it: one
+    // line, cut to FALLBACK_LENGTH characters, escaped; none when empty.
+    function tokenWith(token, fallback) {
+        var text = Array.from(String(fallback || '').replace(/[\r\n]+/g, ' ').trim()).slice(0, FALLBACK_LENGTH).join('');
+        var bare = tokenBare(token);
+
+        return text ? bare.slice(0, -2) + '|' + text.replace(/[\\{}|]/g, '\\$&') + '}}' : bare;
+    }
+
+    // Does a text read the value of a (bare) token, with or without a
+    // fallback? Its field ends at "}}" or "|".
+    function holdsToken(text, token) {
+        var head = token.slice(0, -2);
+
+        return (String(text).indexOf(head + '}}') !== -1) || (String(text).indexOf(head + '|') !== -1);
+    }
 
     // The arrows of the graph once each, as ws_flow_graph_check() reads
     // them: id => ids an arrow leads into, and id => id => true for an arrow
@@ -4022,7 +4472,7 @@
         var add = function (token, item) {
             if (!keys[item.key]) {
                 keys[item.key] = true;
-                list.push({ token: '{{' + token + item.key + '}}', label: item.label, type: item.type || 'text' });
+                list.push({ token: '{{' + token + item.key + '}}', key: item.key, label: item.label, type: item.type || 'text' });
             }
         };
 
@@ -4071,6 +4521,16 @@
             }
         });
 
+        // A For each box gives the fields of an item it names
+        // (ws_flow_loop_outputs()).
+        if (node.kind === 'for_each') {
+            (node.config.fields || []).forEach(function (key) {
+                if (/^[a-z_][a-z0-9_]{0,31}$/.test(key)) {
+                    add(prefix, { key: key, label: key });
+                }
+            });
+        }
+
         if (node.kind === 'report') {
             (node.config.metrics || []).forEach(function (item) {
                 var key = String(item.key || '') + (((parseInt(item.param, 10) || 0) > 0) ? '_' + parseInt(item.param, 10) : '');
@@ -4107,6 +4567,10 @@
         // A derived value box has no place among the arrows: it may read any
         // box, checked at the boxes that read it.
         var reader = node.kind === 'value';
+        // A box outside a loop reads neither its body's boxes nor the item
+        // (ws_flow_loop_problems()); the End box reads the body's values.
+        var loops = flowLoops();
+        var inside = loopOf(loops, node.id);
 
         orderedNodes().forEach(function (other) {
             // A value box gives to every box, read whenever it is.
@@ -4118,6 +4582,17 @@
             }
 
             var values = boxValues(other);
+            var held = loopOf(loops, other.id);
+
+            if (!reader && held && (held !== inside) && (loops[held].end !== node.id)) {
+                return;
+            }
+
+            if (!reader && (other.kind === 'for_each') && (other.id !== inside)) {
+                values = values.filter(function (value) {
+                    return (value.key !== 'index') && (value.key !== 'item') && ((other.config.fields || []).indexOf(value.key) === -1);
+                });
+            }
 
             if (!values.length) {
                 return;
@@ -4156,17 +4631,161 @@
         return names;
     }
 
-    // A value as the builder reads it; one no box before gives keeps its
-    // token, marked (the reference check names it a problem).
+    // What a box's chip of a value reads, else the value as written.
+    function valueLabel(node, text) {
+        var name = valueNames(node)[text];
+
+        return name ? name.label : text;
+    }
+
+    // The loops of the graph, as ws_flow_loops() finds them: for each For
+    // each box its End box (the first naming it, '' for none), the boxes its
+    // each arrows lead into and its body, the boxes reached from them short
+    // of the End box and of any box after it.
+    function flowLoops() {
+        var ends = {};
+        var next = {};
+        var out = {};
+
+        state.graph.nodes.forEach(function (node) {
+            var loop = (node.config || {}).for_each;
+
+            if ((node.kind === 'for_each_end') && loop && !ends[loop]) {
+                ends[loop] = node.id;
+            }
+        });
+        state.graph.edges.forEach(function (edge) {
+            (next[edge.from] = next[edge.from] || []).push([edge.to, edge.on]);
+        });
+
+        state.graph.nodes.forEach(function (node) {
+            if (node.kind !== 'for_each') {
+                return;
+            }
+
+            var end = ends[node.id] || '';
+            var each = [];
+            var after = {};
+            var body = {};
+            var list = [];
+            var queue = end ? [end] : [];
+
+            (next[node.id] || []).forEach(function (arrow) {
+                if ((arrow[1] === 'each') && (each.indexOf(arrow[0]) === -1)) {
+                    each.push(arrow[0]);
+                }
+            });
+
+            while (queue.length) {
+                (next[queue.shift()] || []).forEach(function (arrow) {
+                    if (!after[arrow[0]]) {
+                        after[arrow[0]] = true;
+                        queue.push(arrow[0]);
+                    }
+                });
+            }
+
+            var take = function (to) {
+                if ((to !== end) && (to !== node.id) && !body[to] && !after[to]) {
+                    body[to] = true;
+                    list.push(to);
+                    queue.push(to);
+                }
+            };
+
+            each.forEach(take);
+
+            while (queue.length) {
+                (next[queue.shift()] || []).forEach(function (arrow) {
+                    take(arrow[0]);
+                });
+            }
+
+            out[node.id] = { end: end, each: each, body: list };
+        });
+
+        return out;
+    }
+
+    // The For each box whose body holds a box, '' outside every loop.
+    function loopOf(loops, id) {
+        return Object.keys(loops).filter(function (key) {
+            return loops[key].body.indexOf(id) !== -1;
+        })[0] || '';
+    }
+
+    // Whether a value holds a list a For each box may go through: a
+    // webhook's answer or the list an End for each box gathered.
+    function listValue(source) {
+        return ((source.node.kind === 'webhook') && (source.value.key === 'body'))
+            || ((source.node.kind === 'for_each_end') && (source.value.key === 'list'));
+    }
+
+    // Whether a field of a box may take a value: a For each box's list a
+    // list, an End box's gathered value one of its loop's body.
+    function fieldTakes(node, key, source) {
+        if ((node.kind === 'for_each') && (key === 'list')) {
+            return listValue(source);
+        }
+
+        if ((node.kind === 'for_each_end') && (key === 'collect')) {
+            var loop = flowLoops()[node.config.for_each || ''];
+
+            return !!loop && (loop.body.indexOf(source.node.id) !== -1);
+        }
+
+        // A webhook's address takes a number only, in its path or query.
+        if ((node.kind === 'webhook') && (key === 'url')) {
+            return source.value.type === 'number';
+        }
+
+        return true;
+    }
+
+    // An address with a value put at its end: after its path's "/" when it
+    // has only a host, so the value never lands in the host.
+    function urlWithValue(url, token) {
+        var rest = url.replace(/^[a-z][a-z0-9+.-]*:\/\//i, '');
+
+        return url + (/[\/?#]/.test(rest) ? '' : '/') + token;
+    }
+
+    // A value as the builder reads it, with what it writes when empty; one
+    // no box before gives keeps its token, marked (the reference check
+    // names it a problem). A skipped box's value is dashed until it has a
+    // fallback.
     function valueChip(token, names) {
-        var name = names[token];
-        var chip = el('span', 'wsf-chip' + (name ? (name.skipped ? ' wsf-chip-skipped' : '') : ' wsf-chip-bad'), name ? name.label : token.slice(2, -2));
+        var name = names[tokenBare(token)];
+        var fallback = tokenFallback(token);
+        var label = name ? name.label : tokenBare(token).slice(2, -2);
+        var chip = el('span', 'wsf-chip' + (name ? ((name.skipped && !fallback) ? ' wsf-chip-skipped' : '') : ' wsf-chip-bad'), fallback ? t('fl_values_else', label, fallback) : label);
+        var title = name ? (fallback ? t('fl_values_writes', fallback) : (name.skipped ? t('fl_values_skipped') : tokenBare(token))) : t('fl_values_missing');
 
         chip.contentEditable = 'false';
         chip.setAttribute('data-token', token);
-        chip.title = name ? (name.skipped ? t('fl_values_skipped') : token) : t('fl_values_missing');
+        chip.title = (name && state.edit) ? title + ' ' + t('fl_values_empty_tap') : title;
 
         return chip;
+    }
+
+    // Asks what a chip's value writes when it is empty, and keeps it in the
+    // chip's token (per thread: each place has its own).
+    function askFallback(chip, names, done) {
+        var body = el('div');
+        var input = el('input', 'form-control');
+        var token = chip.getAttribute('data-token');
+
+        input.type = 'text';
+        input.maxLength = FALLBACK_LENGTH;
+        input.value = tokenFallback(token);
+        body.appendChild(field(t('fl_values_empty_text'), input, t('fl_values_empty_help')));
+
+        K.ask(t('fl_values_empty_ask'), t('fl_values_empty_set'), false, body).then(function (yes) {
+            if (yes && chip.parentNode) {
+                chip.parentNode.replaceChild(valueChip(tokenWith(token, input.value), names), chip);
+                done();
+            }
+        });
     }
 
     function drawValues(input, text, names) {
@@ -4359,6 +4978,13 @@
             }
         });
         input.addEventListener('drop', function (event) { event.preventDefault(); });
+        input.addEventListener('click', function (event) {
+            var chip = (event.target.nodeType === 1) ? event.target.closest('.wsf-chip') : null;
+
+            if (state.edit && chip && input.contains(chip) && names[tokenBare(chip.getAttribute('data-token'))]) {
+                askFallback(chip, names, changed);
+            }
+        });
         input.addEventListener('input', changed);
         input.addEventListener('keyup', keep);
         input.addEventListener('mouseup', keep);
@@ -4384,8 +5010,9 @@
     }
 
     // A field of a box's text with "Add value": the list of what started the
-    // run and the boxes before it, each value a chip put in the text.
-    function valueField(node, label, value, max, onInput, multi, help) {
+    // run and the boxes before it, each value a chip put in the text; with
+    // `takes`, only the values it accepts ({ node, value }).
+    function valueField(node, label, value, max, onInput, multi, help, takes) {
         var input = valueInput(node, value, max, onInput, multi);
         var wrap = field(label, input, help ? help + ' ' + t('fl_values_hint') : t('fl_values_hint'));
         var caption = wrap.querySelector('label');
@@ -4426,7 +5053,11 @@
                 return;
             }
 
-            var groups = valueGroups(node);
+            var groups = valueGroups(node).map(function (group) {
+                return takes ? { node: group.node, skipped: group.skipped, values: group.values.filter(function (one) { return takes({ node: group.node, value: one }); }) } : group;
+            }).filter(function (group) {
+                return group.values.length > 0;
+            });
 
             K.clear(list);
 
@@ -4530,6 +5161,38 @@
     function flowForm() {
         var box = el('div');
 
+        homeField(box);
+
+        var keys = el('details', 'small wsf-keys');
+        var list = el('ul', 'mb-0 ps-5 fg-secondary');
+
+        keys.appendChild(el('summary', 'fw-semibold', t('fl_keys')));
+        ['tab', 'arrows', 'connect', 'thread', 'delete', 'undo', 'enter', 'zoom', 'pan', 'escape'].forEach(function (key) {
+            list.appendChild(el('li', '', t('fl_key_' + key)));
+        });
+        keys.appendChild(list);
+        box.appendChild(el('p', 'small fg-secondary', state.edit ? flowHelp() : t('fl_read_only')));
+        box.appendChild(keys);
+
+        return box;
+    }
+
+    // A live flow runs its published version while the draft is changed;
+    // only a flow never published runs nothing yet.
+    function flowHelp() {
+        var flow = state.flow;
+
+        return (flow && (flow.status === 'live') && (flow.version > 0)) ? t('fl_flow_help_live') : t('fl_flow_help');
+    }
+
+    // The flow's home channel; a role-3 member's own flow has none, said in
+    // its place.
+    function homeField(box) {
+        if (memberOwn()) {
+            box.appendChild(field(t('fl_home'), el('p', 'small fg-secondary mb-0', t('fl_member_no_home'))));
+            return;
+        }
+
         // "Only you" is the owner's to read; somebody the flow is shared with
         // reads that it has no home.
         var channels = [[0, state.flow.manage ? t('fl_home_none') : t('fl_home_none_other')]];
@@ -4556,19 +5219,6 @@
             changed(false);
         });
         box.appendChild(field(t('fl_home'), home, (state.edit && !state.flow.manage) ? t('fl_home_owner_only') : t('fl_home_help')));
-
-        var keys = el('details', 'small wsf-keys');
-        var list = el('ul', 'mb-0 ps-5 fg-secondary');
-
-        keys.appendChild(el('summary', 'fw-semibold', t('fl_keys')));
-        ['tab', 'arrows', 'connect', 'thread', 'delete', 'undo', 'enter', 'zoom', 'pan', 'escape'].forEach(function (key) {
-            list.appendChild(el('li', '', t('fl_key_' + key)));
-        });
-        keys.appendChild(list);
-        box.appendChild(el('p', 'small fg-secondary', state.edit ? t('fl_flow_help') : t('fl_read_only')));
-        box.appendChild(keys);
-
-        return box;
     }
 
     function nodeForm(node) {
@@ -4576,7 +5226,7 @@
         var config = node.config;
 
         var titled = (node.kind === 'task') || (node.kind === 'task_open') || (node.kind === 'approval');
-        var title = textInput(titleOf(node), titled ? 200 : 160, function (value) {
+        var title = textInput(rawTitle(node), titled ? 200 : 160, function (value) {
             if (titled) {
                 config.title = value;
             }
@@ -4650,6 +5300,10 @@
             mcpFields(box, node);
         }
 
+        if ((node.kind === 'row_add') || (node.kind === 'row_set')) {
+            rowWriteFields(box, node);
+        }
+
         if (node.kind === 'condition') {
             conditionFields(box, node);
         }
@@ -4668,6 +5322,14 @@
 
         if (node.kind === 'start_flow') {
             chainFields(box, node);
+        }
+
+        if (node.kind === 'for_each') {
+            loopFields(box, node);
+        }
+
+        if (node.kind === 'for_each_end') {
+            loopEndFields(box, node);
         }
 
         if (node.kind === 'approval') {
@@ -4690,6 +5352,14 @@
 
         if (node.kind === 'row') {
             rowFields(box, node);
+        }
+
+        if (node.kind === 'no_order') {
+            noOrderFields(box, node);
+        }
+
+        if (KINDS[node.kind] && (KINDS[node.kind].group === 'start')) {
+            tellField(box, node);
         }
 
         if (state.edit) {
@@ -5006,10 +5676,25 @@
     function urlFields(box, node) {
         var config = node.config;
 
-        box.appendChild(field(t('fl_url'), textInput(config.url, 2000, function (value) {
-            config.url = value.trim();
-            refreshNode(node);
-        }), t('fl_url_help')));
+        if (node.kind === 'webhook') {
+            // A number of a box before may go into the path or query; only
+            // numbers are offered, and the host takes none (the server
+            // refuses one there).
+            var address = valueField(node, t('fl_url'), config.url, 2000, function (value) {
+                config.url = value.trim();
+                refreshNode(node);
+            }, false, null, function (item) {
+                return item.value.type === 'number';
+            });
+
+            address.querySelector('.form-text').textContent = t('fl_hook_url_help');
+            box.appendChild(address);
+        } else {
+            box.appendChild(field(t('fl_url'), textInput(config.url, 2000, function (value) {
+                config.url = value.trim();
+                refreshNode(node);
+            }), t('fl_url_help')));
+        }
 
         if (node.kind === 'webhook') {
             var format = K.select([['generic', t('fl_hook_generic')], ['text', t('fl_hook_text')], ['discord', t('fl_hook_discord')]], config.format || 'generic');
@@ -5190,10 +5875,23 @@
         }, false));
         box.appendChild(field(t('fl_report_counts'), list));
         channelField(box, node, t('fl_post_channel'), t('fl_task_no_channel'));
+        reportToField(box, node);
+    }
+
+    // A summary's e-mail addresses; a role-3 member's own flow sends it to
+    // a channel only, so they have none (addresses kept from their staff
+    // days are marked on the box by the server, to be cleared here).
+    function reportToField(box, node) {
+        var config = node.config;
+
+        if (memberOwn() && !String(config.to || '').trim()) {
+            return;
+        }
+
         box.appendChild(field(t('fl_email_to'), textInput(config.to, 2000, function (value) {
             config.to = value;
             refreshNode(node);
-        }), t('fl_report_where_help')));
+        }), memberOwn() ? t('fl_member_report_to') : t('fl_report_where_help')));
     }
 
     // A check-in: the channel asked and the question.
@@ -5230,8 +5928,17 @@
         return stepLists().mcp.filter(function (item) { return item.id === id; })[0] || null;
     }
 
+    // Whether the box's tool asks its owner before each call (rule approve,
+    // ws_step_mcp_tool_asks()): the run waits for the owner's approval.
+    function mcpToolAsks(config) {
+        var server = mcpServer(config.server_id);
+
+        return !!(server && config.tool && (server.asks.indexOf(config.tool) !== -1));
+    }
+
     // Why the box's tool may not run, '' when it may or none is chosen yet:
-    // the refusals of ws_step_mcp_tool_problem() and ws_step_mcp_check().
+    // the refusals of ws_step_mcp_tool_problem() and ws_step_mcp_check(); a
+    // tool that asks first needs the channel its owner is asked in.
     function mcpToolProblem(config) {
         if (!config.server_id) {
             return '';
@@ -5248,7 +5955,7 @@
         }
 
         if (server.asks.indexOf(config.tool) !== -1) {
-            return t('fl_mcp_tool_asks', config.tool, server.alias);
+            return (parseInt(config.channel_id, 10) > 0) ? '' : t('fl_approval_no_channel');
         }
 
         return server.tools.some(function (tool) { return tool.name === config.tool; }) ? '' : t('fl_mcp_tool_off', config.tool, server.alias);
@@ -5274,8 +5981,11 @@
         return (parsed && (typeof parsed === 'object') && !Array.isArray(parsed)) ? '' : t('fl_mcp_arguments_bad');
     }
 
-    // A tool of a connected MCP server that reads: the server, the tool and
-    // its arguments as a JSON object, values of the run put inside quotes.
+    // A tool of a connected MCP server: the server, the tool and its
+    // arguments as a JSON object, values of the run put inside quotes. A
+    // tool that asks first also takes the channel its owner approves each
+    // call in and the hours they have (channel_id, closes_in, as an
+    // approval box's); a box without them keeps its config as it came.
     function mcpFields(box, node) {
         var config = node.config;
         var servers = stepLists().mcp;
@@ -5289,6 +5999,7 @@
 
         var pick = K.select(options, config.server_id || 0);
         var toolWrap = el('div');
+        var askWrap = el('div');
         var about = el('div', 'form-text');
         var note = el('div', 'small fg-danger mb-5');
         var argNote = el('div', 'small fg-danger mb-5');
@@ -5300,12 +6011,34 @@
             note.textContent = mcpToolProblem(config);
             argNote.textContent = mcpArgumentsProblem(config.arguments);
         };
+        var drawAsk = function () {
+            K.clear(askWrap);
+
+            if (!mcpToolAsks(config)) {
+                return;
+            }
+
+            var room = channelPick(config, t('fl_post_pick'));
+
+            room.setAttribute('data-refocus', 'mcp-channel-' + node.id);
+            room.addEventListener('change', function () {
+                config.channel_id = parseInt(room.value, 10) || 0;
+                tell();
+                refreshNode(node);
+            });
+            askWrap.appendChild(field(t('fl_approval_channel'), room));
+            closesField(askWrap, node);
+        };
         var drawTools = function () {
             var server = mcpServer(config.server_id);
             var list = server ? server.tools : [];
-            var choices = [['', t('fl_mcp_tool_pick')]].concat(list.map(function (item) { return [item.name, item.name]; }));
+            var asks = server ? server.asks : [];
+            var known = list.map(function (item) { return item.name; }).concat(asks);
+            var choices = [['', t('fl_mcp_tool_pick')]].concat(list.map(function (item) { return [item.name, item.name]; }), asks.map(function (name) {
+                return [name, name + ' · ' + t('fl_kind_approval')];
+            }));
 
-            if (config.tool && !list.some(function (item) { return item.name === config.tool; })) {
+            if (config.tool && (known.indexOf(config.tool) === -1)) {
                 choices.push([config.tool, config.tool]);
             }
 
@@ -5314,6 +6047,7 @@
             tools.setAttribute('data-refocus', 'mcp-tool-' + node.id);
             tools.addEventListener('change', function () {
                 config.tool = tools.value;
+                drawAsk();
                 tell();
                 refreshNode(node);
             });
@@ -5329,11 +6063,12 @@
             config.server_id = parseInt(pick.value, 10) || 0;
 
             // A tool of the server before stays only where this one has it.
-            if (!server || !server.tools.some(function (item) { return item.name === config.tool; })) {
+            if (!server || (!server.tools.some(function (item) { return item.name === config.tool; }) && (server.asks.indexOf(config.tool) === -1))) {
                 config.tool = '';
             }
 
             drawTools();
+            drawAsk();
             tell();
             refreshNode(node);
         });
@@ -5341,6 +6076,7 @@
         argNote.setAttribute('role', 'status');
         box.appendChild(field(t('fl_mcp_server'), pick, servers.length ? '' : t('fl_mcp_no_server')));
         box.appendChild(toolWrap);
+        box.appendChild(askWrap);
         box.appendChild(note);
         box.appendChild(valueField(node, t('fl_mcp_arguments'), config.arguments, 20000, function (value) {
             config.arguments = value;
@@ -5349,6 +6085,7 @@
         }, true, t('fl_mcp_arguments_help')));
         box.appendChild(argNote);
         drawTools();
+        drawAsk();
         tell();
     }
 
@@ -5380,6 +6117,62 @@
             refreshNode(node);
         });
         box.appendChild(field(t('fl_chain_flow'), pick, t('fl_chain_help')));
+    }
+
+    // A For each box: the one value holding the list, where the list sits in
+    // it, and the fields of an item it gives by name
+    // (ws_flow_loop_normalize()).
+    function loopFields(box, node) {
+        var config = node.config;
+        var fields = textInput((config.fields || []).join(', '), 400, function (value) {
+            config.fields = [];
+            value.split(',').forEach(function (part) {
+                var key = part.trim().toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 32);
+
+                if (key && (config.fields.indexOf(key) === -1) && (config.fields.length < 10)) {
+                    config.fields.push(key);
+                }
+            });
+            refreshNode(node);
+        });
+        var path = textInput(config.path || '', 200, function (value) {
+            config.path = value.replace(/[^A-Za-z0-9_.\-]/g, '');
+            refreshNode(node);
+        });
+
+        box.appendChild(valueField(node, t('fl_loop_list'), config.list || '', 200, function (value) {
+            config.list = value.trim();
+            refreshNode(node);
+        }, false, t('fl_loop_list_help'), function (source) {
+            return fieldTakes(node, 'list', source);
+        }));
+        box.appendChild(field(t('fl_loop_path'), path, t('fl_loop_path_help')));
+        box.appendChild(field(t('fl_loop_fields'), fields, t('fl_loop_fields_help')));
+    }
+
+    // An End for each box: the loop it ends, and the one value of its body
+    // gathered per item into its list.
+    function loopEndFields(box, node) {
+        var config = node.config;
+        var options = [['', t('fl_loop_pick')]].concat(state.graph.nodes.filter(function (other) {
+            return other.kind === 'for_each';
+        }).map(function (other) {
+            return [other.id, nameOf(other)];
+        }));
+        var pick = K.select(options, config.for_each || '');
+
+        pick.addEventListener('change', function () {
+            config.for_each = pick.value;
+            drawEdges();
+            refreshNode(node);
+        });
+        box.appendChild(field(t('fl_loop_ends'), pick));
+        box.appendChild(valueField(node, t('fl_loop_collect'), config.collect || '', 200, function (value) {
+            config.collect = value.trim();
+            refreshNode(node);
+        }, false, t('fl_loop_collect_help'), function (source) {
+            return fieldTakes(node, 'collect', source);
+        }));
     }
 
     function startFields(box, node) {
@@ -5489,7 +6282,7 @@
                 row.value = text;
                 refreshNode(node);
             });
-            var remove = K.button('btn btn-sm btn-ghost', '', 'bi-x-lg', t('fl_constants_remove', row.key || String(index + 1)));
+            var remove = K.button('btn btn-sm btn-text theme-secondary', '', 'bi-x-lg', t('fl_constants_remove', row.key || String(index + 1)));
 
             name.placeholder = t('fl_constants_name');
             name.setAttribute('aria-label', t('fl_constants_name'));
@@ -5644,7 +6437,6 @@
     function approvalFields(box, node) {
         var config = node.config;
         var rule = K.select([['any', t('fl_approval_any')], ['all', t('fl_approval_all')]], config.rule || 'any');
-        var closes = el('input', 'form-control form-control-sm wsf-number');
 
         channelField(box, node, t('fl_approval_channel'), t('fl_post_pick'));
         box.appendChild(field(t('fl_approval_who'), peopleList(node, el('div', 'wsf-people'), 'approvers', 50), t('fl_approval_who_help')));
@@ -5657,6 +6449,15 @@
             refreshNode(node);
         });
         box.appendChild(field(t('fl_approval_rule'), rule));
+        closesField(box, node);
+    }
+
+    // The hours an approval request stays open (closes_in, '' for no
+    // deadline, else 1 to WS_STEP_APPROVAL_CLOSES_MAX): the approval box's
+    // and that of an MCP box whose tool asks first.
+    function closesField(box, node) {
+        var config = node.config;
+        var closes = el('input', 'form-control form-control-sm wsf-number');
 
         closes.type = 'number';
         closes.min = '1';
@@ -5885,6 +6686,295 @@
         box.appendChild(field(t('fl_row_column'), column, t('fl_row_column_help')));
     }
 
+    // A box on customers who stopped ordering: the days since their last
+    // order (1 to WS_FLOW_NO_ORDER_DAYS_MAX).
+    function noOrderFields(box, node) {
+        var days = el('input', 'form-control form-control-sm wsf-number');
+
+        days.type = 'number';
+        days.min = '1';
+        days.max = '3650';
+        days.value = String(node.config.days || 30);
+        days.addEventListener('input', function () {
+            node.config.days = clamp(parseInt(days.value, 10) || 1, 1, 3650);
+            refreshNode(node);
+        });
+        box.appendChild(field(t('fl_no_order_days'), days, t('fl_no_order_days_help')));
+    }
+
+    // When a run tells the flow's owner it ended (ws_flow_tell_normalize()):
+    // every run is kept as no key, as the server keeps it.
+    function tellField(box, node) {
+        var tell = K.select([
+            ['every', t('fl_tell_every')],
+            ['failures', t('fl_tell_failures')],
+            ['never', t('fl_tell_never')]
+        ], node.config.tell || 'every');
+
+        tell.addEventListener('change', function () {
+            if (tell.value === 'every') {
+                delete node.config.tell;
+            } else {
+                node.config.tell = tell.value;
+            }
+
+            refreshNode(node);
+        });
+        box.appendChild(field(t('fl_tell'), tell, t('fl_tell_help')));
+    }
+
+    // ── Boxes that add or change a row ─────────────────────────────────
+
+    // The tables such a box may write in: those the person may change rows
+    // of (ws_flow_row_tables(), edit), as ws_step_row_check() asks.
+    function rowWriteTables() {
+        return stepLists().tables.filter(function (table) { return !!table.edit; });
+    }
+
+    function rowWriteTable(config) {
+        return rowWriteTables().filter(function (table) { return table.id === config.table_id; })[0] || null;
+    }
+
+    // The columns it writes: all but formulas, which are worked out.
+    function rowWriteColumns(table) {
+        return table ? table.columns.filter(function (column) { return column.type !== 'formula'; }) : [];
+    }
+
+    // A box's cells as an object, column id => value; null for a text that
+    // is no JSON object (a value outside quotes, written over the API).
+    function rowCells(text) {
+        var cells;
+
+        if (!text) {
+            return {};
+        }
+
+        try {
+            cells = JSON.parse(text);
+        } catch (error) {
+            return null;
+        }
+
+        return (cells && (typeof cells === 'object') && !Array.isArray(cells)) ? cells : null;
+    }
+
+    // Its table, and the row a change names by its number or its value.
+    function rowWriteMeta(node) {
+        var config = node.config;
+        var table = rowTable(config);
+        var row = (config.row || '').trim();
+
+        if (!config.table_id) {
+            return t('fl_row_none');
+        }
+
+        var name = table ? table.name : '#' + config.table_id;
+        var named = /^\d+$/.test(row) ? null : valueNames(node)[row];
+
+        return ((node.kind === 'row_set') && row) ? t('fl_rows_meta', name, named ? named.label : row) : name;
+    }
+
+    // Money's decimals, as the table keeps its column (2 unless it says).
+    function cellPlaces(column) {
+        var places = parseInt((column.options || {}).decimals, 10);
+
+        return isNaN(places) ? 2 : Math.max(0, Math.min(places, 6));
+    }
+
+    // A cell as its field shows it: money in minor units as an amount, a
+    // number with the site's decimal mark (siteShown()).
+    function cellShown(column, value) {
+        if ((value === null) || (value === undefined)) {
+            return '';
+        }
+
+        if ((column.type === 'money') && (typeof value === 'number')) {
+            return siteShown((value / Math.pow(10, cellPlaces(column))).toFixed(cellPlaces(column)));
+        }
+
+        if (typeof value === 'number') {
+            return siteShown(value);
+        }
+
+        return (typeof value === 'object') ? JSON.stringify(value) : String(value);
+    }
+
+    // What a field typed keeps, as the table takes it: nothing for an empty
+    // field, a number typed the site's way as a number (siteNumber(); money
+    // in minor units, rounded), a text otherwise; a value from a box before
+    // stays a text the run fills.
+    function cellKept(column, text) {
+        var typed = text.trim();
+
+        if (typed === '') {
+            return undefined;
+        }
+
+        if (((column.type === 'number') && (siteNumber(typed) !== null)) || ((column.type === 'person') && /^\d+$/.test(typed))) {
+            return Number((column.type === 'number') ? siteNumber(typed) : typed);
+        }
+
+        if ((column.type === 'money') && (siteNumber(typed) !== null)) {
+            return Math.round(Number(siteNumber(typed)) * Math.pow(10, cellPlaces(column)));
+        }
+
+        return (column.type === 'text') ? text : typed;
+    }
+
+    // One cell written, or left out; the other cells stay as they are, so
+    // a column of another table, kept from the API, is never lost.
+    function setCell(node, id, value) {
+        var cells = rowCells(node.config.cells) || {};
+
+        if (value === undefined) {
+            delete cells[id];
+        } else {
+            cells[id] = value;
+        }
+
+        node.config.cells = Object.keys(cells).length ? JSON.stringify(cells) : '';
+        refreshNode(node);
+    }
+
+    // The field of one column: a choice for a checkbox and a status, a kind
+    // and a number for a record link, else a text taking values.
+    function cellField(node, column, value) {
+        var id = String(column.id);
+        var options = column.options || {};
+
+        if ((column.type === 'checkbox') || (column.type === 'status')) {
+            var current = ((value === null) || (value === undefined)) ? '' : String(value);
+            var choices = (column.type === 'checkbox') ? [['true', t('fl_change_yes')], ['false', t('fl_change_no')]]
+                : (options.choices || []).map(function (choice) { return [String(choice.key), choice.label]; });
+
+            if (current && !choices.some(function (choice) { return choice[0] === current; })) {
+                choices.push([current, current]);
+            }
+
+            var pick = K.select([['', t('fl_rows_unset')]].concat(choices), current);
+
+            pick.setAttribute('data-refocus', 'rows-cell-' + node.id + '-' + id);
+            pick.addEventListener('change', function () {
+                setCell(node, id, (pick.value === '') ? undefined : ((column.type === 'checkbox') ? (pick.value === 'true') : pick.value));
+            });
+
+            return field(column.name, pick);
+        }
+
+        if (column.type === 'link') {
+            return linkField(node, column, value);
+        }
+
+        var help = { money: t('fl_rows_money_help'), date: t(options.time ? 'fl_rows_time_help' : 'fl_rows_date_help'), person: t('fl_rows_person_help') }[column.type] || '';
+
+        return valueField(node, column.name, cellShown(column, value), 4000, function (text) {
+            setCell(node, id, cellKept(column, text));
+        }, column.type === 'text', help);
+    }
+
+    // A record link: its kind (one of the column's, when it names any) and
+    // its number, kept once both are given.
+    function linkField(node, column, value) {
+        var id = String(column.id);
+        var link = { kind: (value && value.kind) ? String(value.kind) : '', id: (value && (value.id !== undefined)) ? String(value.id) : '' };
+        var kinds = (column.options || {}).kinds || [];
+        var wrap = el('fieldset', 'mb-5');
+        var keep = function () {
+            setCell(node, id, (link.kind && link.id.trim()) ? { kind: link.kind, id: /^\d+$/.test(link.id.trim()) ? Number(link.id.trim()) : link.id.trim() } : undefined);
+        };
+        var kind;
+
+        if (kinds.length) {
+            kind = K.select([['', t('fl_rows_unset')]].concat(kinds.map(function (item) { return [item, item]; })
+                .concat(((link.kind !== '') && (kinds.indexOf(link.kind) === -1)) ? [[link.kind, link.kind]] : [])), link.kind);
+            kind.addEventListener('change', function () {
+                link.kind = kind.value;
+                keep();
+            });
+        } else {
+            kind = textInput(link.kind, 32, function (text) {
+                link.kind = text.trim();
+                keep();
+            });
+        }
+
+        kind.setAttribute('data-refocus', 'rows-link-' + node.id + '-' + id);
+        wrap.appendChild(el('legend', 'form-label small fw-semibold mb-1', column.name));
+        wrap.appendChild(field(t('fl_rows_link_kind'), kind));
+        wrap.appendChild(valueField(node, t('fl_rows_link_id'), link.id, 200, function (text) {
+            link.id = text;
+            keep();
+        }, false));
+
+        return wrap;
+    }
+
+    // A box that adds or changes a row: its table, the row a change names,
+    // then a field per column. Cells the form cannot show (a table not
+    // among those the person changes, or a text that is no JSON object)
+    // are shown as their JSON, so a box built over the API saves unchanged.
+    function rowWriteFields(box, node) {
+        var config = node.config;
+        var table = rowWriteTable(config);
+        var read = rowTable(config);
+        var options = [[0, t('fl_row_table_pick')]].concat(rowWriteTables().map(function (item) { return [item.id, item.name]; }));
+
+        if (config.table_id && !table) {
+            options.push([config.table_id, read ? read.name : '#' + config.table_id]);
+        }
+
+        var pick = K.select(options, config.table_id || 0);
+
+        pick.setAttribute('data-refocus', 'rows-table-' + node.id);
+        pick.addEventListener('change', function () {
+            config.table_id = parseInt(pick.value, 10) || 0;
+            // Column ids are one table's: its cells do not fit another.
+            config.cells = '';
+            refreshNode(node);
+            drawSettings();
+        });
+        box.appendChild(field(t('fl_row_table'), pick, t('fl_rows_table_help')));
+
+        if (node.kind === 'row_set') {
+            box.appendChild(valueField(node, t('fl_rows_row'), config.row, 200, function (value) {
+                config.row = value;
+                refreshNode(node);
+            }, false, t('fl_rows_row_help')));
+        }
+
+        if (!config.table_id) {
+            return;
+        }
+
+        var cells = rowCells(config.cells);
+
+        if (!table || (cells === null)) {
+            var bad = el('div', 'small fg-danger mb-5');
+
+            bad.setAttribute('role', 'status');
+            bad.textContent = (cells === null) ? t('fl_rows_json_bad') : '';
+            box.appendChild(el('div', 'small fg-secondary mb-2', t('fl_rows_json_why')));
+            box.appendChild(valueField(node, t('fl_rows_json'), config.cells, 20000, function (value) {
+                config.cells = value;
+                bad.textContent = (rowCells(value) === null) ? t('fl_rows_json_bad') : '';
+                refreshNode(node);
+            }, true, t('fl_rows_json_help')));
+            box.appendChild(bad);
+
+            return;
+        }
+
+        var columns = rowWriteColumns(table);
+        var group = el('fieldset', 'wsf-rows-cells');
+
+        group.appendChild(el('legend', 'form-label small fw-semibold mb-1', t('fl_rows_cells')));
+        group.appendChild(el('div', 'form-text mt-0 mb-2', columns.length ? t((node.kind === 'row_set') ? 'fl_rows_set_help' : 'fl_rows_add_help') : t('fl_rows_no_columns')));
+        columns.forEach(function (column) {
+            group.appendChild(cellField(node, column, cells[column.id]));
+        });
+        box.appendChild(group);
+    }
+
     // The days of the week by number, 1 Monday - 7 Sunday.
     var DAYS = { 1: 'fl_day_mon', 2: 'fl_day_tue', 3: 'fl_day_wed', 4: 'fl_day_thu', 5: 'fl_day_fri', 6: 'fl_day_sat', 7: 'fl_day_sun' };
 
@@ -6055,7 +7145,7 @@
 
         var operators = stepLists().operators;
 
-        conditionCompare(box, node, rule, VALUE_OPS[type].map(function (key) { return [key, operators[key] || key]; }), (type === 'number') ? { kind: 'decimal' } : null);
+        conditionCompare(box, node, rule, VALUE_OPS[type].map(function (key) { return [key, operators[key] || key]; }), (type === 'number') ? { kind: 'number' } : null);
     }
 
     // A count compared with a number; a count of a channel's tasks reads one
@@ -6207,11 +7297,63 @@
         box.appendChild(field(t('fl_cond_value'), input, (rule.op === 'within') ? t('fl_cond_within_help') : ''));
     }
 
+    // The site's decimal mark (ws_flow_js_config()): ',' in Turkish.
+    function siteDecimal() {
+        return (FL.decimal === ',') ? ',' : '.';
+    }
+
+    // A number typed the site's way, read as ws_calc_number() reads it: with
+    // both marks the last one marks the decimals; a lone mark before groups
+    // of three digits groups thousands, unless it is the site's decimal mark
+    // written once (Turkish 1,500 is 1.5, 1.500 is 1500, 1.250,5 is 1250.5).
+    // Gives a machine number as text, or null when the text is no number.
+    function siteNumber(text) {
+        var match = /^([+-]?)(\d[\d.,]*)$/.exec(String(text).replace(/[\s\u00a0]/g, ''));
+        var decimal = '.';
+
+        if (!match) {
+            return null;
+        }
+
+        var digits = match[2];
+        var dot = digits.lastIndexOf('.');
+        var comma = digits.lastIndexOf(',');
+
+        if ((dot !== -1) && (comma !== -1)) {
+            decimal = (dot > comma) ? '.' : ',';
+        } else if ((dot !== -1) || (comma !== -1)) {
+            var mark = (dot !== -1) ? '.' : ',';
+            var parts = digits.split(mark);
+            var grouped = parts.slice(1).every(function (part) { return part.length === 3; });
+
+            decimal = (grouped && ((parts.length > 2) || (mark !== siteDecimal()))) ? ((mark === '.') ? ',' : '.') : mark;
+
+            if ((parts.length > 2) && (decimal === mark)) {
+                return null;
+            }
+        }
+
+        // Trailing zeros of the decimals go: Turkish 1,500 is kept as 1.5.
+        digits = digits.split((decimal === '.') ? ',' : '.').join('').replace(decimal, '.').replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '');
+
+        return /^\d+(\.\d+)?$/.test(digits) ? ((match[1] === '-') ? '-' : '') + digits : null;
+    }
+
+    // A machine number shown with the site's decimal mark and no grouping,
+    // so it reads back as the same number (Turkish 1.234 shown as 1,234).
+    function siteShown(value) {
+        var text = String(value);
+
+        return ((siteDecimal() === ',') && /^-?\d+\.\d+$/.test(text)) ? text.replace('.', ',') : text;
+    }
+
     // A value a field is compared with, kept as the record keeps it and as
     // the scheduled form sends it (saValueInput() in workspace.js): an amount
     // shown as a decimal and kept in minor units (changeInput()), yes or no
     // as '1' or '0', a day as YYYY-MM-DD, a moment as YYYY-MM-DD HH:MM:00, a
-    // decimal with a dot, anything else as typed. Always text: the store
+    // decimal typed the site's way kept as a machine number (siteNumber()),
+    // anything else as typed: a value of the run's number stays as typed,
+    // read the site's way by ws_flow_typed_number(). Always text: the store
     // would keep a true or false as '' (ws_flow_text()).
     function conditionValue(meta, value, onChange) {
         var kind = meta ? meta.kind : '';
@@ -6237,10 +7379,16 @@
                 typed = (typed === '') ? '' : typed.replace('T', ' ').slice(0, 16) + ':00';
             }
 
-            onChange((kind === 'decimal') ? typed.replace(',', '.') : typed);
+            if (kind === 'decimal') {
+                typed = (siteNumber(typed) === null) ? typed : siteNumber(typed);
+            }
+
+            onChange(typed);
         });
 
-        if (kind === 'date') {
+        if (kind === 'decimal') {
+            input.value = siteShown(value || '');
+        } else if (kind === 'date') {
             input.type = 'date';
         } else if (kind === 'datetime') {
             input.type = 'datetime-local';
@@ -6307,6 +7455,21 @@
         if (config.action !== 'delete') {
             changeValues(box, node, info);
         }
+
+        changeAskFields(box, node);
+    }
+
+    // A role-3 member's own flow proposes its change on an approval request
+    // to its owner (ws_step_change_ask()): the channel it asks in and the
+    // hours it stays open (channel_id, closes_in, as an approval box's).
+    function changeAskFields(box, node) {
+        if (!memberOwn()) {
+            return;
+        }
+
+        channelField(box, node, t('fl_approval_channel'), t('fl_post_pick'));
+        box.appendChild(el('p', 'form-text mt-0', t('fl_change_ask_help')));
+        closesField(box, node);
     }
 
     // The fields of an update, one row each, and a list to add another from.
@@ -6525,7 +7688,7 @@
                 row.appendChild(outcomeSelect(edge));
             }
 
-            var remove = K.button('btn btn-sm btn-ghost', '', 'bi-x-lg');
+            var remove = K.button('btn btn-sm btn-text theme-secondary', '', 'bi-x-lg');
 
             nameLabel(remove, 'fl_remove_arrow_to', nodeById(edge.to));
             remove.title = remove.getAttribute('aria-label');
@@ -6570,7 +7733,9 @@
     function arrowOutcomes(node) {
         var kind = kindOf(node);
 
-        return (kind.into && kind.out.length) ? kind.out.concat(['always']) : kind.out;
+        // A For each box never leaves on always: one arrow enters its loop,
+        // one leaves it when the list cannot be read.
+        return (kind.into && kind.out.length && (kind.loop !== 'start')) ? kind.out.concat(['always']) : kind.out;
     }
 
     function outcomeSelect(edge) {
@@ -6624,6 +7789,11 @@
         return title ? ' · ' + title : ((node.kind === 'task') ? ' · ' + t('fl_untitled_box') : '');
     }
 
+    // The box whose settings the outline shows: the one selected.
+    function outlineOpen() {
+        return (state.selected && (state.selected.type === 'node')) ? state.selected.id : '';
+    }
+
     function drawOutline() {
         K.clear(ui.outlineBox);
 
@@ -6637,15 +7807,31 @@
         }
 
         var list = el('ol', 'wsf-outline-list');
+        var open = outlineOpen();
 
-        orderedNodes().forEach(function (node) {
+        (state.run ? runOrder() : orderedNodes()).forEach(function (node) {
             var item = el('li', 'wsf-outline-item ' + kindClasses(node.kind));
             var head = el('h3', 'wsf-outline-head');
+            // Outside a run the heading opens the box's settings: only the
+            // open box's form is drawn, a big flow has hundreds of controls.
+            var label = state.run ? head : head.appendChild(el('button', 'wsf-outline-toggle'));
 
             item.setAttribute('data-node', node.id);
-            head.appendChild(K.flowIcon(node.kind, 'me-1'));
-            head.appendChild(el('span', 'wsf-outline-kind', t(kindOf(node).name)));
-            head.appendChild(el('span', 'wsf-outline-title', outlineTitle(node)));
+            label.appendChild(K.flowIcon(node.kind, 'me-1'));
+            label.appendChild(el('span', 'wsf-outline-kind', t(kindOf(node).name)));
+            label.appendChild(el('span', 'wsf-outline-title', outlineTitle(node)));
+
+            if (!state.run) {
+                label.type = 'button';
+                label.setAttribute('aria-expanded', (node.id === open) ? 'true' : 'false');
+                label.setAttribute('data-refocus', 'outline-open-' + node.id);
+                label.appendChild(K.icon((node.id === open) ? 'bi-chevron-up' : 'bi-chevron-down', 'wsf-outline-chevron ms-auto'));
+                label.addEventListener('click', function () {
+                    state.refocus = 'outline-open-' + node.id;
+                    select((node.id === outlineOpen()) ? null : { type: 'node', id: node.id });
+                });
+            }
+
             paintMark(item, head, node);
             item.appendChild(head);
 
@@ -6657,9 +7843,9 @@
 
                 head.tabIndex = -1;
                 head.setAttribute('data-refocus', 'outline-box-' + node.id);
-                item.classList.add('wsf-run-' + ((step && STEP_STATES[step.status]) ? step.status : 'none'));
+                item.classList.add(kindOf(node).pure ? 'wsf-run-value' : ('wsf-run-' + ((step && STEP_STATES[step.status]) ? step.status : 'none')));
                 item.appendChild(outlineRun(node, step));
-            } else {
+            } else if (node.id === open) {
                 item.appendChild(nodeForm(node));
             }
             list.appendChild(item);
@@ -6700,9 +7886,9 @@
         });
 
         // The values it reads may have changed, and its name is in the
-        // outline's lines of the boxes it gives to.
-        drawData();
-        drawReads(dataThreads());
+        // outline's lines of the boxes it gives to: drawn again once the
+        // typing pauses (settle()).
+        state.settleThreads = true;
 
         Array.prototype.forEach.call(ui.outlineBox.querySelectorAll('[data-node="' + node.id + '"] > .wsf-outline-head .wsf-outline-title'), function (title) {
             title.textContent = outlineTitle(node);
@@ -6738,8 +7924,19 @@
         state.dirty = true;
         state.changes++;
 
-        if (state.history) {
-            historyRecord(state.history, JSON.stringify(state.graph), !structure && !step, Date.now());
+        // A change that folds (typing, an arrow-key move) is recorded once
+        // the changes pause; one that is its own step first records what
+        // came before it, then itself.
+        if (!structure && !step) {
+            state.settleHistory = !!state.history;
+            window.clearTimeout(state.settleTimer);
+            state.settleTimer = window.setTimeout(settle, SETTLE_DELAY);
+        } else {
+            settle();
+
+            if (state.history) {
+                historyRecord(state.history, JSON.stringify(state.graph), false, Date.now());
+            }
         }
 
         if (structure) {
@@ -6765,18 +7962,46 @@
         state.saveTimer = window.setTimeout(save, SAVE_DELAY);
     }
 
+    // The changes paused (or something needs them settled now: a step of its
+    // own, undo, a run or another flow shown): the undo step and the data
+    // threads put off while typing are made, once.
+    function settle() {
+        window.clearTimeout(state.settleTimer);
+        state.settleTimer = 0;
+
+        if (state.settleHistory) {
+            state.settleHistory = false;
+
+            if (state.edit && state.history && state.flow && (state.history.flow === state.flow.id)) {
+                historyRecord(state.history, JSON.stringify(state.graph), true, Date.now());
+                drawState();
+            }
+        }
+
+        if (state.settleThreads) {
+            state.settleThreads = false;
+            drawData();
+            drawReads(dataThreads());
+        }
+    }
+
     // Undo (back) or redo may be pressed: the draft open for editing, no
     // run shown, no box on its way and a step to go to.
     function undoable(back) {
         var history = state.history;
 
-        return !!(state.edit && state.flow && !state.run && !state.drag && history && (history.flow === state.flow.id) && (back ? history.past : history.future).length);
+        // A change waiting to be recorded (settle()) is a step back already
+        // and leaves nothing to redo.
+        return !!(state.edit && state.flow && !state.run && !state.drag && history && (history.flow === state.flow.id)
+            && (back ? (history.past.length || state.settleHistory) : (history.future.length && !state.settleHistory)));
     }
 
     // The graph one step back or forward, saved as any change; a box
     // selected stays selected while it is there, an arrow (selected by its
     // place in the list) does not.
     function undo(back) {
+        settle();
+
         if (!undoable(back)) {
             return;
         }
@@ -6788,6 +8013,14 @@
         state.graph = graph;
         state.binding = null;
         state.selected = (selected && (selected.type === 'node') && nodeById(selected.id)) ? selected : null;
+
+        // A box back from the bin of this session forgets its old place.
+        if (state.gone) {
+            graph.nodes.forEach(function (node) {
+                delete state.gone.at[node.id];
+            });
+        }
+
         changed(true);
 
         // The button that went grey gives the focus to the other one.
@@ -6827,7 +8060,7 @@
     }
 
     function addItem(kind, at) {
-        if (!state.edit || !state.flow) {
+        if (!state.edit || !state.flow || !memberKind(kind)) {
             return;
         }
 
@@ -6866,7 +8099,7 @@
         } else if (kind === 'start_action') {
             config = { target_id: 0, delay: 0 };
         } else if (kind === 'change') {
-            config = { record: '', action: 'update', id: 0, fields: {} };
+            config = memberOwn() ? { record: '', action: 'update', id: 0, fields: {}, channel_id: 0, closes_in: '' } : { record: '', action: 'update', id: 0, fields: {} };
         } else if (kind === 'constants') {
             config = { rows: [{ key: '', type: 'text', value: '' }] };
         } else if (kind === 'value') {
@@ -6877,13 +8110,21 @@
             // The one server there is is taken; of several, none yet.
             var servers = stepLists().mcp;
 
-            config = { server_id: (servers.length === 1) ? servers[0].id : 0, tool: '', arguments: '' };
+            config = { server_id: (servers.length === 1) ? servers[0].id : 0, tool: '', arguments: '', channel_id: 0, closes_in: '' };
         } else if (kind === 'condition') {
             config = { rule: { type: 'workday' } };
         } else if (kind === 'delay') {
             config = { amount: 1, unit: 'hours' };
         } else if (kind === 'start_flow') {
             config = { flow_id: 0 };
+        } else if (kind === 'for_each') {
+            config = { list: '', path: '', fields: [] };
+        } else if (kind === 'for_each_end') {
+            // The loop that has no End box yet, when there is one such.
+            var loops = flowLoops();
+            var open = Object.keys(loops).filter(function (id) { return !loops[id].end; });
+
+            config = { for_each: (open.length === 1) ? open[0] : '', collect: '' };
         } else if (kind === 'approval') {
             config = { channel_id: 0, title: '', text: '', approvers: [], rule: 'any', closes_in: '' };
         } else if (kind === 'schedule') {
@@ -6892,11 +8133,21 @@
             config = { event: '', page_id: 0, status: '', channel_id: 0 };
         } else if (kind === 'join') {
             config = { channel_id: 0 };
+        } else if (kind === 'no_order') {
+            config = { days: 30 };
         } else if (kind === 'row') {
             // The one table there is is taken; of several, none yet.
             var tables = stepLists().tables;
 
             config = { table_id: (tables.length === 1) ? tables[0].id : 0, what: 'created', column_id: 0 };
+        } else if ((kind === 'row_add') || (kind === 'row_set')) {
+            var writable = rowWriteTables();
+
+            config = { table_id: (writable.length === 1) ? writable[0].id : 0, cells: '' };
+
+            if (kind === 'row_set') {
+                config.row = '';
+            }
         }
 
         var node = { id: freeId(kind, state.graph.nodes), kind: kind, label: '', x: place.x, y: place.y, config: config };
@@ -6999,6 +8250,13 @@
                 state.refocus = (near ? 'title-' + near.id + ' ' : '') + 'outline-add-task';
             }
 
+            // Where it stood: the values it gave still have threads, red, from
+            // there (goneThread()).
+            if (!state.gone || !state.flow || (state.gone.flow !== state.flow.id)) {
+                state.gone = { flow: state.flow ? state.flow.id : null, at: {} };
+            }
+
+            state.gone.at[node.id] = { x: node.x, y: node.y };
             state.graph.nodes = state.graph.nodes.filter(function (item) { return item !== node; });
             state.graph.edges = state.graph.edges.filter(function (edge) { return edge.from !== node.id && edge.to !== node.id; });
             announce(t('fl_removed', nameOf(node)));
@@ -7051,7 +8309,9 @@
 
     // The draft as saved, also while a run is shown over it.
     function payload() {
-        var data = { flow_id: state.flow.id, draft_rev: state.flow.draft_rev, channel_id: state.flow.channel_id || 0, graph: draftOf() };
+        // A role-3 member's own flow has no home: one kept from their staff
+        // days goes with the first save rather than refusing it.
+        var data = { flow_id: state.flow.id, draft_rev: state.flow.draft_rev, channel_id: memberOwn() ? 0 : (state.flow.channel_id || 0), graph: draftOf() };
 
         if (String(state.flow.name || '').trim() !== '') {
             data.name = state.flow.name;
@@ -7306,7 +8566,7 @@
         var title = el('h2', 'dialog-title fs-md');
         var cross = el('button', 'btn-close');
         var foot = el('div', 'dialog-footer');
-        var close = K.button('btn btn-sm btn-ghost', t('fl_share_close'));
+        var close = K.button('btn btn-sm btn-text theme-secondary', t('fl_share_close'));
 
         modal.id = 'wsf-share';
         modal.tabIndex = -1;
@@ -7450,7 +8710,7 @@
         row.appendChild(level);
 
         if (manage) {
-            var remove = K.button('btn btn-sm btn-ghost wsf-share-remove', '', 'bi-x-lg', t('fl_share_remove', name));
+            var remove = K.button('btn btn-sm btn-text theme-secondary wsf-share-remove', '', 'bi-x-lg', t('fl_share_remove', name));
 
             remove.setAttribute('data-share-focus', 'remove-' + share.id);
             remove.addEventListener('click', function () {
@@ -7688,6 +8948,29 @@
         return badge;
     }
 
+    // A value box in a run's words: a neutral mark in place of a state, as
+    // it writes no step of its own (paintRun()).
+    function stepBadge(node, step) {
+        if (kindOf(node).pure) {
+            var badge = el('span', 'wsf-run-badge wsf-run-value');
+
+            badge.appendChild(K.icon('bi-calculator'));
+            badge.appendChild(document.createTextNode(t('fl_group_values')));
+
+            return badge;
+        }
+
+        return runBadge(STEP_STATES, step ? step.status : 'none');
+    }
+
+    // The boxes of a run in arrow order, the steps first and the value
+    // boxes after them.
+    function runOrder() {
+        var nodes = orderedNodes();
+
+        return nodes.filter(function (node) { return !kindOf(node).pure; }).concat(nodes.filter(function (node) { return kindOf(node).pure; }));
+    }
+
     // A run's flag (assets/js/workspace_flow_flag.js, in the workspace
     // bundle so the run's card in a channel draws the same one).
     function runFlag(run, options) {
@@ -7811,7 +9094,7 @@
 
     // Stop on a running run's flag: asked first, as Cancel the run is.
     function stopLastRun(run, control) {
-        K.ask(t('fl_run_cancel_ask'), t('fl_run_cancel'), true).then(function (yes) {
+        askCancel().then(function (yes) {
             if (!yes) {
                 refocus();
                 return null;
@@ -8068,7 +9351,7 @@
         ui.side.appendChild(rows);
 
         if (list.next) {
-            var more = K.button('btn btn-sm btn-ghost', t('fl_runs_more'), 'bi-chevron-down');
+            var more = K.button('btn btn-sm btn-text theme-secondary', t('fl_runs_more'), 'bi-chevron-down');
 
             more.setAttribute('data-refocus', 'runs-more');
             more.disabled = list.loading;
@@ -8131,6 +9414,7 @@
         }
 
         state.openSeq++;
+        settle();
 
         if (!state.stash) {
             state.stash = { graph: state.graph, selected: state.selected, view: { x: state.view.x, y: state.view.y, k: state.view.k }, edit: state.edit };
@@ -8283,7 +9567,7 @@
             tools.appendChild(cancel);
         }
 
-        var all = K.button('btn btn-sm btn-ghost', t('fl_run_all'), 'bi-clock-history');
+        var all = K.button('btn btn-sm btn-text theme-secondary', t('fl_run_all'), 'bi-clock-history');
 
         all.setAttribute('data-refocus', 'run-all');
         all.addEventListener('click', function () {
@@ -8314,7 +9598,7 @@
         title.setAttribute('data-refocus', 'step');
         wrap.appendChild(title);
         wrap.appendChild(el('div', 'fw-semibold mb-1', nameOf(node)));
-        wrap.appendChild(runBadge(STEP_STATES, step ? step.status : 'none'));
+        wrap.appendChild(stepBadge(node, step));
 
         [metaOf(node), (step && step.started_at) ? t('fl_run_at', when(step.started_at)) : '', (step && step.finished_at) ? t('fl_run_ended', when(step.finished_at)) : ''].forEach(function (text) {
             if (text) {
@@ -8401,15 +9685,28 @@
         wrap.appendChild(el('p', 'small fg-secondary mb-3', t('fl_run_pick')));
         list.setAttribute('aria-label', t('fl_run_boxes'));
 
-        orderedNodes().forEach(function (node) {
+        var values = false;
+
+        // The value boxes come after the steps, under their own heading.
+        runOrder().forEach(function (node) {
             var step = stepOf(node.id);
             var row = K.button('wsf-run-step-row', '');
+            var pure = !!kindOf(node).pure;
+
+            if (pure && !values) {
+                values = true;
+                list.appendChild(el('li', 'wsf-run-values small fw-semibold fg-secondary mt-3 mb-1', t('fl_group_values')));
+            }
 
             row.appendChild(K.flowIcon(node.kind));
 
             row.setAttribute('data-refocus', 'run-step-' + node.id);
             row.appendChild(el('span', 'wsf-run-step-name', nameOf(node)));
-            row.appendChild(runBadge(STEP_STATES, step ? step.status : 'none'));
+
+            if (!pure) {
+                row.appendChild(stepBadge(node, step));
+            }
+
             row.addEventListener('click', function () {
                 select({ type: 'node', id: node.id }, { reveal: true, focus: true });
             });
@@ -8427,7 +9724,7 @@
         var box = el('div', 'wsf-run-outline');
         var meta = metaOf(node);
 
-        box.appendChild(el('p', 'mb-1')).appendChild(runBadge(STEP_STATES, step ? step.status : 'none'));
+        box.appendChild(el('p', 'mb-1')).appendChild(stepBadge(node, step));
 
         if (meta) {
             box.appendChild(el('p', 'small fg-secondary mb-1', meta));
@@ -8450,11 +9747,19 @@
     // value named, not worked out again. A box not
     // reached or skipped gives nothing. What started the run is not in the
     // run's answer: unknown, named rather than given.
-    function runValue(thread) {
+    function runValue(thread, fallback) {
+        var value = runValueOf(thread);
+        var instead = (fallback === undefined) ? thread.fallback : fallback;
+
+        // An empty value is filled by its fallback, as ws_step_value_of().
+        return (thread.from && instead && !value.unknown && (value.text === '')) ? { text: instead } : value;
+    }
+
+    function runValueOf(thread) {
         var match = /^\{\{node\.([a-z0-9_]+)\.([a-z0-9_]+)\}\}$/.exec(thread.token);
 
         if (!thread.from) {
-            return { text: '', note: t('fl_values_missing') };
+            return { text: '', note: t(thread.gone ? 'fl_values_gone' : 'fl_values_missing') };
         }
 
         if (!match) {
@@ -8500,8 +9805,8 @@
     // named in brackets.
     function runFilled(text, threads) {
         return text.replace(VALUE_TOKEN, function (token) {
-            var thread = threads.filter(function (item) { return item.token === token; })[0];
-            var value = thread ? runValue(thread) : { text: '' };
+            var thread = threads.filter(function (item) { return item.token === tokenBare(token); })[0];
+            var value = thread ? runValue(thread, tokenFallback(token)) : { text: '' };
 
             return value.unknown ? '[' + thread.label + ']' : value.text;
         });
@@ -8787,10 +10092,103 @@
         return 'canvas.' + Array.prototype.map.call(random, function (value) { return ('0' + value.toString(16)).slice(-2); }).join('');
     }
 
+    // The optional customer of a run, asked under Run's question: a search
+    // among the contacts the person reads (ws_ref_search), one picked at a
+    // time. The server checks the pick again (ws_flow_run_contact_check()).
+    function customerPicker() {
+        var picked = { id: 0 };
+        var wrap = el('div', 'wsf-run-customer');
+        var id = 'wsf-run-customer-' + Date.now();
+        var label = el('label', 'form-label small fw-semibold mb-1', t('fl_run_customer'));
+        var input = el('input', 'form-control form-control-sm');
+        var help = el('div', 'form-text', t('fl_run_customer_help'));
+        var list = el('div', 'list-group mt-1 d-none');
+        var chip = el('div', 'd-flex align-items-center gap-2 mt-1 d-none');
+        var serial = 0;
+
+        label.htmlFor = id;
+        input.id = id;
+        input.type = 'search';
+        input.autocomplete = 'off';
+        help.id = id + '-help';
+        input.setAttribute('aria-describedby', help.id);
+
+        function pick(found) {
+            picked.id = found ? found.id : 0;
+            K.clear(chip);
+            list.classList.add('d-none');
+            input.value = '';
+            input.classList.toggle('d-none', !!found);
+            chip.classList.toggle('d-none', !found);
+
+            if (!found) {
+                input.focus();
+                return;
+            }
+
+            var clear = K.button('btn btn-sm btn-text theme-secondary', '', 'bi-x-lg');
+
+            clear.setAttribute('aria-label', t('fl_run_customer_clear'));
+            clear.title = t('fl_run_customer_clear');
+            clear.addEventListener('click', function () {
+                pick(null);
+            });
+            chip.appendChild(el('span', 'bi bi-person-vcard'));
+            chip.appendChild(el('span', 'fw-semibold', found.label));
+            chip.appendChild(clear);
+            clear.focus();
+        }
+
+        input.addEventListener('input', K.debounce(function () {
+            var mine = ++serial;
+            var query = input.value.trim();
+
+            if (query === '') {
+                list.classList.add('d-none');
+                return;
+            }
+
+            K.api('ws_ref_search', { type: 'contact', q: query }).then(function (data) {
+                if (mine !== serial) {
+                    return;
+                }
+
+                K.clear(list);
+                (data.items || []).forEach(function (found) {
+                    var item = K.button('list-group-item list-group-item-action small text-start', found.label + (found.meta ? ' · ' + found.meta : ''));
+
+                    item.addEventListener('click', function () {
+                        pick(found);
+                    });
+                    list.appendChild(item);
+                });
+
+                if (!list.firstChild) {
+                    list.appendChild(el('div', 'list-group-item small fg-secondary', t('fl_run_customer_none')));
+                }
+
+                list.classList.remove('d-none');
+            }).catch(K.fail);
+        }, 250));
+        input.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape') {
+                list.classList.add('d-none');
+            }
+        });
+
+        [label, input, chip, list, help].forEach(function (node) {
+            wrap.appendChild(node);
+        });
+
+        return { node: wrap, picked: picked };
+    }
+
     // Run: asked first, then started once. A second click while it is asked
     // or sent does nothing; the token goes with the request and is kept
     // until the server answers it, so a start sent again after an answer was
-    // lost gets the run the first one started instead of a second run.
+    // lost gets the run the first one started instead of a second run. A
+    // customer picked makes the run about them: a run for them still open
+    // is answered instead of a second one.
     function startRun() {
         var flow = state.flow;
 
@@ -8800,7 +10198,9 @@
 
         state.starting = 'ask';
 
-        K.ask(t('fl_run_ask', flow.name, flow.version), t('fl_run_do')).then(function (yes) {
+        var customer = FL.run_customer ? customerPicker() : null;
+
+        K.ask(t('fl_run_ask', flow.name, flow.version), t('fl_run_do'), false, customer ? customer.node : null).then(function (yes) {
             if (!yes || (state.flow !== flow)) {
                 state.starting = false;
                 state.refocus = 'run';
@@ -8820,7 +10220,8 @@
 
             // start_token, not token: K.api() sends the CSRF token as token,
             // and a data key of that name would replace it.
-            return K.api('ws_flow_run_start', { flow_id: flow.id, start_token: state.startToken.value }).then(function (data) {
+            // contact_id 0: a run about nobody.
+            return K.api('ws_flow_run_start', { flow_id: flow.id, start_token: state.startToken.value, contact_id: customer ? customer.picked.id : 0 }).then(function (data) {
                 state.startToken = null;
                 state.starting = false;
                 K.toast(data.started ? t('fl_run_started') : t('fl_run_again'), 'success');
@@ -8849,10 +10250,24 @@
         });
     }
 
+    // Cancel the run is asked as any question is (K.ask()), but its way out
+    // reads Keep running: a second Cancel beside Cancel the run read as the
+    // same answer. ask() fills its dialog before it returns.
+    function askCancel() {
+        var asked = K.ask(t('fl_run_cancel_ask'), t('fl_run_cancel'), true);
+        var back = document.querySelector('#ws-ask [data-ws-ask-cancel]');
+
+        if (back) {
+            back.textContent = t('fl_run_keep');
+        }
+
+        return asked;
+    }
+
     function cancelRun(control) {
         var run = state.run;
 
-        K.ask(t('fl_run_cancel_ask'), t('fl_run_cancel'), true).then(function (yes) {
+        askCancel().then(function (yes) {
             if (!yes || !state.run || (state.run.id !== run.id)) {
                 state.refocus = 'run-cancel run-title';
                 refocus();
@@ -8887,9 +10302,16 @@
     // ── Selection and view ─────────────────────────────────────────────
 
     function select(selected, options) {
+        var open = outlineOpen();
+
         state.selected = selected;
         markSelected();
         drawSettings();
+
+        // The outline draws the form of the box selected only.
+        if (state.outline && !state.run && (outlineOpen() !== open)) {
+            drawOutline();
+        }
 
         if (options && options.reveal) {
             if (state.outline) {

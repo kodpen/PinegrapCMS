@@ -55,5 +55,5 @@ function test_tag_cloud_widget_registered()
 	pg_assert_contains("{ type: 'tag_cloud_region'", $js, 'in SW_TYPES');
 	pg_assert_contains("case 'tag_cloud_region': {", $js, 'has a starter tree');
 	pg_assert_contains("tag_cloud_region:  SW_TAG_CLOUD_TOKEN_GROUPS", $js, 'has a token palette');
-	pg_assert_contains("ad_region: 1, tag_cloud_region: 1 };", $js, 'draws no Messages block');
+	pg_assert_contains("ad_region: 1, tag_cloud_region: 1", $js, 'draws no Messages block');
 }

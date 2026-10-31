@@ -736,6 +736,41 @@ function pg_tr_props($props, $type)
 }
 
 /**
+ * Turns the mark pg_tr_render_lang_mark() left on a node into a lang
+ * attribute among the ones the renderer already draws (_render_extra_attrs()),
+ * and takes the mark off. A lang the node was given in the designer wins.
+ *
+ * @param array $props
+ * @return array
+ */
+function pg_tr_lang_attr_props($props)
+{
+    if (!isset($props['_tr_lang'])) {
+        return $props;
+    }
+
+    $lang = (string) $props['_tr_lang'];
+    unset($props['_tr_lang']);
+
+    if ($lang === '') {
+        return $props;
+    }
+
+    $attrs = (!empty($props['_attrs']) && is_array($props['_attrs'])) ? $props['_attrs'] : array();
+
+    foreach ($attrs as $attr) {
+        if (is_array($attr) && isset($attr['name']) && (strtolower(trim((string) $attr['name'])) === 'lang')) {
+            return $props;
+        }
+    }
+
+    $attrs[] = array('name' => 'lang', 'value' => $lang);
+    $props['_attrs'] = $attrs;
+
+    return $props;
+}
+
+/**
  * A node's props with the text its value condition compares with read in
  * the current language (the "_cond:" fields of pg_tr_node_fields()). The
  * renderer asks for it before it reads the condition, then drops the

@@ -654,8 +654,10 @@ function get_menu_item_options($menu_id, $exception_menu_item_id = 0, $parent_id
 // page sent to the bin is left out with it. A folder sent to the bin keeps its
 // own folder_archived and carries its pages in: $include_recycled = false
 // leaves those out too. $keep_id is the page the record being edited already
-// points at: while it is in the bin it stays, marked, under the name it had
-// before the bin parked it, so saving the record does not drop it.
+// points at: it stays whatever its folder and whatever the user's folder
+// access, so saving the record does not drop it. In the bin it is marked and
+// shown under the name it had before the bin parked it; in an archived folder
+// it is marked archived.
 function get_page_options($page_id = '', $page_type = '', $access = 'edit', $include_recycled = true, $keep_id = 0)
 {
     global $user;
@@ -687,8 +689,8 @@ function get_page_options($page_id = '', $page_type = '', $access = 'edit', $inc
     } else {
         $where .= ' AND ';
     }
-    // The kept page is let past the archived rule here; the loop below keeps
-    // it only while it is in the bin.
+    // The kept page is let past the archived rule here; the loop below marks
+    // it (pg_page_option_status()).
     $where .= ($keep_id > 0) ? '((folder.folder_archived = "0") OR (page.page_id = \'' . $keep_id . '\'))' : '(folder.folder_archived = "0")';
     // get pages
     $query = "SELECT
@@ -710,25 +712,54 @@ function get_page_options($page_id = '', $page_type = '', $access = 'edit', $inc
         ORDER BY page.page_name";
     $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
     while ($row = mysqli_fetch_assoc($result)) {
-        $binned = isset($bin_folders[(int) $row['page_folder']]);
-        $kept = $binned && ((int) $row['page_id'] === $keep_id);
-        if ((((string) $row['folder_archived'] !== '0') || ($binned && ($include_recycled == false))) && !$kept) {
+        $kept = ((int) $row['page_id'] === $keep_id);
+        $status = pg_page_option_status((string) $row['folder_archived'] !== '0', isset($bin_folders[(int) $row['page_folder']]), $include_recycled == true, $kept);
+        if ($status === 'skip') {
             continue;
         }
         $page_name = $row['page_name'];
-        if ($kept) {
+        if ($status === 'bin') {
             require_once(PG_FUNCTIONS_DIR . '/view_folder_and_files_f.php');
             $original = pg_recycle_parked_original($page_name, $row['page_id']);
             $page_name = (($original !== '') ? $original : $page_name) . ' [' . lang('IN RECYCLE BIN') . ']';
+        } elseif ($status === 'archived') {
+            $page_name .= ' [' . lang('ARCHIVED') . ']';
         }
         // If access is set to "edit" and the user has edit access to this page,
         // or if access is set to "view" and the user has view access to this page,
-        // then include it
-        if ((($access == 'edit') && (check_folder_access_in_array($row['page_folder'], $folders_that_user_has_access_to) == true)) || (($access == 'view') && (check_view_access($row['page_folder']) == true))) {
+        // then include it. The kept page is the record's own and stays.
+        if ($kept || (($access == 'edit') && (check_folder_access_in_array($row['page_folder'], $folders_that_user_has_access_to) == true)) || (($access == 'view') && (check_view_access($row['page_folder']) == true))) {
             $page_options[h($page_name)] = $row['page_id'];
         }
     }
     return $page_options;
+}
+
+/**
+ * How get_page_options() lists one page.
+ *
+ * @param bool $archived          The page's folder is archived (the Recycle Bin is one)
+ * @param bool $binned            The page is in the bin or in a folder sent into it
+ * @param bool $include_recycled  Pages in a folder sent into the bin are listed
+ * @param bool $kept              The page is the one the edited record points at
+ * @return string  'skip' (left out), 'show', 'bin' (kept, marked in the
+ *                 Recycle Bin) or 'archived' (kept, marked archived)
+ */
+function pg_page_option_status($archived, $binned, $include_recycled, $kept)
+{
+    if ($kept) {
+        if ($binned) {
+            return 'bin';
+        }
+
+        return $archived ? 'archived' : 'show';
+    }
+
+    if ($archived || ($binned && !$include_recycled)) {
+        return 'skip';
+    }
+
+    return 'show';
 }
 
 /**
@@ -960,6 +991,11 @@ function get_form_info($page_id, $product_id, $order_item_id, $quantity_number, 
     while ($row = mysqli_fetch_assoc($result)) {
         $fields[] = $row;
     }
+    // No SMS, no number, no box: outside edit mode the SMS question goes
+    // when the visitor cannot be asked it.
+    if (($form_type == 'custom') && ($editable == false)) {
+        $fields = pg_cf_drop_sms_question($fields, $contact, $_GET);
+    }
     $label_column_width_added = false;
     $form_info['wysiwyg_fields'] = array();
     // Picker kinds of the hooked fields (backend only), for picker_scripts.
@@ -1016,8 +1052,13 @@ function get_form_info($page_id, $product_id, $order_item_id, $quantity_number, 
             // Otherwise if edit mode is off and the form is a custom form and a contact was found for user
             // and this field is connected to a contact field, then set the default value for the field
             // to the contact field's value
-        } else if (($editable == false) && ($form_type == 'custom') && ($contact) && ($field['contact_field'] != '')) {
+        } else if (($editable == false) && ($form_type == 'custom') && ($contact) && pg_cf_contact_column($field['contact_field'])) {
             $default_value = $contact[$field['contact_field']];
+            // The SMS question has no contacts column: it starts from the
+            // person's last answer in the consent log.
+        } else if (($editable == false) && ($form_type == 'custom') && ($field['contact_field'] != '')
+            && !pg_cf_contact_column($field['contact_field']) && (($sms_start_value = pg_cf_sms_start_value($contact)) !== '')) {
+            $default_value = $sms_start_value;
             // Otherwise, if field is set to use folder name for default value, then use it.
         } else if ($field['use_folder_name_for_default_value'] == 1) {
             $default_value = db_value("SELECT folder_name FROM folder WHERE folder_id = '" . escape($folder_id_for_default_value) . "'");
@@ -2352,7 +2393,22 @@ function get_thumbnail_dimensions($image_width, $image_height, $max_dimension)
         'height' => $thumbnail_height
     );
 }
-function convert_bytes_to_string($bytes, $round = 0)
+/**
+ * A file size for display: "1.3 MB".
+ *
+ * @param float|int|string $bytes
+ * @param int|string       $round      Decimals for every unit (0 by default,
+ *                                     which site output keeps), or 'auto':
+ *                                     B and KB whole, MB and up one decimal,
+ *                                     as the File Manager's upload window
+ *                                     writes them; or 'floor': the same, cut
+ *                                     down instead of rounded, so an upload
+ *                                     limit is never shown above itself.
+ * @param array|null       $separators decimal/thousands; the panel's
+ *                                     (pg_number_separators()) when null
+ * @return string
+ */
+function convert_bytes_to_string($bytes, $round = 0, $separators = null)
 {
     $sizes = array(
         'B',
@@ -2366,8 +2422,33 @@ function convert_bytes_to_string($bytes, $round = 0)
         'YB'
     );
     $total = count($sizes);
+    if (($round === 'auto') || ($round === 'floor')) {
+        $bytes = is_numeric($bytes) ? max(0.0, (float) $bytes) : 0.0;
+        for ($i = 0; ($bytes >= 1024) && ($i < $total - 1); $i++)
+            $bytes /= 1024;
+        $decimals = ($i >= 2) ? 1 : 0;
+        $factor = pow(10, $decimals);
+        // The small offset keeps 155.0 from flooring to 154.9 on a float
+        // that lands just under it.
+        $value = ($round === 'floor')
+            ? floor($bytes * $factor + 1e-9) / $factor
+            : round($bytes, $decimals);
+        // 1023.6 KB rounds to 1024 KB: write it as the next unit instead.
+        if (($value >= 1024) && ($i < $total - 1)) {
+            $i++;
+            $decimals = ($i >= 2) ? 1 : 0;
+            $value = round($value / 1024, $decimals);
+        }
+        if (!is_array($separators)) {
+            return pg_format_number($value, $decimals) . ' ' . $sizes[$i];
+        }
+        return number_format($value, $decimals, $separators['decimal'], $separators['thousands']) . ' ' . $sizes[$i];
+    }
     for ($i = 0; $bytes > 1024 && $i < $total; $i++)
         $bytes /= 1024;
+    if (is_array($separators)) {
+        return number_format(round($bytes, $round), $round, $separators['decimal'], $separators['thousands']) . ' ' . $sizes[$i];
+    }
     return pg_format_number(round($bytes, $round), $round) . ' ' . $sizes[$i];
 }
 function generate_url_id()
@@ -2771,9 +2852,34 @@ function get_duplicate_catalog_item_address_name_number($address_name, $number =
 // Not a general transliteration: it covers the alphabets this software is
 // actually used in, which is what a URL segment needs. Turkish first, because
 // its dotless i and dotted I are the pair that most often breaks an address.
+//
+// The table itself is pg_transliterate_ascii_table(); this applies it.
 function pg_transliterate_to_ascii($text)
 {
-    static $accented = array(
+    static $accented = null;
+    static $plain = null;
+
+    if ($accented === null) {
+        $table = pg_transliterate_ascii_table();
+        $accented = array_keys($table);
+        $plain = array_values($table);
+    }
+
+    return str_replace($accented, $plain, (string) $text);
+}
+
+// The accented letters pg_transliterate_to_ascii() replaces, as
+// accented => plain. The product screen passes it to its address preview so
+// the browser builds the address with this table instead of a copy of it.
+function pg_transliterate_ascii_table()
+{
+    static $table = null;
+
+    if ($table !== null) {
+        return $table;
+    }
+
+    $accented = array(
         'ı','İ','ş','Ş','ğ','Ğ','ü','Ü','ö','Ö','ç','Ç',
         'á','à','â','ä','ã','å','ā','Á','À','Â','Ä','Ã','Å','Ā',
         'é','è','ê','ë','ē','É','È','Ê','Ë','Ē',
@@ -2784,7 +2890,7 @@ function pg_transliterate_to_ascii($text)
         'ł','Ł','ń','ň','Ń','Ň','ř','Ř','ś','š','Ś','Š',
         'ť','Ť','ź','ż','ž','Ź','Ż','Ž','æ','Æ','œ','Œ','ß');
 
-    static $plain = array(
+    $plain = array(
         'i','I','s','S','g','G','u','U','o','O','c','C',
         'a','a','a','a','a','a','a','A','A','A','A','A','A','A',
         'e','e','e','e','e','E','E','E','E','E',
@@ -2795,7 +2901,9 @@ function pg_transliterate_to_ascii($text)
         'l','L','n','n','N','N','r','R','s','s','S','S',
         't','T','z','z','z','Z','Z','Z','ae','AE','oe','OE','ss');
 
-    return str_replace($accented, $plain, (string) $text);
+    $table = array_combine($accented, $plain);
+
+    return $table;
 }
 
 function prepare_catalog_item_address_name($address_name, $item_id = '')
@@ -3615,8 +3723,8 @@ function get_variable_submitted_form_data_for_content($current_page_id, $submitt
                     if (($field_name == 'newest_comment') && (mb_strlen($data) > 100)) {
                         $data = mb_substr($data, 0, 100) . '...';
                     }
-                    // if this is the newest comment name field and the value is blank and there is a newest comment, then set name to "Anonymous"
-                    if (($field_name == 'newest_comment_name') && ($data == '') && ($submitted_form['newest_comment_id'] != '')) {
+                    // The newest comment's name: no name, or the stored 'Anonymous', reads in the site language.
+                    if (($field_name == 'newest_comment_name') && (($data == '') || ($data === 'Anonymous')) && ($submitted_form['newest_comment_id'] != '')) {
                         $data = lang('Anonymous');
                     }
                     // If this is the submitter field and badge is enabled for the submitter,

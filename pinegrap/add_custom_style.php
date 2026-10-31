@@ -65,6 +65,11 @@ if (!$_POST) {
     $values = pg_custom_style_form_values($_POST, SOCIAL_NETWORKING == TRUE);
     $name = $values['style_name'];
 
+    // A name of only spaces passes the browser's required check and is trimmed to ''.
+    if ($name === '') {
+        output_error(lang('Name is required.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+    }
+
     // insert row into style table
     $result=db_q(
         "INSERT INTO style (" . implode(', ', array_keys($values)) . ", style_timestamp, style_user) VALUES (" . str_repeat('?, ', count($values)) . "UNIX_TIMESTAMP(), ?)",

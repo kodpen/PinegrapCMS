@@ -24,6 +24,9 @@ description: Flow templates (G1 #2161, flow_templates.php): format, the schedule
 ## Which are saved on the site?
 - Staff-saved ones, category `saved`, key `site_<id>`: `workspace-flows-template-saved.md`.
 
+## What is left of the templates?
+- Export and import of templates over the API with dry run (G4 of the closed templates plan; answer #2416: Save as template first, G3a #3146, G3b #3242). The AI start of New flow: `workspace-flow-ai-start.md`.
+
 ## Which are a flow's own?
 - new_customer, quote_approval, text_review (G3): `workspace-flows-template-flow-only.md`.
 
@@ -31,5 +34,5 @@ description: Flow templates (G1 #2161, flow_templates.php): format, the schedule
 - forms, orders and chain (R1b): `workspace-flows-template-last-day.md`.
 
 ## How does the canvas use it?
-- "New flow" with templates opens `showGallery(null)` in place of the canvas: Empty canvas, then the cards by category; Use creates a flow named after the template with its graph.
+- "New flow" with templates or the AI start opens `showGallery(null)` in place of the canvas: Empty canvas, Describe it to AI, then the cards by category; Use creates a flow named after the template with its graph.
 - The box list shows "Start from a template" while the flow has no boxes; Use opens that flow again and places the graph (a flow that got boxes meanwhile gets a new flow instead), saved as any change; then the motion and the setup panel (`workspace-flows-template-setup.md`).

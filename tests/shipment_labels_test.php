@@ -124,8 +124,21 @@ function test_shipment_label_shipment_shape()
 	pg_assert_same('Ayşe Yılmaz', $shipment['recipient']['name'], 'name');
 	pg_assert_same('TR', $shipment['recipient']['country'], 'country upper case');
 	pg_assert_same('TR-34', $shipment['recipient']['state_code'], 'plate');
+	pg_assert_same('', $shipment['recipient']['district'], 'no district column');
+	$with = pg_shipment_label_shipment(array(), array('city' => 'Kadıköy', 'district' => ' Moda '), array());
+	pg_assert_same('Moda', $with['recipient']['district'], 'ship_tos.district');
 	pg_assert_same(array('length' => 25.4, 'width' => 25.4, 'height' => 15.24, 'weight' => round(2.5 * 0.45359237, 3)), $shipment['parcel'], 'parcel in cm and kg');
 	pg_assert_same(array(array('title' => 'Mug', 'quantity' => 2), array('title' => 'Plate', 'quantity' => 1)), $shipment['items'], 'items');
+	pg_assert_same(array(
+		array('name' => 'Mug', 'quantity' => 2, 'price' => 0, 'weight' => 0.454, 'hs_code' => '', 'origin_country' => '', 'sku' => ''),
+		array('name' => 'Plate', 'quantity' => 1, 'price' => 0, 'weight' => 0.227, 'hs_code' => '', 'origin_country' => '', 'sku' => ''),
+	), $shipment['goods'], 'goods for customs, nothing filled');
+
+	$customs = pg_shipment_label_shipment(array(), array(), array(
+		array('product_name' => 'Mug', 'quantity' => 1, 'price' => '1249.5', 'weight' => '1', 'hs_code' => '6912.00', 'origin_country' => 'tr', 'sku' => ' MUG-01 '),
+	));
+
+	pg_assert_same(array('name' => 'Mug', 'quantity' => 1, 'price' => 1250, 'weight' => 0.454, 'hs_code' => '6912.00', 'origin_country' => 'TR', 'sku' => 'MUG-01'), $customs['goods'][0], 'unit price rounded, unit weight in kg, SKU trimmed');
 	pg_assert_same(12345, $shipment['total'], 'total in minor units');
 	pg_assert_same('TRY', $shipment['currency'], 'currency');
 	pg_assert_same(false, $shipment['return'], 'not a return');
@@ -438,4 +451,111 @@ function test_shipment_label_customer_headers()
 	$zpl = pg_shipment_label_customer_headers('zpl', 'label-R1');
 	pg_assert_contains('Content-Type: application/octet-stream', $zpl);
 	pg_assert_contains('Content-Disposition: attachment; filename="label-R1.zpl"', $zpl);
+}
+
+// A package whose marketplace makes its label for its own carrier now gets no
+// carrier label service's label: named after an active label, before a
+// missing driver.
+function test_shipment_label_create_refusal_marketplace_label()
+{
+	$order = array('status' => 'complete');
+	$refusal = pg_shipment_label_create_refusal(true, $order, 0, 'geliver', false, 'Trendyol');
+
+	pg_assert_same('marketplace_label', $refusal['code']);
+	pg_assert_contains('Trendyol', $refusal['error']);
+	pg_assert_same('label_exists', pg_shipment_label_create_refusal(true, $order, 1, 'geliver', false, 'Trendyol')['code'], 'the label kept first');
+	pg_assert_same('marketplace_label', pg_shipment_label_create_refusal(true, $order, 0, '', false, 'Trendyol')['code'], 'before a missing driver');
+	pg_assert_same(array('code' => '', 'error' => ''), pg_shipment_label_create_refusal(true, $order, 0, 'geliver', false, ''));
+	pg_assert_same(array('code' => '', 'error' => ''), pg_shipment_label_create_refusal(true, $order, 0, 'geliver'), 'none named: as before');
+}
+
+// A package the marketplace carries on its own carrier but whose label it
+// does not make (another carrier, or no longer open) gets no carrier label
+// service's label either: that would be a second, paid shipment.
+function test_shipment_label_create_refusal_marketplace_carried()
+{
+	$order = array('status' => 'complete');
+	$refusal = pg_shipment_label_create_refusal(true, $order, 0, 'geliver', false, '', 'Trendyol');
+
+	pg_assert_same('marketplace_carried', $refusal['code']);
+	pg_assert_contains('Trendyol', $refusal['error']);
+	pg_assert_same('marketplace_carried', pg_shipment_label_create_refusal(true, $order, 0, '', false, '', 'Trendyol')['code'], 'before a missing driver');
+	pg_assert_same('label_exists', pg_shipment_label_create_refusal(true, $order, 1, 'geliver', false, '', 'Trendyol')['code'], 'the label kept first');
+	pg_assert_same('marketplace_label', pg_shipment_label_create_refusal(true, $order, 0, 'geliver', false, 'Trendyol', '')['code'], 'covered: the common label');
+	pg_assert_same(array('code' => '', 'error' => ''), pg_shipment_label_create_refusal(true, $order, 0, 'geliver', false, '', ''), 'ships itself or no marketplace');
+}
+
+// The orders list's bulk buttons show for a carrier label service, or for a
+// marketplace account whose label is fetched; Request Pickup keeps its own.
+function test_shipment_label_bulk_buttons_gate()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/view_orders.php');
+
+	pg_assert_contains('if (pg_shipment_labels_ready() && (pg_shipment_label_drivers() || pg_shipment_label_marketplace_offers())) {', $source);
+	pg_assert_contains("if (\$output_shipment_label_buttons !== '' && pg_shipment_label_pickup_drivers()) {", $source);
+	pg_assert_contains('A Trendyol common label is fetched for every qualifying package of the selected orders that has no label yet, 20 at a time. Continue?', $source);
+}
+
+// The name a label's maker is shown by.
+function test_shipment_label_driver_name()
+{
+	pg_assert_same('Geliver', pg_shipment_label_driver_name('geliver'));
+	pg_assert_same('no_such_maker', pg_shipment_label_driver_name('no_such_maker'));
+	pg_assert_same('../x', pg_shipment_label_driver_name('../x'), 'not a key: shown as it is, nothing loaded for it');
+}
+
+// A bulk .zpl keeps the selection's order, one newline between labels and
+// one at the end; no label gives an empty file.
+function test_shipment_label_zpl_join()
+{
+	pg_assert_same("^XA^FDone^XZ\n^XA^FDtwo^XZ\n^XA^FDthree^XZ\n", pg_shipment_label_zpl_join(array("^XA^FDone^XZ\r\n\n", "^XA^FDtwo^XZ", "^XA^FDthree^XZ \n")), 'order kept, one newline between and after');
+	pg_assert_same('', pg_shipment_label_zpl_join(array()), 'an empty list is an empty file');
+}
+
+// Only active outbound labels whose document is readable ZPL go into the
+// bulk .zpl.
+function test_shipment_label_bulk_zpl_filter()
+{
+	$rows = array(
+		array('id' => 1, 'order_id' => 10, 'ship_to_id' => 1, 'state' => 'active', 'is_return' => 0, 'label_format' => 'zpl'),
+		array('id' => 2, 'order_id' => 10, 'ship_to_id' => 1, 'state' => 'cancelled', 'is_return' => 0, 'label_format' => 'zpl'),
+		array('id' => 3, 'order_id' => 10, 'ship_to_id' => 2, 'state' => 'active', 'is_return' => 1, 'label_format' => 'zpl'),
+		array('id' => 4, 'order_id' => 10, 'ship_to_id' => 3, 'state' => 'active', 'is_return' => 0, 'label_format' => 'pdf'),
+		array('id' => 5, 'order_id' => 10, 'ship_to_id' => 4, 'state' => 'active', 'is_return' => 0, 'label_format' => 'zpl'),
+		array('id' => 6, 'order_id' => 10, 'ship_to_id' => 5, 'state' => 'active', 'is_return' => 0, 'label_format' => 'zpl'),
+	);
+	$documents = array(
+		1 => array('ok' => true, 'document' => '^XA^FD1^XZ', 'format' => 'zpl'),
+		2 => array('ok' => true, 'document' => '^XA^FD2^XZ', 'format' => 'zpl'),
+		3 => array('ok' => true, 'document' => '^XA^FD3^XZ', 'format' => 'zpl'),
+		4 => array('ok' => true, 'document' => '%PDF-1.4', 'format' => 'pdf'),
+		5 => array('ok' => true, 'document' => 'not a label', 'format' => 'zpl'),
+		6 => array('ok' => false, 'document' => '', 'format' => ''),
+	);
+	$kept = array();
+
+	foreach (pg_shipment_label_print_selection($rows, array(10)) as $row) {
+		if (pg_shipment_label_bulk_zpl_readable($documents[$row['id']])) {
+			$kept[] = $row['id'];
+		}
+	}
+
+	pg_assert_same(array(1), $kept, 'only an active outbound label with readable ZPL');
+}
+
+// The bulk PDF's last page counts the ZPL labels of the .zpl download and
+// lists only the labels that are in neither file.
+function test_shipment_label_bulk_note()
+{
+	$unreadable = array('order_number' => '1001', 'number' => 'AB12', 'label_format' => 'zpl');
+	$note = pg_shipment_label_bulk_note(array($unreadable), 2);
+
+	pg_assert_true(strpos($note, 'Download ZPL Labels') !== false, 'the ZPL count names the download');
+	pg_assert_true(strpos($note, 'AB12') !== false, 'an unreadable label is listed');
+
+	$only_zpl = pg_shipment_label_bulk_note(array(), 3);
+
+	pg_assert_true(strpos($only_zpl, '<li>') === false, 'a readable ZPL label is not listed');
+	pg_assert_true(strpos($only_zpl, 'Labels not in this PDF') === false, 'no list heading without a left-out label');
+	pg_assert_same('', pg_shipment_label_bulk_note(array(), 0), 'nothing to say, no page');
 }

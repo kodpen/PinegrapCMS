@@ -134,12 +134,21 @@ function pg_panel_get_notifications($request, $action)
             'readed' => (pg_notification_is_read($notification, $user['id']) ? 1 : 0),
             'url' => $display['url'],
             'action' => $display['action'],
-            'time' => get_relative_time(array('timestamp' => $notification['timestamp']))
+            'time' => get_relative_time(array('timestamp' => $notification['timestamp'])),
+            // The bell's filters: what the workspace told this person, and
+            // the rest of the site.
+            'group' => ((($notification['action'] ?? '') === 'workspace') ? 'workspace' : 'site'),
+            'glyph' => $display['glyph'],
+            'join' => $display['join'],
+            'fold' => $display['fold']
         );
 
         array_push($array, $item);
         $mark_read[] = $notification['id'];
     }
+
+    // The runs of one flow are one line, opened on a click.
+    $array = pg_notification_fold($array);
 
     // One write for the whole list. Marking each row as it was drawn cost a
     // query per notification, and on a site with more than one operator it
@@ -203,10 +212,7 @@ function pg_panel_push_config($request, $action)
     // Exempt from the general gate, which answered a request without a
     // session this way; the same answer is kept.
     if (!USER_LOGGED_IN) {
-        respond(array(
-            'status' => 'error',
-            'message' => 'Invalid login.'
-        ));
+        respond(panel_login_refusal());
     }
     validate_token();
     $user = validate_user();
@@ -249,10 +255,7 @@ function pg_panel_push_subscribe($request, $action)
     // Exempt from the general gate, which answered a request without a
     // session this way; the same answer is kept.
     if (!USER_LOGGED_IN) {
-        respond(array(
-            'status' => 'error',
-            'message' => 'Invalid login.'
-        ));
+        respond(panel_login_refusal());
     }
     validate_token();
     $user = validate_user();
@@ -295,10 +298,7 @@ function pg_panel_push_unsubscribe($request, $action)
     // Exempt from the general gate, which answered a request without a
     // session this way; the same answer is kept.
     if (!USER_LOGGED_IN) {
-        respond(array(
-            'status' => 'error',
-            'message' => 'Invalid login.'
-        ));
+        respond(panel_login_refusal());
     }
     validate_token();
     $user = validate_user();
@@ -324,10 +324,7 @@ function pg_panel_push_test($request, $action)
     // Exempt from the general gate, which answered a request without a
     // session this way; the same answer is kept.
     if (!USER_LOGGED_IN) {
-        respond(array(
-            'status' => 'error',
-            'message' => 'Invalid login.'
-        ));
+        respond(panel_login_refusal());
     }
     validate_token();
     $user = validate_user();
@@ -348,6 +345,15 @@ function pg_panel_push_test($request, $action)
     exit();
 }
 
+// The title a device banner shows. pg_notification_display() returns it as
+// escaped markup for the bell; the operating system shows text, so the
+// markup is dropped and the entities decoded, as pg_notification_body()
+// does for the body beside it.
+function pg_panel_push_title($title)
+{
+    return trim(html_entity_decode(strip_tags((string) $title), ENT_QUOTES, 'UTF-8'));
+}
+
 function pg_panel_push_pending($request, $action)
 {
     // Kept global: helpers read the session user through `global $user`;
@@ -361,10 +367,7 @@ function pg_panel_push_pending($request, $action)
     // Exempt from the general gate, which answered a request without a
     // session this way; the same answer is kept.
     if (!USER_LOGGED_IN) {
-        respond(array(
-            'status' => 'error',
-            'message' => 'Invalid login.'
-        ));
+        respond(panel_login_refusal());
     }
     $user = validate_user();
     include_once(PG_FUNCTIONS_DIR . '/includes/notifications.php');
@@ -381,7 +384,7 @@ function pg_panel_push_pending($request, $action)
 
         $array[] = array(
             'id'        => $notification['id'],
-            'title'     => $display['title'],
+            'title'     => pg_panel_push_title($display['title']),
             'body'      => pg_notification_body($display),
             'url'       => $display['url'],
             'icon'      => $display['icon'],

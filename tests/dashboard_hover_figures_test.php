@@ -52,7 +52,7 @@ function test_dashboard_hover_figures_bar_figures_are_text()
 
 		pg_assert_contains($key, $source);
 		pg_assert_false((bool) preg_match('/<div class="progress[^"]*"[^>]*\btitle=/', $source), 'figure only in the bar title (widget ' . $id . ')');
-		pg_assert_contains('<div class="fg-secondary mt-1" style="font-size:10px">', $source);
+		pg_assert_contains('<div class="fg-secondary mt-1" style="font-size:.625rem">', $source);
 	}
 }
 

@@ -19,6 +19,10 @@
 
 ini_set('max_execution_time', '9999');
 include('init.php');
+
+// A file over post_max_size empties the whole request; say so instead of
+// drawing the form again as if nothing had been sent.
+pg_upload_refuse_discarded_body();
 include_once('liveform.class.php');
 include_once('includes/user_permissions.php');
 $liveform = new liveform('import_users');
@@ -156,9 +160,9 @@ if (!$_POST) {
             'icon'=>'account', 
             'heading'=>lang('Import Users'),
             'heading_description' => lang('Import new Users and Contacts, assign privileges, and choose to email login info to Users.'),
-            'cancel'=>array('enable'=>'true','url'=>'view_users.php'),
+            'cancel' => array('enable' => 'true', 'url' => pg_send_to_url(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_users.php')),
         
-            'breadcrumb' => array(array('label' => lang('All My Users'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_users.php'), array('label' => lang('Import Users'))),
+            'breadcrumb' => array(array('label' => lang('Users'), 'url' => pg_send_to_list_url(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_users.php')), array('label' => lang('Import Users'))),
         )
     ) . '
 <main id="content" class="container-fluid">
@@ -179,6 +183,7 @@ if (!$_POST) {
                         <div class="card-body">
                             <label for="file" class="form-label">' . lang('Select Formatted Text File to Upload') . '</label>
                             ' . $liveform->output_field(array('type'=>'file', 'name'=>'file', 'size'=>'60', 'id'=>'file', 'class'=>'form-control w-auto', 'required'=>'required')) . '
+                            ' . pg_upload_limit_hint() . '
                         </div>
                     </div>
 
@@ -205,7 +210,7 @@ if (!$_POST) {
                                 </div>
                                 <div class="col-12 sm:col-6 lg:col-4">
                                     <label class="form-label" for="reward_points">' . lang('Reward Program, Reward Points') . '</label>
-                                    <input type="number" class="form-control" id="reward_points" name="reward_points" maxlength="9"/>
+                                    <input type="number" min="0" max="4294967295" step="1" class="form-control" id="reward_points" name="reward_points"/>
                                 </div>
                                 <div class="col-12">
                                     <div class="form-field">
@@ -303,10 +308,23 @@ if (!$_POST) {
         exit();
     }
 
+    $upload_limits = pg_upload_limits();
+    $upload_refusal = pg_upload_file_refusal($_FILES['file'], $upload_limits['file_max']);
+
+    if ($upload_refusal !== '') {
+        $liveform->mark_error('file', h($upload_refusal));
+
+        header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/import_users.php?send_to=' . (isset($_REQUEST['send_to']) ? h($_REQUEST['send_to']) : ''));
+        exit();
+    }
+
     // get file handle for uploaded CSV file
     $handle = pg_csv_open($_FILES['file']['tmp_name']);
+    // The header line says which separator the file uses (Excel in Turkish
+    // writes ';').
+    $separator = pg_csv_read_separator($handle);
     // get column names from first row of CSV file
-    $columns = fgetcsv($handle, 100000, ",", '"', '\\');
+    $columns = fgetcsv($handle, 100000, $separator, '"', '\\');
     
     // if file is empty
     if (!$columns) {
@@ -328,12 +346,16 @@ if (!$_POST) {
     // when the CSV does not contain them.
     $email_address_key = null;
     $username_key = null;
+
+    // Headings the import does not know, named in the result.
+    $unknown_headings = array();
     
     // foreach column field name
     foreach ($column_names as $key => $value) {
         // if the column is invalid, remove from column list
         if ($value === FALSE) {
             unset($column_names[$key]);
+            $unknown_headings[] = $columns[$key];
         }
         
         // if column is email_address, then store key location for email_address
@@ -347,6 +369,16 @@ if (!$_POST) {
         }
     }
     
+    // Every user needs an e-mail address, so a file without the column
+    // (a heading such as 'E-posta') cannot be imported.
+    if ($email_address_key === null) {
+        $liveform->mark_error('file', h(lang(array('string' => 'The file has no e-mail address column (email_address), so no user could be imported. Headings found: {var:1}', 'vars' => array(pg_csv_headings_text($columns))))));
+        fclose($handle);
+
+        header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/import_users.php?send_to=' . (isset($_REQUEST['send_to']) ? h($_REQUEST['send_to']) : ''));
+        exit();
+    }
+
     // Return a CSV cell as a string, or '' when the column is missing from the file or the row.
     $import_cell = function ($row, $key) {
         return (($key !== null) && isset($row[$key])) ? (string) $row[$key] : '';
@@ -362,9 +394,22 @@ if (!$_POST) {
     $pre_existing_user_list = '';
     $import_user_error = false;
 
+    // Rows without an e-mail address, as array(line, reason).
+    $missing_email_lines = array();
+    $next_line = 2;
+
     // loops through all rows of data in CSV file
-    while ($row = fgetcsv($handle, 100000, ",", '"', '\\')) {
+    while ($row = fgetcsv($handle, 100000, $separator, '"', '\\')) {
         $current_import_user_error = false;
+
+        // The file line the row starts on.
+        $line = $next_line;
+        $next_line += pg_csv_row_lines($row);
+
+        // A blank row (an empty line, or separators only) is passed over.
+        if (pg_csv_row_blank($row)) {
+            continue;
+        }
 
         // If there is an email address in this row, then continue.
         if (trim($import_cell($row, $email_address_key)) != '') {
@@ -410,18 +455,16 @@ if (!$_POST) {
             }
 
             if ($current_import_user_error === false) {
-                // If there are no errors, then prepare to add user.
-                $users_to_be_imported[] = $row;
+                // If there are no errors, then prepare to add user. The key
+                // is the file line, to name the row if it is skipped.
+                $users_to_be_imported[$line] = $row;
             }
 
-        // Otherwise there is not an email address in this row, so output error.
+        // Otherwise there is not an email address in this row: the file is
+        // refused, naming the line.
         } else {
-            // There was an improperly formatted row in the csv file so tell the user to fix it.
-            $liveform->mark_error('file', lang('There are errors in your .csv file. Please check each users format and then try again.'));
-            
-            // Forward them back to the import users screen.
-            header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/import_users.php?send_to=' . (isset($_REQUEST['send_to']) ? h($_REQUEST['send_to']) : ''));
-            exit();
+            $missing_email_lines[] = array($line, lang('There is no e-mail address.'));
+            $import_user_error = true;
         }
         
     }
@@ -432,6 +475,11 @@ if (!$_POST) {
     if ($import_user_error) {
         $combined_errors = '';
         
+        // Rows without an e-mail address, by line.
+        if ($missing_email_lines) {
+            $combined_errors .= '<p>' . lang('There are errors in your .csv file. Please check each users format and then try again.') . '<br>' . implode('<br>', array_map('h', pg_csv_problem_list($missing_email_lines))) . '</p>';
+        }
+
         // If there were emails that had an invalid format
         if ($invalid_emails_count > 0) {
             $combined_errors .= '<p>' . lang(array('string'=>'{var:1} email address(es) were invalid. ({var:2})','vars'=>array($invalid_emails_count,htmlspecialchars($invalid_email_list, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')))) . '</p>';
@@ -481,9 +529,13 @@ if (!$_POST) {
     }
 
     $imported_users = 0;
+
+    // Rows skipped because an earlier row of the file took their e-mail
+    // address or user name, as array(line, reason).
+    $skipped_lines = array();
     
     // Loop through the valid users and import them
-    foreach ($users_to_be_imported as $user_to_be_imported) {
+    foreach ($users_to_be_imported as $line => $user_to_be_imported) {
 
         $username = trim($import_cell($user_to_be_imported, $username_key));
         $email_address = trim($import_cell($user_to_be_imported, $email_address_key));
@@ -508,6 +560,7 @@ if (!$_POST) {
                     OR (user_email = '" . e($username) . "')
                     OR (user_email = '" . e($email_address) . "')")
         ) {
+            $skipped_lines[] = array($line, lang(array('string' => 'The e-mail address or user name of this row ({var:1}) is already used by an earlier row of the file, so the user was not imported.', 'vars' => array($email_address))));
             continue;
         }
 
@@ -948,6 +1001,15 @@ if (!$_POST) {
     
     // Output Confirmation
     $liveform_view_users->add_notice(lang(array('string'=>'{var:1} users were imported','vars'=>$imported_users)));
+
+    if (pg_csv_headings_text($unknown_headings) !== '') {
+        $liveform_view_users->add_warning(h(lang(array('string' => 'These columns were not recognised and were left out: {var:1}', 'vars' => array(pg_csv_headings_text($unknown_headings))))));
+    }
+
+    // The first rows skipped, each with its line and reason.
+    if ($skipped_lines) {
+        $liveform_view_users->add_warning(implode('<br>', array_map('h', pg_csv_problem_list($skipped_lines))));
+    }
     
     // If there is a send to value then send user back to that screen
     if ((isset($_REQUEST['send_to']) == TRUE) && ($_REQUEST['send_to'] != '')) {

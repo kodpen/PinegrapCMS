@@ -39,7 +39,7 @@ $liveform->add_fields_to_session();
 
 // The billing fields post one value each (the custom billing form's fields are checked by
 // submit_custom_form()).
-pg_liveform_single_values($liveform, array('billing_salutation', 'billing_first_name', 'billing_last_name', 'billing_company', 'billing_address_1', 'billing_address_2', 'billing_city', 'billing_state', 'billing_zip_code', 'billing_country', 'billing_phone_number', 'billing_fax_number', 'billing_email_address', 'custom_field_1', 'custom_field_2', 'opt_in', 'opt_in_displayed', 'tax_exempt', 'tax_number', 'tax_office', 'po_number', 'referral_source', 'update_contact'));
+pg_liveform_single_values($liveform, array('billing_salutation', 'billing_first_name', 'billing_last_name', 'billing_company', 'billing_address_1', 'billing_address_2', 'billing_city', 'billing_state', 'billing_zip_code', 'billing_country', 'billing_phone_number', 'billing_fax_number', 'billing_email_address', 'custom_field_1', 'custom_field_2', 'opt_in', 'opt_in_displayed', 'opt_in_sms', 'opt_in_sms_shown', 'tax_exempt', 'tax_number', 'tax_office', 'po_number', 'referral_source', 'update_contact'));
 
 // The form names this page and the next one by id, each one string. One posted as an array
 // (page_id[]=) counts as empty, so every read of them below gets a string.
@@ -366,7 +366,8 @@ if ($liveform->check_form_errors() == false) {
         // The box's answer goes to the consent log as the contact now holds
         // it, here where the contact takes it: the order may still be
         // refused or left unpaid, and the contact keeps the answer then too.
-        pg_consent_log_checkout($liveform->get_field_value('billing_email_address'), $user_id, $contact_id, $liveform->get_field_value('opt_in_displayed'), $ghost, $opt_in);
+        pg_consent_log_checkout($liveform->get_field_value('billing_email_address'), $user_id, $contact_id, $liveform->get_field_value('opt_in_displayed'), $ghost, $opt_in,
+            pg_consent_checkout_sms_answers($liveform->get_field_value('opt_in_sms_shown'), $ghost, $liveform->get_field_value('billing_phone_number'), $liveform->get_field_value('opt_in_sms')));
     } elseif ($liveform->field_in_session('tax_number')) {
         // The card is not updated from the billing block, but a card with no
         // tax number still takes the one typed here: the order keeps none of

@@ -37,7 +37,20 @@ function test_comment_rating_radios_reachable_and_named()
 	pg_assert_contains('<label id="comment_rating_label" class="form-label">', $source);
 	pg_assert_contains('role="radiogroup" aria-labelledby="comment_rating_label"', $source);
 	pg_assert_true(strpos($source, 'aria-label="Rating"') === false, 'the rating group keeps a literal English name');
-	pg_assert_contains('.rating .btn-check:focus-visible+label', $source);
+	pg_assert_contains('.rating .btn-check:focus-visible+label{outline: 2px solid var(--pg-primary-ink);', $source);
+}
+
+function test_comment_rating_stars_follow_theme()
+{
+	$source = comment_calendar_names_source('edit_comment.php');
+
+	// An invert filter would also invert the focus outline; the stars are
+	// masks painted with the text colour instead.
+	pg_assert_false(strpos($source, 'filter: invert') !== false, 'the rating stars are inverted with a filter');
+	pg_assert_false(strpos($source, 'background-image') !== false, 'the rating stars are black background pictures');
+	pg_assert_contains('background-color: currentColor;', $source);
+	pg_assert_contains('.rating .btn-check:checked+label~label::before{', $source);
+	pg_assert_same(2, substr_count($source, '-webkit-mask-image: url('), 'filled and outline star masks');
 }
 
 function test_panel_calendar_controls_named()

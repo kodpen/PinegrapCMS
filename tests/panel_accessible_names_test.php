@@ -73,7 +73,8 @@ function test_panel_accessible_names_icon_buttons()
 	$source = panel_accessible_names_source('marketplace_products.php');
 	pg_assert_same(3, substr_count($source, "lang('Previous page'), 'bi-chevron-left')"), 'marketplace_products.php: previous page arrows');
 	pg_assert_same(3, substr_count($source, "lang('Next page'), 'bi-chevron-right')"), 'marketplace_products.php: next page arrows');
-	pg_assert_same(2, substr_count($source, "aria-label=\"' . h(\$label) . '\""), 'marketplace_products.php: the arrow helper names the link and the span');
+	pg_assert_same(1, substr_count($source, "aria-label=\"' . h(\$label) . '\""), 'marketplace_products.php: the arrow helper names the link');
+	pg_assert_contains("<span class=\"visually-hidden\">' . h(\$label) . '</span></span>", $source, 'marketplace_products.php: the disabled arrow says its name in hidden text');
 }
 
 function test_panel_accessible_names_autofill_decoy()
@@ -217,7 +218,7 @@ function test_panel_accessible_names_parasut_inbox()
 	pg_assert_contains("aria-label=\"' . h(\$label) . '\">' . \$inner . '</a>", $source, 'a live arrow is named');
 	pg_assert_contains('<span aria-hidden="true">\' . $glyph . \'</span>', $source, 'arrow glyph hidden');
 	// A disabled arrow is a span, so Tab does not reach it.
-	pg_assert_contains("<li class=\"page-item disabled\"><span class=\"page-link\" aria-label=\"' . h(\$label) . '\">", $source);
+	pg_assert_contains("<li class=\"page-item disabled\"><span class=\"page-link\">' . \$inner . '<span class=\"visually-hidden\">' . h(\$label) . '</span></span></li>", $source);
 	pg_assert_contains('<li class="page-item active" aria-current="page"><span class="page-link">', $source);
 	pg_assert_true(strpos($source, '&laquo;</a>') === false && strpos($source, '&raquo;</a>') === false, 'no bare glyph links');
 

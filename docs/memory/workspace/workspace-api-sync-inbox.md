@@ -11,6 +11,7 @@ description: Keeping a Workspace app current through the API: GET /workspace/syn
 - Never `DELETE FROM ws_inbox` directly: `ws_inbox_delete($where)` (`notify.php`) keeps a trace in `ws_inbox_deleted` (30 days), and only through it do `GET /workspace/inbox?changed_since=` and the sync's `inbox_changed_at` see the deletion.
 - Code that changes a line in place moves its `created_at` (sent again) or `read_at`: changed lines are found by those two stamps alone.
 - Code that takes people out of a channel's reach (membership removed, channel closed or made private) calls `ws_inbox_reach_lost($channel, $user_ids)`: their lines about it are marked read and come with `deleted: true`. Code that brings them back (added to a private channel, channel opened, discussion rejoined) calls `ws_inbox_reach_regained($channel, $user_ids)` for those who could not read it before: their read lines' `read_at` moves and they come back as live lines.
+- `GET /workspace/inbox?note_id=` keeps only the rows whose `note_id` is that note, with the other params as usual (#3527): filter through `ws_api_inbox_list_where()` / `ws_api_inbox_changed_where()`, never a second query, so the reachability rule still hides an unreadable note (empty list, no 403). Deleted marks keep no note and come unfiltered with `changed_since`. Clearing stays `POST /workspace/inbox/read`; the read of a note marks nothing.
 - A listing's own envelope field (`reload`) goes through `api_ok_list()`'s `$extra` and is declared beside `'list'` in the route's `returns`.
 
 ## How is a per-person message state kept?

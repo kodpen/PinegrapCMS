@@ -53,11 +53,11 @@ function ws_wtable_import_names($header)
         $base = $name;
         $n = 1;
 
-        while (isset($seen[mb_strtolower($name)])) {
+        while (isset($seen[ws_fold($name)])) {
             $name = $base . ' ' . (++$n);
         }
 
-        $seen[mb_strtolower($name)] = true;
+        $seen[ws_fold($name)] = true;
         $names[] = $name;
     }
 
@@ -67,8 +67,10 @@ function ws_wtable_import_names($header)
 /**
  * A number as written in a file, as the store takes it ("1234.5"), or null.
  * Spaces and a thousands separator are dropped; with both "." and "," the
- * last one is the decimal mark, a lone "," is one too (1,5 and 12,50), and
- * the same mark more than once separates thousands.
+ * last one is the decimal mark, and the same mark more than once separates
+ * thousands. A lone mark is the decimal, unless it stands before three
+ * digits and is not the site's decimal mark: in Turkish 1.250 is 1250 and
+ * 1,25 is 1.25, in English 1,250 is 1250 and 1.25 is 1.25.
  *
  * @param string $text
  * @return string|null
@@ -91,6 +93,12 @@ function ws_wtable_import_number($text)
         $mark = ($dot !== false) ? '.' : (($comma !== false) ? ',' : '');
 
         if (($mark !== '') && (substr_count($text, $mark) > 1)) {
+            $text = str_replace($mark, '', $text);
+            $mark = '';
+        } elseif (($mark !== '') && ($mark !== (ws_calc_decimal_comma() ? ',' : '.'))
+            && preg_match('/^[-+]?[1-9][0-9]{0,2}[.,][0-9]{3}$/', $text)) {
+            // A lone mark before three digits that the site does not write
+            // decimals with groups thousands, as ws_calc_number() reads it.
             $text = str_replace($mark, '', $text);
             $mark = '';
         }
@@ -250,7 +258,7 @@ function ws_wtable_import_guess($values)
         } elseif (($type === 'number') && !$all('ws_wtable_import_number')) {
             continue;
         } elseif ($type === 'status') {
-            $labels = array_unique(array_map('mb_strtolower', $filled));
+            $labels = array_unique(array_map('ws_fold', $filled));
 
             if ((count($filled) < 4) || (count($labels) > 10) || (count($labels) * 2 > count($filled))) {
                 continue;
@@ -321,7 +329,7 @@ function ws_wtable_import_options($type, $values)
             $labels = array();
 
             foreach ($values as $value) {
-                $labels[mb_strtolower($value)] = isset($labels[mb_strtolower($value)]) ? $labels[mb_strtolower($value)] : $value;
+                $labels[ws_fold($value)] = isset($labels[ws_fold($value)]) ? $labels[ws_fold($value)] : $value;
             }
 
             return array('choices' => ws_wtable_screen_status_choices(implode("\n", $labels)));
@@ -339,7 +347,7 @@ function ws_wtable_import_options($type, $values)
  *
  * @param array  $column type, options
  * @param string $text
- * @param array  $people lower-case name or user name => user id
+ * @param array  $people name or user name folded (ws_fold()) => user id
  * @return mixed
  */
 function ws_wtable_import_cell($column, $text, $people = array())
@@ -382,7 +390,7 @@ function ws_wtable_import_cell($column, $text, $people = array())
 
         case 'status':
             foreach ((array) ($options['choices'] ?? array()) as $choice) {
-                if ((mb_strtolower((string) $choice['label']) === mb_strtolower($text)) || ((string) $choice['key'] === $text)) {
+                if ((ws_fold((string) $choice['label']) === ws_fold($text)) || ((string) $choice['key'] === $text)) {
                     return (string) $choice['key'];
                 }
             }
@@ -395,7 +403,7 @@ function ws_wtable_import_cell($column, $text, $people = array())
             return ($tick === null) ? $text : $tick;
 
         case 'person':
-            return $people[mb_strtolower($text)] ?? (ctype_digit($text) ? (int) $text : $text);
+            return $people[ws_fold($text)] ?? (ctype_digit($text) ? (int) $text : $text);
 
         case 'link':
             return ws_wtable_screen_cell_from_form($column, $text);
@@ -405,7 +413,8 @@ function ws_wtable_import_cell($column, $text, $people = array())
 }
 
 /**
- * The file's columns matched to a table's by name, case and spaces aside;
+ * The file's columns matched to a table's by name, case, dotted or dotless i
+ * and spaces aside (ws_fold());
  * each table column takes one file column, a formula column none.
  *
  * @param string[] $names   the file's column names
@@ -415,7 +424,7 @@ function ws_wtable_import_cell($column, $text, $people = array())
 function ws_wtable_import_match($names, $columns)
 {
     $key = function ($name) {
-        return mb_strtolower(trim(preg_replace('/\s+/u', ' ', (string) $name)));
+        return ws_fold(trim(preg_replace('/\s+/u', ' ', (string) $name)));
     };
 
     $by_name = array();
@@ -682,8 +691,9 @@ function ws_wtable_import_note_rows($table, $names = array(), $scope = array())
 /**
  * The notes a person may read whose text holds a table, each table one
  * choice: own notes and notes shared with them by name, as the notes list
- * reads them. A note longer than the list's cut is read whole (up to 50 of
- * them), so a table further down is offered too.
+ * reads them. The list carries only an excerpt, so the whole text of the
+ * listed notes holding a '|' is read in one query, the first 50 of them in
+ * the list's order.
  *
  * @param array $viewer
  * @return array list of note (id), block (index), label
@@ -696,26 +706,41 @@ function ws_wtable_import_note_choices($viewer)
 
     $list = ws_notes_list($viewer);
     $notes = array_merge((array) $list['mine'], (array) $list['shared']);
-    $long = array();
+    $ids = array();
 
     foreach ($notes as $note) {
-        if ((mb_strlen((string) $note['body']) >= WS_NOTE_LIST_BODY) && (strpos((string) $note['body'], '|') !== false) && (count($long) < 50)) {
-            $long[] = (int) $note['id'];
+        $ids[] = (int) $note['id'];
+    }
+
+    $bodies = array();
+
+    if (!empty($ids)) {
+        $in = implode(',', $ids);
+
+        foreach ((array) db_items("SELECT id, body FROM ws_notes WHERE id IN (" . $in . ") AND body LIKE '%|%'
+            ORDER BY FIELD(id, " . $in . ") LIMIT 50") as $row) {
+            $bodies[(int) $row['id']] = (string) $row['body'];
         }
     }
 
-    $whole = array();
+    return ws_wtable_import_note_choices_from($notes, $bodies);
+}
 
-    if (!empty($long)) {
-        foreach ((array) db_items("SELECT id, body FROM ws_notes WHERE id IN (" . implode(',', $long) . ")") as $row) {
-            $whole[(int) $row['id']] = (string) $row['body'];
-        }
-    }
-
+/**
+ * The choices of ws_wtable_import_note_choices() from the listed notes
+ * (rows of ws_notes_list(): id, title) and their whole texts by note id; a
+ * note without a text there is not offered.
+ *
+ * @param array $notes
+ * @param array $bodies note id => text
+ * @return array list of note (id), block (index), label
+ */
+function ws_wtable_import_note_choices_from($notes, $bodies)
+{
     $choices = array();
 
     foreach ($notes as $note) {
-        $body = $whole[(int) $note['id']] ?? (string) $note['body'];
+        $body = (string) ($bodies[(int) $note['id']] ?? '');
 
         if (strpos($body, '|') === false) {
             continue;
@@ -790,7 +815,7 @@ function ws_wtable_import_note_read($viewer, $note_id, $block, $max)
    --------------------------------------------------------------------------- */
 
 /**
- * The team by lower-case name and user name, for person cells.
+ * The team by name and user name folded (ws_fold()), for person cells.
  *
  * @return array
  */
@@ -801,7 +826,7 @@ function ws_wtable_import_people()
     foreach ((array) ws_team_members() as $person) {
         foreach (array('name', 'username') as $key) {
             if (isset($person[$key]) && ((string) $person[$key] !== '')) {
-                $people[mb_strtolower((string) $person[$key])] = (int) $person['id'];
+                $people[ws_fold((string) $person[$key])] = (int) $person['id'];
             }
         }
     }
@@ -962,10 +987,11 @@ function ws_wtable_import_keep($read, $file_name, $table_id, $note = false)
 function ws_wtable_import_kept()
 {
     $kept = $_SESSION['software']['ws_wtable_import'] ?? null;
-    $path = is_array($kept) ? (string) ($kept['path'] ?? '') : '';
 
     // Only a file this code wrote is read back.
-    if (($path === '') || (strpos(pg_basename($path), 'pg_wtimport_') !== 0) || (realpath(dirname($path)) !== realpath(sys_get_temp_dir())) || !is_file($path)) {
+    $path = ws_wtable_import_kept_path(is_array($kept) ? (string) ($kept['path'] ?? '') : '');
+
+    if ($path === '') {
         return null;
     }
 
@@ -989,11 +1015,51 @@ function ws_wtable_import_kept()
 function ws_wtable_import_drop()
 {
     $kept = $_SESSION['software']['ws_wtable_import'] ?? null;
-    $path = is_array($kept) ? (string) ($kept['path'] ?? '') : '';
+    $path = ws_wtable_import_kept_path(is_array($kept) ? (string) ($kept['path'] ?? '') : '');
 
-    if (($path !== '') && (strpos(pg_basename($path), 'pg_wtimport_') === 0) && is_file($path)) {
+    if ($path !== '') {
         @unlink($path);
     }
 
     unset($_SESSION['software']['ws_wtable_import']);
+}
+
+/**
+ * The kept file's real path when it is a file ws_wtable_import_keep()
+ * wrote: a file right inside the system's temp folder with a name
+ * tempnam() gives our prefix. Else ''.
+ *
+ * @param string $path as kept in the session
+ * @return string
+ */
+function ws_wtable_import_kept_path($path)
+{
+    if (($path === '') || !ws_wtable_import_temp_name($path)) {
+        return '';
+    }
+
+    $real = realpath($path);
+    $temp = realpath(sys_get_temp_dir());
+
+    if (($real === false) || ($temp === false) || (dirname($real) !== $temp) || !is_file($real)) {
+        return '';
+    }
+
+    return $real;
+}
+
+/**
+ * Whether a path's file name is one tempnam() makes from the prefix
+ * 'pg_wtimport_': the whole prefix on most systems; on Windows only its
+ * first three characters, then up to four hex digits and .tmp
+ * (C:\Windows\Temp\pg_1A2B.tmp). Backslashes count as separators.
+ *
+ * @param string $path
+ * @return bool
+ */
+function ws_wtable_import_temp_name($path)
+{
+    $name = pg_basename(str_replace('\\', '/', (string) $path));
+
+    return (strpos($name, 'pg_wtimport_') === 0) || (preg_match('/^pg_[0-9a-f]{1,4}\.tmp$/i', $name) === 1);
 }

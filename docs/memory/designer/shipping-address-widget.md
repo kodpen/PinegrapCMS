@@ -5,7 +5,7 @@ module: widgets_shipping_address
 ---
 
 ## What is it?
-- Kind `shipping_address_and_arrival` (`includes/fn/widgets_shipping_address.php`), the first of four widgets for the classic multi-step checkout ([[system-widget-missing-types]]). It posts to `shipping_address_and_arrival.php` with the classic field names; the handler's checks, address book write and redirects are unchanged.
+- Kind `shipping_address_and_arrival` (`includes/fn/widgets_shipping_address.php`), the first of four widgets for the classic multi-step checkout ([[system-widget-page-types]]). It posts to `shipping_address_and_arrival.php` with the classic field names; the handler's checks, address book write and redirects are unchanged.
 - The cart sends the visitor here with `?ship_to_id=` (`next_page_id_with_shipping`). `pg_sw_page_type_widgets()` maps the classic type to it.
 
 ## Where are the page's settings?

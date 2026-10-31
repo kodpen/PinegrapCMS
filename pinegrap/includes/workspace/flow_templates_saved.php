@@ -85,6 +85,9 @@ function ws_flow_template_setting_keys()
         'checkin'     => array('channel_id' => 'channel'),
         'lead'        => array('user_ids' => 'person'),
         'approval'    => array('channel_id' => 'channel', 'approvers' => 'person'),
+        'row'         => array('table_id' => 'table'),
+        'row_add'     => array('table_id' => 'table'),
+        'row_set'     => array('table_id' => 'table'),
     );
 }
 
@@ -121,7 +124,7 @@ function ws_flow_template_secrets_dropped($graph)
  * value as the first box of that type, so the one answer replaces that value
  * everywhere and a box with a value of its own keeps it. A value the setup
  * panel cannot give is no target: a channel of 0 (any) or -1 (the channel
- * joined), nobody, or a value read from elsewhere ({{…}}). A webhook's
+ * joined), no table, nobody, or a value read from elsewhere ({{…}}). A webhook's
  * address, dropped as a secret, is asked although empty. Pure.
  *
  * @param array $graph ws_flow_template_secrets_dropped()
@@ -137,7 +140,7 @@ function ws_flow_template_settings_of($graph)
         foreach ($keys[$node['kind']] ?? array() as $key => $type) {
             $value = $node['config'][$key] ?? null;
 
-            if (($type === 'channel') && ((int) $value <= 0)) {
+            if (in_array($type, array('channel', 'table'), true) && ((int) $value <= 0)) {
                 continue;
             }
 

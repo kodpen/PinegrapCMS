@@ -172,6 +172,8 @@ function test_widget_edit_chip_stylesheet_rules()
 	pg_assert_contains('.pg-edit-chip:hover{transform:scale(1.08)!important}', $css);
 	pg_assert_contains('@media print{.pg-edit-chip{visibility:hidden!important}}', $css);
 	pg_assert_contains('.pg-edit-chip::before,.pg-edit-chip::after{content:none!important;display:none!important}', $css);
+	// A heading or breadcrumb under the chip moves its text clear of it.
+	pg_assert_contains(':is(h1,h2,h3,h4,h5,h6,.breadcrumb).pg-edit-host,.pg-edit-chip+:is(h1,h2,h3,h4,h5,h6,nav,.breadcrumb){padding-inline-start:2.4rem}', $css);
 }
 
 // Once per page, in its head, and only on a page that shows a chip.

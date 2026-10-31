@@ -35,7 +35,7 @@ function test_calendar_form_card_prints_the_name_field()
 	pg_assert_contains('maxlength="100"', $card, 'names keep their 100 character limit');
 	pg_assert_contains('required="required"', $card, 'the name is required in the browser on both screens');
 	pg_assert_contains('value="Events &amp; &quot;Talks&quot;"', $card, 'the value is escaped');
-	pg_assert_contains('class="invalid-feedback"', $card, 'the required message');
+	pg_assert_true(strpos($card, 'invalid-feedback') === false, 'no fixed message beside the one liveform prints for a refused name');
 
 	if ($saved === null) {
 		unset($_SESSION);

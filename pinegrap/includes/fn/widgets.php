@@ -89,6 +89,7 @@ function pg_sw_type_labels()
         'menu_sequence_region' => lang('Menu Sequence'),
         'ad_region'           => lang('Ad Region'),
         'tag_cloud_region'    => lang('Tag Cloud'),
+        'google_reviews'      => lang('Google Reviews'),
     );
 }
 
@@ -516,7 +517,7 @@ function pg_sw_apply_tokens($template, $row, $custom = array(), $extra = array()
                     break;
 
                 case 'newest_comment_name':
-                    if ($data === '' && !empty($row['newest_comment_id'])) {
+                    if (($data === '' || $data === 'Anonymous') && !empty($row['newest_comment_id'])) {
                         $data = h(lang('Anonymous'));
                     }
                     $data .= _pg_sw_badge_html($row, 'newest_comment_submitter_badge', 'newest_comment_submitter_badge_label');
@@ -1690,7 +1691,9 @@ function pg_sw_filter_sql_closed($filter_sql, $record_view = false)
 //   search_enabled      bool (default false)
 //   search_fields       array<string>  form_fields.name tokens to search on
 //   empty_message       string         shown when no records match (default: the
-//                                      translated "No records found.")
+//                                      translated "No records found."); a search
+//                                      that finds nothing says so instead
+//                                      (pg_sw_form_list_empty_message())
 //   order_by_field      string  submitted_date_and_time | submitted_form_id |
 //                               number_of_views | number_of_comments |
 //                               recent_views | newest_activity_date_and_time |
@@ -1740,6 +1743,25 @@ function pg_sw_filter_sql_closed($filter_sql, $record_view = false)
 // uses `$_GET['page']` as the URL slug (set by .htaccess rewrite). A
 // pagination link of the form `?page=2` would overwrite the slug and break
 // routing entirely. Match the legacy form_list_view's `page_number` instead.
+/**
+ * The form list's empty-state words: a search that matched nothing says so
+ * (the list itself may hold records); otherwise the configured message, or
+ * "No records found." when none is set.
+ *
+ * @param  mixed $configured    the widget's empty_message setting
+ * @param  bool  $search_active a search query is applied
+ * @return string Plain text.
+ */
+function pg_sw_form_list_empty_message($configured, $search_active)
+{
+    if ($search_active) {
+        return lang('Nothing matched your search. Try fewer or different words.');
+    }
+    $configured = is_string($configured) ? $configured : '';
+
+    return ($configured !== '') ? $configured : lang('No records found.');
+}
+
 function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widget_id, $cfg = array())
 {
     $custom_form_page_id = (int)$custom_form_page_id;
@@ -1778,9 +1800,7 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
                         ? substr($cfg['search_label'], 0, 100)
                         : (string)lang('Search...');
 
-    $empty_message  = (isset($cfg['empty_message']) && is_string($cfg['empty_message']) && $cfg['empty_message'] !== '')
-                        ? $cfg['empty_message']
-                        : lang('No records found.');
+    $empty_message  = (isset($cfg['empty_message']) && is_string($cfg['empty_message'])) ? $cfg['empty_message'] : '';
 
     $order_by_field    = isset($cfg['order_by_field']) ? (string)$cfg['order_by_field'] : 'submitted_date_and_time';
     $order_by_direction = (isset($cfg['order_by_direction']) && strtoupper($cfg['order_by_direction']) === 'ASC') ? 'ASC' : 'DESC';
@@ -2077,9 +2097,10 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
             '</form>';
     }
 
-    // Empty-state HTML used when no records match (with or without search
-    // active), as an element the records' parent may hold.
-    $empty_html = pg_sw_state_message_html($empty_message, $split['loop_parent'], 'pg-sw-empty', pg_sw_row_cells($loop_template));
+    // Empty-state HTML used when no records match, as an element the
+    // records' parent may hold: a search that found nothing says so, not
+    // that the list has no records.
+    $empty_html = pg_sw_state_message_html(pg_sw_form_list_empty_message($empty_message, $search_active), $split['loop_parent'], 'pg-sw-empty', pg_sw_row_cells($loop_template));
 
     // The records go where the loop_area was. The search box and the
     // pagination go there too, except into a list or a table: those may
@@ -4354,6 +4375,18 @@ function _pg_member_drop_controls(&$tree, $match)
     }
 }
 
+// The SMS marketing box (opt_in_sms) stays only while SMS is on and the
+// form asks for the mobile number (pg_consent_sms_offered()); otherwise it
+// goes with its label, so a site without SMS shows nothing new. The editor
+// keeps it, so it can be placed before SMS is set up.
+function _pg_member_sms_box(&$tree, $mode)
+{
+    if ($mode === 'edit' || !is_array($tree)) return;
+    if (!pg_consent_sms_offered(pg_member_tree_asks_mobile($tree))) {
+        _pg_member_drop_control($tree, 'opt_in_sms');
+    }
+}
+
 // Drop the control named $name (see _pg_member_drop_controls).
 function _pg_member_drop_control(&$tree, $name)
 {
@@ -4604,7 +4637,7 @@ function pg_member_widget_register_opts($widget_id, $form, $type = 'registration
     if (!is_array($tree)) return $opts;
 
     foreach (_pg_member_controls($tree) as $c) {
-        if ($c['contact_field'] === '' || !$form->field_in_session($c['name'])) continue;
+        if (!pg_cf_contact_column($c['contact_field']) || !$form->field_in_session($c['name'])) continue;
         $opts['contact_fields'][$c['contact_field']] = $form->get_field_value($c['name']);
     }
     if (!empty($cfg['contact_group_id']) && (int)$cfg['contact_group_id'] > 0) {
@@ -5840,7 +5873,9 @@ function _pg_sw_search_collect($query, $cfg, $advanced = null)
     if ($advanced === null) $advanced = defined('SEARCH_TYPE') && SEARCH_TYPE === 'advanced';
     $path         = defined('PATH') ? PATH : '/';
     $host         = (defined('URL_SCHEME') ? URL_SCHEME : '') . (defined('HOSTNAME') ? HOSTNAME : '');
-    $page_row     = function ($title, $name_or_url, $excerpt, $is_url = false) use ($path, $host) {
+    // $item: a search_items row read with its page's name and title
+    // (pg_search_item_type()), so a record or a file is not labelled a page.
+    $page_row     = function ($title, $name_or_url, $excerpt, $is_url = false, $item = null) use ($path, $host) {
         $url = $is_url ? $path . $name_or_url : $path . encode_url_path((string)$name_or_url);
         // On a page in another language the title reads in it; the link gets
         // the language's directory with the rest of the page's links.
@@ -5848,12 +5883,25 @@ function _pg_sw_search_collect($query, $cfg, $advanced = null)
             $title   = pg_tr_text((string)$title, 'text', 'seo');
             $excerpt = pg_tr_text((string)$excerpt, 'text', 'seo');
         }
+        $type  = 'page';
+        $label = '';
+        if (is_array($item)) {
+            $type = pg_search_item_type($item);
+            // A record (or an event) is named by the page that shows it:
+            // "Topic", "Guide"; a page without a title says "Record".
+            if ($type === 'record') {
+                $label = isset($item['page_title']) ? trim((string)$item['page_title']) : '';
+                if ($label !== '' && function_exists('pg_tr_text')) $label = pg_tr_text($label, 'text', 'seo');
+                if ($label === '') $label = lang('Record');
+            }
+        }
         return array(
             'title'    => ((string)$title !== '') ? (string)$title : $host . $url,
             'url'      => $url,
             'full_url' => $host . $url,
             'excerpt'  => (string)$excerpt,
-            'type'     => 'page',
+            'type'     => $type,
+            'type_label' => $label,
             'image'    => '',
             'price'    => '',
             // The page, for its search sections (_pg_sw_search_attach_sections());
@@ -5955,39 +6003,40 @@ function _pg_sw_search_collect($query, $cfg, $advanced = null)
             if (!$folders) return $out;
             $sql_folders = "(search_items.folder_id IN (" . implode(',', array_map('intval', $folders)) . ")) AND ";
         }
-        // A single word without quotes is searched as an exact phrase, so
-        // "multi-recipient" does not match "multi" and "recipient" apart.
-        $filter = $query;
-        if (mb_strpos($filter, ' ') === false && mb_strpos($filter, '"') === false) $filter = '"' . $filter . '"';
-        $score   = $filter;
-        $boolean = '';
-        if (mb_strpos($filter, '"') !== false || mb_strpos($filter, '+') !== false) {
-            $boolean = ' IN BOOLEAN MODE';
-            $score   = str_replace(array('"', '+'), '', $score);
-        }
-        $featured = db_items(
-            "SELECT id, url, title, description,
-                    MATCH(keywords) AGAINST ('" . e($score) . "') AS score
-             FROM search_items
-             WHERE $sql_folders (MATCH(keywords) AGAINST('" . e($filter) . "'$boolean))
-             ORDER BY score DESC LIMIT 100");
+        // Boolean operators a word does not carry are dropped
+        // (pg_search_boolean_terms()); nothing searchable left finds nothing.
+        $filter = pg_search_boolean_terms($query);
+        $featured = $results = array();
+        $score   = pg_search_score_terms($filter);
+        $mode    = pg_search_needs_boolean_mode($filter) ? ' IN BOOLEAN MODE' : '';
+        // Pages since binned, archived or removed stay out until the index
+        // is rebuilt.
+        $sql_live = pg_search_items_live_sql(pg_recycle_bin_folder_ids());
+        if ($filter !== '') $featured = pg_search_fulltext_items(
+            "SELECT search_items.id, url, title, description, search_items.page_id,
+                    sp.page_name, sp.page_title,
+                    MATCH(keywords) AGAINST (?) AS score
+             FROM search_items LEFT JOIN page AS sp ON sp.page_id = search_items.page_id
+             WHERE $sql_folders (MATCH(keywords) AGAINST(?$mode))$sql_live
+             ORDER BY score DESC LIMIT 100", array($score, $filter));
         $not_featured = '';
-        foreach ((array)$featured as $item) {
-            $out['featured'][] = $page_row($item['title'], $item['url'], $item['description'], true);
-            $not_featured .= "(id != '" . (int)$item['id'] . "') AND ";
+        foreach ($featured as $item) {
+            $out['featured'][] = $page_row($item['title'], $item['url'], $item['description'], true, $item);
+            $not_featured .= "(search_items.id != '" . (int)$item['id'] . "') AND ";
         }
-        $results = db_items(
-            "SELECT url, title, description,
-                    ((3 * (MATCH(title) AGAINST ('" . e($score) . "')))
-                   + (2 * (MATCH(description) AGAINST ('" . e($score) . "')))
-                   + (1 * (MATCH(content) AGAINST ('" . e($score) . "')))) AS score
-             FROM search_items
-             WHERE $sql_folders $not_featured (MATCH(content) AGAINST('" . e($filter) . "'$boolean))
-             ORDER BY score DESC LIMIT 100");
-        foreach ((array)$results as $item) {
-            $out['pages'][] = $page_row($item['title'], $item['url'], $item['description'], true);
+        if ($filter !== '') $results = pg_search_fulltext_items(
+            "SELECT url, title, description, search_items.page_id,
+                    sp.page_name, sp.page_title,
+                    ((3 * (MATCH(title) AGAINST (?)))
+                   + (2 * (MATCH(description) AGAINST (?)))
+                   + (1 * (MATCH(content) AGAINST (?)))) AS score
+             FROM search_items LEFT JOIN page AS sp ON sp.page_id = search_items.page_id
+             WHERE $sql_folders $not_featured (MATCH(content) AGAINST(?$mode))$sql_live
+             ORDER BY score DESC LIMIT 100", array($score, $score, $score, $filter));
+        foreach ($results as $item) {
+            $out['pages'][] = $page_row($item['title'], $item['url'], $item['description'], true, $item);
         }
-        $out['limited'] = (is_array($results) && count($results) === 100);
+        $out['limited'] = (count($results) === 100);
         $out['pages'] = _pg_sw_search_merge_pages($tr_pages, $out['pages']);
         $out['featured'] = _pg_sw_search_attach_sections($out['featured'], $query);
         $out['pages']    = _pg_sw_search_attach_sections($out['pages'], $query);
@@ -6364,7 +6413,7 @@ function _render_system_widget_search_results($tree_json, $widget_id, $cfg = arr
     $loop_template = str_replace('<!--pg-sr-pagination-->', $pagination_html, $loop_template);
     $static_html   = str_replace('<!--pg-sr-pagination-->', $pagination_html, $static_html);
 
-    $type_labels = array('page' => lang('Page'), 'product' => lang('Product'), 'product group' => lang('Product Group'));
+    $type_labels = array('page' => lang('Page'), 'file' => lang('File'), 'product' => lang('Product'), 'product group' => lang('Product Group'));
     $loop_rendered = '';
     // A tree without a loop_area has nowhere to put rows: it renders once.
     if ($loop_template !== '' && $static_html !== '') {
@@ -6375,7 +6424,8 @@ function _render_system_widget_search_results($tree_json, $widget_id, $cfg = arr
                 '__result_full_url'     => $r['full_url'],
                 '__result_excerpt'      => $r['excerpt'],
                 '__result_type'         => $r['type'],
-                '__result_type_label'   => isset($type_labels[$r['type']]) ? $type_labels[$r['type']] : '',
+                '__result_type_label'   => (isset($r['type_label']) && $r['type_label'] !== '') ? $r['type_label']
+                                         : (isset($type_labels[$r['type']]) ? $type_labels[$r['type']] : ''),
                 '__result_image'        => $r['image'],
                 '__result_price'        => $r['price'],
                 '__result_is_featured'  => $r['featured'],
@@ -6487,6 +6537,7 @@ function _render_system_widget_registration($tree_json, $widget_id, $cfg = array
     if (!$submitted) {
         $remembered = ((isset($_COOKIE['software']['remember_me']) ? (string)$_COOKIE['software']['remember_me'] : '') === 'true');
         _pg_member_fill_control($tree, 'opt_in', '1', true);
+        _pg_member_fill_control($tree, 'opt_in_sms', '1', true);
         _pg_member_fill_control($tree, 'register_remember_me', '1', $remembered);
         _pg_member_fill_control($tree, 'remember_me', '1', $remembered);
     } else {
@@ -6494,6 +6545,7 @@ function _render_system_widget_registration($tree_json, $widget_id, $cfg = array
     }
 
     // Features that are off leave nothing behind.
+    _pg_member_sms_box($tree, $mode);
     if (!(defined('PASSWORD_HINT') && PASSWORD_HINT)) {
         _pg_member_drop_control($tree, 'password_hint');
     }
@@ -6620,6 +6672,15 @@ function pg_sw_item_missing($mark = null)
     return true;
 }
 
+// The order view's not-found message as HTML: $message escaped, then a
+// My Account link when $account_url is not ''.
+function pg_sw_order_not_found_message_html($message, $account_url)
+{
+    $account_url = (string)$account_url;
+    return h((string)$message)
+        . ($account_url !== '' ? ' <a href="' . h($account_url) . '" class="alert-link">' . h(lang('My Account')) . '</a>' : '');
+}
+
 /**
  * A one-line, plain-text summary of a product's rich description, for order
  * lines (cart, express order, order view). products.full_description is the
@@ -6647,6 +6708,32 @@ function pg_sw_item_summary($html, $max = 140)
     $space = strrpos($cut, ' ');
     if ($space !== false && $space > strlen($cut) * 0.6) $cut = substr($cut, 0, $space);
     return rtrim($cut, " ,.;:-") . "\u{2026}";
+}
+
+// Order view trees saved before the starter's card surcharge row carried
+// has_surcharge printed "Card surcharge 0,00" on every order. The outermost
+// node whose only text-bound token is __order_surcharge, with no
+// eo_visible_if of its own, gets has_surcharge; a node that already has a
+// condition is left alone, and a node holding another figure too is not the
+// row.
+function pg_ov_stamp_surcharge_row(&$node)
+{
+    if (!is_array($node)) return;
+    if (isset($node['props']['_bindings']['eo_visible_if']) && (string)$node['props']['_bindings']['eo_visible_if'] !== '') {
+        return;
+    }
+    $marks = _pg_op_subtree_marks($node);
+    if (array_keys($marks['tokens']) === array('__order_surcharge')) {
+        if (!isset($node['props']) || !is_array($node['props'])) $node['props'] = array();
+        if (!isset($node['props']['_bindings']) || !is_array($node['props']['_bindings'])) $node['props']['_bindings'] = array();
+        $node['props']['_bindings']['eo_visible_if'] = 'has_surcharge';
+        return;
+    }
+    if (!isset($marks['tokens']['__order_surcharge']) || empty($node['children']) || !is_array($node['children'])) return;
+    foreach ($node['children'] as &$child) {
+        pg_ov_stamp_surcharge_row($child);
+    }
+    unset($child);
 }
 
 // Render an 'order_view' system widget. Reads a single completed order via
@@ -6762,8 +6849,10 @@ function pg_sw_item_summary($html, $max = 140)
 //   ^^__item_url^^              detail page link (products.address_name)
 //   ^^__item_ship_to^^          per-item shipping address summary (one-liner)
 //
-// Note: requires ECOMMERCE to be active. Returns empty if ECOMMERCE is off or
-// the order is not found / does not belong to the current user.
+// Note: requires ECOMMERCE to be active; returns empty if it is off. With no
+// order id, no such order, or an order that is not the visitor's, the widget
+// draws the not-found message with a My Account link and the page answers 404
+// with noindex (pg_sw_item_missing()).
 function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array())
 {
     $widget_id = (int)$widget_id;
@@ -6829,9 +6918,13 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
     // that places ^^__not_found_message^^ draws its own empty state; any
     // other tree came out as a page of headings with nothing under them, or
     // as nothing at all, so it shows the message through its message area.
+    // Every way here answers 404 (nothing in an e-mail or an SEO pass).
     $render_not_found = function () use ($tree_decoded, $not_found_message) {
+        pg_sw_item_missing(true);
         if (strpos(pg_sw_cond_tree_json($tree_decoded), '__not_found_message') === false) {
-            return _pg_sw_render_message_only($tree_decoded, 'order_view', h($not_found_message), 'warning');
+            $acct_url = function_exists('_pg_acct_page_url') ? _pg_acct_page_url(0, 'my account') : '';
+            return _pg_sw_render_message_only($tree_decoded, 'order_view',
+                pg_sw_order_not_found_message_html($not_found_message, $acct_url), 'warning');
         }
         $split_empty = _split_widget_tree($tree_decoded);
         if ($split_empty['loop_children'] === null) {
@@ -6965,7 +7058,9 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
         (string)$order['billing_address_1'],
         (string)$order['billing_address_2'],
         $billing_city_line,
-        (string)$order['billing_country'],
+        // The address names the country in the site language; the
+        // __billing_country token keeps the stored code.
+        pg_geo_country_label_site($order['billing_country']),
     ));
     $billing_full_address = implode(', ', $billing_full_parts);
 
@@ -7009,7 +7104,7 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
         (string)($ship_to['address_1'] ?? ''),
         (string)($ship_to['address_2'] ?? ''),
         $shipping_city_line,
-        (string)($ship_to['country']   ?? ''),
+        pg_geo_country_label_site($ship_to['country'] ?? ''),
     ));
     $shipping_full_address = implode(', ', $shipping_full_parts);
     $shipping_address_html = implode('<br>', array_map('h', $shipping_full_parts));
@@ -7231,7 +7326,7 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
     // (ECOMMERCE_DEFAULT_TRACKING_PROVIDER), and failing that from the number's
     // own shape (pg_sw_order_parcels(), pg_shipment_view()).
     $tracking_columns = pg_shipment_rows_ready()
-        ? ', shipping_tracking_numbers.carrier, shipping_tracking_numbers.tracking_url, shipping_tracking_numbers.status'
+        ? ', shipping_tracking_numbers.carrier, shipping_tracking_numbers.tracking_url, shipping_tracking_numbers.status, shipping_tracking_numbers.shipped_at, shipping_tracking_numbers.delivered_at'
         : '';
 
     $tracking_rows = db_items("SELECT shipping_tracking_numbers.number,
@@ -7266,10 +7361,6 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
     }
 
     // ── Timeline events ───────────────────────────────────────────────
-    // Aggregate ship_to ship_date / delivery_date across all rows; the
-    // earliest non-zero date wins (a multi-recipient order is "shipped"
-    // when the first ship_to goes out, "delivered" when the first
-    // arrives — closest to what customers actually want to see).
     static $_order_view_has_cancelled_at_col = null;
     if ($_order_view_has_cancelled_at_col === null) {
         $_order_view_has_cancelled_at_col = pg_schema_has('orders', 'cancelled_at');
@@ -7285,26 +7376,46 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
             $cancellation_reason = trim((string)($_cancel_row['cancellation_reason'] ?? ''));
         }
     }
-    $shipping_ts = 0;
-    $delivery_ts = 0;
+    // A step says Shipped or Delivered only when a record backs it: a
+    // numbered parcel or a shipped quantity for Shipped, a parcel's
+    // delivered_at for Delivered (pg_shipment_timeline_steps()). Without one
+    // the checkout estimate stays an estimate, even after its day has passed.
+    // A multi-recipient order is shipped when the first address goes out and
+    // delivered when the first arrives.
     $st_dates = db_items(
-        "SELECT ship_date, delivery_date FROM ship_tos
+        "SELECT id, ship_date, delivery_date FROM ship_tos
          WHERE order_id = '$oid_esc'
            AND complete = 1
          ORDER BY id ASC"
     );
-    if (is_array($st_dates)) {
-        foreach ($st_dates as $_d) {
-            if (!empty($_d['ship_date']) && $_d['ship_date'] !== '0000-00-00') {
-                $_t = strtotime((string)$_d['ship_date']);
-                if ($_t > 0 && ($shipping_ts === 0 || $_t < $shipping_ts)) $shipping_ts = $_t;
-            }
-            if (!empty($_d['delivery_date']) && $_d['delivery_date'] !== '0000-00-00') {
-                $_t = strtotime((string)$_d['delivery_date']);
-                if ($_t > 0 && ($delivery_ts === 0 || $_t < $delivery_ts)) $delivery_ts = $_t;
-            }
-        }
+    $st_shipped_rows = db_items(
+        "SELECT ship_to_id, COALESCE(SUM(shipped_quantity), 0) AS shipped_quantity
+         FROM order_items
+         WHERE order_id = '$oid_esc' AND ship_to_id > 0
+         GROUP BY ship_to_id"
+    );
+    $st_shipped = array();
+    foreach ((is_array($st_shipped_rows) ? $st_shipped_rows : array()) as $_sq) {
+        $st_shipped[(int)$_sq['ship_to_id']] = (int)$_sq['shipped_quantity'];
     }
+    $st_parcels = array();
+    foreach ((is_array($tracking_rows) ? $tracking_rows : array()) as $_tr) {
+        $st_parcels[(int)$_tr['ship_to_id']][] = array(
+            'shipped_at'   => isset($_tr['shipped_at']) ? (int)$_tr['shipped_at'] : 0,
+            'delivered_at' => isset($_tr['delivered_at']) ? (int)$_tr['delivered_at'] : 0,
+        );
+    }
+    $st_addresses = array();
+    foreach ((is_array($st_dates) ? $st_dates : array()) as $_d) {
+        $_st_id = (int)$_d['id'];
+        $st_addresses[] = array(
+            'ship_date'        => (string)$_d['ship_date'],
+            'delivery_date'    => (string)$_d['delivery_date'],
+            'shipped_quantity' => isset($st_shipped[$_st_id]) ? $st_shipped[$_st_id] : 0,
+            'parcels'          => isset($st_parcels[$_st_id]) ? $st_parcels[$_st_id] : array(),
+        );
+    }
+    $shipment_steps = pg_shipment_timeline_steps($st_addresses);
     // Format helper — same date logic as $order_date above, plus HH:MM
     // for events that have a real time component (cancellation, order
     // creation). Pure-date columns (ship_date, delivery_date) skip the
@@ -7348,24 +7459,20 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
             'kind'  => 'paid',
         );
     }
-    // ship_date / delivery_date are worked out at checkout from the
-    // shipping method: until the day comes they are a forecast, and a
-    // just-placed order listed itself as shipped and delivered.
-    $_today_ts = strtotime(date('Y-m-d'));
-    if ($shipping_ts > 0) {
+    if ($shipment_steps['shipped']['ts'] > 0) {
         $timeline_events[] = array(
-            'label' => ($shipping_ts > $_today_ts) ? lang('Estimated shipping') : lang('Shipped'),
-            'ts'    => $_fmt_ts($shipping_ts, false),
+            'label'    => $shipment_steps['shipped']['estimate'] ? lang('Estimated shipping') : lang('Shipped'),
+            'ts'       => $_fmt_ts($shipment_steps['shipped']['ts'], false),
             'kind'     => 'shipped',
-            'estimate' => ($shipping_ts > $_today_ts),
+            'estimate' => $shipment_steps['shipped']['estimate'],
         );
     }
-    if ($delivery_ts > 0) {
+    if ($shipment_steps['delivered']['ts'] > 0) {
         $timeline_events[] = array(
-            'label' => ($delivery_ts > $_today_ts) ? lang('Estimated delivery') : lang('Delivered'),
-            'ts'    => $_fmt_ts($delivery_ts, false),
+            'label'    => $shipment_steps['delivered']['estimate'] ? lang('Estimated delivery') : lang('Delivered'),
+            'ts'       => $_fmt_ts($shipment_steps['delivered']['ts'], false),
             'kind'     => 'delivered',
-            'estimate' => ($delivery_ts > $_today_ts),
+            'estimate' => $shipment_steps['delivered']['estimate'],
         );
     }
     if ($cancelled_at_ts > 0) {
@@ -7546,6 +7653,7 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
         'withdrawal_deadline_estimated' => $withdrawal_date !== '' && $withdrawal['estimated'] && $withdrawal['open'],
         'withdrawal_ended'              => $withdrawal_date !== '' && !$withdrawal['open'],
     );
+    pg_ov_stamp_surcharge_row($tree_decoded);
     if (function_exists('_eo_apply_visibility_bindings')) {
         _eo_apply_visibility_bindings($tree_decoded, $_ov_vis_ctx);
     }
@@ -7908,6 +8016,7 @@ function _render_system_widget_membership($tree_json, $widget_id, $cfg = array()
     if (!$submitted) {
         $remembered = ((isset($_COOKIE['software']['remember_me']) ? (string)$_COOKIE['software']['remember_me'] : '') === 'true');
         _pg_member_fill_control($tree, 'opt_in', '1', true);
+        _pg_member_fill_control($tree, 'opt_in_sms', '1', true);
         _pg_member_fill_control($tree, 'register_remember_me', '1', $remembered);
         _pg_member_fill_control($tree, 'remember_me', '1', $remembered);
         if ($google_signup) {
@@ -7929,6 +8038,7 @@ function _render_system_widget_membership($tree_json, $widget_id, $cfg = array()
         }
     }
 
+    _pg_member_sms_box($tree, $mode);
     if (!(defined('PASSWORD_HINT') && PASSWORD_HINT)) {
         _pg_member_drop_control($tree, 'password_hint');
     }
@@ -8091,6 +8201,14 @@ function _render_system_widget_custom_form($tree_json, $widget_id, $cfg = array(
         $cf_url_values = (strpos((string)$tree_json, '"url_param"') !== false)
             ? pg_cf_url_prefill_values(_pg_cf_controls($tree_decoded, $form_page_id), $cf_field_map, pg_sw_filter_request())
             : array();
+        // No SMS, no number, no box: outside the editor an SMS question the
+        // visitor cannot be asked is dropped as an office-use-only field is.
+        if ($mode !== 'edit') {
+            $cf_sms_kept = pg_cf_drop_sms_question($cf_field_map, pg_cf_submitter_contact(), $_GET);
+            foreach (array_diff_key($cf_field_map, $cf_sms_kept) as $cf_sms_key => $cf_sms_row) {
+                $cf_field_map[$cf_sms_key]['_pg_cf_sms_dropped'] = 1;
+            }
+        }
         pg_cf_apply_field_bindings($tree_decoded, $cf_field_map, $cf_liveform, $cf_folder, $cf_staff, $cf_url_values);
     }
     // Ids are final now, including the ones invented above, so a label that
@@ -8988,8 +9106,9 @@ function pg_sw_backend_edit_url($script, $id, $params = array())
  * the record itself wins); the chip fades in on hover and focus and grows
  * under the pointer (!important, over the plain opacity and transform the
  * chip carries); it draws no pseudo-element a design gives links; it is not
- * printed (visibility: its display is pinned). The chip's size, shape and
- * colours need none of it. Written once per page by
+ * printed (visibility: its display is pinned); a heading or breadcrumb that
+ * hosts the chip or follows it moves its text clear of the chip. The chip's
+ * size, shape and colours need none of it. Written once per page by
  * pg_sw_edit_chip_css_inject().
  */
 function pg_sw_edit_chip_css()
@@ -8999,6 +9118,7 @@ function pg_sw_edit_chip_css()
         . '.pg-edit-chip::before,.pg-edit-chip::after{content:none!important;display:none!important}'
         . '.pg-edit-host:hover>.pg-edit-chip,.pg-edit-chip:focus-visible{opacity:1!important}'
         . '.pg-edit-chip:hover{transform:scale(1.08)!important}'
+        . ':is(h1,h2,h3,h4,h5,h6,.breadcrumb).pg-edit-host,.pg-edit-chip+:is(h1,h2,h3,h4,h5,h6,nav,.breadcrumb){padding-inline-start:2.4rem}'
         . '.pg-edit-chip:focus-visible{outline:2px solid #fff!important;outline-offset:2px!important}'
         . '@media (hover:none){.pg-edit-chip{opacity:.9!important}}'
         . '@media print{.pg-edit-chip{visibility:hidden!important}}'

@@ -52,6 +52,19 @@ function test_dashboard_keyboard_status_popover_opens_on_focus()
 	pg_assert_contains("selector: \\'.status-popover\\',\n            trigger: \"hover focus\"", $source);
 }
 
+// Bootstrap 6's popover data API cancels every click on
+// [data-bs-toggle="popover"], so a chip that is a link never followed its
+// href. The welcome.php delegate gives the chip its popover without the
+// attribute; no-popover keeps the title popover off it.
+function test_dashboard_keyboard_status_chip_link_is_followed()
+{
+	$source = dashboard_keyboard_source('includes/dashboard/widgets/widget_2.php');
+
+	pg_assert_false(strpos($source, 'data-bs-toggle="popover"') !== false, 'chip carries data-bs-toggle="popover"');
+	pg_assert_false(strpos($source, 'data-bs-trigger="hover focus"') !== false, 'chip carries an ignored data-bs-trigger');
+	pg_assert_contains(' class="pg-check pg-check-\' . $check_tone . \' status-popover no-popover"', $source);
+}
+
 // The refresh replaces a card's body; the control that had focus is found
 // again by its key and focused, as the scroll position is restored.
 function test_dashboard_keyboard_refresh_keeps_focus()
@@ -61,4 +74,22 @@ function test_dashboard_keyboard_refresh_keeps_focus()
 	pg_assert_contains('function pg_widget_focus_save(', $source);
 	pg_assert_contains('pg_widget_focus_restore($widget[0], focus_key);', $source);
 	pg_assert_contains('data-pg-focus-key', $source);
+}
+
+// A card list that scrolls inside the card and holds no link or button has
+// no Tab stop, so Safari cannot scroll it from the keyboard and other
+// browsers focus it without a name. After each draw and on resize such an
+// area becomes a named region with a Tab stop; the marks come off when it
+// stops overflowing or gains a control.
+function test_dashboard_keyboard_scroll_areas_are_named_regions()
+{
+	$source = dashboard_keyboard_source('welcome.php');
+
+	pg_assert_contains('function pg_widget_scroll_regions(', $source);
+	pg_assert_contains('".card-body, .pg-split, .pg-split-half, .pg-split-scroll, .pg-ops-body, .pg-vs-pages"', $source);
+	pg_assert_contains('setAttribute("role", "region")', $source);
+	pg_assert_contains('setAttribute("tabindex", "0")', $source);
+	pg_assert_contains('removeAttribute("aria-label")', $source);
+	pg_assert_contains('pg_widget_scroll_regions(event.target);', $source);
+	pg_assert_contains('[data-pg-focus-key^="scroll-"]:focus-visible', $source);
 }

@@ -214,7 +214,7 @@ function ws_mail_route_fields($prefix, $box, $channels)
         $html .= '
                 <div class="md:col-6">
                     <label class="form-label visually-hidden" for="' . $id . '">' . h(lang('Address or tag')) . '</label>
-                    <input class="form-control form-control-sm font-monospace" type="text" name="route_match[]" id="' . $id . '" maxlength="255" value="' . h((string) $route['match']) . '" placeholder="' . h(lang('billing@example.com or +billing')) . '" autocomplete="off">
+                    <input class="form-control form-control-sm font-monospace" type="text" inputmode="email" spellcheck="false" autocapitalize="off" name="route_match[]" id="' . $id . '" maxlength="255" value="' . h((string) $route['match']) . '" placeholder="' . h(lang('billing@example.com or +billing')) . '" autocomplete="off">
                 </div>
                 <div class="md:col-6">
                     <label class="form-label visually-hidden" for="' . $id . '_channel">' . h(lang('Channel')) . '</label>

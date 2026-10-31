@@ -29,14 +29,14 @@ $pg_settings_cards[] = '
                                 <div class="card-body">
                                    <div class="row gy-5">
                                         <div class="pg-f-lg">
-                                            <label for="title" class="form-label">' . lang('Web Browser Title') . '</label>
-                                            <input type="text" name="title" id="title" class="form-control" maxlength="255" value="' . h($title) . '"/>
-                                            <div id="seo_c_title"></div>
+                                            <label for="setting_title" class="form-label">' . lang('Web Browser Title') . '</label>
+                                            <input type="text" name="title" id="setting_title" class="form-control" maxlength="255" value="' . h($title) . '"/>
+                                            <div id="setting_seo_c_title"></div>
                                         </div>
                                         <div class="pg-f-lg">
-                                            <label for="meta_description" class="form-label">' . lang('Web Browser Description') . '</label>
-                                            <textarea name="meta_description" id="meta_description" class="form-control" maxlength="255" >' . h($meta_description) . '</textarea>
-                                            <div id="seo_c_meta_description"></div>
+                                            <label for="setting_meta_description" class="form-label">' . lang('Web Browser Description') . '</label>
+                                            <textarea name="meta_description" id="setting_meta_description" class="form-control" maxlength="255" >' . h($meta_description) . '</textarea>
+                                            <div id="setting_seo_c_meta_description"></div>
                                         </div>
                                         <div id="pgsub-sitemap" class="col-12  mb-0"><h6 class="fg-secondary text-uppercase">' . lang('Site Map and Crawling') . '</h6></div>
                                         <div class="pg-f-lg">
@@ -94,8 +94,8 @@ $pg_settings_scripts[] = '
     <script>
         // SEO character counters — logic in assets/js/backend.src.js
         initSeoCounters([
-            { sel: "#title",            counterId: "seo_c_title",            min: 50,  max: 60  },
-            { sel: "#meta_description", counterId: "seo_c_meta_description", min: 150, max: 160 }
+            { sel: "#setting_title",            counterId: "setting_seo_c_title",            min: 50,  max: 60  },
+            { sel: "#setting_meta_description", counterId: "setting_seo_c_meta_description", min: 150, max: 160 }
         ]);
 
         // Fills the additional robots.txt field with the rule that blocks every crawler.
@@ -302,15 +302,15 @@ $pg_settings_cards[] = '
                                         </div>
                                         <div class="pg-f-lg">
                                             <label for="product_feed_seller_url" class="form-label">' . lang('Seller website') . '</label>
-                                            <input type="text" name="product_feed_seller_url" id="product_feed_seller_url" class="form-control" maxlength="2000" value="' . h($product_feeds_settings['seller_url']) . '" placeholder="https://"/>
+                                            <input type="text" inputmode="url" spellcheck="false" autocapitalize="off" name="product_feed_seller_url" id="product_feed_seller_url" class="form-control" maxlength="2000" value="' . h($product_feeds_settings['seller_url']) . '" placeholder="https://"/>
                                         </div>
                                         <div class="pg-f-lg">
                                             <label for="product_feed_privacy_policy_url" class="form-label">' . lang('Privacy policy address') . '</label>
-                                            <input type="text" name="product_feed_privacy_policy_url" id="product_feed_privacy_policy_url" class="form-control" maxlength="2000" value="' . h($product_feeds_settings['privacy_policy_url']) . '" placeholder="https://"/>
+                                            <input type="text" inputmode="url" spellcheck="false" autocapitalize="off" name="product_feed_privacy_policy_url" id="product_feed_privacy_policy_url" class="form-control" maxlength="2000" value="' . h($product_feeds_settings['privacy_policy_url']) . '" placeholder="https://"/>
                                         </div>
                                         <div class="pg-f-lg">
                                             <label for="product_feed_terms_url" class="form-label">' . lang('Terms of sale address') . '</label>
-                                            <input type="text" name="product_feed_terms_url" id="product_feed_terms_url" class="form-control" maxlength="2000" value="' . h($product_feeds_settings['terms_url']) . '" placeholder="https://"/>
+                                            <input type="text" inputmode="url" spellcheck="false" autocapitalize="off" name="product_feed_terms_url" id="product_feed_terms_url" class="form-control" maxlength="2000" value="' . h($product_feeds_settings['terms_url']) . '" placeholder="https://"/>
                                             <div class="form-text">' . lang('Full addresses starting with https://. The OpenAI feed passes them on with every product.') . '</div>
                                         </div>
                                         <div class="pg-f-lg">
@@ -330,6 +330,9 @@ $pg_settings_cards[] = '
                         </div>';
 
 // ── Visitor Tracking ──
+// The Google Analytics figures part of the card ($google_analytics_figures).
+require(PG_FUNCTIONS_DIR . '/includes/settings/seo_analytics.php');
+
 $pg_settings_cards[] = '
                         <div id="pgset-analytics" class="pg-set-card">
                             <div class="card">
@@ -370,7 +373,7 @@ $pg_settings_cards[] = '
                                                                <div class="row gy-5">
                                                                     <div class="col-12 ">
                                                                         <label for="stats_url" class="form-label">' . lang('Website Analytics URL') . '</label>
-                                                                        <input type="text" name="stats_url" id="stats_url" class="form-control" value="' . h($stats_url) . '" />
+                                                                        <input type="text" inputmode="url" spellcheck="false" autocapitalize="off" name="stats_url" id="stats_url" class="form-control" value="' . h($stats_url) . '" />
                                                                     </div>
                                                                     <div class="col-12 ">
                                                                         <label for="google_analytics_web_property_id" class="form-label">' . lang('Web Property ID') . '</label>
@@ -410,7 +413,7 @@ $pg_settings_cards[] = '
                                                 <div class="form-text">' . lang('Each day is added up by source, landing page, campaign, place and device first, so the visitor report and the API still count it. Turned off, those days are gone from the visitor report; the dashboard charts keep them either way.') . '</div>
                                                 <div class="form-text"><a href="database_engine.php#visitor-records">' . lang('The size of the table, and a cleanup you can start yourself, are on the Database Engine screen.') . '</a></div>
                                             </div>
-                                        </div>' : '') . '
+                                        </div>' : '') . $google_analytics_figures . '
                                    </div>
                                 </div>
                             </div>
@@ -435,7 +438,7 @@ $pg_settings_cards[] = '
                                         </div>
                                         <div class="pg-f-lg">
                                             <label for="cookie_consent_policy_url" class="form-label">' . lang('Cookie Policy Address') . '</label>
-                                            <input type="text" name="cookie_consent_policy_url" id="cookie_consent_policy_url" class="form-control" maxlength="500" value="' . h($cookie_consent_policy_url) . '" placeholder="/cookie-policy"/>
+                                            <input type="text" inputmode="url" spellcheck="false" autocapitalize="off" name="cookie_consent_policy_url" id="cookie_consent_policy_url" class="form-control" maxlength="500" value="' . h($cookie_consent_policy_url) . '" placeholder="/cookie-policy"/>
                                             <div class="form-text">' . lang('A page that explains the cookies in detail, shown as a link in the notice. Start it with / or https://; leave it empty for no link.') . '</div>
                                         </div>
                                         <div class="col-12">

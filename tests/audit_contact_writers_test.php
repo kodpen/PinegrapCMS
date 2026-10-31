@@ -76,5 +76,6 @@ function test_audit_iys_writes_are_recorded_as_job()
 	pg_assert_contains('$was = pg_audit_as_job(true);', $source, 'run as the job');
 	pg_assert_contains('pg_audit_as_job($was);', $source, 'switch restored');
 	pg_assert_same(2, substr_count($source, "pg_audit_fetch_by('contacts', 'email_address'"), 'push and pull read the address first');
-	pg_assert_same(2, substr_count($source, "pg_audit_record_many('update', 'contacts'"), 'push and pull record after');
+	pg_assert_same(2, substr_count($source, "pg_audit_fetch_many('contacts'"), 'the SMS push and pull read the contacts first');
+	pg_assert_same(4, substr_count($source, "pg_audit_record_many('update', 'contacts'"), 'push and pull record after, e-mail and SMS');
 }

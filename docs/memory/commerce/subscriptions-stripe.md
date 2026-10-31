@@ -5,7 +5,7 @@ module: subscriptions
 ---
 
 ## When does Stripe run subscriptions?
-- Always: `pg_payment_stripe_capabilities()` declares `'recurring' => 'store'` with no switch, since Stripe charges a kept card off-session for any account (unlike iyzico, `subscriptions-iyzico.md`). The checkout hook of slice 2 (`pg_subscription_checkout_create()`) picks it up unchanged.
+- Always: `pg_payment_stripe_capabilities()` declares `'recurring' => 'store'` with no switch, since Stripe charges a kept card off-session for any account (unlike iyzico, `subscriptions-iyzico.md`). The checkout hook of slice 2 (`pg_subscription_checkout_create()`) picks it up unchanged, later lines included (`subscriptions-later-start.md`).
 
 ## How is the card kept on the first payment?
 - `authorize()` with `payment['recurring']` (the cart has a priced recurring line) first makes a Customer (`POST /v1/customers`: email, name, metadata order_id and user_id; key `pg-cus-` + order + token), then creates the intent with `customer` and `setup_future_usage: off_session`.
@@ -22,8 +22,8 @@ module: subscriptions
 - `update_card($row)`: Checkout Session `mode=setup` for the Customer (card, Link when on), `success_url` = `cancel_url` = the return address, metadata `subscription_id`; key `pg-setup-` + id, customer, address, UTC day. Answers redirect; never unclear. Chosen over the Billing Portal, which needs a portal configuration saved in the Dashboard.
 - `subscription_cancel($row)`: detaches every card of the Customer (the stored one when the list cannot be read). Lines of one order share the Customer: the cancel slice calls it only when no other live subscription of that order uses it.
 
-## What is left?
-- The confirmation page's `payment_intent.succeeded` carries `subscription_id`, not `order_id`, so `notify()` ignores it: the renewal writer slice must take it (or re-read the intent).
+## Who takes the confirmation page's payment?
+- `payment_intent.succeeded` carries `subscription_id`, not `order_id`: `notify()` answers it with `raw.subscription_id` and the renewal writer takes it (`subscriptions-renewal.md`).
 
 ## How was it verified?
 - `tests/payment_stripe_test.php` (stand-in HTTP caller). No Stripe test-mode run: the off-session and confirmation flows follow Stripe's documentation.

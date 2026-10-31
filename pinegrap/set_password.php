@@ -41,7 +41,7 @@ $token = $form->get('k');
 $pg_return_to = pg_sw_return_to($form->get('return_to'));
 
 if (!$token) {
-    log_activity('Set Password: missing token');
+    log_activity(pg_log_lang(array('string' => 'Set Password: missing token')));
     output_error(lang('Sorry, the token is missing, so we can\'t allow you to set a password.'));
 }
 
@@ -60,7 +60,7 @@ $user = db_item(
 // If query to database return no results for token
 if (!is_array($user) || !$user['id']) {
 
-    log_activity('Set Password: invalid token');
+    log_activity(pg_log_lang(array('string' => 'Set Password: invalid token')));
 
     output_error(lang(array('string' => 'Sorry, the token is not valid, so we can\'t allow you to set a password. The token might be old, so please <a href="{var:1}">request a new email</a>.', 'vars' => array(h(pg_sign_in_screen_url('forgot password', 'forgot_password.php'))))));
 }
@@ -71,7 +71,7 @@ $time_24hrs = (24*60*60);
 // Check to see if token has expired after 24 hours
 if (($token_timestamp + $time_24hrs) < time()) {
 
-    log_activity('Set Password: expired token');
+    log_activity(pg_log_lang(array('string' => 'Set Password: expired token')));
 
     output_error(lang(array('string' => 'Sorry, the token has expired. Please <a href="{var:1}">request a new email</a>.', 'vars' => array(h(pg_sign_in_screen_url('forgot password', 'forgot_password.php'))))));
 }   
@@ -138,7 +138,7 @@ $pg_signed_in = pg_post_password_signin($user['id'], $user['username']);
 // the visitor to the login screen, and there is no session to bind a device
 // token or an order to). The confirmation screen asks them to sign in.
 if (!$pg_signed_in) {
-    log_activity('User set password.', $user['username']);
+    log_activity(pg_log_lang(array('string' => 'User set password.')), $user['username']);
 
     $form->remove();
     $form->set('screen', 'confirm');
@@ -150,7 +150,7 @@ if (!$pg_signed_in) {
 require_once(dirname(__FILE__) . '/connect_user_to_order.php');
 connect_user_to_order();
 
-log_activity('User set password and was automatically logged in.', $user['username']);
+log_activity(pg_log_lang(array('string' => 'User set password and was automatically logged in.')), $user['username']);
 
 // Same as change_password.php: the revoke above dropped this browser's token
 // too, so bind the session to a fresh one or the next request signs it out.

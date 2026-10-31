@@ -425,6 +425,19 @@ function pg_cron_jobs()
             'dispatch'    => true,
             'lane'        => 'light',
         ),
+        // Google Analytics figures for the dashboard card: read again once
+        // the kept report is older than PG_GA_TTL. Hourly, so a reading is
+        // never much older than the window; a site with no GA4 property chosen
+        // records the run and calls nothing. Choosing a property puts it in
+        // the dispatch list.
+        'google_analytics_job' => array(
+            'label'       => lang('Google Analytics'),
+            'script'      => 'google_analytics_job.php',
+            'interval'    => 3600,
+            'stale_after' => 172800,
+            'dispatch'    => true,
+            'lane'        => 'light',
+        ),
         // Refunds of returns falling due: the staff's bell rings for each
         // return whose refund is due within three days, and once more when it
         // is late. Daily; a run with no goods on their way back is one indexed

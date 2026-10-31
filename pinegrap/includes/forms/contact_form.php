@@ -183,20 +183,73 @@ function pg_contact_form_name_row($values, $is_new, $image_html)
 }
 
 /**
+ * The attributes that open the right phone keyboard on a text box: 'tel'
+ * opens the telephone keypad, 'url' the web address keyboard without
+ * capitalising or spellchecking. The box stays type="text" because phone
+ * values carry spaces, + and parentheses and a bare www.example.com is a
+ * valid website.
+ *
+ * @param string $keyboard 'tel', 'url' or '' for the default keyboard
+ * @return string
+ */
+function pg_contact_form_keyboard_attributes($keyboard)
+{
+    if ($keyboard === 'tel') {
+        return ' inputmode="tel"';
+    }
+
+    if ($keyboard === 'url') {
+        return ' inputmode="url" spellcheck="false" autocapitalize="off"';
+    }
+
+    return '';
+}
+
+/**
  * One text field of the work and home cards.
  *
  * @param array $values
  * @param string $name
  * @param string $label
  * @param int $maxlength
+ * @param string $keyboard Phone keyboard (pg_contact_form_keyboard_attributes())
  * @return string
  */
-function pg_contact_form_text_field($values, $name, $label, $maxlength)
+function pg_contact_form_text_field($values, $name, $label, $maxlength, $keyboard = '')
 {
     return '
                                         <div class="col-12 md:col-4 my-3">
                                             <label for="' . $name . '" class="form-label">' . $label . '</label>
-                                            <input value="' . pg_contact_form_value($values, $name) . '" type="text" name="' . $name . '" id="' . $name . '" class="form-control" maxlength="' . (int) $maxlength . '" />
+                                            <input value="' . pg_contact_form_value($values, $name) . '" type="text" name="' . $name . '" id="' . $name . '" class="form-control" maxlength="' . (int) $maxlength . '"' . pg_contact_form_keyboard_attributes($keyboard) . ' />
+                                        </div>';
+}
+
+/**
+ * The lead source field: a select of the referral sources with an empty
+ * choice; a stored value outside the list stays as its own selected choice
+ * (pg_contact_lead_source_options()).
+ *
+ * @param array $values  The stored contact (raw values), array() for a new one
+ * @param array $sources Rows of name and code (pg_referral_sources())
+ * @return string
+ */
+function pg_contact_form_lead_source_field($values, $sources)
+{
+    $current = (string) ($values['lead_source'] ?? '');
+    $options = '';
+    $hint = '';
+
+    foreach (pg_contact_lead_source_options($sources, $current) as $option) {
+        $options .= '<option value="' . h($option['value']) . '"' . (($option['value'] === $current) ? ' selected="selected"' : '') . '>' . h($option['label']) . '</option>';
+
+        if ($option['kept']) {
+            $hint = '<div class="form-text">' . lang('The stored value is not one of the referral sources; it is kept until another one is chosen.') . '</div>';
+        }
+    }
+
+    return '<div class="col-12 my-5">
+                                            <label for="lead_source" class="form-label">' . lang('Lead Source') . '</label>
+                                            <select name="lead_source" id="lead_source" class="form-control">' . $options . '</select>' . $hint . '
                                         </div>';
 }
 
@@ -216,7 +269,7 @@ function pg_contact_form_detail_cards($values, $is_new, $work_extra, $groups_htm
         pg_contact_form_text_field($values, 'title', lang('Title'), 50) .
         pg_contact_form_text_field($values, 'department', lang('Department'), 50) .
         pg_contact_form_text_field($values, 'office_location', lang('Office Location'), 50) .
-        pg_contact_form_text_field($values, 'website', lang('Website'), 255);
+        pg_contact_form_text_field($values, 'website', lang('Website'), 255, 'url');
 
     $output_business =
         pg_contact_form_text_field($values, 'business_address_1', lang('Business Address') . ' 1', 50) .
@@ -224,9 +277,9 @@ function pg_contact_form_detail_cards($values, $is_new, $work_extra, $groups_htm
         pg_contact_form_text_field($values, 'business_city', lang('Business City'), 50) .
         pg_contact_form_text_field($values, 'business_state', lang('Business State'), 50) .
         pg_contact_form_text_field($values, 'business_country', lang('Business Country'), 50) .
-        pg_contact_form_text_field($values, 'business_zip_code', lang('Business Zip Code'), 50) .
-        pg_contact_form_text_field($values, 'business_phone', lang('Business Phone'), 50) .
-        pg_contact_form_text_field($values, 'business_fax', lang('Business Fax'), 50);
+        pg_contact_form_text_field($values, 'business_zip_code', lang('Business Zip Code'), 10) .
+        pg_contact_form_text_field($values, 'business_phone', lang('Business Phone'), 50, 'tel') .
+        pg_contact_form_text_field($values, 'business_fax', lang('Business Fax'), 50, 'tel');
 
     $output_home =
         pg_contact_form_text_field($values, 'home_address_1', lang('Home Address') . ' 1', 50) .
@@ -234,10 +287,10 @@ function pg_contact_form_detail_cards($values, $is_new, $work_extra, $groups_htm
         pg_contact_form_text_field($values, 'home_city', lang('Home City'), 50) .
         pg_contact_form_text_field($values, 'home_state', lang('Home State'), 50) .
         pg_contact_form_text_field($values, 'home_country', lang('Home Country'), 50) .
-        pg_contact_form_text_field($values, 'home_zip_code', lang('Home Zip Code'), 50) .
-        pg_contact_form_text_field($values, 'home_phone', lang('Home Phone'), 50) .
-        pg_contact_form_text_field($values, 'home_fax', lang('Home Fax'), 50) .
-        pg_contact_form_text_field($values, 'mobile_phone', lang('Mobile Phone'), 255);
+        pg_contact_form_text_field($values, 'home_zip_code', lang('Home Zip Code'), 10) .
+        pg_contact_form_text_field($values, 'home_phone', lang('Home Phone'), 50, 'tel') .
+        pg_contact_form_text_field($values, 'home_fax', lang('Home Fax'), 50, 'tel') .
+        pg_contact_form_text_field($values, 'mobile_phone', lang('Mobile Phone'), 50, 'tel');
 
     return '
                     <div class="row">
@@ -286,7 +339,7 @@ function pg_contact_form_detail_cards($values, $is_new, $work_extra, $groups_htm
                                     <div class="row">
                                         <div class="col-12 my-3">
                                             <label for="member_id" class="form-label">' . h(MEMBER_ID_LABEL) . '</label>
-                                            <input value="' . pg_contact_form_value($values, 'member_id') . '" type="text" name="member_id" id="member_id" class="form-control" />
+                                            <input value="' . pg_contact_form_value($values, 'member_id') . '" type="text" name="member_id" id="member_id" class="form-control" maxlength="50" />
                                             <div class="form-text text-end">' . lang('leave blank for no membership') . '</div>
                                         </div>
                                         <div class="col-12 my-3">
@@ -306,10 +359,7 @@ function pg_contact_form_detail_cards($values, $is_new, $work_extra, $groups_htm
                                 </h2>
                                 <div class="card-body">
                                     <div class="row">
-                                        <div class="col-12 my-3">
-                                            <label for="lead_source" class="form-label">' . lang('Lead Source') . '</label>
-                                            <input value="' . pg_contact_form_value($values, 'lead_source') . '" type="text" name="lead_source" id="lead_source" class="form-control" maxlength="50" />
-                                        </div>
+                                        ' . pg_contact_form_lead_source_field($values, pg_referral_sources()) . '
                                         <div class="col-12 my-3">
                                             <label for="description" class="form-label">' . lang('Description') . '</label>
                                             <textarea type="text" name="description" id="description" class="form-control">' . pg_contact_form_value($values, 'description') . '</textarea>
@@ -369,13 +419,13 @@ function pg_contact_form_affiliate_card($values)
                         <div class="col-12 md:col-6 my-3">
                             <label for="affiliate_code" class="form-label">' . lang('Affiliate Code') . '</label>
                             <input value="' . pg_contact_form_value($values, 'affiliate_code') . '" type="text" name="affiliate_code" id="affiliate_code" class="form-control" maxlength="100" />
-                            <div class="form-text text-end">' . lang('leave blank to automatically generate code') . '</div>
+                            <div class="form-text text-end">' . lang('leave blank to generate a code when the affiliate is approved') . '</div>
                         </div>
                         <div class="col-12 md:col-3 my-3">
                             <label for="affiliate_commission_rate" class="form-label">' . lang('Commission Rate') . '</label>
                             <label class="form-control form-adorn form-adorn-end">
                                 <span class="form-adorn-text" aria-hidden="true">%</span>
-                                <input value="' . h(pg_contact_form_commission_rate_value($values['affiliate_commission_rate'] ?? '')) . '" type="text" name="affiliate_commission_rate" id="affiliate_commission_rate" class="form-ghost" size="3" maxlength="3" inputmode="numeric" data-inputmask-alias="decimal" data-inputmask-placeholder="0" style="text-align: right;">
+                                <input value="' . h(pg_contact_form_commission_rate_value($values['affiliate_commission_rate'] ?? '')) . '" type="text" name="affiliate_commission_rate" id="affiliate_commission_rate" class="form-ghost" size="6" maxlength="6" inputmode="decimal" data-inputmask-alias="decimal" data-inputmask-placeholder="0" style="text-align: right;">
                             </label>
                             <div class="form-text text-end">' . lang(array('string'=>'leave blank for default: {var:1}%','vars'=>AFFILIATE_DEFAULT_COMMISSION_RATE)) . '</div>
                         </div>
@@ -506,32 +556,47 @@ function pg_contact_form_email($email_address)
 }
 
 /**
- * The affiliate code a posted contact is saved with: the posted one, which
- * no other contact may use (an error ends the request), or a new one when
- * the contact is approved without a code.
+ * The affiliate code a posted contact is saved with: the posted one,
+ * trimmed, which no other contact may use (an error ends the request), or a
+ * new one when the contact is approved without a code. A code of only
+ * spaces is blank: under PAD SPACE it would match every contact with the
+ * empty code, and checkout matches the trimmed offer code, so a padded code
+ * would never credit its affiliate.
  *
  * @param array $post
  * @param int|string $contact_id The contact itself, 0 for a new one
+ * @param callable $taken Lookup as pg_contact_form_affiliate_code_taken() (tests stub it)
+ * @param callable $generate Code generator (tests stub it)
  * @return string
  */
-function pg_contact_form_affiliate_code($post, $contact_id)
+function pg_contact_form_affiliate_code($post, $contact_id, $taken = 'pg_contact_form_affiliate_code_taken', $generate = 'generate_affiliate_code')
 {
-    $affiliate_code = pg_contact_form_posted($post, 'affiliate_code');
+    $affiliate_code = trim(pg_contact_form_posted($post, 'affiliate_code'));
 
-    if ($affiliate_code) {
-        $result = db_q("SELECT id FROM contacts WHERE affiliate_code = ? AND id != ?", array($affiliate_code, (string) $contact_id)) or output_error('Query failed.');
-
-        if (mysqli_num_rows($result) > 0) {
-            output_error(lang('That affiliate code is already in use. Please use a different code') . '. <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
-        }
+    if ($affiliate_code && $taken($affiliate_code, $contact_id)) {
+        output_error(lang('That affiliate code is already in use. Please use a different code') . '. <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
     }
 
     // An unticked Approved box is not posted at all.
     if (!empty($post['affiliate_approved']) && (!$affiliate_code)) {
-        $affiliate_code = generate_affiliate_code();
+        $affiliate_code = $generate();
     }
 
     return $affiliate_code;
+}
+
+/**
+ * Whether another contact already has the affiliate code.
+ *
+ * @param string $affiliate_code
+ * @param int|string $contact_id The contact itself (left out), 0 for a new one
+ * @return bool
+ */
+function pg_contact_form_affiliate_code_taken($affiliate_code, $contact_id)
+{
+    $result = db_q("SELECT id FROM contacts WHERE affiliate_code = ? AND id != ?", array((string) $affiliate_code, (string) $contact_id)) or output_error('Query failed.');
+
+    return mysqli_num_rows($result) > 0;
 }
 
 /**

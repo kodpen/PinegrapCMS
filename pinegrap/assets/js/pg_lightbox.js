@@ -20,11 +20,14 @@
     if (global.pgLightbox && global.pgLightbox.__pgInit) return; // idempotent
 
     // ── Tunables ────────────────────────────────────────────────────────────
-    var MIN_ZOOM        = 1;       // 1x = fit-to-screen baseline
-    var MAX_ZOOM        = 6;       // max user-driven zoom
+    // Zoom is the image's scale against its natural size; the fitted size
+    // (fitScale) is the lower bound and the baseline for "zoomed".
+    var MAX_ZOOM        = 6;       // max zoom against the natural size (fitScale <= 1)
     var WHEEL_STEP      = 0.18;    // % zoom per wheel notch (decimal scale)
-    var DBLCLICK_ZOOM   = 2.4;     // double-click zoom level
-    var SWIPE_THRESHOLD = 60;      // px horizontal drag at scale=1 to flip slide
+    var DBLCLICK_ZOOM   = 2.4;     // double-click zoom, times the fitted size
+    var KEY_PAN_STEP    = 0.1;     // arrow key pan, share of the stage size
+    var KEY_PAN_STEP_BIG = 0.33;   // Shift + arrow key pan
+    var SWIPE_THRESHOLD = 60;      // px horizontal drag at the fitted size to flip slide
     var SWIPE_VELOCITY  = 0.4;     // px/ms — fast flick triggers nav at lower threshold
     var TAP_MAX_MOVE    = 8;       // px movement still counts as tap (close on background)
     var TAP_MAX_TIME    = 220;     // ms hold still counts as tap
@@ -169,7 +172,7 @@
         function updateClass() {
             stage.classList.toggle('pgl-grabbing', !!dragStart);
             stage.classList.toggle('pgl-pinching', Object.keys(pointers).length >= 2);
-            stage.classList.toggle('pgl-zoomed',   scale > 1.001);
+            stage.classList.toggle('pgl-zoomed',   isZoomed());
         }
 
         // Pointer down
@@ -217,7 +220,7 @@
                 var dist = Math.hypot(p1.x - p2.x, p1.y - p2.y);
                 if (pinchStartDist > 0) {
                     var ratio = dist / pinchStartDist;
-                    var newScale = clamp(startScale * ratio, MIN_ZOOM, MAX_ZOOM);
+                    var newScale = clamp(startScale * ratio, fitScale, MAX_ZOOM);
                     var sRect = stage.getBoundingClientRect();
                     var cx = pinchCenter.x - sRect.left;
                     var cy = pinchCenter.y - sRect.top;
@@ -237,7 +240,7 @@
             if (dragStart) {
                 var dx = e.clientX - dragStart.x;
                 var dy = e.clientY - dragStart.y;
-                if (scale > 1.01) {
+                if (isZoomed()) {
                     // Pan when zoomed
                     tx = dragStart.startTx + dx;
                     ty = dragStart.startTy + dy;
@@ -277,10 +280,10 @@
                     var dist = Math.hypot(totalDx, totalDy);
                     var elapsed = Date.now() - dragStart.time;
                     var velocity = Math.abs(totalDx) / Math.max(1, elapsed);
-                    if (scale <= 1.01 && (Math.abs(totalDx) > SWIPE_THRESHOLD || velocity > SWIPE_VELOCITY)) {
+                    if (!isZoomed() && (Math.abs(totalDx) > SWIPE_THRESHOLD || velocity > SWIPE_VELOCITY)) {
                         // Swipe → navigate
                         navigate(totalDx < 0 ? +1 : -1);
-                    } else if (scale <= 1.01 && dist > 0) {
+                    } else if (!isZoomed() && dist > 0) {
                         // Snap back if drag at fit-zoom didn't trigger swipe
                         applyTransform();
                     } else {
@@ -306,21 +309,25 @@
             zoomAt(cx, cy, scale * (1 + delta));
         }, { passive: false });
 
-        // Double-click toggle zoom (1x ↔ 2.4x at click point)
+        // Double-click toggles between the fit and 2.4x the fit at the click point
         stage.addEventListener('dblclick', function (e) {
             if (e.target.closest('button, .pgl-thumbs, .pgl-toolbar, .pgl-nav')) return;
             var sRect = stage.getBoundingClientRect();
             var cx = e.clientX - sRect.left;
             var cy = e.clientY - sRect.top;
-            if (scale > 1.01) {
+            if (isZoomed()) {
                 resetTransform(true);
             } else {
-                zoomAt(cx, cy, DBLCLICK_ZOOM);
+                zoomAt(cx, cy, fitScale * DBLCLICK_ZOOM);
             }
         });
     }
 
     // ── Zoom helpers ────────────────────────────────────────────────────────
+    function isZoomed() {
+        return scale > fitScale * 1.01;
+    }
+
     function zoomBy(direction) {
         // Zoom around image center
         var sRect = stage.getBoundingClientRect();
@@ -328,7 +335,7 @@
     }
 
     function zoomAt(cx, cy, newScale) {
-        newScale = clamp(newScale, MIN_ZOOM, MAX_ZOOM);
+        newScale = clamp(newScale, fitScale, MAX_ZOOM);
         if (Math.abs(newScale - scale) < 0.001) return;
         // Keep the point under (cx,cy) anchored as zoom changes
         var imgX = (cx - tx) / scale;
@@ -336,6 +343,13 @@
         tx = cx - imgX * newScale;
         ty = cy - imgY * newScale;
         scale = newScale;
+        clampPan();
+        applyTransform();
+    }
+
+    function panBy(dx, dy) {
+        tx += dx;
+        ty += dy;
         clampPan();
         applyTransform();
     }
@@ -382,6 +396,7 @@
         if (!img) return;
         img.style.transition = ''; // ensure default applies (cleared during gestures)
         img.style.transform = 'translate(' + tx + 'px,' + ty + 'px) scale(' + scale + ')';
+        if (stage) stage.classList.toggle('pgl-zoomed', isZoomed());
     }
 
     function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
@@ -395,7 +410,7 @@
         stage.classList.add('pgl-loading');
         // Reset transforms preemptively so the previous image's pan doesn't
         // briefly flash on the new one.
-        scale = 1; tx = 0; ty = 0;
+        scale = 1; fitScale = 1; tx = 0; ty = 0;
         img.style.transition = 'none';
         img.style.transform = 'translate(0,0) scale(1)';
         // Stage rect for fit calculation
@@ -570,8 +585,10 @@
         switch (e.key) {
             case 'Escape':     e.preventDefault(); close(); break;
             case 'Tab':        trapTab(e); break;
-            case 'ArrowLeft':  e.preventDefault(); navigate(-1); break;
-            case 'ArrowRight': e.preventDefault(); navigate(+1); break;
+            case 'ArrowLeft':
+            case 'ArrowRight':
+            case 'ArrowUp':
+            case 'ArrowDown':  onArrowKey(e); break;
             case '+':
             case '=':          e.preventDefault(); zoomBy(+1); break;
             case '-':
@@ -580,6 +597,22 @@
             case '1':          e.preventDefault(); resetTransform(true); break;
             case 'f':
             case 'F':          e.preventDefault(); toggleFullscreen(); break;
+        }
+    }
+
+    // A zoomed picture pans with the arrow keys (the key shows that side of
+    // the picture); at the fitted size Left/Right change the picture.
+    function onArrowKey(e) {
+        var horizontal = e.key === 'ArrowLeft' || e.key === 'ArrowRight';
+        var back = e.key === 'ArrowLeft' || e.key === 'ArrowUp';
+        if (isZoomed()) {
+            e.preventDefault();
+            var share = e.shiftKey ? KEY_PAN_STEP_BIG : KEY_PAN_STEP;
+            var step = (horizontal ? stageRect.w : stageRect.h) * share * (back ? 1 : -1);
+            panBy(horizontal ? step : 0, horizontal ? 0 : step);
+        } else if (horizontal) {
+            e.preventDefault();
+            navigate(back ? -1 : +1);
         }
     }
 

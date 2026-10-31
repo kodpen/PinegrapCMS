@@ -19,3 +19,9 @@ description: How the design importer fetches a page (import_design.php): each ho
 - Location is the header as sent, resolved by `url_to_absolute()`, instead of cURL's own resolved redirect URL.
 - A failed HEAD hop answers false instead of status 0; `check_if_url_exists()` answered false for both.
 - Still not honoured: `PROXY_ADDRESS` (neither before nor now).
+
+## Can the final Import run twice?
+- No: the scan-result form sends once and says it is importing (`ui/button-busy-state.md`); the server still takes the scanned list from the session on the first request.
+
+## How is the typed start address read?
+- `import_design_start_url()` lower-cases a typed http/https scheme in any case (`Https://x` → `https://x`; a phone capitalised the first letter and the address became `http://Https://x`, "could not find a web page") and adds `http://` only when no scheme is there. The crawler's guard `import_design_url_is_web()` takes http/https in any case and refuses `file:`, `php:` and every other scheme. The box has `spellcheck=false autocapitalize=off` (`ui/settings-input-keyboards.md`). Tests: `tests/import_design_start_url_test.php`.

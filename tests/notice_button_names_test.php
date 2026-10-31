@@ -4,9 +4,9 @@
  *
  * Tests for notices that point at a control: Site Log's delete confirmations
  * survive an apostrophe in any language, and the texts of Pages, Storage
- * Engine, Repair Software, the offer editor, the e-invoice inbox and
- * Translations name the button they mean instead of "OK", "the button", a
- * colour or a direction.
+ * Engine, Repair Software, the offer editor, the e-invoice inbox,
+ * Translations, Sessions and API Documentation name the control they mean
+ * instead of "OK", "the button", a colour or a direction.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -56,6 +56,18 @@ function test_notice_button_names_texts_name_their_button()
 		'erp_inbox_document.php' => array(
 			'gone' => array('details on the left'),
 			'named' => array('the supplier details in this card'),
+		),
+		'view_sessions.php' => array(
+			'gone' => array('and so does the button below', 'from the bell in their own panel'),
+			'named' => array('and so does Stop on its row', 'from Notifications in their own panel'),
+		),
+		'api_docs.php' => array(
+			'gone' => array('Choose an application at the top first'),
+			'named' => array('Choose an application under Try as first', '<label for="doc_app"'),
+		),
+		'edit_offer_f.php' => array(
+			'gone' => array('Please correct the highlighted rows.'),
+			'named' => array('Some entries cannot be saved; the reason is written under each one.'),
 		),
 		'translations.php' => array(
 			'gone' => array('Press "Update translations"', ': "Update translations" scans', 'the next "Update translations"'),

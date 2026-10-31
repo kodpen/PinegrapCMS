@@ -349,7 +349,8 @@ $config = array(
     ),
 );
 
-$output_can_settings = $can_erp && (((int) $user['role'] < 3) || !empty($user['manage_erp_settings']));
+// The ERP card is on the commerce settings screen, which admits role < 3 only.
+$output_can_settings = $can_erp && ((int) $user['role'] < 3);
 
 // The account drawer of the ERP lists, reused for "Account summary".
 if ($can_erp) {
@@ -406,7 +407,7 @@ echo
                         <li><button type="button" class="menu-item pg-link-body-emphasis d-flex align-items-center no-submit" data-sale-sound><i class="bi bi-volume-up me-3" aria-hidden="true"></i>' . lang('Error sound') . '<i class="bi bi-check2 ms-auto ps-5" id="pg_sale_sound_tick" aria-hidden="true"></i></button></li>'
                         . ($output_can_settings ? '
                         <li><hr class="menu-divider"></li>
-                        <li><a class="menu-item pg-link-body-emphasis" href="' . h(pg_settings_link('commerce', 'pgset-erp')) . '"><i class="bi bi-gear me-3" aria-hidden="true"></i>' . lang('Sales settings (ERP card)') . '</a></li>' : '') . '
+                        <li><a class="menu-item pg-link-body-emphasis" href="' . h(pg_settings_link('accounting', 'pgset-erp')) . '"><i class="bi bi-gear me-3" aria-hidden="true"></i>' . lang('Sales settings (ERP card)') . '</a></li>' : '') . '
                     </ul>
                 </div>
             </div>
@@ -440,7 +441,7 @@ echo
                     <div class="card pg-sale-cart mt-5">
                         <div class="card-header">
                             <h2 class="pg-sale-ch fg-primary">' . lang('Cart') . '</h2>
-                            <span class="small fg-secondary" id="pg_sale_count">' . (($totals['count'] > 0) ? h(lang(array('string' => '{var:1} lines · {var:2} units', 'vars' => array($totals['count'], $totals['units'])))) : '') . '</span>
+                            <span class="small fg-secondary" id="pg_sale_count">' . h(local_sale_count_text($totals)) . '</span>
                         </div>
                         <div class="table-responsive">
                             <table class="table mb-0 pg-sale-table">

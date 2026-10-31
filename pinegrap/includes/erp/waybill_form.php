@@ -123,7 +123,7 @@ function erp_waybill_form_line_row($liveform, $index, $line)
                     <input type="hidden" name="' . h($name('product_id')) . '" value="' . (int) $line['product_id'] . '" data-erp-product-id />
                     ' . $liveform->output_field(array(
                         'type' => 'text', 'id' => $id('product_search'), 'name' => $name('product_name'),
-                        'value' => h($line['product_name']),
+                        'value' => $line['product_name'],
                         'class' => 'form-control form-control-sm erp-product-search', 'maxlength' => '100', 'autocomplete' => 'off',
                         'placeholder' => lang('Search products'), 'aria-label' => lang('Product'))) . '
                     <div class="menu shadow-sm" id="' . h($id('product_results')) . '" data-erp-product-results></div>
@@ -131,17 +131,17 @@ function erp_waybill_form_line_row($liveform, $index, $line)
                 </td>
                 <td>' . $liveform->output_field(array(
                     'type' => 'text', 'id' => $id('description'), 'name' => $name('description'),
-                    'value' => h($line['description']),
+                    'value' => $line['description'],
                     'class' => 'form-control form-control-sm', 'maxlength' => '255', 'autocomplete' => 'off',
                     'aria-label' => lang('Description'))) . '</td>
                 <td>' . $liveform->output_field(array(
                     'type' => 'text', 'id' => $id('quantity'), 'name' => $name('quantity'),
-                    'value' => h($line['quantity']),
+                    'value' => $line['quantity'],
                     'class' => 'form-control form-control-sm text-end', 'maxlength' => '12', 'inputmode' => 'decimal', 'autocomplete' => 'off',
                     'aria-label' => lang('Quantity'))) . '</td>
                 <td>' . $liveform->output_field(array(
                     'type' => 'select', 'id' => $id('unit_code'), 'name' => $name('unit_code'),
-                    'value' => h($unit_code),
+                    'value' => $unit_code,
                     'class' => 'form-control form-control-sm', 'options' => $unit_options,
                     'aria-label' => lang('Unit'))) . '</td>
                 <td class="align-middle text-end">

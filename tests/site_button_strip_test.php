@@ -2,11 +2,10 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Source checks for the editing button strip over a site page
- * (#software_pinegrap_button_container in get_page.php): a vertical strip on
- * the right edge, centred, so it leaves the top corner (account menu, cart,
- * language switch) to the theme; collapsed by default on a narrow screen; the
- * SEO panel and the inline save/cancel pair beside it.
+ * Source checks for the editing button box over a site page
+ * (#software_pinegrap_button_container in get_page.php): a row in the
+ * top-right corner, collapsed to its arrow by default on a narrow screen,
+ * with the SEO panel and the inline save/cancel pair opening under it.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -31,36 +30,42 @@ function site_button_strip_block($source, $selector)
 	return ($start === false) ? '' : substr($source, $start, strpos($source, '}', $start) - $start);
 }
 
-// A column on the right edge, centred by insets and auto margins: a transform
-// would turn the strip into the containing block of the fixed pair inside it.
-function test_site_button_strip_is_a_centred_column()
+// A row in the top-right corner. No transform: it would turn the box into
+// the containing block of the fixed pair and arrow inside it.
+function test_site_button_box_sits_in_the_top_right_corner()
 {
-	$box = site_button_strip_block(site_button_strip_source('get_page.php'), "#software_pinegrap_button_container{\n");
+	$page = site_button_strip_source('get_page.php');
+	$box = site_button_strip_block($page, "#software_pinegrap_button_container{\n");
+	$pair = site_button_strip_block($page, "#software_inline_editing_buttons{");
 
-	pg_assert_true($box !== '', 'the strip rule is found');
-	pg_assert_true(strpos($box, 'flex-direction:column;') !== false, 'the buttons are stacked');
-	pg_assert_true(strpos($box, 'bottom: 0px;') !== false && strpos($box, 'margin: auto 0;') !== false, 'the strip is centred on the edge');
-	pg_assert_true(strpos($box, 'transform') === false, 'the strip has no transform');
+	pg_assert_true($box !== '', 'the box rule is found');
+	pg_assert_true(strpos($box, 'flex-direction:row;') !== false, 'the buttons sit in a row');
+	pg_assert_true(strpos($box, 'top: 0px;') !== false, 'the box sits at the top');
+	pg_assert_true(strpos($box, 'bottom: 0px;') === false && strpos($box, 'margin: auto 0;') === false, 'the box is not centred on the edge');
+	pg_assert_true(strpos($box, 'transform') === false, 'the box has no transform');
+	pg_assert_true($pair !== '' && strpos($pair, 'top: 50%') === false, 'the save/cancel pair is not centred on the edge');
 }
 
 // Collapsed by default under 768 px; the session choice wins once made.
-function test_site_button_strip_starts_collapsed_on_a_narrow_screen()
+function test_site_button_box_starts_collapsed_on_a_narrow_screen()
 {
 	$page = site_button_strip_source('get_page.php');
 
 	pg_assert_true(strpos($page, 'window.matchMedia("(max-width: 767.98px)").matches ? "hide" : "show"') !== false, 'a narrow screen starts collapsed');
 	pg_assert_true(strpos($page, 'if (state !== "show" && state !== "hide") {') !== false, 'the default applies only without a stored choice');
-	pg_assert_true(strpos($page, 'role="toolbar" aria-orientation="vertical"') !== false, 'the strip is a labelled toolbar');
-	pg_assert_true(strpos($page, 'setAttribute("aria-expanded"') !== false, 'the arrow says whether the strip is open');
+	pg_assert_true(strpos($page, 'id="software_pinegrap_button_container" role="toolbar" aria-label=') !== false, 'the box is a labelled toolbar');
+	pg_assert_true(strpos($page, 'aria-orientation="vertical"') === false, 'the box is not a vertical toolbar');
+	pg_assert_true(strpos($page, 'setAttribute("aria-expanded"') !== false, 'the arrow says whether the box is open');
 }
 
-// The SEO panel sits beside the strip on the site, under the bar in the toolbar.
-function test_site_button_strip_seo_panel_beside_it()
+// The SEO panel opens under the box on the site, under the bar in the toolbar.
+function test_site_button_box_seo_panel_under_it()
 {
 	$panel = site_button_strip_block(site_button_strip_source('seo.php'), "#software_seo_panel{\n                position: fixed;");
 	$toolbar = site_button_strip_source('toolbar.php');
 
-	pg_assert_true(strpos($panel, 'right: 48px;') !== false, 'the panel clears the strip');
-	pg_assert_true(strpos($panel, 'transform: translateY(-50%);') !== false, 'the panel is centred on the strip');
+	pg_assert_true(strpos($panel, 'top: 50px;') !== false, 'the panel opens under the box');
+	pg_assert_true(strpos($panel, 'right: 0;') !== false, 'the panel keeps to the right edge');
+	pg_assert_true(strpos($panel, 'translateY') === false, 'the panel is not centred on the edge');
 	pg_assert_true(strpos($toolbar, "right: 0;\n                transform: none;") !== false, 'the toolbar copy keeps its column place');
 }

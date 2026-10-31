@@ -34,7 +34,8 @@ function test_page_form_radio_questions_are_legends()
 	);
 
 	foreach ($legends as $text => $count) {
-		pg_assert_true(substr_count($src, '<legend class="form-label fs-md">\' . lang(\'' . $text . '\') . \'</legend>') === $count, $text . ' is a legend ' . $count . ' time(s)');
+		// A legend may carry an id, for an editor it names (aria-labelledby).
+		pg_assert_true(preg_match_all('/<legend class="form-label fs-md"( id="[a-z_]+")?>\'\s*\.\s*lang\(\'' . preg_quote($text, '/') . '\'\)\s*\.\s*\'<\/legend>/', $src) === $count, $text . ' is a legend ' . $count . ' time(s)');
 		pg_assert_true(preg_match('/<label class="form-label"( for="")?>\'\s*\.\s*lang\(\'' . preg_quote($text, '/') . '\'\)/', $src) === 0, 'no orphan ' . $text . ' label');
 	}
 

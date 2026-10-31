@@ -19,8 +19,8 @@ module: subscriptions
 - The SDK's `Subscription` mappers stay unloaded (no PHP 7.1 patch).
 
 ## How does the checkout make the row?
-- `submit_order.php`, right after `pg_order_complete()` and before the legacy profiles: when a driver took the payment and the cart has a recurring line, `pg_subscription_checkout_create($order_id, $driver, $payment_answer, $products)`. Pure `pg_subscription_checkout_lines()` picks recurring, priced lines charged today (start date ≤ today), once per line, only for mode `store` with a card_ref. `pg_subscription_create_from_order_line()` returns the existing row of the same order line (retried return). A line that got none is logged ("A subscription could not be created for an order line.", e.g. no `ENCRYPTION_KEY`). Currency: `BASE_CURRENCY_CODE`.
-- The legacy `case 'Iyzipay':` that sets `recurring_profile_enabled` still runs; lines that start later get no row yet.
+- `submit_order.php`, right after `pg_order_complete()` and before the legacy profiles: when a driver took the payment and the cart has a recurring line, `pg_subscription_checkout_create($order_id, $driver, $payment_answer, $products)`. Pure `pg_subscription_checkout_lines()` picks recurring, priced lines, once per line, only for mode `store` with a card_ref; later lines too (`subscriptions-later-start.md`). `pg_subscription_create_from_order_line()` returns the existing row of the same order line (retried return). A line that got none is logged ("A subscription could not be created for an order line.", e.g. no `ENCRYPTION_KEY`). Currency: `BASE_CURRENCY_CODE`.
+- The legacy `case 'Iyzipay':` that sets `recurring_profile_enabled` still runs. With the switch off iyzico has no recurring mode: later lines get no row and the order is not refused, as before.
 
 ## How was it verified?
 - `tests/payment_iyzico_test.php` (stand-in HTTP client), `tests/subscriptions_test.php`. No iyzico sandbox run: the card management page's request and answer follow iyzico's documentation, not a recorded exchange.

@@ -92,6 +92,14 @@ if ($page_id != '') {
 // custom form to bleed into another custom form.
 $liveform = new liveform('add_submitted_form', $page_id);
 
+// An attachment over post_max_size makes PHP throw the whole request away.
+// The custom form rides in the form's address, so the screen comes back to
+// it and says what happened instead of drawing the pick list.
+if (pg_post_body_discarded()) {
+    $liveform->mark_error('', h(pg_submitted_form_discarded_message()));
+    go(PATH . SOFTWARE_DIRECTORY . '/add_submitted_form.php' . (($page_id != '') ? '?page_id=' . urlencode($page_id) : ''));
+}
+
 $pretty_urls = false;
 
 if ($page_id != '') {
@@ -143,7 +151,7 @@ if (!$_POST) {
                     $name = $row['page_name'];
                 }
 
-                $custom_form_options[$name] = $row['page_id'];
+                $custom_form_options[h($name)] = $row['page_id'];
             }
         }
 
@@ -157,7 +165,7 @@ if (!$_POST) {
                 'heading_description' => lang('Manually create a submitted form for any existing custom form.'),
                 'cancel'=>array('enable'=>'true','url'=>'view_submitted_forms.php'),
 
-                'breadcrumb' => array(array('label' => lang('My Submitted Forms'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_submitted_forms.php'), array('label' => lang('Add Submitted Form'))),
+                'breadcrumb' => array(array('label' => lang('Forms'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_submitted_forms.php'), array('label' => lang('Add Submitted Form'))),
             )
         ) . '
 <main id="content" class="container-fluid">
@@ -216,7 +224,7 @@ if (!$_POST) {
                 'heading'=>lang('Add Submitted Form'),
                 'cancel'=>array('enable'=>'true','url'=>'view_submitted_forms.php'),
                 'breadcrumb' => array(
-                    array('label' => lang('My Submitted Forms'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_submitted_forms.php'),
+                    array('label' => lang('Forms'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_submitted_forms.php'),
                     array('label' => lang('Add Submitted Form')),
                 ),
             )
@@ -232,12 +240,13 @@ if (!$_POST) {
                         <div class="col-12 sm:col-12 text-center md:text-start">
                             <div class="row mb-3">
                                 <div class="col-12 md:col">
-                                    <h2 class="d-inline-block text-break" data-bs-content="' . lang('Manually create a submitted form for this custom form. Office use only fields are also visible.') . '" title="' . lang('Add Submitted Form') . '">[' . h($form_name) . ']</h2>
+                                    <h2 class="d-inline-block text-break">[' . h($form_name) . ']</h2>
+                                    <p class="form-text mt-0">' . lang('Manually create a submitted form for this custom form. Office use only fields are also visible.') . '</p>
                                     <p class="p-0 m-0"><a class="pg-link-secondary" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_submitted_form.php">' . lang('Select a different custom form') . '</a></p>
                                 </div>
                             </div>
                         </div>
-                        <form' . $form_markup['enctype'] . ' name="form" action="add_submitted_form.php" method="post">
+                        <form' . $form_markup['enctype'] . ' name="form" action="add_submitted_form.php?page_id=' . h(urlencode($page_id)) . '" method="post">
                             ' . get_token_field() . '
                             <input type="hidden" name="page_id" value="' . h($page_id) . '" />
                             <div class="row">

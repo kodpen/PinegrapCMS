@@ -47,6 +47,18 @@ define('URL_SCHEME', $row['url_scheme']);
 define('HOSTNAME_SETTING', $row['hostname']);
 define('TIMEZONE', $row['timezone']);
 
+// lang() and the software language, which init.php would otherwise provide:
+// the access lines this file writes to the site log are read in the panel.
+// The router read the whole config row ($router_config_row) before it
+// dispatched here.
+if (!defined('PG_FUNCTIONS_DIR')) {
+    define('PG_FUNCTIONS_DIR', dirname(__FILE__));
+}
+
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/lang_files.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/lang.php');
+pg_software_language_define(isset($router_config_row['software_language']) ? $router_config_row['software_language'] : '');
+
 // If this request was made over the web instead of a cron job,
 // then deal with forcing secure mode and starting session.
 if (!empty($_SERVER['HTTP_HOST'])) {
@@ -315,13 +327,13 @@ if (
 
                 // If the user's private access to this folder has expired, then log activity and output error.
                 if ($access_check['expired'] == true) {
-                    log_activity('access denied to private file (' . $file['name'] . ') because user\'s access had expired', $_SESSION['sessionusername']);
+                    log_activity(pg_log_lang(array('string' => 'access denied to private file ({var:1}) because user\'s access had expired', 'vars' => array($file['name']))), $_SESSION['sessionusername']);
 
                     output_error(get_file_text('Sorry, you do not have access to view this file because your access has expired.'), 403);
 
                 // Otherwise if the user just doesn't have private access to this folder, then log activity and output error.
                 } else if ($access_check['access'] == false) {
-                    log_activity('access denied to private file (' . $file['name'] . ')', $_SESSION['sessionusername']);
+                    log_activity(pg_log_lang(array('string' => 'access denied to private file ({var:1})', 'vars' => array($file['name']))), $_SESSION['sessionusername']);
 
                     output_error(get_file_text('Sorry, you do not have access to view this file.'), 403);
                 }
@@ -820,7 +832,7 @@ if ($file['attachment'] == 1) {
         // Otherwise the visitor is logged in, so we know the visitor
         // should not have access, so log activity and output error.
         } else {
-            log_activity('access denied to file attachment (' . $file['name'] . ')', $_SESSION['sessionusername']);
+            log_activity(pg_log_lang(array('string' => 'access denied to file attachment ({var:1})', 'vars' => array($file['name']))), $_SESSION['sessionusername']);
 
             output_error(get_file_text('Sorry, you do not have access to view this file attachment.'), 403);
         }
@@ -833,7 +845,7 @@ if ($file['attachment'] == 1) {
 
 if ($access_control_type == 'private') {
     log_activity(
-        'User viewed private file.' . "\n" .
+        pg_log_lang(array('string' => 'User viewed private file.')) . "\n" .
         "\n" .
         URL_SCHEME . HOSTNAME_SETTING . get_request_uri(),
         $_SESSION['sessionusername']);
@@ -1473,7 +1485,7 @@ function initialize_user()
             if (is_array($user) && isset($user['id'])) {
                 pg_session_sign_in($user['id'], $user['username']);
                 pg_session_bind_token((string) strtok((string) $_COOKIE['software']['auth'], ':'), $user['id']);
-                log_activity('user logged in', $user['username']);
+                log_activity(pg_log_lang(array('string' => 'user logged in')), $user['username']);
             } else {
                 $user = null;
             }
@@ -1493,7 +1505,7 @@ function initialize_user()
         $binding_broken = pg_session_token_binding_broken();
 
         if ($binding_broken !== '') {
-            log_activity('session ended on this device (' . $binding_broken . ')', (string) ($_SESSION['sessionusername'] ?? ''));
+            log_activity(pg_log_lang(array('string' => 'session ended on this device ({var:1})', 'vars' => array($binding_broken))), (string) ($_SESSION['sessionusername'] ?? ''));
 
             session_unset();
             session_destroy();

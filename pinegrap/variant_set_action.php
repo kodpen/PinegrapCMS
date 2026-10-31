@@ -133,7 +133,7 @@ switch ($action) {
                 $deleted_products += $result['products'];
                 log_activity(
                     $binning
-                        ? lang(array('string' => 'The product group, {var:1}, was moved to the Recycle Bin.', 'vars' => h($result['name'])))
+                        ? lang(array('string' => 'The product group, {var:1}, was moved to the Recycle Bin.', 'vars' => $result['name']))
                         : lang(array('string' => 'product group ({var:1}) was deleted', 'vars' => array($result['name']))),
                     $_SESSION['sessionusername']);
             } else {

@@ -1239,13 +1239,13 @@ function test_pg_fields_combobox_on_bootstrap_6()
 	);
 	pg_assert_same(
 		array(
-			array('multiple' => false, 'search' => true, 'placeholder' => 'Choose an account'),
-			array('multiple' => false, 'search' => false, 'placeholder' => 'Pick one'),
-			array('multiple' => false, 'search' => false, 'placeholder' => 'Choose an account'),
-			array('multiple' => false, 'search' => false, 'placeholder' => ''),
+			array('multiple' => false, 'search' => true, 'placeholder' => 'Choose an account', 'searchNormalize' => true),
+			array('multiple' => false, 'search' => false, 'placeholder' => 'Pick one', 'searchNormalize' => true),
+			array('multiple' => false, 'search' => false, 'placeholder' => 'Choose an account', 'searchNormalize' => true),
+			array('multiple' => false, 'search' => false, 'placeholder' => '', 'searchNormalize' => true),
 		),
 		$m['options'],
-		'search from eight options on, the placeholder from data-placeholder, else the empty option\'s text'
+		'search from eight options on, the placeholder from data-placeholder, else the empty option\'s text; accents and the dot of İ dropped before matching'
 	);
 	pg_assert_same('form-control form-control-sm is-invalid pg-combobox-native', $m['native'], 'the select stays, hidden by its class');
 	pg_assert_same(array('BUTTON', 'button', 'acct_label acct_combobox_value', 'Account 335', 'combobox-value'), $m['toggle'], 'a button named by the field\'s label and the chosen option it shows');
@@ -1393,7 +1393,7 @@ function test_pg_fields_combobox_server_search()
 
 	$m = $r['remote6'];
 	pg_assert_same(array('combobox:form-control combobox-toggle pg-combobox'), $m['calls'], 'a server-searched field is a Bootstrap 6 Combobox on the panel');
-	pg_assert_same(array(array('multiple' => false, 'search' => false, 'placeholder' => 'Category')), $m['options'], 'its search box is ours: Bootstrap does not filter the server\'s answer');
+	pg_assert_same(array(array('multiple' => false, 'search' => false, 'placeholder' => 'Category', 'searchNormalize' => true)), $m['options'], 'its search box is ours: Bootstrap does not filter the server\'s answer');
 	pg_assert_same('form-control pg-combobox-native', $m['native'], 'the select stays as the posted store');
 	pg_assert_same(array('gpc_label gpc_combobox_value', 'Apparel > Shoes  (187)'), $m['toggle'], 'named by its label and the stored choice it shows');
 	pg_assert_same('gpc_menu', $m['menu_id']);

@@ -68,8 +68,16 @@ define('WS_STEP_MCP_ARGUMENTS_MAX', 20000);
 define('WS_STEP_ROW_CELLS_MAX', 20000);
 
 // A value a box's text reads: {{node.<id>.<field>}}, or {{trigger.<field>}}
-// (group 1 the box id, empty for the trigger; group 2 the field).
-define('WS_STEP_VALUE_PATTERN', '/\{\{(?:node\.([a-z][a-z0-9_]{0,31})|trigger)\.([a-z_][a-z0-9_]{0,31})\}\}/');
+// (group 1 the box id, empty for the trigger; group 2 the field). Either
+// may end in "|" and what to write when the value is empty (group 3, the
+// fallback): one line in which "\", "{", "}" and "|" are written escaped
+// with "\" (ws_step_value_token()), so "}}" never ends it early. Group 3
+// counts bytes, so its limit leaves room for WS_STEP_FALLBACK_LENGTH
+// characters of any script.
+define('WS_STEP_VALUE_PATTERN', '/\{\{(?:node\.([a-z][a-z0-9_]{0,31})|trigger)\.([a-z_][a-z0-9_]{0,31})(?:\|((?:[^\\\\{}\r\n]|\\\\[\\\\{}|]){0,400}))?\}\}/');
+
+// The longest fallback of a value, in characters.
+define('WS_STEP_FALLBACK_LENGTH', 100);
 
 /**
  * The kinds of step box: their name, the scheduled action's step they are
@@ -109,7 +117,7 @@ function ws_step_kinds()
             'outputs' => array($number('told', lang('People told')))),
         'task_open' => array('label' => lang('Open a task without waiting'), 'type' => 'task', 'texts' => array('title', 'description'), 'lines' => array('title'),
             'outputs' => array($number('task_id', lang('Task')))),
-        'webhook'   => array('label' => lang('Call a webhook'), 'type' => 'webhook', 'texts' => array('text'), 'lines' => array(),
+        'webhook'   => array('label' => lang('Call a webhook'), 'type' => 'webhook', 'texts' => array('text'), 'lines' => array(), 'urls' => array('url'),
             'outputs' => array($number('status_code', lang('Status code')), $number('duration_ms', lang('Time taken (ms)')), $text('body', lang('Answer')))),
         'web_check' => array('label' => lang('Check a web address'), 'type' => 'web_check', 'texts' => array(), 'lines' => array(),
             'outputs' => array($number('status_code', lang('Status code'), 'status'), $number('duration_ms', lang('Time taken (ms)'), 'status'),
@@ -141,15 +149,16 @@ function ws_step_kinds()
  * its sentence is (ws_step_result_shown()): a change box's record and the
  * run a start-a-flow box started (all its values), a webhook's or an MCP
  * tool's answer, which may carry what the service tells only the flow's
- * owner, and the row a table box wrote, in a table the reader may not
- * reach.
+ * owner, the row a table box wrote, in a table the reader may not
+ * reach, and what a loop read from such an answer: a For each box's items
+ * and an End for each box's list.
  *
  * @return array kind => keys, ['*'] for all
  */
 function ws_step_outputs_held()
 {
     return array('change' => array('*'), 'start_flow' => array('*'), 'webhook' => array('body'), 'mcp' => array('result'),
-        'row_add' => array('*'), 'row_set' => array('*'));
+        'row_add' => array('*'), 'row_set' => array('*'), 'for_each' => array('items'), 'for_each_end' => array('list'));
 }
 
 /**
@@ -294,7 +303,10 @@ function ws_step_outcomes()
  * change:    record (a kind of the change catalogue), action (update,
  *            delete), id, fields (up to 30 of name => value; a value is a
  *            number, yes/no, a text, or a set of texts, a submission's
- *            answers; none for a delete)
+ *            answers; none for a delete), channel_id and closes_in (for a
+ *            box that proposes its change, ws_flow_change_asks(): where its
+ *            owner is asked to approve it, and the request's deadline as an
+ *            approval box's)
  * lead:      private (a channel it opens is private), user_ids (up to 50,
  *            put in a channel it opens)
  * approval:  channel_id, title, text, approvers (up to 50), rule (any, all),
@@ -462,11 +474,15 @@ function ws_step_config_normalize($kind, $config)
                 }
             }
 
+            $closes_in = $config['closes_in'] ?? '';
+
             return array(
-                'record' => (string) preg_replace('/[^a-z_]/', '', strtolower(ws_flow_token($config['record'] ?? '', 32))),
-                'action' => $verb,
-                'id'     => $number($config['id'] ?? 0),
-                'fields' => $fields,
+                'record'     => (string) preg_replace('/[^a-z_]/', '', strtolower(ws_flow_token($config['record'] ?? '', 32))),
+                'action'     => $verb,
+                'id'         => $number($config['id'] ?? 0),
+                'fields'     => $fields,
+                'channel_id' => $number($config['channel_id'] ?? 0),
+                'closes_in'  => (is_bool($closes_in) || !is_numeric($closes_in)) ? '' : max(1, min(WS_STEP_APPROVAL_CLOSES_MAX, (int) $closes_in)),
             );
 
         case 'lead':
@@ -588,6 +604,10 @@ function ws_step_config_problems($kind, $config, $name, $joined = false)
                 $problems[] = lang(array('string' => 'The box {var:1} needs an address that starts with https://.', 'vars' => $name));
             }
 
+            if (($kind === 'webhook') && (ws_step_url_host_refs($config['url']) !== array())) {
+                $problems[] = lang(array('string' => 'The box {var:1} may take a value only in the path or query of its address, never in its host or scheme.', 'vars' => $name));
+            }
+
             if (($kind === 'webhook') && ($config['format'] !== 'generic') && ($config['text'] === '')) {
                 $problems[] = lang(array('string' => 'The box {var:1} needs the message to send.', 'vars' => $name));
             }
@@ -705,7 +725,15 @@ function ws_step_config_problems($kind, $config, $name, $joined = false)
  */
 function ws_step_action($kind, $config)
 {
-    return array('type' => (string) (ws_step_kinds()[$kind]['type'] ?? $kind)) + (array) $config;
+    $config = (array) $config;
+
+    // Where a proposed change is asked is the box's own, no scheduled
+    // action's step setting.
+    if ($kind === 'change') {
+        unset($config['channel_id'], $config['closes_in']);
+    }
+
+    return array('type' => (string) (ws_step_kinds()[$kind]['type'] ?? $kind)) + $config;
 }
 
 /**
@@ -736,7 +764,15 @@ function ws_step_check($viewer, $kind, $config, $joined = false)
         return ws_step_row_check($viewer, $kind, ws_step_config_normalize($kind, $config));
     }
 
-    return ws_scheduled_action_input($viewer, ws_step_action($kind, $config), 0, 0, $joined);
+    $check = ws_scheduled_action_input($viewer, ws_step_action($kind, $config), 0, 0, $joined);
+
+    // A role-3 member's change box proposes its change: the change is the
+    // one they may make, and they must be able to ask in its channel.
+    if ($check['ok'] && ($kind === 'change') && ws_flow_change_asks(ws_flow_builder_kind($viewer))) {
+        return ws_step_change_ask_check($viewer, ws_step_config_normalize('change', $config), $check['action']);
+    }
+
+    return $check;
 }
 
 /**
@@ -785,7 +821,8 @@ function ws_step_trigger_context($context)
  * and payload only where the owner may see the record now ($sees); its
  * name always. A row box's table, row and cells only where the owner reads
  * the table now ($sees), each cell as ws_flow_row_cell_text() says it. A
- * run started by hand or by another flow's box declares none, whatever it
+ * customer who stopped ordering only where the owner may still read them
+ * ($sees). A run started by hand or by another flow's box declares none, whatever it
  * carries. Pure but for a row box's columns when $names lacks them.
  *
  * @param array $context ws_flow_run_context()
@@ -833,6 +870,8 @@ function ws_step_trigger_values($context, $sees, $names = array())
         foreach ((array) ($payload['cells'] ?? array()) as $id => $value) {
             $given['cell_' . (int) $id] = function_exists('ws_flow_row_cell_text') ? ws_flow_row_cell_text($value) : '';
         }
+    } elseif (($kind === 'no_order') && $sees) {
+        $given = is_array($context['customer'] ?? null) ? $context['customer'] : array();
     }
 
     $out = array();
@@ -877,6 +916,13 @@ function ws_step_trigger_values_for($owner, $context)
         $names['columns'] = $sees ? array_values(ws_wtable_columns($table_id)) : array();
     }
 
+    // A customer who stopped ordering: orders and contacts still read by
+    // the owner, the contact one they may open.
+    if (($kind === 'no_order') && function_exists('ws_flow_no_order_refusal')) {
+        $contact_id = (int) ($context['customer']['contact_id'] ?? 0);
+        $sees = ($contact_id > 0) && (ws_flow_no_order_refusal($owner) === '') && !empty(ws_viewer_contacts_open($owner, array($contact_id)));
+    }
+
     if ($kind === 'join') {
         $newcomer = (int) ($context['newcomer'] ?? 0);
         $channel = (int) ($context['join_channel_id'] ?? 0);
@@ -901,10 +947,11 @@ function ws_step_trigger_values_for($owner, $context)
  * @param string   $kind
  * @param array    $config
  * @param callable $viewer_for person id => ws_change_viewer_for_id()
- * @param callable $check      ws_step_check()
+ * @param callable $check      ws_step_change_reach_check(): the change
+ *                             alone, not where a proposed one is asked
  * @return string '' when the change may be made, else why not
  */
-function ws_step_starter_refusal($run, $kind, $config, $viewer_for = 'ws_change_viewer_for_id', $check = 'ws_step_check')
+function ws_step_starter_refusal($run, $kind, $config, $viewer_for = 'ws_change_viewer_for_id', $check = 'ws_step_change_reach_check')
 {
     $starter_id = (int) ($run['started_by'] ?? 0);
 
@@ -973,8 +1020,71 @@ function ws_step_fill_nodes($text, $values, $target = 'text')
     }
 
     return (string) preg_replace_callback(WS_STEP_VALUE_PATTERN, function ($match) use ($values, $target) {
-        return ws_step_fill_value((string) ($values[ws_step_value_box($match)][$match[2]] ?? ''), $target);
+        return ws_step_fill_value(ws_step_value_of($match, $values), $target);
     }, $text);
+}
+
+/**
+ * The value a match of WS_STEP_VALUE_PATTERN reads among a run's values as
+ * text; its fallback when the run gives none or an empty one (a box that
+ * was skipped or did not run yet). Pure.
+ *
+ * @param string[] $match
+ * @param array    $values ws_step_node_values(), the trigger's under WS_STEP_TRIGGER
+ * @return string
+ */
+function ws_step_value_of($match, $values)
+{
+    $value = $values[ws_step_value_box($match)][$match[2]] ?? '';
+    $value = is_scalar($value) ? (string) $value : '';
+
+    return ($value === '') ? ws_step_value_fallback($match) : $value;
+}
+
+/**
+ * The fallback a match of WS_STEP_VALUE_PATTERN writes when its value is
+ * empty, unescaped; '' for none. Pure.
+ *
+ * @param string[] $match
+ * @return string
+ */
+function ws_step_value_fallback($match)
+{
+    return (string) preg_replace('/\\\\([\\\\{}|])/', '$1', (string) ($match[3] ?? ''));
+}
+
+/**
+ * A reference as a text writes it: {{node.<id>.<field>}} ($box '' for
+ * {{trigger.<field>}}), with "|" and the fallback escaped when one is given;
+ * the fallback is kept on one line and cut to WS_STEP_FALLBACK_LENGTH
+ * characters. Pure.
+ *
+ * @param string $box
+ * @param string $field
+ * @param string $fallback
+ * @return string
+ */
+function ws_step_value_token($box, $field, $fallback = '')
+{
+    $fallback = mb_substr(trim((string) preg_replace('/[\r\n]+/', ' ', (string) $fallback)), 0, WS_STEP_FALLBACK_LENGTH);
+    $tail = ($fallback === '') ? '' : '|' . preg_replace('/[\\\\{}|]/', '\\\\$0', $fallback);
+
+    return '{{' . (((string) $box === '') ? 'trigger' : 'node.' . $box) . '.' . $field . $tail . '}}';
+}
+
+/**
+ * Is a text one reference alone, with no fallback? A condition's value,
+ * a loop's list and an End box's gathered value read a value as it is.
+ * Pure.
+ *
+ * @param string $text
+ * @return bool
+ */
+function ws_step_value_single($text)
+{
+    $text = trim((string) $text);
+
+    return (preg_match(WS_STEP_VALUE_PATTERN, $text, $match) === 1) && ($match[0] === $text) && (ws_step_value_fallback($match) === '');
 }
 
 /**
@@ -1068,6 +1178,59 @@ function ws_step_fill_value($value, $target)
 }
 
 /**
+ * The values of a run with each moment a box gives as UTC ISO text (the
+ * delay box's waited_until) written in the site's date and time format and
+ * time zone, for a text people read. Conditions and machine readers keep the
+ * ISO value. Pure but for the site's settings.
+ *
+ * @param array $values ws_step_node_values()
+ * @return array
+ */
+function ws_step_values_local_times($values)
+{
+    $date = defined('DATE_FORMAT') ? (string) DATE_FORMAT : '';
+    $time = defined('TIME_FORMAT') ? (string) TIME_FORMAT : '';
+
+    foreach ($values as $box => $fields) {
+        if (is_array($fields) && isset($fields['waited_until']) && is_string($fields['waited_until'])) {
+            $values[$box]['waited_until'] = ws_step_local_time($fields['waited_until'], $date, $time);
+        }
+    }
+
+    return $values;
+}
+
+/**
+ * A UTC ISO moment ('2026-10-30T00:50:44Z') as the site writes a date and
+ * time, in the time zone PHP runs in (the site's): 30.10.2026 03:50 for day
+ * first, 10/30/2026 for month first, 3:50 AM on a twelve-hour clock.
+ * Anything else comes back as it was. Pure but for the time zone.
+ *
+ * @param string $iso
+ * @param string $date_format DATE_FORMAT: month_day or day_month
+ * @param string $time_format TIME_FORMAT: twelve_hours or twenty_four_hours
+ * @return string
+ */
+function ws_step_local_time($iso, $date_format, $time_format)
+{
+    $iso = (string) $iso;
+
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/', $iso)) {
+        return $iso;
+    }
+
+    $moment = DateTime::createFromFormat('Y-m-d\TH:i:s\Z', $iso, new DateTimeZone('UTC'));
+
+    if (!$moment) {
+        return $iso;
+    }
+
+    $moment->setTimezone(new DateTimeZone(date_default_timezone_get()));
+
+    return $moment->format((($date_format === 'month_day') ? 'm/d/Y' : 'd.m.Y') . ' ' . (($time_format === 'twelve_hours') ? 'g:i A' : 'H:i'));
+}
+
+/**
  * A step's texts with the {{node.*}} values of its run filled in, each made
  * safe for where the texts land (ws_step_fill_target()); a line field loses
  * its control characters and line breaks after the fill. Pure.
@@ -1082,6 +1245,13 @@ function ws_step_fill_action($kind, $action, $values)
     $info = ws_step_kinds()[$kind] ?? array('texts' => array(), 'lines' => array());
     $target = ws_step_fill_target($kind, $action);
 
+    // People read a message, a chat post or an e-mail: a moment there is in
+    // the site's own date and time; a webhook's body, an MCP call and a
+    // table cell keep the machine value.
+    if (in_array($target, array('message', 'chat', 'discord'), true) || (($target === 'text') && ($kind !== 'webhook'))) {
+        $values = ws_step_values_local_times($values);
+    }
+
     foreach ($info['texts'] as $key) {
         if (isset($action[$key]) && is_string($action[$key])) {
             $action[$key] = ws_step_fill_nodes($action[$key], $values, $target);
@@ -1092,7 +1262,137 @@ function ws_step_fill_action($kind, $action, $values)
         }
     }
 
+    foreach ($info['urls'] ?? array() as $key) {
+        if (isset($action[$key]) && is_string($action[$key])) {
+            $action[$key] = ws_step_url_fill($action[$key], $values)['url'];
+        }
+    }
+
     return $action;
+}
+
+/**
+ * Where the host of an https address ends: the length of its scheme and
+ * authority (user, host, port), up to the first "/", "?" or "#" after
+ * "://"; the whole address when it has none. Pure.
+ *
+ * @param string $url
+ * @return int
+ */
+function ws_step_url_host_end($url)
+{
+    $url = (string) $url;
+    $at = strpos($url, '://');
+
+    if ($at === false) {
+        return strlen($url);
+    }
+
+    $end = strcspn($url, '/?#', $at + 3);
+
+    return $at + 3 + $end;
+}
+
+/**
+ * The {{node.*}} and {{trigger.*}} references in an address's scheme or
+ * host, where no value may go: a value there would choose the system the
+ * call goes to. Pure.
+ *
+ * @param string $url
+ * @return string[]
+ */
+function ws_step_url_host_refs($url)
+{
+    $url = (string) $url;
+
+    if (strpos($url, '{{') === false) {
+        return array();
+    }
+
+    $head = substr($url, 0, ws_step_url_host_end($url));
+
+    // A reference that starts in the host and runs past its end is in it
+    // as well: "https://example.com{{node.a.b}}" has no "/" before it.
+    $refs = array();
+
+    if (preg_match_all(WS_STEP_VALUE_PATTERN, $url, $matches, PREG_OFFSET_CAPTURE)) {
+        foreach ($matches[0] as $match) {
+            if ($match[1] < strlen($head)) {
+                $refs[] = $match[0];
+            }
+        }
+    }
+
+    // A brace pair the pattern does not read is no value, yet it is no
+    // host either.
+    if (empty($refs) && (strpos($head, '{{') !== false)) {
+        $refs[] = '{{';
+    }
+
+    return $refs;
+}
+
+/**
+ * A webhook address with the values of its run filled into its path or
+ * query (decision #3410): each must be digits only and goes in
+ * URL-encoded. A value in the scheme or host, or one that is not digits
+ * (a text, a negative or decimal number, a box that did not run), is the
+ * error, and that reference is filled in empty. Pure.
+ *
+ * @param string $url
+ * @param array  $values ws_step_node_values(), the trigger's under WS_STEP_TRIGGER
+ * @return array url, error ('' when every value fits)
+ */
+function ws_step_url_fill($url, $values)
+{
+    $url = (string) $url;
+
+    if (ws_step_url_host_refs($url) !== array()) {
+        return array('url' => $url, 'error' => lang('A value may go only into the path or query of the address, never into its host or scheme.'));
+    }
+
+    $error = '';
+    $filled = (string) preg_replace_callback(WS_STEP_VALUE_PATTERN, function ($match) use ($values, &$error) {
+        // A fallback stands in for an empty value and obeys the same rule.
+        $value = ws_step_value_of($match, $values);
+
+        if (!preg_match('/^[0-9]+$/', $value)) {
+            if ($error === '') {
+                $error = lang(array('string' => 'The address takes only a whole number for {var:1}, and the run gave none.', 'vars' => $match[0]));
+            }
+
+            return '';
+        }
+
+        return rawurlencode($value);
+    }, $url);
+
+    return array('url' => $filled, 'error' => $error);
+}
+
+/**
+ * Why a box's address may not be called with the values of its run, ''
+ * when it may (ws_step_url_fill()); only the kinds whose `urls` take a
+ * value (ws_step_kinds()) are read. Pure.
+ *
+ * @param string $kind
+ * @param array  $action ws_scheduled_action_input()
+ * @param array  $values ws_step_node_values()
+ * @return string
+ */
+function ws_step_url_refusal($kind, $action, $values)
+{
+    foreach (ws_step_kinds()[$kind]['urls'] ?? array() as $key) {
+        if (isset($action[$key]) && is_string($action[$key])) {
+            $error = ws_step_url_fill($action[$key], $values)['error'];
+
+            if ($error !== '') {
+                return $error;
+            }
+        }
+    }
+
+    return '';
 }
 
 /**
@@ -1111,7 +1411,7 @@ function ws_step_fill_missing($text, $values)
 
     if (preg_match_all(WS_STEP_VALUE_PATTERN, (string) $text, $matches, PREG_SET_ORDER)) {
         foreach ($matches as $match) {
-            if (!isset($values[ws_step_value_box($match)][$match[2]]) && !in_array($match[0], $missing, true)) {
+            if (!isset($values[ws_step_value_box($match)][$match[2]]) && (ws_step_value_fallback($match) === '') && !in_array($match[0], $missing, true)) {
                 $missing[] = $match[0];
             }
         }
@@ -1359,18 +1659,37 @@ function ws_step_run_anchor($context)
 /**
  * The values a box of a run fills into its texts: those of the boxes the run
  * has settled so far, of what started it with the owner's rights now
- * (ws_step_trigger_values_for()), and of the value boxes.
+ * (ws_step_trigger_values_for()), and of the value boxes. A box inside a
+ * loop (pass > 0) reads the boxes of its own item and those outside the
+ * loops, and its For each box gives the current item (flow_loops.php).
  *
- * @param array $run     ws_flow_runs row
- * @param array $graph   the run's graph
- * @param array $owner   the flow's owner, as the workspace sees their rights
- * @param array $context ws_flow_run_context()
+ * @param array      $run     ws_flow_runs row
+ * @param array      $graph   the run's graph
+ * @param array      $owner   the flow's owner, as the workspace sees their rights
+ * @param array      $context ws_flow_run_context()
+ * @param array|null $step    the ws_flow_run_steps row of the box reading them
  * @return array ws_step_node_values(), the trigger's under WS_STEP_TRIGGER
  */
-function ws_step_run_values($run, $graph, $owner, $context)
+function ws_step_run_values($run, $graph, $owner, $context, $step = null)
 {
-    $values = ws_step_node_values(db_items("SELECT node_id, status, outcome, result FROM ws_flow_run_steps
-        WHERE run_id = '" . (int) $run['id'] . "' AND status IN ('done', 'failed', 'skipped')"));
+    $pass = (int) ($step['pass'] ?? 0);
+    $rows = (array) db_items("SELECT node_id, pass, status, outcome, result FROM ws_flow_run_steps
+        WHERE run_id = '" . (int) $run['id'] . "' AND pass IN (0, " . $pass . ") AND status IN ('done', 'failed', 'skipped')
+        ORDER BY pass, id");
+    $values = ws_step_node_values($rows);
+
+    if (($pass > 0) && function_exists('ws_flow_loops')) {
+        $loop = ws_flow_loop_of(ws_flow_loops($graph), (string) $step['node_id']);
+        $start = ($loop !== '') ? ws_flow_graph_node($graph, $loop) : null;
+
+        foreach ($rows as $row) {
+            if ($start && ((string) $row['node_id'] === $loop) && ((int) $row['pass'] === 0)) {
+                $kept = json_decode((string) $row['result'], true)['data']['items'] ?? '';
+                $values[$loop] = ws_flow_loop_item_values($start['config'], is_string($kept) ? $kept : '', $pass) + (array) ($values[$loop] ?? array());
+            }
+        }
+    }
+
     $values[WS_STEP_TRIGGER] = ws_step_trigger_values_for($owner, $context);
 
     return ws_flow_pure_values($graph, $values) + $values;
@@ -1392,7 +1711,12 @@ function ws_step_run_values($run, $graph, $owner, $context)
 function ws_step_run($run, $step, $node, $graph, $owner)
 {
     $kind = (string) $node['kind'];
-    $approved = ($kind === 'mcp') ? ws_flow_effect_approved_id((string) ($step['effect'] ?? '')) : 0;
+    $approved = in_array($kind, array('mcp', 'change'), true) ? ws_flow_effect_approved_id((string) ($step['effect'] ?? '')) : 0;
+
+    if (($approved > 0) && ($kind === 'change')) {
+        ws_step_change_approved_write($run, $step, $node, $graph, $owner, $approved);
+        return;
+    }
 
     if ($approved > 0) {
         ws_step_mcp_approved_call($step, $node, $graph, $owner, $approved);
@@ -1434,10 +1758,20 @@ function ws_step_run($run, $step, $node, $graph, $owner)
     }
 
     $context = ws_flow_run_context($run);
-    $values = ws_step_run_values($run, $graph, $owner, $context);
+    $values = ws_step_run_values($run, $graph, $owner, $context, $step);
 
     $anchor = ws_step_run_anchor($context);
     $row = ws_step_action_row($run, $context, $anchor);
+
+    // A webhook address takes only digits from the values of its run.
+    $refusal = ws_step_url_refusal($kind, $check['action'], $values);
+
+    if ($refusal !== '') {
+        $end = ws_step_settlement(false, $routed);
+        ws_flow_step_settle($step, 'running', $end['status'], $end['outcome'], $refusal);
+
+        return;
+    }
 
     $action = ws_step_fill_action($kind, $check['action'], $values);
 
@@ -1465,7 +1799,7 @@ function ws_step_run($run, $step, $node, $graph, $owner)
 
     // An approval's deadline counts from when the box runs, as does that of
     // the request an MCP box's call asks with.
-    if (in_array($kind, array('approval', 'mcp'), true) && (($node['config']['closes_in'] ?? '') !== '')) {
+    if (in_array($kind, array('approval', 'mcp', 'change'), true) && (($node['config']['closes_in'] ?? '') !== '')) {
         $action['closes_at'] = time() + (int) $node['config']['closes_in'] * 3600;
     }
 
@@ -1479,9 +1813,13 @@ function ws_step_run($run, $step, $node, $graph, $owner)
     // call asks the owner to approve it instead of making it. Nor is a
     // table box's row, which the table's store writes; the event it sends
     // carries this depth.
-    $asks = ($kind === 'mcp') && !empty($action['asks']);
+    // A role-3 member's change box proposes its change to its owner and
+    // writes nothing now (ws_flow_change_asks()).
+    $asks = (($kind === 'mcp') || ($kind === 'change')) && !empty($action['asks']);
 
-    if ($asks) {
+    if ($asks && ($kind === 'change')) {
+        $done = ws_step_change_ask($owner, $action, (string) $row['name'], (int) ($run['started_by'] ?? 0));
+    } elseif ($asks) {
         $done = ws_step_mcp_ask($owner, $action, (string) $row['name'], (int) ($run['started_by'] ?? 0));
     } elseif ($kind === 'mcp') {
         $done = ws_step_mcp_do($owner, $action);
@@ -1495,7 +1833,8 @@ function ws_step_run($run, $step, $node, $graph, $owner)
 
     // An approval box asked: it waits for the request to end
     // (flow_runs.php). So does an MCP box that asked, its arguments kept
-    // beside its values for the call (ws_step_mcp_asked_arguments()).
+    // beside its values for the call (ws_step_mcp_asked_arguments()), and a
+    // change box that proposed its change.
     if ((($kind === 'approval') || $asks) && !empty($done['ok'])) {
         ws_flow_approval_wait($step, (int) ($done['approval_id'] ?? 0), (string) ($done['text'] ?? ''), ws_step_result_data($kind, $node['config'], $done) + array_intersect_key($done, array('call' => true)), $kind);
         return;
@@ -1556,8 +1895,15 @@ function ws_flow_box_try($viewer, $flow, $data)
     // The boxes act with the rights the flow's owner holds when they run.
     $owner = ws_change_viewer_for_id((int) $flow['owner_id']);
 
-    if (!is_array($owner) || !ws_can_schedule($owner)) {
+    if (!is_array($owner) || !ws_flow_builder($owner)) {
         return ws_flow_refusal(lang('The owner of the flow is no longer on the staff, so the box did not run.'));
+    }
+
+    // A role-3 member tries only a box their own flow may hold.
+    $refused = ws_flow_member_box_refusal(ws_flow_builder_kind($owner), $node);
+
+    if ($refused !== '') {
+        return ws_flow_refusal($refused);
     }
 
     // The values of the boxes a run of the person's choice has settled; a
@@ -1613,6 +1959,14 @@ function ws_flow_box_try($viewer, $flow, $data)
             return array('outcome' => 'failed', 'refusal' => (string) $check['error']) + $answer;
         }
 
+        // Without a run the address's values are only empty, as the texts'
+        // are; with one, it is refused as the run would refuse it.
+        $refusal = ($run_id > 0) ? ws_step_url_refusal($kind, $check['action'], $values) : '';
+
+        if ($refusal !== '') {
+            return array('outcome' => 'failed', 'refusal' => $refusal) + $answer;
+        }
+
         $tried = ws_step_try_texts($kind, $check['action'], $values);
 
         if ($fill !== null) {
@@ -1630,6 +1984,8 @@ function ws_flow_box_try($viewer, $flow, $data)
 
         if ($kind === 'mcp') {
             $said = ws_step_mcp_text($action);
+        } elseif (($kind === 'change') && !empty($action['asks'])) {
+            $said = ws_step_change_ask_said(ws_scheduled_action_text($owner, $action), (string) $action['channel_name']);
         } elseif (in_array($kind, ws_step_row_kinds(), true)) {
             $said = ws_step_row_text($action);
         } else {
@@ -2194,6 +2550,211 @@ function ws_step_mcp_approved_call($step, $node, $graph, $owner, $approval_id)
     $end = ws_step_settlement(!empty($done['ok']), $routed);
 
     ws_flow_step_settle($step, 'running', $end['status'], $end['outcome'], (string) $done['text'], $data);
+}
+
+/* ---------------------------------------------------------------------------
+   A change a role-3 member's flow proposes (the box change, asking)
+   --------------------------------------------------------------------------- */
+
+/**
+ * Checks a change box a role-3 member's flow holds (ws_flow_change_asks()):
+ * the change is already checked with their rights (ws_scheduled_action_input());
+ * here, the channel where they are asked to approve it, as an MCP box whose
+ * tool asks first: there, in a channel they may write in, the owner alone
+ * approves.
+ *
+ * @param array $viewer the owner
+ * @param array $config ws_step_config_normalize('change')
+ * @param array $action ws_scheduled_action_input() of the change
+ * @return array ok, error, action (with asks, channel_id, channel_name)
+ */
+function ws_step_change_ask_check($viewer, $config, $action)
+{
+    $channel = ((int) ($config['channel_id'] ?? 0) > 0) ? ws_channel((int) $config['channel_id']) : null;
+
+    if (!$channel) {
+        return array('ok' => false, 'error' => lang('In your own flows a change is proposed for your approval first: choose the channel to ask in.'), 'action' => null);
+    }
+
+    $checked = ws_approval_input($viewer, $channel, array(
+        'title'     => lang('Approve a change of one of your flows'),
+        'approvers' => array((int) $viewer['id']),
+        'rule'      => 'any',
+    ));
+
+    if (!$checked['ok']) {
+        return array('ok' => false, 'error' => $checked['error'], 'action' => null);
+    }
+
+    return array('ok' => true, 'error' => '', 'action' => array(
+        'asks'         => true,
+        'channel_id'   => (int) $channel['id'],
+        'channel_name' => (string) $channel['name'],
+    ) + (array) $action);
+}
+
+/**
+ * Checks the change of a change box with somebody's rights, without where
+ * it is asked: what the run's starter must be able to make
+ * (ws_step_starter_refusal()), and what is checked again as an approved
+ * change is written.
+ *
+ * @param array  $viewer
+ * @param string $kind change
+ * @param array  $config
+ * @return array ok, error, action
+ */
+function ws_step_change_reach_check($viewer, $kind, $config)
+{
+    return ws_scheduled_action_input($viewer, ws_step_action($kind, $config), 0, 0);
+}
+
+/**
+ * The words of the request a change box asks its owner with: the flow, who
+ * approves it, who started the run when somebody else did, and the change
+ * as the box would make it. They are shown, not sent: a tag in them stays
+ * text (<@user:5> mentions nobody). Words that do not fit the room are cut
+ * at a character. Pure.
+ *
+ * @param string $change  the change in words (ws_scheduled_action_text())
+ * @param string $flow    the flow's name
+ * @param string $owner   who approves the change, by name
+ * @param string $starter who started the run, '' when the owner did
+ * @param int    $room    the most characters the words may take
+ * @return string
+ */
+function ws_step_change_ask_text($change, $flow, $owner, $starter, $room)
+{
+    $text = function ($value) {
+        return str_replace('<', "<\u{2060}", (string) $value);
+    };
+
+    $intro = ((string) $starter !== '')
+        ? lang(array('string' => 'Flow “{var:1}”, started by {var:3}, proposes this change and waits for {var:2} to approve it. It is made with their rights.', 'vars' => array($text($flow), $text($owner), $text($starter))))
+        : lang(array('string' => 'Flow “{var:1}” proposes this change and waits for {var:2} to approve it. It is made with their rights.', 'vars' => array($text($flow), $text($owner))));
+    $whole = $intro . "\n" . $text($change);
+
+    if (mb_strlen($whole) <= (int) $room) {
+        return $whole;
+    }
+
+    return mb_substr($whole, 0, max(0, (int) $room - 1)) . '…';
+}
+
+/**
+ * What trying a change box that proposes its change says. Pure.
+ *
+ * @param string $change  the change in words
+ * @param string $channel the channel's name
+ * @return string
+ */
+function ws_step_change_ask_said($change, $channel)
+{
+    return lang(array('string' => 'Asks you to approve this change in #{var:1} and writes nothing until you do: {var:2}', 'vars' => array((string) $channel, (string) $change)));
+}
+
+/**
+ * Proposes the change of a role-3 member's change box: a request in the
+ * box's channel (approvals.php), in the owner's name, the owner its only
+ * approver, as an MCP box's call asks. A request tells nobody of their own
+ * asking, so the owner is told here. Nothing is written: the box waits for
+ * the request (ws_flow_approval_wait()) and writes once it is approved
+ * (ws_step_change_approved_write()).
+ *
+ * @param array  $owner      the flow's owner, checked (ws_step_change_ask_check())
+ * @param array  $action     the checked change, with asks, channel_id, closes_at
+ * @param string $flow_name  the flow's name, as the run started
+ * @param int    $starter_id who started the run
+ * @return array ok, text, data; approval_id, message_id
+ */
+function ws_step_change_ask($owner, $action, $flow_name, $starter_id)
+{
+    $channel = ws_channel((int) $action['channel_id']);
+
+    if (!$channel) {
+        return array('ok' => false, 'text' => lang('The channel to write in is gone.'), 'data' => array());
+    }
+
+    $title = mb_substr(lang(array('string' => 'Approve the change: {var:1}', 'vars' => ws_scheduled_record_label($owner, $action['record'], $action['id']))), 0, 255);
+    $starter = ((int) $starter_id !== (int) $owner['id']) ? ws_person_name((int) $starter_id) : '';
+
+    // The message is the bold title, a blank line and these words.
+    $created = ws_approval_create($owner, $channel, array(
+        'title'     => $title,
+        'text'      => ws_step_change_ask_text(ws_scheduled_action_text($owner, $action), $flow_name, ws_person_name((int) $owner['id']), $starter, WS_MESSAGE_MAX - mb_strlen($title) - 6),
+        'approvers' => array((int) $owner['id']),
+        'rule'      => 'any',
+        'closes_at' => (int) ($action['closes_at'] ?? 0),
+    ));
+
+    if (!$created['ok']) {
+        return array('ok' => false, 'text' => lang(array('string' => 'Could not ask for approval in #{var:1}: {var:2}', 'vars' => array($channel['name'], $created['error']))), 'data' => array());
+    }
+
+    ws_notify((int) $owner['id'], 'approval_requested', array('channel_id' => (int) $channel['id'], 'message_id' => (int) $created['message_id'], 'actor_id' => (int) $owner['id']));
+
+    return array(
+        'ok'          => true,
+        'text'        => lang(array('string' => 'proposed the change for approval in #{var:1}', 'vars' => $channel['name'])),
+        'data'        => array(),
+        'approval_id' => (int) $created['approval_id'],
+        'message_id'  => (int) $created['message_id'],
+    );
+}
+
+/**
+ * Writes the change a role-3 member's change box proposed, once approved
+ * (ws_flow_approved_ready()), claimed by this request. It writes that it
+ * began first, from the approved effect only, so the change is written once
+ * whatever stops half way (ws_flow_stale_action()); checks the change again
+ * with the owner's rights as they are now (and the starter's), so a right
+ * lost meanwhile stops it; and writes it as a change box does
+ * (ws_scheduled_change()). A failure tries again where the box is set to,
+ * and a new try asks again.
+ *
+ * @param array $run         ws_flow_runs row
+ * @param array $step        ws_flow_run_steps row, running
+ * @param array $node        the box
+ * @param array $graph       the run's graph
+ * @param array $owner       the flow's owner
+ * @param int   $approval_id the request that approved the change
+ */
+function ws_step_change_approved_write($run, $step, $node, $graph, $owner, $approval_id)
+{
+    db("UPDATE ws_flow_run_steps SET effect = '" . e(WS_STEP_BEGAN . 'change') . "'
+        WHERE id = '" . (int) $step['id'] . "' AND status = 'running' AND effect = '" . e(ws_flow_approved_key($approval_id)) . "'");
+
+    if ((int) mysqli_affected_rows(db::$con) !== 1) {
+        return;
+    }
+
+    $routed = ws_flow_outcome_routed($graph, $node['id'], 'failed');
+    $check = ws_step_change_reach_check($owner, 'change', $node['config']);
+    $refusal = $check['ok'] ? ws_step_starter_refusal($run, 'change', $node['config']) : '';
+
+    if (!$check['ok']) {
+        $done = array('ok' => false, 'text' => (string) $check['error'], 'data' => array());
+    } elseif ($refusal !== '') {
+        $done = array('ok' => false, 'text' => $refusal, 'data' => array());
+    } else {
+        $context = ws_flow_run_context($run);
+        $row = ws_step_action_row($run, $context, ws_step_run_anchor($context));
+
+        $outer_depth = ws_event_depth();
+        ws_event_depth((int) ($run['depth'] ?? 0));
+        $done = ws_scheduled_do($owner, $row, $check['action'], ws_step_trigger_context($context));
+        ws_event_depth($outer_depth - 1);
+    }
+
+    $data = ws_step_result_data('change', $node['config'], $done);
+
+    if (empty($done['ok']) && ws_flow_retry_wait($step, $node, (string) ($done['text'] ?? ''), $data)) {
+        return;
+    }
+
+    $end = ws_step_settlement(!empty($done['ok']), $routed);
+
+    ws_flow_step_settle($step, 'running', $end['status'], $end['outcome'], (string) ($done['text'] ?? ''), $data);
 }
 
 /* ---------------------------------------------------------------------------

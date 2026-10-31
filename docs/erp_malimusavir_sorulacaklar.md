@@ -10,7 +10,7 @@ description: Questions for the accountant about ERP behaviour; answers fill each
 kod değişmez. Cevabı gelen madde ilgili ekrana ya da yeni bir işe dönüşür.
 
 Kaynaklar: `docs/memory/plans/erp-edocument-leftovers.md` (iade yolları, mevzuat notu), git geçmişindeki `docs/degisiklikler.md`,
-`docs/_isbasi_api_notlari.md`, `docs/_erp_devir_notu.md` ("Mali müşavire").
+`docs/_isbasi_api_notlari.md`.
 
 ---
 

@@ -5,7 +5,7 @@ module: user_list
 ---
 
 ## Which zone and format do session and password dates use?
-- `get_absolute_time()`: Edit User's sessions (Opened, Expires), `view_sessions.php` (Created, Expires, push Subscribed) and Edit User's password "Last changed" (`'type' => 'date'`). They follow the site's 12/24-hour and day/month order and the person's zone, like the "Last used" column beside them (`panel-times-user-time-zone.md`).
+- `get_absolute_time()`: Edit User's sessions (Opened, Expires), `view_sessions.php` (Created, Expires, push Subscribed) and Edit User's password "Last changed" (`'type' => 'date'`). The Sessions cells print the `<time>` element unescaped; Edit User's lines go through `h(lang())`, so they take `'format' => 'plain_text'` (`panel-dates-site-order.md`). They follow the site's 12/24-hour and day/month order and the person's zone, like the "Last used" column beside them (`panel-times-user-time-zone.md`).
 - Before, they were `date('Y-m-d H:i')` / `date('d.m.Y')`: the site's zone and one fixed format, so one row mixed two zones.
 
 ## How are the users list controls named?

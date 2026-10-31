@@ -502,7 +502,7 @@ function pg_explorer_handle_recycle_restore($type, $request, $user)
 
             db("DELETE FROM recycle_bin WHERE id = '" . e($entry['id']) . "'");
 
-            log_activity(lang(array('string' => 'The short link, {var:1}, was restored.', 'vars' => h($restore_short_link_name))), $_SESSION['sessionusername']);
+            log_activity(lang(array('string' => 'The short link, {var:1}, was restored.', 'vars' => $restore_short_link_name)), $_SESSION['sessionusername']);
 
             $restored++;
             continue;

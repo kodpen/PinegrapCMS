@@ -436,7 +436,7 @@ function pg_payment_stripe_refused($order, $error, $message, $code, $state = arr
         'success' => false,
         'error'   => $error,
         'state'   => $state,
-        'log'     => array('Stripe payment for order #' . $order_id . ' was not accepted: ' . $detail . (($code !== '') ? ' (' . $code . ')' : '') . '.'),
+        'log'     => array(pg_log_lang(array('string' => 'Stripe payment for order #{var:1} was not accepted: {var:2}{var:3}.', 'vars' => array($order_id, $detail, (($code !== '') ? ' (' . $code . ')' : ''))))),
         'raw'     => array('message' => $message, 'code' => $code),
     );
 }
@@ -685,7 +685,7 @@ function pg_payment_stripe_complete_with($order, $amount, $return, $state, $sett
                 ? lang('The order total changed while the payment was being verified. The payment was cancelled. Please review your order and try again.')
                 : lang('The order total changed while the payment was being verified, and the payment could not be undone automatically. The store will refund it. Please review your order before paying again.'),
             'log'     => array_merge(
-                array('Stripe payment ' . $intent_id . ' for order #' . (int) $order_id . ' was for ' . pg_payment_decimal($started) . ', the order now totals ' . pg_payment_decimal($amount) . '.'),
+                array(pg_log_lang(array('string' => 'Stripe payment {var:1} for order #{var:2} was for {var:3}, the order now totals {var:4}.', 'vars' => array($intent_id, (int) $order_id, pg_payment_decimal($started), pg_payment_decimal($amount))))),
                 $void['log']),
         );
     }
@@ -804,7 +804,7 @@ function pg_payment_stripe_void_with($intent_id, $settings, $http)
     $status = ($read['ok'] && isset($read['body']['status']) && is_string($read['body']['status'])) ? $read['body']['status'] : '';
 
     if ($status === 'canceled') {
-        return array('cancelled' => true, 'reference' => $intent_id, 'message' => '', 'log' => array('Stripe payment ' . $intent_id . ' was already cancelled.'));
+        return array('cancelled' => true, 'reference' => $intent_id, 'message' => '', 'log' => array(pg_log_lang(array('string' => 'Stripe payment {var:1} was already cancelled.', 'vars' => array($intent_id)))));
     }
 
     if ($status === 'succeeded') {
@@ -813,23 +813,23 @@ function pg_payment_stripe_void_with($intent_id, $settings, $http)
         $refund_status = ($call['ok'] && isset($call['body']['status']) && is_string($call['body']['status'])) ? $call['body']['status'] : '';
 
         if (in_array($refund_status, array('succeeded', 'pending'), true)) {
-            return array('cancelled' => true, 'reference' => $reference, 'message' => '', 'log' => array('Stripe payment ' . $intent_id . ' was refunded in full (refund ' . $reference . ').'));
+            return array('cancelled' => true, 'reference' => $reference, 'message' => '', 'log' => array(pg_log_lang(array('string' => 'Stripe payment {var:1} was refunded in full (refund {var:2}).', 'vars' => array($intent_id, $reference)))));
         }
 
         $message = ($call['message'] !== '') ? $call['message'] : 'refund ' . ($refund_status !== '' ? $refund_status : 'not made');
 
-        return array('cancelled' => false, 'reference' => '', 'message' => $message, 'log' => array('Stripe payment ' . $intent_id . ' could not be refunded. MANUAL REFUND REQUIRED. Gateway message: ' . $message));
+        return array('cancelled' => false, 'reference' => '', 'message' => $message, 'log' => array(pg_log_lang(array('string' => 'Stripe payment {var:1} could not be refunded. MANUAL REFUND REQUIRED. Gateway message: {var:2}', 'vars' => array($intent_id, $message)))));
     }
 
     $call = pg_payment_stripe_call($http, $settings, 'POST', '/v1/payment_intents/' . $intent_id . '/cancel', array('cancellation_reason' => 'requested_by_customer'));
 
     if ($call['ok'] && isset($call['body']['status']) && ($call['body']['status'] === 'canceled')) {
-        return array('cancelled' => true, 'reference' => $intent_id, 'message' => '', 'log' => array('Stripe payment ' . $intent_id . ' was cancelled.'));
+        return array('cancelled' => true, 'reference' => $intent_id, 'message' => '', 'log' => array(pg_log_lang(array('string' => 'Stripe payment {var:1} was cancelled.', 'vars' => array($intent_id)))));
     }
 
     $message = ($call['message'] !== '') ? $call['message'] : (($read['message'] !== '') ? $read['message'] : '(no message)');
 
-    return array('cancelled' => false, 'reference' => '', 'message' => $message, 'log' => array('Stripe payment ' . $intent_id . ' could not be cancelled. MANUAL REFUND REQUIRED. Gateway message: ' . $message));
+    return array('cancelled' => false, 'reference' => '', 'message' => $message, 'log' => array(pg_log_lang(array('string' => 'Stripe payment {var:1} could not be cancelled. MANUAL REFUND REQUIRED. Gateway message: {var:2}', 'vars' => array($intent_id, $message)))));
 }
 
 /**
@@ -1090,7 +1090,7 @@ function pg_payment_stripe_renewal_unclear($id, $message, $code)
         'string' => 'No clear answer came from the payment service ({var:1}). Check the payment on the service\'s own screen before trying again.',
         'vars'   => array(($message !== '') ? $message : lang('no answer')))),
         array('message' => $message, 'code' => $code));
-    $answer['log'] = array('Stripe renewal of subscription #' . (int) $id . ' got no clear answer: ' . (($message !== '') ? $message : '(no message)') . (($code !== '') ? ' (' . $code . ')' : '') . '.');
+    $answer['log'] = array(pg_log_lang(array('string' => 'Stripe renewal of subscription #{var:1} got no clear answer: {var:2}{var:3}.', 'vars' => array((int) $id, (($message !== '') ? $message : pg_log_lang(array('string' => '(no message)'))), (($code !== '') ? ' (' . $code . ')' : '')))));
 
     return $answer;
 }
@@ -1108,7 +1108,7 @@ function pg_payment_stripe_renewal_refused($id, $message, $code)
     return array(
         'success' => false,
         'error'   => pg_payment_stripe_visitor_error($code, $message),
-        'log'     => array('Stripe renewal of subscription #' . (int) $id . ' was not accepted: ' . (($message !== '') ? $message : '(no message)') . (($code !== '') ? ' (' . $code . ')' : '') . '.'),
+        'log'     => array(pg_log_lang(array('string' => 'Stripe renewal of subscription #{var:1} was not accepted: {var:2}{var:3}.', 'vars' => array((int) $id, (($message !== '') ? $message : pg_log_lang(array('string' => '(no message)'))), (($code !== '') ? ' (' . $code . ')' : ''))))),
         'raw'     => array('message' => $message, 'code' => $code),
     );
 }
@@ -1158,7 +1158,7 @@ function pg_payment_stripe_charge_renewal_with($subscription, $settings, $http)
     $cards = pg_payment_stripe_customer_cards_with($card[0], $settings, $http);
 
     if ($cards === array()) {
-        return pg_payment_failure_logged(lang('The subscription has no stored card.'), array('Stripe renewal of subscription #' . $id . ' was not made: the customer has no card left on Stripe.'));
+        return pg_payment_failure_logged(lang('The subscription has no stored card.'), array(pg_log_lang(array('string' => 'Stripe renewal of subscription #{var:1} was not made: the customer has no card left on Stripe.', 'vars' => array($id)))));
     }
 
     if ($cards !== null) {
@@ -1224,7 +1224,9 @@ function pg_payment_stripe_charge_renewal_with($subscription, $settings, $http)
         'status'         => ($status === 'succeeded') ? 'paid' : 'pending',
         'transaction_id' => $intent_id,
         'amount'         => $amount,
-        'log'            => array('Stripe renewal of subscription #' . $id . ' ' . (($status === 'succeeded') ? 'was paid' : 'is processing') . ' (' . $intent_id . ').'),
+        'log'            => array(($status === 'succeeded')
+            ? pg_log_lang(array('string' => 'Stripe renewal of subscription #{var:1} was paid ({var:2}).', 'vars' => array($id, $intent_id)))
+            : pg_log_lang(array('string' => 'Stripe renewal of subscription #{var:1} is processing ({var:2}).', 'vars' => array($id, $intent_id)))),
     ));
 
     if ($payment_method !== $card[1]) {
@@ -1234,7 +1236,7 @@ function pg_payment_stripe_charge_renewal_with($subscription, $settings, $http)
         $detach = pg_payment_stripe_call($http, $settings, 'POST', '/v1/payment_methods/' . $card[1] . '/detach');
 
         if (!$detach['ok']) {
-            $answer['log'][] = 'Stripe kept the replaced card of subscription #' . $id . ': ' . (($detach['message'] !== '') ? $detach['message'] : '(no message)') . '.';
+            $answer['log'][] = pg_log_lang(array('string' => 'Stripe kept the replaced card of subscription #{var:1}: {var:2}.', 'vars' => array($id, ($detach['message'] !== '') ? $detach['message'] : pg_log_lang(array('string' => '(no message)')))));
         }
     }
 
@@ -1276,7 +1278,7 @@ function pg_payment_stripe_renewal_confirmation($id, $call, $payment_method, $su
         'status'         => 'redirect',
         'transaction_id' => $intent_id,
         'redirect_url'   => $url,
-        'log'            => array('Stripe renewal of subscription #' . $id . ' waits for the card holder to confirm it (' . $intent_id . ').'),
+        'log'            => array(pg_log_lang(array('string' => 'Stripe renewal of subscription #{var:1} waits for the card holder to confirm it ({var:2}).', 'vars' => array($id, $intent_id)))),
         'raw'            => array('code' => 'authentication_required'),
     );
 }
@@ -1458,7 +1460,10 @@ function pg_payment_stripe_log_amount($amount, $currency)
  *
  *   payment_intent.succeeded  paid: the payment of an order (metadata
  *                             order_id) went through, perhaps after the
- *                             visitor left the 3-D Secure page
+ *                             visitor left the 3-D Secure page; or a
+ *                             subscription's renewal (metadata
+ *                             subscription_id, order_reference
+ *                             'subscription-<id>', raw.subscription_id)
  *   charge.refunded           refunded: money was given back on Stripe's
  *                             screen (amount: everything refunded so far)
  *   charge.dispute.created    pending: the card holder disputes the payment
@@ -1511,12 +1516,27 @@ function pg_payment_stripe_notify_with($headers, $body, $settings, $now)
     switch ($type) {
         case 'payment_intent.succeeded':
             $order_id = (isset($object['metadata']['order_id']) && is_scalar($object['metadata']['order_id'])) ? trim((string) $object['metadata']['order_id']) : '';
+            $subscription_id = (isset($object['metadata']['subscription_id']) && is_scalar($object['metadata']['subscription_id'])) ? trim((string) $object['metadata']['subscription_id']) : '';
+            $amount = isset($object['amount_received']) ? $object['amount_received'] : null;
+
+            // A renewal's payment names its subscription, never an order:
+            // the callback hands it to the renewal writer, which takes it only
+            // when the cron left the row waiting (a confirmation link).
+            if (($order_id === '') && (preg_match('/^[1-9][0-9]{0,9}$/', $subscription_id) === 1) && (preg_match('/^pi_[A-Za-z0-9]{1,250}$/', $text('id')) === 1)) {
+                return array(
+                    'success'         => true,
+                    'status'          => 'paid',
+                    'transaction_id'  => $text('id'),
+                    'order_reference' => 'subscription-' . $subscription_id,
+                    'amount'          => pg_payment_stripe_hundredths($amount, $currency),
+                    'log'             => array(pg_log_lang(array('string' => 'Stripe reports that payment {var:1} of {var:2} for subscription {var:3} succeeded', 'vars' => array($text('id'), pg_payment_stripe_log_amount($amount, $currency), $subscription_id)))),
+                    'raw'             => $raw + array('subscription_id' => $subscription_id),
+                );
+            }
 
             if ((preg_match('/^[1-9][0-9]{0,18}$/', $order_id) !== 1) || (preg_match('/^pi_[A-Za-z0-9]{1,250}$/', $text('id')) !== 1)) {
                 return $ignored;
             }
-
-            $amount = isset($object['amount_received']) ? $object['amount_received'] : null;
 
             return array(
                 'success'         => true,
@@ -1524,7 +1544,7 @@ function pg_payment_stripe_notify_with($headers, $body, $settings, $now)
                 'transaction_id'  => $text('id'),
                 'order_reference' => $order_id,
                 'amount'          => pg_payment_stripe_hundredths($amount, $currency),
-                'log'             => array('Stripe reports that payment ' . $text('id') . ' of ' . pg_payment_stripe_log_amount($amount, $currency) . ' succeeded'),
+                'log'             => array(pg_log_lang(array('string' => 'Stripe reports that payment {var:1} of {var:2} succeeded', 'vars' => array($text('id'), pg_payment_stripe_log_amount($amount, $currency))))),
                 'raw'             => $raw,
             );
 
@@ -1540,11 +1560,11 @@ function pg_payment_stripe_notify_with($headers, $body, $settings, $now)
 
             if ($type === 'charge.refunded') {
                 $amount = isset($object['amount_refunded']) ? $object['amount_refunded'] : null;
-                $line = 'Stripe reports that ' . pg_payment_stripe_log_amount($amount, $currency) . ' of payment ' . $intent . ' was refunded on Stripe';
+                $line = pg_log_lang(array('string' => 'Stripe reports that {var:1} of payment {var:2} was refunded on Stripe', 'vars' => array(pg_payment_stripe_log_amount($amount, $currency), $intent)));
                 $status = 'refunded';
             } else {
                 $amount = isset($object['amount']) ? $object['amount'] : null;
-                $line = 'Stripe reports a dispute of ' . pg_payment_stripe_log_amount($amount, $currency) . ' on payment ' . $intent . ' (reason: ' . (($text('reason') !== '') ? $text('reason') : 'none given') . ')';
+                $line = pg_log_lang(array('string' => 'Stripe reports a dispute of {var:1} on payment {var:2} (reason: {var:3})', 'vars' => array(pg_payment_stripe_log_amount($amount, $currency), $intent, ($text('reason') !== '') ? $text('reason') : pg_log_lang(array('string' => 'none given')))));
                 $status = 'pending';
             }
 

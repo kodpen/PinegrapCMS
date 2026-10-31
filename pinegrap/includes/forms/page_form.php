@@ -1923,38 +1923,8 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
     if (FORMS == true) {
         $output_wysiwyg_editor_code = get_wysiwyg_editor_code(array('custom_form_confirmation_message', 'custom_form_return_message'), $activate_editors);
 
-        // prepare to get folders that user has access to, in order to determine which form list views should be available to be selected for the form view directory page type
-        $folders_that_user_has_access_to = array();
-        
-        // if user is a basic user, then get folders that user has access to
-        if ($user['role'] == 3) {
-            $folders_that_user_has_access_to = get_folders_that_user_has_access_to($user['id']);
-        }
-        
-        // get all unarchived form list views for form view directory page type
-        $query =
-            "SELECT
-                page.page_id,
-                page.page_name,
-                page.page_folder as folder_id,
-                form_list_view_pages.custom_form_page_id
-            FROM page
-            LEFT JOIN form_list_view_pages ON
-                (page.page_id = form_list_view_pages.page_id)
-                AND (form_list_view_pages.collection = 'a')
-            LEFT JOIN folder ON page.page_folder = folder.folder_id
-            WHERE
-                (page.page_type = 'form list view')
-                AND (folder.folder_archived = '0')
-            ORDER BY page.page_name ASC";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-        
-        $form_list_views = array();
-        
-        // loop through the form list views in order to add them to array
-        while ($row = mysqli_fetch_assoc($result)) {
-            $form_list_views[] = $row;
-        }
+        // the form list views this editor may link to a form view directory
+        $form_list_views = pg_page_form_offered_form_list_views($user);
         
         // get selected form list views for this page
         $query =
@@ -1974,84 +1944,63 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
             $selected_form_list_views[$row['form_list_view_page_id']] = $row;
         }
         
-        // get all custom form fields for form view directory page type
-        $query =
-            "SELECT
-                id,
-                name,
-                page_id
-            FROM form_fields
-            ORDER BY page_id ASC, sort_order ASC";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-        
-        // create custom forms array that will hold the form fields
-        $custom_forms = array();
-        
-        // loop through the form fields in order to add them to array
-        while ($row = mysqli_fetch_assoc($result)) {
-            $custom_forms[$row['page_id']]['form_fields'][] = $row;
-        }
-        
         $output_form_view_directory_form_list_view_rows = '';
         
         // loop through all of the form list views in order to prepare rows for each one
         foreach ($form_list_views as $form_list_view) {
-            // if user has edit access to the form list view and there are form fields for the form list view's custom form, then prepare to output a row for it
-            if ((check_folder_access_in_array($form_list_view['folder_id'], $folders_that_user_has_access_to) == TRUE) && (isset($custom_forms[$form_list_view['custom_form_page_id']]['form_fields']) == TRUE)) {
-                // assume that form list view should not be checked until we find out otherwise
-                $form_list_view_checked = '';
+            // assume that form list view should not be checked until we find out otherwise
+            $form_list_view_checked = '';
+            
+            // assume that we will not show name and subject fields until we find out otherwise
+            $name_container_style = 'display: none';
+            $subject_form_field_id_container_style = 'display: none';
+            
+            // assume that the form list view name is blank until we find out otherwise
+            $output_form_list_view_name = '';
+            
+            // if this form list view is selected, then prepare checkbox to be checked and prepare to show name and subject fields
+            if (isset($selected_form_list_views[$form_list_view['page_id']]) == TRUE) {
+                $form_list_view_checked = ' checked="checked"';
+                $name_container_style = '';
+                $subject_form_field_id_container_style = '';
+                $output_form_list_view_name = h($selected_form_list_views[$form_list_view['page_id']]['form_list_view_name']);
+            }
+            
+            $output_form_view_directory_subject_field_options = '';
+            
+            // loop through the fields for this form list view's custom form, in order to prepare to output subject field options
+            foreach ($form_list_view['form_fields'] as $form_field) {
+                // assume that this field should not be selected, until we find out otherwise
+                $selected = '';
                 
-                // assume that we will not show name and subject fields until we find out otherwise
-                $name_container_style = 'display: none';
-                $subject_form_field_id_container_style = 'display: none';
-                
-                // assume that the form list view name is blank until we find out otherwise
-                $output_form_list_view_name = '';
-                
-                // if this form list view is selected, then prepare checkbox to be checked and prepare to show name and subject fields
-                if (isset($selected_form_list_views[$form_list_view['page_id']]) == TRUE) {
-                    $form_list_view_checked = ' checked="checked"';
-                    $name_container_style = '';
-                    $subject_form_field_id_container_style = '';
-                    $output_form_list_view_name = h($selected_form_list_views[$form_list_view['page_id']]['form_list_view_name']);
+                // if this form list view is selected and this field is selected, then prepare to select it
+                if ((isset($selected_form_list_views[$form_list_view['page_id']]) == TRUE) && ($form_field['id'] == $selected_form_list_views[$form_list_view['page_id']]['subject_form_field_id'])) {
+                    $selected = ' selected="selected"';
                 }
                 
-                $output_form_view_directory_subject_field_options = '';
-                
-                // loop through the fields for this form list view's custom form, in order to prepare to output subject field options
-                foreach ($custom_forms[$form_list_view['custom_form_page_id']]['form_fields'] as $form_field) {
-                    // assume that this field should not be selected, until we find out otherwise
-                    $selected = '';
-                    
-                    // if this form list view is selected and this field is selected, then prepare to select it
-                    if ((isset($selected_form_list_views[$form_list_view['page_id']]) == TRUE) && ($form_field['id'] == $selected_form_list_views[$form_list_view['page_id']]['subject_form_field_id'])) {
-                        $selected = ' selected="selected"';
-                    }
-                    
-                    $output_form_view_directory_subject_field_options .= '<option value="' . $form_field['id'] . '"' . $selected . '>' . h($form_field['name']) . '</option>';
-                }
-                
-                $output_form_view_directory_form_list_view_rows .=
-                    '<div class="form-field">
-                        <input type="checkbox" id="form_view_directory_form_list_view_' . $form_list_view['page_id'] . '" name="form_view_directory_form_list_view_' . $form_list_view['page_id'] . '" value="1"' . $form_list_view_checked . ' class="check collapse-switcher" data-bs-target="#form_view_directory_form_list_view_' . $form_list_view['page_id'] . '_row"/>
-                        <label class="" for="form_view_directory_form_list_view_' . $form_list_view['page_id'] . '">' . h($form_list_view['page_name']) . '</label>
-                    </div>
-                    <div class="collapse popover fade bs-popover-bottom p-0 mb-3" id="form_view_directory_form_list_view_' . $form_list_view['page_id'] . '_row">
-                        <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
-                        <div class="popover-body">
-                            <div class="row">
-                                <div class="col-12 lg:col-6 my-1" id="form_view_directory_form_list_view_' . $form_list_view['page_id'] . '_name_container" >
-                                    <label for="form_view_directory_form_list_view_' . $form_list_view['page_id'] . '_name" class="form-label">' . lang('Name') . '</label>
-                                    <input value="' . $output_form_list_view_name . '" name="form_view_directory_form_list_view_' . $form_list_view['page_id'] . '_name" id="form_view_directory_form_list_view_' . $form_list_view['page_id'] . '_name" type="text" class="form-control" maxlength="100" />
-                                </div>
-                                <div class="col-12 lg:col-6 my-1" id="form_view_directory_form_list_view_' . $form_list_view['page_id'] . '_subject_form_field_id_container">
-                                    <label for="form_view_directory_form_list_view_' . $form_list_view['page_id'] . '_subject_form_field_id" class="form-label">' . lang('Subject Field') . '</label>
-                                    <select class="form-control" name="form_view_directory_form_list_view_' . $form_list_view['page_id'] . '_subject_form_field_id" id="form_view_directory_form_list_view_' . $form_list_view['page_id'] . '_subject_form_field_id"><option value=""></option>' . $output_form_view_directory_subject_field_options . '</select>
-                                </div>
+                $output_form_view_directory_subject_field_options .= '<option value="' . $form_field['id'] . '"' . $selected . '>' . h($form_field['name']) . '</option>';
+            }
+            
+            $output_form_view_directory_form_list_view_rows .=
+                '<div class="form-field">
+                    <input type="checkbox" id="form_view_directory_form_list_view_' . $form_list_view['page_id'] . '" name="form_view_directory_form_list_view_' . $form_list_view['page_id'] . '" value="1"' . $form_list_view_checked . ' class="check collapse-switcher" data-bs-target="#form_view_directory_form_list_view_' . $form_list_view['page_id'] . '_row"/>
+                    <label class="" for="form_view_directory_form_list_view_' . $form_list_view['page_id'] . '">' . h($form_list_view['page_name']) . '</label>
+                </div>
+                <div class="collapse popover fade bs-popover-bottom p-0 mb-3" id="form_view_directory_form_list_view_' . $form_list_view['page_id'] . '_row">
+                    <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
+                    <div class="popover-body">
+                        <div class="row">
+                            <div class="col-12 lg:col-6 my-1" id="form_view_directory_form_list_view_' . $form_list_view['page_id'] . '_name_container" >
+                                <label for="form_view_directory_form_list_view_' . $form_list_view['page_id'] . '_name" class="form-label">' . lang('Name') . '</label>
+                                <input value="' . $output_form_list_view_name . '" name="form_view_directory_form_list_view_' . $form_list_view['page_id'] . '_name" id="form_view_directory_form_list_view_' . $form_list_view['page_id'] . '_name" type="text" class="form-control" maxlength="100" />
+                            </div>
+                            <div class="col-12 lg:col-6 my-1" id="form_view_directory_form_list_view_' . $form_list_view['page_id'] . '_subject_form_field_id_container">
+                                <label for="form_view_directory_form_list_view_' . $form_list_view['page_id'] . '_subject_form_field_id" class="form-label">' . lang('Subject Field') . '</label>
+                                <select class="form-control" name="form_view_directory_form_list_view_' . $form_list_view['page_id'] . '_subject_form_field_id" id="form_view_directory_form_list_view_' . $form_list_view['page_id'] . '_subject_form_field_id"><option value=""></option>' . $output_form_view_directory_subject_field_options . '</select>
                             </div>
                         </div>
-                    </div>';
-            }
+                    </div>
+                </div>';
         }
         
         $output_forms_page_type_properties =
@@ -2368,7 +2317,7 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
         $output_forms_page_type_properties .=
             '<div class="col-12 my-1" id="custom_form_confirmation_type_row" style="' . $custom_form_confirmation_type_row_style . '">
                 <fieldset>
-                    <legend class="form-label fs-md">' . lang('Confirmation Type') . '</legend>
+                    <legend class="form-label fs-md" id="custom_form_confirmation_type_legend">' . lang('Confirmation Type') . '</legend>
                     <div class="form-field  d-inline-grid me-5">
                         <input class="radio collapse-switcher" type="radio" id="custom_form_confirmation_type_message" name="custom_form_confirmation_type"' . $custom_form_confirmation_type_message_checked . ' value="message" onclick="show_or_hide_custom_form_confirmation_type()" data-bs-target="#custom_form_confirmation_type_message_row" />
                         <label for="custom_form_confirmation_type_message">' . lang('Message') . '</label> 
@@ -2383,8 +2332,8 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                     <div class="popover-body">
                         <div class="row">
                             <div class="col-12 my-1">
-                              <label for="custom_form_confirmation_message" class="form-label">' . lang('Message') . '</label>
-                              <textarea class="form-control" id="custom_form_confirmation_message" name="custom_form_confirmation_message" rows="3">' . h(prepare_rich_text_editor_content_for_output(($custom_form_properties['confirmation_message'] ?? ''))) . '</textarea>
+                              <label for="custom_form_confirmation_message" class="form-label" id="custom_form_confirmation_message_label">' . lang('Message') . '</label>
+                              <textarea class="form-control" id="custom_form_confirmation_message" aria-labelledby="custom_form_confirmation_type_legend custom_form_confirmation_message_label" name="custom_form_confirmation_message" rows="3">' . h(prepare_rich_text_editor_content_for_output(($custom_form_properties['confirmation_message'] ?? ''))) . '</textarea>
                             </div>
                         </div>
                     </div>
@@ -2424,7 +2373,7 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
             </div>
             <div class="col-12 my-1" id="custom_form_return_type_row" style="' . $custom_form_return_type_row_style . '">
                 <fieldset>
-                    <legend class="form-label fs-md">' . lang('If User has already submitted form in the past, then show') . '</legend>
+                    <legend class="form-label fs-md" id="custom_form_return_type_legend">' . lang('If User has already submitted form in the past, then show') . '</legend>
                     <div class="form-field d-inline-grid me-5">
                         <input class="radio collapse-switcher" type="radio" id="custom_form_return_type_custom_form" name="custom_form_return_type"' . $custom_form_return_type_custom_form_checked . ' value="custom_form" onclick="show_or_hide_custom_form_return_type()"  />
                         <label for="custom_form_return_type_custom_form">' . lang('Custom Form') . '</label> 
@@ -2443,8 +2392,8 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                     <div class="popover-body">
                         <div class="row">
                             <div class="col-12 my-1">
-                                <label for="custom_form_return_message" class="form-label">' . lang('Message') . '</label>
-                                <textarea class="form-control" id="custom_form_return_message" name="custom_form_return_message" rows="3">' . h(prepare_rich_text_editor_content_for_output(($custom_form_properties['return_message'] ?? ''))) . '</textarea>
+                                <label for="custom_form_return_message" class="form-label" id="custom_form_return_message_label">' . lang('Message') . '</label>
+                                <textarea class="form-control" id="custom_form_return_message" aria-labelledby="custom_form_return_type_legend custom_form_return_message_label" name="custom_form_return_message" rows="3">' . h(prepare_rich_text_editor_content_for_output(($custom_form_properties['return_message'] ?? ''))) . '</textarea>
                             </div>
                         </div>
                     </div>
@@ -2795,9 +2744,10 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                                     <label class="" for="layout_type_system">'. lang('System') . '</label>
                                 </div>
                                 <div class="form-field">
-                                    <input value="custom" class="radio" type="radio" id="layout_type_custom" name="layout_type"' . $layout_type_custom_option_disabled . $layout_type_custom_checked . '>
-                                    <label title="' . $layout_type_custom_label_title . '" class="' . trim($layout_type_custom_label_class) . '" for="layout_type_custom">'. lang('Custom') . '</label>
-                                </div>
+                                    <input value="custom" class="radio" type="radio" id="layout_type_custom" name="layout_type"' . ($layout_type_custom_label_title !== '' ? ' aria-describedby="layout_type_custom_hint"' : '') . $layout_type_custom_option_disabled . $layout_type_custom_checked . '>
+                                    <label class="' . trim($layout_type_custom_label_class) . '" for="layout_type_custom">'. lang('Custom') . '</label>
+                                </div>' . ($layout_type_custom_label_title !== '' ? '
+                                <div class="form-text" id="layout_type_custom_hint">' . $layout_type_custom_label_title . '</div>' : '') . '
                             </fieldset>
                         </div>
                         <div class="col-12 md:col-6 lg:col-4 my-3" id="email_a_friend_submit_button_label_row" style="' . $email_a_friend_submit_button_label_row_style . '">
@@ -3124,6 +3074,14 @@ function pg_page_form_type_properties_from_post($page_type, $page_id, $source = 
         return $field($prefix . '_product_description_type', 'full_description');
     };
 
+    // A count box emptied or set below 1 saves the default the form shows:
+    // the INT UNSIGNED column would store 0, which the site reads as none.
+    $count = function ($name, $default) use ($field) {
+        $value = $field($name);
+
+        return ((int) $value < 1) ? $default : $value;
+    };
+
     $properties = array();
 
     switch ($page_type) {
@@ -3148,7 +3106,7 @@ function pg_page_form_type_properties_from_post($page_type, $page_id, $source = 
         case 'photo gallery':
             $properties = array(
                 'page_id' => $page_id,
-                'number_of_columns' => $field('photo_gallery_number_of_columns'),
+                'number_of_columns' => $count('photo_gallery_number_of_columns', 4),
                 'thumbnail_max_size' => $field('photo_gallery_thumbnail_max_size')
             );
 
@@ -3308,8 +3266,8 @@ function pg_page_form_type_properties_from_post($page_type, $page_id, $source = 
             $properties = array(
                 'page_id' => $page_id,
                 'summary' => $field('form_view_directory_summary', 0),
-                'summary_days' => $field('form_view_directory_summary_days'),
-                'summary_maximum_number_of_results' => $field('form_view_directory_summary_maximum_number_of_results'),
+                'summary_days' => $count('form_view_directory_summary_days', 30),
+                'summary_maximum_number_of_results' => $count('form_view_directory_summary_maximum_number_of_results', 5),
                 'form_list_view_heading' => $form_list_view_heading,
                 'subject_heading' => $subject_heading,
                 'number_of_submitted_forms_heading' => $number_of_submitted_forms_heading
@@ -3546,10 +3504,91 @@ function pg_page_form_type_properties_from_post($page_type, $page_id, $source = 
 }
 
 /**
+ * The form list views an editor may link to a form view directory: those
+ * outside an archived folder, in a folder a basic user may edit, whose custom
+ * form has fields. The drawing and the save both read this list, so a save
+ * changes only the links the screen offered.
+ *
+ * @param array $user  The signed-in user (validate_user())
+ * @return array  Rows with page_id, page_name, folder_id, custom_form_page_id
+ *                and form_fields (id, name), by name
+ */
+function pg_page_form_offered_form_list_views($user)
+{
+    $folders_that_user_has_access_to = array();
+
+    if ($user['role'] == 3) {
+        $folders_that_user_has_access_to = get_folders_that_user_has_access_to($user['id']);
+    }
+
+    $form_list_views = db_items(
+        "SELECT
+            page.page_id,
+            page.page_name,
+            page.page_folder as folder_id,
+            form_list_view_pages.custom_form_page_id
+        FROM page
+        LEFT JOIN form_list_view_pages ON
+            (page.page_id = form_list_view_pages.page_id)
+            AND (form_list_view_pages.collection = 'a')
+        LEFT JOIN folder ON page.page_folder = folder.folder_id
+        WHERE
+            (page.page_type = 'form list view')
+            AND (folder.folder_archived = '0')
+        ORDER BY page.page_name ASC");
+
+    $form_fields = array();
+
+    foreach (db_items("SELECT id, name, page_id FROM form_fields ORDER BY page_id ASC, sort_order ASC") as $form_field) {
+        $form_fields[$form_field['page_id']][] = $form_field;
+    }
+
+    $offered = array();
+
+    foreach ($form_list_views as $form_list_view) {
+        if ((check_folder_access_in_array($form_list_view['folder_id'], $folders_that_user_has_access_to) == true) && (isset($form_fields[$form_list_view['custom_form_page_id']]) == true)) {
+            $form_list_view['form_fields'] = $form_fields[$form_list_view['custom_form_page_id']];
+            $offered[] = $form_list_view;
+        }
+    }
+
+    return $offered;
+}
+
+/**
+ * What a save does to a page's links: it removes a stored link only when the
+ * screen offered it and the box was left unticked, adds a ticked one not yet
+ * stored and updates a ticked one already stored. A stored link the screen
+ * did not offer (a calendar the user has no access to, a form list view in an
+ * archived folder or out of the user's folders) is left untouched.
+ *
+ * @param array $stored   Ids linked now
+ * @param array $offered  Ids the screen drew a box for
+ * @param array $ticked   Ids posted as ticked
+ * @return array  'remove', 'add' and 'update' lists of ids as strings
+ */
+function pg_page_form_link_changes(array $stored, array $offered, array $ticked)
+{
+    $strings = function (array $ids) {
+        return array_values(array_unique(array_map('strval', $ids)));
+    };
+
+    $stored = $strings($stored);
+    $offered = $strings($offered);
+    $ticked = array_values(array_intersect($strings($ticked), $offered));
+
+    return array(
+        'remove' => array_values(array_diff(array_intersect($stored, $offered), $ticked)),
+        'add' => array_values(array_diff($ticked, $stored)),
+        'update' => array_values(array_intersect($ticked, $stored)),
+    );
+}
+
+/**
  * The records a page type keeps outside its own table: the site search tag
  * cloud of a search results page, and the form list views or calendars a
- * directory or calendar page shows. The old links are replaced with what was
- * submitted, keeping only those the user may reach.
+ * directory or calendar page shows. Only the links the screen offered the
+ * user are changed (pg_page_form_link_changes()); the others stay.
  *
  * @param string $page_type
  * @param int    $page_id
@@ -3566,51 +3605,55 @@ function pg_page_form_save_type_links($page_type, $page_id, $user)
             break;
 
         case 'form view directory':
-            db("DELETE FROM form_view_directories_form_list_views_xref WHERE form_view_directory_page_id = '" . escape($page_id) . "'");
+            $offered = array();
+            $ticked = array();
 
-            // prepare to get folders that user has access to, in order to determine which form list views should be available to be selected for the form view directory page type
-            $folders_that_user_has_access_to = array();
+            foreach (pg_page_form_offered_form_list_views($user) as $form_list_view) {
+                $offered[] = $form_list_view['page_id'];
 
-            // if user is a basic user, then get folders that user has access to
-            if ($user['role'] == 3) {
-                $folders_that_user_has_access_to = get_folders_that_user_has_access_to($user['id']);
+                if (($_POST['form_view_directory_form_list_view_' . $form_list_view['page_id']] ?? '') == 1) {
+                    $ticked[] = $form_list_view['page_id'];
+                }
             }
 
-            // get all unarchived form list views for form view directory page type
-            $form_list_views = db_items(
-                "SELECT
-                    page.page_id,
-                    page.page_name,
-                    page.page_folder as folder_id,
-                    form_list_view_pages.custom_form_page_id
-                FROM page
-                LEFT JOIN form_list_view_pages ON
-                    (page.page_id = form_list_view_pages.page_id)
-                    AND (form_list_view_pages.collection = 'a')
-                LEFT JOIN folder ON page.page_folder = folder.folder_id
-                WHERE
-                    (page.page_type = 'form list view')
-                    AND (folder.folder_archived = '0')
-                ORDER BY page.page_name ASC");
+            $stored = array();
+            $result = db_q("SELECT form_list_view_page_id FROM form_view_directories_form_list_views_xref WHERE form_view_directory_page_id = ?", array((string) $page_id)) or output_error('Query failed.');
 
-            // loop through all of the form list views in order to add them to the database if necessary
-            foreach ($form_list_views as $form_list_view) {
-                $prefix = 'form_view_directory_form_list_view_' . $form_list_view['page_id'];
+            while ($row = mysqli_fetch_assoc($result)) {
+                $stored[] = $row['form_list_view_page_id'];
+            }
 
-                // if the user has edit access to the form list view and the user selected it, then add it to the data
-                if ((check_folder_access_in_array($form_list_view['folder_id'], $folders_that_user_has_access_to) == TRUE) && (($_POST[$prefix] ?? '') == 1)) {
-                    db(
-                        "INSERT INTO form_view_directories_form_list_views_xref (
-                            form_view_directory_page_id,
-                            form_list_view_page_id,
-                            form_list_view_name,
-                            subject_form_field_id)
-                        VALUES (
-                            '" . escape($page_id) . "',
-                            '" . $form_list_view['page_id'] . "',
-                            '" . escape($_POST[$prefix . '_name'] ?? '') . "',
-                            '" . escape($_POST[$prefix . '_subject_form_field_id'] ?? '') . "')");
-                }
+            $changes = pg_page_form_link_changes($stored, $offered, $ticked);
+
+            foreach ($changes['remove'] as $form_list_view_page_id) {
+                db_q("DELETE FROM form_view_directories_form_list_views_xref WHERE (form_view_directory_page_id = ?) AND (form_list_view_page_id = ?)", array((string) $page_id, $form_list_view_page_id)) or output_error('Query failed.');
+            }
+
+            foreach ($changes['add'] as $form_list_view_page_id) {
+                $prefix = 'form_view_directory_form_list_view_' . $form_list_view_page_id;
+
+                db_q(
+                    "INSERT INTO form_view_directories_form_list_views_xref (
+                        form_view_directory_page_id,
+                        form_list_view_page_id,
+                        form_list_view_name,
+                        subject_form_field_id)
+                    VALUES (?, ?, ?, ?)",
+                    array((string) $page_id, $form_list_view_page_id, (string) ($_POST[$prefix . '_name'] ?? ''), (string) ($_POST[$prefix . '_subject_form_field_id'] ?? ''))) or output_error('Query failed.');
+            }
+
+            foreach ($changes['update'] as $form_list_view_page_id) {
+                $prefix = 'form_view_directory_form_list_view_' . $form_list_view_page_id;
+
+                db_q(
+                    "UPDATE form_view_directories_form_list_views_xref
+                    SET
+                        form_list_view_name = ?,
+                        subject_form_field_id = ?
+                    WHERE
+                        (form_view_directory_page_id = ?)
+                        AND (form_list_view_page_id = ?)",
+                    array((string) ($_POST[$prefix . '_name'] ?? ''), (string) ($_POST[$prefix . '_subject_form_field_id'] ?? ''), (string) $page_id, $form_list_view_page_id)) or output_error('Query failed.');
             }
 
             break;
@@ -3625,21 +3668,34 @@ function pg_page_form_save_type_links($page_type, $page_id, $user)
                 $prefix = 'calendar_event_view_calendar_';
             }
 
-            db("DELETE FROM $table WHERE page_id = '" . escape($page_id) . "'");
+            $offered = array();
+            $ticked = array();
 
-            $calendars = db_items("SELECT id, name FROM calendars ORDER BY name");
+            foreach (db_items("SELECT id, name FROM calendars ORDER BY name") as $calendar) {
+                if (validate_calendar_access($calendar['id']) == true) {
+                    $offered[] = $calendar['id'];
 
-            // if user has access to calendar and calendar was checked then connect the page to it
-            foreach ($calendars as $calendar) {
-                if ((validate_calendar_access($calendar['id']) == true) && ($_POST[$prefix . $calendar['id']] ?? '')) {
-                    db(
-                        "INSERT INTO $table (
-                           page_id,
-                           calendar_id)
-                        VALUES (
-                           '" . escape($page_id) . "',
-                           '" . $calendar['id'] . "')");
+                    if ($_POST[$prefix . $calendar['id']] ?? '') {
+                        $ticked[] = $calendar['id'];
+                    }
                 }
+            }
+
+            $stored = array();
+            $result = db_q("SELECT calendar_id FROM $table WHERE page_id = ?", array((string) $page_id)) or output_error('Query failed.');
+
+            while ($row = mysqli_fetch_assoc($result)) {
+                $stored[] = $row['calendar_id'];
+            }
+
+            $changes = pg_page_form_link_changes($stored, $offered, $ticked);
+
+            foreach ($changes['remove'] as $calendar_id) {
+                db_q("DELETE FROM $table WHERE (page_id = ?) AND (calendar_id = ?)", array((string) $page_id, $calendar_id)) or output_error('Query failed.');
+            }
+
+            foreach ($changes['add'] as $calendar_id) {
+                db_q("INSERT INTO $table (page_id, calendar_id) VALUES (?, ?)", array((string) $page_id, $calendar_id)) or output_error('Query failed.');
             }
 
             break;

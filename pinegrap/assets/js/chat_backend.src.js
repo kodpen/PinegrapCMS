@@ -285,39 +285,80 @@
         return fileLink;
     }
 
+    // Year, month (1-12), day, hour (0-23) and minute of a moment in the
+    // panel's zone; the browser's own zone when the name is unknown to it.
+    function zoneParts(date, zone) {
+        if (zone && typeof Intl !== 'undefined' && Intl.DateTimeFormat) {
+            try {
+                var parts = {};
+                new Intl.DateTimeFormat('en-US', {
+                    timeZone: zone,
+                    hourCycle: 'h23',
+                    year: 'numeric',
+                    month: 'numeric',
+                    day: 'numeric',
+                    hour: 'numeric',
+                    minute: 'numeric'
+                }).formatToParts(date).forEach(function (part) {
+                    parts[part.type] = parseInt(part.value, 10);
+                });
+                if (!isNaN(parts.year) && !isNaN(parts.minute)) {
+                    return {
+                        year: parts.year,
+                        month: parts.month,
+                        day: parts.day,
+                        hour: parts.hour % 24,
+                        minute: parts.minute
+                    };
+                }
+            } catch (e) {
+                // Unknown zone name: fall through to the browser's zone.
+            }
+        }
+
+        return {
+            year: date.getFullYear(),
+            month: date.getMonth() + 1,
+            day: date.getDate(),
+            hour: date.getHours(),
+            minute: date.getMinutes()
+        };
+    }
+
     function formatTime(timestamp) {
         if (!timestamp) {
             return '';
         }
 
-        var date = new Date(timestamp * 1000);
-        var now = new Date();
-        var sameDay = date.getFullYear() === now.getFullYear()
-            && date.getMonth() === now.getMonth()
-            && date.getDate() === now.getDate();
+        // The site's clock, date order and the panel's time zone.
+        var clock = config.clock || {};
+        var date = zoneParts(new Date(timestamp * 1000), clock.zone);
+        var now = zoneParts(new Date(), clock.zone);
+        var sameDay = date.year === now.year
+            && date.month === now.month
+            && date.day === now.day;
 
         function pad(value) {
             return (value < 10 ? '0' : '') + value;
         }
 
-        // The site's clock: 12-hour "2:05 PM" or 24-hour "14:05".
-        var clock = config.clock || {};
+        // 12-hour "2:05 PM" or 24-hour "14:05".
         var time;
         if (clock.twelve_hours) {
-            var hours = date.getHours() % 12 || 12;
-            time = hours + ':' + pad(date.getMinutes()) + ' ' + (date.getHours() < 12 ? 'AM' : 'PM');
+            var hours = date.hour % 12 || 12;
+            time = hours + ':' + pad(date.minute) + ' ' + (date.hour < 12 ? 'AM' : 'PM');
         } else {
-            time = pad(date.getHours()) + ':' + pad(date.getMinutes());
+            time = pad(date.hour) + ':' + pad(date.minute);
         }
 
         if (sameDay) {
             return time;
         }
 
-        // The site's date order: month/day or day.month.
+        // Month/day or day.month.
         var day = clock.date_order === 'month_day'
-            ? pad(date.getMonth() + 1) + '/' + pad(date.getDate())
-            : pad(date.getDate()) + '.' + pad(date.getMonth() + 1);
+            ? pad(date.month) + '/' + pad(date.day)
+            : pad(date.day) + '.' + pad(date.month);
 
         return day + ' ' + time;
     }
@@ -652,7 +693,7 @@
             var source = (user && user.name) ? user.name : (fallbackName || '');
 
             face.classList.add('avatar-subtle', 'theme-secondary');
-            face.textContent = source.replace(/^\s+/, '').charAt(0).toUpperCase() || '?';
+            face.textContent = source.replace(/^\s+/, '').charAt(0).toLocaleUpperCase(document.documentElement.lang || undefined) || '?';
         }
 
         if (user && (['online', 'away', 'offline'].indexOf(user.presence) !== -1)) {
@@ -734,7 +775,7 @@
         nameLine.appendChild(el('span', 'pg-chat-row-name fw-semibold', config.ai.label));
 
         var badgeAi = el('span', 'badge rounded-pill theme-success flex-shrink-0', 'AI');
-        badgeAi.style.fontSize = '10px';
+        badgeAi.style.fontSize = '0.625rem';
         nameLine.appendChild(badgeAi);
 
         main.appendChild(nameLine);
@@ -767,7 +808,7 @@
 
         var titleWrap = el('div', 'flex-grow-1 overflow-hidden');
         var titleLine = el('div', 'fw-semibold text-truncate', config.ai.label);
-        titleLine.style.fontSize = '13px';
+        titleLine.style.fontSize = '0.8125rem';
         titleWrap.appendChild(titleLine);
         titleWrap.appendChild(el('small', 'fg-secondary', STR.online));
         header.appendChild(titleWrap);
@@ -1043,7 +1084,7 @@
 
         var titleWrap = el('div', 'flex-grow-1 overflow-hidden');
         var titleLine = el('div', 'fw-semibold text-truncate');
-        titleLine.style.fontSize = '13px';
+        titleLine.style.fontSize = '0.8125rem';
 
         // Header title: name/surname links to the linked contact's edit
         // page, the small @username next to it links to the account's edit
@@ -1054,7 +1095,7 @@
 
         if (headerPeer && headerPeer.username) {
             var accountName = el('span', 'fg-secondary ms-1', '@' + headerPeer.username);
-            accountName.style.fontSize = '11px';
+            accountName.style.fontSize = '0.6875rem';
             accountName.style.fontWeight = 'normal';
             titleLine.appendChild(accountName);
         }
@@ -1138,7 +1179,15 @@
 
         panel.appendChild(header);
 
+        // The messages scroll in their own box: in the tab order so the
+        // arrow keys scroll it, named, and a log, so a new message is read
+        // out. Live only after the first fill (appendMessages()), so opening
+        // a long history is not read out as new.
         var body = el('div', 'pg-chat-body bg-1 px-3 py-3');
+        body.setAttribute('role', 'log');
+        body.setAttribute('tabindex', '0');
+        body.setAttribute('aria-label', STR.messages);
+        body.setAttribute('aria-live', 'off');
         panel.appendChild(body);
 
         // ── Composer ────────────────────────────────────────────────────
@@ -1265,9 +1314,16 @@
             textarea.style.height = 'auto';
 
             var wanted = textarea.scrollHeight;
+            // The cap is the CSS max-height (6rem), so it grows with the
+            // browser's text size.
+            var cap = parseFloat(window.getComputedStyle(textarea).maxHeight);
 
-            textarea.style.height = Math.min(wanted, 96) + 'px';
-            textarea.style.overflowY = (wanted > 96) ? 'auto' : 'hidden';
+            if (isNaN(cap)) {
+                cap = 96;
+            }
+
+            textarea.style.height = Math.min(wanted, cap) + 'px';
+            textarea.style.overflowY = (wanted > cap) ? 'auto' : 'hidden';
         }
 
         function refreshSendState() {
@@ -1766,6 +1822,16 @@
 
         if (messages.length && shouldScroll) {
             body.scrollTop = body.scrollHeight;
+        }
+
+        // The first fill is the history; what arrives after it is new. The
+        // switch waits a moment so the history's own insertions are not
+        // caught by the live part.
+        if ((body.getAttribute('aria-live') === 'off') && !body.getAttribute('data-pg-chat-filled')) {
+            body.setAttribute('data-pg-chat-filled', '1');
+            setTimeout(function () {
+                body.setAttribute('aria-live', 'polite');
+            }, 1000);
         }
     }
 

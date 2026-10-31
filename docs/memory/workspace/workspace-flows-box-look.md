@@ -1,10 +1,10 @@
 ---
 name: workspace-flows-box-look
-description: How a flow box looks (V1, V2 of plans/workspace-flows-look.md, PRs #3118, #3158): its group and colour per theme, its line icon, the 1.5 px border, the selection ring, control arrows
+description: How a flow box looks (V1, V2 of plans/workspace-flows-look.md, PRs #3118, #3158): group colour per theme, line icon, 1.5 px border, selection ring, arrows, palette wrapping
 ---
 
 ## Which group is a box in?
-- `KINDS[kind].group` in workspace_flow.js: start (manual, schedule, event, join, row), values (constants, value), logic (condition, delay, end), people (task, task_open, checkin, approval, task_digest, lead), message (post, email, notify, report), system (web_check, webhook, change, start_flow, start_action, mcp). The owner's plan lists them so; the add column (V4) lists them in that order.
+- `KINDS[kind].group` in workspace_flow.js: start (manual, schedule, event, join, row), values (constants, value), logic (condition, delay, for_each, for_each_end, end), people (task, task_open, checkin, approval, task_digest, lead), message (post, email, notify, report), system (web_check, webhook, change, start_flow, start_action, mcp, row_add, row_set). The owner's plan lists them so; the add column (V4) lists them in that order.
 - `kindClasses(kind)` gives a box and its outline entry `wsf-node-<kind> wsf-group-<group>`; an unknown kind `wsf-node-unknown`, no group (grey).
 - A new kind needs its group, or `test_workspace_flows_canvas_every_kind_has_one_group` fails.
 
@@ -24,6 +24,9 @@ description: How a flow box looks (V1, V2 of plans/workspace-flows-look.md, PRs 
 
 ## Arrows?
 - Control arrows `.wsf-edge-line`: 2 px #7d8696 (3.67:1 on white), filled head `#wsf-arrow` in the same grey; selected, bad and the run view's taken (green) and not-taken (faded) arrows unchanged.
+
+## How does the palette fit its column?
+- A long box name wraps (`.wsf-palette-item`: `--bs-btn-white-space: normal`, `min-width: 0`, `overflow-wrap: anywhere`) and the search field never shrinks (`.wsf-palette-search`: `flex-shrink: 0`). Under Bootstrap 6 `.btn` is nowrap and `.form-control` a flex box: the long names ran past the column with a sideways scroll bar, and the field was squeezed to a thin line (#3805).
 
 ## Other drawings?
 - A scheduled action drawn read-only (`showAction()`): `ACTION_KINDS` gives its boxes groups: when start, condition logic, step people, follow-up system (it starts another action). Their own `wsf-node-sa-*` colours went.

@@ -18,14 +18,16 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 }
 
 // A price typed in the currency, in integer minor units, or null when it is
-// empty, not a number or below zero. A comma is read as the decimal point.
+// empty, not a number or below zero. It is read by pg_normalize_amount(),
+// as on the product screen: 1.250,00 and 1,250.00 are both 1250, and a
+// single separator with three digits after it is read by the panel language.
 // round() rather than a cast: the cast truncates and the card and the feed
 // then disagree by a kuruş. Zero is allowed and negative is not: a shop
 // really does carry free articles -- donations, account payments -- but
 // nothing costs less than nothing.
 function pg_explorer_catalog_quick_price($value)
 {
-    $number = str_replace(',', '.', (string) $value);
+    $number = pg_normalize_amount((string) $value);
 
     if (($number === '') || (is_numeric($number) == false)) {
         return null;
@@ -40,13 +42,15 @@ function pg_explorer_catalog_quick_price($value)
     return $number;
 }
 
-// A typed stock count in whole units, or null when it is empty or not a
-// number. Stock does not go negative: a shelf holds none or some.
+// A typed stock count in whole units, or null when it is empty, not a number
+// or not whole. It is read by pg_normalize_amount(), as the price is, so a
+// grouped figure (1.200 on a Turkish panel) is twelve hundred, not 1. Stock
+// does not go negative: a shelf holds none or some.
 function pg_explorer_catalog_quick_quantity($value)
 {
-    $value = (string) $value;
+    $value = pg_normalize_amount((string) $value);
 
-    if (($value === '') || (is_numeric($value) == false)) {
+    if (($value === '') || (is_numeric($value) == false) || ((float) $value != floor((float) $value))) {
         return null;
     }
 
@@ -211,7 +215,7 @@ function pg_explorer_handle_catalog_quick_edit($type, $request, $user)
 
     $quick_message = lang(array(
         'string' => '{var:1} was updated ({var:2}).',
-        'vars' => array(h($quick_row['name']), $quick_note)));
+        'vars' => array($quick_row['name'], $quick_note)));
 
     log_activity($quick_message, $_SESSION['sessionusername']);
 

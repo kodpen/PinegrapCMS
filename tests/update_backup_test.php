@@ -146,3 +146,32 @@ function test_update_backup_rollback_reads_its_copy()
 	pg_assert_false(strpos($body, "hash_file('sha256', \$path)") !== false);
 	pg_assert_false(strpos($body, '$zip->open($path)') !== false);
 }
+
+// Backup and rollback: the backup's manifest names the build, the rollback
+// puts the file back or deletes it.
+function test_update_backup_build_in_manifest_and_rollback()
+{
+	$manifest = pg_update_backup_manifest('2026.11.0', 1793000000, 'p.zip', 2, array('a.php'), array('version' => '2026.11.0', 'build' => 'bbbbbbb.202611051500', 'git_ref' => 'v2026.11.0-beta.202611051500'));
+
+	pg_assert_same('bbbbbbb.202611051500', $manifest['build']);
+	pg_assert_same('v2026.11.0-beta.202611051500', $manifest['git_ref']);
+	pg_assert_same(array('a.php'), $manifest['added']);
+	pg_assert_same('', pg_update_backup_manifest('2026.11.0', 1, 'p.zip', 0, array(), array('version' => '', 'build' => '', 'git_ref' => ''))['build'], 'no build');
+
+	$folder = sys_get_temp_dir() . '/pg_update_backup_build_' . bin2hex(random_bytes(6));
+	mkdir($folder);
+	$path = $folder . '/update_build.json';
+
+	pg_assert_true(pg_update_build_write('2026.11.0', 'ccccccc.202611061200', '', $path));
+	pg_assert_true(pg_update_build_restore($manifest, $path));
+	pg_assert_same('bbbbbbb.202611051500', pg_update_build_read($path, '2026.11.0')['build'], 'restored');
+	pg_assert_same('v2026.11.0-beta.202611051500', pg_update_build_read($path, '2026.11.0')['git_ref']);
+
+	pg_assert_true(pg_update_build_restore(array('version' => '2026.4.10', 'build' => ''), $path));
+	pg_assert_false(is_file($path), 'deleted when the backup has none');
+
+	pg_assert_true(pg_update_build_restore(array('version' => '2026.4.10'), $path), 'an archive made before the field');
+	pg_assert_false(is_file($path));
+
+	@rmdir($folder);
+}

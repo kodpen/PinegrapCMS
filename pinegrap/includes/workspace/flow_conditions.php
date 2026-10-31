@@ -163,7 +163,13 @@ function ws_flow_condition_problems($config, $name)
                 : array();
 
         case 'value':
-            return ($rule['ref'] === '') ? array(lang(array('string' => 'The box {var:1} needs the value it looks at.', 'vars' => $name))) : array();
+            if ($rule['ref'] === '') {
+                return array(lang(array('string' => 'The box {var:1} needs the value it looks at.', 'vars' => $name)));
+            }
+
+            return ws_flow_condition_number_missing($rule)
+                ? array(lang(array('string' => 'The box {var:1} compares sizes: {var:2} is not a number.', 'vars' => array($name, $rule['value']))))
+                : array();
     }
 
     return array();
@@ -192,12 +198,42 @@ function ws_flow_condition_check($viewer, $config)
     if ($rule['type'] === 'value') {
         $config = ws_flow_condition_normalize(array('rule' => $rule));
 
-        return ($config['rule']['ref'] === '')
-            ? array('ok' => false, 'error' => lang('Choose the value the box looks at.'), 'rule' => null)
+        if ($config['rule']['ref'] === '') {
+            return array('ok' => false, 'error' => lang('Choose the value the box looks at.'), 'rule' => null);
+        }
+
+        // A flow published before typed numbers were checked fails the box
+        // rather than leaving on no without a word.
+        return ws_flow_condition_number_missing($config['rule'])
+            ? array('ok' => false, 'error' => lang(array('string' => 'The condition compares sizes: {var:1} is not a number.', 'vars' => $config['rule']['value'])), 'rule' => null)
             : array('ok' => true, 'error' => '', 'rule' => $config['rule']);
     }
 
     return ws_scheduled_rule_input($viewer, $rule);
+}
+
+/**
+ * Whether a value rule's operator compares sizes (more, less), which hold
+ * only between two numbers. Pure.
+ *
+ * @param string $op
+ * @return bool
+ */
+function ws_flow_condition_sized($op)
+{
+    return in_array((string) $op, array('gt', 'gte', 'lt', 'lte'), true);
+}
+
+/**
+ * Whether a value rule compares sizes with a typed value that is no number
+ * as the site writes it (ws_flow_typed_number()).
+ *
+ * @param array $rule ws_flow_condition_normalize() value rule
+ * @return bool
+ */
+function ws_flow_condition_number_missing($rule)
+{
+    return ws_flow_condition_sized($rule['op'] ?? '') && (ws_flow_typed_number($rule['value'] ?? '') === null);
 }
 
 /**
@@ -258,11 +294,10 @@ function ws_flow_condition_run($run, $step, $node, $owner)
     }
 
     if ($check['rule']['type'] === 'value') {
-        $values = ws_step_node_values(db_items("SELECT node_id, status, outcome, result FROM ws_flow_run_steps
-            WHERE run_id = '" . (int) $run['id'] . "' AND status IN ('done', 'failed', 'skipped')"));
-        $values[WS_STEP_TRIGGER] = ws_step_trigger_values_for($owner, ws_flow_run_context($run));
-        $values = ws_flow_pure_values(ws_flow_run_graph($run), $values) + $values;
-        $held = ws_flow_condition_value_holds($check['rule'], $values);
+        // Inside a loop, the boxes of its own item and the current item.
+        $graph = ws_flow_run_graph($run);
+        $values = ws_step_run_values($run, $graph, $owner, ws_flow_run_context($run), $step);
+        $held = ws_flow_condition_value_holds($check['rule'], $values, $graph);
         $end = ws_flow_condition_settlement($held['holds']);
 
         ws_flow_step_settle($step, 'running', $end['status'], $end['outcome'], $held['text']);
@@ -282,15 +317,17 @@ function ws_flow_condition_run($run, $step, $node, $owner)
 
 /**
  * Whether a value rule holds against the run's values, and the sentence the
- * box keeps: the rule and the value it read. A value the run lacks (a box
- * skipped, a field it did not give) is ''. A comparison of size holds only
- * between two numbers, so an empty value is never "less than 5". Pure.
+ * box keeps: the rule, the value named as the value picker names it, and
+ * the value it read. A value the run lacks (a box skipped, a field it did
+ * not give) is ''. A comparison of size holds only between two numbers, so
+ * an empty value is never "less than 5". Pure.
  *
  * @param array $rule   ws_flow_condition_normalize() value rule
  * @param array $values ws_step_node_values(), the trigger's under WS_STEP_TRIGGER
+ * @param array $graph  the graph the run follows, which names the value
  * @return array holds, text
  */
-function ws_flow_condition_value_holds($rule, $values)
+function ws_flow_condition_value_holds($rule, $values, $graph = array())
 {
     $current = '';
 
@@ -300,14 +337,122 @@ function ws_flow_condition_value_holds($rule, $values)
 
     $op = (string) $rule['op'];
     $value = (string) $rule['value'];
-    $sized = in_array($op, array('gt', 'gte', 'lt', 'lte'), true);
-    $holds = ($sized && (!is_numeric(trim($current)) || !is_numeric(trim($value))))
-        ? false
-        : ws_scheduled_compare($current, $op, $value, 'text');
-    $said = trim(substr((string) $rule['ref'], 2, -2) . ' ' . (ws_scheduled_operators()[$op] ?? $op) . ' ' . (in_array($op, array('empty', 'not_empty'), true) ? '' : $value));
+    $shown = in_array($op, array('empty', 'not_empty'), true) ? '' : $value;
+
+    if (ws_flow_condition_sized($op)) {
+        // The run's value is mostly a machine number (1500); the typed one
+        // is read as the site writes it (1.000,50).
+        $a = is_numeric(trim($current)) ? (float) trim($current) : ws_flow_typed_number($current);
+        $b = ws_flow_typed_number($value);
+        $holds = ($a !== null) && ($b !== null) && ws_scheduled_compare(ws_flow_derived_number($a), $op, ws_flow_derived_number($b), 'text');
+        $shown = ($b === null) ? $value : ws_flow_typed_number_shown($b);
+    } else {
+        $holds = ws_scheduled_compare($current, $op, $value, 'text');
+    }
+
+    $said = trim(ws_flow_condition_value_name((string) $rule['ref'], $graph) . ' ' . (ws_scheduled_operators()[$op] ?? $op) . ' ' . $shown);
     $text = $holds
         ? lang(array('string' => 'The condition held: {var:1} (it was "{var:2}").', 'vars' => array($said, $current)))
         : lang(array('string' => 'The condition did not hold: {var:1} (it was "{var:2}").', 'vars' => array($said, $current)));
 
     return array('holds' => $holds, 'text' => $text);
+}
+
+/**
+ * A value a condition reads, named as the value picker's chip names it:
+ * "Box name › Value" (a box by its label, a task or approval box by its
+ * title, else by its kind; what started the run by its start box). A box
+ * the graph no longer has, or a field it does not give, keeps the reference
+ * as written. Pure but for a row start box's columns.
+ *
+ * @param string $ref   {{node.<id>.<field>}} or {{trigger.<field>}}
+ * @param array  $graph the graph the run follows
+ * @return string
+ */
+function ws_flow_condition_value_name($ref, $graph)
+{
+    $fallback = trim(substr((string) $ref, 2, -2));
+
+    if (preg_match(WS_STEP_VALUE_PATTERN, (string) $ref, $match) !== 1) {
+        return $fallback;
+    }
+
+    $kinds = ws_flow_kinds();
+    $trigger = ((string) $match[1] === '');
+    $box = null;
+
+    foreach ((array) ($graph['nodes'] ?? array()) as $node) {
+        $kind = (string) ($node['kind'] ?? '');
+
+        if ($trigger ? !empty($kinds[$kind]['trigger']) : ((string) ($node['id'] ?? '') === (string) $match[1])) {
+            $box = $node;
+            break;
+        }
+    }
+
+    if ($box === null) {
+        return $fallback;
+    }
+
+    $label = ws_flow_condition_field_label($box, (string) $match[2], $kinds);
+
+    if ($label === '') {
+        return $fallback;
+    }
+
+    $kind = (string) $box['kind'];
+    $config = (array) ($box['config'] ?? array());
+    $name = in_array($kind, array('task', 'task_open', 'approval'), true) ? (string) ($config['title'] ?? '') : '';
+    $name = ($name !== '') ? $name : (string) ($box['label'] ?? '');
+    $name = ($name !== '') ? $name : (string) ($kinds[$kind]['label'] ?? $kind);
+
+    return $name . ' › ' . $label;
+}
+
+/**
+ * What the value picker calls a field of a box: text, outcome and status of
+ * a box that runs, else the label of the value it declares; '' for a field
+ * it does not give. Pure but for a row start box's columns.
+ *
+ * @param array  $node  a box of the graph
+ * @param string $field
+ * @param array  $kinds ws_flow_kinds()
+ * @return string
+ */
+function ws_flow_condition_field_label($node, $field, $kinds)
+{
+    $kind = (string) $node['kind'];
+    $config = (array) ($node['config'] ?? array());
+    $start = !empty($kinds[$kind]['trigger']);
+
+    if (!$start && ($kind !== 'constants') && ($kind !== 'value')) {
+        $own = array('text' => lang('What it did'), 'outcome' => lang('Outcome'), 'status' => lang('Status'));
+
+        if (isset($own[$field])) {
+            return $own[$field];
+        }
+    }
+
+    if ($kind === 'value') {
+        return ($field === 'value') ? lang('Value') : '';
+    }
+
+    if ($kind === 'constants') {
+        $outputs = function_exists('ws_flow_constants_outputs') ? ws_flow_constants_outputs($config) : array();
+    } elseif ($start) {
+        $outputs = function_exists('ws_flow_trigger_outputs') ? ws_flow_trigger_outputs($kind, $config) : array();
+    } elseif (($kind === 'for_each') && function_exists('ws_flow_loop_outputs')) {
+        $outputs = ws_flow_loop_outputs($config);
+    } else {
+        $outputs = (!empty($kinds[$kind]['step']) && function_exists('ws_step_outputs')) ? ws_step_outputs($kind, $config) : ($kinds[$kind]['outputs'] ?? array());
+    }
+
+    foreach ($outputs as $output) {
+        if ((string) ($output['key'] ?? '') === $field) {
+            // A constants row is named by its key, as the picker names it.
+            return (string) (($output['label'] ?? '') !== '' ? $output['label'] : $field);
+        }
+    }
+
+    return '';
 }

@@ -4,8 +4,8 @@
  *
  * The İYS (İleti Yönetim Sistemi) client: the brand list, adding one consent
  * and reading the changes recipients made through İYS, and the daily job
- * that pushes the e-mail marketing answers of consent_log to İYS and pulls
- * the refusals back.
+ * that pushes the e-mail and SMS marketing answers of consent_log to İYS
+ * (EPOSTA and MESAJ) and pulls the changes back.
  *
  * The account is the connect_apps row "iys", as the SMS providers keep
  * theirs: the API user is client_id, its password sealed with the site key;
@@ -289,6 +289,94 @@ function pg_iys_consent_body($email, $status, $created_at)
 }
 
 /**
+ * The form İYS takes a number in: a Turkish mobile number as +905xxxxxxxxx,
+ * '' for any other (a landline, a number abroad, none).
+ *
+ * @param mixed $number as stored or posted
+ * @return string
+ */
+function pg_iys_sms_recipient($number)
+{
+    $digits = is_scalar($number) ? pg_sms_number((string) $number) : '';
+
+    return (strpos($digits, '905') === 0) ? '+' . $digits : '';
+}
+
+/**
+ * The consent İYS is sent for one SMS consent_log row: the MESAJ channel for
+ * a Turkish mobile number, otherwise as pg_iys_consent_body().
+ *
+ * @param string $number     the number the answer is for (pg_iys_push_number())
+ * @param string $status     consent_log status: granted or refused
+ * @param int    $created_at when the answer was given
+ * @return array|null null when the row is not one İYS takes
+ */
+function pg_iys_sms_consent_body($number, $status, $created_at)
+{
+    $recipient = pg_iys_sms_recipient($number);
+
+    if (($recipient === '') || !in_array($status, array('granted', 'refused'), true) || ((int) $created_at <= 0)) {
+        return null;
+    }
+
+    return array(
+        'consentDate'   => pg_iys_date($created_at),
+        'source'        => 'HS_WEB',
+        'recipient'     => $recipient,
+        'recipientType' => 'BIREYSEL',
+        'status'        => ($status === 'granted') ? 'ONAY' : 'RET',
+        'type'          => 'MESAJ',
+    );
+}
+
+/**
+ * The number an SMS answer is for. A checkout asks about the billing phone of
+ * the order, so its answer goes with that number while it is a mobile one;
+ * every other screen asks about the contact's mobile number.
+ *
+ * @param array $row pg_iys_push_rows() row: source, phone, order_phone
+ * @return string '' when there is none
+ */
+function pg_iys_push_number($row)
+{
+    $phone = isset($row['phone']) ? (string) $row['phone'] : '';
+    $order_phone = isset($row['order_phone']) ? (string) $row['order_phone'] : '';
+
+    if (isset($row['source']) && ($row['source'] === 'checkout') && (pg_iys_sms_recipient($order_phone) !== '')) {
+        return $order_phone;
+    }
+
+    return $phone;
+}
+
+/**
+ * The forms a stored mobile number can take once spaces, dashes, brackets,
+ * dots and slashes are dropped, all read back by pg_sms_number() as the
+ * same number. One query with them finds the contacts of a number although
+ * contacts.mobile_phone is kept as people typed it.
+ *
+ * @param string $digits pg_sms_number() of a Turkish mobile: 905xxxxxxxxx
+ * @return string[] empty for any other number
+ */
+function pg_iys_number_variants($digits)
+{
+    return preg_match('/^905\d{9}$/', (string) $digits) ? pg_sms_number_variants($digits) : array();
+}
+
+/**
+ * Whether a refusal pulled from İYS is written to the consent log for a
+ * contact: only while their last SMS answer here is a yes, so sending stops.
+ * A contact never asked, or one who said no already, gets no new row.
+ *
+ * @param array $current pg_consent_log_current() of the contact
+ * @return bool
+ */
+function pg_iys_sms_refusal_needed($current)
+{
+    return isset($current['sms:marketing']['status']) && ($current['sms:marketing']['status'] === 'granted');
+}
+
+/**
  * The first error İYS gave in a body, as "code: message", cut short.
  *
  * @param mixed $data the decoded body
@@ -434,6 +522,44 @@ function pg_iys_changes_parse($answer)
 }
 
 /**
+ * The SMS changes of a changes answer: MESAJ items for a Turkish mobile
+ * number with a known status. The cursor and the count of the page are
+ * pg_iys_changes_parse()'s.
+ *
+ * @param array $answer pg_iys_answer()
+ * @return array[] number (905xxxxxxxxx), status approved|refused, at
+ */
+function pg_iys_sms_changes_parse($answer)
+{
+    $changes = array();
+    $data = $answer['data'];
+
+    if (($answer['outcome'] !== 'ok') || !is_array($data) || !isset($data['list']) || !is_array($data['list'])) {
+        return $changes;
+    }
+
+    foreach ($data['list'] as $item) {
+        if (!is_array($item) || !isset($item['type'], $item['status'], $item['recipient']) || ($item['type'] !== 'MESAJ')) {
+            continue;
+        }
+
+        $recipient = pg_iys_sms_recipient($item['recipient']);
+
+        if (($recipient === '') || !in_array($item['status'], array('ONAY', 'RET'), true)) {
+            continue;
+        }
+
+        $changes[] = array(
+            'number' => substr($recipient, 1),
+            'status' => ($item['status'] === 'ONAY') ? 'approved' : 'refused',
+            'at'     => pg_iys_timestamp(isset($item['consentDate']) ? $item['consentDate'] : null),
+        );
+    }
+
+    return $changes;
+}
+
+/**
  * One call. GET without a body, POST with one.
  *
  * @param array $request url, headers, optional body
@@ -504,29 +630,41 @@ function pg_iys_state_save($state)
 }
 
 /**
- * The e-mail marketing answers not pushed yet, oldest first. Only a person's
- * own answer (pg_consent_log_answers()) is in the log: a contact opted in by
- * a default, an import or the API has no row and is never pushed. Rows
- * pulled from İYS are not sent back.
+ * The e-mail marketing answers not pushed yet, and the SMS ones while the
+ * contacts carry iys_sms_status, oldest first. Only a person's own answer
+ * (pg_consent_log_answers()) is in the log: a contact opted in by a default,
+ * an import or the API has no row and is never pushed. Rows pulled from İYS
+ * are not sent back. An SMS row carries the contact's mobile number and, for
+ * a checkout answer, the billing phone of the contact's latest order.
  *
- * @param int $after_id
- * @param int $limit
- * @return array rows: id, created_at, status, email
+ * @param int  $after_id
+ * @param int  $limit
+ * @param bool $sms include the SMS rows
+ * @return array rows: id, created_at, channel, source, status, contact_id,
+ *               email, phone, order_phone
  */
-function pg_iys_push_rows($after_id, $limit)
+function pg_iys_push_rows($after_id, $limit, $sms = false)
 {
     return db_items(
         "SELECT
             consent_log.id,
             consent_log.created_at,
+            consent_log.channel,
+            consent_log.source,
             consent_log.status,
-            COALESCE(NULLIF(contacts.email_address, ''), user.user_email, '') AS email
+            consent_log.contact_id,
+            COALESCE(NULLIF(contacts.email_address, ''), user.user_email, '') AS email,
+            COALESCE(contacts.mobile_phone, '') AS phone,
+            IF(
+                (consent_log.channel = 'sms') AND (consent_log.source = 'checkout') AND (consent_log.contact_id > 0),
+                (SELECT orders.billing_phone_number FROM orders WHERE orders.contact_id = consent_log.contact_id ORDER BY orders.id DESC LIMIT 1),
+                NULL) AS order_phone
         FROM consent_log
         LEFT JOIN contacts ON (consent_log.contact_id > 0) AND (contacts.id = consent_log.contact_id)
         LEFT JOIN user ON (consent_log.user_id > 0) AND (user.user_id = consent_log.user_id)
         WHERE
             (consent_log.id > '" . (int) $after_id . "')
-            AND (consent_log.channel = 'email')
+            AND " . ($sms ? "(consent_log.channel IN ('email', 'sms'))" : "(consent_log.channel = 'email')") . "
             AND (consent_log.purpose = 'marketing')
             AND (consent_log.status IN ('granted', 'refused'))
             AND (consent_log.source <> 'iys')
@@ -540,12 +678,13 @@ function pg_iys_push_rows($after_id, $limit)
  *
  * @param array $app   pg_iys_app()
  * @param int   $limit rows per run
+ * @param bool  $sms   push the SMS answers too (contacts.iys_sms_status exists)
  * @return array pushed, rejected, skipped, last_id, error, dry_run
  */
-function pg_iys_push($app, $limit = 500)
+function pg_iys_push($app, $limit = 500, $sms = false)
 {
     $result = array('pushed' => 0, 'rejected' => 0, 'skipped' => 0, 'last_id' => $app['push_id'], 'error' => '', 'dry_run' => !$app['live']);
-    $rows = pg_iys_push_rows($app['push_id'], $limit);
+    $rows = pg_iys_push_rows($app['push_id'], $limit, $sms);
 
     if (!$rows) {
         return $result;
@@ -569,7 +708,10 @@ function pg_iys_push($app, $limit = 500)
     }
 
     foreach ($rows as $row) {
-        $consent = pg_iys_consent_body($row['email'], $row['status'], $row['created_at']);
+        $is_sms = ($row['channel'] === 'sms');
+        $consent = $is_sms
+            ? pg_iys_sms_consent_body(pg_iys_push_number($row), $row['status'], $row['created_at'])
+            : pg_iys_consent_body($row['email'], $row['status'], $row['created_at']);
 
         if ($consent !== null) {
             $answer = pg_iys_call(pg_iys_consent_request($app, $token['token'], $consent));
@@ -579,7 +721,18 @@ function pg_iys_push($app, $limit = 500)
                 break;
             }
 
-            if ($answer['outcome'] === 'ok') {
+            if (($answer['outcome'] === 'ok') && $is_sms) {
+                $result['pushed']++;
+
+                // The contact whose answer it was; another contact with the
+                // same number gets the status from İYS's changes.
+                if ((int) $row['contact_id'] > 0) {
+                    $audit_before = pg_audit_fetch_many('contacts', array((int) $row['contact_id']));
+                    db("UPDATE contacts SET iys_sms_status = '" . (($consent['status'] === 'ONAY') ? 'approved' : 'refused') . "'
+                        WHERE id = '" . (int) $row['contact_id'] . "'");
+                    pg_audit_record_many('update', 'contacts', $audit_before);
+                }
+            } elseif ($answer['outcome'] === 'ok') {
                 $result['pushed']++;
                 $audit_before = pg_audit_fetch_by('contacts', 'email_address', $consent['recipient']);
                 db("UPDATE contacts SET iys_email_status = '" . (($consent['status'] === 'ONAY') ? 'approved' : 'refused') . "'
@@ -613,13 +766,17 @@ function pg_iys_push($app, $limit = 500)
  * back). An approval only records the status: whether the person wants the
  * mails is their own answer here, which a late page of changes must not undo.
  *
+ * The SMS changes are applied the same way to the contacts with the number
+ * (pg_iys_apply_sms_changes()) while the contacts carry iys_sms_status.
+ *
  * @param array $app   pg_iys_app()
  * @param int   $pages pages of 999 changes per run
- * @return array approved, refused, error
+ * @param bool  $sms   apply the SMS changes too
+ * @return array approved, refused, error, sms_approved, sms_refused
  */
-function pg_iys_pull($app, $pages = 10)
+function pg_iys_pull($app, $pages = 10, $sms = false)
 {
-    $result = array('approved' => 0, 'refused' => 0, 'error' => '');
+    $result = array('approved' => 0, 'refused' => 0, 'error' => '', 'sms_approved' => 0, 'sms_refused' => 0);
     $token = pg_iys_token($app);
 
     if ($token['token'] === '') {
@@ -643,6 +800,12 @@ function pg_iys_pull($app, $pages = 10)
         foreach ($read['changes'] as $change) {
             pg_iys_apply_change($change);
             $result[$change['status']]++;
+        }
+
+        if ($sms) {
+            foreach (pg_iys_apply_sms_changes(pg_iys_sms_changes_parse($answer)) as $status => $count) {
+                $result['sms_' . $status] += $count;
+            }
         }
 
         if (($read['after'] === '') || ($read['after'] === $after)) {
@@ -700,6 +863,81 @@ function pg_iys_apply_change($change)
 }
 
 /**
+ * Writes the SMS changes of one page to the contacts with each number. The
+ * page's numbers are looked up in one query by the forms they may be stored
+ * in (pg_iys_number_variants()), and each contact found is confirmed with
+ * pg_sms_number(). A refusal stops marketing SMS at once: a contact whose
+ * last answer here is a yes gets a refusal row (source iys, never pushed
+ * back). An approval only records the status, as for e-mail.
+ *
+ * @param array[] $changes pg_iys_sms_changes_parse()
+ * @return array approved, refused: changes applied
+ */
+function pg_iys_apply_sms_changes($changes)
+{
+    $applied = array('approved' => 0, 'refused' => 0);
+    $variants = array();
+
+    foreach ($changes as $change) {
+        $variants = array_merge($variants, pg_iys_number_variants($change['number']));
+    }
+
+    if (!$variants) {
+        return $applied;
+    }
+
+    $stripped = pg_sms_number_sql('mobile_phone');
+
+    $contacts = array();
+
+    foreach ((array) db_items(
+        "SELECT id, email_address, mobile_phone
+        FROM contacts
+        WHERE
+            (mobile_phone <> '')
+            AND (" . $stripped . " IN ('" . implode("', '", array_map('e', array_unique($variants))) . "'))") as $contact) {
+        $contacts[pg_sms_number($contact['mobile_phone'])][] = $contact;
+    }
+
+    // A number changed twice on one page ends in its last state.
+    foreach ($changes as $change) {
+        $applied[$change['status']]++;
+
+        if (empty($contacts[$change['number']])) {
+            continue;
+        }
+
+        $ids = array();
+
+        foreach ($contacts[$change['number']] as $contact) {
+            $ids[] = (int) $contact['id'];
+
+            if (($change['status'] === 'refused') && function_exists('pg_consent_log_record')
+                && pg_iys_sms_refusal_needed(pg_consent_log_current(pg_consent_log_rows(array('contact_id' => (int) $contact['id']))))) {
+                pg_consent_log_record(array(
+                    'channel'    => 'sms',
+                    'purpose'    => 'marketing',
+                    'status'     => 'refused',
+                    'source'     => 'iys',
+                    'email'      => (string) $contact['email_address'],
+                    'contact_id' => (int) $contact['id'],
+                    'created_at' => ($change['at'] > 0) ? $change['at'] : time(),
+                    'ip'         => '',
+                    'user_agent' => '',
+                ));
+            }
+        }
+
+        $where = "id IN ('" . implode("', '", $ids) . "')";
+        $audit_before = pg_audit_fetch_many('contacts', $ids);
+        db("UPDATE contacts SET iys_sms_status = '" . e($change['status']) . "' WHERE " . $where);
+        pg_audit_record_many('update', 'contacts', $audit_before);
+    }
+
+    return $applied;
+}
+
+/**
  * The daily run: push, then pull, so a refusal given here before the pull
  * is in İYS before İYS is read. A dry run calls nothing and logs what it
  * would push.
@@ -718,27 +956,32 @@ function pg_iys_run()
         return array('ran' => false, 'reason' => 'schema', 'push' => null, 'pull' => null);
     }
 
+    // The SMS answers ride the same run once the contacts carry their status
+    // column; until then only the e-mail rows are read.
+    $sms = pg_schema_has('contacts', 'iys_sms_status');
+
     // The contact changes are the sync's own, also when a manager starts the
     // run from the panel.
     $was = pg_audit_as_job(true);
-    $push = pg_iys_push($app);
+    $push = pg_iys_push($app, 500, $sms);
 
     if (!$app['live']) {
         pg_audit_as_job($was);
 
         if ($push['pushed'] > 0) {
-            log_activity('İYS dry run: ' . $push['pushed'] . ' e-mail consent answer(s) would be pushed (consent log rows ' . ($app['push_id'] + 1) . '-' . $push['last_id'] . ').', 'UNKNOWN');
+            log_activity(lang(array('string' => 'İYS dry run: {var:1} consent answer(s) would be pushed (consent log rows {var:2}-{var:3}).', 'vars' => array($push['pushed'], $app['push_id'] + 1, $push['last_id']))), 'UNKNOWN');
         }
 
         return array('ran' => true, 'reason' => 'dry_run', 'push' => $push, 'pull' => null);
     }
 
-    $pull = pg_iys_pull($app);
+    $pull = pg_iys_pull($app, 10, $sms);
     pg_audit_as_job($was);
 
     if ($push['rejected'] || ($push['error'] !== '') || ($pull['error'] !== '')) {
-        log_activity('İYS: ' . $push['pushed'] . ' consent(s) pushed, ' . $push['rejected'] . ' refused by İYS, '
-            . $pull['refused'] . ' refusal(s) pulled. ' . trim($push['error'] . ' ' . $pull['error']), 'UNKNOWN');
+        log_activity(lang(array(
+            'string' => 'İYS: {var:1} consent(s) pushed, {var:2} refused by İYS, {var:3} refusal(s) pulled. {var:4}',
+            'vars' => array($push['pushed'], $push['rejected'], $pull['refused'] + $pull['sms_refused'], trim($push['error'] . ' ' . $pull['error'])))), 'UNKNOWN');
     }
 
     return array('ran' => true, 'reason' => 'live', 'push' => $push, 'pull' => $pull);

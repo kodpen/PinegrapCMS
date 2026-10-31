@@ -35,14 +35,14 @@ function settings_place_names_test_tr($key)
 	return isset($map[$key]) ? (string) $map[$key] : '';
 }
 
-// Two-Step Verification without a key: the switch that makes one is in the
-// Payment Methods card of Ecommerce and shows only with card payments on.
+// Two-Step Verification without a key: the switch that makes one is on the
+// Encryption Key card of Accounts and sign-in, which the hint links.
 function test_settings_place_names_two_step_verification_key_hint()
 {
-	$key = 'Two-step verification needs an encryption key in config.php. Make one in Site Settings › Ecommerce › Payment Methods: with Enable Commerce and Credit/Debit Card on, switch on Reset Encryption Key and save.';
+	$key = 'Two-step verification needs an encryption key in config.php. Make one on the Encryption Key card: switch on Reset Encryption Key and save.';
 
 	pg_assert_contains("lang('" . $key . "')", settings_place_names_test_source('includes/settings/security.php'));
-	pg_assert_contains('Site Ayarları › E-Ticaret › Ödeme Metodları', settings_place_names_test_tr($key));
+	pg_assert_contains('Şifreleme Anahtarı kartında', settings_place_names_test_tr($key));
 	pg_assert_contains('Şifreleme Anahtarını Sıfırla', settings_place_names_test_tr($key));
 }
 

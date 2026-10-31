@@ -10,7 +10,11 @@ description: Bulk price change (edit_products.php, pg_bulk_price_change(), and t
 - Percentages round as before (`round((100 ± v) / 100 x price)`).
 
 ## And the Catalog Manager's bulk price change?
-- `view_folder_and_files_f.php` (`price_method` increase, decrease, increase_percent, decrease_percent): it refuses a value that is empty, non-numeric or at or below zero up front and skips every product whose result is at or below zero. Both screens now take the same values; on a price already below zero the Catalog Manager skips an increase that the bulk edit writes.
+- `includes/explorer/handle_products_bulk.php` (`price_method` increase, decrease, increase_percent, decrease_percent): `pg_explorer_bulk_price_value()` refuses a value that is empty, non-numeric or at or below zero up front, and the handler skips every product whose result is at or below zero. Both screens now take the same values; on a price already below zero the Catalog Manager skips an increase that the bulk edit writes.
+
+## How does the Catalog Manager read a typed amount?
+- The bulk increase/decrease by amount and the quick price box (`pg_explorer_catalog_quick_price()`, `includes/explorer/handle_catalog_edit.php`) read the text through `pg_normalize_amount()`, like the product screen (ui/money-field-input-mask.md): `1.250,00` and `1,250.00` are 1250, and a single separator with three digits after it is read by the panel language, so `1.250` on a Turkish panel is 1250. Both boxes are plain text inputs posted as typed. Percentages still read a comma as the decimal point.
+- Before, every comma was turned into a point: Turkish `1.250` saved 1,25 TL with no warning and a grouped amount was refused.
 
 ## Why must no writer store a negative price?
 - A negative product becomes a negative order line. Paraşüt refuses such a line outright (live, 2026-10-23): unit price, VAT and discount must be zero or more. The checkout taxes it alone while the ERP groups it, and an ERP return of it refunds too much (erp/erp-negative-price-lines.md).
@@ -18,3 +22,4 @@ description: Bulk price change (edit_products.php, pg_bulk_price_change(), and t
 
 ## Which tests cover it?
 - `tests/bulk_price_change_test.php` (the helper, and the screen's refusal of a value that is no amount). The screen was not submitted on a live instance.
+- `tests/explorer_handle_products_bulk_test.php` (`pg_explorer_bulk_price_value()`) and `tests/explorer_handle_catalog_edit_test.php` (the quick price, grouped amounts).

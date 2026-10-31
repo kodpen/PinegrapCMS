@@ -257,13 +257,13 @@ function test_catalog_bin_edit_screens_keep_the_product_they_point_at()
 	pg_assert_contains("get_product_options(true, \$keep['product_id'])", catalog_bin_test_source('includes/forms/short_link_form.php'), 'short_link_form.php');
 
 	// The calendar event edit screen passes its id; the shared cards then keep the product.
-	pg_assert_contains('pg_calendar_event_form_cards($liveform, $user, $calendars, $calendar_event_locations, $id)', catalog_bin_test_source('edit_calendar_event.php'), 'edit_calendar_event.php');
+	pg_assert_contains('pg_calendar_event_form_cards($liveform, $user, $calendars, $calendar_event_locations, $id, $stored_next_page_id)', catalog_bin_test_source('edit_calendar_event.php'), 'edit_calendar_event.php');
 	$calendar_form = catalog_bin_test_source('includes/forms/calendar_event_form.php');
 	pg_assert_contains("\$product_id = \$liveform->get_field_value('product_id');", $calendar_form, 'calendar_event_form.php');
 	pg_assert_contains('get_product_options(true, $product_id)', $calendar_form, 'calendar_event_form.php');
 
 	// The campaign profile screen hands its product to the shared form.
-	pg_assert_contains("pg_email_campaign_profile_form_cards(\$liveform, \$user, \$liveform->get_field_value('product_id'))", catalog_bin_test_source('edit_email_campaign_profile.php'), 'edit_email_campaign_profile.php');
+	pg_assert_contains("pg_email_campaign_profile_form_cards(\$liveform, \$user, \$liveform->get_field_value('product_id'), array(", catalog_bin_test_source('edit_email_campaign_profile.php'), 'edit_email_campaign_profile.php');
 	pg_assert_contains('get_product_options(true, $product_id)', catalog_bin_test_source('includes/forms/email_campaign_profile_form.php'), 'email_campaign_profile_form.php');
 }
 

@@ -35,6 +35,33 @@ function pg_list_page_lengths()
 }
 
 /**
+ * A list's remembered filter value checked against the ids its pick list
+ * offers. An id that is no longer offered (the record was deleted, or the
+ * user lost access to it) selects no option, so the browser shows the first
+ * one, '[All] (N)', while the WHERE clause still narrows to the gone id and
+ * the list comes up empty. Such a value falls back to '[All]'.
+ *
+ * @param mixed  $value the remembered value
+ * @param array  $ids   the ids the pick list offers
+ * @param string $all   the value that stands for every record
+ * @return string
+ */
+function pg_list_filter_known($value, array $ids, $all = '[All]')
+{
+    if (!is_string($value) || ($value === $all)) {
+        return is_string($value) ? $value : $all;
+    }
+
+    foreach ($ids as $id) {
+        if ((string) $id === $value) {
+            return $value;
+        }
+    }
+
+    return $all;
+}
+
+/**
  * The rows one request may ask for. A length the menu does not offer falls
  * back to 100, the menu's default; -1 asks for every row from the offset on.
  * The offset is a whole number of 0 or more.
@@ -53,6 +80,30 @@ function pg_list_page_window($start, $length)
     }
 
     return array('offset' => $offset, 'limit' => ($length === -1) ? null : $length);
+}
+
+/**
+ * A page number held to the pages a list has: 1 to ceil(total / per_page),
+ * or 1 when the list is empty or a page holds no rows. A screen that reloads
+ * after rows left the list (a bulk accept keeps ?page=N) shows its last page
+ * instead of an empty one past the end.
+ *
+ * @param mixed $page     the page asked for, counted from 1
+ * @param mixed $total    the rows of the list
+ * @param mixed $per_page the rows of one page
+ * @return int
+ */
+function pg_list_page_clamp($page, $total, $per_page)
+{
+    $page = (int) $page;
+    $total = (int) $total;
+    $per_page = (int) $per_page;
+
+    if (($per_page <= 0) || ($total <= 0) || ($page < 1)) {
+        return 1;
+    }
+
+    return min($page, (int) ceil($total / $per_page));
 }
 
 /**
@@ -129,6 +180,41 @@ function pg_list_like_pattern($term)
 }
 
 /**
+ * The charset a list search matches I and ı in under Turkish case rules:
+ * the connection's ('utf8' for a utf8/utf8mb3 connection, else 'utf8mb4')
+ * when the panel or the pages are in Turkish, '' otherwise or without a
+ * connection.
+ *
+ * @return string
+ */
+function pg_list_search_turkish_charset()
+{
+    $turkish = (strtolower(substr((string) lang(array('info' => '')), 0, 2)) === 'tr')
+        || (function_exists('pg_tr_source_language') && (strtolower(substr((string) pg_tr_source_language(), 0, 2)) === 'tr'));
+
+    if (!$turkish || !class_exists('db', false) || !isset(db::$con) || !db::$con) {
+        return '';
+    }
+
+    $charset = strtolower((string) @mysqli_character_set_name(db::$con));
+
+    return in_array($charset, array('utf8', 'utf8mb3'), true) ? 'utf8' : 'utf8mb4';
+}
+
+/**
+ * A search word folded the Turkish way for a list search: İ, I and ı become
+ * i, the rest is lower cased, so "YILDIZ", "yildiz" and "Yıldız" are one
+ * word (the rule of ws_fold()). One letter for one letter.
+ *
+ * @param string $text
+ * @return string
+ */
+function pg_list_search_fold($text)
+{
+    return mb_strtolower(str_replace(array('İ', 'I', 'ı'), 'i', (string) $text), 'UTF-8');
+}
+
+/**
  * The search condition of a list: every word must be found in one of the
  * columns, or name one of the labels a column shows for a stored value (a
  * role number shown as "Manager"). Answers '' and no values when there is
@@ -144,11 +230,23 @@ function pg_list_like_pattern($term)
  *                       cannot be in that column
  * @param array $labels  list of array('expr' => SQL expression,
  *                       'labels' => stored value => shown label)
+ * @param string|null $turkish the connection charset ('utf8mb4' or 'utf8')
+ *                       when a word with I or ı is also matched under
+ *                       Turkish case rules (I = ı, İ = i) and a word with
+ *                       any i letter also folded (pg_list_search_fold()),
+ *                       '' when it is not; null asks
+ *                       pg_list_search_turkish_charset()
  * @return array array('sql' => '(…) AND (…)' or '', 'params' => values for
  *               its placeholders, in order)
  */
-function pg_list_search_where($terms, $columns, $labels = array())
+function pg_list_search_where($terms, $columns, $labels = array(), $turkish = null)
 {
+    if ($turkish === null) {
+        $turkish = pg_list_search_turkish_charset();
+    }
+
+    $turkish = (string) $turkish;
+
     $parts = array();
     $params = array();
 
@@ -158,6 +256,7 @@ function pg_list_search_where($terms, $columns, $labels = array())
 
         foreach ($columns as $column) {
             $column_term = $term;
+            $plain = !is_array($column);
 
             if (is_array($column)) {
                 $column_term = (string) call_user_func($column['term'], $term);
@@ -168,15 +267,35 @@ function pg_list_search_where($terms, $columns, $labels = array())
                 }
             }
 
+            // utf8mb4_unicode_ci folds I with i, not with ı, so "YILDIZ" missed
+            // "Yıldız". The plain LIKE stays: turkish_ci alone loses the ş/s and
+            // ç/c folding and finds "iPhone" for "IPHONE" no more. CONVERT, not
+            // COLLATE alone, so a numeric or utf8 (mb3) expression takes it too.
             $alternatives[] = $column . ' LIKE ?';
             $params[] = pg_list_like_pattern($column_term);
+
+            if ($plain && ($turkish !== '') && preg_match('/[Iı]/u', $column_term)) {
+                $alternatives[] = 'CONVERT(' . $column . ' USING ' . $turkish . ') COLLATE ' . $turkish . '_turkish_ci LIKE ?';
+                $params[] = pg_list_like_pattern($column_term);
+            }
+
+            // I, İ, ı and i as one letter, so "yildiz" finds "Yıldız" and
+            // "isik" finds "Işık": the word folded here, the column folded by
+            // REPLACE (case-sensitive, so İ and ı each need one; I already
+            // equals i under the charset's case-insensitive collation). LIKE
+            // '%…%' scans anyway, so no index is lost.
+            if ($plain && ($turkish !== '') && preg_match('/[iIıİ]/u', $column_term)) {
+                $alternatives[] = 'REPLACE(REPLACE(CONVERT(' . $column . ' USING ' . $turkish . "), 'İ', 'i'), 'ı', 'i') LIKE ?";
+                $params[] = pg_list_like_pattern(pg_list_search_fold($column_term));
+            }
         }
 
         foreach ($labels as $label_column) {
             $values = array();
 
             foreach ($label_column['labels'] as $value => $label) {
-                if (mb_stripos((string) $label, $term, 0, 'UTF-8') !== false) {
+                if ((mb_stripos((string) $label, $term, 0, 'UTF-8') !== false)
+                    || (($turkish !== '') && (mb_strpos(pg_list_search_fold($label), pg_list_search_fold($term), 0, 'UTF-8') !== false))) {
                     $values[] = (string) $value;
                 }
             }
@@ -191,6 +310,115 @@ function pg_list_search_where($terms, $columns, $labels = array())
     }
 
     return array('sql' => implode(' AND ', $parts), 'params' => $params);
+}
+
+/**
+ * A sort expression that orders a column of stored codes by the labels the
+ * list shows for them (a page type code shown as "Shopping Cart"), in the
+ * order of the current language (pg_geo_label_compare()). The answer is
+ * FIELD($expr, 'code', ...) with the codes in label order, for a sort map
+ * that pg_list_order_by() adds asc or desc to; a code outside the list
+ * sorts before every listed one. Only codes made of letters, digits,
+ * spaces, '_' and '-' are written into the query; the others are left out.
+ *
+ * @param string $expr   SQL expression of the stored code; written into the
+ *                       query as it is, so never from a request
+ * @param array  $labels stored code => shown label
+ * @return string
+ */
+function pg_list_label_order($expr, array $labels)
+{
+    $codes = array();
+
+    foreach ($labels as $code => $label) {
+        $code = (string) $code;
+
+        if (preg_match('/^[A-Za-z0-9 _-]*$/', $code)) {
+            $codes[] = array('code' => $code, 'label' => (string) $label);
+        }
+    }
+
+    if (!$codes) {
+        return (string) $expr;
+    }
+
+    $quoted = array();
+
+    foreach (pg_geo_sort_by_label($codes) as $code) {
+        $quoted[] = "'" . $code['code'] . "'";
+    }
+
+    return 'FIELD(' . $expr . ', ' . implode(', ', $quoted) . ')';
+}
+
+/**
+ * A list read into PHP sorted by its levels the way a database list sorts:
+ * a number key as a number, a key that shows a label for a stored code by
+ * that label, any other text the way the panel language orders it
+ * (pg_geo_label_compare(): case does not matter, "Çanta" comes before "D").
+ * Items that tie on every level keep the order of their first key's text.
+ *
+ * @param array $items   list of arrays
+ * @param array $levels  pg_list_state()'s sorts: array('sort', 'order')
+ * @param array $keys    sort code => the item key it orders by
+ * @param array $numbers item keys compared as numbers (a size, a time)
+ * @param array $labels  item key => array(stored code => shown label)
+ * @return array the items, renumbered
+ */
+function pg_list_sort_items(array $items, array $levels, array $keys, array $numbers = array(), array $labels = array())
+{
+    $first_key = $keys ? reset($keys) : '';
+
+    usort($items, function ($a, $b) use ($levels, $keys, $numbers, $labels, $first_key) {
+        foreach ($levels as $level) {
+            $key = $keys[$level['sort'] ?? ''] ?? null;
+
+            if ($key === null) {
+                continue;
+            }
+
+            $x = $a[$key] ?? '';
+            $y = $b[$key] ?? '';
+
+            if (in_array($key, $numbers, true)) {
+                $result = ((float) $x <=> (float) $y);
+            } else {
+                if (isset($labels[$key])) {
+                    $x = $labels[$key][$x] ?? $x;
+                    $y = $labels[$key][$y] ?? $y;
+                }
+
+                $result = pg_geo_label_compare((string) $x, (string) $y);
+            }
+
+            if ($result !== 0) {
+                return (($level['order'] ?? '') === 'desc') ? -$result : $result;
+            }
+        }
+
+        return pg_geo_label_compare((string) ($a[$first_key] ?? ''), (string) ($b[$first_key] ?? ''));
+    });
+
+    return $items;
+}
+
+/**
+ * Product groups and products in their sort order, ties by name the way the
+ * panel language orders it (pg_geo_label_compare(): "Çanta" before "D").
+ * An empty sort order counts as 0, as the forms save it.
+ *
+ * @param array $items list of arrays with 'sort_order' and 'name'
+ * @return array the items, renumbered
+ */
+function pg_list_sort_by_order_and_name(array $items)
+{
+    usort($items, function ($a, $b) {
+        $result = ((int) ($a['sort_order'] ?? 0)) <=> ((int) ($b['sort_order'] ?? 0));
+
+        return ($result !== 0) ? $result : pg_geo_label_compare((string) ($a['name'] ?? ''), (string) ($b['name'] ?? ''));
+    });
+
+    return $items;
 }
 
 /**
@@ -211,6 +439,25 @@ function pg_list_cell($html, $class = 'align-middle', $attributes = array())
     }
 
     return $cell;
+}
+
+/**
+ * When a record was last changed and, when known, by whom ("15 days ago by
+ * ali"); an unknown user leaves the time alone instead of a dangling "by".
+ *
+ * @param mixed  $timestamp
+ * @param string $username
+ * @return string escaped HTML
+ */
+function pg_list_when($timestamp, $username)
+{
+    $html = get_relative_time(array('timestamp' => $timestamp));
+
+    if (trim((string) $username) !== '') {
+        $html .= ' ' . lang(array('string' => 'by {var:1}', 'vars' => array(h($username))));
+    }
+
+    return $html;
 }
 
 /**

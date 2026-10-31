@@ -57,7 +57,7 @@ function test_list_names_wrap_text_cells()
 	$fields = list_names_wrap_source('view_fields.php');
 	pg_assert_contains('$output_label_cell = \'<td class="text-wrap">' . $wrap . '\' . $label_or_information . \'</div></td>\';', $fields);
 	// Information text is rich text that can run to paragraphs: it keeps its cut preview.
-	pg_assert_contains('<td title="\' . h(strip_tags($label_or_information)) . \'"><span class="text-truncate overflow-hidden d-block" style="width:200px;max-width:100%;">\' . $label_or_information . \'</span></td>', $fields);
+	pg_assert_contains('<td title="\' . h(pg_liveform_message_text($label_or_information)) . \'"><span class="text-truncate overflow-hidden d-block" style="width:200px;max-width:100%;">\' . $label_or_information . \'</span></td>', $fields);
 
 	$shipping = list_names_wrap_source('view_shipping_methods.php');
 	pg_assert_contains('<td class="align-middle chart_label \' . $status_color_class . \'">' . $wrap . '\' . h($name) . \'</div></td>', $shipping);

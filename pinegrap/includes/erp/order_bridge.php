@@ -1207,7 +1207,8 @@ function erp_invoice_from_order_locked($order_id, $options = array())
  * @param array  $order             orders row: status, type, paid_at, erp_on_account, total,
  *                                  gift_card_discount, erp_invoice_id
  * @param string $invoice_status    Status of the order's last sales invoice, '' when it has none
- * @param array  $filters           tax_number_only (bool), min_total (minor units, 0 for none)
+ * @param array  $filters           tax_number_only (bool), min_total (minor units, 0 for none),
+ *                                  marketplace (bool: marketplace orders too)
  * @param string $buyer_tax_number  The number the invoice would carry
  *                                  (erp_auto_invoice_buyer_tax_number()); read only when
  *                                  tax_number_only is on
@@ -1240,7 +1241,9 @@ function erp_auto_invoice_decision($setting, $trigger, $order, $invoice_status, 
         return 'counter_sale';
     }
 
-    if ($type === 'marketplace') {
+    // Left to its screen unless the store invoices marketplace orders too
+    // (11.0.62); then it is weighed like a web order.
+    if (($type === 'marketplace') && empty($filters['marketplace'])) {
         return 'marketplace';
     }
 
@@ -1289,15 +1292,18 @@ function erp_auto_invoice_decision($setting, $trigger, $order, $invoice_status, 
 
 /**
  * The store's two filters on the invoice it issues on its own (ERP settings
- * card, 2026.11.0, 11.0.58). Off and 0 before the step has run.
+ * card, 2026.11.0, 11.0.58), and whether it takes marketplace orders too
+ * (11.0.62). Off and 0 before the steps have run.
  *
- * @return array  tax_number_only (bool), min_total (minor units of the base currency)
+ * @return array  tax_number_only (bool), min_total (minor units of the base currency),
+ *                marketplace (bool)
  */
 function erp_auto_invoice_filters()
 {
     return array(
         'tax_number_only' => defined('ERP_AUTO_INVOICE_TAX_NUMBER_ONLY') && ((int) ERP_AUTO_INVOICE_TAX_NUMBER_ONLY === 1),
         'min_total' => defined('ERP_AUTO_INVOICE_MIN_TOTAL') ? max(0, (int) ERP_AUTO_INVOICE_MIN_TOTAL) : 0,
+        'marketplace' => defined('ERP_AUTO_INVOICE_MARKETPLACE') && ((int) ERP_AUTO_INVOICE_MARKETPLACE === 1),
     );
 }
 
@@ -1560,8 +1566,8 @@ function erp_auto_invoice_for_order($order_id, $trigger)
     $vars = array((string) $order['order_number'], $answer['number']);
 
     log_activity(($trigger === 'order_shipped')
-        ? lang(array('string' => 'Order (#{var:1}) was invoiced automatically once it was shipped: {var:2}.', 'vars' => $vars))
-        : lang(array('string' => 'Order (#{var:1}) was invoiced automatically once it was paid: {var:2}.', 'vars' => $vars)));
+        ? pg_log_lang(array('string' => 'Order (#{var:1}) was invoiced automatically once it was shipped: {var:2}.', 'vars' => $vars))
+        : pg_log_lang(array('string' => 'Order (#{var:1}) was invoiced automatically once it was paid: {var:2}.', 'vars' => $vars)));
 
     return $answer;
 }
@@ -1606,7 +1612,7 @@ function erp_auto_invoice_refused($order, $reason)
 {
     $reason = trim((string) $reason);
 
-    log_activity(lang(array(
+    log_activity(pg_log_lang(array(
         'string' => 'Order (#{var:1}) could not be invoiced automatically: {var:2}',
         'vars' => array((string) ($order['order_number'] ?? ''), $reason),
     )));

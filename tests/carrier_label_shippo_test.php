@@ -111,11 +111,9 @@ function test_carrier_label_shippo_is_a_builtin_driver()
 	pg_assert_true(pg_label_driver('shippo') !== null);
 	pg_assert_same(array('carriers' => array('ups', 'fedex', 'usps', 'dhl', 'deutschepost', 'dpd', 'royalmail'), 'formats' => array('pdf', 'zpl')), pg_label_info('shippo'));
 
-	foreach (array('test', 'create', 'label', 'cancel', 'track') as $operation) {
+	foreach (array('test', 'create', 'label', 'cancel', 'track', 'pickup') as $operation) {
 		pg_assert_true(pg_label_can('shippo', $operation), $operation);
 	}
-
-	pg_assert_false(pg_label_can('shippo', 'pickup'));
 
 	$fields = array();
 
@@ -137,6 +135,13 @@ function test_carrier_label_shippo_is_a_builtin_driver()
 		'sender_country'  => 'text required',
 		'sender_phone'    => 'text',
 		'sender_email'    => 'text',
+		'pickup_location' => 'select',
+		'customs_contents'       => 'select',
+		'customs_incoterm'       => 'select',
+		'customs_non_delivery'   => 'select',
+		'customs_hs_code'        => 'text',
+		'customs_origin_country' => 'select',
+		'customs_signer'         => 'text',
 	), $fields);
 }
 
@@ -416,4 +421,224 @@ function test_carrier_label_shippo_carrier_of_a_provider()
 	foreach ($providers as $provider => $carrier) {
 		pg_assert_same($carrier, pg_label_shippo_carrier($provider), $provider);
 	}
+}
+
+// Order lines as pg_shipment_label_shipment() gives them for customs: the
+// unit price in minor units, the unit weight in kg.
+function carrier_label_shippo_test_goods()
+{
+	return array(
+		array('name' => 'Kaffeebecher „Berlin“', 'quantity' => 2, 'price' => 1249.5, 'weight' => 0.4, 'hs_code' => '6912.00', 'origin_country' => 'PT'),
+		array('name' => 'Untersetzer', 'quantity' => 1, 'price' => 1, 'weight' => 0, 'hs_code' => '', 'origin_country' => ''),
+	);
+}
+
+// A parcel from Germany to Great Britain carries the declaration of
+// tests/fixtures/shippo/customs_declaration.json with the shipment: the
+// product's values first, the shop defaults for the line with none, total
+// value and net weight per line.
+function test_carrier_label_shippo_create_declares_customs()
+{
+	carrier_label_shippo_test_stub(array(
+		'POST /shipments/'    => array('shipment.json'),
+		'POST /transactions/' => array('transaction.json'),
+		'GET shippo-delivery-east.s3.amazonaws.com/915d94940ea54c3a80cbfa328722f5a1.pdf' => array('label.pdf'),
+	));
+	$shipment = carrier_label_shippo_test_shipment();
+	$shipment['goods'] = carrier_label_shippo_test_goods();
+	$account = carrier_label_shippo_test_account(array(
+		'customs_contents'       => 'merchandise',
+		'customs_incoterm'       => 'DDU',
+		'customs_non_delivery'   => 'return',
+		'customs_hs_code'        => '4823.90',
+		'customs_origin_country' => 'DE',
+		'customs_signer'         => '',
+	));
+	$answer = pg_label_call('shippo', 'create', array($shipment, $account));
+	$sent = $GLOBALS['carrier_label_shippo_test_sent'];
+	carrier_label_shippo_test_done();
+
+	pg_assert_true($answer['success'], $answer['error']);
+	pg_assert_same(json_decode(carrier_label_shippo_test_fixture('customs_declaration.json'), true), $sent[0]['body']['customs_declaration']);
+
+	// A return is declared as returned goods; the shop's choices are mapped.
+	$shipment['return'] = true;
+	$customs = pg_label_shippo_customs($shipment, array_merge($account, array('customs_incoterm' => 'DAP', 'customs_non_delivery' => 'abandon', 'customs_signer' => 'Jane Roe')));
+
+	pg_assert_same('RETURN_MERCHANDISE', $customs['declaration']['contents_type']);
+	pg_assert_same('DAP', $customs['declaration']['incoterm']);
+	pg_assert_same('ABANDON', $customs['declaration']['non_delivery_option']);
+	pg_assert_same('Jane Roe', $customs['declaration']['certify_signer']);
+}
+
+// A line with no HS code anywhere refuses the label before Shippo is asked.
+function test_carrier_label_shippo_create_refuses_a_line_without_hs_code()
+{
+	carrier_label_shippo_test_stub(array());
+	$shipment = carrier_label_shippo_test_shipment();
+	$shipment['goods'] = carrier_label_shippo_test_goods();
+	$answer = pg_label_call('shippo', 'create', array($shipment, carrier_label_shippo_test_account(array('customs_origin_country' => 'DE'))));
+	$sent = carrier_label_shippo_test_sent();
+	carrier_label_shippo_test_done();
+
+	pg_assert_false($answer['success']);
+	pg_assert_false(!empty($answer['unclear']), 'nothing was bought');
+	pg_assert_contains('Untersetzer', $answer['error']);
+	pg_assert_same(array(), $sent, 'no request');
+}
+
+// A domestic or EU route, or a shop that has filled nothing yet, sends the
+// shipment as before: no declaration.
+function test_carrier_label_shippo_routes_without_customs_are_unchanged()
+{
+	$filled = carrier_label_shippo_test_account(array('customs_hs_code' => '6912', 'customs_origin_country' => 'DE'));
+	$shipment = carrier_label_shippo_test_shipment();
+	$shipment['goods'] = carrier_label_shippo_test_goods();
+
+	foreach (array('DE' => 'domestic', 'FR' => 'within the EU') as $country => $route) {
+		$shipment['recipient']['country'] = $country;
+		pg_assert_same(array('declaration' => null, 'error' => ''), pg_label_shippo_customs($shipment, $filled), $route);
+	}
+
+	$shipment['recipient']['country'] = 'GB';
+	$plain = carrier_label_shippo_test_goods();
+	$plain[0]['hs_code'] = '';
+	$plain[0]['origin_country'] = '';
+	$shipment['goods'] = $plain;
+	pg_assert_same(array('declaration' => null, 'error' => ''), pg_label_shippo_customs($shipment, carrier_label_shippo_test_account()), 'nothing filled yet');
+
+	carrier_label_shippo_test_stub(array(
+		'POST /shipments/'    => array('shipment.json'),
+		'POST /transactions/' => array('transaction.json'),
+		'GET shippo-delivery-east.s3.amazonaws.com/915d94940ea54c3a80cbfa328722f5a1.pdf' => array('label.pdf'),
+	));
+	$shipment['recipient']['country'] = 'DE';
+	$shipment['goods'] = carrier_label_shippo_test_goods();
+	pg_label_call('shippo', 'create', array($shipment, $filled));
+	$sent = $GLOBALS['carrier_label_shippo_test_sent'];
+	carrier_label_shippo_test_done();
+
+	pg_assert_false(array_key_exists('customs_declaration', $sent[0]['body']), 'a domestic shipment carries none');
+}
+
+function carrier_label_shippo_test_pickup_request($references = array('915d94940ea54c3a80cbfa328722f5a1'))
+{
+	return array('references' => $references, 'start' => gmmktime(8, 0, 0, 11, 2, 2026), 'end' => gmmktime(16, 0, 0, 11, 2, 2026));
+}
+
+// A pickup reads the carrier account from each label's rate, then books one
+// pickup at it with the sender address and the window in UTC; the answer's
+// reference is the carrier's confirmation code.
+function test_carrier_label_shippo_pickup_books_at_the_rate_carrier_account()
+{
+	carrier_label_shippo_test_stub(array(
+		'GET /transactions/915d94940ea54c3a80cbfa328722f5a1' => array('transaction.json'),
+		'GET /rates/a7e5b9c39c3b4b9a8e0a4b5b7c5d6e1f'        => array('rate.json'),
+		'POST /pickups/'                                     => array(array(201, carrier_label_shippo_test_fixture('pickup.json'))),
+	));
+	$answer = pg_label_call('shippo', 'pickup', array(carrier_label_shippo_test_pickup_request(), carrier_label_shippo_test_account(array('pickup_location' => 'Reception'))));
+	$sent = $GLOBALS['carrier_label_shippo_test_sent'];
+	carrier_label_shippo_test_done();
+
+	pg_assert_true($answer['success'], $answer['error']);
+	pg_assert_same('PRG4711', $answer['reference']);
+	pg_assert_contains('CONFIRMED', implode(' ', $answer['log']));
+	pg_assert_same('POST /pickups/', $sent[2]['request']);
+	pg_assert_same(array(
+		'carrier_account'      => '1a2b3c4d5e6f40718293a4b5c6d7e8f9',
+		'location'             => array(
+			'building_location_type' => 'Reception',
+			'address'                => array(
+				'name'    => 'Example Shop',
+				'street1' => 'Friedrichstraße 10',
+				'city'    => 'Berlin',
+				'zip'     => '10117',
+				'country' => 'DE',
+				'phone'   => '+49 30 1234567',
+				'email'   => 'shop@example.com',
+			),
+		),
+		'transactions'         => array('915d94940ea54c3a80cbfa328722f5a1'),
+		'requested_start_time' => '2026-11-02T08:00:00Z',
+		'requested_end_time'   => '2026-11-02T16:00:00Z',
+	), $sent[2]['body']);
+	pg_assert_false(strpos(json_encode($answer), 'shippo_test_5f1a9c0b7e2d4c3b8a6f') !== false, 'the token is masked');
+}
+
+// Labels bought at two carrier accounts, a refunded label, a carrier that
+// refuses and a window that is no window book nothing; a booking without a
+// readable answer is unclear, since a pickup may be charged.
+function test_carrier_label_shippo_pickup_refusals_and_unclear()
+{
+	$two = array('915d94940ea54c3a80cbfa328722f5a1', '7a1b2c3d4e5f60718293a4b5c6d7e8f9');
+	carrier_label_shippo_test_stub(array(
+		'GET /transactions/915d94940ea54c3a80cbfa328722f5a1' => array('transaction.json'),
+		'GET /transactions/7a1b2c3d4e5f60718293a4b5c6d7e8f9' => array(array(200, str_replace(array('915d94940ea54c3a80cbfa328722f5a1', 'a7e5b9c39c3b4b9a8e0a4b5b7c5d6e1f'), array('7a1b2c3d4e5f60718293a4b5c6d7e8f9', '545ab0a1a6ea4c9f9adb2512a57d6d8b'), carrier_label_shippo_test_fixture('transaction.json')))),
+		'GET /rates/a7e5b9c39c3b4b9a8e0a4b5b7c5d6e1f'        => array('rate.json'),
+		'GET /rates/545ab0a1a6ea4c9f9adb2512a57d6d8b'        => array(array(200, '{"object_id": "545ab0a1a6ea4c9f9adb2512a57d6d8b", "carrier_account": "078870331023437cb917f5187429b093"}')),
+	));
+	$mixed = pg_label_call('shippo', 'pickup', array(carrier_label_shippo_test_pickup_request($two), carrier_label_shippo_test_account()));
+	$sent = carrier_label_shippo_test_sent();
+	carrier_label_shippo_test_done();
+
+	pg_assert_false($mixed['success']);
+	pg_assert_false($mixed['unclear']);
+	pg_assert_false(in_array('POST /pickups/', $sent, true), 'nothing booked');
+
+	carrier_label_shippo_test_stub(array('GET /transactions/915d94940ea54c3a80cbfa328722f5a1' => array('transaction_refunded.json')));
+	$refunded = pg_label_call('shippo', 'pickup', array(carrier_label_shippo_test_pickup_request(), carrier_label_shippo_test_account()));
+	carrier_label_shippo_test_done();
+
+	pg_assert_false($refunded['success']);
+	pg_assert_false($refunded['unclear']);
+
+	$window = carrier_label_shippo_test_pickup_request();
+	$window['end'] = $window['start'];
+	carrier_label_shippo_test_stub(array());
+	$empty = pg_label_call('shippo', 'pickup', array($window, carrier_label_shippo_test_account()));
+	$sent = carrier_label_shippo_test_sent();
+	carrier_label_shippo_test_done();
+
+	pg_assert_false($empty['success']);
+	pg_assert_same(array(), $sent, 'nothing asked');
+
+	$reads = array(
+		'GET /transactions/915d94940ea54c3a80cbfa328722f5a1' => array('transaction.json'),
+		'GET /rates/a7e5b9c39c3b4b9a8e0a4b5b7c5d6e1f'        => array('rate.json'),
+	);
+
+	carrier_label_shippo_test_stub($reads + array('POST /pickups/' => array(array(201, '{"object_id": "e3b5", "status": "ERROR", "messages": [{"text": "No pickup available on this date."}]}'))));
+	$error = pg_label_call('shippo', 'pickup', array(carrier_label_shippo_test_pickup_request(), carrier_label_shippo_test_account()));
+	carrier_label_shippo_test_done();
+
+	pg_assert_false($error['success']);
+	pg_assert_false($error['unclear']);
+	pg_assert_contains('No pickup available', $error['error']);
+
+	carrier_label_shippo_test_stub($reads);
+	$lost = pg_label_call('shippo', 'pickup', array(carrier_label_shippo_test_pickup_request(), carrier_label_shippo_test_account()));
+	carrier_label_shippo_test_done();
+
+	pg_assert_false($lost['success']);
+	pg_assert_true($lost['unclear']);
+
+	carrier_label_shippo_test_stub($reads + array('POST /pickups/' => array(array(201, 'not json'))));
+	$unread = pg_label_call('shippo', 'pickup', array(carrier_label_shippo_test_pickup_request(), carrier_label_shippo_test_account()));
+	carrier_label_shippo_test_done();
+
+	pg_assert_false($unread['success']);
+	pg_assert_true($unread['unclear']);
+}
+
+// A long accented refusal is cut on a character, not a byte: a broken last
+// letter would make htmlspecialchars() print the whole notice empty.
+function test_carrier_label_shippo_long_refusal_is_cut_on_a_character()
+{
+	carrier_label_shippo_test_stub(array('POST /shipments/' => array(array(400, json_encode(array('detail' => 'A' . str_repeat('ş', 200)))))));
+	$answer = pg_label_call('shippo', 'create', array(carrier_label_shippo_test_shipment(), carrier_label_shippo_test_account()));
+	carrier_label_shippo_test_done();
+
+	pg_assert_false($answer['success']);
+	pg_assert_true(mb_check_encoding($answer['error'], 'UTF-8'), 'the error is valid UTF-8');
+	pg_assert_contains('A' . str_repeat('ş', 149), htmlspecialchars($answer['error'], ENT_QUOTES, 'UTF-8'));
 }

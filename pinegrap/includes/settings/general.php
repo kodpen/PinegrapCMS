@@ -2,7 +2,7 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Site Settings - the General cards: where the site is, what the software is, which releases it takes, the time it keeps, what runs on a schedule and how it is backed up.
+ * Site Settings - the General cards: who runs the site, where it is, what the software is, which releases it takes, the time it keeps, what runs on a schedule and how it is backed up.
  *
  * Fills $pg_settings_cards, one grid column per card, in reading order. Which
  * cards belong here is said once, in includes/settings/registry.php; this file
@@ -19,6 +19,69 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     exit;
 }
 
+// ── Organization ──
+// Who runs the site, in one place: the name and address the campaigns, the
+// invoices and the legal texts print, the logo of the structured data, the
+// address system mail comes from and the seller's tax number. Each field
+// keeps its column; general.save.php writes them all.
+$pg_settings_cards[] = '
+    <div id="pgset-organization" class="pg-set-card">
+        <div class="card">
+            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                ' . lang('Organization') . '
+            </div>
+            <div class="card-body">
+                <div class="row gy-5">
+                    <div class="pg-f-md">
+                        <label for="organization_name" class="form-label">' . lang('Organization Name') . '</label>
+                        <input type="text" name="organization_name" id="organization_name" class="form-control" value="' . h($organization_name) . '"/>
+                    </div>
+                    <div class="pg-f-md">
+                        <label for="organization_address_1" class="form-label">' . lang('Organization Address') . ' 1</label>
+                        <input type="text" name="organization_address_1" id="organization_address_1" class="form-control" value="' . h($organization_address_1) . '"/>
+                    </div>
+                    <div class="pg-f-md">
+                        <label for="organization_address_2" class="form-label">' . lang('Organization Address') . ' 2</label>
+                        <input type="text" name="organization_address_2" id="organization_address_2" class="form-control" value="' . h($organization_address_2) . '"/>
+                    </div>
+                    <div class="pg-f-md">
+                        <label for="organization_city" class="form-label">' . lang('Organization City') . '</label>
+                        <input type="text" name="organization_city" id="organization_city" class="form-control" value="' . h($organization_city) . '"/>
+                    </div>
+                    <div class="pg-f-md">
+                        <label for="organization_state" class="form-label">' . lang('Organization State') . '</label>
+                        <input type="text" name="organization_state" id="organization_state" class="form-control" value="' . h($organization_state) . '"/>
+                    </div>
+                    <div class="pg-f-md">
+                        <label for="organization_zip_code" class="form-label">' . lang('Organization Zip Code') . '</label>
+                        <input type="text" name="organization_zip_code" id="organization_zip_code" class="form-control" value="' . h($organization_zip_code) . '"/>
+                    </div>
+                    <div class="pg-f-md">
+                        <label for="organization_country" class="form-label">' . lang('Organization Country') . '</label>
+                        <input type="text" name="organization_country" id="organization_country" class="form-control" value="' . h($organization_country) . '"/>
+                    </div>
+                    <div class="pg-f-md">
+                        <label for="setting_email_address" class="form-label">' . lang('Support E-mail Address') . '</label>
+                        <input type="text" name="email_address" id="setting_email_address" autocomplete="off" class="form-control" value="' . h($email_address) . '" inputmode="email" data-inputmask-alias="email"/>
+                    </div>' . $output_organization_logo_picker . '
+                    <div class="pg-f-md">
+                        ' . ((pg_erp_store_country() === 'TR')
+                            ? '<label class="form-label" for="erp_seller_vkn">' . lang('Seller VKN / TCKN') . '</label>
+                        <input type="text" class="form-control" id="erp_seller_vkn" name="erp_seller_vkn" value="' . h($erp_seller_vkn) . '" maxlength="11" inputmode="numeric" autocomplete="off" />
+                        <div class="form-text">' . lang('Tax number (10 digits) or ID number (11 digits) of the company that issues the invoices') . '</div>'
+                            : '<label class="form-label" for="erp_seller_vkn">' . lang('Seller tax number') . '</label>
+                        <input type="text" class="form-control" id="erp_seller_vkn" name="erp_seller_vkn" value="' . h($erp_seller_vkn) . '" maxlength="32" autocomplete="off" />
+                        <div class="form-text">' . lang('The tax number of the company that issues the invoices (VAT id, EIN, ...), as it is printed on them.') . '</div>') . '
+                    </div>
+                    <div class="pg-f-md' . ((pg_erp_store_country() === 'TR') ? '' : ' d-none') . '">
+                        <label class="form-label" for="erp_seller_tax_office">' . lang('Seller Tax Office') . '</label>
+                        <input type="text" class="form-control" id="erp_seller_tax_office" name="erp_seller_tax_office" value="' . h($erp_seller_tax_office) . '" maxlength="100" autocomplete="off" />
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>';
+
 // ── Server & Domain ──
 $pg_settings_cards[] = '
     <div id="pgset-server" class="pg-set-card">
@@ -34,15 +97,11 @@ $pg_settings_cards[] = '
                     </div>
                     <div class="pg-f-lg">
                         <label for="hostname" class="form-label">' . lang('Hostname') . '</label>
-                        <input type="text" name="hostname" id="hostname" maxlength="255" class="form-control" value="' . h($hostname) . '" />
-                    </div>
-                    <div class="pg-f-lg">
-                        <label for="email_address" class="form-label">' . lang('Support E-mail Address') . '</label>
-                        <input type="text" name="email_address" id="email_address" autocomplete="off" class="form-control" value="' . h($email_address) . '" inputmode="email" data-inputmask-alias="email"/>
+                        <input type="text" inputmode="url" spellcheck="false" autocapitalize="off" name="hostname" id="hostname" maxlength="255" class="form-control" value="' . h($hostname) . '" />
                     </div>
                     <div class="pg-f-lg">
                         <label for="proxy_address" class="form-label">' . lang('Proxy Address') . '</label>
-                        <input type="text" name="proxy_address" id="proxy_address" maxlength="255" class="form-control" value="' . h($proxy_address) . '" />
+                        <input type="text" inputmode="url" spellcheck="false" autocapitalize="off" name="proxy_address" id="proxy_address" maxlength="255" class="form-control" value="' . h($proxy_address) . '" />
                     </div>
                 </div>
             </div>
@@ -159,7 +218,7 @@ $pg_settings_cards[] = '
                         <div id="pgset-cron" class="pg-set-card">
                             <div class="card">
                                 <div class="card-header bg-reset border-0 d-flex flex-wrap justify-content-between align-items-center">
-                                    <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . lang('Cron Jobs') . ' (' . $output_os_family . ')</span>
+                                    <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . lang('Cron Jobs') . ' (<span lang="en">' . h($output_os_family) . '</span>)</span>
                                     <a href="#!" class="btn btn-sm btn-outline theme-secondary" data-bs-toggle="dialog" data-bs-target="#cron_jobs"><i class="bi bi-clock-history me-1"></i>' . lang('Setup Instructions') . '</a>
                                 </div>
                                 <div class="card-body">
@@ -373,7 +432,7 @@ if ($backup_settings_ready) {
                             </div>') . '
                             <div class="pg-f-md">
                                 <label for="backup_ftp_host" class="form-label">' . lang('FTP server') . '</label>
-                                <input type="text" name="backup_ftp_host" id="backup_ftp_host" maxlength="255" class="form-control" value="' . h($backup_remote_ftp['host']) . '" placeholder="ftp.example.com" />
+                                <input type="text" inputmode="url" spellcheck="false" autocapitalize="off" name="backup_ftp_host" id="backup_ftp_host" maxlength="255" class="form-control" value="' . h($backup_remote_ftp['host']) . '" placeholder="ftp.example.com" />
                             </div>
                             <div class="pg-f-xs">
                                 <label for="backup_ftp_port" class="form-label">' . lang('Port') . '</label>
@@ -381,7 +440,7 @@ if ($backup_settings_ready) {
                             </div>
                             <div class="pg-f-md">
                                 <label for="backup_ftp_user" class="form-label">' . lang('Username') . '</label>
-                                <input type="text" name="backup_ftp_user" id="backup_ftp_user" maxlength="255" class="form-control" value="' . h($backup_remote_ftp['user']) . '" autocomplete="off" />
+                                <input type="text" spellcheck="false" autocapitalize="off" name="backup_ftp_user" id="backup_ftp_user" maxlength="255" class="form-control" value="' . h($backup_remote_ftp['user']) . '" autocomplete="off" />
                             </div>
                             <div class="pg-f-md">
                                 <label for="backup_ftp_password" class="form-label">' . lang('Password') . '</label>
@@ -389,7 +448,7 @@ if ($backup_settings_ready) {
                             </div>
                             <div class="pg-f-md">
                                 <label for="backup_ftp_path" class="form-label">' . lang('Folder on the server') . '</label>
-                                <input type="text" name="backup_ftp_path" id="backup_ftp_path" maxlength="255" class="form-control" value="' . h($backup_remote_ftp['path']) . '" placeholder="/backups" />
+                                <input type="text" spellcheck="false" autocapitalize="off" name="backup_ftp_path" id="backup_ftp_path" maxlength="255" class="form-control" value="' . h($backup_remote_ftp['path']) . '" placeholder="/backups" />
                             </div>
                             <div class="col-12">
                                 <div class="form-field">
@@ -403,24 +462,24 @@ if ($backup_settings_ready) {
                         <div class="row gy-5">
                             <div class="pg-f-lg">
                                 <label for="backup_s3_endpoint" class="form-label">' . lang('Endpoint address') . '</label>
-                                <input type="text" name="backup_s3_endpoint" id="backup_s3_endpoint" maxlength="255" class="form-control" value="' . h($backup_remote_s3['endpoint']) . '" placeholder="https://s3.eu-central-1.amazonaws.com" />
+                                <input type="text" inputmode="url" spellcheck="false" autocapitalize="off" name="backup_s3_endpoint" id="backup_s3_endpoint" maxlength="255" class="form-control" value="' . h($backup_remote_s3['endpoint']) . '" placeholder="https://s3.eu-central-1.amazonaws.com" />
                                 <div class="form-text">' . lang('Leave empty for Amazon S3 in the region below.') . '</div>
                             </div>
                             <div class="pg-f-sm">
                                 <label for="backup_s3_region" class="form-label">' . lang('Region') . '</label>
-                                <input type="text" name="backup_s3_region" id="backup_s3_region" maxlength="64" class="form-control" value="' . h($backup_remote_s3['region']) . '" placeholder="us-east-1" />
+                                <input type="text" spellcheck="false" autocapitalize="off" name="backup_s3_region" id="backup_s3_region" maxlength="64" class="form-control" value="' . h($backup_remote_s3['region']) . '" placeholder="us-east-1" />
                             </div>
                             <div class="pg-f-md">
                                 <label for="backup_s3_bucket" class="form-label">' . lang('Bucket name') . '</label>
-                                <input type="text" name="backup_s3_bucket" id="backup_s3_bucket" maxlength="255" class="form-control" value="' . h($backup_remote_s3['bucket']) . '" />
+                                <input type="text" spellcheck="false" autocapitalize="off" name="backup_s3_bucket" id="backup_s3_bucket" maxlength="255" class="form-control" value="' . h($backup_remote_s3['bucket']) . '" />
                             </div>
                             <div class="pg-f-md">
                                 <label for="backup_s3_prefix" class="form-label">' . lang('Folder in the bucket') . '</label>
-                                <input type="text" name="backup_s3_prefix" id="backup_s3_prefix" maxlength="255" class="form-control" value="' . h($backup_remote_s3['prefix']) . '" placeholder="backups" />
+                                <input type="text" spellcheck="false" autocapitalize="off" name="backup_s3_prefix" id="backup_s3_prefix" maxlength="255" class="form-control" value="' . h($backup_remote_s3['prefix']) . '" placeholder="backups" />
                             </div>
                             <div class="pg-f-md">
                                 <label for="backup_s3_access_key" class="form-label">' . lang('Access Key') . '</label>
-                                <input type="text" name="backup_s3_access_key" id="backup_s3_access_key" maxlength="255" class="form-control" value="' . h($backup_remote_s3['access_key']) . '" autocomplete="off" />
+                                <input type="text" spellcheck="false" autocapitalize="off" name="backup_s3_access_key" id="backup_s3_access_key" maxlength="255" class="form-control" value="' . h($backup_remote_s3['access_key']) . '" autocomplete="off" />
                             </div>
                             <div class="pg-f-md">
                                 <label for="backup_s3_secret_key" class="form-label">' . lang('Secret Key') . '</label>
@@ -540,7 +599,7 @@ if ($ops_alerts_ready) {
                             </div>
                             <div class="pg-f-xs">
                                 <label for="ops_alert_disk_percent" class="form-label">' . lang('Free disk space below %') . '</label>
-                                <div class="form-range pg-range-bubble" data-pg-range="%">
+                                <div class="form-range pg-range-bubble" data-pg-range="' . h(lang('{var:1}%')) . '">
                                     <input type="range" name="ops_alert_disk_percent" id="ops_alert_disk_percent" min="0" max="50" step="1" class="form-range-input" value="' . (int) $ops_alert_disk_percent . '" />
                                 </div>
                             </div>
@@ -664,7 +723,7 @@ $pg_settings_cards[] = '
 $pg_settings_modals[] = '
                 <dialog class="dialog dialog-xl" id="cron_jobs" aria-labelledby="cron_jobs_title">
                             <div class="dialog-header">
-                                <h5 class="dialog-title" id="cron_jobs_title">' . lang('Cron Jobs') . ' (' . $output_os_family . ')</h5>
+                                <h5 class="dialog-title" id="cron_jobs_title">' . lang('Cron Jobs') . ' (<span lang="en">' . h($output_os_family) . '</span>)</h5>
                                 <button type="button" title="' . lang('Close') . '" class="btn-close" data-bs-dismiss="dialog" aria-label="' . h(lang('Close')) . '"></button>
                             </div>
                             <div class="dialog-body ">

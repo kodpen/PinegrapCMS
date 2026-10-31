@@ -574,13 +574,16 @@ $captcha = function () use ($el) {
     return $el('div', 'mb-3', lang('CAPTCHA'), array(), array('_bindings' => array('section' => 'captcha')));
 };
 // A box the visitor must tick: what was agreed to is stored with the form.
-$agree = function ($id, $name, $text) use ($el, $attr) {
-    return $el('div', 'form-check small mb-3', lang('Consent'), array(
+// $privacy adds a link to the privacy page after the label.
+$agree = function ($id, $name, $text, $privacy = false) use ($el, $attr, $link) {
+    $children = array(
         $el('input', 'form-check-input', lang('Field'), array(), array('id' => $id, '_attrs' => array(
             $attr('type', 'checkbox'), $attr('name', $name), $attr('value', 'yes'), $attr('required', ''),
         ))),
         $el('label', 'form-check-label', lang('Label'), array(), array('text' => $text, '_attrs' => array($attr('for', $id)))),
-    ));
+    );
+    if ($privacy) $children[] = $link(lang('Privacy Policy'), '{{page:privacy}}', 'ms-1');
+    return $el('div', 'form-check small mb-3', lang('Consent'), $children);
 };
 // The newsletter's e-mail field and button, in one line. The address is the
 // contact's, so the sign-up becomes a contact of the newsletter's group.
@@ -897,7 +900,7 @@ $pages[] = array(
                     $fact('25+', lang('years caring for the neighbourhood')),
                     $fact('12', lang('doctors, nurses and lab staff')),
                     $fact('6', lang('services under one roof')),
-                    $fact('4.9', lang('average rating from our patients')),
+                    $fact(lang('4.9'), lang('average rating from our patients')),
                 ), '4'),
             )),
         )),
@@ -1600,7 +1603,8 @@ $pages[] = array(
     'title'    => lang('Conversation'),
     'search'   => false,
     'sitemap'  => false,
-    'comments' => array('label' => lang('Reply'), 'allow_new' => true, 'auto_publish' => true, 'show_date' => true, 'login' => true,
+    // The label is the lower-case noun key: the shared 'Reply' is a verb button.
+    'comments' => array('label' => lang('reply'), 'allow_new' => true, 'auto_publish' => true, 'show_date' => true, 'login' => true,
                         'email_page' => '{{tab:email_reply}}', 'email_subject' => lang('There is a new reply to your conversation'),
                         'notify_email' => '{{site_email}}'),
     'tree'     => $page(array(
@@ -1837,6 +1841,30 @@ $pages[] = array(
                 ), '', 'center'),
             )),
         )),
+    )),
+);
+
+// The privacy notice the consent boxes link to: sample text with a note to
+// adapt it.
+$pages[] = array(
+    'key'              => 'privacy',
+    'name'             => lang('privacy-policy'),
+    'folder'           => 'public',
+    'title'            => lang('Privacy Policy'),
+    'meta_description' => lang('What the practice keeps about you, why, and what you can ask of us.'),
+    'tree'             => $page(array(
+        $page_header(lang('Privacy Policy'), lang('What the practice keeps about you, why, and what you can ask of us.')),
+        $el('section', 'py-5', lang('Your Data'), array(
+            $container(array($row(array($col(array(
+                $el('div', 'alert alert-secondary d-flex gap-2 small', lang('Sample Text Note'), array(
+                    $icon('bi-info-circle', 'mt-1'),
+                    $span(lang('Sample text: adapt it to your practice and to the law that applies to you before you publish.'), '', lang('Text')),
+                ), array('_attrs' => array($attr('role', 'note')))),
+                $heading('h2', lang('Your data'), 'h4 fw-bold mb-3'),
+                $para(lang('When you book an appointment or open an account, we keep your name, your contact details and what you tell us about your visit, to arrange your care. Your medical records are kept as the law requires.'), 'mb-3'),
+                $para(lang('We keep these details only as long as we need them for that, and never sell them or give them to advertisers. You can see and change your account data from My Account, and ask us to delete it through the contact page.'), 'mb-0'),
+            ), '', '8'))))),
+        ), array('id' => 'your-data')),
     )),
 );
 
@@ -2167,7 +2195,7 @@ $widgets = array(
             ), lang('At the practice')),
             $form_step(2, lang('When suits you?')),
             $row(array(
-                $col(array($field('cl-appt-date', lang('Preferred Date'), $input('cl-appt-date', 'date', 'preferred_date', 'off'))), '6'),
+                $col(array($field('cl-appt-date', lang('Preferred Date'), $input('cl-appt-date', 'date', 'preferred_date', 'off', true, array('rules' => array('min_date' => 'today'))))), '6'),
                 $col(array($field('cl-appt-time', lang('Preferred Time'), $select('cl-appt-time', 'preferred_time', lang('Choose a time of day…'), $time_windows))), '6'),
             ), '3'),
             $form_step(3, lang('About you')),
@@ -2187,7 +2215,7 @@ $widgets = array(
             $field('cl-appt-status', lang('Status'), $select('cl-appt-status', 'status', '', array(
                 lang('Requested'), lang('Confirmed'), lang('Completed'), lang('Cancelled'),
             ), false, lang('Requested'), array('office_use_only' => true))),
-            $agree('cl-appt-consent', 'consent', lang('I agree that the practice keeps these details to arrange my care, as its privacy notice explains.')),
+            $agree('cl-appt-consent', 'consent', lang('I agree that the practice keeps these details to arrange my care, as its privacy notice explains.'), true),
             $captcha(),
             $el('div', 'd-flex flex-wrap align-items-center gap-3', lang('Send Area'), array(
                 $submit(lang('Request Appointment'), 'btn btn-primary btn-lg px-4'),
@@ -3035,6 +3063,9 @@ $search_sections = array(
         lang('Our Story') => array('our-story', lang('about us, our story, history, practice')),
         lang('Features')  => array('why-us', lang('why choose us, values, quality')),
     ),
+    'privacy' => array(
+        '#your-data' => array('your-data', lang('privacy, personal data, consent, delete my data')),
+    ),
     'contact' => array(
         lang('Contact Details') => array('contact-details', lang('address, phone, e-mail, opening hours, parking, location')),
     ),
@@ -3070,7 +3101,7 @@ foreach ($pages as $i => $p) {
 
 return array(
     'name'        => lang('Clinic'),
-    'version'     => '1.0.6',
+    'version'     => '1.0.7',
     'framework'   => 'bootstrap5',
     'order'       => 50,
     'icon'        => 'bi-heart-pulse',

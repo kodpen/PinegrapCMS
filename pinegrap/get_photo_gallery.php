@@ -79,7 +79,7 @@ function get_photo_gallery($properties) {
                 
                 // if this folder is not in the array, then output an error
                 if (in_array($_GET['folder_id'], $all_child_folders) == FALSE) {
-                    log_activity("access denied because folder is not in the scope of the photo gallery page ($page_name)", $_SESSION['sessionusername'] ?? '');
+                    log_activity(pg_log_lang(array('string' => 'access denied because folder is not in the scope of the photo gallery page ({var:1})', 'vars' => array($page_name))), $_SESSION['sessionusername'] ?? '');
                     output_error(lang('Access denied. <a href="javascript:history.go(-1)">Go back</a>.'));
                 }
                 
@@ -122,7 +122,7 @@ function get_photo_gallery($properties) {
 
                                 // If the visitor does not have private access to this folder, log activity and output error.
                                 if ($access_check['access'] == false) {
-                                    log_activity("access denied to private folder ($folder_name)", $_SESSION['sessionusername']);
+                                    log_activity(pg_log_lang(array('string' => 'access denied to private folder ({var:1})', 'vars' => array($folder_name))), $_SESSION['sessionusername']);
                                     output_error(lang('Access denied. <a href="javascript:history.go(-1);">Go back</a>.'));
                                 }
                             }
@@ -707,7 +707,7 @@ function get_photo_gallery($properties) {
             
             // if this folder is not in the array, then output an error
             if (in_array($_GET['folder_id'], $all_child_folders) == FALSE) {
-                log_activity("access denied because folder is not in the scope of the photo gallery page ($page_name)", $_SESSION['sessionusername'] ?? '');
+                log_activity(pg_log_lang(array('string' => 'access denied because folder is not in the scope of the photo gallery page ({var:1})', 'vars' => array($page_name))), $_SESSION['sessionusername'] ?? '');
                 output_error(lang('Access denied. <a href="javascript:history.go(-1)">Go back</a>.'));
             }
             
@@ -750,7 +750,7 @@ function get_photo_gallery($properties) {
 
                             // If the visitor does not have private access to this folder, log activity and output error.
                             if ($access_check['access'] == false) {
-                                log_activity("access denied to private folder ($folder_name)", $_SESSION['sessionusername']);
+                                log_activity(pg_log_lang(array('string' => 'access denied to private folder ({var:1})', 'vars' => array($folder_name))), $_SESSION['sessionusername']);
                                 output_error(lang('Access denied. <a href="javascript:history.go(-1);">Go back</a>.'));
                             }
                         }

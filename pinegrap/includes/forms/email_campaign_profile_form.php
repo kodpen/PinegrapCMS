@@ -33,6 +33,31 @@ function pg_email_campaign_profile_commerce_actions()
         'order_shipped',
         'order_delivered',
         'product_ordered',
+        'subscription_renewed',
+        'subscription_failed',
+        'subscription_cancelled',
+        'subscription_price_changed',
+    );
+}
+
+/**
+ * The mail-merge fields the subscription actions fill in, as the form lists
+ * them (pg_subscription_mail_fields(), then the two of
+ * pg_subscription_price_mail_fields() only the price change mail fills in).
+ *
+ * @return array field name => what it holds
+ */
+function pg_email_campaign_profile_subscription_fields()
+{
+    return array(
+        'subscription_product' => lang('the subscribed product'),
+        'subscription_amount' => lang('the amount of each charge'),
+        'subscription_next_date' => lang('the date of the next charge'),
+        'subscription_card_url' => lang('a link where the customer updates the card (failed charges)'),
+        'subscription_confirm_url' => lang('a link where the customer confirms the charge with the bank (failed charges)'),
+        'order_number' => lang('the number of the renewal order (renewed)'),
+        'subscription_new_amount' => lang('the new amount of each charge (price change)'),
+        'subscription_new_date' => lang('the date the new amount takes effect (price change)'),
     );
 }
 
@@ -82,7 +107,12 @@ function pg_email_campaign_profile_action_rows($action)
         'product_id' => '',
         'calendar_schedule' => '',
         'standard_schedule' => 'show',
+        'subscription_fields' => '',
     );
+
+    if (strpos((string) $action, 'subscription_') === 0) {
+        $rows['subscription_fields'] = 'show';
+    }
 
     $item_field = pg_email_campaign_profile_action_item_field($action);
 
@@ -154,6 +184,95 @@ function pg_email_campaign_profile_schedule_time($time)
 }
 
 /**
+ * Which profile each "campaign sent" profile follows, read from every
+ * profile whatever the user may see, so a ring through a profile the user
+ * cannot see is still found.
+ *
+ * @return array profile id => the id of the profile it follows
+ */
+function pg_email_campaign_profile_follow_map()
+{
+    $follows = array();
+
+    foreach (db_items("SELECT id, action_item_id FROM email_campaign_profiles WHERE action = 'email_campaign_sent'") as $profile) {
+        $follows[(int) $profile['id']] = (int) $profile['action_item_id'];
+    }
+
+    return $follows;
+}
+
+/**
+ * The profile plus every profile that follows it, directly or further down
+ * the chain: none of them may be its trigger, or the campaigns run in a ring
+ * that never ends.
+ *
+ * @param int   $profile_id  The profile being edited, 0 for a new one
+ * @param array $follows     pg_email_campaign_profile_follow_map()
+ * @return int[]  Sorted ids, empty for a new profile
+ */
+function pg_email_campaign_profile_downstream($profile_id, $follows)
+{
+    $profile_id = (int) $profile_id;
+
+    if (!$profile_id) {
+        return array();
+    }
+
+    $followers = array();
+
+    foreach ($follows as $id => $followed_id) {
+        $followers[(int) $followed_id][] = (int) $id;
+    }
+
+    $visited = array($profile_id => true);
+    $queue = array($profile_id);
+
+    while ($queue) {
+        $id = array_shift($queue);
+
+        foreach ($followers[$id] ?? array() as $follower_id) {
+            if (!isset($visited[$follower_id])) {
+                $visited[$follower_id] = true;
+                $queue[] = $follower_id;
+            }
+        }
+    }
+
+    $ids = array_keys($visited);
+    sort($ids);
+
+    return $ids;
+}
+
+/**
+ * Whether following $pick would close a ring: walks up from the pick along
+ * what each profile follows until it meets the edited profile, a profile
+ * that follows nothing, or one already visited (a ring elsewhere).
+ *
+ * @param int        $profile_id  The profile being edited, 0 for a new one
+ * @param int|string $pick        The profile picked as the trigger
+ * @param array      $follows     pg_email_campaign_profile_follow_map()
+ * @return bool
+ */
+function pg_email_campaign_profile_closes_ring($profile_id, $pick, $follows)
+{
+    $profile_id = (int) $profile_id;
+    $id = (int) $pick;
+    $visited = array();
+
+    while ($profile_id && $id && !isset($visited[$id])) {
+        if ($id == $profile_id) {
+            return true;
+        }
+
+        $visited[$id] = true;
+        $id = (int) ($follows[$id] ?? 0);
+    }
+
+    return false;
+}
+
+/**
  * The five field cards of the form, wrapped in their row.
  *
  * @param liveform $liveform
@@ -161,11 +280,21 @@ function pg_email_campaign_profile_schedule_time($time)
  * @param int      $product_id  The stored product, kept in the product
  *                              picker even when it is no longer offered
  *                              (0 on the create screen)
+ * @param array    $keep_pages  The stored 'custom_form_page_id' and 'page_id',
+ *                              kept in their page pickers even in an archived
+ *                              folder, and the stored 'email_campaign_profile_id',
+ *                              kept in its picker even when it closes a ring
+ *                              (empty on the create screen)
+ * @param int      $profile_id  The profile being edited, 0 for a new one; it
+ *                              and the profiles downstream of it are left out
+ *                              of the "campaign sent" picker
  * @return string  HTML
  */
-function pg_email_campaign_profile_form_cards($liveform, $user, $product_id = 0)
+function pg_email_campaign_profile_form_cards($liveform, $user, $product_id = 0, $keep_pages = array(), $profile_id = 0)
 {
     $rows = pg_email_campaign_profile_action_rows($liveform->get_field_value('action'));
+
+    $exclude_ids = $profile_id ? pg_email_campaign_profile_downstream($profile_id, pg_email_campaign_profile_follow_map()) : array();
 
     $output_body_preview_iframe_source = '';
 
@@ -188,6 +317,7 @@ function pg_email_campaign_profile_form_cards($liveform, $user, $product_id = 0)
         lang('Custom Form Submitted') => 'custom_form_submitted');
 
     $output_product_id_row = '';
+    $output_subscription_fields_row = '';
 
     // If commerce is enabled and the user has access to commerce,
     // then add commerce actions and product id row.
@@ -198,12 +328,27 @@ function pg_email_campaign_profile_form_cards($liveform, $user, $product_id = 0)
         $action_options[lang('Order Delivered')] = 'order_delivered';
         $action_options[lang('Order Shipped')] = 'order_shipped';
         $action_options[lang('Product Ordered')] = 'product_ordered';
+        $action_options[lang('Subscription Renewed')] = 'subscription_renewed';
+        $action_options[lang('Subscription Payment Failed')] = 'subscription_failed';
+        $action_options[lang('Subscription Cancelled')] = 'subscription_cancelled';
+        $action_options[lang('Subscription Price Changed')] = 'subscription_price_changed';
+
+        $output_subscription_fields = '';
+
+        foreach (pg_email_campaign_profile_subscription_fields() as $name => $meaning) {
+            $output_subscription_fields .= '<li><code>^^' . h($name) . '^^</code> ' . h($meaning) . '</li>';
+        }
+
+        $output_subscription_fields_row =
+            '<div class="col-12 my-3 collapse ' . $rows['subscription_fields'] . '" id="subscription_fields_row">
+                <div class="form-text">' . h(lang('The subject and the body can use these fields:')) . '</div>
+                <ul class="form-text mb-0">' . $output_subscription_fields . '</ul>
+            </div>';
 
         $output_product_id_row =
             '<div class="col-12 md:col-6 lg:col-4 my-3 collapse ' . $rows['product_id'] . '" id="product_id_row">
                 <label for="product_id" class="form-label">' . lang('Product') . '</label>
                 ' . $liveform->output_field(array('type'=>'select', 'name'=>'product_id', 'id'=>'product_id', 'class'=>'form-control', 'options'=>get_product_options(true, $product_id) )) . '
-                <div class="invalid-feedback">' . lang('Required Area') . '</div>
             </div>';
     }
 
@@ -224,30 +369,26 @@ function pg_email_campaign_profile_form_cards($liveform, $user, $product_id = 0)
                                         </div>
                                         <div class="col-12 md:col-6 lg:col-4 my-3">
                                             <label for="name" class="form-label">' . lang('Name') . '</label>
-                                            ' . $liveform->output_field(array('type'=>'text', 'name'=>'name', 'id'=>'name', 'size'=>'60', 'maxlength'=>'100', 'placeholder'=>lang('Campaign Profile Name'), 'class'=>'form-control')) . '
-                                            <div class="invalid-feedback">' . lang('Required Area') . '</div>
+                                            ' . $liveform->output_field(array('type'=>'text', 'name'=>'name', 'id'=>'name', 'size'=>'60', 'maxlength'=>'100', 'placeholder'=>lang('Campaign Profile Name'), 'class'=>'form-control', 'required'=>'required')) . '
                                         </div>
                                         <div class="col-12 md:col-6 lg:col-4 my-3">
                                             <label for="action" class="form-label">' . lang('Action') . '</label>
                                             ' . $liveform->output_field(array('type'=>'select', 'name'=>'action', 'id'=>'action', 'class'=>'form-control', 'options'=>$action_options, 'onchange'=>'change_email_campaign_profile_action()')) . '
-                                            <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                         </div>
                                         <div class="col-12 md:col-6 lg:col-4 my-3 collapse ' . $rows['calendar_event_id'] . '" id="calendar_event_id_row">
                                             <label for="calendar_event_id" class="form-label">' . lang('Calendar Event') . '</label>
                                             ' . $liveform->output_field(array('type'=>'select', 'name'=>'calendar_event_id', 'id'=>'calendar_event_id', 'class'=>'form-control', 'options'=>get_calendar_event_options(array('reservations' => true)) )) . '
-                                            <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                         </div>
                                         <div class="col-12 md:col-6 lg:col-4 my-3 collapse ' . $rows['custom_form_page_id'] . '" id="custom_form_page_id_row">
                                             <label for="custom_form_page_id" class="form-label">' . lang('Custom Form') . '</label>
-                                            ' . $liveform->output_field(array('type'=>'select', 'name'=>'custom_form_page_id', 'id'=>'custom_form_page_id', 'class'=>'form-control', 'options'=>get_page_options('', 'custom form') )) . '
-                                            <div class="invalid-feedback">' . lang('Required Area') . '</div>
+                                            ' . $liveform->output_field(array('type'=>'select', 'name'=>'custom_form_page_id', 'id'=>'custom_form_page_id', 'class'=>'form-control', 'options'=>get_page_options('', 'custom form', 'edit', true, $keep_pages['custom_form_page_id'] ?? 0) )) . '
                                         </div>
                                         <div class="col-12 md:col-6 lg:col-4 my-3 collapse ' . $rows['email_campaign_profile_id'] . '" id="email_campaign_profile_id_row">
                                             <label for="email_campaign_profile_id" class="form-label">' . lang('Campaign Profile for Campaign that was sent') . '</label>
-                                            ' . $liveform->output_field(array('type'=>'select', 'name'=>'email_campaign_profile_id', 'id'=>'email_campaign_profile_id', 'class'=>'form-control', 'options'=>get_email_campaign_profile_options() )) . '
-                                            <div class="invalid-feedback">' . lang('Required Area') . '</div>
+                                            ' . $liveform->output_field(array('type'=>'select', 'name'=>'email_campaign_profile_id', 'id'=>'email_campaign_profile_id', 'class'=>'form-control', 'options'=>get_email_campaign_profile_options($exclude_ids, $keep_pages['email_campaign_profile_id'] ?? 0) )) . '
                                         </div>
                                         ' . $output_product_id_row . '
+                                        ' . $output_subscription_fields_row . '
                                     </div>
                                 </div>
                             </div>
@@ -261,8 +402,7 @@ function pg_email_campaign_profile_form_cards($liveform, $user, $product_id = 0)
                                     <div class="row">
                                         <div class="col-12 my-3">
                                             <label for="subject" class="form-label">' . lang('Subject') . '</label>
-                                            ' . $liveform->output_field(array('type'=>'text', 'name'=>'subject', 'id'=>'subject', 'placeholder'=>lang('Subject'), 'maxlength'=>'255', 'class'=>'form-control')) . '
-                                            <div class="invalid-feedback">' . lang('Required Area') . '</div>
+                                            ' . $liveform->output_field(array('type'=>'text', 'name'=>'subject', 'id'=>'subject', 'placeholder'=>lang('Subject'), 'maxlength'=>'255', 'class'=>'form-control', 'required'=>'required')) . '
                                         </div>
                                         <div class="col-12 my-1">
                                             <fieldset>
@@ -283,7 +423,6 @@ function pg_email_campaign_profile_form_cards($liveform, $user, $product_id = 0)
                                                         <div class="col-12 my-1">
                                                           <label for="email_body" class="form-label">' . lang('Body') . '</label>
                                                           ' . $liveform->output_field(array('type'=>'textarea', 'name'=>'body', 'id'=>'email_body', 'class'=>'form-control', 'placeholder'=>lang('Type E-mail body here') )) . '
-                                                          <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -294,8 +433,7 @@ function pg_email_campaign_profile_form_cards($liveform, $user, $product_id = 0)
                                                     <div class="row">
                                                         <div class="col-12 sm:col-8 my-1">
                                                             <label class="form-label" for="page_id">' . lang('Page') . '</label>
-                                                            ' . $liveform->output_field(array('type'=>'select', 'id'=>'page_id', 'name'=>'page_id', 'class'=>'form-control collapse-if-selected', 'options'=>get_page_options('', '', 'view'), 'data-bs-target'=>'#body_preview_row', 'onchange'=>'document.getElementById(\'body_preview_iframe\').src = \'' . OUTPUT_PATH . '\' + this.options[this.selectedIndex].firstChild.nodeValue + \'?edit=no&email=true\';')) . '
-                                                            <div class="invalid-feedback">' . lang('Required Area') . '</div>
+                                                            ' . $liveform->output_field(array('type'=>'select', 'id'=>'page_id', 'name'=>'page_id', 'class'=>'form-control collapse-if-selected', 'options'=>get_page_options('', '', 'view', true, $keep_pages['page_id'] ?? 0), 'data-bs-target'=>'#body_preview_row', 'onchange'=>'document.getElementById(\'body_preview_iframe\').src = \'' . OUTPUT_PATH . '\' + this.options[this.selectedIndex].firstChild.nodeValue + \'?edit=no&email=true\';')) . '
                                                         </div>
                                                         <div class="collapse popover fade bs-popover-bottom p-0 mb-3 w-100" id="body_preview_row">
                                                             <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
@@ -325,25 +463,21 @@ function pg_email_campaign_profile_form_cards($liveform, $user, $product_id = 0)
                                     <div class="row">
                                         <div class="col-12 sm:col-6 xl:col-12 my-3">
                                             <label class="form-label" for="from_name">' . lang('From Name') . '</label>
-                                            ' . $liveform->output_field(array('type'=>'text','value'=>h(ORGANIZATION_NAME), 'name'=>'from_name', 'id'=>'from_name', 'class'=>'form-control', 'maxlength'=>'100')) . '
-                                            <div class="invalid-feedback">' . lang('Required Area') . '</div>
+                                            ' . $liveform->output_field(array('type'=>'text','value'=>ORGANIZATION_NAME, 'name'=>'from_name', 'id'=>'from_name', 'class'=>'form-control', 'maxlength'=>'100', 'required'=>'required')) . '
                                         </div>
                                         <div class="col-12">
                                             <div class="row">
                                                 <div class="col-12 sm:col-6 xl:col-4 my-3">
                                                     <label class="form-label" for="bcc_email_address">' . lang('BCC E-mail Address') . '</label>
                                                     ' . $liveform->output_field(array('type'=>'text','value'=>'', 'name'=>'bcc_email_address', 'id'=>'bcc_email_address', 'class'=>'form-control text-end', 'maxlength'=>'100', 'inputmode'=>'email', 'data-inputmask-alias'=>'email')) . '
-                                                    <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                                 </div>
                                                 <div class="col-12 sm:col-6 xl:col-4 my-3">
                                                     <label class="form-label" for="from_email_address">' . lang('From E-mail Address') . '</label>
-                                                    ' . $liveform->output_field(array('type'=>'text','value'=>h($user['email_address']), 'name'=>'from_email_address', 'id'=>'from_email_address', 'class'=>'form-control text-end', 'maxlength'=>'100', 'inputmode'=>'email', 'data-inputmask-alias'=>'email')) . '
-                                                    <div class="invalid-feedback">' . lang('Required Area') . '</div>
+                                                    ' . $liveform->output_field(array('type'=>'text','value'=>$user['email_address'], 'name'=>'from_email_address', 'id'=>'from_email_address', 'class'=>'form-control text-end', 'maxlength'=>'100', 'required'=>'required', 'inputmode'=>'email', 'data-inputmask-alias'=>'email')) . '
                                                 </div>
                                                 <div class="col-12 sm:col-6 xl:col-4 my-3">
                                                     <label class="form-label" for="reply_email_address">' . lang('Reply to E-mail Address') . '</label>
-                                                    ' . $liveform->output_field(array('type'=>'text','value'=>h($user['email_address']), 'name'=>'reply_email_address', 'id'=>'reply_email_address', 'class'=>'form-control text-end', 'maxlength'=>'100', 'inputmode'=>'email', 'data-inputmask-alias'=>'email')) . '
-                                                    <div class="invalid-feedback">' . lang('Required Area') . '</div>
+                                                    ' . $liveform->output_field(array('type'=>'text','value'=>$user['email_address'], 'name'=>'reply_email_address', 'id'=>'reply_email_address', 'class'=>'form-control text-end', 'maxlength'=>'100', 'inputmode'=>'email', 'data-inputmask-alias'=>'email')) . '
                                                 </div>
                                             </div>
                                         </div>
@@ -371,7 +505,6 @@ function pg_email_campaign_profile_form_cards($liveform, $user, $product_id = 0)
                                         <div class="col-12 md:col-6 lg:col-4 my-3">
                                             <label class="form-label" for="schedule_time">' . lang('Send at a specific time') . '</label>
                                             ' . $liveform->output_field(array('type'=>'text', 'name'=>'schedule_time', 'id'=>'schedule_time', 'class'=>'form-control', 'maxlength'=>'8', 'data-pg-time' => '')) . '
-                                            <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                             <div class="text-end form-text">' . ((pg_time_format_code() === 'H:i') ? lang('HH:mm, leave blank to send at any time.') : lang('h:mm AM/PM, leave blank to send at any time.')) . '</div>
                                             ' . get_time_picker_format() . pg_fields_script() . '
                                         </div>
@@ -495,6 +628,16 @@ function pg_email_campaign_profile_form_validate($liveform, $profile_id = 0)
                 ) {
                     log_activity(lang('access denied for user to set campaign profile action for a campaign profile, because user does not have access to campaign profile'), $_SESSION['sessionusername']);
                     $liveform->mark_error('email_campaign_profile_id', lang('Sorry, you do not have access to that campaign profile.'));
+                }
+
+                // Each profile has one action, so a profile that follows itself or a
+                // profile downstream of it has nothing that ever starts it, and
+                // queued campaigns of it would send again after every run.
+                if (
+                    ($liveform->check_field_error('email_campaign_profile_id') == false)
+                    && pg_email_campaign_profile_closes_ring($profile_id, $liveform->get_field_value('email_campaign_profile_id'), pg_email_campaign_profile_follow_map())
+                ) {
+                    $liveform->mark_error('email_campaign_profile_id', lang('A campaign profile cannot follow itself or a profile that follows it.'));
                 }
 
                 break;

@@ -31,11 +31,15 @@ if (!$_POST) {
         $liveform->assign_field_value('doc_date', prepare_form_data_for_output(date('Y-m-d'), 'date'));
     }
 
+    // With foreign currency on, the amount is moved in the From till's
+    // currency, so each till names its currency and the amount box says so.
+    $fx_on = erp_fx_enabled();
+
     $till_options = array();
     $till_options[lang('Choose a till or bank account')] = '';
 
-    foreach ((array) db_items("SELECT id, name FROM erp_cash_accounts WHERE is_active = 1 ORDER BY sort_order ASC, name ASC") as $till) {
-        $till_options[$till['name']] = (string) (int) $till['id'];
+    foreach ((array) db_items("SELECT id, name, currency FROM erp_cash_accounts WHERE is_active = 1 ORDER BY sort_order ASC, name ASC") as $till) {
+        $till_options[h($till['name'] . ($fx_on ? (' (' . strtoupper(trim((string) $till['currency'])) . ')') : ''))] = (string) (int) $till['id'];
     }
 
     echo
@@ -81,7 +85,7 @@ if (!$_POST) {
                             <div class="col-12 sm:col-6 lg:col-4 my-3">
                                 <label for="amount" class="form-label">' . lang('Amount') . '</label>
                                 <label class="form-control form-adorn form-adorn-end">
-                                    <span class="form-adorn-text" aria-hidden="true">' . BASE_CURRENCY_SYMBOL . '</span>
+                                    <span class="form-adorn-text" aria-hidden="true">' . ($fx_on ? lang('in the till currency') : BASE_CURRENCY_SYMBOL) . '</span>
                                     ' . $liveform->output_field(array(
                                         'type' => 'text', 'id' => 'amount', 'name' => 'amount',
                                         'class' => 'form-ghost text-end', 'maxlength' => '15',

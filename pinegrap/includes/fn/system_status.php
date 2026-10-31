@@ -297,18 +297,41 @@ function pg_integrity_github_software_path()
     return 'pinegrap/';
 }
 
-// The tags a version can be released under, the update channel's own first:
-// a stable release is tagged v<version>, a beta build v<version>-beta.
-function pg_integrity_release_tags($version)
+// The tags a version can be released under. A stable release is tagged
+// v<version>, an old fixed beta package v<version>-beta; on the beta channel
+// the ref of the installed build (data/update_build.json) is asked first, as
+// it names exactly the files that build shipped.
+function pg_integrity_release_tags($version, $channel = null, $git_ref = null)
 {
-    $stable = 'v' . $version;
-    $beta = 'v' . $version . '-beta';
-
-    if (function_exists('pg_update_channel') && pg_update_channel() === 'beta') {
-        return [$beta, $stable];
+    if ($channel === null) {
+        $channel = function_exists('pg_update_channel') ? pg_update_channel() : 'stable';
     }
 
-    return [$stable, $beta];
+    $tags = ['v' . $version, 'v' . $version . '-beta'];
+
+    if (($channel === 'beta') && ((string) $git_ref !== '')) {
+        array_unshift($tags, (string) $git_ref);
+    }
+
+    return array_values(array_unique($tags));
+}
+
+// The git_ref the integrity check asks for first: the installed build's on
+// the beta channel, else ''.
+function pg_integrity_build_ref()
+{
+    if (!function_exists('pg_update_channel') || !function_exists('pg_update_build_read') || (pg_update_channel() !== 'beta')) {
+        return '';
+    }
+
+    return pg_update_build_read()['git_ref'];
+}
+
+// What the cached GitHub tree is kept under: the version, and the build's ref
+// when one is asked, so another build of the same version is fetched anew.
+function pg_integrity_reference_key($version, $git_ref)
+{
+    return (string) $version . (((string) $git_ref !== '') ? '@' . $git_ref : '');
 }
 
 /**
@@ -397,11 +420,11 @@ function pg_integrity_http_get($url, $headers)
  * when GitHub could not be asked or its answer cannot be used (no route, rate
  * limit, TLS failure, a truncated or unreadable tree).
  */
-function pg_integrity_github_reference($version, $ignored_files)
+function pg_integrity_github_reference($version, $ignored_files, $git_ref = '')
 {
     $software_path = pg_integrity_github_software_path();
 
-    foreach (pg_integrity_release_tags($version) as $tag) {
+    foreach (pg_integrity_release_tags($version, null, $git_ref) as $tag) {
         $response = pg_integrity_http_get(
             'https://api.github.com/repos/' . pg_integrity_github_repository() . '/git/trees/' . rawurlencode($tag) . '?recursive=1',
             ['Accept: application/vnd.github+json', 'X-GitHub-Api-Version: 2022-11-28']
@@ -458,6 +481,7 @@ function pg_integrity_github_reference($version, $ignored_files)
 
         return [
             'version' => (string) $version,
+            'key' => pg_integrity_reference_key($version, $git_ref),
             'tag' => $tag,
             'sha' => isset($tree['sha']) ? (string) $tree['sha'] : '',
             'fetched' => time(),
@@ -566,10 +590,13 @@ function check_directory_file_integrity()
         $reference_stamp = md5('local|' . @filemtime($reference_file) . '|' . @filesize($reference_file) . '|' . json_encode($generated));
     } else {
         $github = is_file($github_file) ? json_decode((string) @file_get_contents($github_file), true) : null;
+        $git_ref = pg_integrity_build_ref();
+        $reference_key = pg_integrity_reference_key($current_version, $git_ref);
 
         $usable = is_array($github)
             && isset($github['version'], $github['files'], $github['fetched'])
             && ((string) $github['version'] === $current_version)
+            && ((isset($github['key']) ? (string) $github['key'] : (string) $github['version']) === $reference_key)
             && is_array($github['files'])
             && !empty($github['files']);
 
@@ -579,14 +606,14 @@ function check_directory_file_integrity()
         // the hour for the same version, so an unreachable GitHub or a spent rate
         // limit is not asked on every request; a new version is asked at once.
         $due = !$usable || (($now - (int) $github['fetched']) >= 43200);
-        $may_ask = ((string) $state['github_attempt_version'] !== $current_version)
+        $may_ask = ((string) $state['github_attempt_version'] !== $reference_key)
             || (($now - (int) $state['github_attempt']) >= 3600);
 
         if ($due && $may_ask) {
             $state['github_attempt'] = $now;
-            $state['github_attempt_version'] = $current_version;
+            $state['github_attempt_version'] = $reference_key;
 
-            $fetched = pg_integrity_github_reference($current_version, $ignored_files);
+            $fetched = pg_integrity_github_reference($current_version, $ignored_files, $git_ref);
 
             // Logged when the reference goes missing, not on every hourly retry.
             $was_unavailable = ($state['last_local_result'] === 'unable_to_fetch_reference');
@@ -1489,6 +1516,26 @@ function pg_php_build_time()
     @phpinfo(INFO_GENERAL);
 
     return pg_php_build_time_from_info(ob_get_clean());
+}
+
+/**
+ * Drops the cached System Status result, so the next draw runs the checks
+ * again. Called by a screen that has just changed what a tile reports (a
+ * Site Settings save, a webhook switch or Retry, the Maintenance Mode switch),
+ * otherwise the tile keeps the old state for up to ten minutes. A missing
+ * file is not an error.
+ *
+ * Compatibility: PHP 7.0 - 8.5
+ * Returns: void
+ */
+
+function pg_system_status_forget()
+{
+    $file = PG_FUNCTIONS_DIR . '/data/temp/system_status_cache.json';
+
+    if (is_file($file)) {
+        @unlink($file);
+    }
 }
 
 /**

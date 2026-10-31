@@ -382,8 +382,8 @@ function ws_wtable_share_set($viewer, $table, $data)
     if ($share_id === 0) {
         // Not db(): a failed statement there ends the request with an HTML
         // page, and the duplicate key of a share made meanwhile is an answer.
-        $written = @mysqli_query(db::$con, "INSERT INTO ws_wtable_shares (table_id, target_type, target_id, level, created_by, created_at)
-            VALUES ('" . $table_id . "', '" . e($type) . "', '" . $target_id . "', '" . e($level) . "', '" . (int) $viewer['id'] . "', '" . time() . "')");
+        $written = db_q("INSERT INTO ws_wtable_shares (table_id, target_type, target_id, level, created_by, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+            array($table_id, (string) $type, (int) $target_id, (string) $level, (int) $viewer['id'], time()));
 
         if ($written) {
             $share_id = (int) mysqli_insert_id(db::$con);

@@ -29,6 +29,11 @@ function test_state_form_values()
 		array('name' => '', 'code' => '', 'country_id' => ''),
 		pg_state_form_values(array('name' => array('x'), 'code' => null)),
 		'missing, null or nested values are empty');
+
+	pg_assert_same(
+		array('name' => 'Texas', 'code' => 'TX', 'country_id' => '1'),
+		pg_state_form_values(array('name' => ' Texas', 'code' => ' TX ', 'country_id' => '1')),
+		'the name and the code are trimmed');
 }
 
 function test_state_form_both_screens_draw_the_shared_card()

@@ -282,7 +282,7 @@ function ws_claude_setup_guide($base, $host, $prompt, $copy)
         array(
             'art'   => 'try',
             'title' => h(lang('Try it')),
-            'text'  => h(lang('Try the connection here, then write @Claude in a channel. The answer comes back under the request in a few minutes; the eye on the request means Claude has taken it.')),
+            'text'  => h(lang('Try the connection here, then write @Claude in a channel. The answer comes back under the request in a few minutes; the eyes reaction (👀) on the request means Claude has taken it.')),
             'extra' => '',
         ),
     );

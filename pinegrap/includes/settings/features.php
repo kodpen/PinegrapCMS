@@ -29,8 +29,8 @@ $pg_settings_cards[] = '
                                 <div class="card-body">
                                    <div class="row gy-5">
                                         <div class="pg-f-md">
-                                            <label for="badge_label" class="form-label">' . lang('Default Badge Label') . '</label>
-                                            <input type="text" name="badge_label" id="badge_label" maxlength="100" class="form-control" value="' . h($badge_label) . '" />
+                                            <label for="setting_badge_label" class="form-label">' . lang('Default Badge Label') . '</label>
+                                            <input type="text" name="badge_label" id="setting_badge_label" maxlength="100" class="form-control" value="' . h($badge_label) . '" />
                                         </div>
                                         <div class="col-12 ">
                                             <fieldset><legend class="form-label fs-md">'. lang('Site Search Type') . '</legend>
@@ -334,7 +334,7 @@ $pg_settings_cards[] = '
                             </div>
                             <div class="pg-f-xs">
                                 <label for="image_resize_quality" class="form-label">' . lang('Quality When Resizing') . '</label>
-                                <div class="form-range pg-range-bubble" data-pg-range="%">
+                                <div class="form-range pg-range-bubble" data-pg-range="' . h(lang('{var:1}%')) . '">
                                     <input type="range" name="image_resize_quality" id="image_resize_quality" min="40" max="100" step="1" class="form-range-input" value="' . (int) $image_settings['resize_quality'] . '" />
                                 </div>
                                 <div class="form-text">' . lang('Applies only when an image is actually scaled down. Optimizing without resizing keeps its own quality setting.') . '</div>
@@ -469,7 +469,7 @@ $pg_settings_cards[] = '
                                         </div>
                                         <div class="pg-f-lg">
                                             <label for="signature_tsa_url" class="form-label">' . lang('Time Stamp Authority Address') . '</label>
-                                            <input type="text" name="signature_tsa_url" id="signature_tsa_url" maxlength="255" class="form-control" value="' . h($signature_tsa_url) . '" placeholder="https://tsa.example/tsr" />
+                                            <input type="text" inputmode="url" spellcheck="false" autocapitalize="off" name="signature_tsa_url" id="signature_tsa_url" maxlength="255" class="form-control" value="' . h($signature_tsa_url) . '" placeholder="https://tsa.example/tsr" />
                                             <div class="form-text">' . lang('Leave empty to take no time stamp; signatures are stored exactly as they are today. Free authorities produce a real, verifiable token but are not licensed providers, so their stamp is not a "qualified time stamp" in the sense Turkish law gives that term.') . '</div>
                                         </div>
                                         <div class="pg-f-md">
@@ -482,7 +482,7 @@ $pg_settings_cards[] = '
                                         </div>
                                         <div class="pg-f-md">
                                             <label for="signature_tsa_username" class="form-label">' . lang('User Name') . '</label>
-                                            <input type="text" name="signature_tsa_username" id="signature_tsa_username" maxlength="100" class="form-control" value="' . h($signature_tsa_username) . '" />
+                                            <input type="text" spellcheck="false" autocapitalize="off" name="signature_tsa_username" id="signature_tsa_username" maxlength="100" class="form-control" value="' . h($signature_tsa_username) . '" />
                                         </div>
                                         <div class="pg-f-md">
                                             <label for="signature_tsa_password" class="form-label">' . lang('Password') . '</label>

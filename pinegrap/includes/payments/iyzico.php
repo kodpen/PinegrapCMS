@@ -569,12 +569,12 @@ function pg_payment_iyzico_authorize_with($order, $amount, $payment, $settings, 
 
         if ($status !== 'success') {
             $raw = (string) $initialize->getRawResult();
-            $log[] = "Iyzipay 3DS init error: status=$status, code=$error_code, message=$error_message, raw=" . substr($raw, 0, 1500);
+            $log[] = pg_log_lang(array('string' => 'Iyzipay 3D Secure could not be started: status {var:1}, code {var:2}, message {var:3}. Answer: {var:4}', 'vars' => array((string) $status, (string) $error_code, (string) $error_message, substr($raw, 0, 1500))));
 
             return pg_payment_failure_logged(pg_payment_iyzico_start_error($error_message, $raw), $log);
         }
 
-        $log[] = lang(array(
+        $log[] = pg_log_lang(array(
             'string' => 'The 3D Security process has been started by {var:1} {var:2} ({var:3}).',
             'vars'   => $billing_name,
         ));
@@ -599,19 +599,19 @@ function pg_payment_iyzico_authorize_with($order, $amount, $payment, $settings, 
     $fraud_status = $paid->getFraudStatus();
 
     if ($status !== 'success') {
-        $log[] = "Iyzipay payment error: code=$error_code, message=$error_message";
+        $log[] = pg_log_lang(array('string' => 'Iyzipay payment was not accepted: code {var:1}, message {var:2}', 'vars' => array((string) $error_code, (string) $error_message)));
 
         return pg_payment_failure_logged(lang('Payment failed. Please try again.'), $log);
     }
 
     if ($fraud_status === -1) {
-        $log[] = "Iyzipay fraud rejected: paymentId=$payment_id";
+        $log[] = pg_log_lang(array('string' => 'Iyzipay rejected payment {var:1} as fraud.', 'vars' => array((string) $payment_id)));
 
         return pg_payment_failure_logged(lang('Payment was found to be risky and rejected.'), $log);
     }
 
     if ($fraud_status === 0) {
-        $log[] = "Iyzipay fraud pending review: paymentId=$payment_id";
+        $log[] = pg_log_lang(array('string' => 'Iyzipay holds payment {var:1} for a fraud review.', 'vars' => array((string) $payment_id)));
     }
 
     return array(
@@ -753,7 +753,7 @@ function pg_payment_iyzico_complete_with($order, $amount, $return, $state, $sett
     // The row must belong to the order in the visitor's session, otherwise a
     // conversation id taken from another order could complete this one.
     if (!is_array($row) || ($order_id <= 0) || ((int) $row['order_id'] !== $order_id) || ($posted_payment_id === '')) {
-        $log[] = "Iyzipay 3DS callback: state not found or order mismatch for conversationId=$conversation_id, order_id=$order_id";
+        $log[] = pg_log_lang(array('string' => 'Iyzipay 3D Secure answer matches no payment started for order #{var:1} (conversation {var:2}).', 'vars' => array($order_id, $conversation_id)));
 
         $answer = pg_payment_failure_logged(lang('Session could not be verified. Please try again.'), $log);
         $answer['state'] = $state;
@@ -762,7 +762,7 @@ function pg_payment_iyzico_complete_with($order, $amount, $return, $state, $sett
     }
 
     if (!call_user_func($claim, $row, $posted_payment_id)) {
-        $log[] = "Iyzipay 3DS callback: state already used for conversationId=$conversation_id";
+        $log[] = pg_log_lang(array('string' => 'Iyzipay 3D Secure answer was already used (conversation {var:1}).', 'vars' => array($conversation_id)));
 
         $answer = pg_payment_failure_logged(lang('Session could not be verified. Please try again.'), $log);
         $answer['state'] = $state;
@@ -788,25 +788,25 @@ function pg_payment_iyzico_complete_with($order, $amount, $return, $state, $sett
     $paid_cents = (int) round((float) $paid->getPaidPrice() * 100);
 
     if ($error_code === '5002') {
-        $log[] = "Iyzipay 3DS error 5002: paymentId=$payment_id";
+        $log[] = pg_log_lang(array('string' => 'Iyzipay 3D Secure verification failed (error 5002) for payment {var:1}.', 'vars' => array((string) $payment_id)));
 
         return pg_payment_failure_logged(lang('3D Secure verification failed. Please try again.'), $log);
     }
 
     if ($status !== 'success') {
-        $log[] = "Iyzipay 3DS status!=success: code=$error_code, message=$error_message";
+        $log[] = pg_log_lang(array('string' => 'Iyzipay 3D Secure payment was not accepted: code {var:1}, message {var:2}', 'vars' => array((string) $error_code, (string) $error_message)));
 
         return pg_payment_failure_logged(lang('Payment could not be verified. Please try again.'), $log);
     }
 
     if ($fraud_status === -1) {
-        $log[] = "Iyzipay 3DS fraud rejected: paymentId=$payment_id";
+        $log[] = pg_log_lang(array('string' => 'Iyzipay rejected payment {var:1} as fraud.', 'vars' => array((string) $payment_id)));
 
         return pg_payment_failure_logged(lang('Payment was found to be risky and rejected.'), $log);
     }
 
     if ($fraud_status === 0) {
-        $log[] = "Iyzipay 3DS fraud pending review: paymentId=$payment_id";
+        $log[] = pg_log_lang(array('string' => 'Iyzipay holds payment {var:1} for a fraud review.', 'vars' => array((string) $payment_id)));
     }
 
     // The order must still total what the payment was started with (the cart
@@ -826,13 +826,13 @@ function pg_payment_iyzico_complete_with($order, $amount, $return, $state, $sett
     }
 
     if (($base_total <= 0) || ($current_total !== $base_total) || (abs($paid_cents - $expected_cents) > $tolerance)) {
-        $log[] = "Iyzipay 3DS amount mismatch: paymentId=$payment_id, order_id=$order_id, current_total=$current_total, stored_total=$base_total, gateway_paid=$paid_cents, expected_paid=$expected_cents";
+        $log[] = pg_log_lang(array('string' => 'Iyzipay payment {var:1} does not match order #{var:2}: the order totals {var:3}, the payment was started for {var:4}, iyzico took {var:5} (expected {var:6}).', 'vars' => array($payment_id, $order_id, pg_payment_decimal($current_total), pg_payment_decimal($base_total), pg_payment_decimal($paid_cents), pg_payment_decimal($expected_cents))));
         $log = array_merge($log, pg_payment_iyzico_void($options, $payment_id, $conversation_id, 'Order total changed during 3D Secure verification'));
 
         return pg_payment_failure_logged(lang('The order total changed while the payment was being verified. The payment was cancelled. Please review your order and try again.'), $log);
     }
 
-    $log[] = lang(array(
+    $log[] = pg_log_lang(array(
         'string' => 'The 3D Security process has been completed by {var:1} {var:2} ({var:3}).',
         'vars'   => array(
             pg_payment_iyzico_order_value($order, 'billing_first_name'),
@@ -916,12 +916,12 @@ function pg_payment_pay_with_iyzico_authorize_with($order, $amount, $payment, $s
 
     if ($status !== 'success') {
         $raw = (string) $result->getRawResult();
-        $log[] = "Pay with Iyzico init error: code=$error_code, message=$error_message, raw=" . substr($raw, 0, 1500);
+        $log[] = pg_log_lang(array('string' => 'Pay with iyzico could not be started: code {var:1}, message {var:2}. Answer: {var:3}', 'vars' => array((string) $error_code, (string) $error_message, substr($raw, 0, 1500))));
 
         return pg_payment_failure_logged(pg_payment_iyzico_start_error($error_message, $raw), $log);
     }
 
-    $log[] = lang(array(
+    $log[] = pg_log_lang(array(
         'string' => 'Pay with Iyzico has been started by {var:1} {var:2} ({var:3}).',
         'vars'   => array(
             pg_payment_iyzico_order_value($order, 'billing_first_name'),
@@ -975,7 +975,7 @@ function pg_payment_pay_with_iyzico_complete_with($order, $amount, $return, $sta
     // The token iyzico posts back must be the one this payment was started
     // with, for the order in this session; nothing is asked of iyzico before.
     if (($token === '') || ($token !== $stored_token) || ($order_id <= 0) || ($stored_order_id !== $order_id)) {
-        $log[] = "Pay with Iyzico callback: token or order mismatch (order_id=$order_id, stored_order_id=$stored_order_id)";
+        $log[] = pg_log_lang(array('string' => 'Pay with iyzico answer does not match this order (order #{var:1}, payment started for order #{var:2}).', 'vars' => array($order_id, $stored_order_id)));
 
         $answer = pg_payment_failure_logged(lang('Session could not be verified. Please try again.'), $log);
         $answer['state'] = $state;
@@ -999,7 +999,7 @@ function pg_payment_pay_with_iyzico_complete_with($order, $amount, $return, $sta
     $error_message = $retrieved->getErrorMessage();
 
     if ($status !== 'success') {
-        $log[] = "Pay with Iyzico status!=success: code=$error_code, message=$error_message";
+        $log[] = pg_log_lang(array('string' => 'Pay with iyzico payment was not accepted: code {var:1}, message {var:2}', 'vars' => array((string) $error_code, (string) $error_message)));
 
         return pg_payment_failure_logged(lang('Payment could not be verified. Please try again.'), $log);
     }
@@ -1018,13 +1018,13 @@ function pg_payment_pay_with_iyzico_complete_with($order, $amount, $return, $sta
         || ($paid_cents < $base_total)
         || (($installment <= 1) && ($paid_cents !== $base_total))
     ) {
-        $log[] = "Pay with Iyzico amount mismatch: paymentId=$payment_id, order_id=$order_id, current_total=$current_total, stored_total=$base_total, gateway_paid=$paid_cents, installment=$installment";
+        $log[] = pg_log_lang(array('string' => 'Pay with iyzico payment {var:1} does not match order #{var:2}: the order totals {var:3}, the payment was started for {var:4}, iyzico took {var:5} in {var:6} installments.', 'vars' => array($payment_id, $order_id, pg_payment_decimal($current_total), pg_payment_decimal($base_total), pg_payment_decimal($paid_cents), $installment)));
         $log = array_merge($log, pg_payment_iyzico_void($options, $payment_id, $conversation_id, 'Order total changed during Pay with Iyzico checkout'));
 
         return pg_payment_failure_logged(lang('The order total changed while the payment was being verified. The payment was cancelled. Please review your order and try again.'), $log);
     }
 
-    $log[] = lang(array(
+    $log[] = pg_log_lang(array(
         'string' => 'Pay with Iyzico has been completed by {var:1} {var:2} ({var:3}).',
         'vars'   => array(
             pg_payment_iyzico_order_value($order, 'billing_first_name'),
@@ -1053,7 +1053,8 @@ function pg_payment_pay_with_iyzico_complete_with($order, $amount, $return, $sta
  * @param \Iyzipay\Options $options
  * @param string           $payment_id
  * @param mixed            $conversation_id
- * @param string           $reason a short English reason, for the log and iyzico
+ * @param string           $reason a short English reason for iyzico, a language
+ *                                  shard key the log line translates
  * @return array lines for the activity log; a refusal says MANUAL REFUND REQUIRED
  */
 function pg_payment_iyzico_void($options, $payment_id, $conversation_id, $reason)
@@ -1061,8 +1062,12 @@ function pg_payment_iyzico_void($options, $payment_id, $conversation_id, $reason
     $payment_id = (string) $payment_id;
     $reason = (string) $reason;
 
+    // The reason goes to iyzico in English and to the log in the software
+    // language; each caller's reason is a key of the language shards.
+    $logged_reason = pg_log_lang(array('string' => $reason));
+
     if ($payment_id === '') {
-        return array('Iyzipay payment could not be cancelled because the payment id is empty (' . $reason . ').');
+        return array(pg_log_lang(array('string' => 'Iyzipay payment could not be cancelled because the payment id is empty ({var:1}).', 'vars' => array($logged_reason))));
     }
 
     try {
@@ -1076,17 +1081,17 @@ function pg_payment_iyzico_void($options, $payment_id, $conversation_id, $reason
         $cancel = \Iyzipay\Model\Cancel::create($request, $options);
 
         if ($cancel->getStatus() == 'success') {
-            return array('Iyzipay payment ' . $payment_id . ' was cancelled: ' . $reason . '.');
+            return array(pg_log_lang(array('string' => 'Iyzipay payment {var:1} was cancelled: {var:2}.', 'vars' => array($payment_id, $logged_reason))));
         }
 
         $error_message = (string) $cancel->getErrorMessage();
 
-        return array(
-            'Iyzipay payment ' . $payment_id . ' could not be cancelled (' . $reason . '). MANUAL REFUND REQUIRED. ' .
-            'Gateway message: ' . ($error_message !== '' ? $error_message : '(no message)'),
-        );
+        return array(pg_log_lang(array(
+            'string' => 'Iyzipay payment {var:1} could not be cancelled ({var:2}). MANUAL REFUND REQUIRED. Gateway message: {var:3}',
+            'vars'   => array($payment_id, $logged_reason, ($error_message !== '') ? $error_message : pg_log_lang(array('string' => '(no message)'))),
+        )));
     } catch (\Throwable $exception) {
-        return array('Iyzipay payment ' . $payment_id . ' could not be cancelled (' . $reason . '). MANUAL REFUND REQUIRED. ' . $exception->getMessage());
+        return array(pg_log_lang(array('string' => 'Iyzipay payment {var:1} could not be cancelled ({var:2}). MANUAL REFUND REQUIRED. {var:3}', 'vars' => array($payment_id, $logged_reason, $exception->getMessage()))));
     }
 }
 
@@ -1534,13 +1539,13 @@ function pg_payment_iyzico_charge_renewal_with($subscription, $settings)
     $refusal = pg_payment_iyzico_refusal((string) $paid->getStatus(), (string) $paid->getErrorCode(), (string) $paid->getErrorMessage());
 
     if ($refusal !== null) {
-        $refusal['log'] = array('Iyzipay renewal error: subscription=' . $id . ', code=' . $paid->getErrorCode() . ', message=' . $paid->getErrorMessage());
+        $refusal['log'] = array(pg_log_lang(array('string' => 'Iyzipay renewal of subscription #{var:1} was not accepted: code {var:2}, message {var:3}', 'vars' => array($id, (string) $paid->getErrorCode(), (string) $paid->getErrorMessage()))));
 
         return $refusal;
     }
 
     if ($paid->getFraudStatus() === -1) {
-        return pg_payment_failure_logged(lang('Payment was found to be risky and rejected.'), array("Iyzipay renewal fraud rejected: subscription=$id, paymentId=$payment_id"));
+        return pg_payment_failure_logged(lang('Payment was found to be risky and rejected.'), array(pg_log_lang(array('string' => 'Iyzipay rejected the renewal of subscription #{var:1} as fraud (payment {var:2}).', 'vars' => array($id, $payment_id)))));
     }
 
     $answer = array(
@@ -1553,7 +1558,7 @@ function pg_payment_iyzico_charge_renewal_with($subscription, $settings)
         'installments'   => 1,
         'card_brand'     => (string) $paid->getCardAssociation(),
         'card_last4'     => (string) $paid->getLastFourDigits(),
-        'log'            => ($paid->getFraudStatus() === 0) ? array("Iyzipay renewal fraud pending review: subscription=$id, paymentId=$payment_id") : array(),
+        'log'            => ($paid->getFraudStatus() === 0) ? array(pg_log_lang(array('string' => 'Iyzipay holds the renewal of subscription #{var:1} for a fraud review (payment {var:2}).', 'vars' => array($id, $payment_id)))) : array(),
     );
 
     if ($token !== $card[1]) {

@@ -188,7 +188,7 @@ if (!$_POST) {
             $child_product_groups = db_items(
                 "SELECT id
                 FROM product_groups
-                WHERE parent_id = '" . $product_group['id'] . "'
+                WHERE parent_id = '" . $product_group['id'] . "'" . pg_catalog_bin_live_sql('product_groups') . "
                 ORDER BY sort_order ASC");
         }
 
@@ -307,16 +307,18 @@ if (!$_POST) {
         }
 
         // Get all products that are in this product group,
-        // in order to add products to new group.
+        // in order to add products to new group. Products in the
+        // Recycle Bin are left out, as Edit Product Group leaves them out.
         $product_references = db_items(
             "SELECT
-                product AS id,
-                sort_order,
-                featured,
-                featured_sort_order,
-                new_date
+                products_groups_xref.product AS id,
+                products_groups_xref.sort_order,
+                products_groups_xref.featured,
+                products_groups_xref.featured_sort_order,
+                products_groups_xref.new_date
             FROM products_groups_xref
-            WHERE product_group = '" . $product_group['id'] . "'");
+            JOIN products ON products.id = products_groups_xref.product
+            WHERE products_groups_xref.product_group = '" . $product_group['id'] . "'" . pg_catalog_bin_live_sql('products'));
 
         // Loop through the products in order to add them to new group.
         foreach ($product_references as $product_reference) {
@@ -331,6 +333,13 @@ if (!$_POST) {
                 // Otherwise this product has not already been duplicated, so duplicate it.
                 } else {
                     $product_id = duplicate_product($product_reference['id']);
+
+                    // duplicate_product() links the copy to every group the
+                    // original is in. The copy belongs only to the new groups,
+                    // which the insert below links it to.
+                    if ((int) $product_id > 0) {
+                        db("DELETE FROM products_groups_xref WHERE product = '" . e((int) $product_id) . "'");
+                    }
 
                     $duplicated_products[$product_reference['id']] = $product_id;
                 }
@@ -443,10 +452,11 @@ if (!$_POST) {
 
     log_activity(lang(array('string'=>'product group ({var:1}) was duplicated','vars'=>array($product_group['name']) )), $_SESSION['sessionusername']);
 
+    // Clear what an earlier visit left in the form first, then queue the
+    // notice, so Edit Product Group prints it.
     $liveform_edit_product_group = new liveform('edit_product_group');
-    $liveform_edit_product_group->add_notice(lang('The product group has been duplicated, and you are now editing the duplicate.'));
-
     $liveform_edit_product_group->remove_form();
+    $liveform_edit_product_group->add_notice(lang('The product group has been duplicated, and you are now editing the duplicate.'));
 
     go(PATH . SOFTWARE_DIRECTORY . '/edit_product_group.php?id=' . $new_product_group_id);
 }

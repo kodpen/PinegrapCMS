@@ -6,7 +6,7 @@ module: shipment_labels
 
 ## How is a label created over the API?
 - `POST /orders/{id}/shipments/label` (`orders.labels.create`, `orders:write`, 201 `OrderShipmentLabel`): `ship_to_id` (optional with one address, 422 with several, as `POST /orders/{id}/shipment`), `is_return`. It calls `pg_shipment_label_create()`, the panel's Create Label, with the key's owner as `user_id`.
-- Refusals come from `pg_shipment_label_create_check()` with the panel's messages, mapped by `api_order_label_refusal()`: not_ready 503 `service_unavailable`, not_found 404, 409 `order_not_completed`, `label_exists`, `no_label_service`; after the service, 409 `label_refused` or `label_unclear` (create's `unclear`). An order with no address is 409 `no_shipping_address`.
+- Refusals come from `pg_shipment_label_create_check()` with the panel's messages, mapped by `api_order_label_refusal()`: not_ready 503 `service_unavailable`, not_found 404, 409 `order_not_completed`, `label_exists`, `no_label_service`; `marketplace_label` (the marketplace makes the package's label: `trendyol-common-label.md`) falls to 409 `label_refused` with its sentence; after the service, 409 `label_refused` or `label_unclear` (create's `unclear`). An order with no address is 409 `no_shipping_address`.
 
 ## How is the check split?
 - `pg_shipment_label_create_refusal($ready, $order, $active, $driver, $return)` (pure) holds the refusals in create's old order: table, order, completed, active label of the kind (return-request labels not counted), driver. `pg_shipment_label_create_check()` reads only (ship_to, order, active count, driver pick) and returns `ship_to`, `order`, `driver`; `pg_shipment_label_create()` runs it first and keeps no refusal of its own.

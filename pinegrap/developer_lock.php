@@ -46,7 +46,7 @@ if (!$_POST) {
     // over a single real input (data-bs-otp starts it), which is what is
     // posted. A long PIN's slots shrink with the card (.pg-otp-fluid).
     $pin_inputs = '<div class="otp otp-lg otp-connected pg-otp-fluid justify-content-center" data-bs-otp="" data-bs-mask="true">
-            <input type="text" id="pin" name="pin" class="otp-input" maxlength="' . (int) $pin_length . '" inputmode="numeric" autocomplete="off" spellcheck="false" autofocus="autofocus"/>
+            <input type="text" id="pin" name="pin" class="otp-input" maxlength="' . (int) $pin_length . '" inputmode="numeric" autocomplete="off" spellcheck="false" autofocus="autofocus" aria-describedby="pin_hint"/>
         </div>';
 
     print 
@@ -81,6 +81,7 @@ if (!$_POST) {
                                 </div>
                                 <div class="card-body">
                                     ' . $pin_inputs . '
+                                    <div id="pin_hint" class="form-text text-center mt-3">' . lang('The page opens as soon as every digit is entered.') . '</div>
                                 </div>
                             </div>
                         </div>
@@ -96,7 +97,8 @@ if (!$_POST) {
     </style>
     <script>
     (function () {
-        // Sends the form once every slot holds a digit. The OTP component
+        // Sends the form once every slot holds a digit (#pin_hint says so
+        // in advance). The OTP component
         // takes over typing (beforeinput) and paste, so no native "input"
         // follows a keystroke: the value is read after each keyup and paste.
         var pin = document.getElementById("pin");

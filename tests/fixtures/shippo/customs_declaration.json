@@ -1,0 +1,29 @@
+{
+  "contents_type": "MERCHANDISE",
+  "non_delivery_option": "RETURN",
+  "incoterm": "DDU",
+  "certify": true,
+  "certify_signer": "Example Shop",
+  "items": [
+    {
+      "description": "Kaffeebecher „Berlin“",
+      "quantity": 2,
+      "net_weight": "0.8",
+      "mass_unit": "kg",
+      "value_amount": "25.00",
+      "value_currency": "EUR",
+      "origin_country": "PT",
+      "tariff_number": "6912.00"
+    },
+    {
+      "description": "Untersetzer",
+      "quantity": 1,
+      "net_weight": "0.45",
+      "mass_unit": "kg",
+      "value_amount": "0.01",
+      "value_currency": "EUR",
+      "origin_country": "DE",
+      "tariff_number": "4823.90"
+    }
+  ]
+}

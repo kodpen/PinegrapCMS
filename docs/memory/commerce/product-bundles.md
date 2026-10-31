@@ -6,8 +6,8 @@ module: bundles
 
 ## What is stored? (11.0.54, PR #2646)
 - `products.bundle`, `bundle_pricing` ('fixed'/'sum'), `bundle_discount_bp` (basis points). `product_bundle_items` (bundle_id, product_id, quantity, sort_order; UNIQUE (bundle_id, product_id)).
-- `order_item_components` and `erp_invoice_item_components` are created empty: the sale and ERP steps write them.
-- `erp_stock_moves`: `uniq_line_product (kind, line_id, product_id)` replaces `uniq_line (kind, line_id)`, added before the old one is dropped (rerun-safe, never without a unique key).
+- `order_item_components`, `erp_invoice_item_components`: written by the sale and ERP steps.
+- `erp_stock_moves`: `uniq_line_product (kind, line_id, product_id)` replaces `uniq_line (kind, line_id)` (added before the old one goes: never without a unique key).
 - Before the step `pg_bundles_ready()` is false: all answer empty.
 
 ## How are stock and price derived?
@@ -27,7 +27,7 @@ module: bundles
 - `check_inventory()`: a cart holding a bundle goes to `pg_bundle_check_inventory()`: every line against one stock pool (`pg_bundle_cart_allowance()`, lines in id order); other carts keep the old loop.
 
 ## Where else is a bundle handled?
-- ERP: one invoice line, a stock move per component (`erp/erp-bundle-lines.md`). Storefront: [[product-bundles-storefront]].
+- ERP: one invoice line, a stock move per component (`erp/erp-bundle-lines.md`). Storefront: [[product-bundles-storefront]]. Copy: [[product-duplicate]].
 
 ## What does the product screen do?
 - Edit screen only: the Bundle card (`pg_pb_render_bundle_card()`, `assets/js/product_bundle.js`), search through `add_order.php?request=search_products`. Hidden `bundle_card` marks a save that carries it.

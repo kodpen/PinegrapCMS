@@ -35,12 +35,12 @@ function test_panel_dates_site_order_no_fixed_day_month_dates()
 function test_panel_dates_site_order_screens_use_get_absolute_time()
 {
 	pg_assert_same(3, substr_count(panel_dates_site_order_source('api_settings.php'), "get_absolute_time(array('timestamp' => (int)"));
-	pg_assert_contains("get_absolute_time(array('timestamp' => (int)\$connection['created_timestamp'], 'type' => 'date'))", panel_dates_site_order_source('connected_apps.php'));
-	pg_assert_contains("get_absolute_time(array('timestamp' => (int)\$account['created_timestamp'], 'type' => 'date'))", panel_dates_site_order_source('connections.php'));
+	pg_assert_contains("get_absolute_time(array('timestamp' => (int)\$connection['created_timestamp'], 'type' => 'date', 'format' => 'plain_text'))", panel_dates_site_order_source('connected_apps.php'));
+	pg_assert_contains("get_absolute_time(array('timestamp' => (int)\$account['created_timestamp'], 'type' => 'date', 'format' => 'plain_text'))", panel_dates_site_order_source('connections.php'));
 
 	$chat = panel_dates_site_order_source('chat.php');
-	pg_assert_contains("get_absolute_time(array('timestamp' => \$timestamp, 'type' => 'date'))", $chat);
-	pg_assert_contains("get_absolute_time(array('timestamp' => \$timestamp))", $chat);
+	pg_assert_contains("get_absolute_time(array('timestamp' => \$timestamp, 'type' => 'date', 'format' => 'plain_text'))", $chat);
+	pg_assert_contains("get_absolute_time(array('timestamp' => \$timestamp, 'format' => 'plain_text'))", $chat);
 }
 
 function test_panel_dates_site_order_chat_window_reads_site_clock()
@@ -49,11 +49,15 @@ function test_panel_dates_site_order_chat_window_reads_site_clock()
 	pg_assert_contains("'clock' => array(", $chat);
 	pg_assert_contains("DATE_FORMAT == 'month_day'", $chat);
 	pg_assert_contains("TIME_FORMAT == 'twelve_hours'", $chat);
+	pg_assert_contains("'zone' => (pg_time_uses_user_zone(array()) ? pg_timezone_canonical(USER_TIMEZONE) : date_default_timezone_get())", $chat);
 
 	foreach (array('chat_backend.src.js', 'chat_backend.min.js') as $file) {
 		$source = panel_dates_site_order_source('assets/js/' . $file);
 		pg_assert_contains('month_day', $source, $file);
 		pg_assert_contains('twelve_hours', $source, $file);
+		// Message times follow the panel's zone, not the browser's.
+		pg_assert_contains('timeZone', $source, $file);
+		pg_assert_contains('formatToParts', $source, $file);
 	}
 
 	$source = panel_dates_site_order_source('assets/js/chat_backend.src.js');

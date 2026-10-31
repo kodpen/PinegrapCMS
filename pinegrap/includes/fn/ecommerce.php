@@ -868,18 +868,18 @@ function _pg_decrypt_legacy_credit_card_number($credit_card_number, $key)
     if (
         (extension_loaded('mcrypt') == FALSE)
         || (function_exists('mcrypt_decrypt') == FALSE)
-        || (in_array('rijndael-256', mcrypt_list_algorithms()) == FALSE)
+        || (in_array('rijndael-256', mcrypt_list_algorithms()) == FALSE) // phpcs:ignore PHPCompatibility.FunctionUse.RemovedFunctions.mcrypt_list_algorithmsDeprecatedRemoved,PHPCompatibility.Extensions.RemovedExtensions.mcryptDeprecatedRemoved -- guarded by extension_loaded('mcrypt') / function_exists('mcrypt_decrypt'); kept while PHP 7.1 is supported
     ) {
         return '';
     }
     $credit_card_number = base64_decode($credit_card_number);
-    $iv_size = mcrypt_get_iv_size(MCRYPT_RIJNDAEL_256, MCRYPT_MODE_CBC);
+    $iv_size = mcrypt_get_iv_size(MCRYPT_RIJNDAEL_256, MCRYPT_MODE_CBC); // phpcs:ignore PHPCompatibility.FunctionUse.RemovedFunctions.mcrypt_get_iv_sizeDeprecatedRemoved,PHPCompatibility.Extensions.RemovedExtensions.mcryptDeprecatedRemoved,PHPCompatibility.Constants.RemovedConstants.mcrypt_rijndael_256DeprecatedRemoved,PHPCompatibility.Constants.RemovedConstants.mcrypt_mode_cbcDeprecatedRemoved -- guarded by extension_loaded('mcrypt') / function_exists('mcrypt_decrypt'); kept while PHP 7.1 is supported
     if (strlen($credit_card_number) <= $iv_size) {
         return '';
     }
     $iv = substr($credit_card_number, 0, $iv_size);
     $credit_card_number = substr($credit_card_number, $iv_size);
-    $decrypted_credit_card_number = mcrypt_decrypt(MCRYPT_RIJNDAEL_256, $key, $credit_card_number, MCRYPT_MODE_CBC, $iv);
+    $decrypted_credit_card_number = mcrypt_decrypt(MCRYPT_RIJNDAEL_256, $key, $credit_card_number, MCRYPT_MODE_CBC, $iv); // phpcs:ignore PHPCompatibility.FunctionUse.RemovedFunctions.mcrypt_decryptDeprecatedRemoved,PHPCompatibility.Extensions.RemovedExtensions.mcryptDeprecatedRemoved,PHPCompatibility.Constants.RemovedConstants.mcrypt_rijndael_256DeprecatedRemoved,PHPCompatibility.Constants.RemovedConstants.mcrypt_mode_cbcDeprecatedRemoved -- guarded by extension_loaded('mcrypt') / function_exists('mcrypt_decrypt'); kept while PHP 7.1 is supported
     // remove null padding from the end
     return rtrim((string) $decrypted_credit_card_number, "\0");
 }
@@ -1168,7 +1168,19 @@ function pg_erp_auto_invoice_run($order_id, $trigger)
             return null;
         }
 
-        return erp_auto_invoice_for_order((int) $order_id, (string) $trigger);
+        $answer = erp_auto_invoice_for_order((int) $order_id, (string) $trigger);
+
+        // A marketplace order's invoice goes on to the marketplace: its
+        // public address and, on Trendyol, the Invoiced status
+        // (mp_invoice_push_order(), which does nothing while the store does
+        // not invoice marketplace orders).
+        if (!empty($answer['done'])
+            && ((string) db_value("SELECT type FROM orders WHERE id = '" . (int) $order_id . "' LIMIT 1") === 'marketplace')) {
+            require_once(PG_FUNCTIONS_DIR . '/includes/api/outbound/invoice_push.php');
+            mp_invoice_push_order((int) $order_id);
+        }
+
+        return $answer;
     } catch (Throwable $error) {
         if (function_exists('pg_error_write') && function_exists('pg_error_entry')) {
             pg_error_write(pg_error_entry(
@@ -3195,6 +3207,70 @@ function parse_tax_rate($raw)
 }
 
 
+
+/**
+ * Site Settings' card surcharge percentage as
+ * config.ecommerce_surcharge_percentage (decimal(6,3) unsigned) stores it:
+ * read like a tax rate (decimal comma, 0..100), and blank or unreadable is no
+ * surcharge, which the settings screen shows as an empty box.
+ *
+ * @param  mixed $raw
+ * @return string
+ */
+function pg_settings_surcharge_percentage($raw)
+{
+    $rate = parse_tax_rate($raw);
+
+    return ($rate === NULL) ? '0' : $rate;
+}
+
+
+/**
+ * A commission rate typed in Site Settings (Default Commission Rate) as a
+ * decimal(5,2) unsigned column stores it. The last "." or "," is the decimal
+ * separator, as on the product screen's commission boxes, so "7,5" and "7.5"
+ * are both 7.50; the value is rounded to two places and held to 0..999.99.
+ *
+ * @param  mixed $raw
+ * @return string
+ */
+function pg_parse_commission_rate($raw)
+{
+    $value = preg_replace('/[^0-9.,]/', '', trim((string) $raw));
+    $rate = 0.0;
+
+    if ($value !== '') {
+        $pos = max(strrpos($value, '.'), strrpos($value, ','));
+
+        if ($pos === false) {
+            $rate = (float) $value;
+        } else {
+            $whole = preg_replace('/[.,]/', '', substr($value, 0, $pos));
+            $fraction = substr($value, $pos + 1);
+            $rate = (float) (($whole === '' ? '0' : $whole) . '.' . ($fraction === '' ? '0' : $fraction));
+        }
+    }
+
+    $rate = min(999.99, max(0, round($rate, 2)));
+
+    return number_format($rate, 2, '.', '');
+}
+
+
+/**
+ * The reward program goal (points) typed in Site Settings as
+ * config.ecommerce_reward_program_points (int(10) unsigned) stores it: read
+ * through pg_parse_amount(), so a goal grouped with the panel's thousands
+ * separator ("1.000" on a Turkish panel) is a thousand, never 1.
+ *
+ * @param  mixed $raw
+ * @return int
+ */
+function pg_parse_reward_goal($raw)
+{
+    return pg_parse_whole_number($raw, 4294967295);
+}
+
 /**
  * A stored rate as an operator should see it.
  *
@@ -4016,7 +4092,19 @@ function pg_order_installment_charge($lines, $discount, $charges, $installment)
     return (int) pg_order_charges_reachable($lines, $discount, $charges)['installment'];
 }
 
-function update_order_item_taxes()
+/**
+ * Takes the tax of every line of the session's order and writes it to
+ * order_items.tax_total (and tax_rate): a line with a recipient on the
+ * recipient's address, a line without one on the billing address.
+ *
+ * @param array $ship_to_addresses ship_to_id => [country, state] taken instead of the
+ *                                 stored ship_tos address. The express order widget passes
+ *                                 the address its form shows, to take the render-time tax
+ *                                 on it before the visitor has submitted one; nothing is
+ *                                 written to ship_tos, and submit_order() recomputes from
+ *                                 the stored rows. Empty for every other caller.
+ */
+function update_order_item_taxes($ship_to_addresses = array())
 {
     // get information from order
     $query = "SELECT
@@ -4096,7 +4184,10 @@ function update_order_item_taxes()
             $shipping_address_tax_rate = false;
             // if this ship to is a real recipient, get tax rate for shipping address
             if ($ship_to['ship_to_id'] > 0) {
-                $shipping_address_tax_rate = get_tax_rate_for_address($ship_to['country'], $ship_to['state']);
+                $ship_to_address = isset($ship_to_addresses[(int) $ship_to['ship_to_id']])
+                    ? $ship_to_addresses[(int) $ship_to['ship_to_id']]
+                    : array('country' => $ship_to['country'], 'state' => $ship_to['state']);
+                $shipping_address_tax_rate = get_tax_rate_for_address((string) ($ship_to_address['country'] ?? ''), (string) ($ship_to_address['state'] ?? ''));
             }
             // get all order items for this ship to
             $query = "SELECT
@@ -7737,6 +7828,28 @@ function pg_parse_amount($value)
 }
 
 /**
+ * A whole number a person typed into a settings box, read through
+ * pg_parse_amount(): a figure grouped with the panel's thousands separator
+ * ("2.400" on a Turkish panel) is 2400, never 2. A fraction is rounded; a
+ * blank, unreadable or negative entry is 0; the result is held to $max, the
+ * widest value the column or the caller's clamp accepts.
+ *
+ * @param  mixed     $raw
+ * @param  int|float $max
+ * @return int
+ */
+function pg_parse_whole_number($raw, $max)
+{
+    $number = round(pg_parse_amount($raw));
+
+    if ($number <= 0) {
+        return 0;
+    }
+
+    return ($number >= $max) ? (int) $max : (int) $number;
+}
+
+/**
  * An amount typed into a form, in the machine format ("1.234,56" ->
  * "1234.56"), for the handlers that validate with is_numeric() before they
  * store it. A value that is not a number is returned trimmed and otherwise
@@ -9084,6 +9197,48 @@ function pg_assign_product_barcode($product_id, $barcode = '', $type = '')
 
     return $barcode;
 }
+/**
+ * The columns a product copy (duplicate_product()) writes beside its fixed
+ * list for the columns later versions added, each only where the source row,
+ * read with SELECT *, has it: the AI write marks the copy keeps
+ * (pg_ai_fields_copy()), the VAT exemption code a zero-rated ERP line reads,
+ * and a bundle's switch, pricing and discount, without which a copied bundle
+ * would sell its cached stock as its own.
+ *
+ * @param array $row the source product row
+ * @param mixed $ai_fields pg_ai_fields_copy(): false names no ai_fields column
+ * @return array columns and values, each list ending with a comma or empty
+ */
+function pg_product_copy_extra_sql($row, $ai_fields)
+{
+    $columns = '';
+    $values = '';
+
+    if (!is_array($row)) {
+        return array('columns' => '', 'values' => '');
+    }
+
+    if ($ai_fields !== false) {
+        $columns .= 'ai_fields,';
+        $values .= (($ai_fields === null) ? 'NULL' : "'" . e($ai_fields) . "'") . ',';
+    }
+
+    if (array_key_exists('vat_exemption_code', $row)) {
+        $columns .= 'vat_exemption_code,';
+        $values .= "'" . e(substr(trim((string) $row['vat_exemption_code']), 0, 10)) . "',";
+    }
+
+    if (array_key_exists('bundle', $row) && array_key_exists('bundle_pricing', $row) && array_key_exists('bundle_discount_bp', $row)) {
+        $bp = (int) $row['bundle_discount_bp'];
+
+        $columns .= 'bundle, bundle_pricing, bundle_discount_bp,';
+        $values .= "'" . (empty($row['bundle']) ? 0 : 1) . "', "
+            . "'" . (($row['bundle_pricing'] === 'sum') ? 'sum' : 'fixed') . "', "
+            . "'" . ((($bp < 0) || ($bp > 10000)) ? 0 : $bp) . "',";
+    }
+
+    return array('columns' => $columns, 'values' => $values);
+}
 function duplicate_product($id)
 {
     // get original product's info
@@ -9114,6 +9269,18 @@ function duplicate_product($id)
     // price as it starts with its price.
     $compare_at_column = array_key_exists('compare_at_price', $row) ? 'compare_at_price,' : '';
     $compare_at_value = array_key_exists('compare_at_price', $row) ? pg_compare_at_price_sql($row['compare_at_price']) . ',' : '';
+    // products.hs_code and origin_country (2026.11.0) the same way.
+    $customs = pg_product_customs_copy_sql($row);
+    // products.ai_fields, vat_exemption_code and the bundle columns the same
+    // way. The texts are copied unchanged, so every mark whose text still
+    // matches is kept.
+    $extra = pg_product_copy_extra_sql($row, pg_ai_fields_copy('product', $row, array(
+        'short_description' => $row['short_description'],
+        'full_description'  => $row['full_description'],
+        'title'             => $row['title'],
+        'meta_description'  => $row['meta_description'],
+    )));
+    $is_bundle = !empty($row['bundle']);
     // insert row into product table
     $query = "INSERT INTO products (
 
@@ -9298,6 +9465,10 @@ function duplicate_product($id)
             mpn,
 
             " . $compare_at_column . "
+
+            " . $customs['columns'] . "
+
+            " . $extra['columns'] . "
 
             user,
 
@@ -9486,6 +9657,10 @@ function duplicate_product($id)
             '" . escape($row['mpn']) . "',
 
             " . $compare_at_value . "
+
+            " . $customs['values'] . "
+
+            " . $extra['values'] . "
 
             '" . USER_ID . "',
 
@@ -9744,8 +9919,23 @@ function duplicate_product($id)
                 '" . $products_group['product_group'] . "')");
     }
 
+    // The gallery pictures beside the cover, in the order they were written:
+    // the table has no order column and is read back in that order.
+    $images = db_values("SELECT file_name FROM products_images_xref WHERE product = '" . (int) $id . "' AND file_name != ''");
+
+    foreach ($images as $image) {
+        db_q("INSERT INTO products_images_xref (product, file_name) VALUES (?, ?)", array((int) $new_product_id, (string) $image));
+    }
+
     // The copy starts a price history of its own at the original's price.
     pg_price_history_record($new_product_id, 'panel');
+
+    // A bundle copy takes the same contents, then its stock and price are
+    // derived from them like any bundle's instead of kept from the copied row.
+    if ($is_bundle && pg_bundles_ready()) {
+        pg_bundle_items_save($new_product_id, pg_bundle_items($id));
+        pg_bundle_refresh($new_product_id);
+    }
 
     pg_audit_record('create', 'products', (int) $new_product_id);
 
@@ -10706,11 +10896,15 @@ function process_order_cancellation($order_id, $reason = '', $is_admin = false, 
         );
     }
 
-    log_activity(
-        'Order #' . $order_id . ' cancelled by ' .
-        ($is_admin ? 'admin' : 'customer') . ' (user_id=' . (int) $user_id . ').' .
-        ($reason_clean !== '' ? ' Reason: ' . $reason_clean : '')
-    );
+    $cancel_line = $is_admin
+        ? pg_log_lang(array('string' => 'Order #{var:1} cancelled by admin (user ID {var:2}).', 'vars' => array($order_id, (int) $user_id)))
+        : pg_log_lang(array('string' => 'Order #{var:1} cancelled by customer (user ID {var:2}).', 'vars' => array($order_id, (int) $user_id)));
+
+    if ($reason_clean !== '') {
+        $cancel_line = pg_log_lang(array('string' => '{var:1} Reason: {var:2}', 'vars' => array($cancel_line, $reason_clean)));
+    }
+
+    log_activity($cancel_line);
 
     // ── Automatic refund (opt-in) ───────────────────────────────────────
     // Default OFF. When ECOMMERCE_ORDER_CANCEL_AUTO_REFUND === true and the
@@ -10818,9 +11012,9 @@ function process_order_cancellation($order_id, $reason = '', $is_admin = false, 
         try {
             _send_order_cancellation_email($order, $reason_clean, $refund_status_outcome);
         } catch (\Throwable $e) {
-            log_activity('Cancellation email failed for order #' . $order_id . ': ' . $e->getMessage());
+            log_activity(pg_log_lang(array('string' => 'Cancellation email failed for order #{var:1}: {var:2}', 'vars' => array($order_id, $e->getMessage()))));
         } catch (\Exception $e) {
-            log_activity('Cancellation email failed for order #' . $order_id . ': ' . $e->getMessage());
+            log_activity(pg_log_lang(array('string' => 'Cancellation email failed for order #{var:1}: {var:2}', 'vars' => array($order_id, $e->getMessage()))));
         }
     }
 
@@ -10952,7 +11146,7 @@ function pg_order_restore_cancelled($order_id, $status = 'complete')
 
     pg_order_restore_gift_cards($order_id, (string) $cancelled_order['order_number'], $cancelled_order['cancelled_at'] ?? 0);
 
-    log_activity('Restored cancelled order #' . $order_id . ' to ' . $status . '.');
+    log_activity(pg_log_lang(array('string' => 'Restored cancelled order #{var:1} to {var:2}.', 'vars' => array($order_id, $status))));
 
     return true;
 }
@@ -11242,7 +11436,7 @@ function iyzipay_cancel_payment($options, $payment_id, $conversation_id, $reason
     $reason = (string) $reason;
 
     if ($payment_id === '') {
-        log_activity('Iyzipay payment could not be cancelled because the payment id is empty (' . $reason . ').');
+        log_activity(pg_log_lang(array('string' => 'Iyzipay payment could not be cancelled because the payment id is empty ({var:1}).', 'vars' => array($reason))));
         return false;
     }
 
@@ -11260,17 +11454,16 @@ function iyzipay_cancel_payment($options, $payment_id, $conversation_id, $reason
         $cancel = \Iyzipay\Model\Cancel::create($request, $options);
 
         if ($cancel->getStatus() == 'success') {
-            log_activity('Iyzipay payment ' . $payment_id . ' was cancelled: ' . $reason . '.');
+            log_activity(pg_log_lang(array('string' => 'Iyzipay payment {var:1} was cancelled: {var:2}.', 'vars' => array($payment_id, $reason))));
             return true;
         }
 
         $error_message = method_exists($cancel, 'getErrorMessage') ? (string) $cancel->getErrorMessage() : '';
-        log_activity(
-            'Iyzipay payment ' . $payment_id . ' could not be cancelled (' . $reason . '). MANUAL REFUND REQUIRED. ' .
-            'Gateway message: ' . ($error_message !== '' ? $error_message : '(no message)')
-        );
+        log_activity(pg_log_lang(array(
+            'string' => 'Iyzipay payment {var:1} could not be cancelled ({var:2}). MANUAL REFUND REQUIRED. Gateway message: {var:3}',
+            'vars' => array($payment_id, $reason, ($error_message !== '') ? $error_message : pg_log_lang(array('string' => '(no message)'))))));
     } catch (\Throwable $e) {
-        log_activity('Iyzipay payment ' . $payment_id . ' could not be cancelled (' . $reason . '). MANUAL REFUND REQUIRED. ' . $e->getMessage());
+        log_activity(pg_log_lang(array('string' => 'Iyzipay payment {var:1} could not be cancelled ({var:2}). MANUAL REFUND REQUIRED. {var:3}', 'vars' => array($payment_id, $reason, $e->getMessage()))));
     }
 
     return false;
@@ -12300,6 +12493,17 @@ function pg_products_import_row_prices($row, $money_positions)
     }
 
     return array('prices' => $prices, 'refused' => false);
+}
+
+// The column name an import file's heading stands for: trimmed, lower-cased
+// (UTF-8) and with each run of spaces or dashes read as one underscore, so
+// "Price", " PRICE " and "Short Description" match price and
+// short_description. Used by the products and campaign profile importers.
+function pg_import_heading($heading)
+{
+    $heading = mb_strtolower(trim((string) $heading), 'UTF-8');
+
+    return (string) preg_replace('/[\s\-]+/u', '_', $heading);
 }
 
 // The text of one column of a CSV row: '' when the file has no such column

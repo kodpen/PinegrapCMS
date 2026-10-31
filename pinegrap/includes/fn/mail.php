@@ -565,10 +565,8 @@ function send_comment_email_to_custom_form_submitter($comment_id)
         $comments_submitter_email_subject = get_variable_submitted_form_data_for_content($page_id, $item_id, $comments_submitter_email_subject, $prepare_for_html = false);
         $body = '';
         $extra_system_content = '';
-        // if name is blank then output anonymous
-        if ($name == '') {
-            $name = lang('Anonymous');
-        }
+        // No name, or the stored 'Anonymous', reads in the site language.
+        $name = pg_comment_display_name($name);
         $output_file_attachment = '';
         // if there is a file attachment, then output it
         if ($file_name != '') {
@@ -717,10 +715,8 @@ function send_comment_email_to_watchers($comment_id)
         if ($page_type == 'form item view') {
             $comments_watcher_email_subject = get_variable_submitted_form_data_for_content($page_id, $item_id, $comments_watcher_email_subject, $prepare_for_html = false);
         }
-        // if name is blank then output anonymous
-        if ($name == '') {
-            $name = lang('Anonymous');
-        }
+        // No name, or the stored 'Anonymous', reads in the site language.
+        $name = pg_comment_display_name($name);
         $output_file_attachment = '';
         // if there is a file attachment, then output it
         if ($file_name != '') {
@@ -775,8 +771,15 @@ function send_comment_email_to_watchers($comment_id)
         }
     }
 }
-// Create function that can be used to build the options for a pick list of email campaign profiles.
-function get_email_campaign_profile_options()
+/**
+ * Builds the options for a pick list of email campaign profiles.
+ *
+ * @param int[] $exclude_ids  Profiles left out (a profile and those that follow it)
+ * @param int   $keep_id      The stored pick, listed even when excluded so the
+ *                            picker shows what is saved
+ * @return array label => id
+ */
+function get_email_campaign_profile_options($exclude_ids = array(), $keep_id = 0)
 {
     $email_campaign_profile_options = array();
     $email_campaign_profile_options['-' . lang(array('string' => 'Select {var:1}', 'vars' => array(lang('campaign profile')))) . '-'] = '';
@@ -796,7 +799,13 @@ function get_email_campaign_profile_options()
     foreach ($email_campaign_profiles as $email_campaign_profile) {
         // If this user has a role greater than a user role or if this user is the creator,
         // then add this profile as an option.
-        if ((USER_ROLE < 3) || (USER_ID == $email_campaign_profile['created_user_id'])) {
+        if (
+            ((USER_ROLE < 3) || (USER_ID == $email_campaign_profile['created_user_id']))
+            && (
+                !in_array((int) $email_campaign_profile['id'], $exclude_ids, true)
+                || ((int) $email_campaign_profile['id'] == (int) $keep_id)
+            )
+        ) {
             $email_campaign_profile_options[h($email_campaign_profile['name'])] = $email_campaign_profile['id'];
         }
     }
@@ -813,11 +822,12 @@ function get_email_campaign_profile_options()
  * @param string $body   the e-mail's HTML
  * @param array  $fields names of the fields that hold a whole address; by
  *                       default those of the auto campaigns: review_url
- *                       (review request) and tracking_url (order shipped and
- *                       order delivered)
+ *                       (review request), tracking_url (order shipped and
+ *                       order delivered), subscription_card_url and
+ *                       subscription_confirm_url (subscription payment failed)
  * @return string
  */
-function pg_mail_merge_address_hrefs($body, $fields = array('review_url', 'tracking_url'))
+function pg_mail_merge_address_hrefs($body, $fields = array('review_url', 'tracking_url', 'subscription_card_url', 'subscription_confirm_url'))
 {
     $body = (string) $body;
     $names = array();
@@ -844,7 +854,7 @@ function pg_mail_merge_address_hrefs($body, $fields = array('review_url', 'track
 // Create function that is used to see if auto email campaigns need to be created after a specific action has occurred
 // and then create them if necessary.
 // Properties:
-// action: "calendar_event_reserved", "custom_form_submitted", "email_campaign_sent", "order_abandoned", "order_completed", "order_review_request", "order_shipped", "order_delivered", "product_ordered"
+// action: "calendar_event_reserved", "custom_form_submitted", "email_campaign_sent", "order_abandoned", "order_completed", "order_review_request", "order_shipped", "order_delivered", "product_ordered", "subscription_renewed", "subscription_failed", "subscription_cancelled", "subscription_price_changed"
 // action_item_id: The id of item that is related to the action (e.g. the calendar event id)
 // calendar_event_recurrence_number
 // order_id: Used by the order_abandoned and order_review_request actions.
@@ -975,7 +985,7 @@ function create_auto_email_campaigns($properties)
             require_once(PG_FUNCTIONS_DIR . '/get_page_content.php');
             // Get html for page.
             $body = get_page_content($email_campaign_profile['page_id'], $system_content = '', $extra_system_content = '', $mode = 'preview', $email = true, $data);
-            // A link made with the editor's Link button to ^^review_url^^ or ^^tracking_url^^ was stored with http:// in front of it.
+            // A link made with the editor's Link button to a field holding a whole address (^^review_url^^, ^^tracking_url^^, ...) was stored with http:// in front of it.
             $body = pg_mail_merge_address_hrefs($body);
             // Find if there is a base tag in the HTML.
             $base_in_html = preg_match('/<\s*base\s+[^>]*href\s*=\s*["\'](?:http:\/\/|https:\/\/|ftp:\/\/).*?["\']/is', $body);
@@ -1300,6 +1310,21 @@ function create_auto_email_campaigns($properties)
                     break;
                 case 'product_ordered':
                     $log_action = lang('product ordered');
+                    break;
+                case 'subscription_renewed':
+                    $log_action = lang('subscription renewed');
+                    break;
+                case 'subscription_failed':
+                    $log_action = lang('subscription payment failed');
+                    break;
+                case 'subscription_cancelled':
+                    $log_action = lang('subscription cancelled');
+                    break;
+                case 'subscription_price_changed':
+                    $log_action = lang('subscription price changed');
+                    break;
+                default:
+                    $log_action = $action;
                     break;
             }
 
@@ -1833,6 +1858,9 @@ function email($properties)
     // there is in the stored properties, so sending again fails the same way.
     $permanent = false;
 
+    // Set when PHP mail() refused a fully built message (pg_mail_send_built()).
+    $transport_failed = false;
+
     $mail = new PHPMailer(true);
 
     // Language setting
@@ -1910,8 +1938,11 @@ function email($properties)
             }
             $mail->Port = (defined('CAMPAIGN_SMTP_PORT') && CAMPAIGN_SMTP_PORT !== '') ? CAMPAIGN_SMTP_PORT : 587;
         } elseif (!function_exists('mail')) {
+            // No way to send at all until an SMTP server is set up: the queue
+            // gives the message up instead of trying it again.
             log_activity(lang('Email could not be sent because the PHP mail() function is disabled.'));
             pg_mail_last_error(lang('Email could not be sent because the PHP mail() function is disabled.'));
+            pg_mail_last_error_permanent(true);
             return false;
         }
 
@@ -2087,7 +2118,11 @@ function email($properties)
             return true;
         }
 
-        $sent = $mail->send();
+        $sent = pg_mail_send_built($mail, $transport_failed);
+
+        if (!$sent && $transport_failed) {
+            throw new Exception(pg_mail_transport_failure_sentence());
+        }
 
         if ($sent && !empty($properties['keep_mime'])) {
             pg_mail_last_sent_mime($mail->getSentMIMEMessage());
@@ -2096,32 +2131,35 @@ function email($properties)
         return $sent;
 
     } catch (Exception $e) {
-        $error = ($mail->ErrorInfo !== '') ? $mail->ErrorInfo : $e->getMessage();
+        $outcome = pg_mail_failure_outcome(($mail->ErrorInfo !== '') ? $mail->ErrorInfo : $e->getMessage(), $permanent, $transport_failed);
 
-        $log = lang('The following email could not be delivered.') . "\n\n";
-        $log .= lang('Error') . ': ' . $error . "\n\n";
-        $log .= lang('Subject') . ': ' . $subject . "\n";
-        $log .= lang('To') . ': ' . (is_array($to) ? implode(', ', $to) : $to) . "\n";
+        $error = $outcome['error'];
+        $permanent = $outcome['permanent'];
+
+        $log = pg_log_lang(array('string' => 'The following email could not be delivered.')) . "\n\n";
+        $log .= pg_log_lang(array('string' => 'Error')) . ': ' . $error . "\n\n";
+        $log .= pg_log_lang(array('string' => 'Subject')) . ': ' . $subject . "\n";
+        $log .= pg_log_lang(array('string' => 'To')) . ': ' . (is_array($to) ? implode(', ', $to) : $to) . "\n";
 
         if ($bcc) {
-            $log .= lang('BCC') . ': ' . (is_array($bcc) ? implode(', ', $bcc) : $bcc) . "\n";
+            $log .= pg_log_lang(array('string' => 'BCC')) . ': ' . (is_array($bcc) ? implode(', ', $bcc) : $bcc) . "\n";
         }
 
-        $log .= lang('From') . ': ' . ($from_name ? "$from_name <$from_email_address>" : $from_email_address) . "\n";
+        $log .= pg_log_lang(array('string' => 'From')) . ': ' . ($from_name ? "$from_name <$from_email_address>" : $from_email_address) . "\n";
 
         if ($reply_to) {
-            $log .= lang('Reply-To') . ': ' . $reply_to . "\n";
+            $log .= pg_log_lang(array('string' => 'Reply-To')) . ': ' . $reply_to . "\n";
         }
 
         if (pg_mail_failure_body_shown($properties)) {
-            $log .= lang('Body') . ":\n" . $body;
+            $log .= pg_log_lang(array('string' => 'Body')) . ":\n" . $body;
         }
 
         log_activity($log);
 
         // 'permanent' asks for the notice only when no later attempt can
         // succeed (the mail queue before its last attempt).
-        if (($notify_sender === 'permanent') ? $permanent : $notify_sender) {
+        if ($outcome['notify'] && (($notify_sender === 'permanent') ? $permanent : $notify_sender)) {
             email([
                 'to' => $from_email_address,
                 'to_name' => $from_name,
@@ -2140,6 +2178,36 @@ function email($properties)
 
         return false;
     }
+}
+
+// Hands a built PHPMailer message over, as PHPMailer's send() does, in its
+// two halves so a failure of the hand-over itself is told apart from one in
+// building the message. $transport_failed is set when the PHP mail()
+// transport (no SMTP server, no connected account) refused a message that
+// was built without fault: the server cannot send e-mail that way, and
+// trying the same message again changes nothing. A failure in building, or
+// of an SMTP server, leaves it false. Exceptions are passed on.
+function pg_mail_send_built($mail, &$transport_failed)
+{
+    $transport_failed = false;
+
+    if (!$mail->preSend()) {
+        return false;
+    }
+
+    try {
+        $sent = $mail->postSend();
+    } catch (\Exception $e) {
+        $transport_failed = ($mail->Mailer === 'mail');
+
+        throw $e;
+    }
+
+    if (!$sent) {
+        $transport_failed = ($mail->Mailer === 'mail');
+    }
+
+    return $sent;
 }
 
 // Whether email() writes a message's body into the failure entry of the
@@ -2414,4 +2482,32 @@ function pg_send_custom_form_notifications($custom_form_page_id, $form_id, $cont
         'contact_id' => $contact_id));
 
     return true;
+}
+
+// Why each of these single-address boxes (field name => what was typed)
+// cannot be saved: it holds something validate_email_address() refuses.
+// A blank box is allowed. A list is refused too: email() hands the string
+// to PHPMailer's addAddress() or addBCC() as one address.
+function pg_email_field_errors($values)
+{
+    $errors = array();
+
+    foreach ($values as $field => $value) {
+        if ($value === null) {
+            continue;
+        }
+
+        $address = is_scalar($value) ? trim((string) $value) : '';
+
+        if (is_scalar($value) && (($address === '') || validate_email_address($address))) {
+            continue;
+        }
+
+        $errors[$field] = lang(array(
+            'string' => 'Not an e-mail address: {var:1}',
+            'vars'   => array(h($address)),
+        ));
+    }
+
+    return $errors;
 }

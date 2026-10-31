@@ -115,6 +115,8 @@ foreach ($date_defaults as $key => $value) {
     }
 }
 
+$_SESSION['software']['ecommerce']['view_orders'] = pg_list_period_ordered($_SESSION['software']['ecommerce']['view_orders']);
+
 if (isset($_SESSION['software']['ecommerce']['view_orders']['status']) == false) {
     $_SESSION['software']['ecommerce']['view_orders']['status'] = 'complete_or_exported';
 }
@@ -479,14 +481,31 @@ if (($_SESSION['software']['ecommerce']['view_orders']['advanced_filters'] ?? ''
 //output export for parasut.
 $output_generate_xlsl_button = '';
 
-// Carrier labels of the selected orders (shipment_label.php): open the
-// missing ones, or print them all as one PDF in a new tab.
+// Carrier labels of the selected orders (shipment_label.php), shown for a
+// carrier label service or a marketplace account whose labels it makes:
+// open the missing ones, print them all as one PDF in a new tab, or download the
+// ZPL ones as one .zpl file for a thermal printer.
 $output_shipment_label_buttons = '';
 
-if (pg_shipment_labels_ready() && pg_shipment_label_drivers()) {
+if (pg_shipment_labels_ready() && (pg_shipment_label_drivers() || pg_shipment_label_marketplace_offers())) {
+    // Only a marketplace account: no shipment is bought, Trendyol's label is fetched.
+    $shipment_label_confirm = pg_shipment_label_drivers()
+        ? lang('A shipment is opened and its label bought at the carrier label service for every address of the selected orders that has no label yet, 20 at a time. Continue?')
+        : lang('A Trendyol common label is fetched for every qualifying package of the selected orders that has no label yet, 20 at a time. Continue?');
     $output_shipment_label_buttons =
-        '<button type="submit" formaction="shipment_label.php" name="label_request" value="bulk_create" class="btn mb-1 mt-1 btn-solid theme-secondary disabled" data-confirm-content="' . h(lang('A shipment is opened and its label bought at the carrier label service for every address of the selected orders that has no label yet, 20 at a time. Continue?')) . '"><i class="bi bi-upc-scan me-3" aria-hidden="true"></i>' . lang('Create Labels') . '</button>
-        <button type="submit" formaction="shipment_label.php" formtarget="_blank" name="label_request" value="bulk_print" class="btn mb-1 mt-1 btn-solid theme-secondary disabled"><i class="bi bi-printer me-3" aria-hidden="true"></i>' . lang('Print Labels') . '</button>';
+        '<button type="submit" formaction="shipment_label.php" name="label_request" value="bulk_create" class="btn mb-1 mt-1 btn-solid theme-secondary disabled" data-confirm-content="' . h($shipment_label_confirm) . '"><i class="bi bi-upc-scan me-3" aria-hidden="true"></i>' . lang('Create Labels') . '</button>
+        <button type="submit" formaction="shipment_label.php" formtarget="_blank" name="label_request" value="bulk_print" class="btn mb-1 mt-1 btn-solid theme-secondary disabled"><i class="bi bi-printer me-3" aria-hidden="true"></i>' . lang('Print Labels') . '</button>
+        <button type="submit" formaction="shipment_label.php" name="label_request" value="bulk_zpl" class="btn mb-1 mt-1 btn-solid theme-secondary disabled"><i class="bi bi-download me-3" aria-hidden="true"></i>' . lang('Download ZPL Labels') . '</button>';
+}
+
+// A carrier pickup for the active labels of the selected orders: a dialog
+// inside the list form asks the date and window (shipment_label.php).
+$output_shipment_pickup_dialog = '';
+
+if ($output_shipment_label_buttons !== '' && pg_shipment_label_pickup_drivers()) {
+    $output_shipment_label_buttons .= '
+        <button type="button" class="no-submit btn mb-1 mt-1 btn-solid theme-secondary disabled" data-bs-toggle="dialog" data-bs-target="#shipment_pickup_dialog"><i class="bi bi-truck me-3" aria-hidden="true"></i>' . lang('Request Pickup') . '</button>';
+    $output_shipment_pickup_dialog = pg_shipment_label_pickup_dialog('shipment_pickup_dialog', '', 'bulk_pickup');
 }
 $output_xlsl_setup_modal = '';
 if(defined('ENABLE_PARASUT') && ENABLE_PARASUT != 0){
@@ -518,7 +537,7 @@ if(defined('ENABLE_PARASUT') && ENABLE_PARASUT != 0){
                 <div class="dialog-footer">
                 <p>' . lang('Do you approve to create 2 excel files suitable for using the selected orders in Paraşut application?') . '</p>
                     <button type="button" class="no-submit btn btn-solid theme-secondary" data-bs-dismiss="dialog">' . lang('Close') . '</button>
-                    <button type="button" name="submit_data" value="Export Orders For Parasut" class="btn btn-solid theme-success"><span class="material-icons me-3">done</span>' . lang(array('string'=>'Confirm') ) . '</button>
+                    <button type="button" name="submit_data" value="Export Orders For Parasut" class="btn btn-solid theme-success" data-wait-text="' . h(lang('Preparing the export file. Please wait.')) . '" data-error-text="' . h(lang('The export file could not be created. Please try again.')) . '"><span class="material-icons me-3">done</span>' . lang(array('string'=>'Confirm') ) . '</button>
                 </div>
     </dialog>';
     $output_generate_xlsl_button = '<button type="button" class="no-submit btn mb-1 mt-1 btn-solid theme-success disabled" data-bs-toggle="dialog" data-bs-target="#xlsl_setup_modal"><span class="material-icons me-3">file_present</span>' . lang(array('string'=>'Export for Parasut Selected') ) . '</button>';
@@ -663,7 +682,8 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
         '"affiliate_code",' .
         $multi_currency_column_name .
         '"http_referer",' .
-        '"ip_address"';
+        '"ip_address",' .
+        '"installment_charges"';
 
     // Loop through the custom billing field names in order to
     // output them in the first row of the orders.csv data.
@@ -735,15 +755,6 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
             $opt_in = 'no';
         }
 
-        // If the date format is month and then day, then use that format.
-        if (DATE_FORMAT == 'month_day') {
-            $month_and_day_format = 'n/j';
-
-        // Otherwise the date format is day and then month, so use that format.
-        } else {
-            $month_and_day_format = 'j/n';
-        }
-
         // if multi currency is enabled
         if (ECOMMERCE_MULTICURRENCY === true) {
             $currency_code = '"' . $order['currency_code'] . '",';
@@ -796,7 +807,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
             '"' . sprintf("%01.2lf", $order['surcharge'] / 100) . '",' .
             '"' . sprintf("%01.2lf", $order['total'] / 100) . '",' .
             '"' . sprintf("%01.2lf", $order['commission'] / 100) . '",' .
-            '"' . date($month_and_day_format . '/Y g:i:s A T', $order['order_date']) . '",' .
+            '"' . pg_csv_export_time($order['order_date']) . '",' .
             '"' . $order['transaction_id'] . '",' .
             '"' . $order['authorization_code'] . '",' .
             '"' . $order['special_offer_code'] . '",' .
@@ -811,7 +822,8 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
             '"' . $order['affiliate_code'] . '",' .
             $currency_code .
             '"' . $order['http_referer'] . '",' .
-            '"' . $ip_address . '"';
+            '"' . $ip_address . '",' .
+            '"' . sprintf("%01.2lf", $order['installment_charges'] / 100) . '"';
 
         // Loop through the custom billing field names in order to
         // output custom billing form data for this order row.
@@ -1123,7 +1135,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
             '"' . $row['quantity'] . '",' .
             '"' . $shipped_quantity . '",' .
             '"' . sprintf("%01.2lf", $row['price'] / 100) . '",' .
-            '"' . sprintf("%01.2lf", $row['tax'] / 100) . '",' .
+            '"' . sprintf("%01.2lf", pg_order_item_line_tax($row['tax_total'], $row['tax'], $row['quantity']) / 100) . '",' .
             '"' . $recurring_payment_period . '",' .
             '"' . $recurring_number_of_payments . '",' .
             '"' . $recurring_start_date . '",' .
@@ -1185,18 +1197,18 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
     
     $zipfile = new zipfile();
 
-    $zipfile->add_file($order_data, 'orders.csv');
+    $zipfile->add_file("\xEF\xBB\xBF" . $order_data, 'orders.csv');
 
     // if at least one ship to exists, then include ship tos file
     if ($ship_to_exists == true) {
-        $zipfile->add_file($ship_to_data, 'ship_tos.csv');
+        $zipfile->add_file("\xEF\xBB\xBF" . $ship_to_data, 'ship_tos.csv');
     }
 
-    $zipfile->add_file($order_item_data, 'order_items.csv');
+    $zipfile->add_file("\xEF\xBB\xBF" . $order_item_data, 'order_items.csv');
     
     // if there is at least one shipping tracking number, then include file for it
     if ($shipping_tracking_number_data != '') {
-        $zipfile->add_file($shipping_tracking_number_data, 'shipping_tracking_numbers.csv');
+        $zipfile->add_file("\xEF\xBB\xBF" . $shipping_tracking_number_data, 'shipping_tracking_numbers.csv');
     }
 
     header("Content-type: application/octet-stream");
@@ -1244,6 +1256,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
             orders.shipping,
             orders.gift_card_discount,
             orders.surcharge,
+            orders.installment_charges,
             orders.total,
             orders.commission,
             orders.order_date,
@@ -1352,7 +1365,8 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
             products.short_description,
             order_items.quantity,
             order_items.price,
-            order_items.tax_total AS tax,
+            order_items.tax,
+            order_items.tax_total,
             order_items.recurring_payment_period,
             order_items.recurring_number_of_payments,
             order_items.recurring_start_date,
@@ -1464,8 +1478,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
     }
 
     // initialize download dialog
-    header("Content-type: text/csv");
-    header("Content-disposition: attachment; filename=orders.csv");
+    pg_csv_download_start('orders.csv');
 
     // prepare column headings for order records
     echo
@@ -1518,8 +1531,9 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
         '"member_id",' .
         '"affiliate_code",' .
         $multi_currency_column_name .
-        '"http_referer",' . 
-        '"ip_address"';
+        '"http_referer",' .
+        '"ip_address",' .
+        '"installment_charges"';
         
     // Loop through the custom billing field names in order to output them in the order heading row.
     foreach ($custom_billing_field_names as $custom_billing_field_name) {
@@ -1715,15 +1729,6 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
             $opt_in = 'no';
         }
 
-        // If the date format is month and then day, then use that format.
-        if (DATE_FORMAT == 'month_day') {
-            $month_and_day_format = 'n/j';
-
-        // Otherwise the date format is day and then month, so use that format.
-        } else {
-            $month_and_day_format = 'j/n';
-        }
-
         // if multi currency is enabled
         if (ECOMMERCE_MULTICURRENCY === true) {
             $currency_code = '"' . $order['currency_code'] . '",';
@@ -1775,7 +1780,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
             '"' . sprintf("%01.2lf", $order['surcharge'] / 100) . '",' .
             '"' . sprintf("%01.2lf", $order['total'] / 100) . '",' .
             '"' . sprintf("%01.2lf", $order['commission'] / 100) . '",' .
-            '"' . date($month_and_day_format . '/Y g:i:s A T', $order['order_date']) . '",' .
+            '"' . pg_csv_export_time($order['order_date']) . '",' .
             '"' . $order['transaction_id'] . '",' .
             '"' . $order['authorization_code'] . '",' .
             '"' . $order['special_offer_code'] . '",' .
@@ -1790,7 +1795,8 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
             '"' . $order['affiliate_code'] . '",' .
             $currency_code .
             '"' . $order['http_referer'] . '",' .
-            '"' . $ip_address . '"';
+            '"' . $ip_address . '",' .
+            '"' . sprintf("%01.2lf", $order['installment_charges'] / 100) . '"';
         
         // Loop through the custom billing field names in order to output custom billing form data for this order row.
         foreach ($custom_billing_field_names as $custom_billing_field_name) {
@@ -1863,7 +1869,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                 '"' . $order_item['quantity'] . '",' .
                 '"' . $shipped_quantity . '",' .
                 '"' . sprintf("%01.2lf", $order_item['price'] / 100) . '",' .
-                '"' . sprintf("%01.2lf", $order_item['tax'] / 100) . '",' .
+                '"' . sprintf("%01.2lf", pg_order_item_line_tax($order_item['tax_total'], $order_item['tax'], $order_item['quantity']) / 100) . '",' .
                 '"' . $recurring_payment_period . '",' .
                 '"' . $recurring_number_of_payments . '",' .
                 '"' . $recurring_start_date . '",' .
@@ -2100,7 +2106,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                     '"' . $order_item['quantity'] . '",' .
                     '"' . $shipped_quantity . '",' .
                     '"' . sprintf("%01.2lf", $order_item['price'] / 100) . '",' .
-                    '"' . sprintf("%01.2lf", $order_item['tax'] / 100) . '",' .
+                    '"' . sprintf("%01.2lf", pg_order_item_line_tax($order_item['tax_total'], $order_item['tax'], $order_item['quantity']) / 100) . '",' .
                     '"' . $recurring_payment_period . '",' .
                     '"' . $recurring_number_of_payments . '",' .
                     '"' . $recurring_start_date . '",' .
@@ -3197,8 +3203,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
             'cancel'=>false
         )
     ) . '
-<main id="content" class="container-fluid">     
-    ' . $output_advanced_filters . '
+<main id="content" class="container-fluid">
             <div class="row">
             <div class="col-12">
                 ' . $liveform->output_errors() . '
@@ -3212,7 +3217,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                             <button type="button" class="btn btn-sm btn-text theme-secondary no-popover pg-menu-caret" data-bs-toggle="menu" aria-expanded="false"><i class="bi bi-file-earmark-arrow-down me-1" aria-hidden="true"></i>' . lang('Export') . '</button>
                             <ul class="menu shadow">
                                 <li><button type="submit" name="submit_data" value="Export Orders (single file)" class="menu-item"><i class="bi bi-file-earmark-arrow-down me-3" aria-hidden="true"></i>' . lang('Single file') . '</button></li>
-                                <li><button type="submit" name="submit_data" value="Export Orders (multiple files)" class="menu-item"><i class="bi bi-file-earmark-zip me-3" aria-hidden="true"></i>' . lang('One file per order') . '</button></li>
+                                <li><button type="submit" name="submit_data" value="Export Orders (multiple files)" class="menu-item"><i class="bi bi-file-earmark-zip me-3" aria-hidden="true"></i>' . lang('Multiple files') . '</button></li>
                             </ul>
                         </div>
                         ' . $output_gateway_buttons . '
@@ -3225,6 +3230,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                     <a class="btn btn-sm btn-text theme-secondary' . $output_advanced_filters_class . '" title="' . $output_advanced_filters_label . '" aria-label="' . $output_advanced_filters_label . '" href="view_orders.php?advanced_filters=' . $output_advanced_filters_value . '"><i class="bi ' . $advanced_filters_icon . '" aria-hidden="true"></i></a>
                     ' . $output_period_navigator . '
                 </nav>
+                ' . $output_advanced_filters . '
                 ' . $output_order_stats . '
                 <div class="card my-7">
                     <div class="card-body p-0 position-relative">
@@ -3271,6 +3277,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                                 </div>
                             </nav>
                             ' . $output_xlsl_setup_modal . '
+                            ' . $output_shipment_pickup_dialog . '
                         </form>
 
                         <!-- Per-row cancel POST target. Deliberately a sibling of the
@@ -3372,7 +3379,13 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
             spark("pg_orders_spark_count", "bar", data.counts, count);
 
             var palette = [primary, color("--bs-success", "#198754"), color("--bs-warning", "#ffc107"), color("--bs-info", "#0dcaf0"), color("--bs-danger", "#dc3545"), color("--bs-secondary", "#6c757d")];
-            var ink = color("--bs-secondary-color", "#6c757d");
+            // A custom property reads back as light-dark() text a canvas
+            // cannot parse, so the panel ink is resolved through a probe.
+            var probe = document.createElement("span");
+            probe.style.color = "var(--pg-fg-2)";
+            document.body.appendChild(probe);
+            var ink = getComputedStyle(probe).color;
+            probe.remove();
             var top = document.getElementById("pg_orders_top");
             if (top && data.top.length) {
                 new Chart(top, {

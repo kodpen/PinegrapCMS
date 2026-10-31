@@ -69,6 +69,7 @@ function pg_dashboard_widget_7($request, $user)
             'color' => $kind['color'],
             'count' => ($today > 0) ? pg_format_number($today, 0) : '',
             'title' => lang(array('string' => '{var:1} today', 'vars' => pg_format_number($today, 0))),
+            'count_text' => lang(array('string' => '{var:1} today', 'vars' => pg_format_number($today, 0))),
             'bars'  => ($kind['series'] !== null) ? $kind['series'] : null,
         ));
 
@@ -114,6 +115,7 @@ function pg_dashboard_widget_7($request, $user)
         'color' => '#8b5cf6',
         'count' => ($today_total > 0) ? pg_format_number($today_total, 0) : '',
         'title' => lang(array('string' => '{var:1} today', 'vars' => pg_format_number($today_total, 0))),
+        'count_text' => lang(array('string' => '{var:1} today', 'vars' => pg_format_number($today_total, 0))),
     ));
 
     $output_data = '
@@ -168,10 +170,16 @@ function pg_dashboard_activity_kinds($user, $limit)
     $kinds['update'] = $kind(lang('Content'), 'bi-pencil-square', '#8b5cf6',
         pg_dashboard_activity_updates($user, $limit), null, '', '');
 
-    if (($user['role'] < 3) || ($user['manage_forms'] == true)) {
+    // Forms and contacts: the tile's count and bars and the list read the
+    // same condition, so a contributor's tile counts only the rows they are
+    // shown. A null condition means nothing is granted: no rows, zero bars.
+    // Switched off in Site Settings, Forms is left out as the menu leaves it out.
+    if ((FORMS === true) && ((($user['role'] < 3) || ($user['manage_forms'] == true)))) {
+        $form_where = pg_dashboard_activity_forms_where($user);
+
         $kinds['form'] = $kind(lang('Forms'), 'bi-file-earmark-text', '#0ea5e9',
-            pg_dashboard_activity_forms($user, $limit),
-            pg_activity_daily('forms', 'forms.submitted_timestamp', " AND (forms.complete = '1')"),
+            pg_dashboard_activity_forms($form_where, $limit),
+            ($form_where !== null) ? pg_activity_daily('forms', 'forms.submitted_timestamp', ' AND ' . $form_where) : array_fill(0, 8, 0),
             'view_submitted_forms.php', lang('All submitted forms'));
     }
 
@@ -183,19 +191,25 @@ function pg_dashboard_activity_kinds($user, $limit)
     }
 
     if (($user['role'] < 3) || ($user['manage_contacts'] == true)) {
+        $contact_where = pg_dashboard_activity_contacts_where($user);
+
         $kinds['contact'] = $kind(lang('Contacts'), 'bi-person-lines-fill', '#6366f1',
-            pg_dashboard_activity_contacts($user, $limit),
-            pg_activity_daily('contacts', 'contacts.timestamp'),
+            pg_dashboard_activity_contacts($contact_where, $limit),
+            ($contact_where !== null) ? pg_activity_daily('contacts', 'contacts.timestamp', $contact_where) : array_fill(0, 8, 0),
             'view_contacts.php', lang('All contacts'));
     }
 
     // Same reach as view_comments.php for staff. A contributor's queue is
     // scoped through the commented page's folder; the Comment Moderation
-    // card does that, and the feed leaves those readers to it.
+    // card does that, and the feed leaves those readers to it. Comments on
+    // pages in the Recycle Bin are not on the site and are left out of the
+    // count and the list, as the Comment Moderation card does.
     if ($user['role'] < 3) {
+        $comment_where = pg_comment_live_page_sql(pg_recycle_bin_folder_ids());
+
         $kinds['comment'] = $kind(lang('Comments'), 'bi-chat-square-quote', '#f59e0b',
-            pg_dashboard_activity_comments($limit),
-            pg_activity_daily('comments', 'comments.created_timestamp'),
+            pg_dashboard_activity_comments($comment_where, $limit),
+            pg_activity_daily('comments LEFT JOIN page ON comments.page_id = page.page_id', 'comments.created_timestamp', $comment_where),
             'view_comments.php', lang('All comments'));
     }
 
@@ -627,10 +641,11 @@ function pg_dashboard_activity_update_row($item)
     );
 }
 
-// Submitted forms, newest submission first. Staff see every form; a
-// contributor with the forms permission sees the forms on pages in folders
-// they may edit, which is what the submitted forms screen shows them too.
-function pg_dashboard_activity_forms($user, $limit)
+// The submitted forms this reader may see, as a WHERE condition on forms.
+// Staff see every form; a contributor with the forms permission sees the
+// forms on pages in folders they may edit, which is what the submitted forms
+// screen shows them too. Null when such a reader may edit no form page.
+function pg_dashboard_activity_forms_where($user)
 {
     $where = "(forms.complete = '1')";
 
@@ -646,10 +661,21 @@ function pg_dashboard_activity_forms($user, $limit)
         }
 
         if (empty($page_ids)) {
-            return array();
+            return null;
         }
 
         $where .= " AND (forms.page_id IN (" . implode(',', $page_ids) . "))";
+    }
+
+    return $where;
+}
+
+// Submitted forms, newest submission first, matching $where from
+// pg_dashboard_activity_forms_where().
+function pg_dashboard_activity_forms($where, $limit)
+{
+    if ($where === null) {
+        return array();
     }
 
     $items = array();
@@ -727,44 +753,46 @@ function pg_dashboard_activity_orders($limit)
     return $items;
 }
 
-// Contacts as they are added. A contributor with the contacts permission sees
-// the contact groups they may edit, as the contacts screen does.
-function pg_dashboard_activity_contacts($user, $limit)
+// The contacts this reader may see, as a condition appended to a WHERE on
+// contacts: nothing for staff; for a contributor with the contacts
+// permission, the contacts in the groups they may edit, as the contacts
+// screen shows. Null when such a reader may edit no group. A subquery rather
+// than a join, so a contact in two of the groups is one row and one count.
+function pg_dashboard_activity_contacts_where($user)
 {
     if ($user['role'] < 3) {
-        $rows = db_items("SELECT
-                contacts.id,
-                contacts.first_name,
-                contacts.last_name,
-                contacts.email_address,
-                contacts.timestamp,
-                user.user_username AS username
-            FROM contacts
-            LEFT JOIN user ON contacts.user = user.user_id
-            ORDER BY contacts.timestamp DESC
-            LIMIT " . (int) $limit);
-    } else {
-        $groups = array_map('intval', get_items_user_can_edit('contact_groups', $user['id']));
-
-        if (empty($groups)) {
-            return array();
-        }
-
-        $rows = db_items("SELECT
-                contacts.id,
-                MAX(contacts.first_name) AS first_name,
-                MAX(contacts.last_name) AS last_name,
-                MAX(contacts.email_address) AS email_address,
-                MAX(contacts.timestamp) AS timestamp,
-                MAX(user.user_username) AS username
-            FROM contacts
-            LEFT JOIN user ON contacts.user = user.user_id
-            INNER JOIN contacts_contact_groups_xref ON contacts.id = contacts_contact_groups_xref.contact_id
-            WHERE contacts_contact_groups_xref.contact_group_id IN (" . implode(',', $groups) . ")
-            GROUP BY contacts.id
-            ORDER BY MAX(contacts.timestamp) DESC
-            LIMIT " . (int) $limit);
+        return '';
     }
+
+    $groups = array_map('intval', get_items_user_can_edit('contact_groups', $user['id']));
+
+    if (empty($groups)) {
+        return null;
+    }
+
+    return " AND (contacts.id IN (SELECT contact_id FROM contacts_contact_groups_xref WHERE contact_group_id IN (" . implode(',', $groups) . ")))";
+}
+
+// Contacts as they are added, matching $where from
+// pg_dashboard_activity_contacts_where().
+function pg_dashboard_activity_contacts($where, $limit)
+{
+    if ($where === null) {
+        return array();
+    }
+
+    $rows = db_items("SELECT
+            contacts.id,
+            contacts.first_name,
+            contacts.last_name,
+            contacts.email_address,
+            contacts.timestamp,
+            user.user_username AS username
+        FROM contacts
+        LEFT JOIN user ON contacts.user = user.user_id
+        WHERE 1 = 1" . $where . "
+        ORDER BY contacts.timestamp DESC
+        LIMIT " . (int) $limit);
 
     $items = array();
 
@@ -775,10 +803,10 @@ function pg_dashboard_activity_contacts($user, $limit)
             $name = (string) $row['username'];
         }
 
-        $initials = mb_strtoupper(mb_substr((string) $row['first_name'], 0, 1) . mb_substr((string) $row['last_name'], 0, 1));
+        $initials = pg_initials_upper(mb_substr((string) $row['first_name'], 0, 1) . mb_substr((string) $row['last_name'], 0, 1));
 
         if ($initials === '') {
-            $initials = mb_strtoupper(mb_substr((string) $row['username'], 0, 1));
+            $initials = pg_initials_upper(mb_substr((string) $row['username'], 0, 1));
         }
 
         $items[] = array(
@@ -795,8 +823,9 @@ function pg_dashboard_activity_contacts($user, $limit)
 }
 
 // Comments as they are posted, published or not; the ones still waiting say
-// so, because that is the one thing about a comment worth acting on.
-function pg_dashboard_activity_comments($limit)
+// so, because that is the one thing about a comment worth acting on. $where
+// is the Recycle Bin fragment from pg_comment_live_page_sql(), already safe.
+function pg_dashboard_activity_comments($where, $limit)
 {
     $items = array();
 
@@ -809,6 +838,7 @@ function pg_dashboard_activity_comments($limit)
             page.page_name
         FROM comments
         LEFT JOIN page ON comments.page_id = page.page_id
+        WHERE 1 = 1" . $where . "
         ORDER BY comments.created_timestamp DESC
         LIMIT " . (int) $limit) as $row) {
 
@@ -853,7 +883,7 @@ function pg_dashboard_activity_users($user, $limit)
         ORDER BY user.user_timestamp DESC
         LIMIT " . (int) $limit) as $row) {
 
-        $initial = mb_strtoupper(mb_substr((string) $row['username'], 0, 1));
+        $initial = pg_initials_upper(mb_substr((string) $row['username'], 0, 1));
 
         $items[] = array(
             'ts'    => (int) $row['timestamp'],
@@ -962,7 +992,7 @@ function pg_dashboard_activity_logs($limit)
             'sort'  => 'log:' . (int) $row['log_id'],
             'href'  => 'view_log.php',
             'badge' => '<i class="bi bi-journal-text"></i>',
-            'name'  => h(pg_dashboard_log_actor($row['log_user'], $row['log_ip'])),
+            'name'  => h(pg_log_actor($row['log_user'], $row['log_ip'])),
             'meta'  => pg_dashboard_log_meta($row['log_description'], $row['log_ip']),
         );
     }

@@ -5,7 +5,7 @@ description: Which system widget records carry the front-end edit pencil (produc
 
 ## Which renderers call pg_sw_add_edit_chip()?
 - `catalog_listing`: every product card and product group card (`edit_product.php`, `edit_product_group.php`, tone `ecommerce`, `pg_sw_can_edit_products()`).
-- `catalog_item_view`: the product, or the group on a variant group's page.
+- `catalog_item_view`: the product or group, on the widget's first element (#3621).
 - `form_list_view`: every record row; `form_item_view`: the record when the design places no `^^__edit_url^^` button (`edit_submitted_form.php`, tone `forms`, `pg_sw_can_edit_submitted_forms()`).
 - `calendar_view`: every event row of the loop (month, week and upcoming views); `calendar_event_view`: the event, on the widget's first element (`edit_calendar_event.php`, tone `calendar`, `_pg_sw_calendar_event_edit_chip()`; #1553).
 - Comments on a Bootstrap visual-design page (its own or a record's): `get_page_content.php` (`edit_comment.php`, tone `page`).

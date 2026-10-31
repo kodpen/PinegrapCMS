@@ -304,3 +304,30 @@ function test_carrier_webhook_writes_only_through_the_tracking_write_back()
 	pg_assert_contains("define('PG_NO_SESSION', true);", $entry);
 	pg_assert_contains('pg_carrier_webhook_receive();', $entry);
 }
+
+function test_carrier_webhook_by_hand_key_follows_the_switch()
+{
+	pg_assert_same('make', pg_carrier_webhook_manual_change(true, true, ''), 'on and ready: a key, no call');
+	pg_assert_same('', pg_carrier_webhook_manual_change(true, true, 'k9k9k9k9'), 'a save keeps the address the merchant added');
+	pg_assert_same('', pg_carrier_webhook_manual_change(true, false, ''), 'not ready: nothing yet');
+	pg_assert_same('drop', pg_carrier_webhook_manual_change(false, true, 'k9k9k9k9'), 'off: the old address is refused');
+	pg_assert_same('', pg_carrier_webhook_manual_change(false, false, ''));
+
+	$sync = pg_test_function_source('pg_carrier_webhook_sync');
+	pg_assert_contains('pg_carrier_webhook_manual_change(', $sync);
+}
+
+function test_carrier_webhook_by_hand_card_row_shows_the_address()
+{
+	pg_label_load('basitkargo');
+
+	$row = pg_carrier_webhook_card_row('basitkargo', array('enabled' => true, 'secrets' => array('webhook_key' => 'k9k9k9k9')));
+	pg_assert_contains('value="/carrier_webhook.php?driver=basitkargo&amp;key=k9k9k9k9"', $row);
+	pg_assert_contains('Yönetim Paneli → Ayarlar → Webhook', $row);
+	pg_assert_contains('Durum Değişikliği', $row);
+	pg_assert_contains('Kargo Hareketi', $row);
+
+	$waiting = pg_carrier_webhook_card_row('basitkargo', array('enabled' => false, 'secrets' => array()));
+	pg_assert_true($waiting !== '', 'a by-hand driver still has a webhook line');
+	pg_assert_false(strpos($waiting, 'carrier_webhook.php') !== false, 'no address before a key exists');
+}

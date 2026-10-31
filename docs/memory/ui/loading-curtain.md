@@ -18,3 +18,6 @@ description: Loading curtain printed by pg_preloader_markup() on every panel scr
 
 ## Where is it excluded?
 - `toolbar.php` (the strip above the edited site) and `output_header_secure()` (in-modal picker screens).
+
+## Do the bar and dots keep running behind a done curtain?
+- No. `.pg-preloader.is-done` pauses `.pg-preloader-bar i` and `.pg-preloader-dots i` (`animation-play-state: paused`), so a hidden curtain does not keep the compositor busy (#3592, #3676). Not `animation: none`: `pgPreloaderShow()` takes `is-done` off again on a link click and the loops must carry on at once, and the mark, which rests at opacity 0 until its delayed fade-in, is left alone.

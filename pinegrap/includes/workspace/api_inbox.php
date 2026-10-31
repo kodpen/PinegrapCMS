@@ -286,13 +286,52 @@ function ws_api_inbox_unread($user_id)
  * @param int $after_id only rows after this one
  * @return string
  */
-function ws_api_inbox_changed_where($user_id, $since, $after_id)
+function ws_api_inbox_changed_where($user_id, $since, $after_id, $note_id = 0, $notes_ready = true)
 {
     $since = max(1, (int) $since);
 
     return "user_id = '" . (int) $user_id . "'"
         . " AND (created_at >= '" . $since . "' OR read_at >= '" . $since . "')"
-        . " AND id > '" . max(0, (int) $after_id) . "'";
+        . " AND id > '" . max(0, (int) $after_id) . "'"
+        . ws_api_inbox_note_where($note_id, $notes_ready);
+}
+
+/**
+ * The condition that keeps only the rows about one note (note_id), empty
+ * without one. An inbox without the note_id column ties no line to a note,
+ * so the filter then keeps nothing.
+ *
+ * @param int  $note_id 0: every row
+ * @param bool $ready   ws_notes_inbox_ready()
+ * @return string " AND ..." or ''
+ */
+function ws_api_inbox_note_where($note_id, $ready)
+{
+    if ((int) $note_id < 1) {
+        return '';
+    }
+
+    return $ready ? " AND note_id = '" . (int) $note_id . "'" : ' AND 0 = 1';
+}
+
+/**
+ * Which of a person's rows a page of the inbox reads: the unread ones when
+ * asked, those before the cursor's row and, with note_id, only the rows
+ * about that note.
+ *
+ * @param int  $user_id
+ * @param bool $unread
+ * @param int  $before_id   0: from the newest
+ * @param int  $note_id     0: every row
+ * @param bool $notes_ready ws_notes_inbox_ready()
+ * @return string
+ */
+function ws_api_inbox_list_where($user_id, $unread, $before_id, $note_id, $notes_ready)
+{
+    return "user_id = '" . (int) $user_id . "'"
+        . ($unread ? " AND read_at = 0" : '')
+        . (((int) $before_id > 0) ? " AND id < '" . (int) $before_id . "'" : '')
+        . ws_api_inbox_note_where($note_id, $notes_ready);
 }
 
 /**
@@ -450,15 +489,20 @@ function ws_api_inbox_reload($since, $now, $keep)
  * application Claude works through may not hear of are passed over and the
  * page filled from the rows after them, so as many lines as limit means more
  * may follow - the rule the app pages a channel's changed messages by.
+ * With a note, only the live rows about it are read; a mark of a line taken
+ * away keeps no note, so those marks come as they do without one.
  *
  * @param array $viewer
  * @param int   $since    timestamp
  * @param int   $after_id
  * @param int   $limit
+ * @param int   $note_id  0: every row
  * @return array[]
  */
-function ws_api_inbox_changed($viewer, $since, $after_id, $limit)
+function ws_api_inbox_changed($viewer, $since, $after_id, $limit, $note_id = 0)
 {
+    $notes_ready = ((int) $note_id < 1) || (function_exists('ws_notes_inbox_ready') && ws_notes_inbox_ready());
+
     $limit = max(1, min(WS_API_INBOX_MAX, (int) $limit));
     $after = max(0, (int) $after_id);
     $chunk = $limit;
@@ -470,7 +514,7 @@ function ws_api_inbox_changed($viewer, $since, $after_id, $limit)
     // read that meets them goes on in larger steps, a bounded number of
     // times, and a moment far back does not walk the whole inbox in one call.
     for ($round = 0; $round < 20; $round++) {
-        $rows = (array) db_items("SELECT * FROM ws_inbox WHERE " . ws_api_inbox_changed_where($viewer['id'], $since, $after) . "
+        $rows = (array) db_items("SELECT * FROM ws_inbox WHERE " . ws_api_inbox_changed_where($viewer['id'], $since, $after, $note_id, $notes_ready) . "
             ORDER BY id
             LIMIT " . $chunk);
 
@@ -519,19 +563,17 @@ function ws_api_inbox_list($params)
     $viewer = ws_api_viewer();
     $limit = max(1, min(WS_API_INBOX_MAX, (int) ($params['limit'] ?? 30)));
 
+    $note_id = (int) ($params['note_id'] ?? 0);
+
     if (isset($params['changed_since'])) {
         $since = (int) $params['changed_since'];
 
-        api_ok_list(ws_api_inbox_changed($viewer, $since, (int) ($params['since_id'] ?? 0), $limit), $limit, null, null, array(
+        api_ok_list(ws_api_inbox_changed($viewer, $since, (int) ($params['since_id'] ?? 0), $limit, $note_id), $limit, null, null, array(
             'reload' => ws_api_inbox_reload($since, time(), WS_INBOX_DELETED_KEEP),
         ));
     }
 
-    $where = array("user_id = '" . (int) $viewer['id'] . "'");
-
-    if (!empty($params['unread'])) {
-        $where[] = "read_at = 0";
-    }
+    $before_id = 0;
 
     if (isset($params['cursor']) && ($params['cursor'] !== '')) {
         $cursor = api_cursor_decode($params['cursor']);
@@ -540,10 +582,15 @@ function ws_api_inbox_list($params)
             api_fail(400, 'invalid_cursor', lang('The cursor is not readable. Start the listing again without one.'), 'cursor');
         }
 
-        $where[] = "id < '" . (int) $cursor['i'] . "'";
+        $before_id = max(1, (int) $cursor['i']);
     }
 
-    $rows = (array) db_items("SELECT * FROM ws_inbox WHERE " . implode(' AND ', $where) . " ORDER BY id DESC LIMIT " . ($limit + 1));
+    // A note the owner cannot read leaves its lines out by the same rule as
+    // any other line (ws_api_inbox_reachable_rows()): the page is empty,
+    // never a refusal that would tell the note exists.
+    $where = ws_api_inbox_list_where($viewer['id'], !empty($params['unread']), $before_id, $note_id, ($note_id < 1) || (function_exists('ws_notes_inbox_ready') && ws_notes_inbox_ready()));
+
+    $rows = (array) db_items("SELECT * FROM ws_inbox WHERE " . $where . " ORDER BY id DESC LIMIT " . ($limit + 1));
     $next = null;
 
     // The cursor follows the rows read, not the lines shown: a page whose

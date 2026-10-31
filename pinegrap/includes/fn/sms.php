@@ -11,16 +11,19 @@
  * needs it.
  *
  * The account is kept in connect_apps under 'sms_<key>', like the carriers'
- * API applications: the user code as client_id, the password sealed with the
- * site's key and never drawn back into a form, the sender name among the
- * options and the Communication settings' switch as enabled. A provider added
- * later needs no schema change.
+ * API applications: the user code or API key as client_id, the password or
+ * API secret sealed with the site's key and never drawn back into a form, the
+ * sender name among the options and the Communication settings' switch as
+ * enabled. A provider added later needs no schema change: its definition
+ * names its two account fields as the settings card shows them.
  *
  * Every message has a kind. Transactional kinds (an order, a shipment, a
  * sign-in code, a reminder, the one back-in-stock notice a customer asked
- * for) go out as informational messages; a commercial
- * one needs the recipient's consent recorded in İYS, and until the consent
- * records exist pg_sms_send() refuses it.
+ * for) go out as informational messages and carry no promotion text. A
+ * marketing message goes only to a number whose owner said yes to marketing
+ * SMS here (consent_log channel sms) and neither here nor in İYS said no,
+ * and only once the sender identity (trade name or MERSİS number) is set:
+ * the identity and the type label are appended to its text.
  *
  * pg_sms_send() makes the network call itself and waits for the answer, so it
  * belongs in a background job or behind an operator's button (the settings'
@@ -44,17 +47,106 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 /**
  * The SMS providers, in the order the settings offer them.
  *
- * @return array key => label, file (under includes/sms/), portal
+ * Each account has two credentials, kept as user and password whatever the
+ * provider calls them: the labels and the card's help text come from here.
+ *
+ * @return array key => label, file (under includes/sms/), portal,
+ *               user_label, password_label, help (the card's line, HTML),
+ *               refused_fields
+ *               (the provider's refusal code => 'password' or 'user', the
+ *               field a refused account check marks; 'user' when not
+ *               listed), user_sends (the user code is a sender name too,
+ *               listed or not), sender_label, sender_maxlength,
+ *               sender_pattern (a regular expression a sender must match, ''
+ *               for a sender name of up to sender_maxlength characters),
+ *               sender_error (the sentence a sender that does not fit gets),
+ *               sender_compact (spaces, dashes, dots and brackets are
+ *               dropped from a typed sender, as in a copied phone number)
  */
 function pg_sms_providers()
 {
+    $netgsm = pg_sms_portal_link('Netgsm', 'https://www.netgsm.com.tr/');
+    $iletimerkezi = pg_sms_portal_link('İleti Merkezi', 'https://www.iletimerkezi.com/');
+    $twilio = pg_sms_portal_link('Twilio', 'https://www.twilio.com/');
+    $sender_name = array(
+        'sender_label'     => lang('Sender Name'),
+        'sender_maxlength' => 11,
+        'sender_pattern'   => '',
+        'sender_error'     => lang('A sender name has at most 11 characters.'),
+        'sender_compact'   => false,
+    );
+
     return array(
         'netgsm' => array(
-            'label'  => 'Netgsm',
-            'file'   => 'netgsm.php',
-            'portal' => 'https://www.netgsm.com.tr/',
+            'label'          => 'Netgsm',
+            'file'           => 'netgsm.php',
+            'portal'         => 'https://www.netgsm.com.tr/',
+            'user_label'     => lang('User Code'),
+            'password_label' => lang('Password'),
+            'help'           => lang(array(
+                'string' => 'Enter the user code and password of an API user of your {var:1} account, and a sender name approved on it. Saving checks them with {var:1}. To remove the account from this site, switch SMS off and empty the user code.',
+                'vars'   => array($netgsm))),
+            'refused_fields' => array('30' => 'password'),
+            'user_sends'     => true,
+        ) + $sender_name,
+        'iletimerkezi' => array(
+            'label'          => 'İleti Merkezi',
+            'file'           => 'iletimerkezi.php',
+            'portal'         => 'https://www.iletimerkezi.com/',
+            'user_label'     => lang('API Key'),
+            'password_label' => lang('API Hash'),
+            'help'           => lang(array(
+                'string' => 'Enter the API key and API hash of your {var:1} account (Settings › Security › API Access; API access must be allowed there) and a sender name approved on it. Saving checks them with {var:1}. To remove the account from this site, switch SMS off and empty the API key.',
+                'vars'   => array($iletimerkezi))),
+            'refused_fields' => array('401' => 'password'),
+            'user_sends'     => false,
+        ) + $sender_name,
+        'twilio' => array(
+            'label'            => 'Twilio',
+            'file'             => 'twilio.php',
+            'portal'           => 'https://www.twilio.com/',
+            'user_label'       => lang('Account SID'),
+            'password_label'   => lang('Auth Token'),
+            'help'             => lang(array(
+                'string' => 'Enter the Account SID and Auth Token of your {var:1} account (Console › Account Info) and, as the sender, one of its phone numbers in international form (+14155550100) or a Messaging Service SID (MG…). Saving checks them with {var:1}. {var:1} sends to every country its geographic permissions allow; a number typed without a country code is read as a Turkish one. To remove the account from this site, switch SMS off and empty the Account SID.',
+                'vars'   => array($twilio))),
+            'refused_fields'   => array('20003' => 'password'),
+            'user_sends'       => false,
+            'sender_label'     => lang('Sender'),
+            'sender_maxlength' => 34,
+            'sender_pattern'   => '/^(\+[1-9]\d{6,14}|MG[0-9a-fA-F]{32})$/D',
+            'sender_error'     => lang('The sender is a phone number of the Twilio account in international form (+14155550100) or a Messaging Service SID (MG followed by 32 characters).'),
+            'sender_compact'   => true,
         ),
     );
+}
+
+/**
+ * A provider's name linked to its site, for the settings card's help line.
+ *
+ * @param string $label
+ * @param string $portal
+ * @return string HTML
+ */
+function pg_sms_portal_link($label, $portal)
+{
+    return '<a href="' . h($portal) . '" target="_blank" rel="noopener">' . h($label) . '</a>';
+}
+
+/**
+ * The field a refused account check marks: the one the provider's code
+ * names, otherwise the user code.
+ *
+ * @param string $provider
+ * @param string $code the provider's refusal code
+ * @return string 'user' or 'password'
+ */
+function pg_sms_refused_field($provider, $code)
+{
+    $definition = pg_sms_provider_definition($provider);
+    $fields = ($definition !== null) ? $definition['refused_fields'] : array();
+
+    return (isset($fields[(string) $code]) && ($fields[(string) $code] === 'password')) ? 'password' : 'user';
 }
 
 /**
@@ -274,17 +366,21 @@ function pg_sms_failure($error, $retry = false)
 }
 
 /**
- * What every message is checked for before any account is read: a known kind
- * that is not commercial (until İYS consent records exist), a number an SMS
- * can be sent to, a text that is not empty and not longer than
- * pg_sms_max_length().
+ * What every message is checked for before any account is read: a known kind,
+ * the sender identity for a marketing message, a number an SMS can be sent
+ * to, a text that is not empty and, with a marketing message's identity and
+ * type label appended (pg_sms_marketing_text()), not longer than
+ * pg_sms_max_length(). The recipient's consent is asked separately
+ * (pg_sms_marketing_permission()): it needs the database.
  *
- * @param mixed $to
- * @param mixed $text
- * @param mixed $kind
+ * @param mixed      $to
+ * @param mixed      $text
+ * @param mixed      $kind
+ * @param array|null $marketing pg_sms_marketing_normalize() shape; read from
+ *                              the settings when null
  * @return array ok, number (E.164 digits), text (as it is sent), error
  */
-function pg_sms_check($to, $text, $kind)
+function pg_sms_check($to, $text, $kind, $marketing = null)
 {
     $kinds = pg_sms_kinds();
     $refused = array('ok' => false, 'number' => '', 'text' => '', 'error' => '');
@@ -295,8 +391,12 @@ function pg_sms_check($to, $text, $kind)
     }
 
     if ($kinds[$kind]) {
-        $refused['error'] = lang('Marketing messages are not sent by SMS: they need the recipient\'s consent recorded in İYS.');
-        return $refused;
+        $marketing = is_array($marketing) ? pg_sms_marketing_normalize($marketing) : pg_sms_marketing_settings();
+
+        if (!pg_sms_marketing_identity_filled($marketing)) {
+            $refused['error'] = pg_sms_marketing_identity_missing();
+            return $refused;
+        }
     }
 
     $number = pg_sms_number($to);
@@ -313,12 +413,320 @@ function pg_sms_check($to, $text, $kind)
         return $refused;
     }
 
+    if ($kinds[$kind]) {
+        $text = pg_sms_marketing_text($text, $marketing);
+    }
+
     if (mb_strlen($text, 'UTF-8') > pg_sms_max_length()) {
         $refused['error'] = lang(array('string' => 'The message is longer than {var:1} characters.', 'vars' => array(pg_sms_max_length())));
         return $refused;
     }
 
     return array('ok' => true, 'number' => $number, 'text' => $text, 'error' => '');
+}
+
+/**
+ * The marketing messages' sender identity and type label in a stored or
+ * posted shape, every key present. Kept in connect_apps 'sms_templates'
+ * under options.marketing, beside the order messages' templates.
+ *
+ * @param array|null $marketing
+ * @return array trade_name, mersis (16 digits or ''), label ('' for the
+ *               built-in one)
+ */
+function pg_sms_marketing_normalize($marketing)
+{
+    $marketing = is_array($marketing) ? $marketing : array();
+    $normal = array();
+
+    foreach (array('trade_name', 'mersis', 'label') as $key) {
+        $normal[$key] = (isset($marketing[$key]) && is_scalar($marketing[$key])) ? pg_sms_text(str_replace("\n", ' ', (string) $marketing[$key])) : '';
+    }
+
+    return $normal;
+}
+
+/**
+ * The site's sender identity and type label.
+ *
+ * @return array pg_sms_marketing_normalize()
+ */
+function pg_sms_marketing_settings()
+{
+    $app = (function_exists('pg_connect_schema_ready') && pg_connect_schema_ready()) ? pg_connect_app('sms_templates') : null;
+
+    return pg_sms_marketing_normalize((is_array($app) && isset($app['options']['marketing'])) ? $app['options']['marketing'] : null);
+}
+
+/**
+ * The type label a marketing message carries while the setting is empty, in
+ * the site's language when the message is checked.
+ *
+ * @return string
+ */
+function pg_sms_marketing_label_default()
+{
+    return lang('This is a promotion, campaign and information message.');
+}
+
+/**
+ * Whether a marketing message can name its sender: a trade name or a MERSİS
+ * number is set.
+ *
+ * @param array $marketing pg_sms_marketing_normalize()
+ * @return bool
+ */
+function pg_sms_marketing_identity_filled($marketing)
+{
+    return ($marketing['trade_name'] !== '') || ($marketing['mersis'] !== '');
+}
+
+/**
+ * The reason a marketing message is refused while the identity is empty.
+ *
+ * @return string
+ */
+function pg_sms_marketing_identity_missing()
+{
+    return lang('A marketing SMS needs the sender identity: fill in the trade name or the MERSİS number in Settings › Communication › SMS Messages.');
+}
+
+/**
+ * A marketing message as it is sent: its text, then a line with the trade
+ * name and the MERSİS number, then the type label. A text that already ends
+ * with them (a queued message checked again when it is sent) is returned as
+ * it is, so they are never appended twice.
+ *
+ * @param string $text      pg_sms_text()
+ * @param array  $marketing pg_sms_marketing_normalize()
+ * @return string
+ */
+function pg_sms_marketing_text($text, $marketing)
+{
+    $identity = $marketing['trade_name'];
+
+    if ($marketing['mersis'] !== '') {
+        $identity = trim($identity . ' ' . lang(array('string' => 'MERSİS No: {var:1}', 'vars' => array($marketing['mersis']))));
+    }
+
+    $footer = $identity . "\n" . (($marketing['label'] !== '') ? $marketing['label'] : pg_sms_marketing_label_default());
+    $text = (string) $text;
+
+    if (($text === $footer) || (substr($text, -strlen("\n" . $footer)) === "\n" . $footer)) {
+        return $text;
+    }
+
+    return ($text === '') ? $footer : $text . "\n" . $footer;
+}
+
+/**
+ * The latest SMS marketing answer of each contact. Pure.
+ *
+ * @param array[] $rows consent_log rows of channel sms, purpose marketing:
+ *                      id, created_at, contact_id, channel, purpose, status
+ * @return array contact_id => status
+ */
+function pg_sms_marketing_answers($rows)
+{
+    $per_contact = array();
+
+    foreach ((array) $rows as $row) {
+        if (is_array($row) && isset($row['contact_id'])) {
+            $per_contact[(int) $row['contact_id']][] = $row;
+        }
+    }
+
+    $answers = array();
+
+    foreach ($per_contact as $contact_id => $contact_rows) {
+        $current = pg_consent_log_current($contact_rows);
+
+        if (isset($current['sms:marketing']['status'])) {
+            $answers[$contact_id] = (string) $current['sms:marketing']['status'];
+        }
+    }
+
+    ksort($answers);
+
+    return $answers;
+}
+
+/**
+ * Why a marketing message may not go to a number, '' when it may: a yes
+ * given here by one of the contacts with the number, no contact's last answer
+ * a no, and no refusal İYS holds for one of them. İYS's own approval is no
+ * consent here and its silence stops nothing: İYS never narrows sending
+ * further than the answers given on the site. Pure.
+ *
+ * @param array $answers contact_id => latest status (pg_sms_marketing_answers())
+ * @param array $iys     contact_id => contacts.iys_sms_status
+ * @return string
+ */
+function pg_sms_marketing_refusal($answers, $iys)
+{
+    if (in_array('refused', (array) $answers, true)) {
+        return lang('The recipient refused marketing messages by SMS.');
+    }
+
+    if (in_array('refused', (array) $iys, true)) {
+        return lang('İYS records that the recipient refused marketing messages by SMS.');
+    }
+
+    if (!in_array('granted', (array) $answers, true)) {
+        return lang('The recipient has not consented to marketing messages by SMS.');
+    }
+
+    return '';
+}
+
+/**
+ * The forms a stored phone number can take once spaces, dashes, brackets,
+ * dots and slashes are dropped, all read back by pg_sms_number() as the same
+ * number: the national forms of a Turkish mobile, the plus and 00 forms of
+ * any number.
+ *
+ * @param string $digits pg_sms_number()
+ * @return string[]
+ */
+function pg_sms_number_variants($digits)
+{
+    $digits = (string) $digits;
+
+    if (preg_match('/^905\d{9}$/', $digits)) {
+        $national = substr($digits, 2);
+
+        return array($national, '0' . $national, $digits, '+' . $digits, '00' . $digits, '+900' . $national);
+    }
+
+    return preg_match('/^[1-9]\d{7,14}$/', $digits) ? array('+' . $digits, '00' . $digits) : array();
+}
+
+/**
+ * A phone column in SQL without the separators pg_sms_number_variants()
+ * drops, to compare with those variants.
+ *
+ * @param string $column a trusted column name
+ * @return string
+ */
+function pg_sms_number_sql($column)
+{
+    $stripped = $column;
+
+    foreach (array(' ', '-', '(', ')', '.', '/') as $separator) {
+        $stripped = "REPLACE(" . $stripped . ", '" . $separator . "', '')";
+    }
+
+    return $stripped;
+}
+
+/**
+ * Why a marketing message may not go to a number, read from the database:
+ * the contacts whose mobile number it is, and the contacts whose answer at a
+ * checkout was about it (the billing phone of their latest order, as
+ * pg_iys_push_number() pushes it), with their consent rows and İYS status.
+ *
+ * @param string $number E.164 digits (pg_sms_check())
+ * @return string '' when it may go
+ */
+function pg_sms_marketing_permission($number)
+{
+    $variants = pg_sms_number_variants($number);
+
+    if (!$variants || !function_exists('pg_consent_log_ready') || !pg_consent_log_ready()) {
+        return pg_sms_marketing_refusal(array(), array());
+    }
+
+    $in = "('" . implode("', '", array_map('e', $variants)) . "')";
+    $iys_column = pg_schema_has('contacts', 'iys_sms_status') ? 'contacts.iys_sms_status' : "''";
+
+    $found = (array) db_items(
+        "SELECT contacts.id, contacts.mobile_phone AS phone, " . $iys_column . " AS iys
+        FROM contacts
+        WHERE
+            (contacts.mobile_phone <> '')
+            AND (" . pg_sms_number_sql('contacts.mobile_phone') . " IN " . $in . ")");
+
+    $found = array_merge($found, (array) db_items(
+        "SELECT contacts.id, orders.billing_phone_number AS phone, " . $iys_column . " AS iys
+        FROM orders
+        JOIN contacts ON contacts.id = orders.contact_id
+        WHERE
+            (orders.contact_id > 0)
+            AND (" . pg_sms_number_sql('orders.billing_phone_number') . " IN " . $in . ")
+            AND (orders.id = (SELECT MAX(latest.id) FROM orders AS latest WHERE latest.contact_id = orders.contact_id))
+            AND EXISTS (
+                SELECT 1 FROM consent_log
+                WHERE
+                    (consent_log.contact_id = orders.contact_id)
+                    AND (consent_log.channel = 'sms')
+                    AND (consent_log.source = 'checkout'))"));
+
+    $iys = array();
+
+    foreach ($found as $contact) {
+        if (pg_sms_number((string) $contact['phone']) === $number) {
+            $iys[(int) $contact['id']] = (string) $contact['iys'];
+        }
+    }
+
+    if (!$iys) {
+        return pg_sms_marketing_refusal(array(), array());
+    }
+
+    $rows = db_items(
+        "SELECT id, created_at, contact_id, channel, purpose, status
+        FROM consent_log
+        WHERE
+            (channel = 'sms')
+            AND (purpose = 'marketing')
+            AND (contact_id IN ('" . implode("', '", array_keys($iys)) . "'))");
+
+    return pg_sms_marketing_refusal(pg_sms_marketing_answers(is_array($rows) ? $rows : array()), $iys);
+}
+
+/**
+ * The marketing settings of a post of the SMS Messages card; no database.
+ *
+ * @param array $post
+ * @param array $before pg_sms_marketing_settings()
+ * @return array|null marketing (pg_sms_marketing_normalize()), changed, marks
+ *                    (field => sentence); null when the post has no such card
+ */
+function pg_sms_marketing_settings_decide($post, $before)
+{
+    if (empty($post['sms_msg_card'])) {
+        return null;
+    }
+
+    $marketing = pg_sms_marketing_normalize(array(
+        'trade_name' => pg_sms_post($post, 'sms_mkt_trade_name'),
+        'mersis'     => preg_replace('/[\s.-]+/', '', pg_sms_post($post, 'sms_mkt_mersis')),
+        'label'      => pg_sms_post($post, 'sms_mkt_label'),
+    ));
+
+    // The built-in label sent back unchanged stays the built-in one, so it
+    // follows the site's language.
+    if ($marketing['label'] === pg_sms_marketing_label_default()) {
+        $marketing['label'] = '';
+    }
+
+    $marks = array();
+
+    if (($marketing['mersis'] !== '') && !preg_match('/^\d{16}$/', $marketing['mersis'])) {
+        $marks['sms_mkt_mersis'] = lang('A MERSİS number has 16 digits.');
+    }
+
+    foreach (array('trade_name' => 120, 'label' => 120) as $key => $max) {
+        if (mb_strlen($marketing[$key], 'UTF-8') > $max) {
+            $marks['sms_mkt_' . $key] = lang(array('string' => 'At most {var:1} characters.', 'vars' => array($max)));
+        }
+    }
+
+    return array(
+        'marketing' => $marketing,
+        'changed'   => ($marketing != pg_sms_marketing_normalize($before)),
+        'marks'     => $marks,
+    );
 }
 
 /**
@@ -395,6 +803,17 @@ function pg_sms_send($to, $text, $kind)
 
     $number = $check['number'];
     $text = $check['text'];
+    $kinds = pg_sms_kinds();
+
+    // Asked again when a queued message is sent: a refusal given since it
+    // was queued stops it.
+    if ($kinds[$kind]) {
+        $refusal = pg_sms_marketing_permission($number);
+
+        if ($refusal !== '') {
+            return pg_sms_failure($refusal);
+        }
+    }
 
     // Anyone can sign in to a demonstration site, so it sends nothing, as it
     // sends no e-mail (email() in includes/fn/mail.php).
@@ -414,7 +833,7 @@ function pg_sms_send($to, $text, $kind)
 
     $send = 'pg_sms_' . $provider . '_send';
 
-    return $send(pg_sms_app($provider), $number, $text, false);
+    return $send(pg_sms_app($provider), $number, $text, $kinds[$kind]);
 }
 
 /**
@@ -439,11 +858,13 @@ function pg_sms_senders($provider, $app)
 
 /**
  * The approved spelling of a sender name, compared without regard to case.
- * The account's own number (the user code) is a sender too, listed or not.
+ * Where the provider says so (user_sends: Netgsm, whose user code is the
+ * account's number), the user code is a sender too, listed or not; the
+ * caller passes it only then (pg_sms_sender_approved()).
  *
  * @param string $sender
  * @param array  $senders the provider's list
- * @param string $user    the account's user code
+ * @param string $user    the account's user code, '' when it sends nothing
  * @return string '' when it is not among them
  */
 function pg_sms_sender_match($sender, $senders, $user = '')
@@ -467,6 +888,22 @@ function pg_sms_sender_match($sender, $senders, $user = '')
     }
 
     return '';
+}
+
+/**
+ * The approved spelling of a sender name on a provider's account.
+ *
+ * @param string $provider
+ * @param string $sender
+ * @param array  $senders the provider's list
+ * @param string $user    the account's user code or API key
+ * @return string '' when it is not approved
+ */
+function pg_sms_sender_approved($provider, $sender, $senders, $user)
+{
+    $definition = pg_sms_provider_definition($provider);
+
+    return pg_sms_sender_match($sender, $senders, (($definition !== null) && $definition['user_sends']) ? $user : '');
 }
 
 /**
@@ -682,6 +1119,17 @@ function pg_sms_enqueue($to, $text, $kind, $options = array())
     if (!$check['ok']) {
         $refused['error'] = $check['error'];
         return $refused;
+    }
+
+    $kinds = pg_sms_kinds();
+
+    if ($kinds[$kind]) {
+        $refusal = pg_sms_marketing_permission($check['number']);
+
+        if ($refusal !== '') {
+            $refused['error'] = $refusal;
+            return $refused;
+        }
     }
 
     if (function_exists('pg_demo') && pg_demo()) {
@@ -1027,17 +1475,44 @@ function pg_sms_post($post, $name)
 }
 
 /**
- * Whether a sender name can be one: at most eleven characters, no control
- * characters. The provider's list is what says it is approved.
+ * Whether a sender can be one on a provider: the provider's pattern (Twilio:
+ * a phone number or a Messaging Service SID), otherwise a sender name of at
+ * most eleven characters with no control characters. The provider's list is
+ * what says it is approved.
  *
  * @param string $sender
+ * @param string $provider a pg_sms_providers() key; '' for a sender name
  * @return bool
  */
-function pg_sms_sender_valid($sender)
+function pg_sms_sender_valid($sender, $provider = '')
 {
     $sender = (string) $sender;
+    $definition = pg_sms_provider_definition($provider);
+
+    if (($definition !== null) && ($definition['sender_pattern'] !== '')) {
+        return (bool) preg_match($definition['sender_pattern'], $sender);
+    }
 
     return ($sender !== '') && (mb_strlen($sender, 'UTF-8') <= 11) && !preg_match('/[\x00-\x1F\x7F]/', $sender);
+}
+
+/**
+ * A typed sender as it is checked and stored: a phone number copied with
+ * spaces or dashes loses them where the provider says so (sender_compact).
+ *
+ * @param string $sender
+ * @param string $provider
+ * @return string
+ */
+function pg_sms_sender_typed($sender, $provider)
+{
+    $definition = pg_sms_provider_definition($provider);
+
+    if (($definition !== null) && $definition['sender_compact']) {
+        return (string) preg_replace('/[\s\-.()]+/u', '', (string) $sender);
+    }
+
+    return (string) $sender;
 }
 
 /**
@@ -1100,7 +1575,7 @@ function pg_sms_settings_fields()
                                         <div class="col-12">
                                             <div class="form-field">
                                                 <div class="switch"><input type="checkbox" name="sms_enabled" id="sms_enabled" value="1"' . ($enabled ? ' checked="checked"' : '') . ' class="collapse-switcher" data-bs-target="#sms_row"/></div>
-                                                <label class="" for="sms_enabled">' . lang('Send SMS') . '<br/><span class="form-text">' . lang('Text messages through an SMS provider account of the site. Only transactional messages are sent and they carry no promotion: a marketing message needs the recipient\'s consent recorded in İYS.') . '</span></label>
+                                                <label class="" for="sms_enabled">' . lang('Send SMS') . '<br/><span class="form-text">' . lang('Text messages through an SMS provider account of the site. Transactional messages carry no promotion; a marketing message goes only to a number whose owner consented to it, with the sender identity and type label set on the SMS Messages card.') . '</span></label>
                                             </div>
                                             <div class="collapse popover fade bs-popover-bottom p-0" id="sms_row">
                                                 <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
@@ -1118,8 +1593,15 @@ function pg_sms_settings_fields()
                                                             <select name="sms_provider" id="sms_provider" class="form-control">' . $options . '</select>
                                                         </div>';
 
+    // Every provider's fields are drawn and posted, so switching the select
+    // back loses nothing typed; only the chosen one's are shown
+    // (pg_sms_settings_script()).
     foreach (pg_sms_providers() as $key => $definition) {
-        $html .= pg_sms_settings_account_fields($key, $definition, ($key === $shown) ? $app : pg_sms_app($key));
+        $html .= '
+                                                        <div class="col-12" data-sms-provider="' . h($key) . '"' . (($key === $shown) ? '' : ' hidden') . '>
+                                                            <div class="row gy-5">' . pg_sms_settings_account_fields($key, $definition, ($key === $shown) ? $app : pg_sms_app($key)) . '
+                                                            </div>
+                                                        </div>';
     }
 
     if (pg_sms_queue_ready()) {
@@ -1147,6 +1629,36 @@ function pg_sms_settings_fields()
 }
 
 /**
+ * The SMS card's script: shows the account fields of the provider the select
+ * names (data-sms-provider) and hides the others. It knows no provider, so a
+ * new one needs nothing here.
+ *
+ * @return string
+ */
+function pg_sms_settings_script()
+{
+    return '
+    <script>
+        (function () {
+            var select = document.getElementById("sms_provider");
+
+            if (!select) {
+                return;
+            }
+
+            function sync() {
+                Array.prototype.forEach.call(document.querySelectorAll("[data-sms-provider]"), function (pane) {
+                    pane.hidden = pane.getAttribute("data-sms-provider") !== select.value;
+                });
+            }
+
+            select.addEventListener("change", sync);
+            sync();
+        })();
+    </script>';
+}
+
+/**
  * One provider's account fields.
  *
  * @param string $provider
@@ -1165,20 +1677,18 @@ function pg_sms_settings_account_fields($provider, $definition, $app)
         : '';
 
     return '
-                                                        <div class="col-12 form-text">' . lang(array(
-                                                            'string' => 'Enter the user code and password of an API user of your {var:1} account, and a sender name approved on it. Saving checks them with {var:1}. To remove the account from this site, switch SMS off and empty the user code.',
-                                                            'vars'   => array('<a href="' . h($definition['portal']) . '" target="_blank" rel="noopener">' . h($definition['label']) . '</a>'))) . '</div>
+                                                        <div class="col-12 form-text">' . $definition['help'] . '</div>
                                                         <div class="pg-f-md">
-                                                            <label for="' . h($name) . 'user" class="form-label">' . lang('User Code') . '</label>
+                                                            <label for="' . h($name) . 'user" class="form-label">' . h($definition['user_label']) . '</label>
                                                             <input type="text" name="' . h($name) . 'user" id="' . h($name) . 'user" class="form-control" value="' . h($app['user']) . '" maxlength="255" autocomplete="off"/>
                                                         </div>
                                                         <div class="pg-f-md">
-                                                            <label for="' . h($name) . 'password" class="form-label">' . lang('Password') . '</label>
+                                                            <label for="' . h($name) . 'password" class="form-label">' . h($definition['password_label']) . '</label>
                                                             <input type="password" name="' . h($name) . 'password" id="' . h($name) . 'password" class="form-control" value="" maxlength="255" autocomplete="new-password"' . $placeholder . '/>
                                                         </div>
                                                         <div class="pg-f-sm">
-                                                            <label for="' . h($name) . 'sender" class="form-label">' . lang('Sender Name') . '</label>
-                                                            <input type="text" name="' . h($name) . 'sender" id="' . h($name) . 'sender" class="form-control" value="' . h($app['sender']) . '" maxlength="11" autocomplete="off"/>
+                                                            <label for="' . h($name) . 'sender" class="form-label">' . h($definition['sender_label']) . '</label>
+                                                            <input type="text" name="' . h($name) . 'sender" id="' . h($name) . 'sender" class="form-control" value="' . h($app['sender']) . '" maxlength="' . (int) $definition['sender_maxlength'] . '" autocomplete="off"/>
                                                         </div>';
 }
 
@@ -1233,7 +1743,7 @@ function pg_sms_settings_decide($post, $provider, $before, $refusal)
         'provider'           => $provider,
         'user'               => pg_sms_post($post, $name . 'user'),
         'password'           => pg_sms_post($post, $name . 'password'),
-        'sender'             => pg_sms_post($post, $name . 'sender'),
+        'sender'             => pg_sms_sender_typed(pg_sms_post($post, $name . 'sender'), $provider),
         'enabled'            => !empty($post['sms_enabled']),
         'action'             => 'none',
         'ask'                => false,
@@ -1294,21 +1804,22 @@ function pg_sms_settings_decide($post, $provider, $before, $refusal)
     }
 
     $decision['password_effective'] = ($decision['password'] !== '') ? $decision['password'] : $before['password'];
+    $definition = pg_sms_provider_definition($provider);
 
     if ($decision['user'] === '') {
-        $decision['marks'][$name . 'user'] = lang(array('string' => '{var:1} is required.', 'vars' => array(lang('User Code'))));
+        $decision['marks'][$name . 'user'] = lang(array('string' => '{var:1} is required.', 'vars' => array(h($definition['user_label']))));
     }
 
     if ($decision['password_effective'] === '') {
         $decision['marks'][$name . 'password'] = $before['password_stored']
             ? lang('SMS is switched on but cannot send: the stored password cannot be read with this site\'s encryption key. Enter it again.')
-            : lang(array('string' => '{var:1} is required.', 'vars' => array(lang('Password'))));
+            : lang(array('string' => '{var:1} is required.', 'vars' => array(h($definition['password_label']))));
     }
 
     if ($decision['sender'] === '') {
-        $decision['marks'][$name . 'sender'] = lang(array('string' => '{var:1} is required.', 'vars' => array(lang('Sender Name'))));
-    } elseif (!pg_sms_sender_valid($decision['sender'])) {
-        $decision['marks'][$name . 'sender'] = lang('A sender name has at most 11 characters.');
+        $decision['marks'][$name . 'sender'] = lang(array('string' => '{var:1} is required.', 'vars' => array(h($definition['sender_label']))));
+    } elseif (!pg_sms_sender_valid($decision['sender'], $provider)) {
+        $decision['marks'][$name . 'sender'] = $definition['sender_error'];
     }
 
     $decision['ask'] = !$decision['marks'];
@@ -1379,7 +1890,7 @@ function pg_sms_settings_check($post, $liveform)
         'sender'   => $decision['sender']));
 
     if ($check['ok']) {
-        $approved = pg_sms_sender_match($decision['sender'], $check['senders'], $decision['user']);
+        $approved = pg_sms_sender_approved($provider, $decision['sender'], $check['senders'], $decision['user']);
 
         if ($approved !== '') {
             $decision['sender'] = $approved;
@@ -1393,7 +1904,7 @@ function pg_sms_settings_check($post, $liveform)
                 'vars'   => array($label))));
         }
     } elseif ($check['refused']) {
-        $liveform->mark_error(($check['code'] === '30') ? $name . 'password' : $name . 'user', h($check['error']));
+        $liveform->mark_error($name . pg_sms_refused_field($provider, $check['code']), h($check['error']));
     } else {
         // The provider could not be asked (no answer, an unreadable one, an
         // outage, a limit): the account is kept unchecked rather than the

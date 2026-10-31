@@ -10,6 +10,8 @@
  * apart from a charged total: it is what the cart holds, not money taken.
  * The filter totals and the chart keep adding orders.total only.
  *
+ * Also the tax of one order line for the orders CSV exports.
+ *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
  * @copyright   2017–2026 Kodpen
@@ -106,4 +108,27 @@ function pg_order_list_amount_html($status, $total, $cart_total = null)
     }
 
     return prepare_amount((int) $total / 100);
+}
+
+/**
+ * The tax of one order line in minor units, as the order's tax counted it.
+ * Checkout writes the line's tax to tax_total and 0 to the old per-unit tax
+ * column; a marketplace import writes only the per-unit tax, and its order
+ * tax is that tax times the quantity. So tax_total is taken when it is set,
+ * else the unit tax for each unit.
+ *
+ * @param int|string|null $tax_total order_items.tax_total
+ * @param int|string|null $unit_tax order_items.tax
+ * @param int|string|null $quantity order_items.quantity
+ * @return int
+ */
+function pg_order_item_line_tax($tax_total, $unit_tax, $quantity)
+{
+    $tax_total = (int) round((float) $tax_total);
+
+    if ($tax_total !== 0) {
+        return $tax_total;
+    }
+
+    return (int) round((float) $unit_tax * (float) $quantity);
 }

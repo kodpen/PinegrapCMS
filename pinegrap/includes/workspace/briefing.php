@@ -195,9 +195,15 @@ function ws_channel_briefing($viewer, $channel, $membership)
     $readings = array();
 
     if ($first_visit) {
-        $readings[] = ((string) $channel['topic'] !== '')
-            ? lang(array('string' => 'Welcome to {var:1}: {var:2}. {var:3} people talk here.', 'vars' => array($name, $channel['topic'], $members)))
-            : lang(array('string' => 'Welcome to {var:1}. {var:2} people talk here; the summary tab says what the channel is for.', 'vars' => array($name, $members)));
+        if ((string) $channel['topic'] !== '') {
+            $readings[] = ($members === 1)
+                ? lang(array('string' => 'Welcome to {var:1}: {var:2}. One person talks here.', 'vars' => array($name, $channel['topic'])))
+                : lang(array('string' => 'Welcome to {var:1}: {var:2}. {var:3} people talk here.', 'vars' => array($name, $channel['topic'], $members)));
+        } else {
+            $readings[] = ($members === 1)
+                ? lang(array('string' => 'Welcome to {var:1}. One person talks here; the summary tab says what the channel is for.', 'vars' => $name))
+                : lang(array('string' => 'Welcome to {var:1}. {var:2} people talk here; the summary tab says what the channel is for.', 'vars' => array($name, $members)));
+        }
     }
 
     if (!empty($mention_ids)) {
@@ -209,33 +215,56 @@ function ws_channel_briefing($viewer, $channel, $membership)
     if ($recap_line !== '') {
         $readings[] = $recap_line;
     } elseif (!$first_visit && ($new_count > 0)) {
-        $readings[] = ($loudest !== '')
-            ? lang(array('string' => '{var:1} new messages since your last visit, most of them from {var:2}.', 'vars' => array($new_count, $loudest)))
-            : lang(array('string' => '{var:1} new messages since your last visit.', 'vars' => $new_count));
+        if ($new_count === 1) {
+            $readings[] = ($loudest !== '')
+                ? lang(array('string' => 'One new message since your last visit, from {var:1}.', 'vars' => $loudest))
+                : lang('One new message since your last visit.');
+        } else {
+            $readings[] = ($loudest !== '')
+                ? lang(array('string' => '{var:1} new messages since your last visit, most of them from {var:2}.', 'vars' => array($new_count, $loudest)))
+                : lang(array('string' => '{var:1} new messages since your last visit.', 'vars' => $new_count));
+        }
     }
 
     if (!$first_visit && ($new_count === 0) && is_array($last_message) && ((int) $last_message['created_at'] < $now - 2 * 86400)) {
         $readings[] = lang(array('string' => 'It has been quiet here since {var:1}.', 'vars' => ws_time_label($last_message['created_at'])));
     }
 
+    // A count of one takes its own sentence: the verb agrees with the count.
     if ($overdue > 0) {
-        $readings[] = lang(array('string' => '{var:1} of the {var:2} open tasks here are past their due date.', 'vars' => array($overdue, count($open))));
+        if (count($open) === 1) {
+            $readings[] = lang('The one open task here is past its due date.');
+        } elseif ($overdue === 1) {
+            $readings[] = lang(array('string' => '{var:1} of the {var:2} open tasks here is past its due date.', 'vars' => array($overdue, count($open))));
+        } else {
+            $readings[] = lang(array('string' => '{var:1} of the {var:2} open tasks here are past their due date.', 'vars' => array($overdue, count($open))));
+        }
     } elseif ($due_today > 0) {
-        $readings[] = lang(array('string' => '{var:1} tasks in this channel are due today.', 'vars' => $due_today));
+        $readings[] = ($due_today === 1)
+            ? lang('One task in this channel is due today.')
+            : lang(array('string' => '{var:1} tasks in this channel are due today.', 'vars' => $due_today));
     } elseif (count($open) > 0) {
-        $readings[] = lang(array('string' => '{var:1} tasks are open in this channel, none of them late.', 'vars' => count($open)));
+        $readings[] = (count($open) === 1)
+            ? lang('One task is open in this channel, and it is not late.')
+            : lang(array('string' => '{var:1} tasks are open in this channel, none of them late.', 'vars' => count($open)));
     }
 
     if ($mine > 0) {
-        $readings[] = lang(array('string' => '{var:1} of the open tasks here are yours.', 'vars' => $mine));
+        $readings[] = ($mine === 1)
+            ? lang('One of the open tasks here is yours.')
+            : lang(array('string' => '{var:1} of the open tasks here are yours.', 'vars' => $mine));
     }
 
     if ($waiting > 0) {
-        $readings[] = lang(array('string' => '{var:1} tasks here are waiting on something.', 'vars' => $waiting));
+        $readings[] = ($waiting === 1)
+            ? lang('One task here is waiting on something.')
+            : lang(array('string' => '{var:1} tasks here are waiting on something.', 'vars' => $waiting));
     }
 
     if ($done_week > 0) {
-        $readings[] = lang(array('string' => '{var:1} tasks were finished here in the last seven days.', 'vars' => $done_week));
+        $readings[] = ($done_week === 1)
+            ? lang('One task was finished here in the last seven days.')
+            : lang(array('string' => '{var:1} tasks were finished here in the last seven days.', 'vars' => $done_week));
     }
 
     if (is_array($decision) && ($decisions_week > 0)) {
@@ -305,6 +334,64 @@ function ws_channel_briefing($viewer, $channel, $membership)
         'advice'   => $advice,
         'recap'    => $offer ? array('since_id' => $last_read, 'messages' => $recap['messages']) : null,
         'key'      => $channel_id . ':' . $today,
+        // What the channel screen shows: one line of what came while the
+        // reader was away.
+        'catchup'  => ws_channel_catchup(array(
+            'messages'      => $first_visit ? 0 : $new_count,
+            'mentions'      => count($mention_ids),
+            'overdue'       => $overdue,
+            'first_unread'  => $first_unread,
+            'first_mention' => $mention_ids[0] ?? 0,
+        )),
+    );
+}
+
+/**
+ * The channel's catch-up line: what came while the reader was away (new
+ * messages, mentions) and the tasks past their date, or null when there is
+ * none of that. A first visit counts no messages: the channel's info says
+ * what it is for.
+ *
+ * @param array $signals messages, mentions, overdue (counts); first_unread,
+ *                       first_mention (message ids)
+ * @return array|null lead, parts (the counts as words), go (the message to
+ *                    open: the first mention, else the first unread), mention,
+ *                    tasks (whether the overdue tasks are offered)
+ */
+function ws_channel_catchup($signals)
+{
+    $messages = max(0, (int) ($signals['messages'] ?? 0));
+    $mentions = max(0, (int) ($signals['mentions'] ?? 0));
+    $overdue = max(0, (int) ($signals['overdue'] ?? 0));
+
+    if (($messages + $mentions + $overdue) === 0) {
+        return null;
+    }
+
+    $parts = array();
+
+    if ($messages > 0) {
+        $parts[] = ($messages === 1) ? lang('a new message') : lang(array('string' => '{var:1} new messages', 'vars' => $messages));
+    }
+
+    if ($mentions > 0) {
+        $parts[] = ($mentions === 1) ? lang('a mention') : lang(array('string' => '{var:1} mentions', 'vars' => $mentions));
+    }
+
+    if ($overdue > 0) {
+        $parts[] = ($overdue === 1) ? lang('an overdue task') : lang(array('string' => '{var:1} overdue tasks', 'vars' => $overdue));
+    }
+
+    $first_mention = (int) ($signals['first_mention'] ?? 0);
+    $first_unread = ($messages > 0) ? (int) ($signals['first_unread'] ?? 0) : 0;
+
+    // Late tasks alone did not come while the reader was away: they wait.
+    return array(
+        'lead'    => (($messages + $mentions) > 0) ? lang('While you were away') : lang('Waiting for you'),
+        'parts'   => $parts,
+        'go'      => ($first_mention > 0) ? $first_mention : $first_unread,
+        'mention' => ($first_mention > 0),
+        'tasks'   => ($overdue > 0),
     );
 }
 
@@ -689,27 +776,24 @@ function ws_recap_sentence($facts)
 
 /**
  * Who wrote a message, for the model: the name, and whether it was the
- * reader or a guest. No tags, so none come back in the summary.
+ * reader, a guest or an e-mail. No tags, so none come back in the summary.
  *
- * @param array $row ws_messages row
+ * @param array $row  ws_messages row
  * @param int   $me
+ * @param array $mail ws_mail_items_map() of the rows being recapped
  * @return string
  */
-function ws_recap_author($row, $me)
+function ws_recap_author($row, $me, $mail = array())
 {
     if ($row['sender_kind'] === 'user') {
-        return ws_person_name((int) $row['sender_id']) . (((int) $row['sender_id'] === (int) $me) ? ' (the reader)' : '');
+        return ws_ai_author_words('user', ws_person_name((int) $row['sender_id']), ((int) $row['sender_id'] === (int) $me) ? '(the reader)' : '');
     }
 
-    if (($row['sender_kind'] === 'guest') && function_exists('ws_guest_sender')) {
-        return ws_guest_sender((int) $row['sender_id'])['name'] . ' (guest)';
+    if ($row['sender_kind'] === 'mail') {
+        return ws_ai_mail_author($mail[(int) $row['sender_id']] ?? null, false);
     }
 
-    if ($row['sender_kind'] === 'app') {
-        return (string) ws_app_sender((int) $row['sender_id'])['name'];
-    }
-
-    return 'System';
+    return ws_ai_author($row, null, false);
 }
 
 /**
@@ -747,6 +831,7 @@ function ws_recap_transcript($viewer, $channel, $since_id, $limit, $chars)
 
     $refs = ws_refs_resolve($viewer, $tokens);
     $heard = function_exists('ws_voice_transcripts') ? ws_voice_transcripts($rows) : array();
+    $mail = function_exists('ws_mail_items_map') ? ws_mail_items_map($rows) : array();
     $lines = array();
 
     foreach ($rows as $row) {
@@ -759,7 +844,7 @@ function ws_recap_transcript($viewer, $channel, $since_id, $limit, $chars)
             $text = '[file: ' . $row['file_name'] . ']';
         }
 
-        $lines[] = '[' . date('d.m H:i', (int) $row['created_at']) . ' · ' . ws_recap_author($row, $viewer['id']) . ']'
+        $lines[] = '[' . date('d.m H:i', (int) $row['created_at']) . ' · ' . ws_recap_author($row, $viewer['id'], $mail) . ']'
             . (($row['kind'] === 'decision') ? ' (decision)' : '')
             . (((int) $row['task_id'] > 0) ? ' (task card)' : '')
             . ' ' . $text;

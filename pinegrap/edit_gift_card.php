@@ -44,6 +44,7 @@ $gift_card = db_item(
         orders.order_number,
         gift_cards.from_name,
         user.user_id,
+        user.user_role,
         contacts.id AS contact_id,
         gift_cards.recipient_email_address,
         gift_cards.message,
@@ -117,18 +118,18 @@ if (!$_POST) {
             $output_name = lang('Anonymous');
         }
 
-        // If we know the user that purchased the gift card,
-        // then link name to that user.
-        if ($gift_card['user_id'] != '') {
+        // If we know the user that purchased the gift card and the viewer
+        // may open that account, then link name to that user.
+        if (($gift_card['user_id'] != '') && pg_can_open_user($user, $gift_card['user_role'])) {
             $output_from = '<a href="edit_user.php?id=' . $gift_card['user_id'] . '&amp;send_to=' . h(urlencode($request_uri)) . '">' . $output_name . '</a>';
 
-        // Otherwise if we know the contact that purchased the gift card,
-        // then link name to that contact.
-        } else if ($gift_card['contact_id'] != '') {
+        // Otherwise if we know the contact that purchased the gift card and
+        // the viewer may open it, then link name to that contact.
+        } else if (($gift_card['contact_id'] != '') && pg_can_open_contact($user, $gift_card['contact_id'])) {
             $output_from = '<a href="edit_contact.php?id=' . $gift_card['contact_id'] . '&amp;send_to=' . h(urlencode($request_uri)) . '">' . $output_name . '</a>';
 
-        // Otherwise we don't know the user or the contact
-        // so just output the name without a link.
+        // Otherwise we don't know the user or the contact, or the viewer
+        // may open neither, so just output the name without a link.
         } else {
             $output_from = $output_name;
         }

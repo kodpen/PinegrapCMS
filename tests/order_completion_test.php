@@ -130,7 +130,7 @@ function test_order_completion_tail_writes_in_order()
 		'contact groups' => array('"INSERT INTO contacts_contact_groups_xref ('),
 		'abandoned campaigns cancelled' => array('"UPDATE email_campaigns'),
 		'visitor record' => array('UPDATE visitors'),
-		'activity log' => array("lang('Order was completed')"),
+		'activity log' => array("pg_log_lang(array('string' => 'Order was completed'))"),
 		'new_order notification' => array("'action' => 'new_order'"),
 		'receipt order id kept' => array("\$_SESSION['ecommerce']['completed_order_id'] = (\$_SESSION"),
 		'post-save hook' => array('eval(prepare_for_eval($post_save_hook_code))'),
@@ -881,7 +881,7 @@ function test_order_completion_payment_records_the_installment_difference()
 
 	pg_assert_contains("function pg_order_complete_from_payment(\$order_id, \$status, array \$paid = array())", $completion);
 	pg_assert_contains("\$paid_totals = pg_payment_paid_totals(\$paid['amount'] ?? null, \$paid['installments'] ?? 0, \$order['total']);", $completion, 'against the total read under this request');
-	pg_assert_contains("'reason' => 'the amount paid is not the order\\'s total'", $completion);
+	pg_assert_contains("'reason' => pg_log_lang(array('string' => 'the amount paid is not the order\\'s total'))", $completion);
 	pg_assert_contains("array_merge(pg_order_payment_completion_values(", $completion);
 	pg_assert_contains(", \$paid_totals),", $completion, 'the paid figures win over the kept ones');
 	pg_assert_contains("(int) \$order['total'] - (int) \$order['surcharge']", $completion, 'the commission base is the kept total');

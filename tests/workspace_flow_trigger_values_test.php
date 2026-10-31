@@ -136,7 +136,7 @@ function test_workspace_flow_trigger_value_escaping()
 	pg_assert_same("<b>hi</b> & {{$j}{{$j}customer}}", $mail['body'], 'the e-mail HTML is escaped where it is written, not here');
 
 	$hook = ws_step_fill_action('webhook', array('type' => 'webhook', 'format' => 'generic', 'url' => 'https://example.com/{{trigger.record_id}}', 'text' => '{{trigger.text}}'), $values);
-	pg_assert_same('https://example.com/{{trigger.record_id}}', $hook['url'], 'a webhook address is never filled');
+	pg_assert_same('https://example.com/4', $hook['url'], 'a number goes into the path of a webhook address');
 	$json = json_encode(array('text' => $hook['text']));
 	pg_assert_same(array('text' => "<b>hi</b> & {{$j}{{$j}customer}}"), json_decode($json, true), 'one JSON string, read back as filled');
 

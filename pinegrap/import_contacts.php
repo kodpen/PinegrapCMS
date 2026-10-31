@@ -17,6 +17,10 @@
  */
 
 include('init.php');
+
+// A file over post_max_size empties the whole request; say so instead of
+// drawing the form again as if nothing had been sent.
+pg_upload_refuse_discarded_body();
 $user = validate_user();
 validate_contacts_access($user);
 
@@ -67,9 +71,9 @@ if (!$_POST) {
             'icon'=>'contact', 
             'heading'=>lang('Import Contacts'),
             'heading_description' => lang('Import contacts into any of my contact groups.'),
-            'cancel'=>array('enable'=>'true','url'=>'view_contacts.php'),
+            'cancel' => array('enable' => 'true', 'url' => pg_send_to_url(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_contacts.php')),
         
-            'breadcrumb' => array(array('label' => lang('Contacts'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_contacts.php'), array('label' => lang('Import Contacts'))),
+            'breadcrumb' => array(array('label' => lang('Contacts'), 'url' => pg_send_to_list_url(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_contacts.php')), array('label' => lang('Import Contacts'))),
         )
     ) . '
 <main id="content" class="container-fluid">
@@ -90,6 +94,7 @@ if (!$_POST) {
                                         <div class="col-12 my-3">
                                             <label for="file" class="form-label">' . lang('Select Formatted Text File to Upload') . '</label>
                                             <input name="file" id="file" type="file" size="60" class="form-control w-auto" required />
+                                            ' . pg_upload_limit_hint() . '
                                         </div>
                                         <div class="col-12 my-5" role="radiogroup" aria-labelledby="import_mode_label">
                                             <div class="form-label" id="import_mode_label">'. lang('Import Mode') . '</div>
@@ -141,10 +146,20 @@ if (!$_POST) {
         output_error(lang('Please select a file.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
     }
 
+    $upload_limits = pg_upload_limits();
+    $upload_refusal = pg_upload_file_refusal($_FILES['file'], $upload_limits['file_max']);
+
+    if ($upload_refusal !== '') {
+        output_error(h($upload_refusal) . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+    }
+
     // get file handle for uploaded CSV file
     $handle = pg_csv_open($_FILES['file']['tmp_name']);
+    // The header line says which separator the file uses (Excel in Turkish
+    // writes ';').
+    $separator = pg_csv_read_separator($handle);
     // get column names from first row of CSV file
-    $columns = fgetcsv($handle, 100000, ",", '"', '\\');
+    $columns = fgetcsv($handle, 100000, $separator, '"', '\\');
 
     // if file is empty
     if (!$columns) {
@@ -156,17 +171,26 @@ if (!$_POST) {
         $column_names[] = convert_column_name($value);
     }
 
+    // Headings the import does not know, named in the result.
+    $unknown_headings = array();
+
     // foreach column field name
     foreach ($column_names as $key => $value) {
         // if the column is invalid, remove from column list
         if ($value === FALSE) {
             unset($column_names[$key]);
+            $unknown_headings[] = $columns[$key];
         }
 
         // if column is email_address, then store key location for email_address
         if ($value == 'email_address') {
             $email_address_key = $key;
         }
+    }
+
+    // Without one known column every row would become an empty contact.
+    if (!$column_names) {
+        output_error(h(lang(array('string' => 'None of the columns in the file could be used, so nothing was imported. Headings found: {var:1}', 'vars' => array(pg_csv_headings_text($columns))))) . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
     }
 
     // build list of column names for database query
@@ -201,8 +225,16 @@ if (!$_POST) {
     // a large file neither reads every new row at once nor one at a time.
     $audit_created = array();
 
+    // Rows changed or skipped, as array(line, reason).
+    $problems = array();
+    $next_line = 2;
+
     // loops through all rows of data in CSV file
-    while ($row = fgetcsv($handle, 100000, ",", '"', '\\')) {
+    while ($row = fgetcsv($handle, 100000, $separator, '"', '\\')) {
+        // The file line the row starts on.
+        $line = $next_line;
+        $next_line += pg_csv_row_lines($row);
+
         // Assume that this line does not have a value,
         // until we find out otherwise.
         $line_has_value = false;
@@ -225,7 +257,11 @@ if (!$_POST) {
             switch ($_POST['import_mode']) {
                 case 'import_all_contacts':
                     // if e-mail address data was supplied in CSV file and e-mail address is invalid, clear e-mail address value
-                    if ((isset($email_address_key) == true) && (validate_email_address(trim($row[$email_address_key])) == false)) {
+                    if ((isset($email_address_key) == true) && (validate_email_address(trim($row[$email_address_key] ?? '')) == false)) {
+                        if (trim($row[$email_address_key] ?? '') != '') {
+                            $problems[] = array($line, lang(array('string' => 'The e-mail address "{var:1}" is not valid, so the contact was imported without it.', 'vars' => array(trim($row[$email_address_key])))));
+                        }
+
                         $row[$email_address_key] = '';
                     }
                     
@@ -234,7 +270,7 @@ if (!$_POST) {
                     // foreach field
                     foreach ($column_names as $key => $value) {
                         // create value list
-                        $value = escape(trim($row[$key]));
+                        $value = escape(trim($row[$key] ?? ''));
                         $data_list .= "'$value', ";
                     }
 
@@ -247,7 +283,7 @@ if (!$_POST) {
                     $contact_id = mysqli_insert_id(db::$con);
                     
                     // if e-mail address exists
-                    if (trim($row[$email_address_key]) != '') {
+                    if (isset($email_address_key) && (trim($row[$email_address_key] ?? '') != '')) {
                         // check to see if contact should be opted out
                         $query = "SELECT id FROM contacts WHERE (opt_in = 0) AND (email_address = ?) AND (id != ?)";
                         $result = db_q($query, array((string) trim($row[$email_address_key]), (string) $contact_id)) or output_error('Query failed.');
@@ -272,7 +308,11 @@ if (!$_POST) {
                     // if e-mail address data was supplied in CSV file
                     if (isset($email_address_key)) {
                         // if e-mail address is not valid, set e-mail address to empty
-                        if (validate_email_address(trim($row[$email_address_key])) == false) {
+                        if (validate_email_address(trim($row[$email_address_key] ?? '')) == false) {
+                            if (trim($row[$email_address_key] ?? '') != '') {
+                                $problems[] = array($line, lang(array('string' => 'The e-mail address "{var:1}" is not valid, so the contact was imported without it.', 'vars' => array(trim($row[$email_address_key])))));
+                            }
+
                             $row[$email_address_key] = '';
                         }
 
@@ -287,6 +327,7 @@ if (!$_POST) {
                                 $unique = true;
                             } else {
                                 $unique = false;
+                                $problems[] = array($line, lang(array('string' => 'A contact with the e-mail address "{var:1}" already exists, so the row was not imported.', 'vars' => array(trim($row[$email_address_key])))));
                             }
                             
                         // else e-mail address is empty
@@ -302,7 +343,7 @@ if (!$_POST) {
                         // foreach field
                         foreach ($column_names as $key => $value) {
                             // create value list
-                            $value = escape(trim($row[$key]));
+                            $value = escape(trim($row[$key] ?? ''));
                             $data_list .= "'$value', ";
                         }
 
@@ -352,6 +393,15 @@ if (!$_POST) {
     
     $liveform_view_contacts = new liveform('view_contacts');
     $liveform_view_contacts->add_notice( lang(array('string'=>'{var:1} contacts were imported','vars'=>pg_format_number($imported_contacts, 0))) );
+
+    if (pg_csv_headings_text($unknown_headings) !== '') {
+        $liveform_view_contacts->add_warning(h(lang(array('string' => 'These columns were not recognised and were left out: {var:1}', 'vars' => array(pg_csv_headings_text($unknown_headings))))));
+    }
+
+    // The first rows changed or skipped, each with its line and reason.
+    if ($problems) {
+        $liveform_view_contacts->add_warning(implode('<br>', array_map('h', pg_csv_problem_list($problems))));
+    }
     
     // If there is a send to value then send user back to that screen
     if ((isset($_REQUEST['send_to']) == TRUE) && ($_REQUEST['send_to'] != '')) {

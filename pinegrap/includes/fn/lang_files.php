@@ -25,7 +25,7 @@
 // neighbours, so two branches adding different keys touch different lines
 // and git merges them; a single file that every branch appends to conflicts
 // on every pair. lang() and every other reader take a language through
-// pg_lang_map() (includes/fn/core.php): the folder when it holds a shard,
+// pg_lang_map() (includes/fn/lang.php): the folder when it holds a shard,
 // else includes/local/<code>.json.
 
 if (!defined('PG_FUNCTIONS_DIR')) {

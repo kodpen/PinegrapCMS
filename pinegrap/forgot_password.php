@@ -79,7 +79,7 @@ $form->validate_required_field('email', lang(array('string'=>'{var:1} is require
 $set_password_url = pg_sign_in_screen_url('set password', 'set_password.php');
 
 if ($set_password_url === false) {
-    log_activity('Forgot Password: no set password page');
+    log_activity(pg_log_lang(array('string' => 'Forgot Password: no set password page')));
     $form->mark_error('email', lang('Sorry, password reset is not available on this website right now.'));
 
     go($url);

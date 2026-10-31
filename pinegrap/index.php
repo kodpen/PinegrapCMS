@@ -123,9 +123,9 @@ if (!$pg_login_posted || !isset($_POST['email'])) {
             // The site log records which half was wrong; the visitor gets one
             // message for both, so the screen does not tell which accounts exist.
             if (validate_username($username) == true) {
-                log_activity(lang(array('string'=>'access denied (password invalid) (email or username: {var:1})','vars'=>$username)), lang('UNKNOWN') );
+                log_activity(lang(array('string'=>'access denied (password invalid) (email or username: {var:1})','vars'=>$username)), 'UNKNOWN');
             } else {
-                log_activity(lang(array('string'=>'access denied (email or username invalid: {var:1})','vars'=>$username)), lang('UNKNOWN') );
+                log_activity(lang(array('string'=>'access denied (email or username invalid: {var:1})','vars'=>$username)), 'UNKNOWN');
             }
 
             $liveform->mark_error('password', pg_login_refused_message(FORGOT_PASSWORD_LINK == true));

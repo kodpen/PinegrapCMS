@@ -1141,6 +1141,54 @@ function test_ws_api_inbox_changed_where()
 	pg_assert_same("user_id = '7' AND (created_at >= '1' OR read_at >= '1') AND id > '0'", ws_api_inbox_changed_where('7', 0, -5));
 }
 
+// A client that opens a note asks for that note's lines alone: note_id is a
+// declared whole number from 1, so 0 or a word answers 400 like the other
+// params, and the tool takes it too.
+function test_ws_api_inbox_list_takes_note_id()
+{
+	$list = null;
+
+	foreach (ws_api_routes() as $route) {
+		if ($route['id'] === 'workspace.inbox.list') {
+			$list = $route;
+		}
+	}
+
+	$params = array();
+
+	foreach ($list['params'] as $param) {
+		$params[$param['name']] = $param;
+	}
+
+	pg_assert_true(isset($params['note_id']), 'note_id is declared');
+	pg_assert_same('query int 1', $params['note_id']['in'] . ' ' . $params['note_id']['type'] . ' ' . $params['note_id']['min']);
+	pg_assert_true(strpos($list['description'], 'note_id') !== false, 'the description says what note_id does');
+	pg_assert_true(strpos($list['description'], 'POST /workspace/inbox/read') !== false, 'and where the lines are cleared');
+
+	$properties = (array) pg_mcp_tool_from_route($list)['inputSchema']['properties'];
+
+	pg_assert_true(isset($properties['note_id']), 'the tool takes it');
+}
+
+// The listing keeps the person's rows, the unread ones when asked, those
+// before the cursor and, with note_id, only the rows about that note; a site
+// whose inbox cannot tie a line to a note has no line about one.
+function test_ws_api_inbox_list_where()
+{
+	pg_assert_same("user_id = '7'", ws_api_inbox_list_where(7, false, 0, 0, true));
+	pg_assert_same("user_id = '7' AND read_at = 0 AND id < '90' AND note_id = '44'", ws_api_inbox_list_where('7', true, 90, 44, true));
+	pg_assert_same("user_id = '7' AND note_id = '44'", ws_api_inbox_list_where(7, false, 0, '44', true));
+	pg_assert_same("user_id = '7' AND read_at = 0", ws_api_inbox_list_where(7, true, 0, -3, true), 'no note filter below 1');
+	pg_assert_same("user_id = '7' AND 0 = 1", ws_api_inbox_list_where(7, false, 0, 44, false), 'no note column, no line');
+}
+
+// changed_since narrows to one note's rows the same way.
+function test_ws_api_inbox_changed_where_note()
+{
+	pg_assert_same("user_id = '7' AND (created_at >= '1700000000' OR read_at >= '1700000000') AND id > '42' AND note_id = '44'", ws_api_inbox_changed_where(7, 1700000000, 42, 44));
+	pg_assert_same("user_id = '7' AND (created_at >= '1700000000' OR read_at >= '1700000000') AND id > '42' AND 0 = 1", ws_api_inbox_changed_where(7, 1700000000, 42, 44, false));
+}
+
 // A line taken away is found by when it went, only the person's marks after
 // the one given, and no further than the live rows were read when that read
 // stopped short.
@@ -2139,7 +2187,7 @@ function test_ws_message_send_file_checks_before_storing()
 	$start = strpos($actions, "case 'ws_attach':");
 	$attach = ($start === false) ? '' : substr($actions, $start, strpos($actions, 'case \'', $start + 18) - $start);
 
-	pg_assert_contains('ws_message_send_file(', $attach, 'the paperclip goes through it');
+	pg_assert_contains('ws_message_send_file_bytes(', $attach, 'the paperclip goes through it');
 	pg_assert_false(strpos($attach, 'ws_store_upload') !== false, 'the paperclip keeps no file of its own');
 
 	// A copy of a file of the file manager (library.php) too.
@@ -2235,7 +2283,7 @@ function test_ws_api_files_create_answers_a_message()
 	$attach = preg_replace('~^\s*//.*$~m', '', $attach);
 
 	pg_assert_true(strpos($attach, 'ws_message_parent_check(') !== false, 'the panel checks the parent');
-	pg_assert_true(strpos($attach, 'ws_message_parent_check(') < strpos($attach, 'ws_message_send_file('), 'the panel checks the parent first');
+	pg_assert_true(strpos($attach, 'ws_message_parent_check(') < strpos($attach, 'ws_message_send_file_bytes('), 'the panel checks the parent first');
 	pg_assert_contains("'parent_id' => \$parent_id,", $attach, 'the panel hands the parent to the upload');
 }
 

@@ -113,3 +113,44 @@ function test_email_campaign_profile_screens_use_shared_form()
 		pg_assert_contains('get_token_field()', $source, $file . ' prints the token');
 	}
 }
+
+function test_email_campaign_profile_downstream()
+{
+	// 2 follows 1, 3 follows 2, 4 follows 3; 5 follows 9; 6 follows itself.
+	$follows = array(2 => 1, 3 => 2, 4 => 3, 5 => 9, 6 => 6);
+
+	pg_assert_same(array(1, 2, 3, 4), pg_email_campaign_profile_downstream(1, $follows), 'whole chain below 1');
+	pg_assert_same(array(3, 4), pg_email_campaign_profile_downstream(3, $follows), 'only below 3');
+	pg_assert_same(array(4), pg_email_campaign_profile_downstream(4, $follows), 'nothing follows 4');
+	pg_assert_same(array(6), pg_email_campaign_profile_downstream(6, $follows), 'a self-loop ends');
+	pg_assert_same(array(), pg_email_campaign_profile_downstream(0, $follows), 'a new profile has none');
+
+	// An existing ring 7 -> 8 -> 7 ends through the visited guard.
+	pg_assert_same(array(7, 8), pg_email_campaign_profile_downstream(7, array(7 => 8, 8 => 7)), 'ring ends');
+}
+
+function test_email_campaign_profile_closes_ring()
+{
+	$follows = array(2 => 1, 3 => 2, 4 => 3, 5 => 9, 7 => 8, 8 => 7);
+
+	pg_assert_true(pg_email_campaign_profile_closes_ring(1, 1, $follows), 'itself');
+	pg_assert_true(pg_email_campaign_profile_closes_ring(1, 2, $follows), 'a direct follower');
+	pg_assert_true(pg_email_campaign_profile_closes_ring(1, 4, $follows), 'a follower further down');
+	pg_assert_true(pg_email_campaign_profile_closes_ring(1, '4', $follows), 'posted as a string');
+	pg_assert_false(pg_email_campaign_profile_closes_ring(4, 1, $follows), 'a profile upstream');
+	pg_assert_false(pg_email_campaign_profile_closes_ring(1, 5, $follows), 'an unrelated chain');
+	pg_assert_false(pg_email_campaign_profile_closes_ring(1, 7, $follows), 'an existing ring elsewhere ends');
+	pg_assert_false(pg_email_campaign_profile_closes_ring(0, 1, $follows), 'a new profile');
+	pg_assert_false(pg_email_campaign_profile_closes_ring(1, '', $follows), 'no pick');
+}
+
+function test_email_campaign_profile_picker_leaves_out_downstream()
+{
+	$form = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/forms/email_campaign_profile_form.php');
+	pg_assert_contains('get_email_campaign_profile_options($exclude_ids', $form, 'picker leaves the downstream profiles out');
+	pg_assert_contains('A campaign profile cannot follow itself or a profile that follows it.', $form, 'save refuses a ring');
+
+	$edit = (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_email_campaign_profile.php');
+	pg_assert_contains("'email_campaign_profile_id' =>", $edit, 'edit keeps the stored pick');
+	pg_assert_contains('), $id) .', $edit, 'edit passes the profile id to the cards');
+}

@@ -182,6 +182,20 @@ if ($_POST) {
 
 		$existing = db_item("SELECT id, name FROM api_apps WHERE id = '" . $app_id . "' LIMIT 1");
 
+		// The drawer's Name box sits on a tab that may be hidden at Save, so
+		// a blank name is refused here rather than by the browser.
+		$name = isset($_POST['name']) ? (is_string($_POST['name']) ? trim($_POST['name']) : '') : ($existing ? $existing['name'] : '');
+
+		if ($existing && $name === '') {
+
+			$liveform->add_error(lang('Application Name is a required field!'));
+
+			header('Location: ' . $screen_url);
+
+			exit();
+
+		}
+
 		if ($existing) {
 
 			$audit_before = pg_audit_fetch('api_apps', $app_id);
@@ -207,7 +221,7 @@ if ($_POST) {
 			}
 
 			db("UPDATE api_apps SET
-					name = '" . escape(isset($_POST['name']) ? $_POST['name'] : $existing['name']) . "',
+					name = '" . escape($name) . "',
 					description = '" . escape(isset($_POST['description']) ? $_POST['description'] : '') . "',
 					scopes = '" . escape(json_encode($posted_scopes)) . "',
 					ip_allowlist = '" . escape(isset($_POST['ip_allowlist']) ? $_POST['ip_allowlist'] : '') . "',
@@ -300,6 +314,9 @@ if ($_POST) {
 				'vars'   => array($hook['url'], $new_status)
 			)), $_SESSION['sessionusername']);
 
+			// The Webhooks tile on System Status reads these rows.
+			pg_system_status_forget();
+
 		}
 
 		header('Location: ' . $screen_url);
@@ -324,6 +341,9 @@ if ($_POST) {
 			db("UPDATE api_webhook_queue
 				SET attempts = '0', next_attempt_at = UNIX_TIMESTAMP(), last_error = ''
 				WHERE webhook_id = '" . (int)$hook['id'] . "'");
+
+			// The Webhooks tile on System Status reads these rows.
+			pg_system_status_forget();
 
 			$liveform->add_notice(lang(array(
 				'string' => 'Waiting events for {var:1} will be sent again on the next run of the scheduled task.',
@@ -695,7 +715,7 @@ if (api_devices_ready()) {
 				'name'     => (string)$row['name'],
 				'platform' => (string)$row['platform'],
 				'version'  => (string)$row['app_version'],
-				'since'    => get_absolute_time(array('timestamp' => (int)$row['created_timestamp'], 'type' => 'date')),
+				'since'    => get_absolute_time(array('timestamp' => (int)$row['created_timestamp'], 'type' => 'date', 'format' => 'plain_text')),
 				'used_text' => api_settings_ago($row['last_used_timestamp']),
 				'ip'       => (string)$row['last_used_ip']
 			);
@@ -957,7 +977,7 @@ foreach ($apps as $app) {
 
 	$is_device = (isset($app['kind']) && ($app['kind'] === 'device'));
 
-	$signed_in_count = pg_format_number(isset($device_rows[(int)$app['id']]) ? count($device_rows[(int)$app['id']]) : 0, 0);
+	$signed_in_number = isset($device_rows[(int)$app['id']]) ? count($device_rows[(int)$app['id']]) : 0;
 
 	$app_rows .= '
 	<div class="api-row" data-app="' . (int)$app['id'] . '" role="button" tabindex="0">
@@ -966,9 +986,9 @@ foreach ($apps as $app) {
 			<div>
 				<b>' . h($app['name']) . '</b>
 				' . ($is_oauth
-					? '<code>' . lang('Connected apps (OAuth)') . ' &middot; ' . $signed_in_count . ' ' . lang('connections') . '</code>'
+					? '<code>' . lang('Connected apps (OAuth)') . ' &middot; ' . lang(array('string' => '{var:1} connection{suffix:1}', 'vars' => pg_format_number($signed_in_number, 0), 'suffix' => ($signed_in_number == 1) ? '' : 's')) . '</code>'
 					: ($is_device
-					? '<code>' . lang('Team devices') . ' &middot; ' . $signed_in_count . ' ' . lang('devices') . '</code>'
+					? '<code>' . lang('Team devices') . ' &middot; ' . lang(array('string' => '{var:1} device{suffix:1}', 'vars' => pg_format_number($signed_in_number, 0), 'suffix' => ($signed_in_number == 1) ? '' : 's')) . '</code>'
 					: '<code>' . h(substr($app['api_key'], 0, 16)) . '&hellip;</code>')) . '
 			</div>
 		</div>
@@ -976,9 +996,9 @@ foreach ($apps as $app) {
 		<div><span class="api-status ' . $status_class . '">' . h($status_label) . '</span></div>
 		<div class="api-meta">' . h(api_settings_ago($app['last_used_timestamp'])) . '
 			<small>' . ($app['last_used_ip'] !== '' ? h($app['last_used_ip']) : '&mdash;') . '</small></div>
-		<div class="api-meta">' . ($stats['requests'] > 0 ? pg_format_number($stats['requests'], 0) . ' ' . lang('requests') : '&mdash;') . '
+		<div class="api-meta">' . ($stats['requests'] > 0 ? lang(array('string' => '{var:1} request{suffix:1}', 'vars' => pg_format_number($stats['requests'], 0), 'suffix' => ($stats['requests'] == 1) ? '' : 's')) : '&mdash;') . '
 			<small' . ($stats['failures'] > 0 ? ' class="bad"' : '') . '>'
-			. ($stats['failures'] > 0 ? pg_format_number($stats['failures'], 0) . ' ' . lang('errors') : '&mdash;') . '</small></div>
+			. ($stats['failures'] > 0 ? lang(array('string' => '{var:1} error{suffix:1}', 'vars' => pg_format_number($stats['failures'], 0), 'suffix' => ($stats['failures'] == 1) ? '' : 's')) : '&mdash;') . '</small></div>
 		<div class="text-end"><i class="bi bi-chevron-right"></i></div>
 	</div>';
 
@@ -999,7 +1019,7 @@ foreach ($apps as $app) {
 		'key'         => $app['api_key'],
 		'hint'        => $app['api_secret_hint'],
 		'owner'       => $app['owner_username'],
-		'created'     => get_absolute_time(array('timestamp' => (int)$app['created_timestamp'], 'type' => 'date')),
+		'created'     => get_absolute_time(array('timestamp' => (int)$app['created_timestamp'], 'type' => 'date', 'format' => 'plain_text')),
 		'status'      => $app['status'],
 		'ip'          => $app['ip_allowlist'],
 		'expires'     => ((int)$app['expires_at'] > 0) ? date('Y-m-d', (int)$app['expires_at']) : '',
@@ -1074,6 +1094,21 @@ function api_settings_permission_rows($prefix, $id_prefix = '') {
 }
 
 /* ---------------------------------------------------------------------------
+   A Copy button for the text of a <code>, with its status beside it
+   --------------------------------------------------------------------------- */
+
+function api_settings_copy_button($id, $caption_id, $button_class) {
+
+	// Every button says only "Copy", so it is named by itself and the caption
+	// of what it copies ("Copy Key"). The status sits in the same box: the
+	// drawer is a modal dialog and the one-time sheet makes everything else
+	// inert, so a region outside them would never be heard.
+	return '<button type="button" class="btn btn-sm ' . $button_class . ' api-copy" id="' . $id . '_copy" data-copy="#' . $id . '" aria-labelledby="' . $id . '_copy ' . $caption_id . '"><i class="bi bi-clipboard me-1" aria-hidden="true"></i>' . lang('Copy') . '</button>'
+		. '<span class="visually-hidden" role="status" aria-live="polite" data-copied="' . h(lang('Copied')) . '" data-refused="' . h(lang('The browser did not let the text be copied. Select it and copy it from here.')) . '"></span>';
+
+}
+
+/* ---------------------------------------------------------------------------
    The OAuth connection guide, drawn in the drawer and in the sheet shown once
    the application is made
    --------------------------------------------------------------------------- */
@@ -1094,7 +1129,7 @@ function api_settings_oauth_guide($id_prefix, $button_class) {
 
 	$box = function ($id, $value) use ($button_class) {
 		return '<div class="api-secret-box mb-1"><code id="' . $id . '">' . h($value) . '</code>
-			<button type="button" class="btn btn-sm ' . $button_class . ' api-copy" data-copy="#' . $id . '">' . lang('Copy') . '</button></div>';
+			' . api_settings_copy_button($id, $id . '_label', $button_class) . '</div>';
 	};
 
 	// Each application is set up its own way: a menu, a command or a
@@ -1158,26 +1193,26 @@ function api_settings_oauth_guide($id_prefix, $button_class) {
 
 		$client_rows .= '
 			<details class="api-client">
-				<summary>' . h($client['name']) . '</summary>
+				<summary id="' . $id_prefix . '_c_' . $key . '_label">' . h($client['name']) . '</summary>
 				<p class="mb-1">' . h($client['steps']) . '</p>'
 				. (($client['snippet'] !== '')
 					? '<div class="api-secret-box api-snippet mb-1"><code id="' . $id_prefix . '_c_' . $key . '">' . h($client['snippet']) . '</code>
-						<button type="button" class="btn btn-sm ' . $button_class . ' api-copy" data-copy="#' . $id_prefix . '_c_' . $key . '">' . lang('Copy') . '</button></div>'
+						' . api_settings_copy_button($id_prefix . '_c_' . $key, $id_prefix . '_c_' . $key . '_label', $button_class) . '</div>'
 					: '') . '
 			</details>';
 
 	}
 
 	return '
-	<label class="form-label small">' . lang('MCP server address') . '</label>
+	<label class="form-label small" id="' . $id_prefix . '_mcp_label">' . lang('MCP server address') . '</label>
 	' . $box($id_prefix . '_mcp', $mcp_file) . '
 	<div class="form-text mb-5">' . lang('Give this address to an AI application that speaks MCP, such as Claude or ChatGPT. It is the server\'s own file, so it works on every server.') . '</div>
 
-	<label class="form-label small">' . lang('Short address') . '</label>
+	<label class="form-label small" id="' . $id_prefix . '_mcp_short_label">' . lang('Short address') . '</label>
 	' . $box($id_prefix . '_mcp_short', $mcp_short) . '
 	<div class="form-text mb-5">' . lang('The same server at the site\'s own address. It works wherever the site\'s page addresses work; if an application cannot reach it, use the address above.') . '</div>
 
-	<label class="form-label small">' . lang('Discovery address') . '</label>
+	<label class="form-label small" id="' . $id_prefix . '_meta_label">' . lang('Discovery address') . '</label>
 	' . $box($id_prefix . '_meta', $metadata_url) . '
 	<div class="form-text mb-5">' . lang('Applications find this on their own from the MCP server address. It is shown for checking the setup.') . '</div>
 
@@ -1483,9 +1518,9 @@ if ($oauth_in_use || !empty($oauth_clients)) {
 		}
 
 		$meta = array(
-			pg_format_number((int)$client['connections'], 0) . ' ' . lang('connections'),
+			lang(array('string' => '{var:1} connection{suffix:1}', 'vars' => pg_format_number((int)$client['connections'], 0), 'suffix' => ((int)$client['connections'] == 1) ? '' : 's')),
 			lang('Last used') . ' ' . api_settings_ago($client['last_used_timestamp']),
-			lang(array('string' => 'Registered on {var:1}', 'vars' => get_absolute_time(array('timestamp' => (int)$client['created_timestamp'], 'type' => 'date'))))
+			lang(array('string' => 'Registered on {var:1}', 'vars' => get_absolute_time(array('timestamp' => (int)$client['created_timestamp'], 'type' => 'date', 'format' => 'plain_text'))))
 		);
 
 		if ((string)$client['software_version'] !== '') {
@@ -1576,7 +1611,9 @@ echo pg_page_shell(array(
 	gap: 14px; align-items: center; min-width: 900px; }
 .api-head { padding: 0 16px 8px; font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--pg-fg-2); }
 .api-row { padding: 13px 16px; border-top: 1px solid var(--pg-border-color); cursor: pointer; }
-.api-row:hover, .api-row:focus-visible { background: var(--pg-bg-1); outline: 0; }
+.api-row:hover, .api-row:focus-visible { background: var(--pg-bg-1); }
+/* Inset: .api-scroll clips a ring drawn outside the row. */
+.api-row:focus-visible { outline: 2px solid var(--pg-primary-ink); outline-offset: -2px; }
 .api-name { display: flex; align-items: center; gap: 9px; min-width: 0; }
 .api-name i { opacity: .7; }
 .api-name b { font-size: 13px; display: block; }
@@ -1681,6 +1718,9 @@ body.api-drawer-open .pg-chat-launcher { display: none !important; }
 			<span class="input-group-text"><i class="bi bi-search"></i></span>
 			<input type="text" class="form-control" id="api_filter" aria-label="' . h(lang('Search application')) . '" placeholder="' . lang('Search application') . '" autocomplete="off">
 		</div>
+		<div class="visually-hidden" id="api_filter_status" role="status"
+			data-found="' . h(lang(array('string' => '{var:1} found', 'vars' => '{1}'))) . '"
+			data-none="' . h(lang('Nothing found.')) . '"></div>
 		<div class="flex-grow-1"></div>
 		<a class="btn btn-sm btn-outline theme-secondary" href="api_docs.php">
 			<i class="bi bi-file-earmark-text me-1"></i>' . lang('API Documentation') . '</a>
@@ -1704,6 +1744,7 @@ body.api-drawer-open .pg-chat-launcher { display: none !important; }
 				<span>' . lang('24 hours') . '</span><span></span>
 			</div>
 			<div id="api_rows">' . $app_rows . '</div>
+			<div class="api-empty d-none" id="api_filter_empty">' . h(lang('Nothing found.')) . '</div>
 			</div>
 		</div>
 	</div>
@@ -1763,9 +1804,9 @@ body.api-drawer-open .pg-chat-launcher { display: none !important; }
 					<input type="text" class="form-control form-control-sm" name="description" id="d_description" maxlength="500">
 				</div>
 				<div class="mb-5">
-					<label class="form-label small">' . lang('API Key') . '</label>
+					<label class="form-label small" id="d_key_label">' . lang('API Key') . '</label>
 					<div class="api-secret-box"><code id="d_key"></code>
-						<button type="button" class="btn btn-sm btn-outline theme-secondary api-copy" data-copy="#d_key">' . lang('Copy') . '</button></div>
+						' . api_settings_copy_button('d_key', 'd_key_label', 'btn-outline theme-secondary') . '</div>
 					<div class="form-text">' . lang('Public identifier. Safe to share with the integrator.') . '</div>
 				</div>
 				<div class="mb-5" id="d_secret_block">
@@ -1784,9 +1825,9 @@ body.api-drawer-open .pg-chat-launcher { display: none !important; }
 					<i class="bi bi-lock me-1"></i>' . h(lang('This application belongs to an account above yours, so only that account or one above it can change it.')) . '
 				</div>
 				<div class="mb-5" id="d_device_block">
-					<label class="form-label small">' . lang('Signing in') . '</label>
+					<label class="form-label small" id="d_login_label">' . lang('Signing in') . '</label>
 					<div class="api-secret-box"><code id="d_login">POST ' . h($api_base_url) . '/auth/login</code>
-						<button type="button" class="btn btn-sm btn-outline theme-secondary api-copy" data-copy="#d_login">' . lang('Copy') . '</button></div>
+						' . api_settings_copy_button('d_login', 'd_login_label', 'btn-outline theme-secondary') . '</div>
 					<div class="form-text">'
 						. lang('Staff sign in on the app with their own user name and password. Each person gets at most what their own account may do, and never more than the permissions chosen here. The key is not a secret; the app sends it as client_key, and can leave it out while this is the only team devices application.') . '</div>
 				</div>
@@ -1794,10 +1835,10 @@ body.api-drawer-open .pg-chat-launcher { display: none !important; }
 					' . api_settings_oauth_guide('d_oauth', 'btn-outline theme-secondary') . '
 				</div>
 				<div class="mb-5" id="d_auth_block">
-					<label class="form-label small">' . lang('Authentication') . '</label>
+					<label class="form-label small" id="d_curl_label">' . lang('Authentication') . '</label>
 					<div class="api-secret-box"><code id="d_curl">curl -u APPLICATION_KEY:SECRET_KEY "'
 						. h($api_base_url) . '/meta"</code>
-						<button type="button" class="btn btn-sm btn-outline theme-secondary api-copy" data-copy="#d_curl">' . lang('Copy') . '</button></div>
+						' . api_settings_copy_button('d_curl', 'd_curl_label', 'btn-outline theme-secondary') . '</div>
 					<div class="form-text">'
 						. lang('HTTP Basic: the user name is the key above, the password is the secret. This line is the whole handshake - hand it to the integrator with the key.') . '</div>
 				</div>
@@ -1991,16 +2032,16 @@ if (($new_credentials !== null) && isset($new_credentials['kind']) && ($new_cred
 			<div class="dialog-body">
 				<p class="mb-5">' . lang('Staff can now sign in on the app with their own user name and password. Nothing here has to be kept secret.') . '</p>
 
-				<label class="form-label small text-uppercase opacity-75">' . lang('Sign-in address') . '</label>
+				<label class="form-label small text-uppercase opacity-75" id="nc_login_label">' . lang('Sign-in address') . '</label>
 				<div class="api-secret-box mb-5">
 					<code id="nc_login">POST ' . h($api_base_url) . '/auth/login</code>
-					<button type="button" class="btn btn-sm btn-outline theme-primary api-copy" data-copy="#nc_login">' . lang('Copy') . '</button>
+					' . api_settings_copy_button('nc_login', 'nc_login_label', 'btn-outline theme-primary') . '
 				</div>
 
-				<label class="form-label small text-uppercase opacity-75">client_key</label>
+				<label class="form-label small text-uppercase opacity-75" id="nc_key_label">client_key</label>
 				<div class="api-secret-box mb-5">
 					<code id="nc_key">' . h($new_credentials['key']) . '</code>
-					<button type="button" class="btn btn-sm btn-outline theme-primary api-copy" data-copy="#nc_key">' . lang('Copy') . '</button>
+					' . api_settings_copy_button('nc_key', 'nc_key_label', 'btn-outline theme-primary') . '
 				</div>
 
 				<div class="alert theme-primary py-3 px-5 small mb-0">
@@ -2036,16 +2077,16 @@ if ($new_credentials !== null) {
 					<span class="small opacity-75">'
 					. lang('Only a verification hash is stored. If it is lost, issue a new one.') . '</span></p>
 
-				<label class="form-label small text-uppercase opacity-75">' . lang('Key') . '</label>
+				<label class="form-label small text-uppercase opacity-75" id="nc_key_label">' . lang('Key') . '</label>
 				<div class="api-secret-box mb-5">
 					<code id="nc_key">' . h($new_credentials['key']) . '</code>
-					<button type="button" class="btn btn-sm btn-outline theme-primary api-copy" data-copy="#nc_key">' . lang('Copy') . '</button>
+					' . api_settings_copy_button('nc_key', 'nc_key_label', 'btn-outline theme-primary') . '
 				</div>
 
-				<label class="form-label small text-uppercase opacity-75">' . lang('Secret') . '</label>
+				<label class="form-label small text-uppercase opacity-75" id="nc_secret_label">' . lang('Secret') . '</label>
 				<div class="api-secret-box mb-5">
 					<code id="nc_secret">' . h($new_credentials['secret']) . '</code>
-					<button type="button" class="btn btn-sm btn-outline theme-primary api-copy" data-copy="#nc_secret">' . lang('Copy') . '</button>
+					' . api_settings_copy_button('nc_secret', 'nc_secret_label', 'btn-outline theme-primary') . '
 				</div>
 
 				<div class="alert theme-warning py-3 px-5 small mb-0">
@@ -2206,7 +2247,7 @@ echo '
 		document.getElementById("d_app_id").value = app.id;
 		document.getElementById("d_title").textContent = app.name;
 		document.getElementById("d_sub").innerHTML =
-			' . json_encode(lang('Owner'), JSON_UNESCAPED_UNICODE) . ' + " <b>" + app.owner + "</b> &middot; " + app.created;
+			' . json_encode(lang('Owner'), JSON_UNESCAPED_UNICODE) . ' + " <b>" + esc(app.owner) + "</b> &middot; " + esc(app.created);
 		document.getElementById("d_name").value = app.name;
 		document.getElementById("d_description").value = app.description || "";
 		document.getElementById("d_key").textContent = app.key;
@@ -2317,13 +2358,32 @@ echo '
 		ask.focus();
 	});
 
-	// Filter
+	// Filter. The rows are a grid, so they are hidden with an inline display;
+	// the count is told to screen readers once the typing stops.
 	var filter = document.getElementById("api_filter");
+	var filterStatus = document.getElementById("api_filter_status");
+	var filterEmpty = document.getElementById("api_filter_empty");
+	var filterTimer = null;
+	// The panel Turkish fold (pgFoldTR), so "iade" finds "İade".
+	var fold = window.pgFoldTR || function (s) { return String(s).toLowerCase(); };
 	filter.addEventListener("input", function () {
-		var needle = this.value.toLowerCase();
-		document.querySelectorAll(".api-row").forEach(function (row) {
-			row.style.display = row.textContent.toLowerCase().indexOf(needle) > -1 ? "" : "none";
+		var needle = fold(this.value).trim();
+		var rows = document.querySelectorAll(".api-row");
+		var shown = 0;
+		rows.forEach(function (row) {
+			var match = fold(row.textContent).indexOf(needle) > -1;
+			row.style.display = match ? "" : "none";
+			if (match) { shown++; }
 		});
+		filterEmpty.classList.toggle("d-none", needle === "" || rows.length === 0 || shown > 0);
+		clearTimeout(filterTimer);
+		filterStatus.textContent = "";
+		if (needle === "" || rows.length === 0) { return; }
+		filterTimer = setTimeout(function () {
+			filterStatus.textContent = shown > 0
+				? filterStatus.dataset.found.replace("{1}", shown)
+				: filterStatus.dataset.none;
+		}, 500);
 	});
 
 	// The subscription buttons post through the form the drawer already has: a
@@ -2370,11 +2430,37 @@ echo '
 		if (!button) { return; }
 		var source = document.querySelector(button.dataset.copy);
 		if (!source) { return; }
-		navigator.clipboard.writeText(source.textContent.trim()).then(function () {
-			var original = button.innerHTML;
-			button.innerHTML = "<i class=\'bi bi-check\'></i>";
-			setTimeout(function () { button.innerHTML = original; }, 1500);
-		});
+		// The button keeps its label; only the icon changes and the status
+		// beside it says whether the copy happened.
+		var status = button.parentNode.querySelector("[role=status]");
+		var icon = button.querySelector("i");
+		var done = function () {
+			icon.className = "bi bi-check2 me-1";
+			status.textContent = status.getAttribute("data-copied");
+			setTimeout(function () {
+				icon.className = "bi bi-clipboard me-1";
+				status.textContent = "";
+			}, 1500);
+		};
+		// Plain http has no clipboard API and a write can be refused: select
+		// the text and copy it the old way; when that fails too, leave it
+		// selected and say so.
+		var fallback = function () {
+			var copied = false;
+			var selection = window.getSelection();
+			selection.selectAllChildren(source);
+			try { copied = document.execCommand("copy"); } catch (error) {}
+			if (copied) {
+				done();
+			} else {
+				status.textContent = status.getAttribute("data-refused");
+			}
+		};
+		if (navigator.clipboard && window.isSecureContext) {
+			navigator.clipboard.writeText(source.textContent.trim()).then(done, fallback);
+		} else {
+			fallback();
+		}
 	});
 
 	// The one-time sheet closes only once the operator says they have the secret.

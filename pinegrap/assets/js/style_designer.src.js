@@ -1593,6 +1593,9 @@ const StyleDesigner = (function () {
      *                       left out of translation (icon names, codes,
      *                       JSON); absent, the field row keeps its own flag
      *                       (form_fields.translate_values, new fields on)
+     *   rules               visitor rules (form_fields.rules): min_date
+     *                       'today' on a day picker, required_when {field,
+     *                       answers}; on the field's first control
      *   url_param           the page-address parameter the field starts with
      *                       (?topic=…), on the field's first control
      *                       (_cfFieldLeadOf); read when the page is drawn
@@ -2512,6 +2515,34 @@ const StyleDesigner = (function () {
                 _cfHint(_sdT('A regular expression; the whole value must match (e.g. <code>[0-9]{10}</code>). The browser checks before submitting, the server on submit.')));
         }
 
+        // The visitor rules (form_fields.rules, pg_cf_rules_clean()): kept on
+        // the field's first control, the one the server reads. A site
+        // submission is checked against them; staff editing a record are not.
+        var ruleLead = _cfFieldLeadOf(node, w.tree);
+        var rules    = _cfRulesOf(ruleLead);
+        if (_cfInputType(ruleLead) === 'date') {
+            html += '<div class="sd-prop-row"><div class="sd-prop-control">' +
+                    _cfSwitch('sd-cf-mindate', rules.min_date === 'today', _sdT('Not before today')) +
+                    _cfHint(esc(_sdT('A visitor cannot pick a day before today (in the site\'s time zone). Staff can still record a past date in the panel.'))) +
+                    '</div></div>';
+        }
+        var ruleWhen   = (rules.required_when && typeof rules.required_when === 'object') ? rules.required_when : {};
+        var ruleOthers = _cfFieldsOf(w.tree).filter(function (f) { return f.lead !== ruleLead && f.members.indexOf(node) === -1; })
+            .map(function (f) { return [f.name, f.label && f.label !== f.name ? f.label + ' (' + f.name + ')' : f.name]; });
+        if (ruleWhen.field && !ruleOthers.some(function (o) { return String(o[0]).toLowerCase() === String(ruleWhen.field).toLowerCase(); })) {
+            ruleOthers.push([ruleWhen.field, _sdT('{var} (not on this form)', ruleWhen.field)]);
+        }
+        if (ruleOthers.length) {
+            html += row(_sdT('Required when'),
+                _cfSel('sd-cf-when-field', ruleWhen.field || '', ruleOthers, _sdT('— No condition —')) +
+                (ruleWhen.field
+                    ? '<textarea class="form-control form-control-sm mt-1 sd-cf-when-answers" rows="2" spellcheck="false"' +
+                          ' aria-label="' + esc(_sdT('Answers')) + '" placeholder="' + esc(_sdT('one answer per line')) + '">' +
+                          esc((Array.isArray(ruleWhen.answers) ? ruleWhen.answers : []).join('\n')) + '</textarea>' +
+                      _cfHint(esc(_sdT('The field is required when that field\'s answer is one of these (as the option\'s value, upper and lower case alike).')))
+                    : _cfHint(esc(_sdT('Make the field required only for some answers of another field.')))));
+        }
+
         if (c.itype === 'file' && folders.length) {
             html += row(_sdT('Upload to'),
                 _cfSel('sd-cf-folder', rec.upload_folder_id || 0, folders, _sdT('— Default —')));
@@ -2532,6 +2563,20 @@ const StyleDesigner = (function () {
 
         html += '</div>';
         return sect('bi-ui-checks', _sdT('Form Field'), html);
+    }
+
+    // A control's visitor rules (`_cf.rules`), always an object.
+    function _cfRulesOf(n) {
+        var r = (n && n.props && n.props._cf && n.props._cf.rules) || null;
+        return (r && typeof r === 'object' && !Array.isArray(r)) ? r : {};
+    }
+
+    // Write a control's visitor rules; none left removes the key, and an
+    // empty `_cf` with it (it turns into an array on the server's round trip).
+    function _cfWriteRules(n, rules) {
+        var rec = _cfRec(n);
+        if (Object.keys(rules).length) rec.rules = rules; else delete rec.rules;
+        if (!Object.keys(rec).length) delete n.props._cf;
     }
 
     // Write the label where it lives (see _cfLabelSource).
@@ -2573,6 +2618,7 @@ const StyleDesigner = (function () {
         password_verify:      _sdT('Password again'),
         password_hint:        _sdT('Password hint (not drawn when the site setting is off)'),
         opt_in:               _sdT('Campaign consent (contact: opt_in)'),
+        opt_in_sms:           _sdT('SMS campaign consent (drawn while SMS is on and a mobile number is asked)'),
         register_remember_me: _sdT('Remember me'),
         remember_me:          _sdT('Remember me'),
         captcha_submitted_answer: _sdT('CAPTCHA answer')
@@ -2751,6 +2797,29 @@ const StyleDesigner = (function () {
         });
         on('sd-cf-message', 'change', function (el) {
             _cfRec(lead).validation_message = el.value.trim();
+            commit(false);
+        });
+        on('sd-cf-mindate', 'change', function (el) {
+            var fl = _cfFieldLeadOf(node, w.tree), r = _cfRulesOf(fl);
+            if (el.checked) r.min_date = 'today'; else delete r.min_date;
+            _cfWriteRules(fl, r);
+            commit(false);
+        });
+        on('sd-cf-when-field', 'change', function (el) {
+            var fl = _cfFieldLeadOf(node, w.tree), r = _cfRulesOf(fl);
+            var was = (r.required_when && Array.isArray(r.required_when.answers)) ? r.required_when.answers : [];
+            if (el.value) r.required_when = { field: el.value, answers: was }; else delete r.required_when;
+            _cfWriteRules(fl, r);
+            commit(true);
+        });
+        on('sd-cf-when-answers', 'change', function (el) {
+            var fl = _cfFieldLeadOf(node, w.tree), r = _cfRulesOf(fl);
+            if (!r.required_when) return;
+            var seen = {};
+            r.required_when.answers = String(el.value || '').split(/\r\n|\r|\n/)
+                .map(function (a) { return a.trim(); })
+                .filter(function (a) { if (!a || seen[a]) return false; seen[a] = true; return true; });
+            _cfWriteRules(fl, r);
             commit(false);
         });
         on('sd-cf-folder', 'change', function (el) {
@@ -3612,9 +3681,13 @@ const StyleDesigner = (function () {
     // in place with no history.
     //
     // Each snapshot is { tree: <json>, shared: { sid: <tree-json> } }.
-    // Restore writes both back, marks every restored sid dirty so the
-    // next save flush pushes the rolled-back state to the server, and
-    // reindexes so the global gid counter never collides with a restored id.
+    // Restore writes both back and reindexes so the global gid counter never
+    // collides with a restored id. A restored sid is marked dirty only when
+    // its tree really differs: from the stored row's snapshot when there is
+    // one (an equal tree also drops the mark), else from the tree it
+    // replaces. An undo of a page edit restores identical component trees,
+    // and an unconditional mark made every page showing the header count as
+    // changed (_pgPageUnchanged()), so the save sent every page.
     function _snapshotShared() {
         var out = {};
         var sids = Object.keys(_sharedCache);
@@ -3631,8 +3704,15 @@ const StyleDesigner = (function () {
             try {
                 var t = JSON.parse(snap[sid]);
                 if (!_sharedCache[sid]) _sharedCache[sid] = { name: '', tree: null };
+                var prev = _sharedCache[sid].tree;
+                var key = _sdSharedTreeJSON(t);
                 _sharedCache[sid].tree = t;
-                _sharedDirty[sid] = true;  // restored state must be flushed on next save
+                if (_sharedSnapshots[sid]) {
+                    if (key !== _sharedSnapshots[sid]) _sharedDirty[sid] = true;
+                    else delete _sharedDirty[sid];
+                } else if (!prev || key !== _sdSharedTreeJSON(prev)) {
+                    _sharedDirty[sid] = true;
+                }
                 // Reindex so any new node ids stay above what's now in the cache.
                 var maxInCache = reindex(t);
                 if (maxInCache > nodeIdCounter) nodeIdCounter = maxInCache;
@@ -11263,6 +11343,7 @@ const StyleDesigner = (function () {
                     menu_sequence_region: _sdT('Menu Sequence'),
                     ad_region:            _sdT('Ad Region'),
                     tag_cloud_region:     _sdT('Tag Cloud'),
+                    google_reviews:       _sdT('Google Reviews'),
                     // Legacy aliases — normalized to form_list_view downstream
                     form_list:            _sdT('Form List View'),
                     submitted_forms_list: _sdT('Form List View'),
@@ -11561,6 +11642,73 @@ const StyleDesigner = (function () {
             p = findParent(p, root);
         }
         return place;
+    }
+
+    // The Reviews frame of a catalog_item_view (twin of
+    // _pg_civ_drop_comments_frame() in includes/fn/widgets_catalog.php): the
+    // classic comments block draws nothing while the page's comments are off
+    // or a comments widget on the page shows the reviews, and the site leaves
+    // out its tab pane with the tab, else a section holding only headings
+    // beside it, else the region. Those nodes fade here with the reason.
+    var _sdCivFrame = { root: null, nodes: [] };
+    function _sdCivHasClass(n, cls) {
+        return !!(n && n.props && (' ' + String(n.props.cssClass || '').replace(/\s+/g, ' ') + ' ').indexOf(' ' + cls + ' ') !== -1);
+    }
+    function _sdCivAttr(n, name) {
+        var a = (n && n.props && Array.isArray(n.props._attrs)) ? n.props._attrs : [];
+        for (var i = 0; i < a.length; i++) if (a[i] && a[i].name === name) return String(a[i].value || '');
+        return null;
+    }
+    /* @pg-site-output */
+    function _sdCivCommentsFrameNodes(root) {
+        var out = [];
+        var blocks = [];
+        (function walk(n) {
+            if (!n) return;
+            if (n.type === 'region' && n.props && n.props.regionType === 'comments_block') { blocks.push(n); return; }
+            (n.children || []).forEach(walk);
+        })(root);
+        var trigger = function (target) {
+            var hit = null;
+            (function walk(n) {
+                if (hit || !n) return;
+                var href = (n.props && typeof n.props.href === 'string') ? n.props.href : null;
+                if (_sdCivAttr(n, 'data-bs-target') === target || _sdCivAttr(n, 'href') === target || href === target) { hit = n; return; }
+                (n.children || []).forEach(walk);
+            })(root);
+            return hit;
+        };
+        blocks.forEach(function (region) {
+            for (var a = findParent(region, root); a; a = findParent(a, root)) {
+                if (!_sdCivHasClass(a, 'tab-pane')) continue;
+                out.push(a);
+                var t = a.props && a.props.id ? trigger('#' + a.props.id) : null;
+                if (t) {
+                    var li = findParent(t, root);
+                    out.push((li && ((li.props && li.props.tag === 'li') || _sdCivHasClass(li, 'nav-item'))) ? li : t);
+                }
+                return;
+            }
+            var parent = findParent(region, root);
+            var onlyHeadings = !!parent && parent !== root && (parent.children || []).every(function (c) {
+                return c === region || !!(c && c.props && /^h[1-6]$/.test(String(c.props.tag || '')));
+            });
+            out.push(onlyHeadings ? parent : region);
+        });
+        return out;
+    }
+    function _sdCivCommentsFrameOff(node, cfg) {
+        if (!node || !cfg || cfg.regionType !== 'catalog_item_view' || !_sysWidgetRenderTreeRoot) return '';
+        if (_sdCivFrame.root !== _sysWidgetRenderTreeRoot || node === _sysWidgetRenderTreeRoot) {
+            _sdCivFrame = { root: _sysWidgetRenderTreeRoot, nodes: _sdCivCommentsFrameNodes(_sysWidgetRenderTreeRoot) };
+        }
+        if (_sdCivFrame.nodes.indexOf(node) === -1) return '';
+        if (_getCmtVal('pg_comments') !== '1') return _sdT('Off — comments are off in this page\'s comment settings');
+        var p = (typeof _pgActivePage === 'function') ? _pgActivePage() : null;
+        if (p && _swTabHasWidget(p, ['comments'], function (c) { return _swKindOf(c) === 'comments'; })) {
+            return _sdT('Off — the Comments widget on this page shows the reviews');
+        }
+        return '';
     }
 
     // Comments widget: the canvas twin of _pg_comments_binding_disabled()
@@ -12852,6 +13000,16 @@ const StyleDesigner = (function () {
                 wrapper.setAttribute('data-sd-off-reason', _commentsOff);
             }
         }
+        // Product page: the comments block's frame the site leaves out
+        // (_sdCivCommentsFrameOff()).
+        if (_sysWidgetRenderCfg && !wrapper.classList.contains('sd-binding-off')) {
+            var _civFrameOff = _sdCivCommentsFrameOff(node, _sysWidgetRenderCfg);
+            if (_civFrameOff) {
+                wrapper.classList.add('sd-binding-off');
+                wrapper.setAttribute('data-sd-binding-off', '1');
+                wrapper.setAttribute('data-sd-off-reason', _civFrameOff);
+            }
+        }
 
         // A value condition (Bind Data, "Show only when a value…") is named
         // on the element; the state the band chose decides whether it is
@@ -13362,6 +13520,7 @@ const StyleDesigner = (function () {
                     month_grid:           _sdT('Month grid (filled by the backend — the events of each day)'),
                     reserve_form:         _sdT('Reserve button (filled by the backend — hidden when reservations are closed)'),
                     order_history:        _sdT('Order history (filled by the backend — the member\'s orders, each linking to the order page)'),
+                    subscriptions:        _sdT('Subscriptions (filled by the backend — the member\'s subscriptions with pause, resume, cancel and card update)'),
                     // Express order section bindings (prefixed eo_*) — same
                     // pattern as catalog: real container in the tree, server
                     // injects the live HTML at render time.
@@ -13861,7 +14020,7 @@ const StyleDesigner = (function () {
                         'color:#6c9bd1;font-size:14px;margin:4px 0;pointer-events:none;">' +
                         '<i class="bi bi-chat-square-text" style="font-size:22px;display:block;margin-bottom:6px;"></i>' +
                         '<strong>' + esc(_sdT('Comments Area')) + '</strong>' +
-                        '<div style="font-size:11px;margin-top:4px;opacity:0.75;">' + esc(_sdT('The page comments will appear here')) + '</div>' +
+                        '<div style="font-size:11px;margin-top:4px;opacity:0.75;">' + esc((typeof _pgActivePage === 'function' && _sdCommentsProductViewPage(_pgActivePage())) ? _sdT('The product\'s reviews will appear here') : _sdT('The page comments will appear here')) + '</div>' +
                         '</div>';
                     return rg;
                 }
@@ -16713,7 +16872,9 @@ const StyleDesigner = (function () {
                 // Hero Explosion
                 if (ctype === 'hero') {
                     // A dark band in any mode: the theme switch makes text-body and
-                    // the palette's dark colours apply inside it.
+                    // the palette's dark colours apply inside it. The second action is a
+                    // solid btn-secondary: btn-outline-secondary keeps Bootstrap's grey
+                    // text, 3.2:1 on the dark band.
                     return createNode('semantic', { tag: 'div', cssClass: 'py-5 px-3 text-center bg-body text-body mb-4 rounded-3', customName: _sdT('Hero Section'),
                         _attrs: [{ name: 'data-bs-theme', value: 'dark' }] }, [
                         createNode('content', { contentType: 'heading', tag: 'h1', text: _sdT('Hero title'), cssClass: 'display-5 fw-bold' }),
@@ -16721,7 +16882,7 @@ const StyleDesigner = (function () {
                              createNode('content', { contentType: 'paragraph', text: _sdT('Quickly design and customize responsive mobile-first sites with Bootstrap.'), cssClass: 'lead mb-4' }),
                              createNode('semantic', { tag: 'div', cssClass: 'd-grid gap-2 d-sm-flex justify-content-sm-center', customName: _sdT('Hero Buttons') }, [
                                   createNode('component', { componentType: 'btn', text: _sdT('Primary button'), variant: 'primary', size: 'lg' }),
-                                  createNode('component', { componentType: 'btn', text: _sdT('Secondary'), variant: 'outline-secondary', size: 'lg' })
+                                  createNode('component', { componentType: 'btn', text: _sdT('Secondary'), variant: 'secondary', size: 'lg' })
                              ])
                         ])
                     ]);
@@ -17276,7 +17437,7 @@ const StyleDesigner = (function () {
                                         createNode('semantic', { tag: 'tr', cssClass: '', customName: _sdT('Support Row') }, [
                                             _pcRowHead(_sdT('Support')),
                                             _pcCellText(_sdT('Email'),    false),
-                                            _pcCellText(_sdT('Priority'),  false),
+                                            _pcCellText(_sdT('Priority support'),  false),
                                             _pcCellText(_sdT('Dedicated, around the clock'),  false)
                                         ]),
                                         createNode('semantic', { tag: 'tr', cssClass: '', customName: _sdT('API Row') }, [
@@ -33664,6 +33825,7 @@ const StyleDesigner = (function () {
             var _isMenuSequence    = (_regionType === 'menu_sequence_region');
             var _isAdRegion        = (_regionType === 'ad_region');
             var _isTagCloud        = (_regionType === 'tag_cloud_region');
+            var _isGoogleReviews   = (_regionType === 'google_reviews');
             var _isCommentsRecent  = (_regionType === 'comments_recent');
 
             // Read both `custom_form_page_id` (current) and `form_page_id` (legacy) for back-compat.
@@ -34807,7 +34969,7 @@ const StyleDesigner = (function () {
                         _saHint(esc(_swLinkHint('shipping_address_and_arrival', '__address_type_url')))
                     ) +
                     row(_sdT('Controls'),
-                        _saHint(_sdT('The form reads its controls by name: {var}.', '<code>salutation, first_name, last_name, company, address_1, address_2, city, state, zip_code, country, address_type, phone_number, shipping_same_as_billing, arrival_date, custom_arrival_date</code>')))
+                        _saHint(_sdT('The form reads its controls by name: {var}.', '<code>salutation, first_name, last_name, company, address_1, address_2, city, district, state, zip_code, country, address_type, phone_number, shipping_same_as_billing, arrival_date, custom_arrival_date</code>')))
                 );
             }
 
@@ -34840,7 +35002,8 @@ const StyleDesigner = (function () {
                     _biField(1) + _biField(2) +
                     row(_sdT('PO number'), _biSwitch('po_number') + _biHint(_sdT('While on, the purchase order number (name: <code>po_number</code>) is drawn.'))) +
                     row(_sdT('Controls'),
-                        _biHint(_sdT('The form reads its controls by name: {var}.', '<code>billing_salutation, billing_first_name, billing_last_name, billing_company, billing_address_1, billing_address_2, billing_city, billing_state, billing_zip_code, billing_country, billing_phone_number, billing_fax_number, billing_email_address, custom_field_1, custom_field_2, po_number, referral_source, tax_number, tax_office, tax_exempt, opt_in, update_contact</code>')))
+                        _biHint(_sdT('The form reads its controls by name: {var}.', '<code>billing_salutation, billing_first_name, billing_last_name, billing_company, billing_address_1, billing_address_2, billing_city, billing_state, billing_zip_code, billing_country, billing_phone_number, billing_fax_number, billing_email_address, custom_field_1, custom_field_2, po_number, referral_source, tax_number, tax_office, tax_exempt, opt_in, opt_in_sms, update_contact</code>')) +
+                            _biHint(_sdT('The SMS box (name: <code>opt_in_sms</code>) is drawn only while SMS is on and the buyer has not said yes.')))
                 );
             }
 
@@ -34879,6 +35042,13 @@ const StyleDesigner = (function () {
                         '<select class="form-control form-control-sm" data-sw-id="' + sid + '" data-sw-cfg="search_page_name">' + _tcOpts + '</select>' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('Each keyword links to this page searching for it; without a page the widget draws no keyword.')) + '</div>'
                     )
+                );
+            }
+
+            // ── google_reviews settings ──────────────────────────────────────
+            if (_isGoogleReviews) {
+                systemSection += sect('bi-google', _sdT('Google Reviews Settings'),
+                    '<div style="font-size:.7rem;color:#888">' + esc(_sdT('The Places API key and the Place ID are set in Site Settings, Communication, Google Reviews. Without them the widget shows nothing on the site.')) + '</div>'
                 );
             }
 
@@ -35159,6 +35329,7 @@ const StyleDesigner = (function () {
                     ) +
                     '<div class="sd-prop-row"><div class="sd-prop-control" style="font-size:.66rem;color:#888;line-height:1.45">' +
                         _sdT('Core controls are recognised by name: <code>first_name</code>, <code>last_name</code>, <code>email</code>, <code>email_verify</code> (optional), <code>password</code>, <code>password_verify</code>, <code>password_hint</code>, <code>opt_in</code>, <code>username</code> (derived from the email when absent). Select any other control and bind it to a contact column with <strong>Contact binding</strong>.') +
+                        ' ' + _sdT('A control named <code>opt_in_sms</code> asks the SMS marketing question; it is drawn only while SMS is on and the form has a visible control bound to the mobile number.') +
                     '</div></div>'
                 );
             }
@@ -35622,6 +35793,7 @@ const StyleDesigner = (function () {
                     ) +
                     '<div class="sd-prop-row"><div class="sd-prop-control" style="font-size:.66rem;color:#888;line-height:1.45">' +
                         _sdT('Core controls are recognised by name: <code>member_id</code>, <code>first_name</code>, <code>last_name</code>, <code>email</code>, <code>email_verify</code> (optional), <code>password</code>, <code>password_verify</code>, <code>password_hint</code>, <code>opt_in</code>, <code>username</code> (derived from the email when absent). The member number and last name must match a member in the contacts. Select any other control and bind it to a contact column with <strong>Contact binding</strong>.') +
+                        ' ' + _sdT('A control named <code>opt_in_sms</code> asks the SMS marketing question; it is drawn only while SMS is on and the form has a visible control bound to the mobile number.') +
                     '</div></div>'
                 );
             }
@@ -36123,7 +36295,7 @@ const StyleDesigner = (function () {
                     change_password:   'email_address, current_password, new_password, new_password_verify, password_hint',
                     set_password:      'new_password, password_hint',
                     account_profile:   'first_name, last_name, title, company, business_address_1, business_address_2, business_city, business_state, business_zip_code, business_country, business_phone, mobile_phone, home_phone, business_fax, salutation, suffix, tax_number, tax_office, timezone',
-                    email_preferences: 'email_address, opt_in, contact_group',
+                    email_preferences: 'email_address, opt_in, opt_in_sms, contact_group',
                     address_book:      'ship_to_name, salutation, first_name, last_name, company, address_1, address_2, city, state, zip_code, country, address_type, phone_number',
                     account_security:  'code, current_password, name'
                 }[_regionType];
@@ -38005,6 +38177,7 @@ const StyleDesigner = (function () {
                             _mkField('col-12 col-md-12 mb-2', _sdT('Address 1'), 'shipping_address_1',  'text', '', true),
                             _mkField('col-12 col-md-12 mb-2', _sdT('Address 2'), 'shipping_address_2',  'text', '', false),
                             _mkField('col-12 col-md-6 mb-2', _sdT('City'),    'shipping_city',       'text', '', true),
+                            _mkField('col-12 col-md-6 mb-2', _sdT('District'), 'shipping_district',  'text', '', false),
                             _mkField('col-12 col-md-6 mb-2', _sdT('State'),'shipping_state',      'text', '', true),
                             _mkField('col-12 col-md-6 mb-2', _sdT('Zip Code'),'shipping_zip_code',  'text', '', true),
                             createNode('semantic', { tag: 'div', cssClass: 'col-12 col-md-6 mb-2' }, [
@@ -38531,7 +38704,7 @@ const StyleDesigner = (function () {
         shipping_address_and_arrival: 1, shipping_method: 1, billing_information: 1,
         order_preview: 1, menu_region: 1, menu_sequence_region: 1, ad_region: 1,
         tag_cloud_region: 1, order_form: 1, folder_view: 1, photo_gallery: 1,
-        affiliate_sign_up_form: 1
+        affiliate_sign_up_form: 1, google_reviews: 1
     };
 
     // One filter word read as pg_sw_fill_parse() reads it: {name, arg} for
@@ -40510,6 +40683,31 @@ const StyleDesigner = (function () {
         ]}
     ];
 
+    // google_reviews token palette — has loop_area (one row per review, five
+    // at most). Mirrors _render_system_widget_google_reviews() in
+    // widgets_google_reviews.php.
+    var SW_GOOGLE_REVIEWS_TOKEN_GROUPS = [
+        { label: _sdT('Google Reviews'), tokens: [
+            ['__place_name',           _sdT('Business name on Google')],
+            ['__place_rating',         _sdT('Average rating (one decimal)')],
+            ['__place_review_count',   _sdT('Number of ratings on Google')],
+            ['__review_total',         _sdT('Number of reviews shown')],
+            ['__google_attribution',   _sdT('Google attribution ("Google Maps")')]
+        ]},
+        { label: _sdT('Review (loop_area)'), tokens: [
+            ['__review_author_name',   _sdT('Review author')],
+            ['__review_author_photo',  _sdT('Review author photo')],
+            ['__review_rating',        _sdT('Review rating (1 to 5)')],
+            ['__review_text',          _sdT('Review text')],
+            ['__review_relative_time', _sdT('When it was written ("2 weeks ago")')]
+        ]},
+        { label: _sdT('Links (href)'), tokens: [
+            ['__place_maps_url',       _sdT('The business on Google Maps')],
+            ['__review_author_url',    _sdT('Review author on Google Maps')],
+            ['__review_url',           _sdT('The review on Google Maps')]
+        ]}
+    ];
+
     // ad_region token palette — has loop_area (one row per ad shown).
     // Mirrors _render_system_widget_ad_region() in widgets_ad_region.php.
     var SW_AD_REGION_TOKEN_GROUPS = [
@@ -40569,7 +40767,8 @@ const StyleDesigner = (function () {
         menu_region:       SW_MENU_REGION_TOKEN_GROUPS,
         menu_sequence_region: SW_MENU_SEQUENCE_TOKEN_GROUPS,
         ad_region:         SW_AD_REGION_TOKEN_GROUPS,
-        tag_cloud_region:  SW_TAG_CLOUD_TOKEN_GROUPS
+        tag_cloud_region:  SW_TAG_CLOUD_TOKEN_GROUPS,
+        google_reviews:    SW_GOOGLE_REVIEWS_TOKEN_GROUPS
     };
 
     // search_results token palette — has loop_area (per-result iteration).
@@ -41012,6 +41211,7 @@ const StyleDesigner = (function () {
             ['shipping_address_1',     _sdT('Address 1')],
             ['shipping_address_2',     _sdT('Address 2')],
             ['shipping_city',          _sdT('City')],
+            ['shipping_district',      _sdT('District')],
             ['shipping_state',         _sdT('State / Province')],
             ['shipping_zip_code',      _sdT('Zip Code')],
             ['shipping_country',       _sdT('Country code')]
@@ -41024,7 +41224,8 @@ const StyleDesigner = (function () {
         { label: _sdT('Promotion / Preferences'), tokens: [
             ['special_offer_code',  _sdT('Special offer code')],
             ['tax_exempt',          _sdT('Tax exemption (checkbox)')],
-            ['opt_in',              _sdT('Newsletter subscription (checkbox)')]
+            ['opt_in',              _sdT('Newsletter subscription (checkbox)')],
+            ['opt_in_sms',          _sdT('SMS campaign consent (checkbox)')]
         ]},
         // Acceptance boxes. legal_preinfo / legal_contract are asked for by
         // submit_order.php while the checkout documents are switched on.
@@ -42357,6 +42558,7 @@ const StyleDesigner = (function () {
             ['has_legal_kvkk',       _sdT('A KVKK notice page or consent sentence is set')],
             ['has_legal_kvkk_notice', _sdT('A KVKK notice page is set')],
             ['has_legal_kvkk_consent', _sdT('A KVKK consent sentence is set')],
+            ['shows_opt_in_sms',     _sdT('The SMS box is offered (SMS is on and the buyer has not said yes)')],
             ['tax_exempt_allowed',   _sdT('Tax exemption is allowed')],
             ['has_discount',         _sdT('There is a discount')],
             ['has_tax',              _sdT('There is tax')],
@@ -42530,6 +42732,12 @@ const StyleDesigner = (function () {
             ['invoice_is_open',    _sdT('Row: money is still owed on it')],
             ['invoice_has_order',  _sdT('Row: made from an order')]
         ],
+        google_reviews: [
+            ['has_reviews',      _sdT('Google has a review of the business to show')],
+            ['no_reviews',       _sdT('Google shows the business without a review')],
+            ['review_has_photo', _sdT('Row: the author has a photo')],
+            ['review_has_text',  _sdT('Row: the review has a text')]
+        ],
         tag_cloud_region: [
             ['has_tags',        _sdT('The search results page has a keyword to show')],
             ['no_tags',         _sdT('No page is chosen, or it has no keyword')]
@@ -42606,6 +42814,7 @@ const StyleDesigner = (function () {
             ['has_po_number',        _sdT('The page asks for a PO number')],
             ['has_custom_form',      _sdT('The page has a custom billing form')],
             ['shows_opt_in',         _sdT('The opt-in box is offered (the contact has not opted in)')],
+            ['shows_opt_in_sms',     _sdT('The SMS box is offered (SMS is on and the buyer has not said yes)')],
             ['can_update_contact',   _sdT('A signed-in member may update their contact')],
             ['has_referral_sources', _sdT('The site has referral sources')],
             ['has_tax_exempt',       _sdT('Tax exemption can be asked for')]
@@ -45298,6 +45507,7 @@ const StyleDesigner = (function () {
                 _sectionOpts.push(['month_grid',           _sdT('Month grid (not in the upcoming view)')]);
             } else if (_semSwRegion === 'my_account') {
                 _sectionOpts.push(['order_history',        _sdT('Order history (shop sites; hidden when there are no orders)')]);
+                _sectionOpts.push(['subscriptions',        _sdT('Subscriptions (shop sites; hidden when there are none)')]);
             } else if (_semSwRegion === 'change_password' || _semSwRegion === 'set_password') {
                 _sectionOpts.push(['password_rules',       _sdT('Strong password rules (hidden when the site setting is off)')]);
             } else if (_semSwRegion === 'calendar_event_view') {
@@ -56319,7 +56529,8 @@ const StyleDesigner = (function () {
         { type: 'menu_region',       label: _sdT('Menu'),              slug: _sdT('menu'),              icon: 'bi-menu-button-wide' },
         { type: 'menu_sequence_region', label: _sdT('Menu Sequence'),  slug: _sdT('menu-sequence'),     icon: 'bi-arrow-left-right' },
         { type: 'ad_region',         label: _sdT('Ad Region'),         slug: _sdT('ad-region'),         icon: 'bi-badge-ad' },
-        { type: 'tag_cloud_region',  label: _sdT('Tag Cloud'),         slug: _sdT('tag-cloud'),         icon: 'bi-tags' }
+        { type: 'tag_cloud_region',  label: _sdT('Tag Cloud'),         slug: _sdT('tag-cloud'),         icon: 'bi-tags' },
+        { type: 'google_reviews',    label: _sdT('Google Reviews'),    slug: _sdT('google-reviews'),    icon: 'bi-google' }
     ];
     // The account widgets (widgets_account.php), and those of them that show
     // one screen - their loop_area is not used.
@@ -59819,6 +60030,8 @@ const StyleDesigner = (function () {
                                     fld('col-12 col-md-6 mb-3', _sdT('Address 1'),    'shipping_address_1',   'text', '', true),
                                     fld('col-12 col-md-6 mb-3', _sdT('Address 2'),    'shipping_address_2',   'text'),
                                     fld('col-12 col-md-6 mb-3', _sdT('City'),         'shipping_city',        'text', '', true),
+                                    // Optional; the site shows it for a Turkish address.
+                                    fld('col-12 col-md-6 mb-3', _sdT('District'),     'shipping_district',    'text'),
                                     sem('div', 'col-12 col-md-6 mb-3', [
                                         lbl('shipping_country', _sdT('Country'), true),
                                         sem('select', 'form-select', null, {
@@ -59916,7 +60129,6 @@ const StyleDesigner = (function () {
                         sem('div', 'card-body', [
                             bind('payment_methods', 'mb-3'),
                             sem('div', 'pg-eo-cc-fields', [
-                                sem('p', 'small text-muted mb-2', _sdT('The card fields appear when Credit/Debit Card is selected.')),
                                 sem('div', 'row', [
                                     fld('col-12 mb-3', _sdT('Card Number'), 'card_number', 'text', '•••• •••• •••• ••••', false, true),
                                     fld('col-6 mb-3',  _sdT('Expiry date'),  'expiration',  'text', _sdT('MM / YY'), false, true),
@@ -60015,6 +60227,8 @@ const StyleDesigner = (function () {
                                 // Moved out of the Order Preferences card —
                                 // last step before the visitor confirms order.
                                 checkRow('opt_in', _sdT('I want to subscribe to the campaign and offer newsletter'), 'pg-eo-opt-in mb-3'),
+                                // The SMS box beside it, only while it is offered.
+                                checkRow('opt_in_sms', _sdT('I want to receive campaign and offer messages by SMS.'), 'pg-eo-opt-in-sms mb-3', 'shows_opt_in_sms'),
                                 sem('div', 'd-grid gap-2 mt-3', [
                                     sem('button', 'btn btn-primary btn-lg', _sdT('Complete Order'),
                                         { bindings: { action: 'eo_submit_purchase' } }),
@@ -60737,30 +60951,35 @@ const StyleDesigner = (function () {
                 // 3-tab section under add-to-cart row:
                 //   1) Details          — paragraph bound to ^^__details^^ (products.details)
                 //   2) Checkout Options — sample HTML table (Bootstrap .table)
-                //   3) Reviews          — comments_block region (renders page comments)
+                //   3) Reviews          — comments_block region: the product's reviews on a
+                //      designed product page; the site leaves the tab out when the
+                //      block draws nothing (comments off, or a Comments widget on the page)
+                // nav-justified + flex-nowrap keep the three tabs on one line on a
+                // phone (equal widths, a long label wraps inside its tab), h-100
+                // keeps the tabs the same height.
                 // Random tabPfx prevents collisions when multiple tab widgets coexist.
                 var civTabPfx = 'civtab_' + Math.random().toString(36).substr(2, 5);
                 var tabsSection = createNode('semantic', { tag: 'div', cssClass: 'mt-5', customName: _sdT('Product Information (Tabs)') }, [
-                    createNode('semantic', { tag: 'ul', cssClass: 'nav nav-tabs', customName: _sdT('Tab Menu'),
+                    createNode('semantic', { tag: 'ul', cssClass: 'nav nav-tabs nav-justified flex-nowrap', customName: _sdT('Tab Menu'),
                         _attrs: [{ name: 'role', value: 'tablist' }] }, [
                         createNode('semantic', { tag: 'li', cssClass: 'nav-item', customName: _sdT('Details Tab'),
                             _attrs: [{ name: 'role', value: 'presentation' }] }, [
-                            createNode('content', { contentType: 'heading', tag: 'button', text: _sdT('Details'), cssClass: 'nav-link active',
+                            createNode('content', { contentType: 'heading', tag: 'button', text: _sdT('Details'), cssClass: 'nav-link active h-100',
                                 _attrs: [{ name: 'type', value: 'button' }, { name: 'data-bs-toggle', value: 'tab' }, { name: 'data-bs-target', value: '#' + civTabPfx + '_0' }, { name: 'role', value: 'tab' }, { name: 'aria-selected', value: 'true' }] })
                         ]),
                         createNode('semantic', { tag: 'li', cssClass: 'nav-item', customName: _sdT('Payment Tab'),
                             _attrs: [{ name: 'role', value: 'presentation' }] }, [
-                            createNode('content', { contentType: 'heading', tag: 'button', text: _sdT('Checkout Options'), cssClass: 'nav-link',
+                            createNode('content', { contentType: 'heading', tag: 'button', text: _sdT('Checkout Options'), cssClass: 'nav-link h-100',
                                 _attrs: [{ name: 'type', value: 'button' }, { name: 'data-bs-toggle', value: 'tab' }, { name: 'data-bs-target', value: '#' + civTabPfx + '_1' }, { name: 'role', value: 'tab' }] })
                         ]),
                         createNode('semantic', { tag: 'li', cssClass: 'nav-item', customName: _sdT('Reviews Tab'),
                             _attrs: [{ name: 'role', value: 'presentation' }] }, [
-                            createNode('content', { contentType: 'heading', tag: 'button', text: _sdT('Reviews'), cssClass: 'nav-link',
+                            createNode('content', { contentType: 'heading', tag: 'button', text: _sdT('Reviews'), cssClass: 'nav-link h-100',
                                 _attrs: [{ name: 'type', value: 'button' }, { name: 'data-bs-toggle', value: 'tab' }, { name: 'data-bs-target', value: '#' + civTabPfx + '_2' }, { name: 'role', value: 'tab' }] })
                         ])
                     ]),
                     createNode('semantic', { tag: 'div', cssClass: 'tab-content p-3 border border-top-0', customName: _sdT('Tab Contents') }, [
-                        // Pane 1 — Detaylar: product details (rich text field)
+                        // Pane 1 — Details: product details (rich text field)
                         createNode('semantic', { tag: 'div', cssClass: 'tab-pane fade show active', id: civTabPfx + '_0', customName: _sdT('Details Pane'),
                             _attrs: [{ name: 'role', value: 'tabpanel' }] }, [
                             createNode('content', { contentType: 'paragraph',
@@ -60819,7 +61038,7 @@ const StyleDesigner = (function () {
                                 ]);
                             })()
                         ]),
-                        // Pane 3 — Reviews: page-comments region (placeholder on canvas, real comments at render time)
+                        // Pane 3 — Reviews: the comments block (placeholder on canvas, the product's reviews at render time)
                         createNode('semantic', { tag: 'div', cssClass: 'tab-pane fade', id: civTabPfx + '_2', customName: _sdT('Reviews Pane'),
                             _attrs: [{ name: 'role', value: 'tabpanel' }] }, [
                             createNode('region', { regionType: 'comments_block', regionName: '' })
@@ -61600,10 +61819,13 @@ const StyleDesigner = (function () {
                 ]);
 
                 // Totals breakdown row helper — label left, amount right.
-                var totalRow = function (label, token, cssExtra) {
-                    return createNode('semantic', { tag: 'div',
+                // `visibleIf`: optional eo_visible_if flag that drops the row.
+                var totalRow = function (label, token, cssExtra, visibleIf) {
+                    var rowProps = { tag: 'div',
                         cssClass: 'd-flex justify-content-between mb-1 ' + (cssExtra || ''),
-                        customName: _sdT('{var} Row', label) }, [
+                        customName: _sdT('{var} Row', label) };
+                    if (visibleIf) rowProps._bindings = { eo_visible_if: visibleIf };
+                    return createNode('semantic', rowProps, [
                         createNode('content', { contentType: 'paragraph',
                             text: label, cssClass: 'mb-0 text-muted small' }),
                         createNode('content', { contentType: 'paragraph',
@@ -61747,7 +61969,7 @@ const StyleDesigner = (function () {
                                         totalRow(_sdT('Discount'),     '__order_discount',  'text-success'),
                                         totalRow(_sdT('Tax (VAT)'), '__order_tax',       ''),
                                         totalRow(_sdT('Shipping'),       '__order_shipping',  ''),
-                                        totalRow(_sdT('Card surcharge'),'__order_surcharge',''),
+                                        totalRow(_sdT('Card surcharge'),'__order_surcharge','', 'has_surcharge'),
                                         createNode('semantic', { tag: 'hr', cssClass: 'my-2' }),
                                         createNode('semantic', { tag: 'div',
                                             cssClass: 'd-flex justify-content-between',
@@ -63037,6 +63259,7 @@ const StyleDesigner = (function () {
                     biReferral,
                     biCheck('tax_exempt', _sdT('Tax-Exempt?'), '_taxex', '__tax_exempt_label', 'has_tax_exempt'),
                     biCheck('opt_in', _sdT('Opt-in checkbox label'), '_optin', '__opt_in_label', 'shows_opt_in'),
+                    biCheck('opt_in_sms', _sdT('I want to receive campaign and offer messages by SMS.'), '_optinsms', '', 'shows_opt_in_sms'),
                     biCheck('update_contact', _sdT('Update my contact information with these details.'), '_upd', '', 'can_update_contact'),
                     createNode('semantic', { tag: 'div', cssClass: 'my-4', customName: _sdT('Custom Billing Form'),
                         _bindings: { eo_visible_if: 'has_custom_form' } }, [
@@ -63248,6 +63471,75 @@ const StyleDesigner = (function () {
                                     _bindings: { href: '__tag_url', text: '__tag_name', show_if: '__tag_weight' },
                                     _bindParams: { show_if: { op: 'eq', value: String(i + 1) } } });
                             }))
+                        ])
+                    ])
+                ]);
+            }
+
+            case 'google_reviews': {
+                // The business's Google rating, then up to five reviews as
+                // cards, then the link to the place and Google's attribution,
+                // which Google requires beside its content. Nothing of it
+                // shows on the site without a key and a Place ID. Mirrors
+                // _render_system_widget_google_reviews().
+                var grLink = function (cls, label, txt, token) {
+                    return createNode('semantic', { tag: 'a', cssClass: cls, text: txt, href: '#', target: '_blank', customName: label,
+                        _attrs: [{ name: 'rel', value: 'noopener' }], _bindings: { href: token } });
+                };
+                var grStar = function () {
+                    return createNode('semantic', { tag: 'i', cssClass: 'bi bi-star-fill text-warning', customName: _sdT('Star'),
+                        _attrs: [{ name: 'aria-hidden', value: 'true' }] });
+                };
+                return createNode('root', {}, [
+                    createNode('semantic', { tag: 'section', cssClass: '', customName: _sdT('Google Reviews'),
+                        _attrs: [{ name: 'aria-label', value: _sdT('Google Reviews') }] }, [
+                        createNode('semantic', { tag: 'div', cssClass: 'd-flex flex-wrap align-items-center gap-2 mb-3', customName: _sdT('Rating') }, [
+                            createNode('semantic', { tag: 'h2', cssClass: 'h5 mb-0 me-2', text: _sdT('Business name'), customName: _sdT('Business name'),
+                                _bindings: { text: '__place_name' } }),
+                            grStar(),
+                            createNode('semantic', { tag: 'span', cssClass: 'fw-bold', text: '4.8', customName: _sdT('Average rating'),
+                                _bindings: { text: '__place_rating' } }),
+                            createNode('semantic', { tag: 'span', cssClass: 'text-body-secondary small', customName: _sdT('Number of ratings') }, [
+                                createNode('semantic', { tag: 'span', cssClass: '', text: '120', customName: _sdT('Number'), _bindings: { text: '__place_review_count' } }),
+                                createNode('semantic', { tag: 'span', cssClass: '', text: ' ' + _sdT('ratings'), customName: _sdT('Label') })
+                            ])
+                        ]),
+                        createNode('semantic', { tag: 'div', cssClass: 'row g-3', customName: _sdT('Reviews'),
+                            _bindings: { eo_visible_if: 'has_reviews' } }, [
+                            createNode('loop_area', {}, [
+                                createNode('semantic', { tag: 'div', cssClass: 'col-12 col-md-6 col-lg-4', customName: _sdT('Review') }, [
+                                    createNode('semantic', { tag: 'article', cssClass: 'card h-100', customName: _sdT('Card') }, [
+                                        createNode('semantic', { tag: 'div', cssClass: 'card-body', customName: _sdT('Card Body') }, [
+                                            createNode('semantic', { tag: 'div', cssClass: 'd-flex align-items-center gap-2 mb-2', customName: _sdT('Author') }, [
+                                                createNode('content', { contentType: 'image', src: '', alt: '', fluid: false, rounded: false, width: '40', height: '40',
+                                                    cssClass: 'rounded-circle flex-shrink-0 object-fit-cover',
+                                                    _attrs: [{ name: 'referrerpolicy', value: 'no-referrer' }],
+                                                    _bindings: { src: '__review_author_photo', eo_visible_if: 'review_has_photo' } }),
+                                                createNode('semantic', { tag: 'div', cssClass: 'small', customName: _sdT('Name and time') }, [
+                                                    grLink('d-block fw-semibold text-body text-decoration-none', _sdT('Review author'), _sdT('Author name'), '__review_author_url'),
+                                                    createNode('semantic', { tag: 'span', cssClass: 'text-body-secondary', text: _sdT('2 weeks ago'), customName: _sdT('When'),
+                                                        _bindings: { text: '__review_relative_time' } })
+                                                ])
+                                            ]),
+                                            createNode('semantic', { tag: 'div', cssClass: 'mb-2 small', customName: _sdT('Review rating') }, [
+                                                grStar(),
+                                                createNode('semantic', { tag: 'span', cssClass: 'ms-1', text: '5', customName: _sdT('Rating'), _bindings: { text: '__review_rating' } }),
+                                                createNode('semantic', { tag: 'span', cssClass: '', text: '/5', customName: _sdT('Out of') })
+                                            ]),
+                                            createNode('semantic', { tag: 'p', cssClass: 'card-text', text: _sdT('Review text'), customName: _sdT('Review text'),
+                                                _bindings: { text: '__review_text', eo_visible_if: 'review_has_text' } }),
+                                            grLink('small', _sdT('The review on Google Maps'), _sdT('Read on Google Maps'), '__review_url')
+                                        ])
+                                    ])
+                                ])
+                            ])
+                        ]),
+                        createNode('semantic', { tag: 'p', cssClass: 'text-body-secondary', text: _sdT('Google shows no review of the business yet.'), customName: _sdT('No reviews'),
+                            _bindings: { eo_visible_if: 'no_reviews' } }),
+                        createNode('semantic', { tag: 'div', cssClass: 'd-flex flex-wrap justify-content-between align-items-center gap-2 mt-3 small', customName: _sdT('Attribution') }, [
+                            grLink('', _sdT('The business on Google Maps'), _sdT('See all reviews on Google Maps'), '__place_maps_url'),
+                            createNode('semantic', { tag: 'span', cssClass: 'text-body-secondary notranslate', text: 'Google Maps', customName: _sdT('Google attribution'),
+                                _attrs: [{ name: 'translate', value: 'no' }], _bindings: { text: '__google_attribution' } })
                         ])
                     ])
                 ]);
@@ -63756,6 +64048,8 @@ const StyleDesigner = (function () {
                         _swAcctField(_sdT('Address (line 2)'), saId + '_addr2', 'text', 'address_2', { autocomplete: 'address-line2', attrs: [{ name: 'maxlength', value: '50' }] }),
                         createNode('semantic', { tag: 'div', cssClass: 'row', customName: _sdT('City') }, [
                             _swAcctField(_sdT('City'), saId + '_city', 'text', 'city', { required: true, autocomplete: 'address-level2', colCss: 'col-sm-6', attrs: [{ name: 'maxlength', value: '50' }] }),
+                            // Optional; the site shows it for a Turkish address.
+                            _swAcctField(_sdT('District'), saId + '_district', 'text', 'district', { autocomplete: 'address-level3', colCss: 'col-sm-6', attrs: [{ name: 'maxlength', value: '50' }] }),
                             saCountry
                         ]),
                         createNode('semantic', { tag: 'div', cssClass: 'row', customName: _sdT('State') }, [
@@ -64211,7 +64505,7 @@ const StyleDesigner = (function () {
     // "PHP Messages" box in the middle of the header that the page never shows.
     // An e-mail shows no alerts either (_render_system_widget_account_email()).
     // A list of recent comments takes no form either (_render_system_widget_comments_recent()).
-    var _SW_NO_MESSAGES = { cart_link: 1, login_region: 1, language_switcher: 1, account_invoices: 1, account_email: 1, comments_recent: 1, menu_region: 1, menu_sequence_region: 1, ad_region: 1, tag_cloud_region: 1 };
+    var _SW_NO_MESSAGES = { cart_link: 1, login_region: 1, language_switcher: 1, account_invoices: 1, account_email: 1, comments_recent: 1, menu_region: 1, menu_sequence_region: 1, ad_region: 1, tag_cloud_region: 1, google_reviews: 1 };
 
     // Removes every Messages block from a tree; true when there was one.
     function _sdDropMessagesNodes(n) {
@@ -68510,7 +68804,16 @@ const StyleDesigner = (function () {
             window.addEventListener('pagehide', function () { if (_pgTabLayoutTimer) _pgTabsLayoutSave(true); });
         }
         var addNew = document.getElementById('sd-tab-new-page');
-        if (addNew && !addNew._pgBound) { addNew._pgBound = true; addNew.addEventListener('click', _pgTabsAddNew); }
+        if (addNew && !addNew._pgBound) {
+            addNew._pgBound = true;
+            // The menu closes first: left open, it covers the new tab's name box.
+            addNew.addEventListener('click', function () {
+                var wrap = addNew.closest('.sd-tabs-add');
+                var btn = wrap ? wrap.querySelector('[data-bs-toggle="menu"]') : null;
+                if (btn) pgUI.menu.hide(btn);
+                _pgTabsAddNew();
+            });
+        }
         // The draft's Publish button: this page goes on the site with the
         // save it makes.
         var pubPage = document.getElementById('sd-publish-page');
@@ -72565,11 +72868,16 @@ const StyleDesigner = (function () {
     // the component, and the panels change the selected node without marking
     // anything: the next edit was never written. Compared here, before the
     // pages are serialised (_pgPageUnchanged()) and the flush reads the marks.
+    // A mark on a tree equal to its snapshot is dropped (deleted, since the
+    // draft/live check counts the keys), or every page showing that
+    // component would be sent; an entry without a snapshot keeps its mark.
     function _sdSharedCatchEdits() {
         Object.keys(_sharedSnapshots).forEach(function (k) {
-            if (_sharedDirty[k]) return;
             var c = _sharedCache[k];
-            if (c && c.tree && _sdSharedTreeJSON(c.tree) !== _sharedSnapshots[k]) _sharedDirty[k] = true;
+            if (!c || !c.tree) return;
+            var changed = _sdSharedTreeJSON(c.tree) !== _sharedSnapshots[k];
+            if (changed) _sharedDirty[k] = true;
+            else if (_sharedDirty[k]) delete _sharedDirty[k];
         });
     }
 
@@ -74832,27 +75140,36 @@ const StyleDesigner = (function () {
         return cl.contains('sd-shared-inner') || cl.contains('sd-loop-area') || cl.contains('sd-system-drop-area');
     }
 
-    // Every node the canvas can show, by id: the page's and those of the
-    // shared components, whose own nodes carry their ids on the canvas.
+    // Every node the canvas can show, by id: the page's in `page`, each
+    // shared component's in `shared[sid]`. Shared trees keep their saved ids,
+    // which collide with the page's (and with each other's), so one map
+    // named a page node after a shared one.
     function _sdCanvasNodeIndex(root) {
-        var index = {};
-        function walk(n) {
-            if (!n) return;
-            if (n._id) index[n._id] = n;
-            if (n.children) n.children.forEach(walk);
+        function build(top) {
+            var map = {};
+            (function walk(n) {
+                if (!n) return;
+                if (n._id) map[n._id] = n;
+                if (n.children) n.children.forEach(walk);
+            })(top);
+            return map;
         }
-        walk(root);
+        var index = { page: build(root), shared: {} };
         Object.keys(_sharedCache).forEach(function (sid) {
             var c = _sharedCache[sid];
-            if (c && c.tree) walk(c.tree);
+            if (c && c.tree) index.shared[sid] = build(c.tree);
         });
         return index;
     }
 
     // The node a canvas element belongs to: the nearest wrapper a tree knows.
+    // A wrapper inside a shared component carries its sid (`data-sw-sid`,
+    // buildSharedRefEl()), so its id is read in that component's tree only.
     function _sdCanvasNodeOf(el, index) {
         for (var w = el.closest('[data-sd-id]'); w; w = w.parentElement ? w.parentElement.closest('[data-sd-id]') : null) {
-            var n = index[w.getAttribute('data-sd-id')];
+            var sid = w.getAttribute('data-sw-sid');
+            var map = sid ? index.shared[sid] : index.page;
+            var n = map ? map[w.getAttribute('data-sd-id')] : null;
             if (n) return n.type === 'root' ? null : n;
         }
         return null;

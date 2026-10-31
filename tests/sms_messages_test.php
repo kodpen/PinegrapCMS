@@ -58,7 +58,7 @@ function test_sms_messages_normalize_defaults_off()
 {
 	$events = pg_sms_message_normalize(null);
 
-	pg_assert_same(array('order_received', 'order_shipped', 'order_delivered', 'stock_back', 'cod_code', 'signin_code'), array_keys($events));
+	pg_assert_same(array('order_received', 'order_shipped', 'order_delivered', 'stock_back', 'cod_code', 'signin_code', 'erp_overdue'), array_keys($events));
 	pg_assert_same(array('on' => false, 'text' => ''), $events['order_shipped']);
 
 	$events = pg_sms_message_normalize(array('events' => array('order_received' => array('on' => 1, 'text' => 'X'), 'order_shipped' => 'junk')));
@@ -156,4 +156,44 @@ function test_sms_messages_code_event_needs_code()
 	pg_assert_same(array(), $decision['marks']);
 	pg_assert_same('otp', pg_sms_message_events()['cod_code']['kind']);
 	pg_assert_false(pg_sms_message_normalize(null)['cod_code']['on'], 'off by default');
+}
+
+// The overdue receivable reminder is a transactional reminder, off until it
+// is switched on, and its built-in text names the account and what is due.
+function test_sms_messages_erp_overdue_event()
+{
+	$definition = pg_sms_message_events()['erp_overdue'];
+
+	pg_assert_same('reminder', $definition['kind']);
+	pg_assert_true(!empty($definition['erp']), 'shown only while the ERP module is on');
+	pg_assert_same(array('store', 'account', 'count', 'total'), $definition['fields']);
+	pg_assert_false(pg_sms_message_normalize(null)['erp_overdue']['on'], 'off by default');
+
+	$text = pg_sms_message_render($definition['text'], array(
+		'store'   => 'Shop',
+		'account' => 'Acme Ltd',
+		'count'   => '2',
+		'total'   => '1.250,00 TL',
+	));
+
+	pg_assert_contains('Shop', $text);
+	pg_assert_contains('Acme Ltd', $text);
+	pg_assert_contains('2', $text);
+	pg_assert_contains('1.250,00 TL', $text);
+	pg_assert_same(array(), pg_sms_message_template_fields($text), 'every field filled in');
+}
+
+// While the ERP module is off the card leaves the event out but carries its
+// stored switch and text, so a save keeps them.
+function test_sms_messages_erp_event_hidden_keeps_values()
+{
+	pg_assert_true(pg_sms_message_event_shown(pg_sms_message_events()['order_received'], false));
+	pg_assert_false(pg_sms_message_event_shown(pg_sms_message_events()['erp_overdue'], false));
+	pg_assert_true(pg_sms_message_event_shown(pg_sms_message_events()['erp_overdue'], true));
+
+	$html = pg_sms_message_event_hidden_fields('erp_overdue', array('on' => true, 'text' => 'Pay ^^total^^'));
+
+	pg_assert_contains('name="sms_msg_erp_overdue_on" value="1"', $html);
+	pg_assert_contains('name="sms_msg_erp_overdue_text" value="Pay ^^total^^"', $html);
+	pg_assert_same('', pg_sms_message_event_hidden_fields('erp_overdue', array('on' => false, 'text' => '')));
 }

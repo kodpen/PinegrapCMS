@@ -840,7 +840,9 @@ function ws_ref_sources_backfill_run($seconds = WS_REF_BACKFILL_SECONDS)
 }
 
 /**
- * A money amount in minor units, as the panel prints prices.
+ * A base-currency money amount in minor units, as the panel prints prices
+ * (prepare_amount(): the base symbol, no conversion to the currency the
+ * operator's browser picked for the shop). Plain text the caller escapes.
  *
  * @param int $minor
  * @return string
@@ -849,11 +851,38 @@ function ws_money_out($minor)
 {
     // The currency symbol is kept as an HTML entity (&#8378;); the text is
     // escaped where it is printed, so it travels decoded.
-    if (function_exists('prepare_price_for_output') && defined('VISITOR_CURRENCY_EXCHANGE_RATE')) {
-        return html_entity_decode(prepare_price_for_output((int) $minor, false, 0, 'plain_text'), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    if (function_exists('prepare_amount') && defined('BASE_CURRENCY_SYMBOL')) {
+        return html_entity_decode(prepare_amount(((int) $minor) / 100), ENT_QUOTES | ENT_HTML5, 'UTF-8');
     }
 
     return function_exists('pg_format_number') ? pg_format_number(((int) $minor) / 100, 2) : number_format(((int) $minor) / 100, 2);
+}
+
+/**
+ * An ERP document's amount in minor units, in the document's own currency,
+ * as the ERP screens print it (erp_money_out_currency()). Loads the ERP
+ * money helpers alone when the module's bootstrap has not run. Plain text
+ * the caller escapes.
+ *
+ * @param int    $minor
+ * @param string $currency ISO code; '' for the base currency
+ * @return string
+ */
+function ws_erp_money_out($minor, $currency)
+{
+    if (!function_exists('erp_money_out_currency')) {
+        // The gate every file under includes/erp/ checks; the ERP bootstrap
+        // defines it the same way.
+        if (!defined('PG_ERP_ENTRY')) {
+            define('PG_ERP_ENTRY', true);
+        }
+
+        require_once(PG_FUNCTIONS_DIR . '/includes/erp/money.php');
+    }
+
+    $currency = trim((string) $currency);
+
+    return erp_money_out_currency((int) $minor, ($currency !== '') ? $currency : (defined('BASE_CURRENCY_CODE') ? BASE_CURRENCY_CODE : ''));
 }
 
 /**
@@ -1135,7 +1164,7 @@ function ws_refs_resolve($viewer, $tokens)
 
     if (!empty($ids['invoice'])) {
         $rows = (defined('ERP_ENABLED') && ERP_ENABLED)
-            ? (array) db_items("SELECT i.id, i.full_number, i.status, i.grand_total, i.doc_type, a.title AS account_title
+            ? (array) db_items("SELECT i.id, i.full_number, i.status, i.grand_total, i.currency, i.doc_type, a.title AS account_title
                 FROM erp_invoices i LEFT JOIN erp_accounts a ON a.id = i.account_id
                 WHERE i.id IN (" . $in('invoice') . ")")
             : array();
@@ -1152,7 +1181,7 @@ function ws_refs_resolve($viewer, $tokens)
                 );
 
                 $put('invoice', $row['id'], lang('Invoice') . ' ' . $number, $base . 'edit_erp_invoice.php?id=' . (int) $row['id'],
-                    trim((string) $row['account_title'] . ' · ' . ws_money_out($row['grand_total']), ' ·'),
+                    trim((string) $row['account_title'] . ' · ' . ws_erp_money_out($row['grand_total'], $row['currency']), ' ·'),
                     $invoice_statuses[$row['status']] ?? (string) $row['status'], true, 'bi-receipt');
             } else {
                 $put('invoice', $row['id'], lang('Invoice'), '', '', '', false, 'bi-receipt');
@@ -1301,7 +1330,7 @@ function ws_refs_resolve($viewer, $tokens)
 
     if (!empty($ids['receipt'])) {
         $rows = (defined('ERP_ENABLED') && ERP_ENABLED)
-            ? (array) db_items("SELECT c.id, c.doc_type, c.doc_date, c.amount, a.title AS account_title
+            ? (array) db_items("SELECT c.id, c.doc_type, c.doc_date, c.amount, c.currency, a.title AS account_title
                 FROM erp_cash_transactions c LEFT JOIN erp_accounts a ON a.id = c.account_id
                 WHERE c.id IN (" . $in('receipt') . ") AND c.doc_type IN ('collection', 'payment')")
             : array();
@@ -1311,7 +1340,7 @@ function ws_refs_resolve($viewer, $tokens)
 
             if ($viewer['erp_cash']) {
                 $put('receipt', $row['id'], $title . ' #' . (int) $row['id'], $base . 'erp_receipt.php?id=' . (int) $row['id'],
-                    trim((string) $row['account_title'] . ' · ' . ws_money_out($row['amount']) . ' · ' . $date_out($row['doc_date']), ' ·'),
+                    trim((string) $row['account_title'] . ' · ' . ws_erp_money_out($row['amount'], $row['currency']) . ' · ' . $date_out($row['doc_date']), ' ·'),
                     '', true, 'bi-cash-coin');
             } else {
                 $put('receipt', $row['id'], lang('Cash receipt'), '', '', '', false, 'bi-cash-coin');
@@ -1321,7 +1350,7 @@ function ws_refs_resolve($viewer, $tokens)
 
     if (!empty($ids['edoc'])) {
         $rows = (defined('ERP_ENABLED') && ERP_ENABLED)
-            ? (array) db_items("SELECT id, gib_number, supplier_title, total, issue_date, status FROM erp_edoc_inbox WHERE id IN (" . $in('edoc') . ")")
+            ? (array) db_items("SELECT id, gib_number, supplier_title, total, currency, issue_date, status FROM erp_edoc_inbox WHERE id IN (" . $in('edoc') . ")")
             : array();
 
         $statuses = array('new' => lang('New'), 'imported' => lang('Imported'), 'ignored' => lang('Ignored'));
@@ -1329,7 +1358,7 @@ function ws_refs_resolve($viewer, $tokens)
         foreach ($rows as $row) {
             if ($viewer['erp']) {
                 $put('edoc', $row['id'], lang('Incoming e-invoice') . ' ' . $row['gib_number'], $base . 'erp_inbox_document.php?id=' . (int) $row['id'],
-                    trim((string) $row['supplier_title'] . ' · ' . ws_money_out($row['total']), ' ·'),
+                    trim((string) $row['supplier_title'] . ' · ' . ws_erp_money_out($row['total'], $row['currency']), ' ·'),
                     $statuses[$row['status']] ?? (string) $row['status'], true, 'bi-envelope-paper');
             } else {
                 $put('edoc', $row['id'], lang('Incoming e-invoice'), '', '', '', false, 'bi-envelope-paper');
@@ -1359,7 +1388,7 @@ function ws_refs_resolve($viewer, $tokens)
                 // grand_total is in the quote's own currency (erp_quote_save()
                 // keeps the base figure apart), so it is printed in that
                 // currency, as the quote screens print it; ws_money_out()
-                // would show it in the visitor's currency.
+                // would show it under the base symbol.
                 $put('erp_quote', $row['id'], lang('Sales quote') . ' ' . $number, $base . 'edit_erp_quote.php?id=' . (int) $row['id'],
                     trim((string) $row['account_title'] . ' · ' . erp_money_out_currency((int) $row['grand_total'], (string) $row['currency']), ' ·'),
                     $statuses[$state][0] ?? $state, true, 'bi-file-earmark-text');
@@ -1533,7 +1562,7 @@ function ws_ref_search($viewer, $type, $query, $limit = 8, $only = null)
     if (($type === 'user') || ($type === 'dept')) {
         if ($type === 'user') {
             foreach (ws_team_members() as $person) {
-                if (($query === '') || (mb_stripos($person['name'], $query) !== false) || (mb_stripos($person['username'], $query) !== false)) {
+                if (($query === '') || ws_text_contains($person['name'], $query) || ws_text_contains($person['username'], $query)) {
                     $out[] = array('token' => '<@user:' . $person['id'] . '>', 'type' => 'user', 'id' => $person['id'],
                         'label' => $person['name'], 'meta' => $person['title'], 'icon' => 'bi-person', 'avatar' => $person['avatar']);
                 }
@@ -1544,7 +1573,7 @@ function ws_ref_search($viewer, $type, $query, $limit = 8, $only = null)
             }
         } else {
             foreach (ws_departments() as $department) {
-                if (($query === '') || (mb_stripos($department['name'], $query) !== false)) {
+                if (($query === '') || ws_text_contains($department['name'], $query)) {
                     $out[] = array('token' => '<@dept:' . $department['id'] . '>', 'type' => 'dept', 'id' => $department['id'],
                         'label' => $department['name'], 'meta' => lang('Department'), 'icon' => 'bi-people');
                 }

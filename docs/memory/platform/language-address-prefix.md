@@ -14,3 +14,6 @@ The prefixes are settled before anything is written, in the screen's order, by `
 
 ## What about a site that already stored "pt-BR"?
 It heals without a migration: `router_translation_prefixes()` and `pg_tr_prefix_map()` lower-case the prefix keys, `pg_tr_prefix()` and `pg_tr_prefixes_rewrite()` lower-case what they hand out, and the screen shows the stored prefix lower-cased so the next save writes it that way.
+
+## What do the Number format, Date format and og:locale boxes of a row take?
+Number: 1234.56 written the language's way (`pg_number_separators()` accepts only `1<sep>234<sep>56`, anything else is ignored). Date: a PHP `date()` string used as-is on that language's pages. og:locale: `language_COUNTRY`; the save empties any other shape. An empty number or date box uses `pg_tr_known_languages()`'s default for that code, so each row's placeholder is that default, and the hint `tr_formats_hint_<code>` under the row states the three rules (pinned in `tests/languages_card_format_hint_test.php`).

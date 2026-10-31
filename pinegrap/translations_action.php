@@ -26,6 +26,13 @@ require('init.php');
 
 $user = validate_user();
 
+// The CSV import is the one form this file takes; a CSV over post_max_size
+// arrives without its 'action' field and would otherwise be read as a JSON
+// call. Only a multipart body is checked: the JSON calls never fill $_POST.
+if (stripos((string) ($_SERVER['CONTENT_TYPE'] ?? ''), 'multipart/form-data') === 0) {
+    pg_upload_refuse_discarded_body();
+}
+
 $translations_form_action = (isset($_POST['action']) && is_string($_POST['action'])) ? $_POST['action'] : '';
 $translations_is_import = in_array($translations_form_action, array('import', 'glossary_save', 'glossary_delete'), true);
 $translations_is_export = (isset($_GET['action']) && ($_GET['action'] === 'export'));
@@ -116,7 +123,7 @@ if (!$translations_is_import && !$translations_is_export) {
 
     if (($session_token === '') || !hash_equals($session_token, $sent_token)) {
         http_response_code(403);
-        translations_respond(array('status' => 'error', 'message' => lang('Invalid token.')));
+        translations_respond(array('status' => 'error', 'message' => lang('Your session expired. Reload the page and try again.')));
     }
 
     if (!pg_tr_ready()) {
@@ -523,6 +530,14 @@ if ($translations_form_action === 'glossary_save') {
 // ── the import: a posted file, written as reviewed translations, then back
 // to the screen with the counts ──
 
+$upload_limits = pg_upload_limits();
+$upload_refusal = pg_upload_file_refusal($_FILES['csv'] ?? null, $upload_limits['file_max']);
+
+if ($upload_refusal !== '') {
+    $liveform->mark_error('', h($upload_refusal));
+    go($back);
+}
+
 if (empty($_FILES['csv']) || !is_uploaded_file($_FILES['csv']['tmp_name'])) {
     $liveform->mark_error('', lang('Please choose a CSV file.'));
     go($back);
@@ -531,10 +546,26 @@ if (empty($_FILES['csv']) || !is_uploaded_file($_FILES['csv']['tmp_name'])) {
 $csv = (string) file_get_contents($_FILES['csv']['tmp_name']);
 $summary = pg_tr_csv_import($language, $csv, (int) $user['id'], !empty($_POST['as_machine']));
 
+if ($summary['error'] !== '') {
+    $liveform->mark_error('csv', h($summary['error']));
+    go($back);
+}
+
 log_activity(lang(array('string' => 'translations were imported from a CSV file ({var:1}, {var:2} text(s))', 'vars' => array($language, $summary['written']))), $_SESSION['sessionusername']);
 
 $liveform->add_notice(lang(array(
     'string' => 'CSV import: {var:1} translation(s) written, {var:2} empty row(s) skipped, {var:3} row(s) whose text has since changed, {var:4} row(s) rejected.',
     'vars'   => array($summary['written'], $summary['skipped'], $summary['stale'], $summary['rejected']))));
+
+// The first rejected rows, each with its file line and reason.
+if ($summary['problems']) {
+    $shown = array_map('h', array_slice($summary['problems'], 0, 20));
+
+    if (count($summary['problems']) > 20) {
+        $shown[] = h(lang(array('string' => 'and {var:1} more line(s) that could not be used.', 'vars' => array(count($summary['problems']) - 20))));
+    }
+
+    $liveform->add_error(implode('<br>', $shown));
+}
 
 go($back);

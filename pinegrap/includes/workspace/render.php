@@ -91,6 +91,37 @@ function ws_tag_card_html($body, $refs)
 }
 
 /**
+ * One character of a web address in text already escaped with h(): no
+ * space, angle bracket, quote or set-aside sign (\x01), and of the entities
+ * h() writes only &amp;. So an address ends where &quot;, &#039;, &lt; or
+ * &gt; starts: "https://a.test", <https://a.test>, a JSON value and
+ * https://kodpen.com'da link the address alone. $exclude adds characters
+ * that end it too (a regex class fragment).
+ *
+ * @param string $exclude
+ * @return string
+ */
+function ws_text_address_char($exclude = '')
+{
+    return '(?:[^\s<>"&\x01' . $exclude . ']|&amp;)';
+}
+
+/**
+ * An escaped address split into the address and the sentence's punctuation
+ * after it (. , ; : ! ? and a closing bracket). A trailing &amp; goes with
+ * the punctuation whole, never leaving "&amp" in the link.
+ *
+ * @param string $address
+ * @return array  array(address, tail)
+ */
+function ws_text_address_split($address)
+{
+    $tail = preg_match('/(?:[.,;:!?)]|&amp;)+$/', $address, $match) ? $match[0] : '';
+
+    return array(substr($address, 0, strlen($address) - strlen($tail)), $tail);
+}
+
+/**
  * The author's own text, escaped and lightly formatted.
  *
  * @param string $text
@@ -128,14 +159,13 @@ function ws_format_text($text)
 
     // [text](address): web and mail addresses only. Both parts are escaped
     // already, so neither can leave the attribute or the tag it lands in.
-    $html = preg_replace_callback('#\[([^\]\n\x01]{1,300})\]\(((?:https?://|mailto:)[^\s()<>"\x01]{1,1000})\)#i', function ($match) use ($keep, $emphasis) {
+    $html = preg_replace_callback('#\[([^\]\n\x01]{1,300})\]\(((?:https?://|mailto:)' . ws_text_address_char('()') . '{1,1000})\)#i', function ($match) use ($keep, $emphasis) {
         return $keep('<a href="' . $match[2] . '" target="_blank" rel="noopener noreferrer">' . $emphasis($match[1]) . '</a>');
     }, $html);
 
     // Bare web addresses.
-    $html = preg_replace_callback('#\bhttps?://[^\s<>"\x01]{2,500}#i', function ($match) use ($keep) {
-        $url = rtrim($match[0], '.,;:!?)');
-        $tail = substr($match[0], strlen($url));
+    $html = preg_replace_callback('#\bhttps?://' . ws_text_address_char() . '{2,500}#i', function ($match) use ($keep) {
+        list($url, $tail) = ws_text_address_split($match[0]);
 
         return $keep('<a href="' . $url . '" target="_blank" rel="noopener noreferrer">' . $url . '</a>') . $tail;
     }, $html);

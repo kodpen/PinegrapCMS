@@ -330,9 +330,7 @@ function pg_audit_view_csv_line(array $row)
     // A value spreadsheet software would run as a formula (a name or label
     // starting with =, +, -, @) is shown as text.
     foreach ($line as $index => $value) {
-        if (($value !== '') && (strpos("=+-@\t\r", $value[0]) !== false)) {
-            $line[$index] = "'" . $value;
-        }
+        $line[$index] = pg_csv_formula_guard($value);
     }
 
     return $line;
@@ -464,7 +462,7 @@ function pg_audit_view_labels($kind)
             'audit'        => lang('Audit trail'),
         ),
         'action' => array(
-            'create'  => lang('Created'),
+            'create'  => lang('Record created'),
             'update'  => lang('Updated'),
             'delete'  => lang('Deleted'),
             'recycle' => lang('Moved to the Recycle Bin'),

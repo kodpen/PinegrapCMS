@@ -127,6 +127,11 @@ function get_shipping_address_and_arrival($properties) {
         $form->assign_field_value('address_1', $row['address_1']);
         $form->assign_field_value('address_2', $row['address_2']);
         $form->assign_field_value('city', $row['city']);
+
+        // The district is kept on the recipient only: the address book has none.
+        if (pg_ship_to_district_ready()) {
+            $form->assign_field_value('district', (string) db_value("SELECT district FROM ship_tos WHERE id = '" . (int) $_GET['ship_to_id'] . "'"));
+        }
         $form->assign_field_value('state', $row['state']);
         $form->assign_field_value('zip_code', $row['zip_code']);
         $form->assign_field_value('country', $row['country']);
@@ -378,6 +383,19 @@ function get_shipping_address_and_arrival($properties) {
                 </div>';
         }
         
+        // The optional district, shown by its script while the country is
+        // Turkey or the recipient's carrier asks for it.
+        $output_district_row = '';
+
+        if (pg_ship_to_district_ready()) {
+            $district_asks = pg_ship_to_district_method_asks((int) db_value("SELECT shipping_method_id FROM ship_tos WHERE id = '" . (int) $_GET['ship_to_id'] . "'"));
+            $output_district_row =
+                '<tr data-pg-district-wrap>
+                    <td><label for="district">' . h(lang('District')) . '</label></td>
+                    <td><input type="text" id="district" name="district" size="40" maxlength="50" class="software_input_text" value="' . h((string) $form->get_field_value('district')) . '" data-pg-district="country" data-pg-district-codes="' . h(implode(',', pg_ship_to_district_tr_codes())) . '"' . ($district_asks ? ' data-pg-district-asks="1"' : '') . '>' . pg_ship_to_district_script() . '</td>
+                </tr>';
+        }
+
         $output_shipping_address_fields =
             '<table>
                 <tr>
@@ -408,6 +426,7 @@ function get_shipping_address_and_arrival($properties) {
                     <td>City*</td>
                     <td>' . $form->output_field(array('type'=>'text', 'id'=>'city', 'name'=>'city', 'size'=>'40', 'maxlength'=>'50', 'class'=>'software_input_text', 'required' => 'true')) . '</td>
                 </tr>
+                ' . $output_district_row . '
                 <tr>
                     <td>Country*</td>
                     <td>' . $form->output_field(array('type'=>'select', 'id'=>'country', 'name'=>'country', 'options'=>$country_options, 'class'=>'software_select', 'required' => 'true')) . '</td>

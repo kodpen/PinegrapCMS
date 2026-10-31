@@ -182,3 +182,38 @@ function test_liveform_output_field_aria_label()
 		pg_assert_false(strpos($form->output_field(array('type' => 'hidden', 'name' => 'h', 'aria-label' => 'x')), 'aria-label') !== false, 'hidden prints none');
 	});
 }
+
+// A field given aria-describedby (the id of a hint printed under it) prints
+// it, escaped; one without prints none.
+function test_liveform_output_field_aria_describedby()
+{
+	_test_liveform_with_session(function ($form) {
+		foreach (array('text', 'checkbox', 'select', 'textarea') as $type) {
+			$field = array('type' => $type, 'name' => 'd_' . $type);
+			if ($type === 'select') $field['options'] = array('A' => 'a');
+			pg_assert_false(strpos($form->output_field($field), 'aria-describedby') !== false, $type . ' without one');
+
+			$field['aria-describedby'] = 'x_hint"';
+			pg_assert_contains(' aria-describedby="x_hint&quot;"', $form->output_field($field), $type . ' with one');
+		}
+	});
+}
+
+// A field given autocapitalize prints it, escaped, beside spellcheck; one
+// without prints none, so site forms do not change.
+function test_liveform_output_field_autocapitalize()
+{
+	_test_liveform_with_session(function ($form) {
+		foreach (array('text', 'textarea') as $type) {
+			$field = array('type' => $type, 'name' => 'c_' . $type);
+			pg_assert_false(strpos($form->output_field($field), 'autocapitalize') !== false, $type . ' without one');
+
+			$field['autocapitalize'] = 'characters"';
+			$field['spellcheck'] = 'false';
+			$html = $form->output_field($field);
+			pg_assert_contains(' autocapitalize="characters&quot;"', $html, $type . ' with one');
+			pg_assert_contains(' spellcheck="false"', $html, $type . ' keeps spellcheck');
+			pg_assert_same(1, substr_count($html, 'autocapitalize='), $type . ': written once');
+		}
+	});
+}

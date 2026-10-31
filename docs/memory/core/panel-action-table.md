@@ -11,7 +11,8 @@ description: Adding an api.php panel action: the pg_panel_actions() row and its 
 
 ## What does the general gate do?
 - Listed with `exempt => true`: no general check; the handler checks session, token and role itself, in its own order (that order decides the error text clients rely on).
-- Listed, not exempt: a session (`Invalid login.`), then role <= 1 (`The User must have a Designer or Administrator role.`); `any_role => true` asks only for the session.
+- Listed, not exempt: a session (`panel_login_refusal()`: the translated "Your session has expired. Reload the page and sign in again." with `code: session`, or "Invalid login." when the request sent a user name and password), then role <= 1 ("The User must have a Designer or Administrator role.", translated); `any_role => true` asks only for the session.
+- An exempt handler that finds no session answers `respond(panel_login_refusal());` too, never its own literal.
 - Not listed: the same session + role <= 1 gate, then `Invalid action.`. Only names starting with `chat_`, `site_chat_` or `ws_` (`pg_panel_exempt_prefixes()`) skip the gate and get `Invalid action.` directly.
 - So an action open to role 2 or 3 is either `exempt => true` AND checks session, token and role in its handler, or `any_role => true` (the gate checks the session, the handler the rest; `get_form`, `get_forms`). An allowlist inside a handler never sees a request the gate stopped.
 

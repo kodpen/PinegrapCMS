@@ -35,7 +35,8 @@ $query =
         menus.id,
         menus.name,
         menu_items.name as menu_item_name,
-        menu_items.parent_id
+        menu_items.parent_id,
+        menu_items.link_page_id
     FROM menus
     LEFT JOIN menu_items ON menus.id = menu_items.menu_id
     WHERE menu_items.id = ?";
@@ -53,6 +54,8 @@ $menu_id = $row['id'];
 $menu_name = $row['name'];
 $menu_item_name = $row['menu_item_name'];
 $parent_id = $row['parent_id'];
+// The stored page stays in the page picker, so a plain Save keeps the link.
+$stored_link_page_id = (int) $row['link_page_id'];
 
 // if user has a user role and if they do not have access to this menu, output error
 if (($user['role'] == 3) && (in_array($menu_id, get_items_user_can_edit('menus', $user['id'])) == FALSE)) {
@@ -139,7 +142,7 @@ if (!$_POST) {
         'icon'=>'design',
         'heading'=>lang('Edit Menu Item'),
         'heading_description' => lang('Define the label to display for this menu item and where it links too.'),
-        'cancel'=>array('enable'=>'true','url'=>'view_menu_items.php'),
+        'cancel'=>array('enable'=>'true','url'=>'view_menu_items.php?id=' . (int)$menu_id . '&from=' . urlencode((string)($_GET['from'] ?? '')) . '&send_to=' . urlencode((string)($_GET['send_to'] ?? ''))),
         'breadcrumb' => array(
             array('label' => lang('All Menus'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_menus.php'),
             array('label' => lang('Edit Menu'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_menu_items.php?id=' . $menu_id),
@@ -170,13 +173,13 @@ if (!$_POST) {
                                         <div class="col-12 md:col-6 lg:col-4 my-3">
                                             <label for="sort_order" class="form-label">' . lang('Position') . '</label>
                                             ' . $liveform->output_field(array('type'=>'select', 'id'=>'sort_order', 'name'=>'sort_order', 'class'=>'form-control', 'options'=>$sort_order_options)) . '
-                                        </div>') . '
+                                        </div>', $stored_link_page_id) . '
                     
                     <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
                                 <button type="submit" id="submit_save" name="submit_save" value="Save" class="btn my-1  btn-solid theme-success "><span class="material-icons me-3">save</span><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>
-                                <button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-solid theme-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('menu item and all menu items underneath it')))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>
+                                <button type="submit" name="submit_delete" value="Delete" formnovalidate class="btn my-1  btn-solid theme-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('menu item and all menu items underneath it')))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>
                             </div>
                         </div>
                     </nav>
@@ -243,6 +246,13 @@ if (!$_POST) {
         
         $liveform->validate_required_field('name', lang('Name is required.'));
         
+        // An address a browser would run, or one the external API refuses, is
+        // refused here too; a chosen page blanks the URL, so it is not checked.
+        $url_problem = empty($_POST['link_page_id']) ? pg_menu_item_url_problem($_POST['link_url'] ?? '') : '';
+        if ($url_problem !== '') {
+            $liveform->mark_error('link_url', $url_problem);
+        }
+
         // if there is an error, forward user back to edit menu screen
         if ($liveform->check_form_errors() == true) {
             header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/edit_menu_item.php?id=' . $_POST['id'] . '&from=' . urlencode($_POST['from']) . '&send_to=' . urlencode($_POST['send_to']));

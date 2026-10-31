@@ -18,6 +18,16 @@ if (!defined('PG_TEST_RUNNER')) {
 	exit;
 }
 
+if (!defined('PG_MCP_ENTRY')) {
+	define('PG_MCP_ENTRY', true);
+}
+
+if (!defined('PG_API_PANEL')) {
+	define('PG_API_PANEL', true);
+}
+
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/refs.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/commands.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/wtables.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/wtable_screen.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/render.php');
@@ -49,6 +59,56 @@ function test_workspace_wtable_import_number()
 	pg_assert_same(null, ws_wtable_import_number('12a'));
 	pg_assert_same(null, ws_wtable_import_number('.'));
 	pg_assert_same(null, ws_wtable_import_number(''));
+}
+
+// Runs $test with the site writing decimals with a comma (Turkish) or a dot,
+// then puts the site's own way back.
+function ws_wtable_import_test_in($comma, $test)
+{
+	$own = ws_calc_decimal_comma();
+	ws_calc_decimal_comma($comma);
+
+	try {
+		$test();
+	} finally {
+		ws_calc_decimal_comma($own);
+	}
+}
+
+function test_workspace_wtable_import_number_site()
+{
+	ws_wtable_import_test_in(true, function () {
+		pg_assert_same('1250', ws_wtable_import_number('1.250'), 'Turkish: a dot before three digits groups thousands');
+		pg_assert_same('1.25', ws_wtable_import_number('1,25'));
+		pg_assert_same('1.250', ws_wtable_import_number('1,250'), 'Turkish: a comma is the decimal, three digits or not');
+		pg_assert_same('1.25', ws_wtable_import_number('1.25'), 'a dot not before three digits is the decimal');
+		pg_assert_same('1250.50', ws_wtable_import_number('1.250,50'));
+		pg_assert_same('1250.50', ws_wtable_import_number('1,250.50'));
+		pg_assert_same('0.250', ws_wtable_import_number('0.250'), 'a lone nought is no thousands group');
+		pg_assert_same('1234.567', ws_wtable_import_number('1234.567'), 'four digits before the mark are no group');
+		pg_assert_same(array('amount' => '1250', 'currency' => 'TRY'), ws_wtable_import_money('1.250 ₺'));
+		pg_assert_same(array('amount' => '1250', 'currency' => 'TRY'), ws_wtable_import_money('1.250 TL'));
+		pg_assert_same(125000, ws_wtable_import_cell(array('type' => 'money', 'options' => array('decimals' => 2)), '₺1.250 '), 'money in minor units');
+		pg_assert_same('1250', ws_wtable_import_cell(array('type' => 'number', 'options' => array()), '1.250'));
+		pg_assert_same('1,250 kg', ws_wtable_import_cell(array('type' => 'number', 'options' => array()), '1,250 kg'), 'not a number: handed over as written');
+		pg_assert_same(array('type' => 'number', 'options' => array('decimals' => 0)), ws_wtable_import_guess(array('1.250', '2.500', '3')), 'the guess is still a number');
+		pg_assert_same(array('type' => 'money', 'options' => array('decimals' => 2, 'currency' => 'TRY')), ws_wtable_import_guess(array('1.250 ₺', '12,50 TL')));
+		pg_assert_same('text', ws_wtable_import_guess(array('1.250', 'yok'))['type'], 'a cell that is no number keeps the column text');
+	});
+
+	ws_wtable_import_test_in(false, function () {
+		pg_assert_same('1250', ws_wtable_import_number('1,250'), 'English: a comma before three digits groups thousands');
+		pg_assert_same('1.25', ws_wtable_import_number('1.25'));
+		pg_assert_same('1.250', ws_wtable_import_number('1.250'), 'English: a dot is the decimal, three digits or not');
+		pg_assert_same('1.25', ws_wtable_import_number('1,25'), 'a comma not before three digits is the decimal');
+		pg_assert_same('1250.50', ws_wtable_import_number('1,250.50'));
+		pg_assert_same('1250.50', ws_wtable_import_number('1.250,50'));
+		pg_assert_same(array('amount' => '1250', 'currency' => 'USD'), ws_wtable_import_money('$1,250'));
+		pg_assert_same(array('amount' => '1250', 'currency' => 'EUR'), ws_wtable_import_money('EUR 1,250'));
+		pg_assert_same(125000, ws_wtable_import_cell(array('type' => 'money', 'options' => array('decimals' => 2)), '1,250 USD'));
+		pg_assert_same(array('type' => 'number', 'options' => array('decimals' => 0)), ws_wtable_import_guess(array('1,250', '2,500', '3')));
+		pg_assert_same('text', ws_wtable_import_guess(array('1,250', 'n/a'))['type']);
+	});
 }
 
 function test_workspace_wtable_import_money()
@@ -146,6 +206,37 @@ function test_workspace_wtable_import_cell()
 	pg_assert_true(ws_wtable_cell_check($status, ws_wtable_import_cell($status, 'open'))['ok']);
 }
 
+// A Turkish file written in capitals: İ, I, ı and i are one letter in the
+// keys, so statuses, column names and people match the other spelling.
+function test_workspace_wtable_import_turkish_fold()
+{
+	pg_assert_same(array('Açık', 'AÇIK 2', 'Isı', 'ISI 2'), ws_wtable_import_names(array('Açık', 'AÇIK', 'Isı', 'ISI')), 'a name met before, I and ı aside, gets a number');
+
+	$status = array('type' => 'status', 'options' => array('choices' => array(array('key' => 's1', 'label' => 'Açık', 'color' => ''))));
+	pg_assert_same('s1', ws_wtable_import_cell($status, 'AÇIK'), 'a status by its label in capitals');
+	pg_assert_same('s1', ws_wtable_import_cell($status, 'açik'));
+
+	$columns = array(
+		7 => array('name' => 'İsim', 'type' => 'text'),
+		8 => array('name' => 'Açıklama', 'type' => 'text'),
+	);
+	$match = ws_wtable_import_match(array('İSİM', 'AÇIKLAMA'), $columns);
+	pg_assert_same(array(0 => 7, 1 => 8), $match['map'], 'column names across I/ı and İ/i');
+	pg_assert_same(array(), $match['unmatched']);
+
+	$people = array(ws_fold('Can Yıldız') => 5);
+	pg_assert_same(5, ws_wtable_import_cell(array('type' => 'person'), 'CAN YILDIZ', $people), 'a person in capitals');
+	pg_assert_same(5, ws_wtable_import_cell(array('type' => 'person'), 'can yildiz', $people));
+
+	$guess = ws_wtable_import_guess(array('Açık', 'AÇIK', 'Kapalı', 'KAPALI', 'açık', 'Kapalı'));
+	pg_assert_same('status', $guess['type']);
+	pg_assert_same(array('Açık', 'Kapalı'), array_column($guess['options']['choices'], 'label'), 'the first spelling met is the label');
+
+	// Plain ASCII keys as before.
+	pg_assert_same(array('Name', 'NAME 2'), ws_wtable_import_names(array('Name', 'NAME')));
+	pg_assert_same(5, ws_wtable_import_cell(array('type' => 'person'), 'Ada Lovelace', array(ws_fold('Ada Lovelace') => 5)));
+}
+
 function test_workspace_wtable_import_row_cells()
 {
 	$columns = array(3 => array('type' => 'text'), 4 => array('type' => 'number', 'options' => array('decimals' => 0)));
@@ -210,4 +301,45 @@ function test_workspace_wtable_import_note_rows()
 	pg_assert_same(array('Item', 'Price'), $rows[0]);
 	pg_assert_same(array('Cup', '6'), $rows[1], 'a formula as its value');
 	pg_assert_same(array('Can', ''), $rows[2], 'a formula error is empty');
+}
+
+function test_workspace_wtable_import_note_choices_from()
+{
+	// Rows as ws_notes_list() gives them: an excerpt, no body.
+	$notes = array(
+		array('id' => 7, 'title' => 'Fruit', 'name' => 'Fruit', 'excerpt' => 'Ürün Adet Fiyat', 'access' => 'owner'),
+		array('id' => 8, 'title' => 'Plain', 'name' => 'Plain', 'excerpt' => 'No table here', 'access' => 'owner'),
+		array('id' => 9, 'title' => 'Shared', 'name' => 'Shared', 'excerpt' => '…', 'access' => 'view'),
+	);
+	$bodies = array(
+		7 => "| Ürün | Adet | Fiyat |\n|---|---|---|\n| Elma | 3 | 12,50 |\n| Armut | 1 | 20 |",
+		8 => 'a | b without a row of dashes',
+	);
+
+	$choices = ws_wtable_import_note_choices_from($notes, $bodies);
+
+	pg_assert_same(array(array('note' => 7, 'block' => 0, 'label' => 'Fruit — Ürün, Adet, Fiyat')), $choices, 'a table from the body; a note without one or without a body is left out');
+	pg_assert_same(array(), ws_wtable_import_note_choices_from($notes, array()), 'the excerpt is never read');
+}
+
+function test_workspace_wtable_import_temp_name()
+{
+	pg_assert_true(ws_wtable_import_temp_name('/tmp/pg_wtimport_Ab12Cd'), 'the whole prefix');
+	pg_assert_true(ws_wtable_import_temp_name('C:\\Windows\\Temp\\pg_1A2B.tmp'), 'Windows: three prefix characters, backslashes');
+	pg_assert_true(ws_wtable_import_temp_name('C:\\Windows\\Temp\\pg_F.TMP'));
+	pg_assert_true(!ws_wtable_import_temp_name('C:\\Windows\\Temp\\other.tmp'), 'another file');
+	pg_assert_true(!ws_wtable_import_temp_name('C:\\pg_wtimport_x\\secret.txt'), 'the prefix in a folder name only');
+	pg_assert_true(!ws_wtable_import_temp_name('/tmp/pg_session.json'));
+	pg_assert_true(!ws_wtable_import_temp_name(''));
+}
+
+function test_workspace_wtable_import_kept_path()
+{
+	$path = tempnam(sys_get_temp_dir(), 'pg_wtimport_');
+	$real = realpath($path);
+
+	pg_assert_same($real, ws_wtable_import_kept_path($path), 'a file tempnam() wrote in the temp folder');
+	pg_assert_same('', ws_wtable_import_kept_path(__FILE__), 'a file elsewhere');
+	@unlink($path);
+	pg_assert_same('', ws_wtable_import_kept_path($path), 'a file no longer there');
 }

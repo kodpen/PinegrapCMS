@@ -240,5 +240,13 @@ if ($style['type'] == 'system') {
 }
 log_activity(lang(array('string'=>'{var:1} ({var:2}) was duplicated','vars'=>array(lang('page style'), $original_style_name) )), $_SESSION['sessionusername']);
 
+// Edit Custom Page Style prints its notices; the system style screen keeps
+// its own per-style notices and would never show this one.
+if ($style['type'] == 'custom') {
+    include_once('liveform.class.php');
+    $liveform = new liveform('edit_custom_style');
+    $liveform->add_notice(lang(array('string' => 'The {var:1} has been duplicated, and you are now editing the duplicate.', 'vars' => lang('page style'))));
+}
+
 header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_' . $style['type'] . '_style.php?id=' . $new_style_id);
 ?>

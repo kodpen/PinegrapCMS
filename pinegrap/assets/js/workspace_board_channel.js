@@ -529,8 +529,11 @@
             var share = k.el('span', 'ws-cb-progress');
             var bar = k.el('span', 'progress ws-cb-progress-bar');
             var fill = k.el('span', 'progress-bar');
+            var shareText = t('progress_text', item.progress.done, item.progress.total, item.progress.percent);
 
+            // The bar is named with the sentence; the title only serves the mouse.
             bar.setAttribute('role', 'progressbar');
+            bar.setAttribute('aria-label', shareText);
             bar.setAttribute('aria-valuemin', '0');
             bar.setAttribute('aria-valuemax', '100');
             bar.setAttribute('aria-valuenow', String(item.progress.percent));
@@ -538,7 +541,7 @@
             bar.appendChild(fill);
             share.appendChild(bar);
             share.appendChild(document.createTextNode(item.progress.done + '/' + item.progress.total));
-            share.title = t('progress_text', item.progress.done, item.progress.total, item.progress.percent);
+            share.title = shareText;
             meta.appendChild(share);
         }
 

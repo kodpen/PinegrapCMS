@@ -5,7 +5,7 @@ module: designer_fx
 ---
 
 ## Why this shape?
-- Approved 2026-10-19 (`plans/designer-interactions-collections.md`): data attributes read by one small script, CSS transitions and IntersectionObserver only, no GSAP, `prefers-reduced-motion` honoured, no per-component JavaScript. Built in I1 #1922, I2 #1961, I3 #1977, I4 #1998.
+- Approved 2026-10-19: data attributes read by one small script, CSS transitions and IntersectionObserver only, no GSAP, `prefers-reduced-motion` honoured, no per-component JavaScript. Built in I1 #1922, I2 #1961, I3 #1977, I4 #1998.
 
 ## Where is a node's interaction kept?
 - In `props._fx` (next to `_attrs`): one effect per node. `pg_fx_normalize()` (`includes/fn/designer_fx.php`) and its twin `_sdFxNormalize()` keep the known fields in range and drop those that do not apply (no trigger or timing for sticky and parallax, `stagger` only for load/view, `repeat` only for view, no `distance` for fade). An unknown effect is no interaction.

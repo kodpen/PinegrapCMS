@@ -18,3 +18,7 @@ description: Pitfalls: notices and warnings stay in the session until remove_for
 - A notice waits in the session until a screen prints it and removes the form. When the request that adds it runs twice before that (two tabs, a request the browser or a tool repeats), the list holds the sentence twice and the screen prints "Notices:" with it twice.
 - A notice that describes a state rather than an action is added only when it is not already waiting: `if (!in_array($notice, $liveform->get_notices(), true))`. The theme designer's redirect to the CSS editor for a theme without designer settings does this since PR #671; the custom form's "off" notice in `includes/fn/widgets.php` did already.
 - The class itself does not drop repeated notices: two copies made by two requests are two facts. Errors are different: `output_errors()` and `get_errors()` print a repeated sentence once.
+
+## Which notices does Edit Custom Page Style print?
+- Its own `edit_custom_style` liveform under the heading, then `remove_form()`: Duplicate (`duplicate_style.php`, custom styles only) queues "has been duplicated, and you are now editing the duplicate", Save queues "The style was edited successfully." The system style screen keeps per-style notices, so Duplicate queues nothing for it.
+- Symptom fixed: the copy looked like the original apart from its `[name[1]]` heading, and Save confirmed nothing. Pinned by `tests/file_style_duplicate_test.php`.

@@ -1,6 +1,6 @@
 ---
 name: marketplace-products-names
-description: Marketplace products screen: row boxes named per row, focus kept on a redrawn row, disabled pager arrows as spans, status text in emphasis inks, counts formatted (#2988), read progress announced
+description: Marketplace products screen: named row boxes, focus kept on redrawn rows and when the bulk bar hides, pager spans, emphasis inks, formatted counts, announced progress and selected count
 ---
 
 ## How are the row tick boxes named?
@@ -11,8 +11,15 @@ description: Marketplace products screen: row boxes named per row, focus kept on
 - The code box: Save and Cancel give it to the row's `[data-mp-act="code"]` button (Cancel rewrites the cell's markup).
 - The product picker: after an accept it waits for `pgUI.dialog.hide()` and then focuses the fresh row, because the dialog's return target was the replaced row.
 
+## Where does the focus go when the bulk bar hides?
+- `updateBulk()` hides `#mpp-bulk` when nothing is ticked. If the bar holds the focus (Clear, or a step that empties the selection), it first focuses `#mpp-select-all`, else the first `[data-mp-select]`. Before, Clear hid its own button and the focus fell to `<body>`.
+
+## Is the selected count announced?
+- Yes. The bar is not a live region, so `updateBulk()` passes the bar's own visible text (`#mpp-bulk-n` and its "selected" word, read from the DOM; no new string) to `window.pgAnnounce()` 400 ms after the last change. The count on load is the baseline: nothing is said on load or when the count stays the same.
+
 ## How is the pager drawn?
 - `mp_products_pager_arrow()` prints a link, or a `<span class="btn … disabled" aria-disabled="true">` when there is no page that way. Bootstrap 6 `.btn.disabled` only sets `pointer-events: none`, so a disabled `<a href>` stayed in the tab order and Enter followed it.
+- An empty page read while the view still has rows (`mp_products_page_past_end()`) is read again on `pg_list_page_clamp()`'s last page: a bulk accept reloads `?page=N`, which showed an empty list and "Page 3 of 2" (#3862).
 
 ## Which colours carry the status text?
 - Matched and ready figures, the matched/sure score and the "Sure" tag: `--pg-success-fg-emphasis`; not-sent figures and error lines (`.mpp-err`): `--pg-danger-fg-emphasis`. The fills read 1.85:1 and 2.74:1 as text. The meter, row tints and card borders keep the fills.
@@ -28,4 +35,4 @@ description: Marketplace products screen: row boxes named per row, focus kept on
 - `#mpp-meter` shows the matched share, or the read share while a read runs. `setMeter(value, name)` sets its width, `aria-valuenow` and `aria-label` together: `readFrom()` passes the read share and "Reading products", `setCounts()` the matched share and "Matched". Before, a read widened the bar but the meter still read the matched value under the name "Matched".
 - `#mpp-progress-text` is `role="status"`; `announceProgress()` writes "x of y products read" only every 10% of the read or 10 s, so a long read is heard without a message per page. Failures go to `#mpp-flash`.
 
-Test: `tests/marketplace_products_names_test.php`, `tests/pg_ui_test.php` (`test_pg_ui_build_dialog`).
+Test: `tests/marketplace_products_names_test.php`, `tests/marketplace_bulk_bar_test.php`, `tests/pg_ui_test.php` (`test_pg_ui_build_dialog`).

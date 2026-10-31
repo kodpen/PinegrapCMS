@@ -17,6 +17,7 @@ description: How a green merge train lands (2026-10-25): one fast-forward push, 
 - Find the PR that breaks it: drop the PRs that touch the failing area, or split the train in two. Take it out with one comment naming the failure, rebuild the rest from `origin/development` (rerere replays the resolutions) and run CI once more. Nothing lands before the train is green: a red `development` makes every PR's CI red for the train's reason.
 
 ## Is GitHub's merge queue an option?
-- It does the same (groups PRs, tests the merged result, merges) but needs rulesets on `development` and a `merge_group:` trigger in `php-checks.yml`, and it cannot settle a language-file conflict. With the Turkish wording in sorted shards ([[lang-files]]) it is the next step (plan [[merge-flow-tools]]); until then, the train.
+- Not planned. It groups PRs and tests the merged result, but needs rulesets on `development` and a `merge_group:` trigger in `php-checks.yml`, and it settles no conflict. The trains settle the shared-file conflicts (plan files, generated indexes, language shards [[lang-files]]) that a queue would push back to every author.
+- Decided in #2454 (2026-10-27): the trains stay. The queue is looked at again only once those conflicts are designed away and rulesets are set on `development`.
 
 Related: docs/memory/workflow/merge-train-tool.md, docs/memory/workflow/merge-train.md, docs/memory/workflow/merge-review.md

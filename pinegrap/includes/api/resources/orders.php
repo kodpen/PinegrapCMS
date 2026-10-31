@@ -43,9 +43,12 @@ function api_order_statuses() {
 // The money columns, listed once. Every one of them is stored in minor units and
 // leaves in minor units - the surface this replaces divided by a hundred here
 // and multiplied by a hundred there, so no client could hold one rule.
+// gift_card_discount lowers the total and installment_charges raises it
+// (a payment service adds the bank's instalment difference to the total),
+// neither with a line of its own, so a client needs both to explain a total.
 function api_order_money_fields() {
 
-	return array('subtotal', 'discount', 'tax', 'shipping', 'surcharge', 'total');
+	return array('subtotal', 'discount', 'tax', 'shipping', 'surcharge', 'gift_card_discount', 'installment_charges', 'total');
 
 }
 
@@ -84,6 +87,9 @@ function api_order_present($row, $items = null, $shipments = null) {
 			'transaction_id' => $row['transaction_id']
 		),
 		'offer_code' => $row['special_offer_code'],
+		// The number of instalments the card was charged in: 1 (or 0 on an
+		// order saved before a payment was taken) for a single payment.
+		'payment_installment' => isset($row['payment_installment']) ? (int)$row['payment_installment'] : 0,
 		// Null on a site that lacks the column (api_order_state_columns()).
 		'type'                => array_key_exists('type', $row) ? (string)$row['type'] : null,
 		'cancelled_at'        => array_key_exists('cancelled_at', $row) ? api_time($row['cancelled_at']) : null,
@@ -93,7 +99,8 @@ function api_order_present($row, $items = null, $shipments = null) {
 
 	foreach (api_order_money_fields() as $field) {
 
-		$order['totals'][$field] = api_money($row[$field]);
+		// A column the row lacks counts as nothing, never a notice.
+		$order['totals'][$field] = api_money(isset($row[$field]) ? round((float)$row[$field]) : 0);
 
 	}
 
@@ -263,8 +270,8 @@ function api_order_select($present = null) {
 			orders.billing_city, orders.billing_state, orders.billing_zip_code,
 			orders.billing_country, orders.billing_phone_number,
 			orders.subtotal, orders.discount, orders.tax, orders.shipping,
-			orders.surcharge, orders.total,
-			orders.payment_method, orders.transaction_id, orders.special_offer_code,
+			orders.surcharge, orders.gift_card_discount, orders.installment_charges, orders.total,
+			orders.payment_method, orders.payment_installment, orders.transaction_id, orders.special_offer_code,
 			contacts.member_id
 		FROM orders
 		LEFT JOIN contacts ON orders.contact_id = contacts.id";
@@ -1702,6 +1709,8 @@ function api_order_schema() {
 			'tax'       => 'integer',
 			'shipping'  => 'integer',
 			'surcharge' => 'integer',
+			'gift_card_discount'  => 'integer',
+			'installment_charges' => 'integer',
 			'total'     => 'integer'
 		),
 		'payment' => array(
@@ -1709,6 +1718,7 @@ function api_order_schema() {
 			'transaction_id' => 'string?'
 		),
 		'offer_code' => 'string',
+		'payment_installment' => 'integer',
 		'type'                => 'string?',
 		'cancelled_at'        => 'string?',
 		'cancellation_reason' => 'string?',

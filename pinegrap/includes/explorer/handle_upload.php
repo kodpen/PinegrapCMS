@@ -83,7 +83,7 @@ function pg_explorer_handle_upload($type, $request, $user)
             'status' => 'error',
             'message' => lang(array(
                 'string' => 'The file is too large. The maximum allowed size is {var:1}.',
-                'vars' => convert_bytes_to_string($upload_limits['json_max'])))));
+                'vars' => convert_bytes_to_string($upload_limits['json_max'], 'floor')))));
     }
 
     // Same rules the upload screen applies: URL-safe ASCII name and
@@ -211,7 +211,7 @@ function pg_explorer_handle_upload($type, $request, $user)
 
     pg_audit_record('create', 'files', (int) $file_id);
 
-    log_activity(lang(array('string' => 'The file, {var:1}, has been uploaded.', 'vars' => h($name))), $_SESSION['sessionusername']);
+    log_activity(lang(array('string' => 'The file, {var:1}, has been uploaded.', 'vars' => $name)), $_SESSION['sessionusername']);
 
     // What was done to the picture is worth its own line: the file on
     // the site is no longer byte for byte the one that was sent, and
@@ -220,9 +220,9 @@ function pg_explorer_handle_upload($type, $request, $user)
         log_activity(lang(array(
             'string' => 'image ({var:1}) was optimized on upload ({var:2} -> {var:3})',
             'vars' => array(
-                h($name),
-                convert_bytes_to_string($image_report['bytes_before']),
-                convert_bytes_to_string($image_report['bytes_after'])))),
+                $name,
+                convert_bytes_to_string($image_report['bytes_before'], 'auto'),
+                convert_bytes_to_string($image_report['bytes_after'], 'auto')))),
             $_SESSION['sessionusername']);
     }
 
@@ -232,6 +232,6 @@ function pg_explorer_handle_upload($type, $request, $user)
         'file' => array(
             'id' => (int) $file_id,
             'name' => $name,
-            'size_label' => convert_bytes_to_string(filesize($file_path))),
-        'message' => lang(array('string' => 'The file, {var:1}, has been uploaded.', 'vars' => h($name)))));
+            'size_label' => convert_bytes_to_string(filesize($file_path), 'auto')),
+        'message' => lang(array('string' => 'The file, {var:1}, has been uploaded.', 'vars' => $name))));
 }

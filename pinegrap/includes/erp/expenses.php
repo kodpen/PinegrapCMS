@@ -37,6 +37,116 @@ if (!defined('ERP_EXPENSE_FILE_MAX_BYTES')) {
 }
 
 /**
+ * The biggest file an ERP upload box takes: the box's own limit, or the
+ * server's single-file limit (upload_max_filesize, held under
+ * post_max_size) when that is lower. A box that states only its own limit
+ * promises a size the server refuses before the screen sees it.
+ *
+ * @param int      $app_max    bytes, the box's own limit
+ * @param int|null $server_max bytes, the server's; null reads pg_upload_limits()
+ * @return int
+ */
+function erp_upload_max_bytes($app_max, $server_max = null)
+{
+    if ($server_max === null) {
+        $limits = function_exists('pg_upload_limits') ? pg_upload_limits() : array();
+        $server_max = (int) ($limits['file_max'] ?? 0);
+    }
+
+    $app_max = (int) $app_max;
+    $server_max = (int) $server_max;
+
+    if (($server_max > 0) && (($app_max <= 0) || ($server_max < $app_max))) {
+        return $server_max;
+    }
+
+    return $app_max;
+}
+
+/**
+ * A limit in megabytes for the "at most {var:1} MB" hints: whole when it is,
+ * else to one decimal, so a 512 KB server limit does not read as 0 MB.
+ *
+ * @param int $bytes
+ * @return string
+ */
+function erp_upload_mb_text($bytes)
+{
+    $mb = round(((int) $bytes) / 1048576, 1);
+
+    return pg_format_number($mb, ($mb == floor($mb)) ? 0 : 1);
+}
+
+/**
+ * What an ERP screen says when PHP threw its request away for being over
+ * post_max_size (pg_post_body_discarded()): nothing typed arrived, so the
+ * screen names the size that was sent and the most one request may carry.
+ *
+ * @param int|null $sent     bytes, the request's Content-Length; null reads it
+ * @param int|null $post_max bytes, post_max_size; null reads pg_upload_limits()
+ * @return string  Plain text
+ */
+function erp_upload_discarded_message($sent = null, $post_max = null)
+{
+    if ($sent === null) {
+        $sent = (int) ($_SERVER['CONTENT_LENGTH'] ?? 0);
+    }
+
+    if ($post_max === null) {
+        $limits = function_exists('pg_upload_limits') ? pg_upload_limits() : array();
+        $post_max = (int) ($limits['post_max'] ?? 0);
+    }
+
+    return lang(array(
+        'string' => 'Nothing was saved: the request was {var:1} and this server accepts at most {var:2} in one request. Choose a smaller file, or raise post_max_size and upload_max_filesize on the server.',
+        'vars' => array(convert_bytes_to_string((int) $sent, 1), convert_bytes_to_string((int) $post_max, 1))));
+}
+
+/**
+ * Why one $_FILES entry of an ERP upload box is refused, naming the file and
+ * the limit it went over; '' for a file under both limits and for an empty
+ * box, which each screen words itself.
+ *
+ * @param array|null $upload     one entry of $_FILES
+ * @param int        $app_max    bytes, the box's own limit
+ * @param int|null   $server_max bytes, the server's; null reads pg_upload_limits()
+ * @return string  Plain text
+ */
+function erp_upload_refusal($upload, $app_max, $server_max = null)
+{
+    if (!is_array($upload)) {
+        return '';
+    }
+
+    $error = (int) ($upload['error'] ?? UPLOAD_ERR_NO_FILE);
+    $name = (string) ($upload['name'] ?? '');
+
+    if ($error === UPLOAD_ERR_NO_FILE) {
+        return '';
+    }
+
+    $max = erp_upload_max_bytes($app_max, $server_max);
+
+    if (in_array($error, array(UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE), true)) {
+        return lang(array(
+            'string' => '{var:1} is larger than {var:2}, the biggest single file this server accepts.',
+            'vars' => array($name, convert_bytes_to_string($max, 1))));
+    }
+
+    if ($error !== UPLOAD_ERR_OK) {
+        return lang(array('string' => '{var:1} did not arrive whole. Please choose it again.', 'vars' => array($name)));
+    }
+
+    if ((int) ($upload['size'] ?? 0) > $max) {
+        return lang(array(
+            'string' => '{var:1} is larger than {var:2}, the biggest file this box takes.',
+            'vars' => array($name, convert_bytes_to_string($max, 1))));
+    }
+
+    return '';
+}
+
+/**
  * Whether the expense tables are there (2026.4.4, 4.95).
  *
  * @return bool
@@ -1267,13 +1377,11 @@ function erp_expense_receipt_check($id, $bytes, $replace = false)
 function erp_expense_attach($id, $upload, $user_id = 0, $replace = false)
 {
     if (!is_array($upload) || ((int) ($upload['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) || !is_uploaded_file((string) ($upload['tmp_name'] ?? ''))) {
-        $code = is_array($upload) ? (int) ($upload['error'] ?? UPLOAD_ERR_NO_FILE) : UPLOAD_ERR_NO_FILE;
+        $refusal = erp_upload_refusal(is_array($upload) ? $upload : null, ERP_EXPENSE_FILE_MAX_BYTES);
 
         return array(
             'success' => false,
-            'error' => in_array($code, array(UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE), true)
-                ? lang('The file is larger than the server accepts.')
-                : lang('Choose a picture or a PDF of the receipt.'),
+            'error' => ($refusal !== '') ? $refusal : lang('Choose a picture or a PDF of the receipt.'),
             'replaced' => false,
             'code' => 'invalid',
         );

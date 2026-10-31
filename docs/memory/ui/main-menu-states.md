@@ -25,4 +25,4 @@ description: Main menu on wide screens: expanded / mini / hidden, the one bar bu
 - Below lg the shut drawer is `inert` (`main-menu-drawer-focus.md`).
 
 ## What does the tour say?
-- The frame tour's menu step says that a row with an arrow opens its pages in the menu and that the button at the top left walks the three states, only narrowing on the navigator screens; its narrow step rings `#menu_mode_toggle`. `PG_TOUR_SHELL_KEY` is `shell.6` (the navigator sentence); `shell.5` for the one button, `shell.4` for the earlier controls (#598).
+- Menu step: an arrow row opens its pages in the menu, Back returns, Menu view (top left, Ctrl+D) walks the three states, only narrowing on navigator screens. Narrow step: rings `#menu_mode_toggle`, names Show menu / Hide menu. `PG_TOUR_SHELL_KEY` is `shell.6` (navigator sentence; kept for wording fixes); `shell.5` for the one button, `shell.4` for the earlier controls (#598).

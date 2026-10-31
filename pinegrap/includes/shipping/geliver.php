@@ -13,8 +13,9 @@
  * create() takes:
  *
  *   order_number  string  the store's order number
- *   recipient     array   name, email, phone, address_1, address_2, city
- *                         (the district), state (the province), state_code
+ *   recipient     array   name, email, phone, address_1, address_2, city,
+ *                         district (sent first, else the city), state (the
+ *                         province), state_code
  *                         (the province's licence plate number), zip,
  *                         country (ISO 3166-1 alpha-2, TR when empty)
  *   parcel        array   length, width, height (cm), weight (kg)
@@ -296,7 +297,7 @@ function pg_label_geliver_shipment_body($shipment, $account)
         'address2'     => $text($recipient, 'address_2'),
         'countryCode'  => ($country !== '') ? $country : 'TR',
         'cityName'     => $text($recipient, 'state'),
-        'districtName' => $text($recipient, 'city'),
+        'districtName' => pg_label_recipient_district($recipient),
         'zip'          => $text($recipient, 'zip'),
     );
 

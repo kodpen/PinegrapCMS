@@ -56,13 +56,13 @@ function pg_shipment_status_reported($status)
 /**
  * Who wrote a row: the order screen (and the Workspace, which saves through
  * it), the external API, a marketplace import, a carrier's own API, a CSV
- * upload.
+ * upload, a ShipWorks shipment update.
  *
  * @return string[]
  */
 function pg_shipment_sources()
 {
-    return array('panel', 'api', 'marketplace', 'carrier', 'csv');
+    return array('panel', 'api', 'marketplace', 'carrier', 'csv', 'shipworks');
 }
 
 /**
@@ -1235,6 +1235,593 @@ function pg_shipping_postcode_province($country, $state, $postcode)
 }
 
 /**
+ * Whether step 11.0.134 has run: ship_tos.district exists. Until it has, an
+ * address is written and copied without its district, as before.
+ *
+ * @return bool
+ */
+function pg_ship_to_district_ready()
+{
+    return function_exists('pg_schema_has') && pg_schema_has('ship_tos', 'district');
+}
+
+/**
+ * Whether a country, as a code or a name ('TR', 'Turkey', 'Türkiye'), is
+ * Turkey. Pure.
+ *
+ * @param  string $country countries.code or countries.name
+ * @param  string $name    countries.name when $country is the code
+ * @return bool
+ */
+function pg_ship_to_district_country_is_tr($country, $name = '')
+{
+    $country = is_scalar($country) ? trim((string) $country) : '';
+    $name = is_scalar($name) ? trim((string) $name) : '';
+
+    if (($country === '') && ($name === '')) {
+        return false;
+    }
+
+    require_once(PG_FUNCTIONS_DIR . '/includes/sales_map.php');
+
+    return pg_sales_map_canonical_country($country, ($name !== '') ? $name : $country) === 'TR';
+}
+
+/**
+ * The codes of the shop's countries rows that stand for Turkey, for the
+ * script that shows the box when one of them is picked.
+ *
+ * @return array list of countries.code
+ */
+function pg_ship_to_district_tr_codes()
+{
+    static $codes = null;
+
+    if ($codes !== null) {
+        return $codes;
+    }
+
+    $codes = array();
+
+    foreach ((array) db_items("SELECT code, name FROM countries") as $row) {
+        if (((string) $row['code'] !== '') && pg_ship_to_district_country_is_tr((string) $row['code'], (string) $row['name'])) {
+            $codes[] = (string) $row['code'];
+        }
+    }
+
+    return $codes;
+}
+
+/**
+ * Whether a carrier's label driver asks for the recipient's district. A
+ * driver says so by defining pg_label_<key>_needs_district() that answers
+ * true (Aras, Kargonomi). pg_label_info() loads the driver first, so the
+ * hook is seen on a request that has not loaded it yet.
+ *
+ * @param  string $carrier a pg_shipping_carriers() key, '' when not known
+ * @return bool
+ */
+function pg_ship_to_district_carrier_asks($carrier)
+{
+    $carrier = (string) $carrier;
+
+    if (($carrier === '') || !function_exists('pg_label_drivers') || !function_exists('pg_label_info')) {
+        return false;
+    }
+
+    foreach (array_keys(pg_label_drivers()) as $key) {
+        $ask = 'pg_label_' . $key . '_needs_district';
+
+        if (in_array($carrier, (array) pg_label_info($key)['carriers'], true) && function_exists($ask) && $ask()) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/**
+ * Whether the optional district box is drawn for an address: only once
+ * ship_tos.district exists, then for a Turkish address or one whose carrier's
+ * driver asks for it.
+ *
+ * @param  string    $country countries.code or countries.name of the address
+ * @param  bool      $carrier_asks pg_ship_to_district_carrier_asks()
+ * @param  bool|null $ready pg_ship_to_district_ready(), asked when null
+ * @return bool
+ */
+function pg_ship_to_district_shown($country, $carrier_asks = false, $ready = null)
+{
+    if ($ready === null) {
+        $ready = pg_ship_to_district_ready();
+    }
+
+    if (!$ready) {
+        return false;
+    }
+
+    return $carrier_asks || pg_ship_to_district_country_is_tr($country);
+}
+
+/**
+ * A typed district as it is stored: one line, trimmed, at most 50
+ * characters (cut by character, so a Turkish letter is never split). Empty
+ * is allowed: the box is never required. Pure.
+ *
+ * @param  mixed  $value
+ * @return string
+ */
+function pg_ship_to_district_clean($value)
+{
+    $value = is_scalar($value) ? (string) $value : '';
+    // Line breaks and control characters become one space; a value that is
+    // not UTF-8 is dropped rather than stored broken.
+    $value = preg_replace('/[\x00-\x1F\x7F\s]+/u', ' ', $value);
+    $value = ($value === null) ? '' : trim($value);
+
+    if ($value === '') {
+        return '';
+    }
+
+    if (function_exists('mb_substr')) {
+        return trim(mb_substr($value, 0, 50, 'UTF-8'));
+    }
+
+    return trim(substr($value, 0, 50));
+}
+
+/**
+ * The ", district = '…'" part of an UPDATE or INSERT … SET of ship_tos, or ''
+ * while the column is missing, so a save before step 11.0.134 writes the
+ * address without it, as before.
+ *
+ * @param  mixed     $value the typed district
+ * @param  bool|null $ready pg_ship_to_district_ready(), asked when null
+ * @return string
+ */
+function pg_ship_to_district_set_sql($value, $ready = null)
+{
+    if ($ready === null) {
+        $ready = pg_ship_to_district_ready();
+    }
+
+    if (!$ready) {
+        return '';
+    }
+
+    return ", district = '" . escape(pg_ship_to_district_clean($value)) . "'";
+}
+
+/**
+ * Whether the carrier of a shipping method asks for the district
+ * (pg_ship_to_district_carrier_asks()); no for a method without a carrier or
+ * before the carrier column exists.
+ *
+ * @param  int  $method_id shipping_methods.id
+ * @return bool
+ */
+function pg_ship_to_district_method_asks($method_id)
+{
+    $method_id = (int) $method_id;
+
+    if (($method_id <= 0) || !pg_shipment_rows_ready()) {
+        return false;
+    }
+
+    return pg_ship_to_district_carrier_asks((string) db_value("SELECT carrier FROM shipping_methods WHERE id = '" . $method_id . "'"));
+}
+
+/**
+ * The district part of a ship_tos UPDATE for a posted address: the typed
+ * value while the box applies to the address, '' when it does not (a box
+ * left over from another country is not kept), nothing at all while the
+ * column is missing.
+ *
+ * @param  mixed $value     the posted district
+ * @param  string $country  the posted country code
+ * @param  int   $method_id the address's shipping method, 0 when not chosen yet
+ * @return string pg_ship_to_district_set_sql()
+ */
+function pg_ship_to_district_address_sql($value, $country, $method_id = 0)
+{
+    if (!pg_ship_to_district_ready()) {
+        return '';
+    }
+
+    $shown = pg_ship_to_district_shown($country, pg_ship_to_district_method_asks($method_id), true);
+
+    return pg_ship_to_district_set_sql($shown ? $value : '', true);
+}
+
+/**
+ * Writes the district of a posted address on its recipient
+ * (pg_ship_to_district_address_sql(), with the recipient's own shipping
+ * method); nothing while the column is missing.
+ *
+ * @param  int    $ship_to_id
+ * @param  mixed  $value   the posted district
+ * @param  string $country the posted country code
+ * @return void
+ */
+function pg_ship_to_district_save($ship_to_id, $value, $country)
+{
+    $ship_to_id = (int) $ship_to_id;
+
+    if (($ship_to_id <= 0) || !pg_ship_to_district_ready()) {
+        return;
+    }
+
+    $method_id = (int) db_value("SELECT shipping_method_id FROM ship_tos WHERE id = '" . $ship_to_id . "'");
+    $set = pg_ship_to_district_address_sql($value, $country, $method_id);
+
+    if ($set !== '') {
+        db("UPDATE ship_tos SET " . substr($set, 2) . " WHERE id = '" . $ship_to_id . "'");
+    }
+}
+
+/**
+ * The path (child indexes) to the first node of a designer tree $match says
+ * yes to, or null. Pure.
+ *
+ * @param  array    $tree
+ * @param  callable $match receives a node
+ * @return array|null
+ */
+function pg_ship_to_district_tree_path($tree, $match)
+{
+    if (!is_array($tree)) {
+        return null;
+    }
+
+    if ($match($tree)) {
+        return array();
+    }
+
+    if (!empty($tree['children']) && is_array($tree['children'])) {
+        foreach ($tree['children'] as $i => $child) {
+            $path = pg_ship_to_district_tree_path($child, $match);
+
+            if ($path !== null) {
+                return array_merge(array($i), $path);
+            }
+        }
+    }
+
+    return null;
+}
+
+/**
+ * Whether a node only wraps its control and labels (a field's column), so it
+ * goes and is hidden with the control. Pure.
+ *
+ * @param  array $node
+ * @return bool
+ */
+function pg_ship_to_district_tree_is_wrap($node)
+{
+    if (!is_array($node) || empty($node['children']) || !is_array($node['children']) || (count($node['children']) > 3)) {
+        return false;
+    }
+
+    $controls = 0;
+
+    foreach ($node['children'] as $child) {
+        $tag = isset($child['props']['tag']) ? strtolower((string) $child['props']['tag']) : '';
+
+        if (in_array($tag, array('input', 'select', 'textarea'), true)) {
+            $controls++;
+        } elseif (!in_array($tag, array('label', 'small', 'span'), true)) {
+            return false;
+        }
+    }
+
+    return $controls === 1;
+}
+
+/**
+ * Fits the district box into a widget's designer tree. While the column is
+ * missing a district control (and the column that wraps it) is removed. Once
+ * it exists, a tree designed before the box gets $node right after the City
+ * control's column, so every saved checkout page draws it; a tree that has
+ * the control keeps it where the designer put it. Pure.
+ *
+ * @param  array    $tree
+ * @param  callable $is_city     receives a node: the City control
+ * @param  callable $is_district receives a node: the district control
+ * @param  array    $node        the field to add (a column with a label and the control)
+ * @param  bool     $ready       pg_ship_to_district_ready()
+ * @return void
+ */
+function pg_ship_to_district_tree_fit(&$tree, $is_city, $is_district, $node, $ready)
+{
+    $path = pg_ship_to_district_tree_path($tree, $is_district);
+
+    if (!$ready) {
+        if (($path === null) || (count($path) === 0)) {
+            return;
+        }
+
+        $parent_path = array_slice($path, 0, -1);
+        $parent = pg_ship_to_district_tree_node($tree, $parent_path);
+
+        if ((count($parent_path) > 0) && pg_ship_to_district_tree_is_wrap($parent)) {
+            $path = $parent_path;
+        }
+
+        pg_ship_to_district_tree_splice($tree, $path, null);
+
+        return;
+    }
+
+    if ($path !== null) {
+        return;
+    }
+
+    $path = pg_ship_to_district_tree_path($tree, $is_city);
+
+    if (($path === null) || (count($path) === 0)) {
+        return;
+    }
+
+    $parent_path = array_slice($path, 0, -1);
+
+    if ((count($parent_path) > 0) && pg_ship_to_district_tree_is_wrap(pg_ship_to_district_tree_node($tree, $parent_path))) {
+        $path = $parent_path;
+    }
+
+    pg_ship_to_district_tree_splice($tree, $path, $node);
+}
+
+// The node at $path of a tree, null when there is none.
+function pg_ship_to_district_tree_node($tree, $path)
+{
+    foreach ($path as $i) {
+        if (!isset($tree['children'][$i])) {
+            return null;
+        }
+
+        $tree = $tree['children'][$i];
+    }
+
+    return $tree;
+}
+
+// Removes the node at $path ($add null) or puts $add right after it.
+function pg_ship_to_district_tree_splice(&$tree, $path, $add)
+{
+    $last = array_pop($path);
+    $parent = &$tree;
+
+    foreach ($path as $i) {
+        $parent = &$parent['children'][$i];
+    }
+
+    $children = array_values($parent['children']);
+    array_splice($children, $last + (($add === null) ? 0 : 1), ($add === null) ? 1 : 0, ($add === null) ? array() : array($add));
+    $parent['children'] = $children;
+    unset($parent);
+}
+
+/**
+ * Gives the district control its attributes for the show script
+ * (pg_ship_to_district_script()): the name of the country control it
+ * follows, the codes that stand for Turkey, whether the carrier asks for it
+ * anyway, at most 50 characters; its column is marked as what is hidden.
+ * Pure.
+ *
+ * @param  array    $tree
+ * @param  callable $is_district receives a node: the district control
+ * @param  string   $country_name name of the country control
+ * @param  array    $tr_codes     pg_ship_to_district_tr_codes()
+ * @param  bool     $asks         the carrier asks for the district
+ * @return void
+ */
+function pg_ship_to_district_tree_mark(&$tree, $is_district, $country_name, $tr_codes, $asks)
+{
+    $path = pg_ship_to_district_tree_path($tree, $is_district);
+
+    if ($path === null) {
+        return;
+    }
+
+    $attrs = array(
+        'data-pg-district' => (string) $country_name,
+        'data-pg-district-codes' => implode(',', (array) $tr_codes),
+        'maxlength' => '50',
+    );
+
+    if ($asks) {
+        $attrs['data-pg-district-asks'] = '1';
+    }
+
+    $last = array_pop($path);
+    $node = &$tree;
+
+    foreach ($path as $i) {
+        $node = &$node['children'][$i];
+    }
+
+    if ((count($path) > 0) && pg_ship_to_district_tree_is_wrap($node)) {
+        pg_ship_to_district_node_attrs($node, array('data-pg-district-wrap' => ''));
+    }
+
+    pg_ship_to_district_node_attrs($node['children'][$last], $attrs);
+    unset($node);
+}
+
+// Sets attributes on a node (props._attrs), replacing ones of the same name.
+function pg_ship_to_district_node_attrs(&$node, $attrs)
+{
+    $list = (isset($node['props']['_attrs']) && is_array($node['props']['_attrs'])) ? $node['props']['_attrs'] : array();
+    $list = array_values(array_filter($list, function ($a) use ($attrs) {
+        return !(is_array($a) && isset($a['name']) && array_key_exists((string) $a['name'], $attrs));
+    }));
+
+    foreach ($attrs as $name => $value) {
+        $list[] = array('name' => $name, 'value' => (string) $value);
+    }
+
+    $node['props']['_attrs'] = $list;
+}
+
+/**
+ * The script that shows each district box only while its country is Turkey
+ * (or its carrier asks for it), following the country control as the
+ * visitor changes it. Once per page.
+ *
+ * @return string
+ */
+function pg_ship_to_district_script()
+{
+    static $done = false;
+
+    if ($done) {
+        return '';
+    }
+
+    $done = true;
+
+    return '<script>(function(){'
+        . 'function sync(i){var f=i.form,c=f?f.elements[i.getAttribute("data-pg-district")]:null;'
+        .   'var w=i.closest("[data-pg-district-wrap]")||i,codes=(i.getAttribute("data-pg-district-codes")||"").split(",");'
+        .   'var on=i.hasAttribute("data-pg-district-asks")||(c&&codes.indexOf(c.value)!==-1);w.hidden=!on;}'
+        . 'function all(){document.querySelectorAll("[data-pg-district]").forEach(sync);}'
+        . 'document.addEventListener("change",function(e){var t=e.target;if(!t||!t.name||!t.form)return;'
+        .   't.form.querySelectorAll("[data-pg-district]").forEach(function(i){if(i.getAttribute("data-pg-district")===t.name)sync(i);});});'
+        . 'if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",all);else all();'
+        . '})();</script>';
+}
+
+/**
+ * A Turkish province's licence plate number from its name ('İstanbul' ->
+ * '34'), or '' for a name no province carries. Accents, case and spacing are
+ * folded the way the sales map folds them, so 'IĞDIR', 'Iğdır' and the older
+ * spellings the states table ships ('Afyon', 'Hakkari') all match.
+ *
+ * @param  string $name a states.name value
+ * @return string two digits or ''
+ */
+function pg_state_plate_code($name)
+{
+    $name = is_scalar($name) ? trim((string) $name) : '';
+
+    if ($name === '') {
+        return '';
+    }
+
+    require_once(PG_FUNCTIONS_DIR . '/includes/sales_map.php');
+
+    $code = pg_sales_map_match_region('TR', $name);
+
+    return ($code === '') ? '' : substr($code, 3);
+}
+
+/**
+ * The plate codes to write into Turkish states rows: id => plate number for
+ * each row whose plate_code is empty and whose name is a province. A row
+ * that already has a plate code, whoever wrote it, is left out.
+ *
+ * @param  array $rows each: id, name, plate_code (missing reads as empty)
+ * @return array int id => string plate number
+ */
+function pg_state_plate_codes($rows)
+{
+    $codes = array();
+
+    foreach ((array) $rows as $row) {
+        if (!is_array($row) || !isset($row['id'])) {
+            continue;
+        }
+
+        if (isset($row['plate_code']) && (trim((string) $row['plate_code']) !== '')) {
+            continue;
+        }
+
+        $plate = pg_state_plate_code(isset($row['name']) ? $row['name'] : '');
+
+        if ($plate !== '') {
+            $codes[(int) $row['id']] = $plate;
+        }
+    }
+
+    return $codes;
+}
+
+/**
+ * The ids of the countries rows that stand for Turkey, read the way the sales
+ * map reads a row: its code when that is a country code, else its name, else
+ * its code as a name (a row whose code is 'TÜRKİYE').
+ *
+ * @param  array $rows each: id, name, code
+ * @return array int ids
+ */
+function pg_state_plate_country_ids($rows)
+{
+    require_once(PG_FUNCTIONS_DIR . '/includes/sales_map.php');
+
+    $ids = array();
+
+    foreach ((array) $rows as $row) {
+        if (!is_array($row) || !isset($row['id'])) {
+            continue;
+        }
+
+        $code = isset($row['code']) ? $row['code'] : '';
+        $name = isset($row['name']) ? $row['name'] : '';
+
+        if (pg_sales_map_canonical_country($code, $name) === 'TR') {
+            $ids[] = (int) $row['id'];
+        }
+    }
+
+    return $ids;
+}
+
+/**
+ * The checkout's order for a Turkish ship_tos row stored the other way round
+ * (province in city, town in state), as n11 imports kept it before #2004:
+ * city, state and district to write, or an empty array when the row is not
+ * reversed. A row counts as reversed when its country is Turkey (empty, a
+ * code or a name the sales map reads as TR), its city names a province and
+ * its state names none, so a row already in the checkout's order, or one an
+ * earlier run swapped, never matches. The district takes the town only when
+ * it is empty.
+ *
+ * @param  array $row city, state, district, country (missing reads as empty)
+ * @return array city, state, district, or array()
+ */
+function pg_ship_to_reversed_tr_swap($row)
+{
+    if (!is_array($row)) {
+        return array();
+    }
+
+    $read = function ($key) use ($row) {
+        return (isset($row[$key]) && is_scalar($row[$key])) ? (string) $row[$key] : '';
+    };
+
+    $country = trim($read('country'));
+    $city = $read('city');
+    $state = $read('state');
+    $district = $read('district');
+
+    require_once(PG_FUNCTIONS_DIR . '/includes/sales_map.php');
+
+    if (($country !== '') && (pg_sales_map_canonical_country($country, $country) !== 'TR')) {
+        return array();
+    }
+
+    if ((pg_sales_map_match_region('TR', $city) === '') || (pg_sales_map_match_region('TR', $state) !== '')) {
+        return array();
+    }
+
+    return array(
+        'city'     => $state,
+        'state'    => $city,
+        'district' => (trim($district) === '') ? $state : $district);
+}
+
+/**
  * The note under an address whose postcode belongs to another province.
  *
  * @param  string $province the province the postcode points to
@@ -1243,4 +1830,74 @@ function pg_shipping_postcode_province($country, $state, $postcode)
 function pg_shipping_postcode_province_text($province)
 {
     return lang(array('string' => 'This postcode belongs to {var:1}, not to the province given. Check the address before shipping.', 'vars' => array($province)));
+}
+
+/**
+ * The Shipped and Delivered steps of the order view timeline. A step is a
+ * fact only when a record says so; otherwise it is the checkout estimate,
+ * even after the estimated day has passed.
+ *
+ * An address counts as shipped when it has a numbered parcel or a shipped
+ * quantity ("Mark Shipped" writes the quantity and no parcel). Its day is its
+ * earliest parcel shipped_at, else its ship_date. The earliest shipped address
+ * wins; with none shipped, the earliest ship_date of all is the estimate.
+ * Delivered is the earliest parcel delivered_at, else the earliest
+ * delivery_date as an estimate.
+ *
+ * @param  array $addresses each: ship_date, delivery_date (Y-m-d, '' or
+ *                          '0000-00-00'), shipped_quantity (int), parcels
+ *                          (rows with shipped_at, delivered_at unix ints, 0
+ *                          when unknown)
+ * @return array shipped => {ts, estimate}, delivered => {ts, estimate}; ts 0
+ *               is no step
+ */
+function pg_shipment_timeline_steps($addresses)
+{
+    $day = function ($date) {
+        $date = trim((string) $date);
+        if ($date === '' || $date === '0000-00-00') {
+            return 0;
+        }
+        $ts = strtotime($date);
+
+        return ($ts > 0) ? $ts : 0;
+    };
+    $earliest = function ($current, $ts) {
+        return ($ts > 0 && ($current === 0 || $ts < $current)) ? $ts : $current;
+    };
+
+    $shipped_real = 0;
+    $shipped_estimate = 0;
+    $delivered_real = 0;
+    $delivered_estimate = 0;
+
+    foreach ((array) $addresses as $address) {
+        if (!is_array($address)) {
+            continue;
+        }
+        $ship_day = $day(isset($address['ship_date']) ? $address['ship_date'] : '');
+        $shipped_estimate = $earliest($shipped_estimate, $ship_day);
+        $delivered_estimate = $earliest($delivered_estimate, $day(isset($address['delivery_date']) ? $address['delivery_date'] : ''));
+
+        $parcels = isset($address['parcels']) ? (array) $address['parcels'] : array();
+        $parcel_shipped = 0;
+        foreach ($parcels as $parcel) {
+            $parcel_shipped = $earliest($parcel_shipped, isset($parcel['shipped_at']) ? (int) $parcel['shipped_at'] : 0);
+            $delivered_real = $earliest($delivered_real, isset($parcel['delivered_at']) ? (int) $parcel['delivered_at'] : 0);
+        }
+
+        $shipped = !empty($parcels) || (isset($address['shipped_quantity']) && (int) $address['shipped_quantity'] > 0);
+        if ($shipped) {
+            $shipped_real = $earliest($shipped_real, ($parcel_shipped > 0) ? $parcel_shipped : $ship_day);
+        }
+    }
+
+    return array(
+        'shipped'   => ($shipped_real > 0)
+            ? array('ts' => $shipped_real, 'estimate' => false)
+            : array('ts' => $shipped_estimate, 'estimate' => true),
+        'delivered' => ($delivered_real > 0)
+            ? array('ts' => $delivered_real, 'estimate' => false)
+            : array('ts' => $delivered_estimate, 'estimate' => true),
+    );
 }

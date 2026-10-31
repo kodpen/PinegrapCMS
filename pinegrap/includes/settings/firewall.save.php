@@ -2,7 +2,7 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Site Settings - what the Firewall screen writes: the request filter, the bot policy and the address lists.
+ * Site Settings - what the Firewall and HTTPS screen writes: the request filter, the trusted proxies, the bot policy, the address lists and the HTTPS headers.
  *
  * Runs in the scope of includes/settings/screen.php, after the token check and
  * after post_value() is defined. Only the columns edited by the cards on this
@@ -184,13 +184,13 @@ if (!defined('PG_SETTINGS_ENTRY')) {
             $waf_post_sensitivity = 'medium';
         }
 
-        $waf_post_requests  = max(10, min(60000, (int) post_value('waf_rate_limit_requests')));
-        $waf_post_sensitive = max(3,  min(60000, (int) post_value('waf_rate_limit_sensitive')));
-        $waf_post_api       = max(10, min(60000, (int) post_value('waf_rate_limit_api')));
-        $waf_post_threshold = max(1,  min(1000,  (int) post_value('waf_auto_ban_threshold')));
-        $waf_post_minutes   = max(1,  min(43200, (int) post_value('waf_auto_ban_minutes')));
-        $waf_post_retention = max(1,  min(3650,  (int) post_value('waf_log_retention_days')));
-        $waf_post_max_rows  = max(500, min(5000000, (int) post_value('waf_log_max_rows')));
+        $waf_post_requests  = max(10, min(60000, pg_parse_whole_number(post_value('waf_rate_limit_requests'), 60000)));
+        $waf_post_sensitive = max(3,  min(60000, pg_parse_whole_number(post_value('waf_rate_limit_sensitive'), 60000)));
+        $waf_post_api       = max(10, min(60000, pg_parse_whole_number(post_value('waf_rate_limit_api'), 60000)));
+        $waf_post_threshold = max(1,  min(1000,  pg_parse_whole_number(post_value('waf_auto_ban_threshold'), 1000)));
+        $waf_post_minutes   = max(1,  min(43200, pg_parse_whole_number(post_value('waf_auto_ban_minutes'), 43200)));
+        $waf_post_retention = max(1,  min(3650,  pg_parse_whole_number(post_value('waf_log_retention_days'), 3650)));
+        $waf_post_max_rows  = max(500, min(5000000, pg_parse_whole_number(post_value('waf_log_max_rows'), 5000000)));
 
         // A proxy added or edited here reads X-Forwarded-For only unless its
         // vendor header is named; one already stored keeps its reading.
@@ -258,8 +258,8 @@ if (!defined('PG_SETTINGS_ENTRY')) {
             // for readability, waf_csp_policy() folds them when sending.
             $waf_post_csp_policy = mb_substr(trim((string) post_value('security_csp_policy')), 0, 4000);
 
-            $waf_post_inflight    = max(0, min(50, (int) post_value('waf_inflight_limit')));
-            $waf_post_max_minutes = max($waf_post_minutes, min(525600, (int) post_value('waf_auto_ban_max_minutes')));
+            $waf_post_inflight    = max(0, min(50, pg_parse_whole_number(post_value('waf_inflight_limit'), 50)));
+            $waf_post_max_minutes = max($waf_post_minutes, min(525600, pg_parse_whole_number(post_value('waf_auto_ban_max_minutes'), 525600)));
 
             $sql_waf_settings .=
                 "security_headers = '" . escape(post_value('security_headers') ? 1 : 0) . "',
@@ -283,77 +283,6 @@ if (!defined('PG_SETTINGS_ENTRY')) {
             last_modified_timestamp = UNIX_TIMESTAMP()");
 
 
-    // Email block list. Its column arrives with migration 4.15, so a database
-    // that has not been upgraded yet must not break the rest of this save.
-    // Normalised on the way in: trimmed, lower-cased, de-duplicated - the list
-    // is matched case-insensitively, and a tidy list is one an operator can
-    // still read a year from now.
-    if (pg_schema_has('config', 'banned_email_addresses')) {
-        $bea_entries = array();
-
-        foreach (preg_split('/[\r\n,;]+/', (string) post_value('banned_email_addresses')) as $bea_entry) {
-            $bea_entry = pg_email_fold(trim($bea_entry));
-
-            if (($bea_entry !== '') && !in_array($bea_entry, $bea_entries, true)) {
-                $bea_entries[] = $bea_entry;
-            }
-        }
-
-        db("UPDATE config SET banned_email_addresses = '" . escape(implode(',', $bea_entries)) . "'");
-
-        // Blocking an address has to reach the session that is already open,
-        // or the person being blocked simply carries on until their token
-        // expires - which is the whole complaint the list exists to answer.
-        // Only accounts that actually hold a live token are examined, and only
-        // members: a revoked token ends the session on that browser's very
-        // next request (initialize_user treats a missing token as fatal).
-        //
-        // The freshly saved list is read here rather than the constant, which
-        // still holds the value this request started with.
-        $bea_live = mysqli_query(db::$con,
-            "SELECT DISTINCT user.user_id, user.user_email
-            FROM auth_tokens
-            INNER JOIN user ON auth_tokens.user_id = user.user_id
-            WHERE user.user_role = 3");
-
-        if ($bea_live) {
-            $bea_list = implode(',', $bea_entries);
-
-            while ($bea_row = mysqli_fetch_assoc($bea_live)) {
-                $bea_email = pg_email_fold(trim((string) $bea_row['user_email']));
-
-                if (($bea_email === '') || ($bea_list === '')) {
-                    continue;
-                }
-
-                $bea_at = strrpos($bea_email, '@');
-                $bea_domain = ($bea_at === false) ? '' : substr($bea_email, $bea_at);
-
-                foreach ($bea_entries as $bea_entry) {
-                    $bea_entry = ltrim($bea_entry, '*');
-
-                    if (strpos($bea_entry, '@') === false) {
-                        $bea_entry = '@' . $bea_entry;
-                    }
-
-                    $bea_hit = (strpos($bea_entry, '@') === 0)
-                        ? (($bea_domain !== '') && ($bea_domain === $bea_entry))
-                        : ($bea_entry === $bea_email);
-
-                    if ($bea_hit) {
-                        pg_auth_token_revoke_user((int) $bea_row['user_id']);
-
-                        log_activity(lang(array(
-                            'string' => 'sessions ended because the email address was blocked ({var:1})',
-                            'vars'   => array($bea_row['user_email']))), $_SESSION['sessionusername'] ?? '');
-
-                        break;
-                    }
-                }
-            }
-        }
-    }
-    
     // ── IP allow / block lists ───────────────────────────────────────────
     //
     // This screen only owns MANUAL entries. The old code TRUNCATEd the whole

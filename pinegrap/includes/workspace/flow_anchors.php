@@ -21,6 +21,8 @@
  * the lists, on its card and in its history; by hand and by a chain it
  * starts its flow as well, and the run's outcome is written back to the
  * action's run with its news (ws_flow_anchor_run_ended()).
+ * A box on customers who stopped ordering keeps an hourly rule; each run of
+ * its anchor starts the flow once per customer (flow_no_order.php).
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -45,6 +47,7 @@ function ws_flow_anchor_kinds()
         'event'    => array('label' => lang('When something happens'), 'rule' => 'event'),
         'join'     => array('label' => lang('When somebody joins a channel'), 'rule' => 'join'),
         'row'      => array('label' => lang('When a table row changes'), 'rule' => 'row'),
+        'no_order' => array('label' => lang('When a customer stops ordering'), 'rule' => 'at'),
     );
 }
 
@@ -138,10 +141,12 @@ function ws_flow_row_columns($config)
 /**
  * The tables a row box may start a flow on, for the canvas: those the
  * person reaches, the latest changed first, at most 200, each with its
- * columns (id, name, type) for the values the box gives.
+ * columns (id, name, type, options) for the values the box gives, and
+ * whether the person may change its rows (edit), as a box that adds or
+ * changes a row needs (ws_step_row_check()).
  *
  * @param array $viewer
- * @return array[] id, name, columns
+ * @return array[] id, name, edit, columns
  */
 function ws_flow_row_tables($viewer)
 {
@@ -152,16 +157,20 @@ function ws_flow_row_tables($viewer)
     $tables = array();
 
     foreach (array_slice(ws_wtables_reached($viewer, 'all'), 0, 200) as $table) {
-        $tables[(int) $table['id']] = array('id' => (int) $table['id'], 'name' => (string) $table['name'], 'columns' => array());
+        $tables[(int) $table['id']] = array('id' => (int) $table['id'], 'name' => (string) $table['name'],
+            'edit' => ws_wtable_access_rank((string) $table['access']) >= ws_wtable_access_rank('edit'), 'columns' => array());
     }
 
     if (empty($tables)) {
         return array();
     }
 
-    foreach ((array) db_items("SELECT id, table_id, name, type FROM ws_wtable_columns
+    foreach ((array) db_items("SELECT id, table_id, name, type, options FROM ws_wtable_columns
         WHERE table_id IN ('" . implode("','", array_keys($tables)) . "') ORDER BY position, id") as $column) {
-        $tables[(int) $column['table_id']]['columns'][] = array('id' => (int) $column['id'], 'name' => (string) $column['name'], 'type' => (string) $column['type']);
+        $options = json_decode((string) $column['options'], true);
+
+        $tables[(int) $column['table_id']]['columns'][] = array('id' => (int) $column['id'], 'name' => (string) $column['name'],
+            'type' => (string) $column['type'], 'options' => (object) (is_array($options) ? $options : array()));
     }
 
     return array_values($tables);
@@ -188,6 +197,10 @@ function ws_flow_trigger_outputs($kind, $config = array())
 
     if ($kind === 'row') {
         return ws_flow_row_outputs(ws_flow_row_columns($config));
+    }
+
+    if ($kind === 'no_order') {
+        return ws_flow_no_order_outputs();
     }
 
     if ($kind === 'join') {
@@ -266,6 +279,7 @@ function ws_flow_event_outputs()
  * row:      table_id, what (created, updated, deleted), column_id (a change
  *           counts only when it writes this column; 0 for any, and 0 for
  *           what is not updated)
+ * no_order: days (1 to WS_FLOW_NO_ORDER_DAYS_MAX) since the last order
  *
  * @param string $kind
  * @param mixed  $config
@@ -319,6 +333,11 @@ function ws_flow_anchor_normalize($kind, $config)
                 'what'      => $what,
                 'column_id' => ($what === 'updated') ? $number($config['column_id'] ?? 0) : 0,
             );
+
+        case 'no_order':
+            $days = array_key_exists('days', $config) ? $number($config['days']) : WS_FLOW_NO_ORDER_DAYS;
+
+            return array('days' => max(1, min(WS_FLOW_NO_ORDER_DAYS_MAX, $days)));
     }
 
     return array();
@@ -369,6 +388,12 @@ function ws_flow_anchor_rule($kind, $config)
         );
     }
 
+    // A box on customers who stopped ordering looks for them every hour;
+    // its days stay in the box (ws_flow_no_order_scan()).
+    if ($kind === 'no_order') {
+        return ws_flow_no_order_rule(time());
+    }
+
     $rule = array('type' => (string) (ws_flow_anchor_kinds()[$kind]['rule'] ?? ''));
 
     foreach ((array) $config as $key => $value) {
@@ -400,6 +425,10 @@ function ws_flow_anchor_check($viewer, $kind, $config)
 
     if ($kind === 'row') {
         return ws_flow_row_check($viewer, $config);
+    }
+
+    if (($kind === 'no_order') && (ws_flow_no_order_refusal($viewer) !== '')) {
+        return array('ok' => false, 'error' => ws_flow_no_order_refusal($viewer), 'rule' => null, 'next_run_at' => 0);
     }
 
     $checked = ws_scheduled_rule_input($viewer, ws_flow_anchor_rule($kind, $config));
@@ -797,6 +826,31 @@ function ws_flow_anchor_start($viewer, $row, $fill)
         if ($refused !== '') {
             return $fail($refused);
         }
+    }
+
+    // A role-3 member's own flow: an event box asked again with the rights
+    // they hold now (one they no longer see starts nothing), and the cap of
+    // starts of all their flows (flow_member.php).
+    if (ws_flow_builder_kind($viewer) === 'member') {
+        if ((string) $trigger['kind'] === 'event') {
+            $checked = ws_scheduled_rule_input($viewer, ws_flow_anchor_rule('event', $trigger['config'] ?? array()));
+
+            if (!$checked['ok']) {
+                return $fail($checked['error']);
+            }
+        }
+
+        $refused = ws_flow_member_starts_check($viewer);
+
+        if ($refused !== '') {
+            return $fail($refused);
+        }
+    }
+
+    // A box on customers who stopped ordering starts one run per customer
+    // whose threshold passed, each under a key of its own.
+    if ((string) $trigger['kind'] === 'no_order') {
+        return ws_flow_no_order_scan($viewer, $flow, $version, $trigger, $fill);
     }
 
     $flow_id = (int) $flow['id'];

@@ -426,6 +426,11 @@
 
         box.style.maxHeight = '18rem';
         box.style.overflow = 'auto';
+        // A long draft scrolls inside the box: a Tab stop lets the arrow
+        // keys scroll it in every browser, and the name says what it holds.
+        box.tabIndex = 0;
+        box.setAttribute('role', 'region');
+        box.setAttribute('aria-label', onBrowser(state.settings) ? label('title_browser') : label('title'));
 
         // The html format is markup the server built from escaped words; a
         // plain text draft keeps its line breaks, as the field will.

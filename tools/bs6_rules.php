@@ -797,6 +797,7 @@ function bs6_site_functions()
 		'includes/fn/custom_form.php' => array('pg_cf_validation_script'),
 		'includes/fn/design_themes.php' => array('pg_design_looks'),
 		'includes/fn/passkeys.php' => array('pg_passkey_account_section', 'pg_passkey_add_form_script'),
+		'includes/fn/privacy.php' => array('pg_consent_sms_checkout_row'),
 		'includes/fn/returns.php' => array('pg_return_actions_html', 'pg_return_badge_class', 'pg_return_form_html', 'pg_returns_list_html'),
 		'includes/fn/sms_codes.php' => array('pg_sms_cod_field_html'),
 	);
@@ -1184,7 +1185,7 @@ function bs6_scope_kind($path)
 	// elements of a custom_form widget tree.
 	$site_fn = array(
 		'consent.php', 'language_redirect.php', 'layout_convert.php', 'maintenance_mode.php', 'meta_tags.php',
-		'reviews.php', 'visitor_texts.php', 'site_datetime.php',
+		'reviews.php', 'visitor_texts.php', 'site_datetime.php', 'subscriptions_account.php',
 	);
 	if (strpos($path, 'includes/fn/') === 0 && (in_array($base, $site_fn, true) || preg_match('/^widgets(_[a-z0-9_]+)?\.php$/', $base))) {
 		return 'site';

@@ -1264,7 +1264,7 @@ function parasut_connection_line($status)
     }
 
     if ((int) ($status['connected_at'] ?? 0) > 0) {
-        $parts[] = date('d.m.Y H:i', (int) $status['connected_at']);
+        $parts[] = get_absolute_time(array('timestamp' => (int) $status['connected_at'], 'format' => 'plain_text'));
     }
 
     return ['text' => implode(' · ', $parts), 'tone' => 'success'];

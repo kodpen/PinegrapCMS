@@ -98,12 +98,44 @@ function test_erp_quote_followup_input_passes_the_followup_check()
 	pg_assert_same(array(7), $check['data']['assignees'], 'for the maker');
 }
 
-// Off unless the site switches it on in config.php.
+// Off unless the site switches it on: the Settings checkbox
+// (config.erp_quote_expiry_followup) or the config.php constant.
 function test_erp_quote_expiry_followup_is_off_by_default()
 {
-	pg_assert_false(ERP_QUOTE_EXPIRY_FOLLOWUP, 'off by default');
-	pg_assert_contains('ERP_QUOTE_EXPIRY_FOLLOWUP', pg_test_function_source('erp_alert_quote_expiry'), 'the bell asks the switch');
+	pg_assert_false(ERP_QUOTE_EXPIRY_FOLLOWUP, 'the constant is off by default');
+	pg_assert_contains('erp_quote_expiry_followup_on()', pg_test_function_source('erp_alert_quote_expiry'), 'the bell asks the switch');
 	pg_assert_contains('erp_quote_expiry_followups(', pg_test_function_source('erp_alert_quote_expiry'), 'the bell opens them');
+}
+
+// Either the column or the constant switches it on; both off keeps it off.
+function test_erp_quote_expiry_followup_switch()
+{
+	pg_assert_false(erp_quote_expiry_followup_switch(0, false), 'both off');
+	pg_assert_false(erp_quote_expiry_followup_switch(null, false), 'no column yet, constant off');
+	pg_assert_true(erp_quote_expiry_followup_switch(1, false), 'the Settings checkbox');
+	pg_assert_true(erp_quote_expiry_followup_switch('1', false), 'the column as the database returns it');
+	pg_assert_true(erp_quote_expiry_followup_switch(0, true), 'the config.php constant');
+	pg_assert_true(erp_quote_expiry_followup_switch(null, true), 'the constant before the update ran');
+	pg_assert_true(erp_quote_expiry_followup_switch(1, true), 'both on');
+}
+
+// The hourly job prints the same switch the bell uses.
+function test_erp_quote_expiry_followup_job_reads_the_switch()
+{
+	$job = (string) file_get_contents(PG_FUNCTIONS_DIR . '/erp_stock_alert_job.php');
+
+	pg_assert_contains('erp_quote_expiry_followup_on()', $job, 'the job summary');
+	pg_assert_false(strpos($job, '&& ERP_QUOTE_EXPIRY_FOLLOWUP') !== false, 'no second reading of the constant');
+}
+
+// The Settings card draws, saves and reads the checkbox.
+function test_erp_quote_expiry_followup_settings_checkbox()
+{
+	$dir = PG_FUNCTIONS_DIR . '/includes/settings/';
+
+	pg_assert_contains('name="erp_quote_expiry_followup"', (string) file_get_contents($dir . 'accounting.php'), 'drawn');
+	pg_assert_contains("waf_table_has_column('config', 'erp_quote_expiry_followup')", (string) file_get_contents($dir . 'accounting.save.php'), 'saved once the column is there');
+	pg_assert_contains("erp_quote_expiry_followup", (string) file_get_contents($dir . 'prep.php'), 'read');
 }
 
 // One open follow-up per sales quote: the job runs every hour and a date

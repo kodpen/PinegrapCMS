@@ -492,7 +492,7 @@ if (($language !== '') && !$rows) {
 $output_pagination = '';
 
 if ($total_pages > 1) {
-    $output_pagination .= '<nav aria-label="' . h(lang('Pages')) . '"><ul class="pagination pagination-sm mb-0">';
+    $output_pagination .= '<nav aria-label="' . h(lang('Pagination')) . '"><ul class="pagination pagination-sm mb-0">';
 
     for ($i = 1; $i <= $total_pages; $i++) {
         if (($total_pages > 12) && ($i > 2) && ($i < $total_pages - 1) && (abs($i - $page_number) > 2)) {
@@ -854,6 +854,7 @@ echo pg_page_shell(array(
                         <div class="mb-5">
                             <label class="form-label" for="pg_tr_import_file">' . lang('CSV file') . '</label>
                             <input type="file" class="form-control" id="pg_tr_import_file" name="csv" accept=".csv,text/csv" required="required"/>
+                            ' . pg_upload_limit_hint() . '
                             <div class="form-text">' . lang('A file exported from this screen, with its translation column filled in. Rows are matched by the hash column; a row whose source text has since changed is skipped.') . '</div>
                         </div>
                         <div class="form-field">

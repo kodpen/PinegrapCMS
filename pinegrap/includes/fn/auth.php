@@ -362,18 +362,37 @@ function pg_email_address_matches($given, $stored)
 }
 
 // Whether a member widget's tree (the decoded shared_components.tree_json)
-// asks the marketing question: it has a control named opt_in, the one name
-// pg_member_register() and pg_member_activate() read the answer from. A
-// hidden input of that name is not a question the visitor saw, and a
-// control bound to the opt_in column under another name is never read.
-function pg_member_tree_asks_opt_in(array $tree)
+// asks the marketing question: it has a control named opt_in (opt_in_sms for
+// the SMS question), the names pg_member_register() and pg_member_activate()
+// read the answers from. A hidden input of that name is not a question the
+// visitor saw, and a control bound to the opt_in column under another name
+// is never read.
+function pg_member_tree_asks_opt_in(array $tree, $name = 'opt_in')
 {
     if (!function_exists('_pg_member_controls')) {
         return false;
     }
 
     foreach (_pg_member_controls($tree) as $control) {
-        if (($control['name'] === 'opt_in') && ($control['type'] !== 'hidden')) {
+        if (($control['name'] === (string) $name) && ($control['type'] !== 'hidden')) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+// Whether a member widget's tree asks for the mobile number: a visible
+// control bound to the contact's mobile_phone column. Without one the SMS
+// box has no number to stand for and is not drawn.
+function pg_member_tree_asks_mobile(array $tree)
+{
+    if (!function_exists('_pg_member_controls')) {
+        return false;
+    }
+
+    foreach (_pg_member_controls($tree) as $control) {
+        if (($control['contact_field'] === 'mobile_phone') && ($control['type'] !== 'hidden')) {
             return true;
         }
     }
@@ -386,8 +405,9 @@ function pg_member_tree_asks_opt_in(array $tree)
 // pg_member_widget_register_opts() reads it. $type is the widget type the
 // entrance serves ('registration' or 'membership'); an id that names no
 // widget of that type answers false, as nothing shows the question was on
-// the screen.
-function pg_member_widget_asks_opt_in($widget_id, $type = 'registration')
+// the screen. $name 'opt_in_sms' asks for the SMS question, which the widget
+// draws only while SMS is on and it asks for the mobile number.
+function pg_member_widget_asks_opt_in($widget_id, $type = 'registration', $name = 'opt_in')
 {
     $widget_id = (int) $widget_id;
     if ($widget_id <= 0) {
@@ -404,7 +424,11 @@ function pg_member_widget_asks_opt_in($widget_id, $type = 'registration')
     }
     $tree = json_decode((string) $row['tree_json'], true);
 
-    return is_array($tree) && pg_member_tree_asks_opt_in($tree);
+    if (!is_array($tree) || !pg_member_tree_asks_opt_in($tree, $name)) {
+        return false;
+    }
+
+    return ($name !== 'opt_in_sms') || pg_consent_sms_offered(pg_member_tree_asks_mobile($tree));
 }
 
 // The settings (system_region_config) of the widget a form was posted from,
@@ -435,6 +459,26 @@ function pg_member_confirmation_notice($cfg, $default)
     return ($message !== '') ? nl2br(h($message), false) : (string) $default;
 }
 
+// The marketing answers a sign-up records: the e-mail one when the screen
+// asked it, the SMS one when it asked it and the contact has a mobile
+// number after the save (pg_consent_sms_answers()).
+function pg_member_consent_answers($form, array $opts, $opt_in, $contact_id)
+{
+    $answers = array();
+
+    if (!empty($opts['opt_in_asked'])) {
+        $answers['email:marketing'] = ($opt_in === '1');
+    }
+
+    if (!empty($opts['sms_opt_in_asked'])) {
+        $answers += pg_consent_sms_answers(true,
+            pg_consent_sms_number_known(pg_consent_sms_contact_number($contact_id)),
+            $form->get_field_value('opt_in_sms'));
+    }
+
+    return $answers;
+}
+
 // Register a member from the 'register' liveform: the validation and the
 // writes the registration entrance has always done, in one place, so the
 // legacy screen and a designed page (the registration widget) run the same
@@ -451,6 +495,9 @@ function pg_member_confirmation_notice($cfg, $default)
 //   opt_in_asked      true when the screen that posted showed the marketing
 //                     question; only then is the answer recorded in
 //                     consent_log.
+//   sms_opt_in_asked  the same for the SMS question (opt_in_sms); recorded
+//                     only when the contact has a mobile number after the
+//                     save.
 //   kvkk_consent      true when the visitor ticked the store's explicit KVKK
 //                     consent box (pg_legal_kvkk_consent_given()); recorded
 //                     in consent_log as a granted contract:kvkk answer.
@@ -621,14 +668,12 @@ function pg_member_register($form, $opts = array())
     }
     $new_user_id = (int) create_member_user($create);
 
-    // The marketing answer, once per sign-up however many contacts share the
-    // address, and only when it differs from the person's last recorded one.
-    if (!empty($opts['opt_in_asked'])) {
-        pg_consent_log_answers(
-            array('email' => $email, 'user_id' => $new_user_id, 'contact_id' => $contact_id),
-            array('email:marketing' => ($opt_in === '1')),
-            'signup');
-    }
+    // The marketing answers, once per sign-up however many contacts share the
+    // address, and only when they differ from the person's last recorded ones.
+    pg_consent_log_answers(
+        array('email' => $email, 'user_id' => $new_user_id, 'contact_id' => $contact_id),
+        pg_member_consent_answers($form, $opts, $opt_in, $contact_id),
+        'signup');
 
     // Explicit KVKK consent: only a ticked box is an answer (no refusal row),
     // and a person who gave it before adds nothing.
@@ -700,7 +745,7 @@ function pg_member_register($form, $opts = array())
 //
 // $opts: contact_fields (column => value written to the member's contact,
 // found or created), contact_group_id (the site setting when absent),
-// opt_in_asked and kvkk_consent (as in pg_member_register()).
+// opt_in_asked, sms_opt_in_asked and kvkk_consent (as in pg_member_register()).
 function pg_member_activate($form, $opts = array())
 {
     if (!is_array($opts)) $opts = array();
@@ -908,15 +953,13 @@ function pg_member_activate($form, $opts = array())
         pg_signin_identity_add($new_user_id, $pending_provider, (string) ($google_pending['sub'] ?? ''), $email);
     }
 
-    // The marketing answer (see pg_member_register()). The contact id and the
-    // address the contact had before find what the member answered earlier;
-    // a one-click unsubscribe is recorded under the address alone.
-    if (!empty($opts['opt_in_asked'])) {
-        pg_consent_log_answers(
-            array('email' => $email, 'user_id' => $new_user_id, 'contact_id' => $contact_id, 'previous_email' => $previous_email),
-            array('email:marketing' => ($opt_in === '1')),
-            'signup');
-    }
+    // The marketing answers (see pg_member_register()). The contact id and
+    // the address the contact had before find what the member answered
+    // earlier; a one-click unsubscribe is recorded under the address alone.
+    pg_consent_log_answers(
+        array('email' => $email, 'user_id' => $new_user_id, 'contact_id' => $contact_id, 'previous_email' => $previous_email),
+        pg_member_consent_answers($form, $opts, $opt_in, $contact_id),
+        'signup');
 
     // Explicit KVKK consent (see pg_member_register()).
     if (!empty($opts['kvkk_consent'])) {
@@ -983,6 +1026,67 @@ function pg_user_role_name($role)
         default:
             return lang('User');
     }
+}
+
+/**
+ * Whether edit_user.php would let $user open an account of $target_role: an
+ * administrator opens any, a designer or manager only a strictly lower role
+ * (not their own), role 3 none. Screens print the name without a link when
+ * this says no.
+ *
+ * @param array      $user        validate_user() row
+ * @param int|string $target_role user_role of the account
+ * @return bool
+ */
+function pg_can_open_user($user, $target_role)
+{
+    $role = (int) $user['role'];
+
+    return ($role === 0) || (($role <= 2) && ($role < (int) $target_role));
+}
+
+/**
+ * Whether edit_contact.php would let $user open a contact: roles below 3
+ * always, role 3 with contacts access and the contact in one of their groups.
+ * A list passes $contacts_access, validate_contacts_access($user, true) run
+ * once per screen, so each row costs only the group lookup. Code that has no
+ * user row at hand (the ERP drawer and order flow) passes null for the
+ * signed-in viewer, loaded once and only for role 3.
+ *
+ * @param array|null $user            validate_user() row, or null for the viewer
+ * @param int        $contact_id
+ * @param bool|null  $contacts_access precomputed contacts access, or null
+ * @return bool
+ */
+function pg_can_open_contact($user, $contact_id, $contacts_access = null)
+{
+    static $viewer = null;
+
+    if ((int) $contact_id < 1) {
+        return false;
+    }
+
+    if ($user === null) {
+        if (defined('USER_ROLE') && ((int) USER_ROLE < 3)) {
+            return true;
+        }
+
+        if ($viewer === null) {
+            $viewer = validate_user();
+        }
+
+        $user = $viewer;
+    }
+
+    if ((int) $user['role'] < 3) {
+        return true;
+    }
+
+    if ($contacts_access === null) {
+        $contacts_access = validate_contacts_access($user, true);
+    }
+
+    return $contacts_access && validate_contact_access($user, (int) $contact_id);
 }
 
 /**
@@ -2479,7 +2583,7 @@ function validate_contact_group_access($user, $contact_group_id)
 function validate_erp_access($user, $area = '')
 {
     if (!defined('ERP_ENABLED') || !ERP_ENABLED) {
-        $liveform_url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/' . pg_settings_return_url('commerce', 'pgset-erp');
+        $liveform_url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/' . pg_settings_return_url('accounting', 'pgset-erp');
         output_error(lang('The ERP module is not switched on.') . ' <a href="' . h($liveform_url) . '">' . lang('Settings') . '</a>');
         return false;
     }
@@ -3600,7 +3704,7 @@ function pg_form_spam_ip_listed($ip)
         if (is_array($response) && !empty($response['error']) && is_string($response['error'])) {
             $error = ' (' . $response['error'] . ')';
         }
-        log_activity(lang(array('string' => 'an error occurred when communicating with the spam protection service {var:1}, so visitor\'s request was accepted', 'vars' => array($error))), lang('UNKNOWN'));
+        log_activity(pg_log_lang(array('string' => 'an error occurred when communicating with the spam protection service {var:1}, so visitor\'s request was accepted', 'vars' => array($error))), 'UNKNOWN');
         return false;
     }
 
@@ -3608,7 +3712,7 @@ function pg_form_spam_ip_listed($ip)
         return false;
     }
 
-    log_activity(lang(array('string' => 'visitor\'s request was denied because the spam protection service reported that visitor\'s IP address was used by spammers. (confidence: {var:1}%, frequency: {var:2})', 'vars' => array(round((float) ($response['ip']['confidence'] ?? 0)), pg_format_number((int) ($response['ip']['frequency'] ?? 0), 0)))), lang('UNKNOWN'));
+    log_activity(pg_log_lang(array('string' => 'visitor\'s request was denied because the spam protection service reported that visitor\'s IP address was used by spammers. (confidence: {var:1}%, frequency: {var:2})', 'vars' => array(round((float) ($response['ip']['confidence'] ?? 0)), pg_format_number((int) ($response['ip']['frequency'] ?? 0), 0)))), 'UNKNOWN');
 
     return true;
 }
@@ -4382,10 +4486,10 @@ function pg_login_record_failure($identifier)
     $closed_at = $account_closed ? $limits['attempts'] : $limits['attempts_address'];
 
     log_activity(
-        lang(array(
+        pg_log_lang(array(
             'string' => 'sign-in locked for {var:1} after {var:2} failed attempts',
             'vars'   => array($subject_label, $closed_at))),
-        lang('UNKNOWN'));
+        'UNKNOWN');
 
     // Also recorded in the firewall log. That is the screen an operator
     // watches while a site is being probed, and a sign-in lockout belongs in
@@ -4561,6 +4665,10 @@ function pg_login_captcha_issue()
 /**
  * Check the answer against the question this session was issued, and
  * consume the question either way. Ten minutes to answer.
+ *
+ * Returns 'ok', 'wrong' (also for a missing or malformed question: a script
+ * that drops the session must not escape the counter) or 'expired' (a
+ * well-formed question older than ten minutes, whatever the answer).
  */
 function pg_login_captcha_check($answer)
 {
@@ -4569,24 +4677,24 @@ function pg_login_captcha_check($answer)
     unset($_SESSION['software']['login_captcha']);
 
     if (!is_array($pending) || !isset($pending['answer']) || !isset($pending['issued'])) {
-        return false;
+        return 'wrong';
     }
 
     if (((int) $pending['issued'] + 600) < time()) {
-        return false;
+        return 'expired';
     }
 
     $answer = trim((string) $answer);
 
-    return (preg_match('/^\d{1,2}$/', $answer) && ((int) $answer === (int) $pending['answer']));
+    return (preg_match('/^\d{1,2}$/', $answer) && ((int) $answer === (int) $pending['answer'])) ? 'ok' : 'wrong';
 }
 
 /**
  * Stop a sign-in attempt that owes an answer.
  *
  * Called right after pg_login_throttle_guard(), before the password is
- * looked at. The request ends on the question screen in two cases: no
- * answer was sent, or it was wrong. A wrong answer is recorded as a failed
+ * looked at. The request ends on the question screen in three cases: no
+ * answer was sent, the question ran out, or the answer was wrong. A wrong answer is recorded as a failed
  * attempt and as a firewall log entry, so it is visible and eventually locks
  * the address or the account out like any other failure - but it is not an
  * offence; see above.
@@ -4605,8 +4713,21 @@ function pg_login_captcha_gate($identifier, $liveform, $screen)
         pg_login_captcha_screen($identifier, $liveform, $screen, '');
     }
 
-    if (pg_login_captcha_check($_POST['login_captcha_answer'])) {
+    $outcome = pg_login_captcha_check($_POST['login_captcha_answer']);
+
+    if ($outcome === 'ok') {
         return;
+    }
+
+    // A question left open too long is not a guess: the answer was never
+    // compared and the password never looked at, so nothing is counted. The
+    // request still ends on a new question, so this opens no way past it.
+    if ($outcome === 'expired') {
+        if (function_exists('waf_log_event')) {
+            waf_log_event('log', 'login-captcha', 'login', 3, mb_substr(trim((string) $identifier), 0, 64), 'question expired');
+        }
+
+        pg_login_captcha_screen($identifier, $liveform, $screen, lang('The question was open for more than 10 minutes. Please answer the new one.'));
     }
 
     if (function_exists('waf_log_event')) {

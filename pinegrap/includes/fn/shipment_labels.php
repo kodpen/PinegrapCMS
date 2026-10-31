@@ -198,6 +198,96 @@ function pg_shipment_label_drivers()
 }
 
 /**
+ * The marketplace layer (includes/api/outbound/labels.php), loaded once for a
+ * request that ran init.php. The label a marketplace makes for its own
+ * carrier (Trendyol's common label) is kept here like a carrier label
+ * service's, and is asked for and read again through that layer.
+ *
+ * @return bool whether it is there
+ */
+function pg_shipment_label_marketplace_ready()
+{
+    if (!function_exists('mp_label_ship_to') && defined('PG_INIT_LOADED')) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/api/outbound/labels.php');
+    }
+
+    return function_exists('mp_label_ship_to');
+}
+
+/**
+ * Whether a marketplace account has its packages' labels made by the
+ * marketplace (mp_label_accounts_offer()), so the orders list offers the bulk
+ * label buttons without a carrier label service. The marketplace layer is
+ * loaded only when an active account exists. Once a request.
+ *
+ * @return bool
+ */
+function pg_shipment_label_marketplace_offers()
+{
+    static $offers = null;
+
+    if ($offers === null) {
+        $offers = pg_shipment_labels_ready()
+            && ((int) db_value("SELECT COUNT(*) FROM marketplace_accounts WHERE status = 'active'") > 0)
+            && pg_shipment_label_marketplace_ready()
+            && mp_label_accounts_offer(mp_accounts('', 'active'));
+    }
+
+    return $offers;
+}
+
+/**
+ * The marketplace's label of an order's address (mp_label_ship_to()): offer
+ * ('create' while the marketplace makes the label of this package now,
+ * 'print' or '' once it has one), carried (its carrier takes the parcel
+ * without that label), label_id, map_id, account_id, provider and
+ * name. null for an address of an order no marketplace brought in; the
+ * marketplace layer is loaded only for one that did.
+ *
+ * @param int $ship_to_id
+ * @return array|null
+ */
+function pg_shipment_label_marketplace($ship_to_id)
+{
+    if (!pg_shipment_labels_ready()) {
+        return null;
+    }
+
+    $order_id = (int) db_value("SELECT order_id FROM ship_tos WHERE id = '" . (int) $ship_to_id . "'");
+
+    if (($order_id <= 0)
+        || ((int) db_value("SELECT COUNT(*) FROM marketplace_order_map WHERE order_id = '" . $order_id . "'") === 0)
+        || !pg_shipment_label_marketplace_ready()) {
+        return null;
+    }
+
+    return mp_label_ship_to((int) $ship_to_id);
+}
+
+/**
+ * The name a label's maker is shown by: the carrier label service's, else
+ * the marketplace's whose label it is, else the key.
+ *
+ * @param string $key shipment_labels.driver
+ * @return string
+ */
+function pg_shipment_label_driver_name($key)
+{
+    $key = (string) $key;
+    $driver = pg_label_driver($key);
+
+    if ($driver !== null) {
+        return $driver['label'];
+    }
+
+    if (pg_label_key_valid($key) && pg_shipment_label_marketplace_ready() && mp_provider_is_valid($key)) {
+        return mp_provider_name($key);
+    }
+
+    return $key;
+}
+
+/**
  * When a label's file is due to go: 30 days after the parcel was delivered
  * or the label cancelled, whichever came first, and 90 days after the label
  * was made at the latest. Pure.
@@ -234,7 +324,9 @@ function pg_shipment_label_expires_at($created_at, $delivered_at, $cancelled_at)
  * @param array $ship_to the ship_tos row (first_name, last_name, company,
  *                       address_1, address_2, city, state, zip_code,
  *                       country, phone_number) and total (minor units)
- * @param array $items   list of product_name, quantity, weight, length, width, height
+ * @param array $items   list of product_name, quantity, weight, length, width, height,
+ *                       and for a customs declaration price (minor units),
+ *                       hs_code, origin_country, sku (products.name)
  * @param string $state_code the province's plate number, TR-34 or 34
  * @param bool  $return
  * @return array
@@ -254,6 +346,7 @@ function pg_shipment_label_shipment($order, $ship_to, $items, $state_code = '', 
     $weight = 0.0;
     $size = array('length' => 0.0, 'width' => 0.0, 'height' => 0.0);
     $lines = array();
+    $goods = array();
 
     foreach ((array) $items as $item) {
         $quantity = max(1, (int) $text($item, 'quantity'));
@@ -266,6 +359,18 @@ function pg_shipment_label_shipment($order, $ship_to, $items, $state_code = '', 
         if ($text($item, 'product_name') !== '') {
             $lines[] = array('title' => $text($item, 'product_name'), 'quantity' => $quantity);
         }
+
+        // Every line, for a customs declaration (pg_label_customs_lines()):
+        // the unit weight in kilograms.
+        $goods[] = array(
+            'name'           => $text($item, 'product_name'),
+            'quantity'       => $quantity,
+            'price'          => (int) round((float) $text($item, 'price')),
+            'weight'         => round(((float) $text($item, 'weight')) * 0.45359237, 3),
+            'hs_code'        => $text($item, 'hs_code'),
+            'origin_country' => strtoupper($text($item, 'origin_country')),
+            'sku'            => $text($item, 'sku'),
+        );
     }
 
     $parcel = array();
@@ -285,6 +390,8 @@ function pg_shipment_label_shipment($order, $ship_to, $items, $state_code = '', 
             'address_1'  => $text($ship_to, 'address_1'),
             'address_2'  => $text($ship_to, 'address_2'),
             'city'       => $text($ship_to, 'city'),
+            // '' on a site without ship_tos.district or an order without one.
+            'district'   => $text($ship_to, 'district'),
             'state'      => $text($ship_to, 'state'),
             'state_code' => (string) $state_code,
             'zip'        => $text($ship_to, 'zip_code'),
@@ -292,11 +399,25 @@ function pg_shipment_label_shipment($order, $ship_to, $items, $state_code = '', 
         ),
         'parcel'       => $parcel,
         'items'        => $lines,
+        'goods'        => $goods,
         'total'        => (int) $text($ship_to, 'total'),
         'currency'     => strtoupper($text($order, 'currency')),
         'service'      => '',
         'return'       => (bool) $return,
     );
+}
+
+/**
+ * The products' customs columns for the label's line query, '' on a site
+ * that has not run the upgrade that adds them.
+ *
+ * @return string
+ */
+function pg_shipment_label_customs_columns()
+{
+    return pg_product_customs_ready() ? ',
+            products.hs_code,
+            products.origin_country' : '';
 }
 
 /**
@@ -416,17 +537,27 @@ function pg_shipment_label_rows($ship_to_id)
  * pg_shipment_label_create_check() reads what it weighs.
  *
  * An address that already has an active label of the kind asked for gets no
- * second one: a second create() would buy a second shipment.
+ * second one: a second create() would buy a second shipment. Nor does a
+ * package whose marketplace makes its label for its own carrier now
+ * (pg_shipment_label_marketplace()): its parcel goes with that carrier. Nor
+ * does one the marketplace's carrier takes without that label (another
+ * carrier, or a package no longer open): it travels on the marketplace's
+ * account already.
  *
  * @param bool       $ready   pg_shipment_labels_ready()
  * @param array|null $order   status of the address's order, null when none
  * @param int        $active  active labels of the kind on the address
  * @param string     $driver  pg_shipment_label_driver_pick()
  * @param bool       $return
+ * @param string     $marketplace the name of the marketplace that makes the
+ *                                label, '' for none
+ * @param string     $carried     the name of the marketplace whose carrier
+ *                                takes the parcel without its label, '' for none
  * @return array code (not_ready, not_found, not_completed, label_exists,
- *               no_driver; '' when nothing refuses), error
+ *               marketplace_label, marketplace_carried, no_driver; '' when
+ *               nothing refuses), error
  */
-function pg_shipment_label_create_refusal($ready, $order, $active, $driver, $return = false)
+function pg_shipment_label_create_refusal($ready, $order, $active, $driver, $return = false, $marketplace = '', $carried = '')
 {
     if (!$ready) {
         return array('code' => 'not_ready', 'error' => lang('Run the software update first: the table for shipping labels is missing.'));
@@ -444,6 +575,20 @@ function pg_shipment_label_create_refusal($ready, $order, $active, $driver, $ret
         return array('code' => 'label_exists', 'error' => $return
             ? lang('This address already has a return label. Print it again, or cancel it before creating another.')
             : lang('This address already has a label. Print it again, or cancel it before creating another.'));
+    }
+
+    if ((string) $marketplace !== '') {
+        return array('code' => 'marketplace_label', 'error' => lang(array(
+            'string' => '{var:1} makes the label of this parcel for its own carrier: get it with Get {var:1} label. A carrier label service\'s label would be a second shipment.',
+            'vars'   => array((string) $marketplace),
+        )));
+    }
+
+    if ((string) $carried !== '') {
+        return array('code' => 'marketplace_carried', 'error' => lang(array(
+            'string' => '{var:1}\'s contracted carrier takes this parcel, but its common label does not cover it. A carrier label service\'s label would be a second shipment: handle it in the {var:1} seller panel.',
+            'vars'   => array((string) $carried),
+        )));
     }
 
     if ((string) $driver === '') {
@@ -472,6 +617,8 @@ function pg_shipment_label_create_check($ship_to_id, $return = false)
     $order = null;
     $active = 0;
     $driver = '';
+    $marketplace_name = '';
+    $carried_name = '';
 
     if ($ready) {
         $ship_to = db_item(
@@ -496,9 +643,13 @@ function pg_shipment_label_create_check($ship_to_id, $return = false)
 
         $carrier = pg_shipment_label_carrier(isset($ship_to['method_carrier']) ? $ship_to['method_carrier'] : '', $ship_to['shipping_method_code']);
         $driver = pg_shipment_label_driver_pick($carrier, pg_shipment_label_drivers());
+
+        $marketplace = $return ? null : pg_shipment_label_marketplace((int) $ship_to['id']);
+        $marketplace_name = ($marketplace && ($marketplace['offer'] === 'create')) ? $marketplace['name'] : '';
+        $carried_name = ($marketplace && !empty($marketplace['carried'])) ? $marketplace['name'] : '';
     }
 
-    $refusal = pg_shipment_label_create_refusal($ready, $order, $active, $driver, $return);
+    $refusal = pg_shipment_label_create_refusal($ready, $order, $active, $driver, $return, $marketplace_name, $carried_name);
 
     $out['code'] = $refusal['code'];
     $out['error'] = $refusal['error'];
@@ -549,10 +700,12 @@ function pg_shipment_label_create($ship_to_id, $user_id, $return = false)
         "SELECT
             order_items.product_name,
             order_items.quantity,
+            order_items.price,
+            products.name AS sku,
             products.weight,
             products.length,
             products.width,
-            products.height
+            products.height" . pg_shipment_label_customs_columns() . "
         FROM order_items
         LEFT JOIN products ON products.id = order_items.product_id
         WHERE (order_items.ship_to_id = '" . (int) $ship_to['id'] . "')" . pg_order_item_active_sql());
@@ -800,10 +953,11 @@ function pg_shipment_label_return_open($return, $user_id)
             order_items.product_name,
             order_return_items.quantity,
             order_items.price,
+            products.name AS sku,
             products.weight,
             products.length,
             products.width,
-            products.height
+            products.height" . pg_shipment_label_customs_columns() . "
         FROM order_return_items
         LEFT JOIN order_items ON order_items.id = order_return_items.order_item_id
         LEFT JOIN products ON products.id = order_items.product_id
@@ -963,8 +1117,8 @@ function pg_shipment_label_customer_headers($format, $file_name)
 /**
  * A label's document for printing: the kept file, else the service's copy
  * asked for by reference (a file the sweep removed, a create() that sent
- * none). The service's copy is not written back: it would restart the time
- * the address is kept.
+ * none), the marketplace's for a label a marketplace made. The copy is not
+ * written back: it would restart the time the address is kept.
  *
  * @param array $row a shipment_labels row
  * @return array ok, error, document, format
@@ -983,6 +1137,16 @@ function pg_shipment_label_document($row)
     }
 
     $driver = (string) $row['driver'];
+
+    // A marketplace's own label has no driver: the marketplace gives it again
+    // by its cargo number (mp_label_document()).
+    if ((pg_label_driver($driver) === null) && pg_label_key_valid($driver) && pg_shipment_label_marketplace_ready()) {
+        $copy = mp_label_document($row);
+
+        if ($copy !== null) {
+            return $copy;
+        }
+    }
 
     if (!pg_label_can($driver, 'label') || !pg_label_ready($driver)) {
         $out['error'] = lang('The label is no longer kept and its carrier label service is not switched on.');
@@ -1418,7 +1582,10 @@ function pg_shipment_label_print_selection($rows, $order_ids)
 
 /**
  * Open labels for the addresses of the selected orders that have no active
- * one, at most $limit a run (each is a call to the service).
+ * one, at most $limit a run (each is a call to the service). A package whose
+ * marketplace makes its label now gets that one, for one box, read once
+ * without waiting (mp_label_create_for_ship_to()); a carrier label
+ * service's would be a second shipment of the parcel.
  *
  * @param array $order_ids
  * @param int   $user_id
@@ -1455,7 +1622,11 @@ function pg_shipment_label_bulk_create($order_ids, $user_id, $limit = 20)
             break;
         }
 
-        $result = pg_shipment_label_create((int) $ship_to_id, $user_id);
+        $marketplace = pg_shipment_label_marketplace((int) $ship_to_id);
+
+        $result = ($marketplace && ($marketplace['offer'] === 'create'))
+            ? mp_label_create_for_ship_to((int) $ship_to_id, 1, $user_id, false)
+            : pg_shipment_label_create((int) $ship_to_id, $user_id);
 
         if ($result['ok']) {
             $out['created']++;
@@ -1469,9 +1640,10 @@ function pg_shipment_label_bulk_create($order_ids, $user_id, $limit = 20)
 
 /**
  * The labels of the selected orders as one PDF, merged now and never kept.
- * An SVG label is drawn into a page of its own. A label that is not a PDF
- * or an SVG (ZPL for a thermal printer) or cannot be read or drawn is
- * listed on a last page instead, to be printed from its order.
+ * An SVG label is drawn into a page of its own. A readable ZPL label (for a
+ * thermal printer) is counted on a last page as part of the .zpl download
+ * (pg_shipment_label_bulk_zpl()); a label that cannot be read or drawn is
+ * listed there instead, to be printed from its order.
  *
  * @param array $order_ids in the order selected
  * @return array ok, error, document, count (labels in the PDF)
@@ -1492,9 +1664,16 @@ function pg_shipment_label_bulk_pdf($order_ids)
     $documents = array();
     $labels = array();
     $left_out = array();
+    $zpl_count = 0;
 
     foreach (pg_shipment_label_print_selection($rows, $order_ids) as $row) {
         $document = pg_shipment_label_document($row);
+
+        // A readable ZPL label goes into the .zpl download instead.
+        if (pg_shipment_label_bulk_zpl_readable($document)) {
+            $zpl_count++;
+            continue;
+        }
 
         // An SVG joins as a page dompdf draws; one it cannot draw is listed.
         $pdf = ($document['ok'] && ($document['format'] === 'svg')) ? pg_shipment_label_svg_pdf($document['document']) : '';
@@ -1516,18 +1695,14 @@ function pg_shipment_label_bulk_pdf($order_ids)
 
     $out['count'] = count($documents) - count($skipped);
 
-    if ($left_out) {
-        $note = '<meta charset="utf-8"><h3>' . h(lang('Labels not in this PDF')) . '</h3><p>' . h(lang('Print these from their orders.')) . '</p><ul>';
+    $note = pg_shipment_label_bulk_note($left_out, $zpl_count);
 
-        foreach ($left_out as $row) {
-            $note .= '<li>' . h(lang(array('string' => 'Order {var:1}: {var:2} ({var:3})', 'vars' => array($row['order_number'], $row['number'], strtoupper($row['label_format']))))) . '</li>';
-        }
-
-        $page = pg_privacy_export_pdf($note . '</ul>');
+    if ($note !== '') {
+        $page = pg_privacy_export_pdf($note);
         $merged = is_string($page) ? pg_pdf_merge(array_merge($merged !== '' ? array($merged) : array(), array($page))) : $merged;
     }
 
-    if (($merged === '') || (($out['count'] === 0) && !$left_out)) {
+    if (($merged === '') || (($out['count'] === 0) && ($note === ''))) {
         $out['error'] = lang('The selected orders have no active shipping label.');
         return $out;
     }
@@ -1536,4 +1711,416 @@ function pg_shipment_label_bulk_pdf($order_ids)
     $out['document'] = $merged;
 
     return $out;
+}
+
+/**
+ * The last page of a bulk PDF: how many ZPL labels are in the .zpl
+ * download, and the labels in neither file, to be printed from their
+ * orders. Empty when there is nothing to say. Pure.
+ *
+ * @param array $left_out  shipment_labels rows with order_number
+ * @param int   $zpl_count readable ZPL labels of the same run
+ * @return string HTML for pg_privacy_export_pdf(), or ''
+ */
+function pg_shipment_label_bulk_note($left_out, $zpl_count)
+{
+    if (!$left_out && ($zpl_count < 1)) {
+        return '';
+    }
+
+    $note = '<meta charset="utf-8">';
+
+    if ($zpl_count > 0) {
+        $note .= '<p>' . h(lang(array('string' => '{var:1} ZPL label(s) are in the Download ZPL Labels file.', 'vars' => array(pg_format_number($zpl_count, 0))))) . '</p>';
+    }
+
+    if ($left_out) {
+        $note .= '<h3>' . h(lang('Labels not in this PDF')) . '</h3><p>' . h(lang('Print these from their orders.')) . '</p><ul>';
+
+        foreach ($left_out as $row) {
+            $note .= '<li>' . h(lang(array('string' => 'Order {var:1}: {var:2} ({var:3})', 'vars' => array($row['order_number'], $row['number'], strtoupper($row['label_format']))))) . '</li>';
+        }
+
+        $note .= '</ul>';
+    }
+
+    return $note;
+}
+
+/**
+ * Whether a label's document (pg_shipment_label_document()) goes into the
+ * bulk .zpl: read, ZPL, and holding a label. Pure.
+ *
+ * @param array $document ok, document, format
+ * @return bool
+ */
+function pg_shipment_label_bulk_zpl_readable($document)
+{
+    return !empty($document['ok']) && (($document['format'] ?? '') === 'zpl') && pg_label_document_valid($document['document'] ?? '', 'zpl');
+}
+
+/**
+ * ZPL documents as one file for a thermal printer: in the given order,
+ * trailing whitespace trimmed, one newline between and after them. A
+ * document with several labels (one per box or piece) stays whole. Pure.
+ *
+ * @param string[] $documents
+ * @return string
+ */
+function pg_shipment_label_zpl_join($documents)
+{
+    $documents = array_map('rtrim', array_map('strval', (array) $documents));
+
+    return $documents ? implode("\n", $documents) . "\n" : '';
+}
+
+/**
+ * The ZPL labels of the selected orders as one .zpl file, joined now and
+ * never kept: the same labels and order as the bulk PDF, only the readable
+ * ZPL ones. Labels whose document could not be read are returned for the
+ * caller; a PDF or SVG label is the bulk PDF's.
+ *
+ * @param array $order_ids in the order selected
+ * @return array ok, error, document, count, unreadable (shipment_labels rows)
+ */
+function pg_shipment_label_bulk_zpl($order_ids)
+{
+    $out = array('ok' => false, 'error' => '', 'document' => '', 'count' => 0, 'unreadable' => array());
+    $order_ids = array_values(array_filter(array_map('intval', (array) $order_ids)));
+
+    $rows = ($order_ids && pg_shipment_labels_ready())
+        ? db_items(
+            "SELECT shipment_labels.*, orders.order_number
+            FROM shipment_labels
+            LEFT JOIN orders ON orders.id = shipment_labels.order_id
+            WHERE shipment_labels.order_id IN ('" . implode("','", $order_ids) . "')")
+        : array();
+
+    $documents = array();
+
+    foreach (pg_shipment_label_print_selection($rows, $order_ids) as $row) {
+        $document = pg_shipment_label_document($row);
+
+        if (pg_shipment_label_bulk_zpl_readable($document)) {
+            $documents[] = $document['document'];
+        } elseif (!$document['ok'] || ($document['format'] === 'zpl')) {
+            $out['unreadable'][] = $row;
+        }
+    }
+
+    if (!$documents) {
+        $out['error'] = lang('The selected orders have no active ZPL label.');
+        return $out;
+    }
+
+    $out['ok'] = true;
+    $out['count'] = count($documents);
+    $out['document'] = pg_shipment_label_zpl_join($documents);
+
+    return $out;
+}
+
+
+/* ---------------------------------------------------------------------------
+   Pickup requests
+   --------------------------------------------------------------------------- */
+
+/**
+ * Whether a label can keep its pickup confirmation (pickup_ref, pickup_at).
+ *
+ * @return bool
+ */
+function pg_shipment_labels_pickup_ready()
+{
+    return pg_shipment_labels_ready()
+        && pg_schema_has('shipment_labels', 'pickup_ref')
+        && pg_schema_has('shipment_labels', 'pickup_at');
+}
+
+/**
+ * The label services that are on and can book a pickup.
+ *
+ * @return string[] driver keys
+ */
+function pg_shipment_label_pickup_drivers()
+{
+    $drivers = array();
+
+    if (!pg_shipment_labels_pickup_ready()) {
+        return $drivers;
+    }
+
+    foreach (array_keys(pg_label_drivers()) as $key) {
+        if (pg_label_can($key, 'pickup') && pg_label_ready($key)) {
+            $drivers[] = $key;
+        }
+    }
+
+    return $drivers;
+}
+
+/**
+ * The window a pickup is asked for, from the date and times the operator
+ * picked in the site's time zone. Pure but for the time zone.
+ *
+ * @param string $date Y-m-d
+ * @param string $from H:i
+ * @param string $to   H:i
+ * @param int    $now
+ * @return array start, end (unix time), error ('' when the window is usable)
+ */
+function pg_shipment_label_pickup_window($date, $from, $to, $now)
+{
+    $out = array('start' => 0, 'end' => 0, 'error' => '');
+    $date = is_scalar($date) ? trim((string) $date) : '';
+    $from = is_scalar($from) ? trim((string) $from) : '';
+    $to = is_scalar($to) ? trim((string) $to) : '';
+
+    if ((preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $date, $day) !== 1) || !checkdate((int) $day[2], (int) $day[3], (int) $day[1])
+        || (preg_match('/^([01]\d|2[0-3]):([0-5]\d)$/', $from, $start) !== 1)
+        || (preg_match('/^([01]\d|2[0-3]):([0-5]\d)$/', $to, $end) !== 1)) {
+        $out['error'] = lang('Choose the date and the time window of the pickup.');
+        return $out;
+    }
+
+    $out['start'] = mktime((int) $start[1], (int) $start[2], 0, (int) $day[2], (int) $day[3], (int) $day[1]);
+    $out['end'] = mktime((int) $end[1], (int) $end[2], 0, (int) $day[2], (int) $day[3], (int) $day[1]);
+
+    if ($out['end'] <= $out['start']) {
+        $out['error'] = lang('The end of the pickup window must come after its start.');
+    } elseif ($out['end'] <= (int) $now) {
+        $out['error'] = lang('The pickup window has already passed.');
+    }
+
+    return $out;
+}
+
+/**
+ * The labels a pickup can take, one request each per label service and
+ * carrier: active outbound labels of a service that books pickups. Pure.
+ *
+ * @param array    $rows    shipment_labels rows with carrier (the parcel's)
+ * @param string[] $drivers pg_shipment_label_pickup_drivers()
+ * @return array "driver carrier" => rows, in the order given
+ */
+function pg_shipment_label_pickup_groups($rows, $drivers)
+{
+    $groups = array();
+
+    foreach ((array) $rows as $row) {
+        if (($row['state'] !== 'active') || (int) $row['is_return'] || ((string) $row['reference'] === '')
+            || !in_array((string) $row['driver'], (array) $drivers, true)) {
+            continue;
+        }
+
+        $groups[$row['driver'] . ' ' . (isset($row['carrier']) ? (string) $row['carrier'] : '')][] = $row;
+    }
+
+    return $groups;
+}
+
+/**
+ * The labels of a request that have a pickup booked already. Pure.
+ *
+ * @param array $groups pg_shipment_label_pickup_groups()
+ * @return array rows
+ */
+function pg_shipment_label_pickup_booked($groups)
+{
+    $booked = array();
+
+    foreach ((array) $groups as $rows) {
+        foreach ($rows as $row) {
+            if (isset($row['pickup_ref']) && ((string) $row['pickup_ref'] !== '')) {
+                $booked[] = $row;
+            }
+        }
+    }
+
+    return $booked;
+}
+
+/**
+ * The warning a request on booked labels stops with: a second pickup may be
+ * charged again. Pure.
+ *
+ * @param array $booked pg_shipment_label_pickup_booked()
+ * @return string '' when none is booked
+ */
+function pg_shipment_label_pickup_warning($booked)
+{
+    if (!$booked) {
+        return '';
+    }
+
+    $references = array();
+
+    foreach ($booked as $row) {
+        $references[(string) $row['pickup_ref']] = true;
+    }
+
+    return lang(array(
+        'string' => '{var:1} label(s) already have a pickup booked ({var:2}). A second request may be charged again: tick "Book another pickup" to send it anyway.',
+        'vars'   => array(pg_format_number(count($booked), 0), implode(', ', array_slice(array_keys($references), 0, 5))),
+    ));
+}
+
+/**
+ * Active outbound labels of orders or of one address, with the parcel's
+ * carrier.
+ *
+ * @param array $order_ids
+ * @param int   $ship_to_id 0 for the orders' labels
+ * @return array rows
+ */
+function pg_shipment_label_pickup_rows($order_ids, $ship_to_id = 0)
+{
+    if (!pg_shipment_labels_pickup_ready()) {
+        return array();
+    }
+
+    if ($ship_to_id > 0) {
+        $where = "sl.ship_to_id = '" . (int) $ship_to_id . "'";
+    } else {
+        $order_ids = array_values(array_filter(array_map('intval', (array) $order_ids)));
+
+        if (!$order_ids) {
+            return array();
+        }
+
+        $where = 'sl.order_id IN (' . implode(',', $order_ids) . ')';
+    }
+
+    // A parcel is unique by (ship_to_id, number): one carrier a label.
+    $carrier = pg_shipment_rows_ready() ? 'stn.carrier' : "''";
+
+    return db_items(
+        "SELECT sl.*, " . $carrier . " AS carrier
+        FROM shipment_labels AS sl
+        LEFT JOIN shipping_tracking_numbers AS stn ON stn.ship_to_id = sl.ship_to_id AND stn.number = sl.number AND sl.number <> ''
+        WHERE " . $where . " AND sl.state = 'active' AND sl.is_return = 0
+        ORDER BY sl.order_id, sl.ship_to_id, sl.id");
+}
+
+/**
+ * Books a pickup for the labels: one request per label service and carrier
+ * for the chosen date and window; each confirmation is written on every
+ * label its request took. Labels with a pickup booked stop the whole
+ * request unless $again.
+ *
+ * @param array  $rows   pg_shipment_label_pickup_rows()
+ * @param string $date   Y-m-d
+ * @param string $from   H:i
+ * @param string $to     H:i
+ * @param bool   $again  book even where a pickup is booked
+ * @return array booked (labels), requests, failed (sentences), warning
+ */
+function pg_shipment_label_pickup_request($rows, $date, $from, $to, $again)
+{
+    $out = array('booked' => 0, 'requests' => 0, 'failed' => array(), 'warning' => '');
+    $groups = pg_shipment_label_pickup_groups($rows, pg_shipment_label_pickup_drivers());
+
+    if (!$groups) {
+        $out['failed'][] = lang('None of these orders has an active label of a carrier label service that books pickups.');
+        return $out;
+    }
+
+    $window = pg_shipment_label_pickup_window($date, $from, $to, time());
+
+    if ($window['error'] !== '') {
+        $out['failed'][] = $window['error'];
+        return $out;
+    }
+
+    if (!$again) {
+        $out['warning'] = pg_shipment_label_pickup_warning(pg_shipment_label_pickup_booked($groups));
+
+        if ($out['warning'] !== '') {
+            return $out;
+        }
+    }
+
+    foreach ($groups as $labels) {
+        $driver = (string) $labels[0]['driver'];
+        $references = array();
+        $ids = array();
+
+        foreach ($labels as $label) {
+            $references[] = (string) $label['reference'];
+            $ids[] = (int) $label['id'];
+        }
+
+        $account = pg_label_account(pg_label_fields($driver), pg_label_settings($driver));
+        $answer = pg_label_call($driver, 'pickup', array(array('references' => $references, 'start' => $window['start'], 'end' => $window['end']), $account));
+
+        if (!$answer['success'] || ($answer['reference'] === '') || (strlen($answer['reference']) > 64)) {
+            $out['failed'][] = (!$answer['success'] && !$answer['unclear'])
+                ? lang(array('string' => 'The service refused the pickup request: {var:1}', 'vars' => array($answer['error'])))
+                : lang('The service did not say whether the pickup was booked. Check it there before asking again.');
+            continue;
+        }
+
+        db("UPDATE shipment_labels SET pickup_ref = '" . e($answer['reference']) . "', pickup_at = '" . (int) $window['start'] . "' WHERE id IN (" . implode(',', $ids) . ")");
+
+        $out['booked'] += count($ids);
+        $out['requests']++;
+
+        log_activity(lang(array('string' => 'A carrier pickup was booked for {var:1} label(s): {var:2}', 'vars' => array(count($ids), $answer['reference']))));
+    }
+
+    return $out;
+}
+
+/**
+ * The pickup dialog: date, window, the "book another" box and the send
+ * button, its fields posted with the form named (the orders list's own, or
+ * the order screen's shipment-label-form).
+ *
+ * @param string $id      the dialog's id
+ * @param string $form    the form id the fields belong to, '' for the
+ *                        form the dialog sits in
+ * @param string $request the label_request value sent
+ * @param string $note    a warning shown above the fields, '' for none
+ * @return string HTML
+ */
+function pg_shipment_label_pickup_dialog($id, $form, $request, $note = '')
+{
+    $owner = ($form !== '') ? ' form="' . h($form) . '"' : '';
+    $tomorrow = date('Y-m-d', strtotime('+1 day'));
+
+    return '<dialog id="' . h($id) . '" class="dialog" aria-labelledby="' . h($id) . '_title">
+            <div class="dialog-header">
+                <h5 class="dialog-title" id="' . h($id) . '_title">' . lang('Request Pickup') . '</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="' . h(lang('Close')) . '"></button>
+            </div>
+            <div class="dialog-body">
+                <p class="small fg-secondary">' . lang('The carrier collects the active labels at the sender address of the label service. One request is sent for each carrier.') . '</p>
+                ' . (($note !== '') ? '<div class="alert theme-warning small">' . h($note) . '</div>' : '') . '
+                <div class="row g-5">
+                    <div class="col-12 sm:col-4">
+                        <label class="form-label" for="' . h($id) . '_date">' . lang('Date') . '</label>
+                        <input type="date" data-pg-date class="form-control" id="' . h($id) . '_date" name="pickup_date" value="' . h($tomorrow) . '" min="' . h(date('Y-m-d')) . '"' . $owner . '>
+                    </div>
+                    <div class="col-6 sm:col-4">
+                        <label class="form-label" for="' . h($id) . '_from">' . lang('From') . '</label>
+                        <input type="time" class="form-control" id="' . h($id) . '_from" name="pickup_from" value="09:00"' . $owner . '>
+                    </div>
+                    <div class="col-6 sm:col-4">
+                        <label class="form-label" for="' . h($id) . '_to">' . lang('To') . '</label>
+                        <input type="time" class="form-control" id="' . h($id) . '_to" name="pickup_to" value="17:00"' . $owner . '>
+                    </div>
+                    <div class="col-12">
+                        <div class="form-field">
+                            <input class="check" type="checkbox" id="' . h($id) . '_again" name="pickup_again" value="1"' . $owner . '>
+                            <label for="' . h($id) . '_again">' . lang('Book another pickup') . '</label>
+                            <div class="form-text">' . lang('Needed only for labels that already have a pickup booked: a second pickup may be charged again.') . '</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="dialog-footer">
+                <button type="button" class="no-submit btn btn-solid theme-secondary" data-bs-dismiss="dialog">' . lang('Close') . '</button>
+                <button type="submit" formaction="shipment_label.php" name="label_request" value="' . h($request) . '"' . $owner . ' class="btn btn-solid theme-primary"><i class="bi bi-truck me-3" aria-hidden="true"></i>' . lang('Request Pickup') . '</button>
+            </div>
+        </dialog>';
 }

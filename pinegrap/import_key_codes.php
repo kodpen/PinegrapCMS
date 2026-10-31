@@ -17,6 +17,10 @@
  */
 
 include('init.php');
+
+// A file over post_max_size empties the whole request; say so instead of
+// drawing the form again as if nothing had been sent.
+pg_upload_refuse_discarded_body();
 $user = validate_user();
 validate_ecommerce_access($user);
 
@@ -49,6 +53,7 @@ if (!$_POST) {
                                         <div class="col-12  my-3">
                                             <label for="file" class="form-label">' . lang('Select Formatted Text File to Upload') . '</label>
                                             <input type="file" id="file" name="file" class="form-control w-auto" required />
+                                            ' . pg_upload_limit_hint() . '
                                         </div>
                                     </div>
                                 </div>       
@@ -77,6 +82,13 @@ if (!$_POST) {
     // if no file was uploaded
     if (empty($_FILES['file']['name'])) {
         output_error(lang('Please select a file') . '. <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+    }
+
+    $upload_limits = pg_upload_limits();
+    $upload_refusal = pg_upload_file_refusal($_FILES['file'], $upload_limits['file_max']);
+
+    if ($upload_refusal !== '') {
+        output_error(h($upload_refusal) . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
     }
 
     // get file handle for uploaded CSV file

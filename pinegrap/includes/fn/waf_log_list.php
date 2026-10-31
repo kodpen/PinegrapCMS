@@ -163,7 +163,9 @@ function pg_waf_log_list_sort()
     $sort_keys = array(
         'time'   => 'last_seen',
         'hits'   => 'hit_count',
-        'action' => 'action',
+        'action' => pg_list_label_order('action', array_map(function ($badge) {
+            return $badge[1];
+        }, pg_waf_log_list_actions())),
         'ip'     => 'ip_address',
         'rule'   => 'rule_id',
         'score'  => 'score',
@@ -215,9 +217,9 @@ function pg_waf_log_list_row(array $event, $now)
 
     // The relative age of the last hit tells a row still firing from one
     // that stopped after its cause was fixed; both show a clock time.
-    $time = h(date('Y-m-d H:i', (int) $event['log_timestamp']))
+    $time = h(get_absolute_time(array('timestamp' => (int) $event['log_timestamp'], 'format' => 'plain_text')))
         . (((int) $event['last_seen'] > (int) $event['log_timestamp'])
-            ? '<div class="fg-secondary" style="font-size:.75rem;">&rarr; ' . h(date('H:i', (int) $event['last_seen'])) . '</div>'
+            ? '<div class="fg-secondary" style="font-size:.75rem;">&rarr; ' . h(get_absolute_time(array('timestamp' => (int) $event['last_seen'], 'type' => 'time', 'format' => 'plain_text'))) . '</div>'
             : '')
         . '<div class="' . (((int) $event['last_seen'] > ((int) $now - 300)) ? 'fg-danger fw-semibold' : 'fg-secondary') . '" style="font-size:.75rem;">'
         . get_relative_time(array('timestamp' => (int) $event['last_seen']))

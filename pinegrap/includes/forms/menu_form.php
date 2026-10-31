@@ -57,18 +57,19 @@ function pg_menu_form_card($liveform)
                                             <div class="form-label" id="effect_label">'. lang('Submenu Effect') . '</div>
                                         </div>
                                         <div class="col-12 mb-1">
+                                            <style>@layer custom { html[data-bs-theme="dark"] .pg-menu-effect-picture { filter: invert(1); } }</style>
                                             <div role="radiogroup" aria-labelledby="effect_label">
                                             <div class="form-field d-inline-grid me-5" title="">
                                                 ' . $liveform->output_field(array('type'=>'radio', 'id'=>'effect_popup',  'name'=>'effect', 'value'=>'Pop-up', 'class'=>'radio collapse-switcher', 'data-bs-target'=>'#pop-up_row')) . '
-                                                <label class="" for="effect_popup">'. lang('Pop-up') . '<br><img src="assets/images/menu_effect_popup.png" width="71" height="75" alt="" /></label>
+                                                <label class="" for="effect_popup">'. lang('Pop-up') . '<br><img src="assets/images/menu_effect_popup.png" width="71" height="75" alt="" class="pg-menu-effect-picture" /></label>
                                             </div>
                                             <div class="form-field d-inline-grid me-5">
                                                 ' . $liveform->output_field(array('type'=>'radio', 'id'=>'effect_accordion', 'name'=>'effect', 'value'=>'Accordion', 'class'=>'radio collapse-switcher')) . '
-                                                <label class="" for="effect_accordion">'. lang('Accordion') . '<br><img src="assets/images/menu_effect_accordion.png" width="71" height="75" alt="" /></label>
+                                                <label class="" for="effect_accordion">'. lang('Accordion') . '<br><img src="assets/images/menu_effect_accordion.png" width="56" height="75" alt="" class="pg-menu-effect-picture" /></label>
                                             </div>
                                             <div class="form-field d-inline-grid me-5">
                                                 ' . $liveform->output_field(array('type'=>'radio', 'id'=>'effect_none', 'name'=>'effect', 'value'=>'', 'class'=>'radio collapse-switcher')) . '
-                                                <label class="" for="effect_none">'. lang('None') . '<br><img src="assets/images/menu_effect_none.png" width="71" height="75" alt="" /></label>
+                                                <label class="" for="effect_none">'. lang('None') . '<br><img src="assets/images/menu_effect_none.png" width="56" height="75" alt="" class="pg-menu-effect-picture" /></label>
                                             </div>
                                             </div>
                                             <div class="collapse popover fade bs-popover-bottom p-0 mb-3 w-100" id="pop-up_row">

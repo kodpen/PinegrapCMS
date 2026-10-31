@@ -9,7 +9,7 @@ description: The MCP box of flows (F8a #3000, F8b #3028 canvas, answer 5): step 
 ## How is it built on the canvas (F8b, PR #3028)?
 - `ws_flow_js_config()` gives `steps.mcp` = `ws_step_mcp_form_servers()` (steps.php, pure): each active server the person may call (an OAuth one only with their or the site's account), its `ws_mcp_form_tools()` (name, description cut at 200) and `asks` (approve tools). A server with no such tool is left out. No new read: it rides the screen's config.
 - `paletteItems()` in workspace_flow.js offers "Run a tool of an MCP server" only while `steps.mcp` is not empty; a new box takes the one server there is.
-- `mcpFields()`: server, tool (only the offered ones; a kept tool that asks first or is off shows a refusal, `mcpToolProblem()`, though the server runs one that asks first since F8c-1), `arguments` as a value field (VALUE_FIELDS, so the picker and threads insert `{{node.*}}`/`{{trigger.*}}`), `mcpArgumentsProblem()` reads it as `ws_step_mcp_arguments()` does. Config problems still come from the save's Problems list; the owner's check at publish.
+- `mcpFields()`: server, tool (those that read and those that ask first, F8c-2: `workspace-flows-mcp-box-writes.md`; a kept tool that is off shows a refusal, `mcpToolProblem()`), `arguments` as a value field (VALUE_FIELDS, so the picker and threads insert `{{node.*}}`/`{{trigger.*}}`), `mcpArgumentsProblem()` reads it as `ws_step_mcp_arguments()` does. Config problems still come from the save's Problems list; the owner's check at publish.
 - Every edit goes through `refreshNode()` → `changed()`, so undo/redo covers it. Tests: `mcp_box` in tests/workspace_flows_canvas_test.php, `mcp_form_servers` in tests/workspace_flow_steps_test.php.
 
 ## What does it keep?

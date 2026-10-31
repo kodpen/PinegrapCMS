@@ -342,7 +342,7 @@ function ws_channel_board_decisions($viewer, $channel, $q)
             }
         }
 
-        if (($q !== '') && (mb_stripos(ws_plain_text($viewer, (string) $row['body']), $q) === false)) {
+        if (($q !== '') && !ws_text_contains(ws_plain_text($viewer, (string) $row['body']), $q)) {
             continue;
         }
 
@@ -378,18 +378,13 @@ function ws_channel_board_files($viewer, $channel, $q)
         LIMIT 100");
 
     $hidden = ws_message_hidden_ids($viewer['id'], array_map(function ($row) { return (int) $row['id']; }, $rows));
-    $senders = array();
     $files = array();
 
     foreach ($rows as $row) {
-        if ($row['sender_kind'] === 'user') {
-            $senders[] = (int) $row['sender_id'];
-        }
-
         $files[] = (int) $row['file_id'];
     }
 
-    $people = ws_people(array_unique($senders));
+    list($people, $mail) = ws_message_rows_senders($rows);
     $stored = array();
 
     if (!empty($files)) {
@@ -404,13 +399,13 @@ function ws_channel_board_files($viewer, $channel, $q)
         $name = (string) $row['file_name'];
 
         if (isset($hidden[(int) $row['id']]) || !isset($stored[(int) $row['file_id']])
-            || (($q !== '') && (mb_stripos($name, $q) === false))) {
+            || (($q !== '') && !ws_text_contains($name, $q))) {
             continue;
         }
 
         $kind = ws_file_kind($name);
         $url = PATH . encode_url_path($stored[(int) $row['file_id']]);
-        $by = ws_palette_sender_name($row, $people);
+        $by = ws_palette_sender_name($row, $people, $mail);
         $when = ws_time_label($row['created_at']);
 
         $out[] = array(
@@ -550,7 +545,7 @@ function ws_channel_board($viewer, $channel, $options = array())
             $notes = array();
             $pin = ws_channel_pin_present($viewer, $channel, ws_channel_membership($channel['id'], $viewer['id']));
 
-            if ($pin && (($q === '') || (mb_stripos($pin['text'], $q) !== false))) {
+            if ($pin && (($q === '') || ws_text_contains($pin['text'], $q))) {
                 $notes[] = array(
                     'kind'       => 'pin',
                     'id'         => (int) $pin['id'],
@@ -562,7 +557,7 @@ function ws_channel_board($viewer, $channel, $options = array())
 
             $summary = trim((string) $channel['summary']);
 
-            if (($summary !== '') && (($q === '') || (mb_stripos(ws_plain_text($viewer, $summary), $q) !== false))) {
+            if (($summary !== '') && (($q === '') || ws_text_contains(ws_plain_text($viewer, $summary), $q))) {
                 $notes[] = array(
                     'kind'  => 'summary',
                     'id'    => (int) $channel['id'],

@@ -85,3 +85,20 @@ function test_custom_style_form_screens_use_shared_form()
 		pg_assert_false(strpos($source, 'Override Layout Type') !== false, $file . ' keeps no copy of the cards');
 	}
 }
+
+function test_custom_style_screens_refuse_a_blank_name()
+{
+	$queries = array('add_custom_style.php' => 'INSERT INTO style', 'edit_custom_style.php' => 'UPDATE style SET');
+
+	foreach ($queries as $file => $query) {
+		$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
+		$check = strpos($source, "if (\$name === '') {");
+		pg_assert_true($check !== false, $file . ' refuses a name of only spaces');
+		pg_assert_true($check < strpos($source, $query), $file . ' refuses it before the save');
+		pg_assert_true(strpos($source, "lang('Name is required.')", $check) !== false, $file . ' says the name is required');
+	}
+
+	$edit = (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_custom_style.php');
+	pg_assert_contains('<button type="submit" name="submit_delete" value="Delete" formnovalidate', $edit, 'Delete is not blocked by an empty required box');
+	pg_assert_true(strpos($edit, "if (\$name === '') {") > strpos($edit, 'DELETE FROM style WHERE style_id = ?'), 'Delete is never refused for a blank name');
+}

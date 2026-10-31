@@ -44,6 +44,38 @@
     var S = CFG.strings || {};
     var BOOT = null;
 
+    // ── Density ────────────────────────────────────────────────────────
+
+    // Comfortable (the default) or compact, kept per browser like the open
+    // groups of the main menu's list. Compact is one class on <html> that
+    // narrows the --ws-space-* tokens (backend.src.css); it is set here, at
+    // the top of the script, before any screen is drawn.
+    var DENSITY_KEY = 'ws-density';
+
+    function readDensity() {
+        try {
+            return (window.localStorage.getItem(DENSITY_KEY) === 'compact') ? 'compact' : 'comfortable';
+        } catch (error) {
+            return 'comfortable';
+        }
+    }
+
+    function applyDensity(value) {
+        document.documentElement.classList.toggle('ws-compact', value === 'compact');
+    }
+
+    function writeDensity(value) {
+        try {
+            window.localStorage.setItem(DENSITY_KEY, value);
+        } catch (error) {
+            // Private mode or a full store: the switch still holds for this page.
+        }
+
+        applyDensity(value);
+    }
+
+    applyDensity(readDensity());
+
     // ── Small helpers ──────────────────────────────────────────────────
 
     function t(key) {
@@ -154,6 +186,7 @@
         event: ['M9 1.5L3.5 9H8l-1 5.5L12.5 7H8z'],
         join: ['M3.5 5a2.5 2.5 0 1 0 5 0a2.5 2.5 0 1 0 -5 0', 'M1.5 14c0-2.5 2-4.5 4.5-4.5s4.5 2 4.5 4.5', 'M13 4.5v4M11 6.5h4'],
         row: ['M2 2.5h12v11H2z', 'M2 6h12M2 9.5h12M6.5 6v7.5'],
+        no_order: ['M2 3.5h1.75l1.5 7h7l1.5-5H4.5', 'M5.5 13.25a.75.75 0 1 0 1.5 0a.75.75 0 1 0 -1.5 0', 'M10.5 13.25a.75.75 0 1 0 1.5 0a.75.75 0 1 0 -1.5 0', 'M9 1.5v3M10.5 3L9 4.5L7.5 3'],
         task: ['M2.5 2.5h11v11h-11z', 'M5 8l2 2l4-4'],
         post: ['M2 3h12v8H7l-3 3v-3H2z'],
         email: ['M1.5 3.5h13v9h-13z', 'M1.5 4l6.5 5l6.5-5'],
@@ -169,10 +202,14 @@
         change: ['M10.5 2.25l3.25 3.25L6 13.25H2.75V10z', 'M9 3.75l3.25 3.25'],
         lead: ['M1.5 3h13v10h-13z', 'M4 6.5a1.5 1.5 0 1 0 3 0a1.5 1.5 0 1 0 -3 0', 'M3.25 11c0-1.25 1-2.25 2.25-2.25s2.25 1 2.25 2.25', 'M9.75 6.5h3M9.75 9h3'],
         mcp: ['M5.5 1.5v3M10.5 1.5v3', 'M3.5 4.5h9v2.25a4.5 4.5 0 0 1-9 0z', 'M8 11.25v3.25'],
+        row_add: ['M1.5 2h9v8.5h-9z', 'M1.5 5.5h9M5 5.5v5', 'M13 9.5v5M10.5 12h5'],
+        row_set: ['M1.5 2h9v8.5h-9z', 'M1.5 5.5h9M5 5.5v5', 'M13 8.5l1.75 1.75L10 15H8.25v-1.75z'],
         approval: ['M8 1.5l5.5 2v4c0 3.5-2.5 6-5.5 7c-3-1-5.5-3.5-5.5-7v-4z', 'M5.5 8l1.75 1.75l3.5-3.5'],
         condition: ['M8 14.5V9L3.5 4.5M8 9l4.5-4.5', 'M3 7.5V4h3.5M13 7.5V4H9.5'],
         delay: ['M4 1.75h8M4 14.25h8', 'M5 1.75c0 3 6 3.5 6 6.25s-6 3.25-6 6.25M11 1.75c0 3-6 3.5-6 6.25s6 3.25 6 6.25'],
         end: ['M3.5 14.5V2', 'M3.5 2.5h9l-2 3l2 3h-9'],
+        for_each: ['M13.25 8a5.25 5.25 0 1 1 -1.55 -3.7', 'M12.25 1.5v2.75H9.5', 'M6.5 6.25l2.25 1.75l-2.25 1.75'],
+        for_each_end: ['M11 8a4.5 4.5 0 1 1 -1.3 -3.2', 'M10.25 2v2.75H7.5', 'M14.25 2.5v11'],
         constants: ['M2 2h6l6 6l-6 6l-6-6z', 'M4.5 5.25a0.75 0.75 0 1 0 1.5 0a0.75 0.75 0 1 0 -1.5 0'],
         value: ['M12 2.5H4l4.5 5.5L4 13.5h8']
     };
@@ -453,6 +490,69 @@
         });
     }
 
+    // A file sent to an action as a form part, over XMLHttpRequest: fetch()
+    // says nothing while the body is on its way, and a form part travels
+    // without base64's third more and the JSON body's memory limit. fields
+    // go beside it; onProgress(loaded, total) follows the bytes (total 0
+    // when the browser cannot tell). The answer is read as api() reads it;
+    // xhr.abort() rejects with error.aborted.
+    function apiUpload(action, fields, file, name, onProgress) {
+        var xhr = new XMLHttpRequest();
+        var form = new FormData();
+
+        form.append('action', action);
+        form.append('token', CFG.token);
+        Object.keys(fields || {}).forEach(function (key) {
+            form.append(key, fields[key]);
+        });
+        form.append('file', file, name);
+
+        var done = new Promise(function (resolve, reject) {
+            xhr.open('POST', CFG.api_url);
+            // The listeners go on before send(), or no progress is reported.
+            xhr.upload.addEventListener('progress', function (event) {
+                if (onProgress) {
+                    onProgress(event.lengthComputable ? event.loaded : 0, event.lengthComputable ? event.total : 0);
+                }
+            });
+            xhr.addEventListener('load', function () {
+                var json = null;
+
+                try {
+                    json = JSON.parse(xhr.responseText);
+                } catch (error) {
+                    json = null;
+                }
+
+                if (json && json.status === 'success') {
+                    resolve(json.data || {});
+                    return;
+                }
+
+                // Not an answer of ours: a web server or proxy refused the
+                // body before PHP saw it (nginx 413, IIS 404.13), or a
+                // gateway gave up waiting.
+                var error = new Error((json && json.message) ? json.message
+                    : ((xhr.status === 413 || xhr.status === 404) ? t('upload_too_large_server') : t('error_generic')));
+
+                error.code = (json && json.code) ? json.code : '';
+                reject(error);
+            });
+            xhr.addEventListener('error', function () {
+                reject(new Error(t('upload_failed')));
+            });
+            xhr.addEventListener('abort', function () {
+                var error = new Error('');
+
+                error.aborted = true;
+                reject(error);
+            });
+            xhr.send(form);
+        });
+
+        return { xhr: xhr, done: done };
+    }
+
     var toastRoot = null;
 
     function toast(message, kind, action) {
@@ -502,6 +602,94 @@
 
     function fail(error) {
         toast((error && error.message) ? error.message : t('error_generic'), 'danger');
+    }
+
+    // Uploads on their way, for the guard against leaving the page. It
+    // stands only while one runs: a standing listener keeps the page out of
+    // the browser's back-forward cache.
+    var uploadsRunning = 0;
+
+    function uploadLeaveGuard(event) {
+        event.preventDefault();
+        event.returnValue = t('upload_leave');
+
+        return event.returnValue;
+    }
+
+    // A file on its way, in the corner where the notices stand: what goes
+    // (label, the file's name), a bar with the share sent, "1.4 MB of 6.0
+    // MB" and Cancel upload, which calls onCancel. progress(loaded, total)
+    // moves it; remove() takes it away once the request has ended.
+    function uploadCard(label, name, onCancel) {
+        if (!toastRoot) {
+            toastRoot = el('div', 'toast-container position-fixed bottom-0 start-0 p-5');
+            toastRoot.style.zIndex = 1090;
+            document.body.appendChild(toastRoot);
+        }
+
+        var box = el('div', 'toast show border-0 bg-inverse fg-contrast-inverse');
+        var inner = el('div', 'toast-body');
+        var title = el('div', 'fw-semibold', label);
+        var file = el('div', 'small text-truncate', name);
+        var bar = progressBar({ percent: 0 }, true, label);
+        var fill = bar.firstChild;
+        var row = el('div', 'd-flex justify-content-between align-items-center gap-3 small mt-2');
+        var bytes = el('span');
+        var stop = button('btn btn-sm btn-text fg-reset', t('upload_cancel'));
+        var gone = false;
+
+        // The step is announced, not every percent.
+        title.setAttribute('role', 'status');
+        stop.addEventListener('click', function () {
+            stop.disabled = true;
+            onCancel();
+        });
+
+        inner.appendChild(title);
+        inner.appendChild(file);
+        inner.appendChild(el('div', 'mt-2')).appendChild(bar);
+        row.appendChild(bytes);
+        row.appendChild(stop);
+        inner.appendChild(row);
+        box.appendChild(inner);
+        toastRoot.appendChild(box);
+
+        if (uploadsRunning++ === 0) {
+            window.addEventListener('beforeunload', uploadLeaveGuard);
+        }
+
+        return {
+            progress: function (loaded, total) {
+                // No figures (a browser that cannot tell the size): a moving
+                // bar.
+                if (!total) {
+                    fill.className = 'progress-bar progress-bar-striped progress-bar-animated';
+                    fill.style.width = '100%';
+                    bar.removeAttribute('aria-valuenow');
+                    bytes.textContent = '';
+                    return;
+                }
+
+                var share = Math.min(100, Math.round(100 * loaded / total));
+
+                fill.className = 'progress-bar';
+                fill.style.width = share + '%';
+                bar.setAttribute('aria-valuenow', String(share));
+                bytes.textContent = t('upload_sent', sizeLabel(loaded), sizeLabel(total));
+            },
+            remove: function () {
+                if (gone) {
+                    return;
+                }
+
+                gone = true;
+                box.remove();
+
+                if (--uploadsRunning === 0) {
+                    window.removeEventListener('beforeunload', uploadLeaveGuard);
+                }
+            }
+        };
     }
 
     function debounce(fn, wait) {
@@ -1050,12 +1238,77 @@
 
     var ctxNode = null;
     var ctxOpenedAt = 0;
+    var ctxOpener = null;
+    var ctxKeyAt = 0;
+    var messageMetaSeq = 0;
 
+    // Focus inside the menu (or already lost to the page) goes back to what
+    // opened it: removing a focused node drops focus to the body.
     function closeCtx() {
         if (ctxNode) {
+            var opener = ctxOpener;
+            var active = document.activeElement;
+            var inside = !active || (active === document.body) || ctxNode.contains(active);
+
             ctxNode.remove();
             ctxNode = null;
+            ctxOpener = null;
+
+            if (opener && opener.hasAttribute('aria-haspopup')) {
+                opener.setAttribute('aria-expanded', 'false');
+            }
+
+            if (inside) {
+                giveFocusBack(opener);
+            }
         }
+    }
+
+    function giveFocusBack(opener) {
+        if (opener && opener.isConnected && opener.focus) {
+            opener.focus({ preventScroll: true });
+        }
+    }
+
+    // What has focus when a menu or a box opens is where focus returns.
+    function takeOpener() {
+        var active = document.activeElement;
+
+        ctxOpener = (active && active !== document.body) ? active : null;
+
+        if (ctxOpener && ctxOpener.hasAttribute('aria-haspopup')) {
+            ctxOpener.setAttribute('aria-expanded', 'true');
+        }
+
+        return ctxOpener;
+    }
+
+    // A button that opens a context menu says so.
+    function menuButton(node) {
+        node.setAttribute('aria-haspopup', 'menu');
+        node.setAttribute('aria-expanded', 'false');
+
+        return node;
+    }
+
+    // The density switch in the overview's header: comfortable or compact,
+    // changed at once on every Workspace part of this page.
+    function densityButton() {
+        var opener = menuButton(button('btn btn-sm btn-text theme-secondary', '', 'bi-arrows-collapse-vertical', t('density')));
+
+        opener.addEventListener('click', function (event) {
+            var box = opener.getBoundingClientRect();
+            var now = readDensity();
+
+            event.stopPropagation();
+            ctxMenu(Math.max(8, box.right - 200), box.bottom + 4, [
+                { header: t('density') },
+                { label: t('density_comfortable'), checked: now === 'comfortable', action: function () { writeDensity('comfortable'); } },
+                { label: t('density_compact'), checked: now === 'compact', action: function () { writeDensity('compact'); } }
+            ]);
+        });
+
+        return opener;
     }
 
     // An open dialog or drawer sits in the top layer over an inert page, so a
@@ -1088,6 +1341,7 @@
             return;
         }
 
+        var opener = takeOpener();
         var menu = el('div', 'ws-ctx contextmenu popover shadow-lg backdrop');
         var body = el('div', 'popover-body');
 
@@ -1103,8 +1357,17 @@
                 return;
             }
 
+            // The header names the menu; the row itself is only its look.
             if (item.header) {
-                body.appendChild(el('div', 'ws-ctx-header', item.header));
+                var header = el('div', 'ws-ctx-header', item.header);
+
+                header.setAttribute('role', 'none');
+                body.appendChild(header);
+
+                if (!menu.hasAttribute('aria-label')) {
+                    menu.setAttribute('aria-label', item.header);
+                }
+
                 return;
             }
 
@@ -1150,7 +1413,14 @@
 
             var entry = el('button', 'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate ws-ctx-item' + (item.danger ? ' ws-ctx-danger' : '') + (item.checked ? ' ws-ctx-checked' : ''));
             entry.type = 'button';
-            entry.setAttribute('role', 'menuitem');
+            // One of a set of choices (a notification level): which one is on
+            // is said, not only drawn.
+            entry.setAttribute('role', ('checked' in item) ? 'menuitemradio' : 'menuitem');
+
+            if ('checked' in item) {
+                entry.setAttribute('aria-checked', item.checked ? 'true' : 'false');
+            }
+
             entry.appendChild(icon(item.checked ? 'bi-check2' : (item.icon || 'bi-dot'), 'me-3'));
             entry.appendChild(document.createTextNode(item.label));
             entry.disabled = !!item.disabled;
@@ -1159,6 +1429,10 @@
                 event.stopPropagation();
                 closeCtx();
                 item.action();
+
+                if (document.activeElement === document.body || !document.activeElement) {
+                    giveFocusBack(opener);
+                }
             });
             body.appendChild(entry);
         });
@@ -1204,22 +1478,43 @@
         }
     }, true);
 
+    // ContextMenu or Shift+F10 raises the browser's contextmenu event on the
+    // focused node; onContext() then opens the menu at the node.
+    document.addEventListener('keydown', function (event) {
+        if (event.key === 'ContextMenu' || (event.shiftKey && event.key === 'F10')) {
+            ctxKeyAt = Date.now();
+        }
+    }, true);
+
     document.addEventListener('keydown', function (event) {
         if (!ctxNode) {
             return;
         }
 
+        // A floating box (the emoji picker, the table picker) keeps Tab,
+        // Home and End for its own fields.
+        var isMenu = ctxNode.getAttribute('role') === 'menu';
+
+        if (event.key === 'Tab' && isMenu) {
+            event.preventDefault();
+            closeCtx();
+            return;
+        }
+
+        var entries = Array.prototype.slice.call(ctxNode.querySelectorAll('.ws-ctx-item:not([disabled])'));
+        var index = entries.indexOf(document.activeElement);
+
+        if (!entries.length) {
+            return;
+        }
+
         if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
-            var entries = Array.prototype.slice.call(ctxNode.querySelectorAll('.ws-ctx-item:not([disabled])'));
-            var index = entries.indexOf(document.activeElement);
-
-            if (!entries.length) {
-                return;
-            }
-
             event.preventDefault();
             index = (index + (event.key === 'ArrowDown' ? 1 : -1) + entries.length) % entries.length;
             entries[index].focus();
+        } else if (isMenu && (event.key === 'Home' || event.key === 'End')) {
+            event.preventDefault();
+            entries[(event.key === 'Home') ? 0 : entries.length - 1].focus();
         }
     });
 
@@ -2021,6 +2316,8 @@
     function floatBox(x, y, content, className, above) {
         closeCtx();
 
+        takeOpener();
+
         var box = el('div', 'ws-ctx contextmenu popover shadow-lg backdrop ws-float' + (className ? ' ' + className : ''));
 
         box.setAttribute('data-pg-menu-hold', '');
@@ -2224,7 +2521,19 @@
                 return;
             }
 
-            ctxMenu(event.clientX, event.clientY, build(event));
+            var x = event.clientX;
+            var y = event.clientY;
+
+            // Raised from the keyboard: at the node, not where the pointer
+            // happens to be.
+            if ((Date.now() - ctxKeyAt) < 1000) {
+                var rect = node.getBoundingClientRect();
+
+                x = rect.left + 8;
+                y = rect.bottom;
+            }
+
+            ctxMenu(x, y, build(event));
         });
 
         node.addEventListener('touchstart', function (event) {
@@ -2269,6 +2578,74 @@
                 event.stopImmediatePropagation();
             }
         }, true);
+    }
+
+    // One Tab stop over the messages of a pane, the newest until another is
+    // focused: Up and Down move between messages, Home and End go to the
+    // first and the last. A focused message shows its tools (:focus-within)
+    // and opens its menu with ContextMenu or Shift+F10 (onContext()). Keys
+    // act only on the message itself, so a control inside keeps its own.
+    function messageKeys(pane) {
+        function messages() {
+            return Array.prototype.slice.call(pane.querySelectorAll('.ws-msg'));
+        }
+
+        function moveStop(target) {
+            messages().forEach(function (node) {
+                node.tabIndex = (node === target) ? 0 : -1;
+            });
+        }
+
+        function keepStop() {
+            var all = messages();
+
+            if (all.length && !all.some(function (node) { return node.tabIndex === 0; })) {
+                all[all.length - 1].tabIndex = 0;
+            }
+        }
+
+        pane.addEventListener('focusin', function (event) {
+            var node = event.target.closest ? event.target.closest('.ws-msg') : null;
+
+            if (node && pane.contains(node) && node.tabIndex !== 0) {
+                moveStop(node);
+            }
+        });
+
+        pane.addEventListener('keydown', function (event) {
+            if (!event.target.classList || !event.target.classList.contains('ws-msg') || event.altKey || event.ctrlKey || event.metaKey) {
+                return;
+            }
+
+            var all = messages();
+            var index = all.indexOf(event.target);
+            var next = null;
+
+            if (event.key === 'ArrowUp') {
+                next = all[index - 1];
+            } else if (event.key === 'ArrowDown') {
+                next = all[index + 1];
+            } else if (event.key === 'Home') {
+                next = all[0];
+            } else if (event.key === 'End') {
+                next = all[all.length - 1];
+            } else {
+                return;
+            }
+
+            event.preventDefault();
+
+            if (next) {
+                moveStop(next);
+                next.focus();
+            }
+        });
+
+        if (window.MutationObserver) {
+            new MutationObserver(keepStop).observe(pane, { childList: true, subtree: true });
+        }
+
+        keepStop();
     }
 
     // Tags inside a message, and the head of a lone tag's card: open the
@@ -2941,11 +3318,39 @@
     // ── Progress bars and tag fields ───────────────────────────────────
 
     // How far a checklist has got, as a thin bar.
-    function progressBar(progress, small) {
+    // A bar says what it counts: a checklist bar is named with the "items
+    // done" sentence unless the caller names it, so a screen reader does
+    // not hear a bare percentage.
+    // Sizes of files in a list and on their way, as the file manager
+    // writes them (uploadSizeLabel() in view_folders.php). The unit letters
+    // are not translated: the server's convert_bytes_to_string() writes the
+    // same ones in every language.
+    function sizeLabel(bytes) {
+        var steps = [[1073741824, ' GB', 1], [1048576, ' MB', 1], [1024, ' KB', 0]];
+
+        for (var i = 0; i < steps.length; i++) {
+            if (bytes >= steps[i][0]) {
+                return (bytes / steps[i][0]).toLocaleString(CFG.locale || undefined, { minimumFractionDigits: steps[i][2], maximumFractionDigits: steps[i][2] }) + steps[i][1];
+            }
+        }
+
+        return bytes + ' B';
+    }
+
+    function progressBar(progress, small, label) {
         var bar = el('div', 'progress ws-progress' + (small ? ' ws-progress-sm' : '') + (progress.complete ? ' ws-progress-full' : ''));
         var fill = el('div', 'progress-bar');
 
+        if (!label && progress.total) {
+            label = t('progress_text', progress.done, progress.total, progress.percent);
+        }
+
         bar.setAttribute('role', 'progressbar');
+
+        if (label) {
+            bar.setAttribute('aria-label', label);
+        }
+
         bar.setAttribute('aria-valuemin', '0');
         bar.setAttribute('aria-valuemax', '100');
         bar.setAttribute('aria-valuenow', String(progress.percent));
@@ -5704,7 +6109,6 @@
                 },
                 openChannel: function (id) { self.open(id, 0); },
                 openThread: function (thread) { self.threadGo({ id: thread.id, channel_id: thread.channel_id, mine: true }); },
-                search: function (text) { self.search(text); },
                 newChannel: function () {
                     channelForm(null, {}, function (id) { self.reloadChannels(id); });
                 },
@@ -5714,9 +6118,10 @@
                     }
                 },
                 // The workspace's own tour (includes/workspace/tour.php): it
-                // points at entries of the work and records sections.
+                // points at the tiles of the Tools section; a place behind
+                // More is opened by the tour itself (PGWsSide.openFor()).
                 tour: (window.PgTour && window.PG_TOUR && window.PG_TOUR.key) ? function () {
-                    window.PGWsSide.openSections(['work', 'records']);
+                    window.PGWsSide.openSections(['tools']);
                     window.PgTour.start(window.PG_TOUR.key);
                 } : null,
                 pin: function (channel, pinned) { self.pinChannel(channel, pinned); },
@@ -5732,7 +6137,7 @@
                     onContext(link, function () { return self.channelActions(channel); });
                 },
                 decorateGroup: function (head, group) {
-                    var more = button('btn btn-sm btn-text theme-secondary ws-group-more', '', 'bi-three-dots', t('more'));
+                    var more = menuButton(button('btn btn-sm btn-text theme-secondary ws-group-more', '', 'bi-three-dots', t('more')));
 
                     more.addEventListener('click', function (event) {
                         event.stopPropagation();
@@ -5775,20 +6180,21 @@
                 return;
             }
 
+            // One line: the pin, who wrote it and its text; a click opens it
+            // in the conversation. Who pinned it is the line's tooltip.
             var bar = el('div', 'ws-pin-bar');
             var text = el('button', 'ws-pin-text');
+            var words = el('span', 'ws-pin-words');
 
             text.type = 'button';
-            text.title = t('pin_go');
-            bar.appendChild(icon('bi-pin-angle-fill', 'ws-pin-icon'));
-            text.appendChild(el('b', 'me-1', (pin.sender ? pin.sender.name : '') + ':'));
-            text.appendChild(document.createTextNode(pin.text));
+            text.title = t('pin_go') + (pin.pinned_by ? ' · ' + t('pin_by', pin.pinned_by) : '');
+            text.setAttribute('aria-label', text.title);
+            text.appendChild(icon('bi-pin-angle-fill', 'ws-pin-icon'));
+            words.appendChild(el('b', 'me-1', (pin.sender ? pin.sender.name : '') + ':'));
+            words.appendChild(document.createTextNode(pin.text));
+            text.appendChild(words);
             text.addEventListener('click', function () { self.jumpTo(pin.id, true); });
             bar.appendChild(text);
-
-            if (pin.pinned_by) {
-                bar.appendChild(el('span', 'ws-pin-by', t('pin_by', pin.pinned_by)));
-            }
 
             // Its read receipt, or a way to ask for one (workspace_acks.js).
             var pinAck = window.PGWsAcks ? window.PGWsAcks.pinNode(pin, self, featureHelpers()) : null;
@@ -5797,7 +6203,7 @@
                 bar.appendChild(pinAck);
             }
 
-            var close = button('btn btn-sm btn-text theme-secondary py-0', '', 'bi-x-lg', t('pin_close'));
+            var close = button('btn btn-sm btn-text theme-secondary py-0 ws-pin-close', '', 'bi-x-lg', t('pin_close'));
             close.addEventListener('click', function () {
                 if (self.channel.joined) {
                     api('ws_pin_hide', { channel_id: self.channel.id }).catch(function () {});
@@ -7011,6 +7417,10 @@
             var date = el('div', 'ws-topic');
             title.appendChild(date);
             head.appendChild(title);
+
+            var actions = el('div', 'ws-head-actions');
+            actions.appendChild(densityButton());
+            head.appendChild(actions);
             center.appendChild(head);
 
             var body = el('div', 'ws-home');
@@ -7740,7 +8150,12 @@
             var channel = self.channel;
             var center = clear(self.center);
 
-            // Header: name, topic, the customer, the people, the tools.
+            // Header, one line: the channel's sign and name, how its work
+            // stands, its department and its customer; then its people,
+            // search, its info, a new task and its menu. The purpose is in
+            // the info (showMembers()) and on the name's tooltip. On a phone
+            // the line keeps the way back, the name and the menu, which then
+            // holds the rest.
             var head = el('div', 'ws-head');
             head.appendChild(channelsToggle());
 
@@ -7756,66 +8171,61 @@
             tile.setAttribute('aria-hidden', 'true');
             tile.appendChild(channelIcon(channel));
             h.appendChild(tile);
-            h.appendChild(document.createTextNode(channel.name));
+            h.appendChild(el('span', 'ws-head-name', channel.name));
+
+            if (channel.topic) {
+                h.title = channel.topic;
+            }
+
             title.appendChild(h);
 
-            var topic = el('div', 'ws-topic');
-
-            // The customer, and beside it the records tied to it.
-            if (channel.customer) {
-                var who = el('span', 'ws-customer');
-
-                setHtml(who, channel.customer.customer.html);
-
-                channel.customer.links.forEach(function (link) {
-                    var tie = el('span', 'ws-customer-tie');
-
-                    setHtml(tie, link.html);
-                    tie.title = link.kind;
-                    who.appendChild(tie);
-                });
-
-                topic.appendChild(who);
-                topic.appendChild(document.createTextNode(' '));
-            } else if (channel.contact) {
-                setHtml(topic, channel.contact.html);
-                topic.appendChild(document.createTextNode(' '));
-            }
+            var tags = el('div', 'ws-head-tags');
 
             // How the work stands, from the latest status update
             // (workspace_status.js).
             var statusPill = window.PGWsStatus ? window.PGWsStatus.pill(channel, self, featureHelpers()) : null;
 
             if (statusPill) {
-                topic.appendChild(statusPill);
+                tags.appendChild(statusPill);
             }
 
             if (channel.department) {
-                var departmentBadge = topic.appendChild(el('span', 'badge me-1', channel.department.name));
+                var departmentBadge = tags.appendChild(el('span', 'badge ws-head-tag', channel.department.name));
                 departmentBadge.style.background = channel.department.color;
                 departmentBadge.style.color = readableInk(channel.department.color);
             }
 
-            topic.appendChild(document.createTextNode(channel.topic || ''));
-            title.appendChild(topic);
+            // The customer, and beside it the records tied to it.
+            var customer = self.customerNode(channel);
+
+            if (customer) {
+                customer.classList.add('ws-head-tag');
+                tags.appendChild(customer);
+            }
+
+            if (tags.firstChild) {
+                title.appendChild(tags);
+            }
+
             head.appendChild(title);
 
             var actions = el('div', 'ws-head-actions');
-            var faces = button('btn btn-sm btn-text theme-secondary d-inline-flex align-items-center gap-1', '', '', t('members'));
+            var faces = button('btn btn-sm btn-text theme-secondary ws-head-faces ws-head-wide', '', '', t('members'));
             faces.appendChild(avatarStack('', channel.members, 4));
             faces.appendChild(el('span', 'small', channel.members.length));
             faces.addEventListener('click', function () { self.showMembers(); });
             actions.appendChild(faces);
 
-            var addTask = button('btn btn-sm btn-text theme-secondary', '', 'bi-check2-square', t('new_task'));
-            addTask.addEventListener('click', function () {
-                var about = channel.customer ? channel.customer.customer : null;
-                var refs = about
-                    ? [{ type: about.type, id: about.id, label: about.label, icon: about.icon, token: '<#' + about.type + ':' + about.id + '>' }]
-                    : (channel.contact ? [{ type: 'contact', id: channel.contact.id, label: channel.contact.label, icon: 'bi-person-vcard', token: '<#contact:' + channel.contact.id + '>' }] : []);
+            var find = button('btn btn-sm btn-text theme-secondary ws-head-wide', '', 'bi-search', t('channel_search'));
+            find.addEventListener('click', function () { self.searchChannel(); });
+            actions.appendChild(find);
 
-                taskDrawer.open(0, { channel_id: channel.id, department_id: channel.department ? channel.department.id : 0, refs: refs }, function () { self.sync(); });
-            });
+            var info = button('btn btn-sm btn-text theme-secondary ws-head-wide', '', 'bi-info-circle', t('channel_info'));
+            info.addEventListener('click', function () { self.showMembers(); });
+            actions.appendChild(info);
+
+            var addTask = button('btn btn-sm btn-text theme-secondary ws-head-wide', '', 'bi-check2-square', t('new_task'));
+            addTask.addEventListener('click', function () { self.newChannelTask(); });
             actions.appendChild(addTask);
 
             actions.appendChild(self.channelMenu());
@@ -7900,22 +8310,26 @@
                 }
             });
 
+            // The catch-up line and the pinned message, one above the other;
+            // on a phone they share one thin row.
             if (self.tab === 'messages') {
-                var brief = self.briefingNode();
+                var strip = el('div', 'ws-strip');
+                var brief = self.catchupNode();
 
                 if (brief) {
-                    center.appendChild(brief);
+                    strip.appendChild(brief);
                 }
 
-                // The pinned message, under the greeting.
                 self.pinHolder = el('div', 'ws-pin-holder');
-                center.appendChild(self.pinHolder);
+                strip.appendChild(self.pinHolder);
+                center.appendChild(strip);
                 self.drawPinBar();
             }
 
             var pane = el('div', 'ws-pane ws-pane-' + self.tab);
             center.appendChild(pane);
             self.pane = pane;
+            messageKeys(pane);
 
             // A picture that finishes loading under the newest line pushes
             // it out of view; whoever was reading at the end stays there.
@@ -7997,6 +8411,55 @@
             });
         },
 
+        // The customer of the channel with the records tied to it, or its
+        // contact: a chip in the header and a line of its info.
+        customerNode: function (channel) {
+            if (channel.customer) {
+                var who = el('span', 'ws-customer');
+
+                setHtml(who, channel.customer.customer.html);
+
+                channel.customer.links.forEach(function (link) {
+                    var tie = el('span', 'ws-customer-tie');
+
+                    setHtml(tie, link.html);
+                    tie.title = link.kind;
+                    who.appendChild(tie);
+                });
+
+                return who;
+            }
+
+            if (channel.contact) {
+                var contact = el('span', 'ws-customer');
+
+                setHtml(contact, channel.contact.html);
+
+                return contact;
+            }
+
+            return null;
+        },
+
+        // A task of this channel, about its customer or contact.
+        newChannelTask: function () {
+            var self = this;
+            var channel = self.channel;
+            var about = channel.customer ? channel.customer.customer : null;
+            var refs = about
+                ? [{ type: about.type, id: about.id, label: about.label, icon: about.icon, token: '<#' + about.type + ':' + about.id + '>' }]
+                : (channel.contact ? [{ type: 'contact', id: channel.contact.id, label: channel.contact.label, icon: 'bi-person-vcard', token: '<#contact:' + channel.contact.id + '>' }] : []);
+
+            taskDrawer.open(0, { channel_id: channel.id, department_id: channel.department ? channel.department.id : 0, refs: refs }, function () { self.sync(); });
+        },
+
+        // The workspace search, on this channel (workspace_palette.js).
+        searchChannel: function () {
+            if (window.PGWsPalette) {
+                window.PGWsPalette.open({ scope: 'here' });
+            }
+        },
+
         channelMenu: function () {
             var self = this;
             var channel = self.channel;
@@ -8008,19 +8471,27 @@
 
             var menu = el('ul', 'menu pg-menu-end');
 
-            function item(label, iconName, handler) {
-                var li = el('li');
+            function item(label, iconName, handler, className) {
+                var li = el('li', className || '');
                 var link = button('menu-item pg-link-body-emphasis', label, iconName);
                 link.addEventListener('click', handler);
                 li.appendChild(link);
                 menu.appendChild(li);
             }
 
-            function divider() {
-                var li = el('li');
+            function divider(className) {
+                var li = el('li', className || '');
                 li.appendChild(el('hr', 'menu-divider'));
                 menu.appendChild(li);
             }
+
+            // On a phone the header keeps only the name: the channel's info,
+            // people and search beside it on a wider screen come first here
+            // (a new task is the Tasks tab's button and the / command).
+            item(t('channel_info'), 'bi-info-circle', function () { self.showMembers(); }, 'ws-head-narrow');
+            item(t('members') + ' (' + channel.members.length + ')', 'bi-people', function () { self.showMembers(); }, 'ws-head-narrow');
+            item(t('channel_search'), 'bi-search', function () { self.searchChannel(); }, 'ws-head-narrow');
+            divider('ws-head-narrow');
 
             if (channel.can_manage) {
                 item(t('edit_channel'), 'bi-pencil', function () {
@@ -8190,14 +8661,41 @@
             return wrap;
         },
 
+        // The channel's info: what it is for, its customer and department,
+        // then its people.
         showMembers: function () {
             var self = this;
             var channel = self.channel;
-            var node = offcanvas('ws-members', t('members'));
+            var node = offcanvas('ws-members', t('channel_info'));
             var body = clear(node.querySelector('.drawer-body'));
             var footer = clear(node.querySelector('.drawer-footer'));
 
             footer.classList.add('d-none');
+
+            var about = el('div', 'ws-info-about');
+
+            if (channel.topic) {
+                about.appendChild(el('div', 'ws-info-label', t('purpose')));
+                about.appendChild(el('p', 'ws-info-purpose', channel.topic));
+            }
+
+            var customer = self.customerNode(channel);
+
+            if (customer) {
+                about.appendChild(customer);
+            }
+
+            if (channel.department) {
+                var department = about.appendChild(el('span', 'badge ms-1', channel.department.name));
+                department.style.background = channel.department.color;
+                department.style.color = readableInk(channel.department.color);
+            }
+
+            if (about.firstChild) {
+                body.appendChild(about);
+            }
+
+            body.appendChild(el('div', 'ws-info-label', t('members') + ' (' + channel.members.length + ')'));
 
             // Claude, where it can be asked: listed, but no person to open.
             if (BOOT.claude && channel.claude && channel.claude.available) {
@@ -8231,7 +8729,7 @@
                 row.appendChild(personLink(memberFace, member));
                 var text = el('div', 'flex-grow-1');
                 text.appendChild(personLink(el('div', 'fw-semibold', member.name), member));
-                text.appendChild(el('small', 'fg-secondary', (member.id === channel.owner_id ? t('owner') + ' · ' : '') + (member.title || '')));
+                text.appendChild(el('small', 'fg-secondary', [(member.id === channel.owner_id) ? t('owner') : '', member.title || ''].filter(Boolean).join(' · ')));
                 row.appendChild(text);
                 row.appendChild(el('span', 'badge rounded-pill ' + (member.presence === 'online' ? 'theme-success' : 'theme-secondary'), t('presence_' + member.presence)));
 
@@ -8427,6 +8925,11 @@
                 + ((message.kind === 'decision' || message.kind === 'note') ? ' ws-msg-' + message.kind : ''));
             node.setAttribute('data-ws-message', message.id);
 
+            // A Tab stop of the pane's one (messageKeys()), named by its
+            // sender and time row.
+            node.tabIndex = -1;
+            node.setAttribute('role', 'article');
+
             var face = el('div', 'ws-msg-avatar');
             var person = (message.sender_kind === 'user') ? message.sender : null;
             face.appendChild(personLink(avatar(message.sender), person));
@@ -8434,6 +8937,8 @@
 
             var main = el('div', 'ws-msg-main');
             var meta = el('div', 'ws-msg-meta');
+            meta.id = 'ws-msg-meta-' + (++messageMetaSeq);
+            node.setAttribute('aria-labelledby', meta.id);
             meta.appendChild(personLink(el('b', '', message.sender ? message.sender.name : ''), person));
 
             if (message.sender_kind === 'guest') {
@@ -8600,7 +9105,7 @@
                 fileBox.appendChild(self.filePreview(message));
 
                 if (message.file.versions) {
-                    var versions = button('ws-file-versions', t('file_versions', message.file.versions), 'bi-clock-history');
+                    var versions = menuButton(button('ws-file-versions', t('file_versions', message.file.versions), 'bi-clock-history'));
                     versions.addEventListener('click', function (event) {
                         event.stopPropagation();
                         self.fileVersions(message, versions);
@@ -8642,6 +9147,11 @@
             // A conversation's card answered by e-mail (workspace_mail.js).
             if (message.mail_reply && window.PGWsMail) {
                 main.appendChild(window.PGWsMail.node(message, self, featureHelpers()));
+            }
+
+            // Pinegrap AI's reply draft under a conversation (workspace_mail.js).
+            if (message.mail_draft && window.PGWsMail) {
+                main.appendChild(window.PGWsMail.draft(message, self, featureHelpers()));
             }
 
             // Somebody mentioned here who is not in the channel: one click
@@ -9006,7 +9516,7 @@
                 tools.appendChild(tool);
             });
 
-            var more = button('', '', 'bi-three-dots', t('more'));
+            var more = menuButton(button('', '', 'bi-three-dots', t('more')));
             more.addEventListener('click', function (event) {
                 var box = more.getBoundingClientRect();
                 event.stopPropagation();
@@ -9017,15 +9527,18 @@
             return tools;
         },
 
-        // The channel's greeting: what happened since the last visit, what is
-        // waiting, and the one thing worth doing. Closed, it stays closed for
-        // the rest of the day in this channel.
-        briefingNode: function () {
+        // While the reader was away (ws_channel_catchup()): one line with what
+        // came, the way to it and to the tasks past their date, and Pinegrap
+        // AI's summary of it on request. Shown only when there is something;
+        // closed, it stays closed for the rest of the day in this channel.
+        // The greeting itself lives on the overview and in the morning mail.
+        catchupNode: function () {
             var self = this;
             var brief = self.briefing;
+            var line = brief ? brief.catchup : null;
             var storeKey = 'ws-brief-closed';
 
-            if (!brief) {
+            if (!line) {
                 return null;
             }
 
@@ -9034,45 +9547,61 @@
                     return null;
                 }
             } catch (error) {
-                // No storage: the greeting simply shows.
+                // No storage: the line simply shows.
             }
 
-            var box = el('div', 'ws-brief');
-            var badge = el('div', 'ws-brief-icon');
-            badge.appendChild(icon(brief.icon || 'bi-stars'));
-            box.appendChild(badge);
+            var box = el('div', 'ws-catchup');
+            var row = el('div', 'ws-catchup-row');
+            var text = el('span', 'ws-catchup-text');
 
-            var text = el('div', 'ws-grow');
-            text.appendChild(el('div', 'ws-brief-greeting', brief.greeting));
+            box.setAttribute('role', 'status');
+            row.appendChild(icon('bi-clock-history', 'ws-catchup-icon'));
+            text.appendChild(el('strong', '', line.lead));
+            text.appendChild(document.createTextNode(' ' + line.parts.join(' · ')));
+            row.appendChild(text);
 
-            (brief.lines || []).forEach(function (line) {
-                text.appendChild(el('div', 'ws-brief-line', line));
-            });
+            // A labelled button that keeps only its icon on a phone.
+            function action(label, iconName, handler) {
+                var node = button('btn btn-sm btn-outline theme-secondary rounded-pill ws-catchup-action', '', iconName, label);
 
-            // Pinegrap AI's summary of what was missed, written once asked
-            // for and kept on the greeting while the channel stays open.
-            var buttons = el('div', 'ws-brief-buttons');
+                node.appendChild(el('span', 'ws-catchup-label', label));
+                node.addEventListener('click', handler);
+                row.appendChild(node);
 
+                return node;
+            }
+
+            if (line.go) {
+                action(t(line.mention ? 'catchup_mention' : 'catchup_go'), line.mention ? 'bi-at' : 'bi-arrow-down-circle', function () {
+                    self.jumpTo(line.go, true);
+                });
+            }
+
+            if (line.tasks) {
+                action(t('catchup_tasks'), 'bi-alarm', function () {
+                    self.tab = 'tasks';
+                    self.drawCenter();
+                    self.syncAddress();
+                });
+            }
+
+            // Pinegrap AI's summary of the missed messages, written once asked
+            // for and kept under the line while the channel stays open.
             if (brief.recap) {
-                var recapBox = el('div', 'ws-brief-recap');
+                var recapBox = el('div', 'ws-catchup-recap');
                 var showRecap = function () {
                     clear(recapBox);
-                    recapBox.appendChild(el('div', 'ws-brief-recap-text', brief.recap.text));
-                    recapBox.appendChild(el('div', 'ws-brief-recap-by', t('brief_recap_by')));
+                    recapBox.appendChild(el('div', 'ws-catchup-recap-text', brief.recap.text));
+                    recapBox.appendChild(el('div', 'ws-catchup-recap-by', t('brief_recap_by')));
                 };
-
-                text.appendChild(recapBox);
 
                 if (brief.recap.text) {
                     showRecap();
                 } else {
                     var channelId = self.channel.id;
-                    var ask = button('btn btn-sm ws-brief-action', t('brief_recap'), 'bi-stars');
-                    ask.addEventListener('click', function () {
+                    var ask = action(t('brief_recap'), 'bi-stars', function () {
                         ask.disabled = true;
-                        clear(ask);
-                        ask.appendChild(el('span', 'spinner-border spinner-border-sm me-1'));
-                        ask.appendChild(document.createTextNode(t('brief_recap_wait')));
+                        recapBox.appendChild(el('div', 'ws-catchup-recap-by', t('brief_recap_wait')));
 
                         api('ws_brief_recap', { channel_id: channelId, since_id: brief.recap.since_id }).then(function (data) {
                             brief.recap.text = data.text || '';
@@ -9080,43 +9609,19 @@
                             showRecap();
                         }).catch(function (error) {
                             ask.disabled = false;
-                            clear(ask);
-                            ask.appendChild(icon('bi-stars', 'me-1'));
-                            ask.appendChild(document.createTextNode(t('brief_recap')));
+                            clear(recapBox);
                             fail(error);
                         });
                     });
-                    buttons.appendChild(ask);
                 }
+
+                box.appendChild(row);
+                box.appendChild(recapBox);
+            } else {
+                box.appendChild(row);
             }
 
-            text.appendChild(buttons);
-
-            if (brief.advice && brief.advice.action !== 'none') {
-                var go = button('btn btn-sm ws-brief-action', brief.advice.label, brief.advice.icon);
-                go.addEventListener('click', function () {
-                    if (brief.advice.action === 'tab') {
-                        self.tab = brief.advice.target;
-                        self.drawCenter();
-                    } else if (brief.advice.action === 'message') {
-                        var target = self.center.querySelector('[data-ws-message="' + brief.advice.target + '"]');
-
-                        if (target) {
-                            target.classList.add('ws-msg-highlight');
-                            target.scrollIntoView({ block: 'center', behavior: 'smooth' });
-                        } else {
-                            self.open(self.channel.id, brief.advice.target);
-                        }
-                    }
-                });
-                buttons.appendChild(go);
-            } else if (brief.advice) {
-                text.appendChild(el('div', 'ws-brief-hint', brief.advice.label));
-            }
-
-            box.appendChild(text);
-
-            var close = button('btn-close ws-brief-close', '', '', t('close'));
+            var close = button('btn-close ws-catchup-close', '', '', t('close'));
             close.addEventListener('click', function () {
                 try {
                     window.localStorage.setItem(storeKey + ':' + brief.key, '1');
@@ -9126,7 +9631,7 @@
 
                 box.remove();
             });
-            box.appendChild(close);
+            row.appendChild(close);
 
             return box;
         },
@@ -9919,8 +10424,10 @@
         // A flow draft's card drawn as a small flow window
         // (ws_flow_draft_card_graph_read()): its boxes where the canvas puts
         // them, the threads between, outbound boxes and a patch's boxes
-        // marked. A box picked shows below with its link to the canvas and
-        // its try once the draft is a flow. The graph is read once a page.
+        // marked. A box picked shows below with its link to the canvas, its
+        // try once the draft is a flow and Edit here where the person may
+        // change it. The graph is read once a page, again after a box is
+        // saved here.
         flowWindow: function (change) {
             var self = this;
             var wrap = el('div', 'ws-fd-window');
@@ -9928,30 +10435,137 @@
 
             self.flowGraphs = self.flowGraphs || {};
 
-            if (!self.flowGraphs[key]) {
-                self.flowGraphs[key] = api('ws_flow_draft_graph', { change_id: change.id }).then(function (data) {
-                    return data.graph;
+            function load() {
+                if (!self.flowGraphs[key]) {
+                    self.flowGraphs[key] = api('ws_flow_draft_graph', { change_id: change.id }).then(function (data) {
+                        return data.graph;
+                    });
+                }
+
+                self.flowGraphs[key].then(function (graph) {
+                    clear(wrap);
+                    self.flowWindowDraw(wrap, graph, null, {
+                        change: change,
+                        reload: function () {
+                            delete self.flowGraphs[key];
+                            load();
+                        }
+                    });
+                }).catch(function (error) {
+                    delete self.flowGraphs[key];
+                    clear(wrap);
+                    wrap.appendChild(el('div', 'ws-draft-meta fg-emphasis-warning', (error && error.message) || String(error)));
                 });
             }
 
-            self.flowGraphs[key].then(function (graph) {
-                self.flowWindowDraw(wrap, graph);
-            }).catch(function (error) {
-                delete self.flowGraphs[key];
-                wrap.appendChild(el('div', 'ws-draft-meta fg-emphasis-warning', (error && error.message) || String(error)));
-            });
+            load();
 
             return wrap;
         },
 
+        // Edit here on an opened draft card: the picked box's name and the
+        // texts its kind's form shows (ws_flow_draft_box_read()), saved
+        // through the canvas's own save at the draft_rev read here, so a
+        // draft moved meanwhile is refused with the canvas's message. People,
+        // times and rules stay the canvas's.
+        flowBoxForm: function (holder, change, nodeId, reload) {
+            var form = el('form', 'ws-fd-form');
+
+            form.noValidate = true;
+            holder.appendChild(form);
+
+            api('ws_flow_draft_box', { change_id: change.id, node_id: nodeId }).then(function (data) {
+                var box = data.box;
+                var label = el('input', 'form-control form-control-sm');
+                var inputs = {};
+
+                label.type = 'text';
+                label.maxLength = 160;
+                label.value = box.label;
+                label.placeholder = box.kind_label;
+                form.appendChild(formRow(t('fd_box_label'), label));
+
+                box.fields.forEach(function (field) {
+                    var input = el(field.lines ? 'textarea' : 'input', 'form-control form-control-sm');
+
+                    if (field.lines) {
+                        input.rows = 3;
+                    } else {
+                        input.type = 'text';
+                    }
+
+                    input.maxLength = field.most;
+                    input.value = field.value;
+                    inputs[field.key] = input;
+                    form.appendChild(formRow(field.label, input));
+                });
+
+                form.appendChild(el('div', 'form-text mb-3', t('fd_box_canvas')));
+
+                var bar = el('div', 'ws-fd-tools');
+                var save = button('btn btn-sm btn-solid theme-primary', t('fd_box_save'), 'bi-check2');
+                var cancel = button('btn btn-sm btn-text theme-secondary', t('fd_box_cancel'));
+
+                save.type = 'submit';
+                bar.appendChild(save);
+                bar.appendChild(cancel);
+                form.appendChild(bar);
+                label.focus();
+
+                cancel.addEventListener('click', function () {
+                    holder.removeChild(form);
+                });
+
+                form.addEventListener('submit', function (event) {
+                    var settings = {};
+
+                    event.preventDefault();
+                    save.disabled = true;
+
+                    Object.keys(inputs).forEach(function (key) {
+                        settings[key] = inputs[key].value;
+                    });
+
+                    api('ws_flow_draft_box_save', {
+                        change_id: change.id,
+                        node_id: nodeId,
+                        label: label.value,
+                        settings: settings,
+                        draft_rev: box.draft_rev
+                    }).then(function () {
+                        toast(t('fd_box_saved'), 'success');
+                        reload();
+                    }).catch(function (error) {
+                        save.disabled = false;
+                        fail(error);
+
+                        // Saved meanwhile on another screen: the window is
+                        // read again rather than saved over.
+                        if (error && error.field === 'changed_meanwhile') {
+                            reload();
+                        }
+                    });
+                });
+            }).catch(function (error) {
+                holder.removeChild(form);
+                fail(error);
+            });
+        },
+
         // onPick, when given, is told the box picked instead of the detail
-        // below (the mini window of Add › Scheduled flow shows its form).
-        flowWindowDraw: function (wrap, graph, onPick) {
+        // below (the mini window of Add › Scheduled flow shows its form);
+        // card, on a draft card's window, its change and a reload.
+        // Drawn to the visual spec in px (ws_flow_card_graph()): boxes
+        // 128 × 60 with the kind's icon and name, the kind and the box's dry
+        // run as its third line; control arrows 2 px with a filled head;
+        // data threads 1 px in their type's tone, placed by the server.
+        flowWindowDraw: function (wrap, graph, onPick, card) {
+            var self = this;
             var NS = 'http://www.w3.org/2000/svg';
-            var W = 208;
-            var H = 80;
-            var SCALE = 0.4;
+            var W = 128;
+            var H = 60;
             var byId = {};
+            var groups = {};
             var picked = null;
 
             if (!graph || !graph.nodes.length) {
@@ -9975,8 +10589,8 @@
             var pane = el('div', 'ws-fd-pane');
             var drawing = make('svg', {
                 viewBox: '0 0 ' + graph.width + ' ' + graph.height,
-                width: Math.round(graph.width * SCALE),
-                height: Math.round(graph.height * SCALE),
+                width: graph.width,
+                height: graph.height,
                 role: 'group',
                 'aria-label': t('fd_window')
             });
@@ -9988,19 +10602,40 @@
                 byId[node.id] = node;
             });
 
+            // Control arrows from a box's right edge into the next one's
+            // left, the head drawn as its own shape so no marker id is
+            // shared between windows.
             graph.edges.forEach(function (edge) {
                 var from = byId[edge.from];
                 var to = byId[edge.to];
                 var x1 = from.x + W;
                 var y1 = from.y + H / 2;
-                var x2 = to.x;
+                var x2 = to.x - 6;
                 var y2 = to.y + H / 2;
-                var bend = Math.max(48, Math.abs(x2 - x1) / 2);
+                var bend = Math.max(24, Math.abs(x2 - x1) / 2);
 
                 drawing.appendChild(make('path', {
-                    'class': 'ws-fd-thread',
+                    'class': 'ws-fd-arrow',
                     d: 'M' + x1 + ' ' + y1 + ' C' + (x1 + bend) + ' ' + y1 + ' ' + (x2 - bend) + ' ' + y2 + ' ' + x2 + ' ' + y2
                 }));
+                drawing.appendChild(make('path', { 'class': 'ws-fd-head', d: 'M' + to.x + ' ' + y2 + ' l-7 -4 v8 z' }));
+            });
+
+            // Data threads: a quadratic curve from the value's dot on the
+            // source's bottom edge to the bottom edge of the box it fills.
+            var dots = {};
+
+            (graph.threads || []).forEach(function (thread) {
+                var tone = 'ws-fd-tone-' + thread.type + '-' + thread.tone;
+
+                drawing.appendChild(make('path', {
+                    'class': 'ws-fd-thread ' + tone,
+                    d: 'M' + thread.x1 + ' ' + thread.y1 + ' Q' + thread.cx + ' ' + thread.cy + ' ' + thread.x2 + ' ' + thread.y2
+                }));
+
+                if (!dots[thread.from + '.' + thread.value]) {
+                    dots[thread.from + '.' + thread.value] = make('circle', { 'class': 'ws-fd-dot ' + tone, cx: thread.dot_x, cy: thread.y1, r: 2.5 });
+                }
             });
 
             function show(node, group) {
@@ -10065,6 +10700,40 @@
                 } else if (tools.childNodes.length) {
                     detail.appendChild(tools);
                 }
+
+                // Edit here: an opened card's box at once; a waiting card's
+                // after its draft is opened as Open on canvas opens it, the
+                // form then shown once the card is drawn opened.
+                if (card && graph.edit) {
+                    var edit = button('btn btn-sm btn-text theme-primary', t(graph.edit === 'open' ? 'fd_box_open_edit' : 'fd_box_edit'), 'bi-pencil');
+
+                    edit.addEventListener('click', function () {
+                        if (graph.edit === 'edit') {
+                            if (!detail.querySelector('.ws-fd-form')) {
+                                self.flowBoxForm(detail, card.change, node.id, card.reload);
+                            }
+
+                            return;
+                        }
+
+                        edit.disabled = true;
+                        self.flowEdit = { change: card.change.id, node: node.id };
+
+                        api('ws_flow_from_draft', { change_id: card.change.id }).then(function () {
+                            self.sync();
+                        }).catch(function (error) {
+                            self.flowEdit = null;
+                            edit.disabled = false;
+                            fail(error);
+                        });
+                    });
+
+                    if (!tools.parentNode) {
+                        detail.appendChild(tools);
+                    }
+
+                    tools.appendChild(edit);
+                }
             }
 
             graph.nodes.forEach(function (node) {
@@ -10074,27 +10743,34 @@
                     role: 'button',
                     'aria-label': node.name + ', ' + node.label + (node.outbound ? ', ' + t('fd_outbound') : '')
                         + (node.mark ? ', ' + t(node.mark === 'added' ? 'fd_added' : 'fd_changed') : '')
+                        + (node.said ? ', ' + node.said : '')
                 });
-                var name = node.name.length > 18 ? node.name.slice(0, 17) + '…' : node.name;
+                var cut = function (text, most) {
+                    return text.length > most ? text.slice(0, most - 1) + '…' : text;
+                };
+                var kind = node.mark ? t(node.mark === 'added' ? 'fd_added' : 'fd_changed') : node.label;
 
-                group.appendChild(make('title', {}, node.name + ' · ' + node.label));
-                group.appendChild(make('rect', { x: node.x, y: node.y, width: W, height: H, rx: 12 }));
-                group.appendChild(make('text', { x: node.x + 14, y: node.y + 34, 'class': 'ws-fd-name' }, name));
-                // The kind's icon before its name, drawn at 24 units (the
-                // window is shown at 0.4).
-                var sign = make('svg', { x: node.x + 14, y: node.y + 44, width: 24, height: 24, viewBox: '0 0 16 16', 'class': 'ws-fd-icon' });
+                group.appendChild(make('title', {}, node.name + ' · ' + node.label + (node.said ? '\n' + node.said : '')));
+                group.appendChild(make('rect', { x: node.x, y: node.y, width: W, height: H, rx: 8 }));
+                // The kind's icon before its name, at the canvas's 16 px.
+                var sign = make('svg', { x: node.x + 7, y: node.y + 6, width: 16, height: 16, viewBox: '0 0 16 16', 'class': 'ws-fd-icon' });
 
                 flowIconPaths(node.kind).forEach(function (d) {
                     sign.appendChild(make('path', { d: d }));
                 });
                 group.appendChild(sign);
-                group.appendChild(make('text', { x: node.x + 46, y: node.y + 64, 'class': 'ws-fd-kind' },
-                    node.mark ? t(node.mark === 'added' ? 'fd_added' : 'fd_changed') : (node.label.length > 19 ? node.label.slice(0, 18) + '…' : node.label)));
+                group.appendChild(make('text', { x: node.x + 28, y: node.y + 18, 'class': 'ws-fd-name' }, cut(node.name, node.outbound ? 13 : 16)));
+                group.appendChild(make('text', { x: node.x + 8, y: node.y + 35, 'class': 'ws-fd-kind' }, cut(kind, 22)));
 
-                if (node.outbound) {
-                    group.appendChild(make('path', { 'class': 'ws-fd-out', d: 'M' + (node.x + W - 34) + ' ' + (node.y + 34) + ' l16 -16 m-10 0 h10 v10' }));
+                if (node.said) {
+                    group.appendChild(make('text', { x: node.x + 8, y: node.y + 50, 'class': 'ws-fd-said' + (node.failed ? ' is-failed' : '') }, cut(node.said, 24)));
                 }
 
+                if (node.outbound) {
+                    group.appendChild(make('path', { 'class': 'ws-fd-out', d: 'M' + (node.x + W - 18) + ' ' + (node.y + 18) + ' l10 -10 m-6 0 h6 v6' }));
+                }
+
+                groups[node.id] = group;
                 group.addEventListener('click', function () {
                     show(node, group);
                 });
@@ -10105,6 +10781,10 @@
                     }
                 });
                 drawing.appendChild(group);
+            });
+
+            Object.keys(dots).forEach(function (key) {
+                drawing.appendChild(dots[key]);
             });
 
             pane.appendChild(drawing);
@@ -10118,6 +10798,16 @@
 
             if (!onPick) {
                 wrap.appendChild(detail);
+            }
+
+            // The box Open and edit here was asked on, once its card is
+            // drawn opened.
+            var asked = self.flowEdit;
+
+            if (card && asked && (asked.change === card.change.id) && (graph.edit === 'edit') && byId[asked.node]) {
+                self.flowEdit = null;
+                show(byId[asked.node], groups[asked.node]);
+                self.flowBoxForm(detail, card.change, asked.node, card.reload);
             }
         },
 
@@ -10909,11 +11599,63 @@
                 shown();
 
                 // A box picked in the drawing brings its settings forward.
-                self.flowWindowDraw(drawing, data.graph, function (picked) {
-                    var target = (picked.id === 'post') ? message : date;
+                function draw(graph) {
+                    clear(drawing);
+                    self.flowWindowDraw(drawing, graph, function (picked) {
+                        var target = (picked.id === 'post') ? message : date;
 
-                    target.focus();
-                    target.scrollIntoView({ block: 'nearest' });
+                        target.focus();
+                        target.scrollIntoView({ block: 'nearest' });
+                    });
+                }
+
+                function filled() {
+                    return {
+                        channel_id: channelId,
+                        name: name.value,
+                        body: message.value,
+                        start: scheduledFlowStart({
+                            date: date.value,
+                            time: time.value,
+                            repeat: repeat.value,
+                            every: every.value,
+                            until: until.value,
+                            days: Array.prototype.filter.call(days.querySelectorAll('input'), function (box) {
+                                return box.checked;
+                            }).map(function (box) { return box.value; })
+                        })
+                    };
+                }
+
+                draw(data.graph);
+
+                // Each box's dry run follows the form: the sketch is asked
+                // again with what it holds once typing stops. A late answer
+                // to an older form is dropped.
+                var asked = 0;
+                var wait = null;
+
+                function sketchAgain() {
+                    var mine = ++asked;
+
+                    api('ws_flow_scheduled_new', Object.assign(filled(), { sketch: 1 })).then(function (again) {
+                        if (mine === asked) {
+                            draw(again.graph);
+                        }
+                    }).catch(function () {
+                        // The drawing as it was stays; Publish says what is wrong.
+                    });
+                }
+
+                ['input', 'change'].forEach(function (type) {
+                    body.addEventListener(type, function (event) {
+                        if (drawing.contains(event.target)) {
+                            return;
+                        }
+
+                        clearTimeout(wait);
+                        wait = setTimeout(sketchAgain, 600);
+                    });
                 });
 
                 function send(publish, control) {
@@ -10925,24 +11667,11 @@
                     control.disabled = true;
                     clear(said);
 
-                    api('ws_flow_scheduled_new', {
-                        channel_id: channelId,
+                    api('ws_flow_scheduled_new', Object.assign(filled(), {
                         flow_id: saved.flow_id,
                         draft_rev: saved.draft_rev,
-                        name: name.value,
-                        body: message.value,
-                        publish: publish ? 1 : 0,
-                        start: scheduledFlowStart({
-                            date: date.value,
-                            time: time.value,
-                            repeat: repeat.value,
-                            every: every.value,
-                            until: until.value,
-                            days: Array.prototype.filter.call(days.querySelectorAll('input'), function (box) {
-                                return box.checked;
-                            }).map(function (box) { return box.value; })
-                        })
-                    }).then(function (result) {
+                        publish: publish ? 1 : 0
+                    })).then(function (result) {
                         busy = false;
                         control.disabled = false;
                         saved.flow_id = result.flow_id;
@@ -11634,6 +12363,7 @@
             content.appendChild(caption);
             content.appendChild(grid);
             floatBox(x, y, content, 'ws-table-picker', true);
+            cells[0].focus({ preventScroll: true });
         },
 
         replaceTaskCard: function (taskId, markup) {
@@ -11993,6 +12723,11 @@
 
             // A file from this device, or one of the file manager's.
             var attach = button('btn btn-sm btn-text theme-secondary', '', 'bi-paperclip', t('attach'));
+
+            if (CFG.library) {
+                menuButton(attach);
+            }
+
             attach.addEventListener('click', function (event) {
                 var box = attach.getBoundingClientRect();
 
@@ -12032,7 +12767,7 @@
 
             // A table, a calculation, a checklist or a poll: the things that are
             // more than a line.
-            var insert = button('btn btn-sm btn-text theme-secondary', '', 'bi-plus-circle', t('insert'));
+            var insert = menuButton(button('btn btn-sm btn-text theme-secondary', '', 'bi-plus-circle', t('insert')));
             insert.addEventListener('click', function (event) {
                 var box = insert.getBoundingClientRect();
 
@@ -12114,7 +12849,7 @@
             // (scheduled_messages.php).
             if (CFG.scheduled_messages && !self.era) {
                 var sendGroup = el('div', 'btn-group ws-send-group');
-                var later = button('btn btn-sm btn-solid theme-primary rounded-end-pill ws-send-later', '', 'bi-clock', t('sm_send_later'));
+                var later = menuButton(button('btn btn-sm btn-solid theme-primary rounded-end-pill ws-send-later', '', 'bi-clock', t('sm_send_later')));
 
                 send.classList.remove('rounded-pill');
                 send.classList.add('rounded-start-pill');
@@ -13504,53 +14239,58 @@
                     return;
                 }
 
-                var reader = new FileReader();
+                var name = file.name || ('image-' + Date.now() + '.png');
+                var card = uploadCard((total > 1) ? t('uploading_count', total - queue.length, total) : t('uploading'), name, function () {
+                    request.xhr.abort();
+                });
+                var request = apiUpload('ws_attach', {
+                    channel_id: self.channel.id,
+                    name: name,
+                    body: body,
+                    parent_id: settings.parent_id || 0,
+                    voice_duration_ms: settings.voice ? Math.round(settings.voice.duration_ms || 0) : 0,
+                    voice_peaks: settings.voice ? (settings.voice.peaks || '') : ''
+                }, file, name, function (loaded, sent) {
+                    card.progress(loaded, sent);
+                });
 
-                reader.onload = function () {
-                    toast((total > 1) ? t('uploading_count', done + 1, total) : t('uploading'), 'secondary');
+                request.done.then(function (result) {
+                    card.remove();
+                    done++;
 
-                    api('ws_attach', {
-                        channel_id: self.channel.id,
-                        name: file.name || ('image-' + Date.now() + '.png'),
-                        data: reader.result,
-                        body: body,
-                        parent_id: settings.parent_id || 0,
-                        voice_duration_ms: settings.voice ? Math.round(settings.voice.duration_ms || 0) : 0,
-                        voice_peaks: settings.voice ? (settings.voice.peaks || '') : ''
-                    }).then(function (result) {
-                        done++;
-
-                        // "/create product" sent with a spreadsheet: the file
-                        // is posted, its rows a card of drafts or refused.
-                        if (result && result.command) {
-                            if (result.command.type === 'error') {
-                                toast(result.command.error, 'warning');
-                            } else if (result.command.bulk) {
-                                self.bulkMade(result.command.bulk);
-                            }
+                    // "/create product" sent with a spreadsheet: the file
+                    // is posted, its rows a card of drafts or refused.
+                    if (result && result.command) {
+                        if (result.command.type === 'error') {
+                            toast(result.command.error, 'warning');
+                        } else if (result.command.bulk) {
+                            self.bulkMade(result.command.bulk);
                         }
+                    }
 
-                        if (body !== '') {
-                            body = '';
+                    if (body !== '') {
+                        body = '';
 
-                            if (!ownBody) {
-                                self.clearInput();
-                            }
+                        if (!ownBody) {
+                            self.clearInput();
                         }
+                    }
 
-                        next();
-                    }).catch(function (error) {
-                        fail(error);
-                        next();
-                    });
-                };
-
-                reader.onerror = function () {
-                    toast(t('error_generic'), 'danger');
                     next();
-                };
+                }).catch(function (error) {
+                    card.remove();
 
-                reader.readAsDataURL(file);
+                    // Cancel stops this file and the ones after it; what
+                    // was posted stays.
+                    if (error && error.aborted) {
+                        queue.length = 0;
+                        toast(t('upload_cancelled'), 'secondary');
+                    } else {
+                        fail(error);
+                    }
+
+                    next();
+                });
             }
 
             next();
@@ -14048,11 +14788,11 @@
             // The team, as the @ picker lists it, without whoever the line
             // already names; never the site's members.
             if (source === 'people' || source === 'people_departments') {
-                var needle = query.toLocaleLowerCase();
+                var needle = foldText(query);
                 var markup = self.tokens(self.inputText());
                 var people = [];
                 var fits = function (text) {
-                    return !needle || String(text || '').toLocaleLowerCase().indexOf(needle) !== -1;
+                    return !needle || foldText(text).indexOf(needle) !== -1;
                 };
 
                 (BOOT.people || []).forEach(function (member) {
@@ -14252,7 +14992,7 @@
             }
 
             return Object.keys(BOOT.ref_types).some(function (key) {
-                return BOOT.ref_types[key].prefixes.indexOf(words[0].toLocaleLowerCase()) !== -1;
+                return BOOT.ref_types[key].prefixes.map(foldText).indexOf(foldText(words[0])) !== -1;
             });
         },
 
@@ -14333,20 +15073,20 @@
             }
 
             if (mode === 'people') {
-                var needle = query.toLocaleLowerCase();
+                var needle = foldText(query);
                 var items = [];
 
                 // Claude and Pinegrap AI as a note asks them: a tag once
                 // connected, before that the name as text, which answers with
                 // how to set it up.
                 var noteAssistants = function () {
-                    if (BOOT.claude && (!needle || 'claude'.indexOf(needle) === 0)) {
+                    if (BOOT.claude && (!needle || foldText('claude').indexOf(needle) === 0)) {
                         items.push(BOOT.claude.token
                             ? { label: 'Claude', meta: t('claude_meta'), icon: 'bi-stars', token: BOOT.claude.token, shown: '@Claude' }
                             : { label: 'Claude', meta: t('claude_not_ready'), icon: 'bi-stars', insert: '@Claude ' });
                     }
 
-                    if (BOOT.ai && (!needle || 'ai'.indexOf(needle) === 0 || 'pinegrap'.indexOf(needle) === 0)) {
+                    if (BOOT.ai && (!needle || foldText('ai').indexOf(needle) === 0 || foldText('pinegrap').indexOf(needle) === 0)) {
                         items.push(BOOT.ai.token
                             ? { label: BOOT.ai.name, meta: BOOT.ai.handle, icon: 'bi-cpu', token: BOOT.ai.token, shown: BOOT.ai.handle }
                             : { label: BOOT.ai.name, meta: t('ai_not_ready'), icon: 'bi-cpu', insert: BOOT.ai.handle + ' ' });
@@ -14359,7 +15099,7 @@
                 // has on its answers (ws_mcp_boot_entry()).
                 var mcpAliases = function () {
                     (BOOT.mcp || []).forEach(function (server) {
-                        if (!needle || server.alias.indexOf(needle) === 0 || server.name.toLocaleLowerCase().indexOf(needle) !== -1) {
+                        if (!needle || foldText(server.alias).indexOf(needle) === 0 || foldText(server.name).indexOf(needle) !== -1) {
                             items.push({ label: '@' + server.alias, meta: (server.name ? server.name + ' · ' : '') + t(server.agent ? 'mcp_meta_agent' : 'mcp_meta'), avatar: server.avatar || '', face: { avatar: server.avatar || '', initials: server.initials, tone: server.tone, name: server.alias }, icon: server.icon || 'bi-plug', insert: '@' + server.alias + ' ' });
                         }
                     });
@@ -14383,7 +15123,7 @@
                 // Claude: a tag where it may be asked; elsewhere, or before it
                 // is connected, "@Claude" as text, which answers with how to
                 // set it up or open the channel to it.
-                if (BOOT.claude && self.channel && (!needle || 'claude'.indexOf(needle) === 0)) {
+                if (BOOT.claude && self.channel && (!needle || foldText('claude').indexOf(needle) === 0)) {
                     if (BOOT.claude.token && self.channel.claude && self.channel.claude.available) {
                         items.push({ label: 'Claude', meta: t('claude_meta'), icon: 'bi-stars', token: BOOT.claude.token, shown: '@Claude' });
                     } else {
@@ -14392,7 +15132,7 @@
                 }
 
                 // Pinegrap AI the same way, with @ai.
-                if (BOOT.ai && self.channel && (!needle || 'ai'.indexOf(needle) === 0 || 'pinegrap'.indexOf(needle) === 0)) {
+                if (BOOT.ai && self.channel && (!needle || foldText('ai').indexOf(needle) === 0 || foldText('pinegrap').indexOf(needle) === 0)) {
                     if (BOOT.ai.token && self.channel.ai && self.channel.ai.available) {
                         items.push({ label: BOOT.ai.name, meta: BOOT.ai.handle, icon: 'bi-cpu', token: BOOT.ai.token, shown: BOOT.ai.handle });
                     } else {
@@ -14407,20 +15147,20 @@
                     // handle or name (app_handles.php); before the people,
                     // as the list is cut at ten.
                     (self.channel.apps || []).forEach(function (app) {
-                        if (!needle || app.shown.slice(1).indexOf(needle) === 0 || app.meta.toLocaleLowerCase().indexOf(needle) === 0) {
+                        if (!needle || foldText(app.shown.slice(1)).indexOf(needle) === 0 || foldText(app.meta).indexOf(needle) === 0) {
                             items.push({ label: app.label, meta: app.meta, icon: app.icon, token: app.token, shown: app.shown });
                         }
                     });
                 }
 
                 BOOT.people.forEach(function (member) {
-                    if (!needle || member.name.toLocaleLowerCase().indexOf(needle) !== -1 || member.username.toLocaleLowerCase().indexOf(needle) !== -1) {
+                    if (!needle || foldText(member.name).indexOf(needle) !== -1 || foldText(member.username).indexOf(needle) !== -1) {
                         items.push({ label: member.name, meta: member.title, avatar: member.avatar, face: member, token: '<@user:' + member.id + '>', shown: shownLabel('@', member.name) });
                     }
                 });
 
                 BOOT.departments.forEach(function (item) {
-                    if (!needle || item.name.toLocaleLowerCase().indexOf(needle) !== -1) {
+                    if (!needle || foldText(item.name).indexOf(needle) !== -1) {
                         items.push({ label: item.name, meta: t('department'), icon: 'bi-people', token: '<@dept:' + item.id + '>', shown: shownLabel('@', item.name) });
                     }
                 });
@@ -14437,7 +15177,7 @@
 
             if (prefix) {
                 Object.keys(BOOT.ref_types).forEach(function (key) {
-                    if (BOOT.ref_types[key].prefixes.indexOf(prefix[1].toLocaleLowerCase()) !== -1) {
+                    if (BOOT.ref_types[key].prefixes.map(foldText).indexOf(foldText(prefix[1])) !== -1) {
                         type = key;
                         search = prefix[2];
                     }
@@ -14450,10 +15190,10 @@
             var people = [];
 
             if (self.notesMode && (type === 'all')) {
-                var wanted = search.trim().toLocaleLowerCase();
+                var wanted = foldText(search.trim());
 
                 BOOT.people.forEach(function (member) {
-                    if ((people.length < 5) && (!wanted || member.name.toLocaleLowerCase().indexOf(wanted) !== -1 || member.username.toLocaleLowerCase().indexOf(wanted) !== -1)) {
+                    if ((people.length < 5) && (!wanted || foldText(member.name).indexOf(wanted) !== -1 || foldText(member.username).indexOf(wanted) !== -1)) {
                         people.push({ label: member.name, meta: t('notes_person'), avatar: member.avatar, face: member, token: '<@user:' + member.id + '>', shown: shownLabel('@', member.name) });
                     }
                 });
@@ -15788,6 +16528,7 @@
             var pane = el('div', 'ws-pane ws-pane-messages ws-thread-pane');
             center.appendChild(pane);
             self.pane = pane;
+            messageKeys(pane);
             self.atEnd = true;
             self.unseenBelow = 0;
             pane.addEventListener('scroll', function () {
@@ -15815,7 +16556,7 @@
             var self = this;
             var channel = self.channel;
             var thread = channel.thread || {};
-            var more = button('btn btn-sm btn-text theme-secondary', '', 'bi-three-dots-vertical', t('more'));
+            var more = menuButton(button('btn btn-sm btn-text theme-secondary', '', 'bi-three-dots-vertical', t('more')));
 
             more.addEventListener('click', function (event) {
                 var place = more.getBoundingClientRect();
@@ -16923,9 +17664,13 @@
         var bar = el('nav', 'pg-toolbar navigation mb-5');
         var list = el('div', 'card');
         var listBody = el('div', 'card-body p-0');
+        // Says how many tasks the list holds after a filter or a search.
+        var countLine = el('div', 'visually-hidden');
 
+        countLine.setAttribute('role', 'status');
         list.appendChild(listBody);
         root.appendChild(bar);
+        root.appendChild(countLine);
         root.appendChild(list);
 
         var add = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('new_task'), 'bi-plus-circle');
@@ -16944,12 +17689,30 @@
             scopeList.push(['time', t('tt_my_time')]);
         }
 
+        // Fill and aria-pressed move together onto the chosen scope.
+        function setScope(name) {
+            state.scope = name;
+            Array.prototype.forEach.call(scopes.children, function (child) {
+                var on = child.getAttribute('data-scope') === name;
+
+                child.classList.toggle('active', on);
+                child.setAttribute('aria-pressed', on ? 'true' : 'false');
+            });
+        }
+
         scopeList.forEach(function (scope) {
             var item = button('btn btn-text theme-secondary' + (state.scope === scope[0] ? ' active' : ''), scope[1]);
+            item.setAttribute('data-scope', scope[0]);
+            item.setAttribute('aria-pressed', state.scope === scope[0] ? 'true' : 'false');
             item.addEventListener('click', function () {
-                state.scope = scope[0];
-                Array.prototype.forEach.call(scopes.children, function (child) { child.classList.remove('active'); });
-                item.classList.add('active');
+                // ws_tasks reads department_id only in the department scope,
+                // so the select must not keep showing one the list ignores.
+                if (scope[0] !== 'department') {
+                    state.department_id = 0;
+                    dept.value = '0';
+                }
+
+                setScope(scope[0]);
                 load();
             });
             scopes.appendChild(item);
@@ -16968,11 +17731,12 @@
 
         var dept = select(departmentOptions(t('all_departments')), 0);
         dept.classList.add('w-auto');
+        dept.setAttribute('aria-label', t('department'));
         dept.addEventListener('change', function () {
             state.department_id = parseInt(dept.value, 10) || 0;
 
             if (state.department_id) {
-                state.scope = 'department';
+                setScope('department');
             }
 
             load();
@@ -17031,6 +17795,7 @@
             var mine = ++serial;
 
             if (state.scope === 'time') {
+                countLine.textContent = '';
                 window.PGWsTaskTime.myTime(listBody, partHelpers());
                 return;
             }
@@ -17038,6 +17803,7 @@
             api('ws_tasks', state).then(function (data) {
                 if (mine === serial) {
                     taskRows(listBody, data.tasks, load);
+                    countLine.textContent = data.tasks.length ? t('task_count', data.tasks.length) : t('nothing_found');
                 }
             }).catch(fail);
         }
@@ -17120,10 +17886,15 @@
 
         [[7, t('one_week')], [14, t('two_weeks')]].forEach(function (option) {
             var item = button('btn btn-text theme-secondary' + (state.days === option[0] ? ' active' : ''), option[1]);
+            item.setAttribute('aria-pressed', state.days === option[0] ? 'true' : 'false');
             item.addEventListener('click', function () {
                 state.days = option[0];
-                Array.prototype.forEach.call(span.children, function (child) { child.classList.remove('active'); });
+                Array.prototype.forEach.call(span.children, function (child) {
+                    child.classList.remove('active');
+                    child.setAttribute('aria-pressed', 'false');
+                });
                 item.classList.add('active');
+                item.setAttribute('aria-pressed', 'true');
                 load();
             });
             span.appendChild(item);
@@ -17133,6 +17904,7 @@
 
         var dept = select(departmentOptions(t('all_departments')), 0);
         dept.classList.add('w-auto');
+        dept.setAttribute('aria-label', t('department'));
         dept.addEventListener('change', function () {
             state.department_id = parseInt(dept.value, 10) || 0;
             load();
@@ -17188,7 +17960,9 @@
         function draw(data) {
             var board = clear(wrap);
             var grid = el('div', 'ws-board');
-            grid.style.gridTemplateColumns = 'var(--ws-board-person, 14rem) repeat(' + data.days.length + ', minmax(var(--ws-board-day, 7.5rem), 1fr))';
+            // The person column gives way to 11rem before the days do, so seven
+            // days fit a 1280 px window; .ws-board's min-width is this minimum.
+            grid.style.gridTemplateColumns = 'minmax(min(11rem, var(--ws-board-person, 14rem)), var(--ws-board-person, 14rem)) repeat(' + data.days.length + ', minmax(var(--ws-board-day, 7rem), 1fr))';
             board.appendChild(grid);
 
             range.textContent = data.days[0].label + ' – ' + data.days[data.days.length - 1].label;
@@ -17559,6 +18333,7 @@
 
         var dept = select(departmentOptions(t('all_departments')), 0);
         dept.classList.add('w-auto');
+        dept.setAttribute('aria-label', t('department'));
         dept.addEventListener('change', function () {
             state.department_id = parseInt(dept.value, 10) || 0;
             load();
@@ -18305,6 +19080,25 @@
 
         body.appendChild(grid);
 
+        // The customer of a visit (ws_events.contact_id): sent only once it
+        // was changed here, so a customer the person cannot open stays.
+        var customer = null;
+
+        if (CFG.event_contacts) {
+            customer = eventCustomerPicker(event ? event.contact : null, event && !event.can_edit);
+
+            var customerRow = el('div');
+            customerRow.appendChild(formRow(t('event_customer'), customer.node, t('event_customer_help')));
+            body.appendChild(customerRow);
+
+            var customerView = function () {
+                customerRow.classList.toggle('d-none', kind.value !== 'visit');
+            };
+
+            kind.addEventListener('change', customerView);
+            customerView();
+        }
+
         var note = el('textarea', 'form-control form-control-sm');
         note.id = nextId('ws-ev-note-');
         note.rows = 2;
@@ -18422,7 +19216,8 @@
                     start_time: startTime.value,
                     end_time: endTime.value,
                     note: note.value,
-                    meeting_url: meeting ? meeting.value.trim() : undefined
+                    meeting_url: meeting ? meeting.value.trim() : undefined,
+                    contact_id: (customer && customer.changed) ? customer.id : undefined
                 }).then(function () {
                     hideOffcanvas(node);
                     toast(t('plan_saved'), 'success');
@@ -18436,6 +19231,96 @@
         }
 
         showOffcanvas(node);
+    }
+
+    // The customer field of the plan item form: a search among the contacts
+    // the person may open (ws_ref_search), one picked at a time. The server
+    // checks the pick again (ws_event_save_check()).
+    function eventCustomerPicker(contact, readOnly) {
+        var picked = { id: contact && !contact.hidden ? contact.id : 0, changed: false };
+        var wrap = el('div');
+        var input = el('input', 'form-control form-control-sm');
+        var list = el('div', 'list-group mt-1 d-none');
+        var chip = el('div', 'd-flex align-items-center gap-2 d-none');
+        var serial = 0;
+
+        input.type = 'search';
+        input.autocomplete = 'off';
+        picked.node = wrap;
+
+        function show(label, hidden) {
+            clear(chip);
+            list.classList.add('d-none');
+            input.value = '';
+            input.classList.toggle('d-none', label !== '' || readOnly);
+            chip.classList.toggle('d-none', label === '');
+
+            if (label === '') {
+                return;
+            }
+
+            chip.appendChild(icon('bi-person-vcard'));
+            chip.appendChild(el('span', hidden ? 'fg-secondary' : 'fw-semibold', label));
+
+            if (readOnly) {
+                return;
+            }
+
+            var remove = button('btn btn-sm btn-text theme-secondary', '', 'bi-x-lg', t('event_customer_clear'));
+            remove.addEventListener('click', function () {
+                picked.id = 0;
+                picked.changed = true;
+                show('', false);
+                input.focus();
+            });
+            chip.appendChild(remove);
+        }
+
+        input.addEventListener('input', debounce(function () {
+            var mine = ++serial;
+            var query = input.value.trim();
+
+            if (query === '') {
+                list.classList.add('d-none');
+                return;
+            }
+
+            api('ws_ref_search', { type: 'contact', q: query }).then(function (data) {
+                if (mine !== serial) {
+                    return;
+                }
+
+                clear(list);
+                (data.items || []).forEach(function (found) {
+                    var item = button('list-group-item list-group-item-action small text-start', found.label + (found.meta ? ' · ' + found.meta : ''));
+
+                    item.addEventListener('click', function () {
+                        picked.id = found.id;
+                        picked.changed = true;
+                        show(found.label, false);
+                    });
+                    list.appendChild(item);
+                });
+
+                if (!list.firstChild) {
+                    list.appendChild(el('div', 'list-group-item small fg-secondary', t('event_customer_none')));
+                }
+
+                list.classList.remove('d-none');
+            }).catch(fail);
+        }, 250));
+        input.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape') {
+                list.classList.add('d-none');
+            }
+        });
+
+        wrap.appendChild(input);
+        wrap.appendChild(chip);
+        wrap.appendChild(list);
+        show(contact ? (contact.hidden ? t('event_customer_hidden') : contact.label) : '', !!(contact && contact.hidden));
+
+        return picked;
     }
 
     // ═══════════════════════════════════════════════════════════════════
@@ -19931,7 +20816,7 @@
 
                 top.appendChild(el('span', 'ws-nb-item-time', note.updated));
 
-                var more = button('ws-nb-item-more', '', 'bi-three-dots', t('more'));
+                var more = menuButton(button('ws-nb-item-more', '', 'bi-three-dots', t('more')));
                 more.addEventListener('click', function (event) {
                     var box = more.getBoundingClientRect();
 
@@ -20417,7 +21302,7 @@
             setStatus(dirty ? 'unsaved' : (current.id && editable() ? 'saved' : ''));
 
             if (current.access === 'owner' || !current.id) {
-                var share = button('btn btn-sm btn-text theme-secondary', t('notes_share'), 'bi-send');
+                var share = menuButton(button('btn btn-sm btn-text theme-secondary', t('notes_share'), 'bi-send'));
                 share.disabled = !current.id;
                 share.addEventListener('click', function (event) {
                     var box = share.getBoundingClientRect();
@@ -20450,7 +21335,7 @@
                 headNode.appendChild(versions);
             }
 
-            var more = button('btn btn-sm btn-text theme-secondary', '', 'bi-three-dots', t('more'));
+            var more = menuButton(button('btn btn-sm btn-text theme-secondary', '', 'bi-three-dots', t('more')));
             more.disabled = !current.id;
             more.addEventListener('click', function (event) {
                 var box = more.getBoundingClientRect();
@@ -20782,23 +21667,6 @@
             }
 
             // ── the files ──
-
-            // Sizes in the list and while the files travel, as the file
-            // manager writes them (uploadSizeLabel() in view_folders.php).
-            // The unit letters are not translated: the server's
-            // convert_bytes_to_string() writes the same ones in every
-            // language.
-            function sizeLabel(bytes) {
-                var steps = [[1073741824, ' GB', 1], [1048576, ' MB', 1], [1024, ' KB', 0]];
-
-                for (var i = 0; i < steps.length; i++) {
-                    if (bytes >= steps[i][0]) {
-                        return (bytes / steps[i][0]).toLocaleString(CFG.locale || undefined, { minimumFractionDigits: steps[i][2], maximumFractionDigits: steps[i][2] }) + steps[i][1];
-                    }
-                }
-
-                return bytes + ' B';
-            }
 
             // The kind the server reads a file as: its last extension, in
             // lower case (ws_note_import_stage()).
@@ -21165,16 +22033,26 @@
             // server as files would be, and the preview below takes them.
             var notion = { state: null, query: '', pages: [], chosen: {} };
 
-            // Files or Notion, above either: only where the site has a
-            // Notion server.
+            // Files, Notion or OneNote, above them: only where the site has
+            // a Notion server or a Microsoft application.
             function sourceTabs(current) {
-                if (!CFG.notes_notion) {
+                var tabs = [['files', t('notes_files_tab'), 'bi-cloud-arrow-up']];
+
+                if (CFG.notes_notion) {
+                    tabs.push(['notion', t('notes_notion_tab'), 'bi-journal-text']);
+                }
+
+                if (CFG.notes_onenote) {
+                    tabs.push(['onenote', t('notes_onenote_tab'), 'bi-microsoft']);
+                }
+
+                if (tabs.length < 2) {
                     return;
                 }
 
-                var row = el('div', 'd-flex gap-2 mb-4');
+                var row = el('div', 'd-flex flex-wrap gap-2 mb-4');
 
-                [['files', t('notes_files_tab'), 'bi-cloud-arrow-up'], ['notion', t('notes_notion_tab'), 'bi-journal-text']].forEach(function (tab) {
+                tabs.forEach(function (tab) {
                     var on = (tab[0] === current);
                     var item = button('btn btn-sm rounded-pill px-4 ' + (on ? 'btn-solid theme-primary' : 'btn-text theme-secondary'), tab[1], tab[2]);
 
@@ -21186,8 +22064,10 @@
 
                         if (tab[0] === 'files') {
                             drawPick().focus();
-                        } else {
+                        } else if (tab[0] === 'notion') {
                             drawNotion();
+                        } else {
+                            drawOneNote();
                         }
                     });
                     row.appendChild(item);
@@ -21336,17 +22216,20 @@
                     body.appendChild(notice);
                 }
 
-                go.addEventListener('click', fetchPages);
+                go.addEventListener('click', function () {
+                    fetchPages('notion_stage', Object.keys(notion.chosen), t('notes_notion_fetching'), drawNotion, function () {
+                        notion.chosen = {};
+                    });
+                });
                 footer.appendChild(go);
                 update();
                 input.focus();
             }
 
             // The pages picked, fetched and staged; the preview follows as
-            // after an upload.
-            function fetchPages() {
-                var ids = Object.keys(notion.chosen);
-
+            // after an upload. A refusal goes back to the picker it came
+            // from.
+            function fetchPages(step, ids, waiting, back, done) {
                 if (!ids.length) {
                     return;
                 }
@@ -21356,8 +22239,8 @@
                 clear(body);
                 clear(footer);
 
-                var label = el('div', 'small fg-secondary mb-3', t('notes_notion_fetching'));
-                var bar = progressBar({ percent: 100 });
+                var label = el('div', 'small fg-secondary mb-3', waiting);
+                var bar = progressBar({ percent: 100 }, false, waiting);
 
                 label.setAttribute('role', 'status');
                 bar.firstChild.className = 'progress-bar progress-bar-striped progress-bar-animated';
@@ -21367,24 +22250,226 @@
                 footer.appendChild(closeButton());
                 window.addEventListener('beforeunload', leaveGuard);
 
-                send({ step: 'notion_stage', token: CFG.token, pages: ids }).then(function (data) {
+                send({ step: step, token: CFG.token, pages: ids }).then(function (data) {
                     if (closed) {
                         send({ step: 'discard', token: CFG.token, stage: data.stage || '' }).catch(function () {});
                         return;
                     }
 
-                    notion.chosen = {};
+                    done();
                     stage = data.stage || '';
                     rows = data.rows || [];
                     capacity = data.capacity || 0;
                     drawPreview(data);
                 }, function (failure) {
                     if (!closed) {
-                        drawNotion(failure.message);
+                        back(failure.message);
                     }
                 }).then(function () {
                     window.removeEventListener('beforeunload', leaveGuard);
                 });
+            }
+
+            // ── OneNote pages ──
+
+            // The person's own notebooks through Microsoft Graph: a section
+            // is opened, its pages picked, and they are staged on the server
+            // as Notion's are. Picks stay while other sections are opened.
+            var onenote = { state: null, notebooks: null, section: null, pages: [], more: false, chosen: {} };
+
+            function onenoteCount() {
+                return Object.keys(onenote.chosen).length;
+            }
+
+            function drawOneNote(error) {
+                phase = 'onenote';
+                clear(body);
+                clear(footer);
+                sourceTabs('onenote');
+                footer.appendChild(closeButton());
+
+                var wait = el('div', 'small fg-secondary', t('loading'));
+
+                // A step asked, then this drawn again; a refusal is shown on
+                // the notebooks (or alone, when the state itself failed).
+                function reload(step, payload, keep) {
+                    error = '';
+                    body.appendChild(wait);
+                    payload.step = step;
+                    payload.token = CFG.token;
+                    send(payload).then(keep, function (failure) {
+                        if (!onenote.state) {
+                            onenote.state = { state: 'error', message: failure.message };
+                            return;
+                        }
+
+                        error = failure.message;
+                        onenote.section = null;
+                        onenote.notebooks = onenote.notebooks || [];
+                    }).then(function () {
+                        if (!closed && phase === 'onenote') {
+                            drawOneNote(error);
+                        }
+                    });
+                }
+
+                if (!onenote.state) {
+                    reload('onenote_state', {}, function (data) {
+                        onenote.state = data;
+                    });
+                    return;
+                }
+
+                // Not connected: one line, and the button that connects the
+                // person's own Microsoft account.
+                if (onenote.state.state !== 'ready') {
+                    var line = el('div', 'alert theme-secondary small mb-0', onenote.state.message || t('error_generic'));
+
+                    body.appendChild(line);
+
+                    if (onenote.state.connect && CFG.urls.connect) {
+                        var form = el('form', 'mt-4');
+                        var fields = { token: CFG.token, provider: onenote.state.connect.provider, purpose: onenote.state.connect.purpose, owner: onenote.state.connect.owner, 'return': onenote.state.connect['return'], connection_id: '0' };
+
+                        form.method = 'post';
+                        form.action = CFG.urls.connect;
+                        Object.keys(fields).forEach(function (name) {
+                            var input = el('input');
+
+                            input.type = 'hidden';
+                            input.name = name;
+                            input.value = fields[name];
+                            form.appendChild(input);
+                        });
+
+                        var connect = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('notes_onenote_connect'), 'bi-microsoft');
+
+                        connect.type = 'submit';
+                        form.appendChild(connect);
+                        body.appendChild(form);
+                    }
+
+                    return;
+                }
+
+                if (!onenote.notebooks) {
+                    reload('onenote_sections', {}, function (data) {
+                        onenote.notebooks = data.notebooks || [];
+                    });
+                    return;
+                }
+
+                body.appendChild(el('p', 'small fg-secondary', t('notes_onenote_intro')));
+
+                var list = el('div', 'list-group ws-nb-import-list');
+                var note = el('div', 'small fg-secondary');
+                var max = onenote.state.max || 25;
+                var go = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', '', 'bi-box-arrow-in-down');
+                var first = null;
+
+                function update() {
+                    var picked = onenoteCount();
+
+                    go.textContent = '';
+                    go.appendChild(icon('bi-box-arrow-in-down', 'me-1'));
+                    go.appendChild(document.createTextNode(t('notes_notion_go', picked)));
+                    go.disabled = !picked || picked > max;
+                    note.textContent = (picked > max) ? t('notes_notion_max', max) : '';
+                }
+
+                if (!onenote.section) {
+                    // Notebooks, each with its sections to open.
+                    if (!onenote.notebooks.length && !error) {
+                        list.appendChild(el('div', 'list-group-item small fg-secondary', t('notes_onenote_empty')));
+                    }
+
+                    onenote.notebooks.forEach(function (book) {
+                        list.appendChild(el('div', 'list-group-item small fw-semibold fg-secondary', book.name || t('notes_notion_untitled')));
+
+                        book.sections.forEach(function (section) {
+                            var open = button('list-group-item list-group-item-action d-flex gap-3 align-items-center ps-6', section.name || t('notes_notion_untitled'), 'bi-folder2');
+
+                            open.addEventListener('click', function () {
+                                onenote.section = section;
+                                onenote.pages = [];
+                                reload('onenote_pages', { section: section.id }, function (data) {
+                                    onenote.pages = data.pages || [];
+                                    onenote.more = !!data.more;
+                                });
+                                clear(list);
+                            });
+                            list.appendChild(open);
+                            first = first || open;
+                        });
+                    });
+                } else {
+                    var back = button('btn btn-sm btn-text theme-secondary mb-3', t('notes_onenote_back'), 'bi-arrow-left');
+
+                    back.addEventListener('click', function () {
+                        onenote.section = null;
+                        drawOneNote();
+                    });
+                    body.appendChild(back);
+                    body.appendChild(el('div', 'fw-semibold mb-2', onenote.section.name || t('notes_notion_untitled')));
+                    first = back;
+
+                    if (!onenote.pages.length) {
+                        list.appendChild(el('div', 'list-group-item small fg-secondary', t('notes_onenote_none')));
+                    }
+
+                    onenote.pages.forEach(function (page) {
+                        var row = el('label', 'list-group-item d-flex gap-3 align-items-start');
+                        var box = el('input', 'check mt-1');
+                        var main = el('div', 'ws-nb-import-main');
+
+                        box.type = 'checkbox';
+                        box.checked = !!onenote.chosen[page.id];
+                        box.addEventListener('change', function () {
+                            if (box.checked) {
+                                onenote.chosen[page.id] = true;
+                            } else {
+                                delete onenote.chosen[page.id];
+                            }
+
+                            update();
+                        });
+                        main.appendChild(el('div', 'fw-semibold text-truncate', page.title || t('notes_notion_untitled')));
+
+                        if (page.when) {
+                            main.appendChild(el('div', 'ws-nb-import-path', new Date(page.when * 1000).toLocaleDateString(CFG.locale || undefined)));
+                        }
+
+                        row.appendChild(box);
+                        row.appendChild(main);
+                        list.appendChild(row);
+                    });
+
+                    if (onenote.more) {
+                        note.appendChild(el('div', '', t('notes_onenote_more')));
+                    }
+                }
+
+                body.appendChild(list);
+                body.appendChild(note);
+
+                if (error) {
+                    var notice = el('div', 'alert theme-danger small mt-4 mb-0', error);
+
+                    notice.setAttribute('role', 'alert');
+                    body.appendChild(notice);
+                }
+
+                go.addEventListener('click', function () {
+                    fetchPages('onenote_stage', Object.keys(onenote.chosen), t('notes_onenote_fetching'), drawOneNote, function () {
+                        onenote.chosen = {};
+                    });
+                });
+                footer.appendChild(go);
+                update();
+
+                if (first) {
+                    first.focus();
+                }
             }
 
             // ── the upload ──
@@ -21402,13 +22487,12 @@
                 var label = el('span', '', t('uploading'));
                 var percent = el('span');
                 var bytes = el('span');
-                var bar = progressBar({ percent: 0 });
+                var bar = progressBar({ percent: 0 }, false, t('uploading'));
                 var fill = bar.firstChild;
                 var stop = button('btn btn-sm btn-text theme-secondary', t('notes_import_cancel_upload'));
 
                 // The step is announced, not every percent.
                 label.setAttribute('role', 'status');
-                bar.setAttribute('aria-label', t('uploading'));
                 left.appendChild(label);
                 left.appendChild(document.createTextNode(' '));
                 left.appendChild(percent);
@@ -21605,7 +22689,7 @@
                     body.appendChild(el('div', 'alert theme-warning small py-3', t('notes_import_more', data.more, rows.length)));
                 }
 
-                // Notion pages that could not be fetched.
+                // Notion or OneNote pages that could not be fetched.
                 (data.warnings || []).forEach(function (warning) {
                     body.appendChild(el('div', 'alert theme-warning small py-3', warning));
                 });
@@ -21938,16 +23022,25 @@
                         return;
                     }
 
-                    var reader = new FileReader();
+                    var card = uploadCard(t('notes_uploading'), file.name, function () {
+                        request.xhr.abort();
+                    });
+                    var request = apiUpload('ws_note_file', { note_id: current.id, name: file.name }, file, file.name, function (loaded, total) {
+                        card.progress(loaded, total);
+                    });
 
-                    toast(t('notes_uploading') + ' ' + file.name);
+                    request.done.then(function (data) {
+                        card.remove();
+                        field.rich.insertLink(data.file.name, data.file.url);
+                    }).catch(function (error) {
+                        card.remove();
 
-                    reader.onload = function () {
-                        api('ws_note_file', { note_id: current.id, name: file.name, data: String(reader.result || '') }).then(function (data) {
-                            field.rich.insertLink(data.file.name, data.file.url);
-                        }).catch(fail);
-                    };
-                    reader.readAsDataURL(file);
+                        if (error && error.aborted) {
+                            toast(t('upload_cancelled'), 'secondary');
+                        } else {
+                            fail(error);
+                        }
+                    });
                 });
             }).catch(fail);
         }
@@ -22652,6 +23745,7 @@
     function shareKit() {
         window.PGWsKit = {
             cfg: CFG,
+            foldText: foldText,
             t: t,
             el: el,
             icon: icon,

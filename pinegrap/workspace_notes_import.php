@@ -13,6 +13,14 @@
  *        the person's Notion pages matching the words, for the picker
  *   POST JSON: { step: 'notion_stage', token, pages }
  *        fetches the pages picked into a stage and answers as upload does
+ *   POST JSON: { step: 'onenote_state', token }
+ *        whether the person can bring OneNote pages in, and if not why
+ *   POST JSON: { step: 'onenote_sections', token }
+ *        the person's notebooks and their sections
+ *   POST JSON: { step: 'onenote_pages', token, section }
+ *        the pages of one section, for the picker
+ *   POST JSON: { step: 'onenote_stage', token, pages }
+ *        fetches the pages picked into a stage and answers as upload does
  *   POST JSON: { step: 'import', token, stage, mode, skip }
  *        writes the next batch and answers how far the import has got
  *   POST JSON: { step: 'finish', token, stage }
@@ -272,6 +280,74 @@ if ($step === 'notion_stage') {
     }
 
     $staged = ws_note_notion_stage($viewer, (array) ($request['pages'] ?? array()), $upload_token);
+
+    if (!$staged['ok']) {
+        ws_notes_import_refuse($staged['error']);
+    }
+
+    ws_notes_import_staged($viewer, $staged['token'], lang('The page could not be read.'), $staged['warnings']);
+}
+
+// ── OneNote pages, through the person's own Microsoft connection ────────
+
+if ($step === 'onenote_state') {
+    session_write_close();
+
+    $status = ws_note_onenote_status($viewer);
+
+    ws_notes_import_answer(array(
+        'state'   => $status['state'],
+        'message' => $status['message'],
+        'connect' => $status['connect'],
+        'max'     => WS_NOTE_ONENOTE_PICK_MAX,
+    ));
+}
+
+if ($step === 'onenote_sections') {
+    session_write_close();
+
+    $found = ws_note_onenote_sections($viewer);
+
+    if (!$found['ok']) {
+        ws_notes_import_refuse($found['error']);
+    }
+
+    ws_notes_import_answer(array('notebooks' => $found['notebooks']));
+}
+
+if ($step === 'onenote_pages') {
+    session_write_close();
+
+    $found = ws_note_onenote_section_pages($viewer, (string) ($request['section'] ?? ''));
+
+    if (!$found['ok']) {
+        ws_notes_import_refuse($found['error']);
+    }
+
+    ws_notes_import_answer(array('pages' => $found['pages'], 'more' => $found['more']));
+}
+
+if ($step === 'onenote_stage') {
+    ws_note_import_sweep();
+
+    // As an upload: one import a session, its name kept before the pages
+    // are fetched and the session let go while they are.
+    $earlier = (string) ($_SESSION['software']['ws_notes_import'] ?? '');
+
+    if ($earlier !== '') {
+        ws_note_import_remove(ws_note_import_stage_dir($earlier));
+    }
+
+    $upload_token = bin2hex(random_bytes(16));
+    $_SESSION['software']['ws_notes_import'] = $upload_token;
+
+    session_write_close();
+
+    if (function_exists('set_time_limit')) {
+        @set_time_limit(300);
+    }
+
+    $staged = ws_note_onenote_stage($viewer, (array) ($request['pages'] ?? array()), $upload_token);
 
     if (!$staged['ok']) {
         ws_notes_import_refuse($staged['error']);

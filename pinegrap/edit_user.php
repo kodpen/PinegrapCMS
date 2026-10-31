@@ -414,7 +414,7 @@ if (!$_POST) {
         $output_password_hint_field = 
             '<div class="col-12 xl:col-6 my-3">
                 <label for="password_hint" class="form-label">' . lang('User Password Hint') . '</label>
-                <input value="' . h($password_hint) . '" type="text" name="password_hint" id="password_hint" class="form-control" />
+                <input value="' . h($password_hint) . '" type="text" name="password_hint" id="password_hint" class="form-control" maxlength="100" />
             </div>';
     }
 
@@ -706,7 +706,13 @@ if (!$_POST) {
 
     if ($contact_id != '') {
         if ($contact_file_id != 0) {
-            $identity_photo = PATH . db_value("SELECT name FROM files WHERE id = '" . escape($contact_file_id) . "'");
+            // A file deleted in the File Manager leaves contacts.file_id
+            // behind; without its files row the initial shows.
+            $contact_picture_name = pg_contact_picture_name($contact_file_id);
+
+            if ($contact_picture_name !== '') {
+                $identity_photo = PATH . $contact_picture_name;
+            }
         } elseif ($contact_image != '') {
             $identity_photo = $contact_image;
         }
@@ -715,7 +721,7 @@ if (!$_POST) {
     if ($identity_photo != '') {
         $output_identity_picture = '<img class="pg-identity-pic" src="' . h($identity_photo) . '" alt="" />';
     } else {
-        $output_identity_picture = '<span class="pg-identity-pic">' . h(mb_strtoupper(mb_substr($identity_name, 0, 1, 'UTF-8'), 'UTF-8')) . '</span>';
+        $output_identity_picture = '<span class="pg-identity-pic">' . h(pg_initials_upper(mb_substr($identity_name, 0, 1, 'UTF-8'))) . '</span>';
     }
 
     // ── Sessions ─────────────────────────────────────────────────────────
@@ -790,8 +796,8 @@ if (!$_POST) {
                 . '<div class="pg-session-text">'
                 . '<div class="pg-session-name">' . h(pg_user_agent_label($edit_user_session['user_agent'])) . $edit_user_session_tags . '</div>'
                 . '<div class="pg-session-meta">' . h((string) $edit_user_session['ip_address'])
-                . ' &middot; ' . h(lang(array('string' => 'Opened {var:1}', 'vars' => get_absolute_time(array('timestamp' => (int) $edit_user_session['created_at'])))))
-                . ' &middot; ' . h(lang(array('string' => 'Expires {var:1}', 'vars' => get_absolute_time(array('timestamp' => (int) $edit_user_session['expires_at'])))))
+                . ' &middot; ' . h(lang(array('string' => 'Opened {var:1}', 'vars' => get_absolute_time(array('timestamp' => (int) $edit_user_session['created_at'], 'format' => 'plain_text')))))
+                . ' &middot; ' . h(lang(array('string' => 'Expires {var:1}', 'vars' => get_absolute_time(array('timestamp' => (int) $edit_user_session['expires_at'], 'format' => 'plain_text')))))
                 . '</div></div>'
                 . '<div class="pg-session-actions">' . $edit_user_session_pin_button
                 . '<form method="post" action="view_sessions.php" style="margin:0">' . get_token_field()
@@ -817,9 +823,9 @@ if (!$_POST) {
         $output_identity_lock_tag = '<span class="badge theme-danger fw-light"><i class="bi bi-lock-fill me-1"></i>' . h(lang('Sign-in Locked')) . '</span>';
 
         $output_sign_in_lock_notice =
-            '<div class="alert theme-danger d-flex align-items-center gap-3 py-3">'
+            '<div class="alert theme-danger d-flex flex-wrap align-items-center gap-3 py-3">'
             . '<i class="bi bi-lock-fill"></i>'
-            . '<span><b>' . h(lang('Sign-in is locked.')) . '</b> ' . h(lang(array(
+            . '<span class="flex-grow-1 min-w-0" style="flex-basis: 10rem"><b>' . h(lang('Sign-in is locked.')) . '</b> ' . h(lang(array(
                 'string' => 'Too many failed attempts. Clears on its own in {var:1} minutes.',
                 'vars'   => $sign_in_lock_minutes))) . '</span>'
             . '<button type="submit" form="unlock_sign_in_form" class="btn btn-sm btn-outline theme-danger rounded-pill px-5 ms-auto"><i class="bi bi-unlock me-1"></i>' . h(lang('Unlock Sign-in')) . '</button>'
@@ -890,6 +896,10 @@ if (!$_POST) {
 
     } else {
 
+        // This button is printed inside the main form, and Return in a field
+        // presses the form's first submit button. The form therefore opens
+        // with a hidden nameless submit, which reaches the save branch (the
+        // final else, which reads no button name).
         $output_contact_body =
             '<p class="small fg-secondary mb-3">' . h(lang('This User does not currently have a Contact connected to it. Connecting a Contact to this User is required to use the Membership features. A Contact will be created and connected to this User automatically when the User performs certain actions (e.g. updates his/her profile, submits a Custom Form, submits an Order, and etc.). However, if for any reason, you would like to do this now, you can.')) . '</p>'
             . '<button type="submit" id="submit_create_contact" name="submit_create_contact" value="Create Contact" class="btn btn-sm btn-outline theme-secondary rounded-pill px-5"><i class="bi bi-person-plus me-1"></i><span class="pg-btn-label">' . h(lang('Create Contact')) . '</span></button>';
@@ -916,7 +926,7 @@ if (!$_POST) {
         : 0;
 
     $output_password_note = ($password_changed_at > 0)
-        ? lang(array('string' => 'Last changed {var:1}', 'vars' => get_absolute_time(array('timestamp' => $password_changed_at, 'type' => 'date'))))
+        ? lang(array('string' => 'Last changed {var:1}', 'vars' => get_absolute_time(array('timestamp' => $password_changed_at, 'type' => 'date', 'format' => 'plain_text'))))
         : lang('Change date not recorded');
 
     $output_identity_rows = $user_identities
@@ -1054,9 +1064,9 @@ if (!$_POST) {
         $identity_label = pg_signin_provider_label($identity_provider);
         $output_identity_panel .= '<div class="pg-perm-block">
                 <div class="pg-perm-block-title">' . h(lang(array('string' => 'Sign in with {var:1}', 'vars' => $identity_label))) . '</div>
-                <div class="d-flex align-items-start gap-5 border rounded-4 p-5">
+                <div class="d-flex flex-wrap align-items-start gap-5 border rounded-4 p-5">
                     <span class="pg-fact-icon"><i class="bi ' . h(is_array($identity_definition) ? $identity_definition['icon'] : 'bi-person-badge') . '"></i></span>
-                    <div class="flex-grow-1">
+                    <div class="flex-grow-1 min-w-0" style="flex-basis: 10rem">
                         <p class="small mb-0">' . h(lang(array('string' => 'The connection is tied to the {var:1} account itself, not to the email address - changing the email here does not remove it.', 'vars' => $identity_label))) . '</p>
                     </div>
                     <form method="post" action="edit_user.php" class="disable_shortcut" style="margin:0">' . get_token_field()
@@ -1089,9 +1099,9 @@ if (!$_POST) {
         $output_mfa_panel =
             '<div class="pg-perm-block">
                 <div class="pg-perm-block-title">' . h(lang('Two-step verification')) . '</div>
-                <div class="d-flex align-items-start gap-5 border rounded-4 p-5">
+                <div class="d-flex flex-wrap align-items-start gap-5 border rounded-4 p-5">
                     <span class="pg-fact-icon"><i class="bi bi-shield-lock"></i></span>
-                    <div class="flex-grow-1">
+                    <div class="flex-grow-1 min-w-0" style="flex-basis: 10rem">
                         <p class="small mb-0">' . h($output_mfa_note) . '</p>
                     </div>
                     <form method="post" action="edit_user.php" class="disable_shortcut" style="margin:0">' . get_token_field()
@@ -1195,6 +1205,7 @@ if (!$_POST) {
                 ' . $output_reset_password_form . '
                 <form name="form" action="edit_user.php" method="post">
                     ' . get_token_field() . '
+                    <button type="submit" class="visually-hidden" tabindex="-1" aria-hidden="true"></button>
                     <input type="hidden" name="id" value="' . h($_GET['id']) . '">
                     ' . $output_hidden_role . '
                     <input type="hidden" id="send_to" name="send_to" value="' . (isset($_REQUEST['send_to']) ? h($_REQUEST['send_to']) : '') . '" />
@@ -1242,7 +1253,7 @@ if (!$_POST) {
                                         ' . $output_password_hint_field . '
                                         <div class="col-12 sm:col-6 lg:col-4">
                                             <label class="form-label" for="reward_points">' . lang('Reward Program, Reward Points') . '</label>
-                                            <input value="' . h($reward_points) . '" type="number" class="form-control" id="reward_points" name="reward_points" maxlength="9"/>
+                                            <input value="' . h($reward_points) . '" type="number" min="0" max="4294967295" step="1" class="form-control" id="reward_points" name="reward_points"/>
                                         </div>
                                         <div class="col-12">
                                             <div class="form-field">
@@ -1639,6 +1650,13 @@ if (!$_POST) {
                 user_timestamp = UNIX_TIMESTAMP()
             WHERE user_id = '" . escape($_POST['id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+
+        // The session keeps its own copy of the username from sign-in; the
+        // greeting, the account menu, the Site Log and the developer lock
+        // read it, so a rename of your own account must update it here.
+        if ((int) ($_POST['id'] ?? 0) === (int) USER_ID) {
+            $_SESSION['sessionusername'] = (string) $username;
+        }
 
         pg_audit_record('update', 'user', $audit_user_id, $audit_before);
 

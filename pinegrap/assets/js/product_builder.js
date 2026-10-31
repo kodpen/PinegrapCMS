@@ -696,10 +696,10 @@
 
         }, function (xhr) {
 
-            /* add_file.php answers a request it could not take with a JSON
-               body and a 413, so the reason survives. An expired token or a
-               folder the operator cannot write to still arrives as an HTML
-               error page, which is the fallback sentence. */
+            /* add_file.php answers a request it could not take (a body over
+               post_max_size, an expired token, a folder the operator cannot
+               write to) with a JSON body and a 4xx, so the reason survives.
+               Anything else is the fallback sentence. */
             var payload = xhr && xhr.responseJSON;
 
             if (!payload && xhr && xhr.responseText) {
@@ -1938,12 +1938,12 @@
 
             '<td class="d-block lg:d-table-cell align-middle">' +
             cellLabel(label('Product ID / SKU')) +
-            '<input type="text" class="form-control form-control-sm pg-pb-v-name" value="' + esc(sku) + '"' + cellName('Product ID / SKU', combo) + ' />' +
+            '<input type="text" class="form-control form-control-sm pg-pb-v-name" maxlength="100" value="' + esc(sku) + '"' + cellName('Product ID / SKU', combo) + ' />' +
             '</td>' +
 
             '<td class="d-block lg:d-table-cell align-middle">' +
             cellLabel(label('Short Description')) +
-            '<input type="text" class="form-control form-control-sm pg-pb-v-short" value="' + esc(short) + '"' + cellName('Short Description', combo) + ' />' +
+            '<input type="text" class="form-control form-control-sm pg-pb-v-short" maxlength="100" value="' + esc(short) + '"' + cellName('Short Description', combo) + ' />' +
             '</td>' +
 
             '<td class="d-block lg:d-table-cell align-middle">' +
@@ -2250,21 +2250,48 @@
     }
 
     /* The address a visitor lands on, built the way the server builds it.
-       prepare_catalog_item_address_name() replaces spaces and ampersands and
-       nothing else, and falls back to the short description, then the name —
-       so an operator who leaves the catalog name blank still sees what their
-       URL is going to be.
+       The steps are prepare_catalog_item_address_name()'s: trim, transliterate
+       with the server's own accent table (cfg.asciiTable, from
+       pg_transliterate_ascii_table()), every character outside A-Z a-z 0-9
+       [ ] _ - to an underscore, runs of underscores to one, none at either
+       end, and 'item' when nothing is left. The duplicate number the server
+       appends ("[1]") needs the database and is not shown.
+
+       The source falls back the way the save does: the catalog name, then the
+       short description, then the name. On Edit the save rebuilds the address
+       only when the box changed, so a blank or unchanged box shows the stored
+       address (cfg.storedAddress) as it is.
 
        The middle segment is an ellipsis on purpose. A product sits under
        whichever page the catalog is on, and that page is not chosen on this
        screen; printing a guess would be inventing a URL. */
     function previewAddress() {
 
-        var raw = $.trim($('#address_name').val() || '') ||
+        var typed  = $.trim($('#address_name').val() || '');
+        var stored = cfg.storedAddress || '';
+
+        if (stored && (typed === '' || typed === stored)) {
+            return stored;
+        }
+
+        var raw = typed ||
                   $.trim($('#short_description').val() || '') ||
                   $.trim($('#name').val() || '');
 
-        return raw.replace(/ /g, '_').replace(/&/g, '_');
+        if (!raw) {
+            return '';
+        }
+
+        var table = cfg.asciiTable || {};
+
+        Object.keys(table).forEach(function (accented) {
+            raw = raw.split(accented).join(table[accented]);
+        });
+
+        return raw
+            .replace(/[^A-Za-z0-9\[\]_-]/g, '_')
+            .replace(/_{2,}/g, '_')
+            .replace(/^_+|_+$/g, '') || 'item';
     }
 
     /* Rich text fields are CKEditor 4 instances, and CKEditor hides the original
@@ -2847,17 +2874,27 @@
             '</div>';
     }
 
+    /* Each option row is named by its position ("Option 2"): the placeholder
+       alone repeated the word of the attribute's own Label field. */
+    function numberOptionRows() {
+        $('#pg_pb_attr_options .pg-pb-attr-option-label').each(function (index) {
+            $(this).attr('aria-label', label('option_n').replace('{n}', index + 1));
+        });
+    }
+
     function resetAttributeModal() {
         $('#pg_pb_attribute_modal_error').addClass('d-none').text('');
         $('#pg_pb_attr_name').val('').removeClass('is-invalid');
         $('#pg_pb_attr_label').val('');
         $('#pg_pb_attr_options').html(optionRow() + optionRow());
+        numberOptionRows();
     }
 
     pgUI.dialog.on('#pg_pb_attribute_modal', 'show', resetAttributeModal);
 
     $('#pg_pb_attr_add_option').on('click', function () {
         $('#pg_pb_attr_options').append(optionRow());
+        numberOptionRows();
         $('#pg_pb_attr_options .pg-pb-attr-option-label').last().trigger('focus');
     });
 
@@ -2865,6 +2902,7 @@
         var $rows = $('#pg_pb_attr_options .pg-pb-attr-option');
         if ($rows.length > 1) {
             $(this).closest('.pg-pb-attr-option').remove();
+            numberOptionRows();
         } else {
             $rows.find('.pg-pb-attr-option-label').val('');
         }

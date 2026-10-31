@@ -810,7 +810,7 @@ function pg_field_form_cards($liveform, $field, $context)
                         <div class="row">
                             <div class="col-12 my-3">
                                 <label for="quiz_answer" class="form-label">' . lang('Correct Answer') . '</label>
-                                <input value="' . h(prepare_form_data_for_output($field['quiz_answer'], $field['type'])) . '" type="text" name="quiz_answer" id="quiz_answer" class="form-control"  maxlength="255"/>
+                                <input value="' . h(prepare_form_data_for_output($field['quiz_answer'], $field['type'], false)) . '" type="text" name="quiz_answer" id="quiz_answer" class="form-control"  maxlength="255"/>
                             </div>
                         </div>
                     </div>
@@ -859,7 +859,7 @@ function pg_field_form_cards($liveform, $field, $context)
 
     // A new field's name is required in the browser too; a stored one is
     // filled in.
-    $name_attributes = array('type' => 'text', 'id' => 'name', 'name' => 'name', 'placeholder' => lang('Field Name'), 'class' => 'form-control ');
+    $name_attributes = array('type' => 'text', 'id' => 'name', 'name' => 'name', 'placeholder' => lang('Field Name'), 'maxlength' => '100', 'class' => 'form-control ');
 
     if ($field['id'] == '') {
         $name_attributes['required'] = 'required';
@@ -902,7 +902,7 @@ function pg_field_form_cards($liveform, $field, $context)
                                         ' . $output_rss_field_row . '
                                         <div class="col-12 md:col-12 lg:col-4 my-3 collapse" id="label_row">
                                             <label for="label" class="form-label">' . lang('Label') . '</label>
-                                            <input type="text" name="label" value="' . h($field['label']) . '" placeholder="' . lang('Label to display on pages') . '" id="label" class="form-control" />
+                                            <input type="text" name="label" value="' . h($field['label']) . '" placeholder="' . lang('Label to display on pages') . '" id="label" class="form-control" maxlength="255" />
                                         </div>
                                         <div class="col-12 md:col-6 lg:col-4 my-3 collapse" id="size_row">
                                             <label for="size" class="form-label">' . lang('Size') . '</label>
@@ -986,13 +986,13 @@ function pg_field_form_cards($liveform, $field, $context)
                                 </div>
                             </div>
                             <div class="card my-7 collapse" id="information_row">
-                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold" id="information_heading">
                                 ' . lang('Information') . '
                                 </h2>
                                 <div class="card-body p-0">
                                     <div class="row">
                                         <div class="col-12">
-                                            <textarea id="information" name="information">' . h(prepare_rich_text_editor_content_for_output($field['information'])) . '</textarea>
+                                            <textarea id="information" name="information" aria-labelledby="information_heading">' . h(prepare_rich_text_editor_content_for_output($field['information'])) . '</textarea>
                                         </div>
                                     </div>
                                 </div>

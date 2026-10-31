@@ -168,8 +168,10 @@ if ($_POST) {
             ));
 
             if (!$saved['success']) {
+                // Keep the typed address and both switches, so the card shows
+                // what was refused instead of the stored settings.
+                $liveform->add_fields_to_session();
                 $liveform->mark_error('accountant_email', h($saved['error']));
-                $liveform->assign_field_value('accountant_email', (string) ($_POST['accountant_email'] ?? ''));
                 go($self_url);
             }
 
@@ -256,7 +258,7 @@ if (is_array($new_link) && !empty($new_link['url'])) {
                                 <input type="text" class="form-control font-monospace" id="erp_accountant_link" value="' . h($link_url) . '" readonly aria-label="' . h(lang('Link')) . '" />
                                 <button type="button" class="btn btn-outline theme-primary" id="erp_accountant_link_copy"><i class="bi bi-clipboard me-1" aria-hidden="true"></i>' . h(lang('Copy')) . '</button>
                             </div>
-                            <span class="visually-hidden" role="status" aria-live="polite" id="erp_accountant_link_status" data-copied="' . h(lang('Copied')) . '"></span>
+                            <span class="visually-hidden" role="status" aria-live="polite" id="erp_accountant_link_status" data-copied="' . h(lang('Copied')) . '" data-refused="' . h(lang('The browser did not let the text be copied. Select it and copy it from here.')) . '"></span>
                             <div class="form-text">' . h(lang('It is shown only now. Anyone who has it can download the pack, so send it to the accountant only.')) . '</div>
                             ' . (($output_link_download !== '') ? '<div class="mt-3">' . $output_link_download . '</div>' : '') . '
                         </div>
@@ -284,13 +286,25 @@ if (is_array($new_link) && !empty($new_link['url'])) {
                             status.textContent = "";
                         }, 1500);
                     };
+                    // Plain http has no clipboard API and a write can be
+                    // refused: select the text and copy it the old way, and
+                    // when that fails too, leave it selected and say so.
+                    var fallback = function () {
+                        var copied = false;
+                        input.focus();
+                        input.select();
+                        try { copied = document.execCommand("copy"); } catch (e) {}
+                        if (copied) {
+                            done();
+                        } else {
+                            status.textContent = status.getAttribute("data-refused");
+                        }
+                    };
                     if (navigator.clipboard && window.isSecureContext) {
-                        navigator.clipboard.writeText(input.value).then(done);
+                        navigator.clipboard.writeText(input.value).then(done, fallback);
                         return;
                     }
-                    // Plain http has no clipboard API; select the text and copy it the old way.
-                    input.select();
-                    try { document.execCommand("copy"); done(); } catch (e) {}
+                    fallback();
                 });
                 // The link exists only in this page; once the window is closed
                 // it is taken out of the page as well.
@@ -368,6 +382,14 @@ $output_lock_state = ($lock_date !== '')
     : '<div class="h5 mb-1"><i class="bi bi-unlock fg-secondary me-3" aria-hidden="true"></i>' . lang('No period is locked') . '</div>'
         . '<div class="form-text mt-0">' . lang('Lock a period once its VAT return and books have been filed, so nothing in it changes afterwards.') . '</div>';
 
+// After a refused save the card shows what was sent; otherwise what is stored.
+$settings_form = $settings;
+if (!$liveform->prefill() && ((string) $liveform->get_field_value('erp_action') === 'settings')) {
+    $settings_form['email'] = (string) $liveform->get_field_value('accountant_email');
+    $settings_form['monthly'] = ((string) $liveform->get_field_value('accountant_monthly') !== '');
+    $settings_form['pdfs'] = ((string) $liveform->get_field_value('accountant_pdfs') !== '');
+}
+
 $output_settings_card = '
             <div class="card my-7">
                 <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Accountant') . '</div>
@@ -378,18 +400,18 @@ $output_settings_card = '
                         <div class="row g-5">
                             <div class="col-12">
                                 <label class="form-label" for="accountant_email">' . lang('Accountant\'s e-mail') . '</label>
-                                <input type="email" class="form-control" id="accountant_email" name="accountant_email" value="' . h($settings['email']) . '" maxlength="255" autocomplete="off"' . ($can_settings ? '' : ' disabled') . ' />
+                                <input type="email" class="form-control" id="accountant_email" name="accountant_email" value="' . h($settings_form['email']) . '" maxlength="255" autocomplete="off"' . ($can_settings ? '' : ' disabled') . ' />
                             </div>
                             <div class="col-12">
                                 <div class="form-field">
-                                    <div class="switch"><input class="" type="checkbox" id="accountant_monthly" name="accountant_monthly" value="1"' . ($settings['monthly'] ? ' checked' : '') . ($can_settings ? '' : ' disabled') . ' /></div>
+                                    <div class="switch"><input class="" type="checkbox" id="accountant_monthly" name="accountant_monthly" value="1"' . ($settings_form['monthly'] ? ' checked' : '') . ($can_settings ? '' : ' disabled') . ' /></div>
                                     <label class="" for="accountant_monthly">' . lang('Send last month\'s pack by itself') . '</label>
                                 </div>
                                 <div class="form-text">' . h(lang(array('string' => 'On the first days of every month the scheduled job builds the month before and e-mails the accountant a link that works for {var:1} days.', 'vars' => ERP_ACCOUNTANT_LINK_DAYS))) . '</div>
                             </div>
                             <div class="col-12">
                                 <div class="form-field">
-                                    <div class="switch"><input class="" type="checkbox" id="accountant_pdfs" name="accountant_pdfs" value="1"' . ($settings['pdfs'] ? ' checked' : '') . ($can_settings ? '' : ' disabled') . ' /></div>
+                                    <div class="switch"><input class="" type="checkbox" id="accountant_pdfs" name="accountant_pdfs" value="1"' . ($settings_form['pdfs'] ? ' checked' : '') . ($can_settings ? '' : ' disabled') . ' /></div>
                                     <label class="" for="accountant_pdfs">' . lang('Put the documents in the monthly pack') . '</label>
                                 </div>
                             </div>
