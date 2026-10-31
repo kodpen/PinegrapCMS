@@ -409,6 +409,31 @@ function pg_calendar_event_form_validate($liveform, $calendar_event_id = '0')
 }
 
 /**
+ * The calendars a new event starts on: the requested one (the calendar the
+ * user came from) when it is offered, else the only offered calendar when
+ * there is exactly one, else none. Without a ticked calendar the first save
+ * is refused.
+ *
+ * @param array $offered_ids   ids of the calendars the user may post to
+ * @param mixed $requested_id  ?calendar_id from the link, or null
+ * @return array  ids (strings) to tick
+ */
+function pg_calendar_event_form_start_calendars(array $offered_ids, $requested_id)
+{
+    $offered_ids = array_map('strval', array_values($offered_ids));
+
+    if (is_string($requested_id) && $requested_id !== '' && in_array($requested_id, $offered_ids, true)) {
+        return array($requested_id);
+    }
+
+    if (count($offered_ids) == 1) {
+        return $offered_ids;
+    }
+
+    return array();
+}
+
+/**
  * Every calendar and every event location (id, name, by name), the lists
  * the form's checkboxes are drawn from.
  *

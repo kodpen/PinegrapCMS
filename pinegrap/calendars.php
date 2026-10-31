@@ -72,6 +72,7 @@ while ($row = mysqli_fetch_assoc($result)) {
     }
 }
 $output_edit_calendar_button = '';
+$create_calendar_event_url = 'add_calendar_event.php';
 $pg_breadcrumb_items = array(
     array('label' => lang('Calendars'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_calendars.php'),
 );
@@ -80,6 +81,8 @@ if($calendar_name == ''){
     $pg_breadcrumb_items[] = array('label' => lang('All Calendars'));
 }else{
     $pg_breadcrumb_items[] = array('label' => lang('View Calendars'));
+    // The create screen starts with the viewed calendar ticked.
+    $create_calendar_event_url = 'add_calendar_event.php?calendar_id=' . h(urlencode((string) $_SESSION['software']['calendars']['calendar_id']));
     $output_edit_calendar_button ='<a class="btn btn-sm btn-solid theme-primary m-1 " href="edit_calendar.php?id=' . h(($_SESSION['software']['calendars']['calendar_id'] ?? '')) . '"><span class="material-icons me-3">edit</span>' . lang(array('string'=>'Edit Calendar Properties') ) . '</a>';
 }
 echo
@@ -110,7 +113,7 @@ pg_page_shell(
                 <div class="col-12 sm:col-12 md:col-6 xl:col-9 text-center md:text-start">
 
                     <nav id="button_bar" class="navigation " aria-label="' . h(lang('Button Bar')) . '">
-                        <a class="btn btn-sm btn-solid theme-primary m-1 " href="add_calendar_event.php"><span class="bi bi-plus-circle me-3"></span>' . lang(array('string'=>'Create Calendar Event') ) . '</a>
+                        <a class="btn btn-sm btn-solid theme-primary m-1 " href="' . $create_calendar_event_url . '"><span class="bi bi-plus-circle me-3"></span>' . lang(array('string'=>'Create Calendar Event') ) . '</a>
                         ' . $output_edit_calendar_button . '
                     </nav>
                 </div>
