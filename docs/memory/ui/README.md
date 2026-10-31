@@ -118,6 +118,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - email-campaign-shared-form.md: The e-mail campaign create and edit screens share includes/forms/email_campaign_form.php: its helpers, the read-only flag, what stays in the screens
 - erp-account-shared-form.md: add_erp_account.php and edit_erp_account.php share their cards, field list, checks and the erp_account_save() row through includes/erp/account_form.php; what each screen keeps
 - erp-line-editor-hints.md: ERP line editor and inbox e-invoice lines show their hints as text: barcode and withholding hints, column notes, the barcode "not found" message, the zone-rate source, the inbox mismatch figures
+- erp-link-rights.md: ERP order, contact and user links (erp_order_link_html(), the account form's contact card) link only when the target screen admits the clerk; plain text otherwise
 - explorer-breadcrumb-narrow.md: Why the File and Catalog Manager's location bar scrolls to its end after every draw and on resize, and fades on its left edge.
 - explorer-drawer-names.md: File and Catalog Manager drawer rows drawn by script name themselves: access selects per user, commerce switch groups, shipping-zone lists, bulk description, backup upload path, file window code field
 - explorer-grid-tiles.md: Explorer grid tiles (view_folders.php, catalog and files): the tile size scale, picture vs glyph, the missing-picture plate sized from --pg-tile-icon, the narrow pill it fixed (PR #2200)
