@@ -106,6 +106,56 @@ function test_speculation_pick_from_menu_items()
 	pg_assert_same(array('/About', '/'), pg_speculation_pick(array('/About', '/'), '/', $pages, 'contact', false), 'names compare in lower case');
 }
 
+// A page built in the visual designer is page type 'standard'; a system
+// widget in its tree that does a left-out page type's work (sign-in,
+// sign-out, registration, password, cart, checkout, account, search
+// results) leaves it out as that page type would be.
+function test_speculation_pick_leaves_out_pages_with_acting_widgets()
+{
+	$pages = array(
+		'about'  => array('type' => 'standard', 'public' => true, 'home' => false, 'acting' => false),
+		'giris'  => array('type' => 'standard', 'public' => true, 'home' => false, 'acting' => true),
+		'cikis'  => array('type' => 'standard', 'public' => true, 'home' => false, 'acting' => true),
+		'menu'   => array('type' => 'standard', 'public' => true, 'home' => false),
+	);
+
+	pg_assert_same(array('/about', '/menu'), pg_speculation_pick(array('/about', '/giris', '/cikis', '/menu'), '/', $pages, '', false));
+}
+
+// The widgets that leave a page out follow the page types left out: the
+// widget standing in for each such type, every account widget and the
+// favourites list. Content widgets and the header's login region and cart
+// link (placed on every page) keep it.
+function test_speculation_widget_kept()
+{
+	$map = pg_sw_page_type_widgets();
+
+	foreach (array('login_form', 'logout', 'registration', 'membership', 'forgot_password', 'set_password',
+			'change_password', 'shopping_cart', 'express_order', 'order_preview', 'order_form',
+			'billing_information', 'shipping_address_and_arrival', 'shipping_method', 'my_account',
+			'account_profile', 'account_security', 'account_invoices', 'account_email', 'email_preferences',
+			'address_book', 'search_results', 'order_view', 'affiliate_sign_up_form', 'wishlist') as $type) {
+		pg_assert_false(pg_speculation_widget_kept($type, $map), $type);
+		pg_assert_true(strpos($type, 'account_') === 0 || in_array($type, pg_speculation_acting_widget_types($map), true), $type . ' listed');
+	}
+
+	foreach (array('catalog_listing', 'catalog_item_view', 'folder_view', 'photo_gallery', 'calendar_view',
+			'calendar_event_view', 'custom_form', 'form_list_view', 'form_item_view', 'menu_region',
+			'login_region', 'cart_link', 'comments', 'language_switcher', '') as $type) {
+		pg_assert_true(pg_speculation_widget_kept($type, $map), $type);
+	}
+}
+
+// The SQL test of a page's tree for the acting widgets: the exact sharedId
+// value, closed by a comma or a brace, so id 4 never matches 41.
+function test_speculation_tree_sql()
+{
+	pg_assert_same('0', pg_speculation_tree_sql('t.tree', array()));
+	pg_assert_same(
+		"(t.tree LIKE '%\"sharedId\":4,%' OR t.tree LIKE '%\"sharedId\":4}%' OR t.tree LIKE '%\"sharedId\":12,%' OR t.tree LIKE '%\"sharedId\":12}%')",
+		pg_speculation_tree_sql('t.tree', array(4, '12', 4, 0, -3)));
+}
+
 // The list is cut at the limit.
 function test_speculation_pick_limit()
 {
