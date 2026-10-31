@@ -232,7 +232,7 @@ if (
         'secret' => true));
 }
 
-log_activity(lang('User requested reset password email.'), $user['username']);
+log_activity(pg_log_lang(array('string' => 'User requested reset password email.')), $user['username']);
 
 $form->remove();
 

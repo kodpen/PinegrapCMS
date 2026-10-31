@@ -25,6 +25,24 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 const PG_SUBMITTED_FORM_CHOOSE_AGAIN = '__choose_file_again';
 
 /**
+ * The value a field starts with on a new submitted form: the folder name when
+ * the field is set to use it and the name is known, else its default value,
+ * as the site's form does (pg_cf_field_initial_value()).
+ *
+ * @param array $field  A form_fields row
+ * @param string $folder_name  The custom form page's folder name
+ * @return string
+ */
+function pg_submitted_form_start_value($field, $folder_name)
+{
+    if (!empty($field['use_folder_name_for_default_value']) && ((string) $folder_name !== '')) {
+        return (string) $folder_name;
+    }
+
+    return isset($field['default_value']) ? (string) $field['default_value'] : '';
+}
+
+/**
  * The "Form Data" fields of a custom form, with the scripts its fields need.
  *
  * A new submitted form ($form_id '') offers the signature pad and a plain
@@ -37,11 +55,23 @@ const PG_SUBMITTED_FORM_CHOOSE_AGAIN = '__choose_file_again';
  * @param int|string $page_id  The custom form's page
  * @param bool $office_use_only_access  Office use only fields are shown too
  * @param int|string $form_id  The submitted form, '' while it is created
+ * @param int $folder_id  The custom form page's folder; a new submitted form
+ *                        starts its "use folder name" fields with its name
  * @return array  'fields' (markup), 'wysiwyg_javascript', 'enctype'
  */
-function pg_submitted_form_fields_markup($liveform, $user, $page_id, $office_use_only_access, $form_id = '')
+function pg_submitted_form_fields_markup($liveform, $user, $page_id, $office_use_only_access, $form_id = '', $folder_id = 0)
 {
     $existing = ($form_id !== '');
+
+    // A new submitted form starts like the site's form: a field set to use the
+    // folder name for its default value starts with the name of the custom
+    // form page's folder (its Default Value box is hidden, so default_value
+    // may be empty or stale).
+    $folder_name = '';
+
+    if (!$existing && ((int) $folder_id > 0)) {
+        $folder_name = (string) db_value("SELECT folder_name FROM folder WHERE folder_id = '" . (int) $folder_id . "' LIMIT 1");
+    }
 
     // get all fields for this form
     $query = "SELECT
@@ -51,6 +81,7 @@ function pg_submitted_form_fields_markup($liveform, $user, $page_id, $office_use
                 required,
                 information,
                 default_value,
+                use_folder_name_for_default_value,
                 size,
                 maxlength,
                 wysiwyg,
@@ -88,6 +119,7 @@ function pg_submitted_form_fields_markup($liveform, $user, $page_id, $office_use
 
     foreach ($fields as $field) {
         $field_required = '';
+        $start_value = pg_submitted_form_start_value($field, $folder_name);
 
         // If this is an office use only field and the user may not edit those from this screen, then skip it.
         if (($field['office_use_only'] != 0) && ($office_use_only_access == false)) {
@@ -176,7 +208,7 @@ function pg_submitted_form_fields_markup($liveform, $user, $page_id, $office_use
                 $output_fields .=
                     '<div class="col-12 md:col-6 lg:col-4 my-3 ' . $row_class . '">
                         ' . pg_ai_write_label_row('<label class="form-label" for="' . h($field['id']) . '">' . h($field['label']) . '</label>', pg_ai_write_form_button($user, $page_id, $field['id'])) . '
-                        ' . $liveform->output_field(array_merge(array('type'=>'text', 'name'=>$field['id'], 'id'=>$field['id'], 'value'=>$field['default_value'], 'size'=>$field['size'], 'class'=>'form-control', 'maxlength'=>$field['maxlength']), pg_coll_input_attrs($coll_kind['kind'], $field['type']))) . '
+                        ' . $liveform->output_field(array_merge(array('type'=>'text', 'name'=>$field['id'], 'id'=>$field['id'], 'value'=>$start_value, 'size'=>$field['size'], 'class'=>'form-control', 'maxlength'=>$field['maxlength']), pg_coll_input_attrs($coll_kind['kind'], $field['type']))) . '
                         ' . $field_required . '
                     </div>';
                 break;
@@ -203,7 +235,7 @@ function pg_submitted_form_fields_markup($liveform, $user, $page_id, $office_use
                 $output_fields .=
                     '<div class="col-12 my-3 ' . $row_class . '">
                         ' . pg_ai_write_label_row('<label class="form-label" for="' . h($field['id']) . '">' . h($field['label']) . '</label>', pg_ai_write_form_button($user, $page_id, $field['id'])) . '
-                        ' . $liveform->output_field(array('type'=>'textarea', 'name'=>$field['id'], 'id'=>$field['id'], 'value'=>$field['default_value'], 'maxlength'=>$field['maxlength'], 'class'=>'form-control', 'rows'=>$field['rows'], 'cols'=>$field['cols'], 'style'=>$style)) . '
+                        ' . $liveform->output_field(array('type'=>'textarea', 'name'=>$field['id'], 'id'=>$field['id'], 'value'=>$start_value, 'maxlength'=>$field['maxlength'], 'class'=>'form-control', 'rows'=>$field['rows'], 'cols'=>$field['cols'], 'style'=>$style)) . '
                         ' . $field_required . '
                     </div>';
                 break;
@@ -230,7 +262,7 @@ function pg_submitted_form_fields_markup($liveform, $user, $page_id, $office_use
                 $output_fields .=
                     '<div class="col-12 md:col-6 lg:col-4 my-3 ' . $row_class . '">
                         <label class="form-label" for="' . h($field['id']) . '">' . h($field['label']) . '</label>
-                        ' . $liveform->output_field(array('type'=>'select', 'name'=>$name, 'id'=>$field['id'], 'value'=>$field['default_value'], 'options'=>$pick_list_options, 'class'=>'form-control', 'size'=>$field['size'], 'multiple'=>$multiple)) . '
+                        ' . $liveform->output_field(array('type'=>'select', 'name'=>$name, 'id'=>$field['id'], 'value'=>$start_value, 'options'=>$pick_list_options, 'class'=>'form-control', 'size'=>$field['size'], 'multiple'=>$multiple)) . '
                         ' . $field_required . '
                     </div>';
 
@@ -241,7 +273,7 @@ function pg_submitted_form_fields_markup($liveform, $user, $page_id, $office_use
 
                 foreach ($options as $option) {
                     // if this radio button should be selected by default, prepare to select by default
-                    if ($option['value'] == $field['default_value']) {
+                    if ($option['value'] == $start_value) {
                         $checked = 'checked';
                     } else {
                         $checked = '';
@@ -282,7 +314,7 @@ function pg_submitted_form_fields_markup($liveform, $user, $page_id, $office_use
 
                 foreach ($options as $option) {
                     // if this checkbox should be selected by default, prepare to select by default
-                    if (($option['default_selected'] == 1) || ($option['value'] == $field['default_value'])) {
+                    if (($option['default_selected'] == 1) || ($option['value'] == $start_value)) {
                         $checked = 'checked';
                     } else {
                         $checked = '';

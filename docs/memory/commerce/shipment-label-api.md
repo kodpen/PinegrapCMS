@@ -13,7 +13,7 @@ module: shipment_labels
 - The dry run stops right after the check (`api_dry_run_stop('created', 'shipment_label', …)` with `driver`), so no service is called and nothing is written. What only the service knows (its refusal) is not foreseen.
 
 ## What does GET /orders/{id} list?
-- `shipments[].labels`, newest first, one query per order (`api_order_labels()`): `id`, `driver`, `number`, `reference`, `barcode`, `format`, `state`, `is_return`, `created_at`, `cancelled_at`, `file_kept` (a file not swept), `document_url`. The answer of `POST /orders/{id}/shipment` carries it too. Never the document or the stored file name: the document holds the recipient's address.
+- `shipments[].labels`, newest first, one query per order (`api_order_labels()`): `id`, `driver`, `number`, `reference`, `barcode`, `format`, `state`, `is_return`, `created_at`, `cancelled_at`, `pickup_ref`/`pickup_at` (#3937; null for ''/0 or a site before 11.0.131), `file_kept` (a file not swept), `document_url`. The answer of `POST /orders/{id}/shipment` carries it too. Never the document or the stored file name: the document holds the recipient's address.
 
 ## How is the document handed out?
 - `GET /orders/{id}/shipments/labels/{label_id}/document` (`orders.labels.document`, `orders:read`, `binary`, `mcp` false): the row only when it belongs to the order in the path (404 otherwise), `pg_shipment_label_document()` (kept file, else the service's copy; 409 `label_unavailable`), headers `pg_shipment_label_headers($format, $name, true)` through `api_order_label_headers()`: an SVG is always an attachment with `Content-Security-Policy: sandbox`, never the print page. Bytes are sent from memory, so no ETag or Range.

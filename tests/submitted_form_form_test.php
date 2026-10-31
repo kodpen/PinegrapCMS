@@ -159,3 +159,27 @@ function test_submitted_form_screens_mark_chosen_files()
 		pg_assert_contains('pg_submitted_form_mark_chosen_files(', $source, $screen . ' marks the files to choose again before sending the form back');
 	}
 }
+
+function test_submitted_form_start_value_takes_the_folder_name()
+{
+	$field = array('default_value' => 'Stale', 'use_folder_name_for_default_value' => '1');
+
+	pg_assert_same('İzmir Şubesi', pg_submitted_form_start_value($field, 'İzmir Şubesi'), 'a folder name field starts with the folder name');
+	pg_assert_same('Stale', pg_submitted_form_start_value($field, ''), 'without a folder name it falls back to the default value');
+
+	$field['use_folder_name_for_default_value'] = '0';
+	pg_assert_same('Stale', pg_submitted_form_start_value($field, 'İzmir Şubesi'), 'a field without the switch keeps its default value');
+
+	pg_assert_same('', pg_submitted_form_start_value(array('default_value' => null), 'İzmir Şubesi'), 'a field without either starts empty');
+}
+
+function test_submitted_form_new_form_reads_the_folder_name()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/forms/submitted_form_form.php');
+
+	pg_assert_contains('use_folder_name_for_default_value', $source, 'the fields query reads the folder name switch');
+	pg_assert_same(6, substr_count($source, '$start_value'), 'text box, text area, pick list, radio and check box start from the start value, set once per field');
+
+	$add = (string) file_get_contents(PG_FUNCTIONS_DIR . '/add_submitted_form.php');
+	pg_assert_contains('pg_submitted_form_fields_markup($liveform, $user, $page_id, $office_use_only_access, \'\', $folder_id)', $add, 'the create screen passes the custom form page\'s folder');
+}

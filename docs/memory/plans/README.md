@@ -53,7 +53,6 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - settings-recategorization.md: Plan (owner 2026-10-30): Site Settings regrouped, one place per setting; System tools screen, Accounting category, clearer names; steps in settings-recategorization-steps.md
 - shipping-carrier-labels.md: Plan (approved 2026-10-19; 1-4, 6-8 partly done): carrier APIs for labels and barcodes, bulk labels, status write-back; aggregator first, then Yurtiçi and Aras direct, then abroad
 - shipping-management.md: Shipping plan (2026-10-08; phases 1-7 and the phase 8 postcode check done): single write path, panel, customer e-mail and guest tracking, bulk CSV, API fields, more carriers
-- site-log-language.md: Plan: the Site Log writers still passing bare English to log_activity() (issue #3332, after part 4)
 - storefront-api-acp-ucp.md: Storefront API design note: OpenAI ACP checkout_sessions mapped onto the storefront routes, the UCP manifest after checkout exists, MCP tools under the customer's consent, WAF agent verification
 - storefront-api-agentic-commerce.md: Plan (approved 2026-10-19; design note first, code after 2026.11.0 ships, #3798): public storefront API (cart, checkout, customer auth), base for OpenAI ACP and Google UCP bindings
 - storefront-api-callers.md: Storefront API design note: who calls it (application key + optional cart or customer token), the storefront:* scopes, rate buckets, Idempotency-Key and dry-run rules shared by every route
