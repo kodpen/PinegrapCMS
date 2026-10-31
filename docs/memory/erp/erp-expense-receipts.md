@@ -15,3 +15,4 @@ description: An ERP expense's receipt file: one door for form and API, type read
 
 ## How does code read an expense's file?
 - `erp_archive_file($doc_type, $id)` returns the newest row whose file is on disk. A query that joins `files` directly reduces it to one row with `MAX(id)` (as `includes/erp/files.php` and the expense API do); otherwise a replaced receipt lists the expense twice.
+- `edit_erp_expense.php` keeps that row in `$kept`; no other variable on the screen may take the name. A closure once reused it, every expense screen answered HTTP 500 ("Cannot use object of type Closure as array") until it was renamed `$sent_form` (#3996, `tests/erp_expense_screen_test.php`).
