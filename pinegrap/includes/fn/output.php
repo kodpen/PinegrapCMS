@@ -4305,6 +4305,7 @@ function output_menu($properties = false)
         case 'settings_api.php':
         case 'settings_accounting.php':
         case 'settings_privacy.php':
+        case 'settings_maintenance.php':
         case 'settings_languages.php':
         case 'translations.php':
         case 'private_label.php':

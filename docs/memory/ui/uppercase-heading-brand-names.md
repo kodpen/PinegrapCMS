@@ -11,7 +11,7 @@ description: English brand and product names inside text-uppercase titles carry 
 - Wrap it in `<span lang="en">…</span>` inside the uppercase element; the browser uppercases that span with the English rule.
 - A whole English title: `lang="en"` on the title element itself (`connections.php`, provider labels).
 - A title mixing translated words and names: one key with `{var:N}` placeholders, each name passed as a span: `lang(array('string' => 'Sign in with {var:1}, {var:2} and {var:3}', 'vars' => array('<span lang="en">Google</span>', …)))` (`includes/settings/security.php`).
-- A name from a variable: `'<span lang="en">' . h($name) . '</span>'` (Cron Jobs title in `includes/settings/general.php`).
+- A name from a variable: `'<span lang="en">' . h($name) . '</span>'` (Cron Jobs title in `includes/settings/maintenance.php`).
 - The old full-text keys (`MailChimp`, `Sign in with Google, Microsoft and Apple`) stay: `includes/settings/registry.php` lists them in the settings search.
 
 ## What was not covered?

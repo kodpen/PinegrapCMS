@@ -17,7 +17,7 @@ description: Panel sliders as the Bootstrap 6 Range with a value bubble (step B9
 
 ## Where is it used?
 - Editor inspector (`style_designer.js`): progress bar Value, gradient Mid on the linear and radial tabs (`_sdPercent` formats); label editor Scroll X (`LabelEditor` in `backend.src.js`, plain number).
-- Settings: Features, image Quality When Resizing (40-100, the save clamps the same); General, Alerts, Free disk space below % (0-50).
+- Settings: Features, image Quality When Resizing (40-100, the save clamps the same); Updates and maintenance, Alerts, Free disk space below % (0-50).
 
 ## What stays a v5 range?
 - The palette's Range form field (`style_designer.js`, `def.type === 'range'` gets `form-range` on the input): it is site output on 5.3.8.

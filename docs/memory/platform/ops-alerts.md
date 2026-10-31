@@ -15,7 +15,7 @@ description: Operations alerts (includes/fn/ops_alerts.php): codes, the once-a-d
 
 ## Which channels and settings?
 - Bell always (it is the record). E-mail (`ops_alert_email`) to `ops_alert_recipients` or the site address, queued; a `direct` code (`mail_failures`) is sent at once. Device banner (`ops_alert_push`) needs the Device notifications job.
-- Settings › General › Alerts (`pgset-alerts`). Thresholds, 0 = check off: `ops_alert_error_rate` 50/h, `ops_alert_disk_percent` 10 (also under 1 GB), `ops_alert_mail_failures` 10/day, `ops_alert_cert_days` 14. `OPS_ALERT*` constants in `init.php`; `OPS_ALERTS` reads 0 before the upgrade.
+- Settings › Updates and maintenance › Alerts (`pgset-alerts`, #3968). Thresholds, 0 = check off: `ops_alert_error_rate` 50/h, `ops_alert_disk_percent` 10 (also under 1 GB), `ops_alert_mail_failures` 10/day, `ops_alert_cert_days` 14. `OPS_ALERT*` constants in `init.php`; `OPS_ALERTS` reads 0 before the upgrade.
 
 ## Where is each source checked?
 - `pg_ops_alerts_run()` from the general job every tick: checks at most every 10 min, a tick overlapping a pass skips (`data/temp/ops_alerts.lock`); one failing check is logged, the rest run.

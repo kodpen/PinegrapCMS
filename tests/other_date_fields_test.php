@@ -36,12 +36,12 @@ function test_other_date_fields_native_inputs_are_hooked()
 		}
 	}
 
-	pg_assert_contains('<input type="datetime-local" data-pg-datetime name="maintenance_until"', other_date_fields_test_source('includes/settings/general.php'), 'the maintenance end keeps its Y-m-d\TH:i store on the control');
+	pg_assert_contains('<input type="datetime-local" data-pg-datetime name="maintenance_until"', other_date_fields_test_source('includes/settings/maintenance.php'), 'the maintenance end keeps its Y-m-d\TH:i store on the control');
 }
 
 function test_other_date_fields_screens_print_the_date_order_with_the_script()
 {
-	foreach (array('cloudflare.php', 'api_settings.php', 'view_parasut_inbox.php', 'includes/workspace/workdays.php', 'includes/settings/general.php', 'view_folders.php') as $file) {
+	foreach (array('cloudflare.php', 'api_settings.php', 'view_parasut_inbox.php', 'includes/workspace/workdays.php', 'includes/settings/maintenance.php', 'view_folders.php') as $file) {
 		pg_assert_true(strpos(other_date_fields_test_source($file), 'get_date_picker_format() . pg_fields_script()') !== false, $file . ' prints the date order with the field script');
 	}
 }

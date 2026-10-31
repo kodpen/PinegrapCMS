@@ -96,7 +96,7 @@ if (defined('VERSION') && VERSION === '2026') {
 	    include_once('liveform.class.php');
 	    $liveform = new liveform('settings');
 	    $liveform->add_notice("Pre-upgrade preparation failed: " . $e->getMessage());
-	    header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/' . pg_settings_return_url('general', 'pgset-channel'));
+	    header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/' . pg_settings_return_url('maintenance', 'pgset-channel'));
 	exit();
 
     }
@@ -147,7 +147,7 @@ $liveform = new liveform('software_update');
 if ($software_update_check['error'] === 'curl_missing') {
     $liveform = new liveform('settings');
     $liveform->mark_error('update', lang('Software update check could not communicate with the software update server, because cURL is not installed, so it is not known if there is a software update available.'));
-    header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/' . pg_settings_return_url('general', 'pgset-channel'));
+    header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/' . pg_settings_return_url('maintenance', 'pgset-channel'));
     exit();
 }
 
@@ -158,7 +158,7 @@ if ($software_update_check['error'] === 'curl_error') {
 
 	$liveform = new liveform('settings');
 	$liveform->mark_error('update', lang(array('string'=>'software update check could not communicate with the software update server, so it is not known if there is a software update available. cURL Error Number: {var:1}. cURL Error Message: {var:2}.','vars'=>array($curl_errno,$curl_error) )));
-	header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/' . pg_settings_return_url('general', 'pgset-channel'));
+	header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/' . pg_settings_return_url('maintenance', 'pgset-channel'));
 	exit();
 }
 
@@ -167,7 +167,7 @@ if ($software_update_check['error'] === 'invalid_response') {
 
 	$liveform = new liveform('settings');
 	$liveform->mark_error('update', lang('software update check received an invalid response from the software update server, so it is not known if there is a software update available') );
-	header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/' . pg_settings_return_url('general', 'pgset-channel'));
+	header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/' . pg_settings_return_url('maintenance', 'pgset-channel'));
 	exit();
 }
 
@@ -183,7 +183,7 @@ if (isset($software_update_check['decision'])) {
 
         $liveform = new liveform('settings');
         $liveform->mark_error('update', pg_vendor_release_message($decision, VERSION));
-        header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/' . pg_settings_return_url('general', 'pgset-channel'));
+        header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/' . pg_settings_return_url('maintenance', 'pgset-channel'));
         exit();
     }
 }
@@ -201,7 +201,7 @@ if($software_update_available == 0){
 
 	$liveform = new liveform('settings');
 	$liveform->add_notice(lang('There is no update available.'));
-	header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/' . pg_settings_return_url('general', 'pgset-channel'));
+	header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/' . pg_settings_return_url('maintenance', 'pgset-channel'));
 	exit();
 }
 

@@ -2,7 +2,7 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Site Settings - what the General screen writes: who runs the site, where it is, what the software is, which releases it takes, the time it keeps, what runs on a schedule and how it is backed up.
+ * Site Settings - what the General screen writes: who runs the site, where it is, what the software is, the time it keeps and how it is backed up.
  *
  * Runs in the scope of includes/settings/screen.php, after the token check and
  * after post_value() is defined. Only the columns edited by the cards on this
@@ -69,47 +69,6 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         unset($_SESSION['software']['settings']['license']['expiration_date_formatted']);
         unset($_SESSION['software']['settings']['license']['status']);
         unset($_SESSION['software']['settings']['license']['error_code']);
-    }
-
-    // ── Live chat settings ───────────────────────────────────────────────
-    // Same pattern as the WAF fragment: on installs that have not run the
-    // upgrade the fragment stays empty and saving does not crash on an
-    // unknown column. The appearance columns (2026.4.3) have their own
-    // guard.
-    // ── Scheduled job dispatch ───────────────────────────────────────────
-    // Same fragment pattern: an install that has not run the 2026.4.2 upgrade
-    // saves nothing here instead of failing the whole screen on an unknown
-    // column.
-    $sql_job_dispatch_settings = '';
-
-    if (function_exists('waf_table_has_column')
-        && waf_table_has_column('config', 'job_dispatch_enabled')
-    ) {
-        $job_dispatch_posted = post_value('job_dispatch_job');
-
-        if (!is_array($job_dispatch_posted)) {
-            $job_dispatch_posted = array();
-        }
-
-        // Filtered against the catalogue rather than stored as posted. The
-        // dispatcher turns these names into file paths, so nothing that is not
-        // a job this software ships may reach the column.
-        $job_dispatch_selected = array();
-
-        foreach (pg_cron_jobs() as $job_dispatch_name => $job_dispatch_job) {
-
-            if (!$job_dispatch_job['dispatch']) {
-                continue;
-            }
-
-            if (isset($job_dispatch_posted[$job_dispatch_name])) {
-                $job_dispatch_selected[] = $job_dispatch_name;
-            }
-        }
-
-        $sql_job_dispatch_settings =
-            "job_dispatch_enabled = '" . escape(post_value('job_dispatch_enabled') ? 1 : 0) . "',
-             job_dispatch = '" . escape(implode(',', $job_dispatch_selected)) . "',";
     }
 
     // ── Backups ──────────────────────────────────────────────────────────
@@ -232,121 +191,6 @@ if (!defined('PG_SETTINGS_ENTRY')) {
              backup_remote_settings = '" . escape($backup_blob_value) . "',"
             . ($backup_changed ? " backup_remote_error = ''," : '');
     }
-    // ── Alerts ───────────────────────────────────────────────────────────
-    // The 2026.11.0 columns (11.0.5); before the upgrade nothing is written
-    // here. A recipient that is not an address refuses the whole save, like
-    // the backup card's required fields: a half-saved category is worse than
-    // none. The list is stored comma-separated, whatever the operator typed
-    // between the addresses.
-    $sql_ops_alert_settings = '';
-
-    if (array_key_exists('ops_alerts', $row) && function_exists('pg_ops_alert_recipients')) {
-
-        $ops_alert_recipients_posted = trim((string) post_value('ops_alert_recipients'));
-        $ops_alert_recipients_invalid = pg_ops_alert_recipients_invalid($ops_alert_recipients_posted);
-
-        if ($ops_alert_recipients_invalid) {
-            $liveform->mark_error('ops_alert_recipients', lang(array(
-                'string' => 'Not an e-mail address: {var:1}',
-                'vars'   => array(h(implode(', ', $ops_alert_recipients_invalid))),
-            )));
-        }
-
-        if ($liveform->check_form_errors()) {
-            return;
-        }
-
-        $sql_ops_alert_settings =
-            "ops_alerts = '" . (post_value('ops_alerts') ? 1 : 0) . "',
-             ops_alert_email = '" . (post_value('ops_alert_email') ? 1 : 0) . "',
-             ops_alert_push = '" . (post_value('ops_alert_push') ? 1 : 0) . "',
-             ops_alert_recipients = '" . escape(implode(', ', pg_ops_alert_recipients($ops_alert_recipients_posted, array()))) . "',";
-
-        // The thresholds (0 = that check off), held to what each column and
-        // check can take, the way the backup retention is. An empty box
-        // keeps what is stored.
-        if (array_key_exists('ops_alert_error_rate', $row)) {
-
-            $ops_alert_limits = array(
-                'ops_alert_error_rate'    => 100000,
-                'ops_alert_disk_percent'  => 50,
-                'ops_alert_mail_failures' => 100000,
-                'ops_alert_cert_days'     => 60,
-            );
-
-            foreach ($ops_alert_limits as $ops_alert_column => $ops_alert_max) {
-
-                $ops_alert_posted = trim((string) post_value($ops_alert_column));
-
-                $ops_alert_value = ($ops_alert_posted === '')
-                    ? (int) $row[$ops_alert_column]
-                    : min($ops_alert_max, max(0, (int) $ops_alert_posted));
-
-                $sql_ops_alert_settings .= "
-             " . $ops_alert_column . " = '" . $ops_alert_value . "',";
-            }
-        }
-    }
-
-    // ── Maintenance mode ─────────────────────────────────────────────────
-    // The 2026.11.0 columns (11.0.7); before the upgrade nothing is written.
-    // The end time arrives from a datetime-local box in the site's own time
-    // zone. An address the firewall's lists would not take, a time that is
-    // not one, or an end that has already passed while the mode is being
-    // switched on, refuses the save.
-    $sql_maintenance_settings = '';
-    $maintenance_switched = null;
-
-    if (array_key_exists('maintenance_mode', $row) && function_exists('pg_maintenance_allow_invalid')) {
-
-        $maintenance_on = post_value('maintenance_mode') ? 1 : 0;
-        $maintenance_allow_posted = trim((string) post_value('maintenance_allow_ips'));
-        $maintenance_allow_invalid = pg_maintenance_allow_invalid($maintenance_allow_posted);
-
-        if ($maintenance_allow_invalid) {
-            $liveform->mark_error('maintenance_allow_ips', lang(array(
-                'string' => 'Not an address or a range: {var:1}',
-                'vars'   => array(h(implode(', ', $maintenance_allow_invalid))),
-            )));
-        }
-
-        // Read in the time zone this same save gives the site (an empty one
-        // is the server's), not the one the request started with.
-        $maintenance_timezone = (string) post_value('timezone');
-
-        if (($maintenance_timezone === '') && defined('SERVER_TIMEZONE')) {
-            $maintenance_timezone = (string) SERVER_TIMEZONE;
-        }
-
-        $maintenance_until_saved = pg_maintenance_until_parse(post_value('maintenance_until'), $maintenance_timezone);
-
-        if ($maintenance_until_saved === false) {
-            $maintenance_until_saved = 0;
-            $liveform->mark_error('maintenance_until', lang('The end time is not a date and time.'));
-        } elseif (pg_maintenance_until_refused((bool) $maintenance_on, $maintenance_until_saved, time(), (int) $row['maintenance_mode'] === 1, (int) $row['maintenance_until'])) {
-            $liveform->mark_error('maintenance_until', lang('The end time has already passed.'));
-        }
-
-        if ($liveform->check_form_errors()) {
-            return;
-        }
-
-        $sql_maintenance_settings =
-            "maintenance_mode = '" . $maintenance_on . "',
-             maintenance_until = '" . (int) $maintenance_until_saved . "',
-             maintenance_allow_ips = '" . escape(implode(', ', waf_parse_list($maintenance_allow_posted))) . "',";
-
-        if ($maintenance_on !== (int) $row['maintenance_mode']) {
-            $maintenance_switched = $maintenance_on;
-        }
-    }
-
-    // ── Backup before updating ───────────────────────────────────────────
-    // The 2026.11.0 column (11.0.6); before the upgrade nothing is written.
-    $sql_update_backup = array_key_exists('update_backup', $row)
-        ? "update_backup = '" . (post_value('update_backup') ? 1 : 0) . "',"
-        : '';
-
     // The seller's tax number, kept the way the store's country writes it:
     // digits in Turkey (VKN/TCKN), as typed elsewhere - an EU VAT id carries
     // its country prefix and letters. Never longer than the column holds
@@ -388,36 +232,9 @@ if (!defined('PG_SETTINGS_ENTRY')) {
             timezone = '" . escape(post_value('timezone')) . "',
             date_format = '" . escape(post_value('date_format')) . "',
             time_format = '" . escape(post_value('time_format')) . "',
-            " . $sql_job_dispatch_settings . "
             " . $sql_backup_settings . "
-            " . $sql_ops_alert_settings . "
-            " . $sql_update_backup . "
-            " . $sql_maintenance_settings . "
             last_modified_user_id = '" . USER_ID . "',
             last_modified_timestamp = UNIX_TIMESTAMP()");
-
-    // The mode changed: in the log, and System Status is told at once rather
-    // than after its ten-minute cache.
-    if ($maintenance_switched !== null) {
-        log_activity($maintenance_switched ? lang('Maintenance mode was switched on.') : lang('Maintenance mode was switched off.'), $_SESSION['sessionusername']);
-
-        pg_system_status_forget();
-    }
-
-    // An address every visitor shares on the list (the server behind a
-    // tunnel, a proxy that is not declared) lets everyone through. The list
-    // is saved as typed - on a machine without such a proxy it is the
-    // operator's own - and the warning says what it does.
-    if (($sql_maintenance_settings !== '') && function_exists('waf_client_ip')) {
-        $maintenance_my_ip = (string) waf_client_ip();
-
-        if (pg_maintenance_list_opens_to_all($maintenance_allow_posted, $maintenance_my_ip, pg_maintenance_ip_is_shared($maintenance_my_ip))) {
-            $liveform->add_warning(lang(array(
-                'string' => '{var:1} is on the list, but it is the server or a proxy every visitor arrives through, so everyone sees the site during maintenance. Add it to Trusted Proxies on the Firewall card and list your own address instead.',
-                'vars'   => array(h($maintenance_my_ip)),
-            )));
-        }
-    }
 
     // Pinegrap AI sends this key to its gateway (includes/workspace/ai.php).
     // What the gateway said about the old key is forgotten with it: a key it
@@ -427,28 +244,6 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         db("UPDATE config SET ws_ai_license_state = '', ws_ai_license_checked = 0, ws_ai_license_expires = 0, ws_ai_error = ''");
     }
 
-
-    // Update channel: its column arrives with migration 4.21, so a database that
-    // has not been upgraded yet must not break the rest of this save. Changing
-    // the channel also clears the last answer and the check timestamp — that
-    // answer came from the other channel, and leaving it there would show the
-    // wrong "an update is available" (or hide a real one) until the next daily
-    // check happened to run.
-    $channel_column = @mysqli_query(db::$con, "SHOW COLUMNS FROM config WHERE Field = 'software_update_channel'");
-
-    if ($channel_column && (mysqli_num_rows($channel_column) > 0)) {
-
-        $channel_value = ((post_value('software_update_channel') === 'beta') ? 'beta' : 'stable');
-
-        if ($channel_value !== (defined('SOFTWARE_UPDATE_CHANNEL') ? SOFTWARE_UPDATE_CHANNEL : 'stable')) {
-
-            db("UPDATE config SET software_update_channel = '" . escape($channel_value) . "', software_update_available = '0', last_software_update_check_timestamp = '0'");
-
-            db("DELETE FROM notifications WHERE action = 'software_update'");
-
-            log_activity(lang(array('string' => 'The update channel was changed to {var:1}.', 'vars' => $channel_value)), $_SESSION['sessionusername']);
-        }
-    }
 
     // "Save and test the connection": the settings above are stored first, so
     // the test reads exactly what the next automatic backup will use. A small

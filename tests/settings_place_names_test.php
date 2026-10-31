@@ -46,14 +46,14 @@ function test_settings_place_names_two_step_verification_key_hint()
 	pg_assert_contains('Şifreleme Anahtarını Sıfırla', settings_place_names_test_tr($key));
 }
 
-// The nightly accessibility check: its switch is in General › Cron Jobs and
+// The nightly accessibility check: its switch is in Updates and maintenance › Cron Jobs and
 // shows only while Run Cron Jobs Automatically is on.
 function test_settings_place_names_accessibility_cron_hint()
 {
-	$key = 'The nightly check is off: in Site Settings › General › Cron Jobs, with Run Cron Jobs Automatically on, switch on "Accessibility report", or check the pages now.';
+	$key = 'The nightly check is off: in Site Settings › Updates and maintenance › Cron Jobs, with Run Cron Jobs Automatically on, switch on "Accessibility report", or check the pages now.';
 
 	pg_assert_contains("h(lang('" . $key . "'))", settings_place_names_test_source('view_accessibility.php'));
-	pg_assert_contains('Site Ayarları › Genel › Cron işleri', settings_place_names_test_tr($key));
+	pg_assert_contains('Site Ayarları › Güncellemeler ve Bakım › Cron işleri', settings_place_names_test_tr($key));
 	pg_assert_contains('Cron İşlerini Otomatik Yürüt', settings_place_names_test_tr($key));
 }
 
