@@ -1,6 +1,6 @@
 ---
 name: workspace-notes-sources
-description: Where an imported note came from (ws_note_sources, schema 11.0.86): the id per provider, how the import plan turns a known file into "same" or "update", when rows are written and dropped
+description: Where an imported note came from (ws_note_sources, schema 11.0.86, PR #1812): the id per provider, how the import plan turns a known file into "same" or "update", when rows are written and dropped
 ---
 
 ## What does ws_note_sources keep?
