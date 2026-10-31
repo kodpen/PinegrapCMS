@@ -500,6 +500,7 @@ if (!$_POST) {
                 <form name="form" action="edit_product_group.php" method="post" class="product_group_form">
                     ' . get_token_field() . '
                     <input type="hidden" name="id" value="' . h($_GET['id']) . '">
+                    <input type="hidden" name="listed_product_ids" value="' . h(implode(',', array_map('intval', $selected_products))) . '" />
                     <input type="hidden" name="send_to" value="' . h(($_GET['send_to'] ?? '')) . '" />
 
                     <div class="row edit_product_group_container">
@@ -826,15 +827,20 @@ if (!$_POST) {
                 timestamp = UNIX_TIMESTAMP()
             WHERE id = '" . e($_POST['id'] ?? '') . "'");
         
-        // flush appropriate entries from products_groups_xref table
+        // Rewrite only the member rows the form listed when it was opened.
         //
-        // Except those of products in the Recycle Bin: the screen does not
-        // list them, so they are never posted back, and dropping their rows
-        // here would take the product out of this group for good while it
-        // waits in the bin. What is left after this is exactly those rows.
-        $query = "DELETE FROM products_groups_xref WHERE product_group = ?"
-            . (pg_catalog_bin_ready() ? " AND product NOT IN (SELECT id FROM products WHERE recycled = '1')" : "");
-        $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed');
+        // A product linked to the group since then (Create or Edit Product,
+        // Catalog Manager, API) is not on the form, so its row stays. So do
+        // the rows of products in the Recycle Bin: the screen does not list
+        // them, and dropping their rows here would take the product out of
+        // this group for good while it waits in the bin. What is left after
+        // this is exactly the rows the save does not write.
+        $member_rows = pg_product_group_form_member_rows(isset($_POST['listed_product_ids']) ? $_POST['listed_product_ids'] : null, (array) db_values("SELECT product FROM products_groups_xref WHERE product_group = '" . e($_POST['id'] ?? '') . "'"));
+        if ($member_rows['delete']) {
+            $query = "DELETE FROM products_groups_xref WHERE product_group = ? AND product IN (" . implode(',', array_map('intval', $member_rows['delete'])) . ")"
+                . (pg_catalog_bin_ready() ? " AND product NOT IN (SELECT id FROM products WHERE recycled = '1')" : "");
+            $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed');
+        }
 
         $kept_product_ids = array_map('intval', (array) db_values("SELECT product FROM products_groups_xref WHERE product_group = '" . e($_POST['id'] ?? '') . "'"));
 

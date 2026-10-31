@@ -55,3 +55,23 @@ function test_product_group_form_screens_use_the_shared_form()
 	// The image code is printed escaped on both screens.
 	pg_assert_contains("<textarea id=\"code\" name=\"code\">' . h(\$v['code']) . '</textarea>", (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/forms/product_group_form.php'), 'code escaped');
 }
+
+function test_product_group_form_member_rows()
+{
+	// The form listed 1, 2 and 3; meanwhile 9 joined the group elsewhere.
+	pg_assert_same(array('delete' => array(1, 2, 3), 'keep' => array(9)), pg_product_group_form_member_rows('1,2,3', array(1, 2, 3, 9)), 'a product that joined later is kept');
+	pg_assert_same(array('delete' => array(2), 'keep' => array(7)), pg_product_group_form_member_rows('1,2', array('2', '7')), 'a listed member already gone is not deleted again');
+	pg_assert_same(array('delete' => array(), 'keep' => array(4, 5)), pg_product_group_form_member_rows('', array(4, 5)), 'an empty list deletes nothing');
+	pg_assert_same(array('delete' => array(4, 5), 'keep' => array()), pg_product_group_form_member_rows(null, array(4, 5, 5)), 'a form without the field deletes every row, as before');
+	pg_assert_same(array('delete' => array(3), 'keep' => array(8)), pg_product_group_form_member_rows('3,x,-1,0,3', array(3, 8)), 'only positive ids count');
+	pg_assert_same(array('delete' => array(), 'keep' => array(3)), pg_product_group_form_member_rows(array('3'), array(3)), 'a list posted as an array counts as not listed');
+}
+
+function test_product_group_form_edit_save_scoped_to_listed_members()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_product_group.php');
+
+	pg_assert_contains('<input type="hidden" name="listed_product_ids" value="\' . h(implode(\',\', array_map(\'intval\', $selected_products))) . \'" />', $source, 'the listed members are posted back');
+	pg_assert_contains("pg_product_group_form_member_rows(isset(\$_POST['listed_product_ids']) ? \$_POST['listed_product_ids'] : null, ", $source, 'the save splits the rows by the list');
+	pg_assert_true(strpos($source, '"DELETE FROM products_groups_xref WHERE product_group = ?"' . "\n") === false, 'no group-wide delete');
+}
