@@ -410,28 +410,83 @@ function pg_audit_view_record_ids(array $rows)
 }
 
 /**
+ * The column a type's edit screen gates on, read with the live lookup so
+ * the "Open" link is drawn only when that screen admits the viewer:
+ * edit_user.php compares the account's role, edit_file.php refuses a
+ * design file below Designer.
+ *
+ * @return array type => column of its pg_audit_view_record_tables() table
+ */
+function pg_audit_view_record_columns()
+{
+    return array(
+        'user' => 'user_role',
+        'file' => 'design',
+    );
+}
+
+/**
  * Which records of a page of audit lines still exist, so the "Open" link
  * is drawn only for them: a deleted page or file opened its edit screen's
  * "not found" error (#2521). The record's history link stays either way.
  *
  * @param array $rows audit_log rows (entity_type, entity_id)
- * @return array type => array(id => true)
+ * @return array type => array(id => true), or id => array(column => value)
+ *               for a type of pg_audit_view_record_columns()
  */
 function pg_audit_view_live_records(array $rows)
 {
     $tables = pg_audit_view_record_tables();
+    $columns = pg_audit_view_record_columns();
     $live = array();
 
     foreach (pg_audit_view_record_ids($rows) as $type => $ids) {
         list($table, $column) = $tables[$type];
-        $found = db_values("SELECT `$column` FROM `$table` WHERE `$column` IN (" . implode(',', array_map('intval', $ids)) . ")");
+        $in = implode(',', array_map('intval', $ids));
 
-        foreach ((array) $found as $id) {
+        if (isset($columns[$type])) {
+            $gate = $columns[$type];
+
+            foreach ((array) db_items("SELECT `$column` AS id, `$gate` FROM `$table` WHERE `$column` IN ($in)") as $item) {
+                $live[$type][(int) $item['id']] = array($gate => $item[$gate]);
+            }
+
+            continue;
+        }
+
+        foreach ((array) db_values("SELECT `$column` FROM `$table` WHERE `$column` IN ($in)") as $id) {
             $live[$type][(int) $id] = true;
         }
     }
 
     return $live;
+}
+
+/**
+ * Whether the edit screen of a live record admits a viewer of $role:
+ * edit_user.php through pg_can_open_user(), edit_file.php refusing a
+ * design file above role 1. A user or file whose gate column is unknown
+ * is refused rather than linked to "Access denied".
+ *
+ * @param string     $type
+ * @param array|bool $record pg_audit_view_live_records()'s value for it
+ * @param int        $role   the viewer's role
+ * @return bool
+ */
+function pg_audit_view_can_open($type, $record, $role)
+{
+    $role = (int) $role;
+
+    if ($type === 'user') {
+        return is_array($record) && isset($record['user_role'])
+            && pg_can_open_user(array('role' => $role), $record['user_role']);
+    }
+
+    if ($type === 'file') {
+        return ($role <= 1) || (is_array($record) && isset($record['design']) && ((int) $record['design'] !== 1));
+    }
+
+    return true;
 }
 
 /**

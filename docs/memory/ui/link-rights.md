@@ -13,7 +13,7 @@ module: auth
 - `pg_can_open_contact($user, $contact_id, $contacts_access = null)`: no contact id -> false; role < 3 -> true with no query; role 3 -> `validate_contacts_access($user, true)` and `validate_contact_access()` (contact in one of their groups), as `edit_contact.php`. A list passes `$contacts_access` computed once per screen (`erp_accounts.php`). `$user = null` means the signed-in viewer (`USER_ROLE` short-circuit, else `validate_user()` once): used by `includes/erp/drawer.php` and `includes/erp/order_flow.php`, which get no user row.
 
 ## Which screens use them?
-- `view_order.php` and `print_order.php` (User, Contact, affiliate; both read `user_role AS username_role` in the order query), `edit_gift_card.php` (From: user link, else contact link, else plain), `erp_accounts.php` (the contact icon shows unlinked with a hidden "Contact" label), ERP account drawer contact name, ERP order flow "Edit Contact" step link (left out), `view_sessions.php` (names, Manage button).
+- `view_order.php` and `print_order.php` (User, Contact, affiliate; both read `user_role AS username_role` in the order query), `edit_gift_card.php` (From: user link, else contact link, else plain), `erp_accounts.php` (the contact icon shows unlinked with a hidden "Contact" label), ERP account drawer contact name, ERP order flow "Edit Contact" step link (left out), `view_sessions.php` (names, Manage button), `view_audit_log.php` (the Open icon of user lines, and of design files for roles 0-1: `core/audit-trail-screen.md`).
 - Older guards of the same kind: `includes/fn/contact_list.php`, `includes/dashboard/widgets/widget_4.php`, `chat.php`.
 
 ## Which order and product links need the commerce right?
