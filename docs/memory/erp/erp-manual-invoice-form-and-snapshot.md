@@ -10,7 +10,7 @@ description: Manual invoice form mechanics (lines[n][field] arrays, template row
 - Product choice is a shortcut, not a lock: `product_id` sits in a hidden field and drops to 0 when the product name is edited.
 - JS totals mimic `erp_kurus` / `erp_line_total` / `erp_apply_rate` exactly (whole kuruş, `Math.round`), and the group taxes with `allocate()` / `rateTaxes()`, copies of `erp_allocate()` / `erp_rate_vat()` (#1004): a line's total shows its share of the group's VAT. PHP recomputes on every save; a mismatch between the two is a bug.
 
-## Which document does the form name? (#3944)
+## Which document does the form name? (#3944, PR #3985)
 - `erp_invoice_form_cards()` serves invoices, quotes (`'quote' => true`) and purchase orders (`'purchase_order' => true`); every invoice-only text picks its noun from `$is_quote` / `$is_order` with its own English key (e.g. the preview note "…when the quote is saved"), never a second copy of the form.
 
 ## What is the account snapshot on an invoice (4.51)?
