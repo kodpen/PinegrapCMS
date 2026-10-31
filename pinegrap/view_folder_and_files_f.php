@@ -302,6 +302,19 @@ function pg_explorer_seo_payload($row)
         'labels' => pg_seo_flag_labels((int) ($row['seo_flags'] ?? 0), 3));
 }
 
+// Whether the user may copy pages: designers and managers always, a user
+// (role 3) only with the 'Create pages' right. duplicate_page() refuses the
+// rest with an HTML page and exit, which would end the file manager's JSON
+// answer half way, so its callers here check first and skip the page.
+function pg_explorer_can_copy_pages($user)
+{
+    if (!isset($user['role'])) {
+        return false;
+    }
+
+    return ((int) $user['role'] < 3) || !empty($user['create_pages']);
+}
+
 // Copy a folder into another folder, with everything inside it.
 //
 // The platform's own duplicate_folder() copies one folder's pages and stops:
@@ -397,13 +410,22 @@ function pg_explorer_copy_folder($source_id, $target_parent_id, $user, &$errors,
     $copied = 1;
 
     // Pages.
-    $pages = db_items("SELECT page_id AS id FROM page WHERE page_folder = '" . e($source_id) . "'");
+    $pages = db_items("SELECT page_id AS id, page_name AS name FROM page WHERE page_folder = '" . e($source_id) . "'");
 
     if ($pages) {
 
         require_once(dirname(__FILE__) . '/duplicate_page_f.php');
 
+        // Without the page creation right each page is skipped by name, the
+        // way design files are below; files and subfolders still copy.
+        $can_copy_pages = pg_explorer_can_copy_pages($user);
+
         foreach ($pages as $page) {
+
+            if (!$can_copy_pages) {
+                $errors[] = lang(array('string' => 'Access denied for {var:1}.', 'vars' => $page['name']));
+                continue;
+            }
 
             $response = duplicate_page(array(
                 'page' => array('id' => (int) $page['id']),

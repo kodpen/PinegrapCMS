@@ -153,9 +153,24 @@ function pg_explorer_handle_paste($type, $request, $user)
 
             case 'page':
 
+                $page = db_item("SELECT page_id AS id, page_name AS name, page_folder AS folder FROM page WHERE page_id = '" . e($item_id) . "'");
+
+                if (!$page) {
+                    $errors[] = lang('Sorry, the page could not be found.');
+                    break;
+                }
+
+                // duplicate_page() refuses a missing page creation right or
+                // source folder access with an HTML page and exit, which
+                // would end this JSON answer half way, so both are checked
+                // here and the page is skipped by name.
+                if (!pg_explorer_can_copy_pages($user) || (check_edit_access($page['folder']) == false)) {
+                    $errors[] = lang(array('string' => 'Access denied for {var:1}.', 'vars' => $page['name']));
+                    break;
+                }
+
                 // duplicate_page() carries the full copy: settings,
-                // regions, layout file, and it validates the page
-                // creation right and source folder access itself.
+                // regions and layout file.
                 require_once(PG_FUNCTIONS_DIR . '/duplicate_page_f.php');
 
                 $response = duplicate_page(array(
