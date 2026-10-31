@@ -31,7 +31,7 @@ description: Steps R1-R9 of plans/settings-recategorization.md: what each moves,
   - R7c, done in #4067: API is named Integrations, holds Google Reviews (from Communication) and a Related screens card (`pg_settings_integration_links()`).
   - R7d, done in #4095: Private Label Branding is an Appearance card for role 0; `private_label.php` redirects to it.
 
-- Next: R8, then R9; both free after #4095 lands.
+- Next: R8 (building on feature/settings-r8-search), then R9.
 
 - R8 (M) Search. A search box in the dialog covers every category's cards and field labels, from the registry plus the drawn labels. Palette keywords: false hits ("logo" on E-Invoice) and misses (favicon, kvkk, workspace, prefetch, encryption). Headings over the list as decided #3879 (Site, Security, Selling, Running the site; `.pg-sm-group`, a `group` key per category).
 
