@@ -163,6 +163,12 @@ if ($selected_page === null) {
 // The Update button says what it scans; the notes that point at it use the
 // same label.
 $update_button_label = ($page_id > 0) ? lang('Update this page') : (($group !== '') ? lang('Update these texts') : lang('Update translations'));
+// By hand nothing goes to an engine: the button only scans and lists.
+if ($engine_key === 'manual') {
+    $update_button_title = ($page_id > 0) ? lang('Scan this page and list its pending texts here') : (($group !== '') ? lang('Scan these texts and list the pending ones here') : lang('Scan every page and list the pending texts here'));
+} else {
+    $update_button_title = ($page_id > 0) ? lang('Scan this page and send its pending texts to the engine') : (($group !== '') ? lang('Scan these texts and send the pending ones to the engine') : lang('Scan every page and send the pending texts to the engine'));
+}
 
 // Under the reviewed policy a page is indexed in the language only when
 // every text drawn on it stands approved: what each page answered the last
@@ -755,7 +761,7 @@ echo pg_page_shell(array(
                 </button>
                 <ul class="menu">' . $output_language_menu . '</ul>
             </div>
-            <button type="button" class="btn btn-sm btn-text theme-secondary no-popover" id="pg_tr_update"' . ($engine['ready'] ? '' : ' disabled="disabled"') . ' data-bs-toggle="tooltip" title="' . h(($page_id > 0) ? lang('Scan this page and send its pending texts to the engine') : (($group !== '') ? lang('Scan these texts and send the pending ones to the engine') : lang('Scan every page and send the pending texts to the engine'))) . '">
+            <button type="button" class="btn btn-sm btn-text theme-secondary no-popover" id="pg_tr_update"' . ($engine['ready'] ? '' : ' disabled="disabled"') . ' data-bs-toggle="tooltip" title="' . h($update_button_title) . '">
                 <i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . h($update_button_label) . '
             </button>
             <label class="visually-hidden" for="pg_tr_engine">' . lang('Translation engine') . '</label>

@@ -94,18 +94,14 @@ switch ($action) {
             update_product_group_status(array('id' => $group_id, 'status' => $status));
         }
 
-        log_activity(
-            lang(array(
-                'string' => '{var:1} variant set{suffix:1} were updated',
-                'vars'   => array(count($group_ids)),
-                'suffix' => (count($group_ids) === 1) ? '' : 's')),
-            $_SESSION['sessionusername']);
+        // The verb agrees with the count, so one key per form.
+        $updated_text = (count($group_ids) === 1)
+            ? lang(array('string' => '{var:1} variant set was updated', 'vars' => array(1)))
+            : lang(array('string' => '{var:1} variant sets were updated', 'vars' => array(count($group_ids))));
 
-        $liveform->add_notice(
-            lang(array(
-                'string' => '{var:1} variant set{suffix:1} were updated',
-                'vars'   => array(count($group_ids)),
-                'suffix' => (count($group_ids) === 1) ? '' : 's')));
+        log_activity($updated_text, $_SESSION['sessionusername']);
+
+        $liveform->add_notice($updated_text);
 
         break;
 

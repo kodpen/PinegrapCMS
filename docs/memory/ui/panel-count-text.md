@@ -5,7 +5,7 @@ description: Panel counts read right at one: ERP due badges, Create Order cart c
 
 ## Which screens were fixed, and how?
 - ERP Invoices due badges (`'{var:1} day{suffix:1} overdue'`, `'due in {var:1} day{suffix:1}'`), ERP dashboard top overdue (`'{var:1} day{suffix:1}'`), Create Order payment term and recent sales line count, the Users list lock (`'Clears in {var:1} minute{suffix:1}.'`) and the Settings › API applications counts (`'{var:1} connection{suffix:1}'`, device, request, error) carry a `{suffix:N}`; before, English read "1 days overdue", "Clears in 1 minutes." and the API counts were glued outside `lang()`.
-- Sentences whose verb agrees with the count pick one of two literal keys: users deleted, connections ended, files updated/compressed/extracted, pages updated, products updated (with and without the notes), items moved.
+- Sentences whose verb agrees with the count pick one of two literal keys: users deleted, connections ended, variant sets enabled/disabled (Variant Sets log line and notice, `tests/translations_zip_variant_wording_test.php`), files updated/compressed/extracted, pages updated, products updated (with and without the notes), items moved.
 - The Create Order cart count is `local_sale_count_text($totals)` in `includes/local_sale.php` (cart header, summary card, Ajax `count_text`); lines and units go through `pg_format_number($n, 0)`.
 
 ## Why does the File Manager move log name "the folder"?
