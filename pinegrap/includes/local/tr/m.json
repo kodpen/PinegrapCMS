@@ -129,6 +129,7 @@
     "Make your home yours": "Evinizi size benzetin",
     "Make your own look": "Kendi görünümünüzü yapın",
     "Make {var:1} new records ({var:2}), off sale unless a row puts it on sale": "{var:1} yeni kayıt oluştur ({var:2}); satırda satışa açılmadıkça satışta değil",
+    "Makes a new key in config.php. Card numbers kept with orders and the payment gateway secrets are encrypted again with it; two-step verification needs a key.": "config.php dosyasında yeni bir anahtar oluşturur. Siparişlerde saklanan kart numaraları ve ödeme altyapısı gizli anahtarları bununla yeniden şifrelenir; iki adımlı doğrulama için bir anahtar gerekir.",
     "Makes the region a shared component its content editors edit in the designer; its tag draws the component on every page, and front-end inline editing of the region ends. This page places the component.": "Bölgeyi, içerik düzenleyicilerinin tasarımcıda düzenlediği bir paylaşılan bileşene çevirir; etiketi her sayfada bileşeni çizer ve bölgenin sitede satır içi düzenlenmesi sona erer. Bu sayfa bileşeni yerleştirir.",
     "Making coffee": "Kahve yapmak",
     "Making fun things": "Eğlenceli şeyler yapıyorum",

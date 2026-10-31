@@ -65,7 +65,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $passkey_signin_ready = array_key_exists('passkey_signin', $row);
     $passkey_signin = $passkey_signin_ready ? (int) $row['passkey_signin'] : 0;
     $passkeys_available = function_exists('pg_passkeys_available') && pg_passkeys_available();
-    // Commerce warns before the encryption key is reset when somebody's
+    // The Encryption Key card warns before the key is reset when somebody's
     // second factor would become unreadable by it.
     $mfa_enabled_accounts = pg_mfa_table_exists()
         ? (int) db_value("SELECT COUNT(*) FROM user_mfa WHERE enabled_at > 0")
@@ -1711,7 +1711,6 @@ if (!defined('PG_SETTINGS_ENTRY')) {
 	$ecommerce_iyzipay_3ds_row_style = 'display: none';
     $ecommerce_iyzipay_protected_currency_row_style = 'display: none';
     $ecommerce_surcharge_percentage_row_style = 'display: none';
-    $ecommerce_reset_encryption_key_row_style = 'display: none';
     
     // if e-commerce is on then prepare to show e-commerce fields
     if ($ecommerce_on_or_off == 1) {
@@ -1719,7 +1718,6 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         // if credit/debit card is on, then prepare to show credit/debit card fields
         if ($ecommerce_credit_debit_card == 1) {
             $ecommerce_surcharge_percentage_row_style = '';
-            $ecommerce_reset_encryption_key_row_style = '';
             
             // if there is a payment gateway selected, then prepare to show payment gateway fields
             if ($ecommerce_payment_gateway != '') {

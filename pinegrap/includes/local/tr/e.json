@@ -1292,6 +1292,7 @@
     "empty": "boş",
     "empty (prompt)": "boş (istem)",
     "enabled": "etkin",
+    "encryption, encryption key, config.php, card number, two-step, secret, openssl": "encryption, encryption key, config.php, card number, two-step, secret, openssl, şifreleme, şifreleme anahtarı, kart numarası, iki adımlı, gizli",
     "end or ~length": "bitiş ya da ~süre",
     "end_date must be a date as YYYY-MM-DD, or empty for an offer with no end.": "end_date YYYY-AA-GG biçiminde bir tarih olmalı; bitişi olmayan kampanya için boş bırakın.",
     "ended all of their OAuth connections": "OAuth bağlantılarının hepsini sonlandırdı",

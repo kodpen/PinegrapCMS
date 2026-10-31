@@ -875,6 +875,7 @@
     "invoice, e-invoice, e-archive, e-document, provider, parasut, isbasi, logo, accounting": "fatura, e-fatura, e-arşiv, e-belge, sağlayıcı, paraşüt, işbaşı, logo, muhasebe",
     "invoice, e-invoice, parasut, accounting": "invoice, e-invoice, parasut, accounting, fatura, e-fatura, paraşüt, muhasebe",
     "invoices": "faturalar",
+    "ip, ip block, block, allow, allow list, banned": "ip, ip block, block, allow, allow list, banned, ip engel, izin listesi, yasakli",
     "ip, ip block, block, allow, allow list, blocked email, banned": "ip, ip block, block, allow, allow list, blocked email, banned, ip engel, izin listesi, eposta engel, yasakli",
     "is": "eşittir",
     "is a multiple of": "katı",
