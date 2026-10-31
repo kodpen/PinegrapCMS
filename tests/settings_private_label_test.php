@@ -93,3 +93,10 @@ function test_settings_private_label_old_screen_sends_to_the_card()
 	pg_assert_contains("pg_settings_url('appearance') . '#pgset-private-label'", $screen, 'to the card');
 	pg_assert_same(false, strpos($screen, 'UPDATE config'), 'it writes nothing any more');
 }
+
+function test_settings_private_label_has_no_menu_case_of_its_own()
+{
+	$output = settings_private_label_test_source('includes/fn/output.php');
+
+	pg_assert_true(strpos($output, "case 'private_label.php':") === false, 'the address only redirects, so output_menu() never sees it');
+}

@@ -143,7 +143,7 @@ if (($_GET['view'] ?? '') === 'forecast') {
             'icon' => 'erp',
             'heading' => lang('Cash forecast'),
             'heading_description' => lang('What the books say will come in and go out over the coming days: open invoices, unpaid expenses, repeating documents and cheques on their due dates, and where the tills would stand.'),
-            'cancel' => array('enable' => 'true', 'url' => 'erp_cash.php'),
+            'cancel' => array('enable' => 'true', 'url' => 'erp_cash.php', 'title' => lang('Cash and Bank')),
             'breadcrumb' => array(
                 array('label' => lang('Cash and Bank'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_cash.php'),
                 array('label' => lang('Cash forecast')),
@@ -420,7 +420,7 @@ pg_page_shell(array(
         'icon' => 'erp',
         'heading' => lang('Cash flow'),
         'heading_description' => lang('What came into the tills and what went out over a period, in the base currency, and where the position stood.'),
-        'cancel' => array('enable' => 'true', 'url' => 'erp_cash.php'),
+        'cancel' => array('enable' => 'true', 'url' => 'erp_cash.php', 'title' => lang('Cash and Bank')),
         'breadcrumb' => array(
             array('label' => lang('Cash and Bank'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_cash.php'),
             array('label' => lang('Cash flow')),

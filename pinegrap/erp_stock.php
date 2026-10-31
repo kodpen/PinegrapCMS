@@ -145,7 +145,7 @@ pg_page_shell(array(
         'heading' => lang('Stock and cost'),
         'heading_description' => lang('What each product has cost and what the stock on hand is worth at that cost, in the base currency; with the movements the documents made.'),
         // One product's movements go back to the whole stock.
-        'cancel' => ($product_id > 0) ? array('enable' => 'true', 'url' => 'erp_stock.php') : false,
+        'cancel' => ($product_id > 0) ? array('enable' => 'true', 'url' => 'erp_stock.php', 'title' => lang('Stock and cost')) : false,
         'breadcrumb' => ($product_id > 0) ? array(
             array('label' => lang('Stock and cost'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_stock.php'),
             array('label' => ($product_title !== '') ? $product_title : ('#' . $product_id)),

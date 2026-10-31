@@ -559,6 +559,13 @@ function pg_image_editor_file($file_id, $user)
         return array('refusal' => pg_image_editor_refusal(lang('Sorry, we could not find the file.')));
     }
 
+    // A file in the Recycle Bin is offline: neither opened nor saved, or a
+    // copy would land in the bin folder with no recycle_bin row, out of the
+    // bin's list and refused by its "move to bin".
+    if (pg_folder_binned((int) $row['folder'])) {
+        return array('refusal' => pg_image_editor_refusal(lang('Sorry, we could not find the file.')));
+    }
+
     // A document the ERP module keeps (a receipt's picture, an expense's
     // scan) is read-only in the file manager.
     if (pg_files_include_erp_document(array($row['id']))) {
@@ -828,7 +835,9 @@ function pg_image_editor_save($request, $user)
             return pg_image_editor_refusal(lang('Invalid request.'));
         }
 
-        if (!check_edit_access($folder)) {
+        // The bin folder takes no new file, as the File Manager's upload and
+        // move refuse it.
+        if (!check_edit_access($folder) || pg_folder_binned($folder)) {
             return pg_image_editor_refusal(lang('Access denied'), 403);
         }
 

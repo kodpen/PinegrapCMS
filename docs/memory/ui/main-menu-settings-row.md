@@ -18,7 +18,7 @@ description: The Site Settings row of the main menu (slot 20): two levels of pan
 - Under its sections and a divider, the screens that go with the category without being settings pages: `pg_settings_category_screens($user)` (registry), each under its screen's gate. Translations under Languages and Translation (role <= 2). Private Label Branding is a section of Appearance since #4095 (role 0). They carry no `data-pg-settings-page`. Why: `main-menu-entry-gates.md`.
 
 ## Which screens mark it active?
-- Row 20: the category pages (`settings_accounting.php` and `settings_privacy.php` included) and their screens (`translations.php`; `private_label.php`, now a redirect to the Appearance card), in `output_menu()`'s switch; a new one needs its `case` there.
+- Row 20: the category pages (`settings_accounting.php` and `settings_privacy.php` included) and their screens (`translations.php`; `private_label.php` only redirects to the Appearance card and has no case), in `output_menu()`'s switch; a new one needs its `case` there.
 - Row 25: `system_tools.php` and the tool screens (`view_log.php`, `smtp_settings.php`, `backups.php`, ...); the Store Lists screens for role <= 2, the shipping row (15) for role 3. `view_sessions.php` stays unmarked: it is in the Users panel too.
 
 ## How do the two levels behave?

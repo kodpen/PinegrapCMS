@@ -538,6 +538,7 @@
     "Browser identification, as sent": "Tarayıcı kimliği (gönderildiği gibi)",
     "Browser language only": "Yalnızca tarayıcı dili",
     "Browser language, then location": "Önce tarayıcı dili, sonra konum",
+    "Browser-based MCP and OAuth clients cannot connect: the web server answers their preflight (OPTIONS) request itself, without the CORS headers the software sends. On IIS, add OPTIONS to the verbs of the PHP handler mapping. Server-side connectors are not affected.": "Tarayıcıda çalışan MCP ve OAuth istemcileri bağlanamıyor: web sunucusu bunların ön isteğini (OPTIONS) yazılımın gönderdiği CORS başlıkları olmadan kendisi yanıtlıyor. IIS'te PHP işleyici eşlemesinin fiillerine OPTIONS ekleyin. Sunucuda çalışan bağlayıcılar etkilenmez.",
     "Brunch & Book Club": "Brunch ve Kitap Kulübü",
     "Brush Pen Set": "Fırça Kalem Seti",
     "Brush lettering for beginners": "Yeni başlayanlar için fırça kalem yazısı",

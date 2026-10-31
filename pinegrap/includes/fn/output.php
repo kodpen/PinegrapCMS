@@ -4309,7 +4309,6 @@ function output_menu($properties = false)
         case 'settings_maintenance.php':
         case 'settings_languages.php':
         case 'translations.php':
-        case 'private_label.php':
             $active_menu = 20;
             break;
 

@@ -1711,7 +1711,9 @@ function pg_payment_cancel_driver($method, $gateway = null)
  * the activity log lines that say so: the driver's own lines first, then the
  * cancellation's.
  *
- * @param int    $order_id
+ * @param string $order_number   how the lines name the order
+ *                               (pg_order_log_number(): its order number, the
+ *                               row id only for a cart without one)
  * @param string $transaction_id orders.transaction_id, the reference when the
  *                               service names none
  * @param array  $answer         pg_payment_call() of cancel()
@@ -1719,15 +1721,15 @@ function pg_payment_cancel_driver($method, $gateway = null)
  * @return array refund_status ('refunded' or 'manual_required'),
  *               refund_reference, log
  */
-function pg_payment_cancel_outcome($order_id, $transaction_id, $answer, $service)
+function pg_payment_cancel_outcome($order_number, $transaction_id, $answer, $service)
 {
-    $order_id = (int) $order_id;
+    $order_number = (string) $order_number;
     $answer = pg_payment_answer('cancel', $answer);
     $log = $answer['log'];
 
     if ($answer['success']) {
         $reference = ($answer['refund_reference'] !== '') ? $answer['refund_reference'] : (string) $transaction_id;
-        $log[] = pg_log_lang(array('string' => 'Auto-refund SUCCESS via {var:1} — order #{var:2} (payment {var:3}).', 'vars' => array($service, $order_id, $reference)));
+        $log[] = pg_log_lang(array('string' => 'Auto-refund SUCCESS via {var:1} — order #{var:2} (payment {var:3}).', 'vars' => array($service, $order_number, $reference)));
 
         return array('refund_status' => 'refunded', 'refund_reference' => $reference, 'log' => $log);
     }
@@ -1735,11 +1737,11 @@ function pg_payment_cancel_outcome($order_id, $transaction_id, $answer, $service
     $message = (isset($answer['raw']['message']) && is_scalar($answer['raw']['message'])) ? (string) $answer['raw']['message'] : '';
 
     if (isset($answer['raw']['exception'])) {
-        $log[] = pg_log_lang(array('string' => 'Auto-refund EXCEPTION — order #{var:1}. MANUAL REFUND REQUIRED. {var:2}', 'vars' => array($order_id, $message)));
+        $log[] = pg_log_lang(array('string' => 'Auto-refund EXCEPTION — order #{var:1}. MANUAL REFUND REQUIRED. {var:2}', 'vars' => array($order_number, $message)));
     } else {
         $log[] = pg_log_lang(array(
             'string' => 'Auto-refund FAILED via {var:1} — order #{var:2}. MANUAL REFUND REQUIRED. Gateway message: {var:3}',
-            'vars'   => array($service, $order_id, ($message !== '') ? $message : pg_log_lang(array('string' => '(no message)')))));
+            'vars'   => array($service, $order_number, ($message !== '') ? $message : pg_log_lang(array('string' => '(no message)')))));
     }
 
     return array('refund_status' => 'manual_required', 'refund_reference' => '', 'log' => $log);

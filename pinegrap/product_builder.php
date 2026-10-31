@@ -3724,7 +3724,7 @@ function pg_pb_variant_sets_screen()
         'icon'          => 'store',
         'heading'       => lang('Variant Sets'),
         'heading_description' => lang('Product groups that present several forms of the same product as one catalog item.'),
-        'cancel'        => array('enable' => 'true', 'url' => 'view_products.php?mode=products'),
+        'cancel'        => array('enable' => 'true', 'url' => 'view_products.php?mode=products', 'title' => lang('All Products')),
         'breadcrumb'    => array(
             // ?mode=products is required, not tidy: without it the session sends
             // the operator straight back here and the breadcrumb becomes a loop.
@@ -4343,6 +4343,9 @@ function pg_pb_render_product_screen($values = array(), $context = array())
     // already in stays on its list, marked, even from the bin: the save
     // rewrites the product's groups from what is posted, and an option missing
     // from the list would take the product out of that group for good.
+    //
+    // A new group is always filed under a group (pg_catalog_group_parent_id()),
+    // so the parent list has no empty choice and opens on the top group.
     $output_parent_group_field = '';
     $output_catalog_group_field = '';
 
@@ -4352,8 +4355,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
             '<div class="col-12 lg:col-8 my-3 pg-pb-group-only d-none">
                 <label for="parent_group_id" class="form-label">' . lang('Parent Product Group') . '</label>
                 <select style="width:100%" data-pg-combobox class="form-control" id="parent_group_id" name="parent_group_id" data-placeholder="' . lang('Select Parent Group') . '">
-                    <option value="0">-' . lang('None') . '-</option>
-                    ' . get_product_group_options(0, 0, 0, 0, array(), FALSE, 'text', false, true, false) . '
+                    ' . get_product_group_options(pg_catalog_group_top_id(), 0, 0, 0, array(), FALSE, 'text', false, true, false) . '
                 </select>
                 <div class="form-text">' . lang('The new variant group is placed under this group in the catalog.') . '</div>
             </div>';

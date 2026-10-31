@@ -92,6 +92,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-channel-messages.md: The channel's messages as drawn (C4 of workspace-channel-screen.md): grouped lines with their time on hover, the short hover bar, the decision tag, the discussion line, Convert to text
 - workspace-channel-panels.md: The side panels as drawn (C6 of workspace-channel-screen.md): the channel info beside the conversation in the discussion's place, its parts, the discussion's head and follow line
 - workspace-channel-screen.md: The Workspace channel screen as redrawn (C1–C8, 2026-10-31): what every change to it keeps, what must hold on a phone, who changes the design, where each part is described
+- workspace-channel-search-scope.md: A search narrowed to one channel (palette "Only in #channel", ws_message_search) reads the channel's discussions too: ws_channel_search_ids()/ws_channel_search_sql(), #4239
 - workspace-checklist-to-task.md: A checklist item of a Workspace message made into a task (ws_checklist_item_task(), step 9b): read as /task reads it, item tied by message + words, button, tag, edits, rights, API
 - workspace-claude-bootstrap.md: Claude's routine reads its instructions and each request's briefing (ws_ai_briefing()) from the site; the short versioned bootstrap pasted on claude.ai and the card's warning
 - workspace-claude-key-reads.md: Workspace reads with Claude's application key keep to the channels Claude may be asked in (ws_claude_channel_allowed()): which reads, record refs narrowed, the leak it fixed
@@ -134,7 +135,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-flows-arrows-always.md: Arrows on always in a flow (PR #2249): taken however the box ended, as a scheduled follow-up on always; which boxes have it, routing a failure, the timeout check, canvas
 - workspace-flows-box-look.md: How a flow box looks (V1, V2 of plans/workspace-flows-look.md, PRs #3118, #3158): group colour per theme, line icon, 1.5 px border, selection ring, arrows, palette wrapping
 - workspace-flows-box-try.md: Trying one box of a flow's draft without running it (F4e, PR #2024, ws_flow_box_try()): answers per kind, run values, rights, panel action, read-only API route, canvas button
-- workspace-flows-canvas-harness.md: Browser harness of the Flows canvas (tests/js/flows_canvas.js, #3162, run by hand, not in CI): what is real and what stands in, how to run it, the scenarios, the result of 2026-10-29
+- workspace-flows-canvas-harness.md: Browser harness of the Flows canvas (tests/js/flows_canvas.js, #3162, run by hand, not in CI): what is real and what stands in, how to run it, the scenarios, the result of 2026-10-31 (#3983)
 - workspace-flows-canvas.md: The flow canvas (workspace_flows.php, workspace_flow.js): who sees it, panel actions, editor, autosave, 409, focus, keys, outline, read-only, what is left; the run view has its own file
 - workspace-flows-catalogue.md: The box catalogue GET /workspace/flow-kinds (settings read from the normalizers) and GET /workspace/flows/{id}/validate (the publish check without publishing), flow_catalogue.php
 - workspace-flows-chain-box.md: The start a flow box (PR #2235, flow_runs.php): another live flow started by hand, started by a box with the owner's rights, depth 8, start key per box, {{source}}, what non-editors read
@@ -208,6 +209,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-menu-list.md: The Workspace list in the main menu (#2545, layout #3794, #3817): workspace_side.js draws ws_side_payload() on every panel page; its order, who sees what, inline data vs ws_side, hooks, pill, tour
 - workspace-menu-tools.md: Tools tiles and More in the Workspace list (#3817, M2 of plans/workspace-menu-layout.md): which places, short names, colours, the More rows, ws-side-open, the tour opening what hides a place
 - workspace-message-meter.md: The Workspace composer's length meter near WS_MESSAGE_MAX: what is counted, the limit's source, 90 % and over, the send refused early, commands, screen readers, boxes
+- workspace-message-seen-by.md: A message's "Who has seen it" drawer (ws_message_seen_by(), seenBy() in workspace.js): who is counted, the two groups, the one line when nobody but the writer is in the channel (#4238)
 - workspace-module-decisions.md: Binding decisions of the Workspace module (channels, tasks, plan board): rights not roles, private channel audit, chat bubble kept apart, multiple assignees, customer context, API scope ceiling
 - workspace-nested-controls.md: Why the channel list's pin and the search palette's account link are aria-hidden mouse shortcuts inside their link/option, and the keyboard routes to the same actions (Shift+F10 menu, Shift+Enter)
 - workspace-new-sales-quote.md: "New sales quote" in a Workspace channel's menu: the quote editor opened on the current account the channel's customer is or is tied to; who sees it, how the account is found, what is never done
@@ -229,6 +231,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-notes.md: Workspace notes (ws_notes): tables, limits, body format, versions, an assistant's answer under the line that asked, the paged list, what the API offers and lacks
 - workspace-office-edits.md: The cells of an Excel file or the paragraphs of a Word file posted in a channel, changed in its preview window (ws_file_office, ws_file_office_save, PR #656, #702): who may, replace or copy
 - workspace-personal-ical.md: A person's own secret iCal address as a read-only layer on their Work Calendar: ws_holiday_feeds.user_id, the sealed payload, the sync path, who sees it (#3254, decided in #3180)
+- workspace-plan-day-state.md: How a plan grid day reads (ws_plan_day_state(): away, holiday, off, over, full, ok), why load 999 is an internal marker, and where a day off with work is named instead of "%999" (PR #4326, #4233)
 - workspace-polls-api.md: A poll over the Workspace API: closed_at, can_vote false past closes_at and in an earlier version (ws_poll_vote_state()), and the field a vote, change or close refusal names
 - workspace-quick-create.md: A product or group made by a person in the Workspace (ws_quick_create_*): drawer new mode, palette line, /create, off sale unless ticked, applied ws_ai_changes row, decision
 - workspace-quick-edit-drawer.md: The "Fields" section of the record drawer (openRecord, quickEditSection in workspace.js): glance line, short list, inputs from saValueInput(), what a save sends, stale line, decision tick

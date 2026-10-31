@@ -400,3 +400,37 @@ function test_image_editor_model_layers()
 	pg_assert_same(30, $r['flippedPicture'], 'a picture keeps its angle');
 	pg_assert_same(array(255, 25, 50, 20, 30), $r['turnedPicture'], 'a picture follows a turn with its middle, its shape kept');
 }
+
+// Enter and Space go to the focused control that uses them (a button, a
+// link, a checkbox's Space, a text field); on the stage, a slider or the
+// dialog itself they stay the editor's shortcuts (apply the crop, pan).
+function test_image_editor_model_owns_key()
+{
+	$r = image_editor_model_node(
+		'var cases = {' . "\n"
+		. ' buttonEnter: M.ownsKey({ tag: "BUTTON" }, "Enter"), buttonSpace: M.ownsKey({ tag: "BUTTON" }, " "),' . "\n"
+		. ' link: M.ownsKey({ tag: "A" }, "Enter"), roleButton: M.ownsKey({ tag: "DIV", role: "button" }, " "),' . "\n"
+		. ' textEnter: M.ownsKey({ tag: "INPUT", type: "number" }, "Enter"), textarea: M.ownsKey({ tag: "TEXTAREA" }, " "),' . "\n"
+		. ' editable: M.ownsKey({ tag: "DIV", editable: true }, " "), select: M.ownsKey({ tag: "SELECT" }, "Enter"),' . "\n"
+		. ' checkSpace: M.ownsKey({ tag: "INPUT", type: "checkbox" }, " "), checkEnter: M.ownsKey({ tag: "INPUT", type: "checkbox" }, "Enter"),' . "\n"
+		. ' range: M.ownsKey({ tag: "INPUT", type: "range" }, " "), rangeEnter: M.ownsKey({ tag: "INPUT", type: "range" }, "Enter"),' . "\n"
+		. ' stage: M.ownsKey({ tag: "DIV" }, " "), dialog: M.ownsKey({ tag: "DIALOG" }, "Enter"), none: M.ownsKey(null, "Enter"),' . "\n"
+		. ' otherKey: M.ownsKey({ tag: "BUTTON" }, "+")' . "\n"
+		. '};' . "\n"
+		. 'console.log(JSON.stringify(cases));'
+	);
+
+	if ($r === null) {
+		return;
+	}
+
+	pg_assert_false(isset($r['error']), isset($r['error']) ? $r['error'] : 'ran');
+
+	foreach (array('buttonEnter', 'buttonSpace', 'link', 'roleButton', 'textEnter', 'textarea', 'editable', 'select', 'checkSpace') as $k) {
+		pg_assert_true($r[$k], $k . ': the focused control takes the key');
+	}
+
+	foreach (array('checkEnter', 'range', 'rangeEnter', 'stage', 'dialog', 'none', 'otherKey') as $k) {
+		pg_assert_false($r[$k], $k . ': the key stays the editor\'s shortcut');
+	}
+}

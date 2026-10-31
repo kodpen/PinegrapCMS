@@ -129,11 +129,16 @@ if (!$_POST) {
 } else {
     validate_token_field();
     
+    // A hand edit is the operator's choice: it clears the mark the order's
+    // cancellation left, so restoring the order does not undo it.
+    $cancel_marker_sql = pg_schema_has('commissions', 'status_before_cancel') ? "status_before_cancel = ''," : '';
+
     // update commission
     $query =
         "UPDATE commissions
         SET
             status = ?,
+            " . $cancel_marker_sql . "
             last_modified_user_id = ?,
             last_modified_timestamp = UNIX_TIMESTAMP()
         WHERE id = ?";

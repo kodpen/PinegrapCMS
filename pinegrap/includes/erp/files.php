@@ -385,38 +385,23 @@ function erp_files_invoice_payload($row, $as_edoc = false)
     $number = $is_draft ? '' : (string) $row['full_number'];
     $currency = strtoupper(trim((string) $row['currency']));
     $account_title = (trim((string) ($row['account_title'] ?? '')) !== '') ? (string) $row['account_title'] : (string) ($row['live_account_title'] ?? '');
-    $safe_number = preg_replace('/[^A-Za-z0-9._-]+/', '_', $number);
     $states = erp_invoice_status_labels();
     $edoc_labels = function_exists('erp_edoc_status_labels') ? erp_edoc_status_labels() : array();
     $edoc_status = (string) ($row['edoc_status'] ?? 'none');
     $timestamp = max((int) $row['created_at'], (int) $row['updated_at']);
-    $screen = ($is_draft ? 'edit_erp_invoice_draft.php?id=' : 'edit_erp_invoice.php?id=') . $id;
-
-    if ($as_edoc) {
-        $kind = 'erp_edoc';
-        $gib = trim((string) ($row['gib_number'] ?? ''));
-        $name = (($gib !== '') ? $gib : $safe_number) . '.pdf';
-        $url = 'get_erp_edoc_document.php?id=' . $id . '&format=pdf';
-        $download_url = $url . '&download=1';
-        $source = 'provider';
-    } else {
-        $kind = 'erp_invoice';
-        $name = $is_draft ? (lang('Draft') . ' #' . $id) : ((($safe_number !== '') ? $safe_number : ('invoice_' . $id)) . '.pdf');
-        $url = $is_draft ? $screen : ('get_erp_invoice_pdf.php?id=' . $id);
-        $download_url = $is_draft ? '' : ($url . '&download=1');
-        $source = $is_draft ? 'draft' : 'generated';
-    }
+    $target = erp_files_invoice_target($row, $as_edoc);
+    $kept = !empty($row['kept_file_id']) && $target['kept_used'];
 
     return array(
-        'kind' => $kind,
+        'kind' => $target['kind'],
         'id' => $id,
-        'name' => $name,
+        'name' => $target['name'],
         'title' => trim($number . (($account_title !== '') ? ' — ' . $account_title : '')),
-        'type' => $is_draft ? '' : 'pdf',
-        'size' => !empty($row['kept_file_id']) ? (int) $row['kept_size'] : null,
-        'kept' => !empty($row['kept_file_id']),
-        'kept_at' => !empty($row['kept_file_id']) ? (int) $row['kept_at'] : 0,
-        'source' => !empty($row['kept_file_id']) ? 'kept' : $source,
+        'type' => $target['type'],
+        'size' => $kept ? (int) $row['kept_size'] : null,
+        'kept' => $kept,
+        'kept_at' => $kept ? (int) $row['kept_at'] : 0,
+        'source' => $kept ? 'kept' : $target['source'],
         'number' => $number,
         'doc_class' => ((string) $row['doc_type'] === 'return') ? 'return' : (((string) $row['direction'] === 'purchase') ? 'purchase' : 'sales'),
         'date' => (string) $row['issue_date'],
@@ -440,10 +425,54 @@ function erp_files_invoice_payload($row, $as_edoc = false)
         'timestamp' => $timestamp,
         'modified' => ($timestamp > 0) ? get_relative_time(array('timestamp' => $timestamp)) : '',
         'username' => (string) ($row['user_username'] ?? ''),
-        'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/' . $url,
-        'download_url' => ($download_url !== '') ? OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/' . $download_url : '',
-        'edit_url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/' . $screen,
+        'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/' . $target['url'],
+        'download_url' => ($target['download_url'] !== '') ? OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/' . $target['download_url'] : '',
+        'edit_url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/' . $target['screen'],
     );
+}
+
+/**
+ * What an invoice entry is and where it opens, relative to the panel.
+ *
+ * A sales invoice (or return) is its PDF. A draft has no document and opens
+ * in its editor. A purchase invoice has no document of the store's own
+ * (erp_archive_keeps_rendering()): the supplier's e-document is the invoice,
+ * so its entry is the record itself, opening the invoice screen with nothing
+ * to download. A PDF an earlier version kept for one stays in the files
+ * table unused, so kept_used is false and the entry does not show it.
+ *
+ * @param array $row      erp_invoices row (id, status, full_number, direction)
+ * @param bool  $as_edoc  The provider's copy rather than the store's PDF
+ * @return array  kind, name, type, url, download_url, screen, source, kept_used
+ */
+function erp_files_invoice_target($row, $as_edoc = false)
+{
+    $id = (int) $row['id'];
+    $is_draft = ((string) $row['status'] === 'draft');
+    $number = $is_draft ? '' : (string) $row['full_number'];
+    $safe_number = preg_replace('/[^A-Za-z0-9._-]+/', '_', $number);
+    $screen = ($is_draft ? 'edit_erp_invoice_draft.php?id=' : 'edit_erp_invoice.php?id=') . $id;
+
+    if ($as_edoc) {
+        $gib = trim((string) ($row['gib_number'] ?? ''));
+        $url = 'get_erp_edoc_document.php?id=' . $id . '&format=pdf';
+
+        return array('kind' => 'erp_edoc', 'name' => (($gib !== '') ? $gib : $safe_number) . '.pdf', 'type' => 'pdf', 'url' => $url, 'download_url' => $url . '&download=1', 'screen' => $screen, 'source' => 'provider', 'kept_used' => true);
+    }
+
+    if ($is_draft) {
+        return array('kind' => 'erp_invoice', 'name' => lang('Draft') . ' #' . $id, 'type' => '', 'url' => $screen, 'download_url' => '', 'screen' => $screen, 'source' => 'draft', 'kept_used' => true);
+    }
+
+    $base_name = ($safe_number !== '') ? $safe_number : ('invoice_' . $id);
+
+    if (!erp_archive_keeps_rendering((string) ($row['direction'] ?? ''))) {
+        return array('kind' => 'erp_invoice', 'name' => $base_name, 'type' => '', 'url' => $screen, 'download_url' => '', 'screen' => $screen, 'source' => 'record', 'kept_used' => false);
+    }
+
+    $url = 'get_erp_invoice_pdf.php?id=' . $id;
+
+    return array('kind' => 'erp_invoice', 'name' => $base_name . '.pdf', 'type' => 'pdf', 'url' => $url, 'download_url' => $url . '&download=1', 'screen' => $screen, 'source' => 'generated', 'kept_used' => true);
 }
 
 /**

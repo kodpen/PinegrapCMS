@@ -18002,8 +18002,9 @@ html[data-bs-theme="dark"] #ws-menu-side .ws-count.ws-count-mention {
 .ws-home-grid-3 {
   grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
 }
+/* min() lets the one column of a phone shrink below 22rem with the page. */
 .ws-home-grid-2 {
-  grid-template-columns: repeat(auto-fit, minmax(22rem, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(22rem, 100%), 1fr));
 }
 .ws-home-grid > .ws-home-card {
   min-width: 0;
@@ -18077,6 +18078,24 @@ html[data-bs-theme="dark"] .ws-home-count.ws-home-count-hot {
   background: transparent;
   color: inherit;
   text-align: left;
+}
+/* The title shortens, the priority badge beside it never does. */
+.ws-home-task-head {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+.ws-home-task-head .ws-home-row-title {
+  min-width: 0;
+}
+.ws-home-task-head .ws-home-priority {
+  flex: none;
+}
+/* The due tasks the card has no room for. */
+.ws-home-more {
+  display: block;
+  padding: .35rem .5rem;
+  font-size: .85rem;
 }
 .ws-home-task-done .ws-home-row-title {
   color: var(--pg-fg-2);

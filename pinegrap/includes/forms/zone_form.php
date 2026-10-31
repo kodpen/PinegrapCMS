@@ -309,3 +309,109 @@ function pg_zone_form_delete_confirm($products, $methods, $stranded_products, $s
 
     return $sentences;
 }
+
+/**
+ * What deleting a state or a country does to the shipping zones and tax
+ * zones: how many list it (a country also through its states, which go
+ * with it), and how many of those keep no other state or country. A zone
+ * with no member matches no address, so its methods are never offered; a
+ * tax zone with no member charges no tax.
+ *
+ * @param string $kind 'state' or 'country'
+ * @param int    $id   the state's or the country's id
+ * @return array list of (zones, tax zones, emptied zones, emptied tax zones)
+ */
+function pg_zone_form_member_delete_counts($kind, $id)
+{
+    // A state delete takes that state's rows; a country delete takes the
+    // country's rows and the rows of its states. Ids start at 1, so 0
+    // matches nothing.
+    $state_id = $kind == 'country' ? 0 : (int) $id;
+    $country_id = $kind == 'country' ? (int) $id : 0;
+    $counts = array();
+
+    foreach (array(
+        array('zones_states_xref', 'zones_countries_xref', 'zone_id'),
+        array('tax_zones_states_xref', 'tax_zones_countries_xref', 'tax_zone_id'),
+    ) as $tables) {
+        list($states, $countries, $zone) = $tables;
+        $result = db_q("SELECT COUNT(*) FROM (SELECT s.$zone AS zone FROM $states s
+                WHERE s.state_id = ? OR s.state_id IN (SELECT id FROM states WHERE country_id = ?)
+            UNION SELECT c.$zone AS zone FROM $countries c WHERE c.country_id = ?) linked", array($state_id, $country_id, $country_id));
+        $row = $result ? mysqli_fetch_row($result) : null;
+        $counts[] = $row ? (int) $row[0] : 0;
+
+        $result = db_q("SELECT COUNT(*) FROM (SELECT s.$zone AS zone FROM $states s
+                WHERE s.state_id = ? OR s.state_id IN (SELECT id FROM states WHERE country_id = ?)
+            UNION SELECT c.$zone AS zone FROM $countries c WHERE c.country_id = ?) linked
+            WHERE NOT EXISTS (SELECT 1 FROM $states s WHERE s.$zone = linked.zone
+                AND s.state_id != ? AND s.state_id NOT IN (SELECT id FROM states WHERE country_id = ?))
+            AND NOT EXISTS (SELECT 1 FROM $countries c WHERE c.$zone = linked.zone AND c.country_id != ?)", array($state_id, $country_id, $country_id, $state_id, $country_id, $country_id));
+        $row = $result ? mysqli_fetch_row($result) : null;
+        $counts[] = $row ? (int) $row[0] : 0;
+    }
+
+    return array($counts[0], $counts[2], $counts[1], $counts[3]);
+}
+
+/**
+ * The sentences a state or country Delete confirmation adds as lang()
+ * arguments: the shipping zones and tax zones it leaves, then those left
+ * with no state or country. Nothing when it is in no zone.
+ *
+ * @param int $zones
+ * @param int $tax_zones
+ * @param int $emptied_zones     shipping zones left with no member
+ * @param int $emptied_tax_zones tax zones left with no member
+ * @return array list of lang() arguments, one per sentence
+ */
+function pg_zone_form_member_delete_sentences($zones, $tax_zones, $emptied_zones, $emptied_tax_zones)
+{
+    $zones = (int) $zones;
+    $tax_zones = (int) $tax_zones;
+    $emptied_zones = (int) $emptied_zones;
+    $emptied_tax_zones = (int) $emptied_tax_zones;
+    $sentences = array();
+
+    if ($zones > 0 && $tax_zones > 0) {
+        $sentences[] = array(
+            'string' => 'It will also be removed from {var:1} shipping zone{suffix:1} and {var:2} tax zone{suffix:2}.',
+            'vars' => array($zones, $tax_zones),
+            'suffix' => array($zones == 1 ? '' : 's', $tax_zones == 1 ? '' : 's'),
+        );
+    } elseif ($zones > 0) {
+        $sentences[] = array(
+            'string' => 'It will also be removed from {var:1} shipping zone{suffix:1}.',
+            'vars' => array($zones),
+            'suffix' => array($zones == 1 ? '' : 's'),
+        );
+    } elseif ($tax_zones > 0) {
+        $sentences[] = array(
+            'string' => 'It will also be removed from {var:1} tax zone{suffix:1}.',
+            'vars' => array($tax_zones),
+            'suffix' => array($tax_zones == 1 ? '' : 's'),
+        );
+    }
+
+    if ($emptied_zones > 0 && $emptied_tax_zones > 0) {
+        $sentences[] = array(
+            'string' => '{var:1} shipping zone{suffix:1} will have no state or country left and will match no address, and {var:2} tax zone{suffix:2} will have no state or country left and will charge no tax.',
+            'vars' => array($emptied_zones, $emptied_tax_zones),
+            'suffix' => array($emptied_zones == 1 ? '' : 's', $emptied_tax_zones == 1 ? '' : 's'),
+        );
+    } elseif ($emptied_zones > 0) {
+        $sentences[] = array(
+            'string' => '{var:1} shipping zone{suffix:1} will have no state or country left and will match no address.',
+            'vars' => array($emptied_zones),
+            'suffix' => array($emptied_zones == 1 ? '' : 's'),
+        );
+    } elseif ($emptied_tax_zones > 0) {
+        $sentences[] = array(
+            'string' => '{var:1} tax zone{suffix:1} will have no state or country left and will charge no tax.',
+            'vars' => array($emptied_tax_zones),
+            'suffix' => array($emptied_tax_zones == 1 ? '' : 's'),
+        );
+    }
+
+    return $sentences;
+}
