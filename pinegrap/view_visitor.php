@@ -213,7 +213,7 @@ if ($utm_source) {
     if ($utm_medium) {
         $utm .=
             '<div class="col-12 md:col-6 lg:col-4 my-3">
-                <div class="form-text">' . lang('Medium') . '</div>
+                <div class="form-text">' . lang('UTM medium') . '</div>
                 <div class="h5">' . h($utm_medium) . '</div>
             </div>';
     }

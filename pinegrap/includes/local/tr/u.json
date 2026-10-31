@@ -21,6 +21,7 @@
     "USPS rate response: {var:1}": "USPS fiyat yanıtı: {var:1}",
     "UTF-8 for static files": "Statik dosyalar için UTF-8",
     "UTM": "UTM",
+    "UTM medium": "Mecra",
     "Ukulele": "Ukulele",
     "Unable to fetch remote hash reference.": "Uzak karma referansı getirilemiyor.",
     "Unable to resolve current working directory.": "Geçerli çalışma dizini çözülemedi.",
