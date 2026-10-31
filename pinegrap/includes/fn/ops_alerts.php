@@ -56,7 +56,7 @@ function pg_ops_alert_codes()
         'backup_remote_failed' => array(
             'label' => lang('The remote backup copy failed'),
             'type'  => 'warning',
-            'url'   => 'settings_general.php#pgset-backup',
+            'url'   => 'settings_maintenance.php#pgset-backup',
         ),
         'backup_stale' => array(
             'label' => lang('No recent backup'),
