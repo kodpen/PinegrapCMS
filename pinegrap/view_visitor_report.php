@@ -1575,7 +1575,6 @@ if (!$_POST) {
                             if ($liveform->get_field_value('detail') == 1) {
                                 foreach ($summarize_by_3_result['visitors'] as $visitor) {
                                     // get percentages
-                                    $count_percentage = ($summarize_by_3_result['count'] > 0) ? $visitor['count'] / $summarize_by_3_result['count'] * 100 : 0;
                                     $page_views_percentage = ($summarize_by_3_result['page_views'] > 0) ? $visitor['page_views'] / $summarize_by_3_result['page_views'] * 100 : 0;
                                     $order_total_percentage = ($summarize_by_3_result['order_total'] > 0) ? $visitor['order_total'] / $summarize_by_3_result['order_total'] * 100 : 0;
                                     
@@ -1614,7 +1613,6 @@ if (!$_POST) {
                         if ($liveform->get_field_value('detail') == 1) {
                             foreach ($summarize_by_2_result['visitors'] as $visitor) {
                                 // get percentages
-                                $count_percentage = ($summarize_by_2_result['count'] > 0) ? $visitor['count'] / $summarize_by_2_result['count'] * 100 : 0;
                                 $page_views_percentage = ($summarize_by_2_result['page_views'] > 0) ? $visitor['page_views'] / $summarize_by_2_result['page_views'] * 100 : 0;
                                 $order_total_percentage = ($summarize_by_2_result['order_total'] > 0) ? $visitor['order_total'] / $summarize_by_2_result['order_total'] * 100 : 0;
                                 
@@ -1654,7 +1652,6 @@ if (!$_POST) {
                 if ($liveform->get_field_value('detail') == 1) {
                     foreach ($summarize_by_1_result['visitors'] as $visitor) {
                         // get percentages
-                        $count_percentage = ($summarize_by_1_result['count'] > 0) ? $visitor['count'] / $summarize_by_1_result['count'] * 100 : 0;
                         $page_views_percentage = ($summarize_by_1_result['page_views'] > 0) ? $visitor['page_views'] / $summarize_by_1_result['page_views'] * 100 : 0;
                         $order_total_percentage = ($summarize_by_1_result['order_total'] > 0) ? $visitor['order_total'] / $summarize_by_1_result['order_total'] * 100 : 0;
                         
@@ -1694,7 +1691,6 @@ if (!$_POST) {
         if ($liveform->get_field_value('detail') == 1) {
             foreach ($visitors as $visitor) {
                 // get percentages
-                $count_percentage = ($grand_count > 0) ? $visitor['count'] / $grand_count * 100 : 0;
                 $page_views_percentage = ($grand_page_views > 0) ? $visitor['page_views'] / $grand_page_views * 100 : 0;
                 $order_total_percentage = ($grand_order_total > 0) ? $visitor['order_total'] / $grand_order_total * 100 : 0;
                 
