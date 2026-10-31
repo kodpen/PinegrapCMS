@@ -17,6 +17,7 @@ description: Add › Start a flow in a channel's composer and the run's card the
 
 ## What does the card do?
 - `flowRunCard()` in workspace.js draws `window.PGWsFlowFlag.runFlag()` under the system line: Stop (asks, `ws_flow_run_cancel`) while running and `can_cancel`; "Open the run" goes to `workspace_flows.php?flow=&run=`, which opens that run with the runs list (`openLastRun()`). Focus and an unfolded result survive a redraw.
+- Its Turkish text is "Çalıştırmayı aç", the word the rest of the run UI uses; it read "Koşumu aç" before (#3943). The scheduled-flow window names its boxes through `ws_flow_card_graph()` → `ws_flow_box_names()`, by kind, never "start" / "post" (#4189, #4261).
 - It reads the run again (`ws_flow_run_get`) while running or waiting: every 4 s for a minute, 15 s for ten more, then each minute (`flowRunWait()`); paused while the tab is hidden, stopped when the card leaves the page.
 
 ## Tests
