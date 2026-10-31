@@ -2519,6 +2519,7 @@
     "The message was deleted from the queue.": "İleti kuyruktan silindi.",
     "The message was posted.": "Mesaj gönderildi.",
     "The message will be deleted from the queue and not sent.": "İleti kuyruktan silinecek ve gönderilmeyecek.",
+    "The message will be sent on the next run of the general job or mail_job.php.": "Mesaj, genel görevin veya mail_job.php'nin bir sonraki çalışmasında gönderilecek.",
     "The message will be sent on the next run of the general job.": "İleti genel işin bir sonraki çalışmasında gönderilecek.",
     "The message would expire before it could be sent.": "Mesajın süresi, gönderilebileceği zamandan önce doluyor.",
     "The messages are forwarded.": "Mesajlar iletildi.",
