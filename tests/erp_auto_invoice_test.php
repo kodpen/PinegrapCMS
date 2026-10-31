@@ -432,7 +432,7 @@ function test_erp_auto_invoice_marketplace_hooks()
 // the card did not post the select.
 function test_erp_auto_invoice_marketplace_setting_save()
 {
-	$save = erp_auto_invoice_test_source('includes/settings/commerce.save.php');
+	$save = erp_auto_invoice_test_source('includes/settings/accounting.save.php');
 
 	$start = strpos($save, "is_string(post_value('erp_auto_invoice_on'))");
 	pg_assert_true($start !== false);
@@ -442,6 +442,6 @@ function test_erp_auto_invoice_marketplace_setting_save()
 	pg_assert_true($line < strpos($save, '// The walk-in sales account'), 'inside its block');
 	pg_assert_true(strpos($save, "waf_table_has_column('config', 'erp_auto_invoice_marketplace')") !== false, 'not before the step has run');
 
-	$card = erp_auto_invoice_test_source('includes/settings/commerce.php');
+	$card = erp_auto_invoice_test_source('includes/settings/accounting.php');
 	pg_assert_contains('name="erp_auto_invoice_marketplace"', $card);
 }

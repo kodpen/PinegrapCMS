@@ -133,8 +133,8 @@ function test_erp_quote_expiry_followup_settings_checkbox()
 {
 	$dir = PG_FUNCTIONS_DIR . '/includes/settings/';
 
-	pg_assert_contains('name="erp_quote_expiry_followup"', (string) file_get_contents($dir . 'commerce.php'), 'drawn');
-	pg_assert_contains("waf_table_has_column('config', 'erp_quote_expiry_followup')", (string) file_get_contents($dir . 'commerce.save.php'), 'saved once the column is there');
+	pg_assert_contains('name="erp_quote_expiry_followup"', (string) file_get_contents($dir . 'accounting.php'), 'drawn');
+	pg_assert_contains("waf_table_has_column('config', 'erp_quote_expiry_followup')", (string) file_get_contents($dir . 'accounting.save.php'), 'saved once the column is there');
 	pg_assert_contains("erp_quote_expiry_followup", (string) file_get_contents($dir . 'prep.php'), 'read');
 }
 

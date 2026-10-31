@@ -2583,7 +2583,7 @@ function validate_contact_group_access($user, $contact_group_id)
 function validate_erp_access($user, $area = '')
 {
     if (!defined('ERP_ENABLED') || !ERP_ENABLED) {
-        $liveform_url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/' . pg_settings_return_url('commerce', 'pgset-erp');
+        $liveform_url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/' . pg_settings_return_url('accounting', 'pgset-erp');
         output_error(lang('The ERP module is not switched on.') . ' <a href="' . h($liveform_url) . '">' . lang('Settings') . '</a>');
         return false;
     }

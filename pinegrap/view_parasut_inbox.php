@@ -24,7 +24,7 @@ $liveform = new liveform('view_parasut_inbox');
 
 if (!defined('ENABLE_PARASUT') || !ENABLE_PARASUT || !defined('PARASUT_COMPANY_ID') || PARASUT_COMPANY_ID === '') {
     $liveform->mark_error('_error', lang('Parasut integration is not enabled. Please configure it in Settings.'));
-    go(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/' . pg_settings_return_url('commerce', 'pgset-invoice'));
+    go(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/' . pg_settings_return_url('accounting', 'pgset-invoice'));
 }
 
 // Determine active tab.

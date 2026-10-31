@@ -400,7 +400,7 @@ function test_erp_request_values_posted_list_entries_checked()
 // "Array" as the key; a select keeps to its options.
 function test_erp_request_values_edoc_settings_save()
 {
-	$source = file_get_contents(PG_FUNCTIONS_DIR . '/includes/settings/commerce.save.php');
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/includes/settings/accounting.save.php');
 
 	pg_assert_same(0, preg_match('/\(string\)\s*post_value\(\'edoc_/', $source), 'e-document settings cast with (string)');
 	pg_assert_true(strpos($source, "is_string(post_value('edoc_provider'))") !== false, 'provider read as one string');

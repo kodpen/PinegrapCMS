@@ -12,7 +12,7 @@ description: Steps R1-R9 of plans/settings-recategorization.md: what each moves,
 - R1b (S) R1's rest, after #3141 (it holds the files): a System tools row under the main menu's System heading (`includes/fn/output.php`; `pg_menu_settings_entries()` still lists the tool groups, so drop them from it at the same time) and a help row for `system_tools.php` in `get_help_url.php` (its own topic; the screen passes `'help' => 'site-settings#site-settings-intro'` until then).
 
 - R2 (M) Accounting category, cut in two (size).
-  - R2a: a new `accounting` key, `accounting.php` and `accounting.save.php`; the ERP and E-Invoice blocks and their columns leave `commerce.php`/`commerce.save.php` unchanged; anchors `pgset-erp`, `pgset-invoice`, `pgsub-invoice` land on them; return links name `accounting`.
+  - R2a, done in #3819: a new `accounting` key, `accounting.php` and `accounting.save.php`; the ERP and E-Invoice blocks and their columns leave `commerce.php`/`commerce.save.php` unchanged; anchors `pgset-erp`, `pgset-invoice`, `pgsub-invoice` land on them; return links name `accounting`.
   - R2b: the `erp_settings.php` cards (rules, late fee, e-Fatura threshold, templates) move in and that screen opens `#settings/accounting`; `system_status.php` 3589 still lands on the threshold card. Ask first (plan, open questions).
   - After #3141 (holds `output.php`, `get_help_url.php`), with R1b: the menu's ERP Settings row links `#settings/accounting`; `case 'settings_accounting.php'` in `output_menu()`; a `settings_accounting` help row.
 
