@@ -2,7 +2,7 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Site Settings - the General cards: where the site is, what the software is, which releases it takes, the time it keeps, what runs on a schedule and how it is backed up.
+ * Site Settings - the General cards: who runs the site, where it is, what the software is, which releases it takes, the time it keeps, what runs on a schedule and how it is backed up.
  *
  * Fills $pg_settings_cards, one grid column per card, in reading order. Which
  * cards belong here is said once, in includes/settings/registry.php; this file
@@ -18,6 +18,69 @@
 if (!defined('PG_SETTINGS_ENTRY')) {
     exit;
 }
+
+// ── Organization ──
+// Who runs the site, in one place: the name and address the campaigns, the
+// invoices and the legal texts print, the logo of the structured data, the
+// address system mail comes from and the seller's tax number. Each field
+// keeps its column; general.save.php writes them all.
+$pg_settings_cards[] = '
+    <div id="pgset-organization" class="pg-set-card">
+        <div class="card">
+            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                ' . lang('Organization') . '
+            </div>
+            <div class="card-body">
+                <div class="row gy-5">
+                    <div class="pg-f-md">
+                        <label for="organization_name" class="form-label">' . lang('Organization Name') . '</label>
+                        <input type="text" name="organization_name" id="organization_name" class="form-control" value="' . h($organization_name) . '"/>
+                    </div>
+                    <div class="pg-f-md">
+                        <label for="organization_address_1" class="form-label">' . lang('Organization Address') . ' 1</label>
+                        <input type="text" name="organization_address_1" id="organization_address_1" class="form-control" value="' . h($organization_address_1) . '"/>
+                    </div>
+                    <div class="pg-f-md">
+                        <label for="organization_address_2" class="form-label">' . lang('Organization Address') . ' 2</label>
+                        <input type="text" name="organization_address_2" id="organization_address_2" class="form-control" value="' . h($organization_address_2) . '"/>
+                    </div>
+                    <div class="pg-f-md">
+                        <label for="organization_city" class="form-label">' . lang('Organization City') . '</label>
+                        <input type="text" name="organization_city" id="organization_city" class="form-control" value="' . h($organization_city) . '"/>
+                    </div>
+                    <div class="pg-f-md">
+                        <label for="organization_state" class="form-label">' . lang('Organization State') . '</label>
+                        <input type="text" name="organization_state" id="organization_state" class="form-control" value="' . h($organization_state) . '"/>
+                    </div>
+                    <div class="pg-f-md">
+                        <label for="organization_zip_code" class="form-label">' . lang('Organization Zip Code') . '</label>
+                        <input type="text" name="organization_zip_code" id="organization_zip_code" class="form-control" value="' . h($organization_zip_code) . '"/>
+                    </div>
+                    <div class="pg-f-md">
+                        <label for="organization_country" class="form-label">' . lang('Organization Country') . '</label>
+                        <input type="text" name="organization_country" id="organization_country" class="form-control" value="' . h($organization_country) . '"/>
+                    </div>
+                    <div class="pg-f-md">
+                        <label for="setting_email_address" class="form-label">' . lang('Support E-mail Address') . '</label>
+                        <input type="text" name="email_address" id="setting_email_address" autocomplete="off" class="form-control" value="' . h($email_address) . '" inputmode="email" data-inputmask-alias="email"/>
+                    </div>' . $output_organization_logo_picker . '
+                    <div class="pg-f-md">
+                        ' . ((pg_erp_store_country() === 'TR')
+                            ? '<label class="form-label" for="erp_seller_vkn">' . lang('Seller VKN / TCKN') . '</label>
+                        <input type="text" class="form-control" id="erp_seller_vkn" name="erp_seller_vkn" value="' . h($erp_seller_vkn) . '" maxlength="11" inputmode="numeric" autocomplete="off" />
+                        <div class="form-text">' . lang('Tax number (10 digits) or ID number (11 digits) of the company that issues the invoices') . '</div>'
+                            : '<label class="form-label" for="erp_seller_vkn">' . lang('Seller tax number') . '</label>
+                        <input type="text" class="form-control" id="erp_seller_vkn" name="erp_seller_vkn" value="' . h($erp_seller_vkn) . '" maxlength="32" autocomplete="off" />
+                        <div class="form-text">' . lang('The tax number of the company that issues the invoices (VAT id, EIN, ...), as it is printed on them.') . '</div>') . '
+                    </div>
+                    <div class="pg-f-md' . ((pg_erp_store_country() === 'TR') ? '' : ' d-none') . '">
+                        <label class="form-label" for="erp_seller_tax_office">' . lang('Seller Tax Office') . '</label>
+                        <input type="text" class="form-control" id="erp_seller_tax_office" name="erp_seller_tax_office" value="' . h($erp_seller_tax_office) . '" maxlength="100" autocomplete="off" />
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>';
 
 // ── Server & Domain ──
 $pg_settings_cards[] = '
@@ -35,10 +98,6 @@ $pg_settings_cards[] = '
                     <div class="pg-f-lg">
                         <label for="hostname" class="form-label">' . lang('Hostname') . '</label>
                         <input type="text" inputmode="url" spellcheck="false" autocapitalize="off" name="hostname" id="hostname" maxlength="255" class="form-control" value="' . h($hostname) . '" />
-                    </div>
-                    <div class="pg-f-lg">
-                        <label for="setting_email_address" class="form-label">' . lang('Support E-mail Address') . '</label>
-                        <input type="text" name="email_address" id="setting_email_address" autocomplete="off" class="form-control" value="' . h($email_address) . '" inputmode="email" data-inputmask-alias="email"/>
                     </div>
                     <div class="pg-f-lg">
                         <label for="proxy_address" class="form-label">' . lang('Proxy Address') . '</label>

@@ -29,7 +29,6 @@ description: Plan (owner 2026-10-30): Site Settings regrouped, one place per set
 
 ## What is still open?
 - Headings over the list, for example Site, Selling, Security, Running the site? Ask before R8.
-- Two "Support E-mail Address" fields (`general.php` 40, `commerce.php` 1281): one field, or two names? Ask before R4.
 
 ## Where to start?
 - Code: `registry.php`, `modal.php`, `screen.php`, `settings_pane.php`, the category files and their `.save.php`.

@@ -140,13 +140,13 @@ function erp_settings_placeholders_from_data($data, $prefix = '')
 }
 
 $settings_url = PATH . SOFTWARE_DIRECTORY . '/' . pg_settings_return_url('accounting', 'pgset-erp');
-$contact_url = PATH . SOFTWARE_DIRECTORY . '/' . pg_settings_return_url('contact');
+$organization_url = PATH . SOFTWARE_DIRECTORY . '/' . pg_settings_return_url('general', 'pgset-organization');
 $edoc_url = PATH . SOFTWARE_DIRECTORY . '/' . pg_settings_return_url('accounting', 'pgset-invoice');
 
 // The Site Settings dialog and screens are for role < 3; a role 3 user with
 // the ERP settings right sees where the setting is as plain text.
 $can_site_settings = ((int) $user['role'] < 3);
-$contact_place = lang('Site Settings') . ' &rsaquo; ' . lang('Contact');
+$organization_place = lang('Site Settings') . ' &rsaquo; ' . lang('General') . ' &rsaquo; ' . lang('Organization');
 $settings_place = lang('Site Settings') . ' &rsaquo; ' . lang('Accounting') . ' &rsaquo; ' . lang('ERP');
 $edoc_place = lang('Site Settings') . ' &rsaquo; ' . lang('Accounting') . ' &rsaquo; ' . lang('E-Invoice');
 
@@ -358,9 +358,9 @@ echo pg_page_shell(array(
                     ' . lang('Seller Information') . '
                 </div>
                 <div class="card-body">
-                    <p class="mb-3">' . lang('The seller title, address and logo printed on the invoice come from the organization settings.') . '
-                        ' . ($can_site_settings ? '<a href="' . h($contact_url) . '">' . $contact_place . '</a>' : $contact_place) . '</p>
-                    <p class="mb-3">' . lang('The seller tax number, tax office and the address the sale was made at are on the ERP card of the accounting settings.') . '
+                    <p class="mb-3">' . lang('The seller title, address, logo, tax number and tax office printed on the invoice are on the Organization card.') . '
+                        ' . ($can_site_settings ? '<a href="' . h($organization_url) . '">' . $organization_place . '</a>' : $organization_place) . '</p>
+                    <p class="mb-3">' . lang('The address the sale was made at is on the ERP card of the accounting settings.') . '
                         ' . ($can_site_settings ? '<a href="' . h($settings_url) . '">' . $settings_place . '</a>' : $settings_place) . '</p>
                     <p class="mb-0">' . lang('The e-document provider (Paraşüt, Logo İşbaşı) and its credentials are on the E-Invoice card of the accounting settings.') . '
                         ' . ($can_site_settings ? '<a href="' . h($edoc_url) . '">' . $edoc_place . '</a>' : $edoc_place) . '</p>

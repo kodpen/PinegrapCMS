@@ -460,6 +460,7 @@
     "history, milestones, timeline, founded": "tarihçe, dönüm noktaları, zaman çizelgesi, kuruluş",
     "home": "anasayfa",
     "hostname, domain, ip, ssl, https, secure mode, secure, email, support, proxy": "hostname, domain, ip, ssl, https, secure mode, secure, email, support, proxy, sunucu, alan adi, alan adı, guvenli mod, eposta, destek, vekil",
+    "hostname, domain, ip, ssl, https, secure mode, secure, proxy": "hostname, domain, ip, ssl, https, secure mode, secure, proxy, sunucu, alan adi, alan adı, guvenli mod, vekil",
     "hour": "saat",
     "hour(s)": "saat",
     "hours": "saat",
