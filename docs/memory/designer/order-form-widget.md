@@ -5,7 +5,7 @@ module: widgets_order_form
 ---
 
 ## What is it?
-- Kind `order_form` (`includes/fn/widgets_order_form.php`), the first type of the owner's order in [[system-widget-missing-types]] (5a, #2367). A product group's products go into the cart at once. It posts the classic names (`product_<id>`, `donation_<id>`, `recurring_payment_period_<id>`, `recurring_number_of_payments_<id>`, `recurring_start_date_<id>`, `product_id`, `quantity`, `ship_to`, `add_name`, `submit_add`, `submit_skip`, hidden `page_id`, `require_cookies`) to `order_form.php`; its checks, the items it adds and its redirects are unchanged.
+- Kind `order_form` (`includes/fn/widgets_order_form.php`), the first type of the owner's order in [[system-widget-page-types]] (5a, #2367). A product group's products go into the cart at once. It posts the classic names (`product_<id>`, `donation_<id>`, `recurring_payment_period_<id>`, `recurring_number_of_payments_<id>`, `recurring_start_date_<id>`, `product_id`, `quantity`, `ship_to`, `add_name`, `submit_add`, `submit_skip`, hidden `page_id`, `require_cookies`) to `order_form.php`; its checks, the items it adds and its redirects are unchanged.
 
 ## Where are the page's settings?
 - In the page's `order_form_pages` row: the handler finds the page by it (no page type check). A designed page gets one at render (`INSERT IGNORE`, not in a background render).

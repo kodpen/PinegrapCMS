@@ -71,7 +71,6 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - storefront-api-routes-checkout.md: Storefront API design note: checkout routes (create from cart, totals, payment intent through the payment driver layer, confirm), the totals functions they call, guest checkout
 - storefront-api-routes-customer.md: Storefront API design note: customer routes (sign-in, sign-up, refresh, sign-out, password reset, profile, orders, addresses, returns) with scopes, limits and the website code each one calls
 - subscriptions-iyzico-stripe.md: Plan (approved 2026-10-19, watch list, after payment-driver-layer): recurring billing for iyzico and Stripe through drivers, membership renewals, customer pause/cancel; legacy profiles untouched
-- system-widget-missing-types.md: Plan (2026-10-19, multi-step checkout done): classic page types with no designer system widget (multi-step checkout, order form, folder view, photo gallery, confirmations, affiliate…)
 - visitor-ai-assistant.md: Plan (approved 2026-10-19, watch list): visitor-facing AI assistant in the site bubble answering from the site's own content with hand-over to Live Chat; AI disclosure; Premium licence
 - visitor-records-deferred.md: Deferred visitor-table work: more summary dimensions (monthly partitions and early IP removal are built)
 - workspace-agent-handles.md: Plan (2026-10-21, step 1 done, answers open): each askable agent gets its own @handle, name, avatar and channel permission: outside apps, MCP agents, own-key model assistants such as @chatgpt

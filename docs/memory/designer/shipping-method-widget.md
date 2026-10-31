@@ -5,7 +5,7 @@ module: widgets_shipping_method
 ---
 
 ## What is it?
-- Kind `shipping_method` (`includes/fn/widgets_shipping_method.php`), the second of the four classic checkout widgets ([[system-widget-missing-types]]). It posts `shipping_method`, `page_id`, `next_page_id`, `ship_to_id` to `shipping_method.php`; the handler checks the method again (`check_shipping_method()`), stores its cost and redirects (next recipient, express order, billing or order preview).
+- Kind `shipping_method` (`includes/fn/widgets_shipping_method.php`), the second of the four classic checkout widgets ([[system-widget-page-types]]). It posts `shipping_method`, `page_id`, `next_page_id`, `ship_to_id` to `shipping_method.php`; the handler checks the method again (`check_shipping_method()`), stores its cost and redirects (next recipient, express order, billing or order preview).
 - The handler has no page type check, so a designed page needs no page row. `pg_sw_page_type_widgets()` maps the classic type to it.
 
 ## Where does the next page come from?

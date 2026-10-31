@@ -20,7 +20,7 @@ description: Legacy-layout power in system widgets (W1-W26, done): the finish pa
 - 2026-10-26: words translatable wherever possible; design elements over placeholder tokens. So no "default text": a sibling with `show_if empty` holds it ([[widget-fill-shop]]). W16 equal look and behaviour, not bytes; W5 three sources, filtered, copied; W8 the allow-list of [[widget-entity-fields]] ([[widget-designability-decisions]]).
 - 2026-10-27: every proposal accepted ([[widget-designability-decisions-2]]). W17/W18 (#2409): the record is the one the address opens; values outside widgets are W17; a form record's text, number, date and pick-list fields join the allow-list.
 - W20b (#3179, architect): starters shipped as files in the gallery ([[widget-starters]]).
-- Page types still missing as widgets: [[system-widget-missing-types]], built on this engine.
+- Classic page types: settled, which have widgets and which stay `system` nodes in [[system-widget-page-types]], built on this engine.
 
 ## Where is each piece?
 - Finish pass and conditions: [[widget-finish-pass]], [[widget-conditions]], [[widget-condition-panel]], [[widget-condition-canvas]], [[widget-condition-rows]], [[page-conditions]].
