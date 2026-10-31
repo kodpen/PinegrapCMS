@@ -704,6 +704,7 @@
     "A product feed could not be built. Platforms still read the file built before, which no longer follows the shop. The reason is on the Product Feeds card.": "Bir ürün akışı oluşturulamadı. Platformlar önceki dosyayı okumaya devam ediyor; bu dosya mağazadaki değişiklikleri artık izlemiyor. Nedeni Ürün Akışları kartında.",
     "A product feed has not been built for more than two days. Check that the scheduled tasks run, or build it from the Product Feeds card.": "Bir ürün akışı iki günden uzun süredir oluşturulmadı. Zamanlanmış görevlerin çalıştığını kontrol edin ya da akışı Ürün Akışları kartından oluşturun.",
     "A product from one group discounts the whole order.": "Bir gruptan alınan ürün tüm siparişe indirim getirir.",
+    "A product group cannot be copied into itself.": "Bir ürün grubu kendi içine kopyalanamaz.",
     "A product group cannot be moved into itself.": "Bir ürün grubu kendi içine taşınamaz.",
     "A product group with the name {var:1} already exists (id {var:2}).": "{var:1} adında bir ürün grubu zaten var (id {var:2}).",
     "A product in a chosen group, or in a group under it, is in no feed. Hold Ctrl (or ⌘) to choose several.": "Seçilen grupta ya da onun altındaki bir grupta olan ürün hiçbir akışa girmez. Birden fazla seçmek için Ctrl (ya da ⌘) tuşunu basılı tutun.",
