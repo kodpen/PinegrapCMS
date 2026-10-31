@@ -80,6 +80,7 @@ function test_commerce_lists_names_landmarks_translated()
 	foreach ($paths as $path) {
 		$source = commerce_lists_names_source($path);
 		pg_assert_true(strpos($source, 'aria-label="Button Bar"') === false, $path . ': literal landmark name');
-		pg_assert_contains("aria-label=\"' . h(lang('Button Bar')) . '\"", $source, $path);
+		// The toolbar's landmark name comes from pg_screen_toolbar(), translated.
+		pg_assert_contains('pg_screen_toolbar(', $source, $path);
 	}
 }

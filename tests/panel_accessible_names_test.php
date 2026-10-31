@@ -230,6 +230,6 @@ function test_panel_accessible_names_parasut_inbox()
 	pg_assert_contains('btn.dataset.statusLabel', $source);
 	pg_assert_true(strpos($source, 'btn.dataset.type ') === false && strpos($source, 'btn.dataset.status ') === false, 'raw codes not shown');
 
-	pg_assert_contains("aria-label=\"' . h(lang('Button Bar')) . '\"", $source);
+	pg_assert_contains('pg_screen_toolbar(', $source, 'the toolbar is named by pg_screen_toolbar()');
 	pg_assert_true(strpos($source, 'aria-label="Button Bar"') === false, 'no literal toolbar name');
 }

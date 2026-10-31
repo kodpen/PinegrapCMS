@@ -571,18 +571,9 @@ echo pg_page_shell([
             ' . $liveform->get_warnings() . '
             ' . $liveform->output_notices() . '
 
-            <div class="row mb-3 flex-wrap">
-                <div class="col-12 text-center md:text-start">
-                    
-                    <nav id="button_bar" class="navigation" aria-label="' . h(lang('Button Bar')) . '">
-                        <a class="btn btn-sm btn-outline theme-secondary"
-                           href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_parasut_inbox.php?tab=' . h($tab) . '"
-                           title="' . lang('Refresh') . '">
-                            <i class="bi bi-arrow-clockwise"></i>
-                        </a>
-                    </nav>
-                </div>
-            </div>
+            ' . pg_screen_toolbar(array(
+                'secondary' => array('label' => lang('Refresh'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_parasut_inbox.php?tab=' . $tab, 'icon' => 'bi-arrow-clockwise'),
+            )) . '
 
             ' . $output_tab_nav . '
             ' . $output_tab_content . '

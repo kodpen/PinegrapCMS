@@ -240,16 +240,10 @@ pg_page_shell([
 <main id="content" class="container-fluid">
     <div class="row">
         <div class="col-12">
-            <div class="row mb-3  flex-wrap">
-                <div class="col-12 text-center md:text-start">
-                    
-                    <nav id="button_bar" class="navigation " aria-label="' . h(lang('Button Bar')) . '">
-                        <a class="btn btn-sm btn-solid theme-primary m-1 " href="add_shipping_method.php"><span class="bi bi-plus-circle me-3"></span>' . lang(array('string'=>'Create') ) . '</a>
-                        <div class="pg-toolbar-grow"></div>
-                        ' . pg_list_sort_menu('view_shipping_methods.php', $sort_columns, $sort_levels, $sort_default) . '
-                    </nav>
-                </div>
-            </div>
+            ' . pg_screen_toolbar(array(
+                'primary' => array('label' => lang('Create'), 'url' => 'add_shipping_method.php', 'icon' => 'bi-plus-circle'),
+                'search'  => pg_list_sort_menu('view_shipping_methods.php', $sort_columns, $sort_levels, $sort_default),
+            )) . '
             <div class="card my-7">
                 <div class="card-body p-0 position-relative">
                     <table class="chart table-hover table " style="width:100%;display:none;"' . pg_list_edit_table('view_shipping_methods.php', $quick_edit) . '>

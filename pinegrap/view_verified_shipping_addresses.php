@@ -187,16 +187,10 @@ echo
                 ' . $liveform->get_warnings() . '
                 ' . $liveform->output_notices() . '
 
-                <div class="row mb-3 flex-wrap">
-                    <div class="col-12 text-center md:text-start">
-                        
-                        <nav id="button_bar" class="navigation" aria-label="' . h(lang('Button Bar')) . '">
-                            <a class="btn btn-sm btn-solid theme-primary m-1" href="add_verified_shipping_address.php?state_id=' . h(urlencode($_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['state_id'] ?? '')) . '"><span class="bi bi-plus-circle me-3"></span>' . lang('Create') . '</a>
-                            <div class="pg-toolbar-grow"></div>
-                            ' . pg_list_sort_menu('view_verified_shipping_addresses.php', $sort_columns, $sort_levels, $sort_default) . '
-                        </nav>
-                    </div>
-                </div>
+                ' . pg_screen_toolbar(array(
+                    'primary' => array('label' => lang('Create'), 'url' => 'add_verified_shipping_address.php?state_id=' . urlencode($_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['state_id'] ?? ''), 'icon' => 'bi-plus-circle'),
+                    'search'  => pg_list_sort_menu('view_verified_shipping_addresses.php', $sort_columns, $sort_levels, $sort_default),
+                )) . '
                 <div class="card my-7">
                     <div class="card-body p-0 position-relative">
                         <div class="p-5 border-bottom">

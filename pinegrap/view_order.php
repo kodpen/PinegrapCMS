@@ -2828,23 +2828,17 @@ if (!$_POST) {
                 ' . $liveform->output_notices() . '
                 ' . $output_payment_pending_banner . '
                 ' . $output_refund_banner . '
-                <div class="row mb-3  flex-wrap pg-print-none">
-                    <div class="col-12 sm:col-12 text-center md:text-start">
-
-                        <nav id="button_bar" class="navigation " aria-label="' . h(lang('Button Bar')) . '">
-                            ' . $output_mark_paid_button . '
-                            ' . $output_gateway_buttons . '
-                            ' . $output_cancel_button . '
-                            ' . $output_parasut_buttons . '
-                            ' . $output_erp_buttons . '
-                            ' . $output_workspace_button . '
-                            <div class=" btn-group btn-group-sm flex-wrap">
-                                <button type="button" class="btn btn-link pg-link-secondary py-0 mb-3 position-relative" title="' . lang('Print Order') . '" aria-label="' . h(lang('Print Order')) . '" onclick="window.open(\'print_order.php?id=' . (int)$_GET['id'] . '\', \'\', \'width=794, height=1123, resizable=1, scrollbars=1\'); return false;"><span class="material-icons me-1">print</span>' . lang('Print') . '</button>
-
-                            </div>
-                        </nav>
-                    </div>
-                </div>
+                ' . pg_screen_toolbar(array(
+                    'secondary' => array(
+                        $output_mark_paid_button,
+                        $output_gateway_buttons,
+                        $output_cancel_button,
+                        $output_parasut_buttons,
+                        $output_erp_buttons,
+                        $output_workspace_button,
+                        '<button type="button" class="btn btn-sm btn-text theme-secondary" title="' . h(lang('Print Order')) . '" aria-label="' . h(lang('Print Order')) . '" onclick="window.open(\'print_order.php?id=' . (int)$_GET['id'] . '\', \'\', \'width=794, height=1123, resizable=1, scrollbars=1\'); return false;"><i class="bi bi-printer me-1" aria-hidden="true"></i>' . lang('Print') . '</button>',
+                    ),
+                ), array('class' => 'pg-print-none')) . '
                 ' . $output_erp_documents . '
                 <form method="post">
                     ' . get_token_field() . '

@@ -37,11 +37,11 @@ function test_theme_screens_edit_theme_tools_in_toolbar()
 {
 	$source = file_get_contents(PG_FUNCTIONS_DIR . '/edit_theme_file.php');
 
-	$bar = strpos($source, '<nav id="button_bar"');
+	$bar = strpos($source, 'pg_screen_toolbar(');
 	$save_bar = strpos($source, 'aria-label="\' . h(lang(\'data edit buttons\'))');
 	pg_assert_true($bar !== false && $save_bar !== false && $bar < $save_bar, 'toolbar before the save bar');
 
-	$toolbar = substr($source, $bar, strpos($source, '</nav>', $bar) - $bar);
+	$toolbar = substr($source, $bar, strpos($source, '))', $bar) - $bar);
 	$save = substr($source, $save_bar, strpos($source, '</nav>', $save_bar) - $save_bar);
 
 	foreach (array('$output_edit_theme_button', '$output_export_button', '$output_download_file_button') as $button) {
