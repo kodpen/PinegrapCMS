@@ -32,4 +32,4 @@ description: Plan (approved 2026-10-19): SMS layer, order messages, consent writ
 - DEFAULT-1 contacts (forms, imports, API, profile) have no consent row and are never pushed.
 
 ## Where to start?
-- Step 10 (#3570) next: the SMS campaign queues `marketing` messages (`platform/sms-marketing-kind.md`). Waits on a schema decision: the e-mail campaign tables cannot hold it. First İYS live run: once credentials exist, fill the card in test environment and live mode (`platform/iys-settings-card.md`), run `iys_job.php`.
+- Step 10 (#3570) next: the SMS campaign queues `marketing` messages (`platform/sms-marketing-kind.md`). Waits on decision #3847 (storage): the e-mail campaign tables cannot hold it. First İYS live run: once credentials exist, fill the card in test environment and live mode (`platform/iys-settings-card.md`), run `iys_job.php`.
