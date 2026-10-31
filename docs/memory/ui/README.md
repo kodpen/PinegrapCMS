@@ -31,7 +31,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - ad-region-shared-form.md: The ad region create and edit screens share includes/forms/ad_region_form.php: what it holds, the defaults, what stays in the screens
 - ad-shared-form.md: The ad create and edit screens share includes/forms/ad_form.php: what it holds, what stays in the screens
 - admin-screen-toolbar-rules.md: Button recipes, menu colour rule, shared toolbar CSS classes, card header pattern and narrow-screen behaviour for admin screen toolbars.
-- admin-screen-toolbar.md: Panel screen basics (frame, notices, fields, width, icons, help) and the single-toolbar design principle for every admin screen, with view_folders.php as reference: slot order and classes.
+- admin-screen-toolbar.md: Panel screen basics (frame, notices, fields, width, icons, help), the one-toolbar principle with view_folders.php as reference, slot order, classes and the pg_screen_toolbar() helper.
 - ai-write-alt-text.md: "Write with AI" for an image's alt text in the visual designer: the image_alt target, the browser's model only, the image read in the browser, where the button sits and when it shows
 - ai-write-browser.md: "Write with AI" on the browser's built-in AI (Prompt API) for a site without Pinegrap AI: when, the two server steps, languages and the translation bridge, gesture, long data
 - ai-write-decisions.md: Why "Write with AI" is built the way it is (decided 2026-10-19/20): one endpoint, the models, daily cap, brand voice, the panel, labelling and the marks, translation, alt text on the browser's model

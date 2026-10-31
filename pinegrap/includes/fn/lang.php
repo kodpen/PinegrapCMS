@@ -477,3 +477,30 @@ function pg_log_lang($properties)
 
     return $text;
 }
+
+/**
+ * Runs a builder of staff text (an e-mail to the moderators, the store or
+ * the operator) that a visitor's request sends. A page or form in another
+ * site language (FRONTEND_LANGUAGE, pg_lang) would turn its lang() calls
+ * into that language; staff read the software language, so the builder runs
+ * while pg_tr_suspend() holds, and the hold is let go even when it throws.
+ *
+ * @param callable $build
+ * @return mixed what the builder returns
+ */
+function pg_staff_lang(callable $build)
+{
+    $held = function_exists('pg_tr_suspend');
+
+    if ($held) {
+        pg_tr_suspend(true);
+    }
+
+    try {
+        return $build();
+    } finally {
+        if ($held) {
+            pg_tr_suspend(false);
+        }
+    }
+}

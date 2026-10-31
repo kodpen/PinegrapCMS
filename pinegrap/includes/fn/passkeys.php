@@ -1322,7 +1322,7 @@ function pg_passkey_passwordless_signin()
     }
 
     if ($error !== '') {
-        log_activity(lang(array(
+        log_activity(pg_log_lang(array(
             'string' => 'access denied (passkey not accepted: {var:1})',
             'vars'   => array($error))), is_array($account) ? (string) $account['user_username'] : 'UNKNOWN');
 
@@ -1353,7 +1353,7 @@ function pg_passkey_passwordless_signin()
     require_once(PG_FUNCTIONS_DIR . '/connect_user_to_order.php');
     connect_user_to_order();
 
-    log_activity(lang(array(
+    log_activity(pg_log_lang(array(
         'string' => 'user signed in with a passkey ({var:1})',
         'vars'   => array($name))), $username);
 

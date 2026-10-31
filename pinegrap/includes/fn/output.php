@@ -502,6 +502,20 @@ PGPRELOADER;
 }
 
 
+/**
+ * The page shell of a panel screen: output_header() with the screen's tour
+ * named in its head. It takes output_header()'s keys (title, extra classes,
+ * icon, heading, heading_description, cancel, breadcrumb, head, hide_menu)
+ * plus 'tour' and 'pre_main_html'. The screen's actions are not drawn here:
+ * they go into its toolbar, pg_screen_toolbar(), inside <main>.
+ *
+ * The page owns its own <main>: every screen writes the element itself so it
+ * can pick .container or .container-fluid, and closes it before
+ * output_footer().
+ *
+ * @param array $properties
+ * @return string Page-shell HTML up to the point where the caller opens <main>.
+ */
 function pg_page_shell($properties = array())
 {
     if (!is_array($properties)) {
@@ -518,42 +532,93 @@ function pg_page_shell($properties = array())
 
     $output = output_header($properties);
 
-    $extra_class = isset($properties['action_bar_class']) ? (string) $properties['action_bar_class'] : 'mb-5';
-    $extra_class = htmlspecialchars($extra_class, ENT_QUOTES, 'UTF-8');
-
     // Opt-in raw HTML printable between <body>/header and <main>.
     // Used by pages like view_log.php that render an advanced filter bar outside <main>.
     if (isset($properties['pre_main_html']) && is_string($properties['pre_main_html']) && $properties['pre_main_html'] !== '') {
         $output .= $properties['pre_main_html'];
     }
 
-    $buttons_html = '';
-
-    $render_button = function ($btn, $default_variant) {
-        if (!is_array($btn) || empty($btn['label'])) return '';
-        $label = htmlspecialchars((string) $btn['label'], ENT_QUOTES, 'UTF-8');
-        $url   = isset($btn['url']) ? htmlspecialchars((string) $btn['url'], ENT_QUOTES, 'UTF-8') : '#';
-        $icon  = isset($btn['icon']) ? htmlspecialchars((string) $btn['icon'], ENT_QUOTES, 'UTF-8') : '';
-        $variant = isset($btn['variant']) ? preg_replace('/[^a-z0-9_-]/i', '', (string) $btn['variant']) : $default_variant;
-        $icon_html = $icon !== '' ? '<i class="bi ' . $icon . ' me-3" aria-hidden="true"></i>' : '';
-        return '<a class="btn ' . ((strpos($variant, 'outline-') === 0) ? 'btn-outline theme-' . substr($variant, 8) : 'btn-solid theme-' . $variant) . ' me-3" href="' . $url . '">' . $icon_html . $label . '</a>';
-    };
-
-    if (isset($properties['primary_button']) && is_array($properties['primary_button'])) {
-        $buttons_html .= $render_button($properties['primary_button'], 'primary');
-    }
-
-    if (isset($properties['actions']) && is_array($properties['actions'])) {
-        foreach ($properties['actions'] as $btn) {
-            $buttons_html .= $render_button($btn, 'outline-secondary');
-        }
-    }
-
-    if ($buttons_html !== '') {
-        $output .= '<div class="pg-page-actions d-flex flex-wrap align-items-center ' . $extra_class . '">' . $buttons_html . '</div>';
-    }
-
     return $output;
+}
+
+
+/**
+ * The toolbar under a panel screen's heading: nav#button_bar.pg-toolbar, the
+ * one place for everything the screen can do. The slots are drawn in a fixed
+ * order whatever order the caller lists them in:
+ *
+ *   primary    the main action (often a menu)
+ *   secondary  tools and related screens
+ *   grow       location, breadcrumb or a fact line; takes the free space
+ *   search     search or filter
+ *   view       view switches
+ *   overflow   the three-dots menu of rare, screen-specific things
+ *
+ * A slot is markup the screen built (a menu, a form, pg_filter_select()), a
+ * button array, or a list of either. A button array is
+ * ['label' => …, 'url' => …, 'icon' => 'bi-…', 'id' => …], plain text escaped
+ * here and drawn in its slot's recipe; markup is printed as given. When the
+ * right-hand cluster (search, view, overflow) has no grow before it, an empty
+ * grow pushes it to the bar's right end.
+ *
+ * Options:
+ *   label  the bar's accessible name; defaults to "Button Bar"
+ *   class  extra classes on the bar
+ *
+ * @param array $slots
+ * @param array $opts
+ * @return string '' when no slot is filled
+ */
+function pg_screen_toolbar($slots, $opts = array())
+{
+    $recipes = array(
+        'primary'   => 'btn btn-sm btn-solid theme-primary rounded-pill px-5',
+        'secondary' => 'btn btn-sm btn-text theme-secondary',
+        'grow'      => 'btn btn-sm btn-text theme-secondary',
+        'search'    => 'btn btn-sm btn-text theme-secondary',
+        'view'      => 'btn btn-sm btn-text theme-secondary',
+        'overflow'  => 'btn btn-sm btn-text theme-secondary',
+    );
+
+    $drawn = array();
+    foreach ($recipes as $slot => $recipe) {
+        $html = '';
+        $items = isset($slots[$slot]) ? $slots[$slot] : '';
+        // One button array, or a list of markup strings and button arrays.
+        if (!is_array($items) || isset($items['label'])) {
+            $items = array($items);
+        }
+        foreach ($items as $item) {
+            if (is_array($item)) {
+                if (!isset($item['label']) || (string) $item['label'] === '') {
+                    continue;
+                }
+                $icon = (isset($item['icon']) && $item['icon'] !== '') ? '<i class="bi ' . h((string) $item['icon']) . ' me-2" aria-hidden="true"></i>' : '';
+                $id = (isset($item['id']) && $item['id'] !== '') ? ' id="' . h((string) $item['id']) . '"' : '';
+                $url = isset($item['url']) ? (string) $item['url'] : '#';
+                $html .= '<a class="' . $recipe . '"' . $id . ' href="' . h($url) . '">' . $icon . h((string) $item['label']) . '</a>';
+            } elseif (is_string($item)) {
+                $html .= $item;
+            }
+        }
+        $drawn[$slot] = $html;
+    }
+
+    if (implode('', $drawn) === '') {
+        return '';
+    }
+
+    if ($drawn['grow'] !== '') {
+        $drawn['grow'] = '<div class="pg-toolbar-grow">' . $drawn['grow'] . '</div>';
+    } elseif ($drawn['search'] . $drawn['view'] . $drawn['overflow'] !== '') {
+        // An empty grow is the spacer; the narrow-screen CSS hides it (:empty).
+        $drawn['grow'] = '<div class="pg-toolbar-grow"></div>';
+    }
+
+    $label = (isset($opts['label']) && $opts['label'] !== '') ? (string) $opts['label'] : lang('Button Bar');
+    $class = (isset($opts['class']) && $opts['class'] !== '') ? ' ' . h((string) $opts['class']) : '';
+
+    return '<nav id="button_bar" class="pg-toolbar' . $class . '" aria-label="' . h($label) . '">' . implode('', $drawn) . '</nav>';
 }
 
 

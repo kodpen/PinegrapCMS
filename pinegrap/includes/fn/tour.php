@@ -19,26 +19,6 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 }
 
 
-/**
- * Render a complete page shell: output_header + a standardized action bar.
- * Additive: output_header() remains the underlying API; this
- * wrapper accepts the same keys plus optional UX-bar fields and renders:
- *   <output_header html>
- *     <div class="pg-page-actions ...">  (primary_button + actions[])
- *
- * The page owns its own <main>: every screen writes the element itself so it can
- * pick .container or .container-fluid, and closes it before output_footer().
- *
- * Accepted keys (passed through to output_header):
- *   title, extra classes, icon, heading, cancel, breadcrumb, head, hide_menu, toolbar
- * UX-bar keys (rendered after the shell):
- *   primary_button: ['label' => '...', 'url' => '...', 'icon' => 'bi-plus-lg', 'variant' => 'primary']
- *   actions: [ same shape as primary_button, rendered as secondary buttons ]
- *   action_bar_class: extra CSS class for the wrapping div (default "mb-5")
- *
- * @param array $properties
- * @return string Page-shell HTML up to the point where the caller opens <main>.
- */
 // ── Guided tours ────────────────────────────────────────────────────────
 //
 // A tour is a short walk over a screen: everything dims, a ring lands on one

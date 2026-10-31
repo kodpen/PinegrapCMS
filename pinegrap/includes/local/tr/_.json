@@ -900,6 +900,7 @@
     "{var:1} line(s) are of products no purchase invoice has given a cost yet, so their cost counts as nothing and their profit is overstated.": "{var:1} satır, henüz hiçbir alış faturasıyla maliyeti oluşmamış ürünlere ait; maliyetleri sıfır sayıldığı için kârları olduğundan yüksek görünür.",
     "{var:1} line(s) could not be used:": "{var:1} satır kullanılamadı:",
     "{var:1} line(s) recorded as suggested; {var:2} could not be.": "{var:1} satır önerildiği gibi kaydedildi; {var:2} satır kaydedilemedi.",
+    "{var:1} line(s) recorded as suggested; {var:2} could not be: {var:3}": "{var:1} satır önerildiği gibi kaydedildi; {var:2} satır kaydedilemedi: {var:3}",
     "{var:1} line(s) sold before the ERP kept stock moves are costed at the product's average cost today.": "ERP stok hareketi tutmaya başlamadan önce satılan {var:1} satır, ürünün bugünkü ortalama maliyetiyle hesaplandı.",
     "{var:1} line(s) taken in, {var:2} matched to the books; {var:3} skipped (not a dated amount, or taken in before).": "{var:1} satır alındı, {var:2} satır defterle eşleşti; {var:3} satır atlandı (tarihli tutar değil ya da önceden alınmış).",
     "{var:1} lines added, {var:2} removed against the revision.": "Sürüme göre {var:1} satır eklendi, {var:2} satır silindi.",

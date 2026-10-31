@@ -475,13 +475,6 @@ text tone. Every value is a theme colour.
 
 @@ includes/fn/output.php
 <<<
-        return '<a class="btn btn-' . $variant . ' me-3" href="' . $url . '">' . $icon_html . $label . '</a>';
-===
-        return '<a class="btn ' . ((strpos($variant, 'outline-') === 0) ? 'btn-outline theme-' . substr($variant, 8) : 'btn-solid theme-' . $variant) . ' me-3" href="' . $url . '">' . $icon_html . $label . '</a>';
->>>
-
-@@ includes/fn/output.php
-<<<
         $badge = '<span class="pg-lic-badge no-popover text-bg-' . h($badge_color) . '" title="' . h(lang('Premium features access status')) . '"><i class="bi bi-gem" aria-hidden="true"></i></span>';
 ===
         $badge = '<span class="pg-lic-badge no-popover bg-' . h($badge_color) . ' fg-contrast-' . h($badge_color) . '" title="' . h(lang('Premium features access status')) . '"><i class="bi bi-gem" aria-hidden="true"></i></span>';

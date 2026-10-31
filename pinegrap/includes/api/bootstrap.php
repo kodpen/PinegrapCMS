@@ -136,9 +136,14 @@ function api_run() {
 	// The schema has to be current before anything else is attempted: on a site
 	// whose files were updated but whose database has not caught up, api_apps
 	// does not exist yet and every route would fail inside a query.
+	// A lost connection has a code of its own: service_unavailable is what a
+	// feature answers while the database waits for its update, and a client
+	// hides that feature, while an outage only calls for a retry.
 	if (!defined('DB_CONNECTED')) {
 
-		api_fail(503, 'service_unavailable', lang('No database connection.'));
+		api_extra_headers('Retry-After', '30');
+
+		api_fail(503, 'database_unavailable', lang('No database connection.'));
 
 	}
 

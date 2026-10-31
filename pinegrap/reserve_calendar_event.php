@@ -44,7 +44,7 @@ $result = db_q($query, array((string) $page_id)) or output_error('Query failed.'
 
 // if the page was not found, then log activity and output error
 if (mysqli_num_rows($result) == 0) {
-    log_activity(lang('access denied to reserve calendar event because page does not exist'), $_SESSION['sessionusername']);
+    log_activity(pg_log_lang(array('string' => 'access denied to reserve calendar event because page does not exist')), $_SESSION['sessionusername']);
     output_error(lang('You do not have access to reserve this calendar event because the page does not exist.') . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
 }
 
@@ -63,7 +63,7 @@ $widget_page = ($page_type != 'calendar event view')
 
 // if the page type is not calendar event view, then log activity and output error
 if (($page_type != 'calendar event view') && !$widget_page) {
-    log_activity(lang(array('string' => 'access denied to reserve calendar event for page ({var:1}) because page is not a calendar event view', 'vars' => $page_name)), $_SESSION['sessionusername']);
+    log_activity(pg_log_lang(array('string' => 'access denied to reserve calendar event for page ({var:1}) because page is not a calendar event view', 'vars' => $page_name)), $_SESSION['sessionusername']);
     output_error(lang('You do not have access to reserve this calendar event because the page is not a calendar event view.') . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
 }
 
@@ -71,7 +71,7 @@ $calendar_event = get_calendar_event($calendar_event_id, $recurrence_number);
 
 // if the calendar event is not published, then log activity and output error
 if ($calendar_event['published'] == 0) {
-    log_activity(lang(array('string' => 'access denied to reserve calendar event ({var:1}) for page ({var:2}) because calendar event is not published.', 'vars' => array($calendar_event['name'], $page_name))), $_SESSION['sessionusername']);
+    log_activity(pg_log_lang(array('string' => 'access denied to reserve calendar event ({var:1}) for page ({var:2}) because calendar event is not published.', 'vars' => array($calendar_event['name'], $page_name))), $_SESSION['sessionusername']);
     output_error(lang('You do not have access to reserve this calendar event because it is not published.') . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
 }
 
@@ -114,31 +114,31 @@ if (!$widget_page) {
 
 // if calendar event is not allowed in this view, then log activity and output error
 if (!$widget_page && (mysqli_num_rows($result) == 0)) {
-    log_activity(lang(array('string' => 'access denied to reserve calendar event ({var:1}) for page ({var:2}) because calendar event is not allowed in this calendar event view.', 'vars' => array($calendar_event['name'], $page_name))), $_SESSION['sessionusername']);
+    log_activity(pg_log_lang(array('string' => 'access denied to reserve calendar event ({var:1}) for page ({var:2}) because calendar event is not allowed in this calendar event view.', 'vars' => array($calendar_event['name'], $page_name))), $_SESSION['sessionusername']);
     output_error(lang('You do not have access to reserve this calendar event because it is not allowed in this calendar event view.') . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
 }
 
 // if reservations is disabled for this calendar event, then log activity and output error
 if ($calendar_event['reservations'] == 0) {
-    log_activity(lang(array('string' => 'access denied to reserve calendar event ({var:1}) for page ({var:2}) because reservations are not enabled for this calendar event.', 'vars' => array($calendar_event['name'], $page_name))), $_SESSION['sessionusername']);
+    log_activity(pg_log_lang(array('string' => 'access denied to reserve calendar event ({var:1}) for page ({var:2}) because reservations are not enabled for this calendar event.', 'vars' => array($calendar_event['name'], $page_name))), $_SESSION['sessionusername']);
     output_error(lang('Reservations are not allowed for this calendar event.') . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
 }
 
 // if the product no longer exists for the calendar event, then log activity and output error
 if ($calendar_event['product_id'] == '') {
-    log_activity(lang(array('string' => 'access denied to reserve calendar event ({var:1}) for page ({var:2}) because product no longer exists for calendar event.', 'vars' => array($calendar_event['name'], $page_name))), $_SESSION['sessionusername']);
+    log_activity(pg_log_lang(array('string' => 'access denied to reserve calendar event ({var:1}) for page ({var:2}) because product no longer exists for calendar event.', 'vars' => array($calendar_event['name'], $page_name))), $_SESSION['sessionusername']);
     output_error(lang('You do not have access to reserve this calendar event because the product for it no longer exists.') . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
 }
 
 // if the event is in the past, then log activity and output error
 if (strtotime($calendar_event['end_date_and_time']) < time()) {
-    log_activity(lang(array('string' => 'access denied to reserve calendar event ({var:1}) for page ({var:2}) because the calendar event has ended.', 'vars' => array($calendar_event['name'], $page_name))), $_SESSION['sessionusername']);
+    log_activity(pg_log_lang(array('string' => 'access denied to reserve calendar event ({var:1}) for page ({var:2}) because the calendar event has ended.', 'vars' => array($calendar_event['name'], $page_name))), $_SESSION['sessionusername']);
     output_error(lang('Sorry, you may not reserve this event because the event has ended.') . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
 }
 
 // if user does not have access to calendar event view page, log and output error
 if (check_view_access($folder_id) == false) {
-    log_activity(lang(array('string' => 'access denied to reserve calendar event ({var:1}) for page ({var:2}) because visitor does not have view access to page', 'vars' => array($calendar_event['name'], $page_name))), $_SESSION['sessionusername']);
+    log_activity(pg_log_lang(array('string' => 'access denied to reserve calendar event ({var:1}) for page ({var:2}) because visitor does not have view access to page', 'vars' => array($calendar_event['name'], $page_name))), $_SESSION['sessionusername']);
     output_error(lang('You do not have access to reserve this calendar event.') . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
 }
 

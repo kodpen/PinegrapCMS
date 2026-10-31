@@ -414,35 +414,42 @@ if (!isset($_POST['submit'])) {
             // however this caused issues with mail providers using DMARC (e.g. Yahoo, AOL),
             // so we now send it from this site's info and add a reply to for the submitter (if exists).
             
+            // The approver reads the software language, not the language of
+            // the page the form was posted from.
+            list($subject, $body) = pg_staff_lang(function () use ($liveform, $contact_id) {
+                return array(
+                    lang('Affiliate Approval Needed'),
+                    lang('An affiliate has requested your approval.') . "\n" .
+                        "\n" .
+                        lang('Affiliate Code') . ': ' . $liveform->get_field_value('affiliate_code') . "\n" .
+                        lang('Affiliate / Company Name') . ': ' . $liveform->get_field_value('affiliate_name') . "\n" .
+                        lang('Affiliate Website') . ': ' . $liveform->get_field_value('affiliate_website') . "\n" .
+                        lang('First Name') . ': ' . $liveform->get_field_value('first_name') . "\n" .
+                        lang('Last Name') . ': ' . $liveform->get_field_value('last_name') . "\n" .
+                        lang('Address') . ' 1: ' . $liveform->get_field_value('address_1') . "\n" .
+                        lang('Address') . ' 2: ' . $liveform->get_field_value('address_2') . "\n" .
+                        lang('City') . ': ' . $liveform->get_field_value('city') . "\n" .
+                        lang('State / Province') . ': ' . $liveform->get_field_value('state') . "\n" .
+                        lang('Zip / Postal Code') . ': ' . $liveform->get_field_value('zip_code') . "\n" .
+                        lang('Country') . ': ' . $liveform->get_field_value('country') . "\n" .
+                        lang('Phone') . ': ' . $liveform->get_field_value('phone_number') . "\n" .
+                        lang('Fax') . ': ' . $liveform->get_field_value('fax_number') . "\n" .
+                        lang('Email') . ': ' . $liveform->get_field_value('email_address') . "\n" .
+                        "\n" .
+                        lang('If you approve, please click on the link below.  If you are not currently logged in, you will be asked to log in.') . "\n" .
+                        "\n" .
+                        URL_SCHEME . HOSTNAME_SETTING . PATH . SOFTWARE_DIRECTORY . '/approve_affiliate.php?id=' . (int) $contact_id . "\n" .
+                        "\n");
+            });
+
             email(array(
                 'to' => AFFILIATE_EMAIL_ADDRESS,
                 'bcc' => AFFILIATE_EMAIL_ADDRESS,
                 'from_name' => ORGANIZATION_NAME,
                 'from_email_address' => EMAIL_ADDRESS,
                 'reply_to' => $liveform->get_field_value('email_address'),
-                'subject' => lang('Affiliate Approval Needed'),
-                'body' => 
-                    lang('An affiliate has requested your approval.') . "\n" .
-                    "\n" .
-                    lang('Affiliate Code') . ': ' . $liveform->get_field_value('affiliate_code') . "\n" .
-                    lang('Affiliate / Company Name') . ': ' . $liveform->get_field_value('affiliate_name') . "\n" .
-                    lang('Affiliate Website') . ': ' . $liveform->get_field_value('affiliate_website') . "\n" .
-                    lang('First Name') . ': ' . $liveform->get_field_value('first_name') . "\n" .
-                    lang('Last Name') . ': ' . $liveform->get_field_value('last_name') . "\n" .
-                    lang('Address') . ' 1: ' . $liveform->get_field_value('address_1') . "\n" .
-                    lang('Address') . ' 2: ' . $liveform->get_field_value('address_2') . "\n" .
-                    lang('City') . ': ' . $liveform->get_field_value('city') . "\n" .
-                    lang('State / Province') . ': ' . $liveform->get_field_value('state') . "\n" .
-                    lang('Zip / Postal Code') . ': ' . $liveform->get_field_value('zip_code') . "\n" .
-                    lang('Country') . ': ' . $liveform->get_field_value('country') . "\n" .
-                    lang('Phone') . ': ' . $liveform->get_field_value('phone_number') . "\n" .
-                    lang('Fax') . ': ' . $liveform->get_field_value('fax_number') . "\n" .
-                    lang('Email') . ': ' . $liveform->get_field_value('email_address') . "\n" .
-                    "\n" .
-                    lang('If you approve, please click on the link below.  If you are not currently logged in, you will be asked to log in.') . "\n" .
-                    "\n" .
-                    URL_SCHEME . HOSTNAME_SETTING . PATH . SOFTWARE_DIRECTORY . '/approve_affiliate.php?id=' . (int) $contact_id . "\n" .
-                    "\n"));
+                'subject' => $subject,
+                'body' => $body));
 
         }
 

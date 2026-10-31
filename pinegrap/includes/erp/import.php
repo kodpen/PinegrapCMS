@@ -44,9 +44,10 @@ if (!defined('ERP_IMPORT_MAX_BYTES')) {
  * The fields a row can be mapped onto.
  *
  * Each field carries the label the screen shows, the column length it is
- * trimmed to, and the header names it is recognised by. The translated label
- * is added to the synonyms at run time, so a file made from the template maps
- * itself whatever language the panel is in.
+ * trimmed to, and the header names it is recognised by
+ * (erp_import_field_synonyms()). The translated label is added to the
+ * synonyms at run time, so a file made from the template maps itself
+ * whatever language the panel is in.
  *
  * @return array  field => ['label' => string, 'length' => int, 'synonyms' => array]
  */
@@ -59,57 +60,119 @@ function erp_import_fields()
     }
 
     $fields = array(
-        'title' => array('label' => lang('Name'), 'length' => 255, 'synonyms' => array(
-            'unvan', 'ünvan', 'ad', 'adı', 'adi', 'firma', 'firma adı', 'cari adı', 'cari', 'cari hesap', 'hesap adı',
-            'müşteri', 'müşteri adı', 'name', 'company', 'company name', 'account', 'account name', 'title', 'customer')),
-        'kind' => array('label' => lang('Type'), 'length' => 20, 'synonyms' => array(
-            'tür', 'tur', 'türü', 'tip', 'tipi', 'cari türü', 'hesap türü', 'type', 'kind', 'account type')),
-        'is_person' => array('label' => lang('Taxpayer'), 'length' => 10, 'synonyms' => array(
-            'mükellef', 'mükellef türü', 'şahıs', 'şahıs/şirket', 'kişi', 'taxpayer', 'person', 'is person', 'entity')),
-        'tax_number' => array('label' => erp_tax_id_label(), 'length' => erp_tax_number_width(), 'synonyms' => array(
-            'vkn', 'tckn', 'vkn/tckn', 'vkn / tckn', 'vergi no', 'vergi numarası', 'vergi numarasi', 'tc', 'tc kimlik',
-            'tc kimlik no', 'kimlik no', 'tax number', 'tax no', 'tax id', 'vat number', 'tin')),
-        'tax_office' => array('label' => lang('Tax Office'), 'length' => 100, 'synonyms' => array(
-            'vergi dairesi', 'vd', 'tax office')),
-        'email' => array('label' => lang('E-mail Address'), 'length' => 255, 'synonyms' => array(
-            'e-posta', 'eposta', 'e posta', 'e-posta adresi', 'mail', 'e-mail', 'email', 'email address', 'e-mail address')),
-        'phone' => array('label' => lang('Phone Number'), 'length' => 50, 'synonyms' => array(
-            'telefon', 'tel', 'telefon no', 'telefon numarası', 'cep', 'cep telefonu', 'gsm', 'phone', 'phone number',
-            'mobile', 'mobile phone')),
-        'address' => array('label' => lang('Address'), 'length' => 255, 'synonyms' => array(
-            'adres', 'açık adres', 'address', 'street', 'address 1')),
-        'district' => array('label' => lang('District'), 'length' => 100, 'synonyms' => array(
-            'ilçe', 'ilce', 'semt', 'district', 'town')),
-        'city' => array('label' => lang('City'), 'length' => 100, 'synonyms' => array(
-            'il', 'şehir', 'sehir', 'city')),
-        'state' => array('label' => lang('State / Province'), 'length' => 100, 'synonyms' => array(
-            'eyalet', 'state', 'province', 'region', 'state / province', 'state/province')),
-        'postcode' => array('label' => lang('Postal Code'), 'length' => 20, 'synonyms' => array(
-            'posta kodu', 'pk', 'postcode', 'post code', 'postal code', 'zip', 'zip code')),
-        'country_code' => array('label' => lang('Country'), 'length' => 2, 'synonyms' => array(
-            'ülke', 'ulke', 'ülke kodu', 'country', 'country code')),
-        'currency' => array('label' => lang('Currency'), 'length' => 3, 'synonyms' => array(
-            'para birimi', 'döviz', 'doviz', 'currency', 'currency code')),
-        'status' => array('label' => lang('Status'), 'length' => 10, 'synonyms' => array(
-            'durum', 'durumu', 'status', 'active')),
-        'notes' => array('label' => lang('Notes'), 'length' => 65535, 'synonyms' => array(
-            'not', 'notlar', 'açıklama', 'aciklama', 'notes', 'note', 'description', 'comments')),
-        'payment_days' => array('label' => lang('Payment Term (days)'), 'length' => 4, 'synonyms' => array(
-            'vade', 'vade günü', 'vade gunu', 'vade gün', 'vade gun', 'ödeme vadesi', 'odeme vadesi', 'payment days',
-            'payment term', 'payment terms', 'terms', 'due days')),
-        'overdue_notify_days' => array('label' => lang('Reminder threshold (days)'), 'length' => 4, 'synonyms' => array(
-            'hatırlatma eşiği', 'hatirlatma esigi', 'hatırlatma günü', 'hatirlatma gunu', 'gecikme eşiği', 'gecikme esigi',
-            'reminder days', 'reminder threshold', 'overdue days', 'overdue reminder')),
-        'overdue_notify_customer' => array('label' => lang('Remind the customer'), 'length' => 10, 'synonyms' => array(
-            'müşteriye hatırlat', 'musteriye hatirlat', 'müşteriye yaz', 'musteriye yaz', 'müşteriye hatırlatma', 'musteriye hatirlatma',
-            'notify customer', 'remind customer', 'customer reminder', 'customer reminders')),
+        'title' => array('label' => lang('Name'), 'length' => 255),
+        'kind' => array('label' => lang('Type'), 'length' => 20),
+        'is_person' => array('label' => lang('Taxpayer'), 'length' => 10),
+        'tax_number' => array('label' => erp_tax_id_label(), 'length' => erp_tax_number_width()),
+        'tax_office' => array('label' => lang('Tax Office'), 'length' => 100),
+        'email' => array('label' => lang('E-mail Address'), 'length' => 255),
+        'phone' => array('label' => lang('Phone Number'), 'length' => 50),
+        'address' => array('label' => lang('Address'), 'length' => 255),
+        'district' => array('label' => lang('District'), 'length' => 100),
+        'city' => array('label' => lang('City'), 'length' => 100),
+        'state' => array('label' => lang('State / Province'), 'length' => 100),
+        'postcode' => array('label' => lang('Postal Code'), 'length' => 20),
+        'country_code' => array('label' => lang('Country'), 'length' => 2),
+        'currency' => array('label' => lang('Currency'), 'length' => 3),
+        'status' => array('label' => lang('Status'), 'length' => 10),
+        'notes' => array('label' => lang('Notes'), 'length' => 65535),
+        'payment_days' => array('label' => lang('Payment Term (days)'), 'length' => 4),
+        'overdue_notify_days' => array('label' => lang('Reminder threshold (days)'), 'length' => 4),
+        'overdue_notify_customer' => array('label' => lang('Remind the customer'), 'length' => 10),
     );
 
+    $synonyms = erp_import_field_synonyms();
+
     foreach ($fields as $field => $definition) {
+        $fields[$field]['synonyms'] = $synonyms[$field];
         $fields[$field]['synonyms'][] = $definition['label'];
     }
 
     return $fields;
+}
+
+/**
+ * The header names each field is recognised by, whatever the panel language.
+ *
+ * Besides the common names, each field knows the heading the accounts export
+ * writes for it (erp_export_columns()) in English and in Turkish: the export
+ * writes headings in the panel language, so a file taken from a site in the
+ * other language, or written before the language was switched, still loads.
+ * The order of the fields decides ties (erp_import_guess_field()).
+ *
+ * @return array  field => synonyms
+ */
+function erp_import_field_synonyms()
+{
+    static $synonyms = null;
+
+    if ($synonyms !== null) {
+        return $synonyms;
+    }
+
+    $synonyms = array(
+        'title' => array(
+            'unvan', 'ünvan', 'ad', 'adı', 'adi', 'firma', 'firma adı', 'cari adı', 'cari', 'cari hesap', 'hesap adı',
+            'müşteri', 'müşteri adı', 'name', 'company', 'company name', 'account', 'account name', 'title', 'customer'),
+        'kind' => array(
+            'tür', 'tur', 'türü', 'tip', 'tipi', 'cari türü', 'hesap türü', 'type', 'kind', 'account type'),
+        'is_person' => array(
+            'mükellef', 'mükellef türü', 'şahıs', 'şahıs/şirket', 'kişi', 'taxpayer', 'person', 'is person', 'entity'),
+        'tax_number' => array(
+            'vkn', 'tckn', 'vkn/tckn', 'vkn / tckn', 'vergi no', 'vergi numarası', 'vergi numarasi', 'tc', 'tc kimlik',
+            'tc kimlik no', 'kimlik no', 'tax number', 'tax no', 'tax id', 'vat number', 'tin'),
+        'tax_office' => array(
+            'vergi dairesi', 'vd', 'tax office'),
+        'email' => array(
+            'e-posta', 'eposta', 'e posta', 'e-posta adresi', 'mail', 'e-mail', 'email', 'email address', 'e-mail address'),
+        'phone' => array(
+            'telefon', 'tel', 'telefon no', 'telefon numarası', 'cep', 'cep telefonu', 'gsm', 'phone', 'phone number',
+            'mobile', 'mobile phone'),
+        'address' => array(
+            'adres', 'açık adres', 'address', 'street', 'address 1'),
+        'district' => array(
+            'ilçe', 'ilce', 'semt', 'district', 'town'),
+        'city' => array(
+            'il', 'şehir', 'sehir', 'city'),
+        'state' => array(
+            'eyalet', 'state', 'province', 'region', 'state / province', 'state/province'),
+        'postcode' => array(
+            'posta kodu', 'pk', 'postcode', 'post code', 'postal code', 'zip', 'zip code'),
+        'country_code' => array(
+            'ülke', 'ulke', 'ülke kodu', 'country', 'country code'),
+        'currency' => array(
+            'para birimi', 'döviz', 'doviz', 'currency', 'currency code'),
+        'status' => array(
+            'durum', 'durumu', 'status', 'active'),
+        'notes' => array(
+            'not', 'notlar', 'açıklama', 'aciklama', 'notes', 'note', 'description', 'comments'),
+        'payment_days' => array(
+            'vade', 'vade günü', 'vade gunu', 'vade gün', 'vade gun', 'ödeme vadesi', 'odeme vadesi', 'payment days',
+            'payment term', 'payment terms', 'terms', 'due days'),
+        'overdue_notify_days' => array(
+            'hatırlatma eşiği', 'hatirlatma esigi', 'hatırlatma günü', 'hatirlatma gunu', 'gecikme eşiği', 'gecikme esigi',
+            'reminder days', 'reminder threshold', 'overdue days', 'overdue reminder'),
+        'overdue_notify_customer' => array(
+            'müşteriye hatırlat', 'musteriye hatirlat', 'müşteriye yaz', 'musteriye yaz', 'müşteriye hatırlatma', 'musteriye hatirlatma',
+            'notify customer', 'remind customer', 'customer reminder', 'customer reminders'),
+    );
+
+    // English source of each export heading; the tax id heading depends on
+    // the country and both its forms are among the common names.
+    $headings = array(
+        'title' => 'Name', 'kind' => 'Type', 'is_person' => 'Taxpayer', 'tax_office' => 'Tax Office',
+        'email' => 'E-mail Address', 'phone' => 'Phone Number', 'address' => 'Address', 'district' => 'District',
+        'city' => 'City', 'state' => 'State / Province', 'postcode' => 'Postal Code', 'country_code' => 'Country',
+        'currency' => 'Currency', 'status' => 'Status', 'notes' => 'Notes', 'payment_days' => 'Payment Term (days)',
+        'overdue_notify_days' => 'Reminder threshold (days)', 'overdue_notify_customer' => 'Remind the customer',
+    );
+
+    foreach ($headings as $field => $heading) {
+        $synonyms[$field][] = $heading;
+        $synonyms[$field][] = lang(array('string' => $heading, 'language' => 'tr'));
+    }
+
+    return $synonyms;
 }
 
 /**
@@ -334,6 +397,8 @@ function erp_import_parse_kind($value)
         'musteri' => 'customer', 'alici' => 'customer', 'customer' => 'customer', 'client' => 'customer', 'c' => 'customer',
         'tedarikci' => 'supplier', 'satici' => 'supplier', 'supplier' => 'supplier', 'vendor' => 'supplier', 's' => 'supplier',
         'herikisi' => 'both', 'ikisi' => 'both', 'musteritedarikci' => 'both', 'musterivetedarikci' => 'both', 'both' => 'both', 'b' => 'both',
+        // The English words the accounts export writes for 'both'.
+        'customerandsupplier' => 'both', 'supplierandcustomer' => 'both',
     );
 
     return isset($map[$key]) ? $map[$key] : '';
