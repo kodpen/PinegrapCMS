@@ -46,19 +46,19 @@ set the page is buffered and discarded after `pg_cron_ran()`; an error screen
 ends the run inside the buffer and still reaches the site log. A direct
 command line run still prints the page.
 
-## What still differs between a web and a command line index run?
-The web run unsets `$_SESSION`, but `USER_LOGGED_IN` and the role were already
-defined from the manager's session by `init.php`. Menus and regions shown
-only to signed-in users (for example a "my conversations" link) and the files
-they link reach the index, and `includes/fn/mail.php` and
-`includes/fn/content.php` warn about the missing session user. The command
-line run indexes what a visitor sees. Not changed here.
+## Does a web index run render as the manager who started it?
+No (#4207, issue #4144). `initialize_user()` skips the session user while
+`UPDATE_SEARCH_INDEX` is set (`pg_auth_session_user_applies()`, pure), as
+the remember-me branch already did, so `USER_LOGGED_IN` is false for the
+run. Before, the manager's edit access put the classic comments area's
+watcher e-mails in the public index. The job checks the caller's role from
+`$_SESSION['sessionuserid']` itself; the stored session is untouched, so
+nobody is signed out. Rebuild the index once after the update.
 
 ## How does a web run read a visual page's records?
 As an anonymous visitor while `UPDATE_SEARCH_INDEX` is set:
 `pg_sw_submitted_form_visible()` denies `logged_in` and `submitter_only`
 record views, and the comments region of a record on a visual page lists only
-published comments (legacy pages unchanged). Commenter usernames shown to
-editors still reach a web run.
-
-Test: `tests/cli_job_warnings_test.php`. PR #493.
+published comments. 
+Tests: `tests/cli_job_warnings_test.php` (PR #493),
+`tests/search_index_anonymous_test.php` (#4207).

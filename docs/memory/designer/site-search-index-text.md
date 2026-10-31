@@ -13,6 +13,9 @@ module: site_search
 
 Title, meta description and keywords are still added by the job around this text, as before.
 
+## As whom is the page drawn?
+As a visitor who is not signed in, whoever runs the job (panel button, cron, command line): `initialize_user()` loads no session user while `UPDATE_SEARCH_INDEX` is set (#4207, issue #4144). A panel run used to draw with the manager's edit access and stored watcher and submitter e-mails.
+
 ## Why not convert_html_to_text()?
 It is the plain-text e-mail body converter (`includes/fn/mail.php`): it keeps every region and writes links as `text (url)`. The index used it, so the consent window ("Reject all"), the top strip, sign-in links, the menu, the sitemap and the footer columns were in every page's text, and a word found only there returned the whole site (#4038, fixed by #4096). Leave the mail converter as it is; index text changes go into `pg_search_index_text()`.
 
