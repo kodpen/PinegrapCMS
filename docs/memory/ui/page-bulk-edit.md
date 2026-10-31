@@ -14,6 +14,10 @@ module: page_bulk
 - Tag cloud: `update_tag_cloud_keywords_for_page()` when `page_search` flips.
 - Unchanged values are not written.
 
+## What happens when a write fails?
+- `pg_page_bulk_apply()` answers false as soon as a `preview_styles` DELETE/INSERT or the page UPDATE (`db_q()`) fails, and skips the tag cloud update; true otherwise. Edit Pages stops with 'Query failed.' before the audit row and the count. The File Manager panel (JSON, no `output_error()`) leaves the page out of the count, the audit and the log, and names it ("The page {var:1} could not be saved."); `updated` and the status read the pages written.
+- Before, the move into the shared function dropped the checks, so a failed write was announced as changed (`tests/page_bulk_failed_write_test.php`).
+
 ## What did this fix?
 - `edit_pages.php` let a role 3 user restyle pages, overwrote the style of visual-editor pages, never marked the SEO score stale (the Pages SEO column, weak-SEO filters and the dashboard brief showed the old score up to 7 days) and set sitemap = 1 on noindex pages. The File Manager panel wrote sitemap regardless of type and noindex, and skipped the tag cloud update when search was switched.
 - `sitemap.xml` itself was never wrong: `get_sitemap_info()` leaves noindex pages out; the stored flag and the Pages list check mark were.

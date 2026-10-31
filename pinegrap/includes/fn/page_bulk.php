@@ -185,6 +185,8 @@ function pg_page_bulk_fetch($page_id)
  * @param array $decision          pg_page_bulk_decide()
  * @param int   $user_id
  * @param int   $preview_theme_id  0 when no style goes to a preview
+ * @return bool  false as soon as a write fails; the tag cloud is then left
+ *               alone, since the search flag it counts did not change
  */
 function pg_page_bulk_apply($page, $decision, $user_id, $preview_theme_id = 0)
 {
@@ -194,17 +196,21 @@ function pg_page_bulk_apply($page, $decision, $user_id, $preview_theme_id = 0)
 
     if ($preview_theme_id > 0) {
         foreach ($decision['styles'] as $device => $style_id) {
-            db_q(
+            $deleted = db_q(
                 "DELETE FROM preview_styles
                 WHERE (page_id = ?) AND (theme_id = ?) AND (device_type = ?)",
                 array($page_id, (int) $preview_theme_id, (string) $device));
 
+            if ($deleted === false) {
+                return false;
+            }
+
             // The default here is the activated style: no row.
-            if ($style_id > 0) {
-                db_q(
+            if (($style_id > 0) && (db_q(
                     "INSERT INTO preview_styles (page_id, theme_id, style_id, device_type)
                     VALUES (?, ?, ?, ?)",
-                    array($page_id, (int) $preview_theme_id, (int) $style_id, (string) $device));
+                    array($page_id, (int) $preview_theme_id, (int) $style_id, (string) $device)) === false)) {
+                return false;
             }
         }
     } else {
@@ -234,13 +240,17 @@ function pg_page_bulk_apply($page, $decision, $user_id, $preview_theme_id = 0)
         $params[] = (int) $user_id;
         $params[] = $page_id;
 
-        db_q(
+        $updated = db_q(
             "UPDATE page
             SET
                 " . implode(",\n                ", $sql) . ",
                 page_timestamp = UNIX_TIMESTAMP(),
                 page_user = ?
             WHERE page_id = ?", $params);
+
+        if ($updated === false) {
+            return false;
+        }
     }
 
     if ($decision['tag_cloud'] == 'add') {
@@ -248,4 +258,6 @@ function pg_page_bulk_apply($page, $decision, $user_id, $preview_theme_id = 0)
     } elseif ($decision['tag_cloud'] == 'remove') {
         update_tag_cloud_keywords_for_page($page_id, 0, '', 1, $page['page_search_keywords']);
     }
+
+    return true;
 }
