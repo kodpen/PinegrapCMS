@@ -93,9 +93,14 @@ function test_contact_form_columns()
 function test_contact_form_affiliate_columns()
 {
 	pg_assert_same(
-		array('affiliate_approved' => '1', 'affiliate_name' => 'Shop', 'affiliate_code' => 'ABC123', 'affiliate_commission_rate' => '10'),
+		array('affiliate_approved' => '1', 'affiliate_name' => 'Shop', 'affiliate_code' => 'ABC123', 'affiliate_commission_rate' => '10.00'),
 		pg_contact_form_affiliate_columns(array('affiliate_approved' => '1', 'affiliate_name' => 'Shop', 'affiliate_code' => 'typed', 'affiliate_commission_rate' => '10'), 'ABC123'),
 		'the settled code wins over the posted one');
+
+	pg_assert_same('8.25', pg_contact_form_affiliate_columns(array('affiliate_commission_rate' => '8,25'), '')['affiliate_commission_rate'], 'decimal comma read as the decimal point');
+	pg_assert_same('8.25', pg_contact_form_affiliate_columns(array('affiliate_commission_rate' => ' 8.25 '), '')['affiliate_commission_rate'], 'decimal point kept');
+	pg_assert_same('999.99', pg_contact_form_affiliate_columns(array('affiliate_commission_rate' => '1000'), '')['affiliate_commission_rate'], 'held to the column');
+	pg_assert_same('', pg_contact_form_affiliate_columns(array('affiliate_commission_rate' => '  '), '')['affiliate_commission_rate'], 'blank stays blank for the default');
 
 	pg_assert_same(
 		array('affiliate_approved' => '', 'affiliate_name' => '', 'affiliate_code' => '', 'affiliate_commission_rate' => ''),

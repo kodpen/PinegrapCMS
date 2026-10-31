@@ -85,6 +85,7 @@ window.pgFoldTR = function (s) {
     }
 
     var numericMask = numeric.mask;
+    var numericBeforeMask = numeric.onBeforeMask;
 
     Inputmask.extendAliases({
         currency: {
@@ -96,6 +97,25 @@ window.pgFoldTR = function (s) {
                 }
 
                 return mask;
+            }
+        },
+        // Number boxes (rates, days) use the "decimal" alias with "." as the
+        // decimal point and no thousands separator. A typed "," becomes "."
+        // as it is typed, but the stock alias split a pasted or autofilled
+        // value at "." only and dropped the rest, so "8,25" became 825.
+        // Without a thousands separator the last "." or "," is the decimal
+        // point (as pg_parse_commission_rate() reads it on the server).
+        decimal: {
+            onBeforeMask: function (value, opts) {
+                if ((typeof value === 'string') && (opts.groupSeparator === '') && (opts.radixPoint !== '')) {
+                    var last = Math.max(value.lastIndexOf('.'), value.lastIndexOf(','));
+
+                    if (last !== -1) {
+                        value = value.slice(0, last).replace(/[.,]/g, '') + opts.radixPoint + value.slice(last + 1);
+                    }
+                }
+
+                return (typeof numericBeforeMask === 'function') ? numericBeforeMask.call(this, value, opts) : value;
             }
         },
         // The stock alias is a fixed mask (at most four local-part dots and
