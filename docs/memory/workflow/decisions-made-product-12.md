@@ -8,7 +8,7 @@ description: Decisions list, product part 12 (2026-10-31 on): ERP settings cards
 
 ## Where does a role-3 user edit the ERP settings cards? (#3828)
 - Decided (architect, 2026-10-31, settings recategorization R2b): both places from one code path. The four `erp_settings.php` cards (rules, late fee, e-Fatura threshold, document templates) move into shared functions under `includes/erp/`; `accounting.php` / `accounting.save.php` draw and save them for role < 3 in the pane's one Save; `erp_settings.php` draws the same functions for role 3 with `manage_erp_settings`. No right changes; `settings_pane.php`'s manager gate stays. Refused: a role-3 exception in the dialog gate; a link card instead of the move. The template editor joins the pane only if it fits one Save, else the pane shows each document's state and links to the screen; the screen redirects role < 3 to `#settings/accounting` only once nothing it offers is missing from the pane.
-- Owner, 2026-10-31: the four cards leave `erp_settings.php` for role < 3; the screen keeps the template editor; role 3 unchanged (#4055).
+- Built (#4055, 2026-10-31): the four cards leave `erp_settings.php` for role < 3; the screen keeps the template editor; role 3 unchanged.
 
 ## Trendyol import: which column holds the province? (#3835)
 - Decided (architect, 2026-10-31): before 2026.11.0 ships, `mp_trendyol_address()` stores Trendyol's `district` in `city` and its `city` (province) in `state`, as checkout and n11 (#2004) do; `district` unchanged; no data step (only dev sites hold Trendyol rows). Refused: keeping the reversed order for good; a rewrite of dev rows.
