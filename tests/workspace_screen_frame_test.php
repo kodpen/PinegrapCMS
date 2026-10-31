@@ -3,9 +3,9 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Source checks for the frame of the Workspace screens in backend.src.css:
- * the MCP connections and channel template screens put their columns
- * straight into .ws-shell-main, so they take the settings screen's padding
- * and gutter; sticky status columns stay below the fixed panel header; the
+ * the MCP connections, channel template and tables screens put their
+ * columns straight into .ws-shell-main, so they take the settings screen's
+ * padding and gutter; sticky status columns stay below the fixed panel header; the
  * MCP servers card wraps on a phone.
  *
  * @author      Erdal Güral (Kodpen)
@@ -37,7 +37,7 @@ function ws_frame_css_rule($source, $selector)
 function test_ws_frame_gutter_rule_leaves_out_framed_screens()
 {
 	$source = ws_frame_css_source();
-	$framed = 'body.workspace:not(.workspace_settings, .workspace_mcp, .workspace_template, .workspace_calendar_feed)';
+	$framed = 'body.workspace:not(.workspace_settings, .workspace_mcp, .workspace_template, .workspace_calendar_feed, .workspace_wtables)';
 
 	pg_assert_true(strpos($source, $framed . ' #content.p-0 > .row,') !== false, 'the gutter-0 rule on #content leaves out the framed screens');
 	$rule = ws_frame_css_rule($source, $framed . ' .ws-shell-main > .row');
@@ -49,7 +49,7 @@ function test_ws_frame_gutter_rule_leaves_out_framed_screens()
 function test_ws_frame_mcp_and_template_take_settings_frame()
 {
 	$source = ws_frame_css_source();
-	$screens = 'body.workspace:is(.workspace_settings, .workspace_mcp, .workspace_template, .workspace_calendar_feed)';
+	$screens = 'body.workspace:is(.workspace_settings, .workspace_mcp, .workspace_template, .workspace_calendar_feed, .workspace_wtables)';
 
 	$main = ws_frame_css_rule($source, $screens . ' .ws-shell-main');
 	pg_assert_true(strpos($main, 'padding: 0 .75rem .75rem;') !== false, 'the framed screens pad .ws-shell-main');
@@ -88,4 +88,15 @@ function test_ws_frame_calendar_feed_in_the_frame()
 
 	pg_assert_contains("'extra classes'       => 'workspace workspace_calendar_feed',", $source, 'the workspace body classes');
 	pg_assert_contains('<main id="content" class="container-fluid p-0">' . "\n" . '<div class="ws-shell">' . "\n" . '<div class="ws-shell-main">', $source, 'the shell around the columns');
+}
+
+// A small select keeps its longest option clear of its arrow (the panel's
+// small fields are 0.5rem across; v6's three of them ended where the arrow
+// began).
+function test_ws_frame_small_select_keeps_its_arrow_clear()
+{
+	$rule = ws_frame_css_rule(ws_frame_css_source(), 'select.form-control.form-control-sm:not([multiple], [size]:not([size="1"]))');
+
+	pg_assert_contains('--bs-control-select-bg-position: right .5rem center;', $rule);
+	pg_assert_contains('padding-inline-end: 1.75rem;', $rule);
 }

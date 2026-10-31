@@ -251,6 +251,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - panel-save-shortcut.md: Panel Ctrl+S (backend.src.js) and Return in a text field: which form and button each submits, the button hint, disable_shortcut forms, a key a dialog handled, buttons on their own form
 - panel-screenshots.md: tools/screenshots/shoot.js shoots panel screens (light/dark, wide/phone) on a setup_sandbox.sh instance with sample records: running it, adding a screen, the private page
 - panel-script-number-format.md: Panel scripts and size labels write figures with pg_number_separators(), never toLocaleString() or a bare toFixed()
+- panel-small-select-arrow.md: A small select (select.form-control.form-control-sm) keeps its longest option clear of the arrow: 1.75rem end padding, the arrow 0.5rem in
 - panel-stepper-and-product-names.md: Accessible names of number steppers, catalog landmarks, the Modify Selected (Products) value boxes and the product screen fields, and the tests that pin them
 - panel-tab-rows.md: Panel tab rows say which tab is open (role=tab + aria-selected, named tabpanel) and move with the arrow keys; a hidden Bootstrap tab is also disabled
 - panel-text-size.md: Panel text in rem so it follows the browser's text size: the screens and dashboard cards converted, the boxes that grow with their text, what stays px on purpose

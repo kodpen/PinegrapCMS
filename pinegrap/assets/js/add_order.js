@@ -1208,9 +1208,10 @@
                 if (answer.ok) {
                     state.picker = false;
                     el.customer.innerHTML = state.customerHtml;
-                    pgUI.dialog.hide(el.accountModal);
                     toast(answer.message, 'success');
-                    el.product.focus();
+                    // The product field takes the focus once the window has
+                    // closed: until then the page under it is inert.
+                    pgUI.dialog.hide(el.accountModal).then(function () { el.product.focus(); });
                     return;
                 }
                 var errors = answer.field_errors || {};
@@ -1404,9 +1405,10 @@
             pgUI.dialog.show(byId('pg_sale_clear'));
         });
         byId('pg_sale_clear_go').addEventListener('click', function () {
-            pgUI.dialog.hide(byId('pg_sale_clear'));
             send('clear_cart', {}, { toast: true });
-            el.product.focus();
+            // As above: the focus goes back to the product field once the
+            // window has closed, or it lands on the Clear button again.
+            pgUI.dialog.hide(byId('pg_sale_clear')).then(function () { el.product.focus(); });
         });
     }
 

@@ -10,6 +10,7 @@ description: A Bootstrap 6 dialog or drawer hands its result to the page only on
 ## Where is it done?
 - `modal()` in assets/js/workspace_editor.js gives each window `finish(callback)`: hide, then the callback. The table, checklist, code and calculation windows hand their markup over through it (`win.finish(function () { done(…); })`), for the channel's writing box and the notes alike.
 - `hideOffcanvas(node, then)` in workspace.js runs `then` once the drawer has closed: the + menu's "Pull from elsewhere" (`blockPuller()`) and the saved replies' Add to message (workspace_replies.js) use it.
+- add_order.js: the product box takes the focus in `pgUI.dialog.hide(…).then()` after the new-customer window and Empty the cart; focused right after `hide()` the focus fell to `<body>`, so the next scan went nowhere (`commerce/counter-sale-keyboard-focus.md`).
 
 ## What was the symptom?
 - Owner, 2026-10-31: the writing box's + menu put neither a table nor a calculation into the message; the window closed and the box stayed empty. Checklist, code block, pulled blocks and saved replies did the same. It came with the panel's switch to Bootstrap 6 (`866af2d9f`), when the windows became `<dialog>`s.

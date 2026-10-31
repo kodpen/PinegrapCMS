@@ -109,3 +109,17 @@ function test_workspace_recurrence_end_date_box()
 	pg_assert_true(strpos($rec, "untilBox.classList.toggle('d-none', ends.value !== 'on');") !== false, 'the end date is hidden with the box drawn after it');
 	pg_assert_true(strpos($rec, 'window.pgFields.focus(until);') !== false, 'the focus goes to the box people type in, not the hidden store');
 }
+
+// The Decision Timeline's two days say what they are while empty and share
+// their row of the toolbar: as w-auto boxes they were blank and pushed a
+// phone's page sideways.
+function test_workspace_timeline_dates_are_named_and_fit()
+{
+	$src = workspace_datetime_source('assets/js/workspace.js');
+	$css = workspace_datetime_source('assets/css/backend.src.css');
+
+	pg_assert_contains("var dates = el('div', 'd-flex gap-1 ws-tl-dates');", $src);
+	pg_assert_contains('input.placeholder = label;', $src, 'the label is the placeholder too');
+	pg_assert_contains(".ws-tl-dates {\n  flex: 0 1 22rem;\n  min-width: 0;\n}", $css);
+	pg_assert_contains(".ws-tl-dates > .pg-date-box {\n  flex: 1 1 0;\n  min-width: 0;\n}", $css);
+}

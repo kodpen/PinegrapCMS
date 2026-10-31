@@ -398,6 +398,13 @@ input.btn-check:disabled + .btn {
 .input-group-lg > select.form-control:not([multiple], [size]:not([size="1"])) {
   padding-inline-end: calc(var(--bs-btn-input-lg-padding-x) * 3);
 }
+/* A small select keeps its longest option clear of the arrow: the panel's
+   small fields are 0.5rem across, so v6's three of them (1.5rem) ended where
+   its arrow, drawn 0.75rem in, began ("Tüm departmanlar" ran into it). */
+select.form-control.form-control-sm:not([multiple], [size]:not([size="1"])) {
+  --bs-control-select-bg-position: right .5rem center;
+  padding-inline-end: 1.75rem;
+}
 /* v5's field: a label in the text's own colour and weight (.small
    shrinks it), no inset shadow. */
 .form-label,
@@ -11376,26 +11383,26 @@ body.workspace .card .table {
    their toolbar across the whole width and give what is under it the
    toolbar's own side padding, so the rounded cards do not meet the edge and
    line up with the first button above them. The settings, MCP connections,
-   channel template and calendar subscription screens put their columns straight into
+   channel template, calendar subscription and tables screens put their columns straight into
    .ws-shell-main, with no #ws-root around them: they give the main area
    that padding themselves, so their columns keep their gutter. */
-body.workspace:not(.workspace_settings, .workspace_mcp, .workspace_template, .workspace_calendar_feed) #content.p-0 > .row,
-body.workspace:not(.workspace_settings, .workspace_mcp, .workspace_template, .workspace_calendar_feed) .ws-shell-main > .row {
+body.workspace:not(.workspace_settings, .workspace_mcp, .workspace_template, .workspace_calendar_feed, .workspace_wtables) #content.p-0 > .row,
+body.workspace:not(.workspace_settings, .workspace_mcp, .workspace_template, .workspace_calendar_feed, .workspace_wtables) .ws-shell-main > .row {
   --bs-gutter-x: 0;
 }
 body.workspace:not(.workspace_channels) #ws-root {
   padding: 0 .75rem .75rem;
 }
-body.workspace:is(.workspace_settings, .workspace_mcp, .workspace_template, .workspace_calendar_feed) .ws-shell-main {
+body.workspace:is(.workspace_settings, .workspace_mcp, .workspace_template, .workspace_calendar_feed, .workspace_wtables) .ws-shell-main {
   padding: 0 .75rem .75rem;
 }
 body.workspace:not(.workspace_channels) #ws-root > .pg-toolbar,
-body.workspace:is(.workspace_settings, .workspace_mcp, .workspace_template, .workspace_calendar_feed) .ws-shell-main > #button_bar {
+body.workspace:is(.workspace_settings, .workspace_mcp, .workspace_template, .workspace_calendar_feed, .workspace_wtables) .ws-shell-main > #button_bar {
   max-width: none;
   margin-left: -.75rem;
   margin-right: -.75rem;
 }
-body.workspace:is(.workspace_settings, .workspace_mcp, .workspace_template, .workspace_calendar_feed) .ws-shell-main > #button_bar {
+body.workspace:is(.workspace_settings, .workspace_mcp, .workspace_template, .workspace_calendar_feed, .workspace_wtables) .ws-shell-main > #button_bar {
   padding: .5rem .75rem;
   border-bottom: 1px solid var(--pg-border-color-translucent);
 }
@@ -17558,7 +17565,16 @@ html[data-bs-theme="dark"] .ws-fd-tone-text-2 { --ws-fd-tone: #f0c060; }
   color: var(--pg-fg-2);
 }
 /* The decision timeline: a day heading, then the day's decisions on a line
-   of dots - the time on its left, the decision's card on its right. */
+   of dots - the time on its left, the decision's card on its right. Its two
+   days share a row of the toolbar, narrower on a phone. */
+.ws-tl-dates {
+  flex: 0 1 22rem;
+  min-width: 0;
+}
+.ws-tl-dates > .pg-date-box {
+  flex: 1 1 0;
+  min-width: 0;
+}
 .ws-tl-summary {
   display: flex;
   flex-wrap: wrap;
