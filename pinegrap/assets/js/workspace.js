@@ -23758,6 +23758,59 @@
     // Start
     // ═══════════════════════════════════════════════════════════════════
 
+    // The page's back arrow running the back step of a view drawn in the
+    // page (a flow, a scheduled action). Workspace screens print no arrow of
+    // their own, so while such a view is open the arrow is drawn here at the
+    // head of the breadcrumb strip, as output_header() draws it, and the
+    // strip is made where the screen has none. One step at a time: a new
+    // one replaces the last; viewBack(null) takes it away when the view
+    // closes. refocusKey is the data-refocus a caller restores focus with.
+    function viewBack(label, onBack, refocusKey) {
+        var arrow = document.getElementById('ws-view-back');
+        var strip = arrow ? arrow.parentNode : document.querySelector('.pg-breadcrumb');
+
+        if (arrow) {
+            strip.removeChild(arrow);
+        }
+
+        if (strip && (strip.getAttribute('data-ws-view-back') === '1') && !strip.children.length) {
+            strip.parentNode.removeChild(strip);
+            strip = null;
+        }
+
+        if (!label) {
+            return null;
+        }
+
+        if (!strip) {
+            var main = document.getElementById('content');
+
+            if (!main || !main.parentNode) {
+                return null;
+            }
+
+            strip = el('div', 'pg-breadcrumb pg-print-none');
+            strip.setAttribute('data-ws-view-back', '1');
+            main.parentNode.insertBefore(strip, main);
+        }
+
+        arrow = el('button', 'pg-backbtn no-popover');
+        arrow.type = 'button';
+        arrow.id = 'ws-view-back';
+        arrow.title = label;
+        arrow.setAttribute('aria-label', label);
+
+        if (refocusKey) {
+            arrow.setAttribute('data-refocus', refocusKey);
+        }
+
+        arrow.appendChild(el('span', 'bi bi-arrow-left')).setAttribute('aria-hidden', 'true');
+        arrow.addEventListener('click', onBack);
+        strip.insertBefore(arrow, strip.firstChild);
+
+        return arrow;
+    }
+
     // What the screens kept in files of their own lean on here
     // (workspace_palette.js, workspace_board_channel.js, workspace_flow.js):
     // the small helpers, the dialogs and menus, the people picker the note
@@ -23772,6 +23825,7 @@
             icon: icon,
             flowIcon: flowIcon,
             button: button,
+            viewBack: viewBack,
             select: select,
             avatar: avatar,
             avatarStack: avatarStack,

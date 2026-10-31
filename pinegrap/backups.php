@@ -102,6 +102,9 @@ if (!$_POST) {
 	        )
 	    ) . '
 <main id="content" class="container-fluid">
+	    ' . pg_screen_toolbar(array(
+	        'grow' => '<span class="small fg-secondary">' . lang('Disk Usage') . ': ' . h(convert_bytes_to_string(folderSize('data/backups'), 2)) . '</span>',
+	    )) . '
 
 	        <div class="row">
 	            <div class="col-12">
@@ -109,15 +112,6 @@ if (!$_POST) {
 	                ' . $liveform->get_warnings() . '
 	                ' . $liveform->output_notices() . '
 	                ' . $output_restore_notice . '
-
-	                <div class="row mb-3 flex-wrap">
-	                    <div class="col-12 sm:col-12 text-center md:text-start">
-	                        
-	                        <p>' . lang('Disk Usage') . ': ' 
-	                            . h(convert_bytes_to_string(folderSize('data/backups'), 2)) . '
-	                        </p>
-	                    </div>
-	                </div>
 
 	                <form name="form" id="backupform" action="backups.php"
 	                      class="disable_shortcut" method="post" autocomplete="off">

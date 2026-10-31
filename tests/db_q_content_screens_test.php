@@ -121,7 +121,7 @@ function db_q_content_screens_test_calls($path)
 function db_q_content_screens_test_files()
 {
 	return array(
-		'edit_folder.php' => 21,
+		'edit_folder.php' => 22,
 		'duplicate_page_f.php' => 22,
 		'edit_calendar_event.php' => 22,
 		'image_editor_edit.php' => 26,

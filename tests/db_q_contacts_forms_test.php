@@ -138,7 +138,7 @@ function db_q_contacts_forms_test_files()
 		'includes/forms/contact_form.php' => 16,
 		'import_contacts.php' => 4,
 		'add_field.php' => 2,
-		'includes/forms/field_form.php' => 9,
+		'includes/forms/field_form.php' => 10,
 		'delete_fields.php' => 8,
 		'add_submitted_form.php' => 1,
 		'import_submitted_forms.php' => 7,

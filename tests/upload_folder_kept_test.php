@@ -1,0 +1,63 @@
+<?php
+/**
+ * Pinegrap - Enterprise Website Platform
+ *
+ * A form upload field whose folder was deleted or is no longer offered:
+ * Edit Field keeps the stored folder selected and marked with a line asking
+ * for another one, and Edit Folder's Delete confirmation names the upload
+ * fields that use the folder.
+ *
+ * @author      Erdal Güral (Kodpen)
+ * @link        https://kodpen.com
+ * @copyright   2017–2026 Kodpen
+ * @license     https://opensource.org/licenses/mit-license.html MIT License
+ */
+
+if (!defined('PG_TEST_RUNNER')) {
+	exit;
+}
+
+require_once(PG_FUNCTIONS_DIR . '/includes/forms/field_form.php');
+
+function test_upload_folder_kept_listed_folder_unchanged()
+{
+	$options = '<option value="1">Root</option><option value="7" selected="selected">Applications</option>';
+	$kept = pg_field_form_kept_folder($options, '7', 'Applications');
+
+	pg_assert_same($options, $kept['options'], 'a listed folder leaves the options as they are');
+	pg_assert_same('', $kept['help'], 'no help line for a listed folder');
+
+	$kept = pg_field_form_kept_folder($options, '0', null);
+	pg_assert_same($options, $kept['options'], 'no stored folder: nothing added');
+	pg_assert_same('', $kept['help'], 'no stored folder: no help line');
+}
+
+function test_upload_folder_kept_deleted_folder()
+{
+	$options = '<option value="1">Root</option>';
+	$kept = pg_field_form_kept_folder($options, '7', null);
+
+	pg_assert_contains('<option value="7" selected>' . h(lang('(deleted folder)')) . '</option>', $kept['options'], 'a deleted folder stays selected and is marked');
+	pg_assert_same(0, strpos($kept['options'], $options), 'the listed options come first');
+	pg_assert_contains('id="upload_folder_id_help"', $kept['help'], 'the help line has the id the select points at');
+	pg_assert_contains(h(lang('The folder this field uploads to was deleted. Choose another folder.')), $kept['help'], 'the deleted folder line');
+}
+
+function test_upload_folder_kept_not_offered_folder()
+{
+	$kept = pg_field_form_kept_folder('<option value="1">Root</option>', 7, 'CVs <old>');
+
+	pg_assert_contains('<option value="7" selected>' . h('CVs <old> ' . lang('(no longer offered)')) . '</option>', $kept['options'], 'a binned folder keeps its escaped name and is marked');
+	pg_assert_contains(h(lang('The folder this field uploads to is no longer offered here. Choose another folder.')), $kept['help'], 'the not offered line');
+}
+
+function test_upload_folder_kept_screens_wired()
+{
+	$form = file_get_contents(PG_FUNCTIONS_DIR . '/includes/forms/field_form.php');
+	pg_assert_contains('pg_field_form_kept_folder($folder_options, $field[\'upload_folder_id\'], pg_field_form_folder_name(', $form, 'Edit Field keeps the stored upload folder');
+	pg_assert_contains('aria-describedby="upload_folder_id_help"', $form, 'the select points at its help line');
+
+	$folder = file_get_contents(PG_FUNCTIONS_DIR . '/edit_folder.php');
+	pg_assert_contains('FROM form_fields WHERE upload_folder_id = ? AND type IN', $folder, 'Edit Folder counts the upload fields of the folder');
+	pg_assert_contains("'WARNING: This folder will be permanently deleted. It is the upload folder of {var:1} form field{suffix:1}. Later uploads to a field left on it will not show in All Files or the File Manager.'", $folder, 'the confirmation names the upload fields');
+}

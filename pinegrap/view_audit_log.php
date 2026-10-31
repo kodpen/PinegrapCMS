@@ -150,8 +150,21 @@ if ($audit_view_filters['request'] !== '') {
     $audit_view_narrowed .= '<span class="badge badge-subtle theme-secondary border me-3">' . h(lang('Request ID')) . ' ' . h($audit_view_filters['request']) . ' <a class="pg-link-secondary ms-1" href="' . h(pg_audit_list_link($audit_view_query, array('request' => ''))) . '" aria-label="' . h(lang('Remove')) . '"><i class="bi bi-x-lg" aria-hidden="true"></i></a></span>';
 }
 
-$audit_view_toolbar = '
-            <form action="view_audit_log.php" method="get" class="disable_shortcut card mb-7">
+// The search box, Filter and Clear filters sit in the screen toolbar; the
+// search box and Filter belong to the filter form below by their form
+// attribute, so one submit carries the fields and the search together.
+$audit_view_toolbar = pg_screen_toolbar(array(
+    'primary'   => '<button type="submit" form="audit_view_filter" class="btn btn-sm btn-solid theme-primary rounded-pill px-5"><i class="bi bi-funnel me-1" aria-hidden="true"></i>' . h(lang('Filter')) . '</button>',
+    'secondary' => $audit_view_query ? '<a href="view_audit_log.php" class="btn btn-sm btn-text theme-secondary">' . h(lang('Clear filters')) . '</a>' : '',
+    'grow'      => $audit_view_narrowed,
+    'search'    => '<label class="form-control form-control-sm form-adorn rounded-pill pg-toolbar-search">
+                        <span class="form-adorn-text" aria-hidden="true"><i class="bi bi-search"></i></span>
+                        <input type="search" class="form-ghost" form="audit_view_filter" name="q" value="' . h($audit_view_filters['q']) . '" maxlength="255" placeholder="' . h(lang('Record name')) . '" aria-label="' . h(lang('Record name')) . '">
+                    </label>',
+    'view'      => pg_list_sort_menu('view_audit_log.php', $audit_view_sort['sort_columns'], $audit_view_sort['sort_levels'], $audit_view_sort['sort_default'], $audit_view_kept),
+    'overflow'  => '<a href="' . h(pg_audit_list_link($audit_view_query, array('export' => 'csv'))) . '" class="btn btn-sm btn-text theme-secondary"><i class="bi bi-filetype-csv me-1" aria-hidden="true"></i>' . h(lang('Export CSV')) . '</a>',
+)) . '
+            <form action="view_audit_log.php" method="get" id="audit_view_filter" class="disable_shortcut card mb-7">
                 <div class="card-body">
                     ' . $audit_view_hidden . '
                     <div class="row g-3 align-items-end">
@@ -180,16 +193,6 @@ $audit_view_toolbar = '
                             <input type="text" class="form-control form-control-sm" id="audit_user" name="user" value="' . h($audit_view_filters['user']) . '" maxlength="100" placeholder="' . h(lang('Name or ID')) . '">
                         </div>
                     </div>
-                    <div class="pg-toolbar mt-5 mb-0">
-                        <label class="form-control form-control-sm form-adorn rounded-pill pg-toolbar-search">
-                            <span class="form-adorn-text" aria-hidden="true"><i class="bi bi-search"></i></span>
-                            <input type="search" class="form-ghost" name="q" value="' . h($audit_view_filters['q']) . '" maxlength="255" placeholder="' . h(lang('Record name')) . '" aria-label="' . h(lang('Record name')) . '">
-                        </label>
-                        <button type="submit" class="btn btn-sm btn-solid theme-primary rounded-pill px-5"><i class="bi bi-funnel me-1" aria-hidden="true"></i>' . h(lang('Filter')) . '</button>
-                        ' . ($audit_view_query ? '<a href="view_audit_log.php" class="btn btn-sm btn-text theme-secondary">' . h(lang('Clear filters')) . '</a>' : '') . '
-                        <div class="pg-toolbar-grow">' . $audit_view_narrowed . '</div>
-                        <a href="' . h(pg_audit_list_link($audit_view_query, array('export' => 'csv'))) . '" class="btn btn-sm btn-outline theme-secondary"><i class="bi bi-filetype-csv me-1" aria-hidden="true"></i>' . h(lang('Export CSV')) . '</a>
-                    </div>
                 </div>
             </form>
             ' . get_date_picker_format() . pg_fields_script();
@@ -204,13 +207,9 @@ pg_page_shell(array(
         'cancel'              => true,
     )) . '
 <main id="content" class="container-fluid">
+    ' . $audit_view_toolbar . '
     <div class="row">
         <div class="col-12">
-            ' . $audit_view_toolbar . '
-            <div class="pg-toolbar mb-3">
-                <div class="pg-toolbar-grow"></div>
-                ' . pg_list_sort_menu('view_audit_log.php', $audit_view_sort['sort_columns'], $audit_view_sort['sort_levels'], $audit_view_sort['sort_default'], $audit_view_kept) . '
-            </div>
             <div class="card mb-5">
                 <div class="card-body p-0 position-relative">
                     <table class="chart table-hover table align-top" style="width:100%;display:none" data-pg-list-action="audit_log_list_rows" data-pg-list-params="' . h(encode_json(array('filters' => (object) $audit_view_query))) . '" data-pg-audit-failed="' . h(lang('Query failed.')) . '" data-pg-audit-loading="' . h(lang('Loading...')) . '">

@@ -883,3 +883,26 @@ function pg_bundle_contents_of($bundle_ids)
 
     return $contents;
 }
+
+/**
+ * What a bulk delete says about the ticked products it left alone because
+ * they are part of a bundle (pg_catalog_bin_product() and
+ * pg_pb_delete_product() refuse a component). Empty when there are none.
+ *
+ * @param int $count
+ * @return string
+ */
+function pg_bundle_bulk_delete_refusal($count)
+{
+    $count = (int) $count;
+
+    if ($count <= 0) {
+        return '';
+    }
+
+    if ($count == 1) {
+        return lang(array('string' => '{var:1} product stayed because it is part of a bundle. Take it out of the bundle before deleting it.', 'vars' => array($count)));
+    }
+
+    return lang(array('string' => '{var:1} products stayed because they are part of a bundle. Take them out of the bundle before deleting them.', 'vars' => array($count)));
+}

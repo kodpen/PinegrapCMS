@@ -16,5 +16,5 @@ description: The way back to a parent or list screen is only the back arrow and 
 - `workspace_calendar.php` lost its bottom link to Calendar subscription; that screen is in the Workspace nav and the menu.
 - Pinned by `tests/back_arrow_targets_test.php` (`test_back_arrow_replaces_back_to_list_copies`).
 
-## What is left?
-- The copies drawn by JavaScript in `workspace_flow.js` and `workspace.js` (step H2b).
+## What about the views Workspace scripts draw in the page?
+- Their in-view back buttons became the page's arrow too (#3971): `back-arrow-targets.md`, "inside a Workspace view".

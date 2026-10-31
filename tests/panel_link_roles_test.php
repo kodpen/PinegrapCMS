@@ -33,7 +33,7 @@ function test_report_edit_and_add_filter_are_buttons()
 		$source = panel_link_roles_source($file);
 
 		pg_assert_false(strpos($source, 'href="#" id="edit_button"') !== false, $file . ': Edit is a link');
-		pg_assert_true(strpos($source, '<button type="button" class="btn btn-solid theme-primary" id="edit_button"') !== false, $file . ': Edit is a button');
+		pg_assert_true(strpos($source, '<button type="button" class="btn btn-sm btn-solid theme-primary rounded-pill px-5" id="edit_button"') !== false, $file . ': Edit is a button');
 		pg_assert_true(strpos($source, "document.getElementById(\\'edit_button\\').focus();") !== false, $file . ': Cancel Edit returns focus to Edit');
 		pg_assert_true(strpos($source, "querySelector(\\'input:not([type=hidden]), select, textarea\\')") !== false, $file . ': Edit moves focus into the form');
 	}

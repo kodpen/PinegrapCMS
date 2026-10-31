@@ -13,7 +13,7 @@ description: Steps H1-H6 of plans/screen-header-actions.md: which screens each f
   - `workspace_calendar_feed.php` gets a back arrow and breadcrumb to Work Calendar instead.
   - Test: `panel_screen_titles_test.php` refuses the removed keys.
 
-- H2 (M) The way back. H2a (the PHP screens, the six arrows below) done in #3933; H2b (the JS-drawn copies) open.
+- H2 (M) The way back. Done (#3933, #3971).
   - Give each screen whose bar holds a "back to list" copy a `cancel` url and a breadcrumb, then drop the copy: `add_return`, `view_return`, `view_returns`, `view_subscriptions`, `view_cart_quotes`, `product_builder`, `marketplace_products`, `workspace_template`, `workspace_wtables`, `workspace_mcp`, `find_and_replace`, `erp_stock` (card link), `erp_cashflow`.
   - Also drop the bottom link of `workspace_calendar.php` and the JS-drawn ones in `workspace_flow.js` and `workspace.js`; rebuild the bundles.
   - Add the six unlisted `history.go(-1)` arrows to `back-arrow-targets.md`: `privacy_erase`, `privacy_export`, `generate_layout`, `barcode_increase_inventory`, `barcode_decrease_inventory`, `import_design`.
@@ -25,6 +25,7 @@ description: Steps H1-H6 of plans/screen-header-actions.md: which screens each f
   - Split the screens into two PRs if needed.
 
 - H4 (M) Lone controls and fact lines.
+  - H4a done (#3966): right-only bars, report headers, lone buttons and Disk Usage draw one `pg_screen_toolbar()` bar directly in `<main>`; fact lines (counts, Disk Usage, the 404 and firewall summaries) sit in its grow slot. Left for H4b: Duplicate rows, `[name]` headings, Page Style Body Tag rows.
   - Bars whose only control sits at the right: `erp_invoice_recurrences`, `view_audit_log`, `view_waf_log`, `view_not_found_log`.
   - Report headers: `view_order_report`, `view_visitor_report`, `view_performance_log`.
   - Lone buttons: `erp_bank_statement`, `erp_stock_count`, `calendars.php`.
