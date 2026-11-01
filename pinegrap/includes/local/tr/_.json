@@ -1285,6 +1285,7 @@
     "{var:1} refused the label: {var:2}": "{var:1} etiketi reddetti: {var:2}",
     "{var:1} refused this site's CAPTCHA keys ({var:2}), so form submissions are refused until the keys are corrected in the Security settings": "{var:1} bu sitenin CAPTCHA anahtarlarını kabul etmedi ({var:2}); anahtarlar Güvenlik ayarlarında düzeltilene kadar form gönderimleri reddediliyor",
     "{var:1} region{suffix:1}": "{var:1} bölge",
+    "{var:1} removed": "{var:1} kaldırıldı",
     "{var:1} removed from the cart.": "{var:1} sepetten çıkarıldı.",
     "{var:1} renamed to {var:2}": "{var:1}, {var:2} olarak yeniden adlandırıldı",
     "{var:1} repaired in {var:2} s. The server said: {var:3}": "{var:1} {var:2} sn'de onarıldı. Sunucunun yanıtı: {var:3}",

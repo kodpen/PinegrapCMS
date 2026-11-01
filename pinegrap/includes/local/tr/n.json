@@ -77,6 +77,7 @@
     "Names at the root of the site that stand for a page, a product, a file or an address somewhere else.": "Sitenin kökünde duran, bir sayfanın, ürünün, dosyanın ya da başka bir adresin yerine geçen adlar.",
     "Names starting with og:, fb: or article: are written as property, the others as name, and a tag replaces the Open Graph or Twitter tag of the same name the site writes. viewport, description and robots come from the page settings.": "og:, fb: ya da article: ile başlayan adlar property, ötekiler name olarak yazılır; bir etiket, sitenin kendi yazdığı aynı adlı Open Graph ya da Twitter etiketinin yerine geçer. viewport, description ve robots sayfa ayarlarından gelir.",
     "Naming things": "Bir şeylere isim koymak",
+    "Narrow": "Dar",
     "Narrowing the permissions takes effect at once. After widening them, connect again in the application so the person can agree to the new ones.": "İzinleri daraltmak hemen geçerli olur. Genişlettikten sonra, kişinin yeni izinleri onaylayabilmesi için uygulamada yeniden bağlanın.",
     "Nashville": "Nashville",
     "National ID number (Iyzipay)": "TC Kimlik No (Iyzipay)",

@@ -82,7 +82,8 @@ function pg_dashboard_v2_greeting_preset($preset, $shop = false)
  *
  * @param string $layout_json dashboard_layout.layout, '' when none
  * @param bool   $shop
- * @return array preset, actions, tiles, chips, top (since, actions, tiles)
+ * @return array preset, actions, tiles, chips, top (since, actions, tiles,
+ *               status)
  */
 function pg_dashboard_v2_greeting_settings($layout_json, $shop)
 {
@@ -104,7 +105,7 @@ function pg_dashboard_v2_greeting_settings($layout_json, $shop)
     };
 
     $top = array();
-    foreach (array('since', 'actions', 'tiles') as $part) {
+    foreach (array('since', 'actions', 'tiles', 'status') as $part) {
         $top[$part] = (isset($layout['top'][$part]) && ((int) $layout['top'][$part] === 0)) ? 0 : 1;
     }
 

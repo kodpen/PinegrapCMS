@@ -15,6 +15,9 @@
  * Try again button. The cards of the refresh list are asked for again at the
  * session's refresh time while the tab is visible.
  *
+ * pg_dash_edit.js arranges the grid through pgDash.place(entries), reads it
+ * back with pgDash.layout() and asks one card again with pgDash.reload().
+ *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
  * @copyright   2017–2026 Kodpen
@@ -153,6 +156,9 @@
 
     var config = null;
     var frames = {};
+    // Frames taken off the grid (a removed card, another preset) wait here,
+    // so putting one back needs no new request.
+    var parked = {};
 
     function frame(entry) {
         var meta = config.cards[entry.id];
@@ -161,6 +167,7 @@
 
         box.setAttribute("data-card", entry.id);
         box.setAttribute("data-width", entry.w);
+        box.setAttribute("data-badge", entry.badge ? "1" : "0");
         box.setAttribute("data-category", meta.category);
         box.setAttribute("aria-labelledby", titleId);
         box.setAttribute("aria-busy", "true");
@@ -189,10 +196,27 @@
             pill.type = "button";
             head.appendChild(pill);
             pill.addEventListener("click", function () {
-                entry.per = (entry.per + 1) % 3;
-                drawPeriod(entry);
-                load([entry]);
+                var current = frames[entry.id].entry;
+                current.per = (current.per + 1) % 3;
+                pgDash.reload(current);
+                if (typeof pgDash.periodChanged === "function") {
+                    pgDash.periodChanged(current);
+                }
             });
+        }
+
+        if (!config.edit.locked) {
+            var more = el("button", "pg-dash-card-edit");
+            more.type = "button";
+            more.setAttribute("aria-label", (config.strings.edit_card || "").replace("{var:1}", meta.title));
+            more.appendChild(el("i", "bi bi-three-dots"));
+            more.firstChild.setAttribute("aria-hidden", "true");
+            more.addEventListener("click", function () {
+                if (pgDash.edit) {
+                    pgDash.edit.enter(entry.id);
+                }
+            });
+            head.appendChild(more);
         }
 
         box.appendChild(head);
@@ -285,6 +309,77 @@
             grid.appendChild(el("p", "pg-dash-empty", config.strings.empty));
         }
     }
+
+    // ── Arranging the grid ─────────────────────────────────────────────────
+
+    // The grid in this order: frames already drawn move, parked ones come
+    // back, new ones are made; the rest are parked. A card whose period or
+    // compare differs from its frame's is asked for again.
+    pgDash.place = function (entries) {
+        var grid = document.getElementById("pg_dash_grid");
+        var keep = {};
+        var fresh = [];
+
+        entries.forEach(function (entry) {
+            if (!config.cards[entry.id] || keep[entry.id]) {
+                return;
+            }
+            keep[entry.id] = true;
+
+            var item = frames[entry.id] || parked[entry.id];
+
+            if (!item) {
+                grid.appendChild(frame(entry));
+                fresh.push(entry);
+                return;
+            }
+
+            delete parked[entry.id];
+            frames[entry.id] = item;
+
+            if ((item.entry.per !== entry.per) || (item.entry.cmp !== entry.cmp)) {
+                fresh.push(entry);
+            }
+
+            item.entry = entry;
+            item.box.setAttribute("data-width", entry.w);
+            item.box.setAttribute("data-badge", entry.badge ? "1" : "0");
+            grid.appendChild(item.box);
+            drawPeriod(entry);
+        });
+
+        Object.keys(frames).forEach(function (id) {
+            if (!keep[id]) {
+                parked[id] = frames[id];
+                frames[id].box.remove();
+                delete frames[id];
+            }
+        });
+
+        var empty = grid.querySelector(".pg-dash-empty");
+        if (empty) {
+            empty.remove();
+        }
+        emptyCheck();
+        loadAll(fresh);
+    };
+
+    // The cards on the grid in their order, as layout entries.
+    pgDash.layout = function () {
+        var grid = document.getElementById("pg_dash_grid");
+        return Array.prototype.map.call(grid.querySelectorAll(".pg-dash-cardbox"), function (box) {
+            return frames[box.getAttribute("data-card")].entry;
+        });
+    };
+
+    pgDash.frame = function (id) {
+        return frames[id] || null;
+    };
+
+    pgDash.reload = function (entry) {
+        drawPeriod(entry);
+        load([entry]);
+    };
 
     // ── Data ───────────────────────────────────────────────────────────────
 
