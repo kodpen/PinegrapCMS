@@ -61,23 +61,18 @@
 (function () {
     'use strict';
 
-    var GRID = 16;
-    var BOX_W = 208;
-    var BOX_H = 80;
+    // The canvas core (assets/js/pg_graph_canvas.js): the grid, the box
+    // size, the geometry helpers, the undo history and the viewport.
+    var G = window.PGGraphCanvas;
+    var GRID = G.GRID;
+    var BOX_W = G.BOX_W;
+    var BOX_H = G.BOX_H;
     // The label of each kind of template setting (ws_flow_template_setting_types()).
     var SETTINGS = { channel: 'fl_tpl_set_channel', person: 'fl_tpl_set_person', time: 'fl_tpl_set_time', url: 'fl_tpl_set_url', address: 'fl_tpl_set_address', table: 'fl_tpl_set_table' };
-    var ZOOM_MIN = 0.25;
-    var ZOOM_MAX = 2;
     var SAVE_DELAY = 1500;
     // Browsers refuse a keepalive request body over 64 KiB; the action and
     // the token ride on top of the draft.
     var KEEPALIVE_BYTES = 60000;
-    var SVG_NS = 'http://www.w3.org/2000/svg';
-    // Undo goes back at most HISTORY_MAX steps; a change that is not
-    // structural made within HISTORY_FOLD ms of the one before it (typing,
-    // an arrow-key move) folds into that step.
-    var HISTORY_MAX = 50;
-    var HISTORY_FOLD = 1000;
     // While a box's settings are typed in, the data threads, the outline's
     // reads and the undo step wait until no key came for SETTLE_DELAY ms
     // (settle()): in a big flow each of them takes longer than a keystroke.
@@ -311,28 +306,24 @@
 
     // ── Small helpers ──────────────────────────────────────────────────
 
-    function snap(value) {
-        return Math.round(value / GRID) * GRID;
-    }
+    var snap = G.snap;
+    var clamp = G.clamp;
+    var svgEl = G.svgEl;
+    var curve = G.curve;
+    var freeId = G.freeId;
+    var typing = G.typing;
+    var bytes = G.bytes;
 
-    function clamp(value, min, max) {
-        return Math.max(min, Math.min(max, value));
-    }
+    // Undo and redo: the open flow's graph as JSON text before each change
+    // (historyOf(), historyRecord(), historyStep() of the core).
+    var historyOf = G.historyOf;
+    var historyRecord = G.historyRecord;
+    var historyStep = G.historyStep;
 
     function coord(value) {
         var limit = (FL.limits && FL.limits.coord) || 100000;
 
         return clamp(snap(value), -limit, limit);
-    }
-
-    function svgEl(tag, className) {
-        var node = document.createElementNS(SVG_NS, tag);
-
-        if (className) {
-            node.setAttribute('class', className);
-        }
-
-        return node;
     }
 
     function nodeById(id) {
@@ -394,74 +385,9 @@
         return titleOf(node) || t(kindOf(node).name);
     }
 
-    function freeId(prefix, list) {
-        var n = 1;
-
-        while (list.some(function (item) { return item.id === prefix + '_' + n; })) {
-            n++;
-        }
-
-        return prefix + '_' + n;
-    }
-
     function announce(text) {
         ui.live.textContent = '';
         window.setTimeout(function () { ui.live.textContent = text; }, 30);
-    }
-
-    // ── Undo and redo ──────────────────────────────────────────────────
-
-    // The steps of one flow as JSON text of its graph: before each change
-    // (past), those undone (future), and the graph as it is (now).
-    function historyOf(flow, graph) {
-        return { flow: flow, past: [], future: [], now: graph, at: 0, fold: false };
-    }
-
-    // The graph after a change; false when it is the same (the flow's name,
-    // its home). A change undone cannot be redone once another one is made.
-    function historyRecord(history, graph, fold, at) {
-        if (graph === history.now) {
-            return false;
-        }
-
-        if (!(fold && history.fold && ((at - history.at) < HISTORY_FOLD))) {
-            history.past.push(history.now);
-
-            if (history.past.length > HISTORY_MAX) {
-                history.past.shift();
-            }
-        }
-
-        history.future = [];
-        history.now = graph;
-        history.at = at;
-        history.fold = fold;
-
-        return true;
-    }
-
-    // One step back (or forward again): the graph to show, null when there
-    // is none. The change after it starts a step of its own.
-    function historyStep(history, back) {
-        var from = back ? history.past : history.future;
-
-        if (!from.length) {
-            return null;
-        }
-
-        (back ? history.future : history.past).push(history.now);
-        history.now = from.pop();
-        history.fold = false;
-
-        return history.now;
-    }
-
-    function typing(target) {
-        return !!(target && target.closest && target.closest('input, textarea, select, [contenteditable="true"]'));
-    }
-
-    function bytes(text) {
-        return new Blob([text]).size;
     }
 
     // The flow is the person's to change, whether or not a run is shown
@@ -2967,12 +2893,6 @@
         if (ui.flag && (box !== ui.flag)) {
             placeFlag();
         }
-    }
-
-    function curve(x1, y1, x2, y2) {
-        var dx = Math.max(48, Math.abs(x2 - x1) / 2);
-
-        return { d: 'M' + x1 + ' ' + y1 + ' C' + (x1 + dx) + ' ' + y1 + ' ' + (x2 - dx) + ' ' + y2 + ' ' + x2 + ' ' + y2, mx: (x1 + x2) / 2, my: (y1 + y2) / 2 };
     }
 
     // Where a loop's frame goes: around its For each box, its body and its
@@ -8879,7 +8799,6 @@
         });
     }
 
-
     // ── Shares ─────────────────────────────────────────────────────────
 
     // The Share dialog, made once: a title, the list and the controls drawn
@@ -10743,79 +10662,29 @@
             return;
         }
 
-        var rect = ui.viewport.getBoundingClientRect();
-        var v = state.view;
-        var left = item.x * v.k + v.x;
-        var top = item.y * v.k + v.y;
-        var margin = 32;
+        canvasView.reveal(item);
+    }
 
-        if ((left < margin) || (top < margin) || (left + BOX_W * v.k > rect.width - margin) || (top + BOX_H * v.k > rect.height - margin)) {
-            v.x = rect.width / 2 - (item.x + BOX_W / 2) * v.k;
-            v.y = rect.height / 2 - (item.y + BOX_H / 2) * v.k;
-            applyView();
+    // Pan and zoom (viewport() of the core) on state.view, which fit(), a
+    // pinch and the run view put a new view in.
+    var canvasView = G.viewport({
+        ui: ui,
+        view: function (next) {
+            if (next) {
+                state.view = next;
+            }
+
+            return state.view;
+        },
+        items: function () {
+            return state.graph ? state.graph.nodes : [];
         }
-    }
-
-    function applyView() {
-        var v = state.view;
-        var dots = GRID * v.k;
-
-        // Zoomed far out, every fourth dot of the grid is drawn.
-        while (dots < 8) {
-            dots *= 4;
-        }
-
-        ui.layer.style.transform = 'translate(' + v.x + 'px, ' + v.y + 'px) scale(' + v.k + ')';
-        ui.viewport.style.backgroundSize = dots + 'px ' + dots + 'px';
-        ui.viewport.style.backgroundPosition = v.x + 'px ' + v.y + 'px';
-        ui.zoomLabel.textContent = Math.round(v.k * 100) + '%';
-    }
-
-    function zoomAt(clientX, clientY, factor) {
-        var rect = ui.viewport.getBoundingClientRect();
-        var v = state.view;
-        var k = clamp(v.k * factor, ZOOM_MIN, ZOOM_MAX);
-        var px = clientX - rect.left;
-        var py = clientY - rect.top;
-
-        v.x = px - (px - v.x) * (k / v.k);
-        v.y = py - (py - v.y) * (k / v.k);
-        v.k = k;
-        applyView();
-    }
-
-    function zoomBy(factor) {
-        var rect = ui.viewport.getBoundingClientRect();
-
-        zoomAt(rect.left + rect.width / 2, rect.top + rect.height / 2, factor);
-    }
-
-    // Everything on the canvas in sight, at most a little larger than life.
-    function fit() {
-        var items = state.graph ? state.graph.nodes : [];
-        var rect = ui.viewport.getBoundingClientRect();
-
-        if (!items.length || !rect.width) {
-            state.view = { x: 40, y: 40, k: 1 };
-            applyView();
-            return;
-        }
-
-        var minX = Math.min.apply(null, items.map(function (item) { return item.x; }));
-        var minY = Math.min.apply(null, items.map(function (item) { return item.y; }));
-        var maxX = Math.max.apply(null, items.map(function (item) { return item.x + BOX_W; }));
-        var maxY = Math.max.apply(null, items.map(function (item) { return item.y + BOX_H; }));
-        var k = clamp(Math.min((rect.width - 96) / Math.max(1, maxX - minX), (rect.height - 96) / Math.max(1, maxY - minY)), ZOOM_MIN, 1.25);
-
-        state.view = { x: (rect.width - (maxX - minX) * k) / 2 - minX * k, y: (rect.height - (maxY - minY) * k) / 2 - minY * k, k: k };
-        applyView();
-    }
-
-    function canvasPoint(clientX, clientY) {
-        var rect = ui.viewport.getBoundingClientRect();
-
-        return { x: (clientX - rect.left - state.view.x) / state.view.k, y: (clientY - rect.top - state.view.y) / state.view.k };
-    }
+    });
+    var applyView = canvasView.apply;
+    var zoomAt = canvasView.zoomAt;
+    var zoomBy = canvasView.zoomBy;
+    var fit = canvasView.fit;
+    var canvasPoint = canvasView.point;
 
     // ── Pointer and keyboard ───────────────────────────────────────────
 
@@ -10827,17 +10696,7 @@
         viewport.addEventListener('pointerup', pointerUp);
         viewport.addEventListener('pointercancel', pointerUp);
 
-        viewport.addEventListener('wheel', function (event) {
-            event.preventDefault();
-
-            if (event.ctrlKey || event.metaKey) {
-                zoomAt(event.clientX, event.clientY, Math.exp(-event.deltaY * 0.002));
-            } else {
-                state.view.x -= event.deltaX;
-                state.view.y -= event.deltaY;
-                applyView();
-            }
-        }, { passive: false });
+        viewport.addEventListener('wheel', canvasView.wheel, { passive: false });
 
         viewport.addEventListener('dragover', function (event) {
             if (state.edit) {
@@ -10888,12 +10747,7 @@
             var points = Object.keys(state.pointers).map(function (id) { return state.pointers[id]; });
 
             cancelDrag();
-            state.pinch = {
-                d: Math.max(1, Math.hypot(points[0].x - points[1].x, points[0].y - points[1].y)),
-                cx: (points[0].x + points[1].x) / 2,
-                cy: (points[0].y + points[1].y) / 2,
-                view: { x: state.view.x, y: state.view.y, k: state.view.k }
-            };
+            state.pinch = canvasView.pinchStart(points);
             return;
         }
 
@@ -11000,16 +10854,7 @@
                 return;
             }
 
-            var pinch = state.pinch;
-            var k = clamp(pinch.view.k * Math.hypot(points[0].x - points[1].x, points[0].y - points[1].y) / pinch.d, ZOOM_MIN, ZOOM_MAX);
-            var rect = ui.viewport.getBoundingClientRect();
-            var cx = (points[0].x + points[1].x) / 2 - rect.left;
-            var cy = (points[0].y + points[1].y) / 2 - rect.top;
-            var px = (pinch.cx - rect.left - pinch.view.x) / pinch.view.k;
-            var py = (pinch.cy - rect.top - pinch.view.y) / pinch.view.k;
-
-            state.view = { x: cx - px * k, y: cy - py * k, k: k };
-            applyView();
+            canvasView.pinchMove(state.pinch, points);
             return;
         }
 
