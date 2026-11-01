@@ -35,6 +35,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - billing-information-widget.md: The Billing Information widget (third classic checkout step): handler and page row, prefill from order and contact, parts the page turns off, helpers shared with step 1.
 - bootstrap-direct-child-canvas.md: Bootstrap direct-child selectors break on the canvas because of .sd-wrap: two-part fix (display:contents + re-applied rule), the td display:flex ban, the selected-child lift.
 - catalog-binding-disabled-no-output.md: Disabled catalog feature emits no output: _pg_catalog_binding_disabled(), designer mirror _sdCatalogBindingDisabled(), which settings disable which bindings.
+- catalog-item-checkout-options-tab.md: The product page starter's Checkout Options tab (catalog_item_view) is bound to the store's switched-on payment methods, with real fees, or not drawn (#4556); saved trees untouched
 - catalog-listing-system-widget.md: catalog_listing system widget defaults (PHP and designer JS), group card behaviour (browse/select), group scope rules, the subtree helper (no recursive SQL) and group price range rules.
 - catalog-rating-tokens.md: Product rating in the catalog widgets: __rating_avg / __rating_count tokens, has_rating / no_rating flags per card and on the product page, columns before 11.0.14, variant payload and switch
 - catalog-rss-structured-data.md: RSS feeds and JSON-LD for system widget pages: _pg_ bridge functions, integration points in get_page.php/get_page_content.php, channel/entity/review rules.
