@@ -378,9 +378,13 @@ function pg_sms_failure($error, $retry = false)
  * @param mixed      $kind
  * @param array|null $marketing pg_sms_marketing_normalize() shape; read from
  *                              the settings when null
+ * @param bool       $queued    the text is a queued body, which got its
+ *                              footer when it was queued: it is not appended
+ *                              again, so an identity or label changed since
+ *                              does not give the message a second footer
  * @return array ok, number (E.164 digits), text (as it is sent), error
  */
-function pg_sms_check($to, $text, $kind, $marketing = null)
+function pg_sms_check($to, $text, $kind, $marketing = null, $queued = false)
 {
     $kinds = pg_sms_kinds();
     $refused = array('ok' => false, 'number' => '', 'text' => '', 'error' => '');
@@ -413,7 +417,7 @@ function pg_sms_check($to, $text, $kind, $marketing = null)
         return $refused;
     }
 
-    if ($kinds[$kind]) {
+    if ($kinds[$kind] && !$queued) {
         $text = pg_sms_marketing_text($text, $marketing);
     }
 
@@ -798,6 +802,8 @@ function pg_sms_reachable($number, $provider)
  * @param string $to   a mobile number in any form pg_sms_number() reads
  * @param string $text
  * @param string $kind one of pg_sms_kinds()
+ * @param bool   $queued the text is a queued body (pg_sms_queue_run()),
+ *                       already carrying a marketing message's footer
  * @return array ok, id (the provider's id for the message), code (the
  *               provider's result code), error (a sentence for the operator),
  *               retry (whether sending it again cannot deliver it twice, so
@@ -805,9 +811,9 @@ function pg_sms_reachable($number, $provider)
  *               taken it although no success came back: sending it again
  *               could deliver it twice)
  */
-function pg_sms_send($to, $text, $kind)
+function pg_sms_send($to, $text, $kind, $queued = false)
 {
-    $check = pg_sms_check($to, $text, $kind);
+    $check = pg_sms_check($to, $text, $kind, null, $queued);
 
     if (!$check['ok']) {
         return pg_sms_failure($check['error']);
@@ -1351,7 +1357,7 @@ function pg_sms_queue_run($limit = 10, $seconds = 15)
 
         $expired = ((int) $row['expires_at'] > 0) && ((int) $row['expires_at'] <= time());
 
-        $send = $expired ? null : pg_sms_send(pg_sms_dial($row['recipient']), $row['body'], $row['kind']);
+        $send = $expired ? null : pg_sms_send(pg_sms_dial($row['recipient']), $row['body'], $row['kind'], true);
 
         $outcome = pg_sms_queue_outcome($row, $send, time());
 
