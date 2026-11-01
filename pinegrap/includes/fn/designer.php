@@ -7586,6 +7586,86 @@ function _pg_tpl_unique_page_name($base, $taken)
     return $base . '-' . time();
 }
 
+/**
+ * The page names a template design's first save writes. Pure.
+ *
+ * The names are chosen when the template opens (_pg_tpl_unique_page_name())
+ * and nothing holds them until the design is saved, so another design, an
+ * operator or a file may have taken one in the meantime. Such a name moves
+ * on to the next free one: "anasayfa-4" to "anasayfa-5" and on, a name
+ * without a number to "-2" and on. A name another tab of the same save
+ * carries is never chosen. Free names stay as they are.
+ *
+ * @param array    $names    tab key => page name, in tab order
+ * @param callable $is_taken function (string $name): bool, whether the site
+ *                           already uses the name
+ * @return array tab key => page name
+ */
+function pg_design_template_free_page_names($names, $is_taken)
+{
+    $names = is_array($names) ? $names : array();
+    $held = array();
+    foreach ($names as $name) $held[mb_strtolower(trim((string)$name), 'UTF-8')] = true;
+    $out = array();
+    foreach ($names as $key => $name) {
+        $name = trim((string)$name);
+        if ($name === '' || !call_user_func($is_taken, $name)) {
+            $out[$key] = $name;
+            continue;
+        }
+        if (preg_match('/^(.*\S)-(\d+)$/u', $name, $m)) {
+            $base = $m[1];
+            $n = (int)$m[2] + 1;
+        } else {
+            $base = $name;
+            $n = 2;
+        }
+        $new = $name;
+        for ($tries = 0; $tries < 500; $tries++, $n++) {
+            $candidate = $base . '-' . $n;
+            $lower = mb_strtolower($candidate, 'UTF-8');
+            if (isset($held[$lower]) || call_user_func($is_taken, $candidate)) continue;
+            $new = $candidate;
+            break;
+        }
+        $held[mb_strtolower($new, 'UTF-8')] = true;
+        $out[$key] = $new;
+    }
+    return $out;
+}
+
+/**
+ * Point the links of a template design at the addresses its pages were
+ * saved under (pg_design_template_free_page_names()). Pure.
+ *
+ * $value is a tree, a setting or JSON text; every string in it is read. An
+ * old address is replaced where it is a whole value or a quoted attribute
+ * value, and may carry a query or a fragment ("/iletisim-4?x", "#form");
+ * "/iletisim-40" and an address in running text stay as they are.
+ *
+ * @param mixed $value
+ * @param array $map old address => new address
+ * @return mixed
+ */
+function pg_design_template_relink($value, $map)
+{
+    if (!$map) return $value;
+    if (is_array($value)) {
+        foreach ($value as $k => $v) $value[$k] = pg_design_template_relink($v, $map);
+        return $value;
+    }
+    if (!is_string($value) || $value === '') return $value;
+    foreach ($map as $old => $new) {
+        $old = (string)$old;
+        if ($old === '' || strpos($value, $old) === false) continue;
+        $value = preg_replace(
+            '/(?<=^|["\'])' . preg_quote($old, '/') . '(?=$|["\'?#\\\\])/u',
+            str_replace(array('\\', '$'), array('\\\\', '\\$'), (string)$new),
+            $value);
+    }
+    return $value;
+}
+
 // Replace the template's placeholders in every string of a tree or a
 // setting: {{page:<key>}} the address of that template page, {{tab:<key>}}
 // the page as a page picker names a tab that has no id yet (resolved to the
@@ -8001,9 +8081,12 @@ function _pg_tpl_reuse_cutoff()
 // Whether a shared_components row is placed on any page, the recycle bin
 // included (a page brought back from the bin must find it where it left it),
 // or inside another shared component or widget (a login region in a header).
-function _pg_tpl_row_in_use($sid)
+// $used: the answer for every row at once (_pg_tpl_used_rows()); without it
+// the trees are read for this one row.
+function _pg_tpl_row_in_use($sid, $used = null)
 {
     $sid = (int)$sid;
+    if (is_array($used)) return isset($used[$sid]);
     if ((int)db_value(
         "SELECT COUNT(*) FROM page
          LEFT JOIN style ON page.page_style = style.style_id
@@ -8017,13 +8100,61 @@ function _pg_tpl_row_in_use($sid)
            AND (tree_json LIKE '%\"sharedId\":" . $sid . ",%' OR tree_json LIKE '%\"sharedId\":" . $sid . "}%')") > 0;
 }
 
+/**
+ * The shared_components ids some tree places, from the page trees and the
+ * component rows given. Pure.
+ *
+ * A component naming its own id does not count. The whole digit run is
+ * read, so id 1 never matches a reference to 12.
+ *
+ * @param array $page_trees     tree JSON strings
+ * @param array $component_rows rows with id and tree_json
+ * @return array id => true
+ */
+function _pg_tpl_used_shared_ids($page_trees, $component_rows)
+{
+    $used = array();
+    foreach ((array)$page_trees as $json) {
+        $json = (string)$json;
+        if (strpos($json, '"sharedId"') === false) continue;
+        if (!preg_match_all('/"sharedId":\s*"?(\d+)/', $json, $m)) continue;
+        foreach ($m[1] as $sid) $used[(int)$sid] = true;
+    }
+    foreach ((array)$component_rows as $row) {
+        $json = isset($row['tree_json']) ? (string)$row['tree_json'] : '';
+        if (strpos($json, '"sharedId"') === false) continue;
+        if (!preg_match_all('/"sharedId":\s*"?(\d+)/', $json, $m)) continue;
+        $self = isset($row['id']) ? (int)$row['id'] : 0;
+        foreach ($m[1] as $sid) {
+            if ((int)$sid !== $self) $used[(int)$sid] = true;
+        }
+    }
+    unset($used[0]);
+    return $used;
+}
+
+// Every shared_components row placed somewhere, in one reading of the page
+// trees (the recycle bin included) and of the component trees: opening a
+// template asks this of each earlier row it might take again, and asking
+// per row read every page once or twice for each.
+function _pg_tpl_used_rows()
+{
+    $tree_expr = pg_page_tree_sql_expr();
+    $pages = db_values(
+        "SELECT " . $tree_expr . " FROM page
+         LEFT JOIN style ON page.page_style = style.style_id
+         WHERE " . $tree_expr . " LIKE '%sharedId%'");
+    $rows = db_items("SELECT id, tree_json FROM shared_components WHERE tree_json LIKE '%sharedId%'");
+    return _pg_tpl_used_shared_ids(is_array($pages) ? $pages : array(), is_array($rows) ? $rows : array());
+}
+
 // The row for one template shared component (a header, a footer, a band
 // several pages carry): an unused one made for the same template earlier,
 // brought back to the template's layout, else a new one. A plain shared
 // component has no system_region_config, so where it came from is kept in
 // `category` ("template:<template>/<key>"), which nothing else writes for
 // these rows. Returns array(id, name) or null.
-function _pg_tpl_shared_row($origin, $name, $tree, $user_id)
+function _pg_tpl_shared_row($origin, $name, $tree, $user_id, &$used = null)
 {
     $tree_json = pg_designer_tree_encode($tree);
     if ($tree_json === '') return null;
@@ -8035,9 +8166,10 @@ function _pg_tpl_shared_row($origin, $name, $tree, $user_id)
            AND (system_region_config IS NULL OR system_region_config = '')
            AND updated_at < '" . (int)_pg_tpl_reuse_cutoff() . "'
          ORDER BY id ASC");
+    if ($candidates && $used === null) $used = _pg_tpl_used_rows();
     foreach ((array)$candidates as $row) {
         $sid = (int)$row['id'];
-        if (_pg_tpl_row_in_use($sid)) continue;
+        if (_pg_tpl_row_in_use($sid, $used)) continue;
         db("UPDATE shared_components SET tree_json = '" . e($tree_json) . "', updated_at = '$now' WHERE id = '$sid' LIMIT 1");
         return array('id' => $sid, 'name' => (string)$row['name']);
     }
@@ -8086,13 +8218,14 @@ function pg_design_template_discard($ids)
         if ($made) $made_rows[$sid] = $sid;
     }
     // A row placed inside another row of the same set (a widget in a
-    // header) is free once that one is gone, so the set is gone over again
-    // until a pass deletes nothing.
+    // header) is free once that one is gone, so the set is gone over again,
+    // with the trees read once a pass, until a pass deletes nothing.
     $deleted = 0;
     for ($pass = 0; $made_rows && $pass < 8; $pass++) {
         $before = $deleted;
+        $used = _pg_tpl_used_rows();
         foreach ($made_rows as $sid) {
-            if (_pg_tpl_row_in_use($sid)) continue;
+            if (_pg_tpl_row_in_use($sid, $used)) continue;
             db("DELETE FROM shared_components WHERE id = '$sid' LIMIT 1");
             unset($made_rows[$sid]);
             $deleted++;
@@ -8105,7 +8238,7 @@ function pg_design_template_discard($ids)
 // The row for one template widget: an unused one made for the same template
 // earlier (brought back to the template's layout), else a new one.
 // Returns array(id, name, tree_json, system_region_config) or null.
-function _pg_tpl_widget_row($origin, $name, $tree, $cfg, $user_id)
+function _pg_tpl_widget_row($origin, $name, $tree, $cfg, $user_id, &$used = null)
 {
     $tree_json = pg_designer_tree_encode($tree);
     $cfg_json  = json_encode($cfg, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
@@ -8117,11 +8250,12 @@ function _pg_tpl_widget_row($origin, $name, $tree, $cfg, $user_id)
          WHERE system_region_config LIKE '%\"template_origin\":\"" . e($origin) . "\"%'
            AND updated_at < '" . (int)_pg_tpl_reuse_cutoff() . "'
          ORDER BY id ASC");
+    if ($candidates && $used === null) $used = _pg_tpl_used_rows();
     foreach ((array)$candidates as $row) {
         $row_cfg = json_decode((string)$row['system_region_config'], true);
         if (!is_array($row_cfg) || !isset($row_cfg['template_origin']) || $row_cfg['template_origin'] !== $origin) continue;
         $sid = (int)$row['id'];
-        if (_pg_tpl_row_in_use($sid)) continue;
+        if (_pg_tpl_row_in_use($sid, $used)) continue;
         db("UPDATE shared_components
             SET tree_json = '" . e($tree_json) . "', system_region_config = '" . e($cfg_json) . "', updated_at = '$now'
             WHERE id = '$sid' LIMIT 1");
@@ -8224,6 +8358,10 @@ function pg_design_template_prepare($template_id, $user)
     // one page, like the header's login region, after the template).
     $widgets = array();
     $widget_out = array();
+    // Which earlier rows are placed somewhere: read once, on the first row
+    // that has an earlier one to take again, for every widget and shared
+    // component below.
+    $used = null;
     // The widget and shared component trees as written, for the second pass
     // below: 'w:<key>' / 's:<key>' => tree.
     $row_trees = array();
@@ -8242,7 +8380,7 @@ function pg_design_template_prepare($template_id, $user)
         // <page>-<kind>-widget, the name the editor gives a dropped widget
         // (_swAutoName), so the editor still treats it as one it named.
         $wname = trim(preg_replace('/[^a-z0-9]+/', '-', strtolower(pg_ascii_file_name($page_name . '-' . $slug))), '-') . '-widget';
-        $row  = _pg_tpl_widget_row($cfg['template_origin'], $wname, $tree, $cfg, (int)$user['id']);
+        $row  = _pg_tpl_widget_row($cfg['template_origin'], $wname, $tree, $cfg, (int)$user['id'], $used);
         if (!$row) return array('ok' => false, 'error' => lang('The template\'s widgets could not be created.'));
         $widgets[$wkey] = $row;
         if (!$starter) $row_trees['w:' . $wkey] = $tree;
@@ -8288,7 +8426,7 @@ function pg_design_template_prepare($template_id, $user)
         $id_count = 0;
         _pg_tpl_assign_ids($stree, 'tpl_' . substr(md5(uniqid('', true)), 0, 6) . '_', $id_count);
         $sname = trim((string)(isset($sdef['name']) ? $sdef['name'] : $skey));
-        $row = _pg_tpl_shared_row($tpl['id'] . '/' . $skey, $sname !== '' ? $sname : $skey, $stree, (int)$user['id']);
+        $row = _pg_tpl_shared_row($tpl['id'] . '/' . $skey, $sname !== '' ? $sname : $skey, $stree, (int)$user['id'], $used);
         if (!$row) return array('ok' => false, 'error' => lang('The template\'s shared components could not be created.'));
         $shared[$skey] = $row;
         $row_trees['s:' . $skey] = $stree;
@@ -8393,6 +8531,103 @@ function pg_design_template_prepare($template_id, $user)
         'folders'    => $folders,
         'assets'     => $assets,
     );
+}
+
+/**
+ * The first save of a design opened from a template: the page names chosen
+ * when it opened that the site has taken since move on to the next free
+ * ones (pg_design_template_free_page_names()), and every link of the saved
+ * pages to such a page follows (pg_design_template_relink()).
+ *
+ * Only pages saved for the first time (no page_id) are renamed. $pages is
+ * the save's page list, returned changed; 'map' (old address => new) goes
+ * to pg_design_template_relink_rows() once the save has been checked;
+ * 'renamed' is old name => new name.
+ *
+ * @return array('pages' => array, 'map' => array, 'renamed' => array)
+ */
+function pg_design_template_first_save_names($pages)
+{
+    $pages = is_array($pages) ? $pages : array();
+    $names = array();
+    foreach ($pages as $i => $p) {
+        if (!is_array($p) || !empty($p['page_id']) || !empty($p['unchanged'])) continue;
+        $name = trim((string)(isset($p['page_name']) ? $p['page_name'] : ''));
+        if ($name !== '') $names[$i] = $name;
+    }
+    $none = array('pages' => $pages, 'map' => array(), 'renamed' => array());
+    if (!$names) return $none;
+    $free = pg_design_template_free_page_names($names, function ($name) {
+        return !check_name_availability(array('name' => $name));
+    });
+    $map = array();
+    $renamed = array();
+    $base = defined('OUTPUT_PATH') ? OUTPUT_PATH : '/';
+    foreach ($names as $i => $old) {
+        if ($free[$i] === $old) continue;
+        $pages[$i]['page_name'] = $free[$i];
+        $renamed[$old] = $free[$i];
+        $map[$base . encode_url_path($old)] = $base . encode_url_path($free[$i]);
+    }
+    if (!$map) return $none;
+    foreach ($pages as $i => $p) {
+        if (!is_array($p)) continue;
+        foreach ($p as $field => $value) {
+            if ($field === 'page_name' || $field === 'key') continue;
+            $pages[$i][$field] = pg_design_template_relink($value, $map);
+        }
+    }
+    return array('pages' => $pages, 'map' => $map, 'renamed' => $renamed);
+}
+
+/**
+ * The links of the template's own widget and shared component rows that
+ * these pages place, through any number of levels, pointed at the new
+ * addresses (pg_design_template_first_save_names()). A row a template did
+ * not make (another design's header) is never touched.
+ */
+function pg_design_template_relink_rows($pages, $map)
+{
+    if (!$map) return;
+    $sids = array();
+    foreach ((array)$pages as $p) {
+        if (!is_array($p) || !isset($p['tree_json'])) continue;
+        foreach (array_keys(_pg_tpl_used_shared_ids(array($p['tree_json']), array())) as $sid) $sids[$sid] = true;
+    }
+    $frontier = $sids;
+    $rows = array();
+    for ($depth = 0; $depth < 8 && $frontier; $depth++) {
+        $found = db_items("SELECT id, category, system_region_config, tree_json FROM shared_components
+                           WHERE id IN (" . implode(',', array_map('intval', array_keys($frontier))) . ")");
+        $nested = array();
+        foreach ((is_array($found) ? $found : array()) as $row) {
+            $rows[(int)$row['id']] = $row;
+            foreach (array_keys(_pg_tpl_used_shared_ids(array($row['tree_json']), array())) as $sid) $nested[$sid] = true;
+        }
+        $frontier = array_diff_key($nested, $sids);
+        $sids += $frontier;
+    }
+    foreach ($rows as $sid => $row) {
+        $cfg = json_decode((string)$row['system_region_config'], true);
+        $made = (strpos((string)$row['category'], 'template:') === 0)
+            || (is_array($cfg) && !empty($cfg['template_origin']));
+        if (!$made) continue;
+        $set = array();
+        if (is_array($cfg)) {
+            $new_cfg = pg_design_template_relink($cfg, $map);
+            if ($new_cfg !== $cfg) {
+                $set[] = "system_region_config = '" . e(json_encode($new_cfg, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) . "'";
+            }
+        }
+        $tree = json_decode((string)$row['tree_json'], true);
+        if (is_array($tree)) {
+            $new_tree = pg_design_template_relink($tree, $map);
+            $tree_json = ($new_tree !== $tree) ? pg_designer_tree_encode($new_tree) : '';
+            if ($tree_json !== '') $set[] = "tree_json = '" . e($tree_json) . "'";
+        }
+        if (!$set) continue;
+        db("UPDATE shared_components SET " . implode(', ', $set) . ", updated_at = '" . time() . "' WHERE id = '" . (int)$sid . "' LIMIT 1");
+    }
 }
 
 /**

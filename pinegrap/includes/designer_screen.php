@@ -2932,6 +2932,23 @@ function pg_designer_screen_post($ctx)
     $seen_names   = array();
     $warnings     = array();
     $locked_pages = array();
+    // A design opened from a template and never saved: the page names it
+    // opened with are held by nothing, so one the site took since then moves
+    // on to the next free one and the links follow
+    // (pg_design_template_first_save_names()).
+    $tpl_link_map = array();
+    if ($mode !== 'edit' && $style_id <= 0
+        && isset($_POST['style_template']) && (string)$_POST['style_template'] !== ''
+        && pg_design_template((string)$_POST['style_template'])) {
+        $tpl_names = pg_design_template_first_save_names($pages);
+        $pages = $tpl_names['pages'];
+        $tpl_link_map = $tpl_names['map'];
+        foreach ($tpl_names['renamed'] as $tpl_old => $tpl_new) {
+            $warnings[] = lang(array(
+                'string' => 'The page name "{var:1}" was taken in the meantime, so the page was saved as "{var:2}".',
+                'vars'   => array($tpl_old, $tpl_new)));
+        }
+    }
     foreach ($pages as $i => $p) {
         if (!is_array($p)) { $errors[] = lang('Invalid page data.'); continue; }
         $nm = trim((string)(isset($p['page_name']) ? $p['page_name'] : ''));
@@ -2965,6 +2982,10 @@ function pg_designer_screen_post($ctx)
     }
     if ($style_name === '' && empty($errors)) $errors[] = lang('Name is required.');
     if (!empty($errors)) $fail($errors);
+    if ($tpl_link_map) {
+        require_once(dirname(__FILE__) . '/designer_access.php');
+        if (pg_designer_is_full($user)) pg_design_template_relink_rows($pages, $tpl_link_map);
+    }
 
     // ── Write: style first (pages need its id and body classes) ───────────
     //
