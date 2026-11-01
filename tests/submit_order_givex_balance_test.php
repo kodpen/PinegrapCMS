@@ -31,6 +31,6 @@ function test_submit_order_givex_balance_rounded()
 {
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/submit_order.php');
 
-	pg_assert_contains("\$balance = (int) round(\$result['balance'] * 100);", $source, 'the Givex balance is rounded to minor units');
+	pg_assert_contains("\$balance = pg_givex_minor_units(\$result['balance']);", $source, 'the Givex balance is rounded to minor units');
 	pg_assert_same(0, substr_count($source, "\$balance = \$result['balance'] * 100;"), 'no float balance is kept');
 }
