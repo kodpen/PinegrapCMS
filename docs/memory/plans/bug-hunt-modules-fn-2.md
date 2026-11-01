@@ -60,7 +60,7 @@ description: Module list of plans/bug-hunt.md, part 2: includes/fn/ modules pric
 
 - `site_time_sql`: open
 
-- `sms`: taken by LW, #4674
+- `sms`: #4674 (LW: number reading and stored form, marketing identity, footer and consent lookup, queue row, claim, outcome and sweep, transport never-sent rule, sender match, settings decide, check, save and test message, their escaping checked; rest clean)
 
 - `sms_campaigns`: open
 
