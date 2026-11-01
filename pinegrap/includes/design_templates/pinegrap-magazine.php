@@ -243,10 +243,24 @@ $contributor_name = function ($key) {
 $contributor_url = function ($key) {
     return '{{page:author}}?author=' . rawurlencode(lang($key));
 };
-// The archive of an issue, for a link printed by a live record: the token is
-// replaced by the record's own value (pg_sw_apply_tokens()), HTML-escaped,
-// which is why issue names stay plain.
-$issue_href = '{{page:issues}}?issue=^^issue^^';
+// The archive of an issue, for a link printed by a record: the issues page
+// with ?issue= set to the record's issue, filled for each record by the
+// list or the story view ([[record-value-page-links]]); a record with no
+// issue opens the bare page.
+$issue_page_link = array(
+    '_bindings'   => array('href' => '__page_link'),
+    '_bindParams' => array('href' => array('page_id' => '{{tab:issues}}', 'params' => array(array('name' => 'issue', 'token' => 'issue')))),
+);
+// A record's byline as a link to the contributor's own stories: the
+// contributors page with ?author= set to the record's byline, filled the
+// same way. A story with no byline prints none. $sample is the editor's
+// text.
+$byline_link = function ($sample, $class = '') use ($link) {
+    return $link($sample, '#', trim('pm-byline pg-hide-if-empty ' . $class), array(), array(
+        '_bindings'   => array('text' => 'byline', 'href' => '__page_link'),
+        '_bindParams' => array('href' => array('page_id' => '{{tab:author}}', 'params' => array(array('name' => 'author', 'token' => 'byline')))),
+    ));
+};
 
 // The heads of the sample stories, newest first: array(section key,
 // placement index, issue key ('' = Online only), contributor, title,
@@ -545,6 +559,9 @@ $magazine_css = implode("\n", array(
     // An issue's name as a link inside a card whose title is a stretched
     // link: raised over it, like the kicker.
     '.pm-issue-link{position:relative;z-index:2;color:inherit;text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:.2em}',
+    // A byline links to the contributor's own stories, raised the same way.
+    '.pm-byline{position:relative;z-index:2;color:inherit;text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:.2em}',
+    '.pm-byline:hover,.pm-byline:focus-visible{color:inherit;text-decoration-thickness:2px}',
     // A list's page links come after its rows inside the rows' parent: they
     // span the river and the issues' row.
     '.pm-river .pg-sw-pagination{grid-column:1 / -1}',
@@ -996,10 +1013,10 @@ $reading_time = function () use ($el, $span, $bind, $dot) {
 };
 // The byline, how long ago the story went live ($with_time) and its
 // reading time. Lists print relative times; the story page the site's date.
-$card_meta = function ($s, $with_time = false, $class = 'mb-0') use ($el, $span, $bind, $bind_date, $dot, $reading_time) {
+$card_meta = function ($s, $with_time = false, $class = 'mb-0') use ($el, $span, $bind_date, $dot, $reading_time, $byline_link) {
     $children = array(
         $span(lang('Written by'), 'visually-hidden', lang('Label')),
-        $span($s['byline'], '', lang('Byline'), $bind('byline')),
+        $byline_link($s['byline']),
     );
     if ($with_time) {
         $children[] = $dot();
@@ -1008,14 +1025,13 @@ $card_meta = function ($s, $with_time = false, $class = 'mb-0') use ($el, $span,
     $children[] = $reading_time();
     return $el('p', trim('pm-meta ' . $class), lang('Byline and Time'), $children);
 };
-// The story's issue, linking to the issue's contents: a static address
-// with the record's own value in it (the list fills ^^issue^^ in).
-$issue_link = function ($s) use ($el, $span, $bind, $dot, $issue_href) {
+// The story's issue, linking to the issue's contents.
+$issue_link = function ($s) use ($el, $span, $bind, $dot, $issue_page_link) {
     return $el('span', 'pg-hide-if-empty', lang('Issue Link'), array(
         $dot(),
         $el('a', 'pm-issue-link', lang('Link'), array(
             $span($s['issue'], 'pg-field-value', lang('Issue Name'), $bind('issue')),
-        ), array('href' => $issue_href)),
+        ), array_merge(array('href' => '#'), $issue_page_link)),
     ));
 };
 // A picture of the story in a frame that leaves with it.
@@ -1137,16 +1153,18 @@ $index_row = function ($s) use ($el, $para, $bind, $card_picture, $card_kicker, 
     ));
 };
 // (h) An issue: a live Editor's letter of an issue, drawn as the issue. Its
-// picture stands for the issue, its title link opens the issue's contents
-// (the static address with the record's issue in it), and on Every issue
-// its standfirst reads as the issue's line.
-$issue_card = function ($with_dek) use ($el, $link, $para, $bind, $bind_date, $head, $photo, $card_picture, $issue_href) {
+// picture stands for the issue, its title link opens the issue's contents,
+// and on Every issue its standfirst reads as the issue's line.
+$issue_card = function ($with_dek) use ($el, $link, $para, $bind, $bind_date, $head, $photo, $card_picture, $issue_page_link) {
     $s = $head(0);
     $s['cover'] = $photo('letter-small-places', 800, 1000);
     $children = array(
         $card_picture($s, 'ratio pm-ratio-4x5 pm-media mb-3'),
         $el('h3', 'pm-title h4 mb-1', lang('Title'), array(
-            $link($s['issue'], $issue_href, 'stretched-link', array(), $bind('issue')),
+            $link($s['issue'], '#', 'stretched-link', array(), array(
+                '_bindings'   => array('text' => 'issue', 'href' => '__page_link'),
+                '_bindParams' => $issue_page_link['_bindParams'],
+            )),
         )),
         $para(lang('Date'), 'pm-meta mb-2', $bind_date('publish_date', 'relative')),
     );
@@ -3297,7 +3315,7 @@ $widgets['blog_post'] = array(
                         $para($story['summary'], 'pm-dek lead pm-standfirst mb-4', $bind('summary')),
                         $el('p', 'pm-meta mb-0', lang('Byline and Time'), array(
                             $span(lang('Written by'), 'visually-hidden', lang('Label')),
-                            $span($story['byline'], 'fw-semibold text-body', lang('Byline'), $bind('byline')),
+                            $byline_link($story['byline'], 'fw-semibold text-body'),
                             $dot(),
                             $span(lang('Date'), '', lang('Date'), $bind('publish_date')),
                             $reading_time(),
@@ -3349,7 +3367,7 @@ $widgets['blog_post'] = array(
                                 $optional_image('byline_photo', '', 'rounded-circle object-fit-cover pg-circle-60', 'flex-shrink-0', $portrait($story['byline'], 192), '', $lazy),
                                 $el('div', 'pm-min-0', lang('Words'), array(
                                     $para(lang('About the writer'), 'pm-kicker mb-1'),
-                                    $para($story['byline'], 'pm-title h5 mb-1', $bind('byline')),
+                                    $el('p', 'pm-title h5 mb-1', lang('Byline'), array($byline_link($story['byline']))),
                                     $para($story['bio'], 'pm-dek mb-2 pg-hide-if-empty', $bind('byline_bio')),
                                     $link(lang('Meet our contributors'), '{{page:author}}#contributors', 'pm-meta'),
                                 )),
@@ -4207,7 +4225,7 @@ foreach ($pages as $i => $p) {
 
 return array(
     'name'        => lang('Long-Read Magazine'),
-    'version'     => '1.1.0',
+    'version'     => '1.2.0',
     'framework'   => 'bootstrap5',
     'order'       => 80,
     'icon'        => 'bi-journal-richtext',

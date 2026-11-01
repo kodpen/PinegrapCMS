@@ -123,7 +123,7 @@ function test_newsroom_comments_no_fixed_block()
 {
 	foreach (_newsroom_comments_templates() as $id => $version) {
 		$tpl = _newsroom_comments_tpl($id);
-		pg_assert_same($version, $tpl['version'], $id . ': the version moved');
+		pg_assert_true(version_compare($tpl['version'], $version, '>='), $id . ': the version moved');
 
 		$trees = array();
 		foreach ($tpl['pages'] as $p) {

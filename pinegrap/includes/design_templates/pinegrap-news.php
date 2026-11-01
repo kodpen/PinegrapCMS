@@ -248,6 +248,16 @@ $writer_name = function ($key) {
 $writer_url = function ($key) {
     return '{{page:author}}?author=' . rawurlencode(lang($key));
 };
+// A record's byline as a link to the writer's own articles: the writers
+// page with ?author= set to the record's byline, filled for each article
+// by the list or the article view ([[record-value-page-links]]). An
+// article with no byline prints none. $sample is the editor's text.
+$byline_link = function ($sample, $class = '') use ($link) {
+    return $link($sample, '#', trim('pn-byline pg-hide-if-empty ' . $class), array(), array(
+        '_bindings'   => array('text' => 'byline', 'href' => '__page_link'),
+        '_bindParams' => array('href' => array('page_id' => '{{tab:author}}', 'params' => array(array('name' => 'author', 'token' => 'byline')))),
+    ));
+};
 
 // ── The filters of the article lists ────────────────────────────────────
 // Operators and dynamic values are the renderer's English constants, never
@@ -335,6 +345,15 @@ $news_css = implode("\n", array(
     // barely show, and on the masthead's menu and search buttons, which
     // have no colour variant and so no ring of their own.
     '.pn-topbar a:focus-visible,.pn-topbar .btn:focus-visible,.pn-masthead .btn:focus-visible{outline:2px solid var(--bs-emphasis-color);outline-offset:2px;box-shadow:none}',
+    // Every other button and field: Bootstrap's focus is a half-clear
+    // shadow that all but vanishes on the page and in the dark theme, so
+    // focus is an ink outline everywhere (body outranks the theme's button
+    // rule). Page links and the drawer's close button are not .btn, and
+    // Bootstrap's own :focus rules for them set no outline.
+    'body .btn:focus-visible{outline:2px solid var(--bs-emphasis-color);outline-offset:2px;box-shadow:none}',
+    'body .page-link:focus-visible,body .btn-close:focus-visible{outline:2px solid var(--bs-emphasis-color);outline-offset:2px;box-shadow:none}',
+    'body .form-control:focus,body .form-select:focus{outline:2px solid var(--bs-emphasis-color);outline-offset:1px}',
+    'body .form-check-input:focus-visible{outline:2px solid var(--bs-emphasis-color);outline-offset:2px}',
     // The menu bar's links: a bar slides in under the current one.
     '.pn-navlink{position:relative;display:inline-flex;align-items:center;gap:.375rem;height:3rem;padding:0 .75rem;border:0;background:none;font-family:var(--pg-font-heading);font-weight:700;font-size:.95rem;letter-spacing:.02em;text-transform:uppercase;white-space:nowrap}',
     '.pn-navlink::after{content:"";position:absolute;left:.75rem;right:.75rem;bottom:0;height:3px;background:currentColor;transform:scaleX(0);transform-origin:left;transition:transform .2s ease}',
@@ -399,6 +418,11 @@ $news_css = implode("\n", array(
     '.pn-headline{font-family:var(--pg-font-heading);font-weight:700;line-height:1.18;text-wrap:balance}',
     '.pn-headline a{color:inherit;text-decoration:none}',
     '.pn-story:hover .pn-headline a,.pn-headline a:focus-visible{text-decoration:underline;text-decoration-color:var(--pn-cat,currentColor);text-decoration-thickness:2px;text-underline-offset:.18em}',
+    // A byline links to the writer's own articles: above a card's stretched
+    // headline link, in the words' own colour, a thin underline that thickens
+    // under the pointer.
+    '.pn-byline{position:relative;z-index:2;color:inherit;text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:.2em}',
+    '.pn-byline:hover,.pn-byline:focus-visible{color:inherit;text-decoration-thickness:2px}',
     // The lead grid: the first story large, the next two beside it. The
     // first article, not the first child: an editor's edit button may
     // bring its own style element in first.
@@ -883,9 +907,9 @@ $reading_time = function ($sample = '4') use ($el, $span, $bind, $attr) {
         $span(lang('min read'), '', lang('Text')),
     ));
 };
-// The byline as the writer gave it.
-$card_byline = function ($class = '', $sample = '') use ($span, $bind, $writer_name) {
-    return $span($sample !== '' ? $sample : $writer_name('Jane Cooper'), $class, lang('Byline'), $bind('byline'));
+// The byline as the writer gave it, linking to the writer's articles.
+$card_byline = function ($class = '', $sample = '') use ($byline_link, $writer_name) {
+    return $byline_link($sample !== '' ? $sample : $writer_name('Jane Cooper'), $class);
 };
 // The cover picture in a frame that leaves with it; $src is the sample.
 $cover = function ($src, $class, $frame, $lazy_load = true) use ($optional_image, $lazy) {
@@ -932,13 +956,13 @@ $row_story = function ($s = array()) use ($el, $para, $bind, $photo, $cover, $ca
 };
 // (d) A column: the columnist's portrait and name, the column's title in
 // the serif and the time.
-$columnist_card = function () use ($el, $para, $bind, $optional_image, $portrait, $writer_name, $card_headline, $card_time) {
+$columnist_card = function () use ($el, $para, $optional_image, $portrait, $writer_name, $byline_link, $card_headline, $card_time) {
     return $el('article', 'pn-story position-relative h-100 p-3 bg-body border', lang('Column Card'), array(
         $el('div', 'd-flex align-items-center gap-3 mb-2', lang('Columnist'), array(
             $optional_image('byline_photo', '', 'pg-circle-60 rounded-circle object-fit-cover', 'flex-shrink-0',
                 $portrait($writer_name('Nora Whitfield'), 192), '', array('_attrs' => array(array('name' => 'loading', 'value' => 'lazy')))),
             $el('div', '', lang('Name'), array(
-                $para($writer_name('Nora Whitfield'), 'small fw-bold mb-0', $bind('byline')),
+                $el('p', 'small fw-bold mb-0', lang('Byline'), array($byline_link($writer_name('Nora Whitfield')))),
                 $para(lang('Opinion'), 'pn-kicker mb-0'),
             )),
         )),
@@ -1438,7 +1462,10 @@ $sec_head = function ($title, $more_text = '', $more_href = '', $tag = 'h2') use
 $mail_style = function ($css) use ($attr) {
     return array('_attrs' => array($attr('style', $css)));
 };
-$mail_page = function ($children) use ($el, $shared, $mail_style) {
+// The frame is light in any page theme: the dark theme would turn its
+// Bootstrap backgrounds dark under the written dark text when an editor
+// opens the page in a browser (a sent e-mail has no theme).
+$mail_page = function ($children) use ($el, $shared, $mail_style, $attr) {
     return array('type' => 'root', 'props' => array('cssClass' => ''), 'children' => array(
         $el('div', 'bg-body-tertiary py-4 px-3', lang('E-mail Frame'), array(
             $el('div', 'mx-auto bg-body border overflow-hidden', lang('E-mail Card'), array(
@@ -1446,7 +1473,10 @@ $mail_page = function ($children) use ($el, $shared, $mail_style) {
                 $el('div', 'p-4', lang('E-mail Body'), $children, $mail_style('padding:24px')),
                 $shared('email_footer'),
             ), $mail_style('max-width:600px;margin:0 auto;background:#ffffff;border:1px solid #d8dfe9;overflow:hidden')),
-        ), $mail_style('background:#f1f4f9;padding:24px 12px;font-family:Public Sans,-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif;font-size:15px;line-height:1.6;color:#0e1730')),
+        ), array('_attrs' => array(
+            $attr('data-bs-theme', 'light'),
+            $attr('style', 'background:#f1f4f9;padding:24px 12px;font-family:Public Sans,-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif;font-size:15px;line-height:1.6;color:#0e1730'),
+        ))),
     ));
 };
 $mail_heading = function ($text) use ($heading, $attr) {
@@ -3664,7 +3694,7 @@ $widgets['blog_post'] = array(
                         $optional_image('byline_photo', '', 'rounded-circle object-fit-cover pg-circle-40', 'flex-shrink-0', $portrait($writer_name('Jane Cooper'), 96), ''),
                         $el('div', 'small pn-min-0', lang('Byline and Time'), array(
                             $span(lang('Written by'), 'visually-hidden', lang('Label')),
-                            $span($writer_name('Jane Cooper'), 'fw-semibold', lang('Byline'), $bind('byline')),
+                            $byline_link($writer_name('Jane Cooper'), 'fw-semibold'),
                             $el('span', 'pg-hide-if-empty', lang('Dateline'), array(
                                 $span('·', 'mx-1', lang('Separator'), array('_attrs' => array($attr('aria-hidden', 'true')))),
                                 $span(lang('Denver'), 'pg-field-value text-uppercase', lang('Value'), $bind('dateline')),
@@ -3714,7 +3744,7 @@ $widgets['blog_post'] = array(
                             $optional_image('byline_photo', '', 'pg-circle-60 rounded-circle object-fit-cover', 'flex-shrink-0', $portrait($writer_name('Jane Cooper'), 192), '', $lazy),
                             $el('div', 'pn-min-0', lang('Words'), array(
                                 $para(lang('About the writer'), 'pn-kicker mb-1'),
-                                $para($writer_name('Jane Cooper'), 'fw-bold mb-1', $bind('byline')),
+                                $el('p', 'fw-bold mb-1', lang('Byline'), array($byline_link($writer_name('Jane Cooper')))),
                                 $para($writers['Jane Cooper'][1], 'small text-body-secondary pg-hide-if-empty', $bind('byline_bio')),
                                 $link(lang('Meet our writers'), '{{page:author}}#writers', 'small link-body-emphasis'),
                             )),
@@ -4278,7 +4308,7 @@ foreach ($pages as $i => $p) {
 
 return array(
     'name'        => lang('News Portal'),
-    'version'     => '1.1.0',
+    'version'     => '1.2.0',
     'framework'   => 'bootstrap5',
     'order'       => 70,
     'icon'        => 'bi-newspaper',

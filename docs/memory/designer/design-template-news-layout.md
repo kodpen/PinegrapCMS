@@ -1,6 +1,6 @@
 ---
 name: design-template-news-layout
-description: News template page shapes: the lead grid, most read inside the article's record view, newsletter field order, one tip call on the front page, band padding, p titles in the drawer, whole tips.
+description: News template page shapes: the lead grid, most read in the article view, newsletter field order, one tip call, band padding, p titles in the drawer, whole tips, byline links.
 ---
 
 ## Why is the lead grid one widget, with `:first-of-type`?
@@ -31,3 +31,6 @@ description: News template page shapes: the lead grid, most read inside the arti
 
 ## Why does the desk show a whole tip?
 - `staff_tips` prints each tip in full (no line clamp): an editor must read all of it to judge it. `.pn-tip` only wraps long words (`overflow-wrap:anywhere`); the value already has a `<br>` per line, so `white-space:pre-line` would double the spacing.
+
+## Where does a byline link?
+- Public bylines are `$byline_link()`: `__page_link` to `{{tab:author}}` with `author` = `byline` ([[record-value-page-links]]); `.pn-byline` lifts it over a stretched headline. The writers directory keeps static `$writer_url()` (sample names). 1.2.0, with the magazine's focus rings and light e-mail frame ([[design-template-magazine-a11y]]).
