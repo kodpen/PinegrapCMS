@@ -190,6 +190,6 @@ description: Module list of plans/bug-hunt.md, part 1: includes/fn/ modules a11y
 
 - `passkeys`: open
 
-- `payments`: open
+- `payments`: taken by bug-hunt-payments
 
-- `pdf_merge`: taken by bug-hunt-pdf-merge
+- `pdf_merge`: done (#4610)

@@ -1185,6 +1185,51 @@ function pg_payment_checkout_methods_decide($switches, $driver_methods, $recurri
 }
 
 /**
+ * The card brands the store's config switches on, as the brand constants
+ * hold them (the database's '1' or '0'; undefined reads as off).
+ *
+ * @return array brand label => config value, in the settings form's order
+ */
+function pg_payment_card_brand_config()
+{
+    $config = array();
+
+    foreach (array(
+        'Visa'             => 'ECOMMERCE_VISA',
+        'MasterCard'       => 'ECOMMERCE_MASTERCARD',
+        'American Express' => 'ECOMMERCE_AMERICAN_EXPRESS',
+        'Diners Club'      => 'ECOMMERCE_DINERS_CLUB',
+        'Discover'         => 'ECOMMERCE_DISCOVER_CARD',
+        'Troy'             => 'ECOMMERCE_TROY',
+    ) as $label => $constant) {
+        $config[$label] = defined($constant) ? constant($constant) : '';
+    }
+
+    return $config;
+}
+
+/**
+ * The card brands accepted: each whose config value is on. The value is
+ * compared loosely, since a config column reads back as the string '1'.
+ * Pure.
+ *
+ * @param array $config brand label => config value
+ * @return array brand labels, in the order given
+ */
+function pg_payment_card_brands_accepted($config)
+{
+    $brands = array();
+
+    foreach ((array) $config as $label => $value) {
+        if (is_scalar($value) && ($value == true)) {
+            $brands[] = (string) $label;
+        }
+    }
+
+    return $brands;
+}
+
+/**
  * The switch of each built-in method, from the store's config. With
  * $card_brands the card counts as on only while at least one card brand is
  * accepted, as the designer's express order widget has always asked.
@@ -1201,9 +1246,7 @@ function pg_payment_builtin_switches($card_brands = false)
     $card = $on('ECOMMERCE_CREDIT_DEBIT_CARD');
 
     if ($card && $card_brands) {
-        $card = $on('ECOMMERCE_VISA') || $on('ECOMMERCE_MASTERCARD')
-            || (defined('ECOMMERCE_AMERICAN_EXPRESS') && (ECOMMERCE_AMERICAN_EXPRESS === true))
-            || $on('ECOMMERCE_DINERS_CLUB') || $on('ECOMMERCE_DISCOVER_CARD') || $on('ECOMMERCE_TROY');
+        $card = (pg_payment_card_brands_accepted(pg_payment_card_brand_config()) !== array());
     }
 
     return array(

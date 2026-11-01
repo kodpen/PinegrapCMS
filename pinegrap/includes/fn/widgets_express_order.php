@@ -2944,13 +2944,7 @@ function _eo_render_payment_methods($lf, $cfg, $hosted_card_html = '')
         // Each enabled brand gets a small pill so the visitor knows which
         // cards the merchant accepts BEFORE they start typing the number.
         // Order matches settings.php form order; disabled brands are hidden.
-        $card_brands = array();
-        if (defined('ECOMMERCE_VISA')             && ECOMMERCE_VISA == true)             $card_brands[] = 'Visa';
-        if (defined('ECOMMERCE_MASTERCARD')       && ECOMMERCE_MASTERCARD == true)       $card_brands[] = 'MasterCard';
-        if (defined('ECOMMERCE_AMERICAN_EXPRESS') && ECOMMERCE_AMERICAN_EXPRESS === true) $card_brands[] = 'American Express';
-        if (defined('ECOMMERCE_DINERS_CLUB')      && ECOMMERCE_DINERS_CLUB == true)      $card_brands[] = 'Diners Club';
-        if (defined('ECOMMERCE_DISCOVER_CARD')    && ECOMMERCE_DISCOVER_CARD == true)    $card_brands[] = 'Discover';
-        if (defined('ECOMMERCE_TROY')             && ECOMMERCE_TROY == true)             $card_brands[] = 'Troy';
+        $card_brands = pg_payment_card_brands_accepted(pg_payment_card_brand_config());
         $brand_pills_html = '';
         if (!empty($card_brands)) {
             $brand_pills_html = '<div class="pg-eo-card-brands d-flex flex-wrap gap-2 mb-2">';

@@ -70,7 +70,7 @@ description: Generated from the module field of the memory files: each includes/
 - `output`: [[list-status-words]]
 - `page_bulk`: [[page-bulk-edit]]
 - `page_facts`: [[page-conditions]]
-- `payments`: [[payment-driver-paytr-installments]], [[payment-gateway-secrets]]
+- `payments`: [[card-brand-switches]], [[payment-driver-paytr-installments]], [[payment-gateway-secrets]]
 - `pdf_merge`: [[shipment-label-bulk]]
 - `privacy`: [[consent-log-and-audit-trail]], [[sms-consent-box]]
 - `privacy_export`: [[personal-data-export]]
