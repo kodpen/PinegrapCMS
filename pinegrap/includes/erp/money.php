@@ -708,6 +708,21 @@ function erp_rate_vat($lines)
 }
 
 /**
+ * An amount as an input box is filled with: the store's separators and no
+ * currency symbol or minus (5.536,40), since the box's adornment names the
+ * currency and erp_kurus() reads the figure back.
+ *
+ * @param int $kurus
+ * @return string
+ */
+function erp_money_input($kurus)
+{
+    $separators = erp_number_separators();
+
+    return number_format(abs((int) $kurus) / 100, 2, $separators['decimal'], $separators['thousands']);
+}
+
+/**
  * Format kurus for the screen, in the base currency.
  *
  * @param int  $kurus
