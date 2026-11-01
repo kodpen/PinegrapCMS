@@ -4,7 +4,7 @@ description: Module list of plans/bug-hunt.md, part 2: includes/fn/ modules pric
 ---
 
 ## Which includes/fn/ modules (price_history to wishlist) are hunted?
-- `price_history`: open
+- `price_history`: clean
 
 - `privacy`: clean
 
