@@ -1,6 +1,6 @@
 ---
 name: workspace-flows-canvas-harness
-description: Browser harness of the Flows canvas (tests/js/flows_canvas.js, #3162, run by hand, not in CI): what is real and what stands in, how to run it, the scenarios, the result of 2026-10-31 (#3983)
+description: Browser harness of the Flows canvas (tests/js/flows_canvas.js, #3162, by hand, not in CI): what is real, how to run it, the scenarios, the result, touch emulation
 ---
 
 ## What is it?
@@ -12,16 +12,19 @@ description: Browser harness of the Flows canvas (tests/js/flows_canvas.js, #316
 
 ## How is it run?
 - `node tests/js/flows_canvas.js [filter] [--min] [--motion] [--dark] [--shots=<dir>] [--verbose]`; `PG_CHROMIUM` and `PG_PHP` name the binaries. About 75 s. Exit 0 all pass, 1 a failure, 2 could not run.
-- Reduced motion by default; `--motion` keeps the fades. `--shots` takes a picture of each end state (light, or `--dark`) to compare CSS work.
+- Reduced motion by default; `--motion` keeps fades. `--shots` pictures each end state (light, or `--dark`).
 
 ## What do the scenarios cover?
 - 30 scenarios (`flows_canvas_scenarios.js`): boxes at their places and sizes, arrows port to port, zoom, fit, pinch, pan (drag, wheel, Space, middle button), select, Tab order, arrow keys, drag on the grid, Esc, connect by port, C and the side panel, outcomes, Delete, undo, data threads (drag to bind, toggle kept), outline, phone, autosave after 1.5 s, 409, keepalive on hide and leave, the 60 000-byte limit, Ctrl+S, blur, Retry, back to the list for another flow; palette and drop, problems, Publish, read-only, ⋯ Share and Delete, no flow, New flow, Run and its token, runs list, polling.
 
-## What did it give on 2026-10-31?
+## What does it give?
+- 2026-11-01: 30 of 30, from sources and with `--min` (Chromium 153, Linux; Chrome 156, Windows 11 after #4418). The C › "Add the arrow" focus and the double keepalive on leave pass since #4322.
 - Before #3983 only 4 of 30 passed: the harness still waited for the first flow to open by itself (adapted in #4316).
-- Now 28 of 30, from sources and with `--min` (Chromium 153, Linux). Fails: C, then "Add the arrow": the focus ends on the page (the box is redrawn while the dialog keeps the page inert; the dialog's close gives the focus back to the removed box; Cancel keeps it). And leaving the page sends the keepalive save twice on the same `draft_rev` (beforeunload, then pagehide): most likely the first request's promise is cut off by the unload, which brings `dirty` back.
-- `--motion`: 26 of 30; Publish (status) and deleting a flow (the list's search) lose the focus too when the answer comes before the fade ends.
 - Seen: after Fit the first boxes sit under the palette (`fit()` ignores it); the no-flow screen shows an empty palette frame.
 
+## Why does a scenario switch touch emulation itself?
+- Touch emulation turns `(pointer: coarse)` on: the panel's tap targets grow to `--pg-tap` (44px) and the canvas moves a few px. `page.touches()` on a page that is not a touch screen turns it on only for the gesture, so a measure taken before and after it is in another layout. A scenario that compares positions around a gesture calls `h.touchScreen(true)` before its first measure and `h.touchScreen(false)` after its last (pinch, #4418: on Windows the pinch point moved 3 px).
+- A profile folder Chrome still holds at the end (Windows, EPERM) is a warning on stderr; the exit code stays the result's.
+
 ## What keeps it in step?
-- A bundle the flows screen adds goes into `SCREEN_BUNDLES`, in order (`pg_graph_canvas.min.js` before `workspace_flow.min.js`). On 2026-11-01 30 of 30 pass, from sources and with `--min`. Scenarios find controls by their texts (`h.t()`), the `pgc-` and `wsf-` classes, `data-node`, `data-edge` and `data-refocus`; a refactor that renames them changes the scenarios with it.
+- A bundle the flows screen adds goes into `SCREEN_BUNDLES`, in order (`pg_graph_canvas.min.js` before `workspace_flow.min.js`). Scenarios find controls by their texts (`h.t()`), the `pgc-` and `wsf-` classes, `data-node`, `data-edge` and `data-refocus`; a refactor that renames them changes the scenarios with it.
