@@ -11,7 +11,7 @@ module: image_editor
 
 ## How does the Select tool work?
 - A press hits the topmost visible, unlocked layer (`hitLayer()`, 4 screen px of slack): it is selected and moves with the rest of the selection; Shift adds or removes; the empty stage clears the selection; Escape clears it before leaving full screen. Locked layers are chosen in the list only.
-- One selected, unlocked layer gets eight handles and a turning handle above it (`.pgie-sh`, 44 px targets on touch), plus its type's own (`.pgie-shx`). `resizeBox()` keeps the opposite edge or corner in the layer's own turned frame; a picture keeps its ratio from a corner (Shift does the other); `angleTo()` turns it, Shift in steps of 15°.
+- One selected, unlocked layer gets eight handles and a turning handle above it (`.pgie-sh`, 44 px targets on touch), plus its type's own (`.pgie-shx`). A press on a box handle more than 10 screen px inside the box moves the layer (`insideBox()`): on touch the 44 px targets cover a small sticker's middle. `resizeBox()` keeps the opposite edge or corner in the layer's own turned frame; a picture keeps its ratio from a corner (Shift does the other); `angleTo()` turns it, Shift in steps of 15°.
 - A move snaps an edge or the middle to the canvas's edges and middle and to the other visible layers' (`snapBox()`, 6 screen px), with pink guides; Alt moves freely. A drag is one undo step.
 - Keys with a selection: arrows nudge 1 (Shift 10), Delete removes, Ctrl+D duplicates, Ctrl+C copies (a paste without a picture on the clipboard brings the copies back), Ctrl+A selects all. A focused slider keeps these keys; text fields keep their own.
 
