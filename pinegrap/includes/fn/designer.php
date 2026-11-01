@@ -9517,6 +9517,30 @@ function pg_designer_preview_input($page_id, $settings, $access)
 }
 
 /**
+ * The editor's widget payload as pg_sw_preview_overrides() rows: sid =>
+ * tree_json and settings (a `tab:` page reads as nothing chosen), at most
+ * 40. Shared by the Preview and the SEO check on the draft. Pure.
+ *
+ * @param array $widgets [{id, tree_json, system_region_config}]
+ * @return array sid => array(tree_json, cfg)
+ */
+function pg_designer_preview_override_rows($widgets)
+{
+    $overrides = array();
+    foreach ((array)$widgets as $w) {
+        if (!is_array($w) || count($overrides) >= 40) continue;
+        $sid = isset($w['id']) ? (int)$w['id'] : 0;
+        if ($sid <= 0) continue;
+        $cfg = isset($w['system_region_config']) ? json_decode((string)$w['system_region_config'], true) : null;
+        $overrides[$sid] = array(
+            'tree_json' => isset($w['tree_json']) ? (string)$w['tree_json'] : '',
+            'cfg'       => is_array($cfg) ? _pg_preview_drop_tab_refs($cfg) : null,
+        );
+    }
+    return $overrides;
+}
+
+/**
  * The editor's Preview: the system widgets on a page, rendered by the server,
  * which the blob page the editor opens cannot do.
  *
@@ -9547,17 +9571,7 @@ function pg_designer_preview_input($page_id, $settings, $access)
 function pg_designer_preview_widgets($page_id, $widgets, $comment_settings = array())
 {
     $page_id   = (int)$page_id;
-    $overrides = array();
-    foreach ((array)$widgets as $w) {
-        if (!is_array($w) || count($overrides) >= 40) continue;
-        $sid = isset($w['id']) ? (int)$w['id'] : 0;
-        if ($sid <= 0) continue;
-        $cfg = isset($w['system_region_config']) ? json_decode((string)$w['system_region_config'], true) : null;
-        $overrides[$sid] = array(
-            'tree_json' => isset($w['tree_json']) ? (string)$w['tree_json'] : '',
-            'cfg'       => is_array($cfg) ? _pg_preview_drop_tab_refs($cfg) : null,
-        );
-    }
+    $overrides = pg_designer_preview_override_rows($widgets);
     if (empty($overrides)) return array();
 
     $page_name = ($page_id > 0) ? (string)db_value("SELECT page_name FROM page WHERE page_id = '" . $page_id . "' LIMIT 1") : '';

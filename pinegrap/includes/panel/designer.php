@@ -661,7 +661,7 @@ function pg_panel_designer($request, $action)
                 if ($draft !== null && $draft['error'] === '' && stripos((string)$draft['html'], '<html') !== false) {
                     $document = true;
                     $raw = pg_seo_analyze_html($draft['html'], 'document',
-                        pg_seo_check_draft_context($row, $draft['page_type'], (!defined('OPEN_GRAPH') || OPEN_GRAPH)));
+                        pg_seo_check_draft_context($row, $draft['page_type']));
                 }
             }
             if (!$document && trim($html) !== '') {

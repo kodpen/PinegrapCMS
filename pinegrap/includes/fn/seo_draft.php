@@ -110,23 +110,22 @@ function pg_seo_check_carried($raw, $stored, $document)
 }
 
 /**
- * What pg_seo_analyze_html() needs to know of a rendered draft that the
- * markup cannot say: the structure pass's context (pg_seo_analyze_page()),
- * built from the editor's fields. Pure.
+ * The structure pass's context (pg_seo_document_context()) for a rendered
+ * draft, built from the editor's fields.
  *
- * @param array  $row        seo_check's page fields: page_title, sitemap
- *                           ('1'/'0'), folder_public, folder_archived
- * @param string $page_type  the stored page's type
- * @param bool   $open_graph whether the site writes Open Graph tags
+ * @param array  $row       seo_check's page fields: page_title, sitemap
+ *                          ('1'/'0'), folder_public, folder_archived
+ * @param string $page_type the stored page's type
  * @return array
  */
-function pg_seo_check_draft_context($row, $page_type, $open_graph)
+function pg_seo_check_draft_context($row, $page_type)
 {
-    return array(
-        'title'         => (string)($row['page_title'] ?? ''),
-        'in_sitemap'    => ((string)($row['sitemap'] ?? '') === '1') && !empty($row['folder_public']) && empty($row['folder_archived']),
-        'open_graph'    => (bool)$open_graph,
-        'expect_jsonld' => in_array((string)$page_type, array('catalog', 'catalog detail', 'order form', 'express order'), true),
+    require_once(PG_FUNCTIONS_DIR . '/seo_structure.php');
+
+    return pg_seo_document_context(
+        (string)($row['page_title'] ?? ''),
+        ((string)($row['sitemap'] ?? '') === '1') && !empty($row['folder_public']) && empty($row['folder_archived']),
+        $page_type
     );
 }
 
@@ -192,19 +191,7 @@ function pg_seo_check_draft_render($page_id, $fields, $tree_json, $widgets, $use
         }
     }
 
-    $overrides = array();
-    if (pg_designer_is_full($user)) {
-        foreach ((array)$widgets as $w) {
-            if (!is_array($w) || count($overrides) >= 40) continue;
-            $sid = isset($w['id']) ? (int)$w['id'] : 0;
-            if ($sid <= 0) continue;
-            $cfg = isset($w['system_region_config']) ? json_decode((string)$w['system_region_config'], true) : null;
-            $overrides[$sid] = array(
-                'tree_json' => isset($w['tree_json']) ? (string)$w['tree_json'] : '',
-                'cfg'       => is_array($cfg) ? _pg_preview_drop_tab_refs($cfg) : null,
-            );
-        }
-    }
+    $overrides = pg_designer_is_full($user) ? pg_designer_preview_override_rows($widgets) : array();
 
     require_once(PG_FUNCTIONS_DIR . '/seo_structure.php');
 

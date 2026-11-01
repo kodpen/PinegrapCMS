@@ -84,17 +84,16 @@ function test_seo_check_carries_stored_document_findings_only_for_a_fragment()
 
 function test_seo_check_draft_context_reads_the_editor_fields()
 {
-	$context = pg_seo_check_draft_context(array('page_title' => 'Yeni', 'sitemap' => '1', 'folder_public' => true, 'folder_archived' => false), 'catalog', true);
+	$context = pg_seo_check_draft_context(array('page_title' => 'Yeni', 'sitemap' => '1', 'folder_public' => true, 'folder_archived' => false), 'catalog');
 
-	pg_assert_same('Yeni', $context['title']);
+	pg_assert_same(pg_seo_document_context('Yeni', true, 'catalog'), $context, 'the structure pass builds the same context');
 	pg_assert_true($context['in_sitemap']);
-	pg_assert_true($context['open_graph']);
 	pg_assert_true($context['expect_jsonld'], 'a catalog page carries JSON-LD');
 
-	$context = pg_seo_check_draft_context(array('page_title' => '', 'sitemap' => '1', 'folder_public' => false, 'folder_archived' => false), 'standard', false);
+	$context = pg_seo_check_draft_context(array('page_title' => '', 'sitemap' => '1', 'folder_public' => false, 'folder_archived' => false), 'standard');
 	pg_assert_true(!$context['in_sitemap'], 'a private page is not in the site map');
-	pg_assert_true(!$context['open_graph']);
 	pg_assert_true(!$context['expect_jsonld']);
+	pg_assert_true(!pg_seo_check_draft_context(array('sitemap' => '1', 'folder_public' => true, 'folder_archived' => '1'), 'standard')['in_sitemap'], 'nor an archived one');
 }
 
 function test_designer_gate_refuses_a_new_page_from_a_content_level_user()
@@ -108,4 +107,19 @@ function test_designer_gate_refuses_a_new_page_from_a_content_level_user()
 	$gate = pg_designer_gate_tree($tree, 0, array('role' => 1));
 	pg_assert_true($gate['ok'], 'a designer draws any tree');
 	pg_assert_same($tree, $gate['tree']);
+}
+
+function test_preview_override_rows_are_shared_by_preview_and_draft()
+{
+	$rows = pg_designer_preview_override_rows(array(
+		array('id' => 5, 'tree_json' => '{"type":"root"}', 'system_region_config' => '{"regionType":"form_item_view","custom_form_page_id":"tab:k1"}'),
+		array('id' => 0, 'tree_json' => 'x'),
+		'not a widget',
+		array('id' => 6),
+	));
+
+	pg_assert_same(array(5, 6), array_keys($rows));
+	pg_assert_same('{"type":"root"}', $rows[5]['tree_json']);
+	pg_assert_same(0, $rows[5]['cfg']['custom_form_page_id'], 'a tab page reads as nothing chosen');
+	pg_assert_same(array('tree_json' => '', 'cfg' => null), $rows[6]);
 }
