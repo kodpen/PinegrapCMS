@@ -1218,6 +1218,8 @@
     "Price Row": "Fiyat Satırı",
     "Price Rules": "Fiyat Kuralları",
     "Price and Button": "Fiyat ve Düğme",
+    "Price and stock have not been sent yet; the daily feed fetch carries them until then.": "Fiyat ve stok henüz gönderilmedi; o zamana kadar günlük besleme çekimi bunları taşır.",
+    "Price and stock last sent: {var:1}": "Fiyat ve stokun son gönderimi: {var:1}",
     "Price before the discount": "İndirimden önceki fiyat",
     "Price before the discount (the reference price rule, with symbol)": "İndirimden önceki fiyat (referans fiyat kuralı, simgeyle)",
     "Price block (automatic struck-through + new, HTML)": "Fiyat bloğu (otomatik üstü çizili + yeni, HTML)",

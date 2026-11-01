@@ -4894,6 +4894,12 @@ function pg_pb_render_product_screen($values = array(), $context = array())
     // nothing in the checkout knows how to sell.
     $gift_cards_enabled = (defined('ECOMMERCE_GIFT_CARD') && ECOMMERCE_GIFT_CARD == TRUE);
 
+    // Google Merchant Center's push state and its send button: the button
+    // posts a form drawn after the product form, never nested in it.
+    $pg_merchant = (($pg_mode === 'edit') && !$pg_recycled && function_exists('pg_merchant_product_card'))
+        ? pg_merchant_product_card($pg_product_id)
+        : array('card' => '', 'form' => '');
+
     print
     pg_page_shell(array(
         'title'         => ($pg_mode === 'edit') ? lang('Edit Product') : lang('Create Product'),
@@ -5327,6 +5333,8 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                             </div>
                         </div>
                     </div>
+
+                    ' . $pg_merchant['card'] . '
 
                     <!-- -------------------------------------------------- seo -->
                     <div class="col-12" id="pg_pb_sec_seo">
@@ -5803,6 +5811,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
             </div>
         </div>
     </form>
+    ' . $pg_merchant['form'] . '
 
     <!-- Outside the form on purpose — see pg_pb_render_attribute_modal(). -->
     ' . pg_pb_render_attribute_modal() . '

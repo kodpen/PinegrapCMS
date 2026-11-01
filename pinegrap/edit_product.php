@@ -91,6 +91,18 @@ if ($_POST) {
         go(PATH . SOFTWARE_DIRECTORY . '/edit_product.php?id=' . $product_id . '&send_to=' . urlencode($send_to));
     }
 
+    // "Send to Merchant Center" (includes/fn/merchant_center_push.php): only
+    // queued, sent by api_sync_job.php within minutes; nothing else is saved.
+    if (!empty($_POST['merchant_push'])) {
+        if (pg_merchant_product_push($product_id)) {
+            $liveform->add_notice(lang('Queued: the price and stock are sent to Merchant Center within a few minutes.'));
+        } else {
+            $liveform->add_warning(lang('This product is not sent to Merchant Center.'));
+        }
+
+        go(PATH . SOFTWARE_DIRECTORY . '/edit_product.php?id=' . $product_id);
+    }
+
     // Delete first: the rest of this block writes the product, and doing that
     // on the way to deleting it is work nobody sees and one more chance to
     // fail halfway.

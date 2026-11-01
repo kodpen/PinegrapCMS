@@ -95,7 +95,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - marketplace-variant-attributes.md: Listed products' variant attributes (Trendyol varianter and slicer, n11 isVariant): own option first, the article's value as fallback, duplicate refusal, mapping screen field.
 - marketplace-webhook-receiver.md: marketplace_webhook.php: what calls it and what it imports, its checks and status codes, why it never calls out, the job's acceptance pass, the firewall entry.
 - marketplace-webhook-registration.md: How a marketplace order webhook is registered and removed from the account screen, which saves are refused while one exists, what account delete does with it, and Trendyol's webhook facts.
-- merchant-center-push.md: Per-product push to Google Merchant Center rides the outbound marketplace layer (#4389): a managed provider, mapping rows from the feed, the queue, a supplemental data source; no table of its own
+- merchant-center-push.md: Per-product push to Google Merchant Center on the outbound marketplace layer (#4389, #4423): managed provider, mapping from the feed, queue, supplemental source
 - merchant-center.md: Google Merchant Center via the Merchant API (PR #3213): feed.php as a fetched data source, cached product issues on System Status, state in config.product_feeds
 - n11-api-facts.md: n11 REST API facts for the connector: headers, connection test, async price/stock task flow, REJECT vs IN_QUEUE, order endpoints and page cap, GMT+3 dates, discount fields, stockCode.
 - n11-old-address-order.md: The 2026.11.0 data step 11.0.138 that swaps old n11-imported ship_tos rows (province in city, town in state) into the checkout's order (#3836)
