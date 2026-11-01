@@ -2051,6 +2051,45 @@ function pg_marketplace_product_changed($product_id, $priority = 5)
     return mp_enqueue($product_id, 'stock_price', $priority);
 }
 
+/**
+ * Queues many products for the marketplaces at once, for a writer that
+ * refreshes the bundles itself (the product import's pg_bundle_refresh_all()):
+ * pg_marketplace_product_changed() without its per-product bundle refresh.
+ *
+ * @param array $product_ids
+ * @return int queue rows written
+ */
+function pg_marketplace_products_changed($product_ids)
+{
+    $ids = array();
+
+    foreach ((array) $product_ids as $product_id) {
+        if (is_scalar($product_id) && ((int) $product_id > 0)) {
+            $ids[(int) $product_id] = true;
+        }
+    }
+
+    if (!$ids or !defined('DB_CONNECTED')) {
+        return 0;
+    }
+
+    $connectors = PG_FUNCTIONS_DIR . '/includes/api/outbound/connectors/base.php';
+
+    if (!is_file($connectors)) {
+        return 0;
+    }
+
+    require_once($connectors);
+
+    $written = 0;
+
+    foreach (array_keys($ids) as $product_id) {
+        $written += (int) mp_enqueue($product_id, 'stock_price', 5);
+    }
+
+    return $written;
+}
+
 
 /**
  * The low-stock line this site runs, 0 when it runs none.
@@ -13181,6 +13220,19 @@ function pg_barcode_scan_quantity($value)
     }
 
     return (int) $value;
+}
+
+/**
+ * Whether an import file carries a column the marketplaces receive (price,
+ * extra shipping, stock, tracking or the enabled flag), so the products it
+ * updates are queued for them.
+ *
+ * @param array $column_names the file's column names
+ * @return bool
+ */
+function pg_products_import_marketplace_columns($column_names)
+{
+    return (bool) array_intersect(array('price', 'extra_shipping_cost', 'inventory', 'inventory_quantity', 'enabled'), (array) $column_names);
 }
 
 /**
