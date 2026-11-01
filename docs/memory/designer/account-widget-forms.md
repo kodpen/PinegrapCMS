@@ -22,3 +22,6 @@ description: Designed account widgets: the login region's two states and per-pla
 
 ## Which widgets show one screen?
 - `_SW_ONE_SCREEN` (`error_page`, `login_region`, `cart_link`) and `_SW_ACCOUNT_SINGLE` in `style_designer.js`: their loop area is hidden on the canvas and left out of the output. A new one-screen kind goes into the list. The error page itself: `error-page-widget.md`.
+
+## Which heading level is an account page's title?
+- `h1` with the `h4` class (size kept): the card title of the login, forgot password, sign-up, membership, log-out (both states), change password and set password starters. A template's account page has no other heading, so the old `h4` left it without an `h1` and the SEO check flagged it (#4455). Existing sites keep their own trees. `tests/account_page_heading_test.php`.
