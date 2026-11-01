@@ -10,7 +10,7 @@ module: health_gauge
 - `pg_changelog_dialog()` (`includes/fn/system_status.php`): the Release Notes dialog and its header button, built once by `welcome.php` and by the new card ("Details").
 
 ## What keeps widget 2 the same?
-- The code moved as it was (#N3 PR). `tests/dashboard_v2_status_test.php` compares the functions with `tests/fixtures/health_gauge/` (gauge at 0, 44, 100; chips for roles 0 and 2), written by widget 2's own code before the move. Change the gauge on purpose: write the fixtures again and say so in the PR.
+- The code moved as it was (#4756). `tests/dashboard_v2_status_test.php` compares the functions with `tests/fixtures/health_gauge/` (gauge at 0, 44, 100; chips for roles 0 and 2), written by widget 2's own code before the move. Change the gauge on purpose: write the fixtures again and say so in the PR.
 - The SVG ids (`pg_health_gradient`, `pg_health_cell_clip`, …) are fixed, so one page draws one gauge; the two dashboards never share a page.
 
 ## How does the new dashboard's card differ?

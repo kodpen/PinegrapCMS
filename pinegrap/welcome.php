@@ -94,6 +94,7 @@ $output_header_includes = '';
 $changelog_dialog = pg_changelog_dialog();
 $output_changelog_button = $changelog_dialog['button'];
 $output_changelog_modal = $changelog_dialog['dialog'];
+$changelog_sections = $changelog_dialog['sections'];
 
 $output_widget_controls = '';
 // ── Loading skeletons ───────────────────────────────────────────────────────

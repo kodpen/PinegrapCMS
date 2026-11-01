@@ -4390,7 +4390,8 @@ function check_and_repair_database_tables($deep = false)
  * column alignment of a text editor, which is exactly what a reader does
  * not need here. Newest version is open, the rest are folded away.
  *
- * @return array button, dialog (HTML; both empty without a changelog)
+ * @return array button, dialog (HTML; both empty without a changelog) and
+ *               sections (pg_changelog_sections(), which the brief reads too)
  */
 function pg_changelog_dialog()
 {
@@ -4509,5 +4510,5 @@ if (count($changelog_sections) > 0) {
     </dialog>';
     }
 
-    return array('button' => $output_changelog_button, 'dialog' => $output_changelog_modal);
+    return array('button' => $output_changelog_button, 'dialog' => $output_changelog_modal, 'sections' => $changelog_sections);
 }

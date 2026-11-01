@@ -127,3 +127,14 @@ function test_dashboard_v2_status_calm_and_compact_rules()
 		pg_assert_contains('[data-widget-theme="' . $style . '"] .pg-dash-card', $css, $style);
 	}
 }
+
+// welcome.php hands the parsed sections on to the brief, so the dialog
+// function returns them beside its markup.
+function test_dashboard_v2_status_changelog_dialog_returns_sections()
+{
+	$dialog = pg_changelog_dialog();
+
+	pg_assert_true(is_array($dialog['sections']), 'sections');
+	pg_assert_same(pg_changelog_sections(), $dialog['sections']);
+	pg_assert_contains("\$changelog_sections = \$changelog_dialog['sections'];", (string) file_get_contents(PG_FUNCTIONS_DIR . '/welcome.php'));
+}
