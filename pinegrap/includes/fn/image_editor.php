@@ -1214,6 +1214,44 @@ function pg_image_editor_sticker_rows($rows, $folders)
 }
 
 /**
+ * The WHERE clause of the sticker panel's listing: pictures only, none in
+ * the Recycle Bin (pg_image_editor_file() treats those as offline), a
+ * role-3 user's folders only, and the name search. The folders are filtered
+ * here, before the LIMIT, so a user whose folders hold none of the newest
+ * pictures still sees theirs.
+ *
+ * @param string     $search  the name search ('' for none)
+ * @param array|null $folders the folder ids a role-3 user may reach; null for every folder
+ * @param array      $bin     the Recycle Bin's folder ids
+ * @return string|null the clause, or null when the user may reach no folder
+ */
+function pg_image_editor_sticker_where($search, $folders, $bin)
+{
+    $where = "(type IN ('jpg', 'jpeg', 'png', 'gif', 'webp')) AND (name != '')";
+    $ids = function ($list) {
+        return implode(', ', array_map(function ($id) { return "'" . (int) $id . "'"; }, $list));
+    };
+
+    if ($folders !== null) {
+        $folders = array_values(array_diff(array_map('intval', $folders), array_map('intval', $bin)));
+
+        if (!$folders) {
+            return null;
+        }
+
+        $where .= ' AND (folder IN (' . $ids($folders) . '))';
+    } elseif ($bin) {
+        $where .= ' AND (folder NOT IN (' . $ids($bin) . '))';
+    }
+
+    if ($search !== '') {
+        $where .= " AND (name LIKE '" . e(pg_list_like_pattern($search)) . "')";
+    }
+
+    return $where;
+}
+
+/**
  * Action sticker_files: the newest pictures in Files, or those whose name
  * holds the search, for the sticker panel's "Picture from Files". Read only;
  * a role-3 user sees the folders they may edit, as the File Manager shows
@@ -1226,24 +1264,18 @@ function pg_image_editor_sticker_rows($rows, $folders)
 function pg_image_editor_action_sticker_files($request, $user)
 {
     $search = (isset($request['search']) && is_string($request['search'])) ? trim(mb_substr($request['search'], 0, 100)) : '';
-    $where = "(type IN ('jpg', 'jpeg', 'png', 'gif', 'webp')) AND (name != '')";
-
-    if ($search !== '') {
-        $where .= " AND (name LIKE '" . e(pg_list_like_pattern($search)) . "')";
-    }
-
-    $rows = db_items(
+    $folders = ((int) $user['role'] === 3) ? get_folders_that_user_has_access_to($user['id']) : null;
+    $where = pg_image_editor_sticker_where($search, $folders, pg_recycle_bin_folder_ids());
+    $rows = ($where === null) ? array() : db_items(
         "SELECT id, name, type, folder, image_width, image_height
         FROM files
         WHERE $where
         ORDER BY timestamp DESC
-        LIMIT 200");
-
-    $folders = ((int) $user['role'] === 3) ? get_folders_that_user_has_access_to($user['id']) : null;
+        LIMIT 60");
 
     return array(array(
         'status' => 'success',
-        'files'  => array_slice(pg_image_editor_sticker_rows(is_array($rows) ? $rows : array(), $folders), 0, 60)), 200);
+        'files'  => pg_image_editor_sticker_rows(is_array($rows) ? $rows : array(), $folders)), 200);
 }
 
 // -- Redact (pg_image_editor_redact.js) --

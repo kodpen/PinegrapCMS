@@ -7,7 +7,7 @@ module: image_editor
 ## What does the Sticker tool offer?
 - Eight built-in stickers (`STICKERS` in the model: burst, pill, tag, stamp, speech bubble, check, star, heart), placed in the middle of the visible stage at a size in hundredths of the picture's shorter side, selected. The tool is a select tool: the selection's handles, moves and keys work in it (`Editor.selectTools`).
 - With stickers selected: sticker colour, label colour (not for a star or heart), the label of one sticker (a double click with Select opens the sheet and focuses it), then duplicate, forward, backward, delete. Select's panel shows the same colours and label (`layerTypes.sticker.panel`).
-- "Picture from Files" opens on demand: the 60 newest pictures (jpg, png, gif, webp) or those whose name holds the search, from the API action `sticker_files`. A press adds an `image` layer with the file's address (same origin, so the save's canvas stays clean) and `fileId`. Not offered in a callback save or without the API.
+- "Picture from Files" opens on demand: the 60 newest pictures (jpg, png, gif, webp) or those whose name holds the search, from the API action `sticker_files`; none in the Recycle Bin, and a role-3 user's folders filtered in the query before its LIMIT (`pg_image_editor_sticker_where()`). A press adds an `image` layer with the file's address (same origin, so the save's canvas stays clean) and `fileId`. Not offered in a callback save or without the API.
 
 ## What is a sticker layer?
 - `{ type: 'sticker', kind, label, color, ink, x, y, w, h, rot, opacity }`. `stickerShape(l)` gives its outline in its box (`d`, a second path `hd`, `outline` for the stamp's two rings, `tick`, the label box `lb`); the stage (`node`) and the save (`paint`, `Path2D`) draw the same paths.
@@ -16,7 +16,7 @@ module: image_editor
 
 ## How do frames work?
 - `doc.frame` is `{ kind: line|thick|polaroid|corners, color, width 1-10 }` or `null` (None, Reset). `frameShape(frame, box)` gives an even-odd ring over the saved picture's box (the crop box, an artboard's whole board); the stage draws it in its own SVG over the layers (hidden while cropping).
-- Every frame lies on the picture's own edge, the polaroid's wider foot too: the saved size stays and the server's save path is untouched (an outward polaroid would need the artboard extension of the save path). Choosing Polaroid sets white.
+- Every frame lies on the picture's own edge, the polaroid's wider foot too: the saved size stays and the server's save path is untouched. The outward polaroid of screen 08, where the canvas grows, comes with the canvas extension of E12 (accepted by the plan holder on #4486). Choosing Polaroid sets white.
 - A save with a frame redraws the overlay (layers, then frame) in a save hook; a new artboard's PNG gets fill, layers and frame. The server lays the overlay before the crop shape, so a circle crop cuts the frame too.
 - Until versions keep the document (E11), a reopened file shows the frame as pixels: adding one again draws a second.
 

@@ -179,3 +179,25 @@ function test_image_editor_sticker_files_filter()
 	$basic = pg_image_editor_sticker_rows($rows, array(2));
 	pg_assert_same(array(1), array_map(function ($f) { return $f['id']; }, $basic), 'a role-3 user sees only the folders they may reach');
 }
+
+// The listing's query leaves out the Recycle Bin and filters a role-3
+// user's folders before its LIMIT; a user with no folder gets no query.
+function test_image_editor_sticker_files_where()
+{
+	$all = pg_image_editor_sticker_where('', null, array(7, 8));
+	pg_assert_contains("folder NOT IN ('7', '8')", $all, 'the Recycle Bin is left out');
+	pg_assert_false(strpos($all, 'LIKE') !== false, 'no search, no LIKE');
+
+	$none = pg_image_editor_sticker_where('', null, array());
+	pg_assert_false(strpos($none, 'folder') !== false, 'without a Recycle Bin every folder');
+
+	$basic = pg_image_editor_sticker_where('', array(2, '5', 7), array(7, 8));
+	pg_assert_contains("folder IN ('2', '5')", $basic, 'a role-3 user\'s folders, the bin left out, in the query');
+
+	pg_assert_same(null, pg_image_editor_sticker_where('', array(), array(7)), 'no folder, no query');
+	pg_assert_same(null, pg_image_editor_sticker_where('', array(7), array(7)), 'only the bin, no query');
+
+	if (function_exists('pg_list_like_pattern') && class_exists('db', false) && db::$con) {
+		pg_assert_contains('LIKE', pg_image_editor_sticker_where('logo', null, array()), 'a search adds LIKE');
+	}
+}
