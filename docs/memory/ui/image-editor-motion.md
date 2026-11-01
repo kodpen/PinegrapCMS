@@ -36,8 +36,8 @@ module: image_editor
 - On a phone held upright (`max-width: 599.98px`) it comes first in the sheet instead.
 - It is rebuilt only when what it shows changes (`stageBarKey`), so a zoom or an active scrub keeps it.
 - requestAnimationFrame advances `this.time` and calls only `applyMotion()` and `updateBar()`.
-- With the Animate tool active, Space plays or pauses, unless a focused button or field takes the key. Escape pauses before anything else.
+- With the Animate tool active, K plays or pauses (the video players' key; the button's label names it). Space keeps panning the view as in every tool. Escape pauses before anything else. The tool's letter M goes into E18's key map (`M.toolForKey()`) with E18 or AN11, whichever lands after this.
 
 ## What is left out, and what never moves?
 - Redaction layers never move: one moving away in an export would show what it hides.
-- Tracks (AN2), frames, exports and the server's base (AN3 onward), and the timeline keys other than Space (AN11), are not in this step.
+- Tracks (AN2), frames, exports and the server's base (AN3 onward), and the timeline keys other than K (AN11), are not in this step.

@@ -658,16 +658,10 @@
 
     // ---- keys and pointers ----
 
+    // K plays and pauses in the Animate tool, the video players' key; Space
+    // keeps moving the view as in every tool.
     Editor.prototype.motionKey = function (e, mod, k) {
-        var tg = e.target, tag = (tg && tg.tagName) || '';
-
-        if ((this.tool !== 'motion') || mod || ((k !== ' ') && (e.code !== 'Space'))) {
-            return false;
-        }
-
-        // A focused button or field takes its own Space; the scrub slider
-        // has no use for it.
-        if (/^(BUTTON|A|SELECT|TEXTAREA|SUMMARY)$/.test(tag) || ((tag === 'INPUT') && (tg.type !== 'range'))) {
+        if ((this.tool !== 'motion') || mod || e.altKey || ((k !== 'k') && (k !== 'K'))) {
             return false;
         }
 

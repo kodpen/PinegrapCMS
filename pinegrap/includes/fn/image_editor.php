@@ -2407,7 +2407,7 @@ function pg_image_editor_strings_motion()
 {
     return array(
         'tool_motion'          => lang('Animate'),
-        'hintMotion'           => lang('Select a layer and give it an entrance, a loop and an exit. Space: play or pause'),
+        'hintMotion'           => lang('Select a layer and give it an entrance, a loop and an exit. K: play or pause'),
         'motionPick'           => lang('Select a layer to give it motion.'),
         'motionStill'          => lang('A redaction does not move: what it hides would show.'),
         'motionLayers'         => lang('{n} layers'),
@@ -2466,8 +2466,8 @@ function pg_image_editor_strings_motion()
         'motionBase_panleft'   => lang('Pan left'),
         'motionBase_panright'  => lang('Pan right'),
         'motionBar'            => lang('Animation preview'),
-        'motionPlay'           => lang('Play'),
-        'motionPause'          => lang('Pause'),
+        'motionPlay'           => lang('Play (K)'),
+        'motionPause'          => lang('Pause (K)'),
         'motionScrub'          => lang('Playhead'),
         'motionRepeat'         => lang('Repeat the preview'),
     );
