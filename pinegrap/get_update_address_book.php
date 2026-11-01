@@ -32,19 +32,30 @@ function get_update_address_book($properties = array()) {
     
     $form = new liveform('update_address_book');
 
+    // The address being edited. A list (?id[]=1) is no id: it reached the
+    // query as "Array" and h() below, where htmlspecialchars() of an array is
+    // a TypeError on PHP 8 that ended the page.
+    $address_id = (isset($_GET['id']) && is_scalar($_GET['id'])) ? (int) $_GET['id'] : 0;
+
+    $row = null;
+
     // if an id was passed and form has not been filled out yet, get recipient data in order to populate fields
-    if (($_GET['id'] ?? '') && ($form->field_in_session('ship_to_name') == false)) {
+    if (($address_id > 0) && ($form->field_in_session('ship_to_name') == false)) {
         // get user id because we want to make sure that this user has access to the recipient that they are requesting to update
         $query = "SELECT user_id FROM user WHERE user_username = ?";
-        $result = db_q($query, array((string) $_SESSION['sessionusername'])) or output_error('Query failed.');
+        $result = db_q($query, array((string) ($_SESSION['sessionusername'] ?? ''))) or output_error('Query failed.');
         $row = mysqli_fetch_assoc($result);
-        $user_id = $row['user_id'];
+        $user_id = (int) ($row['user_id'] ?? 0);
 
         // get recipient data
         $query = "SELECT * FROM address_book WHERE id = ? AND user = ?";
-        $result = db_q($query, array((string) $_GET['id'], (string) $user_id)) or output_error('Query failed.');
+        $result = db_q($query, array((string) $address_id, (string) $user_id)) or output_error('Query failed.');
         $row = mysqli_fetch_assoc($result);
+    }
 
+    // Another member's address, or one removed since, fills in nothing: each
+    // column read of the missing row was a warning.
+    if ($row) {
         // set field values
         $form->assign_field_value('ship_to_name', $row['ship_to_name']);
         $form->assign_field_value('salutation', $row['salutation']);
@@ -150,7 +161,7 @@ function get_update_address_book($properties = array()) {
             <form action="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/update_address_book.php" method="post" class="software">
                 ' . get_token_field() . '
                 <input type="hidden" name="page_id" value="' . $page_id . '" />
-                <input type="hidden" name="id" value="' . h($_GET['id'] ?? '') . '" />
+                <input type="hidden" name="id" value="' . ($address_id ?: '') . '" />
                 <table style="margin-bottom: 15px">
                     <tr>
                         <td>' . lang('Ship to Name') . '*</td>
@@ -280,7 +291,7 @@ function get_update_address_book($properties = array()) {
             get_token_field() . '
 
             <input type="hidden" name="page_id" value="' . h($page_id) . '">
-            <input type="hidden" name="id" value="' . h($_GET['id'] ?? '') . '">';
+            <input type="hidden" name="id" value="' . ($address_id ?: '') . '">';
 
         $output = render_layout(array(
             'page_id' => $page_id,

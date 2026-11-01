@@ -110,6 +110,6 @@ description: Module list of plans/bug-hunt.md, part 4: root endpoint groups opti
 
 - Endpoints smtp_settings, stock_notify, submit_order, test_secure_mode, add_to_cart, toolbar: open
 
-- Endpoints track_shipment, get_update_address_book, url_to_absolute, variant_set_action, welcome, wishlist: open
+- Endpoints track_shipment, get_update_address_book, url_to_absolute, variant_set_action, welcome, wishlist: taken by fix/bug-hunt-track-shipment
 
 - Endpoints import_zip: open
