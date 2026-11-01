@@ -142,6 +142,7 @@ function output_control_panel_header_includes($include_assistant = true, $help_t
         'Short Links' => lang('Short Links'),
         'Search...' => lang('Search...'),
         'Load More' => lang('Load More'),
+        'No Search Result' => lang('No Search Result'),
         'Please allow pop-up windows for this site.' => lang('Please allow pop-up windows for this site.'),
         'No text yet. Aim for {var:1} to {var:2} characters.' => lang('No text yet. Aim for {var:1} to {var:2} characters.'),
         '{var:1} characters, too short. Aim for {var:2} to {var:3}.' => lang('{var:1} characters, too short. Aim for {var:2} to {var:3}.'),

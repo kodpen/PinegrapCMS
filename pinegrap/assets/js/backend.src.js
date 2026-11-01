@@ -2739,7 +2739,9 @@ $(document).ready(function () {
                             $results.append($actRow);
                         }
                         if (!resp.results || resp.results.length === 0) {
-                            $results.append('<p class="fg-danger my-3">' + t('No Search Result') + '.</p>');
+                            // Under shortcut buttons the empty record list is not an error.
+                            var noResultClass = matched.length ? 'fg-secondary' : 'fg-danger';
+                            $results.append('<p class="' + noResultClass + ' my-3">' + t('No Search Result') + '.</p>');
                             return;
                         }
                     }
