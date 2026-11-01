@@ -80,7 +80,8 @@ function test_panel_forced_colors_controls_draw_their_state()
 		'stepper disc frame' => '/\.stepper-item::before\s*\{[^}]*border:\s*1px solid CanvasText;/',
 		'reached step fill' => '/\.stepper-item\.active::before\s*\{[^}]*background-color:\s*Highlight;/',
 		'current step ring' => '/\.stepper-item\[aria-current="step"\]::before\s*\{[^}]*outline:/',
-		'role card and chips focus' => '/\.btn-check:focus-visible \+ \.pg-role-card,\s*\.pg-chips:focus-within\s*\{[^}]*outline:\s*2px solid Highlight;/',
+		'chips focus' => '/\.pg-chips:focus-within\s*\{[^}]*outline:\s*2px solid Highlight;/',
+		'role card focus' => '/\.btn-check:focus-visible \+ \.pg-role-card\s*\{[^}]*outline-color:\s*Highlight;/',
 	);
 	foreach ($expect as $what => $pattern) {
 		pg_assert_same(1, preg_match($pattern, $block), $what);

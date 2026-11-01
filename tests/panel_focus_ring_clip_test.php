@@ -88,5 +88,5 @@ function test_panel_focus_ring_clip_chip_field_joins_global_ring()
 {
 	$css = panel_focus_ring_clip_css();
 
-	pg_assert_true(preg_match('/\.form-adorn:has\(> \.form-ghost:focus-visible\),\s*\.chip-input\.pg-chips:has\(> \.form-ghost:focus-visible\)\s*\{\s*outline:\s*2px solid var\(--pg-primary-ink\);/', $css) === 1, 'a chip field wears the global ring');
+	pg_assert_true(preg_match('/\.form-adorn:has\(> \.form-ghost:focus-visible\),\s*\.chip-input\.pg-chips:has\(> \.form-ghost:focus-visible\)\s*\{\s*outline:\s*var\(--pg-focus-ring-width\) solid var\(--pg-primary-ink\);\s*outline-offset:\s*var\(--pg-focus-ring-offset\);/', $css) === 1, 'a chip field wears the global ring');
 }

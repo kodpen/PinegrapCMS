@@ -154,9 +154,8 @@ input.btn-check:checked + .btn {
   box-shadow: var(--bs-btn-active-shadow);
 }
 input.btn-check:focus-visible + .btn {
-  outline: 2px solid var(--pg-primary-ink);
-  outline-offset: 2px;
-  box-shadow: 0 0 0 var(--pg-focus-ring-width) var(--pg-focus-ring-color);
+  outline: var(--pg-focus-ring-width) solid var(--pg-primary-ink);
+  outline-offset: var(--pg-focus-ring-offset);
 }
 input.btn-check:disabled + .btn {
   color: var(--bs-btn-disabled-color);
@@ -1047,6 +1046,10 @@ select.form-control.form-control-sm:not([multiple], [size]:not([size="1"])) {
   /* A pastel ring at Bootstrap's 0.25 alpha is close to invisible on white. */
   --pg-focus-ring-color: color-mix(in srgb, var(--pg-primary) 35%, transparent);
   --pg-focus-ring-width: var(--bs-focus-ring-width);
+  /* Bootstrap 6's 1px gap between a control and its ring. A value, not an
+     alias: Bootstrap changes --bs-focus-ring-offset on single components
+     (-1px on fields), which an alias resolved here would never see. */
+  --pg-focus-ring-offset: 1px;
   --pg-bg-1: var(--bs-bg-1);
   --pg-bg-2: var(--bs-bg-2);
   --pg-fg-body: var(--bs-fg-body);
@@ -8393,13 +8396,17 @@ html[data-bs-theme="dark"] .pg-next {
 .pg-skip-link:focus,
 .pg-skip-link:focus-visible {
   top: 8px;
-  outline: 3px solid var(--pg-primary-ink);
-  outline-offset: 2px;
+  outline: var(--pg-focus-ring-width) solid var(--pg-primary-ink);
+  outline-offset: var(--pg-focus-ring-offset);
 }
 
 /* Ensure a visible focus ring on every interactive element.
    Bootstrap covers most cases; this hardens custom widgets and any
-   element where focus-visible was suppressed by inline styles. */
+   element where focus-visible was suppressed by inline styles. The ring is
+   Bootstrap 6's shape (one outline, the token width, the token offset out)
+   in the primary ink, which keeps 3:1 against the page where Bootstrap's
+   pale ring colour does not. Its outer edge sits 4px out, the room the
+   scrolling strips leave for it. */
 a:focus-visible,
 button:focus-visible,
 input:focus-visible,
@@ -8412,9 +8419,8 @@ textarea:focus-visible,
 .breadcrumb-item a:focus-visible,
 .form-adorn:has(> .form-ghost:focus-visible),
 .chip-input.pg-chips:has(> .form-ghost:focus-visible) {
-  outline: 2px solid var(--pg-primary-ink);
-  outline-offset: 2px;
-  box-shadow: 0 0 0 0.2rem var(--pg-focus-ring-color);
+  outline: var(--pg-focus-ring-width) solid var(--pg-primary-ink);
+  outline-offset: var(--pg-focus-ring-offset);
 }
 /* A form-adorn field wears the ring on its wrapper, the label drawn as the
    input; the borderless input inside it shows none of its own. */
@@ -8426,8 +8432,8 @@ textarea:focus-visible,
 /* Some legacy admin links carry inline `outline:0` style; force visible focus. */
 a.no-popover:focus-visible,
 button.no-popover:focus-visible {
-  outline: 2px solid var(--pg-primary-ink) !important;
-  outline-offset: 2px;
+  outline: var(--pg-focus-ring-width) solid var(--pg-primary-ink) !important;
+  outline-offset: var(--pg-focus-ring-offset);
 }
 
 
@@ -9464,8 +9470,8 @@ html:has(.mpp-bulk:not(.d-none)) {
   color: var(--pg-primary-fg-emphasis);
 }
 .btn-check:focus-visible + .pg-role-card {
-  outline: 0;
-  box-shadow: 0 0 0 0.25rem var(--pg-focus-ring-color);
+  outline: var(--pg-focus-ring-width) solid var(--pg-focus-ring-color);
+  outline-offset: var(--pg-focus-ring-offset);
 }
 .btn-check:disabled + .pg-role-card {
   opacity: 0.6;
@@ -21466,11 +21472,15 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
     outline-offset: 2px;
   }
 
-  /* Focus drawn only as a shadow ring: the role card and the chips field. */
-  .btn-check:focus-visible + .pg-role-card,
+  /* Focus drawn only as a shadow ring: the chips field. */
   .pg-chips:focus-within {
     outline: 2px solid Highlight;
     outline-offset: 2px;
+  }
+  /* The role card's ring is an outline of the token size; it takes the
+     system focus colour. */
+  .btn-check:focus-visible + .pg-role-card {
+    outline-color: Highlight;
   }
 }
 }

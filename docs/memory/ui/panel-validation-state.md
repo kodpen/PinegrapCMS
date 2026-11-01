@@ -9,7 +9,7 @@ description: Invalid and valid fields in the panel on Bootstrap 6: why v6's own 
 - Hit by every server error (`liveform::create_error_class()`) and the runtime marks of `product_builder.js`, `add_order.js`, `erp_account_quick.js` and `backend.src.js` (IndexNow key). The `.tagin.is-invalid + .pg-chips` rule had the same look already.
 
 ## What must stay?
-- `--bs-danger-border` / `--bs-success-border` on the pale `-line` tones (alerts, badges, `theme-*` borders) and every `--pg-*` value. A `.form-adorn` with an invalid input takes the 3px ring of `--pg-focus-ring-width`, not the global rule's 0.2rem; ring sizes otherwise wait for B10 (`panel-focus-ring.md`).
+- `--bs-danger-border` / `--bs-success-border` on the pale `-line` tones (alerts, badges, `theme-*` borders) and every `--pg-*` value. A `.form-adorn` with an invalid input takes the 3px ring of `--pg-focus-ring-width` (`panel-focus-ring.md`).
 - Computed (Chromium, v6 dist + backend.src.css): invalid border 255,205,210 to 229,115,115 light, 107,43,43 to 229,115,115 dark; focused, it kept that border (was 100,181,246) with a danger ring at 35%.
 
 Related: docs/memory/ui/panel-css-tokens.md, docs/memory/ui/panel-focus-ring.md, docs/memory/ui/form-adorn.md
