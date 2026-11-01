@@ -110,6 +110,6 @@ description: Module list of plans/bug-hunt.md, part 4: root endpoint groups opti
 
 - Endpoints smtp_settings, stock_notify, submit_order, test_secure_mode, add_to_cart, toolbar: open
 
-- Endpoints track_shipment, get_update_address_book, url_to_absolute, variant_set_action, welcome, wishlist: taken by fix/bug-hunt-update-address-book
+- Endpoints track_shipment, get_update_address_book, url_to_absolute, variant_set_action, welcome, wishlist: done (#4604: get_update_address_book array id and missing row; track_shipment token and throttle, url_to_absolute RFC 3986 cases, variant_set_action set check, welcome role ladder and output, wishlist token and redirect checked)
 
 - Endpoints import_zip: open
