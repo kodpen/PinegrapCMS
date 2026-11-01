@@ -2229,6 +2229,7 @@
     "The invoice at Paraşüt does not have the same lines as the ERP invoice; nothing was converted.": "Paraşüt'teki faturanın kalemleri ERP faturasınınkiyle aynı değil; hiçbir şey resmileştirilmedi.",
     "The invoice came out {var:1} away from the order total.": "Fatura, sipariş toplamından {var:1} farklı çıktı.",
     "The invoice can be printed": "Fatura yazdırılabilir",
+    "The invoice cannot fall due before its date.": "Vade tarihi fatura tarihinden önce olamaz.",
     "The invoice carries VAT withholding (tevkifat). The ERP does not record withholding yet, so it cannot be taken in as it stands.": "Faturada KDV tevkifatı var. ERP henüz tevkifat kaydetmediği için fatura bu hâliyle alınamaz.",
     "The invoice carries a discount or a surcharge on the whole document, which a typed invoice cannot hold.": "Faturada belgenin tamamına uygulanmış bir indirim ya da artırım var; elle girilen fatura bunu taşıyamaz.",
     "The invoice carries a second tax, which an e-document cannot show; it stays a PDF document.": "Faturada ikinci bir vergi var; e-belge bunu gösteremez, fatura PDF belge olarak kalır.",

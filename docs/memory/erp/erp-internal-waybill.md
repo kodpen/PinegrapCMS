@@ -17,6 +17,7 @@ description: Internal ERP waybill (irsaliye; no driver sends e-Irsaliye): files,
 - Invoiced state is derived, no column: `erp_waybill_invoice_state()` reads a LEFT JOIN on `erp_invoices` (missing/`cancelled` → `none`, `draft` → `draft`, else `invoiced`). `erp_invoice_draft_delete()` drops the link via `erp_waybill_unlink_invoice()` (guarded by `function_exists`).
 - Where the invoice opens: `erp_waybill_invoice_url()` ('' for `none`, the draft editor for `draft`, `edit_erp_invoice.php` otherwise). The drawer (`erp_drawer_waybill()`) uses it; it used to link a cancelled invoice the list and full page hide (#4368).
 - Order-linked waybill → `erp_invoice_for_order()` / `erp_invoice_from_order()`; manual waybill → draft via `erp_invoice_draft_save()`, each line priced and rated by `erp_product_for_line($product, account)` as the editor and `POST /erp/invoices` do: the product's own rate, else the account's zone rate. Before PR #1131 (#1068) a product left to the zone (`tax_rate` NULL) got 0% and the issued invoice carried no VAT.
+- Invoicing an order-linked waybill (screen or API) runs `erp_waybill_write_back()` after the link, as the order card does; the screen shows its notice. Before PR #4516 (#4433) the invoice had no shipment date.
 - An invoiced waybill cannot be cancelled; cancel keeps the number and does not open the series.
 
 ## How do the editor and document work?

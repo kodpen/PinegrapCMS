@@ -137,7 +137,7 @@ function erp_export_columns($profile)
         case 'csv_receipts':
             return array(lang('Date'), lang('Direction'), lang('Account'), erp_tax_id_label(), lang('Till or Bank Account'),
                 lang('Payment Method'), lang('Amount'), lang('Currency'), lang('Exchange Rate'), lang('Amount (base currency)'),
-                lang('Description'), lang('Receipt ID'));
+                lang('Description'), lang('Receipt ID'), lang('Cancelled receipt ID'));
 
         case 'parasut_contacts':
             return array('FİRMA ADI *', 'KISA ADI', 'MÜŞTERİ/TEDARİKÇİ *', 'E-POSTA', 'KATEGORİ', 'ADRES', 'İLÇE', 'İL', 'TELEFON', 'FAKS',
@@ -379,7 +379,10 @@ function erp_export_fetch_invoices($filters, $profile)
  */
 function erp_export_fetch_receipts($filters, $profile)
 {
-    $where = "c.doc_type IN ('collection','payment')";
+    // A cancelled receipt stays in the file with the movement that took it
+    // back, so the file adds up to the till ledgers and a cancel made after
+    // the receipt was exported reaches the next file on its own id.
+    $where = "(c.doc_type IN ('collection','payment') OR (c.doc_type = 'cancel' AND o.doc_type IN ('collection','payment')))";
 
     if ($filters['from'] !== '') {
         $where .= " AND c.doc_date >= '" . escape($filters['from']) . "'";
@@ -392,8 +395,10 @@ function erp_export_fetch_receipts($filters, $profile)
         $where .= erp_export_not_exported_sql('receipt', 'c.id', $profile);
     }
 
-    return (array) db_items("SELECT c.*, a.title AS account_title, a.tax_number AS account_tax_number, t.name AS till_name
+    return (array) db_items("SELECT c.*, a.title AS account_title, a.tax_number AS account_tax_number, t.name AS till_name,
+            o.doc_type AS cancelled_doc_type
         FROM erp_cash_transactions c
+        LEFT JOIN erp_cash_transactions o ON c.doc_type = 'cancel' AND o.id = c.doc_id
         LEFT JOIN erp_accounts a ON c.account_id = a.id
         LEFT JOIN erp_cash_accounts t ON c.cash_account_id = t.id
         WHERE " . $where . "
@@ -557,9 +562,14 @@ function erp_export_payment_method_label($method)
 function erp_export_rows_csv_receipts($receipts, $profile)
 {
     $rows = array();
-    $direction_words = array('collection' => lang('Receipt'), 'payment' => lang('Payment'));
+    $direction_words = array('collection' => lang('Receipt'), 'payment' => lang('Payment'), 'cancel' => lang('Cancellation'));
 
     foreach ($receipts as $r) {
+        // A cancellation takes its receipt's amount back: written negative,
+        // the two rows add up to nothing, as they do in the till ledger.
+        $cancel = ((string) $r['doc_type'] === 'cancel');
+        $sign = $cancel ? -1 : 1;
+
         $rows[] = array(
             erp_export_date($r['doc_date'], $profile),
             isset($direction_words[$r['doc_type']]) ? $direction_words[$r['doc_type']] : (string) $r['doc_type'],
@@ -567,12 +577,13 @@ function erp_export_rows_csv_receipts($receipts, $profile)
             (string) ($r['account_tax_number'] ?? ''),
             (string) ($r['till_name'] ?? ''),
             erp_export_payment_method_label($r['payment_method']),
-            erp_export_amount($r['amount'], $profile),
+            erp_export_amount($sign * (int) $r['amount'], $profile),
             erp_export_currency($r['currency'], $profile),
             erp_export_rate($r['exchange_rate'], $profile, 6),
-            erp_export_amount($r['amount_base'], $profile),
+            erp_export_amount($sign * (int) $r['amount_base'], $profile),
             (string) $r['description'],
             (string) (int) $r['id'],
+            $cancel ? (string) (int) ($r['doc_id'] ?? 0) : '',
         );
     }
 

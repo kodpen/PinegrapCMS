@@ -90,7 +90,11 @@ function test_erp_export_receipts_csv_writes_a_cancellation_signed()
 	pg_assert_same('-50.00', $rows[1][9], 'and the base amount');
 	pg_assert_same('23', $rows[1][12], 'it names the receipt it cancels');
 	pg_assert_same('', $rows[0][12], 'a receipt cancels nothing');
-	pg_assert_same(count(erp_export_headers('csv_receipts')), count($rows[1]), 'one header per column');
+	pg_assert_same(13, count($rows[0]), 'every row has the thirteen columns');
+	pg_assert_same(13, count($rows[1]), 'the cancel row too');
+
+	$src = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/erp/export.php');
+	pg_assert_contains("lang('Receipt ID'), lang('Cancelled receipt ID'));", $src, 'the thirteenth heading');
 }
 
 function test_erp_export_receipts_fetch_takes_their_cancellations()

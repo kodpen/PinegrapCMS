@@ -215,10 +215,10 @@ function test_erp_invoice_due_before_issue()
 function test_erp_invoice_due_date_follows_a_new_date()
 {
 	// Stored 1/11 due 1/11 (worked out from the term), redated to 15/11.
-	pg_assert_same('2026-11-15', erp_invoice_due_date_redated('2026-11-15', '2026-11-01', '2026-11-01', '2026-11-01', '2026-11-15'), 'a worked-out due date moves with the date');
-	pg_assert_same('2026-11-20', erp_invoice_due_date_redated('2026-11-15', '2026-11-20', '2026-11-01', '2026-11-01', '2026-11-15'), 'a due date typed now stays');
-	pg_assert_same('2026-11-05', erp_invoice_due_date_redated('2026-11-15', '2026-11-05', '2026-11-01', '2026-11-05', '2026-11-15'), 'a due date typed before stays');
-	pg_assert_same('2026-11-01', erp_invoice_due_date_redated('2026-11-01', '2026-11-01', '2026-11-01', '2026-11-01', '2026-11-01'), 'the same date changes nothing');
+	pg_assert_same('2026-11-15', erp_invoice_due_date_redated('2026-11-15', '2026-11-01', '2026-11-01', '2026-11-01', '2026-11-01', '2026-11-15'), 'a worked-out due date moves with the date');
+	pg_assert_same('2026-11-20', erp_invoice_due_date_redated('2026-11-15', '2026-11-20', '2026-11-01', '2026-11-01', '2026-11-01', '2026-11-15'), 'a due date typed now stays');
+	pg_assert_same('2026-11-05', erp_invoice_due_date_redated('2026-11-15', '2026-11-05', '2026-11-01', '2026-11-05', '2026-11-01', '2026-11-15'), 'a due date typed before stays');
+	pg_assert_same('2026-11-01', erp_invoice_due_date_redated('2026-11-01', '2026-11-01', '2026-11-01', '2026-11-01', '2026-11-01', '2026-11-01'), 'the same date changes nothing');
 }
 
 function test_erp_invoice_due_date_is_checked_on_save_and_issue()
