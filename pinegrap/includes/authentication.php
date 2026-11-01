@@ -554,8 +554,8 @@ function pg_folder_access_resolve($rows, $folder_id, $bin_id)
 // Determine what access control type a folder has.
 function get_access_control_type($folder_id)
 {
-    // Per-request memoization. view_files.php walks every file row twice
-    // (count loop + render loop), so the answer is kept per folder.
+    // Per-request memoization. A file list asks once for every file row,
+    // so the answer is kept per folder.
     static $resolved = array();
 
     if (isset($resolved[$folder_id])) {

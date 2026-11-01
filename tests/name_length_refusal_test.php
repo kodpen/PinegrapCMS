@@ -4,8 +4,8 @@
  *
  * Tests for the name length refusal: a folder, page, product or product
  * group name longer than its varchar column is refused by the File and
- * Catalog Manager, the folder screens and the Pages bulk Find & Replace,
- * instead of being cut by the non-strict session.
+ * Catalog Manager and the Pages bulk Find & Replace, instead of being cut by
+ * the non-strict session.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -16,8 +16,6 @@
 if (!defined('PG_TEST_RUNNER')) {
 	exit;
 }
-
-require_once(PG_FUNCTIONS_DIR . '/includes/forms/folder_form.php');
 
 function _test_name_length_source($file)
 {
@@ -53,16 +51,6 @@ function test_name_length_explorer_handlers_refuse_before_writing()
 	pg_assert_true(strpos($group, 'pg_name_too_long($name)') < strpos($group, 'INSERT INTO product_groups'), 'group create refuses before the insert');
 	$crename = substr($catalog, (int) strpos($catalog, 'function pg_explorer_handle_catalog_rename('));
 	pg_assert_true(strpos($crename, 'pg_name_too_long($name)') < strpos($crename, 'UPDATE product_groups'), 'catalog rename refuses before the update');
-}
-
-function test_name_length_folder_screens()
-{
-	$html = pg_folder_form_markup(array('name' => 'Docs'));
-	pg_assert_contains('maxlength="100"', $html, 'edit name box stops at 100');
-
-	pg_assert_contains("'maxlength'=>'100'", _test_name_length_source('add_folder.php'), 'create name box stops at 100');
-	pg_assert_contains('pg_name_too_long($name)', _test_name_length_source('add_folder.php'), 'create refuses a long name');
-	pg_assert_contains('pg_name_too_long(trim((string) $_POST[\'name\']))', _test_name_length_source('edit_folder.php'), 'edit refuses a long name');
 }
 
 function test_name_length_mass_edit()

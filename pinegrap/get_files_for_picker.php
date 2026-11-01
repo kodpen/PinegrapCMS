@@ -35,7 +35,7 @@ $rows = db_items(
 );
 
 // A basic user sees only the files of the folders they may edit, the rule
-// view_files.php applies; everyone above sees them all.
+// the File Manager applies; everyone above sees them all.
 $folders_that_user_has_access_to = array();
 
 if ($user['role'] == 3) {

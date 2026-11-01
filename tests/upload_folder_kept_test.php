@@ -4,8 +4,8 @@
  *
  * A form upload field whose folder was deleted or is no longer offered:
  * Edit Field keeps the stored folder selected and marked with a line asking
- * for another one, and Edit Folder's Delete confirmation names the upload
- * fields that use the folder.
+ * for another one, and the File Manager's folder delete confirmation says
+ * how many upload fields use the folder or a folder inside it.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -57,7 +57,11 @@ function test_upload_folder_kept_screens_wired()
 	pg_assert_contains('pg_field_form_kept_folder($folder_options, $field[\'upload_folder_id\'], pg_field_form_folder_name(', $form, 'Edit Field keeps the stored upload folder');
 	pg_assert_contains('aria-describedby="upload_folder_id_help"', $form, 'the select points at its help line');
 
-	$folder = file_get_contents(PG_FUNCTIONS_DIR . '/edit_folder.php');
-	pg_assert_contains('FROM form_fields WHERE upload_folder_id = ? AND type IN', $folder, 'Edit Folder counts the upload fields of the folder');
-	pg_assert_contains("'WARNING: This folder will be permanently deleted. It is the upload folder of {var:1} form field{suffix:1}. Later uploads to a field left on it will not show in All Files or the File Manager.'", $folder, 'the confirmation names the upload fields');
+	$check = file_get_contents(PG_FUNCTIONS_DIR . '/includes/explorer/handle_recycle.php');
+	pg_assert_contains("WHERE (upload_folder_id IN (\" . \$sql_ids . \")) AND (type IN ('file upload', 'signature'))", $check, 'the delete check counts the upload fields of the whole subtree');
+	pg_assert_contains("'upload_fields' => \$upload_fields,", $check, 'and answers the count');
+
+	$explorer = file_get_contents(PG_FUNCTIONS_DIR . '/view_folders.php');
+	pg_assert_contains("'delete_folder_upload_fields' => lang('{var:1} form field(s) save their uploads in this folder or a folder inside it.", $explorer, 'the line is translated');
+	pg_assert_contains('if (response.upload_fields > 0) {', $explorer, 'the confirmation says it only when a field uses the folder');
 }

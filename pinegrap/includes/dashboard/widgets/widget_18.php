@@ -36,15 +36,15 @@ function pg_dashboard_widget_18($request, $user)
     //
     //   0 administrator  everything
     //   1 designer       everything
-    //   2 manager        design files excluded — view_files.php
-    //                    and optimize.php both refuse them above
-    //                    role 1, so listing them would only
-    //                    produce a dead end
+    //   2 manager        design files excluded — optimize.php
+    //                    refuses them above role 1, so listing
+    //                    them would only produce a dead end
     //   3 contributor    design files excluded, and narrowed to
     //                    the folders granted with edit rights
     //
     // Archived folders are left out for everyone, matching the
-    // default view_files.php listing.
+    // File Manager's Files view, which shows them only under its
+    // Archived files scope.
 
     // Above this an image is too heavy for a web page however
     // well it is compressed, so it is reported even when the row
@@ -235,8 +235,7 @@ function pg_dashboard_widget_18($request, $user)
             && in_array(mb_strtolower($fm_item['type']), $fm_optimizable_types));
 
         // Read from the cached column only. Filling it in means
-        // decoding and recompressing the image, which view_files.php
-        // does deliberately and under a threshold; a dashboard that
+        // decoding and recompressing the image; a dashboard that
         // every logged-in user loads is the wrong place to start
         // that work.
         $fm_percent = '';
@@ -422,7 +421,7 @@ function pg_dashboard_widget_18($request, $user)
         ' . $fm_cap_note . '
     </div>
     <div class="card-footer border-0 bg-reset py-1 text-center">
-        <a href="view_files.php" class="text-decoration-none" style="font-size:.6875rem">'
+        <a href="view_folders.php?view=files" class="text-decoration-none" style="font-size:.6875rem">'
         . lang('Files') . ' <i class="bi bi-arrow-right-short"></i></a>
     </div>';
 

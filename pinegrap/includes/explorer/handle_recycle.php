@@ -48,10 +48,9 @@ function pg_explorer_bin_status($done, $errors)
 }
 
 // Reports what deleting a folder together with its contents would remove,
-// and what blocks it. The deletions themselves run through the proven
-// handlers (edit_pages.php for pages, this API for files, edit_folder.php
-// per emptied folder) so every safety check — the submitted-forms rule above
-// all — stays where it has always lived.
+// and what blocks it. The deletion itself goes through the recycle bin
+// (explorer_recycle_delete) or its hard delete (explorer_hard_delete); a page
+// holding submitted forms is refused there too (recycle_bin.php).
 function pg_explorer_handle_delete_check($type, $request, $user)
 {
     $folder_id = (int) (isset($request['item_folder_id']) ? $request['item_folder_id'] : 0);
@@ -154,6 +153,14 @@ function pg_explorer_handle_delete_check($type, $request, $user)
         $file_ids[] = (int) $file['id'];
     }
 
+    // Form upload and signature fields keep their folder id after the folder
+    // is binned or deleted, and their later uploads then show in no file
+    // list, so the confirmation says how many fields upload into the subtree.
+    $upload_fields = (int) db_value(
+        "SELECT COUNT(*)
+        FROM form_fields
+        WHERE (upload_folder_id IN (" . $sql_ids . ")) AND (type IN ('file upload', 'signature'))");
+
     respond(array(
         'status' => 'success',
         'request' => $type,
@@ -168,6 +175,7 @@ function pg_explorer_handle_delete_check($type, $request, $user)
             'folders' => count($folder_ids) - 1,
             'pages' => count($page_ids),
             'files' => count($file_ids)),
+        'upload_fields' => $upload_fields,
         'blockers' => $blockers));
 }
 
