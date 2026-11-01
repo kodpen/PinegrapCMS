@@ -84,7 +84,7 @@ description: Module list of plans/bug-hunt.md, part 2: includes/fn/ modules pric
 
 - `system_status`: open
 
-- `text_search`: open
+- `text_search`: taken by MM — #4819
 
 - `tour`: open
 
