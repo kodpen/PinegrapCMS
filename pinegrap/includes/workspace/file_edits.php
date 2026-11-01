@@ -304,9 +304,11 @@ function ws_file_edit_name($name, $extension)
  * @param array  $channel
  * @param string $name  the name the file goes by
  * @param string $data  base64, as the panel sends files
+ * @param bool   $redacted the edit burnt a redaction in: the earlier version
+ *                         is then listed for the editor alone
  * @return array ok, error
  */
-function ws_message_file_replace($viewer, $message, $channel, $name, $data)
+function ws_message_file_replace($viewer, $message, $channel, $name, $data, $redacted = false)
 {
     if (!ws_file_can_replace($viewer, $message, $channel)) {
         return array('ok' => false, 'error' => lang('Only the one who posted a file can replace it. Send an edited copy instead.'));
@@ -323,10 +325,12 @@ function ws_message_file_replace($viewer, $message, $channel, $name, $data)
     }
 
     $now = time();
+    // 11.0.144: before the upgrade runs the row is written without the flag.
+    $flag = pg_schema_has('ws_file_edits', 'redacted');
 
-    db("INSERT INTO ws_file_edits (message_id, original_file_id, original_file_name, edited_file_id, edited_by, created_at)
+    db("INSERT INTO ws_file_edits (message_id, original_file_id, original_file_name, edited_file_id, edited_by, created_at" . ($flag ? ', redacted' : '') . ")
         VALUES ('" . (int) $message['id'] . "', '" . (int) $message['file_id'] . "', '" . e(mb_substr((string) $message['file_name'], 0, 255)) . "',
-            '" . (int) $stored['file_id'] . "', '" . (int) $viewer['id'] . "', '" . $now . "')");
+            '" . (int) $stored['file_id'] . "', '" . (int) $viewer['id'] . "', '" . $now . "'" . ($flag ? ", '" . ($redacted ? 1 : 0) . "'" : '') . ")");
 
     db("UPDATE ws_messages SET file_id = '" . (int) $stored['file_id'] . "', file_name = '" . e($stored['name']) . "', edited_at = '" . $now . "'
         WHERE id = '" . (int) $message['id'] . "'");
@@ -354,12 +358,28 @@ function ws_message_file_send($viewer, $message, $channel, $name, $data)
 }
 
 /**
- * The earlier versions of a message's file, newest first.
+ * Whether a row of ws_file_edits is listed for a viewer: the earlier version
+ * of a redacted edit shows what the redaction covers, so only the person who
+ * made the edit sees it; the file itself stays in the file manager under its
+ * folder's access.
+ *
+ * @param array $row       edited_by and, from 11.0.144, redacted
+ * @param int   $viewer_id
+ * @return bool
+ */
+function ws_file_edit_visible($row, $viewer_id)
+{
+    return empty($row['redacted']) || (((int) $viewer_id > 0) && ((int) $row['edited_by'] === (int) $viewer_id));
+}
+
+/**
+ * The earlier versions of a message's file the viewer may see, newest first.
  *
  * @param int $message_id
+ * @param int $viewer_id
  * @return array[] name, url, by, time
  */
-function ws_file_history($message_id)
+function ws_file_history($message_id, $viewer_id = 0)
 {
     if (!ws_file_edits_ready()) {
         return array();
@@ -369,6 +389,7 @@ function ws_file_history($message_id)
         LEFT JOIN files f ON f.id = e.original_file_id
         WHERE e.message_id = '" . (int) $message_id . "'
         ORDER BY e.id DESC LIMIT 50");
+    $rows = array_values(array_filter($rows, function ($row) use ($viewer_id) { return ws_file_edit_visible($row, $viewer_id); }));
 
     $people = ws_people(array_map(function ($row) { return (int) $row['edited_by']; }, $rows));
     $out = array();
