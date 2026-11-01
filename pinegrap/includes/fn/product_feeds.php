@@ -1023,7 +1023,8 @@ function pg_product_feed_catalog_roots()
 // code, an account or a cart (get_discounted_product_prices(false)), as on
 // the catalog page, whoever's request builds the feed.
 //
-// $options: 'excluded_group_ids', 'default_brand'.
+// $options: 'excluded_group_ids', 'default_brand', 'product_id' (only that
+// product, for a one-product push to Merchant Center).
 // $each: called with each chunk's items (a list) instead of collecting them
 // in 'items', so a large catalog is never in memory whole
 // (pg_product_feed_refresh()); null collects them.
@@ -1078,7 +1079,8 @@ function pg_product_feed_products($options = array(), $each = null)
                 inventory, inventory_quantity, backorder,
                 gtin, brand, mpn, google_product_category
             FROM products
-            WHERE (enabled = 1) AND (id > " . (int) $last_id . ")
+            WHERE (enabled = 1) AND (id > " . (int) $last_id . ")"
+                . (!empty($options['product_id']) ? " AND (id = " . (int) $options['product_id'] . ")" : '') . "
             ORDER BY id ASC
             LIMIT " . (int) PG_PRODUCT_FEED_CHUNK);
 

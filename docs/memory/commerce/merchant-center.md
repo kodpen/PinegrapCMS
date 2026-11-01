@@ -10,7 +10,7 @@ module: merchant_center
 
 ## Where is the state kept, and why no table?
 - Under the `merchant` key of `config.product_feeds`: connection id, account id and name, target country, data source name, registered_at / register_error, checked_at / check_error and the issue summary (counts per severity, product stats, top 5 issues). `pg_product_feed_settings_parse()` passes the key through untouched; `pg_merchant_state_parse()` types it. Writes go through `pg_merchant_state_save()` (fresh read, merge, `pg_product_feed_settings_save()`).
-- No schema by decision (#3180): per-item push and a sync table are a separate schema question.
+- No schema by decision (#3180). The one-product push (#4388) keeps `supplement` and `pushed` here too (`merchant-center-push.md`); a sync table is question #4389.
 
 ## How is registering kept idempotent?
 - `pg_merchant_register()` lists the account's data sources; `pg_merchant_find_source()` keeps one whose `fetchUri` is the feed address, moves the one registered before (stored name) to a new address with PATCH `updateMask=fileInput.fetchSettings.fetchUri` (a renewed feed token), and only otherwise creates one (`pg_merchant_data_source_body()`). Google needs `contentLanguage` + `feedLabel` for a file input: the language is `TRANSLATION_SOURCE_LANGUAGE` cut to two letters, the label is the target country.
@@ -25,4 +25,4 @@ module: merchant_center
 
 ## What is not verified, and what remains?
 - Tests: `tests/merchant_center_test.php` (pure parts). The live run needs a Merchant Center account and the Merchant API enabled in the Google Cloud project of the site's OAuth client; checked on dev by the owner.
-- Remaining: `plans/reverse-oauth-leftovers.md` (Merchant Center row).
+- Remaining: `plans/reverse-oauth-leftovers.md` (Merchant Center row); push: `merchant-center-push.md`.

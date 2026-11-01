@@ -1748,6 +1748,7 @@
     "private workspace channel ({var:1}) was opened for inspection": "özel çalışma alanı kanalı ({var:1}) denetim için açıldı",
     "process, steps, plan, price, quote, delivery": "süreç, adımlar, plan, fiyat, teklif, teslim",
     "product": "ürün",
+    "product (ID {var:1}) was sent to Google Merchant Center": "ürün (ID {var:1}) Google Merchant Center'a gönderildi",
     "product ({var:1} - {var:2}) was disabled": "ürün ({var:1} - {var:2}) devre dışı bırakıldı",
     "product ({var:1} - {var:2}) was enabled": "ürün ({var:1} - {var:2}) etkinleştirildi",
     "product ({var:1}) was changed on the product list: {var:2} from \"{var:3}\" to \"{var:4}\"": "ürün ({var:1}) ürün listesinde değiştirildi: {var:2} \"{var:3}\" iken \"{var:4}\" oldu",

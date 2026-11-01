@@ -37,6 +37,12 @@ if (function_exists('pg_merchant_refresh_issues')) {
     pg_merchant_refresh_issues();
 }
 
+// Prices and stock sent by hand from the product screen are taken back once
+// Google has fetched a feed that carries them (pg_merchant_pushes_due()).
+if (function_exists('pg_merchant_release_pushes')) {
+    pg_merchant_release_pushes();
+}
+
 if (function_exists('pg_cron_ran')) {
     pg_cron_ran('product_feed_job');
 }
