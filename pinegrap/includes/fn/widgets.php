@@ -2771,6 +2771,9 @@ function pg_sw_record_href_bindings(&$node)
 //   props._bindings.href   = '__page_link'
 //   props._bindParams.href = array('page_id' => 12,
 //                                  'params'  => array(array('name' => 'board', 'token' => 'board'), ...))
+// A value may also be fixed text, the same in every record
+// (array('name' => 'topic', 'text' => 'Reserving a seat')): a form on the
+// other page opens with that answer chosen.
 // The renderer gives each such link a token of its own (__page_link_<n>, the
 // way the catalog expands __link_label), reads the pages once and fills the
 // token per record with the finished, escaped address. Names and values
@@ -2787,10 +2790,11 @@ function pg_sw_page_link_max()
 
 // A stored link spec in the shape the renderer reads: page_id a positive id
 // or 0 (a tab not published yet, 'tab:<key>', is 0 here), params a list of
-// name/token pairs. A name the URL filters refuse, an empty token or a name
-// given twice is dropped (the first one stays); at most
-// pg_sw_page_link_max() pairs. Tokens keep the characters _apply_bindings()
-// keeps, lowercased as the token map is keyed.
+// name/token pairs, or name/text pairs for fixed text (read only when the
+// token is empty, trimmed). A name the URL filters refuse, a pair with
+// neither a token nor a text, or a name given twice is dropped (the first
+// one stays); at most pg_sw_page_link_max() pairs. Tokens keep the
+// characters _apply_bindings() keeps, lowercased as the token map is keyed.
 function pg_sw_page_link_spec($spec)
 {
     $out = array('page_id' => 0, 'params' => array());
@@ -2811,9 +2815,10 @@ function pg_sw_page_link_spec($spec)
         $name  = pg_sw_url_param_name(isset($param['name']) ? $param['name'] : '');
         $token = (isset($param['token']) && is_string($param['token']))
             ? strtolower(preg_replace('/[^a-z0-9_\-]/i', '', $param['token'])) : '';
-        if ($name === '' || $token === '' || isset($seen[$name])) continue;
+        $text  = ($token === '' && isset($param['text']) && is_string($param['text'])) ? trim($param['text']) : '';
+        if ($name === '' || ($token === '' && $text === '') || isset($seen[$name])) continue;
         $seen[$name] = true;
-        $out['params'][] = array('name' => $name, 'token' => $token);
+        $out['params'][] = ($token !== '') ? array('name' => $name, 'token' => $token) : array('name' => $name, 'text' => $text);
     }
     return $out;
 }
@@ -2846,7 +2851,7 @@ function _pg_sw_page_link_walk(&$node, &$links, $depth, &$row_links, $row_tokens
         $spec = pg_sw_page_link_spec(isset($node['props']['_bindParams']['href']) ? $node['props']['_bindParams']['href'] : null);
         $by_row = false;
         foreach ($spec['params'] as $i => $param) {
-            if (!isset($row_tokens[$param['token']])) continue;
+            if (!isset($param['token']) || !isset($row_tokens[$param['token']])) continue;
             $spec['params'][$i]['row'] = true;
             $by_row = true;
         }
@@ -3002,7 +3007,11 @@ function pg_sw_page_link_values($links, $row, $custom, $extra_raw)
         if ($base !== '' && !empty($link['params']) && is_array($link['params'])) {
             foreach ($link['params'] as $param) {
                 $by_row  = !empty($param['row']);
-                $value   = $by_row ? '' : pg_sw_raw_token_value($param['token'], $row, $custom, $extra_raw);
+                if (isset($param['text'])) {
+                    $value = (string)$param['text'];
+                } else {
+                    $value = $by_row ? '' : pg_sw_raw_token_value($param['token'], $row, $custom, $extra_raw);
+                }
                 $pairs[$param['name']] = $value;
                 $defer[] = array($param['name'], $by_row ? $param['token'] : '', $value);
             }

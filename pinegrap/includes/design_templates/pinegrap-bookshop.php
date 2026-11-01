@@ -668,22 +668,26 @@ $input = function ($id, $type, $name, $autocomplete = '', $required = true, $cf 
     if ($cf) $props['_cf'] = $cf;
     return $el('input', 'form-control', lang('Field'), array(), $props);
 };
-$textarea = function ($id, $name, $rows, $required = true) use ($el, $attr) {
+$textarea = function ($id, $name, $rows, $required = true, $cf = array()) use ($el, $attr) {
     $attrs = array($attr('name', $name), $attr('rows', (string)$rows));
     if ($required) $attrs[] = $attr('required', '');
-    return $el('textarea', 'form-control', lang('Field'), array(), array('id' => $id, '_attrs' => $attrs));
+    $props = array('id' => $id, '_attrs' => $attrs);
+    if ($cf) $props['_cf'] = $cf;
+    return $el('textarea', 'form-control', lang('Field'), array(), $props);
 };
 // A pick list: the first, empty option is the prompt, not an answer. Each
 // answer's value is its own words, so the e-mails and the subject line read
 // as the visitor chose.
-$select = function ($id, $name, $prompt, $options, $required = true) use ($el, $attr) {
+$select = function ($id, $name, $prompt, $options, $required = true, $cf = array()) use ($el, $attr) {
     $children = array($el('option', '', lang('Option'), array(), array('text' => $prompt, '_attrs' => array($attr('value', '')))));
     foreach ($options as $text) {
         $children[] = $el('option', '', lang('Option'), array(), array('text' => $text, '_attrs' => array($attr('value', $text))));
     }
     $attrs = array($attr('name', $name));
     if ($required) $attrs[] = $attr('required', '');
-    return $el('select', 'form-select', lang('Field'), $children, array('id' => $id, '_attrs' => $attrs));
+    $props = array('id' => $id, '_attrs' => $attrs);
+    if ($cf) $props['_cf'] = $cf;
+    return $el('select', 'form-select', lang('Field'), $children, $props);
 };
 $submit = function ($text, $class = 'btn btn-primary px-4') use ($el, $attr) {
     return $el('button', $class, lang('Send Button'), array(), array('text' => $text, '_attrs' => array($attr('type', 'submit'))));
@@ -1230,7 +1234,10 @@ $pages[] = array(
 
 // An event on the events page, as a row of the list: the date leaf, the
 // kind, the title, the summary, the time and the place, and the way to
-// reserve a seat (a message from the contact page).
+// reserve a seat (a message from the contact page). Reserve a seat opens the
+// contact form with the reservation topic chosen and the event's title in
+// the message (?topic=, ?event=: the fields' url_param); the topic is fixed
+// text, the same option value the form's pick list draws.
 $event_row = function () use ($el, $span, $para, $icon, $bind, $date_box) {
     return $el('div', 'list-group-item p-3 p-lg-4', lang('Event'), array(
         $el('div', 'd-flex flex-column flex-sm-row gap-3', lang('Event Row'), array(
@@ -1248,7 +1255,14 @@ $event_row = function () use ($el, $span, $para, $icon, $bind, $date_box) {
                 $el('a', 'btn btn-sm btn-outline-primary', lang('Link'), array(
                     $span(lang('Reserve a seat'), '', lang('Link Text')),
                     $span(lang('Poems after Dark'), 'visually-hidden', lang('Name'), $bind('title')),
-                ), array('href' => '{{page:contact}}')),
+                ), array(
+                    'href'        => '{{page:contact}}',
+                    '_bindings'   => array('href' => '__page_link'),
+                    '_bindParams' => array('href' => array('page_id' => '{{tab:contact}}', 'params' => array(
+                        array('name' => 'topic', 'text' => lang('Reserving a seat at an event')),
+                        array('name' => 'event', 'token' => 'title'),
+                    ))),
+                )),
             )),
         )),
     ));
@@ -1273,7 +1287,7 @@ $pages[] = array(
                             $heading('h2', lang('How to reserve a seat'), 'h5 fw-bold mb-3'),
                             $el('ol', 'small text-body-secondary ps-3 mb-0', lang('List'), array(
                                 $el('li', 'mb-2', lang('Step'), array(), array('text' => lang('Press Reserve a seat beside the event.'))),
-                                $el('li', 'mb-2', lang('Step'), array(), array('text' => lang('Write the event and how many seats you need.'))),
+                                $el('li', 'mb-2', lang('Step'), array(), array('text' => lang('The form opens with the event filled in: add how many seats you need.'))),
                                 $el('li', '', lang('Step'), array(), array('text' => lang('We answer by e-mail to confirm your seats.'))),
                             )),
                         )),
@@ -2365,8 +2379,8 @@ $widgets = array(
                 lang('Reserving a seat at an event'),
                 lang('Ordering a book you do not have'),
                 lang('Something else'),
-            ))),
-            $field('bk-contact-message', lang('Your Message'), $textarea('bk-contact-message', 'message', 6)),
+            ), true, array('url_param' => 'topic'))),
+            $field('bk-contact-message', lang('Your Message'), $textarea('bk-contact-message', 'message', 6, true, array('url_param' => 'event'))),
             $captcha(),
             $submit(lang('Send Message')),
             $loop(array()),
@@ -3343,7 +3357,7 @@ foreach ($pages as $i => $p) {
 
 return array(
     'name'        => lang('Bookshop'),
-    'version'     => '1.3.2',
+    'version'     => '1.3.3',
     'framework'   => 'bootstrap5',
     'order'       => 40,
     'icon'        => 'bi-book-half',
