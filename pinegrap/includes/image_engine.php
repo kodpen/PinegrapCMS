@@ -3902,36 +3902,46 @@ function pg_image_derivative_unlock($lock, $path)
  * @return array status, path, extension, width; made (true) when this call
  *               encoded the derivative
  */
-function pg_image_derivative($file_id, $source_path, $request, $directory, $settings = null)
+/**
+ * Where a derivative of a file is kept, and what it is made as, without
+ * making it: the width, format, quality and name pg_image_derivative() works
+ * out from the source and the request.
+ *
+ * @param int        $file_id
+ * @param string     $source_path
+ * @param array      $request     width, format (pg_image_derivative_request())
+ * @param string     $directory   pg_image_derivative_directory()
+ * @param array|null $settings    pg_image_delivery_settings(); null for the defaults
+ * @return array|null null when the original is the answer (no derivative due);
+ *                    else path, name, folder, extension, format, width,
+ *                    resize, quality, source_width, source_height,
+ *                    source_size
+ */
+function pg_image_derivative_target($file_id, $source_path, $request, $directory, $settings = null)
 {
-    $original = array('status' => 'original', 'path' => $source_path, 'extension' => '', 'width' => 0);
-
-    $busy = $original;
-    $busy['status'] = 'busy';
-
     $file_id = (int) $file_id;
 
     if (($file_id < 1) || !is_array($request) || ((string) $directory === '')) {
-        return $original;
+        return null;
     }
 
     $source_extension = strtolower((string) pathinfo($source_path, PATHINFO_EXTENSION));
 
     if (!pg_image_derivative_source_ok($source_extension)) {
-        return $original;
+        return null;
     }
 
     $mtime = @filemtime($source_path);
     $size = @filesize($source_path);
 
     if (($mtime === false) || ($size === false) || ($size < 1)) {
-        return $original;
+        return null;
     }
 
     list($source_width, $source_height) = pg_image_oriented_size($source_path);
 
     if (($source_width < 1) || ($source_height < 1)) {
-        return $original;
+        return null;
     }
 
     $width = pg_image_derivative_width(isset($request['width']) ? $request['width'] : 0, $source_width);
@@ -3950,7 +3960,7 @@ function pg_image_derivative($file_id, $source_path, $request, $directory, $sett
 
     // The original already is what was asked for.
     if (!$resize && ($format === '')) {
-        return $original;
+        return null;
     }
 
     $extension = ($format !== '') ? $format : $source_extension;
@@ -3958,6 +3968,82 @@ function pg_image_derivative($file_id, $source_path, $request, $directory, $sett
     $name = pg_image_derivative_file_name($width, pg_image_derivative_signature($mtime, $size, $quality), $extension);
     $folder = rtrim((string) $directory, '/\\') . '/' . $file_id;
     $path = $folder . '/' . $name;
+
+    return array(
+        'path'          => $path,
+        'name'          => $name,
+        'folder'        => $folder,
+        'extension'     => $extension,
+        'format'        => $format,
+        'width'         => $width,
+        'resize'        => $resize,
+        'quality'       => $quality,
+        'source_width'  => $source_width,
+        'source_height' => $source_height,
+        'source_size'   => (int) $size);
+}
+
+
+/**
+ * The derivative of a file that is already made, if any; nothing is made or
+ * written. The file window shows the WebP copy's size with it.
+ *
+ * @param int        $file_id
+ * @param string     $source_path
+ * @param array      $request   width, format
+ * @param string     $directory pg_image_derivative_directory()
+ * @param array|null $settings  pg_image_delivery_settings(); null for the defaults
+ * @return array|null path, extension, width, size; null when there is none
+ */
+function pg_image_derivative_cached($file_id, $source_path, $request, $directory, $settings = null)
+{
+    $target = pg_image_derivative_target($file_id, $source_path, $request, $directory, $settings);
+
+    if ($target === null) {
+        return null;
+    }
+
+    clearstatcache(true, $target['path']);
+    $size = @filesize($target['path']);
+
+    if (!@is_file($target['path']) || ($size === false) || ($size < 1)) {
+        return null;
+    }
+
+    return array('path' => $target['path'], 'extension' => $target['extension'], 'width' => $target['width'], 'size' => (int) $size);
+}
+
+
+function pg_image_derivative($file_id, $source_path, $request, $directory, $settings = null)
+{
+    $original = array('status' => 'original', 'path' => $source_path, 'extension' => '', 'width' => 0);
+
+    $busy = $original;
+    $busy['status'] = 'busy';
+
+    $file_id = (int) $file_id;
+
+    if (($file_id < 1) || !is_array($request) || ((string) $directory === '')) {
+        return $original;
+    }
+
+    $target = pg_image_derivative_target($file_id, $source_path, $request, $directory, $settings);
+
+    if ($target === null) {
+        return $original;
+    }
+
+    $path = $target['path'];
+    $name = $target['name'];
+    $folder = $target['folder'];
+    $extension = $target['extension'];
+    $format = $target['format'];
+    $width = $target['width'];
+    $resize = $target['resize'];
+    $quality = $target['quality'];
+    $source_width = $target['source_width'];
+    $source_height = $target['source_height'];
+    $size = $target['source_size'];
 
     $made = array('status' => 'derivative', 'path' => $path, 'extension' => $extension, 'width' => $width);
 
