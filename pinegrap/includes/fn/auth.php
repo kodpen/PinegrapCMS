@@ -3966,17 +3966,33 @@ function validate_token_field()
 }
 
 /**
- * Whether initialize_user() signs the request in as the session's user.
- * Pure: the session's user id and whether this request is a search index
- * run, which always renders as a visitor who is not signed in.
+ * Whether this request renders pages as a visitor who is not signed in,
+ * whoever started it: a search index run (UPDATE_SEARCH_INDEX) or an audit
+ * run from the panel (audit_run.php, PG_ANONYMOUS_RENDER). Such a request
+ * loads no user from the session or the remember-me cookie; the script
+ * checks its caller's role from the session itself.
  *
- * @param mixed $session_user_id $_SESSION['sessionuserid'], or null
- * @param bool  $index_run       UPDATE_SEARCH_INDEX is set
  * @return bool
  */
-function pg_auth_session_user_applies($session_user_id, $index_run)
+function pg_auth_anonymous_run()
 {
-    if ($index_run) {
+    return (defined('UPDATE_SEARCH_INDEX') && UPDATE_SEARCH_INDEX === true)
+        || (defined('PG_ANONYMOUS_RENDER') && PG_ANONYMOUS_RENDER === true);
+}
+
+/**
+ * Whether initialize_user() signs the request in as the session's user.
+ * Pure: the session's user id and whether this request is an anonymous run
+ * (pg_auth_anonymous_run()), which always renders as a visitor who is not
+ * signed in.
+ *
+ * @param mixed $session_user_id $_SESSION['sessionuserid'], or null
+ * @param bool  $anonymous_run   pg_auth_anonymous_run()
+ * @return bool
+ */
+function pg_auth_session_user_applies($session_user_id, $anonymous_run)
+{
+    if ($anonymous_run) {
         return false;
     }
 
@@ -4049,7 +4065,7 @@ function initialize_user()
     // one function every request passes through). Without the table the
     // session is simply a session, the way the previous release treated it.
     if (isset($_SESSION['sessionuserid']) && $_SESSION['sessionuserid']
-        && (!defined('UPDATE_SEARCH_INDEX') || UPDATE_SEARCH_INDEX !== true)
+        && !pg_auth_anonymous_run()
         && pg_auth_tokens_table_exists()) {
 
         $auth_bind_kick = false;
@@ -4183,8 +4199,9 @@ function initialize_user()
     $user = null;
 
     // 1) Remember-me: a selector:validator token in software[auth]. Only when no
-    // session user exists yet, and never while update_search_index.php runs (it
-    // must not adopt the caller's identity from the cookie).
+    // session user exists yet, and never during an anonymous run
+    // (pg_auth_anonymous_run(): it must not adopt the caller's identity from
+    // the cookie).
     //
     // Nor on a request that carries API credentials. Such a request says who it
     // is in its own body and is answered on that alone; letting it fall back to
@@ -4199,7 +4216,7 @@ function initialize_user()
         && isset($_COOKIE['software']['auth'])
         && (isset($_SESSION['sessionuserid']) == false)
         && !defined('API_USERNAME')
-        && (!defined('UPDATE_SEARCH_INDEX') || UPDATE_SEARCH_INDEX !== true)
+        && !pg_auth_anonymous_run()
         && pg_auth_tokens_table_exists()) {
 
         $token_user_id = pg_auth_token_verify($_COOKIE['software']['auth']);
@@ -4240,15 +4257,15 @@ function initialize_user()
         }
 
     // 2) An API request (raw password), or a session that already carries a
-    // user id. Not the session user during a search index run: the index
-    // stores what a visitor who is not signed in reads, and a manager
-    // pressing Update Search Index would otherwise draw every page with edit
-    // access (the comments area's watcher list and its e-mail addresses).
-    // update_search_index.php checks that person's role from the session
-    // itself; the session is left as it is, so nobody is signed out.
+    // user id. Not the session user during an anonymous run (a search index
+    // run, an audit run from the panel): the index stores and the audits judge
+    // what a visitor who is not signed in reads, and a manager pressing the
+    // button would otherwise draw every page with edit access (the comments
+    // area's watcher list and its e-mail addresses). update_search_index.php
+    // and audit_run.php check that person's role from the session itself;
+    // the session is left as it is, so nobody is signed out.
     } else if (defined('API_USERNAME')
-        || pg_auth_session_user_applies($_SESSION['sessionuserid'] ?? null,
-            defined('UPDATE_SEARCH_INDEX') && UPDATE_SEARCH_INDEX === true)) {
+        || pg_auth_session_user_applies($_SESSION['sessionuserid'] ?? null, pg_auth_anonymous_run())) {
 
         if (defined('API_USERNAME')) {
 

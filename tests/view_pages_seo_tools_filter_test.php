@@ -48,9 +48,20 @@ function test_view_pages_seo_tools_filter_every_handler_exit_returns_to_the_view
 	$source = view_pages_seo_tools_filter_test_source();
 	$handlers = view_pages_seo_tools_filter_test_block($source, "if (isset(\$_GET['recalculate_seo'])", '$output_clear_button = ');
 
-	pg_assert_same(5, substr_count($handlers, 'go($seo_return);'), 'all five exits go to the filtered view');
+	pg_assert_same(2, substr_count($handlers, 'go($seo_return);'), 'both exits go to the filtered view');
 	pg_assert_same(0, substr_count($handlers, "go(PATH . SOFTWARE_DIRECTORY . '/view_pages.php');"), 'no exit drops the filter');
-	pg_assert_same(2, substr_count($handlers, 'validate_token_field();'), 'both handlers still check the token');
+	pg_assert_same(1, substr_count($handlers, 'validate_token_field();'), 'the handler still checks the token');
+}
+
+function test_view_pages_seo_tools_filter_structure_run_returns_to_the_view()
+{
+	// Analyze HTML Structure runs in audit_run.php (anonymous render); it
+	// carries the list's filter back the same way.
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/audit_run.php');
+
+	pg_assert_contains("preg_match('/^[a-z_]+\$/', \$_GET['filter'])", $source, 'only a plain filter name is carried');
+	pg_assert_contains("'?filter=' . urlencode(\$_GET['filter'])", $source, 'the filter is URL-encoded into the return URL');
+	pg_assert_same(0, substr_count($source, "go(PATH . SOFTWARE_DIRECTORY . '/view_pages.php');"), 'no exit drops the filter');
 }
 
 function test_view_pages_seo_tools_filter_menu_links_carry_the_filter()
@@ -58,5 +69,5 @@ function test_view_pages_seo_tools_filter_menu_links_carry_the_filter()
 	$source = view_pages_seo_tools_filter_test_source();
 
 	pg_assert_contains("href=\"view_pages.php?recalculate_seo=1' . \$output_filter_for_links . get_token_query_string_field() . '\"", $source, 'Refresh SEO Scores keeps the filter');
-	pg_assert_contains("href=\"view_pages.php?analyze_seo=1' . \$output_filter_for_links . get_token_query_string_field() . '\"", $source, 'Analyze HTML Structure keeps the filter');
+	pg_assert_contains("href=\"audit_run.php?pass=structure' . \$output_filter_for_links . get_token_query_string_field() . '\"", $source, 'Analyze HTML Structure keeps the filter');
 }

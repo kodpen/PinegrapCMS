@@ -3358,6 +3358,7 @@
     "access denied to reserve calendar event ({var:1}) for page ({var:2}) because visitor does not have view access to page": "({var:2}) sayfası için ({var:1}) takvim etkinliği rezervasyon erişimi reddedildi çünkü ziyaretçinin sayfayı görüntüleme erişimi yok",
     "access denied to reserve calendar event because page does not exist": "takvim etkinliği rezervasyon erişimi reddedildi çünkü sayfa mevcut değil",
     "access denied to reserve calendar event for page ({var:1}) because page is not a calendar event view": "({var:1}) sayfası için takvim etkinliği rezervasyon erişimi reddedildi çünkü sayfa bir takvim etkinliği görünümü değil",
+    "access denied to run a page audit": "sayfa denetimi çalıştırma erişimi reddedildi",
     "access denied to save image from ImageEditor because user does not have access to edit image": "kullanıcının görseli düzenleme erişimi olmadığından, Görsel Düzenleyici'den resmi kaydetme erişimi reddedildi",
     "access denied to send e-mail campaign because user is not the creator of the e-mail campaign": "kullanıcı e-posta kampanyasının oluşturucusu olmadığı için e-posta kampanyası gönderme erişimi reddedildi",
     "access denied to set contact group for custom form because user did not have access to contact group": "kullanıcının rehber grubuna erişimi olmadığından, özel form için rehber grubunu ayarlamak erişimi reddedildi",

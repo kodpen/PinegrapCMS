@@ -173,22 +173,18 @@ $form_item_view_urls = array();
 // the page loop: array('page' => page row, 'lists' => list widget configs).
 $designer_hosts = array();
 
-// if calendars enabled than output search properties else do not include them because error while update search index.
-$sql_where = "";
-if(defined('CALENDARS') && CALENDARS == 1){
-    $sql_where .= "OR (page.page_type = 'calendar view')";
-}
-// if ecommerce enabled than output search properties else do not include them because error while update search index.
-if(defined('ECOMMERCE') && ECOMMERCE == 1){
-    $sql_where .= "OR (page.page_type = 'catalog')
-            OR (page.page_type = 'express order')
-            OR (page.page_type = 'order form')
-            OR (page.page_type = 'shopping cart')";
-}
+// Which pages the index covers is written once, beside the audits' scope
+// (pg_render_pass_scope() in includes/fn/background_render.php): the listed
+// types, private folders included (search filters its rows by folder), no
+// archived folder, and only pages whose own search switch is on.
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/background_render.php');
 
-// Get pages that should be included in search index.
-// We removed email preferences page types because they caused an error
-// and we did not want to spend time to resolve error.
+$index_scope = pg_render_pass_scope('index');
+$index_types = array();
+
+foreach ($index_scope['types'] as $index_type) {
+    $index_types[] = "'" . e($index_type) . "'";
+}
 
 $pages = db_items(
     "SELECT
@@ -204,27 +200,7 @@ $pages = db_items(
     WHERE
         (page.page_search = '1')
         AND (folder.folder_archived = '0')
-        AND
-        (
-            (page.page_type = 'standard')
-            OR (page.page_type = 'change password')
-            OR (page.page_type = 'folder view')
-            OR (page.page_type = 'forgot password')
-            OR (page.page_type = 'login')
-            OR (page.page_type = 'logout')
-            OR (page.page_type = 'photo gallery')
-            OR (page.page_type = 'search results')
-            OR (page.page_type = 'registration entrance')
-            OR (page.page_type = 'membership entrance')
-            OR (page.page_type = 'my account')
-            OR (page.page_type = 'my account profile')
-            OR (page.page_type = 'update address book')
-            OR (page.page_type = 'custom form')
-            OR (page.page_type = 'form list view')
-            OR (page.page_type = 'form view directory')
-            $sql_where
-            OR (page.page_type = 'affiliate sign up form')
-        )");
+        AND (page.page_type IN (" . implode(', ', $index_types) . "))");
 
 
 $count_pages = 1;

@@ -10,7 +10,7 @@ description: Steps SA6-SA13 of plans/search-and-audits.md: rule registry, same i
   - New `includes/fn/audit_rules.php`: concept → SEO code, a11y code, WCAG criterion and level, severity per scope, editor rule ids, document-only, browser-only. `pg_seo_structure_severities()` and `pg_a11y_rules()` read it.
   - `tools/check_audit_rules.php` in CI: every editor rule id and `seo:` code in `style_designer.src.js` has an entry, and each entry's codes have a checker. `tests/audit_rules_test.php`.
 
-- SA7 (S) Same pages, same visitor. After SA5.
+- SA7 (S) Same pages, same visitor. After SA5. Done (#4771).
   - Which page types and folders each pass covers is written in one place: the index keeps private folders (search filters its rows by folder), the audits public ones. The structure and accessibility buttons render anonymous, as the jobs do: today they render as the signed-in manager (`view_pages.php`), so a gated page's findings depend on who pressed.
 
 - SA8 (M) The editor runs the server checks on the draft. After SA6 and SA7.
