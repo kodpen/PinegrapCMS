@@ -16,6 +16,10 @@ description: Single source for ERP due dates and aging (includes/erp/aging.php):
 - Sources: `erp_accounts.payment_days` and `config.erp_default_due_days` / `ERP_DEFAULT_DUE_DAYS`.
 - One helper, `erp_account_due_date($account_id, $issue_date)` (`accounts.php`): account > store > invoice date.
 - Read once when the document is written (`order_bridge`, `erp_manual_header_build()`, and a due left blank in the invoice header form); the written date is never overwritten, a return keeps the invoice date.
+## Can a due date fall before the invoice date?
+- No: `erp_invoice_draft_save()` (form and API) refuses it on `due_date`, and `erp_invoice_issue()` refuses an older draft that has one (`erp_invoice_due_before_issue()`; no due date is never early). Quotes and purchase orders keep their own checks. Before PR #4516 (#4437) such an invoice was overdue the day it was issued.
+- A draft whose stored due date is the term's date for its stored date moves with a new date on the draft screen (`erp_invoice_due_date_redated()`); a typed due date stays. Test: `tests/erp_invoice_manual_test.php`.
+
 - CSV account import/export carries the field with the label "Vade (Gün)" (after Notlar).
 
 Related: docs/memory/erp/erp-account-csv-import-export.md

@@ -240,6 +240,7 @@
     "Cancelled on {var:1} (order {var:2}).": "{var:1} üzerinde iptal edildi ({var:2} numaralı sipariş).",
     "Cancelled on {var:1}: {var:2}": "{var:1} tarihinde iptal edildi: {var:2}",
     "Cancelled order": "İptal edilmiş sipariş",
+    "Cancelled receipt ID": "İptal edilen hareket no",
     "Cancelled there: cancel it here too": "Orada iptal edildi, burada da iptal et",
     "Cancelled through the API by {var:1}.": "{var:1} tarafından API üzerinden iptal edildi.",
     "Cancelled with the run by {var:1}.": "Çalıştırmayla birlikte {var:1} tarafından iptal edildi.",

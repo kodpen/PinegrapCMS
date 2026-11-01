@@ -30,3 +30,16 @@ function test_erp_waybill_invoice_lines_use_the_editor_rate()
 	pg_assert_contains("'tax_rate' => is_array(\$start) ? (float) \$start['tax_rate'] : 0", $body, 'its rate from there');
 	pg_assert_false(strpos($body, "\$product['tax_rate'] !== null") !== false, 'no NULL rate read as 0%');
 }
+
+function test_erp_waybill_invoice_of_an_order_writes_the_waybill_back()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/erp/waybills.php');
+	$from = strpos($source, 'function erp_waybill_invoice(');
+	$body = substr($source, $from, strpos($source, '$lines = array();', $from) - $from);
+
+	pg_assert_contains('erp_waybill_write_back($waybill_id)', $body, 'the ship date and the carrier go onto the order\'s invoice');
+	pg_assert_contains("'written_back' =>", $body, 'the screen is told what was written');
+
+	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_erp_waybill.php');
+	pg_assert_contains("The shipment date and the carrier were written onto the invoice, which had none.", $screen, 'and says so');
+}
