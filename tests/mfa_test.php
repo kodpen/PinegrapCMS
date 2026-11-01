@@ -228,6 +228,19 @@ function test_mfa_totp_uri()
 	pg_assert_same('MZXW6', $query['secret'], 'no padding');
 }
 
+// The label is "issuer:account" and apps split it at its first colon, so
+// neither part may carry one; the issuer parameter matches the label's prefix.
+function test_mfa_totp_uri_strips_colons_from_label()
+{
+	$uri = pg_totp_uri('Acme: Shop', 'team:ops', 'foo');
+	$label = rawurldecode((string) parse_url($uri, PHP_URL_PATH));
+
+	pg_assert_same('/Acme Shop:teamops', $label, 'one colon, between issuer and account');
+
+	parse_str((string) parse_url($uri, PHP_URL_QUERY), $query);
+	pg_assert_same('Acme Shop', $query['issuer'], 'issuer parameter matches the label');
+}
+
 // The key for typing: unpadded base32 in groups of four, read back as is.
 function test_mfa_format_secret_groups_of_four()
 {
