@@ -70,6 +70,24 @@ if (isset($_SERVER['HTTP_HOST']) == true) {
     }
 }
 
+// One run at a time, whoever starts it: the panel button and a crontab entry
+// take the job's lock in cron_runs as the general job's dispatcher does (it
+// has taken it already for a dispatched run, and releases it itself). Two
+// runs side by side wrote the same rows twice and fought in the sweep.
+if (!defined('PG_CRON_DISPATCH')) {
+
+    if (!pg_cron_claim('update_search_index')) {
+
+        if (isset($_SERVER['HTTP_HOST'])) {
+            output_error(lang('The search index is already being updated. Try again when that run has finished.'));
+        }
+
+        exit;
+    }
+
+    register_shutdown_function('pg_cron_release', 'update_search_index');
+}
+
 // The general job files whatever a script it dispatched printed in the site
 // log, as "printed a message while running with the general job", because
 // that is how a job reports its own missing settings. This progress page is
@@ -1425,7 +1443,7 @@ foreach ($files as $file) {
 // Delete old items that no longer exist.
 $search_index_run['stage'] = 'sweep';
 $search_index_run['item'] = '';
-db("DELETE FROM search_items WHERE timestamp != '" . $timestamp . "'");
+db(pg_search_index_sweep_sql($timestamp));
 
 // One Site Log line per run names what could not be read, so a site owner
 // sees it without reading the PHP error log.

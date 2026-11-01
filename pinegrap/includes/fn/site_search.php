@@ -242,6 +242,20 @@ function pg_search_fulltext_items($sql, array $params)
 }
 
 /**
+ * The closing sweep of a search index run: every row older than the run's
+ * start goes. Older, not different: a run started later has rewritten its
+ * rows with its own, newer time, and an earlier run that ends first must
+ * leave them (before, the first run to finish deleted them all). Pure.
+ *
+ * @param int $timestamp The run's start time.
+ * @return string
+ */
+function pg_search_index_sweep_sql($timestamp)
+{
+    return "DELETE FROM search_items WHERE timestamp < '" . (int) $timestamp . "'";
+}
+
+/**
  * Make the search index job due now, so the next scheduled tick rebuilds the
  * index instead of the next day's run. It moves the job's last run back by
  * its interval, no further: the maintenance panel still reads it as having
