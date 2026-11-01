@@ -1502,6 +1502,7 @@
     "Products that track stock, at most {var:1} at a time; search to narrow the list. Empty is no minimum. The stock is the store's own count, the one orders take from.": "Stok izleyen ürünler, bir seferde en çok {var:1}; listeyi daraltmak için arayın. Boş bırakılan ürünün minimumu yoktur. Stok, mağazanın siparişlerin düştüğü kendi sayısıdır.",
     "Products to Include": "Dahil Edilecek Ürünler",
     "Products to list": "Listelenecek ürün sayısı",
+    "Products we use": "Kullandığımız ürünler",
     "Products whose description markup has a serious fault, such as invalid nesting or images with no alt text.": "Açıklama işaretlemesinde ciddi kusur bulunan ürünler: geçersiz iç içe geçme veya alt metni olmayan görsel gibi.",
     "Products, cart, checkout and orders come with the platform; switch the shop on in the settings.": "Ürünler, sepet, ödeme ve siparişler platformla birlikte gelir; mağazayı ayarlardan açın.",
     "Products, product groups and offers": "Ürünler, ürün grupları ve teklifler",
