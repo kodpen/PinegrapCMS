@@ -1,6 +1,6 @@
 ---
 name: sms-campaign-limit-and-labels
-description: SMS campaign text limit with the appended sender identity (#3956), the scheduled/queued labels (#3957), xref rows deleted with a contact group (#3958)
+description: SMS campaign text limit with the appended sender identity (#3956), the scheduled/queued labels (#3957), xref rows deleted with a contact group (#3958), a save after the job's claim (#4707)
 module: sms_campaigns
 ---
 
@@ -16,5 +16,8 @@ module: sms_campaigns
 ## What do Delete Selected and Cancel Campaign do on a failed write?
 - `view_sms_campaigns.php` stops with `Query failed.` when a DELETE fails; the xref DELETE runs only after the campaign row went, and a campaign is counted in the notice only after both succeeded.
 - Cancel (`edit_sms_campaign.php`) stops on `=== false` and logs "SMS campaign cancelled" only when `mysqli_affected_rows()` is 1 (a job that claimed it first leaves nothing cancelled). Before #4132 both logged and announced success after a failed write. Pin: `test_sms_campaign_screen_writes_are_checked`.
+
+## What does Save do when the campaign was queued meanwhile?
+- `pg_sms_campaign_save()` takes `mysqli_affected_rows()` right after its UPDATE (`WHERE status IN ('draft', 'ready')`); with no changed row it reads the status and returns `-1` unless the campaign is still `draft`/`ready` (`pg_sms_campaign_update_landed()`), before the xref rows are touched. The screen sends the user back to the list with "…before your changes could be saved. They were not saved." Before #4707 the groups of a queued campaign were rewritten and the edit reported as scheduled.
 
 Related: docs/memory/platform/sms-campaigns.md, docs/memory/ui/contact-group-shared-form.md

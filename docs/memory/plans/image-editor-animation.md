@@ -23,9 +23,9 @@ description: Plan (owner 2026-11-01): image editor animation, layers and scenes 
 - `image-editor-animation-output.md`: the encoders and their limits, the save into Files, re-editing, scenes and Present.
 - `image-editor-animation-steps.md`: steps AN0-AN11, their order and what runs side by side.
 
-## Which questions are open?
-1. Presentation (#4714): scenes in the editor with a full-screen Present mode and PDF and video export, or a viewer on the live site as well (a share link, a page widget). AN7 and AN8 wait for the answer.
-2. Sound (#4716): silent videos, or a music track chosen from Files. Videos are silent until it is answered; a yes adds a step.
+## Which questions are decided? (owner 2026-11-01; `workflow/decisions-made-product-18.md`)
+1. Presentation (#4714): editor only. Scenes with transitions, a full-screen Present mode in the editor, exports as PDF (a page per scene), video and GIF; nothing on the live site (no share link, no widget). AN7 and AN8 are free.
+2. Sound (#4716): videos are silent; a music track from Files may come later as a step after AN6 if asked.
 - Not in this plan: a video widget for the designer (none exists); a saved video is a file in Files, linked or downloaded.
 
 ## Where does it start?

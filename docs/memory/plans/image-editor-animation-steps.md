@@ -27,11 +27,11 @@ description: Steps AN0-AN11 of plans/image-editor-animation.md: screens, motion,
 - AN6 (M) Video. `free` after AN4.
   - WebCodecs with the MP4 and WebM muxers, the MediaRecorder fallback, the limits.
 
-- AN7 (M) Scenes. After AN3 and the answer to question 1.
+- AN7 (M) Scenes. After AN3.
   - `doc.scenes`, the strip, transitions, the timeline and exports across scenes; the validator's cap on scenes and their layers goes in one at a time with the save-path steps.
 
 - AN8 (M) Present and PDF. After AN7.
-  - Present as question 1's answer says; the PDF writer; video and GIF of all scenes.
+  - Present mode in the editor (full screen; click, Space, arrow keys, swipe); the PDF writer; video and GIF of all scenes. No live-site viewer (question 1).
 
 - AN9 (M) Keyframes. `free` after AN2.
   - A layer's position, scale, rotation and opacity at chosen times (diamonds on its track), eased between; moving a layer with the playhead away from 0 sets one; the path shown on the stage.

@@ -26,5 +26,8 @@ description: Cache rules for a CDN or reverse proxy in front of Pinegrap (Cloudf
 - Never `unset req.http.Cookie`: a miss would reach the origin without the visitor's cookies, so a no-store page (the language redirect on `/`, a form) loses `pg_language` and the session and visit counters restart on every view (PR #1382).
 - The builtin `vcl_backend_response` honours `s-maxage` and does not cache an answer with `Set-Cookie` or `no-store`; keep it.
 
+## Pictures and Vary?
+- With the own-address WebP switch on (`image-same-address.md`), a JPEG or PNG address answers WebP or the original by `Accept` and sends `Vary: Accept`. A proxy that keeps pictures must key on it (Cloudflare: a Cache Rule for jpg, jpeg, png varying on `accept`); until the operator confirms that, a request arriving with `CF-Ray`, `CDN-Loop`, `Via` or `X-Amz-Cf-Id` gets the original.
+
 ## What does a hit skip?
 - The performance log; visitor tracking and record view counts, except on a copy taken from a file-cache hit, which carries the beacon (`visitors/page-view-beacon.md`); stale pages up to the lifetime: a purge drops the origin's copies (`page-file-cache.md`), not the proxy's.

@@ -26,7 +26,7 @@ description: Plan for the Events and Conferences template (pinegrap-events): eve
 
 - 3b Standard: `standard.php`; parts.php gained the newsletter and post parts; test `design_template_events_standard_test.php`. **Done (#4645).**
 
-- 4 Account and staff: `account.php` (sign-in pages, My Account pages, staff area, `staff_directory`, `blog_new`, `staff_entry`, account e-mails, `login_region`, `my_account`). After 3a and 3b.
+- 4 Account and staff: `account.php`; test `design_template_events_account_test.php`. **Done (#4686).**
 
 - 5 Assembly: `pinegrap-events.php` (header, order, icon, description, highlights, look, palette, contact group, folders, catalog, `pe-` User Styles, search map), the shared tests' lists, `designer/design-template-events.md`, plan deleted; PR body names `[NEW] Added the Events and Conferences design template`. After 4.
 

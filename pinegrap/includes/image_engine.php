@@ -3782,6 +3782,84 @@ function pg_image_derivative_prune($folder, $width, $extension, $keep)
 
 
 /**
+ * How many derivatives this server encodes at once, across every request.
+ *
+ * A page of forty new pictures asks for forty derivatives in the same second,
+ * and each encode takes a whole core and the picture's decoded size in memory
+ * for a second or more. On a shared host forty of them at once is the host's
+ * process or memory limit, so the encodes past this number are answered with
+ * the original (busy) and made by a later request or the warm-up pass. Two by
+ * default; the PG_IMAGE_ENCODE_SLOTS constant (config.php) sets another
+ * number, 1 to 16.
+ *
+ * @return int
+ */
+function pg_image_encode_slot_count()
+{
+    $count = defined('PG_IMAGE_ENCODE_SLOTS') ? (int) constant('PG_IMAGE_ENCODE_SLOTS') : 2;
+
+    return max(1, min(16, $count));
+}
+
+
+/**
+ * Take a free encode slot: a non-blocking lock on one of the files
+ * encode-1.lock to encode-<count>.lock in the cache directory, beside
+ * formats.json.
+ *
+ * The files stay; only the lock is the slot, so a request that dies holding
+ * one gives it back with its process and nothing has to clean up after it.
+ *
+ * @param string   $directory pg_image_derivative_directory()
+ * @param int|null $count     pg_image_encode_slot_count() when null
+ * @return resource|null the slot's handle, for pg_image_encode_slot_release();
+ *                       null when every slot is taken or none can be opened
+ */
+function pg_image_encode_slot_take($directory, $count = null)
+{
+    $directory = rtrim((string) $directory, '/\\');
+
+    if ($directory === '') {
+        return null;
+    }
+
+    $count = ($count === null) ? pg_image_encode_slot_count() : max(1, (int) $count);
+
+    for ($slot = 1; $slot <= $count; $slot++) {
+
+        $handle = @fopen($directory . '/encode-' . $slot . '.lock', 'c');
+
+        if (!$handle) {
+            continue;
+        }
+
+        if (@flock($handle, LOCK_EX | LOCK_NB)) {
+            return $handle;
+        }
+
+        @fclose($handle);
+    }
+
+    return null;
+}
+
+
+/**
+ * Give an encode slot back.
+ *
+ * @param resource|null $handle pg_image_encode_slot_take()
+ * @return void
+ */
+function pg_image_encode_slot_release($handle)
+{
+    if (is_resource($handle)) {
+        @flock($handle, LOCK_UN);
+        @fclose($handle);
+    }
+}
+
+
+/**
  * Let go of the lock a derivative was made under.
  *
  * @param resource $lock
@@ -3809,7 +3887,8 @@ function pg_image_derivative_unlock($lock, $path)
  *               <name>.skip file, so the same bytes are not decoded again for
  *               the same answer.
  *   busy        send the original, but not for keeping under this address:
- *               another request is making the derivative right now, or the
+ *               another request is making the derivative right now, every
+ *               encode slot is taken (pg_image_encode_slot_take()), or the
  *               cache folder cannot be written. The next request may do better.
  *
  * The caller decides beforehand that the visitor may have the file at all;
@@ -3820,7 +3899,8 @@ function pg_image_derivative_unlock($lock, $path)
  * @param array  $request     pg_image_derivative_request()
  * @param string $directory   pg_image_derivative_directory()
  * @param array|null $settings pg_image_delivery_settings(); null for the defaults
- * @return array status, path, extension, width
+ * @return array status, path, extension, width; made (true) when this call
+ *               encoded the derivative
  */
 function pg_image_derivative($file_id, $source_path, $request, $directory, $settings = null)
 {
@@ -3940,6 +4020,15 @@ function pg_image_derivative($file_id, $source_path, $request, $directory, $sett
         return $original;
     }
 
+    // At most pg_image_encode_slot_count() encodes at once on the server;
+    // past that the original is sent and a later request makes this one.
+    $slot = pg_image_encode_slot_take($directory);
+
+    if ($slot === null) {
+        pg_image_derivative_unlock($lock, $path);
+        return $busy;
+    }
+
     @touch($path . '.try');
 
     // A visitor who leaves the page must not leave the work half done, and a
@@ -3955,6 +4044,8 @@ function pg_image_derivative($file_id, $source_path, $request, $directory, $sett
         'format'        => $format,
         'quality'       => $quality,
         'write'         => false));
+
+    pg_image_encode_slot_release($slot);
 
     @unlink($path . '.try');
 
@@ -3988,6 +4079,8 @@ function pg_image_derivative($file_id, $source_path, $request, $directory, $sett
 
     pg_image_derivative_prune($folder, $width, $extension, $name);
     pg_image_derivative_unlock($lock, $path);
+
+    $made['made'] = true;
 
     return $made;
 }

@@ -1,6 +1,6 @@
 ---
 name: image-derivatives
-description: Image derivatives (PR #589) made by get_file.php for ?w=&f=: fixed widths, WebP/AVIF tested once per server, data/cache/img name and signature, skip and lock files, files that get none
+description: Image derivatives (PR #589) made by get_file.php for ?w=&f=: fixed widths, WebP/AVIF tested once per server, data/cache/img name and signature, skip and lock files, encode slots, files that get none
 ---
 
 ## How is a derivative asked for?
@@ -19,6 +19,7 @@ description: Image derivatives (PR #589) made by get_file.php for ?w=&f=: fixed 
 ## What does get_file.php send when there is no derivative?
 - `original` (normal caching): not a raster type, already small enough, as heavy as the original or heavier (palette PNG), the engine refused (animated, too large, unreadable, non-sRGB profile under GD), or an earlier attempt died part way (`<name>.try` left: one try, else every request would 500). The last three leave an empty `<name>.skip`; a missing library or the GD colour refusal does not (server state, PR #1267).
 - `busy` (`Cache-Control: no-store`): another request holds `<name>.lock` (non-blocking flock) or the folder cannot be written (checked before decoding).
+- `busy` too when every encode slot is taken: at most `pg_image_encode_slot_count()` encodes at once on the server (2; constant `PG_IMAGE_ENCODE_SLOTS`, 1–16), a non-blocking flock on `encode-<n>.lock` beside `formats.json`, taken after the derivative's own lock, given back right after the encode. The files stay; a dead process frees its slot. Why: a page of forty new pictures started forty encodes at once on a shared host.
 - Made after the session and DB connection are closed, with `ignore_user_abort` and a 120 s limit; sent with `readfile()`, never X-Sendfile.
 
 ## Which files get none?
@@ -27,8 +28,5 @@ description: Image derivatives (PR #589) made by get_file.php for ?w=&f=: fixed 
 ## Why is the engine outside functions.php?
 - `includes/image_engine.php` holds `pg_process_image_file()`, its GD/Imagick halves, `pg_ini_bytes()` and the derivative functions; functions.php requires it, get_file.php only for `?w=`/`?f=` (defines `PG_GET_FILE`). Its functions call only each other and PHP; settings stay in `includes/fn/image.php`.
 
-## How is the cache kept clean?
-- General job, once a day, 10 s a tick until through (`pg_image_derivative_sweep_run()`, cursor in `sweep.json`): a folder whose file id is no longer in `files` goes whole, a derivative or `.skip` of an old signature goes, a `.lock`/`.tmp*` older than an hour goes. No delete hooks: reading `files` covers every door that deletes a file. Nothing goes for being old: a current derivative is the cache working (PR #602).
-- Clear caches (`pg_purge_caches()`) renames the folder to `img.old-<time>-<pid>` (instant, `formats.json` included, so formats are tested again), deletes what it can in 2 s; the job deletes the rest.
-- System Status › Storage: `images` in `pg_storage_usage()` (6 h cache), labelled with the formats this server writes.
-
+## How is the cache kept clean and filled ahead?
+- Daily sweep, purge, warm-up: image-derivative-upkeep.md.
