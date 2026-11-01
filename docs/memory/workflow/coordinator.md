@@ -10,7 +10,7 @@ description: Coordinator session (pilot, 2026-10-26): one per account, keeps its
 - Reads the state from GitHub and the plan files, not its memory: open PRs and drafts, the queue count (Working mode 8); `plans/README.md`, open plan steps and `bug` issues (`test-coordinator.md`) only when a slot is free.
 - Picks work no open PR holds: one plan or area per worker, never two workers on the same files or the same plan (Claim work, step 1); steps of one plan in parallel when the owner assigned them so or when they touch different files.
 - Starts each worker as a cloud session with a short brief: the plan step or task, the memory folder, and "follow CLAUDE.md". The worker claims with its own draft PR and works as every session does, its plan's next steps included (Working mode 2 and 6).
-- Keeps 3 to 6 workers busy; fewer only as `coordinator-limits.md` allows.
+- Keeps 4 to 8 workers busy; fewer only as `coordinator-limits.md` allows.
 - No free plan step: issues, bug hunt, a new design template (`coordinator-no-plans.md`).
 - Keeps a to-do list of its workers' PRs (`coordinator-todo-list.md`).
 - Chooses the work itself, never asking the owner or the architect: which free step, the order, how many workers, which steps run in parallel. Only a decision question goes to an `architect` issue; the architect brings the answer to the PR (`architect.md`).

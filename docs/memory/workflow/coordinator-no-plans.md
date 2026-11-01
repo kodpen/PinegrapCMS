@@ -20,7 +20,8 @@ description: What a coordinator gives its workers when no plan step is free: ope
 
 ## When is a new design template started?
 - When a slot is still free after the issues and the open bug-hunt modules, and no template plan is open.
-- The coordinator picks one template type the product does not ship yet (`designer/design-templates*.md` list the shipped ones) that suits many sites, and starts a worker with it. That worker writes `plans/design-template-<name>.md` cut into ~1,000-line steps, following the forum and magazine templates (`designer/design-template-*.md`), and claims step 1.
-- General features only: a template that needs a new schema, module or product behaviour asks the architect first.
+- The coordinator picks the next candidate the product does not ship yet (shipped: `includes/design_templates/`), in this order (owner's list, 2026-11-01): web designer portfolio, mobile app developer, social media (Instagram-like), modern phone launch site, car dealership, hotel, marketplace; then real estate agency, law or consulting firm, online courses, events and conferences, beauty salon with booking.
+- It starts a worker with it. That worker writes `plans/design-template-<name>.md` cut into ~1,000-line steps, following the forum and magazine templates (`designer/design-template-*.md`), and claims step 1.
+- General features only: a template that needs a new schema, module or product behaviour asks the architect first (likely for social media follows and likes, and for marketplace sellers).
 
 Related: docs/memory/workflow/coordinator.md, docs/memory/workflow/test-coordinator.md, docs/memory/designer/README.md
