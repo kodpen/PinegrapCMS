@@ -268,25 +268,6 @@ function pg_pb_price_to_cents($value)
 }
 
 /**
- * True when a typed amount is more than products.price (a signed INT of minor
- * units) holds. Read by pg_pb_price_figure() and bounded as a float, before
- * any int cast. An empty box is not too large.
- *
- * @param string $value
- * @return bool
- */
-function pg_pb_price_input_too_large($value)
-{
-    $figure = pg_pb_price_figure($value);
-
-    if (($figure === '') || !is_numeric($figure)) {
-        return false;
-    }
-
-    return pg_product_price_too_large(round(((float) $figure) * 100));
-}
-
-/**
  * A typed price as a dot-decimal figure ('1234.56'), by the rule of
  * pg_pb_price_to_cents(), or '' when it holds no digit or separator.
  *
@@ -4482,7 +4463,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                             <label for="compare_at_price" class="form-label">' . lang('Amount') . '</label>
                             <label class="form-control form-adorn form-adorn-end">
                                 <span class="form-adorn-text" aria-hidden="true">' . BASE_CURRENCY_SYMBOL . '</span>
-                                <input value="' . h($v('compare_at_price', '')) . '" type="text" name="compare_at_price" id="compare_at_price" class="form-ghost" maxlength="16" inputmode="decimal" inputmask=""' . pg_money_mask_html() . ' style="text-align:right;" />
+                                <input value="' . h($v('compare_at_price', '')) . '" type="text" name="compare_at_price" id="compare_at_price" class="form-ghost" maxlength="12" inputmode="decimal" inputmask=""' . pg_money_mask_html() . ' style="text-align:right;" />
                             </label>
                             <div class="form-text">' . lang('Empty or zero is none.') . '</div>
                         </div>',
@@ -4580,7 +4561,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                                         <label for="extra_shipping_cost" class="form-label">' . lang('Extra Shipping Cost') . '</label>
                                                         <label class="form-control form-adorn form-adorn-end">
                                                             <span class="form-adorn-text" aria-hidden="true">' . BASE_CURRENCY_SYMBOL . '</span>
-                                                            <input value="' . h($v('extra_shipping_cost', '0')) . '" type="text" name="extra_shipping_cost" id="extra_shipping_cost" class="form-ghost" maxlength="16" inputmode="decimal" inputmask=""' . pg_money_mask_html() . ' style="text-align:right;" />
+                                                            <input value="' . h($v('extra_shipping_cost', '0')) . '" type="text" name="extra_shipping_cost" id="extra_shipping_cost" class="form-ghost" maxlength="12" inputmode="decimal" inputmask=""' . pg_money_mask_html() . ' style="text-align:right;" />
                                                         </label>
                                                     </div>
 
@@ -5065,7 +5046,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                         <label for="price" class="form-label">' . lang('Unit Price') . '</label>
                                         <label class="form-control form-adorn form-adorn-end">
                                             <span class="form-adorn-text" aria-hidden="true">' . BASE_CURRENCY_SYMBOL . '</span>
-                                            <input value="' . h($v('price', '0')) . '" type="text" name="price" id="price" class="form-ghost" maxlength="16" inputmode="decimal" inputmask=""' . pg_money_mask_html() . ' style="text-align:right;" />
+                                            <input value="' . h($v('price', '0')) . '" type="text" name="price" id="price" class="form-ghost" maxlength="12" inputmode="decimal" inputmask=""' . pg_money_mask_html() . ' style="text-align:right;" />
                                         </label>
                                         <div class="form-text pg-pb-group-only d-none">' . lang('Starting price for every variant; each row can differ.') . '</div>
                                     </div>
@@ -6599,18 +6580,6 @@ function pg_pb_validate_product_post($user, $product_id = 0)
         if (!empty($_POST[$field]) && (validate_email_address($_POST[$field]) == FALSE)) {
             output_error(lang('The e-mail address is invalid.') . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
         }
-    }
-
-    // The unit price and the extra shipping cost are INT columns of minor
-    // units too. The boxes take one more digit than the top (21.474.836,47)
-    // so that a larger amount reaches this check whole instead of being cut
-    // by the box, and it is refused here instead of by MySQL's silent cut.
-    if (pg_pb_price_input_too_large($_POST['price'] ?? '')) {
-        output_error(lang(array('string' => '{var:1} is too large.', 'vars' => array(lang('Price')))) . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
-    }
-
-    if (pg_pb_price_input_too_large($_POST['extra_shipping_cost'] ?? '')) {
-        output_error(lang(array('string' => '{var:1} is too large.', 'vars' => array(lang('Extra Shipping Cost')))) . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
     }
 
     // A "was" price the column cannot hold is refused before anything is

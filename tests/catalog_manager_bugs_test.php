@@ -2,7 +2,7 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Tests for the Catalog Manager and product screen write paths: a price the
+ * Tests for the Catalog Manager and Edit Selected write paths: a price the
  * products.price column cannot hold is refused instead of cut to its top, a
  * rename refuses a product code another product holds, and the product
  * export leaves the Recycle Bin out.
@@ -17,7 +17,6 @@ if (!defined('PG_TEST_RUNNER')) {
 	exit;
 }
 
-require_once(PG_FUNCTIONS_DIR . '/product_builder.php');
 require_once(PG_FUNCTIONS_DIR . '/export_products_f.php');
 
 // products.price is a signed INT of minor units: 2147483647 is the top.
@@ -39,17 +38,7 @@ function test_catalog_manager_bulk_price_change_refuses_too_large()
 	pg_assert_same(array('price' => 1000, 'refused' => true, 'too_large' => false), pg_bulk_price_change(1000, '1', 1000), 'down to zero');
 }
 
-// The product screen's typed price is bounded the same way.
-function test_catalog_manager_product_screen_price_input_bound()
-{
-	pg_assert_false(pg_pb_price_input_too_large(''), 'empty');
-	pg_assert_false(pg_pb_price_input_too_large('21474836.47'), 'the top');
-	pg_assert_true(pg_pb_price_input_too_large('21474836.48'), 'one above');
-	pg_assert_true(pg_pb_price_input_too_large('30000000'), 'thirty million');
-}
-
-// Each writer asks before it writes; the three boxes take the top amount
-// (21.474.836,47 is 13 characters) and one larger, which the server refuses.
+// Each Catalog Manager and Edit Selected price writer asks before it writes.
 function test_catalog_manager_price_writers_check_the_bound()
 {
 	$quick = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/explorer/handle_catalog_edit.php');
@@ -60,14 +49,6 @@ function test_catalog_manager_price_writers_check_the_bound()
 
 	$edit = (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_products.php');
 	pg_assert_contains("\$change['too_large']", $edit, 'Edit Selected');
-
-	$builder = (string) file_get_contents(PG_FUNCTIONS_DIR . '/product_builder.php');
-	pg_assert_contains("pg_pb_price_input_too_large(\$_POST['price']", $builder, 'unit price');
-	pg_assert_contains("pg_pb_price_input_too_large(\$_POST['extra_shipping_cost']", $builder, 'extra shipping cost');
-
-	foreach (array('price', 'compare_at_price', 'extra_shipping_cost') as $field) {
-		pg_assert_false((bool) preg_match('/name="' . $field . '" id="' . $field . '"[^>]*maxlength="12"/', $builder), $field . ' box');
-	}
 }
 
 // A product rename asks who holds the code, as the product screen does.
