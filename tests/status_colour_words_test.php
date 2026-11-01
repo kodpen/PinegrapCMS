@@ -25,7 +25,7 @@ function status_colour_words_source($path)
 
 function test_status_colour_words_system_status_chips()
 {
-	$source = status_colour_words_source('includes/dashboard/widgets/widget_2.php');
+	$source = status_colour_words_source('includes/fn/health_gauge.php');
 
 	// Warn and fail chips print the generic word; OK and info chips keep it
 	// for screen readers only.
@@ -36,14 +36,16 @@ function test_status_colour_words_system_status_chips()
 
 function test_status_colour_words_system_status_detail_rows()
 {
-	$source = status_colour_words_source('includes/dashboard/widgets/widget_2.php');
+	$source = status_colour_words_source('includes/fn/health_gauge.php');
+	$widget = status_colour_words_source('includes/dashboard/widgets/widget_2.php');
 
-	pg_assert_same(0, substr_count($source, 'pg-health-dot fg-\' . h(($detail_row'), 'both detail loops go through the shared row');
+	pg_assert_same(0, substr_count($source . $widget, 'pg-health-dot fg-\' . h(($detail_row'), 'both detail loops go through the shared row');
 	pg_assert_contains('pg-health-dot fg-\' . h($row_tone) . \'" aria-hidden="true"', $source, 'the dot is decoration');
 	pg_assert_contains("'ok'   => lang('OK')", $source, 'OK word');
 	pg_assert_contains("'warn' => lang('Warning')", $source, 'Warning word');
 	pg_assert_contains("'fail' => lang('Problem')", $source, 'Problem word');
-	pg_assert_same(2, substr_count($source, '$status_detail_row($detail_row)'), 'chip and job panels both use it');
+	pg_assert_same(1, substr_count($source, '$check_rows .= pg_system_status_detail_row($detail_row)'), 'chip panels use it');
+	pg_assert_same(1, substr_count($widget, 'pg_system_status_detail_row($detail_row)'), 'job panels use it');
 }
 
 function test_status_colour_words_payment_methods_chart()
