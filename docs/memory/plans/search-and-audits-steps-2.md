@@ -20,7 +20,7 @@ description: Steps SA6-SA13 of plans/search-and-audits.md: rule registry, same i
 - SA9 (M) The editor's audit panel. After SA8. Done (#4839).
   - The draft's accessibility findings beside SEO, one row per registry concept (label, SEO severity, WCAG criterion); badges through a `data-pg-node` attribute written only in the audit render; the canvas checks listed under the same concepts. `php tools/build_js.php`.
 
-- SA10 (S) Editor measurements kept. After SA9.
+- SA10 (S) Editor measurements kept. After SA9. Done (#4851).
   - On save the editor posts its browser-only findings (contrast, target size); they are stored as `a11y_` rows marked as measured in the editor, replaced on each save, left alone by the nightly pass. The report and its PDF say where and when.
 
 - SA11 (M) The screen. After SA3 and SA4.

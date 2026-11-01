@@ -248,3 +248,53 @@ function test_a11y_report_pdf_never_reads_compliant_before_a_full_pass()
 	pg_assert_same(count(pg_a11y_rules()), substr_count($html, 'class="muted">' . h(lang('Not checked yet'))));
 	pg_assert_same(0, substr_count($html, 'class="ok"'));
 }
+
+// What the editor measured on the canvas: only the browser-only rules, counted
+// per code, the first label as the example, marked with the save's time.
+function test_a11y_measured_findings()
+{
+	$findings = pg_a11y_measured_findings(array(
+		array('rule' => 'low_contrast', 'label' => 'Low text contrast 3,1:1: "Sepet"'),
+		array('rule' => 'low_contrast', 'label' => 'Low text contrast 2,0:1: "Ara"'),
+		array('rule' => 'target_size', 'label' => 'Small target 12×12px'),
+		array('rule' => 'redundant_entry', 'label' => 'not measured by the browser'),
+		array('rule' => 'img_alt', 'label' => 'a server check'),
+		'not a finding',
+		array('label' => 'no rule'),
+	), 1761600000);
+
+	pg_assert_same(array('a11y_contrast', 'a11y_target_size'), array_keys($findings));
+	pg_assert_same(array(
+		'code'        => 'a11y_contrast',
+		'severity'    => 'warning',
+		'occurrences' => 2,
+		'source'      => 'editor:1761600000',
+		'detail'      => 'Low text contrast 3,1:1: "Sepet"',
+	), $findings['a11y_contrast']);
+	pg_assert_same(1, $findings['a11y_target_size']['occurrences']);
+	pg_assert_same(250, mb_strlen(pg_a11y_measured_findings(array(array('rule' => 'target_size', 'label' => str_repeat('ü', 300))), 1)['a11y_target_size']['detail']));
+	pg_assert_same(array(), pg_a11y_measured_findings(null, 1));
+	pg_assert_same(array(), pg_a11y_measured_findings('[]', 1));
+}
+
+// The source tells an editor measurement from a server finding, and when it was kept.
+function test_a11y_measured_time_and_note()
+{
+	pg_assert_same(1761600000, pg_a11y_measured_time(pg_a11y_measured_source(1761600000)));
+	pg_assert_same(0, pg_a11y_measured_time(''));
+	pg_assert_same(0, pg_a11y_measured_time('document'));
+	pg_assert_same(0, pg_a11y_measured_time('editor:x'));
+	pg_assert_same('', pg_a11y_measured_note(''));
+	pg_assert_true(strpos(pg_a11y_measured_note('editor:1761600000'), date('Y-m-d H:i', 1761600000)) !== false);
+}
+
+// The PDF says where a finding measured in the editor came from.
+function test_a11y_report_html_names_editor_measurements()
+{
+	$html = pg_a11y_report_html(
+		array('a11y_contrast' => array('pages' => 1, 'occurrences' => 1)),
+		array(array('page_id' => 3, 'page_name' => 'urunler', 'code' => 'a11y_contrast', 'severity' => 'warning', 'occurrences' => 1, 'detail' => 'x', 'source' => 'editor:1761600000')),
+		1, 1761600000, 'ornek.com');
+
+	pg_assert_true(strpos($html, h(pg_a11y_measured_note('editor:1761600000'))) !== false);
+}

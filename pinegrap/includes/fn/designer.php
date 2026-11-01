@@ -3856,6 +3856,15 @@ function pg_designer_save_page($style_id, $page, $user, $dry_run = false)
         pg_tr_auto_update_page($page_id, (int)($user['id'] ?? 0));
     }
 
+    // Contrast and target size measured on the editor's canvas (only a
+    // browser resolves the colours and sizes) are kept with the accessibility
+    // report and replaced on each save; a save that changed the page without
+    // measuring it (another tab, the API) clears them.
+    if ($page_id > 0 && ($changed || isset($page['a11y_measured']))) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/a11y.php');
+        pg_a11y_store_measured($page_id, isset($page['a11y_measured']) ? $page['a11y_measured'] : null);
+    }
+
     // The revision this save wrote (0 for none), as pg_page_revision_record()
     // read it back by the row's own id: a MAX() taken here could already be
     // another save's number.

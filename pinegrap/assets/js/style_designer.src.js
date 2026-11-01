@@ -72214,6 +72214,13 @@ const StyleDesigner = (function () {
             // A tree loaded back from the History panel is recorded as a
             // restore when it is published (includes/fn/page_revisions.php).
             if (!rec.unchanged && p.restoredFrom) rec.revision_source = 'restore';
+            // What only the browser measures on the canvas (contrast, target
+            // size) goes with the page on the canvas, for the accessibility
+            // report (pg_a11y_store_measured()).
+            if (!rec.unchanged && p.key === _activeKey) {
+                var measured = _sdMeasuredA11y(t);
+                if (measured) rec.a11y_measured = measured;
+            }
             _PG_PAGE_FIELDS.forEach(function (k) { rec[k] = p[k]; });
             // A saved page under a new name: whether its old address sends
             // visitors on (pg_short_link_page_renamed()); on unless it was
@@ -75646,6 +75653,19 @@ const StyleDesigner = (function () {
             } catch (e) {
                 if (window.console) console.warn('Canvas check skipped', e);
             }
+        });
+        return out;
+    }
+
+    // The canvas findings the accessibility report keeps for the page on
+    // the canvas: {rule, label} of the browser-only checks; null when the
+    // canvas could not be measured (the save then clears the stored ones).
+    var _SD_MEASURED_RULES = ['low_contrast', 'target_size'];
+    function _sdMeasuredA11y(root) {
+        if (!canvasDoc || !canvasDoc.body || !window.PgContrast) return null;
+        var out = [];
+        _sdCanvasAuditIssues(root).forEach(function (i) {
+            if (_SD_MEASURED_RULES.indexOf(i.rule) !== -1 && out.length < 1000) out.push({ rule: i.rule, label: i.label });
         });
         return out;
     }
