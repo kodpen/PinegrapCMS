@@ -72,7 +72,6 @@ function test_dashboard_pill_markup()
 	$cases = array(
 		'includes/dashboard/widgets/widget_3.php' => "p['color']",
 		'includes/dashboard/widgets/widget_4.php' => 'eg_role_color',
-		'includes/dashboard/widgets/widget_14.php' => 'color',
 	);
 
 	foreach ($cases as $path => $var) {
@@ -109,9 +108,7 @@ function test_dashboard_rows_without_opacity()
 	$widgets = dashboard_pill_source('includes/dashboard/widgets.php');
 	pg_assert_true(strpos($widgets, "(\$muted ? ' fg-2' : '')") !== false, 'a muted row takes .fg-2');
 
-	foreach (array('includes/dashboard/widgets.php', 'includes/dashboard/widgets/widget_14.php') as $path) {
-		pg_assert_true(strpos(dashboard_pill_source($path), 'opacity-50') === false, $path . ' has no opacity-50');
-	}
+	pg_assert_true(strpos($widgets, 'opacity-50') === false, 'includes/dashboard/widgets.php has no opacity-50');
 
 	pg_assert_true(strpos(dashboard_pill_source('includes/dashboard/widgets/widget_25.php'), 'opacity:.75') === false, 'the Comments location line has no opacity');
 }

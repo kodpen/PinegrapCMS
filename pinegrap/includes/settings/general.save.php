@@ -115,7 +115,6 @@ if (!defined('PG_SETTINGS_ENTRY')) {
             email_address = '" . escape(post_value('email_address')) . "',
             proxy_address = '" . escape(post_value('proxy_address')) . "',
             debug = '" . escape(post_value('debug')) . "',
-            subscription_id = '" . escape(post_value('subscription_id')) . "',
             subscription_key = '" . escape($subscription_key) . "',
             $sql_software_language 
             timezone = '" . escape(post_value('timezone')) . "',

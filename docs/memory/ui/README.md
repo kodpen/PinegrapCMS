@@ -107,7 +107,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - dashboard-list-links.md: Dashboard greeting and card links open their list on the period and filters they counted; dashboard day windows step calendar days
 - dashboard-module-switches.md: The dashboard and the Users list follow the Site Settings module switches (CALENDARS, FORMS, ECOMMERCE) and the greeting's feature lines link only to screens the reader can open
 - dashboard-percent-and-empty-text.md: Dashboard wording: '{var:1}%' percentage figures and the whole-sentence empty states of each card
-- dashboard-pill-contrast.md: Dashboard cards: tinted pills mixed 50% toward the text colour, zero-count and expired rows on .fg-2 instead of opacity, the headline arrow's direction in words
+- dashboard-pill-contrast.md: Dashboard cards: tinted pills mixed 50% toward the text colour, zero-count rows on .fg-2 instead of opacity, the headline arrow's direction in words
 - dashboard-sales-map-data.md: Dashboard sales map widget 1 data side: files, map assets, adding a country, region-name resolution, matching, opening view, number definition, quantile steps.
 - dashboard-sales-map-panel.md: Dashboard sales map widget 1 panel behavior: corner menu with fixed Popper, card colour, permission gates, link gating, brief line signals, reused id 1.
 - dashboard-scroll-regions.md: Dashboard card lists that scroll inside the square card become named keyboard regions (pg_widget_scroll_regions() in welcome.php)

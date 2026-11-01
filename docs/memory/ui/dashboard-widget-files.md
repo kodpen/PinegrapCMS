@@ -11,7 +11,8 @@ description: Adding a dashboard widget: includes/dashboard/widgets/widget_<id>.p
 
 ## What goes into welcome.php?
 - An entry `$widget_registry[<id>]`: `title`, `icon`, `body` (the loading skeleton), `wide`, `show` (may this user see it). Position comes from the stored order; a widget the stored order does not know appears at the end, with no migration.
-- Ids are permanent (dashboards store them): 6, 10, 11, 12, 13, 17, 19, 22, 24 and 26 are retired and never reused. `widget_22.php` still exists: widget 21 calls it for the Firewall card's threat half. Id 1 was reused for the sales map on purpose (`dashboard-sales-map-panel.md`).
+- Ids are permanent (dashboards store them): 6, 10, 11, 12, 13, 14, 17, 19, 22, 24 and 26 are retired and never reused. A retired id keeps a stub file answering an empty success (`widget_6.php`, `widget_14.php`): a tab left open across the update still asks for it, and an unknown id would leave its skeleton spinning. `widget_22.php` still exists: widget 21 calls it for the Firewall card's threat half. Id 1 was reused for the sales map on purpose (`dashboard-sales-map-panel.md`).
+- 14 (Subscriptions: domain, hosting, certificate and licence dates from the old licence server by Subscription ID) retired in 2026.11.0 with the Settings field and its save line; `config.subscription_id` stays (decided in #3205, `workflow/decisions-made-product-5.md`; PR #PRNUM).
 - A card whose content moves minute to minute goes into the `refresh` list of the dashboard script in `welcome.php`; a slow card goes into `solo` (asked for beside the batch).
 
 ## What about charts?

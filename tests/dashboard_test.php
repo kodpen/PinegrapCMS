@@ -85,6 +85,24 @@ function test_dashboard_widget_24_answers_empty_success()
 	}
 }
 
+// Widget 14 (Subscriptions) is retired: an administrator, the only one it was
+// shown to, gets an empty success and nothing is asked of the licence server;
+// the registry no longer lists it and the Subscription ID field is gone.
+function test_dashboard_widget_14_retired()
+{
+	$response = pg_dashboard_widget_run(array('widget_id' => '14'), array('role' => 0));
+	pg_assert_same('success', $response['status'], 'status');
+	pg_assert_same('', $response['data'], 'data');
+
+	$widget = dashboard_test_source('includes/dashboard/widgets/widget_14.php');
+	pg_assert_false(strpos($widget, 'pg_curl_run') !== false, 'no request');
+	pg_assert_false(strpos($widget, 'SUBSCRIPTION_ID') !== false, 'no Subscription ID');
+
+	pg_assert_false(strpos(dashboard_test_source('welcome.php'), '$widget_registry[14]') !== false, 'registry entry');
+	pg_assert_false(strpos(dashboard_test_source('includes/settings/general.php'), 'subscription_id') !== false, 'settings field');
+	pg_assert_false(strpos(dashboard_test_source('includes/settings/general.save.php'), 'subscription_id') !== false, 'save line');
+}
+
 // The clock answers the site time, formatted the way TIME_FORMAT says, with
 // what the dashboard needs to keep its own clock right: the server time, the
 // site offset from UTC and the date line.
@@ -378,9 +396,6 @@ function test_dashboard_cards_never_draw_blank()
 	$rates = dashboard_test_source('includes/dashboard/widgets/widget_16.php');
 	pg_assert_contains("if (\$output_rows === '') {", $rates);
 	pg_assert_contains("lang('No other currencies are set up.')", $rates);
-
-	$subscriptions = dashboard_test_source('includes/dashboard/widgets/widget_14.php');
-	pg_assert_contains("lang('Subscription details could not be loaded.')", $subscriptions);
 
 	// With no activity at all the note is not about a filtered kind.
 	$activity = dashboard_test_source('includes/dashboard/widgets/widget_7.php');
