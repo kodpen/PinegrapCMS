@@ -1764,7 +1764,53 @@
 
     // -- redaction (pg_image_editor_redact.js) --
 
-    var REDACT = {};
+    var REDACT = {
+        REDACT_MODES: ['pixel', 'blur', 'solid'],
+
+        // The block of a pixelation and the radius (sigma) of a blur in the
+        // turned picture's units: shares of its longer side
+        // (pg_image_edit_redact_sizes() scales them to the output).
+        redactSizes: function (strength, spaceMax) {
+            return {
+                block: Math.max(4, Math.round(strength / 100 * 0.035 * spaceMax)),
+                sigma: Math.max(2, strength / 100 * 0.02 * spaceMax)
+            };
+        },
+
+        // A brush area from the points it passed: the pen's box and trace,
+        // with its width.
+        brushLayer: function (pts, size) {
+            var geo = penLayer(pts);
+
+            geo.shape = 'brush';
+            geo.size = size;
+
+            return geo;
+        },
+
+        // The brush's points in the turned space, its box turned and mirrored
+        // as a pen stroke's is.
+        brushPoints: function (l) {
+            var m = mul(translate(l.x + l.w / 2, l.y + l.h / 2), mul(rotate(l.rot || 0), translate(-l.w / 2, -l.h / 2)));
+
+            return (l.trace || []).map(function (p) { return apply(m, p[0] * l.w, p[1] * l.h); });
+        },
+
+        // The output pixels an area covers: its corners (a brush grown by
+        // half its width) carried by the crop box to w x h, whole pixels,
+        // inside the output; null when it lies outside.
+        redactRegion: function (l, box, w, h) {
+            var sx = w / box.w, sy = h / box.h, grow = (l.shape === 'brush') ? (l.size || 0) / 2 : 0;
+            var pts = (l.shape === 'brush') ? REDACT.brushPoints(l) : corners(l);
+            var xs = pts.map(function (p) { return p[0]; }), ys = pts.map(function (p) { return p[1]; });
+            var x0 = Math.max(0, Math.floor((Math.min.apply(null, xs) - grow - box.x) * sx));
+            var y0 = Math.max(0, Math.floor((Math.min.apply(null, ys) - grow - box.y) * sy));
+            var x1 = Math.min(w, Math.ceil((Math.max.apply(null, xs) + grow - box.x) * sx));
+            var y1 = Math.min(h, Math.ceil((Math.max.apply(null, ys) + grow - box.y) * sy));
+
+            return ((x1 > x0) && (y1 > y0)) ? { x: x0, y: y0, w: x1 - x0, h: y1 - y0 } : null;
+        }
+    };
 
     // -- versions (pg_image_editor_versions.js) --
 

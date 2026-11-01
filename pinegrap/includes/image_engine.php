@@ -621,7 +621,10 @@ function pg_image_engine_no_gain($bytes_after, $bytes_before, $format_conversion
  *                         rot, flip_x, flip_y, straighten, crop, space_w,
  *                         space_h, shape, out_w, out_h, color (a matrix and a
  *                         gamma; Imagick only, reason no_color under GD),
- *                         sharpen, vignette, overlay (a PNG's path),
+ *                         sharpen, vignette, redact (areas burned in:
+ *                         mode pixel, blur or solid, block, sigma, the box
+ *                         x, y, w, h and its mask PNG's path), overlay (a
+ *                         PNG's path),
  *                         first_frame (an animated picture gives its first
  *                         frame instead of being refused), type (the
  *                         IMAGETYPE_* to write, the read one by default).
@@ -1604,6 +1607,10 @@ function pg_image_edit_imagick($image, $edit, $alpha)
         $vignette->destroy();
     }
 
+    if (!empty($edit['redact'])) {
+        pg_image_edit_redact_imagick($image, $edit['redact']);
+    }
+
     if (!empty($edit['overlay'])) {
         $overlay = new Imagick($edit['overlay']);
         $image->compositeImage($overlay, Imagick::COMPOSITE_OVER, 0, 0);
@@ -1761,6 +1768,11 @@ function pg_image_edit_gd($image, $edit, $alpha)
         return false;
     }
 
+    if (!empty($edit['redact']) && !pg_image_edit_redact_gd($out, $edit['redact'])) {
+        pg_image_destroy($out);
+        return false;
+    }
+
     if (!empty($edit['overlay'])) {
         $overlay = @imagecreatefrompng($edit['overlay']);
 
@@ -1782,6 +1794,166 @@ function pg_image_edit_gd($image, $edit, $alpha)
     }
 
     return $out;
+}
+
+/**
+ * The box a redaction works on, around an area: grown by what a blur reads
+ * from beside it (three sigmas) or out to whole blocks of a pixelation (the
+ * grid starts at the picture's corner), kept inside the picture. Pure.
+ *
+ * @return array x, y, w, h
+ */
+function pg_image_edit_redact_box($region, $width, $height)
+{
+    $x0 = $region['x'];
+    $y0 = $region['y'];
+    $x1 = $region['x'] + $region['w'];
+    $y1 = $region['y'] + $region['h'];
+
+    if ($region['mode'] === 'blur') {
+        $grow = (int) ceil($region['sigma'] * 3);
+        $x0 -= $grow;
+        $y0 -= $grow;
+        $x1 += $grow;
+        $y1 += $grow;
+    } elseif ($region['mode'] === 'pixel') {
+        $b = max(1, (int) $region['block']);
+        $x0 = (int) floor($x0 / $b) * $b;
+        $y0 = (int) floor($y0 / $b) * $b;
+        $x1 = (int) ceil($x1 / $b) * $b;
+        $y1 = (int) ceil($y1 / $b) * $b;
+    }
+
+    $x0 = max(0, $x0);
+    $y0 = max(0, $y0);
+
+    return array('x' => $x0, 'y' => $y0, 'w' => max(1, min($width, $x1) - $x0), 'h' => max(1, min($height, $y1) - $y0));
+}
+
+// The redaction's solid box colour, the preview's #111317.
+function pg_image_edit_redact_solid()
+{
+    return array(17, 19, 23);
+}
+
+/**
+ * Step 4 under Imagick, in place: each area's pixels made from its box
+ * (blocks, a blur or the solid colour), kept where its mask is opaque and
+ * laid over the picture.
+ */
+function pg_image_edit_redact_imagick($image, $regions)
+{
+    $width = $image->getImageWidth();
+    $height = $image->getImageHeight();
+
+    foreach ($regions as $region) {
+        $box = pg_image_edit_redact_box($region, $width, $height);
+        $mask = new Imagick($region['mask']);
+
+        if ($region['mode'] === 'solid') {
+            list($r, $g, $b) = pg_image_edit_redact_solid();
+            $fx = new Imagick();
+            $fx->newImage($region['w'], $region['h'], new ImagickPixel('rgb(' . $r . ',' . $g . ',' . $b . ')'), 'png');
+        } else {
+            $fx = clone $image;
+            $fx->cropImage($box['w'], $box['h'], $box['x'], $box['y']);
+            $fx->setImagePage(0, 0, 0, 0);
+
+            if ($region['mode'] === 'pixel') {
+                // One average per block, drawn back as squares.
+                $b = $region['block'];
+                $fx->scaleImage(max(1, (int) ceil($box['w'] / $b)), max(1, (int) ceil($box['h'] / $b)));
+                $fx->sampleImage((int) ceil($box['w'] / $b) * $b, (int) ceil($box['h'] / $b) * $b);
+            } else {
+                $fx->gaussianBlurImage(0, (float) $region['sigma']);
+            }
+
+            $fx->cropImage($region['w'], $region['h'], $region['x'] - $box['x'], $region['y'] - $box['y']);
+            $fx->setImagePage(0, 0, 0, 0);
+        }
+
+        $fx->setImageAlphaChannel(Imagick::ALPHACHANNEL_SET);
+        $fx->compositeImage($mask, Imagick::COMPOSITE_DSTIN, 0, 0);
+        $image->compositeImage($fx, Imagick::COMPOSITE_OVER, $region['x'], $region['y']);
+        $fx->clear();
+        $fx->destroy();
+        $mask->clear();
+        $mask->destroy();
+    }
+}
+
+/**
+ * Step 4 under GD, in place, as pg_image_edit_redact_imagick(): a blur is
+ * made by shrinking the box, blurring it there and drawing it back smoothly,
+ * as GD has only a 3 x 3 blur.
+ *
+ * @return bool false when a mask could not be read
+ */
+function pg_image_edit_redact_gd($image, $regions)
+{
+    $width = imagesx($image);
+    $height = imagesy($image);
+
+    foreach ($regions as $region) {
+        $mask = @imagecreatefrompng($region['mask']);
+
+        if (!$mask) {
+            return false;
+        }
+
+        $box = pg_image_edit_redact_box($region, $width, $height);
+        $fx = imagecreatetruecolor($box['w'], $box['h']);
+
+        if ($region['mode'] === 'solid') {
+            list($r, $g, $b) = pg_image_edit_redact_solid();
+            imagefilledrectangle($fx, 0, 0, $box['w'] - 1, $box['h'] - 1, imagecolorallocate($fx, $r, $g, $b));
+        } else {
+            $step = ($region['mode'] === 'pixel') ? max(1, (int) $region['block']) : max(1, $region['sigma'] / 2);
+            $sw = max(1, (int) ceil($box['w'] / $step));
+            $sh = max(1, (int) ceil($box['h'] / $step));
+            $small = imagecreatetruecolor($sw, $sh);
+
+            imagecopyresampled($small, $image, 0, 0, $box['x'], $box['y'], $sw, $sh, $box['w'], $box['h']);
+
+            if ($region['mode'] === 'pixel') {
+                imagecopyresized($fx, $small, 0, 0, 0, 0, $sw * $step, $sh * $step, $sw, $sh);
+            } else {
+                imagefilter($small, IMG_FILTER_GAUSSIAN_BLUR);
+                imagefilter($small, IMG_FILTER_GAUSSIAN_BLUR);
+                imagecopyresampled($fx, $small, 0, 0, 0, 0, $box['w'], $box['h'], $sw, $sh);
+            }
+
+            pg_image_destroy($small);
+        }
+
+        // Each pixel of the area takes the redacted one by its mask's
+        // opacity.
+        $ox = $region['x'] - $box['x'];
+        $oy = $region['y'] - $box['y'];
+
+        for ($y = 0; $y < $region['h']; $y++) {
+            for ($x = 0; $x < $region['w']; $x++) {
+                $a = 1 - ((imagecolorat($mask, $x, $y) >> 24) & 0x7f) / 127;
+
+                if ($a <= 0) {
+                    continue;
+                }
+
+                $c = imagecolorat($fx, $x + $ox, $y + $oy);
+                $d = imagecolorat($image, $region['x'] + $x, $region['y'] + $y);
+                $red = (int) round((($c >> 16) & 0xff) * $a + (($d >> 16) & 0xff) * (1 - $a));
+                $green = (int) round((($c >> 8) & 0xff) * $a + (($d >> 8) & 0xff) * (1 - $a));
+                $blue = (int) round(($c & 0xff) * $a + ($d & 0xff) * (1 - $a));
+
+                imagesetpixel($image, $region['x'] + $x, $region['y'] + $y, ($d & 0x7f000000) | ($red << 16) | ($green << 8) | $blue);
+            }
+        }
+
+        pg_image_destroy($fx);
+        pg_image_destroy($mask);
+    }
+
+    return true;
 }
 
 /**

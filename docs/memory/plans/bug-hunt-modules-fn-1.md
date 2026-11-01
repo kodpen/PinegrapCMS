@@ -192,4 +192,4 @@ description: Module list of plans/bug-hunt.md, part 1: includes/fn/ modules a11y
 
 - `payments`: open
 
-- `pdf_merge`: open
+- `pdf_merge`: taken by bug-hunt-pdf-merge

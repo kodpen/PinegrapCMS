@@ -76,7 +76,7 @@ description: Module list of plans/bug-hunt.md, part 2: includes/fn/ modules pric
 
 - `subscription_renewal`: taken by LK, #4622 (waits on #4623)
 
-- `subscriptions`: open
+- `subscriptions`: clean (LJ: period dates and month-end anchor, retry ladder, status moves and the read-status guarded write, sealed card_ref shape and seal/open, line amount, later-start rows and the nothing-today refusal, event de-duplication checked; store-mode renewals never stop at order_items.recurring_number_of_payments, left to the `subscription_renewal` hunt)
 
 - `subscriptions_account`: open
 
@@ -188,7 +188,7 @@ description: Module list of plans/bug-hunt.md, part 2: includes/fn/ modules pric
 
 - `widgets_shipping_method`: open
 
-- `widgets_starters`: open
+- `widgets_starters`: clean (bindings, flags, markers, actions and wiring against palettes, Default trees and renderers checked)
 
 - `widgets_tag_cloud`: clean (classic and Search Results widget keyword reads against the classic sync, merge and case folding, size and weight scale, token escaping and search links checked)
 
