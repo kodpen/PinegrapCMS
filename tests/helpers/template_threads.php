@@ -3,12 +3,13 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Checks for the comment threads a design template ships on the Comments
- * widget (the Café, Clinic and Playground templates): no fixed comments
- * block left, each thread under its page's record view with its options
- * and a layout of its own, each drawn by the renderer's own steps for a
- * member, a visitor and a staff member, and the reply e-mail's card before
- * the System region, drawn as an e-mail draws it. The shop templates keep
- * their own table (design_template_shop_comments_test.php).
+ * widget (the Café, Clinic and Playground templates; the hello template's
+ * Google Reviews): no fixed comments block left, each thread under its
+ * page's record view with its options and a layout of its own, each drawn
+ * by the renderer's own steps for a member, a visitor and a staff member,
+ * and the reply e-mail's card before the System region, drawn as an e-mail
+ * draws it. The shop templates keep their own table
+ * (design_template_shop_comments_test.php).
  *
  * Not a test file (tools/test.php runs tests/*_test.php only): a test
  * requires it with require_once(__DIR__ . '/helpers/template_threads.php').
@@ -421,10 +422,11 @@ function _tpl_threads_check_email_card($id, $key, $mail_page, $pages)
 }
 
 // A Google Reviews widget of $id (key $key) placed on $page_key inside the
-// section named $section, after the sample words: a layout of its own that
-// shows only while Google returns reviews, with the author link and
-// Google's attribution, drawn by the renderer for a place and not at all
-// without one; the installer's preview, a first visit, leaves it out.
+// section named $section (its layer name: `_label`, or `customName` in a
+// template whose builders name nodes so), after the sample words: a layout
+// of its own that shows only while Google returns reviews, with the author
+// link and Google's attribution, drawn by the renderer for a place and not
+// at all without one; the installer's preview, a first visit, leaves it out.
 function _tpl_threads_check_google_reviews($id, $key, $page_key, $section)
 {
 	$tpl = _tpl_threads_tpl($id);
@@ -435,7 +437,8 @@ function _tpl_threads_check_google_reviews($id, $key, $page_key, $section)
 
 	$placed = 0;
 	foreach (_tpl_threads_nodes(_tpl_threads_page($tpl, $page_key)['tree']) as $n) {
-		if (isset($n['props']['_label']) && $n['props']['_label'] === $section) {
+		$name = isset($n['props']['_label']) ? $n['props']['_label'] : (isset($n['props']['customName']) ? $n['props']['customName'] : '');
+		if ($name === $section) {
 			$order = _tpl_threads_order($n);
 			$placed += in_array($key, $order, true) ? 1 : 0;
 		}

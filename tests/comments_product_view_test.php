@@ -118,11 +118,11 @@ function test_comments_product_view_canvas()
 	pg_assert_contains("return _swTabHasWidget(p, ['catalog_item_view']) && !_swTabHasWidget(p, ['form_item_view']);", $js, 'the same rule');
 }
 
-// The store, boutique and bookshop product page: a reviews widget with
-// stars, newest first, never pinned.
+// The store, boutique, bookshop and hello product page: a reviews widget
+// with stars, newest first, never pinned.
 function test_comments_product_view_templates()
 {
-	foreach (array('pinegrap-store', 'pinegrap-boutique', 'pinegrap-bookshop') as $id) {
+	foreach (array('pinegrap-store', 'pinegrap-boutique', 'pinegrap-bookshop', 'hello-pinegrap') as $id) {
 		$tpl = _pg_tpl_include(PG_FUNCTIONS_DIR . '/includes/design_templates/' . $id . '.php');
 		pg_assert_true(is_array($tpl), $id . ' loaded');
 		if (!is_array($tpl)) {

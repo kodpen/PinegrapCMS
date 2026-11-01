@@ -110,6 +110,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - design-template-forum-private-threads.md: Forum template 1.3.0: the conversation, guide-on-the-desk and report pages draw their messages and notes with two-sided Comments widgets instead of the fixed comments block
 - design-template-forum-replies.md: Forum template on the Comments widget (1.1.0, board list 1.2.0): seven comments widgets, why explicit trees, pages that keep the block, e-mails, page settings, older sites, quirks, checks
 - design-template-forum.md: Community Forum & Docs template (pinegrap-forum): what it ships, its three forms, the live rules, archives and feeds, replies on the Comments widget and their names, Turkish words.
+- design-template-hello.md: Hello template 2.6.0: threads and the reply e-mail card on the Comments widget, product reviews, the Favourites page and its shop-only links, Google Reviews beside the testimonials
 - design-template-magazine-a11y.md: Magazine accessibility: ink focus rings on links, buttons, fields and the shelf, headings that never repeat, e-mail frames light in the dark theme, the core items left open.
 - design-template-magazine-issues.md: Magazine issues: office pick list with the stored default Online only, ?issue= contents, index of live Editor's letters, token hrefs, plain names, launching one.
 - design-template-magazine-layout.md: Magazine look and shapes: pm- User Styles, fonts and serif body, color-mix() paper, rust accent, sticky pull quote, drop cap resets, vanishing bands, preview placeholders.
@@ -119,7 +120,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - design-template-news-publishing.md: News template publishing: who may submit, the three-row live rule, scheduling and search, where a draft could leak, search noise, structured data and feeds, author HTML, signed-in tips, e-mails.
 - design-template-news.md: News Portal template (pinegrap-news): what it ships, the Articles form contract, the look, ?r= addresses, sample dates, preview, platform limits.
 - design-template-newsroom-comments.md: News template (1.1.0) on the Comments widget: post_comments, conversation_replies, desk_messages, the e-mail card on both comment e-mails, why explicit trees, older sites
-- design-template-shop-comments.md: Shop templates (store, boutique, bookshop 1.2.0) comment threads on the Comments widget: post_comments, conversation_replies, the reply e-mail card before the System region, why explicit trees
+- design-template-shop-comments.md: Shop templates (store, boutique, bookshop 1.2.0, hello 2.6.0) on the Comments widget: post_comments, conversation_replies, the reply e-mail card before the System region, why explicit trees
 - design-template-text-contrast.md: Text colours and names in the hello-pinegrap and pinegrap-playground templates: no faded text, no primary text on grey sections, one owner name, Parola wording.
 - design-template-threads.md: Café 1.1.0 (then Clinic, Playground) comment threads on the Comments widget, the reply e-mail card before the System region, Google Reviews beside the sample testimonials
 - design-templates-catalog-and-look.md: A design template's own data and looks: catalog and contact groups made on opening, their placeholders, suggested look and palette, highlights, gallery drawing, dark sections, ratio classes.
