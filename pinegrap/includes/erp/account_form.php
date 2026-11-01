@@ -241,7 +241,7 @@ function erp_account_form_cards($liveform, $with_opening = false, $currency_lock
                         'class' => 'form-control', 'maxlength' => '100', 'autocomplete' => 'off')) . '
                 </div>
                 <div class="col-12 sm:col-6 lg:col-3 my-3">
-                    <label for="city" class="form-label">' . lang('City') . '</label>
+                    <label for="city" class="form-label" data-label-tr="' . h(lang('Province')) . '" data-label-other="' . h(lang('City')) . '">' . h(lang(erp_address_city_label_key($country))) . '</label>
                     ' . $liveform->output_field(array(
                         'type' => 'text', 'id' => 'city', 'name' => 'city',
                         'class' => 'form-control', 'maxlength' => '100', 'autocomplete' => 'off')) . '
@@ -284,10 +284,11 @@ function erp_account_form_cards($liveform, $with_opening = false, $currency_lock
             document.querySelectorAll("[data-erp-not-tr]").forEach(function (element) {
                 element.classList.toggle("d-none", tr);
             });
-            var label = document.querySelector("label[for=tax_number]");
-            if (label) {
+            // The tax number and the city (İl for Turkey) say it in the
+            // country\'s words.
+            document.querySelectorAll("label[data-label-tr]").forEach(function (label) {
                 label.textContent = label.getAttribute(tr ? "data-label-tr" : "data-label-other");
-            }
+            });
             // A Turkish tax number and postcode are digits only.
             ["tax_number", "postcode"].forEach(function (id) {
                 var input = document.getElementById(id);

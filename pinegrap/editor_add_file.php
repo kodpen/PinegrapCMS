@@ -143,6 +143,15 @@ if (!@copy($file_temp_name, FILE_DIRECTORY_PATH . '/' . $file_name)) {
         'vars'   => array(pg_basename((string) $_FILES['upload']['name'])))));
 }
 
+// A picture whose longest edge is above the site's upload cap is shrunk to
+// it in its own format; the row records the size that is on the disk.
+$cap_settings = pg_image_settings();
+$cap_report = pg_image_upload_cap_apply(FILE_DIRECTORY_PATH . '/' . $file_name, $cap_settings['upload_max_dimension'], $cap_settings['resize_quality']);
+
+if ($cap_report && ($cap_report['status'] === 'success') && $cap_report['resized']) {
+    $file_size = filesize(FILE_DIRECTORY_PATH . '/' . $file_name);
+}
+
 // insert file data into file table
 $query =    "INSERT INTO files ".
             "(name, folder, type, size, user, timestamp, design) ".

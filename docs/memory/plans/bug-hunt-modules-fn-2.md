@@ -14,7 +14,7 @@ description: Module list of plans/bug-hunt.md, part 2: includes/fn/ modules pric
 
 - `product_customs`: open
 
-- `product_feeds`: open
+- `product_feeds`: taken by MF, #4729
 
 - `product_list`: open
 
@@ -38,7 +38,7 @@ description: Module list of plans/bug-hunt.md, part 2: includes/fn/ modules pric
 
 - `shipment_lookup`: open
 
-- `shipment_tracking`: open
+- `shipment_tracking`: clean (MJ)
 
 - `shipping`: taken by LL, #4625
 
@@ -182,7 +182,7 @@ description: Module list of plans/bug-hunt.md, part 2: includes/fn/ modules pric
 
 - `widgets_photo_gallery`: open
 
-- `widgets_placement`: open
+- `widgets_placement`: done (#4736)
 
 - `widgets_shipping_address`: clean (#4727)
 

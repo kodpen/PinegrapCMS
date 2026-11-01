@@ -84,7 +84,7 @@ $statuses = array(lang('Registered'), lang('Confirmed'), lang('Waitlisted'), lan
 // price and the way to register for it.
 $event_card = function () use ($el, $span, $para, $icon, $col, $image, $bind, $bind_date, $attr, $link, $page_link, $sample_day) {
     return $col(array(
-        $el('article', 'card h-100 border-0 shadow-sm overflow-hidden', lang('Event Card'), array(
+        $el('article', 'card h-100 border-0 shadow-sm overflow-hidden pev-lift', lang('Event Card'), array(
             $el('div', 'position-relative', lang('Picture Area'), array(
                 $el('div', 'ratio ratio-16x9 bg-body-tertiary', lang('Picture Frame'), array(
                     $image('https://picsum.photos/seed/pinegrap-events-event-meetup/800/450', lang('Product Night: Design Systems in Practice'), 'object-fit-cover',

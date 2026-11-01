@@ -51,12 +51,241 @@ function pg_cron_ran($job_name)
         return false;
     }
 
+    // A dispatched job that calls this has reached its real end, so its
+    // completion marker moves too. The dispatcher's own stamp after every
+    // tick (pg_cron_stamp()) leaves the marker alone: the health screens read
+    // the marker, and a crashed or unfinished tick must not look healthy.
+    $values = "('" . e($job_name) . "', UNIX_TIMESTAMP())";
+    $marker = pg_cron_done_marker($job_name, pg_cron_jobs());
+
+    if ($marker !== '') {
+        $values .= ", ('" . e($marker) . "', UNIX_TIMESTAMP())";
+    }
+
     db(
         "INSERT INTO cron_runs (job_name, last_run_at)
-         VALUES ('" . e($job_name) . "', UNIX_TIMESTAMP())
-         ON DUPLICATE KEY UPDATE last_run_at = UNIX_TIMESTAMP()");
+         VALUES " . $values . "
+         ON DUPLICATE KEY UPDATE last_run_at = VALUES(last_run_at)");
 
     return true;
+}
+
+/**
+ * Stamp a job's run without its completion marker: the dispatcher's record
+ * that a tick handed the job its turn, whatever the job did with it.
+ *
+ * @param string $job_name
+ * @param int|null $at Unix time; null for now.
+ * @return void
+ */
+function pg_cron_stamp($job_name, $at = null)
+{
+    if (!pg_schema_has('cron_runs')) {
+        return;
+    }
+
+    $sql_at = ($at === null) ? 'UNIX_TIMESTAMP()' : (string) (int) $at;
+
+    db(
+        "INSERT INTO cron_runs (job_name, last_run_at)
+         VALUES ('" . e($job_name) . "', " . $sql_at . ")
+         ON DUPLICATE KEY UPDATE last_run_at = " . $sql_at);
+}
+
+/**
+ * Name of a job's completion marker in cron_runs, '' for a job that has none.
+ *
+ * Only a dispatched job gets one: its plain row is also stamped by the
+ * dispatcher after every tick, finished or not. The general job and the
+ * inline jobs run whole on every tick, and a name outside the catalogue (a
+ * throttle or a pass's own marker) is not a job. Pure.
+ *
+ * @param string $job_name
+ * @param array $jobs pg_cron_jobs()
+ * @return string
+ */
+function pg_cron_done_marker($job_name, $jobs)
+{
+    if (!isset($jobs[$job_name]) || empty($jobs[$job_name]['dispatch']) || !empty($jobs[$job_name]['inline'])) {
+        return '';
+    }
+
+    return $job_name . '_done';
+}
+
+/**
+ * Run times as the health screens read them: a job's completion marker
+ * stands for its run when there is one. A job that has not finished since the
+ * marker came (or never reached its end) keeps its plain row. Pure.
+ *
+ * @param array<string,int>|null $runs pg_cron_last_runs()
+ * @return array<string,int>|null
+ */
+function pg_cron_health_runs($runs)
+{
+    if ($runs === null) {
+        return null;
+    }
+
+    foreach ($runs as $name => $at) {
+
+        if ((strlen($name) > 5) && (substr($name, -5) === '_done')) {
+            $runs[substr($name, 0, -5)] = $at;
+        }
+    }
+
+    return $runs;
+}
+
+/**
+ * pg_cron_last_runs() for System Status, the operations alerts and the
+ * accessibility screen: completion markers in place of the dispatcher's
+ * stamps (pg_cron_health_runs()).
+ *
+ * @return array<string,int>|null
+ */
+function pg_cron_health_last_runs()
+{
+    return pg_cron_health_runs(pg_cron_last_runs());
+}
+
+/**
+ * The process time limit a scheduled pass must finish inside: the
+ * JOB_TIME_LIMIT setting when above zero, else PHP's max_execution_time.
+ * 0 means none. Pure.
+ *
+ * @param mixed $setting JOB_TIME_LIMIT, null when not defined.
+ * @param mixed $php_limit ini_get('max_execution_time').
+ * @return int
+ */
+function pg_cron_time_limit_choice($setting, $php_limit)
+{
+    if (((int) $setting) > 0) {
+        return (int) $setting;
+    }
+
+    return max(0, (int) $php_limit);
+}
+
+/**
+ * Note when the process started and how long it may run. Called by job.php
+ * at its top; a job script run alone uses the request's start time.
+ *
+ * @param float|null $started microtime(true); null reads the clock.
+ * @return array{started:float,limit:int}
+ */
+function pg_cron_clock($started = null)
+{
+    static $clock = null;
+
+    if (($started !== null) || ($clock === null)) {
+
+        if ($started === null) {
+            $started = isset($_SERVER['REQUEST_TIME_FLOAT']) ? (float) $_SERVER['REQUEST_TIME_FLOAT'] : microtime(true);
+        }
+
+        $clock = array(
+            'started' => (float) $started,
+            'limit'   => pg_cron_time_limit_choice(defined('JOB_TIME_LIMIT') ? JOB_TIME_LIMIT : null, ini_get('max_execution_time')),
+        );
+    }
+
+    return $clock;
+}
+
+/**
+ * Seconds a pass may work in this tick: its own budget, capped by the time
+ * the process has left before its limit, less a margin for the closing
+ * writes (a fifth of the limit, at most 15 s). Never below 1, so a pass that
+ * starts late still keeps its place and leaves. Pure.
+ *
+ * @param int $budget The pass's own seconds per run.
+ * @param float $started Process start, microtime.
+ * @param int $limit Process time limit in seconds, 0 for none.
+ * @param float $now microtime.
+ * @return int
+ */
+function pg_cron_tick_budget($budget, $started, $limit, $now)
+{
+    $budget = (int) $budget;
+    $limit = (int) $limit;
+
+    if ($limit > 0) {
+        $margin = min(15, max(1, (int) floor($limit / 5)));
+        $budget = min($budget, (int) floor(((float) $started + $limit - $margin) - (float) $now));
+    }
+
+    return max(1, $budget);
+}
+
+/**
+ * pg_cron_tick_budget() for this process.
+ *
+ * @param int $budget
+ * @return int
+ */
+function pg_cron_time_left($budget)
+{
+    $clock = pg_cron_clock();
+
+    return pg_cron_tick_budget($budget, $clock['started'], $clock['limit'], microtime(true));
+}
+
+/**
+ * The last_run_at that makes a job of $interval due again $seconds from
+ * $now; never later than now, so a wait longer than the interval is the
+ * interval. Pure.
+ *
+ * @param int $now
+ * @param int $interval
+ * @param int $seconds
+ * @return int
+ */
+function pg_cron_due_again_stamp($now, $interval, $seconds)
+{
+    $now = (int) $now;
+
+    return min($now, $now - (int) $interval + max(0, (int) $seconds));
+}
+
+/**
+ * Ask for a job to be due again in $seconds rather than after its interval:
+ * a resumable pass that stopped at its budget with work left. Its run is
+ * moved back now, and pg_cron_dispatch_finished() keeps that instead of
+ * stamping the tick. Jobs that have waited longer still go first.
+ *
+ * @param string $name Catalogue name.
+ * @param int $seconds
+ * @return void
+ */
+function pg_cron_due_again($name, $seconds)
+{
+    $jobs = pg_cron_jobs();
+
+    if (!isset($jobs[$name])) {
+        return;
+    }
+
+    pg_cron_due_again_noted($name);
+
+    pg_cron_stamp($name, pg_cron_due_again_stamp(time(), (int) $jobs[$name]['interval'], $seconds));
+}
+
+/**
+ * Names of the jobs that asked to be due again in this process.
+ *
+ * @param string|null $name A name to add.
+ * @return array<int,string>
+ */
+function pg_cron_due_again_noted($name = null)
+{
+    static $names = array();
+
+    if ($name !== null) {
+        $names[] = (string) $name;
+    }
+
+    return $names;
 }
 
 /**
@@ -199,9 +428,13 @@ function pg_cron_jobs()
             'stale_after' => 172800,
             'dispatch'    => true,
             'lane'        => 'heavy',
+            // Resumable like the accessibility pass: one budget per tick.
+            'lock'        => 600,
         ),
-        // Records its run only when a pass reaches the last page, so an
-        // unfinished pass is handed out again on the next tick.
+        // Records its run (and seo_a11y_job_done) only when a pass reaches
+        // the last page; an unfinished pass asks to be due again in a minute
+        // (pg_cron_due_again()). A tick works at most its budget, so the lock
+        // is minutes, not hours.
         'seo_a11y_job' => array(
             'label'       => lang('Accessibility report'),
             'script'      => 'seo_a11y_job.php',
@@ -209,6 +442,7 @@ function pg_cron_jobs()
             'stale_after' => 259200,
             'dispatch'    => true,
             'lane'        => 'heavy',
+            'lock'        => 600,
         ),
         'auto_backup' => array(
             'label'       => lang('Auto backup'),
@@ -927,6 +1161,35 @@ function pg_cron_pick($jobs, $runs, $now, $allowed = null)
 }
 
 /**
+ * Which lane's pick runs in this tick. Both lanes free and both with a job
+ * due: the one that has been due longer (last run plus interval) goes first,
+ * light on a tie; the other lane is offered again next tick. Due time rather
+ * than last run, because a resumable heavy pass that asks to come back in a
+ * minute (pg_cron_due_again()) carries a last run a day old, and compared on
+ * that it would win every tick while the light jobs waited. Pure.
+ *
+ * @param array $jobs Catalogue in pg_cron_jobs() form.
+ * @param array $runs name => array('last_run_at' => int, ...).
+ * @param array $pick pg_cron_pick().
+ * @return string|null
+ */
+function pg_cron_lane_choice($jobs, $runs, $pick)
+{
+    if (($pick['light'] === null) || ($pick['heavy'] === null)) {
+        return ($pick['light'] !== null) ? $pick['light'] : $pick['heavy'];
+    }
+
+    $due = array();
+
+    foreach (array('light', 'heavy') as $lane) {
+        $name = $pick[$lane];
+        $due[$lane] = (isset($runs[$name]['last_run_at']) ? (int) $runs[$name]['last_run_at'] : 0) + (int) $jobs[$name]['interval'];
+    }
+
+    return ($due['heavy'] < $due['light']) ? $pick['heavy'] : $pick['light'];
+}
+
+/**
  * Choose the job the general job should run in this tick, and take its lock.
  *
  * Returns a path rather than running anything itself, because the caller has
@@ -993,19 +1256,7 @@ function pg_cron_dispatch_next()
 
     $pick = pg_cron_pick($jobs, $runs, time(), $candidates);
 
-    // Both lanes free and both with a job due: the one that has waited longer
-    // goes first, light on a tie. The other lane is offered again next tick.
-    $selected = $pick['light'];
-
-    if ($pick['heavy'] !== null) {
-
-        $light_run = ($selected !== null && isset($runs[$selected])) ? $runs[$selected]['last_run_at'] : 0;
-        $heavy_run = isset($runs[$pick['heavy']]) ? $runs[$pick['heavy']]['last_run_at'] : 0;
-
-        if (($selected === null) || ($heavy_run < $light_run)) {
-            $selected = $pick['heavy'];
-        }
-    }
+    $selected = pg_cron_lane_choice($jobs, $runs, $pick);
 
     if ($selected === null) {
         return '';
@@ -1318,10 +1569,15 @@ function pg_cron_dispatch_finished()
     // of what the script did. A job that stamps itself is merely re-stamped
     // with the same clock second; a job that declined or crashed waits out
     // its interval instead of monopolising every tick.
+    //
+    // Only the plain row: the completion marker the health screens read moves
+    // only when the job itself calls pg_cron_ran() at its real end. A
+    // resumable pass that asked to be due again (pg_cron_due_again()) keeps
+    // the time it asked for.
     $name = pg_cron_dispatch_current();
 
-    if ($name !== '') {
-        pg_cron_ran($name);
+    if (($name !== '') && !in_array($name, pg_cron_due_again_noted(), true)) {
+        pg_cron_stamp($name);
     }
 
     // Stamped above before the lock is released here, so a tick that finds

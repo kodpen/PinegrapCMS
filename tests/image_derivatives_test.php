@@ -726,3 +726,43 @@ function test_image_derivative_refuses_what_is_not_a_raster_image()
 		image_derivatives_test_remove($folder);
 	}
 }
+
+
+// The made copy is found without making one; before it is made, and for a
+// request the original answers, there is none.
+function test_image_derivative_cached_finds_only_what_was_made()
+{
+	if (!image_derivatives_test_gd() || !function_exists('imagewebp') || (pg_image_format_writer('webp') === '')) {
+		pg_assert_true(true, 'GD with WebP is not available; skipped');
+		return;
+	}
+
+	$folder = image_derivatives_test_folder();
+	$source = $folder . '/files/photo.jpg';
+	$request = array('width' => 0, 'format' => 'webp');
+
+	try {
+		image_derivatives_test_jpeg($source, 1200, 800, 1);
+
+		pg_assert_same(null, pg_image_derivative_cached(31, $source, $request, $folder . '/cache'), 'nothing before it is made');
+		pg_assert_false(is_dir($folder . '/cache/31'), 'and no folder made by asking');
+
+		$made = pg_image_derivative(31, $source, $request, $folder . '/cache');
+		$cached = pg_image_derivative_cached(31, $source, $request, $folder . '/cache');
+
+		if ($made['status'] === 'derivative') {
+			pg_assert_same($made['path'], $cached['path'], 'the same file');
+			pg_assert_same('webp', $cached['extension'], 'its format');
+			pg_assert_same(1200, $cached['width'], 'its own width');
+			pg_assert_same(filesize($made['path']), $cached['size'], 'its size');
+		} else {
+			pg_assert_same(null, $cached, 'no copy when the original was kept');
+		}
+
+		pg_assert_same(null, pg_image_derivative_cached(31, $source, array('width' => 0, 'format' => ''), $folder . '/cache'), 'the original itself is no copy');
+		pg_assert_same(null, pg_image_derivative_cached(0, $source, $request, $folder . '/cache'), 'no file id');
+	} finally {
+		image_derivatives_test_remove($folder);
+	}
+}
+

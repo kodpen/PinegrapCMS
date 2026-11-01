@@ -15,7 +15,6 @@ description: Research of 2026-11-01 behind plans/search-and-audits.md: why searc
 - A visual-editor record whose render fails loses its row by design (#1197).
 
 ## Why do the structure and accessibility passes stall?
-- `pg_seo_render_page()` (`seo_structure.php` 1468) catches `Exception`, not `Error`: one page ends the pass, the structure queue and the accessibility cursor stay before it, and every run dies there.
 - The accessibility cursor is written only when the budget runs out (`includes/fn/a11y.php` 799): a process killed first checks the same first pages again.
 - Under the dispatcher a pass gets one 120 s tick a day (stamped as run): one pass of a large site takes days or weeks, and the link graph and orphan findings wait for the whole pass.
 - `view_accessibility.php` (51) reads that stamp as "Last full check", and `pg_a11y_result_state()` then says "ok" for checks a partial pass never ran.

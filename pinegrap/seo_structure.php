@@ -1385,8 +1385,8 @@ function pg_seo_analyze_page($page_id)
 // page_name and page_type.
 //
 // Returns NULL when the page type cannot be rendered without a request behind
-// it, otherwise array('html' => ..., 'error' => ...): a failed render carries
-// the exception's message.
+// it, otherwise array('html' => ..., 'error' => ...) from pg_background_render():
+// a failed render (an Exception or an Error) carries its message.
 function pg_seo_render_page($page_id, $page_row)
 {
     require_once(dirname(__FILE__) . '/get_page_content.php');
@@ -1412,84 +1412,18 @@ function pg_seo_render_page($page_id, $page_row)
     // rendered is the anonymous visitor's view - which is the one search
     // engines see and the one worth scoring.
     //
-    // The renderer reads two things a real request would have supplied: the
-    // requested page name (catalog pages resolve their item from it) and the
-    // session token it writes into the inline script block. update_search_
-    // index.php gets away without setting them because it runs from a
-    // browser window; a cron run does not, and an undefined index there
-    // would fill the error log on every page. Both are restored afterwards
-    // so nothing else in the request sees a value this function invented.
-    $had_page_parameter = isset($_GET['page']);
-    $previous_page_parameter = $had_page_parameter ? $_GET['page'] : NULL;
-    $_GET['page'] = $render_context['page'];
+    // The renderer reads the requested page name (catalog pages resolve their
+    // item from it) and the record a designed page's widget shows
+    // (pg_seo_widget_record_query()) from the address; the background
+    // renderer lends both and puts back what was there, and turns whatever
+    // the render throws into this page's error.
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/background_render.php');
 
-    // The record a designed page's widget shows comes from the address too
-    // (pg_seo_widget_record_query()); the previous values are put back with
-    // the page name.
-    $previous_query = array();
+    $get = array('page' => $render_context['page']) + $render_context['query'];
 
-    foreach ($render_context['query'] as $query_key => $query_value) {
-        $previous_query[$query_key] = array_key_exists($query_key, $_GET) ? array(TRUE, $_GET[$query_key]) : array(FALSE, NULL);
-        $_GET[$query_key] = (string) $query_value;
-    }
-
-    // The catalog item resolver memoises for the life of the process, which is
-    // right for a request and wrong for a pass that renders hundreds of pages:
-    // without this every catalog detail page after the first is scored against
-    // the first one's product - its title, its description, its JSON-LD.
-    if (function_exists('get_catalog_item_from_url')) {
-        get_catalog_item_from_url(true);
-    }
-
-    // The token has to be restored by UNSETTING it, not by blanking it.
-    // initialize_token() only generates a new one when the key is absent, and
-    // validate_token_field() rejects outright when the stored token is the
-    // empty string - so leaving '' behind would break every form and every
-    // token-checked link for the rest of that session, permanently.
-    $had_token = isset($_SESSION['software']['token']);
-
-    if (!$had_token) {
-        $_SESSION['software']['token'] = '';
-    }
-
-    // A render that cannot complete calls output_error(), which would print
-    // an error screen and end the process - and with it the whole pass, on
-    // whichever page happened to come first. While the flag is up that call
-    // throws instead. The finally block puts every piece of borrowed request
-    // state back whether the render returned or threw; without it a failed
-    // render would leave a foreign page name in $_GET for the next one.
-    $html = '';
-    $render_error = '';
-
-    pg_seo_rendering(TRUE);
-
-    try {
-        $html = get_page_content($page_id, '', '', 'preview', FALSE, $dynamic_properties, FALSE, 'desktop');
-    } catch (Exception $e) {
-        $render_error = $e->getMessage();
-    } finally {
-        pg_seo_rendering(FALSE);
-
-        if ($had_page_parameter) {
-            $_GET['page'] = $previous_page_parameter;
-        } else {
-            unset($_GET['page']);
-        }
-
-        foreach ($previous_query as $query_key => $previous) {
-            if ($previous[0]) {
-                $_GET[$query_key] = $previous[1];
-            } else {
-                unset($_GET[$query_key]);
-            }
-        }
-
-        if (!$had_token) {
-            unset($_SESSION['software']['token']);
-        }
-    }
-
-    return array('html' => (string) $html, 'error' => $render_error);
+    return pg_background_render(function () use ($page_id, $dynamic_properties) {
+        return get_page_content($page_id, '', '', 'preview', FALSE, $dynamic_properties, FALSE, 'desktop');
+    }, $get);
 }
 
 // The structure findings of a page pg_seo_render_page() rendered, stored, and

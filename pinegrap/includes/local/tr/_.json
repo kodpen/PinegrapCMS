@@ -912,6 +912,7 @@
     "{var:1} joined the discussion": "{var:1} tartışmaya katıldı",
     "{var:1} joined this week, and a first hello tends to land well.": "Bu hafta {var:1} katıldı; ilk bir merhaba genelde iyi gider.",
     "{var:1} joined {var:2}": "{var:1}, {var:2} kanalına katıldı",
+    "{var:1} keeps no WebP copy: it would not be lighter, or this server cannot read the picture.": "{var:1} için WebP kopyası tutulmadı: daha hafif olmayacaktı ya da bu sunucu görseli okuyamıyor.",
     "{var:1} key code(s) linked to this code": "Bu koda bağlı {var:1} anahtar kod",
     "{var:1} key code(s) moved from offer code {var:2} to {var:3}": "{var:1} anahtar kod, {var:2} teklif kodundan {var:3} koduna taşındı",
     "{var:1} key code(s) of offer ({var:2}) were deleted": "{var:2} teklifinin {var:1} anahtar kodu silindi",

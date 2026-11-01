@@ -86,34 +86,26 @@ while ($row = mysqli_fetch_assoc($result)) {
     $calendar_ids[] = $row['calendar_id'];
 }
 
-$where_calendars = "";
-$where_calendars_values = array();
-
-// loop through each calendar id so that we can check if the calendar event is allowed to appear on the calendar event view page
-foreach ($calendar_ids as $calendar_id) {
-    // if this is not the first calendar in the list, then output separator
-    if ($where_calendars != '') {
-        $where_calendars .= " OR ";
-    }
-    
-    $where_calendars .= "(calendar_id = ?)";
-    $where_calendars_values[] = (string) $calendar_id;
-}
+$calendar_condition = pg_calendar_event_view_calendar_condition($calendar_ids);
 
 // check if this calendar event is in a calendar that is allowed to appear on this page
-// (a widget page was already checked against the widget's calendars above)
-if (!$widget_page) {
+// (a widget page was already checked against the widget's calendars above;
+// an event in no calendar is allowed on no calendar event view page)
+$allowed_in_view = $widget_page;
+
+if (!$widget_page && ($calendar_condition !== null)) {
     $query =
         "SELECT calendar_id
         FROM calendar_event_views_calendars_xref
         WHERE
-            (" . $where_calendars . ")
+            " . $calendar_condition[0] . "
             AND (page_id = ?)";
-    $result = db_q($query, array_merge($where_calendars_values, array((string) $page_id))) or output_error('Query failed.');
+    $result = db_q($query, array_merge($calendar_condition[1], array((string) $page_id))) or output_error('Query failed.');
+    $allowed_in_view = (mysqli_num_rows($result) > 0);
 }
 
 // if calendar event is not allowed in this view, then log activity and output error
-if (!$widget_page && (mysqli_num_rows($result) == 0)) {
+if (!$allowed_in_view) {
     log_activity(pg_log_lang(array('string' => 'access denied to reserve calendar event ({var:1}) for page ({var:2}) because calendar event is not allowed in this calendar event view.', 'vars' => array($calendar_event['name'], $page_name))), $_SESSION['sessionusername']);
     output_error(lang('You do not have access to reserve this calendar event because it is not allowed in this calendar event view.') . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
 }

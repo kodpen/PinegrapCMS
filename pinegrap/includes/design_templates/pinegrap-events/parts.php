@@ -311,7 +311,7 @@ $header = function () use ($el, $link, $icon, $span, $attr) {
             $el('div', 'container', lang('Navbar Container'), array(
                 $el('a', 'navbar-brand d-flex align-items-center gap-2 fw-bold', lang('Brand'), array(
                     $el('span', 'd-inline-flex p-2 rounded-3 bg-primary text-white lh-1', lang('Icon Box'), array($icon('bi-calendar2-event', 'fs-5'))),
-                    $span('{{site_name}}', 'fs-4', lang('Name')),
+                    $span('{{site_name}}', 'fs-4 pev-brand', lang('Name')),
                 ), array('href' => '{{page:home}}')),
                 $el('button', 'navbar-toggler', lang('Toggler'), array(
                     $el('span', 'navbar-toggler-icon', lang('Toggler Icon')),
@@ -462,7 +462,7 @@ $page_header = function ($title, $lead, $more = array()) use ($el, $heading, $pa
 // rest, and a rule under them.
 $section_header = function ($eyebrow, $title, $more_text = '', $more_href = '') use ($el, $heading, $para, $icon, $span) {
     $children = array($el('div', '', lang('Section Title'), array(
-        $para($eyebrow, 'small text-uppercase fw-semibold text-primary mb-1'),
+        $para($eyebrow, 'small text-uppercase fw-semibold text-primary mb-1 pev-eyebrow'),
         $heading('h2', $title, 'h3 fw-bold mb-0'),
     )));
     if ($more_text !== '') {

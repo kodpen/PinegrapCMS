@@ -16,7 +16,7 @@ module: widgets_placement
 - Restricted submissions defuse every `<!--pg-` comment typed into text, this one too.
 
 ## What does "narrow" mean?
-- A placement's filter rows (at most ten, cleaned like the widget's) are added after the widget's own; every row must match, and a row the SQL cannot apply closes the list as on the widget (`pg_sw_form_list_filter_sql()`).
+- A placement's filter rows (at most ten, cleaned like the widget's, texts cut by characters: a byte cut inside a Turkish letter made the marker fail and lost the whole placement, #4736) are added after the widget's own; every row must match, and a row the SQL cannot apply closes the list as on the widget (`pg_sw_form_list_filter_sql()`).
 - A count never goes above the widget's (max_results 0 = no cap, so any; upcoming events default 10). A product group must be the widget's or under it (`pg_sw_placement_group_within()`); calendars must be among the widget's (none chosen = every calendar). A widening value is ignored and the widget's own stands. Menu, ad region and order are free choices.
 
 ## What does the editor show?

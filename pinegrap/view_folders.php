@@ -395,12 +395,12 @@ $explorer_lang = array(
     'optimize_all' => lang('Optimize all ({var:1})'),
     'optimizing' => lang('Optimizing images'),
     'optimized_done' => lang('{var:1} images were optimized'),
-    'converted_done' => lang('{var:1} images were converted'),
+    'converted_done' => lang('WebP copies were prepared for {var:1} images'),
     'move_to_bin' => lang('Move to Recycle Bin'),
-    'convert_webp' => lang('Convert to WebP'),
-    'convert_webp_all' => lang('Convert all to WebP ({var:1})'),
-    'webp_confirm' => lang('{var:1} image(s) will be converted to WebP. The file name changes to the .webp extension, and existing links on pages that point to the old address are not updated. Continue?'),
-    'converting' => lang('Converting'),
+    'convert_webp' => lang('Prepare WebP'),
+    'convert_webp_all' => lang('Prepare WebP for all ({var:1})'),
+    'converting' => lang('Preparing WebP'),
+    'webp_copy_fact' => lang('WebP copy {var:1} ({var:2}% lighter)'),
     'folder_settings' => lang('Folder Settings'),
     'sorting' => lang('Sorting'),
     'sorting_note' => lang('Display order of this Folder to other Folders'),
@@ -2273,7 +2273,9 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     };
 
     var OPTIMIZABLE_TYPES = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'tiff', 'webp'];
-    var WEBP_SOURCE_TYPES = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'tiff'];
+    // The types whose own address is answered with WebP when a browser asks
+    // for it (pg_explorer_webp_source_types()).
+    var WEBP_SOURCE_TYPES = ['jpg', 'jpeg', 'jpe', 'png'];
 
     // ── Small helpers ───────────────────────────────────────────────────
 
@@ -2316,6 +2318,13 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             result = result.split('{var:' + (index + 1) + '}').join(value);
         });
         return result;
+    }
+
+    // A download is the uploaded file itself: without f=original a JPEG or
+    // PNG may come back as its WebP copy (get_file.php, by Accept).
+    function originalUrl(url) {
+        url = String(url || '');
+        return url + ((url.indexOf('?') === -1) ? '?' : '&') + 'f=original';
     }
 
     function storageGet(key) {
@@ -6741,7 +6750,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
         if ((item.kind === 'file') && item.can_edit) {
             tools += '<button type="button" class="btn btn-sm btn-text theme-secondary no-popover" data-ql="edit" title="' + esc(L.edit) + '"><i class="bi bi-pencil-square"></i></button>';
-            tools += '<a class="btn btn-sm btn-text theme-secondary no-popover" href="' + esc(item.url) + '" download title="' + esc(L.download) + '"><i class="bi bi-download"></i></a>';
+            tools += '<a class="btn btn-sm btn-text theme-secondary no-popover" href="' + esc(originalUrl(item.url)) + '" download title="' + esc(L.download) + '"><i class="bi bi-download"></i></a>';
         }
 
         if ((item.kind === 'product') || (item.kind === 'group')) {
@@ -7098,7 +7107,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 '<div class="btn-group btn-group-sm w-100 mb-5">' +
                 '<button type="button" class="btn btn-outline theme-secondary no-popover" data-role="copy-address" title="' + esc(L.copy_address) + '"><i class="bi bi-link-45deg"></i></button>' +
                 ((item.kind === 'file')
-                    ? ('<a class="btn btn-outline theme-secondary no-popover" href="' + esc(item.url) + '" download title="' + esc(L.download) + '"><i class="bi bi-download"></i></a>')
+                    ? ('<a class="btn btn-outline theme-secondary no-popover" href="' + esc(originalUrl(item.url)) + '" download title="' + esc(L.download) + '"><i class="bi bi-download"></i></a>')
                     : '') +
                 '<a class="btn btn-outline theme-secondary no-popover" href="' + esc(item.url) + '" target="_blank" rel="noopener" title="' + esc(L.open_in_new_tab) + '"><i class="bi bi-box-arrow-up-right"></i></a>' +
                 '</div>';
@@ -8278,7 +8287,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             case 'download':
                 if (item) {
                     var link = document.createElement('a');
-                    link.href = item.url;
+                    link.href = originalUrl(item.url);
                     link.download = item.name;
                     document.body.appendChild(link);
                     link.click();
@@ -14011,10 +14020,10 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         runInBatches({ type: 'explorer_optimize', mode: mode }, items, 'optimized', L.optimizing, L.optimized_done);
     }
 
+    // Makes the WebP copies in the derivative cache; the files, their names
+    // and their addresses stay as they are, so nothing needs confirming.
     function runWebpConvert(items) {
         if (items.length === 0) { return; }
-
-        if (!window.confirm(fmt(L.webp_confirm, [items.length]))) { return; }
 
         runInBatches({ type: 'explorer_webp' }, items, 'converted', L.converting, L.converted_done);
     }
@@ -14316,6 +14325,11 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             facts.push('<span>' + file.image_width + ' × ' + file.image_height + ' px</span>');
         }
 
+        // The WebP copy sent at the same address to a browser that asks.
+        if (file.webp_copy) {
+            facts.push('<span>' + esc(fmt(L.webp_copy_fact, [file.webp_copy.size_label, file.webp_copy.saving])) + '</span>');
+        }
+
         if (file.modified) {
             facts.push('<span>' + file.modified + (file.username ? ' ' + fmt(L.modified_by, [esc(file.username)]) : '') + '</span>');
         }
@@ -14364,6 +14378,10 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
             // The fresh row over the old one, keeping what the listing does
             // not carry (whether it is on disk, the editor's fields).
+            // The turned picture has new bytes: its WebP copy is made again
+            // on the next visit, so the old one's size no longer holds.
+            file.webp_copy = null;
+
             if (response.file) {
                 Object.keys(response.file).forEach(function (key) { file[key] = response.file[key]; });
             }
@@ -14753,7 +14771,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
             case 'download':
                 var link = document.createElement('a');
-                link.href = file.url;
+                link.href = originalUrl(file.url);
                 link.download = file.name;
                 document.body.appendChild(link);
                 link.click();

@@ -1320,8 +1320,9 @@ function pg_ship_to_district_carrier_asks($carrier)
 
 /**
  * Whether the optional district box is drawn for an address: only once
- * ship_tos.district exists, then for a Turkish address or one whose carrier's
- * driver asks for it.
+ * ship_tos.district exists, then for an address abroad whose carrier's driver
+ * asks for it. A Turkish address never gets it: its city box is the district
+ * (İlçe) and its state box the province (İl), see pg_address_labels().
  *
  * @param  string    $country countries.code or countries.name of the address
  * @param  bool      $carrier_asks pg_ship_to_district_carrier_asks()
@@ -1338,7 +1339,27 @@ function pg_ship_to_district_shown($country, $carrier_asks = false, $ready = nul
         return false;
     }
 
-    return $carrier_asks || pg_ship_to_district_country_is_tr($country);
+    return $carrier_asks && !pg_ship_to_district_country_is_tr($country);
+}
+
+/**
+ * The district stored for a recipient: a Turkish recipient's city box, which
+ * is asked as İlçe; abroad the typed box while the carrier asks for it, else
+ * ''. Pure.
+ *
+ * @param  mixed  $value        the posted district box
+ * @param  mixed  $city         the posted city box
+ * @param  string $country      countries.code or countries.name of the address
+ * @param  bool   $carrier_asks pg_ship_to_district_carrier_asks()
+ * @return string pg_ship_to_district_clean()
+ */
+function pg_ship_to_district_value($value, $city, $country, $carrier_asks)
+{
+    if (pg_ship_to_district_country_is_tr($country)) {
+        return pg_ship_to_district_clean($city);
+    }
+
+    return $carrier_asks ? pg_ship_to_district_clean($value) : '';
 }
 
 /**
@@ -1410,25 +1431,27 @@ function pg_ship_to_district_method_asks($method_id)
 }
 
 /**
- * The district part of a ship_tos UPDATE for a posted address: the typed
- * value while the box applies to the address, '' when it does not (a box
- * left over from another country is not kept), nothing at all while the
- * column is missing.
+ * The district part of a ship_tos UPDATE for a posted address
+ * (pg_ship_to_district_value()): the city box for a Turkish address, the
+ * typed value while the box applies to an address abroad, '' when it does
+ * not (a box left over from another country is not kept), nothing at all
+ * while the column is missing.
  *
- * @param  mixed $value     the posted district
- * @param  string $country  the posted country code
- * @param  int   $method_id the address's shipping method, 0 when not chosen yet
+ * @param  mixed  $value     the posted district
+ * @param  string $country   the posted country code
+ * @param  int    $method_id the address's shipping method, 0 when not chosen yet
+ * @param  mixed  $city      the posted city
  * @return string pg_ship_to_district_set_sql()
  */
-function pg_ship_to_district_address_sql($value, $country, $method_id = 0)
+function pg_ship_to_district_address_sql($value, $country, $method_id = 0, $city = '')
 {
     if (!pg_ship_to_district_ready()) {
         return '';
     }
 
-    $shown = pg_ship_to_district_shown($country, pg_ship_to_district_method_asks($method_id), true);
+    $asks = !pg_ship_to_district_country_is_tr($country) && pg_ship_to_district_method_asks($method_id);
 
-    return pg_ship_to_district_set_sql($shown ? $value : '', true);
+    return pg_ship_to_district_set_sql(pg_ship_to_district_value($value, $city, $country, $asks), true);
 }
 
 /**
@@ -1439,9 +1462,10 @@ function pg_ship_to_district_address_sql($value, $country, $method_id = 0)
  * @param  int    $ship_to_id
  * @param  mixed  $value   the posted district
  * @param  string $country the posted country code
+ * @param  mixed  $city    the posted city
  * @return void
  */
-function pg_ship_to_district_save($ship_to_id, $value, $country)
+function pg_ship_to_district_save($ship_to_id, $value, $country, $city = '')
 {
     $ship_to_id = (int) $ship_to_id;
 
@@ -1450,7 +1474,7 @@ function pg_ship_to_district_save($ship_to_id, $value, $country)
     }
 
     $method_id = (int) db_value("SELECT shipping_method_id FROM ship_tos WHERE id = '" . $ship_to_id . "'");
-    $set = pg_ship_to_district_address_sql($value, $country, $method_id);
+    $set = pg_ship_to_district_address_sql($value, $country, $method_id, $city);
 
     if ($set !== '') {
         db("UPDATE ship_tos SET " . substr($set, 2) . " WHERE id = '" . $ship_to_id . "'");
@@ -1663,9 +1687,10 @@ function pg_ship_to_district_node_attrs(&$node, $attrs)
 }
 
 /**
- * The script that shows each district box only while its country is Turkey
- * (or its carrier asks for it), following the country control as the
- * visitor changes it. Once per page.
+ * The script that follows each country control as the visitor changes it:
+ * a district box shows only while its carrier asks and the country is not
+ * Turkey; a stamped city or state label (pg_address_labels_tree_stamp())
+ * takes its Turkish or other words. Once per page.
  *
  * @return string
  */
@@ -1680,14 +1705,232 @@ function pg_ship_to_district_script()
     $done = true;
 
     return '<script>(function(){'
+        . 'function tr(c,codes){return !!c&&(codes||"").split(",").indexOf(c.value)!==-1;}'
         . 'function sync(i){var f=i.form,c=f?f.elements[i.getAttribute("data-pg-district")]:null;'
-        .   'var w=i.closest("[data-pg-district-wrap]")||i,codes=(i.getAttribute("data-pg-district-codes")||"").split(",");'
-        .   'var on=i.hasAttribute("data-pg-district-asks")||(c&&codes.indexOf(c.value)!==-1);w.hidden=!on;}'
-        . 'function all(){document.querySelectorAll("[data-pg-district]").forEach(sync);}'
+        .   'var w=i.closest("[data-pg-district-wrap]")||i;'
+        .   'var on=i.hasAttribute("data-pg-district-asks")&&!tr(c,i.getAttribute("data-pg-district-codes"));w.hidden=!on;}'
+        . 'function lab(l){var f=l.closest("form"),c=f?f.elements[l.getAttribute("data-pg-addr-label")]:null;if(!c)return;'
+        .   'var t=l.getAttribute(tr(c,l.getAttribute("data-pg-addr-codes"))?"data-pg-addr-tr":"data-pg-addr-other"),n=l.firstChild;'
+        .   'if(n&&n.nodeType===3)n.nodeValue=t;else l.insertBefore(document.createTextNode(t),n);}'
+        . 'function all(){document.querySelectorAll("[data-pg-district]").forEach(sync);document.querySelectorAll("[data-pg-addr-label]").forEach(lab);}'
         . 'document.addEventListener("change",function(e){var t=e.target;if(!t||!t.name||!t.form)return;'
-        .   't.form.querySelectorAll("[data-pg-district]").forEach(function(i){if(i.getAttribute("data-pg-district")===t.name)sync(i);});});'
+        .   't.form.querySelectorAll("[data-pg-district]").forEach(function(i){if(i.getAttribute("data-pg-district")===t.name)sync(i);});'
+        .   't.form.querySelectorAll("[data-pg-addr-label]").forEach(function(l){if(l.getAttribute("data-pg-addr-label")===t.name)lab(l);});});'
         . 'if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",all);else all();'
         . '})();</script>';
+}
+
+/**
+ * The words of an address's city and state labels, as English language keys:
+ * a Turkish address is asked as İlçe ('District') in the city box and İl
+ * ('Province') in the state box, any other as City and State / Province.
+ * Pure.
+ *
+ * @param  string $country countries.code or countries.name
+ * @return array  'city' => key, 'state' => key
+ */
+function pg_address_labels($country)
+{
+    if (pg_ship_to_district_country_is_tr($country)) {
+        return array('city' => 'District', 'state' => 'Province');
+    }
+
+    return array('city' => 'City', 'state' => 'State / Province');
+}
+
+/**
+ * Per label slot ('city', 'state'): the Turkish and the other words in the
+ * page's language, and the default words a label may hold to be swapped
+ * (English and translated; a label a designer or a layout reworded keeps its
+ * words).
+ *
+ * @return array slot => array('tr' => …, 'other' => …, 'defaults' => list)
+ */
+function pg_address_label_words()
+{
+    $tr = pg_address_labels('TR');
+    $other = pg_address_labels('');
+    $extra = array('city' => array(), 'state' => array('State'));
+    $words = array();
+
+    foreach (array('city', 'state') as $slot) {
+        $defaults = array();
+
+        foreach (array_merge(array($tr[$slot], $other[$slot]), $extra[$slot]) as $key) {
+            $defaults[] = $key;
+            $defaults[] = lang($key);
+        }
+
+        $words[$slot] = array(
+            'tr' => lang($tr[$slot]),
+            'other' => lang($other[$slot]),
+            'defaults' => array_values(array_unique($defaults)),
+        );
+    }
+
+    return $words;
+}
+
+/**
+ * A label's words as they are compared: no asterisk or colon, single
+ * spaces, none around a slash, lower case. Pure.
+ *
+ * @param  string $text
+ * @return string
+ */
+function pg_address_label_key($text)
+{
+    $text = str_replace(array('*', ':'), '', (string) $text);
+    $text = preg_replace('~\s*/\s*~u', '/', $text);
+    $text = trim((string) preg_replace('~\s+~u', ' ', (string) $text));
+
+    return function_exists('mb_strtolower') ? mb_strtolower($text, 'UTF-8') : strtolower($text);
+}
+
+/**
+ * A label's text with its words swapped for the Turkish or the other ones,
+ * keeping the spacing, asterisk and colon around them; null when the label
+ * does not hold one of the slot's default words. Pure.
+ *
+ * @param  string $text  the label's text
+ * @param  array  $words one slot of pg_address_label_words()
+ * @param  bool   $is_tr the address is Turkish
+ * @return string|null
+ */
+function pg_address_label_swap($text, $words, $is_tr)
+{
+    if (!preg_match('~^(\s*)(.*?)(\s*\*?\s*:?\s*)$~su', (string) $text, $m) || ($m[2] === '')) {
+        return null;
+    }
+
+    $key = pg_address_label_key($m[2]);
+    $found = false;
+
+    foreach ((array) $words['defaults'] as $default) {
+        if (pg_address_label_key($default) === $key) {
+            $found = true;
+            break;
+        }
+    }
+
+    return $found ? $m[1] . ($is_tr ? $words['tr'] : $words['other']) . $m[3] : null;
+}
+
+/**
+ * Writes the country's words on the city and state labels of an address
+ * form's designer tree (the labels beside the matched controls) and stamps
+ * both texts for pg_ship_to_district_script(), which swaps them as the
+ * visitor changes the country. A label holding words of its own is left as
+ * it is. Saved trees are not rewritten: the render applies it. Pure.
+ *
+ * @param  array    $tree
+ * @param  callable $is_city      receives a node: the city control
+ * @param  callable $is_state     receives a node: the state control
+ * @param  string   $country_name name of the country control
+ * @param  string   $country      the country the form holds now
+ * @param  array    $tr_codes     pg_ship_to_district_tr_codes()
+ * @param  array    $words        pg_address_label_words()
+ * @return void
+ */
+function pg_address_labels_tree_stamp(&$tree, $is_city, $is_state, $country_name, $country, $tr_codes, $words)
+{
+    $is_tr = pg_ship_to_district_country_is_tr($country);
+
+    foreach (array('city' => $is_city, 'state' => $is_state) as $slot => $match) {
+        $path = pg_ship_to_district_tree_path($tree, $match);
+
+        if (($path === null) || (count($path) === 0)) {
+            continue;
+        }
+
+        array_pop($path);
+        $parent = &$tree;
+
+        foreach ($path as $i) {
+            $parent = &$parent['children'][$i];
+        }
+
+        foreach ($parent['children'] as $k => $child) {
+            if (!is_array($child) || (strtolower((string) ($child['props']['tag'] ?? '')) !== 'label')) {
+                continue;
+            }
+
+            $text = (string) ($child['props']['text'] ?? '');
+            $tr = pg_address_label_swap($text, $words[$slot], true);
+
+            if ($tr === null) {
+                continue;
+            }
+
+            $other = (string) pg_address_label_swap($text, $words[$slot], false);
+            $parent['children'][$k]['props']['text'] = $is_tr ? $tr : $other;
+            pg_ship_to_district_node_attrs($parent['children'][$k], array(
+                'data-pg-addr-label' => (string) $country_name,
+                'data-pg-addr-codes' => implode(',', (array) $tr_codes),
+                'data-pg-addr-tr' => $tr,
+                'data-pg-addr-other' => $other,
+            ));
+        }
+
+        unset($parent);
+    }
+}
+
+/**
+ * The attributes of a server-drawn label that follows the country (the
+ * express order's per-recipient form): its text now and both texts for
+ * pg_ship_to_district_script(). Null text when $text is not a default word.
+ *
+ * The control it follows may be another than the country: the verified
+ * address form follows its state pick list, with the ids of the Turkish
+ * states as $codes.
+ *
+ * @param  string     $text         the label's default text ('City*')
+ * @param  string     $slot         'city' or 'state'
+ * @param  string     $country_name name of the control the label follows
+ * @param  string     $country      the value that control holds now
+ * @param  array|null $codes        values that stand for Turkey; null: pg_ship_to_district_tr_codes(), and $country read as a country
+ * @return array  'text' => escaped text, 'attrs' => escaped attributes (leading space)
+ */
+function pg_address_labels_html($text, $slot, $country_name, $country, $codes = null)
+{
+    $words = pg_address_label_words();
+    $is_tr = ($codes === null) ? pg_ship_to_district_country_is_tr($country) : in_array((string) $country, array_map('strval', (array) $codes), true);
+    $codes = ($codes === null) ? pg_ship_to_district_tr_codes() : (array) $codes;
+    $tr = pg_address_label_swap($text, $words[$slot], true);
+
+    if ($tr === null) {
+        return array('text' => h($text), 'attrs' => '');
+    }
+
+    $other = (string) pg_address_label_swap($text, $words[$slot], false);
+
+    return array(
+        'text' => h($is_tr ? $tr : $other),
+        'attrs' => ' data-pg-addr-label="' . h($country_name) . '" data-pg-addr-codes="' . h(implode(',', $codes)) . '"'
+            . ' data-pg-addr-tr="' . h($tr) . '" data-pg-addr-other="' . h($other) . '"',
+    );
+}
+
+/**
+ * The properties a classic page adds to its software.init_country() call so
+ * the default words of its city and state labels follow the country
+ * (software.address_labels() in frontend.src.js): the city control's id, the
+ * codes that stand for Turkey and the words. Starts with ", ".
+ *
+ * @param  string     $city_id
+ * @param  array|null $tr_codes pg_ship_to_district_tr_codes(), asked when null
+ * @param  array|null $words    pg_address_label_words(), asked when null
+ * @return string
+ */
+function pg_address_labels_init_props($city_id, $tr_codes = null, $words = null)
+{
+    $config = array(
+        'codes' => array_values(($tr_codes === null) ? pg_ship_to_district_tr_codes() : (array) $tr_codes),
+        'words' => ($words === null) ? pg_address_label_words() : $words,
+    );
+
+    return ', city_id: ' . encode_json((string) $city_id) . ', address_labels: ' . str_replace('</', '<\/', encode_json($config));
 }
 
 /**
