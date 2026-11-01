@@ -367,10 +367,13 @@ function erp_cheque_step_from()
  * a transfer between the business's own tills, and passing it on or a bounce
  * is a movement on the till and the account.
  *
- * @param string $step deposit | collect | endorse | bounce | pay
+ * A bounce also says how many invoices it opened again.
+ *
+ * @param string $step     deposit | collect | endorse | bounce | pay
+ * @param int    $reopened Invoices a bounce opened again
  * @return string
  */
-function erp_cheque_step_note($step)
+function erp_cheque_step_note($step, $reopened = 0)
 {
     switch ((string) $step) {
         case 'deposit':
@@ -378,6 +381,15 @@ function erp_cheque_step_note($step)
         case 'collect':
         case 'pay':
             return lang('Done. The amount moved between your tills as a transfer.');
+        case 'bounce':
+            $note = lang('Done. The movement is in the till and on the account.');
+            $count = (int) $reopened;
+
+            if ($count === 1) {
+                return $note . ' ' . lang('The invoice the cheque or note had closed is open again.');
+            }
+
+            return ($count > 1) ? $note . ' ' . lang(array('string' => 'The {var:1} invoices the cheque or note had closed are open again.', 'vars' => $count)) : $note;
         default:
             return lang('Done. The movement is in the till and on the account.');
     }
@@ -479,6 +491,7 @@ function erp_cheque_step($id, $step, $options, $user_id)
 
     $close_id = 0;
     $endorsed = 0;
+    $reopened = array();
 
     if (($step === 'collect') || ($step === 'pay')) {
         $moved = erp_post_transfer(array(
@@ -537,6 +550,22 @@ function erp_cheque_step($id, $step, $options, $user_id)
 
         $close_id = (int) $posted['cash_id'];
         $endorsed = ($step === 'endorse') ? $to_account : 0;
+
+        // A bounced cheque never paid what its receipt closed: the invoices
+        // ask for their money again, as when a receipt is cancelled, so the
+        // returned debt shows on open invoices, aging and overdue lists.
+        if (($step === 'bounce') && ((int) $cheque['open_cash_id'] > 0)) {
+            $opened = erp_receipt((int) $cheque['open_cash_id']);
+            $unsettled = is_array($opened) ? erp_txn_unsettle_all((int) $opened['ledger_id'], (int) $user_id) : array();
+
+            if ($unsettled === false) {
+                $error = erp_db_error();
+                erp_tx_rollback();
+                return $fail(($error !== '') ? $error : lang('The allocation could not be removed.'));
+            }
+
+            $reopened = array_values($unsettled);
+        }
     }
 
     $new_status = array('collect' => 'collected', 'pay' => 'paid', 'endorse' => 'endorsed', 'bounce' => 'bounced');
@@ -556,5 +585,5 @@ function erp_cheque_step($id, $step, $options, $user_id)
         return $fail($error);
     }
 
-    return array('success' => true, 'error' => '');
+    return array('success' => true, 'error' => '', 'reopened' => $reopened);
 }

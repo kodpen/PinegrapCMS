@@ -9,6 +9,12 @@ description: ERP cheques and promissory notes (4.101): the steps, money only thr
 - Steps (`erp_cheque_step()`, allowed starts in `erp_cheque_step_from()`): deposit (portfolio → at the bank, no money moves); collect (portfolio or bank → collected: a transfer from the portfolio till to the bank); endorse (portfolio → passed on: a payment to a supplier out of the portfolio); bounce (portfolio or bank → bounced: a payment back to the customer out of the portfolio, so they owe it again); pay (given → paid: a transfer from the bank to the given-cheques till).
 - Each step is a new movement dated its own day; an earlier movement is never rewritten, so a period locked in between stays as it was filed. A step claims the row first (`FOR UPDATE` on its status), so a second click takes no step.
 
+## What does a bounce do to the invoices the cheque closed? (#4429, PR #4517)
+- In the step's transaction it takes every allocation off the cheque's receipt (`open_cash_id`, `erp_txn_unsettle_all()`, the path `erp_receipt_cancel()` uses) and works each invoice out again, so the returned debt is on open invoices, aging and the overdue view. The note says how many invoices opened again. Before, the invoice stayed "Paid" and the debt showed only on the account balance.
+
+## Which date may a step carry? (#4436, PR #4517)
+- Not before the cheque's own `doc_date`: `erp_cheque_step_date_refusal()` inside `erp_cheque_step()`, so the screen and the API refuse alike; the screen's date box starts at today or `doc_date` and carries `min`. Before, a back-dated collect left the portfolio below zero for the days between.
+
 ## What does the screen say after a step?
 - `erp_cheque_step_note($step)`: deposit says the cheque went to the bank and the money moves when the bank collects it; collect and pay say the amount moved between the business's own tills; endorse and bounce say the movement is in the till and on the account. Before, every step said the last, so handing a cheque to the bank seemed to move money (#4004, PR #4184).
 

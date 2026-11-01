@@ -65,7 +65,7 @@ if ($_POST) {
 
     $step_labels = array('deposit' => lang('At the bank'), 'collect' => lang('Collected'), 'endorse' => lang('Passed on'), 'bounce' => lang('Bounced'), 'pay' => lang('Paid'));
     log_activity(lang(array('string' => 'erp cheque or note (#{var:1}) was marked {var:2}', 'vars' => array($cheque_id, $step_labels[$step] ?? $step))), $_SESSION['sessionusername']);
-    $liveform->add_notice(h(erp_cheque_step_note($step)));
+    $liveform->add_notice(h(erp_cheque_step_note($step, count($done['reopened'] ?? array()))));
     go($self);
 }
 

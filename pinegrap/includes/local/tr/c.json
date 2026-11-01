@@ -223,6 +223,7 @@
     "Cancellation email failed for order #{var:1}: {var:2}": "#{var:1} numaralı siparişin iptal e-postası gönderilemedi: {var:2}",
     "Cancellation form": "İptal formu",
     "Cancellation of expense #{var:1}: {var:2}": "#{var:1} numaralı giderin iptali: {var:2}",
+    "Cancellation of payment #{var:1} dated {var:2}: {var:3}": "{var:2} tarihli #{var:1} ödemenin iptali: {var:3}",
     "Cancellation of receipt #{var:1} dated {var:2}: {var:3}": "{var:2} tarihli #{var:1} tahsilatın iptali: {var:3}",
     "Cancellation reason": "İptal nedeni",
     "Cancellation reason (cancellation form)": "İptal nedeni (iptal formu)",
