@@ -104,6 +104,29 @@ function pg_explorer_bulk_price_value($method, $value)
     return $value;
 }
 
+// The value of the product list's Modify Selected price change, read as the
+// Catalog Manager reads it (pg_explorer_bulk_price_value()): methods 1 and 2
+// are an amount, returned in minor units, so 1.250 on a Turkish panel is
+// twelve hundred and fifty, not 1,25; methods 3 and 4 are a percentage. Null
+// for an unknown method or a value that is empty, not a number, zero or below.
+function pg_products_mass_price_value($method, $value)
+{
+    $methods = array('1' => 'increase', '2' => 'decrease', '3' => 'increase_percent', '4' => 'decrease_percent');
+    $method = (string) $method;
+
+    if (!isset($methods[$method])) {
+        return null;
+    }
+
+    $value = pg_explorer_bulk_price_value($methods[$method], $value);
+
+    if ($value === null) {
+        return null;
+    }
+
+    return (($method === '1') || ($method === '2')) ? (int) round($value) : (float) $value;
+}
+
 // The quantity of a bulk stock change in whole units, or null when it is
 // empty, not a number or not whole. It is read by pg_normalize_amount(), as
 // the price is, so a grouped figure (1.200 on a Turkish panel) is twelve

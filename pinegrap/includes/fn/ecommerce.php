@@ -13026,6 +13026,37 @@ function pg_products_import_row_decimals_refused($row, $decimal_positions)
 }
 
 /**
+ * Sets the out-of-stock mark of a product the import has just written, by
+ * the product screens' rule (pg_pb_apply_stock_flag(), product_builder.php,
+ * which the caller loads): tracked with 0 in stock is marked, stamped only
+ * on the way in. Read from the stored row, since a file may carry only one
+ * of the tracking and stock columns, or an empty cell that keeps the column.
+ *
+ * @param int $product_id
+ * @return void
+ */
+function pg_products_import_stock_flag($product_id)
+{
+    $product_id = (int) $product_id;
+    $stored = db_item("SELECT inventory, inventory_quantity, out_of_stock FROM products WHERE id = '" . e($product_id) . "'");
+
+    if (!$stored) {
+        return;
+    }
+
+    $stock = array('inventory' => $stored['inventory'], 'inventory_quantity' => $stored['inventory_quantity']);
+    pg_pb_apply_stock_flag($stock, $product_id);
+
+    if (($stock['out_of_stock'] === (string) $stored['out_of_stock']) && !isset($stock['out_of_stock_timestamp'])) {
+        return;
+    }
+
+    db("UPDATE products SET out_of_stock = '" . e($stock['out_of_stock']) . "'"
+        . (isset($stock['out_of_stock_timestamp']) ? ", out_of_stock_timestamp = '" . e((int) $stock['out_of_stock_timestamp']) . "'" : '')
+        . " WHERE id = '" . e($product_id) . "'");
+}
+
+/**
  * The product that already holds a product code (products.name, the
  * "Product ID / SKU" of the product screen), other than $except_id; null
  * while the code is free. Compared by the column's collation, as the external

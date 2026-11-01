@@ -79,7 +79,9 @@ function test_bulk_price_change_screen_refuses_a_value_that_is_no_amount()
 {
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_products.php');
 
-	pg_assert_contains("!is_numeric(\$raw_price_value) || ((float) \$raw_price_value <= 0)", $source);
+	// The shared reader refuses a value that is empty, no number, zero or below.
+	pg_assert_contains("\$price_value = pg_products_mass_price_value(\$edit_change_price_method", $source);
+	pg_assert_contains("if(\$price_value === null){", $source);
 	pg_assert_contains("\$liveform->add_error(lang('Enter an amount for the price change.'))", $source);
 	pg_assert_contains("(\$_POST['edit_change_price_method'] != '') && !\$price_value_refused", $source);
 }
