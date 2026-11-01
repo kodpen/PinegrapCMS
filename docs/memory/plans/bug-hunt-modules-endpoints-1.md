@@ -10,7 +10,7 @@ description: Module list of plans/bug-hunt.md, part 3: root endpoint groups acco
 
 - Endpoints `affiliate` (5): open
 
-- Endpoints `api` (5): open
+- Endpoints `api` (5): taken by LF
 
 - Endpoints `arrival` (3): open
 
