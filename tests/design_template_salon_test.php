@@ -8,7 +8,8 @@
  * page link names a page of the template, the search anchors are unique,
  * and the booking form keeps what the Clinic's request flow relies on
  * (field names, the date rule, the office-only status, the consent link,
- * the e-mail pages).
+ * the e-mail pages), and the account and staff parts place only defined
+ * widgets and build every page the links name.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -32,6 +33,7 @@ function _test_salon_load()
 	$public = include $dir . '/pages_public.php';
 	$booking = include $dir . '/booking.php';
 	$standard = include $dir . '/standard.php';
+	$account = include $dir . '/account.php';
 	$out = array(
 		'categories' => $categories,
 		'services'   => $services,
@@ -39,6 +41,8 @@ function _test_salon_load()
 		'pages'      => $public,
 		'booking'    => $booking,
 		'standard'   => $standard,
+		'account'    => $account,
+		'samples'    => $sample_posts,
 		'shared'     => array($account_bar_tree(), $header(), $footer(), $booking_band(), $notice(), $email_header_tree(), $email_footer_tree()),
 	);
 	return $out;
@@ -65,7 +69,9 @@ function _test_salon_page_keys()
 		'my_account', 'search', 'staff', 'error', 'forgot_password',
 		'email_appointment_new', 'email_appointment_received', 'email_reply',
 		'email_new_message', 'email_message_received', 'email_welcome',
-		'blog_new', 'login', 'register',
+		'blog_new', 'login', 'register', 'set_password', 'logout', 'profile',
+		'change_password', 'email_preferences', 'address_book', 'staff_directory',
+		'staff_entry', 'email_account_welcome', 'email_password_reset',
 	);
 }
 
@@ -291,8 +297,94 @@ function test_salon_contact_and_newsletter()
 function test_salon_no_clinic_words()
 {
 	$d = _test_salon_load();
-	$json = json_encode(array($d['pages'], $d['booking'], $d['standard'], $d['shared']), JSON_UNESCAPED_UNICODE);
+	$json = json_encode(array($d['pages'], $d['booking'], $d['standard'], $d['account'], $d['shared']), JSON_UNESCAPED_UNICODE);
 	foreach (array('doctor', 'patient', 'practice', 'prescription', 'vaccination', 'clinic', 'health letter', 'cl-') as $word) {
 		pg_assert_true(stripos($json, $word) === false, "no '$word'");
 	}
+}
+
+// The account pages and the staff area, their folders; every page or tab
+// placeholder names a page of the template; every widget sits on a
+// template page or in a shared part, and every widget a page places is
+// defined by one of the parts.
+function test_salon_account_pages()
+{
+	$d = _test_salon_load();
+	$keys = array();
+	foreach ($d['account']['pages'] as $p) {
+		pg_assert_same('root', $p['tree']['type'], $p['key'] . ': root tree');
+		$keys[$p['key']] = $p['folder'];
+	}
+	pg_assert_same(array(
+		'login' => 'public', 'register' => 'public', 'forgot_password' => 'public', 'set_password' => 'public', 'logout' => 'public',
+		'my_account' => 'registration', 'profile' => 'registration', 'change_password' => 'registration',
+		'email_preferences' => 'registration', 'address_book' => 'registration', 'staff_directory' => 'registration',
+		'staff' => 'private', 'blog_new' => 'private', 'staff_entry' => 'private',
+		'email_account_welcome' => 'private', 'email_password_reset' => 'private',
+	), $keys);
+
+	$known = array_flip(_test_salon_page_keys());
+	preg_match_all('/\{\{(?:page|tab):([a-z0-9_]+)\}\}/', json_encode($d['account']), $m);
+	foreach (array_unique($m[1]) as $key) pg_assert_true(isset($known[$key]), "placeholder names a template page: $key");
+	foreach ($d['account']['widgets'] as $wkey => $w) {
+		pg_assert_true($w['page'] === '' || isset($known[$w['page']]), "widget $wkey sits on a template page");
+	}
+
+	// Every page key of every part is one of the finished template's, once.
+	$all = array();
+	foreach (array($d['pages'], $d['booking']['pages'], $d['standard']['pages'], $d['account']['pages']) as $list) {
+		foreach ($list as $p) $all[] = $p['key'];
+	}
+	pg_assert_same(count($all), count(array_unique($all)), 'no page key twice');
+	$missing = array_diff(_test_salon_page_keys(), $all);
+	pg_assert_same(array(), array_values($missing), 'every page the links name is built');
+
+	// Every widget placed anywhere is defined, and defined once.
+	$widgets = array_merge($d['booking']['widgets'], $d['standard']['widgets'], $d['account']['widgets']);
+	pg_assert_same(count($d['booking']['widgets']) + count($d['standard']['widgets']) + count($d['account']['widgets']), count($widgets), 'no widget key twice');
+	$trees = $d['shared'];
+	foreach (array($d['pages'], $d['booking']['pages'], $d['standard']['pages'], $d['account']['pages']) as $list) {
+		foreach ($list as $p) $trees[] = $p['tree'];
+	}
+	$nodes = array();
+	foreach ($trees as $t) _test_salon_nodes($t, $nodes);
+	$placed = 0;
+	foreach ($nodes as $n) {
+		if (!isset($n['props']['templateWidget'])) continue;
+		$placed++;
+		pg_assert_true(isset($widgets[$n['props']['templateWidget']]), 'placed widget defined: ' . $n['props']['templateWidget']);
+	}
+	pg_assert_true($placed > 20, 'widgets placed');
+}
+
+// The staff area places the coming bookings; the blog's form carries the
+// sample posts with the fields the blog widgets read; the account bar's
+// login region links the account and staff pages.
+function test_salon_staff_and_account()
+{
+	$d = _test_salon_load();
+	$pages = array();
+	foreach ($d['account']['pages'] as $p) $pages[$p['key']] = $p;
+	pg_assert_true(strpos(json_encode($pages['staff']['tree']), '"staff_appointments"') !== false, 'staff page places staff_appointments');
+	pg_assert_same('ecommerce', $pages['address_book']['requires']);
+	pg_assert_true(!empty($pages['staff']['noindex']), 'staff area is noindex');
+
+	$form = $pages['blog_new']['form'];
+	pg_assert_same(1, $form['collection']);
+	pg_assert_same('cover_image', $form['share_image_field']);
+	pg_assert_same(4, count($form['sample_records']));
+	foreach ($form['sample_records'] as $r) {
+		pg_assert_same(array('title', 'summary', 'content', 'cover_image'), array_keys($r), 'sample post fields');
+	}
+	pg_assert_same('{{tab:staff_directory}}', $pages['staff_entry']['form']['confirmation_page_id']);
+
+	$w = $d['account']['widgets'];
+	pg_assert_same('', $w['login_region']['page'], 'login region sits in the account bar');
+	pg_assert_same('{{tab:my_account}}', $w['login_region']['config']['account_page_id']);
+	pg_assert_same('{{tab:staff}}', $w['login_region']['config']['staff_page_id']);
+	pg_assert_same('{{tab:staff}}', $w['my_account']['config']['staff_page_id']);
+	pg_assert_same('{{tab:staff_entry}}', $w['staff_directory']['config']['custom_form_page_id']);
+	pg_assert_same('{{tab:email_password_reset}}', $w['forgot_password']['config']['reset_email_page_id']);
+	pg_assert_same('{{tab:email_account_welcome}}', $w['register']['config']['welcome_email_page_id']);
+	pg_assert_true(strpos(json_encode($w['account_email_reset']['tree']), '__set_password_url') !== false, 'reset e-mail carries the set password link');
 }
