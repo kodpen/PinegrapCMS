@@ -252,7 +252,7 @@ function get_shopping_cart($properties) {
                     '<tr>
                         <td style="' . $bottom_border . '"><span class="software_highlight"><strong>' . h($pending_offer['description']) . $output_offer_action_name . '</strong></span></td>
                         <td style="white-space: nowrap' . $bottom_border . '">' . $output_select_recipient . '</td>
-                        <td style="text-align: center' . $bottom_border . '"><input type="submit" name="add_pending_offer_' . $pending_offer['id'] . '_' . $offer_action['id'] . '" value="Add" class="software_input_submit_small_primary" /><br /></td>
+                        <td style="text-align: center' . $bottom_border . '"><input type="submit" name="add_pending_offer_' . $pending_offer['id'] . '_' . $offer_action['id'] . '" value="' . h(lang('Add')) . '" class="software_input_submit_small_primary" /><br /></td>
                     </tr>';
                 
                 $count_offer_actions++;
@@ -311,7 +311,7 @@ function get_shopping_cart($properties) {
                     <input type="hidden" name="pending_offers" value="true" />
                     <input type="hidden" name="require_cookies" value="true" />
                     <fieldset class="software_fieldset">
-                        <legend class="software_legend">Special Offers</legend>
+                        <legend class="software_legend">' . h(lang('Special Offers')) . '</legend>
                             <table cellspacing="0" cellpadding="7" border="0" style="width: 100%">
                                 ' . $output_pending_offers . '
                                 ' . $output_upsell_offers . '
@@ -516,7 +516,7 @@ function get_shopping_cart($properties) {
                     
                     $output_ship_to_and_add_name_rows =
                         '<tr id="quick_add_ship_to_row" style="' . $quick_add_ship_to_row_style . '">
-                            <td><strong>Ship to:</strong></td>
+                            <td><strong>' . h(lang('Ship to')) . ':</strong></td>
                             <td>' . $form->output_field(array('type'=>'select', 'name'=>'quick_add_ship_to', 'options'=>$quick_add_ship_to_options, 'class'=>'software_select')) . '</td>
                         </tr>
                         <tr id="quick_add_add_name_row" style="' . $quick_add_add_name_row_style . '">
@@ -529,7 +529,7 @@ function get_shopping_cart($properties) {
                 if ($quantity_products == true) {
                     $output_quantity_row =
                         '<tr id="quick_add_quantity_row" style="' . $quick_add_quantity_row_style . '">
-                            <td><strong>Qty:</strong></td>
+                            <td><strong>' . h(lang('Qty')) . ':</strong></td>
                             <td>' . $form->output_field(array('type'=>'number', 'id'=>'quick_add_quantity', 'name'=>'quick_add_quantity', 'value'=>'1', 'size'=>'3', 'maxlength'=>'9', 'min'=>'1', 'max'=>'999999999', 'class'=>'software_input_text')) . '</td>
                         </tr>';
                 }
@@ -538,7 +538,7 @@ function get_shopping_cart($properties) {
                 if ($donation_products == true) {
                     $output_amount_row =
                         '<tr id="quick_add_amount_row" style="' . $quick_add_amount_row_style . '">
-                            <td><strong>Amount:</strong></td>
+                            <td><strong>' . h(lang('Amount')) . ':</strong></td>
                             <td>' . VISITOR_CURRENCY_SYMBOL . $form->output_field(array('type'=>'text', 'name'=>'quick_add_amount', 'size'=>'5', 'class'=>'software_input_text')) . h(VISITOR_CURRENCY_CODE_FOR_OUTPUT) . '</td>
                         </tr>';
                 }
@@ -550,7 +550,7 @@ function get_shopping_cart($properties) {
                     $output_add_button_row =
                         '<tr>
                             <td>&nbsp;</td>
-                            <td><input type="submit" name="submit" value="Add" class="software_input_submit_small_secondary mobile_right" /></td>
+                            <td><input type="submit" name="submit" value="' . h(lang('Add')) . '" class="software_input_submit_small_secondary mobile_right" /></td>
                         </tr>';
                 }
 
@@ -575,7 +575,7 @@ function get_shopping_cart($properties) {
                             <legend class="software_legend">' . h($quick_add_label) . '</legend>
                                 <table class="quick_add">
                                     <tr>
-                                        <td style="font-weight: bold; vertical-align: top">Item:</td>
+                                        <td style="font-weight: bold; vertical-align: top">' . h(lang('Item')) . ':</td>
                                         <td>' . $output_products . '</td>
                                     </tr>
                                     ' . $output_ship_to_and_add_name_rows . '
@@ -916,7 +916,7 @@ function get_shopping_cart($properties) {
                         if ((ECOMMERCE_CREDIT_DEBIT_CARD == false) || (ECOMMERCE_PAYMENT_GATEWAY != 'ClearCommerce')) {
                             $output_start_date_row =
                                 '<tr>
-                                    <td>Start Date*:</td>
+                                    <td>' . h(lang('Start Date')) . '*:</td>
                                     <td>
                                         ' . $form->output_field(array('type'=>'text', 'id' => 'recurring_start_date_' . $order_item_id, 'name'=>'recurring_start_date_' . $order_item_id, 'size'=>'10', 'maxlength'=>'10', 'class'=>'software_input_text', 'required' => 'true', 'data-pg-date' => '')) . '
                                     </td>
@@ -925,14 +925,14 @@ function get_shopping_cart($properties) {
                         
                         $output_recurring_schedule_fieldset =
                             '<fieldset class="software_fieldset">
-                                <legend class="software_legend">Payment Schedule</legend>
+                                <legend class="software_legend">' . h(lang('Payment Schedule')) . '</legend>
                                 <table>
                                     <tr>
-                                        <td>Frequency*:</td>
+                                        <td>' . h(lang('Frequency')) . '*:</td>
                                         <td>' . $form->output_field(array('type'=>'select', 'name'=>'recurring_payment_period_' . $order_item_id, 'options'=>get_payment_period_options(), 'class'=>'software_select', 'required' => 'true')) . '</td>
                                     </tr>
                                     <tr>
-                                        <td>Number of Payments' . $output_recurring_number_of_payments_required_asterisk . ':</td>
+                                        <td>' . h(lang('Number of Payments')) . $output_recurring_number_of_payments_required_asterisk . ':</td>
                                         <td>' . $form->output_field(array('type'=>'text', 'name'=>'recurring_number_of_payments_' . $order_item_id, 'size'=>'3', 'maxlength'=>'9', 'class'=>'software_input_text', 'required' => $number_of_payments_required)) . get_number_of_payments_message() . '</td>
                                     </tr>
                                     ' . $output_start_date_row . '
@@ -1005,31 +1005,31 @@ function get_shopping_cart($properties) {
                             
                             // If number of gift cards is greater than 1, then add quantity number to legend.
                             if ($number_of_gift_cards > 1) {
-                                $output_legend_quantity_number .= ' (' . $quantity_number . ' of ' . $number_of_gift_cards . ')';
+                                $output_legend_quantity_number .= ' (' . lang(array('string' => '{var:1} of {var:2}', 'vars' => array($quantity_number, $number_of_gift_cards))) . ')';
                             }
                             
                             $output_gift_cards .=
                                 '<fieldset class="software_fieldset" style="margin-bottom: 1em">
-                                    <legend class="software_legend">Gift Card' . $output_legend_quantity_number . '</legend>
+                                    <legend class="software_legend">' . h(lang('Gift Card')) . $output_legend_quantity_number . '</legend>
                                     <table>
                                         <tr>
-                                            <td>Amount:</td>
+                                            <td>' . h(lang('Amount')) . ':</td>
                                             <td><strong>' . prepare_price_for_output($product_price * 100, false, $discounted_price = '', 'html') . '</strong></td>
                                         </tr>
                                         <tr>
-                                            <td>Recipient Email*:</td>
+                                            <td>' . h(lang('Recipient Email')) . '*:</td>
                                             <td>' . $form->output_field(array('type' => 'email', 'name' => 'order_item_' . $order_item_id . '_quantity_number_' . $quantity_number . '_gift_card_recipient_email_address', 'placeholder' => 'recipient@example.com', 'size' => '40', 'maxlength' => '100', 'class'=>'software_input_text', 'required' => 'true')) . '</td>
                                         </tr>
                                         <tr>
-                                            <td>Your Name:</td>
-                                            <td>' . $form->output_field(array('type' => 'text', 'name' => 'order_item_' . $order_item_id . '_quantity_number_' . $quantity_number . '_gift_card_from_name', 'placeholder' => 'Your name that will appear in the email.', 'size' => '40', 'maxlength' => '100', 'class'=>'software_input_text')) . ' (leave blank if you want to be anonymous)</td>
+                                            <td>' . h(lang('Your Name')) . ':</td>
+                                            <td>' . $form->output_field(array('type' => 'text', 'name' => 'order_item_' . $order_item_id . '_quantity_number_' . $quantity_number . '_gift_card_from_name', 'placeholder' => lang('Your name that will appear in the email.'), 'size' => '40', 'maxlength' => '100', 'class'=>'software_input_text')) . ' ' . h(lang('(leave blank if you want to be anonymous)')) . '</td>
                                         </tr>
                                         <tr>
-                                            <td style="vertical-align: top">Message:</td>
-                                            <td>' . $form->output_field(array('type' => 'textarea', 'name' => 'order_item_' . $order_item_id . '_quantity_number_' . $quantity_number . '_gift_card_message', 'placeholder' => 'The message that will appear in the email.', 'rows' => '3', 'cols' => '60', 'class' => 'software_textarea')) . '</td>
+                                            <td style="vertical-align: top">' . h(lang('Message')) . ':</td>
+                                            <td>' . $form->output_field(array('type' => 'textarea', 'name' => 'order_item_' . $order_item_id . '_quantity_number_' . $quantity_number . '_gift_card_message', 'placeholder' => lang('The message that will appear in the email.'), 'rows' => '3', 'cols' => '60', 'class' => 'software_textarea')) . '</td>
                                         </tr>
                                         <tr>
-                                            <td>Delivery Date:</td>
+                                            <td>' . h(lang('Delivery Date')) . ':</td>
                                             <td>
                                                 ' . $form->output_field(array('type' => 'text', 'id' => 'order_item_' . $order_item_id . '_quantity_number_' . $quantity_number . '_gift_card_delivery_date', 'name' => 'order_item_' . $order_item_id . '_quantity_number_' . $quantity_number . '_gift_card_delivery_date', 'size' => '10', 'maxlength' => '10', 'class' => 'software_input_text', 'data-pg-date' => '')) . '
                                             </td>
@@ -1361,7 +1361,7 @@ function get_shopping_cart($properties) {
                             '<tr class="products data row_' . ($row_count % 2) . '">
                                 <td class="mobile_left" style="vertical-align: top">' . h($name) . '</td>
                                 <td class="mobile_right mobile_width" style="vertical-align: top; width: 100%">' . $output_description . '</td>
-                                <td class="mobile_left" style="vertical-align: top">' . $payment_period . '</td>
+                                <td class="mobile_left" style="vertical-align: top">' . h(lang($payment_period)) . '</td>
                                 <td class="mobile_left" style="vertical-align: top; margin-left: .5em">' . $output_quantity . '</td>
                                 <td class="mobile_left" style="vertical-align: top; text-align: right; margin-left: .5em">' . $output_product_price . '</td>
                                 <td class="mobile_right" style="vertical-align: top; text-align: right; white-space: nowrap; margin-left: .5em">' . $output_total_price_or_donation_amount_text_box . '</td>
@@ -1399,14 +1399,14 @@ function get_shopping_cart($properties) {
                         $output_ship_tos .=
                             '<tr class="ship_tos">
                                 <td colspan="6">
-                                    <div class="heading">Ship to <span class="software_highlight">' . h($ship_to_name) . '</span></div>
+                                    <div class="heading">' . h(lang('Ship to')) . ' <span class="software_highlight">' . h($ship_to_name) . '</span></div>
                                 </td>
                             </tr>';
                     }
 
                     if (($non_donations_exist_in_non_recurring == true) || ($donations_exist_in_non_recurring == false)) {
-                        $output_quantity_heading = 'Qty';
-                        $output_price_heading = 'Price';
+                        $output_quantity_heading = h(lang('Qty'));
+                        $output_price_heading = h(lang('Price'));
                     } else {
                         $output_quantity_heading = '';
                         $output_price_heading = '';
@@ -1415,11 +1415,11 @@ function get_shopping_cart($properties) {
                     // prepare output for this ship to
                     $output_ship_tos .=
                         '<tr class="products heading mobile_hide" style="border: none">
-                            <th class="heading_item" style="text-align: left">Item</th>
-                            <th class="heading_description" style="text-align: left">Description</th>
+                            <th class="heading_item" style="text-align: left">' . h(lang('Item')) . '</th>
+                            <th class="heading_description" style="text-align: left">' . h(lang('Description')) . '</th>
                             <th class="heading_selection" style="text-align: left">' . $output_quantity_heading . '</th>
                             <th class="heading_price" style="text-align: right">' . $output_price_heading . '</th>
-                            <th class="heading_amount" style="text-align: right">Amount</th>
+                            <th class="heading_amount" style="text-align: right">' . h(lang('Amount')) . '</th>
                             <th>&nbsp;</th>
                         </tr>
                         ' . $output_products . '
@@ -1435,14 +1435,14 @@ function get_shopping_cart($properties) {
                         $output_recurring_ship_tos .=
                             '<tr class="ship_tos">
                                 <td colspan="7">
-                                    <div class="heading">Ship to <span class="software_highlight">' . h($ship_to_name) . '</span></div>
+                                    <div class="heading">' . h(lang('Ship to')) . ' <span class="software_highlight">' . h($ship_to_name) . '</span></div>
                                 </td>
                             </tr>';
                     }
                     
                     if (($non_donations_exist_in_recurring == true) || ($donations_exist_in_recurring == false)) {
-                        $output_quantity_heading = 'Qty';
-                        $output_price_heading = 'Price';
+                        $output_quantity_heading = h(lang('Qty'));
+                        $output_price_heading = h(lang('Price'));
                     } else {
                         $output_quantity_heading = '';
                         $output_price_heading = '';
@@ -1451,12 +1451,12 @@ function get_shopping_cart($properties) {
                     // prepare recurring output for this ship to
                     $output_recurring_ship_tos .=
                         '<tr class="products heading mobile_hide" style="border: none">
-                            <th class="heading_item" style="text-align: left">Item</th>
-                            <th class="heading_description" style="text-align: left">Description</th>
-                            <th class="heading_frequency" style="text-align: left">Frequency</th>
+                            <th class="heading_item" style="text-align: left">' . h(lang('Item')) . '</th>
+                            <th class="heading_description" style="text-align: left">' . h(lang('Description')) . '</th>
+                            <th class="heading_frequency" style="text-align: left">' . h(lang('Frequency')) . '</th>
                             <th class="heading_selection" style="text-align: left">' . $output_quantity_heading . '</th>
                             <th class="heading_price" style="text-align: right">' . $output_price_heading . '</th>
-                            <th class="heading_amount" style="text-align: right">Amount</th>
+                            <th class="heading_amount" style="text-align: right">' . h(lang('Amount')) . '</th>
                             <th>&nbsp;</th>
                         </tr>
                         ' . $output_recurring_products . '
@@ -1484,7 +1484,7 @@ function get_shopping_cart($properties) {
             if (!empty($_SESSION['ecommerce']['order_discount'])) {
                 $output_subtotal =
                     '<tr class="order_totals data">
-                        <td class="mobile_left" colspan="4" style="text-align: right">Subtotal:</td>
+                        <td class="mobile_left" colspan="4" style="text-align: right">' . h(lang('Subtotal')) . ':</td>
                         <td class="mobile_right" style="text-align: right">' . prepare_price_for_output($subtotal * 100, FALSE, $discounted_price = '', 'html') . '</td>
                         <td class="mobile_hide">&nbsp;</td>
                     </tr>';
@@ -1493,7 +1493,7 @@ function get_shopping_cart($properties) {
                 
                 $output_discount =
                     '<tr class="order_totals data">
-                        <td class="mobile_left" colspan="4" style="text-align: right">Discount:</td>
+                        <td class="mobile_left" colspan="4" style="text-align: right">' . h(lang('Discount')) . ':</td>
                         <td class="mobile_right" style="text-align: right">-' . prepare_price_for_output($order_discount * 100, FALSE, $discounted_price = '', 'html') . '</td>
                         <td class="mobile_hide">&nbsp;</td>
                     </tr>';
@@ -1502,7 +1502,7 @@ function get_shopping_cart($properties) {
                 
                 $output_total =
                     '<tr class="order_totals data">
-                        <td class="mobile_left" colspan="4" style="text-align: right"><strong>Total:</strong></td>
+                        <td class="mobile_left" colspan="4" style="text-align: right"><strong>' . h(lang('Total')) . ':</strong></td>
                         <td class="mobile_right" style="text-align: right"><strong>' . prepare_price_for_output($total * 100, FALSE, $discounted_price = '', 'html') . '</strong></td>
                         <td class="mobile_hide">&nbsp;</td>
                     </tr>';
@@ -1513,7 +1513,7 @@ function get_shopping_cart($properties) {
             } else {
                 $output_subtotal =
                     '<tr class="order_totals data">
-                        <td class="mobile_left" colspan="4" style="text-align: right"><strong>Subtotal:</strong></td>
+                        <td class="mobile_left" colspan="4" style="text-align: right"><strong>' . h(lang('Subtotal')) . ':</strong></td>
                         <td class="mobile_right" style="text-align: right"><strong>' . prepare_price_for_output($subtotal * 100, FALSE, $discounted_price = '', 'html') . '</strong></td>
                         <td class="mobile_hide">&nbsp;</td>
                     </tr>';
@@ -1526,15 +1526,15 @@ function get_shopping_cart($properties) {
             
             // if tax and shipping are active
             if ((ECOMMERCE_TAX == true) && ($taxable_products_exist == true) && (ECOMMERCE_SHIPPING == TRUE) && ($shippable_products_exist == true)) {
-                $output_total_warning = '<div class="order_totals data" style="margin-bottom: 15px; text-align: center">' . $total_label . ' does not include any applicable taxes or shipping charges which will be calculated during checkout.</div>';
+                $output_total_warning = '<div class="order_totals data" style="margin-bottom: 15px; text-align: center">' . lang(array('string' => '{var:1} does not include any applicable taxes or shipping charges which will be calculated during checkout.', 'vars' => h($total_label))) . '</div>';
                 
             // else if just tax is active
             } elseif ((ECOMMERCE_TAX == true) && ($taxable_products_exist == true)) {
-                $output_total_warning = '<div class="order_totals data" style="margin-bottom: 15px; text-align: center">' . $total_label . ' does not include any applicable taxes which will be calculated during checkout.</div>';
+                $output_total_warning = '<div class="order_totals data" style="margin-bottom: 15px; text-align: center">' . lang(array('string' => '{var:1} does not include any applicable taxes which will be calculated during checkout.', 'vars' => h($total_label))) . '</div>';
                 
             // else if just shipping is active
             } elseif ((ECOMMERCE_SHIPPING == true) && ($shippable_products_exist == true)) {
-                $output_total_warning = '<div class="order_totals data" style="margin-bottom: 15px; text-align: center">' . $total_label . ' does not include any applicable shipping charges which will be calculated during checkout.</div>';
+                $output_total_warning = '<div class="order_totals data" style="margin-bottom: 15px; text-align: center">' . lang(array('string' => '{var:1} does not include any applicable shipping charges which will be calculated during checkout.', 'vars' => h($total_label))) . '</div>';
                 
             // else nothing is active so do not prepare any message
             } else {
@@ -1550,7 +1550,7 @@ function get_shopping_cart($properties) {
                     if ($payment_period['exists'] == true) {
                         $output_payment_periods .=
                             '<tr>
-                                <td class="mobile_left" colspan="5" style="vertical-align: top; text-align: right"><strong>' . $payment_period_name . ' Subtotal:</strong></td>
+                                <td class="mobile_left" colspan="5" style="vertical-align: top; text-align: right"><strong>' . h(lang($payment_period_name)) . ' ' . h(lang('Subtotal')) . ':</strong></td>
                                 <td class="mobile_right" style="text-align: right"><strong>' . prepare_price_for_output($payment_period['subtotal'] * 100, FALSE, $discounted_price = '', 'html') . '</strong></td>
                                 <td class="mobile_hide">&nbsp;</td>
                             </tr>';
@@ -1560,7 +1560,7 @@ function get_shopping_cart($properties) {
                 $output_recurring_products =
                     '<div class="recurring_products">
                     <fieldset style="margin-bottom: 15px" class="software_fieldset">
-                        <legend class="software_legend">Recurring Charges</legend>
+                        <legend class="software_legend">' . h(lang('Recurring Charges')) . '</legend>
                             <table class="products" width="100%" cellspacing="2" cellpadding="2" border="0" style="margin-bottom: 15px">
                                 ' . $output_recurring_ship_tos . '
                                 ' . $output_payment_periods . '
@@ -1642,7 +1642,7 @@ function get_shopping_cart($properties) {
                 // output the offline payment option
                 $output_offline_payment_allowed = 
                     '<div class="software_notice">
-                        ' . $form->output_field(array('type'=>'checkbox', 'name'=>'offline_payment_allowed', 'id'=>'offline_payment_allowed', 'value'=>'1', 'class'=>'software_input_checkbox')) . '<label for="offline_payment_allowed"> Allow offline payment option for this ' . $output_shopping_cart_label . ' (and click update to apply)</label>.
+                        ' . $form->output_field(array('type'=>'checkbox', 'name'=>'offline_payment_allowed', 'id'=>'offline_payment_allowed', 'value'=>'1', 'class'=>'software_input_checkbox')) . '<label for="offline_payment_allowed"> ' . lang(array('string' => 'Allow offline payment option for this {var:1} (and click update to apply).', 'vars' => h($output_shopping_cart_label))) . '</label>
                     </div>';
             }
             
@@ -1688,7 +1688,7 @@ function get_shopping_cart($properties) {
                     ' . $output_offline_payment_allowed . '
                     <table class="cart_update" style="width: 100%">
                         <tr>
-                            <td style="float: left">Click the ' . $output_update_button_label . ' button to update totals, or click the ' . $output_checkout_button_label . ' button to update totals and complete your order on our secure server.</td>
+                            <td style="float: left">' . lang(array('string' => 'Click the {var:1} button to update totals, or click the {var:2} button to update totals and complete your order on our secure server.', 'vars' => array($output_update_button_label, $output_checkout_button_label))) . '</td>
                             <td class="mobile_left mobile_width mobile_margin_top" style="text-align: right; white-space: nowrap">
                                 <input type="submit" name="submit_update" value="' . $output_update_button_label . '" class="software_input_submit_secondary update_button" style="margin: 0 0 .5em 0" formnovalidate>
                                 <input type="submit" name="submit_checkout" value="' . $output_checkout_button_label . '" class="software_input_submit_primary checkout_button" style="margin: 0 0 .5em .5em"/>

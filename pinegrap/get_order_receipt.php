@@ -390,21 +390,21 @@ function get_order_receipt($properties) {
                         if ((ECOMMERCE_CREDIT_DEBIT_CARD == false) || (ECOMMERCE_PAYMENT_GATEWAY != 'ClearCommerce')) {
                             $output_start_date_row =
                                 '<tr>
-                                    <td>Start Date:</td>
+                                    <td>' . h(lang('Start Date')) . ':</td>
                                     <td>' . get_absolute_time(array('timestamp' => strtotime($recurring_start_date), 'type' => 'date', 'size' => 'long')) . '</td>
                                 </tr>';
                         }
                         
                         $output_recurring_schedule_fieldset =
                             '<fieldset class="software_fieldset">
-                                <legend class="software_legend">Payment Schedule</legend>
+                                <legend class="software_legend">' . h(lang('Payment Schedule')) . '</legend>
                                     <table>
                                         <tr>
-                                            <td>Frequency:</td>
-                                            <td>' . $recurring_payment_period . '</td>
+                                            <td>' . h(lang('Frequency')) . ':</td>
+                                            <td>' . h(lang($recurring_payment_period)) . '</td>
                                         </tr>
                                         <tr>
-                                            <td>Number of Payments:</td>
+                                            <td>' . h(lang('Number of Payments')) . ':</td>
                                             <td>' . $output_recurring_number_of_payments . '</td>
                                         </tr>
                                         ' . $output_start_date_row . '
@@ -432,7 +432,7 @@ function get_order_receipt($properties) {
                             
                             // If number of gift cards is greater than 1, then add quantity number to legend.
                             if ($number_of_gift_cards > 1) {
-                                $output_legend_quantity_number .= ' (' . $quantity_number . ' of ' . $number_of_gift_cards . ')';
+                                $output_legend_quantity_number .= ' (' . lang(array('string' => '{var:1} of {var:2}', 'vars' => array($quantity_number, $number_of_gift_cards))) . ')';
                             }
 
                             // Get gift card data from database.
@@ -459,26 +459,26 @@ function get_order_receipt($properties) {
                             
                             $output_gift_cards .=
                                 '<fieldset class="software_fieldset" style="margin-bottom: 1em">
-                                    <legend class="software_legend">Gift Card' . $output_legend_quantity_number . '</legend>
+                                    <legend class="software_legend">' . h(lang('Gift Card')) . $output_legend_quantity_number . '</legend>
                                         <table>
                                             <tr>
-                                                <td>Amount:</td>
+                                                <td>' . h(lang('Amount')) . ':</td>
                                                 <td><strong>' . prepare_price_for_output($product_price * 100, false, $discounted_price = '', 'html') . '</strong></td>
                                             </tr>
                                             <tr>
-                                                <td>Recipient Email:</td>
+                                                <td>' . h(lang('Recipient Email')) . ':</td>
                                                 <td>' . h($order_item_gift_card['recipient_email_address']) . '</td>
                                             </tr>
                                             <tr>
-                                                <td>Your Name:</td>
+                                                <td>' . h(lang('Your Name')) . ':</td>
                                                 <td>' . h($order_item_gift_card['from_name']) . '</td>
                                             </tr>
                                             <tr>
-                                                <td style="vertical-align: top">Message:</td>
+                                                <td style="vertical-align: top">' . h(lang('Message')) . ':</td>
                                                 <td>' . nl2br(h($order_item_gift_card['message'])) . '</td>
                                             </tr>
                                             <tr>
-                                                <td>Delivery Date:</td>
+                                                <td>' . h(lang('Delivery Date')) . ':</td>
                                                 <td>' . $output_delivery_date . '</td>
                                             </tr>
                                         </table>
@@ -677,7 +677,7 @@ function get_order_receipt($properties) {
                             '<tr class="products data row_' . ($row_count % 2) . '">
                                 <td class="mobile_left" style="vertical-align: top">' . h($name) . '</td>
                                 <td class="mobile_right mobile_width" style="vertical-align: top">' . $output_description . '</td>
-                                <td class="mobile_left" style="vertical-align: top">' . $recurring_payment_period . '</td>
+                                <td class="mobile_left" style="vertical-align: top">' . h(lang($recurring_payment_period)) . '</td>
                                 <td class="mobile_left" style="vertical-align: top; text-align: center">' . $output_quantity . '</td>
                                 <td class="mobile_right" style="vertical-align: top; text-align: right; white-space: nowrap; margin-left: .5em">' . $output_product_price . '</td>
                                 <td class="mobile_right" style="vertical-align: top; text-align: right">' . prepare_price_for_output($total_price * 100, FALSE, $discounted_price = '', 'html') . '</td>
@@ -881,11 +881,11 @@ function get_order_receipt($properties) {
                     // prepare output for this ship to
                     $output_ship_tos .=
                         '<tr class="product heading mobile_hide" style="border: none">
-                            <th class="heading_item" style="text-align: left">Item</th>
-                            <th class="heading_description" style="text-align: left">Description</th>
+                            <th class="heading_item" style="text-align: left">' . h(lang('Item')) . '</th>
+                            <th class="heading_description" style="text-align: left">' . h(lang('Description')) . '</th>
                             <th class="heading_selection" style="text-align: left">' . $output_quantity_heading . '</th>
                             <th class="heading_price" style="text-align: right">' . $output_price_heading . '</th>
-                            <th class="heading_amount" style="text-align: right">Amount</th>
+                            <th class="heading_amount" style="text-align: right">' . h(lang('Amount')) . '</th>
                         </tr>
                         ' . $output_products . '
                         ' . $output_shipping . '
@@ -1007,12 +1007,12 @@ function get_order_receipt($properties) {
                     // prepare recurring output for this ship to
                     $output_recurring_ship_tos .=
                         '<tr class="products heading mobile_hide" style="border: none">
-                            <th class="heading_item" style="text-align: left">Item</th>
-                            <th class="heading_description" style="text-align: left">Description</th>
-                            <th class="heading_frequency" style="text-align: left">Frequency</th>
+                            <th class="heading_item" style="text-align: left">' . h(lang('Item')) . '</th>
+                            <th class="heading_description" style="text-align: left">' . h(lang('Description')) . '</th>
+                            <th class="heading_frequency" style="text-align: left">' . h(lang('Frequency')) . '</th>
                             <th class="heading_selection" style="text-align: left">' . $output_quantity_heading . '</th>
                             <th class="heading_price" style="text-align: right">' . $output_price_heading . '</th>
-                            <th class="heading_amount" style="text-align: right">Amount</th>
+                            <th class="heading_amount" style="text-align: right">' . h(lang('Amount')) . '</th>
                         </tr>
                         ' . $output_recurring_products . '
                         <tr class="ship_tos data">
@@ -1065,7 +1065,7 @@ function get_order_receipt($properties) {
             
             $output_discount =
                     '<tr class="order_totals data">
-                        <td class="mobile_left" colspan="4" style="text-align: right">Discount:</td>
+                        <td class="mobile_left" colspan="4" style="text-align: right">' . h(lang('Discount')) . ':</td>
                         <td class="mobile_right" style="text-align: right">-' . prepare_price_for_output($order_discount * 100, FALSE, $discounted_price = '', 'html') . '</td>
                     </tr>';
         }
@@ -1094,7 +1094,7 @@ function get_order_receipt($properties) {
 
             $output_grand_tax =
                     '<tr class="order_totals data">
-                        <td class="mobile_left" colspan="4" style="text-align: right">Tax:</td>
+                        <td class="mobile_left" colspan="4" style="text-align: right">' . h(lang('Tax')) . ':</td>
                         <td class="mobile_right" style="text-align: right">' . prepare_price_for_output($grand_tax * 100, FALSE, $discounted_price = '', 'html') . '</td>
                     </tr>';
         }
@@ -1106,7 +1106,7 @@ function get_order_receipt($properties) {
 
             $output_grand_shipping =
                 '<tr class="order_totals data">
-                    <td class="mobile_left" colspan="4" style="text-align: right">Shipping:</td>
+                    <td class="mobile_left" colspan="4" style="text-align: right">' . h(lang('Shipping')) . ':</td>
                     <td class="mobile_right" style="text-align: right">' . prepare_price_for_output($grand_shipping * 100, FALSE, $discounted_price = '', 'html') . '</td>
                 </tr>';
         }
@@ -1152,7 +1152,7 @@ function get_order_receipt($properties) {
             
             $output_gift_card_discount =
                 '<tr class="gift_card_discount">
-                    <td class="mobile_left" colspan="4" style="text-align: right">Gift Card' . $output_gift_card_label_plural_suffix . ':</td>
+                    <td class="mobile_left" colspan="4" style="text-align: right">' . h(lang('Gift Card')) . $output_gift_card_label_plural_suffix . ':</td>
                     <td class="mobile_right" style="text-align: right; white-space: nowrap">-' . prepare_price_for_output($gift_card_discount * 100, FALSE, $discounted_price = '', 'html') . '</td>
                 </tr>';
         }
@@ -1165,7 +1165,7 @@ function get_order_receipt($properties) {
 
             $output_surcharge =
                 '<tr class="order_totals data">
-                    <td class="mobile_left" colspan="4" style="text-align: right">Surcharge:</td>
+                    <td class="mobile_left" colspan="4" style="text-align: right">' . h(lang('Surcharge')) . ':</td>
                     <td class="mobile_right" style="text-align: right">' . prepare_price_for_output($surcharge * 100, FALSE, $discounted_price = '', 'html') . '</td>
                 </tr>';
         }
@@ -1177,13 +1177,13 @@ function get_order_receipt($properties) {
             
             $output_number_of_installment = 
                 '<tr class="order_totals data">
-                    <td class="mobile_left" colspan="4" style="text-align: right">Number of Installments:</td>
+                    <td class="mobile_left" colspan="4" style="text-align: right">' . h(lang('Number of Installments')) . ':</td>
                     <td class="mobile_right" style="text-align: right">' . $payment_installment . '</td>
                 </tr>';
 
             $output_installment_charges =
                 '<tr class="order_totals data">
-                    <td class="mobile_left" colspan="4" style="text-align: right">Installment Charge:</td>
+                    <td class="mobile_left" colspan="4" style="text-align: right">' . h(lang('Installment Charge')) . ':</td>
                     <td class="mobile_right" style="text-align: right">' . pg_format_money($installment_charges, BASE_CURRENCY_SYMBOL) . '</td>
                 </tr>';
         }
@@ -1214,7 +1214,7 @@ function get_order_receipt($properties) {
                 if ($payment_period['exists'] == true) {
                     $output_payment_periods .=
                         '<tr class="order_totals data">
-                            <td class="mobile_left" colspan="5" style="text-align: right">' . $payment_period_name . ' Subtotal:</td>
+                            <td class="mobile_left" colspan="5" style="text-align: right">' . h(lang($payment_period_name)) . ' ' . h(lang('Subtotal')) . ':</td>
                             <td class="mobile_right" style="text-align: right">' . prepare_price_for_output($payment_period['subtotal'] * 100, FALSE, $discounted_price = '', 'html') . '</td>
                         </tr>';
                         
@@ -1232,7 +1232,7 @@ function get_order_receipt($properties) {
 
                         $output_payment_periods .=
                                 '<tr class="order_totals data">
-                                    <td class="mobile_left" colspan="5" style="text-align: right">' . $payment_period_name . ' Tax:</td>
+                                    <td class="mobile_left" colspan="5" style="text-align: right">' . h(lang($payment_period_name)) . ' ' . h(lang('Tax')) . ':</td>
                                     <td class="mobile_right" style="text-align: right">' . prepare_price_for_output($payment_period['tax'] * 100, FALSE, $discounted_price = '', 'html') . '</td>
                                 </tr>';
 
@@ -1242,7 +1242,7 @@ function get_order_receipt($properties) {
                     
                     $output_payment_periods .=
                         '<tr class="order_totals data">
-                            <td class="mobile_left" colspan="5" style="text-align: right"><strong>' . $payment_period_name . ' Total:</strong></td>
+                            <td class="mobile_left" colspan="5" style="text-align: right"><strong>' . h(lang($payment_period_name)) . ' ' . h(lang('Total')) . ':</strong></td>
                             <td class="mobile_right" style="text-align: right"><strong>' . prepare_price_for_output($payment_period_total * 100, FALSE, $discounted_price = '', 'html') . '</strong></td>
                         </tr>';
                         
@@ -1261,7 +1261,7 @@ function get_order_receipt($properties) {
             $output_recurring_products =
                 '<div class="recurring_products">
                 <fieldset style="padding: 0px 10px 10px 10px; margin-bottom: 15px" class="software_fieldset">
-                    <legend class="software_legend">Recurring Charges</legend>
+                    <legend class="software_legend">' . h(lang('Recurring Charges')) . '</legend>
                     <table class="products" width="100%" cellspacing="2" cellpadding="2" border="0">
                         ' . $output_recurring_ship_tos . '
                         ' . $output_payment_periods . '
@@ -1401,7 +1401,7 @@ function get_order_receipt($properties) {
         if (ECOMMERCE_TAX_EXEMPT == true) {
             // if tax-exempt was checked
             if ($tax_exempt) {
-                $output_billing_information .= 'Tax-Exempt<br />';
+                $output_billing_information .= h(lang('Tax-Exempt')) . '<br />';
             }
         }
 
@@ -1431,7 +1431,7 @@ function get_order_receipt($properties) {
         if (($gift_card_discount > 0)  && (count($applied_gift_cards) > 0)) {
             $output_applied_gift_cards =
                 '<div class="applied_gift_cards" style="margin-bottom: 1em">
-                    <div class="heading">Applied Gift Cards</div>
+                    <div class="heading">' . h(lang('Applied Gift Cards')) . '</div>
                     <div class="data">
                     <ul style="margin-top: 0em">';
             
@@ -1471,13 +1471,13 @@ function get_order_receipt($properties) {
             if ($payment_method == 'Credit/Debit Card') {
                 $output_credit_debit_card_information =
                     'Card Type: ' . $card_type . '<br />
-                    Card Number: ' . $card_number . '<br />';
+                    ' . h(lang('Card Number')) . ': ' . $card_number . '<br />';
             }
             
             $output_payment_information =
-                '<div class="payment heading">Payment Information</div>
+                '<div class="payment heading">' . h(lang('Payment Information')) . '</div>
                 <div class="payment data">
-                Payment Method: ' . $output_payment_method . '<br />' 
+                ' . h(lang('Payment Method')) . ': ' . $output_payment_method . '<br />' 
                 . $output_credit_debit_card_information . '</div>';
         }
 
@@ -1491,7 +1491,7 @@ function get_order_receipt($properties) {
         
         $output =
             '<div class="product_messages">' . $output_order_receipt_messages . '</div>
-            <div class="order data" style="margin-bottom: 15px">Order Number: <b>' . $order_number . '</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Order Date: ' . get_absolute_time(array('timestamp' => $order_date, 'size' => 'long')) . '</div>
+            <div class="order data" style="margin-bottom: 15px">' . h(lang('Order Number')) . ': <b>' . $order_number . '</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;' . h(lang('Order Date')) . ': ' . get_absolute_time(array('timestamp' => $order_date, 'size' => 'long')) . '</div>
             <table class="order_receipt_totals" style="width: 100%; margin-bottom: 15px">
                 ' . $output_ship_tos . '
                 <tr class="order_totals data">
@@ -1500,7 +1500,7 @@ function get_order_receipt($properties) {
                     </td>
                 </tr>
                 <tr class="order_totals data">
-                    <td class="mobile_left" colspan="4" style="text-align: right">Subtotal:</td>
+                    <td class="mobile_left" colspan="4" style="text-align: right">' . h(lang('Subtotal')) . ':</td>
                     <td class="mobile_right" style="text-align: right">' . prepare_price_for_output($subtotal * 100, FALSE, $discounted_price = '', 'html') . '</td>
                 </tr>
                 ' . $output_discount . '
@@ -1511,7 +1511,7 @@ function get_order_receipt($properties) {
                 ' . $output_number_of_installment . '
                 ' . $output_installment_charges . '
                 <tr class="order_totals data">
-                    <td class="mobile_left" colspan="4" style="text-align: right"><strong>Total:</strong></td>
+                    <td class="mobile_left" colspan="4" style="text-align: right"><strong>' . h(lang('Total')) . ':</strong></td>
                     <td class="mobile_right" style="text-align: right"><strong>' . prepare_price_for_output($grand_total * 100, FALSE, $discounted_price = '', 'html') . $output_unconverted_total . '</strong></td>
                 </tr>
             </table>
