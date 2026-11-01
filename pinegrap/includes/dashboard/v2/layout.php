@@ -173,3 +173,170 @@ function pg_dashboard_v2_switch_row($on, $end = '')
         })();
     </script>';
 }
+
+/**
+ * The largest layout JSON a save stores.
+ */
+if (!defined('PG_DASHBOARD_V2_MAX_LAYOUT')) {
+    define('PG_DASHBOARD_V2_MAX_LAYOUT', 65536);
+}
+
+/**
+ * A layout sent by the edit mode, cleaned for storing: unknown card ids,
+ * repeats, shortcut and tile keys outside their pools and unknown keys are
+ * dropped, bad values take the default. The cards the person may not see
+ * are not in what the page sent; they keep their places from the stored
+ * layout, so a module switched off and on again finds its cards where they
+ * were. Goals, pins and notes are kept from the stored layout: the edit
+ * mode does not change them. Pure.
+ *
+ * @param mixed    $layout    the decoded layout the page sent
+ * @param mixed    $old       the decoded stored layout, null when none
+ * @param string[] $visible   ids of the cards the person may see
+ * @param string[] $shortcuts shortcut keys the person may use
+ * @param string[] $figures   figure keys the person may see
+ * @param bool     $shop      the ECOMMERCE switch is on
+ * @return array|null null when $layout is not a layout at all
+ */
+function pg_dashboard_v2_layout_clean($layout, $old, $visible, $shortcuts, $figures, $shop)
+{
+    if (!is_array($layout) || !isset($layout['cards']) || !is_array($layout['cards'])) {
+        return null;
+    }
+
+    require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/v2/presets.php');
+
+    $old = is_array($old) ? $old : array();
+    $cards = pg_dashboard_v2_cards();
+    $presets = array_keys(pg_dashboard_v2_presets());
+    $range = function ($value) {
+        return (is_int($value) && ($value >= 0) && ($value <= 2)) ? $value : 0;
+    };
+
+    $list = array();
+    $seen = array();
+
+    foreach ($layout['cards'] as $entry) {
+        if (!is_array($entry) || !isset($entry['id']) || !is_string($entry['id']) || !isset($cards[$entry['id']])
+            || !in_array($entry['id'], $visible, true) || isset($seen[$entry['id']])) {
+            continue;
+        }
+
+        $id = $entry['id'];
+        $seen[$id] = true;
+
+        $list[] = array(
+            'id'    => $id,
+            'w'     => (isset($entry['w']) && in_array($entry['w'], array('S', 'M', 'L'), true)) ? $entry['w'] : $cards[$id]['width'],
+            'per'   => isset($entry['per']) ? $range($entry['per']) : (int) $cards[$id]['period'],
+            'cmp'   => isset($entry['cmp']) ? $range($entry['cmp']) : 0,
+            'badge' => (isset($entry['badge']) && !$entry['badge']) ? 0 : 1,
+        );
+    }
+
+    // The stored cards the person may not see, back at their old places.
+    if (isset($old['cards']) && is_array($old['cards'])) {
+        foreach (array_values($old['cards']) as $i => $entry) {
+            if (is_array($entry) && isset($entry['id']) && is_string($entry['id']) && isset($cards[$entry['id']])
+                && !in_array($entry['id'], $visible, true) && !isset($seen[$entry['id']])) {
+                $seen[$entry['id']] = true;
+                array_splice($list, min($i, count($list)), 0, array($entry));
+            }
+        }
+    }
+
+    $keys = function ($name, $pool, $most) use ($layout) {
+        $out = array();
+        foreach ((isset($layout[$name]) && is_array($layout[$name])) ? $layout[$name] : array() as $key) {
+            if (is_string($key) && in_array($key, $pool, true) && !in_array($key, $out, true)) {
+                $out[] = $key;
+            }
+        }
+        return array_slice($out, 0, $most);
+    };
+
+    $top = array();
+    foreach (array('since', 'actions', 'tiles', 'status') as $part) {
+        $top[$part] = (isset($layout['top'][$part]) && !$layout['top'][$part]) ? 0 : 1;
+    }
+
+    return array(
+        'v'       => 1,
+        'preset'  => (isset($layout['preset']) && in_array($layout['preset'], $presets, true)) ? $layout['preset'] : pg_dashboard_v2_preset_first($shop),
+        'cards'   => $list,
+        'top'     => $top,
+        'actions' => $keys('actions', $shortcuts, 6),
+        'tiles'   => $keys('tiles', $figures, 4),
+        'goals'   => (isset($old['goals']) && is_array($old['goals'])) ? $old['goals'] : array(),
+        'pins'    => (isset($old['pins']) && is_array($old['pins'])) ? $old['pins'] : array(),
+        'notes'   => (isset($old['notes']) && is_string($old['notes'])) ? $old['notes'] : '',
+    );
+}
+
+/**
+ * A look sent by the page, cleaned: a value outside its choices is left
+ * out, so the site's Appearance value stands for it. Pure.
+ *
+ * @param mixed $look
+ * @return array style, backdrop (when chosen), dense, calm
+ */
+function pg_dashboard_v2_look_clean($look)
+{
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/dashboard.php');
+
+    $choices = pg_dashboard_appearance_choices();
+    $look = is_array($look) ? $look : array();
+    $out = array();
+
+    if (isset($look['style']) && in_array($look['style'], $choices['widget_theme'], true)) {
+        $out['style'] = $look['style'];
+    }
+
+    if (isset($look['backdrop']) && in_array($look['backdrop'], $choices['panel_backdrop'], true)) {
+        $out['backdrop'] = $look['backdrop'];
+    }
+
+    $out['dense'] = empty($look['dense']) ? 0 : 1;
+    $out['calm'] = empty($look['calm']) ? 0 : 1;
+
+    return $out;
+}
+
+/**
+ * Is the layout of a role locked by its default (the role's own row or the
+ * one for everyone)? A locked person cannot change their layout.
+ *
+ * @param int $role
+ * @return bool
+ */
+function pg_dashboard_v2_role_locked($role)
+{
+    $result = @mysqli_query(db::$con, "SELECT locked FROM dashboard_layout WHERE user_id = 0 AND role IN ('" . (int) $role . "', 9) AND locked = 1 LIMIT 1");
+
+    return $result && (mysqli_num_rows($result) > 0);
+}
+
+/**
+ * Store the person's layout, and their look when one is given.
+ *
+ * @param int         $user_id
+ * @param string      $layout JSON
+ * @param string|null $look   JSON, null to keep the stored look
+ * @return bool
+ */
+function pg_dashboard_v2_layout_write($user_id, $layout, $look = null)
+{
+    $user_id = (int) $user_id;
+    $now = time();
+
+    if ($user_id <= 0) {
+        return false;
+    }
+
+    $look_sql = ($look === null) ? '' : ", look = VALUES(look)";
+
+    return (bool) @mysqli_query(db::$con,
+        "INSERT INTO dashboard_layout (user_id, role, layout, look, updated_at, updated_by)
+        VALUES ('" . $user_id . "', 0, '" . escape($layout) . "', '" . escape((string) $look) . "', '" . $now . "', '" . $user_id . "')
+        ON DUPLICATE KEY UPDATE layout = VALUES(layout)" . $look_sql . ", updated_at = VALUES(updated_at), updated_by = VALUES(updated_by)");
+}
