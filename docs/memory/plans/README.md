@@ -35,7 +35,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - erp-parasut-driver-design.md: Paraşüt e-document driver: what awaits the live test, what is still open (queue worker and reconcile ladder), the decisions behind it
 - erp-parasut-open-work.md: Paraşüt work left after the rounds of 2026-10-23 to 26 (#1405-#1682): one live round when a new demo key comes, three decisions (#2440-#2442), small fixes; where to start
 - feature-roadmap-2026-10.md: Feature roadmap decided 2026-10-19 from the gap analysis: 24 approved plans in four groups, wave order, the legacy rule, one task per session; index of the plan files
-- graph-canvas-core.md: Plan (2026-10-24, answers #2445, slice 1 done #3162): a reusable box-and-arrow canvas core split from workspace_flow.js behind an adapter; first Flows, then designer prototype links
+- graph-canvas-core.md: Plan (2026-10-24, answers #2445, slice 1 done #3162, 2a #4402): a reusable box-and-arrow canvas core split from workspace_flow.js behind an adapter; first Flows, then designer prototype links
 - image-editor-design.md: Design of plans/image-editor.md: the parts and file names, the one call and its options, the modal's look, the document model with layers in rotated space
 - image-editor-server.md: Server side of plans/image-editor.md: what the browser and the server each do, the save pipeline through the image engine, replace, copy and new, the versions table proposal, security
 - image-editor-steps-2.md: Steps E11-E20 of plans/image-editor.md: versions, canvas and artboard, optimisation, pen, SVG, Workspace, designer, access, animation, close-out; claim as [plan:image-editor] E<n>
