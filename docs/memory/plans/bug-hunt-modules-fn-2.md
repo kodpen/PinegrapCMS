@@ -62,7 +62,7 @@ description: Module list of plans/bug-hunt.md, part 2: includes/fn/ modules pric
 
 - `sms`: taken by LW, #4674
 
-- `sms_campaigns`: open
+- `sms_campaigns`: taken by MC
 
 - `sms_codes`: clean (LG: hash keep and check, expiry and miss limit, purpose, subject and number binding, queue reference and expiry, send throttle buckets, token check, sign-in offer and number lookup, COD field script and its escaping checked)
 

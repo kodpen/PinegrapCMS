@@ -782,6 +782,7 @@
     "The SMS box (name: <code>opt_in_sms</code>) is drawn only while SMS is on and the buyer has not said yes.": "SMS kutusu (ad: <code>opt_in_sms</code>) yalnızca SMS açıkken ve alıcı henüz evet demediyse çizilir.",
     "The SMS box is offered (SMS is on and the buyer has not said yes)": "SMS kutusu sunuluyor (SMS açık ve alıcı henüz evet demedi)",
     "The SMS campaign could not be found.": "SMS kampanyası bulunamadı.",
+    "The SMS campaign was queued, cancelled or deleted before your changes could be saved. They were not saved.": "SMS kampanyası değişiklikleriniz kaydedilemeden önce kuyruğa alındı, iptal edildi veya silindi. Değişiklikler kaydedilmedi.",
     "The SMS campaign was saved as a draft.": "SMS kampanyası taslak olarak kaydedildi.",
     "The SMS campaign was scheduled. The scheduled job queues it at its time.": "SMS kampanyası zamanlandı. Zamanlanmış iş onu zamanı gelince kuyruğa alır.",
     "The SMS campaigns are not available yet; run the upgrade.": "SMS kampanyaları henüz kullanılamıyor; yükseltmeyi çalıştırın.",
