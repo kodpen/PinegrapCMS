@@ -166,15 +166,15 @@ description: Module list of plans/bug-hunt.md, part 1: includes/fn/ modules a11y
 
 - `order_list`: open
 
-- `order_report`: open
+- `order_report`: clean
 
-- `order_status`: open
+- `order_status`: clean
 
-- `order_view`: open
+- `order_view`: clean (callers escape)
 
-- `output`: open
+- `output`: clean for list sort, quick edit, back URL, filter, period nav; header, menu, license, page panel open
 
-- `page_bulk`: open
+- `page_bulk`: clean
 
 - `page_cache`: clean (gate, serve and store checks, key, pack and write, stale lock, beacon, dirty rules, sweep checked)
 
