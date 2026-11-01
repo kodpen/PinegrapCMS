@@ -66,6 +66,24 @@ function test_audit_list_search()
 	pg_assert_same('delete', end($search['params']));
 }
 
+// A settings line shows its category's name and stores its key: the
+// search box finds it by either.
+function test_audit_list_search_settings_by_shown_name()
+{
+	$names = array('general' => 'Genel', 'commerce' => 'E-Ticaret', 'maintenance' => 'Güncellemeler ve Bakım');
+
+	$search = pg_audit_list_search(array('genel'), $names);
+	pg_assert_contains("(CASE WHEN entity_type = 'settings' THEN label END) IN (?)", $search['sql'], 'a category by its shown name');
+	pg_assert_same('general', end($search['params']));
+
+	$search = pg_audit_list_search(array('BAKIM'), $names);
+	pg_assert_same('maintenance', end($search['params']), 'any case, dotless i folded');
+
+	$search = pg_audit_list_search(array('general'), $names);
+	pg_assert_contains('label LIKE ?', $search['sql'], 'the stored key is still searched');
+	pg_assert_true(strpos($search['sql'], 'CASE WHEN') === false, 'no category is named general');
+}
+
 function test_audit_list_row()
 {
 	$line = array(
