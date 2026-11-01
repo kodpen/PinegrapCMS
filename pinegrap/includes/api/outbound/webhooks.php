@@ -70,6 +70,18 @@ function api_webhook_events() {
 		'cart_quote.applied'   => 'A cart quote\'s link put its products into a visitor\'s cart; added says how many lines went in (the same cart again is not announced)',
 		'cart_quote.ordered'   => 'The cart a cart quote\'s link filled was ordered, from the checkout or a payment service\'s message; order_number names the order',
 		'cart_quote.cancelled' => 'A cart quote was cancelled, on the cart quotes screen or through the API (one that runs past its last day is not announced)',
+		// A store-run subscription (includes/fn/subscription_renewal.php,
+		// pg_subscription_announce()). id is the subscription's; customer_id,
+		// product_id, status, previous_status, kind (the history event),
+		// order_id (the renewal order), amount, currency, next_charge_at and
+		// retry_count follow, never the card. Announced once per written
+		// event, whoever made the move: the renewal job, a payment service's
+		// message, the customer in My Account, staff on the panel or the API.
+		'subscription.renewed'   => 'A subscription was charged for its next period; order_id names the renewal order',
+		'subscription.failed'    => 'A subscription\'s renewal was refused or waits for the customer to confirm the payment; status ended when the last retry failed (the end itself is not announced again)',
+		'subscription.cancelled' => 'A subscription was cancelled; it runs until next_charge_at and is not charged again (its end that day is not announced)',
+		'subscription.paused'    => 'A subscription was paused: nothing is charged until it is resumed',
+		'subscription.resumed'   => 'A paused subscription was resumed and is charged again from next_charge_at',
 		'product.created'      => 'A new product was added',
 		'product.updated'      => 'A product was changed',
 		// Moving a product to the Recycle Bin through the API announces this
