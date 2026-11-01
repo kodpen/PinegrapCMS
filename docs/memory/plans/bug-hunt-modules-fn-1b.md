@@ -28,11 +28,11 @@ description: Module list of plans/bug-hunt.md, part 1b: includes/fn/ modules lin
 
 - `office`: done (#4946: a run property turned off with `w:val="off"` showed its formatting in the Word preview)
 
-- `office_edit`: clean for addresses, value parsing, save lock, file replace, save package; sheet/docx patching not read
+- `office_edit`: clean (sheet/docx patching read; `locked` is xsd:boolean, no "off")
 
 - `ops_alerts`: clean; lead: webhook_failing mails raw webhook URLs
 
-- `order_completion`: done (#4884); receipt, ship dates, line forms, rewards, from_payment not read
+- `order_completion`: done (#4884, #PRNUM: DST end dates); line forms, from_payment not read
 
 - `order_list`: clean
 
