@@ -38,7 +38,7 @@ description: Module list of plans/bug-hunt.md, part 2: includes/fn/ modules pric
 
 - `shipment_lookup`: open
 
-- `shipment_tracking`: open
+- `shipment_tracking`: clean (MJ)
 
 - `shipping`: taken by LL, #4625
 
