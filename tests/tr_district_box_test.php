@@ -34,24 +34,39 @@ function tr_district_box_test_db_stub()
 	}
 }
 
-// A Turkish address gets the box, by code or by name, once the column exists.
-function test_tr_district_box_shown_for_turkey()
+// A Turkish address is asked as İl and İlçe: the city box is the district,
+// so the separate box is never drawn for it, even when the carrier asks.
+function test_tr_district_box_hidden_for_turkey()
 {
-	pg_assert_true(pg_ship_to_district_shown('TR', false, true), 'code');
-	pg_assert_true(pg_ship_to_district_shown('tr', false, true), 'lower-case code');
-	pg_assert_true(pg_ship_to_district_shown('Turkey', false, true), 'English name');
-	pg_assert_true(pg_ship_to_district_shown('Türkiye', false, true), 'Turkish name');
+	pg_assert_false(pg_ship_to_district_shown('TR', false, true), 'code');
+	pg_assert_false(pg_ship_to_district_shown('tr', true, true), 'lower-case code, carrier asks');
+	pg_assert_false(pg_ship_to_district_shown('Turkey', true, true), 'English name');
+	pg_assert_false(pg_ship_to_district_shown('Türkiye', true, true), 'Turkish name');
 	pg_assert_true(pg_ship_to_district_country_is_tr(' TR '), 'spaces');
 }
 
-// Another country gets it only when the carrier's driver asks for it.
-function test_tr_district_box_hidden_elsewhere()
+// An address abroad gets it only when the carrier's driver asks for it.
+function test_tr_district_box_abroad_when_the_carrier_asks()
 {
 	pg_assert_false(pg_ship_to_district_shown('DE', false, true), 'Germany');
 	pg_assert_false(pg_ship_to_district_shown('US', false, true), 'United States');
 	pg_assert_false(pg_ship_to_district_shown('', false, true), 'no country');
 	pg_assert_true(pg_ship_to_district_shown('DE', true, true), 'driver asks');
+	pg_assert_true(pg_ship_to_district_shown('', true, true), 'driver asks, no country yet');
 	pg_assert_false(pg_ship_to_district_carrier_asks(''), 'no carrier');
+}
+
+// What is stored: a Turkish recipient's district is the city box (İlçe),
+// whatever the hidden box held; abroad the typed box while the carrier asks,
+// else nothing.
+function test_tr_district_box_value_by_country()
+{
+	pg_assert_same('Kadıköy', pg_ship_to_district_value('', ' Kadıköy ', 'TR', false), 'Turkey: the city box');
+	pg_assert_same('Kadıköy', pg_ship_to_district_value('Moda', 'Kadıköy', 'Türkiye', true), 'Turkey: the box is ignored');
+	pg_assert_same('', pg_ship_to_district_value('', '', 'TR', false), 'Turkey: no city');
+	pg_assert_same(str_repeat('ç', 50), pg_ship_to_district_value('', str_repeat('ç', 60), 'TR', false), 'cleaned');
+	pg_assert_same('Mitte', pg_ship_to_district_value(' Mitte ', 'Berlin', 'DE', true), 'abroad, carrier asks');
+	pg_assert_same('', pg_ship_to_district_value('Mitte', 'Berlin', 'DE', false), 'abroad, nobody asks');
 }
 
 // Before step 11.0.134 nothing draws the box, even for Turkey.
