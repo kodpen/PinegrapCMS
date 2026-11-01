@@ -1,6 +1,6 @@
 ---
 name: workspace-flows-visual-spec
-description: Plan (owner request 2026-10-27, draft): the Flows canvas look in numbers; line widths, type colours and tones, thread sag and gaps, icons, run flags, the mini window, template motion
+description: The Flows canvas look in numbers (owner, 2026-10-27): lines, type colours and tones, thread sag, icons, run flags, mini window, template motion; all on screen (#4386)
 ---
 
 ## How are lines drawn?
@@ -30,5 +30,8 @@ description: Plan (owner request 2026-10-27, draft): the Flows canvas look in nu
 - Template placement: boxes appear one by one (420 ms each, 150 ms apart, rising and scaling up from 92 %), arrows grow (200 ms), threads draw (650 ms, 200 ms apart), then the setup panel slides in. With prefers-reduced-motion it is placed at once.
 
 ## Where are the rules behind it?
-- workspace/workspace-flows-thread-drawing.md, workspace-flows-channels.md, workspace/workspace-flows-template-format.md, workspace-flows-data-passing.md (D8).
-- The steps that bring the boxes, arrows, icons, palette and flow list to it: workspace-flows-look.md.
+- workspace-flows-thread-drawing.md, -box-look.md, -list.md, -canvas.md, -run-flag.md, -template-setup.md; workspace-flow-draft-card-window.md.
+
+## Is everything in it on screen?
+- Yes (#4386): run flags, template motion, the mini window, threads and colours match the code.
+- Yes/no, person, date and address colours are not drawn: outputs are only number or text (`ws_step_output_types()`). A new output type takes its colour, tones and ring icon from here (`THREAD_TONES`, `.wsf-tone-*`, `.ws-fd-tone-*`).
