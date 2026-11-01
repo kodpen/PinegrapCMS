@@ -498,3 +498,55 @@ function test_salon_google_reviews()
 	$widget = strpos($home, '"templateWidget":"google_reviews"');
 	pg_assert_true($sample !== false && $widget !== false && $sample < $widget, 'the sample words stay, the widget after them');
 }
+
+// The booking links of the team and services pages carry what was chosen
+// (#4801): each value lands in a booking form field that starts with it
+// from the page address, and a pick list's value is one of its answers.
+function test_salon_booking_links_fill_the_form()
+{
+	$d = _test_salon_load();
+	$controls = _pg_cf_controls($d['booking']['widgets']['appointment_form']['tree']);
+	$map = array();
+	foreach ($controls as $key => $c) {
+		$map[$key] = array('type' => isset($c['type']) ? $c['type'] : '', 'office_use_only' => '0', 'maxlength' => '0');
+	}
+	foreach (array('service' => 'service', 'stylist' => 'stylist', 'notes' => 'notes') as $field => $param) {
+		pg_assert_same($param, isset($controls[$field]['url_param']) ? $controls[$field]['url_param'] : '', $field . ' starts from ?' . $param);
+	}
+
+	$links = array();
+	foreach ($d['pages'] as $p) {
+		$nodes = array();
+		_test_salon_nodes($p['tree'], $nodes);
+		foreach ($nodes as $n) {
+			$href = isset($n['props']['href']) ? (string)$n['props']['href'] : '';
+			if (strpos($href, '{{page:appointment}}?') === 0) $links[] = array($p['key'], $href);
+		}
+	}
+	$by_page = array();
+	foreach ($links as $l) $by_page[$l[0]][] = $l[1];
+	pg_assert_same(count($d['team']), count(isset($by_page['team']) ? $by_page['team'] : array()), 'each stylist\'s card books with them');
+	pg_assert_same(3, count(isset($by_page['services']) ? $by_page['services'] : array()), 'each package books it');
+
+	$stylists = 0;
+	$notes = 0;
+	foreach ($links as $l) {
+		parse_str((string)parse_url(substr($l[1], strlen('{{page:appointment}}')), PHP_URL_QUERY), $request);
+		pg_assert_true(!empty($request), $l[0] . ': a choice in ' . $l[1]);
+		$values = pg_cf_url_prefill_values($controls, $map, $request);
+		foreach ($request as $param => $value) {
+			$field = array_search($param, array('service' => 'service', 'stylist' => 'stylist', 'notes' => 'notes'), true);
+			pg_assert_true($field !== false, $l[0] . ': ?' . $param . ' names a field');
+			pg_assert_same($value, isset($values[$field]) ? $values[$field] : null, $l[0] . ': ' . $field . ' starts with ' . $value);
+			if (!empty($controls[$field]['options'])) {
+				$options = array();
+				foreach ($controls[$field]['options'] as $o) $options[] = (string)$o['value'];
+				pg_assert_same($value, pg_cf_match_option($value, $options), $l[0] . ': ' . $value . ' is an answer of ' . $field);
+			}
+			$stylists += ($field === 'stylist') ? 1 : 0;
+			$notes += ($field === 'notes') ? 1 : 0;
+		}
+	}
+	pg_assert_same(count($d['team']), $stylists, 'every stylist named as the list names them');
+	pg_assert_same(3, $notes, 'every package goes into the notes');
+}

@@ -203,6 +203,13 @@ $service_titles = array();
 foreach ($services as $s) $service_titles[] = $s['title'];
 $team_choices = array(lang('No preference'));
 foreach ($team as $t) $team_choices[] = $t['name'] . ' · ' . $t['role'];
+// The query string of a link that opens the booking form with a choice
+// made: the form's Service (?service=), Stylist (?stylist=) and notes
+// (?notes=) fields start with these values (_cf.url_param). A stylist is
+// named as the Stylist list names them.
+$appointment_query = function ($params) {
+    return http_build_query($params, '', '&', PHP_QUERY_RFC3986);
+};
 $time_windows = array(
     lang('Morning (09:00–12:00)'),
     lang('Midday (12:00–15:00)'),
@@ -507,10 +514,12 @@ $input = function ($id, $type, $name, $autocomplete = '', $required = true, $cf 
     if ($cf) $props['_cf'] = $cf;
     return $el('input', 'form-control', lang('Field'), array(), $props);
 };
-$textarea = function ($id, $name, $rows, $required = true) use ($el, $attr) {
+$textarea = function ($id, $name, $rows, $required = true, $cf = array()) use ($el, $attr) {
     $attrs = array($attr('name', $name), $attr('rows', (string)$rows));
     if ($required) $attrs[] = $attr('required', '');
-    return $el('textarea', 'form-control', lang('Field'), array(), array('id' => $id, '_attrs' => $attrs));
+    $props = array('id' => $id, '_attrs' => $attrs);
+    if ($cf) $props['_cf'] = $cf;
+    return $el('textarea', 'form-control', lang('Field'), array(), $props);
 };
 // A pick list: the first, empty option is the prompt, not an answer.
 // $selected is the answer chosen to begin with (no prompt then).
