@@ -111,15 +111,17 @@ function test_api_customers_every_route_applies_the_group_rule()
 		pg_assert_true(
 			(strpos($source, 'api_customer_owner_filter(') !== false)
 				|| (strpos($source, 'api_customer_reachable_or_fail(') !== false)
-				|| (strpos($source, 'api_customer_create_group_or_fail(') !== false),
+				|| (strpos($source, 'api_customer_create_group_or_fail(') !== false)
+				|| (strpos($source, 'api_customer_subscription_move_check(') !== false),
 			$route['id'] . ': ' . $route['handler'] . '() applies the group rule'
 		);
 	}
 
-	pg_assert_same(8, $found, 'list, get, wishlist, consents, create, update and both deletes');
+	pg_assert_same(12, $found, 'list, get, wishlist, consents, subscriptions and their three moves, create, update and both deletes');
 
 	pg_assert_contains('api_customer_owner_filter(', api_customers_test_function_source('api_customer_reachable_or_fail'), 'the record loader');
 	pg_assert_contains('api_customer_create_group(', api_customers_test_function_source('api_customer_create_group_or_fail'), 'the create\'s group');
+	pg_assert_contains('api_customer_reachable_or_fail(', api_customers_test_function_source('api_customer_subscription_move_check'), 'the subscription moves');
 }
 
 // Putting a contact in a group reaches only contacts the owner already reaches,

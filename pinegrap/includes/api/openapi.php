@@ -668,6 +668,7 @@ function api_openapi_objects()
         'PriceHistoryEntry' => 'api_price_history_entry_schema',
         'WishlistItem'      => 'api_wishlist_item_schema',
         'Consent'           => 'api_consent_schema',
+        'Subscription'      => 'api_subscription_schema',
         'ProductMarketplace' => 'api_product_marketplace_schema',
         'Seo'          => 'api_seo_schema',
         'Form'           => 'api_form_schema',

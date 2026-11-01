@@ -950,6 +950,13 @@ function pg_subscription_card_link_state($source, $key, $row, $now)
  */
 function pg_subscription_mail_send($id, $event_id, $event, $status_before, $status_after, $order_id = 0, $detail = '')
 {
+    // Every written subscription event passes here, from the status writer
+    // and both renewal paths, so the webhook goes out from the same place:
+    // once per event, a webhook delivered twice included.
+    if ((int) $event_id > 0) {
+        pg_subscription_announce($id, $event, $status_before, $status_after, $order_id);
+    }
+
     $action = pg_subscription_mail_action($event, $status_before, $status_after);
 
     if (((int) $event_id <= 0) || ($action === '')) {
@@ -990,6 +997,119 @@ function pg_subscription_mail_send($id, $event_id, $event, $status_before, $stat
     } catch (\Throwable $exception) {
         log_activity(pg_log_lang(array(
             'string' => 'The e-mail of subscription {var:1} could not be prepared: {var:2}',
+            'vars'   => array((int) $id, $exception->getMessage()),
+        )), 'UNKNOWN');
+
+        return false;
+    }
+
+    return true;
+}
+
+/* ---------------------------------------------------------------------------
+   Webhooks
+   --------------------------------------------------------------------------- */
+
+/**
+ * The webhook event a subscription event is announced as. A row paid again
+ * after a failure is told by its renewed event; the end of a row is not
+ * announced (the failure that ended the ladder or the cancel already was).
+ * Pure.
+ *
+ * @param string $event         subscription_events.kind
+ * @param string $status_before
+ * @param string $status_after
+ * @return string a subscription.* name, '' for none
+ */
+function pg_subscription_webhook_event($event, $status_before, $status_after)
+{
+    switch ((string) $event) {
+        case 'renewed':
+            return 'subscription.renewed';
+
+        case 'renewal_failed':
+        case 'confirm_needed':
+            return 'subscription.failed';
+
+        case 'status_paused':
+            return 'subscription.paused';
+
+        case 'status_active':
+            return ((string) $status_before === 'paused') ? 'subscription.resumed' : '';
+
+        case 'status_cancelled':
+            return 'subscription.cancelled';
+    }
+
+    return '';
+}
+
+/**
+ * The payload of a subscription.* event: the identifiers, the move and the
+ * money; never the card token or the payment service's ids. Pure.
+ *
+ * @param array  $row           the subscriptions row after the event
+ * @param int    $contact_id    the customer record of the row's account, 0
+ *                              for none
+ * @param string $event         subscription_events.kind
+ * @param string $status_before
+ * @param int    $order_id      the renewal order, 0 for none
+ * @return array
+ */
+function pg_subscription_webhook_data($row, $contact_id, $event, $status_before, $order_id)
+{
+    $next = (int) ($row['next_charge_at'] ?? 0);
+
+    return array(
+        'id'              => (int) ($row['id'] ?? 0),
+        'customer_id'     => ((int) $contact_id > 0) ? (int) $contact_id : null,
+        'product_id'      => (int) ($row['product_id'] ?? 0),
+        'status'          => (string) ($row['status'] ?? ''),
+        'previous_status' => (string) $status_before,
+        'kind'            => (string) $event,
+        'order_id'        => ((int) $order_id > 0) ? (int) $order_id : null,
+        'amount'          => (int) ($row['amount'] ?? 0),
+        'currency'        => (string) ($row['currency'] ?? ''),
+        'next_charge_at'  => ($next > 0) ? gmdate('Y-m-d\TH:i:s\Z', $next) : null,
+        'retry_count'     => (int) ($row['retry_count'] ?? 0),
+    );
+}
+
+/**
+ * Announces a written subscription event to the webhook subscribers
+ * (pg_announce()). A failure here never stops the move or the renewal that
+ * called it.
+ *
+ * @param int    $id
+ * @param string $event
+ * @param string $status_before
+ * @param string $status_after
+ * @param int    $order_id
+ * @return bool true when an event was handed over
+ */
+function pg_subscription_announce($id, $event, $status_before, $status_after, $order_id = 0)
+{
+    $name = pg_subscription_webhook_event($event, $status_before, $status_after);
+
+    if ($name === '') {
+        return false;
+    }
+
+    try {
+        $row = db_item("SELECT s.id, s.product_id, s.status, s.amount, s.currency, s.next_charge_at, s.retry_count,
+                COALESCE(u.user_contact, 0) AS contact_id
+            FROM subscriptions AS s
+            LEFT JOIN user AS u ON u.user_id = s.user_id
+            WHERE s.id = '" . e((int) $id) . "'");
+
+        if (!$row) {
+            return false;
+        }
+
+        pg_announce($name, pg_subscription_webhook_data($row, (int) $row['contact_id'], $event, $status_before, $order_id));
+    } catch (\Throwable $exception) {
+        log_activity(pg_log_lang(array(
+            'string' => 'The webhook of subscription {var:1} could not be prepared: {var:2}',
             'vars'   => array((int) $id, $exception->getMessage()),
         )), 'UNKNOWN');
 

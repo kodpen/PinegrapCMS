@@ -527,6 +527,222 @@ function api_consent_schema() {
 
 }
 
+// A customer's store-run subscriptions (includes/fn/subscriptions.php): the
+// rows of the accounts linked to the contact (user.user_contact), newest
+// first, cursor paged by row.
+function api_customers_subscriptions($params) {
+
+	$id = (int)$params['id'];
+
+	api_customer_reachable_or_fail($id, 'contacts.id');
+
+	$before = 0;
+
+	if (isset($params['cursor']) && $params['cursor'] !== '') {
+
+		$cursor = api_cursor_decode($params['cursor']);
+
+		if ($cursor === null) {
+
+			api_fail(400, 'invalid_cursor', lang('The cursor is not readable. Start the listing again without one.'), 'cursor');
+
+		}
+
+		$before = (int)$cursor['i'];
+
+	}
+
+	$limit = isset($params['limit']) ? (int)$params['limit'] : 50;
+
+	$rows = pg_subscriptions_ready() ? api_rows(api_customer_subscriptions_sql($id, $before, $limit + 1)) : array();
+
+	$next = null;
+
+	if (count($rows) > $limit) {
+
+		array_pop($rows);
+
+		$last = end($rows);
+
+		$next = api_cursor_encode((int)$last['id'], (int)$last['id']);
+
+	}
+
+	$out = array();
+
+	foreach ($rows as $row) {
+
+		$out[] = api_subscription_present($row);
+
+	}
+
+	api_ok_list($out, $limit, $next);
+
+}
+
+// The columns a subscription is presented with, the product's name from the
+// first order's line (the name it was bought under) or the product. The card
+// token is never read here.
+function api_customer_subscriptions_select_sql() {
+
+	return "SELECT s.id, s.user_id, s.product_id, s.order_id, s.status, s.period, s.amount, s.currency,
+			s.next_charge_at, s.retry_count, s.card_last4, s.created_at, s.cancelled_at, s.ended_at,
+			COALESCE(oi.product_name, p.name, '') AS product_name
+		FROM subscriptions AS s
+		LEFT JOIN order_items AS oi ON oi.id = s.order_item_id
+		LEFT JOIN products AS p ON p.id = s.product_id";
+
+}
+
+// The page of a contact's subscriptions before the row $before (0 for the
+// first page).
+function api_customer_subscriptions_sql($contact_id, $before, $rows) {
+
+	return api_customer_subscriptions_select_sql() . "
+		WHERE s.user_id IN (SELECT user_id FROM user WHERE user_contact = '" . (int)$contact_id . "')"
+		. (((int)$before > 0) ? " AND (s.id < '" . (int)$before . "')" : '') . "
+		ORDER BY s.id DESC
+		LIMIT " . max(1, (int)$rows);
+
+}
+
+function api_subscription_present($row) {
+
+	return array(
+		'id'             => (int)$row['id'],
+		'product_id'     => (int)$row['product_id'],
+		'product_name'   => (string)$row['product_name'],
+		'order_id'       => (int)$row['order_id'],
+		'status'         => (string)$row['status'],
+		'period'         => (string)$row['period'],
+		'amount'         => (int)$row['amount'],
+		'currency'       => (string)$row['currency'],
+		'next_charge_at' => api_time($row['next_charge_at']),
+		'retry_count'    => (int)$row['retry_count'],
+		'card_last4'     => (string)$row['card_last4'],
+		'actions'        => array_values(array_diff(pg_subscription_customer_actions($row), array('update_card'))),
+		'created_at'     => api_time($row['created_at']),
+		'cancelled_at'   => api_time($row['cancelled_at']),
+		'ended_at'       => api_time($row['ended_at'])
+	);
+
+}
+
+function api_subscription_schema() {
+
+	return array(
+		'id'             => 'integer',
+		'product_id'     => 'integer',
+		'product_name'   => 'string',
+		'order_id'       => 'integer',
+		'status'         => 'string',
+		'period'         => 'string',
+		'amount'         => 'integer',
+		'currency'       => 'string',
+		'next_charge_at' => 'string?',
+		'retry_count'    => 'integer',
+		'card_last4'     => 'string',
+		'actions'        => 'string[]',
+		'created_at'     => 'string?',
+		'cancelled_at'   => 'string?',
+		'ended_at'       => 'string?'
+	);
+
+}
+
+// Each move rehearses with X-Dry-Run: everything above the stop is the real
+// call's checks.
+function api_customers_subscriptions_pause($params) {
+
+	$row = api_customer_subscription_move_check($params, 'pause');
+
+	api_dry_run_stop('paused', 'subscription', array('id' => (int)$row['id'], 'status' => 'paused'));
+
+	api_customer_subscription_move($row, 'pause');
+
+}
+
+function api_customers_subscriptions_resume($params) {
+
+	$row = api_customer_subscription_move_check($params, 'resume');
+
+	api_dry_run_stop('resumed', 'subscription', array('id' => (int)$row['id'], 'status' => 'active'));
+
+	api_customer_subscription_move($row, 'resume');
+
+}
+
+function api_customers_subscriptions_cancel($params) {
+
+	$row = api_customer_subscription_move_check($params, 'cancel');
+
+	api_dry_run_stop('cancelled', 'subscription', array('id' => (int)$row['id'], 'status' => 'cancelled'));
+
+	api_customer_subscription_move($row, 'cancel');
+
+}
+
+// The line the subscription's history keeps for a move made through the API:
+// the application, as the operator's screen names its user.
+function api_subscription_move_detail($app) {
+
+	$suffix = ' (#' . (int)($app['id'] ?? 0) . ')';
+
+	$name = trim((string)($app['name'] ?? ''));
+
+	return 'api: ' . ltrim(mb_substr($name, 0, 255 - 5 - mb_strlen($suffix)) . $suffix);
+
+}
+
+// Pause, resume or cancel at the period's end: the moves the customer has in
+// My Account, under the same status rules. Answers the row, or refuses with
+// 404 (not this customer's subscription) or 409.
+function api_customer_subscription_move_check($params, $action) {
+
+	$id = (int)$params['id'];
+
+	api_customer_reachable_or_fail($id, 'contacts.id');
+
+	$row = pg_subscriptions_ready()
+		? api_row("SELECT * FROM subscriptions
+			WHERE (id = '" . (int)$params['subscription_id'] . "')
+				AND user_id IN (SELECT user_id FROM user WHERE user_contact = '" . $id . "')
+			LIMIT 1")
+		: null;
+
+	if ($row === null) {
+
+		api_fail_not_found(lang('Subscription'));
+
+	}
+
+	$refusal = pg_subscription_operator_refusal($row, $action);
+
+	if ($refusal !== '') {
+
+		api_fail(409, 'subscription_move_refused', $refusal);
+
+	}
+
+	return $row;
+
+}
+
+// Makes the checked move through the shared one (pg_subscription_store_move()),
+// so the event, the mail and the webhook are those of My Account, and answers
+// the row as it stands.
+function api_customer_subscription_move($row, $action) {
+
+	if (!pg_subscription_store_move($row, $action, api_subscription_move_detail(api_current_app()), pg_subscription_customer_io())) {
+
+		api_fail(409, 'subscription_move_refused', lang('The subscription changed meanwhile. Look at it again and retry.'));
+
+	}
+
+	api_ok(api_subscription_present(api_row(api_customer_subscriptions_select_sql() . " WHERE s.id = '" . (int)$row['id'] . "' LIMIT 1")));
+
+}
+
 // What api_customer_present() returns, declared for the OpenAPI document.
 //
 // Every column but the id may be null: a contact is created with what is known
