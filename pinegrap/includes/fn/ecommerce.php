@@ -445,6 +445,23 @@ function pg_offer_gift_refuse($order_id, $offer_id, $offer_action_id)
     }
 }
 
+// The quantity a cart form posts for one line, as the classic cart reads it:
+// thousands separators (commas) and surrounding spaces dropped, then a whole
+// number is the new quantity and 0 takes the line out. Anything else (an
+// emptied box, a minus sign, a decimal, a typo, a list) is null: the line
+// keeps its quantity instead of being removed.
+function pg_cart_posted_quantity($raw)
+{
+    if (!is_string($raw)) {
+        return null;
+    }
+    $raw = trim(str_replace(',', '', $raw));
+    if (!preg_match('/^\d{1,9}$/', $raw)) {
+        return null;
+    }
+    return (int) $raw;
+}
+
 // The shopper took a line out of the cart: a quantity of 0 on the cart
 // screens. A gift the offer placed by itself is remembered as refused, then
 // the line goes the way every removal does (remove_order_item()): with its
