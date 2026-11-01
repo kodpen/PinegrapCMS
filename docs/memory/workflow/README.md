@@ -19,7 +19,7 @@ Project overview, owner rules, decisions already made, git and branches, sandbox
 
 ## Files
 
-- architect-asking.md: How a session asks a decision question (2026-10-27): search the architect issues first, one issue per decision, the body with a Türkçe özet block, the PR back to draft, then the session ends
+- architect-asking.md: How a session asks a decision question or the owner's approval of screenshots: search first, one architect issue each, a Türkçe özet block, then the session ends
 - architect.md: Decision questions (2026-10-27): an architect issue; the architect analyses it, decides technical ones, asks the owner schema and product-behaviour ones as a selectable list (erdal), records it
 - branch-guards.md: tools/check_pr.php (#1878): CI and pre-push fail a commit trailer, an author or committer other than Erdal Güral, a changelog.txt or data/config.php change; warn above 1,000 product lines
 - ci-workflows.md: GitHub Actions workflows: what each runs and when, the PHP versions the checks run on (8.3, 7.1), action versions (major tags, node24) and how to bump them, the Node line, runner labels
