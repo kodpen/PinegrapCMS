@@ -6,7 +6,7 @@ description: Steps W1-W10 of plans/webp-same-address.md: negotiation, switches, 
 ## Which steps are there?
 - S under 400 product lines, M about 1,000. W1 and W3 touch different files and may run side by side; W2 and W3 both change `includes/image_engine.php`, one after the other.
 
-- W1 (M) Negotiation. `free`.
+- W1 (M) Negotiation. Done (#4690).
   - New `includes/image_negotiation.php` (gate `PG_GET_FILE` or `PG_FUNCTIONS_DIR`, as `includes/http_range.php`), pure: `pg_image_accepts($accept, $type)` (q-values; `q=0` refuses; `image/*` and `*/*` never count), `pg_image_behind_proxy($server)`, `pg_image_negotiated_format()`. `tests/image_negotiation_test.php`.
   - `get_file.php`, after the access checks, for jpg/jpeg/jpe/png asked without `f`, not an attachment, ERP or workspace file: the switch through one function on `$router_config_row` (the router read `SELECT *`: no extra query; bit 4, question 3); the derivative as webp at the asked width (0 = own); `Vary: Accept` on every answer that could differ; download name `<stem>.webp`; `f=original` skips it. Nothing sets the switch before W2, so W1 alone changes no site.
   - Memory: `platform/image-derivatives.md` (plain-address copies); `page-cache-proxy-rules.md` (pictures and `Vary`).
