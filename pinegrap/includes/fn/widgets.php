@@ -6883,6 +6883,22 @@ function pg_sw_render_context($set = null)
 }
 
 /**
+ * The page being drawn, for a widget whose data is the page's own (a custom
+ * form whose fields are drawn on it). A visitor's request registers its page
+ * (pg_rendered_page()); the editor's Preview registers none and names the page
+ * in pg_sw_render_context()'s 'page_id'. 0 when neither knows one.
+ *
+ * @return int
+ */
+function pg_sw_drawn_page_id()
+{
+    $page_id = function_exists('pg_rendered_page') ? (int)pg_rendered_page() : 0;
+    if ($page_id > 0) return $page_id;
+    $ctx = pg_sw_render_context();
+    return isset($ctx['page_id']) ? max(0, (int)$ctx['page_id']) : 0;
+}
+
+/**
  * The page's address names a record, product or product group that is not
  * there, or a record the visitor may not see: the widget draws its not-found
  * state, and the response says so. The status is 404 with an X-Robots-Tag
@@ -8377,7 +8393,7 @@ function _render_system_widget_custom_form($tree_json, $widget_id, $cfg = array(
     // each of those pages then collects its own submissions.
     $form_source = _pg_cf_widget_owns_page_form($cfg) ? 'page' : 'existing';
 
-    $rendered_page_id = function_exists('pg_rendered_page') ? (int)pg_rendered_page() : 0;
+    $rendered_page_id = pg_sw_drawn_page_id();
     $form_page_id = 0;
     if ($form_source === 'page') {
         $form_page_id = $rendered_page_id;
@@ -8474,7 +8490,8 @@ function _render_system_widget_custom_form($tree_json, $widget_id, $cfg = array(
     // Filled in on someone else's behalf: said on the form, as the legacy
     // screen says it. The messages node below prints and consumes it.
     $cf_contact_off = function_exists('pg_cf_connect_to_contact_off') && pg_cf_connect_to_contact_off();
-    if ($cf_contact_off && $cf_liveform && $mode !== 'background') {
+    // A background render (the editor's Preview) writes nothing to the session.
+    if ($cf_contact_off && $cf_liveform && $mode !== 'background' && !pg_seo_rendering()) {
         $cf_off_notice = lang('The connect to contact feature has been disabled for this visit to this form, so your contact information will not be prefilled and will not be updated.');
         if (!in_array($cf_off_notice, $cf_liveform->get_notices(), true)) $cf_liveform->add_notice($cf_off_notice);
     }
