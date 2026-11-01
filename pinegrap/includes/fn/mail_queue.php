@@ -265,6 +265,29 @@ function pg_mail_clip($text, $length)
     return substr($text, 0, $length);
 }
 
+// The mail_outbox columns for a row a dead run left in 'sending' with
+// $attempts counted before it: the lost attempt is counted, and the row
+// goes back to the queue on the retry ladder, or is failed once the attempts
+// run out (pg_mail_queue_gives_up()). $now is the current Unix time.
+function pg_mail_stale_claim_update($attempts, $max_attempts, $now)
+{
+    $attempt = (int) $attempts + 1;
+
+    $update = array(
+        'status'     => 'failed',
+        'attempts'   => $attempt,
+        'last_error' => pg_mail_clip(lang('The job stopped while sending this message.'), 500),
+        'claimed_at' => 0,
+    );
+
+    if (!pg_mail_queue_gives_up($attempt, $max_attempts, false)) {
+        $update['status'] = 'queued';
+        $update['send_after'] = (int) $now + pg_mail_backoff($attempt);
+    }
+
+    return $update;
+}
+
 // Whether the 2026.4.8 upgrade has created mail_outbox.
 function pg_mail_queue_ready()
 {
@@ -443,14 +466,42 @@ function pg_mail_queue_run($limit = 25, $seconds = 20)
 
     // A run that died while sending (fatal error, killed process) leaves its
     // row in 'sending'. Fifteen minutes is far longer than any send takes, so
-    // such a row goes back to the queue. If the message did leave before the
-    // process died it is sent twice; losing it would be worse.
-    db(
-        "UPDATE mail_outbox
-        SET status = 'queued', claimed_at = 0
+    // such a row goes back to the queue, counting the attempt: a message
+    // whose send kills the process every time is given up after the last
+    // one instead of being picked first by every run forever. If the message
+    // did leave before the process died it is sent twice; losing it would be
+    // worse. The claim time in the WHERE keeps two overlapping runs from
+    // counting the same attempt twice.
+    $stale = db_items(
+        "SELECT id, attempts, recipient, claimed_at
+        FROM mail_outbox
         WHERE
             (status = 'sending')
             AND (claimed_at < " . (time() - 900) . ")");
+
+    foreach ($stale as $row) {
+        $update = pg_mail_stale_claim_update($row['attempts'], $max_attempts, time());
+
+        $set = array();
+
+        foreach ($update as $column => $value) {
+            $set[] = $column . " = '" . e((string) $value) . "'";
+        }
+
+        db(
+            "UPDATE mail_outbox
+            SET " . implode(', ', $set) . "
+            WHERE
+                (id = '" . (int) $row['id'] . "')
+                AND (status = 'sending')
+                AND (claimed_at = '" . (int) $row['claimed_at'] . "')");
+
+        if (($update['status'] === 'failed') && (mysqli_affected_rows(db::$con) > 0)) {
+            $result['failed']++;
+
+            $given_up[] = array('id' => (int) $row['id'], 'recipient' => $row['recipient'], 'reason' => $update['last_error']);
+        }
+    }
 
     for ($looked = 0; ($looked < (int) $limit) && (microtime(true) < $deadline); $looked++) {
 
