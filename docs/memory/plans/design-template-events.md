@@ -28,7 +28,7 @@ description: Plan for the Events and Conferences template (pinegrap-events): eve
 
 - 4 Account and staff: `account.php`; test `design_template_events_account_test.php`. **Done (#4686).**
 
-- 5 Assembly: `pinegrap-events.php` (header, order, icon, description, highlights, look, palette, contact group, folders, catalog, `pe-` User Styles, search map), the shared tests' lists, `designer/design-template-events.md`, plan deleted; PR body names `[NEW] Added the Events and Conferences design template`. After 4.
+- 5 Assembly: `pinegrap-events.php` (header, order, icon, description, highlights, look, palette, contact group, folders, catalog, `pe-` User Styles, search map), the shared tests' lists, `designer/design-template-events.md`, plan deleted; PR body names `[NEW] Added the Events and Conferences design template`. In progress.
 
 ## Where to start?
 - `pinegrap-salon/` (same layout), `pinegrap-cafe.php` (events form, `$event_on`, lists, threads, Google Reviews), [[design-templates-file-format]], [[design-template-threads]]; `pinegrap-bookshop.php` shop pages for 3a.
