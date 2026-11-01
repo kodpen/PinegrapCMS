@@ -39,7 +39,7 @@ description: Steps E1-E10 of plans/image-editor.md: core modal, crop, server sav
 - E10 (M) Redaction. Screen 06. Done (#4579).
   - Pixelate, blur, solid box and brush-shaped areas; browser preview, burned in by server step 4; metadata stripped; the versions stay and the served file loses its metadata (#4203).
 
-- E10b (S) Redaction through save.url. `free`.
+- E10b (S) Redaction through save.url. Done (#4745).
   - A save to another endpoint (`save.url`: the Workspace's `workspace_file_save.php`) loses the redaction: the redact part sends its masks only for replace and copy and `pg_image_editor_render()` takes none, so the saved picture shows what was covered. The hook sends them for `url` too; `pg_image_editor_render()` checks them with `pg_image_editor_take_redactions()`, burns them in as a save's step 4 does and removes the masks on every path. A test renders a solid area through it; try a redacted Workspace picture.
 
 - E10c (S) A redacted Workspace replace. `free` after E10b.
