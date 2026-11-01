@@ -1285,6 +1285,23 @@ class liveform {
         return $output;
     }
 
+    /**
+     * The warnings this form is carrying, as plain strings.
+     *
+     * get_warnings() returns them already wrapped in an alert; the visual
+     * designer shows them in its own toasts and needs the messages themselves.
+     *
+     * @return array
+     */
+    function get_warning_messages()
+    {
+        if (!isset($_SESSION['software']['liveforms'][$this->form][$this->index]['warnings'])) {
+            return array();
+        }
+
+        return (array) $_SESSION['software']['liveforms'][$this->form][$this->index]['warnings'];
+    }
+
     function get_warnings()
     {
         $output = '';

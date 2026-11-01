@@ -10019,3 +10019,29 @@ function pg_designer_tab_layout_save($style_id, $layout, $user)
     $out['layout'] = pg_designer_tab_layout_export($norm);
     return $out;
 }
+
+/**
+ * The messages a request left for the visual designer screen, as the list its
+ * own toasts show (sdDesign.messages, sdToast() in style_designer.js).
+ *
+ * The editor is a full-height application screen: the panel's alert boxes
+ * printed above it pushed the toolbar, canvas and side panels down by their
+ * own height. Errors come first and stay until closed; warnings next; the
+ * notices last, in the panel's success tone. Each message is markup already
+ * escaped by whoever added it to the liveform, as the alert boxes print it.
+ *
+ * Pure: no query.
+ *
+ * @return array list of array('type' => 'error'|'warning'|'success', 'message' => string)
+ */
+function pg_designer_screen_messages($errors, $warnings, $notices)
+{
+    $out = array();
+    foreach (array('error' => $errors, 'warning' => $warnings, 'success' => $notices) as $type => $list) {
+        foreach ((array)$list as $message) {
+            if (!is_string($message) || trim($message) === '') continue;
+            $out[] = array('type' => $type, 'message' => $message);
+        }
+    }
+    return $out;
+}

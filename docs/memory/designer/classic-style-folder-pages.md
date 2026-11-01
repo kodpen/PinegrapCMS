@@ -5,7 +5,7 @@ module: classic_style_design
 ---
 
 ## Which pages, and how is it asked?
-- Architect decision #2411 (c): Save asks. Opening lists them (`pg_classic_style_folder_pages()`: no `page_style`, no tree of their own, not binned, in a folder whose desktop style is this one by `pg_classic_style_folder_styles()`, the pure twin of `get_style()`); the editor shows "Also convert the N pages that take this style from their folder", on by default, the pages under a `<details>`. The box sits above the editor's form and posts with it through `form="style_designer_form"`.
+- Architect decision #2411 (c): Save asks. Opening lists them (`pg_classic_style_folder_pages()`: no `page_style`, no tree of their own, not binned, in a folder whose desktop style is this one by `pg_classic_style_folder_styles()`, the pure twin of `get_style()`); the editor shows "Also convert the N pages that take this style from their folder", on by default, the pages under a `<details>`. The box floats bottom left beside the editor (`.sd-classic-folder-pages`, `position: fixed`) and posts with it through `form="style_designer_form"`; in the flow above the form it pushed the full-height editor down (#4892).
 
 ## What does Save write?
 - Save with the box on (`classic_folder_pages=1`, only while `$converting`, designers only): `pg_classic_style_convert_folder_pages()` gives each page `page_style`, the open-time tree (frame component; the folded design-wide body classes on the root, `pg_classic_style_folder_page_tree()`) and its drawn `page_tree_code`; a page given a style or tree meanwhile is skipped by the UPDATE's own condition. The save's toast note counts them. Box cleared: they keep drawing `style_code`, and `select_style()` no longer offers the style to folders.

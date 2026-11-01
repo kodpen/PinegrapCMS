@@ -385,7 +385,7 @@ function pg_classic_style_folder_pages_field($pages)
         $items .= '<li>' . h((string)$p['page_name']) . '</li>';
     }
     return '
-            <div class="alert theme-secondary py-3 small mb-0" id="sd-classic-folder-pages">
+            <div class="alert theme-secondary py-3 small mb-0 shadow sd-classic-folder-pages" id="sd-classic-folder-pages">
                 <div class="form-field mb-0">
                     <input class="check" type="checkbox" id="sd-classic-folder-pages-on" name="classic_folder_pages" value="1" form="style_designer_form" checked>
                     <label for="sd-classic-folder-pages-on">' . h(count($pages) === 1
