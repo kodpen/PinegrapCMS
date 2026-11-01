@@ -7,7 +7,7 @@ module: widgets_catalog
 ## What was wrong?
 - The `catalog_item_view` starter tree (`assets/js/style_designer.src.js`, "Product Information (Tabs)") carried a static "Checkout Options" table: four sample methods and a "+9.90 TL" cash-on-delivery fee. The Online Store, Boutique and Bookshop product pages showed it whatever the store's payment settings said. A fee shown to buyers must not be invented.
 
-## How does it work now? (#4556, PR #PRNUM)
+## How does it work now? (#4556, PR #4616)
 - The starter's table body (`tbody`) carries `_bindings.section = payment_methods` (Section list of catalog_item_view). `_render_system_widget_catalog_item_view()` calls `_pg_civ_fill_payment_methods($tree_decoded, pg_civ_payment_method_rows(_pg_civ_payment_settings()))` before the comments frame drop and the split.
 - Rows (pure `pg_civ_payment_method_rows()`): card when the card switch is on and a gateway is set (fee = `ECOMMERCE_SURCHARGE_PERCENTAGE` as `{var:1}%`, "0%" when none), instalments under the card when the gateway is Iyzipay and `ECOMMERCE_IYZIPAY_INSTALLMENT` >= 2, bank transfer when `ECOMMERCE_OFFLINE_PAYMENT` is on, cash on delivery when offline is on and `pg_sms_code_on('cod')`, PayPal Express, Pay with iyzico, on account when `pg_erp_open_account()` is not null. Every fee cell but the card's is empty: no fee is invented.
 - Each row is a copy of the body's first `tr` (the designer's look) with each cell's first content node set (escaped); no `tr` to copy: a plain three-cell row.
