@@ -162,6 +162,11 @@ $file_list = array(
     'assets/lib/codemirror',
     'assets/lib/codemirror-5.65.9',
     'assets/lib/ckeditor_4_20/plugins/codemirror',
+    // The jQuery UI timepicker add-on. The panel's and the sites' date and
+    // time fields are drawn by assets/js/pg_datetime.js and pg_fields.js, so
+    // no page loads it. Dropped from the package with 2026.11.0.
+    'assets/lib/Jquery/jquery-ui-timepicker-addon-1.2.1.min.js',
+    'assets/lib/Jquery/jquery-ui-timepicker-addon-1.2.1.src.js',
     'assets/colorpicker',
     'assets/dropzone',
     'assets/file-explorer',

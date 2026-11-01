@@ -6,7 +6,8 @@
  * panel screen calls .datetimepicker() or .timepicker() since the date and
  * time fields moved to pg_fields.js, so the converted screens no longer load
  * the add-on, while they still print the picker options pg_fields.js reads.
- * The site renderers draw theirs on the same control, so no file loads it.
+ * The site renderers draw theirs on the same control, so no file loads it,
+ * and the add-on itself is no longer shipped.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -72,7 +73,8 @@ function test_bs6_timepicker_addon_loaded_nowhere()
 			continue;
 		}
 		$path = str_replace('\\', '/', substr($file->getPathname(), strlen($root)));
-		if (strpos($path, 'assets/lib/') === 0) {
+		// clean_up.php names the files to delete them on an updated site.
+		if ((strpos($path, 'assets/lib/') === 0) || ($path === 'clean_up.php')) {
 			continue;
 		}
 		if (strpos((string) file_get_contents($file->getPathname()), 'jquery-ui-timepicker-addon') !== false) {
@@ -101,4 +103,17 @@ function test_bs6_timepicker_addon_form_content_branches()
 		pg_assert_contains($hook, $source, 'content.php hooks its rows: ' . $hook);
 	}
 	pg_assert_false((bool) preg_match('/\\.(date)?(time)?picker\\(datetimepicker_options\\)/', $source), 'content.php calls no jQuery UI picker');
+}
+
+function test_bs6_timepicker_addon_files_are_gone_and_cleaned_up()
+{
+	$clean_up = bs6_timepicker_addon_test_source('clean_up.php');
+
+	foreach (array(
+		'assets/lib/Jquery/jquery-ui-timepicker-addon-1.2.1.min.js',
+		'assets/lib/Jquery/jquery-ui-timepicker-addon-1.2.1.src.js',
+	) as $path) {
+		pg_assert_false(is_file(dirname(__DIR__) . '/pinegrap/' . $path), $path . ' is not shipped');
+		pg_assert_contains("    '" . $path . "',\n", $clean_up, 'Cleanup deletes ' . $path . ' on an updated site');
+	}
 }
