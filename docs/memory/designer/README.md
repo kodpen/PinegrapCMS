@@ -102,7 +102,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - data-binding-to-content.md: Bind data to content elements (span, h1-h6, p, a, img), never structural table tags; tooling, the text slot a binding fills inside markup, and the characters a bound field name keeps.
 - design-asset-records.md: The design's CSS/JS asset rows (style_custom_css / style_custom_js JSON): module scripts, the per-page `pages` list and its tab:/key: references, where they are resolved, the Bootstrap Icons sheet.
 - design-framework.md: A visual design's framework (style.style_framework, bootstrap5 or custom): the pg_design_frameworks() registry, written once at creation, what a custom design does without, the new-design question.
-- design-template-cafe.md: Cafe template (and Clinic where shared): sample event weekdays, menu price hint, rating numbers through lang(), the catering guests pattern, the privacy page the consent boxes link (#3573, #3572).
+- design-template-cafe.md: Cafe and Clinic templates: event weekdays, price hint, rating numbers, guests pattern, consent privacy link, subject dates, booking links that fill the form.
 - design-template-comment-labels.md: Which comments labels the design templates set (singular nouns; `reply` on the forum topic and every conversation page) and why not the verb key `Reply` (#3453).
 - design-template-forum-blog.md: Forum template 1.3.0: the standard blog pages in the forum's look (blog, blog_post, blog_new, home_posts), the Blog Posts form and its samples, the post comments thread
 - design-template-forum-decisions.md: Owner decisions behind the forum template (2026-10-23): general features only, replies as comments, what is not built, and the general features it was built on, with their PRs

@@ -992,7 +992,18 @@ $dish_card = function () use ($el, $span, $para, $col, $image, $bind, $attr) {
 // An event of the lists: its photo with the date on a leaf over it, the
 // kind, the title, when and where, the words, the price and the way to
 // book a table for it.
-$event_card = function () use ($el, $span, $para, $icon, $col, $image, $bind, $bind_date, $attr, $link) {
+// A link to a template page that sends values of the record or list row
+// it is drawn in: $params maps the address name to the token it takes
+// (the renderer's __page_link, filled per row in a list).
+$page_link = function ($page_key, $params) {
+    $list = array();
+    foreach ($params as $name => $token) $list[] = array('name' => $name, 'token' => $token);
+    return array(
+        '_bindings'   => array('href' => '__page_link'),
+        '_bindParams' => array('href' => array('page_id' => '{{tab:' . $page_key . '}}', 'params' => $list)),
+    );
+};
+$event_card = function () use ($el, $span, $para, $icon, $col, $image, $bind, $bind_date, $attr, $link, $page_link) {
     return $col(array(
         $el('article', 'card h-100 border-0 shadow-sm overflow-hidden', lang('Event Card'), array(
             $el('div', 'position-relative', lang('Picture Area'), array(
@@ -1015,7 +1026,10 @@ $event_card = function () use ($el, $span, $para, $icon, $col, $image, $bind, $b
                 $para(lang('Two guitars, one voice and the autumn menu until late.'), 'mb-3', $bind('summary')),
                 $el('div', 'd-flex flex-wrap align-items-center justify-content-between gap-2 mt-auto', lang('Card Footer'), array(
                     $span(lang('Free entry'), 'small fw-semibold', lang('Price'), $bind('price')),
-                    $link(lang('Book a Table'), '{{page:reservation}}', 'btn btn-sm btn-outline-primary'),
+                    // The reservation form opens with the event's café and
+                    // day chosen (?cafe=, ?day=: the fields' url_param).
+                    $link(lang('Book a Table'), '{{page:reservation}}', 'btn btn-sm btn-outline-primary', array(),
+                        $page_link('reservation', array('cafe' => 'cafe', 'day' => 'event_date'))),
                 )),
             )),
         )),
@@ -1772,7 +1786,8 @@ $pages[] = array(
         'confirmation_page_id' => '{{tab:quote_view}}',
         'auto_registration'    => 1,
         'notify_email'         => '{{site_email}}',
-        'notify_subject'       => lang('New catering request: ^^company^^, ^^event_date^^'),
+        // The date in the site's date format, as the e-mail body writes it.
+        'notify_subject'       => pg_cf_subject_date_format(lang('New catering request: ^^company^^, ^^event_date^^'), array('event_date'), pg_sw_default_date_format('date')),
         'notify_page_id'       => '{{tab:email_quote_new}}',
         'confirm_email'        => 1,
         'confirm_subject'      => lang('We received your catering request'),
@@ -2276,7 +2291,8 @@ $pages[] = array(
         'confirmation_page_id' => '{{tab:reservation_view}}',
         'auto_registration'    => 1,
         'notify_email'         => '{{site_email}}',
-        'notify_subject'       => lang('New table booking: ^^cafe^^, ^^reservation_date^^ ^^reservation_time^^'),
+        // The date in the site's date format, as the e-mail body writes it.
+        'notify_subject'       => pg_cf_subject_date_format(lang('New table booking: ^^cafe^^, ^^reservation_date^^ ^^reservation_time^^'), array('reservation_date'), pg_sw_default_date_format('date')),
         'notify_page_id'       => '{{tab:email_reservation_new}}',
         'confirm_email'        => 1,
         'confirm_subject'      => lang('We received your table booking'),
@@ -3453,9 +3469,9 @@ $widgets = array(
         'tree'   => $widget_root(array(
             $form_step(1, lang('Where and when?')),
             $row(array(
-                $col(array($field('cf-res-cafe', lang('Café'), $select('cf-res-cafe', 'cafe', lang('Choose a café…'), $cafe_names))), '6'),
+                $col(array($field('cf-res-cafe', lang('Café'), $select('cf-res-cafe', 'cafe', lang('Choose a café…'), $cafe_names, true, '', array('url_param' => 'cafe')))), '6'),
                 $col(array($field('cf-res-guests', lang('Guests'), $select('cf-res-guests', 'guests', '', $party_sizes, true, '2'))), '6'),
-                $col(array($field('cf-res-date', lang('Date'), $input('cf-res-date', 'date', 'reservation_date', 'off', true, $not_before_today))), '6'),
+                $col(array($field('cf-res-date', lang('Date'), $input('cf-res-date', 'date', 'reservation_date', 'off', true, array_merge($not_before_today, array('url_param' => 'day'))))), '6'),
                 $col(array($field('cf-res-time', lang('Arrival time'), $select('cf-res-time', 'reservation_time', lang('Choose a time…'), $table_times))), '6'),
             ), '3'),
             $choices('cf-res-seating', 'seating', lang('Where would you like to sit?'), array(lang('No preference'), lang('Indoors'), lang('Terrace')), array(lang('No preference'))),
