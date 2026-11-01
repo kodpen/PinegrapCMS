@@ -100,7 +100,7 @@ description: Module list of plans/bug-hunt.md, part 4: root endpoint groups opti
 
 - Endpoints add_or_remove_watcher, organize_contacts, print_packing_slip, passkey, set_password, payment_callback: open
 
-- Endpoints pclzip.lib, view_performance_log, get_photo_gallery, pi, private_label, prototype: open
+- Endpoints pclzip.lib, view_performance_log, get_photo_gallery, pi, private_label, prototype: taken by worker (bughunt/pclzip-perflog-gallery)
 
 - Endpoints purge_cache, push_job, reload_theme, reserve_calendar_event, reset_password, retrieve_order: done (#4672, #4691, #4740)
 
