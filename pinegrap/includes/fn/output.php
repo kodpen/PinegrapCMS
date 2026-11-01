@@ -5015,23 +5015,50 @@ function pg_license_map_v1($answer)
     return $out;
 }
 
-// The licence card's type and site rights: Kodpen's own name of a known type,
-// any other type by its code; "3 / 5" when both counts are known.
-function pg_license_card_details($type, $sites_used, $sites_total)
+// The licence type's name for the card: Kodpen's own name of a known type,
+// any other type by its code (escaped); '' when the type is not known (the
+// old server, or an answer other than a schema-valid 200). HTML.
+function pg_license_type_name($type)
 {
     $names = array('demo' => lang('Demo'), 'premium' => lang('Premium'), 'enterprise' => lang('Enterprise'));
     $type = is_string($type) ? $type : '';
-    $lines = '';
 
-    if ($type !== '') {
-        $lines .= '<div class="pg-lic-type fw-bold small">' . (isset($names[$type]) ? $names[$type] : h($type)) . '</div>';
+    if ($type === '') {
+        return '';
     }
 
-    if (is_int($sites_used) && is_int($sites_total)) {
-        $lines .= '<div class="pg-lic-sites fg-secondary small">' . lang(array('string' => 'Site rights: {var:1} / {var:2}', 'vars' => array($sites_used, $sites_total))) . '</div>';
+    return isset($names[$type]) ? $names[$type] : h($type);
+}
+
+// The licence card's row: "Pinegrap <type> · <state>" when the type is known,
+// else the product's paid licence name as before. HTML.
+function pg_license_card_title($type, $status_text)
+{
+    $name = pg_license_type_name($type);
+    $title = ($name === '') ? 'Pinegrap Premium™' : 'Pinegrap ' . $name;
+
+    return $title . ' · ' . h((string) $status_text);
+}
+
+// The licence card's site rights: "3 / 5" when both counts are known. The
+// type is named on the card's row (pg_license_card_title()).
+function pg_license_card_details($sites_used, $sites_total)
+{
+    if (!is_int($sites_used) || !is_int($sites_total)) {
+        return '';
     }
 
-    return ($lines === '') ? '' : '<div class="px-5 pt-3 text-center">' . $lines . '</div>';
+    return '<div class="px-5 pt-3 text-center"><div class="pg-lic-sites fg-secondary small">'
+        . lang(array('string' => 'Site rights: {var:1} / {var:2}', 'vars' => array($sites_used, $sites_total)))
+        . '</div></div>';
+}
+
+// The licence card's expiry date as plain text, in the panel's language and
+// the site's date order like the panel's other dates (get_absolute_time()).
+// The licence ends on a day, so only the date is written.
+function pg_license_expiry_text(DateTime $expiration)
+{
+    return get_absolute_time(array('timestamp' => $expiration->getTimestamp(), 'type' => 'date', 'format' => 'plain_text'));
 }
 
 // The licence card's sentence for a definitive refusal; '' for a technical
@@ -5432,7 +5459,7 @@ function license_check($properties = false)
                 <div class="px-5 pt-3 pb-1 text-center">
                     <span class="fw-bold lh-1 fg-' . h($bar_color) . '" style="font-size:2.25rem">' . (int) $countdown . '</span>
                     <div class="fg-secondary small">' . lang('days remaining') . '</div>
-                    <div class="fg-secondary mt-1" style="font-size:.7rem;letter-spacing:.02em">' . h($expiration_dt->format('d M Y')) . '</div>
+                    <div class="fg-secondary mt-1" style="font-size:.7rem;letter-spacing:.02em">' . h(pg_license_expiry_text($expiration_dt)) . '</div>
                 </div>
                 <div class="px-5 pt-1 pb-3">
                     <div class="progress rounded-pill overflow-hidden" style="height:3px">
@@ -5445,7 +5472,7 @@ function license_check($properties = false)
                 // expired — show the date it expired
                 $bar_body = '
                 <div class="px-5 py-3 text-center">
-                    <div class="fg-danger small">' . lang('Expired') . ': ' . h($expiration_dt->format('d M Y')) . '</div>
+                    <div class="fg-danger small">' . lang('Expired') . ': ' . h(pg_license_expiry_text($expiration_dt)) . '</div>
                 </div>';
             } else {
                 // technical error — show diagnostic for managers+
@@ -5470,9 +5497,8 @@ function license_check($properties = false)
                 </div>' . $bar_diag_html;
             }
 
-            // The Kodpen API's type and site rights, above the state.
+            // The Kodpen API's site rights, above the state.
             $bar_body = pg_license_card_details(
-                $_SESSION['software']['settings']['license']['type'] ?? '',
                 $_SESSION['software']['settings']['license']['sites_used'] ?? null,
                 $_SESSION['software']['settings']['license']['sites_total'] ?? null
             ) . $bar_body;
@@ -5523,7 +5549,7 @@ function license_check($properties = false)
                         aria-controls="pg_license_panel"
                         title="' . lang('Premium features access status') . '">
                     <i class="bi bi-gem"></i>
-                    <span class="pg-lic-label">Pinegrap Premium™ · ' . h($bar_status_text) . '</span>
+                    <span class="pg-lic-label">' . pg_license_card_title($_SESSION['software']['settings']['license']['type'] ?? '', $bar_status_text) . '</span>
                     ' . $bar_row_meta . '
                     <i class="bi bi-chevron-down pg-lic-chev"></i>
                 </button>
