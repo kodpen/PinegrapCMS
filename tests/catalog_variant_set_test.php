@@ -140,6 +140,67 @@ function test_catalog_variant_set_price_follows_the_rules_in_minor_units()
 	pg_assert_same(5000, pg_catalog_variant_set_price($row, 1499, null), 'no rules: the row\'s own price');
 }
 
+// One rule on attribute 3: option 12 (the first row) and option 13 (the
+// second) each with their own value.
+function catalog_variant_set_test_rules($mode, $first, $second)
+{
+	return array('version' => 1, 'attributes' => array(
+		array('attribute_id' => 3, 'mode' => $mode, 'options' => array(
+			array('option_id' => 12) + $first,
+			array('option_id' => 13) + $second,
+		)),
+	));
+}
+
+function test_catalog_variant_set_price_past_the_column_is_reported()
+{
+	$rules = catalog_variant_set_test_rules('multiply', array('factor' => 2), array('factor' => 1));
+
+	$priced = pg_variant_price_compute(1500000000, $rules, array(3 => 12));
+	pg_assert_true($priced['too_large'], 'twice ₺15.000.000 is past what products.price holds');
+	pg_assert_false($priced['clamped'], 'not the below-zero cut');
+
+	$priced = pg_variant_price_compute(1500000000, $rules, array(3 => 13));
+	pg_assert_same(array('cents' => 1500000000, 'clamped' => false, 'too_large' => false), $priced, 'a factor of 1 fits');
+
+	$priced = pg_variant_price_compute(PG_PRODUCT_PRICE_MAX, $rules, array(3 => 13));
+	pg_assert_same(array('cents' => PG_PRODUCT_PRICE_MAX, 'clamped' => false, 'too_large' => false), $priced, 'the top itself fits');
+
+	$priced = pg_variant_price_compute(-10, $rules, array(3 => 13));
+	pg_assert_same(array('cents' => 0, 'clamped' => true, 'too_large' => false), $priced, 'below zero is still cut to zero');
+}
+
+function test_catalog_variant_set_check_refuses_a_rule_price_past_the_column()
+{
+	$data = catalog_variant_set_test_data();
+	$data['price_base'] = 1500000000;
+	$data['variants'][0]['price'] = 1500000000;
+	$data['variants'][1]['price'] = 1500000000;
+	$data['price_rules'] = catalog_variant_set_test_rules('multiply', array('factor' => 2), array('factor' => 1));
+
+	$errors = pg_catalog_variant_set_check($data);
+	pg_assert_same('variants', isset($errors[0]['field']) ? $errors[0]['field'] : '', 'a factor of 2 on ₺15.000.000 is refused before anything is written');
+	pg_assert_contains('TSHIRT-RED-S', isset($errors[0]['message']) ? $errors[0]['message'] : '', 'the message names the variant');
+
+	// A percentage typed as 25000 instead of 25.
+	$data = catalog_variant_set_test_data();
+	$data['price_base'] = 10000000;
+	$data['price_rules'] = catalog_variant_set_test_rules('adjust', array('percent' => 0), array('percent' => 25000));
+
+	$errors = pg_catalog_variant_set_check($data);
+	pg_assert_same('variants', isset($errors[0]['field']) ? $errors[0]['field'] : '', 'a percentage that takes the base past the top');
+	pg_assert_contains('TSHIRT-RED-M', isset($errors[0]['message']) ? $errors[0]['message'] : '', 'the second row is the one named');
+
+	// The same row with its own price typed over the rules is not theirs to price.
+	$data['variants'][1]['price_manual'] = true;
+	pg_assert_same(array(), pg_catalog_variant_set_check($data), 'a typed price stays the row\'s own');
+
+	$data = catalog_variant_set_test_data();
+	$data['price_base'] = PG_PRODUCT_PRICE_MAX;
+	$data['price_rules'] = catalog_variant_set_test_rules('multiply', array('factor' => 1), array('factor' => 0.5));
+	pg_assert_same(array(), pg_catalog_variant_set_check($data), 'rule prices up to the top are taken');
+}
+
 function test_catalog_variant_set_product_is_the_row_the_screen_built()
 {
 	$data = catalog_variant_set_test_data();
