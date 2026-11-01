@@ -9,6 +9,7 @@ description: Which texts of a designer node enter the site translation (pg_tr_no
 
 ## Is a widget condition's compared text translated?
 - Yes, when it is words: the field `_cond:show_if` (`_bindParams.show_if.value`, read and written by `pg_tr_field_get()`/`pg_tr_field_set()`), read in the page's language before the condition (`pg_tr_condition_props()`); the editor lists it in `_sdTrCandidate()` and `_sdTrFieldLabel()` ([[widget-condition-panel]]).
+- `pg_tr_condition_props()` loads the subsystem (`pg_tr_load()`) before it asks `pg_tr_node_fields()`: the renderer calls it before `pg_tr_props()`, so a conditioned node drawn first on a request in another language (an AJAX widget answer with `pg_lang`) stopped with "Call to undefined function pg_tr_node_fields()" (bug hunt, `tests/translate_condition_props_test.php`).
 
 ## What about visible text kept in an underscore prop?
 - A visible text in a `_` prop (the catalog link's `_labelDetail` / `_labelExpand`, one picked per row by the renderer) enters the translation only once `pg_tr_node_fields()` lists it, and a renderer that reads it during the binding pass reads it through `pg_tr_text()` (`_apply_catalog_listing_bindings()`).
