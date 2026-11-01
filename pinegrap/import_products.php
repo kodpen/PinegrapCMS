@@ -319,6 +319,7 @@ if (!$_POST) {
     $rows_not_amounts = array();
     $rows_not_numbers = array();
     $rows_not_customs = array();
+    $rows_quantity_too_large = array();
     // Rows of products already on file, left as they are because Update
     // Existing Products is off.
     $rows_left_alone = array();
@@ -357,6 +358,13 @@ if (!$_POST) {
             if (pg_products_import_row_decimals_refused($row, $decimal_positions)
                 || (($quantity_cell !== '') && ($row_quantity === null))) {
                 $rows_not_numbers[] = $row_number . ' (' . htmlspecialchars((string) $row[$name_key], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . ')';
+                continue;
+            }
+
+            // A count past what products.inventory_quantity holds leaves the
+            // row out: MySQL would store the column's top without a word.
+            if (($row_quantity !== null) && pg_inventory_quantity_too_large($row_quantity)) {
+                $rows_quantity_too_large[] = $row_number . ' (' . htmlspecialchars((string) $row[$name_key], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . ')';
                 continue;
             }
 
@@ -972,6 +980,12 @@ if (!$_POST) {
     if ($rows_not_numbers) {
         $rows_listed = implode(', ', array_slice($rows_not_numbers, 0, 50)) . ((count($rows_not_numbers) > 50) ? ', ...' : '');
         $liveform_view_products->add_error(lang(array('string' => 'These rows were not imported because a weight, length, width, height, commission rate limit or stock quantity in them is not a number: {var:1}.', 'vars' => array($rows_listed))));
+    }
+
+    // Rows left out because their stock quantity is more than the column holds.
+    if ($rows_quantity_too_large) {
+        $rows_listed = implode(', ', array_slice($rows_quantity_too_large, 0, 50)) . ((count($rows_quantity_too_large) > 50) ? ', ...' : '');
+        $liveform_view_products->add_error(lang(array('string' => 'These rows were not imported because their stock quantity is too large: {var:1}.', 'vars' => array($rows_listed))));
     }
 
     // Rows left out because an HS code or a country of origin cannot be stored.

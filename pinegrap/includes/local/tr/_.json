@@ -1228,6 +1228,7 @@
     "{var:1} product(s)": "{var:1} ürün",
     "{var:1} product(s) are out of stock": "{var:1} ürün tükendi",
     "{var:1} product(s) dropped to or below their minimum stock.": "{var:1} ürün minimum stoğuna ya da altına düştü.",
+    "{var:1} product(s) kept their stock quantity because the new quantity would be too large.": "{var:1} ürünün stok miktarı, yeni miktar çok büyük olacağı için değiştirilmedi.",
     "{var:1} product(s) on the count; {var:2} piece(s) of difference in all. Products not on the count are left as they are.": "Sayımda {var:1} ürün; toplam {var:2} adet fark. Sayımda olmayan ürünlere dokunulmaz.",
     "{var:1} product(s) price cant be decerease. Product price equal or smaller than 0!": "{var:1} ürünün fiyatı düşürülemedi. Ürün fiyatı 0'a eşit veya daha küçük!",
     "{var:1} product(s) queued for listing on {var:2}.": "{var:2} hesabında {var:1} ürün ilan için sıraya alındı.",
