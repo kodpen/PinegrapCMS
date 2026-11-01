@@ -72,8 +72,20 @@ function erp_account_form_cards($liveform, $with_opening = false, $currency_lock
     if ($country === '') {
         $country_options['—'] = '';
     }
-    foreach ((array) db_items("SELECT code, name FROM countries WHERE code <> '' ORDER BY name ASC") as $country_row) {
-        $country_options[h((string) $country_row['name'])] = strtoupper((string) $country_row['code']);
+    // Named and ordered in the panel language (pg_geo_country_label()); two
+    // rows that share a label keep both options by adding the code.
+    $country_rows = array();
+    foreach ((array) db_items("SELECT code, name FROM countries WHERE code <> ''") as $country_row) {
+        $country_rows[] = array(
+            'code' => strtoupper((string) $country_row['code']),
+            'label' => pg_geo_country_label((string) $country_row['name'], (string) $country_row['code']));
+    }
+    foreach (pg_geo_sort_by_label($country_rows) as $country_row) {
+        $label = h($country_row['label']);
+        if (isset($country_options[$label])) {
+            $label .= ' (' . h($country_row['code']) . ')';
+        }
+        $country_options[$label] = $country_row['code'];
     }
 
     $output = '
@@ -241,7 +253,7 @@ function erp_account_form_cards($liveform, $with_opening = false, $currency_lock
                         'class' => 'form-control', 'maxlength' => '100', 'autocomplete' => 'off')) . '
                 </div>
                 <div class="col-12 sm:col-6 lg:col-3 my-3">
-                    <label for="city" class="form-label">' . lang('City') . '</label>
+                    <label for="city" class="form-label" data-label-tr="' . h(lang('Province')) . '" data-label-other="' . h(lang('City')) . '">' . h(lang(erp_address_city_label_key($country))) . '</label>
                     ' . $liveform->output_field(array(
                         'type' => 'text', 'id' => 'city', 'name' => 'city',
                         'class' => 'form-control', 'maxlength' => '100', 'autocomplete' => 'off')) . '
@@ -284,10 +296,11 @@ function erp_account_form_cards($liveform, $with_opening = false, $currency_lock
             document.querySelectorAll("[data-erp-not-tr]").forEach(function (element) {
                 element.classList.toggle("d-none", tr);
             });
-            var label = document.querySelector("label[for=tax_number]");
-            if (label) {
+            // The tax number and the city (İl for Turkey) say it in the
+            // country\'s words.
+            document.querySelectorAll("label[data-label-tr]").forEach(function (label) {
                 label.textContent = label.getAttribute(tr ? "data-label-tr" : "data-label-other");
-            }
+            });
             // A Turkish tax number and postcode are digits only.
             ["tax_number", "postcode"].forEach(function (id) {
                 var input = document.getElementById(id);

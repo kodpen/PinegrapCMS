@@ -350,6 +350,8 @@ function pg_session_sign_in($user_id, $username)
     $_SESSION['sessionuserid']  = $user_id;
     $_SESSION['sessionusername'] = $username;
 
+    pg_session_sign_in_stamp($user_id);
+
     // The form token is renewed with the identity: a token that was handed
     // out while the visitor was anonymous must not keep authorising the
     // signed-in account's forms. initialize_token() lives behind
@@ -359,6 +361,26 @@ function pg_session_sign_in($user_id, $username)
         unset($_SESSION['software']['token']);
         initialize_token();
     }
+}
+
+// Note the sign-in time on the person's dashboard_layout row, moving the one
+// before into signed_in_before: the new dashboard counts what happened since
+// that earlier sign-in. One write per sign-in. The previous release has no
+// such table, so a failing query is left alone (the upgrade bridge); it is
+// asked through mysqli directly because get_file.php signs in without
+// functions.php.
+function pg_session_sign_in_stamp($user_id)
+{
+    $user_id = (int) $user_id;
+
+    if (($user_id <= 0) || !class_exists('db') || !(db::$con instanceof mysqli)) {
+        return;
+    }
+
+    @mysqli_query(db::$con,
+        "INSERT INTO dashboard_layout (user_id, role, signed_in_at)
+        VALUES ('" . $user_id . "', 0, '" . time() . "')
+        ON DUPLICATE KEY UPDATE signed_in_before = signed_in_at, signed_in_at = VALUES(signed_in_at)");
 }
 
 // Bind the session to the auth_tokens row that identifies this device.

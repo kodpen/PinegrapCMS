@@ -873,9 +873,10 @@ function erp_waybill_data_from_order($order_id, $created_by = 0, $open_account =
         $zip = trim((string) ($recipient['zip_code'] ?? ''));
 
         // The checkout's city and state are read by the recipient's
-        // country, the way the account card is filled from a contact.
+        // country, the way the account card is filled from a contact; the
+        // recipient's own district comes first.
         $country = trim((string) ($recipient['country'] ?? ''));
-        $place = erp_address_from_checkout((string) ($recipient['city'] ?? ''), (string) ($recipient['state'] ?? ''), $country);
+        $place = erp_address_from_ship_to((string) ($recipient['city'] ?? ''), (string) ($recipient['state'] ?? ''), $country, (string) ($recipient['district'] ?? ''));
         $ship_to = array(
             'title' => $who,
             'address' => trim($address . (($zip !== '') ? ' ' . $zip : '')),

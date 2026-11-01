@@ -51,83 +51,23 @@ function pg_seo_severity_weights()
     );
 }
 
-// Severity per rule code. Kept in one place so the score, the filters and
-// the detail panel cannot disagree about how serious a finding is.
+// Severity per rule code, read from the audit rule registry
+// (includes/fn/audit_rules.php) so the score, the filters, the detail panel,
+// the accessibility report and the visual editor cannot disagree about how
+// serious a finding is.
 function pg_seo_structure_severities()
 {
-    return array(
-        // Document level tags. These fire when the page template never
-        // emitted the tag at all, which is a different failure from leaving
-        // the corresponding field empty and is invisible from the database.
-        'title_tag_missing'         => 'error',
-        'title_tag_multiple'        => 'warning',
-        'meta_description_tag_missing' => 'error',
-        'canonical_missing'         => 'warning',
-        'canonical_multiple'        => 'warning',
-        'noindex_but_in_sitemap'    => 'error',
-        'viewport_missing'          => 'notice',
-        'og_incomplete'             => 'notice',
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/audit_rules.php');
 
-        // Headings
-        'h1_missing'                => 'error',
-        'h1_multiple'               => 'warning',
-        'h1_empty'                  => 'error',
-        'h1_equals_title'           => 'notice',
-        'h1_too_long'               => 'notice',
-        'heading_starts_at_h2'      => 'warning',
-        'heading_level_skip'        => 'warning',
-        'heading_empty'             => 'warning',
-        'heading_is_paragraph'      => 'notice',
-        'heading_duplicate_text'    => 'notice',
+    $severities = array();
 
-        // Text
-        'p_contains_block'          => 'error',
-        'p_empty'                   => 'notice',
-        'br_as_paragraph'           => 'notice',
-        'presentational_tag'        => 'warning',
-        'bold_italic_tag'           => 'notice',
-        'inline_style_heavy'        => 'notice',
+    foreach (pg_audit_rules() as $rule) {
+        if ($rule['seo'] !== '') {
+            $severities[$rule['seo']] = $rule['severity']['seo'];
+        }
+    }
 
-        // Lists and tables
-        'list_invalid_child'        => 'error',
-        'table_no_header'           => 'notice',
-
-        // Images
-        'img_no_alt'                => 'error',
-        'img_alt_is_filename'       => 'warning',
-        'img_no_dimensions'         => 'notice',
-        'img_no_lazy'               => 'notice',
-
-        // Links
-        'render_failed'             => 'notice',
-        'link_empty'                => 'error',
-        'link_empty_href'           => 'warning',
-        'link_generic_anchor'       => 'notice',
-        'link_blank_no_noopener'    => 'warning',
-
-        // Semantics and accessibility
-        'html_lang_missing'         => 'warning',
-        'main_missing'              => 'notice',
-        'main_multiple'             => 'warning',
-        'landmark_missing'          => 'notice',
-        'input_no_label'            => 'warning',
-        'iframe_no_title'           => 'notice',
-        'button_empty'              => 'warning',
-
-        // Content volume
-        'thin_content'              => 'warning',
-        'low_text_ratio'            => 'notice',
-
-        // Structured data
-        'jsonld_invalid'            => 'error',
-        'jsonld_missing_type'       => 'warning',
-        'jsonld_missing'            => 'notice',
-        'product_schema_incomplete' => 'notice',
-
-        // Set by the page analyzer rather than by the rule pass, because
-        // answering it needs to know which layer the heading came from.
-        'h1_only_in_template'       => 'warning',
-    );
+    return $severities;
 }
 
 // Anchor texts that describe the click instead of the destination. Turkish
@@ -1294,25 +1234,22 @@ function pg_seo_widget_record_query($page_id)
 // The fix is not to run these against a fragment (they would fire on every
 // one) but to carry the stored answers over, which is what the designer
 // already does for the link and speed groups. This list is the contract
-// between the two, and it lives next to the checks that emit it so the two
+// between the two; the audit rule registry (includes/fn/audit_rules.php)
+// marks each code document-only for SEO beside its severity, so the two
 // cannot drift apart.
 function pg_seo_document_only_codes()
 {
-    return array(
-        // <head>: the title and description tags themselves, not their text
-        'title_tag_missing', 'title_tag_multiple', 'meta_description_tag_missing',
-        // sharing tags, only asked for when open_graph is on
-        'og_incomplete',
-        // page-level heading structure
-        'h1_missing', 'h1_multiple',
-        'heading_starts_at_h2', 'heading_level_skip', 'heading_duplicate_text',
-        // document skeleton
-        'html_lang_missing', 'main_missing',
-        // whole-page measures
-        'thin_content',
-        // structured data, only asked for on the types that need it
-        'jsonld_missing',
-    );
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/audit_rules.php');
+
+    $codes = array();
+
+    foreach (pg_audit_rules() as $rule) {
+        if ($rule['seo'] !== '' && in_array('seo', $rule['document'], true)) {
+            $codes[] = $rule['seo'];
+        }
+    }
+
+    return $codes;
 }
 
 // pg_seo_store_issues() and pg_seo_store_links() are the only writers that
@@ -1357,8 +1294,24 @@ function pg_seo_analyze_page($page_id)
         return NULL;
     }
 
+    $folder_public = (get_access_control_type($page_row['page_folder']) === 'public');
+
+    // The audits judge what a visitor who is not signed in is served: a page
+    // in a private or archived folder, or of a type that cannot be rendered
+    // standalone, is not examined, and what it was told before goes.
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/background_render.php');
+
+    if (!pg_render_pass_covers(pg_render_pass_scope('structure'), array(
+        'page_type'       => $page_row['page_type'],
+        'folder_public'   => $folder_public,
+        'folder_archived' => $page_row['folder_archived'],
+    ))) {
+        pg_seo_forget_findings('page', $page_id);
+        return NULL;
+    }
+
     $in_sitemap = (((string) $page_row['sitemap']) === '1')
-        && (get_access_control_type($page_row['page_folder']) === 'public')
+        && $folder_public
         && (((string) $page_row['folder_archived']) !== '1');
 
     $context = array(
@@ -1385,8 +1338,8 @@ function pg_seo_analyze_page($page_id)
 // page_name and page_type.
 //
 // Returns NULL when the page type cannot be rendered without a request behind
-// it, otherwise array('html' => ..., 'error' => ...): a failed render carries
-// the exception's message.
+// it, otherwise array('html' => ..., 'error' => ...) from pg_background_render():
+// a failed render (an Exception or an Error) carries its message.
 function pg_seo_render_page($page_id, $page_row)
 {
     require_once(dirname(__FILE__) . '/get_page_content.php');
@@ -1412,84 +1365,18 @@ function pg_seo_render_page($page_id, $page_row)
     // rendered is the anonymous visitor's view - which is the one search
     // engines see and the one worth scoring.
     //
-    // The renderer reads two things a real request would have supplied: the
-    // requested page name (catalog pages resolve their item from it) and the
-    // session token it writes into the inline script block. update_search_
-    // index.php gets away without setting them because it runs from a
-    // browser window; a cron run does not, and an undefined index there
-    // would fill the error log on every page. Both are restored afterwards
-    // so nothing else in the request sees a value this function invented.
-    $had_page_parameter = isset($_GET['page']);
-    $previous_page_parameter = $had_page_parameter ? $_GET['page'] : NULL;
-    $_GET['page'] = $render_context['page'];
+    // The renderer reads the requested page name (catalog pages resolve their
+    // item from it) and the record a designed page's widget shows
+    // (pg_seo_widget_record_query()) from the address; the background
+    // renderer lends both and puts back what was there, and turns whatever
+    // the render throws into this page's error.
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/background_render.php');
 
-    // The record a designed page's widget shows comes from the address too
-    // (pg_seo_widget_record_query()); the previous values are put back with
-    // the page name.
-    $previous_query = array();
+    $get = array('page' => $render_context['page']) + $render_context['query'];
 
-    foreach ($render_context['query'] as $query_key => $query_value) {
-        $previous_query[$query_key] = array_key_exists($query_key, $_GET) ? array(TRUE, $_GET[$query_key]) : array(FALSE, NULL);
-        $_GET[$query_key] = (string) $query_value;
-    }
-
-    // The catalog item resolver memoises for the life of the process, which is
-    // right for a request and wrong for a pass that renders hundreds of pages:
-    // without this every catalog detail page after the first is scored against
-    // the first one's product - its title, its description, its JSON-LD.
-    if (function_exists('get_catalog_item_from_url')) {
-        get_catalog_item_from_url(true);
-    }
-
-    // The token has to be restored by UNSETTING it, not by blanking it.
-    // initialize_token() only generates a new one when the key is absent, and
-    // validate_token_field() rejects outright when the stored token is the
-    // empty string - so leaving '' behind would break every form and every
-    // token-checked link for the rest of that session, permanently.
-    $had_token = isset($_SESSION['software']['token']);
-
-    if (!$had_token) {
-        $_SESSION['software']['token'] = '';
-    }
-
-    // A render that cannot complete calls output_error(), which would print
-    // an error screen and end the process - and with it the whole pass, on
-    // whichever page happened to come first. While the flag is up that call
-    // throws instead. The finally block puts every piece of borrowed request
-    // state back whether the render returned or threw; without it a failed
-    // render would leave a foreign page name in $_GET for the next one.
-    $html = '';
-    $render_error = '';
-
-    pg_seo_rendering(TRUE);
-
-    try {
-        $html = get_page_content($page_id, '', '', 'preview', FALSE, $dynamic_properties, FALSE, 'desktop');
-    } catch (Exception $e) {
-        $render_error = $e->getMessage();
-    } finally {
-        pg_seo_rendering(FALSE);
-
-        if ($had_page_parameter) {
-            $_GET['page'] = $previous_page_parameter;
-        } else {
-            unset($_GET['page']);
-        }
-
-        foreach ($previous_query as $query_key => $previous) {
-            if ($previous[0]) {
-                $_GET[$query_key] = $previous[1];
-            } else {
-                unset($_GET[$query_key]);
-            }
-        }
-
-        if (!$had_token) {
-            unset($_SESSION['software']['token']);
-        }
-    }
-
-    return array('html' => (string) $html, 'error' => $render_error);
+    return pg_background_render(function () use ($page_id, $dynamic_properties) {
+        return get_page_content($page_id, '', '', 'preview', FALSE, $dynamic_properties, FALSE, 'desktop');
+    }, $get);
 }
 
 // The structure findings of a page pg_seo_render_page() rendered, stored, and

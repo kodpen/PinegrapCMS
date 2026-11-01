@@ -37,6 +37,36 @@ function pg_calendar_day_order($first_day)
 }
 
 /**
+ * The calendar condition of the check that a calendar event view page may
+ * show an event: the event's calendars as a placeholder list. An event in no
+ * calendar answers null, so the caller denies without running a query (an
+ * empty list would build "WHERE ()", which fails).
+ *
+ * @param array $calendar_ids the ids of the calendars the event belongs to
+ * @return array|null array($sql, $values) for db_q(), or null for no calendar
+ */
+function pg_calendar_event_view_calendar_condition($calendar_ids)
+{
+    $values = array();
+
+    foreach ((array) $calendar_ids as $calendar_id) {
+        $calendar_id = (string) $calendar_id;
+
+        if (($calendar_id === '') || ($calendar_id === '0') || in_array($calendar_id, $values, true)) {
+            continue;
+        }
+
+        $values[] = $calendar_id;
+    }
+
+    if (!$values) {
+        return null;
+    }
+
+    return array('calendar_id IN (' . implode(', ', array_fill(0, count($values), '?')) . ')', $values);
+}
+
+/**
  * The inactive cells a month grid needs before its first day and after its
  * last day so that every row starts on the week's first day.
  *

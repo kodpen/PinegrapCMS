@@ -176,8 +176,9 @@ function pg_product_feed_text($value, $max = 0)
 }
 
 // Rich text (the full description) as one line of plain text: scripts and
-// styles dropped, block ends turned into spaces so words of two paragraphs do
-// not run together, tags removed, then pg_product_feed_text().
+// styles dropped, block starts and ends turned into spaces so words of two
+// blocks do not run together (text before a list, a paragraph whose closing
+// tag was left out), tags removed, then pg_product_feed_text().
 function pg_product_feed_plain_text($html, $max = 0)
 {
     $text = (string) $html;
@@ -191,7 +192,7 @@ function pg_product_feed_plain_text($html, $max = 0)
     }
 
     $text = preg_replace('#<(script|style)\b[^>]*>.*?</\1\s*>#is', ' ', $text);
-    $text = preg_replace('#<(br|hr)\b[^>]*>|</(p|div|li|ul|ol|h[1-6]|tr|td|th|table|blockquote|section|article)\s*>#i', ' ', (string) $text);
+    $text = preg_replace('#<(br|hr)\b[^>]*>|</?(p|div|li|ul|ol|h[1-6]|tr|td|th|table|blockquote|section|article)\b[^>]*>#i', ' ', (string) $text);
 
     return pg_product_feed_text(strip_tags((string) $text), $max);
 }

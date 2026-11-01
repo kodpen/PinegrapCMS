@@ -499,13 +499,19 @@ article,aside,details,figcaption,figure,footer,header,hgroup,nav,section,summary
             }
         }
         
-        // generate the css based on the properties we just inserted
-        $handle = fopen(FILE_DIRECTORY_PATH . '/' . $file_name, 'w');
-
+        // Generate the CSS from the properties just inserted and write it as
+        // a whole. When the file cannot be written, the theme's record and
+        // rules are removed again, so no record names a file that is not on
+        // the disk, and the user goes back to the form with the error.
         require_once(dirname(__FILE__) . '/generate_system_theme_css.php');
 
-        fwrite($handle, generate_system_theme_css($css_properties));
-        fclose($handle);
+        if (!pg_file_write_whole(FILE_DIRECTORY_PATH . '/' . $file_name, generate_system_theme_css($css_properties))) {
+            db_q("DELETE FROM system_theme_css_rules WHERE file_id = ?", array((string) $theme_id));
+            db_q("DELETE FROM files WHERE id = ?", array((string) $theme_id));
+            $liveform->add_error(lang(array('string' => '{var:1} could not be written to disk.', 'vars' => h($file_name))));
+            header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/add_theme_file.php');
+            exit();
+        }
         
         // update the file size now that we have a file
         $query = "UPDATE files SET size = ? WHERE id = ?";

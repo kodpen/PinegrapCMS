@@ -242,6 +242,20 @@ function pg_search_fulltext_items($sql, array $params)
 }
 
 /**
+ * The closing sweep of a search index run: every row older than the run's
+ * start goes. Older, not different: a run started later has rewritten its
+ * rows with its own, newer time, and an earlier run that ends first must
+ * leave them (before, the first run to finish deleted them all). Pure.
+ *
+ * @param int $timestamp The run's start time.
+ * @return string
+ */
+function pg_search_index_sweep_sql($timestamp)
+{
+    return "DELETE FROM search_items WHERE timestamp < '" . (int) $timestamp . "'";
+}
+
+/**
  * Make the search index job due now, so the next scheduled tick rebuilds the
  * index instead of the next day's run. It moves the job's last run back by
  * its interval, no further: the maintenance panel still reads it as having
@@ -414,19 +428,21 @@ function _pg_search_index_drop_regions($html, array $names, array $keep_inside)
 }
 
 /**
- * One line naming a record list or record that the search index run left
- * out, for the run's Site Log line: "<page> (<reference code>): <message>",
- * the reference code left out for a list whose query failed. The message is
- * put on one line and cut to $max characters (UTF-8 safe), so a long stack
- * trace does not fill the log. Pure.
+ * One line naming an item that the search index run could not read, for
+ * the run's Site Log line: "<kind> <page> (<reference code>): <message>",
+ * the kind (already translated) and the reference code left out when empty
+ * (a record list, a page, a file). The message is put on one line and cut to
+ * $max characters (UTF-8 safe), so a long stack trace does not fill the log.
+ * Pure.
  *
- * @param string $page_name
- * @param string $reference_code '' for a record list
+ * @param string $page_name page or file name
+ * @param string $reference_code record reference code or event id; '' for none
  * @param string $message the error's message
  * @param int $max characters of the message kept
+ * @param string $kind the item's kind ("Page", "Event", "File"); '' for none
  * @return string
  */
-function pg_search_index_failure_note($page_name, $reference_code, $message, $max = 200)
+function pg_search_index_failure_note($page_name, $reference_code, $message, $max = 200, $kind = '')
 {
     $message = trim(_pg_search_index_replace('/\s+/u', ' ', (string) $message));
     $max = max(1, (int) $max);
@@ -444,7 +460,317 @@ function pg_search_index_failure_note($page_name, $reference_code, $message, $ma
         $label .= ' (' . $reference_code . ')';
     }
 
+    if ((string) $kind !== '') {
+        $label = $kind . ' ' . $label;
+    }
+
     return $label . ': ' . $message;
+}
+
+/**
+ * Counts an item the search index run could not read and keeps its note
+ * while fewer than $keep are kept, for the run's Site Log line. Pure.
+ *
+ * @param int $failures the run's count, raised by one
+ * @param array $notes the run's notes
+ * @param string $note pg_search_index_failure_note()
+ * @param int $keep notes kept at most
+ */
+function pg_search_index_failed(&$failures, array &$notes, $note, $keep = 5)
+{
+    $failures++;
+
+    if (count($notes) < $keep) {
+        $notes[] = (string) $note;
+    }
+}
+
+/**
+ * Draws one page for the search index so that a bad page cannot end the
+ * run: under pg_error_throws(true) a failed query throws instead of printing
+ * an error screen and exiting, and any Throwable (an Error on PHP 8 too) is
+ * caught. $_GET, the output buffer level (a PHP region that throws never
+ * closes its buffer) and the flag are put back whatever happens.
+ *
+ * @param int $page_id
+ * @param array $properties get_page_content()'s dynamic properties
+ *                          (calendar_event_id, form_id)
+ * @param callable $renderer get_page_content() unless a test passes its own
+ * @return array 'content' => HTML, or null when the render failed;
+ *               'error' => the failure's message, '' on success
+ */
+function pg_search_index_render($page_id, $properties = array(), $renderer = 'get_page_content')
+{
+    $saved_get = $_GET;
+    $saved_error_throws = pg_error_throws();
+    $saved_ob_level = ob_get_level();
+
+    pg_error_throws(true);
+
+    try {
+        if ($renderer === 'get_page_content') {
+            $content = get_page_content($page_id, '', '', 'preview', false, $properties);
+        } else {
+            $content = call_user_func($renderer, $page_id, $properties);
+        }
+
+        return array('content' => (string) $content, 'error' => '');
+    } catch (Throwable $throwable) {
+        return array('content' => null, 'error' => (string) $throwable->getMessage());
+    } finally {
+        while (ob_get_level() > $saved_ob_level) {
+            ob_end_clean();
+        }
+
+        pg_error_throws($saved_error_throws);
+        $_GET = $saved_get;
+    }
+}
+
+/**
+ * Keeps the search item of an address the run could not read: its timestamp
+ * becomes the run's, so the sweep at the end spares it and the item keeps
+ * its last indexed text until a later run reads it again. No row: nothing.
+ *
+ * @param string $url
+ * @param int $timestamp the run's timestamp
+ */
+function pg_search_index_keep_item($url, $timestamp)
+{
+    db("UPDATE search_items SET timestamp = '" . (int) $timestamp . "' WHERE url = '" . e((string) $url) . "'");
+}
+
+/**
+ * The bytes of a file for the old office readers, '' when the path is not a
+ * readable file or holds nothing. fread() on a failed fopen() is a TypeError
+ * on PHP 8, and on a length of 0 a ValueError.
+ *
+ * @param string $path
+ * @return string
+ */
+function pg_search_index_file_bytes($path)
+{
+    $path = (string) $path;
+
+    if (!is_file($path) || !is_readable($path)) {
+        return '';
+    }
+
+    $size = (int) @filesize($path);
+
+    if ($size <= 0) {
+        return '';
+    }
+
+    $bytes = @file_get_contents($path, false, null, 0, $size);
+
+    return is_string($bytes) ? $bytes : '';
+}
+
+/**
+ * What a search index run that stopped before its end was doing, for its
+ * Site Log line: "<stage>, <item>: <message> (<file>:<line>)". The error
+ * part comes from error_get_last() and only for a fatal kind; a warning left
+ * over from earlier in the run did not stop it. The message is on one line
+ * and cut to 200 characters. Pure.
+ *
+ * @param string $stage pages, records, files ...
+ * @param string $item the item last started, '' for none
+ * @param array|null $error error_get_last()
+ * @return string
+ */
+function pg_search_index_stop_note($stage, $item, $error)
+{
+    $note = (string) $stage;
+
+    if ((string) $item !== '') {
+        $note .= ', ' . $item;
+    }
+
+    $fatal = E_ERROR | E_PARSE | E_CORE_ERROR | E_COMPILE_ERROR | E_USER_ERROR | E_RECOVERABLE_ERROR;
+
+    if (is_array($error) && isset($error['type']) && (((int) $error['type'] & $fatal) !== 0)) {
+        $where = isset($error['file']) ? basename((string) $error['file']) . ':' . (isset($error['line']) ? (int) $error['line'] : 0) : '';
+        $message = pg_search_index_failure_note('', '', isset($error['message']) ? $error['message'] : '');
+        $note .= ': ' . substr($message, 2) . (($where !== '') ? ' (' . $where . ')' : '');
+    }
+
+    return $note;
+}
+
+/**
+ * The stages of a search index pass, in order. Pure.
+ *
+ * @return string[]
+ */
+function pg_search_index_stages()
+{
+    // A page's calendar events and form records are read with the page, as
+    // one item; the visual editor's records follow all pages, since the
+    // page loop collects the lists they come from.
+    return array('pages', 'designer', 'files', 'sweep');
+}
+
+/**
+ * Where a search index pass stands, as read back from its cursor file: a
+ * state that is missing, unreadable or names no known stage starts a new pass
+ * at $now. Pure.
+ *
+ * The state: started (the pass's start time: every row it writes carries it
+ * and the sweep removes the rows older than it), stage, after (the key of the
+ * stage's last finished item, '' at its start), current (the item started and
+ * not finished: a tick that ended inside it), skipped (notes of the items
+ * skipped this pass), carry (what one stage hands the next: the linked names
+ * the files stage reads, the record lists, the addresses already written),
+ * done.
+ *
+ * @param mixed $state the decoded cursor file, or null
+ * @param int   $now
+ * @return array
+ */
+function pg_search_index_next($state, $now)
+{
+    if (!is_array($state) || !isset($state['stage'], $state['started'])
+        || !in_array($state['stage'], pg_search_index_stages(), true)
+        || ((int) $state['started'] <= 0) || !empty($state['done'])) {
+        return array('started' => (int) $now, 'stage' => 'pages', 'after' => '', 'current' => '', 'skipped' => array(), 'carry' => array(), 'done' => false);
+    }
+
+    return array(
+        'started' => (int) $state['started'],
+        'stage'   => (string) $state['stage'],
+        'after'   => (string) ($state['after'] ?? ''),
+        'current' => (string) ($state['current'] ?? ''),
+        'skipped' => array_values(array_slice((array) ($state['skipped'] ?? array()), 0, 50)),
+        'carry'   => (isset($state['carry']) && is_array($state['carry'])) ? $state['carry'] : array(),
+        'done'    => false,
+    );
+}
+
+/**
+ * A stage's name for the panel window.
+ *
+ * @param string $stage
+ * @return string
+ */
+function pg_search_index_stage_label($stage)
+{
+    switch ((string) $stage) {
+        case 'pages':
+            return lang('pages');
+        case 'designer':
+            return lang('records');
+        case 'files':
+            return lang('files');
+        default:
+            return lang('removing old items');
+    }
+}
+
+/**
+ * Where an unfinished search index pass keeps its place. Losing the file (the
+ * clean up tool empties data/temp) only starts the pass again.
+ *
+ * @return string
+ */
+function pg_search_index_state_path()
+{
+    return PG_FUNCTIONS_DIR . '/data/temp/search_index.json';
+}
+
+/**
+ * The cursor file decoded, or null when there is none to read.
+ *
+ * @return array|null
+ */
+function pg_search_index_state_read()
+{
+    $state = json_decode((string) @file_get_contents(pg_search_index_state_path()), true);
+
+    return is_array($state) ? $state : null;
+}
+
+/**
+ * Write the cursor file; at the end of a pass, remove it.
+ *
+ * @param array $state
+ */
+function pg_search_index_state_write($state)
+{
+    if (!empty($state['done'])) {
+        @unlink(pg_search_index_state_path());
+        return;
+    }
+
+    @file_put_contents(pg_search_index_state_path(), json_encode($state), LOCK_EX);
+}
+
+/**
+ * Start one item of the stage. When it is the item the state names as
+ * started and not finished, a tick ended inside it (a fatal error, an exit,
+ * a killed process): it is skipped, named in the state's notes, and counted
+ * as finished, so the pass never stops at the same item twice. Pure.
+ *
+ * @param array  $state from pg_search_index_next()
+ * @param string $key   the item's key in its stage
+ * @return array state, skip (bool)
+ */
+function pg_search_index_begin($state, $key)
+{
+    $key = (string) $key;
+
+    if (($state['current'] !== '') && ($state['current'] === $key)) {
+        $state['current'] = '';
+        $state['after'] = $key;
+
+        if (count($state['skipped']) < 50) {
+            $state['skipped'][] = $state['stage'] . ' ' . $key;
+        }
+
+        return array('state' => $state, 'skip' => true);
+    }
+
+    $state['current'] = $key;
+
+    return array('state' => $state, 'skip' => false);
+}
+
+/**
+ * Mark an item of the stage finished. Pure.
+ *
+ * @param array  $state
+ * @param string $key
+ * @return array
+ */
+function pg_search_index_finish($state, $key)
+{
+    $state['after'] = (string) $key;
+    $state['current'] = '';
+
+    return $state;
+}
+
+/**
+ * Move to the next stage; after the sweep the pass is done. Pure.
+ *
+ * @param array $state
+ * @return array
+ */
+function pg_search_index_advance($state)
+{
+    $stages = pg_search_index_stages();
+    $at = array_search($state['stage'], $stages, true);
+
+    $state['after'] = '';
+    $state['current'] = '';
+
+    if (($at === false) || ($at + 1 >= count($stages))) {
+        $state['done'] = true;
+    } else {
+        $state['stage'] = $stages[$at + 1];
+    }
+
+    return $state;
 }
 
 /**

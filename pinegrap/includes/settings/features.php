@@ -301,6 +301,22 @@ $pg_settings_cards[] = '
                             </div>';
         }
 
+        // The upload size cap (11.0.142), hidden until its column exists.
+        $output_image_upload_cap_field = '';
+
+        if (pg_schema_has('config', 'image_upload_max_dimension')) {
+
+            $output_image_upload_cap_field = '
+                            <div class="pg-f-xs">
+                                <label for="image_upload_max_dimension" class="form-label">' . lang('Shrink Pictures On Upload Above') . '</label>
+                                <label class="form-control form-adorn form-adorn-end">
+                                    <span class="form-adorn-text" aria-hidden="true">' . lang('pixels') . '</span>
+                                    <input type="text" name="image_upload_max_dimension" id="image_upload_max_dimension" maxlength="5" inputmode="numeric" class="form-ghost text-end" value="' . h($image_settings['upload_max_dimension']) . '" />
+                                </label>
+                                <div class="form-text">' . lang('A picture uploaded to the library whose longest edge is above this is shrunk to it, in its own format. 0 leaves uploads as they are; product photos keep their own limit.') . '</div>
+                            </div>';
+        }
+
         $output_image_settings_card =
             '<div id="pgset-images" class="pg-set-card">
                 <div class="card">
@@ -353,8 +369,8 @@ $pg_settings_cards[] = '
                                     <span class="form-adorn-text" aria-hidden="true">' . lang('pixels') . '</span>
                                     <input type="text" name="image_file_max_dimension" id="image_file_max_dimension" maxlength="5" inputmode="numeric" class="form-ghost text-end" value="' . h($image_settings['file_max_dimension']) . '" />
                                 </label>
-                                <div class="form-text">' . lang('Files are never resized on upload and never by the plain optimize button. This is only used when the resize button is pressed.') . '</div>
-                            </div>' . $output_image_delivery_fields . $output_page_rebuild_field . '
+                                <div class="form-text">' . lang('Used only when the resize button is pressed; the plain optimize button never resizes.') . '</div>
+                            </div>' . $output_image_upload_cap_field . $output_image_delivery_fields . $output_page_rebuild_field . '
                             <div class="col-12 ">
                                 ' . $output_image_library_note . '
                             </div>

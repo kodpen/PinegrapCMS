@@ -162,6 +162,20 @@ function erp_state_code($state, $country_code)
 }
 
 /**
+ * The language key of an address's city field on the account card and the
+ * delivery note: 'Province' (İl) for a Turkish address, whose district has
+ * its own field, 'City' elsewhere. The card's columns stay as they are:
+ * city is the province, district the district.
+ *
+ * @param string $country_code The address's country; the store's when empty
+ * @return string
+ */
+function erp_address_city_label_key($country_code)
+{
+    return (erp_account_country($country_code) === 'TR') ? 'Province' : 'City';
+}
+
+/**
  * How a checkout address lands on the account card. The checkout has a city
  * and a state (province) field. In Turkey the province is what the card and
  * GİB call the city (il) and the checkout's city field holds the district
@@ -182,6 +196,30 @@ function erp_address_from_checkout($city, $state, $country_code)
     }
 
     return array('city' => $city, 'district' => '', 'state' => $state);
+}
+
+/**
+ * How an order's recipient lands on a delivery note: erp_address_from_checkout(),
+ * with the recipient's own district (ship_tos.district) first when it is
+ * filled. A Turkish recipient's district is written from its city box, so
+ * both agree; an address abroad whose carrier asked has only the box.
+ *
+ * @param string $city     ship_tos.city
+ * @param string $state    ship_tos.state
+ * @param string $country_code
+ * @param string $district ship_tos.district, '' when empty or missing
+ * @return array ['city' => string, 'district' => string, 'state' => string]
+ */
+function erp_address_from_ship_to($city, $state, $country_code, $district)
+{
+    $place = erp_address_from_checkout($city, $state, $country_code);
+    $district = trim((string) $district);
+
+    if ($district !== '') {
+        $place['district'] = $district;
+    }
+
+    return $place;
 }
 
 /**

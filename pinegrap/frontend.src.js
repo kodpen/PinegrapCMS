@@ -2064,6 +2064,7 @@ var software = {
         var state_field_name = state_text_box.attr('name');
         var zip_code_text_box = software_$('#' + zip_code_id);
         var zip_code_required = software_$('#' + zip_code_id + '_required');
+        var address_labels = properties.address_labels ? software.address_labels(properties) : null;
 
         // When the user changes the country pick list, then update state and zip code.
         country_pick_list.change(function() {
@@ -2148,12 +2149,60 @@ var software = {
                 zip_code_required.fadeOut();
             }
 
+            if (address_labels) {
+                address_labels(selected_country);
+            }
+
             first_time = false;
             
         });
 
         // Trigger a change event so the fields will be updated during initial page load.
         country_pick_list.trigger('change');
+    },
+
+    // The city and state labels of an address form take the country's words:
+    // İlçe and İl for Turkey, City and State / Province elsewhere
+    // (pg_address_labels_init_props()). Only a label holding a default word
+    // swaps, with its spacing and asterisk kept; a layout's own words stay.
+    // Returns the function init_country() calls with the picked country.
+    address_labels: function(properties) {
+
+        var config = properties.address_labels;
+        var items = [];
+
+        var key = function(text) {
+            return software_$.trim(String(text).replace(/[*:]/g, '').replace(/\s*\/\s*/g, '/').replace(/\s+/g, ' ')).toLowerCase();
+        };
+
+        var add = function(id, slot) {
+            var defaults = software_$.map(config.words[slot].defaults, key);
+
+            if (!id) {
+                return;
+            }
+
+            software_$('label[for="' + id + '"]').each(function() {
+                var node = this.firstChild;
+                var match = (node && node.nodeType === 3) ? /^(\s*)([\s\S]*?)(\s*\*?\s*:?\s*)$/.exec(node.nodeValue) : null;
+
+                if (match && match[2] !== '' && software_$.inArray(key(match[2]), defaults) !== -1) {
+                    items.push({node: node, before: match[1], after: match[3], slot: slot});
+                }
+            });
+        };
+
+        add(properties.city_id, 'city');
+        add(properties.state_text_box_id, 'state');
+        add(properties.state_pick_list_id, 'state');
+
+        return function(country) {
+            var turkish = software_$.inArray(country, config.codes) !== -1;
+
+            software_$.each(items, function(index, item) {
+                item.node.nodeValue = item.before + config.words[item.slot][turkish ? 'tr' : 'other'] + item.after;
+            });
+        };
     },
 
     // Updates the currency pick list so that it automatically submits
@@ -4002,6 +4051,11 @@ var software = {
                     }),
                     type: 'POST',
                     success: function(response) {
+                        // A product that is gone answers with an error and no product.
+                        if (!response || !response.product) {
+                            return;
+                        }
+
                         product = response.product;
 
                         // If there is a full description for the product, then use it.

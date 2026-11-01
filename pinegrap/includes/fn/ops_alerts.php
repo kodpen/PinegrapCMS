@@ -652,7 +652,7 @@ function pg_ops_backup_stale($newest, $now, $max_age = 691200)
  * A job that has never recorded a run is not a failure, as on the tile.
  *
  * @param array $jobs             pg_cron_jobs()
- * @param array $runs             pg_cron_last_runs(): key => unix time
+ * @param array $runs             pg_cron_health_last_runs(): key => unix time
  * @param int   $now
  * @param array $dispatched       pg_cron_dispatch_list()
  * @param bool  $dispatch_enabled JOB_DISPATCH_ENABLED
@@ -752,7 +752,8 @@ function pg_ops_alerts_check_backup($now)
  */
 function pg_ops_alerts_check_cron($now)
 {
-    $runs = pg_cron_last_runs();
+    // Completion markers in place of the dispatcher's per-tick stamps.
+    $runs = pg_cron_health_last_runs();
 
     if ($runs === null) {
         return '';

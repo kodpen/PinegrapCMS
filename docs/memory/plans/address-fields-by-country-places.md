@@ -7,11 +7,11 @@ description: Every place an address's city, state or district is asked, shown or
 - Express order (`widgets_express_order.php`): default tree `_eo_default_designer_tree()` (shipping City, District, State / Province; billing City, State / Province), server parts `_eo_render_shipping_section()` and `_eo_render_billing_address()`, box fit `_eo_fit_district_field()`; JS twins `_buildExpressOrderStarterTree()` and the recipient list block ("Add Recipient List Block").
 - Shipping address and arrival (`widgets_shipping_address.php`: `pg_sa_district_node()`, `_pg_sa_state_controls()`, `pg_sa_state_script()`), billing information (`widgets_billing_information.php`, the same script with `billing_`), affiliate sign-up (`widgets_affiliate_sign_up.php`, the same script).
 - Account profile (business city/state) and address book (`widgets_account.php`): the state is a text box with no pick list (A3).
-- JS starters of all five: `_buildStarterTree()` cases in `style_designer.src.js`.
+- JS starters of all five: `_buildStarterTree()` cases in `style_designer.src.js` (A2: default country's words).
 - Showing only: order view and its lists, shipping method, order preview, cart (`pg_order_view_district()` already drops a district equal to the city). Registration and my account ask for no address.
 
 ## Which design templates hold address forms?
-- Store, boutique, bookshop and hello place express order (so does the unfinished events template, `pinegrap-events/tickets.php`); every finished template places account profile and address book (salon in `pinegrap-salon/account.php`). All open them with `'tree' => 'starter'`; no template ships its own address tree. A2's starters cover new openings, A1's render covers installed designs.
+- Store, boutique, bookshop, hello and events (`pinegrap-events/tickets.php`, #4737) place express order; every finished template places account profile and address book (salon in `pinegrap-salon/account.php`). All open them with `'tree' => 'starter'`; no template ships its own address tree. A2's starters cover new openings, A1's render covers installed designs.
 
 ## Which classic pages and layouts?
 - `get_express_order.php`, `get_shipping_address_and_arrival.php` (with the district box), `get_billing_information.php`, `get_update_address_book.php`, `get_my_account_profile.php`, `get_affiliate_sign_up_form_screen_content.php`; all switch the state through `software.init_country()` (`frontend.src.js`).

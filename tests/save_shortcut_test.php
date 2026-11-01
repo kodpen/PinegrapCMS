@@ -154,3 +154,39 @@ function test_save_shortcut_order_invoice_form_is_excluded()
 
 	pg_assert_contains('<form method="post" action="add_erp_invoice.php" class="d-inline disable_shortcut">', $order, 'the Issue the Invoice form');
 }
+
+// Screens whose save button carries another name (submit_button, erp_action)
+// or none mark it with data-pg-save-shortcut. Before, the key was caught on
+// them and nothing was saved. The mark sits on the save button only: never on
+// Delete, the quote's template buttons, Issue the Invoice or Delete Draft.
+function test_save_shortcut_marked_button_on_other_names()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/backend.src.js');
+	$from = strpos($source, 'function pgSaveShortcutButton($form) {');
+	$lookup = ($from === false) ? '' : substr($source, $from, 900);
+	pg_assert_contains('[data-pg-save-shortcut]', $lookup, 'the lookup takes a marked button');
+
+	$screens = array(
+		'add_product_group.php' => 1,
+		'edit_product_group.php' => 1,
+		'includes/templates/edit_key_code.php' => 1,
+		'includes/templates/edit_auto_dialog.php' => 1,
+		'add_erp_quote.php' => 1,
+		'edit_erp_quote.php' => 1,
+		'add_erp_purchase_order.php' => 1,
+		'edit_erp_purchase_order.php' => 1,
+		'edit_erp_invoice_draft.php' => 1,
+		'add_erp_manual_invoice.php' => 1,
+	);
+
+	foreach ($screens as $file => $count) {
+		$php = (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
+		pg_assert_same($count, substr_count($php, 'data-pg-save-shortcut'), $file . ': one marked button');
+		pg_assert_true(preg_match('/<button[^>]*data-pg-save-shortcut[^>]*(Delete|value="issue"|value="delete"|template_action)/', $php) !== 1, $file . ': not on a delete or issue button');
+	}
+
+	foreach (array('edit_erp_invoice_draft.php', 'add_erp_manual_invoice.php') as $file) {
+		$php = (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
+		pg_assert_contains('name="erp_action" value="draft" data-pg-save-shortcut', $php, $file . ': Save Draft is pressed');
+	}
+}

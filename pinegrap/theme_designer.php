@@ -1959,7 +1959,7 @@ if (!$_POST) {
                         ' . get_token_field() . '
                         <input type="hidden" name="send_to" value="' . h($send_to) . '" />
                         <div id="content_footer" class="buttons" style="padding-bottom: 1em\9;">
-                            <button type="submit" name="submit_button" value="Save" class="submit-primary">' . lang('Save') . '</button>&nbsp;&nbsp;&nbsp;<button type="submit" name="submit_button" value="Duplicate" class="submit-secondary">' . lang('Duplicate') . '</button>&nbsp;&nbsp;&nbsp;<input type="button" name="cancel" value="' . lang('Cancel') . '" onclick="theme_designer_cancel_confirm(\'' . h(escape_javascript($send_to)) . '\')" class="submit-secondary">
+                            <button type="submit" name="submit_button" value="Save" class="submit-primary">' . lang('Save') . '</button>&nbsp;&nbsp;&nbsp;<button type="submit" name="submit_button" value="Duplicate" class="submit-secondary">' . lang('Duplicate') . '</button>&nbsp;&nbsp;&nbsp;<a href="' . h('clear_theme_designer_session.php?file_id=' . urlencode($_GET['id']) . '&send_to=' . urlencode($send_to)) . '" class="submit-secondary" data-confirm-content="' . h(lang('WARNING: If you leave this page, then your unsaved changes will be lost.')) . '">' . lang('Cancel') . '</a>
                         </div>
                     </form>
                 </div>
@@ -1973,6 +1973,17 @@ if (!$_POST) {
 // else process the action that was submitted
 } else {
     validate_token_field();
+
+    // Sends the user back to the designer with an error when the css file
+    // could not be written to the disk.
+    function theme_designer_write_failed($liveform, $id, $file_name)
+    {
+        $liveform->add_error(lang(array('string' => '{var:1} could not be written to disk.', 'vars' => h($file_name))));
+        $send_to = $_REQUEST['send_to'] ?? '';
+        header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/theme_designer.php?id=' . urlencode((string) $id)
+            . ((is_string($send_to) && ($send_to != '')) ? '&send_to=' . urlencode($send_to) : ''));
+        exit();
+    }
     
     // if the user choose to save the file, then process a file save
     if (($_POST['submit_button'] ?? '') == 'Save') {
@@ -2133,16 +2144,16 @@ if (!$_POST) {
         $row = mysqli_fetch_array($result);
         $file_name = $row['name'];
         
-        // remove the old css file for this theme
-        unlink(FILE_DIRECTORY_PATH . '/' . $file_name);
-        
         // generate the system theme css and save the code in the edit theme code session
         $_SESSION['software']['theme_designer'][$_POST['id']]['code'] = generate_system_theme_css($_SESSION['software']['theme_designer'][$_POST['id']]['preview_properties']);
         
-        // save the css file to the files directory
-        $handle = fopen(FILE_DIRECTORY_PATH . '/' . $file_name, 'w');
-		fwrite($handle, $_SESSION['software']['theme_designer'][$_POST['id']]['code']);
-		fclose($handle);
+        // Write the css file as a whole over the stored one. The old file is
+        // never deleted first, so a write that fails leaves it in place; the
+        // user goes back to the designer with the changes still in the
+        // session and the error, and Save can be tried again.
+        if (!pg_file_write_whole(FILE_DIRECTORY_PATH . '/' . $file_name, $_SESSION['software']['theme_designer'][$_POST['id']]['code'])) {
+            theme_designer_write_failed($liveform, $_POST['id'], $file_name);
+        }
         
         // update the last modified in the files tab
         $query =
@@ -2252,10 +2263,13 @@ if (!$_POST) {
         // generate the system theme css and save the code in the edit theme code session
         $_SESSION['software']['theme_designer'][$_POST['id']]['code'] = generate_system_theme_css($_SESSION['software']['theme_designer'][$_POST['id']]['preview_properties']);
         
-        // save the css file to the files directory
-        $handle = fopen(FILE_DIRECTORY_PATH . '/' . $new_file_name, 'w');
-		fwrite($handle, $_SESSION['software']['theme_designer'][$_POST['id']]['code']);
-		fclose($handle);
+        // Save the css file to the files directory. A copy that could not be
+        // written gets no record: the row inserted above is removed again
+        // and the user goes back to the theme being duplicated.
+        if (!pg_file_write_whole(FILE_DIRECTORY_PATH . '/' . $new_file_name, $_SESSION['software']['theme_designer'][$_POST['id']]['code'])) {
+            db_q("DELETE FROM files WHERE id = ?", array((string) $new_theme_id));
+            theme_designer_write_failed($liveform, $_POST['id'], $new_file_name);
+        }
         
         // update the filesize for this file in the database
         $query = "UPDATE files SET size = ? WHERE id = ?";

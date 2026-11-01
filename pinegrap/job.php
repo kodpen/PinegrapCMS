@@ -28,6 +28,11 @@
 
 require('init.php');
 
+// Start and time limit of this process (JOB_TIME_LIMIT, else
+// max_execution_time): a dispatched pass caps each tick by what is left of it
+// (pg_cron_time_left()), so it keeps its place before a runner stops it.
+pg_cron_clock(microtime(true));
+
 // A background run (crontab, or the general job's dispatcher) has no user.
 // Every other request is a web request and must come from a signed-in
 // manager, the same gate the scheduled jobs settings sit behind; without it

@@ -4,7 +4,7 @@ description: New dashboard plan: where the switch, layouts, look, role defaults 
 ---
 
 ## Where are they kept? (question 1, decided)
-- Decided (#4669): one table `dashboard_layout`, made by step `11.0.141` of the open version with `install_create_table()` (InnoDB, utf8mb4_unicode_ci): `id`; `user_id` (0 on a role default row); `role` TINYINT UNSIGNED NOT NULL DEFAULT 0 (a role default row: 0-3, or 9 for everyone; 0 on a person's row, told apart by its `user_id`: a NULL inside a unique key would not enforce uniqueness); `enabled` TINYINT (the switch); `layout` MEDIUMTEXT (JSON); `look` VARCHAR(255) (JSON); `locked` TINYINT (role rows); `signed_in_at`, `signed_in_before` INT (person rows); `updated_at`, `updated_by`. Unique (`user_id`, `role`).
+- Decided (#4669): one table `dashboard_layout`, made by step `11.0.143` of the open version with `install_create_table()` (InnoDB, utf8mb4_unicode_ci): `id`; `user_id` (0 on a role default row); `role` TINYINT UNSIGNED NOT NULL DEFAULT 0 (a role default row: 0-3, or 9 for everyone; 0 on a person's row, told apart by its `user_id`: a NULL inside a unique key would not enforce uniqueness); `enabled` TINYINT (the switch); `layout` MEDIUMTEXT (JSON); `look` VARCHAR(255) (JSON); `locked` TINYINT (role rows); `signed_in_at`, `signed_in_before` INT (person rows); `updated_at`, `updated_by`. Unique (`user_id`, `role`).
 - Every sign-in upserts the person's row moving `signed_in_at` into `signed_in_before` (one write per sign-in), so the chips work the first day the switch is on.
 - Weighed against: browser storage only (no schema, but the layout would not follow the person to another device, and role defaults and sign-in times are impossible); columns on `user` (one per setting, still a schema change).
 

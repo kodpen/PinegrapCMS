@@ -146,3 +146,59 @@ function test_pg_image_negotiated_download_name()
 	pg_assert_same('photo.webp', pg_image_negotiated_download_name('photo', 'webp'), 'no extension');
 	pg_assert_same('.htaccess.webp', pg_image_negotiated_download_name('.htaccess', 'webp'), 'a leading dot only');
 }
+
+// A mail asks for the uploaded bytes of this site's JPEG and PNG pictures.
+function test_pg_image_mail_original_url()
+{
+	$host = 'www.example.com';
+
+	pg_assert_same('/photo.jpg?f=original', pg_image_mail_original_url('/photo.jpg', $host), 'root-relative');
+	pg_assert_same('photo.PNG?f=original', pg_image_mail_original_url('photo.PNG', $host), 'relative, capitals');
+	pg_assert_same('https://example.com/a/b.jpeg?f=original', pg_image_mail_original_url('https://example.com/a/b.jpeg', $host), 'own host without www');
+	pg_assert_same('http://www.example.com:8080/b.jpe?f=original', pg_image_mail_original_url('http://www.example.com:8080/b.jpe', $host), 'own host with a port');
+	pg_assert_same('//www.example.com/b.png?f=original', pg_image_mail_original_url('//www.example.com/b.png', $host), 'scheme-relative');
+	pg_assert_same('/photo.jpg?w=960&amp;f=original', pg_image_mail_original_url('/photo.jpg?w=960', $host), 'after a query');
+	pg_assert_same('/photo.jpg?f=original#top', pg_image_mail_original_url('/photo.jpg#top', $host), 'before a fragment');
+	pg_assert_same('/photo.jpg?f=original', pg_image_mail_original_url('/photo.jpg?', $host), 'an empty query');
+
+	pg_assert_same('/photo.jpg?f=webp', pg_image_mail_original_url('/photo.jpg?f=webp', $host), 'a format already named');
+	pg_assert_same('/photo.jpg?w=1&amp;f=avif', pg_image_mail_original_url('/photo.jpg?w=1&amp;f=avif', $host), 'a format after &amp;');
+	pg_assert_same('https://other.com/photo.jpg', pg_image_mail_original_url('https://other.com/photo.jpg', $host), 'another site');
+	pg_assert_same('/photo.gif', pg_image_mail_original_url('/photo.gif', $host), 'a GIF');
+	pg_assert_same('/photo.webp', pg_image_mail_original_url('/photo.webp', $host), 'a WebP');
+	pg_assert_same('/photo.jpg.zip', pg_image_mail_original_url('/photo.jpg.zip', $host), 'another extension');
+	pg_assert_same('cid:photo.jpg', pg_image_mail_original_url('cid:photo.jpg', $host), 'an embedded part');
+	pg_assert_same('data:image/png;base64,AAAA', pg_image_mail_original_url('data:image/png;base64,AAAA', $host), 'a data address');
+	pg_assert_same('https://example.com/photo.jpg', pg_image_mail_original_url('https://example.com/photo.jpg', ''), 'no host known');
+}
+
+function test_pg_image_mail_original_urls()
+{
+	$host = 'example.com';
+
+	pg_assert_same(
+		'<p><img alt="x" src="/a.jpg?f=original" width="10"></p>',
+		pg_image_mail_original_urls('<p><img alt="x" src="/a.jpg" width="10"></p>', $host),
+		'an img');
+	pg_assert_same(
+		"<td background='/bg.png?f=original'>",
+		pg_image_mail_original_urls("<td background='/bg.png'>", $host),
+		'a background attribute');
+	pg_assert_same(
+		'<div style="color: red; background-image: url(\'/bg.jpg?f=original\')">',
+		pg_image_mail_original_urls('<div style="color: red; background-image: url(\'/bg.jpg\')">', $host),
+		'url() in a style');
+	pg_assert_same(
+		'<div style="background:url(&quot;/bg.jpg?f=original&quot;)">',
+		pg_image_mail_original_urls('<div style="background:url(&quot;/bg.jpg&quot;)">', $host),
+		'url() with &quot;');
+	pg_assert_same(
+		'<a href="/a.jpg">/a.jpg</a>',
+		pg_image_mail_original_urls('<a href="/a.jpg">/a.jpg</a>', $host),
+		'a link and text stay');
+	pg_assert_same(
+		'<style>.x{background:url(/a.jpg)}</style>',
+		pg_image_mail_original_urls('<style>.x{background:url(/a.jpg)}</style>', $host),
+		'a style block stays');
+	pg_assert_same('<p>no pictures</p>', pg_image_mail_original_urls('<p>no pictures</p>', $host), 'nothing to do');
+}

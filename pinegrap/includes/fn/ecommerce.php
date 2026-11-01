@@ -2051,6 +2051,45 @@ function pg_marketplace_product_changed($product_id, $priority = 5)
     return mp_enqueue($product_id, 'stock_price', $priority);
 }
 
+/**
+ * Queues many products for the marketplaces at once, for a writer that
+ * refreshes the bundles itself (the product import's pg_bundle_refresh_all()):
+ * pg_marketplace_product_changed() without its per-product bundle refresh.
+ *
+ * @param array $product_ids
+ * @return int queue rows written
+ */
+function pg_marketplace_products_changed($product_ids)
+{
+    $ids = array();
+
+    foreach ((array) $product_ids as $product_id) {
+        if (is_scalar($product_id) && ((int) $product_id > 0)) {
+            $ids[(int) $product_id] = true;
+        }
+    }
+
+    if (!$ids or !defined('DB_CONNECTED')) {
+        return 0;
+    }
+
+    $connectors = PG_FUNCTIONS_DIR . '/includes/api/outbound/connectors/base.php';
+
+    if (!is_file($connectors)) {
+        return 0;
+    }
+
+    require_once($connectors);
+
+    $written = 0;
+
+    foreach (array_keys($ids) as $product_id) {
+        $written += (int) mp_enqueue($product_id, 'stock_price', 5);
+    }
+
+    return $written;
+}
+
 
 /**
  * The low-stock line this site runs, 0 when it runs none.
@@ -2853,6 +2892,24 @@ function pg_catalog_variant_set_check($data)
         }
     }
 
+    // What the rules give a row is a price too: a factor or a percentage can
+    // take a base the column holds past its top, which the session (not
+    // strict) would store as 2147483647 without a word.
+    if (!$errors && !empty($data['price_rules'])) {
+
+        $base = isset($data['price_base']) ? $data['price_base'] : 0;
+
+        foreach ($variants as $variant) {
+
+            $priced = pg_catalog_variant_set_priced($variant, $base, $data['price_rules']);
+
+            if ($priced['too_large']) {
+                $errors[] = array('field' => 'variants', 'message' => lang(array('string' => 'The price rules give {var:1} a price that is too large.', 'vars' => array(trim((string) $variant['name'])))));
+                break;
+            }
+        }
+    }
+
     return $errors;
 }
 
@@ -2882,19 +2939,35 @@ function pg_catalog_variant_set_name($data)
  */
 function pg_catalog_variant_set_price($variant, $base_cents, $rules)
 {
+    $priced = pg_catalog_variant_set_priced($variant, $base_cents, $rules);
+
+    return $priced['cents'];
+}
+
+/**
+ * One variant's price as pg_variant_price_compute() reports it: the row's
+ * own price when it was typed over the rules or the set has none.
+ *
+ * @param array      $variant    a row, price in minor units
+ * @param int        $base_cents
+ * @param array|null $rules      canonical rules
+ * @return array 'cents' => int, 'clamped' => bool, 'too_large' => bool (the
+ *               rules went past PG_PRODUCT_PRICE_MAX; 'cents' must not be
+ *               written then)
+ */
+function pg_catalog_variant_set_priced($variant, $base_cents, $rules)
+{
     if (!$rules || !empty($variant['price_manual'])) {
-        return $variant['price'];
+        return array('cents' => $variant['price'], 'clamped' => FALSE, 'too_large' => FALSE);
     }
 
     $selection = array();
 
-    foreach ($variant['attributes'] as $pair) {
+    foreach ((isset($variant['attributes']) ? (array) $variant['attributes'] : array()) as $pair) {
         $selection[(int) $pair['attribute_id']] = (int) $pair['option_id'];
     }
 
-    $priced = pg_variant_price_compute($base_cents, $rules, $selection);
-
-    return $priced['cents'];
+    return pg_variant_price_compute($base_cents, $rules, $selection);
 }
 
 /**
@@ -12698,7 +12771,9 @@ function pg_variant_price_rules_owned($rules)
  * @param int   $base_cents the product's price, used unless an option sets it
  * @param array $rules      canonical rules
  * @param array $selection  attribute_id => option_id of the variant
- * @return array 'cents' => int, 'clamped' => bool (the rules went below zero)
+ * @return array 'cents' => int, 'clamped' => bool (the rules went below zero),
+ *               'too_large' => bool (they went past PG_PRODUCT_PRICE_MAX;
+ *               'cents' is then that top, which must not be written)
  */
 function pg_variant_price_compute($base_cents, $rules, $selection)
 {
@@ -12749,13 +12824,20 @@ function pg_variant_price_compute($base_cents, $rules, $selection)
     // The inner round() strips floating-point noise before the cent is
     // decided (0.1 * 3 is 0.30000000000000004); the browser does the same
     // with toFixed(6).
-    $cents = (int) round(round($price, 6));
+    $rounded = round(round($price, 6));
 
-    if ($cents < 0) {
-        return array('cents' => 0, 'clamped' => TRUE);
+    // Compared as a float before the int cast, which wraps on a 32-bit build.
+    if (pg_product_price_too_large($rounded)) {
+        return array('cents' => PG_PRODUCT_PRICE_MAX, 'clamped' => FALSE, 'too_large' => TRUE);
     }
 
-    return array('cents' => $cents, 'clamped' => FALSE);
+    $cents = (int) $rounded;
+
+    if ($cents < 0) {
+        return array('cents' => 0, 'clamped' => TRUE, 'too_large' => FALSE);
+    }
+
+    return array('cents' => $cents, 'clamped' => FALSE, 'too_large' => FALSE);
 }
 
 
@@ -13138,6 +13220,19 @@ function pg_barcode_scan_quantity($value)
     }
 
     return (int) $value;
+}
+
+/**
+ * Whether an import file carries a column the marketplaces receive (price,
+ * extra shipping, stock, tracking or the enabled flag), so the products it
+ * updates are queued for them.
+ *
+ * @param array $column_names the file's column names
+ * @return bool
+ */
+function pg_products_import_marketplace_columns($column_names)
+{
+    return (bool) array_intersect(array('price', 'extra_shipping_cost', 'inventory', 'inventory_quantity', 'enabled'), (array) $column_names);
 }
 
 /**

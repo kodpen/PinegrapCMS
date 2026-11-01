@@ -64,3 +64,14 @@ function test_translate_html_lang_escapes_the_value_and_skips_an_empty_one()
 	pg_assert_same('', pg_tr_html_lang('', 'tr'), 'no document');
 	pg_assert_same('<p>no html tag</p>', pg_tr_html_lang('<p>no html tag</p>', 'tr'), 'no tag');
 }
+
+// A lang written without quotes, or with spaces around "=", is the tag's own
+// lang too: "en" is replaced and any other value is kept, never a second
+// attribute beside it (a browser reads the first one).
+function test_translate_html_lang_reads_an_unquoted_attribute()
+{
+	pg_assert_same('<html lang="tr" class="h-100">', pg_tr_html_lang('<html lang=en class="h-100">', 'tr'), 'unquoted en');
+	pg_assert_same('<html lang="tr">', pg_tr_html_lang('<html lang = "en">', 'tr'), 'spaces around =');
+	pg_assert_same('<html lang=de>', pg_tr_html_lang('<html lang=de>', 'tr'), 'unquoted other language');
+	pg_assert_same('<html data-lang="x" lang="tr">', pg_tr_html_lang('<html data-lang="x">', 'tr'), 'another attribute ending in lang');
+}

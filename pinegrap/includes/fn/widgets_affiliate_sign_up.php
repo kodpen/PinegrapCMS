@@ -212,6 +212,7 @@ function _render_system_widget_affiliate_sign_up_form($tree_json, $widget_id, $c
     foreach ((array)db_items("SELECT code FROM countries WHERE zip_code_required = 1") as $c) $zip[] = (string)$c['code'];
     $fill = $values;
     unset($fill['state']);
+    pg_sa_address_labels($tree, '', $values['country']);
     _pg_acct_fill_values($tree, $fill, array('country' => _pg_acct_country_options()));
     _pg_sa_state_controls($tree, $values['state'], isset($states[$values['country']]) ? $states[$values['country']] : array());
     _pg_member_edit_control($tree, 'submit', function (&$node) use ($label) {
@@ -224,7 +225,7 @@ function _render_system_widget_affiliate_sign_up_form($tree_json, $widget_id, $c
     $rendered = str_replace('<!--pg-loop-slot-->', '', trim(_render_tree_node($split['static_tree'], 0, 0)));
     $lf->remove();
     $form_id = 'pg-aff-form-w' . $widget_id;
-    $rendered = _pg_member_form_wrap($rendered . pg_sa_state_script($form_id, $states, $zip), _pg_acct_software_path() . '/affiliate_sign_up_form.php', array(
+    $rendered = _pg_member_form_wrap($rendered . pg_sa_state_script($form_id, $states, $zip) . pg_ship_to_district_script(), _pg_acct_software_path() . '/affiliate_sign_up_form.php', array(
         'current_page_id' => $page_id,
         'next_page_id'    => (int)($settings['next_page_id'] ?? 0),
         // Which widget drew the form: its confirmation message, when there

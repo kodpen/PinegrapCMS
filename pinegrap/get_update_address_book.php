@@ -98,8 +98,17 @@ function get_update_address_book($properties = array()) {
         db_items("SELECT name, code, zip_code_required AS zip FROM countries ORDER BY name",
             'code');
 
+    // Named and ordered in the site's language (pg_geo_country_label()); two
+    // rows that share a label (a duplicate code in the data) keep both options.
+    $country_labels = array();
+
     foreach ($countries as $country) {
-        $country_options[$country['name']] = $country['code'];
+        $country_labels[] = array('code' => $country['code'], 'label' => pg_geo_country_label($country['name'], $country['code']));
+    }
+
+    foreach (pg_geo_sort_by_label($country_labels) as $country) {
+        $label = isset($country_options[$country['label']]) ? $country['label'] . ' (' . $country['code'] . ')' : $country['label'];
+        $country_options[$label] = $country['code'];
     }
 
     $states = db_items(
@@ -125,7 +134,7 @@ function get_update_address_book($properties = array()) {
                 country_id: "country",
                 state_text_box_id: "state_text_box",
                 state_pick_list_id: "state_pick_list",
-                zip_code_id: "zip_code"});
+                zip_code_id: "zip_code"' . pg_address_labels_init_props('city') . '});
         </script>';
 
     // If the layout type is system or if there is no update address book page,
@@ -195,8 +204,8 @@ function get_update_address_book($properties = array()) {
                         <td>' . $form->output_field(array('type'=>'text', 'name'=>'address_2', 'maxlength'=>'50', 'class'=>'software_input_text')) . '</td>
                     </tr>
                     <tr>
-                        <td>' . lang('City') . '*</td>
-                        <td>' . $form->output_field(array('type'=>'text', 'name'=>'city', 'maxlength'=>'50', 'class'=>'software_input_text')) . '</td>
+                        <td><label for="city">' . lang('City') . '*</label></td>
+                        <td>' . $form->output_field(array('type'=>'text', 'id'=>'city', 'name'=>'city', 'maxlength'=>'50', 'class'=>'software_input_text')) . '</td>
                     </tr>
                     <tr>
                         <td>' . lang('Country') . '*</td>

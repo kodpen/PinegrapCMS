@@ -311,6 +311,11 @@ if (!$_POST) {
     // each product it writes, as the product screens do.
     $stock_columns_in_file = in_array('inventory', $column_names, true) || ($inventory_quantity_position !== false);
 
+    // A file with a price, stock or enabled column queues every product it
+    // updates for the marketplaces, at the end of the import.
+    $marketplace_columns_in_file = pg_products_import_marketplace_columns($column_names);
+    $marketplace_product_ids = array();
+
     $rows_not_amounts = array();
     $rows_not_numbers = array();
     $rows_not_customs = array();
@@ -610,6 +615,10 @@ if (!$_POST) {
                     }
 
                     pg_price_history_queue($product_id, 'import');
+
+                    if ($marketplace_columns_in_file) {
+                        $marketplace_product_ids[] = $product_id;
+                    }
 
                     // If an enabled column exists and the product is disabled, then delete tag cloud keywords.
                     if (
@@ -932,6 +941,12 @@ if (!$_POST) {
     // every bundle is recomputed from its components once, at the end. A
     // stock or price the file gave a bundle itself is replaced by that too.
     pg_bundle_refresh_all();
+
+    // The products the file updated go to the marketplace queue, as from any
+    // other stock or price writer; the queue writes one row per product and
+    // calls no marketplace here. A new product has no marketplace mapping
+    // yet, so only the updated ones are queued.
+    pg_marketplace_products_changed($marketplace_product_ids);
 
     // The rest of the queued products. A row is written only for a product
     // whose price is not the newest one in its history (or that has no

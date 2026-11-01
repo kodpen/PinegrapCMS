@@ -19,8 +19,9 @@
 #                               pinegrap/data/config.php (tools/check_pr.php)
 #   any change outside the      php -l of the changed PHP files, translation
 #   documentation (docs/,       keys, designer bindings, external API schema,
-#   .github/, .claude/, the     get_file.php copies, Bootstrap 6 panel
-#                               markup (check_bs6.php --strict), minified
+#   .github/, .claude/, the     audit rule registry, get_file.php copies,
+#                               Bootstrap 6 panel markup (check_bs6.php
+#                               --strict), minified
 #                               stylesheets (build_css.php --check), unit tests
 #   root *.md files)
 #   a change to a panel script  node --check of the panel scripts CI checks,
@@ -290,6 +291,7 @@ check_commit() {
 		run_tool 'translation keys' check_lang.php
 		run_tool 'designer bindings' check_bindings.php
 		run_tool 'external API schema' check_api_schema.php
+		run_tool 'audit rule registry' check_audit_rules.php
 		run_tool 'get_file.php copies' check_copies.php
 		run_tool 'Bootstrap 6 panel markup' check_bs6.php --strict
 		run_tool 'minified stylesheets' build_css.php --check

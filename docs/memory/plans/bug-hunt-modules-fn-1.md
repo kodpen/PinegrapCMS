@@ -176,11 +176,11 @@ description: Module list of plans/bug-hunt.md, part 1: includes/fn/ modules a11y
 
 - `page_bulk`: open
 
-- `page_cache`: open
+- `page_cache`: clean (gate, serve and store checks, key, pack and write, stale lock, beacon, dirty rules, sweep checked)
 
-- `page_facts`: open
+- `page_facts`: clean (empty cart '' is the owner's rule)
 
-- `page_revisions`: open
+- `page_revisions`: lead: panel `revisions_list` sends `more` on exactly 50 rows, so "Show older revisions" can load nothing; read 51 like the API (`includes/panel/designer.php`, held by #4786 then)
 
 - `page_schedule`: clean (time parsing and range, save plan, job pass and its overlap guard, API time checks, list chip escaping checked)
 

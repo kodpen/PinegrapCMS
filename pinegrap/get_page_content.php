@@ -6594,6 +6594,14 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
         $content = pg_img_strip_responsive($content);
     }
 
+    // An e-mail's JPEG and PNG pictures ask for the uploaded bytes: a mail
+    // program, or the proxy that fetches its pictures, may name WebP and
+    // then show or keep the copy get_file.php would send it instead.
+    if ($email) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/image_negotiation.php');
+        $content = pg_image_mail_original_urls($content, HOSTNAME_SETTING);
+    }
+
     // An e-mail body says which language it is written in; a page gets this
     // from pg_tr_finalize(), which an e-mail never passes.
     if ($email && function_exists('pg_tr_mail_html_lang')) {

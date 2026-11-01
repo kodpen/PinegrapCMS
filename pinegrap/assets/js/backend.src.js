@@ -314,12 +314,22 @@ var pgLazyOptions = {
 };
 
 // The button the panel's Ctrl+S presses in a form: the one named by the
-// form's submitshortcut attribute; without it submit_save, or submit_create
+// form's submitshortcut attribute; without it the button marked
+// data-pg-save-shortcut (a save button whose name the screen shares with
+// Delete or Issue, or that has none), then submit_save, or submit_create
 // on a create screen that has no submit_save. Empty when the form has none;
 // the shortcut then submits nothing and no button gets its hint.
 function pgSaveShortcutButton($form) {
     var names = $form.attr('submitshortcut') ? [$form.attr('submitshortcut')] : ['submit_save', 'submit_create'];
     var $buttons = $form.find('button');
+
+    if (!$form.attr('submitshortcut')) {
+        var $marked = $buttons.filter('[data-pg-save-shortcut]').first();
+
+        if ($marked.length) {
+            return $marked;
+        }
+    }
 
     for (var i = 0; i < names.length; i++) {
         var $button = $buttons.filter(function () {
@@ -2739,7 +2749,9 @@ $(document).ready(function () {
                             $results.append($actRow);
                         }
                         if (!resp.results || resp.results.length === 0) {
-                            $results.append('<p class="fg-danger my-3">' + t('No Search Result') + '.</p>');
+                            // Under shortcut buttons the empty record list is not an error.
+                            var noResultClass = matched.length ? 'fg-secondary' : 'fg-danger';
+                            $results.append('<p class="' + noResultClass + ' my-3">' + t('No Search Result') + '.</p>');
                             return;
                         }
                     }

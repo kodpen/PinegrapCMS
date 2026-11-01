@@ -211,7 +211,7 @@ function test_designer_search_index_page_loop_skips_record_pages()
 	$source = _designer_search_index_source('update_search_index.php');
 	$widgets = strpos($source, "pg_sw_page_widgets(\$page['id'])");
 	$skip    = strpos($source, "\$designer_record_page = true;");
-	$render  = strpos($source, "\$content = get_page_content(\$page['id']");
+	$render  = strpos($source, "pg_search_index_render(\$page['id'])");
 	pg_assert_true($widgets !== false && $skip !== false && $render !== false);
 	pg_assert_true($widgets < $render && $skip < $render);
 	pg_assert_true((bool) preg_match('/if \(\$designer_record_page\) \{\s*continue;/', $source, $continue, PREG_OFFSET_CAPTURE));
@@ -225,9 +225,9 @@ function test_designer_search_index_page_loop_skips_record_pages()
 function test_designer_search_index_record_branch()
 {
 	$source = _designer_search_index_source('update_search_index.php');
-	$start  = strpos($source, '$designer_record_urls = array();');
+	$start  = strpos($source, '$search_index_run[\'stage\'] = \'records\';');
 	$files  = strpos($source, '// Get files that should be included in search index.');
-	$sweep  = strpos($source, 'DELETE FROM search_items WHERE timestamp');
+	$sweep  = strpos($source, 'db(pg_search_index_sweep_sql(');
 	pg_assert_true($start !== false && $files !== false && $sweep !== false);
 	pg_assert_true($start < $files && $files < $sweep);
 
@@ -319,27 +319,28 @@ function test_designer_search_index_failure_note_truncates()
 	pg_assert_same('p: ' . str_repeat("\xff", 3) . '...', pg_search_index_failure_note('p', '', str_repeat("\xff", 10), 3));
 }
 
-// Both catch blocks keep a note (at most five), the run writes one Site Log
-// line, and the finish window says records were left out instead of
-// "updated successfully".
+// Both catch blocks count the failure and keep a note with its kind; the
+// run's Site Log line and the finish window count every kind together
+// (tests/search_index_isolation_test.php).
 function test_designer_search_index_failures_reported()
 {
 	$source = _designer_search_index_source('update_search_index.php');
-	$start  = strpos($source, '$designer_record_urls = array();');
+	$start  = strpos($source, '$search_index_run[\'stage\'] = \'records\';');
 	$files  = strpos($source, '// Get files that should be included in search index.');
 	$branch = substr($source, $start, $files - $start);
 
-	pg_assert_same(2, substr_count($branch, '$designer_failures++;'));
-	pg_assert_same(2, substr_count($branch, 'pg_search_index_failure_note('));
-	pg_assert_same(2, substr_count($branch, 'count($designer_failure_notes) < 5'));
-	pg_assert_contains("\$host_page['page_name'], '', \$throwable->getMessage()", $branch);
-	pg_assert_contains("\$detail_page['page_name'], \$record['reference_code'], \$throwable->getMessage()", $branch);
-	pg_assert_contains('log_activity(lang(array(', $branch);
-	pg_assert_contains('{var:1}', $branch);
+	// A record list or record that fails to draw, and a host a run ended inside.
+	pg_assert_same(3, substr_count($branch, 'pg_search_index_failed($index_failures, $index_failure_notes, pg_search_index_failure_note('));
+	pg_assert_contains("\$host_page['page_name'], '', \$throwable->getMessage(), 200, lang('Record list')", $branch);
+	pg_assert_contains("\$detail_page['page_name'], \$record['reference_code'], \$throwable->getMessage(), 200, lang('Record')", $branch);
 	pg_assert_false(strpos($branch, "error_log('Pinegrap: the search index left out") !== false);
+
+	$tail = substr($source, strpos($source, 'db(pg_search_index_sweep_sql('));
+	pg_assert_contains('log_activity(lang(array(', $tail);
+	pg_assert_contains('{var:1}', $tail);
 
 	$finish = substr($source, strpos($source, '<div id="finish"'));
 	pg_assert_contains('id="finish_message"', $finish);
-	pg_assert_contains('$designer_failures > 0', substr($source, strpos($source, "pg_cron_ran('update_search_index');")));
+	pg_assert_contains('$index_failures > 0', substr($source, strpos($source, "pg_cron_ran('update_search_index');")));
 	pg_assert_contains('bi-exclamation-triangle-fill', $source);
 }

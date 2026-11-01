@@ -31,30 +31,30 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 
 /**
  * Every check: its severity, the WCAG 2.2 success criterion it reads and that
- * criterion's level. 'document' rules need a whole page and are skipped for
- * output that is not one (seo-structure-non-html-output.md).
+ * criterion's level, in checklist order; read from the audit rule registry
+ * (includes/fn/audit_rules.php). 'document' rules need a whole page and are
+ * skipped for output that is not one (seo-structure-non-html-output.md).
  *
  * @return array<string,array>
  */
 function pg_a11y_rules()
 {
-    return array(
-        'a11y_page_title'        => array('severity' => 'error',   'criterion' => '2.4.2', 'level' => 'A',  'document' => true),
-        'a11y_html_lang'         => array('severity' => 'error',   'criterion' => '3.1.1', 'level' => 'A',  'document' => true),
-        'a11y_main_missing'      => array('severity' => 'warning', 'criterion' => '2.4.1', 'level' => 'A',  'document' => true),
-        'a11y_heading_order'     => array('severity' => 'warning', 'criterion' => '1.3.1', 'level' => 'A',  'document' => false),
-        'a11y_img_alt'           => array('severity' => 'error',   'criterion' => '1.1.1', 'level' => 'A',  'document' => false),
-        'a11y_form_label'        => array('severity' => 'error',   'criterion' => '1.3.1', 'level' => 'A',  'document' => false),
-        'a11y_idref_broken'      => array('severity' => 'warning', 'criterion' => '1.3.1', 'level' => 'A',  'document' => false),
-        'a11y_error_association' => array('severity' => 'warning', 'criterion' => '3.3.1', 'level' => 'A',  'document' => false),
-        'a11y_link_name'         => array('severity' => 'error',   'criterion' => '2.4.4', 'level' => 'A',  'document' => false),
-        'a11y_link_generic'      => array('severity' => 'notice',  'criterion' => '2.4.4', 'level' => 'A',  'document' => false),
-        'a11y_button_name'       => array('severity' => 'error',   'criterion' => '4.1.2', 'level' => 'A',  'document' => false),
-        'a11y_frame_title'       => array('severity' => 'error',   'criterion' => '4.1.2', 'level' => 'A',  'document' => false),
-        'a11y_media_autoplay'    => array('severity' => 'warning', 'criterion' => '1.4.2', 'level' => 'A',  'document' => false),
-        'a11y_contrast'          => array('severity' => 'warning', 'criterion' => '1.4.3', 'level' => 'AA', 'document' => false),
-        'a11y_target_size'       => array('severity' => 'notice',  'criterion' => '2.5.8', 'level' => 'AA', 'document' => false),
-    );
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/audit_rules.php');
+
+    $rules = array();
+
+    foreach (pg_audit_rules() as $rule) {
+        if ($rule['a11y'] !== '') {
+            $rules[$rule['a11y']] = array(
+                'severity'  => $rule['severity']['a11y'],
+                'criterion' => $rule['criterion'],
+                'level'     => $rule['level'],
+                'document'  => in_array('a11y', $rule['document'], true),
+            );
+        }
+    }
+
+    return $rules;
 }
 
 // WCAG 2.2 success criteria the checks read, by number, with their names.
@@ -707,19 +707,22 @@ function pg_a11y_state_path()
 }
 
 /**
- * The pages the report covers, page_id => row: published (public folder, not
- * archived) and of a type the structure pass can render. Classic pages are
- * read like visual ones; nothing in their markup is changed.
+ * The pages the report covers, page_id => row: the audits' scope
+ * (pg_render_pass_scope('a11y'): public folder, not archived, a type the
+ * structure pass can render). Classic pages are read like visual ones;
+ * nothing in their markup is changed.
  *
  * @return array<int,array>
  */
 function pg_a11y_pages()
 {
-    $types = pg_seo_renderable_page_types();
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/background_render.php');
+
+    $scope = pg_render_pass_scope('a11y');
     $pages = array();
 
     $rows = db_items(
-        "SELECT page.page_id, page.page_name, page.page_type, page.page_folder
+        "SELECT page.page_id, page.page_name, page.page_type, page.page_folder, folder.folder_archived
         FROM page
         LEFT JOIN folder ON page.page_folder = folder.folder_id
         WHERE (folder.folder_archived IS NULL) OR (folder.folder_archived <> '1')
@@ -730,7 +733,7 @@ function pg_a11y_pages()
 
     foreach ($rows as $row) {
 
-        if (!in_array($row['page_type'], $types, true)) {
+        if (!in_array($row['page_type'], $scope['types'], true)) {
             continue;
         }
 
@@ -738,7 +741,9 @@ function pg_a11y_pages()
             $public[$row['page_folder']] = (get_access_control_type($row['page_folder']) === 'public');
         }
 
-        if ($public[$row['page_folder']]) {
+        $row['folder_public'] = $public[$row['page_folder']];
+
+        if (pg_render_pass_covers($scope, $row)) {
             $pages[(int) $row['page_id']] = $row;
         }
     }
@@ -797,8 +802,6 @@ function pg_a11y_run($time_budget)
         }
 
         if ((microtime(true) - $started) > max(1, (int) $time_budget)) {
-            @file_put_contents(pg_a11y_state_path(), json_encode(array('after' => $after)), LOCK_EX);
-
             return array('checked' => $checked, 'failed' => $failed, 'done' => false, 'ready' => true);
         }
 
@@ -808,7 +811,10 @@ function pg_a11y_run($time_budget)
             $failed++;
         }
 
+        // The place is kept after every page: a process stopped from outside
+        // (a runner's time limit) carries on after the last page it checked.
         $after = $page_id;
+        @file_put_contents(pg_a11y_state_path(), json_encode(array('after' => $after)), LOCK_EX);
     }
 
     db(

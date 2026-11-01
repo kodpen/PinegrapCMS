@@ -335,7 +335,7 @@ function erp_waybill_form_cards($liveform, $options = array())
                         'class' => 'form-control', 'maxlength' => '100', 'autocomplete' => 'off')) . '
                 </div>
                 <div class="col-12 sm:col-6 lg:col-3 my-3">
-                    <label for="ship_to_city" class="form-label">' . lang('City') . '</label>
+                    <label for="ship_to_city" class="form-label" data-label-tr="' . h(lang('Province')) . '" data-label-other="' . h(lang('City')) . '">' . h(lang(erp_address_city_label_key((string) $liveform->get_field_value('ship_to_country')))) . '</label>
                     ' . $liveform->output_field(array(
                         'type' => 'text', 'id' => 'ship_to_city', 'name' => 'ship_to_city',
                         'class' => 'form-control', 'maxlength' => '100', 'autocomplete' => 'off')) . '
@@ -353,12 +353,17 @@ function erp_waybill_form_cards($liveform, $options = array())
                         'class' => 'form-control', 'options' => erp_waybill_country_options())) . '
                     <script>
                     (function () {
-                        // A Turkish address has no state: the province is the city.
+                        // A Turkish address has no state: the province is the
+                        // city field, labelled İl.
                         var select = document.getElementById("ship_to_country");
                         var box = document.getElementById("ship_to_state_box");
+                        var city = document.querySelector("label[for=ship_to_city]");
                         if (select && box) {
                             select.addEventListener("change", function () {
                                 box.classList.toggle("d-none", select.value === "TR");
+                                if (city) {
+                                    city.textContent = city.getAttribute((select.value === "TR") ? "data-label-tr" : "data-label-other");
+                                }
                             });
                         }
                     })();
