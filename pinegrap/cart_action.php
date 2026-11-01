@@ -68,10 +68,11 @@ if ((isset($_POST['submit_update_cart']) || $checkout) && $oid > 0) {
     $applied = 0;
     foreach ($qty_arr as $iid => $q) {
         $iid = (int)$iid;
-        // quantities[<id>][]= is not a quantity: (int) made it 1, or 0 and the
-        // row was removed. The row keeps its quantity.
-        if (!is_string($q)) continue;
-        $q   = (int)$q;
+        // Only a whole number is a quantity (pg_cart_posted_quantity()): an
+        // emptied box, a minus sign, a typo or quantities[<id>][]= read as 0
+        // through (int) and removed the row. The row keeps its quantity.
+        $q = pg_cart_posted_quantity($q);
+        if ($q === null) continue;
         if ($iid <= 0) continue;
         // Anti-tamper: the row must belong to THIS session's order.
         $line = db_item("SELECT order_items.ship_to_id, order_items.quantity, ship_tos.complete

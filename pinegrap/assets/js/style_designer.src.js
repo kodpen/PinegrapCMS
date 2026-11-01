@@ -5676,7 +5676,9 @@ const StyleDesigner = (function () {
             defaultProps: { cssClass: '' },
             render: function (doc, p) {
                 var d = doc.createElement('div');
-                d.className = 'alert alert-info py-2 mb-0';
+                // sd-editor-ph: editor chrome, left out of the canvas audit
+                // (_SD_CANVAS_AUDIT_SKIP); the site prints only the messages.
+                d.className = 'alert alert-info py-2 mb-0 sd-editor-ph';
                 d.style.borderStyle = 'dashed';
                 d.style.opacity = '0.7';
                 d.innerHTML = '<span class="bi bi-chat-square-text me-1"></span><strong>' + esc(_sdT('PHP Messages')) + '</strong>' +
@@ -14074,8 +14076,10 @@ const StyleDesigner = (function () {
                 var rg = doc.createElement('div');
                 // Special canvas placeholder for comments_block
                 if (node.props.regionType === 'comments_block') {
+                    // sd-editor-ph: editor chrome, left out of the canvas
+                    // audit (_SD_CANVAS_AUDIT_SKIP).
                     rg.innerHTML =
-                        '<div style="border:2px dashed #6c9bd1;border-radius:8px;padding:20px;' +
+                        '<div class="sd-editor-ph" style="border:2px dashed #6c9bd1;border-radius:8px;padding:20px;' +
                         'text-align:center;background:rgba(108,155,209,0.07);' +
                         'color:#6c9bd1;font-size:14px;margin:4px 0;pointer-events:none;">' +
                         '<i class="bi bi-chat-square-text" style="font-size:22px;display:block;margin-bottom:6px;"></i>' +
@@ -33937,7 +33941,7 @@ const StyleDesigner = (function () {
                 _sourceInfoHtml = _sdT('Choosing a type loads that type\'s ready-made layout and renames the widget after the type instead of <code>{var}</code>.', esc(_swAutoName('', null, { sid: sid })));
             } else if (_isErrorPage) {
                 // No source: the error arrives with the request.
-                _sourceInfoHtml = _sdT('The first published page carrying this widget becomes the site\'s error page: a page that cannot be found, and every other site error, is shown on it instead of the legacy error page. The <strong>Not found</strong> and <strong>Other error</strong> blocks are kept or dropped by the kind of error. Opened directly, the page answers 404.');
+                _sourceInfoHtml = _sdT('A page carrying this widget in a public folder becomes the site\'s error page, the published design\'s first (the home page\'s design); a page of a design kept as a draft in a private folder never does. A page that cannot be found, and every other site error, is shown on it instead of the legacy error page. The <strong>Not found</strong> and <strong>Other error</strong> blocks are kept or dropped by the kind of error. Opened directly, the page answers 404.');
             } else if (_isComments) {
                 _sourceInfoHtml = _sdT('Shows the comments of the page it is placed on, under that page\'s comment settings, and the form that adds one. Placed on several pages, it keeps one look and shows each page its own comments.');
             } else if (_isCommentsRecent) {
@@ -75370,7 +75374,7 @@ const StyleDesigner = (function () {
     // and elements a switched-off feature drops from the page.
     var _SD_CANVAS_AUDIT_SKIP = '.sd-tb, .sd-persistent-note, .sd-issue-badge, .sd-region-ph, .sd-system-template-band, ' +
         '.sd-system-empty-hint, .sd-system-placeholder, .sd-section-binding-hint, .sd-loop-band, .sd-loop-band-row, ' +
-        '.sd-loop-empty-cell, .sd-dz, .sd-img-placeholder, .sd-drag-ghost, .sd-ghost, .sd-align-guide, .sd-binding-off';
+        '.sd-loop-empty-cell, .sd-dz, .sd-img-placeholder, .sd-drag-ghost, .sd-ghost, .sd-align-guide, .sd-binding-off, .sd-editor-ph';
 
     // An editor box around an element: its background (the selection tint,
     // the loop area's) and its display are the editor's, not the page's.

@@ -5020,7 +5020,7 @@ function pg_sw_widget_page_index()
 
     $not_binned = pg_designer_not_binned_sql('page.page_folder');
     $pages = db_items(
-        "SELECT page.page_id, page.page_name, page.page_title, page.page_folder
+        "SELECT page.page_id, page.page_name, page.page_title, page.page_folder, page.page_style
          FROM page
          INNER JOIN style ON page.page_style = style.style_id
          WHERE 1 = 1" . $not_binned . "
@@ -5085,13 +5085,33 @@ function pg_sw_pick_widget_pages(array $pages, array $by_sid, array $sids)
 }
 
 // The first of $pages (rows with 'page_folder') whose folder $can_view
-// accepts, in their order; null when there is none. Pure.
-function pg_sw_first_viewable_page(array $pages, $can_view)
+// accepts, in their order; null when there is none. With $prefer_styles
+// (design ids, best first; 0 is passed over), an accepted page of one of
+// those designs (rows with 'page_style') comes before the others. Pure.
+function pg_sw_first_viewable_page(array $pages, $can_view, array $prefer_styles = array())
 {
+    $open = array();
     foreach ($pages as $page) {
-        if (isset($page['page_folder']) && call_user_func($can_view, (int)$page['page_folder'])) return $page;
+        if (isset($page['page_folder']) && call_user_func($can_view, (int)$page['page_folder'])) $open[] = $page;
     }
-    return null;
+    foreach ($prefer_styles as $style_id) {
+        if ((int)$style_id <= 0) continue;
+        foreach ($open as $page) {
+            if (isset($page['page_style']) && (int)$page['page_style'] === (int)$style_id) return $page;
+        }
+    }
+    return $open ? $open[0] : null;
+}
+
+// The design of the site's home page - the published design - or 0. Read
+// once per request.
+function pg_sw_home_style_id()
+{
+    static $style_id = null;
+    if ($style_id === null) {
+        $style_id = (int)db_value("SELECT page_style FROM page WHERE page_home = 'yes'" . pg_designer_not_binned_sql('page_folder') . " ORDER BY page_id ASC LIMIT 1");
+    }
+    return $style_id;
 }
 
 // The page product links open when a widget names none: the first designed
