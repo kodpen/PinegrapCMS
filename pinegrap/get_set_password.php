@@ -33,7 +33,12 @@ function get_set_password($properties) {
 
     } else {
 
-        $token = $_GET['k'] ?? '';
+        // The token and the address to go back to. Either sent as an array
+        // (?k[]=x, ?send_to[]=x) counts as not given: hash() and the form's
+        // h() throw a TypeError on it under PHP 8 and the screen became a
+        // 500 page.
+        $token = is_scalar($_GET['k'] ?? null) ? (string) $_GET['k'] : '';
+        $send_to = is_scalar($_GET['send_to'] ?? null) ? (string) $_GET['send_to'] : '';
 
         // Only a token names an account; without one there is no address to show.
         $user = null;
@@ -90,7 +95,7 @@ function get_set_password($properties) {
 
         // If the form is empty, then set default values.
         if ($form->is_empty()) {
-            $form->set('send_to', ($_GET['send_to'] ?? ''));
+            $form->set('send_to', $send_to);
             $form->set('k', $token);
         }
 
