@@ -2335,7 +2335,35 @@ function pg_image_editor_action_delete_version($request, $user)
  */
 function pg_image_editor_strings_artboard()
 {
-    return array();
+    return array(
+        'preset_square'     => lang('Square post'),
+        'preset_portrait'   => lang('Portrait post'),
+        'preset_story'      => lang('Story'),
+        'preset_share'      => lang('Share image'),
+        'preset_banner'     => lang('Web banner'),
+        'preset_custom'     => lang('Custom size'),
+        'boardBackground'   => lang('Background'),
+        'boardLightBlue'    => lang('Light blue'),
+        'boardPresets'      => lang('Preset sizes'),
+        'canvasSize'        => lang('Canvas size'),
+        'create'            => lang('Create'),
+        'anchor'            => lang('Fixed point'),
+        'anchorTopLeft'     => lang('Top left'),
+        'anchorTop'         => lang('Top'),
+        'anchorTopRight'    => lang('Top right'),
+        'anchorLeft'        => lang('Left'),
+        'anchorCenter'      => lang('Center'),
+        'anchorRight'       => lang('Right'),
+        'anchorBottomLeft'  => lang('Bottom left'),
+        'anchorBottom'      => lang('Bottom'),
+        'anchorBottomRight' => lang('Bottom right'),
+        'fitContent'        => lang('Fit to content'),
+        'fitSelection'      => lang('Fit to the selection'),
+        'hintArtboard'      => lang('Drag the edges and corners: the artwork stays, the canvas slides over it. Shift keeps the ratio, Alt sizes from the center.'),
+        'hintImage'         => lang('Choose an image, or drop or paste one onto the canvas.'),
+        'imagePick'         => lang('Choose an image from this computer'),
+        'imageNote'         => lang('You can also drop an image onto the canvas or paste one.'),
+    );
 }
 
 // -- Export (pg_image_editor_export.js) --

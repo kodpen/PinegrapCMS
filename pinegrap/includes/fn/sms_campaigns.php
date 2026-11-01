@@ -417,12 +417,35 @@ function pg_sms_campaign_groups($user)
 }
 
 /**
+ * Whether an UPDATE of an existing campaign really saved the edit; no
+ * database. The UPDATE only touches a draft or a scheduled campaign, so no
+ * changed row means either the same values saved again within the same
+ * second (still editable) or a campaign the job claimed, someone cancelled
+ * or deleted after the screen read it.
+ *
+ * @param int         $affected   mysqli_affected_rows() of the UPDATE
+ * @param string|null $status_now the campaign's status read after it, null
+ *                                when the row is gone
+ * @return bool
+ */
+function pg_sms_campaign_update_landed($affected, $status_now)
+{
+    if ((int) $affected === 1) {
+        return true;
+    }
+
+    return ((int) $affected === 0) && in_array($status_now, array('draft', 'ready'), true);
+}
+
+/**
  * Writes a campaign and its groups.
  *
  * @param int   $id     0 for a new campaign
  * @param array $values pg_sms_campaign_decide() values
  * @param int   $user_id
- * @return int the campaign's id, 0 when it could not be written
+ * @return int the campaign's id, 0 when it could not be written, -1 when the
+ *             campaign is no longer a draft or scheduled (queued, cancelled
+ *             or deleted since the screen read it): nothing was written
  */
 function pg_sms_campaign_save($id, $values, $user_id)
 {
@@ -434,6 +457,20 @@ function pg_sms_campaign_save($id, $values, $user_id)
             "UPDATE sms_campaigns SET name = ?, body = ?, status = ?, start_at = ?, updated_at = ?, updated_by = ?
             WHERE id = ? AND status IN ('draft', 'ready')",
             array($values['name'], $values['body'], $values['status'], (string) $values['start_at'], $now, $user_id, (string) (int) $id));
+
+        // The groups of a campaign the job has queued are its record of who
+        // it went to, and the job reads them right after its claim: they are
+        // left as they are when the edit did not land.
+        // Read before any other query replaces it.
+        $affected = ($result !== false) ? mysqli_affected_rows(db::$con) : -1;
+
+        if (($result !== false) && ($affected !== 1)) {
+            $status_now = db_value("SELECT status FROM sms_campaigns WHERE id = '" . (int) $id . "'");
+
+            if (!pg_sms_campaign_update_landed($affected, $status_now)) {
+                return -1;
+            }
+        }
     } else {
         $result = db_q(
             "INSERT INTO sms_campaigns (name, body, status, start_at, created_at, created_by, updated_at, updated_by)

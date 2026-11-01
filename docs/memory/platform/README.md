@@ -63,11 +63,13 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 - hostname-in-mail-links.md: HOSTNAME (request Host header) for redirects back to the visitor, HOSTNAME_SETTING for links that leave the request (e-mails, documents); the mails that used the request host
 - image-color-profile.md: ICC colour profiles in the image engine: Imagick and GD keep a non-sRGB RGB profile, GD writes it into JPEG/PNG/WebP itself and refuses (color_profile) only what it cannot carry; how a profile is read
 - image-delivery-settings.md: Image delivery settings (2026.11.0 step 11.0.9): formats offered (bit set) and quality per format, where they are read, one clamp, what a change does to derivatives and pages
-- image-derivatives.md: Image derivatives (PR #589) made by get_file.php for ?w=&f=: fixed widths, WebP/AVIF tested once per server, data/cache/img name and signature, skip and lock files, files that get none
+- image-derivative-upkeep.md: Upkeep of the image derivative cache: the daily sweep and its cursor, the purge that sets the folder aside, the storage line, and the warm-up pass that makes own-address WebP copies ahead of visitors
+- image-derivatives.md: Image derivatives (PR #589) made by get_file.php for ?w=&f=: fixed widths, WebP/AVIF tested once per server, data/cache/img name and signature, skip and lock files, encode slots, files that get none
 - image-editor-recycle-bin.md: The image editor's server refuses the Recycle Bin: a binned file is not opened, replaced or copied, and a new picture is not written into the bin folder (#4297)
 - image-editor-save.md: The image editor's save: image_editor_api.php open and save, the document check, the engine's edit option (turn, flip, straighten, crop, size, overlay, shape), replace, copy and new
 - image-files-left-alone.md: Images the engine refuses to process: animated (PR #1234), unreadable Exif orientation (PR #1242), ICC profile GD cannot carry (PR #1267, #1345); how each is told and handled
 - image-processing-engine.md: Single image engine pg_process_image_file(): optimize vs resize jobs and the nine invariants (size guard, atomic write, EXIF, CMYK, GIF, memory, pixels, GIF transparency).
+- image-same-address.md: A JPEG or PNG answered with its WebP derivative at its own address (get_file.php, includes/image_negotiation.php): the switch bits, who gets WebP, Vary, CDN guard, f=original, download name
 - image-settings-and-product-upload.md: Image config keys and defaults, product upload pipeline (image_profile=product), files.image_width/height cache rule, optimizable-percent badge cost.
 - import-design-fetch.md: How the design importer fetches a page (import_design.php): each hop one api_http_request() with opt-in options, the 5-hop walk and the stream fallback kept, what changed with the move
 - indexnow-ping-result.md: The IndexNow ping in update_sitemap_and_ping() logs success only for HTTP 200/202; a refusal (400, 403, 422, 429) logs 'IndexNow ping failed: HTTP <code>'
@@ -113,7 +115,7 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 - short-link-redirects.md: Redirects are short link options (2026.11.0, 11.0.12): answer 0/301/302, * patterns tried only at 404, loop checks on every entry point; names in short-link-names.md.
 - site-icon.md: The site icon (favicon sizes, apple-touch-icon, site.webmanifest): setting in config_text, sizes drawn by the image engine, router addresses, head links.
 - sms-and-iys-rules.md: The lasting rules of SMS and İYS (approved 2026-10-19, built PR #600 to #3846): why İYS, providers, message kinds, consent and İYS rules, marketing SMS, where each part is described, what is left
-- sms-campaign-limit-and-labels.md: SMS campaign text limit with the appended sender identity (#3956), the scheduled/queued labels (#3957), xref rows deleted with a contact group (#3958)
+- sms-campaign-limit-and-labels.md: SMS campaign text limit with the appended sender identity (#3956), the scheduled/queued labels (#3957), xref rows deleted with a contact group (#3958), a save after the job's claim (#4707)
 - sms-campaigns.md: SMS campaigns beside the e-mail campaigns (PR #3846, #3570, tables decided #3847): the two tables, the audience, the job's queueing through pg_sms_enqueue(), the screens
 - sms-codes.md: One-time codes by SMS (includes/fn/sms_codes.php): session hash bound to purpose, subject and number, ten minutes, five guesses, queue reference and expires_at per send
 - sms-erp-overdue.md: ERP overdue receivable SMS (PR #3626): event erp_overdue (kind reminder, off by default), one text per account per notice, which number, the reference, digest count, invoice screen line

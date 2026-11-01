@@ -1501,6 +1501,223 @@
 
 /* -- Canvas and artboard (pg_image_editor_artboard.js) -- */
 
+/* The board while the Canvas tool is on: a dashed line, eight handles and
+   its size above it. */
+.pgie-board {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 1;
+  outline: 1.5px dashed var(--pgie-sel, #1e88e5);
+  pointer-events: none;
+}
+
+.pgie-board[hidden] {
+  display: none;
+}
+
+.pgie-board .pgie-h {
+  pointer-events: auto;
+}
+
+.pgie-boardsize {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 10px);
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: var(--pgie-sel, #1e88e5);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 650;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  transform: translateX(-50%);
+}
+
+.pgie-boardrow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.pgie-boardfits {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pgie-anchors {
+  display: grid;
+  grid-template-columns: repeat(3, 24px);
+  gap: 3px;
+  padding: 4px;
+  border: 1px solid var(--pgie-line);
+  border-radius: 9px;
+  background: var(--pgie-surface);
+}
+
+.pgie .pgie-anchor {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.pgie .pgie-anchor:hover {
+  background: var(--pgie-hover);
+}
+
+.pgie-anchor span {
+  width: 6px;
+  height: 6px;
+  border-radius: 2px;
+  background: var(--pgie-line);
+}
+
+.pgie-anchor.on span {
+  width: 10px;
+  height: 10px;
+  background: var(--pgie-sel, #1e88e5);
+}
+
+/* The New image dialog: presets in three columns, two on a phone. */
+.pgie-confirm-box.pgie-newbox {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: min(620px, calc(100% - 32px));
+  max-height: calc(100% - 32px);
+  overflow-y: auto;
+}
+
+.pgie-confirm-box.pgie-newbox h2 {
+  margin: 0;
+}
+
+.pgie-presets {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.pgie .pgie-preset {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--pgie-line);
+  border-radius: 14px;
+  background: var(--pgie-surface);
+  color: var(--pgie-tx);
+  text-align: left;
+  cursor: pointer;
+}
+
+.pgie .pgie-preset:hover {
+  background: var(--pgie-hover);
+}
+
+.pgie .pgie-preset.on {
+  border-color: var(--pgie-pline);
+  background: var(--pgie-pw);
+}
+
+.pgie-pthumb {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+}
+
+.pgie-pthumb span {
+  display: block;
+  border: 1.5px solid var(--pgie-muted);
+  border-radius: 3px;
+}
+
+.pgie-pthumb .pgie-pcustom {
+  border-style: dashed;
+}
+
+.pgie-ptext {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.pgie-ptext b {
+  font-size: 13.5px;
+}
+
+.pgie-ptext span {
+  color: var(--pgie-muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.pgie-wh[hidden] {
+  display: none;
+}
+
+.pgie-bgopts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.pgie .pgie-bgopt {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 12px 0 8px;
+  border: 1px solid var(--pgie-line);
+  border-radius: 9px;
+  background: var(--pgie-surface);
+  color: var(--pgie-tx);
+  cursor: pointer;
+}
+
+.pgie .pgie-bgopt.on {
+  border-color: var(--pgie-pline);
+  background: var(--pgie-pw);
+}
+
+.pgie-bgsw {
+  width: 20px;
+  height: 20px;
+  border: 1px solid var(--pgie-line);
+  border-radius: 5px;
+}
+
+@media (max-width: 599.98px) {
+  .pgie-presets {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .pgie .pgie-preset {
+    gap: 8px;
+    padding: 10px 8px;
+  }
+
+  .pgie-pthumb {
+    width: 28px;
+    height: 28px;
+  }
+
+  .pgie-pthumb span {
+    transform: scale(0.75);
+  }
+}
+
 /* -- Export (pg_image_editor_export.js) -- */
 
 /* -- Vector (pg_image_editor_vector.js) -- */

@@ -1057,7 +1057,32 @@ if (function_exists('session_status') && (session_status() === PHP_SESSION_ACTIV
 // of pg_image_delivery_settings() apply.
 $image_delivery_row = null;
 
-if ((isset($_GET['w']) || isset($_GET['f'])) && isset(db::$con) && db::$con) {
+// A JPEG or PNG asked for at its own address (no f=) may be answered with its
+// WebP derivative when the browser's Accept names image/webp and the operator
+// switched it on (includes/image_negotiation.php; bit 4 of
+// config.image_derivative_formats, read from the router's config row, so no
+// query of its own). ?f=original always sends the uploaded bytes. Files that
+// get no derivatives (ERP documents, workspace files, attachments) are never
+// negotiated.
+$image_negotiation = array('format' => '', 'vary' => false);
+$image_original_asked = false;
+
+if (($erp_document === false) && ($workspace_file === false) && ($file['attachment'] != 1)) {
+    if (!defined('PG_GET_FILE')) {
+        define('PG_GET_FILE', true);
+    }
+
+    require_once(dirname(__FILE__) . '/includes/image_negotiation.php');
+
+    $image_original_asked = pg_image_original_asked($_GET);
+    $image_negotiation = pg_image_negotiated_format(
+        isset($router_config_row) ? $router_config_row : null,
+        $extension,
+        $_GET,
+        $_SERVER);
+}
+
+if ((isset($_GET['w']) || isset($_GET['f']) || ($image_negotiation['format'] !== '')) && !$image_original_asked && isset(db::$con) && db::$con) {
     $image_delivery_result = @mysqli_query(db::$con,
         "SELECT
             image_derivative_formats,
@@ -1092,7 +1117,8 @@ $file['download_name'] = $file['name'];
 $derivative_status = '';
 
 if (
-    (isset($_GET['w']) || isset($_GET['f']))
+    (isset($_GET['w']) || isset($_GET['f']) || ($image_negotiation['format'] !== ''))
+    && !$image_original_asked
     && ($erp_document === false)
     && ($workspace_file === false)
     && ($file['attachment'] != 1)
@@ -1105,6 +1131,13 @@ if (
 
     $derivative_request = pg_image_derivative_request($_GET);
 
+    // The negotiated format at the asked width (0 = the picture's own).
+    if ($image_negotiation['format'] !== '') {
+        $derivative_request = array(
+            'width'  => ($derivative_request !== null) ? $derivative_request['width'] : 0,
+            'format' => $image_negotiation['format']);
+    }
+
     if ($derivative_request !== null) {
         $derivative = pg_image_derivative($file['id'], $file['path'], $derivative_request, pg_image_derivative_directory(), pg_image_delivery_settings($image_delivery_row));
         $derivative_status = $derivative['status'];
@@ -1112,9 +1145,21 @@ if (
         if ($derivative_status === 'derivative') {
             $file['path'] = $derivative['path'];
             $extension = $derivative['extension'];
-            $file['download_name'] = pg_image_derivative_download_name($file['name'], $derivative['width'], $derivative['extension']);
+
+            // The plain address keeps the picture's name, so the copy saves
+            // as photo.webp; a width asked for names it, as before.
+            $file['download_name'] = (($image_negotiation['format'] !== '') && ($derivative_request['width'] < 1))
+                ? pg_image_negotiated_download_name($file['name'], $derivative['extension'])
+                : pg_image_derivative_download_name($file['name'], $derivative['width'], $derivative['extension']);
         }
     }
+}
+
+// The answer depends on Accept wherever the switch could give either format,
+// the original included and on a 304 too, so a cache keeps one copy per
+// format. Appended: another layer may have set Vary already.
+if ($image_negotiation['vary']) {
+    header('Vary: Accept', false);
 }
 
 $if_modified_since = '';

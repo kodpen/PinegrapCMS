@@ -62,7 +62,7 @@ description: Module list of plans/bug-hunt.md, part 4: root endpoint groups opti
 
 - Endpoints `tax` (3): open
 
-- Endpoints `theme` (6): open
+- Endpoints `theme` (6): taken by a bug-hunt worker (add_theme_file, edit_theme_css, edit_theme_file, get_theme_designer_module, theme_designer, view_themes)
 
 - Endpoints `translation` (3): open
 
@@ -102,7 +102,7 @@ description: Module list of plans/bug-hunt.md, part 4: root endpoint groups opti
 
 - Endpoints pclzip.lib, view_performance_log, get_photo_gallery, pi, private_label, prototype: open
 
-- Endpoints purge_cache, push_job, reload_theme, reserve_calendar_event, reset_password, retrieve_order: taken by a bug-hunt worker
+- Endpoints purge_cache, push_job, reload_theme, reserve_calendar_event, reset_password, retrieve_order: done (#4672, #4691)
 
 - Endpoints get_robots.txt, router, send_email_campaign, view_sessions, get_set_password, shipworks: done (#4655)
 
