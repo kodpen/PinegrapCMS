@@ -205,6 +205,7 @@ function test_custom_form_rules_templates()
 		array('pinegrap-cafe', 'cf-res-date'),
 		array('pinegrap-cafe', 'cf-quote-date'),
 		array('pinegrap-clinic', 'cl-appt-date'),
+		array('pinegrap-salon', 'sl-book-date'),
 	) as $c) {
 		$node = _test_cf_rules_template_node($c[0], $c[1]);
 		pg_assert_true($node !== null, $c[1] . ' exists');
