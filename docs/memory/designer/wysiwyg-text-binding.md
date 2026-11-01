@@ -23,3 +23,6 @@ description: Rich text in widgets: a short block-wrapped field is reduced to inl
 - Rich text written for the classic theme scales pictures with `img-responsive`, which only the classic stylesheet defines; on a Bootstrap 5 page the picture kept its natural width and the page scrolled sideways. Every widget's finished output passes `pg_img_fluid_alias()` (before its srcset pass, not in an e-mail): an `<img>` with `img-responsive` gets `img-fluid` too. Stored text and the field hints are not changed; no CSS is added.
 
 Related: docs/memory/designer/data-binding-to-content.md
+
+## What does the variant chooser write into `text:out_of_stock_message`?
+- `get_product` (`pg_panel_get_product()`) keeps `out_of_stock_message` as the raw column for old custom layouts (`frontend.src.js` tests the stock itself) and adds `out_of_stock_notice` = `pg_product_oos_notice()` (`includes/fn/ecommerce.php`): inline, and only when stock is tracked and quantity <= 0 (back-order included), the widget's `$oos_notice` rule. `pg_civ_variants.js` writes the notice into the bound element, so an in-stock variant no longer shows "Sorry, this product is currently unavailable." on load (#4534). Test: `tests/product_oos_notice_test.php`.

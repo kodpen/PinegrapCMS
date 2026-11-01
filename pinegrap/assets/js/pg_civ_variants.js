@@ -508,6 +508,10 @@
                     if (String(productId) !== currentPid) return;
                     if (!json || json.status !== 'success' || !json.product) return;
                     var p = json.product;
+                    // out_of_stock_message is the raw rich-text column, sent
+                    // whatever the stock; the element bound to it shows the
+                    // notice, which is empty while the variant is in stock.
+                    p.out_of_stock_message = ('out_of_stock_notice' in p) ? p.out_of_stock_notice : '';
                     // Re-apply only the fields the API returned (overrides the
                     // preloaded values with fresh stock + computed fields).
                     var scope = form || document;

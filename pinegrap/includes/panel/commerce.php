@@ -680,6 +680,8 @@ function pg_panel_get_product($request, $action)
     //                          when products.address_name is set)
     //   • gallery[]          (each entry: {url, alt})
     //   • out_of_stock       (bool — derived from inventory rules)
+    //   • out_of_stock_notice (the unavailable copy, inline, only when
+    //                          tracked stock is used up)
     $_pg_pid = (int)$product['id'];
     $_pg_gallery = array();
     $_pg_main = (string)($product['image_name'] ?? '');
@@ -748,6 +750,9 @@ function pg_panel_get_product($request, $action)
     $product['gallery']         = $_pg_gallery;
     $product['gallery_count']   = count($_pg_gallery);
     $product['out_of_stock']    = $_pg_oos;
+    // out_of_stock_message stays the raw column for old custom layouts that
+    // test the stock themselves; the notice is what a bound element shows.
+    $product['out_of_stock_notice'] = pg_product_oos_notice($product);
     $product['quantity_available'] = ($_pg_inv_tracked && !$_pg_backorder) ? $_pg_inv_qty : null;
 
     $response = array(
