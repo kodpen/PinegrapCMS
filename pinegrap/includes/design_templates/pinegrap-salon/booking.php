@@ -106,7 +106,7 @@ $booking_pages[] = array(
                         'notify_email' => '{{site_email}}'),
     'tree'     => $page(array(
         $widget('appointment_detail'),
-        $comments_section(lang('Messages')),
+        $comments_section(lang('Messages'), 'appointment_messages'),
     ), false),
 );
 
@@ -183,8 +183,11 @@ $booking_pages[] = array_merge($mail_settings, array(
     'tree'  => $mail_page(array($widget('email_appointment_client'))),
 ));
 // A new message or reply: sent to the client of a booking, the sender of a
-// conversation and the visitors watching a page. The System region carries
-// the comment and a "View or Reply" button.
+// conversation and the visitors watching a page. Its Comments widget draws
+// the comment in the card of mail.php, with its "View or Reply" button; the
+// System region after it keeps the fixed comment and its own button for an
+// e-mail the widget does not draw (a card edited so it lost its link to the
+// comment).
 $booking_pages[] = array_merge($mail_settings, array(
     'key'   => 'email_reply',
     'name'  => lang('email-new-reply'),
@@ -192,6 +195,7 @@ $booking_pages[] = array_merge($mail_settings, array(
     'tree'  => $mail_page(array(
         $mail_heading(lang('There is a new message')),
         $mail_para(lang('Something new was written on a page you follow: your booking, a conversation or a post. You can read it below and answer it on the page.')),
+        $widget('email_comment'),
         array('type' => 'region', 'props' => array('regionType' => 'system', 'regionName' => ''), 'children' => array()),
     )),
 ));
@@ -377,6 +381,39 @@ $booking_widgets = array(
         )),
     ),
 
+    // The messages about a booking: the booking page's own Comments widget,
+    // which shows them only to whoever may read the booking above it. Oldest
+    // first, one after another, all on one page, never pinned. No Reply,
+    // Share or follow box: the booking has two sides, its client is e-mailed
+    // every answer and the salon every new message.
+    'appointment_messages' => array(
+        'page'   => 'appointment_view',
+        'slug'   => lang('comments'),
+        'config' => array(
+            'regionType' => 'comments',
+            'order'      => 'oldest',
+            'featured'   => 'none',
+            'layout'     => 'flat',
+            'max_depth'  => 1,
+            'per_page'   => 0,
+        ),
+        'tree'   => $comment_thread(array(
+            'title'     => lang('Messages'),
+            'empty'     => lang('No messages yet. Write to us here about your booking.'),
+            'heading'   => lang('Write to us'),
+            'label'     => lang('Your message'),
+            'sign_in'   => lang('Sign in to write to us.'),
+            'submit'    => lang('Send message'),
+            'watch_box' => '',
+            'follow'    => '',
+            'unfollow'  => '',
+            'close'     => lang('Stop new messages'),
+            'reopen'    => lang('Allow new messages'),
+            'reply'     => false,
+            'watch'     => false,
+        )),
+    ),
+
     // My Appointments: the bookings the client sent (or watches); the staff
     // see them all. Newest first.
     'my_appointments_list' => array(
@@ -492,6 +529,23 @@ $booking_widgets = array(
                 ), $mail_style('margin:0')),
             ), array_merge($mail_style('border-top:1px solid #f3d9e4;padding-top:16px'), $show_when('has_new_account'))),
         )),
+    ),
+
+    // The comment of the reply e-mail, drawn for the comment the e-mail is
+    // about, flat and alone. The pages that name the e-mail keep their
+    // comment settings.
+    'email_comment' => array(
+        'page'   => 'email_reply',
+        'slug'   => lang('comments'),
+        'config' => array(
+            'regionType' => 'comments',
+            'order'      => 'oldest',
+            'featured'   => 'none',
+            'layout'     => 'flat',
+            'max_depth'  => 1,
+            'per_page'   => 0,
+        ),
+        'tree'   => $mail_comment_tree,
     ),
 );
 
