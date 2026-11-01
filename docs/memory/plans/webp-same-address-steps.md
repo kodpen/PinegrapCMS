@@ -23,5 +23,5 @@ description: Steps W1-W6 of plans/webp-same-address.md: negotiation, switches an
 - W5 (S) Cloudflare rule. After W2.
   - Cloudflare Tools writes the Cache Rule (phase `http_request_cache_settings`; jpg, jpeg, png; Vary `accept` normalize, media type `image/webp`) when the token may, else shows the steps; a check fetches one picture through the edge with two `Accept` values and sets the confirmation only when each gets its own type.
 
-- W6 (S) Close-out.
-  - Lasting decisions to `platform/` (the extension rule as a key rule of `platform/README.md`); the three plan files deleted.
+- W6 (S) Close-out. After W1-W5 and W7-W9 (`webp-same-address-steps-2.md`).
+  - Lasting decisions to `platform/` (the extension rule as a key rule of `platform/README.md`); the four plan files deleted.

@@ -75,6 +75,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - visitor-ai-assistant.md: Plan (approved 2026-10-19, watch list): visitor-facing AI assistant in the site bubble answering from the site's own content with hand-over to Live Chat; AI disclosure; Premium licence
 - visitor-records-deferred.md: Deferred visitor-table work: more summary dimensions (monthly partitions and early IP removal are built)
 - webp-same-address-options.md: Research of 2026-11-01 behind plans/webp-same-address.md: the options weighed for WebP without breaking addresses, and the outside facts (browsers, mail, social sites, marketplaces, Cloudflare)
+- webp-same-address-steps-2.md: Steps W7-W9 of plans/webp-same-address.md (#4677): a 320 px rung for panel thumbnails, Workspace previews from the derivative cache, the master file and shrink on upload
 - webp-same-address-steps.md: Steps W1-W6 of plans/webp-same-address.md: negotiation, switches and status, encode cap and warm-up, convert doors, Cloudflare rule, close-out; claim as [plan:webp-same-address] W<n>
 - webp-same-address.md: Plan (owner request 2026-11-01): a JPEG or PNG keeps its address and its file; a browser that asks for WebP gets a WebP copy there, every other reader the original; steps W1-W6
 - workspace-agent-handles.md: Plan (2026-10-21, steps 1 and 5 done, 4 waits for 2): each askable agent gets its own @handle, name, avatar and channel permission: outside apps, MCP agents, own-key model assistants such as @chatgpt
