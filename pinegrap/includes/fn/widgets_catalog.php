@@ -3288,9 +3288,10 @@ function _civ_resolve_catalog_listing_root_group_id($page_id)
  * @param string $select_group_name Friendly name when select-group active.
  * @param int    $catalog_page_id   Optional listing page id for crumb URLs.
  * @param int    $root_group_id     Optional scope root (excludes ancestors above this).
+ * @param string $root_label        Optional first crumb's words (blank: "Main Catalog").
  * @return array                  the catalog.crumbs rows (pg_sw_list_crumb_rows_item())
  */
-function _civ_breadcrumb_rows($p, $select_group_id, $select_group_name, $catalog_page_id, $root_group_id)
+function _civ_breadcrumb_rows($p, $select_group_id, $select_group_name, $catalog_page_id, $root_group_id, $root_label = '')
 {
     $base_path = defined('OUTPUT_PATH') ? OUTPUT_PATH : '/';
     $catalog_root_url = '';
@@ -3352,7 +3353,7 @@ function _civ_breadcrumb_rows($p, $select_group_id, $select_group_name, $catalog
     if ($select_group_id <= 0 && is_array($p) && !empty($p['id'])) {
         $product_name = !empty($p['short_description']) ? (string)$p['short_description'] : (string)$p['name'];
     }
-    return pg_sw_list_crumb_rows_item($crumbs, $catalog_root_url, (int)$select_group_id > 0, $product_name);
+    return pg_sw_list_crumb_rows_item($crumbs, $catalog_root_url, (int)$select_group_id > 0, $product_name, $root_label);
 }
 
 /**
@@ -5608,7 +5609,10 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
                 : 0;
         }
         if (pg_sw_list_wanted('crumbs')) {
-            pg_sw_list_publish('crumbs', array('catalog.crumbs' => array(1 => _civ_breadcrumb_rows($p, (int)$select_group_id, (string)$select_group_name, $_civ_cat_pid, $_civ_cat_root))));
+            // cfg['catalog_root_label'] (set by a design template, no editor
+            // field) names the first crumb instead of "Main Catalog".
+            $_civ_root_label = isset($cfg['catalog_root_label']) && is_string($cfg['catalog_root_label']) ? $cfg['catalog_root_label'] : '';
+            pg_sw_list_publish('crumbs', array('catalog.crumbs' => array(1 => _civ_breadcrumb_rows($p, (int)$select_group_id, (string)$select_group_name, $_civ_cat_pid, $_civ_cat_root, $_civ_root_label))));
         }
 
         // Gallery images from products_images_xref (up to 5 named tokens + total count).

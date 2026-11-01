@@ -424,6 +424,11 @@ function test_events_tickets_catalog_and_shop_pages()
 	$cart = $t['widgets']['cart']['config'];
 	pg_assert_same('{{tab:checkout}}', $cart['next_page_id_with_shipping']);
 	pg_assert_same('{{tab:checkout}}', $cart['next_page_id_without_shipping']);
+	// The ticket product's breadcrumb starts at the tickets page by its
+	// name, not at "Main Catalog".
+	$detail = $t['widgets']['product_detail']['config'];
+	pg_assert_same('{{tab:tickets}}', $detail['catalog_listing_page_id']);
+	pg_assert_same(lang('Tickets'), $detail['catalog_root_label']);
 	$checkout = $t['widgets']['checkout']['config'];
 	pg_assert_same('{{tab:order}}', $checkout['next_page_id']);
 	pg_assert_same('{{tab:email_order}}', $checkout['order_receipt_email_page_id']);
