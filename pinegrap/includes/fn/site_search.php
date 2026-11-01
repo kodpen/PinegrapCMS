@@ -450,22 +450,36 @@ function pg_search_index_failure_note($page_name, $reference_code, $message, $ma
 /**
  * A visit's site search terms with one more search added, separated by "|"
  * as the visitor report and the visit detail split them. An empty term adds
- * nothing. Pure.
+ * nothing; a "|" in the term becomes a space, so it stays one term.
+ *
+ * The column is varchar(255) and the session's sql_mode is not strict, so
+ * MySQL cut a longer value: half a term was stored and every later search of
+ * the visit was lost. The value now stays within $max characters: a lone term
+ * is cut to it, and a term that no longer fits after the earlier ones is not
+ * added. Pure.
  *
  * @param string $existing visitors.site_search_terms as stored
  * @param string $term     what the visitor searched for
+ * @param int    $max      characters the column holds
  * @return string
  */
-function pg_search_visit_terms_append($existing, $term)
+function pg_search_visit_terms_append($existing, $term, $max = 255)
 {
     $existing = (string) $existing;
-    $term = trim((string) $term);
+    $max = max(1, (int) $max);
+    $term = trim(_pg_search_index_replace('/[\s|]+/u', ' ', (string) $term));
 
     if ($term === '') {
         return $existing;
     }
 
-    return ($existing === '') ? $term : $existing . '|' . $term;
+    if ($existing === '') {
+        return (mb_strlen($term, 'UTF-8') > $max) ? rtrim(mb_substr($term, 0, $max, 'UTF-8')) : $term;
+    }
+
+    $joined = $existing . '|' . $term;
+
+    return (mb_strlen($joined, 'UTF-8') > $max) ? $existing : $joined;
 }
 
 /**

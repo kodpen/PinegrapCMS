@@ -26,3 +26,12 @@ The widget writes only when the request carries no page parameter
 (`pg_sw_list_page_param()`), so moving to page 2 of the same search does
 not add it twice. The legacy page still writes on every request with a
 query, as before.
+
+## Why does a long search history stop growing?
+The column is `varchar(255)` and the session's `sql_mode` is not strict, so
+MySQL used to cut a longer value: half a term was stored and every later
+search of the visit was lost. `pg_search_visit_terms_append()` now keeps the
+value within 255 characters: a lone term is cut to it, a term that does not
+fit after the earlier ones is not added (the visit's `stop_timestamp` is still
+written), and a `|` typed in a term becomes a space so it stays one term.
+Test: `tests/site_search_visit_terms_test.php`.
