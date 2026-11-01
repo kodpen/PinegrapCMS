@@ -5,8 +5,8 @@ description: Steps B10-B11 of plans/bootstrap-6-panel.md: token tuning and the r
 
 ## How are the tokens tuned (B10)?
 - After B9, one PR per token group (colours, radius, spacing, focus), with before and after screenshots of the liked screens. The owner approves each before merge, asked through an approval issue (`workflow/architect-asking.md`).
-- Ready to start: radius, spacing, one claim each.
-- Focus: #4465 (ring sizes on `--pg-focus-ring-width` / `--pg-focus-ring-offset`, `ui/panel-focus-ring.md`). Colours: #4836 (surfaces on the gray scale, text and lines Bootstrap 6's, rings on the ink; `ui/panel-css-tokens.md`). Open: radius, spacing.
+- Ready to start: spacing, one claim.
+- Focus: #4465 (ring sizes on `--pg-focus-ring-width` / `--pg-focus-ring-offset`, `ui/panel-focus-ring.md`). Colours: #4836 (surfaces on the gray scale, text and lines Bootstrap 6's, rings on the ink; `ui/panel-css-tokens.md`). Radius: #4867 (controls Bootstrap 6's, one surface radius; `ui/panel-radius-tokens.md`). Open: spacing.
 
 ## Which screens are redesigned (B11), and how?
 - Legacy edit screens whose inputs spread over full-width rows or label/field tables. The B1b screenshot round lists them. Ready to start: the claiming session picks the next screen (most used first) and names it in its draft; the owner approves each PR (approval issue, `workflow/architect-asking.md`). The liked screens (`bootstrap-6-panel.md`) are the reference and are not redone.
