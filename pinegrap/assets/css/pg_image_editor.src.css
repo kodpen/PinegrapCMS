@@ -1130,6 +1130,84 @@
 
 /* -- Text (pg_image_editor_text.js) -- */
 
+/* The typing box over a text: the layer's letters at the view's zoom, its
+   lines kept as typed. */
+.pgie-textedit {
+  position: absolute;
+  z-index: 3;
+  box-sizing: border-box;
+  margin: 0;
+  border: 0;
+  outline: 2px dashed var(--pgie-sel);
+  outline-offset: 3px;
+  overflow: hidden;
+  resize: none;
+  white-space: pre;
+  overflow-wrap: normal;
+  transform-origin: 50% 50%;
+  caret-color: var(--pgie-sel);
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.pgie-typing .pgie-sel {
+  display: none;
+}
+
+.pgie-textedit::placeholder {
+  color: currentColor;
+  opacity: 0.5;
+}
+
+.pgie-tfonts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.pgie .pgie-tfont {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-width: 0;
+  height: 54px;
+  padding: 0 6px;
+  border: 1px solid var(--pgie-line);
+  border-radius: 12px;
+  background: var(--pgie-surface);
+  cursor: pointer;
+}
+
+.pgie .pgie-tfont:hover {
+  background: var(--pgie-hover);
+}
+
+.pgie .pgie-tfont.on {
+  border-color: var(--pgie-sel);
+  background: var(--pgie-pw);
+}
+
+.pgie-tfont b {
+  font-size: 21px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.pgie-tfont span {
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--pgie-muted);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pgie .pgie-textweight {
+  width: 100%;
+}
+
 /* -- Stickers and frames (pg_image_editor_sticker.js) -- */
 
 /* -- Redact (pg_image_editor_redact.js) -- */

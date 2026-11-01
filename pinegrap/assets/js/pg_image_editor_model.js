@@ -1423,7 +1423,166 @@
 
     // -- text (pg_image_editor_text.js) --
 
-    var TEXT = {};
+    // A text layer: its box (x, y, w, h, rot), text, font (a key of
+    // TEXT_FONTS or 'g:' and a site font's family), size (px of the rotated
+    // space), weight, italic, align, lineHeight (times the size), spacing,
+    // pad, radius, outline and shadow sizes (em: times the size, so a resize
+    // scales them with the letters), colour, bg (a colour or ''), outline
+    // ({ color, width } or null), shadow ({ color, blur, dx, dy } or null).
+    var TEXT_FONTS = {
+        sans: 'system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+        serif: 'Georgia, "Times New Roman", Times, serif',
+        hand: '"Segoe Print", "Bradley Hand", "Comic Sans MS", "Chalkboard SE", cursive',
+        display: 'Impact, Haettenschweiler, "Arial Narrow Bold", "Franklin Gothic Bold", sans-serif',
+        mono: 'ui-monospace, Menlo, Consolas, "Liberation Mono", monospace'
+    };
+
+    var TEXT_WEIGHTS = [300, 400, 600, 700, 900];
+
+    // size 0: the editor picks one from the picture's size.
+    function textDefaults() {
+        return {
+            text: '', font: 'sans', size: 0, weight: 700, italic: false, align: 'left', lineHeight: 1.25, spacing: 0,
+            color: '#ffffff', bg: '', pad: 0.3, radius: 0.16, outline: null, shadow: null
+        };
+    }
+
+    // A site font's family as typed in a style: letters, digits, spaces and
+    // a few marks, so it can sit quoted in a font string.
+    function textFamilyName(name) {
+        var s = String(name || '').replace(/[^A-Za-z0-9 _\-.]/g, '').replace(/\s+/g, ' ').trim();
+
+        return s.slice(0, 60);
+    }
+
+    // The CSS family list of a layer's font.
+    function textFamily(font) {
+        var f = String(font || '');
+
+        if (f.slice(0, 2) === 'g:' && textFamilyName(f.slice(2))) {
+            return '"' + textFamilyName(f.slice(2)) + '", ' + TEXT_FONTS.sans;
+        }
+
+        return TEXT_FONTS[f] || TEXT_FONTS.sans;
+    }
+
+    // The canvas font string of a layer (also what document.fonts loads).
+    function textFont(l) {
+        var w = Number(l.weight) || 400;
+
+        return (l.italic ? 'italic ' : '') + w + ' ' + textRound(Math.max(0.5, Number(l.size) || 1)) + 'px ' + textFamily(l.font);
+    }
+
+    function textRound(n) {
+        return Math.round(n * 100) / 100;
+    }
+
+    // The one line layout the stage and the saved overlay both draw:
+    // measure(font, string) is the width of a string, metrics(font, size)
+    // the font's { ascent, descent } in px (else 0.8 and 0.2 of the size).
+    // Lines break only at a new line. Letter spacing goes after each
+    // character but the last; with it every character gets its own x,
+    // measured over the line up to it so kerning stays.
+    // Answers the box size (w, h), the padding and, per line, its text, x
+    // from the box's left, baseline y and width, and chars [[c, x]] when
+    // spaced.
+    function textLayout(l, measure, metrics) {
+        var size = Math.max(0.5, Number(l.size) || 1), font = textFont(l);
+        var lh = size * (Number(l.lineHeight) || 1.25), spacing = (Number(l.spacing) || 0) * size;
+        var pad = l.bg ? Math.max(0, Number(l.pad) || 0) * size : 0;
+        var m = metrics ? metrics(font, size) : null;
+        var asc = (m && m.ascent > 0) ? m.ascent : size * 0.8, desc = (m && m.descent >= 0) ? m.descent : size * 0.2;
+        var lines = String(l.text || '').split('\n'), widest = 0;
+
+        var out = lines.map(function (text, i) {
+            var chars = null, width;
+
+            if (spacing && text.length) {
+                var list = Array.from(text), at = '';
+
+                chars = list.map(function (c, j) {
+                    var x = measure(font, at) + j * spacing;
+
+                    at += c;
+
+                    return [c, textRound(x)];
+                });
+                width = measure(font, text) + (list.length - 1) * spacing;
+            } else {
+                width = text.length ? measure(font, text) : 0;
+            }
+
+            width = Math.max(0, width);
+            widest = Math.max(widest, width);
+
+            return { text: text, width: width, chars: chars, base: textRound(pad + i * lh + (lh - asc - desc) / 2 + asc) };
+        });
+
+        // An empty text keeps room for the caret.
+        var inner = Math.max(widest, size * 0.6);
+
+        out.forEach(function (line) {
+            var free = inner - line.width;
+
+            line.x = textRound(pad + ((l.align === 'center') ? free / 2 : ((l.align === 'right') ? free : 0)));
+            line.width = textRound(line.width);
+        });
+
+        return { w: textRound(inner + 2 * pad), h: textRound(lines.length * lh + 2 * pad), pad: textRound(pad), lineHeight: textRound(lh), size: size, font: font, lines: out };
+    }
+
+    // The layer's box for a new layout, kept where it was: the side the
+    // text is aligned to stays (the middle for centred text), the top too.
+    function textFit(l, layout) {
+        var w0 = Number(l.w) || 0, x = Number(l.x) || 0;
+
+        if (w0 && (l.align === 'center')) {
+            x += (w0 - layout.w) / 2;
+        } else if (w0 && (l.align === 'right')) {
+            x += w0 - layout.w;
+        }
+
+        return { x: textRound(x), y: Number(l.y) || 0, w: layout.w, h: layout.h };
+    }
+
+    // A handle of a text's box dragged to box (M.resizeBox()): the letters
+    // scale, by the height from a corner or a top or bottom side, by the
+    // width from a left or right side; the opposite corner or side stays
+    // put in the layer's turned frame. Answers the fields that change.
+    function textResize(start, box, h) {
+        var w0 = Number(start.w) || 1, h0 = Number(start.h) || 1;
+        var k = /^[ew]$/.test(h) ? box.w / w0 : box.h / h0;
+        var size = clamp((Number(start.size) || 1) * k, 2, 4000);
+
+        k = size / (Number(start.size) || 1);
+
+        var fx = (h.indexOf('e') >= 0) ? -1 : ((h.indexOf('w') >= 0) ? 1 : 0);
+        var fy = (h.indexOf('s') >= 0) ? -1 : ((h.indexOf('n') >= 0) ? 1 : 0);
+        var a = (Number(start.rot) || 0) * Math.PI / 180, cos = Math.cos(a), sin = Math.sin(a);
+        var turn = function (x, y) { return [x * cos - y * sin, x * sin + y * cos]; };
+        var w1 = w0 * k, h1 = h0 * k;
+        var o = turn(fx * w0 / 2, fy * h0 / 2), n = turn(fx * w1 / 2, fy * h1 / 2);
+        var cx = start.x + w0 / 2 + o[0] - n[0], cy = start.y + h0 / 2 + o[1] - n[1];
+
+        return { x: textRound(cx - w1 / 2), y: textRound(cy - h1 / 2), w: textRound(w1), h: textRound(h1), size: textRound(size) };
+    }
+
+    // A shadow or an outline of a layer in px of the rotated space.
+    function textEffects(l) {
+        var size = Math.max(0.5, Number(l.size) || 1), o = l.outline, s = l.shadow;
+
+        return {
+            outline: (o && o.color && (Number(o.width) > 0)) ? { color: o.color, width: textRound(Number(o.width) * size) } : null,
+            shadow: (s && s.color) ? { color: s.color, blur: textRound(Math.max(0, Number(s.blur) || 0) * size), dx: textRound((Number(s.dx) || 0) * size), dy: textRound((Number(s.dy) || 0) * size) } : null,
+            radius: l.bg ? textRound(Math.max(0, Number(l.radius) || 0) * size) : 0
+        };
+    }
+
+    var TEXT = {
+        TEXT_FONTS: TEXT_FONTS, TEXT_WEIGHTS: TEXT_WEIGHTS, textDefaults: textDefaults, textFamilyName: textFamilyName,
+        textFamily: textFamily, textFont: textFont, textLayout: textLayout, textFit: textFit, textResize: textResize,
+        textEffects: textEffects
+    };
 
     // -- stickers and frames (pg_image_editor_sticker.js) --
 

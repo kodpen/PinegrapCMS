@@ -30,8 +30,8 @@ description: Steps E1-E10 of plans/image-editor.md: core modal, crop, server sav
 - E6 (M) Drawing and ready-made shapes. Screen 04. Done in #4475 (`ui/image-editor-draw.md`).
   - Pen with smoothing and eraser, line, arrow (head styles), box with a corner-radius handle and value, ellipse, triangle, polygon (3-12 sides), star (4-12 points, inner ratio), speech bubble; stroke, fill, opacity, dash.
 
-- E7 (M) Text. Screen 05. `free`
-  - Typing in place, font (site fonts and system), size, weight, italic, alignment, line height, letter spacing, colour, background box with padding and radius, outline, shadow; one line layout for view and export.
+- E7 (M) Text. Screen 05. Done in #4488 (`ui/image-editor-text.md`).
+  - Typing in place, system and site fonts, size, weight, italic, alignment, line and letter spacing, colour, background box (padding, radius), outline, shadow; one layout for view and export.
 
 - E8 (S) Stickers and frames. Screens 07, 08. `free`
   - Built-in SVG stickers with an editable label, a picture from Files as a sticker, frames (line, thick, polaroid, corners) and background fill.

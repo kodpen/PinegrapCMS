@@ -331,7 +331,9 @@
     //                             handles [{ h, x, y, title }] in the layer's
     //                             frame from its box's corner; box: false
     //                             leaves out the box's), drag(start, h, x, y,
-    //                             e) (the fields such a handle changes)
+    //                             e) (the fields such a handle changes),
+    //                             resize(start, box, h) (the fields a box
+    //                             handle changes, box from M.resizeBox())
     //   keys                      [fn(e, mod, key)]: true when it used the key
     //   escapes                   [fn()]: true when it used Escape (ends a
     //                             tool's own state before the selection)
