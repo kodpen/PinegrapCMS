@@ -26,7 +26,7 @@ function submitted_form_list_test_state($state)
 
 function test_submitted_form_list_defaults_fill_what_is_missing()
 {
-	submitted_form_list_test_state(array('start_year' => 'x', 'stop_day' => '7'));
+	submitted_form_list_test_state(array('range_picked' => true, 'start_year' => 'x', 'stop_day' => '7'));
 	pg_submitted_form_list_defaults(array(array('id' => '5', 'name' => 'A')));
 	$state = $_SESSION['software']['forms']['view_submitted_forms'];
 

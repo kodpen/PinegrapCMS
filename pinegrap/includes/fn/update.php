@@ -1434,13 +1434,12 @@ function pg_update_server_version($mode = 'update')
     $request['installer'] = INSTALLER;
     $request['private_label'] = PRIVATE_LABEL;
     $data = encode_json($request);
-    $API = '59593DS72233483322T669223344';
     // Beta sites ask their own question; see pg_update_channel().
     $REQUEST = pg_update_request_key();
 
     // Verify the certificate. See pg_curl_tls() for why this matters most
     // on the update and licence channel.
-    $answer = pg_curl_run('POST', 'https://www.kodpen.com/api2?API=' . $API . '&REQUEST=' . $REQUEST, array(
+    $answer = pg_curl_run('POST', 'https://www.kodpen.com/api2?REQUEST=' . $REQUEST, array(
         'body'            => $data,
         'headers'         => array(
             'Content-Type: application/json',

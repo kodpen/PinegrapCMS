@@ -10,6 +10,9 @@ module: vendor_api
 ## What does the switch do?
 - `define('PG_VENDOR_API_V1', false);` alone on its line; `true` only in the plan's last step. While off, `pg_vendor_api_request()` refuses before cURL runs (errno 0) and api2 answers as before. The hosting platform reads the file as text (`/^[ \t]*define\('PG_VENDOR_API_V1', true\);[ \t]*\r?$/m`), so the on form is nowhere else in it, comments included; `vendor_api_test.php` pins the line.
 
+## Does an api2 call send a key?
+- No, since #4395: api2 answers the same without the fixed `API` key, so the update check (`includes/fn/update.php`, `software_update_check.php`) and the licence check (`includes/fn/output.php`) ask `api2?REQUEST=…`. `vendor_api_test.php` pins no `api2?API=` in `pinegrap/`; the root `download_assistant.php` keeps its key.
+
 ## Where does a call go?
 - `pg_vendor_api_base()`: `https://api.kodpen.com/v1`, or `PG_VENDOR_API_URL` (`data/config.php`, a test server): https, host, optional port and path, ending in `/v1`, no user, query or blank. Any other value gives '' and no call, never production. `pg_vendor_api_url($path)` appends the path.
 

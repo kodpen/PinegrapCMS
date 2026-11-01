@@ -449,9 +449,9 @@ $placeholder_w29 = $pg_ph_card('<div class="pg-list">'
 // Reset Widgets.
 //
 // Ids are permanent: api.php answers get_widget_data on the same number and
-// dashboards in the field have it stored. 6, 10, 11, 12, 13, 17, 19, 22, 24
-// and 26 are retired and are not reused: their content lives on in 3, 5, 7, 9
-// and 21.
+// dashboards in the field have it stored. 6, 10, 11, 12, 13, 14, 17, 19, 22,
+// 24 and 26 are retired and are not reused: their content lives on in 3, 5, 7,
+// 9 and 21, except 14, whose dates left with the old licence server.
 //
 // 1 is the exception, and it is a deliberate one: the slot answered with an
 // empty string for long enough that no dashboard can be showing anything under
@@ -627,12 +627,9 @@ $widget_registry[30] = array(
     'body'  => $placeholder_w9,
     'show'  => (($pg_ws_rights !== null) && ($pg_ws_rights['board'] || !empty(ws_led_people($pg_ws_rights['id'])))));
 
-// Subscriptions. Administrator only, and only where the installation has a
-// subscription key to report on. Carries no icon, as it always has.
-$widget_registry[14] = array(
-    'title' => lang('Subscriptions'),
-    'body'  => $placeholder,
-    'show'  => (($user['role'] < 1) && (trim((string) SUBSCRIPTION_ID) != '')));
+// 14 (Subscriptions) is retired: it asked the old licence server by
+// Subscription ID, which went with it; the licence card in Settings remains.
+// The id is never reused (decisions-made: permanent dashboard ids).
 
 $widget_registry[15] = array(
     'title' => lang('Offers'),

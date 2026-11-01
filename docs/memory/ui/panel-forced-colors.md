@@ -12,7 +12,7 @@ description: The panel in Windows High Contrast (forced colours): the one @media
 - The tick, dot and knob (`::before`) are CanvasText; a checked switch has a Highlight track and a HighlightText knob; `.btn-close` is ButtonText.
 - Current and pressed items sit in one `:is(…)` list with `forced-color-adjust: none`, Highlight fill, HighlightText text and a Highlight border; their descendants inherit the colour, so icons and labels stay readable.
 - `.progress` gets a CanvasText frame and `.progress-bar` a Highlight fill. Stepper discs get a frame; `.active` discs and track a Highlight fill; the `aria-current="step"` disc a ring too. The offer editor's `.pg-stepper-cards` items are all `.active` by design, so they all turn Highlight.
-- `.pg-role-card` focus and `.pg-chips:focus-within` get a 2px Highlight outline.
+- `.pg-chips:focus-within` gets a 2px Highlight outline; the `.pg-role-card` focus ring, an outline since B10 (#4465), takes `Highlight` as its colour.
 
 ## How do I add a new on state?
 - Add its screen selector to both `:is(…)` lists. `:is()` takes the specificity of its most specific entry (`#header .pg-um-themebtn.active`), so the list beats any screen rule it repeats. A state shown only by a shadow or a `::before` needs its own rule.

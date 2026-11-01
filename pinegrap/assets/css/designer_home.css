@@ -116,9 +116,9 @@
 }
 
 .sdh-start:focus-visible {
-  outline: 0;
+  outline: var(--pg-focus-ring-width) solid var(--pg-focus-ring-color);
+  outline-offset: var(--pg-focus-ring-offset);
   border-color: var(--sdh-hover-line);
-  box-shadow: 0 0 0 .2rem var(--pg-focus-ring-color);
 }
 
 .sdh-start[aria-disabled="true"] {
@@ -302,15 +302,12 @@
 
 /* ── The cards ─────────────────────────────────────────────────────────── */
 
+/* A card is focusable (tabindex="0") and wears the panel's global ring from
+   backend.css: its [tabindex] selector outranks a .sdh-card rule. */
 .sdh-card {
   position: relative;
   background: var(--pg-card-bg, var(--pg-bg-body));
   border: 1px solid var(--pg-border-color);
-}
-
-.sdh-card:focus-visible {
-  outline: 0;
-  box-shadow: 0 0 0 .2rem var(--pg-focus-ring-color);
 }
 
 .sdh-tile:hover {
@@ -492,8 +489,8 @@ button.sdh-page:hover {
 }
 
 .sdh-page:focus-visible {
-  outline: 0;
-  box-shadow: 0 0 0 .2rem var(--pg-focus-ring-color);
+  outline: var(--pg-focus-ring-width) solid var(--pg-focus-ring-color);
+  outline-offset: var(--pg-focus-ring-offset);
 }
 
 .sdh-page-name {

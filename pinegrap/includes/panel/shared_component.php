@@ -361,40 +361,32 @@ function pg_panel_shared_component($request, $action)
             break;
 
         // ── DELETE MANY ──────────────────────────────────────────────────
-        // The palette's bulk delete. A row a saved page still places is
-        // kept unless the request says `force` — the editor asks for that
-        // only after the operator typed the confirmation — so a page saved
-        // from another tab since the palette loaded is never broken by
-        // accident. Answers with what went and what stayed.
+        // The palette's and the designs home's bulk delete, any number of
+        // rows. A row a saved page still places is kept unless the request
+        // says `force` (sent only after the operator confirmed the places)
+        // so a page saved from another tab since the list loaded is never
+        // broken by accident. Answers with what went and what stayed.
+        // Usage is read once for all ids (one pass over the page trees);
+        // the IN lists go in slices of 500.
         case 'delete_many':
-            $sc_ids = array();
-            foreach ((array)(isset($request['ids']) ? $request['ids'] : array()) as $sc_raw) {
-                $sc_one = (int)$sc_raw;
-                if ($sc_one > 0) $sc_ids[$sc_one] = $sc_one;
-            }
+            $sc_ids = pg_shared_component_delete_ids(isset($request['ids']) ? $request['ids'] : array());
             if (empty($sc_ids)) {
                 respond(array('status' => 'error', 'message' => lang('Nothing is selected.')));
             }
-            if (count($sc_ids) > 500) {
-                respond(array('status' => 'error', 'message' => lang('Select at most 500 at a time.')));
-            }
             $sc_force = !empty($request['force']);
-            $sc_usage = pg_shared_component_usage(array_values($sc_ids));
+            $sc_usage = pg_shared_component_usage($sc_ids);
             $sc_names = array();
-            $sc_rows  = db_items("SELECT id, name FROM shared_components WHERE id IN (" . implode(',', $sc_ids) . ")");
-            foreach ((is_array($sc_rows) ? $sc_rows : array()) as $sc_row) $sc_names[(int)$sc_row['id']] = (string)$sc_row['name'];
-            $sc_deleted = array();
-            $sc_kept    = array();
-            foreach ($sc_ids as $sc_one) {
-                if (!isset($sc_names[$sc_one])) continue;   // already gone
-                if (!$sc_force && !empty($sc_usage[$sc_one])) {
-                    $sc_kept[] = array('id' => $sc_one, 'name' => $sc_names[$sc_one], 'usage' => $sc_usage[$sc_one]);
-                    continue;
-                }
-                $sc_deleted[] = $sc_one;
+            foreach (pg_shared_component_id_slices($sc_ids) as $sc_in) {
+                $sc_rows = db_items("SELECT id, name FROM shared_components WHERE id IN (" . $sc_in . ")");
+                foreach ((is_array($sc_rows) ? $sc_rows : array()) as $sc_row) $sc_names[(int)$sc_row['id']] = (string)$sc_row['name'];
             }
+            $sc_split   = pg_shared_component_delete_split($sc_ids, $sc_names, $sc_usage, $sc_force);
+            $sc_deleted = $sc_split['deleted'];
+            $sc_kept    = $sc_split['kept'];
             if (!empty($sc_deleted)) {
-                db("DELETE FROM shared_components WHERE id IN (" . implode(',', $sc_deleted) . ")");
+                foreach (pg_shared_component_id_slices($sc_deleted) as $sc_in) {
+                    db("DELETE FROM shared_components WHERE id IN (" . $sc_in . ")");
+                }
                 _sc_delete_grants($sc_deleted);
                 $sc_list = array();
                 foreach ($sc_deleted as $sc_one) $sc_list[] = $sc_names[$sc_one];
@@ -509,6 +501,20 @@ function pg_panel_shared_component($request, $action)
                      ORDER BY parent_id ASC, sort_order ASC, name ASC"
             );
             respond(array('status' => 'success', 'groups' => $sc_pg_rows));
+            break;
+
+        // ── LIST FOLDERS ────────────────────────────────────────────────
+        // Every folder but the Recycle Bin and what is in it, for the
+        // Photo Gallery widget's Folder picker (pg_gal_folder_choices()).
+        // Its setting is the widget's, written by administrators and
+        // designers only, so the list is not among the read-only actions.
+        case 'list_folders':
+            $sc_fo_rows = db_items(
+                "SELECT folder_id AS id, folder_name AS name, folder_parent AS parent_id, folder_archived AS archived
+                     FROM folder
+                     ORDER BY folder_level, folder_order, folder_name"
+            );
+            respond(array('status' => 'success', 'folders' => pg_gal_folder_choices(is_array($sc_fo_rows) ? $sc_fo_rows : array(), pg_recycle_bin_folder_ids())));
             break;
 
         // ── LIST CATALOG PAGES ──────────────────────────────────────────
@@ -900,14 +906,13 @@ function _sc_content_flags($rows, $user)
     return $rows;
 }
 
-// The grants of deleted components go with them.
+// The grants of deleted components go with them, in slices of 500 ids.
 function _sc_delete_grants($ids)
 {
-    $list = array();
-    foreach ((array)$ids as $id) {
-        if ((int)$id > 0) $list[] = (int)$id;
-    }
+    $list = pg_shared_component_delete_ids($ids);
     if ($list && pg_schema_has('users_shared_components_xref')) {
-        db("DELETE FROM users_shared_components_xref WHERE shared_component_id IN (" . implode(',', $list) . ")");
+        foreach (pg_shared_component_id_slices($list) as $in) {
+            db("DELETE FROM users_shared_components_xref WHERE shared_component_id IN (" . $in . ")");
+        }
     }
 }

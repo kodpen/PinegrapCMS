@@ -82,6 +82,8 @@ function test_geo_country_label_used_by_the_country_lists()
 		'get_express_order.php',
 		'includes/forms/zone_form.php',
 		'includes/forms/tax_zone_form.php',
+		'includes/fn/forms.php',
+		'view_states.php',
 	) as $file) {
 		$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
 		pg_assert_true(strpos($source, 'pg_geo_country_label(') !== false, $file . ' names the country');
@@ -109,4 +111,43 @@ function test_geo_country_label_used_by_the_express_order()
 
 	$page = (string) file_get_contents(PG_FUNCTIONS_DIR . '/get_express_order.php');
 	pg_assert_true(strpos($page, "\$country_options[\$country['name']]") === false, 'the classic page keys no option by the stored name');
+}
+
+// Rows with the same label keep their order, so states already ordered by
+// name stay ordered within their country.
+function test_geo_sort_by_label_keeps_the_order_of_equal_labels()
+{
+	$rows = array();
+
+	foreach (array('Z', 'B', 'A', 'Y', 'C', 'X', 'D', 'W', 'E', 'V', 'F', 'U', 'G', 'T', 'H', 'S', 'I', 'R') as $i => $state) {
+		$rows[] = array('country' => ($i % 2) ? 'Almanya' : 'Türkiye', 'state' => $state);
+	}
+
+	$sorted = pg_geo_sort_by_label($rows, 'country');
+	$states = array();
+
+	foreach ($sorted as $row) {
+		$states[$row['country']][] = $row['state'];
+	}
+
+	pg_assert_same(array('Almanya', 'Türkiye'), array_keys($states), 'countries in label order');
+	pg_assert_same(array('B', 'Y', 'X', 'W', 'V', 'U', 'T', 'S', 'R'), $states['Almanya'], 'input order kept within a country');
+	pg_assert_same(array('Z', 'A', 'C', 'D', 'E', 'F', 'G', 'H', 'I'), $states['Türkiye'], 'input order kept within the other');
+}
+
+function test_country_select_options()
+{
+	$rows = array(
+		array('id' => 7, 'label' => 'Almanya', 'default_selected' => 0),
+		array('id' => 3, 'label' => 'Türkiye', 'default_selected' => 1),
+	);
+
+	pg_assert_same(
+		'<option value="7">Almanya</option><option value="3" selected="selected">Türkiye</option>',
+		pg_country_select_options($rows),
+		'the label shown, the id as value, the default selected');
+	pg_assert_same(
+		'<option value="7" selected="selected">Almanya</option><option value="3">Türkiye</option>',
+		pg_country_select_options($rows, '7'),
+		'the given country selected instead of the default');
 }

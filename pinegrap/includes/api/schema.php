@@ -1747,6 +1747,70 @@ function api_schema() {
 		),
 
 		array(
+			'id'      => 'customers.subscriptions',
+			'method'  => 'GET',
+			'path'    => '/customers/{id}/subscriptions',
+			'scope'   => 'customers:read',
+			'handler' => 'api_customers_subscriptions',
+			'returns' => array('list' => 'Subscription'),
+			'summary' => 'A customer\'s subscriptions',
+			'description' => 'The subscriptions the store charges for the site accounts linked to this customer record, newest first: the product, the amount in minor units and its currency, the period, the status (active, past_due, paused, cancelled, ended), the next charge (for a cancelled one, the day it runs until) and the last four digits of the card. actions lists the moves the customer could make now, the same as the Subscriptions section of My Account offers. Subscriptions of the older card gateways\' recurring profiles are not listed. Cursor paged. The customers row rule applies: an application whose owner has the user role reaches only the customers of the contact groups given to that account, 404 for the rest. A site without subscriptions answers an empty list. Changes are announced as subscription.renewed, subscription.failed, subscription.cancelled, subscription.paused and subscription.resumed.',
+			'params'  => array(
+				array('name' => 'id',     'in' => 'path',  'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'limit',  'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
+				array('name' => 'cursor', 'in' => 'query', 'type' => 'string', 'max_length' => 200, 'description' => 'next_cursor from the previous page.')
+			)
+		),
+
+		array(
+			'id'      => 'customers.subscriptions.pause',
+			'method'  => 'POST',
+			'path'    => '/customers/{id}/subscriptions/{subscription_id}/pause',
+			'scope'   => 'customers:write',
+			'handler' => 'api_customers_subscriptions_pause',
+			'dry_run' => true,
+			'returns' => 'Subscription',
+			'summary' => 'Pause a customer\'s subscription',
+			'description' => 'Nothing is charged until it is resumed. Only an active subscription can be paused: one with a payment due cannot, as that would stop the payment retries. The move is the one the customer makes in My Account, written to the subscription\'s history under this application\'s name. 409 subscription_move_refused when the status does not allow it or the subscription changed meanwhile; 404 for a subscription that is not this customer\'s. Announced as subscription.paused.',
+			'params'  => array(
+				array('name' => 'id',              'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'subscription_id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'customers.subscriptions.resume',
+			'method'  => 'POST',
+			'path'    => '/customers/{id}/subscriptions/{subscription_id}/resume',
+			'scope'   => 'customers:write',
+			'handler' => 'api_customers_subscriptions_resume',
+			'dry_run' => true,
+			'returns' => 'Subscription',
+			'summary' => 'Resume a paused subscription',
+			'description' => 'It is charged again from its next charge date. Only a paused subscription can be resumed. The move is the one the customer makes in My Account, written to the subscription\'s history under this application\'s name. 409 subscription_move_refused when the status does not allow it or the subscription changed meanwhile; 404 for a subscription that is not this customer\'s. Announced as subscription.resumed.',
+			'params'  => array(
+				array('name' => 'id',              'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'subscription_id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'customers.subscriptions.cancel',
+			'method'  => 'POST',
+			'path'    => '/customers/{id}/subscriptions/{subscription_id}/cancel',
+			'scope'   => 'customers:write',
+			'handler' => 'api_customers_subscriptions_cancel',
+			'dry_run' => true,
+			'returns' => 'Subscription',
+			'summary' => 'Cancel a subscription at the end of its period',
+			'description' => 'The subscription is cancelled at once and never charged again; it runs until next_charge_at, the end of the period already paid, and ends that day (one with a payment due ends at the next run of the renewal job). No refund and no proration. The payment service forgets the stored card unless another subscription of the same order still uses it. The move is the one the customer makes in My Account, written to the subscription\'s history under this application\'s name, and the customer gets the cancellation e-mail. 409 subscription_move_refused when the subscription is already cancelled or ended or changed meanwhile; 404 for a subscription that is not this customer\'s. Announced as subscription.cancelled.',
+			'params'  => array(
+				array('name' => 'id',              'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'subscription_id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
 			'id'      => 'customers.create',
 			'method'  => 'POST',
 			'path'    => '/customers',

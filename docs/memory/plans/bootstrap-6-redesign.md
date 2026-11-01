@@ -5,6 +5,7 @@ description: Steps B10-B11 of plans/bootstrap-6-panel.md: token tuning and the r
 
 ## How are the tokens tuned (B10)?
 - After B9, one PR per token group (colours, radius, spacing, focus), with before and after screenshots of the liked screens. The owner approves each before merge.
+- Focus: #4465 (ring sizes on `--pg-focus-ring-width` / `--pg-focus-ring-offset`, `ui/panel-focus-ring.md`). Open: colours, radius, spacing. The ring colours (pale `--pg-focus-ring-color` on role card and designer home, ink elsewhere) belong to the colours group.
 
 ## Which screens are redesigned (B11), and how?
 - Legacy edit screens whose inputs spread over full-width rows or label/field tables. The B1b screenshot round lists them; the owner picks the order. The liked screens (`bootstrap-6-panel.md`) are the reference and are not redone.

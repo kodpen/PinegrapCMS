@@ -154,9 +154,11 @@ function pg_submitted_form_list_options($custom_forms)
  * list for the rest of the session.
  *
  * @param array $custom_forms pg_submitted_form_list_custom_forms()'s answer
+ * @param array $request      the request's values; the rows action passes
+ *                            none, so it reads the range the screen kept
  * @return void
  */
-function pg_submitted_form_list_defaults($custom_forms)
+function pg_submitted_form_list_defaults($custom_forms, array $request = array())
 {
     $state = &$_SESSION['software']['forms']['view_submitted_forms'];
 
@@ -197,21 +199,9 @@ function pg_submitted_form_list_defaults($custom_forms)
         $state['date_type'] = 'last modified';
     }
 
-    $month_ago = time() - 2678400;
-    $date_defaults = array(
-        'start_month' => date('m', $month_ago),
-        'start_day'   => date('d', $month_ago),
-        'start_year'  => date('Y', $month_ago),
-        'stop_month'  => date('m'),
-        'stop_day'    => date('d'),
-        'stop_year'   => date('Y'),
-    );
-
-    foreach ($date_defaults as $key => $value) {
-        if (!preg_match('/^\d{1,4}$/', (string) ($state[$key] ?? ''))) {
-            $state[$key] = $value;
-        }
-    }
+    // A month ago to today unless the user picked a range: the date parts
+    // came in with the request before this call, so the screen passes it.
+    $state = pg_list_period_state($state, $request, time());
 }
 
 /**

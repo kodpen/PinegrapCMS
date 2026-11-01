@@ -462,7 +462,11 @@ function pg_folder_access_tree()
         $rows[$r['folder_id']] = $r;
     }
 
-    $config = db_item("SELECT * FROM config LIMIT 1");
+    // init.php has read the row already and handed it to the firewall.
+    $config = function_exists('waf_config_row') ? waf_config_row() : null;
+    if (!is_array($config)) {
+        $config = db_item("SELECT * FROM config LIMIT 1");
+    }
     $bin_id = (is_array($config) && isset($config['recycle_folder_id'])) ? (int) $config['recycle_folder_id'] : 0;
 
     if (!isset($rows[$bin_id])) {

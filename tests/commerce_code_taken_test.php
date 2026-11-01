@@ -86,7 +86,7 @@ function test_country_card_prints_the_code_error_next_to_the_field()
 {
 	$card = pg_country_form_card(pg_country_form_values(array('code' => 'DE')), array('code' => 'Taken <b>'));
 
-	pg_assert_contains('class="form-control is-invalid" maxlength="50" value="DE" aria-invalid="true" aria-describedby="code-error"', $card, 'the code field is marked');
+	pg_assert_contains('class="form-control is-invalid" maxlength="50" required value="DE" aria-invalid="true" aria-describedby="code-error"', $card, 'the code field is marked');
 	pg_assert_contains('<div id="code-error" class="invalid-feedback d-block">Taken &lt;b&gt;</div>', $card, 'the message sits under the field, escaped');
 	pg_assert_false(strpos(pg_country_form_card(null), 'is-invalid') !== false, 'no mark without an error');
 }
@@ -115,7 +115,7 @@ function test_state_card_prints_the_code_error_next_to_the_field()
 {
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/forms/state_form.php');
 
-	pg_assert_contains('class="form-control\' . $code_class . \'" maxlength="50"\' . $code_aria . \' />\' . $code_feedback', $source, 'the code field is marked and followed by its message');
+	pg_assert_contains('class="form-control\' . $code_class . \'" maxlength="50" required\' . $code_aria . \' />\' . $code_feedback', $source, 'the code field is marked and followed by its message');
 	pg_assert_contains('<div id="code-error" class="invalid-feedback d-block">\' . h($code_error) . \'</div>', $source, 'the message is escaped');
 }
 

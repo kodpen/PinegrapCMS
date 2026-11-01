@@ -57,7 +57,7 @@ function test_bs6_sibling_toggle_rules()
 	pg_assert_contains('background-color: var(--bs-btn-active-bg', $checked);
 	pg_assert_contains('border-color: var(--bs-btn-active-border-color)', $checked);
 	pg_assert_contains('color: var(--bs-btn-active-color)', $checked);
-	pg_assert_contains('var(--pg-focus-ring-color)', bs6_overlays_test_rule($css, 'input.btn-check:focus-visible + .btn'));
+	pg_assert_contains('outline: var(--pg-focus-ring-width) solid var(--pg-primary-ink);', bs6_overlays_test_rule($css, 'input.btn-check:focus-visible + .btn'));
 	pg_assert_contains('opacity: var(--bs-btn-disabled-opacity', bs6_overlays_test_rule($css, 'input.btn-check:disabled + .btn'));
 	pg_assert_contains('border-start-start-radius: var(--bs-btn-border-radius)', bs6_overlays_test_rule($css, '.btn-group > input.btn-check:first-child + .btn'));
 

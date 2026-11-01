@@ -107,7 +107,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - dashboard-list-links.md: Dashboard greeting and card links open their list on the period and filters they counted; dashboard day windows step calendar days
 - dashboard-module-switches.md: The dashboard and the Users list follow the Site Settings module switches (CALENDARS, FORMS, ECOMMERCE) and the greeting's feature lines link only to screens the reader can open
 - dashboard-percent-and-empty-text.md: Dashboard wording: '{var:1}%' percentage figures and the whole-sentence empty states of each card
-- dashboard-pill-contrast.md: Dashboard cards: tinted pills mixed 50% toward the text colour, zero-count and expired rows on .fg-2 instead of opacity, the headline arrow's direction in words
+- dashboard-pill-contrast.md: Dashboard cards: tinted pills mixed 50% toward the text colour, zero-count rows on .fg-2 instead of opacity, the headline arrow's direction in words
 - dashboard-sales-map-data.md: Dashboard sales map widget 1 data side: files, map assets, adding a country, region-name resolution, matching, opening view, number definition, quantile steps.
 - dashboard-sales-map-panel.md: Dashboard sales map widget 1 panel behavior: corner menu with fixed Popper, card colour, permission gates, link gating, brief line signals, reused id 1.
 - dashboard-scroll-regions.md: Dashboard card lists that scroll inside the square card become named keyboard regions (pg_widget_scroll_regions() in welcome.php)
@@ -170,7 +170,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - image-editor-adjust.md: The image editor's Adjust tool: eight adjustments, nine filters as fixed values of them, one colour matrix shared by the preview and the server, the vignette and sharpening, the GD colour layer
 - image-editor-crop.md: The image editor's crop tool: geometry in the document, the rotated space, cover scale, crop mode with its undo and Cancel, ratios, handles, turns and flips, shape, output size, keys
 - image-editor-draw.md: The image editor's Draw tool: nine kinds and the eraser, drawn layers as boxes with their drawing inside, line ends, corner radius, style fields, turns and flips
-- image-editor-keys.md: The image editor's keys and gestures: shortcuts, Escape on keydown and the reopened dialog, Enter and Space left to focused buttons (ownsKey), panning, double click
+- image-editor-keys.md: The image editor's keys: shortcuts, Escape on keydown, Enter and Space to focused buttons, arrows to sliders (ownsKey), focus kept after a panel redraw, panning
 - image-editor-layers.md: The image editor's layers and the Select tool: the layer box model, selection and handles, snapping, align, distribute, order, the layers list, keys, pasting a picture, and the overlay a save draws
 - image-editor-modal.md: The image editor core (window.PgImageEditor): files, loader, bundles, the pure model, labels via lang(), options, full screen, the phone layout, recording a change
 - image-editor-parts.md: The image editor in parts: core, model, one file per tool; the hooks a tool hangs on the editor (panels, pointers, layer types), its model section, labels, API actions, styles and tests
@@ -184,7 +184,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - list-label-sort.md: List columns that show a label for a stored code sort by that label (pg_list_label_order(), FIELD()); the link picker sorts in PHP with pg_list_sort_items()
 - list-page-state.md: A paged panel list (table.chart) comes back on its page, length and search after Back (history.state, pgListState/pgListKeep); the pager landmark named from the DataTables language
 - list-period-navigator-and-clock.md: List screens: the month arrows step from the last shown month, the range heading follows the date order (list_period.php), pickers and times follow the 24-hour setting (#2039, #2040, #2058)
-- list-period-order.md: List screens swap a date range entered the wrong way round (pg_list_period_ordered()); the Site Log's 7/30-day presets count calendar days
+- list-period-order.md: List date ranges: default a month ago to today on every request (pg_list_period_state(), PR #4463), reversed range swapped; Site Log presets in calendar days
 - list-period-week.md: Week's first day (Monday in Turkish, Sunday otherwise) for the list screens' period navigator (#2039) and the get_calendar() grids (#3328)
 - list-quick-edit-keyboard.md: List quick edit (data-pg-edit cells in backend.src.js) from the keyboard: Enter, Escape, Tab to the next row, where focus goes past the last row
 - list-row-names.md: Orders, products, submitted forms, pages and files lists: row box names, SEO links, No Image, folder access by icon and word, names and descriptions that wrap instead of a cut
@@ -240,7 +240,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - panel-css-tokens.md: The panel's --pg-* CSS token layer (Bootstrap 6 step B3): names rules read, the alias block on :root and [data-bs-theme], color-mix() instead of -rgb, what is converted
 - panel-dates-site-order.md: Application Access, Connected applications, Connections, the chat window and the barcode scan logs show dates in the site's date order and 12/24-hour clock; chat times in the panel's zone
 - panel-field-title-override.md: A labelled panel field carries no title: Bootstrap 6 copies a popover title into aria-label, replacing the label as its name; what replaces the title, the scan test, what is left
-- panel-focus-ring.md: The panel's focus ring on Bootstrap 6's focus-ring tokens (step B9k): the --pg-focus-ring-* tokens, why the colour is not an alias, what was checked, which ring sizes wait for B10
+- panel-focus-ring.md: The panel's focus ring on Bootstrap 6's tokens and shape (B9k colour, B10 sizes): the --pg-focus-ring-* tokens, why colour and offset are not aliases, inset rings, what was checked
 - panel-forced-colors.md: The panel in Windows High Contrast (forced colours): the one @media (forced-colors: active) block in backend.src.css, what it draws, how to add a new state to it, how it was checked
 - panel-help-links.md: Where a panel screen's help goes: get_help_url.php maps script names (and list filters) to page#anchor on pinegrap.com; the 'help' property, language prefix, private label, F1, adding a new screen.
 - panel-hint-tooltip-or-popover.md: Panel hover hints: why a bare title turns into a large header-only popover, when to use a compact tooltip (no-popover + data-bs-toggle="tooltip") and how to keep a details popover short

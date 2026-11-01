@@ -984,9 +984,11 @@ function ws_screen_assets($viewer, $mode, $extra = array())
     }
 
     // The flow canvas (assets/js/workspace_flow.js), started by workspace.js
-    // once the team is known.
+    // once the team is known, after the canvas core it draws with
+    // (assets/js/pg_graph_canvas.js).
     if ($mode === 'flows') {
-        $output .= pg_js_bundle_tags('assets/js/workspace_flow.min.js');
+        $output .= pg_js_bundle_tags('assets/js/pg_graph_canvas.min.js')
+            . pg_js_bundle_tags('assets/js/workspace_flow.min.js');
     }
 
     return $output;

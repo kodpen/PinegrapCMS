@@ -20,10 +20,10 @@ description: Plan (approved 2026-10-19, watch list, after payment-driver-layer):
 - Slice 2 done (#3249): iyzico store mode behind the stored-card renewals switch, `card_ref`, `charge_renewal`, `update_card`, `subscription_cancel`, the row from checkout (`commerce/subscriptions-iyzico.md`). Later lines: #3378.
 - Slice 3 done (#3270): Stripe store mode (`commerce/subscriptions-stripe.md`).
 - Slice 4a done (#3290): renewal writer + ladder (`commerce/subscriptions-renewal.md`). 4b done (#3318): the mails (`commerce/subscriptions-mails.md`).
-- 5a done #3347: My Account subscriptions (`commerce/subscriptions-account.md`). Operator screen done #3405 (#3343; `commerce/subscriptions-operator-screen.md`). Next: 5b API `/customers/{id}/subscriptions` + `subscription.*` webhooks.
+- 5a done #3347: My Account subscriptions (`commerce/subscriptions-account.md`). Operator screen done #3405 (#3343; `commerce/subscriptions-operator-screen.md`). 5b done #4399: API + `subscription.*` webhooks (`api/api-customer-subscriptions.md`).
 
 ## Open questions?
 - Price changes done #3495 (`commerce/subscriptions-price-notice.md`); next: the profile form names the action (after #3488). Later lines: done (#3310, #3378).
 
 ## Where to start?
-- Slice 5b: read `commerce/subscriptions.md`, `subscriptions-account.md` (`pg_subscription_store_move()` is the shared move) and the external API memory (`api/`).
+- Slices 1-5 are done; left: the open question above (the profile form names the action). Then the plan closes.

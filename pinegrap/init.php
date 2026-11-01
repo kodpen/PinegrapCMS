@@ -245,8 +245,13 @@ if (!defined('DB_CONNECTED') or DB_CONNECTED !== true) {
 }
 
 // get configuration constants from database
+// A page view comes through router.php, which has read the row already and
+// handed it to the firewall (waf_prime_config()): it is taken from there
+// rather than read a second time. The panel and the jobs load waf.php below,
+// so they read it here.
+$row = function_exists('waf_config_row') ? waf_config_row() : null;
 $query = "SELECT * FROM config";
-$result = mysqli_query(db::$con, $query);
+$result = is_array($row) ? true : mysqli_query(db::$con, $query);
 
 // A database that answers but has no config table is an installation that was
 // never run, or one whose tables are gone. router.php says so on the front end
@@ -289,7 +294,9 @@ if ($result === false) {
     exit();
 }
 
-$row = mysqli_fetch_assoc($result);
+if ($result !== true) {
+    $row = mysqli_fetch_assoc($result);
+}
 
 // Upgrade bridge: a config row from a database behind the code lacks the
 // columns this release added, and the two hundred reads below are plain

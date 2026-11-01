@@ -10865,13 +10865,13 @@ function pg_gift_card_quick_update($gift_card_id, $field, $value, $user_id)
 function get_product_groups($properties)
 {
     $id = $properties['id'];
-    $display_type = $properties['display_type'];
+    $display_type = $properties['display_type'] ?? '';
     if (isset($properties['level'])) {
         $level = $properties['level'];
     } else {
         $level = 0;
     }
-    $status = $properties['status'];
+    $status = $properties['status'] ?? '';
     // Get info for this product group.
     $product_group = db_item("SELECT
 

@@ -63,3 +63,31 @@ function test_zone_form_both_screens_draw_the_shared_cards()
 		pg_assert_contains('pg_zone_form_rate(', $source, $file . ' reads the rates through the shared helper');
 	}
 }
+
+function test_zone_form_post_values()
+{
+	$values = pg_zone_form_post_values(array('name' => '  Europe ', 'base_rate' => '1,50', 'allowed_countries' => array('3', '4'), 'allowed_states' => 'x'));
+	pg_assert_same('Europe', $values['name'], 'the name is trimmed');
+	pg_assert_same('1,50', $values['base_rate'], 'a rate is kept as typed');
+	pg_assert_same('', $values['item_rate'], 'a missing rate is empty');
+	pg_assert_same(array('3', '4'), $values['allowed_countries'], 'the chosen countries');
+	pg_assert_same(array(), $values['allowed_states'], 'a non-list is no choice');
+}
+
+function test_zone_form_name_error()
+{
+	pg_assert_same('', pg_zone_form_name_error('Europe'), 'a name passes');
+	pg_assert_same(lang('Enter a name.'), pg_zone_form_name_error(''), 'a blank name is refused');
+}
+
+function test_zone_form_screens_refuse_a_blank_name()
+{
+	foreach (array('add_zone.php', 'edit_zone.php') as $file) {
+		$source = file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
+		pg_assert_contains('pg_zone_form_name_error(', $source, $file . ' checks the name');
+	}
+
+	$html = pg_zone_form_cards(array('name' => '', 'base_rate' => '0', 'primary_weight_rate' => '0', 'secondary_weight_rate' => '0', 'item_rate' => '0'), '', '', array('name' => 'Enter a name.'));
+	pg_assert_contains('<div id="name-error" class="invalid-feedback d-block">Enter a name.</div>', $html, 'the message under the name');
+	pg_assert_contains(' required', $html, 'the name box is required');
+}

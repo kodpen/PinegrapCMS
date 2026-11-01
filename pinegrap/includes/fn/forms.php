@@ -1948,22 +1948,47 @@ function get_recipient_options()
 
     return $recipient_options;
 }
+/**
+ * The options of a single country select: each country named and ordered
+ * in the current language (pg_geo_country_label()), its id as the value.
+ * The given country is selected, else the default selected one.
+ *
+ * @param int|string $country_id
+ * @return string  HTML
+ */
 function select_country($country_id = '')
 {
-    // only ever appended to below, so it has to start out empty
+    $rows = array();
+
+    $result = mysqli_query(db::$con, "SELECT id, name, code, default_selected FROM countries") or output_error(lang('Query failed.'));
+
+    while ($row = mysqli_fetch_assoc($result)) {
+        $row['label'] = pg_geo_country_label($row['name'], $row['code']);
+        $rows[] = $row;
+    }
+
+    return pg_country_select_options(pg_geo_sort_by_label($rows), $country_id);
+}
+
+/**
+ * The option tags of select_country() from rows with 'id', 'label' and
+ * 'default_selected', in the order given.
+ *
+ * @param array      $rows
+ * @param int|string $country_id The selected country; '' selects the default one
+ * @return string  HTML
+ */
+function pg_country_select_options($rows, $country_id = '')
+{
     $output = '';
 
-    $query = "SELECT id, name, default_selected " . "FROM countries " . "ORDER BY name";
-    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
-    while ($row = mysqli_fetch_assoc($result)) {
-        // if (this country is the selected country OR (this is the default selected country AND there is no selected country)), select this country by default
-        if (($row['id'] == $country_id) || (($row['default_selected'] == 1) && ($country_id == ''))) {
-            $selected = ' selected="selected"';
-        } else {
-            $selected = '';
-        }
-        $output .= '<option value="' . $row['id'] . '"' . $selected . '>' . h($row['name']) . '</option>';
+    foreach ($rows as $row) {
+        $selected = (((string) $row['id'] === (string) $country_id) || (($row['default_selected'] == 1) && ((string) $country_id === '')))
+            ? ' selected="selected"'
+            : '';
+        $output .= '<option value="' . h($row['id']) . '"' . $selected . '>' . h($row['label']) . '</option>';
     }
+
     return $output;
 }
 // outputs the options for a drop-down selection field for selecting a referral source

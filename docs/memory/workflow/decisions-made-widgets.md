@@ -1,6 +1,6 @@
 ---
 name: decisions-made-widgets
-description: Decisions list, system widget part: conditions and required controls, translated compared text, old blocks equal in look (W16), gallery sources (W5), entity values (W8), the 2026-10-27 answers.
+description: Decisions list, system widget part: conditions and required controls, translated text, equal old blocks (W16), gallery sources (W5), entity values (W8), 2026-10-27 answers, Photo Gallery folder.
 ---
 
 ## How do system widget conditions treat forms and languages?
@@ -15,3 +15,6 @@ description: Decisions list, system widget part: conditions and required control
 ## What do the answers of 2026-10-27 bind?
 - Owner decision (2026-10-27, all proposals accepted): OR conditions (up to three, All/Any), hide-if-empty in every kind, value inside one translatable sentence, a classic form converter and no PHP code area, page facts (record plus signed in, cart has items, cart count) that only choose what shows, placements that only narrow content, form parts with system-owned sending and required controls, express display lists, W12 grouping by the page's language, the canvas opening on the first state. Reasons per answer in `designer/widget-designability-decisions-2.md`.
 - Reference price window (2026-10-27, answered for the owner under "en makul ve işlevsel seçimle"): while a reduced price runs the window ends where it began, else now; not a missing "now" (`commerce/product-reference-price-decisions.md`).
+
+## Which folder does the Photo Gallery widget show?
+- Owner decision (2026-11-01, "Klasör seçimi ekle"): the widget's panel chooses the folder it shows; empty keeps the page's folder. Reason: the gallery could only show the folder its page sits in. A chosen folder that is gone or in the Recycle Bin shows nothing rather than the page's folder, which may be the whole site's root (#4450, `designer/photo-gallery-widget.md`).

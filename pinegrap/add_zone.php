@@ -21,9 +21,27 @@ require_once(PG_FUNCTIONS_DIR . '/includes/forms/zone_form.php');
 $user = validate_user();
 validate_ecommerce_access($user);
 
-if (!$_POST) {
+// A post with a blank name draws the form again with what was typed and
+// the message under the name; nothing is written.
+$values = array('name' => '', 'base_rate' => '0', 'primary_weight_rate' => '0', 'secondary_weight_rate' => '0', 'item_rate' => '0');
+$selected = null;
+$errors = array();
 
-    $choices = pg_zone_form_choices();
+if ($_POST) {
+    validate_token_field();
+
+    $values = pg_zone_form_post_values($_POST);
+    $selected = $values;
+    $name_error = pg_zone_form_name_error($values['name']);
+
+    if ($name_error !== '') {
+        $errors['name'] = $name_error;
+    }
+}
+
+if (!$_POST || $errors) {
+
+    $choices = pg_zone_form_choices(0, $selected);
 
     $output =
     pg_page_shell([
@@ -42,7 +60,7 @@ if (!$_POST) {
                 
                 <form name="form" action="add_zone.php" method="post">
                     ' . get_token_field() . '
-                    ' . pg_zone_form_cards(array('name' => '', 'base_rate' => '0', 'primary_weight_rate' => '0', 'secondary_weight_rate' => '0', 'item_rate' => '0'), $choices['countries'], $choices['states']) . '
+                    ' . pg_zone_form_cards($values, $choices['countries'], $choices['states'], $errors) . '
                     <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
@@ -60,9 +78,6 @@ if (!$_POST) {
     print $output;
 
 } else {
-    validate_token_field();
-    
-
     // Rates are stored in minor units.
     $base_rate = pg_zone_form_rate($_POST['base_rate'] ?? '');
     $primary_weight_rate = pg_zone_form_rate($_POST['primary_weight_rate'] ?? '');
@@ -86,7 +101,7 @@ if (!$_POST) {
                 ?,
                 ?,
                 UNIX_TIMESTAMP())";
-    $result = db_q($query, array((string) ($_POST['name'] ?? ''), (string) $base_rate, (string) $primary_weight_rate, (string) $secondary_weight_rate, (string) $item_rate, (int) $user['id'])) or output_error('Query failed.');
+    $result = db_q($query, array($values['name'], (string) $base_rate, (string) $primary_weight_rate, (string) $secondary_weight_rate, (string) $item_rate, (int) $user['id'])) or output_error('Query failed.');
 
     $zone_id = mysqli_insert_id(db::$con);
 

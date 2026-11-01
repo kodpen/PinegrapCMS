@@ -10,7 +10,7 @@ module: seo
 
 ## How do the readers know?
 - `get_access_control_type()` (`includes/authentication.php`) answers `private` for the bin and every folder below it (`pg_folder_access_resolve()`, pure over the folder rows and the bin id; `pg_folder_in_bin_chain()`). That covers `get_file.php`, sitemap.xml and every other caller; managers keep their access as for any private folder.
-- The bin id is read with `SELECT * FROM config` in `pg_folder_access_tree()`, not `pg_recycle_bin_folder_id()`: `get_file.php` never loads functions.php, and `SELECT *` has no `recycle_folder_id` key before the upgrade that adds it.
+- The bin id comes from the config row the firewall holds (`waf_config_row()`; `SELECT * FROM config` when it holds none) in `pg_folder_access_tree()`, not `pg_recycle_bin_folder_id()`: `get_file.php` never loads functions.php, and `SELECT *` has no `recycle_folder_id` key before the upgrade that adds it.
 - `get_page.php` treats a page in a binned folder (`pg_folder_binned()`) as archived: 410 for anybody without edit access.
 - `view_pages.php` counts the bin's folders as archived: the live lists and the SEO summary append `pg_pages_bin_sql(pg_recycle_bin_folder_ids(), false)`, the archive list `..., true)` (`includes/fn/seo.php`).
 

@@ -116,6 +116,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - design-template-news-layout.md: News template page shapes: the lead grid, most read inside the article's record view, newsletter field order, one tip call on the front page, band padding, p titles in the drawer, whole tips.
 - design-template-news-publishing.md: News template publishing: who may submit, the three-row live rule, scheduling and search, where a draft could leak, search noise, structured data and feeds, author HTML, signed-in tips, e-mails.
 - design-template-news.md: News Portal template (pinegrap-news): what it ships, the Articles form contract, the look, ?r= addresses, sample dates, preview, platform limits.
+- design-template-shop-comments.md: Store and boutique templates (1.2.0) comment threads on the Comments widget: post_comments, conversation_replies, the reply e-mail card before the System region, why explicit trees, older sites
 - design-templates-catalog-and-look.md: A design template's own data and looks: catalog and contact groups made on opening, their placeholders, suggested look and palette, highlights, gallery drawing, dark sections, ratio classes.
 - design-templates-file-format.md: Writing a design template file (includes/design_templates/<id>.php): version, keys, placeholders, requires, starter widgets, shared parts, folders, and what opening a template writes before Publish.
 - design-templates-from-design.md: Templates made from a design (2026.4.8): design_template table, custom-<n> ids, same shape as a template file, the pg_dtc_* placeholder export, assets, deleting, the same-request cache trap.
@@ -218,6 +219,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - express-order-legal-documents.md: Checkout document boxes and KVKK lines in the designer's express order tree: legal_* field bindings, has_legal_documents / has_legal_kvkk* flags, __legal_* tokens, sentence split of the label
 - folder-view-widget.md: The Folder View widget (classic "folder view" page type): settings and their fallback, the folder tree as a main loop plus nested folder_view.children lists, row tokens, flags, what is left out.
 - form-feed-item-guid-enclosure.md: A form feed item's guid is unique per record (permalink with a detail page, page#code without one); a typed media address gets length 0 and a type from its extension, or no enclosure
+- form-field-errors.md: Which controls a refused server submission marks (is-invalid, aria-invalid, linked invalid-feedback) on designed forms, member widgets and classic liveform fields (#4458).
 - form-item-ai-summary.md: AI on a designed form item view (2026.4.8): four assistant links and when they fill, the prompt setting, the in-browser summary wired by bindings, why the box is an aside, the translator bridge.
 - form-list-filters-fail-closed.md: A form list filter on a missing field or unknown operator shows no record (page, feeds, sitemap, index); address filters unchanged; editor warning; unanswered lists use comments less than 1
 - form-list-result-count.md: form_list_view ^^__result_count^^ (records matched, capped at max_results, grouped digits), the flags has_records / no_records, the count strip (empty loop area), canvas and installer preview
@@ -242,6 +244,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - legacy-region-preview.md: The canvas preview of a classic page's system region drawn by its custom layout (designer/legacy_region_preview): who sees it, the markers, the background render, read only, when it is asked again
 - link-button-inline-children.md: Spans and icons inside a link or button: two ways to hold them, why an inline edit keeps a link's markup, which drops a button accepts, where the label prints beside children.
 - link-target-in-attrs.md: A link's window and rel: props first, _attrs when the prop is empty (link and button link, server and canvas alike), the selection-time fold, starter trees and templates, page bodies drawn before
+- list-search-sort-price-forms.md: The server-built search box (form list, catalog listing) and the catalog's sort and price forms: accessible names, translated words, hidden inputs without the router's page name (#4457).
 - loop-band-canvas.md: The loop area's band on the canvas (.sd-loop-band): one line with an ellipsis and the full text in its tooltip, and the Turkish terms the band and its notes use (#2523)
 - member-email-asked-once.md: Registration and membership activation ask for the email once: email_verify optional, a typed copy must match; starter layouts, templates, classic screens and the starter site changed
 - member-widgets-handlers-and-forms.md: Membership widgets (login/forgot/registration/membership): legacy handlers, pg_member_register/activate, control naming, form wrap, validation script.
@@ -252,6 +255,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - multi-page-design-model.md: Data model of multi-page visual designer designs (style + page_style, page_tree_json), tree-reading helpers, design-page detection, start screen, recycle bin rules.
 - multi-page-designer-editor.md: Editor screen code, save flow, JSON api.php body, the dirty check and unchanged pages, tab switching/menu/rename DOM rules, toolbar overflow, palette order and designer texts.
 - no-form-in-form.md: No form inside a form in the designer: semantic forms at any depth, widgets the server wraps in a form (_SD_FORM_WIDGET_TYPES), blocks, widgets and components that bring one.
+- no-image-placeholder.md: assets/images/no-image.svg, the fallback for a missing or failed image, is an icon without words so it reads the same in every site language (PR #4472)
 - node-text-and-whitespace.md: Designer node props.text: innerHTML (content nodes) vs plain text (semantic nodes), and whitespace-sensitive tags pre/textarea/code in generateHTML().
 - options-panel-style-labels.md: Labels of the options panel selects built from utility classes (selStyleGroup) and of the colour pickers: how options and placeholders are translated, the Text/Background Color row keys (#2046)
 - order-form-widget.md: The Order Form widget (classic "order form" page type): handler and page row, list and drop-down layouts, row controls by name, flags, schedule section, what is left out.
@@ -276,7 +280,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - palette-insert-at-selection.md: Where a palette double-click or command palette insert lands: in the selection, else beside it (in a widget too), where the operator may edit, wrapped as a drop; widgets stop at a system widget.
 - palette-lists-keyboard.md: Palette lists from the keyboard: focusable rows Enter/Space insert, header toggle buttons with aria-expanded, named search boxes, reachable bulk box, tip card on focus
 - passkey-widget-list.md: Passkeys in the designed account_security widget (PR #1843, #2279): the list, row tokens, flags, rename/remove, the add form with the e-mailed code, device rows
-- photo-gallery-widget.md: Photo Gallery widget and classic page: image types shown, thumbnail alt text, folder shown and ?folder_id= check, rows, tokens, flags, Where used, what is left out.
+- photo-gallery-widget.md: Photo Gallery widget and classic page: the folder setting and its fallback, ?folder_id= and the Recycle Bin, image types, alt text, rows, tokens, flags, Where used, what is left out.
 - product-name-sku-and-canvas-placeholders.md: Which product token is the SKU and which the store name, their Bind Data labels and canvas samples; the placeholder of a value with no sample; a bound section's canvas name (#4200)
 - record-media-field-share-image.md: A form's RSS media upload opens with the record; og:image comes from the form's share image field, then the media field, and skips an upload an anonymous visitor cannot open (#2191, #2174, #2891)
 - record-value-page-links.md: A form list or detail link opening another page with the record's values in its address (__page_link + _bindParams.href): shape, pre-pass, escaping, values, Publish, export, editor, code view

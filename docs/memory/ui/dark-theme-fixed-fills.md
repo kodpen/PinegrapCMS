@@ -9,7 +9,6 @@ description: Fixed light colours in panel markup and scripts (label designer, tr
 ## What was changed?
 - `PgBarcode.LabelEditor` in `assets/js/backend.src.js`: the property box and the Label Size box read `var(--pg-bg-1)` and `var(--pg-border-color)`; their inputs and selects `var(--pg-border-color)`, `var(--pg-bg-body)` and `var(--pg-fg-body)`; the note text `var(--pg-fg-2)`.
 - The Parasut order export "Please Wait" overlay in `backend.src.js`: `color-mix(in srgb, var(--pg-bg-body) 70%, transparent)` with `var(--pg-fg-body)` text.
-- The hosting widget track (`widget_14.php`): `var(--pg-bg-2)`.
 - The rows/columns corner ticks of `includes/forms/field_form.php`: `var(--pg-border-color)`.
 - The dashboard tracks of widgets 18, 21 (and its hit count pill, which keeps `color:inherit`), 22 and 23: `rgba(0,0,0,.06)` vanished on the dark card, now `var(--pg-bg-2)` (#2569).
 - Chart.js charts in `erp_profit.php`, `search_console.php` and the Orders statistics strip (`view_orders.php`, which read the undefined `--bs-secondary-color` and so always drew `#6c757d`, under 4.5:1 on both cards) drew Chart.js defaults (#666 labels, black 10% grid). They resolve an ink from `var(--pg-fg-2)` through a probe element (`getComputedStyle(probe).color`) and pass it to the legend and every scale's ticks, with a `rgba(128,128,128,.2)` grid. Never hand `getPropertyValue('--pg-*')` to Chart.js: it returns `light-dark(...)` text a canvas cannot parse (#2569).

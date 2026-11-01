@@ -26,32 +26,17 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 
 /**
  * Brings the commissions list's date range in the session into shape and
- * answers it: a month ago to today by default, and every date part a number
- * (mktime() throws for anything else, and one bad address would otherwise
- * break the list for the rest of the session).
+ * answers it: a month ago to today worked out on every request unless the
+ * user picked a range (pg_list_period_state()).
  *
+ * @param array $request the request's values; the rows action passes none,
+ *                       so it reads the range the screen kept
  * @return array array('start' => first second, 'stop' => last second)
  */
-function pg_commission_list_range()
+function pg_commission_list_range(array $request = array())
 {
-    $state = &$_SESSION['software']['ecommerce']['view_commissions'];
-    $month_ago = time() - 2678400;
-    $defaults = array(
-        'start_month' => date('m', $month_ago),
-        'start_day'   => date('d', $month_ago),
-        'start_year'  => date('Y', $month_ago),
-        'stop_month'  => date('m'),
-        'stop_day'    => date('d'),
-        'stop_year'   => date('Y'),
-    );
-
-    foreach ($defaults as $key => $value) {
-        if (!preg_match('/^\d{1,4}$/', (string) ($state[$key] ?? ''))) {
-            $state[$key] = $value;
-        }
-    }
-
-    $state = pg_list_period_ordered($state);
+    $state = pg_list_period_state($_SESSION['software']['ecommerce']['view_commissions'] ?? array(), $request, time());
+    $_SESSION['software']['ecommerce']['view_commissions'] = $state;
 
     return array(
         'start' => mktime(0, 0, 0, (int) $state['start_month'], (int) $state['start_day'], (int) $state['start_year']),

@@ -132,10 +132,6 @@ $pg_settings_cards[] = '
                 <div class="row gy-5">
                     ' . $output_software_language . '
                     <div class="pg-f-lg">
-                        <label for="subscription_id" class="form-label">' . lang('Subscription ID') . '</label>
-                        <input type="text" name="subscription_id" id="subscription_id" maxlength="10" autocomplete="false" class="form-control" value="' . SUBSCRIPTION_ID . '" />
-                    </div>
-                    <div class="pg-f-lg">
                         <label for="subscription_key" class="form-label">' . lang('Subscription Key') . '</label>
                         <input type="text" name="subscription_key" id="subscription_key" maxlength="19" autocomplete="false" spellcheck="false" autocapitalize="characters" class="form-control input-mask-key-code" value="' . h(SUBSCRIPTION_KEY) . '"' . (($license_site_warning !== '') ? ' aria-describedby="subscription_key_site"' : '') . ' />' . $license_site_warning_html . '
                     </div>

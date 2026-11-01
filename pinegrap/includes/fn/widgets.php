@@ -1369,9 +1369,13 @@ function pg_sw_list_page_past($requests)
 }
 
 // The fields a filter may name on form $custom_form_page_id, keyed by their
-// lower-case name: every named field but the information blocks.
+// lower-case name: every named field but the information blocks. Read once
+// per form and request: every list and filter of a page asks for it.
 function pg_sw_filter_form_fields($custom_form_page_id)
 {
+    static $forms = array();
+    $custom_form_page_id = (int)$custom_form_page_id;
+    if (isset($forms[$custom_form_page_id])) return $forms[$custom_form_page_id];
     $custom = array();
     $rows = db_items(
         "SELECT id, name, type, multiple"
@@ -1384,7 +1388,7 @@ function pg_sw_filter_form_fields($custom_form_page_id)
     foreach ((array)$rows as $row) {
         $custom[mb_strtolower((string)$row['name'], 'UTF-8')] = $row;
     }
-    return $custom;
+    return $forms[$custom_form_page_id] = $custom;
 }
 
 // The filters a form_list_view widget applies to its records: the classic
@@ -2075,26 +2079,7 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
     // so the user keeps their wider page state. Hidden inputs replay the rest.
     $search_html = '';
     if ($search_enabled) {
-        $hidden = '';
-        if (!empty($_GET) && is_array($_GET)) {
-            foreach ($_GET as $k => $v) {
-                if ($k === $query_param || $k === $page_param) continue;
-                if (is_array($v)) continue;  // skip array params; rare and unsafe
-                $hidden .= '<input type="hidden" name="' . h($k) . '" value="' . h((string)$v) . '">';
-            }
-        }
-        $search_html =
-            '<form method="get" class="pg-sw-search mb-3" role="search">' .
-                $hidden .
-                '<div class="input-group input-group-sm ' . $search_width_cls . '">' .
-                    '<input type="text" class="form-control" name="' . h($query_param) . '" ' .
-                           'value="' . h($search_query) . '" placeholder="' . h($search_label) . '" maxlength="100">' .
-                    '<button type="submit" class="btn btn-outline-secondary"><span class="bi bi-search"></span></button>' .
-                    ($search_query !== ''
-                        ? '<a class="btn btn-outline-secondary" href="?' . h(_pg_sw_build_query($query_param, '', $page_param, '')) . '"><span class="bi bi-x-lg"></span></a>'
-                        : '') .
-                '</div>' .
-            '</form>';
+        $search_html = _pg_sw_search_box_html($query_param, $search_query, $search_label, $search_width_cls, $page_param);
     }
 
     // Empty-state HTML used when no records match, as an element the
@@ -3271,15 +3256,19 @@ function pg_sw_route_record_address($page_id, $segment)
 }
 
 // The address a list links each record to: the detail page's, resolved once
-// per render. A detail page that shows another form gives no address (its
+// per render and kept for the request (several lists of a page often share
+// one). A detail page that shows another form gives no address (its
 // widget would not find the record). Returns array('page_name' => '' when
 // there is none, 'pretty' => bool).
 function pg_sw_list_detail_target($detail_page_id, $custom_form_page_id)
 {
+    static $targets = array();
     $out = array('page_name' => '', 'pretty' => false);
     $detail_page_id = (int)$detail_page_id;
     $custom_form_page_id = (int)$custom_form_page_id;
     if ($detail_page_id <= 0 || $custom_form_page_id <= 0) return $out;
+    $key = $detail_page_id . '|' . $custom_form_page_id;
+    if (isset($targets[$key])) return $targets[$key];
 
     // A classic form item view page bound to the same form.
     $name = (string)db_value(
@@ -3298,13 +3287,13 @@ function pg_sw_list_detail_target($detail_page_id, $custom_form_page_id)
     if (!$classic && pg_sw_page_widget($detail_page_id, 'form_item_view', function ($c) use ($custom_form_page_id) {
         return pg_sw_form_widget_form_page_id($c) === $custom_form_page_id;
     })) {
-        $name = (string)db_value("SELECT page_name FROM page WHERE page_id = '" . $detail_page_id . "' LIMIT 1");
+        $name = pg_page_name_for_link($detail_page_id);
     }
     $out['page_name'] = $name;
     // A classic detail page answers only ?r= under its own name; its pretty
     // address is the classic list page's (get_page.php).
     $out['pretty'] = ($name !== '' && !$classic && pg_sw_form_pretty_urls($custom_form_page_id));
-    return $out;
+    return $targets[$key] = $out;
 }
 
 // ============================================================================
@@ -4513,9 +4502,9 @@ function _pg_member_page_url($page_id)
 {
     $page_id = (int)$page_id;
     if ($page_id <= 0) return '';
-    $name = db_value("SELECT page_name FROM page WHERE page_id = '$page_id' LIMIT 1");
-    if ($name === '' || $name === null || $name === false) return '';
-    return (defined('OUTPUT_PATH') ? OUTPUT_PATH : '/') . encode_url_path((string)$name);
+    $name = pg_page_name_for_link($page_id);
+    if ($name === '') return '';
+    return (defined('OUTPUT_PATH') ? OUTPUT_PATH : '/') . encode_url_path($name);
 }
 
 // A same-origin path from the query string, or '' — the caller decides the
@@ -4634,6 +4623,8 @@ function _pg_member_controls($tree)
 // stored value matches its own value (or is truthy when it has none).
 function _pg_member_fill_from_form(&$tree, $form, $skip = array())
 {
+    // The controls the refused attempt failed on are marked, passwords too.
+    if (method_exists($form, 'field_error_texts')) pg_form_mark_invalid_controls($tree, $form->field_error_texts());
     foreach (_pg_member_controls($tree) as $c) {
         if (in_array($c['name'], $skip, true)) continue;
         if (!$form->field_in_session($c['name'])) continue;
@@ -4994,30 +4985,103 @@ function pg_sw_page_widget($page_id, $type, $test = null)
 // Pages that carry a widget of $type ($test narrows by config):
 // [['page_id', 'page_name', 'page_title']], binned pages left out. For the
 // page pickers, and for finding a companion page (the event page of a
-// calendar, the detail page of a list) when none is configured.
+// calendar, the detail page of a list) when none is configured. The page
+// trees are read once per request (pg_sw_widget_page_index()); only the
+// type's components are asked for on each call.
 function pg_sw_widget_pages($type, $test = null)
 {
     $rows = db_items(
         "SELECT id, system_region_config FROM shared_components
          WHERE system_region_config LIKE '%\"regionType\":\"" . e($type) . "\"%'");
-    $likes = array();
+    $sids = array();
     foreach ((array)$rows as $row) {
         $cfg = json_decode((string)$row['system_region_config'], true);
         if (!is_array($cfg) || !isset($cfg['regionType']) || $cfg['regionType'] !== $type) continue;
         if ($test !== null && !$test($cfg)) continue;
         $sid = (int)$row['id'];
         if ($sid <= 0) continue;
-        $likes[] = pg_page_tree_sql_expr() . " LIKE '%\"sharedId\":" . $sid . ",%'"
-                 . " OR " . pg_page_tree_sql_expr() . " LIKE '%\"sharedId\":" . $sid . "}%'";
+        $sids[] = $sid;
     }
-    if (!$likes) return array();
+    if (!$sids) return array();
+    $index = pg_sw_widget_page_index();
+    return pg_sw_pick_widget_pages($index['pages'], $index['by_sid'], $sids);
+}
+
+// Every page that is not in the recycle bin, ordered by title then name, and
+// the shared component ids its tree names: array('pages' => rows,
+// 'by_sid' => sid => positions in 'pages'). Built once per request: the
+// sitemap asks for about twenty widget types, and a LIKE scan of every tree
+// per component took seconds on a site with many components (#4459). The
+// trees are read in chunks by page id and dropped once their ids are taken.
+function pg_sw_widget_page_index()
+{
+    static $index = null;
+    if ($index !== null) return $index;
+
+    $not_binned = pg_designer_not_binned_sql('page.page_folder');
     $pages = db_items(
         "SELECT page.page_id, page.page_name, page.page_title
          FROM page
          INNER JOIN style ON page.page_style = style.style_id
-         WHERE (" . implode(' OR ', $likes) . ")" . pg_designer_not_binned_sql('page.page_folder') . "
+         WHERE 1 = 1" . $not_binned . "
          ORDER BY page.page_title ASC, page.page_name ASC");
-    return is_array($pages) ? $pages : array();
+    $pages = is_array($pages) ? array_values($pages) : array();
+    $position = array();
+    foreach ($pages as $i => $page) $position[(int)$page['page_id']] = $i;
+
+    $by_sid = array();
+    $after = 0;
+    do {
+        $chunk = db_items(
+            "SELECT page.page_id, " . pg_page_tree_sql_expr() . " AS tree
+             FROM page
+             INNER JOIN style ON page.page_style = style.style_id
+             WHERE page.page_id > '" . (int)$after . "'
+               AND " . pg_page_tree_sql_expr() . " LIKE '%\"sharedId\":%'" . $not_binned . "
+             ORDER BY page.page_id ASC
+             LIMIT 100");
+        $chunk = is_array($chunk) ? $chunk : array();
+        foreach ($chunk as $row) {
+            $page_id = (int)$row['page_id'];
+            $after = $page_id;
+            if (!isset($position[$page_id])) continue;
+            foreach (pg_sw_tree_shared_ids((string)$row['tree']) as $sid) {
+                $by_sid[$sid][] = $position[$page_id];
+            }
+        }
+    } while (count($chunk) === 100);
+
+    return $index = array('pages' => $pages, 'by_sid' => $by_sid);
+}
+
+// The shared component ids a layout tree's JSON names, each once, in the
+// order they first appear: "sharedId":N followed by "," or "}", case
+// ignored, matched as the column's LIKE '%"sharedId":N,%' /
+// '%"sharedId":N}%' pair did.
+function pg_sw_tree_shared_ids($json)
+{
+    $json = (string)$json;
+    if ($json === '' || !preg_match_all('/"sharedId":([1-9][0-9]*)[,}]/i', $json, $m)) return array();
+    $out = array();
+    foreach ($m[1] as $sid) $out[(int)$sid] = true;
+    return array_keys($out);
+}
+
+// The rows of $pages whose positions $by_sid lists under one of $sids, each
+// once and in the order of $pages.
+function pg_sw_pick_widget_pages(array $pages, array $by_sid, array $sids)
+{
+    $picked = array();
+    foreach ($sids as $sid) {
+        if (!isset($by_sid[$sid])) continue;
+        foreach ($by_sid[$sid] as $i) $picked[(int)$i] = true;
+    }
+    ksort($picked);
+    $out = array();
+    foreach (array_keys($picked) as $i) {
+        if (isset($pages[$i])) $out[] = $pages[$i];
+    }
+    return $out;
 }
 
 // Name of the page product links open: the configured page, else the first
@@ -5030,7 +5094,7 @@ function pg_sw_catalog_detail_page_name($page_id = 0)
     static $auto = null;
     $page_id = (int)$page_id;
     if ($page_id > 0) {
-        $name = (string)db_value("SELECT page_name FROM page WHERE page_id = '" . $page_id . "' LIMIT 1");
+        $name = pg_page_name_for_link($page_id);
         if ($name !== '') return $name;
     }
     if ($auto === null) {
@@ -5615,6 +5679,33 @@ function _pg_sw_hidden_query_inputs($skip)
         $html .= '<input type="hidden" name="' . h($name) . '" value="' . h((string)$value) . '">';
     }
     return $html;
+}
+
+// The search box a list widget prints above its items (form list, catalog
+// listing). The text box and the icon-only buttons carry accessible names:
+// a placeholder is no label. Hidden inputs replay the visitor's other query
+// parameters, without the router's page name on a pretty address.
+function _pg_sw_search_box_html($query_param, $search_query, $search_label, $width_cls, $page_param)
+{
+    $skip = array((string)$query_param, (string)$page_param);
+    $clear_params = _pg_sw_query_params();
+    foreach ($skip as $key) unset($clear_params[$key]);
+
+    return
+        '<form method="get" class="pg-sw-search mb-3" role="search">' .
+            _pg_sw_hidden_query_inputs($skip) .
+            '<div class="input-group input-group-sm ' . h($width_cls) . '">' .
+                '<input type="text" class="form-control" name="' . h($query_param) . '" ' .
+                       'value="' . h($search_query) . '" placeholder="' . h($search_label) . '" ' .
+                       'aria-label="' . h($search_label) . '" maxlength="100">' .
+                '<button type="submit" class="btn btn-outline-secondary" aria-label="' . h(lang('Search')) . '">' .
+                    '<span class="bi bi-search" aria-hidden="true"></span></button>' .
+                ((string)$search_query !== ''
+                    ? '<a class="btn btn-outline-secondary" href="?' . h(http_build_query($clear_params)) . '" ' .
+                          'aria-label="' . h(lang('Clear search')) . '"><span class="bi bi-x-lg" aria-hidden="true"></span></a>'
+                    : '') .
+            '</div>' .
+        '</form>';
 }
 
 // The designer's search form, bound rather than hand-wired:
@@ -8328,6 +8419,9 @@ function _render_system_widget_custom_form($tree_json, $widget_id, $cfg = array(
             }
         }
         pg_cf_apply_field_bindings($tree_decoded, $cf_field_map, $cf_liveform, $cf_folder, $cf_staff, $cf_url_values);
+        // A refused submission marks the controls it failed on (the
+        // bindings renamed them to the field ids the errors are kept by).
+        if ($cf_liveform) pg_form_mark_invalid_controls($tree_decoded, $cf_liveform->field_error_texts());
     }
     // Ids are final now, including the ones invented above, so a label that
     // names nothing can be pointed at the control beside it.
