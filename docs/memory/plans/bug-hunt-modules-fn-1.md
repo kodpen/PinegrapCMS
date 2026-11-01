@@ -182,7 +182,7 @@ description: Module list of plans/bug-hunt.md, part 1: includes/fn/ modules a11y
 
 - `page_revisions`: open
 
-- `page_schedule`: open
+- `page_schedule`: clean (time parsing and range, save plan, job pass and its overlap guard, API time checks, list chip escaping checked)
 
 - `page_type_pane`: open
 
