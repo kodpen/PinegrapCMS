@@ -436,7 +436,7 @@ $enrol_band = function () use ($el, $heading, $para, $link, $container, $row, $c
             $row(array(
                 $col(array(
                     $heading('h2', lang('Start with a free lesson'), 'h3 fw-bold mb-2'),
-                    $para(lang('Every course opens with a lesson anyone can watch. Enrol when you know it is the right one.'), 'mb-0 opacity-75'),
+                    $para(lang('Every course opens with a lesson anyone can watch. Enrol when you know it is the right one.'), 'mb-0'),
                 ), '', '8'),
                 $col(array(
                     $el('div', 'd-flex flex-wrap gap-2 justify-content-lg-end', lang('Buttons'), array(

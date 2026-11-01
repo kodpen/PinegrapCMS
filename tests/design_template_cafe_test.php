@@ -155,6 +155,7 @@ function test_design_template_cafe_clinic_privacy_page()
 	$consents = array(
 		'pinegrap-cafe'   => array('cf-res-consent', 'cf-quote-consent'),
 		'pinegrap-clinic' => array('cl-appt-consent'),
+		'pinegrap-courses' => array('pco-enrol-consent'),
 		'pinegrap-events' => array('ev-reg-consent'),
 		'pinegrap-salon'  => array('sl-book-consent'),
 	);

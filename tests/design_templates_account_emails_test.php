@@ -73,7 +73,7 @@ function _test_dtae_widget_on($tpl, $page_key, $type)
 function test_design_templates_account_emails_templates_found()
 {
 	$tpls = _test_dtae_templates();
-	foreach (array('hello-pinegrap', 'pinegrap-bookshop', 'pinegrap-boutique', 'pinegrap-cafe', 'pinegrap-clinic', 'pinegrap-events', 'pinegrap-playground', 'pinegrap-salon', 'pinegrap-store') as $id) {
+	foreach (array('hello-pinegrap', 'pinegrap-bookshop', 'pinegrap-boutique', 'pinegrap-cafe', 'pinegrap-clinic', 'pinegrap-courses', 'pinegrap-events', 'pinegrap-playground', 'pinegrap-salon', 'pinegrap-store') as $id) {
 		pg_assert_true(isset($tpls[$id]) && is_array($tpls[$id]), $id . ' loaded');
 	}
 }

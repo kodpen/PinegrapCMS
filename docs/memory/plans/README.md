@@ -36,7 +36,6 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - datetime-picker-site-steps.md: Site steps S1-S4 of plans/datetime-picker.md (after the panel stop): on-demand loader, classic renderers, checkout, designer widgets and palette; claim as [plan:datetime-picker] S<n>
 - datetime-picker-steps.md: Panel steps P1-P11 of plans/datetime-picker.md: what each changes, its files, tests and size, its dependencies; claim as [plan:datetime-picker] P<n>
 - datetime-picker.md: Plan (decided in #2693, 2026-10-28): one date-and-time control for the whole software, the time in the same popup, on vanilla-calendar-pro; panel P1-P11, sites S1-S4, steps in datetime-picker-steps.md
-- design-template-courses.md: Plan for the Online Courses template (pinegrap-courses): courses as shop products granting a private course folder, lessons as pages in it, an all-access membership; parts in a folder; steps 1-7
 - designer-prototype-links-code.md: What the code holds for plans/designer-prototype-links.md: where links sit, the two href places, page links by id, renames, the resolver's limits, editor state, rights and Publish
 - designer-prototype-links.md: Plan (2026-10-24; ready to start, owner 2026-11-01): a Figma/XD-like prototype view in the visual designer: pages as frames, menu items and links as hotspots, an arrow sets the page a click opens
 - erp-auto-invoice-earchive.md: Plan (approved 2026-10-19): auto invoice with its two filters and the e-Fatura threshold warning built (#697, #958, #1773); only the internet-sale UBL fields (step 3) left
