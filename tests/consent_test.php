@@ -82,6 +82,20 @@ function test_consent_page_services_lists_tagged_scripts()
 	pg_assert_same(array('analytics' => array(), 'marketing' => array()), pg_consent_page_services('<p>none</p>'), 'nothing tagged');
 }
 
+// A tag commented out in the page never runs and pg_consent.js never finds
+// it, so the notice must not ask about it.
+function test_consent_page_services_skips_commented_out_scripts()
+{
+	$content = '<!-- <script type="text/plain" data-pg-consent="marketing" data-pg-consent-name="Meta Pixel">a()</script> -->'
+		. "<!--[if lt IE 9]><script type=\"text/plain\" data-pg-consent=\"analytics\" data-pg-consent-name=\"Old\"></script><![endif]-->\n"
+		. '<script type="text/plain" data-pg-consent="analytics" data-pg-consent-name="Hotjar">b()</script>';
+
+	pg_assert_same(
+		array('analytics' => array('Hotjar'), 'marketing' => array()),
+		pg_consent_page_services($content)
+	);
+}
+
 // The list the Translations screen takes in is every lang() key the notice
 // prints: a key added to the notice and missing here would stay untranslated
 // until a visitor happened to see it.
