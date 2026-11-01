@@ -17,7 +17,7 @@ description: Back-in-stock notice by SMS (PR #1864): kind stock (transactional, 
 - Template fields `^^store^^`, `^^product^^` (`short_description`, else the SKU, one line), `^^url^^` (`pg_stock_notify_url()`, may be empty). Queued with the two-day expiry of every event ([[sms-order-messages]]).
 
 ## What does the visitor read?
-- `pg_stock_notify_status_message('added', $by_sms)`: "one text message" or "one e-mail". `$by_sms` is the kept number and `pg_stock_notify_sms_sends()` (event on and `pg_sms_job_alive()`), the sender's own rule; before the bug hunt fix it was the event alone, so a site whose general job did not run promised a text and mailed. The item view starter has the number field (`stock_notify_phone`) under the address and the line "We will send you one message when it is back in stock." Designs made before keep their tree; the answer sentence says it there.
+- `pg_stock_notify_status_message('added', $by_sms)`: "one text message" or "one e-mail". `$by_sms` is the kept number and `pg_stock_notify_sms_sends()` (event on and `pg_sms_job_alive()`), the sender's own rule; before #4668 it was the event alone, so a site whose general job did not run promised a text and mailed. The item view starter has the number field (`stock_notify_phone`) under the address and the line "We will send you one message when it is back in stock." Designs made before keep their tree; the answer sentence says it there.
 - The number field binding: `type="tel" name="phone" autocomplete="tel" inputmode="tel" maxlength="50"`, never required, `can_notify` unless flagged ([[catalog-stock-notify-form]]).
 
 ## How was it verified?
