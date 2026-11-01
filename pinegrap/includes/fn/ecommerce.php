@@ -2853,6 +2853,24 @@ function pg_catalog_variant_set_check($data)
         }
     }
 
+    // What the rules give a row is a price too: a factor or a percentage can
+    // take a base the column holds past its top, which the session (not
+    // strict) would store as 2147483647 without a word.
+    if (!$errors && !empty($data['price_rules'])) {
+
+        $base = isset($data['price_base']) ? $data['price_base'] : 0;
+
+        foreach ($variants as $variant) {
+
+            $priced = pg_catalog_variant_set_priced($variant, $base, $data['price_rules']);
+
+            if ($priced['too_large']) {
+                $errors[] = array('field' => 'variants', 'message' => lang(array('string' => 'The price rules give {var:1} a price that is too large.', 'vars' => array(trim((string) $variant['name'])))));
+                break;
+            }
+        }
+    }
+
     return $errors;
 }
 
@@ -2882,19 +2900,35 @@ function pg_catalog_variant_set_name($data)
  */
 function pg_catalog_variant_set_price($variant, $base_cents, $rules)
 {
+    $priced = pg_catalog_variant_set_priced($variant, $base_cents, $rules);
+
+    return $priced['cents'];
+}
+
+/**
+ * One variant's price as pg_variant_price_compute() reports it: the row's
+ * own price when it was typed over the rules or the set has none.
+ *
+ * @param array      $variant    a row, price in minor units
+ * @param int        $base_cents
+ * @param array|null $rules      canonical rules
+ * @return array 'cents' => int, 'clamped' => bool, 'too_large' => bool (the
+ *               rules went past PG_PRODUCT_PRICE_MAX; 'cents' must not be
+ *               written then)
+ */
+function pg_catalog_variant_set_priced($variant, $base_cents, $rules)
+{
     if (!$rules || !empty($variant['price_manual'])) {
-        return $variant['price'];
+        return array('cents' => $variant['price'], 'clamped' => FALSE, 'too_large' => FALSE);
     }
 
     $selection = array();
 
-    foreach ($variant['attributes'] as $pair) {
+    foreach ((isset($variant['attributes']) ? (array) $variant['attributes'] : array()) as $pair) {
         $selection[(int) $pair['attribute_id']] = (int) $pair['option_id'];
     }
 
-    $priced = pg_variant_price_compute($base_cents, $rules, $selection);
-
-    return $priced['cents'];
+    return pg_variant_price_compute($base_cents, $rules, $selection);
 }
 
 /**
@@ -12698,7 +12732,9 @@ function pg_variant_price_rules_owned($rules)
  * @param int   $base_cents the product's price, used unless an option sets it
  * @param array $rules      canonical rules
  * @param array $selection  attribute_id => option_id of the variant
- * @return array 'cents' => int, 'clamped' => bool (the rules went below zero)
+ * @return array 'cents' => int, 'clamped' => bool (the rules went below zero),
+ *               'too_large' => bool (they went past PG_PRODUCT_PRICE_MAX;
+ *               'cents' is then that top, which must not be written)
  */
 function pg_variant_price_compute($base_cents, $rules, $selection)
 {
@@ -12749,13 +12785,20 @@ function pg_variant_price_compute($base_cents, $rules, $selection)
     // The inner round() strips floating-point noise before the cent is
     // decided (0.1 * 3 is 0.30000000000000004); the browser does the same
     // with toFixed(6).
-    $cents = (int) round(round($price, 6));
+    $rounded = round(round($price, 6));
 
-    if ($cents < 0) {
-        return array('cents' => 0, 'clamped' => TRUE);
+    // Compared as a float before the int cast, which wraps on a 32-bit build.
+    if (pg_product_price_too_large($rounded)) {
+        return array('cents' => PG_PRODUCT_PRICE_MAX, 'clamped' => FALSE, 'too_large' => TRUE);
     }
 
-    return array('cents' => $cents, 'clamped' => FALSE);
+    $cents = (int) $rounded;
+
+    if ($cents < 0) {
+        return array('cents' => 0, 'clamped' => TRUE, 'too_large' => FALSE);
+    }
+
+    return array('cents' => $cents, 'clamped' => FALSE, 'too_large' => FALSE);
 }
 
 
