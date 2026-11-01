@@ -327,3 +327,32 @@ function test_privacy_export_summary_pending_consent()
 	pg_assert_contains('<td>email:group:7</td><td>' . h(lang('Waiting for confirmation')) . '</td>', $html, 'pending');
 	pg_assert_contains('<td>email:marketing</td><td>' . h(lang('Given')) . '</td>', $html, 'granted');
 }
+
+// A section read in several parts (accounting documents, Workspace) holds no
+// more rows than one read may: the joined rows are cut at the row limit and
+// the section is marked truncated, as the summary's "+" promises.
+function test_privacy_export_join_keeps_the_row_limit()
+{
+	$limit = pg_privacy_export_row_limit();
+	$part = function ($count, $kind, $truncated = false) {
+		$rows = array();
+
+		for ($i = 1; $i <= $count; $i++) {
+			$rows[] = array('document' => $kind, 'id' => $i);
+		}
+
+		return array('rows' => $rows, 'truncated' => $truncated);
+	};
+
+	$joined = pg_privacy_export_join(array($part($limit - 1, 'invoice'), $part(2, 'quote'), $part(3, 'waybill')));
+	pg_assert_same($limit, count($joined['rows']), 'cut at the limit');
+	pg_assert_true($joined['truncated'], 'marked truncated');
+	pg_assert_same(array('document' => 'quote', 'id' => 1), $joined['rows'][$limit - 1], 'parts kept in order');
+
+	$joined = pg_privacy_export_join(array($part(2, 'invoice'), $part(1, 'quote')));
+	pg_assert_same(3, count($joined['rows']), 'under the limit, all rows');
+	pg_assert_false($joined['truncated'], 'not truncated');
+
+	pg_assert_true(pg_privacy_export_join(array($part(1, 'invoice', true)))['truncated'], 'a cut part stays cut');
+	pg_assert_same(array('rows' => array(), 'truncated' => false), pg_privacy_export_join(array()), 'no part');
+}
