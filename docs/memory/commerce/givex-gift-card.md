@@ -40,6 +40,13 @@ balance"; a balance that was not a number was a 500 when applying, at the
 submit check, and at redemption after Givex had taken the amount (order left
 incomplete, a retry redeemed again).
 
+## How is a Givex balance turned into minor units?
+- `submit_order()` keeps the checked balance as `(int) round($balance * 100)`.
+  Before (bug hunt, PR after #4600), `19.99 * 100` stayed 1998.9999…: a card
+  holding the order total left a total above zero, so a card payment was
+  still asked. `order_preview.php`, `express_order.php` and the redemption
+  still multiply without rounding (other files; not yet fixed).
+
 ## Which inputs count as not given?
 - A code that is empty once dashes and spaces are stripped (`----`) is "could
   not find a gift card for that code"; it is never sent to Givex.
