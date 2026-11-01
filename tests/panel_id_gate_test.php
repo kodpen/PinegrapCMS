@@ -226,7 +226,7 @@ function test_panel_id_gate_file_editors_check_name_and_type()
 	pg_assert_true(($not_found !== false) && ($gate < $not_found), 'edit_design_file stops on "Record not found."');
 	pg_assert_true($not_found < strpos($source, 'validate_token_field();'), 'edit_design_file gate runs before the POST branch');
 	pg_assert_contains("validate_token_field();\n\n    // Delete and rename act on the record and the stored name the gate\n    // above checked.\n    \$_POST['id'] = \$id;", $source, 'edit_design_file POST uses the gated id');
-	pg_assert_contains("if ((\$name !== \$stored_name) && is_file(FILE_DIRECTORY_PATH . '/' . \$stored_name)) {", $source, 'edit_design_file renames only a file on the disk');
+	pg_assert_contains("(\$name !== \$stored_name)\n            && is_file(FILE_DIRECTORY_PATH . '/' . \$stored_name)\n            && !@rename(", $source, 'edit_design_file renames only a file on the disk');
 
 	// The theme screen renames only a file on the disk and says when the file
 	// is missing, on the screen and in the themes list after Save.
