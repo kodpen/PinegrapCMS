@@ -24,6 +24,7 @@ description: The single shipment write path (includes/fn/shipping.php): pg_shipm
 ## When is a delivery recorded?
 - `update_order()`: `pg_shipment_delivery_entered()`, i.e. the save enters or changes the delivery date to a day not after today (an unchanged estimate records nothing; a future date is an estimate). Tracking: a service's delivered answer, at its time.
 - `pg_shipment_delivered()` stamps `status` delivered and `delivered_at` on the address's numbered rows not yet arrived; it announces `order.delivered` (`pg_announce`) and starts `order_delivered` campaigns only when it changed rows and none had arrived before. Resaves, corrections, re-polls and racing writers give one event; a later parcel is stamped silently; the first arrival time never moves; clearing the date undoes nothing.
+- The announced `delivery_date` (event and e-mail data) is the day of `$time`, the arrival, never `ship_tos.delivery_date`: the tracking job and marketplace polls leave checkout's estimate there (#4625, the event once carried the estimate).
 - An address with no numbered row uses `$opts['first']` (the caller's own transition): there a correction past → past day announces again, and a number added after such a delivery can announce twice.
 - `notify` false (API `notify` false, marketplace) skips the customer e-mail and SMS, not the event. The marketplace import calls it per address on each delivered poll; `first` is its "delivery_date was empty" update.
 
