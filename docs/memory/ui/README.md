@@ -67,6 +67,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - calendar-event-edit-screen.md: Edit calendar event screen (edit_calendar_event.php): which recurring instance it edits (recurrence_number) and how a missing or array value is read
 - calendar-event-location-shared-form.md: The calendar event location create and edit screens share includes/forms/calendar_event_location_form.php: what it holds, what stays in the screens
 - calendar-event-shared-form.md: add_calendar_event.php and edit_calendar_event.php draw and check the event form through includes/forms/calendar_event_form.php; what differs between the two calls
+- calendar-location-availability.md: How check_calendar_event_location_availability() finds a room already booked, including recurring, overnight and multi-day events
 - calendar-shared-form.md: The calendar create and edit screens share includes/forms/calendar_form.php: what it holds and what stays in the screens
 - catalog-rename-live-row.md: Catalog Manager rename (grid, tree, Bulk Rename) refuses a product or group that is deleted or in the Recycle Bin
 - chart-destroy-before-markup-change.md: Destroy Chart.js charts (destroy_widget_charts in welcome.php) before .html()/.remove()/.append() replaces markup with canvases, or instances leak.

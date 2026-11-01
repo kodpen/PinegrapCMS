@@ -28,7 +28,7 @@ description: Module list of plans/bug-hunt.md, part 1: includes/fn/ modules a11y
 
 - `bundles`: open
 
-- `calendar`: open
+- `calendar`: taken by LM
 
 - `captcha`: clean (siteverify outcomes, token, widget escaping, settings card and save order checked)
 
