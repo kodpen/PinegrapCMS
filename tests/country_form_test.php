@@ -61,3 +61,37 @@ function test_country_form_both_screens_draw_the_shared_card()
 		pg_assert_contains('validate_ecommerce_access($user)', $source, $file . ' keeps its gate');
 	}
 }
+
+function test_country_form_required_errors()
+{
+	pg_assert_same(array(), pg_country_form_required_errors(array('name' => 'Germany', 'code' => 'DE')), 'a name and a code pass');
+
+	$errors = pg_country_form_required_errors(pg_country_form_values(array('name' => '  ', 'code' => '')));
+	pg_assert_same(array('name', 'code'), array_keys($errors), 'a blank name and code are both refused');
+	pg_assert_same(lang('Enter a name.'), $errors['name'], 'the name message');
+	pg_assert_same(lang('Enter a code.'), $errors['code'], 'the code message');
+}
+
+function test_country_form_card_marks_a_missing_name()
+{
+	$html = pg_country_form_card(null);
+	pg_assert_contains('id="name" class="form-control" maxlength="50" required', $html, 'the name box is required');
+	pg_assert_contains('id="code" class="form-control" maxlength="50" required', $html, 'the code box is required');
+
+	$html = pg_country_form_card(pg_country_form_values(array('code' => 'DE')), array('name' => 'Enter a name.'));
+	pg_assert_contains('id="name" class="form-control is-invalid"', $html, 'the name box is marked');
+	pg_assert_contains('<div id="name-error" class="invalid-feedback d-block">Enter a name.</div>', $html, 'the message under the name');
+	pg_assert_contains('value="DE"', $html, 'the typed code is kept');
+}
+
+function test_country_form_screens_refuse_a_blank_name_and_code()
+{
+	foreach (array('add_country.php', 'edit_country.php') as $file) {
+		$source = file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
+		pg_assert_contains('pg_country_form_required_errors($values)', $source, $file . ' checks the required fields');
+	}
+
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/add_country.php');
+	pg_assert_contains("'cancel'=>array('enable'=>'true','url'=>'view_countries.php')", $source, 'add_country.php has the back arrow');
+	pg_assert_true(strpos($source, 'all_ad_regions') === false, 'the breadcrumb goes to the plain list');
+}

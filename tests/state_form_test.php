@@ -46,3 +46,19 @@ function test_state_form_both_screens_draw_the_shared_card()
 		pg_assert_contains('validate_ecommerce_access($user)', $source, $file . ' keeps its gate');
 	}
 }
+
+function test_state_form_required_errors()
+{
+	pg_assert_same(array(), pg_state_form_required_errors(array('name' => 'Adana', 'code' => '01', 'country_id' => '5')), 'a name and a code pass');
+
+	$errors = pg_state_form_required_errors(pg_state_form_values(array('name' => ' ', 'code' => '', 'country_id' => '5')));
+	pg_assert_same(array('name', 'code'), array_keys($errors), 'a blank name and code are both refused');
+}
+
+function test_state_form_screens_refuse_a_blank_name_and_code()
+{
+	foreach (array('add_state.php', 'edit_state.php') as $file) {
+		$source = file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
+		pg_assert_contains('pg_state_form_required_errors($values)', $source, $file . ' checks the required fields');
+	}
+}
