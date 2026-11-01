@@ -11580,9 +11580,16 @@ const StyleDesigner = (function () {
     // what the visitor actually gets. Only meaningful inside a catalog_listing
     // system widget; every other regionType returns false.
     function _sdCatalogBindingDisabled(node, cfg) {
-        if (!node || !cfg || cfg.regionType !== 'catalog_listing') return false;
+        if (!node || !cfg) return false;
         var b = (node.props && node.props._bindings) || null;
         if (!b) return false;
+        // Product page: the Checkout Options table while no payment method
+        // is switched on (_pg_civ_fill_payment_methods()).
+        if (cfg.regionType === 'catalog_item_view') {
+            var flags = (typeof sdDesign !== 'undefined' && sdDesign && sdDesign.siteFlags) ? sdDesign.siteFlags : null;
+            return b.section === 'payment_methods' && !!flags && flags.payment_methods === false;
+        }
+        if (cfg.regionType !== 'catalog_listing') return false;
 
         var searchOn  = !!cfg.search_enabled;
         var filtersOn = !!(cfg.price_filter_enabled || cfg.stock_filter_enabled || cfg.show_attribute_filters);
@@ -13033,7 +13040,9 @@ const StyleDesigner = (function () {
         if (_sysWidgetRenderCfg && _sdCatalogBindingDisabled(node, _sysWidgetRenderCfg)) {
             wrapper.classList.add('sd-binding-off');
             wrapper.setAttribute('data-sd-binding-off', '1');
-            wrapper.setAttribute('data-sd-off-reason', _sdT('Off — turn it on in the settings panel'));
+            wrapper.setAttribute('data-sd-off-reason', (node.props._bindings.section === 'payment_methods')
+                ? _sdT('Off — no payment method is switched on in the store settings')
+                : _sdT('Off — turn it on in the settings panel'));
         }
         // Member widgets: the same story for a control or block the front end
         // drops while its site setting or widget switch is off. A wrapper
@@ -13550,8 +13559,10 @@ const StyleDesigner = (function () {
             // container, show a warning — those children will be REPLACED
             // by the backend's inner-only token at render time, so the
             // hand-built content would be lost.
+            // Not inside a table: a div there would break the table's layout.
             if (node.type === 'semantic'
-                && node.props && node.props._bindings && node.props._bindings.section) {
+                && node.props && node.props._bindings && node.props._bindings.section
+                && ['table', 'thead', 'tbody', 'tfoot', 'tr'].indexOf(String(node.props.tag || '').toLowerCase()) === -1) {
                 var _sectionLabels = {
                     group_tree:        _sdT('Category Tree (nested list — filled by the backend)'),
                     filters_offcanvas: _sdT('Filter Offcanvas (filled in by the backend — Bootstrap offcanvas)'),
@@ -41480,6 +41491,7 @@ const StyleDesigner = (function () {
             out.push(['pending_offers',    _sdT('Campaign Gifts (with an Add button — its own form)')]);
         } else if (type === 'catalog_item_view') {
             out.push(['recipient_picker',  _sdT('Recipient Picker (hidden on a product that is not shipped)')]);
+            out.push(['payment_methods',   _sdT('Payment methods (a table body: one row per method switched on in the store settings)')]);
         } else if (type === 'custom_form') {
             // Site-wide CAPTCHA (Settings → CAPTCHA). Absent for a signed-in
             // visitor and when the setting is off, and the container goes
@@ -61237,7 +61249,8 @@ const StyleDesigner = (function () {
                 ]);
                 // 3-tab section under add-to-cart row:
                 //   1) Details          — paragraph bound to ^^__details^^ (products.details)
-                //   2) Checkout Options — sample HTML table (Bootstrap .table)
+                //   2) Checkout Options — table bound to payment_methods (the store's
+                //      switched-on payment methods; the tab goes when none is on)
                 //   3) Reviews          — comments_block region: the product's reviews on a
                 //      designed product page; the site leaves the tab out when the
                 //      block draws nothing (comments off, or a Comments widget on the page)
@@ -61273,7 +61286,7 @@ const StyleDesigner = (function () {
                                 text: _sdT('The product details will appear here.'), cssClass: 'mb-0',
                                 _bindings: { text: '__details' } })
                         ]),
-                        // Pane 2 — Checkout Options: sample payment-method table
+                        // Pane 2 — Checkout Options: the store's payment methods
                         createNode('semantic', { tag: 'div', cssClass: 'tab-pane fade', id: civTabPfx + '_1', customName: _sdT('Payment Pane'),
                             _attrs: [{ name: 'role', value: 'tabpanel' }] }, [
                             // Table cells (<th>/<td>) follow the codebase pattern: text lives in a
@@ -61296,29 +61309,24 @@ const StyleDesigner = (function () {
                                             createNode('semantic', { tag: 'tr', cssClass: '', customName: _sdT('Header Row') }, [
                                                 _ciTh(_sdT('Method')),
                                                 _ciTh(_sdT('Description')),
-                                                _ciTh(_sdT('Commission'), 'text-end')
+                                                _ciTh(_sdT('Fee'), 'text-end')
                                             ])
                                         ]),
-                                        createNode('semantic', { tag: 'tbody', cssClass: '', customName: _sdT('Table Body') }, [
+                                        // Bound to payment_methods: the site fills it with one row per
+                                        // payment method switched on in the store's settings, in the first
+                                        // row's look, and leaves the tab out when none is on. These rows are
+                                        // the canvas sample only; no fee is named here.
+                                        createNode('semantic', { tag: 'tbody', cssClass: '', customName: _sdT('Table Body'),
+                                            _bindings: { section: 'payment_methods' } }, [
                                             createNode('semantic', { tag: 'tr', cssClass: '' }, [
-                                                _ciTd(_sdT('Credit Card')),
-                                                _ciTd(_sdT('Visa, Mastercard, Troy — every card')),
-                                                _ciTd('%0', 'text-end')
+                                                _ciTd(_sdT('Credit/Debit Card')),
+                                                _ciTd(_sdT('Pay securely by card')),
+                                                _ciTd('', 'text-end')
                                             ]),
                                             createNode('semantic', { tag: 'tr', cssClass: '' }, [
                                                 _ciTd(_sdT('Bank Transfer / EFT')),
                                                 _ciTd(_sdT('A direct transfer to our bank account')),
-                                                _ciTd('%0', 'text-end')
-                                            ]),
-                                            createNode('semantic', { tag: 'tr', cssClass: '' }, [
-                                                _ciTd(_sdT('Cash on Delivery')),
-                                                _ciTd(_sdT('Cash or card on delivery')),
-                                                _ciTd(_sdT('+9.90 TL'), 'text-end')
-                                            ]),
-                                            createNode('semantic', { tag: 'tr', cssClass: '' }, [
-                                                _ciTd(_sdT('3 Instalments')),
-                                                _ciTd(_sdT('3 equal instalments at no extra cost')),
-                                                _ciTd('%0', 'text-end')
+                                                _ciTd('', 'text-end')
                                             ])
                                         ])
                                     ])
