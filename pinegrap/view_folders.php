@@ -14,9 +14,8 @@
 // moving, copy & paste, inline renaming, folder access control and settings,
 // inline previews, a recycle bin and a guarded recursive folder delete. All
 // data comes from the "file_explorer" JSON sub-actions in api.php
-// (view_folder_and_files_f.php); destructive page and folder deletes post to
-// the proven edit_pages.php / edit_folder.php handlers instead of
-// reimplementing their cleanup.
+// (view_folder_and_files_f.php), and deletes go through them too: to the
+// recycle bin, or its hard delete. Folders have no screen of their own.
 //
 // It grew up at view_folder_and_files.php and then took over this address
 // from the classic folder tree screen; the old address now redirects here.
@@ -166,13 +165,14 @@ if ($explorer_area == 'catalog') {
 // not know.
 $initial_erp_folder = (($initial_mode == 'erp') && isset($_GET['erp'])) ? preg_replace('/[^a-z_]/', '', (string) $_GET['erp']) : '';
 
-// ?view=files&scope=documents narrows the Files view the way view_files.php's
-// filter select did. Only the Files view takes one.
+// ?view=files&scope=documents narrows the Files view by type (documents,
+// media, attachments, archived) or by the folder's access. Only the Files
+// view takes one.
 $file_scopes = array('documents', 'media', 'attachments', 'archived', 'public', 'guest', 'registration', 'membership', 'private');
 $initial_scope = (($initial_mode == 'all') && ($initial_filter == '') && isset($_GET['scope']) && in_array($_GET['scope'], $file_scopes, true)) ? $_GET['scope'] : '';
 
-// The left menu's two actions under Files: arrive with the upload window
-// open, or with a new file already made and waiting for its name.
+// ?upload=1 and ?create=file: arrive with the upload window open, or with a
+// new file already made and waiting for its name.
 $initial_action = '';
 
 if ($explorer_area != 'catalog') {
@@ -244,6 +244,7 @@ $explorer_lang = array(
     'paste' => lang('Paste'),
     'rename' => lang('Rename'),
     'duplicate' => lang('Duplicate'),
+    'duplicate_find_replace' => lang('Duplicate with Find & Replace'),
     'delete' => lang('Delete'),
     'new_folder' => lang('New Folder'),
     'expand' => lang('Expand'),
@@ -348,6 +349,7 @@ $explorer_lang = array(
     'delete_folder_title' => lang('Delete Folder and Contents'),
     'delete_folder_summary' => lang('The folder {var:1} and everything inside it will be permanently deleted:'),
     'delete_folder_empty' => lang('The folder is empty.'),
+    'delete_folder_upload_fields' => lang('{var:1} form field(s) save their uploads in this folder or a folder inside it. Later uploads to such a field will not show in the File Manager until the field is given another folder.'),
     'type_name_to_confirm' => lang('Type the folder name to confirm.'),
     'name_does_not_match' => lang('The name does not match.'),
     'deleting' => lang('Deleting'),
@@ -874,7 +876,7 @@ $explorer_tour = ($explorer_area == 'catalog')
         array(
             'at' => 'tree_menu',
             'title' => lang('The folder menu'),
-            'text' => lang('Right-clicking a folder in the tree opens this: open it, a new folder inside it, upload a file into it, paste, rename, folder settings, access rules, duplicate and delete. The site root itself cannot be renamed, moved or deleted, so those entries are switched off on it.')),
+            'text' => lang('Right-clicking a folder in the tree opens this: open it, a new folder inside it, upload a file into it, paste, rename, folder settings, access rules, duplicate and delete. The site root itself cannot be moved, duplicated or deleted, so those entries are switched off on it; its folder settings hold the site\'s default page styles.')),
         array(
             'at' => 'new',
             'title' => lang('The New button'),
@@ -1523,9 +1525,9 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                  of the screen with half its entries unreadable. -->
             <ul class="menu shadow" id="explorer_filter_menu" style="border-radius:.75rem;"></ul>
         </div>
-        <!-- The Files view, narrowed -- what view_files.php offered from a
-             select. Only on that view: Pictures is a view of its own, and a
-             folder is not something to narrow by type. -->
+        <!-- The Files view, narrowed by type or by access. Only on that
+             view: Pictures is a view of its own, and a folder is not
+             something to narrow by type. -->
         <div class="pg-menu-wrap d-none" id="file_scope_wrap">
             <button type="button" id="file_scope_button" class="btn btn-sm btn-text theme-secondary no-popover pg-menu-caret text-nowrap" data-bs-toggle="menu" data-bs-display="static" aria-expanded="false"><span class="bi bi-funnel me-1"></span><span id="file_scope_label"></span></button>
             <ul class="menu shadow" id="file_scope_menu" style="border-radius:.75rem;">
@@ -1597,11 +1599,8 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                      the screen you are already on, and are not.  The left menu
                      is where the software is navigated, and it lists both. -->
                 <li><h6 class="menu-header"><?php echo lang('Classic views'); ?></h6></li>
-                <!-- The classic files screen stays reachable from here for a
-                     while longer: everything it did is on this screen now, but
-                     the old screen is the yardstick while the new one settles.
-                     It comes out of the left menu first and from here last. -->
-                <li class="area-files"><a class="menu-item" href="view_files.php"><span class="bi bi-file-earmark-image me-3"></span><?php echo lang('Files'); ?></a></li>
+                <!-- The classic files screen is gone: everything it did is on
+                     this screen, the Files view and its scope menu. -->
                 <li class="area-files"><a class="menu-item" href="view_pages.php"><span class="bi bi-window-stack me-3"></span><?php echo lang('Pages'); ?></a></li>
                 <li class="area-catalog"><a class="menu-item" href="view_products.php"><span class="bi bi-box2-heart me-3"></span><?php echo lang('Products'); ?></a></li>
             </ul>
@@ -1823,8 +1822,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 </script>
 
 <!-- Upload.
-     add_file.php is still the upload screen and view_files.php still goes
-     there. This window is the file manager's own, because the manager already
+     This window is the file manager's own, because the manager already
      has an uploader: it walks a dropped folder, makes the folders as it goes
      and sends one file per request. What it did not have was anywhere to say
      which folder, what the description is, or what to do to a picture on the
@@ -1986,9 +1984,10 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     <div class="drawer-body" id="access_offcanvas_body"></div>
 </dialog>
 
-<!-- Folder settings: the everyday knobs from edit_folder.php (order, archive,
-     page styles) without leaving the manager. The full edit screen stays
-     reachable from the context menu until the manager replaces it. -->
+<!-- Folder settings: order, archive and page styles; for the root folder the
+     styles alone, which are the site's default page styles. A folder has no
+     edit screen of its own: it is renamed in place, and its access rules
+     have their own drawer. -->
 <dialog class="drawer drawer-end" id="settings_offcanvas" aria-labelledby="settings_offcanvas_label">
     <div class="drawer-header">
         <h5 class="drawer-title" id="settings_offcanvas_label"><span class="bi bi-sliders me-3"></span><?php echo lang('Folder Settings'); ?></h5>
@@ -2057,10 +2056,9 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     <div class="drawer-body" id="bulk_products_offcanvas_body"></div>
 </dialog>
 
-<!-- Recursive folder delete: pre-flight summary + type-the-name confirmation.
-     Execution reuses edit_pages.php (pages), the explorer API (files) and
-     edit_folder.php (each emptied folder), so every safety rule stays where
-     it has always lived. -->
+<!-- Recursive folder delete: pre-flight summary + type-the-name confirmation,
+     then the explorer API: the folder and everything in it to the recycle
+     bin, or the hard delete where the bin is off. -->
 <dialog class="dialog" id="folder_delete_modal" aria-labelledby="folder_delete_title" style="border-radius: 1rem;">
             <div class="dialog-header border-0">
                 <h5 class="dialog-title fg-danger" id="folder_delete_title"><span class="bi bi-trash me-3"></span><span id="folder_delete_title_text"><?php echo lang('Delete Folder and Contents'); ?></span></h5>
@@ -7932,8 +7930,9 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 }
             }
 
+            // A folder is edited here, with no screen of its own: renamed in
+            // place, its settings and access rules in their drawers.
             if (item.kind === 'folder') {
-                html += menuItem('bi-pencil', L.edit, 'edit', multi || !item.can_edit);
                 html += menuItem('bi-sliders', L.folder_settings, 'folder_settings', multi || !item.can_edit);
                 html += menuItem('bi-shield-lock', L.access_permissions, 'access', multi || !item.can_edit);
                 html += menuItem(isPinned(item.id) ? 'bi-pin-angle-fill' : 'bi-pin-angle',
@@ -7974,6 +7973,13 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 html += menuItem('bi-input-cursor', fmt(L.bulk_rename_menu, [bulkRenameTargets().length]), 'bulk_rename', bulkRenameTargets().length === 0);
             }
             html += menuItem('bi-copy', L.duplicate, 'duplicate', multi || !itemDuplicable(item));
+
+            // The folder and the pages directly in it, with words found and
+            // replaced in the copies (duplicate_folder.php); Duplicate above
+            // copies the whole tree as it is.
+            if (item.kind === 'folder') {
+                html += menuItem('bi-search', L.duplicate_find_replace, 'duplicate_find_replace', multi || !itemDuplicable(item) || !((state.caps.role < 3) || state.caps.can_create_pages));
+            }
 
             // Archives. Compressing needs something with bytes behind it, so
             // a selection of pages alone is not offered it.
@@ -8075,10 +8081,14 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         html += menuItem('bi-upload', L.upload_file, 'tree_upload', !node.canEdit);
         html += menuDivider();
         html += menuItem('bi-clipboard-check', L.paste, 'tree_paste', !state.clipboard || !node.canEdit);
-        html += menuItem('bi-input-cursor-text', L.rename, 'tree_rename', !node.canEdit || node.isRoot);
-        html += menuItem('bi-sliders', L.folder_settings, 'tree_settings', !node.canEdit || node.isRoot);
+        // The root folder is renamed and given the site's default page
+        // styles here too: no other screen edits it. Its settings are the
+        // two styles alone, which only managers and above set.
+        html += menuItem('bi-input-cursor-text', L.rename, 'tree_rename', !node.canEdit);
+        html += menuItem('bi-sliders', L.folder_settings, 'tree_settings', !node.canEdit || (node.isRoot && !(state.caps.role < 3)));
         html += menuItem('bi-shield-lock', L.access_permissions, 'tree_access', !node.canEdit);
         html += menuItem('bi-copy', L.duplicate, 'tree_duplicate', !node.canEdit || node.isRoot);
+        html += menuItem('bi-search', L.duplicate_find_replace, 'tree_duplicate_find_replace', !node.canEdit || node.isRoot || !((state.caps.role < 3) || state.caps.can_create_pages));
         html += menuDivider();
         html += menuItem('bi-trash', L.delete, 'tree_delete', !node.canEdit || node.isRoot);
 
@@ -8089,8 +8099,8 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         positionMenu(event);
     }
 
-    // The resize button follows view_files.php: shown while the image is
-    // wider or taller than the configured trigger, optimized or not.
+    // Resize is offered while the image is wider or taller than the
+    // configured trigger, optimized or not.
     function itemResizable(item) {
         return item.kind === 'file' && item.is_image && item.can_edit &&
             OPTIMIZABLE_TYPES.indexOf(item.type) !== -1 &&
@@ -8278,9 +8288,12 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             case 'quick_edit_quantity': if (item) { quickEditFromMenu(item, 'quantity'); } break;
             case 'quick_edit_short': if (item) { quickEditFromMenu(item, 'short_description'); } break;
             case 'open_containing': if (item && item.folder_id) { exitAllFiles(item.folder_id); } break;
+            case 'duplicate_find_replace':
+                if (item && (item.kind === 'folder')) { window.location.href = 'duplicate_folder.php?id=' + item.id + '&send_to=' + encodeURIComponent(currentSendTo()); }
+                break;
             case 'edit':
                 if (!item) { break; }
-                if (item.kind === 'folder') { window.location.href = 'edit_folder.php?id=' + item.id + '&send_to=' + encodeURIComponent(currentSendTo()); }
+                if (item.kind === 'folder') { openFolderSettings(item.id); }
                 else if (item.kind === 'file') { openFileEditor(item); }
                 else { window.location.href = item.edit_url + '&send_to=' + encodeURIComponent(currentSendTo()); }
                 break;
@@ -8524,6 +8537,9 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             case 'tree_rename': if (node) { beginTreeRename(node); } break;
             case 'tree_settings': if (node) { openFolderSettings(node.id); } break;
             case 'tree_access': if (node) { openAccessPanel({ id: node.id }); } break;
+            case 'tree_duplicate_find_replace':
+                if (node) { window.location.href = 'duplicate_folder.php?id=' + node.id + '&send_to=' + encodeURIComponent(currentSendTo()); }
+                break;
             case 'tree_duplicate':
                 if (node) {
                     api({ type: 'explorer_paste', target_folder_id: node.parentId, items: [{ kind: 'folder', id: node.id }] }, function (response) {
@@ -11176,6 +11192,12 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                     '</div>';
             }
 
+            // Form fields that upload into the folder keep pointing at it.
+            if (response.upload_fields > 0) {
+                html += '<div class="alert theme-warning mb-5"><p class="mb-0"><span class="bi bi-exclamation-triangle me-3" aria-hidden="true"></span>' +
+                    esc(fmt(L.delete_folder_upload_fields, [String(response.upload_fields)])) + '</p></div>';
+            }
+
             if (blocked) {
                 html += '<div class="alert theme-warning mb-0">';
                 response.blockers.forEach(function (blocker) {
@@ -13388,14 +13410,17 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             var body = document.getElementById('settings_offcanvas_body');
             var folder = response.folder;
 
-            // The style dropdowns arrive as ready-made option lists from the
-            // same helpers edit_folder.php uses, inherited-style labels and
-            // all. Only managers and above get them, like on that screen.
+            // The style dropdowns arrive as ready-made option lists
+            // (select_style(), get_mobile_style_options()), inherited-style
+            // labels and all. Only managers and above get them. The root
+            // folder has nothing else: its styles are the site's default
+            // page styles, and its order and archive stay as they are.
             var stylesHtml = '';
+            var isRoot = !!folder.is_root;
 
             if (response.styles) {
                 stylesHtml =
-                    '<hr />' +
+                    (isRoot ? '' : '<hr />') +
                     '<div class="mb-5">' +
                     '<label class="form-label" for="settings_style_select">' + esc(L.desktop_style) + '</label>' +
                     '<select id="settings_style_select" class="form-control">' + response.styles.desktop + '</select>' +
@@ -13407,8 +13432,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                     '</div>';
             }
 
-            body.innerHTML =
-                '<h6 class="text-break mb-5"><span class="bi bi-folder-fill me-3 ' + folder.access_control_type + '"></span>' + esc(folder.name) + '</h6>' +
+            var orderArchiveHtml = isRoot ? '' :
                 '<div class="mb-5">' +
                 '<label class="form-label" for="settings_order_input">' + esc(L.sorting) + '</label>' +
                 '<input type="number" id="settings_order_input" class="form-control" inputmode="numeric" value="' + esc(String(folder.order)) + '" />' +
@@ -13418,16 +13442,22 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 '<div class="switch"><input class="" type="checkbox" role="switch" id="settings_archived_input"' + (folder.archived ? ' checked' : '') + ' /></div>' +
                 '<label class="" for="settings_archived_input">' + esc(L.archive) + '</label>' +
                 '<div class="form-text">' + esc(L.archive_note) + '</div>' +
-                '</div>' +
+                '</div>';
+
+            body.innerHTML =
+                '<h6 class="text-break mb-5"><span class="bi bi-folder-fill me-3 ' + folder.access_control_type + '"></span>' + esc(folder.name) + '</h6>' +
+                orderArchiveHtml +
                 stylesHtml +
                 '<div class="mt-5 text-end"><button type="button" id="settings_save_button" class="btn btn-solid theme-success"><span class="bi bi-save me-3"></span>' + esc(L.save) + '</button></div>';
 
             document.getElementById('settings_save_button').addEventListener('click', function () {
+                // The root's order and archive are not on the drawer; the
+                // server keeps the stored ones whatever is sent.
                 var payload = {
                     type: 'explorer_folder_settings_set',
                     item_folder_id: folder.id,
-                    order: document.getElementById('settings_order_input').value,
-                    archived: document.getElementById('settings_archived_input').checked ? '1' : ''
+                    order: isRoot ? String(folder.order) : document.getElementById('settings_order_input').value,
+                    archived: (isRoot ? folder.archived : document.getElementById('settings_archived_input').checked) ? '1' : ''
                 };
 
                 if (response.styles) {

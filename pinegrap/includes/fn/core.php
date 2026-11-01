@@ -3672,7 +3672,7 @@ function go($url)
 
     // A path with no leading slash is relative to the directory of the running
     // script, which is how a browser resolves it in an href. Resolving it the
-    // same way here keeps pg_safe_back_url()'s "view_files.php" form working.
+    // same way here keeps pg_safe_back_url()'s "view_folders.php" form working.
     // Pasting it straight onto the host name instead would turn the equally
     // well-formed "x.evil.com/a.php" into https://example.comx.evil.com/a.php,
     // a host name the attacker can register.

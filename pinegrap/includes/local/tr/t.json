@@ -2124,6 +2124,7 @@
     "The folder for the packs could not be made under data/temp/.": "Paketlerin klasörü data/temp/ altında oluşturulamadı.",
     "The folder has an entry the visitor may see": "Klasörde ziyaretçinin görebileceği bir içerik var",
     "The folder has been duplicated, and you are now editing the duplicate.": "Klasör çoğaltıldı ve şimdi kopyayı düzenliyorsunuz.",
+    "The folder has been duplicated.": "Klasör çoğaltıldı.",
     "The folder has no entry the visitor may see": "Klasörde ziyaretçinin görebileceği içerik yok",
     "The folder is empty.": "Klasör boş.",
     "The folder menu": "Klasör menüsü",

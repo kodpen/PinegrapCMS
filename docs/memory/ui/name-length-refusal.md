@@ -1,6 +1,6 @@
 ---
 name: name-length-refusal
-description: File and Catalog Manager, folder screens and Pages Find & Replace refuse a name longer than its varchar column instead of letting the non-strict session cut it
+description: File and Catalog Manager and Pages Find & Replace refuse a name longer than its varchar column instead of letting the non-strict session cut it
 module: files
 ---
 
@@ -11,7 +11,6 @@ module: files
 ## Where is a long name refused?
 - `includes/explorer/handle_items.php`: folder create (before `get_unique_name()`, so its `[1]` is never cut off) and the folder/page rename (before `check_name_availability()`); file renames keep `prepare_file_name()`'s own rules. Answer: `status=error` with "The name can be at most {var:1} characters long.", which the File Manager shows as a toast.
 - `includes/explorer/handle_catalog.php`: group create and group/product rename, same answer. Bulk Rename calls these endpoints row by row, so a prefix/suffix that pushes a name past 100 is refused per row.
-- `add_folder.php` (liveform error on Name) and `edit_folder.php` (error page, before the parent move); both name boxes carry `maxlength="100"` (`includes/forms/folder_form.php`).
 - `mass_edit.php`: Web Browser Title has `maxlength="255"`; Find & Replace leaves a value that would pass its column unchanged, checks the page name's availability on the value it would store, and adds the notice "N value(s) skipped: longer than the field allows.".
 
 ## Why?

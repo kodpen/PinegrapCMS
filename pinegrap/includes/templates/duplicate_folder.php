@@ -25,13 +25,7 @@ if (!defined('PG_INIT_LOADED')) {
 				<div class="col-12 sm:col-12 text-center md:text-start">
 					<nav class="navigation" aria-label="breadcrumb">
 						<ol class="breadcrumb justify-content-center md:justify-content-start ">
-							<?php if(isset($_GET['send_to']) && ($_GET['send_to'] ?? '') != ''): ?>
-								<li class="breadcrumb-item"><a class="pg-link-secondary " href="<?=OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY?>/explorer.php"><?=lang('Explorer')?></a></li>
-								<li class="breadcrumb-item"><a class="pg-link-secondary " href="<?=OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY?>/edit_folder.php?id=<?=h($_GET['id'] ?? '')?>&send_to=<?=h($_GET['send_to'] ?? '')?>"><?=lang('Edit Folder')?></a></li>
-							<?php else:?>
-								<li class="breadcrumb-item"><a class="pg-link-secondary " href="<?=OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY?>/view_folders.php"><?=lang('All Folders')?></a></li>
-								<li class="breadcrumb-item"><a class="pg-link-secondary " href="<?=OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY?>/edit_folder.php?id=<?=h($_GET['id'] ?? '')?>"><?=lang('Edit Folder')?></a></li>
-							<?php endif;?>
+							<li class="breadcrumb-item"><a class="pg-link-secondary " href="<?=h($back_url)?>"><?=lang('File Manager')?></a></li>
 							<li class="breadcrumb-item active" aria-current="page"><?=lang('Duplicate Folder')?></li>
 						</ol>
 					</nav>

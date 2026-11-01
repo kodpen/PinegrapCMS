@@ -1185,8 +1185,8 @@ function pg_panel_designer_file($request, $action)
             if (!in_array($df_type, array('css', 'js', 'json'), true)) {
                 respond(array('status' => 'error', 'message' => 'Invalid file type.'));
             }
-            // Folder is required — view_files.php joins on folder.folder_id
-            // and excludes rows where the join misses, so a folder=0 file
+            // Folder is required — the file lists join on folder.folder_id
+            // and leave out rows where the join misses, so a folder=0 file
             // is invisible in the file manager. Reject the create instead
             // of silently writing an unreachable file.
             if ($df_folder <= 0) {

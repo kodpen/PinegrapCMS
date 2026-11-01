@@ -8,7 +8,7 @@ description: Bootstrap 6 floats a .form-floating label only when it comes before
 - Site output (Bootstrap 5.3.8) keeps the v5 order; this rule is for panel markup only.
 
 ## Which screens were fixed?
-- The Modify Selected popups (#2579): `edit_pages.php` (folder, page style, mobile style, site search, sitemap), `edit_files.php` (design, folder), `includes/templates/edit_products.php` (status, price change, tax rate, inventory, quantity process). They open from view_pages, view_files, view_design_files, view_products and edit_product_group.
+- The Modify Selected popups (#2579): `edit_pages.php` (folder, page style, mobile style, site search, sitemap), `edit_files.php` (design, folder), `includes/templates/edit_products.php` (status, price change, tax rate, inventory, quantity process). They open from view_pages, view_design_files, view_products and edit_product_group.
 - Same PR: the Site Search, sitemap.xml and Design labels pointed at `for="folder"`; each names its own select now. A stray second `</select>` after the mobile style select was dropped.
 
 ## What keeps it from coming back?

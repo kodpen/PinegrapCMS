@@ -148,8 +148,8 @@ function test_menu_file_manager_row_holds_the_files()
 	$menu = pg_test_function_source('output_menu');
 
 	pg_assert_contains("\$menu_items[1]['href'] = 'view_folders.php';", $menu, 'the row opens the explorer');
-	pg_assert_contains("\$menu_items[1]['data-bs-content'] .= '<a href=\\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_folders.php?view=files&upload=1\\''", $menu, 'the upload is its entry');
-	pg_assert_contains("\$menu_items[1]['data-bs-content'] .= '<hr class=\\'divider my-3\\' />' . pg_menu_explorer_side('files', \$user, \$toolbar, \$menu_tail);", $menu, 'then the tree, with Files and Pictures in it');
+	pg_assert_contains("\$menu_items[1]['data-bs-content'] = pg_menu_explorer_side('files', \$user, \$toolbar, \$menu_tail);", $menu, 'the panel is the tree alone, with Files and Pictures in it');
+	pg_assert_false(strpos($menu, "/view_folders.php?view=files&upload=1") !== false, 'uploading happens in the explorer, not from an entry');
 	pg_assert_false(strpos($menu, "OUTPUT_SOFTWARE_DIRECTORY . '/view_folders.php?view=images") !== false, 'Pictures is not an entry twice');
 	pg_assert_false(strpos($menu, "OUTPUT_SOFTWARE_DIRECTORY . '/view_folders.php?view=files\\''") !== false, 'nor Files');
 	pg_assert_false(strpos($menu, "\$menu_items[3]") !== false, 'the Files row is gone');

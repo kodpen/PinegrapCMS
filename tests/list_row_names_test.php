@@ -118,7 +118,7 @@ function test_list_row_names_folder_access_mark()
 
 	pg_assert_same('', pg_folder_access_mark('nonsense'));
 
-	foreach (array('view_pages.php' => '$page', 'view_files.php' => '$file') as $path => $var) {
+	foreach (array('view_pages.php' => '$page') as $path => $var) {
 		pg_assert_contains('pg_folder_list_name(' . $var . '[\'folder_name\'], ' . $var . '[\'folder_access_control_type\'])', list_row_names_source($path), $path);
 	}
 }

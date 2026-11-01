@@ -3240,10 +3240,8 @@ function output_menu($properties = false)
     // get user informations.
     global $user;
     $menu_items = array();
-    // Panels drawn without a row of their own: the pinned My Notes panel when
-    // nothing is pinned yet, and the second level of Site Settings and of
-    // System tools.
-    $menu_panels_unattached = array();
+    // Panels drawn without a row of their own: the second level of Site
+    // Settings and of System tools.
     $menu_panels_nested = '';
     // What follows the rows and panels: the Workspace list's data and script.
     $menu_tail = '';
@@ -3268,26 +3266,22 @@ function output_menu($properties = false)
     // Appearance.
 
     if (($user['role'] < 3) || (no_acl_check($user['id']) == true)) {
-        // FILE MANAGER. The row opens the explorer itself; its panel holds the
-        // ways to add to it, then the explorer's tree (pg_menu_explorer_side()):
-        // its views across every file (Files, Pictures, Pages, ...) and the
-        // folders. The two actions open the explorer with the upload window,
-        // or a new file, already in hand (view_files.php, add_file.php and
-        // create_file.php are not linked from here). Slot 3, the Files row,
-        // is retired and never reused.
+        // FILE MANAGER. The row opens the explorer itself; its panel holds only
+        // the explorer's tree (pg_menu_explorer_side()): its views across every
+        // file (Files, Pictures, Pages, ...) and the folders. Creating a
+        // folder or a file and uploading happen on the explorer, so the panel
+        // carries no links of its own. The tree box is drawn whether or not it
+        // holds links (empty on the explorer's own screen, which moves its
+        // tree in), so the row asks for its panel by the flag. Slot 3, the
+        // Files row, is retired and never reused.
         $menu_items[1]['id'] = 1;
         $menu_items[1]['href'] = 'view_folders.php';
         $menu_items[1]['menu_icon'] = 'folders';
         $menu_items[1]['color_class'] = 'folders-color';
         $menu_items[1]['title'] = 'File Manager';
         $menu_items[1]['context'] = true;
-        // The tree below marks the folder or view that is open, so the
-        // explorer's own home leaves the current mark to it (data-pg-menu-skip).
-        $menu_items[1]['data-bs-content'] = '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_folders.php\'' . $output_parent_target . ' data-pg-menu-skip class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-folder bi-me-2\'>' . lang('File Manager') . '</a>';
-        $menu_items[1]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_folder.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Folder'))) . '</a>';
-        $menu_items[1]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_folders.php?view=files&upload=1\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-upload bi-me-2\'>' . lang('Upload Files or Folders') . '</a>';
-        $menu_items[1]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_folders.php?view=files&create=file\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang('Create File') . '</a>';
-        $menu_items[1]['data-bs-content'] .= '<hr class=\'divider my-3\' />' . pg_menu_explorer_side('files', $user, $toolbar, $menu_tail);
+        $menu_items[1]['panel'] = true;
+        $menu_items[1]['data-bs-content'] = pg_menu_explorer_side('files', $user, $toolbar, $menu_tail);
         // PAGES
         $menu_items[2]['id'] = 2;
         $menu_items[2]['href'] = 'view_pages.php';
@@ -3908,24 +3902,19 @@ function output_menu($properties = false)
 
             // My Notes pinned to the menu by the person (the pin button of the
             // notes screen): a row of its own, drawn right under the workspace.
-            // Slot 24, never reused, like 22 and 23.
-            if (function_exists('ws_notes_ready') && ws_notes_ready()) {
-                $notes_menu_entries = '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/workspace_notes.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-journal-text bi-me-2\'>' . lang('My Notes') . '</a>'
-                    . '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/workspace_notes.php?new=1\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Add {var:1}', 'vars' => lang('Note'))) . '</a>';
-
-                if (function_exists('ws_notes_menu_pinned') && ws_notes_menu_pinned((int) $user['id'])) {
-                    $menu_items[24]['id'] = 24;
-                    $menu_items[24]['href'] = 'workspace_notes.php';
-                    $menu_items[24]['menu_icon'] = 'notes';
-                    $menu_items[24]['color_class'] = 'workspace-color';
-                    $menu_items[24]['title'] = 'My Notes';
-                    $menu_items[24]['context'] = true;
-                    $menu_items[24]['data-bs-content'] = $notes_menu_entries;
-                } else {
-                    // Not pinned: the panel is drawn on its own, for the row
-                    // the notes screen adds when the person pins it.
-                    $menu_panels_unattached[24] = array('title' => 'My Notes', 'entries' => $notes_menu_entries);
-                }
+            // Slot 24, never reused, like 22 and 23. It has no panel of its
+            // own: a click opens the Workspace list (slot 23's panel), where
+            // the notes are one of the places, so the menu shows the
+            // workspace whichever of the two rows was used. The row keeps
+            // its address, so a new tab still opens the notes.
+            if (function_exists('ws_notes_ready') && ws_notes_ready()
+                && function_exists('ws_notes_menu_pinned') && ws_notes_menu_pinned((int) $user['id'])) {
+                $menu_items[24]['id'] = 24;
+                $menu_items[24]['href'] = 'workspace_notes.php';
+                $menu_items[24]['menu_icon'] = 'notes';
+                $menu_items[24]['color_class'] = 'workspace-color';
+                $menu_items[24]['title'] = 'My Notes';
+                $menu_items[24]['panel_of'] = 23;
             }
         }
     }
@@ -3984,11 +3973,9 @@ function output_menu($properties = false)
         // view of the explorer included: the File Manager row's panel marks
         // the view that is open.
         case 'view_folders.php':
-        case 'add_folder.php':
-        case 'edit_folder.php':
         case 'duplicate_folder.php':
-        case 'view_files.php':
         case 'add_file.php':
+        case 'create_file.php':
         case 'edit_file.php':
         case 'editor_select_image.php':
             $active_menu = 1;
@@ -4360,6 +4347,10 @@ function output_menu($properties = false)
 
     $menu_rows = array();
     $output_menu_panels = '';
+    // The rows whose panels are drawn so far, for a row that opens another
+    // row's panel (pg_menu_row_panel_id()); rows come in the order they were
+    // built, so the Workspace row's panel is drawn before the My Notes row.
+    $menu_panels_drawn = array();
     foreach ($menu_drawn as $key) {
         $options = $menu_items[$key];
 
@@ -4377,10 +4368,7 @@ function output_menu($properties = false)
             $menu_panel_entries = (string) $options['data-bs-content'];
         }
 
-        $menu_panel_id = '';
-        if (pg_menu_row_has_panel($options, $menu_panel_entries)) {
-            $menu_panel_id = 'menu_panel_' . $options['id'];
-        }
+        $menu_panel_id = pg_menu_row_panel_id($options, $menu_panel_entries, $menu_panels_drawn);
 
         $output_menu_item_icon = '';
         // The drawn two-tone icon (pg_menu_icon()), then a Bootstrap icon,
@@ -4416,7 +4404,12 @@ function output_menu($properties = false)
         if ($menu_panel_id !== '') {
             $output_menu_row_panel .= ' data-pg-menu-panel="' . $menu_panel_id . '" aria-controls="' . $menu_panel_id . '" aria-expanded="false"';
             $output_menu_row_end = '<span class="pg-menu-hint"></span><i class="bi bi-chevron-right pg-menu-chevron" aria-hidden="true"></i>';
-            $output_menu_panels .= pg_menu_panel($menu_panel_id, 'menu_item_' . $options['id'], lang($options['title']), $menu_panel_entries);
+
+            // A row that opens another row's panel draws none of its own.
+            if ($menu_panel_id === 'menu_panel_' . (int) $options['id']) {
+                $output_menu_panels .= pg_menu_panel($menu_panel_id, 'menu_item_' . $options['id'], lang($options['title']), $menu_panel_entries);
+                $menu_panels_drawn[(int) $options['id']] = true;
+            }
         }
 
         // no-popover: the row keeps the browser's own title hint, which names
@@ -4424,14 +4417,6 @@ function output_menu($properties = false)
         $menu_rows[$key] = '<a id="menu_item_' . $options['id'] . '"' . $output_menu_row_panel . ' class="list-group-item list-group-item-action border-0 no-popover' . (($menu_panel_id !== '') ? ' pg-menu-parent' : '') . $active_menu_class . '" title="' . lang($options['title']) . '" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/' . $options['href'] . '" ' . $output_parent_target . '>' . $output_menu_item_icon . '<span class="list-group-text">' . lang($options['title']) . '</span>' . $output_menu_item_badge . $output_menu_row_end . '</a>';
 
 
-    }
-
-    // A panel with no row yet: My Notes, for the row the notes screen adds
-    // when the person pins it (workspace.js).
-    foreach ($menu_panels_unattached as $id => $panel) {
-        if (!isset($menu_items[$id])) {
-            $output_menu_panels .= pg_menu_panel('menu_panel_' . $id, 'menu_item_' . $id, lang($panel['title']), $panel['entries']);
-        }
     }
 
     // The second level, opened from entries of a first-level panel.
@@ -4807,6 +4792,27 @@ function pg_menu_row_has_panel($options, $entries)
     }
 
     return pg_menu_row_opens_panel($entries, isset($options['href']) ? $options['href'] : '');
+}
+
+/**
+ * The panel a row of the main menu opens: its own (menu_panel_<row id>), the
+ * panel of the row it names in 'panel_of' once that panel is drawn (the
+ * pinned My Notes row opens the Workspace list), or none.
+ *
+ * @param array  $options the row, as output_menu() built it
+ * @param string $entries the row's entries
+ * @param array  $drawn   row id => true for each row whose panel is drawn so far
+ * @return string the panel's id, '' for a row that is a plain link
+ */
+function pg_menu_row_panel_id($options, $entries, $drawn)
+{
+    if (isset($options['panel_of'])) {
+        $of = (int) $options['panel_of'];
+
+        return isset($drawn[$of]) ? 'menu_panel_' . $of : '';
+    }
+
+    return pg_menu_row_has_panel($options, $entries) ? 'menu_panel_' . (int) $options['id'] : '';
 }
 
 /**

@@ -5,7 +5,7 @@ description: Plan (owner decisions 2026-10-25; status in bootstrap-6-panel-steps
 
 ## What is the goal and the scope?
 - Owner request 2026-10-25: move the panel to Bootstrap 6 quickly by the official migration rules (skill `bootstrap-v5-v6-migration`), swap own widgets for native v6 components in the same stage (`bootstrap-6-components.md`), then redesign legacy form screens and tables (`bootstrap-6-redesign.md`). Scope and references: `ui/bootstrap-6.md`.
-- Screens the owner likes must not look worse: workspace, view_files, product_builder, edit_user, welcome, view_product_groups, view_offers, edit_offer, header, footer, main menu. The visual editor keeps its look.
+- Screens the owner likes must not look worse: workspace, product_builder, edit_user, welcome, view_product_groups, view_offers, edit_offer, header, footer, main menu. The visual editor keeps its look.
 
 ## What did the owner decide (2026-10-25)?
 - Start now on npm 6.0.0-alpha.1 (in `assets/lib/bootstrap-6` since B0b).

@@ -197,8 +197,7 @@ function pg_explorer_handle_list_all_files($type, $request, $user, $folders_that
             . " ORDER BY files.name");
 
         // An access rule is inherited down the folder tree, so it
-        // is read off the resolved folder rather than the row --
-        // the same way view_files.php filtered by it.
+        // is read off the resolved folder rather than the row.
         $access_scope = in_array($scope, array('public', 'guest', 'registration', 'membership', 'private'), true) ? $scope : '';
 
         if ($rows) {
