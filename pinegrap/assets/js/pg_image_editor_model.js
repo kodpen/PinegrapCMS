@@ -150,7 +150,7 @@
     // ---- tools ----
 
     var PROFILES = {
-        photo: ['select', 'crop', 'adjust', 'draw', 'text', 'redact', 'sticker', 'frame', 'vector'],
+        photo: ['select', 'crop', 'artboard', 'adjust', 'draw', 'text', 'redact', 'sticker', 'frame', 'vector'],
         canvas: ['select', 'artboard', 'draw', 'text', 'sticker', 'image', 'vector', 'frame'],
         annotate: ['arrow', 'rect', 'text', 'pen', 'redact'],
         optimise: ['export']
@@ -1948,9 +1948,103 @@
         return d;
     }
 
+    // -- a picture's canvas --
+
+    // doc.canvas on a picture: { l, t, r, b, background }, how far the
+    // canvas reaches past each side of the crop box (below 0 trims it), in
+    // the rotated space's units; null when the canvas is the crop box. What
+    // the picture does not cover takes the background.
+    function canvasBox(doc) {
+        var c = cropBox(doc), m = doc.canvas;
+
+        return m ? { x: c.x - m.l, y: c.y - m.t, w: c.w + m.l + m.r, h: c.h + m.t + m.b } : c;
+    }
+
+    // Frames that may lie outside the picture, growing the canvas:
+    // [band in parts of the shorter side (per width step, plus a base), left,
+    // right, top and bottom in bands] as frameShape() draws them inward.
+    var FRAME_OUT = { line: [0.002, 0, 1, 1, 1, 1], thick: [0.008, 0, 1, 1, 1, 1], polaroid: [0.004, 0.03, 1, 1, 1, 3.8] };
+
+    function frameOutward(frame) {
+        return !!frame && !!frame.outside && FRAME_OUT.hasOwnProperty(frame.kind);
+    }
+
+    // The sides an outward frame adds around box: the grown box is one whose
+    // inward frame (frameShape()) has box as its hole. The band is a part c of
+    // the grown box's shorter side, so with W = w + (l + r) * band it is
+    // c * w / (1 - c * (l + r)) for the width, the same for the height, and
+    // the smaller of the two.
+    function framePads(frame, box) {
+        var f = FRAME_OUT[frame.kind], c = f[1] + f[0] * clamp(Number(frame.width) || 4, 1, 10);
+        var band = Math.min(c * box.w / (1 - c * (f[2] + f[3])), c * box.h / (1 - c * (f[4] + f[5])));
+
+        return { l: band * f[2], r: band * f[3], t: band * f[4], b: band * f[5] };
+    }
+
+    // The box a save draws, in the rotated space: an artboard's board, else
+    // the picture's canvas grown by an outward frame.
+    function saveBox(doc) {
+        if (doc.artboard) {
+            return { x: 0, y: 0, w: doc.artboard.width, h: doc.artboard.height };
+        }
+
+        var box = canvasBox(doc), p;
+
+        if (frameOutward(doc.frame)) {
+            p = framePads(doc.frame, box);
+            box = { x: box.x - p.l, y: box.y - p.t, w: box.w + p.l + p.r, h: box.h + p.t + p.b };
+        }
+
+        return box;
+    }
+
+    // Where a picture's save lays it: the canvas in whole pixels of the
+    // output (w, h), the picture's top left on it (x, y) and the fill; null
+    // when the canvas is the picture's own. The server's extend step
+    // (pg_image_edit_extend()).
+    function saveLayout(doc) {
+        if (doc.artboard || (!doc.canvas && !frameOutward(doc.frame))) {
+            return null;
+        }
+
+        var b = saveBox(doc), c = cropBox(doc), out = outputSize(doc), sx = out.w / c.w, sy = out.h / c.h;
+        var fill = doc.canvas ? doc.canvas.background : doc.frame.color;
+
+        return {
+            w: Math.round(clamp(b.w * sx, 1, SIZE_MAX)), h: Math.round(clamp(b.h * sy, 1, SIZE_MAX)),
+            x: Math.round((c.x - b.x) * sx), y: Math.round((c.y - b.y) * sy),
+            fill: /^#[0-9a-f]{6}$/i.test(fill || '') ? fill : 'transparent'
+        };
+    }
+
+    // The size a save writes.
+    function saveSize(doc) {
+        var l = saveLayout(doc);
+
+        return doc.artboard ? { w: doc.artboard.width, h: doc.artboard.height } : (l ? { w: l.w, h: l.h } : outputSize(doc));
+    }
+
+    // doc with its picture's canvas moved to r (in the canvas box's units,
+    // as boardDrag() gives it): whole units on each side, at least SIZE_MIN
+    // and at most SIZE_MAX across. The layers stay: they lie in the rotated
+    // space, not on the canvas. A canvas back on the crop box with a white
+    // background is none.
+    function applyCanvas(doc, r) {
+        var d = clone(doc), c = cropBox(doc), b = canvasBox(doc);
+        var x = b.x + Math.round(r.x), y = b.y + Math.round(r.y), w = boardSide(r.w), h = boardSide(r.h);
+        var m = { l: c.x - x, t: c.y - y, r: x + w - c.x - c.w, b: y + h - c.y - c.h, background: doc.canvas ? doc.canvas.background : '#ffffff' };
+
+        ['l', 't', 'r', 'b'].forEach(function (k) { m[k] = Math.round(m[k] * 1000) / 1000; });
+        d.canvas = (!m.l && !m.t && !m.r && !m.b && (m.background === '#ffffff')) ? null : m;
+
+        return d;
+    }
+
     var ARTBOARD = {
         BOARD_PRESETS: BOARD_PRESETS, BOARD_BACKGROUNDS: BOARD_BACKGROUNDS, boardSide: boardSide, boardPreset: boardPreset,
-        boardDrag: boardDrag, boardAnchored: boardAnchored, boardAround: boardAround, applyBoard: applyBoard
+        boardDrag: boardDrag, boardAnchored: boardAnchored, boardAround: boardAround, applyBoard: applyBoard,
+        canvasBox: canvasBox, FRAME_OUT: FRAME_OUT, frameOutward: frameOutward, framePads: framePads, saveBox: saveBox,
+        saveLayout: saveLayout, saveSize: saveSize, applyCanvas: applyCanvas
     };
 
     // -- export (pg_image_editor_export.js) --

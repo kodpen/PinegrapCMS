@@ -1501,6 +1501,33 @@
 
 /* -- Canvas and artboard (pg_image_editor_artboard.js) -- */
 
+/* A picture's canvas: its fill around the picture, under the layers. */
+.pgie-mat {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+/* The Frame panel's "outside the picture". */
+.pgie-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 12px 0 0;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.pgie-check input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--pgie-sel, #1e88e5);
+}
+
 /* The board while the Canvas tool is on: a dashed line, eight handles and
    its size above it. */
 .pgie-board {

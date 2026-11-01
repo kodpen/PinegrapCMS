@@ -906,7 +906,7 @@ function pg_image_editor_save($request, $user)
             return pg_image_editor_refusal(lang('Sorry, the file could not be saved.'));
         }
 
-        return pg_image_editor_record('new', $name, $folder, 'png', null, $user);
+        return pg_image_editor_pictures_saved(pg_image_editor_record('new', $name, $folder, 'png', null, $user), $request, $folder, $user);
     }
 
     if (($mode !== 'replace') && ($mode !== 'copy')) {
@@ -930,10 +930,22 @@ function pg_image_editor_save($request, $user)
     $name = (string) $file['row']['name'];
     $overlay = '';
 
+    // The canvas grown or trimmed around the picture; the overlay is drawn
+    // at its size.
+    $extend = pg_image_edit_extend(isset($request['extend']) ? $request['extend'] : null, $edit['out_w'], $edit['out_h']);
+
+    if ($extend === false) {
+        return pg_image_editor_refusal(lang('Invalid request.'));
+    }
+
+    if ($extend) {
+        $edit['extend'] = $extend;
+    }
+
     if (!empty($request['overlay'])) {
         $overlay = FILE_DIRECTORY_PATH . '/' . $name . '.' . (function_exists('getmypid') ? getmypid() : uniqid()) . '.overlay.tmp';
 
-        if (!pg_image_editor_take_png($request['overlay'], $overlay, $edit['out_w'], $edit['out_h'])) {
+        if (!pg_image_editor_take_png($request['overlay'], $overlay, $extend ? $extend['w'] : $edit['out_w'], $extend ? $extend['h'] : $edit['out_h'])) {
             return pg_image_editor_refusal(lang('Invalid request.'));
         }
 
@@ -1046,7 +1058,7 @@ function pg_image_editor_save($request, $user)
         return pg_image_editor_refusal(lang('Sorry, the file could not be saved.'));
     }
 
-    $record = pg_image_editor_record($mode, $name, (int) $file['row']['folder'], (string) $file['row']['type'], $file['row'], $user);
+    $record = pg_image_editor_pictures_saved(pg_image_editor_record($mode, $name, (int) $file['row']['folder'], (string) $file['row']['type'], $file['row'], $user), $request, (int) $file['row']['folder'], $user);
 
     if (($mode === 'replace') && $base && ($record[0]['status'] === 'success')) {
         pg_file_versions_after_save((int) $file['row']['id'], FILE_DIRECTORY_PATH . '/' . $name, isset($request['doc_object']) ? $request['doc_object'] : null, $base, $user['id'], !empty($redactions));
@@ -2352,11 +2364,157 @@ function pg_image_editor_strings_artboard()
         'anchorBottomRight' => lang('Bottom right'),
         'fitContent'        => lang('Fit to content'),
         'fitSelection'      => lang('Fit to the selection'),
+        'frameOutside'      => lang('Outside the picture (the canvas grows)'),
         'hintArtboard'      => lang('Drag the edges and corners: the artwork stays, the canvas slides over it. Shift keeps the ratio, Alt sizes from the center.'),
         'hintImage'         => lang('Choose an image, or drop or paste one onto the canvas.'),
         'imagePick'         => lang('Choose an image from this computer'),
         'imageNote'         => lang('You can also drop an image onto the canvas or paste one.'),
     );
+}
+
+/**
+ * The canvas a picture's save is laid on (saveLayout() of the model): w x h
+ * whole pixels, the picture's top left x, y on it (below 0: trimmed) and the
+ * fill, '#rrggbb' or 'transparent'. Some of the picture (out_w x out_h) has
+ * to lie on the canvas. Pure.
+ *
+ * @return array|null|false w, h, x, y, fill (array(r, g, b) or null for
+ *                          transparent); null for none, false when refused
+ */
+function pg_image_edit_extend($value, $out_w, $out_h)
+{
+    if ($value === null) {
+        return null;
+    }
+
+    if (!is_array($value)) {
+        return false;
+    }
+
+    $w = isset($value['w']) ? pg_image_edit_number($value['w'], 1, 8000) : null;
+    $h = isset($value['h']) ? pg_image_edit_number($value['h'], 1, 8000) : null;
+
+    if (($w === null) || ($h === null)) {
+        return false;
+    }
+
+    $x = isset($value['x']) ? pg_image_edit_number($value['x'], 1 - $out_w, $w - 1) : null;
+    $y = isset($value['y']) ? pg_image_edit_number($value['y'], 1 - $out_h, $h - 1) : null;
+    $fill = isset($value['fill']) ? $value['fill'] : null;
+
+    if (($x === null) || ($y === null) || (floor($w) != $w) || (floor($h) != $h) || (floor($x) != $x) || (floor($y) != $y)) {
+        return false;
+    }
+
+    if ($fill === 'transparent') {
+        $fill = null;
+    } elseif (is_string($fill) && preg_match('/^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i', $fill, $m)) {
+        $fill = array(hexdec($m[1]), hexdec($m[2]), hexdec($m[3]));
+    } else {
+        return false;
+    }
+
+    return array('w' => (int) $w, 'h' => (int) $h, 'x' => (int) $x, 'y' => (int) $y, 'fill' => $fill);
+}
+
+/**
+ * The pictures of image layers that came from this computer (picked,
+ * dropped or pasted): the browser sends them beside the document as
+ * pictures [{id: the layer's, data: a PNG or JPEG data: URL, name}]. Pure:
+ * the list kept, or false when it is no such list (at most 50).
+ *
+ * @return array|false
+ */
+function pg_image_editor_picture_list($value)
+{
+    if ($value === null) {
+        return array();
+    }
+
+    if (!is_array($value) || (count($value) > 50)) {
+        return false;
+    }
+
+    $list = array();
+
+    foreach ($value as $item) {
+        if (!is_array($item) || !isset($item['id'], $item['data']) || !is_string($item['id']) || !preg_match('/^[a-z0-9_-]{1,64}$/i', $item['id'])
+            || !is_string($item['data']) || !preg_match('#^data:image/(png|jpeg);base64,#', substr($item['data'], 0, 32))) {
+            return false;
+        }
+
+        $list[] = array('id' => $item['id'], 'data' => $item['data'], 'name' => (isset($item['name']) && is_string($item['name'])) ? $item['name'] : '');
+    }
+
+    return $list;
+}
+
+/**
+ * After a save that succeeded: each picture of the request kept as a file
+ * in $folder (its own files row, named after the file it came from) and its
+ * layer in the document pointed at it (src, fileId), so the version keeps a
+ * document without pixels in it. Only a written save leaves files: an edit
+ * that is cancelled sent nothing. A picture that cannot be kept is left in
+ * the document as it came (the version then keeps the drawn pixels).
+ *
+ * @param array $record   pg_image_editor_record()'s answer
+ * @param array $request  the save request; its doc_object is changed
+ * @return array $record, with pictures: layer id => {id, url}
+ */
+function pg_image_editor_pictures_saved($record, &$request, $folder, $user)
+{
+    $list = pg_image_editor_picture_list(isset($request['pictures']) ? $request['pictures'] : null);
+
+    if (($record[0]['status'] !== 'success') || !$list || !check_edit_access($folder) || pg_folder_binned($folder)) {
+        return $record;
+    }
+
+    $saved = array();
+
+    foreach ($list as $picture) {
+        $type = (strncmp($picture['data'], 'data:image/png', 14) === 0) ? 'png' : 'jpg';
+        $base = preg_replace('/\.[a-z0-9]{2,5}$/i', '', trim(pg_basename(str_replace('\\', '/', $picture['name']))));
+        $name = get_unique_name(array('name' => prepare_file_name((($base !== '') ? $base : lang('Picture')) . '.' . $type), 'type' => 'file'));
+
+        if (pg_upload_name_blocked($name)) {
+            continue;
+        }
+
+        $path = FILE_DIRECTORY_PATH . '/' . $name;
+        $temporary = $path . '.' . (function_exists('getmypid') ? getmypid() : uniqid()) . '.tmp';
+
+        if (!pg_image_editor_take_picture($picture['data'], $temporary)) {
+            continue;
+        }
+
+        pg_process_image_file($temporary);
+
+        if (!@rename($temporary, $path)) {
+            @unlink($temporary);
+            continue;
+        }
+
+        $row = pg_image_editor_record('new', $name, $folder, $type, null, $user);
+
+        if ($row[0]['status'] === 'success') {
+            $saved[$picture['id']] = array('id' => (int) $row[0]['id'], 'url' => PATH . encode_url_path($name));
+        }
+    }
+
+    $doc = isset($request['doc_object']) ? $request['doc_object'] : null;
+
+    if ($saved && is_object($doc) && isset($doc->layers) && is_array($doc->layers)) {
+        foreach ($doc->layers as $layer) {
+            if (is_object($layer) && isset($layer->id) && is_string($layer->id) && isset($saved[$layer->id])) {
+                $layer->src = $saved[$layer->id]['url'];
+                $layer->fileId = $saved[$layer->id]['id'];
+            }
+        }
+    }
+
+    $record[0]['pictures'] = (object) $saved;
+
+    return $record;
 }
 
 // -- Export (pg_image_editor_export.js) --

@@ -604,7 +604,7 @@
 
     // The size the picture will be saved at, under the file name.
     Editor.prototype.renderMeta = function () {
-        var a = this.doc.artboard, out = a ? { w: a.width, h: a.height } : M.outputSize(this.doc);
+        var out = M.saveSize(this.doc);
 
         this.meta.textContent = out.w + ' × ' + out.h + ' px';
         this.sizeLabel.textContent = this.meta.textContent;
@@ -623,7 +623,8 @@
     };
 
     // The part of the rotated space the frame shows: all of it while
-    // cropping, else the crop box; a blank document's artboard.
+    // cropping, else what a save draws (the crop box, or the canvas around
+    // it: M.saveBox()); a blank document's artboard.
     Editor.prototype.viewRect = function () {
         if (!this.doc.source) {
             return { x: 0, y: 0, w: this.doc.artboard.width, h: this.doc.artboard.height };
@@ -635,7 +636,7 @@
             return { x: 0, y: 0, w: fr.rw, h: fr.rh };
         }
 
-        return M.cropBox(this.doc);
+        return M.saveBox(this.doc);
     };
 
     // A point of the page in the rotated space.
@@ -1462,6 +1463,11 @@
                 self.setSaving(false);
                 self.showMessage((r && r.message) || t('saveError'), true);
                 return;
+            }
+
+            // Pictures the save kept as files: their layers point at them.
+            if (self.takePictures) {
+                self.takePictures(r.pictures);
             }
 
             var result = { file: r, doc: M.clone(self.doc), fileId: r.id };

@@ -451,7 +451,9 @@
     };
 
     // A picture file as a layer in the middle of the canvas, at most 60 % of
-    // it; one larger than 2000 px is kept at that size.
+    // it; one larger than 2000 px is kept at that size, one in another type
+    // than PNG or JPEG as a PNG (a save keeps it as a file, fileName naming
+    // it).
     Editor.prototype.addPicture = function (file) {
         var self = this, reader = new FileReader();
 
@@ -461,7 +463,7 @@
             img.onload = function () {
                 var src = String(reader.result), w = img.naturalWidth, h = img.naturalHeight, k = Math.min(1, 2000 / Math.max(w, h));
 
-                if (k < 1) {
+                if ((k < 1) || !/^data:image\/(png|jpeg);/.test(src)) {
                     var canvas = document.createElement('canvas');
 
                     canvas.width = Math.round(w * k);
@@ -474,7 +476,7 @@
                     var vr = self.viewRect(), fit = Math.min(1, 0.6 * vr.w / w, 0.6 * vr.h / h), lw = w * fit, lh = h * fit;
 
                     self.toSelect();
-                    self.addLayers([{ type: 'image', src: src, x: vr.x + (vr.w - lw) / 2, y: vr.y + (vr.h - lh) / 2, w: lw, h: lh, rot: 0, opacity: 1 }], 0);
+                    self.addLayers([{ type: 'image', src: src, fileName: file.name || '', x: vr.x + (vr.w - lw) / 2, y: vr.y + (vr.h - lh) / 2, w: lw, h: lh, rot: 0, opacity: 1 }], 0);
                 });
             };
             img.src = String(reader.result);
@@ -614,11 +616,11 @@
             return null;
         }
 
-        var out = M.outputSize(this.doc), canvas = document.createElement('canvas');
+        var out = M.saveSize(this.doc), canvas = document.createElement('canvas');
 
         canvas.width = out.w;
         canvas.height = out.h;
-        this.paintLayers(canvas.getContext('2d'), M.cropBox(this.doc), out.w, out.h);
+        this.paintLayers(canvas.getContext('2d'), M.saveBox(this.doc), out.w, out.h);
 
         return canvas.toDataURL('image/png');
     };

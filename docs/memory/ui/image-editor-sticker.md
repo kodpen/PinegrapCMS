@@ -15,13 +15,13 @@ module: image_editor
 - Upright: a turn or flip of the picture moves only its middle (`mapLayer()`); a corner keeps its shape (`ratio`).
 
 ## How do frames work?
-- `doc.frame` is `{ kind: line|thick|polaroid|corners, color, width 1-10 }` or `null` (None, Reset). `frameShape(frame, box)` gives an even-odd ring over the saved picture's box (the crop box, an artboard's whole board); the stage draws it in its own SVG over the layers (hidden while cropping).
-- Every frame lies on the picture's own edge, the polaroid's wider foot too: the saved size stays and the server's save path is untouched. The outward polaroid of screen 08, where the canvas grows, comes with the canvas extension of E12 (accepted by the plan holder on #4486). Choosing Polaroid sets white.
+- `doc.frame` is `{ kind: line|thick|polaroid|corners, color, width 1-10 }` or `null` (None, Reset). `frameShape(frame, box)` gives an even-odd ring over the saved box (`M.saveBox()`: the crop box or a photo's canvas, an artboard's whole board); the stage draws it in its own SVG over the layers (hidden while cropping).
+- A frame lies on the edge of the saved box, the polaroid's wider foot too. On a photo a line, thick line or polaroid may lie outside it (`frame.outside`), growing the canvas; Polaroid starts outside there (screen 08, `ui/image-editor-artboard.md`). Choosing Polaroid sets white.
 - A save with a frame redraws the overlay (layers, then frame) in a save hook; a new artboard's PNG gets fill, layers and frame. The server lays the overlay before the crop shape, so a circle crop cuts the frame too.
 - Until versions keep the document (E11), a reopened file shows the frame as pixels: adding one again draws a second.
 
 ## What is the background fill?
-- On an artboard (a blank canvas) the Frame panel shows Background swatches with Transparent; it sets `doc.artboard.background`, drawn by the stage each redraw (so undo follows) and by the save's PNG. A photo has no fill: the overlay cannot reach under the picture.
+- On an artboard (a blank canvas) the Frame panel shows Background swatches with Transparent; it sets `doc.artboard.background`, drawn by the stage each redraw (so undo follows) and by the save's PNG. A photo's canvas fill is the Canvas tool's (`doc.canvas.background`, `ui/image-editor-artboard.md`).
 
 ## Where is it tested?
 - `tests/image_editor_sticker_test.php`: the set and its labels, outlines and label boxes inside the box, label sizes, frame rings, the Files listing's filter (`pg_image_editor_sticker_rows()`).

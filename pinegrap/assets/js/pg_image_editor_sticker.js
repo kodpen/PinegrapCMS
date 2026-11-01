@@ -434,8 +434,8 @@
             box = { x: 0, y: 0, w: a.width, h: a.height };
             out = { w: a.width, h: a.height };
         } else {
-            box = M.cropBox(this.doc);
-            out = M.outputSize(this.doc);
+            box = M.saveBox(this.doc);
+            out = M.saveSize(this.doc);
         }
 
         canvas.width = out.w;
@@ -465,6 +465,11 @@
                 width: (patch.width !== undefined) ? patch.width : now.width
             };
 
+            // Outside the picture, growing the canvas (M.frameOutward()).
+            if ((patch.outside !== undefined) ? patch.outside : now.outside) {
+                next.outside = true;
+            }
+
             doc.frame = (next.kind === 'none') ? null : next;
         }, key || null, !!key);
     };
@@ -490,7 +495,9 @@
                 class: 'pgie-tile' + (on ? ' on' : ''),
                 'aria-pressed': on ? 'true' : 'false',
                 onclick: function () {
-                    self.setFrame({ kind: name, color: (name === 'polaroid') ? '#ffffff' : (fr ? fr.color : '#ffffff') });
+                    // On a picture the polaroid lies outside it, as a print's.
+                    self.setFrame({ kind: name, color: (name === 'polaroid') ? '#ffffff' : (fr ? fr.color : '#ffffff'),
+                        outside: (name === 'polaroid') ? !!self.doc.source : (fr ? !!fr.outside : false) });
                 }
             }, [pic, el('span', { text: label })]));
         });

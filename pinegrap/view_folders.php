@@ -10927,14 +10927,14 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     //
     // "New image" opens the picture editor on a blank canvas instead of on a
     // file, so a banner, a placeholder or a quick mock-up can be made here
-    // rather than somewhere else and uploaded. A thousand square is a working
-    // surface rather than a guess at a final size: every one of the editor's
-    // tools resizes and crops, and starting square means neither dimension is
-    // the one that has to be undone.
+    // rather than somewhere else and uploaded. The editor's square preset
+    // (1080) is a working surface rather than a guess at a final size: every
+    // one of its tools resizes and crops, and starting square means neither
+    // dimension is the one that has to be undone.
     //
     // There is nothing to replace: the editor opens an empty white canvas
     // and its save makes a new PNG in the folder.
-    var BLANK_IMAGE_SIZE = 1000;
+    var BLANK_IMAGE_SIZE = 1080;
 
     function createBlankImage() {
 
