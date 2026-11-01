@@ -148,6 +148,7 @@
     "Last used (relative time)": "Son kullanım (göreli zaman)",
     "Last used (relative time, else \"Never\")": "Son kullanım (göreli zaman, yoksa \"Hiç\")",
     "Last used {var:1}.": "Son kullanım {var:1}.",
+    "Last year": "Geçen yıl",
     "Last {var:1} left": "Son {var:1} adet kaldı",
     "Last {var:1} of {var:2}": "Son {var:1} (toplam {var:2})",
     "Late": "Gecikti",

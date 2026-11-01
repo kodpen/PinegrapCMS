@@ -53,7 +53,7 @@ pg_page_shell(
         ' . pg_dashboard_v2_greeting($user) . '
         ' . pg_dashboard_v2_status($user) . '
     </div>
-    ' . pg_dashboard_v2_grid($user) . '
+    ' . pg_dashboard_v2_grid($user, pg_dashboard_v2_row($user['id'])) . '
     ' . pg_js_bundle_tags('assets/js/pg_dash.min.js') . '
 </main>' .
 output_footer();

@@ -4710,6 +4710,7 @@
     "This cannot be done with the subscription as it is now.": "Aboneliğin şu anki durumunda bu işlem yapılamaz.",
     "This cannot be undone!": "Bu işlem geri alınamaz!",
     "This cannot be undone.": "Bu işlem geri alınamaz.",
+    "This card could not be loaded.": "Bu kart yüklenemedi.",
     "This card has already been dealt with.": "Bu kart için zaten işlem yapıldı.",
     "This card is already linked to an account.": "Bu kart zaten bir cariye bağlı.",
     "This card is linked to another account. Undo that link first.": "Bu kart başka bir cariye bağlı. Önce o bağı çözün.",

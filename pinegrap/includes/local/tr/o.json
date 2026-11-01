@@ -312,6 +312,7 @@
     "One per line. Ranges are written the same way as in the firewall. Empty means no restriction.": "Her satıra bir tane. Aralıklar güvenlik duvarındaki ile aynı biçimde yazılır. Boş bırakılırsa kısıt olmaz.",
     "One per month, {var:1} months: {var:2} to {var:3}": "Her ay için bir tane, {var:1} ay: {var:2} – {var:3}",
     "One person is looking around the site right now.": "Şu anda bir kişi siteyi geziyor.",
+    "One person on the site now": "Şu an sitede bir kişi var",
     "One question or idea for each topic.": "Her konuda tek bir soru ya da fikir.",
     "One record to a row": "Satırda bir kayıt",
     "One ride, one photo, one sentence. Mostly fields, sometimes a goat. A small book of the first year is on my shelf and very likely on my mother's.": "Bir tur, bir fotoğraf, bir cümle. Çoğunlukla tarlalar, bazen bir keçi. İlk yılın küçük bir kitabı rafımda ve büyük ihtimalle annemin rafında.",
