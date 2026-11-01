@@ -44,6 +44,29 @@ function pg_country_form_values($post)
 }
 
 /**
+ * The required fields left blank, as field => message. A country with no
+ * name prints an empty row in every list and picker, and one with no code
+ * cannot be matched by checkout or written to an order.
+ *
+ * @param array $values pg_country_form_values()
+ * @return array  'name' and/or 'code' => message
+ */
+function pg_country_form_required_errors($values)
+{
+    $errors = array();
+
+    if (trim((string) ($values['name'] ?? '')) === '') {
+        $errors['name'] = lang('Enter a name.');
+    }
+
+    if (trim((string) ($values['code'] ?? '')) === '') {
+        $errors['code'] = lang('Enter a code.');
+    }
+
+    return $errors;
+}
+
+/**
  * Whether another country already has the code. Checkout's zone lookup and
  * the product destination check take the country id from the first row with
  * the code, so a second country with it would be read as the first.
@@ -99,7 +122,8 @@ function pg_country_form_code_error($code, $stored_code, $except_id, $taken = 'p
  * @param array|null $values The fields of pg_country_form_values() from a
  *                           stored country or a refused post; null on
  *                           create, which prints no values and no switch on
- * @param array      $errors Field => message; 'code' is printed under the code field
+ * @param array      $errors Field => message; 'name' and 'code' are printed
+ *                           under their fields
  * @return string  HTML
  */
 function pg_country_form_card($values, $errors = array())
@@ -115,7 +139,12 @@ function pg_country_form_card($values, $errors = array())
     $code_aria = ($code_error !== '') ? ' aria-invalid="true" aria-describedby="code-error"' : '';
     $code_feedback = ($code_error !== '') ? '
                                                 <div id="code-error" class="invalid-feedback d-block">' . h($code_error) . '</div>' : '';
-    $zip_checked = $values['zip_code_required'] ? ' checked' : '';
+    $name_error = isset($errors['name']) ? (string) $errors['name'] : '';
+    $name_class = ($name_error !== '') ? ' is-invalid' : '';
+    $name_aria = ($name_error !== '') ? ' aria-invalid="true" aria-describedby="name-error"' : '';
+    $name_feedback = ($name_error !== '') ? '
+                                                <div id="name-error" class="invalid-feedback d-block">' . h($name_error) . '</div>' : '';
+    $zip_checked =$values['zip_code_required'] ? ' checked' : '';
     $default_checked = ($values['default_selected'] == 1) ? ' checked' : '';
 
     return '
@@ -129,13 +158,12 @@ function pg_country_form_card($values, $errors = array())
                                         <div class="row">
                                             <div class="col-12 md:col-6 lg:col-4 my-3">
                                                 <label for="name" class="form-label">' . lang(array('string'=>'{var:1} Name','vars'=>lang('Country'))) . '</label>
-                                                <input type="text" name="name" id="name" class="form-control" maxlength="50"' . $name_value . ' />
-                                                <div class="invalid-feedback">' . lang('Required Area') . '</div>
+                                                <input type="text" name="name" id="name" class="form-control' . $name_class . '" maxlength="50" required' . $name_value . $name_aria . ' />' . $name_feedback . '
                                                 <div class="form-text">' . lang('Display on Commerce Pages') . '</div>
                                             </div>
                                             <div class="col-12 md:col-6 lg:col-4 my-3">
                                                 <label for="code" class="form-label">' . lang('Code') . '</label>
-                                                <input type="text" name="code" id="code" class="form-control' . $code_class . '" maxlength="50"' . $code_value . $code_aria . ' />' . $code_feedback . '
+                                                <input type="text" name="code" id="code" class="form-control' . $code_class . '" maxlength="50" required' . $code_value . $code_aria . ' />' . $code_feedback . '
                                                 <div class="form-text">' . lang('New Country Code for Order Reporting') . '</div>
                                             </div>
 

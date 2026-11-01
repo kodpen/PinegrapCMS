@@ -21,9 +21,9 @@ require_once(PG_FUNCTIONS_DIR . '/includes/forms/state_form.php');
 $user = validate_user();
 validate_ecommerce_access($user);
 
-// A post whose code another state of the same country has draws the form
-// again with what was typed and the message under the code field; nothing
-// is written.
+// A post with a blank name or code, or a code another state of the same
+// country has, draws the form again with what was typed and the message
+// under the field; nothing is written.
 $values = null;
 $errors = array();
 
@@ -31,9 +31,10 @@ if ($_POST) {
     validate_token_field();
 
     $values = pg_state_form_values($_POST);
+    $errors = pg_state_form_required_errors($values);
     $code_error = pg_state_form_code_error($values, null, null);
 
-    if ($code_error !== '') {
+    if (($code_error !== '') && !isset($errors['code'])) {
         $errors['code'] = $code_error;
     }
 }

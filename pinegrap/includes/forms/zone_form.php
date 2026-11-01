@@ -38,6 +38,44 @@ function pg_zone_form_rate($value)
 }
 
 /**
+ * The posted form as the screens redraw it: the name trimmed, the rates as
+ * typed (pg_zone_form_rate() reads them on the write) and the chosen
+ * country and state ids. A missing or non-scalar value is empty.
+ *
+ * @param array $post The posted form ($_POST)
+ * @return array  'name', the four rates, 'allowed_countries', 'allowed_states'
+ */
+function pg_zone_form_post_values($post)
+{
+    $values = array();
+
+    foreach (array('name', 'base_rate', 'primary_weight_rate', 'secondary_weight_rate', 'item_rate') as $key) {
+        $values[$key] = (isset($post[$key]) && is_scalar($post[$key])) ? (string) $post[$key] : '';
+    }
+
+    $values['name'] = trim($values['name']);
+
+    foreach (array('allowed_countries', 'allowed_states') as $key) {
+        $ids = (isset($post[$key]) && is_array($post[$key])) ? $post[$key] : array();
+        $values[$key] = array_values(array_map('strval', array_filter($ids, 'is_scalar')));
+    }
+
+    return $values;
+}
+
+/**
+ * The message for a blank zone name, or '': a zone with no name is an empty
+ * row in the zone list and in the product and shipping method pickers.
+ *
+ * @param string $name
+ * @return string
+ */
+function pg_zone_form_name_error($name)
+{
+    return (trim((string) $name) === '') ? lang('Enter a name.') : '';
+}
+
+/**
  * The options of a multiple select: the chosen items first, selected, then
  * the rest, each list in the order given.
  *
@@ -63,12 +101,15 @@ function pg_zone_form_option_list($items, $selected_ids)
 }
 
 /**
- * The country and state options of the form, a zone's own links selected.
+ * The country and state options of the form, a zone's own links selected,
+ * or the given ids when a refused post is drawn again.
  *
- * @param int $zone_id The zone being edited, 0 for a new one
+ * @param int        $zone_id  The zone being edited, 0 for a new one
+ * @param array|null $selected 'allowed_countries' and 'allowed_states' ids
+ *                             to select instead of the zone's links
  * @return array  'countries' and 'states' (HTML)
  */
-function pg_zone_form_choices($zone_id = 0)
+function pg_zone_form_choices($zone_id = 0, $selected = null)
 {
     $countries = array();
     $states = array();
@@ -84,17 +125,25 @@ function pg_zone_form_choices($zone_id = 0)
     // Named and ordered in the panel's language (pg_geo_country_label()).
     $countries = pg_geo_sort_by_label($countries);
 
+    // States under their country's name in the panel's language, ordered
+    // by it; the query's state name order is kept within each country.
     $result = mysqli_query(db::$con,
-        "SELECT states.id, states.name, countries.name as country_name
+        "SELECT states.id, states.name, countries.name as country_name, countries.code as country_code
         FROM states
         LEFT JOIN countries ON countries.id = states.country_id
-        ORDER BY countries.name, states.name") or output_error('Query failed.');
+        ORDER BY states.name") or output_error('Query failed.');
 
     while ($row = mysqli_fetch_assoc($result)) {
-        $states[] = array('id' => $row['id'], 'label' => $row['country_name'] . ': ' . $row['name']);
+        $country_label = ($row['country_name'] !== null) ? pg_geo_country_label($row['country_name'], $row['country_code']) : '';
+        $states[] = array('id' => $row['id'], 'country' => $country_label, 'label' => $country_label . ': ' . $row['name']);
     }
 
-    if ($zone_id > 0) {
+    $states = pg_geo_sort_by_label($states, 'country');
+
+    if ($selected !== null) {
+        $zone_country_ids = (array) ($selected['allowed_countries'] ?? array());
+        $zone_state_ids = (array) ($selected['allowed_states'] ?? array());
+    } elseif ($zone_id > 0) {
         $result = db_q("SELECT country_id FROM zones_countries_xref WHERE zone_id = ?", array((string) $zone_id)) or output_error('Query failed.');
 
         while ($row = mysqli_fetch_assoc($result)) {
@@ -122,10 +171,17 @@ function pg_zone_form_choices($zone_id = 0)
  *                                'secondary_weight_rate', 'item_rate' (plain text)
  * @param string $country_options pg_zone_form_choices()['countries']
  * @param string $state_options   pg_zone_form_choices()['states']
+ * @param array  $errors          Field => message; 'name' is printed under the name field
  * @return string  HTML
  */
-function pg_zone_form_cards($values, $country_options, $state_options)
+function pg_zone_form_cards($values, $country_options, $state_options, $errors = array())
 {
+    $name_error = isset($errors['name']) ? (string) $errors['name'] : '';
+    $name_class = ($name_error !== '') ? ' is-invalid' : '';
+    $name_aria = ($name_error !== '') ? ' aria-invalid="true" aria-describedby="name-error"' : '';
+    $name_feedback = ($name_error !== '') ? '
+                                            <div id="name-error" class="invalid-feedback d-block">' . h($name_error) . '</div>' : '';
+
     return '
                     <div class="row">
                         <div class="col-12 md:col-6 mb-12">
@@ -137,7 +193,7 @@ function pg_zone_form_cards($values, $country_options, $state_options)
                                     <div class="row">
                                         <div class="col-12 lg:col-6 my-3">
                                             <label for="name" class="form-label">' . lang('Shipping Zone Name') . '</label>
-                                            <input value="' . h($values['name']) . '" type="text" name="name" placeholder="' . lang('Zone Name') . '" id="name" maxlength="50" class="form-control" />
+                                            <input value="' . h($values['name']) . '" type="text" name="name" placeholder="' . lang('Zone Name') . '" id="name" maxlength="50" class="form-control' . $name_class . '" required' . $name_aria . ' />' . $name_feedback . '
                                         </div>
                                     </div>
                                 </div>

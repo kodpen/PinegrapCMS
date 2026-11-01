@@ -32,9 +32,9 @@ if (!$row) {
     output_error(lang('Record not found.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.', 404);
 }
 
-// A save whose code another country has draws the form again with what was
-// typed and the message under the code field; nothing is written. Delete
-// is never held back by the code.
+// A save with a blank name or code, or a code another country has, draws
+// the form again with what was typed and the message under the field;
+// nothing is written. Delete is never held back by them.
 $values = pg_country_form_values($row);
 $errors = array();
 
@@ -44,9 +44,10 @@ if ($_POST) {
     $values = pg_country_form_values($_POST);
 
     if (($_POST['submit_delete'] ?? '') != 'Delete') {
+        $errors = pg_country_form_required_errors($values);
         $code_error = pg_country_form_code_error($values['code'], (string) $row['code'], $id);
 
-        if ($code_error !== '') {
+        if (($code_error !== '') && !isset($errors['code'])) {
             $errors['code'] = $code_error;
         }
     }
