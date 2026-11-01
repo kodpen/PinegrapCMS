@@ -167,7 +167,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - form-time-24-hour.md: Form time values: validate_time() and prepare_form_data_for_input() read 12- and 24-hour time (PR #1698); prepare_form_data_for_output() and the time help follow the site clock
 - form-view-newest-comment-cut.md: ^^newest_comment^^ in classic form item / list views and content variables is cut to 100 characters before escaping, never after
 - gift-card-shared-form.md: add_gift_card.php and edit_gift_card.php draw the Gift Card Options card and check its amount and date through includes/forms/gift_card_form.php; what each screen keeps
-- graph-canvas-core-module.md: The graph canvas core (pg_graph_canvas.js, window.PGGraphCanvas, includes/fn/graph_canvas.php): what it owns, its adapter, its texts, its first user the Flows canvas
+- graph-canvas-core-module.md: The graph canvas core (pg_graph_canvas.js, window.PGGraphCanvas, includes/fn/graph_canvas.php): what it owns, its adapter, its texts, its pgc- CSS and tokens, its first user the Flows canvas
 - greeting-counts.md: Counts in the dashboard greeting, the Workspace channel greeting and the Ecommerce card: a key for one, nominative vs accusative link phrases, counts inside one key
 - guided-tour.md: The guided tour engine (assets/js/pg_tour.js, pg_tour.css): who uses it, how steps are counted, Back at the start, how a step is read out, where focus goes at the end, the bubble's size
 - icon-ligature-button-names.md: Buttons whose content is a Material Icons ligature (north, south, delete, living) are named by that word; how the product attribute and product group screens name them (#2893)

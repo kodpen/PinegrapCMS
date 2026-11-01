@@ -9,12 +9,12 @@ description: How a flow box looks (V1, V2 of the flows look work, PRs #3118, #31
 - A new kind needs its group, or `test_workspace_flows_canvas_every_kind_has_one_group` fails.
 
 ## Which colours?
-- `.wsf-group-<group>` sets `--wsf-kind` once per theme in backend.src.css. Dark (`html[data-bs-theme="dark"]`): the visual spec's start #6fdca6, system #45c4d6, logic #e9b44c, message #6ea8ff, people #b49cff, values #e58fd0. Light: #1a7f4e, #0e7383, #8a5c00, #2f62c4, #6d4bd0, #a8468f, each at least 4.5:1 on white (`test_workspace_flows_canvas_group_colours` computes it).
+- `.wsf-group-<group>` sets `--wsf-kind` once per theme in backend.src.css; a box hands it to the core as `--pgc-node-accent` (border, ports). Dark (`html[data-bs-theme="dark"]`): the visual spec's start #6fdca6, system #45c4d6, logic #e9b44c, message #6ea8ff, people #b49cff, values #e58fd0. Light: #1a7f4e, #0e7383, #8a5c00, #2f62c4, #6d4bd0, #a8468f, each at least 4.5:1 on white (`test_workspace_flows_canvas_group_colours` computes it).
 - Before (until this step) only manual, task, end and the value boxes had a colour, as a 4 px left stripe.
 
 ## What takes the colour?
 - The box's 1.5 px border all round, its kind label and icon (`.wsf-node-head`), its ports; a value box's border dashed. The outline entry keeps its left stripe in the group colour.
-- Selected: a ring outside the border, `--wsf-ring` (#a78bfa dark, #7c3aed light), a 1.5 px gap in the ground colour between.
+- Selected: a ring outside the border, `--pgc-ring`, set in the Workspace token block (#a78bfa dark, #7c3aed light), a 1.5 px gap in the ground colour between.
 - A run view box's border takes its run state's line (`--wsf-run-line`); its label keeps the group colour. A problem box's border is red.
 
 ## Which icons? (V2, PR #3158)
@@ -23,7 +23,7 @@ description: How a flow box looks (V1, V2 of the flows look work, PRs #3118, #31
 - The scheduled-action drawing still takes the server's Bootstrap icons (`node.icon`) until V5 removes it.
 
 ## Arrows?
-- Control arrows `.wsf-edge-line`: 2 px #7d8696 (3.67:1 on white), filled head `#wsf-arrow` in the same grey; selected, bad and the run view's taken (green) and not-taken (faded) arrows unchanged.
+- Control arrows `.pgc-edge-line`: 2 px #7d8696 (3.67:1 on white), filled head `#wsf-arrow` in the same grey; selected, bad and the run view's taken (green) and not-taken (faded) arrows unchanged.
 
 ## How does the palette fit its column?
 - A long box name wraps (`.wsf-palette-item`: `--bs-btn-white-space: normal`, `min-width: 0`, `overflow-wrap: anywhere`) and the search field never shrinks (`.wsf-palette-search`: `flex-shrink: 0`). Under Bootstrap 6 `.btn` is nowrap and `.form-control` a flex box: the long names ran past the column with a sideways scroll bar, and the field was squeezed to a thin line (#3805).
