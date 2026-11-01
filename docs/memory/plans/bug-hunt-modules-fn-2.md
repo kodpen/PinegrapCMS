@@ -48,7 +48,7 @@ description: Module list of plans/bug-hunt.md, part 2: includes/fn/ modules pric
 
 - `signature`: open
 
-- `signin`: open
+- `signin`: clean
 
 - `site_datetime`: open
 
@@ -74,7 +74,7 @@ description: Module list of plans/bug-hunt.md, part 2: includes/fn/ modules pric
 
 - `submitted_form_list`: open
 
-- `subscription_renewal`: open
+- `subscription_renewal`: fault fixed by LN, #4622 (renewals stop at the line's number of payments, decided in #4623)
 
 - `subscriptions`: clean (LJ: period dates and month-end anchor, retry ladder, status moves and the read-status guarded write, sealed card_ref shape and seal/open, line amount, later-start rows and the nothing-today refusal, event de-duplication checked; store-mode renewals never stop at order_items.recurring_number_of_payments, left to the `subscription_renewal` hunt)
 

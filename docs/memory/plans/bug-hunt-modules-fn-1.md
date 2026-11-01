@@ -28,7 +28,7 @@ description: Module list of plans/bug-hunt.md, part 1: includes/fn/ modules a11y
 
 - `bundles`: open
 
-- `calendar`: taken by LM (#4632)
+- `calendar`: taken by LM (#4632, #4646)
 
 - `captcha`: clean (siteverify outcomes, token, widget escaping, settings card and save order checked)
 
@@ -186,7 +186,7 @@ description: Module list of plans/bug-hunt.md, part 1: includes/fn/ modules a11y
 
 - `page_type_pane`: clean (type rights, layout type rule, offer rights, contact group, private folder and custom form guards, form name check, pane CSRF, folder access and collaboration lock checked)
 
-- `parasut`: open
+- `parasut`: clean (request and 429 retry, credentials and token cache, connect and settings card escaping, inbox totals and list filters, VKN lookup, Create Invoice and E-Shipment flows, kept-id SQL, order screen notices checked)
 
 - `passkeys`: clean
 

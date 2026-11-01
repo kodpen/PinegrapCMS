@@ -112,4 +112,4 @@ description: Module list of plans/bug-hunt.md, part 4: root endpoint groups opti
 
 - Endpoints track_shipment, get_update_address_book, url_to_absolute, variant_set_action, welcome, wishlist: done (#4604: get_update_address_book array id and missing row; track_shipment token and throttle, url_to_absolute RFC 3986 cases, variant_set_action set check, welcome role ladder and output, wishlist token and redirect checked)
 
-- Endpoints import_zip: open
+- Endpoints import_zip: done (#4640: page title over several lines or with attributes; upload refusal, archive ceilings, blocked names, entry paths, escaping of skipped names, CSRF and area gate checked)

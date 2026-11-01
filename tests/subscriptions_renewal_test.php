@@ -645,3 +645,104 @@ function test_subscription_price_mail()
 	), $fields);
 	pg_assert_same(2, count(pg_subscription_price_mail_fields(array(), null)), 'passed empty');
 }
+
+// The renewal io for a line sold for $payments payments whose row has
+// $renewed paid renewals; $start is the line's recurring_start_date.
+function subscriptions_renewal_test_payments_io(array &$store, array &$calls, $answer, $payments, $renewed, $start = '')
+{
+	$io = subscriptions_renewal_test_io($store, $calls, $answer);
+	$io['first_order'] = function ($row) use (&$calls, $payments, $start) {
+		$calls[] = 'first_order';
+		return array(
+			'order' => array('id' => '501', 'billing_email_address' => 'a@example.com'),
+			'item'  => array('id' => '9001', 'ship_to_id' => '0', 'product_id' => '44', 'product_name' => 'Box', 'quantity' => '1', 'price' => '14990',
+				'recurring_start_date' => $start, 'recurring_number_of_payments' => (string) $payments),
+		);
+	};
+	$io['paid_count'] = function ($id) use (&$renewed) {
+		return $renewed;
+	};
+
+	return $io;
+}
+
+function test_subscription_renewal_payments_left()
+{
+	$row = subscriptions_renewal_test_row();
+
+	pg_assert_same(-1, pg_subscription_renewal_payments_left($row, array('recurring_number_of_payments' => '0'), 5), '0: until cancelled');
+	pg_assert_same(-1, pg_subscription_renewal_payments_left($row, array(), 5), 'no column: until cancelled');
+	pg_assert_same(0, pg_subscription_renewal_payments_left($row, array('recurring_number_of_payments' => '1'), 0), 'the order was the only payment');
+	pg_assert_same(1, pg_subscription_renewal_payments_left($row, array('recurring_number_of_payments' => '2'), 0));
+	pg_assert_same(0, pg_subscription_renewal_payments_left($row, array('recurring_number_of_payments' => '2'), 1));
+	pg_assert_same(0, pg_subscription_renewal_payments_left($row, array('recurring_number_of_payments' => '2'), 4), 'a row already past N');
+
+	// A later-start line was not charged in the order.
+	$later = array('recurring_number_of_payments' => '2', 'recurring_start_date' => '2027-03-01');
+	pg_assert_same(2, pg_subscription_renewal_payments_left($row, $later, 0));
+	pg_assert_same(1, pg_subscription_renewal_payments_left($row, $later, 1));
+	pg_assert_same(0, pg_subscription_renewal_payments_left($row, $later, 2));
+}
+
+function test_subscription_renewal_stops_at_the_number_of_payments()
+{
+	$now = mktime(10, 0, 0, 3, 31, 2027);
+	$paid = array('success' => true, 'status' => 'paid', 'transaction_id' => 'pi_9');
+	$GLOBALS['subscriptions_renewal_test_mails'] = array();
+
+	// N = 1, started today, no renewal yet: the order was the only payment.
+	$store = subscriptions_renewal_test_row();
+	$calls = array();
+	pg_assert_same('ended', pg_subscription_renewal_run_row(7, $now, subscriptions_renewal_test_payments_io($store, $calls, $paid, 1, 0)));
+	pg_assert_same(0, subscriptions_renewal_test_charges($calls), 'N = 1: not charged');
+	pg_assert_same('ended', $store['status']);
+	pg_assert_same(0, (int) $store['next_charge_at']);
+	pg_assert_same($now, (int) $store['ended_at']);
+	pg_assert_false(in_array('write_order', $calls, true));
+	pg_assert_same(array(), $GLOBALS['subscriptions_renewal_test_mails'], 'a contract run out is no cancellation mail');
+	pg_assert_same('unlock', $calls[count($calls) - 1]);
+
+	// N = 2, started today, one renewal paid: done.
+	$store = subscriptions_renewal_test_row();
+	$calls = array();
+	pg_assert_same('ended', pg_subscription_renewal_run_row(7, $now, subscriptions_renewal_test_payments_io($store, $calls, $paid, 2, 1)));
+	pg_assert_same(0, subscriptions_renewal_test_charges($calls), 'N = 2 after one renewal: not charged');
+	pg_assert_same('ended', $store['status']);
+
+	// N = 2, started later, one renewal paid: charged once more, then ended.
+	$store = subscriptions_renewal_test_row();
+	$calls = array();
+	pg_assert_same('paid', pg_subscription_renewal_run_row(7, $now, subscriptions_renewal_test_payments_io($store, $calls, $paid, 2, 1, '2027-03-01')));
+	pg_assert_same(1, subscriptions_renewal_test_charges($calls), 'the second payment of a later-start line');
+	pg_assert_true(in_array('write_order', $calls, true), 'the last renewal order is written');
+	pg_assert_same('ended', $store['status'], 'and the row closes in the same run');
+	pg_assert_same(0, (int) $store['next_charge_at']);
+	pg_assert_same('renewed', $GLOBALS['subscriptions_renewal_test_mails'][0]['event']);
+
+	// N = 3, started today, one renewal paid: charged and still active.
+	$store = subscriptions_renewal_test_row();
+	$calls = array();
+	pg_assert_same('paid', pg_subscription_renewal_run_row(7, $now, subscriptions_renewal_test_payments_io($store, $calls, $paid, 3, 0)));
+	pg_assert_same('active', $store['status']);
+	pg_assert_same('2027-04-30', date('Y-m-d', (int) $store['next_charge_at']));
+
+	// N = 0: until cancelled, whatever was paid.
+	$store = subscriptions_renewal_test_row();
+	$calls = array();
+	pg_assert_same('paid', pg_subscription_renewal_run_row(7, $now, subscriptions_renewal_test_payments_io($store, $calls, $paid, 0, 40)));
+	pg_assert_same('active', $store['status']);
+	pg_assert_same('2027-04-30', date('Y-m-d', (int) $store['next_charge_at']));
+}
+
+function test_subscription_renewal_confirmed_last_payment_ends_the_row()
+{
+	$now = mktime(12, 0, 0, 4, 2, 2027);
+	$paid = array('success' => true, 'status' => 'paid', 'transaction_id' => 'pi_4', 'amount' => 17688);
+
+	$store = subscriptions_renewal_test_row(array('status' => 'past_due', 'next_charge_at' => '0'));
+	$calls = array();
+	pg_assert_same('paid', pg_subscription_renewal_confirmed('stripe', 7, $paid, $now, subscriptions_renewal_test_payments_io($store, $calls, $paid, 2, 0)));
+	pg_assert_same('ended', $store['status'], 'the confirmed charge was the last one');
+	pg_assert_same(0, (int) $store['next_charge_at']);
+	pg_assert_true(in_array('write_order', $calls, true));
+}
