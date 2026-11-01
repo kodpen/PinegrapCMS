@@ -304,6 +304,9 @@ const StyleDesigner = (function () {
     var _formItemViewPagesByForm = {}; // form_id → [{page_id, page_name, page_title}, …]
     var _productGroupsCache       = null; // [{id, name, parent_id, sort_order}, …] — catalog group list
     var _catalogDetailPagesCache  = null; // [{page_id, page_name, page_title}, …] — catalog detail-page candidates
+    // [{id, name, parent_id, archived}, …] — the Photo Gallery widget's Folder
+    // picker, the Recycle Bin left out; false when the list could not be read.
+    var _swFoldersCache           = null;
     // Set by buildSharedRefEl while rendering a system widget's inner tree so that
     // buildNodeEl can read the parent widget's regionType and hide loop_area nodes
     // that are irrelevant in single-record widget types (form_item_view, my_account
@@ -1359,6 +1362,57 @@ const StyleDesigner = (function () {
         };
         xhr.onerror = function () { _productGroupsCache = []; if (cb) cb(_productGroupsCache); };
         xhr.send(JSON.stringify({ action: 'shared_component', sub_action: 'list_product_groups', token: token }));
+    }
+
+    // Fetch the folders for the Photo Gallery widget's Folder picker. Cached
+    // for the session; false when the list could not be read (a role that
+    // may not change widget settings is refused it).
+    function _fetchFolders(cb) {
+        if (_swFoldersCache !== null) { if (cb) cb(_swFoldersCache); return; }
+        var apiBase = (typeof path !== 'undefined' ? path : '') +
+                      (typeof software_directory !== 'undefined' ? software_directory + '/' : '') + 'api.php';
+        var token   = (typeof software_token !== 'undefined') ? software_token : '';
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', apiBase, true);
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        xhr.onreadystatechange = function () {
+            if (xhr.readyState !== 4) return;
+            try {
+                var resp = JSON.parse(xhr.responseText);
+                _swFoldersCache = (resp && resp.status === 'success' && Array.isArray(resp.folders)) ? resp.folders : false;
+            } catch (e) { _swFoldersCache = false; }
+            if (cb) cb(_swFoldersCache);
+        };
+        xhr.onerror = function () { _swFoldersCache = false; if (cb) cb(_swFoldersCache); };
+        xhr.send(JSON.stringify({ action: 'shared_component', sub_action: 'list_folders', token: token }));
+    }
+
+    // The <option>s of the Photo Gallery widget's Folder picker: the folders
+    // as a tree, each indented under its parent, archived ones marked, and
+    // `cur` selected. A folder whose parent is not listed starts a branch of
+    // its own; folders caught in a loop of parents are not listed. `found`
+    // is false when `cur` (above 0) is not among them: gone, or in the
+    // Recycle Bin. Pure.
+    function _swFolderOptions(folders, cur) {
+        var byParent = {}, ids = {}, html = '', found = false, done = {};
+        cur = parseInt(cur, 10) || 0;
+        (folders || []).forEach(function (f) { ids[parseInt(f.id, 10) || 0] = true; });
+        (folders || []).forEach(function (f) {
+            var pid = parseInt(f.parent_id, 10) || 0;
+            if (!ids[pid]) pid = 0;
+            (byParent[pid] = byParent[pid] || []).push(f);
+        });
+        var emit = function (f, depth) {
+            var id = parseInt(f.id, 10) || 0;
+            if (!id || done[id]) return;
+            done[id] = true;
+            if (id === cur) found = true;
+            html += '<option value="' + id + '"' + (id === cur ? ' selected' : '') + '>' +
+                esc(new Array(depth + 1).join('\u00a0\u00a0') + (f.name || ('#' + id)) + (f.archived ? ' [' + _sdT('ARCHIVED') + ']' : '')) + '</option>';
+            (byParent[id] || []).forEach(function (k) { emit(k, depth + 1); });
+        };
+        (byParent[0] || []).forEach(function (f) { emit(f, 0); });
+        return { html: html, found: found };
     }
 
     // Fetch the list of catalog_detail pages (candidates for the catalog
@@ -33895,7 +33949,7 @@ const StyleDesigner = (function () {
             } else if (_isAffiliateSignUp) {
                 _sourceInfoHtml = _sdT('The classic affiliate sign up form: a signed-in visitor applies to the affiliate programme with their business address and the affiliate code they want. It opens with the visitor\'s own contact details; the checks, the e-mails and the approval work as on the classic page. A visitor who is not signed in is asked to sign in or register when the form is sent.');
             } else if (_isPhotoGallery) {
-                _sourceInfoHtml = _sdT('The classic photo gallery: the page\'s folder is the gallery. The loop repeats its albums (the sub-folders the visitor may view, each with its first photo and its number of photos), then its photos (the images in the folder). An album opens on the same page; the back link returns to the album above. Photos are added under Files, albums are folders.');
+                _sourceInfoHtml = _sdT('The classic photo gallery: the folder chosen under Photo Gallery Settings is the gallery, or the page\'s folder when none is chosen. The loop repeats its albums (the sub-folders the visitor may view, each with its first photo and its number of photos), then its photos (the images in the folder). An album opens on the same page; the back link returns to the album above. Photos are added under Files, albums are folders.');
             } else if (_isFolderView) {
                 _sourceInfoHtml = _sdT('The classic folder view: the pages and files of the page\'s folder and of the folders below it, as the visitor may see them. The loop repeats the entries of the page\'s folder; a list of the entries of a folder in a folder\'s row lists the level below. Pages are listed with their title and description; the page shown and the steps of other screens (confirmations, checkout steps, detail pages) are left out.');
             } else if (_isOrderForm) {
@@ -35229,6 +35283,42 @@ const StyleDesigner = (function () {
                     row(_sdT('Include Files'), _fvSwitch('include_files', _cfg.include_files === true)) +
                     row(_sdT('Folder'),
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('The entries of the page\'s own folder are listed; move the page to list another folder. With neither pages nor files included the widget lists nothing.')) + '</div>')
+                );
+            }
+
+            // ── photo_gallery settings ───────────────────────────────────────
+            // folder_id: the gallery's top folder; 0 keeps the page's folder
+            // (pg_gal_folder_setting(), pg_gal_top_folder()). A chosen folder
+            // that is gone or in the Recycle Bin shows nothing on the site.
+            if (_isPhotoGallery) {
+                var _pgFolder = parseInt(_cfg.folder_id, 10) || 0;
+                if (_pgFolder < 0) _pgFolder = 0;
+                var _pgFolderOpts = '<option value="0"' + (_pgFolder === 0 ? ' selected' : '') + '>' + esc(_sdT('— The page\'s folder —')) + '</option>';
+                var _pgFolderLost = false;
+                if (_swFoldersCache === null) {
+                    if (_pgFolder > 0) _pgFolderOpts += '<option value="' + _pgFolder + '" selected>' + esc(_sdT('Loading...')) + '</option>';
+                    _fetchFolders(function () { renderProperties(); });
+                } else if (_swFoldersCache === false) {
+                    // The list could not be read: the choice stays as it is.
+                    if (_pgFolder > 0) _pgFolderOpts += '<option value="' + _pgFolder + '" selected>#' + _pgFolder + '</option>';
+                } else {
+                    var _pgFolderList = _swFolderOptions(_swFoldersCache, _pgFolder);
+                    _pgFolderOpts += _pgFolderList.html;
+                    if (_pgFolder > 0 && !_pgFolderList.found) {
+                        _pgFolderLost = true;
+                        _pgFolderOpts += '<option value="' + _pgFolder + '" selected>' + esc(_sdT('{var} (not found)', '#' + _pgFolder)) + '</option>';
+                    }
+                }
+                systemSection += sect('bi-images', _sdT('Photo Gallery Settings'),
+                    row(_sdT('Folder'),
+                        '<select class="form-control form-control-sm" data-sw-id="' + sid + '" data-sw-cfg="folder_id" data-sw-cfg-kind="int" min="0" data-sw-cfg-repaint="1">' + _pgFolderOpts + '</select>' +
+                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('The folder whose images the gallery shows: its sub-folders the visitor may view are the albums, and an album link opens only folders below it. A folder a visitor may not view shows them nothing.')) + '</div>' +
+                        (_pgFolderLost
+                            ? '<div style="font-size:.72rem;color:#b45309;background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.3);padding:5px 8px;border-radius:3px;line-height:1.4;margin-top:4px">' +
+                                '<span class="bi bi-exclamation-triangle-fill me-1"></span>' +
+                                esc(_sdT('The chosen folder is gone or in the Recycle Bin. The gallery shows nothing until another folder is chosen or the folder is restored.')) +
+                              '</div>'
+                            : ''))
                 );
             }
 

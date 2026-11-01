@@ -544,6 +544,8 @@ function pg_explorer_handle_file_usage($type, $request, $user, $folders_that_use
     // A photo gallery page shows the images of its folder and of the
     // albums below it, chosen by folder rather than by name, so the
     // pages whose folder holds the file, or a folder above it, use it.
+    // A Photo Gallery widget shows the folder its settings choose, or its
+    // page's folder when none is chosen (pg_gal_widget_pages_showing()).
     // A page in the Recycle Bin shows nothing.
     if (in_array(strtolower((string) $usage_file['type']), pg_gal_image_types(), true) && ((int) $usage_file['design'] == 0)) {
         $usage_gallery_folders = pg_gal_folders_showing($usage_file['folder'], function ($folder_id) {
@@ -560,6 +562,18 @@ function pg_explorer_handle_file_usage($type, $request, $user, $folders_that_use
                 ORDER BY page_name
                 LIMIT " . ($usage_cap + 1));
             $usage_gallery_pages = is_array($usage_gallery_pages) ? $usage_gallery_pages : array();
+
+            // The designed pages, each page once, all in name order.
+            $usage_gallery_by_id = array();
+
+            foreach (array_merge($usage_gallery_pages, pg_gal_widget_pages_showing($usage_gallery_folders)) as $usage_row) {
+                $usage_gallery_by_id[(int) $usage_row['page_id']] = $usage_row;
+            }
+
+            $usage_gallery_pages = array_values($usage_gallery_by_id);
+            usort($usage_gallery_pages, function ($a, $b) {
+                return strcmp((string) $a['page_name'], (string) $b['page_name']);
+            });
 
             if (count($usage_gallery_pages) > $usage_cap) {
                 $usage_truncated = true;

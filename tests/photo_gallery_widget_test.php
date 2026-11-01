@@ -213,4 +213,57 @@ function test_photo_gallery_where_used()
 	pg_assert_contains('pg_gal_folders_showing($usage_file[\'folder\']', $handler, 'walks the folders above the file');
 	pg_assert_contains("WHERE page_type = 'photo gallery'", $handler, 'reads the gallery pages');
 	pg_assert_contains('pg_recycle_bin_folder_ids()', $handler, 'leaves the Recycle Bin out');
+	pg_assert_contains('pg_gal_widget_pages_showing($usage_gallery_folders)', $handler, 'and the designed pages whose widget shows the file');
+}
+
+// The renderer takes the widget's folder setting, checks the chosen top
+// against the visitor, and never opens the Recycle Bin.
+function test_photo_gallery_widget_renderer_uses_the_setting()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/widgets_photo_gallery.php');
+	pg_assert_contains('$chosen = pg_gal_folder_setting($cfg);', $source, 'reads the setting');
+	pg_assert_contains("pg_gal_top_folder(\$chosen, \$page_folder, '_pg_gal_parent_or_null', \$bin_id)", $source, 'the top folder');
+	pg_assert_contains('if ($chosen > 0 && $root_id > 0 && !check_view_access($root_id)) $root_id = 0;', $source, 'a chosen folder the visitor may not view shows nothing');
+	pg_assert_contains("\$_GET['folder_id'] : null, \$parent_of, \$bin_id)", $source, 'albums walk with the bin');
+}
+
+// The panel's Folder picker (_swFolderOptions): the folders as a tree under
+// their parents, the chosen one selected, a lost choice reported.
+function test_photo_gallery_widget_folder_picker_twin()
+{
+	$out = array();
+	$code = 1;
+	@exec('node --version 2>&1', $out, $code);
+	if ($code !== 0) {
+		return;
+	}
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
+	$from = strpos($source, "\n    function _swFolderOptions(");
+	pg_assert_true($from !== false, 'the designer has _swFolderOptions()');
+	$to = strpos($source, "\n    }\n", $from + 1);
+	$folders = array(
+		array('id' => 1, 'name' => 'Root', 'parent_id' => 0, 'archived' => false),
+		array('id' => 5, 'name' => 'Summer <b>', 'parent_id' => 1, 'archived' => true),
+		array('id' => 6, 'name' => 'Orphan', 'parent_id' => 99, 'archived' => false),
+		array('id' => 7, 'name' => 'Loop A', 'parent_id' => 8, 'archived' => false),
+		array('id' => 8, 'name' => 'Loop B', 'parent_id' => 7, 'archived' => false),
+	);
+	$script = 'var esc = function (s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); };'
+		. 'var _sdT = function (s) { return s; };'
+		. substr($source, $from, $to + 7 - $from)
+		. 'var f = ' . json_encode($folders) . ';'
+		. 'console.log(JSON.stringify({ chosen: _swFolderOptions(f, 5), lost: _swFolderOptions(f, 42), none: _swFolderOptions(f, 0) }));';
+	$file = tempnam(sys_get_temp_dir(), 'pggallery');
+	file_put_contents($file, $script);
+	$out = array();
+	exec('node ' . escapeshellarg($file) . ' 2>&1', $out, $code);
+	unlink($file);
+	pg_assert_same(0, $code, implode("\n", $out));
+	$r = json_decode(implode("\n", $out), true);
+	$nbsp = "\u{00a0}\u{00a0}";
+	pg_assert_same('<option value="1">Root</option><option value="5" selected>' . $nbsp . 'Summer &lt;b&gt; [ARCHIVED]</option><option value="6">Orphan</option>',
+		$r['chosen']['html'], 'a tree, escaped, archived marked, an orphan at the top, a loop left out');
+	pg_assert_true($r['chosen']['found'], 'the chosen folder is listed');
+	pg_assert_false($r['lost']['found'], 'a gone or binned folder is reported');
+	pg_assert_false(strpos($r['none']['html'], 'selected') !== false, 'nothing chosen: no folder selected');
 }

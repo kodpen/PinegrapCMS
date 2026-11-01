@@ -282,14 +282,75 @@ function pg_gal_flags($rows, $in_album)
     return $gal_flags;
 }
 
+// A folder's parent id, null when the folder does not exist: the
+// $parent_of pg_gal_top_folder() takes.
+function _pg_gal_parent_or_null($folder_id)
+{
+    $parent = db_value("SELECT folder_parent FROM folder WHERE folder_id = '" . (int)$folder_id . "'");
+    return ($parent === null) ? null : (int)$parent;
+}
+
+// The designed pages placing a Photo Gallery widget, on the page or inside a
+// component placed there, the Recycle Bin left out: rows of page_id,
+// page_name, page_folder and folder_id (the widget's setting), for Where
+// used. Reads every designed page's tree, so it is asked on demand only.
+function _pg_gal_widget_placements()
+{
+    if (!function_exists('pg_shared_component_usage') || !pg_schema_has('shared_components')) return array();
+    $settings = array();
+    $rows = db_items("SELECT id, system_region_config FROM shared_components WHERE system_region_config LIKE '%\"regionType\":\"photo_gallery\"%'");
+    foreach ((is_array($rows) ? $rows : array()) as $row) {
+        $cfg = json_decode((string)$row['system_region_config'], true);
+        if (!is_array($cfg) || !isset($cfg['regionType']) || $cfg['regionType'] !== 'photo_gallery') continue;
+        $settings[(int)$row['id']] = pg_gal_folder_setting($cfg);
+    }
+    if (!$settings) return array();
+    $placed = array();
+    foreach (pg_shared_component_usage(array_keys($settings)) as $sid => $pages) {
+        foreach ((array)$pages as $page) {
+            if (!empty($page['binned']) || (int)$page['page_id'] <= 0) continue;
+            $placed[] = array('page_id' => (int)$page['page_id'], 'page_name' => (string)$page['page_name'], 'folder_id' => $settings[(int)$sid]);
+        }
+    }
+    if (!$placed) return array();
+    $folders = array();
+    $ids = array();
+    foreach ($placed as $p) $ids[$p['page_id']] = $p['page_id'];
+    foreach ((array)db_items("SELECT page_id, page_folder FROM page WHERE page_id IN (" . implode(',', $ids) . ")") as $row) {
+        $folders[(int)$row['page_id']] = (int)$row['page_folder'];
+    }
+    $out = array();
+    foreach ($placed as $p) {
+        if (!isset($folders[$p['page_id']])) continue;
+        $p['page_folder'] = $folders[$p['page_id']];
+        $out[] = $p;
+    }
+    return $out;
+}
+
+// The designed pages whose Photo Gallery widget shows a file of one of the
+// folders in $chain (pg_gal_folders_showing(), the Recycle Bin left out):
+// rows of page_id, page_name, page_folder.
+function pg_gal_widget_pages_showing($chain)
+{
+    if (!$chain) return array();
+    $bin_id = (int)pg_recycle_bin_folder_id();
+    return pg_gal_pages_showing($chain, _pg_gal_widget_placements(), function ($folder_id, $page_folder) use ($bin_id) {
+        return pg_gal_top_folder($folder_id, $page_folder, '_pg_gal_parent_or_null', $bin_id);
+    });
+}
+
 // The albums and photos of $folder_id the visitor may see, as the classic
-// page reads them.
+// page reads them. The Recycle Bin is never an album, not even for an
+// editor when the gallery's top is the folder that holds it.
 function _pg_gal_read($folder_id)
 {
     $folder_id = (int)$folder_id;
     $types = pg_gal_image_types_sql();
+    $bin_id = (int)pg_recycle_bin_folder_id();
     $albums = array();
     foreach ((array)db_items("SELECT folder_id AS id, folder_name AS name FROM folder WHERE folder_parent = '" . $folder_id . "' ORDER BY folder_order, folder_name") as $f) {
+        if ($bin_id > 0 && (int)$f['id'] === $bin_id) continue;
         if (!check_view_access($f['id'])) continue;
         $f['photos'] = (int)db_value("SELECT COUNT(*) FROM files WHERE folder = '" . (int)$f['id'] . "' AND type IN (" . $types . ") AND design = '0'");
         $f['photo'] = $f['photos'] ? (string)db_value("SELECT name FROM files WHERE folder = '" . (int)$f['id'] . "' AND type IN (" . $types . ") AND design = '0' ORDER BY name LIMIT 1") : '';
@@ -316,6 +377,9 @@ function _pg_gal_read($folder_id)
 // Tokens: ^^__album_name^^ (the folder shown), ^^__back_url^^ (the album
 // above, the link drops at the top).
 // Flags: pg_gal_flags(). Messages: 'photo_gallery'.
+// $cfg folder_id: the gallery's top folder (pg_gal_top_folder()); none
+// chosen keeps the page's folder. A chosen folder the visitor may not view
+// shows them nothing.
 function _render_system_widget_photo_gallery($tree_json, $widget_id, $cfg = array(), $mode = 'preview')
 {
     $widget_id = (int)$widget_id;
@@ -326,14 +390,18 @@ function _render_system_widget_photo_gallery($tree_json, $widget_id, $cfg = arra
     if (function_exists('pg_page_cache_personal')) pg_page_cache_personal('access');
 
     $page_id = _pg_sa_page_id();
-    $root_id = ($page_id > 0) ? (int)db_value("SELECT page_folder FROM page WHERE page_id = '" . $page_id . "'") : 0;
+    $page_folder = ($page_id > 0) ? (int)db_value("SELECT page_folder FROM page WHERE page_id = '" . $page_id . "'") : 0;
     $page_url = ($page_id > 0) ? (defined('OUTPUT_PATH') ? OUTPUT_PATH : '/') . encode_url_path((string)get_page_name($page_id)) : '';
     $parent_of = function ($id) {
         return (int)db_value("SELECT folder_parent FROM folder WHERE folder_id = '" . (int)$id . "'");
     };
+    $bin_id = (int)pg_recycle_bin_folder_id();
+    $chosen = pg_gal_folder_setting($cfg);
+    $root_id = pg_gal_top_folder($chosen, $page_folder, '_pg_gal_parent_or_null', $bin_id);
+    if ($chosen > 0 && $root_id > 0 && !check_view_access($root_id)) $root_id = 0;
     $folder_id = $root_id;
     if ($root_id > 0 && $mode !== 'background') {
-        $folder_id = pg_gal_folder_shown($root_id, isset($_GET['folder_id']) ? $_GET['folder_id'] : null, $parent_of);
+        $folder_id = pg_gal_folder_shown($root_id, isset($_GET['folder_id']) ? $_GET['folder_id'] : null, $parent_of, $bin_id);
         if ($folder_id !== $root_id && !check_view_access($folder_id)) $folder_id = $root_id;
     }
     $rows = array();
