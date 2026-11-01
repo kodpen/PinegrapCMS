@@ -36,9 +36,8 @@ description: Steps E1-E10 of plans/image-editor.md: core modal, crop, server sav
 - E8 (S) Stickers and frames. Screens 07, 08. Done in #4486 (`ui/image-editor-sticker.md`).
   - SVG stickers with a label, a picture from Files as a sticker; frames (line, thick, polaroid, corners), fill.
 
-- E9 (M) Switch and removal. `free` after E6, E7, E8.
-  - The `openImageEditor` alias; callers: `view_folders.php`, `style_designer.src.js`, `workspace.js` (saving through `workspace_file_save.php`), `edit_file.php`, `edit_design_file.php`, `view_files.php`, `view_design_files.php`, `widget_18.php`, `content.php`, `frontend.src.js`, `output.php`; `image_editor_edit.php` becomes a redirect that opens the modal.
-  - Delete `assets/lib/image_editor/`, `image_editor_modal.js`, `image_editor_save.php` and the old loader; `clean_up.php` lists the removed names; memory topic files follow; the PR body names the `[NEW]` changelog line.
+- E9 (M) Switch and removal. Done in #4609 (`ui/image-editor-callers.md`).
+  - Every caller on the new editor, `image_editor_edit.php` a redirect; the old editor, its endpoint and loader removed.
 
 - E10 (M) Redaction. Screen 06. Done (#4579).
   - Pixelate, blur, solid box and brush-shaped areas; browser preview, burned in by server step 4; metadata stripped; the versions stay and the served file loses its metadata (#4203).

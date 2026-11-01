@@ -127,7 +127,6 @@ function output_control_panel_header_includes($include_assistant = true, $help_t
         'Pages' => lang('Pages'),
         'Products' => lang('Products'),
         'An error occurred.' => lang('An error occurred.'),
-        'Pintura Image Editor' => lang('Pintura Image Editor'),
         'Product Groups' => lang('Product Groups'),
         'Add Offer' => lang('Add Offer'),
         'Settings' => lang('Settings'),
@@ -3988,7 +3987,6 @@ function output_menu($properties = false)
         case 'view_files.php':
         case 'add_file.php':
         case 'edit_file.php':
-        case 'image_editor_edit.php':
         case 'editor_select_image.php':
             $active_menu = 1;
             break;

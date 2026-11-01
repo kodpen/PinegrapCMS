@@ -29,7 +29,6 @@ function test_panel_accessible_names_close_buttons()
 		'marketplace_settings.php',
 		'view_parasut_inbox.php',
 		'includes/designer_screen.php',
-		'assets/js/image_editor_modal.js',
 		'view_folders.php',
 	);
 
@@ -42,8 +41,6 @@ function test_panel_accessible_names_close_buttons()
 		}
 	}
 
-	pg_assert_contains("'Close' => lang('Close')", panel_accessible_names_source('includes/fn/editor.php'));
-	pg_assert_contains("aria-label=\"' + t('Close') + '\"", panel_accessible_names_source('assets/js/image_editor_modal.js'));
 	pg_assert_contains("aria-label=\"' + L.close + '\"", panel_accessible_names_source('view_folders.php'));
 }
 
@@ -52,7 +49,6 @@ function test_panel_accessible_names_icon_buttons()
 	$expect = array(
 		'cloudflare.php' => array("aria-label=\"' . h(lang('Edit')) . '\"", "aria-label=\"' . h(lang('Delete')) . '\""),
 		'view_parasut_inbox.php' => array("aria-label=\"' . h(lang('Invoice Detail')) . '\""),
-		'image_editor_edit.php' => array("id=\"bd-theme\" type=\"button\" aria-label=\"' . h(lang('Software Theme')) . '\""),
 		'editor_select_image.php' => array("onclick=\"esiUnsplashSearch()\" aria-label=\"' . h(lang('Search')) . '\""),
 		'erp_account_prices.php' => array("<button type=\"submit\" class=\"btn btn-outline theme-secondary\" aria-label=\"' . h(lang('Search')) . '\">"),
 		'view_performance_log.php' => array("<button type=\"submit\" class=\"btn btn-sm btn-solid theme-primary\" aria-label=\"' . h(lang('Search')) . '\">"),

@@ -4,7 +4,7 @@ description: clean_up.php $file_list and data/temp sweep: never list a live file
 ---
 
 ## Why can't the `clean_up.php` list hold a live file name?
-- `$file_list` in `clean_up.php` means "safe to delete" and the Cleanup tool applies it literally. `image_editor_save.php` sat there as a LiveSite leftover; the same name was later given to the Pintura image editor's endpoint. An operator who ran Cleanup deleted a live endpoint, and every save in the image editor then returned 404.
+- `$file_list` in `clean_up.php` means "safe to delete" and the Cleanup tool applies it literally. `image_editor_save.php` sat there as a LiveSite leftover while the same name served the previous image editor's endpoint. An operator who ran Cleanup deleted a live endpoint, and every save in the image editor then returned 404. That editor was removed in #4609; its endpoint, modal script and library folder are listed now.
 - The symptom links to no cause anywhere: the tool says "cleaned", the editor says "Görsel kaydedilemedi. (404)", `error.log` has no line (there is no error, the file is gone).
 
 ## What do I check before touching the list?

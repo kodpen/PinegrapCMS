@@ -9,7 +9,7 @@ description: Why a file the ERP module keeps (erp_doc_type set, no folder) is re
 
 ## Why must every write door ask for it by name?
 - A file with no folder passes `check_edit_access(0)` for staff, and a file with no folder and no `erp-` name is public. So a screen that renames, replaces, deletes or copies a file must refuse ERP rows itself, or an issued invoice could be renamed, overwritten, or copied beside itself as a public file.
-- The doors that ask: `edit_file.php` (the file's screen), `pg_explorer_handle()` for every type in `pg_explorer_file_id_actions()` (`view_folder_and_files_f.php`), the explorer's file read in `includes/panel/explorer.php`, and `image_editor_save.php` (added in PR #517: in replace mode it wrote over the picture the row named, in copy mode it placed the edited copy in folder 0; both refused now with the shared sentence "ERP documents are read-only in the file manager."). Test: `tests/files_erp_readonly_test.php`.
+- The doors that ask: `edit_file.php` (the file's screen), `pg_explorer_handle()` for every type in `pg_explorer_file_id_actions()` (`view_folder_and_files_f.php`), the explorer's file read in `includes/panel/explorer.php`, and the image editor's `pg_image_editor_file()` (`includes/fn/image_editor.php`), which every open and save goes through (since PR #517 the editor's save refuses: a replace wrote over the picture the row named, a copy landed in folder 0; refused with the shared sentence "ERP documents are read-only in the file manager."). Test: `tests/files_erp_readonly_test.php`.
 - The Workspace does not reach these rows: `ws_file_edit_target()` works on the channel folder's copies only.
 
 ## What does a new file-writing endpoint do?

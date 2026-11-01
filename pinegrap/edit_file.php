@@ -295,7 +295,6 @@ if (!isset($_POST['name'])) {
     $image_buttons = '';
     $output_rotate_form = '';
     $output_convert_rows = '';
-    $output_image_edit_link = '' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/image_editor_edit.php?file_name=' . h(urlencode($file_name)) . '&send_to=' . h(urlencode(REQUEST_URL)) . '';
     // Convert file size to a user friendly output.
     $output_file_size = convert_bytes_to_string ($row['size']);
     // get file extension
@@ -470,7 +469,7 @@ if (!isset($_POST['name'])) {
                     <input type="hidden" name="send_to" value="' . h(pg_send_to_url('')) . '">
                 </form>';
 
-            $image_buttons = $optimize_button . $resize_button . '<button type="submit" form="edit_file_rotate" class="btn btn-link pg-link-secondary py-0 mb-3" name="rotate_left" value="1"><i class="bi bi-arrow-counterclockwise bi-me-2"></i>' . lang('Rotate Left') . '</button> <button type="submit" form="edit_file_rotate" class="btn btn-link pg-link-secondary py-0 mb-3" name="rotate_right" value="1"><i class="bi bi-arrow-clockwise bi-me-2"></i>' . lang('Rotate right') . '</button><a class="btn btn-link pg-link-secondary py-0 mb-3" href="' . $output_image_edit_link . '"><i class="bi bi-flower2 bi-me-2"></i>' . lang(array('string'=>'Edit this image with {var:1}','vars'=>array(lang('Image Editor')) )) . '</a>';
+            $image_buttons = $optimize_button . $resize_button . '<button type="submit" form="edit_file_rotate" class="btn btn-link pg-link-secondary py-0 mb-3" name="rotate_left" value="1"><i class="bi bi-arrow-counterclockwise bi-me-2"></i>' . lang('Rotate Left') . '</button> <button type="submit" form="edit_file_rotate" class="btn btn-link pg-link-secondary py-0 mb-3" name="rotate_right" value="1"><i class="bi bi-arrow-clockwise bi-me-2"></i>' . lang('Rotate right') . '</button><button type="button" class="btn btn-link pg-link-secondary py-0 mb-3" data-pg-image-edit="' . h($file_name) . '"><i class="bi bi-flower2 bi-me-2"></i>' . lang(array('string'=>'Edit this image with {var:1}','vars'=>array(lang('Image Editor')) )) . '</button>' . pg_image_editor_includes();
             if($file['type'] !== 'webp'){
                 $output_convert_rows = '
                 <div class="col-12 ' . $output_no_file_editor_classes . '">

@@ -9,9 +9,7 @@ description: Dialogs and fields drawn by script after load name themselves: uniq
 
 ## Which ones carry it now?
 - File manager (`view_folders.php`): the delete dialog names `folder_delete_title`; both confirm labels (type the name, type the word) point at `folder_delete_name_input`; the Access drawer label at `access_type_select`; the one-time link box `sl_address` is `L.link_once_title`; inline rename is `L.rename`; the quick-edit cell is the column's name (`quickEditLabel()`: `L.price`, `L.quantity`, `L.short_description`).
-- Pintura dialog (`image_editor_modal.js`) names `pgImageEditorTitle`.
 - Orders list Paraşüt export dialog (`view_orders.php`) names `xlsl_setup_title`.
-- Image editor Save Option dialog (`image_editor_edit.php`) names `save_option_title`; its format select is `lang('File Format')`.
 
 ## What rules came with it?
 - A dialog title id is unique: the two `exampleModalLabel` copies were renamed.

@@ -78,10 +78,7 @@ function test_panel_number_format_visitor_widget()
 
 function test_panel_number_format_image_editor_and_product_uploads()
 {
-	pg_assert_contains('window.pgImageEditorNumber', _panel_number_format_source('includes/fn/editor.php'), 'the editor gets the panel separators');
-
-	$editor = _panel_number_format_body(_panel_number_format_source('assets/js/image_editor_modal.js'), 'function _humanSize(');
-	pg_assert_contains('pgImageEditorNumber', $editor, 'the editor size uses them');
+	pg_assert_contains("'decimal' => pg_image_editor_decimal()", _panel_number_format_source('includes/fn/image_editor.php'), 'the editor gets the panel separator');
 
 	$product = _panel_number_format_body(_panel_number_format_source('assets/js/product_builder.js'), 'function readableBytes(');
 	pg_assert_contains('cfg.moneySeparators', $product, 'the product screen size uses the panel separators');

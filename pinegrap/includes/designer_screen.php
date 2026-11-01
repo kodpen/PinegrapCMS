@@ -610,7 +610,7 @@ function pg_designer_screen_render($ctx)
             </form>
         </main>
         ' . ($access === PG_DESIGNER_ACCESS_FULL ? pg_designer_target_modal() : '') . '
-        ' . get_image_editor_includes() . '
+        ' . pg_image_editor_includes() . '
         ' . $sd_ws_tasks . '
         <!-- The designer\'s data, and its translation map, are declared BEFORE
              the editor script. style_designer.min.js resolves _sdT() at module

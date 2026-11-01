@@ -28,6 +28,6 @@ description: Server side of plans/image-editor.md: what the browser and the serv
 - Opening loads the original and the newest document, so layers and texts edit again; restore makes a version current; the original plus the last 10 saves are kept (#4203); deleting the file (File Manager, the Recycle Bin's permanent delete, erasure) deletes rows and files; the bytes count in Disk Usage. The document refuses inline pixel data and a size over 1 MB; an inserted picture is its own `files` row referenced by id.
 
 ## What does security need?
-- Each call: the session token check `image_editor_save.php` does today, `check_edit_access()` on the target folder, the doc validated against limits (sizes, counts, number ranges) before any pixel work, the overlay PNG decoded and its size checked.
+- Each call: the session token check, `check_edit_access()` on the target folder, the doc validated against limits (sizes, counts, number ranges) before any pixel work, the overlay PNG decoded and its size checked.
 - SVG: an allowlist sanitizer `pg_svg_sanitize()` (listed elements and attributes; `href` only `#id` or `data:image/*`; no script, event handlers, `foreignObject`, external URLs, `@import`). The server never rasterises SVG: GD cannot, and Imagick's SVG readers are missing on many hosts and have a bad record.
 - A redacted save strips all metadata: an EXIF thumbnail can hold the unredacted picture.

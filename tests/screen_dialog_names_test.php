@@ -23,12 +23,6 @@ function screen_dialog_names_source($path)
 	return (string) file_get_contents(dirname(__DIR__) . '/pinegrap/' . $path);
 }
 
-function test_screen_dialog_names_image_editor_modal()
-{
-	$source = screen_dialog_names_source('assets/js/image_editor_modal.js');
-	pg_assert_true(strpos($source, 'id="pgImageEditorModal" aria-labelledby="pgImageEditorTitle"') !== false, 'Pintura dialog names its title');
-}
-
 function test_screen_dialog_names_file_manager()
 {
 	$source = screen_dialog_names_source('view_folders.php');
@@ -49,12 +43,3 @@ function test_screen_dialog_names_parasut_export()
 	pg_assert_true(strpos($source, '<h5 class="dialog-title" id="xlsl_setup_title">') !== false, 'export dialog title has its id');
 }
 
-function test_screen_dialog_names_image_editor_edit()
-{
-	$source = screen_dialog_names_source('image_editor_edit.php');
-	pg_assert_true(strpos($source, '<dialog class="dialog" id="confirm_modal" data-bs-backdrop="static" aria-labelledby="save_option_title">') !== false, 'save option dialog names its title and lets Escape close it');
-	pg_assert_true(strpos($source, 'data-bs-keyboard="false"') === false, 'Escape is not blocked');
-	pg_assert_true(strpos($source, 'id="save_option_title"') !== false, 'save option title has its id');
-	pg_assert_true(strpos($source, 'id="save_option_item_type" name="save_option_item_type" aria-label="\' . h(lang(\'File Format\')) . \'"') !== false, 'file format select is named');
-	pg_assert_true(strpos($source, 'exampleModalLabel') === false, 'no shared placeholder id');
-}

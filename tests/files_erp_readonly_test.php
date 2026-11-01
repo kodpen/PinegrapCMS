@@ -30,7 +30,7 @@ function test_files_erp_readonly_every_write_door_asks()
 		'edit_file.php'                     => 'pg_files_include_erp_document(array($_REQUEST[\'id\'] ?? 0, $_POST[\'id\'] ?? 0))',
 		'view_folder_and_files_f.php'       => 'pg_files_include_erp_document(pg_explorer_request_file_ids($type, $request))',
 		'includes/panel/explorer.php'       => 'pg_files_include_erp_document(array($row[\'id\']))',
-		'image_editor_save.php'             => 'pg_files_include_erp_document(array($image_editor_row[\'id\']))',
+		'includes/fn/image_editor.php'      => 'pg_files_include_erp_document(array($row[\'id\']))',
 	);
 
 	foreach ($doors as $file => $guard) {
@@ -38,16 +38,18 @@ function test_files_erp_readonly_every_write_door_asks()
 	}
 }
 
-// The image editor's guard sits after the row is found and before the folder
-// is decided, so neither a replace nor a copy beside the document can start.
+// The image editor's guard sits after the row is found and before the
+// folder right is asked, so neither a replace nor a copy beside the document
+// can start (pg_image_editor_file(), which open and save go through).
 function test_files_erp_readonly_image_editor_refuses_before_any_write()
 {
-	$source = files_erp_readonly_test_source('image_editor_save.php');
-	$guard = strpos($source, 'pg_files_include_erp_document(array($image_editor_row[\'id\']))');
+	$source = files_erp_readonly_test_source('includes/fn/image_editor.php');
+	$start = strpos($source, 'function pg_image_editor_file(');
+	$body = substr($source, $start, strpos($source, "\n}\n", $start) - $start);
+	$guard = strpos($body, 'pg_files_include_erp_document(array($row[\'id\']))');
 
 	pg_assert_true($guard !== false, 'the guard is there');
-	pg_assert_true($guard > strpos($source, '$image_editor_row = db_item('), 'after the row is read');
-	pg_assert_true($guard < strpos($source, '$image_editor_target_folder = '), 'before the folder is decided');
-	pg_assert_true($guard < strpos($source, 'check_edit_access($image_editor_target_folder)'), 'before the folder right is asked');
-	pg_assert_contains("image_editor_refuse(lang('ERP documents are read-only in the file manager.'), 403);", $source, 'the same sentence as the other doors');
+	pg_assert_true($guard > strpos($body, '$row = '), 'after the row is read');
+	pg_assert_true($guard < strpos($body, 'check_edit_access('), 'before the folder right is asked');
+	pg_assert_contains("pg_image_editor_refusal(lang('ERP documents are read-only in the file manager.'), 403)", $body, 'the same sentence as the other doors');
 }

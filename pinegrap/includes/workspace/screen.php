@@ -939,12 +939,10 @@ function ws_screen_assets($viewer, $mode, $extra = array())
     // The panel's picture viewer, for the pictures in a conversation.
     $lightbox = function_exists('_pg_lightbox_assets_once') ? _pg_lightbox_assets_once() : '';
 
-    // The image editor is large and seldom needed: its files wait in a
-    // template on the channel screen and are loaded the first time a picture
-    // is edited (assets/js/workspace.js).
-    if (($mode === 'channels') && function_exists('get_image_editor_includes')) {
-        $lightbox .= '
-<template id="ws-image-editor-assets">' . get_image_editor_includes() . '</template>';
+    // The image editor's loader: its files are fetched the first time a
+    // picture is edited (assets/js/workspace.js).
+    if ($mode === 'channels') {
+        $lightbox .= pg_image_editor_includes();
     }
 
     $output = $lightbox . '

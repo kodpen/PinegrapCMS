@@ -962,74 +962,14 @@
         window.open(images[start || 0].src, '_blank', 'noopener');
     }
 
-    // The panel's image editor waits in a template on the channel screen
-    // (includes/workspace/screen.php) and is loaded the first time a picture
-    // is edited: its styles, then its scripts one after the other.
-    var imageEditorLoading = null;
-
+    // The image editor's loader (pg_image_editor_includes() on the channel
+    // screen) fetches its files the first time a picture is edited.
     function loadImageEditor() {
-        if (window.openImageEditor && window.imageEditorAvailable && window.imageEditorAvailable()) {
-            return Promise.resolve();
-        }
-
-        if (imageEditorLoading) {
-            return imageEditorLoading;
-        }
-
-        var template = document.getElementById('ws-image-editor-assets');
-
-        if (!template || !template.content) {
+        if (!window.pgImageEditor) {
             return Promise.reject(new Error(t('file_editor_missing')));
         }
 
-        var chain = Promise.resolve();
-
-        Array.prototype.forEach.call(template.content.childNodes, function (node) {
-            if (node.nodeType !== 1) {
-                return;
-            }
-
-            if (node.tagName === 'LINK') {
-                var sheet = document.createElement('link');
-                sheet.rel = 'stylesheet';
-                sheet.href = node.getAttribute('href');
-                document.head.appendChild(sheet);
-                return;
-            }
-
-            if (node.tagName !== 'SCRIPT') {
-                return;
-            }
-
-            chain = chain.then(function () {
-                return new Promise(function (resolve, reject) {
-                    var script = document.createElement('script');
-
-                    if (node.getAttribute('src')) {
-                        script.src = node.getAttribute('src');
-                        script.onload = resolve;
-                        script.onerror = reject;
-                        document.head.appendChild(script);
-                    } else {
-                        script.text = node.textContent;
-                        document.head.appendChild(script);
-                        resolve();
-                    }
-                });
-            });
-        });
-
-        imageEditorLoading = chain.then(function () {
-            if (!(window.openImageEditor && window.imageEditorAvailable && window.imageEditorAvailable())) {
-                throw new Error(t('file_editor_missing'));
-            }
-        });
-
-        imageEditorLoading.catch(function () {
-            imageEditorLoading = null;
-        });
-
-        return imageEditorLoading;
+        return window.pgImageEditor.load();
     }
 
     // The drawing code of the Word and Excel preview (assets/js/pg_office_view.js),
@@ -10415,28 +10355,13 @@
                 window.openImageEditor({
                     src: message.file.url,
                     fileName: message.file.name,
-                    token: CFG.token,
                     saveUrl: CFG.urls.file_save + '?message=' + message.id + '&as=' + (mine ? 'replace' : 'send'),
                     saveLabel: mine ? t('file_edit_put') : t('file_edit_send'),
-                    allowReplace: false,
-                    allowCopy: true,
                     onSaved: function () {
                         toast(mine ? t('file_replaced') : t('file_copy_sent'), 'success');
                         self.sync(!mine);
                     }
                 });
-
-                // The picture keeps the format the editor gives it, so the
-                // format picker of the editor's footer is not offered here.
-                var format = document.getElementById('pgImageEditorType');
-
-                if (format) {
-                    format.classList.add('d-none');
-
-                    if (format.previousElementSibling) {
-                        format.previousElementSibling.classList.add('d-none');
-                    }
-                }
             }).catch(function () {
                 toast(t('file_editor_missing'), 'danger');
             });

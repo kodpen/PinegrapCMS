@@ -94,47 +94,6 @@ one takes a row of the page grid.
 .ws-palette.dialog {
 >>>
 
-The image editor's full-screen switch: the class goes on the <dialog>.
-
-@@ assets/js/image_editor_modal.js
-<<<
-            '#pgImageEditorModal .modal-dialog.modal-fullscreen .modal-content { height:100% !important; }' +
-===
-            '#pgImageEditorModal.dialog-fullscreen { height:100% !important; }' +
->>>
-
-@@ assets/js/image_editor_modal.js
-<<<
-    // Bootstrap's own modal-fullscreen class does the layout; the work here is
-===
-    // Bootstrap's own dialog-fullscreen class does the layout; the work here is
->>>
-
-@@ assets/js/image_editor_modal.js
-<<<
-        var dialog = _modalEl ? _modalEl.querySelector('.modal-dialog') : null;
-        return !!(dialog && dialog.classList.contains('modal-fullscreen'));
-===
-        return !!(_modalEl && _modalEl.classList.contains('dialog-fullscreen'));
->>>
-
-@@ assets/js/image_editor_modal.js
-<<<
-        var dialog = _modalEl.querySelector('.modal-dialog');
-===
-        var dialog = _modalEl;
->>>
-
-@@ assets/js/image_editor_modal.js
-<<<
-        dialog.classList.toggle('modal-fullscreen', !!on);
-        dialog.classList.toggle('modal-xl', !on);
-        dialog.classList.toggle('modal-dialog-centered', !on);
-===
-        dialog.classList.toggle('dialog-fullscreen', !!on);
-        dialog.classList.toggle('dialog-xl', !on);
->>>
-
 The code editor's full-screen switch.
 
 @@ assets/js/codemirror_modal.js
