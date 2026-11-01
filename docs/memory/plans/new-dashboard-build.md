@@ -9,8 +9,8 @@ description: New dashboard plan: the page branch in welcome.php, the files (page
 
 ## Which files?
 - PHP: `includes/dashboard/v2/` (gate constant as `widgets/`): `page.php` and its parts (`page_greeting.php`, `page_status.php`, `page_grid.php`), `layout.php` (read, merge, validate, save), `cards.php` (the 30 cards: id, title, icon, category, width, period, gate), `presets.php`, `figures.php`, `cards/<id>.php`.
-- Script: bundle `assets/js/dashboard_v2.min.js` in `pg_js_bundles()` from `dashboard_v2.js` (grid, card frame, loading, refresh), `dashboard_v2_edit.js` (edit mode, drag, keyboard, gallery, side panel) and one renderer file per card group, `dashboard_v2_cards_<group>.js` (visitors, content, security, team, shop, work, assistant), each registering its cards' draw functions. A card step adds its file and appends one line to the bundle list.
-- Styles: `assets/css/dashboard_v2.src.css` in `pg_css_bundles()`, as the image editor's, one section per group; `php tools/build_css.php`, `php tools/build_js.php`.
+- Script: bundle `assets/js/pg_dash.min.js` in `pg_js_bundles()` from `pg_dash.js` (grid, card frame, loading, refresh), `pg_dash_edit.js` (edit mode, drag, keyboard, gallery, side panel) and one renderer file per card group, `pg_dash_cards_<group>.js` (visitors, content, security, team, shop, work, assistant), each registering its cards' draw functions. A card step adds its file and appends one line to the bundle list. (Bundle and stylesheet names take no digits: `tests/js_bundles_test.php`, `tests/css_minify_test.php`.)
+- Styles: `assets/css/pg_dash.src.css` in `pg_css_bundles()`, as the image editor's, one section per group; `php tools/build_css.php`, `php tools/build_js.php`.
 - Tests: `tests/dashboard_v2_<topic>_test.php` for layout validation, presets, figures and each card function's shape.
 
 ## How does it look?

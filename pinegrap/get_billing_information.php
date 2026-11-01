@@ -390,7 +390,7 @@ function get_billing_information($properties) {
                 country_id: "billing_country",
                 state_text_box_id: "billing_state_text_box",
                 state_pick_list_id: "billing_state_pick_list",
-                zip_code_id: "billing_zip_code"});
+                zip_code_id: "billing_zip_code"' . pg_address_labels_init_props('billing_city') . '});
         </script>';
 
     if ($layout_type == 'system') {
@@ -630,8 +630,8 @@ function get_billing_information($properties) {
                         <td>' . $form->output_field(array('type'=>'text', 'name'=>'billing_address_2', 'maxlength'=>'50', 'class'=>'software_input_text')) . '</td>
                     </tr>
                     <tr>
-                        <td>City*</td>
-                        <td>' . $form->output_field(array('type'=>'text', 'name'=>'billing_city', 'maxlength'=>'50', 'class'=>'software_input_text', 'required' => 'true')) . '</td>
+                        <td><label for="billing_city">City*</label></td>
+                        <td>' . $form->output_field(array('type'=>'text', 'id'=>'billing_city', 'name'=>'billing_city', 'maxlength'=>'50', 'class'=>'software_input_text', 'required' => 'true')) . '</td>
                     </tr>
                     <tr>
                         <td>Country*</td>

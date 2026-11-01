@@ -465,7 +465,7 @@ $result = db_q($query, array((string) ($liveform->get_field_value('salutation'))
 
 // The optional district, written apart: the value is free text and the
 // query above binds its values by placeholder.
-pg_ship_to_district_save((int) ($_POST['ship_to_id'] ?? 0), $liveform->get_field_value('district'), $liveform->get_field_value('country'));
+pg_ship_to_district_save((int) ($_POST['ship_to_id'] ?? 0), $liveform->get_field_value('district'), $liveform->get_field_value('country'), $liveform->get_field_value('city'));
 
 // If the user is logged in and not ghosting, then update address book.
 if (USER_LOGGED_IN and !$ghost) {

@@ -29,6 +29,7 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 
 - accessibility-compliance.md: Why Pinegrap has accessibility and consent tools (Circular 2025/10, EU Accessibility Act, KVKK cookie guide), which piece covers what, and what is left for later
 - accessibility-report.md: Accessibility report (seo_a11y_job.php, includes/fn/a11y.php, view_accessibility.php): server-side WCAG 2.2 checks, a11y_ codes in seo_issue, the resumable pass, screen, PDF, API filter
+- background-render.md: pg_background_render(): the one in-process page render of the passes that draw many pages (SEO structure, accessibility, later the search index); what it catches, restores and lends
 - backup-upload-extraction.md: Backup archives: install-screen upload streamed into data/temp and checksum-checked; the file explorer's backup extract/upload and web-root zip extract follow the same rule plus name and size limits.
 - browser-image-preshrink.md: Browser-side pre-shrink of images over server upload limits: when, EXIF orientation check, quality-before-pixels order, shrinkTo/shrinkQuality, blob name.
 - ca-bundle-panel-update.md: Panel CA bundle update (ca_bundle_update, pg_ca_bundle_update): https-only source, validation checks, atomic write to data/cacert.pem.
@@ -71,6 +72,7 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 - image-processing-engine.md: Single image engine pg_process_image_file(): optimize vs resize jobs and the nine invariants (size guard, atomic write, EXIF, CMYK, GIF, memory, pixels, GIF transparency).
 - image-same-address.md: A JPEG or PNG answered with its WebP derivative at its own address (get_file.php, includes/image_negotiation.php): the switch bits, who gets WebP, Vary, CDN guard, f=original, download name
 - image-settings-and-product-upload.md: Image config keys and defaults, product upload pipeline (image_profile=product), files.image_width/height cache rule, optimizable-percent badge cost.
+- image-upload-cap.md: Upload size cap (config.image_upload_max_dimension, 11.0.142, #4700): library uploads above N px shrunk in their own format; 0 off, 2560 on a new site; the doors
 - import-design-fetch.md: How the design importer fetches a page (import_design.php): each hop one api_http_request() with opt-in options, the 5-hop walk and the stream fallback kept, what changed with the move
 - indexnow-ping-result.md: The IndexNow ping in update_sitemap_and_ping() logs success only for HTTP 200/202; a refusal (400, 403, 422, 429) logs 'IndexNow ping failed: HTTP <code>'
 - install-command-line.md: php install/index.php install (PR #621): a starter site from PG_INSTALL_* variables without the screen; what it refuses, output and exit status, how the screen's code runs

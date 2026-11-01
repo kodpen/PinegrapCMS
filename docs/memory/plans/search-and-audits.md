@@ -22,13 +22,13 @@ description: Plan (owner request 2026-11-01): search index and page audits as re
 - `search-and-audits-causes.md`: why runs fail and passes stall, by file and line.
 - `search-and-audits-rules.md`: the three rule sets side by side.
 
-## Which questions are open?
-1. Owner: one panel screen, "Search and audits", opened from the Pages tools menu, the main menu and Site Settings › SEO, the popup window gone (recommended); or a card in Site Settings.
-2. Owner: the index, structure and accessibility jobs on by default for new installs (recommended); running sites unchanged until switched on.
-3. Owner: the editor's audit panel lists the draft's accessibility findings beside SEO (recommended).
-4. Owner: contrast and target size measured in the editor kept with the accessibility report, marked "measured in the editor" and replaced on each save (recommended): the server cannot resolve CSS.
-5. Architect: a visual-editor record whose render fails keeps its last indexed text, as pages do from SA1 (recommended).
-6. Architect: a delta stage between full runs re-indexes pages and records changed since their row (recommended, no schema).
+## Which questions are decided? (owner 2026-11-01 for 1-4, architect for 5-6; PR #4693; `workflow/decisions-made-product-18.md`)
+1. One panel screen "Search and audits" for the four engines, opened from the Pages tools menu, the main menu and Site Settings › SEO; the popup window goes.
+2. The index, structure and accessibility jobs are on for a new install; a running site is unchanged until the operator switches them on there.
+3. The editor's audit panel lists the draft's accessibility findings beside SEO.
+4. Contrast and target size measured in the editor are kept with the accessibility report, marked "measured in the editor", replaced on each save.
+5. A visual-editor record whose render fails keeps its last indexed text, as pages do from SA1; the failed item is skipped and named the next time.
+6. A delta stage between full runs re-indexes pages and records changed since their row; no schema: a record is told from its indexed address (`?r=`), modified time against the row's run timestamp; an item without a readable one waits for the full run.
 
 ## Where does it start?
 - SA1-SA8 need no answer; SA1, SA3 and SA5 first. Read `designer/designer-records-site-search.md`, `designer/search-index-run-failures.md`, `platform/scheduled-jobs-command-line-render.md`, `platform/accessibility-report.md`.
