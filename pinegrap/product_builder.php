@@ -3961,21 +3961,6 @@ function pg_pb_render_product_screen($values = array(), $context = array())
     // here (edit_product.php refuses the write too); the way back is
     // restoring it in the Catalog Manager, so that is what the screen offers.
     $pg_recycled = ($pg_mode === 'edit') && !empty($context['recycled']);
-
-    // Send this product's price and stock to Google Merchant Center now
-    // (merchant_product.php), once an account is chosen and the feed is
-    // registered there. Its own form: the button bar is outside the product
-    // form, and a push must not save the screen's unsaved changes.
-    $merchant_push_button = '';
-
-    if (($pg_mode === 'edit') && !$pg_recycled && function_exists('pg_merchant_push_available')
-        && pg_merchant_ready() && pg_merchant_push_available(pg_merchant_state())) {
-        $merchant_push_button = '<form class="d-inline" action="merchant_product.php" method="post">'
-            . get_token_field()
-            . '<input type="hidden" name="id" value="' . h($pg_product_id) . '" />'
-            . '<button type="submit" class="btn btn-sm btn-link pg-link-secondary" title="' . h(lang('Sends the saved price and stock now, before the daily feed fetch.')) . '"><i class="bi bi-google me-1"></i>' . lang('Send to Merchant Center') . '</button>'
-            . '</form>';
-    }
     $pg_bin_link = '<a class="btn my-1 btn-solid theme-secondary" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_product_groups.php?view=bin"><span class="bi bi-trash3 me-3"></span><span class="pg-btn-label">' . lang('Open the Recycle Bin') . '</span></a>';
 
     // What a new product starts as. Written as values rather than as markup
@@ -4958,7 +4943,6 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                 ' . (($v('product_form') or $v('pg_pb_has_form_fields'))
                     ? '<a class="btn btn-sm btn-link pg-link-secondary" href="view_fields.php?product_id=' . h($pg_product_id) . '"><i class="bi bi-ui-checks me-1"></i>' . lang('Product Form') . '</a>'
                     : '') . '
-                ' . $merchant_push_button . '
             </nav>'
         : '') . '
 

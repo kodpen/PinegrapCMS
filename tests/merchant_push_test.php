@@ -5,8 +5,8 @@
  * Tests for the pure parts of the one-product push to Google Merchant Center
  * (includes/fn/merchant_center.php): the money and availability values, the
  * product input sent to the supplemental data source, the supplemental source
- * body and its link into the feed source's default rule, the product's issues,
- * the stored list of pushed products and when each one is released.
+ * body and its link into the feed source's default rule, the product's issues
+ * and the stored supplemental source name.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -117,39 +117,7 @@ function test_merchant_push_product_issues()
 
 function test_merchant_push_state()
 {
-	$state = pg_merchant_state_parse(array(
-		'supplement' => 'accounts/1/dataSources/9',
-		'pushed'     => array('15' => 1700000000, 'x' => 5, '0' => 3, '16' => -4, '17' => 'junk'),
-	));
-	pg_assert_same('accounts/1/dataSources/9', $state['supplement']);
-	pg_assert_same(array(15 => 1700000000), $state['pushed'], 'only product ids with a time');
-
-	$state = pg_merchant_state_parse(array('supplement' => 'accounts/1/dataSources/x/../2'));
-	pg_assert_same('', $state['supplement']);
-	pg_assert_same(array(), $state['pushed']);
-
-	pg_assert_same(false, pg_merchant_push_available(pg_merchant_state_parse(null)));
-	pg_assert_same(false, pg_merchant_push_available(pg_merchant_state_parse(array('account' => '1'))), 'the feed is not registered');
-	pg_assert_same(true, pg_merchant_push_available(pg_merchant_state_parse(array('account' => '1', 'data_source' => 'accounts/1/dataSources/2'))));
-}
-
-function test_merchant_push_release()
-{
-	$previous = date_default_timezone_get();
-	date_default_timezone_set('Europe/Istanbul');
-
-	$built = mktime(2, 30, 0, 11, 1, 2026);
-	pg_assert_same(mktime(PG_MERCHANT_FETCH_HOUR, 0, 0, 11, 1, 2026), pg_merchant_fetch_after($built), 'built before the fetch hour: fetched the same day');
-	pg_assert_same(mktime(PG_MERCHANT_FETCH_HOUR, 0, 0, 11, 2, 2026), pg_merchant_fetch_after(mktime(9, 0, 0, 11, 1, 2026)), 'built after it: the next day');
-
-	$pushed = array(
-		15 => mktime(1, 0, 0, 11, 1, 2026),  // before the build: the feed carries it
-		16 => mktime(3, 0, 0, 11, 1, 2026),  // after the build: kept
-	);
-
-	pg_assert_same(array(), pg_merchant_pushes_due($pushed, $built, mktime(6, 30, 0, 11, 1, 2026)), 'Google may still be fetching');
-	pg_assert_same(array(15), pg_merchant_pushes_due($pushed, $built, mktime(PG_MERCHANT_FETCH_HOUR + 2, 0, 0, 11, 1, 2026)));
-	pg_assert_same(array(), pg_merchant_pushes_due($pushed, 0, time()), 'no build: nothing is released');
-
-	date_default_timezone_set($previous);
+	pg_assert_same('accounts/1/dataSources/9', pg_merchant_state_parse(array('supplement' => 'accounts/1/dataSources/9'))['supplement']);
+	pg_assert_same('', pg_merchant_state_parse(array('supplement' => 'accounts/1/dataSources/x/../2'))['supplement']);
+	pg_assert_same('', pg_merchant_state_parse(null)['supplement']);
 }
