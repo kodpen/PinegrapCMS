@@ -20,15 +20,13 @@ description: Plan for the Online Courses template (pinegrap-courses): courses as
 - As Events: steps 1-6 write `includes/design_templates/pinegrap-courses/` (not globbed); step 7's `pinegrap-courses.php` offers it. Classes `pco-`.
 
 ## Which steps are there?
-- 1 Engine (product grants a template folder or membership: [[design-templates-catalog-and-look]]) and `parts.php`. **Done (#4770).**
-- 2 Public pages: `pages_public.php` (home, courses, course pages, instructors, pricing, about, FAQ). **Done (#4788).**
-- 3 Learning: `learn.php` (classrooms, lessons, My Courses, library). **Done (#4838).**
-- 4 Enrolment and assignments: `assignments.php`, `mail.php` (enrolment request, assignment, views, My Assignments, staff lists, notify e-mails).
+- 1-4 done: engine and `parts.php` (#4770), `pages_public.php` (#4788), `learn.php` (#4838), `assignments.php` and `mail.php` (#4849).
 - 5a Shop: `shop.php` (Courses group, course and membership products, listing, product, cart, checkout, order, `email_order`; `requires ecommerce`).
 - 5b Standard: `standard.php` (contact, inbox, conversation, newsletter, blog, blog post, search, error, privacy); test `…_standard_test.php`.
 - 6 Account and staff: `account.php`; test `…_account_test.php`.
 - 7 Assembly: `pinegrap-courses.php` (header, order, icon `bi-mortarboard`, highlights, look, palette, contact group, folders, catalog, `pco-` User Styles, search map), shared tests' lists, `designer/design-template-courses.md`, plan deleted; PR body names `[NEW] Added the Online Courses design template`.
 
 ## Where to start?
-- Step 4. Already named: pages `enrolment`, `assignment` (both read `?course=<title>`), `my_assignments`, `staff_enrolments`, `staff_assignments`, `email_reply` (lesson answers); widgets `buy_<course>`, `buy_membership` (5a), `home_posts` (5b); folders `public`, `registration`, `private`, `course_<key>` (private), `members` (membership). `tests/design_template_courses_test.php` lists the page and widget keys.
-- Copy from `pinegrap-events/` (`events.php`, `mail.php`, `tickets.php`).
+- Step 5a or 5b (different files). Already named: pages `enrolment`, `enrolment_view`, `assignment`, `assignment_view`, `my_assignments`, `staff_enrolments`, `staff_assignments`, `email_reply` and four form e-mails (`assignments.php`, also widget `email_comment`); widgets `buy_<course>`, `buy_membership` (5a), `home_posts` (5b); folders `public`, `registration`, `private`, `course_<key>` (private), `members` (membership). `tests/design_template_courses_test.php` lists the page and widget keys.
+- `mail.php`: the `$mail_*` builders, `$email_header_tree`, `$email_footer_tree`; inline colours are teal (`#0f766e`), so step 7 should suggest a teal palette (`ocean`) or change them.
+- Copy from `pinegrap-events/` (`tickets.php`, `standard.php`, `account.php`).
