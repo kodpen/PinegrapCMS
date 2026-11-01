@@ -88,7 +88,7 @@ description: Module list of plans/bug-hunt.md, part 2: includes/fn/ modules pric
 
 - `tour`: open
 
-- `translate`: taken by MM — #4753
+- `translate`: taken by MM — #4753, #NEXT
 
 - `update`: open
 
