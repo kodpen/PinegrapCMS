@@ -74,7 +74,7 @@ description: Module list of plans/bug-hunt.md, part 4: root endpoint groups opti
 
 - Endpoints `visitor` (3): open
 
-- Endpoints `waf` (4: view_waf_log, waf, waf_ranges_job, waf_unban): taken by LD
+- Endpoints `waf` (4: view_waf_log, waf, waf_ranges_job, waf_unban): taken by LD (#4601)
 
 - Endpoints `workspace` (21): open
 
