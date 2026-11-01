@@ -48857,12 +48857,34 @@ const StyleDesigner = (function () {
     // 'rounded-top-3' → "Top 3"); the bare `shadow` reads "Regular". A
     // label with a word that has no translation keeps its class-derived
     // form in full ('Decoration none'), never half of it.
+    // Labels of the Themes panel's link decoration options; the values stay
+    // the CSS keywords.
+    function _sdThemeDecorationLabels() {
+        return {
+            'none': _sdT('No decoration'), 'underline': _sdT('Underline'),
+            'overline': _sdT('Overline'), 'line-through': _sdT('Strikethrough')
+        };
+    }
     function _sdStyleOptionLabel(cls) {
         var words = {
             'none': _sdT('None'), 'sm': _sdT('Small'), 'lg': _sdT('Large'),
             'circle': _sdT('Circle'), 'pill': _sdT('Pill'),
-            'top': _sdT('Top'), 'end': _sdT('End'), 'bottom': _sdT('Bottom'), 'start': _sdT('Start')
+            'top': _sdT('Top'), 'end': _sdT('End'), 'bottom': _sdT('Bottom'), 'start': _sdT('Start'),
+            'base': _sdT('Base'), 'display': _sdT('Display heading')
         };
+        // Whole classes whose name is no word of the panel's language: the
+        // text case, font weight, font style and decoration families.
+        var named = {
+            'text-lowercase': _sdT('lowercase'), 'text-uppercase': _sdT('UPPERCASE'),
+            'text-capitalize': _sdT('Capitalize Each Word'),
+            'fw-lighter': _sdT('Lighter'), 'fw-light': _sdT('Light weight'), 'fw-normal': _sdT('Normal'),
+            'fw-medium': _sdT('Medium'), 'fw-semibold': _sdT('Semibold'), 'fw-bold': _sdT('Bold'),
+            'fw-bolder': _sdT('Bolder'),
+            'fst-italic': _sdT('Italic'), 'fst-normal': _sdT('Normal'),
+            'text-decoration-none': _sdT('No decoration'), 'text-decoration-underline': _sdT('Underline'),
+            'text-decoration-line-through': _sdT('Strikethrough'), 'text-decoration-overline': _sdT('Overline')
+        };
+        if (Object.prototype.hasOwnProperty.call(named, cls)) return named[cls];
         var fit = {
             'object-fit-contain': _sdT('Contain (whole image)'), 'object-fit-cover': _sdT('Cover (crop to fill)'),
             'object-fit-fill': _sdT('Stretch to fill'), 'object-fit-scale-down': _sdT('Scale down only'),
@@ -53909,7 +53931,7 @@ const StyleDesigner = (function () {
                 vars: [
                     { name: '--bs-primary',   label: _sdT('Primary'),   kind: 'color', theme: true, def: { light: '#0d6efd', dark: '#6ea8fe' } },
                     { name: '--bs-secondary', label: _sdT('Secondary'), kind: 'color', theme: true, def: { light: '#6c757d', dark: '#a7acb1' } },
-                    { name: '--bs-success',   label: 'Success',   kind: 'color', theme: true, def: { light: '#198754', dark: '#75b798' } },
+                    { name: '--bs-success',   label: _sdT('Success'),   kind: 'color', theme: true, def: { light: '#198754', dark: '#75b798' } },
                     { name: '--bs-info',      label: _sdT('Info'),      kind: 'color', theme: true, def: { light: '#0dcaf0', dark: '#6edff6' } },
                     { name: '--bs-warning',   label: _sdT('Warning'),   kind: 'color', theme: true, def: { light: '#ffc107', dark: '#ffda6a' } },
                     { name: '--bs-danger',    label: _sdT('Danger'),    kind: 'color', theme: true, def: { light: '#dc3545', dark: '#ea868f' } },
@@ -53948,8 +53970,8 @@ const StyleDesigner = (function () {
                 vars: [
                     { name: '--bs-link-color',           label: _sdT('Color'),            kind: 'color', def: { light: '#0d6efd', dark: '#6ea8fe' } },
                     { name: '--bs-link-hover-color',     label: _sdT('Hover Color'),      kind: 'color', def: { light: '#0a58ca', dark: '#9ec5fe' } },
-                    { name: '--bs-link-decoration',      label: _sdT('Decoration'),       kind: 'select', opts: ['none','underline','overline','line-through'], def: { light: 'underline', dark: 'underline' } },
-                    { name: '--bs-link-hover-decoration',label: _sdT('Hover Decoration'), kind: 'select', opts: ['none','underline','overline','line-through'], def: { light: 'underline', dark: 'underline' } }
+                    { name: '--bs-link-decoration',      label: _sdT('Decoration'),       kind: 'select', opts: ['none','underline','overline','line-through'], optLabels: _sdThemeDecorationLabels(), def: { light: 'underline', dark: 'underline' } },
+                    { name: '--bs-link-hover-decoration',label: _sdT('Hover Decoration'), kind: 'select', opts: ['none','underline','overline','line-through'], optLabels: _sdThemeDecorationLabels(), def: { light: 'underline', dark: 'underline' } }
                 ]
             },
             {
@@ -54574,7 +54596,7 @@ const StyleDesigner = (function () {
                     } else if (v.kind === 'select') {
                         var opts = (v.opts || []).map(function (o) {
                             var sel = (val === o) || (!val && ph === o);
-                            return '<option value="' + esc(o) + '"' + (sel ? ' selected' : '') + '>' + esc(o) + '</option>';
+                            return '<option value="' + esc(o) + '"' + (sel ? ' selected' : '') + '>' + esc(v.optLabels && v.optLabels[o] ? v.optLabels[o] : o) + '</option>';
                         }).join('');
                         html +=
                             '<div class="sd-theme-row sd-theme-row-select" data-var="' + v.name + '">' +

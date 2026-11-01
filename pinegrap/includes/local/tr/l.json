@@ -397,6 +397,7 @@
     "Light rain": "Hafif yağmurlu",
     "Light serif headings, widely spaced capitals, deep shadows, slim lines.": "Hafif tırnaklı başlıklar, geniş aralıklı büyük harfler, derin gölgeler, ince çizgiler.",
     "Light titanium frames, ready for your own prescription lenses.": "Kendi numaralı camlarınıza hazır hafif titanyum çerçeve.",
+    "Light weight": "İnce",
     "Lightbox (full screen)": "Lightbox (tam ekran)",
     "Lighter": "Daha İnce",
     "Lighter still than WebP. Browsers that cannot read AVIF get WebP or the original instead.": "WebP'den de hafiftir. AVIF okuyamayan tarayıcılar onun yerine WebP'yi ya da asıl dosyayı alır.",
@@ -838,5 +839,6 @@
     "lookbook": "lookbook",
     "low": "düşük",
     "lower": "düşür",
-    "lower-case letters": "küçük harfler"
+    "lower-case letters": "küçük harfler",
+    "lowercase": "küçük harf"
 }

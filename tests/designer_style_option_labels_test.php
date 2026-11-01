@@ -189,13 +189,13 @@ function test_designer_style_option_labels_placeholder()
 }
 
 // A label with a word that has no translation keeps its class-derived form
-// in full: no half-translated "Decoration Hiçbiri". The font style classes
-// lose their whole `fst-` prefix (they read "T italic").
+// in full: no half-translated "Sm Hiçbiri". The font style classes lose
+// their whole `fst-` prefix (they read "T italic").
 function test_designer_style_option_labels_untranslated_words_kept()
 {
 	$result = _test_sol_run(array(
-		array('', array('fw-lighter', 'text-decoration-none', 'overflow-auto', 'fst-italic', 'lh-sm', 'lh-base'), 'Default'),
-	), _test_sol_keys());
+		array('', array('overflow-auto', 'shadow-inset-sm', 'position-sticky', 'fst-italic', 'lh-sm'), 'Default'),
+	), array_merge(_test_sol_keys(), array('Italic')));
 
 	if ($result === null) {
 		return;
@@ -203,12 +203,11 @@ function test_designer_style_option_labels_untranslated_words_kept()
 
 	pg_assert_same(array(
 		array('', 'Varsayılan', false),
-		array('fw-lighter', 'Lighter', false),
-		array('text-decoration-none', 'Decoration none', false),
 		array('overflow-auto', 'Auto', false),
-		array('fst-italic', 'Italic', false),
+		array('shadow-inset-sm', 'Inset sm', false),
+		array('position-sticky', 'Sticky', false),
+		array('fst-italic', 'İtalik', false),
 		array('lh-sm', 'Küçük', false),
-		array('lh-base', 'Base', false),
 	), $result[0]['options']);
 }
 

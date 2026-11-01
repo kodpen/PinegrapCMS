@@ -6,6 +6,7 @@
     "UI Fixes": "Kullanıcı Arayüzü Düzeltmeleri",
     "UNKNOWN": "BİLİNMEYEN",
     "UPC-A barcode must be exactly 12 digits.": "UPC-A barkodu tam olarak 12 haneli olmalıdır.",
+    "UPPERCASE": "BÜYÜK HARF",
     "UPS": "UPS",
     "UPS rate request: {var:1}": "UPS fiyat isteği: {var:1}",
     "UPS rate response: {var:1}": "UPS fiyat yanıtı: {var:1}",
