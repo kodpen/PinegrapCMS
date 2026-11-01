@@ -8,4 +8,4 @@ description: pg_seo_compose() must get all four groups wherever the same SEO sco
 - `api.php designer/seo_check` called it with two arguments (60/40) while `pg_seo_recalculate()` used four: designer showed 48, pages list 46.
 
 ## What does the live check feed now?
-- All four. Meta and structure come from the canvas; link (`page.seo_link_score`) and speed (`pg_seo_evaluate_speed`) are read from the SAVED row, since both are measured from saved markup and incoming traffic and cannot be known before saving. The panel writes all four groups.
+- All four. Meta comes from the editor's fields and structure from the draft rendered by the server (`seo-check-draft-render.md`; the canvas markup for a page not saved yet); link (`page.seo_link_score`) and speed (`pg_seo_evaluate_speed`) are read from the SAVED row, since both are measured from saved markup and incoming traffic and cannot be known before saving. The panel writes all four groups.

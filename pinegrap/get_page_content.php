@@ -41,6 +41,13 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
     // or was deleted), in which case there is no row here at all.
     $row = mysqli_fetch_assoc($result);
 
+    // The visual editor's SEO check draws the page it holds, saved or not
+    // (includes/fn/seo_draft.php). Only in a background render: a visitor's
+    // request never reads a draft.
+    if (function_exists('pg_seo_draft_override') && pg_seo_rendering()) {
+        $row = pg_seo_draft_apply($row, pg_seo_draft_override());
+    }
+
     $page_name = $row['page_name'] ?? '';
     $page_folder = $row['page_folder'] ?? '';
     $page_style = $row['page_style'] ?? '';

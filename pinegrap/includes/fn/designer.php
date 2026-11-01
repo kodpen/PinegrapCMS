@@ -3510,33 +3510,12 @@ function pg_designer_save_page($style_id, $page, $user, $dry_run = false)
     // only what is allowed needs no such list — a change that is not copied
     // has not happened.
     if (is_array($tree) && $restricted) {
-        if ($page_id <= 0) {
-            // No stored page to merge into, and a content-level operator has
-            // no business creating one.
-            return array('ok' => false, 'page_id' => 0,
-                'errors' => array(lang('You do not have access to add pages.')), 'warnings' => $warnings);
+        $gate = pg_designer_gate_tree($tree, $page_id, $user);
+        if (!$gate['ok']) {
+            return array('ok' => false, 'page_id' => max(0, $page_id),
+                'errors' => array($gate['error']), 'warnings' => $warnings);
         }
-        if (pg_designer_page_access($page_id, $user) !== 'edit') {
-            return array('ok' => false, 'page_id' => $page_id,
-                'errors' => array(lang('You do not have access to edit this page.')), 'warnings' => $warnings);
-        }
-        $stored_json = pg_page_tree_json($page_id);
-        $stored_tree = ($stored_json !== '') ? json_decode($stored_json, true) : null;
-        if (is_array($stored_tree)) {
-            $tree = pg_designer_merge_restricted_tree($stored_tree, $tree);
-        } else {
-            // No stored tree to merge into (a page saved before the per-page
-            // tree existed). The submission is written, minus the nodes this
-            // level may never create: a custom_php node is eval()ed on every
-            // public render, so accepting one here would be code execution.
-            // The same marker typed into an ordinary text prop is defused,
-            // since the renderers emit that text into the page raw.
-            if (_pg_dm_locked_kind($tree) !== '') {
-                $tree = array('type' => 'root', 'props' => array(), 'children' => array());
-            }
-            pg_designer_drop_locked_nodes($tree);
-            _pg_dm_neutralise_markers($tree);
-        }
+        $tree = $gate['tree'];
     }
 
     // After the merge, so a content-level operator's note is stamped too, and
@@ -9538,6 +9517,30 @@ function pg_designer_preview_input($page_id, $settings, $access)
 }
 
 /**
+ * The editor's widget payload as pg_sw_preview_overrides() rows: sid =>
+ * tree_json and settings (a `tab:` page reads as nothing chosen), at most
+ * 40. Shared by the Preview and the SEO check on the draft. Pure.
+ *
+ * @param array $widgets [{id, tree_json, system_region_config}]
+ * @return array sid => array(tree_json, cfg)
+ */
+function pg_designer_preview_override_rows($widgets)
+{
+    $overrides = array();
+    foreach ((array)$widgets as $w) {
+        if (!is_array($w) || count($overrides) >= 40) continue;
+        $sid = isset($w['id']) ? (int)$w['id'] : 0;
+        if ($sid <= 0) continue;
+        $cfg = isset($w['system_region_config']) ? json_decode((string)$w['system_region_config'], true) : null;
+        $overrides[$sid] = array(
+            'tree_json' => isset($w['tree_json']) ? (string)$w['tree_json'] : '',
+            'cfg'       => is_array($cfg) ? _pg_preview_drop_tab_refs($cfg) : null,
+        );
+    }
+    return $overrides;
+}
+
+/**
  * The editor's Preview: the system widgets on a page, rendered by the server,
  * which the blob page the editor opens cannot do.
  *
@@ -9568,17 +9571,7 @@ function pg_designer_preview_input($page_id, $settings, $access)
 function pg_designer_preview_widgets($page_id, $widgets, $comment_settings = array())
 {
     $page_id   = (int)$page_id;
-    $overrides = array();
-    foreach ((array)$widgets as $w) {
-        if (!is_array($w) || count($overrides) >= 40) continue;
-        $sid = isset($w['id']) ? (int)$w['id'] : 0;
-        if ($sid <= 0) continue;
-        $cfg = isset($w['system_region_config']) ? json_decode((string)$w['system_region_config'], true) : null;
-        $overrides[$sid] = array(
-            'tree_json' => isset($w['tree_json']) ? (string)$w['tree_json'] : '',
-            'cfg'       => is_array($cfg) ? _pg_preview_drop_tab_refs($cfg) : null,
-        );
-    }
+    $overrides = pg_designer_preview_override_rows($widgets);
     if (empty($overrides)) return array();
 
     $page_name = ($page_id > 0) ? (string)db_value("SELECT page_name FROM page WHERE page_id = '" . $page_id . "' LIMIT 1") : '';

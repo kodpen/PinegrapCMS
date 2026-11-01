@@ -1314,12 +1314,7 @@ function pg_seo_analyze_page($page_id)
         && $folder_public
         && (((string) $page_row['folder_archived']) !== '1');
 
-    $context = array(
-        'title' => $page_row['page_title'],
-        'in_sitemap' => $in_sitemap,
-        'open_graph' => (!defined('OPEN_GRAPH') || OPEN_GRAPH),
-        'expect_jsonld' => in_array($page_row['page_type'], array('catalog', 'catalog detail', 'order form', 'express order')),
-    );
+    $context = pg_seo_document_context($page_row['page_title'], $in_sitemap, $page_row['page_type']);
 
     $render = pg_seo_render_page($page_id, $page_row);
 
@@ -1329,6 +1324,22 @@ function pg_seo_analyze_page($page_id)
     }
 
     return pg_seo_analyze_rendered_page($page_id, $page_row, $context, $render['html'], $render['error']);
+}
+
+// What pg_seo_analyze_html() needs to know of a whole rendered page that the
+// markup cannot say: the title (h1_equals_title), whether it is in the site
+// map (noindex_but_in_sitemap), whether the site writes Open Graph tags, and
+// whether its type should carry structured data. One builder for the
+// structure pass and the editor's check on the draft, so both judge a page
+// against the same context.
+function pg_seo_document_context($title, $in_sitemap, $page_type)
+{
+    return array(
+        'title' => (string) $title,
+        'in_sitemap' => (bool) $in_sitemap,
+        'open_graph' => (!defined('OPEN_GRAPH') || OPEN_GRAPH),
+        'expect_jsonld' => in_array((string) $page_type, array('catalog', 'catalog detail', 'order form', 'express order'), true),
+    );
 }
 
 // Render a page in process the way a signed-out visitor sees it.

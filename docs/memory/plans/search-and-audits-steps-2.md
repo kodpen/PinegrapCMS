@@ -13,7 +13,7 @@ description: Steps SA6-SA13 of plans/search-and-audits.md: rule registry, same i
 - SA7 (S) Same pages, same visitor. After SA5. Done (#4771).
   - Which page types and folders each pass covers is written in one place: the index keeps private folders (search filters its rows by folder), the audits public ones. The structure and accessibility buttons render anonymous, as the jobs do: today they render as the signed-in manager (`view_pages.php`), so a gated page's findings depend on who pressed.
 
-- SA8 (M) The editor runs the server checks on the draft. After SA6 and SA7.
+- SA8 (M) The editor runs the server checks on the draft. After SA6 and SA7. Done (#4786).
   - `seo_check` renders the draft on the server (its tree, widgets as the Preview draws them with `pg_designer_preview_widgets()`, shared components, the head) under the background renderer's rules and runs the structure rules in `document` mode with the page's Open Graph and JSON-LD context. The document-only findings carried over from the stored ones go; link and speed stay read from the saved page.
   - Tests: the draft render and the endpoint's composition beside the parity checks of `designer/seo-score-live-check-parity.md`.
 
