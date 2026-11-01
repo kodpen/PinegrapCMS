@@ -27,7 +27,11 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 //
 // WebP on its own only changes the format: nothing is scaled, because
 // "convert to webp" is not a request to make the picture smaller on the page.
-function pg_explorer_upload_image_options($image_settings, $optimize, $to_webp, $file_extension)
+//
+// The site's upload cap (pg_image_upload_cap_options(), null when it does not
+// apply) scales a picture over it down whatever the window asked for, except
+// under optimize, whose product ceiling is its own setting.
+function pg_explorer_upload_image_options($image_settings, $optimize, $to_webp, $file_extension, $upload_cap = null)
 {
     $image_options = array();
 
@@ -37,6 +41,10 @@ function pg_explorer_upload_image_options($image_settings, $optimize, $to_webp, 
         $image_options['quality'] = $image_settings['resize_quality'];
     } elseif (isset($image_settings['resize_quality'])) {
         $image_options['quality'] = $image_settings['resize_quality'];
+    }
+
+    if (!$optimize && is_array($upload_cap)) {
+        $image_options = array_merge($image_options, $upload_cap);
     }
 
     if ($to_webp && ($file_extension != 'webp')) {
@@ -110,14 +118,23 @@ function pg_explorer_handle_upload($type, $request, $user)
 
     $image_report = null;
 
-    if ($is_image && ($to_webp || $optimize)) {
+    // Measured before anything is decoded, so a picture under the cap is not
+    // re-encoded for it.
+    $upload_cap = null;
+
+    if ($is_image && !$optimize) {
+        $cap_size = @getimagesize($file_path);
+        $upload_cap = $cap_size ? pg_image_upload_cap_options((int) $cap_size[0], (int) $cap_size[1], $file_extension, pg_image_settings()) : null;
+    }
+
+    if ($is_image && ($to_webp || $optimize || $upload_cap)) {
 
         // A 24 megapixel photo takes a couple of seconds to resample,
         // and an upload is a queue of them. The same allowance
         // add_file.php gives itself for the same work.
         @set_time_limit(120);
 
-        $image_options = pg_explorer_upload_image_options(pg_image_settings(), $optimize, $to_webp, $file_extension);
+        $image_options = pg_explorer_upload_image_options(pg_image_settings(), $optimize, $to_webp, $file_extension, $upload_cap);
 
 
         $image_report = pg_process_image_file($file_path, $image_options);
@@ -173,9 +190,10 @@ function pg_explorer_handle_upload($type, $request, $user)
 
     // Flagged optimized so the Files screen does not offer to do it
     // again -- the badge there would promise a saving already taken.
-    // Only for a real optimize: a plain format change has not been
-    // held to the site's quality profile.
-    $optimized_flag = (($optimize) && ($image_report) && ($image_report['status'] === 'success')) ? '1' : '0';
+    // Only for a real optimize or a scale-down to the upload cap: a
+    // plain format change has not been held to the site's quality profile.
+    $optimized_flag = (($image_report) && ($image_report['status'] === 'success')
+        && ($optimize || ($upload_cap && $image_report['resized']))) ? '1' : '0';
 
     // A designer's flag, and only a designer's: role 2 and 3 have no
     // say over which files the design owns. Same gate add_file.php has.

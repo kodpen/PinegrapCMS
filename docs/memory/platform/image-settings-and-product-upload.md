@@ -10,10 +10,11 @@ description: Image config keys and defaults, product upload pipeline (image_prof
 - `image_product_min_dimension` = 500: warning threshold (Merchant Center 2027).
 - `image_file_resize_trigger` = 2560: the resize button on files appears above this.
 - `image_file_max_dimension` = 1920: resize target.
+- `image_upload_max_dimension` = 0 (2560 on a new install): upload cap, `image-upload-cap.md`.
 - `image_resize_quality` = 82: only when actually shrinking. Plain optimize keeps the old size ladder (85/75/65/60).
 
 ## How does the product upload path work?
-- `add_file.php` runs the pipeline only with the opt-in field `image_profile=product`, sent ONLY by the product and variant-set screens. Every other upload (file manager, picker dropzone, `editor_select_image.php`) is stored byte-for-byte.
+- `add_file.php` runs the pipeline only with the opt-in field `image_profile=product`, sent ONLY by the product and variant-set screens. Every other upload (file manager, picker dropzone, `editor_select_image.php`) is stored byte-for-byte unless the site's upload cap is set and the picture is over it (`image-upload-cap.md`).
 - The record row is written at upload time with `optimized = 1` + `image_width/height`, so the Files screen shows no badge promising a gain already taken.
 - An image picked from the library is never touched (it may be used on a dozen other pages) and gets no size warning. Only a product-screen upload is checked: `add_file.php` answers `too_small` when the shortest edge is under `image_product_min_dimension`, and `product_builder.js` lists those files (`image_too_small`); the upload is still accepted (Merchant Center is not mandatory).
 

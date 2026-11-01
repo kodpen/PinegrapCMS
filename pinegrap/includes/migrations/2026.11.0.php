@@ -131,6 +131,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_commission_cancel_marker(); // 11.0.139
 	upgrade_2026_11_0_file_versions();           // 11.0.140
 	upgrade_2026_11_0_form_field_product_group(); // 11.0.141
+	upgrade_2026_11_0_image_upload_max_dimension(); // 11.0.142
 
 }
 
@@ -4250,5 +4251,21 @@ function upgrade_2026_11_0_form_field_product_group() {
 	}
 
 	install_note('Variant sets: the fields of a variant set\'s form template are stored under a form type of their own, so their edit screen opens again and the template is applied to every variant.');
+
+}
+
+// The upload cap (2026.11.0, 11.0.142; includes/fn/image.php, Site Settings ›
+// Features › Image Optimization).
+//
+// image_upload_max_dimension is the long edge in pixels above which an
+// uploaded picture is scaled down in its own format (pg_image_upload_shrink());
+// 0 leaves every upload as it arrived. A running site keeps storing what it
+// stored before, so the column starts at 0; a new site gets 2560 from the
+// installer, after this step. The product photo ceiling is its own column.
+function upgrade_2026_11_0_image_upload_max_dimension() {
+
+	install_add_column('config', 'image_upload_max_dimension', "SMALLINT UNSIGNED NOT NULL DEFAULT 0");
+
+	install_note('Images: uploaded pictures larger than a set size can now be scaled down on upload, under Site Settings › Features › Image Optimization. It stays off on this site until a size is set.');
 
 }

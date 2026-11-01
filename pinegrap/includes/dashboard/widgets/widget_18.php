@@ -387,6 +387,22 @@ function pg_dashboard_widget_18($request, $user)
         </div>';
     }
 
+    // The upload cap keeps the next photo off this list (Site
+    // Settings › Features › Image Optimization). Pointed to while it
+    // is off and there is something to clear, for the roles that may
+    // open the settings.
+    $fm_upload_cap_note = '';
+
+    if ($fm_optimize_items && ($user['role'] < 3)
+        && ($fm_image_settings['upload_max_dimension'] === 0)
+        && pg_schema_has('config', 'image_upload_max_dimension')) {
+        $fm_upload_cap_note = '
+        <div class="px-5 pb-3">
+            <a href="' . h(pg_settings_link('features', 'pgset-images')) . '" class="text-decoration-none" style="font-size:.625rem">'
+            . lang('Shrink large pictures on upload') . ' <i class="bi bi-arrow-right-short" aria-hidden="true"></i></a>
+        </div>';
+    }
+
     $output_data = '
     <div class="card-body p-0 d-flex flex-column" style="overflow-x:hidden;overflow-y:auto">
         <div class="d-flex align-items-center justify-content-between px-5 pt-3 pb-1">
@@ -394,7 +410,7 @@ function pg_dashboard_widget_18($request, $user)
             <span class="fg-secondary" style="font-size:.625rem">' . pg_format_number($fm_optimize_total, 0) . '</span>
         </div>
         <div class="px-5 pb-1">' . $fm_optimize_rows . '</div>
-        ' . $fm_optimizer_note . '
+        ' . $fm_optimizer_note . $fm_upload_cap_note . '
         <div class="d-flex align-items-center justify-content-between px-5 pt-3 pb-1 border-top">
             <span class="fg-secondary" style="font-size:.6875rem">' . lang('Largest files') . '</span>
             <span class="fg-secondary" style="font-size:.625rem">' . lang(array('string' => 'Top {var:1}', 'vars' => pg_format_number($fm_largest_limit, 0))) . '</span>

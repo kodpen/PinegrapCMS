@@ -857,6 +857,7 @@
     "image ({var:1}) could not be retrieved from Editor": "({var:1}) görseli Düzenleyiciden alınamadı",
     "image ({var:1}) was optimized on upload ({var:2} -> {var:3})": "görsel ({var:1}) yüklenirken optimize edildi ({var:2} -> {var:3})",
     "image ({var:1}) was rotated": "görsel ({var:1}) döndürüldü",
+    "image ({var:1}) was scaled down on upload to {var:2} x {var:3} pixels ({var:4} -> {var:5})": "görsel ({var:1}) yüklenirken {var:2} x {var:3} piksele küçültüldü ({var:4} -> {var:5})",
     "image, photo, optimization, webp, avif, responsive, quality, size, upload, watermark": "image, photo, optimization, webp, avif, responsive, quality, size, upload, watermark, resim, gorsel, görsel, foto, optimizasyon, duyarlı, duyarli, kalite, boyut, yukleme, filigran",
     "image, photo, optimization, webp, quality, size, upload, watermark": "image, photo, optimization, webp, quality, size, upload, watermark, resim, gorsel, görsel, foto, optimizasyon, kalite, boyut, yukleme, filigran",
     "img alt is missing": "img alt eksik",

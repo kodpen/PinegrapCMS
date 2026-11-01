@@ -76,6 +76,14 @@ if (!defined('PG_SETTINGS_ENTRY')) {
              image_resize_quality = " . $image_quality . ",";
     }
 
+    // The upload cap (2026.11.0, 11.0.142): an empty box or 0 is off, anything
+    // else is held to the range of the other limits (pg_image_upload_cap_clamp()).
+    if (pg_image_settings_ready() && pg_schema_has('config', 'image_upload_max_dimension') && array_key_exists('image_upload_max_dimension', $_POST)) {
+
+        $sql_image_settings .=
+            "image_upload_max_dimension = " . pg_image_upload_cap_clamp(pg_parse_whole_number(trim((string) post_value('image_upload_max_dimension')), 20000)) . ",";
+    }
+
     // How pictures are delivered (2026.11.0). Clamped by the function
     // get_file.php and the markup read them through, so what is stored is
     // what both use. A changed format set changes the <source>s the pages'

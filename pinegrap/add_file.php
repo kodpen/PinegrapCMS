@@ -474,6 +474,9 @@ if (!$_POST) {
     // editor's upload box — keeps landing byte for byte as the visitor sent
     // it, because a file in the library can be a design asset or a print
     // original and resizing one behind the operator's back is not a service.
+    // The one exception is the site's upload cap, which the operator sets in
+    // the image card: a picture over it is scaled down in its own format
+    // (pg_image_upload_shrink(), off unless a cap is set).
     $image_profile = (($_POST['image_profile'] ?? '') === 'product') ? 'product' : '';
 
     $image_settings = pg_image_settings();

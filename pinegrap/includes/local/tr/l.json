@@ -708,6 +708,7 @@
     "Longer or thicker hair needs more time and product. Your stylist tells you the exact price before starting.": "Uzun ya da gür saç daha fazla zaman ve ürün ister. Uzmanınız başlamadan önce kesin fiyatı söyler.",
     "Longer than the account card holds ({var:1} characters).": "Cari kartının tutabileceğinden uzun ({var:1} karakter).",
     "Longest Ban": "En Uzun Yasak",
+    "Longest edge. A picture uploaded above this is scaled down on upload in its own format, upright and keeping its proportions. Leave empty to store every upload as it arrives. Product photos keep their own limit.": "Uzun kenar. Bu değerin üzerinde yüklenen görsel, yüklenirken kendi biçiminde, dik konumda ve oranları korunarak küçültülür. Her yüklemeyi geldiği gibi saklamak için boş bırakın. Ürün fotoğrafları kendi sınırlarını korur.",
     "Longest edge. A product photo above this is scaled down on upload, keeping its proportions.": "Uzun kenar. Bu değerin üzerindeki ürün fotoğrafı yüklenirken oranları korunarak küçültülür.",
     "Look": "Görünüm",
     "Look 01": "Kombin 01",

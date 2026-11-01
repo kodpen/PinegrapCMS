@@ -967,7 +967,8 @@ function pg_upload_limit_hint($app_max = 0)
  * In order: a name the web server would run is refused, a file over the
  * biggest single upload this server accepts is refused, the name is
  * prepared and made unique, the bytes are copied in, a product photo is
- * processed (image_profile 'product'), and only then is the row written and
+ * processed (image_profile 'product') or any other picture brought down to
+ * the upload cap (pg_image_upload_shrink()), and only then is the row written and
  * announced. Nothing is recorded for a file that is not on the disk.
  *
  * The caller has checked the token and the person's right to the folder,
@@ -1075,6 +1076,42 @@ function pg_file_store_upload($source_path, $file_name, $file_size, $options)
                         convert_bytes_to_string($image_report['bytes_before'], 'auto'),
                         convert_bytes_to_string($image_report['bytes_after'], 'auto')))));
             }
+        }
+
+    } elseif ($image_settings) {
+
+        // Every other picture is stored as it arrived unless the site has an
+        // upload cap and its long edge is over it: then it is scaled down in
+        // its own format (pg_image_upload_shrink()). The product ceiling
+        // above is its own setting and is not touched by the cap.
+        $image_report = pg_image_upload_shrink($file_path, $file_extension, $image_settings);
+
+        if ($image_report && ($image_report['status'] === 'success') && $image_report['resized']) {
+
+            $file_size = filesize($file_path);
+
+            $sql_image_1 = "optimized, image_width, image_height, optimization_percent,";
+            $sql_image_2 =
+                "'1',
+                 '" . (int) $image_report['width'] . "',
+                 '" . (int) $image_report['height'] . "',
+                 '0',";
+
+            log_activity(lang(array(
+                'string' => 'image ({var:1}) was scaled down on upload to {var:2} x {var:3} pixels ({var:4} -> {var:5})',
+                'vars'   => array(
+                    $file_name,
+                    (int) $image_report['width'],
+                    (int) $image_report['height'],
+                    convert_bytes_to_string($image_report['bytes_before'], 'auto'),
+                    convert_bytes_to_string($image_report['bytes_after'], 'auto')))));
+
+        } else {
+
+            // Not scaled: the file is the one that arrived, and the
+            // report's measurements are not written as if it had been
+            // processed.
+            $image_report = null;
         }
     }
 

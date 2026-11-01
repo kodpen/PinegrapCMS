@@ -255,7 +255,8 @@ function pg_image_settings($recheck = false)
         'resize_quality'        => 82,
         'derivative_formats'    => 3,
         'quality_webp'          => 80,
-        'quality_avif'          => 50);
+        'quality_avif'          => 50,
+        'upload_max_dimension'  => 0);
 
     if (pg_image_settings_ready($recheck)) {
 
@@ -291,6 +292,14 @@ function pg_image_settings($recheck = false)
     // image the shrink would leave exactly as it is.
     $settings['file_resize_trigger'] = max($settings['file_max_dimension'], min(20000, $settings['file_resize_trigger']));
 
+    // The upload cap (2026.11.0, 11.0.142): 0 leaves every upload as it
+    // arrived, the default of a running site until the operator sets one.
+    if (pg_schema_has('config', 'image_upload_max_dimension')) {
+        $settings['upload_max_dimension'] = (int) db_value("SELECT image_upload_max_dimension FROM config LIMIT 1");
+    }
+
+    $settings['upload_max_dimension'] = pg_image_upload_cap_clamp($settings['upload_max_dimension']);
+
     // How derivatives are delivered (includes/image_engine.php). Clamped by
     // the same function get_file.php uses on its own read of the row, so the
     // markup and the files it asks for never disagree.
@@ -325,6 +334,103 @@ function pg_image_settings($recheck = false)
     $cached = $settings;
 
     return $cached;
+}
+
+
+/**
+ * The upload cap as it may be stored: 0 (off), else 200 to 20000 pixels on
+ * the long edge, the range of the other image limits. A negative or
+ * unreadable value is off, never a ceiling of a few pixels.
+ *
+ * @param mixed $value
+ * @return int
+ */
+function pg_image_upload_cap_clamp($value)
+{
+    $value = is_numeric($value) ? (int) $value : 0;
+
+    if ($value <= 0) {
+        return 0;
+    }
+
+    return max(200, min(20000, $value));
+}
+
+
+/**
+ * The engine options that bring an uploaded picture down to the upload cap,
+ * or null when it is stored as it arrived: the cap is off, the picture is not
+ * one the engine writes back in its own format, or its long edge is not over
+ * the cap.
+ *
+ * Measured before the engine runs, so a picture under the cap is never
+ * recompressed: the cap promises fewer pixels, not a quiet re-encode. The
+ * format stays the picture's own; the engine turns it upright from its EXIF
+ * orientation and never writes a result heavier than the original. The long
+ * edge is the same whichever way the camera stored the picture.
+ *
+ * @param int    $width          from getimagesize(), 0 when unread
+ * @param int    $height
+ * @param string $file_extension the stored name's extension
+ * @param array  $image_settings pg_image_settings()
+ * @return array|null max_dimension, quality
+ */
+function pg_image_upload_cap_options($width, $height, $file_extension, $image_settings)
+{
+    $cap = isset($image_settings['upload_max_dimension']) ? pg_image_upload_cap_clamp($image_settings['upload_max_dimension']) : 0;
+
+    // Formats the engine both reads and writes back as themselves; a TIFF
+    // is read for its size only and could not be written.
+    $types = array('jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp');
+
+    if (($cap === 0) || !in_array(strtolower((string) $file_extension), $types, true)) {
+        return null;
+    }
+
+    if (max((int) $width, (int) $height) <= $cap) {
+        return null;
+    }
+
+    return array(
+        'max_dimension' => $cap,
+        'quality'       => isset($image_settings['resize_quality']) ? (int) $image_settings['resize_quality'] : 82);
+}
+
+
+/**
+ * Shrinks a picture that has just been written to the file directory when
+ * its long edge is over the upload cap (pg_image_upload_cap_options()).
+ *
+ * @param string $file_path      the stored file
+ * @param string $file_extension its extension
+ * @param array  $image_settings pg_image_settings()
+ * @return array|null the engine's report, null when nothing was asked of it
+ */
+function pg_image_upload_shrink($file_path, $file_extension, $image_settings)
+{
+    $size = @getimagesize($file_path);
+
+    if (!$size) {
+        return null;
+    }
+
+    $options = pg_image_upload_cap_options((int) $size[0], (int) $size[1], $file_extension, $image_settings);
+
+    if ($options === null) {
+        return null;
+    }
+
+    // A 24 megapixel photo takes a couple of seconds to resample; a host
+    // may have removed the function.
+    if (function_exists('set_time_limit')) {
+        @set_time_limit(120);
+    }
+
+    $report = pg_process_image_file($file_path, $options);
+
+    @clearstatcache(true, $file_path);
+
+    return $report;
 }
 
 

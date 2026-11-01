@@ -143,11 +143,29 @@ if (!@copy($file_temp_name, FILE_DIRECTORY_PATH . '/' . $file_name)) {
         'vars'   => array(pg_basename((string) $_FILES['upload']['name'])))));
 }
 
-// insert file data into file table
-$query =    "INSERT INTO files ".
-            "(name, folder, type, size, user, timestamp, design) ".
-            "VALUES (?,?,?,?,?, UNIX_TIMESTAMP(), '0')";
-$result = db_q($query, array((string) $file_name, (string) $folder_id, (string) $file_extension, (string) $file_size, (string) USER_ID)) or output_error('Query failed.');
+// A picture over the site's upload cap is scaled down in its own format,
+// as on the Upload File screen (pg_image_upload_shrink()); every other file
+// is stored as it arrived.
+$image_report = pg_image_upload_shrink(FILE_DIRECTORY_PATH . '/' . $file_name, $file_extension, pg_image_settings());
+
+if ($image_report && ($image_report['status'] === 'success') && $image_report['resized']) {
+
+    $file_size = filesize(FILE_DIRECTORY_PATH . '/' . $file_name);
+
+    // insert file data into file table, with the size the engine measured
+    $query =    "INSERT INTO files ".
+                "(name, folder, type, size, optimized, image_width, image_height, optimization_percent, user, timestamp, design) ".
+                "VALUES (?,?,?,?, '1', ?, ?, '0', ?, UNIX_TIMESTAMP(), '0')";
+    $result = db_q($query, array((string) $file_name, (string) $folder_id, (string) $file_extension, (string) $file_size, (string) (int) $image_report['width'], (string) (int) $image_report['height'], (string) USER_ID)) or output_error('Query failed.');
+
+} else {
+
+    // insert file data into file table
+    $query =    "INSERT INTO files ".
+                "(name, folder, type, size, user, timestamp, design) ".
+                "VALUES (?,?,?,?,?, UNIX_TIMESTAMP(), '0')";
+    $result = db_q($query, array((string) $file_name, (string) $folder_id, (string) $file_extension, (string) $file_size, (string) USER_ID)) or output_error('Query failed.');
+}
 $file_id = mysqli_insert_id(db::$con);
 
 log_activity(lang(array('string' => 'file ({var:1}) was created', 'vars' => array($file_name))), $_SESSION['sessionusername']);
