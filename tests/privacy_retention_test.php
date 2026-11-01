@@ -51,8 +51,24 @@ function test_consent_log_trim_query_keeps_the_answer_in_force()
 		pg_assert_contains('(n.' . $column . ' = c.' . $column . ')', $query, 'same ' . $column);
 	}
 
-	pg_assert_contains('(n.id > c.id)', $query, 'a newer line');
+	pg_assert_contains('((n.created_at > c.created_at) OR ((n.created_at = c.created_at) AND (n.id > c.id)))', $query, 'a newer line');
 	pg_assert_contains('LIMIT 500', $query, 'batch');
+}
+
+// "Newer" is the order pg_consent_log_current() reads the answer in force
+// by: time first, then id. A line written later with an earlier time (an
+// IYS refusal stamped with IYS's own time) does not supersede a newer answer.
+function test_consent_log_trim_query_newer_by_time_then_id()
+{
+	$query = preg_replace('/\s+/', ' ', pg_consent_log_trim_query(1700000000, 500));
+
+	pg_assert_true(strpos($query, 'AND (n.id > c.id) )') === false, 'a higher id alone is not newer');
+
+	$older = array('id' => 11, 'created_at' => 100, 'channel' => 'email', 'purpose' => 'marketing', 'status' => 'refused');
+	$newer = array('id' => 10, 'created_at' => 200, 'channel' => 'email', 'purpose' => 'marketing', 'status' => 'granted');
+	$current = pg_consent_log_current(array($older, $newer));
+
+	pg_assert_same(10, $current['email:marketing']['id'], 'the answer in force is the newer time, not the higher id');
 }
 
 // The bounds the screen, the save and the job share.
