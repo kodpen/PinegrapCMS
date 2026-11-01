@@ -190,7 +190,7 @@ function pg_dashboard_v2_greeting($user)
             foreach ($actions as $i => $key) {
                 $shortcut = $pool[$key];
                 $count = ($shortcut['count'] !== '') ? pg_dashboard_v2_shortcut_count($shortcut['count'], $user) : 0;
-                $output .= '<a class="btn ' . (($i === 0) ? 'pg-dash-action-main' : 'btn-outline-secondary') . ' pg-dash-action" data-shortcut="' . h($key) . '" href="' . h($shortcut['url']) . '">'
+                $output .= '<a class="btn ' . (($i === 0) ? 'pg-dash-action-main' : 'btn-outline theme-secondary') . ' pg-dash-action" data-shortcut="' . h($key) . '" href="' . h($shortcut['url']) . '">'
                     . '<i class="bi ' . h($shortcut['icon']) . '" aria-hidden="true"></i> '
                     . '<span class="pg-btn-label">' . h($shortcut['label']) . (($count > 0) ? ' · ' . h(pg_format_number($count, 0)) : '') . '</span></a>';
             }
