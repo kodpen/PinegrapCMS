@@ -22,8 +22,9 @@
  *             of each PR (the --list train when none is named), merges it
  *             with --no-ff --no-commit, settles the mechanical conflicts
  *             (language files, the generated memory indexes and module
- *             list, .min.js bundles), writes the PR's changelog.txt
- *             lines from the Changelog section of its body and commits.
+ *             list, .min.js bundles, .min.css stylesheets), writes the
+ *             PR's changelog.txt lines from the Changelog section of its
+ *             body and commits.
  *             A PR already in the branch is skipped, so after a stop the
  *             same command goes on. It stops, with the merge left open, on a
  *             conflict it cannot settle or a [SCHEME] item, which is worded
@@ -649,51 +650,70 @@ function merge_train_settle()
 		}
 	}
 
-	$unmerged = merge_train_unmerged();
-	$readmes = array();
-	$bundles = array();
-	$rest = array();
+	$generated = array('index' => array(), 'script' => array(), 'style' => array());
+	$open = array('index' => false, 'script' => false, 'style' => false);
 
-	foreach ($unmerged as $path) {
-		// The memory indexes and the module list are all written by memory_index.php.
-		if (((strpos($path, 'docs/memory/') === 0) && (basename($path) === 'README.md')) || ($path === MERGE_TRAIN_MODULE_LIST)) {
-			$readmes[] = $path;
-		} elseif (substr($path, -7) === '.min.js') {
-			$bundles[] = $path;
+	foreach (merge_train_unmerged() as $path) {
+		$kind = merge_train_generated($path);
+
+		if ($kind !== '') {
+			$generated[$kind][] = $path;
 		} else {
-			$rest[] = $path;
+			// The generators read the merged sources, so they run only when
+			// those are settled: a source still in conflict holds back the
+			// generator that reads it.
+			foreach (array_keys($open) as $source) {
+				$open[$source] = $open[$source] || (merge_train_source_of($path) === $source);
+			}
 		}
 	}
 
-	// The generators read the merged sources, so they run only when those
-	// are settled: a memory file or a script still in conflict is left too.
-	$memory_open = false;
-	$script_open = false;
+	$tools = array('index' => 'tools/memory_index.php', 'script' => 'tools/build_js.php', 'style' => 'tools/build_css.php');
 
-	foreach ($rest as $path) {
-		$memory_open = $memory_open || (strpos($path, 'docs/memory/') === 0);
-		$script_open = $script_open || (substr($path, -3) === '.js');
-	}
+	foreach ($tools as $kind => $tool) {
+		if ($generated[$kind] && !$open[$kind]) {
+			merge_train_run(array(PHP_BINARY, $tool), $out);
+			fwrite(STDOUT, $out);
 
-	if ($readmes && !$memory_open) {
-		merge_train_run(array(PHP_BINARY, 'tools/memory_index.php'), $out);
-		fwrite(STDOUT, $out);
-
-		foreach ($readmes as $path) {
-			merge_train_stage_if_clean($path);
-		}
-	}
-
-	if ($bundles && !$script_open) {
-		merge_train_run(array(PHP_BINARY, 'tools/build_js.php'), $out);
-		fwrite(STDOUT, $out);
-
-		foreach ($bundles as $path) {
-			merge_train_stage_if_clean($path);
+			foreach ($generated[$kind] as $path) {
+				merge_train_stage_if_clean($path);
+			}
 		}
 	}
 
 	return merge_train_unmerged();
+}
+
+// The generator that writes a path: 'index' (the memory README indexes and
+// the module list, memory_index.php), 'script' (.min.js bundles,
+// build_js.php), 'style' (.min.css stylesheets, build_css.php), or '' for a
+// file written by hand.
+function merge_train_generated($path)
+{
+	if (((strpos($path, 'docs/memory/') === 0) && (basename($path) === 'README.md')) || ($path === MERGE_TRAIN_MODULE_LIST)) {
+		return 'index';
+	}
+
+	if (substr($path, -7) === '.min.js') {
+		return 'script';
+	}
+
+	return (substr($path, -8) === '.min.css') ? 'style' : '';
+}
+
+// The generator that reads a hand-written path ('index', 'script', 'style'
+// as above), or ''.
+function merge_train_source_of($path)
+{
+	if (strpos($path, 'docs/memory/') === 0) {
+		return 'index';
+	}
+
+	if (substr($path, -3) === '.js') {
+		return 'script';
+	}
+
+	return (substr($path, -4) === '.css') ? 'style' : '';
 }
 
 // The PRs a train branch carries since its start, from its merge commits'

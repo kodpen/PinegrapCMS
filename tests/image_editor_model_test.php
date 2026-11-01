@@ -356,13 +356,14 @@ function test_image_editor_model_layers()
 		'var box = { id: "a", type: "rect", x: 100, y: 100, w: 200, h: 100, rot: 0 };' . "\n"
 		. 'var turned = { id: "b", type: "rect", x: 100, y: 100, w: 200, h: 100, rot: 90 };' . "\n"
 		. 'var doc = { layers: [box, turned, { id: "c", type: "image", x: 0, y: 0, w: 10, h: 10, locked: true }] };' . "\n"
-		. 'var round = function (v) { return Math.round(v * 1000) / 1000; };' . "\n"
+		. 'var round = function (v) { return Math.round(v * 1000) / 1000; }, seen = null;' . "\n"
 		. 'var d = M.newDocument({}); d.source.width = 400; d.source.height = 300;' . "\n"
 		. 'd.layers = [{ id: "r", type: "rect", x: 10, y: 10, w: 50, h: 20, rot: 30 }, { id: "p", type: "image", x: 10, y: 10, w: 50, h: 20, rot: 30 }];' . "\n"
 		. 'var f = M.flipDocument(d, "x"), t = M.turnDocument(d, 1);' . "\n"
 		. 'console.log(JSON.stringify({'
 		. ' bounds: M.bounds([turned]), both: M.bounds([box, turned]),'
 		. ' hitTop: M.hitLayer(doc, 200, 140, 0).id, hitTurned: M.hitLayer(doc, 200, 240, 0).id, miss: M.hitLayer(doc, 5, 5, 0),'
+		. ' hitOwn: M.hitLayer(doc, 200, 140, 0, function (l, p) { if (l.id === "a") { seen = p; } return l.id !== "b"; }).id, seen: seen,'
 		. ' se: M.resizeBox(box, "se", 400, 300, false, 4), keep: M.resizeBox(box, "se", 400, 150, true, 4), west: M.resizeBox(box, "w", 50, 0, false, 4),'
 		. ' small: M.resizeBox(box, "e", 0, 0, false, 4), turnedEast: M.resizeBox(turned, "e", 200, 400, false, 4),'
 		. ' up: M.angleTo(box, 200, 0, false), right: M.angleTo(box, 400, 150, false), snapped: M.angleTo(box, 400, 140, true),'
@@ -385,6 +386,8 @@ function test_image_editor_model_layers()
 	pg_assert_same('b', $r['hitTop'], 'the topmost layer is hit');
 	pg_assert_same('b', $r['hitTurned'], 'a turned box is hit where it is drawn');
 	pg_assert_same(null, $r['miss'], 'a locked layer is not hit');
+	pg_assert_same('a', $r['hitOwn'], 'a type\'s own test lets a press through to the layer below');
+	pg_assert_same(array(100, 40), $r['seen'], 'the test gets the point in the layer\'s own frame');
 	pg_assert_same(array('x' => 100, 'y' => 100, 'w' => 300, 'h' => 200), $r['se'], 'the opposite corner stays');
 	pg_assert_same(array('x' => 100, 'y' => 100, 'w' => 300, 'h' => 150), $r['keep'], 'from a corner the ratio can be kept');
 	pg_assert_same(array('x' => 50, 'y' => 100, 'w' => 250, 'h' => 100), $r['west'], 'the west edge moves alone');

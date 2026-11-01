@@ -22,13 +22,44 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 }
 
 /**
+ * The parts of the editor that keep their own labels: the core, then each
+ * tool beside its script (assets/js/pg_image_editor_<part>.js), in the
+ * bundle's order. Each part's labels are pg_image_editor_strings_<part>(), at
+ * the end of this file.
+ *
+ * @return array part names
+ */
+function pg_image_editor_parts()
+{
+    return array('core', 'crop', 'adjust', 'layers', 'draw', 'text', 'sticker', 'redact', 'versions', 'artboard', 'export', 'vector');
+}
+
+/**
  * Every label of the editor, by the key the script asks for. The script holds
  * no text of its own, so the panel's language reaches it through lang() here
- * and tools/check_lang.php sees each key.
+ * and tools/check_lang.php sees each key. A key belongs to one part
+ * (tests/image_editor_includes_test.php).
  *
  * @return array key => translated text
  */
 function pg_image_editor_strings()
+{
+    $strings = array();
+
+    foreach (pg_image_editor_parts() as $part) {
+        $strings = array_merge($strings, call_user_func('pg_image_editor_strings_' . $part));
+    }
+
+    return $strings;
+}
+
+/**
+ * The core's labels: the dialog, the top bar, the rail's tool names, the
+ * view, saving, and the words the tools share (Reset, Apply, Width).
+ *
+ * @return array key => translated text
+ */
+function pg_image_editor_strings_core()
 {
     return array(
         'dialog'         => lang('Image editor'),
@@ -51,7 +82,6 @@ function pg_image_editor_strings()
         'zoomActual'     => lang('Actual size'),
         'tools'          => lang('Tools'),
         'layers'         => lang('Layers'),
-        'noLayers'       => lang('No layers yet.'),
         'closePanel'     => lang('Close the panel'),
         'loading'        => lang('Opening the image…'),
         'loadError'      => lang('The image could not be opened.'),
@@ -79,67 +109,8 @@ function pg_image_editor_strings()
         'tool_pen'       => lang('Pen'),
         'reset'          => lang('Reset'),
         'apply'          => lang('Apply'),
-        'cropRatio'      => lang('Ratio'),
-        'cropFree'       => lang('Freeform'),
-        'cropOriginal'   => lang('Original'),
-        'rotateFlip'     => lang('Rotate and flip'),
-        'rotateLeft'     => lang('Rotate left'),
-        'rotateRight'    => lang('Rotate right'),
-        'flipH'          => lang('Flip horizontally'),
-        'flipV'          => lang('Flip vertically'),
-        'straighten'     => lang('Straighten'),
-        'cropShape'      => lang('Crop shape'),
-        'shapeRect'      => lang('Rectangle'),
-        'shapeRounded'   => lang('Rounded corners'),
-        'shapeCircle'    => lang('Circle'),
-        'outputSize'     => lang('Output size'),
         'width'          => lang('Width'),
         'height'         => lang('Height'),
-        'adjustments'    => lang('Adjustments'),
-        'filters'        => lang('Filters'),
-        'details'        => lang('Details'),
-        'adj_brightness' => lang('Brightness'),
-        'adj_contrast'   => lang('Contrast'),
-        'adj_saturation' => lang('Saturation'),
-        'adj_exposure'   => lang('Exposure'),
-        'adj_temperature' => lang('Temperature'),
-        'adj_gamma'      => lang('Gamma'),
-        'adj_vignette'   => lang('Vignette'),
-        'adj_sharpen'    => lang('Sharpen'),
-        'filter_none'    => lang('Original'),
-        'filter_mono'    => lang('Black and white'),
-        'filter_sepia'   => lang('Sepia'),
-        'filter_cool'    => lang('Cool'),
-        'filter_warm'    => lang('Warm'),
-        'filter_fade'    => lang('Faded'),
-        'filter_vivid'   => lang('Vivid'),
-        'filter_noir'    => lang('Noir'),
-        'filter_chrome'  => lang('Chrome'),
-        'hintAdjust'     => lang('Changes show at once. Double-click a slider to set it back to 0.'),
-        'hintSelect'     => lang('Click a layer to select it, with Shift to add more. Drag to move it; the handles resize and turn it. Ctrl+V pastes a picture.'),
-        'layer_image'    => lang('Picture'),
-        'rotate'         => lang('Rotate'),
-        'show'           => lang('Show'),
-        'hide'           => lang('Hide'),
-        'lock'           => lang('Lock'),
-        'unlock'         => lang('Unlock'),
-        'arrange'        => lang('Arrange'),
-        'bringFront'     => lang('Bring to front'),
-        'bringForward'   => lang('Bring forward'),
-        'sendBackward'   => lang('Send backward'),
-        'sendBack'       => lang('Send to back'),
-        'align'          => lang('Align'),
-        'alignLeft'      => lang('Align left'),
-        'alignCenter'    => lang('Align center'),
-        'alignRight'     => lang('Align right'),
-        'alignTop'       => lang('Align top'),
-        'alignMiddle'    => lang('Align middle'),
-        'alignBottom'    => lang('Align bottom'),
-        'distributeX'    => lang('Distribute horizontally'),
-        'distributeY'    => lang('Distribute vertically'),
-        'opacity'        => lang('Layer opacity'),
-        'duplicate'      => lang('Duplicate'),
-        'delete'         => lang('Delete'),
     );
 }
 
@@ -966,7 +937,10 @@ function pg_image_editor_save($request, $user)
  *   { token, action: 'save', mode: 'replace'|'copy'|'new', file_id | folder_id,
  *     doc, overlay?, picture? and name? (new) }
  *       -> { status, mode, id, name, folder, url, width, height, size }
+ *   { token, action: '<name>', … }
+ *       -> pg_image_editor_action_<name>($request, $user), a tool's own
  *
+
  * @param string $body the raw request body
  * @param array  $user validate_user()
  * @return array array(payload, HTTP status)
@@ -1017,5 +991,213 @@ function pg_image_editor_api($body, $user)
         return pg_image_editor_save($request, $user);
     }
 
+    // Any other action is a tool's, pg_image_editor_action_<name>($request,
+    // $user) at the end of this file. The name is checked first, so a request
+    // reaches only those functions.
+    if (preg_match('/^[a-z][a-z_]{0,30}$/', $action) && function_exists('pg_image_editor_action_' . $action)) {
+        return call_user_func('pg_image_editor_action_' . $action, $request, $user);
+    }
+
     return pg_image_editor_refusal(lang('Invalid request.'));
+}
+
+// ---- The tools' own parts ----
+// Each tool keeps its labels, and the API actions only it asks for
+// (pg_image_editor_action_<name>(), reached through pg_image_editor_api()),
+// under its own line below, so tools built side by side do not change the
+// same lines. The labels of a layer type are layer_<type>.
+
+// -- Crop (pg_image_editor_crop.js) --
+
+/**
+ * The crop tool: labels.
+ *
+ * @return array key => translated text
+ */
+function pg_image_editor_strings_crop()
+{
+    return array(
+        'cropRatio'      => lang('Ratio'),
+        'cropFree'       => lang('Freeform'),
+        'cropOriginal'   => lang('Original'),
+        'rotateFlip'     => lang('Rotate and flip'),
+        'rotateLeft'     => lang('Rotate left'),
+        'rotateRight'    => lang('Rotate right'),
+        'flipH'          => lang('Flip horizontally'),
+        'flipV'          => lang('Flip vertically'),
+        'straighten'     => lang('Straighten'),
+        'cropShape'      => lang('Crop shape'),
+        'shapeRect'      => lang('Rectangle'),
+        'shapeRounded'   => lang('Rounded corners'),
+        'shapeCircle'    => lang('Circle'),
+        'outputSize'     => lang('Output size'),
+    );
+}
+
+// -- Adjust (pg_image_editor_adjust.js) --
+
+/**
+ * The Adjust tool: labels.
+ *
+ * @return array key => translated text
+ */
+function pg_image_editor_strings_adjust()
+{
+    return array(
+        'adjustments'     => lang('Adjustments'),
+        'filters'         => lang('Filters'),
+        'details'         => lang('Details'),
+        'adj_brightness'  => lang('Brightness'),
+        'adj_contrast'    => lang('Contrast'),
+        'adj_saturation'  => lang('Saturation'),
+        'adj_exposure'    => lang('Exposure'),
+        'adj_temperature' => lang('Temperature'),
+        'adj_gamma'       => lang('Gamma'),
+        'adj_vignette'    => lang('Vignette'),
+        'adj_sharpen'     => lang('Sharpen'),
+        'filter_none'     => lang('Original'),
+        'filter_mono'     => lang('Black and white'),
+        'filter_sepia'    => lang('Sepia'),
+        'filter_cool'     => lang('Cool'),
+        'filter_warm'     => lang('Warm'),
+        'filter_fade'     => lang('Faded'),
+        'filter_vivid'    => lang('Vivid'),
+        'filter_noir'     => lang('Noir'),
+        'filter_chrome'   => lang('Chrome'),
+        'hintAdjust'      => lang('Changes show at once. Double-click a slider to set it back to 0.'),
+    );
+}
+
+// -- Layers and Select (pg_image_editor_layers.js) --
+
+/**
+ * The layers and the Select tool: labels.
+ *
+ * @return array key => translated text
+ */
+function pg_image_editor_strings_layers()
+{
+    return array(
+        'noLayers'       => lang('No layers yet.'),
+        'hintSelect'     => lang('Click a layer to select it, with Shift to add more. Drag to move it; the handles resize and turn it. Ctrl+V pastes a picture.'),
+        'layer_image'    => lang('Picture'),
+        'rotate'         => lang('Rotate'),
+        'show'           => lang('Show'),
+        'hide'           => lang('Hide'),
+        'lock'           => lang('Lock'),
+        'unlock'         => lang('Unlock'),
+        'arrange'        => lang('Arrange'),
+        'bringFront'     => lang('Bring to front'),
+        'bringForward'   => lang('Bring forward'),
+        'sendBackward'   => lang('Send backward'),
+        'sendBack'       => lang('Send to back'),
+        'align'          => lang('Align'),
+        'alignLeft'      => lang('Align left'),
+        'alignCenter'    => lang('Align center'),
+        'alignRight'     => lang('Align right'),
+        'alignTop'       => lang('Align top'),
+        'alignMiddle'    => lang('Align middle'),
+        'alignBottom'    => lang('Align bottom'),
+        'distributeX'    => lang('Distribute horizontally'),
+        'distributeY'    => lang('Distribute vertically'),
+        'opacity'        => lang('Layer opacity'),
+        'duplicate'      => lang('Duplicate'),
+        'delete'         => lang('Delete'),
+    );
+}
+
+// -- Draw (pg_image_editor_draw.js) --
+
+/**
+ * The drawing tool and its mini bar kinds: labels.
+ *
+ * @return array key => translated text
+ */
+function pg_image_editor_strings_draw()
+{
+    return array();
+}
+
+// -- Text (pg_image_editor_text.js) --
+
+/**
+ * The text tool: labels.
+ *
+ * @return array key => translated text
+ */
+function pg_image_editor_strings_text()
+{
+    return array();
+}
+
+// -- Stickers and frames (pg_image_editor_sticker.js) --
+
+/**
+ * The sticker and frame tools: labels.
+ *
+ * @return array key => translated text
+ */
+function pg_image_editor_strings_sticker()
+{
+    return array();
+}
+
+// -- Redact (pg_image_editor_redact.js) --
+
+/**
+ * The redaction tool: labels.
+ *
+ * @return array key => translated text
+ */
+function pg_image_editor_strings_redact()
+{
+    return array();
+}
+
+// -- Versions (pg_image_editor_versions.js) --
+
+/**
+ * The versions drawer: labels.
+ *
+ * @return array key => translated text
+ */
+function pg_image_editor_strings_versions()
+{
+    return array();
+}
+
+// -- Canvas and artboard (pg_image_editor_artboard.js) --
+
+/**
+ * The canvas, artboard and Image tools: labels.
+ *
+ * @return array key => translated text
+ */
+function pg_image_editor_strings_artboard()
+{
+    return array();
+}
+
+// -- Export (pg_image_editor_export.js) --
+
+/**
+ * The export settings: labels.
+ *
+ * @return array key => translated text
+ */
+function pg_image_editor_strings_export()
+{
+    return array();
+}
+
+// -- Vector (pg_image_editor_vector.js) --
+
+/**
+ * The vector pen: labels.
+ *
+ * @return array key => translated text
+ */
+function pg_image_editor_strings_vector()
+{
+    return array();
 }

@@ -5,8 +5,8 @@ module: image_editor
 ---
 
 ## Which files make the editor?
-- `includes/fn/image_editor.php`: `pg_image_editor_strings()` (every label as `lang()`; the scripts hold no text), `pg_image_editor_config()`, `pg_image_editor_style_url()`, `pg_image_editor_includes()` (once per page: `window.pgImageEditorConfig` and the loader `window.pgImageEditor`).
-- `assets/js/pg_image_editor_model.js` (`window.PgImageEditorModel`, pure: matrices, quarter turns and flips, cover scale, fit and zoom, the tools of a call, the document, the history; `tests/image_editor_model_test.php` runs it under Node) and `assets/js/pg_image_editor.js` (`window.PgImageEditor`, the modal), bundled in that order as `pg_image_editor.min.js` (`pg_js_bundles()`; run `php tools/build_js.php`).
+- `includes/fn/image_editor.php`: `pg_image_editor_strings()` (every label as `lang()`, the core's and each tool's; the scripts hold no text), `pg_image_editor_config()`, `pg_image_editor_style_url()`, `pg_image_editor_includes()` (once per page: `window.pgImageEditorConfig` and the loader `window.pgImageEditor`).
+- `assets/js/pg_image_editor_model.js` (`window.PgImageEditorModel`, pure: matrices, quarter turns and flips, cover scale, fit and zoom, the tools of a call, the document, the history; `tests/image_editor_model_test.php` runs it under Node), `assets/js/pg_image_editor.js` (`window.PgImageEditor`, the modal) and one file per tool (`image-editor-parts.md`), bundled in that order as `pg_image_editor.min.js` (`pg_js_bundles()`; run `php tools/build_js.php`).
 - `assets/css/pg_image_editor.src.css` built to `.min.css` (`pg_css_bundles()`, `php tools/build_css.php`). Every rule sits under `.pgie-dialog` or `.pgie`, no Bootstrap class, so panel pages (Bootstrap 6), site pages (5.3.8) and the designer look the same. Light colours come from the `--pg-*` tokens with fallbacks; the theme follows `html[data-bs-theme]` unless the call names one.
 
 ## How does a screen open it?

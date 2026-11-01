@@ -6670,8 +6670,14 @@ function pg_js_bundles()
         'assets/js/workspace_side.min.js'          => array('assets/js/workspace_side.js'),
         'assets/js/payment_hosted.min.js'          => array('assets/js/payment_hosted.js'),
         // The image editor (includes/fn/image_editor.php loads it on the
-        // first open): the pure model first, then the modal.
-        'assets/js/pg_image_editor.min.js'         => array('assets/js/pg_image_editor_model.js', 'assets/js/pg_image_editor.js'),
+        // first open): the pure model, the core modal, then each tool's file,
+        // which hangs its code on the core.
+        'assets/js/pg_image_editor.min.js'         => array(
+            'assets/js/pg_image_editor_model.js', 'assets/js/pg_image_editor.js',
+            'assets/js/pg_image_editor_crop.js', 'assets/js/pg_image_editor_adjust.js', 'assets/js/pg_image_editor_layers.js',
+            'assets/js/pg_image_editor_draw.js', 'assets/js/pg_image_editor_text.js', 'assets/js/pg_image_editor_sticker.js',
+            'assets/js/pg_image_editor_redact.js', 'assets/js/pg_image_editor_versions.js', 'assets/js/pg_image_editor_artboard.js',
+            'assets/js/pg_image_editor_export.js', 'assets/js/pg_image_editor_vector.js'),
         'assets/js/pg_fx.min.js'                   => array('assets/js/pg_fx.src.js'),
         // "Convert to text" under a voice message, loaded before
         // workspace.min.js and beside the chat window's script.

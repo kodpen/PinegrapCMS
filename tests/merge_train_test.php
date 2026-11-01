@@ -63,6 +63,22 @@ function test_merge_train_docs_only()
 	pg_assert_false(merge_train_docs_only(array()));
 }
 
+// A generated file is settled by the tool that writes it, once no source
+// that tool reads is still in conflict.
+function test_merge_train_generated_and_sources()
+{
+	pg_assert_same('index', merge_train_generated('docs/memory/ui/README.md'));
+	pg_assert_same('index', merge_train_generated('docs/memory/core/fn-modules.md'));
+	pg_assert_same('script', merge_train_generated('pinegrap/assets/js/pg_image_editor.min.js'));
+	pg_assert_same('style', merge_train_generated('pinegrap/assets/css/pg_image_editor.min.css'));
+	pg_assert_same('', merge_train_generated('pinegrap/assets/css/pg_image_editor.src.css'));
+	pg_assert_same('', merge_train_generated('docs/memory/ui/image-editor-layers.md'));
+	pg_assert_same('index', merge_train_source_of('docs/memory/ui/image-editor-layers.md'));
+	pg_assert_same('script', merge_train_source_of('pinegrap/assets/js/pg_image_editor_draw.js'));
+	pg_assert_same('style', merge_train_source_of('pinegrap/assets/css/pg_image_editor.src.css'));
+	pg_assert_same('', merge_train_source_of('pinegrap/includes/fn/image_editor.php'));
+}
+
 function test_merge_train_checks_green()
 {
 	pg_assert_true(merge_train_checks_green(array(
