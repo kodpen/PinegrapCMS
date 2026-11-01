@@ -48,7 +48,7 @@ description: Module list of plans/bug-hunt.md, part 2: includes/fn/ modules pric
 
 - `signature`: open
 
-- `signin`: open
+- `signin`: clean
 
 - `site_datetime`: open
 
