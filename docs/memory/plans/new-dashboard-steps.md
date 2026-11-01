@@ -22,8 +22,8 @@ description: Steps N1-N14 of plans/new-dashboard.md: size, screens, order, which
 - N6 (M) Gallery and side panel. Screens 06, 09, 11. `free` after N5.
   - Gallery (search, categories, sketches, tags, add and remove), the Add card tile, top-section switches, the Look section.
 
-- N7 (M) Visitor and content cards. Screens 03, 04, 18, 19. `free` after N4.
-  - `gsearch`, `ga`, `content`, `comments` (Approve, Spam through the comments screen's endpoint), `files`, `activity` with its chips.
+- N7 (M) Visitor and content cards. Screens 03, 04, 18, 19. done (#4861).
+  - `gsearch`, `ga`, `content`, `comments`, `files`, `activity`; `pg_dash_cards_content.js`.
 
 - N8 (M) Security and team cards. Screens 04, 18. `free` after N4.
   - `firewall`, `team`, `mytasks` (tick through `ws_task_status`), `waiting`, `week`, `calendars`.

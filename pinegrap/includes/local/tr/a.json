@@ -3200,6 +3200,7 @@
     "Average of the column above": "Üstteki sütunun ortalaması",
     "Average order": "Ortalama sipariş",
     "Average position": "Ortalama sıra",
+    "Average position {var:1}": "Ortalama sıra {var:1}",
     "Average rating": "Ortalama puan",
     "Average rating (one decimal)": "Ortalama puan (bir ondalık)",
     "Average rating (verified reviews)": "Ortalama puan (doğrulanmış incelemeler)",
