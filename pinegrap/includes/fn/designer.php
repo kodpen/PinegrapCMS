@@ -4360,7 +4360,9 @@ function pg_theme_switcher_inject($content)
 /**
  * The marker of a Bootstrap tooltip or popover: data-bs-toggle="tooltip"
  * (the Tooltip option of the editor's panel, _pg_node_title_attrs()) or
- * data-bs-toggle="popover" (Components > Popover), in any quoting. The
+ * data-bs-toggle="popover" (Components > Popover), in any quoting; and of
+ * tabs (data-bs-toggle="tab", "pill" or "list"), whose pane holding the
+ * address's anchor the same script shows. The
  * editor's Preview tests the markup with the same expression
  * (_SD_PAGE_SCRIPTS in assets/js/style_designer.js).
  *
@@ -4368,12 +4370,13 @@ function pg_theme_switcher_inject($content)
  */
 function pg_bs_tips_pattern()
 {
-    return '/data-bs-toggle\s*=\s*["\']?(?:tooltip|popover)\b/i';
+    return '/data-bs-toggle\s*=\s*["\']?(?:tooltip|popover|tab|pill|list)\b/i';
 }
 
 /**
- * The script that starts Bootstrap tooltips and popovers, for a visual
- * editor page whose HTML holds one (pg_bs_tips_pattern()).
+ * The script that starts Bootstrap tooltips and popovers and shows the tab
+ * holding the address's anchor, for a visual editor page whose HTML holds
+ * one of them (pg_bs_tips_pattern()).
  *
  * Bootstrap creates neither by itself, so without this a popover never opens
  * on the published page and a tooltip shows only the browser's own title.
