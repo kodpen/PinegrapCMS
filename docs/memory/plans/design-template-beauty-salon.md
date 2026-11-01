@@ -18,7 +18,7 @@ description: Plan for the Beauty Salon design template (pinegrap-salon) with onl
 
 ## Which steps are there?
 
-- 1 Parts and the public pages: `pinegrap-salon/parts.php` (node builders, the salon's services by category with durations and prices, the team, the shared account bar, header, footer and booking band, page shells, section helpers, form-field builders) and `pinegrap-salon/pages_public.php` (home, services and prices, team, lookbook, about). Test: the parts load, every page has a key, a root tree and its builders' `{{page:…}}` links name pages of the plan.
+- 1 **done (#4470)** Parts and the public pages: `pinegrap-salon/parts.php` (node builders, the salon's services by category with durations and prices, the team, the shared account bar, header, footer and booking band, page shells, section helpers, form-field builders) and `pinegrap-salon/pages_public.php` (home, services and prices, team, lookbook, about). Test: the parts load, every page has a key, a root tree and its builders' `{{page:…}}` links name pages of the plan.
 
 - 2 Booking: `pinegrap-salon/pages_booking.php`: the appointment form page (Appointments form, rules, notify and confirm pages, auto-registration), the request's page with its messages, My Appointments, the staff list of coming requests, the privacy page, the booking e-mail pages. Test: field names, the `min_date` rule, consent links `{{page:privacy}}`, e-mail page keys. After 1.
 
