@@ -28,5 +28,5 @@ description: Steps SA1-SA5 of plans/search-and-audits.md: index isolation, overl
   - The panel window drives the same pass with short requests and shows progress.
   - Tests: the stage and cursor logic pure (`pg_search_index_next()`), the skip rule.
 
-- SA5 (S) One background renderer. `free`.
+- SA5 (S) One background renderer. Done (#4734).
   - `pg_background_render()` taken out of `pg_seo_render_page()`: `catch (Throwable)` (today `Exception`: an `Error` ends the pass, and the queue and cursor never get past that page), output-buffer level restored. The structure and accessibility passes use it.
