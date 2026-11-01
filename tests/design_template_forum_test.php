@@ -15,8 +15,10 @@
  * Comments widget (the threads of the topic and guide pages, the lists of
  * recent replies on the home page, in My topics and on the moderators'
  * dashboard, and the comment e-mails), the two-sided threads of the desk,
- * inbox and report pages, the e-mail pages, the template's own CSS, its
- * landmarks and headings, its Turkish words and the installer preview.
+ * inbox and report pages, the blog (its Blog Posts form and sample posts,
+ * its lists, the post and its comments), the e-mail pages, the template's
+ * own CSS, its landmarks and headings, its Turkish words and the installer
+ * preview.
  * Pure: the template file is read as the template loader reads it, the
  * trees are walked and the comments widgets are drawn by the renderer's own
  * steps, with no database.
@@ -397,7 +399,7 @@ function _test_forum_bound_items($tree, $kind, $value)
 	return $out;
 }
 
-// The two threads: where each sits, its options and its words.
+// The public threads: where each sits, its options and its words.
 function _test_forum_threads()
 {
 	return array(
@@ -432,6 +434,24 @@ function _test_forum_threads()
 			'unfollow' => lang('Stop following this guide'),
 			'close' => lang('Stop new feedback'),
 			'reopen' => lang('Allow new feedback'),
+		),
+		// Following a post is said the way a topic's is: the store's "Notify
+		// me" words are "haber ver" in Turkish, which the forum keeps out.
+		'post_comments' => array(
+			'page' => 'blog_post',
+			'view' => 'blog_post',
+			'options' => array('order' => 'oldest', 'featured' => 'first', 'layout' => 'threaded', 'max_depth' => 2, 'per_page' => 20),
+			'rating' => false,
+			'featured' => lang('Featured'),
+			'empty' => lang('No comments yet. Be the first to share your thoughts.'),
+			'heading' => lang('Leave a comment'),
+			'sign_in' => lang('Sign in to add your comment.'),
+			'submit' => lang('Post comment'),
+			'watch_box' => lang('Follow this post: e-mail me its new comments.'),
+			'follow' => lang('Follow this post'),
+			'unfollow' => lang('Stop following this post'),
+			'close' => lang('Stop new comments'),
+			'reopen' => lang('Allow new comments'),
 		),
 	);
 }
@@ -649,6 +669,7 @@ function _test_forum_forms()
 		'{{tab:report}}' => 'report_form',
 		'{{tab:contact}}' => 'contact_form',
 		'{{tab:staff_entry}}' => 'staff_form',
+		'{{tab:blog_new}}' => 'blog_form',
 	);
 }
 
@@ -841,7 +862,9 @@ function test_forum_template_loads()
 	pg_assert_same(1, preg_match('/^\d+\.\d+\.\d+$/', $tpl['version']), 'version x.y.z');
 	// 1.1.0: replies and feedback on the Comments widget, the lists of
 	// recent replies and the comment e-mails drawn by it; 1.2.0: the board
-	// page's latest replies, held to the board by a record filter.
+	// page's latest replies, held to the board by a record filter; 1.3.0:
+	// the inbox, desk and report threads on the Comments widget, and the
+	// blog.
 	pg_assert_same('1.3.0', $tpl['version'], 'version 1.3.0');
 	pg_assert_same('bootstrap5', $tpl['framework'], 'framework');
 	pg_assert_same(90, $tpl['order'], 'order');
@@ -868,7 +891,7 @@ function test_forum_template_loads()
 	pg_assert_same(array('pinegrap-forum'), array_keys($orders, 90, true), 'order 90 is the forum\'s alone');
 	pg_assert_same(array('pinegrap-forum'), array_keys($themes, 'minimal/aurora', true), 'no other template suggests minimal with aurora');
 	pg_assert_true(isset(pg_design_templates()['pinegrap-forum']), 'the template is listed');
-	pg_assert_same(55, count($tpl['pages']), '55 pages');
+	pg_assert_same(58, count($tpl['pages']), '58 pages');
 
 	// The folders: the template's root and its three folders, the private
 	// one for the moderators.
@@ -1079,7 +1102,7 @@ function test_forum_private_views()
 		'my_topics', 'my_docs', 'doc_submission') as $key) {
 		pg_assert_same('registration', $pages[$key]['folder'], $key . ' folder');
 	}
-	foreach (array('staff', 'staff_topics', 'staff_docs', 'staff_reports', 'staff_report', 'staff_directory', 'staff_entry') as $key) {
+	foreach (array('staff', 'staff_topics', 'staff_docs', 'staff_reports', 'staff_report', 'staff_directory', 'staff_entry', 'blog_new') as $key) {
 		pg_assert_same('private', $pages[$key]['folder'], $key . ' folder');
 		pg_assert_contains('"templateShared":"staff_bar"', json_encode($pages[$key]['tree']), $key . ' has the moderators\' bar');
 	}
@@ -1201,7 +1224,7 @@ function test_forum_author_fields()
 
 	// Every label names a control of its form, and every hint the control
 	// it describes.
-	foreach (array('topic_form', 'doc_form', 'report_form', 'contact_form', 'staff_form') as $form) {
+	foreach (array('topic_form', 'doc_form', 'report_form', 'contact_form', 'staff_form', 'blog_form') as $form) {
 		$tree = _test_forum_tpl()['widgets'][$form]['tree'];
 		$ids = array();
 		foreach (_test_forum_nodes($tree) as $n) {
@@ -1565,7 +1588,7 @@ function test_forum_samples_never_go_stale()
 		}
 	}
 	$checked = 0;
-	foreach (array('new_topic', 'doc_new') as $page) {
+	foreach (array('new_topic', 'doc_new', 'blog_new') as $page) {
 		foreach (_test_forum_samples($page) as $i => $r) {
 			foreach ($r as $field => $value) {
 				$checked++;
@@ -1633,7 +1656,7 @@ function test_forum_one_paginated_list_per_page()
 	}
 	foreach (array('forum_topics' => 20, 'board_topics' => 20, 'tag_topics' => 20, 'member_topics' => 20, 'unanswered_topics' => 20,
 		'docs_all' => 12, 'section_guides' => 20, 'my_topics_started' => 20, 'my_docs_list' => 20, 'staff_topics_list' => 20,
-		'staff_docs_all' => 20, 'staff_reports_all' => 20) as $key => $ipp) {
+		'staff_docs_all' => 20, 'staff_reports_all' => 20, 'blog_list' => 10) as $key => $ipp) {
 		pg_assert_same(0, $tpl['widgets'][$key]['config']['max_results'], $key . ' pages through');
 		pg_assert_same($ipp, $tpl['widgets'][$key]['config']['items_per_page'], $key . ' per page');
 	}
@@ -2021,7 +2044,8 @@ function test_forum_private_fields_stay_private()
 
 // -- 15. comments -------------------------------------------------------------
 
-// Replies, feedback, messages and notes are comments of their record pages:
+// Replies, feedback, a post's comments, messages and notes are comments of
+// their record pages:
 // each label a singular noun (the platform puts it in plural and into
 // sentences), signed in, placed right under the page's record and headed by
 // the record view while it shows a record. Every page draws them with the
@@ -2037,6 +2061,7 @@ function test_forum_comments()
 		'doc_submission' => array(lang('Message'), 'doc_submission_view', lang('Messages with the moderators'), 'doc_messages'),
 		'conversation' => array(lang('Message'), 'conversation', lang('Replies'), 'conversation_replies'),
 		'staff_report' => array(lang('Note'), 'staff_report_view', lang('Notes'), 'report_notes'),
+		'blog_post' => array(lang('Comment'), 'blog_post', lang('Comments'), 'post_comments'),
 	);
 	$tr = _test_forum_tr();
 	$found = array();
@@ -2118,7 +2143,7 @@ function test_forum_comments()
 		pg_assert_true($headed, $key . ' has the h2 ' . $want[$key][2] . ' with the record');
 	}
 	sort($found);
-	pg_assert_same(array('conversation', 'doc', 'doc_submission', 'staff_report', 'topic'), $found, 'five pages take comments');
+	pg_assert_same(array('blog_post', 'conversation', 'doc', 'doc_submission', 'staff_report', 'topic'), $found, 'six pages take comments');
 
 	// Replies: published at once, mailed to the topic's followers; the
 	// moderators follow them on their dashboard, not by e-mail.
@@ -2142,6 +2167,14 @@ function test_forum_comments()
 	$c = $pages['staff_report']['comments'];
 	pg_assert_same(true, $c['auto_publish'], 'notes are published at once');
 	pg_assert_false(isset($c['email_page']) || isset($c['notify_email']), 'notes are never mailed');
+	// A post's comments: published at once, mailed to the post's followers
+	// and to the moderators, who see no list of them elsewhere.
+	$c = $pages['blog_post']['comments'];
+	pg_assert_same(array(true, '{{tab:email_reply}}', '{{site_email}}'), array($c['auto_publish'], $c['email_page'], $c['notify_email']), 'a post\'s comments');
+	pg_assert_same(lang('There is a new comment on a post you follow'), $c['email_subject'], 'the comment e-mail\'s subject');
+	pg_assert_true(empty($c['rating']), 'comments take no rating');
+	pg_assert_same(lang('Your comment is signed with the name in your profile and appears at once.'), isset($c['message']) ? $c['message'] : null, 'the line over the comment form');
+	pg_assert_same(lang('This post takes no new comments.'), isset($c['closed_message']) ? $c['closed_message'] : null, 'a closed post says so');
 }
 
 // The topic page shows the topic, its replies and, beside them, what is
@@ -2832,8 +2865,8 @@ function test_forum_widget_flags_fit_their_mode()
 	}
 	ksort($checked);
 	pg_assert_same(array('board_latest_replies' => 'comments_recent', 'conversation_replies' => 'comments', 'doc_feedback' => 'comments', 'doc_messages' => 'comments',
-		'email_comment' => 'comments', 'home_latest_replies' => 'comments_recent', 'my_replies' => 'comments_recent', 'report_notes' => 'comments',
-		'staff_replies_waiting' => 'comments_recent', 'topic_replies' => 'comments'), $checked, 'the ten comments widgets');
+		'email_comment' => 'comments', 'home_latest_replies' => 'comments_recent', 'my_replies' => 'comments_recent', 'post_comments' => 'comments',
+		'report_notes' => 'comments', 'staff_replies_waiting' => 'comments_recent', 'topic_replies' => 'comments'), $checked, 'the eleven comments widgets');
 }
 
 // What the FAQ says about replies: how to follow a topic, how a best answer
@@ -2881,7 +2914,7 @@ function test_forum_preview_html()
 	$tpl = pg_design_templates()['pinegrap-forum'];
 	$preview = array_keys(pg_design_template_preview_pages($tpl));
 	sort($preview);
-	$want = array('about', 'accessibility', 'board', 'contact', 'docs', 'docs_section', 'faq', 'forum', 'guidelines', 'home', 'privacy',
+	$want = array('about', 'accessibility', 'blog', 'board', 'contact', 'docs', 'docs_section', 'faq', 'forum', 'guidelines', 'home', 'privacy',
 		'search', 'terms', 'unanswered');
 	pg_assert_same($want, $preview, 'the preview pages');
 
@@ -2900,6 +2933,13 @@ function test_forum_preview_html()
 	pg_assert_contains(h(lang('How can we help?')), $html, 'home has its h1');
 	pg_assert_contains(h(lang('Forum')), pg_design_template_preview_html('pinegrap-forum', 'forum'), 'the forum has its h1');
 	pg_assert_contains(h(lang('Boards')), pg_design_template_preview_html('pinegrap-forum', 'board'), 'the board page has its h1');
+	// The blog's newest posts on home, and every post on the blog page,
+	// each card with its sample cover.
+	pg_assert_contains(h(lang('From the blog')), $html, 'home has the blog\'s newest posts');
+	pg_assert_contains('pinegrap-forum-post-1/1200/675', $html, 'drawn as cards with their cover');
+	$blog = pg_design_template_preview_html('pinegrap-forum', 'blog');
+	pg_assert_contains(h(lang('Blog')), $blog, 'the blog has its h1');
+	pg_assert_contains('pf-card-link', $blog, 'the blog draws its post cards');
 	// The Comments widgets ship their trees: home keeps its Latest replies
 	// and the e-mails their comment card in the preview, which leaves out a
 	// page with a widget the editor builds.
@@ -3552,4 +3592,198 @@ function test_forum_turkish()
 		pg_assert_false(isset($seen[$slug]), $key . ' Turkish address is its own: ' . $slug);
 		$seen[$slug] = true;
 	}
+}
+
+// -- 23. the blog -------------------------------------------------------------
+
+// The blog every template carries, in the forum's look: the blog page with
+// every post and a search, the post with its comments, and the moderators'
+// page that writes a post. Its links from the masthead, the footer, the
+// staff bar and the dashboard.
+function test_forum_blog_pages()
+{
+	$tpl = _test_forum_tpl();
+	$pages = _test_forum_pages();
+	foreach (array('blog' => 'public', 'blog_post' => 'public', 'blog_new' => 'private') as $key => $folder) {
+		pg_assert_true(isset($pages[$key]), $key . ' exists');
+		pg_assert_same($folder, isset($pages[$key]) ? $pages[$key]['folder'] : null, $key . ' folder');
+	}
+	// The blog is a page of the site search and the sitemap; a bare post
+	// address is "not found", so its posts reach the sitemap by the lists.
+	pg_assert_false(isset($pages['blog']['search']) || isset($pages['blog']['sitemap']) || isset($pages['blog']['noindex']), 'the blog is searched and indexed');
+	pg_assert_same(false, $pages['blog_post']['sitemap'], 'a post page stays out of the sitemap');
+	pg_assert_false(isset($pages['blog_post']['noindex']), 'a post is indexed');
+	foreach (array('search' => false, 'sitemap' => false, 'noindex' => true) as $setting => $value) {
+		pg_assert_same($value, $pages['blog_new'][$setting], 'blog_new ' . $setting);
+	}
+	pg_assert_contains('"templateShared":"staff_bar"', json_encode($pages['blog_new']['tree']), 'blog_new has the moderators\' bar');
+
+	// What each page places, in order.
+	$placed = function ($key) use ($pages) {
+		return _test_forum_placed(_test_forum_resolve($pages[$key]['tree']));
+	};
+	$lists = function ($key) use ($tpl, $placed) {
+		$out = array();
+		foreach ($placed($key) as $w) {
+			if (in_array($tpl['widgets'][$w]['config']['regionType'], array('form_list_view', 'form_item_view', 'comments', 'custom_form'), true)) {
+				$out[] = $w;
+			}
+		}
+		return $out;
+	};
+	pg_assert_same(array('blog_list'), $lists('blog'), 'the blog lists every post: its first list, so its feed');
+	pg_assert_same(array('blog_post', 'post_comments'), $lists('blog_post'), 'the post, then its comments');
+	pg_assert_same(array('blog_form'), $lists('blog_new'), 'the form on its page');
+	$home = $placed('home');
+	pg_assert_true(in_array('home_posts', $home, true), 'home shows the newest posts');
+	pg_assert_true(array_search('home_guides', $home, true) < array_search('home_posts', $home, true), 'after the featured guides');
+	pg_assert_same('home_count_topics', $lists('home')[0], 'the front page\'s feed stays every live topic');
+
+	// Home's posts sit in a band that leaves while there is none, under a
+	// heading that links the blog.
+	$band = null;
+	foreach (_test_forum_nodes_in_context(_test_forum_resolve($pages['home']['tree'])) as $item) {
+		if (isset($item[0]['type']) && $item[0]['type'] === 'widget' && $item[0]['props']['_widget'] === 'home_posts') {
+			$band = $item[1];
+		}
+	}
+	pg_assert_true(is_array($band) && in_array('pf-vanish', $band, true), 'home_posts sits in a band that leaves while it is empty');
+	pg_assert_contains(json_encode(lang('From the blog'), JSON_UNESCAPED_UNICODE), json_encode($pages['home']['tree'], JSON_UNESCAPED_UNICODE), 'under its heading');
+	pg_assert_contains('"href":"{{page:blog}}"', json_encode($pages['home']['tree'], JSON_UNESCAPED_SLASHES), 'which links the blog');
+
+	// The post and its comments in the main column, the comments in
+	// .pf-replies (left out of a print); a named side column beside them.
+	$box = null;
+	foreach (_test_forum_nodes_in_context($pages['blog_post']['tree']) as $item) {
+		if (isset($item[0]['props']['templateWidget']) && $item[0]['props']['templateWidget'] === 'post_comments') {
+			$box = $item[1];
+		}
+	}
+	pg_assert_true(is_array($box) && in_array('pf-replies', $box, true) && in_array('d-print-none', $box, true), 'the comments sit in .pf-replies, out of a print');
+	foreach (array('blog', 'blog_post') as $key) {
+		pg_assert_contains('"aria-label","value":' . json_encode(lang('More from the community'), JSON_UNESCAPED_UNICODE), json_encode($pages[$key]['tree'], JSON_UNESCAPED_UNICODE), $key . ' has its named side column');
+	}
+
+	// The links: the masthead's bar and drawer and the footer link the blog;
+	// the staff bar and the dashboard the page that writes a post.
+	pg_assert_same(2, substr_count(json_encode($tpl['shared']['masthead']['tree']), '"{{page:blog}}"'), 'the masthead links the blog in its bar and its drawer');
+	pg_assert_same(1, substr_count(json_encode($tpl['shared']['footer']['tree']), '"{{page:blog}}"'), 'the footer links the blog');
+	pg_assert_contains('"{{page:blog_new}}"', json_encode($tpl['shared']['staff_bar']['tree']), 'the staff bar links New Blog Post');
+	pg_assert_contains('"{{page:blog_new}}"', json_encode($pages['staff']['tree']), 'the dashboard has its shortcut');
+	pg_assert_contains(json_encode(lang('New Blog Post'), JSON_UNESCAPED_UNICODE), json_encode($pages['staff']['tree'], JSON_UNESCAPED_UNICODE), 'named New Blog Post');
+	// The reply e-mail names a post's comments among what it brings.
+	pg_assert_contains(json_encode(lang('Someone wrote on a page you follow: a reply under a topic, feedback under a guide, a comment under a blog post or an answer from the moderators in your conversation. Read it below and answer on the page.'), JSON_UNESCAPED_UNICODE),
+		json_encode($pages['email_reply']['tree'], JSON_UNESCAPED_UNICODE), 'the reply e-mail covers a post\'s comments');
+}
+
+// The Blog Posts form: a collection the moderators fill, its fields with
+// their roles, the posts it opens with and the cover a shared post shows.
+function test_forum_blog_form()
+{
+	$tpl = _test_forum_tpl();
+	$pages = _test_forum_pages();
+	$form = $pages['blog_new']['form'];
+	pg_assert_same(lang('Blog Posts'), $form['form_name'], 'the form every template carries');
+	pg_assert_same(1, $form['collection'], 'a collection');
+	pg_assert_same(lang('The post is published.'), $form['confirmation_message'], 'its confirmation');
+	pg_assert_same('{{tab:blog}}', $form['confirmation_page_id'], 'sent, it opens the blog');
+	pg_assert_same('cover_image', $form['share_image_field'], 'the cover is the picture a shared post shows');
+	pg_assert_false(isset($form['notify_page_id']) || isset($form['confirm_page_id']), 'a post sends no e-mail');
+
+	$w = $tpl['widgets']['blog_form'];
+	pg_assert_same(array('blog_new', 'custom_form', 'page'), array($w['page'], $w['config']['regionType'], $w['config']['form_source']), 'the form widget of its page');
+	$c = _test_forum_controls('blog_form');
+	pg_assert_same(array('title', 'summary', 'cover_image', 'content'), array_keys($c), 'the Blog Posts fields, in order');
+	pg_assert_same(array('text box', true, 'title', 150), array($c['title']['type'], $c['title']['required'], $c['title']['rss_field'], $c['title']['maxlength']), 'title');
+	pg_assert_same(array('text area', true, 'description'), array($c['summary']['type'], $c['summary']['required'], $c['summary']['rss_field']), 'summary');
+	pg_assert_same(array('file upload', false, 'media', '{{folder:public}}'), array($c['cover_image']['type'], $c['cover_image']['required'], $c['cover_image']['rss_field'], _test_forum_upload_folder('blog_form', 'cover_image')), 'the cover, kept in the public folder');
+	pg_assert_same('image', _test_forum_control($w['tree'], 'cover_image')['props']['_cf']['kind'] ?? null, 'the cover takes pictures only');
+	pg_assert_same(array('text area', true, true), array($c['content']['type'], $c['content']['required'], $c['content']['wysiwyg']), 'the text is required rich text, like a topic\'s');
+	pg_assert_contains('"submit"', json_encode($w['tree']), 'a send button');
+
+	// The posts it opens with: four, every value a field of the form, the
+	// text as the rich-text field stores it, each with a cover of its own.
+	$samples = _test_forum_samples('blog_new');
+	$tr = _test_forum_tr();
+	pg_assert_same(4, count($samples), 'four sample posts');
+	$titles = array();
+	foreach ($samples as $i => $r) {
+		pg_assert_same(array('title', 'summary', 'cover_image', 'content'), array_keys($r), 'post ' . $i . ' fills every field');
+		foreach ($c as $name => $control) {
+			if ($control['required']) {
+				pg_assert_true(isset($r[$name]) && $r[$name] !== '', 'post ' . $i . ' fills ' . $name);
+			}
+		}
+		pg_assert_false(isset($titles[$r['title']]), 'post ' . $i . ' has a title of its own');
+		$titles[$r['title']] = true;
+		pg_assert_true(mb_strlen($r['title'], 'UTF-8') <= 150, 'post ' . $i . ' title fits');
+		pg_assert_same('https://picsum.photos/seed/pinegrap-forum-post-' . ($i + 1) . '/1200/675', $r['cover_image'], 'post ' . $i . ' cover');
+		pg_assert_true(isset($tr[$r['title']], $tr[$r['summary']]), 'post ' . $i . ' title and summary have Turkish values');
+		pg_assert_same(0, strpos($r['content'], '<p>'), 'post ' . $i . ' starts with a paragraph');
+		pg_assert_same(0, preg_match('~<(?!/?(p|h2|ul|ol|li|pre|code)>)~', $r['content']), 'post ' . $i . ' has no other markup (escaped words)');
+		$parts = _test_forum_rich_parts($r['content']);
+		pg_assert_true(count($parts) >= 3, 'post ' . $i . ' has a text');
+		foreach ($parts as $part) {
+			pg_assert_true(isset($tr[$part]), 'post ' . $i . ' text has a Turkish value: ' . $part);
+		}
+	}
+	// The round-up names the sample guides by their own titles.
+	$guides = array();
+	foreach (_test_forum_samples('doc_new') as $g) {
+		$guides[] = $g['title'];
+	}
+	preg_match_all('~<li>(.*?)</li>~s', $samples[2]['content'], $m);
+	pg_assert_true(count($m[1]) === 4 && !array_diff(array_map('htmlspecialchars_decode', $m[1]), $guides), 'the round-up lists four sample guides');
+}
+
+// The blog's lists and its post: every post, the newest first, each card
+// opening the post; the post anybody may read, with the heading of its
+// comments while it shows one.
+function test_forum_blog_widgets()
+{
+	$tpl = _test_forum_tpl();
+	$w = $tpl['widgets'];
+	$base = array('regionType' => 'form_list_view', 'custom_form_page_id' => '{{tab:blog_new}}', 'detail_page_id' => '{{tab:blog_post}}',
+		'order_by_field' => 'submitted_date_and_time', 'order_by_direction' => 'DESC');
+	foreach (array('home_posts' => array('home', 3, 3, false), 'blog_list' => array('blog', 10, 0, true)) as $key => $want) {
+		$cfg = $w[$key]['config'];
+		pg_assert_same($want[0], $w[$key]['page'], $key . ' page');
+		pg_assert_same(lang('form-list'), $w[$key]['slug'], $key . ' slug');
+		pg_assert_same($base, array_intersect_key($cfg, $base), $key . ': the posts, the newest first, each opening its page');
+		pg_assert_same(array($want[1], $want[2]), array($cfg['items_per_page'], $cfg['max_results']), $key . ' how many');
+		pg_assert_false(isset($cfg['filters']), $key . ': every post is public');
+		pg_assert_same($want[3], !empty($cfg['search_enabled']), $key . ' search');
+		pg_assert_true(isset($cfg['empty_message']) && $cfg['empty_message'] !== '', $key . ' says so while there is none');
+		// The cards sit in a list, so the search and the page links stand
+		// before and after it, not in the grid as columns.
+		$found = _test_forum_loop_parent($w[$key]['tree']);
+		pg_assert_true($found !== null && _test_forum_tag($found[0]) === 'ul' && in_array('row', _test_forum_classes($found[0]), true), $key . ': a list of cards in a grid');
+		$card = ($found !== null && $found[1]['children']) ? $found[1]['children'][0] : null;
+		pg_assert_same('li', _test_forum_tag($card), $key . ': one card a list item');
+		$json = json_encode($w[$key]['tree']);
+		foreach (array('"text":"title","href":"form_item_view"', '"src":"cover_image"', '"text":"summary"', '"text":"submitted_date_and_time"') as $binding) {
+			pg_assert_contains($binding, $json, $key . ' binds ' . $binding);
+		}
+	}
+	pg_assert_same(array('title', 'summary', 'content'), $w['blog_list']['config']['search_fields'], 'the blog searches the title, the summary and the text');
+	pg_assert_same(lang('No posts found. Try other words.'), $w['blog_list']['config']['empty_message'], 'a search that finds nothing says so');
+
+	$cfg = $w['blog_post']['config'];
+	pg_assert_same('blog_post', $w['blog_post']['page'], 'the post view\'s page');
+	pg_assert_same(array('form_item_view', '{{tab:blog_new}}', 'public', 'title'), array($cfg['regionType'], $cfg['custom_form_page_id'], $cfg['access_control'], $cfg['title_field']), 'the post: public, its title the page\'s');
+	pg_assert_false(isset($cfg['filters']), 'every post shows');
+	pg_assert_true(isset($cfg['not_found_message']) && $cfg['not_found_message'] !== '', 'a missing post says so');
+	$heads = array();
+	foreach (_test_forum_nodes_in_context($w['blog_post']['tree']) as $item) {
+		if (preg_match('/^h[1-6]$/', _test_forum_tag($item[0]))) {
+			$bound = isset($item[0]['props']['_bindings']['text']) ? $item[0]['props']['_bindings']['text'] : '';
+			$heads[] = _test_forum_tag($item[0]) . ' ' . ($bound !== '' ? '^' . $bound : $item[0]['props']['text']) . ' ' . implode(',', $item[2]);
+		}
+	}
+	pg_assert_same(array('h1 ' . lang('Post not found') . ' record_not_found', 'h1 ^title record_found', 'h2 ' . lang('Comments') . ' record_found'), $heads, 'the post\'s h1 and the heading of its comments, or the missing post\'s h1');
+	$json = json_encode($w['blog_post']['tree']);
+	foreach (array('"summary"', '"submitter_name"', '"submitted_date_and_time"', '"cover_image"', '"content"', '"__edit_url"', '"can_edit"') as $token) {
+		pg_assert_contains($token, $json, 'the post binds ' . $token);
+	}
+	pg_assert_contains('pf-post pf-measure', $json, 'the text in the template\'s box, at a reading measure');
 }

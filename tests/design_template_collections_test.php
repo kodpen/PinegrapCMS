@@ -84,7 +84,7 @@ function test_design_template_collection_forms()
 		'pinegrap-boutique'   => array('blog_new', 'staff_entry'),
 		'pinegrap-cafe'       => array('blog_new', 'event_new', 'menu_new', 'staff_entry'),
 		'pinegrap-clinic'     => array('blog_new', 'staff_entry'),
-		'pinegrap-forum'      => array('staff_entry'),
+		'pinegrap-forum'      => array('blog_new', 'staff_entry'),
 		'pinegrap-magazine'   => array('blog_new', 'staff_entry'),
 		'pinegrap-news'       => array('blog_new', 'staff_entry'),
 		'pinegrap-playground' => array('blog_new', 'staff_entry'),
