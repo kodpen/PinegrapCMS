@@ -1,6 +1,6 @@
 ---
 name: design-template-events-words
-description: Events template wording (1.0.1, #4825: bilet, oturum dizisi, own keys for registration pages, cancelled status, speakers address) and heading order (1.0.2, #4824).
+description: Events template wording: "Events" is Etkinlikler (1.0.3, #4810), bilet, oturum dizisi, own keys for registration pages (1.0.1, #4825), heading order (1.0.2, #4824).
 ---
 
 ## Which Turkish words does it use?
@@ -16,3 +16,6 @@ description: Events template wording (1.0.1, #4825: bilet, oturum dizisi, own ke
 
 ## How are its headings ordered? (1.0.2, #4824)
 - Never more than one level down: the programme's day theme is an `h2` between the page `h1` and the sessions' `h3`, a ticket card's title an `h2`. `test_events_headings_never_skip_a_level` walks every page tree (widget trees not included).
+
+## Why does "Events" read "Etkinlikler"? (Events 1.0.3, Bookshop 1.3.1, #4810)
+- The templates' events page, menu, footer, form name and help topic use `lang('Events')`; it read "Olaylar" ("incidents") while the same sites say "etkinlik". The key is now "Etkinlikler"; the API screens (`api_settings.php`, `api/console_view.php`) use `Webhook events` ("Webhook olayları"), the firewall log card `Logged events` ("Kayıtlı olaylar"). Installed sites keep their stored names. Test: `test_events_key_reads_as_site_events_in_turkish`.
