@@ -1780,9 +1780,15 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
     $atc_software_dir = defined('OUTPUT_SOFTWARE_DIRECTORY') ? OUTPUT_SOFTWARE_DIRECTORY : 'software';
     $atc_action_url   = $base_path . $atc_software_dir . '/catalog_detail.php';
     $atc_request_uri  = function_exists('get_request_uri') ? get_request_uri() : (isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : '/');
-    $atc_current_page_id = isset($_GET['page'])
-        ? (int)db_value("SELECT page_id FROM page WHERE page_name = '" . e((string)$_GET['page']) . "' LIMIT 1")
-        : 0;
+    // Read once per request: every listing of the page asks for the same id.
+    static $atc_page_ids = array();
+    $atc_page_key = isset($_GET['page']) ? (string)$_GET['page'] : '';
+    if (!isset($atc_page_ids[$atc_page_key])) {
+        $atc_page_ids[$atc_page_key] = ($atc_page_key !== '')
+            ? (int)db_value("SELECT page_id FROM page WHERE page_name = '" . e($atc_page_key) . "' LIMIT 1")
+            : 0;
+    }
+    $atc_current_page_id = isset($_GET['page']) ? $atc_page_ids[$atc_page_key] : 0;
 
     // Pre-load offer-driven discounted prices ONCE for the whole loop —
     // the helper does its own internal queries (offers, offer_actions,
@@ -1791,10 +1797,16 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
     // product currently qualifying for an order-scope offer. Used to
     // populate the per-card discount tokens (__original_price_formatted,
     // __has_discount, __discount_percent…) that drive the strike-through
-    // discount visual.
-    $_pg_disc_prices = function_exists('get_discounted_product_prices')
-        ? get_discounted_product_prices() : array();
-    if (!is_array($_pg_disc_prices)) $_pg_disc_prices = array();
+    // discount visual. Kept for the request: the visitor's order, offer code
+    // and cart do not change while a page draws its listings, and a page
+    // with four listings read every active offer four times.
+    static $_pg_disc_prices_request = null;
+    if ($_pg_disc_prices_request === null) {
+        $_pg_disc_prices_request = function_exists('get_discounted_product_prices')
+            ? get_discounted_product_prices() : array();
+        if (!is_array($_pg_disc_prices_request)) $_pg_disc_prices_request = array();
+    }
+    $_pg_disc_prices = $_pg_disc_prices_request;
 
     // The price before the discount of every card, read for the whole page
     // at once (pg_price_reference_page()): the price each card shows and
@@ -6095,43 +6107,43 @@ function pg_sw_cart_toast_script($message, $cart_url)
 // _render_system_widget_catalog_listing / _render_system_widget_catalog_item_view
 // so the feed/structured-data always matches what the visitor actually sees.
 
-// Locate the first system widget of a given regionType ('catalog_listing' or
-// 'catalog_item_view') embedded as a shared_ref on a page's style tree.
-// Mirrors the sharedId-substring-match technique already used by
-// _civ_resolve_catalog_listing_root_group_id() above. Returns
+// Locate the system widget of a given regionType ('catalog_listing' or
+// 'catalog_item_view') placed as a shared_ref on a page's layout tree: of
+// several, the lowest widget id. Returns
 //   array('widget_id'=>int, 'cfg'=>array, 'product_group_id'=>int)
 // or null when the page has no widget of that type.
+//
+// A page view asks this four times (feed link and structured data, each for
+// both types), and a sitemap or feed build once per page: it reads through
+// pg_sw_page_widgets(), which reads a page's tree and its widgets once per
+// request. A page or widget saved meanwhile is not seen until the next
+// request.
 function _pg_find_system_widget_on_page($page_id, $region_type)
 {
     $page_id = (int)$page_id;
     if ($page_id <= 0) return null;
 
-    $style_tree = pg_page_tree_json($page_id);
-    if ($style_tree === '') return null;
+    return _pg_find_system_widget_in_list(pg_sw_page_widgets($page_id), (string)$region_type);
+}
 
-    $rows = db_items(
-        "SELECT id, system_region_config FROM shared_components
-         WHERE system_region_config LIKE '%\"regionType\":\"" . $region_type . "\"%'
-         ORDER BY id ASC"
-    );
-    if (!is_array($rows)) return null;
-
-    foreach ($rows as $r) {
-        $wid = (int)$r['id'];
-        if ($wid <= 0) continue;
-        if (strpos($style_tree, '"sharedId":' . $wid . ',') === false &&
-            strpos($style_tree, '"sharedId":' . $wid . '}') === false) {
-            continue;
-        }
-        $cfg = json_decode((string)$r['system_region_config'], true);
-        if (!is_array($cfg)) $cfg = array();
-        return array(
+// The widget of $region_type with the lowest id among $widgets (as
+// pg_sw_page_widgets() lists them: ['id' => sid, 'cfg' => config]), as
+// _pg_find_system_widget_on_page() returns it, or null. Pure.
+function _pg_find_system_widget_in_list($widgets, $region_type)
+{
+    $found = null;
+    foreach (is_array($widgets) ? $widgets : array() as $w) {
+        $wid = isset($w['id']) ? (int)$w['id'] : 0;
+        if ($wid <= 0 || !isset($w['cfg']) || !is_array($w['cfg'])) continue;
+        if (!isset($w['cfg']['regionType']) || $w['cfg']['regionType'] !== $region_type) continue;
+        if ($found !== null && $found['widget_id'] < $wid) continue;
+        $found = array(
             'widget_id'        => $wid,
-            'cfg'              => $cfg,
-            'product_group_id' => isset($cfg['product_group_id']) ? (int)$cfg['product_group_id'] : 0,
+            'cfg'              => $w['cfg'],
+            'product_group_id' => isset($w['cfg']['product_group_id']) ? (int)$w['cfg']['product_group_id'] : 0,
         );
     }
-    return null;
+    return $found;
 }
 
 // Resolve the "active" product group for RSS/structured-data purposes the
