@@ -152,3 +152,83 @@ function test_workspace_calendar_sync_state_shape()
 	pg_assert_same(array('a' => 'AAMk1'), $state['remote'], 'only text ids kept');
 	pg_assert_same(array(), $state['written'], 'a broken written list is empty');
 }
+
+function test_workspace_calendar_sync_google_when()
+{
+	pg_assert_same(array('date' => '2026-11-05', 'time' => ''), ws_calsync_google_when(array('date' => '2026-11-05'), 'Europe/Istanbul'), 'a whole day by its date');
+	pg_assert_same(array('date' => '2026-11-05', 'time' => '14:30'), ws_calsync_google_when(array('dateTime' => '2026-11-05T11:30:00Z'), 'Europe/Istanbul'), 'a moment read in the site zone');
+	pg_assert_same(array('date' => '2026-11-06', 'time' => '01:00'), ws_calsync_google_when(array('dateTime' => '2026-11-05T23:00:00+01:00', 'timeZone' => 'Europe/Berlin'), 'Europe/Istanbul'), 'another zone moves the day');
+	pg_assert_same(null, ws_calsync_google_when(array('dateTime' => 'soon'), 'UTC'), 'an unreadable moment is no date');
+	pg_assert_same(null, ws_calsync_google_when(null, 'UTC'), 'no start, no date');
+
+	$moment = mktime(14, 30, 0, 11, 5, 2026);
+	$body = ws_calsync_google_body(ws_calsync_test_item(array('all_day' => false, 'start' => $moment, 'end' => null)), date_default_timezone_get());
+	pg_assert_same(array('date' => date('Y-m-d', $moment), 'time' => date('H:i', $moment)), ws_calsync_body_when('google', $body, date_default_timezone_get()), 'a written body reads back as written');
+}
+
+function test_workspace_calendar_sync_graph_when()
+{
+	pg_assert_same(array('date' => '2026-11-05', 'time' => ''), ws_calsync_graph_when(array('dateTime' => '2026-11-05T00:00:00.0000000', 'timeZone' => 'UTC'), true, 'Europe/Istanbul'), 'a whole day by its date, never shifted');
+	pg_assert_same(array('date' => '2026-11-05', 'time' => '14:30'), ws_calsync_graph_when(array('dateTime' => '2026-11-05T11:30:00.0000000', 'timeZone' => 'UTC'), false, 'Europe/Istanbul'), 'UTC read in the site zone');
+	pg_assert_same(null, ws_calsync_graph_when(array('dateTime' => '2026-11-05'), false, 'UTC'), 'no time part, no date');
+
+	$body = ws_calsync_graph_body(ws_calsync_test_item());
+	pg_assert_same(array('date' => '2026-11-05', 'time' => ''), ws_calsync_body_when('microsoft', $body, 'Europe/Istanbul'), 'a written whole day reads back as written');
+
+	$moment = mktime(9, 15, 0, 11, 5, 2026);
+	$body = ws_calsync_graph_body(ws_calsync_test_item(array('all_day' => false, 'start' => $moment, 'end' => null)));
+	pg_assert_same(array('date' => date('Y-m-d', $moment), 'time' => '09:15'), ws_calsync_body_when('microsoft', $body, date_default_timezone_get()), 'a written moment reads back as written');
+}
+
+function test_workspace_calendar_sync_moves()
+{
+	$tz = 'Europe/Istanbul';
+	$task = ws_calsync_event_id('example.com', 'ws-task-42');
+	$copy = ws_calsync_event_id('example.com', 'ws-series-3-20261112');
+	$changed = ws_calsync_event_id('example.com', 'ws-task-43');
+
+	$bodies = array(
+		$task    => ws_calsync_google_body(ws_calsync_test_item(), $tz),
+		$copy    => ws_calsync_google_body(ws_calsync_test_item(array('uid' => 'ws-series-3-20261112', 'start' => '2026-11-12', 'end' => '2026-11-12')), $tz),
+		$changed => ws_calsync_google_body(ws_calsync_test_item(array('uid' => 'ws-task-43')), $tz),
+	);
+	$written = array(
+		$task    => ws_calsync_body_hash($bodies[$task]),
+		$copy    => ws_calsync_body_hash($bodies[$copy]),
+		$changed => 'an older body',
+	);
+	$tasks = array($task => 42, $changed => 43);
+	$later = array('date' => '2026-11-07', 'time' => '');
+
+	pg_assert_same(
+		array($task => array('task_id' => 42, 'when' => $later)),
+		ws_calsync_moves(array($task => $later, $copy => $later, $changed => $later), $bodies, $written, $tasks, 'google', $tz),
+		'only a task whose event still held the last write moves; a copy and a task changed on the site do not'
+	);
+	pg_assert_same(array(), ws_calsync_moves(array($task => array('date' => '2026-11-05', 'time' => '')), $bodies, $written, $tasks, 'google', $tz), 'the site\'s own write read back, or a new title, is no move');
+	pg_assert_same(array(), ws_calsync_moves(array($task => null), $bodies, $written, $tasks, 'google', $tz), 'a deleted event is no move');
+	pg_assert_same(array(), ws_calsync_moves(array('pgunknown' => $later), $bodies, $written, $tasks, 'google', $tz), 'an event the site does not carry is no move');
+}
+
+function test_workspace_calendar_sync_move_fields()
+{
+	$task = array('due_date' => '2026-11-05', 'start_date' => null, 'due_time' => null);
+
+	pg_assert_same(array('due_date' => '2026-11-07'), ws_calsync_move_fields($task, array('date' => '2026-11-07', 'time' => '')), 'another day');
+	pg_assert_same(array('due_time' => '10:00'), ws_calsync_move_fields($task, array('date' => '2026-11-05', 'time' => '10:00')), 'a whole day given a time');
+	pg_assert_same(array(), ws_calsync_move_fields($task, array('date' => '2026-11-05', 'time' => '')), 'nothing changed');
+
+	$timed = array('due_date' => '2026-11-05', 'start_date' => '2026-11-01', 'due_time' => '14:30:00');
+	pg_assert_same(
+		array('due_date' => '2026-11-08', 'start_date' => '2026-11-04', 'due_time' => ''),
+		ws_calsync_move_fields($timed, array('date' => '2026-11-08', 'time' => '')),
+		'the start moves by as many days and a whole day clears the time'
+	);
+	pg_assert_same(array(), ws_calsync_move_fields($timed, array('date' => '2026-11-05', 'time' => '14:30')), 'the same moment');
+
+	pg_assert_same(
+		array('due_date' => '2026-11-03', 'start_date' => null),
+		ws_calsync_move_fields(array('due_date' => null, 'start_date' => '2026-11-01'), array('date' => '2026-11-03', 'time' => '')),
+		'a task with only a start date gets the day as its due date, as on the board; no due time field, no time'
+	);
+}
