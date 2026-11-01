@@ -39,7 +39,7 @@ sign itself: the English starter dump has `$^^amount^^`, the Turkish one
 The four e-gift card products (GC10 to GC100) of `turkish_default` send the
 subject `₺^^amount^^ Hediye Kartı – [[^^from_name^^||Bir dostunuzdan]]`
 and the plain-text body's `Kimden: [[^^from_name^^||Bir dostunuzdan]]`.
-Before #4462 they sent a half-English subject (`$^^amount^^ Hediye Kartı
+Before #4462 (PR #4662) they sent a half-English subject (`$^^amount^^ Hediye Kartı
 [[^^from_name^^|| an Anonymous Giver]] a`). Only the dump changed; running
 sites keep their texts (`workflow/decisions-made-data.md`).
 `tests/starter_gift_card_texts_test.php` pins the texts.
