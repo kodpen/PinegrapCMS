@@ -880,6 +880,157 @@ function pg_a11y_run($time_budget)
     return array('checked' => $checked, 'failed' => $failed, 'done' => true, 'ready' => true);
 }
 
+// ---- Measured in the editor -----------------------------------------------
+
+/**
+ * The seo_issue.source of a finding measured on the visual editor's canvas:
+ * "editor:" and the time of the save that sent it. The nightly pass leaves
+ * these rows alone (pg_seo_store_issues()); the next save of the page
+ * replaces them (pg_a11y_store_measured()).
+ *
+ * @param int $time
+ * @return string
+ */
+function pg_a11y_measured_source($time)
+{
+    return 'editor:' . (int) $time;
+}
+
+/**
+ * When a stored finding was measured in the editor: the save time its source
+ * names, 0 for a finding of the server's checks.
+ *
+ * @param string $source seo_issue.source
+ * @return int
+ */
+function pg_a11y_measured_time($source)
+{
+    return preg_match('/^editor:(\d{1,10})$/', (string) $source, $m) ? (int) $m[1] : 0;
+}
+
+/**
+ * The findings to store for what the editor measured on the canvas, keyed by
+ * code: only the browser-only concepts of the audit rule registry (contrast,
+ * target size), by their editor rule ids; occurrences counted, the first
+ * label as the example. Anything else the request carries is dropped.
+ *
+ * @param mixed $measured list of array('rule' => editor rule id, 'label' => text)
+ * @param int   $time     the save's time
+ * @return array<string,array>
+ */
+function pg_a11y_measured_findings($measured, $time)
+{
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/audit_rules.php');
+
+    $codes = array();
+
+    foreach (pg_audit_rules() as $rule) {
+        if ($rule['browser'] && ($rule['a11y'] !== '')) {
+            foreach ($rule['editor'] as $editor_rule) {
+                $codes[$editor_rule] = array($rule['a11y'], $rule['severity']['a11y']);
+            }
+        }
+    }
+
+    $findings = array();
+
+    foreach (array_slice(is_array($measured) ? $measured : array(), 0, 1000) as $item) {
+
+        if (!is_array($item) || !isset($item['rule']) || !is_string($item['rule']) || !isset($codes[$item['rule']])) {
+            continue;
+        }
+
+        list($code, $severity) = $codes[$item['rule']];
+
+        if (isset($findings[$code])) {
+            $findings[$code]['occurrences']++;
+            continue;
+        }
+
+        $findings[$code] = array(
+            'code'        => $code,
+            'severity'    => $severity,
+            'occurrences' => 1,
+            'source'      => pg_a11y_measured_source($time),
+            'detail'      => mb_substr(trim((string) (isset($item['label']) && is_scalar($item['label']) ? $item['label'] : '')), 0, 250),
+        );
+    }
+
+    return $findings;
+}
+
+/**
+ * Replace a page's findings measured in the editor with those of this save.
+ * $measured null (the save measured nothing: another tab, the API, the AI
+ * editor) clears them, since they described the page before the save.
+ *
+ * @param int        $page_id
+ * @param array|null $measured as for pg_a11y_measured_findings()
+ * @return void
+ */
+function pg_a11y_store_measured($page_id, $measured)
+{
+    $page_id = (int) $page_id;
+
+    if (($page_id <= 0) || !pg_schema_has('seo_issue')) {
+        return;
+    }
+
+    db(
+        "DELETE FROM seo_issue
+        WHERE
+            (entity_type = 'page') AND (entity_id = '" . $page_id . "')
+            AND (LEFT(code, 5) = 'a11y_') AND (LEFT(source, 7) = 'editor:')");
+
+    // A page the report does not cover (a private folder, a type the
+    // passes do not render) keeps none, as the nightly pass would leave it.
+    $findings = pg_a11y_measured_findings($measured, time());
+
+    if (!$findings || !pg_a11y_page_covered($page_id)) {
+        return;
+    }
+
+    foreach ($findings as $finding) {
+        db(
+            "INSERT INTO seo_issue (entity_type, entity_id, code, severity, occurrences, source, detail)
+            VALUES (
+                'page',
+                '" . $page_id . "',
+                '" . e($finding['code']) . "',
+                '" . e($finding['severity']) . "',
+                '" . min(65535, (int) $finding['occurrences']) . "',
+                '" . e($finding['source']) . "',
+                '" . e($finding['detail']) . "')");
+    }
+}
+
+/**
+ * Whether the report covers one page, as pg_a11y_pages() decides for all.
+ *
+ * @param int $page_id
+ * @return bool
+ */
+function pg_a11y_page_covered($page_id)
+{
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/background_render.php');
+    require_once(PG_FUNCTIONS_DIR . '/seo.php');
+    require_once(PG_FUNCTIONS_DIR . '/seo_structure.php');
+
+    $row = db_item(
+        "SELECT page.page_type, page.page_folder, folder.folder_archived
+        FROM page
+        LEFT JOIN folder ON page.page_folder = folder.folder_id
+        WHERE page.page_id = '" . (int) $page_id . "'");
+
+    if (!$row) {
+        return false;
+    }
+
+    $row['folder_public'] = (get_access_control_type($row['page_folder']) === 'public');
+
+    return pg_render_pass_covers(pg_render_pass_scope('a11y'), $row);
+}
+
 // ---- The report -----------------------------------------------------------
 
 /**
@@ -934,12 +1085,27 @@ function pg_a11y_report_rows($code, $limit)
     $sql_code = isset($rules[$code]) ? " AND (seo_issue.code = '" . e($code) . "')" : " AND (LEFT(seo_issue.code, 5) = 'a11y_')";
 
     return db_items(
-        "SELECT seo_issue.entity_id AS page_id, page.page_name, seo_issue.code, seo_issue.severity, seo_issue.occurrences, seo_issue.detail
+        "SELECT seo_issue.entity_id AS page_id, page.page_name, seo_issue.code, seo_issue.severity, seo_issue.occurrences, seo_issue.detail, seo_issue.source
         FROM seo_issue
         JOIN page ON page.page_id = seo_issue.entity_id
         WHERE (seo_issue.entity_type = 'page')" . $sql_code . "
         ORDER BY FIELD(seo_issue.severity, 'error', 'warning', 'notice'), seo_issue.code, page.page_name
         LIMIT " . (int) $limit);
+}
+
+/**
+ * Where a finding was measured, for the screen and the PDF: '' for the
+ * server's checks of the published markup, else "Measured in the editor" and
+ * the time of the save that kept it.
+ *
+ * @param string $source seo_issue.source
+ * @return string plain text
+ */
+function pg_a11y_measured_note($source)
+{
+    $time = pg_a11y_measured_time($source);
+
+    return $time ? lang(array('string' => 'Measured in the editor, {var:1}', 'vars' => array(date('Y-m-d H:i', $time)))) : '';
 }
 
 /**
@@ -973,7 +1139,8 @@ function pg_a11y_report_html($summary, $rows, $pages, $last_run, $site)
         . '<h1>' . h(lang('Accessibility report')) . '</h1>'
         . '<p>' . h($site) . ' · ' . h(lang(array('string' => '{var:1} published pages checked', 'vars' => array($pages)))) . ' · '
         . h($last_run ? lang(array('string' => 'last full check {var:1}', 'vars' => array(date('Y-m-d H:i', $last_run)))) : lang('no full check has finished yet')) . '</p>'
-        . '<p class="muted">' . h(lang('The checks read the published markup of each page against WCAG 2.2. They cover only what can be checked automatically; every criterion still needs a person to review the rest.')) . '</p>'
+        . '<p class="muted">' . h(lang('The checks read the published markup of each page against WCAG 2.2. They cover only what can be checked automatically; every criterion still needs a person to review the rest.')) . ' '
+        . h(lang('Contrast and target size are also measured in the visual editor when a page is saved; those findings say so and when.')) . '</p>'
         . '<h2>' . h(lang('Checklist')) . '</h2><table><tr><th>' . h(lang('Criterion')) . '</th><th>' . h(lang('Level')) . '</th><th>' . h(lang('Check')) . '</th><th>' . h(lang('Result')) . '</th></tr>';
 
     foreach ($by_criterion as $number => $codes) {
@@ -1000,7 +1167,9 @@ function pg_a11y_report_html($summary, $rows, $pages, $last_run, $site)
         $html .= '<h2>' . h(lang('Findings')) . '</h2><table><tr><th>' . h(lang('Page')) . '</th><th>' . h(lang('Problem')) . '</th><th>' . h(lang('Times')) . '</th><th>' . h(lang('Example')) . '</th></tr>';
 
         foreach ($rows as $row) {
-            $html .= '<tr><td>' . h($row['page_name']) . '</td><td>' . h(pg_a11y_issue_label($row['code'])) . '</td><td>' . (int) $row['occurrences'] . '</td><td>' . h($row['detail']) . '</td></tr>';
+            $note = pg_a11y_measured_note(isset($row['source']) ? $row['source'] : '');
+            $html .= '<tr><td>' . h($row['page_name']) . '</td><td>' . h(pg_a11y_issue_label($row['code']))
+                . (($note !== '') ? '<br><span class="muted">' . h($note) . '</span>' : '') . '</td><td>' . (int) $row['occurrences'] . '</td><td>' . h($row['detail']) . '</td></tr>';
         }
 
         $html .= '</table>';

@@ -930,10 +930,12 @@ function pg_seo_source_label($source)
 // link-graph pass both write findings for the same record and run at
 // different times, so a blanket delete would mean whichever ran last erased
 // the other's work. The accessibility pass ('a11y') owns the codes starting
-// with a11y_ and the other scopes leave them alone.
+// with a11y_ and the other scopes leave them alone. It leaves alone too the
+// a11y_ rows measured in the visual editor (source "editor:<time>"): only the
+// next save of the page replaces them (pg_a11y_store_measured()).
 function pg_seo_store_issues($type, $id, $findings, $scope = 'structure')
 {
-    $sql_scope = ($scope === 'a11y') ? " AND (LEFT(code, 5) = 'a11y_')" : " AND (LEFT(code, 5) <> 'a11y_')";
+    $sql_scope = ($scope === 'a11y') ? " AND (LEFT(code, 5) = 'a11y_') AND (LEFT(source, 7) <> 'editor:')" : " AND (LEFT(code, 5) <> 'a11y_')";
 
     if (($scope !== 'a11y') && function_exists('pg_seo_link_codes')) {
         if ($scope === 'graph') {
