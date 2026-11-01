@@ -64,10 +64,15 @@
         }
 
         var size = M.svgRoot(root.getAttribute('width'), root.getAttribute('height'), root.getAttribute('viewBox'));
-        var probe = document.createElementNS(SVGNS, 'svg'), defs = [], items = [], layers = [], out = { w: size.w, h: size.h, defs: '', layers: layers };
+        var probe = document.createElementNS(SVGNS, 'svg'), defs = [], items = [], layers = [], out = { w: size.w, h: size.h, id: root.getAttribute('id') || '', defs: '', layers: layers };
 
-        // Measured in the page (getBBox), out of sight.
+        // Measured in the page (getBBox), out of sight, under the root's id
+        // so the file's scoped style sheet applies.
         probe.setAttribute('style', 'position:absolute;left:-10000px;top:0;width:10px;height:10px;visibility:hidden');
+
+        if (out.id) {
+            probe.setAttribute('id', out.id);
+        }
         document.body.appendChild(probe);
 
         Array.prototype.forEach.call(root.children, function (child) {
@@ -164,6 +169,7 @@
         this.doc = M.newDocument({ blank: { width: got.w, height: got.h, background: 'transparent' } });
         this.doc.layers = got.layers;
         this.doc.svgDefs = got.defs;
+        this.doc.svgRootId = got.id;
         this.svgFileId = fileId;
 
         // Versions keep pictures: an SVG file has none to show.
@@ -231,6 +237,11 @@
         probe.setAttribute('style', 'position:absolute;left:-10000px;top:0;width:10px;height:10px;visibility:hidden');
         probe.appendChild(markupNode(this.doc.svgDefs || '<defs/>'));
         probe.appendChild(n);
+
+        if (this.doc.svgRootId) {
+            probe.setAttribute('id', this.doc.svgRootId);
+        }
+
         document.body.appendChild(probe);
 
         try {
@@ -315,9 +326,14 @@
         panel: function (body, layers) { this.svgPanel(body, layers); }
     };
 
-    // The kept definitions on the stage, so gradients and clip paths draw.
+    // The kept definitions on the stage, so gradients and clip paths draw;
+    // the stage takes the file's root id, which its style rules are scoped to.
     Editor.views.push(function () {
         var host = this.layersSvg, defs = this.doc.svgDefs || '', now = host.querySelector('[data-pgie-svgdefs]');
+
+        if (this.doc.svgRootId) {
+            host.setAttribute('id', this.doc.svgRootId);
+        }
 
         if (now && (now.getAttribute('data-src') === defs) && (now === host.firstChild)) {
             return;
@@ -419,7 +435,7 @@
                 img.setAttribute('href', data);
             });
         })).then(function () {
-            return M.svgFile(a.width, a.height, a.background, self.doc.svgDefs || '', nodes.map(serialize));
+            return M.svgFile(a.width, a.height, a.background, self.doc.svgDefs || '', nodes.map(serialize), self.doc.svgRootId || '');
         });
     };
 

@@ -2402,12 +2402,13 @@
         return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
 
-    // A whole SVG file: its size, the artboard's fill, the kept definitions
-    // and the layers' markup, in order.
-    function svgFile(w, h, background, defs, bodies) {
+    // A whole SVG file: its size, the root's id (which its style rules are
+    // scoped to), the artboard's fill, the kept definitions and the layers'
+    // markup, in order.
+    function svgFile(w, h, background, defs, bodies, id) {
         var fill = (background && (background !== 'transparent')) ? '<rect width="' + w + '" height="' + h + '" fill="' + svgEscape(background) + '"/>' : '';
 
-        return '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="' + w + '" height="' + h + '" viewBox="0 0 ' + w + ' ' + h + '">'
+        return '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"' + (id ? ' id="' + svgEscape(id) + '"' : '') + ' width="' + w + '" height="' + h + '" viewBox="0 0 ' + w + ' ' + h + '">'
             + (defs || '') + fill + bodies.join('') + '</svg>';
     }
 

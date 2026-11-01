@@ -122,6 +122,11 @@ function pg_svg_sanitize_value_ok($value)
         return false;
     }
 
+    // CSS fetches pictures from plain strings as well as from url().
+    if (preg_match('/image-set\s*\(|cross-fade\s*\(|\belement\s*\(|\bimage\s*\(|\bsrc\s*\(/', $lower)) {
+        return false;
+    }
+
     // Each url() names an id of this file.
     if (preg_match_all('/url\s*\(\s*([^)]*)\)/', $lower, $found)) {
         foreach ($found[1] as $target) {
@@ -187,24 +192,104 @@ function pg_svg_sanitize_style($value)
 }
 
 /**
- * A style sheet's text when it is plain rules over kept values; null when
- * it imports, reaches outside, escapes or could close its element.
+ * The selectors of a rule that stay, each under the root's id: names,
+ * classes and ids joined by descendant or child combinators. Attribute
+ * selectors, pseudo-classes, pseudo-elements, the universal selector and
+ * the sibling combinators go, and so does a selector starting at the root's
+ * own element name, which a scoped rule cannot match.
  *
- * @return string|null
+ * @return string the kept selectors, comma separated, or ''
  */
-function pg_svg_sanitize_sheet($text)
+function pg_svg_sanitize_selectors($prelude, $root_id)
 {
-    if (!pg_svg_sanitize_value_ok($text) || preg_match('/@(?!keyframes|media|font-feature-values)/i', $text)) {
-        return null;
+    $compound = '(?:[a-zA-Z][a-zA-Z0-9_-]*(?:[.#][a-zA-Z_-][a-zA-Z0-9_-]*)*|(?:[.#][a-zA-Z_-][a-zA-Z0-9_-]*)+)';
+    $kept = array();
+
+    foreach (explode(',', $prelude) as $part) {
+        $part = preg_replace('/\s*>\s*/', ' > ', trim(preg_replace('/\s+/', ' ', $part)));
+
+        // A rule already scoped (a file this sanitizer wrote) is scoped once.
+        while (strpos($part, '#' . $root_id . ' ') === 0) {
+            $part = trim(ltrim(substr($part, strlen($root_id) + 2), ' >'));
+        }
+
+        if (!preg_match('/^' . $compound . '(?: (?:> )?' . $compound . ')*$/', $part) || preg_match('/^svg(?![a-zA-Z0-9_-])/i', $part)) {
+            continue;
+        }
+
+        $kept[] = '#' . $root_id . ' ' . $part;
     }
 
-    return $text;
+    return implode(', ', $kept);
+}
+
+/**
+ * A style sheet rebuilt from its plain rules: each rule's selectors scoped
+ * to the root's id (pg_svg_sanitize_selectors()), its declarations kept as
+ * a style attribute's are (pg_svg_sanitize_style()). Comments, at-rules
+ * (@import, @media, @keyframes, @font-face) and any rule left without a
+ * selector or a declaration go; an inline drawing's sheet then reaches
+ * nothing outside its own root.
+ *
+ * @return string|null the sheet, or null when no rule is left
+ */
+function pg_svg_sanitize_sheet($text, $root_id)
+{
+    $text = preg_replace('#/\*.*?(\*/|$)#s', ' ', (string) $text);
+    $length = strlen($text);
+    $depth = 0;
+    $start = 0;
+    $prelude = '';
+    $body = 0;
+    $rules = array();
+
+    for ($i = 0; $i < $length; $i++) {
+        $c = $text[$i];
+
+        if ($c === '{') {
+            if ($depth === 0) {
+                $prelude = substr($text, $start, $i - $start);
+                $body = $i + 1;
+            }
+
+            $depth++;
+        } elseif ($c === '}') {
+            if ($depth === 0) {
+                $start = $i + 1;
+                continue;
+            }
+
+            $depth--;
+
+            if ($depth === 0) {
+                $declarations = substr($text, $body, $i - $body);
+                $start = $i + 1;
+
+                // An at-rule's block, or a rule with blocks inside, goes whole.
+                if ((strpos(ltrim($prelude), '@') === 0) || (strpos($declarations, '{') !== false)) {
+                    continue;
+                }
+
+                $selectors = pg_svg_sanitize_selectors($prelude, $root_id);
+                $style = pg_svg_sanitize_style($declarations);
+
+                if (($selectors !== '') && ($style !== '')) {
+                    $rules[] = $selectors . '{' . $style . '}';
+                }
+            }
+        } elseif (($c === ';') && ($depth === 0)) {
+            // A statement at-rule (@import, @charset) ends here.
+            $start = $i + 1;
+        }
+    }
+
+    return $rules ? implode("\n", $rules) : null;
 }
 
 /**
  * Copies $source's kept attributes and children into $target.
  */
-function pg_svg_sanitize_copy($source, $target, $out, $elements, $common)
+function pg_svg_sanitize_copy($source, $target, $out, $elements, $common, &$context)
 {
     $name = $source->localName;
     $allowed = array_flip(array_merge($common, $elements[$name]));
@@ -271,11 +356,13 @@ function pg_svg_sanitize_copy($source, $target, $out, $elements, $common)
         }
 
         if ($child->localName === 'style') {
-            $sheet = pg_svg_sanitize_sheet($child->textContent);
+            $sheet = pg_svg_sanitize_sheet($child->textContent, $context['root_id']);
 
             if ($sheet === null) {
                 continue;
             }
+
+            $context['sheet'] = true;
 
             $element = $out->createElementNS('http://www.w3.org/2000/svg', 'style');
             $element->appendChild($out->createTextNode($sheet));
@@ -285,7 +372,7 @@ function pg_svg_sanitize_copy($source, $target, $out, $elements, $common)
 
         $element = $out->createElementNS('http://www.w3.org/2000/svg', $child->localName);
         $target->appendChild($element);
-        pg_svg_sanitize_copy($child, $element, $out, $elements, $common);
+        pg_svg_sanitize_copy($child, $element, $out, $elements, $common, $context);
     }
 }
 
@@ -293,7 +380,7 @@ function pg_svg_sanitize_copy($source, $target, $out, $elements, $common)
  * An SVG rebuilt from the allowlist: listed elements and attributes only,
  * href to an id of the file or an embedded raster picture, no script, event
  * handler, foreignObject, link, animation, outside url(), @import, document
- * type or entity.
+ * type or entity; style sheets keep only plain rules, scoped to the root's id.
  *
  * @param string $svg the SVG's text
  * @return string the sanitized SVG starting at its <svg> root, or '' when
@@ -318,16 +405,33 @@ function pg_svg_sanitize($svg)
     libxml_clear_errors();
     libxml_use_internal_errors($errors);
 
+    // Checked again on the parsed document: another encoding (UTF-16)
+    // hides a document type from the text search above.
+    if ($loaded && ($source->doctype !== null)) {
+        return '';
+    }
+
     $root = $loaded ? $source->documentElement : null;
 
     if (!$root || ($root->localName !== 'svg') || ($root->namespaceURI !== 'http://www.w3.org/2000/svg')) {
         return '';
     }
 
+    // Style sheets are scoped to the root's id: its own when it is a plain
+    // name, else one made from the file.
+    $id = $root->getAttribute('id');
+    $context = array(
+        'root_id' => preg_match('/^[A-Za-z][A-Za-z0-9_-]{0,63}$/', $id) ? $id : 'pgsvg-' . substr(sha1($svg), 0, 10),
+        'sheet'   => false);
+
     $out = new DOMDocument('1.0', 'UTF-8');
     $element = $out->createElementNS('http://www.w3.org/2000/svg', 'svg');
     $out->appendChild($element);
-    pg_svg_sanitize_copy($root, $element, $out, pg_svg_sanitize_elements(), pg_svg_sanitize_common_attributes());
+    pg_svg_sanitize_copy($root, $element, $out, pg_svg_sanitize_elements(), pg_svg_sanitize_common_attributes(), $context);
+
+    if ($context['sheet']) {
+        $element->setAttribute('id', $context['root_id']);
+    }
 
     $text = $out->saveXML($out->documentElement);
 

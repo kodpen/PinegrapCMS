@@ -98,9 +98,10 @@ function test_svg_sanitize_references()
 // Style sheets: @import, outside url() and escapes take the whole sheet out.
 function test_svg_sanitize_style_sheets()
 {
-	$ok = pg_svg_sanitize(svg_sanitize_doc('<style>.a { fill: #f00; } .b { fill: url(#g1); }</style><rect class="a" width="1" height="1"/>'));
-	pg_assert_contains('<style>.a { fill: #f00; } .b { fill: url(#g1); }</style>', $ok, 'a plain sheet stays');
+	$ok = pg_svg_sanitize(svg_sanitize_doc('<style>/* note */ .a { fill: #f00; } g > .b, #c rect { fill: url(#g1); stroke-width: 2 }</style><rect class="a" width="1" height="1"/>', ' id="art"'));
+	pg_assert_contains('<style>#art .a{fill: #f00}' . "\n" . '#art g &gt; .b, #art #c rect{fill: url(#g1); stroke-width: 2}</style>', $ok, 'a plain sheet stays, each selector under the root');
 	pg_assert_contains('class="a"', $ok, 'classes stay');
+	pg_assert_true((bool) preg_match('#<svg [^>]*id="art"#', $ok), 'the root keeps its id');
 
 	foreach (array(
 		'@import url(https://evil.example/x.css);',
@@ -114,6 +115,59 @@ function test_svg_sanitize_style_sheets()
 		pg_assert_false(strpos($out, '<style') !== false, 'sheet dropped: ' . $sheet);
 		svg_sanitize_assert_clean($out, 'sheet ' . $sheet);
 	}
+}
+
+// A sheet cannot reach past the drawing: rules are scoped to the root's id
+// (a generated one when it has none), selectors other than names, classes,
+// ids and descendant or child combinators go, and so do at-rules, rules
+// on the root's own element name and declarations of unlisted properties.
+function test_svg_sanitize_sheet_scoped()
+{
+	$out = pg_svg_sanitize(svg_sanitize_doc('<style>svg path{display:none} .pgie-top{background:#ff00ff !important} rect.box{fill:#2563eb}</style><rect class="box" width="1" height="1"/>'));
+
+	pg_assert_true((bool) preg_match('#<svg [^>]*id="(pgsvg-[0-9a-f]{10})"#', $out, $m), 'a root without an id gets one');
+	pg_assert_contains('<style>#' . (isset($m[1]) ? $m[1] : '?') . ' rect.box{fill: #2563eb}</style>', $out, 'only the drawing\'s own rule stays, under the root');
+	pg_assert_false(strpos($out, 'pgie-top') !== false, 'a rule of no listed property goes');
+	pg_assert_false(strpos($out, 'display') !== false, 'a rule on the root\'s element name goes');
+
+	$out = pg_svg_sanitize(svg_sanitize_doc('<style>input[value^="a"]{fill:red} rect:hover{fill:red} rect::before{fill:red} * {fill:red} a ~ b {fill:red} a + b {fill:red}'
+		. ' @media print { rect { fill: red } } @keyframes k { from { opacity: 0 } } @font-face { font-family: x; src: local(x) } rect, circle:hover {stroke: blue}</style><rect width="1" height="1"/>', ' id="r"'));
+	pg_assert_contains('<style>#r rect{stroke: blue}</style>', $out, 'only plain selectors and no at-rule stay');
+
+	$once = pg_svg_sanitize(svg_sanitize_doc('<style>rect.box{fill:#2563eb} g > .t{fill:red}</style><rect class="box" width="1" height="1"/>'));
+	pg_assert_same($once, pg_svg_sanitize($once), 'a sanitized file comes through unchanged: rules are scoped once');
+	pg_assert_contains(' rect.box{fill: #2563eb}', $once, 'scoped');
+
+	$plain = pg_svg_sanitize(svg_sanitize_doc('<rect width="1" height="1"/>'));
+	pg_assert_false(strpos($plain, ' id=') !== false, 'no sheet, no generated id');
+}
+
+// CSS fetches pictures from plain strings too: the image functions are
+// refused in sheets, style attributes and presentation attributes.
+function test_svg_sanitize_image_functions()
+{
+	foreach (array('image-set("https://evil.example/t.png" 1x)', '-webkit-image-set("//evil.example/t.png" 1x)', 'IMAGE-SET(\'https://evil.example/t.png\' 1x)',
+		'cross-fade(url(#a), "https://evil.example/t.png", 50%)', 'element(#x)', 'image("https://evil.example/t.png")', 'src("https://evil.example/t.png")') as $value) {
+		$sheet = pg_svg_sanitize(svg_sanitize_doc('<style>rect{mask:' . $value . '}</style><rect width="1" height="1"/>'));
+		pg_assert_false(strpos($sheet, '<style') !== false, 'sheet: ' . $value);
+
+		$attribute = pg_svg_sanitize(svg_sanitize_doc('<rect width="1" height="1" mask="' . htmlspecialchars($value) . '"/>'));
+		pg_assert_contains('<rect width="1" height="1"/>', $attribute, 'mask attribute: ' . $value);
+
+		$style = pg_svg_sanitize(svg_sanitize_doc('<rect width="1" height="1" style="mask: ' . htmlspecialchars($value) . '; fill: red"/>'));
+		pg_assert_contains('style="fill: red"', $style, 'style attribute: ' . $value);
+		svg_sanitize_assert_clean($sheet . $attribute . $style, $value);
+	}
+}
+
+// A document type is refused after parsing too: a UTF-16 file hides it
+// from a text search.
+function test_svg_sanitize_doctype_utf16()
+{
+	$xml = '<?xml version="1.0" encoding="UTF-16"?><!DOCTYPE svg [<!ENTITY x "boom">]><svg xmlns="http://www.w3.org/2000/svg"><text>&x;</text></svg>';
+	$utf16 = "\xFF\xFE" . mb_convert_encoding($xml, 'UTF-16LE', 'UTF-8');
+
+	pg_assert_same('', pg_svg_sanitize($utf16), 'a UTF-16 document type is refused');
 }
 
 // Document types, entities, processing instructions and comments: a file

@@ -104,7 +104,7 @@ function test_image_editor_svg_place()
 function test_image_editor_svg_file()
 {
 	$r = image_editor_svg_node(
-		'console.log(JSON.stringify({ a: M.svgFile(20, 10, "#ffffff", "<defs/>", ["<rect/>", "<circle/>"]), b: M.svgFile(5, 5, "transparent", "", []), e: M.svgEscape("a<\"&>") }));'
+		'console.log(JSON.stringify({ a: M.svgFile(20, 10, "#ffffff", "<defs/>", ["<rect/>", "<circle/>"]), b: M.svgFile(5, 5, "transparent", "", []), c: M.svgFile(5, 5, "", "", [], "art"), e: M.svgEscape("a<\"&>") }));'
 	);
 
 	if ($r === null) {
@@ -114,6 +114,7 @@ function test_image_editor_svg_file()
 	pg_assert_false(isset($r['error']), isset($r['error']) ? $r['error'] : 'ran');
 	pg_assert_same('<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="20" height="10" viewBox="0 0 20 10"><defs/><rect width="20" height="10" fill="#ffffff"/><rect/><circle/></svg>', $r['a'], 'the whole file');
 	pg_assert_false(strpos($r['b'], '<rect') !== false, 'no fill on a transparent artboard');
+	pg_assert_contains('xmlns:xlink="http://www.w3.org/1999/xlink" id="art" width="5"', $r['c'], 'the root\'s id, which its style rules are scoped to');
 	pg_assert_same('a&lt;&quot;&amp;&gt;', $r['e'], 'escaped');
 
 	// The file the editor writes passes the sanitizer unchanged in substance.
