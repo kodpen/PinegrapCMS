@@ -224,7 +224,7 @@ function pg_image_editor_includes()
     // onSaved gets the saved file.
     window.openImageEditor = function (o) {
         o = o || {};
-        var options = { fileId: o.fileId, fileName: o.fileName, tools: o.tools, profile: o.profile, onClose: o.onCancel };
+        var options = { fileId: o.fileId, fileName: o.fileName, tools: o.tools, profile: o.profile, ratio: o.ratio, onClose: o.onCancel };
         if (o.saveUrl) {
             options.src = o.src;
             options.save = { mode: "url", url: o.saveUrl, label: o.saveLabel };
@@ -1175,6 +1175,7 @@ function pg_image_editor_strings_crop()
         'cropRatio'      => lang('Ratio'),
         'cropFree'       => lang('Freeform'),
         'cropOriginal'   => lang('Original'),
+        'cropGiven'      => lang('The shape the page shows it in'),
         'rotateFlip'     => lang('Rotate and flip'),
         'rotateLeft'     => lang('Rotate left'),
         'rotateRight'    => lang('Rotate right'),
