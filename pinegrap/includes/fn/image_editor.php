@@ -1127,7 +1127,104 @@ function pg_image_editor_strings_draw()
  */
 function pg_image_editor_strings_text()
 {
-    return array();
+    return array(
+        'layer_text'          => lang('Text'),
+        'hintText'            => lang('Click to add a text there. Double-click a text to change it; the handles size and turn it.'),
+        'textPlaceholder'     => lang('Type here'),
+        'textNoteAdd'         => lang('Click anywhere on the image to add text.'),
+        'textNoteEdit'        => lang('Text stays a layer; double-click it to change it later.'),
+        'textAdd'             => lang('Add text'),
+        'textColor'           => lang('Text color'),
+        'textOwnColor'        => lang('Custom color'),
+        'textFont'            => lang('Font'),
+        'textFontSans'        => lang('Clean'),
+        'textFontSerif'       => lang('Classic'),
+        'textFontHand'        => lang('Handwritten'),
+        'textFontDisplay'     => lang('Poster'),
+        'textFontMono'        => lang('Monospace'),
+        'textSize'            => lang('Size'),
+        'textStyle'           => lang('Style and alignment'),
+        'textBold'            => lang('Bold'),
+        'textItalic'          => lang('Italic'),
+        'textAlignLeft'       => lang('Align text left'),
+        'textAlignCenter'     => lang('Center text'),
+        'textAlignRight'      => lang('Align text right'),
+        'textBackground'      => lang('Text background'),
+        'textNone'            => lang('None'),
+        'textWhite'           => lang('White'),
+        'textDark'            => lang('Dark'),
+        'textSoft'            => lang('Soft'),
+        'textWeight'          => lang('Font weight'),
+        'textWeight300'       => lang('Light (300)'),
+        'textWeight400'       => lang('Regular (400)'),
+        'textWeight600'       => lang('Semibold (600)'),
+        'textWeight700'       => lang('Bold (700)'),
+        'textWeight900'       => lang('Heavy (900)'),
+        'textLineHeight'      => lang('Line height'),
+        'textSpacing'         => lang('Letter spacing'),
+        'textBackgroundColor' => lang('Background color'),
+        'textPadding'         => lang('Padding'),
+        'textRadius'          => lang('Corner radius'),
+        'textOutline'         => lang('Text outline'),
+        'textOutlineWidth'    => lang('Outline width'),
+        'textShadow'          => lang('Shadow'),
+        'textShadowHard'      => lang('Hard'),
+        'textShadowGlow'      => lang('Glow'),
+    );
+}
+
+/**
+ * Action text_fonts: the font families the site's styles load from Google
+ * Fonts (style_custom_fonts, the JSON list the designer writes), for the
+ * text tool's font list. Families only, cleaned as the editor quotes them.
+ *
+ *   { token, action: 'text_fonts' } -> { status, fonts: [family, ...] }
+ *
+ * @return array array(payload, HTTP status)
+ */
+function pg_image_editor_action_text_fonts($request, $user)
+{
+    $fonts = array();
+
+    if (pg_schema_has('style', 'style_custom_fonts')) {
+        $rows = db_values("SELECT DISTINCT style_custom_fonts FROM style WHERE style_custom_fonts != ''");
+
+        foreach (is_array($rows) ? $rows : array() as $json) {
+            foreach (pg_image_editor_text_families($json) as $family) {
+                $fonts[strtolower($family)] = $family;
+            }
+        }
+    }
+
+    natcasesort($fonts);
+
+    return array(array('status' => 'success', 'fonts' => array_values(array_slice($fonts, 0, 60))), 200);
+}
+
+/**
+ * The enabled families of one style_custom_fonts value: the JSON list of
+ * { family, weights, enabled }; the older one-URL-a-line form names none.
+ *
+ * @return array families, cleaned to letters, digits, spaces and - _ .
+ */
+function pg_image_editor_text_families($json)
+{
+    $list = json_decode((string) $json, true);
+    $out = array();
+
+    foreach (is_array($list) ? $list : array() as $font) {
+        if (!is_array($font) || (isset($font['enabled']) && ($font['enabled'] === false)) || empty($font['family']) || !is_string($font['family'])) {
+            continue;
+        }
+
+        $family = trim(preg_replace('/\s+/', ' ', preg_replace('/[^A-Za-z0-9 _\-.]/', '', $font['family'])));
+
+        if ($family !== '') {
+            $out[] = mb_substr($family, 0, 60);
+        }
+    }
+
+    return $out;
 }
 
 // -- Stickers and frames (pg_image_editor_sticker.js) --

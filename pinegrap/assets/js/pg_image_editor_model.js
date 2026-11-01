@@ -932,9 +932,10 @@
 
     var TEXT_WEIGHTS = [300, 400, 600, 700, 900];
 
+    // size 0: the editor picks one from the picture's size.
     function textDefaults() {
         return {
-            text: '', font: 'sans', size: 64, weight: 700, italic: false, align: 'left', lineHeight: 1.25, spacing: 0,
+            text: '', font: 'sans', size: 0, weight: 700, italic: false, align: 'left', lineHeight: 1.25, spacing: 0,
             color: '#ffffff', bg: '', pad: 0.3, radius: 0.16, outline: null, shadow: null
         };
     }

@@ -162,3 +162,33 @@ function test_image_editor_text_fonts_and_effects()
 	pg_assert_same(10, $result['fx']['radius'], 'the corner radius in px');
 	pg_assert_same(array(null, null, 0), array($result['none']['outline'], $result['none']['shadow'], $result['none']['radius']), 'no background, no radius; a zero outline is none');
 }
+
+function test_image_editor_text_site_families()
+{
+	$json = json_encode(array(
+		array('family' => 'Open Sans', 'weights' => array('400', '700')),
+		array('family' => 'Lobster', 'enabled' => false),
+		array('family' => 'Bad"; } x {', 'weights' => array('400')),
+		array('family' => ''),
+		'not a font'));
+
+	pg_assert_same(array('Open Sans', 'Bad x'), pg_image_editor_text_families($json), 'enabled families, cleaned for quoting');
+	pg_assert_same(array(), pg_image_editor_text_families("https://fonts.googleapis.com/css2?family=Roboto\n"), 'the old one-URL-a-line form names none');
+	pg_assert_same(array(), pg_image_editor_text_families(''), 'nothing set');
+}
+
+function test_image_editor_text_labels_cover_the_tool()
+{
+	$strings = pg_image_editor_strings_text();
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_image_editor_text.js');
+
+	preg_match_all("/t\\('(text[A-Za-z0-9]+|layer_text|hintText)'\\)|\\['[^']*', '(text[A-Za-z0-9]+)'\\]/", $source, $m);
+
+	foreach (array_filter(array_merge($m[1], $m[2])) as $key) {
+		pg_assert_true(isset($strings[$key]), 'the label ' . $key . ' is in pg_image_editor_strings_text()');
+	}
+
+	foreach (array(300, 400, 600, 700, 900) as $weight) {
+		pg_assert_true(isset($strings['textWeight' . $weight]), 'weight ' . $weight . ' has a label');
+	}
+}
