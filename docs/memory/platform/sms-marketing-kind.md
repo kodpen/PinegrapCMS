@@ -8,7 +8,7 @@ description: The marketing SMS kind (PR #3820, #3570): sender identity and type 
 - An empty label (or the built-in one sent back unchanged) is the built-in `pg_sms_marketing_label_default()` in the site's language ("Tanıtım, kampanya ve bilgilendirme mesajıdır.").
 
 ## What does a marketing text look like?
-- `pg_sms_marketing_text()`: text, `\n`, trade name + "MERSİS No: …", `\n`, label. Applied in `pg_sms_check()` for the commercial kind only, before the 1000-character limit; never to order, shipping, otp, reminder, stock or test. A text that already ends with the footer (a queued body checked again when sent) is not appended twice.
+- `pg_sms_marketing_text()`: text, `\n`, trade name + "MERSİS No: …", `\n`, label. Applied in `pg_sms_check()` for the commercial kind only, before the 1000-character limit; never to order, shipping, otp, reminder, stock or test. A queued body is sent as it was queued: the queue run passes `$queued` to `pg_sms_send()` / `pg_sms_check()`, which then appends nothing, so an identity or label changed between queueing and sending no longer gives a second footer (#4674). `pg_sms_marketing_text()` also leaves a text already ending with the same footer alone.
 - No trade name and no MERSİS number: `pg_sms_check()` refuses with `pg_sms_marketing_identity_missing()`, before the number is read.
 
 ## Who may get one?

@@ -61,6 +61,24 @@ function test_sms_marketing_text_is_appended_once()
 	pg_assert_same($once, pg_sms_marketing_text($once, $settings));
 }
 
+// A queued body already carries the footer it was queued with. Checked again
+// when it is sent after the identity changed, it goes out as it was queued,
+// not with a second footer below the first.
+function test_sms_check_queued_body_keeps_its_footer()
+{
+	$queued = pg_sms_check('0532 123 45 67', 'Kampanya', 'marketing', sms_marketing_test_settings());
+	$changed = sms_marketing_test_settings(array('trade_name' => 'Yeni Unvan Ltd.'));
+
+	$again = pg_sms_check(pg_sms_dial($queued['number']), $queued['text'], 'marketing', $changed, true);
+
+	pg_assert_true($again['ok']);
+	pg_assert_same($queued['text'], $again['text']);
+
+	// A new message takes the new identity.
+	$fresh = pg_sms_check('0532 123 45 67', 'Kampanya', 'marketing', $changed);
+	pg_assert_same(pg_sms_marketing_text('Kampanya', $changed), $fresh['text']);
+}
+
 function test_sms_marketing_identity_filled()
 {
 	pg_assert_true(pg_sms_marketing_identity_filled(sms_marketing_test_settings()));

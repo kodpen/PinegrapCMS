@@ -38,6 +38,8 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  *                         | approval_answered (somebody outside the team answered: approval_guests.php)
  *                         | task_note (a note on a task one is on: task_work.php)
  *                         | task_reminder | task_overdue | meeting_soon (reminders.php)
+ *                         | calendar_refused (a task moved in one's own calendar could not
+ *                           be moved and was written back: calendar_sync.php)
  *                         | flow_finished (a run of one's flow ended: flow_runs.php)
  *                         | flow_shared (a flow was shared with one: flow_shares.php)
  *                         | wtable_shared (a workflow table was shared with one: wtable_shares.php)
@@ -642,6 +644,16 @@ function ws_inbox_describe($viewer, $row)
         case 'task_overdue':
             return array(
                 'title' => lang(array('string' => '{var:1} is overdue', 'vars' => $task ? ws_task_number($task['id']) : '')),
+                'body'  => $task ? (string) $task['title'] . ' — ' . lang(array('string' => 'Due: {var:1}', 'vars' => ws_task_due_label($task))) : '',
+                'url'   => $base . 'workspace_tasks.php?task=' . (int) $row['task_id'],
+                'icon'  => 'bi-calendar-x',
+            );
+
+        // A task's event moved in the person's own calendar that the task
+        // could not take: the event was written back (calendar_sync.php).
+        case 'calendar_refused':
+            return array(
+                'title' => lang(array('string' => 'The move of {var:1} in your calendar was not kept', 'vars' => $task ? ws_task_number($task['id']) : '')),
                 'body'  => $task ? (string) $task['title'] . ' — ' . lang(array('string' => 'Due: {var:1}', 'vars' => ws_task_due_label($task))) : '',
                 'url'   => $base . 'workspace_tasks.php?task=' . (int) $row['task_id'],
                 'icon'  => 'bi-calendar-x',

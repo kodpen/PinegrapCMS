@@ -27,4 +27,4 @@ description: A person's Workspace tasks written to their own Google or Outlook c
 
 ## What is unverified and what is left?
 - No live provider call ran in CI; zero-length events and the 404 paths follow the API references.
-- Left (`plans/reverse-oauth-leftovers.md`): slice 3, reading changes back as decided above; not started.
+- Reading changes back (slice 3) is done: `workspace-calendar-read.md`.

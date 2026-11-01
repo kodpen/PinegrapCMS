@@ -1241,6 +1241,7 @@
     "Not doing right now": "Şu an yapmadıklarım",
     "Not done": "Yapılamadı",
     "Not done in time": "Zamanında bitmedi",
+    "Not enough balance in the till.": "Kasada yeterli bakiye yok.",
     "Not enough data": "Yeterli veri yok",
     "Not enough stock. Available: {var:1}": "Yeterli stok yok. Mevcut: {var:1}",
     "Not entered": "Girilmedi",

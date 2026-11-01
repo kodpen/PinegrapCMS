@@ -1032,6 +1032,7 @@
     "most-read": "en-cok-okunanlar",
     "moved from {var:1}": "{var:1} tarihinden kaydırıldı",
     "moved to the folder {var:1}": "{var:1} klasörüne taşındı",
+    "moved workspace task {var:1} to {var:2} from their calendar": "{var:1} çalışma alanı görevini takviminden {var:2} tarihine taşıdı",
     "ms": "ms",
     "music, albums, listening": "müzik, albümler, dinlemek",
     "music, choirs": "müzik, korolar",

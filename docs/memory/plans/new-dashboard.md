@@ -4,7 +4,7 @@ description: Plan (owner 2026-11-01): a new dashboard from the owner's design, t
 ---
 
 ## What is the status?
-- Written 2026-11-01 from the owner's design canvas "Pinegrap Pano Tasarımı" (artboard Main, 1440 px). Not held: coordinators give its `free` step lines to workers (`new-dashboard-steps.md`). N1 waits for open question 1.
+- Written 2026-11-01 from the owner's design canvas "Pinegrap Pano Tasarımı" (artboard Main, 1440 px). Not held: coordinators give its `free` step lines to workers (`new-dashboard-steps.md`). Questions 1-4 are decided (below).
 
 ## What is it?
 - A second dashboard on `welcome.php`: a greeting card with "since your last sign-in" chips, shortcuts and four figure tiles; a System Status gauge card; a grid of 30 possible cards in three widths, each with its own period, compare and badge; an edit mode with drag, keyboard moves, a card gallery, five preset layouts, look options and role defaults with a lock.
@@ -24,11 +24,11 @@ description: Plan (owner 2026-11-01): a new dashboard from the owner's design, t
 - The current dashboard: markup, script, site-wide order (`dashboard.order_widgets`), the Appearance card, widget ids and API actions. It gains only the switch row; `welcome.php` only that row and an early branch that draws the new page for a person who has it on.
 - Widget numbers stay permanent; new cards have string ids (`ai`, `goals`, …) and never take a widget number.
 
-## Which questions are open? (for the architect; steps cite them)
-1. Schema: one new table for per-person layouts, role defaults, the lock, the switch and the sign-in times (`new-dashboard-data.md`). Blocks N1.
-2. Visitor map: a visit stores no city (only billing city on orders, country by IP is not stored); which source, if any, for the city map (`new-dashboard-cards.md`, `visitmap`). Blocks that card only.
-3. Assistant daily summary: a daily run of the site's Claude routine costs one run of the admin's allowance; on by default, a setting, or left out (`new-dashboard-cards.md`, `ai`). Blocks N11's summary part.
-4. Role default and lock: whom a default reaches (people with no layout of their own, or everyone in the role) and what a lock does to a person's own layout (`new-dashboard-edit.md`). Blocks N13.
+## Which questions are decided? (owner 2026-11-01, #4669; `workflow/decisions-made-product-17.md`)
+1. Schema: one new table `dashboard_layout` (step `11.0.143`) for the switch, layouts, look, sign-in times, role defaults and the lock (`new-dashboard-data.md`).
+2. Visitor map: a site behind Cloudflare takes the city from `CF-IPCity` and writes it on the visit; otherwise the card draws at country level (home / abroad, countries). No schema (`visitors.city` exists).
+3. Assistant daily summary: a setting with an hour, off by default; proposals, waiting approvals and "Give Claude a job" stay while off.
+4. Role default and lock: the default reaches people who never saved a layout; while locked, everyone in the role sees the default and cannot edit, their own layouts kept for when the lock lifts.
 
 ## Where does it start?
-- N1 once question 1 is answered; its screens are 21 and 22.
+- N1; its screens are 21 and 22.

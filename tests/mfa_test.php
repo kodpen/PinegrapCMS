@@ -315,3 +315,25 @@ function test_mfa_password_only_paths_count_passkeys()
 	$edit_user = (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_user.php');
 	pg_assert_contains("pg_mfa_table_exists() && pg_mfa_has_factor((int) \$_GET['id'])", $edit_user, 'user screen state and reset');
 }
+
+// New recovery codes are proved with a TOTP code alone. A recovery code
+// typed there is refused before it reaches pg_mfa_verify_code(), which
+// would spend it: the account lost one of its codes and got no new set.
+function test_mfa_verify_totp_never_spends_a_recovery_code()
+{
+	pg_assert_true(function_exists('pg_mfa_verify_totp'), 'pg_mfa_verify_totp() exists');
+
+	if (!function_exists('pg_mfa_verify_totp')) {
+		return;
+	}
+
+	// These return before any query: there is no database here.
+	pg_assert_same(false, pg_mfa_verify_totp(5, 'abcd-efgh'), 'a recovery code');
+	pg_assert_same(false, pg_mfa_verify_totp(5, 'ABCDEFGH'), 'a recovery code without its dash');
+	pg_assert_same(false, pg_mfa_verify_totp(5, ''), 'nothing typed');
+	pg_assert_same(false, pg_mfa_verify_totp(5, '12345'), 'five digits');
+
+	$endpoint = (string) file_get_contents(PG_FUNCTIONS_DIR . '/account_security.php');
+	pg_assert_contains('if (!pg_mfa_verify_totp($user_id, $mfa_code)) {', $endpoint, 'account_security.php asks for a TOTP code only');
+	pg_assert_true(strpos($endpoint, 'pg_mfa_verify_code(') === false, 'account_security.php never calls pg_mfa_verify_code()');
+}

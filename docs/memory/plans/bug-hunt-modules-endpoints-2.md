@@ -102,9 +102,9 @@ description: Module list of plans/bug-hunt.md, part 4: root endpoint groups opti
 
 - Endpoints pclzip.lib, view_performance_log, get_photo_gallery, pi, private_label, prototype: open
 
-- Endpoints purge_cache, push_job, reload_theme, reserve_calendar_event, reset_password, retrieve_order: open
+- Endpoints purge_cache, push_job, reload_theme, reserve_calendar_event, reset_password, retrieve_order: taken by a bug-hunt worker
 
-- Endpoints get_robots.txt, router, send_email_campaign, view_sessions, get_set_password, shipworks: taken by a bug-hunt worker
+- Endpoints get_robots.txt, router, send_email_campaign, view_sessions, get_set_password, shipworks: done (#4655)
 
 - Endpoints si, signature_receipt, signin, get_site_icon, get_sitemap_info, get_sitemap.xml: open
 

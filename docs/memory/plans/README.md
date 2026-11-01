@@ -16,6 +16,9 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 ## Files
 
 - addon-hook-system.md: Plan (approved 2026-10-19, watch list, not before 2026.11.0 ships): add-on packages under includes/addons/ with manifest and hooks so payment, carrier, marketplace and SMS drivers add without forking
+- address-fields-by-country-places.md: Every place an address's city, state or district is asked, shown or read, checked on 2026-11-01 for plans/address-fields-by-country.md, with what each needs
+- address-fields-by-country-steps.md: Steps A1-A8 of plans/address-fields-by-country.md: site labels and district rule, editor starters, account state list, panel and ERP, place lists; claim as [plan:address-fields-by-country] A<n>
+- address-fields-by-country.md: Plan (owner request 2026-11-01): Turkish addresses as İl and İlçe (the city box is the district) in every form, the district box rule, then per-country place lists; steps A1-A8
 - agent-channel.md: DRAFT, not to be started (owner, 2026-10-29): a Workspace channel as the messaging space of agents and people: wake rules, claim queue, memory, doors; the full plan stays with the owner
 - bootstrap-6-components.md: Step B9 of plans/bootstrap-6-panel.md: own panel widgets swapped for native Bootstrap 6 components, the conditions research found, what stays as it is
 - bootstrap-6-findings.md: Research of 2026-10-25 behind plans/bootstrap-6-panel.md: old browsers, conflict rates, work size, hot spots, the visual editor split, third-party coupling
@@ -42,12 +45,16 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - erp-parasut-open-work.md: Paraşüt work left after the rounds of 2026-10-23 to 26 (#1405-#1682): one live round when a new demo key comes, three decisions (#2440-#2442), small fixes; where to start
 - feature-roadmap-2026-10.md: Feature roadmap decided 2026-10-19 from the gap analysis: 24 approved plans in four groups, wave order, the legacy rule, one task per session; index of the plan files
 - graph-canvas-core.md: Plan (2026-10-24, answers #2445, 1, 2a-2d done): a box-and-arrow canvas core split from workspace_flow.js behind an adapter; first Flows, then designer prototype links
+- image-editor-animation-design.md: Design of plans/image-editor-animation.md: the motion fields of the document and a layer, the presets, M.motionAt(), the preview on the stage, the frame renderer and the still base the server draws
+- image-editor-animation-output.md: Outputs of plans/image-editor-animation.md: the encoder worker, GIF, APNG, WebP, MP4, WebM, PDF and SVG with their limits, the save into Files, re-editing an animation, scenes and the Present mode
+- image-editor-animation-steps.md: Steps AN0-AN11 of plans/image-editor-animation.md: screens, motion, tracks, GIF, saving, APNG, WebP, video, scenes, Present, PDF, keyframes, SVG; claim as [plan:image-editor-animation] AN<n>
+- image-editor-animation.md: Plan (owner 2026-11-01): image editor animation, layers and scenes that move, saved as GIF, APNG, WebP, MP4 or WebM, a PDF of the scenes or animated SVG; held with plans/image-editor.md
 - image-editor-design.md: Design of plans/image-editor.md: the parts and file names, the one call and its options, the modal's look, the document model with layers in rotated space
 - image-editor-server.md: Server side of plans/image-editor.md: what the browser and the server each do, the save pipeline through the image engine, replace, copy and new, the versions table proposal, security
-- image-editor-steps-2.md: Steps E11-E20 of plans/image-editor.md: versions, canvas and artboard, optimisation, pen, SVG, Workspace, designer, access, animation, close-out; claim as [plan:image-editor] E<n>
+- image-editor-steps-2.md: Steps E11-E20 of plans/image-editor.md: versions, canvas and artboard, optimisation, pen, SVG, Workspace, designer, access, close-out; claim as [plan:image-editor] E<n>
 - image-editor-steps.md: Steps E1-E10 of plans/image-editor.md: core modal, crop, server save, adjust, layers, shapes, text, stickers, the switch that removes the old editor, redaction; claim as [plan:image-editor] E<n>
 - image-editor-visuals.md: The image editor prototype the owner approved on 2026-10-31: its screens and source in plans/image-editor/, what each screen shows and which step of plans/image-editor.md builds it
-- image-editor-workers.md: How coordinators' workers take steps of plans/image-editor.md marked free: which run side by side, the files a step owns, what its PR shows, the holder's review before it is marked ready
+- image-editor-workers.md: How coordinators' workers take the free steps of plans/image-editor.md and image-editor-animation.md: which run side by side, the files a step owns, what its PR shows, the holder's review
 - image-editor.md: Plan (owner 2026-10-31): Pinegrap's own image editor, a core modal with full screen on demand, replacing the bundled third-party one; held by one session; steps E1-E20
 - kodpen-vendor-api-client-design-update.md: Update contract of plans/kodpen-vendor-api-client.md: release check, pin, checks before extraction, download failures and security events, beta builds, keys, P2's workflow
 - kodpen-vendor-api-client-design.md: Client contract of plans/kodpen-vendor-api-client.md: calls and headers, the licence check, card and key field, what is stored where, the switch line; updates in -design-update
@@ -69,6 +76,11 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - prototype-sharing.md: Plan (2026-10-24; slices 1-4 done: #1867, #1579, #1595, #1578; 5 later): drafts play as a clickable prototype shared by a view-only link; flows with the team
 - refactor-candidates.md: Refactor and infrastructure items from the 2026-10-08 code audit that were still open on 2026-10-16 (designer JS twin, add/edit pairs, big lists, db_q, schema probes, fragment cache, _f gates)
 - reverse-oauth-leftovers.md: Remaining outside-account connections (calendar, notes, cloud picker, Meta, Merchant, GA4, Business Profile, social, AI), the connect.pinegrap.com broker and open decisions
+- search-and-audits-causes.md: Research of 2026-11-01 behind plans/search-and-audits.md: why search index runs end early or remove pages and why the structure and accessibility passes stall, by file and line
+- search-and-audits-rules.md: Research of 2026-11-01 behind plans/search-and-audits.md: the visual editor's audit, the SEO structure rules and the accessibility report side by side; where inputs, codes and severities differ
+- search-and-audits-steps-2.md: Steps SA6-SA13 of plans/search-and-audits.md: rule registry, same input, editor checks on the draft, audit panel, editor measurements, the screen, delta stage; claim as [plan:search-and-audits] SA<n>
+- search-and-audits-steps.md: Steps SA1-SA5 of plans/search-and-audits.md: index isolation, overlapping runs, time limit and honest health, resumable index, one background renderer; claim as [plan:search-and-audits] SA<n>
+- search-and-audits.md: Plan (owner request 2026-11-01): search index and page audits as resumable passes that survive a bad page or a killed job; one rule set for panel and editor; one screen; SA1-SA13
 - security-findings-2026-10.md: 2026-10-19 security audit: fixed by that day's PRs and #713; items 2-8 decided by the owner 2026-10-28 (labels, CVV, escape_like, sign-in message, gateway secrets, ERP host, rich text)
 - shipping-carrier-labels.md: Plan (approved 2026-10-19; 1-4, 6-8 partly done): carrier APIs for labels and barcodes, bulk labels, status write-back; aggregator first, then Yurtiçi and Aras direct, then abroad
 - shipping-management.md: Shipping plan (2026-10-08; phases 1-7 and the phase 8 postcode check done): single write path, panel, customer e-mail and guest tracking, bulk CSV, API fields, more carriers

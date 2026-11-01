@@ -125,7 +125,10 @@ function pg_privacy_retention_due()
 /**
  * The SELECT of the consent lines that may go: older than the cutoff, and
  * either without a person or followed by a newer line of the same person,
- * channel and purpose. The newest line of each stays. Pure.
+ * channel and purpose. Newer is the order pg_consent_log_current() reads
+ * the answer in force by: time, then id, since a line may be written with
+ * an earlier time than one already stored (an IYS pull stamps IYS's own
+ * time). The newest line of each stays. Pure.
  *
  * @param int $cutoff
  * @param int $batch
@@ -144,7 +147,7 @@ function pg_consent_log_trim_query($cutoff, $batch)
                 AND (n.contact_id = c.contact_id)
                 AND (n.channel = c.channel)
                 AND (n.purpose = c.purpose)
-                AND (n.id > c.id)
+                AND ((n.created_at > c.created_at) OR ((n.created_at = c.created_at) AND (n.id > c.id)))
             )
         )
         ORDER BY c.id

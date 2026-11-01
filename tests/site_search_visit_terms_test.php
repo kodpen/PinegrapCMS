@@ -27,6 +27,29 @@ function test_search_visit_terms_append_joins_with_a_bar()
 	pg_assert_same('kahve|çay', pg_search_visit_terms_append('kahve', ' çay '), 'the term is trimmed');
 }
 
+function test_search_visit_terms_append_stays_inside_the_column()
+{
+	// visitors.site_search_terms is varchar(255) and the session's sql_mode is
+	// not strict: a longer value was cut by MySQL, half a term was stored and
+	// every later search of the visit was lost.
+	$full = rtrim(str_repeat('kahvaltı|', 28), '|');
+	pg_assert_same(251, mb_strlen($full, 'UTF-8'));
+	pg_assert_same($full, pg_search_visit_terms_append($full, 'menü'), 'a term that does not fit is not added');
+	pg_assert_same($full . '|çay', pg_search_visit_terms_append($full, 'çay'), 'a term that fits exactly is added');
+
+	$long = str_repeat('ş', 300);
+	pg_assert_same(str_repeat('ş', 255), pg_search_visit_terms_append('', $long), 'a single long term is cut to the column');
+	pg_assert_same('kahve', pg_search_visit_terms_append('kahve', $long), 'a long term after another one does not fit');
+	pg_assert_same(str_repeat('a', 10), pg_search_visit_terms_append('', str_repeat('a', 20), 10), 'the width can be given');
+}
+
+function test_search_visit_terms_append_keeps_the_separator_apart()
+{
+	pg_assert_same('kahve|çay menü', pg_search_visit_terms_append('kahve', 'çay|menü'), 'a bar in the term does not make two terms');
+	pg_assert_same('kahve|çay menü', pg_search_visit_terms_append('kahve', "çay \t | menü"), 'spaces are folded');
+	pg_assert_same('kahve', pg_search_visit_terms_append('kahve', ' | '), 'a lone bar adds nothing');
+}
+
 function test_search_visit_term_written_by_both_search_screens()
 {
 	$widgets = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/widgets.php');

@@ -130,7 +130,8 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_n11_old_address_order(); // 11.0.138
 	upgrade_2026_11_0_commission_cancel_marker(); // 11.0.139
 	upgrade_2026_11_0_file_versions();           // 11.0.140
-	upgrade_2026_11_0_dashboard_layout();        // 11.0.141
+	upgrade_2026_11_0_form_field_product_group(); // 11.0.141
+	upgrade_2026_11_0_dashboard_layout();        // 11.0.143
 
 }
 
@@ -4172,7 +4173,88 @@ function upgrade_2026_11_0_file_versions() {
 
 }
 
-// The new dashboard (2026.11.0, 11.0.141; includes/dashboard/v2/). A person's
+// Variant set form templates keep their own form type (2026.11.0, 11.0.141;
+// add_field.php, edit_field.php, product_builder.php). A template field of a
+// variant set's product form is written with form_type 'product_group'
+// (product_group_id = the set, product_id 0, template_field_id 0; see
+// 2026.4), but the column's enum never carried that value, so a non-strict
+// session stored those rows as '': their edit screen matched no kind of form
+// and failed, and a read by form_type = 'product_group' found them only when
+// MySQL chose the form_type index, so applying the template could clear the
+// copies on every variant without writing them back.
+//
+// The enum is read from the column and only widened, so a value another step
+// added stays; the null rule, the default and the form_type index are kept.
+// The backfill comes after the MODIFY: before it the value cannot be stored,
+// and after it form_type = 'product_group' no longer reaches a row stored as
+// ''. Only rows of a template's shape change: a copy on a variant is
+// 'product' with a template_field_id, a field added to a variant by hand has
+// a product_id, a page form's field a page_id and no product_group_id. A
+// second run widens nothing and finds no row to fill, so it writes nothing.
+function upgrade_2026_11_0_form_field_product_group() {
+
+	$column = install_column_info('form_fields', 'form_type');
+
+	if (!is_array($column) || !preg_match('/^enum\((.*)\)$/is', (string) $column['Type'], $list)) {
+
+		install_skipped('form_fields.form_type: the column does not read as an enum, left as it is');
+
+		return;
+
+	}
+
+	if (strpos($list[1], "'product_group'") !== false) {
+
+		install_skipped(lang(array('string' => '{var:1} already exists', 'vars' => 'form_fields.form_type product_group')));
+
+	} else {
+
+		preg_match_all("/'((?:[^']|'')*)'/", $list[1], $matches);
+
+		$values = $matches[1];
+		$values[] = 'product_group';
+
+		$definition = "ENUM('" . implode("','", $values) . "')"
+			. ((isset($column['Null']) && ($column['Null'] === 'YES')) ? ' NULL' : ' NOT NULL')
+			. (isset($column['Default']) ? " DEFAULT '" . e((string) $column['Default']) . "'" : '');
+
+		install_modify_column('form_fields', 'form_type', $definition);
+
+	}
+
+	if (install_column_exists('form_fields', 'product_group_id') && install_column_exists('form_fields', 'template_field_id')) {
+
+		$template_rows = "(form_type = '')
+			AND (product_group_id <> 0)
+			AND (product_id = 0)
+			AND (template_field_id = 0)
+			AND (page_id = 0)";
+
+		$filled = (int) db_value("SELECT COUNT(*) FROM form_fields WHERE " . $template_rows);
+
+		if ($filled > 0) {
+
+			db("UPDATE form_fields SET form_type = 'product_group' WHERE " . $template_rows);
+
+			install_ran('form_fields: ' . $filled . ' variant set form template field(s) given the product_group form type');
+
+		} else {
+
+			install_skipped('form_fields: no variant set form template field without its form type');
+
+		}
+
+	} else {
+
+		install_skipped('form_fields: no variant set form template columns, no template field to fill');
+
+	}
+
+	install_note('Variant sets: the fields of a variant set\'s form template are stored under a form type of their own, so their edit screen opens again and the template is applied to every variant.');
+
+}
+
+// The new dashboard (2026.11.0, 11.0.143; includes/dashboard/v2/). A person's
 // row (user_id > 0, role 0) holds their switch, layout and look JSON and the
 // last two sign-in times; a role default row (user_id 0, role 0-3 or 9 for
 // everyone) holds a layout, a look and the lock. role is never NULL: a NULL
