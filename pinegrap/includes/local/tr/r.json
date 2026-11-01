@@ -621,6 +621,7 @@
     "Remove the Editable Area": "Düzenlenebilir Alanı Kaldır",
     "Remove the Product from the Cart (express_order loop_area)": "Ürünü Sepetten Kaldır (express_order loop_area)",
     "Remove the Product from the Cart (loop_area)": "Ürünü Sepetten Kaldır (loop_area)",
+    "Remove the allocations above: the invoices they close read as paid by money that never came.": "Yukarıdaki tahsisleri kaldırın: kapattıkları faturalar hiç gelmeyen parayla ödenmiş görünüyor.",
     "Remove the arrow": "Oku kaldır",
     "Remove the arrow to {var:1}": "{var:1} kutusuna giden oku kaldır",
     "Remove the box": "Kutuyu kaldır",
