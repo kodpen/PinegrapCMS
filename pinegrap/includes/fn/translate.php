@@ -786,12 +786,15 @@ function pg_tr_condition_props($props, $type)
         return $props;
     }
 
+    // pg_tr_node_fields() is the subsystem's: the renderer asks here before
+    // pg_tr_props(), so this may be the request's first call into it.
+    pg_tr_load();
+
     foreach (pg_tr_node_fields($type, $props) as $spec) {
         if (strpos($spec[0], '_cond:') !== 0) {
             continue;
         }
 
-        pg_tr_load();
         $raw = pg_tr_field_get($props, $spec[0]);
         $translated = pg_tr_render_text($raw, $spec[1]);
 
