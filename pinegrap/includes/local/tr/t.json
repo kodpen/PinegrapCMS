@@ -2881,6 +2881,7 @@
     "The page name \"{var:1}\" is already in use.": "\"{var:1}\" sayfa adı zaten kullanımda.",
     "The page name \"{var:1}\" is reserved for a site language.": "\"{var:1}\" sayfa adı bir site diline ayrılmış.",
     "The page name \"{var:1}\" is used by two tabs.": "\"{var:1}\" sayfa adı iki sekmede birden kullanılıyor.",
+    "The page name \"{var:1}\" was taken in the meantime, so the page was saved as \"{var:2}\".": "\"{var:1}\" sayfa adı bu arada başkası tarafından alındığı için sayfa \"{var:2}\" adıyla kaydedildi.",
     "The page name for catalog and catalog detail pages cannot contain forward slashes. Please type in a new name for the page.": "Katalog ve katalog detay sayfaları için sayfa adı eğik çizgi içeremez. Lütfen sayfa için yeni bir ad girin.",
     "The page name that you entered is already in use.": "Girdiğiniz sayfa adı zaten kullanılıyor.",
     "The page name that you entered is already in use. Please enter a different page name.": "Girdiğiniz sayfa adı zaten kullanılıyor. Lütfen farklı bir sayfa adı girin.",
