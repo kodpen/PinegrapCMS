@@ -13086,6 +13086,37 @@ function pg_products_import_row_decimals_refused($row, $decimal_positions)
 }
 
 /**
+ * The quantity of a barcode stock scan (barcode_increase_inventory.php,
+ * barcode_decrease_inventory.php): a whole count from 1 to 1000000, read the
+ * panel's way (pg_normalize_amount()), or null. The screen's method gives the
+ * direction, so a minus sign is refused, and so is a fraction: the stock
+ * column is an integer.
+ *
+ * @param mixed $value
+ * @return int|null
+ */
+function pg_barcode_scan_quantity($value)
+{
+    if (!is_scalar($value) || is_bool($value)) {
+        return null;
+    }
+
+    $value = trim((string) $value);
+
+    if (($value === '') || (strpos($value, '-') === 0)) {
+        return null;
+    }
+
+    $value = pg_normalize_amount($value);
+
+    if (!is_numeric($value) || ((float) $value != floor((float) $value)) || ((float) $value < 1) || ((float) $value > 1000000)) {
+        return null;
+    }
+
+    return (int) $value;
+}
+
+/**
  * Sets the out-of-stock mark of a product the import has just written, by
  * the product screens' rule (pg_pb_apply_stock_flag(), product_builder.php,
  * which the caller loads): tracked with 0 in stock is marked, stamped only

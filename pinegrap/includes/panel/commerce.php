@@ -1193,8 +1193,12 @@ function pg_panel_save_product_barcode($request, $action)
     $barcode = trim($request['barcode'] ?? '');
     $barcode_type = trim($request['barcode_type'] ?? 'CODE128');
 
-    if (!$product_id)
+    // The product must exist and be out of the Recycle Bin: a code saved for
+    // a missing product could never be given to another one.
+    if (!$product_id || !db_value("SELECT id FROM products WHERE id = '" . e($product_id) . "'"))
         respond(array('status' => 'error', 'message' => lang('Product not found.')));
+    if (pg_catalog_product_binned($product_id))
+        respond(array('status' => 'error', 'message' => lang('The product is in the Recycle Bin. Restore it in the Catalog Manager or choose another product.')));
     if ($barcode === '')
         respond(array('status' => 'error', 'message' => lang('Barcode value is required.')));
 
