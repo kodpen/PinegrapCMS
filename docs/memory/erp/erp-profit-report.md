@@ -20,3 +20,6 @@ description: ERP profit and loss (includes/erp/profit.php): what counts as reven
 
 ## How is a negative margin written?
 - With `erp_profit_margin_text()`: "-%12,5". `erp_percent_text()` puts the percent sign first in Turkish, so a negative number passed to it reads "%-12,5". No revenue gives a dash.
+
+## Why do the top cards stack up to 1536 px?
+- "Income statement" and "By month" sit side by side only from `2xl` (`2xl:col-5` / `2xl:col-7`, like the row below them). With `xl:` the 13-month table (760 px) overflowed its 644 px card at 1280 px and scrolled inside it (#4529, from #4440).
