@@ -139,6 +139,6 @@ function test_ccf_services_and_cafe_cards_carry_the_item()
 	pg_assert_false(strpos($clinic, "\$link(lang('Book this service'), '{{page:appointment}}',") !== false, 'no Book this service link without the department');
 	pg_assert_contains("\$link(lang('Book a Table'), '{{page:reservation}}?' . \$reservation_query(array('cafe' => \$c['name'])), 'btn btn-primary px-4')", $cafe);
 	pg_assert_same('cafe=Old%20Town', http_build_query(array('cafe' => 'Old Town'), '', '&', PHP_QUERY_RFC3986), 'a space is %20, as the clinic links write it');
-	pg_assert_contains("'version'     => '1.1.1'", $clinic);
-	pg_assert_contains("'version'     => '1.1.1'", $cafe);
+	pg_assert_contains("'version'     => '1.1.2'", $clinic);
+	pg_assert_contains("'version'     => '1.1.2'", $cafe);
 }

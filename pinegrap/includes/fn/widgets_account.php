@@ -63,6 +63,17 @@ function pg_sw_page_type_widgets()
     );
 }
 
+// The designs whose widget pages a link on the page being drawn prefers, in
+// order: the design of that page, then the published design (the home
+// page's). A site with two designs has an account or Favourites page in
+// each, and the one of the visitor's design keeps its header and footer.
+function _pg_sw_preferred_style_ids()
+{
+    $current_id = function_exists('_pg_sw_current_page_id') ? (int)_pg_sw_current_page_id() : 0;
+    $current_style = ($current_id > 0) ? (int)db_value("SELECT page_style FROM page WHERE page_id = '" . $current_id . "' LIMIT 1") : 0;
+    return array($current_style, pg_sw_home_style_id());
+}
+
 // Address of the designed page carrying the widget that stands in for
 // $page_type, or '' when there is none. get_page_type_url() asks this when
 // the site has no page of the legacy type, so a password reset link, a
@@ -98,9 +109,7 @@ function pg_sw_page_type_widget_url($page_type)
         $type = get_access_control_type($folder_id);
         return $anyone ? ($type === 'public') : in_array($type, array('public', 'guest', 'registration'), true);
     };
-    $current_id = function_exists('_pg_sw_current_page_id') ? (int)_pg_sw_current_page_id() : 0;
-    $current_style = ($current_id > 0) ? (int)db_value("SELECT page_style FROM page WHERE page_id = '" . $current_id . "' LIMIT 1") : 0;
-    $page = pg_sw_first_viewable_page($pages, $can_view, array($current_style, pg_sw_home_style_id()));
+    $page = pg_sw_first_viewable_page($pages, $can_view, _pg_sw_preferred_style_ids());
     if ($page === null) return '';
     return $cache[$page_type] = (defined('PATH') ? PATH : '/') . encode_url_path((string)$page['page_name']);
 }
@@ -166,17 +175,18 @@ function pg_sw_sign_in_url($send_to, $fallback, $legacy_type = 'login', $designe
 // Name of the first designed page carrying a widget of $type that the
 // visitor may open, or ''. A page in a folder that itself asks for a sign-in
 // does not count: sending a signed-out visitor there to sign in would send
-// them round in a circle. With $style_id, a page of that design comes first.
-function _pg_sw_open_widget_page_name($type, $style_id = 0)
+// them round in a circle. $style_ids (one id or a list) names the designs
+// whose pages come first, in that order.
+function _pg_sw_open_widget_page_name($type, $style_ids = 0)
 {
-    $first = '';
+    $open = array();
     foreach (pg_sw_widget_pages($type) as $p) {
         $row = db_item("SELECT page_folder, page_style FROM page WHERE page_id = '" . (int)$p['page_id'] . "' LIMIT 1");
         if (!is_array($row) || (string)$row['page_folder'] === '' || !check_view_access($row['page_folder'])) continue;
-        if ((int)$style_id <= 0 || (int)$row['page_style'] === (int)$style_id) return (string)$p['page_name'];
-        if ($first === '') $first = (string)$p['page_name'];
+        $open[] = array('page_name' => (string)$p['page_name'], 'page_folder' => (int)$row['page_folder'], 'page_style' => (int)$row['page_style']);
     }
-    return $first;
+    $page = pg_sw_first_viewable_page($open, function () { return true; }, (array)$style_ids);
+    return ($page === null) ? '' : (string)$page['page_name'];
 }
 
 // Where a screen of the software directory sends its visitor on a site that
@@ -611,7 +621,10 @@ function _render_system_widget_change_password($tree_json, $widget_id, $cfg = ar
  * The set-password screen's message when its link cannot be used: the token
  * is missing from the address, matches no account, or is older than a day.
  * Each one links to the forgot-password page, where a new e-mail is asked
- * for. HTML: the address is escaped here.
+ * for. HTML: the address is escaped here. The widget shows it in a Bootstrap
+ * alert, so the link is an .alert-link and takes the alert's own dark
+ * shade: the plain link colour measured 4.06:1 on alert-warning (#4898).
+ * The classic set_password.php screens keep the same keys without it.
  *
  * @param string $reason     missing, invalid or expired
  * @param string $forgot_url the forgot-password page
@@ -620,6 +633,13 @@ function _render_system_widget_change_password($tree_json, $widget_id, $cfg = ar
 function pg_set_password_token_message($reason, $forgot_url)
 {
     $vars = array(h((string)$forgot_url));
+    return preg_replace('/<a href=/', '<a class="alert-link" href=', _pg_set_password_token_text($reason, $vars), 1);
+}
+
+// The set-password token message of $reason in the site language, with the
+// escaped forgot-password address in $vars.
+function _pg_set_password_token_text($reason, array $vars)
+{
     if ($reason === 'missing') {
         return lang(array('string' => 'Sorry, the token is missing from the address, so we can\'t allow you to set a password. Please <a href="{var:1}">request a new email</a>.', 'vars' => $vars));
     }

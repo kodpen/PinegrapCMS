@@ -864,9 +864,10 @@ function test_forum_template_loads()
 	// recent replies and the comment e-mails drawn by it; 1.2.0: the board
 	// page's latest replies, held to the board by a record filter; 1.3.0:
 	// the inbox, desk and report threads on the Comments widget, and the
-	// blog; 1.3.1: the conversation's answers labelled replies; 1.3.2: the
-	// report notes' own button words, a guide's byline as its author.
-	pg_assert_same('1.3.2', $tpl['version'], 'version 1.3.2');
+	// blog; 1.3.1: the conversation's answers labelled replies; 1.3.2:
+	// readable alert links; 1.3.3: the report notes' own button words, a
+	// guide's byline as its author.
+	pg_assert_same('1.3.3', $tpl['version'], 'version 1.3.3');
 	pg_assert_same('bootstrap5', $tpl['framework'], 'framework');
 	pg_assert_same(90, $tpl['order'], 'order');
 	pg_assert_same('bi-chat-square-text', $tpl['icon'], 'icon');

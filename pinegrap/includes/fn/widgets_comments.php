@@ -3059,7 +3059,7 @@ function pg_comments_default_tree()
             '_bindings' => array('eo_visible_if' => 'is_replying')), array(
             $sem('span', array('text' => lang('Replying to'))),
             $sem('strong', array('_bindings' => array('text' => '__reply_to_name'))),
-            $content('link', array('text' => lang('Cancel'), 'href' => '#', 'cssClass' => 'ms-auto', '_bindings' => array('action' => 'comment_reply_cancel'))),
+            $content('link', array('text' => lang('Cancel'), 'href' => '#', 'cssClass' => 'ms-auto alert-link', '_bindings' => array('action' => 'comment_reply_cancel'))),
         )),
         $sem('div', array('cssClass' => 'mb-3'), array(
             $sem('label', array('cssClass' => 'form-label visually-hidden', 'text' => lang('Comment'), '_attrs' => $attrs('for', 'comment_message'))),
@@ -3125,7 +3125,7 @@ function pg_comments_default_tree()
                 $sem('div', array('cssClass' => 'alert alert-secondary d-flex flex-wrap gap-2', 'customName' => lang('Sign in'),
                     '_bindings' => array('eo_visible_if' => 'must_sign_in')), array(
                     $sem('span', array('text' => lang('Sign in to add your comment.'))),
-                    $content('link', array('text' => lang('Sign in'), 'href' => '#', 'cssClass' => 'fw-semibold', 'rel' => 'nofollow',
+                    $content('link', array('text' => lang('Sign in'), 'href' => '#', 'cssClass' => 'alert-link', 'rel' => 'nofollow',
                         '_bindings' => array('href' => '__login_url'))),
                 )),
                 $form,
