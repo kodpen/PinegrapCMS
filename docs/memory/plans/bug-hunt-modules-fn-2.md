@@ -182,7 +182,7 @@ description: Module list of plans/bug-hunt.md, part 2: includes/fn/ modules pric
 
 - `widgets_photo_gallery`: open
 
-- `widgets_placement`: taken (Arzu)
+- `widgets_placement`: done (#4736)
 
 - `widgets_shipping_address`: clean (#4727)
 

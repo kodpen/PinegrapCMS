@@ -88,6 +88,21 @@ function test_widget_placement_marker()
 	pg_assert_same(array(), pg_sw_placement_decode(rtrim(strtr(base64_encode('{"empty_message":"x"}'), '+/', '-_'), '=')), 'a payload is cleaned');
 }
 
+// A long filter value is cut by characters: a byte cut inside a multibyte
+// letter left text json_encode() refuses, and the marker, with every other
+// value of the placement, was dropped.
+function test_widget_placement_multibyte_cut()
+{
+	$long = str_repeat('a', 254) . str_repeat('ş', 10);
+	$clean = pg_sw_placement_clean(array('filters' => array(array('field' => 'tag', 'value' => $long))));
+	pg_assert_same(str_repeat('a', 254) . 'ş', $clean['filters'][0]['value'], 'cut at 255 characters');
+	$values = array('max_results' => 4, 'filters' => array(array('field' => 'tag', 'operator' => 'contains', 'value' => $long)));
+	$marker = pg_sw_placement_marker($values);
+	pg_assert_true((bool)preg_match('/^<!--pg-placement:([A-Za-z0-9_-]+)-->$/', $marker, $m), 'the marker is written');
+	$back = isset($m[1]) ? pg_sw_placement_decode($m[1]) : array();
+	pg_assert_same(4, isset($back['max_results']) ? $back['max_results'] : null, 'the other values stay');
+}
+
 function test_widget_placement_tree_render()
 {
 	$node = array('type' => 'shared_ref', 'props' => array('sharedId' => 7, 'placement' => array('max_results' => 2)), 'children' => array());

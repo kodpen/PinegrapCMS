@@ -85,12 +85,15 @@ function pg_sw_placement_clean($values)
             if (count($rows) >= 10) break;
             if (!is_array($f) || !isset($f['field']) || !is_string($f['field']) || trim($f['field']) === '') continue;
             $attr = isset($f['dynamic_value_attribute']) && is_scalar($f['dynamic_value_attribute']) ? $f['dynamic_value_attribute'] : '';
+            // Cut by characters: a byte cut inside a multibyte letter leaves
+            // text json_encode() refuses, and the marker would lose the
+            // whole placement (pg_sw_placement_marker()).
             $rows[] = array(
-                'field'                   => substr($f['field'], 0, 100),
-                'operator'                => (isset($f['operator']) && is_string($f['operator'])) ? substr($f['operator'], 0, 40) : '',
-                'value'                   => (isset($f['value']) && is_scalar($f['value'])) ? substr((string)$f['value'], 0, 255) : '',
-                'dynamic_value'           => (isset($f['dynamic_value']) && is_string($f['dynamic_value'])) ? substr($f['dynamic_value'], 0, 40) : '',
-                'dynamic_value_attribute' => is_string($attr) ? substr($attr, 0, 32) : (int)$attr,
+                'field'                   => mb_substr($f['field'], 0, 100, 'UTF-8'),
+                'operator'                => (isset($f['operator']) && is_string($f['operator'])) ? mb_substr($f['operator'], 0, 40, 'UTF-8') : '',
+                'value'                   => (isset($f['value']) && is_scalar($f['value'])) ? mb_substr((string)$f['value'], 0, 255, 'UTF-8') : '',
+                'dynamic_value'           => (isset($f['dynamic_value']) && is_string($f['dynamic_value'])) ? mb_substr($f['dynamic_value'], 0, 40, 'UTF-8') : '',
+                'dynamic_value_attribute' => is_string($attr) ? mb_substr($attr, 0, 32, 'UTF-8') : (int)$attr,
             );
         }
         if ($rows) $out['filters'] = $rows;
