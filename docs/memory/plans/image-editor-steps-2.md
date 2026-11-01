@@ -27,7 +27,7 @@ description: Steps E11-E20 of plans/image-editor.md: versions, canvas and artboa
 - E16 (M) Workspace canvas. `free` after E9 and E11.
   - "New canvas" in a channel and in notes; saved through `workspace_file_save.php` with its doc; texts edit later; a preview picture in the message.
 
-- E17 (S) Visual designer. `free` after E9 and E11.
+- E17 (S) Visual designer. `free` Done (#4777, `designer/image-editor-tool.md`).
   - The image widget's "Edit image" opens the modal over the designer; a saved version refreshes the picture (cache key); crop presets from the widget's ratio.
 
 - E18 (S) Access. `free` after E9.
