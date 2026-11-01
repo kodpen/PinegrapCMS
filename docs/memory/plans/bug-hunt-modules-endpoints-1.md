@@ -74,7 +74,7 @@ description: Module list of plans/bug-hunt.md, part 3: root endpoint groups acco
 
 - Endpoints `forgot` (2): open
 
-- Endpoints `form` (6): open
+- Endpoints `form` (6: `edit_form_item_view`, `edit_form_list_view`, `forms`, `get_form_item_view`, `get_form_list_view`, `preview_form`; also `get_form_view_directory_screen_content`): taken by KU
 
 - Endpoints `generate` (3): open
 

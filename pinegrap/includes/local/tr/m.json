@@ -133,6 +133,7 @@
     "Make-up for an evening out, a photo shoot or the biggest day of your life.": "Bir akşam yemeği, bir fotoğraf çekimi ya da hayatınızın en önemli günü için makyaj.",
     "Makes a new key in config.php. Card numbers kept with orders and the payment gateway secrets are encrypted again with it; two-step verification needs a key.": "config.php dosyasında yeni bir anahtar oluşturur. Siparişlerde saklanan kart numaraları ve ödeme altyapısı gizli anahtarları bununla yeniden şifrelenir; iki adımlı doğrulama için bir anahtar gerekir.",
     "Makes the region a shared component its content editors edit in the designer; its tag draws the component on every page, and front-end inline editing of the region ends. This page places the component.": "Bölgeyi, içerik düzenleyicilerinin tasarımcıda düzenlediği bir paylaşılan bileşene çevirir; etiketi her sayfada bileşeni çizer ve bölgenin sitede satır içi düzenlenmesi sona erer. Bu sayfa bileşeni yerleştirir.",
+    "Making a gel manicure last three weeks": "Kalıcı manikürü üç hafta korumak",
     "Making coffee": "Kahve yapmak",
     "Making fun things": "Eğlenceli şeyler yapıyorum",
     "Manage": "Yönet",

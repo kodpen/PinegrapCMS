@@ -129,6 +129,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_sms_campaigns();           // 11.0.137
 	upgrade_2026_11_0_n11_old_address_order(); // 11.0.138
 	upgrade_2026_11_0_commission_cancel_marker(); // 11.0.139
+	upgrade_2026_11_0_file_versions();           // 11.0.140
 
 }
 
@@ -4132,5 +4133,40 @@ function upgrade_2026_11_0_commission_cancel_marker() {
 	install_add_column('recurring_commission_profiles', 'disabled_by_cancel', "TINYINT(1) NOT NULL DEFAULT 0");
 
 	install_note('Affiliate commissions: cancelling an order makes its pending and payable commissions ineligible and stops its recurring commission profiles; restoring the order puts them back.');
+
+}
+
+// Image versions (2026.11.0, 11.0.140; includes/fn/image_editor.php). One row
+// per saved version of a picture edited in the image editor: version_no 1 is
+// the original as uploaded, copied before the first save writes over the
+// file; later rows keep the result pixels, so restoring needs no render. The
+// editor document (layers, texts, crop, adjustments) is doc_json, '' for a
+// row that only holds pixels; doc_hash (SHA-1) lets a save equal to the
+// newest version write no row. The pixels are a file under
+// data/file_versions/ named stored_name, never served by URL. Deleting the
+// file deletes its rows and files; the original plus the last 10 saves stay.
+function upgrade_2026_11_0_file_versions() {
+
+	install_create_table('file_versions', "CREATE TABLE file_versions (
+		version_id   INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		file_id      INT UNSIGNED NOT NULL DEFAULT 0,
+		version_no   INT UNSIGNED NOT NULL DEFAULT 0,
+		doc_json     MEDIUMTEXT NOT NULL,
+		doc_hash     CHAR(40) NOT NULL DEFAULT '',
+		stored_name  VARCHAR(100) NOT NULL DEFAULT '',
+		format       VARCHAR(8) NOT NULL DEFAULT '',
+		width        INT UNSIGNED NOT NULL DEFAULT 0,
+		height       INT UNSIGNED NOT NULL DEFAULT 0,
+		size         INT UNSIGNED NOT NULL DEFAULT 0,
+		redacted     TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		user_id      INT UNSIGNED NOT NULL DEFAULT 0,
+		source       VARCHAR(16) NOT NULL DEFAULT 'save',
+		created_at   INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (version_id),
+		UNIQUE KEY idx_file_version (file_id, version_no),
+		KEY idx_file_created (file_id, created_at)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Image versions: every save in the image editor keeps a version of the picture; the original and the last 10 saves can be previewed and restored from the editor.');
 
 }

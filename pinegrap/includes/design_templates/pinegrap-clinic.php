@@ -226,6 +226,13 @@ $service_titles = array();
 foreach ($services as $s) $service_titles[] = $s['title'];
 $doctor_choices = array(lang('No preference'));
 foreach ($doctors as $d) $doctor_choices[] = $d['name'] . ' · ' . $d['specialty'];
+// The query string of a link that opens the appointment form with a choice
+// made: the form's Specialty (?department=), Doctor (?doctor=) and Reason
+// (?reason=) fields start with these values (_cf.url_param). A doctor is
+// named as the Doctor list names them.
+$appointment_query = function ($params) {
+    return http_build_query($params, '', '&', PHP_QUERY_RFC3986);
+};
 $time_windows = array(
     lang('Morning (08:00–12:00)'),
     lang('Midday (12:00–14:00)'),
@@ -528,10 +535,12 @@ $input = function ($id, $type, $name, $autocomplete = '', $required = true, $cf 
     if ($cf) $props['_cf'] = $cf;
     return $el('input', 'form-control', lang('Field'), array(), $props);
 };
-$textarea = function ($id, $name, $rows, $required = true) use ($el, $attr) {
+$textarea = function ($id, $name, $rows, $required = true, $cf = array()) use ($el, $attr) {
     $attrs = array($attr('name', $name), $attr('rows', (string)$rows));
     if ($required) $attrs[] = $attr('required', '');
-    return $el('textarea', 'form-control', lang('Field'), array(), array('id' => $id, '_attrs' => $attrs));
+    $props = array('id' => $id, '_attrs' => $attrs);
+    if ($cf) $props['_cf'] = $cf;
+    return $el('textarea', 'form-control', lang('Field'), array(), $props);
 };
 // A pick list: the first, empty option is the prompt, not an answer. Each
 // answer's value is its own words, so the e-mails and the subject line read
@@ -1214,7 +1223,10 @@ foreach ($doctors as $key => $d) {
                         $el('a', 'btn btn-sm btn-outline-primary align-self-start mt-auto', lang('Link'), array(
                             $span(lang('Book an Appointment'), '', lang('Link Text')),
                             $span($d['name'], 'visually-hidden', lang('Name')),
-                        ), array('href' => '{{page:appointment}}')),
+                        ), array('href' => '{{page:appointment}}?' . $appointment_query(array(
+                            'department' => $services[$d['service']]['title'],
+                            'doctor'     => $d['name'] . ' · ' . $d['specialty'],
+                        )))),
                     )),
                 )),
             )),
@@ -1254,7 +1266,8 @@ foreach ($packages as $p) {
                 $para($p['text'], 'small text-body-secondary mb-3'),
                 $para($p['price'], 'display-6 fw-bold mb-3'),
                 $check_list($p['items'], 'list-unstyled small mb-4'),
-                $link(lang('Book this check-up'), '{{page:appointment}}', 'btn ' . ($featured ? 'btn-primary' : 'btn-outline-primary') . ' mt-auto'),
+                // The package goes into the form's Reason for the visit.
+                $link(lang('Book this check-up'), '{{page:appointment}}?' . $appointment_query(array('reason' => $p['title'])), 'btn ' . ($featured ? 'btn-primary' : 'btn-outline-primary') . ' mt-auto'),
             )))
         )),
     ), '', '4');
@@ -1316,7 +1329,8 @@ $pages[] = array(
         'confirmation_page_id' => '{{tab:appointment_view}}',
         'auto_registration'    => 1,
         'notify_email'         => '{{site_email}}',
-        'notify_subject'       => lang('New appointment request: ^^department^^, ^^preferred_date^^'),
+        // The date in the site's date format, as the e-mail body writes it.
+        'notify_subject'       => pg_cf_subject_date_format(lang('New appointment request: ^^department^^, ^^preferred_date^^'), array('preferred_date'), pg_sw_default_date_format('date')),
         'notify_page_id'       => '{{tab:email_appointment_new}}',
         'confirm_email'        => 1,
         'confirm_subject'      => lang('We received your appointment request'),
@@ -2387,8 +2401,8 @@ $widgets = array(
         'tree'   => $widget_root(array(
             $form_step(1, lang('What do you need?')),
             $row(array(
-                $col(array($field('cl-appt-department', lang('Specialty'), $select('cl-appt-department', 'department', lang('Choose a specialty…'), $service_titles))), '6'),
-                $col(array($field('cl-appt-doctor', lang('Doctor'), $select('cl-appt-doctor', 'doctor', '', $doctor_choices, true, lang('No preference')))), '6'),
+                $col(array($field('cl-appt-department', lang('Specialty'), $select('cl-appt-department', 'department', lang('Choose a specialty…'), $service_titles, true, '', array('url_param' => 'department')))), '6'),
+                $col(array($field('cl-appt-doctor', lang('Doctor'), $select('cl-appt-doctor', 'doctor', '', $doctor_choices, true, lang('No preference'), array('url_param' => 'doctor')))), '6'),
             ), '3'),
             $radios('cl-appt-visit', 'visit_mode', lang('How would you like to be seen?'), array(
                 array(lang('At the practice'), lang('At the practice')),
@@ -2412,7 +2426,7 @@ $widgets = array(
                     lang('No insurance, I pay myself'),
                 ), false))), '6'),
             ), '3'),
-            $field('cl-appt-reason', lang('Reason for the visit'), $textarea('cl-appt-reason', 'reason', 4, false)),
+            $field('cl-appt-reason', lang('Reason for the visit'), $textarea('cl-appt-reason', 'reason', 4, false, array('url_param' => 'reason'))),
             $field('cl-appt-status', lang('Status'), $select('cl-appt-status', 'status', '', array(
                 lang('Requested'), lang('Confirmed'), lang('Completed'), lang('Cancelled'),
             ), false, lang('Requested'), array('office_use_only' => true))),

@@ -3649,6 +3649,24 @@ function prepare_form_data_for_output($data, $type, $prepare_for_html = true, $d
     }
     return $output;
 }
+/**
+ * The newest comment as ^^newest_comment^^ prints it in a form item view or a
+ * form list view: the first 100 characters of the raw message and "...".
+ * Called before prepare_form_data_for_output(): cutting the escaped text
+ * split "&amp;" into "&am" and a line break's "<br />" into an open "<br"
+ * tag that swallowed the layout markup after it.
+ */
+function pg_form_view_newest_comment($message)
+{
+    $message = (string) $message;
+
+    if (mb_strlen($message) > 100) {
+        $message = mb_substr($message, 0, 100) . '...';
+    }
+
+    return $message;
+}
+
 function get_standard_fields_for_view()
 {
     $standard_fields = array(

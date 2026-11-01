@@ -514,7 +514,7 @@ echo
             array('label' => lang('Create'), 'url' => 'create_file.php', 'icon' => 'bi-plus-circle'),
         ),
         'secondary' => array('label' => lang('File Manager'), 'url' => 'view_folders.php', 'icon' => 'bi-folder2-open'),
-        'grow'      => '<span class="small fg-secondary">' . lang('Disk Usage') . ': ' . h(convert_bytes_to_string(db("SELECT SUM(size) FROM files"), 2)) . '</span>',
+        'grow'      => '<span class="small fg-secondary">' . lang('Disk Usage') . ': ' . h(convert_bytes_to_string(pg_files_disk_usage(), 2)) . '</span>',
         'view'      => array(
             pg_list_sort_menu('view_files.php', $sort_columns, $sort_levels, $sort_default, array('filter' => $filter)),
             '<form id="search_form" action="view_files.php" method="get" class="search_form">

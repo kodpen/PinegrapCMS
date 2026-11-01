@@ -6,7 +6,7 @@ description: Steps E11-E20 of plans/image-editor.md: versions, canvas and artboa
 ## Which steps are there?
 - Sizes and screens as in `image-editor-steps.md`. E11's table is settled (#4202, `image-editor-server.md`); E12 needs E11 for editable texts; E19 comes last (#4203).
 
-- E11 (M) Versions. Screen 10. `free`
+- E11 (M) Versions. Screen 10. `free` Done (#4483, `ui/image-editor-versions.md`).
   - A sub-step in the open version's migration with `install_create_table()`, rerun twice on a dev DB; a save writes a version and its doc; opening loads the original plus the doc; the versions drawer (preview, restore, delete); retention: the original plus the last 10 saves (#4203).
 
 - E12 (M) Canvas and artboard. Screens 14-17. `free` after E10.

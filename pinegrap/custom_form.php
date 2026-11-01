@@ -319,23 +319,20 @@ foreach ($fields as $field_key => $field) {
             // if field is a file upload type
             if ($field['type'] == 'file upload') {
                 if (empty($_FILES[$field['id']]['name'])) {
-                    $error_message = '';
-                    
-                    if ($field['label']) {
-                        $error_message = lang(array('string'=>'{var:1} is required.','vars'=>h(function_exists('pg_tr_label') ? pg_tr_label($field['label']) : $field['label'])));
-                    }
-                    
+                    $error_message = pg_cf_required_message($field['type'], function_exists('pg_tr_label') ? pg_tr_label($field['label']) : $field['label'], 0);
+
                     $liveform->mark_error($field['id'], $error_message);
                 }
                 
             // else field is not a file upload type
             } else {
-                $error_message = '';
-                
-                if ($field['label']) {
-                    $error_message = lang(array('string'=>'{var:1} is required.','vars'=>h(function_exists('pg_tr_label') ? pg_tr_label($field['label']) : $field['label'])));
-                }
-                
+                // A lone check box (a consent) is labelled by a whole sentence,
+                // so it gets a short message of its own.
+                $option_count = ($field['type'] == 'check box')
+                    ? (int) db_value("SELECT COUNT(*) FROM form_field_options WHERE form_field_id = '" . escape($field['id']) . "'")
+                    : 0;
+                $error_message = pg_cf_required_message($field['type'], function_exists('pg_tr_label') ? pg_tr_label($field['label']) : $field['label'], $option_count);
+
                 $liveform->validate_required_field($field['id'], $error_message);
             }
         }

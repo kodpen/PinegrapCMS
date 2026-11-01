@@ -207,6 +207,7 @@
     "Image optimization is not available on this server.": "Bu sunucuda görsel optimizasyonu kullanılamıyor.",
     "Image selector is not available.": "Görsel seçici kullanılamıyor.",
     "Image src": "Görsel src",
+    "Image versions: every save in the image editor keeps a version of the picture; the original and the last 10 saves can be previewed and restored from the editor.": "Görsel sürümleri: görsel düzenleyicideki her kayıt resmin bir sürümünü saklar; orijinal ve son 10 kayıt düzenleyiciden önizlenip geri yüklenebilir.",
     "Image viewer": "Görsel görüntüleyici",
     "Image without alternative text": "Alternatif metni olmayan görsel",
     "Image {var:1} of {var:2}": "Görsel {var:1} / {var:2}",

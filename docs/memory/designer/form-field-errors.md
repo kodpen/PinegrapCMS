@@ -5,7 +5,7 @@ module: custom_form
 ---
 
 ## What does a refused submission mark on a designed form?
-- Every control of a failed field gets `is-invalid` and `aria-invalid="true"`; one `div.invalid-feedback.d-block.pg-inline-feedback` with the message as plain text and an id is added after the field's last control (after a `<label>` right behind it, so a check box keeps its label), and every control names it in `aria-describedby` (an existing hint id is kept first).
+- Every control of a failed field gets `is-invalid` and `aria-invalid="true"`; one `div.invalid-feedback.d-block.pg-inline-feedback` with the message as plain text and an id is added after the field's last control (after a `<label>` right behind it, so a check box keeps its label; a check box or radio inside a `form-check` row gets it last in that row, after a privacy link, PR #4567 for #4544), and every control names it in `aria-describedby` (an existing hint id is kept first).
 - Feedback id: `<first control id>-feedback`, else `pg-field-<name>-<n>-feedback`. A message `''` marks without a text.
 - Before #4458 only the alert box listed the errors; the fields carried nothing (accessibility report rule `a11y_error_association`).
 
@@ -17,3 +17,6 @@ module: custom_form
 
 ## And the classic `liveform::output_field()` path?
 - The inline text it prints for a failed field has id `<control id>-feedback` (or `pg-field-<name>-feedback`) and the control's `aria-describedby` names it, after any hint given in `aria-describedby`. The designed sign-up's CAPTCHA comes from this path (`get_captcha_fields()`).
+
+## What does a required lone check box say?
+- `pg_cf_required_message()` (`includes/fn/custom_form.php`): a `check box` field with at most one option (a consent) says "Check this box to continue."; any other required field "<label> is required.". Before PR #4567 a consent repeated its whole sentence plus "is required." (#4544).

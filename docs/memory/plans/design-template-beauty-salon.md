@@ -24,7 +24,7 @@ description: Plan for the Beauty Salon design template (pinegrap-salon) with onl
 
 - 3a **done (#4524)** `pinegrap-salon/standard.php`: contact and inbox, newsletter, blog and post, help-center search, error, the message and newsletter e-mails, their widgets (`newsletter_band`, `home_posts` included).
 
-- 3b Account and staff: `pinegrap-salon/account.php` (pages and widgets): sign-in pages, My Account and its pages, the staff area (`staff` placing `staff_appointments`, `staff_directory`, `blog_new` with sample posts, `staff_entry`), account e-mails; widgets `login_region`, `my_account`, the starters. After 3a.
+- 3b **done (#4570)** Account and staff: `pinegrap-salon/account.php` (pages and widgets): sign-in pages, My Account and its pages, the staff area (`staff` placing `staff_appointments`, `staff_directory`, `blog_new` with sample posts, `staff_entry`), account e-mails; widgets `login_region`, `my_account`, the starters. After 3a.
 
 - 4 Assembly and look: `pinegrap-salon.php` (header, name, order, icon, description, highlights, look and palette, contact group, folders, `assets` User Styles with own `ps-` rules, search sections map), a gallery drawing if one is added, the template in the shared template tests' lists, memory `designer/design-template-salon.md`; PR body names `[NEW] Added the Beauty Salon design template with online booking`. After 3b.
 

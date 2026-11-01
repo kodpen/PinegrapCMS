@@ -539,7 +539,7 @@
                     self.showMessage(r.file.notice);
                 }
 
-                self.loadImage(self.opts.src || r.file.url);
+                self.openFile(r);
             }, function () {
                 self.fail(t('loadError'));
             });
@@ -548,6 +548,12 @@
         }
 
         this.loadImage(this.opts.src || '');
+    };
+
+    // The open answer's picture into the stage; the versions part loads the
+    // version a saved document was drawn on instead.
+    Editor.prototype.openFile = function (r) {
+        this.loadImage(this.opts.src || r.file.url);
     };
 
     Editor.prototype.fail = function (message) {

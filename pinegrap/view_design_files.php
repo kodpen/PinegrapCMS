@@ -222,7 +222,7 @@ pg_page_shell(
 <main id="content" class="container-fluid">
     ' . pg_screen_toolbar(array(
         'primary' => array('label' => lang('Upload File'), 'url' => 'add_design_file.php?send_to=' . urlencode(REQUEST_URL), 'icon' => 'bi-upload'),
-        'grow'    => '<span class="small fg-secondary">' . lang('Disk Usage') . ': ' . h(convert_bytes_to_string(db("SELECT SUM(size) FROM files"), 2)) . '</span>',
+        'grow'    => '<span class="small fg-secondary">' . lang('Disk Usage') . ': ' . h(convert_bytes_to_string(pg_files_disk_usage(), 2)) . '</span>',
         'view'    => pg_list_sort_menu('view_design_files.php', $sort_columns, $sort_levels, $sort_default),
     )) . '
     <div class="row">
