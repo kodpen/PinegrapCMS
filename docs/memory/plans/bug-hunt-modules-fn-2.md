@@ -14,7 +14,7 @@ description: Module list of plans/bug-hunt.md, part 2: includes/fn/ modules pric
 
 - `product_customs`: open
 
-- `product_feeds`: open
+- `product_feeds`: MF, #4729
 
 - `product_list`: open
 

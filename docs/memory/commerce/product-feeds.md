@@ -14,7 +14,7 @@ description: Product feed builder (includes/fn/product_feeds.php, PR #561): whic
 
 ## How is a product described?
 - URL: site base + `pg_sw_catalog_detail_page_name(0)` + `/` + address_name, as the cart and express order link products. Images: `image_name` then `products_images_xref` by file name (as the product page), absolute, max 1 + 10.
-- Title: `_pg_product_rss_title()` (same as RSS/JSON-LD), 150 chars. Description: plain text of `full_description`, else meta, else short description, else the title; 5000 chars. Text fields are entity-decoded, not tag-stripped ("<10 cm" stays).
+- Title: `_pg_product_rss_title()` (same as RSS/JSON-LD), 150 chars. Description: plain text of `full_description` (block starts and ends become spaces, #4729), else meta, else short description, else the title; 5000 chars. Text fields are entity-decoded, not tag-stripped ("<10 cm" stays).
 - Price: `products.price` as "1499.00 TRY" built from integers; `sale_price` only when the offer price for everybody (`get_discounted_product_prices(false)`, below) is above 0 and below the price.
 - GTIN only with a valid GS1 check digit (spaces/dashes dropped). Brand: product brand, else `default_brand` option.
 - Variant family: the product's first select-type group gives `group_id` "G<id>" (never equals an item id) and the attribute choices (label without a trailing colon, "nothing selected" options skipped).
