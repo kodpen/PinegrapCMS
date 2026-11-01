@@ -955,9 +955,11 @@
 
     // ── Shared components and system widgets (pg_designer_components_card()) ──
 
-    // Tick rows in the offcanvas panel, delete them in one go. Rows still
-    // placed on a page are deleted too (force) once the operator has seen
-    // where.
+    // Tick rows in the offcanvas panel, delete them in one go, however many:
+    // "select all" ticks every row the panel lists (it has no filter and
+    // draws every row) and the server takes any number in one request.
+    // Rows still placed on a page are deleted too (force) once the operator
+    // has seen where.
     (function () {
         var panel = document.getElementById('sd-comp-offcanvas');
 
@@ -970,6 +972,9 @@
         var counter = document.getElementById('sd-comp-count');
         var opener = document.getElementById('sd-comp-open');
         var total = document.getElementById('sd-comp-total');
+
+        // Rows the confirmation names one by one.
+        var LISTED = 20;
 
         // Nothing left to list: close the panel, then drop it and its button
         // once the slide-out has finished.
@@ -1022,14 +1027,23 @@
             var used = 0;
             var lines = [];
 
+            // Every row is counted; the confirmation names the first ones
+            // (the used ones lead) and the number of the rest, so a few
+            // thousand ticked rows still give a dialog that can be read.
             rows.forEach(function (row) {
                 var where = [];
                 try { where = JSON.parse(row.dataset.usage || '[]'); } catch (e) { where = []; }
                 if (where.length) {
                     used++;
                 }
-                lines.push('• ' + (row.dataset.name || '') + (where.length ? ' — ' + say('usedOn') + where.join(', ') : ''));
+                if (lines.length < LISTED) {
+                    lines.push('• ' + (row.dataset.name || '') + (where.length ? ' — ' + say('usedOn') + where.join(', ') : ''));
+                }
             });
+
+            if (rows.length > lines.length) {
+                lines.push('… ' + say('compMore').replace('{var}', rows.length - lines.length));
+            }
 
             var message = say('compAsk').replace('{var}', rows.length) + '\n' + lines.join('\n') + '\n\n'
                 + (used ? say('compUsed').replace('{var}', used) + ' ' : '')
@@ -1052,9 +1066,11 @@
                             }
 
                             var gone = (res.deleted || []).map(function (id) { return num(id); });
+                            var goneSet = {};
 
+                            gone.forEach(function (id) { goneSet[id] = true; });
                             rows.forEach(function (row) {
-                                if (gone.indexOf(num(row.dataset.id)) !== -1) {
+                                if (goneSet[num(row.dataset.id)]) {
                                     row.remove();
                                 }
                             });

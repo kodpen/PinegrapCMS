@@ -9128,6 +9128,70 @@ function pg_shared_component_usage($ids = null)
 }
 
 /**
+ * The ids a bulk delete of shared components names, cleaned: positive
+ * integers, each once, in the order given. There is no upper bound: the
+ * statements take them in slices (pg_shared_component_id_slices()). Pure.
+ *
+ * @param mixed $raw the request's ids (array, or a single value)
+ * @return int[]
+ */
+function pg_shared_component_delete_ids($raw)
+{
+    $ids = array();
+    foreach ((array)$raw as $one) {
+        if (!is_scalar($one)) continue;
+        $one = (int)$one;
+        if ($one > 0) $ids[$one] = $one;
+    }
+    return array_values($ids);
+}
+
+/**
+ * Any number of shared component ids cut into the comma lists of IN (…)
+ * clauses, 500 to a list, so one statement never grows past what a server
+ * packet holds however many rows a bulk delete names. Pure.
+ *
+ * @param int[] $ids
+ * @return string[] e.g. array('4,7,9')
+ */
+function pg_shared_component_id_slices($ids)
+{
+    $lists = array();
+    foreach (array_chunk(array_values(array_map('intval', (array)$ids)), 500) as $slice) {
+        $lists[] = implode(',', $slice);
+    }
+    return $lists;
+}
+
+/**
+ * What a bulk delete of shared components does with each id asked for
+ * (shared_component/delete_many). A row already gone is skipped. A row a
+ * saved page still places is kept, with where it is placed, unless $force:
+ * the operator has seen those places and confirmed. Pure.
+ *
+ * @param int[] $ids   cleaned ids (pg_shared_component_delete_ids())
+ * @param array $names id => name of the rows that exist
+ * @param array $usage id => placements (pg_shared_component_usage())
+ * @param bool  $force delete rows that are still placed too
+ * @return array 'deleted' => int[], 'kept' => list of {id, name, usage}
+ */
+function pg_shared_component_delete_split($ids, $names, $usage, $force)
+{
+    $deleted = array();
+    $kept    = array();
+    foreach ((array)$ids as $id) {
+        $id = (int)$id;
+        if (!isset($names[$id])) continue;
+        if (!$force && !empty($usage[$id])) {
+            $kept[] = array('id' => $id, 'name' => (string)$names[$id], 'usage' => $usage[$id]);
+            continue;
+        }
+        $deleted[] = $id;
+    }
+    return array('deleted' => $deleted, 'kept' => $kept);
+}
+
+/**
  * Widget trees and settings the current request renders in place of the
  * saved ones: sid => {tree_json, cfg}. Set only by the editor's Preview.
  */
