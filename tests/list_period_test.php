@@ -241,8 +241,13 @@ function test_list_period_screens_order_their_range()
 {
 	$root = dirname(__DIR__) . '/pinegrap/';
 
-	foreach (array('view_orders.php', 'includes/fn/contact_list.php', 'includes/fn/commission_list.php', 'view_log.php') as $file) {
+	foreach (array('includes/fn/contact_list.php', 'view_log.php') as $file) {
 		pg_assert_contains('pg_list_period_ordered(', file_get_contents($root . $file), $file . ' orders its range');
+	}
+
+	// pg_list_period_state() puts the range the right way round as well.
+	foreach (array('view_orders.php', 'includes/fn/commission_list.php', 'includes/fn/submitted_form_list.php') as $file) {
+		pg_assert_contains('pg_list_period_state(', file_get_contents($root . $file), $file . ' works out its range');
 	}
 
 	pg_assert_contains("\$filters['from'] > \$filters['to']", file_get_contents($root . 'erp_audit.php'), 'erp_audit.php reads a reversed range the right way round');

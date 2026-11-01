@@ -37,7 +37,9 @@ function commission_list_test_commission($values = array())
 
 function test_commission_list_range_defaults_and_bad_parts()
 {
+	// A range the user picked: its good parts stay, a bad part falls back.
 	$_SESSION['software']['ecommerce']['view_commissions'] = array(
+		'range_picked' => true,
 		'start_month' => '2', 'start_day' => '3', 'start_year' => '2025',
 		'stop_month' => 'x', 'stop_day' => '', 'stop_year' => '2026',
 	);
