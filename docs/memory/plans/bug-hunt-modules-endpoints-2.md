@@ -66,7 +66,7 @@ description: Module list of plans/bug-hunt.md, part 4: root endpoint groups opti
 
 - Endpoints `translation` (3): open
 
-- Endpoints `user` (5): taken by KD (add_user, edit_user, delete_users, import_users, view_users)
+- Endpoints `user` (5): done #4489, #4505 (add_user, edit_user, delete_users, import_users, view_users)
 
 - Endpoints `verified` (3): open
 
