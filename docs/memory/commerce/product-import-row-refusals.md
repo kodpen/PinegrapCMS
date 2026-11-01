@@ -1,6 +1,6 @@
 ---
 name: product-import-row-refusals
-description: Product import rows left out and why each list says so (too large, not whole, not a number, in the Recycle Bin); an update finds its product by id (#4718, #4719)
+description: Product import rows left out and why each list says so (too large, not whole, not a number, in the Recycle Bin); an update finds its product by id (PR #4917)
 ---
 
 ## Which rows does import_products.php leave out, and how are they named?
@@ -11,11 +11,11 @@ description: Product import rows left out and why each list says so (too large, 
   - an HS code or country of origin that cannot be stored (`rows_not_customs`);
   - a product in the Recycle Bin (`rows_binned`).
 - The readers are pure, in `includes/fn/ecommerce.php`: `pg_products_import_price_read()` (`cents`, `too_large`), `pg_products_import_row_prices()` (adds `too_large`), `pg_products_import_row_decimals_problem()` (`''`, `not_number`, `too_large`), `pg_products_import_quantity_refusal()` (`not_whole`, `not_number`, called once `pg_products_mass_quantity_value()` gave null).
-- Before (#4719) a too-large price was reported as "not an amount" and a fractional, negative or too-large stock, weight or size as "not a number": the operator looked for a typo that was not there.
+- Before (#4719, PR #4917) a too-large price was reported as "not an amount" and a fractional, negative or too-large stock, weight or size as "not a number": the operator looked for a typo that was not there.
 
 ## What happens to a row whose product is in the Recycle Bin?
 - The product lookup reads `recycled` when the bin's upgrade step has run (`pg_catalog_bin_ready()`); a binned product's row is left out and listed ("…because their product is in the Recycle Bin"), whether Update Existing Products is on or off. A binned product still holds its code (`pg_product_name_holder()`), so the row cannot create a new one either.
-- Before (#4718) the import updated the binned product's price, stock and other columns, wrote a price history row and counted it as updated, while Edit Product, Modify Selected, the Catalog Manager and the barcode screens refuse a binned product.
+- Before (#4718, PR #4917) the import updated the binned product's price, stock and other columns, wrote a price history row and counted it as updated, while Edit Product, Modify Selected, the Catalog Manager and the barcode screens refuse a binned product.
 
 ## How does an update find its product?
 - `UPDATE products … WHERE id = <the id the name lookup found>`; it used to be `WHERE name = …`, which would change every row holding that name.
