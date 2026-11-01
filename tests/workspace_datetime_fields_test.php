@@ -98,7 +98,7 @@ function test_workspace_module_date_inputs_carry_their_hook()
 	pg_assert_same(0, preg_match_all("/input\\('date'/", workspace_datetime_source('assets/js/workspace_task_time.js') . workspace_datetime_source('assets/js/workspace_task_approval.js')), 'the small input() builders make no native date');
 
 	$ws = workspace_datetime_source('assets/js/workspace.js');
-	pg_assert_same(3, substr_count($ws, 'dateField: pgDateField'), 'the part, feature and repeat helpers lend pgDateField()');
+	pg_assert_same(4, substr_count($ws, 'dateField: pgDateField'), 'the part, feature and repeat helpers and the kit workspace_flow.js reads lend pgDateField()');
 }
 
 // The repeat's end date: its box hides with it and is where the focus goes.
