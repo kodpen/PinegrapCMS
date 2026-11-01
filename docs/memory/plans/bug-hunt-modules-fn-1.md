@@ -158,7 +158,7 @@ description: Module list of plans/bug-hunt.md, part 1: includes/fn/ modules a11y
 
 - `office`: open
 
-- `office_edit`: open
+- `office_edit`: clean for addresses, value parsing, save lock, file replace, save package; sheet/docx patching not read
 
 - `ops_alerts`: clean; lead: webhook_failing mails raw webhook URLs
 
