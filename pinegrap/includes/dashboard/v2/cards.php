@@ -66,7 +66,7 @@ function pg_dashboard_v2_periods()
 function pg_dashboard_v2_cards()
 {
     // The cards whose function exists.
-    $built = array('visitors', 'engagement');
+    $built = array('visitors', 'engagement', 'firewall', 'team', 'mytasks', 'waiting', 'week', 'calendars');
 
     $card = function ($title, $icon, $category, $width, $period, $gate) {
         return array(
