@@ -37,8 +37,14 @@ function pg_sw_error_context($message = null, $code = null)
     return $stored;
 }
 
-// The first designed page carrying an error page widget, or 0. Pages in the
-// recycle bin do not count (pg_sw_widget_pages() leaves them out).
+// The designed page carrying an error page widget that draws the site's
+// error screens, or 0. get_error_screen() draws it without an access check,
+// for every visitor, so only a page in a public folder counts: a design
+// tried out as a draft (a private folder) took over every error screen of
+// the site when its page's title sorted first (#4477). A page of the
+// published design (the home page's) comes first, then the lowest page id.
+// Pages in the recycle bin do not count (pg_sw_widget_pages() leaves them
+// out).
 function pg_sw_error_page_id()
 {
     static $page_id = null;
@@ -47,9 +53,23 @@ function pg_sw_error_page_id()
     // page_tree_json arrived with the multi-page editor; before that upgrade
     // no designed page can carry a widget.
     if (function_exists('pg_multi_page_design_ready') && !pg_multi_page_design_ready()) return $page_id;
-    $pages = pg_sw_widget_pages('error_page');
-    if ($pages) $page_id = (int)$pages[0]['page_id'];
+    $public = function ($folder_id) {
+        return get_access_control_type($folder_id) === 'public';
+    };
+    $page_id = pg_sw_error_page_pick(pg_sw_widget_pages('error_page'), $public, pg_sw_home_style_id());
     return $page_id;
+}
+
+// Of $pages (rows with 'page_id', 'page_folder', 'page_style'), the id of
+// the one $is_public accepts, of design $home_style first, else the lowest
+// id; 0 when none. Pure.
+function pg_sw_error_page_pick(array $pages, $is_public, $home_style)
+{
+    usort($pages, function ($a, $b) {
+        return (int)$a['page_id'] - (int)$b['page_id'];
+    });
+    $page = pg_sw_first_viewable_page($pages, $is_public, array((int)$home_style));
+    return ($page === null) ? 0 : (int)$page['page_id'];
 }
 
 // Which blocks of an error page show for an error with this response code
