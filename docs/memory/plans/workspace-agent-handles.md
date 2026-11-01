@@ -1,6 +1,6 @@
 ---
 name: workspace-agent-handles
-description: Plan (2026-10-21, step 1 done, answers open): each askable agent gets its own @handle, name, avatar and channel permission: outside apps, MCP agents, own-key model assistants such as @chatgpt
+description: Plan (2026-10-21, steps 1 and 5 done, 4 waits for 2): each askable agent gets its own @handle, name, avatar and channel permission: outside apps, MCP agents, own-key model assistants such as @chatgpt
 ---
 
 ## What is asked? (owner, 2026-10-21)
@@ -21,10 +21,9 @@ description: Plan (2026-10-21, step 1 done, answers open): each askable agent ge
    - 1a done (#1885, workspace-app-handles.md); 1b (picker) done (#1975).
 2. Registry and permission (schema, ask first): a table of agents an administrator adds (kind, handle, name, app id, provider, model, sealed key, status; keys `app:<id>`, `model:<id>`) and each channel's choice per agent; then an outside app hears a mention by invitation where the channel allows it (`ws_app_reads_channel()`). `claude_access`, `ai_access` stay.
 3. Model assistants with the site's own key: OpenAI-compatible chat APIs (OpenAI, Gemini, Mistral, DeepSeek, OpenRouter with PKCE sign-in (plans/reverse-oauth-leftovers.md), Azure OpenAI, a custom address such as Ollama) answered by the Pinegrap AI engine (`ws_ai_step()` with that address, key and model): the same tools, proposals and approvals. A card each: handle (`@chatgpt`), name, avatar, sealed key, model, test. `ws_ai_requests.agent` `model:<id>`.
-4. Application membership endpoints (moved here from the Workspace phase 3 leftovers): add or remove an application in a channel; only a member adds one to a private channel.
+4. Application membership endpoints: add or remove an application in a channel; only a member adds one to a private channel. Waits for step 2 (#4393): the membership is step 2's channel/agent permission row (allowed = member); routes after the new API design.
 5. MCP agents get an avatar and their name in tags. Each slice writes its memory.
-   - 5a done (#2112, workspace-mcp-agent-identity.md): one avatar and icon per `mcp:<id>`, server.
-   - 5b done (#2130): the @ picker draws the server's avatar/icon, the task's delegate tag its icon (workspace-mcp-agent-identity.md).
+   - 5a, 5b done (#2112, #2130, workspace-mcp-agent-identity.md): one avatar and icon per `mcp:<id>`; the @ picker and the task's delegate tag draw them.
 
 ## Which questions are answered? (#2418)
 1. Step 2 first, then (a) model assistants (`@chatgpt` answers inside the site).
