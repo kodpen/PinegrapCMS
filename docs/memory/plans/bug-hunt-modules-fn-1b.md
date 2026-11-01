@@ -32,7 +32,7 @@ description: Module list of plans/bug-hunt.md, part 1b: includes/fn/ modules lin
 
 - `ops_alerts`: clean; lead: webhook_failing mails raw webhook URLs
 
-- `order_completion`: done (#4884, #PRNUM: DST end dates); line forms, from_payment not read
+- `order_completion`: done (#4884, #4962: DST end dates); line forms, from_payment not read
 
 - `order_list`: clean
 
