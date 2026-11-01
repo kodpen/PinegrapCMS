@@ -17,5 +17,8 @@ description: The editor's Dark/Light canvas view and the theme switchers on the 
 - Canvas switcher → engine → `pg-theme-change` on the canvas document → `_sdCanvasThemeChanged()` reads `<html>` ("System" is resolved there to light or dark) and calls `applyCanvasTheme(mode, {source: 'canvas'})`, so the toolbar button and the Themes panel follow. The switchers are never clicked by the editor.
 - The editor's preview window is a separate document and is not covered here.
 
+## Which group buttons does the Themes tab draw?
+- Only each group's reset (`data-act="reset-all"`). Copy and Paste buttons that did nothing were removed (#4494); they come back only with a working feature (`tests/page_editor_fixes_test.php`).
+
 ## What tests cover it?
 - `tests/designer_canvas_controls_test.php`: the engine and `applyCanvasTheme()` run together under Node on a DOM stand-in (toolbar, switch, menu, Themes tab; nothing stored at any step; the published page still stores the visitor's choice), and the wiring (no clicks, the flag before the file, the listener, `<html>` on a fresh document).

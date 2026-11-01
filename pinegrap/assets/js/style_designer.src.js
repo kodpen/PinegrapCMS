@@ -54418,8 +54418,6 @@ const StyleDesigner = (function () {
                                 '<span class="bi bi-chevron-' + (collapsed ? 'right' : 'down') + ' sd-theme-grp-chev"></span>' +
                                 '<span class="sd-theme-grp-label">' + g.label + '</span>' +
                                 '<span class="sd-theme-grp-spacer"></span>' +
-                                '<button type="button" class="sd-theme-grp-act" data-act="copy" data-grp="' + g.id + '" title="' + esc(_sdT('Copy (coming soon)')) + '"><span class="bi bi-clipboard"></span></button>' +
-                                '<button type="button" class="sd-theme-grp-act" data-act="paste" data-grp="' + g.id + '" title="' + esc(_sdT('Paste (coming soon)')) + '"><span class="bi bi-clipboard-plus"></span></button>' +
                                 '<button type="button" class="sd-theme-grp-act" data-act="reset-all" data-grp="' + g.id + '" title="' + esc(_sdT('Reset every change in this group')) + '"><span class="bi bi-arrow-counterclockwise"></span></button>' +
                             '</div>' +
                             '<div class="sd-theme-grp-body"' + (collapsed ? ' style="display:none"' : '') + '>';
@@ -54494,8 +54492,7 @@ const StyleDesigner = (function () {
                     _setGrpCollapsed(id, nowCollapsed);
                 });
             });
-            // Group action buttons. Reset-all is wired now; copy/paste are
-            // placeholders for a future "share theme" flow.
+            // Group action buttons: each group's reset.
             host.querySelectorAll('.sd-theme-grp-act').forEach(function (btn) {
                 btn.addEventListener('click', function (e) {
                     e.stopPropagation();
@@ -54509,7 +54506,6 @@ const StyleDesigner = (function () {
                         renderThemePanel();
                         applyAssetsToIframe();
                     }
-                    // copy/paste: TODO — future iteration
                 });
             });
 
@@ -64946,7 +64942,10 @@ const StyleDesigner = (function () {
     }
 
     // The kind's default layout with a starter's repeated part in its first
-    // loop area and the starter's props on the element holding it; a form
+    // loop area without a source (the widget's own loop; a list such as the
+    // catalog's breadcrumb is skipped with what it holds, as
+    // _sdFirstLoopArea() does) and the starter's props on the element
+    // holding it; a form
     // list's record goes where the starter marks it (props.starterFields),
     // drawn from the form's fields as the default layout draws it.
     /* @pg-site-output */
@@ -64956,7 +64955,7 @@ const StyleDesigner = (function () {
         if (it.body) return _sdLgStarterBody(kind, it, base);
         var loop = null, holder = null;
         (function walk(n, parent) {
-            if (loop || !n) return;
+            if (loop || !n || _sdListIsSourced(n)) return;
             if (n.type === 'loop_area') { loop = n; holder = parent; return; }
             (n.children || []).forEach(function (c) { walk(c, n); });
         })(base, null);

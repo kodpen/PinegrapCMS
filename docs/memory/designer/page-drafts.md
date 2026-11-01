@@ -12,6 +12,9 @@ description: Drafts of visual-designer pages (2026.4.7): the private Drafts fold
 - The editor shows and sends `page_folder` as the folder to return to everywhere, and the state as `page_draft`; both go through `pg_designer_save_page()` (`pg_designer_page_draft_plan()`), no endpoint of their own. A save without `page_draft` (install, external API, the AI assistant) and every content-level save keep the stored state; the server's default is on the site.
 - The home page stays on the site (with a warning). Every move uses `pg_page_draft_move()`, also for the designs list and scheduled times (`page-schedule.md`).
 
+## What does the site log say?
+- `pg_designer_page_draft_log($was, $draft, $created)` picks the line: "taken off the site as a draft" only for a stored page that was on the site, "was published" only for a stored draft put back. A page the save creates gets only "was created": a new page starting as a draft was never on the site (#4494).
+
 ## How does the editor show it?
 - A page the editor creates starts as a draft: a new path that creates a tab sets `page_draft: _pgNewPageDraft()` on it.
 - On a draft tab the main button is "Save", with `#sd-publish-page` "Publish" beside it (`_pgSetDraft([active key], false)`); a live tab has one button, "Publish". One save writes the whole design: Save on a draft also puts the pending changes of the live pages on the site, and the message says so.
