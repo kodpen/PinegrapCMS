@@ -697,6 +697,7 @@
     "A pickup was booked for {var:1} label(s).": "{var:1} etiket için kurye çağrıldı.",
     "A picture from the file manager or from an address.": "Dosya yöneticisinden ya da bir adresten gelen görsel.",
     "A picture or a PDF of the receipt": "Fişin fotoğrafı ya da PDF'i",
+    "A picture uploaded to the library whose longest edge is above this is shrunk to it, in its own format. 0 leaves uploads as they are; product photos keep their own limit.": "Kütüphaneye yüklenen ve uzun kenarı bundan büyük olan resim kendi biçiminde bu boyuta küçültülür. 0 yüklemelere dokunmaz; ürün fotoğrafları kendi sınırlarını korur.",
     "A piece of text within a line, for styling a word or a phrase.": "Bir kelimeyi ya da ifadeyi biçimlendirmek için satır içindeki metin parçası.",
     "A place for everyone": "Herkese yer var",
     "A place to ask questions about the app, share what you made and learn from each other.": "Uygulama hakkında soru sorabileceğiniz, yaptıklarınızı paylaşabileceğiniz ve birbirinizden öğrenebileceğiniz bir yer.",

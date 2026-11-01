@@ -131,6 +131,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_commission_cancel_marker(); // 11.0.139
 	upgrade_2026_11_0_file_versions();           // 11.0.140
 	upgrade_2026_11_0_form_field_product_group(); // 11.0.141
+	upgrade_2026_11_0_image_upload_cap();        // 11.0.142
 
 }
 
@@ -4250,5 +4251,20 @@ function upgrade_2026_11_0_form_field_product_group() {
 	}
 
 	install_note('Variant sets: the fields of a variant set\'s form template are stored under a form type of their own, so their edit screen opens again and the template is applied to every variant.');
+
+}
+
+// The upload size cap (2026.11.0, 11.0.142; pg_image_upload_cap_apply() in
+// includes/fn/image.php, the Image Optimization card under Site Settings,
+// Features). A picture uploaded to the library whose longest edge is above
+// image_upload_max_dimension px is shrunk to it in its own format; 0 is off.
+// SMALLINT because the value is a pixel count up to 20000. Off on a running
+// site, so an upgrade changes no upload; a new starter site gets 2560 from
+// install/index.php after the upgrade.
+function upgrade_2026_11_0_image_upload_cap() {
+
+	install_add_column('config', 'image_upload_max_dimension', "SMALLINT UNSIGNED NOT NULL DEFAULT 0");
+
+	install_note('Images: pictures larger than a chosen size can be shrunk on upload, under Site Settings, Features, Image Optimization; the setting is off until switched on.');
 
 }
