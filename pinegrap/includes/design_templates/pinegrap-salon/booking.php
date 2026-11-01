@@ -264,8 +264,8 @@ $booking_widgets = array(
         'tree'   => $widget_root(array(
             $form_step(1, lang('What would you like?')),
             $row(array(
-                $col(array($field('sl-book-service', lang('Treatment'), $select('sl-book-service', 'service', lang('Choose a service…'), $service_titles))), '6'),
-                $col(array($field('sl-book-stylist', lang('Stylist'), $select('sl-book-stylist', 'stylist', '', $team_choices, true, lang('No preference')))), '6'),
+                $col(array($field('sl-book-service', lang('Treatment'), $select('sl-book-service', 'service', lang('Choose a service…'), $service_titles, true, '', array('url_param' => 'service')))), '6'),
+                $col(array($field('sl-book-stylist', lang('Stylist'), $select('sl-book-stylist', 'stylist', '', $team_choices, true, lang('No preference'), array('url_param' => 'stylist')))), '6'),
             ), '3'),
             $radios('sl-book-first', 'first_visit', lang('Have you been to us before?'), array(
                 array(lang('First time with us'), lang('First time with us')),
@@ -283,7 +283,7 @@ $booking_widgets = array(
                 $col(array($field('sl-book-email', lang('Email'), $input('sl-book-email', 'email', 'email', 'email', true, array('contact_field' => 'email_address')))), '6'),
                 $col(array($field('sl-book-phone', lang('Phone'), $input('sl-book-phone', 'tel', 'phone', 'tel', true, array('contact_field' => 'mobile_phone')))), '6'),
             ), '3'),
-            $field('sl-book-notes', lang('Anything we should know?'), $textarea('sl-book-notes', 'notes', 4, false), 'mb-3',
+            $field('sl-book-notes', lang('Anything we should know?'), $textarea('sl-book-notes', 'notes', 4, false, array('url_param' => 'notes')), 'mb-3',
                 lang('An allergy, the look you have in mind or a picture from the lookbook.')),
             $field('sl-book-status', lang('Status'), $select('sl-book-status', 'status', '', array(
                 lang('Requested'), lang('Confirmed'), lang('Appointment completed'), lang('Appointment cancelled'),

@@ -6119,11 +6119,8 @@ function _render_content_html($props, $pad, $kids = '')
             // An e-mail page and a background render (the editor's Preview,
             // the SEO pass) never show or use up the session's pending
             // messages: they belong to the page the visitor sees next.
-            if (function_exists('pg_seo_rendering') && pg_seo_rendering()) break;
-            if (function_exists('pg_sw_render_context')) {
-                $msg_ctx = pg_sw_render_context();
-                if (!empty($msg_ctx['email'])) break;
-            }
+            if (function_exists('pg_sw_messages_held_back') ? pg_sw_messages_held_back()
+                : (function_exists('pg_seo_rendering') && pg_seo_rendering())) break;
             $msg_form  = !empty($props['formName']) ? $props['formName'] : '';
             $msg_cls   = !empty($props['cssClass']) ? ' ' . h($props['cssClass']) : '';
             $msg_parts = array();

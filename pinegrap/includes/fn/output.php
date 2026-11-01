@@ -3795,6 +3795,11 @@ function output_menu($properties = false)
         $menu_items[22]['data-bs-content'] .= '<hr class=\'divider my-3\' />';
         $menu_items[22]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_accounts.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-building bi-me-2\'>' . lang('Accounts') . '</a>';
         $menu_items[22]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_invoices.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-receipt bi-me-2\'>' . lang('Invoices') . '</a>';
+        // The row's count is the overdue sales invoices: the entry that lists
+        // them carries it, so the opened panel shows what the count is about.
+        if ($menu_items[22]['badge'] > 0) {
+            $menu_items[22]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_invoices.php?filter=overdue&amp;direction=sales\'' . $output_parent_target . ' data-pg-menu-label=\'' . h(lang('Overdue')) . '\' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-exclamation-circle bi-me-2 pg-menu-has-badge\'>' . lang('Overdue') . pg_menu_count_badge($menu_items[22]['badge'], $menu_items[22]['badge_title']) . '</a>';
+        }
         $menu_items[22]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_quotes.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-file-earmark-text bi-me-2\'>' . lang('Quotes') . '</a>';
         $menu_items[22]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_purchase_orders.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-cart-check bi-me-2\'>' . lang('Purchase orders') . '</a>';
         // Screens only an e-document provider can fill; a store without one
@@ -4390,10 +4395,9 @@ function output_menu($properties = false)
         // A count worth acting on, pinned to the row's right edge; collapsed
         // to the rail it sits on the icon's corner (backend.src.css). Zero
         // draws nothing: an empty pill would read as "something".
-        $output_menu_item_badge = '';
-        if (isset($options['badge']) && ((int) $options['badge'] > 0)) {
-            $output_menu_item_badge = '<span class="pg-menu-badge badge rounded-pill theme-danger"' . (isset($options['badge_title']) ? ' title="' . h($options['badge_title']) . '"' : '') . '>' . (((int) $options['badge'] > 99) ? '99+' : (int) $options['badge']) . '</span>';
-        }
+        // The panel's entry that the count is about carries the same pill, so
+        // an opened row says where the number comes from.
+        $output_menu_item_badge = pg_menu_count_badge($options['badge'] ?? 0, $options['badge_title'] ?? '');
 
         // A row with a panel keeps its address, so a middle click or "open in
         // a new tab" still reaches its screen; a plain click opens the panel
@@ -4825,6 +4829,28 @@ function pg_menu_row_panel_id($options, $entries, $drawn)
  * @param string $entries  the row's entries, as output_menu() built them
  * @return string
  */
+/**
+ * The red count pill of a menu row or of a panel entry.
+ *
+ * Zero or less draws nothing: an empty pill would read as "something".
+ *
+ * @param mixed  $count
+ * @param string $title  Hover text naming what is counted
+ * @return string
+ */
+function pg_menu_count_badge($count, $title = '')
+{
+    $count = is_numeric($count) ? (int) $count : 0;
+
+    if ($count <= 0) {
+        return '';
+    }
+
+    $title = (string) $title;
+
+    return '<span class="pg-menu-badge badge rounded-pill theme-danger"' . (($title !== '') ? ' title="' . h($title) . '"' : '') . '>' . (($count > 99) ? '99+' : (string) $count) . '</span>';
+}
+
 function pg_menu_panel($panel_id, $row_id, $title, $entries)
 {
     return '<div id="' . $panel_id . '" class="pg-menu-panel" data-pg-menu-row="' . $row_id . '" role="group" aria-labelledby="' . $panel_id . '_title">'

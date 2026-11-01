@@ -282,7 +282,9 @@ foreach ($packages as $p) {
                 $para($p['text'], 'small text-body-secondary mb-3'),
                 $para($p['price'], 'display-6 fw-semibold mb-3'),
                 $check_list($p['items'], 'list-unstyled small mb-4'),
-                $link(lang('Book this package'), '{{page:appointment}}', 'btn rounded-pill ' . ($is_featured ? 'btn-primary' : 'btn-outline-primary') . ' mt-auto'),
+                // The package goes into the form's notes: the form has no
+                // package field, and its services are single treatments.
+                $link(lang('Book this package'), '{{page:appointment}}?' . $appointment_query(array('notes' => $p['title'])), 'btn rounded-pill ' . ($is_featured ? 'btn-primary' : 'btn-outline-primary') . ' mt-auto'),
             )))
         )),
     ), '', '4');
@@ -354,7 +356,7 @@ foreach ($team as $key => $t) {
                         $el('a', 'btn btn-sm btn-outline-primary rounded-pill align-self-start mt-auto', lang('Link'), array(
                             $span(lang('Book with me'), '', lang('Link Text')),
                             $span($t['name'], 'visually-hidden', lang('Name')),
-                        ), array('href' => '{{page:appointment}}')),
+                        ), array('href' => '{{page:appointment}}?' . $appointment_query(array('stylist' => $t['name'] . ' · ' . $t['role'])))),
                     )),
                 )),
             )),

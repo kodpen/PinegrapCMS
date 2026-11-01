@@ -126,7 +126,7 @@ description: Generated from the module field of the memory files: each includes/
 - `widgets_comments_recent`: [[comments-widget-recent]], [[comments-widget-recent-reads]]
 - `widgets_conditions`: [[widget-conditions]]
 - `widgets_entity_fields`: [[widget-entity-fields]]
-- `widgets_express_order`: [[checkout-requested-arrival-date]]
+- `widgets_express_order`: [[checkout-requested-arrival-date]], [[express-order-field-labels]]
 - `widgets_fill`: [[widget-fill-filters]]
 - `widgets_finish`: [[widget-finish-pass]], [[widget-hide-if-empty]]
 - `widgets_folder_view`: [[folder-view-widget]]
