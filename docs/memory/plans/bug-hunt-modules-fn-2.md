@@ -74,7 +74,7 @@ description: Module list of plans/bug-hunt.md, part 2: includes/fn/ modules pric
 
 - `submitted_form_list`: open
 
-- `subscription_renewal`: taken by LK
+- `subscription_renewal`: taken by LK, #4622 (waits on #4623)
 
 - `subscriptions`: open
 
