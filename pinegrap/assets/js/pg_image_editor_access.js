@@ -84,7 +84,7 @@
 
         this.helpReturn = document.activeElement;
 
-        var close = button('pgie-ibtn sm', t('closePanel'), 'close', function () { self.closeHelp(); });
+        var close = button('pgie-ibtn sm', t('close'), 'close', function () { self.closeHelp(); });
         var body = el('div', { class: 'pgie-keys' });
 
         M.keyMap(this.tools.list).forEach(function (g) {
