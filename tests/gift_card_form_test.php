@@ -129,3 +129,18 @@ function test_gift_card_form_quantity_is_a_whole_number()
 	pg_assert_same(false, pg_gift_card_form_quantity(''), 'empty');
 	pg_assert_same(false, pg_gift_card_form_quantity(array('2')), 'an array');
 }
+
+/**
+ * gift_cards.amount and balance are INT(10) UNSIGNED minor units: an amount
+ * above 42,949,672.95 was clamped to that ceiling by MySQL (or the write
+ * failed in strict mode) while the screen reported it saved.
+ */
+function test_gift_card_form_amount_fits_the_column()
+{
+	pg_assert_true(pg_gift_card_form_amount_fits('0'), 'zero');
+	pg_assert_true(pg_gift_card_form_amount_fits('12.50'), 'an ordinary amount');
+	pg_assert_true(pg_gift_card_form_amount_fits('42949672.95'), 'the ceiling itself');
+	pg_assert_false(pg_gift_card_form_amount_fits('42949672.96'), 'one minor unit above');
+	pg_assert_false(pg_gift_card_form_amount_fits('999999999.99'), 'what the 12-character field takes');
+	pg_assert_same(4294967295, PG_GIFT_CARD_AMOUNT_MAX, 'the column ceiling in minor units');
+}
