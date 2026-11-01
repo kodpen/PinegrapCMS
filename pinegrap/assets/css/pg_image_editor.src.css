@@ -773,6 +773,51 @@
   color: var(--pgie-tx);
 }
 
+/* The shared colour palette (swatches() in pg_image_editor.js). */
+.pgie-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.pgie .pgie-swatch,
+.pgie .pgie-colorin {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 2px solid var(--pgie-surface);
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px var(--pgie-line);
+  cursor: pointer;
+  flex: none;
+}
+
+.pgie .pgie-swatch.on {
+  box-shadow: 0 0 0 2px var(--pgie-sel);
+}
+
+.pgie .pgie-colorin {
+  background: conic-gradient(#e53935, #fdd835, #43a047, #1e88e5, #8e24aa, #e53935);
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.pgie .pgie-colorin::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+.pgie .pgie-colorin::-webkit-color-swatch {
+  border: 0;
+  opacity: 0;
+}
+
+.pgie .pgie-colorin::-moz-color-swatch {
+  border: 0;
+  opacity: 0;
+}
+
 .pgie-range {
   width: 100%;
   margin: 0;
@@ -1020,6 +1065,69 @@
 
 /* -- Draw (pg_image_editor_draw.js) -- */
 
+.pgie-kinds {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.pgie .pgie-kind {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  padding: 8px 0 6px;
+  border: 1px solid var(--pgie-line);
+  border-radius: 12px;
+  background: var(--pgie-surface);
+  color: var(--pgie-muted);
+  font-size: 11px;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+  cursor: pointer;
+}
+
+.pgie .pgie-kind span {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pgie .pgie-kind:hover {
+  background: var(--pgie-hover);
+  color: var(--pgie-tx);
+}
+
+.pgie .pgie-kind.on {
+  border-color: var(--pgie-pline);
+  background: var(--pgie-pw);
+  color: var(--pgie-ink);
+}
+
+/* A line's ends and a box's corner-radius dot. */
+.pgie-sh.pgie-shx[data-h="a"],
+.pgie-sh.pgie-shx[data-h="b"] {
+  cursor: crosshair;
+}
+
+.pgie-sh.pgie-shx[data-h="radius"] {
+  border-color: #ffffff;
+  background: var(--pgie-sel);
+  cursor: nwse-resize;
+}
+
+.pgie-eraser {
+  position: absolute;
+  border: 1.5px solid var(--pgie-sel);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.18);
+  pointer-events: none;
+}
+
+
 /* -- Text (pg_image_editor_text.js) -- */
 
 /* -- Stickers and frames (pg_image_editor_sticker.js) -- */
@@ -1049,45 +1157,6 @@
   width: 100%;
   height: 100%;
   max-width: 120px;
-}
-
-.pgie-swatches {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
-}
-
-.pgie .pgie-sw,
-.pgie .pgie-swc {
-  width: 24px;
-  height: 24px;
-  padding: 0;
-  border: 1px solid var(--pgie-line);
-  border-radius: 50%;
-  cursor: pointer;
-}
-
-.pgie .pgie-sw.pgie-checker {
-  background-size: 10px 10px;
-}
-
-.pgie .pgie-sw.on {
-  box-shadow: 0 0 0 2px var(--pgie-surface), 0 0 0 4px var(--pgie-sel);
-}
-
-.pgie .pgie-swc {
-  overflow: hidden;
-  background: conic-gradient(#e53935, #fdd835, #43a047, #1e88e5, #8e24aa, #e53935);
-}
-
-.pgie .pgie-swc::-webkit-color-swatch-wrapper {
-  padding: 0;
-  opacity: 0;
-}
-
-.pgie .pgie-swc::-moz-color-swatch {
-  opacity: 0;
 }
 
 .pgie .pgie-stklabel,
@@ -1192,6 +1261,158 @@
 
 /* -- Versions (pg_image_editor_versions.js) -- */
 
+.pgie-vbtn {
+  padding: 0 12px;
+  background: var(--pgie-bg);
+}
+
+.pgie-vbtn.on {
+  border-color: var(--pgie-pline);
+  background: var(--pgie-pw);
+  color: var(--pgie-ink);
+}
+
+.pgie-vcount {
+  min-width: 20px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--pgie-hover);
+  color: var(--pgie-muted);
+  font-size: 11px;
+  text-align: center;
+}
+
+.pgie-vintro {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--pgie-hover);
+  color: var(--pgie-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.pgie-vnote {
+  margin: 0;
+  color: var(--pgie-muted);
+  font-size: 12px;
+}
+
+.pgie-vnote.pgie-error {
+  color: var(--pgie-danger);
+}
+
+.pgie-vlist {
+  margin: 0 -16px;
+  padding: 0;
+  list-style: none;
+}
+
+.pgie-vrow {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--pgie-line);
+}
+
+.pgie-vhead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pgie-vbadge {
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--pgie-pw);
+  color: var(--pgie-ink);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.pgie-vmeta,
+.pgie-vkind {
+  color: var(--pgie-muted);
+  font-size: 12px;
+}
+
+.pgie-vkind {
+  color: var(--pgie-tx);
+}
+
+.pgie-vact {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.pgie-vact .pgie-btn {
+  height: 30px;
+  padding: 0 10px;
+  border-radius: 8px;
+  font-size: 12px;
+}
+
+.pgie-vact .pgie-btn.on {
+  border-color: var(--pgie-pline);
+  background: var(--pgie-pw);
+  color: var(--pgie-ink);
+}
+
+.pgie-vpreview {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 16px;
+  background: var(--pgie-stage);
+}
+
+.pgie-vpreview img {
+  min-height: 0;
+  max-width: 100%;
+  max-height: calc(100% - 56px);
+  object-fit: contain;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.25);
+}
+
+.pgie-vpbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 6px 6px 14px;
+  border: 1px solid var(--pgie-line);
+  border-radius: 12px;
+  background: var(--pgie-surface);
+  font-size: 13px;
+}
+
+/* On a phone the versions button keeps its icon and count. */
+@media (max-width: 599.98px), (max-height: 499.98px) {
+  .pgie-vlabel {
+    display: none;
+  }
+
+  .pgie-vbtn {
+    padding: 0 8px;
+    gap: 4px;
+  }
+}
+
+@media (pointer: coarse) {
+  .pgie-vact .pgie-btn,
+  .pgie-vact .pgie-ibtn {
+    min-height: 44px;
+  }
+}
+
 /* -- Canvas and artboard (pg_image_editor_artboard.js) -- */
 
 /* -- Export (pg_image_editor_export.js) -- */
@@ -1271,6 +1492,12 @@
    sheet above it. */
 
 @media (max-width: 599.98px) {
+  .pgie .pgie-swatch,
+  .pgie .pgie-colorin {
+    width: 30px;
+    height: 30px;
+  }
+
   .pgie-top {
     height: calc(52px + env(safe-area-inset-top));
     gap: 2px;

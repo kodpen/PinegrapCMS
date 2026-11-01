@@ -16,13 +16,7 @@
 (function (X) {
     'use strict';
 
-    var Editor = X.Editor, M = X.M, SVGNS = X.SVGNS, find = X.find, t = X.t, el = X.el, section = X.section, button = X.button, config = X.config;
-
-    // The swatches of the sticker, label, frame and background colours.
-    var PALETTE = [
-        ['#ffffff', 'colorWhite'], ['#1a1c1e', 'colorBlack'], ['#e53935', 'colorRed'], ['#fb8c00', 'colorOrange'],
-        ['#fdd835', 'colorYellow'], ['#43a047', 'colorGreen'], ['#1e88e5', 'colorBlue'], ['#8e24aa', 'colorPurple']
-    ];
+    var Editor = X.Editor, M = X.M, SVGNS = X.SVGNS, find = X.find, t = X.t, el = X.el, section = X.section, button = X.button, config = X.config, swatches = X.swatches;
 
     // System fonts only: the stage and the saved overlay draw the same
     // letters without waiting for a web font.
@@ -171,34 +165,6 @@
         return def.label ? ((/^sticker/.test(def.label)) ? t(def.label) : def.label) : '';
     }
 
-    // A row of colour swatches and a custom colour; pick(colour, key)
-    // records a choice.
-    function swatches(label, current, pick, extra) {
-        var row = el('div', { class: 'pgie-swatches', role: 'group', 'aria-label': label });
-        var now = String(current || '').toLowerCase();
-
-        (extra || []).concat(PALETTE).forEach(function (c) {
-            var on = (now === c[0]);
-
-            row.appendChild(el('button', {
-                type: 'button',
-                class: 'pgie-sw' + (on ? ' on' : '') + ((c[0] === 'transparent') ? ' pgie-checker' : ''),
-                style: (c[0] === 'transparent') ? null : 'background: ' + c[0],
-                title: t(c[1]),
-                'aria-label': t(c[1]),
-                'aria-pressed': on ? 'true' : 'false',
-                onclick: function () { pick(c[0]); }
-            }));
-        });
-
-        var custom = el('input', { type: 'color', class: 'pgie-swc', title: t('customColor'), 'aria-label': t('customColor'), value: /^#[0-9a-f]{6}$/.test(now) ? now : '#000000' });
-
-        custom.addEventListener('input', function () { pick(custom.value, 'custom'); });
-        row.appendChild(custom);
-
-        return section(label, row);
-    }
-
     // ---- stickers ----
 
     // A built-in sticker in the middle of what the stage shows, sized to
@@ -221,22 +187,24 @@
     // sticker tool's.
     Editor.prototype.stickerPanel = function (body, picked) {
         var self = this, first = picked[0], shape = M.stickerShape(first);
-        var set = function (field, value, key) {
+        // live: the colour input moving, one undo step; its closing change
+        // only ends that step.
+        var set = function (field, value, live) {
+            if (!live && picked.every(function (o) { return self.layer(o.id) && (self.layer(o.id)[field] === value); })) {
+                self.history.key = null;
+                self.render();
+                return;
+            }
+
             self.change(function (doc) {
                 picked.forEach(function (o) { find(doc, o.id)[field] = value; });
-            }, key ? 'sticker-' + field : null, !!key);
-
-            if (key) {
-                self.stickerSwatch(field);
-            }
+            }, live ? 'sticker-' + field : null, !!live);
         };
 
-        body.appendChild(swatches(t('stickerColor'), first.color, function (c, key) { set('color', c, key); }));
-        body.lastChild.setAttribute('data-field', 'color');
+        body.appendChild(swatches(t('stickerColor'), first.color, function (c, live) { set('color', c, live); }));
 
         if (picked.some(function (l) { return l.kind !== 'star' && l.kind !== 'heart'; })) {
-            body.appendChild(swatches(t('stickerInk'), first.ink, function (c, key) { set('ink', c, key); }));
-            body.lastChild.setAttribute('data-field', 'ink');
+            body.appendChild(swatches(t('stickerInk'), first.ink, function (c, live) { set('ink', c, live); }));
         }
 
         if ((picked.length === 1) && shape.lb) {
@@ -257,17 +225,6 @@
             });
             body.appendChild(section(t('stickerLabel'), input));
         }
-    };
-
-    // A custom colour being dragged redraws only the stage; the pressed
-    // swatch follows here.
-    Editor.prototype.stickerSwatch = function (field) {
-        var row = this.panel && this.panel.querySelector('[data-field="' + field + '"]');
-
-        Array.prototype.forEach.call(row ? row.querySelectorAll('.pgie-sw') : [], function (b) {
-            b.classList.remove('on');
-            b.setAttribute('aria-pressed', 'false');
-        });
     };
 
     Editor.prototype.stickerToolPanel = function (body) {
@@ -550,16 +507,28 @@
             });
             slider.addEventListener('change', function () { self.history.key = null; });
 
-            body.appendChild(swatches(t('frameColor'), fr.color, function (c, key) {
-                self.setFrame({ color: c }, key ? 'frame-color' : null);
+            body.appendChild(swatches(t('frameColor'), fr.color, function (c, live) {
+                if (live || (c !== fr.color)) {
+                    self.setFrame({ color: c }, live ? 'frame-color' : null);
+                } else {
+                    self.history.key = null;
+                    self.render();
+                }
             }));
             body.appendChild(section(t('frameWidth'), slider, value));
         }
 
         if (this.doc.artboard) {
-            body.appendChild(swatches(t('frameBackground'), this.doc.artboard.background, function (c, key) {
-                self.change(function (doc) { doc.artboard.background = c; }, key ? 'artboard-background' : null, !!key);
-            }, [['transparent', 'colorTransparent']]));
+            var fill = this.doc.artboard.background;
+
+            body.appendChild(swatches(t('frameBackground'), fill, function (c, live) {
+                if (live || (c !== fill)) {
+                    self.change(function (doc) { doc.artboard.background = c; }, live ? 'artboard-background' : null, !!live);
+                } else {
+                    self.history.key = null;
+                    self.render();
+                }
+            }, { transparent: true }));
         }
     };
 

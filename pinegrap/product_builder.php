@@ -268,6 +268,29 @@ function pg_pb_price_to_cents($value)
 }
 
 /**
+ * Whether a typed amount is above what the price columns hold (2147483647
+ * minor units, 21.474.836,47). Checked on the float before the int cast,
+ * which wraps on a 32-bit build; the session is not strict, so MySQL would
+ * store the top of the column instead without a word. More than 15 digits is
+ * too large whatever the float makes of it.
+ *
+ * @param string $value
+ * @return bool
+ */
+function pg_pb_price_above_column_top($value)
+{
+    $value = is_scalar($value) ? (string) $value : '';
+
+    if (strlen((string) preg_replace('/[^0-9]/', '', $value)) > 15) {
+        return true;
+    }
+
+    $figure = pg_pb_price_figure($value);
+
+    return ($figure !== '') && (round(((float) $figure) * 100) > 2147483647);
+}
+
+/**
  * A typed price as a dot-decimal figure ('1234.56'), by the rule of
  * pg_pb_price_to_cents(), or '' when it holds no digit or separator.
  *
@@ -3934,6 +3957,35 @@ function pg_pb_render_bundle_card($mode, $product_id, $values)
 
 
 /**
+ * The variables the gift card e-mail replaces when the card is sent
+ * (complete_order(), includes/fn/order_completion.php), in the order the
+ * product screen lists them.
+ *
+ * @return string[]
+ */
+function pg_pb_gift_card_variable_names()
+{
+    return array('code', 'amount', 'from_name', 'recipient_email_address', 'message', 'delivery_date');
+}
+
+/**
+ * The buttons under the gift card e-mail's subject and body: each shows its
+ * ^^token^^ and carries the variable name in data-pg-pb-giftvar.
+ *
+ * @return string
+ */
+function pg_pb_gift_card_variable_buttons()
+{
+    $output = '';
+
+    foreach (pg_pb_gift_card_variable_names() as $name) {
+        $output .= '<button type="button" class="pg-pb-giftvar btn btn-sm btn-outline theme-secondary" data-pg-pb-giftvar="' . h($name) . '">^^' . h($name) . '^^</button>';
+    }
+
+    return $output;
+}
+
+/**
  * Every field of a product, drawn once.
  *
  * Creating a product and editing one are the same screen with different values
@@ -3950,9 +4002,9 @@ function pg_pb_render_product_screen($values = array(), $context = array())
 {
     global $user, $liveform;
 
-    // NOTE: $output_gift_card_variables is never assigned anywhere, so the gift card variable
-    // chips below render empty.  Starting it empty keeps that and stops the warning.
-    $output_gift_card_variables = '';
+    // One button per ^^variable^^ the gift card e-mail replaces; product_builder.js
+    // inserts the token at the caret of the box the buttons sit under.
+    $output_gift_card_variables = pg_pb_gift_card_variable_buttons();
 
     $pg_mode       = isset($context['mode']) ? $context['mode'] : 'create';
     $pg_product_id = isset($context['product_id']) ? (int) $context['product_id'] : 0;
@@ -4463,7 +4515,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                             <label for="compare_at_price" class="form-label">' . lang('Amount') . '</label>
                             <label class="form-control form-adorn form-adorn-end">
                                 <span class="form-adorn-text" aria-hidden="true">' . BASE_CURRENCY_SYMBOL . '</span>
-                                <input value="' . h($v('compare_at_price', '')) . '" type="text" name="compare_at_price" id="compare_at_price" class="form-ghost" maxlength="12" inputmode="decimal" inputmask=""' . pg_money_mask_html() . ' style="text-align:right;" />
+                                <input value="' . h($v('compare_at_price', '')) . '" type="text" name="compare_at_price" id="compare_at_price" class="form-ghost" maxlength="13" inputmode="decimal" inputmask=""' . pg_money_mask_html() . ' style="text-align:right;" />
                             </label>
                             <div class="form-text">' . lang('Empty or zero is none.') . '</div>
                         </div>',
@@ -4561,7 +4613,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                                         <label for="extra_shipping_cost" class="form-label">' . lang('Extra Shipping Cost') . '</label>
                                                         <label class="form-control form-adorn form-adorn-end">
                                                             <span class="form-adorn-text" aria-hidden="true">' . BASE_CURRENCY_SYMBOL . '</span>
-                                                            <input value="' . h($v('extra_shipping_cost', '0')) . '" type="text" name="extra_shipping_cost" id="extra_shipping_cost" class="form-ghost" maxlength="12" inputmode="decimal" inputmask=""' . pg_money_mask_html() . ' style="text-align:right;" />
+                                                            <input value="' . h($v('extra_shipping_cost', '0')) . '" type="text" name="extra_shipping_cost" id="extra_shipping_cost" class="form-ghost" maxlength="13" inputmode="decimal" inputmask=""' . pg_money_mask_html() . ' style="text-align:right;" />
                                                         </label>
                                                     </div>
 
@@ -4894,6 +4946,12 @@ function pg_pb_render_product_screen($values = array(), $context = array())
     // nothing in the checkout knows how to sell.
     $gift_cards_enabled = (defined('ECOMMERCE_GIFT_CARD') && ECOMMERCE_GIFT_CARD == TRUE);
 
+    // Google Merchant Center's push state and its send button: the button
+    // posts a form drawn after the product form, never nested in it.
+    $pg_merchant = (($pg_mode === 'edit') && !$pg_recycled && function_exists('pg_merchant_product_card'))
+        ? pg_merchant_product_card($pg_product_id)
+        : array('card' => '', 'form' => '');
+
     print
     pg_page_shell(array(
         'title'         => ($pg_mode === 'edit') ? lang('Edit Product') : lang('Create Product'),
@@ -5040,7 +5098,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                         <label for="price" class="form-label">' . lang('Unit Price') . '</label>
                                         <label class="form-control form-adorn form-adorn-end">
                                             <span class="form-adorn-text" aria-hidden="true">' . BASE_CURRENCY_SYMBOL . '</span>
-                                            <input value="' . h($v('price', '0')) . '" type="text" name="price" id="price" class="form-ghost" maxlength="12" inputmode="decimal" inputmask=""' . pg_money_mask_html() . ' style="text-align:right;" />
+                                            <input value="' . h($v('price', '0')) . '" type="text" name="price" id="price" class="form-ghost" maxlength="13" inputmode="decimal" inputmask=""' . pg_money_mask_html() . ' style="text-align:right;" />
                                         </label>
                                         <div class="form-text pg-pb-group-only d-none">' . lang('Starting price for every variant; each row can differ.') . '</div>
                                     </div>
@@ -5327,6 +5385,8 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                             </div>
                         </div>
                     </div>
+
+                    ' . $pg_merchant['card'] . '
 
                     <!-- -------------------------------------------------- seo -->
                     <div class="col-12" id="pg_pb_sec_seo">
@@ -5803,6 +5863,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
             </div>
         </div>
     </form>
+    ' . $pg_merchant['form'] . '
 
     <!-- Outside the form on purpose — see pg_pb_render_attribute_modal(). -->
     ' . pg_pb_render_attribute_modal() . '
@@ -6571,6 +6632,16 @@ function pg_pb_validate_product_post($user, $product_id = 0)
         if (!empty($_POST[$field]) && (validate_email_address($_POST[$field]) == FALSE)) {
             output_error(lang('The e-mail address is invalid.') . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
         }
+    }
+
+    // A unit price or an extra shipping cost the column cannot hold is
+    // refused before anything is written, as the "was" price below.
+    if (pg_pb_price_above_column_top(isset($_POST['price']) ? $_POST['price'] : '')) {
+        output_error(lang(array('string' => '{var:1} is too large.', 'vars' => array(lang('Unit Price')))) . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
+    }
+
+    if (pg_pb_price_above_column_top(isset($_POST['extra_shipping_cost']) ? $_POST['extra_shipping_cost'] : '')) {
+        output_error(lang(array('string' => '{var:1} is too large.', 'vars' => array(lang('Extra Shipping Cost')))) . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
     }
 
     // A "was" price the column cannot hold is refused before anything is

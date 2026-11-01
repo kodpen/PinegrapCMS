@@ -23,11 +23,18 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - bootstrap-6-panel-steps.md: Steps B0-B12 of plans/bootstrap-6-panel.md with dependencies and status (each done step names its PR); claim as [plan:bootstrap-6-panel] B<n>
 - bootstrap-6-panel.md: Plan (owner decisions 2026-10-25; status in bootstrap-6-panel-steps.md): panel UI from Bootstrap 5.3.8 to 6.0.0-alpha.1 by pre-landing adapters on development, then one generated switch
 - bootstrap-6-redesign.md: Steps B10-B11 of plans/bootstrap-6-panel.md: token tuning and the redesign of legacy form screens and tables (open); decisions and open points
+- bug-hunt-modules-endpoints-1.md: Module list of plans/bug-hunt.md, part 3: root endpoint groups account to offer by area word, one line each with its state
+- bug-hunt-modules-endpoints-2.md: Module list of plans/bug-hunt.md, part 4: root endpoint groups optimize to zone by area word and the single endpoints, one line each with its state
+- bug-hunt-modules-fn-1.md: Module list of plans/bug-hunt.md, part 1: includes/fn/ modules a11y to pdf_merge, one line each with its state
+- bug-hunt-modules-fn-2.md: Module list of plans/bug-hunt.md, part 2: includes/fn/ modules price_history to wishlist, one line each with its state
+- bug-hunt.md: Plan: module-by-module bug hunt when no plan step is free; how a module is taken, hunted and closed; the module lists are in bug-hunt-modules-*.md
 - claude-code-channel.md: SHELVED plan for Claude as a live channel member through a Claude Code channel plugin (C1–C5): reuse of the routine queue, slices, open questions 5–12, security
 - code-audit-2026-10-followups.md: Architecture items from the 2026-10-19 audit that no other plan holds: one outgoing HTTP wrapper, nested named functions, CI checks, and the parked explicit "who may write PHP" rule
 - datetime-picker-site-steps.md: Site steps S1-S4 of plans/datetime-picker.md (after the panel stop): on-demand loader, classic renderers, checkout, designer widgets and palette; claim as [plan:datetime-picker] S<n>
 - datetime-picker-steps.md: Panel steps P1-P11 of plans/datetime-picker.md: what each changes, its files, tests and size, its dependencies; claim as [plan:datetime-picker] P<n>
 - datetime-picker.md: Plan (decided in #2693, 2026-10-28): one date-and-time control for the whole software, the time in the same popup, on vanilla-calendar-pro; panel P1-P11, sites S1-S4, steps in datetime-picker-steps.md
+- design-template-beauty-salon.md: Plan for the Beauty Salon design template (pinegrap-salon) with online booking on the Clinic template's request pattern: parts built in a folder, offered once assembled; steps 1-4
+- design-template-bookshop-events.md: Plan (owner, 2026-11-01): the bookshop template's hard-coded events become form records the business adds in the panel, the Café way, past events dropping out of lists
 - designer-prototype-links-code.md: What the code holds for plans/designer-prototype-links.md: where links sit, the two href places, page links by id, renames, the resolver's limits, editor state, rights and Publish
 - designer-prototype-links.md: Plan (2026-10-24, not started, answer 1 given): a Figma/XD-like prototype view in the visual designer: pages as frames, menu items and links as hotspots, an arrow sets the page a click opens
 - erp-auto-invoice-earchive.md: Plan (approved 2026-10-19): auto invoice with its two filters and the e-Fatura threshold warning built (#697, #958, #1773); only the internet-sale UBL fields (step 3) left
@@ -35,7 +42,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - erp-parasut-driver-design.md: Paraşüt e-document driver: what awaits the live test, what is still open (queue worker and reconcile ladder), the decisions behind it
 - erp-parasut-open-work.md: Paraşüt work left after the rounds of 2026-10-23 to 26 (#1405-#1682): one live round when a new demo key comes, three decisions (#2440-#2442), small fixes; where to start
 - feature-roadmap-2026-10.md: Feature roadmap decided 2026-10-19 from the gap analysis: 24 approved plans in four groups, wave order, the legacy rule, one task per session; index of the plan files
-- graph-canvas-core.md: Plan (2026-10-24, answers #2445, slice 1 done #3162): a reusable box-and-arrow canvas core split from workspace_flow.js behind an adapter; first Flows, then designer prototype links
+- graph-canvas-core.md: Plan (2026-10-24, answers #2445, 1, 2a-2d done): a box-and-arrow canvas core split from workspace_flow.js behind an adapter; first Flows, then designer prototype links
 - image-editor-design.md: Design of plans/image-editor.md: the parts and file names, the one call and its options, the modal's look, the document model with layers in rotated space
 - image-editor-server.md: Server side of plans/image-editor.md: what the browser and the server each do, the save pipeline through the image engine, replace, copy and new, the versions table proposal, security
 - image-editor-steps-2.md: Steps E11-E20 of plans/image-editor.md: versions, canvas and artboard, optimisation, pen, SVG, Workspace, designer, access, animation, close-out; claim as [plan:image-editor] E<n>

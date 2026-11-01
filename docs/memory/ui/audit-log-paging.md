@@ -15,4 +15,4 @@ module: audit_list
 
 ## How is it sorted and searched?
 - Heading links (`pg_list_state('view_audit_log')`): date (default, newest first), who (`username`), action, record (`label`), IP; ties by `id` in the first level's direction. The sort menu sits above the table, outside the filter form (it has its own GET form).
-- The search box: every word in the user name, record name, IP, request id, the stored action/type words, the shown source/action/type names (`pg_audit_view_labels()`), or the record's number (`#12`). The "Record name" filter and the CSV export are unchanged; the export still goes newest first by id.
+- The search box: every word in the user name, record name, IP, request id, the stored action/type words, the shown source/action/type names (`pg_audit_view_labels()`), a settings line's shown category name (`pg_audit_view_settings_names()`, on settings lines only; before, "Genel" found nothing and only the key `general` did: #4414, PR #4495), or the record's number (`#12`). The "Record name" filter and the CSV export are unchanged; the export still goes newest first by id.

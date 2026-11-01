@@ -5,7 +5,7 @@ description: The flow canvas (workspace_flows.php, workspace_flow.js): who sees 
 
 ## What is there?
 - Screen `workspace_flows.php` (mode `flows`, list key `flows`); no `?flow=`: `workspace-flows-list.md`. `ws_flows_nav_visible()` shows it to staff, live flows' home readers and sharees (`ws_nav_groups()`).
-- `workspace.js` calls `window.PGWsFlow.start(root, BOOT)` and lends `PGWsKit`. Bundle `workspace_flow.min.js`, mode `flows` only.
+- `workspace.js` calls `window.PGWsFlow.start(root, BOOT)` and lends `PGWsKit`. Bundle `workspace_flow.min.js`, mode `flows` only, after the core `pg_graph_canvas.min.js` (`plans/graph-canvas-core.md`).
 - Texts `ws_flow_js_strings()` (`fl_*`). Config `ws_flow_js_config($viewer, $mode)`: `nav`; mode `record`: `nav: false`, no query; `flows` adds build, subjects, limits.
 
 ## Where are staff's scheduled actions?

@@ -137,8 +137,26 @@ function mp_providers() {
 					'default' => 'trendyol'
 				)
 			)
+		),
+		// Managed: no fields of its own. The Product Feeds card writes and
+		// deletes its account row (includes/fn/merchant_center_push.php); this
+		// screen lists it and never offers it under "add account".
+		'merchant_center' => array(
+			'name'    => 'Google Merchant Center',
+			'file'    => 'merchant_center.php',
+			'managed' => true,
+			'fields'  => array()
 		)
 	);
+
+}
+
+// Whether another screen owns the provider's account rows ('managed').
+function mp_provider_is_managed($provider) {
+
+	$providers = mp_providers();
+
+	return !empty($providers[$provider]['managed']);
 
 }
 

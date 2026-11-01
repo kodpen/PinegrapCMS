@@ -12,6 +12,7 @@ description: ERP receipt cancel, settlement removal/late allocation, FX reversal
 
 ## How are receipts corrected? (`erp_receipt.php`, gate `manage_erp_cash`)
 - Cancel = cash + account counter entries (`doc_type='cancel'`, `doc_id` = the cash movement, original `amount_base`, dated today; `erp_receipt_cancel()`).
+- Its allocations go first through `erp_txn_unsettle_all()` (`includes/erp/cash.php`), which the cheque bounce shares; each invoice is worked out again. The stored description says "payment" for money out ("Cancellation of payment #N dated …"), "receipt" for money in; before #4438 (PR #4517) every cancel read "receipt", kept on old rows.
 - Cancelled state is derived from the counter-entry row (`erp_receipt_is_cancelled()`; a subquery in lists).
 - Remove a settlement: `erp_settlement_remove()` → `erp_unsettle()`.
 - Late settlement: `erp_settlement_allocate()` (same checks as at receipt time, `amount_base` at the receipt's rate).

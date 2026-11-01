@@ -10,7 +10,7 @@ module: merchant_center
 
 ## Where is the state kept, and why no table?
 - Under the `merchant` key of `config.product_feeds`: connection id, account id and name, target country, data source name, registered_at / register_error, checked_at / check_error and the issue summary (counts per severity, product stats, top 5 issues). `pg_product_feed_settings_parse()` passes the key through untouched; `pg_merchant_state_parse()` types it. Writes go through `pg_merchant_state_save()` (fresh read, merge, `pg_product_feed_settings_save()`).
-- Per-product push has no table of its own either: it rides the marketplace layer (#4389, `merchant-center-push.md`).
+- Per-product push has no table of its own either: it rides the marketplace layer (#4389, #4423, `merchant-center-push.md`).
 
 ## How is registering kept idempotent?
 - `pg_merchant_register()` lists the account's data sources; `pg_merchant_find_source()` keeps one whose `fetchUri` is the feed address, moves the one registered before (stored name) to a new address with PATCH `updateMask=fileInput.fetchSettings.fetchUri` (a renewed feed token), and only otherwise creates one (`pg_merchant_data_source_body()`). Google needs `contentLanguage` + `feedLabel` for a file input: the language is `TRANSLATION_SOURCE_LANGUAGE` cut to two letters, the label is the target country.

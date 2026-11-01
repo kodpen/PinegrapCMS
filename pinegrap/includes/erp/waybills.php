@@ -1050,7 +1050,12 @@ function erp_waybill_invoice($waybill_id, $created_by = 0)
             return $fail(erp_db_error());
         }
 
-        return array('success' => true, 'invoice_id' => $invoice_id, 'draft' => false, 'error' => '');
+        // What the note knows (ship date, carrier) goes onto the invoice
+        // where it is still empty, as the order card's invoice step does: an
+        // invoice made from the order has no ship date later than today.
+        $written_back = erp_waybill_write_back($waybill_id);
+
+        return array('success' => true, 'invoice_id' => $invoice_id, 'draft' => false, 'error' => '', 'written_back' => $written_back);
     }
 
     $lines = array();

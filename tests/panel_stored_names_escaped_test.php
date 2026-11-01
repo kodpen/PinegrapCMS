@@ -21,8 +21,8 @@ function test_panel_stored_names_are_escaped()
 {
 	$lines = array(
 		array('api_settings.php', '" <b>" + esc(app.owner) + "</b> &middot; " + esc(app.created);', 1),
-		array('includes/settings/prep.php', '\'<option value="\' . h($currency[\'code\']) . \'" selected="selected">\' . h($currency[\'code\']) . \' - \' . h($currency[\'name\']) . \'</option>\'', 1),
-		array('includes/settings/prep.php', '\'<option value="\' . h($currency[\'code\']) . \'" >\' . h($currency[\'code\']) . \' - \' . h($currency[\'name\']) . \'</option>\'', 1),
+		array('includes/settings/prep.php', '\'<option value="\' . h($currency[\'code\']) . \'" selected="selected">\' . h($currency[\'code\']) . \' - \' . h(pg_currency_label($currency[\'name\'])) . \'</option>\'', 1),
+		array('includes/settings/prep.php', '\'<option value="\' . h($currency[\'code\']) . \'" >\' . h($currency[\'code\']) . \' - \' . h(pg_currency_label($currency[\'name\'])) . \'</option>\'', 1),
 	);
 
 	foreach ($lines as $line) {

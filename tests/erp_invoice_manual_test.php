@@ -202,3 +202,34 @@ function test_erp_invoice_manual_inbox_line_checks_the_stored_quantity()
 	$built = erp_manual_lines_build($read['lines']);
 	pg_assert_same(array(4938000, 5000000, 25000000), array($built['lines'][0]['line_total'], $built['lines'][1]['line_total'], $built['lines'][2]['line_total']));
 }
+
+function test_erp_invoice_due_before_issue()
+{
+	pg_assert_true(erp_invoice_due_before_issue('2026-11-01', '2026-10-20'), 'a due date before the invoice date');
+	pg_assert_false(erp_invoice_due_before_issue('2026-11-01', '2026-11-01'), 'the same day');
+	pg_assert_false(erp_invoice_due_before_issue('2026-11-01', '2026-12-01'), 'a later day');
+	pg_assert_false(erp_invoice_due_before_issue('2026-11-01', '0000-00-00'), 'no due date');
+	pg_assert_false(erp_invoice_due_before_issue('2026-11-01', ''), 'an empty one');
+}
+
+function test_erp_invoice_due_date_follows_a_new_date()
+{
+	// Stored 1/11 due 1/11 (worked out from the term), redated to 15/11.
+	pg_assert_same('2026-11-15', erp_invoice_due_date_redated('2026-11-15', '2026-11-01', '2026-11-01', '2026-11-01', '2026-11-01', '2026-11-15'), 'a worked-out due date moves with the date');
+	pg_assert_same('2026-11-20', erp_invoice_due_date_redated('2026-11-15', '2026-11-20', '2026-11-01', '2026-11-01', '2026-11-01', '2026-11-15'), 'a due date typed now stays');
+	pg_assert_same('2026-11-05', erp_invoice_due_date_redated('2026-11-15', '2026-11-05', '2026-11-01', '2026-11-05', '2026-11-01', '2026-11-15'), 'a due date typed before stays');
+	pg_assert_same('2026-11-01', erp_invoice_due_date_redated('2026-11-01', '2026-11-01', '2026-11-01', '2026-11-01', '2026-11-01', '2026-11-01'), 'the same date changes nothing');
+}
+
+function test_erp_invoice_due_date_is_checked_on_save_and_issue()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/erp/invoice_manual.php');
+	foreach (array('function erp_invoice_draft_save(', 'function erp_invoice_issue(') as $name) {
+		$from = strpos($source, $name);
+		$body = substr($source, $from, strpos($source, "\nfunction ", $from + 10) - $from);
+		pg_assert_contains('erp_invoice_due_before_issue(', $body, $name . ' refuses a due date before the invoice date');
+	}
+
+	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_erp_invoice_draft.php');
+	pg_assert_contains('erp_invoice_due_date_redated(', $screen, 'the draft screen moves a worked-out due date');
+}

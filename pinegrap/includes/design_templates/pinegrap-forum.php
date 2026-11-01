@@ -11,13 +11,15 @@
  * (?member=) and the topics nobody has answered; the topic page, with its
  * replies beside a column about the topic; the form that starts a topic;
  * the docs, which members contribute and moderators review: their sections
- * (?section=) and each guide with its feedback; a form to report a post;
- * the guidelines, the questions and answers, about, contact and the legal
+ * (?section=) and each guide with its feedback; the blog, every post with a
+ * search and each post with its comments; a form to report a post; the
+ * guidelines, the questions and answers, about, contact and the legal
  * pages; the sign-in and account pages, with the member's own topics, the
  * guides they sent and the review of each, and their inbox; the
- * moderators' dashboard, every topic, the docs desk, the reported posts and
- * the staff directory; the e-mails the site sends and a site search. Built
- * on Bootstrap 5. Read by pg_design_templates() (includes/fn/designer.php).
+ * moderators' dashboard, every topic, the docs desk, the reported posts,
+ * the staff directory and the page that writes a blog post; the e-mails
+ * the site sends and a site search. Built on Bootstrap 5. Read by
+ * pg_design_templates() (includes/fn/designer.php).
  *
  * A topic is a record of the Forum Topics form, owned by the Start a Topic
  * page in the "registration" folder: a member sends it, and it is public at
@@ -28,23 +30,28 @@
  * Community Docs form, owned by the Contribute a Guide page: it is public
  * only while its Status is Live on the site ($doc_live); its author follows
  * it on the docs desk. A report (Forum Reports, the Report a Post page) is
- * never public: only the moderators' pages show it. Replies are comments of
- * the topic page, feedback (with a rating, held for the moderators)
- * comments of the guide page; the author and the moderators write messages
- * under a guide on the desk, and the moderators notes under a report.
+ * never public: only the moderators' pages show it. A blog post is a record
+ * of the Blog Posts form, owned by the New Blog Post page in the private
+ * folder: the moderators write it, and it is public at once. Replies are
+ * comments of the topic page, feedback (with a rating, held for the
+ * moderators) comments of the guide page, and the comments under a post
+ * those of the blog post page; the author and the moderators write
+ * messages under a guide on the desk, and the moderators notes under a
+ * report.
  *
- * The replies and the feedback are drawn by the Comments widget, each page's
- * thread in the template's layout: replies under the post they answer, the
- * deepest quoting it, the best answer (a featured reply) first, the form,
- * the box to follow the topic and the moderators' controls. Three lists of
- * the same widget, in its recent mode, read the topic and guide pages: the
- * latest replies on the home page, the member's own in My topics and the
- * ones awaiting approval on the moderators' dashboard; a fourth reads the
- * topic page alone and keeps the replies of the board the address names
- * (its record filters), on the board page. The reply e-mails
- * draw the comment they are about with it too. The desk, the inbox and the
- * report page keep the platform's fixed comments block. Every page keeps its
- * own comment settings ('comments' below).
+ * The replies, the feedback and the comments under a post are drawn by the
+ * Comments widget, each page's thread in the template's layout: replies
+ * under the post they answer, the deepest quoting it, the best answer (a
+ * featured reply) first, the form, the box to follow the thread and the
+ * moderators' controls. Three lists of the same widget, in its recent mode,
+ * read the topic and guide pages: the latest replies on the home page, the
+ * member's own in My topics and the ones awaiting approval on the
+ * moderators' dashboard; a fourth reads the topic page alone and keeps the
+ * replies of the board the address names (its record filters), on the
+ * board page. The reply e-mails draw the comment they are about with it
+ * too. The desk, the inbox and the report page draw their messages and
+ * notes with it as well, flat and two-sided (no Reply, Share or follow
+ * box). Every page keeps its own comment settings ('comments' below).
  *
  * The look ships in the template's User Styles: the template's own rules,
  * all named pf-. Fonts: Figtree for the text and the headings and JetBrains
@@ -349,6 +356,15 @@ $doc_pub = array(
     'regionType'           => 'form_list_view',
     'custom_form_page_id'  => '{{tab:doc_new}}',
     'detail_page_id'       => '{{tab:doc}}',
+    'order_by_field'       => 'submitted_date_and_time',
+    'order_by_direction'   => 'DESC',
+);
+// The settings every list of blog posts shares: the newest first, each
+// opening the post's page. Every post is public, so no rule keeps one out.
+$post_pub = array(
+    'regionType'           => 'form_list_view',
+    'custom_form_page_id'  => '{{tab:blog_new}}',
+    'detail_page_id'       => '{{tab:blog_post}}',
     'order_by_field'       => 'submitted_date_and_time',
     'order_by_direction'   => 'DESC',
 );
@@ -713,12 +729,6 @@ $person_fields = function ($prefix) use ($row, $col, $field, $input) {
 $edit_button = function ($text = '') use ($link) {
     return $link($text !== '' ? $text : lang('Edit'), '#', 'btn btn-sm btn-secondary', array(),
         array('_bindings' => array('href' => '__edit_url', 'eo_visible_if' => 'can_edit')));
-};
-// The messages and notes of the desk, the inbox and the report pages: the
-// platform's fixed comments block, placed in the page's own tree. The topic
-// and guide pages draw theirs with the Comments widget ($reply_thread).
-$comments_block = function () {
-    return array('type' => 'region', 'props' => array('regionType' => 'comments_block', 'regionName' => ''), 'children' => array());
 };
 // The notice a record page shows above the record once its form is sent,
 // and ($with_account) the account opened for a visitor who had none.
@@ -1178,6 +1188,34 @@ $conversation_row = function () use ($el, $link, $span, $bind_date, $dot, $perso
         $row_count(lang('Messages'), '2', lang('Number of Messages')),
     ));
 };
+// (l) A blog post card: its cover (the frame leaves with a post that has
+// none), when it was posted, its title over the whole card and its summary.
+// The cover's alt is empty: the title under it says what the post is.
+$post_card = function ($p, $tag = 'h3') use ($el, $link, $para, $image, $attr, $bind, $bind_date) {
+    return $el('article', 'pf-card pf-card-link h-100', lang('Post Card'), array(
+        $el('div', 'pg-hide-if-empty mb-3', lang('Picture'), array(
+            $el('span', 'pg-field-value d-block ratio ratio-16x9', lang('Picture Frame'), array(
+                $image($p['cover'], '', 'rounded object-fit-cover', array(
+                    '_bindings' => array('src' => 'cover_image'),
+                    '_attrs'    => array($attr('loading', 'lazy')),
+                )),
+            )),
+        )),
+        $para(lang('2 days ago'), 'pf-meta small mb-1', $bind_date('submitted_date_and_time', 'relative')),
+        $el($tag, 'pf-card-title h5 mb-2', lang('Title'), array(
+            $link($p['title'], '#', 'stretched-link', array(), array('_bindings' => array('text' => 'title', 'href' => 'form_item_view'))),
+        )),
+        $para($p['summary'], 'text-body-secondary small mb-0 pf-clamp-3', $bind('summary')),
+    ));
+};
+// The cards of a list of posts, in a list whose page links and search stand
+// before and after it (a grid row would take them in as columns). $cols:
+// the cards to a row from md and lg.
+$post_cards = function ($p, $cols, $tag = 'h3') use ($el, $loop, $post_card) {
+    return $el('ul', 'row ' . $cols . ' g-3 g-lg-4 list-unstyled mb-0', lang('Posts'), array(
+        $loop(array($el('li', 'col', lang('Column'), array($post_card($p, $tag))))),
+    ));
+};
 
 // ── The parts every page repeats ────────────────────────────────────────
 
@@ -1190,6 +1228,7 @@ $masthead = function () use ($el, $link, $icon, $span, $attr, $lang_switcher, $w
     foreach (array(
         array(lang('Forum'), '{{page:forum}}'),
         array(lang('Docs'), '{{page:docs}}'),
+        array(lang('Blog'), '{{page:blog}}'),
         array(lang('Guidelines'), '{{page:guidelines}}'),
         array(lang('Search'), '{{page:search}}'),
     ) as $m) {
@@ -1205,6 +1244,7 @@ $masthead = function () use ($el, $link, $icon, $span, $attr, $lang_switcher, $w
         $drawer_link(lang('Forum'), '{{page:forum}}', 'bi-chat-square-text'),
         $drawer_link(lang('Boards'), '{{page:board}}', 'bi-grid'),
         $drawer_link(lang('Docs'), '{{page:docs}}', 'bi-journal-text'),
+        $drawer_link(lang('Blog'), '{{page:blog}}', 'bi-newspaper'),
         $drawer_link(lang('Guidelines'), '{{page:guidelines}}', 'bi-heart'),
         $drawer_link(lang('Search'), '{{page:search}}', 'bi-search'),
     );
@@ -1329,6 +1369,7 @@ $footer = function () use ($el, $para, $link, $icon, $span, $heading, $attr) {
                     $link(lang('Search'), '{{page:search}}', $plain),
                 )),
                 $column(lang('Community'), 'col-6 col-md-3 col-lg-2', array(
+                    $link(lang('Blog'), '{{page:blog}}', $plain),
                     $link(lang('Guidelines'), '{{page:guidelines}}', $plain),
                     $link(lang('FAQ'), '{{page:faq}}', $plain),
                     $link(lang('About the community'), '{{page:about}}', $plain),
@@ -1369,6 +1410,7 @@ $staff_bar = function () use ($el, $link, $span, $attr) {
                 $item('staff_docs', lang('Docs desk')),
                 $item('staff_reports', lang('Reported posts')),
                 $item('inbox', lang('Inbox')),
+                $item('blog_new', lang('New Blog Post')),
                 $item('staff_directory', lang('Staff Directory')),
             ), array('smartActive' => true, '_attrs' => array($attr('aria-label', lang('Moderators'))))),
         )),
@@ -1651,39 +1693,62 @@ $feedback_comments = array(
 );
 // The messages between a guide's author and the moderators.
 $doc_desk_comments = array(
-    'label'         => lang('Message'),
-    'allow_new'     => true,
-    'auto_publish'  => true,
-    'show_date'     => true,
-    'login'         => true,
-    'email_page'    => '{{tab:email_doc_message}}',
-    'email_subject' => lang('New message about a guide sent to the docs'),
-    'notify_email'  => '{{site_email}}',
-    'attachments'   => false,
-    'select_name'   => false,
+    'label'          => lang('Message'),
+    'allow_new'      => true,
+    'auto_publish'   => true,
+    'show_date'      => true,
+    'login'          => true,
+    'email_page'     => '{{tab:email_doc_message}}',
+    'email_subject'  => lang('New message about a guide sent to the docs'),
+    'notify_email'   => '{{site_email}}',
+    'attachments'    => false,
+    'select_name'    => false,
+    'message'        => lang('Your message is signed with the name in your profile and appears at once.'),
+    'closed_message' => lang('This guide takes no new messages.'),
 );
 // The answers in a conversation started from the contact page.
 $conversation_comments = array(
-    'label'         => lang('Message'),
-    'allow_new'     => true,
-    'auto_publish'  => true,
-    'show_date'     => true,
-    'login'         => true,
-    'email_page'    => '{{tab:email_reply}}',
-    'email_subject' => lang('There is a new reply to your conversation'),
-    'notify_email'  => '{{site_email}}',
-    'attachments'   => false,
-    'select_name'   => false,
+    'label'          => lang('Message'),
+    'allow_new'      => true,
+    'auto_publish'   => true,
+    'show_date'      => true,
+    'login'          => true,
+    'email_page'     => '{{tab:email_reply}}',
+    'email_subject'  => lang('There is a new reply to your conversation'),
+    'notify_email'   => '{{site_email}}',
+    'attachments'    => false,
+    'select_name'    => false,
+    'message'        => lang('Your reply is signed with the name in your profile and appears at once.'),
+    'closed_message' => lang('This conversation is closed.'),
 );
 // The moderators' notes under a report, for the moderators only.
 $staff_note_comments = array(
-    'label'        => lang('Note'),
-    'allow_new'    => true,
-    'auto_publish' => true,
-    'show_date'    => true,
-    'login'        => true,
-    'attachments'  => false,
-    'select_name'  => false,
+    'label'          => lang('Note'),
+    'allow_new'      => true,
+    'auto_publish'   => true,
+    'show_date'      => true,
+    'login'          => true,
+    'attachments'    => false,
+    'select_name'    => false,
+    'message'        => lang('Notes are for the moderators only: say what you found and what you did.'),
+    'closed_message' => lang('This report takes no new notes.'),
+);
+// The comments under a blog post: signed in, published at once, mailed to
+// the post's followers and to the moderators, who follow no list of them
+// elsewhere.
+$blog_comments = array(
+    'label'          => lang('Comment'),
+    'allow_new'      => true,
+    'auto_publish'   => true,
+    'show_date'      => true,
+    'login'          => true,
+    'email_page'     => '{{tab:email_reply}}',
+    'email_subject'  => lang('There is a new comment on a post you follow'),
+    'notify_email'   => '{{site_email}}',
+    'attachments'    => false,
+    'select_name'    => false,
+    'message'        => lang('Your comment is signed with the name in your profile and appears at once.'),
+    'closed_message' => lang('This post takes no new comments.'),
 );
 
 // ── The sample records ──────────────────────────────────────────────────
@@ -2082,15 +2147,82 @@ $sample_docs = array(
     )),
 );
 
+// The heads of the sample blog posts, newest first: array(title, summary).
+// The blog page's lead is the oldest post's summary.
+$blog_lead = lang('Notes from the moderators and the team: changes to the forum, guides worth reading and what members build.');
+$post_heads = array(
+    array(lang('Moderation update: what happens after you report a post'), lang('Who sees your report, what the moderators do with it and how you hear back.')),
+    array(lang('Five habits of the members who help the most'), lang('The members whose replies solve the most topics share a few habits. Anyone can pick them up.')),
+    array(lang('A guide round-up: where to start in the docs'), lang('New to the app, or helping someone who is? These guides answer the questions the forum hears most.')),
+    array(lang('Welcome to the community blog'), $blog_lead),
+);
+// A sample post's values as the cards and the post bind them, by its index
+// above; each has a cover of its own.
+$post_sample = function ($i) use ($post_heads) {
+    return array(
+        'title'   => $post_heads[$i][0],
+        'summary' => $post_heads[$i][1],
+        'cover'   => 'https://picsum.photos/seed/pinegrap-forum-post-' . ($i + 1) . '/1200/675',
+    );
+};
+// Sample post $i: its head, its cover and its text.
+$sample_post = function ($i, $blocks) use ($post_sample, $rich) {
+    $p = $post_sample($i);
+    return array(
+        'title'       => $p['title'],
+        'summary'     => $p['summary'],
+        'cover_image' => $p['cover'],
+        'content'     => $rich($blocks),
+    );
+};
+// Four posts by the moderators and the team: a moderation update, how the
+// most helpful members answer, a round-up of the guides to start with (by
+// the sample guides' own titles) and the blog's welcome.
+$sample_posts = array(
+    $sample_post(0, array(
+        lang('When a topic or a reply breaks the community guidelines, Report a post is the quickest way to tell the moderators. Here is what happens next.'),
+        array('h2' => lang('Who sees your report')),
+        lang('Only the moderators. Your report never appears on the site, and the member who wrote the post is never told who reported it.'),
+        array('h2' => lang('What the moderators do')),
+        array('ol' => array(
+            lang('A moderator reads the post and the reason you gave.'),
+            lang('If the post breaks the guidelines, the moderator edits or hides it, or writes to the member who posted it.'),
+            lang('The moderator notes what they found and what they did, so the other moderators can follow the case.'),
+        )),
+        lang('You get a copy of your report by e-mail. If you think a decision was wrong, write to the moderators through the contact page.'),
+    )),
+    $sample_post(1, array(
+        lang('Some members answer question after question, and theirs are the replies marked as the best answer. We looked at what they do differently.'),
+        array('ul' => array(
+            lang('They read the whole question and ask for what is missing before they guess.'),
+            lang('They answer in short, numbered steps that can be followed one at a time.'),
+            lang('They say which version of the app they tried it on.'),
+            lang('They link to a guide in the docs when one covers the question.'),
+            lang('They come back to say thank you when someone finds a better way.'),
+        )),
+        lang('None of this takes long. Pick a topic from Unanswered topics and try it in your next reply.'),
+    )),
+    $sample_post(2, array(
+        lang('The docs hold guides written by members and by the team. If you are new, or answering someone who is, start with these four.'),
+        array('ul' => array($doc_heads[1][3], $doc_heads[7][3], $doc_heads[2][3], $doc_heads[8][3])),
+        lang('A moderator checks every guide before it is published, and you can rate each one and say what could be clearer. If a guide is missing, contribute one of your own.'),
+    )),
+    $sample_post(3, array(
+        lang('The forum is where members help each other. This blog is where the moderators and the team write to all of you at once.'),
+        lang('Expect short posts about changes to the forum and the docs, round-ups of the guides worth reading and stories from members who built something with the app.'),
+        lang('Every post takes comments. Sign in, say what you think, and follow a post to get its new comments by e-mail.'),
+    )),
+);
+
 // ── Pages ───────────────────────────────────────────────────────────────
 
 $pages = array();
 
 // The front page: the search and the forum's numbers, the announcements,
 // the boards, the latest activity beside the topics waiting for an answer
-// and the week's most viewed, the featured guides and the guidelines. Its
-// RSS feed is its first list, the count of every live topic: every live
-// topic, the newest first.
+// and the week's most viewed, the featured guides, the blog's newest posts
+// and the guidelines. Its RSS feed is its first list, the count of every
+// live topic: every live topic, the newest first.
 // Three numbers in a row from sm; on a phone two in a row and the third
 // across, so a count of thousands keeps inside its card.
 $stat = function ($widget_key, $class = 'col-6 col-sm-4') use ($el, $widget) {
@@ -2177,6 +2309,12 @@ $pages[] = array(
         $band(lang('Featured guides'), array(
             $sec_head(lang('Featured guides'), lang('Browse the docs'), '{{page:docs}}'),
             $widget('home_guides'),
+        ), 'pf-band pt-0 pf-vanish'),
+        // The blog's three newest posts; the band leaves the page while
+        // there is none.
+        $band(lang('From the blog'), array(
+            $sec_head(lang('From the blog'), lang('All posts'), '{{page:blog}}'),
+            $widget('home_posts'),
         ), 'pf-band pt-0 pf-vanish'),
         $band(lang('Guidelines Call-out'), array(
             $el('div', 'pf-callout pf-tint', lang('Call-out'), array(
@@ -2517,6 +2655,65 @@ $pages[] = array(
                         ), 'pf-card pf-tint'),
                     ), array('_attrs' => array($attr('aria-label', lang('More from the docs'))))),
                 ), '', '4', '', '12', 'd-print-none'),
+            ), '4', '', 'g-lg-5'),
+        )),
+    )),
+);
+
+// Beside the blog and a post: how to take part in a post's comments, and
+// the way to the forum for a question about the app.
+$blog_aside = function ($class = '') use ($el, $side_card, $para, $link, $attr) {
+    return $el('aside', $class, lang('Side Column'), array(
+        $side_card(lang('About the blog'), lang('About the blog'), array(
+            $para(lang('Every post takes comments. Sign in, say what you think, and follow a post to get its new comments by e-mail.'), 'small mb-0'),
+        ), 'pf-card pf-tint mb-4'),
+        $side_card(lang('Help With the App'), lang('A question about the app?'), array(
+            $para(lang('Ask it in the forum: other members know the app well, and the answer helps the next person too.'), 'small text-body-secondary mb-3'),
+            $link(lang('Start a topic'), '{{page:new_topic}}', 'btn btn-sm btn-primary'),
+        ), 'pf-card'),
+    ), array('_attrs' => array($attr('aria-label', lang('More from the community')))));
+};
+
+// The blog: every post the moderators and the team wrote, the newest first,
+// with a search (the page's first list, so its feed is every post).
+$pages[] = array(
+    'key'              => 'blog',
+    'name'             => lang('blog'),
+    'folder'           => 'public',
+    'title'            => lang('Blog'),
+    'meta_description' => $blog_lead,
+    'tree'             => $page(array(
+        $page_header(lang('Blog'), $blog_lead),
+        $band(lang('Posts'), array(
+            $row(array(
+                $col(array($widget('blog_list')), '', '8'),
+                $col(array($blog_aside()), '', '4'),
+            ), '4', '', 'g-lg-5'),
+        ), 'pf-band pt-0'),
+    )),
+);
+
+// A post (?r=): the post as long-form text with its comments under it
+// (signed in, published at once) and the blog's side column beside it. The
+// bare page shows "not found", so it stays out of the sitemap; its posts get
+// there through the lists. A printed post leaves out the comments and the
+// side column.
+$pages[] = array(
+    'key'              => 'blog_post',
+    'name'             => lang('blog-post'),
+    'folder'           => 'public',
+    'title'            => lang('Blog Post'),
+    'meta_description' => lang('A post from our blog.'),
+    'sitemap'          => false,
+    'comments'         => $blog_comments,
+    'tree'             => $page(array(
+        $el('div', 'container pf-band pt-4', lang('Blog Post'), array(
+            $row(array(
+                $col(array(
+                    $widget('blog_post'),
+                    $el('div', 'pf-replies d-print-none', lang('Comments'), array($widget('post_comments'))),
+                ), '', '8'),
+                $col(array($blog_aside('pf-sticky')), '', '4', '', '12', 'd-print-none'),
             ), '4', '', 'g-lg-5'),
         )),
     )),
@@ -3107,7 +3304,7 @@ $pages[] = array(
             $row(array(
                 $col(array(
                     $widget('conversation'),
-                    $el('div', 'pf-replies d-print-none', lang('Replies'), array($comments_block())),
+                    $el('div', 'pf-replies d-print-none', lang('Replies'), array($widget('conversation_replies'))),
                 ), '', '8'),
             ), '', 'center'),
         )),
@@ -3223,7 +3420,7 @@ $pages[] = array(
             $row(array(
                 $col(array(
                     $widget('doc_submission_view'),
-                    $el('div', 'pf-replies d-print-none', lang('Messages'), array($comments_block())),
+                    $el('div', 'pf-replies d-print-none', lang('Messages'), array($widget('doc_messages'))),
                 ), '', '8'),
                 $col(array(
                     $el('aside', 'pf-sticky', lang('Side Column'), array(
@@ -3243,8 +3440,8 @@ $pages[] = array(
 
 // ── The moderators' pages ───────────────────────────────────────────────
 // Behind the private folder, under the staff bar: the dashboard, every
-// topic, the docs desk, the reported posts and one report, and the staff
-// directory with its form.
+// topic, the docs desk, the reported posts and one report, the staff
+// directory with its form, and the page that writes a blog post.
 
 // A list of the dashboard or a desk under its heading: the anchor the jump
 // list points at, a line on what it holds and, under it, the way to the
@@ -3317,6 +3514,7 @@ $staff_notes = array(
     lang('A report arrives as Open. Its post is what the member typed: copy it into your browser, it is never a link. Act on the post, write a note under the report for the other moderators, then set the report to Resolved or Dismissed. The member who wrote the post is never told who reported it.'),
     lang('Never rename or remove the fields named status, board, kind, pinned, announcement, section, featured or doc_order, nor their options: the lists filter on these words, and a list whose filter names a missing field or word shows nothing. Keep Hide from the visitor (staff only) on for the office fields, or members could set them. A board, a section or a status is renamed by an administrator or designer in the visual editor, together with the board and section links of the pages; then publish, and set the new word on the records that had the old one.'),
     lang('Site search changes when its index is rebuilt, once a day: after you hide a topic, an administrator, designer or manager can run Update Search Index in the control panel to take it out of search at once. The popular tags of the forum and tag pages are written in the design: keep them in step with the tags members use.'),
+    lang('Write a blog post on New Blog Post: it is on the blog and the home page at once. Change or delete a post with Edit on its page or under Submitted Forms. Comments under a post are published at once and e-mailed to the site\'s address; edit or delete them under Comments.'),
     lang('New topics, guides, reports and contact messages are e-mailed to the site\'s address; replies are not: follow them in Latest replies on the home page and under Comments.'),
 );
 // The notes in two columns from lg: the first half, then the rest.
@@ -3393,6 +3591,7 @@ $pages[] = array(
                 $staff_shortcut('bi-journal-check', lang('Docs desk'), lang('The guides sent to the docs, by status.'), '{{page:staff_docs}}'),
                 $staff_shortcut('bi-flag', lang('Reported posts'), lang('Open, resolved and dismissed reports.'), '{{page:staff_reports}}'),
                 $staff_shortcut('bi-inbox', lang('Inbox'), lang('Every message from the contact page. Answer under each one.'), '{{page:inbox}}'),
+                $staff_shortcut('bi-journal-plus', lang('New Blog Post'), lang('Write a post; it appears on the blog as soon as you send it.'), '{{page:blog_new}}'),
                 $staff_shortcut('bi-person-lines-fill', lang('Staff Directory'), lang('The moderators and the team, and how to reach them.'), '{{page:staff_directory}}'),
                 $staff_shortcut('bi-speedometer2', lang('Control panel'), lang('Users, folders, pages and the site\'s settings.'), $panel_url),
             ), '3'),
@@ -3518,7 +3717,7 @@ $pages[] = array(
             $row(array(
                 $col(array(
                     $widget('staff_report_view'),
-                    $el('div', 'pf-replies d-print-none', lang('Notes'), array($comments_block())),
+                    $el('div', 'pf-replies d-print-none', lang('Notes'), array($widget('report_notes'))),
                 ), '', '8'),
                 $col(array(
                     $el('aside', 'pf-sticky', lang('Side Column'), array(
@@ -3588,6 +3787,54 @@ $pages[] = array(
     )),
 );
 
+// New Blog Post: the Blog Posts form, for the moderators (the private
+// folder). Its page owns the form; a post is public as soon as it is sent,
+// on the blog and the home page. The template's sample posts are written
+// in when the form is made (pg_cf_seed_sample_records()), and the cover is
+// the picture a shared post shows (pg_cf_share_image_field_id()).
+$pages[] = array(
+    'key'     => 'blog_new',
+    'name'    => lang('new-blog-post'),
+    'folder'  => 'private',
+    'title'   => lang('New Blog Post'),
+    'search'  => false,
+    'sitemap' => false,
+    'noindex' => true,
+    'form'    => array(
+        'form_name'            => lang('Blog Posts'),
+        'collection'           => 1,
+        'confirmation_message' => lang('The post is published.'),
+        'confirmation_page_id' => '{{tab:blog}}',
+        'sample_records'       => $sample_posts,
+        'share_image_field'    => 'cover_image',
+    ),
+    'tree'    => $staff_page(array(
+        $page_header(lang('New Blog Post'), lang('Write the post; it appears on the blog as soon as you send it.'), array(
+            $breadcrumb(array(array(lang('Moderation'), '{{page:staff}}'), array(lang('New Blog Post'), ''))),
+        )),
+        $band(lang('Content'), array(
+            $row(array(
+                $col(array(
+                    $el('div', 'card card-body p-4', lang('Form Card'), array($widget('blog_form'))),
+                ), '', '8'),
+                $col(array(
+                    $side_card(lang('Before you publish'), lang('Before you publish'), array(
+                        $check_list(array(
+                            lang('A title that says what the post is about.'),
+                            lang('A summary of one or two sentences: the lists and the search show it.'),
+                            lang('A wide cover picture with no words in it, so it reads at any size.'),
+                        )),
+                    ), 'pf-card pf-tint mb-4'),
+                    $side_card(lang('After you publish'), lang('After you publish'), array(
+                        $para(lang('The post is on the blog and the home page at once, and members can comment on it. Change or delete it with Edit on its page.'), 'small mb-3'),
+                        $link(lang('All posts'), '{{page:blog}}', 'btn btn-sm btn-secondary'),
+                    )),
+                ), '', '4'),
+            ), '4', '', 'g-lg-5'),
+        ), 'pf-band pt-0'),
+    )),
+);
+
 // The page a missing address shows.
 $pages[] = array(
     'key'     => 'error',
@@ -3631,14 +3878,15 @@ foreach ($mail_pages as $m) {
 $mail_system = array('type' => 'region', 'props' => array('regionType' => 'system', 'regionName' => ''), 'children' => array());
 // Something new on a page the member follows: a reply under a topic they
 // started or follow, feedback a moderator published under a guide they
-// wrote or follow, or an answer in their conversation with the moderators.
+// wrote or follow, a comment under a blog post they commented on or follow,
+// or an answer in their conversation with the moderators.
 $pages[] = array_merge($mail_settings, array(
     'key'   => 'email_reply',
     'name'  => lang('email-new-reply'),
     'title' => lang('New Reply E-mail'),
     'tree'  => $mail_page(array(
         $mail_heading(lang('There is something new for you')),
-        $mail_para(lang('Someone wrote on a page you follow: a reply under a topic, feedback under a guide, or an answer from the moderators in your conversation. Read it below and answer on the page.')),
+        $mail_para(lang('Someone wrote on a page you follow: a reply under a topic, feedback under a guide, a comment under a blog post or an answer from the moderators in your conversation. Read it below and answer on the page.')),
         $widget('email_comment'),
         $mail_system,
     )),
@@ -3951,14 +4199,14 @@ $widgets = array(
 );
 
 // ── The Comments widgets ────────────────────────────────────────────────
-// The replies of a topic, the feedback of a guide, the lists of recent
-// replies and the comment e-mails are Comments widgets. Their layouts ship
-// with the template, in its own look: a widget left to the editor's starter
-// would keep its page out of the installer's preview. Every control is a
-// binding the renderer wires to its handler: the form posts the comment, the
-// watch form follows the thread, the moderators' form opens or closes it,
-// Reply and Share answer or point at one post. A flag shows a part only
-// while it holds for the visitor.
+// The replies of a topic, the feedback of a guide, the comments under a
+// blog post, the lists of recent replies and the comment e-mails are
+// Comments widgets. Their layouts ship with the template, in its own look:
+// a widget left to the editor's starter would keep its page out of the
+// installer's preview. Every control is a binding the renderer wires to its
+// handler: the form posts the comment, the watch form follows the thread,
+// the moderators' form opens or closes it, Reply and Share answer or point
+// at one post. A flag shows a part only while it holds for the visitor.
 
 // A Messages node: the notices and errors of the form it sits in.
 $messages = function ($class = '') {
@@ -3977,16 +4225,23 @@ $messages = function ($class = '') {
 // watch_box, follow, unfollow, close, reopen, featured) and rating, whether
 // the form asks for stars.
 $reply_thread = function ($w) use ($el, $heading, $para, $link, $span, $icon, $attr, $bind, $show_when, $loop, $widget_root, $messages, $people) {
+    // A thread of two sides (the inbox, the desk, the moderators' notes)
+    // turns both off: no Reply, Share, quote or featured mark, and no
+    // follow box (who writes there is e-mailed by the page's settings).
+    $reply = !isset($w['reply']) || $w['reply'];
+    $watch = !isset($w['watch']) || $w['watch'];
     $body = array();
     if ($w['rating']) {
         $body[] = $el('div', 'text-warning small mb-1', lang('Stars'), pg_sw_part_comment_stars(), array('_bindings' => array('eo_visible_if' => 'comment_has_rating')));
     }
-    $body[] = $el('p', 'pf-meta d-flex flex-wrap align-items-center gap-2 mb-2', lang('Name Line'), array(
-        $span($people[1], 'fw-semibold text-body-emphasis', lang('Name'), $bind('__comment_name')),
-        $el('span', 'pf-badge pf-badge-pin', lang('Featured'), array(
+    $name_line = array($span($people[1], 'fw-semibold text-body-emphasis', lang('Name'), $bind('__comment_name')));
+    if ($reply) {
+        $name_line[] = $el('span', 'pf-badge pf-badge-pin', lang('Featured'), array(
             $icon('bi-patch-check-fill'),
             $span($w['featured'], '', lang('Text')),
-        ), $show_when('comment_is_featured')),
+        ), $show_when('comment_is_featured'));
+    }
+    $body[] = $el('p', 'pf-meta d-flex flex-wrap align-items-center gap-2 mb-2', lang('Name Line'), array_merge($name_line, array(
         $span(lang('Moderator'), 'pf-badge', lang('Badge'), array('_bindings' => array('text' => '__comment_badge', 'eo_visible_if' => 'comment_has_badge'))),
         $span(lang('2 hours ago'), 'pg-hide-if-empty', lang('Time'), $bind('__comment_date')),
         // The account behind the post, for the moderators only.
@@ -3994,32 +4249,35 @@ $reply_thread = function ($w) use ($el, $heading, $para, $link, $span, $icon, $a
             $span(lang('Account:'), 'me-1', lang('Label')),
             $span('priya.raman', 'pg-field-value', lang('User Name'), $bind('__comment_staff_name')),
         ), $show_when('is_staff')),
-    ));
+    )));
     $body[] = $el('p', 'small fw-semibold text-danger-emphasis mb-2 pg-hide-if-empty', lang('Comment Status'), array(),
         array('text' => lang('Awaiting approval'), '_bindings' => array('text' => '__comment_status', 'eo_visible_if' => 'comment_is_pending')));
-    $body[] = $el('div', 'pf-post', lang('Message'), array(
-        $el('blockquote', '', lang('Quote'), array(
+    $post = array();
+    if ($reply) {
+        $post[] = $el('blockquote', '', lang('Quote'), array(
             $el('p', 'small mb-1', lang('In reply to'), array(
                 $span(lang('In reply to'), 'me-1', lang('Label')),
                 $link($people[0], '#', 'fw-semibold link-body-emphasis', array(), array('_bindings' => array('href' => '__comment_parent_url', 'text' => '__comment_parent_name'))),
             )),
             $el('p', 'mb-0 pg-hide-if-empty', lang('Quoted text'), array(), array('text' => lang('Quoted text'), '_bindings' => array('text' => '__comment_quote'))),
-        ), $show_when('comment_has_quote')),
-        $el('div', '', lang('Comment text'), array(), array('text' => lang('Comment text'), '_bindings' => array('text' => '__comment_message_html'))),
-    ));
+        ), $show_when('comment_has_quote'));
+    }
+    $post[] = $el('div', '', lang('Comment text'), array(), array('text' => lang('Comment text'), '_bindings' => array('text' => '__comment_message_html')));
+    $body[] = $el('div', 'pf-post', lang('Message'), $post);
     // The file a post carries, while the page takes attachments.
     $body[] = $el('p', 'small mb-2', lang('Attachment'), array(
         $icon('bi-paperclip', 'me-1'),
         $link('screenshot.png', '#', '', array(), array('target' => '_blank', 'rel' => 'noopener', '_bindings' => array('href' => '__comment_file_url', 'text' => '__comment_file_name'))),
         $span('84 KB', 'pf-meta ms-1', lang('Value'), $bind('__comment_file_size')),
     ), $show_when('comment_has_file'));
-    $body[] = $el('div', 'pf-reply-actions', lang('Comment Actions'), array(
-        $link(lang('Reply'), '#', 'link-body-emphasis', array(), array('_bindings' => array('action' => 'comment_reply'))),
-        $link(lang('Share'), '#', '', array(), array('_bindings' => array('action' => 'comment_share'))),
-        // Bound to the post's edit screen, so the list adds no pencil of
-        // its own.
-        $link(lang('Edit'), '#', '', array(), array('_bindings' => array('href' => '__comment_edit_url', 'eo_visible_if' => 'comment_can_edit'))),
-    ));
+    $actions = array();
+    if ($reply) {
+        $actions[] = $link(lang('Reply'), '#', 'link-body-emphasis', array(), array('_bindings' => array('action' => 'comment_reply')));
+        $actions[] = $link(lang('Share'), '#', '', array(), array('_bindings' => array('action' => 'comment_share')));
+    }
+    // Bound to the post's edit screen, so the list adds no pencil of its own.
+    $actions[] = $link(lang('Edit'), '#', '', array(), array('_bindings' => array('href' => '__comment_edit_url', 'eo_visible_if' => 'comment_can_edit')));
+    $body[] = $el('div', 'pf-reply-actions', lang('Comment Actions'), $actions);
 
     $label = function ($for, $text, $class = 'form-label') use ($el, $attr) {
         return $el('label', $class, lang('Label'), array(), array('text' => $text, '_attrs' => array($attr('for', $for))));
@@ -4027,18 +4285,18 @@ $reply_thread = function ($w) use ($el, $heading, $para, $link, $span, $icon, $a
     $control = function ($tag, $class, $id, $value, $attrs = array()) use ($el) {
         return $el($tag, $class, lang('Field'), array(), array('id' => $id, '_attrs' => $attrs, '_bindings' => array('value' => $value)));
     };
-    $fields = array(
-        $messages(),
+    $fields = array($messages());
+    if ($reply) {
         // The post the reply answers, while it answers one. The page keeps
         // the box with the hidden attribute for Reply to show it, so it
         // takes no display utility: d-flex, !important and later in
         // Bootstrap than its [hidden] rule, would keep it on screen, empty.
-        $el('div', 'alert alert-secondary py-2 small', lang('Replying To'), array(
+        $fields[] = $el('div', 'alert alert-secondary py-2 small', lang('Replying To'), array(
             $span(lang('Replying to'), 'me-1', lang('Text')),
             $el('strong', '', lang('Name'), array(), array('text' => $people[1], '_bindings' => array('text' => '__reply_to_name'))),
             $link(lang('Cancel'), '#', 'ms-3 fw-semibold', array(), array('_bindings' => array('action' => 'comment_reply_cancel'))),
-        ), $show_when('is_replying')),
-    );
+        ), $show_when('is_replying'));
+    }
     if ($w['rating']) {
         $fields[] = $el('div', 'mb-3', lang('Rating'), array(
             $el('div', 'form-label', lang('Label'), array(), array('text' => lang('Rating'))),
@@ -4068,10 +4326,12 @@ $reply_thread = function ($w) use ($el, $heading, $para, $link, $span, $icon, $a
         $control('input', 'form-control', 'comment_file', 'comment_file', array($attr('type', 'file'))),
     ), $show_when('files_on'));
     $fields[] = $el('div', 'mb-3 small', lang('Publish'), array(), array('_bindings' => array('section' => 'comment_publish')));
-    $fields[] = $el('div', 'form-check mb-3', lang('Watch'), array(
-        $control('input', 'form-check-input', 'comment_watcher', 'comment_watcher', array($attr('type', 'checkbox'))),
-        $label('comment_watcher', $w['watch_box'], 'form-check-label'),
-    ), $show_when('watching_on'));
+    if ($watch) {
+        $fields[] = $el('div', 'form-check mb-3', lang('Watch'), array(
+            $control('input', 'form-check-input', 'comment_watcher', 'comment_watcher', array($attr('type', 'checkbox'))),
+            $label('comment_watcher', $w['watch_box'], 'form-check-label'),
+        ), $show_when('watching_on'));
+    }
     $fields[] = $el('div', 'mb-3', lang('CAPTCHA'), array(), array('_bindings' => array('section' => 'comment_captcha')));
     $fields[] = $el('div', '', lang('Send Button'), array(
         $el('button', 'btn btn-primary px-4', lang('Send Button'), array(), array('text' => $w['submit'], '_attrs' => array($attr('type', 'submit')), '_bindings' => array('action' => 'comment_submit'))),
@@ -4081,7 +4341,7 @@ $reply_thread = function ($w) use ($el, $heading, $para, $link, $span, $icon, $a
         return $el('button', 'btn btn-sm btn-secondary', lang('Send Button'), array(), array('text' => $text, '_attrs' => array($attr('type', 'submit')), '_bindings' => array('action' => $action)));
     };
 
-    return $widget_root(array(
+    $parts = array(
         $el('div', 'pg-hide-if-empty', lang('Comment List'), array(
             $loop(array($el('article', 'pf-reply', lang('Comment'), array(
                 $el('div', 'pf-reply-rule', lang('Reply Indent'), array(), $show_when('comment_is_reply')),
@@ -4100,9 +4360,11 @@ $reply_thread = function ($w) use ($el, $heading, $para, $link, $span, $icon, $a
             ), $show_when('must_sign_in')),
             $el('form', 'pf-card', lang('Comment Form'), $fields, array('_bindings' => array('action' => 'comment_form', 'eo_visible_if' => 'can_comment'))),
         )),
+    );
+    if ($watch) {
         // Following the thread: how many follow it, and the member's own
         // button; the moderators' list of who follows.
-        $el('div', 'pf-card pf-tint mt-4 pg-hide-if-empty', lang('Watch'), array(
+        $parts[] = $el('div', 'pf-card pf-tint mt-4 pg-hide-if-empty', lang('Watch'), array(
             $el('p', 'pf-meta mb-2 pg-hide-if-empty', lang('Text'), array(), $bind('__watcher_count_text')),
             $el('form', 'd-flex flex-wrap align-items-center gap-2', lang('Watch Form'), array(
                 $messages('w-100'),
@@ -4110,14 +4372,15 @@ $reply_thread = function ($w) use ($el, $heading, $para, $link, $span, $icon, $a
                 $small_button($w['unfollow'], 'comment_unwatch'),
             ), array('_bindings' => array('action' => 'comment_watch_form'))),
             $el('div', '', lang('Watchers'), array(), array('_bindings' => array('section' => 'comment_watchers'))),
-        ), $show_when('watching_on')),
-        $el('div', 'd-flex justify-content-end mt-3', lang('Staff Controls'), array(
-            $el('form', '', lang('Open or Close'), array(
-                $small_button($w['close'], 'comment_close'),
-                $small_button($w['reopen'], 'comment_reopen'),
-            ), array('_bindings' => array('action' => 'comment_allow_new_form'))),
-        ), $show_when('is_staff')),
-    ));
+        ), $show_when('watching_on'));
+    }
+    $parts[] = $el('div', 'd-flex justify-content-end mt-3', lang('Staff Controls'), array(
+        $el('form', '', lang('Open or Close'), array(
+            $small_button($w['close'], 'comment_close'),
+            $small_button($w['reopen'], 'comment_reopen'),
+        ), array('_bindings' => array('action' => 'comment_allow_new_form'))),
+    ), $show_when('is_staff'));
+    return $widget_root($parts);
 };
 // The words of a topic's replies and of a guide's feedback.
 $topic_words = array(
@@ -4147,6 +4410,62 @@ $doc_words = array(
     'reopen'    => lang('Allow new feedback'),
     'featured'  => lang('Featured'),
     'rating'    => true,
+);
+// The words of the comments under a blog post. Following a post is said
+// the way a topic's is, not "Notify me": its Turkish is "haber ver", a word
+// the forum keeps out of its texts.
+$post_words = array(
+    'empty'     => lang('No comments yet. Be the first to share your thoughts.'),
+    'heading'   => lang('Leave a comment'),
+    'label'     => lang('Your comment'),
+    'sign_in'   => lang('Sign in to add your comment.'),
+    'submit'    => lang('Post comment'),
+    'watch_box' => lang('Follow this post: e-mail me its new comments.'),
+    'follow'    => lang('Follow this post'),
+    'unfollow'  => lang('Stop following this post'),
+    'close'     => lang('Stop new comments'),
+    'reopen'    => lang('Allow new comments'),
+    'featured'  => lang('Featured'),
+    'rating'    => false,
+);
+// The words of the two-sided threads: a conversation's answers, the
+// messages between a guide's author and the moderators, the moderators'
+// notes under a report.
+$conversation_words = array(
+    'empty'   => lang('No replies yet. Our answer will appear here.'),
+    'heading' => lang('Write a reply'),
+    'label'   => lang('Your reply'),
+    'sign_in' => lang('Sign in to reply.'),
+    'submit'  => lang('Send reply'),
+    'close'   => lang('Stop new replies'),
+    'reopen'  => lang('Allow new replies'),
+    'rating'  => false,
+    'reply'   => false,
+    'watch'   => false,
+);
+$desk_words = array(
+    'empty'   => lang('No messages yet. Write the first one.'),
+    'heading' => lang('Write a message'),
+    'label'   => lang('Your message'),
+    'sign_in' => lang('Sign in to reply.'),
+    'submit'  => lang('Send message'),
+    'close'   => lang('Stop new messages'),
+    'reopen'  => lang('Allow new messages'),
+    'rating'  => false,
+    'reply'   => false,
+    'watch'   => false,
+);
+$note_words = array(
+    'empty'   => lang('No notes yet.'),
+    'heading' => lang('Add a note'),
+    'label'   => lang('Your note'),
+    'sign_in' => lang('Sign in to reply.'),
+    'submit'  => lang('Add note'),
+    'close'   => lang('Stop new comments'),
+    'reopen'  => lang('Allow new comments'),
+    'rating'  => false,
+    'reply'   => false,
+    'watch'   => false,
 );
 
 // A list of recent replies, in a side card's short rows: whether a reply
@@ -4798,6 +5117,56 @@ $widgets['doc_feedback'] = array(
     ),
     'tree'   => $reply_thread($doc_words),
 );
+// The comments under a blog post: the post page's own Comments widget,
+// under the post view, threaded like a topic's replies. Oldest first, an
+// answer under the comment it answers and one more level under that (an
+// answer that deep quotes the one it answers), a featured comment first,
+// twenty with their answers to a page.
+$widgets['post_comments'] = array(
+    'page'   => 'blog_post',
+    'slug'   => lang('comments'),
+    'config' => array(
+        'regionType' => 'comments',
+        'order'      => 'oldest',
+        'featured'   => 'first',
+        'layout'     => 'threaded',
+        'max_depth'  => 2,
+        'per_page'   => 20,
+    ),
+    'tree'   => $reply_thread($post_words),
+);
+// The two-sided threads: the inbox's conversation, the desk's guide and the
+// moderators' report, each under its record view, which shows them only to
+// whoever may read the record. Oldest first, one after another, all on one
+// page, never featured; no Reply, Share or follow box: the sender is
+// e-mailed every answer and the moderators every new message by the page's
+// own settings, and report notes are e-mailed to nobody.
+$two_sided = array(
+    'regionType' => 'comments',
+    'order'      => 'oldest',
+    'featured'   => 'none',
+    'layout'     => 'flat',
+    'max_depth'  => 1,
+    'per_page'   => 0,
+);
+$widgets['conversation_replies'] = array(
+    'page'   => 'conversation',
+    'slug'   => lang('comments'),
+    'config' => $two_sided,
+    'tree'   => $reply_thread($conversation_words),
+);
+$widgets['doc_messages'] = array(
+    'page'   => 'doc_submission',
+    'slug'   => lang('comments'),
+    'config' => $two_sided,
+    'tree'   => $reply_thread($desk_words),
+);
+$widgets['report_notes'] = array(
+    'page'   => 'staff_report',
+    'slug'   => lang('comments'),
+    'config' => $two_sided,
+    'tree'   => $reply_thread($note_words),
+);
 
 // ── The forms ───────────────────────────────────────────────────────────
 
@@ -4919,6 +5288,117 @@ $widgets['contact_form'] = array(
         $captcha(),
         $submit(lang('Send the message')),
         $loop(array()),
+    )),
+);
+
+// ── The blog ────────────────────────────────────────────────────────────
+
+// The Blog Posts form, on New Blog Post (the moderators' page, so no
+// CAPTCHA): the title, the summary the lists show, the cover and the text,
+// rich like a topic's.
+$widgets['blog_form'] = array(
+    'page'   => 'blog_new',
+    'slug'   => 'form',
+    'config' => array('regionType' => 'custom_form', 'form_source' => 'page'),
+    'tree'   => $widget_root(array(
+        $field('pf-post-title', lang('Title'), pg_cf_with_role($input('pf-post-title', 'text', 'title', 'off', true, array(), array('maxlength' => '150')), 'title')),
+        $field_help('pf-post-summary', lang('Summary'), pg_cf_with_role($textarea('pf-post-summary', 'summary', 3, true, '', array(), array('maxlength' => '300')), 'description'),
+            lang('One or two sentences readers see in the lists and in the search results.')),
+        $field_help('pf-post-cover', lang('Cover Image'), pg_cf_with_role($file('pf-post-cover', 'cover_image', 'public'), 'media'),
+            lang('A wide picture, about 1200 by 675 pixels. It shows on the post, in the lists and where the post is shared.')),
+        $field_help('pf-post-content', lang('Content'), $textarea('pf-post-content', 'content', 16, true, '', array('wysiwyg' => true)),
+            lang('Subheads, lists, links and code blocks are kept.')),
+        $submit(lang('Publish'), 'btn btn-primary btn-lg px-4'),
+        $loop(array()),
+    )),
+);
+
+// The home page's three newest posts.
+$widgets['home_posts'] = array(
+    'page'   => 'home',
+    'slug'   => lang('form-list'),
+    'config' => array_merge($post_pub, array(
+        'items_per_page' => 3,
+        'max_results'    => 3,
+        'empty_message'  => lang('No posts yet.'),
+    )),
+    'tree'   => $widget_root(array($post_cards($post_sample(0), 'row-cols-1 row-cols-md-3'))),
+);
+// The blog: every post, the newest first, ten to a page, with a search over
+// the title, the summary and the text. The page has no heading over the
+// list, so a post's title is an h2.
+$widgets['blog_list'] = array(
+    'page'   => 'blog',
+    'slug'   => lang('form-list'),
+    'config' => array_merge($post_pub, array(
+        'items_per_page' => 10,
+        'max_results'    => 0,
+        'search_enabled' => true,
+        'search_fields'  => array('title', 'summary', 'content'),
+        'search_width'   => 'full',
+        'search_label'   => lang('Search the blog...'),
+        'empty_message'  => lang('No posts found. Try other words.'),
+    )),
+    'tree'   => $widget_root(array($post_cards($post_sample(1), 'row-cols-1 row-cols-md-2', 'h2'))),
+);
+
+// The post: anybody may read it. Its title is the page's title, its summary
+// the description of the head and the feed, its cover the picture a shared
+// link shows; the text keeps a reading measure. The byline leaves with a
+// post that has no author's name (a sample sent by the setup account).
+// Above the comments, which the page puts right under it, their heading; it
+// leaves with a missing post.
+$shown_post = $post_sample(0);
+$widgets['blog_post'] = array(
+    'page'   => 'blog_post',
+    'slug'   => lang('form-detail'),
+    'config' => array(
+        'regionType'          => 'form_item_view',
+        'custom_form_page_id' => '{{tab:blog_new}}',
+        'access_control'      => 'public',
+        'title_field'         => 'title',
+        'not_found_message'   => lang('This post could not be found. It may have been removed.'),
+    ),
+    'tree'   => $widget_root(array(
+        $el('div', 'text-center py-5', lang('Not Found'), array(
+            $icon('bi-journal-x', 'display-5 text-body-secondary'),
+            $heading('h1', lang('Post not found'), 'h3 fw-bold mt-3'),
+            $para(lang('This post could not be found. It may have been removed.'), 'text-body-secondary mb-4', $bind('not_found')),
+            $buttons(array(
+                $link(lang('Back to the blog'), '{{page:blog}}', 'btn btn-primary'),
+                $link(lang('Search'), '{{page:search}}', 'btn btn-secondary'),
+            ), 'd-flex flex-wrap justify-content-center gap-2'),
+        ), $show_when('record_not_found')),
+        $el('article', '', lang('Post'), array(
+            $record_toolbar(lang('All posts'), '{{page:blog}}'),
+            $el('header', 'mb-4', lang('Post Header'), array(
+                $para(lang('Blog'), 'pf-kicker mb-2'),
+                $heading('h1', $shown_post['title'], 'pf-page-title mb-3', $bind('title')),
+                $para($shown_post['summary'], 'lead text-body-secondary pf-measure mb-3', $bind('summary')),
+                $el('p', 'pf-meta mb-0', lang('Byline and Time'), array(
+                    $el('span', 'pg-hide-if-empty', lang('Author'), array(
+                        $span(lang('Written by'), 'me-1', lang('Label')),
+                        $span($people[1], 'pg-field-value fw-semibold text-body', lang('Name'), $bind('submitter_name')),
+                        $dot(),
+                    )),
+                    $span(lang('Posted:'), 'me-1', lang('Label')),
+                    $span(lang('Date'), '', lang('Date'), $bind('submitted_date_and_time')),
+                )),
+            )),
+            $el('div', 'pg-hide-if-empty mb-4', lang('Picture'), array(
+                $el('span', 'pg-field-value d-block ratio ratio-16x9', lang('Picture Frame'), array(
+                    $image($shown_post['cover'], '', 'rounded-3 object-fit-cover', array('_bindings' => array('src' => 'cover_image'))),
+                )),
+            )),
+            // The post's text is rich text: a div holds what was written,
+            // contained by the template's rules, at a reading measure.
+            $el('div', 'pf-post pf-measure mb-4', lang('Post Content'), array(), array_merge(
+                array('text' => lang('The text of the post appears here.')), $bind('content'))),
+            $el('div', 'border-top pt-4 d-print-none', lang('Comments'), array(
+                $heading('h2', lang('Comments'), 'pf-sec-title mb-1'),
+                $para(lang('Say what you think or add what you know. Be kind, and keep to the subject of the post.'), 'pf-meta mb-3'),
+            )),
+        ), $show_when('record_found')),
     )),
 );
 
@@ -5714,7 +6194,7 @@ foreach ($pages as $i => $p) {
 
 return array(
     'name'        => lang('Community Forum & Docs'),
-    'version'     => '1.2.1',
+    'version'     => '1.3.0',
     'framework'   => 'bootstrap5',
     'order'       => 90,
     'icon'        => 'bi-chat-square-text',

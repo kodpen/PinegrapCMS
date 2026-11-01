@@ -77,17 +77,11 @@ if ($scope != 'all') {
         output_error(lang('Nothing is selected.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
     }
 
-    $parts = array();
-
-    if (count($ids) > 0) {
-        $parts[] = 'id IN (' . implode(',', $ids) . ')';
-    }
+    $deep = array();
 
     if (count($group_ids) > 0) {
 
         require_once(dirname(__FILE__) . '/view_folder_and_files_f.php');
-
-        $deep = array();
 
         foreach ($group_ids as $group_id) {
 
@@ -97,14 +91,9 @@ if ($scope != 'all') {
                 $deep[(int) $child] = true;
             }
         }
-
-        $parts[] = 'id IN (
-            SELECT product
-            FROM products_groups_xref
-            WHERE product_group IN (' . implode(',', array_keys($deep)) . '))';
     }
 
-    $where = 'WHERE (' . implode(' OR ', $parts) . ')';
+    $where = pg_products_export_where($ids, array_keys($deep), pg_catalog_bin_live_sql('products'));
     $name = 'products-selected';
 
     // One group on its own is named after the group: an operator exporting a
@@ -120,6 +109,12 @@ if ($scope != 'all') {
             $name = 'products-' . preg_replace('#[/\\\\:*?"<>|\x00-\x1F]+#u', '_', (string) $group_name);
         }
     }
+}
+
+// The Recycle Bin is not a catalogue to export: "all" leaves it out as the
+// selection does, so this file and the Products screen's give the same rows.
+if ($scope == 'all') {
+    $where = pg_products_export_where(array(), array(), pg_catalog_bin_live_sql('products'));
 }
 
 $table = pg_products_export_table($where, 'name ASC');

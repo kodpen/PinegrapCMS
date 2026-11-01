@@ -77,10 +77,10 @@ if (!$_POST) {
             $liveform->assign_field_value('supplier_tax_number', (string) $existing['supplier_tax_number']);
             $liveform->assign_field_value('document_no', (string) $existing['document_no']);
             $liveform->assign_field_value('description', (string) $existing['description']);
-            $liveform->assign_field_value('amount', erp_money_out_currency((int) $existing['total_amount'], $currency, false));
+            $liveform->assign_field_value('amount', erp_money_input((int) $existing['total_amount']));
             $liveform->assign_field_value('includes_tax', '1');
             $liveform->assign_field_value('tax_rate', erp_quantity_text((float) $existing['tax_rate']));
-            $liveform->assign_field_value('tax_amount', erp_money_out_currency((int) $existing['tax_amount'], $currency, false));
+            $liveform->assign_field_value('tax_amount', erp_money_input((int) $existing['tax_amount']));
             $liveform->assign_field_value('tax_deductible', ((int) $existing['tax_deductible'] === 1) ? '1' : '');
             $liveform->assign_field_value('currency', $currency);
             $liveform->assign_field_value('exchange_rate', ($currency !== $base) ? erp_fx_rate_out((float) $existing['exchange_rate']) : '');

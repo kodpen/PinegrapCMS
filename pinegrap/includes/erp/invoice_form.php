@@ -521,7 +521,7 @@ function erp_invoice_form_cards($liveform, $options = array())
                 ? ' <span id="erp_withholding_hint">' . lang('The buyer pays part of the VAT to the tax office: pick the withholding code on each line it applies to.') . ' ' . lang(array('string' => '{var:1}: {var:2}', 'vars' => array(lang('Withholding'), lang('Withholding code and the share of the VAT the buyer pays to the tax office.')))) . '</span>'
                 : '') . '</div>
             <div class="table-responsive">
-                <table class="table table-sm align-middle mb-0" data-erp-lines-table>
+                <table class="table table-sm align-middle mb-0" data-erp-lines-table style="min-width:60rem">
                     <thead>
                         <tr>
                             <th style="width:2.5rem">#</th>

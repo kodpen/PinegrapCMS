@@ -148,10 +148,11 @@ if (!defined('PG_INIT_LOADED')) {
 							<label for="price_value" id="price_value_label" class="form-label"><?=h(lang('Amount'))?></label>
 							<div class="input-group my-1">
 								<span id="value_type" class="input-group-text"><?=BASE_CURRENCY_CODE?></span>
-								<?=$liveform->output_field(array(
-									'type' => 'number',
+								<?=$liveform->output_field(array_merge(array(
+									'type' => 'text',
 									'id' => 'price_value',
-									'class'=>'form-control'))?>
+									'inputmode' => 'decimal',
+									'class'=>'form-control'), pg_money_mask_attributes()))?>
 							</div>
 						</div>
 					</div>

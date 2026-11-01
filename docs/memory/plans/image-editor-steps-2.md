@@ -6,12 +6,12 @@ description: Steps E11-E20 of plans/image-editor.md: versions, canvas and artboa
 ## Which steps are there?
 - Sizes and screens as in `image-editor-steps.md`. E11's table is settled (#4202, `image-editor-server.md`); E12 needs E11 for editable texts; E19 comes last (#4203).
 
-- E11 (M) Versions. Screen 10. `free`
+- E11 (M) Versions. Screen 10. `free` Done (#4483, `ui/image-editor-versions.md`).
   - A sub-step in the open version's migration with `install_create_table()`, rerun twice on a dev DB; a save writes a version and its doc; opening loads the original plus the doc; the versions drawer (preview, restore, delete); retention: the original plus the last 10 saves (#4203).
 
 - E12 (M) Canvas and artboard. Screens 14-17. `free` after E10.
   - New image dialog (square 1080, portrait 1080×1350, story 1080×1920, share 1200×630, banner 1920×600, custom; white, transparent, black, light blue); pictures as layers (Files, upload, paste).
-  - Artboard tool: handles on the edges and corners; the artwork stays where it is, the board slides over it; width and height with a nine-point anchor; fit to content or to the selection; Shift keeps the ratio, Alt sizes from the centre. On a photo the same tool extends or trims the canvas with a fill.
+  - Artboard tool: handles on the edges and corners; the artwork stays where it is, the board slides over it; width and height with a nine-point anchor; fit to content or to the selection; Shift keeps the ratio, Alt sizes from the centre. On a photo the same tool extends or trims the canvas with a fill; with it a frame may grow the canvas outward (the Polaroid of screen 08; E8 draws frames on the picture's edge).
   - File Manager "New image" opens it (today `createBlankImage()` sends a white PNG to the old editor).
 
 - E13 (M) Optimisation. Screen 11. `free` after E12.

@@ -252,6 +252,51 @@ function mp_sync_send_batch($account, &$summary) {
 
 	}
 
+	// A connector that sends product by product (Merchant Center) answers at
+	// once instead of with a task: data['deferred'] names the products it did
+	// not get to (a rate limit, its time budget), which wait again without an
+	// attempt counted; data['pushed'] the ones that went through, whose
+	// mapping records the push.
+	$deferred = (isset($result['data']['deferred']) && is_array($result['data']['deferred']))
+		? array_map('intval', $result['data']['deferred']) : array();
+
+	if ($deferred) {
+
+		$delay = isset($result['data']['retry_after']) && is_numeric($result['data']['retry_after'])
+			? max(0, min(3600, (int)$result['data']['retry_after'])) : 0;
+
+		db("UPDATE marketplace_sync_queue
+			SET run_after = UNIX_TIMESTAMP() + " . (int)$delay . ", updated_timestamp = UNIX_TIMESTAMP()
+			WHERE id IN (" . implode(',', $ids) . ") AND status = 'waiting'
+			  AND product_id IN (" . implode(',', $deferred) . ")");
+
+		$ids = array_values(array_map('intval', (array) db_values("SELECT id FROM marketplace_sync_queue
+			WHERE id IN (" . implode(',', $ids) . ") AND NOT (status = 'waiting'
+			  AND product_id IN (" . implode(',', $deferred) . "))")));
+
+		if (!$ids) {
+
+			mp_account_outcome($account_id, true);
+
+			return true;
+
+		}
+
+	}
+
+	$pushed = (isset($result['data']['pushed']) && is_array($result['data']['pushed']))
+		? array_map('intval', $result['data']['pushed']) : array();
+
+	if ($task_id === '' && $pushed) {
+
+		db("UPDATE marketplace_product_map
+			SET last_pushed = UNIX_TIMESTAMP(), last_error = ''
+			WHERE (account_id = '" . e($account_id) . "') AND (product_id IN (" . implode(',', $pushed) . "))");
+
+		$summary['pushed'] += count($pushed);
+
+	}
+
 	// Nothing was sent: whatever is left had nothing to say (a product that
 	// does not track stock, on an account that does not send prices). There
 	// is no task to ask about, so those rows are done here.

@@ -428,6 +428,7 @@ pg_page_shell([
             ' . $liveform->output_errors() . '
             ' . $liveform->get_warnings() . '
             ' . $liveform->output_notices() . '
+            <div class="mb-3"><span class="small fg-secondary me-2">' . lang('Status') . '</span><span class="badge theme-' . h($status[1]) . '">' . h($status[0]) . '</span></div>
 
             <nav id="button_bar" class="pg-toolbar navigation d-flex flex-wrap gap-1" aria-label="' . lang('Button Bar') . '">
                 <a class="btn btn-sm btn-outline theme-secondary" href="get_erp_purchase_order_pdf.php?id=' . $order_id . '" target="_blank" rel="noopener"><i class="bi bi-file-earmark-pdf me-1" aria-hidden="true"></i>' . lang('PDF') . '</a>

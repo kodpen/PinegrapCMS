@@ -4,7 +4,7 @@ description: Panel Ctrl+S (backend.src.js) and Return in a text field: which for
 ---
 
 ## Which form does Ctrl+S submit on a panel screen?
-- `backend.src.js`, the window `keydown` block, `case 's'`: the form around the focused element, skipping `form.disable_shortcut`; without one, the first visible such form that has a save button. It presses the form's `submitshortcut` button (default `submit_save`, found by `pgSaveShortcutButton()`); a form without one is never submitted.
+- `backend.src.js`, the window `keydown` block, `case 's'`: the form around the focused element, skipping `form.disable_shortcut`; without one, the first visible such form that has a save button. It presses the form's `submitshortcut` button, else `submit_save`, else `submit_create` (create screens; `pgSaveShortcutButton()`); a form without one is never submitted. Before #4412 (PR #4495) about forty create screens caught the key and saved nothing; the order screen's Issue the Invoice form carries `disable_shortcut`.
 - Before #3946 (fixed in PR #4334) it fell back to `form.submit()`, which skipped the button's click handlers and `data-confirm-content`: on Orders a bulk action refused with "No" (Delete included) ran, and a subscription was paused or cancelled without its question.
 - On ready every form without `disable_shortcut` gets the hint `Ctrl+S | ⌘+S` in the title of that button only, added after a title it already has; no other button gets it.
 - The Orders bulk buttons write the hidden `action` before their question; "No" now empties it again.

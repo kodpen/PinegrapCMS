@@ -1816,23 +1816,27 @@ function test_magazine_shares_the_news_contract()
 
 // -- 23. issue links -------------------------------------------------------------
 
-// An issue's name goes into an address unencoded, from a closed list: only
-// live public views print it, and the names stay plain.
+// An issue's link opens the issues page with ?issue= set to the record's
+// issue: a value link the list or the story view fills, only in live public
+// views. No address carries a record's token but the e-mails'
+// ?r=^^reference_code^^. An issue name goes back into the list's filter only
+// when the address reads it unchanged, so the names stay plain and short.
 function test_magazine_issue_links()
 {
 	$tpl = _test_mag_tpl();
-	$issue_href = '{{page:issues}}?issue=^^issue^^';
 	$where = array();
 	foreach (_test_mag_all_trees() as $name => $tree) {
 		foreach (_test_mag_nodes($tree) as $n) {
 			foreach (_test_mag_hrefs($n) as $href) {
-				if (strpos($href, '^^') === false) {
-					continue;
+				if (strpos($href, '^^') !== false) {
+					pg_assert_same(1, preg_match('/\?r=\^\^reference_code\^\^$/', $href), $name . ' token address ' . $href);
 				}
-				pg_assert_true($href === $issue_href || preg_match('/\?r=\^\^reference_code\^\^$/', $href) === 1, $name . ' token address ' . $href);
-				if ($href === $issue_href) {
-					$where[$name] = true;
-				}
+			}
+			$spec = isset($n['props']['_bindParams']['href']) ? $n['props']['_bindParams']['href'] : null;
+			if (isset($spec['page_id']) && $spec['page_id'] === '{{tab:issues}}') {
+				pg_assert_same('__page_link', isset($n['props']['_bindings']['href']) ? $n['props']['_bindings']['href'] : null, $name . ' an issue link is a value link');
+				pg_assert_same(array(array('name' => 'issue', 'token' => 'issue')), $spec['params'], $name . ' sends the record\'s issue');
+				$where[$name] = true;
 			}
 		}
 	}
@@ -1842,6 +1846,7 @@ function test_magazine_issue_links()
 	foreach (array('blog_post', 'home_cover', 'home_issues', 'issue_index') as $key) {
 		pg_assert_same(array(), _test_mag_live_problems($tpl['widgets'][$key]['config']), $key . ' is live');
 	}
+	pg_assert_same('issue', pg_sw_url_param_name('issue'), 'the issues page reads ?issue=');
 
 	$tr = _test_mag_tr();
 	foreach (_test_mag_issue_options() as $name) {
@@ -1849,6 +1854,7 @@ function test_magazine_issue_links()
 			pg_assert_true(is_string($value) && $value !== '', 'issue name and its Turkish: ' . $name);
 			pg_assert_same(0, preg_match('/[&#?+%="\'<>]/', (string) $value), 'a plain issue name: ' . $value);
 			pg_assert_true(mb_strlen((string) $value, 'UTF-8') <= 100, 'an issue name fits the address parameter: ' . $value);
+			pg_assert_same((string) $value, pg_sw_url_param_value(array('issue' => (string) $value), 'issue'), 'the address reads the issue back: ' . $value);
 		}
 	}
 }
@@ -2110,4 +2116,39 @@ function test_magazine_headings_differ_and_most_read_has_a_rule()
 		}
 	}
 	pg_assert_true($ruled, 'the most read heading sits in a section head');
+}
+
+// -- byline links -----------------------------------------------------------------
+
+// A byline in a public list or story view links to the contributor's own
+// stories: the contributors page with ?author= set to the record's byline,
+// the address the author list filters by. Above a card's stretched title.
+function test_magazine_bylines_link_to_the_contributor()
+{
+	$tpl = _test_mag_tpl();
+	$pages = _test_mag_pages();
+	$linked = array();
+	foreach ($tpl['widgets'] as $key => $w) {
+		if (!is_array($w['tree']) || !isset($pages[$w['page']]) || $pages[$w['page']]['folder'] !== 'public') {
+			continue;
+		}
+		foreach (_test_mag_nodes($w['tree']) as $n) {
+			if (!isset($n['props']['_bindings']['text']) || $n['props']['_bindings']['text'] !== 'byline') {
+				continue;
+			}
+			pg_assert_same('__page_link', isset($n['props']['_bindings']['href']) ? $n['props']['_bindings']['href'] : null, $key . ': the byline is a value link');
+			$spec = isset($n['props']['_bindParams']['href']) ? $n['props']['_bindParams']['href'] : array();
+			pg_assert_same('{{tab:author}}', isset($spec['page_id']) ? $spec['page_id'] : null, $key . ': to the contributors page');
+			pg_assert_same(array(array('name' => 'author', 'token' => 'byline')), isset($spec['params']) ? $spec['params'] : null, $key . ': with ?author= the byline');
+			pg_assert_true(strpos(' ' . (isset($n['props']['cssClass']) ? $n['props']['cssClass'] : '') . ' ', ' pm-byline ') !== false, $key . ': raised over the card\'s link');
+			$linked[$key] = true;
+		}
+	}
+	foreach (array('blog_list', 'author_list', 'blog_post') as $key) {
+		pg_assert_true(isset($linked[$key]), $key . ' links its bylines');
+	}
+	pg_assert_same('author', pg_sw_url_param_name('author'), 'the contributors page reads ?author=');
+	pg_assert_true(in_array(array('field' => 'byline', 'operator' => 'is equal to', 'value' => '', 'dynamic_value' => 'url parameter', 'dynamic_value_attribute' => 'author'),
+		$tpl['widgets']['author_list']['config']['filters'], true), 'the author list filters the byline by ?author=');
+	pg_assert_same(1, preg_match('/(^|\n)\.pm-byline\{position:relative;z-index:2;/', _test_mag_own_css()), 'a byline sits over the stretched title link');
 }

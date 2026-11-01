@@ -37,6 +37,13 @@ if (function_exists('pg_merchant_refresh_issues')) {
     pg_merchant_refresh_issues();
 }
 
+// The Merchant Center account's mapping kept to the products the feed offers,
+// so a product added to the shop is pushed when it changes and one that left
+// the feed is not; nothing while no account row exists.
+if (function_exists('pg_merchant_map_refresh') && (defined('ECOMMERCE') && (ECOMMERCE === true))) {
+    pg_merchant_map_refresh();
+}
+
 if (function_exists('pg_cron_ran')) {
     pg_cron_ran('product_feed_job');
 }

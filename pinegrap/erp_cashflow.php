@@ -524,7 +524,7 @@ pg_page_shell(array(
             </div>
 
             <div class="row">
-                <div class="col-12 xl:col-8">
+                <div class="col-12 2xl:col-8">
                     <div class="card my-7">
                         <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('By till') . '</div>
                         <div class="card-body p-0 position-relative table-responsive">
@@ -548,7 +548,7 @@ pg_page_shell(array(
                         ' . (((int) $options['till'] === 0) ? '<div class="px-5 pb-5"><div class="form-text">' . lang('Transfers are counted here: what left one till arrived in another.') . '</div></div>' : '') . '
                     </div>
                 </div>
-                <div class="col-12 xl:col-4">
+                <div class="col-12 2xl:col-4">
                     <div class="card my-7">
                         <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('By payment method') . '</div>
                         <div class="card-body p-0 position-relative table-responsive">

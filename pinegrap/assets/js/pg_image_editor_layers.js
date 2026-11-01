@@ -20,8 +20,9 @@
 
     var Editor = X.Editor, M = X.M, SVGNS = X.SVGNS, find = X.find, t = X.t, el = X.el, section = X.section, button = X.button;
 
-    // The eight handles of a box and the turning handle.
-    var BOX_HANDLES = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w', 'rot'];
+    // The eight handles of a box and the turning handle. The corners come
+    // after the edges, so on a small box their touch targets lie on top.
+    var BOX_HANDLES = ['n', 'e', 's', 'w', 'nw', 'ne', 'se', 'sw', 'rot'];
 
     // What a layer's type adds (Editor.layerTypes, the list in
     // pg_image_editor.js); an empty object for a type no tool file knows.
@@ -194,12 +195,19 @@
     // and moved with the rest of the selection; the empty stage clears it.
     Editor.prototype.startDrag = function (e) {
         var p = this.toDoc(e.clientX, e.clientY), h = e.target.getAttribute && e.target.getAttribute('data-h');
-        var one = (this.sel.length === 1) ? this.layer(this.sel[0]) : null, hit;
+        var one = (this.sel.length === 1) ? this.layer(this.sel[0]) : null, hit = null;
+
+        // On touch a box handle's 44 px target covers a small layer's middle:
+        // a press well inside the box moves the layer instead of resizing it.
+        if (h && one && (h !== 'rot') && (BOX_HANDLES.indexOf(h) >= 0) && M.insideBox(one, p[0], p[1], 10 / this.view.k)) {
+            h = null;
+            hit = one;
+        }
 
         if (h && one) {
             this.drag = { kind: (h === 'rot') ? 'rotate' : ((BOX_HANDLES.indexOf(h) >= 0) ? 'resize' : 'handle'), h: h, start: M.clone(one) };
         } else {
-            hit = M.hitLayer(this.doc, p[0], p[1], 4 / this.view.k, layerHit);
+            hit = hit || M.hitLayer(this.doc, p[0], p[1], 4 / this.view.k, layerHit);
 
             if (!hit) {
                 if (this.sel.length && !e.shiftKey) {

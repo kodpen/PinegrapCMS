@@ -68,7 +68,40 @@ if (($preset_account_id > 0) && ((int) db_value("SELECT COUNT(*) FROM erp_accoun
     $preset_account_id = 0;
 }
 
-if (!$_POST) {
+// An invoice this movement cannot close (cancelled, a return, the other
+// side, already paid) is refused before the form is drawn, with the same
+// reason a save would give, instead of after the form is filled in.
+$preset_refusal = (!$_POST && ($preset_invoice !== null))
+    ? erp_receipt_invoice_refusal($preset_invoice, (int) $preset_invoice['account_id'], strtoupper(trim((string) $preset_invoice['currency'])), $is_collection)
+    : '';
+
+if ($preset_refusal !== '') {
+    $invoice_url = 'edit_erp_invoice.php?id=' . (int) $preset_invoice['id'];
+
+    echo
+    pg_page_shell([
+        'title' => $page_title,
+        'extra classes' => 'erp erp_cash',
+        'icon' => 'erp',
+        'heading' => $page_title,
+        'cancel' => array('enable' => 'true', 'url' => $invoice_url),
+        'breadcrumb' => array(
+            array('label' => lang('Cash and Bank'), 'url' => $list_url),
+            array('label' => $page_title),
+        ),
+    ]) . '
+<main id="content" class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="alert theme-warning my-7" role="alert">' . h($preset_refusal) . '</div>
+            <a class="btn btn-outline theme-secondary" href="' . h($invoice_url) . '">' . lang('Back to the invoice') . '</a>
+        </div>
+    </div>
+</main>
+' .
+    output_footer();
+
+} elseif (!$_POST) {
 
     // The currency the money is in: the invoice's when closing one, the base
     // otherwise, and only a choice at all with foreign currency switched on.
@@ -85,7 +118,7 @@ if (!$_POST) {
             $liveform->assign_field_value('account_id', (string) $preset_account_id);
 
             if ($preset_amount > 0) {
-                $liveform->assign_field_value('amount', erp_money_out_currency($preset_amount, $preset_currency, false));
+                $liveform->assign_field_value('amount', erp_money_input($preset_amount));
             }
             if (in_array($preset_method, erp_cash_payment_methods(), true)) {
                 $liveform->assign_field_value('payment_method', $preset_method);
@@ -97,7 +130,7 @@ if (!$_POST) {
 
         if ($preset_invoice !== null) {
             $liveform->assign_field_value('account_id', (string) (int) $preset_invoice['account_id']);
-            $liveform->assign_field_value('amount', erp_money_out_currency(erp_invoice_open_amount($preset_invoice), $preset_currency, false));
+            $liveform->assign_field_value('amount', erp_money_input(erp_invoice_open_amount($preset_invoice)));
             $liveform->assign_field_value('description', lang(array(
                 'string' => 'Invoice {var:1}',
                 'vars' => $preset_invoice['full_number'],

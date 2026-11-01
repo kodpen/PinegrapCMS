@@ -225,7 +225,7 @@ $navbar = function () use ($el, $link, $icon, $span, $shop, $lang_switcher) {
 // A shared component like the header under it, with the two system widgets
 // placed inside it.
 $account_bar = function () use ($el, $widget, $shop) {
-    return $el('div', 'bg-body-tertiary border-bottom', lang('Account Bar'), array(
+    return $el('div', 'bg-body border-bottom', lang('Account Bar'), array(
         $el('div', 'container d-flex justify-content-end align-items-center gap-2 py-1', lang('Account Area'),
             $shop ? array($widget('cart_link'), $widget('login_region')) : array($widget('login_region'))),
     ));
@@ -270,7 +270,7 @@ $page = function ($active, $main) use ($root, $account_bar, $shared, $el) {
 // server like the header's.
 $staff_bar = function () use ($el, $link) {
     $item = function ($key, $text) use ($link) {
-        return $link($text, '{{page:' . $key . '}}', 'nav-link px-0');
+        return $link($text, '{{page:' . $key . '}}', 'nav-link link-body-emphasis px-0');
     };
     return $el('div', 'bg-body-tertiary border-bottom', lang('Staff Bar'), array(
         $el('div', 'container d-flex flex-wrap align-items-center gap-4 py-2 small', lang('Staff Bar Container'), array(
@@ -294,7 +294,7 @@ $cta = function () use ($el, $container, $heading, $para, $link) {
             $el('div', 'p-4 p-lg-5 rounded-4 text-bg-secondary d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3', lang('Call to Action'), array(
                 $el('div', '', lang('Text'), array(
                     $heading('h2', lang('Have a question? We are happy to help.'), 'h3 mb-2'),
-                    $para(lang('Write a few lines; the answer comes to your inbox.'), 'mb-0 opacity-75'),
+                    $para(lang('Write a few lines; the answer comes to your inbox.'), 'mb-0'),
                 )),
                 $link(lang('Write to Us'), '{{page:contact}}', 'btn btn-light btn-lg px-4 flex-shrink-0'),
             )),
@@ -447,7 +447,7 @@ $stat = function ($figure, $label, $class = '') use ($el, $para, $col) {
     return $col(array(
         $el('div', trim('text-center ' . $class), lang('Stat'), array(
             $para($figure, 'display-6 fw-bold mb-1'),
-            $para($label, 'small mb-0 opacity-75'),
+            $para($label, 'small mb-0'),
         )),
     ), '3', '', '6');
 };
@@ -567,7 +567,7 @@ $pages[] = array(
                         $para(lang('This site is ready. Change the words, add your pictures and publish — every block on these pages can be edited in the visual editor.'), 'lead text-body-secondary mb-4'),
                         $el('div', 'd-flex flex-wrap gap-2 mb-4', lang('Buttons'), array(
                             $link(lang('Our Services'), '{{page:services}}', 'btn btn-primary btn-lg px-4'),
-                            $link(lang('Write to Us'), '{{page:contact}}', 'btn btn-outline-secondary btn-lg px-4'),
+                            $link(lang('Write to Us'), '{{page:contact}}', 'btn btn-secondary btn-lg px-4'),
                         )),
                         $el('ul', 'list-inline small text-body-secondary mb-0', lang('Highlights'), array(
                             $el('li', 'list-inline-item me-3', lang('List Item'), array($icon('bi-check-circle-fill', 'text-primary me-1'), $span(lang('Edited on the page'), ''))),
@@ -607,7 +607,7 @@ $pages[] = array(
                             array('_attrs' => array(array('name' => 'loading', 'value' => 'lazy')))),
                     ), '', '6'),
                     $col(array(
-                        $para(lang('How we help'), 'text-primary fw-semibold text-uppercase small mb-2'),
+                        $para(lang('How we help'), 'text-body-emphasis fw-semibold text-uppercase small mb-2'),
                         $heading('h2', lang('From the first idea to a site that works for you'), 'h2 mb-3'),
                         $para(lang('Tell visitors what you do and why it matters to them. Two or three short paragraphs read better than one long one.'), 'text-body-secondary mb-4'),
                         $el('ul', 'list-unstyled mb-4', lang('Check List'), array(
@@ -653,7 +653,7 @@ $pages[] = array(
             $container(array(
                 $el('div', 'd-flex flex-wrap align-items-end justify-content-between gap-2 mb-4', lang('Section Header'), array(
                     $heading('h2', lang('From the blog'), 'h3 mb-0'),
-                    $link(lang('All posts'), '{{page:blog}}', 'link-primary text-decoration-none fw-semibold'),
+                    $link(lang('All posts'), '{{page:blog}}', 'link-body-emphasis text-decoration-none fw-semibold'),
                 )),
                 $widget('home_posts'),
             )),
@@ -738,7 +738,7 @@ $pages[] = array(
         $el('section', 'py-5 bg-body-tertiary', lang('Our Values'), array(
             $container(array(
                 $el('div', 'text-center mb-5', lang('Section Header'), array(
-                    $para(lang('Our values'), 'text-primary fw-semibold text-uppercase small mb-2'),
+                    $para(lang('Our values'), 'text-body-emphasis fw-semibold text-uppercase small mb-2'),
                     $heading('h2', lang('What we care about'), 'h2 mb-0'),
                 )),
                 $row(array(
@@ -775,7 +775,7 @@ $pages[] = array(
         $el('section', 'py-5 bg-body-tertiary', lang('Our Team'), array(
             $container(array(
                 $el('div', 'text-center mb-5', lang('Section Header'), array(
-                    $para(lang('Our team'), 'text-primary fw-semibold text-uppercase small mb-2'),
+                    $para(lang('Our team'), 'text-body-emphasis fw-semibold text-uppercase small mb-2'),
                     $heading('h2', lang('The people behind the work'), 'h2 mb-0'),
                 )),
                 // Filled from the staff directory: whoever the staff add
@@ -944,7 +944,7 @@ $pages[] = array(
                                 $span(lang('Follow the answer in your inbox'), ''),
                             )),
                             $para(lang('Your message becomes a conversation: the page that opens after you send it, and your inbox, show our answers, and you can write back there. If you have no account yet, one is opened for you.'), 'small text-body-secondary mb-3'),
-                            $link(lang('Open my inbox'), '{{page:inbox}}', 'btn btn-sm btn-outline-primary'),
+                            $link(lang('Open my inbox'), '{{page:inbox}}', 'btn btn-sm btn-primary'),
                         )),
                     ), '', '5'),
                 ), '4', '', 'g-lg-5'),
@@ -1143,7 +1143,7 @@ $pages[] = array(
                             $para(lang('This site runs on Pinegrap. Everything a visitor sees — these pages, the forms, the blog, the shop — is edited in one place, and the work behind it lives in the same panel.'), 'lead text-body-secondary mb-4'),
                             $el('div', 'd-flex flex-wrap gap-2', lang('Buttons'), array(
                                 $link(lang('Open the control panel'), $panel_url, 'btn btn-primary'),
-                                $link(lang('New Blog Post'), '{{page:blog_new}}', 'btn btn-outline-secondary'),
+                                $link(lang('New Blog Post'), '{{page:blog_new}}', 'btn btn-secondary'),
                             )),
                         ), '', '8'),
                     )),
@@ -2430,7 +2430,7 @@ foreach ($pages as $i => $p) {
 
 return array(
     'name'        => lang('Say hello to Pinegrap'),
-    'version'     => '2.5.0',
+    'version'     => '2.5.1',
     'framework'   => 'bootstrap5',
     'order'       => 10,
     'icon'        => 'bi-hand-thumbs-up',

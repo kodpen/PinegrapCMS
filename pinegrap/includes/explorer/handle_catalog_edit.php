@@ -33,13 +33,15 @@ function pg_explorer_catalog_quick_price($value)
         return null;
     }
 
-    $number = (int) round(((float) $number) * 100);
+    // Kept a float until it is known to fit, so a 32-bit build cannot wrap
+    // a large amount before the caller bounds it.
+    $number = round(((float) $number) * 100);
 
     if ($number < 0) {
         return null;
     }
 
-    return $number;
+    return pg_product_price_too_large($number) ? $number : (int) $number;
 }
 
 // A typed stock count in whole units, or null when it is empty, not a number
@@ -131,6 +133,12 @@ function pg_explorer_handle_catalog_quick_edit($type, $request, $user)
 
         if ($quick_number === null) {
             respond(array('status' => 'error', 'message' => lang('Enter an amount for the price change.')));
+        }
+
+        // Refused rather than left to MySQL, which would store the top of
+        // the column and the price history with it.
+        if (pg_product_price_too_large($quick_number)) {
+            respond(array('status' => 'error', 'message' => lang(array('string' => '{var:1} is too large.', 'vars' => array(lang('Price'))))));
         }
 
         $quick_sql = "price = '" . e($quick_number) . "'";

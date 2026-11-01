@@ -27,14 +27,14 @@ description: Steps E1-E10 of plans/image-editor.md: core modal, crop, server sav
 - E5 (M) Layers and selection. Screen 01. Done in #4327 (`ui/image-editor-layers.md`).
   - Select, move, resize, rotate, align, distribute, order, lock, hide, duplicate, delete, copy and paste, snapping, the list.
 
-- E6 (M) Drawing and ready-made shapes. Screen 04. `free`
+- E6 (M) Drawing and ready-made shapes. Screen 04. Done in #4475 (`ui/image-editor-draw.md`).
   - Pen with smoothing and eraser, line, arrow (head styles), box with a corner-radius handle and value, ellipse, triangle, polygon (3-12 sides), star (4-12 points, inner ratio), speech bubble; stroke, fill, opacity, dash.
 
 - E7 (M) Text. Screen 05. `free`
   - Typing in place, font (site fonts and system), size, weight, italic, alignment, line height, letter spacing, colour, background box with padding and radius, outline, shadow; one line layout for view and export.
 
 - E8 (S) Stickers and frames. Screens 07, 08. Done in #4486 (`ui/image-editor-sticker.md`).
-  - Built-in SVG stickers with an editable label, a picture from Files as a sticker, frames (line, thick, polaroid, corners) and background fill.
+  - SVG stickers with an editable label, a picture from Files as a sticker; frames (line, thick, polaroid, corners), background fill.
 
 - E9 (M) Switch and removal. `free` after E6, E7, E8.
   - The `openImageEditor` alias; callers: `view_folders.php`, `style_designer.src.js`, `workspace.js` (saving through `workspace_file_save.php`), `edit_file.php`, `edit_design_file.php`, `view_files.php`, `view_design_files.php`, `widget_18.php`, `content.php`, `frontend.src.js`, `output.php`; `image_editor_edit.php` becomes a redirect that opens the modal.

@@ -24,10 +24,21 @@ $liveform_view_users = new liveform('view_users');
 $user = validate_user();
 validate_area_access($user, 'manager');
 
+// The username and e-mail are one value each; one posted as an array
+// (username[]=x) counts as not given ("Username is required") instead of an
+// error page from trim().
+pg_request_single_values(array('username', 'email'));
+
 // Stop early when the screen is opened without an existing record (stale
 // link, hand-typed URL, row deleted meanwhile): a "not found" screen instead
 // of a half-empty form and PHP notices from the unchecked row below.
-$id = is_scalar($_REQUEST['id'] ?? null) ? (int) $_REQUEST['id'] : 0;
+//
+// The record and role checks run on the id the handlers further down read:
+// $_POST for a submit, $_GET for the form. $_REQUEST can also be fed by a
+// cookie of the same name, which would let the role check pass on one user
+// while the submit deletes or changes another (an administrator).
+$requested_user_id = $_POST ? ($_POST['id'] ?? '') : ($_GET['id'] ?? '');
+$id = is_scalar($requested_user_id) ? (int) $requested_user_id : 0;
 if (($id < 1) || ((int) db_value("SELECT COUNT(*) FROM user WHERE user_id = '" . $id . "'") < 1)) {
     output_error(lang('Record not found.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.', 404);
 }
@@ -39,7 +50,7 @@ if ($user['role'] > 0) {
         "SELECT user_role
         FROM user
         WHERE user_id = ?";
-    $result = db_q($query, array((string) $_REQUEST['id'])) or output_error('Query failed.');
+    $result = db_q($query, array((string) $id)) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
     $role = $row['user_role'];
     
@@ -1469,8 +1480,8 @@ if (!$_POST) {
             output_error(lang('Access denied.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
         }
 
-        $_POST['username'] = trim($_POST['username']);
-        $_POST['email'] = trim($_POST['email']);
+        $_POST['username'] = trim($_POST['username'] ?? '');
+        $_POST['email'] = trim($_POST['email'] ?? '');
 
         // If the username is blank, then output error.
         if ($_POST['username'] == '') {

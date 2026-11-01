@@ -278,6 +278,12 @@ function erp_receipt_invoice_refusal($invoice, $account_id, $currency, $is_colle
         return lang('That invoice does not belong to this account.');
     }
 
+    // Asked before the open amount: a cancelled invoice owes nothing, and
+    // "already closed" gave the wrong reason.
+    if ((string) $invoice['status'] === 'cancelled') {
+        return lang('That invoice has been cancelled.');
+    }
+
     // A return closes against the invoice it returns, never with money.
     // Read without its doc_type it looked like an invoice whose whole
     // total was open, so the money went to the return (marked paid)
@@ -663,6 +669,37 @@ function erp_receipt_cancel_check($cash_id, $reason)
 }
 
 /**
+ * Take every allocation off one ledger movement and work out again each
+ * invoice it closed, inside the caller's transaction. Used when the money
+ * behind the movement is withdrawn: a cancelled receipt, a bounced cheque.
+ *
+ * @param int $ledger_id   erp_account_transactions.id
+ * @param int $created_by
+ * @return int[]|false  The reopened invoice ids (id => id), false on a failed write
+ */
+function erp_txn_unsettle_all($ledger_id, $created_by = 0)
+{
+    $reopened = array();
+
+    foreach (erp_txn_settlements((int) $ledger_id) as $settlement) {
+        $invoice_id = (int) $settlement['invoice_id'];
+
+        if (erp_query("DELETE FROM erp_settlements WHERE id = '" . (int) $settlement['id'] . "'") === false) {
+            return false;
+        }
+
+        if (!erp_invoice_refresh_paid($invoice_id)
+            || !erp_settlement_after_reopen($invoice_id, (string) $settlement['invoice_currency'], (int) $created_by)) {
+            return false;
+        }
+
+        $reopened[$invoice_id] = $invoice_id;
+    }
+
+    return $reopened;
+}
+
+/**
  * Cancel a receipt or a payment that should never have been recorded.
  *
  * Both halves are reversed, never deleted: the till gets the opposite
@@ -700,10 +737,11 @@ function erp_receipt_cancel($cash_id, $reason, $created_by = 0)
     $account_id = (int) $receipt['account_id'];
     $created_by = (int) $created_by;
 
-    $description = mb_substr(lang(array(
-        'string' => 'Cancellation of receipt #{var:1} dated {var:2}: {var:3}',
-        'vars' => array($cash_id, prepare_form_data_for_output((string) $receipt['doc_date'], 'date'), $reason),
-    )), 0, 255);
+    // Stored with the row, so a payment has to say payment from the start.
+    $vars = array($cash_id, prepare_form_data_for_output((string) $receipt['doc_date'], 'date'), $reason);
+    $description = mb_substr(((string) $receipt['direction'] === 'out')
+        ? lang(array('string' => 'Cancellation of payment #{var:1} dated {var:2}: {var:3}', 'vars' => $vars))
+        : lang(array('string' => 'Cancellation of receipt #{var:1} dated {var:2}: {var:3}', 'vars' => $vars)), 0, 255);
 
     if (!erp_tx_begin()) {
         return $fail(lang('Could not start a database transaction.'));
@@ -711,25 +749,12 @@ function erp_receipt_cancel($cash_id, $reason, $created_by = 0)
 
     // The allocations first: the invoices they closed have to ask for their
     // money again before the movement that paid them is turned around.
-    $reopened = array();
+    $reopened = erp_txn_unsettle_all($ledger_id, $created_by);
 
-    foreach (erp_txn_settlements($ledger_id) as $settlement) {
-        $invoice_id = (int) $settlement['invoice_id'];
-
-        if (erp_query("DELETE FROM erp_settlements WHERE id = '" . (int) $settlement['id'] . "'") === false) {
-            $error = erp_db_error();
-            erp_tx_rollback();
-            return $fail($error);
-        }
-
-        if (!erp_invoice_refresh_paid($invoice_id)
-            || !erp_settlement_after_reopen($invoice_id, (string) $settlement['invoice_currency'], $created_by)) {
-            $error = erp_db_error();
-            erp_tx_rollback();
-            return $fail(($error !== '') ? $error : lang('The receipt could not be cancelled.'));
-        }
-
-        $reopened[$invoice_id] = $invoice_id;
+    if ($reopened === false) {
+        $error = erp_db_error();
+        erp_tx_rollback();
+        return $fail(($error !== '') ? $error : lang('The receipt could not be cancelled.'));
     }
 
     $shared = array(

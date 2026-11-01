@@ -404,6 +404,7 @@ if (!$_POST) {
 
                     $query = "DELETE FROM files WHERE id = ?";
                     $result = db_q($query, array((string) $file_id)) or output_error('Query failed.');
+                    pg_file_versions_delete_file($file_id);
 
                     pg_audit_record('delete', 'files', $file_id, $audit_before);
 

@@ -10,11 +10,15 @@
   Squarish viewBox so it composes well inside fixed thumbnail wrappers
   (e.g. cart row 72×72, catalog card 1:1) regardless of the surrounding
   layout's aspect ratio.
+
+  The picture carries no words: a static file cannot follow the page's
+  language, and the <img> element's alt text already names the item.
 -->
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" preserveAspectRatio="xMidYMid meet" role="img" aria-label="No image available">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
   <rect width="400" height="400" fill="#f1f3f5"/>
-  <rect x="40" y="60" width="320" height="240" rx="12" ry="12" fill="#dee2e6"/>
-  <circle cx="140" cy="140" r="22" fill="#adb5bd"/>
-  <path d="M 60 290 L 160 190 L 220 250 L 280 200 L 340 290 Z" fill="#adb5bd"/>
-  <text x="200" y="350" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" font-weight="500" fill="#868e96" text-anchor="middle">No image available</text>
+  <g transform="translate(0 20)">
+    <rect x="40" y="60" width="320" height="240" rx="12" ry="12" fill="#dee2e6"/>
+    <circle cx="140" cy="140" r="22" fill="#adb5bd"/>
+    <path d="M 60 290 L 160 190 L 220 250 L 280 200 L 340 290 Z" fill="#adb5bd"/>
+  </g>
 </svg>

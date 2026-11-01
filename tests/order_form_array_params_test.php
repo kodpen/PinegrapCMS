@@ -246,8 +246,10 @@ function test_order_form_array_cart_action()
 	$single = strpos($source, "pg_request_single_values(array('special_offer_code', 'offline_payment_allowed', 'quick_add_product_id', 'quick_add_quantity', 'quick_add_amount', 'quick_add_ship_to', 'quick_add_add_name', 'save_item_id', 'checkout_to'));");
 	pg_assert_true(($single !== false) && ($single < strpos($source, 'initialize_order();')), 'one-value fields before the order is opened');
 
-	$skip = strpos($source, 'if (!is_string($q)) continue;');
-	pg_assert_true(($skip !== false) && ($skip < strpos($source, '$q   = (int)$q;')), 'quantity list skipped before the cast');
+	// pg_cart_posted_quantity() answers null for a list, and the row is skipped.
+	pg_assert_same(null, pg_cart_posted_quantity(array('2')), 'quantity list is no quantity');
+	$skip = strpos($source, 'if ($q === null) continue;');
+	pg_assert_true(($skip !== false) && (strpos($source, '$q = pg_cart_posted_quantity($q);') < $skip), 'quantity list skipped before the row is changed');
 
 	$skip = strpos($source, 'if (!is_string($raw)) continue;');
 	pg_assert_true(($skip !== false) && ($skip < strpos($source, '$amount = pg_parse_amount($raw);')), 'donation list skipped before it is parsed');

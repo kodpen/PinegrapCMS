@@ -63,10 +63,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     };
 
-    // The person's tasks written to their Google Calendar.
-    if (ws_gcal_post($user_id, $action, $liveform)) {
+    // The person's tasks written to their own Google or Outlook calendar.
+    if (ws_calsync_post($user_id, $action, $liveform)) {
 
-        header('Location: ' . $screen_url . '#ws-google-calendar');
+        header('Location: ' . $screen_url . '#ws-calendar-sync');
 
         exit();
 
@@ -318,7 +318,7 @@ echo pg_page_shell(array(
             ' . $address_card . '
             ' . $manage_card . '
             ' . ws_personal_ical_card($user_id) . '
-            ' . ws_gcal_card($user_id) . '
+            ' . ws_calsync_card($user_id) . '
         </div>
         <div class="col-12 xl:col-5">
             ' . $help . '
@@ -375,9 +375,9 @@ echo pg_page_shell(array(
         });
     }
 
-    // Stopping Google Calendar writing asks first.
+    // Stopping calendar writing asks first.
     document.addEventListener("submit", function (e) {
-        var form = e.target.closest(".ws-gcal-confirm");
+        var form = e.target.closest(".ws-calsync-confirm");
         if (form && !window.confirm(form.dataset.confirm)) {
             e.preventDefault();
         }

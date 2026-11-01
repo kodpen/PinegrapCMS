@@ -22,6 +22,6 @@ echo output_header_secure(array('title'=>lang('System Info'),'icon'=>'setting'))
 
 echo render(array(
     'template' => 'si.php',
-    'disk_usage' => db("SELECT SUM(size) FROM files")));
+    'disk_usage' => pg_files_disk_usage()));
 
 echo output_footer_secure();

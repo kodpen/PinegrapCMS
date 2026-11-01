@@ -1221,8 +1221,8 @@ function test_news_bare_buttons_have_a_focus_ring()
 
 // The article page: the most read sits beside the article inside the record
 // view's own row (shown with a found article), so the right third is not
-// empty from lg; the comments stay in the article's column below, alone in
-// their row, and the page places the most read once.
+// empty from lg; the comments (post_comments) stay in the article's column
+// below, alone in their row, and the page places the most read once.
 function test_news_article_row()
 {
 	$tpl = _test_news_tpl();
@@ -1283,7 +1283,7 @@ function test_news_article_row()
 	foreach (_test_news_nodes($pages['blog_post']['tree']) as $n) {
 		if (isset($n['type']) && $n['type'] === 'row') {
 			foreach (_test_news_nodes($n) as $m) {
-				if (isset($m['props']['regionType']) && $m['props']['regionType'] === 'comments_block') {
+				if (isset($m['props']['templateWidget']) && $m['props']['templateWidget'] === 'post_comments') {
 					$comment_cols = $n['children'];
 				}
 			}
@@ -1326,4 +1326,68 @@ function test_news_home_one_tip_call()
 		}
 	}
 	pg_assert_same(1, $calls, 'one link to the tips page in the front page\'s own layout');
+}
+
+// -- byline links and focus --------------------------------------------------------
+
+// A byline in a public list or article view links to the writer's own
+// articles: the writers page with ?author= set to the record's byline, the
+// address the author list filters by. Above a card's stretched headline.
+function test_news_bylines_link_to_the_writer()
+{
+	$tpl = _test_news_tpl();
+	$pages = _test_news_pages();
+	$linked = array();
+	foreach ($tpl['widgets'] as $key => $w) {
+		if (!is_array($w['tree']) || !isset($pages[$w['page']]) || $pages[$w['page']]['folder'] !== 'public') {
+			continue;
+		}
+		foreach (_test_news_nodes($w['tree']) as $n) {
+			if (!isset($n['props']['_bindings']['text']) || $n['props']['_bindings']['text'] !== 'byline') {
+				continue;
+			}
+			pg_assert_same('__page_link', isset($n['props']['_bindings']['href']) ? $n['props']['_bindings']['href'] : null, $key . ': the byline is a value link');
+			$spec = isset($n['props']['_bindParams']['href']) ? $n['props']['_bindParams']['href'] : array();
+			pg_assert_same('{{tab:author}}', isset($spec['page_id']) ? $spec['page_id'] : null, $key . ': to the writers page');
+			pg_assert_same(array(array('name' => 'author', 'token' => 'byline')), isset($spec['params']) ? $spec['params'] : null, $key . ': with ?author= the byline');
+			pg_assert_true(in_array('pn-byline', _test_news_classes($n), true), $key . ': raised over the card\'s link');
+			$linked[$key] = true;
+		}
+	}
+	foreach (array('home_lead', 'blog_list', 'author_list', 'opinion_list', 'blog_post') as $key) {
+		pg_assert_true(isset($linked[$key]), $key . ' links its bylines');
+	}
+	pg_assert_same('author', pg_sw_url_param_name('author'), 'the writers page reads ?author=');
+	pg_assert_true(in_array(array('field' => 'byline', 'operator' => 'is equal to', 'value' => '', 'dynamic_value' => 'url parameter', 'dynamic_value_attribute' => 'author'),
+		$tpl['widgets']['author_list']['config']['filters'], true), 'the author list filters the byline by ?author=');
+	pg_assert_same(1, preg_match('/(^|\n)\.pn-byline\{position:relative;z-index:2;/', _test_news_own_css()), 'a byline sits over the stretched headline link');
+}
+
+// Focus is an ink outline on every button, field, page link and the
+// drawer's close button, not Bootstrap's half-clear shadow.
+function test_news_buttons_and_fields_have_a_focus_ring()
+{
+	$own = _test_news_own_css();
+	pg_assert_same(1, preg_match('/(^|\n)body \.btn:focus-visible\{outline:2px solid var\(--bs-emphasis-color\);[^}]*box-shadow:none\}/', $own), 'every button shows its focus');
+	pg_assert_same(1, preg_match('/(^|\n)body \.form-control:focus,body \.form-select:focus\{outline:2px solid var\(--bs-emphasis-color\)[^}]*\}/', $own), 'every field shows its focus');
+	pg_assert_same(1, preg_match('/(^|\n)body \.form-check-input:focus-visible\{outline:2px solid var\(--bs-emphasis-color\)[^}]*\}/', $own), 'every check box shows its focus');
+	pg_assert_same(1, preg_match('/(^|\n)body \.page-link:focus-visible,body \.btn-close:focus-visible\{outline:2px solid var\(--bs-emphasis-color\);[^}]*box-shadow:none\}/', $own), 'page links and the close button show their focus');
+	pg_assert_false(strpos($own, '!important') !== false, 'no !important');
+}
+
+// An e-mail page opened in a browser under the dark theme keeps its light
+// frame: its text colours are written for a light card.
+function test_news_email_frames_stay_light()
+{
+	$found = 0;
+	foreach (_test_news_pages() as $key => $p) {
+		$frame = isset($p['tree']['children'][0]) ? $p['tree']['children'][0] : null;
+		if (!isset($frame['props']['_label']) || $frame['props']['_label'] !== lang('E-mail Frame')) {
+			continue;
+		}
+		$found++;
+		$attrs = _test_news_attrs($frame);
+		pg_assert_same('light', isset($attrs['data-bs-theme']) ? $attrs['data-bs-theme'] : null, $key . ': the frame is light');
+	}
+	pg_assert_true($found >= 11, 'every e-mail page is checked');
 }
