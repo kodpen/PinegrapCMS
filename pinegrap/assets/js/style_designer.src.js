@@ -60975,8 +60975,7 @@ const StyleDesigner = (function () {
                                     cssClass: 'form-control',
                                     _attrs: [
                                         { name: 'type', value: 'search' },
-                                        { name: 'placeholder', value: _sdT('Search…') },
-                                        { name: 'aria-label', value: _sdT('Search products') }
+                                        { name: 'placeholder', value: _sdT('Search…') }
                                     ],
                                     _bindings: { value: 'search_query' } }),
                                 createNode('component', { componentType: 'btn',

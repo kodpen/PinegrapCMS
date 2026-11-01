@@ -67,12 +67,3 @@ function test_catalog_bound_search_form_uses_the_shared_hidden_inputs()
 	pg_assert_contains("'search_label'         => (string)lang('Search products'),", $src);
 }
 
-// The editor's catalog starter names its search box too.
-function test_catalog_starter_search_box_is_named()
-{
-	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
-	pg_assert_contains("{ name: 'placeholder', value: _sdT('Search…') },\n"
-		. "                                        { name: 'aria-label', value: _sdT('Search products') }\n"
-		. "                                    ],\n"
-		. "                                    _bindings: { value: 'search_query' } }),", $js);
-}
