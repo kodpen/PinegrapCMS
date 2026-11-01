@@ -1,15 +1,20 @@
 ---
 name: tax-zone-shared-form
-description: add_tax_zone.php and edit_tax_zone.php draw the tax zone form and write its country and state links through includes/forms/tax_zone_form.php; what each screen keeps
+description: The tax zone screens share includes/forms/tax_zone_form.php: cards, options, links; a blank name is refused and redrawn; states under the country's shown name (#4713)
 ---
 
 ## What is shared?
-- `includes/forms/tax_zone_form.php` (loaded with `require_once(PG_FUNCTIONS_DIR . …)` after `init.php`): `pg_tax_zone_form_cards($values, $country_options, $state_options)` (options, countries, states cards; `$values` null on create, where the name shows a placeholder and no value), `pg_tax_zone_form_choices($tax_zone_id = 0)` (country and state options, a zone's own links selected) and `pg_tax_zone_form_save_links($tax_zone_id, $_POST)` (the posted country and state links inserted). PR #2587.
+- `includes/forms/tax_zone_form.php` (loaded with `require_once(PG_FUNCTIONS_DIR . …)` after `init.php`): `pg_tax_zone_form_cards($values, $country_options, $state_options, $errors = array())` (options, countries, states cards; `$values` null on create, the name box always `required` with a placeholder), `pg_tax_zone_form_choices($tax_zone_id = 0, $selected = null)` (country and state options, a zone's own links or the posted ids selected), `pg_tax_zone_form_post_values()`, `pg_tax_zone_form_name_error()` and `pg_tax_zone_form_save_links($tax_zone_id, $_POST)` (the posted country and state links inserted). PR #2587.
 - A screen keeps its gates (`validate_user()`, `validate_ecommerce_access()`), the edit screen's not-found guard and record load, the form tag, buttons (edit adds Delete), the edit screen's hidden `id`, the INSERT / UPDATE, the edit screen's link delete before a save or a delete, the log line and the redirect.
 
-## How are the options ordered?
-- `pg_tax_zone_form_option_list()` (pure, tests in `tests/tax_zone_form_test.php`): the given order (countries by name, states by country then name), the zone's own selected in place. Unlike the shipping zone form (`zone-shared-form.md`), selected options are not moved first: the markup stayed as it was.
-- The edit screen used to run one query per country and per state to find its links; `pg_tax_zone_form_choices()` reads each xref table once.
+## Is a blank name refused?
+- Yes (#4713), as on the shipping zone form (`zone-shared-form.md`): `pg_tax_zone_form_name_error()` refuses an empty or spaces-only name; the screens read the post through `pg_tax_zone_form_post_values()` (name trimmed, rate as typed) and draw the form again with what was typed, the posted countries and states selected and "Enter a name." under the name; nothing is written. Edit's delete is never held back. The trimmed name is what is stored. Before, a nameless zone was written and listed as an empty row of All Tax Zones.
+- A blank or unreadable rate is still refused afterwards with `output_error()` (`parse_tax_rate()`); the box is `type="number" required`, so a browser rarely sends one.
+
+## How are the options ordered and named?
+- Countries: `pg_geo_country_label()` and `pg_geo_sort_by_label()` (`commerce/country-names-display.md`).
+- States: `pg_tax_zone_form_state_items()` (pure) labels each "Country: State" with the country's shown name and orders by it, state name order kept within a country, like the shipping zone form. Before (#4713) the label used the stored English name and SQL ordered by it ("Turkey: Adana").
+- `pg_tax_zone_form_option_list()` (pure) keeps the given order with the zone's own selected in place; unlike the shipping zone form, selected options are not moved first. Tests: `tests/tax_zone_form_test.php`.
 
 ## What does a posted link list accept?
-- `pg_tax_zone_form_link_ids()` (pure): the non-empty scalar values as text, as the old `if ($id)` loops did; a posted value that is not a list gives none instead of a foreach warning.
+- `pg_tax_zone_form_link_ids()` (pure): the non-empty scalar values as text; a posted value that is not a list gives none instead of a foreach warning.
