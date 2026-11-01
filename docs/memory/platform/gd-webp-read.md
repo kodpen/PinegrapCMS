@@ -17,6 +17,9 @@ description: Reading WebP with GD: bundled GD before PHP 8.2 ends the request on
 - `imagecreatefromstring()` reads WebP only from PHP 7.3. Before it a WebP gave the grey accent colour, and a WebP sent as the profile picture was kept as it came: not squared, not shrunk, its metadata kept.
 - `pg_image_from_string($binary, $path = '')` (`includes/fn/image.php`): the check above, `imagecreatefromstring()`, and on 7.1–7.2 `imagecreatefromwebp()` on `$path` (the file the bytes came from) or a temporary copy that is deleted. Callers: `get_dominant_area_color()`, `pg_contact_photo_store()`. A new GD read of bytes that may be WebP uses it.
 
+## What stops a picture too large to decode?
+- `pg_contact_photo_store()` asks `pg_image_ensure_memory()` with the declared size before GD decodes the profile picture, and refuses it ("The picture is too large to process.") when it does not fit: before #4624 a tiny PNG declaring 30000 x 30000 ended the request with a fatal memory error (`tests/contact_photo_store_test.php`).
+
 ## How is it tested?
 - `tests/image_webp_read_test.php`: the check (lossy, alpha, a lossless sample, cut short, animated, frame tag), `pg_image_from_string()` with and without a path, the accent colour, `pg_image_gd_read()` and the engine report, the doors. Before the change the run ends with the fatal error on PHP 7.1–8.1, and on 7.1 a still WebP's colour came out grey; with it, green on 7.1–8.2.
 
