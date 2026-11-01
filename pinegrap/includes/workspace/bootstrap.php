@@ -118,6 +118,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/notes_html.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/notes_notion.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/notes_onenote.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/file_edits.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/canvas.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/watch.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/templates.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/palette.php');

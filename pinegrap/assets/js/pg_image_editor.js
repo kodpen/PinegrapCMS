@@ -24,8 +24,10 @@
  * not be) and an artboard given save.folderId becomes a new file ('new');
  * result.file is the saved file. A file named by fileName alone is looked up
  * by its name. save.url ('url') sends what a replace sends, the document and
- * the overlay, to that address instead (Workspace); save.label names its
- * button. Without any of these, or with save.mode 'callback', the document
+ * the overlay, to that address instead (Workspace); for an artboard the PNG
+ * drawn here (picture) in place of the overlay; save.label names its
+ * button. opts.doc with opts.blank opens a canvas saved before with its
+ * layers (M.canvasOpenDoc()). Without any of these, or with save.mode 'callback', the document
  * goes to onSave and nothing is written.
  *
  * One editor is open at a time. Labels come from
@@ -288,6 +290,14 @@
         this.tap = null;
         this.lastTouch = 0;
         this.doc = M.newDocument(opts);
+        // A canvas saved before (opts.doc with opts.blank) opens with its
+        // layers, texts still editable.
+        this.reopened = (opts.blank && opts.doc) ? M.canvasOpenDoc(opts.doc) : null;
+
+        if (this.reopened) {
+            this.doc = this.reopened;
+        }
+
         this.history = new M.History(100);
         this.dirty = false;
         // The document as it opened: dirty is any difference from it.
@@ -301,6 +311,12 @@
         this.pan = null;
         this.returnFocus = document.activeElement;
         Editor.inits.forEach(function (init) { init.call(self); });
+
+        // The New image dialog has nothing to ask of a canvas opened again.
+        if (this.reopened && this.board) {
+            this.board.ask = false;
+        }
+
         this.build();
         this.load();
     }
@@ -1433,7 +1449,7 @@
         var self = this, body = { action: 'save', mode: mode, doc: this.doc };
 
         // Without Imagick the server takes the colour step from here.
-        if ((mode !== 'new') && !config().serverColor && M.colorMatrix(M.colorValues(this.doc))) {
+        if (!this.doc.artboard && !config().serverColor && M.colorMatrix(M.colorValues(this.doc))) {
             body.colour = this.drawColour();
 
             if (!body.colour) {
@@ -1443,8 +1459,13 @@
             }
         }
 
-        if (mode === 'new') {
-            body.folder_id = (this.opts.save && this.opts.save.folderId) || 0;
+        // An artboard is the PNG drawn here: a new file, or a canvas another
+        // endpoint keeps (save.url, Workspace).
+        if (this.doc.artboard) {
+            if (mode === 'new') {
+                body.folder_id = (this.opts.save && this.opts.save.folderId) || 0;
+            }
+
             body.name = (this.opts.save && this.opts.save.name) || this.opts.fileName || '';
             body.picture = this.drawArtboard();
         } else {

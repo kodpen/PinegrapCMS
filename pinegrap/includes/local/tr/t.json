@@ -1259,6 +1259,7 @@
     "The canonical address of {var:1} must be a full address starting with http:// or https://, or a path on this site starting with /.": "{var:1} sayfasının canonical adresi http:// ya da https:// ile başlayan tam bir adres ya da bu sitede / ile başlayan bir yol olmalı.",
     "The canvas is not ready": "Canvas hazır değil",
     "The canvas shows the look as you change it.": "Değiştirdikçe tuval görünümü gösterir.",
+    "The canvas was sent.": "Tuval gönderildi.",
     "The captain knows every dock by the color of its flag. A red flag means there is mail going out. A white one means someone wants a word, and the boat always stops for a word.": "Kaptan her iskeleyi bayrağının renginden tanıyor. Kırmızı bayrak, gönderilecek posta olduğunu gösteriyor. Beyaz bayrak, birinin iki çift laf etmek istediğini; tekne de iki çift laf için her zaman duruyor.",
     "The card can be paid in installments": "Kartla taksitli ödenebilir",
     "The card could not be found.": "Kart bulunamadı.",
