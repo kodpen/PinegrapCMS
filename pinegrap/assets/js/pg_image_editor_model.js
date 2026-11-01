@@ -1830,6 +1830,28 @@
             return entry.when + ' · ' + (entry.user || you);
         },
 
+        // A canvas's saved document (an artboard, no picture) as the editor
+        // opens it again, or null when it is none.
+        canvasOpenDoc: function (doc) {
+            if (!doc || (typeof doc !== 'object') || (doc.v !== 1) || doc.source || !doc.artboard || (typeof doc.artboard !== 'object')
+                || !doc.geometry || (typeof doc.geometry !== 'object')) {
+                return null;
+            }
+
+            var next = clone(doc);
+
+            next.source = null;
+            next.artboard.width = boardSide(next.artboard.width);
+            next.artboard.height = boardSide(next.artboard.height);
+            next.artboard.background = (typeof next.artboard.background === 'string') ? next.artboard.background : '#ffffff';
+            next.adjust = (next.adjust && (typeof next.adjust === 'object') && !Array.isArray(next.adjust)) ? next.adjust : {};
+            next.layers = Array.isArray(next.layers) ? next.layers : [];
+            next.filter = next.filter || 'none';
+            next.frame = (next.frame === undefined) ? null : next.frame;
+
+            return next;
+        },
+
         // The newest save's document as the editor opens it on the version
         // it was drawn on: this file's id, no base (the save request names
         // it), or null when it is no picture's document.
