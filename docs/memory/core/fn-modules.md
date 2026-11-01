@@ -29,7 +29,7 @@ description: Generated from the module field of the memory files: each includes/
 - `contacts`: [[contact-holders]], [[contact-lead-source]], [[deleted-picture-fallback]], [[panel-avatar]], [[panel-avatar-sites]]
 - `core`: [[error-screen-language-and-status]], [[send-to-url-safety]], [[time-zone-list-labels]]
 - `currency_rates`: [[exchange-rates-update]]
-- `custom_form`: [[collection-template-refs]], [[custom-form-field-rules]], [[sms-consent-custom-form]]
+- `custom_form`: [[collection-template-refs]], [[custom-form-field-rules]], [[form-field-errors]], [[sms-consent-custom-form]]
 - `designer_fx`: [[designer-interactions]]
 - `designer_vocab`: [[designer-bootstrap-vocabulary]]
 - `ecommerce`: [[affiliate-link-offer-code]], [[card-data-manual-processing]], [[cart-default-quantity]], [[csv-import-headings]], [[express-order-tax-address]], [[import-decimal-cells]], [[order-cancel-commissions]], [[panel-image-alt]]

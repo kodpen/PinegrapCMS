@@ -2758,6 +2758,123 @@ function _pg_cf_node_text($node)
     return trim(preg_replace('/\s+/u', ' ', implode(' ', $out)));
 }
 
+// Mark the controls a failed server check named, as the classic liveform
+// fields are marked: each control of a failed field gets `is-invalid` and
+// aria-invalid="true", and one `invalid-feedback` text with an id is added
+// after the field's last control (after the label right behind it, so a
+// check box keeps its label beside it) and named by every control's
+// aria-describedby. $errors maps a control's name (a trailing "[]" is
+// ignored) to the message as plain text; an empty message marks the
+// controls without a text. Returns the number of fields marked.
+function pg_form_mark_invalid_controls(&$tree, $errors)
+{
+    if (!is_array($tree) || !is_array($errors) || empty($errors)) return 0;
+
+    // Every control in document order, by name, as a path of child indexes.
+    $found = array();
+    $walk = function ($node, $path) use (&$walk, &$found, $errors) {
+        if (!is_array($node)) return;
+        $tag = (isset($node['type']) && $node['type'] === 'semantic' && isset($node['props']['tag']))
+            ? strtolower((string)$node['props']['tag']) : '';
+        if (in_array($tag, array('input', 'select', 'textarea'), true)) {
+            $attrs = _pg_cf_node_attrs($node);
+            $type  = strtolower(isset($attrs['type']) ? $attrs['type'] : 'text');
+            $name  = isset($attrs['name']) ? preg_replace('/\[\]$/', '', (string)$attrs['name']) : '';
+            if ($name !== '' && array_key_exists($name, $errors)
+                && !in_array($type, array('hidden', 'submit', 'reset', 'button', 'image'), true)) {
+                $found[$name][] = array('path' => $path, 'id' => isset($attrs['id']) ? $attrs['id'] : '');
+            }
+        }
+        if (!empty($node['children']) && is_array($node['children'])) {
+            foreach ($node['children'] as $i => $child) {
+                $walk($child, array_merge($path, array($i)));
+            }
+        }
+    };
+    $walk($tree, array());
+    if (empty($found)) return 0;
+
+    static $seq = 0;
+    $inserts = array();
+    foreach ($found as $name => $controls) {
+        $text = trim((string)$errors[$name]);
+        $fb_id = '';
+        if ($text !== '') {
+            $base  = ($controls[0]['id'] !== '') ? $controls[0]['id'] : 'pg-field-' . preg_replace('/[^A-Za-z0-9_-]+/', '-', (string)$name) . '-' . (++$seq);
+            $fb_id = $base . '-feedback';
+        }
+        foreach ($controls as $c) {
+            $node = &_pg_form_node_at($tree, $c['path']);
+            $cls = isset($node['props']['cssClass']) ? trim((string)$node['props']['cssClass']) : '';
+            if (!preg_match('/(^|\s)is-invalid(\s|$)/', $cls)) {
+                $node['props']['cssClass'] = trim($cls . ' is-invalid');
+            }
+            $attrs = _pg_cf_node_attrs($node);
+            _pg_form_node_set_attr($node, 'aria-invalid', 'true');
+            if ($fb_id !== '') {
+                $described = isset($attrs['aria-describedby']) ? trim($attrs['aria-describedby']) : '';
+                if (!in_array($fb_id, preg_split('/\s+/', $described), true)) {
+                    _pg_form_node_set_attr($node, 'aria-describedby', trim($described . ' ' . $fb_id));
+                }
+            }
+            unset($node);
+        }
+        if ($fb_id !== '') {
+            $last = $controls[count($controls) - 1]['path'];
+            $inserts[] = array('path' => $last, 'node' => array(
+                'type'     => 'semantic',
+                'props'    => array('tag' => 'div', 'id' => $fb_id, 'cssClass' => 'invalid-feedback d-block pg-inline-feedback', 'text' => $text),
+                'children' => array(),
+            ));
+        }
+    }
+
+    // Insert from the last position in document order back, so an insertion
+    // never moves a position still to be used.
+    usort($inserts, function ($a, $b) {
+        $n = min(count($a['path']), count($b['path']));
+        for ($i = 0; $i < $n; $i++) {
+            if ($a['path'][$i] !== $b['path'][$i]) return $b['path'][$i] - $a['path'][$i];
+        }
+        return count($b['path']) - count($a['path']);
+    });
+    foreach ($inserts as $ins) {
+        $path  = $ins['path'];
+        $index = array_pop($path);
+        $parent = &_pg_form_node_at($tree, $path);
+        $pos = array_search($index, array_keys($parent['children']), true);
+        $children = array_values($parent['children']);
+        $at = (int)$pos + 1;
+        if (isset($children[$at]) && is_array($children[$at]) && isset($children[$at]['props']['tag'])
+            && strtolower((string)$children[$at]['props']['tag']) === 'label') {
+            $at++;
+        }
+        array_splice($children, $at, 0, array($ins['node']));
+        $parent['children'] = $children;
+        unset($parent);
+    }
+    return count($found);
+}
+
+// The node at a path of child indexes, by reference.
+function &_pg_form_node_at(&$tree, $path)
+{
+    $node = &$tree;
+    foreach ($path as $i) $node = &$node['children'][$i];
+    return $node;
+}
+
+// Set one attribute in a node's `_attrs` list, replacing an earlier entry.
+function _pg_form_node_set_attr(&$node, $attr, $value)
+{
+    $list = (isset($node['props']['_attrs']) && is_array($node['props']['_attrs'])) ? $node['props']['_attrs'] : array();
+    $list = array_values(array_filter($list, function ($a) use ($attr) {
+        return !(is_array($a) && isset($a['name']) && strtolower((string)$a['name']) === $attr);
+    }));
+    $list[] = array('name' => $attr, 'value' => $value);
+    $node['props']['_attrs'] = $list;
+}
+
 function _pg_cf_node_attrs($node)
 {
     $attrs = array();
