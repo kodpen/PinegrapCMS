@@ -97,6 +97,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - marketplace-order-status-sync.md: Marketplace package status rules: first sight, fill-only dates, tracking once, cancel without refund or customer e-mail, stock restore, cancellations first, auto-accept only Created.
 - marketplace-outbound-layer.md: Design rules of the outbound marketplace layer (includes/api/outbound/connectors/): connector contract, three tables, queue, lease and rotation job.
 - marketplace-price.md: Price and VAT rate sent to Trendyol and n11 - the checkout's tax-inclusive price (mp_product_price()), the rate inside it (vat_rate), the mapping screen's price column.
+- marketplace-product-import-queue.md: The product import queues the products it updated for the marketplaces in one call at the end, after the bundle refresh, without webhooks
 - marketplace-provider-fields.md: How a marketplace provider declares its credential fields in mp_providers() (text, secret, select), help, cargo template and barcode keys, and the transport seam of Trendyol's functions.
 - marketplace-shop-view.md: Shop view of marketplace_products.php (#1931): shop products with pictures and their state on an account, codes typed in the row, bulk own-code match, send, remove, listing changes
 - marketplace-variant-attributes.md: Listed products' variant attributes (Trendyol varianter and slicer, n11 isVariant): own option first, the article's value as fallback, duplicate refusal, mapping screen field.

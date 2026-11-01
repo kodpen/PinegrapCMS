@@ -35,7 +35,7 @@ description: Generated from the module field of the memory files: each includes/
 - `custom_form`: [[collection-template-refs]], [[custom-form-field-rules]], [[form-field-errors]], [[sms-consent-custom-form]]
 - `designer_fx`: [[designer-interactions]]
 - `designer_vocab`: [[designer-bootstrap-vocabulary]]
-- `ecommerce`: [[affiliate-link-offer-code]], [[barcode-stock-scan-checks]], [[card-data-manual-processing]], [[cart-default-quantity]], [[csv-import-headings]], [[currency-names-display]], [[express-order-tax-address]], [[import-decimal-cells]], [[order-cancel-commissions]], [[panel-image-alt]]
+- `ecommerce`: [[affiliate-link-offer-code]], [[barcode-stock-scan-checks]], [[card-data-manual-processing]], [[cart-default-quantity]], [[csv-import-headings]], [[currency-names-display]], [[express-order-tax-address]], [[import-decimal-cells]], [[marketplace-product-import-queue]], [[order-cancel-commissions]], [[panel-image-alt]]
 - `editor`: [[rich-text-profiles]]
 - `email_campaign_schedule`: [[email-campaign-schedule-label]]
 - `email_campaign_send`: [[email-campaign-send]]

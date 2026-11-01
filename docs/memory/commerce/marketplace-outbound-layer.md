@@ -21,7 +21,6 @@ description: Design rules of the outbound marketplace layer (includes/api/outbou
 
 ## What are the queue rules?
 - A network call is NEVER made in the request flow. `pg_marketplace_product_changed($product_id, $priority = 5)` (`includes/fn/ecommerce.php`) only writes to the queue (`mp_enqueue()`; priority 1 goes on the next pass) and is one line at every place that writes stock or price: checkout, barcode screens, product screen and mass edit, file manager edits, local sale, API products/groups/inventory, Workspace changes, ERP stock and counts, marketplace import. A new stock or price writer adds that line too.
-- The product import (`import_products.php`) refreshes every bundle once at the end, so it queues the products it updated with `pg_marketplace_products_changed($ids)` (no per-product bundle refresh) when the file has a price, extra shipping, stock, tracking or enabled column; before #4772 it queued nothing and the marketplaces kept the old price and stock (#4720). Its webhooks stay silent.
 - The queue carries INSTRUCTIONS, not events: while a pending row exists for the same product a second one is not written; two changes seconds apart are a single send.
 - Before the network call a 300 s lease (`run_after`) is taken and status stays `waiting`: overlapping cron runs skip, and if the process dies the lease expires. Same pattern as `api_webhook_queue`.
 - `api_sync_job.php` runs in rotation (300 s), NOT inline. A webhook is a message, stock is a state; running rarely makes batches bigger and writes less against the per-minute rate limit.
