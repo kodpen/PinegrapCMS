@@ -16,6 +16,31 @@
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
+/**
+ * The title of an imported HTML file and the file without its title
+ * elements, which the page draws itself. The element may carry attributes,
+ * any case and run over several lines, as an editor that formats the head
+ * writes it; runs of white space read as one space, as a browser shows the
+ * title. A file without one gives '' and comes back as it was.
+ *
+ * @param string $content
+ * @return array array(<title>, <content>)
+ */
+function pg_imported_page_take_title($content)
+{
+    $content = (string) $content;
+    $pattern = '/<title\b[^>]*>(.*?)<\/title\s*>/is';
+
+    if (!preg_match($pattern, $content, $match)) {
+        return array('', $content);
+    }
+
+    $title = trim(preg_replace('/[ \t\r\n\f]+/', ' ', unhtmlspecialchars($match[1])));
+    $stripped = preg_replace($pattern, '', $content);
+
+    return array($title, ($stripped === null) ? $content : $stripped);
+}
+
 // Helper: resolve a relative URL against a base URL.
 // Uses resolve_url_for_scan() if available (import_design.php), otherwise falls back to url_to_absolute().
 function resolve_url_for_update($base, $relative)
