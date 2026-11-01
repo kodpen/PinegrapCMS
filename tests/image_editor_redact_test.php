@@ -41,9 +41,23 @@ function image_editor_redact_doc()
 		'layers' => array());
 }
 
-// A w x h PNG data: URL, opaque on its left half when $half, else all over.
+// A w x h PNG data: URL, opaque on its left half when $half, else all over;
+// $half 'disc' gives a round area in its box, as a brush dot leaves.
 function image_editor_redact_mask($width, $height, $half)
 {
+	if ($half === 'disc') {
+		$image = imagecreatetruecolor($width, $height);
+		imagesavealpha($image, true);
+		imagealphablending($image, false);
+		imagefilledrectangle($image, 0, 0, $width - 1, $height - 1, imagecolorallocatealpha($image, 0, 0, 0, 127));
+		imagefilledellipse($image, (int) ($width / 2), (int) ($height / 2), $width - 10, $height - 10, imagecolorallocatealpha($image, 255, 255, 255, 0));
+		ob_start();
+		imagepng($image);
+		pg_image_destroy($image);
+
+		return 'data:image/png;base64,' . base64_encode((string) ob_get_clean());
+	}
+
 	$image = imagecreatetruecolor($width, $height);
 	imagesavealpha($image, true);
 	imagealphablending($image, false);
@@ -132,6 +146,9 @@ function test_image_editor_redact_burns_in()
 					: pg_process_image_with_imagick($path, IMAGETYPE_PNG, false, 120, 80, 92, '', 0, $edit);
 				pg_image_editor_drop_redactions($edit['redact']);
 				$image = imagecreatefromstring((string) $data);
+				// Imagick writes a picture of a few colours (the solid box over
+				// black and white) as a palette PNG: read as colours, not indices.
+				imagepalettetotruecolor($image);
 				$label = $library . ' ' . $mode . ': ';
 
 				$inside = array();
@@ -157,6 +174,25 @@ function test_image_editor_redact_burns_in()
 				pg_assert_same(array(255, 0), array(imagecolorat($image, 10, 10) & 0xff, imagecolorat($image, 11, 10) & 0xff), $label . 'outside the area is left alone');
 				pg_image_destroy($image);
 			}
+		}
+
+		// A brush-shaped solid area: its box is partly transparent, and the
+		// corners of the box keep the picture.
+		foreach ($libraries as $library) {
+			$edit = pg_image_edit_validate(image_editor_redact_doc())['edit'];
+			$edit['redact'] = pg_image_editor_take_redactions(array(array('mode' => 'solid', 'strength' => 50, 'x' => 20, 'y' => 20, 'mask' => image_editor_redact_mask(40, 40, 'disc'))), $edit, $prefix);
+			$data = ($library === 'gd')
+				? pg_process_image_with_gd($path, IMAGETYPE_PNG, false, 120, 80, 92, '', 0, $edit)
+				: pg_process_image_with_imagick($path, IMAGETYPE_PNG, false, 120, 80, 92, '', 0, $edit);
+			pg_image_editor_drop_redactions($edit['redact']);
+			$image = imagecreatefromstring((string) $data);
+			imagepalettetotruecolor($image);
+			$label = $library . ' brush solid: ';
+
+			pg_assert_same(array(17, 19, 23), array_values(array_slice(imagecolorsforindex($image, imagecolorat($image, 40, 40)), 0, 3)), $label . 'the middle is the solid colour');
+			pg_assert_same(array(255, 0), array(imagecolorat($image, 22, 22) & 0xff, imagecolorat($image, 23, 22) & 0xff), $label . 'a corner of its box is left alone');
+			pg_assert_same(array(255, 0), array(imagecolorat($image, 10, 10) & 0xff, imagecolorat($image, 11, 10) & 0xff), $label . 'outside the box is left alone');
+			pg_image_destroy($image);
 		}
 	} finally {
 		@unlink($path);
