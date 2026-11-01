@@ -23,7 +23,7 @@ description: Plan (2026-10-24, answers #2445, 1, 2a-2d done): a box-and-arrow ca
 ## Slices (one PR each)
 1. Done #3162: the harness, run by hand (workspace/workspace-flows-canvas-harness.md); 30 of 30 since #4316.
 2. Pure refactor: core plus Flows adapter, behaviour identical, the harness's result the same before and after; new tests: core keys in the shards and `pg_graph_canvas_js_strings()`, the core bundled; the literals the canvas test reads stay in workspace_flow.js; core printed first. Cut into PRs of about 1,000 lines:
-   - 2a done #4402: the core file and bundle, printed first; helpers, undo history, `viewport(host)` moved; workspace_flow.js aliases them (`var x = G.x`; `ws_flows_canvas_test_node()` searches the core too).
+   - 2a done #4402: the core file and bundle, printed first; helpers, undo history, `viewport(host)`; workspace_flow.js aliases them.
    - 2b done #4497: `create(adapter)`: pointers, pinch, Space, zoom keys, `destroy()`.
    - 2c done #4518: `box()`, `place()`, `edge()`, `mark()`, `announce()`, box move and connect drags; texts `pgc_*` (`ui/graph-canvas-core-module.md`). The outline stays in Flows (its forms, nothing generic yet).
    - 2d done #4557: `autosave(host)`, its state on the host's record; Flows' host sends `ws_flow_save`.
