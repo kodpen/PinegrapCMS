@@ -36,6 +36,7 @@ function _test_events_load()
 	include $dir . '/mail.php';
 	$public = include $dir . '/pages_public.php';
 	$events = include $dir . '/events.php';
+	$tickets = include $dir . '/tickets.php';
 	$out = array(
 		'tracks'    => $tracks,
 		'speakers'  => $speakers,
@@ -46,6 +47,7 @@ function _test_events_load()
 		'pages'     => $public['pages'],
 		'widgets'   => $public['widgets'],
 		'events'    => $events,
+		'tickets'   => $tickets,
 		'samples'   => $sample_events,
 		'shared'    => array($account_bar_tree(), $header(), $footer(), $register_band(), $notice(), $staff_bar(), $email_header_tree(), $email_footer_tree()),
 	);
@@ -70,7 +72,7 @@ function _test_events_page_keys()
 		'home', 'programme', 'speakers', 'venue', 'about',
 		'events', 'event_view', 'event_new', 'registration', 'registration_view', 'my_registrations', 'privacy',
 		'email_registration_new', 'email_registration_received', 'email_reply',
-		'tickets', 'product', 'cart',
+		'tickets', 'product', 'cart', 'checkout', 'order', 'email_order',
 		'contact', 'inbox', 'conversation', 'newsletter', 'blog', 'blog_post', 'search', 'error',
 		'my_account', 'staff', 'blog_new', 'login', 'register', 'set_password', 'logout', 'profile',
 		'change_password', 'email_preferences', 'address_book', 'staff_directory', 'staff_entry', 'forgot_password',
@@ -127,10 +129,10 @@ function test_events_page_links_name_template_pages()
 	$d = _test_events_load();
 	$known = array_flip(_test_events_page_keys());
 	$trees = $d['shared'];
-	foreach (array_merge($d['pages'], $d['events']['pages']) as $p) $trees[] = $p['tree'];
-	foreach (array_merge($d['widgets'], $d['events']['widgets']) as $w) $trees[] = $w['tree'];
+	foreach (array_merge($d['pages'], $d['events']['pages'], $d['tickets']['pages']) as $p) $trees[] = $p['tree'];
+	foreach (array_merge($d['widgets'], $d['events']['widgets'], $d['tickets']['widgets']) as $w) $trees[] = $w['tree'];
 	$json = json_encode($trees);
-	preg_match_all('/\{\{(?:page|tab):([a-z0-9_]+)\}\}/', $json . json_encode($d['events']), $m);
+	preg_match_all('/\{\{(?:page|tab):([a-z0-9_]+)\}\}/', $json . json_encode($d['events']) . json_encode($d['tickets']), $m);
 	pg_assert_true(count($m[1]) > 10, 'links found');
 	foreach (array_unique($m[1]) as $key) pg_assert_true(isset($known[$key]), "page link {{page:$key}} names a template page");
 }
@@ -233,7 +235,7 @@ function test_events_pages_and_widgets_of_the_events_part()
 	// another step's: the newsletter band and the login region), and every
 	// widget names a page of the template.
 	$own = $d['events']['widgets'];
-	$later = array('newsletter_band', 'login_region');
+	$later = array('newsletter_band', 'login_region', 'cart_link');
 	$known = array_flip(_test_events_page_keys());
 	foreach ($d['events']['pages'] as $p) {
 		$nodes = array();
@@ -350,4 +352,65 @@ function test_events_registration_page_thread_and_emails()
 		pg_assert_same('private', $p['folder'], "$key: private");
 		pg_assert_same(true, $p['noindex'], "$key: noindex");
 	}
+}
+
+function test_events_tickets_catalog_and_shop_pages()
+{
+	$d = _test_events_load();
+	$t = $d['tickets'];
+
+	// The catalog: one Tickets group under the site's top group, a product
+	// for every pass by its SKU, none of them shipped, a price in every
+	// currency.
+	$group = $t['catalog']['groups']['tickets'];
+	pg_assert_same('root', $group['parent']);
+	$skus = array();
+	foreach ($group['products'] as $p) {
+		$skus[] = $p['sku'];
+		pg_assert_same(false, $p['shippable'], $p['sku'] . ': not shipped');
+		foreach (array('USD', 'EUR', 'GBP', 'TRY') as $cur) pg_assert_true($p['price'][$cur] > 0, $p['sku'] . ": price in $cur");
+	}
+	$pass_skus = array();
+	foreach ($d['passes'] as $p) $pass_skus[] = $p['sku'];
+	pg_assert_same($pass_skus, $skus, 'a product for every pass');
+
+	// The tickets page is there without the shop; every other page and
+	// widget of the shop needs it, and the tickets page places the listing.
+	$keys = array();
+	foreach ($t['pages'] as $p) {
+		$keys[] = $p['key'];
+		if ($p['key'] === 'tickets') {
+			pg_assert_false(isset($p['requires']), 'tickets page without the shop');
+			pg_assert_contains('"templateWidget":"ticket_passes"', json_encode($p['tree']), 'tickets page places the passes on sale');
+			// Each pass card registers with its pass filled in.
+			foreach ($d['passes'] as $pass) {
+				pg_assert_contains(json_encode('{{page:registration}}?pass=' . rawurlencode($pass['title'])), json_encode($p['tree']), 'register with ' . $pass['sku']);
+			}
+		} else {
+			pg_assert_same('ecommerce', $p['requires'], $p['key'] . ': needs the shop');
+		}
+	}
+	pg_assert_same(array('tickets', 'product', 'cart', 'checkout', 'order', 'email_order'), $keys);
+	foreach ($t['widgets'] as $key => $w) pg_assert_same('ecommerce', $w['requires'], "$key: needs the shop");
+
+	$c = $t['widgets']['ticket_passes']['config'];
+	pg_assert_same('catalog_listing', $c['regionType']);
+	pg_assert_same('{{product_group:tickets}}', $c['product_group_id']);
+	pg_assert_same('{{tab:product}}', $c['detail_page_id']);
+	pg_assert_same('{{tab:cart}}', $c['add_to_cart_next_page_id']);
+	pg_assert_contains('"catalog_add_to_cart"', json_encode($t['widgets']['ticket_passes']['tree']), 'Add to cart');
+
+	// The settings keys the renderers read.
+	$cart = $t['widgets']['cart']['config'];
+	pg_assert_same('{{tab:checkout}}', $cart['next_page_id_with_shipping']);
+	pg_assert_same('{{tab:checkout}}', $cart['next_page_id_without_shipping']);
+	$checkout = $t['widgets']['checkout']['config'];
+	pg_assert_same('{{tab:order}}', $checkout['next_page_id']);
+	pg_assert_same('{{tab:email_order}}', $checkout['order_receipt_email_page_id']);
+	$receipt = json_encode($t['widgets']['email_order']['tree']);
+	foreach (array('__order_no', '__item_short_description', '__order_total', '{{page:registration}}') as $token) pg_assert_contains($token, $receipt, "receipt has $token");
+
+	// The account bar places the cart link; on a site without the shop
+	// the link is left out with its widget.
+	pg_assert_contains('"templateWidget":"cart_link"', json_encode($d['shared'][0]), 'account bar places the cart link');
 }

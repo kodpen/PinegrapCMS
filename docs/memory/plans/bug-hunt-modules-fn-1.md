@@ -28,7 +28,7 @@ description: Module list of plans/bug-hunt.md, part 1: includes/fn/ modules a11y
 
 - `bundles`: open
 
-- `calendar`: open
+- `calendar`: taken by LM (#4632)
 
 - `captcha`: clean (siteverify outcomes, token, widget escaping, settings card and save order checked)
 
@@ -60,7 +60,7 @@ description: Module list of plans/bug-hunt.md, part 1: includes/fn/ modules a11y
 
 - `contact_list`: open
 
-- `contacts`: taken by LI, #4624
+- `contacts`: done #4624
 
 - `content`: open
 
@@ -102,7 +102,7 @@ description: Module list of plans/bug-hunt.md, part 1: includes/fn/ modules a11y
 
 - `explorer_side`: open
 
-- `files`: taken by LE, #4613
+- `files`: done #4613
 
 - `form_subscription`: open
 
@@ -182,7 +182,7 @@ description: Module list of plans/bug-hunt.md, part 1: includes/fn/ modules a11y
 
 - `page_revisions`: open
 
-- `page_schedule`: open
+- `page_schedule`: clean (time parsing and range, save plan, job pass and its overlap guard, API time checks, list chip escaping checked)
 
 - `page_type_pane`: open
 
@@ -190,6 +190,6 @@ description: Module list of plans/bug-hunt.md, part 1: includes/fn/ modules a11y
 
 - `passkeys`: open
 
-- `payments`: open
+- `payments`: taken by bug-hunt-payments
 
-- `pdf_merge`: taken by bug-hunt-pdf-merge
+- `pdf_merge`: done (#4610)

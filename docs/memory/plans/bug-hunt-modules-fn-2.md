@@ -26,7 +26,7 @@ description: Module list of plans/bug-hunt.md, part 2: includes/fn/ modules pric
 
 - `record_revisions`: open
 
-- `returns`: open
+- `returns`: clean (#4619)
 
 - `reviews`: taken by LC, #4597
 
@@ -40,7 +40,7 @@ description: Module list of plans/bug-hunt.md, part 2: includes/fn/ modules pric
 
 - `shipment_tracking`: open
 
-- `shipping`: open
+- `shipping`: taken by LL, #4625
 
 - `shipping_import`: open
 

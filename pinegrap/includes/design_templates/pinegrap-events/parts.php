@@ -275,15 +275,16 @@ $notice = function () use ($el, $icon, $span) {
     ));
 };
 
-// The bar above the header: the notice on the left, the language switcher
-// and the login region on the right. Every page places it as one shared
-// component, so a change to it is made once for the whole site.
+// The bar above the header: the notice on the left, the language switcher,
+// the login region and the cart (with the shop) on the right. Every page
+// places it as one shared component, so a change to it is made once for the
+// whole site.
 $account_bar_tree = function () use ($el, $widget, $shared, $lang_switcher) {
     return $el('div', 'border-bottom small bg-body-tertiary', lang('Account Bar'), array(
         $el('div', 'container d-flex flex-wrap align-items-center justify-content-between gap-2 py-1', lang('Account Area'), array(
             $el('div', '', lang('Announcement Area'), array($shared('notice'))),
             $el('div', 'd-flex align-items-center gap-2 ms-auto', lang('Account Links'), array(
-                $lang_switcher(), $widget('login_region'),
+                $lang_switcher(), $widget('login_region'), $widget('cart_link'),
             )),
         )),
     ));
