@@ -30,7 +30,7 @@ description: Steps E11-E20 of plans/image-editor.md: versions, canvas and artboa
 - E17 (S) Visual designer. `free` after E9 and E11.
   - The image widget's "Edit image" opens the modal over the designer; a saved version refreshes the picture (cache key); crop presets from the widget's ratio.
 
-- E18 (S) Access. `free` after E9.
+- E18 (S) Access. `free` after E9. Done (#4785, `ui/image-editor-access.md`).
   - Keyboard map and help sheet, names for every control, focus trap, reduced motion, two-finger rotate (the phone layout is E1b).
 
 - E19 SVG animation. AN10 of `image-editor-animation-steps.md` (owner, 2026-11-01).
