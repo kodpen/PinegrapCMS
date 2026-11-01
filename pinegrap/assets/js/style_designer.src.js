@@ -35104,7 +35104,7 @@ const StyleDesigner = (function () {
 
             // ── tag_cloud_region settings ────────────────────────────────────
             if (_isTagCloud) {
-                var _tcNames = (regionData && regionData.tag_cloud_regions) || [];
+                var _tcNames = _sdTagCloudPageNames();
                 var _tcName = typeof _cfg.search_page_name === 'string' ? _cfg.search_page_name : '';
                 var _tcOpts = '<option value="">' + esc(_sdT('— Select —')) + '</option>';
                 _tcNames.forEach(function (nm) {
@@ -48712,6 +48712,18 @@ const StyleDesigner = (function () {
             .catch(function () { sdToast(esc(_sdT('Network error')), 'error'); });
     }
 
+    // The pages a Tag Cloud widget can link its keywords to: the classic
+    // search results pages and the pages built with the Search Results
+    // widget (a site installed from a design template has only those).
+    function _sdTagCloudPageNames() {
+        var out = [];
+        var lists = [(regionData && regionData.tag_cloud_regions) || [], (regionData && regionData.tag_cloud_widget_pages) || []];
+        lists.forEach(function (list) {
+            list.forEach(function (nm) { if (out.indexOf(nm) === -1) out.push(nm); });
+        });
+        return out;
+    }
+
     function needsName(t) { return ['ad','common','designer','dynamic','login','menu','menu_sequence','tag_cloud','system'].indexOf(t) !== -1; }
 
     function buildRegionNames(type) {
@@ -56904,7 +56916,7 @@ const StyleDesigner = (function () {
             if (cfg.show_register_link === undefined) cfg.show_register_link = true;
         } else if (newType === 'tag_cloud_region') {
             // The site's first search results page, so a new widget shows keywords at once.
-            if (cfg.search_page_name === undefined) cfg.search_page_name = ((regionData && regionData.tag_cloud_regions) || [])[0] || '';
+            if (cfg.search_page_name === undefined) cfg.search_page_name = _sdTagCloudPageNames()[0] || '';
         } else if (newType === 'ad_region') {
             // The site's first ad region, so a new widget shows ads at once.
             if (cfg.ad_region_name === undefined) cfg.ad_region_name = ((regionData && regionData.ad_regions) || [])[0] || '';
