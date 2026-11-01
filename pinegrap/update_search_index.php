@@ -118,6 +118,27 @@ output_header_secure(array(
 // Store the current timestamp.  We will use this is order to know which search items are old and can be deleted.
 $timestamp = time();
 
+// The items the run could not read, every kind together, and the first five
+// named for the run's Site Log line.
+$index_failures = 0;
+$index_failure_notes = array();
+
+// What the run is reading, for the Site Log line of a run that stops before
+// its end: a fatal error, an exit or redirect inside a page, a memory or time
+// limit. The line names the stage, the last item started and the fatal error.
+$search_index_run = array('stage' => 'pages', 'item' => '', 'done' => false);
+
+register_shutdown_function(function () use (&$search_index_run, &$username) {
+    if ($search_index_run['done']) {
+        return;
+    }
+
+    log_activity(lang(array(
+        'string' => 'The search index run stopped before its end: {var:1}',
+        'vars' => array(pg_search_index_stop_note($search_index_run['stage'], $search_index_run['item'], error_get_last())))),
+        isset($username) ? (string) $username : '');
+});
+
 // Create array that we will use to store every item name that is linked in the HTML for all pages
 // that are included in the search index.  This will allow us to determine which files should be included in index.
 $linked_item_names = array();
@@ -222,109 +243,118 @@ foreach ($pages as $page) {
         }
     }
 
-    // Get HTML version of page.
-    $content = get_page_content($page['id'], $system_content = '', $extra_system_content = '', $mode = 'preview', $email = false);
+    // Get HTML version of page. A page that cannot be drawn keeps its last
+    // indexed text; its calendar events or records below are still read.
+    $search_index_run['item'] = $page['name'];
+    $render = pg_search_index_render($page['id']);
 
-    // Updated linked item names so that later we know which files to include in index.
-    $linked_item_names = update_linked_item_names($content, $linked_item_names);
+    if ($render['content'] === null) {
+        pg_search_index_keep_item($url, $timestamp);
+        pg_search_index_failed($index_failures, $index_failure_notes, pg_search_index_failure_note($page['name'], '', $render['error'], 200, lang('Page')));
+    } else {
+        $content = $render['content'];
 
-    // Start the promoted keywords off with the content that the editor might have
-    // entered into the "Promote on Keyword" page property.
-    $promoted_keywords = $page['search_keywords'];
+        // Updated linked item names so that later we know which files to include in index.
+        $linked_item_names = update_linked_item_names($content, $linked_item_names);
 
-    // Check for more keywords that might appear inside HTML tags with
-    // "promote-on-keyword" class.
-    $more_promoted_keywords = get_promoted_keywords($content);
+        // Start the promoted keywords off with the content that the editor might have
+        // entered into the "Promote on Keyword" page property.
+        $promoted_keywords = $page['search_keywords'];
 
-    // If more keywords were found, then add them to the promoted keywords.
-    if ($more_promoted_keywords != '') {
+        // Check for more keywords that might appear inside HTML tags with
+        // "promote-on-keyword" class.
+        $more_promoted_keywords = get_promoted_keywords($content);
 
-        // If there are already keywords from the page property,
-        // then add a comma and space for separation.
-        if ($promoted_keywords != '') {
-            $promoted_keywords .= ', ';
+        // If more keywords were found, then add them to the promoted keywords.
+        if ($more_promoted_keywords != '') {
+
+            // If there are already keywords from the page property,
+            // then add a comma and space for separation.
+            if ($promoted_keywords != '') {
+                $promoted_keywords .= ', ';
+            }
+
+            $promoted_keywords .= $more_promoted_keywords;
         }
 
-        $promoted_keywords .= $more_promoted_keywords;
-    }
+        // Get plain text version of page.
+        $content = pg_search_index_text($content);
 
-    // Get plain text version of page.
-    $content = pg_search_index_text($content);
+        // If the page title is blank, then use the name for the title.
+        if ($page['title'] == '') {
+            $title = $page['name'];
 
-    // If the page title is blank, then use the name for the title.
-    if ($page['title'] == '') {
-        $title = $page['name'];
+        // Otherwise use the title.
+        } else {
+            $title = $page['title'];
+        }
 
-    // Otherwise use the title.
-    } else {
-        $title = $page['title'];
-    }
+        // Add title, meta description, and the promote on keyword terms to content
+        // so that there is more data included in index to get better results
+        // and so that we can simply search the one content index instead of
+        // searching the title, description, and content indexes.
+        $content = $title . ' ' . $page['meta_description'] . ' ' . $page['search_keywords'] . ' ' . $content;
 
-    // Add title, meta description, and the promote on keyword terms to content
-    // so that there is more data included in index to get better results
-    // and so that we can simply search the one content index instead of
-    // searching the title, description, and content indexes.
-    $content = $title . ' ' . $page['meta_description'] . ' ' . $page['search_keywords'] . ' ' . $content;
+        // The topics given to the page's search sections are searched with its
+        // text; nothing on the page shows them.
+        if (function_exists('pg_search_section_topics') && function_exists('pg_page_tree_json')) {
+            $section_topics = pg_search_section_topics(json_decode(pg_page_tree_json($page['id']), true));
+            if ($section_topics !== '') $content .= ' ' . $section_topics;
+        }
 
-    // The topics given to the page's search sections are searched with its
-    // text; nothing on the page shows them.
-    if (function_exists('pg_search_section_topics') && function_exists('pg_page_tree_json')) {
-        $section_topics = pg_search_section_topics(json_decode(pg_page_tree_json($page['id']), true));
-        if ($section_topics !== '') $content .= ' ' . $section_topics;
-    }
+        // Check if a search item already exists for this URL.
+        $number_of_items = db_value("SELECT COUNT(*) FROM search_items WHERE url = '" . escape($url) . "'");
 
-    // Check if a search item already exists for this URL.
-    $number_of_items = db_value("SELECT COUNT(*) FROM search_items WHERE url = '" . escape($url) . "'");
+        // If a search item already exists, then update it.
+        if ($number_of_items == 1) {
+            db(
+                "UPDATE search_items
+                SET
+                    url = '" . escape($url) . "',
+                    content = '" . escape($content) . "',
+                    title = '" . escape($title) . "',
+                    description = '" . escape($page['meta_description']) . "',
+                    keywords = '" . e($promoted_keywords) . "',
+                    page_id = '" . $page['id'] . "',
+                    folder_id = '" . $page['folder_id'] . "',
+                    timestamp = '" . $timestamp . "'
+                WHERE url = '" . escape($url) . "'");
 
-    // If a search item already exists, then update it.
-    if ($number_of_items == 1) {
-        db(
-            "UPDATE search_items
-            SET
-                url = '" . escape($url) . "',
-                content = '" . escape($content) . "',
-                title = '" . escape($title) . "',
-                description = '" . escape($page['meta_description']) . "',
-                keywords = '" . e($promoted_keywords) . "',
-                page_id = '" . $page['id'] . "',
-                folder_id = '" . $page['folder_id'] . "',
-                timestamp = '" . $timestamp . "'
-            WHERE url = '" . escape($url) . "'");
+        // Otherwise a search item does not already exist, so insert it.
+        } else {
+            db(
+                "INSERT INTO search_items (
+                    url,
+                    content,
+                    title,
+                    description,
+                    keywords,
+                    page_id,
+                    folder_id,
+                    timestamp)
+                VALUES (
+                    '" . escape($url) . "',
+                    '" . escape($content) . "',
+                    '" . escape($title) . "',
+                    '" . escape($page['meta_description']) . "',
+                    '" . e($promoted_keywords) . "',
+                    '" . $page['id'] . "',
+                    '" . $page['folder_id'] . "',
+                    '" . $timestamp . "')");
+        }
 
-    // Otherwise a search item does not already exist, so insert it.
-    } else {
-        db(
-            "INSERT INTO search_items (
-                url,
-                content,
-                title,
-                description,
-                keywords,
-                page_id,
-                folder_id,
-                timestamp)
-            VALUES (
-                '" . escape($url) . "',
-                '" . escape($content) . "',
-                '" . escape($title) . "',
-                '" . escape($page['meta_description']) . "',
-                '" . e($promoted_keywords) . "',
-                '" . $page['id'] . "',
-                '" . $page['folder_id'] . "',
-                '" . $timestamp . "')");
-    }
-
-    echo
-        '<li class="list-group-item px-3 py-3">
-            <div class="d-flex align-items-start gap-3">
-                <small class="fg-secondary flex-shrink-0 text-end mt-1" style="min-width:1.375rem;font-size:0.625rem">' . $count_pages++ . '</small>
-                <div class="flex-fill overflow-hidden">
-                    <a href="' . h(URL_SCHEME . HOSTNAME . PATH . $url) . '" target="_blank" class="fw-semibold text-truncate d-block" style="font-size:0.8125rem">' . h($title) . '</a>
-                    <div class="fg-secondary text-truncate" style="font-size:0.6875rem">' . h($url) . ($page['meta_description'] ? ' &middot; ' . h($page['meta_description']) : '') . '</div>
+        echo
+            '<li class="list-group-item px-3 py-3">
+                <div class="d-flex align-items-start gap-3">
+                    <small class="fg-secondary flex-shrink-0 text-end mt-1" style="min-width:1.375rem;font-size:0.625rem">' . $count_pages++ . '</small>
+                    <div class="flex-fill overflow-hidden">
+                        <a href="' . h(URL_SCHEME . HOSTNAME . PATH . $url) . '" target="_blank" class="fw-semibold text-truncate d-block" style="font-size:0.8125rem">' . h($title) . '</a>
+                        <div class="fg-secondary text-truncate" style="font-size:0.6875rem">' . h($url) . ($page['meta_description'] ? ' &middot; ' . h($page['meta_description']) : '') . '</div>
+                    </div>
+                    <span class="badge badge-subtle theme-secondary border flex-shrink-0" style="font-size:0.5625rem">' . lang('Page') . '</span>
                 </div>
-                <span class="badge badge-subtle theme-secondary border flex-shrink-0" style="font-size:0.5625rem">' . lang('Page') . '</span>
-            </div>
-        </li>';
+            </li>';
+    }
 
     // Do additional things depending on the type of page.
     switch ($page['type']) {
@@ -407,8 +437,19 @@ foreach ($pages as $page) {
                             // Multiple calendar views can link to the same calendar event on the same calendar event view,
                             // so that is why this check is necessary.
                             if (in_array($url, $calendar_event_view_urls) == false) {
-                                // Get HTML version of page.
-                                $content = get_page_content($calendar_event_view_page_id, $system_content = '', $extra_system_content = '', $mode = 'preview', $email = false, array('calendar_event_id' => $calendar_event['id']));
+                                // Get HTML version of page. An event that cannot be
+                                // drawn keeps its last indexed text.
+                                $search_index_run['item'] = $url;
+                                $render = pg_search_index_render($calendar_event_view_page_id, array('calendar_event_id' => $calendar_event['id']));
+
+                                if ($render['content'] === null) {
+                                    pg_search_index_keep_item($url, $timestamp);
+                                    pg_search_index_failed($index_failures, $index_failure_notes, pg_search_index_failure_note($calendar_event_view_page_name, (string) $calendar_event['id'], $render['error'], 200, lang('Event')));
+                                    $calendar_event_view_urls[] = $url;
+                                    continue;
+                                }
+
+                                $content = $render['content'];
 
                                 // Updated linked item names so that later we know which files to include in index.
                                 $linked_item_names = update_linked_item_names($content, $linked_item_names);
@@ -810,8 +851,19 @@ foreach ($pages as $page) {
                         // Multiple form list views can link to the same submitted form on the same form item view,
                         // so that is why this check is necessary.
                         if (in_array($url, $form_item_view_urls) == false) {
-                            // Get HTML version of page.
-                            $content = get_page_content($form_item_view_page_id, $system_content = '', $extra_system_content = '', $mode = 'preview', $email = false, array('form_id' => $submitted_form['id']));
+                            // Get HTML version of page. A record that cannot be
+                            // drawn keeps its last indexed text.
+                            $search_index_run['item'] = $url;
+                            $render = pg_search_index_render($form_item_view_page_id, array('form_id' => $submitted_form['id']));
+
+                            if ($render['content'] === null) {
+                                pg_search_index_keep_item($url, $timestamp);
+                                pg_search_index_failed($index_failures, $index_failure_notes, pg_search_index_failure_note($form_item_view_page_name, (string) $submitted_form['reference_code'], $render['error'], 200, lang('Record')));
+                                $form_item_view_urls[] = $url;
+                                continue;
+                            }
+
+                            $content = $render['content'];
 
                             // Updated linked item names so that later we know which files to include in index.
                             $linked_item_names = update_linked_item_names($content, $linked_item_names);
@@ -970,9 +1022,7 @@ foreach ($pages as $page) {
 // indexed.
 $designer_record_urls = array();
 $designer_detail_pages = array();
-$designer_failures = 0;
-// The first few failures, named for the run's Site Log line.
-$designer_failure_notes = array();
+$search_index_run['stage'] = 'records';
 $recycle_bin_folder_ids = pg_recycle_bin_folder_ids();
 
 foreach ($designer_hosts as $designer_host) {
@@ -1056,11 +1106,7 @@ foreach ($designer_hosts as $designer_host) {
                 ORDER BY forms.id ASC");
         } catch (Throwable $throwable) {
             $records = array();
-            $designer_failures++;
-
-            if (count($designer_failure_notes) < 5) {
-                $designer_failure_notes[] = pg_search_index_failure_note($host_page['page_name'], '', $throwable->getMessage());
-            }
+            pg_search_index_failed($index_failures, $index_failure_notes, pg_search_index_failure_note($host_page['page_name'], '', $throwable->getMessage(), 200, lang('Record list')));
         } finally {
             pg_error_throws($saved_error_throws);
         }
@@ -1092,6 +1138,7 @@ foreach ($designer_hosts as $designer_host) {
             }
 
             $designer_record_urls[$url] = null;
+            $search_index_run['item'] = $url;
 
             $had_reference_code = array_key_exists('r', $_GET);
             $saved_reference_code = $had_reference_code ? $_GET['r'] : null;
@@ -1162,11 +1209,7 @@ foreach ($designer_hosts as $designer_host) {
 
                 $designer_record_urls[$url] = $folder_id;
             } catch (Throwable $throwable) {
-                $designer_failures++;
-
-                if (count($designer_failure_notes) < 5) {
-                    $designer_failure_notes[] = pg_search_index_failure_note($detail_page['page_name'], $record['reference_code'], $throwable->getMessage());
-                }
+                pg_search_index_failed($index_failures, $index_failure_notes, pg_search_index_failure_note($detail_page['page_name'], $record['reference_code'], $throwable->getMessage(), 200, lang('Record')));
 
                 continue;
             } finally {
@@ -1201,14 +1244,7 @@ foreach ($designer_hosts as $designer_host) {
     }
 }
 
-// One Site Log line per run names what was left out, so a site owner sees
-// it without reading the PHP error log.
-if ($designer_failures > 0) {
-    log_activity(lang(array(
-        'string' => 'The search index left out {var:1} record list(s) or record(s) that failed to load: {var:2}',
-        'vars' => array($designer_failures, implode('; ', $designer_failure_notes) . (($designer_failures > count($designer_failure_notes)) ? '; ...' : '')))),
-        isset($username) ? $username : '');
-}
+$search_index_run['stage'] = 'files';
 
 // Get files that should be included in search index.
 $files = db_items(
@@ -1230,73 +1266,94 @@ foreach ($files as $file) {
         $url = encode_url_path($file['name']);
 
         $content = '';
+        $search_index_run['item'] = $file['name'];
+        $saved_error_throws = pg_error_throws();
+        $saved_ob_level = ob_get_level();
+        pg_error_throws(true);
 
-        // Get the content in different ways depending on the type of file.
-        // We only get content for certain file types.
-        switch (mb_strtolower($file['type'])) {
-            case 'doc':
-                $content = convert_doc_to_text(FILE_DIRECTORY_PATH . '/' . $file['name']);
-                break;
+        // A file the converter cannot read keeps its last indexed text.
+        try {
+            // Get the content in different ways depending on the type of file.
+            // We only get content for certain file types.
+            switch (mb_strtolower($file['type'])) {
+                case 'doc':
+                    $content = convert_doc_to_text(FILE_DIRECTORY_PATH . '/' . $file['name']);
+                    break;
 
-            case 'docx':
-                $content = convert_docx_to_text(FILE_DIRECTORY_PATH . '/' . $file['name']);
-                break;
+                case 'docx':
+                    $content = convert_docx_to_text(FILE_DIRECTORY_PATH . '/' . $file['name']);
+                    break;
 
-            case 'pdf':
-                // If the path to pdftotext has not been determined yet, then try to find it.
-                if (isset($pdftotext_path) == false)  {
-                    $pdftotext_path = '';
+                case 'pdf':
+                    // If the path to pdftotext has not been determined yet, then try to find it.
+                    if (isset($pdftotext_path) == false)  {
+                        $pdftotext_path = '';
 
-                    // If the server is running Windows, then try to find pdftotext in a certain way.
-                    if (mb_strtoupper(mb_substr(PHP_OS, 0, 3)) == 'WIN') {
-                        // If the path constant is defined then use that (but add quotes around path,
-                        // because path might contain spaces and Windows requires that).
-                        if ((defined('PDFTOTEXT_PATH') == true) && (PDFTOTEXT_PATH != '')) {
-                            $pdftotext_path = '"' . PDFTOTEXT_PATH . '"';
-                        }
+                        // If the server is running Windows, then try to find pdftotext in a certain way.
+                        if (mb_strtoupper(mb_substr(PHP_OS, 0, 3)) == 'WIN') {
+                            // If the path constant is defined then use that (but add quotes around path,
+                            // because path might contain spaces and Windows requires that).
+                            if ((defined('PDFTOTEXT_PATH') == true) && (PDFTOTEXT_PATH != '')) {
+                                $pdftotext_path = '"' . PDFTOTEXT_PATH . '"';
+                            }
                         
-                    // Otherwise the server is running Unix, so try to find pdftotext in a different way.
-                    } else {
-                        // If the path constant is defined, then use that.
-                        if ((defined('PDFTOTEXT_PATH') == true) && (PDFTOTEXT_PATH != '')) {
-                            $pdftotext_path = PDFTOTEXT_PATH;
-
-                        // Otherwise, try to figure out the path.
-                        // For this area, we first tried using code similar to what we do for wkhtmltopdf,
-                        // however pdftotext would not return anything when testing the location,
-                        // so we had to use this "which" solution instead.
+                        // Otherwise the server is running Unix, so try to find pdftotext in a different way.
                         } else {
-                            $pdftotext_path = trim(shell_exec('which pdftotext'));
+                            // If the path constant is defined, then use that.
+                            if ((defined('PDFTOTEXT_PATH') == true) && (PDFTOTEXT_PATH != '')) {
+                                $pdftotext_path = PDFTOTEXT_PATH;
+
+                            // Otherwise, try to figure out the path.
+                            // For this area, we first tried using code similar to what we do for wkhtmltopdf,
+                            // however pdftotext would not return anything when testing the location,
+                            // so we had to use this "which" solution instead.
+                            } else {
+                                // A shell_exec named in disable_functions is
+                                // "Call to undefined function" on PHP 8.
+                                $pdftotext_path = function_exists('shell_exec') ? trim((string) shell_exec('which pdftotext')) : '';
+                            }
                         }
                     }
-                }
 
-                // If a pdftotext path has been found, then convert PDF to text.
-                if ($pdftotext_path != '') {
-                    $content = shell_exec($pdftotext_path . ' ' . escapeshellarg(FILE_DIRECTORY_PATH . '/' . $file['name']) . ' -');
-                }
-                break;
+                    // If a pdftotext path has been found, then convert PDF to text.
+                    if (($pdftotext_path != '') && function_exists('shell_exec')) {
+                        $content = (string) shell_exec($pdftotext_path . ' ' . escapeshellarg(FILE_DIRECTORY_PATH . '/' . $file['name']) . ' -');
+                    }
+                    break;
 
-            case 'ppt':
-                $content = convert_ppt_to_text(FILE_DIRECTORY_PATH . '/' . $file['name']);
-                break;
+                case 'ppt':
+                    $content = convert_ppt_to_text(FILE_DIRECTORY_PATH . '/' . $file['name']);
+                    break;
 
-            case 'pptx':
-                $content = convert_pptx_to_text(FILE_DIRECTORY_PATH . '/' . $file['name']);
-                break;
+                case 'pptx':
+                    $content = convert_pptx_to_text(FILE_DIRECTORY_PATH . '/' . $file['name']);
+                    break;
 
-            case 'txt':
-                $content = @file_get_contents(FILE_DIRECTORY_PATH . '/' . $file['name']);
-                break;
+                case 'txt':
+                    $content = @file_get_contents(FILE_DIRECTORY_PATH . '/' . $file['name']);
+                    break;
 
-            case 'xls':
-                $content = convert_xls_to_text(FILE_DIRECTORY_PATH . '/' . $file['name']);
-                break;
+                case 'xls':
+                    $content = convert_xls_to_text(FILE_DIRECTORY_PATH . '/' . $file['name']);
+                    break;
 
-            case 'xlsx':
-                $content = convert_xlsx_to_text(FILE_DIRECTORY_PATH . '/' . $file['name']);
-                break;
+                case 'xlsx':
+                    $content = convert_xlsx_to_text(FILE_DIRECTORY_PATH . '/' . $file['name']);
+                    break;
+            }
+        } catch (Throwable $throwable) {
+            pg_search_index_keep_item($url, $timestamp);
+            pg_search_index_failed($index_failures, $index_failure_notes, pg_search_index_failure_note($file['name'], '', $throwable->getMessage(), 200, lang('File')));
+            continue;
+        } finally {
+            while (ob_get_level() > $saved_ob_level) {
+                ob_end_clean();
+            }
+
+            pg_error_throws($saved_error_throws);
         }
+
+        $content = (string) $content;
 
         $description = trim($file['description']);
 
@@ -1366,7 +1423,18 @@ foreach ($files as $file) {
 }
 
 // Delete old items that no longer exist.
+$search_index_run['stage'] = 'sweep';
+$search_index_run['item'] = '';
 db("DELETE FROM search_items WHERE timestamp != '" . $timestamp . "'");
+
+// One Site Log line per run names what could not be read, so a site owner
+// sees it without reading the PHP error log.
+if ($index_failures > 0) {
+    log_activity(lang(array(
+        'string' => 'The search index could not read {var:1} item(s): {var:2}',
+        'vars' => array($index_failures, implode('; ', $index_failure_notes) . (($index_failures > count($index_failure_notes)) ? '; ...' : '')))),
+        isset($username) ? $username : '');
+}
 
 // Ping IndexNow if the sitemap has changed and at least 12 hours have passed since the last ping.
 // This runs here so the CURL call stays off the interactive page load path.
@@ -1377,11 +1445,13 @@ if ($timestamp >= (LAST_SITEMAP_CHECK_TIMESTAMP + 43200)) {
 // Scheduled-task health: record that this job finished. See pg_cron_ran().
 pg_cron_ran('update_search_index');
 
-if ($designer_failures > 0) {
+$search_index_run['done'] = true;
+
+if ($index_failures > 0) {
     $finish_icon = 'bi-exclamation-triangle-fill fg-warning';
     $finish_message = lang(array(
-        'string' => 'The Search Index has been updated, but {var:1} record list(s) or record(s) failed to load and were left out. The Site Log names them.',
-        'vars' => array($designer_failures)));
+        'string' => 'The Search Index has been updated, but {var:1} item(s) could not be read. The Site Log names them.',
+        'vars' => array($index_failures)));
 } else {
     $finish_icon = 'bi-check-circle-fill fg-success';
     $finish_message = lang('The Search Index has been updated successfully!');
@@ -1455,8 +1525,7 @@ to decide where the text is:
 
 function convert_doc_to_text($file_path) 
 {
-    $fileHandle = fopen($file_path, "r");
-    $line = @fread($fileHandle, filesize($file_path));   
+    $line = pg_search_index_file_bytes($file_path);
     $lines = explode(chr(0x0D),$line);
     $outtext = "";
     foreach($lines as $thisline)
@@ -1511,8 +1580,7 @@ function convert_docx_to_text($file_path)
 function convert_ppt_to_text($file_path)
 {
     // This approach uses detection of the string "chr(0f).Hex_value.chr(0x00).chr(0x00).chr(0x00)" to find text strings, which are then terminated by another NUL chr(0x00). [1] Get text between delimiters [2] 
-    $fileHandle = fopen($file_path, "r");
-    $line = @fread($fileHandle, filesize($file_path));
+    $line = pg_search_index_file_bytes($file_path);
     $lines = explode(chr(0x0f),$line);
     $outtext = '';
 
